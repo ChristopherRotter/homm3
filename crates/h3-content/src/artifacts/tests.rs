@@ -9,7 +9,7 @@ use crate::pack::{
     ArtifactDef, ArtifactSlotDef, ArtifactSlotOverride, ProfileDef, SecondarySkillDef,
 };
 use crate::ruleset::Ruleset;
-use crate::ruleset::tests::{battle_def, creature, faction, key, manifest, resource};
+use crate::ruleset::tests::{creature, faction, key, manifest, resource};
 
 fn slot(k: &str, count: u8) -> ArtifactSlotDef {
     ArtifactSlotDef {
@@ -119,7 +119,6 @@ fn pack() -> ContentPack {
             key: key("t:faithful"),
             quirks: vec![],
         }],
-        battle: Some(battle_def()),
         ..ContentPack::new(manifest("t", &[]))
     }
 }

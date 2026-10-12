@@ -7,8 +7,8 @@ use std::vec::Vec;
 use super::*;
 use crate::flags::CreatureFlag;
 use crate::pack::{
-    CreatureDef, CreatureInfoDef, CreatureOverride, FactionDef, ObstacleDef, PackManifest,
-    ProfileDef, ResourceDef, TerrainDef,
+    CreatureDef, CreatureInfoDef, CreatureOverride, FactionDef, PackManifest, ProfileDef,
+    ResourceDef, TerrainDef,
 };
 use crate::quirks::QuirkRegistry;
 
@@ -19,44 +19,8 @@ pub(crate) fn key(s: &str) -> ContentKey {
 pub(crate) fn creature(k: &str) -> CreatureDef {
     CreatureDef {
         key: key(k),
-        attack: 5,
-        defense: 4,
-        damage_min: 1,
-        damage_max: 3,
-        hit_points: 10,
         speed: 5,
         info: CreatureInfoDef::default(),
-    }
-}
-
-pub(crate) fn battle_def() -> BattleParamsDef {
-    BattleParamsDef {
-        field_width: 17,
-        field_height: 11,
-        side_columns: 1,
-        army_slots: 3,
-        damage_roll_samples: 10,
-        attack_bonus_per_point_percent: 5,
-        attack_bonus_cap_percent: 300,
-        defense_reduction_per_point_permille: 25,
-        defense_reduction_cap_permille: 700,
-        defend_bonus_percent: 20,
-        defend_bonus_min: 1,
-        ranged_full_damage_distance: 10,
-        ranged_penalty_percent: 50,
-        melee_penalty_percent: 50,
-        morale_dice: 24,
-        good_morale_chances: vec![1, 2, 3],
-        bad_morale_chances: vec![2, 4, 6],
-        luck_dice: 24,
-        good_luck_chances: vec![1, 2, 3],
-        war_machine_positions: vec![[1, 3], [1, 1], [1, 9]],
-        loose_formation: vec![vec![5], vec![3, 7], vec![2, 5, 8]],
-        tight_formation: vec![vec![5], vec![4, 6], vec![4, 5, 6]],
-        tactics_zone_columns: vec![3, 5, 7],
-        surrender: None,
-        hero_casts_per_round: 1,
-        side_stack_limit: 20,
     }
 }
 
@@ -83,17 +47,6 @@ pub(crate) fn faction(k: &str) -> FactionDef {
     }
 }
 
-fn obstacle(k: &str, terrains: &[&str], blocked: &[(i8, i8)], absolute: bool) -> ObstacleDef {
-    ObstacleDef {
-        key: key(k),
-        terrains: terrains.iter().map(|t| key(t)).collect(),
-        width: 2,
-        height: 1,
-        blocked: blocked.to_vec(),
-        absolute,
-    }
-}
-
 fn base() -> ContentPack {
     ContentPack {
         manifest: PackManifest {
@@ -116,15 +69,6 @@ fn base() -> ContentPack {
                 name: "Lava".into(),
             },
         ],
-        obstacles: vec![
-            obstacle(
-                "base:rock",
-                &["base:grass", "base:lava"],
-                &[(0, 0), (1, -1)],
-                false,
-            ),
-            obstacle("base:cliff", &["base:lava"], &[(5, 4), (6, 4)], true),
-        ],
         creatures: vec![creature("base:a"), creature("base:b")],
         creature_overrides: vec![],
         profiles: vec![
@@ -137,7 +81,6 @@ fn base() -> ContentPack {
                 quirks: vec![("quirk.battle.x".into(), true)],
             },
         ],
-        battle: Some(battle_def()),
         ..ContentPack::new(manifest("base", &[]))
     }
 }
@@ -173,25 +116,7 @@ fn compiles_packs_in_order_with_dense_handles() {
     );
     assert_eq!(r.profile().as_str(), "base:faithful");
     assert_eq!(r.quirks().bits(), 0);
-    assert_eq!(r.battle().field.width, 17);
-    assert_eq!(r.battle().army_slots, 3);
-}
-
-#[test]
-fn formation_rows() {
-    let r = Ruleset::compile(&[base()], "base:faithful").unwrap();
-    let b = r.battle();
-    assert_eq!(b.formation_row(Formation::Loose, 1, 0), Some(5));
-    assert_eq!(b.formation_row(Formation::Loose, 3, 2), Some(8));
-    assert_eq!(b.formation_row(Formation::Tight, 3, 2), Some(6));
-    assert_eq!(b.formation_row(Formation::Tight, 2, 0), Some(4));
-    for f in [Formation::Loose, Formation::Tight] {
-        assert_eq!(b.formation_row(f, 3, 3), None);
-        assert_eq!(b.formation_row(f, 4, 0), None);
-        assert_eq!(b.formation_row(f, 0, 0), None);
-    }
-    assert_eq!(Formation::default(), Formation::Loose);
-    assert_eq!(Formation::Tight.index(), 1);
+    assert_eq!(r.creature_info(c), r.creature(c));
 }
 
 #[test]
@@ -243,48 +168,6 @@ fn hash_is_stable_and_sensitive() {
     assert_ne!(a.content_hash(), c.content_hash());
     let quirky = Ruleset::compile_with(&[base()], "base:quirky", &TEST_REGISTRY).unwrap();
     assert_ne!(a.content_hash(), quirky.content_hash());
-    let mut tight = base();
-    tight.battle.as_mut().unwrap().tight_formation[1] = vec![3, 7];
-    let tight = Ruleset::compile(&[tight], "base:faithful").unwrap();
-    assert_ne!(a.content_hash(), tight.content_hash());
-    let mut tactics = base();
-    tactics.battle.as_mut().unwrap().tactics_zone_columns[2] = 15;
-    let tactics = Ruleset::compile(&[tactics], "base:faithful").unwrap();
-    assert_ne!(a.content_hash(), tactics.content_hash());
-    // The surrender's resource is resolved like any reference (BAT-FLE-002).
-    let mut surrender = base();
-    surrender.battle.as_mut().unwrap().surrender = Some(crate::SurrenderDef {
-        resource: key("base:gold"),
-        cost_percent: 50,
-    });
-    let priced = Ruleset::compile(&[surrender.clone()], "base:faithful").unwrap();
-    assert_ne!(a.content_hash(), priced.content_hash());
-    let gold = priced
-        .resources()
-        .iter()
-        .position(|r| r.key.as_str() == "base:gold");
-    assert_eq!(
-        priced
-            .battle()
-            .surrender
-            .map(|s| (s.resource.index(), s.cost_percent)),
-        Some((gold.unwrap(), 50))
-    );
-    surrender
-        .battle
-        .as_mut()
-        .unwrap()
-        .surrender
-        .as_mut()
-        .unwrap()
-        .resource = key("base:silver");
-    assert_eq!(
-        Ruleset::compile(&[surrender], "base:faithful").unwrap_err(),
-        CompileError::UnknownReference {
-            kind: "resource",
-            key: "base:silver".into(),
-        }
-    );
     // Golden value: pins the canonical encoding (bump RULESET_HASH_VERSION when it changes).
     assert_eq!(
         a.content_hash(),
@@ -294,7 +177,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0xc74b_fb23_4711_a86a;
+const GOLDEN_BASE_HASH: u64 = 0x6d64_5424_ea47_dc8e;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()
@@ -359,20 +242,7 @@ fn pack_level_errors() {
         expect(&[base()], "base:nope"),
         CompileError::UnknownProfile("base:nope".into())
     );
-    let mut no_battle = base();
-    no_battle.battle = None;
-    assert_eq!(
-        expect(&[no_battle], "base:faithful"),
-        CompileError::MissingBattleParams
-    );
-    let mut second = ext();
-    second.battle = Some(battle_def());
-    assert_eq!(
-        expect(&[base(), second], "base:faithful"),
-        CompileError::DuplicateBattleParams("ext".into())
-    );
 }
-
 #[test]
 fn too_many_creatures() {
     let mut big = base();
@@ -386,50 +256,11 @@ fn too_many_creatures() {
 #[test]
 fn creature_errors() {
     type Edit = fn(&mut CreatureDef);
-    const DAMAGE: &str = "damage_min must be at least 1 (war machines: or damage [0, 0])";
     const SPEED: &str = "speed must be 0 for war machines and at least 1 otherwise";
-    let cases: [(Edit, &str); 9] = [
-        (|c| c.damage_min = 0, DAMAGE),
-        (
-            |c| c.damage_max = 0,
-            "damage_max must not be below damage_min",
-        ),
-        (|c| c.hit_points = 0, "hit_points must be at least 1"),
+    let cases: [(Edit, &str); 2] = [
         (|c| c.speed = 0, SPEED),
         // War machines never move (BAT-WAR-001).
         (|c| c.info.flags = vec!["war_machine".into()], SPEED),
-        // A war machine may have no damage, but not a damage range starting at 0.
-        (
-            |c| {
-                c.info.flags = vec!["war_machine".into()];
-                c.damage_min = 0;
-            },
-            DAMAGE,
-        ),
-        (
-            |c| {
-                c.info.flags = vec!["war_machine".into()];
-                c.damage_min = 0;
-                c.damage_max = 0;
-                c.speed = 0;
-                c.hit_points = 0;
-            },
-            "hit_points must be at least 1",
-        ),
-        // Only war machines act automatically.
-        (
-            |c| c.info.abilities = vec![AbilityDef::AmmoSupply],
-            "ammo_supply and first_aid require flag war_machine",
-        ),
-        (
-            |c| {
-                c.info.abilities = vec![AbilityDef::FirstAid {
-                    min_hp: 1,
-                    max_hp: 2,
-                }]
-            },
-            "ammo_supply and first_aid require flag war_machine",
-        ),
     ];
     for (edit, reason) in cases {
         let mut p = base();
@@ -442,155 +273,11 @@ fn creature_errors() {
             }
         );
     }
+    let mut machine = base();
+    machine.creatures[0].speed = 0;
+    machine.creatures[0].info.flags = vec!["war_machine".into()];
+    assert!(Ruleset::compile(&[machine], "base:faithful").is_ok());
 }
-
-#[test]
-fn battle_param_errors() {
-    type Edit = fn(&mut BattleParamsDef);
-    let cases: Vec<(Edit, &str)> = vec![
-        (
-            |b| b.field_height = 0,
-            "the field needs at least one row and two standable columns",
-        ),
-        (
-            |b| b.field_width = 3,
-            "the field needs at least one row and two standable columns",
-        ),
-        (|b| b.field_height = 16, "the field has more than 255 hexes"),
-        (
-            |b| b.army_slots = 0,
-            "army_slots must be between 1 and min(16, field_height)",
-        ),
-        (
-            |b| b.army_slots = 17,
-            "army_slots must be between 1 and min(16, field_height)",
-        ),
-        (
-            |b| b.army_slots = 12,
-            "army_slots must be between 1 and min(16, field_height)",
-        ),
-        (
-            |b| b.damage_roll_samples = 0,
-            "damage_roll_samples must be at least 1",
-        ),
-        (
-            |b| b.defense_reduction_cap_permille = 1001,
-            "defense_reduction_cap_permille must not exceed 1000",
-        ),
-        (
-            |b| b.ranged_penalty_percent = 101,
-            "ranged and melee penalties must not exceed 100 percent",
-        ),
-        (
-            |b| b.melee_penalty_percent = 101,
-            "ranged and melee penalties must not exceed 100 percent",
-        ),
-        (
-            |b| b.morale_dice = 0,
-            "morale_dice and luck_dice must be at least 1",
-        ),
-        (
-            |b| b.luck_dice = 0,
-            "morale_dice and luck_dice must be at least 1",
-        ),
-        (
-            |b| b.bad_morale_chances = vec![1, 24],
-            "bad morale chances must be below morale_dice",
-        ),
-        (
-            |b| b.bad_morale_chances = vec![1; 9],
-            "morale and luck chances: at most 8 levels, each at most the die's sides",
-        ),
-        (
-            |b| b.good_luck_chances = vec![25],
-            "morale and luck chances: at most 8 levels, each at most the die's sides",
-        ),
-        (
-            |b| b.war_machine_positions = vec![[1, 3]],
-            "war_machine_positions needs 3 hexes [x, y] on the field",
-        ),
-        (
-            |b| b.tactics_zone_columns.truncate(2),
-            "tactics_zone_columns needs one width per skill level, each between 1 and the standable columns",
-        ),
-        (
-            |b| b.side_stack_limit = 22,
-            "side_stack_limit must be at most 21",
-        ),
-        (
-            |b| b.tactics_zone_columns[0] = 0,
-            "tactics_zone_columns needs one width per skill level, each between 1 and the standable columns",
-        ),
-        (
-            |b| b.tactics_zone_columns[2] = 16,
-            "tactics_zone_columns needs one width per skill level, each between 1 and the standable columns",
-        ),
-        (
-            |b| b.war_machine_positions[2] = [17, 9],
-            "war_machine_positions needs 3 hexes [x, y] on the field",
-        ),
-        (
-            |b| b.war_machine_positions[2] = [1, 11],
-            "war_machine_positions needs 3 hexes [x, y] on the field",
-        ),
-        // covers: BAT-WAR-001
-        (
-            |b| b.war_machine_positions[0] = [0, 3],
-            "war machine positions need room for a two-hex machine behind them",
-        ),
-        (
-            |b| b.war_machine_positions[1] = [2, 3],
-            "war machine positions overlap (as two-hex footprints)",
-        ),
-        (
-            |b| b.war_machine_positions[2] = [1, 3],
-            "war machine positions overlap (as two-hex footprints)",
-        ),
-        (
-            |b| b.war_machine_positions[2] = [8, 5],
-            "war machine positions overlap (as two-hex footprints)",
-        ),
-        (
-            |b| drop(b.loose_formation.pop()),
-            "formations need one entry per army size 1..=army_slots",
-        ),
-        (
-            |b| drop(b.tight_formation.pop()),
-            "formations need one entry per army size 1..=army_slots",
-        ),
-        (
-            |b| b.loose_formation[1] = vec![1],
-            "formation entry n must list n rows",
-        ),
-        (
-            |b| b.tight_formation[1] = vec![1, 11],
-            "formation row outside the field",
-        ),
-        (
-            |b| b.loose_formation[2] = vec![1, 2, 1],
-            "formation rows must be distinct",
-        ),
-    ];
-    for (edit, reason) in cases {
-        let mut p = base();
-        edit(p.battle.as_mut().unwrap());
-        assert_eq!(
-            expect(&[p], "base:faithful"),
-            CompileError::InvalidBattleParams(reason),
-            "{reason}"
-        );
-    }
-    // Wide fields with many rows are fine as long as they fit in 255 hexes; large slot counts too.
-    let mut ok = base();
-    let b = ok.battle.as_mut().unwrap();
-    b.field_width = 15;
-    b.field_height = 17;
-    b.army_slots = 16;
-    b.loose_formation = (1..=16u8).map(|n| (0..n).collect()).collect();
-    b.tight_formation = (1..=16u8).map(|n| (0..n).rev().collect()).collect();
-    assert!(Ruleset::compile(&[ok], "base:faithful").is_ok());
-}
-
 #[test]
 fn error_messages() {
     let cases = [
@@ -629,13 +316,6 @@ fn error_messages() {
         ),
         (CompileError::TooManyCreatures, "too many creature types"),
         (
-            CompileError::InvalidObstacle {
-                key: "a:o".into(),
-                reason: "bad",
-            },
-            "obstacle `a:o`: bad",
-        ),
-        (
             CompileError::DependencyCycle("a".into()),
             "pack dependencies form a cycle through `a`",
         ),
@@ -660,18 +340,6 @@ fn error_messages() {
         (
             CompileError::UnknownFlag("swims".into()),
             "unknown creature flag `swims`",
-        ),
-        (
-            CompileError::MissingBattleParams,
-            "no pack provides battle parameters",
-        ),
-        (
-            CompileError::DuplicateBattleParams("a".into()),
-            "pack `a` provides battle parameters a second time",
-        ),
-        (
-            CompileError::InvalidBattleParams("bad"),
-            "battle parameters: bad",
         ),
         (
             CompileError::DuplicateHeroParams("a".into()),
@@ -755,8 +423,6 @@ fn rich_base() -> ContentPack {
     info.horde_growth = 4;
     info.fight_value = 100;
     info.ai_value = 80;
-    info.shots = 12;
-    info.casts = 1;
     info.adventure_count = [20, 50];
     info.flags = vec!["flying".into(), "two_hex".into()];
     p
@@ -784,9 +450,8 @@ fn resources_factions_and_creature_info_compile() {
     );
     assert_eq!((info.growth, info.horde_growth), (14, 4));
     assert_eq!((info.fight_value, info.ai_value), (100, 80));
-    assert_eq!((info.casts, info.adventure_count), (1, [20, 50]));
+    assert_eq!((info.speed, info.adventure_count), (5, [20, 50]));
     let stats = r.creature(a).unwrap();
-    assert_eq!(stats.shots, 12);
     assert!(stats.flags.contains(CreatureFlag::Flying));
     assert!(stats.flags.contains(CreatureFlag::TwoHex));
     assert!(!stats.flags.contains(CreatureFlag::Undead));
@@ -921,23 +586,7 @@ fn too_many_resources_and_factions() {
         expect(&[p], "base:faithful"),
         CompileError::TooManyEntries("terrain")
     );
-    let mut p = base();
-    p.obstacles = (0..=n)
-        .map(|i| {
-            obstacle(
-                &std::format!("base:o{i}"),
-                &["base:grass"],
-                &[(0, 0)],
-                false,
-            )
-        })
-        .collect();
-    assert_eq!(
-        expect(&[p], "base:faithful"),
-        CompileError::TooManyEntries("obstacle")
-    );
 }
-
 #[test]
 fn info_validation() {
     let mut p = base();
@@ -962,11 +611,6 @@ fn info_validation() {
 
 fn full_patch() -> CreaturePatch {
     CreaturePatch {
-        attack: Some(9),
-        defense: Some(8),
-        damage_min: Some(2),
-        damage_max: Some(7),
-        hit_points: Some(30),
         speed: Some(11),
         name: Some("Beta".into()),
         plural: Some("Betas".into()),
@@ -977,14 +621,8 @@ fn full_patch() -> CreaturePatch {
         horde_growth: Some(1),
         fight_value: Some(5000),
         ai_value: Some(6000),
-        shots: Some(24),
-        casts: Some(3),
         adventure_count: Some([4, 10]),
         flags: Some(vec!["undead".into()]),
-        abilities: Some(vec![AbilityDef::Hate {
-            target: key("ext:c"),
-            percent: 50,
-        }]),
         upgrades: Some(vec![key("ext:c")]),
     }
 }
@@ -1018,17 +656,6 @@ fn overrides_change_only_the_listed_fields() {
         "base:faithful",
     )
     .unwrap();
-    let stats = r.creature(a).unwrap();
-    assert_eq!(
-        (
-            stats.attack,
-            stats.defense,
-            stats.damage_min,
-            stats.damage_max
-        ),
-        (9, 8, 2, 7)
-    );
-    assert_eq!((stats.hit_points, stats.speed), (30, 11));
     let info = r.creature_info(a).unwrap();
     assert_eq!(
         (info.name.as_str(), info.plural.as_str()),
@@ -1045,17 +672,10 @@ fn overrides_change_only_the_listed_fields() {
     );
     assert_eq!((info.growth, info.horde_growth), (2, 1));
     assert_eq!((info.fight_value, info.ai_value), (5000, 6000));
-    assert_eq!((info.casts, info.adventure_count), (3, [4, 10]));
-    assert_eq!(stats.shots, 24);
-    assert!(stats.flags.contains(CreatureFlag::Undead));
-    assert!(!stats.flags.contains(CreatureFlag::Flying));
-    assert_eq!(
-        r.abilities(a),
-        [CompiledAbility::Hate {
-            target: r.creature_by_key("ext:c").unwrap(),
-            percent: 50
-        }]
-    );
+    assert_eq!((info.speed, info.adventure_count), (11, [4, 10]));
+    assert!(info.flags.contains(CreatureFlag::Undead));
+    assert!(!info.flags.contains(CreatureFlag::Flying));
+    assert_eq!(info.upgrades, [r.creature_by_key("ext:c").unwrap()]);
     // `Some(None)` makes a creature neutral.
     let neutral = CreaturePatch {
         faction: Some(None),
@@ -1130,228 +750,27 @@ fn override_errors() {
     );
     // The patched creature is validated like a definition.
     let broken = CreaturePatch {
-        hit_points: Some(0),
+        level: Some(0),
         ..CreaturePatch::default()
     };
     assert_eq!(
         expect(&[base(), overriding("base:a", broken)], "base:faithful"),
         CompileError::InvalidCreature {
             key: "base:a".into(),
-            reason: "hit_points must be at least 1"
+            reason: "level must be at least 1"
         }
     );
 }
 
-fn with_abilities(abilities: Vec<AbilityDef>) -> ContentPack {
-    let mut p = base();
-    p.creatures[0].info.abilities = abilities;
-    p
-}
-
 #[test]
-fn abilities_compile_with_forward_references() {
-    use crate::ability::{AreaShot, AuraTarget};
-    let mut p = with_abilities(vec![
-        // `base:b` is defined after `base:a`.
-        AbilityDef::Hate {
-            target: key("base:b"),
-            percent: 50,
-        },
-        AbilityDef::MoraleAura {
-            amount: 1,
-            affects: AuraTarget::Allies,
-        },
-    ]);
-    p.creatures[1].info.flags = vec!["area_attack".into(), "multi_headed".into()];
-    p.creatures[1].info.abilities = vec![
-        AbilityDef::AreaShot {
-            effect: AreaShot::Fireball,
-        },
-        AbilityDef::ThreeHeadedAttack,
-    ];
-    let r = Ruleset::compile(&[p], "base:faithful").unwrap();
-    let a = r.creature_by_key("base:a").unwrap();
-    let b = r.creature_by_key("base:b").unwrap();
-    assert_eq!(
-        r.abilities(a),
-        [
-            CompiledAbility::Hate {
-                target: b,
-                percent: 50
-            },
-            CompiledAbility::MoraleAura {
-                amount: 1,
-                affects: AuraTarget::Allies
-            }
-        ]
-    );
-    assert_eq!(r.abilities(b).len(), 2);
-    assert!(r.abilities(CreatureTypeId::from_raw(99)).is_empty());
-    // Abilities are part of the content hash.
-    let plain = Ruleset::compile(&[with_abilities(vec![])], "base:faithful").unwrap();
-    let hated = Ruleset::compile(
-        &[with_abilities(vec![AbilityDef::Teleports])],
-        "base:faithful",
-    )
-    .unwrap();
-    assert_ne!(plain.content_hash(), hated.content_hash());
-}
-
-#[test]
-fn ability_errors() {
-    let invalid = |reason| CompileError::InvalidCreature {
-        key: "base:a".into(),
-        reason,
-    };
-    assert_eq!(
-        expect(
-            &[with_abilities(vec![AbilityDef::Hate {
-                target: key("base:zzz"),
-                percent: 50
-            }])],
-            "base:faithful"
-        ),
-        CompileError::UnknownReference {
-            kind: "creature",
-            key: "base:zzz".into()
-        }
-    );
-    // A base creature cannot refer to a creature of a pack it does not depend on.
-    assert_eq!(
-        expect(
-            &[
-                with_abilities(vec![AbilityDef::Hate {
-                    target: key("ext:c"),
-                    percent: 50
-                }]),
-                ext()
-            ],
-            "base:faithful"
-        ),
-        CompileError::ReferenceOutsideDependencies {
-            key: "ext:c".into(),
-            pack: "base".into()
-        }
-    );
-    assert_eq!(
-        expect(
-            &[with_abilities(vec![AbilityDef::Jousting {
-                percent_per_hex: 0
-            }])],
-            "base:faithful"
-        ),
-        invalid("jousting percent_per_hex must be at least 1")
-    );
-    assert_eq!(
-        expect(
-            &[with_abilities(vec![AbilityDef::AttacksAllAdjacent])],
-            "base:faithful"
-        ),
-        invalid("flag multi_headed requires attacks_all_adjacent or three_headed_attack")
-    );
-    let mut flagged = base();
-    flagged.creatures[0].info.flags = vec!["area_attack".into()];
-    assert_eq!(
-        expect(&[flagged], "base:faithful"),
-        invalid("flag area_attack requires an area_shot ability (and vice versa)")
-    );
-    // Overrides resolve their abilities in the overriding pack's scope and are validated.
-    let bad = CreaturePatch {
-        abilities: Some(vec![AbilityDef::Hate {
-            target: key("ext:nobody"),
-            percent: 50,
-        }]),
-        ..CreaturePatch::default()
-    };
-    assert!(matches!(
-        expect(&[base(), overriding("base:a", bad)], "base:faithful"),
-        CompileError::UnknownReference {
-            kind: "creature",
-            ..
-        }
-    ));
-    let twice = CreaturePatch {
-        abilities: Some(vec![AbilityDef::Teleports, AbilityDef::Teleports]),
-        ..CreaturePatch::default()
-    };
-    assert_eq!(
-        expect(&[base(), overriding("base:a", twice)], "base:faithful"),
-        invalid("an ability is listed twice")
-    );
-}
-
-#[test]
-fn roll_tables_index_levels_from_one_and_cap_at_the_top() {
-    let r = Ruleset::compile(&[base()], "base:faithful").unwrap();
-    let b = r.battle();
-    assert_eq!((b.morale_dice, b.luck_dice), (24, 24));
-    assert_eq!(b.good_morale.levels(), 3);
-    assert_eq!(
-        (0..=4).map(|l| b.bad_morale.chance(l)).collect::<Vec<_>>(),
-        vec![0, 2, 4, 6, 6]
-    );
-    assert_eq!(b.good_luck.chance(1), 1);
-    assert_eq!(RollTable::default().chance(1), 0);
-}
-
-#[test]
-fn aura_values_are_keyed_and_limited() {
-    use crate::ability::AuraTarget;
-    let morale = |amount, affects| AbilityDef::MoraleAura { amount, affects };
-    let k = |a: AbilityDef| a.aura_key();
-    assert_eq!(
-        k(morale(1, AuraTarget::Allies)),
-        k(morale(1, AuraTarget::Allies))
-    );
-    assert_ne!(
-        k(morale(1, AuraTarget::Allies)),
-        k(morale(1, AuraTarget::Enemies))
-    );
-    assert_ne!(
-        k(morale(-1, AuraTarget::Enemies)),
-        k(morale(1, AuraTarget::Enemies))
-    );
-    assert_ne!(
-        k(morale(-1, AuraTarget::Enemies)),
-        k(AbilityDef::LuckAura {
-            amount: -1,
-            affects: AuraTarget::Enemies
-        })
-    );
-    assert_eq!(k(AbilityDef::Regeneration), None);
-    let with_auras = |n: i8| {
-        let mut p = base();
-        p.creatures = (0..n)
-            .map(|i| {
-                let mut c = creature(&std::format!("base:c{i}"));
-                c.info.abilities = vec![morale(i + 1, AuraTarget::Allies)];
-                c
-            })
-            .collect();
-        p
-    };
-    Ruleset::compile(&[with_auras(8)], "base:faithful").unwrap();
-    assert_eq!(
-        expect(&[with_auras(9)], "base:faithful"),
-        CompileError::TooManyEntries("distinct aura")
-    );
-}
-
-#[test]
-fn terrains_native_terrains_and_obstacles() {
+fn terrains_and_native_terrains() {
     let r = Ruleset::compile(&[base()], "base:faithful").unwrap();
     let grass = r.terrain_by_key("base:grass").unwrap();
     let lava = r.terrain_by_key("base:lava").unwrap();
     assert_eq!(r.terrains()[lava.index()].name, "Lava");
     assert_eq!(r.terrain_by_key("base:snow"), None);
     assert_eq!(r.factions()[0].native_terrain, Some(grass));
-    let o = &r.obstacles()[0];
-    assert_eq!(
-        (o.terrains.as_slice(), o.width, o.absolute),
-        (&[grass, lava][..], 2, false)
-    );
-    assert_eq!(r.obstacles()[1].blocked, vec![(5, 4), (6, 4)]);
-    // Errors: unknown terrain, duplicate key, invalid shapes.
+    // Errors: unknown terrain, duplicate key, a key outside the pack.
     let mut p = base();
     p.factions[0].native_terrain = Some(key("base:snow"));
     assert_eq!(
@@ -1368,98 +787,16 @@ fn terrains_native_terrains_and_obstacles() {
         CompileError::DuplicateKey("base:grass".into())
     );
     let mut p = base();
-    p.obstacles.push(p.obstacles[0].clone());
-    assert_eq!(
-        expect(&[p], "base:faithful"),
-        CompileError::DuplicateKey("base:rock".into())
-    );
-    let mut p = base();
-    p.obstacles[0].terrains.push(key("base:snow"));
-    assert!(matches!(
-        expect(&[p], "base:faithful"),
-        CompileError::UnknownReference {
-            kind: "terrain",
-            ..
-        }
-    ));
-    let mut p = base();
     p.terrains[0].key = key("ext:grass");
     assert!(matches!(
         expect(&[p], "base:faithful"),
         CompileError::KeyOutsidePack { .. }
     ));
-    let mut p = base();
-    p.obstacles[0].key = key("ext:rock");
-    assert!(matches!(
-        expect(&[p], "base:faithful"),
-        CompileError::KeyOutsidePack { .. }
-    ));
-    // A usual obstacle is a removable piece of the battle, which holds 8 hexes (E04b T11b
-    // review, F-robust-5); an absolute one has no such bound.
-    let row = |hexes: i8, y: i8| -> Vec<(i8, i8)> { (0..hexes).map(|dx| (dx + 1, y)).collect() };
-    assert_eq!(MAX_USUAL_OBSTACLE_HEXES, 8);
-    for (blocked, absolute) in [(row(8, 0), false), (row(9, 4), true)] {
-        let mut p = base();
-        p.obstacles
-            .push(obstacle("base:o", &["base:grass"], &blocked, absolute));
-        assert!(Ruleset::compile(&[p], "base:faithful").is_ok());
-    }
-    let shapes: [(ObstacleDef, &str); 6] = [
-        (
-            obstacle("base:o", &["base:grass"], &row(9, 0), false),
-            "usual obstacles block at most 8 hexes",
-        ),
-        (
-            obstacle("base:o", &[], &[(0, 0)], false),
-            "an obstacle needs at least one terrain and one blocked hex",
-        ),
-        (
-            obstacle("base:o", &["base:grass"], &[], false),
-            "an obstacle needs at least one terrain and one blocked hex",
-        ),
-        (
-            obstacle("base:o", &["base:grass"], &[(0, 1)], false),
-            "usual obstacles need width and height >= 1 and blocked dy <= 0",
-        ),
-        (
-            ObstacleDef {
-                height: 0,
-                ..obstacle("base:o", &["base:grass"], &[(0, 0)], false)
-            },
-            "usual obstacles need width and height >= 1 and blocked dy <= 0",
-        ),
-        (
-            obstacle("base:o", &["base:grass"], &[(0, 4)], true),
-            "absolute obstacles must block standable hexes of the field",
-        ),
-    ];
-    for (o, reason) in shapes {
-        let mut p = base();
-        p.obstacles.push(o);
-        assert_eq!(
-            expect(&[p], "base:faithful"),
-            CompileError::InvalidObstacle {
-                key: "base:o".into(),
-                reason
-            }
-        );
-    }
-    for (x, y) in [(16, 4), (5, -1), (5, 11)] {
-        let mut p = base();
-        p.obstacles
-            .push(obstacle("base:o", &["base:grass"], &[(x, y)], true));
-        assert!(matches!(
-            expect(&[p], "base:faithful"),
-            CompileError::InvalidObstacle { .. }
-        ));
-    }
-    let mut p = base();
-    p.obstacles.push(ObstacleDef {
-        width: 0,
-        ..obstacle("base:o", &["base:grass"], &[(0, 0)], false)
-    });
-    assert!(matches!(
-        expect(&[p], "base:faithful"),
-        CompileError::InvalidObstacle { .. }
-    ));
+}
+
+#[test]
+fn formations_have_an_index() {
+    assert_eq!(Formation::default(), Formation::Loose);
+    assert_eq!([Formation::Loose.index(), Formation::Tight.index()], [0, 1]);
+    assert_eq!(Formation::COUNT, 2);
 }
