@@ -1,11 +1,12 @@
 //! Batch 2a's direct-damage spells on the harvested SoD packs (E04b T11a, the fold-in; BAT-MAG-003
-//! to BAT-MAG-005): R3 to R5 of `experiments/results/E04b-batch-2a.md` (SoD 4.0 Complete, plain
+//! to BAT-MAG-006): R1 to R5 of `experiments/results/E04b-batch-2a.md` (SoD 4.0 Complete, plain
 //! HD, 2026-10-06) replayed with the heroes the batch used, derived in the Heroes context. Also
 //! E04b exit criterion 2's guard: every combat spell of the packs but Earthquake (E04c) and every
 //! ability spell has effects the battle implements.
 
 use h3_battle::{
-    BattleState, CastTarget, CastTargets, Command, Event, EventKind, StackId, apply, cast_targets,
+    BattleState, CastTarget, CastTargets, Command, Event, EventKind, Field, StackId, apply,
+    cast_targets,
 };
 use h3_content::{Formation, HeroTypeId, Ruleset, SchoolId, SpellCategory, SpellId, SpellScope};
 use h3_contracts::{Army, ArmyStack, BattleEffect, BattleHero, BattleSetup, BattleSide, Rate};
@@ -293,6 +294,104 @@ fn implosion_with_huge_spell_damage_rates_does_not_overflow() {
             "{profile}"
         );
     }
+}
+
+// covers: BAT-MAG-006, BAT-MAG-003, BAT-TAC-001
+/// Batch 2a R1 and R2 as they were played (E04b T11b review, r1 F-10): a hero of power 1 with 30
+/// spell points and ten Pikemen casts Chain Lightning at the first of three Peasant stacks (100,
+/// 101 and 102), which Blue's hero placed in its tactics phase (Expert Tactics). At no mastery
+/// the chain strikes four stacks with 40 × 1 + 25 = 65, then half each time: 65, 32, 16, 8.
+#[test]
+fn batch_2a_r1_r2_chain_lightning_by_the_screen_distance_and_the_army_slot() {
+    let r = sod();
+    let chain = spell(&r, "base:chain_lightning");
+    let field = Field::new(r.battle().field);
+    // The damage of each stack struck, in order, and every stack's count afterwards: stack 0
+    // the Pikemen, 1 to 3 the Peasants in their army's order, placed on `hexes` (column, row).
+    let play = |red: &str, blue: &str, hexes: [(i32, i32); 3]| {
+        let caster = details(&r, red, 1, 3, false, &[], &["base:chain_lightning"]);
+        let tactician = HeroDetails {
+            hero_type: r.hero_type_by_key(blue).unwrap(),
+            level: 1,
+            experience: 0,
+            primary: [0; 4],
+            skills: vec![(r.skill_by_key("base:tactics").unwrap(), 3)],
+            worn: vec![],
+            backpack: vec![],
+            spells: vec![],
+            mana: 0,
+        };
+        let peasants = [100, 101, 102].map(|count| ("ab:peasant", count));
+        let setup = BattleSetup {
+            attacker: army(&r, &[("base:pikeman", 10)]),
+            defender: army(&r, &peasants),
+            obstacles: vec![],
+            heroes: [&caster, &tactician].map(|d| Some(derive_battle_hero(d, &r).unwrap())),
+            terrain: None,
+            war_machines: [vec![], vec![]],
+            formations: [Formation::Loose; 2],
+            funds: [0; 2],
+        };
+        let mut s = BattleState::new(&r, &setup, 1).unwrap();
+        // Blue's tactics phase: its stacks come in their army's order (equal speeds).
+        assert_eq!(
+            s.tactics().map(|t| (t.side, t.columns)),
+            Some((BattleSide::Defender, 7))
+        );
+        for (id, (x, y)) in (1u8..).zip(hexes) {
+            assert_eq!(s.active(), Some(StackId(id)));
+            let to = field.hex(x, y).unwrap();
+            let place = Command::Move { to };
+            apply(
+                &mut s,
+                &r,
+                BattleSide::Defender,
+                place,
+                &mut Vec::<Event>::new(),
+            )
+            .unwrap();
+        }
+        let end = Command::EndTactics;
+        apply(
+            &mut s,
+            &r,
+            BattleSide::Defender,
+            end,
+            &mut Vec::<Event>::new(),
+        )
+        .unwrap();
+        // Round 1: the Pikemen act before the Peasants. Chain Lightning may be aimed at each
+        // Peasant stack and not at the caster's own Pikemen (R1, round 2).
+        assert_eq!((s.round(), s.active()), (1, Some(StackId(0))));
+        assert_eq!(s.hero(BattleSide::Attacker).unwrap().mana, 30);
+        assert_eq!(
+            targets(&s, &r, chain),
+            [1, 2, 3].map(|id| CastTarget::Stack(StackId(id)))
+        );
+        let struck = cast(&mut s, &r, chain, CastTarget::Stack(StackId(1)));
+        let counts: Vec<u32> = s.stacks().iter().map(|t| t.count).collect();
+        (struck, counts)
+    };
+    // R1: A (the 100) in row 5, B (the 101) two hexes to its left, 88 pixels away, C (the 102)
+    // two rows beneath it, 84 pixels away (the pattern one hex to the left of the plan, as it
+    // was played). The bolt went A, C, B, Pikemen: A 35, C 70, B 85 left, the Pikemen all ten.
+    assert_eq!(
+        play("base:caitlin", "base:nagash", [(11, 4), (9, 4), (11, 6)]),
+        (
+            vec![(1, 65), (3, 32), (2, 16), (0, 8)],
+            vec![10, 35, 85, 70]
+        )
+    );
+    // R2: A (the 100), R (the 101) two hexes to its right and L (the 102) two hexes to its left,
+    // both 88 pixels away (the pattern one hex down-left of the plan, as it was played). The
+    // bolt went A, R, L, Pikemen: the earlier stack of the army first; A 35, R 69, L 86 left.
+    assert_eq!(
+        play("base:jenova", "base:damacon", [(12, 5), (14, 5), (10, 5)]),
+        (
+            vec![(1, 65), (2, 32), (3, 16), (0, 8)],
+            vec![10, 35, 69, 86]
+        )
+    );
 }
 
 // covers: BAT-MAG-003, BAT-MAG-005, BAT-MAG-007

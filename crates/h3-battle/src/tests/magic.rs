@@ -157,6 +157,20 @@ fn mastery_is_the_best_school_and_selects_cost_and_effect() {
         Err(CommandError::NotEnoughMana)
     );
     assert_eq!(s, before);
+    // Mana equal to the cost is enough (only less refuses): the cast is legal and leaves none.
+    let mut exact = h.clone();
+    exact.magic.mana = 4;
+    let mut s = led(
+        &r,
+        [Some(exact), None],
+        &[(0, "fixed", 1)],
+        &[(0, "tank", 1)],
+    );
+    assert!(castable_spells(&s, &r, BattleSide::Attacker).contains(spell(&r, "bolt")));
+    let events = act(&mut s, &r, cast(&r, "bolt", 1)).unwrap();
+    assert_eq!(spell_damage(&events), [(1, 40, 0)]);
+    let view = s.hero(BattleSide::Attacker).unwrap();
+    assert_eq!((view.mana, view.casts), (0, 1));
 }
 
 // covers: BAT-MAG-001, BAT-MAG-003
