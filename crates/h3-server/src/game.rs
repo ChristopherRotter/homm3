@@ -29,6 +29,11 @@
 //!   and its journal moves to `<data>/void/`, with no replay (a restored one too). A game that
 //!   waits for its players and none of whose seats is held any more leaves, whoever watches it:
 //!   its spectators hear `Goodbye { Abandoned }`.
+//! - **Ranked games** (E16 M4 T3a). A game of a ladder's pool is ranked: it has no host, neither
+//!   `[limits] empty_game_ms` nor the abandoned waiting game applies, and the session's clock
+//!   (milliseconds since the thread began it, a restored one afresh) moves at every message, every
+//!   closed connection and every tick of the registry's sweep: a seat empty beyond the ladder's
+//!   grace forfeits, and the game ends as any other (its replay up to the forfeit).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -44,7 +49,9 @@ use h3_content::Ruleset;
 use h3_contracts::BattleSetup;
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::account::CHALLENGE_BYTES;
-use h3_protocol::session::{Bot, ConnId, Entry, GameConfig, Journal, Outbound, SeatKind, Session};
+use h3_protocol::session::{
+    Bot, ConnId, Entry, GameConfig, Grace, Journal, Outbound, SeatKind, Session,
+};
 use h3_protocol::wire::{
     self, ClientMessage, GameInfo, GoodbyeReason, Phase, Seat, Seated, ServerMessage,
 };
@@ -236,6 +243,8 @@ pub struct Offer {
     /// The ladder whose pool it is in (E16 M4 T2): its games are that ladder's matches, and no
     /// client creates one.
     pub ladder: Option<String>,
+    /// The ladder's grace for its games' absent players (E16 M4 T3a): its games are ranked.
+    pub grace: Option<Grace>,
 }
 
 impl Offer {
@@ -268,6 +277,7 @@ impl Offer {
             bots: config.bots.clone(),
             info,
             ladder: None,
+            grace: None,
         })
     }
 }
@@ -328,6 +338,12 @@ fn commands(limits: &config::Limits) -> usize {
     usize::try_from(limits.commands_per_game).unwrap_or(usize::MAX)
 }
 
+/// How long the seats of a game of `offer` may all stay empty while it runs before it pauses (E16
+/// M2 T5a): a ranked game never pauses so (E16 M4 T3a: its grace bounds its players' absences).
+fn empty_game(offer: &Offer, limits: &config::Limits) -> Option<Duration> {
+    deadline(limits.empty_game_ms).filter(|_| offer.grace.is_none())
+}
+
 /// A deadline of `ms` milliseconds; none for 0 (E16 M2 T5a).
 pub(crate) fn deadline(ms: u64) -> Option<Duration> {
     (ms > 0).then(|| Duration::from_millis(ms))
@@ -380,6 +396,7 @@ impl Prepared {
             shadow: server.shadow_instance,
             spectators: limits.spectators_per_game,
             record_bytes: limits.record_bytes,
+            ranked: offer.grace,
             watchable,
         };
         let (bot_seed, replay_path) = (os_u64()?, replay_path(&server.data, &offer.id, game)?);
@@ -400,6 +417,7 @@ impl Prepared {
         };
         let journal = Writer::create(&server.data, &start)
             .map_err(|e| Error(format!("game {game}'s journal: {e}")))?;
+        let empty_game = empty_game(&offer, limits);
         Ok(Self {
             scenario: offer.scenario.clone(),
             offer,
@@ -408,7 +426,7 @@ impl Prepared {
             bot_seed,
             replay_path,
             data: server.data.clone(),
-            empty_game: deadline(limits.empty_game_ms),
+            empty_game,
             commands: commands(limits),
             accounts,
             reserved: [None, None],
@@ -455,6 +473,7 @@ impl Prepared {
             shadow: server.shadow_instance,
             spectators: limits.spectators_per_game,
             record_bytes: limits.record_bytes,
+            ranked: offer.grace,
             // A game restores only if it started, and its entries hold the setting it started
             // with (`Entry::Spectators`).
             watchable: true,
@@ -462,6 +481,7 @@ impl Prepared {
         let secrets =
             os_u64().and_then(|seed| Ok((seed, replay_path(&server.data, &offer.id, game)?)));
         let (bot_seed, replay_path) = secrets.map_err(|e| e.0)?;
+        let empty_game = empty_game(&offer, limits);
         Ok(Self {
             scenario,
             offer,
@@ -470,7 +490,7 @@ impl Prepared {
             bot_seed,
             replay_path,
             data: server.data.clone(),
-            empty_game: deadline(limits.empty_game_ms),
+            empty_game,
             commands: commands(limits),
             accounts,
             reserved: [None, None],
@@ -553,6 +573,7 @@ impl Prepared {
         // A match's seats are its accounts' before anyone joins, in the journal before the players
         // hear of the game (E16 M4 T2).
         let matched = reserved.iter().any(Option::is_some);
+        let ranked = offer.grace.is_some();
         for (side, login) in [BattleSide::Attacker, BattleSide::Defender]
             .into_iter()
             .zip(reserved)
@@ -567,7 +588,7 @@ impl Prepared {
         }
         let mut journal = Some(journal);
         // Its last command reached the limit, and it is not over (E16 M3 T4a).
-        let past = |s: &Session<'_>| s.result().is_none() && s.journal().commands.len() >= commands;
+        let past = |s: &Session<'_>| !s.over() && s.journal().commands.len() >= commands;
         if past(&session) {
             let host = (data.as_path(), registry);
             return too_long(game, (&BTreeMap::new(), &[]), journal, host, &mut inbox);
@@ -581,6 +602,17 @@ impl Prepared {
         // The seats' accounts the lobby names (E16 M3 T3); a restored game was listed with them.
         let mut named = owned(session.accounts());
         let mut empty_since = (!session.seated()).then(Instant::now);
+        // The session's clock (E16 M4 T3a): it began with the session, a restored one afresh. It
+        // moves before anything else the game does: a seat empty beyond the grace forfeits.
+        let begun = Instant::now();
+        let elapse = |session: &mut Session<'_>, out: &mut Vec<Outbound>| {
+            let now = u64::try_from(begun.elapsed().as_millis()).unwrap_or(u64::MAX);
+            let forfeited = session.elapse(now, out);
+            if forfeited {
+                eprintln!("h3-server: game {game}: a player stayed away beyond the grace");
+            }
+            forfeited
+        };
         while let Some(event) = inbox.blocking_recv() {
             let mut left = None;
             match event {
@@ -593,12 +625,14 @@ impl Prepared {
                     continue;
                 }
                 ToGame::Message { conn, message } => {
+                    elapse(&mut session, &mut out);
                     let k = passed.entry(conn).or_default();
                     *k += 1;
                     session.handle(conn, message, &mut out);
                     left = (!session.holds(conn)).then_some((conn, *k));
                 }
                 ToGame::Closed { conn } => {
+                    elapse(&mut session, &mut out);
                     conns.remove(&conn);
                     passed.remove(&conn);
                     session.disconnected(conn);
@@ -607,10 +641,12 @@ impl Prepared {
                     let due = empty_game
                         .zip(empty_since)
                         .is_some_and(|(after, since)| since.elapsed() >= after);
-                    if !(due && session.suspend(&mut out)) {
-                        continue;
+                    if !elapse(&mut session, &mut out) {
+                        if !(due && session.suspend(&mut out)) {
+                            continue;
+                        }
+                        eprintln!("h3-server: game {game}: its seats stayed empty");
                     }
-                    eprintln!("h3-server: game {game}: its seats stayed empty");
                 }
                 ToGame::Drain if session.started() => continue,
                 ToGame::Drain | ToGame::Stop => {
@@ -658,10 +694,9 @@ impl Prepared {
                 let host = (data.as_path(), registry);
                 return too_long(game, (&conns, &closed), journal, host, &mut inbox);
             }
-            // A match's game waits for its players however its joins went (E16 M4 T2; the grace
-            // comes with E16 M4 T3a).
-            // stub: SRV-STUB-3
-            if session.phase() == Phase::Waiting && !session.seated() && !matched {
+            // A match's game waits for its players however their joins went (E16 M4 T2): its
+            // grace ends it if they do not come (E16 M4 T3a).
+            if session.phase() == Phase::Waiting && !session.seated() && !ranked {
                 // Its spectators hear it, and a joiner whose join is still on its way; a connection
                 // whose join it refused leaves at its refusal and never reads the goodbye.
                 close_all(&conns, &closed, GoodbyeReason::Abandoned);
@@ -671,7 +706,7 @@ impl Prepared {
                 turn_away(&mut inbox, GoodbyeReason::Abandoned);
                 return eprintln!("h3-server: game {game} abandoned before it started");
             }
-            if session.result().is_some()
+            if session.over()
                 && let Some(journal) = journal.take()
             {
                 match over(&session, journal) {
@@ -751,7 +786,7 @@ fn resume<'r>(
             return None;
         }
     };
-    if session.result().is_some() {
+    if session.over() {
         over(&session, journal);
         gone();
         return None;
@@ -784,7 +819,7 @@ fn resume<'r>(
     } else {
         Hosted::Live { to, bound: 0 }
     };
-    lock(registry).reopen(read.start.origin, info, hosted);
+    lock(registry).reopen(read.start.origin, info, hosted, owned(session.accounts()));
     drop(done);
     if paused {
         eprintln!("h3-server: game {game} restored, paused");
@@ -1053,7 +1088,10 @@ fn verify(
             | Entry::Started
             | Entry::Paused
             | Entry::Resumed
-            | Entry::Spectators(_) => {}
+            | Entry::Spectators(_)
+            | Entry::Ranked
+            | Entry::Absent(..)
+            | Entry::Forfeit(_) => {}
         }
     }
     replay.final_hash = session.state_hash();
@@ -1098,6 +1136,7 @@ mod tests {
             spectators: 0,
             watchable: true,
             record_bytes: 1 << 20,
+            ranked: None,
         };
         let mut session = Session::new(&r, config, players).unwrap();
         let join = |token: Option<&str>| ClientMessage::Join {

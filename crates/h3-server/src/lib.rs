@@ -206,7 +206,14 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         ladders: Arc::clone(&ladders),
     });
     let (stop, stopping) = watch::channel(false);
-    let sweeper = tokio::spawn(registry::sweep_every(Arc::clone(&registry), config.limits));
+    let grace = (config.ladders.iter())
+        .flat_map(|ladder| [ladder.grace_ms, ladder.grace_total_ms])
+        .collect();
+    let sweeper = tokio::spawn(registry::sweep_every(
+        Arc::clone(&registry),
+        config.limits,
+        grace,
+    ));
     let matcher = tokio::spawn(registry::match_every(Arc::clone(&registry)));
     let shared = Arc::clone(&registry);
     let listener = tokio::spawn(net::listen(

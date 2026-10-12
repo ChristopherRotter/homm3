@@ -4,21 +4,14 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, SRV-Q16; M3 done 2026-10-12, its checkpoint passed, SRV-Q18). M4 refined 2026-10-12 (SRV-Q19): ADR-0019 points 4–9 decided; the working detail in `E16-design.md` §11; cut below, each task about half a context, the inbox's M4 items folded in; T1 done 2026-10-12 (`[[ladder]]`, `rating`, the results log); T2 done 2026-10-12 (the queues, the match's game, wire 14; `E16-log.md`). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`, each journal change `JOURNAL_FORMAT_VERSION`.
-
-### E16 M4 T3a — A ranked game's seats and forfeits
-
-- **Scope:** a ranked game has no host (`Pause` without agreement and `SetSpectators` refused; spectators by the ladder's setting); `empty_game_ms` and `paused_game_ms` do not apply. Absence: a seat with no connection beyond `grace_ms` in one stretch, or `grace_total_ms` in total, forfeits (a loss; both absent: void, a no-show each), a game not yet started counted from its creation; `Entry::Ranked`, `Entry::Absent(side, ms)`, `Entry::Forfeit(side)` (`JOURNAL_FORMAT_VERSION` 5); a restore keeps the totals and starts a running stretch afresh (the downtime never counts). A forfeit's result on the wire (`GameEnded`); the replay holds the commands up to it (check `h3 replay verify` with an unfinished battle).
-- **Acceptance:** the Definition of Done; end to end: a player back within the grace re-takes the seat by account and the game goes on; beyond the grace, and beyond the total in several drops, a forfeit; both away: void; across a restart the totals hold.
-- **Depends on:** T2 (done: a match's game has its first seat as host and never leaves while it waits, SRV-STUB-3, which this task resolves; `registry::Registry::ranked` lists the matches' games, which a restart loses: `Entry::Ranked` brings them back).
-- **Status:** ready.
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, SRV-Q16; M3 done 2026-10-12, its checkpoint passed, SRV-Q18). M4 refined 2026-10-12 (SRV-Q19): ADR-0019 points 4–9 decided; the working detail in `E16-design.md` §11; cut below, each task about half a context, the inbox's M4 items folded in; T1 done 2026-10-12 (`[[ladder]]`, `rating`, the results log); T2 done 2026-10-12 (the queues, the match's game, wire 14; `E16-log.md`); T3a done 2026-10-12 (no host, the grace, forfeits and no-shows, journal format 5, wire 15). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`, each journal change `JOURNAL_FORMAT_VERSION`.
 
 ### E16 M4 T3b — The rated end
 
-- **Scope:** a ranked game's journal verified before `GameEnded` (the inbox's M2 item: a void game's players are told, `Unverified`); a verified result with both seats held by their accounts rated (T1's `rating`) and written to the ladder's results log (`Rated`; a no-show `NoShow`), then `Rating { ladder, before, after }` to its seats; the one-unfinished-game rule fed from the registry, restored games included; game ids unique for the server's life (`<data>/next-game`, the inbox's M2 item).
+- **Scope:** a ranked game's journal verified before `GameEnded` (the inbox's M2 item: a void game's players are told, `Unverified`; today the session sends `GameEnded` at the end, and the forfeit's in `Session::elapse`, before the host's `finish` verifies); a verified result with both seats held by their accounts rated (T1's `rating`) and written to the ladder's results log (`Rated`, a forfeit's with `forfeit`; a no-show, `Session::forfeited` both, `NoShow`), then `Rating { ladder, before, after }` to its seats; game ids unique for the server's life (`<data>/next-game`, the inbox's M2 item). (The one-unfinished-game rule over restored games came with T3a: `Registry::reopen`.)
 - **Acceptance:** the Definition of Done; end to end: a played and a forfeited game rated as Glicko-2 gives it; the ratings the same after a restart; an unverified game unrated; no game id handed out twice across a restart.
-- **Depends on:** T3a.
-- **Status:** ready once T3a is done.
+- **Depends on:** T3a (done: `Session::over` and `forfeited`, `Outcome::Forfeit` and `NoShow`, SRV-STUB-4 in `registry::report`).
+- **Status:** ready.
 
 ### E16 M4 T4 — Leaderboards
 
@@ -36,10 +29,10 @@ Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-00
 
 ### E16 M4 T6 — The pause by agreement
 
-- **Scope:** `ProposePause { seq, ms }` within the ladder's `pause_ms` and the seat's remaining `pauses`, one ask per seat until the game moves on (the inbox's M2 T5e item; for unranked games too); `PauseProposed { n, seat, ms }` to the other seat, `AnswerPause { seq, accept }`; agreed, the game pauses with its length in the journal; at its due time the grace runs (from the start for a server that was down); a resumed game goes on.
+- **Scope:** `ProposePause { seq, ms }` within the ladder's `pause_ms` and the seat's remaining `pauses`, one ask per seat until the game moves on (the inbox's M2 T5e item; for unranked games too); `PauseProposed { n, seat, ms }` to the other seat, `AnswerPause { seq, accept }`; agreed, the game pauses with its length in the journal; at its due time the grace runs (from the start for a server that was down); a resumed game goes on. A ranked game's `Pause` is rejected `NotHost` since T3a and nothing pauses one yet: the registry's `paused_game_ms` sweep (`Registry::sweep`) must not void a paused ranked game, and the session's clock (`Session::elapse`, counting from the session's start) must count the grace from the due time.
 - **Acceptance:** the Definition of Done; end to end: a proposal declined, one accepted and resumed in time, one whose player is not back after the due time and the grace forfeits; a second ask before the game moved on refused.
-- **Depends on:** T3a.
-- **Status:** ready once T3a is done.
+- **Depends on:** T3a (done).
+- **Status:** ready.
 
 ### E16 M4 T7 — M4's closure
 
@@ -50,6 +43,7 @@ Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-00
 
 ## Inbox
 
+- 2026-10-12 (M4 T3a, the user; **SRV-Q20**, open): eager disconnect detection by server-side pings, wanted eventually; until then a silent drop's grace starts after the idle timeout, and a server-side outage can void ranked games or, with a total nearly spent, cost one a forfeit. Settle before T3b's ratings go live if possible.
 - 2026-10-12 (the user, SRV-Q19; **M5**): the turn timer against a connected player who stalls is a game rule (`h3-game`; E08 decision 8's system commands for turn timers); until then a ranked battle can be stalled (the epic's risks).
 - 2026-10-11 (M2 T5b; **later**, M4's refinement: the server's own bots send no messages): a separate rate for automated clients: an operator raises `messages_per_second` and `messages_per_address` meanwhile.
 - 2026-10-11 (M3's review; **later**): the player log's readers (every login, the games' lookups of display names and preferences) wait behind a write's sync under its one lock; `account_changes_per_address` bounds the writes. Split the lock (a read lock for the accounts, the file's own for the writes) if logins stall under load. And a rename an old-key session sent before a re-key's commit can still land while its answer is off the task: refuse account requests whose connection's key is no longer the account's.

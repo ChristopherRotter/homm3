@@ -18,10 +18,12 @@ use super::full;
 use crate::RECORD_FORMAT_VERSION;
 use crate::codec::{self, decode_server};
 use crate::map;
-use crate::session::{Bot, ConnId, Entry, GameConfig, Outbound, RestoreError, SeatKind, Session};
+use crate::session::{
+    Bot, ConnId, Entry, GameConfig, Grace, Outbound, RestoreError, SeatKind, Session,
+};
 use crate::wire::{
     ClientMessage, Command, GoodbyeReason, Outcome, Phase, Query, RecordHeader, Refusal,
-    RejectCode, Seat, ServerMessage, Target,
+    RejectCode, Seat, ServerMessage, Side, Target,
 };
 
 const A: ConnId = ConnId(1);
@@ -83,6 +85,7 @@ fn config(seed: u64) -> GameConfig {
         spectators: 2,
         watchable: true,
         record_bytes: 1 << 20,
+        ranked: None,
     }
 }
 
@@ -233,7 +236,7 @@ fn two_players_join_and_play_a_hosted_battle_to_its_end() {
         ] => {
             assert_eq!(token, TOKENS[0]);
             assert_eq!(*sent, manifest);
-            assert_eq!(observation.viewer, crate::wire::Side::Attacker);
+            assert_eq!(observation.viewer, Side::Attacker);
         }
         other => panic!("{other:?}"),
     }
@@ -756,6 +759,7 @@ fn journals_without_checkpoints_verify() {
         spectators: 2,
         watchable: true,
         record_bytes: 1 << 20,
+        ranked: None,
     };
     let mut s = Session::new(&r, config, players()).unwrap();
     let out = started(&mut s);
@@ -778,6 +782,7 @@ fn a_setup_the_engine_refuses_hosts_no_game() {
         spectators: 2,
         watchable: true,
         record_bytes: 1 << 20,
+        ranked: None,
     };
     assert!(Session::new(&r, config.clone(), players()).is_err());
     assert!(matches!(
@@ -2113,4 +2118,375 @@ fn a_matchs_seats_belong_to_their_accounts_from_the_start() {
     let mut s = host(&r, 21, [attacker, random_bot(3)]);
     s.reserve(BattleSide::Defender, "bob".to_string());
     assert_eq!((drained(&mut s), s.accounts()), (vec![], [None, None]));
+}
+
+/// A ranked game's grace in the tests (E16 M4 T3a): 1 s in one stretch, 1.5 s in total.
+const GRACE: Grace = Grace {
+    stretch_ms: 1_000,
+    total_ms: 1_500,
+};
+
+/// Game 1, ranked with [`GRACE`] (the `full` scenario with `seed`): its seats alice's and bob's.
+fn ranked(r: &Ruleset, seed: u64) -> Session<'_> {
+    let config = GameConfig {
+        ranked: Some(GRACE),
+        ..config(seed)
+    };
+    let mut s = Session::new(r, config, players()).unwrap();
+    s.reserve(BattleSide::Attacker, "alice".to_string());
+    s.reserve(BattleSide::Defender, "bob".to_string());
+    s
+}
+
+/// At `now`, `conn` logged in as `login` takes its account's `seat`: every frame.
+fn back(s: &mut Session<'_>, now: u64, (conn, login, seat): (ConnId, &str, Seat)) -> Vec<Outbound> {
+    let mut out = Vec::new();
+    assert!(!s.elapse(now, &mut out));
+    s.logged_in(conn, login.to_string());
+    out.extend(join(s, conn, seat, None));
+    out
+}
+
+/// At `now`, `conn` is gone.
+fn gone(s: &mut Session<'_>, now: u64, conn: ConnId) {
+    assert!(!s.elapse(now, &mut Vec::new()));
+    s.disconnected(conn);
+}
+
+/// Whether the game ends at `now`, and the frames.
+fn at(s: &mut Session<'_>, now: u64) -> (bool, Vec<Outbound>) {
+    let mut out = Vec::new();
+    (s.elapse(now, &mut out), out)
+}
+
+const ALICE: (ConnId, &str, Seat) = (A, "alice", Seat::Attacker);
+const BOB: (ConnId, &str, Seat) = (B, "bob", Seat::Defender);
+
+#[test]
+fn a_ranked_game_has_no_host() {
+    let r = ruleset();
+    let mut s = ranked(&r, 31);
+    assert_eq!(
+        drained(&mut s),
+        [
+            Entry::Ranked,
+            Entry::TakenBy(BattleSide::Attacker, "alice".to_string()),
+            Entry::TakenBy(BattleSide::Defender, "bob".to_string()),
+        ]
+    );
+    back(&mut s, 0, ALICE);
+    // Neither the seat taken first nor the other sets the spectators, nor pauses.
+    let set = send(
+        &mut s,
+        A,
+        ClientMessage::SetSpectators {
+            seq: 1,
+            open: false,
+        },
+    );
+    assert!(matches!(
+        to(&set, A)[..],
+        [ServerMessage::Rejected {
+            code: RejectCode::NotHost,
+            ..
+        }]
+    ));
+    let out = back(&mut s, 200, BOB);
+    assert_eq!(s.phase(), Phase::Running);
+    assert_eq!(
+        drained(&mut s),
+        [
+            Entry::Absent(BattleSide::Attacker, 0),
+            Entry::Absent(BattleSide::Defender, 200),
+            Entry::Spectators(true),
+            Entry::Started,
+        ]
+    );
+    for conn in [A, B] {
+        let paused = send(&mut s, conn, ClientMessage::Pause { seq: 2 });
+        assert!(matches!(
+            paused[..],
+            [Outbound { to, ref frame, .. }] if to == conn && matches!(
+                decode(frame),
+                ServerMessage::Rejected { code: RejectCode::NotHost, .. }
+            )
+        ));
+    }
+    assert!(turn(&out).is_some(), "it plays on");
+    assert!(!s.paused());
+}
+
+#[test]
+fn a_player_away_beyond_the_total_forfeits_the_game() {
+    let r = ruleset();
+    let mut s = ranked(&r, 32);
+    back(&mut s, 0, ALICE);
+    back(&mut s, 0, BOB);
+    // Bob is away for 950 ms, then back: within the grace.
+    gone(&mut s, 100, B);
+    assert!(!at(&mut s, 1_000).0);
+    back(&mut s, 1_050, BOB);
+    // Away again for 500 ms: 1 450 in total, still within.
+    gone(&mut s, 1_100, B);
+    assert!(!at(&mut s, 1_650).0);
+    let mut entries = drained(&mut s);
+    assert!(entries.ends_with(&[Entry::Absent(BattleSide::Defender, 950)]));
+    // At 1 501 ms in total he forfeits: Alice wins, the battle stays where it stood.
+    let (ended, out) = at(&mut s, 1_651);
+    assert!(ended);
+    let forfeit = Outcome::Forfeit {
+        side: Side::Defender,
+    };
+    assert!(matches!(
+        to(&out, A)[..],
+        [ServerMessage::GameEnded { result, .. }] if result == forfeit
+    ));
+    assert_eq!(drained(&mut s), [Entry::Forfeit(BattleSide::Defender)]);
+    assert_eq!(
+        (s.phase(), s.over(), s.forfeited(), s.result()),
+        (Phase::Over, true, [false, true], None)
+    );
+    // Nothing more happens in it: no command, no pause, no turn for Bob back.
+    let command = send(
+        &mut s,
+        A,
+        ClientMessage::Command {
+            seq: 3,
+            command: Command::Wait {},
+        },
+    );
+    assert!(matches!(
+        to(&command, A)[..],
+        [ServerMessage::Rejected {
+            code: RejectCode::BattleOver,
+            ..
+        }]
+    ));
+    let paused = send(&mut s, A, ClientMessage::Pause { seq: 4 });
+    assert!(matches!(
+        to(&paused, A)[..],
+        [ServerMessage::Rejected {
+            code: RejectCode::BattleOver,
+            ..
+        }]
+    ));
+    assert!(!at(&mut s, 60_000).0, "over");
+    let bob = back(&mut s, 60_000, BOB);
+    let told = to(&bob, B);
+    assert!(
+        matches!(
+            told[..],
+            [ServerMessage::Joined { .. }, ServerMessage::Snapshot { .. }]
+        ),
+        "{told:?}"
+    );
+    assert_eq!(drained(&mut s), [], "no stretch after the end");
+    // The record holds the end for the absent seat too.
+    let (_, lines, _) = fetched_record(&mut s, B);
+    assert!(lines.iter().any(|l| l.contains("Forfeit")), "{lines:?}");
+    // The replay comes once the host publishes it; it holds the commands up to the forfeit.
+    let fetch = send(&mut s, A, ClientMessage::FetchReplay { seq: 5 });
+    assert!(matches!(
+        to(&fetch, A)[..],
+        [ServerMessage::Rejected {
+            code: RejectCode::NotOver,
+            ..
+        }]
+    ));
+    s.publish_replay("[replay]".to_string());
+    let fetch = send(&mut s, A, ClientMessage::FetchReplay { seq: 6 });
+    assert!(matches!(to(&fetch, A)[..], [ServerMessage::Replay { .. }]));
+    replay(&r, &s).verify(&r).unwrap();
+    // A restart restores it over, as it ended.
+    entries.push(Entry::Forfeit(BattleSide::Defender));
+    let config = GameConfig {
+        ranked: Some(GRACE),
+        ..config(32)
+    };
+    let restored = Session::restore(&r, config.clone(), players(), &entries).unwrap();
+    assert_eq!(
+        (restored.phase(), restored.forfeited()),
+        (Phase::Over, [false, true])
+    );
+    // A ranked game's journal begins with its mark, and only a ranked game's does.
+    let unmarked = Session::restore(&r, config, players(), &entries[1..]);
+    assert_eq!(unmarked.unwrap_err(), RestoreError::Diverged { at: 0 });
+    let unranked = Session::restore(&r, self::config(32), players(), &entries);
+    assert_eq!(unranked.unwrap_err(), RestoreError::Diverged { at: 0 });
+}
+
+#[test]
+fn a_stretch_beyond_the_grace_forfeits_and_both_away_is_void() {
+    let r = ruleset();
+    // Alice is away for longer than one stretch may last.
+    let mut s = ranked(&r, 33);
+    back(&mut s, 0, ALICE);
+    back(&mut s, 0, BOB);
+    gone(&mut s, 10, A);
+    assert!(!at(&mut s, 1_010).0, "exactly the grace");
+    let (ended, out) = at(&mut s, 1_011);
+    let forfeit = Outcome::Forfeit {
+        side: Side::Attacker,
+    };
+    assert!(ended);
+    assert!(matches!(
+        to(&out, B)[..],
+        [ServerMessage::GameEnded { result, .. }] if result == forfeit
+    ));
+    assert_eq!(s.forfeited(), [true, false]);
+    // Nobody comes to a match's game: void, a no-show each; its spectator hears it.
+    let mut s = ranked(&r, 34);
+    let c = ConnId(3);
+    join(&mut s, c, Seat::Spectator, None);
+    assert!(!at(&mut s, 1_000).0);
+    let (ended, out) = at(&mut s, 1_001);
+    assert!(ended);
+    assert!(matches!(
+        to(&out, c)[..],
+        [ServerMessage::GameEnded {
+            result: Outcome::NoShow {},
+            ..
+        }]
+    ));
+    assert_eq!((s.forfeited(), s.started()), ([true, true], false));
+    let entries = drained(&mut s);
+    assert!(entries.ends_with(&[
+        Entry::Forfeit(BattleSide::Attacker),
+        Entry::Forfeit(BattleSide::Defender)
+    ]));
+    // One beyond the grace while the other is away too, within it: void as well.
+    let mut s = ranked(&r, 35);
+    back(&mut s, 0, ALICE);
+    back(&mut s, 0, BOB);
+    gone(&mut s, 500, B);
+    gone(&mut s, 900, A);
+    assert_eq!(at(&mut s, 1_501), (true, Vec::new()), "nobody to hear it");
+    assert_eq!(s.forfeited(), [true, true]);
+    // A bot's seat is never away (E16 M4 T5's bots): the player alone forfeits.
+    let [attacker, _] = players();
+    let config = GameConfig {
+        ranked: Some(GRACE),
+        ..config(35)
+    };
+    let mut s = Session::new(&r, config, [attacker, random_bot(3)]).unwrap();
+    assert!(at(&mut s, 1_001).0);
+    assert_eq!(s.forfeited(), [true, false]);
+    // Alice comes, Bob never: he forfeits a game that never started, which stays so.
+    let mut s = ranked(&r, 36);
+    back(&mut s, 0, ALICE);
+    assert!(at(&mut s, 1_001).0);
+    assert_eq!(s.forfeited(), [false, true]);
+    let bob = back(&mut s, 2_000, BOB);
+    assert_eq!(to(&bob, B).len(), 2, "Joined and Snapshot");
+    assert_eq!((s.started(), s.phase()), (false, Phase::Over));
+    let command = send(
+        &mut s,
+        B,
+        ClientMessage::Command {
+            seq: 1,
+            command: Command::Wait {},
+        },
+    );
+    assert!(matches!(
+        to(&command, B)[..],
+        [ServerMessage::Rejected {
+            code: RejectCode::NotStarted,
+            ..
+        }]
+    ));
+}
+
+#[test]
+fn a_restore_keeps_the_totals_and_starts_a_stretch_afresh() {
+    let r = ruleset();
+    let mut s = ranked(&r, 37);
+    back(&mut s, 0, ALICE);
+    back(&mut s, 0, BOB);
+    gone(&mut s, 100, B);
+    back(&mut s, 900, BOB);
+    // The server stops with Bob away again: the stretch running then is not journaled.
+    gone(&mut s, 950, B);
+    let entries = drained(&mut s);
+    assert!(entries.ends_with(&[Entry::Absent(BattleSide::Defender, 800)]));
+    let config = GameConfig {
+        ranked: Some(GRACE),
+        ..config(37)
+    };
+    let mut restored = Session::restore(&r, config, players(), &entries).unwrap();
+    assert_eq!(drained(&mut restored), [], "nothing lacks");
+    // Both seats are empty from the restore on, the downtime not counted; Alice is back first.
+    back(&mut restored, 100, ALICE);
+    assert_eq!(
+        drained(&mut restored),
+        [Entry::Absent(BattleSide::Attacker, 100)]
+    );
+    // Bob's 800 ms before count: at 701 ms more he is beyond the total, not the stretch.
+    assert!(!at(&mut restored, 700).0);
+    let (ended, out) = at(&mut restored, 701);
+    assert!(ended);
+    let forfeit = Outcome::Forfeit {
+        side: Side::Defender,
+    };
+    assert!(matches!(
+        to(&out, A)[..],
+        [ServerMessage::GameEnded { result, .. }] if result == forfeit
+    ));
+}
+
+#[test]
+fn the_hosts_clock_counts_for_ranked_games_only_and_never_goes_back() {
+    let r = ruleset();
+    // An unranked game knows no grace.
+    let mut s = host(&r, 38, players());
+    started(&mut s);
+    s.disconnected(B);
+    assert_eq!(at(&mut s, u64::MAX), (false, Vec::new()));
+    // A clock that goes back is ignored: Bob's stretch runs from 2 000.
+    let mut s = ranked(&r, 38);
+    back(&mut s, 0, ALICE);
+    back(&mut s, 0, BOB);
+    assert!(!at(&mut s, 2_000).0, "both are there");
+    gone(&mut s, 100, B);
+    assert!(!at(&mut s, 3_000).0);
+    assert!(at(&mut s, 3_001).0);
+}
+
+#[test]
+fn a_ranked_game_that_ends_counts_no_absence_after() {
+    let r = ruleset();
+    let mut s = ranked(&r, 39);
+    back(&mut s, 0, ALICE);
+    let mut out = back(&mut s, 0, BOB);
+    let (actor, legal) = turn(&out).unwrap();
+    if legal.contains(&Command::EndTactics {}) {
+        out = send(
+            &mut s,
+            actor,
+            ClientMessage::Command {
+                seq: 1,
+                command: Command::EndTactics {},
+            },
+        );
+    }
+    // The one not to act is away when the other retreats.
+    let (actor, _) = turn(&out).unwrap();
+    let other = if actor == A { B } else { A };
+    gone(&mut s, 10, other);
+    send(
+        &mut s,
+        actor,
+        ClientMessage::Command {
+            seq: 2,
+            command: Command::Retreat {},
+        },
+    );
+    assert!(s.result().is_some());
+    drained(&mut s);
+    // Over, nobody's absence counts: neither the running one nor a new one.
+    s.disconnected(actor);
+    assert_eq!(at(&mut s, 60_000), (false, Vec::new()));
+    let login = if other == A { ALICE } else { BOB };
+    back(&mut s, 60_000, login);
+    assert_eq!(drained(&mut s), []);
+    assert_eq!(s.forfeited(), [false, false]);
 }

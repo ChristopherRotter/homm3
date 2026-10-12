@@ -416,9 +416,21 @@ impl Registry {
         closes
     }
 
-    /// Lists a game a restart restored, as `origin` created it, and hosts it (E16 M2 T2, T3).
-    pub(crate) fn reopen(&mut self, origin: IpAddr, info: GameInfo, hosted: Hosted) {
+    /// Lists a game a restart restored, as `origin` created it, and hosts it (E16 M2 T2, T3); a
+    /// match's game, its seats `accounts`', keeps them from another match on its ladder (E16 M4
+    /// T3a).
+    pub(crate) fn reopen(
+        &mut self,
+        origin: IpAddr,
+        info: GameInfo,
+        hosted: Hosted,
+        accounts: [Option<String>; 2],
+    ) {
         let game = info.game;
+        if let (Some(ladder), [Some(attacker), Some(defender)]) = (&info.ladder, accounts) {
+            self.ranked
+                .insert(game, (ladder.clone(), [attacker, defender]));
+        }
         self.lobby.reopen(origin, info);
         self.games.insert(game, hosted);
     }
@@ -663,11 +675,13 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
     Ok(())
 }
 
-/// Sweeps the registry for abandoned games (E16 M2 T5a), every quarter of its shortest deadline,
-/// at least every minute and at most every 10 ms.
-pub(crate) async fn sweep_every(shared: Shared, limits: config::Limits) {
+/// Sweeps the registry for abandoned games (E16 M2 T5a) and the ranked games' absent players (E16
+/// M4 T3a: the ladders' `grace`), every quarter of its shortest deadline, at least every minute
+/// and at most every 10 ms.
+pub(crate) async fn sweep_every(shared: Shared, limits: config::Limits, grace: Vec<u64>) {
     let shortest = [limits.empty_game_ms, limits.paused_game_ms]
         .into_iter()
+        .chain(grace)
         .filter(|&ms| ms > 0)
         .min()
         .unwrap_or(u64::MAX);

@@ -159,6 +159,15 @@ pub enum Outcome {
         /// The side that surrendered.
         side: Side,
     },
+    /// The side's player stayed away beyond the ranked game's grace (E16 M4 T3a): the other wins,
+    /// the battle left where it stood. Only in `GameEnded`.
+    Forfeit {
+        /// The side that forfeited.
+        side: Side,
+    },
+    /// Both seats of the ranked game were empty when one's grace ran out (E16 M4 T3a): the game
+    /// is void, a no-show each. Only in `GameEnded`.
+    NoShow {},
 }
 
 /// Why a command was rejected: the engine's errors one to one, then the session's own codes.
@@ -204,7 +213,7 @@ pub enum RejectCode {
     /// The game's journal did not re-run to the game as played: its replay is withheld (E16 M2
     /// T3).
     Unverified,
-    /// Only the game's host may do this (E16 M2 T4c).
+    /// Only the game's host may do this (E16 M2 T4c); a ranked game has none (E16 M4 T3a).
     NotHost,
     /// The game has started: its configuration is fixed (E16 M2 T4c).
     AlreadyStarted,
