@@ -635,6 +635,22 @@ fn check_unlisted(
 /// Ownership isolation: a command of `actor` moves no other player's hero, changes no other
 /// player's army or explored tiles, and changes another player's heroes' points only when that
 /// player's turn starts (ADV-MOV-002).
+/// Conservation (`docs/05-testing.md`): increment 1 has no source or sink of creatures (no
+/// battle, recruitment or pickup; E08 T10b's audit), so an accepted command leaves every hero's
+/// army as it was, the actor's own included.
+fn check_conservation(before: &GameState, after: &GameState) -> Result<(), TestCaseError> {
+    let armies = |state: &GameState| -> Vec<_> {
+        state
+            .adventure()
+            .heroes()
+            .iter()
+            .map(|h| (h.id, h.army.clone()))
+            .collect()
+    };
+    prop_assert_eq!(armies(before), armies(after));
+    Ok(())
+}
+
 fn check_isolation(
     before: &GameState,
     after: &GameState,
@@ -664,8 +680,8 @@ fn check_isolation(
 proptest! {
     #![proptest_config(ProptestConfig { cases: 48, ..ProptestConfig::default() })]
 
-    /// Atomicity, legality consistency and ownership isolation at every step of random play on
-    /// imported maps, in both profiles.
+    /// Atomicity, legality consistency, ownership isolation and conservation at every step of
+    /// random play on imported maps, in both profiles.
     #[test]
     fn every_step_keeps_the_commands_invariants(
         plan in plan(),
@@ -702,6 +718,7 @@ proptest! {
                 prop_assert_eq!(state.adventure().hero(hero).map(|h| h.pos), path.last().copied());
             }
             check_isolation(&before, &state, actor, &events)?;
+            check_conservation(&before, &state)?;
         }
     }
 

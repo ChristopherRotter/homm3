@@ -741,3 +741,71 @@ its own arguments (the battle's `Args` stays private to `main.rs`).
   unchanged); `patchwork` asserts whole patches; `*.h3m binary` in `.gitattributes` (shared PR:
   a map is named by its bytes' hash). Kept: `verify` does not know an env's day limit, since a
   replay certifies game commands (a server's log has none).
+
+### Checkpoint after T9b and T10a + T10b (2026-10-12, `adventure/e08-t10a`)
+
+The user merged T9b (#103, #104) and took (ADV-Q8) **T10 in three parts**: T10a (the movement
+experiments' spec shape and a batch) with T10b (the exit-criteria audit and the closure docs)
+now, T10c (scoring the batch, refining increment 2, the checkpoint) next round. Asked with the
+cut: the spec shape, **user: extend the battle lane's `h3-experiment` and `h3_formats::h3m` as
+`cross-lane`** (not an adventure-owned compiler on `h3-map`'s test encoder, not waiting for
+R01); the batch, **user: ADV-Q4, ADV-Q6 and D-2** (D-3 left out). Corrected the same day and told
+to the user: D-2 is disputed only for a step off a road (the wiki: "Road ⇄ Terrain move — terrain
+tile"; terrain to terrain all sources price by the tile left), so the batch needs roads too.
+
+**T10a — the spec shape and batch 1.**
+- **Writer** (`h3_formats::h3m`): `Patch` (a rectangle of another terrain, later ones on top),
+  `Road` (straight, west to east, at least two tiles; `RoadKind`), and interior pictures for every
+  terrain. Both read from the game's 164 maps through `h3-map` (a throwaway program): interior
+  tiles (eight neighbours of the same terrain) use dirt 21–44, sand 0–23, the six other land
+  terrains 49–72, water 21–32, rock 0–7, the first eight of each range about ten times as often;
+  a straight east–west road 15 (west end), 12/13, 15 with the road mirror flag `0x10` (east end),
+  over about 4 300 such tiles, a handful of exceptions aside (`docs/formats/h3m.md`). Between two
+  terrains the writer puts interior pictures too (a hard edge in the game; movement reads only
+  the codes).
+- **Spec** (`h3-experiment`, `docs/experiments/README.md`): `[[map.patch]]`, `[[map.road]]`,
+  a hero's `at`, `[[encounter.also]]` (more heroes per encounter, named as their type), `defaults
+  = true` (army, experience, skills, artifacts, spells and primary skills the type's own; the
+  writer leaves those fields out, as the editor does), table rows with a filled first column
+  (`labels`); two objects never share a tile. `primary` and `army` are required only without
+  `defaults`, so earlier specs compile unchanged. Tests: both shapes, every refusal; `h3-map`'s
+  read-back test reads a patch, a road and a hero of its type's defaults.
+- **Batch 1a** (`experiments/specs/E08-batch-1a.toml`, 72 × 72: grass, swamp over columns
+  20–32, two dirt roads; scouts, heroes that never move, explore each walker's row past the
+  farthest prediction so one click shows a path's marks): Q4a and Q4b (ADV-Q4: a battle in the
+  other player's turn takes the Pikemen out of a Pikemen-and-Angels army, then the hero walks; 20
+  steps if points are set at the owner's turn start, 15 at the day's; day 1 and day 2), Q4c (a
+  dismissed Pikeman: 15 unless points follow every change of the army), D2a and D2b (off a road on
+  grass onto swamp, on swamp onto grass: 9 and 14 by the reading and VCMI, 8 and 15 by the wiki),
+  C0 (the land table: 15 on grass). **Batch 1b** (`E08-batch-1b.toml`, 36 × 36): sixteen heroes
+  of their type's defaults, the nine war-machine heroes and seven whose three starting creatures
+  differ, over up to eight loads (128 armies): the reading gives 3 % of armies their third slot
+  without the second (none in 128: 2 %), VCMI never; the wiki never leaves out a war machine
+  (12 % by the reading and VCMI). ADV-Q6's design (eight players, three loads) was cut to two
+  players: the same armies, fewer turns to pass.
+- **Checked:** the compiled maps through `h3-map`'s reader and import and the engine's
+  reachable-tiles query (a throwaway run, seeds 1 and 2): D2a 9, D2b 14, C0 15, every Q4 walker 15
+  before its battle; batch 1b's armies drawn as GAM-SET-001 says. **Review** (an agent that had
+  not written the specs): the arithmetic and the hypotheses held; from it Q4c (recomputing on any
+  army change would also give Q4a/Q4b 20), a path's last mark is a cross and counts, each path's
+  expected length so a short click shows, saves to recover a battle, batch 1b's slots told apart by
+  name (a missing second slot lets the third creature move up), the Catapult every hero carries,
+  a fallback when Restart Scenario is not offered.
+- **Delivered:** the maps in the user's `experiments/out/` (gitignored); the templates in
+  `experiments/results/`. Scored in T10c.
+
+**T10b — increment 1's exit criteria** (the epic's list, checked on 2026-10-12):
+
+| Criterion | State |
+|---|---|
+| ADR drafts accepted and numbered | ADR-0015, -0016, -0017 (2026-10-10) |
+| Full verify green in CI, adventure crates at 100 % | `master` d4e3aae green (run 38213824876, after #103/#104); the logic crates `h3-adventure` and `h3-game` are in the coverage gate; `h3-map`, `h3-pack-adventure` and `h3-sim`'s adventure path are adapters (`arch.toml`, not gated), tested by their own suites |
+| Seven property tests, two copy-on-write properties | atomicity, legality consistency, ownership isolation (`h3-map` `play.rs`, random play on imported maps, both profiles), **conservation added here** (no source or sink of creatures in increment 1: every hero's army unchanged by an accepted command; before, only the other players' armies were checked), observation hygiene and the view against the events (`view.rs`), clone equivalence and determinism (`play.rs`; the env's own in `h3-sim`); copy-on-write in `h3-adventure`'s `persistent/tests.rs` |
+| Golden replays in the determinism matrix | three on the duel map (`fixtures/replays/adventure/`), debug, release and native CPU; passed in this session's baseline verify |
+| Benchmark baseline and measured targets in 02 §8 | three gated workloads (T9b) with targets met |
+| Every ADV-*/GAM-* rule implemented with sources | 16 ADV and 4 GAM rules, all `implemented`, each with sources; ADV-MOV-002 (ADV-Q4) and GAM-SET-001 (ADV-Q6) rest on interim choices until batch 1 is scored; D-2 (ADV-MOV-003) on the user's choice |
+| HANDOFF, epic log, QUEUE current | this round |
+
+Open at T10c: scoring batches 1a and 1b (ADV-Q4, ADV-Q6, D-2's confirmation), the refinement of
+increment 2 (scenario loading and validation, pickups, the first visitable objects; the epic's
+sketch) with the queue's inbox sorted into it, the checkpoint that closes increment 1.

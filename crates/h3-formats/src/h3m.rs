@@ -1,6 +1,7 @@
 //! Writer for the subset of the SoD map format (`.h3m`, version `0x1C`) that staged experiments
-//! need (E04a T2, OPEN-QUESTIONS Q28): one terrain, players without towns, heroes with custom
-//! armies, skills, artifacts, spells and primary skills, and wandering monsters.
+//! need (E04a T2, OPEN-QUESTIONS Q28): one level of a base terrain with rectangles of other
+//! terrains and straight east-west roads (E08 T10a), players without towns, heroes with custom armies, skills, artifacts, spells
+//! and primary skills (or their hero type's own), and wandering monsters.
 //!
 //! Layout notes are in `docs/formats/h3m.md`. The field order follows VCMI 1.7.5's map reader
 //! (`lib/mapping/MapFormatH3M.cpp`, `MapReaderH3M.cpp`, `ObjectTemplate::readMap`; GPL-2.0-or-later,
@@ -76,20 +77,22 @@ pub enum Terrain {
 }
 
 impl Terrain {
-    /// The first of eight interior tile pictures ("view" in map files) of this terrain, for the
-    /// terrains whose pictures were observed in the game's own maps (dirt and water 21–28, grass
-    /// 49–56). Other terrains are added when a map shows their numbers.
-    const fn interior_view(self) -> Option<u8> {
+    /// The first of eight interior tile pictures ("view" in map files) of this terrain: a tile
+    /// whose eight neighbours have its terrain shows one of them. Observed in the game's 164 maps
+    /// (E08 T10a, every interior tile counted): dirt 21–44, sand 0–23, the six other land
+    /// terrains 49–72, water 21–32, rock 0–7; the first eight of each range are by far the most
+    /// common. Between two terrains the writer puts interior pictures too, which the game draws
+    /// with a hard edge.
+    const fn interior_view(self) -> u8 {
         match self {
-            Self::Dirt | Self::Water => Some(21),
-            Self::Grass => Some(49),
-            Self::Sand
+            Self::Dirt | Self::Water => 21,
+            Self::Sand | Self::Rock => 0,
+            Self::Grass
             | Self::Snow
             | Self::Swamp
             | Self::Rough
             | Self::Subterranean
-            | Self::Lava
-            | Self::Rock => None,
+            | Self::Lava => 49,
         }
     }
 }
@@ -289,7 +292,65 @@ pub enum MapObject {
     Monster(Monster),
 }
 
-/// A map: one level, one terrain.
+/// A rectangle of tiles with a terrain of its own (E08 T10a: movement experiments).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Patch {
+    /// Terrain of the rectangle's tiles.
+    pub terrain: Terrain,
+    /// Top left tile (column, row).
+    pub from: (u8, u8),
+    /// Bottom right tile (column, row), inclusive.
+    pub to: (u8, u8),
+}
+
+impl Patch {
+    fn covers(&self, x: u8, y: u8) -> bool {
+        (self.from.0..=self.to.0).contains(&x) && (self.from.1..=self.to.1).contains(&y)
+    }
+}
+
+/// Road kinds in map files.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RoadKind {
+    /// Dirt road.
+    Dirt = 1,
+    /// Gravel road.
+    Gravel = 2,
+    /// Cobblestone road.
+    Cobblestone = 3,
+}
+
+/// A straight road from west to east on one row, at least two tiles long (E08 T10a: movement
+/// experiments). Its tile pictures are the ones the game's own maps give such a road (counted
+/// over the 164 maps): 15 at the west end, 12 and 13 between, 15 mirrored at the east end.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Road {
+    /// Kind of road.
+    pub kind: RoadKind,
+    /// Row.
+    pub row: u8,
+    /// West end's column.
+    pub from: u8,
+    /// East end's column (inclusive), east of `from`.
+    pub to: u8,
+}
+
+impl Road {
+    /// The road's picture and mirror flags on the column `x` of its row, if it covers it.
+    fn picture(&self, x: u8) -> Option<(u8, u8)> {
+        match x {
+            _ if x == self.from => Some((15, 0)),
+            _ if x == self.to => Some((15, ROAD_MIRRORED)),
+            _ if (self.from..self.to).contains(&x) => Some((12 + (x - self.from + 1) % 2, 0)),
+            _ => None,
+        }
+    }
+}
+
+/// A tile's flag that mirrors its road picture left to right.
+const ROAD_MIRRORED: u8 = 0x10;
+
+/// A map: one level, a base terrain, rectangles of other terrains and roads.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Map {
     /// Name shown in the scenario list.
@@ -298,8 +359,12 @@ pub struct Map {
     pub description: String,
     /// Width and height (36, 72, 108 or 144).
     pub size: u8,
-    /// Terrain of every tile.
+    /// Terrain of every tile no patch covers.
     pub terrain: Terrain,
+    /// Rectangles of other terrains; a later patch covers an earlier one.
+    pub patches: Vec<Patch>,
+    /// Roads; no two cover the same tile.
+    pub roads: Vec<Road>,
     /// Players (index = colour); `None` = nobody plays this colour.
     pub players: [Option<Player>; PLAYERS],
     /// Objects.
@@ -395,11 +460,26 @@ fn validate(map: &Map) -> Result<(), FormatError> {
     if ![36, 72, 108, 144].contains(&map.size) {
         return Err(out_of_range("map size", map.size));
     }
-    if map.terrain.interior_view().is_none() {
-        return Err(out_of_range(
-            "terrain without known tile pictures",
-            map.terrain as u8,
-        ));
+    for patch in &map.patches {
+        if patch.from.0 > patch.to.0 || patch.from.1 > patch.to.1 {
+            return Err(out_of_range("patch corners (from after to)", patch.from.0));
+        }
+        if patch.to.0 >= map.size || patch.to.1 >= map.size {
+            return Err(out_of_range(
+                "patch tile",
+                u64::from(patch.to.0) << 8 | u64::from(patch.to.1),
+            ));
+        }
+    }
+    for (index, road) in map.roads.iter().enumerate() {
+        if road.from >= road.to || road.to >= map.size || road.row >= map.size {
+            return Err(out_of_range("road (west end, east end, row)", road.to));
+        }
+        let overlaps =
+            |other: &Road| other.row == road.row && other.from <= road.to && road.from <= other.to;
+        if map.roads[..index].iter().any(overlaps) {
+            return Err(out_of_range("road over another road (row)", road.row));
+        }
     }
     for object in &map.objects {
         let (x, y) = match object {
@@ -533,11 +613,33 @@ fn write_player(
 
 fn write_terrain(out: &mut Out, map: &Map) {
     let size = usize::from(map.size);
-    let view = map.terrain.interior_view().unwrap_or(0);
-    for index in 0..size * size {
+    for (index, (y, x)) in (0..map.size)
+        .flat_map(|y| (0..map.size).map(move |x| (y, x)))
+        .enumerate()
+    {
+        let terrain = map
+            .patches
+            .iter()
+            .rev()
+            .find(|patch| patch.covers(x, y))
+            .map_or(map.terrain, |patch| patch.terrain);
         // A deterministic spread over the eight interior pictures (the editor picks randomly).
         let variant = ((index * 7 + index / size * 3) % 8) as u8;
-        out.bytes(&[map.terrain as u8, view + variant, 0, 0, 0, 0, 0]);
+        let road = map
+            .roads
+            .iter()
+            .filter(|road| road.row == y)
+            .find_map(|road| Some((road.kind as u8, road.picture(x)?)));
+        let (kind, (picture, flags)) = road.unwrap_or((0, (0, 0)));
+        out.bytes(&[
+            terrain as u8,
+            terrain.interior_view() + variant,
+            0,
+            0,
+            kind,
+            picture,
+            flags,
+        ]);
     }
 }
 
@@ -706,6 +808,17 @@ mod tests {
             description: "A test map".into(),
             size: 36,
             terrain: Terrain::Grass,
+            patches: vec![Patch {
+                terrain: Terrain::Swamp,
+                from: (2, 3),
+                to: (4, 3),
+            }],
+            roads: vec![Road {
+                kind: RoadKind::Gravel,
+                row: 5,
+                from: 1,
+                to: 4,
+            }],
             players,
             objects: vec![
                 MapObject::Hero(Hero {
@@ -774,12 +887,93 @@ mod tests {
     }
 
     #[test]
+    fn patches_cover_the_base_terrain_with_interior_pictures() {
+        let mut map = smoke_like_map();
+        map.patches.push(Patch {
+            terrain: Terrain::Sand,
+            from: (4, 3),
+            to: (35, 35),
+        });
+        assert!(write(&map).is_ok());
+        let mut out = Out::default();
+        write_terrain(&mut out, &map);
+        let bytes = out.0;
+        assert_eq!(bytes.len(), 7 * 36 * 36);
+        let tile = |x: usize, y: usize| &bytes[7 * (y * 36 + x)..][..7];
+        // Grass, then the swamp patch, then the later sand patch over the swamp's last tile.
+        for (x, y, terrain, first) in [
+            (0, 0, Terrain::Grass, 49),
+            (1, 3, Terrain::Grass, 49),
+            (2, 3, Terrain::Swamp, 49),
+            (3, 3, Terrain::Swamp, 49),
+            (4, 3, Terrain::Sand, 0),
+            (4, 2, Terrain::Grass, 49),
+            (35, 35, Terrain::Sand, 0),
+        ] {
+            let t = tile(x, y);
+            assert_eq!(t[0], terrain as u8, "terrain of ({x}, {y})");
+            assert!((first..first + 8).contains(&t[1]), "picture of ({x}, {y})");
+            assert_eq!(&t[2..], &[0; 5]);
+        }
+        // The gravel road on row 5: 15, 12, 13, 15 mirrored; nothing beside it.
+        for (x, road) in [
+            (0, [0, 0, 0]),
+            (1, [2, 15, 0]),
+            (2, [2, 12, 0]),
+            (3, [2, 13, 0]),
+            (4, [2, 15, ROAD_MIRRORED]),
+            (5, [0, 0, 0]),
+        ] {
+            assert_eq!(
+                &tile(x, 5)[2..],
+                &[0, 0, road[0], road[1], road[2]],
+                "road at {x}"
+            );
+        }
+        for (terrain, first) in [
+            (Terrain::Dirt, 21),
+            (Terrain::Water, 21),
+            (Terrain::Rock, 0),
+            (Terrain::Snow, 49),
+            (Terrain::Rough, 49),
+            (Terrain::Subterranean, 49),
+            (Terrain::Lava, 49),
+        ] {
+            assert_eq!(terrain.interior_view(), first);
+        }
+    }
+
+    #[test]
     fn invalid_maps_are_rejected() {
         let mut map = smoke_like_map();
         map.size = 40;
         assert!(write(&map).is_err());
+        for road in [(1, 1, 5), (4, 4, 5), (1, 36, 5), (1, 4, 36)] {
+            let mut map = smoke_like_map();
+            (map.roads[0].from, map.roads[0].to, map.roads[0].row) = road;
+            assert!(write(&map).is_err(), "{road:?}");
+        }
         let mut map = smoke_like_map();
-        map.terrain = Terrain::Lava;
+        map.roads.push(Road {
+            kind: RoadKind::Dirt,
+            row: 5,
+            from: 4,
+            to: 6,
+        });
+        assert!(write(&map).is_err());
+        map.roads[1].from = 5;
+        assert!(write(&map).is_ok());
+        let mut map = smoke_like_map();
+        map.patches[0].from = (5, 3);
+        assert!(write(&map).is_err());
+        let mut map = smoke_like_map();
+        map.patches[0].from = (2, 4);
+        assert!(write(&map).is_err());
+        let mut map = smoke_like_map();
+        map.patches[0].to = (36, 3);
+        assert!(write(&map).is_err());
+        let mut map = smoke_like_map();
+        map.patches[0].to = (4, 36);
         assert!(write(&map).is_err());
         let base = smoke_like_map();
         let with_hero = |f: &dyn Fn(&mut Hero)| {

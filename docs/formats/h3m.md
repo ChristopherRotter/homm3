@@ -206,5 +206,14 @@ biography (bool + string); sex i8 (`-1` default); spells (bool + 9-byte mask); p
 (0 compliant … 4 savage), message and treasure (bool; 0 here), never flees (bool), does not grow
 (bool), 2 zero bytes.
 
-**Terrain pictures** observed for interior tiles: dirt and water 21–28, grass 49–56. Other terrains
-are rejected until a map shows their numbers.
+**Terrain pictures** of interior tiles (the eight neighbours on the level have the tile's terrain),
+counted over the game's 164 maps (E08 T10a): dirt 21–44, sand 0–23, grass, snow, swamp, rough,
+subterranean and lava 49–72, water 21–32, rock 0–7; in each range the first eight pictures are
+about ten times as common as the others. The other pictures are the edges between terrains. The
+experiment writer (`h3_formats::h3m`) gives every tile one of the first eight interior pictures of
+its terrain, edges included, which the game draws as a hard edge.
+
+**Road pictures** of a straight east–west road (counted over the same maps, E08 T10a): 15 at
+the west end, 12 and 13 between, 15 at the east end with the road's mirror flag (bit 4 of the
+tile's flags, `0x10`); a north–south road uses 14 at its ends and 10 and 11 between. The
+experiment writer lays east–west roads only.

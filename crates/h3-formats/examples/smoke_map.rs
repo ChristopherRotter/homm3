@@ -45,6 +45,8 @@ fn smoke_map(pikeman: ObjectTemplate) -> Map {
                 .into(),
         size: 36,
         terrain: Terrain::Grass,
+        patches: Vec::new(),
+        roads: Vec::new(),
         players,
         objects: vec![
             MapObject::Hero(Hero {

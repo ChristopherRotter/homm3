@@ -1,7 +1,9 @@
 //! Experiment specs (E04a T2, OPEN-QUESTIONS Q28; `docs/experiments/README.md`).
 //!
 //! A spec lists *encounters*: a hero of the user's (or a second human player's) next to the
-//! opponent it fights, with a procedure and the values to record. [`build`] compiles a spec into a
+//! opponent it fights, with a procedure and the values to record; or, for the adventure map's
+//! experiments (E08 T10a), heroes placed on chosen tiles of a map with rectangles of other
+//! terrains, some of them as their hero type makes them. [`build`] compiles a spec into a
 //! SoD map (written with [`h3_formats::h3m`]) and a results template the user fills in. Names
 //! resolve against the original tables of the user's installation ([`Tables`]), so a spec reads
 //! like the game ("Archangel", "Basic Armorer") and a typo fails at build time instead of in the
@@ -14,7 +16,7 @@ use std::fmt::Write as _;
 
 use h3_formats::h3m::{
     ARMY_SLOTS, ARTIFACT_SLOTS, Hero, HeroArtifacts, Map, MapObject, Monster, ObjectTemplate,
-    PLAYERS, Player, Terrain,
+    PLAYERS, Patch, Player, Road, RoadKind, Terrain,
 };
 use serde::Deserialize;
 
@@ -86,6 +88,38 @@ pub struct MapSpec {
     /// General instructions at the top of the template (how to start the map, saving, …).
     #[serde(default)]
     pub instructions: Vec<String>,
+    /// Rectangles of other terrains (`[[map.patch]]`, E08 T10a); a later one covers an earlier.
+    #[serde(default)]
+    pub patch: Vec<PatchSpec>,
+    /// Straight roads from west to east (`[[map.road]]`, E08 T10a).
+    #[serde(default)]
+    pub road: Vec<RoadSpec>,
+}
+
+/// A road on one row.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RoadSpec {
+    /// "dirt", "gravel" or "cobblestone".
+    pub kind: String,
+    /// Row.
+    pub row: u8,
+    /// West end's column.
+    pub from: u8,
+    /// East end's column, east of `from`.
+    pub to: u8,
+}
+
+/// A rectangle of the map with a terrain of its own.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PatchSpec {
+    /// Terrain, as in [`MapSpec::terrain`].
+    pub terrain: String,
+    /// Top left tile, `[column, row]`.
+    pub from: [u8; 2],
+    /// Bottom right tile, inclusive.
+    pub to: [u8; 2],
 }
 
 fn default_size() -> u8 {
@@ -108,6 +142,10 @@ pub struct Encounter {
     /// What the hero fights (none for an inspection).
     #[serde(default)]
     pub opponent: Option<Opponent>,
+    /// More heroes of the encounter, each on its own tile (`at`); their names are their hero
+    /// types' unless given (E08 T10a: inspections of many heroes).
+    #[serde(default)]
+    pub also: Vec<HeroSpec>,
     /// Steps for the user, in order.
     #[serde(default)]
     pub procedure: Vec<String>,
@@ -133,18 +171,29 @@ pub struct HeroSpec {
     /// "red" or "blue".
     #[serde(default = "red")]
     pub owner: String,
+    /// The hero's tile, `[column, row]` (default: the encounter's place in the grid, one column
+    /// further east for the opponent; required for [`Encounter::also`]).
+    #[serde(default)]
+    pub at: Option<[u8; 2]>,
+    /// Everything but owner, tile and name is the hero type's own, as the map editor places a
+    /// hero (E08 T10a): army, experience, primary and secondary skills, artifacts and spells.
+    /// The spec then lists none of them.
+    #[serde(default)]
+    pub defaults: bool,
     /// Name in the game (default: the encounter id).
     #[serde(default)]
     pub name: Option<String>,
     /// Experience (0 = level 1).
     #[serde(default)]
     pub experience: u32,
-    /// Attack, defense, power, knowledge.
-    pub primary: [u8; 4],
+    /// Attack, defense, power, knowledge (required unless [`HeroSpec::defaults`]).
+    #[serde(default)]
+    pub primary: Option<[u8; 4]>,
     /// Secondary skills as (name, level 1–3); replaces the hero type's.
     #[serde(default)]
     pub skills: Vec<(String, u8)>,
-    /// Army as (creature, count), at most seven stacks.
+    /// Army as (creature, count), one to seven stacks (none with [`HeroSpec::defaults`]).
+    #[serde(default)]
     pub army: Vec<(String, u16)>,
     /// Worn artifacts by slot name ([`SLOT_NAMES`]); replaces the hero type's (so no spell book
     /// unless listed).
@@ -205,6 +254,10 @@ pub struct Record {
     /// Empty rows of the table.
     #[serde(default)]
     pub rows: Option<u8>,
+    /// Rows with their first column filled in, one per label, after the empty ones (E08 T10a:
+    /// a row per hero).
+    #[serde(default)]
+    pub labels: Vec<String>,
 }
 
 /// Parses a spec.
@@ -225,7 +278,52 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
     if ![36, 72, 108, 144].contains(&size) {
         return Err(format!("map size {size} (36, 72, 108 or 144)"));
     }
-    let terrain = terrain(&spec.map.terrain)?;
+    let base = terrain(&spec.map.terrain)?;
+    let patches = spec
+        .map
+        .patch
+        .iter()
+        .map(|p| {
+            let [fx, fy] = p.from;
+            let [tx, ty] = p.to;
+            if fx > tx || fy > ty || tx >= size || ty >= size {
+                return Err(format!(
+                    "patch from {:?} to {:?}: corners out of order or off the map",
+                    p.from, p.to
+                ));
+            }
+            Ok(Patch {
+                terrain: terrain(&p.terrain)?,
+                from: (fx, fy),
+                to: (tx, ty),
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let roads = spec
+        .map
+        .road
+        .iter()
+        .map(|r| {
+            let kind = match r.kind.as_str() {
+                "dirt" => RoadKind::Dirt,
+                "gravel" => RoadKind::Gravel,
+                "cobblestone" => RoadKind::Cobblestone,
+                other => return Err(format!("unknown road `{other}`")),
+            };
+            if r.from >= r.to || r.to >= size || r.row >= size {
+                return Err(format!(
+                    "road on row {} from {} to {}: one tile or less, or off the map",
+                    r.row, r.from, r.to
+                ));
+            }
+            Ok(Road {
+                kind,
+                row: r.row,
+                from: r.from,
+                to: r.to,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
     let columns = (size - 2 * ORIGIN) / COLUMN_STEP + 1;
     let capacity = usize::from(columns) * usize::from((size - 2 * ORIGIN) / ROW_STEP + 1);
     if spec.encounter.len() > capacity {
@@ -252,8 +350,9 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
         let x = ORIGIN + (index % columns) * COLUMN_STEP;
         let y = ORIGIN + (index / columns) * ROW_STEP;
         let ctx = |e: String| format!("encounter {}: {e}", enc.id);
-        let mut add_hero = |h: &HeroSpec, tile: (u8, u8), default_owner: &str| {
-            let hero = hero(h, tables, tile, &enc.id, default_owner).map_err(ctx)?;
+        let mut add_hero = |h: &HeroSpec, tile: (u8, u8), name: Option<&str>, owner: &str| {
+            let tile = h.at.map_or(tile, |[x, y]| (x, y));
+            let hero = hero(h, tables, tile, name, owner).map_err(ctx)?;
             if used_types.contains(&hero.hero_type) {
                 return Err(ctx(format!(
                     "hero type {} is used twice",
@@ -272,7 +371,17 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
             objects.push(MapObject::Hero(hero));
             Ok(summary)
         };
-        let own = add_hero(&enc.hero, (x, y), "red")?;
+        let own = add_hero(&enc.hero, (x, y), Some(&enc.id), "red")?;
+        let (x, y) = enc.hero.at.map_or((x, y), |[x, y]| (x, y));
+        // The encounter's other heroes before its opponent, so that the opponent's arm is the
+        // closure's last use (a monster is pushed beside it).
+        let mut more = Vec::new();
+        for h in &enc.also {
+            if h.at.is_none() {
+                return Err(ctx("a hero under `also` needs `at`".into()));
+            }
+            more.push(add_hero(h, (x, y), h.name.as_deref(), "red")?);
+        }
         let against = match &enc.opponent {
             None => None,
             Some(Opponent {
@@ -290,7 +399,7 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
                 if *count == 0 {
                     return Err(ctx("a monster needs at least one creature".into()));
                 }
-                objects.push(monster(template, (x + 1, y), *count));
+                objects.push(monster(template, (x.saturating_add(1), y), *count));
                 Some(format!(
                     "{count} {creature} (wandering monster, never flees)"
                 ))
@@ -299,14 +408,30 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
                 monster: None,
                 count: None,
                 hero: Some(h),
-            }) => Some(add_hero(h, (x + 1, y), "blue")?),
+            }) => Some(add_hero(
+                h,
+                (x.saturating_add(1), y),
+                Some(&enc.id),
+                "blue",
+            )?),
             Some(_) => {
                 return Err(ctx(
                     "an opponent is either `monster` + `count` or `hero`".into()
                 ));
             }
         };
-        encounter_text(&mut text, enc, &own, against.as_deref());
+        encounter_text(&mut text, enc, &own, against.as_deref(), &more);
+    }
+    let mut tiles: Vec<(u8, u8)> = objects
+        .iter()
+        .map(|o| match o {
+            MapObject::Hero(h) => h.tile,
+            MapObject::Monster(m) => m.tile,
+        })
+        .collect();
+    tiles.sort_unstable();
+    if let Some(w) = tiles.windows(2).find(|w| w[0] == w[1]) {
+        return Err(format!("two objects on the tile {:?}", w[0]));
     }
     let mut players: [Option<Player>; PLAYERS] = Default::default();
     // Both players may be human, so the map can be played in hot seat; the allowed towns are the
@@ -330,7 +455,9 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
         name: spec.map.name.clone(),
         description: spec.map.description.clone(),
         size,
-        terrain,
+        terrain: base,
+        patches,
+        roads,
         players,
         objects,
     };
@@ -368,7 +495,7 @@ fn hero(
     h: &HeroSpec,
     tables: &Tables,
     tile: (u8, u8),
-    encounter: &str,
+    name: Option<&str>,
     default_owner: &str,
 ) -> Result<Hero, String> {
     let hero_type = match &h.hero_type {
@@ -392,6 +519,38 @@ fn hero(
         ("blue", _) => 1,
         (other, _) => return Err(format!("owner `{other}` (red or blue)")),
     };
+    let name = h.name.as_deref().or(name).map(str::to_owned);
+    if h.defaults {
+        let listed = h.primary.is_some()
+            || h.experience != 0
+            || !h.skills.is_empty()
+            || !h.army.is_empty()
+            || !h.artifacts.is_empty()
+            || !h.backpack.is_empty()
+            || !h.spells.is_empty();
+        if listed {
+            return Err("a hero with `defaults` lists no army, experience, skills, \
+                        artifacts or spells"
+                .into());
+        }
+        return Ok(Hero {
+            tile,
+            owner,
+            hero_type: hero_type as u8,
+            class,
+            name,
+            experience: None,
+            skills: None,
+            army: None,
+            tight_formation: h.tight,
+            artifacts: None,
+            spells: None,
+            primary: None,
+        });
+    }
+    let primary = h
+        .primary
+        .ok_or("`primary` is required unless the hero has `defaults`")?;
     if h.skills.len() > 8 {
         return Err("at most 8 secondary skills".into());
     }
@@ -452,14 +611,14 @@ fn hero(
         owner,
         hero_type: hero_type as u8,
         class,
-        name: Some(h.name.clone().unwrap_or_else(|| encounter.to_owned())),
+        name,
         experience: Some(h.experience),
         skills: Some(skills),
         army: Some(army),
         tight_formation: h.tight,
         artifacts: Some(HeroArtifacts { worn, backpack }),
         spells: Some(spells),
-        primary: Some(h.primary),
+        primary: Some(primary),
     })
 }
 
@@ -477,7 +636,18 @@ fn monster(template: ObjectTemplate, tile: (u8, u8), count: u16) -> MapObject {
 /// One line describing a hero as the user should see it in the game.
 fn hero_summary(h: &HeroSpec, hero: &Hero, tables: &Tables) -> String {
     let owner = if hero.owner == 0 { "Red" } else { "Blue" };
-    let [a, d, p, k] = h.primary;
+    let name = hero
+        .name
+        .as_deref()
+        .unwrap_or(&tables.heroes[usize::from(hero.hero_type)]);
+    let Some([a, d, p, k]) = h.primary else {
+        return format!(
+            "{owner} hero **{name}** ({}, specialty {}): everything its hero type's own (army, \
+             skills, artifacts, spells)",
+            tables.heroes[usize::from(hero.hero_type)],
+            h.specialty,
+        );
+    };
     let skills = if h.skills.is_empty() {
         "no skills".to_owned()
     } else {
@@ -522,13 +692,19 @@ fn hero_summary(h: &HeroSpec, hero: &Hero, tables: &Tables) -> String {
     format!(
         "{owner} hero **{}** ({}, specialty {}{level}): attack {a}, defense {d}, power {p}, \
          knowledge {k}; {skills}; {artifacts}; {spells}; army {army}",
-        hero.name.as_deref().unwrap_or_default(),
+        name,
         tables.heroes[usize::from(hero.hero_type)],
         h.specialty,
     )
 }
 
-fn encounter_text(out: &mut String, enc: &Encounter, own: &str, against: Option<&str>) {
+fn encounter_text(
+    out: &mut String,
+    enc: &Encounter,
+    own: &str,
+    against: Option<&str>,
+    more: &[String],
+) {
     let questions = if enc.questions.is_empty() {
         String::new()
     } else {
@@ -541,6 +717,9 @@ fn encounter_text(out: &mut String, enc: &Encounter, own: &str, against: Option<
     let _ = writeln!(out, "- {own}");
     if let Some(against) = against {
         let _ = writeln!(out, "- Opponent: {against}");
+    }
+    for hero in more {
+        let _ = writeln!(out, "- {hero}");
     }
     let _ = writeln!(out);
     for (i, step) in enc.procedure.iter().enumerate() {
@@ -560,8 +739,13 @@ fn encounter_text(out: &mut String, enc: &Encounter, own: &str, against: Option<
             }
             let _ = writeln!(out, "| {} |", columns.join(" | "));
             let _ = writeln!(out, "|{}", "---|".repeat(columns.len()));
-            for _ in 0..r.rows.unwrap_or(1) {
+            let empty = if r.labels.is_empty() { 1 } else { 0 };
+            for _ in 0..r.rows.unwrap_or(empty) {
                 let _ = writeln!(out, "|{}", "   |".repeat(columns.len()));
+            }
+            for label in &r.labels {
+                let rest = "   |".repeat(columns.len().saturating_sub(1));
+                let _ = writeln!(out, "| {label} |{rest}");
             }
             let _ = writeln!(out);
         }
@@ -742,5 +926,159 @@ mod tests {
         assert!(fails("backpack = [\"Spell Book\"]", "backpack = [\"Tome\"]").contains("unknown"));
         let no_book = fails("artifacts = { \"spell book\" = \"Spell Book\" }", "");
         assert!(no_book.contains("need a worn"));
+    }
+
+    /// The adventure map's shape (E08 T10a): patches, chosen tiles, more heroes, defaults.
+    const WALKS: &str = r#"
+        [map]
+        name = "Walks"
+        description = "d"
+        size = 72
+        terrain = "grass"
+        [[map.patch]]
+        terrain = "swamp"
+        from = [20, 0]
+        to = [32, 71]
+        [[map.patch]]
+        terrain = "sand"
+        from = [20, 0]
+        to = [20, 0]
+        [[map.road]]
+        kind = "gravel"
+        row = 30
+        from = 17
+        to = 19
+
+        [[encounter]]
+        id = "W1"
+        title = "Walk into the swamp"
+        [encounter.hero]
+        type = "Orrin"
+        specialty = "skill Archery"
+        at = [19, 30]
+        primary = [0, 0, 1, 1]
+        army = [["Pikeman", 1]]
+        [encounter.opponent.hero]
+        type = "Sylvia"
+        specialty = "resource gold"
+        primary = [0, 0, 1, 1]
+        army = [["Pikeman", 1]]
+        [[encounter.also]]
+        type = 2
+        specialty = "creature Archangel"
+        owner = "blue"
+        at = [40, 8]
+        defaults = true
+        [[encounter.also]]
+        type = 3
+        specialty = "spell Spell 9"
+        at = [42, 8]
+        name = "Named"
+        defaults = true
+        [[encounter.record]]
+        table = ["hero", "load 1", "load 2"]
+        labels = ["Twin", "Named"]
+    "#;
+
+    #[test]
+    fn builds_patches_chosen_tiles_and_heroes_of_their_type() {
+        let spec = parse(WALKS).expect("spec");
+        let (map, text) = build(&spec, &tables(), "w.h3m").expect("build");
+        assert_eq!(map.size, 72);
+        assert_eq!(
+            map.patches,
+            [
+                Patch {
+                    terrain: Terrain::Swamp,
+                    from: (20, 0),
+                    to: (32, 71)
+                },
+                Patch {
+                    terrain: Terrain::Sand,
+                    from: (20, 0),
+                    to: (20, 0)
+                }
+            ]
+        );
+        assert_eq!(
+            map.roads,
+            [Road {
+                kind: RoadKind::Gravel,
+                row: 30,
+                from: 17,
+                to: 19
+            }]
+        );
+        let heroes: Vec<&Hero> = map
+            .objects
+            .iter()
+            .map(|o| match o {
+                MapObject::Hero(h) => h,
+                MapObject::Monster(_) => panic!("no monsters"),
+            })
+            .collect();
+        // The encounter's hero, its `also` heroes, then the opponent beside the hero.
+        let tiles: Vec<_> = heroes.iter().map(|h| (h.tile, h.owner)).collect();
+        assert_eq!(
+            tiles,
+            [((19, 30), 0), ((40, 8), 1), ((42, 8), 0), ((20, 30), 1)]
+        );
+        let typed = heroes[1];
+        assert_eq!(typed.name, None);
+        assert_eq!((typed.experience, typed.skills.as_ref()), (None, None));
+        assert_eq!((typed.army, typed.artifacts.as_ref()), (None, None));
+        assert_eq!((typed.spells, typed.primary), (None, None));
+        assert_eq!(heroes[2].name.as_deref(), Some("Named"));
+        assert_eq!(heroes[3].name.as_deref(), Some("W1"));
+        assert!(text.contains(
+            "- Blue hero **Twin** (Twin, specialty creature Archangel): everything its hero \
+             type's own (army, skills, artifacts, spells)"
+        ));
+        assert!(text.contains("- Red hero **Named** (Twin, specialty spell Spell 9): everything"));
+        assert!(text.contains("- Opponent: Blue hero **W1** (Sylvia,"));
+        assert!(text.contains(
+            "| hero | load 1 | load 2 |\n|---|---|---|\n| Twin |   |   |\n| Named |   |   |\n"
+        ));
+        h3_formats::h3m::write(&map).expect("writable");
+    }
+
+    #[test]
+    fn rejects_mistakes_in_the_adventure_shape() {
+        let t = tables();
+        let fails = |from: &str, to: &str| {
+            let spec = parse(&WALKS.replacen(from, to, 1)).expect("spec");
+            build(&spec, &t, "w.h3m").expect_err(to)
+        };
+        assert!(fails("to = [32, 71]", "to = [32, 72]").contains("off the map"));
+        assert!(fails("to = [32, 71]", "to = [72, 71]").contains("off the map"));
+        assert!(fails("to = [32, 71]", "to = [19, 71]").contains("out of order"));
+        assert!(fails("from = [20, 0]", "from = [20, 72]").contains("out of order"));
+        assert!(fails("\"swamp\"", "\"water\"").contains("unknown terrain"));
+        assert!(fails("\"gravel\"", "\"paved\"").contains("unknown road"));
+        for (from, to) in [
+            ("from = 17", "from = 19"),
+            ("to = 19", "to = 72"),
+            ("row = 30", "row = 72"),
+        ] {
+            assert!(fails(from, to).contains("one tile or less, or off the map"));
+        }
+        assert!(fails("at = [40, 8]\n", "").contains("needs `at`"));
+        assert!(fails("at = [40, 8]", "at = [19, 30]").contains("two objects"));
+        assert!(fails("at = [40, 8]", "at = [20, 30]").contains("two objects"));
+        for listed in [
+            "primary = [1, 1, 1, 1]",
+            "experience = 1",
+            "skills = [[\"Archery\", 1]]",
+            "army = [[\"Pikeman\", 1]]",
+            "artifacts = { \"war machine 1\" = \"Ballista\" }",
+            "backpack = [\"Ballista\"]",
+            "spells = [\"Spell 1\"]",
+        ] {
+            let with = format!("defaults = true\n{listed}");
+            assert!(fails("defaults = true", &with).contains("lists no army"));
+        }
+        let no_primary = fails("primary = [0, 0, 1, 1]\n", "");
+        assert!(no_primary.contains("`primary` is required"));
+        assert!(fails("army = [[\"Pikeman\", 1]]", "").contains("0 army stacks"));
     }
 }

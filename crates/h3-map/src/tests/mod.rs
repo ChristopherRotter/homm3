@@ -684,8 +684,47 @@ fn maps_from_the_experiment_writer_read_back() {
         description: "Read back".to_owned(),
         size: 36,
         terrain: w::Terrain::Grass,
+        // A band of swamp, full height (the movement experiments, E08 T10a), and sand over its
+        // top left tile.
+        patches: vec![
+            w::Patch {
+                terrain: w::Terrain::Swamp,
+                from: (10, 0),
+                to: (12, 35),
+            },
+            w::Patch {
+                terrain: w::Terrain::Sand,
+                from: (10, 0),
+                to: (10, 0),
+            },
+        ],
+        // A dirt road ending on the swamp, as the movement experiments lay them.
+        roads: vec![w::Road {
+            kind: w::RoadKind::Dirt,
+            row: 7,
+            from: 8,
+            to: 10,
+        }],
         players,
-        objects: vec![w::MapObject::Hero(hero), w::MapObject::Monster(monster)],
+        objects: vec![
+            w::MapObject::Hero(hero),
+            w::MapObject::Monster(monster),
+            // A hero with everything its hero type's (E08 T10a: the starting armies).
+            w::MapObject::Hero(w::Hero {
+                tile: (20, 5),
+                owner: 0,
+                hero_type: 1,
+                class: 0,
+                name: None,
+                experience: None,
+                skills: None,
+                army: None,
+                tight_formation: false,
+                artifacts: None,
+                spells: None,
+                primary: None,
+            }),
+        ],
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     assert_eq!(m.header.version, Version::Sod);
@@ -697,10 +736,10 @@ fn maps_from_the_experiment_writer_read_back() {
     assert_eq!(red.main_hero.as_ref().map(|h| h.hero_type), Some(0));
     assert_eq!(
         red.heroes,
-        [PlayerHero {
-            hero_type: 0,
+        [0, 1].map(|hero_type| PlayerHero {
+            hero_type,
             name: Text::default()
-        }]
+        })
     );
     let blue = m.players[1].details.as_ref().unwrap();
     assert!(!m.players[1].human && m.players[1].computer && blue.heroes.is_empty());
@@ -710,14 +749,29 @@ fn maps_from_the_experiment_writer_read_back() {
         (Victory::Standard, Loss::Standard, None)
     );
     assert_eq!(m.terrain.tiles.len(), 36 * 36);
-    assert!(
-        m.terrain
-            .tiles
-            .iter()
-            .all(|t| t.terrain == 2 && (49..=56).contains(&t.view))
-    );
-    // The hero (written one column right of its tile, docs/formats/h3m.md) and the monster.
-    assert_eq!(m.objects.len(), 2);
+    for (index, t) in m.terrain.tiles.iter().enumerate() {
+        let (x, y) = (index % 36, index / 36);
+        let (terrain, first) = match (x, y) {
+            (10, 0) => (1, 0),
+            (10..=12, _) => (4, 49),
+            _ => (2, 49),
+        };
+        assert_eq!(t.terrain, terrain, "terrain of ({x}, {y})");
+        assert!(
+            (first..first + 8).contains(&t.view),
+            "picture of ({x}, {y})"
+        );
+        let road = match (x, y) {
+            (8, 7) => (1, 15, 0),
+            (9, 7) => (1, 12, 0),
+            (10, 7) => (1, 15, 0x10),
+            _ => (0, 0, 0),
+        };
+        assert_eq!((t.road, t.road_dir, t.flags), road, "road of ({x}, {y})");
+        assert_eq!((t.river, t.river_dir), (0, 0));
+    }
+    // The heroes (written one column right of their tiles, docs/formats/h3m.md) and the monster.
+    assert_eq!(m.objects.len(), 3);
     let hero_template = &m.templates[m.objects[0].template as usize];
     assert_eq!((hero_template.class, hero_template.subclass), (34, 0));
     assert_eq!(m.objects[0].pos, Pos { x: 4, y: 4, z: 0 });
@@ -745,6 +799,14 @@ fn maps_from_the_experiment_writer_read_back() {
         panic!("not a monster: {:?}", m.objects[1].body)
     };
     assert_eq!((mon.count, mon.disposition, mon.never_flees), (30, 4, true));
+    let Body::Hero(h) = &m.objects[2].body else {
+        panic!("not a hero: {:?}", m.objects[2].body)
+    };
+    assert_eq!(m.objects[2].pos, Pos { x: 21, y: 5, z: 0 });
+    assert_eq!((h.owner, h.hero_type, h.name.as_ref()), (0, 1, None));
+    assert_eq!((h.experience, h.secondary_skills.as_ref()), (None, None));
+    assert_eq!((h.army.as_ref(), h.artifacts.as_ref()), (None, None));
+    assert_eq!((h.spells.as_ref(), h.primary_skills), (None, None));
     assert!(m.events.is_empty());
 }
 
