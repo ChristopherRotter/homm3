@@ -167,8 +167,10 @@ pub enum TimedChange {
     /// damage (damage stage 2), not at all at 0 (Blind; BAT-MAG-024, v11). Ends with any damage
     /// when the spell `ends = "damaged"`.
     Blind,
-    /// The stack's turns are automatic: it attacks the nearest other stack; every other stack is
-    /// its enemy and it is every stack's (Berserk; BAT-MAG-025, v12).
+    /// The stack's turns are automatic: it attacks the nearest other stack; next to any stack
+    /// it counts as that stack's enemy and the stack as its (shots are blocked, multi-headed
+    /// strikes reach it), but its own side may not attack or shoot it (Berserk; BAT-MAG-025,
+    /// v12).
     Berserk,
     /// The other side controls the stack: it commands its turns, and the stack fights for it
     /// (Hypnotize; BAT-MAG-026, v12).

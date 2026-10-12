@@ -2,8 +2,8 @@
 //!
 //! Without a hero's Artillery or First Aid skill war machines are controlled by the engine: when
 //! one becomes active it acts at once and its turn ends. The Ballista shoots the target VCMI's
-//! automatic control picks (BAT-WAR-002), the First Aid Tent heals a random damaged allied stack
-//! (BAT-WAR-003); the Ammo Cart never becomes active (BAT-WAR-004). A hero with Artillery
+//! automatic control picks (BAT-WAR-002), the First Aid Tent heals a random damaged stack of its
+//! side (BAT-WAR-003); the Ammo Cart never becomes active (BAT-WAR-004). A hero with Artillery
 //! commands its side's Ballista instead (BAT-WAR-006), one with First Aid its tent (BAT-WAR-007).
 
 use core::cmp::Ordering;
@@ -16,6 +16,7 @@ use h3_kernel::arith::{X87, cmp_fractions, mul_div_floor};
 
 use crate::combat::{can_shoot, shoot, shot_damage_range};
 use crate::damage::apply_damage;
+use crate::effects::Status;
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::Field;
 use crate::hero;
@@ -55,16 +56,14 @@ pub(crate) fn is_commanded(state: &BattleState, field: Field, id: StackId) -> bo
         || (commanded_tent(state, id).is_some() && !patients(state, id).is_empty())
 }
 
-/// Whether the first-aid war machine `healer` may heal stack `target`: an allied stack (of the
-/// same controller, BAT-MAG-026) that is alive, not a war machine and whose top creature is hurt
-/// (BAT-WAR-003).
+/// Whether the first-aid war machine `healer` may heal stack `target`: a stack of its own side,
+/// whoever controls it (BAT-MAG-026: the original's automatic tent walks the stacks of its side
+/// and its cursor, 0x476490, wants the patient's own side), that is alive, not a war machine and
+/// whose top creature is hurt (BAT-WAR-003).
 pub(crate) fn is_patient(state: &BattleState, healer: StackId, target: StackId) -> bool {
     let me = state.at(healer);
     state.stack(target).is_some_and(|s| {
-        s.controller() == me.controller()
-            && s.is_alive()
-            && !s.has(StackTraits::WAR_MACHINE)
-            && s.top_hp < s.max_hp
+        s.side == me.side && s.is_alive() && !s.has(StackTraits::WAR_MACHINE) && s.top_hp < s.max_hp
     })
 }
 
@@ -95,19 +94,23 @@ pub(crate) fn act<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: Stack
     }
 }
 
-/// Whether stack `id` could attack next turn: it can shoot, or some enemy (BAT-MAG-025/026) has
-/// an attack position it can reach (VCMI `getCanAttackNextTurn`). Its reach is the one both
-/// sides can tell (BAT-MAG-031): the answer picks the automatic Ballista's target, which both
-/// sides are told, so a pit hidden from either side does not count (E04b T11b review).
+/// Whether stack `id` could attack next turn: it can shoot, or some stack its next turn may
+/// strike has an attack position it can reach (VCMI `getCanAttackNextTurn`). Its next turn may
+/// strike the stacks it may attack ([`crate::Stack::may_attack`], BAT-MAG-026, as VCMI's
+/// `battleCanAttackUnit`) or, while it is berserk, any other stack (BAT-MAG-025: its automatic
+/// turn takes any; the engine's own term, VCMI has none). Its reach is the one both sides can
+/// tell (BAT-MAG-031): the answer picks the automatic Ballista's target, which both sides are
+/// told, so a pit hidden from either side does not count (E04b T11b review).
 pub(crate) fn can_attack_next_turn(state: &BattleState, field: Field, id: StackId) -> bool {
     if can_shoot(state, field, id) {
         return true;
     }
     let me = state.at(id);
     let reach = reachable_in_public(state, field, id, me);
+    let berserk = me.spells.status.contains(Status::BERSERK);
     (0u8..)
         .zip(state.stacks.iter())
-        .filter(|&(i, t)| i != id.0 && t.is_alive() && me.is_hostile_to(t))
+        .filter(|&(i, t)| i != id.0 && t.is_alive() && (berserk || me.may_attack(t)))
         .map(|(_, t)| t)
         .any(|t| {
             field
@@ -152,10 +155,11 @@ pub(crate) fn value(
     (ai * (dealt + (kills(min) + kills(max)) * m), 2 * m)
 }
 
-/// The target a war machine shoots (BAT-WAR-002, ported from VCMI): among the living enemies
-/// (BAT-MAG-025/026: a berserk stack of its own side too),
-/// prefer stacks that are not war machines, then stacks that could attack next turn, then the
-/// highest value of the expected damage ([`value`]); ties go to the lowest stack id.
+/// The target a war machine shoots (BAT-WAR-002, ported from VCMI): among the living stacks it
+/// may shoot, those of the other side whoever controls them ([`crate::Stack::may_attack`],
+/// BAT-MAG-025/026: not a berserk or hypnotized stack of its own side, as VCMI compares the
+/// owners), prefer stacks that are not war machines, then stacks that could attack next turn,
+/// then the highest value of the expected damage ([`value`]); ties go to the lowest stack id.
 ///
 /// Whether a stack could attack next turn needs its reachability, the expensive key, so it is
 /// evaluated lazily: within the best class (creatures if there are any), candidates are taken by
@@ -171,7 +175,7 @@ pub(crate) fn shooting_target(
     // Fixed capacity, no allocation (ADR-0004 §8): at most every stack is a candidate.
     let mut candidates: FixedVec<Candidate, STACK_CAPACITY> = FixedVec::new();
     for (i, s) in (0u8..).zip(state.stacks.iter()) {
-        if i != shooter.0 && s.is_alive() && me.is_hostile_to(s) {
+        if i != shooter.0 && s.is_alive() && me.may_attack(s) {
             let id = StackId(i);
             let _ = candidates.push(Candidate {
                 id,

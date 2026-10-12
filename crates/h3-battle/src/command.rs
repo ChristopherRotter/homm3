@@ -162,7 +162,8 @@ pub fn validate(
     plan(state, ruleset, actor, command).map(|_| ())
 }
 
-/// The living stack `target`, an enemy of the active stack `mover` (BAT-MAG-025/026).
+/// The living stack `target`, which the active stack `mover` may attack or shoot: a stack of
+/// the side its controller fights ([`Stack::may_attack`], BAT-MAG-025/026).
 fn enemy(
     state: &BattleState,
     (id, mover): (StackId, &Stack),
@@ -171,7 +172,7 @@ fn enemy(
     let Some(victim) = state.stack(target).filter(|s| s.is_alive()) else {
         return Err(CommandError::NoSuchTarget);
     };
-    if target == id || !mover.is_hostile_to(victim) {
+    if target == id || !mover.may_attack(victim) {
         return Err(CommandError::NotAnEnemy);
     }
     Ok(())

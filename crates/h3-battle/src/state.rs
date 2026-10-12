@@ -712,26 +712,25 @@ impl Stack {
         }
     }
 
-    /// Whether `other`, another stack, is this stack's enemy: of the other controller, or either
-    /// of them berserk (BAT-MAG-025, BAT-MAG-026; the original's 0x442880).
+    /// Whether this stack, on a turn its controller commands, may attack or shoot `other`
+    /// (BAT-MAG-025, BAT-MAG-026): `other` is of the side its controller fights, whoever controls
+    /// `other` and berserk or not. The original's cursor and pathfinder compare the acting side
+    /// with the target's own side (0x476490; VCMI's `battleMatchOwner`; batch 2c row H1): the
+    /// side that hypnotized a stack may attack it and its own side may not, and no side attacks
+    /// its own berserk stack. (A hypnotized stack passes this test for itself.)
+    pub const fn may_attack(&self, other: &Self) -> bool {
+        self.controller().index() != other.side.index()
+    }
+
+    /// Whether `other`, a stack next to this one, counts as its enemy: either of them is
+    /// berserk, or `other` is of the side this stack's controller fights (BAT-MAG-025,
+    /// BAT-MAG-026; the original's 0x442880, which reads the first stack's Hypnotize and the
+    /// second stack's own side). Its two callers ask it: whether a neighbour blocks a shooter
+    /// (BAT-RNG-001) and whether a multi-headed strike reaches a neighbour (BAT-ATK-003). Who may
+    /// be attacked or shot is [`Self::may_attack`].
     pub const fn is_hostile_to(&self, other: &Self) -> bool {
-        let berserk = Status::BERSERK;
-        let special = berserk.bits() | Status::HYPNOTIZED.bits();
-        // The usual case first: neither stack is berserk or hypnotized.
-        if (self.spells.status.bits() | other.spells.status.bits()) & special == 0 {
-            return !matches!(
-                (self.side, other.side),
-                (BattleSide::Attacker, BattleSide::Attacker)
-                    | (BattleSide::Defender, BattleSide::Defender)
-            );
-        }
-        self.spells.status.contains(berserk)
-            || other.spells.status.contains(berserk)
-            || !matches!(
-                (self.controller(), other.controller()),
-                (BattleSide::Attacker, BattleSide::Attacker)
-                    | (BattleSide::Defender, BattleSide::Defender)
-            )
+        (self.spells.status.bits() | other.spells.status.bits()) & Status::BERSERK.bits() != 0
+            || self.may_attack(other)
     }
 
     /// Total remaining hit points: `(count - 1) · max_hp + top_hp` (BAT-DMG-003).

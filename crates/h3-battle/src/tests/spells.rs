@@ -252,6 +252,67 @@ fn resistance_adds_the_heros_to_the_creatures_and_the_aura_multiplies() {
     );
 }
 
+/// E04b T11b review (F-r1-4, F-r6-limits-opening-1; F-r3-control-battlefield-1, scenario d): the
+/// Unicorns' aura reaches the neighbours whose own side is the Unicorns' controller (the
+/// original's aura lists, the reviewers' reading of 0x43EA70: the Unicorn's side through its
+/// Hypnotize against the other stack's own side). The engine compared the two controllers: a
+/// hypnotized stack lost its side's aura and took that of the side controlling it.
+// covers: BAT-MAG-008, BAT-MAG-026
+#[test]
+fn the_aura_protects_the_stacks_of_the_side_that_controls_the_unicorns() {
+    let r = ruleset();
+    let bolt = r.spell(spell(&r, "bolt")).unwrap();
+    let hypnotize = |s: &mut BattleState, id: u8| {
+        let id_spell = spell(&r, "hypnotize");
+        let cast = crate::effects::TimedCast {
+            id: id_spell,
+            spell: r.spell(id_spell).unwrap(),
+            mastery: 0,
+            rounds: 5,
+            own: crate::magic::SpellBonus::default(),
+        };
+        crate::effects::apply(s, &r, cast, StackId(id), &mut Vec::<Event>::new());
+    };
+    // Ids: 0 fixed, 1 unicorn (attacker); 2 fixed beside the attacker's unicorn, 3 fixed beside
+    // its own side's unicorn (4) (defender).
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("fixed", 5, 2, 1), ("unicorn", 5, 7, 5)],
+        &[
+            ("fixed", 5, 8, 5),
+            ("fixed", 5, 12, 9),
+            ("unicorn", 5, 13, 9),
+        ],
+        1,
+    );
+    let chance = |s: &BattleState, caster: BattleSide, id: u8| {
+        affect_chance(s, &r, caster, bolt, StackId(id))
+    };
+    let (att, def) = (BattleSide::Attacker, BattleSide::Defender);
+    assert_eq!((chance(&s, att, 2), chance(&s, att, 3)), (100, 80));
+    // Hypnotized, a stack keeps its own side's aura and gets none from the side controlling it.
+    hypnotize(&mut s, 2);
+    hypnotize(&mut s, 3);
+    assert_eq!((chance(&s, att, 2), chance(&s, att, 3)), (100, 80));
+    // Hypnotized Unicorns protect the stacks of the side that commands them. Ids: 0 fixed,
+    // 1 unicorn, 2 fixed above it (attacker); 3 fixed beside the attacker's unicorn (defender).
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("fixed", 5, 2, 1), ("unicorn", 5, 7, 5), ("fixed", 5, 7, 4)],
+        &[("fixed", 5, 8, 5)],
+        1,
+    );
+    assert_eq!(field(&r).distance(at(&r, 7, 4), at(&r, 7, 5)), 1);
+    assert_eq!((chance(&s, def, 2), chance(&s, att, 3)), (80, 100));
+    hypnotize(&mut s, 1);
+    assert_eq!((chance(&s, def, 2), chance(&s, att, 3)), (100, 80));
+    // A hypnotized stack of that side too.
+    hypnotize(&mut s, 3);
+    assert_eq!(chance(&s, att, 3), 80);
+}
+
 /// Casts `name` at `target` in battles with seeds `1..=n` against Dwarves (id 1) beside a stack
 /// without resistance (id 2); returns how often the Dwarves resisted and how often the spell did
 /// nothing at all.

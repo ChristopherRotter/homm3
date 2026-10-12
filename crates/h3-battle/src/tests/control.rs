@@ -13,8 +13,8 @@ use super::support::*;
 use crate::effects::TimedCast;
 use crate::state::StackFlags;
 use crate::{
-    BattleState, CastTarget, CastTargets, Command, Event, EventKind, LegalCommands, StackId,
-    Status, cast_targets, legal_commands,
+    BattleState, CastTarget, CastTargets, Command, CommandError, Event, EventKind, LegalCommands,
+    StackId, Status, cast_targets, legal_commands,
 };
 
 /// Gives stack `id` the timed effect of `name` at `mastery` for five rounds.
@@ -84,6 +84,13 @@ fn attacks(commands: &[Command], id: u8) -> bool {
         .any(|c| matches!(c, Command::Attack { target, .. } if target.0 == id))
 }
 
+/// Whether `commands` shoot at stack `id`.
+fn shoots(commands: &[Command], id: u8) -> bool {
+    commands
+        .iter()
+        .any(|c| matches!(c, Command::Shoot { target, .. } if target.0 == id))
+}
+
 /// Whether stack `id` has `status`.
 fn has(s: &BattleState, id: u8, status: Status) -> bool {
     s.stacks()[usize::from(id)].spells.status.contains(status)
@@ -139,29 +146,39 @@ fn berserk_reaches_both_sides_around_its_hex_and_ends_hypnotize() {
 #[test]
 fn a_berserk_stack_attacks_the_nearest_stack_on_its_own_turn() {
     let r = ruleset();
+    // Ids: 0 fixed (berserk), 1 fixed (attacker); 2 brute, 3 slow (defender).
     let mut s = arena(
         &r,
         [None, None],
-        &[("brute", 5, 2, 1), ("fixed", 10, 5, 5), ("fixed", 10, 7, 5)],
-        &[("slow", 5, 12, 5)],
+        &[("fixed", 10, 5, 5), ("fixed", 10, 7, 5)],
+        &[("brute", 5, 2, 1), ("slow", 5, 12, 5)],
         1,
     );
-    give(&mut s, &r, (1, "berserk"), 1);
-    // Every other stack is its enemy: its own side may attack it, and not its other stacks.
+    give(&mut s, &r, (0, "berserk"), 1);
+    // Its own side may not attack it (E04b T11b review, F-r3-control-battlefield-2: this test
+    // had the attacker's brute attack it), nor its other stacks; the other side may, as ever.
+    activate(&mut s, 1);
     let commands = legal(&s, &r, BattleSide::Attacker);
-    assert!(attacks(&commands, 1) && !attacks(&commands, 2));
+    assert!(!attacks(&commands, 0) && attacks(&commands, 3));
+    let own = Command::Attack {
+        target: StackId(0),
+        from: at(&r, 6, 5),
+    };
+    assert_eq!(act(&mut s, &r, own), Err(CommandError::NotAnEnemy));
+    activate(&mut s, 2);
+    assert!(attacks(&legal(&s, &r, BattleSide::Defender), 0));
     let attack = Command::Attack {
-        target: StackId(1),
+        target: StackId(0),
         from: at(&r, 4, 5),
     };
     let events = act(&mut s, &r, attack).unwrap();
     // The brute's attack and the retaliation, which does not end Berserk; then the berserk
     // stack's own turn: it attacks the nearest stack, the brute next to it, and its Berserk ends.
-    assert_eq!(strikes(&events), [(0, 1), (1, 0), (1, 0), (0, 1)]);
+    assert_eq!(strikes(&events), [(2, 0), (0, 2), (0, 2), (2, 0)]);
     let ended = events.iter().position(|e| {
         e.kind
             == EventKind::EffectEnded {
-                target: StackId(1),
+                target: StackId(0),
                 spell: spell(&r, "berserk"),
             }
     });
@@ -172,8 +189,8 @@ fn a_berserk_stack_attacks_the_nearest_stack_on_its_own_turn() {
                 .rposition(|e| matches!(e.kind, EventKind::Struck { .. }))
                 .unwrap()
     );
-    assert!(s.stacks()[1].flags.contains(StackFlags::ACTED));
-    assert_eq!(s.active(), Some(StackId(2)));
+    assert!(s.stacks()[0].flags.contains(StackFlags::ACTED));
+    assert_eq!(s.active(), Some(StackId(1)));
     // Without the brute next to it, it walks to its own stack, the nearest, and attacks it.
     let mut s = arena(
         &r,
@@ -191,6 +208,74 @@ fn a_berserk_stack_attacks_the_nearest_stack_on_its_own_turn() {
     })));
     assert_eq!(strikes(&events), [(0, 1), (1, 0)]);
     assert!(!has(&s, 0, Status::BERSERK));
+}
+
+/// E04b T11b review (F-r3-control-battlefield-2): a berserk stack is not its own side's to
+/// attack or shoot (the original's cursor compares the target's own side with the acting side
+/// and has no Berserk test, the reviewers' reading of 0x476490; VCMI's `battleCanAttackUnit`
+/// has none either), while the other side attacks and shoots it as ever. Next to another stack it
+/// counts as that stack's enemy whatever the sides (the two callers of the original's 0x442880):
+/// it blocks a shooter and a multi-headed strike reaches it.
+// covers: BAT-MAG-025, BAT-RNG-001, BAT-ATK-003
+#[test]
+fn a_berserk_stack_is_no_target_of_its_own_side_and_an_enemy_next_to_any_stack() {
+    let r = ruleset();
+    // Ids: 0 archer above the berserk fixed (1), 2 archer far away (attacker); 3 archer beside
+    // the berserk stack, 4 archer far away (defender). Each archer beside it touches no other
+    // stack.
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("archer", 5, 7, 4), ("fixed", 5, 8, 5), ("archer", 5, 2, 1)],
+        &[("archer", 5, 9, 5), ("archer", 5, 14, 8)],
+        1,
+    );
+    let distance =
+        |a: (i32, i32), b: (i32, i32)| field(&r).distance(at(&r, a.0, a.1), at(&r, b.0, b.1));
+    assert_eq!((distance((7, 4), (8, 5)), distance((7, 4), (9, 5))), (1, 2));
+    give(&mut s, &r, (1, "berserk"), 1);
+    let shot = |target: u8, (x, y): (i32, i32)| Command::Shoot {
+        target: StackId(target),
+        at: at(&r, x, y),
+    };
+    // Its own side's archers beside it are blocked and may not strike it either.
+    let commands = legal(&s, &r, BattleSide::Attacker);
+    assert!(!commands.iter().any(|c| matches!(c, Command::Shoot { .. })));
+    assert!(!attacks(&commands, 1) && attacks(&commands, 3));
+    assert_eq!(
+        act(&mut s, &r, shot(4, (14, 8))),
+        Err(CommandError::CannotShoot)
+    );
+    // Those far away shoot the other side's stacks only.
+    activate(&mut s, 2);
+    let commands = legal(&s, &r, BattleSide::Attacker);
+    assert!(shoots(&commands, 3) && shoots(&commands, 4) && !shoots(&commands, 1));
+    assert_eq!(
+        act(&mut s, &r, shot(1, (8, 5))),
+        Err(CommandError::NotAnEnemy)
+    );
+    // The other side's archers beside it are blocked too and strike it; those far away shoot it.
+    activate(&mut s, 3);
+    let commands = legal(&s, &r, BattleSide::Defender);
+    assert!(!commands.iter().any(|c| matches!(c, Command::Shoot { .. })));
+    assert!(attacks(&commands, 1));
+    activate(&mut s, 4);
+    assert!(shoots(&legal(&s, &r, BattleSide::Defender), 1));
+    // A hydra strikes the berserk stack of its own side beside it with the stack it attacks.
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("hydra", 10, 7, 5), ("fixed", 10, 6, 4)],
+        &[("fixed", 10, 8, 5)],
+        1,
+    );
+    give(&mut s, &r, (1, "berserk"), 1);
+    let attack = Command::Attack {
+        target: StackId(2),
+        from: at(&r, 7, 5),
+    };
+    let events = act(&mut s, &r, attack).unwrap();
+    assert_eq!(strikes(&events)[..2], [(0, 2), (0, 1)]);
 }
 
 // covers: BAT-MAG-025
@@ -409,6 +494,133 @@ fn a_hypnotized_stack_fights_for_the_other_side() {
     act(&mut s, &r, Command::Defend).unwrap();
     assert_eq!(s.result(), None);
     assert!(!attacks(&legal(&s, &r, BattleSide::Attacker), 0));
+}
+
+/// E04b T11b review (F-r3-control-battlefield-1, scenarios a and b): who may attack or shoot a
+/// stack is decided by the acting stack's controller against the other stack's own side, as the
+/// original's cursor and pathfinder (the reviewers' reading of 0x476490) and VCMI's
+/// `battleMatchOwner` have it; batch 2c row H1: "Blue's stacks cannot attack the hypnotized
+/// stack". The engine compared the two controllers, the other way round on both counts.
+// covers: BAT-MAG-026
+#[test]
+fn a_hypnotized_stack_is_attacked_by_the_side_that_controls_it_and_not_by_its_own() {
+    let r = ruleset();
+    // Ids: 0 fixed, 1 archer (attacker); 2 fixed (hypnotized), 3 fixed, 4 archer (defender).
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("fixed", 5, 8, 5), ("archer", 5, 2, 2)],
+        &[
+            ("fixed", 5, 9, 5),
+            ("fixed", 5, 10, 5),
+            ("archer", 5, 14, 8),
+        ],
+        1,
+    );
+    give(&mut s, &r, (2, "hypnotize"), 1);
+    // The attacker, who controls it, may attack and shoot it like any stack of the defender.
+    let commands = legal(&s, &r, BattleSide::Attacker);
+    assert!(attacks(&commands, 2) && attacks(&commands, 3));
+    activate(&mut s, 1);
+    let commands = legal(&s, &r, BattleSide::Attacker);
+    assert!(shoots(&commands, 2) && shoots(&commands, 3) && !shoots(&commands, 0));
+    // Its own side may neither attack nor shoot it.
+    activate(&mut s, 3);
+    let commands = legal(&s, &r, BattleSide::Defender);
+    assert!(!attacks(&commands, 2) && attacks(&commands, 0));
+    let attack = Command::Attack {
+        target: StackId(2),
+        from: at(&r, 10, 5),
+    };
+    assert_eq!(act(&mut s, &r, attack), Err(CommandError::NotAnEnemy));
+    activate(&mut s, 4);
+    let commands = legal(&s, &r, BattleSide::Defender);
+    assert!(!shoots(&commands, 2) && shoots(&commands, 0));
+    let shot = Command::Shoot {
+        target: StackId(2),
+        at: at(&r, 9, 5),
+    };
+    assert_eq!(act(&mut s, &r, shot), Err(CommandError::NotAnEnemy));
+    // The hypnotized stack itself attacks the stacks of its own side, another hypnotized one
+    // among them, and none of the side that commands it.
+    give(&mut s, &r, (3, "hypnotize"), 1);
+    activate(&mut s, 2);
+    let commands = legal(&s, &r, BattleSide::Attacker);
+    assert!(attacks(&commands, 3) && !attacks(&commands, 0));
+    // The attacker's attack on the stack it controls is carried out.
+    activate(&mut s, 0);
+    let attack = Command::Attack {
+        target: StackId(2),
+        from: at(&r, 8, 5),
+    };
+    let events = act(&mut s, &r, attack).unwrap();
+    assert_eq!(strikes(&events).first(), Some(&(0, 2)));
+}
+
+/// E04b T11b review (F-r3-control-battlefield-1, scenario c): next to another stack a
+/// hypnotized stack counts as the enemy of the stacks whose controller is not its own side (the
+/// two callers of the original's 0x442880, which takes the first stack's controller and the
+/// second stack's own side): it blocks the shooters of the side that controls it, not those of
+/// its own side, and a multi-headed strike of the side that controls it reaches it.
+// covers: BAT-MAG-026, BAT-RNG-001, BAT-ATK-003
+#[test]
+fn a_hypnotized_stack_blocks_and_is_struck_as_a_stack_of_its_own_side() {
+    let r = ruleset();
+    // Ids: 0 archer (attacker); 1 fixed (hypnotized) between it and 2 archer, 3 fixed (defender).
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("archer", 5, 7, 5)],
+        &[("fixed", 5, 8, 5), ("archer", 5, 9, 5), ("fixed", 5, 14, 1)],
+        1,
+    );
+    give(&mut s, &r, (1, "hypnotize"), 1);
+    // The attacker's archers are blocked by the stack their side controls, and strike it.
+    let commands = legal(&s, &r, BattleSide::Attacker);
+    assert!(!commands.iter().any(|c| matches!(c, Command::Shoot { .. })));
+    assert!(attacks(&commands, 1));
+    let shot = Command::Shoot {
+        target: StackId(3),
+        at: at(&r, 14, 1),
+    };
+    assert_eq!(act(&mut s, &r, shot), Err(CommandError::CannotShoot));
+    // The defender's archers beside it are free to shoot, though not at it.
+    activate(&mut s, 2);
+    let commands = legal(&s, &r, BattleSide::Defender);
+    assert!(shoots(&commands, 0) && !shoots(&commands, 1));
+    assert!(!commands.iter().any(|c| matches!(c, Command::Attack { .. })));
+    // The attacker's hydra strikes the hypnotized stack beside it with the stack it attacks.
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("hydra", 10, 7, 5)],
+        &[("fixed", 10, 8, 5), ("fixed", 10, 6, 4)],
+        1,
+    );
+    give(&mut s, &r, (2, "hypnotize"), 1);
+    let attack = Command::Attack {
+        target: StackId(1),
+        from: at(&r, 7, 5),
+    };
+    let events = act(&mut s, &r, attack).unwrap();
+    assert_eq!(strikes(&events), [(0, 1), (0, 2)]);
+    // The defender's hydra spares its own side's hypnotized stack beside it.
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("fixed", 10, 7, 5)],
+        &[("hydra", 10, 8, 5), ("fixed", 10, 8, 4)],
+        1,
+    );
+    assert_eq!(field(&r).distance(at(&r, 8, 4), at(&r, 8, 5)), 1);
+    give(&mut s, &r, (2, "hypnotize"), 1);
+    activate(&mut s, 1);
+    let attack = Command::Attack {
+        target: StackId(0),
+        from: at(&r, 8, 5),
+    };
+    let events = act(&mut s, &r, attack).unwrap();
+    assert_eq!(strikes(&events), [(1, 0)]);
 }
 
 // covers: BAT-MAG-026

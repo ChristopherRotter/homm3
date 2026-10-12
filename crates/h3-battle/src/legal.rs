@@ -72,9 +72,10 @@ pub fn legal_commands(
 }
 
 /// The commands of the active stack `mover` on its turn, in the order of [`legal_commands`];
-/// its targets are the stacks it is hostile to (BAT-MAG-025/026). A melee attack from a position
-/// where the walk stops in a seen pit is legal only with quirk BAT-QUIRK-2 (`pit_attacks`), as the
-/// attack would not happen (BAT-MAG-032).
+/// its targets are the stacks it may attack ([`Stack::may_attack`], BAT-MAG-025/026: those of
+/// the side its controller fights). A melee attack from a position where the walk stops in a
+/// seen pit is legal only with quirk BAT-QUIRK-2 (`pit_attacks`), as the attack would not happen
+/// (BAT-MAG-032).
 fn turn_commands(
     state: &BattleState,
     (field, pit_attacks): (Field, bool),
@@ -94,8 +95,8 @@ fn turn_commands(
     }
     let shooting = can_shoot(state, field, id);
     for (tid, target) in (0u8..).zip(state.stacks.iter()) {
-        // A stack is hostile to itself only while berserk: the id test rarely runs.
-        if !target.is_alive() || !mover.is_hostile_to(target) || tid == id.0 {
+        // A stack passes its own test only while hypnotized: the id test rarely runs.
+        if !target.is_alive() || !mover.may_attack(target) || tid == id.0 {
             continue;
         }
         let fp = target.footprint(field);

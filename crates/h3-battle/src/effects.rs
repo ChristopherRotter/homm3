@@ -176,7 +176,8 @@ impl Status {
     /// One of its effects ends when it takes damage (Blind, BAT-MAG-024; Stone Gaze, Paralyze,
     /// BAT-MAG-043).
     pub const DAMAGE_ENDS: Self = Self(1 << 3);
-    /// Its turns are automatic and every other stack is its enemy (Berserk, BAT-MAG-025).
+    /// Its turns are automatic and take any other stack; next to a stack it counts as an enemy
+    /// (Berserk, BAT-MAG-025).
     pub const BERSERK: Self = Self(1 << 4);
     /// The other side controls it (Hypnotize, BAT-MAG-026).
     pub const HYPNOTIZED: Self = Self(1 << 5);

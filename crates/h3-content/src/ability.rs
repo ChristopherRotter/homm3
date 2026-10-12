@@ -124,8 +124,9 @@ pub enum Ability<C, S, L> {
         /// Who is spared around the target.
         effect: AreaShot,
     },
-    /// War machine: on its turn it heals the top creature of an allied stack by a uniform
-    /// `min_hp..=max_hp` hit points (First Aid Tent; BAT-WAR-003).
+    /// War machine: on its turn it heals the top creature of a stack of its own side (also one
+    /// the other side controls, BAT-MAG-026) by a uniform `min_hp..=max_hp` hit points (First
+    /// Aid Tent; BAT-WAR-003).
     FirstAid {
         /// Least hit points healed (≥ 1).
         min_hp: u16,
@@ -172,8 +173,9 @@ pub enum Ability<C, S, L> {
         /// Chance, percent (1..=100).
         percent: u8,
     },
-    /// Adjacent allied stacks (not itself) resist hostile spells, the chance to be affected
-    /// multiplied by `100 − percent` % once however many such neighbours (Unicorns; BAT-MAG-008).
+    /// Adjacent stacks (not itself) of the side that controls it resist hostile spells, the
+    /// chance to be affected multiplied by `100 − percent` % once however many such neighbours
+    /// (Unicorns; BAT-MAG-008, BAT-MAG-026).
     MagicResistanceAura {
         /// Resistance, percent (1..=100).
         percent: u8,

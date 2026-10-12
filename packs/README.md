@@ -162,7 +162,7 @@ errors:
 | `minimum_morale`, `minimum_luck` | `value` | lower bound of its morale/luck (BAT-MOR-001, BAT-LCK-001) |
 | `no_distance_penalty` | — | its shots have no distance penalty (BAT-RNG-002) |
 | `area_shot` | `effect` (`fireball`/`death_cloud`) | its shots also hit the stacks around the target (requires flag `area_attack`; BAT-RNG-004) |
-| `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine only (requires flag `war_machine`; First Aid Tent): on its turn heals the top creature of a random hurt allied stack by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
+| `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine only (requires flag `war_machine`; First Aid Tent): on its turn heals the top creature of a random hurt stack of its own side (also one the other side controls, BAT-MAG-026) by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
 | `ammo_supply` | — | war machine only (requires flag `war_machine`; Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
 | `spell_level_immunity` | `max_level` (1..=5) | spells of this level and below cannot affect it (dragons, Magic Elemental; BAT-MAG-005) |
 | `school_immunity` | `school` | the school's spells cannot affect it (one entry per school; fire immunity; BAT-MAG-005) |
@@ -170,7 +170,7 @@ errors:
 | `spell_vulnerability` | `spell`, `percent` (1..=1000) | +`percent` % damage from the spell (one entry per spell; elementals; BAT-MAG-004) |
 | `spell_damage_reduction` | `percent` (1..=100) | damage from spells × (100 − `percent`) / 100, rounded down (Golems; BAT-MAG-004) |
 | `magic_resistance` | `percent` (1..=100) | the creature lets `100 − percent` % of hostile spells through (Dwarves, Crystal Dragon; BAT-MAG-008) |
-| `magic_resistance_aura` | `percent` (1..=100) | adjacent allied stacks' chance to be affected by a hostile spell × (100 − `percent`) %, the strongest aura once (Unicorns; BAT-MAG-008) |
+| `magic_resistance_aura` | `percent` (1..=100) | the chance of adjacent stacks of the side that controls it (BAT-MAG-026) to be affected by a hostile spell × (100 − `percent`) %, the strongest aura once (Unicorns; BAT-MAG-008) |
 | `spell_after_strike` | `spell`, `chance_percent` (1..=100), `mastery` (0..=3), `rounds` (≥ 1), `living`, `unless_active`, `defended` (v21) (default false) | since v19: after each melee strike casts `spell` (timed or dispel effects only) on the struck stack: the chance drawn (none at 100), the stack alive, of a living creature if `living`, not under the spell if `unless_active`, with a defense above 0 if `defended`, then the spell's test without the side test (none for a spell that `ignores_immunity`; a `bind` spell only once per striker); at `mastery`, lasting `rounds`, without a hero (one entry per spell; Unicorns, Black Knights, the flies, BAT-MAG-040; Dendroids, Rust Dragons, BAT-MAG-045, BAT-MAG-046) |
 | `spell_damage_after_strike` | `spell`, `chance_percent` (1..=100), `per_creature` (≥ 1) | since v19: after each melee strike deals `per_creature` × its creatures damage as `spell` (a damage spell) to the struck stack, after the chance and the spell's test (the Thunderbird; BAT-MAG-041) |
 | `damage_after_strike` | `chance_percent` (1..=100), `percent` (1..=100) | since v21: after each melee strike, on a living struck stack and after the chance, deals `percent` % of one roll of its damage range × its creatures (truncated; nothing if 0), without a test (the Rust Dragon; BAT-MAG-047) |
@@ -479,8 +479,9 @@ BAT-MAG-022); since v11, E04b T4b: `forgetfulness` (a shooter counts half its cr
 least one, on every strike; from the first cast's Advanced mastery it cannot shoot,
 BAT-MAG-023), `blind` (the stack loses its turns; struck in melee while blind it retaliates
 with v % of its damage, not at all at 0, BAT-MAG-024); since v12, E04b T4c: `berserk` (its
-turns are automatic, attacking the nearest stack; every other stack is its enemy,
-BAT-MAG-025), `hypnotize` (the other side controls it, BAT-MAG-026); since v20, E04b T7a2:
+turns are automatic, attacking the nearest stack; next to any stack it counts as an enemy, but
+its own side may not attack it, BAT-MAG-025), `hypnotize` (the other side controls it and may
+attack it, its own side may not, BAT-MAG-026); since v20, E04b T7a2:
 `petrify` (the stack loses its turns, takes half the damage of strikes and does not retaliate),
 `paralyze` (it loses its turns; struck in melee it retaliates with v %, the smaller with Blind's;
 both BAT-MAG-043), `poison` (its hit points per creature fall by a tenth of their start value at

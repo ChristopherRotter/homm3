@@ -1927,17 +1927,19 @@ fn percent_rate(single: bool, percent: u8) -> u64 {
     rate(single, u16::from(100 - percent.min(100)) * 100)
 }
 
-/// The strongest magic resistance aura of a living allied stack (of the same controller,
-/// BAT-MAG-026) adjacent to stack `s`, percent (BAT-MAG-008).
+/// The strongest magic resistance aura of a living stack adjacent to stack `s` whose controller
+/// is `s`'s own side, percent (BAT-MAG-008, BAT-MAG-026; the original's aura lists compare the
+/// Unicorn's side through its Hypnotize with the other stack's own side, 0x43EA70): a hypnotized
+/// stack keeps its side's aura, hypnotized Unicorns protect the side that commands them.
 fn aura(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u8> {
     let field = Field::new(ruleset.battle().field);
     let stack = state.at(s);
     let footprint = stack.footprint(field);
-    let controller = stack.controller();
+    let side = stack.side;
     stack_ids(state)
         .filter(|&n| n != s)
         .map(|n| state.at(n))
-        .filter(|n| n.is_alive() && n.controller() == controller)
+        .filter(|n| n.is_alive() && n.controller() == side)
         .filter_map(|n| {
             let percent = ruleset
                 .abilities(n.creature)
