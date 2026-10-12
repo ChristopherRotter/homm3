@@ -106,8 +106,8 @@ fn a_visits_gains_go_to_its_owner_s_treasury_and_are_told_to_it_alone() {
         amount: 700,
     };
     assert_eq!(events.last(), Some(&gained));
-    assert_eq!(state.treasury(RED).unwrap().amounts(), [2000 + 700]);
-    assert_eq!(state.treasury(BLUE).unwrap().amounts(), [2000]);
+    assert_eq!(state.treasury(RED), Some(&[2000 + 700][..]));
+    assert_eq!(state.treasury(BLUE), Some(&[2000][..]));
     assert_eq!(project(&gained, Viewer::Player(RED)), Some(gained));
     assert_eq!(project(&gained, Viewer::Player(BLUE)), None);
     assert_eq!(
@@ -120,11 +120,14 @@ fn a_visits_gains_go_to_its_owner_s_treasury_and_are_told_to_it_alone() {
 #[test]
 fn a_gain_saturates_at_the_cap() {
     let gold = ResourceId::from_raw(0);
-    let mut treasury = Treasury::new(&[MAX_GAIN - 5]);
-    assert_eq!(treasury.gain(gold, 3), 3);
-    assert_eq!(treasury.gain(gold, u32::MAX), 2);
-    assert_eq!(treasury.amounts(), [MAX_GAIN]);
-    // A resource the ruleset does not have gains nothing.
-    assert_eq!(treasury.gain(ResourceId::from_raw(1), 9), 0);
-    assert_eq!(treasury.amount(ResourceId::from_raw(1)), 0);
+    let mut treasuries = Treasuries::new(2, &[MAX_GAIN - 5]);
+    assert_eq!(treasuries.gain(BLUE, gold, 3), 3);
+    assert_eq!(treasuries.gain(BLUE, gold, u32::MAX), 2);
+    assert_eq!(treasuries.of(BLUE), Some(&[MAX_GAIN][..]));
+    assert_eq!(treasuries.of(RED), Some(&[MAX_GAIN - 5][..]));
+    // A resource the ruleset does not have, or a player without a treasury, gains nothing.
+    assert_eq!(treasuries.gain(RED, ResourceId::from_raw(1), 9), 0);
+    assert_eq!(treasuries.gain(PlayerId::new(2), gold, 9), 0);
+    assert_eq!(treasuries.of(PlayerId::new(2)), None);
+    assert_eq!(treasuries.of(RED), Some(&[MAX_GAIN - 5][..]));
 }

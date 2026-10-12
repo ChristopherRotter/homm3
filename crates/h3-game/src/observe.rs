@@ -67,7 +67,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
         turn_group: state.turn_group().to_vec(),
         treasury: state
             .treasury(player)
-            .map_or_else(Vec::new, |t| t.amounts().to_vec()),
+            .map_or_else(Vec::new, <[u32]>::to_vec),
         adventure: state.adventure().observe(rules.core(), player),
     }
 }

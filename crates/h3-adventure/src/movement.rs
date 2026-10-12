@@ -49,13 +49,19 @@ pub fn native_terrain(core: &Ruleset, army: &[ArmyStack]) -> Option<TerrainId> {
     natives.all(|native| native == Some(first)).then_some(first)
 }
 
+/// ⌊√2 · 2⁶⁴⌋, the fixed-point √2 of [`diagonal_cost`].
+const SQRT_2_Q64: u128 = 0x1_6A09_E667_F3BC_C908;
+
 /// The cost of a diagonal step whose straight cost is `straight` (ADV-MOV-005): ⌊straight × √2⌋,
 /// in integers `isqrt(2 · straight²)` (the original multiplies by the f32 1.41421354 and
-/// truncates, which agrees for every cost below 5741; costs here are at most `u16::MAX`).
+/// truncates, which agrees for every cost below 5741; costs here are at most `u16::MAX`). Computed
+/// as ⌊straight · ⌊√2 · 2⁶⁴⌋ / 2⁶⁴⌋, one multiplication, which equals `isqrt(2 · straight²)`
+/// for every cost up to `u16::MAX` (tested exhaustively; E08 T13b: the hot path of the
+/// reachable-tiles query no longer depends on the compiler inlining `isqrt`).
 // rule: ADV-MOV-005
 pub fn diagonal_cost(straight: u32) -> u32 {
-    let straight = u64::from(straight.min(u32::from(u16::MAX)));
-    u32::try_from((2 * straight * straight).isqrt()).unwrap_or(u32::MAX)
+    let straight = u128::from(straight.min(u32::from(u16::MAX)));
+    u32::try_from((straight * SQRT_2_Q64) >> 64).unwrap_or(u32::MAX)
 }
 
 /// The eight steps as `(columns, rows)`, clockwise from up, in the original's order (0x678150);

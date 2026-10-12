@@ -116,6 +116,10 @@ pub struct StaticMap {
     /// The objects visited from each visitable tile, by tile index, in map order (E08 T13b):
     /// what a visit's step looks up. Follows from the objects, so the hash leaves it out.
     visits: BTreeMap<usize, Vec<usize>>,
+    /// A bit per tile index: whether a typed object is visited from the tile, so a blocker's
+    /// visitable tile, the common case, is turned down without a lookup in [`Self::visits`]
+    /// (`bench-check`, E08 T13b). Follows from the objects too.
+    typed_visits: Vec<u64>,
     hash: u64,
 }
 
@@ -172,6 +176,7 @@ impl StaticMap {
             tiles,
             objects: Vec::with_capacity(setup.objects.len()),
             visits: BTreeMap::new(),
+            typed_visits: vec![0; setup.tiles.len().div_ceil(64)],
             hash: 0,
         };
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
@@ -268,6 +273,9 @@ impl StaticMap {
                     .entry(index)
                     .or_default()
                     .push(self.objects.len());
+                if object.object_type.is_some() {
+                    self.typed_visits[index / 64] |= 1 << (index % 64);
+                }
             }
         }
         self.objects.push(MapObject {
@@ -339,9 +347,11 @@ impl StaticMap {
         &self.objects
     }
 
-    /// The objects visited from `pos`, by index in map order (none for a tile off the map).
+    /// The objects visited from `pos`, by index in map order, if a typed one is among them (none
+    /// for a tile only blockers are visited from, or one off the map).
     pub fn visited_from(&self, pos: Pos) -> &[usize] {
         self.index(pos)
+            .filter(|&index| self.typed_visits[index / 64] >> (index % 64) & 1 == 1)
             .and_then(|index| self.visits.get(&index))
             .map_or(&[], Vec::as_slice)
     }
@@ -705,7 +715,10 @@ impl AdventureState {
     ) -> Option<(usize, ObjectTypeId)> {
         let built = |id: &ObjectTypeId| {
             part.object_type(*id).is_some_and(|ty| {
-                ty.visit == Visit::Neighbour && matches!(ty.kind, ObjectKind::Pickup(_))
+                matches!(
+                    (ty.visit, &ty.kind),
+                    (Visit::Neighbour, ObjectKind::Pickup(_))
+                )
             })
         };
         self.map

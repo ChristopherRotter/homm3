@@ -31,6 +31,7 @@ use h3_content::{
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
 use super::*;
+use crate::treasury::Treasuries;
 
 fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()

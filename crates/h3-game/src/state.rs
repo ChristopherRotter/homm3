@@ -13,7 +13,8 @@ use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher, StreamId};
 
 use crate::command::{GameCommandError, GameEvent, NoopSink, Sink};
-use crate::{GAME_STATE_HASH_VERSION, GameRuleset, GameSetup, GameSetupError, Treasury};
+use crate::treasury::Treasuries;
+use crate::{GAME_STATE_HASH_VERSION, GameRuleset, GameSetup, GameSetupError};
 
 /// A player of a running game.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,8 +25,6 @@ struct PlayerState {
     rng: Rng,
     /// Whether its turn is running: its group's turn has started and it has not ended its turn.
     acting: bool,
-    /// Its resources (GAM-RES-001, E08 T13).
-    treasury: Treasury,
 }
 
 /// The state of a whole game.
@@ -34,6 +33,8 @@ pub struct GameState {
     /// The master seed (ADR-0017 point 5: server-only, never in an observation).
     seed: u64,
     players: Vec<PlayerState>,
+    /// The players' resources (GAM-RES-001, E08 T13), by player id.
+    treasuries: Treasuries,
     /// The day's schedule: turn groups in order, each the players who act together
     /// (ADR-0017 point 3). Sequential play, the only schedule of increment 1, is one player per
     /// group in player order.
@@ -78,7 +79,6 @@ impl GameState {
                 colour: player.colour,
                 rng: Rng::for_stream(seed, StreamId::player(index)),
                 acting: false,
-                treasury: Treasury::new(start.human()),
             })
             .collect();
         // rule: GAM-TRN-001
@@ -88,6 +88,7 @@ impl GameState {
             .collect();
         let mut state = Self {
             seed,
+            treasuries: Treasuries::new(players.len(), start.human()),
             players,
             groups,
             group: 0,
@@ -190,9 +191,8 @@ impl GameState {
         gains: &[(ResourceId, u32)],
         sink: &mut S,
     ) {
-        let treasury = &mut self.players[player.index()].treasury;
         for &(resource, amount) in gains {
-            let amount = treasury.gain(resource, amount);
+            let amount = self.treasuries.gain(player, resource, amount);
             sink.emit(GameEvent::ResourceGained {
                 player,
                 resource,
@@ -201,9 +201,9 @@ impl GameState {
         }
     }
 
-    /// A player's treasury, if the player exists (GAM-RES-001).
-    pub fn treasury(&self, player: PlayerId) -> Option<&Treasury> {
-        self.players.get(player.index()).map(|p| &p.treasury)
+    /// A player's treasury, by resource in the core's order, if the player exists (GAM-RES-001).
+    pub fn treasury(&self, player: PlayerId) -> Option<&[u32]> {
+        self.treasuries.of(player)
     }
 
     /// The adventure context's state.
@@ -224,10 +224,10 @@ impl GameState {
 }
 
 impl CanonicalHash for GameState {
-    /// Encoding v2 (E08 T13a; v1 was T6b's): version; the master seed; the day; the running
+    /// Encoding v2 (E08 T13; v1 was T6b's): version; the master seed; the day; the running
     /// group's index; the schedule (groups as length + player ids); the players (colour, acting,
-    /// since v2 the treasury's amounts as length and entries, stream state); the game's stream;
-    /// the adventure state's hash.
+    /// stream state); since v2 the treasuries (the resource kinds, then every player's amounts as
+    /// length and entries); the game's stream; the adventure state's hash.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(GAME_STATE_HASH_VERSION);
         h.write_u64(self.seed);
@@ -244,9 +244,9 @@ impl CanonicalHash for GameState {
         for player in &self.players {
             h.write_u8(player.colour);
             h.write_bool(player.acting);
-            player.treasury.hash_into(h);
             player.rng.hash_into(h);
         }
+        self.treasuries.hash_into(h);
         self.rng.hash_into(h);
         h.write_u64(self.adventure.state_hash());
     }

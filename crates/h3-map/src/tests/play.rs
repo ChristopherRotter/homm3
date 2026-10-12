@@ -715,7 +715,7 @@ fn check_conservation(
         )
     });
     for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
-        let mut treasury = before.treasury(player).unwrap().amounts().to_vec();
+        let mut treasury = before.treasury(player).unwrap().to_vec();
         for event in events {
             if let GameEvent::ResourceGained {
                 player: owner,
@@ -729,7 +729,7 @@ fn check_conservation(
                 }
             }
         }
-        prop_assert_eq!(after.treasury(player).unwrap().amounts(), &treasury[..]);
+        prop_assert_eq!(after.treasury(player).unwrap(), &treasury[..]);
     }
     let armies = |state: &GameState| -> Vec<_> {
         state

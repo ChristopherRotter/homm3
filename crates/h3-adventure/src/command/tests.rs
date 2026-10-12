@@ -564,8 +564,13 @@ fn a_visit_ends_the_move_and_only_pickups_are_visited_yet() {
         rejected("gPgggggggggggggg", &[p(1, 0), p(2, 0)]),
         AdventureCommandError::PastVisit { step: 1 }
     );
-    // A tower (entered: E08 T14 and T15 build those visits) and two blockers' visitable tiles.
-    for row in ["gOgggggggggggggg", "gVgggggggggggggg", "gTgggggggggggggg"] {
+    // A tower and a guard (E08 T15 builds their visits) and two blockers' visitable tiles.
+    for row in [
+        "gOgggggggggggggg",
+        "gKgggggggggggggg",
+        "gVgggggggggggggg",
+        "gTgggggggggggggg",
+    ] {
         assert_eq!(
             rejected(row, &[p(0, 1), p(1, 0)]),
             AdventureCommandError::Visit { step: 1 }

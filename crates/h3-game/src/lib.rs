@@ -9,8 +9,8 @@
 //! (E08 T6a); the state ([`GameState`]) with the starting armies' draw, the players' streams,
 //! sequential turns, the calendar, and [`apply`] with `EndTurn` (T6b); the adventure's commands
 //! (`MoveHero`, T7b); [`observe`] and [`project`] for a player [`Viewer`] (T8b1);
-//! [`legal_commands`] and, per hero, [`legal_moves`] (T8b2a); each player's [`Treasury`] with
-//! the starting resources of the game's difficulty (T13a).
+//! [`legal_commands`] and, per hero, [`legal_moves`] (T8b2a); each player's treasury with the
+//! starting resources of the game's difficulty (T13a) and the gains of visits (T13b).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -51,7 +51,6 @@ pub use setup::{
     DEFAULT_DIFFICULTY, GameHeroSetup, GameSetup, GameSetupError, HeroArmy, PlayerSetup,
 };
 pub use state::GameState;
-pub use treasury::Treasury;
 
 /// Version of the game state's canonical hash encoding (`docs/08-work-process.md`, "Versions";
 /// owned by the adventure lane). Bump it with any change to what the hash covers. v1 (E08 T6b):
