@@ -1622,6 +1622,8 @@ fn configurations_are_checked() {
         "connections_per_address = 0",
         "idle_timeout_ms = 0",
         "idle_timeout_ms = 9223372036854775807",
+        "ping_every_ms = 86400001",
+        "ping_timeout_ms = 0",
         "hello_timeout_ms = 0",
         "lobby_timeout_ms = 86400001",
         "outbound_queue = 0",
@@ -1654,6 +1656,11 @@ fn configurations_are_checked() {
     // A replay of the longest game fits in the outbound queue (E16 M3 T4a).
     let long = refused(&format!("{offer}[limits]\ncommands_per_game = 20000")).unwrap_err();
     assert!(long.0.contains("its replay"), "{long}");
+    // A live client says nothing between two pings (SRV-Q20); without pings, no timeout applies.
+    let pings = refused(&format!("{offer}[limits]\nping_every_ms = 30000")).unwrap_err();
+    assert!(pings.0.contains("longer than ping_every_ms"), "{pings}");
+    let off = format!("{offer}[limits]\nping_every_ms = 0\nping_timeout_ms = 100");
+    assert!(refused(&off).is_ok());
     // The server's id is a WebSocket address (E16 M3 T2a).
     for url in [
         "",

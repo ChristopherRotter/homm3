@@ -367,6 +367,9 @@ ranked game per player per ladder, bots exempt; no turn timer in M4 (a game rule
   verified (`Outcome::Unverified` otherwise), the result rated and logged (`Rated`, `NoShow`),
   `Rating` to the seats, game ids unique for the server's life (`<data>/next-game`); wire 16;
   SRV-STUB-4 resolved.
+- **SRV-Q20 Server-side pings** (done 2026-10-12, the user's choice (a); `E16-log.md`): a ping
+  every `ping_every_ms`, a connection silent for `ping_timeout_ms` closes; a dropped seat is
+  noticed in seconds, an outage ends void for both seats alike.
 - **T4 Leaderboards** (after T3b): pages by season, one's own standing.
 - **T5 Bots on ladders** (after T3b): bot accounts, the standing queue entry, flagged rows.
 - **T6 The pause by agreement** (after T3a): proposed and answered within the ladder's bounds,
@@ -475,6 +478,11 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   stops the start; `<data>/next-game` written whole on each game's thread (one sync per game),
   at start raised by every journal's id; a seat without an account in a ranked game left unrated
   (none occurs).
+- SRV-Q20: `ping_every_ms` 15 s and `ping_timeout_ms` 30 s (0 turns pings and the timeout off),
+  for every connection, the lobby's too; any frame from the client counts as heard (a message, a
+  ping, a pong), the server's own writes excused from the silence; the silent connection told
+  `Goodbye { IdleTimeout }` within a moment (no new reason, no wire change); (b), the clocks
+  standing still on a mass drop, not built.
 
 ## Review list for the M3 checkpoint (passed 2026-10-12, SRV-Q18)
 

@@ -20,6 +20,8 @@
 //! connections = 64                   # in total
 //! connections_per_address = 8
 //! idle_timeout_ms = 300000           # no message within it closes the connection
+//! ping_every_ms = 15000              # a WebSocket ping to each connection (0: none)
+//! ping_timeout_ms = 30000            # nothing heard within it, not even a pong, closes it
 //! hello_timeout_ms = 10000           # no hello within it closes the connection
 //! lobby_timeout_ms = 60000           # in no game for this long closes the connection
 //! outbound_queue = 256               # frames waiting for a slow client; full drops it
@@ -267,6 +269,13 @@ pub struct Limits {
     pub connections_per_address: usize,
     /// No message within this many milliseconds closes a connection.
     pub idle_timeout_ms: u64,
+    /// A WebSocket ping to each connection every this many milliseconds (SRV-Q20; 0: none, and
+    /// no `ping_timeout_ms` either).
+    pub ping_every_ms: u64,
+    /// A connection the server heard nothing from, not even a pong, for this many milliseconds
+    /// is closed (SRV-Q20): a client gone without a close is noticed within it, not after the idle
+    /// timeout. Longer than `ping_every_ms`.
+    pub ping_timeout_ms: u64,
     /// No hello within this many milliseconds of the handshake closes a connection (E16 M2 T5b).
     pub hello_timeout_ms: u64,
     /// A connection in no game for this many milliseconds after its hello, or after it left one
@@ -313,6 +322,8 @@ impl Default for Limits {
             connections: 64,
             connections_per_address: 8,
             idle_timeout_ms: 300_000,
+            ping_every_ms: 15_000,
+            ping_timeout_ms: 30_000,
             hello_timeout_ms: 10_000,
             lobby_timeout_ms: 60_000,
             outbound_queue: 256,
@@ -361,6 +372,8 @@ impl Limits {
                 u64::MAX,
             ),
             ("idle_timeout_ms", self.idle_timeout_ms, 100, 86_400_000),
+            ("ping_every_ms", self.ping_every_ms, 0, 86_400_000),
+            ("ping_timeout_ms", self.ping_timeout_ms, 100, 86_400_000),
             ("hello_timeout_ms", self.hello_timeout_ms, 100, 86_400_000),
             ("lobby_timeout_ms", self.lobby_timeout_ms, 100, 86_400_000),
             ("outbound_queue", wide(self.outbound_queue), 1, 1 << 20),
@@ -407,6 +420,13 @@ impl Limits {
                     "limits.{name} = {value}: outside {min}..={max}"
                 )));
             }
+        }
+        // Between two pings a live client says nothing (SRV-Q20).
+        if self.ping_every_ms > 0 && self.ping_timeout_ms <= self.ping_every_ms {
+            return Err(Error(format!(
+                "limits.ping_timeout_ms = {}: it must be longer than ping_every_ms = {}",
+                self.ping_timeout_ms, self.ping_every_ms
+            )));
         }
         // A fetched record's frame escapes its text once more, at most doubling it.
         if self.record_bytes.saturating_mul(2) >= self.outbound_bytes {

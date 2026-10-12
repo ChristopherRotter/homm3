@@ -1,6 +1,8 @@
 //! A headless client (E16 M1 T3): speaks the protocol over WebSocket, for the end-to-end tests
 //! and for tools; a viewer is the client lane's. It derives an account's key as every client does
-//! (E16 M3 T2a, [`Key::derive`]). Provisional.
+//! (E16 M3 T2a, [`Key::derive`]). It answers the server's pings only while it reads
+//! ([`Client::recv`]): a client that reads nothing for the server's `ping_timeout_ms` is dropped
+//! as gone (SRV-Q20). Provisional.
 
 use std::net::SocketAddr;
 

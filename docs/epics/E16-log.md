@@ -1124,3 +1124,24 @@ how and why the work went.
   forfeit rated; a no-show counted, unrated; a ranked game whose journal changed told
   `Unverified`, unrated, no `Rating`, its replay withheld; ids after a restart beyond a void
   journal's.
+
+### SRV-Q20 — Server-side pings (2026-10-12)
+
+- **The start.** #111 (T3b) had merged (`master`'s CI green); the user chose SRV-Q20's option (a)
+  and asked for it now. The branch restarted from `master`.
+- **The connection's task** (`net.rs`, *provisional*): `Transport::ping` (a WebSocket ping); the
+  task pings every `ping_every_ms` and closes a connection it heard nothing from (any frame: a
+  message, a ping, a pong) for `ping_timeout_ms`, with `Goodbye { IdleTimeout }` bounded by
+  `LINGER` (the peer is most likely gone). The time the task spends writing (a frame, a ping) is
+  added to the last time heard: a large frame to a slow client delays its pong, and the task reads
+  nothing while it writes. The idle timeout is unchanged (messages only).
+- **The configuration**: `[limits] ping_every_ms` (15 000; 0: no pings and no timeout) and
+  `ping_timeout_ms` (30 000), checked as the other timeouts and the timeout longer than the
+  period; the example, the module's sample and the README's proxy step name them.
+- **A test client** answers pings only while it reads (`client.rs` says so): an end-to-end test
+  whose client waits unread longer than the timeout loses it (the first silent-seat test lost Bob
+  while it waited a matcher's second for Ann).
+- **Tests** (`h3-server` 90 → 92): a connection answering pings stays, one that falls silent is
+  pinged, told and closed within the timeout and leaves its game (a fake transport); the bounds'
+  cases and the period's check; end to end: a ranked seat whose client stops reading forfeits in
+  seconds (the idle timeout would have held it 5 minutes), its connection gone.
