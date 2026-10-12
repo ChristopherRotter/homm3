@@ -67,7 +67,8 @@ fn army(r: &Ruleset, stacks: &[(&str, u32)]) -> Army {
 }
 
 /// The battle of Red's `heroes[0]` with `attacker` and its worn war machines against Blue's
-/// `heroes[1]` with `defender`, on `terrain`, without obstacles.
+/// `heroes[1]` with `defender`, on `terrain`, without obstacles; each player has 30 000 gold (SU
+/// c's record).
 fn battle(
     r: &Ruleset,
     heroes: [&HeroDetails; 2],
@@ -83,7 +84,7 @@ fn battle(
         terrain: terrain.map(|t| r.terrain_by_key(t).unwrap()),
         war_machines: heroes.map(|d| war_machines(d, r)),
         formations: [Formation::Loose; 2],
-        funds: [0; 2],
+        funds: [30_000; 2],
     };
     BattleState::new(r, &setup, 1).unwrap()
 }
@@ -345,31 +346,47 @@ fn batch_2d_cl1_clones_places_turns_shots_and_ends() {
     assert_eq!(s.corpse(StackId(5)), NO_CORPSE);
 }
 
-// covers: BAT-MAG-037, BAT-MAG-039, BAT-FLE-002, BAT-END-001, BAT-END-003, BAT-TER-001
-/// Batch 2d SU, variant a, on grass: Octavia (power 1, 350 spell points, Air Elemental, an Ammo
-/// Cart and a First Aid Tent) with seven single Peasants against Calid (power 1, Death Ripple,
-/// Implosion) with ten Skeletons. The surrender price is 910 before and after the first summon.
-/// E1 (two Air Elementals with attack 10, defense 10, speed 8) appears in column 1 and acts in
-/// round 1; E2 follows in round 2, when the Peasants die of Death Ripple; in round 3 Implosion
-/// kills E1 and E3 takes its record, so in round 4 E3 acts before E2. One summon a round goes on
-/// until twelve have succeeded: ten in column 1 (every row but the war machines' rows 1 and 9,
-/// and dead E1's row a second time), then two in column 2. With twenty records in use (seven
-/// Peasants, two war machines, eleven for the elementals) the thirteenth is refused, and still
-/// after another elemental stack died. At the end the elementals kill the Skeletons and both
-/// sides have lost; the casualties are seven Peasants and two Air Elementals (the stack that
-/// died last: E1's losses went with its record) and ten Skeletons. The rows themselves are
-/// drawn: the batch saw 7, 3, 2, 0, 6, 8, 7, 5, 10, 4 and then 3 and 8.
-#[test]
-fn batch_2d_su_summons_until_the_limit_and_a_side_of_elementals_loses() {
-    let r = sod();
-    let field = Field::new(r.battle().field);
-    let (air, ripple, implosion) = (
-        spell(&r, "base:air_elemental"),
-        spell(&r, "base:death_ripple"),
-        spell(&r, "base:implosion"),
-    );
+/// The stacks of batch 2d SU's battle: 0 to 6 Red's Peasants, 7 the Ammo Cart, 8 the First Aid
+/// Tent, 9 Blue's Skeletons; from 10 on the elementals.
+const SKELETONS: u8 = 9;
+
+/// The active stack Defends.
+fn defend(s: &mut BattleState, r: &Ruleset) {
+    let active = s.active().unwrap().0;
+    turn(s, r, active, Command::Defend);
+}
+
+/// Red's hero summons Air Elementals in the active stack's turn; the new stack as
+/// `(stack, count, column, row)`.
+fn summon(s: &mut BattleState, r: &Ruleset) -> (u8, u32, i32, i32) {
+    let active = s.active().unwrap().0;
+    let air = spell(r, "base:air_elemental");
+    let made = created(r, &turn(s, r, active, cast(air, CastTarget::None)));
+    assert_eq!(made.len(), 1);
+    made[0]
+}
+
+/// `key`'s record with `origin`, `start` and `end`.
+fn record(r: &Ruleset, origin: StackOrigin, key: &str, (start, end): (u32, u32)) -> StackRecord {
+    StackRecord {
+        origin,
+        creature: r.creature_by_key(key).unwrap(),
+        start,
+        end,
+    }
+}
+
+/// Batch 2d SU's first two rounds, which its three variants share, on grass: Octavia (power 1,
+/// 350 spell points, Air Elemental, an Ammo Cart and a First Aid Tent) with seven single
+/// Peasants against Calid (power 1, Death Ripple, Implosion) with ten Skeletons. The surrender
+/// price is 910 before and after the first summon. E1 (two Air Elementals with attack 10,
+/// defense 10, speed 8) appears in column 1 and acts in round 1; E2 follows in round 2, in which
+/// the Peasants die of Death Ripple. Returns the battle at the start of round 3 and the rows of
+/// E1 and E2.
+fn su_after_two_rounds(r: &Ruleset) -> (BattleState, [i32; 2]) {
+    let ripple = spell(r, "base:death_ripple");
     let octavia = details(
-        &r,
+        r,
         "base:octavia",
         (1, 35),
         vec![],
@@ -377,7 +394,7 @@ fn batch_2d_su_summons_until_the_limit_and_a_side_of_elementals_loses() {
         &["base:air_elemental"],
     );
     let calid = details(
-        &r,
+        r,
         "base:calid",
         (1, 10),
         vec![],
@@ -385,33 +402,19 @@ fn batch_2d_su_summons_until_the_limit_and_a_side_of_elementals_loses() {
         &["base:death_ripple", "base:implosion"],
     );
     let mut s = battle(
-        &r,
+        r,
         [&octavia, &calid],
         &[("ab:peasant", 1); 7],
         &[("base:skeleton", 10)],
         Some("base:grass"),
     );
-    // Stacks: 0 to 6 the Peasants, 7 the Ammo Cart, 8 the First Aid Tent; 9 the Skeletons;
-    // from 10 on the elementals.
-    let skeletons = 9;
     assert_eq!(s.stacks().len(), 10);
-    let price = |s: &BattleState| s.surrender_price(&r, BattleSide::Attacker);
-    let summon = |s: &mut BattleState| {
-        let active = s.active().unwrap().0;
-        let made = created(&r, &turn(s, &r, active, cast(air, CastTarget::None)));
-        assert_eq!(made.len(), 1);
-        made[0]
-    };
-    let defend = |s: &mut BattleState| {
-        let active = s.active().unwrap().0;
-        turn(s, &r, active, Command::Defend);
-    };
-    let is_elemental = |s: &BattleState| s.active().is_some_and(|id| id.0 >= 10);
+    let price = |s: &BattleState| s.surrender_price(r, BattleSide::Attacker);
     // Round 1: the Skeletons act first and Defend. The first Peasant's turn: the price, E1,
     // the price again.
-    turn(&mut s, &r, skeletons, Command::Defend);
+    turn(&mut s, r, SKELETONS, Command::Defend);
     assert_eq!((s.active(), price(&s)), (Some(StackId(0)), Some(910)));
-    let e1 = summon(&mut s);
+    let e1 = summon(&mut s, r);
     assert_eq!((e1.0, e1.1, e1.2), (10, 2, 1));
     assert_eq!(price(&s), Some(910));
     let elementals = s.stacks()[10];
@@ -423,22 +426,23 @@ fn batch_2d_su_summons_until_the_limit_and_a_side_of_elementals_loses() {
     let mut acted = vec![];
     while s.round() == 1 {
         acted.push(s.active().unwrap().0);
-        defend(&mut s);
+        defend(&mut s, r);
     }
     assert_eq!(acted, [0, 10, 1, 2, 3, 4, 5, 6]);
     // Round 2, E1's turn: E2, on the last free row of column 1 beside the Peasants and the war
-    // machines. The Skeletons' turn: Death Ripple kills the seven Peasants.
+    // machines (the batch saw E1 in row 7 and E2 in row 3).
     assert_eq!(s.active(), Some(StackId(10)));
-    let e2 = summon(&mut s);
+    let e2 = summon(&mut s, r);
     assert_eq!((e2.0, e2.1, e2.2), (11, 2, 1));
     let mut rows = [e1.3, e2.3];
     rows.sort_unstable();
     assert_eq!(rows, [3, 7]);
-    defend(&mut s);
-    defend(&mut s);
-    // Death Ripple (5 + 10 = 15) spares the undead and war machines only (BAT-MAG-005): the
-    // elementals take it too and lose nobody (the batch did not look at them).
-    let events = turn(&mut s, &r, skeletons, cast(ripple, CastTarget::None));
+    defend(&mut s, r);
+    defend(&mut s, r);
+    // The Skeletons' turn: Death Ripple (5 + 10 = 15) kills the seven Peasants. It spares the
+    // undead and war machines only (BAT-MAG-005): the elementals take it too and lose nobody
+    // (the batch did not look at them).
+    let events = turn(&mut s, r, SKELETONS, cast(ripple, CastTarget::None));
     let struck: Vec<(u8, u64, u32)> = (0..7).map(|p| (p, 15, 1)).collect();
     assert_eq!(
         spell_damage(&events),
@@ -446,36 +450,56 @@ fn batch_2d_su_summons_until_the_limit_and_a_side_of_elementals_loses() {
     );
     assert!(s.stacks()[..7].iter().all(|p| !p.is_alive()));
     assert_eq!((s.stacks()[10].count, s.stacks()[11].count), (2, 2));
-    turn(&mut s, &r, skeletons, Command::Defend);
-    // Round 3: E1 and E2 Wait; Implosion kills E1; back in the wait phase, E2's turn: E3 takes
-    // E1's record.
+    turn(&mut s, r, SKELETONS, Command::Defend);
     assert_eq!(s.round(), 3);
+    (s, [e1.3, e2.3])
+}
+
+// covers: BAT-MAG-037, BAT-MAG-039, BAT-FLE-002, BAT-END-001, BAT-END-003, BAT-TER-001
+/// Batch 2d SU, variant a: after the first two rounds ([`su_after_two_rounds`]) Implosion kills
+/// E1 in round 3 and E3 takes its record, so in round 4 E3 acts before E2. One summon a round
+/// goes on until twelve have succeeded: ten in column 1 (every row but the war machines' rows 1
+/// and 9, and dead E1's row a second time), then two in column 2. With twenty records in use
+/// (seven Peasants, two war machines, eleven for the elementals) the thirteenth is refused, and
+/// still after another elemental stack died. At the end the elementals kill the Skeletons and
+/// both sides have lost; the casualties are seven Peasants and two Air Elementals (the stack
+/// that died last: E1's losses went with its record) and ten Skeletons. The rows themselves are
+/// drawn: the batch saw 7, 3, 2, 0, 6, 8, 7, 5, 10, 4 and then 3 and 8.
+#[test]
+fn batch_2d_su_summons_until_the_limit_and_a_side_of_elementals_loses() {
+    let r = sod();
+    let field = Field::new(r.battle().field);
+    let (air, implosion) = (spell(&r, "base:air_elemental"), spell(&r, "base:implosion"));
+    let (mut s, [row1, row2]) = su_after_two_rounds(&r);
+    let is_elemental = |s: &BattleState| s.active().is_some_and(|id| id.0 >= 10);
+    // Round 3: E1 and E2 Wait; Implosion (75 + 100) kills E1; back in the wait phase, E2's
+    // turn: E3 takes E1's record.
     turn(&mut s, &r, 10, Command::Wait);
     turn(&mut s, &r, 11, Command::Wait);
-    let events = turn(&mut s, &r, skeletons, cast(implosion, stack(10)));
+    let events = turn(&mut s, &r, SKELETONS, cast(implosion, stack(10)));
     assert_eq!(spell_damage(&events), [(10, 175, 2)]);
     assert!(!s.stacks()[10].is_alive());
-    turn(&mut s, &r, skeletons, Command::Defend);
+    turn(&mut s, &r, SKELETONS, Command::Defend);
     assert_eq!(s.active(), Some(StackId(11)));
-    let e3 = summon(&mut s);
+    let e3 = summon(&mut s, &r);
     assert_eq!((e3.0, e3.1, e3.2), (10, 2, 1));
     while s.round() == 3 {
-        defend(&mut s);
+        defend(&mut s, &r);
     }
     // Round 4: E3, in the earlier record, acts before E2. From now on one summon a round, on
     // the first elemental's turn, until the book refuses it.
     assert_eq!((s.round(), s.active()), (4, Some(StackId(10))));
-    let mut places = vec![(e1.2, e1.3), (e2.2, e2.3), (e3.2, e3.3)];
+    let mut places = vec![(1, row1), (1, row2), (e3.2, e3.3)];
     let refused = loop {
         let round = s.round();
         assert!(is_elemental(&s));
         if !castable_spells(&s, &r, BattleSide::Attacker).contains(air) {
             break round;
         }
-        let made = summon(&mut s);
+        let made = summon(&mut s, &r);
         places.push((made.2, made.3));
         while s.round() == round {
-            defend(&mut s);
+            defend(&mut s, &r);
         }
     };
     assert_eq!((refused, places.len()), (13, 12));
@@ -487,7 +511,7 @@ fn batch_2d_su_summons_until_the_limit_and_a_side_of_elementals_loses() {
     assert_eq!(machines, [(1, 1), (1, 9)]);
     let mut rows: Vec<i32> = places[..10].iter().map(|p| p.1).collect();
     rows.sort_unstable();
-    let mut expected = vec![0, 2, 3, 4, 5, 6, 7, 8, 10, e1.3];
+    let mut expected = vec![0, 2, 3, 4, 5, 6, 7, 8, 10, row1];
     expected.sort_unstable();
     assert_eq!(rows, expected);
     assert_ne!(places[10].1, places[11].1);
@@ -512,14 +536,14 @@ fn batch_2d_su_summons_until_the_limit_and_a_side_of_elementals_loses() {
     // The Skeletons' turn: Implosion at the last elemental stack. In the next round the summon
     // is still refused.
     let last = u8::try_from(s.stacks().len() - 1).unwrap();
-    while s.active() != Some(StackId(skeletons)) {
-        defend(&mut s);
+    while s.active() != Some(StackId(SKELETONS)) {
+        defend(&mut s, &r);
     }
-    turn(&mut s, &r, skeletons, cast(implosion, stack(last)));
+    turn(&mut s, &r, SKELETONS, cast(implosion, stack(last)));
     assert!(!s.stacks()[usize::from(last)].is_alive());
-    turn(&mut s, &r, skeletons, Command::Defend);
+    turn(&mut s, &r, SKELETONS, Command::Defend);
     while s.round() == 13 {
-        defend(&mut s);
+        defend(&mut s, &r);
     }
     assert!(is_elemental(&s));
     assert!(!castable_spells(&s, &r, BattleSide::Attacker).contains(air));
@@ -527,10 +551,10 @@ fn batch_2d_su_summons_until_the_limit_and_a_side_of_elementals_loses() {
     // The end: the elementals attack the Skeletons until none are left; the Skeletons Defend.
     for _ in 0..400 {
         match s.active() {
-            Some(StackId(9)) => {
-                turn(&mut s, &r, skeletons, Command::Defend);
+            Some(StackId(SKELETONS)) => {
+                turn(&mut s, &r, SKELETONS, Command::Defend);
             }
-            Some(_) => advance(&mut s, &r, skeletons),
+            Some(_) => advance(&mut s, &r, SKELETONS),
             None => break,
         }
     }
@@ -541,23 +565,78 @@ fn batch_2d_su_summons_until_the_limit_and_a_side_of_elementals_loses() {
     // Red's records: the seven Peasants, the two war machines, then eleven created stacks (E1's
     // record went to E3). The casualties as the result window listed them: seven Peasants and
     // two Air Elementals, those of the second Implosion; ten Skeletons.
-    let creature = |key: &str| r.creature_by_key(key).unwrap();
-    let record = |origin, key: &str, start, end| StackRecord {
-        origin,
-        creature: creature(key),
-        start,
-        end,
-    };
     let mut expected: Vec<StackRecord> = (0..7)
-        .map(|slot| record(StackOrigin::Army(slot), "ab:peasant", 1, 0))
+        .map(|slot| record(&r, StackOrigin::Army(slot), "ab:peasant", (1, 0)))
         .collect();
-    expected.push(record(StackOrigin::WarMachine, "base:ammo_cart", 1, 1));
-    expected.push(record(StackOrigin::WarMachine, "base:first_aid_tent", 1, 1));
-    expected.extend([record(StackOrigin::Created, "base:air_elemental", 2, 2); 10]);
-    expected.push(record(StackOrigin::Created, "base:air_elemental", 2, 0));
+    expected.push(record(
+        &r,
+        StackOrigin::WarMachine,
+        "base:ammo_cart",
+        (1, 1),
+    ));
+    expected.push(record(
+        &r,
+        StackOrigin::WarMachine,
+        "base:first_aid_tent",
+        (1, 1),
+    ));
+    expected.extend([record(&r, StackOrigin::Created, "base:air_elemental", (2, 2)); 10]);
+    expected.push(record(
+        &r,
+        StackOrigin::Created,
+        "base:air_elemental",
+        (2, 0),
+    ));
     assert_eq!(outcome.stacks[0], expected);
     assert_eq!(
         outcome.stacks[1],
-        [record(StackOrigin::Army(0), "base:skeleton", 10, 0)]
+        [record(&r, StackOrigin::Army(0), "base:skeleton", (10, 0))]
     );
+}
+
+// covers: BAT-END-001, BAT-END-003, BAT-FLE-001, BAT-FLE-002
+/// Batch 2d SU, variants b and c: after the same two rounds Red has only its elementals and war
+/// machines left. Round 3: the elementals Defend, and in the Skeletons' turn Blue retreats (b)
+/// or surrenders (c) for 300, half the cost of ten Skeletons. The result names Blue's leaving;
+/// Red, whose army has no survivors, has lost as well (its hero was gone from the map both
+/// times) and is still paid the surrender's price (Red's gold rose by 300). The casualties are
+/// the seven Peasants, and none of Blue's.
+#[test]
+fn batch_2d_su_a_side_of_elementals_loses_too_when_the_enemy_leaves() {
+    let r = sod();
+    let blue = BattleSide::Defender;
+    for (command, result, cost) in [
+        (Command::Retreat, BattleResult::Retreat(blue), None),
+        (Command::Surrender, BattleResult::Surrender(blue), Some(300)),
+    ] {
+        let (mut s, _) = su_after_two_rounds(&r);
+        defend(&mut s, &r);
+        defend(&mut s, &r);
+        assert_eq!(s.surrender_price(&r, blue), Some(300));
+        turn(&mut s, &r, SKELETONS, command);
+        let outcome = s.outcome().unwrap();
+        assert_eq!((outcome.result, outcome.surrender_cost), (result, cost));
+        assert!(outcome.survivors[0].stacks.is_empty());
+        let mut expected: Vec<StackRecord> = (0..7)
+            .map(|slot| record(&r, StackOrigin::Army(slot), "ab:peasant", (1, 0)))
+            .collect();
+        expected.push(record(
+            &r,
+            StackOrigin::WarMachine,
+            "base:ammo_cart",
+            (1, 1),
+        ));
+        expected.push(record(
+            &r,
+            StackOrigin::WarMachine,
+            "base:first_aid_tent",
+            (1, 1),
+        ));
+        expected.extend([record(&r, StackOrigin::Created, "base:air_elemental", (2, 2)); 2]);
+        assert_eq!(outcome.stacks[0], expected);
+        assert_eq!(
+            outcome.stacks[1],
+            [record(&r, StackOrigin::Army(0), "base:skeleton", (10, 10))]
+        );
+    }
 }
