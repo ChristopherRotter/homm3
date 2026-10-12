@@ -1174,3 +1174,45 @@ how and why the work went.
   forfeit's two rows on the first page, a page past the end, an unknown season and ladder; one's
   own row (none for an account without a game, refused anonymous); a rename shown; after a
   content change the new season's page empty and the first season's kept.
+
+### M4 T5 — Bots on ladders (2026-10-12)
+
+- **The start.** #114 (T4) had merged; the branch restarted from `master` (T4's scoped verify
+  had no failing step, the workload unchanged; #113, the adventure lane's, touched no server
+  path).
+- **The queue** (`h3_protocol::ladder`, *provisional*): `Ladder::bots` (`LadderBot { login,
+  display, rating }`) and `bot_after_ms`; a waiting entry's connection is `Option` (`None`: a
+  bot). After the players are paired, each one left who waited `bot_after_ms` gets the bot
+  nearest in rating (`min_by_key`: the first of equally near ones, the configuration's order),
+  whatever the window: people first. The bot accepted at once (`MatchFound` to the player only);
+  a decline, an expiry or a drain tells only the player, and the bot, never queued, plays any
+  number of games at once. `Queues::rate(ladder, login, points)`: the host passes the bots'
+  ratings before each matcher's turn (`registry::match_every` reads them from `Ladders::bots`
+  outside the registry's lock). `Matched::players` names a bot with no connection.
+- **The session** (`Session::reserve`): a bot's seat belongs to its bot account too
+  (`Entry::TakenBy`, as a player's): `accounts()` names it, the lobby lists it, the end rates
+  it, and a restart restores it from the journal's tokens (`None`: the bot plays) and entries.
+  Journal format unchanged (5): the lines are the same.
+- **The wire** (version 18): `LadderInfo::bots` (the ladder's bots' display names),
+  `Seated::bot`; `LeaderboardRow::bot` set since T4.
+- **The server**: `[[ladder.bot]]` (`login`, `display`, `kind`, `random` the only one;
+  *provisional*), `bot_after_ms` (60 000; 0 to a year); names checked as an account's, a bot once
+  per ladder, the same entry on every ladder that lists it. The player log's `Bot { login,
+  display }` line: an account with no key (`Account::key` is an `Option`), which no login
+  matches, no re-key or `rebind` changes (`a bot's account`), and whose names are taken as any
+  account's. At start (`Accounts::bots`, before the ladders read their logs) a bot the log does
+  not know is registered, one whose display name changed renamed; a player's account under a
+  bot's login stops the start. `Prepared::new` takes the seats the server's bot plays (the
+  offer's, or the match's bot), so a bot match's journal holds no token for it. The lobby's and
+  the leaderboard's flags come from `Account::is_bot`.
+- **Found on the way:** a match's game never named its accounts in the lobby (T2 on): the game's
+  loop names seats only when they change, and a match's were set before its first look. The game
+  now names them right after the reservation.
+- **Tests** (`h3-protocol` 86 → 87, `h3-server` 94 → 96): the nearest bot after the wait (a
+  tie, a rating changed on one ladder only, a decline, an expiry, people first, a drain); a bot
+  seat's account reserved, restored, never taken by a connection; the wire's corpora and JSON
+  form. The player log's bot accounts (names, rename, no key change, read back); the
+  configuration's bot checks. End to end: a lone player matched with the bot after the wait, its
+  seat named and flagged in the lobby, the game rated for both, the bot's row flagged; no login
+  as the bot or under its name; a renamed bot at the next start; a bot under a player's login
+  stops the start; a human match's seats named in the lobby.
