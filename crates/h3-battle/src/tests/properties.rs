@@ -4,13 +4,16 @@
 //!
 //! Battles are generated from random armies; each step either plays a random legal command or
 //! throws an arbitrary (usually invalid) command at the engine, possibly from the wrong actor.
+//! The heroes cast, among the other spells, Berserk, Hypnotize and Blind (E04b T11b review,
+//! sec F-4): a stack's controller is not always its side, and some turns are automatic. The
+//! assertions are stated for the trusted actor and the controller (BAT-MAG-025, BAT-MAG-026).
 
 use std::num::NonZeroU32;
 use std::vec::Vec;
 
 use h3_content::{
-    Affects, CreatureFlag, CreatureSelector, CreatureStat, Formation, ObstacleKind, Ruleset,
-    SchoolId, SpellCategory, SpellId, SpellScope,
+    Affects, CreatureFlag, CreatureSelector, CreatureStat, EffectDuration, Formation, ObstacleKind,
+    Ruleset, SchoolId, SpellCategory, SpellId, SpellScope, TimedChange,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -28,7 +31,7 @@ use crate::event::StrikeFlags;
 use crate::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, Hex, LegalCommands, SpellSet,
     StackId, Viewer, apply, cast_targets, castable_spells, creature_cast_targets, legal_commands,
-    observe, observe_as, project, project_as, second_targets,
+    observe, observe_as, project, project_as, second_targets, validate,
 };
 
 /// The test ruleset with frequent good and bad morale and luck (a 4-sided die) and the quirk
@@ -62,36 +65,50 @@ enum Step {
     /// odd `n` (or no castable spell) the active stack casts at its `n`-th target instead, if it
     /// may (BAT-MAG-048).
     Cast(u16),
+    /// Cast the `n`-th castable control spell (Berserk, Hypnotize, Blind: BAT-MAG-024 to
+    /// BAT-MAG-026) at its `n`-th target, Berserk at a hex a living stack stands on if it may, so
+    /// that stacks do go berserk; without a castable one, as `Legal(n)`.
+    Control(u16),
 }
 
-/// An arbitrary command; leaving the battle is rare, so that games run long.
+/// The control spells of the test ruleset that a `Control` step casts.
+const CONTROL_SPELLS: [&str; 3] = ["t:berserk", "t:hypnotize", "t:blind"];
+
+/// An arbitrary stack id: mostly one a battle may have (it holds 42 stacks), sometimes any byte.
+fn arb_stack() -> impl Strategy<Value = StackId> {
+    prop_oneof![4 => 0u8..44, 1 => any::<u8>()].prop_map(StackId)
+}
+
+/// An arbitrary cast target.
+fn arb_target() -> impl Strategy<Value = CastTarget> {
+    prop_oneof![
+        Just(CastTarget::None),
+        arb_stack().prop_map(CastTarget::Stack),
+        any::<u8>().prop_map(|h| CastTarget::Hex(Hex(h))),
+    ]
+}
+
+/// An arbitrary command; leaving the battle is rare, so that games run long. A cast names any
+/// spell of the test ruleset (it has 61) or none of it, and its second target may be a hex
+/// (Teleport's, BAT-MAG-029) or a stack (Sacrifice's victim, BAT-MAG-036).
 fn arb_command() -> impl Strategy<Value = Command> {
     prop_oneof![
         8 => Just(Command::Wait),
         8 => Just(Command::Defend),
         8 => Just(Command::EndTactics),
         8 => any::<u8>().prop_map(|h| Command::Move { to: Hex(h) }),
-        8 => (0u8..40, any::<u8>()).prop_map(|(t, h)| Command::Attack {
-            target: StackId(t),
-            from: Hex(h)
+        8 => (arb_stack(), any::<u8>(), 0u8..4).prop_map(|(target, h, kind)| match kind {
+            0 => Command::Shoot { target, at: Hex(h) },
+            _ => Command::Attack { target, from: Hex(h) },
         }),
-        8 => (0u8..40).prop_map(|t| Command::Heal { target: StackId(t) }),
-        8 => (0u16..12, 0u8..3, any::<u8>(), any::<Option<u8>>()).prop_map(|(spell, kind, t, h)| Command::Cast {
-            spell: SpellId::from_raw(spell),
-            target: match kind {
-                0 => CastTarget::None,
-                1 => CastTarget::Stack(StackId(t % 40)),
-                _ => CastTarget::Hex(Hex(t)),
-            },
-            second: h.map_or(CastTarget::None, |h| CastTarget::Hex(Hex(h))),
-        }),
-        8 => (0u8..3, any::<u8>()).prop_map(|(kind, t)| Command::CreatureCast {
-            target: match kind {
-                0 => CastTarget::None,
-                1 => CastTarget::Stack(StackId(t % 40)),
-                _ => CastTarget::Hex(Hex(t)),
-            },
-        }),
+        8 => arb_stack().prop_map(|target| Command::Heal { target }),
+        8 => (0u16..80, arb_target(), prop_oneof![2 => Just(CastTarget::None), 1 => arb_target()])
+            .prop_map(|(spell, target, second)| Command::Cast {
+                spell: SpellId::from_raw(spell),
+                target,
+                second,
+            }),
+        8 => arb_target().prop_map(|target| Command::CreatureCast { target }),
         1 => Just(Command::Retreat),
         1 => Just(Command::Surrender),
     ]
@@ -99,9 +116,10 @@ fn arb_command() -> impl Strategy<Value = Command> {
 
 fn arb_step() -> impl Strategy<Value = Step> {
     prop_oneof![
-        3 => any::<u16>().prop_map(Step::Legal),
-        1 => (arb_command(), any::<bool>()).prop_map(|(command, wrong_actor)| Step::Arbitrary { command, wrong_actor }),
-        1 => any::<u16>().prop_map(Step::Cast),
+        6 => any::<u16>().prop_map(Step::Legal),
+        2 => (arb_command(), any::<bool>()).prop_map(|(command, wrong_actor)| Step::Arbitrary { command, wrong_actor }),
+        2 => any::<u16>().prop_map(Step::Cast),
+        1 => any::<u16>().prop_map(Step::Control),
     ]
 }
 
@@ -166,10 +184,15 @@ fn arb_game() -> impl Strategy<Value = Game> {
 /// Tactics level bits 45–46 (so that some games start with a tactics phase, BAT-TAC-001), bit
 /// 47 whether the attacker's hero wears Shackles of War (no retreat, BAT-FLE-001), bits 48–55
 /// and 56–63 the attacker's and the defender's funds in hundreds of gold (BAT-FLE-002). Both
-/// heroes have spell books (every combat spell of the test ruleset) and the attacker's some
-/// masteries and spell bonuses; their mana comes from bits 0–5 and 6–11 of `machines`
-/// rotated by 13 (BAT-MAG-001 to BAT-MAG-004), the battlefield's terrain from its bits 14–15
-/// (none, the plain or lava, so that some stacks are native: BAT-TER-001, BAT-MAG-031).
+/// heroes have spell books (38 combat spells of the test ruleset, the control spells Berserk,
+/// Hypnotize and Blind among them: BAT-MAG-024 to BAT-MAG-026) and the attacker's some
+/// spell bonuses; their mana comes from bits 0–5 and 6–11 of `machines` rotated by 13
+/// (BAT-MAG-001 to BAT-MAG-004), the battlefield's terrain from its bits 14–15 (none, the plain
+/// or lava, so that some stacks are native: BAT-TER-001, BAT-MAG-031). The attacker's air mastery
+/// is its bits 12–13 and its fire mastery Basic; of `machines` rotated by 29, bits 0–1 give the
+/// attacker's hero power 10 instead of 2 one time in four and bits 2–3 the defender's 6 instead
+/// of 1 (Hypnotize takes a stack of at most power × 25 + 10 to 50 hit points), bits 4–5 and 6–7
+/// the defender's air and fire masteries (Berserk's area and Blind's retaliation are by mastery).
 fn make_setup(
     r: &Ruleset,
     attacker: &[(u8, u8, u32)],
@@ -255,14 +278,19 @@ fn make_setup(
         "copy",
         "sprites",
         "serfs",
+        "berserk",
+        "hypnotize",
+        "blind",
     ]
     .iter()
     .map(|k| r.spell_by_key(&std::format!("t:{k}")).unwrap())
     .collect();
+    let lift = machines.rotate_left(29);
+    let two_bits = |word: u64, shift: u32| u8::try_from((word >> shift) & 3).unwrap();
     led.magic.spell_book = Some(book.clone());
     led.magic.mana = u16::try_from(magic & 63).unwrap();
-    led.magic.masteries = masteries(r, [u8::try_from((magic >> 12) & 3).unwrap(), 1, 0, 0]);
-    led.power = 2;
+    led.magic.masteries = masteries(r, [two_bits(magic, 12), 1, 0, 0]);
+    led.power = if two_bits(lift, 0) == 3 { 10 } else { 2 };
     led.effects.extend([
         BattleEffect::SpellDamage {
             scope: SpellScope::All,
@@ -283,6 +311,10 @@ fn make_setup(
         h.tactics = u8::try_from((machines >> 45) & 3).unwrap();
         h.magic.spell_book = Some(book.clone());
         h.magic.mana = u16::try_from((magic >> 6) & 63).unwrap();
+        h.magic.masteries = masteries(r, [two_bits(lift, 4), two_bits(lift, 6), 0, 0]);
+        if two_bits(lift, 2) == 3 {
+            h.power = 6;
+        }
         h
     });
     BattleSetup {
@@ -307,7 +339,9 @@ fn make_setup(
     }
 }
 
-/// Resolves a step into `(actor, command)` for the current state.
+/// Resolves a step into `(actor, command)` for the current state. The side to act is the active
+/// stack's controller (BAT-MAG-026): a step that is not from the wrong actor is its command, also
+/// for a stack of the other side that it hypnotized.
 fn resolve(
     state: &BattleState,
     r: &Ruleset,
@@ -316,6 +350,35 @@ fn resolve(
 ) -> (BattleSide, Command) {
     let side = state.side_to_act().unwrap_or(BattleSide::Attacker);
     match step {
+        Step::Control(n) => {
+            let castable = castable_spells(state, r, side);
+            let controls: Vec<SpellId> = CONTROL_SPELLS
+                .iter()
+                .filter_map(|key| r.spell_by_key(key))
+                .filter(|&spell| castable.contains(spell))
+                .collect();
+            let Some(&spell) = controls.get(usize::from(*n) % controls.len().max(1)) else {
+                return resolve(state, r, &Step::Legal(*n), legal);
+            };
+            let mut targets = CastTargets::new();
+            cast_targets(state, r, side, spell, &mut targets);
+            let on_stack = |t: &&CastTarget| match t {
+                CastTarget::Hex(h) => state.stacks().iter().any(|s| s.is_alive() && s.hex == *h),
+                _ => true,
+            };
+            let aimed: Vec<CastTarget> = targets.iter().filter(on_stack).copied().collect();
+            let pool = if aimed.is_empty() {
+                targets.as_slice()
+            } else {
+                &aimed
+            };
+            let command = Command::Cast {
+                spell,
+                target: pool[usize::from(*n) % pool.len()],
+                second: CastTarget::None,
+            };
+            (side, command)
+        }
         Step::Legal(n) => {
             legal_commands(state, r, side, legal);
             // The commands that leave the battle come last.
@@ -358,6 +421,62 @@ fn resolve(
     }
 }
 
+/// The timed changes `spell` puts on a stack.
+fn changes(r: &Ruleset, spell: SpellId) -> impl Iterator<Item = TimedChange> + '_ {
+    r.spell(spell)
+        .into_iter()
+        .flat_map(|s| s.magic.effects.iter().filter_map(|e| e.timed()))
+}
+
+/// Whether `spell` puts the timed change `change` on a stack.
+fn has_change(r: &Ruleset, spell: SpellId, change: TimedChange) -> bool {
+    changes(r, spell).any(|c| c == change)
+}
+
+/// Whether `spell`'s effects last for the rest of the battle: such an effect stays on a stack
+/// that dies (BAT-MAG-010).
+fn is_permanent(r: &Ruleset, spell: SpellId) -> bool {
+    r.spell(spell)
+        .is_some_and(|s| s.magic.duration == EffectDuration::Permanent)
+}
+
+/// Timed effects on stacks, each as its stack and spell: the state's list (ADR-0014 point 5), or
+/// what a command's events tell of it.
+type Tracked = Vec<(StackId, SpellId)>;
+
+/// The effect list of `state`.
+fn tracked(state: &BattleState) -> Tracked {
+    state.effects().iter().map(|e| (e.stack, e.spell)).collect()
+}
+
+/// Whether an effect of `list` on stack `id` is of a spell with a timed change that `test`
+/// accepts.
+fn under(
+    r: &Ruleset,
+    list: &[(StackId, SpellId)],
+    id: StackId,
+    test: fn(TimedChange) -> bool,
+) -> bool {
+    list.iter()
+        .any(|&(stack, spell)| stack == id && changes(r, spell).any(test))
+}
+
+/// Whether Berserk is among `list`'s effects on stack `id` (BAT-MAG-025).
+fn berserk(r: &Ruleset, list: &[(StackId, SpellId)], id: StackId) -> bool {
+    under(r, list, id, |c| c == TimedChange::Berserk)
+}
+
+/// The side that commands stack `id`, by the rule (BAT-MAG-026): its own, or the other side while
+/// a Hypnotize is active on it; read from the effect list, not from what the stack keeps.
+fn controller_by_rule(state: &BattleState, r: &Ruleset, id: StackId) -> BattleSide {
+    let side = state.stacks()[id.index()].side;
+    let hypnotized = state
+        .effects()
+        .iter()
+        .any(|e| e.stack == id && has_change(r, e.spell, TimedChange::Hypnotize));
+    if hypnotized { side.opponent() } else { side }
+}
+
 /// Plays a game, returning the final state, the event log and the state hash after every step.
 fn play(
     r: &Ruleset,
@@ -380,28 +499,36 @@ fn play(
 proptest! {
     #![proptest_config(Config { cases: 96, ..Config::default() })]
 
-    /// Atomicity, legality consistency, ownership isolation and conservation, checked at every step.
+    /// Atomicity, legality consistency, ownership isolation and conservation, checked at every
+    /// step, by the trusted actor and the active stack's controller: who commands and whose hero
+    /// casts (BAT-MAG-026), which turns are automatic (a berserk stack's, BAT-MAG-025; a war
+    /// machine's, BAT-WAR-002), and what a command or such a turn may move and strike.
     #[test]
     fn every_step_preserves_the_invariants((att, def, obstacles, seed, steps) in arb_game()) {
         let r = lively();
         let setup = make_setup(&r, &att, &def, &obstacles, seed);
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
         let mut legal = LegalCommands::new();
-        for step in &steps {
+        for (turn, step) in steps.iter().enumerate() {
             let (actor, cmd) = resolve(&state, &r, step, &mut legal);
 
             // Legality consistency: the legal set is exactly what apply accepts. Every listed
-            // command is accepted; the opponent has no legal commands.
+            // command is accepted; exactly the side that controls the active stack has commands
+            // (BAT-MAG-026): not its own side while the other side has hypnotized it.
             legal_commands(&state, &r, actor, &mut legal);
+            prop_assert_eq!(legal.is_empty(), state.side_to_act() != Some(actor));
             for c in legal.iter() {
                 let mut probe = state.clone();
                 prop_assert!(apply(&mut probe, &r, actor, *c, &mut crate::NoopSink).is_ok(), "legal {c:?} rejected");
             }
             let mut other = LegalCommands::new();
             legal_commands(&state, &r, actor.opponent(), &mut other);
-            prop_assert!(other.is_empty() || state.side_to_act() == Some(actor.opponent()));
+            prop_assert_eq!(other.is_empty(), state.side_to_act() != Some(actor.opponent()));
             // The same for casts: every listed spell, target and second target is accepted
-            // (BAT-MAG-001, BAT-MAG-029).
+            // (BAT-MAG-001, BAT-MAG-029). Each passes the validation `apply` runs before it
+            // changes anything, and is applied to a copy of the state; of the casts aimed at a
+            // hex (an area spell has 165 targets, Teleport as many places for each stack) every
+            // second one is applied, by turns from step to step.
             let castable = castable_spells(&state, &r, actor);
             let mut targets = CastTargets::new();
             let mut seconds = CastTargets::new();
@@ -412,9 +539,13 @@ proptest! {
                     second_targets(&state, &r, actor, (spell, *target), &mut seconds);
                     prop_assert!(!seconds.is_empty());
                     for second in seconds.iter() {
-                        let mut probe = state.clone();
                         let c = Command::Cast { spell, target: *target, second: *second };
-                        prop_assert!(apply(&mut probe, &r, actor, c, &mut crate::NoopSink).is_ok(), "legal {c:?} rejected");
+                        prop_assert!(validate(&state, &r, actor, c).is_ok(), "legal {c:?} rejected");
+                        let hex = target.hex().or(second.hex());
+                        if hex.is_none_or(|h| (usize::from(h.0) + turn) % 2 == 0) {
+                            let mut probe = state.clone();
+                            prop_assert!(apply(&mut probe, &r, actor, c, &mut crate::NoopSink).is_ok(), "legal {c:?} rejected");
+                        }
                     }
                 }
             }
@@ -486,58 +617,182 @@ proptest! {
                             prop_assert!(cast_by || a_mana == b_mana);
                         }
                     }
-                    // ... unless it killed the active stack, whose turn then ends (BAT-MAG-004,
-                    // BAT-MAG-036).
-                    if let Command::Cast { .. } = cmd {
-                        let killed = before.active().is_some_and(|a| !state.stacks()[a.index()].is_alive());
-                        prop_assert!(state.is_over() || state.active() == before.active() || killed);
-                    }
+                    // The hero that casts is the trusted actor's, also during the turn of a stack
+                    // of the other side that the actor controls (BAT-MAG-026); nothing else is a
+                    // hero's cast.
+                    let casters: Vec<BattleSide> = events
+                        .iter()
+                        .filter_map(|e| match e.kind {
+                            EventKind::SpellCast { side, .. } => Some(side),
+                            _ => None,
+                        })
+                        .collect();
+                    let cast_now = matches!(cmd, Command::Cast { .. });
+                    prop_assert_eq!(&casters, &[actor][..usize::from(cast_now)]);
                     let mover = before.active().unwrap();
+                    // ... unless it killed the active stack, whose turn then ends (BAT-MAG-004,
+                    // BAT-MAG-036), or made it berserk: it takes its automatic turn at once
+                    // (BAT-MAG-025).
+                    if cast_now {
+                        let killed = !state.stacks()[mover.index()].is_alive();
+                        let enraged = events.iter().any(|e| matches!(e.kind,
+                            EventKind::EffectApplied { target, spell, .. } if target == mover && has_change(&r, spell, TimedChange::Berserk)));
+                        prop_assert!(state.is_over() || state.active() == Some(mover) || killed || enraged);
+                    }
                     // A stack's cast uses one of its casts and nothing else does (BAT-MAG-048)
-                    // but a rebirth, which leaves the stack dead or reborn (BAT-MAG-059); a slot
-                    // a created stack or a Pit Lord's Demons take over starts afresh (BAT-MAG-037,
-                    // BAT-MAG-052).
+                    // but its rebirths (BAT-MAG-059): one cast each time it comes back, which
+                    // may be more than once in a command (its own action and the automatic
+                    // turns after it: two berserk stacks may kill it one after the other), and
+                    // one more if a draw of none left it dead; a slot a created stack or a Pit
+                    // Lord's Demons take over starts afresh (BAT-MAG-037, BAT-MAG-052).
                     let used = usize::from(matches!(cmd, Command::CreatureCast { .. }));
                     for (i, a) in state.stacks().iter().enumerate() {
                         let id = StackId(u8::try_from(i).unwrap());
                         let spent = usize::from(id == mover) * used;
                         let reused = events.iter().any(|e| matches!(e.kind, EventKind::StackCreated { stack, .. } | EventKind::RoseFromCorpse { stack, .. } if stack == id));
-                        let reborn = events.iter().any(|e| matches!(e.kind, EventKind::Reborn { stack, .. } if stack == id));
-                        let rebirth = a.has(crate::StackTraits::REBIRTH) && (reborn || !a.is_alive());
+                        let reborn = events.iter().filter(|e| matches!(e.kind, EventKind::Reborn { stack, .. } if stack == id)).count();
+                        let none_drawn = usize::from(a.has(crate::StackTraits::REBIRTH) && !a.is_alive());
                         let (was, is) = (usize::from(before.casts_left(id)), usize::from(state.casts_left(id)));
-                        prop_assert!(reused || was == is + spent || (rebirth && was == is + 1));
+                        prop_assert!(reused || was == is + spent + reborn || was == is + spent + reborn + none_drawn);
                     }
                     let target = match cmd {
                         Command::Attack { target, .. } | Command::Shoot { target, .. } => Some(target),
                         _ => None,
                     };
-                    // The mover's primary strikes hit the commanded target; retaliations hit the
-                    // mover (BAT-ATK-001, BAT-RET-001).
-                    for e in &events {
-                        if let EventKind::Struck { attacker, target: hit, flags, .. } = e.kind {
-                            if flags.contains(StrikeFlags::SECONDARY) {
-                                continue;
+                    // Who acts when. The command's own action is the active stack's, which the
+                    // actor controls (BAT-MAG-026); every turn that follows within the command
+                    // starts with `TurnStarted` and is automatic: a war machine's (BAT-WAR-002)
+                    // or a berserk stack's (BAT-MAG-025), until a stack awaits its side's
+                    // command. The walk follows the timed effects by the events alone: who is
+                    // berserk and who loses its turns at each event.
+                    let side_of = |id: StackId| state.stacks()[id.index()].side;
+                    let machine = |id: StackId| state.stacks()[id.index()].has(crate::StackTraits::WAR_MACHINE);
+                    let stunned = |live: &Tracked, id: StackId| under(&r, live, id, TimedChange::takes_turns);
+                    let moves = matches!(cmd, Command::Move { .. } | Command::Attack { .. });
+                    let mut live = tracked(&before);
+                    // The stack whose turn it is, whether it is still the turn the actor commands,
+                    // the stack it last struck, the berserk stack that has yet to act, and the
+                    // one that has attacked: its own attack ends its Berserk before the next turn
+                    // starts, unless it died in it (BAT-MAG-025).
+                    let (mut acting, mut commanded, mut struck) = (mover, true, None);
+                    let (mut due, mut attacked) = (None, None);
+                    let calmed = |live: &Tracked, stack: Option<StackId>| {
+                        stack.is_none_or(|s| !berserk(&r, live, s) || !state.stacks()[s.index()].is_alive())
+                    };
+                    for (k, e) in events.iter().enumerate() {
+                        let next = |n: usize| events.get(k + n).map(|e| e.kind);
+                        match e.kind {
+                            EventKind::TurnStarted { stack } => {
+                                prop_assert_eq!(due, None, "a berserk stack's turn left no trace");
+                                prop_assert!(calmed(&live, attacked), "{attacked:?} attacked and is still berserk");
+                                (acting, commanded, attacked) = (stack, false, None);
+                                due = Some(stack).filter(|&s| berserk(&r, &live, s));
                             }
-                            if attacker == mover {
-                                prop_assert_eq!(Some(hit), target);
-                            } else if !before.stacks()[attacker.index()].has(crate::StackTraits::WAR_MACHINE) {
-                                // War machines act on their own after the command (BAT-WAR-002).
-                                prop_assert!(flags.contains(StrikeFlags::RETALIATION));
-                                prop_assert_eq!(hit, mover);
+                            // A cast that makes the active stack berserk lets it take its
+                            // automatic turn at once (BAT-MAG-025).
+                            EventKind::EffectApplied { target, spell, .. } => {
+                                if !live.contains(&(target, spell)) {
+                                    live.push((target, spell));
+                                }
+                                if commanded && target == acting && has_change(&r, spell, TimedChange::Berserk) {
+                                    due = Some(target);
+                                }
                             }
+                            // A stack that is no longer berserk awaits its side's command.
+                            EventKind::EffectEnded { target, spell } => {
+                                live.retain(|&effect| effect != (target, spell));
+                                due = due.filter(|&s| berserk(&r, &live, s));
+                            }
+                            // A stack that comes back keeps only what lasts the whole battle, and a
+                            // new one in a dead stack's slot starts without effects (BAT-MAG-010).
+                            EventKind::Reborn { stack, .. } => live.retain(|&(s, spell)| s != stack || is_permanent(&r, spell)),
+                            EventKind::StackCreated { stack, .. } | EventKind::RoseFromCorpse { stack, .. } => live.retain(|&(s, _)| s != stack),
+                            // A stack moves on its own turn only: by the actor's command to move or
+                            // to attack, or on its own while it is berserk (no war machine moves).
+                            EventKind::Moved { stack, .. } => {
+                                prop_assert_eq!(stack, acting);
+                                prop_assert!(berserk(&r, &live, stack) || (commanded && moves), "{stack:?} moved on its own");
+                                due = due.filter(|&s| s != stack);
+                            }
+                            // Teleport is its side's hero's cast on a stack of that side, whoever
+                            // controls the stack (BAT-MAG-029, BAT-MAG-026).
+                            EventKind::Teleported { stack, .. } => {
+                                prop_assert!(cast_now && side_of(stack) == actor);
+                            }
+                            EventKind::Struck { attacker, target: hit, flags, .. } if !flags.contains(StrikeFlags::SECONDARY) => {
+                                if flags.contains(StrikeFlags::RETALIATION) {
+                                    // The struck stack retaliates against the striker (BAT-RET-001).
+                                    prop_assert_eq!((Some(attacker), hit), (struck, acting));
+                                } else {
+                                    // A stack strikes on its own turn only, and another stack.
+                                    prop_assert_eq!(attacker, acting);
+                                    prop_assert!(hit != attacker);
+                                    struck = Some(hit);
+                                    if berserk(&r, &live, attacker) {
+                                        // A berserk stack takes any other stack (BAT-MAG-025).
+                                        due = due.filter(|&s| s != attacker);
+                                        attacked = Some(attacker);
+                                    } else if commanded {
+                                        // The commanded strikes hit the commanded target, a stack
+                                        // of the side the actor fights, whoever controls it: never
+                                        // one of the actor's own side (BAT-ATK-001, BAT-MAG-026).
+                                        prop_assert_eq!(Some(hit), target);
+                                        prop_assert!(side_of(hit) != actor);
+                                    } else {
+                                        // The automatic Ballista shoots the other side's stacks,
+                                        // whoever controls them (BAT-WAR-002).
+                                        prop_assert!(machine(attacker) && side_of(hit) != side_of(attacker), "{attacker:?} struck on its own");
+                                    }
+                                }
+                            }
+                            // A turn passes without an action for a stack that loses its turns
+                            // (BAT-MAG-024, BAT-MAG-043) and for a berserk one with no stack to
+                            // attack or unable to move (BAT-MAG-025).
+                            EventKind::TurnPassed { stack } => {
+                                prop_assert_eq!(stack, acting);
+                                prop_assert!(stunned(&live, stack) || berserk(&r, &live, stack));
+                                due = due.filter(|&s| s != stack);
+                            }
+                            // Bad morale and Fear freeze a stack as its turn starts, a berserk one
+                            // too (BAT-MOR-004, BAT-MAG-060).
+                            EventKind::BadMorale { stack } | EventKind::Frightened { stack } => {
+                                prop_assert!(!commanded && stack == acting);
+                                due = due.filter(|&s| s != stack);
+                            }
+                            // Only the actor's command makes a stack wait, defend, cast or raise:
+                            // an automatic turn does none of these (BAT-MAG-025, BAT-MAG-048).
+                            EventKind::Waited { stack } | EventKind::Defended { stack } | EventKind::StackCast { stack, .. } | EventKind::CreatureRaise { stack, .. } => {
+                                prop_assert!(commanded && stack == acting);
+                            }
+                            // Good morale gives the stack that acted another turn at once
+                            // (BAT-MOR-003: `GoodMorale`, then `TurnStarted` for it), but not while
+                            // it loses its turns: blind, petrified or paralysed by a retaliation's
+                            // spell, it is passed over (BAT-MAG-024). Fear may freeze the turn
+                            // (BAT-MAG-060). A turn it takes awaits its side's command, which ends
+                            // the command, unless it is still berserk: then the turn is automatic
+                            // too (BAT-MAG-025). The round's mark stays until a new round clears
+                            // it (BAT-TRN-003).
+                            EventKind::GoodMorale { stack } => {
+                                prop_assert_eq!(stack, acting);
+                                let turn = next(1) == Some(EventKind::TurnStarted { stack });
+                                prop_assert_eq!(turn, !stunned(&live, stack));
+                                let awaits = turn && next(2) != Some(EventKind::Frightened { stack }) && !berserk(&r, &live, stack);
+                                prop_assert!(!awaits || state.active() == Some(stack));
+                                let new_round = events.iter().skip(k).any(|e| matches!(e.kind, EventKind::RoundStarted { .. }));
+                                prop_assert!(!(awaits && new_round));
+                                prop_assert!(state.stacks()[stack.index()].flags.contains(crate::StackFlags::HAD_MORALE) || new_round);
+                            }
+                            _ => {}
                         }
                     }
-                    // Good morale keeps the mover active for another turn (BAT-MOR-003), unless its
-                    // action left it unable to act or Fear froze the new turn (BAT-MAG-060); a lost
-                    // turn may end the round, and the new round clears the mark (BAT-TRN-002).
-                    if events.iter().any(|e| matches!(e.kind, EventKind::GoodMorale { .. })) {
-                        let m = state.stacks()[mover.index()];
-                        let lost = m.spells.status.contains(crate::Status::NO_TURNS)
-                            || events.iter().any(|e| e.kind == EventKind::Frightened { stack: mover });
-                        let new_round = events.iter().any(|e| matches!(e.kind, EventKind::RoundStarted { .. }));
-                        prop_assert!(lost || state.active() == Some(mover));
-                        prop_assert!(m.flags.contains(crate::StackFlags::HAD_MORALE) || (lost && new_round));
-                    }
+                    prop_assert_eq!(due, None, "a berserk stack's turn left no trace");
+                    prop_assert!(calmed(&live, attacked), "{attacked:?} attacked and is still berserk");
+                    // The events told every change of the effect list (`EffectApplied`,
+                    // `EffectEnded`; BAT-MAG-009, BAT-MAG-010) but a death's: a dead stack keeps
+                    // only what lasts the whole battle.
+                    live.retain(|&(s, spell)| state.stacks()[s.index()].is_alive() || is_permanent(&r, spell));
+                    live.sort_unstable();
+                    prop_assert_eq!(&live, &tracked(&state));
                     let mentioned = |i: usize, f: fn(&EventKind, usize) -> bool| events.iter().any(|e| f(&e.kind, i));
                     for (i, (b, a)) in before.stacks().iter().zip(state.stacks()).enumerate() {
                         // A created stack, or a stack raised from a corpse, may take a dead
@@ -560,15 +815,22 @@ proptest! {
                         // effects (BAT-MAG-011); they stay in range.
                         prop_assert!((a.morale, a.luck) == (b.morale, b.luck) || a.spells != b.spells);
                         prop_assert!((-3..=3).contains(&a.morale) && (0..=3).contains(&a.luck));
-                        // Ownership isolation: the actor's command cannot move or re-stat enemy
-                        // stacks, and only changes the enemy stacks it strikes (or that
-                        // regenerate at the start of their turn, BAT-TRN-005).
+                        // Ownership isolation: no command re-stats a stack; a stack is moved only as
+                        // a `Moved` or `Teleported` event reports (above: on its own turn, which is
+                        // the actor's command or automatic, or by its own side's hero), so the
+                        // actor moves no stack of the other side but one it controls; and a stack
+                        // of the other side changes only as an event that names it reports: struck
+                        // or hurt by a spell, regenerating at the start of its turn
+                        // (BAT-TRN-005), and, striking on the actor's command while hypnotized or
+                        // on its own while berserk, burnt by a Fire Shield (BAT-MAG-018) or
+                        // draining life (BAT-DMG-008).
                         prop_assert_eq!((a.creature, a.side, a.slot, a.attack, a.defense, a.speed), (b.creature, b.side, b.slot, b.attack, b.defense, b.speed));
+                        let moved = mentioned(i, |k, i| matches!(k, EventKind::Moved { stack, .. } | EventKind::Teleported { stack, .. } if stack.index() == i));
+                        prop_assert!(a.hex == b.hex || moved);
                         if b.side != actor {
-                            prop_assert_eq!(a.hex, b.hex);
                             let explained = mentioned(i, |k, i| matches!(k,
                                 EventKind::Struck { target, .. } | EventKind::DeathStared { target, .. } | EventKind::SpellDamage { target, .. } | EventKind::StrikeDamage { target, .. } if target.index() == i))
-                                || mentioned(i, |k, i| matches!(k, EventKind::Regenerated { stack, .. } | EventKind::Vanished { stack, .. } if stack.index() == i))
+                                || mentioned(i, |k, i| matches!(k, EventKind::Regenerated { stack, .. } | EventKind::Vanished { stack, .. } | EventKind::Reflected { stack, .. } | EventKind::LifeDrained { stack, .. } if stack.index() == i))
                                 || mentioned(i, |k, i| matches!(k, EventKind::Healed { target, .. } if target.index() == i))
                                 // The other side's periodic Cure at its caster's activation after
                                 // the command (BAT-MAG-053).
@@ -600,6 +862,21 @@ proptest! {
             }
             // A battle that is over has no active stack, and vice versa.
             prop_assert_eq!(state.is_over(), state.active().is_none());
+            // Who commands (BAT-MAG-026): a stack's controller is its side, or the other side
+            // exactly while a Hypnotize is active on it; the side to act is the active stack's
+            // controller; and the stack that awaits a command is not berserk (BAT-MAG-025: a
+            // berserk stack's turns are automatic). Berserk and Hypnotize end each other, and
+            // neither takes a war machine.
+            let listed = tracked(&state);
+            for (i, s) in state.stacks().iter().enumerate() {
+                let id = StackId(u8::try_from(i).unwrap());
+                prop_assert_eq!(s.controller(), controller_by_rule(&state, &r, id));
+                let (wild, led) = (berserk(&r, &listed, id), s.controller() != s.side);
+                prop_assert!(!(wild && led), "{id:?} is berserk and hypnotized");
+                prop_assert!(!((wild || led) && s.has(crate::StackTraits::WAR_MACHINE)));
+            }
+            prop_assert_eq!(state.side_to_act(), state.active().map(|id| controller_by_rule(&state, &r, id)));
+            prop_assert!(state.active().is_none_or(|id| !berserk(&r, &listed, id)));
             // Living stacks never share a hex (BAT-GEO-002; a clone neither, BAT-QUIRK-7); a side
             // has at most the stack limit of stacks; exactly the living clones have rounds left,
             // and created stacks leave no corpse (BAT-MAG-037, BAT-MAG-038).
@@ -647,6 +924,18 @@ proptest! {
             prop_assert_eq!(observe(&state, &r, viewer), observe(&twin, &r, viewer));
         }
         prop_assert_eq!(&spectator, &observe_as(&twin, &r, Viewer::Spectator));
+        // What goes with the command goes to the side that commands the active stack, whose the
+        // stack may not be (BAT-MAG-026): the spell it drew and its cast's candidates
+        // (BAT-MAG-049, BAT-MAG-050); the other side, the stack's own while it is hypnotized,
+        // sees neither.
+        let drawn = state.casts.drawn.filter(|&(s, _)| state.active() == Some(s)).map(|(_, spell)| spell);
+        let commander = state.active().map(|id| controller_by_rule(&state, &r, id));
+        for viewer in BattleSide::BOTH {
+            let seen = observe(&state, &r, viewer);
+            let commands = commander == Some(viewer);
+            prop_assert_eq!(seen.drawn, drawn.filter(|_| commands));
+            prop_assert!(commands || seen.cast_candidates == [0; crate::STACK_CAPACITY]);
+        }
         for side in BattleSide::BOTH {
             let mut twin = state.clone();
             for hero in twin.heroes[side.index()].iter_mut() {
@@ -727,8 +1016,17 @@ proptest! {
             (false, true) => lively_with("t:anchors"),
             (false, false) => lively_with("t:quirky"),
         };
-        let (mut state, _, _) =
-            play(&r, &make_setup(&r, &att, &def, &obstacles, seed), seed, &steps);
+        // The one property without Berserk in the heroes' books (the others play it). A berserk
+        // stack's automatic turn is planned with the pits its own side sees, so its walk, which
+        // both sides are told, can show the other side where its own side's hidden pits lie
+        // (the E04b T11b review's F-sec-1 part a and r3 F-11; by the reviewers' reading the
+        // original does the same). What the engine should do there is open: BAT-Q31.
+        let mut setup = make_setup(&r, &att, &def, &obstacles, seed);
+        let berserk = r.spell_by_key("t:berserk").unwrap();
+        for book in setup.heroes.iter_mut().flatten().filter_map(|h| h.magic.spell_book.as_mut()) {
+            book.retain(|&spell| spell != berserk);
+        }
+        let (mut state, _, _) = play(&r, &setup, seed, &steps);
         // More pits and mines of either side, so that most games have hidden ones.
         let kinds = [("t:quicksand", ObstacleKind::Pit), ("t:landmine", ObstacleKind::Mine)];
         for (i, (x, y)) in extra.into_iter().enumerate() {
