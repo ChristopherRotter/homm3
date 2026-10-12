@@ -19,6 +19,8 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use h3_kernel::order;
+
 use crate::wire::{LadderInfo, Refusal, ServerMessage, UnqueueReason};
 
 /// The rating points two players may be apart however briefly they waited.
@@ -316,7 +318,8 @@ impl<C: Copy + Eq> Queues<C> {
     fn pair(&mut self, index: usize, now: u64, told: &mut Told<C>) {
         let ladder = &self.ladders[index];
         let mut by_rating = core::mem::take(&mut self.waiting[index]);
-        by_rating.sort_by_key(|w| (w.rating, w.order));
+        // A player's place in the order is unique: so is each key (ADR-0003 §9).
+        let _ = order::sort_by_unique_key(&mut by_rating, |w| (w.rating, w.order));
         let mut left = Vec::new();
         let mut players = by_rating.into_iter().peekable();
         while let Some(first) = players.next() {
@@ -343,7 +346,7 @@ impl<C: Copy + Eq> Queues<C> {
                 None => left.push(first),
             }
         }
-        left.sort_by_key(|w| w.order);
+        let _ = order::sort_by_unique_key(&mut left, |w| w.order);
         self.waiting[index] = left;
     }
 }

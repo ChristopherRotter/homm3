@@ -75,6 +75,12 @@ fn ladders_are_configured_and_checked() {
         let error = refused(&text);
         assert!(error.contains(expected), "{expected}: {error}");
     }
+    // An offer may not be named as a ladder's pool names its scenarios (E16 M4 T2).
+    let named = format!(
+        "[content]\npacks = \"p\"\n[[offer]]\nid = \"arena.1\"\nscenario = \"s\"\n{ladder}"
+    );
+    let error = Config::parse(&named, &base).unwrap_err().0;
+    assert!(error.contains("names its pool's scenarios so"), "{error}");
     let paused = parse(&format!("{ladder}pauses = 2\npause_ms = 600000")).unwrap();
     assert_eq!(
         (paused.ladders[0].pauses, paused.ladders[0].pause_ms),
