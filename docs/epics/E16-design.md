@@ -57,9 +57,9 @@ Client to server: M2: `ListGames { seq }` and `CreateGame { seq, offer, seat, sp
 `seat` in it at once; `spectators` since T4c, open when left out), `Pause { seq }` (code since
 M2 T3; no `Resume`: a seat's `Join` with its token resumes), `SetSpectators { seq, open }` (code
 since M2 T4c: the host's, until the game starts).
-M3: `Login { public_key, signature, name }`, `Rekey { new_public_key, signatures }`. M4:
-`Queue { ladder }`, `Dequeue`, `AcceptMatch`, `Leaderboard { ladder, page }`,
-`MyRating { ladder }`.
+M3: `Login`, `Rekey`, `Rename`, `SetListed` (code since M3 T1). M4 (§11): `ListLadders`,
+`Queue { ladder }`, `Dequeue`, `AcceptMatch`, `DeclineMatch`, `Leaderboard { ladder, season,
+page }`, `Standing { ladder }`, `ProposePause { ms }`, `AnswerPause { accept }`.
 
 Server to client: M2: `Games { seq, offers, games }` and `GameCreated { seq, game }` (code since
 M2 T1; the refusals `NoSuchOffer` and `TooManyGames`), `PauseAsked { n, seat }` and
@@ -67,8 +67,9 @@ M2 T1; the refusals `NoSuchOffer` and `TooManyGames`), `PauseAsked { n, seat }` 
 seq, open }`, `Goodbye { SpectatorsClosed }`, the reject codes `NotHost` and `AlreadyStarted`
 and `GameInfo::spectators` (code since M2 T4c). No `StartGame`: a
 game starts when every seat is held at once (M1 T2's rule). M3:
-`Challenge { nonce }`, `LoggedIn { player }`. M4: `Queued`, `MatchFound { game, seat,
-deadline }`, `LeaderboardPage`, `Rating`.
+the welcome's challenge, `Account` (code since M3 T1). M4 (§11): `Ladders`, `Queued`,
+`MatchFound { ladder, accept_ms }`, `MatchReady { game, seat }`, `LeaderboardPage`, `Rating`,
+`PauseProposed`, a forfeit's result, `GameInfo::ladder`.
 
 ## 3. The client's content check (for the client lane, M2)
 
@@ -87,7 +88,7 @@ only and a visible note. The server never reads anything from this check.
   the seat's account, M3 T3). Since
   M2 T5a a running game whose seats all stay empty for `[limits] empty_game_ms` pauses, and a
   paused game nobody resumes within `paused_game_ms` is void. Still to come: ranked, both players
-  agree, within the ladder's limit (M4).
+  agree, within the ladder's limit (M4 T6, §11).
 - **Upgrades.** A drain mode refuses new games and lets open ones finish; the operator then
   upgrades. Code since M2 T5a: the first SIGINT or SIGTERM drains (`Refused { Draining }` for a
   creation, a waiting game ends, running and paused ones go on), the server stops once none
@@ -124,14 +125,14 @@ T2a, `commands_per_game` (a game reaching it without an end is void) since M3 T4
 `crates/h3-server/README.md`) since M3 T4b. Still to come:
 
 ```
-[[ladder]]    id = "battle-arena"  scenario_pool = ["…"]  season = 1  pause = false  # M4
+[[ladder]]    id = "arena"  name = "Arena"  scenarios = ["…"]  grace_ms = 300000  # M4, §11
 ```
 
 The journals (`<data>/games/<game>.journal`, open games), the replays (`<data>/replays/`,
 finished) and `<data>/void/` are code since M2 T2, `<data>/players.log` since M3 T2a, `<data>/lock`
 (held by a running server and by the operator's `rebind`) since M3 T2b. Still to
-come: `server-data/records/<game>/<viewer>.jsonl`, `server-data/ladders/<id>/results.jsonl`
-(M4), snapshots beside the logs. The log never
+come: `server-data/records/<game>/<viewer>.jsonl`, `<data>/ladders/<id>.log` and
+`<data>/next-game` (M4, §11), snapshots beside the logs. The log never
 contains seeds, tokens, nonces or signatures.
 
 ## 10. Accounts (M3)
@@ -206,27 +207,76 @@ contains seeds, tokens, nonces or signatures.
 
 ## 11. Ladders and matchmaking (M4)
 
-- Servers are independent: a ladder and its accounts belong to one server; nothing is
-  synchronized between servers; there is no global ladder.
-- A ladder: id, game configuration (packs, profile, options), scenario pool (scenario files or
-  a generator with seeds), rating system constants, season, pause policy. The ruleset hash of
-  the configuration is part of the ladder's identity; a change starts a new season.
-- The queue: one entry per player per ladder. Every few seconds the matcher sorts the queue by
-  rating and pairs neighbours whose distance is within `window(waited)` (for example 100 points
-  plus 50 per 30 seconds waited); a pair gets `MatchFound` with a deadline; both accept, or the
-  decliner leaves the queue and the other stays at the front.
-- The game: a scenario from the pool, sides assigned at random, both seats bound to the
-  players' accounts; a disconnect gives a grace period (configured), after which the absent
-  player forfeits. A pause only by both players' agreement; one ranked game per player at a
-  time, a paused one included; the pause's length proposed within the ladder's bounds and
-  agreed, and at its due time the absent player forfeits (the user, 2026-10-11, SRV-Q13).
-- Rating: Glicko-2 with the published defaults (rating 1500, deviation 350, volatility 0.06,
-  system constant 0.5), one rating period per game end, applied in the order games end; a draw
-  is a half point. Only a game whose journal verified (§8) and whose seats were held by their
-  accounts counts. Bot accounts are flagged; a server may exclude them from the leaderboard or
-  list them apart.
-- The leaderboard: rating, deviation, games, wins, losses, draws; pages of 50; a player's own
-  row and rating history on request.
+Decided at the M4 refinement (ADR-0019 points 4–9, SRV-Q19); the names, numbers and line shapes
+below are the tasks' starting point, *provisional* until M4's review.
+
+- **A ladder** (`[[ladder]]`, code since M4 T1): `id` (1–32 of `a–z 0–9 _ -`), `name` (a display
+  name), `scenarios` (the pool: scenario files on one ruleset; the start refuses a pool whose
+  ruleset hashes differ), `profile` (as an
+  offer's), `accept_ms` (30 s), `grace_ms` (5 min a disconnect), `grace_total_ms` (10 min per
+  player and game), `pauses` (per player and game, 0 by default: none) and `pause_ms` (the
+  longest), `spectators` (whether its games take them, with `[limits] spectators_per_game`).
+  Servers are independent: a ladder and its accounts belong to one server.
+- **Seasons.** The ladder's results log opens each season with a `Season { season, ruleset }`
+  line. At start a ruleset hash other than the last season's starts the next one (a log line
+  and a `Season` line): every account keeps its rating and volatility, its deviation reset to
+  350; earlier seasons stay in the log and their tables readable.
+- **The results log**, `<data>/ladders/<id>.log` (read and `Season` written since M4 T1; T3b
+  appends the rest), JSON lines as the player log's
+  (owner-only, each synced before anything depends on it, read back at start, a torn last line
+  cut, any other bad line stops the start): `Season`, `Rated { game, replay, accounts: [a, d],
+  outcome, forfeit, ratings: [a, d] }` (each rating `{ rating, deviation, volatility }` after
+  the game, as `f64`, which `serde_json` writes and reads back exactly), `NoShow { game, replay,
+  accounts }`. The tables are rebuilt from the lines: a start never recomputes a rating, so a
+  server moved to another platform keeps its ladders bit for bit.
+- **Rating** (`h3-server`'s `rating`, code since M4 T1): Glicko-2 as Glickman's paper gives it (rating
+  1500, deviation 350, volatility 0.06, τ = 0.5, the volatility by the Illinois iteration to
+  ε = 10⁻⁶), the paper's worked example its test vector; one rating period per game for both
+  players, applied in the order games end; a draw scores a half. No deviation growth for
+  inactivity in M4 (the server has no wall clock: the workspace bans `SystemTime`); a season's
+  reset raises it.
+- **The queue** (`h3_protocol::ladder`, sans-I/O, M4 T2): a logged-in account waits in one
+  ladder's queue at a time; it is refused while it has an unfinished ranked game on that ladder
+  (running, waiting or paused). The matcher runs every second (the host passes the time): the
+  entries sorted by rating (ties by their order in the queue), neighbours paired when their
+  distance is within the window of the shorter wait, 100 points plus 50 per 30 s waited
+  (*provisional*). A pair gets `MatchFound { ladder, accept_ms }`; both `AcceptMatch` or the one
+  who did not (a `DeclineMatch`, the deadline, a closed connection) leaves the queue and the
+  other returns to it with its waiting time. A queue lives in memory only: a restart or a
+  closed connection empties it.
+- **The ranked game** (M4 T2, T3): created when both accept, from a scenario of the pool drawn
+  with OS randomness, the sides at random, both seats bound to the accounts at once (no token,
+  `Entry::Ranked` in the journal); the clients `Join` it as their seat. No host: no `Pause` by
+  one seat, no `SetSpectators`. Listed with its ladder (`GameInfo::ladder`). `empty_game_ms`
+  and `paused_game_ms` do not apply.
+- **Disconnects and forfeits** (M4 T3). A seat whose connections are all gone is absent: beyond
+  `grace_ms` in one stretch, or `grace_total_ms` over the game, its player forfeits (a loss;
+  both absent: void, `NoShow`, no rating changes). A game not yet started counts the same way
+  from its creation. The journal keeps each finished stretch (`Entry::Absent(side, ms)`) and the
+  forfeit (`Entry::Forfeit(side)`), so a restart knows the totals; a stretch running when the
+  server stopped restarts at the next start (the downtime never counts). A forfeit ends the
+  game as a result of its own on the wire; the replay holds the commands up to it.
+- **The end of a ranked game** (M4 T3): verified first (§8), then `GameEnded`, then the result
+  rated and written (`Rated`), then `Rating { ladder, before, after }` to its seats; a game that
+  does not verify is void and unrated (its players told: the inbox's M2 item). Game ids stay
+  unique for the server's life (`<data>/next-game`, the inbox's M2 item), so a results line's
+  game names one game.
+- **Leaderboards** (M4 T4): `Leaderboard { seq, ladder, season, page }` (the current season when
+  left out) answered by a page of 50 rows: rank, display name, rating and deviation as whole
+  numbers, games, wins, losses, draws, a bot flag; rows by rating, ties by login name; an account
+  appears after its first game of the season. `Standing { seq, ladder }` gives the asker's own
+  row. Ratings travel as whole numbers: `h3-protocol` holds no floats.
+- **Bots** (M4 T5): `[[ladder.bot]]` entries (`login`, `display`, which bot), registered in the
+  player log as bot accounts with no key (they never log in), each a standing queue entry
+  matched only with a player who waited `bot_after_ms` (60 s, *provisional*: people first),
+  playing any number of games at once, flagged on the leaderboard.
+- **The pause by agreement** (M4 T6): `ProposePause { seq, ms }` within the ladder's `pause_ms`
+  and the seat's remaining `pauses`, once per seat until the game moves on (the inbox's item);
+  `PauseProposed { n, seat, ms }` to the other seat, who answers `AnswerPause { seq, accept }`;
+  agreed, the game pauses with the length in the journal; at its due time (the journal's age,
+  as `paused_game_ms` reads it) the grace runs, from the start for a server that was down.
+- **Stalling** is not answered in M4: a connected player may sit on a turn until the game's
+  rules bring a turn timer (`h3-game`, M5; SRV-Q19).
 
 ## 12. Server identity and discovery (M6)
 

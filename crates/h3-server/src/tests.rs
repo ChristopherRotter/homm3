@@ -20,6 +20,7 @@ use crate::{Running, bench, game, registry, start};
 
 mod accounts;
 mod bounds;
+mod ladders;
 mod proxy;
 mod seats;
 
@@ -73,6 +74,7 @@ fn config(limits: Limits) -> Config {
                 bots: vec![BotSeat::Defender],
             },
         ],
+        ladders: vec![],
     }
 }
 

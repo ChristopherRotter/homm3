@@ -13,6 +13,8 @@
 //! - `accounts`: the logins, re-keys, renames and listing preferences, checked by the
 //!   `Authenticator` (Ed25519), and `players`, the player log they are kept in (M3 T2a, T2b);
 //!   [`rebind`], the operator's;
+//! - `ladders`: the ranked game configurations, their scenario pools and results logs, and
+//!   [`rating`], Glicko-2 (E16 M4 T1);
 //! - [`client`]: a headless client for tests and tools;
 //! - [`bench`]: the session core's workload (`benches/server/`).
 //!
@@ -37,8 +39,10 @@ pub mod client;
 pub mod config;
 pub mod game;
 mod journal;
+mod ladders;
 mod net;
 mod players;
+pub mod rating;
 mod registry;
 
 #[cfg(test)]
@@ -73,6 +77,8 @@ pub struct Running {
     stop: watch::Sender<bool>,
     /// The sweep of abandoned games (E16 M2 T5a).
     sweeper: JoinHandle<()>,
+    /// The ladders (E16 M4 T1).
+    ladders: Arc<ladders::Ladders>,
     /// The data directory's lock (E16 M3 T2b), held until the server stopped.
     _lock: File,
 }
@@ -95,6 +101,17 @@ impl Running {
     /// How many games wait or run: a paused game and one that is over do not count.
     pub fn in_play(&self) -> usize {
         registry::lock(&self.registry).in_play()
+    }
+
+    /// The ladder `ladder`'s current season (E16 M4 T1), if the server has it.
+    pub fn season(&self, ladder: &str) -> Option<u32> {
+        self.ladders.season(ladder)
+    }
+
+    /// The account `login`'s row on the ladder `ladder` in the season `season` (E16 M4 T1), if it
+    /// played in it.
+    pub fn standing(&self, ladder: &str, season: u32, login: &str) -> Option<rating::Standing> {
+        self.ladders.standing(ladder, season, login)
     }
 
     /// Resolves once no game waits or runs.
@@ -125,8 +142,9 @@ pub fn server_name() -> String {
     format!("h3-server {}", env!("CARGO_PKG_VERSION"))
 }
 
-/// Compiles the offers, reads the accounts back, restores the games the data directory's journals
-/// hold, and listens: call from a `tokio` runtime. Games are created by clients (`CreateGame`),
+/// Compiles the offers, reads the accounts back, compiles the ladders and reads their results back
+/// (a ladder whose content changed starts a season), restores the games the data directory's
+/// journals hold, and listens: call from a `tokio` runtime. Games are created by clients (`CreateGame`),
 /// each on its own thread.
 pub async fn start(config: &Config) -> Result<Running, Error> {
     let lock = lock(&config.server.data)?;
@@ -134,6 +152,13 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         &config.server.data,
         Box::new(accounts::Ed25519),
     )?);
+    let known = |login: &str| accounts.get(login).is_some();
+    let ladders = ladders::Ladders::open(
+        &config.ladders,
+        &config.content.packs,
+        &config.server.data,
+        &known,
+    )?;
     let offers = config
         .offers
         .iter()
@@ -192,6 +217,7 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         registry,
         stop,
         sweeper,
+        ladders: Arc::new(ladders),
         _lock: lock,
     })
 }

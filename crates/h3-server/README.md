@@ -12,8 +12,10 @@ h3-server rebind server.toml <login> <key>  # while stopped: an account's new ke
 
 The configuration's format, every field with its default, is in `src/config.rs`; an example is
 `server.example.toml`. The data directory holds the games' journals, the finished games'
-replays, the player log and a lock that keeps one server (or one `rebind`) on it at a time;
-keep it readable by the server's user only. The first signal drains the server (no new game,
+replays, the player log, each ladder's results log (`ladders/<id>.log`: its seasons and the
+ratings after each rated game; a ladder whose content changed starts its next season at the next
+start, every rating carried and its deviation reset) and a lock that keeps one server (or one
+`rebind`) on it at a time; keep it readable by the server's user only. The first signal drains the server (no new game,
 the running ones play on), a second stops it at once; the journals stay, and the next start
 restores the running and paused games.
 

@@ -37,13 +37,25 @@
 //! scenario = "../packs/synthetic/scenarios/duel.toml"
 //! profile = "synthetic:faithful"     # optional: overrides the scenario's profile
 //! bots = ["defender"]                # the seats the server's bot plays (none by default)
+//!
+//! [[ladder]]                         # a ranked game configuration (E16 M4); none by default
+//! id = "arena"                       # a-z 0-9 _ -, at most 32: its results log's file name
+//! name = "Arena"                     # shown to clients, as a display name
+//! scenarios = ["../packs/synthetic/scenarios/duel.toml"]   # the pool, on one ruleset
+//! profile = "synthetic:faithful"     # optional: overrides the scenarios' profile
+//! accept_ms = 30000                  # both players accept a match within it
+//! grace_ms = 300000                  # a player away longer at once forfeits
+//! grace_total_ms = 600000            # a player away longer in a game forfeits
+//! pauses = 0                         # pauses each player may propose in a game
+//! pause_ms = 0                       # the longest pause
+//! spectators = true                  # whether its games take spectators
 //! ```
 //!
 //! The data directory holds `games/<game>.journal` for every game that is not over (its seed and
 //! its seats' tokens: the operator's copy of them; E16 M2 T2), `replays/` for the finished games
 //! and `void/` for the journals a start could not restore, `players.log`, the accounts (E16 M3
-//! T2a), and `lock`, which a running server holds (E16 M3 T2b: one server, or the operator's
-//! `rebind`, at a time). It must be readable by the server's user only: on Unix the server creates
+//! T2a), `ladders/<id>.log`, each ladder's results (E16 M4 T1), and `lock`, which a running server
+//! holds (E16 M3 T2b: one server, or the operator's `rebind`, at a time). It must be readable by the server's user only: on Unix the server creates
 //! the directories owner-only and its files owner-read-write.
 //!
 //! Provisional (E16 M1 and M2 reviews): the format and the defaults.
@@ -82,6 +94,9 @@ pub struct Config {
     /// What a client may create a game from.
     #[serde(rename = "offer")]
     pub offers: Vec<Offer>,
+    /// The ranked game configurations (E16 M4 T1; ADR-0019 point 4).
+    #[serde(rename = "ladder", default)]
+    pub ladders: Vec<Ladder>,
 }
 
 /// The `[server]` section.
@@ -144,6 +159,84 @@ pub struct Offer {
     /// The seats the server's bot plays.
     #[serde(default)]
     pub bots: Vec<BotSeat>,
+}
+
+/// One `[[ladder]]` (E16 M4 T1; ADR-0019 points 4–6; `E16-design.md` §11): a ranked game
+/// configuration, its scenario pool on one ruleset and the bounds of its games.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+pub struct Ladder {
+    /// The ladder's id: its results log's file name.
+    pub id: String,
+    /// What clients see of it: a display name's characters.
+    pub name: String,
+    /// The scenario pool (files as `h3 run` takes them), on one ruleset.
+    pub scenarios: Vec<PathBuf>,
+    /// A profile instead of the scenarios'.
+    pub profile: Option<String>,
+    /// Both players accept a match within it (E16 M4 T2).
+    pub accept_ms: u64,
+    /// A player away longer than this at once forfeits (E16 M4 T3a; the user, SRV-Q19).
+    pub grace_ms: u64,
+    /// A player away longer than this in all in one game forfeits (E16 M4 T3a).
+    pub grace_total_ms: u64,
+    /// The pauses each player may propose in a game (E16 M4 T6; 0: none).
+    pub pauses: u32,
+    /// The longest pause (E16 M4 T6).
+    pub pause_ms: u64,
+    /// Whether its games take spectators (with `[limits] spectators_per_game`).
+    pub spectators: bool,
+}
+
+impl Default for Ladder {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            name: String::new(),
+            scenarios: Vec::new(),
+            profile: None,
+            accept_ms: 30_000,
+            grace_ms: 300_000,
+            grace_total_ms: 600_000,
+            pauses: 0,
+            pause_ms: 0,
+            spectators: true,
+        }
+    }
+}
+
+impl Ladder {
+    /// Its id names a file (`a–z 0–9 _ -`, 1 to 32), its name is a display name, it has a pool,
+    /// and its bounds hold.
+    fn check(&self) -> Result<(), Error> {
+        let fail = |why: String| Err(Error(format!("ladder `{}`: {why}", self.id)));
+        let id = |b: u8| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'-';
+        if !(1..=32).contains(&self.id.len()) || !self.id.bytes().all(id) {
+            return fail(String::from("its id is not 1 to 32 of a-z 0-9 _ -"));
+        }
+        if !h3_protocol::account::is_display_name(&self.name) {
+            return fail(format!("name = {:?}: not a display name", self.name));
+        }
+        if self.scenarios.is_empty() {
+            return fail(String::from("no scenarios"));
+        }
+        let bounds = [
+            ("accept_ms", self.accept_ms, 1_000, 3_600_000),
+            ("grace_ms", self.grace_ms, 1_000, YEAR_MS),
+            ("grace_total_ms", self.grace_total_ms, 1_000, YEAR_MS),
+            ("pauses", u64::from(self.pauses), 0, 100),
+            ("pause_ms", self.pause_ms, 0, YEAR_MS),
+        ];
+        for (name, value, min, max) in bounds {
+            if !(min..=max).contains(&value) {
+                return fail(format!("{name} = {value}: outside {min}..={max}"));
+            }
+        }
+        if self.pauses > 0 && self.pause_ms == 0 {
+            return fail(String::from("pauses without pause_ms"));
+        }
+        Ok(())
+    }
 }
 
 /// A year in milliseconds: the longest deadline of an abandoned game.
@@ -344,10 +437,16 @@ impl Config {
         config.limits.check()?;
         config.check_server()?;
         config.check_offers()?;
+        config.check_ladders()?;
         config.server.data = base.join(&config.server.data);
         config.content.packs = base.join(&config.content.packs);
         for offer in &mut config.offers {
             offer.scenario = base.join(&offer.scenario);
+        }
+        for ladder in &mut config.ladders {
+            for scenario in &mut ladder.scenarios {
+                *scenario = base.join(&*scenario);
+            }
         }
         Ok(config)
     }
@@ -384,6 +483,17 @@ impl Config {
                     "offer `{}`: bots play both seats: a hosted game needs a player",
                     offer.id
                 )));
+            }
+        }
+        Ok(())
+    }
+
+    /// Each ladder checked; ids distinct (E16 M4 T1).
+    fn check_ladders(&self) -> Result<(), Error> {
+        for (i, ladder) in self.ladders.iter().enumerate() {
+            ladder.check()?;
+            if self.ladders[..i].iter().any(|l| l.id == ladder.id) {
+                return Err(Error(format!("ladder `{}`: its id is taken", ladder.id)));
             }
         }
         Ok(())
