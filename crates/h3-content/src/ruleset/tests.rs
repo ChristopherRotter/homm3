@@ -1375,7 +1375,7 @@ fn terrains_native_terrains_and_obstacles() {
     // A usual obstacle is a removable piece of the battle, which holds 8 hexes (E04b T11b
     // review, F-robust-5); an absolute one has no such bound.
     let row = |hexes: i8, y: i8| -> Vec<(i8, i8)> { (0..hexes).map(|dx| (dx + 1, y)).collect() };
-    assert_eq!(crate::MAX_USUAL_OBSTACLE_HEXES, 8);
+    assert_eq!(MAX_USUAL_OBSTACLE_HEXES, 8);
     for (blocked, absolute) in [(row(8, 0), false), (row(9, 4), true)] {
         let mut p = base();
         p.obstacles
