@@ -24,13 +24,13 @@
 //! hash = "fnv1a64-le"
 //! hash_version = 1
 //! game_state_hash_version = 1
-//! adventure_state_hash_version = 3
+//! adventure_state_hash_version = 4
 //! checkpoint_every = 25
 //!
 //! [map]                               # how the replay names its map (ADV-Q2)
 //! path = "fixtures/maps/e08-duel-36.h3m"  # relative, resolved against the tool's root
 //! hash = "0x…"                        # the file's content hash
-//! import_version = 1                  # h3_map::MAP_IMPORT_VERSION
+//! import_version = 2                  # h3_map::MAP_IMPORT_VERSION
 //!
 //! [result]
 //! day = 29                            # the day after the last command

@@ -1,5 +1,64 @@
 # Armageddon's Blade's adventure-map data (E08 T4; format: crates/h3-pack-adventure). Hand-written
-# source; the harvester never writes this file (E08 decision 10).
-#
-# Empty: AB changes nothing the adventure part holds yet (its archive holds the same movement.txt;
-# it adds no terrain, road or river).
+# source; the harvester never writes this file (E08 decision 10). AB holds the same movement.txt
+# and adds no terrain, road or river.
+
+# ADV-VIS-005 (E08 T12a): border gates (class 212, AB and SoD; subclass = the key colour as for
+# the base pack's tents and guards). Never removed; a key holder's heroes enter and cross it, the
+# others visit it from the neighbouring tile (0x4A8DD0, 0x480EE2, 0x56ABB1). VCMI
+# CGBorderGate::passableFor and the wiki (Border Gate: "from Armageddon's Blade on"): the same.
+
+[[object_type]]
+id = "border_gate_light_blue"
+name = "Border gate (light blue)"
+visit = "neighbour"
+from_above = true
+key_gate = { key = 0 }
+
+[[object_type]]
+id = "border_gate_green"
+name = "Border gate (green)"
+visit = "neighbour"
+from_above = true
+key_gate = { key = 1 }
+
+[[object_type]]
+id = "border_gate_red"
+name = "Border gate (red)"
+visit = "neighbour"
+from_above = true
+key_gate = { key = 2 }
+
+[[object_type]]
+id = "border_gate_dark_blue"
+name = "Border gate (dark blue)"
+visit = "neighbour"
+from_above = true
+key_gate = { key = 3 }
+
+[[object_type]]
+id = "border_gate_brown"
+name = "Border gate (brown)"
+visit = "neighbour"
+from_above = true
+key_gate = { key = 4 }
+
+[[object_type]]
+id = "border_gate_purple"
+name = "Border gate (purple)"
+visit = "neighbour"
+from_above = true
+key_gate = { key = 5 }
+
+[[object_type]]
+id = "border_gate_white"
+name = "Border gate (white)"
+visit = "neighbour"
+from_above = true
+key_gate = { key = 6 }
+
+[[object_type]]
+id = "border_gate_black"
+name = "Border gate (black)"
+visit = "neighbour"
+from_above = true
+key_gate = { key = 7 }

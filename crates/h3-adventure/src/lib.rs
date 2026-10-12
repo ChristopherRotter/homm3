@@ -9,7 +9,10 @@
 //! reachable-tiles query ([`Reach`], T7b), the persistent grid ([`BitGrid`], T5b), each player's
 //! explored tiles with the reveals, movement on explored tiles only and the events' viewers
 //! ([`Viewers`], T8a), the fringe under `ADV-QUIRK-1`, the observation per player
-//! ([`AdventureObservation`]) and the events' projection ([`AdventureEvent::project`], T8b1).
+//! ([`AdventureObservation`]) and the events' projection ([`AdventureEvent::project`], T8b1),
+//! object types in the ruleset part and the setup ([`ObjectType`], T12a), the objects' contents
+//! drawn at the build, the objects that left the map and the tiles they freed, and the typed
+//! objects a viewer sees ([`ObjectView`], T12b).
 //! Pointer identity (`ptr_eq`, `as_ptr`) is allowed only in the persistent module
 //! `src/persistent.rs` (`arch.toml`, ADR-0016 point 2).
 //!
@@ -50,27 +53,29 @@ pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, Sink, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, native_terrain};
-pub use observe::{AdventureObservation, HeroView, OwnHeroView, TileView};
+pub use observe::{AdventureObservation, HeroView, ObjectView, OwnHeroView, TileView};
 pub use persistent::BitGrid;
 pub use reach::Reach;
 pub use ruleset::{
     AdventureCompileError, AdventurePack, AdventureParams, AdventureParamsDef, AdventureRuleset,
-    MAX_LAND_POINTS, MAX_PLAYERS, Passage, RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind,
-    TerrainMovement, TerrainMovementDef,
+    KEY_COLOURS, MAX_GAIN, MAX_LAND_POINTS, MAX_PICKUP_AMOUNT, MAX_PLAYERS, ObjectKind,
+    ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, Passage, Pickup, PickupDef, RiverDef,
+    RiverId, RiverKind, RoadDef, RoadId, RoadKind, TerrainMovement, TerrainMovementDef, Visit,
 };
 pub use setup::{
-    AdventureSetup, ArmyError, HeroSetup, MapSetup, ObjectKind, ObjectSetup, Pos, SetupError,
-    StandError, TileMask, TileSetup,
+    AdventureSetup, ArmyError, HeroSetup, MapSetup, ObjectSetup, Pos, SetupError, StandError,
+    TileMask, TileSetup,
 };
 pub use state::{AdventureState, HeroOnMap, MapObject, StaticMap, StaticTile};
 
 /// Version of the adventure state's canonical hash encoding (`docs/08-work-process.md`,
 /// "Versions"; owned by the adventure lane). Bump it with any change to what the hash covers.
 /// v1 (E08 T5a): the first encoding ([`AdventureState`]'s `CanonicalHash`). v2 (E08 T6b): a
-/// hero's movement points. v3 (E08 T8a): each player's explored tiles.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 3;
+/// hero's movement points. v3 (E08 T8a): each player's explored tiles. v4 (E08 T12): each
+/// object's type and contents.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 4;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting
-/// stack chances.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 3;
+/// stack chances. v4 (E08 T12a): the object types.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 4;

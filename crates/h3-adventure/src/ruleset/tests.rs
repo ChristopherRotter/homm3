@@ -8,9 +8,9 @@ use std::string::ToString;
 use std::vec;
 use std::vec::Vec;
 
-use core::num::{NonZeroU8, NonZeroU16};
+use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
-use h3_content::{ContentPack, ProfileDef, Ruleset, TerrainDef};
+use h3_content::{ContentPack, ProfileDef, ResourceDef, ResourceId, Ruleset, TerrainDef};
 use h3_kernel::hash::hash_of;
 
 use super::*;
@@ -27,11 +27,20 @@ fn terrain(k: &str) -> TerrainDef {
     }
 }
 
-/// Core packs: `t` (three terrains, the battle parameters and the profile), `u` (depends on `t`,
-/// one terrain) and `v` (no dependencies, no terrains).
+fn resource(k: &str) -> ResourceDef {
+    ResourceDef {
+        key: key(k),
+        name: "Resource".into(),
+    }
+}
+
+/// Core packs: `t` (three terrains, the resources `t:wood` and `t:gold`, the battle parameters
+/// and the profile), `u` (depends on `t`, one terrain, the resource `u:gem`) and `v` (no
+/// dependencies, no terrains).
 fn core() -> Ruleset {
     let t = ContentPack {
         terrains: vec![terrain("t:grass"), terrain("t:sea"), terrain("t:rock")],
+        resources: vec![resource("t:wood"), resource("t:gold")],
         profiles: vec![ProfileDef {
             key: key("t:faithful"),
             quirks: vec![],
@@ -41,6 +50,7 @@ fn core() -> Ruleset {
     };
     let u = ContentPack {
         terrains: vec![terrain("u:swamp")],
+        resources: vec![resource("u:gem")],
         ..ContentPack::new(manifest("u", &["t"]))
     };
     let v = ContentPack::new(manifest("v", &[]));
@@ -82,8 +92,91 @@ fn river(k: &str) -> RiverDef {
     }
 }
 
-/// Adventure packs for [`core`]: `t` gives its terrains, a road, a river and the parameters;
-/// `u` its terrain and a second road; `v` is empty.
+fn object(k: &str, visit: Visit, from_above: bool, kind: ObjectKindDef) -> ObjectTypeDef {
+    ObjectTypeDef {
+        key: key(k),
+        name: "Object".into(),
+        visit,
+        from_above,
+        kind,
+    }
+}
+
+fn n(value: u32) -> NonZeroU32 {
+    NonZeroU32::new(value).unwrap()
+}
+
+fn pile(k: &str, resource: &str, amount: [u32; 2], multiplier: u32) -> ObjectTypeDef {
+    let kind = ObjectKindDef::Pickup(PickupDef::Resource {
+        resource: key(resource),
+        amount,
+        multiplier: n(multiplier),
+    });
+    object(k, Visit::Neighbour, true, kind)
+}
+
+/// `t`'s object types: two piles, a random pile naming a later type of its own pack first, a
+/// paired pickup, a terrain reveal, an area reveal and a key tent, guard and gate.
+fn objects() -> Vec<ObjectTypeDef> {
+    let keys = |list: &[&str]| list.iter().map(|k| key(k)).collect::<Vec<_>>();
+    vec![
+        object(
+            "t:any_pile",
+            Visit::Neighbour,
+            true,
+            ObjectKindDef::Pickup(PickupDef::OneOf(keys(&["t:gold_pile", "t:wood_pile"]))),
+        ),
+        pile("t:wood_pile", "t:wood", [5, 10], 1),
+        pile("t:gold_pile", "t:gold", [5, 10], 100),
+        object(
+            "t:fire",
+            Visit::Neighbour,
+            true,
+            ObjectKindDef::Pickup(PickupDef::Paired {
+                amount: [4, 6],
+                resources: keys(&["t:wood"]),
+                paired: key("t:gold"),
+                multiplier: n(100),
+            }),
+        ),
+        object(
+            "t:mapper",
+            Visit::Enter,
+            false,
+            ObjectKindDef::RevealTerrain {
+                terrains: keys(&["t:sea", "t:grass"]),
+                price: vec![(key("t:gold"), 1000), (key("t:wood"), 2)],
+            },
+        ),
+        object(
+            "t:tower",
+            Visit::Enter,
+            false,
+            ObjectKindDef::RevealArea { radius: 20 },
+        ),
+        object(
+            "t:tent",
+            Visit::Enter,
+            false,
+            ObjectKindDef::KeyTent { key: 0 },
+        ),
+        object(
+            "t:guard",
+            Visit::Neighbour,
+            true,
+            ObjectKindDef::KeyGuard { key: 1 },
+        ),
+        object(
+            "t:gate",
+            Visit::Neighbour,
+            true,
+            ObjectKindDef::KeyGate { key: 7 },
+        ),
+    ]
+}
+
+/// Adventure packs for [`core`]: `t` gives its terrains, a road, a river, the parameters and
+/// [`objects`]; `u` its terrain, a second road and a gem pile; `v` is empty.
 fn packs() -> Vec<AdventurePack> {
     let t = AdventurePack {
         terrains: vec![
@@ -93,12 +186,14 @@ fn packs() -> Vec<AdventurePack> {
         ],
         roads: vec![road("t:dirt_road", 75)],
         rivers: vec![river("t:clear_river")],
+        object_types: objects(),
         params: Some(params()),
         ..AdventurePack::new(manifest("t", &[]))
     };
     let u = AdventurePack {
         terrains: vec![movement("u:swamp", Passage::Land(cost(175)))],
         roads: vec![road("u:cobblestone_road", 50)],
+        object_types: vec![pile("u:gem_pile", "u:gem", [3, 6], 1)],
         ..AdventurePack::new(manifest("u", &["t"]))
     };
     let v = AdventurePack::new(manifest("v", &[]));
@@ -196,11 +291,358 @@ fn the_hash_is_stable_and_sees_every_part() {
         edit(|p| pack(p, "t").params.as_mut().unwrap().max_levels = NonZeroU8::MIN),
         edit(|p| pack(p, "t").params.as_mut().unwrap().max_players = NonZeroU8::MIN),
         edit(|p| pack(p, "t").params.as_mut().unwrap().army_slots = NonZeroU8::MIN),
+        edit(|p| pack(p, "t").object_types[1].name = "Other".into()),
+        edit(|p| pack(p, "t").object_types[1].visit = Visit::Enter),
+        edit(|p| pack(p, "t").object_types[1].from_above = false),
+        edit(|p| pack(p, "t").object_types.swap(1, 2)),
+        edit(|p| pack(p, "u").object_types.clear()),
+        edit(|p| pack(p, "t").object_types[2] = pile("t:gold_pile", "t:gold", [5, 10], 10)),
+        edit(|p| pack(p, "t").object_types[2] = pile("t:gold_pile", "t:gold", [5, 9], 100)),
+        edit(|p| pack(p, "t").object_types[2] = pile("t:gold_pile", "t:gold", [4, 10], 100)),
+        edit(|p| pack(p, "t").object_types[2] = pile("t:gold_pile", "t:wood", [5, 10], 100)),
+        edit(|p| {
+            set_kind(
+                p,
+                0,
+                ObjectKindDef::Pickup(PickupDef::OneOf(vec![key("t:gold_pile")])),
+            )
+        }),
+        edit(|p| set_kind(p, 3, paired([4, 5], &["t:wood"], "t:gold", 100))),
+        edit(|p| set_kind(p, 3, paired([3, 6], &["t:wood"], "t:gold", 100))),
+        edit(|p| set_kind(p, 3, paired([4, 6], &["t:gold"], "t:gold", 100))),
+        edit(|p| set_kind(p, 3, paired([4, 6], &["t:wood"], "t:wood", 100))),
+        edit(|p| set_kind(p, 3, paired([4, 6], &["t:wood"], "t:gold", 10))),
+        edit(|p| set_kind(p, 4, reveal(&["t:sea"], &[("t:gold", 1000), ("t:wood", 2)]))),
+        edit(|p| set_kind(p, 4, reveal(&["t:sea", "t:grass"], &[("t:gold", 1000)]))),
+        edit(|p| {
+            set_kind(
+                p,
+                4,
+                reveal(&["t:sea", "t:grass"], &[("t:gold", 999), ("t:wood", 2)]),
+            )
+        }),
+        edit(|p| set_kind(p, 5, ObjectKindDef::RevealArea { radius: 19 })),
+        edit(|p| set_kind(p, 6, ObjectKindDef::KeyTent { key: 1 })),
+        edit(|p| set_kind(p, 7, ObjectKindDef::KeyGuard { key: 2 })),
+        edit(|p| set_kind(p, 8, ObjectKindDef::KeyGate { key: 6 })),
+        edit(|p| set_kind(p, 6, ObjectKindDef::KeyGuard { key: 0 })),
+        edit(|p| set_kind(p, 7, ObjectKindDef::KeyGate { key: 1 })),
+        edit(|p| set_kind(p, 8, ObjectKindDef::KeyTent { key: 7 })),
+        edit(|p| set_kind(p, 5, ObjectKindDef::KeyTent { key: 4 })),
     ];
     for (i, packs) in changes.iter().enumerate() {
         let other = compile(packs).unwrap();
         assert_ne!(other.content_hash(), base.content_hash(), "change {i}");
     }
+}
+
+fn set_kind(packs: &mut [AdventurePack], index: usize, kind: ObjectKindDef) {
+    pack(packs, "t").object_types[index].kind = kind;
+}
+
+fn paired(amount: [u32; 2], resources: &[&str], paired: &str, multiplier: u32) -> ObjectKindDef {
+    ObjectKindDef::Pickup(PickupDef::Paired {
+        amount,
+        resources: resources.iter().map(|k| key(k)).collect(),
+        paired: key(paired),
+        multiplier: n(multiplier),
+    })
+}
+
+fn reveal(terrains: &[&str], price: &[(&str, u32)]) -> ObjectKindDef {
+    ObjectKindDef::RevealTerrain {
+        terrains: terrains.iter().map(|k| key(k)).collect(),
+        price: price.iter().map(|&(k, a)| (key(k), a)).collect(),
+    }
+}
+
+// covers: ADV-OBJ-002
+#[test]
+fn compiles_object_types() {
+    let core = core();
+    let part = AdventureRuleset::compile(&core, &packs()).unwrap();
+    let id = |k: &str| part.object_type_by_key(k).unwrap();
+    let ty = |k: &str| part.object_type(id(k)).unwrap();
+    let keys: Vec<&str> = part.object_types().iter().map(|t| t.key.as_str()).collect();
+    // `t` before `u` (the core's load order), each pack's types in its order.
+    assert_eq!(
+        keys,
+        [
+            "t:any_pile",
+            "t:wood_pile",
+            "t:gold_pile",
+            "t:fire",
+            "t:mapper",
+            "t:tower",
+            "t:tent",
+            "t:guard",
+            "t:gate",
+            "u:gem_pile"
+        ]
+    );
+    assert_eq!(id("u:gem_pile").raw(), 9);
+    assert_eq!(part.object_type(ObjectTypeId::from_raw(10)), None);
+    assert_eq!(part.object_type_by_key("t:none"), None);
+    let resource = |k: &str| {
+        let index = core.resources().iter().position(|r| r.key.as_str() == k);
+        ResourceId::from_index(index.unwrap()).unwrap()
+    };
+    let terrain = |k: &str| core.terrain_by_key(k).unwrap();
+    assert_eq!(
+        ty("t:any_pile").kind,
+        ObjectKind::Pickup(Pickup::OneOf(vec![id("t:gold_pile"), id("t:wood_pile")]))
+    );
+    assert_eq!(
+        ty("t:gold_pile").kind,
+        ObjectKind::Pickup(Pickup::Resource {
+            resource: resource("t:gold"),
+            amount: [5, 10],
+            multiplier: n(100),
+        })
+    );
+    assert_eq!(
+        (ty("t:gold_pile").visit, ty("t:gold_pile").from_above),
+        (Visit::Neighbour, true)
+    );
+    assert_eq!(
+        ty("u:gem_pile").kind,
+        ObjectKind::Pickup(Pickup::Resource {
+            resource: resource("u:gem"),
+            amount: [3, 6],
+            multiplier: n(1),
+        })
+    );
+    assert_eq!(
+        ty("t:fire").kind,
+        ObjectKind::Pickup(Pickup::Paired {
+            amount: [4, 6],
+            resources: vec![resource("t:wood")],
+            paired: resource("t:gold"),
+            multiplier: n(100),
+        })
+    );
+    // Terrains and prices in the core's order.
+    assert_eq!(
+        ty("t:mapper").kind,
+        ObjectKind::RevealTerrain {
+            terrains: vec![terrain("t:grass"), terrain("t:sea")],
+            price: vec![(resource("t:wood"), 2), (resource("t:gold"), 1000)],
+        }
+    );
+    assert_eq!(
+        (ty("t:mapper").visit, ty("t:mapper").from_above),
+        (Visit::Enter, false)
+    );
+    assert_eq!(ty("t:tower").kind, ObjectKind::RevealArea { radius: 20 });
+    assert_eq!(ty("t:tent").kind, ObjectKind::KeyTent { key: 0 });
+    assert_eq!(ty("t:guard").kind, ObjectKind::KeyGuard { key: 1 });
+    assert_eq!(ty("t:gate").kind, ObjectKind::KeyGate { key: 7 });
+    let takes: Vec<bool> = part
+        .object_types()
+        .iter()
+        .map(ObjectType::takes_amount)
+        .collect();
+    assert_eq!(
+        takes,
+        [
+            true, true, true, false, false, false, false, false, false, true
+        ]
+    );
+}
+
+// covers: ADV-OBJ-002
+#[test]
+fn object_types_reference_known_content() {
+    let outside = |key: &str, pack: &str| AdventureCompileError::ReferenceOutsideDependencies {
+        key: key.into(),
+        pack: pack.into(),
+    };
+    assert_eq!(
+        compile_err(&edit(|p| pack(p, "t").object_types.push(pile(
+            "t:p",
+            "t:iron",
+            [1, 1],
+            1
+        )))),
+        AdventureCompileError::UnknownResource("t:iron".into())
+    );
+    assert_eq!(
+        compile_err(&edit(|p| pack(p, "v").object_types.push(pile(
+            "v:p",
+            "t:wood",
+            [1, 1],
+            1
+        )))),
+        outside("t:wood", "v")
+    );
+    assert_eq!(
+        compile_err(&edit(|p| set_kind(
+            p,
+            0,
+            ObjectKindDef::Pickup(PickupDef::OneOf(vec![key("t:none")]))
+        ))),
+        AdventureCompileError::UnknownObjectType("t:none".into())
+    );
+    // A type of a later pack is out of reach even where its key exists.
+    assert_eq!(
+        compile_err(&edit(|p| set_kind(
+            p,
+            0,
+            ObjectKindDef::Pickup(PickupDef::OneOf(vec![key("u:gem_pile")]))
+        ))),
+        outside("u:gem_pile", "t")
+    );
+    assert_eq!(
+        compile_err(&edit(|p| set_kind(
+            p,
+            3,
+            paired([4, 6], &["t:iron"], "t:gold", 1)
+        ))),
+        AdventureCompileError::UnknownResource("t:iron".into())
+    );
+    assert_eq!(
+        compile_err(&edit(|p| set_kind(
+            p,
+            3,
+            paired([4, 6], &["t:wood"], "u:gem", 1)
+        ))),
+        outside("u:gem", "t")
+    );
+    assert_eq!(
+        compile_err(&edit(|p| set_kind(p, 4, reveal(&["t:lava"], &[])))),
+        AdventureCompileError::UnknownTerrain("t:lava".into())
+    );
+    assert_eq!(
+        compile_err(&edit(|p| set_kind(p, 4, reveal(&["u:swamp"], &[])))),
+        outside("u:swamp", "t")
+    );
+    assert_eq!(
+        compile_err(&edit(|p| set_kind(
+            p,
+            4,
+            reveal(&["t:sea"], &[("t:iron", 1)])
+        ))),
+        AdventureCompileError::UnknownResource("t:iron".into())
+    );
+    assert_eq!(
+        compile_err(&edit(|p| pack(p, "u").object_types.push(pile(
+            "t:p",
+            "t:wood",
+            [1, 1],
+            1
+        )))),
+        AdventureCompileError::KeyOutsidePack {
+            key: "t:p".into(),
+            pack: "u".into()
+        }
+    );
+    assert_eq!(
+        compile_err(&edit(|p| pack(p, "t").object_types.push(pile(
+            "t:fire",
+            "t:wood",
+            [1, 1],
+            1
+        )))),
+        AdventureCompileError::DuplicateKey("t:fire".into())
+    );
+}
+
+// covers: ADV-OBJ-002
+#[test]
+fn object_type_parameters_are_checked() {
+    let invalid = |index: usize, kind: ObjectKindDef| {
+        let error = compile_err(&edit(|p| set_kind(p, index, kind)));
+        let AdventureCompileError::InvalidObjectType { key, reason } = error else {
+            panic!("{error:?}");
+        };
+        let at = packs()[2].object_types[index].key.as_str().to_string();
+        assert_eq!(key, at);
+        reason
+    };
+    let resource = |amount, multiplier| {
+        ObjectKindDef::Pickup(PickupDef::Resource {
+            resource: key("t:wood"),
+            amount,
+            multiplier: n(multiplier),
+        })
+    };
+    let bounds = "amount is not 1 <= low <= high <= MAX_PICKUP_AMOUNT";
+    for amount in [[0, 1], [3, 2], [1, MAX_PICKUP_AMOUNT + 1]] {
+        assert_eq!(invalid(1, resource(amount, 1)), bounds);
+        assert_eq!(invalid(3, paired(amount, &["t:wood"], "t:gold", 1)), bounds);
+    }
+    let gain = "MAX_PICKUP_AMOUNT times the multiplier is above MAX_GAIN";
+    assert_eq!(invalid(1, resource([1, 1], 4097)), gain);
+    assert_eq!(invalid(1, resource([1, 1], u32::MAX)), gain);
+    assert_eq!(
+        invalid(3, paired([1, 1], &["t:wood"], "t:gold", 4097)),
+        gain
+    );
+    // The largest multiplier: MAX_PICKUP_AMOUNT × 4096 = 2 147 479 552.
+    compile(&edit(|p| {
+        set_kind(p, 1, resource([1, MAX_PICKUP_AMOUNT], 4096))
+    }))
+    .unwrap();
+    let one_of = |list: &[&str]| {
+        ObjectKindDef::Pickup(PickupDef::OneOf(list.iter().map(|k| key(k)).collect()))
+    };
+    assert_eq!(invalid(0, one_of(&[])), "one_of is empty");
+    assert_eq!(
+        invalid(0, one_of(&["t:wood_pile", "t:wood_pile"])),
+        "one_of names a type twice"
+    );
+    for not_a_pile in ["t:any_pile", "t:fire", "t:gate"] {
+        assert_eq!(
+            invalid(0, one_of(&["t:wood_pile", not_a_pile])),
+            "one_of names a type that is not a resource pickup"
+        );
+    }
+    assert_eq!(
+        invalid(3, paired([4, 6], &[], "t:gold", 1)),
+        "resources is empty"
+    );
+    assert_eq!(
+        invalid(3, paired([4, 6], &["t:wood", "t:wood"], "t:gold", 1)),
+        "resources names a resource twice"
+    );
+    assert_eq!(invalid(4, reveal(&[], &[])), "terrains is empty");
+    assert_eq!(
+        invalid(4, reveal(&["t:sea", "t:sea"], &[])),
+        "terrains names a terrain twice"
+    );
+    assert_eq!(
+        invalid(4, reveal(&["t:sea"], &[("t:gold", 1), ("t:gold", 2)])),
+        "price names a resource twice"
+    );
+    for amount in [0, MAX_GAIN + 1] {
+        assert_eq!(
+            invalid(4, reveal(&["t:sea"], &[("t:gold", amount)])),
+            "a price is 0 or above MAX_GAIN"
+        );
+    }
+    // A free reveal and the largest price are fine.
+    compile(&edit(|p| set_kind(p, 4, reveal(&["t:sea"], &[])))).unwrap();
+    compile(&edit(|p| {
+        set_kind(p, 4, reveal(&["t:sea"], &[("t:gold", MAX_GAIN)]))
+    }))
+    .unwrap();
+    assert_eq!(
+        invalid(5, ObjectKindDef::RevealArea { radius: 0 }),
+        "radius is 0"
+    );
+    let key_reason = "key is not below KEY_COLOURS";
+    assert_eq!(
+        invalid(6, ObjectKindDef::KeyTent { key: KEY_COLOURS }),
+        key_reason
+    );
+    assert_eq!(
+        invalid(7, ObjectKindDef::KeyGuard { key: KEY_COLOURS }),
+        key_reason
+    );
+    assert_eq!(
+        invalid(8, ObjectKindDef::KeyGate { key: u8::MAX }),
+        key_reason
+    );
 }
 
 #[test]
@@ -279,6 +721,23 @@ fn handles_run_out_after_u16_max_entries() {
     assert_eq!(
         compile_err(&rivers),
         AdventureCompileError::TooManyEntries("river")
+    );
+    let objects = edit(|p| {
+        let v = pack(p, "v");
+        v.object_types = (0..=usize::from(u16::MAX) + 1)
+            .map(|i| {
+                object(
+                    &format!("v:o{i}"),
+                    Visit::Enter,
+                    false,
+                    ObjectKindDef::RevealArea { radius: 1 },
+                )
+            })
+            .collect();
+    });
+    assert_eq!(
+        compile_err(&objects),
+        AdventureCompileError::TooManyEntries("object_type")
     );
 }
 
@@ -422,6 +881,21 @@ fn errors_explain_themselves() {
         (
             AdventureCompileError::UnknownTerrain("t:x".into()),
             "unknown terrain `t:x`",
+        ),
+        (
+            AdventureCompileError::UnknownResource("t:x".into()),
+            "unknown resource `t:x`",
+        ),
+        (
+            AdventureCompileError::UnknownObjectType("t:x".into()),
+            "unknown object type `t:x`",
+        ),
+        (
+            AdventureCompileError::InvalidObjectType {
+                key: "t:x".into(),
+                reason: "radius is 0",
+            },
+            "object type `t:x`: radius is 0",
         ),
         (
             AdventureCompileError::DuplicateTerrain("t:x".into()),

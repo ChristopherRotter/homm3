@@ -96,8 +96,11 @@ impl Reach {
                 if !state.is_explored(hero.owner, pos)
                     || occupied[next]
                     || !enterable_terrain(part, &to)
-                    || to.blocked
-                    || to.visitable
+                    || ((to.blocked || to.visitable) && {
+                        // An object still on the map covers it (the occupancy layer).
+                        let live = state.live(pos, to);
+                        live.blocked || live.visitable
+                    })
                 {
                     continue;
                 }

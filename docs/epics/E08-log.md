@@ -904,3 +904,76 @@ with the price checked by the game, the decision queue and `Answer`, the env's a
 the versions). Detail in `docs/epics/E08-design.md`.
 
 For the user (ADV-Q10): accept the drafts; D-5, D-6, D-7, A-5; the next round.
+
+### Checkpoint after T11a + T11b and T12a + T12b: object types (2026-10-12, `adventure/e08-t12`)
+
+The user merged #113 and answered ADV-Q10: both ADR amendments accepted as written (applied by
+`shared/e08-inc2-adrs`, #115, with `BACKLOG.md`'s E08 row and the glossary); D-5 the reading
+with the wiki; D-6 guarded piles `Unsupported`; D-7 the border guard's question a second offer;
+A-5 always fixed; the round T12 in two parts, T12a and T12b, one pull request.
+
+**T12a — object types as data and in the import.**
+- **Ruleset part** (`h3-adventure`, `src/ruleset/objects.rs`; ruleset-part hash v4): `ObjectType`
+  (key, name, `Visit::{Enter, Neighbour}`, `from_above`, `ObjectKind`), `ObjectTypeId`, by key.
+  Kinds: `Pickup(Pickup::{Resource, OneOf, Paired})` (a pile: a resource, the bounds of a drawn
+  amount and a multiplier; a random resource: one of these types; a campfire: an amount, one of
+  these resources and the paired resource times a multiplier), `RevealTerrain { terrains,
+  price }`, `RevealArea { radius }`, `KeyTent`, `KeyGuard`, `KeyGate` (a colour below
+  `KEY_COLOURS` = 8). Compiled per pack in two passes (keys first, so a type may name a later
+  type of its own pack); references stay in the pack's dependency closure; a check after every
+  pack that `OneOf` names resource pickups only. Bounds: an amount from 1 to
+  `MAX_PICKUP_AMOUNT` (0x7FFFF, the original's 19 bits), `MAX_PICKUP_AMOUNT` × the multiplier
+  within `MAX_GAIN` (2³¹ − 1, the treasury's cap), prices from 1 to `MAX_GAIN`, radius ≥ 1.
+- **Packs** (`h3-pack-adventure`: `[[object_type]]` with one kind table: `pickup`,
+  `pickup_one_of`, `pickup_paired`, `reveal_terrain`, `reveal_area`, `key_tent`, `key_guard`,
+  `key_gate`): the base pack's 30 types (seven piles, the random resource, the campfire, three
+  Cartographers, the two observatories, eight tents and eight guards) and AB's eight border gates,
+  each with its sources.
+- **Setup** (`ObjectSetup`): `object_type: Option<ObjectTypeId>` (none: a blocker) and `amount`
+  (a pile's or random resource's fixed amount, 1 to 0x7FFFF); `SetupError::{UnknownObjectType,
+  ObjectAmount}`; the static map keeps both (adventure state hash v4).
+- **Import** (`MAP_IMPORT_VERSION` 2, `h3m.md` "Import"): `codes::object_type(class,
+  subclass)`, a subclass the class does not define is `ImportError::Subclass`; a resource body's
+  amount (0 none); a pile or random resource with a guards record is
+  `Unsupported::GuardedPile` (D-6; even an empty record, as the reading of the loader is
+  missing), a blocker in `import_map`. The shipped maps: every static layer still imports and
+  validates; 9 import whole (`Myth and Legend` now has a guarded pile), 5 are unsupported for a
+  guarded pile.
+- **Rules**: ADV-OBJ-002 `implemented`; ADV-PIK-001 to -003 and ADV-VIS-001 to -005 written
+  `specified` with their sources (data in the packs, tests on the data).
+- **Golden replays** re-recorded for the new ruleset-part hash, import version and state hash
+  (the commands are unchanged; the record options are in the test's doc comment).
+- The ADR drafts left `adr-drafts/` (applied by #115).
+
+**T12b — objects in the state.**
+- **Contents drawn at the build** (ADV-PIK-001 to -003 `implemented`): `AdventureState::new`
+  takes the setup stream (`h3_game` passes it after drawing the starting armies, GAM-SET-001's
+  order, tested in `h3-game`); the original's two walks in object order: each random resource's
+  pile type (`below(n)`), then each pile's amount where the map fixes none and each paired
+  pickup's amount then resource. `MapObject.contents` (resource, amount × multiplier) replaces
+  T12a's amount; `MapObject` is no longer `Copy`. Every draw is valid, so validity does not depend
+  on the seed. A test replays the draws by hand for 50 seeds.
+- **Removed objects and the occupancy layer** (`src/state/occupancy.rs`, ADR-0016 point 1): a
+  `BitGrid` of removed objects (32 a row; `SetupError::Objects` beyond 32 × 65 535) and two
+  `BitGrid`s of freed tiles (blocked, visitable), held as `Option<Arc<Occupancy>>`, none until an
+  object leaves: a fork costs one reference more at most, and a tile is read through it only
+  where the static tile is marked. `check_tile` (ADV-MAP-001, so `MoveHero`), the reachable-tiles
+  query and the observation's tiles read the live tile. Measured (`bench-check`, valgrind): read
+  on every tile of the query it cost +4.1 % on random play and the query; as built +0.35 % (fork),
+  +0.86 % (random play), +0.91 % (query), under the 2 % gate, so no re-baseline. `AdventureState::remove_object` frees each tile no other object still on the
+  map covers so (tested with overlapping objects); its first caller is T13 (an `expect(dead_code)`
+  outside tests until then). The state hash covers the removed objects (the freed tiles follow).
+- **Observation**: `AdventureObservation.objects`, an `ObjectView` (type, anchor, masks) per typed
+  object still on the map with a covered tile the viewer sees (explored, or the fringe under
+  `ADV-QUIRK-1`), in map order. Not the object's index: it counts the objects before it, seen or
+  not (the hygiene property found that a removal out of sight would shift it). Blockers are
+  left out (the tiles show them).
+- **Play properties** (`h3-map`'s `play.rs`): plans lay out typed objects too (a wood pile of a
+  drawn amount, 300 gold, a campfire, a Redwood Observatory, a Keymaster's tent; no random
+  resource, whose drawn type shows), so atomicity, legality, isolation, hygiene (other seeds draw
+  other contents) and determinism run with them; a fixed test checks a pile and a campfire in sight
+  show the same for 20 seeds whose contents differ. The fixtures' maps are unchanged.
+- The static layer check of the shipped maps builds a one-player game (`GameSetup::validate`),
+  so it draws contents as a game does; still every static layer validates.
+- Golden replays re-recorded again (state hash v4's final encoding); commands unchanged.
+

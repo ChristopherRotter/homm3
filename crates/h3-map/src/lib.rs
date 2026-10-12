@@ -32,7 +32,8 @@ pub use parse::parse;
 /// Version of the import from a map file into the game's setup (ADR-0015, ADV-Q2): a replay names
 /// its map by content hash and path plus this version, and verifying it re-imports the map. Bump
 /// it with any change that alters an imported setup (`docs/08-work-process.md`, "Versions").
-pub const MAP_IMPORT_VERSION: u32 = 1;
+/// v2 (E08 T12a): object types and the piles' fixed amounts; guarded piles unsupported.
+pub const MAP_IMPORT_VERSION: u32 = 2;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

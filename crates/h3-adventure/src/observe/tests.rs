@@ -1,7 +1,7 @@
 //! Tests of the observation and the events' projection (E08 T8b1): explored tiles, the fringe
 //! under both profiles (ADV-FOG-004, ADV-FOG-005), the heroes a player sees (ADV-FOG-006), a
 //! viewer that is not a player, what hidden state never changes, and the steps' viewers on the
-//! fringe.
+//! fringe; the typed objects a player sees and the tiles removed objects free (T12b).
 
 extern crate std;
 
@@ -18,7 +18,7 @@ use crate::fog::{Sight, on_fringe};
 use crate::ruleset::AdventureRuleset;
 use crate::setup::HeroSetup;
 use crate::testing::{
-    GNOLL, PEASANT, PIKEMAN, hero_at, movement_rules, movement_rules_up_to, world_state,
+    GNOLL, PEASANT, PIKEMAN, WOOD_PILE, hero_at, movement_rules, movement_rules_up_to, world_state,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -177,7 +177,8 @@ fn the_planes_and_the_tiles_line_up_on_a_wide_map_with_two_levels() {
     for faithful in [false, true] {
         let rules = movement_rules_up_to(faithful, 70);
         let setup = crate::testing::world(&rows, 2, heroes.clone());
-        let state = AdventureState::new(&rules.0, &rules.1, &setup).unwrap();
+        let state =
+            AdventureState::new(&rules.0, &rules.1, &setup, &mut crate::testing::draws()).unwrap();
         let seen = state.observe(&rules.0, RED);
         assert_eq!(
             (seen.width, seen.height, seen.levels, seen.stride),
@@ -403,4 +404,52 @@ fn an_event_shows_to_its_viewers_naming_only_the_viewer() {
     assert_eq!(both.bits(), 0b11);
     assert_eq!(both.intersection(blue), blue);
     assert_eq!(red.intersection(blue), Viewers::NONE);
+}
+
+// covers: ADV-FOG-004, ADV-FOG-005
+#[test]
+fn a_typed_object_shows_whole_once_a_tile_it_covers_is_seen() {
+    // Wood piles at (3, 3) (explored by red's hero at (2, 2)), (2, 8) (red's fringe) and
+    // (13, 13) (hidden); a blocker at (4, 4), never listed; blue's hero at (12, 12).
+    let marks = [(3, 3, 'P'), (2, 8, 'P'), (13, 13, 'P'), (4, 4, 'T')];
+    let heroes = || {
+        vec![
+            hero_at(1, 0, p(2, 2), &[PIKEMAN]),
+            hero_at(2, 1, p(12, 12), &[PEASANT]),
+        ]
+    };
+    let pile = |x: u16, y: u16| ObjectView {
+        object_type: WOOD_PILE,
+        anchor: p(x, y),
+        blocked: TileMask::from_bits(1),
+        visitable: TileMask::from_bits(1),
+    };
+    for faithful in [true, false] {
+        let rules = movement_rules(faithful);
+        let state = state_of(&rules, &marks, heroes());
+        let red = state.observe(&rules.0, RED);
+        // Objects come in map order: (3, 3), (4, 4), (2, 8), (13, 13).
+        let mut expected = vec![pile(3, 3)];
+        if faithful {
+            expected.push(pile(2, 8));
+        }
+        assert_eq!(red.objects, expected, "faithful {faithful}");
+        let blue = state.observe(&rules.0, BLUE);
+        assert_eq!(blue.objects, [pile(13, 13)]);
+        // A viewer that is not a player sees none.
+        assert_eq!(state.observe(&rules.0, PlayerId::new(5)).objects, []);
+        // A removed object shows no more, and its tile is free.
+        let mut removed = state.clone();
+        removed.remove_object(0);
+        let red = removed.observe(&rules.0, RED);
+        assert_eq!(red.objects.len(), usize::from(faithful));
+        let TileView::Seen(tile) = red.tile(p(3, 3)).copied().unwrap() else {
+            panic!("(3, 3) is explored");
+        };
+        assert!(!tile.blocked && !tile.visitable);
+        assert_eq!(
+            state.observe(&rules.0, RED).tile(p(3, 3)),
+            Some(&TileView::Seen(*state.map().tile(p(3, 3)).unwrap()))
+        );
+    }
 }

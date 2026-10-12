@@ -2,10 +2,12 @@
 //! `docs/06-security.md`, "Information hiding"): the observation, materialised per viewer as flat
 //! planes, and the projection of events.
 //!
-//! A viewer sees on its explored tiles their terrain, roads and rivers, what objects cover there
-//! and the heroes standing there (ADV-FOG-004); on the fringe their terrain, roads and rivers, and
-//! under `ADV-QUIRK-1` (the `faithful` profile) also what objects cover there and the heroes
-//! standing there (ADV-FOG-005); nothing of any other tile. Of a hero it sees its tile, owner and
+//! A viewer sees on its explored tiles their terrain, roads and rivers, what objects still on the
+//! map cover there and the heroes standing there (ADV-FOG-004); on the fringe their terrain, roads
+//! and rivers, and under `ADV-QUIRK-1` (the `faithful` profile) also what objects cover there and
+//! the heroes standing there (ADV-FOG-005); nothing of any other tile. A typed object still on the
+//! map shows whole, its type and tiles, once the viewer sees any tile it covers so (ADR-0016 point
+//! 6, E08 T12b); its contents never show. Of a hero it sees its tile, owner and
 //! identity; its army and movement points only if the hero is its own (ADV-FOG-006). Other players'
 //! explored tiles, the seed and the streams never show: an event's projection names the viewer
 //! alone among the players who see it, and a step tells only the tiles the viewer sees the hero
@@ -18,8 +20,8 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
 use crate::command::{AdventureEvent, AdventureEventKind, Viewers};
 use crate::fog::Sight;
-use crate::ruleset::{RiverId, RoadId};
-use crate::setup::Pos;
+use crate::ruleset::{ObjectTypeId, RiverId, RoadId};
+use crate::setup::{Pos, TileMask};
 use crate::state::{AdventureState, StaticTile};
 
 /// What one player may know of the adventure map.
@@ -46,6 +48,8 @@ pub struct AdventureObservation {
     pub tiles: Vec<TileView>,
     /// The heroes the viewer sees, by id: its own and those on a tile it sees them on.
     pub heroes: Vec<HeroView>,
+    /// The typed objects still on the map that the viewer sees, in the map's order (E08 T12b).
+    pub objects: Vec<ObjectView>,
 }
 
 impl AdventureObservation {
@@ -92,6 +96,20 @@ impl AdventureObservation {
     }
 }
 
+/// A typed object as a viewer sees it (ADR-0016 point 6): what it is and where, not what it holds.
+/// Not its index in the static map either: that would count the objects before it, seen or not.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ObjectView {
+    /// Its object type (a random resource's drawn pile type).
+    pub object_type: ObjectTypeId,
+    /// The bottom right tile its masks are relative to.
+    pub anchor: Pos,
+    /// The tiles no hero enters.
+    pub blocked: TileMask,
+    /// The tiles a hero visits it from.
+    pub visitable: TileMask,
+}
+
 /// What a viewer sees of a tile.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TileView {
@@ -107,8 +125,8 @@ pub enum TileView {
         /// The river, if any.
         river: Option<RiverId>,
     },
-    /// Everything the tile holds that does not change after setup, what objects cover there
-    /// included: an explored tile (ADV-FOG-004), or a tile of the fringe under `ADV-QUIRK-1`.
+    /// The tile's terrain, road and river and what objects still on the map cover there: an
+    /// explored tile (ADV-FOG-004), or a tile of the fringe under `ADV-QUIRK-1`.
     Seen(StaticTile),
 }
 
@@ -136,8 +154,9 @@ pub struct OwnHeroView {
 
 impl AdventureState {
     /// What `viewer` may know of the adventure map (ADV-FOG-004 to ADV-FOG-006): its sight's
-    /// planes, built word by word from its explored grid, then each tile's view and the heroes
-    /// it sees. A viewer that is not a player of the game sees no tile and no hero.
+    /// planes, built word by word from its explored grid, then each tile's view, the heroes and
+    /// the typed objects it sees. A viewer that is not a player of the game sees no tile, no hero
+    /// and no object.
     // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006
     pub fn observe(&self, core: &Ruleset, viewer: PlayerId) -> AdventureObservation {
         let map = self.map();
@@ -156,18 +175,30 @@ impl AdventureState {
             fringe: sight.fringe,
             tiles: Vec::with_capacity(map.tiles().len()),
             heroes: Vec::new(),
+            objects: Vec::new(),
         };
         let row_tiles = usize::from(width);
+        // A tile as it stands now; only a tile an object covered can differ from the static map's.
+        let live = |row: usize, x: usize, tile: &StaticTile| {
+            if tile.blocked || tile.visitable {
+                let at = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
+                let height = usize::from(height);
+                let level = u8::try_from(row / height).unwrap_or(u8::MAX);
+                self.live(Pos::new(at(x), at(row % height), level), *tile)
+            } else {
+                *tile
+            }
+        };
         for (row, tiles) in map.tiles().chunks_exact(row_tiles).enumerate() {
-            let at = row * observation.stride;
+            let start = row * observation.stride;
             for (x, tile) in tiles.iter().enumerate() {
-                let (word, bit) = (at + x / 64, x % 64);
+                let (word, bit) = (start + x / 64, x % 64);
                 let view = if observation.explored[word] >> bit & 1 == 1 {
-                    TileView::Seen(*tile)
+                    TileView::Seen(live(row, x, tile))
                 } else if observation.fringe[word] >> bit & 1 == 0 {
                     TileView::Hidden
                 } else if objects_on_fringe {
-                    TileView::Seen(*tile)
+                    TileView::Seen(live(row, x, tile))
                 } else {
                     TileView::Ground {
                         terrain: tile.terrain,
@@ -196,6 +227,23 @@ impl AdventureState {
                 }),
             })
             .collect();
+        let sees =
+            |pos| observation.is_explored(pos) || (objects_on_fringe && observation.is_fringe(pos));
+        let objects = map
+            .objects()
+            .iter()
+            .enumerate()
+            .filter_map(|(index, object)| {
+                let object_type = object.object_type?;
+                (!self.is_removed(index) && object.tiles(map).any(sees)).then_some(ObjectView {
+                    object_type,
+                    anchor: object.anchor,
+                    blocked: object.blocked,
+                    visitable: object.visitable,
+                })
+            })
+            .collect();
+        observation.objects = objects;
         observation
     }
 }

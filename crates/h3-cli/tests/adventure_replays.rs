@@ -4,7 +4,9 @@
 //! with `-C target-cpu=native`; running it on another OS is the cross-platform check. The replays
 //! play the generated duel map `fixtures/maps/e08-duel-36.h3m` (re-record them with
 //! `h3 adventure run … --record` when a rule or an encoding changes on purpose; the commit says
-//! why).
+//! why). They were recorded with `--map fixtures/maps/e08-duel-36.h3m` and: `duel-s1-d28`
+//! `--seed 1 --agent-seed 1 --days 28`; `duel-s2-d7` `--seed 2 --agent-seed 3 --days 7`;
+//! `duel-s5-strict-d7` `--seed 5 --agent-seed 8 --days 7 --profile base:strict-fixed`.
 
 use std::path::PathBuf;
 

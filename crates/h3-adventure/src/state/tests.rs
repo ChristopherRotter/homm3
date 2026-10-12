@@ -8,18 +8,22 @@ use std::string::ToString;
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{CreatureTypeId, TerrainId};
+use h3_content::{CreatureTypeId, ResourceId, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_kernel::{Rng, StreamId};
 
 use super::*;
+use crate::ruleset::MAX_PICKUP_AMOUNT;
 use crate::setup::TileSetup;
-use crate::testing::rules;
+use crate::testing::{ANY_PILE, FIRE, GOLD_PILE, TOWER, WOOD_PILE, draws, rules};
 
 const GRASS: TerrainId = TerrainId::from_raw(0);
 const SEA: TerrainId = TerrainId::from_raw(1);
 const ROCK: TerrainId = TerrainId::from_raw(2);
 const IMP: CreatureTypeId = CreatureTypeId::from_raw(0);
 const GOG: CreatureTypeId = CreatureTypeId::from_raw(1);
+const WOOD: ResourceId = ResourceId::from_raw(0);
+const GOLD: ResourceId = ResourceId::from_raw(1);
 
 fn grass() -> TileSetup {
     TileSetup {
@@ -79,13 +83,15 @@ fn setup() -> AdventureSetup {
                     anchor: Pos::new(1, 1, 0),
                     blocked: mask(&[(0, 0), (1, 0), (2, 0)]),
                     visitable: mask(&[(1, 1)]),
-                    kind: ObjectKind::Blocker,
+                    object_type: None,
+                    amount: None,
                 },
                 ObjectSetup {
                     anchor: Pos::new(2, 2, 1),
                     blocked: mask(&[(0, 0), (1, 0)]),
                     visitable: mask(&[(0, 0)]),
-                    kind: ObjectKind::Blocker,
+                    object_type: None,
+                    amount: None,
                 },
             ],
         },
@@ -102,7 +108,7 @@ fn setup() -> AdventureSetup {
 
 fn build(setup: &AdventureSetup) -> Result<AdventureState, SetupError> {
     let (core, part) = rules();
-    AdventureState::new(&core, &part, setup)
+    AdventureState::new(&core, &part, setup, &mut draws())
 }
 
 fn error(edit: impl FnOnce(&mut AdventureSetup)) -> SetupError {
@@ -150,7 +156,7 @@ fn builds_the_static_map_with_the_objects_footprints() {
     assert_eq!(map.index(Pos::new(3, 2, 1)), Some(23));
     assert_eq!(map.objects().len(), 2);
     assert_eq!(map.objects()[1].anchor, Pos::new(2, 2, 1));
-    assert_eq!(map.objects()[1].kind, ObjectKind::Blocker);
+    assert_eq!(map.objects()[1].object_type, None);
     assert_eq!(map.objects()[0].blocked, mask(&[(0, 0), (1, 0), (2, 0)]));
     assert_eq!(map.objects()[0].visitable, mask(&[(1, 1)]));
 }
@@ -166,14 +172,16 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
             anchor: Pos::new(5, 3, 0),
             blocked: mask(&[(0, 0), (3, 2), (6, 4), (0, 4)]),
             visitable: mask(&[(2, 1)]),
-            kind: ObjectKind::Blocker,
+            object_type: None,
+            amount: None,
         },
         // Covering no tile of the map at all.
         ObjectSetup {
             anchor: Pos::new(u16::MAX, u16::MAX, 1),
             blocked: mask(&[(0, 0)]),
             visitable: mask(&[(0, 0)]),
-            kind: ObjectKind::Blocker,
+            object_type: None,
+            amount: None,
         },
     ];
     let state = build(&setup).unwrap();
@@ -188,6 +196,228 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
     // (2, 1) is blocked, (3, 2) visitable; (5, 3), (-1, -1) and (5, -1) are off the map.
     assert_eq!(marked, [(6, true, false), (11, false, true)]);
     assert_eq!(map.objects().len(), 2);
+}
+
+// covers: ADV-OBJ-002, ADV-PIK-001
+#[test]
+fn objects_keep_their_type_and_a_fixed_amount_only_where_the_type_takes_one() {
+    let typed = |object_type, amount| {
+        let mut setup = setup();
+        let object = &mut setup.map.objects[1];
+        object.object_type = object_type;
+        object.amount = amount;
+        build(&setup).map(|state| state.map().objects()[1].clone())
+    };
+    // A fixed amount is the map's, times the multiplier: gold counts in hundreds.
+    let object = typed(Some(GOLD_PILE), Some(MAX_PICKUP_AMOUNT)).unwrap();
+    assert_eq!(object.object_type, Some(GOLD_PILE));
+    assert_eq!(object.contents, [(GOLD, MAX_PICKUP_AMOUNT * 100)]);
+    // A random pile takes the map's amount too, times the drawn pile's multiplier.
+    let random = typed(Some(ANY_PILE), Some(7)).unwrap();
+    let expected = if random.object_type == Some(GOLD_PILE) {
+        (GOLD, 700)
+    } else {
+        (WOOD, 7)
+    };
+    assert_eq!(random.contents, [expected]);
+    for ty in [WOOD_PILE, GOLD_PILE, FIRE, TOWER] {
+        assert_eq!(typed(Some(ty), None).unwrap().object_type, Some(ty));
+    }
+    assert_eq!(typed(Some(TOWER), None).unwrap().contents, []);
+    assert_eq!(typed(None, None).unwrap().contents, []);
+    // A blocker, a paired pickup and a reveal take no amount; a pile takes 1 to the largest.
+    for (object_type, amount) in [
+        (None, 1),
+        (Some(FIRE), 1),
+        (Some(TOWER), 1),
+        (Some(GOLD_PILE), 0),
+        (Some(GOLD_PILE), MAX_PICKUP_AMOUNT + 1),
+        (Some(ANY_PILE), u32::MAX),
+    ] {
+        assert_eq!(
+            typed(object_type, Some(amount)),
+            Err(SetupError::ObjectAmount(1)),
+            "{object_type:?} {amount}"
+        );
+    }
+}
+
+/// [`setup`] with these typed objects added after its two blockers, one tile each on the
+/// underground's free row, their amounts as given.
+fn with_objects(objects: &[(ObjectTypeId, Option<u32>)]) -> AdventureSetup {
+    let mut setup = setup();
+    for (&(object_type, amount), x) in objects.iter().zip(0..) {
+        setup.map.objects.push(ObjectSetup {
+            anchor: Pos::new(x % 4, 0, 1),
+            blocked: TileMask::default(),
+            visitable: mask(&[(0, 0)]),
+            object_type: Some(object_type),
+            amount,
+        });
+    }
+    setup
+}
+
+/// An object's type and contents after the draws.
+type Drawn = (Option<ObjectTypeId>, Vec<(ResourceId, u32)>);
+
+// covers: ADV-PIK-001, ADV-PIK-002, ADV-PIK-003
+#[test]
+fn random_contents_are_drawn_from_the_setup_stream_in_two_walks() {
+    let objects = [
+        (WOOD_PILE, None),
+        (FIRE, None),
+        (ANY_PILE, None),
+        (GOLD_PILE, Some(3)),
+        (ANY_PILE, Some(2)),
+        (GOLD_PILE, None),
+    ];
+    let setup = with_objects(&objects);
+    let (core, part) = rules();
+    for seed in 0..50 {
+        let state = AdventureState::new(
+            &core,
+            &part,
+            &setup,
+            &mut Rng::for_stream(seed, StreamId::SETUP),
+        )
+        .unwrap();
+        // The same draws by hand: the random piles' types first, then the amounts in object order.
+        let mut d = Rng::for_stream(seed, StreamId::SETUP);
+        let piles = [WOOD_PILE, GOLD_PILE];
+        let first = piles[d.below(2) as usize];
+        let second = piles[d.below(2) as usize];
+        let wood = d.range_inclusive(3, 6);
+        let fire = d.range_inclusive(2, 3);
+        assert_eq!(d.below(1), 0);
+        let pile = |ty, amount| {
+            if ty == GOLD_PILE {
+                vec![(GOLD, amount * 100)]
+            } else {
+                vec![(WOOD, amount)]
+            }
+        };
+        let any = pile(
+            first,
+            d.range_inclusive(
+                if first == GOLD_PILE { 5 } else { 3 },
+                if first == GOLD_PILE { 10 } else { 6 },
+            ),
+        );
+        let gold = d.range_inclusive(5, 10);
+        let found: Vec<Drawn> = state.map().objects()[2..]
+            .iter()
+            .map(|o| (o.object_type, o.contents.clone()))
+            .collect();
+        assert_eq!(
+            found,
+            [
+                (Some(WOOD_PILE), vec![(WOOD, wood)]),
+                (Some(FIRE), vec![(WOOD, fire), (GOLD, fire * 100)]),
+                (Some(first), any),
+                (Some(GOLD_PILE), vec![(GOLD, 300)]),
+                (Some(second), pile(second, 2)),
+                (Some(GOLD_PILE), vec![(GOLD, gold * 100)]),
+            ],
+            "seed {seed}"
+        );
+    }
+    // Every amount of a range and both piles come up; the draws depend on the seed only.
+    let draw = |seed| {
+        let state = AdventureState::new(
+            &core,
+            &part,
+            &setup,
+            &mut Rng::for_stream(seed, StreamId::SETUP),
+        )
+        .unwrap();
+        let objects = state.map().objects();
+        (
+            objects[2].contents[0].1,
+            objects[4].object_type,
+            objects[3].contents[0].1,
+        )
+    };
+    let draws: Vec<_> = (0..100).map(draw).collect();
+    for wood in 3..=6 {
+        assert!(draws.iter().any(|d| d.0 == wood), "{wood}");
+    }
+    assert!(draws.iter().any(|d| d.1 == Some(WOOD_PILE)));
+    assert!(draws.iter().any(|d| d.1 == Some(GOLD_PILE)));
+    for fire in 2..=3 {
+        assert!(draws.iter().any(|d| d.2 == fire), "{fire}");
+    }
+    assert_eq!(draw(7), draw(7));
+}
+
+// covers: ADV-OBJ-001
+#[test]
+fn a_removed_object_frees_the_tiles_no_other_object_covers() {
+    let (_, part) = rules();
+    // The first blocker blocks (1, 1) and (0, 1) of the surface and is visited from (0, 0); an
+    // object over it blocks (1, 1) as well and is visited from (0, 1).
+    let mut setup = setup();
+    setup.heroes[0].pos = Pos::new(2, 1, 0);
+    setup.map.objects.push(ObjectSetup {
+        anchor: Pos::new(1, 1, 0),
+        blocked: mask(&[(0, 0)]),
+        visitable: mask(&[(1, 0)]),
+        object_type: Some(TOWER),
+        amount: None,
+    });
+    let base = build(&setup).unwrap();
+    let map = base.map();
+    let mut state = base.clone();
+    let flags = |s: &AdventureState, x, y| {
+        let tile = s.live(Pos::new(x, y, 0), map.at(Pos::new(x, y, 0)));
+        (tile.blocked, tile.visitable)
+    };
+    assert_eq!(flags(&state, 1, 1), (true, false));
+    assert_eq!(flags(&state, 0, 1), (true, true));
+    assert_eq!(flags(&state, 0, 0), (false, true));
+    state.remove_object(0);
+    assert!(state.is_removed(0));
+    assert!(!state.is_removed(2));
+    // (1, 1) stays blocked by the tower, (0, 1) is visited from it but blocked no more, and (0, 0)
+    // is free; the static map keeps both footprints.
+    assert_eq!(flags(&state, 1, 1), (true, false));
+    assert_eq!(flags(&state, 0, 1), (false, true));
+    assert_eq!(flags(&state, 0, 0), (false, false));
+    assert!(map.at(Pos::new(0, 0, 0)).visitable);
+    assert_eq!(state.check_stand(&part, Pos::new(0, 1, 0)), Ok(()));
+    assert_eq!(base.check_stand(&part, Pos::new(0, 1, 0)), Ok(()));
+    // Removing the tower too frees the rest; removing again, or an object past the map's, changes
+    // nothing.
+    state.remove_object(2);
+    assert_eq!(flags(&state, 1, 1), (false, false));
+    assert_eq!(flags(&state, 0, 1), (false, false));
+    let done = state.clone();
+    state.remove_object(2);
+    state.remove_object(3);
+    assert_eq!(state, done);
+    assert_eq!(
+        base.check_stand(&part, Pos::new(1, 1, 0)),
+        Err(StandError::Blocked)
+    );
+    assert_eq!(state.check_stand(&part, Pos::new(1, 1, 0)), Ok(()));
+    // Removals are state: a fork's own, and in the hash.
+    assert_eq!(flags(&base, 0, 0), (false, true));
+    assert_ne!(state.state_hash(), base.state_hash());
+    assert_ne!(state, base);
+    let mut other = base.clone();
+    other.remove_object(2);
+    other.remove_object(0);
+    assert_eq!(other.state_hash(), state.state_hash());
+    assert_eq!(other, state);
+}
+
+#[test]
+fn objects_beyond_what_the_state_tracks_are_rejected() {
+    let mut setup = setup();
+    let object = setup.map.objects[0];
+    let many = Occupancy::ROW * usize::from(u16::MAX) + 1;
+    setup.map.objects = vec![object; many];
+    assert_eq!(build(&setup), Err(SetupError::Objects(many)));
 }
 
 #[test]
@@ -282,6 +512,14 @@ fn each_broken_invariant_is_its_own_error() {
         SetupError::ObjectLevel(1)
     );
     assert_eq!(
+        error(|s| s.map.objects[1].object_type = Some(ObjectTypeId::from_raw(5))),
+        SetupError::UnknownObjectType(1)
+    );
+    assert_eq!(
+        error(|s| s.map.objects[0].amount = Some(1)),
+        SetupError::ObjectAmount(0)
+    );
+    assert_eq!(
         error(|s| s.heroes[1].id = HeroId::new(5)),
         SetupError::DuplicateHero(HeroId::new(5))
     );
@@ -356,6 +594,15 @@ fn the_errors_read_well() {
             SetupError::ObjectLevel(3),
             "object 3 is anchored on a missing level",
         ),
+        (
+            SetupError::UnknownObjectType(3),
+            "object 3 has an unknown object type",
+        ),
+        (
+            SetupError::ObjectAmount(3),
+            "object 3 has an amount its type does not take",
+        ),
+        (SetupError::Objects(9), "9 objects are too many"),
         (SetupError::DuplicateHero(hero), "hero 4 is placed twice"),
         (
             SetupError::UnknownOwner(hero),
@@ -432,6 +679,11 @@ fn the_hash_sees_content_not_sharing() {
         |s| s.map.objects[1].blocked = mask(&[(1, 0)]),
         |s| s.map.objects[1].blocked = mask(&[(0, 0)]),
         |s| s.map.objects[1].visitable = TileMask::default(),
+        |s| s.map.objects[1].object_type = Some(TOWER),
+        |s| {
+            s.map.objects[1].object_type = Some(GOLD_PILE);
+            s.map.objects[1].amount = Some(1);
+        },
         |s| s.map.objects.truncate(1),
         |s| {
             s.map.width = 3;
@@ -457,6 +709,14 @@ fn the_hash_sees_content_not_sharing() {
         assert_ne!(other.state_hash(), base.state_hash(), "change {i}");
         assert_ne!(other, base, "change {i}");
     }
+    let pile = |amount| {
+        let mut setup = setup();
+        setup.map.objects[1].object_type = Some(GOLD_PILE);
+        setup.map.objects[1].amount = amount;
+        build(&setup).unwrap().state_hash()
+    };
+    assert_ne!(pile(Some(1)), pile(None));
+    assert_ne!(pile(Some(1)), pile(Some(2)));
     let mut more = setup();
     more.players = 1;
     more.heroes[0].owner = PlayerId::new(0);

@@ -1,7 +1,8 @@
-//! The import (ADR-0015 point 4, E08 T5a and T6a): a raw map and the game's rules into
-//! `h3_game::GameSetup`. It maps the format's codes to content keys and handles, draws nothing
-//! (a hero without its own army keeps the starting-army placeholder) and rejects what the
-//! current increment cannot represent with a typed [`Unsupported`] error. It checks no game
+//! The import (ADR-0015 point 4, E08 T5a, T6a and T12a): a raw map and the game's rules into
+//! `h3_game::GameSetup`. It maps the format's codes to content keys and handles (the object
+//! classes to object types, ADV-OBJ-002), draws nothing (a hero without its own army keeps the
+//! starting-army placeholder, a pile without an amount draws it when the game is built) and
+//! rejects what the current increment cannot represent with a typed [`Unsupported`] error. It checks no game
 //! invariant: `GameSetup::validate` does, with the checks commands use. Notes:
 //! `docs/formats/h3m.md`, "Import".
 
@@ -9,14 +10,15 @@ pub(crate) mod codes;
 
 use std::fmt;
 
-use h3_adventure::{MapSetup, ObjectKind, ObjectSetup, Pos, TileMask, TileSetup};
+use h3_adventure::{MapSetup, ObjectSetup, Pos, TileMask, TileSetup};
 use h3_content::CreatureTypeId;
 use h3_contracts::{ArmyStack, PlayerId};
 use h3_game::{GameHeroSetup, GameRuleset, GameSetup, HeroArmy, PlayerSetup};
 
 use crate::model::{Army, Body, HeroBody, Object, RawMap, Template, Version};
 
-/// Object classes the import tells apart; every other object is a blocker in increment 1.
+/// Object classes the import tells apart beside the typed ones (`codes::object_type`); every other
+/// object is a blocker.
 const HERO: u32 = 34;
 const RANDOM_HERO: u32 = 70;
 const RANDOM_TOWN: u32 = 77;
@@ -42,6 +44,9 @@ pub enum Unsupported {
     /// (towns: E09; VCMI 1.7.5 `CGameState::placeHeroesInTowns` moves it to its own town's
     /// entrance, an "H3M format quirk").
     HeroInTown(usize),
+    /// The object at this index is a guarded resource pile, which fights before the pickup
+    /// (battles: increment 3; ADV-Q10, D-6). Its static layer keeps it as a blocker.
+    GuardedPile(usize),
 }
 
 impl Unsupported {
@@ -53,6 +58,7 @@ impl Unsupported {
             Self::HeroPlaceholder(_) => "a campaign hero placeholder",
             Self::RandomStack(_) => "a random stack in a hero's army",
             Self::HeroInTown(_) => "a hero standing in a town",
+            Self::GuardedPile(_) => "a guarded resource pile",
         }
     }
 }
@@ -75,6 +81,9 @@ pub enum ImportError {
     MissingContent(&'static str),
     /// The object at this index names a template the map does not have.
     Template(usize),
+    /// The object at this index has a subclass its class does not define (a resource pile of
+    /// resource 7).
+    Subclass(usize),
     /// The hero object at this index belongs to a colour nobody plays.
     HeroOwner(usize),
     /// The hero object at this index has a template without exactly one visitable tile on the
@@ -92,6 +101,12 @@ impl fmt::Display for ImportError {
             Self::UnknownCode { what, code } => write!(f, "unknown {what} code {code}"),
             Self::MissingContent(key) => write!(f, "the ruleset lacks `{key}`"),
             Self::Template(object) => write!(f, "object {object} has no template"),
+            Self::Subclass(object) => {
+                write!(
+                    f,
+                    "object {object} has a subclass its class does not define"
+                )
+            }
             Self::HeroOwner(object) => {
                 write!(f, "hero object {object} belongs to a colour nobody plays")
             }
@@ -116,10 +131,13 @@ impl From<Unsupported> for ImportError {
 /// # Errors
 ///
 /// The first [`ImportError`] found: the players (a hero generated at a main town), the static
-/// map, then the hero objects in the map's order.
+/// map, its first guarded pile, then the hero objects in the map's order.
 pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportError> {
     let (players, colours) = players(map)?;
-    let static_map = import_map(map, rules)?;
+    let (static_map, guarded) = static_layer(map, rules)?;
+    if let Some(index) = guarded {
+        return Err(Unsupported::GuardedPile(index).into());
+    }
     let objects = objects(map)?;
     let towns: Vec<ObjectSetup> = objects
         .iter()
@@ -155,31 +173,80 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
     })
 }
 
-/// Imports the static map (E08 T5a): the size, every tile's terrain, road and river, and every
-/// object but the heroes as a blocker with its footprint (ADV-OBJ-001).
+/// Imports the static map (E08 T5a, T12a): the size, every tile's terrain, road and river, and
+/// every object but the heroes with its footprint (ADV-OBJ-001) and, for the typed classes, its
+/// object type and fixed amount (ADV-OBJ-002); every other object is a blocker, and so is a
+/// guarded pile here (the whole [`import`] refuses it).
 ///
 /// # Errors
 ///
-/// The first [`ImportError`] found: the map's size, the tiles, then the objects' templates.
+/// The first [`ImportError`] found: the map's size, the tiles, then the objects' templates and
+/// types in the map's order.
 pub fn import_map(map: &RawMap, rules: &GameRuleset) -> Result<MapSetup, ImportError> {
+    static_layer(map, rules).map(|(setup, _)| setup)
+}
+
+/// [`import_map`] with the index of the first guarded pile.
+fn static_layer(
+    map: &RawMap,
+    rules: &GameRuleset,
+) -> Result<(MapSetup, Option<usize>), ImportError> {
     let side = u16::try_from(map.terrain.size);
     let levels = u8::try_from(map.terrain.levels);
     let (Ok(side), Ok(levels)) = (side, levels) else {
         return Err(ImportError::MapSize(map.terrain.size, map.terrain.levels));
     };
     let tiles = tiles(map, rules)?;
-    let objects = objects(map)?
-        .into_iter()
-        .filter(|(_, _, template)| !matches!(template.class, HERO | RANDOM_HERO | HERO_PLACEHOLDER))
-        .map(|(_, object, template)| footprint(object, template))
-        .collect();
-    Ok(MapSetup {
+    let mut guarded = None;
+    let mut placed = Vec::new();
+    for (index, object, template) in objects(map)? {
+        if matches!(template.class, HERO | RANDOM_HERO | HERO_PLACEHOLDER) {
+            continue;
+        }
+        let (setup, guards) = typed(rules, index, object, template)?;
+        if guards {
+            guarded = guarded.or(Some(index));
+        }
+        placed.push(setup);
+    }
+    let setup = MapSetup {
         width: side,
         height: side,
         levels,
         tiles,
-        objects,
-    })
+        objects: placed,
+    };
+    Ok((setup, guarded))
+}
+
+/// An object with its footprint and, for a typed class, its object type and the amount the map
+/// fixes (0 is none: drawn when the game is built); whether it is a guarded pile, which stays a
+/// blocker. A guards record counts even without stacks (the original flags a guarded pile's tile,
+/// 0x4A4BF4; how its loader treats an empty record was not read).
+// rule: ADV-OBJ-002
+fn typed(
+    rules: &GameRuleset,
+    index: usize,
+    object: &Object,
+    template: &Template,
+) -> Result<(ObjectSetup, bool), ImportError> {
+    let mut setup = footprint(object, template);
+    let Some(key) = codes::object_type(template.class, template.subclass) else {
+        return Ok((setup, false));
+    };
+    let key = key.ok_or(ImportError::Subclass(index))?;
+    let object_type = rules
+        .adventure()
+        .object_type_by_key(key)
+        .ok_or(ImportError::MissingContent(key))?;
+    if let Body::Resource { message, amount } = &object.body {
+        if message.as_ref().is_some_and(|m| m.guards.is_some()) {
+            return Ok((setup, true));
+        }
+        setup.amount = (*amount != 0).then_some(*amount);
+    }
+    setup.object_type = Some(object_type);
+    Ok((setup, false))
 }
 
 /// The objects with their index and template.
@@ -286,7 +353,8 @@ fn footprint(object: &Object, template: &Template) -> ObjectSetup {
         ),
         blocked: TileMask::from_bits(!reversed(template.passable)),
         visitable: TileMask::from_bits(reversed(template.visitable)),
-        kind: ObjectKind::Blocker,
+        object_type: None,
+        amount: None,
     }
 }
 

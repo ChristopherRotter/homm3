@@ -401,3 +401,238 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Movement"
   retrieved  = "2026-10-09"
   confidence = "medium"
+
+# Increment 2 (E08 T12a; survey docs/rules/surveys/E08-objects.md). The object types' data is in
+# packs/base/adventure.toml and packs/ab/adventure.toml; a rule stays `specified` until the task
+# that builds it (T12b the setup's draws, T13 visits and pickups, T14 the Cartographer, T15 the
+# other visitable objects).
+
+[[rule]]
+id       = "ADV-OBJ-002"
+title    = "Object types: the import's classes and subclasses"
+context  = "adventure"
+status   = "implemented"
+summary  = "The import maps an object's class and subclass to an object type of the adventure ruleset part (ADR-0016 point 4): resource piles (79, subclass = the resource 0-6), random resources (76), campfires (12), Cartographers (13: 0 water, 1 land, 2 subterranean), the Redwood Observatory (58), the Pillar of Fire (60), Keymaster's tents (10), border guards (9) and border gates (212, AB and SoD), each by key colour 0-7. A subclass its class does not define is an import error; every other class stays a blocker (its blocked and visitable tiles block). A type names its kind with typed parameters and two visit properties: entered or visited from a neighbouring tile, and visitable from above or not (classes 9, 12, 76, 79 and 212 are visited from a neighbour and from above; 10, 13, 58 and 60 are entered, not from above). A pile's or random resource's body gives a fixed amount (0 is none, drawn at setup; gold in hundreds), from 1 to 0x7FFFF, which the setup checks; a pile with a guards record is unsupported until battles exist (ADV-Q10, D-6). E08 T12a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe: the per-class settings (232 records at 0x691698, filled at 0x41B500 from the lists 'cannot be entered' 0x63AA58 and 'visitable from above' 0x63AB00); a pile's amount in 19 bits of its tile (0x4C1AE4 tests & 0x7FFFF), its guards flagged in bit 31 (0x4A4BF4); survey E08-objects.md §1, §2"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapping/MapFormatH3M.cpp readResource (amountMultiplier: gold × 100), readMessageAndGuards; config/objects/moddables.json (resource, keymaster, borderGuard, borderGate subtypes by colour); CGResource::initObj, CGBorderGuard::initObj (blockVisit); ObjectTemplate.cpp isOnVisitableFromTopList"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/MapFormatH3M.cpp"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-PIK-001"
+title    = "Resource piles"
+context  = "adventure"
+status   = "implemented"
+summary  = "A resource pile holds one resource: the map's fixed amount or, when it gives none, one drawn at setup between 5 and 10 (wood, ore, gold) or 3 and 6 (mercury, sulfur, crystal, gems), times the type's multiplier (gold 100). A visit gives the visitor's owner the amount and removes the pile (T13). Data: packs/base/adventure.toml (pile_*). E08 T12b: the draw when the game is built (`AdventureState::new`, in the second walk, in object order, from the setup stream after the starting armies), the contents in the static map, hidden from every viewer. D-5: the user took the reading with the wiki over VCMI's 6-10 and 3-5 (ADV-Q10)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe: new_game_heroes 0x4BFE70 calls 0x4C0CC0, which draws random_between(5, 10) or (3, 6) per resource at 0x4C1AD1 for a pile whose amount is 0; the visit 0x4A4BE0 gives the amount (gold × 100, 0x4A4C25) through 0x4E3600 and removes the pile; survey E08-objects.md §3.1"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Resources - Heroes 3 wiki: '5-10 units of Wood' (and Ore), '3-6 units' of Mercury, Sulfur and Crystal, '500-1000 units of gold'"
+  url        = "https://heroes.thelazy.net/index.php/Resources"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/moddables.json resource.amounts: wood and ore 6-10, the rare resources 3-5, gold 5-10 × 100, drawn at setup (ResourceInstanceConstructor::randomizeObject); CGResource::onHeroVisit collectRes"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/moddables.json"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
+  note       = "Disagrees on the ranges (D-5); not taken (ADV-Q10)."
+
+[[rule]]
+id       = "ADV-PIK-002"
+title    = "Random resources"
+context  = "adventure"
+status   = "implemented"
+summary  = "A random resource becomes a resource pile of one of the seven resources at setup, with equal chances; its amount is the map's or drawn as the pile's (ADV-PIK-001). Data: packs/base/adventure.toml (random_resource). E08 T12b: the first walk of the draws when the game is built, in object order; the drawn pile type shows to a viewer as the object's type."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe: new_game_heroes calls 0x4C9DD0 (at 0x4BFFF7) before 0x4C0CC0 (0x4BFFFE); it turns each random resource into a pile of random_between(0, 6) (0x4C9EFB); survey E08-objects.md §3.2"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "CGResource::pickRandomObject: nextInt(WOOD, 6), the file's amount times the new type's multiplier"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-PIK-003"
+title    = "Campfires"
+context  = "adventure"
+status   = "implemented"
+summary  = "A campfire draws at setup an amount of 4 to 6, then one of wood, mercury, ore, sulfur, crystal and gems with equal chances; a visit gives that many of the resource and 100 times as much gold, and removes the campfire (T13). Data: packs/base/adventure.toml (campfire). E08 T12b: the draw when the game is built (the second walk), the contents hidden from every viewer."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe: 0x4C0CC0 case 12 (0x4C0EE5) draws random_between(4, 6), then random_between(0, 5); the visit 0x4A1120 gives gold then the resource (0x4A1185); survey E08-objects.md §3.3"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/rewardablePickable.json campfire: the six resources with 4/400, 5/500, 6/600, drawn at setup"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/rewardablePickable.json"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Campfire - Heroes 3 wiki: 400-600 gold and 4-6 of another resource; disappears after the first visit"
+  url        = "https://heroes.thelazy.net/index.php/Campfire"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-VIS-001"
+title    = "The Cartographers"
+context  = "adventure"
+status   = "specified"
+summary  = "A Cartographer offers its visitor's owner, once per player and kind, to reveal every tile of its terrains on both levels for 1 000 gold: water; dirt, sand, grass, snow, swamp, rough and lava; subterranean (rock in none). With less gold there is no offer; declining keeps the offer for a later visit (T14). Data: packs/base/adventure.toml (cartographer_*)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe: visit case 13 (0x4A8A14): flags per kind (game +0x4E372), 1 000 gold (0x3E8), a yes/no question; the reveal 0x4CA240 by the masks set at 0x4CE457 (water 0x100, land 0xBF, subterranean 0x40); survey E08-objects.md §4"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/cartographer.json: visitMode playerGlobal, canRefuse, 1 000 gold, revealTiles by terrain layer over both levels"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/cartographer.json"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Cartographer - Heroes 3 wiki: the land one 'reveals all tiles, except water and subterranean', the water one 'all water tiles', the subterranean one 'all subterranean tiles'; 1 000 gold in SoD"
+  url        = "https://heroes.thelazy.net/index.php/Cartographer"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-VIS-002"
+title    = "The Redwood Observatory and the Pillar of Fire"
+context  = "adventure"
+status   = "specified"
+summary  = "At every visit the Redwood Observatory and the Pillar of Fire reveal to the visitor's owner the tiles within radius 20 of the visited tile on its level (ADV-FOG-002's disk), at no cost (T15). Data: packs/base/adventure.toml."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe: visit cases 58 and 60 (0x4A9992, 0x4A9A12) call reveal_disk with radius 20 (0x4A9AC6); survey E08-objects.md §5"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/observatory.json: radius 20, visitMode unlimited"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/observatory.json"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Redwood Observatory - Heroes 3 wiki: 'a 20 tile radius around the observatory'"
+  url        = "https://heroes.thelazy.net/index.php/Redwood_Observatory"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-VIS-003"
+title    = "Keymaster's tents"
+context  = "adventure"
+status   = "specified"
+summary  = "A Keymaster's tent gives its visitor's owner the key of its colour (eight colours), at no cost (T15). Data: packs/base/adventure.toml (keymaster_*)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe: visit 0x4A8843 sets the colour's player bit (eight bytes at game +0x4E364); survey E08-objects.md §6"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "CGKeymasterTent::onHeroVisit (visitedObjectsGlobal by colour)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Keymaster's Tent - Heroes 3 wiki: eight colours; the player's heroes may pass guards and gates of its colour"
+  url        = "https://heroes.thelazy.net/index.php/Keymaster%27s_Tent"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-VIS-004"
+title    = "Border guards"
+context  = "adventure"
+status   = "specified"
+summary  = "A border guard is visited from a neighbouring tile; a visitor whose owner holds its key is offered to pass (a second offer, no price; ADV-Q10, D-7), and accepting removes the guard from the map for everyone (T15). Data: packs/base/adventure.toml (border_guard_*)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe: visit 0x4A8734: without the key a message; with it a yes/no question for a human (a computer passes), yes removes the guard (0x4AABB0); survey E08-objects.md §6"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "CGBorderGuard::onHeroVisit, blockingDialogAnswered: a question to every key holder, removeObject on yes"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Border Guard - Heroes 3 wiki: asks a key holder whether to pass, then 'disappears from the map'; 'any hero of any player can pass after that'"
+  url        = "https://heroes.thelazy.net/index.php/Border_Guard"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-VIS-005"
+title    = "Border gates"
+context  = "adventure"
+status   = "specified"
+summary  = "A border gate (AB and SoD) is never removed: the heroes of a player holding its key enter and cross it like a free tile, the others visit it from a neighbouring tile (T15). Data: packs/ab/adventure.toml (border_gate_*)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe: visit 0x4A8DD0, the step's case 212 (0x480EE2), the pathfinder's pass-through test 0x56ABB1; survey E08-objects.md §2.2, §6"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "CGBorderGate::passableFor (the key), onHeroVisit (a message without it)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Border Gate - Heroes 3 wiki: 'cannot be entered or crossed unless' the player has the key; does not disappear; from Armageddon's Blade on"
+  url        = "https://heroes.thelazy.net/index.php/Border_Gate"
+  retrieved  = "2026-10-12"
+  confidence = "medium"

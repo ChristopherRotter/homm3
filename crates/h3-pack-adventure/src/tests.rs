@@ -2,6 +2,9 @@
 
 use std::error::Error;
 
+use h3_adventure::{KEY_COLOURS, ObjectKind, Pickup};
+use h3_content::ResourceId;
+
 use super::*;
 
 const PROFILE: &str = "base:faithful";
@@ -107,13 +110,144 @@ fn the_base_pack_holds_the_sourced_values() {
     );
 }
 
+// covers: ADV-OBJ-002, ADV-PIK-001, ADV-PIK-002, ADV-PIK-003, ADV-VIS-001, ADV-VIS-002
+// covers: ADV-VIS-003, ADV-VIS-004
 #[test]
-fn the_expansions_change_nothing_yet() {
+fn the_base_pack_types_the_objects_of_increment_2() {
+    let (core, part) = compile(&ORIGINAL_PACKS[..1], PROFILE).unwrap();
+    let resource = |key: &str| {
+        let index = core
+            .resources()
+            .iter()
+            .position(|r| r.key.as_str() == key)
+            .unwrap();
+        ResourceId::from_index(index).unwrap()
+    };
+    let ty = |key: &str| {
+        part.object_type(part.object_type_by_key(key).unwrap())
+            .unwrap()
+    };
+    let piles = [
+        ("wood", 5, 10, 1),
+        ("mercury", 3, 6, 1),
+        ("ore", 5, 10, 1),
+        ("sulfur", 3, 6, 1),
+        ("crystal", 3, 6, 1),
+        ("gems", 3, 6, 1),
+        ("gold", 5, 10, 100),
+    ];
+    for (name, low, high, multiplier) in piles {
+        let pile = ty(&format!("base:pile_{name}"));
+        assert_eq!((pile.visit, pile.from_above), (Visit::Neighbour, true));
+        assert!(pile.takes_amount());
+        assert_eq!(
+            pile.kind,
+            ObjectKind::Pickup(Pickup::Resource {
+                resource: resource(&format!("base:{name}")),
+                amount: [low, high],
+                multiplier: NonZeroU32::new(multiplier).unwrap(),
+            })
+        );
+    }
+    let random = ty("base:random_resource");
+    let ObjectKind::Pickup(Pickup::OneOf(choices)) = &random.kind else {
+        panic!("{:?}", random.kind);
+    };
+    let choices: Vec<&str> = choices
+        .iter()
+        .map(|&c| part.object_type(c).unwrap().key.as_str())
+        .collect();
+    assert_eq!(choices.len(), 7);
+    assert!(choices.iter().zip(piles).all(|(c, p)| c.ends_with(p.0)));
+    assert!(random.takes_amount());
+    let campfire = ty("base:campfire");
+    assert!(!campfire.takes_amount());
+    assert_eq!(
+        campfire.kind,
+        ObjectKind::Pickup(Pickup::Paired {
+            amount: [4, 6],
+            resources: ["wood", "mercury", "ore", "sulfur", "crystal", "gems"]
+                .map(|r| resource(&format!("base:{r}")))
+                .to_vec(),
+            paired: resource("base:gold"),
+            multiplier: NonZeroU32::new(100).unwrap(),
+        })
+    );
+    let terrain = |key: &str| core.terrain_by_key(key).unwrap();
+    let gold = vec![(resource("base:gold"), 1000)];
+    for (kind, terrains) in [
+        ("water", vec!["base:water"]),
+        (
+            "land",
+            vec![
+                "base:dirt",
+                "base:desert",
+                "base:grass",
+                "base:snow",
+                "base:swamp",
+                "base:rough",
+                "base:lava",
+            ],
+        ),
+        ("subterranean", vec!["base:subterranean"]),
+    ] {
+        let cartographer = ty(&format!("base:cartographer_{kind}"));
+        assert_eq!(
+            (cartographer.visit, cartographer.from_above),
+            (Visit::Enter, false)
+        );
+        assert_eq!(
+            cartographer.kind,
+            ObjectKind::RevealTerrain {
+                terrains: terrains.into_iter().map(terrain).collect(),
+                price: gold.clone(),
+            }
+        );
+    }
+    for key in ["base:redwood_observatory", "base:pillar_of_fire"] {
+        assert_eq!(ty(key).kind, ObjectKind::RevealArea { radius: 20 });
+        assert_eq!(ty(key).visit, Visit::Enter);
+    }
+    let colours = [
+        "light_blue",
+        "green",
+        "red",
+        "dark_blue",
+        "brown",
+        "purple",
+        "white",
+        "black",
+    ];
+    for (key, colour) in (0..KEY_COLOURS).zip(colours) {
+        let tent = ty(&format!("base:keymaster_{colour}"));
+        assert_eq!(tent.kind, ObjectKind::KeyTent { key });
+        assert_eq!((tent.visit, tent.from_above), (Visit::Enter, false));
+        let guard = ty(&format!("base:border_guard_{colour}"));
+        assert_eq!(guard.kind, ObjectKind::KeyGuard { key });
+        assert_eq!((guard.visit, guard.from_above), (Visit::Neighbour, true));
+    }
+    assert_eq!(part.object_types().len(), 7 + 1 + 1 + 3 + 2 + 8 + 8);
+    assert!(part.object_type_by_key("base:border_gate_red").is_none());
+}
+
+// covers: ADV-VIS-005
+#[test]
+fn the_expansions_add_the_border_gates() {
     let (_, base) = compile(&ORIGINAL_PACKS[..1], PROFILE).unwrap();
     let (ab_core, ab) = compile(&ORIGINAL_PACKS[..2], PROFILE).unwrap();
     let (sod_core, sod) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
-    assert_eq!(ab.content_hash(), base.content_hash());
-    assert_eq!(sod.content_hash(), base.content_hash());
+    assert_ne!(ab.content_hash(), base.content_hash());
+    assert_eq!(sod.content_hash(), ab.content_hash());
+    assert_eq!(ab.object_types().len(), base.object_types().len() + 8);
+    assert_eq!(
+        ab.object_types()[..base.object_types().len()],
+        *base.object_types()
+    );
+    let gate = ab
+        .object_type(ab.object_type_by_key("ab:border_gate_black").unwrap())
+        .unwrap();
+    assert_eq!(gate.kind, ObjectKind::KeyGate { key: 7 });
+    assert_eq!((gate.visit, gate.from_above), (Visit::Neighbour, true));
     // The parts still belong to their own core rulesets.
     assert_eq!(ab.core_hash(), ab_core.content_hash());
     assert_eq!(sod.core_hash(), sod_core.content_hash());
@@ -171,6 +305,76 @@ fn parses_every_field() {
         [[river]]
         id = "stream"
         name = "Stream"
+
+        [[object_type]]
+        id = "heap"
+        name = "Heap"
+        visit = "neighbour"
+        from_above = true
+        pickup = { resource = "coin", amount = [2, 4] }
+
+        [[object_type]]
+        id = "big_heap"
+        name = "Big heap"
+        visit = "neighbour"
+        from_above = false
+        pickup = { resource = "other:gem", amount = [1, 1], multiplier = 10 }
+
+        [[object_type]]
+        id = "any_heap"
+        name = "Any heap"
+        visit = "neighbour"
+        from_above = true
+        pickup_one_of = ["heap", "other:heap"]
+
+        [[object_type]]
+        id = "fire"
+        name = "Fire"
+        visit = "neighbour"
+        from_above = true
+        pickup_paired = { amount = [1, 2], resources = ["coin", "shard"], paired = "gem" }
+
+        [[object_type]]
+        id = "mapper"
+        name = "Mapper"
+        visit = "enter"
+        from_above = false
+        reveal_terrain = { terrains = ["plain", "other:sea"], price = { coin = 5, "other:gem" = 1 } }
+
+        [[object_type]]
+        id = "free_mapper"
+        name = "Free mapper"
+        visit = "enter"
+        from_above = false
+        reveal_terrain = { terrains = ["plain"] }
+
+        [[object_type]]
+        id = "tower"
+        name = "Tower"
+        visit = "enter"
+        from_above = false
+        reveal_area = { radius = 9 }
+
+        [[object_type]]
+        id = "tent"
+        name = "Tent"
+        visit = "enter"
+        from_above = false
+        key_tent = { key = 1 }
+
+        [[object_type]]
+        id = "guard"
+        name = "Guard"
+        visit = "neighbour"
+        from_above = true
+        key_guard = { key = 2 }
+
+        [[object_type]]
+        id = "gate"
+        name = "Gate"
+        visit = "neighbour"
+        from_above = true
+        key_gate = { key = 3 }
         "#,
     )
     .unwrap();
@@ -195,6 +399,115 @@ fn parses_every_field() {
     );
     assert_eq!(pack.rivers[0].key.as_str(), "p:stream");
     assert_eq!(pack.rivers[0].name, "Stream");
+    let k = |text: &str| ContentKey::parse(text).unwrap();
+    let n = |v: u32| NonZeroU32::new(v).unwrap();
+    let kinds: Vec<(&str, &str, Visit, bool, &ObjectKindDef)> = pack
+        .object_types
+        .iter()
+        .map(|t| {
+            (
+                t.key.as_str(),
+                t.name.as_str(),
+                t.visit,
+                t.from_above,
+                &t.kind,
+            )
+        })
+        .collect();
+    assert_eq!(
+        kinds,
+        [
+            (
+                "p:heap",
+                "Heap",
+                Visit::Neighbour,
+                true,
+                &ObjectKindDef::Pickup(PickupDef::Resource {
+                    resource: k("p:coin"),
+                    amount: [2, 4],
+                    multiplier: n(1),
+                })
+            ),
+            (
+                "p:big_heap",
+                "Big heap",
+                Visit::Neighbour,
+                false,
+                &ObjectKindDef::Pickup(PickupDef::Resource {
+                    resource: k("other:gem"),
+                    amount: [1, 1],
+                    multiplier: n(10),
+                })
+            ),
+            (
+                "p:any_heap",
+                "Any heap",
+                Visit::Neighbour,
+                true,
+                &ObjectKindDef::Pickup(PickupDef::OneOf(vec![k("p:heap"), k("other:heap")]))
+            ),
+            (
+                "p:fire",
+                "Fire",
+                Visit::Neighbour,
+                true,
+                &ObjectKindDef::Pickup(PickupDef::Paired {
+                    amount: [1, 2],
+                    resources: vec![k("p:coin"), k("p:shard")],
+                    paired: k("p:gem"),
+                    multiplier: n(1),
+                })
+            ),
+            (
+                "p:mapper",
+                "Mapper",
+                Visit::Enter,
+                false,
+                &ObjectKindDef::RevealTerrain {
+                    terrains: vec![k("p:plain"), k("other:sea")],
+                    price: vec![(k("p:coin"), 5), (k("other:gem"), 1)],
+                }
+            ),
+            (
+                "p:free_mapper",
+                "Free mapper",
+                Visit::Enter,
+                false,
+                &ObjectKindDef::RevealTerrain {
+                    terrains: vec![k("p:plain")],
+                    price: vec![],
+                }
+            ),
+            (
+                "p:tower",
+                "Tower",
+                Visit::Enter,
+                false,
+                &ObjectKindDef::RevealArea { radius: 9 }
+            ),
+            (
+                "p:tent",
+                "Tent",
+                Visit::Enter,
+                false,
+                &ObjectKindDef::KeyTent { key: 1 }
+            ),
+            (
+                "p:guard",
+                "Guard",
+                Visit::Neighbour,
+                true,
+                &ObjectKindDef::KeyGuard { key: 2 }
+            ),
+            (
+                "p:gate",
+                "Gate",
+                Visit::Neighbour,
+                true,
+                &ObjectKindDef::KeyGate { key: 3 }
+            ),
+        ]
+    );
     assert_eq!(
         pack.params,
         Some(AdventureParamsDef {
@@ -248,6 +561,37 @@ fn rejects_malformed_files() {
     assert!(key("[[terrain]]\nterrain = \"Bad:a\"\ncost = 100"));
     assert!(key("[[road]]\nid = \"Bad\"\nname = \"A\"\ncost = 1"));
     assert!(key("[[river]]\nid = \"Bad\"\nname = \"A\""));
+    let object = |kind: &str| {
+        format!(
+            "[[object_type]]\nid = \"o\"\nname = \"O\"\nvisit = \"enter\"\nfrom_above = false\n{kind}"
+        )
+    };
+    assert!(syntax(&object(
+        "reveal_area = { radius = 1 }\nvisit_twice = true"
+    )));
+    assert!(syntax(&object("key_tent = { key = 256 }")));
+    assert!(syntax(&object(
+        "pickup = { resource = \"a\", amount = [1, 2], multiplier = 0 }"
+    )));
+    for kind in ["", "key_tent = { key = 0 }\nkey_gate = { key = 0 }"] {
+        assert_eq!(
+            parse(&object(kind)).unwrap_err(),
+            AdventurePackError::ObjectKind("o".into())
+        );
+    }
+    for kind in [
+        "pickup = { resource = \"Bad\", amount = [1, 2] }",
+        "pickup_one_of = [\"Bad\"]",
+        "pickup_paired = { amount = [1, 2], resources = [\"Bad\"], paired = \"a\" }",
+        "pickup_paired = { amount = [1, 2], resources = [\"a\"], paired = \"Bad\" }",
+        "reveal_terrain = { terrains = [\"Bad\"] }",
+        "reveal_terrain = { terrains = [\"a\"], price = { Bad = 1 } }",
+    ] {
+        assert!(key(&object(kind)), "{kind}");
+    }
+    assert!(key(
+        &object("key_tent = { key = 0 }").replace("id = \"o\"", "id = \"Bad\"")
+    ));
 }
 
 #[test]
@@ -282,6 +626,10 @@ fn errors_explain_themselves() {
         (
             AdventurePackError::TerrainCost("a".into()),
             "terrain `a`: land and water need a cost, an impassable terrain has none".into(),
+        ),
+        (
+            AdventurePackError::ObjectKind("o".into()),
+            "object type `o` needs exactly one kind table".into(),
         ),
         (
             AdventurePackError::Core(PackError::Syntax("eof".into())),

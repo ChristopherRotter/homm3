@@ -4,17 +4,12 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint. T11a (the survey `docs/rules/surveys/E08-objects.md`) and T11b (the ADR amendment drafts in `adr-drafts/`, detail in `docs/epics/E08-design.md`) are done and wait for the checkpoint (ADV-Q10). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-### E08 T12 — Object types in the import
-
-- **Scope:** object types and kinds in the adventure ruleset part (`packs/*/adventure.toml`, `h3-pack-adventure`; sources per type), the import's mapping from class and subclass (every other class a `Blocker`), instance data validated at setup (the rest of E07: amounts, owners, keys), random resources resolved as T11a found, the per-object state table (ADR-0016 point 1), the observation of typed objects as T11b decides; `MAP_IMPORT_VERSION` 2, the adventure state hash; the shipped maps' static layers still import and validate (`--with-original-data`).
-- **Depends on:** T11a, T11b accepted. **Status:** waiting (ADV-Q10: the drafts accepted; D-5 and D-6 decide the pile data and guarded piles).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint. T11a, T11b (ADV-Q10 answered, the ADRs amended) and T12 (in two parts) are done; T12 waits for its checkpoint. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ### E08 T13 — Treasury and pickups
 
-- **Scope:** treasuries in `GameState` with starting resources (decision 16), the two visit modes in `MoveHero` (entering ends the move; a neighbour's visit), resource piles, random resources and campfires (gain, removal, events with their viewers), the treasury in the owner's observation only; the play properties: ownership isolation over treasuries (and each player's stream if a command draws, decision 17), conservation (a treasury changes only by a visit's rule), observation hygiene.
-- **Depends on:** T12. **Status:** waiting (T12).
+- **Scope:** treasuries in `GameState` with starting resources (decision 16), the two visit modes in `MoveHero` (entering ends the move; a neighbour's visit), resource piles, random resources and campfires (gain, removal, events with their viewers), the treasury in the owner's observation only; the play properties: ownership isolation over treasuries (and each player's stream if a command draws, decision 17), conservation (a treasury changes only by a visit's rule), observation hygiene. T12b left `AdventureState::remove_object` (drop its `expect(dead_code)`) and the live tiles for the visits; `MoveHero`'s `Visit` error becomes the visit.
+- **Depends on:** T12. **Status:** waiting (T12's checkpoint).
 
 ### E08 T14 — The Cartographer: the first pending decision
 
@@ -33,9 +28,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-12 (T12b): `ObjectView` has no object index (it would count unseen objects); T14's offer and its events name the object by its visitable tile or anchor, not by index, in what a player sees.
+- 2026-10-12 (T12b, not measured): `remove_object` scans every object for each tile it frees (other objects covering it); a per-tile cover count in the static map if pickups show up in a profile.
+- 2026-10-12 (T12a): the guards record of a pile counts even when empty (`Unsupported`); read the loader (0x4A4BF4's flag) with increment 3's guarded piles.
+
 - 2026-10-12 (T11a): not read, each for the increment that needs it: the computer player's own handling of the Cartographer and observatories (the human path only), the guarded pile's path (0x4A4780, inc. 3), how the loader fits a pile amount above 0x7FFFF (T12 bounds it), the game flag +0x1F69D's 50/50 000 start (probably the tutorial), the computer players' daily resource bonus by difficulty (the wiki's Difficulty level; VCMI has a weekly one; inc. 4), the flying and boat test before a visit from a neighbour (0x4E5CE0, inc. 3), the wiki's "tournament rules" start on impossible (5/2/2 500, probably HD).
 - 2026-10-12 (T11a): the original lets a hero visit the object it stands on again (the space bar); a "visit here" command would let a player re-ask a declined Cartographer without stepping off: with an increment that needs it.
-- 2026-10-12 (T11a): `docs/06-security.md`'s viewer knowledge list gains increment 2's rows (survey §8) with T13's observation.
+- 2026-10-12 (T11a, T12b): `docs/06-security.md`'s viewer knowledge list (a shared path) gains increment 2's rows (survey §8) with T13's observation: typed objects shown whole once a covered tile is seen (T12b), contents never, treasuries the owner's only.
 
 - 2026-10-12 (T10c): `docs/BACKLOG.md`'s E08 row still says "increment 1": update it (in progress, increment 2 refined) with the lane's next `shared/` pull request (T11b's accepted ADRs).
 

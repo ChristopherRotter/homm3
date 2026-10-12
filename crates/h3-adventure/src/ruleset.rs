@@ -5,6 +5,8 @@
 //! of war (T8), so the rule ids `ADV-MOV-001`, `-003`, `-004`, `-007` and `ADV-FOG-001` stay
 //! `specified` until then (`docs/rules/catalog/adventure.toml`).
 //!
+//! Since T12a it holds the object types (`objects.rs`, ADR-0016 point 4).
+//!
 //! A part references core entities by handle (a terrain by its [`TerrainId`]) and its source by
 //! key. Every enabled core pack has exactly one adventure pack (an empty one when the pack has no
 //! `adventure.toml`), so the load order and the dependency closures are the core's.
@@ -21,6 +23,14 @@ use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
 use crate::ADVENTURE_RULESET_HASH_VERSION;
+
+mod objects;
+
+pub use objects::{
+    KEY_COLOURS, MAX_GAIN, MAX_PICKUP_AMOUNT, ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef,
+    ObjectTypeId, Pickup, PickupDef, Visit,
+};
+use objects::{ObjectTables, check_object_types, compile_object_types};
 
 /// Most entries of the land movement table: one per speed a `u8` can hold.
 pub const MAX_LAND_POINTS: usize = 256;
@@ -122,6 +132,8 @@ pub struct AdventurePack {
     pub roads: Vec<RoadDef>,
     /// River kinds.
     pub rivers: Vec<RiverDef>,
+    /// Object types (E08 T12a).
+    pub object_types: Vec<ObjectTypeDef>,
     /// The adventure parameters, if this pack provides them.
     pub params: Option<AdventureParamsDef>,
 }
@@ -134,6 +146,7 @@ impl AdventurePack {
             terrains: Vec::new(),
             roads: Vec::new(),
             rivers: Vec::new(),
+            object_types: Vec::new(),
             params: None,
         }
     }
@@ -253,14 +266,14 @@ pub enum AdventureCompileError {
         /// The dependency.
         dependency: String,
     },
-    /// A pack defines a road or river outside its own namespace.
+    /// A pack defines a road, river or object type outside its own namespace.
     KeyOutsidePack {
         /// The offending key.
         key: String,
         /// The pack defining it.
         pack: String,
     },
-    /// Two road kinds, or two river kinds, share a key.
+    /// Two road kinds, two river kinds or two object types share a key.
     DuplicateKey(String),
     /// A pack references a key of a pack outside its dependency closure.
     ReferenceOutsideDependencies {
@@ -271,6 +284,17 @@ pub enum AdventureCompileError {
     },
     /// A terrain the core ruleset does not define.
     UnknownTerrain(String),
+    /// A resource the core ruleset does not define.
+    UnknownResource(String),
+    /// An object type no pack defines.
+    UnknownObjectType(String),
+    /// An object type's parameters are invalid.
+    InvalidObjectType {
+        /// The object type.
+        key: String,
+        /// Why.
+        reason: &'static str,
+    },
     /// Two packs give one terrain its movement data.
     DuplicateTerrain(String),
     /// A core terrain has no movement data.
@@ -281,7 +305,7 @@ pub enum AdventureCompileError {
     DuplicateParams(String),
     /// The adventure parameters are invalid.
     InvalidParams(&'static str),
-    /// More entries of a kind (`road`, `river`) than handles can address.
+    /// More entries of a kind (`road`, `river`, `object_type`) than handles can address.
     TooManyEntries(&'static str),
 }
 
@@ -308,6 +332,11 @@ impl fmt::Display for AdventureCompileError {
                 )
             }
             Self::UnknownTerrain(k) => write!(f, "unknown terrain `{k}`"),
+            Self::UnknownResource(k) => write!(f, "unknown resource `{k}`"),
+            Self::UnknownObjectType(k) => write!(f, "unknown object type `{k}`"),
+            Self::InvalidObjectType { key, reason } => {
+                write!(f, "object type `{key}`: {reason}")
+            }
             Self::DuplicateTerrain(k) => write!(f, "terrain `{k}` has movement data twice"),
             Self::MissingTerrain(k) => write!(f, "terrain `{k}` has no movement data"),
             Self::MissingParams => f.write_str("no pack provides the adventure parameters"),
@@ -332,6 +361,8 @@ pub struct AdventureRuleset {
     road_index: BTreeMap<String, RoadId>,
     rivers: Vec<RiverKind>,
     river_index: BTreeMap<String, RiverId>,
+    object_types: Vec<ObjectType>,
+    object_type_index: BTreeMap<String, ObjectTypeId>,
     params: AdventureParams,
     hash: u64,
 }
@@ -344,6 +375,7 @@ struct Tables {
     road_index: BTreeMap<String, RoadId>,
     rivers: Vec<RiverKind>,
     river_index: BTreeMap<String, RiverId>,
+    objects: ObjectTables,
     params: Option<AdventureParamsDef>,
 }
 
@@ -372,6 +404,7 @@ impl AdventureRuleset {
                     })
             })
             .collect::<Result<Vec<_>, _>>()?;
+        check_object_types(&tables.objects.types)?;
         let params = tables.params.ok_or(AdventureCompileError::MissingParams)?;
         let params = validate_params(params)?;
         let mut part = Self {
@@ -381,6 +414,8 @@ impl AdventureRuleset {
             road_index: tables.road_index,
             rivers: tables.rivers,
             river_index: tables.river_index,
+            object_types: tables.objects.types,
+            object_type_index: tables.objects.index,
             params,
             hash: 0,
         };
@@ -441,6 +476,21 @@ impl AdventureRuleset {
         self.river_index.get(key).copied()
     }
 
+    /// The object types (ADV-OBJ-002).
+    pub fn object_types(&self) -> &[ObjectType] {
+        &self.object_types
+    }
+
+    /// An object type.
+    pub fn object_type(&self, id: ObjectTypeId) -> Option<&ObjectType> {
+        self.object_types.get(usize::from(id.raw()))
+    }
+
+    /// The object type with this key.
+    pub fn object_type_by_key(&self, key: &str) -> Option<ObjectTypeId> {
+        self.object_type_index.get(key).copied()
+    }
+
     /// The adventure parameters.
     pub const fn params(&self) -> &AdventureParams {
         &self.params
@@ -448,11 +498,12 @@ impl AdventureRuleset {
 }
 
 impl CanonicalHash for AdventureRuleset {
-    /// Encoding v3 (E08 T6b; v1 was T4's, v2 T5a's): version; the terrains in the core's order
-    /// (key, passage: 0 land, 1 water with the cost, 2 impassable); the road kinds (key, name,
-    /// cost); the river kinds (key, name); the parameters (native cost, the land table as its
-    /// length and entries, scouting radius; since v2 the largest map size, levels, players and
-    /// the army slots; since v3 the starting stack chances as their length and entries). The
+    /// Encoding v4 (E08 T12a; v1 was T4's, v2 T5a's, v3 T6b's): version; the terrains in the
+    /// core's order (key, passage: 0 land, 1 water with the cost, 2 impassable); the road kinds
+    /// (key, name, cost); the river kinds (key, name); the parameters (native cost, the land
+    /// table as its length and entries, scouting radius; since v2 the largest map size, levels,
+    /// players and the army slots; since v3 the starting stack chances as their length and
+    /// entries); since v4 the object types in handle order ([`ObjectType`]'s encoding). The
     /// core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
@@ -480,6 +531,10 @@ impl CanonicalHash for AdventureRuleset {
         h.write_u8(self.params.max_players.get());
         h.write_u8(self.params.army_slots.get());
         self.params.starting_stack_chances.hash_into(h);
+        h.write_len(self.object_types.len());
+        for ty in &self.object_types {
+            ty.hash_into(h);
+        }
     }
 }
 
@@ -576,6 +631,7 @@ fn compile_pack(
             return Err(AdventureCompileError::DuplicateTerrain(String::from(key)));
         }
     }
+    compile_object_types(core, id, closure, &pack.object_types, &mut tables.objects)?;
     if let Some(params) = &pack.params {
         if tables.params.is_some() {
             return Err(AdventureCompileError::DuplicateParams(String::from(id)));

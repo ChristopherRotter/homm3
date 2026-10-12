@@ -15,8 +15,7 @@ use std::process::ExitCode;
 
 use std::sync::Arc;
 
-use h3_adventure::{AdventureSetup, AdventureState};
-use h3_game::GameRuleset;
+use h3_game::{GameRuleset, GameSetup, PlayerSetup};
 use h3_map::model::{Artifacts, Body, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
@@ -142,12 +141,15 @@ fn check(
     }
     note(&map, peaks, name);
     let static_map = import_map(&map, rules).map_err(|e| format!("static layer: {e}"))?;
-    let setup = AdventureSetup {
-        players: 1,
+    // The static layer alone, in a game of one player without heroes: its objects' contents are
+    // drawn as a game's are (E08 T12b).
+    let setup = GameSetup {
+        players: vec![PlayerSetup { colour: 0 }],
         map: static_map,
         heroes: Vec::new(),
     };
-    AdventureState::new(rules.core(), rules.adventure(), &setup)
+    setup
+        .validate(rules)
         .map_err(|e| format!("static layer: {e}"))?;
     let outcome = match import(&map, rules) {
         Ok(setup) => {
