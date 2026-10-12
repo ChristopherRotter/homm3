@@ -4,16 +4,48 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3, T4, T5a, T5b, T6a, T6b, T7a, T7b, T8a, T8b1, T8b2a, T8b2b, T9a, T9b, T10a and T10b are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone; after T4: T5a and T6a; after T5a/T6a: T6b and T7a; after T6b/T7a: T7b and T5b; after T7b/T5b: T8a alone, T8 split into T8a and T8b; after T8a: T8b1 alone, T8b split into T8b1 and T8b2; after T8b1: T8b2a alone, T8b2 split into T8b2a, what a command may do, and T8b2b, what a viewer may learn; after T8b2a: T8b2b and T9a, T9 split into T9a, the env, and T9b, the CLI and the gates; after T8b2b/T9a: T9b as T9b1, the replays, and T9b2, the benchmarks; after T9b: T10 split into T10a, the experiments' spec shape and batch 1, with T10b, the exit-criteria audit, then T10c). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint; the first round is T11a with T11b. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T10c — Batch 1's results, the refinement of increment 2, the closing checkpoint
+### E08 T11a — Survey: increment 2's objects, the treasury, starting resources
 
-- **Scope:** score batches 1a and 1b once the user has played them (`experiments/results/E08-batch-1a.md`, `-1b.md`; the predictions in the specs): ADV-Q4 (ADV-MOV-002, Q4c first), ADV-Q6 (GAM-SET-001), D-2's confirmation (ADV-MOV-003); a rule that changes gets its fix and its source (`observation`, SoD Complete 4.0 with plain HD), an unclear result goes back to OPEN-QUESTIONS. Then refine increment 2 with the user (the epic's sketch: scenario loading and validation, pickups, the first visitable objects; this inbox's items sorted into it or left), and the checkpoint that closes increment 1 (the audit is in `E08-log.md`, T10b).
-- **Depends on:** T10a, T10b (done); the user's play of batch 1 for the scoring (the refinement can go first). **Status:** ready.
+- **Scope:** a survey `docs/rules/surveys/E08-objects.md` in the shape of `E08-adventure-core.md`: for resource piles, random resources, campfires, the Cartographer, the Redwood Observatory, the Pillar of Fire, Keymaster's tents, border guards and border gates: class and subclass (`docs/formats/h3m.md`, the reader's bodies), templates and visit mode (entered or visited from a neighbouring tile), effect, amounts and odds and **when they are drawn** (at setup or at the visit; decision 17), what the visitor and the other players see and learn, the events; the treasury (resource kinds, bounds) and starting resources by difficulty (decision 16: the human row for every player); what the import does with the classes that stay `Blocker`; disputes (to OPEN-QUESTIONS with a confirmation experiment for batch 2) and quirk candidates; proposed rule ids. Sources: the wiki and VCMI 1.7.5 first, code readings where they disagree or are silent on a point that matters (consensus before trust, `docs/04-rules-and-sources.md`; map entries for every cited address).
+- **Acceptance:** the survey with labelled sources; disputes and quirk candidates listed for the user; `check-exe-map` clean.
+- **Depends on:** — . **Status:** ready (round with T11b).
+
+### E08 T11b — ADR amendments: objects, visits, the treasury, pending decisions
+
+- **Scope:** drafts in `docs/lanes/adventure/adr-drafts/` amending ADR-0016 (object types and kinds from the ruleset part, the two visit modes, per-object state in the persistent object table and the tiles a removed object frees, what the observation shows of a typed object: tile by tile or whole once a tile is seen, VCMI `CGameState::isVisibleFor`, inbox T8b1) and ADR-0017 (the treasury in `GameState`, decision 14: how a gain or a cost passes between the game and the adventure; the pending decision's state, its answer command and the turn's legality while it is open, decision 15; the env's decision head and the action encoding v2; the versions that change). Short decisions, detail in a design note if needed (ADR index rule).
+- **Acceptance:** the drafts for the user at the checkpoint (accepted drafts go to `docs/adr/` in a `shared/` pull request).
+- **Depends on:** T11a (the visit modes and the draws). **Status:** ready (round with T11a).
+
+### E08 T12 — Object types in the import
+
+- **Scope:** object types and kinds in the adventure ruleset part (`packs/*/adventure.toml`, `h3-pack-adventure`; sources per type), the import's mapping from class and subclass (every other class a `Blocker`), instance data validated at setup (the rest of E07: amounts, owners, keys), random resources resolved as T11a found, the per-object state table (ADR-0016 point 1), the observation of typed objects as T11b decides; `MAP_IMPORT_VERSION` 2, the adventure state hash; the shipped maps' static layers still import and validate (`--with-original-data`).
+- **Depends on:** T11a, T11b accepted. **Status:** waiting (T11b).
+
+### E08 T13 — Treasury and pickups
+
+- **Scope:** treasuries in `GameState` with starting resources (decision 16), the two visit modes in `MoveHero` (entering ends the move; a neighbour's visit), resource piles, random resources and campfires (gain, removal, events with their viewers), the treasury in the owner's observation only; the play properties: ownership isolation over treasuries (and each player's stream if a command draws, decision 17), conservation (a treasury changes only by a visit's rule), observation hygiene.
+- **Depends on:** T12. **Status:** waiting (T12).
+
+### E08 T14 — The Cartographer: the first pending decision
+
+- **Scope:** the Cartographer's offer as a pending decision of its visitor's owner, the answer command (accept: the cost from the treasury, the level revealed; decline), legality while it is open (its answers only, no `EndTurn`), atomicity and legality consistency with decisions; the env's action encoding v2 (a decision head), the replay format if the new command needs it, golden replays re-recorded.
+- **Depends on:** T13. **Status:** waiting (T13).
+
+### E08 T15 — Visitable objects
+
+- **Scope:** the Redwood Observatory and the Pillar of Fire (a reveal around the object), Keymaster's tents (a key per player and colour) with border guards (removed for a player with the key) and border gates (passable for such a player), the per-player object state in the observation.
+- **Depends on:** T13 (visits). **Status:** waiting (T13).
+
+### E08 T16 — Closure of increment 2
+
+- **Scope:** the duel and XL maps regenerated with objects, golden replays and the three benchmarks re-baselined (`02-architecture.md` §8); batch 2: the increment's disputes and D-3 (sand onto a cobblestone road with 200 points left, the survey's example; the writer lays east–west roads only and interior terrain pictures at edges, north–south roads when a batch needs them), with the spec stamp (decision 18: a short hash of the spec in the map's description and the template; `cross-lane` in `h3-experiment`); the exit criteria audited; scoring and the checkpoint with the user.
+- **Depends on:** T14, T15. **Status:** waiting.
 
 ## Inbox
 
-- 2026-10-12 (T10a): D-3 (the points dropped below the cheapest next step, a conflict of the reading with VCMI, ADV-Q3) is one encounter on a map with roads now that the writer lays them: sand onto a cobblestone road with 200 points left (the survey's example); for a later batch. The writer lays east–west roads only and interior terrain pictures at edges; north–south roads (pictures 14, 10/11) when a batch needs them.
+- 2026-10-12 (T10c): `docs/BACKLOG.md`'s E08 row still says "increment 1": update it (in progress, increment 2 refined) with the lane's next `shared/` pull request (T11b's accepted ADRs).
 
 - 2026-10-11 (T9b, measured): the reachable-tiles query is 96 % of a random step (≈ 263 k Ir per query on the duel, 342 k on 144 × 144; of a query `Reach::search` 56 % on its own, the step price 28 %, the heap 7 %; zeroing map-sized arrays 5 % of a step): the first lever on the adventure's speed (`benches/adventure/` gates it), for an increment that needs speed or a performance task.
 - 2026-10-11 (T9b, measured): an agent reading both mask heads before a step doubles the duel's step (70.9 → 141 µs; ×1.7 on 144 × 144): `legal_mask`, `tile_mask` and the step's decode each run the query. Keep the current state's queries in the env, with E05's batch API (or E13's macro-actions), which owns the mask API.
@@ -25,11 +57,9 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 
 - 2026-10-11 (T8b2a): moves are not listed one by one (the user): `h3_game::legal_moves` gives a hero's `Reach`. T9's env builds its mask from it (a bit per tile and hero; ADR-0017 point 8) and the path only for the action taken.
 - 2026-10-11 (T8b2a, the user): clients compute their own paths and `apply` validates them. For the client and server lanes: the pathfinder on a player's observation instead of the state (moves go to explored tiles only, where the observation shows all the query reads: terrain, roads, objects, visible heroes, the own hero's army and points), or a server query for the reach of the player's own hero.
-- 2026-10-11 (T8b2a review): ownership isolation does not cover the players' RNG streams yet (decision 9): no command draws and `GameState` shows no stream. When the first command draws (increment 2's pickups), give the play test a view of each player's stream position (an accessor on `GameState` it can read, or a hash per stream) and check that another player's command leaves it.
 - 2026-10-11 (T8b2a): the play properties (`crates/h3-map/src/tests/play.rs`) take about 6 s for 3 × 48 cases in a debug build. `Plan` and `lay_out` are test code; the generated maps are written once by a test and committed (T9a, T9b).
 
 - 2026-10-11 (T8b1): the fringe is the eight tiles around an explored one (ADR-0016's "touching"); how the original draws its half-dark border (which hidden tiles get an edge sprite) was not read: a code reading or a look in SoD with a single explored diagonal, with T10's batch.
-- 2026-10-11 (T8b1): VCMI shows an object whole once one of its covered tiles is visible (`CGameState::isVisibleFor`); the observation shows what objects cover tile by tile (increment 1's objects have no type). Decide with increment 2's object types what of a partly seen object shows.
 - 2026-10-11 (T8b1): of another player's hero the observation shows tile, owner and identity (ADV-FOG-006, the user): survey what the original's right-click view shows (army, approximate counts) with the battle seam (increment 3). The spectator viewer for the adventure when the server lane hosts adventure games.
 - 2026-10-11 (T8a): the Scouting specialty multiplies the radius by 1 + 0.05 × level (0x4E4070, truncated), not "+1 every six levels" (survey §2): compare with the wiki and VCMI with the adventure profile (increment 3).
 - 2026-10-11 (T8a): the original's reveal sets the bits of every player of the revealer's team (allies share the map; VCMI too): with teams (E10). The new day reveals again around everything a player owns (0x4C7C50): with the first rule that hides tiles (Cover of Darkness, towns).
@@ -37,7 +67,7 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 - 2026-10-10 (T6b review): building a game emits no events (the first `TurnStarted` goes to a `NoopSink`): a replay needs none (T9b: commands and hashes); a client's event stream (server lane) needs a start event or reads the start from `observe`. `GameState` keeps no hero types yet: the game's store of heroes (hero details) comes with `h3-heroes` in increment 3.
 - 2026-10-10 (T6b): the original plays every human player before every computer player each day (0x4C6FE0; VCMI `TurnOrderProcessor` too). The engine has no human/computer distinction; decide with the server lane's seats or the turn-group work whether a schedule should order players so (GAM-TRN-001's note).
 - 2026-10-10 (T6b): weeks of seven days and months of four (wiki Time; VCMI parameters) come with the first rule that reads them (week events, increment 4); GAM-CAL-001 counts days only.
-- 2026-10-10 (T6b): the starting army's other callers (the tavern, 0x4C86A0 and 0x4D9EC0) give one creature of the first stack; for the towns epic. The war machine of a starting army (artifact 4 or 6, ADV-Q6) for increment 3 with the hero details.
+- 2026-10-10 (T6b): the starting army's other callers (the tavern, 0x4C86A0 and 0x4D9EC0) give one creature of the first stack; for the towns epic. The war machine of a starting army (artifact 4 or 6; rolled at 88 % with its slot, ADV-Q6 answered by batch 1b) for increment 3 with the hero details.
 - 2026-10-10 (T6b): `docs/formats/installation.md` §7.1 says the nine war machines are the heroes' *third* starting creature; the hero table has them second (battle-owned doc; tell the battle lane or fix it with the formats lane).
 
 - 2026-10-10 (T5a/T6a): for E09 (towns): a hero placed on a town's blocked tile is the town's visiting hero (VCMI `CGameState::placeHeroesInTowns` moves it to its own town's entrance, an "H3M format quirk"; 3 shipped maps), and a hero generated at a main town (129 maps); both are `Unsupported` in the import until towns exist.
