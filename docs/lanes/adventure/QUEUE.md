@@ -33,8 +33,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
-- 2026-10-12 (T11a): the wiki was not read for the objects survey (approval timed out): before T12/T13 write their rules' sources, read the wiki's Resources, Campfire, Cartographer, Redwood Observatory, Pillar of Fire, Keymaster's Tent, Border Guard, Border Gate and Difficulty pages (raw wikitext) and add them to the survey's facts where they agree or to ADV-Q10 where they do not.
-- 2026-10-12 (T11a): not read, each for the increment that needs it: the computer player's own handling of the Cartographer and observatories (the human path only), the guarded pile's path (0x4A4780, inc. 3), how the loader fits a pile amount above 0x7FFFF (T12 bounds it), the game flag +0x1F69D's 50/50 000 start (probably the tutorial), a weekly resource bonus for computer players (VCMI has one; inc. 4), the flying and boat test before a visit from a neighbour (0x4E5CE0, inc. 3).
+- 2026-10-12 (T11a): not read, each for the increment that needs it: the computer player's own handling of the Cartographer and observatories (the human path only), the guarded pile's path (0x4A4780, inc. 3), how the loader fits a pile amount above 0x7FFFF (T12 bounds it), the game flag +0x1F69D's 50/50 000 start (probably the tutorial), the computer players' daily resource bonus by difficulty (the wiki's Difficulty level; VCMI has a weekly one; inc. 4), the flying and boat test before a visit from a neighbour (0x4E5CE0, inc. 3), the wiki's "tournament rules" start on impossible (5/2/2 500, probably HD).
 - 2026-10-12 (T11a): the original lets a hero visit the object it stands on again (the space bar); a "visit here" command would let a player re-ask a declined Cartographer without stepping off: with an increment that needs it.
 - 2026-10-12 (T11a): `docs/06-security.md`'s viewer knowledge list gains increment 2's rows (survey §8) with T13's observation.
 

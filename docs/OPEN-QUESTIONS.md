@@ -45,8 +45,8 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 #### ADV-Q10 — T11a + T11b checkpoint: the ADR amendments, three disputes, one quirk, the next round (E08)
 
 Context: the survey `docs/rules/surveys/E08-objects.md` (a code reading of the human player's
-path, confirmed by a second reading, and VCMI 1.7.5; the wiki not reached: its approval prompts
-timed out) and the drafts in `docs/lanes/adventure/adr-drafts/` (detail in
+path, confirmed by a second reading, VCMI 1.7.5 and the wiki, which agrees with the reading
+wherever it speaks) and the drafts in `docs/lanes/adventure/adr-drafts/` (detail in
 `docs/epics/E08-design.md`).
 
 1. **The drafts.** ADR-0016: object types name a kind and two visit properties (entered or from a
@@ -57,21 +57,19 @@ timed out) and the drafts in `docs/lanes/adventure/adr-drafts/` (detail in
    the game checks and pays; a decision queue per player answered by `Answer(Accept | Decline)`;
    the env's entry head gains the two answers (encoding v2). **Recommended: accept both**; the
    `shared/` pull request then applies them and updates `BACKLOG.md`'s E08 row.
-2. **D-5, a random pile's amount:** the reading gives wood and ore 5–10 and the rare resources 3–6
-   (gold 5–10 × 100 in both); VCMI gives 6–10 and 3–5. A conflict of sources. **Recommended:**
-   the reading until batch 2's experiment (30 random wood and 30 random mercury piles, survey
-   §11) settles it, and the wiki read first.
+2. **D-5, a random pile's amount:** the reading and the wiki give wood and ore 5–10 and the rare
+   resources 3–6 (gold 500–1 000 everywhere); VCMI gives 6–10 and 3–5. **Recommended: the
+   reading**, which has the wiki's consensus; batch 2's experiment (30 random wood and 30 random
+   mercury piles, survey §11) only if you want an observation too.
 3. **D-6, guarded piles** (39 bodies in the shipped maps; a battle before the pickup):
    **recommended: a typed `Unsupported` import error until battles exist**, or an inert
    `Blocker` (the map plays, the pile cannot be taken).
 4. **D-7, the border guard's question:** the original asks humans yes/no and lets computers pass;
-   VCMI asks everyone. **Recommended: a second offer of the same shape as the Cartographer's**
+   VCMI asks everyone, and the wiki shows the question to the key holder. **Recommended: a second offer of the same shape as the Cartographer's**
    (declining keeps the road closed for others, a real choice), or no question (always pass).
 5. **A-5, the treasury's overflow:** a gain past 2³¹ − 1 wraps and drops the resource to 0
    (0x4E3600). **Suggested: always fixed** (saturate, no flag), as a state-corrupting bug.
-6. **The wiki:** approve the fetches of heroes.thelazy.net when the prompt comes, or say to go
-   on without it (the inbox has the pages to read before T12/T13 write sources).
-7. **The next round:** T12 (object types in the import) alone (recommended: it fixes the data
+6. **The next round:** T12 (object types in the import) alone (recommended: it fixes the data
    and the import version the rest builds on), or T12 with T13.
 
 ### Server lane (`SRV-Q<n>`)

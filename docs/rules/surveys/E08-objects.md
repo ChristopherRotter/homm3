@@ -16,10 +16,19 @@ tests.
   `H3MapItem`'s access bits, `H3Main::keymasterVisited`): guesses, each checked in the code below.
 - `maps`: a census of the 164 maps shipped with the user's installation, read with `h3-map`
   (counts in §1).
-- `wiki`: **not read this session.** The fetches of the wiki's pages (Resources, Campfire,
-  Cartographer, Redwood Observatory, Pillar of Fire, Keymaster's Tent, Border Guard, Border
-  Gate, Difficulty) waited for the user's approval and timed out. Each section names what the
-  wiki must be checked for; D-5 (§3.1) is the one where it decides the consensus.
+- `wiki`: read 2026-10-12 through the summarising fetch tool (the first attempts waited for the
+  user's approval and timed out; the user approved later the same day):
+  [Resources](https://heroes.thelazy.net/index.php/Resources),
+  [Campfire](https://heroes.thelazy.net/index.php/Campfire),
+  [Cartographer](https://heroes.thelazy.net/index.php/Cartographer),
+  [Redwood Observatory](https://heroes.thelazy.net/index.php/Redwood_Observatory),
+  [Pillar of Fire](https://heroes.thelazy.net/index.php/Pillar_of_Fire),
+  [Keymaster's Tent](https://heroes.thelazy.net/index.php/Keymaster%27s_Tent),
+  [Border Guard](https://heroes.thelazy.net/index.php/Border_Guard),
+  [Border Gate](https://heroes.thelazy.net/index.php/Border_Gate),
+  [Difficulty level](https://heroes.thelazy.net/index.php/Difficulty_level). Short quotes only;
+  re-check a fact against the page before a rule cites it with `high` confidence. The wiki has no
+  page on random resources (a search found none) and says nothing about visit modes.
 
 **Second reading:** a fresh agent re-read the deciding code without this survey (2026-10-12)
 and confirmed §3.1's ranges, §3.3's setup and visit, §3.1's visit and 0x4E3600's wrap, §2.1's
@@ -139,8 +148,12 @@ removable list (0x63A9D0) holds 9, 12, 76, 79 and 212 (the gate is never removed
   1 000 in steps of 100 at the visit.
 - **VCMI disagrees on the ranges:** `config/objects/moddables.json`, `resource.amounts`:
   wood and ore 6–10, the four rare resources 3–5, gold 5–10 × 100, drawn at setup
-  (`ResourceInstanceConstructor::randomizeObject` from `CGResource::initObj`). The wiki was not
-  read (it decides consensus here). Dispute **D-5** (§11), a confirmation experiment for batch 2.
+  (`ResourceInstanceConstructor::randomizeObject` from `CGResource::initObj`).
+- **The wiki agrees with the reading** (Resources: "5-10 units of Wood", the same for ore,
+  "3-6 units" of mercury, sulfur and crystal, "500-1000 units of gold" per pile; gems' amount not
+  stated). So the reading has its consensus and VCMI is the outlier. Dispute **D-5** (§11) stays
+  for the user (a reading that contradicts VCMI); its batch-2 experiment becomes an optional
+  confirmation.
 
 ### 3.2 Random resources (class 76)
 
@@ -162,6 +175,9 @@ pile like any other, and its picture shows its resource.
   (4 and 400, 5 and 500, 6 and 600), drawn at setup (`Rewardable::Info::configureRewards`, the
   map dice); its dice give the pairs 33 %, 33 % and 34 % where the original's draw is uniform, a
   difference no experiment can see and no rule needs.
+- The wiki (Campfire, Resources): "between 400–600" gold and "4–6 other resources", and the
+  campfire "disappears after the first visit"; it does not say whether the two amounts are
+  linked or which resources are possible (Resources lists all six non-gold ones). Agreed.
 
 ### 3.4 When the draws happen (decision 17)
 
@@ -193,8 +209,12 @@ Read in the visit dispatch's case 13 (0x4A8A14):
   also reveals the dirt and lava of the underground, and neither reveals rock. VCMI reveals by
   terrain layers (`lib/rewardable/Interface.cpp: grantRewardBeforeLevelup`, `revealTiles` with
   `surface 1, water -1, rock -1` for land and `subterra 1, surface -1, …` for subterranean, over
-  both levels): for the ten base terrains the same three sets. The wiki should be checked for
-  "surface" against "land".
+  both levels): for the ten base terrains the same three sets. The wiki (Cartographer) agrees by
+  terrain, not by level: the land ("tower") one "reveals all tiles, except water and
+  subterranean", the water one "all water tiles", the subterranean ("stalagmite") one "all
+  subterranean tiles (not to be mixed with the whole underground layer)". It does not mention
+  rock, which the reading and VCMI leave hidden. Price: 1 000 gold in SoD (HotA raised it to
+  10 000).
 - **Entered, not from above** (§2). The water Cartographer stands in the water: a hero reaches it
   only by boat *(water and boats: not in increment 2)*, so its kind is typed but unreachable.
 - **The decision:** the yes/no question is a pending decision of the visiting hero's owner
@@ -208,7 +228,9 @@ for their message): every visit (no flag, no cost) calls `reveal_disk` with radi
 its level, for the visitor and its team: `dx² + dy² ≤ 420` (ADV-FOG-002's disk). VCMI
 `config/objects/observatory.json`: radius 20 around the hero's sight centre, every terrain,
 `visitMode: unlimited`; `getTilesInRange` with `DIST_2D` is the same disk, and the hero stands on
-the visited tile. Agreed. Entered, not from above.
+the visited tile. The wiki (Redwood Observatory, Pillar of Fire): "a 20 tile radius around the
+observatory", working on either level. Agreed. Entered, not from above. (The wiki adds that
+tiles under a Cover of Darkness revealed this way are hidden again the next day: towns, E09.)
 
 ## 6. Keymaster's tents (10), border guards (9) and border gates (212)
 
@@ -229,6 +251,12 @@ The keys are eight bytes of player bits in the game, one per colour (+0x4E364; H
   heroes enter and cross it like a free tile (§2.2); without it they visit it from the
   neighbouring tile and get a message. VCMI `CGBorderGate::passableFor` (the key) and
   `onHeroVisit` (a message without it): the same. AB and SoD only (class 212; RoE has no gates).
+- The wiki agrees on each point: the tent lets the player's heroes pass guards and gates of its
+  colour (Keymaster's Tent; eight colours); a guard "cannot be passed until one of any player's
+  heroes has visited" the tent, asks a key holder whether to pass, and then "disappears from the
+  map": "any hero of any player can pass after that" (Border Guard); a gate "cannot be entered
+  or crossed unless one of the player's heroes" has the key and does not disappear, from
+  Armageddon's Blade on (Border Gate).
 
 ## 7. The treasury and the starting resources
 
@@ -267,9 +295,12 @@ and 50 000 gold instead (0x6779C8). VCMI `config/difficulty.json` has the same t
 (`CGameState::initDifficulty`): the same. The difficulty is the one chosen for the game, not the
 map's (the header's difficulty byte is the map's rating). Decision 16 stands: the reading gives
 no reason to overrule it (every player gets the human row; the computer rows are recorded for
-a later human/computer distinction). VCMI's weekly bonus for computer players
-(`RESOURCES_WEEKLY_BONUSES_AI`) belongs to the week *(inc. 4)*; whether the original has one was
-not read.
+a later human/computer distinction). The wiki (Difficulty level) has the same ten rows. It also
+lists a daily bonus for computer players from their weekly income (expert +25 % gold, +39 % wood
+and ore, +14 % rare; impossible +50 %, +53 %, +28 %; easy −25 % gold) and a "tournament rules"
+start on impossible (5 wood and ore, 2 rare, 2 500 gold); neither was read in the code, the
+bonus belongs to the week and to a human/computer distinction *(inc. 4)*, and VCMI has a weekly
+bonus too (`RESOURCES_WEEKLY_BONUSES_AI`).
 
 ## 8. What each viewer sees and learns (for `docs/06-security.md`)
 
@@ -316,13 +347,14 @@ increment 2).
 
 | Id | Question | Sources | Needed by | Settle by |
 |---|---|---|---|---|
-| D-5 | A random pile's amount: wood and ore 5–10 or 6–10; mercury, sulfur, crystal, gems 3–6 or 3–5 | the reading (5–10, 3–6; gold 5–10 × 100 in both) against VCMI (6–10, 3–5); the wiki not read | T13 (data) | the user (ADV-Q10); confirmation in batch 2: a map with 30 random wood piles and 30 random mercury piles in a row, picked up one by one with the amounts noted; if the reading is right, at least one wood pile of 5 shows with 99.6 % and one mercury pile of 6 with 99.98 % (either refutes VCMI), and VCMI's ranges would show neither |
+| D-5 | A random pile's amount: wood and ore 5–10 or 6–10; mercury, sulfur, crystal, gems 3–6 or 3–5 | the reading and the wiki (5–10, 3–6; gold 5–10 × 100 everywhere) against VCMI (6–10, 3–5) | T13 (data) | the user (ADV-Q10; recommended: the reading, which has the wiki's consensus); optional confirmation in batch 2: a map with 30 random wood piles and 30 random mercury piles in a row, picked up one by one with the amounts noted; if the reading is right, at least one wood pile of 5 shows with 99.6 % and one mercury pile of 6 with 99.98 % (either refutes VCMI), and VCMI's ranges would show neither |
 | D-6 | Guarded piles (39 bodies in the shipped maps): typed or not in increment 2 | the reading: a guarded pile asks and fights before the pickup (0x4A4780, not read) | T12 | the user (ADV-Q10): a typed `Unsupported` import error until battles exist (recommended), or an inert `Blocker` |
-| D-7 | The border guard's question: a pending decision or no question | the reading: humans are asked, computers pass; VCMI asks everyone | T11b, T15 | the user (ADV-Q10): a second pending decision of the same shape as the Cartographer's (recommended) |
+| D-7 | The border guard's question: a pending decision or no question | the reading: humans are asked, computers pass; VCMI asks everyone; the wiki shows the key holder's question | T11b, T15 | the user (ADV-Q10): a second pending decision of the same shape as the Cartographer's (recommended) |
 
 No other point needs a confirmation experiment: the reading and VCMI agree on everything else
 (visit modes, directions, campfires, random resources, the Cartographer, observatories, keys,
-gates, starting resources). The wiki is the missing third source for all of them.
+gates, starting resources), and the wiki agrees wherever it speaks (it is silent on visit modes,
+directions and random resources).
 
 ## 12. Proposed rule ids (increment 2)
 

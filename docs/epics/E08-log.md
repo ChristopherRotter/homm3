@@ -865,8 +865,10 @@ The user merged T10c (#110) and took T11a with T11b in one round (one docs-only 
 one checkpoint), over T11a alone or T11a in halves.
 
 **T11a — survey** `docs/rules/surveys/E08-objects.md`, from a code reading of the human player's
-path and VCMI 1.7.5; the wiki was not read (its fetches waited for the user's approval and timed
-out three times), so it is the missing third source everywhere and decides D-5's consensus.
+path and VCMI 1.7.5; the wiki's fetches first waited for the user's approval and timed out, then
+the user approved them and the wiki was read the same day: it agrees with the reading wherever it
+speaks (pile amounts, campfires, the Cartographer by terrain, the radius 20, keys, guards for
+everyone, gates, the starting rows) and is silent on visit modes and random resources.
 Findings:
 - **Visit modes are per class in the original** (0x41B500's settings: "cannot be entered" and
   "visitable from above" lists): piles, random resources, campfires and border guards are
@@ -876,8 +878,8 @@ Findings:
   the move; only gates (and garrisons) let a key holder's move pass. VCMI agrees on all.
 - **All random contents are drawn at setup** (0x4C9DD0 random resources, then 0x4C0CC0 amounts
   and campfires): no visit of increment 2 draws (decision 17's stream watch not needed yet).
-- **D-5**: a random pile's amount, the reading 5–10 (wood, ore, gold × 100) and 3–6 (rare)
-  against VCMI's 6–10 and 3–5; a batch-2 experiment proposed.
+- **D-5**: a random pile's amount, the reading and the wiki 5–10 (wood, ore, gold × 100) and 3–6
+  (rare) against VCMI's 6–10 and 3–5; a batch-2 experiment optional.
 - Campfires (4–6 of one of six resources plus 100 × that gold), random resources (seven equal
   chances), the Cartographer (once per player and kind, 1 000 gold checked before a yes/no,
   reveal by terrain mask on both levels: the land one reveals underground dirt and lava too),
@@ -901,4 +903,4 @@ explored) and ADR-0017 (the treasury in `GameState`, gains and costs by the cont
 with the price checked by the game, the decision queue and `Answer`, the env's answer entries,
 the versions). Detail in `docs/epics/E08-design.md`.
 
-For the user (ADV-Q10): accept the drafts; D-5, D-6, D-7, A-5; the wiki approval; the next round.
+For the user (ADV-Q10): accept the drafts; D-5, D-6, D-7, A-5; the next round.

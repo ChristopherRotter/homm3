@@ -37,7 +37,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-12 — T10c checkpoint and T11a + T11b: the objects survey, the ADR amendment drafts
 
-The user merged #110 and took T11a with T11b (docs only, one checkpoint). Read: the per-class visit settings, every pickup drawn at setup, the Cartographer, observatories, keys, guards, gates, the treasury's add (A-5), the starting rows; a fresh agent confirmed it. VCMI agrees but on D-5. The wiki's prompts timed out (inbox). Drafts: kinds with visit properties as data, gains and offers by outcome, a decision queue. Detail: `E08-log.md`.
+The user merged #110 and took T11a with T11b (docs only, one checkpoint). Read: the per-class visit settings, every pickup drawn at setup, the Cartographer, observatories, keys, guards, gates, the treasury's add (A-5), the starting rows; a fresh agent confirmed it. VCMI agrees but on D-5; the wiki, read once the user approved it, agrees throughout. Drafts: kinds with visit properties as data, gains and offers by outcome, a decision queue. Detail: `E08-log.md`.
 
 ### 2026-10-12 — T10a/T10b checkpoint and T10c: batch 1 scored, increment 1 closed, increment 2 refined
 
