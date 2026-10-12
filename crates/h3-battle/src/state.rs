@@ -1070,7 +1070,7 @@ impl BattleState {
         taken
     }
 
-    /// All stacks (dead ones included; they keep their id, but a new created stack takes a dead
+    /// All stacks (dead ones included; they keep their id, but a new created stack takes a killed
     /// created stack's, BAT-MAG-037).
     pub fn stacks(&self) -> &[Stack] {
         self.stacks.as_slice()

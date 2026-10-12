@@ -192,19 +192,19 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Regression test: `crates/h3-battle/src/tests/pits.rs`, `natives_at_the_start_reveal_the_other_sides_pits_with_bat_quirk_1`, `living_natives_see_the_other_sides_pits_without_bat_quirk_1`
 - Decided by / date: user, 2026-10-07 (E04b checkpoint before T5c, BAT-Q1). Review (E04b T11b, 2026-10-12): at that decision this entry described VCMI as testing the living natives; VCMI counts dead natives too (above), so the variant without the flag follows neither VCMI nor the wiki.
 
-### BAT-QUIRK-2 — An attack from a seen Quicksand pit is accepted and skipped
-- Class: fix-optional (user, 2026-10-07, BAT-Q1)
+### BAT-QUIRK-2 — An attack from a seen Quicksand pit (retired: not a quirk)
+- Class: none: considered, not a quirk (retired by the user, 2026-10-12, BAT-Q30; before: fix-optional, user, 2026-10-07, BAT-Q1)
 - Context / rules affected: battle, BAT-MAG-032
-- Original behavior: the walker (0x441FA0) stops at a step into a hex its side's stops mark (a pit it sees), also when that hex is the move's destination, and returns false; a move and attack (0x478971) then skips the attack. A command to attack from a seen pit therefore moves the stack into the pit and does nothing else.
-- Intended/expected behavior: such an attack is not legal (strict-fixed), as it can never happen; the plain move into the pit stays legal.
-- Impact: cosmetic for players (the original's interface may not offer it; not read), relevant for agents (an action that never does what it names)
+- Original behavior: the walker (0x441FA0) stops at a step into a hex its side's stops mark (a pit it sees), also when that hex is the move's destination, and returns false; a move and attack (0x478971) then skips the attack. No path of the original issues such a command: the cursor's attack positions (0x474690, 0x4747BE to 0x474810; the from-hex only from them, 0x474A00) and the pathfinder's marking of attack targets within one move (0x4B378D to 0x4B37D1) leave out every position with a hex on one of the stack's stops, so the original offers no attack from a pit the stack's side sees.
+- Engine behavior: such an attack is not legal in any profile (CommandError::Unreachable, not listed), as in the original; the plain move into the pit stays legal.
+- Impact: none (the engine follows the original)
 - Community status: unknown
 - Sources: original-data, `docs/formats/installation.md` §7.16
-- Flag: `quirk.battle.attack_from_seen_pit` (E04b T5c1)
-- Defaults: faithful = on, strict-fixed = off
-- Regression test: `crates/h3-battle/src/tests/pits.rs`, `an_attack_from_a_seen_pit_is_legal_only_with_bat_quirk_2`
-- Decided by / date: user, 2026-10-07 (E04b checkpoint before T5c, BAT-Q1)
-- Review (E04b T11b, 2026-10-12): the re-read finds that the original's interface never issues such a command (the part this entry marks "not read"): the cursor's attack slots take a neighbouring position only if neither its hex nor, for a two-hex stack, its other hex is among the stack's stops (0x474690, 0x4747BE to 0x474810), the attack's from-hex comes only from these slots (0x474A00), and the pathfinder's own marking of attack targets passes over a position on a stop for a query within one move, as the cursor's is (0x4B378D to 0x4B37D1). So no attack from a seen pit is offered to a player, and the flag's "on" variant adds commands that no path of the original's interface issues (`docs/formats/installation.md` §7.16); open as BAT-Q30.
+- Flag: none; retired: `quirk.battle.attack_from_seen_pit` (E04b T5c1 to 2026-10-12). Its position 10 in `h3_content::REGISTRY` stays reserved and a profile that names it does not compile (`CompileError::UnknownQuirk`)
+- Defaults: none (no flag)
+- Regression test: `crates/h3-battle/src/tests/pits.rs`, `an_attack_whose_walk_stops_in_a_seen_pit_is_neither_listed_nor_accepted`; `crates/h3-battle/src/tests/control.rs`, `a_berserk_stack_does_not_attack_from_a_pit_its_side_sees`; the retired name: `crates/h3-content/src/quirks.rs`, `a_retired_flag_keeps_its_position_and_has_no_name`
+- Decided by / date: user, 2026-10-07 (E04b checkpoint before T5c, BAT-Q1); retired: user, 2026-10-12 (BAT-Q30)
+- Review (E04b T11b, 2026-10-12): the re-read finds that the original's interface never issues such a command (the part this entry marks "not read"): the cursor's attack slots take a neighbouring position only if neither its hex nor, for a two-hex stack, its other hex is among the stack's stops (0x474690, 0x4747BE to 0x474810), the attack's from-hex comes only from these slots (0x474A00), and the pathfinder's own marking of attack targets passes over a position on a stop for a query within one move, as the cursor's is (0x4B378D to 0x4B37D1). So no attack from a seen pit is offered to a player, and the flag's "on" variant added commands that no path of the original's interface issues (`docs/formats/installation.md` §7.16). The user retired the flag (BAT-Q30): the engine offers and accepts no such attack in any profile.
 
 ### BAT-QUIRK-3 — A natural obstacle's anchor hex belongs to it
 - Class: fix-optional (user, 2026-10-07, OPEN-QUESTIONS Q55)
@@ -231,7 +231,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/remove.rs`, `random_draws_avoid_hidden_obstacles_only_with_bat_quirk_4`; the property test `hidden_obstacles_do_not_show` covers casts without it
 - Decided by / date: user, 2026-10-07 (E04b T5c2 checkpoint, BAT-Q4)
-- Review (E04b T11b, 2026-10-12): a leak of the same kind that no flag covers: a berserk stack's automatic turn (BAT-MAG-025) plans and walks by the pits its own side sees, hidden ones included, and its moves and strikes are public, so a detour, a farther target, a passed turn or, with BAT-QUIRK-2 on, a stop beside its target can show the other side where a hidden pit lies. The re-read finds the same in the original (its pathfinder takes the stops of the stack's side for every caller, 0x4B3384 to 0x4B33C4, 0x4B353E; `docs/formats/installation.md` §7.16); what its walk does when the only attack position lies on a pit its side sees was not read to the end. The engine is as the original here; whether automatic turns should plan only with the pits both sides see is open as BAT-Q31.
+- Review (E04b T11b, 2026-10-12): a leak of the same kind that no flag covers: a berserk stack's automatic turn (BAT-MAG-025) plans and walks by the pits its own side sees, hidden ones included, and its moves and strikes are public, so a detour, a farther target or a passed turn can show the other side where a hidden pit lies. The re-read finds the same in the original (its pathfinder takes the stops of the stack's side for every caller, 0x4B3384 to 0x4B33C4, 0x4B353E; `docs/formats/installation.md` §7.16); what its walk does when the only attack position lies on a pit its side sees was not read to the end. The engine is as the original here, and stays so in every profile (the user, 2026-10-12, BAT-Q31: kept as the original and noted here; no flag). The property test `hidden_obstacles_do_not_show` therefore leaves Berserk out of its heroes' books.
 
 ### BAT-QUIRK-5 — Sacrifice tests the stack it raises as Resurrection would
 - Class: fix-optional (user, 2026-10-08)
@@ -283,19 +283,19 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Regression test: the property invariant that living stacks never share a hex (`crates/h3-battle/src/tests/properties.rs`); `crates/h3-battle/src/tests/created.rs`, `a_crowded_two_hex_stack_is_never_covered_by_its_clone` and, with BAT-QUIRK-7's flag on, `a_clone_never_shares_a_hex_with_its_original`
 - Decided by / date: agent, 2026-10-08 (state-corrupting bugs are always fixed, AGENTS.md); split from BAT-QUIRK-7 at the batch 2d fold-in, which the user reclassified
 
-### BAT-QUIRK-9 — A creature's spell that Magic Mirror sends away is not tested (E04b T7b2a)
-- Class: fix-optional (user, 2026-10-08, BAT-Q11)
+### BAT-QUIRK-9 — A creature's spell that Magic Mirror sends away (retired: not a quirk; E04b T7b2a)
+- Class: none: considered, not a quirk (retired by the user, 2026-10-12, BAT-Q29; before: fix-optional, user, 2026-10-08, BAT-Q11)
 - Context / rules affected: battle, BAT-MAG-049 (with BAT-MAG-022)
-- Original behavior: a Faerie Dragon's cast enters through the same routine as a hero's (0x59EC50, action 10), which decides Magic Mirror's redirect to a random living stack of the caster's side (`docs/formats/installation.md` §7.13, §7.21); the cast routine 0x59FE30 then skips the immunity, Anti-Magic and resistance test of caster kind 1 (0x5A02CB) for the redirected stack too, and the damage handlers do not test immunity: the dragon's own Black Dragons, Gold Dragons, Earth Elementals or Anti-Magic stacks take its mirrored Magic Arrow, Ice Bolt, Lightning Bolt or Chain Lightning, and resistance never helps. A hero's mirrored spell is tested and rolls (BAT-MAG-022).
-- Intended/expected behavior: the redirected stack is tested and rolls as the new target of a hero's cast (strict-fixed).
-- Impact: gameplay-altering (small: an enemy Magic Mirror, or the Faerie Dragons' own 20 % mirror since T7c2a (BAT-MAG-057), against a Faerie Dragon's single-target spells)
+- Original behavior: no creature's spell is ever sent away. The redirect is drawn only in the player's targeting routine (0x59EC50, 0x59EE7A to 0x59EF8B) and kept in the manager's +0x48, which only the hero's action hands to the cast routine (0x479036 to 0x479056); the creature's action passes the target hex alone (0x47936E to 0x479382) and every cast of 0x448260 gives the second hex -1. The cast routine's skipped test for caster kind 1 (0x5A02CB) therefore only ever meets the aimed stack. A hero's mirrored spell is tested and rolls (BAT-MAG-022).
+- Engine behavior: only a hero's spell is redirected, by the spell or by a creature's own mirror (BAT-MAG-057), in every profile; a stack's cast always meets the stack it is aimed at, as in the original and in VCMI.
+- Impact: none (the engine follows the original)
 - Community status: unknown (no report found; not searched)
-- Sources: original-data, `docs/formats/installation.md` §7.21 ("The Faerie Dragon, re-read for T7b2a")
-- Flag: `quirk.battle.creature_mirror_untested` (E04b T7b2a)
-- Defaults: faithful = on, strict-fixed = off
-- Regression test: `crates/h3-battle/src/tests/casters.rs`, `a_mirrored_random_cast_is_untested_with_quirk_bat_quirk_9`
-- Decided by / date: user, 2026-10-08 (E04b T7b2a, BAT-Q11)
-- Review (E04b T11b, 2026-10-12): the re-read finds that the redirect never reaches a creature's cast, so the behaviour described above does not occur in the original: the redirect is drawn only in the player's targeting routine (0x59EC50, 0x59EE7A to 0x59EF8B), which stores the new hex in the manager's +0x48; the hero's action passes it to the cast routine as the second hex (0x479036 to 0x479056), but the creature's action passes only the target hex (0x47936E to 0x479382) and every cast of 0x448260 gives the cast routine the second hex −1. The Faerie Dragon's key path draws a redirect that is dropped; the mouse path draws none. VCMI 1.7.5 agrees (only a hero's spell is reflected, `lib/spells/BattleSpellMechanics.cpp` `isReflected`). The engine still redirects a creature's spell in both variants of the flag (`docs/formats/installation.md` §7.21); open as BAT-Q29.
+- Sources: original-data, `docs/formats/installation.md` §7.21 ("The Faerie Dragon, re-read for T7b2a" and the review re-read "Magic Mirror never redirects a creature's spell"); VCMI 1.7.5 `lib/spells/BattleSpellMechanics.cpp` L514–L523; the wiki's Magic Mirror page ("Spells cast by creatures … will never be reflected", https://heroes.thelazy.net/index.php/Magic_Mirror, retrieved 2026-10-12)
+- Flag: none; retired: `quirk.battle.creature_mirror_untested` (E04b T7b2a to 2026-10-12). Its position 14 in `h3_content::REGISTRY` stays reserved and a profile that names it does not compile (`CompileError::UnknownQuirk`)
+- Defaults: none (no flag)
+- Regression test: `crates/h3-battle/src/tests/casters.rs`, `a_magic_mirror_never_sends_a_creatures_spell_away`; `crates/h3-battle/src/tests/creature_defences.rs`, `a_mirror_of_its_own_never_sends_a_creatures_spell_away`; `crates/h3-pack/tests/harvested_defences.rs`, `a_faerie_dragons_spell_is_never_sent_away_by_the_other_dragons_mirror`
+- Decided by / date: user, 2026-10-08 (E04b T7b2a, BAT-Q11); retired: user, 2026-10-12 (BAT-Q29)
+- Review (E04b T11b, 2026-10-12): the re-read finds that the redirect never reaches a creature's cast, so the behaviour described above does not occur in the original: the redirect is drawn only in the player's targeting routine (0x59EC50, 0x59EE7A to 0x59EF8B), which stores the new hex in the manager's +0x48; the hero's action passes it to the cast routine as the second hex (0x479036 to 0x479056), but the creature's action passes only the target hex (0x47936E to 0x479382) and every cast of 0x448260 gives the cast routine the second hex −1. The Faerie Dragon's key path draws a redirect that is dropped; the mouse path draws none. VCMI 1.7.5 agrees (only a hero's spell is reflected, `lib/spells/BattleSpellMechanics.cpp` `isReflected`). The wiki says the same. The user retired the flag (BAT-Q29): the engine redirects only a hero's spell, in every profile.
 
 ### BAT-QUIRK-10 — The Master Genie's Slayer test counts dead stacks and only the first king level (E04b T7b2b)
 - Class: preserve, no flag: the rule in every profile (user, 2026-10-08, BAT-Q12)
@@ -313,25 +313,25 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 ### BAT-QUIRK-11 — A reused record loses its earlier created stack's losses (E04b T6c)
 - Class: preserve, no flag: the rule in every profile (user, 2026-10-08, BAT-Q13)
 - Context / rules affected: battle, BAT-END-003 (with BAT-MAG-037)
-- Original behavior: a new created stack takes the record of the side's first dead summoned stack (0x47A100) and is set up afresh there (0x43D730: count, start count, temporary creatures), so the dead stack's start count and losses are gone: Necromancy (0x4775E1) and the casualty window count only the later stack (batch 2d SU a: 2 Air Elementals of at least 4 killed); the experience never counts created stacks (`docs/formats/installation.md` §7.19, §7.21).
+- Original behavior: a new created stack takes the record of the side's first dead summoned stack with no creatures (0x47A100: one that was killed; a clone or a turned original whose rounds ran out keeps its count and so its record) and is set up afresh there (0x43D730: count, start count, temporary creatures), so the dead stack's start count and losses are gone: Necromancy (0x4775E1) and the casualty window count only the later stack (batch 2d SU a: 2 Air Elementals of at least 4 killed); the experience never counts created stacks (`docs/formats/installation.md` §7.19, §7.21).
 - Intended/expected behavior: every created stack's losses count for Necromancy, if they count at all (HotA treats Necromancy from clones as a bug; E08–E10 classify Necromancy from created stacks as a whole).
 - Impact: gameplay-altering (small: fewer Skeletons after a battle against reused summons)
 - Community status: unknown (no report found; not searched)
 - Sources: original-data, `docs/formats/installation.md` §7.19; observation `experiments/results/E04b-batch-2d.md` SU a (SoD 4.0 Complete, plain HD, 2026-10-08)
 - Flag: none (the outcome reports the stacks the battle's slots hold at its end, as the original's records)
-- Regression test: `crates/h3-battle/src/tests/created.rs`, `the_outcome_reports_each_created_stack_with_its_losses`
+- Regression test: `crates/h3-battle/src/tests/created.rs`, `the_outcome_reports_each_created_stack_with_its_losses`; the records that are not reused: `a_created_stack_whose_rounds_ran_out_keeps_its_record`, `created_stacks_whose_rounds_ran_out_count_towards_the_limit`, `with_quirk_bat_quirk_7_a_vanished_original_keeps_its_record`
 - Decided by / date: user, 2026-10-08 (E04b increment 9, BAT-Q13)
 
 ### BAT-QUIRK-12 — A Pit Lord's raise with no free stack record crashes (E04b T7b3)
 - Class: exploit-fix
 - Context / rules affected: battle, BAT-MAG-052 (with BAT-MAG-037)
-- Original behavior: the raise 0x5A7390 creates the Demons through 0x47A100, which takes the first of the side's records 0–19 that is empty or holds a dead summoned stack; with 20 records in use and none of them a dead summoned stack (summoned stacks and clones alive, the army and war machines), it creates nothing and returns 0, and 0x5A7390 then writes the army slot through that null pointer: the game crashes. The cursor (0x4473D0, 0x4476C0) does not test the side's records (`docs/formats/installation.md` §7.21).
+- Original behavior: the raise 0x5A7390 creates the Demons through 0x47A100, which takes the first of the side's records 0–19 that is empty or holds a dead summoned stack with no creatures; with 20 records in use and none of them such (summoned stacks and clones alive or vanished at the end of their rounds, the army and war machines), it creates nothing and returns 0, and 0x5A7390 then writes the army slot through that null pointer: the game crashes. The cursor (0x4473D0, 0x4476C0) does not test the side's records (`docs/formats/installation.md` §7.21).
 - Intended/expected behavior: no raise without a record for the new stack; the engine refuses the raise then (its target test).
 - Impact: game-breaking (a crash; reachable with many summoned stacks of one side)
 - Community status: unknown (not searched)
 - Sources: original-data, `docs/formats/installation.md` §7.21 ("The raisers and the end of the battle")
 - Flag: none
-- Regression test: `crates/h3-battle/src/tests/raisers.rs`, `a_pit_lord_needs_a_slot_for_the_new_stack`
+- Regression test: `crates/h3-battle/src/tests/raisers.rs`, `a_pit_lord_needs_a_slot_for_the_new_stack`, `a_pit_lord_finds_no_slot_in_a_clone_whose_rounds_ran_out`
 - Decided by / date: agent, 2026-10-08 (state-corrupting bugs are always fixed, AGENTS.md; the fix's shape, a refused raise, as Clone's and Summon Elemental's limit; BAT-Q13 noted it)
 
 ### BAT-QUIRK-13 — Enchanters judge a spell by the first stack of its side only (E04b T7b4; survey S-12)

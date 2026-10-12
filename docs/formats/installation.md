@@ -329,8 +329,7 @@ dispatcher (VA 0x59ECC4) maps spell ids 10–69 to handlers through a byte table
 - No other comparison of the count with 20 or 21 was found. Resurrection, Animate Dead and
   Sacrifice bring back a dead stack in its own record, so they never need a new one.
 
-Not read: why the 21st record stays free (Pit Lords' Demons: §7.21, "The raisers"). A dead clone's or summoned
-stack's record goes to the next stack the side creates (§7.19).
+Not read: why the 21st record stays free (Pit Lords' Demons: §7.21, "The raisers"). A killed clone's or summoned stack's record (dead with no creatures) goes to the next stack the side creates; one whose rounds ran out keeps its record (§7.19).
 
 ### 7.8 Code reading: damage spells, immunities and magic resistance (E04b T2d, 2026-10-06)
 
@@ -464,9 +463,7 @@ for a spell that takes a target stack (flags `0x20070`), a living stack on the h
 have their own hex tests (T5); every other hex is accepted, so an area spell may be aimed at an
 empty hex, an obstacle or an immune stack's hex (batch 2a R3b, R3c). For Chain Lightning (spell
 19) the cursor, the book's "any target" check and the opening spells' (0x5A40D0, §7.24) also
-refuse a stack of the caster's side (0x59F7BF; batch 2a R1). The single-target spells and the battle-wide
-ones (24–26) need at least one stack the target test accepts before the cursor opens; the area
-spells do not. 0x5A8090 also returns 0 for spells above level 1 on battlefield type 2 (Cursed
+refuse a stack of the caster's side (0x59F7BF; batch 2a R1). The single-target spells, their mass versions and the battle-wide ones (24–26) need at least one hex whose stack the target test accepts (`f > 0`) before the spell is armed: without one the book shows a message and nothing is cast or paid; a spell that takes no target stack at its mastery is then cast without a cursor. The test reads a stack's Hypnotize only for the hero that controls it, so a hypnotized stack the mass handler later passes over counts. The area spells have no such test. 0x5A8090 also returns 0 for spells above level 1 on battlefield type 2 (Cursed
 Ground, E04c) and checks a worn artifact 0x53 (Recanter's Cloak, T8) for spells above level 2.
 
 ### 7.9 Code reading: timed spells (E04b T3a, 2026-10-06)
@@ -1053,9 +1050,7 @@ stack's own hexes are left out. Flyers (stack flag `0x2`) and Devils and Arch De
 rest of the move). The walker (0x441FA0), at each step of its path, before it moves: if the new
 hex of its head or, for a two-hex stack, of its tail is a stop, this step is the last; else if it
 has Quicksand, the walker reveals that pit (+0xA = 1) and this step is the last; then it moves and
-enters the hexes (§7.15: Fire Wall, Land Mine, the moat). Either way the walk returns false, and a
-move and attack (0x478971) then skips the attack, also when the pit was the move's destination and
-seen (BAT-QUIRK-2). A flyer (0x4B49C0) and a teleporting creature (0x4B4E90) never test the pits;
+enters the hexes (§7.15: Fire Wall, Land Mine, the moat). Either way the walk returns false, and a move and attack (0x478971) then skips the attack; a walk that ends in a seen pit is only ever a plain move, as no attack is offered from there (the review re-read below). A flyer (0x4B49C0) and a teleporting creature (0x4B4E90) never test the pits;
 Teleport places the stack without entering. Standing on a pit has no further effect: the stack
 leaves it freely on its next turn (but for a two-hex stack walking on along its row: the review
 re-read below).
@@ -1094,9 +1089,7 @@ move dearer, 0x4B378A). The stops are the pits the stack's side sees (above), so
 a player no attack that ends on a pit his side sees; the attack skipped after a stop ("The walker's
 stops", above) is reached only through a pit the side does not see, or through a two-hex stack's own
 pit hex (the re-read before this one). By the report the computer player's query refuses such an
-attack too (not re-read here); the wiki and VCMI were not compared. The engine lists and accepts
-such attacks while `quirk.battle.attack_from_seen_pit` is on, as it is in the faithful profile
-(BAT-QUIRK-2): it does not follow this yet: BAT-Q30.
+attack too (not re-read here); the wiki and VCMI were not compared. The engine follows this since the user's decision of 2026-10-12 (BAT-Q30): it lists and accepts no attack whose walk stops in a pit the stack's side sees, in any profile, and the flag `quirk.battle.attack_from_seen_pit` of BAT-QUIRK-2 is retired (BAT-MAG-032).
 
 **Information the original gives away** (fixed, Q-0002): Fire Wall's and Force Field's target test
 (0x5A39C0) refuses a hex with the other side's hidden pit, so the cursor shows it; the stops of a
@@ -1116,10 +1109,8 @@ original. One corner was not read to its end. The berserk turn asks the pathfind
 above the stack's speed (127; 0x445582, 0x42232C), and for such a query a position on a stop does
 count as a place to attack from, one whole move dearer (0x4B378A to 0x4B3792), where the cursor's
 query within one move counts none (the re-read above). The walk then attacks only if the target's
-cost is within the stack's speed (0x4223E1) and otherwise walks towards it (0x41F580, not read): a
-berserk stack whose attack position lies on a pit its side sees does not strike that turn, and
-whether it ends its walk on that pit, as the engine's does while BAT-QUIRK-2 is on, is not known.
-Whether an automatic turn should plan only with the pits both sides see is open: BAT-Q31.
+cost is within the stack's speed (0x4223E1) and otherwise walks towards it (0x41F580, not read): a berserk stack whose attack position lies on a pit its side sees does not strike that turn, and whether it ends its walk on that pit is not known; the engine's takes no such position and goes for another stack or passes (BAT-MAG-025; the flag of BAT-QUIRK-2, under which it walked into the pit, is retired, BAT-Q30).
+The user decided on 2026-10-12 to keep the engine as the original here, in every profile (BAT-Q31; noted in the ledger beside BAT-QUIRK-4).
 
 ### 7.17 Code reading: Land Mine (E04b T5c2, 2026-10-07)
 
@@ -1283,9 +1274,7 @@ else nothing is created either (and the caller is not told). The record is set u
 at the battle's start (0x43D8B0, 0x43D730: the creature's table entry, so its flags and none of
 the round's, then the side's hero's bonuses through 0x4E6120, the native-terrain bonus, morale and
 luck), the given flags are added, and the side's count of records in use (+0x54BC) grows unless a
-record was reused. So a new stack acts in the round it appears, and a dead clone's or summoned
-stack's record (and so its place in the turn order's tie-break) goes to the next stack the side
-creates. 0x43D730 also clears the town of creatures 112–115 unless a game setting
+record was reused. So a new stack acts in the round it appears, and a killed clone's or summoned stack's record (and so its place in the turn order's tie-break) goes to the next stack the side creates. A clone whose rounds ran out, and an original turned into one, dies with its count ("A clone's end") and keeps its record: the side's records in use never fall for it. 0x43D730 also clears the town of creatures 112–115 unless a game setting
 (`[0x6994E8]+0x1F698`, not read) is set, which takes their native-terrain bonus away; this
 applies to army stacks too and is left for BAT-TER-001 (experiment list). Batch 2d (NE, SU; SoD 4.0 Complete, plain HD) showed Air Elementals in an army and summoned Air and Earth Elementals with the native bonus on grass: in that setup the setting is on, or this reading is wrong; the engine keeps them natives.
 
@@ -1658,9 +1647,7 @@ the cast): the key enters the cast through 0x59EC50 with action 10 (+0x3C = 10 f
 argument 1), which draws the redirect as for a hero's cast (§7.13), but the creature's action
 hands the new hex to nobody (the review re-read below). 0x59FE30 skips the test and roll at
 0x5A02CB for caster kind 1, and the damage handlers (Magic Arrow 0x5A098A) have no immunity
-test of their own; both only ever meet the aimed stack. So in the original no own Black Dragon
-or Earth Elemental takes the dragon's mirrored Magic Arrow or Lightning Bolt; quirk BAT-QUIRK-9
-and the engine still have it so (BAT-Q29). *Survey S-18*: a
+test of their own; both only ever meet the aimed stack. So in the original no own Black Dragon or Earth Elemental takes the dragon's mirrored Magic Arrow or Lightning Bolt, nor in the engine since BAT-QUIRK-9's flag was retired (2026-10-12, BAT-Q29). *Survey S-18*: a
 Magic Arrow from one dragon is 5 × 10 + 20 = 70 before the target's factors (§7.8), a hero's at
 least 20 (power ≥ 1, HER-DET-001), so neither falls below Gold Golems' 7 or Diamond Golems' 20;
 in SoD only a protection on a Diamond Golem cuts a power-1 Magic Arrow's 1 to 0, the truncation
@@ -1681,9 +1668,7 @@ dropped, the mouse path draws none (its click handler queues action 10 with +0x4
 and no creature's spell is ever sent away: the skip at 0x5A02CB only ever meets the aimed stack, and
 the original has no behaviour of the kind BAT-QUIRK-9 describes. VCMI 1.7.5 agrees: only a hero's
 spell is reflected (`lib/spells/BattleSpellMechanics.cpp` `isReflected`); the wiki was not checked.
-The engine still redirects a creature's single-target spell at a stack under Magic Mirror, or at
-Faerie Dragons with their own 20 %, untested while `quirk.battle.creature_mirror_untested` is on and
-tested without it: it does not follow this yet: BAT-Q29.
+The engine follows this since the user's decision of 2026-10-12 (BAT-Q29): only a hero's spell is redirected, by the spell or by the Faerie Dragons' own 20 %, in every profile, and the flag `quirk.battle.creature_mirror_untested` of BAT-QUIRK-9 is retired (BAT-MAG-022, BAT-MAG-049, BAT-MAG-057). The wiki agrees ("Spells cast by creatures … will never be reflected", the Magic Mirror page).
 
 **Review re-read (E04b T11b, 2026-10-12): the Faerie Dragon's key path and its targets.** The
 original casts the drawn spell in two ways, and the reading above followed the mouse cursor alone.
@@ -1761,8 +1746,7 @@ health (35: the Demon's health, creature 48 of the creature table). *0x5A7390(ca
 its hexes' lists (0x5A7320, both hexes), then 0x47A100(controller's side, 48, the count, the
 corpse's hex, flags **0**, animation 1) and sets the new record's +0x5C (army slot) to the
 corpse's. The Demons are no summoned stack: they count for the winner (0x4658B0), leave a corpse,
-give experience and count for Necromancy, and the army rebuild puts them into that slot. With 20
-records in use and no dead summoned one, 0x47A100 returns 0 and 0x5A7390 writes through it: the
+give experience and count for Necromancy, and the army rebuild puts them into that slot. With 20 records in use and no dead summoned one without creatures, 0x47A100 returns 0 and 0x5A7390 writes through it: the
 game crashes (the engine refuses the raise then). *The Archangel*: the cursor's case 0 calls
 0x5A3CC0(side, hex, 1) (Resurrection's search and test, §7.18) and needs 0x447330 above 0.
 *Clone on its original* (BAT-QUIRK-7): 0x5A6C70 calls 0x47A100 at the clone's position, then takes
@@ -1854,8 +1838,7 @@ and spell 36's table value at no mastery (spell table +0x1354: 20). Only the cas
 (0x59EC50, §7.13) and the AI's spell evaluation (0x43A670) ask it; Hypnotize's refusal (0x5A8090,
 case 60, 0x5A83A6) reads the spell's duration, so a Faerie Dragon can be hypnotized. The dragon's
 own mirror thus sends a hero's single-target cast at it to a random living stack of the caster's
-side as the spell does; a creature's cast is never sent away (the review re-read above; the
-engine still redirects it, BAT-QUIRK-9, BAT-Q29). *The Efreet
+side as the spell does; a creature's cast is never sent away (the review re-read above; nor in the engine since 2026-10-12, BAT-Q29). *The Efreet
 Sultan's shield* (0x443130, Fire Shield's factor): the stored `f32` (+0x4A0) while the spell's
 duration (+0x20C) is not 0, else 0.2 (an `f32`) for creature 53, else 0. The reflection 0x422440
 tests the same (the duration, else creature 53, 0x42244C) and runs as for the spell (§7.11): melee

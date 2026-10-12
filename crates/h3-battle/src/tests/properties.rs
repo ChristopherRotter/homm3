@@ -1514,7 +1514,8 @@ proptest! {
         // stack's automatic turn is planned with the pits its own side sees, so its walk, which
         // both sides are told, can show the other side where its own side's hidden pits lie
         // (the E04b T11b review's F-sec-1 part a and r3 F-11; by the reviewers' reading the
-        // original does the same). What the engine should do there is open: BAT-Q31.
+        // original does the same). The user keeps the engine as the original there (BAT-Q31,
+        // 2026-10-12; the ledger's note beside BAT-QUIRK-4).
         let mut setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
         let berserk = r.spell_by_key("t:berserk").unwrap();
         for book in setup.heroes.iter_mut().flatten().filter_map(|h| h.magic.spell_book.as_mut()) {
