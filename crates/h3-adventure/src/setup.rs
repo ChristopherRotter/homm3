@@ -11,7 +11,7 @@ use core::fmt;
 use h3_content::TerrainId;
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
-use crate::ruleset::{RiverId, RoadId};
+use crate::ruleset::{ObjectTypeId, RiverId, RoadId};
 
 /// A tile's coordinates: the column and row from the top left, and the level (0 the surface,
 /// 1 the underground).
@@ -83,15 +83,6 @@ impl TileMask {
     }
 }
 
-/// The behaviour of a map object (ADR-0016 point 4): a closed set of kinds with typed
-/// parameters, growing by variants with their rules.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ObjectKind {
-    /// Blocks its blocked and its visitable tiles; nothing visits it (increment 1: every
-    /// object).
-    Blocker,
-}
-
 /// An object on the map as the setup places it. Its anchor may lie past the map's right or bottom
 /// edge (the map editor lets objects stick out); the tiles of its footprint off the map are
 /// ignored (ADV-OBJ-001).
@@ -103,8 +94,13 @@ pub struct ObjectSetup {
     pub blocked: TileMask,
     /// The tiles a hero visits it from (ADV-OBJ-001).
     pub visitable: TileMask,
-    /// Its behaviour.
-    pub kind: ObjectKind,
+    /// Its object type (ADV-OBJ-002); none for a blocker, which blocks its blocked and its
+    /// visitable tiles and is never visited (ADR-0016 point 4).
+    pub object_type: Option<ObjectTypeId>,
+    /// The amount the map fixes for a pickup whose type takes one
+    /// ([`crate::ObjectType::takes_amount`]), before the type's multiplier: from 1 to
+    /// [`crate::MAX_PICKUP_AMOUNT`]. None draws it when the game is built.
+    pub amount: Option<u32>,
 }
 
 /// The static map as the setup gives it: what never changes after setup.
@@ -225,6 +221,11 @@ pub enum SetupError {
     Players(u8),
     /// The object at this index is anchored on a level the map does not have.
     ObjectLevel(usize),
+    /// The object at this index has an object type the ruleset does not know.
+    UnknownObjectType(usize),
+    /// The object at this index has an amount its type does not take, or one outside 1 to
+    /// [`crate::MAX_PICKUP_AMOUNT`].
+    ObjectAmount(usize),
     /// Two heroes share this id.
     DuplicateHero(HeroId),
     /// The hero's owner is not a player of the game.
@@ -263,6 +264,12 @@ impl fmt::Display for SetupError {
             Self::Players(n) => write!(f, "{n} players are outside the bounds"),
             Self::ObjectLevel(object) => {
                 write!(f, "object {object} is anchored on a missing level")
+            }
+            Self::UnknownObjectType(object) => {
+                write!(f, "object {object} has an unknown object type")
+            }
+            Self::ObjectAmount(object) => {
+                write!(f, "object {object} has an amount its type does not take")
             }
             Self::DuplicateHero(hero) => write!(f, "hero {} is placed twice", hero.raw()),
             Self::UnknownOwner(hero) => {

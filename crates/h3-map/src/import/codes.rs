@@ -32,6 +32,84 @@ pub(crate) const RIVERS: [&str; 4] = [
     "base:lava_river",
 ];
 
+/// Resource piles (class 79) by subclass: the resource's `.h3m` code (0 wood to 6 gold).
+const PILES: [&str; 7] = [
+    "base:pile_wood",
+    "base:pile_mercury",
+    "base:pile_ore",
+    "base:pile_sulfur",
+    "base:pile_crystal",
+    "base:pile_gems",
+    "base:pile_gold",
+];
+
+/// Cartographers (class 13) by subclass: 0 water, 1 land, 2 subterranean.
+const CARTOGRAPHERS: [&str; 3] = [
+    "base:cartographer_water",
+    "base:cartographer_land",
+    "base:cartographer_subterranean",
+];
+
+/// Keymaster's tents (class 10) by subclass: the key colour (0 light blue to 7 black).
+const KEYMASTERS: [&str; 8] = [
+    "base:keymaster_light_blue",
+    "base:keymaster_green",
+    "base:keymaster_red",
+    "base:keymaster_dark_blue",
+    "base:keymaster_brown",
+    "base:keymaster_purple",
+    "base:keymaster_white",
+    "base:keymaster_black",
+];
+
+/// Border guards (class 9) by subclass: the key colour.
+const BORDER_GUARDS: [&str; 8] = [
+    "base:border_guard_light_blue",
+    "base:border_guard_green",
+    "base:border_guard_red",
+    "base:border_guard_dark_blue",
+    "base:border_guard_brown",
+    "base:border_guard_purple",
+    "base:border_guard_white",
+    "base:border_guard_black",
+];
+
+/// Border gates (class 212, AB and SoD) by subclass: the key colour.
+const BORDER_GATES: [&str; 8] = [
+    "ab:border_gate_light_blue",
+    "ab:border_gate_green",
+    "ab:border_gate_red",
+    "ab:border_gate_dark_blue",
+    "ab:border_gate_brown",
+    "ab:border_gate_purple",
+    "ab:border_gate_white",
+    "ab:border_gate_black",
+];
+
+/// The object type an object of this class and subclass has (E08 T12a, ADV-OBJ-002; survey
+/// `docs/rules/surveys/E08-objects.md` §1): `None` for a class without a type (a blocker),
+/// `Some(None)` for a subclass its class does not define.
+pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static str>> {
+    let by_subclass = |table: &[&'static str]| {
+        usize::try_from(subclass)
+            .ok()
+            .and_then(|i| table.get(i))
+            .copied()
+    };
+    Some(match class {
+        9 => by_subclass(&BORDER_GUARDS),
+        10 => by_subclass(&KEYMASTERS),
+        12 => Some("base:campfire"),
+        13 => by_subclass(&CARTOGRAPHERS),
+        58 => Some("base:redwood_observatory"),
+        60 => Some("base:pillar_of_fire"),
+        76 => Some("base:random_resource"),
+        79 => by_subclass(&PILES),
+        212 => by_subclass(&BORDER_GATES),
+        _ => return None,
+    })
+}
+
 /// Creatures by original id, ascending (ids without a creature are left out).
 pub(crate) const CREATURES: [(u16, &str); 144] = [
     (0, "base:pikeman"),

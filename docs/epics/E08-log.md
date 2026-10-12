@@ -904,3 +904,44 @@ with the price checked by the game, the decision queue and `Answer`, the env's a
 the versions). Detail in `docs/epics/E08-design.md`.
 
 For the user (ADV-Q10): accept the drafts; D-5, D-6, D-7, A-5; the next round.
+
+### Checkpoint after T11a + T11b and T12a + T12b: object types (2026-10-12, `adventure/e08-t12`)
+
+The user merged #113 and answered ADV-Q10: both ADR amendments accepted as written (applied by
+`shared/e08-inc2-adrs`, #115, with `BACKLOG.md`'s E08 row and the glossary); D-5 the reading
+with the wiki; D-6 guarded piles `Unsupported`; D-7 the border guard's question a second offer;
+A-5 always fixed; the round T12 in two parts, T12a and T12b, one pull request.
+
+**T12a — object types as data and in the import.**
+- **Ruleset part** (`h3-adventure`, `src/ruleset/objects.rs`; ruleset-part hash v4): `ObjectType`
+  (key, name, `Visit::{Enter, Neighbour}`, `from_above`, `ObjectKind`), `ObjectTypeId`, by key.
+  Kinds: `Pickup(Pickup::{Resource, OneOf, Paired})` (a pile: a resource, the bounds of a drawn
+  amount and a multiplier; a random resource: one of these types; a campfire: an amount, one of
+  these resources and the paired resource times a multiplier), `RevealTerrain { terrains,
+  price }`, `RevealArea { radius }`, `KeyTent`, `KeyGuard`, `KeyGate` (a colour below
+  `KEY_COLOURS` = 8). Compiled per pack in two passes (keys first, so a type may name a later
+  type of its own pack); references stay in the pack's dependency closure; a check after every
+  pack that `OneOf` names resource pickups only. Bounds: an amount from 1 to
+  `MAX_PICKUP_AMOUNT` (0x7FFFF, the original's 19 bits), `MAX_PICKUP_AMOUNT` × the multiplier
+  within `MAX_GAIN` (2³¹ − 1, the treasury's cap), prices from 1 to `MAX_GAIN`, radius ≥ 1.
+- **Packs** (`h3-pack-adventure`: `[[object_type]]` with one kind table: `pickup`,
+  `pickup_one_of`, `pickup_paired`, `reveal_terrain`, `reveal_area`, `key_tent`, `key_guard`,
+  `key_gate`): the base pack's 30 types (seven piles, the random resource, the campfire, three
+  Cartographers, the two observatories, eight tents and eight guards) and AB's eight border gates,
+  each with its sources.
+- **Setup** (`ObjectSetup`): `object_type: Option<ObjectTypeId>` (none: a blocker) and `amount`
+  (a pile's or random resource's fixed amount, 1 to 0x7FFFF); `SetupError::{UnknownObjectType,
+  ObjectAmount}`; the static map keeps both (adventure state hash v4).
+- **Import** (`MAP_IMPORT_VERSION` 2, `h3m.md` "Import"): `codes::object_type(class,
+  subclass)`, a subclass the class does not define is `ImportError::Subclass`; a resource body's
+  amount (0 none); a pile or random resource with a guards record is
+  `Unsupported::GuardedPile` (D-6; even an empty record, as the reading of the loader is
+  missing), a blocker in `import_map`. The shipped maps: every static layer still imports and
+  validates; 9 import whole (`Myth and Legend` now has a guarded pile), 5 are unsupported for a
+  guarded pile.
+- **Rules**: ADV-OBJ-002 `implemented`; ADV-PIK-001 to -003 and ADV-VIS-001 to -005 written
+  `specified` with their sources (data in the packs, tests on the data).
+- **Golden replays** re-recorded for the new ruleset-part hash, import version and state hash
+  (the commands are unchanged; the record options are in the test's doc comment).
+- The ADR drafts left `adr-drafts/` (applied by #115).
+

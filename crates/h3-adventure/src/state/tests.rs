@@ -12,8 +12,9 @@ use h3_content::{CreatureTypeId, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
 use super::*;
+use crate::ruleset::MAX_PICKUP_AMOUNT;
 use crate::setup::TileSetup;
-use crate::testing::rules;
+use crate::testing::{ANY_PILE, FIRE, GOLD_PILE, TOWER, WOOD_PILE, rules};
 
 const GRASS: TerrainId = TerrainId::from_raw(0);
 const SEA: TerrainId = TerrainId::from_raw(1);
@@ -79,13 +80,15 @@ fn setup() -> AdventureSetup {
                     anchor: Pos::new(1, 1, 0),
                     blocked: mask(&[(0, 0), (1, 0), (2, 0)]),
                     visitable: mask(&[(1, 1)]),
-                    kind: ObjectKind::Blocker,
+                    object_type: None,
+                    amount: None,
                 },
                 ObjectSetup {
                     anchor: Pos::new(2, 2, 1),
                     blocked: mask(&[(0, 0), (1, 0)]),
                     visitable: mask(&[(0, 0)]),
-                    kind: ObjectKind::Blocker,
+                    object_type: None,
+                    amount: None,
                 },
             ],
         },
@@ -150,7 +153,7 @@ fn builds_the_static_map_with_the_objects_footprints() {
     assert_eq!(map.index(Pos::new(3, 2, 1)), Some(23));
     assert_eq!(map.objects().len(), 2);
     assert_eq!(map.objects()[1].anchor, Pos::new(2, 2, 1));
-    assert_eq!(map.objects()[1].kind, ObjectKind::Blocker);
+    assert_eq!(map.objects()[1].object_type, None);
     assert_eq!(map.objects()[0].blocked, mask(&[(0, 0), (1, 0), (2, 0)]));
     assert_eq!(map.objects()[0].visitable, mask(&[(1, 1)]));
 }
@@ -166,14 +169,16 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
             anchor: Pos::new(5, 3, 0),
             blocked: mask(&[(0, 0), (3, 2), (6, 4), (0, 4)]),
             visitable: mask(&[(2, 1)]),
-            kind: ObjectKind::Blocker,
+            object_type: None,
+            amount: None,
         },
         // Covering no tile of the map at all.
         ObjectSetup {
             anchor: Pos::new(u16::MAX, u16::MAX, 1),
             blocked: mask(&[(0, 0)]),
             visitable: mask(&[(0, 0)]),
-            kind: ObjectKind::Blocker,
+            object_type: None,
+            amount: None,
         },
     ];
     let state = build(&setup).unwrap();
@@ -188,6 +193,41 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
     // (2, 1) is blocked, (3, 2) visitable; (5, 3), (-1, -1) and (5, -1) are off the map.
     assert_eq!(marked, [(6, true, false), (11, false, true)]);
     assert_eq!(map.objects().len(), 2);
+}
+
+// covers: ADV-OBJ-002
+#[test]
+fn objects_keep_their_type_and_a_fixed_amount_only_where_the_type_takes_one() {
+    let typed = |object_type, amount| {
+        let mut setup = setup();
+        let object = &mut setup.map.objects[1];
+        object.object_type = object_type;
+        object.amount = amount;
+        build(&setup).map(|state| state.map().objects()[1])
+    };
+    let object = typed(Some(GOLD_PILE), Some(MAX_PICKUP_AMOUNT)).unwrap();
+    assert_eq!(object.object_type, Some(GOLD_PILE));
+    assert_eq!(object.amount, Some(MAX_PICKUP_AMOUNT));
+    // A random pile takes the map's amount too; a typed object may leave it to the draw.
+    assert_eq!(typed(Some(ANY_PILE), Some(1)).unwrap().amount, Some(1));
+    for ty in [WOOD_PILE, GOLD_PILE, ANY_PILE, FIRE, TOWER] {
+        assert_eq!(typed(Some(ty), None).unwrap().object_type, Some(ty));
+    }
+    // A blocker, a paired pickup and a reveal take no amount; a pile takes 1 to the largest.
+    for (object_type, amount) in [
+        (None, 1),
+        (Some(FIRE), 1),
+        (Some(TOWER), 1),
+        (Some(GOLD_PILE), 0),
+        (Some(GOLD_PILE), MAX_PICKUP_AMOUNT + 1),
+        (Some(ANY_PILE), u32::MAX),
+    ] {
+        assert_eq!(
+            typed(object_type, Some(amount)),
+            Err(SetupError::ObjectAmount(1)),
+            "{object_type:?} {amount}"
+        );
+    }
 }
 
 #[test]
@@ -282,6 +322,14 @@ fn each_broken_invariant_is_its_own_error() {
         SetupError::ObjectLevel(1)
     );
     assert_eq!(
+        error(|s| s.map.objects[1].object_type = Some(ObjectTypeId::from_raw(5))),
+        SetupError::UnknownObjectType(1)
+    );
+    assert_eq!(
+        error(|s| s.map.objects[0].amount = Some(1)),
+        SetupError::ObjectAmount(0)
+    );
+    assert_eq!(
         error(|s| s.heroes[1].id = HeroId::new(5)),
         SetupError::DuplicateHero(HeroId::new(5))
     );
@@ -355,6 +403,14 @@ fn the_errors_read_well() {
         (
             SetupError::ObjectLevel(3),
             "object 3 is anchored on a missing level",
+        ),
+        (
+            SetupError::UnknownObjectType(3),
+            "object 3 has an unknown object type",
+        ),
+        (
+            SetupError::ObjectAmount(3),
+            "object 3 has an amount its type does not take",
         ),
         (SetupError::DuplicateHero(hero), "hero 4 is placed twice"),
         (
@@ -432,6 +488,11 @@ fn the_hash_sees_content_not_sharing() {
         |s| s.map.objects[1].blocked = mask(&[(1, 0)]),
         |s| s.map.objects[1].blocked = mask(&[(0, 0)]),
         |s| s.map.objects[1].visitable = TileMask::default(),
+        |s| s.map.objects[1].object_type = Some(TOWER),
+        |s| {
+            s.map.objects[1].object_type = Some(GOLD_PILE);
+            s.map.objects[1].amount = Some(1);
+        },
         |s| s.map.objects.truncate(1),
         |s| {
             s.map.width = 3;
@@ -457,6 +518,14 @@ fn the_hash_sees_content_not_sharing() {
         assert_ne!(other.state_hash(), base.state_hash(), "change {i}");
         assert_ne!(other, base, "change {i}");
     }
+    let pile = |amount| {
+        let mut setup = setup();
+        setup.map.objects[1].object_type = Some(GOLD_PILE);
+        setup.map.objects[1].amount = amount;
+        build(&setup).unwrap().state_hash()
+    };
+    assert_ne!(pile(Some(1)), pile(None));
+    assert_ne!(pile(Some(1)), pile(Some(2)));
     let mut more = setup();
     more.players = 1;
     more.heroes[0].owner = PlayerId::new(0);

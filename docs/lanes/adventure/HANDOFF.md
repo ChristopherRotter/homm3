@@ -35,6 +35,10 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Recent sessions
 
+### 2026-10-12 — T11 checkpoint and T12a + T12b: object types (in progress)
+
+The user answered ADV-Q10 (drafts accepted, applied by `shared/e08-inc2-adrs` #115, docs only, to merge first; D-5 the reading, D-6 `Unsupported`, D-7 an offer, A-5 fixed) and took T12 in two parts on `adventure/e08-t12`. **T12a done** (pushed): object types in the ruleset part and the packs, the import's mapping (v2), golden replays re-recorded. **Next: T12b** (contents drawn at the build, removed objects and the occupancy layer, `ObjectView`s). Detail: `E08-log.md`.
+
 ### 2026-10-12 — T10c checkpoint and T11a + T11b: the objects survey, the ADR amendment drafts
 
 The user merged #110 and took T11a with T11b (docs only, one checkpoint). Read: the per-class visit settings, every pickup drawn at setup, the Cartographer, observatories, keys, guards, gates, the treasury's add (A-5), the starting rows; a fresh agent confirmed it. VCMI agrees but on D-5; the wiki, read once the user approved it, agrees throughout. Drafts: kinds with visit properties as data, gains and offers by outcome, a decision queue. Detail: `E08-log.md`.
@@ -42,7 +46,3 @@ The user merged #110 and took T11a with T11b (docs only, one checkpoint). Read: 
 ### 2026-10-12 — T10a/T10b checkpoint and T10c: batch 1 scored, increment 1 closed, increment 2 refined
 
 The user merged #107 and pushed batch 1's results; took all of T10c (docs only, `cross-lane` for two rows of `docs/experiments/README.md`). Scored: everything as the code reading (ADV-Q4: 2000 points, the points left; D-2: 9 and 14; ADV-Q6: Crag Hack 13, Torosar without Ballista); Q4c was missing from a stale map (trap above; the user's statement stands in). Refined increment 2 with the user (ADV-Q9): scope as proposed, the Cartographer first, the treasury in `h3-game`, the spec stamp with batch 2. Detail: `E08-log.md`.
-
-### 2026-10-12 — T9b checkpoint and T10a + T10b: the movement experiments, the exit criteria
-
-The user merged T9b (#103, #104) and took T10 in three parts (ADV-Q8): T10a + T10b now, the spec shape by extending `h3-experiment` (`cross-lane`), the batch ADV-Q4, ADV-Q6 and D-2. Corrected and told: D-2 needs a road, so the writer lays roads. Built: the shape, batches 1a and 1b (checked through the engine, reviewed by a second agent: Q4c added), the audit (conservation added to the play property). Detail: `E08-log.md`.

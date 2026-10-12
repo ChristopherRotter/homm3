@@ -8,21 +8,19 @@ use std::string::ToString;
 use std::vec;
 use std::vec::Vec;
 
-use core::num::{NonZeroU8, NonZeroU16};
+use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
 use h3_content::{
     BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId,
-    FactionDef, PackManifest, ProfileDef, Ruleset, TerrainDef, TerrainId,
+    FactionDef, PackManifest, ProfileDef, ResourceDef, Ruleset, TerrainDef, TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
 use crate::ruleset::{
-    AdventurePack, AdventureParamsDef, AdventureRuleset, Passage, RiverDef, RoadDef, RoadId,
-    TerrainMovementDef,
+    AdventurePack, AdventureParamsDef, AdventureRuleset, ObjectKindDef, ObjectTypeDef,
+    ObjectTypeId, Passage, PickupDef, RiverDef, RoadDef, RoadId, TerrainMovementDef, Visit,
 };
-use crate::setup::{
-    AdventureSetup, HeroSetup, MapSetup, ObjectKind, ObjectSetup, Pos, TileMask, TileSetup,
-};
+use crate::setup::{AdventureSetup, HeroSetup, MapSetup, ObjectSetup, Pos, TileMask, TileSetup};
 use crate::state::AdventureState;
 
 pub(crate) fn key(text: &str) -> ContentKey {
@@ -81,10 +79,69 @@ fn creature(k: &str, speed: u8) -> CreatureDef {
     }
 }
 
+/// The object types of [`rules`] (E08 T12a), in handle order.
+pub(crate) const WOOD_PILE: ObjectTypeId = ObjectTypeId::from_raw(0);
+pub(crate) const GOLD_PILE: ObjectTypeId = ObjectTypeId::from_raw(1);
+pub(crate) const ANY_PILE: ObjectTypeId = ObjectTypeId::from_raw(2);
+pub(crate) const FIRE: ObjectTypeId = ObjectTypeId::from_raw(3);
+pub(crate) const TOWER: ObjectTypeId = ObjectTypeId::from_raw(4);
+
+/// [`rules`]' object types: a wood pile (3–6), a gold pile (5–10 × 100), a random pile of the two,
+/// a fire (2–3 wood and 100 gold per wood) and a tower revealing radius 3.
+fn object_types() -> Vec<ObjectTypeDef> {
+    let n = |v| NonZeroU32::new(v).unwrap();
+    let ty = |k: &str, visit, kind| ObjectTypeDef {
+        key: key(k),
+        name: "Object".into(),
+        visit,
+        from_above: visit == Visit::Neighbour,
+        kind,
+    };
+    let pile = |resource: &str, amount, multiplier| {
+        ObjectKindDef::Pickup(PickupDef::Resource {
+            resource: key(resource),
+            amount,
+            multiplier: n(multiplier),
+        })
+    };
+    vec![
+        ty("t:wood_pile", Visit::Neighbour, pile("t:wood", [3, 6], 1)),
+        ty(
+            "t:gold_pile",
+            Visit::Neighbour,
+            pile("t:gold", [5, 10], 100),
+        ),
+        ty(
+            "t:any_pile",
+            Visit::Neighbour,
+            ObjectKindDef::Pickup(PickupDef::OneOf(vec![
+                key("t:wood_pile"),
+                key("t:gold_pile"),
+            ])),
+        ),
+        ty(
+            "t:fire",
+            Visit::Neighbour,
+            ObjectKindDef::Pickup(PickupDef::Paired {
+                amount: [2, 3],
+                resources: vec![key("t:wood")],
+                paired: key("t:gold"),
+                multiplier: n(100),
+            }),
+        ),
+        ty(
+            "t:tower",
+            Visit::Enter,
+            ObjectKindDef::RevealArea { radius: 3 },
+        ),
+    ]
+}
+
 /// The rules the setup and state tests use: the terrains `t:grass` (land), `t:sea` (water) and
-/// `t:rock` (impassable), in that order; the creatures `t:imp` (speed 5) and `t:gog` (speed 2);
-/// one road and one river; a land table of 1300, 1360, 1430, 1500 for speeds 0 to 3; maps up to
-/// 8 × 8 on two levels, two players, armies of three slots.
+/// `t:rock` (impassable), in that order; the resources `t:wood` and `t:gold`; the creatures
+/// `t:imp` (speed 5) and `t:gog` (speed 2); one road and one river; a land table of 1300, 1360,
+/// 1430, 1500 for speeds 0 to 3; maps up to 8 × 8 on two levels, two players, armies of three
+/// slots; the object types of [`object_types`].
 pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
     let core = ContentPack {
         terrains: ["t:grass", "t:sea", "t:rock"]
@@ -95,6 +152,13 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             })
             .collect(),
         creatures: vec![creature("t:imp", 5), creature("t:gog", 2)],
+        resources: ["t:wood", "t:gold"]
+            .iter()
+            .map(|k| ResourceDef {
+                key: key(k),
+                name: "Resource".into(),
+            })
+            .collect(),
         profiles: vec![ProfileDef {
             key: key("t:faithful"),
             quirks: vec![],
@@ -123,6 +187,7 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             key: key("t:clear_river"),
             name: "River".into(),
         }],
+        object_types: object_types(),
         params: Some(AdventureParamsDef {
             native_cost: cost(100),
             land_points: vec![1300, 1360, 1430, 1500],
@@ -332,7 +397,8 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
                     ),
                     blocked: TileMask::from_bits(blocked),
                     visitable: TileMask::from_bits(visitable),
-                    kind: ObjectKind::Blocker,
+                    object_type: None,
+                    amount: None,
                 });
             }
         }

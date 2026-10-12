@@ -4,7 +4,7 @@
 
 use std::sync::{Arc, LazyLock};
 
-use h3_adventure::{ObjectKind, Pos as TilePos, TileMask};
+use h3_adventure::{Pos as TilePos, TileMask};
 use h3_contracts::{ArmyStack, PlayerId};
 use h3_game::{GameRuleset, HeroArmy, PlayerSetup};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
@@ -15,7 +15,7 @@ use super::sample;
 use super::strategy::{raw_map, version};
 use crate::import::codes;
 use crate::model::{
-    Body, HeroBody, MainTown, Object, Pos, RawMap, Stack, Template, Text, Tile, Version,
+    Body, HeroBody, MainTown, Message, Object, Pos, RawMap, Stack, Template, Text, Tile, Version,
 };
 use crate::{ImportError, Limits, Unsupported, import, import_map, parse};
 
@@ -135,7 +135,7 @@ fn imports_the_static_layer_players_and_a_placed_hero() {
     assert_eq!(blocker.anchor, TilePos::new(2, 2, 0));
     assert_eq!(blocker.blocked, TileMask::from_bits(0b11));
     assert_eq!(blocker.visitable, TileMask::from_bits(1 << 8));
-    assert_eq!(blocker.kind, ObjectKind::Blocker);
+    assert_eq!((blocker.object_type, blocker.amount), (None, None));
     assert_eq!(import_map(&map(), &SOD).unwrap(), setup.map);
 
     let [hero] = setup.heroes.as_slice() else {
@@ -253,6 +253,136 @@ fn what_the_increment_cannot_represent_is_unsupported() {
     }
 }
 
+/// [`map`] with its blocker (object 0) of this class and subclass and with this body.
+fn typed_map(class: u32, subclass: u32, body: Body) -> RawMap {
+    let mut m = map();
+    m.templates[0].class = class;
+    m.templates[0].subclass = subclass;
+    m.objects[0].body = body;
+    m
+}
+
+fn pile_body(amount: u32, message: Option<Message>) -> Body {
+    Body::Resource { message, amount }
+}
+
+// covers: ADV-OBJ-002
+#[test]
+fn the_typed_classes_import_as_their_object_types() {
+    let colours = [
+        "light_blue",
+        "green",
+        "red",
+        "dark_blue",
+        "brown",
+        "purple",
+        "white",
+        "black",
+    ];
+    let resources = [
+        "wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold",
+    ];
+    let mut cases: Vec<(u32, u32, String)> = vec![
+        (76, 0, "base:random_resource".into()),
+        (12, 0, "base:campfire".into()),
+        (58, 0, "base:redwood_observatory".into()),
+        (60, 0, "base:pillar_of_fire".into()),
+        (13, 0, "base:cartographer_water".into()),
+        (13, 1, "base:cartographer_land".into()),
+        (13, 2, "base:cartographer_subterranean".into()),
+    ];
+    for (subclass, resource) in (0..).zip(resources) {
+        cases.push((79, subclass, format!("base:pile_{resource}")));
+    }
+    for (subclass, colour) in (0..).zip(colours) {
+        cases.push((10, subclass, format!("base:keymaster_{colour}")));
+        cases.push((9, subclass, format!("base:border_guard_{colour}")));
+        cases.push((212, subclass, format!("ab:border_gate_{colour}")));
+    }
+    let part = SOD.adventure();
+    for (class, subclass, key) in &cases {
+        let body = if matches!(class, 76 | 79) {
+            pile_body(0, None)
+        } else {
+            Body::None
+        };
+        let setup = import(&typed_map(*class, *subclass, body), &SOD).unwrap();
+        let object = setup.map.objects[0];
+        assert_eq!(object.object_type, part.object_type_by_key(key), "{key}");
+        assert!(object.object_type.is_some(), "{key}");
+        assert_eq!(object.amount, None);
+        // The footprint is the template's, as for a blocker.
+        assert_eq!(object.blocked, TileMask::from_bits(0b11));
+    }
+    // Every object type of the original packs has its class.
+    assert_eq!(cases.len(), part.object_types().len());
+    // A typed class ignores the subclass where it has one type.
+    let fire = import(&typed_map(12, 7, Body::None), &SOD).unwrap();
+    assert_eq!(
+        fire.map.objects[0].object_type,
+        part.object_type_by_key("base:campfire")
+    );
+    // A class without a type stays a blocker.
+    let other = import(&typed_map(55, 0, Body::None), &SOD).unwrap();
+    assert_eq!(other.map.objects[0].object_type, None);
+}
+
+// covers: ADV-OBJ-002
+#[test]
+fn a_piles_fixed_amount_and_message_carry_over_and_guards_are_unsupported() {
+    let part = SOD.adventure();
+    let amount = |class, amount, message| {
+        let setup = import(&typed_map(class, 6, pile_body(amount, message)), &SOD).unwrap();
+        (
+            setup.map.objects[0].object_type,
+            setup.map.objects[0].amount,
+        )
+    };
+    let gold = part.object_type_by_key("base:pile_gold");
+    let random = part.object_type_by_key("base:random_resource");
+    // Gold counts in hundreds: the amount stays the file's, the type multiplies it.
+    assert_eq!(amount(79, 10, None), (gold, Some(10)));
+    assert_eq!(amount(79, 0, None), (gold, None));
+    assert_eq!(amount(76, 3, None), (random, Some(3)));
+    // A message without guards is presentation only.
+    let note = Message {
+        text: Text(b"Take it".to_vec()),
+        guards: None,
+    };
+    assert_eq!(amount(79, 2, Some(note.clone())), (gold, Some(2)));
+    // A guards record, even an empty one, makes the pile unsupported; its static layer keeps it
+    // as a blocker.
+    for guards in [
+        vec![None; 7],
+        vec![Some(Stack {
+            creature: 0,
+            count: 5,
+        })],
+    ] {
+        for class in [76, 79] {
+            let message = Message {
+                guards: Some(guards.clone()),
+                ..note.clone()
+            };
+            let m = typed_map(class, 6, pile_body(4, Some(message)));
+            assert_eq!(
+                import(&m, &SOD),
+                Err(ImportError::Unsupported(Unsupported::GuardedPile(0)))
+            );
+            let layer = import_map(&m, &SOD).unwrap();
+            assert_eq!(
+                (layer.objects[0].object_type, layer.objects[0].amount),
+                (None, None)
+            );
+        }
+    }
+    // A fixed amount the setup rejects passes the import: validation refuses it.
+    let m = typed_map(79, 0, pile_body(u32::MAX, None));
+    let setup = import(&m, &SOD).unwrap();
+    assert_eq!(setup.map.objects[0].amount, Some(u32::MAX));
+    assert!(setup.validate(&SOD).is_err());
+}
+
 // covers: ADV-OBJ-001
 #[test]
 fn a_town_elsewhere_is_a_blocker() {
@@ -331,6 +461,11 @@ fn each_import_error_is_typed() {
         import_err(|m| m.objects[0].template = 2),
         ImportError::Template(0)
     );
+    for (class, subclass) in [(79, 7), (13, 3), (10, 8), (9, 8), (212, u32::MAX)] {
+        let m = typed_map(class, subclass, Body::None);
+        assert_eq!(import(&m, &SOD), Err(ImportError::Subclass(0)));
+        assert_eq!(import_map(&m, &SOD), Err(ImportError::Subclass(0)));
+    }
     for owner in [1, 0xFF] {
         let mut m = map();
         if let Body::Hero(h) = &mut m.objects[1].body {
@@ -376,6 +511,11 @@ fn content_beyond_the_rules_is_missing() {
         import(&m, &roe),
         Err(ImportError::MissingContent(key)) if key.starts_with("ab:")
     ));
+    // Border gates came with AB.
+    assert_eq!(
+        import(&typed_map(212, 3, Body::None), &roe),
+        Err(ImportError::MissingContent("ab:border_gate_dark_blue"))
+    );
 }
 
 #[test]
@@ -401,6 +541,10 @@ fn the_errors_and_reasons_read_well() {
             "the ruleset lacks `ab:pixie`",
         ),
         (ImportError::Template(3), "object 3 has no template"),
+        (
+            ImportError::Subclass(3),
+            "object 3 has a subclass its class does not define",
+        ),
         (
             ImportError::HeroOwner(3),
             "hero object 3 belongs to a colour nobody plays",
@@ -428,6 +572,7 @@ fn the_errors_and_reasons_read_well() {
             "a random stack in a hero's army",
         ),
         (Unsupported::HeroInTown(0), "a hero standing in a town"),
+        (Unsupported::GuardedPile(0), "a guarded resource pile"),
     ];
     for (what, text) in reasons {
         assert_eq!(what.reason(), text);

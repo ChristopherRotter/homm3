@@ -20,10 +20,10 @@ use crate::command::{
 use crate::fog::{on_fringe, reveal};
 use crate::movement::{Pricing, day_points, direction};
 use crate::persistent::BitGrid;
-use crate::ruleset::{AdventureRuleset, Passage, RiverId, RoadId};
+use crate::ruleset::{AdventureRuleset, MAX_PICKUP_AMOUNT, ObjectTypeId, Passage, RiverId, RoadId};
 use crate::setup::{
-    AdventureSetup, ArmyError, HeroSetup, MapSetup, ObjectKind, ObjectSetup, Pos, SetupError,
-    StandError, TileMask,
+    AdventureSetup, ArmyError, HeroSetup, MapSetup, ObjectSetup, Pos, SetupError, StandError,
+    TileMask,
 };
 
 /// A tile of the static map.
@@ -52,7 +52,7 @@ impl StaticTile {
     };
 }
 
-/// An object of the static map: its position, footprint and kind (ADR-0016 point 4).
+/// An object of the static map: its position, footprint and type (ADR-0016 point 4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MapObject {
     /// The bottom right tile its masks are relative to.
@@ -61,8 +61,10 @@ pub struct MapObject {
     pub blocked: TileMask,
     /// The tiles a hero visits it from.
     pub visitable: TileMask,
-    /// Its behaviour.
-    pub kind: ObjectKind,
+    /// Its object type; none for a blocker.
+    pub object_type: Option<ObjectTypeId>,
+    /// The amount the map fixed, before the type's multiplier.
+    pub amount: Option<u32>,
 }
 
 /// What never changes after setup: dimensions, terrain, roads and rivers per tile, the objects
@@ -78,8 +80,8 @@ pub struct StaticMap {
 }
 
 impl StaticMap {
-    /// Builds the static map from its setup, checking the dimensions, the tiles and the objects'
-    /// levels.
+    /// Builds the static map from its setup, checking the dimensions, the tiles and the objects
+    /// (level, type, amount).
     fn new(core: &Ruleset, part: &AdventureRuleset, setup: &MapSetup) -> Result<Self, SetupError> {
         let params = part.params();
         let in_bounds = |n: u16| (1..=params.max_map_size()).contains(&n);
@@ -130,6 +132,21 @@ impl StaticMap {
             if object.anchor.level >= map.levels {
                 return Err(SetupError::ObjectLevel(index));
             }
+            let ty = object
+                .object_type
+                .map(|id| {
+                    part.object_type(id)
+                        .ok_or(SetupError::UnknownObjectType(index))
+                })
+                .transpose()?;
+            // rule: ADV-OBJ-002
+            let takes = ty.is_some_and(|ty| ty.takes_amount());
+            if object
+                .amount
+                .is_some_and(|a| !(takes && (1..=MAX_PICKUP_AMOUNT).contains(&a)))
+            {
+                return Err(SetupError::ObjectAmount(index));
+            }
             map.place(object);
         }
         map.hash = hash_of(&map);
@@ -154,7 +171,8 @@ impl StaticMap {
             anchor: object.anchor,
             blocked: object.blocked,
             visitable: object.visitable,
-            kind: object.kind,
+            object_type: object.object_type,
+            amount: object.amount,
         });
     }
 
@@ -219,7 +237,8 @@ impl StaticMap {
 
 impl CanonicalHash for StaticMap {
     /// Width, height, levels; every tile (terrain, road, river); every object (anchor, blocked
-    /// and visitable masks, kind). The per-tile object flags follow from the objects.
+    /// and visitable masks, object type, amount; v4). The per-tile object flags follow from the
+    /// objects.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u16(self.width);
         h.write_u16(self.height);
@@ -235,9 +254,8 @@ impl CanonicalHash for StaticMap {
             object.anchor.hash_into(h);
             h.write_u64(object.blocked.bits());
             h.write_u64(object.visitable.bits());
-            h.write_u8(match object.kind {
-                ObjectKind::Blocker => 0,
-            });
+            object.object_type.hash_into(h);
+            object.amount.hash_into(h);
         }
     }
 }

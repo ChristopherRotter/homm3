@@ -115,3 +115,248 @@ name = "Muddy river"
 [[river]]
 id = "lava_river"
 name = "Lava river"
+
+# Object types (E08 T12a; ADR-0016 point 4, ADV-OBJ-002). The import maps the .h3m classes and
+# subclasses to these keys (crates/h3-map/src/import/codes.rs); every other class is a blocker.
+# Survey docs/rules/surveys/E08-objects.md (a code reading confirmed by a second one, VCMI 1.7.5
+# and the wiki). Visits (survey §2.1, §2.3): the original's per-class settings (0x41B500) list
+# classes 9, 12, 76 and 79 as "cannot be entered" (visited from a neighbouring tile; VCMI
+# blockVisit) and 9, 12, 76, 79 and 212 as "visitable from above"; every other class here is
+# entered and not visitable from above (VCMI's visitableFrom, the same members).
+
+# ADV-PIK-001: resource piles (class 79, subclass = the resource: 0 wood, 1 mercury, 2 ore,
+# 3 sulfur, 4 crystal, 5 gems, 6 gold). A random amount is drawn at setup (0x4C0CC0 via
+# 0x4C1AD1): 5-10 for wood, ore and gold, 3-6 for the others; the wiki (Resources) agrees ("5-10
+# units of Wood", "3-6 units" of mercury, sulfur and crystal, "500-1000 units of gold"); VCMI
+# 1.7.5 config/objects/moddables.json has 6-10 and 3-5 (D-5: the user took the reading, ADV-Q10).
+# Gold counts in hundreds, a map's fixed amount too (0x4A4C25; VCMI MapFormatH3M.cpp readResource
+# amountMultiplier).
+[[object_type]]
+id = "pile_wood"
+name = "Wood"
+visit = "neighbour"
+from_above = true
+pickup = { resource = "wood", amount = [5, 10] }
+
+[[object_type]]
+id = "pile_mercury"
+name = "Mercury"
+visit = "neighbour"
+from_above = true
+pickup = { resource = "mercury", amount = [3, 6] }
+
+[[object_type]]
+id = "pile_ore"
+name = "Ore"
+visit = "neighbour"
+from_above = true
+pickup = { resource = "ore", amount = [5, 10] }
+
+[[object_type]]
+id = "pile_sulfur"
+name = "Sulfur"
+visit = "neighbour"
+from_above = true
+pickup = { resource = "sulfur", amount = [3, 6] }
+
+[[object_type]]
+id = "pile_crystal"
+name = "Crystal"
+visit = "neighbour"
+from_above = true
+pickup = { resource = "crystal", amount = [3, 6] }
+
+[[object_type]]
+id = "pile_gems"
+name = "Gems"
+visit = "neighbour"
+from_above = true
+pickup = { resource = "gems", amount = [3, 6] }
+
+[[object_type]]
+id = "pile_gold"
+name = "Gold"
+visit = "neighbour"
+from_above = true
+pickup = { resource = "gold", amount = [5, 10], multiplier = 100 }
+
+# ADV-PIK-002: a random resource (class 76) becomes a pile of one of the seven resources at
+# setup, equal chances (0x4C9DD0: random_between(0, 6), before the amounts); its amount is the
+# file's or drawn as the pile's. VCMI CGResource::pickRandomObject: the same.
+[[object_type]]
+id = "random_resource"
+name = "Random resource"
+visit = "neighbour"
+from_above = true
+pickup_one_of = ["pile_wood", "pile_mercury", "pile_ore", "pile_sulfur", "pile_crystal", "pile_gems", "pile_gold"]
+
+# ADV-PIK-003: a campfire (class 12): at setup an amount of 4-6, then one of wood to gems
+# (0x4C0CC0, case 12 at 0x4C0EE5); the visit gives that many of it and 100 times as much gold
+# (0x4A1120). VCMI config/objects/rewardablePickable.json campfire: the same six resources and
+# pairs; the wiki (Campfire): 400-600 gold and 4-6 of another resource.
+[[object_type]]
+id = "campfire"
+name = "Campfire"
+visit = "neighbour"
+from_above = true
+pickup_paired = { amount = [4, 6], resources = ["wood", "mercury", "ore", "sulfur", "crystal", "gems"], paired = "gold", multiplier = 100 }
+
+# ADV-VIS-001: the Cartographers (class 13, subclass 0 water, 1 land, 2 subterranean): 1 000 gold
+# (0x4A8A14 against 0x3E8; VCMI config/objects/cartographer.json; the wiki's SoD price), then
+# every tile of the kind's terrains on both levels (masks set at 0x4CE457: water 0x100, land 0xBF,
+# subterranean 0x40; rock in none). VCMI reveals the same sets by terrain layer; the wiki agrees
+# by terrain.
+[[object_type]]
+id = "cartographer_water"
+name = "Cartographer (water)"
+visit = "enter"
+from_above = false
+reveal_terrain = { terrains = ["water"], price = { gold = 1000 } }
+
+[[object_type]]
+id = "cartographer_land"
+name = "Cartographer (land)"
+visit = "enter"
+from_above = false
+reveal_terrain = { terrains = ["dirt", "desert", "grass", "snow", "swamp", "rough", "lava"], price = { gold = 1000 } }
+
+[[object_type]]
+id = "cartographer_subterranean"
+name = "Cartographer (subterranean)"
+visit = "enter"
+from_above = false
+reveal_terrain = { terrains = ["subterranean"], price = { gold = 1000 } }
+
+# ADV-VIS-002: the Redwood Observatory (class 58) and the Pillar of Fire (class 60) reveal radius
+# 20 around the visited tile at every visit (0x4A9AC6). VCMI config/objects/observatory.json and
+# the wiki ("a 20 tile radius around the observatory"): the same.
+[[object_type]]
+id = "redwood_observatory"
+name = "Redwood Observatory"
+visit = "enter"
+from_above = false
+reveal_area = { radius = 20 }
+
+[[object_type]]
+id = "pillar_of_fire"
+name = "Pillar of Fire"
+visit = "enter"
+from_above = false
+reveal_area = { radius = 20 }
+
+# ADV-VIS-003, ADV-VIS-004: Keymaster's tents (class 10) and border guards (class 9), subclass =
+# the key colour (0 light blue, 1 green, 2 red, 3 dark blue, 4 brown, 5 purple, 6 white, 7 black;
+# VCMI config/objects/moddables.json). The keys are eight bytes of player bits (game +0x4E364);
+# the tent gives its colour's key (0x4A8843), a guard asks a key holder and leaves the map for
+# everyone on yes (0x4A8734). VCMI CGKeymasterTent, CGBorderGuard and the wiki: the same.
+[[object_type]]
+id = "keymaster_light_blue"
+name = "Keymaster's tent (light blue)"
+visit = "enter"
+from_above = false
+key_tent = { key = 0 }
+
+[[object_type]]
+id = "keymaster_green"
+name = "Keymaster's tent (green)"
+visit = "enter"
+from_above = false
+key_tent = { key = 1 }
+
+[[object_type]]
+id = "keymaster_red"
+name = "Keymaster's tent (red)"
+visit = "enter"
+from_above = false
+key_tent = { key = 2 }
+
+[[object_type]]
+id = "keymaster_dark_blue"
+name = "Keymaster's tent (dark blue)"
+visit = "enter"
+from_above = false
+key_tent = { key = 3 }
+
+[[object_type]]
+id = "keymaster_brown"
+name = "Keymaster's tent (brown)"
+visit = "enter"
+from_above = false
+key_tent = { key = 4 }
+
+[[object_type]]
+id = "keymaster_purple"
+name = "Keymaster's tent (purple)"
+visit = "enter"
+from_above = false
+key_tent = { key = 5 }
+
+[[object_type]]
+id = "keymaster_white"
+name = "Keymaster's tent (white)"
+visit = "enter"
+from_above = false
+key_tent = { key = 6 }
+
+[[object_type]]
+id = "keymaster_black"
+name = "Keymaster's tent (black)"
+visit = "enter"
+from_above = false
+key_tent = { key = 7 }
+
+[[object_type]]
+id = "border_guard_light_blue"
+name = "Border guard (light blue)"
+visit = "neighbour"
+from_above = true
+key_guard = { key = 0 }
+
+[[object_type]]
+id = "border_guard_green"
+name = "Border guard (green)"
+visit = "neighbour"
+from_above = true
+key_guard = { key = 1 }
+
+[[object_type]]
+id = "border_guard_red"
+name = "Border guard (red)"
+visit = "neighbour"
+from_above = true
+key_guard = { key = 2 }
+
+[[object_type]]
+id = "border_guard_dark_blue"
+name = "Border guard (dark blue)"
+visit = "neighbour"
+from_above = true
+key_guard = { key = 3 }
+
+[[object_type]]
+id = "border_guard_brown"
+name = "Border guard (brown)"
+visit = "neighbour"
+from_above = true
+key_guard = { key = 4 }
+
+[[object_type]]
+id = "border_guard_purple"
+name = "Border guard (purple)"
+visit = "neighbour"
+from_above = true
+key_guard = { key = 5 }
+
+[[object_type]]
+id = "border_guard_white"
+name = "Border guard (white)"
+visit = "neighbour"
+from_above = true
+key_guard = { key = 6 }
+
+[[object_type]]
+id = "border_guard_black"
+name = "Border guard (black)"
+visit = "neighbour"
+from_above = true
+key_guard = { key = 7 }
