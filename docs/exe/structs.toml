@@ -224,3 +224,62 @@ fields = [
   { offset = 0x91, name = "army", type = "army", summary = "the hero's army (seven creature types, then seven counts)", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0xC9, name = "secondary_skill_levels", type = "u8[28]", summary = "level per secondary skill id", confidence = "read", refs = ["installation.md §7.4"] },
 ]
+
+[[struct]]
+name = "game"
+size = 0x4E7D0
+summary = "The game (pointer at 0x6994E8; H3API's H3Main, whose size is used here); only what the adventure's docs cite."
+refs = ["rules/surveys/E08-objects.md"]
+h3api = "H3Main"
+fields = [
+  { offset = 0x1F69D, name = "flagged_start", type = "u8", summary = "read by the end-turn button and the battle start; set, a human starts with 0x6779C8's resources (probably the tutorial)", confidence = "inferred", refs = ["rules/surveys/E08-objects.md §7.2"] },
+  { offset = 0x1F6D8, name = "difficulty", type = "i8", summary = "the game's difficulty, 0 easy to 4 impossible: the starting resources' row", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
+  { offset = 0x1F879, name = "teams", type = "i8[8]", summary = "team per colour: a reveal sets the bits of every player of the revealer's team", confidence = "read", refs = ["rules/surveys/E08-adventure-core.md §2"] },
+  { offset = 0x1FC40, name = "tiles", type = "map_item*", summary = "the map's tiles, level by level, row by row", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
+  { offset = 0x1FC44, name = "side", type = "i32", summary = "the map's side in tiles", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
+  { offset = 0x1FC48, name = "two_levels", type = "u8", summary = "1 with an underground level", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
+  { offset = 0x20AD0, name = "players", type = "player_record[8]", summary = "the players by colour", confidence = "read", refs = ["rules/surveys/E08-objects.md §7"] },
+  { offset = 0x4E364, name = "keys", type = "u8[8]", summary = "per Keymaster colour the bits of the players holding its key (H3API's keymasterVisited)", confidence = "read", refs = ["rules/surveys/E08-objects.md §6"] },
+  { offset = 0x4E36C, name = "cartographer_masks", type = "u16[3]", summary = "terrain bits each Cartographer kind reveals: water 0x100, land 0xBF, subterranean 0x40", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
+  { offset = 0x4E372, name = "cartographer_bought", type = "u8[3]", summary = "per Cartographer kind the bits of the players who paid", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
+]
+
+[[struct]]
+name = "player_record"
+size = 0x168
+summary = "A player (game +0x20AD0 + 0x168 x colour; H3API's H3Player); only what the docs cite."
+refs = ["rules/surveys/E08-objects.md §7"]
+h3api = "H3Player"
+fields = [
+  { offset = 0x34, name = "ai_type", type = "i32", summary = "3 for a human; a computer's drawn at a new game, random_between(0, 2)", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
+  { offset = 0x9C, name = "resources", type = "i32[7]", summary = "wood, mercury, ore, sulfur, crystal, gems, gold (+0xB4)", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.1"] },
+  { offset = 0xE2, name = "human", type = "u8", summary = "a human player", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
+]
+
+[[struct]]
+name = "map_item"
+size = 0x26
+summary = "A tile of the adventure map (game +0x1FC40; H3API's H3MapItem); only what the docs cite."
+refs = ["rules/surveys/E08-objects.md"]
+h3api = "H3MapItem"
+fields = [
+  { offset = 0x0, name = "word", type = "u32", summary = "the class's data on the object's entrance tile: a pile's amount (low 19 bits) and guards flag (bit 31), a campfire's resource (low 4 bits) and amount (bits 4 up)", confidence = "read", refs = ["rules/surveys/E08-objects.md §3"] },
+  { offset = 0x4, name = "terrain", type = "u8", summary = "terrain code 0-9", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
+  { offset = 0xD, name = "access", type = "u8", summary = "0x01 cannot be entered, 0x10 an object's entrance (visitable) tile (H3API's names)", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
+  { offset = 0x1E, name = "class", type = "i32", summary = "the object class on this tile", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
+  { offset = 0x22, name = "subclass", type = "i16", summary = "the object subclass on this tile", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
+]
+
+[[struct]]
+name = "object_settings"
+size = 0x10
+summary = "An object class's settings (232 at 0x691698; H3API's H3GlobalObjectSettings), filled by 0x41B500."
+refs = ["rules/surveys/E08-objects.md §2.1"]
+h3api = "H3GlobalObjectSettings"
+fields = [
+  { offset = 0x0, name = "not_entered", type = "u8", summary = "visited from the neighbouring tile (H3API's cannotEnter)", confidence = "read" },
+  { offset = 0x1, name = "from_above", type = "u8", summary = "may be entered from and left toward the three tiles above (H3API's exitTop)", confidence = "read" },
+  { offset = 0x2, name = "removable", type = "u8", summary = "H3API's canBeRemoved", confidence = "read" },
+  { offset = 0x8, name = "value", type = "i32", summary = "from 0x63A6E4; meaning not read", confidence = "read" },
+  { offset = 0xC, name = "decoration", type = "u32", summary = "a decoration", confidence = "read" },
+]
