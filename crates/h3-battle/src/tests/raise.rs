@@ -159,6 +159,26 @@ fn resurrection_from_advanced_raises_for_good_and_needs_one_creatures_health() {
         cast(&mut s, &r, "rise", (stack(0), CastTarget::None)),
         Err(CommandError::InvalidSpellTarget)
     );
+    // Hit points equal to the health reach it (the original compares with "at most", 0x5A850C;
+    // E04b T11b review, r4a F-10): power 0 at Basic raises 40, an ogre's health; with one hit
+    // point of health more the stack is no target.
+    let mut weak = raiser(&r, 1, 0);
+    weak.power = 0;
+    let mut s = arena(
+        &r,
+        [Some(weak), None],
+        &[("ogre", 2, 2, 3), ("ogre", 2, 2, 7)],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    for ogres in &mut s.stacks.as_mut_slice()[..2] {
+        ogres.count = 1;
+    }
+    s.stacks.as_mut_slice()[1].max_hp = 41;
+    assert_eq!(targets(&s, &r, "rise"), vec![0]);
+    let events = cast(&mut s, &r, "rise", (stack(0), CastTarget::None)).unwrap();
+    assert_eq!(raised(&events), vec![(0, 40, 1, true)]);
+    assert_eq!(s.stacks()[0].count, 2);
 }
 
 // covers: BAT-MAG-035, BAT-MAG-010

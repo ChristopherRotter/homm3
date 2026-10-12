@@ -186,6 +186,20 @@ fn a_clone_goes_to_the_first_free_hex_along_the_rays() {
         place_of(&[("serf", 5, 5, 5), ("serf", 1, 5, 4)], 0),
         Some(at(&r, 5, 6).0)
     );
+    // Left of it is skipped in ring 1 too (E04b T11b review, r4a F-10): with the top right, the
+    // bottom right and the bottom left neighbour taken the clone goes top left, not left.
+    assert_eq!(
+        place_of(
+            &[
+                ("serf", 5, 5, 5),
+                ("serf", 1, 5, 4),
+                ("serf", 1, 5, 6),
+                ("serf", 1, 4, 6)
+            ],
+            0
+        ),
+        Some(at(&r, 4, 4).0)
+    );
     // A two-hex stack's clone stands on the row above, its tail top right of the stack's tail.
     assert_eq!(place_of(&[("ogre", 2, 6, 5)], 0), Some(at(&r, 6, 4).0));
     // The defender's clone: from top left anticlockwise.
@@ -439,6 +453,41 @@ fn a_clone_never_shares_a_hex_with_its_original() {
 
 // covers: BAT-MAG-038
 #[test]
+fn the_search_from_a_two_hex_stacks_head_skips_the_way_to_its_tail_in_rings_1_and_2() {
+    // E04b T11b review (r4a F-10): only the ogres' hexes (tail (13, 5), head (14, 5)) and a
+    // place three hexes to their left are free. From the head, the hexes towards the tail are
+    // not tried in rings 1 and 2: there the place would be the ogres' own position, which with
+    // quirk BAT-QUIRK-7 counts as free and would turn them into their own clone. So the search
+    // reaches ring 3, whose way from the tail comes first, and the clone stands on the free
+    // place, in either profile.
+    for profile in ["t:faithful", "t:clone_on_original"] {
+        let r = ruleset_with(profile, |_| {});
+        let mut s = walled(&r, 2, Some(&[(10, 5), (11, 5)]));
+        let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
+        assert_eq!(
+            (created(&events), turned(&events)),
+            (vec![(2, 2, at(&r, 11, 5).0, Some(0))], vec![]),
+            "{profile}"
+        );
+    }
+    // Ring 3 does try the way from the head to the tail. With the free place one hex further
+    // left (ring 4) the search comes to the ogres' own position first: with the quirk they
+    // become their own clone for the cast's three rounds; without it their hexes are taken and
+    // the clone stands on the free place.
+    let place = at(&ruleset(), 10, 5).0;
+    for (profile, expected) in [
+        ("t:faithful", (vec![(2, 2, place, Some(0))], vec![])),
+        ("t:clone_on_original", (vec![], vec![(0, 3)])),
+    ] {
+        let r = ruleset_with(profile, |_| {});
+        let mut s = walled(&r, 2, Some(&[(9, 5), (10, 5)]));
+        let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
+        assert_eq!((created(&events), turned(&events)), expected, "{profile}");
+    }
+}
+
+// covers: BAT-MAG-038
+#[test]
 fn a_clone_vanishes_when_its_rounds_run_out_or_its_original_dies() {
     let r = ruleset();
     let new = |r: &Ruleset| {
@@ -540,6 +589,56 @@ fn summon_elemental_places_effect_times_power_creatures_in_the_first_free_column
     );
     // A new stack acts in the round it appears (none of the round's flags).
     assert_eq!(serfs.flags, StackFlags::default());
+}
+
+// covers: BAT-MAG-039
+#[test]
+fn a_summoned_stack_takes_a_random_fitting_row_and_none_without_a_place() {
+    // E04b T11b review (r4a F-10): the row is drawn with equal chances among the rows of the
+    // first column where the stack fits. Rows 0 to 2 of the attacker's column 1 are blocked:
+    // over 320 battles each of the other eight rows is drawn about forty times.
+    let r = ruleset();
+    let field = Field::new(r.battle().field);
+    let start = |seed: u64, walls: Vec<u8>| {
+        let mut s = arena(
+            &r,
+            [Some(creator(&r, 0, 1)), None],
+            &[("serf", 1, 5, 5)],
+            &[("serf", 1, 10, 5)],
+            seed,
+        );
+        s.natural = NaturalObstacles::new(field, &blocked(walls), false).unwrap();
+        s
+    };
+    let mut rows = [0u32; 11];
+    for seed in 0..320 {
+        let mut s = start(seed, (0..3).map(|y| at(&r, 1, y).0).collect());
+        let events = cast(&mut s, &r, "sprites", CastTarget::None).unwrap();
+        let (x, y) = field.coords(crate::geometry::Hex(created(&events)[0].2));
+        assert_eq!(x, 1);
+        rows[usize::try_from(y).unwrap()] += 1;
+    }
+    assert_eq!(rows[..3], [0, 0, 0]);
+    assert!(rows[3..].iter().all(|n| (20..=60).contains(n)), "{rows:?}");
+    // No place in any column: nothing is created, the cast is paid for all the same (4 at
+    // Basic), and the side's summons are bound to the creature from then on.
+    let walls: Vec<u8> = (0..field.hex_count())
+        .map(|h| u8::try_from(h).unwrap())
+        .filter(|&h| field.is_standable(crate::geometry::Hex(h)))
+        .filter(|&h| h != at(&r, 5, 5).0 && h != at(&r, 10, 5).0)
+        .collect();
+    let mut s = start(1, walls);
+    let mana = s.hero(BattleSide::Attacker).unwrap().mana;
+    let events = cast(&mut s, &r, "sprites", CastTarget::None).unwrap();
+    assert_eq!((created(&events), s.stacks().len()), (vec![], 2));
+    assert_eq!(s.hero(BattleSide::Attacker).unwrap().mana, mana - 4);
+    let sprite = r.creature_by_key("t:sprite").unwrap();
+    assert_eq!(
+        crate::observe(&s, &r, BattleSide::Defender).summoned,
+        [Some(sprite), None]
+    );
+    let castable = castable_spells(&s, &r, BattleSide::Attacker);
+    assert!(castable.contains(spell(&r, "sprites")) && !castable.contains(spell(&r, "serfs")));
 }
 
 // covers: BAT-END-003, BAT-MAG-037, BAT-MAG-038
