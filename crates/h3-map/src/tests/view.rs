@@ -505,8 +505,10 @@ proptest! {
     /// the other players' armies and so their points, the tiles it never sees and what objects
     /// cover there, the objects' contents) show it the same observation, legal commands and moves
     /// after the same commands, accept or reject its own commands alike and tell it the same
-    /// events, as long as the other players' commands are accepted in both or in neither (a move
-    /// that one hero can pay and the other cannot ends where the viewer may see it), and until
+    /// events, as long as the other players' commands have the same outcome in both: accepted in
+    /// both or in neither, their heroes on the same tiles after (a move that one hero can pay and
+    /// the other cannot, or that visits a pile from its neighbour in one game and walks onto the
+    /// pile's tile in the other, which lacks it, ends where the viewer may see it), and until
     /// the viewer picks up an object: a pickup tells its visitor the contents (E08 T13b; survey
     /// `E08-objects.md` §8), so the two games may then tell it other gains, and nothing else; or
     /// until it accepts an offer: a Cartographer reveals tiles by their terrain, hidden ones
@@ -570,9 +572,13 @@ proptest! {
             let (mut ea, mut eb) = (Vec::new(), Vec::new());
             let ra = apply(&mut a, rules, Actor::Player(actor), command.clone(), &mut ea);
             let rb = apply(&mut b, rules, Actor::Player(actor), command, &mut eb);
+            let tiles = |game: &GameState| -> Vec<(HeroId, TilePos)> {
+                let heroes = game.adventure().heroes().iter();
+                heroes.filter(|h| h.owner == actor).map(|h| (h.id, h.pos)).collect()
+            };
             if actor == viewer {
                 prop_assert_eq!(ra, rb);
-            } else if ra.is_ok() != rb.is_ok() {
+            } else if ra.is_ok() != rb.is_ok() || tiles(&a) != tiles(&b) {
                 break;
             }
             let (ta, tb) = (told(&ea, viewer), told(&eb, viewer));
