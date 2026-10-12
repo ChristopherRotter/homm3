@@ -62,8 +62,10 @@
 //!   it, the other seat answers (`AnswerPause`) before the game moves on, or it lapses. Agreed, the
 //!   game pauses as a host's pause does, the length an entry. The host keeps the seats' absences
 //!   from counting until the pause's due time ([`Session::hold`]) and, if no seat was taken by
-//!   then, runs the game again with its players away ([`Session::wake`]). A seat asks once until
-//!   the game moves on, also an unranked game's seat that is not the host's (`Rejected {
+//!   then, runs the game again with its players away ([`Session::wake`]). A seat taken before the
+//!   due time journals the rest of the pause (E16 M4 T8), so a restart holds the absences until
+//!   then too ([`Session::held_pause`]); the due time ends the hold, an entry. A seat asks once
+//!   until the game moves on, also an unranked game's seat that is not the host's (`Rejected {
 //!   AlreadyAsked }`).
 //! - **Integrity** (E16 M2 T3, `E16-design.md` §8). The host verifies a finished game before it
 //!   publishes the replay, and withholds it if the game does not verify
@@ -72,12 +74,13 @@
 //!   are rebuilt from the journal, which is the truth, and the command applied again
 //!   ([`Session::drain_mismatches`]).
 //!
-//! Provisional (E16 M1 T2, M2 T2–T4, M3 T3, M4 T3a, T3b): the names, the connection numbering,
+//! Provisional (E16 M1 T2, M2 T2–T4, M3 T3, M4 T3a, T3b, T8): the names, the connection numbering,
 //! frames as text, the record's layout, the entries, who pauses, a spectator's numbered
 //! rejections, a seat's account fixed when it is first taken, one account in both seats allowed,
 //! a void game when the other seat is empty as one's grace runs out, an unranked game's end told
 //! before its verification, `Rating` numbered, a proposal lapsing when the game moves on and told
-//! to every viewer (the epic's review list).
+//! to every viewer, a hold's end journaled when the clock first moves past its due time (the
+//! epic's review list).
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
@@ -252,6 +255,10 @@ pub enum Entry {
     /// The other seat agreed to the side's proposal to pause for this many milliseconds (E16 M4
     /// T6): [`Entry::Paused`] follows.
     PauseAgreed(BattleSide, u64),
+    /// A seat was taken this many milliseconds before the agreed pause's due time (E16 M4 T8):
+    /// no seat's absence counts until then, also after a restart ([`Session::held_pause`]). 0:
+    /// the due time came, the hold is over.
+    Held(u64),
 }
 
 /// Why a journal does not restore its game.
@@ -453,6 +460,9 @@ pub struct Session<'r> {
     agreed: Option<u64>,
     /// No seat's absence counts before this time of the host's clock (E16 M4 T6).
     due: u64,
+    /// What was left of the agreed pause when a seat was taken before its due time, as journaled,
+    /// until the due time comes (E16 M4 T8).
+    holding: Option<u64>,
 }
 
 impl<'r> Session<'r> {
@@ -515,6 +525,7 @@ impl<'r> Session<'r> {
             pauses_used: [0; 2],
             agreed: None,
             due: 0,
+            holding: None,
         })
     }
 
@@ -526,7 +537,9 @@ impl<'r> Session<'r> {
     /// token. The first drained entries then are what the journal lacks: the checkpoint after its
     /// last command if a crash cut the journal between the two, and the bots' commands if a started
     /// game is theirs to act (a crash between a player's command and the bots' answers). A journal
-    /// that ends with a pause restores a paused session ([`Session::paused`]).
+    /// that ends with a pause restores a paused session ([`Session::paused`]); one whose agreed
+    /// pause was resumed before its due time, which had not come, keeps the hold for the host to
+    /// re-apply ([`Session::held_pause`]).
     pub fn restore(
         ruleset: &'r Ruleset,
         config: GameConfig,
@@ -549,6 +562,10 @@ impl<'r> Session<'r> {
                     session.entries.push(entry.clone());
                 }
                 Entry::PauseAgreed(side, ms) => session.agree(side, ms),
+                Entry::Held(ms) => {
+                    session.holding = (ms > 0).then_some(ms);
+                    session.entries.push(Entry::Held(ms));
+                }
                 Entry::Spectators(open) => {
                     session.watchable = open;
                     session.entries.push(Entry::Spectators(open));
@@ -649,13 +666,18 @@ impl<'r> Session<'r> {
     /// happens, often enough for the grace's precision. In a ranked game that is not over, a seat
     /// empty beyond the grace in one stretch, or beyond its total, forfeits; if the other seat is
     /// empty too, both do (void, a no-show each). Every viewer then hears `GameEnded` with the
-    /// forfeit. Whether the game ended now.
+    /// forfeit. A hold that reaches its due time is over (an entry, E16 M4 T8). Whether the game
+    /// ended now.
     pub fn elapse(&mut self, now: u64, out: &mut Vec<Outbound>) -> bool {
         self.clock = self.clock.max(now);
         let clock = self.clock;
         let Some(grace) = self.grace.filter(|_| !self.over()) else {
             return false;
         };
+        let due = self.due;
+        if self.holding.take_if(|_| clock >= due).is_some() {
+            self.entries.push(Entry::Held(0));
+        }
         let beyond = self.seats.each_ref().map(|seat| {
             seat.away.is_some_and(|since| {
                 let stretch = clock.saturating_sub(since);
@@ -853,8 +875,16 @@ impl<'r> Session<'r> {
         self.agreed
     }
 
+    /// What was left of the agreed pause when a seat was taken before its due time (E16 M4 T8), in
+    /// milliseconds, while the due time has not come: from the journal's last write, the host
+    /// holds the seats' absences until then ([`Session::hold`]) as for a pause.
+    pub const fn held_pause(&self) -> Option<u64> {
+        self.holding
+    }
+
     /// No seat's absence counts before `ms` from now on the host's clock (E16 M4 T6): what is left
-    /// of an agreed pause as its game is restored. A player not back by then is away from then on.
+    /// of an agreed pause, or of its hold (E16 M4 T8), as its game is restored. A player not back
+    /// by then is away from then on.
     pub fn hold(&mut self, ms: u64) {
         let due = self.clock.saturating_add(ms);
         self.due = due;
@@ -936,8 +966,13 @@ impl<'r> Session<'r> {
             self.taken(side, login);
         }
         if core::mem::take(&mut self.paused) {
-            self.agreed = None;
             self.entries.push(Entry::Resumed);
+            // Before an agreed pause's due time: its hold lasts across a restart (E16 M4 T8).
+            let rest = self.due.saturating_sub(self.clock);
+            if self.agreed.take().is_some() && rest > 0 {
+                self.holding = Some(rest);
+                self.entries.push(Entry::Held(rest));
+            }
         }
         out.push(reply(
             conn,
@@ -1171,11 +1206,13 @@ impl<'r> Session<'r> {
     }
 
     /// The side's proposal to pause for `ms` was agreed (E16 M4 T6): it counts against the side's
-    /// pauses, and the game is in it until it resumes.
+    /// pauses, and the game is in it until it resumes. Both players were back: an earlier pause's
+    /// hold is over (E16 M4 T8).
     fn agree(&mut self, side: BattleSide, ms: u64) {
         let used = &mut self.pauses_used[side.index()];
         *used = used.saturating_add(1);
         self.agreed = Some(ms);
+        self.holding = None;
         self.entries.push(Entry::PauseAgreed(side, ms));
     }
 

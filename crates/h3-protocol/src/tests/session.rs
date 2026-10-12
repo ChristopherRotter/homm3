@@ -2738,6 +2738,90 @@ fn a_pause_whose_players_are_not_back_by_its_due_time_runs_on_without_them() {
 }
 
 #[test]
+fn an_agreed_pause_resumed_early_holds_the_absences_across_a_restart() {
+    // E16 M4 T8 (SRV-Q22 (b)): the hold is journaled, re-applied at a restore, and over at its due
+    // time.
+    let r = ruleset();
+    let mut s = ranked(&r, 31);
+    back(&mut s, 0, ALICE);
+    back(&mut s, 0, BOB);
+    send(
+        &mut s,
+        A,
+        ClientMessage::ProposePause { seq: 1, ms: 30_000 },
+    );
+    let answer = |seq| ClientMessage::AnswerPause { seq, accept: true };
+    send(&mut s, B, answer(2));
+    let mut entries = drained(&mut s);
+    let restore =
+        |entries: &[Entry]| Session::restore(&r, ranked_config(31), players(), entries).unwrap();
+    // Restored in its pause with 20 s left, Alice is back 5 s later: the rest is journaled.
+    let mut s = restore(&entries);
+    s.hold(20_000);
+    back(&mut s, 5_000, ALICE);
+    assert_eq!(s.held_pause(), Some(15_000));
+    let resumed = drained(&mut s);
+    assert_eq!(
+        resumed,
+        [
+            Entry::Absent(BattleSide::Attacker, 0),
+            Entry::Resumed,
+            Entry::Held(15_000)
+        ]
+    );
+    // Back at the due time, she journals no hold.
+    let mut late = restore(&entries);
+    late.hold(0);
+    back(&mut late, 0, ALICE);
+    assert_eq!(late.held_pause(), None);
+    assert_eq!(
+        drained(&mut late),
+        [Entry::Absent(BattleSide::Attacker, 0), Entry::Resumed]
+    );
+    // A restart: the restored game runs, its hold re-applied (3 s of it passed meanwhile). Bob is
+    // back beyond the grace from the restart but before the due time: no forfeit.
+    entries.extend(resumed);
+    let mut s = restore(&entries);
+    assert_eq!(
+        (s.phase(), s.agreed_pause(), s.held_pause()),
+        (Phase::Running, None, Some(15_000))
+    );
+    s.hold(12_000);
+    back(&mut s, 0, ALICE);
+    back(&mut s, 11_000, BOB);
+    assert_eq!(s.held_pause(), Some(15_000));
+    // The due time ends the hold; a later restart does not re-apply it.
+    assert!(!at(&mut s, 12_000).0);
+    assert_eq!(s.held_pause(), None);
+    let ended = drained(&mut s);
+    assert_eq!(ended.last(), Some(&Entry::Held(0)));
+    let mut after = entries.clone();
+    after.extend(ended);
+    assert_eq!(restore(&after).held_pause(), None);
+    // Bob not back by the due time: away from it on, the grace forfeits him.
+    let mut s = restore(&entries);
+    s.hold(12_000);
+    back(&mut s, 0, ALICE);
+    assert!(!at(&mut s, 13_000).0, "the grace from the due time");
+    assert!(at(&mut s, 13_001).0);
+    assert_eq!(s.forfeited(), [false, true]);
+    // Both back, a new pause agreed: the earlier hold is over, at a restore too.
+    let mut s = restore(&entries);
+    s.hold(12_000);
+    back(&mut s, 0, ALICE);
+    back(&mut s, 0, BOB);
+    send(
+        &mut s,
+        B,
+        ClientMessage::ProposePause { seq: 3, ms: 10_000 },
+    );
+    send(&mut s, A, answer(4));
+    assert_eq!((s.phase(), s.held_pause()), (Phase::Paused, None));
+    entries.extend(drained(&mut s));
+    assert_eq!(restore(&entries).held_pause(), None);
+}
+
+#[test]
 fn an_unranked_games_other_seat_asks_once_until_the_game_moves_on() {
     // E16 M4 T6 (the M2 review's repeated `PauseAsked`).
     let r = ruleset();

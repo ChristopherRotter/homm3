@@ -834,10 +834,12 @@ fn resume<'r>(
             return None;
         }
     };
-    // An agreed pause (E16 M4 T6): the seats' absences count from its due time, what is left of it
-    // since the journal's last write; woken, the game runs on without its players.
+    // An agreed pause (E16 M4 T6), or its hold after a seat was taken before its due time (E16 M4
+    // T8): the seats' absences count from its due time, what is left of it since the journal's
+    // last write (a hold's later writes not subtracted: never less than its true rest); woken, the
+    // game runs on without its players.
     let agreed = session.agreed_pause();
-    if let Some(ms) = agreed {
+    if let Some(ms) = agreed.or(session.held_pause()) {
         let passed = u64::try_from(paused_for.as_millis()).unwrap_or(u64::MAX);
         session.hold(ms.saturating_sub(passed));
     }
@@ -1234,7 +1236,8 @@ fn verify(
             | Entry::Ranked
             | Entry::Absent(..)
             | Entry::Forfeit(_)
-            | Entry::PauseAgreed(..) => {}
+            | Entry::PauseAgreed(..)
+            | Entry::Held(_) => {}
         }
     }
     replay.final_hash = session.state_hash();
