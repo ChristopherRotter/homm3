@@ -1688,40 +1688,27 @@ fn grow(value: u64, bp: u64) -> u64 {
     mul_div_floor(value, 10_000 + bp, 10_000).unwrap_or(u64::MAX)
 }
 
-/// The damage of `cast` with the value `value` on a stack of `creature` with the school
+/// The damage of `spell` with the value `value` on a stack of `creature` with the school
 /// protections `protection` (BAT-MAG-004) after the caster's bonuses and after the target's
 /// extra damage or reduction and protection, in the original's order (`installation.md` §7.8):
-/// the caster's bonuses (× (1 + the best Orb among the spell's schools) × (1 + Sorcery), kept
-/// fractional and rounded down once; then the spell's own bonus of that, rounded down, and a
-/// specialist's bonus of that, [`specialist_bonus`]), then the target's (one
-/// spell's extra damage, rounded down; the spell damage reduction, rounded down; one protection,
-/// [`protected`]). The rates are exact, or single precision with quirk Q-0005.
+/// the bonuses of the caster's hero `hero` ([`caster_stage`]; none without a hero: the original
+/// runs that stage on the hero only, 0x5A78E0), then the target's (one spell's extra damage,
+/// rounded down; the spell damage reduction, rounded down; one protection, [`protected`]). The
+/// rates are exact, or single precision with quirk Q-0005. Saturates.
 // rule: BAT-MAG-004
 pub(crate) fn spell_damage(
     ruleset: &Ruleset,
-    ((id, spell), b): (SpellRef<'_>, &SpellBonuses),
+    (spell, hero): (SpellRef<'_>, Option<&SpellBonuses>),
     value: u64,
     (creature, protection): (CreatureTypeId, &[u8; MAX_SPELL_SCHOOLS]),
 ) -> (u64, u64) {
-    let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
-    let one = u128::from(scale(single));
-    let school = spell
-        .schools
-        .iter()
-        .map(|l| hero_rate(single, b.school[l.index().min(MAX_SPELL_SCHOOLS - 1)]))
-        .max()
-        .unwrap_or(0);
-    let factor = (one + u128::from(school)) * (one + u128::from(hero_rate(single, b.all)));
-    let t = u64::try_from(u128::from(value) * factor / (one * one)).unwrap_or(u64::MAX);
-    let own = b.spell(id);
-    let specialty = specialist_bonus(ruleset, spell, own, creature, t);
-    let fixed = u128::from(t) * u128::from(own.damage_bp) / u128::from(FULL_BP);
-    let caster =
-        u64::try_from(u128::from(t.saturating_add_signed(specialty)) + fixed).unwrap_or(u64::MAX);
+    let caster = hero.map_or(value, |b| {
+        caster_stage(ruleset, (spell, b), value, creature)
+    });
     let mut damage = caster;
     for ability in ruleset.abilities(creature) {
         match *ability {
-            Ability::SpellVulnerability { spell, percent } if spell == id => {
+            Ability::SpellVulnerability { spell: s, percent } if s == spell.0 => {
                 damage = grow(damage, u64::from(percent) * 100);
             }
             Ability::SpellDamageReduction { percent } => {
@@ -1730,7 +1717,64 @@ pub(crate) fn spell_damage(
             _ => {}
         }
     }
-    (caster, protected(ruleset, spell, damage, protection))
+    (caster, protected(ruleset, spell.1, damage, protection))
+}
+
+/// The value `value` of a damage spell after the bonuses `b` of its caster's hero, on a stack of
+/// `creature` (BAT-MAG-004; the original's 0x4E5760, `installation.md` §7.8 step 1): × (1 + the
+/// best Orb among the spell's schools) × (1 + Sorcery), then the spell's own bonus (a share,
+/// rounded down) and a specialist's ([`specialist_bonus`]), both of the product's whole part.
+///
+/// With exact rates the product is kept fractional and rounded down once, and the bonuses are
+/// added to it. With quirk Q-0005 the executable's arithmetic is followed: it keeps the value
+/// as a single-precision number, so the value, its product with the Orb's factor and that one's
+/// with Sorcery's are each stored as an `f32` (rounded to 24 bits, to nearest: 57.99999982
+/// becomes 58), the bonuses of the last product's whole part are added to the stored product
+/// itself, and only that sum, stored as an `f32` once more, is rounded down. Saturates for any
+/// value and any rates.
+// rule: BAT-MAG-004
+fn caster_stage(
+    ruleset: &Ruleset,
+    ((id, spell), b): (SpellRef<'_>, &SpellBonuses),
+    value: u64,
+    creature: CreatureTypeId,
+) -> u64 {
+    let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
+    let school = spell
+        .schools
+        .iter()
+        .map(|l| hero_rate(single, b.school[l.index().min(MAX_SPELL_SCHOOLS - 1)]))
+        .max()
+        .unwrap_or(0);
+    let all = hero_rate(single, b.all);
+    let own = b.spell(id);
+    // The specialist's bonus (it may lower a value) and the spell's own, below 2^96, of `t`.
+    let bonuses = |t: u64| {
+        let fixed = u128::from(t) * u128::from(own.damage_bp) / u128::from(FULL_BP);
+        (specialist_bonus(ruleset, spell, own, creature, t), fixed)
+    };
+    if single {
+        let stored = |v: X87| v.round(SINGLE_BITS);
+        let v = stored(X87::int(value));
+        let v = stored(v.times(X87::ONE.plus(X87::fixed(school))));
+        let v = stored(X87::ONE.plus(X87::fixed(all)).times(v));
+        let (specialty, fixed) = bonuses(v.trunc());
+        // One whole number, as the original's routine returns it, loaded and stored as an
+        // `f32`: what it adds and what it takes (one of the two is 0; never more than `t`).
+        let bonus = i128::from(specialty).saturating_add_unsigned(fixed);
+        let part = |n: i128| stored(X87::int(u64::try_from(n.max(0)).unwrap_or(u64::MAX)));
+        stored(v.plus(part(bonus)).minus(part(-bonus))).trunc()
+    } else {
+        let one = u128::from(FULL_BP);
+        // Below 2^65: a rate is at most `u32::MAX` basis points.
+        let factor = (one + u128::from(school)) * (one + u128::from(all));
+        // A product beyond `u128` is a quotient beyond `u64`.
+        let t = u128::from(value).checked_mul(factor).map_or(u64::MAX, |p| {
+            u64::try_from(p / (one * one)).unwrap_or(u64::MAX)
+        });
+        let (specialty, fixed) = bonuses(t);
+        u64::try_from(u128::from(t.saturating_add_signed(specialty)) + fixed).unwrap_or(u64::MAX)
+    }
 }
 
 /// A hero's specialty in a spell, for its casts or effects on one stack (BAT-MAG-020; the
@@ -1839,12 +1883,12 @@ pub(crate) fn reflection(
         mul_div_floor(first, u64::from(percent), 100).unwrap_or(u64::MAX)
     };
     let side = state.at(target).controller();
-    let bonuses = state.heroes[side.index()]
+    let hero = state.heroes[side.index()]
         .as_ref()
-        .map_or_else(SpellBonuses::default, |h| h.magic.bonuses);
+        .map(|h| &h.magic.bonuses);
     spell_damage(
         ruleset,
-        ((id, spell), &bonuses),
+        ((id, spell), hero),
         value,
         (striker.creature, &striker.spells.school_protection),
     )
@@ -2018,7 +2062,9 @@ fn affect<S: Sink>(
     if cast.spell.magic.effects.contains(&SpellEffect::Damage) {
         let target = state.at(s);
         let protection = target.spells.school_protection;
-        let caster_ref = ((cast.id, cast.spell), &cast.bonuses);
+        // A stack casts without a hero (BAT-MAG-048).
+        let hero = cast.by.is_none().then_some(&cast.bonuses);
+        let caster_ref = ((cast.id, cast.spell), hero);
         let (caster, damage) =
             spell_damage(ruleset, caster_ref, value, (target.creature, &protection));
         let kills = apply_damage(state.at_mut(s), damage);
@@ -2460,14 +2506,14 @@ pub(crate) fn burn<S: Sink>(
     let Some(spell) = found else {
         return;
     };
-    let bonuses = state.heroes[fire.side.index()]
+    let hero = state.heroes[fire.side.index()]
         .as_ref()
-        .map_or_else(SpellBonuses::default, |h| h.magic.bonuses);
+        .map(|h| &h.magic.bonuses);
     let target = state.at(s);
     let protection = target.spells.school_protection;
     let (caster, damage) = spell_damage(
         ruleset,
-        ((fire.spell, spell), &bonuses),
+        ((fire.spell, spell), hero),
         fire.value,
         (target.creature, &protection),
     );

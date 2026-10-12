@@ -248,6 +248,52 @@ fn the_reflection_is_the_shields_spell_damage() {
     assert_eq!(burnt("fixed", true), [(0, 4, 0)]);
 }
 
+// covers: BAT-MAG-018, BAT-MAG-004
+#[test]
+fn a_fire_shield_reflects_a_huge_strike_without_overflow() {
+    use h3_content::{CreatureSelector, CreatureStat};
+    use h3_contracts::{BattleSide, StatOp};
+    // The robustness review's test for F-robust-3 without any spell damage bonus: the value
+    // itself reaches 2^48 when a Fire Shield reflects the damage of a huge strike on a huge
+    // stack (`magic::reflection` passes `first × v %` to `spell_damage`): `u32::MAX` creatures
+    // whose heroes raise their damage and their hit points with sound `StackStat` effects.
+    // With quirk Q-0005 that overflowed `u128` (a panic).
+    let r = ruleset_with("t:single", |_| {});
+    // `sultan`: an innate Fire Shield of 25 %, 100 hit points.
+    let mut start = setup(&r, &[(0, "flyer", u32::MAX)], &[(0, "sultan", u32::MAX)]);
+    let stat = |stat, amount| BattleEffect::StackStat {
+        creatures: CreatureSelector::All,
+        stat,
+        op: StatOp::Add,
+        amount,
+    };
+    let mut striker = hero(&r);
+    striker.attack = 255;
+    striker.damage.melee = Rate::bp(10_000);
+    striker.effects = vec![
+        stat(CreatureStat::Speed, 30),
+        stat(CreatureStat::MinDamage, i16::MAX),
+        stat(CreatureStat::MinDamage, i16::MAX),
+        stat(CreatureStat::MaxDamage, i16::MAX),
+        stat(CreatureStat::MaxDamage, i16::MAX),
+    ];
+    let mut shielded = hero(&r);
+    shielded.effects = vec![stat(CreatureStat::HitPoints, i16::MAX); 40];
+    start.heroes = [Some(striker), Some(shielded)];
+    let mut state = BattleState::new(&r, &start, 1).unwrap();
+    assert_eq!(state.side_to_act(), Some(BattleSide::Attacker));
+    let mut legal = crate::LegalCommands::new();
+    crate::legal_commands(&state, &r, BattleSide::Attacker, &mut legal);
+    let attack = legal
+        .iter()
+        .copied()
+        .find(|c| matches!(c, Command::Attack { .. }))
+        .unwrap();
+    // The listed attack is applied without a panic, and the shield burns the striker.
+    let events = act(&mut state, &r, attack).unwrap();
+    assert_eq!(reflected(&events).len(), 1);
+}
+
 /// The damage of 10 Fixed, frenzied at `mastery` (none: not), on a lone `target`, in
 /// `profile`.
 fn frenzied_strike(profile: &str, mastery: Option<u8>, target: &'static str) -> u64 {

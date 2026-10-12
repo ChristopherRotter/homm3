@@ -504,7 +504,9 @@ fn the_casters_bonuses_apply_in_the_originals_order() {
 fn a_grown_spell_bonus_counts_with_its_single_precision_value_with_quirk_q0005() {
     // OPEN-QUESTIONS Q45's example: bolt at value 200 (power 19, no mastery: 190 + 10) from a
     // hero whose spells gain 22.5 % (a Sorcery specialist's 15 % at level 10). Kept as
-    // 0.2250000089… it deals 245; f32(0.225) = 0.2249999940… deals 244; exact, 245.
+    // 0.2250000089… it deals 245; f32(0.225) = 0.2249999940… deals 245 too: the product
+    // 244.9999988 is stored as an `f32`, which is 245.0, before it is rounded down (this pinned
+    // 244, the exact product's floor: review r1 F-2); exact, 245.
     let damage = |profile: &str, rate: Rate| {
         let r = ruleset_with(profile, |_| {});
         let mut h = mage(&r, &["bolt"]);
@@ -521,8 +523,246 @@ fn a_grown_spell_bonus_counts_with_its_single_precision_value_with_quirk_q0005()
         single: core::num::NonZeroU32::new(0x3e66_6667),
     };
     assert_eq!(damage("t:single", grown), 245);
-    assert_eq!(damage("t:single", Rate::bp(2250)), 244);
+    assert_eq!(damage("t:single", Rate::bp(2250)), 245);
     assert_eq!(damage("t:faithful", grown), 245);
+    // The rate's own single-precision value counts with the quirk, its basis points without:
+    // one that is not its basis points' (0.25) deals 200 × 1.25 = 250.
+    let other = Rate {
+        bp: 2250,
+        single: core::num::NonZeroU32::new(0x3e80_0000),
+    };
+    assert_eq!(damage("t:single", other), 250);
+    assert_eq!(damage("t:faithful", other), 245);
+}
+
+// covers: BAT-MAG-004
+#[test]
+fn the_casters_products_are_stored_as_singles_with_quirk_q0005() {
+    // The bolt of a hero with `power` whose spells gain `all` and whose air spells gain
+    // `school`, in `profile`, on titans.
+    let bolt = |profile: &str, power: u8, (school, all): (u32, u32)| {
+        let r = ruleset_with(profile, |_| {});
+        let mut h = mage(&r, &["bolt"]);
+        h.power = power;
+        h.effects = vec![
+            BattleEffect::SpellDamage {
+                scope: SpellScope::School(SchoolId::from_raw(0)),
+                rate: Rate::bp(school),
+            },
+            BattleEffect::SpellDamage {
+                scope: SpellScope::All,
+                rate: Rate::bp(all),
+            },
+        ];
+        let mut s = led(&r, [Some(h), None], &[(0, "fast", 1)], &[(0, "titan", 5)]);
+        spell_damage(&act(&mut s, &r, cast(&r, "bolt", 1)).unwrap())[0].1
+    };
+    // Review r1 F-2 (a Sorcery specialist's 16 %, power 4: 50): f32(0.16) = 0.15999999642, so
+    // the product is 57.99999982; the original stores it as an `f32`, 58.0, and rounds that down
+    // (0x4E5760). The exact product's floor was 57.
+    assert_eq!(bolt("t:single", 4, (0, 1600)), 58);
+    assert_eq!(bolt("t:faithful", 4, (0, 1600)), 58);
+    // Each product is stored: 560 × (1 + f32(0.39)) = 778.39999 is stored as 778.39996, and
+    // that × 1.25 = 972.99995 as 972.99994: 972. (One store at the end would keep 973.0; the
+    // exact rates give 973.)
+    assert_eq!(bolt("t:single", 55, (3900, 2500)), 972);
+    assert_eq!(bolt("t:faithful", 55, (3900, 2500)), 973);
+    // The spell's own bonus joins the stored value, not its whole part, and the sum is stored
+    // again: 4997 × (1 + f32(0.0002)) is stored as 4997.9995; with the bonus of its whole part,
+    // 4997, the sum 9994.9995 is stored as 9995.0. The exact rates: 4997 + 4997.
+    let caster = |profile: &str| {
+        let r = ruleset_with(profile, |_| {});
+        let id = spell(&r, "bolt");
+        let mut bonuses = crate::magic::SpellBonuses {
+            all: Rate::bp(2),
+            ..Default::default()
+        };
+        let own = SpellBonus {
+            spell: id,
+            damage_bp: 10_000,
+            ..SpellBonus::default()
+        };
+        bonuses.spells.push(own).unwrap();
+        let titan = r.creature_by_key("t:titan").unwrap();
+        let spell = (id, r.spell(id).unwrap());
+        crate::magic::spell_damage(&r, (spell, Some(&bonuses)), 4997, (titan, &[100; 4])).0
+    };
+    assert_eq!(caster("t:single"), 9995);
+    assert_eq!(caster("t:faithful"), 9994);
+}
+
+/// A battle of ten `fixed` each in `profile`; the attacker's hero has the bolt at power 255
+/// (2 560) and gains `all` for every spell and `school` for the bolt's school.
+fn bolt_caster(profile: &str, all: Rate, school: Rate) -> (Ruleset, BattleState) {
+    let r = ruleset_with(profile, |_| {});
+    let mut h = mage(&r, &["bolt"]);
+    h.power = 255;
+    h.magic.mana = 100;
+    h.effects = vec![
+        BattleEffect::SpellDamage {
+            scope: SpellScope::All,
+            rate: all,
+        },
+        BattleEffect::SpellDamage {
+            scope: SpellScope::School(SchoolId::from_raw(0)),
+            rate: school,
+        },
+    ];
+    // The setup is sound for the battle (BAT-HER-001).
+    let s = led(
+        &r,
+        [Some(h), None],
+        &[(0, "fixed", 10)],
+        &[(0, "fixed", 10)],
+    );
+    (r, s)
+}
+
+// The robustness review's tests for F-robust-3 (and r1 F-5): a hero the soundness check accepts
+// (BAT-HER-001) with huge `SpellDamage` rates made `magic::spell_damage` overflow `u128` under
+// quirk Q-0005 (the value times `(1 + school) × (1 + all)` over `2^40 × 2^40`), a panic.
+
+// covers: BAT-MAG-004, BAT-HER-001
+#[test]
+fn huge_spell_damage_rates_do_not_overflow_the_spell_damage() {
+    // Both rates are the largest basis points the seam carries.
+    let max = Rate::bp(u32::MAX);
+    let (r, mut s) = bolt_caster("t:single", max, max);
+    // The cast is applied without a panic and kills the ten creatures. The damage follows the
+    // executable's stores (the rate is stored as 429 496.71875; from exact rational arithmetic).
+    let events = act(&mut s, &r, cast(&r, "bolt", 1)).unwrap();
+    assert_eq!(spell_damage(&events), [(1, 472_238_801_289_216, 10)]);
+    assert!(!s.stacks()[1].is_alive());
+}
+
+// covers: BAT-MAG-004, BAT-HER-001
+#[test]
+fn huge_spell_damage_rates_cast_with_exact_rates() {
+    // The control: with exact rates (no quirk Q-0005) the same hero casts.
+    let max = Rate::bp(u32::MAX);
+    let (r, mut s) = bolt_caster("t:faithful", max, max);
+    // 2 560 × (1 + 429 496.7295)², rounded down once.
+    let events = act(&mut s, &r, cast(&r, "bolt", 1)).unwrap();
+    assert_eq!(spell_damage(&events), [(1, 472_238_847_092_877, 10)]);
+    assert!(!s.stacks()[1].is_alive());
+}
+
+// covers: BAT-MAG-004, BAT-HER-001
+#[test]
+fn spell_damage_rates_of_millions_of_percent_do_not_overflow() {
+    // The smallest rates that overflowed at the bolt's 2 560: two of 33 160 000 % each,
+    // (1 + 331 600)² × 2 560 > 2^48.
+    let rate = Rate::bp(3_316_000_000);
+    let (r, mut s) = bolt_caster("t:single", rate, rate);
+    let events = act(&mut s, &r, cast(&r, "bolt", 1)).unwrap();
+    assert_eq!(spell_damage(&events), [(1, 281_495_612_686_336, 10)]);
+    assert!(!s.stacks()[1].is_alive());
+}
+
+// covers: BAT-MAG-004, BAT-HER-001
+#[test]
+fn saturated_single_precision_rates_do_not_overflow_the_factor() {
+    // The other site: two single-precision values of their own that saturate the fixed point
+    // (2^99 as an `f32`; any of 2^24 or more) overflowed the product of the two factors.
+    let huge = Rate {
+        bp: 0,
+        single: core::num::NonZeroU32::new(0x7100_0000),
+    };
+    let (r, mut s) = bolt_caster("t:single", huge, huge);
+    act(&mut s, &r, cast(&r, "bolt", 1)).unwrap();
+    assert!(!s.stacks()[1].is_alive());
+}
+
+// covers: BAT-MAG-004
+#[test]
+fn the_spell_damage_saturates_for_every_value_and_rate() {
+    // Every value and every rate the seam can carry, in both variants: the largest value with
+    // the largest rates comes to the largest damage, and no bit pattern of a rate's own
+    // single-precision value (the largest `f32`, an infinity, a NaN, a negative value, a
+    // subnormal one) panics.
+    let patterns = [
+        0x7f7f_ffff,
+        0x7f80_0000,
+        0xffff_ffff,
+        0x8000_0001,
+        0x0000_0001,
+    ];
+    let rates = patterns
+        .map(|bits| Rate {
+            bp: u32::MAX,
+            single: core::num::NonZeroU32::new(bits),
+        })
+        .into_iter()
+        .chain([Rate::bp(u32::MAX), Rate::bp(0)]);
+    let values = [0, 1, 4997, u64::from(u32::MAX), 1 << 48, u64::MAX];
+    for profile in ["t:single", "t:faithful"] {
+        let r = ruleset_with(profile, |_| {});
+        let id = spell(&r, "bolt");
+        let titan = r.creature_by_key("t:titan").unwrap();
+        let spell = (id, r.spell(id).unwrap());
+        let damage = |hero: Option<&crate::magic::SpellBonuses>, value: u64| {
+            crate::magic::spell_damage(&r, (spell, hero), value, (titan, &[100; 4]))
+        };
+        for rate in rates.clone() {
+            let mut bonuses = crate::magic::SpellBonuses {
+                all: rate,
+                school: [rate; 4],
+                ..Default::default()
+            };
+            let own = SpellBonus {
+                spell: id,
+                damage_bp: u32::MAX,
+                per_level_bp: u32::MAX,
+                level: u8::MAX,
+            };
+            bonuses.spells.push(own).unwrap();
+            for value in values {
+                // The bonuses only add (every value here is one an `f32` holds or rounds up).
+                let (caster, dealt) = damage(Some(&bonuses), value);
+                assert!(
+                    caster >= value && dealt == caster,
+                    "{profile} {rate:?} {value}"
+                );
+            }
+            let all = damage(Some(&bonuses), u64::MAX);
+            assert_eq!(all, (u64::MAX, u64::MAX), "{profile} {rate:?}");
+        }
+        // The product alone: the largest value at the largest rates is beyond `u64` (with exact
+        // rates beyond `u128` before the division), a small one is not.
+        let rates = crate::magic::SpellBonuses {
+            all: Rate::bp(u32::MAX),
+            school: [Rate::bp(u32::MAX); 4],
+            ..Default::default()
+        };
+        assert_eq!(damage(Some(&rates), u64::MAX).0, u64::MAX, "{profile}");
+        assert_eq!(damage(Some(&rates), 1 << 40).0, u64::MAX, "{profile}");
+        assert!(damage(Some(&rates), 1).0 < u64::MAX, "{profile}");
+        // Without a hero the value is the damage, whatever it is: the original runs the caster's
+        // stage on a hero only (0x5A78E0), so nothing is stored as an `f32`.
+        let odd = (1 << 24) + 1;
+        for value in values.into_iter().chain([odd, odd + 2]) {
+            assert_eq!(damage(None, value).0, value, "{profile} {value}");
+        }
+        // A hero without bonuses: the same with exact rates; with the quirk the value passes
+        // through an `f32`, which holds whole numbers up to 2^24 and rounds beyond (to nearest,
+        // ties to even) and saturates.
+        let plain = crate::magic::SpellBonuses::default();
+        let single = profile == "t:single";
+        for (value, stored) in [
+            (0, 0),
+            (1, 1),
+            (4997, 4997),
+            (1 << 24, 1 << 24),
+            (odd, 1 << 24),
+            (odd + 2, (1 << 24) + 4),
+            (u64::from(u32::MAX), 1 << 32),
+            (1 << 48, 1 << 48),
+            (u64::MAX, u64::MAX),
+        ] {
+            let expected = if single { stored } else { value };
+            assert_eq!(damage(Some(&plain), value).0, expected, "{profile} {value}");
+        }
+    }
 }
 
 // covers: BAT-HER-001

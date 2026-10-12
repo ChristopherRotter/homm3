@@ -10,7 +10,7 @@ use std::vec::Vec;
 
 use h3_content::{
     Affects, CreatureFlag, CreatureSelector, CreatureStat, Formation, ObstacleKind, Ruleset,
-    SINGLE_PRECISION_RATES, SchoolId, SpellCategory, SpellId, SpellScope,
+    SchoolId, SpellCategory, SpellId, SpellScope,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -1216,13 +1216,10 @@ fn extreme_rate(rng: &mut Rng) -> Rate {
 /// A sound casting hero with values no real hero could have (BAT-HER-001): any primary skills,
 /// mana and damage bonuses, a book of the hero spells of the test ruleset with any masteries,
 /// sometimes Eagle Eye, and up to 40 effects of every kind but `NoRetreat` and the alignment
-/// groups, the magic ones (E04b) with extreme rates, levels and powers.
-///
-/// `exact`: the ruleset's rates are exact. With quirk Q-0005 each spell damage bonus of every
-/// spell or of a school is a real hero's (at most 50 %, no single-precision value of its own;
-/// they add up): huge ones overflow `magic::spell_damage` (E04b T11b review, finding
-/// F-robust-3); widen them once it saturates.
-fn extreme_caster(r: &Ruleset, rng: &mut Rng, exact: bool) -> BattleHero {
+/// groups, the magic ones (E04b) with extreme rates, levels and powers (the spell damage
+/// bonuses too, whatever the ruleset's rates: the spell damage saturates since the E04b T11b
+/// review's finding F-robust-3 was fixed).
+fn extreme_caster(r: &Ruleset, rng: &mut Rng) -> BattleHero {
     let spells: Vec<SpellId> = (0..r.spells().len())
         .filter_map(SpellId::from_index)
         .collect();
@@ -1291,13 +1288,6 @@ fn extreme_caster(r: &Ruleset, rng: &mut Rng, exact: bool) -> BattleHero {
                 .collect(),
         });
     }
-    let multiplying = |rng: &mut Rng| {
-        if exact {
-            extreme_rate(rng)
-        } else {
-            Rate::bp(one_of(rng, &[0, 500, 1500, 5000]))
-        }
-    };
     let level = |rng: &mut Rng| one_of(rng, &[0u8, 1, 2, 3, 4, 5, 6, 100, 255]);
     // The spells with bonuses of their own (at most `MAX_SPELL_BONUSES`).
     let own: Vec<SpellId> = (0..crate::MAX_SPELL_BONUSES)
@@ -1309,14 +1299,14 @@ fn extreme_caster(r: &Ruleset, rng: &mut Rng, exact: bool) -> BattleHero {
         let effect = match rng.below(20) {
             0 | 1 => BattleEffect::SpellDamage {
                 scope: SpellScope::All,
-                rate: multiplying(rng),
+                rate: extreme_rate(rng),
             },
             2 | 3 => BattleEffect::SpellDamage {
                 scope: SpellScope::School(
                     SchoolId::from_index(rng.below(r.spell_schools().len() as u32) as usize)
                         .unwrap(),
                 ),
-                rate: multiplying(rng),
+                rate: extreme_rate(rng),
             },
             4 => BattleEffect::SpellDamage {
                 scope: SpellScope::Spell(one_of(rng, &own)),
@@ -1438,14 +1428,14 @@ fn play_casting(state: &mut BattleState, r: &Ruleset, seed: u64, leave: bool) ->
 // covers: BAT-HER-001, BAT-MAG-001, BAT-MAG-003, BAT-MAG-048
 /// Robustness (E04b T11b review): battles led on both sides by sound casting heroes with extreme
 /// values (BAT-HER-001 accepts them) start and play with the heroes' and the stacks' casts among
-/// the commands, every listed command accepted, under exact rates (armies of up to `u32::MAX`
-/// creatures) and under the original's quirks (single-precision rates, Q-0005); no arithmetic
+/// the commands, every listed command accepted, with armies of up to `u32::MAX` creatures, under
+/// exact rates and under the original's quirks (single-precision rates, Q-0005); no arithmetic
 /// overflows; an outcome when over. Fixed seeds: a failure reproduces.
 ///
-/// Two findings of that review bound it, to be widened once they are fixed: with quirk Q-0005
-/// the armies (at most 200 000 creatures a stack) and the spell damage bonuses stay below what
-/// overflows `magic::spell_damage` (F-robust-3, also through a Fire Shield's reflection of a
-/// huge strike), and the natural obstacles are anchored on their own hex, so that no removal
+/// Two findings of that review bounded it. The spell damage saturates now (F-robust-3, also
+/// through a Fire Shield's reflection of a huge strike), so the armies and the spell damage
+/// bonuses are the same in both profiles. One still bounds it, to be widened once it is fixed:
+/// the natural obstacles are anchored on their own hex, so that no removal
 /// leaves another without a hex (F-robust-2).
 #[test]
 fn extreme_casting_heroes_play_without_failures() {
@@ -1464,7 +1454,6 @@ fn extreme_casting_heroes_play_without_failures() {
     let mut casts = (0, 0);
     for profile in ["t:quirky", "t:original"] {
         let r = lively_with(profile);
-        let exact = !r.quirks().is_enabled(SINGLE_PRECISION_RATES);
         for seed in 0..100u64 {
             let mut rng = Rng::from_seed(seed);
             let army = |rng: &mut Rng| -> ArmySpec {
@@ -1475,9 +1464,8 @@ fn extreme_casting_heroes_play_without_failures() {
                         let count = match rng.below(4) {
                             0 => 1 + rng.below(100),
                             1 => 60_000 + rng.below(140_000),
-                            2 if exact => 1 + rng.below(u32::MAX),
-                            3 if exact => u32::MAX,
-                            _ => 1 + rng.below(1000),
+                            2 => 1 + rng.below(u32::MAX),
+                            _ => u32::MAX,
                         };
                         let creature = if rng.below(3) == 0 {
                             one_of(rng, &casters)
@@ -1493,8 +1481,8 @@ fn extreme_casting_heroes_play_without_failures() {
             // Up to four one-hex obstacles between the armies, each anchored on its own hex.
             setup.obstacles = pieces(&[58, 76, 94, 112][..rng.below(5) as usize]);
             setup.heroes = [
-                Some(extreme_caster(&r, &mut rng, exact)),
-                (rng.below(8) != 0).then(|| extreme_caster(&r, &mut rng, exact)),
+                Some(extreme_caster(&r, &mut rng)),
+                (rng.below(8) != 0).then(|| extreme_caster(&r, &mut rng)),
             ];
             setup.funds = [rng.next_u32(), one_of(&mut rng, &[0, 1000, u32::MAX])];
             let mut state = BattleState::new(&r, &setup, seed).unwrap();

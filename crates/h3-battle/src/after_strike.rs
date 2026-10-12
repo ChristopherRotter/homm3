@@ -19,7 +19,7 @@ use crate::binds;
 use crate::damage::apply_damage;
 use crate::effects::{self, TimedCast};
 use crate::event::{Event, EventKind, Sink};
-use crate::magic::{self, SpellBonus, SpellBonuses};
+use crate::magic::{self, SpellBonus};
 use crate::state::{BattleState, StackId, StackTraits};
 
 /// What a spell after a strike needs of the struck stack besides the spell's test
@@ -230,7 +230,7 @@ fn thunderbolt<S: Sink>(
     let protection = victim.spells.school_protection;
     let (caster, damage) = magic::spell_damage(
         ruleset,
-        ((id, spell), &SpellBonuses::default()),
+        ((id, spell), None),
         value,
         (victim.creature, &protection),
     );
