@@ -1049,3 +1049,14 @@ already current).
   566 626 021 Ir, `random-play-duel-36` 510 210 757 → 439 577 005 Ir; `fork-xl-144` +1.0 %
   (343 600 056 → 347 100 056, under the gate, not re-baselined). `docs/02-architecture.md` §8's
   numbers follow in #125 (a shared path).
+
+### Checkpoint after T13a + T13b and T14a + T14b: the Cartographer (2026-10-12, `adventure/e08-t14`)
+
+The user merged #125 and #132 and accepted T13's four calls: the starting rows in the adventure
+part; the neighbour visit takes the first object in map order (T14a may revisit it: if the
+original visits one order in both modes, the neighbour visit follows it, flagged at the next
+checkpoint); the diagonal cost in one multiplication with the two re-baselines (asked first what
+changed: only the computation, equal for every cost); every game at normal difficulty until T14b
+adds a difficulty option with the replay format's bump (the user: yes). The round: T14 in two
+parts on one pull request, T14a the entered visit and ADV-OBJ-004, T14b the Cartographer's offer
+end to end with the env's action encoding v2 and the replay format v2.
