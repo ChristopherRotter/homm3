@@ -608,7 +608,10 @@ was not read: the engine never retaliates against a dead stack).
 the active stack, else 2 (whatever the caster's power), and stores `v / 100` as `f32` (+0x498).
 The round start's countdown skips it (§7.9); the stack's turn start 0x446E30 (once per round:
 the flag +0x4F0, cleared at the round start 0x447120) counts it down: above 1 it loses a round,
-else it ends. So it lasts through the stack's next turn. **Attack** (0x442410, last, after
+else it ends. So it lasts through the stack's next turn (re-read in the E04b T11b review; VCMI
+1.7.5 instead ends it at the stack's first strike of any kind, a retaliation included, however
+many turns pass: `UNTIL_ATTACK` in `config/spells/timed.json`; the conflict is on record in
+BAT-Q28). **Attack** (0x442410, last, after
 Slayer): `trunc(f32(attack) + f32(d) × factor)` with `d` the frenzied stack's own defense as the
 struck stack sees it (0x442590 with the struck stack as the other side, flag 0): +0xCC (the
 Defend bonus included) reduced by a Behemoth's or Ancient Behemoth's share when the **struck**
@@ -939,7 +942,9 @@ start (0x46402C) the battle sets one byte per side at +0x1329C: whether any of t
 that byte. Nothing writes it again; it is read only when Quicksand or a Land Mine is placed and by
 Land Mine's cast test (T5c2): an object placed by side `s` gets the revealed flag (+0xA, shown to
 both sides) if the other side's byte is set. Natives that die or appear later change nothing
-(BAT-QUIRK-1; VCMI tests the living natives each time).
+(BAT-QUIRK-1). VCMI 1.7.5 asks each time whether the side has a native stack, dead ones included
+(`battleHasNativeStack`, `lib/battle/CBattleInfoEssentials.cpp`: every stack that is no ghost): as
+the original for natives that die, unlike it for natives that appear later.
 
 **Quicksand** (10; the spell book casts it at once, no target, 0x59ECDF): the pits by mastery come
 from the table 0x642214 (4, 4, 6, 8), not from the spell's effect values. A sampler over the hexes
@@ -1292,6 +1297,29 @@ not be bound by that striker's next strike. The engine binds only a living T.
   reduction (after Acid Breath, step 2); a message, then the pending spells are cast again
   (0x468990).
 
+**The other sources** (compared at the E04b T11b review, 2026-10-12; the wiki was not consulted).
+VCMI 1.7.5 (`server/battles/BattleActionProcessor.cpp` `attackCasting`, `config/creatures/*.json`,
+`config/spells/ability.json`) agrees on the cast after an attack or a retaliation on a living
+target, with the immunity test before the draw and no Magic Mirror; on the chances of the
+Unicorns, Medusas, Basilisks, Scorpicores, Zombies, Ghost Dragons and Thunderbirds (20 %), the
+Wyvern Monarchs (30 %), the flies, the Dendroids and the Rust Dragon's defense loss (100 %); on 10
+damage per Thunderbird and 3 rounds for a creature's cast; on a petrified stack's halved damage,
+a paralysed stack's retaliation at 25 %, Acid Breath's permanent −3 and Dispel Helpful Spells'
+positive effects. It differs on ten points, on each of which the review's re-read confirmed this
+reading (reading / VCMI): the Curse of Black and Dread Knights 25 % / 20 % and of Mummies 25 % /
+50 % (0x440711); the Rust Dragon's extra damage 20 % / 30 % (0x4414BC); the Unicorns' Blind at
+mastery 0, so the blinded stack retaliates at half / at level 3, no retaliation; the Dragon Flies'
+Weakness at mastery 2, −6 / at level 0, −3 (0x44147C); the Thunderbirds' bolt tested and dealt as
+Lightning Bolt (0x4411D4, 0x4411F5) / a spell of its own, which Lightning Bolt's immunities and
+Protection from Air do not meet; Stone Gaze resisted as a negative spell / no resistance roll;
+Poison a tenth at the cast and at each round start down to half, kept until a Cure / 10 % per own
+turn down to 30 %, given back at its end; Age's `trunc(H / 2 + 0.95)` (25 → 13) / a whole-number
+−50 % (25 → 12, not run); Bind ended at once when the last binder moves, dies or is teleported,
+or after 255 rounds / at the bound stack's turn start when no binder is adjacent, never by its
+rounds. VCMI also rolls magic resistance against Dispel Helpful Spells. The engine follows this
+reading on all of them; the conflict is on record in BAT-Q28 and in the VCMI sources of
+BAT-MAG-040 to BAT-MAG-047.
+
 ### 7.21 Code reading: casting creatures, the Enchanter and the spell cost (E04b T7b cut, 2026-10-08)
 
 Read for the T7b/T7c cut (Q29: insight only, nothing copied); the parts each task builds are
@@ -1605,6 +1633,23 @@ started) until that ends, when it may act later in the round (BAT-MOR-003, the T
 finding). Such a stack picked in the wait phase is not checked for bad morale either, though it
 never waited: BAT-MOR-004 tested the stack's own waited bit (VCMI's test) until E04b T11a.
 
+**The other sources for the casting creatures** (compared at the E04b T11b review, 2026-10-12; the
+wiki was not consulted). VCMI 1.7.5 agrees on the Archangel (Expert Resurrection, 100 hit points
+per creature, one cast), the Faerie Dragon's weights but Magic Arrow's, the rebirth's fifth and
+its draws, Fear's 10 % after bad morale and the Enchanters' counter. It differs from the readings
+above, which the review's re-read confirmed, in: the Ogre Mage's Bloodlust lasting 3 rounds (the
+reading: power 6, 0x4486A7); obstacles acting on a unit after its spell (the reading: no re-entry
+after the cast, 0x47936E); a resistance roll for every unit against a negative spell whatever the
+caster (the reading: none for the aimed stack of a creature's cast, 0x5A02CB); the Master Genie's
+20 spells without Frenzy, lasting 5 rounds, Prayer without a condition and Slayer for a living
+enemy of any king level (`getRandomBeneficialSpell`); the Enchanters' six spells without weights
+(no Bloodlust, no Cure); the Phoenix's cast used only when a creature comes back, the reborn stack
+without retaliations and back at the moment of its death (`lib/CStack.cpp`); Fear only for living
+creatures (so not the Gargoyles, which 0x464D4C to 0x464D57 frighten) and rolled in the wait phase
+too; the Familiars' channel computed before the cast's effect, so Familiars the cast kills still
+channel. The engine follows the readings; the conflict is on record in BAT-Q28 and in the rules'
+VCMI sources (BAT-MAG-048 to BAT-MAG-060).
+
 ### 7.22 Code reading: the hero's available spells and its mastery of a spell (E04b T8a, 2026-10-10)
 
 Read for E04b T8a (BAT-Q19). Both are functions of the hero record, run outside the battle and
@@ -1726,7 +1771,14 @@ Troglodytes' and Gargoyles' immunities under it (VCMI lifts them); the Cloak aga
 abilities and the Archangel (the wiki names the heroes only; VCMI bars creature casts, not
 abilities); the Dragon Father against level-0 abilities (VCMI never bars level 0). Until an
 experiment settles them, the engine follows the wiki and VCMI on the first two (the Faerie Dragon's
-`ignores_magic_block`, the aura lifted) and this reading on the other three (the user, BAT-Q21). T8b3's
+`ignores_magic_block`, the aura lifted) and this reading on the other three (the user, BAT-Q21).
+A sixth point, found at the E04b T11b review (2026-10-12): VCMI does not agree on what the Orb of
+Vulnerability keeps. In `lib/spells/TargetCondition.cpp` only immunities marked absolute (`addInfo`
+1: in `config/artifacts.json` the Sphere of Permanence's two alone) stand before the Orb's negation;
+the Pendants', Armageddon's Blade's and the Dragon Father's are plain bonuses there, which the Orb
+lifts. This reading has them before the Orb's test (the per-spell switch at 0x44A5F6 and the
+Dragon Father at 0x44A50F, both before 0x44A746) and the wiki keeps "artifact immunities"; no batch
+observed it. The engine follows the reading (BAT-Q28). T8b3's
 per-spell conditions (BAT-Q22): the wiki (the spell pages, `War Machine`, the `Spell Immunity Table`
 template) and VCMI (`config/spells/timed.json`) agree on the undead under Bless and Curse, also with
 the Orb, on Precision's shooters, on the Tent and the Ammo Cart under Bless and Curse (VCMI spares
@@ -1742,7 +1794,9 @@ observed this reading on BAT-Q22's three points (WM, OV) and on BAT-Q21's points
 Orb of Inhibition stops the Faerie Dragons (OI: no spell cursor in two rounds), the Troglodytes keep
 Blind and the Gargoyles Poison under the Orb of Vulnerability (OV: 0 of 12 attacks), the Cloak bars
 the Archangel (RC) and, weakly, the Medusas' Stone Gaze (0 of 8) and the Dragon Father the bolt and
-Poison (DF: 0 of 3 and 0 of 4). On point 2 it observed the wiki and VCMI: under the Orb of
+Poison (DF: 0 of 3 and 0 of 4; the bolt is the strike's Lightning Bolt, a level-2 spell, §7.20, so
+for point 5, the level-0 abilities, only Poison counts: 0 of 4 at 30 % happens in 24 % of the
+tries without the immunity). On point 2 it observed the wiki and VCMI: under the Orb of
 Vulnerability no stack beside the Unicorns resisted Expert Slow (UA: 12 of 12 slowed; 7 % to see
 that with the aura's × 0.8 kept), so this reading's aura in 0x5A8090 is either skipped on a path not
 read or the factor is applied elsewhere; the engine keeps the aura lifted.

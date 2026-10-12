@@ -511,6 +511,7 @@ title    = "Strike and return"
 context  = "battle"
 status   = "implemented"
 summary  = "A creature with strike_and_return that moved to attack returns to the hex it started its turn on after the whole melee attack (after the retaliation and a second attack), if it is still alive and does not lose its turns (Blind, Stone Gaze or Paralyze from the retaliation, BAT-MAG-024, BAT-MAG-043) and is not bound (BAT-MAG-045). The return is a move like any other and costs nothing (the original returns through its move handler, 0x445950): the stacks the returning stack binds are released (BAT-MAG-045) and it enters the hexes it lands on (a walker: those of its path), where a Fire Wall burns it (BAT-MAG-028) and an unseen enemy mine goes off (BAT-MAG-033), each followed by the rebirths (BAT-MAG-059). The return is a part of the strike's action, so the battle's end is checked once, after it (the original checks nothing before the return): a stack that dies where it lands as its side's last ends the battle; one whose strike killed the last enemy stack still lands and burns, and if it dies there nobody wins (BAT-END-002). It does not return if it did not move or died. A bound stack staying is the fix of the original's bug (survey S-14, in every profile, the user 2026-10-08): the original flies a bound Harpy back, which empties its binder lists without ending its Bind, so it stays bound for 255 rounds whatever its binders do. The start hex is always free again (nothing else moves during an attack)."
+quirks   = ["BAT-QUIRK-20"]
 numeric  = "integer"
 
   [[rule.source]]
@@ -1857,7 +1858,7 @@ id       = "BAT-MAG-001"
 title    = "When a hero casts"
 context  = "battle"
 status   = "verified"
-summary  = "A side's hero may cast a spell (Command::Cast) while one of its side's stacks awaits a command outside the tactics phase (BAT-TAC-001), also during the turn of a war machine it commands (BAT-WAR-006/007; VCMI, observed in batch 2a R6, while the wiki says 'one of their creatures'). It needs the spell in its spell book (HER-BAT-011), a combat spell, fewer casts this round than the battle parameter hero_casts_per_round (1; the count is reset when a round starts, BAT-TRN-003), the mana for the cost (BAT-MAG-002) and a valid target (BAT-MAG-003). Casting is never required, and the active stack keeps its turn afterwards, unless the cast killed it (its own hero's area or battle-wide damage, a sacrifice, BAT-MAG-036): then its turn ends and the next stack's starts (E04b T6a; a dead stack cannot act). A cast is public: a SpellCast event with side, spell and target, and the casts this round in HeroView (ADR-0014 point 8). Only spells whose effects the battle implements can be cast (CommandError::NotCastable otherwise): the damage spells since E04b T2d (one stack, chain, area and every stack; BAT-MAG-004 to BAT-MAG-008), other effects with their tasks. Casts are not in legal_commands; castable_spells and cast_targets list exactly what apply accepts (the factorized action, ADR-0014 point 9)."
+summary  = "A side's hero may cast a spell (Command::Cast) while one of its side's stacks awaits a command outside the tactics phase (BAT-TAC-001), also during the turn of a war machine it commands (BAT-WAR-006/007; VCMI, observed in batch 2a R6, while the wiki says 'one of their creatures'). It needs the spell in its spell book (HER-BAT-011), a combat spell, fewer casts this round than the battle parameter hero_casts_per_round (1; the count is reset when a round starts, BAT-TRN-003), the mana for the cost (BAT-MAG-002) and a valid target (BAT-MAG-003). Casting is never required, and the active stack keeps its turn afterwards, unless the cast killed it (its own hero's area or battle-wide damage, a sacrifice, BAT-MAG-036): then its turn ends and the next stack's starts (a dead stack cannot act). A cast is public: a SpellCast event with side, spell and target, and the casts this round in HeroView (ADR-0014 point 8). Only a spell that has effects in the ruleset can be cast (CommandError::NotCastable otherwise). The heroes' artifacts may forbid every cast or the spell's level (BAT-MAG-061, BAT-MAG-062). Casts are not in legal_commands; castable_spells and cast_targets list exactly what apply accepts (the factorized action, ADR-0014 point 9)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1876,10 +1877,15 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E04b-batch-2a.md R6 (SoD 4.0 Complete, plain HD, 2026-10-06): Calid with Basic Artillery casts Magic Arrow in his Ballista's turn (16 to 11 spell points), and once per round"
+  ref        = "experiments/results/E04b-batch-2a.md R6 (SoD 4.0 Complete, plain HD, 2026-10-06): Calid with Basic Artillery casts Magic Arrow in his Ballista's turn (16 to 11 spell points); one cast in each of three rounds (a second cast in a round was not tried)"
   retrieved  = "2026-10-06"
   confidence = "high"
-  note       = "settles X-3 (M-4)"
+  note       = "settles X-3 (M-4); the limit of one cast per round rests on the wiki, VCMI and the code reading"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading: the side's cast mark +0x54B4 is set by a hero's cast (0x59FFF6), tested by the book button and the cast's entry (0x59E948, 0x59EC76; unless the manager's byte +0x13D74 is set, which only a menu command toggles: not a rule) and cleared per side at the round start (0x4760EE)"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MAG-002"
@@ -1938,7 +1944,7 @@ id       = "BAT-MAG-004"
 title    = "Damage of a damage spell"
 context  = "battle"
 status   = "verified"
-summary  = "A damage spell's value is power × power factor + effect[mastery] (the hero's spell power, the spell's row; BAT-MAG-002). Its damage to a stack follows the original's order (installation.md §7.8): first the bonuses of the caster's hero (none without a hero: the original runs this stage on the hero only, 0x5A78E0, so a stack's cast, the Thunderbirds' bolt and a hero-less side's shield, wall or mine keep the value): v × (1 + the best bonus among the spell's schools) (the Orbs, +50 %) × (1 + the every-spell bonus) (Sorcery), whose whole part is t; then this spell's own bonus of t rounded down (Ciele +50 %, Luna +100 %) and a spell specialist's ⌈per-level rate × (hero level div the stack's creature level, at least 1) × t⌉ (3 % per level in SoD; HER-BAT-012). With exact rates the product is kept fractional and rounded down once to t, and the bonuses are added to t. Under quirk Q-0005 the rates are single precision (Sorcery's 5/10/15 %) and the value is kept as the executable keeps it (0x4E5760): v, its product with the school factor and that one's with the every-spell factor are each stored as a single-precision number (rounded to 24 bits, to nearest), the bonuses of the last product's whole part t are added to the stored product itself, and that sum, stored once more, is rounded down; a product a hair below a whole number so becomes that number (a Sorcery specialist's 16 % on 50: 57.99999982 is stored as 58, the damage of the exact rates). Then the target creature's: × 2 from a spell it is vulnerable to (spell_vulnerability; the elementals) and × (100 − p) / 100 from a spell damage reduction of p % (the Golems: 50, 75, 85, 95), each rounded down. The damage saturates for any value and rates. VCMI applies the target's reductions first and rounds after every factor (dispute M-6 settled by code reading; X-1). The damage kills like physical damage (BAT-DMG-003; no luck, morale or retaliation) and is reported as a public SpellDamage event; the battle ends at once if a side has no living stacks left (BAT-END-001/002). Protection spells on the target: BAT-MAG-013."
+summary  = "A damage spell's value is power × power factor + effect[mastery] (the hero's spell power, the spell's row; BAT-MAG-002). Its damage to a stack follows the original's order (installation.md §7.8): first the bonuses of the caster's hero (none without a hero: the original runs this stage on the hero only, 0x5A78E0, so a stack's cast, the Thunderbirds' bolt and a hero-less side's shield, wall or mine keep the value): v × (1 + the best bonus among the spell's schools) (the Orbs, +50 %) × (1 + the every-spell bonus) (Sorcery), whose whole part is t; then this spell's own bonus of t rounded down (Ciele +50 %, Luna +100 %) and a spell specialist's ⌈per-level rate × (hero level div the stack's creature level, which is at least 1; the quotient may be 0) × t⌉ (3 % per level in SoD; HER-BAT-012). With exact rates the product is kept fractional and rounded down once to t, and the bonuses are added to t. Under quirk Q-0005 the rates are single precision (Sorcery's 5/10/15 %) and the value is kept as the executable keeps it (0x4E5760): v, its product with the school factor and that one's with the every-spell factor are each stored as a single-precision number (rounded to 24 bits, to nearest), the bonuses of the last product's whole part t are added to the stored product itself, and that sum, stored once more, is rounded down; a product a hair below a whole number so becomes that number (a Sorcery specialist's 16 % on 50: 57.99999982 is stored as 58, the damage of the exact rates). Then the target creature's: × 2 from a spell it is vulnerable to (spell_vulnerability; the elementals) and × (100 − p) / 100 from a spell damage reduction of p % (the Golems: 50, 75, 85, 95), each rounded down. The damage saturates for any value and rates. VCMI applies the target's reductions first and rounds after every factor (dispute M-6 settled by code reading; X-1). The damage kills like physical damage (BAT-DMG-003; no luck, morale or retaliation) and is reported as a public SpellDamage event; the battle ends at once if a side has no living stacks left (BAT-END-001/002). Protection spells on the target: BAT-MAG-013."
 quirks   = ["BAT-QUIRK-19"]
 numeric  = "integer"
 
@@ -1974,7 +1980,7 @@ id       = "BAT-MAG-005"
 title    = "Stacks a spell cannot affect"
 context  = "battle"
 status   = "verified"
-summary  = "A spell cannot affect a stack whose creature misses a flag of SpellMagic.conditions.requires or has one of excludes (war machines against Implosion and Death Ripple, the executable's spell flag 0x1000; Death Ripple spares undead, Destroy Undead needs them), or has an immunity ability: spell_level_immunity up to a spell level (Green, Red and Azure Dragons 3, Gold Dragon 4, Black Dragon and Magic Elemental 5), school_immunity (fire: Fire and Energy Elementals, Efreet, Efreet Sultans, Firebirds, Phoenixes; the harvester checks it against the creature flag fire_immune) or spell_immunity (Air and Storm Elementals: Meteor Shower; Earth and Magma Elementals: Lightning Bolt, Chain Lightning, Armageddon and, in SoD, Titan's Lightning Bolt (E04b T8b2); Water and Ice Elementals: Ice Bolt, Frost Ring; an absolute one, which no negation lifts: Troglodytes Blind and Stone Gaze, Gargoyles Poison). The heroes add their part (BAT-MAG-063 to BAT-MAG-066). Such a stack is never a target (BAT-MAG-003), never struck by an area or battle-wide spell (BAT-MAG-007), never a chain's next stack (BAT-MAG-006) and never rolls for resistance; immunity holds for positive spells too. The original adds Titan's Lightning Bolt to the Earth/Magma immunities and the Air/Storm vulnerabilities (a SoD pack override once it is castable, E04b T8). A mind spell (SpellMagic.mind: the executable's flag 0x400; Mirth, Sorrow and later Berserk, Hypnotize, Forgetfulness, Blind, Frenzy) cannot affect a creature with flag mind_immune (E04b T3a). Power of the Dragon Father, the Pendants and the Orb of Vulnerability join with T8. A spell that ignores immunity (SpellMagic.ignores_immunity: Dispel, whose test in the original returns before the immunity tests, installation.md §7.10) is affected by none of these, only by its conditions; the Sphere of Permanence, which protects its hero's stacks from Dispel, joins with the Pendants in E04b T8."
+summary  = "A spell cannot affect a stack whose creature misses a flag of SpellMagic.conditions.requires or has one of excludes (war machines against Implosion and Death Ripple, the executable's spell flag 0x1000; Death Ripple spares undead, Destroy Undead needs them), or has an immunity ability: spell_level_immunity up to a spell level (Green, Red and Azure Dragons 3, Gold Dragon 4, Black Dragon and Magic Elemental 5), school_immunity (fire: Fire and Energy Elementals, Efreet, Efreet Sultans, Firebirds, Phoenixes; the harvester checks it against the creature flag fire_immune) or spell_immunity (Air and Storm Elementals: Meteor Shower; Earth and Magma Elementals: Lightning Bolt, Chain Lightning, Armageddon and, in SoD, Titan's Lightning Bolt; Water and Ice Elementals: Ice Bolt, Frost Ring; an absolute one, which no negation lifts: Troglodytes Blind and Stone Gaze, Gargoyles Poison). The heroes add their part (BAT-MAG-063 to BAT-MAG-066). Such a stack is never a target (BAT-MAG-003), never struck by an area or battle-wide spell (BAT-MAG-007), never a chain's next stack (BAT-MAG-006) and never rolls for resistance; immunity holds for positive spells too. Titan's Lightning Bolt is among the Earth/Magma immunities and the Air/Storm vulnerabilities by overrides of the sod pack, whose spell it is. A mind spell (SpellMagic.mind: the executable's flag 0x400; Mirth, Sorrow, Berserk, Hypnotize, Forgetfulness, Blind, Frenzy) cannot affect a creature with flag mind_immune. A spell that ignores immunity (SpellMagic.ignores_immunity: Dispel, whose test in the original returns before the immunity tests, installation.md §7.10) is affected by none of these, only by its conditions; the Sphere of Permanence protects its hero's stacks from Dispel (BAT-MAG-063)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2012,11 +2018,11 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "lib/spells/effects/UnitEffect.cpp L200-L250: the first target resisting ends the chain, a resisting later target is skipped, the next by the closest hex (BattleHex::getClosestTile); lib/spells/effects/Damage.cpp L155-L165: chainFactor^index; config/spells/offensive.json: chainLength 4, 4, 5, 5, chainFactor 0.5"
-  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/effects/UnitEffect.cpp#L200-L250"
-  retrieved  = "2026-10-06"
+  ref        = "lib/spells/effects/UnitEffect.cpp L188-L257 transformTargetByChain: the first target resisting ends the chain; lib/spells/effects/Damage.cpp L160-L164: chainFactor^index; config/spells/offensive.json: chainLength 4, 4, 5, 5, chainFactor 0.5: as the rule. VCMI differs on a later target that resists, in three points: whether a unit resists is drawn once per cast (lib/spells/BattleSpellMechanics.cpp L454-L464, read back by wouldResist, UnitEffect.cpp L227), not at every jump; a skipped unit's hexes leave the candidates (L246-L248), so no later jump strikes it; the next target is the one closest to the unit just examined, the skipped one included (L253, BattleHex::getClosestTile, hex distance). Not followed, the code reading decides (BAT-Q28): in 0x5A61F0 a candidate that fails its roll is passed for that jump only (0x5A6272 to 0x5A6295), marks are written only for struck stacks (0x5A659A), and the distance is from the last stack struck"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/effects/UnitEffect.cpp#L188-L257"
+  retrieved  = "2026-10-12"
   confidence = "medium"
-  note       = "hex distance instead of screen distance; the factor applies to the final damage"
+  note       = "hex distance instead of screen distance; the factor applies to the final damage. Dwarves beside the first target of a four-target chain are struck with about 99 % by the rule (three rolls at 80 %), with 80 % in VCMI"
 
   [[rule.source]]
   kind       = "wiki"
@@ -2237,10 +2243,10 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "config/spells/timed.json slayer: SLAYER bonus with the mastery as value (VCMI's KING bonuses compare it, so at mastery none Slayer affects no creature; the original affects king 1)"
-  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
-  retrieved  = "2026-10-06"
-  confidence = "medium"
+  ref        = "lib/battle/DamageCalculator.cpp L156-L186 getActorAttackSlayer: Slayer counts when its stored level (config/spells/timed.json L1058-L1111 slayer: 0, 1, 2, 3 by mastery) is at least the target's KING value (config/creatures: 0 for king 1, 'will be affected by Slayer with no expertise', 2 for Advanced or better, 3 for Expert only), so at mastery none it counts against king 1; a Slayer specialist adds max(5 - the striker's tier, 0), the original's table 4, 3, 2, 1, 0: VCMI agrees with the code reading"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/DamageCalculator.cpp#L156-L186"
+  retrieved  = "2026-10-12"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MAG-015"
@@ -2315,6 +2321,7 @@ title    = "Fire Shield"
 context  = "battle"
 status   = "verified"
 summary  = "While Fire Shield is active on a stack (v = 20, 20, 25, 30 %), every melee strike on it (an attack, a retaliation or a second strike; never a shot) reflects damage onto the striker unless the striker is fire-immune (creature flag fire_immune): x = with quirk Q-0010 (faithful), as the original, the strike's first damage stage (BAT-DMG-002: the base with its bonuses, before the target's defense, the penalties, Shield and Armorer), capped at the target's hit points before the strike (a clone's: 1, in either profile; the original's 0x422440, E04b T6b); without it (strict-fixed) the hit points the strike took (the spell's text: a share of the damage dealt; VCMI); r = x × v % rounded down (single precision under quirk Q-0005); then r is the shield spell's damage (BAT-MAG-004) with the bonuses of the struck stack's hero as the caster's (Sorcery, the Orb of Fire, a specialty; without a hero r stays as it is) and the striker's reductions and fire protection (BAT-MAG-013); no immunity or magic resistance applies. Only the attacked stack reflects: a breath's second stack never does, in every profile (the user, 2026-10-07: considered as a quirk and kept as the rule, no flag); a multi-headed striker (attacks all adjacent, three-headed) takes back the sum of every stack it struck. The damage comes after the attack's life drain and death stare and before the retaliation (Reflected); the striker may die of it. A timed own-stack spell without a mass version. A creature's own shield reflects alike (the Efreet Sultans' 20 %, BAT-MAG-058); a hypnotized stack's controller's hero counts as the caster (E04b T4)."
+quirks   = ["Q-0010", "Q-0005"]
 numeric  = "integer"
 
   [[rule.source]]
@@ -2324,9 +2331,9 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "config/spells/timed.json fireShield (FIRE_SHIELD 20/20/25/30) and the damage after all reductions (lib/battle/DamageCalculator.cpp; followed in strict-fixed only: with quirk Q-0010 the original reflects from the first stage)"
-  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
-  retrieved  = "2026-10-07"
+  ref        = "config/spells/timed.json fireShield (FIRE_SHIELD 20/20/25/30); server/battles/BattleActionProcessor.cpp L1603-L1616: a melee strike on a unit with the bonus reflects min(the struck unit's health, the damage dealt) × v / 100 unless the striker is fire-immune (its own remark there: the base should be the damage 'with bonus but without penalties', the original's first stage), and L1183-L1206: each share passes the spell's adjustRawDamage with the struck unit's side's hero. The base after all reductions is followed in strict-fixed only: with quirk Q-0010 the original reflects from the first stage"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp#L1603-L1616"
+  retrieved  = "2026-10-12"
   confidence = "medium"
 
   [[rule.source]]
@@ -2342,6 +2349,7 @@ title    = "Frenzy"
 context  = "battle"
 status   = "implemented"
 summary  = "While Frenzy is active on a stack (v = 100, 100, 150, 200 %), its attack in every strike (melee and shots) is its attack (after Bloodlust or Precision and Slayer) plus its defense (with the Defend bonus) × v %, the sum rounded toward 0 (the share single precision under quirk Q-0005); under quirk Q-0009 (S-16, faithful) the defense added is reduced as the struck creature would reduce it (Behemoths, BAT-DMG-006), as the original does. Struck, the frenzied stack has defense 0. It lasts by the stack's own turns (EffectDuration::OwnTurn): 1 if cast on the active stack, else 2, whatever the caster's power; the round start does not count it (BAT-MAG-010), the stack's first turn start of a round (not after waiting) does: above 1 it loses one, else it ends; so it lasts through the stack's next turn. A re-cast keeps the longer count. A timed own-stack mind spell without a mass version."
+quirks   = ["Q-0009", "Q-0005"]
 numeric  = "integer"
 
   [[rule.source]]
@@ -2351,9 +2359,9 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "config/spells/timed.json frenzy: attack + defense × 100/100/150/200 %, defense 0, until the stack's next turn"
-  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
-  retrieved  = "2026-10-07"
+  ref        = "config/spells/timed.json L1112-L1161 frenzy: IN_FRENZY 100/100/150/200 % (the defense added to the attack, the defense 0): as the rule. VCMI: the duration is UNTIL_ATTACK (L1130; lib/bonuses/BonusEnum.h L265, removed in lib/gameState/GameStatePackVisitor.cpp L1314 from the attacker of every attack, a retaliation included): Frenzy lasts, however many of the stack's turns pass, until its first strike of any kind and ends with it; not followed, the code reading decides (BAT-Q28): 0x4448F0 sets 1 or 2 turns, the turn start 0x446E30 counts once per round, the round start 0x447120 skips spell 56"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json#L1112-L1161"
+  retrieved  = "2026-10-12"
   confidence = "medium"
 
 [[rule]]
@@ -2403,6 +2411,7 @@ title    = "Magic Mirror"
 context  = "battle"
 status   = "implemented"
 summary  = "Magic Mirror on an own stack (v = 20, 20, 30, 40 %): a spell aimed at the stack by the other side's hero or by its random caster (BAT-MAG-049; a stack spell, not a mass version, an area or a battle-wide spell; Dispel and any spell that ignores immunity never) goes, if a draw from 0 to 99 is below v, to a living stack of the caster's side drawn with equal chances (war machines included; SpellRedirected). That stack then takes the spell as if it had been aimed at it, whatever the spell's polarity: if the spell cannot affect it (its conditions, immunities, Anti-Magic) it resists, else it rolls for magic resistance with its own side's hero and aura (BAT-MAG-008); the stack first aimed at never rolls. A creature's spell sent away is tested alike, but not at all with quirk BAT-QUIRK-9 (BAT-MAG-049). The value and the caster's bonuses are unchanged; Chain Lightning jumps on from the new stack. A timed own-stack spell without a mass version. A creature's own mirror sends spells away alike (the Faerie Dragons' 20 %, BAT-MAG-057). Not yet: arrow towers left out of the draw (E04c). A stack with the spell cannot be hypnotized (BAT-MAG-026). The original's computer player's spells are never redirected (its AI enters casts without the redirect, installation.md §7.13); every cast here is a player's command and follows the player's path."
+quirks   = ["BAT-QUIRK-9"]
 numeric  = "integer"
 
   [[rule.source]]
@@ -2457,6 +2466,13 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.14): 0x4448F0 stores v / 100 as f32 (+0x49C); the battle loop 0x465080 runs the turn start 0x446E30 once per round (+0x4F0) and picks again while spell 62 (or 70, 74) is active; the damage routine 0x444090 ends spells 62, 70 and 74; 0x441D9C marks a blind struck stack (+0x4C0), 0x441C85 suppresses the retaliation at a factor of 0, stage 2 (0x443CD5) multiplies by the stored factor; 0x44A4D0 spares creatures 70 and 71 and undead absolutely, creatures 112 and 127 as a normal immunity"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/timed.json L1390-L1465 blind: NOT_ACTIVE until the unit is attacked or the rounds run out; its retaliation reduced by 50 % at Basic and 75 % at Advanced (GENERAL_ATTACK_REDUCTION) and none at Expert (NO_RETALIATION); the undead absolutely immune: as the rule. VCMI names no reduction for the level without mastery, where SPTRAITS.TXT has 50 as at Basic; not followed, the original's table decides"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json#L1390-L1465"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
 
   [[rule.source]]
   kind       = "original-data"
@@ -2623,11 +2639,11 @@ quirks   = ["BAT-QUIRK-1", "Q-0002"]
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "lib/battle/CObstacleInstance.cpp L152-L162 (nativeVisible: a side with a living native stack sees the other side's hidden obstacles), as the E04b survey records it (docs/rules/surveys/E04b-magic.md)"
-  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CObstacleInstance.cpp"
-  retrieved  = "2026-10-05"
+  ref        = "lib/battle/CObstacleInstance.cpp L152-L162 visibleForSide (the caster's side, a revealed obstacle, or nativeVisible while the side has a native stack) and lib/battle/CBattleInfoEssentials.cpp L107-L126 battleHasNativeStack: asked each time, over every stack of the side that is no ghost, dead ones included. So in VCMI a side keeps its sight when its natives die, as in the original (whose byte is set at the battle's start), and gains it when natives appear later, unlike the original. The variant without quirk BAT-QUIRK-1 (sight only while a native stack lives) is the engine's own and follows neither"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoEssentials.cpp#L107-L126"
+  retrieved  = "2026-10-12"
   confidence = "medium"
-  note       = "VCMI's living-natives rule is the fix of BAT-QUIRK-1"
+  note       = "the wiki's Land Mine line (BAT-MAG-033: 'started the battle with a unit on its native terrain') fits the original's timing"
 
 [[rule]]
 id       = "BAT-MAG-032"
@@ -2857,13 +2873,20 @@ id       = "BAT-MAG-040"
 title    = "Spells after a melee strike"
 context  = "battle"
 status   = "implemented"
-summary  = "A creature with spell_after_strike abilities (Ability::SpellAfterStrike: Unicorns Blind 20 %, Black and Dread Knights and Mummies Curse 25 %, Serpent and Dragon Flies Dispel Helpful Spells (BAT-MAG-042), Dragon Flies Weakness at mastery 2 unless active) casts, after each of its melee strikes (the attack, its retaliation, the second strike; never a shot), once the strike's damage is dealt and before life drain and death stare, each ability's spell on the struck stack, in ability order: if the ability needs a living creature (flag alive) the stack has one; the ability's chance (one draw, none at 100 %); the stack is alive; with unless_active the spell is not active on it; then the creature's test: the spell can affect the stack (its conditions, immunities, Anti-Magic; BAT-MAG-005, BAT-MAG-021) and the stack does not resist it (magic resistance and aura with their own draw, BAT-MAG-008; none for a positive spell), with no side test (a hypnotized or berserk striker's own stacks may be struck) and no Magic Mirror. The spell then acts as a creature's cast without a hero at the ability's mastery (0: Blind's 50 % retaliation share, Curse's 0), its timed effects lasting the ability's rounds (3), with no specialist or duration bonus (BAT-MAG-009); StrikeSpell reports it before the spell's own events. A spell that stops the target's turns (Blind) also stops its retaliation to that attack, and an attacker that a retaliation's spell blinded makes no second strike."
+summary  = "A creature with spell_after_strike abilities (Ability::SpellAfterStrike: Unicorns Blind 20 %, Black and Dread Knights and Mummies Curse 25 %, Zombies Disease 20 % on living creatures (a level-2 ability that takes up to 2 attack and up to 2 defense while it lasts, BAT-MAG-009), Serpent and Dragon Flies Dispel Helpful Spells (BAT-MAG-042), Dragon Flies Weakness at mastery 2 unless active) casts, after each of its melee strikes (the attack, its retaliation, the second strike; never a shot), once the strike's damage is dealt and before life drain and death stare, each ability's spell on the struck stack, in ability order: if the ability needs a living creature (flag alive) the stack has one; the ability's chance (one draw, none at 100 %); the stack is alive; with unless_active the spell is not active on it; then the creature's test: the spell can affect the stack (its conditions, immunities, Anti-Magic; BAT-MAG-005, BAT-MAG-021) and the stack does not resist it (magic resistance and aura with their own draw, BAT-MAG-008; none for a positive spell), with no side test (a hypnotized or berserk striker's own stacks may be struck) and no Magic Mirror. The spell then acts as a creature's cast without a hero at the ability's mastery (0: Blind's 50 % retaliation share, Curse's 0), its timed effects lasting the ability's rounds (3), with no specialist or duration bonus (BAT-MAG-009); StrikeSpell reports it before the spell's own events. A spell that stops the target's turns (Blind) also stops its retaliation to that attack, and an attacker that a retaliation's spell blinded makes no second strike."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.20): 0x441CB0 (retaliation unless petrified or the strike answers no retaliation; second strike unless blind, petrified or paralysed); 0x441610 runs 0x440500 (the pending spell by the striker's creature, chance draw, 0x5A8640 = 0x5A8090 without its side test and a draw on f x 100), 0x468990 (casts the pending spells with 0x59FE30 as a creature, mastery 0, power 3), then 0x440BC0 (the striker's effects); 0x440BC0 casts Dispel Helpful Spells and the Dragon Fly's Weakness at mastery 2 directly"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleActionProcessor.cpp L1242-L1297 attackCasting: after an attack or a retaliation, on a living target, the spell must be castable at the target (immunities) before the chance is rolled, cast in passive mode (never reflected); a creature's timed effect lasts 3 rounds (lib/battle/CUnitState.cpp L444-L450); config/creatures: the Unicorns' Blind 20 %, the Zombies' Disease 20 %, the flies' Dispel Helpful Spells and Weakness 100 %: as the rule. VCMI differs in three points: the Curse of Black and Dread Knights is 20 % (necropolis.json L376-L381, L411-L416) and of Mummies 50 % (neutral.json L591-L596), where the executable has 25 % for all three (0x440711); the Unicorns' Blind is cast at level 3 (rampart.json L313-L319, L350-L356: no retaliation), where the executable casts at mastery 0 (the blinded stack retaliates at half); the Dragon Flies' Weakness is cast at level 0 (fortress.json L165-L170: 3 attack less), where the executable casts at mastery 2 (6 less, 0x44147C); not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp#L1242-L1297"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
 
 [[rule]]
 id       = "BAT-MAG-041"
@@ -2878,12 +2901,19 @@ numeric  = "integer"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.20): 0x440BC0 case 93: random(1, 100) <= 20, 0x5A8640 for spell 17, damage 0x5A78E0(count x 10, spell 17) without a hero, then, only if the result is above 0 (else the routine leaves without a report, 0x4411FD), 0x444090"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/creatures/stronghold.json L266-L277: thunderbolt after an attack with 20 %, 10 per creature: as the rule. VCMI: the bolt is a spell of its own (config/spells/ability.json L294-L318, thunderbolt, index 77), not Lightning Bolt, so what holds for Lightning Bolt (the Earth and Magma Elementals' immunity, the dragons' level immunity against a level-2 spell, Protection from Air) is not asked there; the executable tests and deals it as Lightning Bolt, spell 17 (0x4411D4, 0x4411F5); not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/stronghold.json#L266-L277"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-042"
 title    = "Dispel Helpful Spells"
 context  = "battle"
 status   = "implemented"
-summary  = "A spell whose dispel effect has dispels_positive (Dispel Helpful Spells, a creature ability) ends only the timed effects of positive spells (BAT-MAG-016), and a strike casts it (BAT-MAG-040) only on a stack with such an effect, with no immunity, Anti-Magic, resistance or aura test (it ends Anti-Magic too). The Sphere of Permanence's protection joins with the artifacts (E04b T8)."
+summary  = "A spell whose dispel effect has dispels_positive (Dispel Helpful Spells, a creature ability) ends only the timed effects of positive spells (BAT-MAG-016), and a strike casts it (BAT-MAG-040) only on a stack with such an effect, with no immunity, Anti-Magic, resistance or aura test (it ends Anti-Magic too). The Sphere of Permanence protects its hero's stacks from it (BAT-MAG-063)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2891,18 +2921,32 @@ numeric  = "integer"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10, §7.20): 0x5A177E ends every active spell 10-69 of positive type (0x444510); 0x5A8090's case for spell 78 returns 0 for the Sphere of Permanence, else 1 if the stack has an active positive spell, before the immunity, Anti-Magic, resistance and aura tests"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/ability.json L319-L347 dispelHelpful: ends positive effects only and ignores immunity; config/creatures/fortress.json: the flies cast it after every attack: as the rule. VCMI: the spell is flagged negative, so a magic resistance roll can stop it (lib/spells/BattleSpellMechanics.cpp L454-L464), where the executable's test for spell 78 returns before the resistance; not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/ability.json#L319-L347"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-043"
 title    = "Stone Gaze and Paralyze"
 context  = "battle"
 status   = "implemented"
-summary  = "A timed petrify change (TimedChange::Petrify: Stone Gaze, a creature ability of level 3 cast after the strikes of Medusas and Basilisks, 20 %, BAT-MAG-040; Troglodytes are immune) makes the stack lose its turns like Blind (BAT-MAG-024), halves the damage of strikes on it (damage stage 3, after Shield or Air Shield and before the Armorer; exact with decimal rates) and keeps it from retaliating while it lasts. A timed paralyze change (TimedChange::Paralyze: Paralyze, level 4, the Scorpicores' 20 %) makes it lose its turns; struck in melee it retaliates with the spell's value in percent (25: the original reads Blind's Advanced effect), the smaller of that and Blind's if both. Both end with any damage (EffectEnd::Damaged): a strike on a petrified stack is halved and ends the petrification before the retaliation test, so it retaliates; an attacker that a retaliation's spell petrified or paralysed makes no second strike, and a strike's spell that does either stops the struck stack's retaliation (BAT-MAG-040). Neither change can have a permanent duration (BAT-MAG-024)."
+summary  = "A timed petrify change (TimedChange::Petrify: Stone Gaze, a creature ability of level 3 cast after the strikes of Medusas and Basilisks, 20 %, BAT-MAG-040; Troglodytes are immune) makes the stack lose its turns like Blind (BAT-MAG-024), halves the damage of strikes on it, shots too (damage stage 3, after Shield or Air Shield and before the Armorer; exact with decimal rates) and keeps it from retaliating while it lasts. A timed paralyze change (TimedChange::Paralyze: Paralyze, level 4, the Scorpicores' 20 %) makes it lose its turns; struck in melee it retaliates with the spell's value in percent (25: the original reads Blind's Advanced effect), the smaller of that and Blind's if both. Both end with any damage (EffectEnd::Damaged): a strike on a petrified stack is halved and ends the petrification before the retaliation test, so it retaliates; an attacker that a retaliation's spell petrified or paralysed makes no second strike, and a strike's spell that does either stops the struck stack's retaliation (BAT-MAG-040). Neither change can have a permanent duration (BAT-MAG-024)."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10, §7.14, §7.20): the battle loop 0x465080 passes over blind, petrified and paralysed stacks; 0x444090 ends spells 62, 70 and 74 at every damage; stage 3 of 0x443F40 halves the damage of a petrified target; 0x441CB0 lets a petrified target not retaliate and marks a paralysed one, whose retaliation stage 2 multiplies by Blind's Advanced effect / 100 (the smaller with Blind's own factor); 0x44A4D0 spares Troglodytes from Stone Gaze"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/ability.json L2-L54 stoneGaze (no turns and no retaliation until the unit is attacked, the damage on it halved) and L169-L221 paralyze (no turns; its retaliation reduced by 75 %); config/creatures: Medusas and Basilisks 20 % (the Medusas in melee only), Scorpicores 20 %; what a hit ends ends before the retaliation is tested, and an attacker that lost its turns strikes no second time (lib/battle/BattleInfo.cpp L742-L745, server/battles/BattleActionProcessor.cpp L298-L334): as the rule. VCMI: Stone Gaze is flagged indifferent (ability.json L46-L48), so no magic resistance roll stops it (lib/spells/BattleSpellMechanics.cpp L454-L464), where the executable's spell table has it negative and the strike's test draws on resistance and aura (0x5A8640); not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/ability.json#L2-L54"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
 
 [[rule]]
 id       = "BAT-MAG-044"
@@ -2918,18 +2962,33 @@ quirks   = ["Q-0005"]
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.20): 0x4448F0 (Poison: factor +0x4A4 = f32(max(factor - f32(0.1), 0.5)), +0xC0 = trunc(f32(H) x factor (x 0.5 if aged) + f32(0.95)), the lost hit points +0x58 at most +0xC0 - 1; Age the same with 0.5), 0x447120 (another tenth at each round start while Poison lasts, after the durations), 0x444510 (Age's end recomputes, Poison's gives nothing back), 0x446500 (Cure resets the factor to 1 first), 0x43D89D (the factor 1.0 at a stack's setup), 0x44A4D0 (Poison spares non-living creatures and Gargoyles)"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/ability.json L55-L97 poison and L222-L258 age; config/creatures: Wyvern Monarchs 30 %, Ghost Dragons 20 %; living creatures only, the Gargoyles spared: as the rule. VCMI differs in two points: Poison takes 10 % of the hit points at the cast and 10 % more at each of the unit's own turns, down to 30 % in all, and gives them back when it ends (server/battles/BattleFlowProcessor.cpp L935-L947; a bonus that lasts its turns), where the executable takes a tenth at the cast and at each round start, down to half, and keeps the loss after the spell ends until a Cure (0x4448F0, 0x447120, 0x444510); Age halves by a whole percentage (25 hit points give 12 by its integer arithmetic; not run), where the executable computes trunc(H / 2 + 0.95) (25 give 13, 0x444FBE); not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/ability.json#L55-L97"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-045"
 title    = "Bind"
 context  = "battle"
 status   = "implemented"
-summary  = "A timed bind change (TimedChange::Bind: Bind, a creature ability of level 0 lasting a fixed 255 rounds, cast after every melee strike of the Dendroids, BAT-MAG-040) makes the stack unable to move while it lasts: no movement range, so it attacks only from where it stands (a berserk one only stacks next to it, BAT-MAG-025), and it still shoots, casts, waits and defends; a bound stack that strikes and returns stays where it struck (BAT-ATK-004, survey S-14 fixed). It ignores immunity and is cast without any test, also on a war machine; the striker becomes one of the target's binders, and a striker that already is one does nothing. Its Bind ends (reported) when its last binder moves (walk, flight, teleporting move, also its return after a strike, BAT-ATK-004), dies (also a clone that vanishes) or is teleported by Teleport, when the stack itself is teleported, by Dispel (not by Cure) or after its rounds; an ended Bind leaves the stack without binders. A dead stack is not bound."
+summary  = "A timed bind change (TimedChange::Bind: Bind, a creature ability of level 0 lasting a fixed 255 rounds, cast after every melee strike of the Dendroids, BAT-MAG-040) makes the stack unable to move while it lasts: no movement range, so it attacks only from where it stands (a berserk one only stacks next to it, BAT-MAG-025), and it still shoots, casts, waits and defends; a bound stack that strikes and returns stays where it struck (BAT-ATK-004, survey S-14 fixed). It ignores immunity and is cast without any test, also on a war machine; the striker becomes one of the target's binders, and a striker that already is one does nothing. Its Bind ends (reported) when its last binder moves (walk, flight, teleporting move, also its return after a strike, BAT-ATK-004), dies (also a clone that vanishes) or is teleported by Teleport, when the stack itself is teleported, by Dispel (not by Cure) or after its rounds; an ended Bind leaves the stack without binders. A dead stack is not bound: a strike that kills its target binds nothing (BAT-QUIRK-21)."
+quirks   = ["BAT-QUIRK-20", "BAT-QUIRK-21"]
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.20): 0x440500 puts Bind (72) in the struck stack's pending spell unless the striker is in its list +0x504 (adding each to the other's lists +0x504 and +0x4F4), without the test; 0x5A15C7 applies it for 255 rounds; the pathfinder 0x4B2DE0 and 0x4B350B gives a stack whose Bind duration +0x2B8 is not 0 no movement; 0x43EE10 removes a binder from each bound stack's list and ends Bind (0x444510(72)) on one left empty, called by the walk (0x4420A3), the flight (0x4B49E1) and a Devil's teleporting move (0x4B4EB1), the death routine 0x444120 (0x4441C7) and Teleport (0x5A1B88), which then ends the teleported stack's own Bind (0x5A1B91); 0x444510 empties an ended Bind's lists; Dispel ends it, Cure does not (§7.10)"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/ability.json L98-L126 bind (BIND_EFFECT, not magical) and config/creatures/rampart.json (the Dendroids, after every attack); a bound unit does not return after its strike (server/battles/BattleActionProcessor.cpp L337-L351): as the rule. VCMI: Bind is permanent and ends at the bound unit's own turn start when no unit that binds it is alive and adjacent (server/battles/BattleFlowProcessor.cpp L905-L933), where the executable ends it at once when the last binder moves (also to another adjacent hex), dies or is teleported, and after 255 rounds (0x43EE10 and its callers); not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp#L905-L933"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
 
 [[rule]]
 id       = "BAT-MAG-046"
@@ -2944,6 +3003,13 @@ numeric  = "integer"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.20): 0x440500 puts Acid Breath (80) in a living struck stack's pending spell if its defense is above 0, without the test; 0x5A1E70 lowers the defense by 3 to at least 0, with no duration"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/ability.json L382-L418 acidBreath (defense -3, permanent, cumulative, ignoring immunity) and config/creatures/neutral.json L339-L344 (the Rust Dragon, after every attack): agrees"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/ability.json#L382-L418"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-047"
 title    = "The Rust Dragon's extra damage"
@@ -2956,6 +3022,13 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.20): 0x440BC0's case for creature 135 (0x44149F): the target's count above 0, random(1, 100) <= 20, then random(min, max damage +0xD0, +0xD4) x the striker's count / 2, taken through 0x444090 if above 0"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/creatures/neutral.json L333-L338 ACID_BREATH (25 per dragon, the chance in addInfo) and server/battles/BattleActionProcessor.cpp L1446-L1467: on a living target, the damage times the attacker's count: the amount agrees (half of the Rust Dragon's damage of 50). VCMI: the chance is 30 %, where the executable draws random(1, 100) <= 20 (0x4414BC); not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp#L1446-L1467"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
 
 [[rule]]
 id       = "BAT-MAG-048"
@@ -2972,9 +3045,9 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "config/creatures/stronghold.json ogreMage: SPELLCASTER bloodlust at level 2, CASTS 3; server/battles/BattleFlowProcessor.cpp: a unit's spell is a unit action and rolls good morale"
-  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/stronghold.json"
-  retrieved  = "2026-10-08"
+  ref        = "config/creatures/stronghold.json L185-L207 ogreMage: SPELLCASTER bloodlust at level 2, CASTS 3; server/battles/BattleFlowProcessor.cpp L767-L815 onActionMade: a unit's spell is a unit action and rolls good morale: as the rule. VCMI differs in three points: the Ogre Mage's CREATURE_ENCHANT_POWER is 3 (its Bloodlust lasts 3 rounds), where the executable passes power 6 (0x4486A7); after a unit's spell the obstacles act on the unit (server/battles/BattleActionProcessor.cpp L734-L735), where the executable's case does not re-enter the stack's hexes (no 0x441F70 after 0x47936E); every unit rolls magic resistance against a negative spell whatever the caster (lib/spells/BattleSpellMechanics.cpp L454-L464), where the executable skips the aimed stack's roll for a creature's cast (0x5A02CB); not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/stronghold.json#L185-L207"
+  retrieved  = "2026-10-12"
   confidence = "medium"
 
 [[rule]]
@@ -2999,10 +3072,10 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "config/creatures/neutral.json fairieDragon: RANDOM_SPELLCASTER; its weights give Magic Arrow 22, the original's table 10 (installation.md §7.21)"
-  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/neutral.json"
-  retrieved  = "2026-10-08"
-  confidence = "low"
+  ref        = "config/creatures/neutral.json L192-L292 fairieDragon: eight SPELLCASTER bonuses at level 2 with their weights in addInfo (Ice Bolt 22, Lightning Bolt 22, Fireball 21, Frost Ring 10, Chain Lightning 5, Meteor Shower 5, Inferno 5: the original's table; Magic Arrow 22, the original's table 10, installation.md §7.21), CREATURE_SPELL_POWER 500 (5 per dragon), CASTS 5, MAGIC_MIRROR 20. server/battles/BattleActionProcessor.cpp L489-L545 doUnitSpellAction casts the spell at the action's target, a location for an area spell (the rule: a hex of a stack; BAT-Q32). lib/battle/CUnitState.cpp L422-L426 getSpellBonus: a unit's cast takes no hero bonus (as the rule; the review's re-read of the executable differs for the area spells and the chain: BAT-Q28). lib/spells/BattleSpellMechanics.cpp L506-L515 isReflected: only a hero's spell is reflected, a unit's never (the rule redirects it: BAT-Q29)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/neutral.json#L192-L292"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
 
 [[rule]]
 id       = "BAT-MAG-050"
@@ -3016,6 +3089,13 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21, re-read for T7b2b): 0x4476C0's case 1 needs a stack on the hex for which 0x447A80 accepts a spell of 10-69 with flag 0x800 (the cursor 0x4766EA: a stack of the acting side, not the caster); the cast 0x447EE0 counts them, draws k = random(1, n) and casts the k-th through 0x59FE30(spell, hex, 1, -1, 2, 6); 0x447A80 refuses a spell active on the stack (+0x198 + 4 x spell) or refused by 0x5A3C80, then switches on spell - 27 (table 0x447E8C, targets 0x447E68): Shield and Fire Shield need an enemy record that cannot shoot (0x4428F0) and Air Shield one that can, among those alive and not blind, petrified or paralysed (+0x290, +0x2B0, +0x2C0) and not creature 147 or 148; the Protections, Anti-Magic and Magic Mirror an enemy hero wearing artifact 0; Cure +0x58 above 0; Bloodlust a stack that cannot shoot, Precision one that can; Prayer bit 0x4000000 clear; Slayer an enemy record with creature flag 0x80, not tested for life"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp L2175-L2316 getRandomBeneficialSpell (a spell not active on the unit that can be cast at it; Shield and Fire Shield against an enemy that cannot shoot, Air Shield against one that can, the Protections, Anti-Magic and Magic Mirror against an enemy hero, Cure for a wounded top creature, Bloodlust for a unit that cannot shoot, Precision for one that can; drawn with equal chances) and config/creatures/tower.json L326-L351 masterGenie (RANDOM_SPELLCASTER at level 2, CASTS 3): as the rule. VCMI differs in four points: 20 spells, without Frenzy (the executable's flag 0x800 is set on Frenzy too); CREATURE_ENCHANT_POWER 5 (5 rounds), where the executable passes power 6; Prayer without a condition, where the executable wants a stack that has not acted; Slayer for a living enemy with any KING bonus, where the executable asks for an enemy record with the king-1 flag, dead or alive; not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp#L2175-L2316"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
 
   [[rule.source]]
   kind       = "wiki"
@@ -3036,6 +3116,13 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21, the raisers): 0x4476C0's case 0 (table 0x447A00) and the empty-hex cursor 0x4473D0 call 0x5A3CC0(side, hex, 1), Resurrection's search and test (0x5A8090 with spell 38 and the Archangels' 100 x creatures hit points, its sixth argument 1), and need 0x447330 (min(start - count, 100 x Archangels div health)) above 0; the cursor (0x4766EA) never offers the active stack; the cast's case (0x448260) raises the stack through 0x5A7560(stack, 100 x creatures, 0), for good"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/creatures/castle.json L424-L452 archangel: SPELLCASTER resurrection at level 3, SPECIFIC_SPELL_POWER 100 (per creature), CASTS 1: agrees"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/castle.json#L424-L452"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
 
 [[rule]]
 id       = "BAT-MAG-052"
@@ -3081,9 +3168,9 @@ quirks   = ["BAT-QUIRK-13", "BAT-QUIRK-14"]
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "VCMI 1.7.5 server/battles/BattleFlowProcessor.cpp (ENCHANTER bonus: at the unit's activation, a side counter that starts at 0 and is set to the cooldown 3 after a cast, decreased each round), config/creatures/neutral.json (the eight spells at level 3)"
-  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp"
-  retrieved  = "2026-10-09"
+  ref        = "VCMI 1.7.5 server/battles/BattleFlowProcessor.cpp L976-L1021 (ENCHANTER bonus: at the unit's activation, a side counter that starts at 0 and is set to the cooldown 3 after a cast, decreased each round, lib/battle/BattleInfo.cpp L651-L657): as the rule. config/creatures/neutral.json L393-L435: six ENCHANTER spells at level 3 (Haste, Slow, Stone Skin, Bless, Weakness, Air Shield), one drawn with equal chances; VCMI has no Bloodlust and no Cure and no weights, where the executable's table 0x6608B8 has eight weighted spells; not followed, the original's table decides"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp#L976-L1021"
+  retrieved  = "2026-10-12"
   confidence = "medium"
 
 [[rule]]
@@ -3135,9 +3222,9 @@ quirks   = ["BAT-QUIRK-16"]
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "VCMI 1.7.5 lib/spells/BattleSpellMechanics.cpp (after a hero's cast, the largest MANA_CHANNELING share among the living stacks the other hero's player owns, times the cost, div 100)"
-  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/BattleSpellMechanics.cpp"
-  retrieved  = "2026-10-09"
+  ref        = "VCMI 1.7.5 lib/spells/BattleSpellMechanics.cpp L368-L382 (for a hero's cast, the largest MANA_CHANNELING share among the living stacks the other hero's player owns, times the cost, div 100: as the rule). VCMI computes the gain before the cast takes effect, so Familiars the cast kills still channel there; the rule's last clause (a stack the cast killed channels nothing) rests on the code reading, where the channel runs in the handlers' common tail and sums the creatures alive then (0x5A2058, 0x5A2170); not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/BattleSpellMechanics.cpp#L368-L382"
+  retrieved  = "2026-10-12"
   confidence = "medium"
 
 [[rule]]
@@ -3213,6 +3300,13 @@ numeric  = "integer"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21, the Phoenix's rebirth read for T7c2b): 0x469440 walks both sides' records; for creature 131 with the dead bit 0x200000, casts left +0xDC above 0 and not a clone (0x800000) it lowers the casts, sets count and lost hit points to 0, draws count +0x60 mod 5 times rand() mod 5 = 0 on top of +0x60 div 5 and, if any, sets the acted bit 0x4000000 and raises the stack by that many times its health +0xC0 (0x46959E to 0x4695AD: the health as the death routine 0x444120 left it, Age's end 0x444740 having given the half back) with 0x5A7560's last argument 0 (permanent); it is called at the end of the strike action 0x445A60 (before the dispatcher's battle_winner 0x4762F0 and good-morale roll 0x464920, which clears the acted bit), in the cast routine's damage cases and the area and mass handlers, after Land Mine (0x59FB40) and Fire Wall (0x59FCD0); not after Sacrifice (0x5A199C)"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/CStack.cpp L184-L222 (a killed unit with REBIRTH and a cast left: floor(base count × 20 %) plus one for each creature left over with a 20 % draw) and config/creatures/conflux.json L851-L855 (the Phoenix, REBIRTH 20): as the rule. VCMI differs in three points: the cast is used only when a creature comes back (L214-L216), where the executable lowers the casts before the draws (0x4694B4); the reborn unit loses its retaliations (L221); it comes back at the moment of its death, not at the end of the action; not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/CStack.cpp#L184-L222"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-060"
 title    = "Fear"
@@ -3225,6 +3319,13 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21, Fear read for T7c3): 0x464D40 spares a stack with flag 0x20000 (no morale) or of creature 132, sums the counts (+0x4C) of the creature-132 records of the side opposite the stack's controller (+0xF4, flipped by +0x288) and, if any, freezes it when rand() mod 10 = 0: the acted bit 0x4000000 and Fear.wav; the pick 0x465080 asks it after bad morale (0x465283)"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/creatures/neutral.json L95-L108 (the Azure Dragon's FEARFUL 10 for the opposite side) and server/battles/BattleFlowProcessor.cpp L356-L376, L965-L975: rolled at the unit's activation after bad morale, the turn lost: as the rule. VCMI differs in two points: only LIVING units are frightened (the bonus's limiter), so not the Stone and Obsidian Gargoyles, which the executable frightens (they have neither the no-morale flag 0x20000 nor are they creature 132, 0x464D4C to 0x464D57); it rolls at every activation, the round's wait phase included, where the executable's pick skips the check in the wait phase; not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp#L965-L975"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
 
 [[rule]]
 id       = "BAT-MAG-061"
@@ -3307,10 +3408,10 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "config/artifacts.json: the Pendants' SPELL_IMMUNITY (Negativity: Lightning Bolt and Chain Lightning), the Sphere's absolute immunity to Dispel and Dispel Helpful Spells, Armageddon's Blade's to Armageddon (agrees)"
-  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json"
-  retrieved  = "2026-10-10"
-  confidence = "high"
+  ref        = "config/artifacts.json: the Pendants' SPELL_IMMUNITY (Negativity: Lightning Bolt and Chain Lightning), the Sphere's absolute immunity to Dispel and Dispel Helpful Spells, Armageddon's Blade's to Armageddon: as the rule while no hero has the Orb of Vulnerability. VCMI: only the Sphere's two immunities are absolute (addInfo 1, L1340-L1356); the Pendants', the Blade's and the Dragon Father's are plain bonuses, which the Orb's negation lifts (lib/spells/TargetCondition.cpp L122-L173, L306-L330, L453-L464: a receptive negation answers before the normal conditions), where the executable tests them before the Orb (0x44A5F6 before 0x44A746) and the wiki keeps 'artifact immunities'; not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/TargetCondition.cpp#L453-L464"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
 
   [[rule.source]]
   kind       = "observation"
@@ -3340,14 +3441,14 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "config/artifacts.json powerOfTheDragonFather: LEVEL_SPELL_IMMUNITY 4; lib/spells/TargetCondition.cpp: a level immunity never covers spells of level 0 (disagrees on the creature abilities: BAT-Q21)"
-  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/TargetCondition.cpp"
-  retrieved  = "2026-10-10"
+  ref        = "config/artifacts.json powerOfTheDragonFather: LEVEL_SPELL_IMMUNITY 4; lib/spells/TargetCondition.cpp: a level immunity never covers spells of level 0 (L122-L155; disagrees on the creature abilities: BAT-Q21), and this one is a plain bonus (no addInfo 1), which the Orb of Vulnerability's negation lifts (L306-L330, L453-L464), where the executable tests artifact 134 first (0x44A50F); not followed, the code reading decides: BAT-Q28"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/TargetCondition.cpp#L122-L155"
+  retrieved  = "2026-10-12"
   confidence = "medium"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E04b-batch-2e.md DF (SoD 4.0 Complete, plain HD, 2026-10-11): against Power of the Dragon Father the Mighty Gorgons' Death Stare kills (the control), while 3 Thunderbird attacks give no bolt and 4 Wyvern Monarch attacks no Poison (weak: 12 % to see neither without the immunity)"
+  ref        = "experiments/results/E04b-batch-2e.md DF (SoD 4.0 Complete, plain HD, 2026-10-11): against Power of the Dragon Father the Mighty Gorgons' Death Stare kills (the control), while 3 Thunderbird attacks give no bolt (the strike's Lightning Bolt, a level-2 spell: 51 % to see none without the immunity) and 4 Wyvern Monarch attacks no Poison (weak, and the only evidence for the level-0 abilities: 24 % to see none without the immunity)"
   retrieved  = "2026-10-11"
   confidence = "medium"
 
@@ -3399,16 +3500,23 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "config/artifacts.json orbOfVulnerability: NEGATE_ALL_NATURAL_IMMUNITIES (battle-wide for the owner's spells, every spell at the owner's stacks), MAGIC_RESISTANCE 0 and SPELL_RESISTANCE_AURA 0 battle-wide; lib/spells/TargetCondition.cpp ImmunityNegationCondition (agrees on the sides; disagrees on the aura and on the Troglodytes' and Gargoyles' immunities, plain SPELL_IMMUNITY there: BAT-Q21)"
-  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/TargetCondition.cpp"
-  retrieved  = "2026-10-10"
+  ref        = "config/artifacts.json orbOfVulnerability: NEGATE_ALL_NATURAL_IMMUNITIES (battle-wide for the owner's spells, every spell at the owner's stacks), MAGIC_RESISTANCE 0 and SPELL_RESISTANCE_AURA 0 battle-wide; lib/spells/TargetCondition.cpp ImmunityNegationCondition (L306-L330; agrees on the sides; disagrees on the aura and on the Troglodytes' and Gargoyles' immunities, plain SPELL_IMMUNITY there: BAT-Q21; disagrees on the heroes' artifact immunities too: the Pendants', Armageddon's Blade's and the Dragon Father's are plain bonuses that its negation lifts, L453-L464, where the rule keeps them: BAT-Q28)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/TargetCondition.cpp#L306-L330"
+  retrieved  = "2026-10-12"
   confidence = "medium"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E04b-batch-2e.md OV, UA (SoD 4.0 Complete, plain HD, 2026-10-11): under the Orb of Vulnerability Blind is refused at Troglodytes and allowed at Air Elementals and Gnolls; 12 Wyvern Monarch attacks never poison Stone Gargoyles (30 % each otherwise); Expert Slow cast four times slows each of the three stacks next to the Unicorns every time (12 rolls; with the aura's 20 % kept, 7 % to see no resist)"
+  ref        = "experiments/results/E04b-batch-2e.md OV (SoD 4.0 Complete, plain HD, 2026-10-11): under the Orb of Vulnerability Blind is refused at Troglodytes and allowed at Air Elementals and Gnolls; 12 Wyvern Monarch attacks never poison Stone Gargoyles (30 % each otherwise)"
   retrieved  = "2026-10-11"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2e.md UA (SoD 4.0 Complete, plain HD, 2026-10-11): under the Orb of Vulnerability Expert Slow cast four times slows each of the three stacks next to the Unicorns every time (12 rolls; with the aura's 20 % kept, 7 % to see no resist)"
+  retrieved  = "2026-10-11"
+  confidence = "low"
+  note       = "weak alone: 12 rolls and no control battle without the Orb. The user decided the aura's clause with the wiki and VCMI (BAT-Q27); the code reading, done twice, keeps the aura under the Orb (docs/formats/installation.md §7.23): BAT-Q28"
 
 [[rule]]
 id       = "BAT-MAG-067"
@@ -3482,6 +3590,7 @@ title    = "Eagle Eye picks the enemy hero's spells at its casts"
 context  = "battle"
 status   = "implemented"
 summary  = "At each cast of a hero (not a creature's, not an opening spell), before the cast's own draws, the hero of the other side picks the spell if its Eagle Eye (BattleMagic.eagle_eye, HER-SPL-004) lists it (a combat spell it has not learned, of a level at most its Eagle Eye level + 1) and one draw of random(1, 100) is at most its chance in whole percent: trunc(chance x 100), with quirk Q-0005 of the original's single-precision value (a Basic Eagle Eye specialist at level 2 has 43 %, not 44 %); no draw at 0 or 100 %. A picked spell is kept once; each later cast of it draws again. Nothing shows in the battle; the outcome reports each hero's picks (HeroOutcome.learned, BAT-END-003). Who learns them after the battle is the orchestrator's: the winner only, while it wears a Spell Book, spells of a level at most its Wisdom + 2 (BAT-Q24, answered as the code, which batch 2f observed)."
+quirks   = ["Q-0005"]
 numeric  = "integer"
 
   [[rule.source]]
