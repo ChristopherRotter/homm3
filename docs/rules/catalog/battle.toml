@@ -1897,7 +1897,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "SPTRAITS.TXT: per spell the cost and the effect for no, Basic, Advanced and Expert mastery (harvested: packs/*/pack.toml cost and effect)"
+  ref        = "SPTRAITS.TXT: per spell the cost and the effect for no, Basic, Advanced and Expert mastery (harvested: packs/*/core.toml cost and effect)"
   confidence = "high"
 
   [[rule.source]]

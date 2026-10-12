@@ -75,7 +75,7 @@ Runtime scripting for all rules (flexible, slow, hard to test/secure); hard-code
 - **One pack file per context:** `adventure.toml` beside the pack's existing file, hand-written
   source the harvester never touches (E08 decision 10), parsed by `h3-pack-adventure`. The split
   of `h3-content` into a core and a battle part, with `core.toml` and `battle.toml`, waits for
-  E04b to close (ADR-0015 point 3).
+  E04b to close (ADR-0015 point 3); done by R01 (2026-10-13, ADR-0015's amendment R01).
 
 ## Amendment — E04b T8e: data quirks (2026-10-11, ADR-0007)
 
