@@ -172,5 +172,109 @@ its own hypnotized stack (the spell's side is tested by the stack's owner), whil
 by its controller (BAT-MAG-063); the original's cursor there is not read. From E04b T11a: a stack
 whose blindness ends in the wait phase is not checked for bad morale (BAT-MOR-004, the code).
 
+**From the E04b review** (T11b, 2026-10-12; none staged: "batch 2g" in the battle queue's inbox).
+The review's code readings that stand against VCMI or the wiki, or alone (OPEN-QUESTIONS BAT-Q28 to
+BAT-Q33; the quirk candidates S-23 to S-27 of `docs/rules/surveys/E04b-magic.md` §16), grouped by
+set-up ("row" is a row of BAT-Q28). *One Faerie Dragon session* (dragons led by a hero; the F key
+casts the drawn spell, the cursor is the control; it joins T7b2a's candidates above): F at a stack
+under Expert Magic Mirror, ten casts: none is sent away (the reading and VCMI) or about four are
+(the engine today; BAT-Q29); with Fireball or Frost Ring drawn, F and a click on an empty hex
+between two stacks: cast or refused, and the two corners, F after the side's hero has cast this
+round and F for dragons without a hero (the reading: it reads a hero that is not there, so a battle
+that may crash; BAT-Q32); one dragon's Fireball under the Orb of Tempestuous Fire: 80 or 120, its
+Magic Arrow 70 either way (BAT-Q28 row 2); batch 2e's OI set-up again with F pressed on the
+dragons' turn (the batch tried only the cursor; BAT-Q32, BAT-Q21 point 1). *One row each:* Chain
+Lightning's tie: an enemy stack A as the first target, one stack of each side of one creature type
+(Q43's offset cancels) two hexes from A in A's row: the attacker's stack is struck second (the
+reading) or the defender's (row 1); defense 12, Defend, Expert Stone Skin, right-click: 20 or 21,
+and a defending stack of defense 0 struck by Rust Dragons: Acid Breath lands or not (row 3); an
+Archangel with 5 hit points left attacks 20 Efreet Sultans and dies of the reflection, then a
+second stack attacks the Sultans in that round: struck back or not (row 4, S-23); Cavaliers with
+their head hex on a seen Quicksand pit ordered three hexes along the row: one hex or three (row 5);
+a stack acts in round 1 and is killed, is raised in round 2 on another stack's turn: a turn in
+round 2 or none, with a control killed before it acted (row 6); the surrender dialog with 5 of 10
+Swordsmen (750) and after a Basic Resurrection to 8: 750 or 1 200 (row 7); stacks of speed 3 and 4
+wait, and in the slower one's turn of the wait phase its hero summons Air Elementals (speed 7): who
+acts next, and is Wait offered to them; with it, a stack frozen by bad morale followed by a speed
+tie across the sides: whose stack goes (rows 8, 9); Wolf Riders die, a Swordsman dies later on
+their rear hex, Resurrection aimed at the Wolf Riders' front hex: who comes back (row 10, S-24);
+Basic Dispel's cursor on an own stack whose only effect is Acid Breath (row 12); Frenzy on a stack
+that defends twice and then attacks: still frenzied (VCMI) or not (BAT-MAG-019; only if the wiki is
+silent); Berserk on a stack whose own side has a hidden pit on its short way: does it go round (the
+reading, BAT-Q31). The earlier candidate "whether the interface offers an attack from a seen pit"
+(BAT-QUIRK-2) is answered by the review's reading: it offers none (BAT-Q30); one look at the cursor
+confirms it. Two rows on battles that may crash or hang, only for their ledger lines: a Fire Wall
+removed at once by Expert Dispel, a Force Field cast onto its hexes, then the round in which the
+Fire Wall would have ended (S-26); elementals summoned in the wait phase and blinded before their
+turn (S-27). *Statistics rows:* neutral stacks at morale −3 over a few hundred activations: 25 % or
+18.75 % freeze (BAT-Q33, S-25); the strike's spells where VCMI contradicts the reading (BAT-Q28
+row 13; most are candidates "From T7a1" to "From T7a3" above): by counting, the Black and Dread
+Knights' and the Mummies' Curse (25 %; VCMI 20, 20 and 50 %) and the Rust Dragon's extra damage
+(20 %; VCMI 30 %); by one observation each, new here: a stack blinded by Unicorns retaliating at
+half, Stone Gaze resisted by Dwarves, Age on 25 hit points (13 or 12), Poison counted per round or
+per own turn; Dwarves beside the first target of a four-target Chain Lightning, the other stacks
+far: struck in about 99 % of the casts (a roll at every jump) or 80 % (VCMI: one roll per cast;
+BAT-MAG-006). *The Orb of Vulnerability rows* (BAT-MAG-066; BAT-Q21 asked for experiments on this
+Orb): batch 2e's UA again with a control, the same battle without the Orb to show that the set-up
+produces resists, and at least 30 rolls beside the Unicorns with it (0.8^30 = 0.1 % under the
+reading; row 11); the defender's hero wears the Orb and the attacker's Chain Lightning jumps near
+the attacker's own Black Dragons: struck or not (row 11); A wears the Orb, B the Pendant of
+Negativity: A's Lightning Bolt cursor at B's stack (no target by the reading and the wiki, a hit in
+VCMI), and Slow from the Orb's owner at stacks under Power of the Dragon Father (BAT-MAG-063, 064).
+
+**Wiki checks the review asks for** (no wiki access in the review; each with its rule or question;
+"row" is a row of BAT-Q28). Chain Lightning: equal distances beyond "randomly chosen", and are own
+stacks preferred (row 1). Sorcery and its specialists: a worked number that tells 58 from 57
+(BAT-MAG-004, Q-0005). Unicorn: whose Unicorns protect a hypnotized stack (BAT-MAG-008). Spell
+book, Combat: can a mass or battle-wide spell that would affect nobody be cast (BAT-MAG-003).
+Faerie Dragon: do the hero's Sorcery, Orbs or specialty raise its area spells and chain (row 2);
+does Magic Mirror reflect its spells (BAT-Q29); can its area spells be aimed at an empty hex, and
+the wording on the Orb of Inhibition, the anti-magic garrison and Cursed Ground (BAT-Q32). Magic
+Mirror: "spells cast by creatures are not reflected"? (BAT-Q29); can the reflected spell go to the
+caster's war machines, and are the computer player's spells never reflected (BAT-MAG-022). Morale,
+Luck and their four spells: does a base beyond ±3 absorb the spells (BAT-MAG-011); do computer or
+neutral armies freeze less often (BAT-Q33). Dispel, Hypnotize: does Expert Dispel end Hypnotize, on
+the caster's own stack too (BAT-MAG-016, 026). Disrupting Ray, Rust Dragon, Resurrection: does the
+defense loss survive death and a raise (BAT-MAG-010, 046). Defend, Stone Skin, Prayer: is the +20 %
+fixed when the stack defends (row 3). Slayer: the list at no skill (BAT-MAG-014). Behemoth, Ancient
+Behemoth: the rounding of the defense reduction (defense 10: 5 or 6; BAT-DMG-006, Q-0005). Frenzy:
+how long it lasts, and does a retaliation end it (BAT-MAG-019). Fire Shield: a retaliation against
+an attacker the shield killed, and the HotA changelog (row 4, S-23). Anti-Magic: which active
+spells the cast removes, and are the own side's spells blocked too (BAT-MAG-021). Adela (the Bless
+specialty): the levels divided first (VCMI multiplies first; BAT-MAG-020). Hypnotize: who may
+attack a hypnotized stack, does it block the hypnotizer's shooters, the First Aid Tent and the Ammo
+Cart for it (BAT-MAG-026). Berserk: can a player attack or shoot his own berserk stack
+(BAT-MAG-025). Quicksand: is a two-hex creature stopped a second time, and can a creature in a pit
+attack by stepping one hex (row 5). Quicksand, Land Mine: the natives' sight for a side that
+"started the battle with" natives, or only while they live (BAT-QUIRK-1, whose strict-fixed variant
+follows neither that wording nor VCMI, which counts dead natives too). Harpy, Fire Wall: is a Harpy
+burnt when it returns onto a Fire Wall hex (BAT-ATK-004). Remove Obstacle, Dispel, Fire Wall, Force
+Field: a crash, or a later obstacle vanishing, after a timed obstacle was removed early (S-26).
+Resurrection, Archangel: does a stack raised in a later round act if it had acted in the round it
+died, and the HotA changelog (row 6). Sacrifice with Efreet, Efreet Sultans or a Phoenix: may a
+fire-immune creature be raised (BAT-MAG-036, BAT-QUIRK-5). Surrender: is the price taken from
+creatures raised by Basic Resurrection (row 7). Clone: do expired clones count towards a side's 20
+stacks (BAT-MAG-037). The strike's spells (BAT-MAG-040 to 047, row 13): Black Knight, Dread Knight,
+Mummy: the chance of Curse; Rust Dragon: the chance of the extra damage; Unicorn: the level of its
+Blind (a retaliation at half, or none); Dragon Fly: the level of its Weakness (−3 or −6);
+Thunderbird: is the bolt treated as Lightning Bolt (immunities, Protection from Air, Anti-Magic);
+Stone Gaze: can Dwarves or a hero's Resistance resist it, the retaliation against the attack that
+frees the stack, is a shot halved; Paralyze: the retaliation at 25 %; Poison: per round or per
+turn, the floor, do the hit points stay lowered, Cure and Dispel; Age: the rounding (25 to 13 or
+12); Bind: what frees the stack. BAT-ATK-004's two wiki quotations (the reviewer could not check
+them). Ogre Mage: the duration of its Bloodlust (6; VCMI 3; BAT-MAG-048). Master Genie: the
+duration (6; VCMI 5), Frenzy in the list, Prayer's and Slayer's conditions (BAT-MAG-050).
+Enchanter: the eight spells and the round of the first cast (BAT-MAG-053). Azure Dragon: who is
+immune to Fear (the Gargoyles decide), its chance, a stack that waited (BAT-MAG-060). Phoenix: the
+rebirth's numbers, once per battle, does a failed rebirth use it up (BAT-MAG-059). Psychic and
+Magic Elemental: the half damage (BAT-DMG-010 has no source beside the reading). Combat: the
+wait-phase order of a stack that did not wait, and can it wait; does a frozen stack count as its
+side's chance to act (rows 8, 9). Familiar, Mage, Pegasus, Wraith: can mana go above the maximum
+through the channel (BAT-MAG-055). Orb of Vulnerability: the sentence on artifact immunities and on
+the Unicorns' aura, and does either cite a test (row 11; BAT-MAG-063, 064, 066). Recanter's Cloak,
+Power of the Dragon Father: statements on creature abilities (BAT-MAG-062, 064). Eagle Eye (SoD):
+does any page give the odd values 43 % and 64 % (BAT-MAG-069, Q-0005). Badge of Courage: "immunity
+to mind spells" for SoD (BAT-MAG-065).
+
 The smoke map is generated by `cargo run -p h3-formats --example smoke_map --
 original-data/extracted/H3bitmap/Objects.txt experiments/out/E04a-smoke.h3m`.
