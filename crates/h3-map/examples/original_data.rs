@@ -15,7 +15,7 @@ use std::process::ExitCode;
 
 use std::sync::Arc;
 
-use h3_game::{GameRuleset, GameSetup, PlayerSetup};
+use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, PlayerSetup};
 use h3_map::model::{Artifacts, Body, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
@@ -145,6 +145,7 @@ fn check(
     // drawn as a game's are (E08 T12b).
     let setup = GameSetup {
         players: vec![PlayerSetup { colour: 0 }],
+        difficulty: DEFAULT_DIFFICULTY,
         map: static_map,
         heroes: Vec::new(),
     };

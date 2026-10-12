@@ -254,6 +254,44 @@ fn the_expansions_add_the_border_gates() {
     assert_ne!(ab.core_hash(), sod.core_hash());
 }
 
+// covers: GAM-RES-002
+#[test]
+fn the_base_pack_holds_the_starting_resources() {
+    let (core, part) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
+    let order: Vec<&str> = core.resources().iter().map(|r| r.key.as_str()).collect();
+    assert_eq!(
+        order,
+        [
+            "base:wood",
+            "base:mercury",
+            "base:ore",
+            "base:sulfur",
+            "base:crystal",
+            "base:gems",
+            "base:gold"
+        ]
+    );
+    // Survey E08-objects.md §7.2: wood and ore, each rare resource, gold; human, then computer.
+    let row = |wood_ore: u32, rare: u32, gold: u32| {
+        vec![wood_ore, rare, wood_ore, rare, rare, rare, gold]
+    };
+    let rows: Vec<(Vec<u32>, Vec<u32>)> = part
+        .starting_resources()
+        .iter()
+        .map(|r| (r.human().to_vec(), r.computer().to_vec()))
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            (row(30, 15, 30_000), row(5, 2, 5_000)),
+            (row(20, 10, 20_000), row(10, 4, 7_500)),
+            (row(15, 7, 15_000), row(15, 7, 10_000)),
+            (row(10, 4, 10_000), row(15, 7, 10_000)),
+            (row(0, 0, 0), row(15, 7, 10_000)),
+        ]
+    );
+}
+
 #[test]
 fn the_synthetic_packs_compile() {
     let (_, part) = compile(
@@ -305,6 +343,10 @@ fn parses_every_field() {
         [[river]]
         id = "stream"
         name = "Stream"
+
+        [[difficulty]]
+        human = { coin = 10, "other:gem" = 2 }
+        computer = {}
 
         [[object_type]]
         id = "heap"
@@ -521,6 +563,16 @@ fn parses_every_field() {
             starting_stack_chances: vec![80, 20],
         })
     );
+    assert_eq!(
+        pack.starting_resources,
+        [StartingResourcesDef {
+            human: vec![
+                (ContentKey::parse("p:coin").unwrap(), 10),
+                (ContentKey::parse("other:gem").unwrap(), 2)
+            ],
+            computer: vec![],
+        }]
+    );
     assert_eq!(parse("").unwrap(), AdventurePack::new(manifest("p")));
 }
 
@@ -592,6 +644,10 @@ fn rejects_malformed_files() {
     assert!(key(
         &object("key_tent = { key = 0 }").replace("id = \"o\"", "id = \"Bad\"")
     ));
+    assert!(key("[[difficulty]]\nhuman = { Bad = 1 }\ncomputer = {}"));
+    assert!(key("[[difficulty]]\nhuman = {}\ncomputer = { Bad = 1 }"));
+    assert!(syntax("[[difficulty]]\nhuman = {}"));
+    assert!(syntax("[[difficulty]]\nhuman = { a = -1 }\ncomputer = {}"));
 }
 
 #[test]

@@ -512,7 +512,7 @@ fn each_broken_invariant_is_its_own_error() {
         SetupError::ObjectLevel(1)
     );
     assert_eq!(
-        error(|s| s.map.objects[1].object_type = Some(ObjectTypeId::from_raw(5))),
+        error(|s| s.map.objects[1].object_type = Some(ObjectTypeId::from_raw(6))),
         SetupError::UnknownObjectType(1)
     );
     assert_eq!(

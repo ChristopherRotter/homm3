@@ -70,6 +70,20 @@ fn params() -> AdventureParamsDef {
     }
 }
 
+/// Two difficulties: 0 with gold and wood for a human, gold for a computer; 1 with gold only.
+fn starting() -> Vec<StartingResourcesDef> {
+    vec![
+        StartingResourcesDef {
+            human: vec![(key("t:gold"), 3000), (key("t:wood"), 5)],
+            computer: vec![(key("t:gold"), 500)],
+        },
+        StartingResourcesDef {
+            human: vec![(key("t:gold"), 2000)],
+            computer: vec![],
+        },
+    ]
+}
+
 fn movement(k: &str, passage: Passage) -> TerrainMovementDef {
     TerrainMovementDef {
         terrain: key(k),
@@ -188,6 +202,7 @@ fn packs() -> Vec<AdventurePack> {
         rivers: vec![river("t:clear_river")],
         object_types: objects(),
         params: Some(params()),
+        starting_resources: starting(),
         ..AdventurePack::new(manifest("t", &[]))
     };
     let u = AdventurePack {
@@ -329,6 +344,10 @@ fn the_hash_is_stable_and_sees_every_part() {
         edit(|p| set_kind(p, 7, ObjectKindDef::KeyGate { key: 1 })),
         edit(|p| set_kind(p, 8, ObjectKindDef::KeyTent { key: 7 })),
         edit(|p| set_kind(p, 5, ObjectKindDef::KeyTent { key: 4 })),
+        edit(|p| pack(p, "t").starting_resources[0].human[0].1 = 2999),
+        edit(|p| pack(p, "t").starting_resources[0].computer[0].1 = 501),
+        edit(|p| pack(p, "t").starting_resources.swap(0, 1)),
+        edit(|p| pack(p, "t").starting_resources.truncate(1)),
     ];
     for (i, packs) in changes.iter().enumerate() {
         let other = compile(packs).unwrap();
@@ -838,6 +857,95 @@ fn one_pack_provides_valid_parameters() {
     assert_eq!(compile(&full).unwrap().params().land_points(u8::MAX), 1500);
 }
 
+// covers: GAM-RES-002
+#[test]
+fn one_pack_provides_the_starting_resources() {
+    let core = core();
+    let part = compile(&packs()).unwrap();
+    let index = |k: &str| {
+        core.resources()
+            .iter()
+            .position(|r| r.key == key(k))
+            .unwrap()
+    };
+    let (gold, wood) = (index("t:gold"), index("t:wood"));
+    let rows = part.starting_resources();
+    assert_eq!(rows.len(), 2);
+    // Every core resource has an amount, in the core's order; one left out starts at 0.
+    assert_eq!(rows[0].human().len(), core.resources().len());
+    assert_eq!((rows[0].human()[gold], rows[0].human()[wood]), (3000, 5));
+    assert_eq!(
+        (rows[0].computer()[gold], rows[0].computer()[wood]),
+        (500, 0)
+    );
+    assert_eq!((rows[1].human()[gold], rows[1].human()[wood]), (2000, 0));
+    assert!(rows[1].computer().iter().all(|&a| a == 0));
+    assert_eq!(
+        compile_err(&edit(|p| pack(p, "t").starting_resources.clear())),
+        AdventureCompileError::MissingDifficulties
+    );
+    assert_eq!(
+        compile_err(&edit(|p| pack(p, "u").starting_resources = starting())),
+        AdventureCompileError::DuplicateDifficulties("u".into())
+    );
+    let row = |f: fn(&mut StartingResourcesDef)| {
+        compile_err(&edit(|p| f(&mut pack(p, "t").starting_resources[1])))
+    };
+    assert_eq!(
+        row(|r| r.computer.push((key("t:gold"), MAX_GAIN + 1))),
+        AdventureCompileError::InvalidDifficulty {
+            row: 1,
+            reason: "an amount is above 2^31 - 1"
+        }
+    );
+    assert_eq!(
+        row(|r| r.human.push((key("t:gold"), 1))),
+        AdventureCompileError::InvalidDifficulty {
+            row: 1,
+            reason: "a resource is named twice"
+        }
+    );
+    assert_eq!(
+        row(|r| r.human.push((key("t:ore"), 1))),
+        AdventureCompileError::UnknownResource("t:ore".into())
+    );
+    // `v` does not depend on `u`.
+    assert_eq!(
+        compile_err(&edit(|p| {
+            pack(p, "t").starting_resources.clear();
+            pack(p, "v").starting_resources = vec![StartingResourcesDef {
+                human: vec![(key("u:gem"), 1)],
+                computer: vec![],
+            }];
+        })),
+        AdventureCompileError::ReferenceOutsideDependencies {
+            key: "u:gem".into(),
+            pack: "v".into()
+        }
+    );
+    // The largest amount and the most rows compile.
+    let most = edit(|p| {
+        pack(p, "t").starting_resources = (0..MAX_DIFFICULTIES)
+            .map(|_| StartingResourcesDef {
+                human: vec![(key("t:gold"), MAX_GAIN)],
+                computer: vec![],
+            })
+            .collect();
+    });
+    let part = compile(&most).unwrap();
+    assert_eq!(part.starting_resources().len(), MAX_DIFFICULTIES);
+    assert_eq!(part.starting_resources()[255].human()[gold], MAX_GAIN);
+    let too_many = edit(|p| {
+        pack(p, "t")
+            .starting_resources
+            .resize(MAX_DIFFICULTIES + 1, starting()[1].clone());
+    });
+    assert_eq!(
+        compile_err(&too_many),
+        AdventureCompileError::TooManyEntries("difficulty")
+    );
+}
+
 #[test]
 fn errors_explain_themselves() {
     let cases: Vec<(AdventureCompileError, &str)> = vec![
@@ -916,6 +1024,21 @@ fn errors_explain_themselves() {
         (
             AdventureCompileError::InvalidParams("land_points is empty"),
             "adventure parameters: land_points is empty",
+        ),
+        (
+            AdventureCompileError::MissingDifficulties,
+            "no pack provides the starting resources by difficulty",
+        ),
+        (
+            AdventureCompileError::DuplicateDifficulties("u".into()),
+            "pack `u` provides the starting resources by difficulty a second time",
+        ),
+        (
+            AdventureCompileError::InvalidDifficulty {
+                row: 2,
+                reason: "a resource is named twice",
+            },
+            "difficulty 2: a resource is named twice",
         ),
         (
             AdventureCompileError::TooManyEntries("road"),

@@ -11,6 +11,14 @@ max_players = 4
 army_slots = 5
 starting_stack_chances = [80, 20]
 
+[[difficulty]]
+human = { coin = 500, shard = 5 }
+computer = { coin = 100 }
+
+[[difficulty]]
+human = { coin = 200 }
+computer = { coin = 300, shard = 3 }
+
 [[terrain]]
 terrain = "meadow"
 cost = 100

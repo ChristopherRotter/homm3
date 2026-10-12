@@ -1,7 +1,8 @@
 //! Tests of the game state (E08 T6b): the starting armies' draw, the players' turns in sequential
 //! play and in a larger turn group, the calendar, `EndTurn` and its rejections, and the hash.
 
-use h3_adventure::{AdventureState, ObjectSetup, TileMask};
+use h3_adventure::{AdventureState, MAX_GAIN, ObjectSetup, TileMask};
+use h3_content::ResourceId;
 use h3_kernel::hash::hash_of;
 use h3_kernel::{Rng, StreamId};
 use proptest::prelude::{prop_assert, prop_assert_eq, proptest};
@@ -223,6 +224,37 @@ fn a_turn_group_ends_when_each_of_its_players_has_ended_its_turn() {
     );
 }
 
+// covers: GAM-RES-001, GAM-RES-002
+#[test]
+fn every_player_starts_with_the_human_row_of_the_difficulty() {
+    let rules = rules();
+    let gold = |state: &GameState, player| state.treasury(player).unwrap().to_vec();
+    let normal = build(&rules, &setup(), 7);
+    assert_eq!(setup().difficulty, DEFAULT_DIFFICULTY);
+    assert_eq!(
+        (gold(&normal, RED), gold(&normal, BLUE)),
+        (vec![2000], vec![2000])
+    );
+    let mut easy = setup();
+    easy.difficulty = 0;
+    let easy = build(&rules, &easy, 7);
+    assert_eq!(
+        (gold(&easy, RED), gold(&easy, BLUE)),
+        (vec![3000], vec![3000])
+    );
+    assert!(normal.treasury(PlayerId::new(2)).is_none());
+    // A row's amount is capped at 2^31 - 1, as a gain is (the compiler already checks the rows).
+    let capped = Treasuries::new(2, &[u32::MAX, 5]);
+    assert_eq!(capped.of(BLUE), Some(&[MAX_GAIN, 5][..]));
+    // A fork shares the treasuries until a gain: equal content compares and hashes equal.
+    let mut fork = normal.clone();
+    assert_eq!(fork.state_hash(), normal.state_hash());
+    fork.gain(RED, &[(ResourceId::from_raw(0), 1)], &mut NoopSink);
+    assert_eq!(normal.treasury(RED), Some(&[2000][..]));
+    assert_eq!(fork.treasury(RED), Some(&[2001][..]));
+    assert_ne!(fork.state_hash(), normal.state_hash());
+}
+
 #[test]
 fn the_hash_covers_the_whole_game() {
     let rules = rules();
@@ -241,6 +273,9 @@ fn the_hash_covers_the_whole_game() {
     let mut colours = setup();
     colours.players[1].colour = 2;
     assert_ne!(build(&rules, &colours, 7).state_hash(), state.state_hash());
+    let mut easy = setup();
+    easy.difficulty = 0;
+    assert_ne!(build(&rules, &easy, 7).state_hash(), state.state_hash());
 }
 
 #[test]

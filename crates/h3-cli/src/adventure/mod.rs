@@ -30,7 +30,7 @@
 //! [map]                               # how the replay names its map (ADV-Q2)
 //! path = "fixtures/maps/e08-duel-36.h3m"  # relative, resolved against the tool's root
 //! hash = "0x…"                        # the file's content hash
-//! import_version = 2                  # h3_map::MAP_IMPORT_VERSION
+//! import_version = 3                  # h3_map::MAP_IMPORT_VERSION
 //!
 //! [result]
 //! day = 29                            # the day after the last command

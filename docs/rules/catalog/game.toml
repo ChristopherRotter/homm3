@@ -95,3 +95,51 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Time"
   retrieved  = "2026-10-10"
   confidence = "medium"
+
+[[rule]]
+id       = "GAM-RES-001"
+title    = "A player's treasury: never negative, gains saturate"
+context  = "game"
+status   = "implemented"
+summary  = "Each player keeps an amount of every resource kind of the core ruleset (seven in the original packs), never negative. A gain adds to it and saturates at 2^31 - 1; the original adds with a 32-bit wrap and sets a negative result to 0, so a gain past 2^31 - 1 drops the resource to 0 (A-5: a state-corrupting bug, fixed without a flag; unreachable in increment 2, whose largest gain on a shipped map is 100 000 gold). Only the owner sees its treasury. E08 T13a: `h3_game::Treasury` in `GameState`, the owner's observation; T13b: the gains of visits."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T11a, survey docs/rules/surveys/E08-objects.md §7.1, confirmed by a second reading): the seven resources are 32-bit signed amounts in the player record (game +0x20AD0 + 0x168 x colour, resources at +0x9C, gold +0xB4); every gain goes through 0x4E3600, which adds with 32-bit wrap and sets a negative result to 0, with no upper bound"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/gameState/GameStatePackVisitor.cpp visitSetResources: every change clamped to 0 ... 10^9 (PLAYER_RESOURCES_CAP); lib/CPlayerState.h PlayerState::resources, config/resources.json in the same order"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/GameStatePackVisitor.cpp"
+  retrieved  = "2026-10-12"
+  confidence = "medium"
+  note       = "Agrees that a treasury never goes negative; caps at 10^9 where the original wraps (the engine saturates at 2^31 - 1, the original's largest positive amount)."
+
+[[rule]]
+id       = "GAM-RES-002"
+title    = "Starting resources by the game's difficulty"
+context  = "game"
+status   = "implemented"
+summary  = "A game starts every player with the starting resources of the game's difficulty (0 easy to 4 impossible): a human player 30, 20, 15, 10, 0 wood and ore each, 15, 10, 7, 4, 0 of each rare resource and 30 000, 20 000, 15 000, 10 000, 0 gold; a computer player 5, 10, 15, 15, 15 wood and ore, 2, 4, 7, 7, 7 rare and 5 000, 7 500, 10 000, 10 000, 10 000 gold. The engine has no human/computer distinction, so every player gets the human row (E08 decision 16); the computer rows are data for later. The difficulty is the game's, chosen when it starts (`GameSetup.difficulty`, the import's default normal), not the map header's rating. Not modelled: the computer players' daily bonus and the tutorial's start (survey §7.2, inc. 4). E08 T13a: `h3_game::GameState::new`, the rows in `adventure.toml`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T11a, survey docs/rules/surveys/E08-objects.md §7.2, confirmed by a second reading): new_game_heroes (0x4C01EE) copies for each playing colour a human's (record +0xE2) row of the chosen difficulty (game +0x1F6D8, 0 easy to 4 impossible) from 0x678170, a computer's from 0x6781FC"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/difficulty.json: the same ten rows (human, ai; pawn to king), applied by PlayerState::human in CGameState::initDifficulty"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/difficulty.json"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Difficulty level: the same ten rows of starting resources"
+  url        = "https://heroes.thelazy.net/index.php/Difficulty_level"
+  retrieved  = "2026-10-12"
+  confidence = "medium"

@@ -5,7 +5,8 @@
 //! of war (T8), so the rule ids `ADV-MOV-001`, `-003`, `-004`, `-007` and `ADV-FOG-001` stay
 //! `specified` until then (`docs/rules/catalog/adventure.toml`).
 //!
-//! Since T12a it holds the object types (`objects.rs`, ADR-0016 point 4).
+//! Since T12a it holds the object types (`objects.rs`, ADR-0016 point 4), since T13a the starting
+//! resources by difficulty, which the game reads (`starting.rs`, GAM-RES-002).
 //!
 //! A part references core entities by handle (a terrain by its [`TerrainId`]) and its source by
 //! key. Every enabled core pack has exactly one adventure pack (an empty one when the pack has no
@@ -25,12 +26,15 @@ use h3_kernel::{CanonicalHash, Handle, StateHasher};
 use crate::ADVENTURE_RULESET_HASH_VERSION;
 
 mod objects;
+mod starting;
 
 pub use objects::{
     KEY_COLOURS, MAX_GAIN, MAX_PICKUP_AMOUNT, ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef,
     ObjectTypeId, Pickup, PickupDef, Visit,
 };
-use objects::{ObjectTables, check_object_types, compile_object_types};
+use objects::{ObjectTables, Scope, check_object_types, compile_object_types};
+use starting::compile_starting;
+pub use starting::{MAX_DIFFICULTIES, StartingResources, StartingResourcesDef};
 
 /// Most entries of the land movement table: one per speed a `u8` can hold.
 pub const MAX_LAND_POINTS: usize = 256;
@@ -136,6 +140,9 @@ pub struct AdventurePack {
     pub object_types: Vec<ObjectTypeDef>,
     /// The adventure parameters, if this pack provides them.
     pub params: Option<AdventureParamsDef>,
+    /// The starting resources by difficulty, from 0 (easy), if this pack provides them (E08
+    /// T13a; empty: it does not).
+    pub starting_resources: Vec<StartingResourcesDef>,
 }
 
 impl AdventurePack {
@@ -148,6 +155,7 @@ impl AdventurePack {
             rivers: Vec::new(),
             object_types: Vec::new(),
             params: None,
+            starting_resources: Vec::new(),
         }
     }
 }
@@ -305,7 +313,19 @@ pub enum AdventureCompileError {
     DuplicateParams(String),
     /// The adventure parameters are invalid.
     InvalidParams(&'static str),
-    /// More entries of a kind (`road`, `river`, `object_type`) than handles can address.
+    /// No enabled pack provides the starting resources by difficulty.
+    MissingDifficulties,
+    /// A second pack provides the starting resources by difficulty.
+    DuplicateDifficulties(String),
+    /// A difficulty's starting resources are invalid.
+    InvalidDifficulty {
+        /// The difficulty, from 0.
+        row: usize,
+        /// Why.
+        reason: &'static str,
+    },
+    /// More entries of a kind (`road`, `river`, `object_type`, `difficulty`) than handles or
+    /// indices can address.
     TooManyEntries(&'static str),
 }
 
@@ -347,6 +367,14 @@ impl fmt::Display for AdventureCompileError {
                 )
             }
             Self::InvalidParams(reason) => write!(f, "adventure parameters: {reason}"),
+            Self::MissingDifficulties => {
+                f.write_str("no pack provides the starting resources by difficulty")
+            }
+            Self::DuplicateDifficulties(p) => write!(
+                f,
+                "pack `{p}` provides the starting resources by difficulty a second time"
+            ),
+            Self::InvalidDifficulty { row, reason } => write!(f, "difficulty {row}: {reason}"),
             Self::TooManyEntries(kind) => write!(f, "too many {kind} entries"),
         }
     }
@@ -364,6 +392,7 @@ pub struct AdventureRuleset {
     object_types: Vec<ObjectType>,
     object_type_index: BTreeMap<String, ObjectTypeId>,
     params: AdventureParams,
+    starting_resources: Vec<StartingResources>,
     hash: u64,
 }
 
@@ -377,6 +406,7 @@ struct Tables {
     river_index: BTreeMap<String, RiverId>,
     objects: ObjectTables,
     params: Option<AdventureParamsDef>,
+    starting_resources: Option<Vec<StartingResources>>,
 }
 
 impl AdventureRuleset {
@@ -407,6 +437,9 @@ impl AdventureRuleset {
         check_object_types(&tables.objects.types)?;
         let params = tables.params.ok_or(AdventureCompileError::MissingParams)?;
         let params = validate_params(params)?;
+        let starting_resources = tables
+            .starting_resources
+            .ok_or(AdventureCompileError::MissingDifficulties)?;
         let mut part = Self {
             core_hash: core.content_hash(),
             terrains,
@@ -417,6 +450,7 @@ impl AdventureRuleset {
             object_types: tables.objects.types,
             object_type_index: tables.objects.index,
             params,
+            starting_resources,
             hash: 0,
         };
         part.hash = hash_of(&part);
@@ -495,6 +529,12 @@ impl AdventureRuleset {
     pub const fn params(&self) -> &AdventureParams {
         &self.params
     }
+
+    /// The starting resources by the game's difficulty, from 0 (easy; GAM-RES-002): at least one
+    /// row.
+    pub fn starting_resources(&self) -> &[StartingResources] {
+        &self.starting_resources
+    }
 }
 
 impl CanonicalHash for AdventureRuleset {
@@ -503,8 +543,9 @@ impl CanonicalHash for AdventureRuleset {
     /// (key, name, cost); the river kinds (key, name); the parameters (native cost, the land
     /// table as its length and entries, scouting radius; since v2 the largest map size, levels,
     /// players and the army slots; since v3 the starting stack chances as their length and
-    /// entries); since v4 the object types in handle order ([`ObjectType`]'s encoding). The
-    /// core's hash is not part of it: replays record both.
+    /// entries); since v4 the object types in handle order ([`ObjectType`]'s encoding); since v5
+    /// the starting resources by difficulty (their number, then each row's human and computer
+    /// amounts as length and entries). The core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
         h.write_len(self.terrains.len());
@@ -534,6 +575,10 @@ impl CanonicalHash for AdventureRuleset {
         h.write_len(self.object_types.len());
         for ty in &self.object_types {
             ty.hash_into(h);
+        }
+        h.write_len(self.starting_resources.len());
+        for row in &self.starting_resources {
+            row.hash_into(h);
         }
     }
 }
@@ -632,6 +677,19 @@ fn compile_pack(
         }
     }
     compile_object_types(core, id, closure, &pack.object_types, &mut tables.objects)?;
+    if !pack.starting_resources.is_empty() {
+        if tables.starting_resources.is_some() {
+            return Err(AdventureCompileError::DuplicateDifficulties(String::from(
+                id,
+            )));
+        }
+        let scope = Scope {
+            core,
+            pack: id,
+            closure,
+        };
+        tables.starting_resources = Some(compile_starting(&scope, &pack.starting_resources)?);
+    }
     if let Some(params) = &pack.params {
         if tables.params.is_some() {
             return Err(AdventureCompileError::DuplicateParams(String::from(id)));

@@ -121,7 +121,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a; `MAP_IMPORT_VERSION` 2)
+## Import (E08 T5a, T6a, T12a, T13a; `MAP_IMPORT_VERSION` 3)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -132,6 +132,9 @@ content and draws nothing; it rejects what the current increment cannot represen
 - **Players:** the colours whose human or computer flag is set, in colour order; a player's
   `PlayerId` is its index there. Unsupported: a playing colour whose main town generates its hero
   (RoE always does; towns are E09).
+- **Difficulty** (v3): `h3_game::DEFAULT_DIFFICULTY`, normal. The game's difficulty is chosen when a
+  game starts; the header's difficulty byte is the map's rating and is not read into the setup
+  (survey `E08-objects.md` §7.2).
 - **Static map:** the side and levels from the terrain block; terrain codes 0–9 → `base:dirt` …
   `base:rock`, roads 1–3 → `base:dirt_road`, `base:gravel_road`, `base:cobblestone_road`, rivers
   1–4 → `base:clear_river` … `base:lava_river` (0 is none). Every object but the heroes keeps its

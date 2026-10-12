@@ -3,7 +3,9 @@
 //! ([`super::play`]): observation hygiene (what a viewer is shown or told does not depend on what
 //! it cannot see) and the observation's consistency with the events it is told.
 
-use h3_adventure::{AdventureEvent, AdventureEventKind, Pos as TilePos, TileView, Viewers};
+use h3_adventure::{
+    AdventureEvent, AdventureEventKind, ObjectView, Pos as TilePos, TileMask, TileView, Viewers,
+};
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
     Actor, GameEvent, GameObservation, GameRuleset, GameState, Viewer, apply, legal_commands,
@@ -274,7 +276,9 @@ fn depth(view: &TileView) -> u8 {
 /// least one tile; a step's tile it leaves is where the viewer last saw the hero, a step it is
 /// not told the tile entered takes the hero out of its sight); a hero shows without a step only
 /// on a tile the viewer did not see before. The viewer forgets nothing: a tile's view only
-/// deepens, and keeps what it showed. Its planes change only by its own command (`own`).
+/// deepens, and keeps what it showed; an object it saw leaves its view only as an object removal
+/// it is told (E08 T13b), and its treasury changes only by the gains it is told, which are its
+/// own. Its planes change only by its own command (`own`).
 fn check_told(
     viewer: PlayerId,
     (before, after): (&GameObservation, &GameObservation),
@@ -293,8 +297,29 @@ fn check_told(
         .map(|h| (h.id, h.pos))
         .collect();
     let mut stepped = Vec::new();
+    let mut removed = Vec::new();
+    let mut treasury = before.treasury.clone();
     for event in told {
         match *event {
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::ObjectRemoved {
+                        object_type,
+                        anchor,
+                    },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, Viewers::NONE.with(viewer));
+                removed.push((object_type, anchor));
+            }
+            GameEvent::ResourceGained {
+                player,
+                resource,
+                amount,
+            } => {
+                prop_assert_eq!(player, viewer);
+                treasury[usize::from(resource.raw())] += amount;
+            }
             GameEvent::DayStarted { day: started } => day = started,
             GameEvent::TurnEnded { player } => {
                 acting[usize::from(player.raw())] = false;
@@ -359,10 +384,59 @@ fn check_told(
             prop_assert!(!sees(before, hero.pos) && sees(after, hero.pos));
         }
     }
-    for (was, is) in before.adventure.tiles.iter().zip(&after.adventure.tiles) {
+    prop_assert_eq!(&after.treasury, &treasury);
+    let named = |o: &ObjectView| (o.object_type, o.anchor);
+    for object in &after.adventure.objects {
+        prop_assert!(!removed.contains(&named(object)), "{:?} removed", object);
+    }
+    for object in &before.adventure.objects {
+        prop_assert!(
+            after.adventure.objects.contains(object) || removed.contains(&named(object)),
+            "{:?} left untold",
+            object
+        );
+    }
+    // The tiles a removed object the viewer saw covered: what covers there may thin out.
+    let (width, height) = (
+        usize::from(before.adventure.width),
+        usize::from(before.adventure.height),
+    );
+    let mut freed = vec![false; before.adventure.tiles.len()];
+    for object in before
+        .adventure
+        .objects
+        .iter()
+        .filter(|o| removed.contains(&named(o)))
+    {
+        let mask = TileMask::from_bits(object.blocked.bits() | object.visitable.bits());
+        for (column, row) in mask.offsets() {
+            let a = object.anchor;
+            if let (Some(x), Some(y)) = (
+                usize::from(a.x).checked_sub(usize::from(column)),
+                usize::from(a.y).checked_sub(usize::from(row)),
+            ) {
+                freed[(usize::from(a.level) * height + y) * width + x] = true;
+            }
+        }
+    }
+    for ((was, is), freed) in before
+        .adventure
+        .tiles
+        .iter()
+        .zip(&after.adventure.tiles)
+        .zip(freed)
+    {
         prop_assert!(depth(was) <= depth(is));
-        if depth(was) == depth(is) {
-            prop_assert_eq!(was, is);
+        match (was, is) {
+            (TileView::Seen(was), TileView::Seen(is)) if freed => {
+                prop_assert_eq!(
+                    (was.terrain, was.road, was.river),
+                    (is.terrain, is.road, is.river)
+                );
+                prop_assert!(is.blocked <= was.blocked && is.visitable <= was.visitable);
+            }
+            _ if depth(was) == depth(is) => prop_assert_eq!(was, is),
+            _ => {}
         }
     }
     if !own {
@@ -377,10 +451,12 @@ proptest! {
 
     /// Observation hygiene: two games that differ only in what a viewer never sees (the seed,
     /// the other players' armies and so their points, the tiles it never sees and what objects
-    /// cover there) show it the same observation, legal commands and moves after the same
-    /// commands, accept or reject its own commands alike and tell it the same events, as long as
-    /// the other players' commands are accepted in both or in neither (a move that one hero can
-    /// pay and the other cannot ends where the viewer may see it).
+    /// cover there, the objects' contents) show it the same observation, legal commands and moves
+    /// after the same commands, accept or reject its own commands alike and tell it the same
+    /// events, as long as the other players' commands are accepted in both or in neither (a move
+    /// that one hero can pay and the other cannot ends where the viewer may see it), and until
+    /// the viewer picks up an object: a pickup tells its visitor the contents (E08 T13b; survey
+    /// `E08-objects.md` §8), so the two games may then tell it other gains, and nothing else.
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in plan(),
@@ -444,7 +520,19 @@ proptest! {
             } else if ra.is_ok() != rb.is_ok() {
                 break;
             }
-            prop_assert_eq!(told(&ea, viewer), told(&eb, viewer));
+            let (ta, tb) = (told(&ea, viewer), told(&eb, viewer));
+            if actor == viewer && ta != tb {
+                // The viewer learned a pickup's contents: only what it gained may differ.
+                let blind = |events: Vec<GameEvent>| -> Vec<Option<GameEvent>> {
+                    events
+                        .into_iter()
+                        .map(|e| (!matches!(e, GameEvent::ResourceGained { .. })).then_some(e))
+                        .collect()
+                };
+                prop_assert_eq!(blind(ta), blind(tb));
+                break;
+            }
+            prop_assert_eq!(ta, tb);
             check_same(&a, &b, rules, viewer)?;
         }
     }
