@@ -196,3 +196,202 @@ Each is `verified` and now has a clause that no observation covers (the status i
   038 and BAT-QUIRK-11) are untouched, as the brief says.
 - Named by the fix notes and not mine: the HANDOFF's trap texts (B2, A1), the survey's line on
   the chain's order, the E04b log's lines.
+
+---
+
+# Second session of worker `d` (after the restart of 2026-10-12, 18:00): Part 3
+
+The section "Part 3 ... (not started)" above is the first session's state. This session did Part 3
+and the four additions of the takeover brief. Same worktree and branch; start head `c7b0e26`.
+
+## Part 3: state
+
+DONE and pushed (branch `battle/e04b-t11b-d`, head `fc0ad81`, worktree clean):
+
+- `bf3cd64`: addition 2 (BAT-Q28 on the four VCMI sources and in §7.14; two VCMI line ranges).
+- `fc0ad81`: the 18 points' re-reads (`installation.md`, the map, the structs, the ledger).
+
+The three checks passed before each commit, on that commit's own state (`check-rules` ok, 183
+rules; `check-docs` ok; `check-exe-map` ok, 355 entries after `fc0ad81`). Logs:
+`<SCRATCH>/wd/p3-check-*.log`.
+
+Edits applied in the worktree (scripts in `<SCRATCH>/wd/edits/p3_*.py`, applied with `sub.py` and
+`mapadd.py`):
+
+- `docs/formats/installation.md`: 19 dated paragraphs "**Review re-read (E04b T11b, 2026-10-12):
+  ...**" for the 18 points (the Faerie Dragon's key path has two: its targets, and no "magic
+  allowed" test), each with the addresses, what was not read or is unsure, the other sources and
+  the closing clause with the question id. Old sentences that the re-reads contradict got a short
+  pointer in place instead of a silent rewrite (§7.8 the chain's order; §7.11 "was not read";
+  §7.13 where the redirect is drawn; §7.14 the pick; §7.16 "leaves it freely"; §7.18 "stays done";
+  §7.19 "(not read)"; §7.20 Acid Breath; §7.21 "no hero bonuses", "local human", "the creature
+  caster's button", "never casts at an empty hex", the dragon's own mirror; §7.23 "every cast
+  there is", "found no path around 0x41F890", batch 2e's OI row). §7.21's *Magic Mirror* sentence
+  of the Faerie Dragon paragraph is rewritten (the brief asks for it): the redirect is drawn and
+  dropped; the engine still redirects (BAT-Q29).
+- `docs/exe/map.toml`: 21 summaries updated (0x5A61F0, 0x5A02CB, 0x5A098A, 0x59EE7A, 0x59EC50,
+  0x448260, 0x464B40 and 0x464F50 now `read`, 0x478D80, 0x4639F0, 0x474D80, 0x465080, 0x446E30,
+  0x447120, 0x441CB0, 0x5A1907, 0x441FA0, 0x4B3400, 0x5A4970, 0x5A6360, 0x5A4BC0, 0x4222C0); 6
+  new entries: 0x41F580 `walk_towards_hex` (inferred, read at its head), 0x474690
+  `cursor_attack_slots`, 0x474A00 `cursor_attack_from_hex`, 0x4782D0 `battle_controls_state`
+  (inferred, read in part), 0x4CE940 `player_id_is_human` (H3API `H3Main::IsHuman`), 0x4E4580
+  `hero_surrender_factor` (H3API `H3Hero::GetDiplomacyPower`; read whole). `scripts/exe.py check`
+  and `cited` pass (650 cited addresses, all covered).
+- `docs/exe/structs.toml`: stack +0xF8 `record`, +0x4DC `defend_bonus`, +0x4E8 `morale`, the
+  defending bit `0x8000000` in the flags' summary; manager +0x3C to +0x48 (the action and its
+  hexes), +0x547C `spell_marks`, +0x54B4 `hero_cast_mark`, +0x132B8/+0x132BC (the stack activated
+  last); +0x54A4 corrected (it is `u8[2]`, the player's human flag, not `i32[2]` "local human";
+  r5b F-3 asks for it) and +0x54A6 added (inferred). The two aura lists' summaries now say which is
+  which (a leftover of fix A10: the old text had "of the same controller").
+- `docs/rules/quirks-ledger.md`: one dated "Review (E04b T11b, 2026-10-12)" line each on
+  BAT-QUIRK-2 (BAT-Q30), BAT-QUIRK-4 (the berserk walker, BAT-Q31) and BAT-QUIRK-9 (BAT-Q29); the
+  entries themselves are untouched. BAT-QUIRK-20 and 21 are the first session's.
+- `docs/rules/catalog/battle.toml` (addition 2): "the code reading decides (BAT-Q28; ...)" on the
+  VCMI sources of BAT-MAG-025, BAT-MAG-026 (the second one), BAT-RNG-001 and BAT-ATK-003; §7.14's
+  closing sentence names BAT-Q28 and the four rules. Two VCMI line ranges of the first session
+  corrected in BAT-MAG-049's VCMI source (see "VCMI citations", below). No other catalog change:
+  the engine is unchanged on all 18 points.
+
+## Every point was opened in the executable (addition 3)
+
+For each of the 18 points I read the deciding addresses with the tool (whole short routines:
+0x5A61F0, 0x464F50, 0x4B3290, 0x465080, 0x4E4580, 0x4CE940, 0x4CE970; the deciding parts of the
+long ones). The reports' readings hold on all 18. Where my reading adds to a report or words it
+differently:
+
+1. **F-r3-5 (two-hex walker).** The report says the walker "tests the new head hex and the new tail
+   hex" and "for a step along the row the new tail hex is the old head hex". What the code tests is
+   the hex the stack's position (+0x38) moves to and that position's other hex (± 1 by the facing).
+   A stack is stopped again only when it walks along its row *with the pit hex leading* (the hex it
+   keeps covering is the pit's); walking the other way along the row it is free at once. The
+   report's scenario (front hex on the pit, ordered forward) is the stopping case. BAT-Q28 row 5
+   and the experiment should say "ordered forward" (the front hex on the pit).
+2. **F-r5b-4 (wait phase).** The report did not read the dispatcher. I read the head of its Wait
+   case (action 8, 0x479906): no test of the phase; it sets the waited bit, and in the wait phase
+   nothing clears that bit before the round ends (the pick's second pass skips waited records and
+   then returns "nobody"), so a Wait arriving there would cost the stack its turn, not give it a
+   second one. The button's state (0x478755) is as the report says. Also read: the pick runs no
+   turn start in the wait phase (0x465211), which the report only "met on the way"; the comparison
+   puts arrow towers and the Catapult before the speeds.
+3. **F-r2a-4 = F-r4b-4 (Defend).** Added: in the tactics phase and for a war machine the stored
+   bonus is 0 and the defending bit is not set (0x479722 to 0x479735, 0x4798C3). r4b lists a war
+   machine's Defend bonus under "not reviewed".
+4. **F-r5b-3 (bad morale).** The flag's meaning does not rest on H3API alone: the adventure lane's
+   own reading (map entry 0x4BADA0, survey E08 §1.4) has the player record's +0xE2 as the human
+   flag. H3API calls +0x54A4 `isNotAI` and +0x54A6 `isHuman` and both record bytes (+0xE1, +0xE2)
+   human flags; "+0x54A6 is the local human" is the report's guess. BAT-Q33's "the flag's meaning
+   is unsure" can be narrowed to that.
+5. **F-r5a-1 (mirror).** Added: 0x59EC50 resets the manager's +0x48 to −1 at every entry
+   (0x59ECB0), so a redirect drawn and dropped on the key path cannot leak into a later cast.
+6. **F-r5a-2.** The existing §7.21 and the map called 0x475CD8 "the creature caster's button"; it
+   is the key handler's case for key code 33 (switch 0x4758FB), as the report says. Corrected in
+   both. The surrender price and the Wait button are cases of the same handler's control switch
+   (0x474E53: controls 2001 and 2009).
+7. **F-r3-11.** The brief's closing clause does not fit: by the reading the engine does what the
+   original does (it plans with the stack's own side's pits). The paragraph says so. One corner I
+   read further than the reports and could not close: the pathfinder's attack marking passes over a
+   position on a stop only for a query within one move (the cursor's; r3 F-4 says "when the range
+   is within one turn"). The berserk turn asks with range 127 (0x445582, 0x42232C), and there a
+   position on a stop does count, one whole move dearer (0x4B378A); the berserk walk attacks only
+   if the target's cost is within the stack's speed (0x4223E1), else calls 0x41F580 ("walk
+   towards", read only at its head; new map entry, inferred). So a berserk stack whose attack
+   position lies on a seen pit does not strike that turn; whether it ends its walk on the pit, as
+   the engine's does with BAT-QUIRK-2 on, is not known. BAT-Q30's "It also takes the sharper form
+   out of BAT-Q31" and BAT-Q31's "(with BAT-QUIRK-2 on it may stop in the pit: the exact hex)"
+   describe the engine; the original may do the same there.
+8. **F-r6-2.** Closing clause: "the engine does not follow this reading" (the user's decision
+   BAT-Q27 stands), not "yet".
+9. **F-r2a-6.** The test wants a duration that is *not 0* (the report: "above 0"); no difference in
+   play.
+
+Read by the reports and not re-read by me (the paragraphs say "by the report"): the computer
+player's attack query (r3 F-4); the single search of the whole code for the acted bit's masks (r4a
+F-2); 0x444297 for "position = the rear hex" (r4a F-5); Ice Bolt's, Lightning Bolt's, Implosion's,
+Death Ripple's and Destroy Undead's hero argument (r1 F-12; I read Magic Arrow's); the click
+handler 0x476C99 (r5a F-1; not cited, it would need a map entry); "no other test of artifact 126 on
+the key path" (r5a F-4; I checked the callers of 0x41F890 and that the three routines push no 126);
+good morale's and Fear's lack of a human branch (r5b F-3); the two places that test artifact 93
+(r6 F-2).
+
+## Report details against the question entries (addition 1)
+
+Read in `/home/claude/wt-q/docs/OPEN-QUESTIONS.md` (head `aabe205`). No entry contradicts a
+report. Points where an entry could be sharper:
+
+- BAT-Q28 row 5: see 1 above ("ordered along the row" should be "ordered forward, its front hex on
+  the pit").
+- BAT-Q28 row 8: "Wait is not offered" is the button's state; the dispatcher would accept a Wait
+  and the stack would lose its turn (2 above).
+- BAT-Q33: see 4 above.
+- BAT-Q28 rows 4 and 10 cite surveys S-23 and S-24, BAT-Q33 S-25: my paragraphs do not cite them
+  (they exist only in worker q's branch); they say "an oddity of the original whose class is the
+  user's to decide".
+- The § references of BAT-Q29 (§7.21), BAT-Q30 (§7.16), BAT-Q31 (§7.16), BAT-Q32 (§7.21, §7.23)
+  and BAT-Q33 (§7.21) are right as they stand. BAT-Q28 names no §; the table at the end has them.
+
+## VCMI citations (second session)
+
+Every VCMI statement in the new paragraphs was opened in `/home/claude/vcmi` (1.7.5):
+`doDefendAction` (BattleActionProcessor.cpp L160-L198), the retaliation's `stack->alive()`
+(`doAttackAction`, L325-L334), `moveStack`'s start hexes (L758-L763) and `oneHexTriggersObstacles`
+(gameConfig.json L613-L614), `nextRound`/`afterNewRound` (BattleInfo.cpp L651-L666, CUnitState.cpp
+L913-L927), `getRawSurrenderCost` (Unit.cpp L238-L245), `getSpellBonus` (CUnitState.cpp L423-L427),
+`isReflected` (BattleSpellMechanics.cpp L514-L523), `doUnitSpellAction` (BattleActionProcessor.cpp
+L489-L546), `tryActivateMoralePenalty` (BattleFlowProcessor.cpp L378-L398), `makeAutomaticAction`
+(L843 on), `getClosestTile` (UnitEffect.cpp L253). All hold.
+
+Two line ranges of the first session in BAT-MAG-049's VCMI source did not: `getSpellBonus` is
+L423-L427 (was L422-L426) and `isReflected` L514-L523 (was L506-L515, which is the end of the
+function before it). Corrected.
+
+## For the coordinator (second session)
+
+- **BAT-Q28's "On record" list**: the three relations of fix A10 and Berserk's term now carry
+  "BAT-Q28" in the four VCMI sources and in §7.14, as addition 2 asks; the entry itself is yours.
+- **The catalog's code-reading sources are unchanged.** Their `ref` texts still state what the
+  earlier readings said, and the summaries state the engine's rule; the question entries carry the
+  conflict. Where a source's wording is now contradicted by a re-read in the § it cites:
+  BAT-MAG-006 ("defender's stacks first"), BAT-MAG-049 and BAT-MAG-022 and BAT-MAG-057 (the
+  redirect reaches a creature's cast; "never at an empty hex"), BAT-MAG-048 ("no hero bonuses"),
+  BAT-MAG-032 ("the hexes a stack starts on never stop it"), BAT-MAG-035 ("stays done" for the
+  round only), BAT-MAG-066 (the aura), BAT-MOR-004 (its source names 0x464B40 with confidence high;
+  the callee had not been read then), BAT-FLE-002 (no code-reading source at all for the price).
+  If these should get a note each, say so; I left them because the brief keeps Part 3 to
+  `installation.md`, the map and the ledger.
+- **BAT-MAG-035 and BAT-FLE-002 are `verified`** and each now has a clause the review's reading
+  contradicts (a stack raised in a later round acts; the price counts temporary creatures): add
+  them to the first session's list of doubtful `verified` statuses.
+- **Not in any report, read on the way** (queue candidates, nothing written into a rule): the
+  Defend case gives a war machine no bonus and none in the tactics phase (does the engine?); a
+  stack first picked in the wait phase gets no turn start, so a Defend bonus from the round before
+  would stay inside its defense and it would not regenerate (r5b lists the missing turn start
+  under "met on the way").
+- The survey ids S-23 to S-25 (worker q) are not cited by `installation.md`.
+- Paragraph length: the brief asks for short paragraphs; they run from 150 to 390 words, because
+  each carries its addresses, the unsure parts and the other sources.
+
+## The § of each point in `docs/formats/installation.md`
+
+Each paragraph starts with "**Review re-read (E04b T11b, 2026-10-12): <title>.**"; the title is
+given so that the paragraph can be found by a search.
+
+| # | finding | question | § | the paragraph's title |
+|---|---|---|---|---|
+| 1 | F-r1-1 | BAT-Q28 | §7.8 | the chain's search order |
+| 2 | F-r1-6 | BAT-Q28 | §7.8 | which side a chain candidate is tested for |
+| 3 | F-r1-12 = F-r5a-3 | BAT-Q28 | §7.21 | the hero's damage bonuses in a creature's area spell and chain (a pointer in §7.8, "Area spells") |
+| 4 | F-r2a-4 = F-r4b-strike-magic-4 | BAT-Q28 | §7.9 | the Defend bonus sits inside the defense (a pointer in §7.20, Acid Breath) |
+| 5 | F-r2a-6 | BAT-Q28 | §7.10 | what counts as an active spell for Dispel's aim |
+| 6 | F-r2b-stack-spells-2 | BAT-Q28 | §7.11 | the retaliation at a striker the reflection killed |
+| 7 | F-r3-control-battlefield-5 | BAT-Q28 | §7.16 | a two-hex walker leaving a pit along its row |
+| 8 | F-r4a-2 | BAT-Q28 | §7.18 | a dead stack's round state is frozen |
+| 9 | F-r4a-5 | BAT-Q28 | §7.18 | the hero's raise spells search twice |
+| 10 | F-r4a-6 and F-r4a-9 | BAT-Q28 | §7.19 | the surrender price |
+| 11 | F-r5b-mana-defences-4 | BAT-Q28 | §7.21 | the order in the wait phase (a pointer in §7.14, Blind's "No turns") |
+| 12 | F-r5b-mana-defences-5 | BAT-Q28 | §7.21 | a freeze and the side that acted last |
+| 13 | F-r6-limits-opening-2 | BAT-Q28 | §7.23 | the aura under the Orb of Vulnerability, a second reading |
+| 14 | F-r5a-1 | BAT-Q29 | §7.21 | Magic Mirror never redirects a creature's spell (a pointer in §7.13) |
+| 15 | F-r3-control-battlefield-4 | BAT-Q30 | §7.16 | no attack is offered from a seen pit |
+| 16 | F-r3-control-battlefield-11 = F-sec-1 part a | BAT-Q31 | §7.16 | a berserk stack's turn and its own side's pits |
+| 17 | F-r5a-2 and F-r5a-4 | BAT-Q32 | §7.21 | the Faerie Dragon's key path and its targets (F-2); the key path asks no "magic allowed" test (F-4); pointers in §7.23 |
+| 18 | F-r5b-mana-defences-3 | BAT-Q33 | §7.21 | bad morale and who commands the side |
