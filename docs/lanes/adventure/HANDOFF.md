@@ -4,7 +4,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Current state
 
-- **E08**: increment 1 (T1a–T10c, decisions 1–12) **closed** on 2026-10-12; **increment 2 refined** the same day (decisions 13–18 in the epic, ADV-Q9): object types, the treasury in `h3-game`, pickups, the Cartographer as the first pending decision, observatories and Keymaster's tents with border guards and gates; treasure chests in increment 3. Tasks T11a–T16 in `QUEUE.md`; **next round: T11a (survey) with T11b (ADR amendments)**, then the checkpoint (the user accepts the drafts). The user takes a couple of tasks per round, the seam confirmed first (user, 2026-10-10 to -12). Done tasks in `E08-log.md`.
+- **E08**: increment 1 (T1a–T10c, decisions 1–12) **closed** on 2026-10-12; **increment 2 refined** the same day (decisions 13–18 in the epic, ADV-Q9). **T11a and T11b done** (2026-10-12, `adventure/e08-t11`): the survey `docs/rules/surveys/E08-objects.md` and the ADR-0016/0017 amendment drafts in `adr-drafts/` (detail `docs/epics/E08-design.md`). **Waiting: the checkpoint (ADV-Q10).** A couple of tasks per round, the seam confirmed first. Done tasks in `E08-log.md`.
 - **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 1, `docs/formats/h3m.md` "Import"). Every shipped map's static layer imports and validates; 10 maps import whole, the rest are typed `Unsupported`. `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on `original-data/install/Maps` (staged 50 per call).
 - **Setups and state:** `h3_adventure::{AdventureSetup, AdventureState}` (static map behind an `Arc`, heroes by id with their movement points, state hash v2; `check_stand` is ADV-MAP-001, `day_points` ADV-MOV-001, `start_turn` ADV-MOV-002); `h3_game::{GameRuleset, GameSetup, GameState}`: the starting armies drawn from the setup stream (GAM-SET-001), a stream per player, sequential turn groups, day 1, `apply` with `EndTurn` and `Adventure(MoveHero)` (GAM-TRN-001/002, GAM-CAL-001), game state hash v1. `GameSetup::validate` builds with seed 0.
 - **Movement** (T7b): `Pricing` in `movement.rs` (ADV-MOV-003 to -006: the source tile prices a step, the diagonal exception under `ADV-QUIRK-2`/`-3`, points below the cheapest next step lost), `native_terrain` (ADV-MOV-004, `ADV-QUIRK-4`), `AdventureState::apply` with `MoveHero` (ADV-MOV-007, rejected whole, `HeroStepped` per step), `AdventureState::reach` (`Reach`, one path per tile as the original's; the user keeps it).
@@ -16,7 +16,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Adventure ruleset part** (v3 since T6b): terrains, roads, rivers, native cost, land table, base scouting radius, the setup bounds (`max_players` ≤ `MAX_PLAYERS` = 8 since T8a) and the starting stack chances.
 - **Readings of increment 1** (survey `docs/rules/surveys/E08-adventure-core.md`): CR-1 to CR-3, the starting army, the native terrain; conflicts with the wiki or VCMI go to the user ("consensus before trust").
 - **ADRs accepted** (2026-10-10): ADR-0015, ADR-0016, ADR-0017 (point 3's "every rule at the start of the day" no longer holds: ADV-MOV-002 runs at the start of a turn; revision note in the shared PR).
-- **Waiting for the user:** nothing (no open `ADV-Q`). The editor maps are dropped (user, 2026-10-11).
+- **Waiting for the user:** ADV-Q10 (the T11 checkpoint). The editor maps are dropped (user, 2026-10-11).
 - **Fuzzing is stable-only for now** (user, 2026-10-10): property tests on arbitrary bytes; `cargo-fuzz` later.
 - **Not before E04b closes:** the content split and the writer's move into `h3-map` (BACKLOG R01). Until then adventure crates use only the core items of `h3-content`.
 - **Ownership:** the four crates, `src/adventure/` in `h3-sim` and `h3-cli` (their `Cargo.toml`, `lib.rs` and `h3-cli`'s `main.rs` are battle's: `cross-lane`), `crates/h3-cli/tests/adventure_replays.rs`, `fixtures/replays/adventure/`, `fixtures/maps/`, `benches/adventure/`, each pack's `adventure.toml`, `docs/formats/h3m.md`, `docs/rules/catalog/{adventure,game,town}.toml`. `h3-heroes` moves to this lane when hero progression starts (increment 3).
@@ -35,6 +35,10 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Recent sessions
 
+### 2026-10-12 — T10c checkpoint and T11a + T11b: the objects survey, the ADR amendment drafts
+
+The user merged #110 and took T11a with T11b (docs only, one checkpoint). Read: the per-class visit settings, every pickup drawn at setup, the Cartographer, observatories, keys, guards, gates, the treasury's add (A-5), the starting rows; a fresh agent confirmed it. VCMI agrees but on D-5; the wiki, read once the user approved it, agrees throughout. Drafts: kinds with visit properties as data, gains and offers by outcome, a decision queue. Detail: `E08-log.md`.
+
 ### 2026-10-12 — T10a/T10b checkpoint and T10c: batch 1 scored, increment 1 closed, increment 2 refined
 
 The user merged #107 and pushed batch 1's results; took all of T10c (docs only, `cross-lane` for two rows of `docs/experiments/README.md`). Scored: everything as the code reading (ADV-Q4: 2000 points, the points left; D-2: 9 and 14; ADV-Q6: Crag Hack 13, Torosar without Ballista); Q4c was missing from a stale map (trap above; the user's statement stands in). Refined increment 2 with the user (ADV-Q9): scope as proposed, the Cartographer first, the treasury in `h3-game`, the spec stamp with batch 2. Detail: `E08-log.md`.
@@ -42,7 +46,3 @@ The user merged #107 and pushed batch 1's results; took all of T10c (docs only, 
 ### 2026-10-12 — T9b checkpoint and T10a + T10b: the movement experiments, the exit criteria
 
 The user merged T9b (#103, #104) and took T10 in three parts (ADV-Q8): T10a + T10b now, the spec shape by extending `h3-experiment` (`cross-lane`), the batch ADV-Q4, ADV-Q6 and D-2. Corrected and told: D-2 needs a road, so the writer lays roads. Built: the shape, batches 1a and 1b (checked through the engine, reviewed by a second agent: Q4c added), the audit (conservation added to the play property). Detail: `E08-log.md`.
-
-### 2026-10-11 — T8b2b/T9a checkpoint and T9b1 + T9b2: replays, benchmarks
-
-The user merged #97, #98 and took T9b in two tasks with one checkpoint, the CLI's wiring in `h3-cli` as `cross-lane`, all three benchmarks gated, and, after the pros and cons, replays of game commands rather than env actions. Built: the replay model and file, `h3 adventure run/verify/bench`, three golden replays, the XL map, three baselines; the perf inbox decided from the numbers. Detail: `E08-log.md`.

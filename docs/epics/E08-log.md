@@ -858,3 +858,49 @@ player (default, the survey may overrule). Not taken: a smaller increment withou
 objects, the week pulled forward, E09 first. Tasks T11a–T16 in the queue; the first round T11a
 with T11b. Inbox sorted: D-3 into T16, the stream watch into T13, the partly seen object into
 T11b/T12.
+
+### Checkpoint after T10c and T11a + T11b: the objects survey, the ADR amendment drafts (2026-10-12, `adventure/e08-t11`)
+
+The user merged T10c (#110) and took T11a with T11b in one round (one docs-only pull request,
+one checkpoint), over T11a alone or T11a in halves.
+
+**T11a — survey** `docs/rules/surveys/E08-objects.md`, from a code reading of the human player's
+path and VCMI 1.7.5; the wiki's fetches first waited for the user's approval and timed out, then
+the user approved them and the wiki was read the same day: it agrees with the reading wherever it
+speaks (pile amounts, campfires, the Cartographer by terrain, the radius 20, keys, guards for
+everyone, gates, the starting rows) and is silent on visit modes and random resources.
+Findings:
+- **Visit modes are per class in the original** (0x41B500's settings: "cannot be entered" and
+  "visitable from above" lists): piles, random resources, campfires and border guards are
+  visited from the neighbouring tile at the step's price (0x480240), the others entered; the
+  gate is entered by key holders only. Objects not visitable from above (tents, Cartographers,
+  observatories) are neither entered from nor left toward the three tiles above. A visit ends
+  the move; only gates (and garrisons) let a key holder's move pass. VCMI agrees on all.
+- **All random contents are drawn at setup** (0x4C9DD0 random resources, then 0x4C0CC0 amounts
+  and campfires): no visit of increment 2 draws (decision 17's stream watch not needed yet).
+- **D-5**: a random pile's amount, the reading and the wiki 5–10 (wood, ore, gold × 100) and 3–6
+  (rare) against VCMI's 6–10 and 3–5; a batch-2 experiment optional.
+- Campfires (4–6 of one of six resources plus 100 × that gold), random resources (seven equal
+  chances), the Cartographer (once per player and kind, 1 000 gold checked before a yes/no,
+  reveal by terrain mask on both levels: the land one reveals underground dirt and lava too),
+  the observatories (radius 20 around the visited tile), keys, guards (removed for everyone
+  after a key holder's yes) and gates: the reading and VCMI agree.
+- **The treasury**: i32 per resource, a gain wraps and a negative result becomes 0, no cap:
+  candidate **A-5** (state-corrupting, unreachable now; suggested always fixed).
+- **Starting resources**: the human and computer rows by the game's difficulty (0x678170,
+  0x6781FC), identical to VCMI's `difficulty.json`; decision 16 stands.
+- **A second pending decision**: the border guard's yes/no (D-7); guarded piles need battles (D-6).
+- A census of the 164 shipped maps (counts per class, 39 guarded bodies, 185 fixed amounts).
+- A fresh agent re-read the deciding code without the survey and confirmed it (one caveat on
+  flying and boats, inc. 3, added).
+- 24 address-map entries (and `new_game_heroes` extended) and four record layouts (game, player record, map item, object
+  settings); `check-exe-map` clean.
+
+**T11b — ADR amendment drafts** in `docs/lanes/adventure/adr-drafts/`: ADR-0016 (types and
+kinds from the ruleset part with the two visit properties, visits, contents resolved at the
+build, the occupancy layer, per-player object state, objects shown whole once a covered tile is
+explored) and ADR-0017 (the treasury in `GameState`, gains and costs by the context's outcome
+with the price checked by the game, the decision queue and `Answer`, the env's answer entries,
+the versions). Detail in `docs/epics/E08-design.md`.
+
+For the user (ADV-Q10): accept the drafts; D-5, D-6, D-7, A-5; the next round.
