@@ -149,7 +149,8 @@ scheduled task restarts the runner as a safety net; it resumes from `QUEUE.md` a
 `in progress (<branch>, <UTC time>)`, commits and pushes that on the lane branch; a runner that
 finds such a mark younger than three hours stops (the previous runner may still be alive), an
 older one resumes from that branch. Less context per task: `verify --summary`, the per-lane
-reading lists, the full verify left to CI.
+reading lists, the full verify left to CI (while CI cannot run, the runner runs it before the pull
+request: `05-testing.md`, "CI").
 
 **Local loop and gates.** `cargo xtask verify --scope <lane>` lints, tests and covers the lane's
 crates, runs the lane's own gates (golden replays when it owns `h3-cli` or replays of its own
@@ -170,7 +171,9 @@ touching another lane). A fresh reviewer agent checks each milestone before the 
 GitHub (`ChristopherRotter/homm3`) holds the durable copy, and **pull requests are how work
 reaches `master`** (Q3, Q49): no bundles or file copies between machines. A lane branch per task
 or increment (`<lane>/<task>`, "Lanes"), pushed after every commit (`AGENTS.md`, "Interruptions
-and resuming") and merged at its checkpoint once CI is green. **A pull request is opened only when
+and resuming") and merged at its checkpoint once CI is green, or, while CI cannot run (minutes or
+billing), once the full local verify is green and recorded in the pull request (`05-testing.md`,
+"CI"; CI never blocks work). **A pull request is opened only when
 its branch is ready for merging** (the task or increment done, the scoped verify without a failing
 step, the lane docs updated; user, 2026-10-08): pushing a branch runs no CI, while every push to an
 open pull request does, and Actions minutes are scarce (`05-testing.md`, "CI"). An open pull
@@ -236,7 +239,7 @@ Use `docs/adr/0000-template.md`. One decision per ADR. Statuses: Proposed, Accep
 
 ## Branching and commits
 
-Trunk-based: short-lived branches, small commits, `master` always green. Since 2026-10-06 the repo is on GitHub (`ChristopherRotter/homm3`); changes reach `master` through pull requests, and CI (`.github/workflows/ci.yml`, `05-testing.md`, "CI") must be green on them; a pull request is opened only when its branch is ready for merging ("Branches, pull requests and syncing"). Branch names carry the lane (`battle/e04b-t5c`, `shared/<topic>`; "Lanes"). The PR body follows `docs/pull_request_template.md`. Conventional-style prefixes are welcome (`feat(battle): …`, `fix(game): …`, `docs: …`). Attribution trailers follow the session's configured instructions.
+Trunk-based: short-lived branches, small commits, `master` always green. Since 2026-10-06 the repo is on GitHub (`ChristopherRotter/homm3`); changes reach `master` through pull requests, and CI (`.github/workflows/ci.yml`, `05-testing.md`, "CI") must be green on them (while CI cannot run, the full local verify stands in); a pull request is opened only when its branch is ready for merging ("Branches, pull requests and syncing"). Branch names carry the lane (`battle/e04b-t5c`, `shared/<topic>`; "Lanes"). The PR body follows `docs/pull_request_template.md`. Conventional-style prefixes are welcome (`feat(battle): …`, `fix(game): …`, `docs: …`). Attribution trailers follow the session's configured instructions.
 
 ## Definition of Done
 
