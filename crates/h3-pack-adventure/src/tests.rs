@@ -296,8 +296,8 @@ fn the_base_pack_holds_the_starting_resources() {
 fn the_synthetic_packs_compile() {
     let (_, part) = compile(
         &[
-            (h3_pack::SYNTHETIC_EXT_PACK, SYNTHETIC_EXT_ADVENTURE),
-            (h3_pack::SYNTHETIC_PACK, SYNTHETIC_ADVENTURE),
+            (h3_pack::SYNTHETIC_EXT_CORE, SYNTHETIC_EXT_ADVENTURE),
+            (h3_pack::SYNTHETIC_CORE, SYNTHETIC_ADVENTURE),
         ],
         "synthetic:faithful",
     )
@@ -661,11 +661,11 @@ fn compile_reports_each_stage() {
         Err(AdventurePackError::Core(PackError::Compile(_)))
     ));
     assert!(matches!(
-        compile(&[(h3_pack::BASE_PACK, "[unknown]")], PROFILE),
+        compile(&[(h3_pack::BASE_CORE, "[unknown]")], PROFILE),
         Err(AdventurePackError::Syntax(_))
     ));
     assert_eq!(
-        compile(&[(h3_pack::BASE_PACK, "")], PROFILE).unwrap_err(),
+        compile(&[(h3_pack::BASE_CORE, "")], PROFILE).unwrap_err(),
         AdventurePackError::Compile(AdventureCompileError::MissingTerrain("base:dirt".into()))
     );
 }

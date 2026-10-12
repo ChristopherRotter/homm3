@@ -18,7 +18,7 @@ serde = { version = "1", default-features = false, features = ["derive", "alloc"
 serde_json = { version = "1", default-features = false, features = ["alloc"] }
 
 [dev-dependencies]
-h3-pack.workspace = true
+h3-pack-battle.workspace = true
 proptest.workspace = true
 h3-sim.workspace = true
 # Provisional (E16 M1 review): the wire types round-trip in a format that is not self-describing.

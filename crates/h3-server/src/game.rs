@@ -283,7 +283,7 @@ impl Offer {
             ))
         };
         let text = fs::read_to_string(&config.scenario).map_err(|e| at(&e))?;
-        let def = h3_pack::parse_scenario(&text).map_err(|e| at(&e))?;
+        let def = h3_pack_battle::parse_scenario(&text).map_err(|e| at(&e))?;
         let profile = config.profile.as_deref().unwrap_or(&def.profile);
         let ruleset = h3_cli::load_ruleset(packs, &def.packs, profile).map_err(|e| at(&e))?;
         let setup = def.resolve(&ruleset).map_err(|e| at(&e))?;
@@ -1268,7 +1268,7 @@ mod tests {
         frames: usize,
         limit: impl Fn(&[Outbound]) -> usize,
     ) {
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_DUEL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_DUEL).unwrap();
         let players = ["a", "b"].map(|t| SeatKind::Player {
             token: String::from(t),
         });

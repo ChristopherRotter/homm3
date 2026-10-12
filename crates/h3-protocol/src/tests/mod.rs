@@ -16,7 +16,7 @@ use h3_content_battle::BattleRuleset;
 
 /// The synthetic `full` scenario: seven stacks a side, both led by casting heroes.
 fn full() -> (BattleRuleset, BattleSetup) {
-    h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap()
+    h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap()
 }
 
 /// A battle of the `full` scenario.

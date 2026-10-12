@@ -11,8 +11,12 @@ use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 use h3_heroes::{HeroDetails, derive_battle_hero};
 
 fn sod(profile: &str) -> BattleRuleset {
-    h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+    h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         profile,
     )
     .unwrap()

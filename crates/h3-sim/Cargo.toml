@@ -17,7 +17,7 @@ h3-adventure.workspace = true
 h3-game.workspace = true
 
 [dev-dependencies]
-h3-pack.workspace = true
+h3-pack-battle.workspace = true
 h3-map.workspace = true
 h3-pack-adventure.workspace = true
 proptest.workspace = true

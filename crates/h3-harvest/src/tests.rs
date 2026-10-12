@@ -535,8 +535,30 @@ fn gap() -> GapFill {
     GapFill::parse(GAP).unwrap()
 }
 
-fn pack<'a>(h: &'a Harvest, id: &str) -> &'a str {
-    &h.packs.iter().find(|(p, _)| *p == id).unwrap().1
+/// A harvested pack's two files (pack format v35).
+#[derive(Clone, Copy)]
+struct Files<'a> {
+    core: &'a str,
+    battle: &'a str,
+}
+
+impl Files<'_> {
+    fn contains(&self, text: &str) -> bool {
+        self.core.contains(text) || self.battle.contains(text)
+    }
+}
+
+fn pack<'a>(h: &'a Harvest, id: &str) -> Files<'a> {
+    let (core, battle) = &h.packs.iter().find(|(p, _)| *p == id).unwrap().1;
+    Files { core, battle }
+}
+
+fn compile(
+    packs: &[Files<'_>],
+    profile: &str,
+) -> Result<h3_content_battle::BattleRuleset, h3_pack_battle::BattlePackError> {
+    let texts: Vec<(&str, &str)> = packs.iter().map(|f| (f.core, f.battle)).collect();
+    h3_pack_battle::compile(&texts, profile)
 }
 
 #[test]
@@ -544,7 +566,7 @@ fn harvests_three_packs_that_compile_and_are_deterministic() {
     let h = harvest(&inputs(), &gap()).unwrap();
     assert_eq!(h, harvest(&inputs(), &gap()).unwrap());
     let (base, ab, sod) = (pack(&h, "base"), pack(&h, "ab"), pack(&h, "sod"));
-    let r = h3_pack::compile(&[base, ab, sod], "base:faithful").unwrap();
+    let r = compile(&[base, ab, sod], "base:faithful").unwrap();
     // 150 ids minus one unused slot and one siege machine; the listed war machine is harvested.
     assert_eq!(r.creature_count(), 148);
     let machine = r.creature_by_key("base:unit_148").unwrap();
@@ -573,7 +595,7 @@ fn harvests_three_packs_that_compile_and_are_deterministic() {
     assert!(r.creature_by_key("base:unit_3").is_none());
 
     // RoE creature of an AB faction: neutral in base, moved by ab.
-    let roe_only = h3_pack::compile(&[base], "base:faithful").unwrap();
+    let roe_only = compile(&[base], "base:faithful").unwrap();
     let u23 = roe_only.creature_by_key("base:unit_23").unwrap();
     let info = roe_only.creature_info(u23).unwrap();
     assert_eq!((info.faction, info.level), (None, 4));
@@ -793,7 +815,7 @@ fn inconsistencies_are_errors() {
 fn harvests_hero_content() {
     let h = harvest(&inputs(), &gap()).unwrap();
     let (base, ab, sod) = (pack(&h, "base"), pack(&h, "ab"), pack(&h, "sod"));
-    let r = h3_pack::compile(&[base, ab, sod], "base:faithful").unwrap();
+    let r = compile(&[base, ab, sod], "base:faithful").unwrap();
     assert_eq!(r.skills().len(), 28);
     assert_eq!(r.spell_schools().len(), 4);
     assert_eq!(r.spells().len(), 3);
@@ -821,7 +843,7 @@ fn harvests_hero_content() {
         "polarity = \"positive\"\nrequires = [\"undead\", \"alive\"]\neffects = [{ kind = \"damage\" }]\n\
          specialist = { amount = 2, kind = \"fixed\" }"
     ));
-    let look = base.split("id = \"look\"").nth(1).unwrap();
+    let look = base.battle.split("id = \"look\"").nth(1).unwrap();
     assert!(!look.split("[[").next().unwrap().contains("effects"));
     let zap = r.spell(r.spell_by_key("base:zap").unwrap()).unwrap();
     assert_eq!(zap.magic.effects, [h3_content_battle::SpellEffect::Damage]);
@@ -1132,7 +1154,7 @@ fn hero_content_errors() {
 fn harvests_artifacts() {
     let h = harvest(&inputs(), &gap()).unwrap();
     let (base, ab, sod) = (pack(&h, "base"), pack(&h, "ab"), pack(&h, "sod"));
-    let r = h3_pack::compile(&[base, ab, sod], "base:faithful").unwrap();
+    let r = compile(&[base, ab, sod], "base:faithful").unwrap();
     assert_eq!(r.artifact_slots().len(), 5);
     let misc = r.artifact_slot_by_key("base:misc").unwrap();
     assert_eq!(r.artifact_slot(misc).unwrap().count, 3);
@@ -1415,8 +1437,8 @@ fn harvests_data_quirk_fixes() {
     let texts = [pack(&h, "base"), pack(&h, "ab"), pack(&h, "sod")];
     assert!(texts[1].contains("fixes = \"quirk.content.elemental_levels\""));
     assert!(texts[0].contains("[[hero_override]]\ntarget = \"base:hero_1\""));
-    let faithful = h3_pack::compile(&texts, "base:faithful").unwrap();
-    let fixed = h3_pack::compile(&texts, "base:strict-fixed").unwrap();
+    let faithful = compile(&texts, "base:faithful").unwrap();
+    let fixed = compile(&texts, "base:strict-fixed").unwrap();
     let level = |r: &h3_content::Ruleset, k: &str| {
         r.creature_info(r.creature_by_key(k).unwrap())
             .unwrap()

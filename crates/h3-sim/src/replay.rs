@@ -264,7 +264,7 @@ mod tests {
     use super::*;
 
     fn recorded() -> (BattleRuleset, Replay) {
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_SKIRMISH).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_SKIRMISH).unwrap();
         let replay = Replay::record_random(&r, setup, 11, 12, 400, 25).unwrap();
         (r, replay)
     }
@@ -338,7 +338,9 @@ mod tests {
     #[test]
     fn headers_must_match() {
         let (r, replay) = recorded();
-        let other = h3_pack::compile(&[h3_pack::SYNTHETIC_PACK], "synthetic:strict-fixed").unwrap();
+        let other =
+            h3_pack_battle::compile(&[h3_pack_battle::SYNTHETIC_PACK], "synthetic:strict-fixed")
+                .unwrap();
         assert_eq!(
             replay.verify(&other),
             Err(ReplayError::Incompatible("profile"))

@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn random_rollouts_are_reproducible() {
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_SKIRMISH).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_SKIRMISH).unwrap();
         let (r, setup) = (Arc::new(r), Arc::new(setup));
         let mut a = BattleEnv::new(r.clone(), setup.clone(), 1, 0).unwrap();
         let mut b = BattleEnv::new(r.clone(), setup.clone(), 1, 0).unwrap();
@@ -155,7 +155,7 @@ mod tests {
     fn the_random_agent_fights_battles_out() {
         // Both heroes of the full scenario may retreat and surrender on every turn (BAT-FLE-001,
         // BAT-FLE-002); the agent never does.
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
         let (r, setup) = (Arc::new(r), Arc::new(setup));
         for seed in 1..4 {
             let mut env = BattleEnv::new(r.clone(), setup.clone(), seed, 0).unwrap();
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn step_command_handles_unencodable_commands() {
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_DUEL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_DUEL).unwrap();
         let mut env = BattleEnv::new(Arc::new(r), Arc::new(setup), 1, 0).unwrap();
         let side = env.to_move().unwrap();
         let bogus = Command::Attack {

@@ -638,8 +638,9 @@ paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
             c.owner("experiments/specs/E08-batch-1.toml"),
             Owner::Lane("adventure".to_owned())
         );
+        assert_eq!(c.owner("crates/h3-pack/src/lib.rs"), Owner::Shared);
         assert_eq!(
-            c.owner("crates/h3-pack/src/lib.rs"),
+            c.owner("crates/h3-pack-battle/src/lib.rs"),
             Owner::Lane("battle".to_owned())
         );
         assert_eq!(
@@ -662,7 +663,7 @@ paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
         for path in [
             "crates/h3-sim/src/env.rs",
             "fixtures/replays/duel-s1.toml",
-            "packs/sod/pack.toml",
+            "packs/sod/battle.toml",
             "docs/formats/installation.md",
         ] {
             assert_eq!(c.owner(path), battle, "{path}");

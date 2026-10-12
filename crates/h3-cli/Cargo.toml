@@ -21,7 +21,7 @@ h3-content.workspace = true
 h3-content-battle.workspace = true
 h3-contracts.workspace = true
 h3-battle.workspace = true
-h3-pack.workspace = true
+h3-pack-battle.workspace = true
 h3-sim.workspace = true
 # The adventure commands (adventure-owned src/adventure/, E08 T9b).
 h3-adventure.workspace = true

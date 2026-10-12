@@ -16,8 +16,12 @@ use h3_contracts::{Army, ArmyStack, BattleEffect, BattleHero, BattleSetup, Battl
 use h3_heroes::{HeroDetails, derive_battle_hero};
 
 fn sod() -> BattleRuleset {
-    h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+    h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         "base:faithful",
     )
     .unwrap()
@@ -141,8 +145,12 @@ fn a_faerie_dragons_spell_is_never_sent_away_by_the_other_dragons_mirror() {
     // profile as without quirks. The engine sent one such spell in five to a stack of the
     // caster's side, untested in `faithful` (the retired flag of BAT-QUIRK-9).
     for profile in ["base:faithful", "base:strict-fixed"] {
-        let r = h3_pack::compile(
-            &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+        let r = h3_pack_battle::compile(
+            &[
+                h3_pack_battle::SOD_PACK,
+                h3_pack_battle::AB_PACK,
+                h3_pack_battle::BASE_PACK,
+            ],
             profile,
         )
         .unwrap();

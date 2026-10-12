@@ -1,6 +1,6 @@
 [package]
 name = "h3-pack"
-description = "Adapter: parses and validates human-editable content packs and scenarios (TOML) into content definitions."
+description = "Adapter: parses and validates the core part of human-editable content packs (core.toml) into content definitions."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,14 +10,8 @@ publish.workspace = true
 [dependencies]
 h3-kernel.workspace = true
 h3-content.workspace = true
-h3-content-battle.workspace = true
-h3-contracts.workspace = true
 serde.workspace = true
 toml.workspace = true
-
-[dev-dependencies]
-h3-heroes.workspace = true
-h3-battle.workspace = true
 
 [lints]
 workspace = true

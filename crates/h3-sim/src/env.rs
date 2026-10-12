@@ -298,14 +298,14 @@ mod tests {
     use crate::action::{ACTION_COUNT, SPELL_COUNT, TARGET_COUNT};
 
     fn make(max_steps: u32) -> BattleEnv {
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_DUEL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_DUEL).unwrap();
         BattleEnv::new(Arc::new(r), Arc::new(setup), 3, max_steps).unwrap()
     }
 
     #[test]
     fn random_obstacles_are_drawn_for_each_episode_from_its_seed() {
         // The duel scenario has a terrain and `random_obstacles` (BAT-GEO-004).
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_DUEL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_DUEL).unwrap();
         let terrain = setup.terrain.unwrap();
         let (r, setup) = (Arc::new(r), Arc::new(setup));
         let expected = |seed| {
@@ -382,7 +382,7 @@ mod tests {
     #[test]
     fn a_step_out_of_turn_is_refused_whatever_the_action() {
         use crate::action::{CREATURE_CAST, END_TACTICS};
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
         let mut env = BattleEnv::new(Arc::new(r), Arc::new(setup), 3, 0).unwrap();
         // Everybody defends until a random caster (the Drakes) awaits its side's command.
         let controller = loop {

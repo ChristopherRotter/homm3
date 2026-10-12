@@ -32,7 +32,7 @@
 //! anchor = 40                     #   a removable obstacle's anchor hex (omitted when none)
 //!
 //! [setup.attacker_hero]           # the battle hero per side (format 3; omitted when none):
-//! hero_type = "base:orrin"        #   the fields of `h3_pack::HeroEntry`
+//! hero_type = "base:orrin"        #   the fields of `h3_pack_battle::HeroEntry`
 //! attack = 2
 //! defense = 2
 //! power = 1
@@ -44,14 +44,14 @@
 //! surrender_discount_bp = 4000    # surrender discount (format 10; omitted when 0)
 //!
 //! [setup.attacker_hero.ballista]  # the side commands its Ballista (format 6; omitted when not):
-//! shots = 1                       #   `h3_pack::BallistaEntry`
+//! shots = 1                       #   `h3_pack_battle::BallistaEntry`
 //! double_damage_chance_bp = 5000
 //!
 //! [setup.attacker_hero.tent]      # the side commands its First Aid Tent (format 7; omitted
-//! heal_bonus_bp = 10000           #   when not): `h3_pack::TentEntry`
+//! heal_bonus_bp = 10000           #   when not): `h3_pack_battle::TentEntry`
 //!
 //! [[setup.attacker_hero.effects]] # its battle effects (format 4; omitted when none):
-//! kind = "morale"                 #   `h3_pack::EffectEntry` (`no_retreat` format 9,
+//! kind = "morale"                 #   `h3_pack_battle::EffectEntry` (`no_retreat` format 9,
 //! amount = 1                      #   `stack_stat` format 11, `regeneration`,
 //!                                 #   `no_range_penalty`, `shoot_when_adjacent` format 12,
 //!                                 #   `alignment_group` format 13)
@@ -80,7 +80,7 @@ use h3_content::{CreatureTypeId, SpellId};
 use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
-use h3_pack::{HeroEntry, ObstacleEntry, PackError, ScenarioDef};
+use h3_pack_battle::{BattlePackError, HeroEntry, ObstacleEntry, ScenarioDef};
 use h3_sim::{Replay, ReplayError, ReplayHeader};
 use serde::{Deserialize, Serialize};
 
@@ -92,7 +92,7 @@ pub enum CliError {
     /// File system error.
     Io(PathBuf, std::io::Error),
     /// Pack or scenario error.
-    Pack(PathBuf, PackError),
+    Pack(PathBuf, BattlePackError),
     /// The replay file is malformed.
     Format(String),
     /// The replay does not verify.
@@ -119,8 +119,9 @@ fn read(path: &Path) -> Result<String, CliError> {
     std::fs::read_to_string(path).map_err(|e| CliError::Io(path.to_path_buf(), e))
 }
 
-/// Loads `<packs_dir>/<id>/pack.toml` for each id and compiles them with `profile`. Ids come
-/// from scenario and replay files, so they must be valid pack ids (no paths).
+/// Loads `<packs_dir>/<id>/core.toml` and, where it exists, `<id>/battle.toml` for each id and
+/// compiles them with `profile`. Ids come from scenario and replay files, so they must be valid
+/// pack ids (no paths).
 pub fn load_ruleset(
     packs_dir: &Path,
     ids: &[String],
@@ -130,11 +131,20 @@ pub fn load_ruleset(
     for id in ids {
         h3_content::ContentKey::new(id, "pack")
             .map_err(|_| CliError::Format(format!("invalid pack id `{id}`")))?;
-        let path = packs_dir.join(id).join("pack.toml");
-        texts.push(read(&path)?);
+        let dir = packs_dir.join(id);
+        let battle = dir.join("battle.toml");
+        let battle = if battle.is_file() {
+            read(&battle)?
+        } else {
+            String::new()
+        };
+        texts.push((read(&dir.join("core.toml"))?, battle));
     }
-    let refs: Vec<&str> = texts.iter().map(String::as_str).collect();
-    h3_pack::compile(&refs, profile).map_err(|e| CliError::Pack(packs_dir.to_path_buf(), e))
+    let refs: Vec<(&str, &str)> = texts
+        .iter()
+        .map(|(c, b)| (c.as_str(), b.as_str()))
+        .collect();
+    h3_pack_battle::compile(&refs, profile).map_err(|e| CliError::Pack(packs_dir.to_path_buf(), e))
 }
 
 /// Loads a scenario file, its packs and its setup. A scenario with `random_obstacles` gets
@@ -144,8 +154,8 @@ pub fn load_scenario(
     packs_dir: &Path,
     seed: u64,
 ) -> Result<(ScenarioDef, BattleRuleset, BattleSetup), CliError> {
-    let def =
-        h3_pack::parse_scenario(&read(path)?).map_err(|e| CliError::Pack(path.to_path_buf(), e))?;
+    let def = h3_pack_battle::parse_scenario(&read(path)?)
+        .map_err(|e| CliError::Pack(path.to_path_buf(), e))?;
     let ruleset = load_ruleset(packs_dir, &def.packs, &def.profile)?;
     let mut setup = def
         .resolve(&ruleset)
@@ -456,7 +466,7 @@ pub fn replay_to_toml(
                 .map(|t| t.key.as_str().to_owned()),
             attacker_war_machines: keys(&replay.setup.war_machines[0]),
             defender_war_machines: keys(&replay.setup.war_machines[1]),
-            tight_formation: h3_pack::tight_sides(replay.setup.formations),
+            tight_formation: h3_pack_battle::tight_sides(replay.setup.formations),
             attacker_funds: replay.setup.funds[0],
             defender_funds: replay.setup.funds[1],
             attacker_hero: hero(&replay.setup.heroes[0])?,
@@ -593,7 +603,7 @@ impl ReplayDoc {
                     machines(&f.setup.attacker_war_machines)?,
                     machines(&f.setup.defender_war_machines)?,
                 ],
-                formations: h3_pack::formations(&f.setup.tight_formation)
+                formations: h3_pack_battle::formations(&f.setup.tight_formation)
                     .map_err(|e| CliError::Format(e.to_string()))?,
                 funds: [f.setup.attacker_funds, f.setup.defender_funds],
             },
@@ -847,7 +857,7 @@ mod tests {
         }
         let missing =
             load_ruleset(Path::new("/nonexistent"), &["x".to_owned()], "x:y").unwrap_err();
-        assert!(missing.to_string().contains("pack.toml"));
+        assert!(missing.to_string().contains("core.toml"));
         for id in ["../synthetic", "/etc", "a/b"] {
             let err = load_ruleset(Path::new("packs"), &[id.to_owned()], "x:y").unwrap_err();
             assert_eq!(

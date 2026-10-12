@@ -468,7 +468,7 @@ mod tests {
     use h3_battle::NoopSink;
 
     fn env() -> (BattleRuleset, BattleState) {
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_SKIRMISH).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_SKIRMISH).unwrap();
         let s = BattleState::new(&r, &setup, 1).unwrap();
         (r, s)
     }
@@ -492,7 +492,7 @@ mod tests {
     /// The full scenario played until the attacker's hero may cast (Brea, whose book has the
     /// most spells, Blink's teleport among them).
     fn until_a_cast() -> (BattleRuleset, BattleState, BattleSide) {
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
         let mut s = BattleState::new(&r, &setup, 3).unwrap();
         let mut legal = LegalCommands::new();
         for _ in 0..200 {
@@ -727,7 +727,7 @@ mod tests {
     #[test]
     fn shots_round_trip_including_tail_aims() {
         use h3_contracts::{Army, ArmyStack, BattleSetup};
-        let r = h3_pack::compile(&[h3_pack::BASE_PACK], "base:faithful").unwrap();
+        let r = h3_pack_battle::compile(&[h3_pack_battle::BASE_PACK], "base:faithful").unwrap();
         let stack = |key: &str, count| Army {
             stacks: vec![ArmyStack {
                 slot: 0,
@@ -905,14 +905,15 @@ mod tests {
     #[test]
     fn a_draw_at_the_cast_names_no_spell() {
         // The skirmish's Wisps as helpful casters (BAT-MAG-050): their spell head allows only 0.
-        let pack = h3_pack::SYNTHETIC_PACK.replace(
+        let battle = h3_pack_battle::SYNTHETIC_BATTLE.replace(
             "{ kind = \"spell_caster\", spell = \"hasten\", mastery = 2, power = 6 },",
             "{ kind = \"helpful_spell_caster\", mastery = 2, power = 6 }, \
              { kind = \"drawn_spell\", spell = \"hasten\", weight = 1 },",
         );
-        assert_ne!(pack, h3_pack::SYNTHETIC_PACK);
-        let scenario = h3_pack::parse_scenario(h3_pack::SYNTHETIC_SKIRMISH).unwrap();
-        let r = h3_pack::compile(&[&pack], &scenario.profile).unwrap();
+        assert_ne!(battle, h3_pack_battle::SYNTHETIC_BATTLE);
+        let scenario = h3_pack_battle::parse_scenario(h3_pack_battle::SYNTHETIC_SKIRMISH).unwrap();
+        let pack = (h3_pack_battle::SYNTHETIC_PACK.0, battle.as_str());
+        let r = h3_pack_battle::compile(&[pack], &scenario.profile).unwrap();
         let mut s = BattleState::new(&r, &scenario.resolve(&r).unwrap(), 1).unwrap();
         let mut legal = LegalCommands::new();
         let side = loop {
@@ -951,7 +952,7 @@ mod tests {
     #[test]
     fn heals_of_the_commanded_tent_round_trip() {
         // The full scenario's attacker commands its tent (BAT-WAR-007): play until it may heal.
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
         let mut s = BattleState::new(&r, &setup, 3).unwrap();
         let mut legal = LegalCommands::new();
         let mut mask = [false; ACTION_COUNT];
@@ -999,7 +1000,7 @@ mod tests {
     #[test]
     fn tactics_commands_round_trip() {
         // The full scenario's attacker has Advanced Tactics, the defender none (BAT-TAC-001).
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
         let s = BattleState::new(&r, &setup, 3).unwrap();
         assert!(s.tactics().is_some());
         let mut legal = LegalCommands::new();

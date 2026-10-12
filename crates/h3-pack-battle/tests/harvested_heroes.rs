@@ -100,8 +100,12 @@ fn army(rng: &mut Rng, pool: &[CreatureTypeId]) -> Army {
 // covers: HER-BAT-001, BAT-HER-001
 #[test]
 fn random_legal_sod_heroes_derive_and_play() {
-    let sod = h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+    let sod = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         "base:faithful",
     )
     .unwrap();
@@ -192,8 +196,12 @@ fn casting_details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
 /// castable (it was, without a target).
 #[test]
 fn remove_obstacle_keeps_a_target_while_it_is_castable() {
-    let r = h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+    let r = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         "base:faithful",
     )
     .unwrap();
@@ -271,8 +279,12 @@ fn remove_obstacle_keeps_a_target_while_it_is_castable() {
 fn random_legal_sod_heroes_cast_and_play() {
     let mut casts = (0, 0);
     for profile in ["base:faithful", "base:strict-fixed"] {
-        let sod = h3_pack::compile(
-            &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+        let sod = h3_pack_battle::compile(
+            &[
+                h3_pack_battle::SOD_PACK,
+                h3_pack_battle::AB_PACK,
+                h3_pack_battle::BASE_PACK,
+            ],
             profile,
         )
         .unwrap();
@@ -409,8 +421,12 @@ fn wearing(sod: &BattleRuleset, worn: &[ArtifactInstance], skills: &[(&str, u8)]
 // covers: HER-SPL-002, HER-SPL-003, HER-ART-003
 #[test]
 fn the_harvested_artifacts_give_the_originals_spells() {
-    let sod = h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+    let sod = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         "base:faithful",
     )
     .unwrap();

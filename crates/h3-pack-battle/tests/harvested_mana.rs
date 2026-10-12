@@ -56,8 +56,12 @@ fn cast_then_defend(s: &mut BattleState, r: &BattleRuleset, spell: SpellId, targ
 // covers: BAT-MAG-054, BAT-MAG-055
 #[test]
 fn batch_2a_r6_spell_costs_and_the_familiars_channel() {
-    let r = h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+    let r = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         "base:faithful",
     )
     .unwrap();
@@ -122,8 +126,12 @@ fn batch_2a_r6_spell_costs_and_the_familiars_channel() {
 /// dead (the Mages shot it in round 2 after the Ballista's turn: they wait here).
 #[test]
 fn batch_2a_r6_the_hero_casts_in_his_ballistas_turn() {
-    let r = h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+    let r = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         "base:faithful",
     )
     .unwrap();

@@ -15,6 +15,7 @@ members = [
     "crates/h3-map",
     "crates/h3-pack-adventure",
     "crates/h3-pack",
+    "crates/h3-pack-battle",
     "crates/h3-sim",
     "crates/h3-ffi",
     "crates/h3-cli",
@@ -37,6 +38,7 @@ default-members = [
     "crates/h3-map",
     "crates/h3-pack-adventure",
     "crates/h3-pack",
+    "crates/h3-pack-battle",
     "crates/h3-sim",
     "crates/h3-ffi",
     "crates/h3-cli",
@@ -63,6 +65,7 @@ h3-contracts = { path = "crates/h3-contracts" }
 h3-battle = { path = "crates/h3-battle" }
 h3-heroes = { path = "crates/h3-heroes" }
 h3-pack = { path = "crates/h3-pack" }
+h3-pack-battle = { path = "crates/h3-pack-battle" }
 h3-sim = { path = "crates/h3-sim" }
 h3-formats = { path = "crates/h3-formats" }
 h3-adventure = { path = "crates/h3-adventure" }

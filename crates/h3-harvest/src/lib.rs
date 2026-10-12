@@ -4,7 +4,8 @@
 //! Inputs, all read-only: `Heroes3.exe` (static creature table: town, level, flags) and the text
 //! tables in `Data/H3bitmap.lod` (SoD) and `Data/H3ab_bmp.lod` (AB-era), plus the committed
 //! gap-fill file with labelled sources for what the installation cannot tell
-//! (`data/gapfill.toml`). Output: the pack texts, deterministic byte for byte, and a report of
+//! (`data/gapfill.toml`). Output: the pack texts, each split into `core.toml` and `battle.toml`
+//! ([`split`]), deterministic byte for byte, and a report of
 //! everything that was not harvested or looked suspicious. The harvester checks that the packs
 //! compile in every allowed expansion combination before returning them.
 //!
@@ -13,6 +14,7 @@
 pub mod artifacts;
 pub mod gapfill;
 pub mod heroes;
+pub mod split;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
@@ -24,6 +26,7 @@ use h3_formats::text::TextTable;
 
 use crate::gapfill::{AbilitySpec, GapFill, Since};
 use crate::heroes::{Context, CreatureRef};
+use crate::split::split;
 
 /// Number of creature ids in the executable's table and the creature text table.
 pub const CREATURE_COUNT: usize = 150;
@@ -311,8 +314,8 @@ pub fn key_of(name: &str) -> String {
 /// Result of a harvest.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Harvest {
-    /// `(pack id, pack.toml text)` for `base`, `ab`, `sod`.
-    pub packs: Vec<(&'static str, String)>,
+    /// `(pack id, (core.toml text, battle.toml text))` for `base`, `ab`, `sod`.
+    pub packs: Vec<(&'static str, (String, String))>,
     /// Notes: what was not harvested, cross-check mismatches, hints for E03.
     pub report: Vec<String>,
 }
@@ -999,16 +1002,21 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     sod.push_str(&hero_packs.sod);
     sod.push_str(&artifact_packs.sod);
 
+    // Each pack splits into its core and battle files (pack format v35, R01).
+    let (base, ab, sod) = (split(&base), split(&ab), split(&sod));
     // The output must compile in every allowed combination, and SoD without AB must be rejected.
     let profile = "base:faithful";
+    fn pair(p: &(String, String)) -> (&str, &str) {
+        (p.0.as_str(), p.1.as_str())
+    }
     for set in [&[&base][..], &[&base, &ab], &[&base, &ab, &sod]] {
-        let texts: Vec<&str> = set.iter().map(|s| s.as_str()).collect();
+        let texts: Vec<(&str, &str)> = set.iter().map(|p| pair(p)).collect();
         for p in [profile, "base:strict-fixed"] {
-            h3_pack::compile(&texts, p)
+            h3_pack_battle::compile(&texts, p)
                 .map_err(|e| format!("generated packs do not compile ({p}): {e}"))?;
         }
     }
-    if h3_pack::compile(&[&base, &sod], profile).is_ok() {
+    if h3_pack_battle::compile(&[pair(&base), pair(&sod)], profile).is_ok() {
         return Err("generated sod pack compiles without ab".into());
     }
     report.push("CRTRAITS ability-text column: flavor text, not harvested (Q13)".into());

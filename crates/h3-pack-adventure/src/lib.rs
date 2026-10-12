@@ -422,7 +422,7 @@ pub fn parse_adventure(
     })
 }
 
-/// Parses and compiles packs given as `(pack.toml, adventure.toml)` texts (`""` for a pack
+/// Parses and compiles packs given as `(core.toml, adventure.toml)` texts (`""` for a pack
 /// without an adventure file) with the profile `profile`: the core ruleset and its adventure part.
 pub fn compile(
     packs: &[(&str, &str)],
@@ -442,11 +442,11 @@ pub fn compile(
     Ok((core, part))
 }
 
-/// The three original packs, RoE to SoD, as `(pack.toml, adventure.toml)` texts.
+/// The three original packs, RoE to SoD, as `(core.toml, adventure.toml)` texts.
 pub const ORIGINAL_PACKS: [(&str, &str); 3] = [
-    (h3_pack::BASE_PACK, BASE_ADVENTURE),
-    (h3_pack::AB_PACK, AB_ADVENTURE),
-    (h3_pack::SOD_PACK, SOD_ADVENTURE),
+    (h3_pack::BASE_CORE, BASE_ADVENTURE),
+    (h3_pack::AB_CORE, AB_ADVENTURE),
+    (h3_pack::SOD_CORE, SOD_ADVENTURE),
 ];
 
 #[cfg(test)]

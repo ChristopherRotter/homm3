@@ -193,11 +193,21 @@ external = ["serde", "toml"]
 dev_deps = []
 dev_external = []
 
-# h3-content-battle: the battle half of each pack.toml, until the pack splits (R01).
+# packs/*/core.toml -> the core's definitions (R01 decision 6).
 [crate.h3-pack]
 layer = "adapter"
 logic = false
-deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts"]
+deps = ["h3-kernel", "h3-content"]
+external = ["serde", "toml"]
+dev_deps = []
+dev_external = []
+
+# packs/*/battle.toml and the battle scenarios -> the battle's definitions and setups (R01
+# decision 6).
+[crate.h3-pack-battle]
+layer = "adapter"
+logic = false
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-pack"]
 external = ["serde", "toml"]
 dev_deps = ["h3-heroes", "h3-battle"]  # hero details and their battle effects checked against the harvested packs
 dev_external = []
@@ -208,13 +218,13 @@ logic = false
 # h3-game and h3-adventure: AdventureEnv in the adventure-owned src/adventure/ (ADR-0017 point 8).
 deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-adventure", "h3-game"]
 external = []
-dev_deps = ["h3-pack", "h3-map", "h3-pack-adventure"]
+dev_deps = ["h3-pack-battle", "h3-map", "h3-pack-adventure"]
 dev_external = ["proptest", "criterion"]
 
 [crate.h3-ffi]
 layer = "adapter"
 logic = false
-deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle", "h3-pack", "h3-sim"]
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim"]
 external = []
 dev_deps = []
 dev_external = []
@@ -223,7 +233,7 @@ dev_external = []
 layer = "adapter"
 logic = false
 # The adventure crates: the adventure commands in the adventure-owned src/adventure/ (ADR-0017 point 8).
-deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack", "h3-sim", "h3-adventure", "h3-game", "h3-map", "h3-pack-adventure"]
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-adventure", "h3-game", "h3-map", "h3-pack-adventure"]
 external = ["serde", "toml"]
 dev_deps = []
 dev_external = []
@@ -236,7 +246,7 @@ layer = "adapter"
 logic = true
 deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle"]
 external = ["serde", "serde_json"]
-dev_deps = ["h3-pack", "h3-sim"]
+dev_deps = ["h3-pack-battle", "h3-sim"]
 dev_external = ["proptest", "postcard"]
 
 # The server binary (E16, ADR-0018): the I/O shell around h3-protocol. `h3-cli` for the pack,
@@ -245,7 +255,7 @@ dev_external = ["proptest", "postcard"]
 [crate.h3-server]
 layer = "adapter"
 logic = false
-deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack", "h3-sim", "h3-cli", "h3-protocol"]
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-cli", "h3-protocol"]
 external = ["serde", "serde_json", "toml", "tokio", "tokio-tungstenite", "futures-util", "getrandom", "ed25519-dalek", "argon2"]
 dev_deps = []
 dev_external = []
@@ -264,7 +274,7 @@ dev_external = ["proptest"]
 [crate.h3-harvest]
 layer = "tool"
 logic = false
-deps = ["h3-formats", "h3-pack"]
+deps = ["h3-formats", "h3-pack-battle"]
 external = ["serde", "toml"]
 dev_deps = ["h3-content", "h3-content-battle"]
 dev_external = []
