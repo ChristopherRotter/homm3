@@ -1303,7 +1303,7 @@ fn ability_syntax() {
             "flags = [\"alive\", \"war_machine\"]\n",
         )
         .replace("speed = 4\n", "speed = 0\n");
-    let r = compile(&[&text], "synthetic:faithful").unwrap();
+    let r = compile(&[text], "synthetic:faithful").unwrap();
     let spearman = r.creature_by_key("synthetic:spearman").unwrap();
     let wisp = r.creature_by_key("synthetic:wisp").unwrap();
     let list = r.abilities(spearman);
@@ -2073,7 +2073,7 @@ fn artifact_syntax() {
             1,
         );
     assert!(!given.contains(bell) && given.contains("granted_by_name_only"));
-    let g = compile(&[&given], "synthetic:faithful").unwrap();
+    let g = compile(&[given], "synthetic:faithful").unwrap();
     let spark = g.spell_by_key("synthetic:spark").unwrap();
     let storm = SchoolId::from_raw(0);
     assert!(g.spell(spark).unwrap().granted_by_name_only);
