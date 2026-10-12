@@ -561,7 +561,7 @@ fn gzip_headers_with_optional_fields_inflate() {
         );
     }
     assert_eq!(
-        gunzip(&h3_formats::h3m::gzip(&data), 1 << 20),
+        gunzip(&crate::writer::gzip(&data), 1 << 20),
         Ok(data.clone())
     );
 }
@@ -612,7 +612,7 @@ fn broken_gzip_is_rejected() {
 #[test]
 fn read_bounds_the_file_and_inflates_it() {
     let m = sample(Version::Sod);
-    let file = h3_formats::h3m::gzip(&encode(&m));
+    let file = crate::writer::gzip(&encode(&m));
     assert_eq!(read(&file, &limits()), Ok(m));
     let tight = Limits {
         max_file_bytes: file.len() - 1,
@@ -635,7 +635,7 @@ fn read_bounds_the_file_and_inflates_it() {
 
 #[test]
 fn maps_from_the_experiment_writer_read_back() {
-    use h3_formats::h3m as w;
+    use crate::writer as w;
     let hero = w::Hero {
         tile: (3, 4),
         owner: 0,
@@ -857,7 +857,7 @@ proptest! {
         noise in prop::collection::vec(any::<u8>(), 0..300),
         edit in (any::<prop::sample::Index>(), any::<u8>()),
     ) {
-        let mut file = h3_formats::h3m::gzip(&encode(&m));
+        let mut file = crate::writer::gzip(&encode(&m));
         prop_assert_eq!(read(&file, &limits()), Ok(m));
         let _ = read(&noise, &limits());
         let i = edit.0.index(file.len());

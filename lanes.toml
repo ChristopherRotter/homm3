@@ -53,6 +53,8 @@ paths = [
     "docs/08-work-process.md",
     "docs/BACKLOG.md",
     "docs/HANDOFF.md",
+    # Shared refactors' design notes (BACKLOG's R rows; R01 the content split).
+    "docs/epics/R0*",
     "docs/pull_request_template.md",
     "docs/adr/",
     "docs/rules/catalog/README.md",

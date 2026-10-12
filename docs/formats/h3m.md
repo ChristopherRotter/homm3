@@ -1,7 +1,7 @@
 # Map files (`.h3m`)
 
-Read by `h3-map` (E08 T3, adventure lane) and, for staged experiments, written by `h3_formats::h3m`
-(E04a T2, OPEN-QUESTIONS Q28; the writer moves into `h3-map` after E04b). Sources: the field order
+Read by `h3-map` (E08 T3, adventure lane) and, for staged experiments, written by `h3_map::writer`
+(E04a T2, OPEN-QUESTIONS Q28; in `h3-formats` until the content split, R01a). Sources: the field order
 and sizes of VCMI 1.7.5's map reader (`lib/mapping/MapFormatH3M.cpp`, `MapReaderH3M.cpp`,
 `MapFeaturesH3M.cpp`, `lib/mapObjects/ObjectTemplate.cpp`;
 https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/MapFormatH3M.cpp), checked against the maps
@@ -222,7 +222,7 @@ biography (bool + string); sex i8 (`-1` default); spells (bool + 9-byte mask); p
 counted over the game's 164 maps (E08 T10a): dirt 21–44, sand 0–23, grass, snow, swamp, rough,
 subterranean and lava 49–72, water 21–32, rock 0–7; in each range the first eight pictures are
 about ten times as common as the others. The other pictures are the edges between terrains. The
-experiment writer (`h3_formats::h3m`) gives every tile one of the first eight interior pictures of
+experiment writer (`h3_map::writer`) gives every tile one of the first eight interior pictures of
 its terrain, edges included, which the game draws as a hard edge.
 
 **Road pictures** of a straight east–west road (counted over the same maps, E08 T10a): 15 at

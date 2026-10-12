@@ -52,9 +52,9 @@ crates/
   h3-adventure/    adventure context: map, heroes on the map, movement, objects, fog of war; its ruleset part (E08, ADR-0015/0016)
   h3-town/ h3-magic/                                (later, split out when they earn it)
   h3-game/         application: the whole game's setup and state, players, turn groups, calendar, RNG streams, routing, projections (E08, ADR-0017)
-  h3-map/          .h3m reader and the import into setup types (adapter, E08); the writer moves here after E04b
+  h3-map/          .h3m reader and the import into setup types (adapter, E08); the experiment maps' writer (R01a)
   h3-pack-adventure/  packs/*/adventure.toml → the adventure's definitions (adapter, E08)
-  h3-formats/      readers for original files: LOD archives, TXT tables, exe static tables (adapter, E02); H3M writer for experiment maps (E04a T2; reader later)
+  h3-formats/      readers for original files: LOD archives, TXT tables, exe static tables (adapter, E02)
   h3-harvest/      one-off harvester: original files → committed TOML packs base/ab/sod (tool, E02, Q13)
   h3-experiment/   experiment compiler: spec → SoD .h3m + results template (tool, E04a T2, Q28)
   h3-sim/          RL environment API (batched, fork/clone, masks, observations)

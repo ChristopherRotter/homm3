@@ -4,7 +4,8 @@
 //! builds `h3_game::GameSetup`, drawing nothing; `h3-game` and the contexts then validate it as
 //! if commands had built it. Map files are untrusted input (`docs/06-security.md`): parse,
 //! import and validation are property-tested together on arbitrary bytes (`cargo-fuzz` later).
-//! Format notes: `docs/formats/h3m.md`. The `.h3m` writer moves here from `h3-formats` after E04b.
+//! Format notes: `docs/formats/h3m.md`. The [`writer`] writes the SoD subset that experiments in
+//! the original game need (moved here from `h3-formats` with the content split, R01a).
 //!
 //! E08 T3: the reader ([`read`], [`parse`] into [`model::RawMap`]); T5a and T6a: the [`import`]
 //! into `h3_game::GameSetup`.
@@ -18,6 +19,7 @@ mod import;
 mod limits;
 pub mod model;
 mod parse;
+pub mod writer;
 
 #[cfg(test)]
 mod tests;

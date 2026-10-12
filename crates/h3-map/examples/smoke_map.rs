@@ -1,12 +1,12 @@
 //! Writes the E04a T2 smoke map: two heroes next to each other and a stack of Pikemen, to check
 //! that the game accepts our `.h3m` files (protocol in `docs/experiments/README.md`).
 //!
-//! Usage: `cargo run -p h3-formats --example smoke_map -- <Objects.txt> <output.h3m>`, where
+//! Usage: `cargo run -p h3-map --example smoke_map -- <Objects.txt> <output.h3m>`, where
 //! `Objects.txt` is the SoD copy extracted from `H3bitmap.lod` (`original-data/extracted/`).
 
 use std::process::ExitCode;
 
-use h3_formats::h3m::{
+use h3_map::writer::{
     ARTIFACT_SLOTS, Hero, HeroArtifacts, Map, MapObject, Monster, ObjectTemplate, PLAYERS, Player,
     Terrain, gzip, write,
 };

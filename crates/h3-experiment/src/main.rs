@@ -103,13 +103,13 @@ fn run() -> Result<(), String> {
         .file_name()
         .map_or_else(String::new, |f| f.to_string_lossy().into_owned());
     let (map, template) = build(&spec, &tables, &file)?;
-    let bytes = h3_formats::h3m::write(&map).map_err(|e| format!("map: {e}"))?;
+    let bytes = h3_map::writer::write(&map).map_err(|e| format!("map: {e}"))?;
     for out in [&args.map, &args.template] {
         if let Some(dir) = out.parent().filter(|d| !d.as_os_str().is_empty()) {
             std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         }
     }
-    std::fs::write(&args.map, h3_formats::h3m::gzip(&bytes))
+    std::fs::write(&args.map, h3_map::writer::gzip(&bytes))
         .map_err(|e| format!("{}: {e}", args.map.display()))?;
     std::fs::write(&args.template, template)
         .map_err(|e| format!("{}: {e}", args.template.display()))?;
