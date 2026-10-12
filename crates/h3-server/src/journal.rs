@@ -17,7 +17,8 @@
 //!   line). On Unix the server makes the directories it creates owner-only and the journals
 //!   owner-read-write; the data directory must stay readable by the server's user only.
 //! - **The end.** A finished game's journal goes once its replay is written (the replay is the
-//!   finished journal); a game that never started leaves none. A journal the server cannot restore
+//!   finished journal) and a ranked game's result is in its ladder's log (E16 M4 T3b); a game that
+//!   never started leaves none. A journal the server cannot restore
 //!   moves to `<data>/void/`.
 //!
 //! Provisional (E16 M2 T2): the layout, the names, the void directory (the epic's review list).
@@ -216,6 +217,23 @@ pub(crate) fn append_line(file: &mut Option<File>, line: &str) -> io::Result<()>
         *file = None;
     }
     written
+}
+
+/// Writes `text` to `path` so that a crash leaves the whole file or the one before (E16 M2 T5e: the
+/// reviewer's finding): to a `.part` file beside it, synced, then renamed and its directory synced.
+/// For the archive's replays and `next-game` (E16 M4 T3b).
+pub(crate) fn replace(path: &Path, text: &str) -> io::Result<()> {
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+    fs::create_dir_all(dir)?;
+    let mut part = path.as_os_str().to_owned();
+    part.push(".part");
+    let mut file = File::create(&part)?;
+    file.write_all(text.as_bytes())?;
+    file.sync_all()?;
+    fs::rename(&part, path)?;
+    #[cfg(unix)]
+    File::open(dir)?.sync_all()?;
+    Ok(())
 }
 
 /// The journals' directory in the data directory `data`.

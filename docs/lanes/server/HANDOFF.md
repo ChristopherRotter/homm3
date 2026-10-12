@@ -4,10 +4,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M3 closed** (SRV-Q12, SRV-Q16, SRV-Q18). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided; the detail in `E16-design.md` §11; the tasks in `QUEUE.md`; no turn timer in M4 (a game rule, M5). **M4 T1 (#106), T2 (#108) and T3a done** (T3a: no host, the grace and forfeits, `Session::elapse`; wire 15, journal 5; SRV-STUB-4 left for T3b). **Next: M4 T3b** (or T6, also ready).
+- **M1–M3 closed** (SRV-Q12, SRV-Q16, SRV-Q18). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided; the detail in `E16-design.md` §11; the tasks in `QUEUE.md`; no turn timer in M4 (a game rule, M5). **M4 T1 (#106), T2 (#108), T3a (#109) and T3b done** (T3b: verified before the end, rated and logged, `Rating`, `<data>/next-game`; wire 16; no stub left). **Next: M4 T4, T5 or T6** (all ready); SRV-Q20 (pings) matters now: results are rated.
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 15 since M4 T3a's forfeits; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 5 since M4 T3a's `Ranked`, `Absent`, `Forfeit`; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 16 since M4 T3b's `Rating`; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 5 since M4 T3a's `Ranked`, `Absent`, `Forfeit`; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. ADR-0019 (identity) was accepted at the M3 refinement; the discovery draft is decided at M6's.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -32,7 +32,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A journal's line holds tokens: errors from reading one name the line and column, never its text (serde_json's messages quote values); a log line never carries a hash either (`journal.rs`).
 - No file I/O under the registry's lock (T5e): a game creates or reads its journal on its own thread (`game::launch`), and a new or resumed game's own opening is queued under the lock (`registry::Opening::first`) before anything else reaches it.
 - A finished game's replay is written by `game::finish` into the archive's directory its spectator setting names (`archive::dir`) and must then join the registry's archive (`Registry::archived`): a replay written elsewhere is neither listed nor trimmed.
-- `PROPTEST_CASES` applies to every proptest of a crate (the session's are slow): name the test (`cargo test -p h3-protocol mutat`) for a longer mutation run.
+- `PROPTEST_CASES` applies to every proptest of a crate: name the test for a longer mutation run (`cargo test -p h3-protocol mutat`).
 - A game's frames go through `game::Outbox` (`offer`, or `last` for a goodbye), never a bare channel: the connection's task subtracts every frame's bytes as it takes it out, so a frame queued around the count wraps it, and the queue then refuses every frame.
 - Write-ahead order in a game's thread: drain the session's entries and sync them before `deliver`; anything new that changes what a restart must redo needs an `Entry`, or the restore diverges from what clients were told (T3's resume is one: `Entry::Resumed`).
 - The observation's mapping (`map/mod.rs`) names every field of the engine's types in patterns, without `..`: a field left out gets `name: _` under a comment with its reason. A field read through a method (`s.attack_now`) still needs its pattern entry.
@@ -45,18 +45,19 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - `f64::exp` and `ln` are banned workspace-wide (ADR-0003 §3): Glicko-2 calls them behind a local `allow` (`rating.rs`); a rating is written to the ladder's log and read back, never recomputed.
 - A queued connection hears its queue only through its own channel (`registry::ToConn`, `(text, still queued)`), sent under the registry's lock with `try_send`; a message for a connection that answers nothing (`AcceptMatch` while the other has not) is `Routed::Passed`.
 - A ranked game's time moves only through `Session::elapse`, which the game's thread calls before every message, closed connection and tick (`game::run`): a new event must call it first. A game's end is `Session::over` (a forfeit leaves `result()` empty).
+- A ranked game's end is told only by the host's verdict (`publish_replay`/`withhold_replay`): a new way for one to end must reach `finish`. A ladder's log names a game once (by id; `<data>/next-game`): never hand out ids below `GameIds::last`.
 - **The workload is lane-only and follows `master`:** 55 % of its count is the battle engine, so battle changes move it and the full verify (CI) does not measure it. At each session's start `verify --scope server` measures it; a drift there came from `master`: re-baseline (`cargo xtask bench-check --update --workload session-random-play-full`) and name the range in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
 
 ## Recent sessions
 
+### 2026-10-12 — M4 T3b, the rated end
+
+#109 had merged; the start's verify green. Built T3b (`E16-log.md`): the held end, `Unverified`, `Rating`, `Ladders::rate`, `GameIds`; wire 16. Choices on the review list.
+
 ### 2026-10-12 — M4 T3a, a ranked game's seats and forfeits
 
-#108 had merged; the start's verify green, the workload unchanged. Built T3a (`E16-log.md`): the session's clock and grace, `Outcome::Forfeit`/`NoShow`, journal 5, wire 15; the restored matches back in the registry's ranked games (T3b's item). No shared change. T3a's choices are on the review list (void: the other seat empty as one's grace runs out).
+#108 had merged. Built T3a (`E16-log.md`): the clock and grace, forfeits and no-shows; journal 5, wire 15.
 
 ### 2026-10-12 — M4 T2, the queue and the match
 
-#106 had merged. Built T2 (`E16-log.md`): `h3_protocol::ladder`, the registry's queues and matches, wire 14.
-
-### 2026-10-12 — M3's checkpoint, M4's refinement
-
-The user passed M3 (SRV-Q18) and refined M4 (SRV-Q19); ADR-0019 amended (`cross-lane`), §11, the M4 tasks. Then T1; a flaky test fixed (`E16-log.md`).
+#106 had merged. Built T2 (`E16-log.md`): the queues and matches, wire 14.

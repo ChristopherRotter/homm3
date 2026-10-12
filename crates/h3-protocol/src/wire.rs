@@ -168,6 +168,9 @@ pub enum Outcome {
     /// Both seats of the ranked game were empty when one's grace ran out (E16 M4 T3a): the game
     /// is void, a no-show each. Only in `GameEnded`.
     NoShow {},
+    /// The ranked game did not verify (E16 M4 T3b; `E16-design.md` §8): void and unrated, its
+    /// replay withheld. Only in `GameEnded`.
+    Unverified {},
 }
 
 /// Why a command was rejected: the engine's errors one to one, then the session's own codes.
@@ -1023,6 +1026,17 @@ pub struct LadderInfo {
     pub waiting: u32,
 }
 
+/// An account's rating on a ladder as the wire carries it (E16 M4 T3b): Glicko-2's rating and
+/// deviation rounded to whole points (`h3-protocol` holds no floats).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Points {
+    /// The rating.
+    pub rating: i32,
+    /// How uncertain it is: the rating's deviation.
+    pub deviation: u32,
+}
+
 /// Why a player is no longer in a ladder's queue without having asked (E16 M4 T2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UnqueueReason {
@@ -1532,6 +1546,18 @@ pub enum ServerMessage {
         /// Why.
         reason: UnqueueReason,
     },
+    /// The seat's account was rated for the ranked game that just ended (E16 M4 T3b): its rating
+    /// on the game's ladder before and after it. Follows the game's `GameEnded`.
+    Rating {
+        /// The viewer's message number.
+        n: u32,
+        /// The ladder's id.
+        ladder: String,
+        /// The rating before the game.
+        before: Points,
+        /// The rating after it.
+        after: Points,
+    },
 }
 
 /// One finished game in the archive (E16 M2 T5d).
@@ -1542,7 +1568,8 @@ pub struct ReplayInfo {
     pub id: String,
     /// The offer the game was created from.
     pub offer: String,
-    /// The game's id while it ran (ids may repeat across restarts; the replay's id does not).
+    /// The game's id while it ran (unique for the server's life since E16 M4 T3b; an older
+    /// server's ids may repeat across restarts, the replay's id does not).
     pub game: u32,
 }
 

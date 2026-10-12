@@ -186,6 +186,12 @@ impl<O: Ord> Lobby<O> {
         self.games.insert(info.game, Entry { origin, info });
     }
 
+    /// The ids up to `last` were handed out before (E16 M4 T3b: in the server's earlier lives):
+    /// the ids handed out after are higher.
+    pub fn skip(&mut self, last: u32) {
+        self.last = self.last.max(last);
+    }
+
     /// Game `game` is gone.
     pub fn remove(&mut self, game: u32) {
         self.games.remove(&game);

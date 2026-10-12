@@ -174,6 +174,22 @@ fn restored_games_are_listed_again_and_counted() {
 }
 
 #[test]
+fn ids_handed_out_in_earlier_lives_are_skipped() {
+    // E16 M4 T3b: the server's `next-game` says ids up to 41 were handed out; a lower mark
+    // changes nothing.
+    let mut lobby = lobby(3, 3);
+    lobby.skip(41);
+    lobby.skip(2);
+    assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((42, 0)));
+    lobby.skip(u32::MAX);
+    assert_eq!(
+        lobby.create(1, "pvp", Seat::Attacker, true),
+        Err(Refusal::TooManyGames),
+        "no id is handed out twice"
+    );
+}
+
+#[test]
 fn a_draining_lobby_refuses_every_creation_and_counts_the_games_in_play() {
     let mut lobby = lobby(8, 8);
     assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((1, 0)));

@@ -14,7 +14,8 @@
 //!   `Authenticator` (Ed25519), and `players`, the player log they are kept in (M3 T2a, T2b);
 //!   [`rebind`], the operator's;
 //! - `ladders`: the ranked game configurations, their scenario pools and results logs, and
-//!   [`rating`], Glicko-2 (E16 M4 T1);
+//!   [`rating`], Glicko-2 (E16 M4 T1); `ids`, the game ids unique for the server's life (E16 M4
+//!   T3b);
 //! - [`client`]: a headless client for tests and tools;
 //! - [`bench`]: the session core's workload (`benches/server/`).
 //!
@@ -38,6 +39,7 @@ pub mod bench;
 pub mod client;
 pub mod config;
 pub mod game;
+mod ids;
 mod journal;
 mod ladders;
 mod net;
@@ -167,11 +169,16 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         .iter()
         .map(|offer| game::Offer::load(offer, &config.content.packs).map(Arc::new))
         .collect::<Result<Vec<_>, _>>()?;
+    let stores = game::Stores {
+        accounts: Arc::clone(&accounts),
+        ladders: Arc::clone(&ladders),
+        ids: Arc::new(ids::GameIds::open(&config.server.data)?),
+    };
     let registry = Arc::new(Mutex::new(Registry::new(
-        (offers, &ladders),
+        offers,
         &config.limits,
         config.server.clone(),
-        Arc::clone(&accounts),
+        stores,
     )));
     registry::lock(&registry).load_archive();
     registry::restore(&registry).await?;

@@ -16,17 +16,18 @@
 //! Provisional (E16 M4 T1, T2): the layout, the names, one lock for every ladder; a season starts
 //! at the start of a server whose content changed, and only then.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use h3_protocol::account;
 use h3_protocol::session::Grace;
+use h3_protocol::wire::Points;
 use serde::{Deserialize, Serialize};
 
 use crate::game::Offer;
-use crate::rating::{Rating, Standing};
+use crate::rating::{self, Rating, Score, Standing};
 use crate::{Error, config, journal};
 
 /// Who won a rated game.
@@ -38,6 +39,15 @@ pub(crate) enum Outcome {
     Defender,
     /// Neither.
     Draw,
+}
+
+/// How a ranked game ended, for its ladder (E16 M4 T3b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum End {
+    /// Who won, and whether the loser forfeited.
+    Result { outcome: Outcome, forfeit: bool },
+    /// Both players were absent beyond the grace: void, a no-show each.
+    NoShow,
 }
 
 /// One line of a ladder's results log.
@@ -81,6 +91,9 @@ struct Results {
     seasons: Vec<Season>,
     /// Every account's latest rating, across the seasons.
     ratings: BTreeMap<String, Rating>,
+    /// The games a line names (E16 M4 T3b): game ids are unique for the server's life, so a game
+    /// is rated once.
+    games: BTreeSet<u32>,
 }
 
 impl Results {
@@ -99,6 +112,7 @@ impl Results {
                 return Ok(());
             }
             Line::Rated {
+                game,
                 accounts,
                 outcome,
                 forfeit,
@@ -111,12 +125,16 @@ impl Results {
                 if *forfeit && *outcome == Outcome::Draw {
                     return fail("a forfeit without a winner");
                 }
-                accounts
+                (game, accounts)
             }
-            Line::NoShow { accounts, .. } => accounts,
+            Line::NoShow { game, accounts, .. } => (game, accounts),
         };
+        let (game, accounts) = accounts;
         if self.seasons.is_empty() {
             return fail("a game before the first season");
+        }
+        if self.games.contains(game) {
+            return fail("a game named twice");
         }
         if !accounts.iter().all(|login| account::is_login_name(login)) {
             return fail("not a name");
@@ -145,11 +163,13 @@ impl Results {
                 });
             }
             Line::Rated {
+                game,
                 accounts,
                 outcome,
                 ratings,
                 ..
             } => {
+                self.games.insert(game);
                 let won = match outcome {
                     Outcome::Attacker => [Some(true), Some(false)],
                     Outcome::Defender => [Some(false), Some(true)],
@@ -170,7 +190,8 @@ impl Results {
                     }
                 }
             }
-            Line::NoShow { accounts, .. } => {
+            Line::NoShow { game, accounts, .. } => {
+                self.games.insert(game);
                 for login in accounts {
                     let rating = self.rating(&login);
                     let Some(season) = self.seasons.last_mut() else {
@@ -186,6 +207,16 @@ impl Results {
     /// The account's rating as it stands: a new account's if it has none.
     fn rating(&self, login: &str) -> Rating {
         self.ratings.get(login).copied().unwrap_or_default()
+    }
+}
+
+/// A rating as the wire carries it (E16 M4 T3b): rounded to whole points.
+pub(crate) fn points(rating: Rating) -> Points {
+    // A rating is a few thousand points, a deviation at most 350: the casts saturate far from
+    // where they would.
+    Points {
+        rating: rating.rating.round() as i32,
+        deviation: rating.deviation.round() as u32,
     }
 }
 
@@ -292,8 +323,58 @@ impl Ladders {
     pub(crate) fn points(&self, id: &str, login: &str) -> i32 {
         let ladders = self.lock();
         let rating = ladders.get(id).map(|l| l.results.rating(login));
-        // A rating is a few thousand points: the cast saturates far from where it would.
-        rating.unwrap_or_default().rating.round() as i32
+        points(rating.unwrap_or_default()).rating
+    }
+
+    /// Records how the ladder `id`'s game `game` ended (`end`; E16 M4 T3b), its replay's id
+    /// `replay` and its seats' accounts `accounts` (the attacker's first, each known to the player
+    /// log as `known` says: asked before, outside this lock): a `Rated` line with both ratings
+    /// after the game, as Glicko-2 rates one game between them, or a `NoShow` line, written and
+    /// synced before the tables change. Each account's rating before and after the game; `None` for
+    /// a no-show and for a game the log names already (a restart re-ran a game whose journal
+    /// outlived its line). Why not, for a line that does not follow or does not write.
+    pub(crate) fn rate(
+        &self,
+        id: &str,
+        (game, replay): (u32, &str),
+        accounts: [String; 2],
+        (end, known): (End, &dyn Fn(&str) -> bool),
+    ) -> Result<Option<[(Rating, Rating); 2]>, String> {
+        let mut ladders = self.lock();
+        let ladder = ladders
+            .get_mut(id)
+            .ok_or_else(|| format!("no ladder `{id}`"))?;
+        if ladder.results.games.contains(&game) {
+            return Ok(None);
+        }
+        let replay = replay.to_owned();
+        let End::Result { outcome, forfeit } = end else {
+            let line = Line::NoShow {
+                game,
+                replay,
+                accounts,
+            };
+            return ladder.record(line, known).map(|()| None);
+        };
+        let before = accounts
+            .each_ref()
+            .map(|login| ladder.results.rating(login));
+        let score = match outcome {
+            Outcome::Attacker => Score::Win,
+            Outcome::Defender => Score::Loss,
+            Outcome::Draw => Score::Draw,
+        };
+        let (attacker, defender) = rating::game(before[0], before[1], score);
+        let line = Line::Rated {
+            game,
+            replay,
+            accounts,
+            outcome,
+            forfeit,
+            ratings: [attacker, defender],
+        };
+        ladder.record(line, known)?;
+        Ok(Some([(before[0], attacker), (before[1], defender)]))
     }
 
     /// The account `login`'s row on the ladder `id` in the season `season`, if it played in it.
@@ -540,11 +621,78 @@ mod tests {
         assert_eq!(ladders.standing("arena", 1, "alice"), Some(alice));
         assert_eq!(ladders.standing("arena", 2, "alice"), None);
         drop(ladders);
-        append(&data, &line(&draw));
+        let no_show = Line::NoShow {
+            game: 4,
+            replay: String::from("arena-game4-0123456789abcdef"),
+            accounts: [String::from("bob"), String::from("alice")],
+        };
+        append(&data, &line(&no_show));
         let ladders = open(&data, Some("synthetic:strict-fixed")).unwrap();
         let carried = ladders.standing("arena", 2, "alice").unwrap();
         assert_eq!(carried.rating, alice.rating.new_season());
         assert_eq!((carried.games, carried.no_shows), (0, 1));
+        fs::remove_dir_all(&data).unwrap();
+    }
+
+    #[test]
+    fn a_game_is_rated_once_as_glicko_2_rates_it() {
+        // E16 M4 T3b.
+        let data = data();
+        let ladders = open(&data, None).unwrap();
+        let known = |login: &str| ["alice", "bob"].contains(&login);
+        let names = |a: &str, b: &str| [String::from(a), String::from(b)];
+        let new = Rating::default();
+        // Bob forfeits game 5: Alice wins it, as Glicko-2 rates one game between new players.
+        let forfeit = End::Result {
+            outcome: Outcome::Attacker,
+            forfeit: true,
+        };
+        let rate = |game, accounts, end| {
+            let replay = format!("arena.1-game{game}-0123456789abcdef");
+            ladders.rate("arena", (game, &replay), accounts, (end, &known))
+        };
+        let (alice, bob) = rating::game(new, new, Score::Win);
+        assert_eq!(
+            rate(5, names("alice", "bob"), forfeit),
+            Ok(Some([(new, alice), (new, bob)]))
+        );
+        // Once: a restart's re-run of the same game changes nothing.
+        assert_eq!(rate(5, names("alice", "bob"), forfeit), Ok(None));
+        // Bob, attacking, loses again; a draw; a no-show, unrated.
+        let defender = End::Result {
+            outcome: Outcome::Defender,
+            forfeit: false,
+        };
+        let (bob_after, alice_after) = rating::game(bob, alice, Score::Loss);
+        assert_eq!(
+            rate(6, names("bob", "alice"), defender),
+            Ok(Some([(bob, bob_after), (alice, alice_after)]))
+        );
+        let draw = End::Result {
+            outcome: Outcome::Draw,
+            forfeit: false,
+        };
+        assert!(rate(7, names("alice", "bob"), draw).unwrap().is_some());
+        assert_eq!(rate(8, names("alice", "bob"), End::NoShow), Ok(None));
+        // Refused, nothing written: an account the player log does not know, another ladder.
+        assert_eq!(
+            rate(9, names("alice", "carol"), forfeit),
+            Err(String::from("no such account"))
+        );
+        let other = ladders.rate("pit", (9, "r"), names("alice", "bob"), (draw, &known));
+        assert_eq!(other, Err(String::from("no ladder `pit`")));
+        let row = ladders.standing("arena", 1, "alice").unwrap();
+        assert_eq!(
+            (row.games, row.wins, row.losses, row.draws, row.no_shows),
+            (3, 2, 0, 1, 1)
+        );
+        // The log reads back to the same tables.
+        drop(ladders);
+        let again = open(&data, None).unwrap();
+        assert_eq!(again.standing("arena", 1, "alice"), Some(row));
+        let text = fs::read_to_string(path(&data, "arena")).unwrap();
+        assert!(text.contains("\"forfeit\":true"), "{text}");
+        assert_eq!(text.lines().count(), 5, "a season, three rated, a no-show");
         fs::remove_dir_all(&data).unwrap();
     }
 
@@ -600,6 +748,11 @@ mod tests {
                 "line 2: not a rating",
             ),
             (format!("{}{{\"Rated\":{{}}}}\n", season(1)), "line 2: Data"),
+            // E16 M4 T3b: game ids are unique for the server's life.
+            (
+                format!("{}{rated}{rated}", season(1)),
+                "line 3: a game named twice",
+            ),
         ];
         for (text, expected) in cases {
             let data = data();

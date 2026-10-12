@@ -790,9 +790,10 @@ async fn journals_that_do_not_restore_their_game_are_void_or_gone() {
     assert!(!journal_file(&data, waiting).exists());
     let void: Vec<_> = std::fs::read_dir(data.join("void")).unwrap().collect();
     assert_eq!(void.len(), 2, "game 3's and game 9's");
-    // Ids go on after the restored game's.
+    // Ids go on after every one handed out before, the void journals' too (E16 M4 T3b: unique for
+    // the server's life).
     let (_, next, _) = created(&again, "pvp", Seat::Attacker).await;
-    assert_eq!(next, first + 1);
+    assert_eq!(next, 10);
 }
 
 /// A change of a journal's line: the line it becomes, or `None` to keep it.
