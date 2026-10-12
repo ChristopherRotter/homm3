@@ -1402,6 +1402,70 @@ async fn a_paused_game_whose_players_are_not_back_wakes_and_is_void() {
     std::fs::remove_dir_all(&config.server.data).unwrap();
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn finished_unrated_games_a_start_re_runs_are_rated_by_game_id() {
+    // M4's review: games over but unrated (their ladder's log did not write) are rated at the next
+    // start one after another by id, as Glicko-2 needs; ids 9 and 10, whose names sort the other
+    // way. Each journal is taken as its players sat down and given a forfeit by hand.
+    let config = graced(1_000, 60_000);
+    std::fs::create_dir_all(&config.server.data).unwrap();
+    std::fs::write(config.server.data.join("next-game"), "9\n").unwrap();
+    let running = start(&config).await.unwrap();
+    let journal = |game| std::fs::read_to_string(journal_file(&config.server.data, game)).unwrap();
+    let forfeit = |seat| format!("{{\"Forfeit\":{{\"side\":\"{:?}\"}}}}\n", side(seat));
+    let ([ann, bob], first, [_, bob_seat]) = seated_match(&running).await;
+    let first_journal = journal(first) + &forfeit(bob_seat);
+    // Both leave: void, no rating changes, and Ann may queue again.
+    ann.close().await;
+    bob.close().await;
+    let mut attempts = 0;
+    while running.standing("arena", 1, "ann").map(|s| s.no_shows) != Some(1) {
+        attempts += 1;
+        assert!(attempts < 500, "never ended");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let (mut ann, mut carl) = (
+        player(&running, "ann", 1).await,
+        player(&running, "carl", 3).await,
+    );
+    matched(&mut ann, &mut carl).await;
+    let (second, [ann_seat, carl_seat]) = accepted(&mut ann, &mut carl).await;
+    takes(&mut ann, second, ann_seat).await;
+    takes(&mut carl, second, carl_seat).await;
+    let second_journal = journal(second) + &forfeit(carl_seat);
+    assert_eq!((first, second), (9, 10));
+    running.shutdown().await;
+    // A start on both journals and the player log.
+    let data = config.server.data.with_extension("rerun");
+    std::fs::create_dir_all(data.join("games")).unwrap();
+    std::fs::write(journal_file(&data, first), first_journal).unwrap();
+    std::fs::write(journal_file(&data, second), second_journal).unwrap();
+    std::fs::copy(
+        config.server.data.join("players.log"),
+        data.join("players.log"),
+    )
+    .unwrap();
+    let rerun = Config {
+        server: Server {
+            data: data.clone(),
+            ..config.server.clone()
+        },
+        ..config.clone()
+    };
+    let again = start(&rerun).await.unwrap();
+    let log = std::fs::read_to_string(data.join("ladders/arena.log")).unwrap();
+    let at = |game: u32| {
+        log.find(&format!("{{\"Rated\":{{\"game\":{game},"))
+            .unwrap()
+    };
+    assert!(at(first) < at(second), "{log}");
+    assert_eq!(again.standing("arena", 1, "ann").map(|s| s.wins), Some(2));
+    again.shutdown().await;
+    for data in [&config.server.data, &data] {
+        std::fs::remove_dir_all(data).unwrap();
+    }
+}
+
 /// The agreed pause's length in the tests of its hold across a restart (E16 M4 T8).
 const HELD_MS: u64 = 8_000;
 

@@ -708,11 +708,13 @@ pub(crate) fn bind(
 }
 
 /// Restores the games whose journals the data directory holds (E16 M2 T2; call before the server
-/// listens): each re-runs on its own thread, which lists it again if it goes on; this returns once
-/// every re-run is done. A journal that does not read, that names an offer the server no longer
-/// has, or whose engine or content identity is not the offer's, is void. A game thread that does
-/// not start stops the server's start. Every journal's game id counts as handed out (E16 M4 T3b:
-/// a journal of a server from before `next-game`); one that does not record stops the start.
+/// listens): each re-runs on its own thread, which lists it again if it goes on, one after another
+/// by game id (M4's review: finished, unrated ranked games are rated in that order, and Glicko-2
+/// depends on it); this returns once every re-run is done. A journal that does not read, that
+/// names an offer the server no longer has, or whose engine or content identity is not the
+/// offer's, is void. A game thread that does not start stops the server's start. Every journal's
+/// game id counts as handed out (E16 M4 T3b: a journal of a server from before `next-game`); one
+/// that does not record stops the start.
 pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
     let (data, ids) = {
         let registry = lock(shared);
@@ -731,8 +733,12 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
         .filter_map(|entry| entry.ok().map(|entry| entry.path()))
         .filter(|path| path.extension().is_some_and(|e| e == "journal"))
         .collect();
-    paths.sort();
-    let mut restoring = Vec::new();
+    // By game id, not by name ("10" before "9"); a name that is no id last, the path the tie-break.
+    let id = |path: &PathBuf| {
+        let stem = path.file_stem().and_then(|s| s.to_str());
+        stem.and_then(|s| s.parse::<u32>().ok())
+    };
+    paths.sort_by_cached_key(|path| (id(path).is_none(), id(path), path.clone()));
     for path in paths {
         let name = path
             .file_stem()
@@ -756,13 +762,10 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
         match prepared {
             Ok(prepared) => {
                 prepared.spawn(inbox, Arc::clone(shared))?;
-                restoring.push(finished);
+                let _ = finished.await;
             }
             Err(why) => journal::void(&data, &path, &name, &why),
         }
-    }
-    for finished in restoring {
-        let _ = finished.await;
     }
     lock(shared).lobby.skip(ids.last());
     Ok(())
