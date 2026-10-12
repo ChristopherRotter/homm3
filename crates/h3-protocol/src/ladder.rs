@@ -15,10 +15,13 @@
 //! - **The bots** (E16 M4 T5). A ladder's bots wait at all times, outside its queue: a player the
 //!   matcher left unpaired after [`Ladder::bot_after_ms`] plays the bot nearest in rating (ties by
 //!   the configuration's order), whatever the window. The bot accepts at once; it plays any number
-//!   of games at once, and a match given up leaves it as it was.
+//!   of games at once, and a match given up leaves it as it was. A player who queued without bots
+//!   (E16 M4 T5b, SRV-Q21) never plays one, however long it waits; `MatchFound` tells a player
+//!   whether its opponent is a bot.
 //!
-//! Provisional (E16 M4 T2, T5): the window, the greedy pairing, the queues in memory only (a
-//! restart empties them); a bot for whoever waited long enough, people first.
+//! Provisional (E16 M4 T2, T5, T5b): the window, the greedy pairing, the queues in memory only (a
+//! restart empties them); a bot for whoever waited long enough, people first; the opt-out per
+//! queue, not stored.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -81,6 +84,8 @@ struct Waiting<C> {
     since: u64,
     /// Its place in the order players came in: unique.
     order: u64,
+    /// Whether it may play a bot (E16 M4 T5b).
+    bots: bool,
 }
 
 /// A match waiting for both players' answers.
@@ -156,17 +161,17 @@ impl<C: Copy + Eq> Queues<C> {
     }
 
     /// Connection `conn`, logged in as `login` (or not), asks to wait in the queue of `ladder`
-    /// at `now`, rated `rating`; `unfinished`: its ranked game on that ladder is not over. The
-    /// answer: `Queued`, or why not.
+    /// at `now`, rated `rating`, and whether it may play a bot (`bots`); `unfinished`: its ranked
+    /// game on that ladder is not over. The answer: `Queued`, or why not.
     pub fn queue(
         &mut self,
         conn: C,
-        (seq, ladder): (u32, &str),
+        (seq, ladder, bots): (u32, &str, bool),
         login: Option<&str>,
         (rating, unfinished): (i32, bool),
         now: u64,
     ) -> ServerMessage {
-        match self.enter(conn, ladder, login, (rating, unfinished), now) {
+        match self.enter(conn, (ladder, bots), login, (rating, unfinished), now) {
             Ok(()) => ServerMessage::Queued {
                 seq,
                 ladder: String::from(ladder),
@@ -179,7 +184,7 @@ impl<C: Copy + Eq> Queues<C> {
     fn enter(
         &mut self,
         conn: C,
-        ladder: &str,
+        (ladder, bots): (&str, bool),
         login: Option<&str>,
         (rating, unfinished): (i32, bool),
         now: u64,
@@ -203,6 +208,7 @@ impl<C: Copy + Eq> Queues<C> {
             rating,
             since: now,
             order: self.order,
+            bots,
         });
         Ok(())
     }
@@ -361,7 +367,8 @@ impl<C: Copy + Eq> Queues<C> {
 
     /// Pairs ladder `index`'s waiting players at `now`: by rating (ties by order), each with the
     /// next while their ratings are within the window of the shorter wait; then each player left
-    /// who waited the ladder's `bot_after_ms` with its nearest bot (E16 M4 T5).
+    /// who waited the ladder's `bot_after_ms`, and did not opt out (E16 M4 T5b), with its nearest
+    /// bot (E16 M4 T5).
     fn pair(&mut self, index: usize, now: u64, told: &mut Told<C>) {
         let ladder = &self.ladders[index];
         let mut by_rating = core::mem::take(&mut self.waiting[index]);
@@ -377,7 +384,7 @@ impl<C: Copy + Eq> Queues<C> {
             let waited = now.saturating_sub(first.since) >= ladder.bot_after_ms;
             // Of equally near bots, the first (`min_by_key` keeps the first of equal keys).
             let bot = (ladder.bots.iter())
-                .filter(|_| waited)
+                .filter(|_| waited && first.bots)
                 .min_by_key(|bot| bot.rating.abs_diff(first.rating));
             let (second, accepted) = match (players.next_if(fits), bot) {
                 (Some(second), _) => (second, false),
@@ -388,6 +395,7 @@ impl<C: Copy + Eq> Queues<C> {
                         rating: bot.rating,
                         since: now,
                         order: 0,
+                        bots: true,
                     };
                     (bot, true)
                 }
@@ -396,9 +404,11 @@ impl<C: Copy + Eq> Queues<C> {
                     continue;
                 }
             };
+            // A bot is always the second (E16 M4 T5b): the first is told so.
             let found = ServerMessage::MatchFound {
                 ladder: ladder.id.clone(),
                 accept_ms: ladder.accept_ms,
+                bot: second.conn.is_none(),
             };
             for conn in [first.conn, second.conn].into_iter().flatten() {
                 told.push((conn, found.clone()));

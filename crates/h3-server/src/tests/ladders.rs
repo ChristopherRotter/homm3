@@ -6,9 +6,9 @@
 //! and forfeits (E16 M4 T3a): no host; a player back within the grace plays on; beyond the grace,
 //! or the total in several drops, a forfeit, whose replay verifies; both away, void; the time away
 //! across a restart. The leaderboards (E16 M4 T4): pages by season, one's own row, a display name
-//! changed. The bots (E16 M4 T5): a lone player plays one after the wait, rated, flagged. The
-//! pause by agreement (E16 M4 T6): declined, agreed and resumed in time, a player not back after
-//! its due time forfeits, neither back: void.
+//! changed. The bots (E16 M4 T5): a lone player plays one after the wait, told so (T5b), rated,
+//! flagged; a player who opted out (T5b) waits on. The pause by agreement (E16 M4 T6): declined,
+//! agreed and resumed in time, a player not back after its due time forfeits, neither back: void.
 
 use h3_protocol::wire::{LadderInfo, LeaderboardRow, Outcome, Points, Seated, Side, UnqueueReason};
 
@@ -241,10 +241,12 @@ async fn ask(client: &mut Client, message: ClientMessage) -> Option<ServerMessag
     client.recv().await
 }
 
+/// Queue in `ladder`, bots welcome.
 fn queue(ladder: &str) -> ClientMessage {
     ClientMessage::Queue {
         seq: 2,
         ladder: ladder.to_string(),
+        bots: None,
     }
 }
 
@@ -259,11 +261,18 @@ fn refused(reason: Refusal) -> Option<ServerMessage> {
     Some(ServerMessage::Refused { reason })
 }
 
-fn found() -> Option<ServerMessage> {
+/// A match in `arena`, against a bot or not (E16 M4 T5b).
+fn found_against(bot: bool) -> Option<ServerMessage> {
     Some(ServerMessage::MatchFound {
         ladder: String::from("arena"),
         accept_ms: 1_000,
+        bot,
     })
+}
+
+/// A match in `arena` against a person.
+fn found() -> Option<ServerMessage> {
+    found_against(false)
 }
 
 /// Both clients queue in `arena` and hear their match.
@@ -1024,10 +1033,11 @@ async fn a_lone_player_plays_the_ladders_bot_after_the_wait_rated_and_flagged() 
         .await
         .unwrap();
     assert_eq!(taken, refused(Refusal::NameTaken));
-    // Ann waits alone: after the wait she is matched with Randy, who accepted already.
+    // Ann waits alone: after the wait she is matched with Randy, who accepted already, and is
+    // told he is a bot (E16 M4 T5b).
     let waited = tokio::time::Instant::now();
     assert_eq!(ask(&mut ann, queue("arena")).await, queued());
-    assert_eq!(ann.recv().await, found());
+    assert_eq!(ann.recv().await, found_against(true));
     assert!(
         waited.elapsed() >= Duration::from_millis(1_500),
         "{:?}",
@@ -1086,6 +1096,19 @@ async fn a_lone_player_plays_the_ladders_bot_after_the_wait_rated_and_flagged() 
         flags.contains(&("Randy", true)) && flags.contains(&("Ann", false)),
         "{flags:?}"
     );
+    // E16 M4 T5b: Bob waits for people only. Twice the wait on he has heard nothing, and still
+    // waits: he leaves as he asks.
+    let mut bob = player(&running, "bob", 2).await;
+    let people = ClientMessage::Queue {
+        seq: 2,
+        ladder: String::from("arena"),
+        bots: Some(false),
+    };
+    assert_eq!(ask(&mut bob, people).await, queued());
+    let heard = tokio::time::timeout(Duration::from_millis(3_000), bob.recv()).await;
+    assert!(heard.is_err(), "{heard:?}");
+    let left = ask(&mut bob, ClientMessage::Dequeue { seq: 7 }).await;
+    assert_eq!(left, Some(ServerMessage::Dequeued { seq: 7 }));
     running.shutdown().await;
     // The configuration renames the bot: its account is renamed at the next start, not added.
     let mut renamed = config.clone();
