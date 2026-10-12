@@ -250,22 +250,28 @@ below are the tasks' starting point, *provisional* until M4's review.
   (`MatchCancelled`). A drain empties the queues (`Unqueued { Draining }`). The queues live in
   memory only: a restart empties them. A queued connection hears its queue through a channel
   of its own, and the lobby's deadline waits while it is queued.
-- **The ranked game** (code since M4 T2 but the parts of T3a, SRV-STUB-3): created when both
+- **The ranked game** (code since M4 T2 and T3a): created when both
   accept, as the server's own (the limit in total applies, none per address; no room:
   `Unqueued { Full }`), from a scenario of the pool drawn with OS randomness, the sides at
   random, both seats the accounts' from the start (`Session::reserve`: `Taken` lines naming
   them, journaled before the players hear `MatchReady`); the clients `Join` it as their seat. A
   pool's scenario is an offer of its own, `<ladder>.<n>`, so a restart restores the game as any
   other. Listed with its ladder (`GameInfo::ladder`); while it waits for its players it does not
-  leave the lobby, whatever their joins did. From T3a: no host (no `Pause` by one seat, no
-  `SetSpectators`), `Entry::Ranked`; `empty_game_ms` and `paused_game_ms` do not apply.
-- **Disconnects and forfeits** (M4 T3). A seat whose connections are all gone is absent: beyond
+  leave the lobby, whatever their joins did (its grace ends it). Since T3a: no host (`Pause` and
+  `SetSpectators` rejected `NotHost`), `Entry::Ranked` its journal's first entry;
+  `empty_game_ms` and `paused_game_ms` do not apply; a restart lists it with its ladder and keeps
+  its players from another match there.
+- **Disconnects and forfeits** (code since M4 T3a: `Session::elapse`, the host's clock moved by
+  every message, closed connection and tick of the sweep, whose period counts the ladders'
+  grace). A seat whose connections are all gone is absent: beyond
   `grace_ms` in one stretch, or `grace_total_ms` over the game, its player forfeits (a loss;
   both absent: void, `NoShow`, no rating changes). A game not yet started counts the same way
   from its creation. The journal keeps each finished stretch (`Entry::Absent(side, ms)`) and the
   forfeit (`Entry::Forfeit(side)`), so a restart knows the totals; a stretch running when the
   server stopped restarts at the next start (the downtime never counts). A forfeit ends the
-  game as a result of its own on the wire; the replay holds the commands up to it.
+  game as a result of its own on the wire (`GameEnded` with `Outcome::Forfeit { side }`, or
+  `Outcome::NoShow {}` when the other seat is empty too as one's grace runs out); the replay
+  holds the commands up to it, its battle undecided (`winner = "none"`).
 - **The end of a ranked game** (M4 T3): verified first (§8), then `GameEnded`, then the result
   rated and written (`Rated`), then `Rating { ladder, before, after }` to its seats; a game that
   does not verify is void and unrated (its players told: the inbox's M2 item). Game ids stay

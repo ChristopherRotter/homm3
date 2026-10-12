@@ -4,10 +4,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 closed (2026-10-11, SRV-Q12). M2 closed (2026-10-11, SRV-Q16). M3 closed (2026-10-12, SRV-Q18):** T1–T5 merged (#99, #101, #102, #105). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided (a shared commit on the lane's branch, `cross-lane`); the detail in `E16-design.md` §11; cut into T1, T2, T3a, T3b, T4, T5, T6, T7 (`QUEUE.md`). No turn timer in M4 (a game rule, M5). **M4 T1 done** (`[[ladder]]`, `rating`, `<data>/ladders/<id>.log`, seasons by ruleset; #106). **M4 T2 done** (the queues, a match's game; wire 14; SRV-STUB-3 and -4 for T3a and T3b). **Next: M4 T3a.**
+- **M1–M3 closed** (SRV-Q12, SRV-Q16, SRV-Q18). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided; the detail in `E16-design.md` §11; the tasks in `QUEUE.md`; no turn timer in M4 (a game rule, M5). **M4 T1 (#106), T2 (#108) and T3a done** (T3a: no host, the grace and forfeits, `Session::elapse`; wire 15, journal 5; SRV-STUB-4 left for T3b). **Next: M4 T3b** (or T6, also ready).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 14 since M4 T2's ladders; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 4 since M3 T3's account in `Taken`; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 15 since M4 T3a's forfeits; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 5 since M4 T3a's `Ranked`, `Absent`, `Forfeit`; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. ADR-0019 (identity) was accepted at the M3 refinement; the discovery draft is decided at M6's.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -44,14 +44,19 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - `Key::derive` costs 64 MiB and about a second in a debug build: tests use `Key::from_seed`, the test vector alone derives.
 - `f64::exp` and `ln` are banned workspace-wide (ADR-0003 §3): Glicko-2 calls them behind a local `allow` (`rating.rs`); a rating is written to the ladder's log and read back, never recomputed.
 - A queued connection hears its queue only through its own channel (`registry::ToConn`, `(text, still queued)`), sent under the registry's lock with `try_send`; a message for a connection that answers nothing (`AcceptMatch` while the other has not) is `Routed::Passed`.
+- A ranked game's time moves only through `Session::elapse`, which the game's thread calls before every message, closed connection and tick (`game::run`): a new event must call it first. A game's end is `Session::over` (a forfeit leaves `result()` empty).
 - **The workload is lane-only and follows `master`:** 55 % of its count is the battle engine, so battle changes move it and the full verify (CI) does not measure it. At each session's start `verify --scope server` measures it; a drift there came from `master`: re-baseline (`cargo xtask bench-check --update --workload session-random-play-full`) and name the range in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
 
 ## Recent sessions
 
+### 2026-10-12 — M4 T3a, a ranked game's seats and forfeits
+
+#108 had merged; the start's verify green, the workload unchanged. Built T3a (`E16-log.md`): the session's clock and grace, `Outcome::Forfeit`/`NoShow`, journal 5, wire 15; the restored matches back in the registry's ranked games (T3b's item). No shared change. T3a's choices are on the review list (void: the other seat empty as one's grace runs out).
+
 ### 2026-10-12 — M4 T2, the queue and the match
 
-#106 had merged; the branch restarted from `master`. Built T2 (`E16-log.md`): `h3_protocol::ladder`, the registry's queues and matches, wire 14. No shared change.
+#106 had merged. Built T2 (`E16-log.md`): `h3_protocol::ladder`, the registry's queues and matches, wire 14.
 
 ### 2026-10-12 — M3's checkpoint, M4's refinement
 
-#105 had merged. The user passed M3 (SRV-Q18: the review list as built, the M3 inbox later) and refined M4 (SRV-Q19): no turn timer (a game rule), a disconnect's grace 5 min and 10 in total, seasons keep ratings and reset deviations, one unfinished ranked game per player per ladder. ADR-0019 amended (a `shared:` commit: the pull request needs `cross-lane`), the design note §11, the epic's M4 tasks and exit criteria, the queue. Then T1 (`E16-log.md`); the start's verify had a flaky test (a void journal moved after the lobby let the game go), fixed.
+The user passed M3 (SRV-Q18) and refined M4 (SRV-Q19); ADR-0019 amended (`cross-lane`), §11, the M4 tasks. Then T1; a flaky test fixed (`E16-log.md`).

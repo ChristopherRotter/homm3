@@ -1046,3 +1046,45 @@ how and why the work went.
   with its ladder, are refused a second match meanwhile, play it out and queue again; a decline,
   an expiry and a departure put the other back, a queued connection outlasting the lobby's
   deadline; a match's game restored after a restart with its ladder, re-taken by account.
+
+### M4 T3a — A ranked game's seats and forfeits (2026-10-12)
+
+- **The session core** (`h3_protocol::session`, *provisional*): `GameConfig::ranked` (a `Grace {
+  stretch_ms, total_ms }`, the ladder's `grace_ms` and `grace_total_ms`) makes a game ranked:
+  `Session::new` makes `Entry::Ranked` its first entry (a restore whose configuration and journal
+  disagree on it diverges at entry 0), no seat becomes the host (`Pause` and `SetSpectators` are
+  rejected `NotHost`). The host's clock (`Session::elapse(now)`, milliseconds since the session
+  began; a clock that goes back is ignored) times each player's seat while no connection holds
+  it, from the session's start: a stretch beyond `stretch_ms`, or one that takes the seat's total
+  beyond `total_ms` ("beyond": strictly more), forfeits; if the other seat is empty then too, both
+  forfeit: void. `GameEnded` to both viewers and the spectators with `Outcome::Forfeit { side }`
+  or `Outcome::NoShow {}`; `Entry::Forfeit(side)` for each. A stretch that ends with a join is
+  `Entry::Absent(side, ms)`. Over by a forfeit (`Session::over`, `forfeited`), the battle stays
+  where it stood: commands are rejected `BattleOver`, a join gets no turn and starts nothing, no
+  absence counts any more (as after a natural end). A restore re-runs the entries: the totals
+  kept, every player seat empty from the restore on (the downtime and a stretch running at the
+  stop never count).
+- **The wire** (version 15): `Outcome::Forfeit { side }` and `Outcome::NoShow {}`, only in
+  `GameEnded` (the engine's results map as before); `NotHost`'s text names the ranked game.
+- **The server**: a pool's offers carry the ladder's grace (`Offer::grace`), so new and restored
+  games of a ladder are ranked; `empty_game_ms` does not apply to them, nor does the abandoned
+  waiting game (SRV-STUB-3 resolved). The game's thread starts the session's clock when it begins
+  the session (a restored one afresh) and moves it before every message, closed connection and
+  tick; the sweep's period counts the ladders' grace (a quarter of the shortest deadline, 10 ms to
+  1 min). A forfeit ends the game as any end does (`Session::over` where `result` was): verified,
+  its replay written with the commands up to it (`winner = "none"`, which `h3 replay verify`
+  accepts) and archived, its journal gone. The journal's lines `Ranked {}`, `Absent { side, ms }`,
+  `Forfeit { side }` (format 5). At start, a restored match's game is in the registry's ranked
+  games again (its ladder and accounts), so its players queue on that ladder only once it is over
+  (T3b's item, taken here).
+- **Tests** (`h3-protocol` 78 → 84, `h3-server` 80 → 85): no host; beyond the total in two
+  stretches, the end for the absent seat's record, no command, pause, turn or stretch after it,
+  the replay up to it verifying, a restore of the forfeited game; beyond one stretch; nobody comes
+  (void, the spectator told); one beyond while the other is away within (void); a bot's seat never
+  away; a forfeit of a game that never started; the totals across a restore; the clock only for
+  ranked games and never back; a natural end stops the counting; the journal's new lines; the
+  wire's corpora and JSON forms. End to end: a player back within the grace plays the game to its
+  end (and pauses nothing alone); beyond the grace a forfeit, the replay verifying with `h3
+  replay verify`'s check and both queuing again; beyond the total in three drops each within the
+  grace; both away (void, a spectator told); the time away across a restart (the forfeit at the
+  total's rest, the restored match refusing another queue).
