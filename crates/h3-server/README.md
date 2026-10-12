@@ -37,6 +37,10 @@ terminates TLS (ADR-0019 point 10): logins are safe without TLS, a session is no
    that set the header themselves.
 4. **Configure the proxy** to pass the WebSocket upgrade, set `X-Forwarded-For` to the client's
    address, and keep idle connections at least as long as `idle_timeout_ms` (300 s by default).
+   The server pings every connection (`ping_every_ms`, 15 s) and closes one that answers
+   nothing within `ping_timeout_ms` (30 s): a player whose network is gone leaves a ranked
+   game's seat within that. nginx and Caddy pass the pings and pongs through; a proxy that
+   answered pings itself would hide a client that is gone.
 
 nginx:
 

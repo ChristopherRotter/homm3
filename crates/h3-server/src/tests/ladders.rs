@@ -753,3 +753,43 @@ async fn a_ranked_game_that_does_not_verify_is_void_unrated_and_its_players_told
     running.shutdown().await;
     std::fs::remove_dir_all(&config.server.data).unwrap();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_seat_whose_client_falls_silent_is_noticed_by_its_pings() {
+    // SRV-Q20: Bob's client stops reading (a network gone, no close). His connection answers no
+    // ping and closes within the ping timeout, and the grace runs from there: he forfeits in
+    // seconds, where the idle timeout (5 minutes) would have held his seat.
+    // A test client answers pings only while it reads: the timeout outlasts the matcher's second,
+    // in which one of the two waits unread.
+    let mut config = graced(1_000, 60_000);
+    config.limits.ping_every_ms = 500;
+    config.limits.ping_timeout_ms = 2_500;
+    let running = start(&config).await.unwrap();
+    let ([mut ann, mut bob], _, [_, bob_seat]) = seated_match(&running).await;
+    let silent = tokio::time::Instant::now();
+    let forfeit = Outcome::Forfeit {
+        side: side(bob_seat),
+    };
+    // Ann reads on, and her client answers the pings meanwhile.
+    assert_eq!(ends(&mut ann).await, forfeit);
+    assert!(
+        silent.elapsed() < Duration::from_secs(10),
+        "{:?}",
+        silent.elapsed()
+    );
+    rating(&mut ann).await;
+    // Bob's connection is gone: what his client did not read ends with the goodbye, or with the
+    // reset his late pong draws from the closed socket (which drops the unread rest).
+    let rest = async {
+        while let Some(message) = bob.recv().await {
+            if let ServerMessage::Goodbye { reason } = message {
+                assert_eq!(reason, GoodbyeReason::IdleTimeout);
+            }
+        }
+    };
+    tokio::time::timeout(Duration::from_secs(5), rest)
+        .await
+        .unwrap();
+    running.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}

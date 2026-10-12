@@ -9,6 +9,13 @@
 //! one for being in a game (a connection in the lobby holds a counted place). A join the game
 //! refused leaves the game, as if the connection had never joined.
 //!
+//! The peer's liveness (SRV-Q20): the server pings every connection (`ping_every_ms`; a browser's
+//! WebSocket answers by itself), and one it heard nothing from, not even a pong, for
+//! `ping_timeout_ms` closes. A client gone without a close (a cable pulled, a network gone) leaves
+//! its seat within that, not the idle timeout, and a server-side outage drops every seat within a
+//! ping of each other. The time the task spends writing to the connection does not count: a large
+//! frame to a slow client delays its pong.
+//!
 //! The login (E16 M3 T2a): an account's request is answered off the task ([`Accounts`]: the
 //! signatures, the player log's sync). Failed logins count per address, also across its
 //! connections' lifetimes: beyond `failed_logins_per_address` a minute, a login closes its
@@ -76,6 +83,8 @@ pub(crate) trait Transport: Send {
     fn recv(&mut self) -> impl Future<Output = Option<Incoming>> + Send;
     /// Sends one text message; `false` if the connection failed.
     fn send(&mut self, text: String) -> impl Future<Output = bool> + Send;
+    /// Sends a ping, which the peer answers (SRV-Q20); `false` if the connection failed.
+    fn ping(&mut self) -> impl Future<Output = bool> + Send;
     /// Closes the connection.
     fn close(&mut self) -> impl Future<Output = ()> + Send;
 }
@@ -92,6 +101,12 @@ impl Transport for WebSocketStream<TcpStream> {
 
     async fn send(&mut self, text: String) -> bool {
         SinkExt::send(self, Message::text(text)).await.is_ok()
+    }
+
+    async fn ping(&mut self) -> bool {
+        SinkExt::send(self, Message::Ping(Default::default()))
+            .await
+            .is_ok()
     }
 
     async fn close(&mut self) {
@@ -196,6 +211,10 @@ enum Wake {
     Game(Option<Frame>),
     /// The idle timeout passed, or the deadline for the hello or for a game (E16 M2 T5b).
     Idle,
+    /// Time to ping the client (SRV-Q20).
+    Ping,
+    /// The client said nothing, not even a pong, for the ping timeout (SRV-Q20).
+    Silent,
     /// The server stops (E16 M2 T5a).
     Stop,
     /// The connection's account re-keyed on another connection (E16 M3 T3).
@@ -285,8 +304,8 @@ fn kicked(rekeyed: &Notify) -> bool {
 /// limits (the connection's and its address's in `place`; WebSocket pings count), a frame that does
 /// not decode, no hello within its timeout or no game within the lobby's timeout after it or after
 /// leaving a game it was in (a refused join does not restart it), a full outbound queue (the game
-/// drops the queue), a write that stalls for the idle timeout or the server's stop (`stop`) close
-/// it.
+/// drops the queue), a write that stalls for the idle timeout, no answer to its pings (SRV-Q20) or
+/// the server's stop (`stop`) close it.
 pub(crate) async fn serve<T: Transport>(
     mut transport: T,
     conn: ConnId,
@@ -308,6 +327,14 @@ pub(crate) async fn serve<T: Transport>(
     let idle = Duration::from_millis(limits.idle_timeout_ms);
     let lobby = Duration::from_millis(limits.lobby_timeout_ms);
     let mut deadline = Instant::now() + idle;
+    // The pings' period and the silence that closes the connection (SRV-Q20), none without pings;
+    // when the next ping goes, and when the client was last heard.
+    let pings = (limits.ping_every_ms > 0).then(|| {
+        let every = Duration::from_millis(limits.ping_every_ms);
+        (every, Duration::from_millis(limits.ping_timeout_ms))
+    });
+    let mut next_ping = pings.map(|(every, _)| Instant::now() + every);
+    let mut heard = Instant::now();
     // The deadline to be in a game: the hello's first, then the lobby's (E16 M2 T5b).
     let mut unjoined = Some(Instant::now() + Duration::from_millis(limits.hello_timeout_ms));
     let mut gate = Connection::new(limits.max_frame, challenge, server.anonymous);
@@ -345,11 +372,16 @@ pub(crate) async fn serve<T: Transport>(
             frame = from_game(&mut link.bound) => Wake::Game(frame),
             () = sleep_until(deadline) => Wake::Idle,
             () = until(lobby_due) => Wake::Idle,
+            () = until(next_ping) => Wake::Ping,
+            () = until(pings.map(|(_, silence)| heard + silence)) => Wake::Silent,
             () = stopped(&mut stop) => Wake::Stop,
             () = rekeyed.notified() => Wake::Rekeyed,
             told = from_queue.recv() => Wake::Queue(told),
         };
         let now = Instant::now();
+        if matches!(wake, Wake::Client(Some(_))) {
+            heard = now;
+        }
         let frame = match wake {
             Wake::Client(None) => break,
             Wake::Client(Some(_)) if !(rate.admit(now) && place.admit(now)) => {
@@ -395,6 +427,21 @@ pub(crate) async fn serve<T: Transport>(
             }
             Wake::Game(None) => goodbye(GoodbyeReason::TooSlow),
             Wake::Idle => goodbye(GoodbyeReason::IdleTimeout),
+            Wake::Ping => {
+                next_ping = pings.map(|(every, _)| now + every);
+                let pinged = timeout(idle, transport.ping()).await;
+                heard += now.elapsed();
+                if !matches!(pinged, Ok(true)) {
+                    break;
+                }
+                continue;
+            }
+            // Gone, most likely: its goodbye gets a moment, not the idle timeout.
+            Wake::Silent => {
+                let silent = goodbye(GoodbyeReason::IdleTimeout).text;
+                let _ = timeout(LINGER, transport.send(silent)).await;
+                break;
+            }
             Wake::Stop => goodbye(GoodbyeReason::Shutdown),
             Wake::Rekeyed => goodbye(GoodbyeReason::Rekeyed),
             Wake::Queue(Some((text, waits))) => {
@@ -412,7 +459,9 @@ pub(crate) async fn serve<T: Transport>(
         if was_queued && !link.queued {
             unjoined = Some(now + lobby);
         }
+        let writing = Instant::now();
         let sent = timeout(idle, transport.send(frame.text)).await;
+        heard += writing.elapsed();
         if frame.close || !matches!(sent, Ok(true)) {
             break;
         }
@@ -1070,8 +1119,15 @@ mod tests {
             self.outbound.send(text).is_ok()
         }
 
+        async fn ping(&mut self) -> bool {
+            self.outbound.send(String::from(PING)).is_ok()
+        }
+
         async fn close(&mut self) {}
     }
+
+    /// What the fake transport sends for a ping.
+    const PING: &str = "<ping>";
 
     /// A connection's task over a fake transport, with game 7 hosted in its registry.
     struct Rig {
@@ -1087,13 +1143,18 @@ mod tests {
 
     impl Rig {
         fn new() -> Self {
+            Self::with(Limits::default())
+        }
+
+        /// A rig within `limits`, one game in total.
+        fn with(limits: Limits) -> Self {
             let (client, inbound) = mpsc::unbounded_channel();
             let (outbound, sent) = mpsc::unbounded_channel();
             let (game, inbox) = mpsc::channel(8);
             let limits = Limits {
                 games: 1,
                 games_per_address: 1,
-                ..Limits::default()
+                ..limits
             };
             let accounts = Arc::new(
                 Accounts::open(
@@ -1254,6 +1315,48 @@ mod tests {
             Some(ToGame::Closed { conn: ConnId(4) })
         ));
         assert!(lock(&rig.registry).close_if_idle(7, Phase::Waiting));
+    }
+
+    /// SRV-Q20: a client that answers the pings stays, one that falls silent is gone within the
+    /// ping timeout, long before the idle timeout, and leaves its game.
+    #[tokio::test]
+    async fn a_connection_that_stops_answering_pings_closes() {
+        let mut rig = Rig::with(Limits {
+            ping_every_ms: 100,
+            ping_timeout_ms: 300,
+            ..Limits::default()
+        });
+        let _to = rig.joined(Seat::Attacker).await;
+        let begun = Instant::now();
+        while begun.elapsed() < Duration::from_millis(800) {
+            assert_eq!(rig.next().await.as_deref(), Some(PING));
+            rig.client.send(Incoming::Control).unwrap();
+        }
+        // Silent from here: pings, then the goodbye, and the game hears the connection close.
+        let silent = Instant::now();
+        let goodbye = goodbye(GoodbyeReason::IdleTimeout).text;
+        let mut pings = 0;
+        loop {
+            match rig.next().await {
+                Some(text) if text == PING => pings += 1,
+                Some(text) => {
+                    assert_eq!(text, goodbye);
+                    break;
+                }
+                None => panic!("no goodbye"),
+            }
+        }
+        assert!(pings >= 2, "{pings} pings");
+        assert!(
+            silent.elapsed() < Duration::from_secs(2),
+            "{:?}",
+            silent.elapsed()
+        );
+        assert!(matches!(
+            rig.told().await,
+            Some(ToGame::Closed { conn: ConnId(4) })
+        ));
+        rig.task.await.unwrap();
     }
 
     #[test]
