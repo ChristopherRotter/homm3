@@ -54,7 +54,8 @@ use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use crate::accounts::Accounts;
 use crate::config::Limits;
 use crate::game::{self, Frame, FromGame, ToGame};
-use crate::registry::{self, Opening, Shared, lock};
+use crate::ladders::Ladders;
+use crate::registry::{self, Opening, Shared, ToConn, lock};
 
 /// What a transport received.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -167,6 +168,9 @@ impl Rate {
     }
 }
 
+/// The frames a connection's queue may hold for it (E16 M4 T2): a few at a time come.
+const QUEUE_FRAMES: usize = 16;
+
 /// The window of an address's failed logins (E16 M3 T2a).
 const FAILED_LOGINS_WINDOW: Duration = Duration::from_secs(60);
 
@@ -196,6 +200,8 @@ enum Wake {
     Stop,
     /// The connection's account re-keyed on another connection (E16 M3 T3).
     Rekeyed,
+    /// The connection's queue told it something (E16 M4 T2).
+    Queue(Option<(String, bool)>),
 }
 
 /// Resolves once the server stops (E16 M2 T5a); never if the signal's sender is gone unset.
@@ -238,6 +244,8 @@ pub(crate) struct Service {
     pub sessions: Mutex<Sessions>,
     /// The reverse proxies whose forwarded header names the client (E16 M3 T4b).
     pub proxies: Vec<IpAddr>,
+    /// The ladders (E16 M4 T2): a queue goes by an account's rating on its ladder.
+    pub ladders: Arc<Ladders>,
 }
 
 /// The logged-in connections by account (E16 M3 T3): the key each logged in with, and what closes
@@ -306,20 +314,32 @@ pub(crate) async fn serve<T: Transport>(
     // Notified when another connection re-keys the account this one logs in as (E16 M3 T3).
     let rekeyed = Arc::new(Notify::new());
     let mut rate = Rate::new(limits.messages_per_second);
+    // Where the connection hears from a ladder's queue it waits in (E16 M4 T2).
+    let (to_me, mut from_queue) = mpsc::channel(QUEUE_FRAMES);
     let mut link = Link {
         conn,
         origin: place.address,
         registry,
         queue: (limits.outbound_queue.max(1), limits.outbound_bytes),
         bound: None,
+        ladders: Arc::clone(&server.ladders),
+        to_me,
+        queued: false,
     };
     loop {
         // The lobby's deadline waits while the connection is bound to a game, and starts afresh
         // only once it leaves a game it was in: a refused join does not restart it (E16 M2 T5e).
+        // It waits while the connection waits in a ladder's queue too, and starts afresh once it
+        // no longer does (E16 M4 T2: a match's players have it to join their game).
         if link.bound.is_none() && unjoined.is_none() {
             unjoined = Some(Instant::now() + lobby);
         }
-        let lobby_due = if link.bound.is_some() { None } else { unjoined };
+        let lobby_due = if link.bound.is_some() || link.queued {
+            None
+        } else {
+            unjoined
+        };
+        let was_queued = link.queued;
         let wake = tokio::select! {
             incoming = transport.recv() => Wake::Client(incoming),
             frame = from_game(&mut link.bound) => Wake::Game(frame),
@@ -327,6 +347,7 @@ pub(crate) async fn serve<T: Transport>(
             () = until(lobby_due) => Wake::Idle,
             () = stopped(&mut stop) => Wake::Stop,
             () = rekeyed.notified() => Wake::Rekeyed,
+            told = from_queue.recv() => Wake::Queue(told),
         };
         let now = Instant::now();
         let frame = match wake {
@@ -376,13 +397,28 @@ pub(crate) async fn serve<T: Transport>(
             Wake::Idle => goodbye(GoodbyeReason::IdleTimeout),
             Wake::Stop => goodbye(GoodbyeReason::Shutdown),
             Wake::Rekeyed => goodbye(GoodbyeReason::Rekeyed),
+            Wake::Queue(Some((text, waits))) => {
+                link.queued = waits;
+                Frame {
+                    text,
+                    close: false,
+                    left: None,
+                    held: false,
+                }
+            }
+            // The task holds a sender of its own: never.
+            Wake::Queue(None) => continue,
         };
+        if was_queued && !link.queued {
+            unjoined = Some(now + lobby);
+        }
         let sent = timeout(idle, transport.send(frame.text)).await;
         if frame.close || !matches!(sent, Ok(true)) {
             break;
         }
     }
     link.unbind().await;
+    lock(&link.registry).closed(conn);
     if let Some(login) = gate.account() {
         server.sessions().remove(&(login.to_owned(), conn));
     }
@@ -479,6 +515,12 @@ struct Link {
     /// The capacity of the connection's queue for a game, in frames and in bytes (E16 M2 T5c).
     queue: (usize, usize),
     bound: Option<Bound>,
+    /// The ladders, for the account's rating (E16 M4 T2).
+    ladders: Arc<Ladders>,
+    /// Where the connection hears from a ladder's queue.
+    to_me: ToConn,
+    /// Whether the connection waits in a ladder's queue, matched or not.
+    queued: bool,
 }
 
 impl Link {
@@ -503,6 +545,32 @@ impl Link {
             }),
             ClientMessage::FetchArchived { seq, replay } => {
                 Routed::Reply(archived(&self.registry, seq, &replay).await)
+            }
+            ClientMessage::ListLadders { seq } => {
+                Routed::Reply(text(lock(&self.registry).ladders(seq)))
+            }
+            ClientMessage::Queue { seq, ladder } => {
+                // Outside the registry's lock: the ladders have their own.
+                let rating =
+                    (login.as_deref()).map_or(0, |login| self.ladders.points(&ladder, login));
+                let to = self.to_me.clone();
+                let asked = (seq, ladder.as_str());
+                let (answer, waits) =
+                    lock(&self.registry).queue(self.conn, asked, login.as_deref(), (rating, to));
+                self.queued = waits;
+                Routed::Reply(text(answer))
+            }
+            ClientMessage::Dequeue { seq } | ClientMessage::DeclineMatch { seq } => {
+                let decline = matches!(message, ClientMessage::DeclineMatch { .. });
+                let (answer, waits) = lock(&self.registry).dequeue(self.conn, seq, decline);
+                self.queued = waits;
+                Routed::Reply(text(answer))
+            }
+            ClientMessage::AcceptMatch { .. } => {
+                match registry::accept(&self.registry, self.conn) {
+                    Some(refused) => Routed::Reply(text(refused)),
+                    None => Routed::Passed,
+                }
             }
             ClientMessage::CreateGame {
                 seq,
@@ -638,6 +706,16 @@ async fn archived(registry: &Shared, seq: u32, id: &str) -> Frame {
     }
 }
 
+/// A frame of `text` that keeps the connection open.
+const fn text(text: String) -> Frame {
+    Frame {
+        text,
+        close: false,
+        left: None,
+        held: false,
+    }
+}
+
 /// `Refused` for a lobby's or a join's refusal; the connection stays open.
 fn refused(reason: Refusal) -> Frame {
     Frame {
@@ -666,7 +744,12 @@ fn unbound(message: &ClientMessage) -> Frame {
         | ClientMessage::Login { seq, .. }
         | ClientMessage::Rekey { seq, .. }
         | ClientMessage::Rename { seq, .. }
-        | ClientMessage::SetListed { seq, .. } => *seq,
+        | ClientMessage::SetListed { seq, .. }
+        | ClientMessage::ListLadders { seq }
+        | ClientMessage::Queue { seq, .. }
+        | ClientMessage::Dequeue { seq }
+        | ClientMessage::AcceptMatch { seq }
+        | ClientMessage::DeclineMatch { seq } => *seq,
         ClientMessage::Hello { .. } | ClientMessage::Ping { .. } | ClientMessage::Join { .. } => 0,
     };
     Frame {
@@ -1019,7 +1102,9 @@ mod tests {
                 .unwrap(),
             );
             let server = crate::config::Server::default();
-            let mut registry = Registry::new(vec![], &limits, server, Arc::clone(&accounts));
+            let ladders = Arc::new(Ladders::default());
+            let mut registry =
+                Registry::new((vec![], &ladders), &limits, server, Arc::clone(&accounts));
             registry.host(7, game);
             let registry = Arc::new(Mutex::new(registry));
             let counts = Arc::new(Mutex::new(Counts::default()));
@@ -1037,6 +1122,7 @@ mod tests {
                     accounts,
                     sessions: Mutex::default(),
                     proxies: Vec::new(),
+                    ladders,
                 }),
                 watch::channel(false).1,
             ));

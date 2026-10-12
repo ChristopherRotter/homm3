@@ -4,21 +4,14 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, SRV-Q16; M3 done 2026-10-12, its checkpoint passed, SRV-Q18). M4 refined 2026-10-12 (SRV-Q19): ADR-0019 points 4–9 decided; the working detail in `E16-design.md` §11; cut below, each task about half a context, the inbox's M4 items folded in; T1 done 2026-10-12 (`[[ladder]]`, `rating`, the results log; `E16-log.md`). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`, each journal change `JOURNAL_FORMAT_VERSION`.
-
-### E16 M4 T2 — The queue and the match
-
-- **Scope:** `h3-protocol` `ladder` (sans-I/O, 100 %): an account's queue entry (one queue at a time; refused while it has an unfinished ranked game on that ladder, which the host tells it, and for an anonymous connection); the matcher (by rating, ties by queue order, the window 100 + 50 per 30 s of the shorter wait; *provisional*); the accept step (`accept_ms`; who did not accept leaves, the other returns with its waiting time); a closed connection leaves its queue. The messages: `ListLadders`/`Ladders`, `Queue`/`Queued`, `Dequeue`, `MatchFound`, `AcceptMatch`, `DeclineMatch`, `MatchReady { game, seat }`, their refusals; `GameInfo::ladder`. `h3-server`: the queues in the registry, the matcher's tick, the accepted match created as a game from a scenario of the pool, the sides at random, both seats bound to their accounts at creation (no token; the players `Join` as their seat). Until T3a the game runs as an unranked one with bound seats; until T3b nothing is rated (an `SRV-STUB` each). Wire 14.
-- **Acceptance:** the Definition of Done; properties: the matcher pairs nobody twice, never an account with itself, never outside the window; end to end: two logged-in clients queue, accept, join and play; a decline and an expiry return the other; a second queue and an anonymous queue refused.
-- **Depends on:** T1 (done: `ladders::Ladders` holds the tables; keep the pool `Ladder::open` compiles and checks, which T1 drops).
-- **Status:** ready.
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, SRV-Q16; M3 done 2026-10-12, its checkpoint passed, SRV-Q18). M4 refined 2026-10-12 (SRV-Q19): ADR-0019 points 4–9 decided; the working detail in `E16-design.md` §11; cut below, each task about half a context, the inbox's M4 items folded in; T1 done 2026-10-12 (`[[ladder]]`, `rating`, the results log); T2 done 2026-10-12 (the queues, the match's game, wire 14; `E16-log.md`). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`, each journal change `JOURNAL_FORMAT_VERSION`.
 
 ### E16 M4 T3a — A ranked game's seats and forfeits
 
 - **Scope:** a ranked game has no host (`Pause` without agreement and `SetSpectators` refused; spectators by the ladder's setting); `empty_game_ms` and `paused_game_ms` do not apply. Absence: a seat with no connection beyond `grace_ms` in one stretch, or `grace_total_ms` in total, forfeits (a loss; both absent: void, a no-show each), a game not yet started counted from its creation; `Entry::Ranked`, `Entry::Absent(side, ms)`, `Entry::Forfeit(side)` (`JOURNAL_FORMAT_VERSION` 5); a restore keeps the totals and starts a running stretch afresh (the downtime never counts). A forfeit's result on the wire (`GameEnded`); the replay holds the commands up to it (check `h3 replay verify` with an unfinished battle).
 - **Acceptance:** the Definition of Done; end to end: a player back within the grace re-takes the seat by account and the game goes on; beyond the grace, and beyond the total in several drops, a forfeit; both away: void; across a restart the totals hold.
-- **Depends on:** T2.
-- **Status:** ready once T2 is done.
+- **Depends on:** T2 (done: a match's game has its first seat as host and never leaves while it waits, SRV-STUB-3, which this task resolves; `registry::Registry::ranked` lists the matches' games, which a restart loses: `Entry::Ranked` brings them back).
+- **Status:** ready.
 
 ### E16 M4 T3b — The rated end
 

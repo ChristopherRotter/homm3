@@ -233,6 +233,9 @@ pub struct Offer {
     pub bots: Vec<BotSeat>,
     /// What the lobby shows of it.
     pub info: wire::Offer,
+    /// The ladder whose pool it is in (E16 M4 T2): its games are that ladder's matches, and no
+    /// client creates one.
+    pub ladder: Option<String>,
 }
 
 impl Offer {
@@ -264,6 +267,7 @@ impl Offer {
             setup,
             bots: config.bots.clone(),
             info,
+            ladder: None,
         })
     }
 }
@@ -291,6 +295,8 @@ pub(crate) struct Prepared {
     commands: usize,
     /// The server's accounts (E16 M3 T3).
     accounts: Arc<Accounts>,
+    /// The accounts the seats belong to from the start (E16 M4 T2: a match's game).
+    reserved: [Option<String>; 2],
     /// A new game or a restored one.
     begin: Begin,
 }
@@ -405,8 +411,15 @@ impl Prepared {
             empty_game: deadline(limits.empty_game_ms),
             commands: commands(limits),
             accounts,
+            reserved: [None, None],
             begin: Begin::New(journal),
         })
+    }
+
+    /// The seats belong to these accounts, the attacker's first, from the start (E16 M4 T2: a
+    /// match's game): their players take them by account, and no one else.
+    pub(crate) fn reserved(self, reserved: [Option<String>; 2]) -> Self {
+        Self { reserved, ..self }
     }
 
     /// The game a journal holds, to restore (E16 M2 T2): the offer `offer` its first line names,
@@ -460,6 +473,7 @@ impl Prepared {
             empty_game: deadline(limits.empty_game_ms),
             commands: commands(limits),
             accounts,
+            reserved: [None, None],
             begin: Begin::Restored(Restored {
                 path: path.to_path_buf(),
                 read,
@@ -495,6 +509,7 @@ impl Prepared {
             empty_game,
             commands,
             accounts,
+            reserved,
             begin,
         } = self;
         let game = config.game;
@@ -517,7 +532,7 @@ impl Prepared {
                 journal,
             )
         };
-        let (mut session, journal) = match begin {
+        let (mut session, mut journal) = match begin {
             Begin::New(journal) => match Session::new(&offer.ruleset, config, seats) {
                 Ok(session) => (session, journal),
                 // `Prepared::new` started this battle already.
@@ -535,6 +550,21 @@ impl Prepared {
                 resumed
             }
         };
+        // A match's seats are its accounts' before anyone joins, in the journal before the players
+        // hear of the game (E16 M4 T2).
+        let matched = reserved.iter().any(Option::is_some);
+        for (side, login) in [BattleSide::Attacker, BattleSide::Defender]
+            .into_iter()
+            .zip(reserved)
+        {
+            if let Some(login) = login {
+                session.reserve(side, login);
+            }
+        }
+        if matched && let Err(e) = journal.append(session.drain_entries()) {
+            eprintln!("h3-server: game {game}: the journal does not write ({e}): it stops");
+            return stop(&BTreeMap::new(), registry, game);
+        }
         let mut journal = Some(journal);
         // Its last command reached the limit, and it is not over (E16 M3 T4a).
         let past = |s: &Session<'_>| s.result().is_none() && s.journal().commands.len() >= commands;
@@ -628,7 +658,10 @@ impl Prepared {
                 let host = (data.as_path(), registry);
                 return too_long(game, (&conns, &closed), journal, host, &mut inbox);
             }
-            if session.phase() == Phase::Waiting && !session.seated() {
+            // A match's game waits for its players however its joins went (E16 M4 T2; the grace
+            // comes with E16 M4 T3a).
+            // stub: SRV-STUB-3
+            if session.phase() == Phase::Waiting && !session.seated() && !matched {
                 // Its spectators hear it, and a joiner whose join is still on its way; a connection
                 // whose join it refused leaves at its refusal and never reads the goodbye.
                 close_all(&conns, &closed, GoodbyeReason::Abandoned);
@@ -739,6 +772,7 @@ fn resume<'r>(
         open: session.open_seats(),
         spectators: session.takes_spectators(),
         seated: seated(&session, accounts),
+        ladder: offer.ladder.clone(),
     };
     let paused = session.paused();
     let hosted = if paused {

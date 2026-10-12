@@ -3,8 +3,8 @@
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
 crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 done
 2026-10-11 (T1 to T5e), its checkpoint passed the same day (SRV-Q16); M3 done 2026-10-12 (T1 to
-T5), its checkpoint passed the same day (SRV-Q18); M4 refined 2026-10-12 (SRV-Q19); M4 T1 done,
-T2 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+T5), its checkpoint passed the same day (SRV-Q18); M4 refined 2026-10-12 (SRV-Q19); M4 T1 and
+T2 done, T3a next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); [ADR-0019](../adr/0019-identity-and-ladders.md) (identity and ladders, accepted at the M3
 refinement, its ladder points decided at M4's); ADR draft `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -356,9 +356,10 @@ ranked game per player per ladder, bots exempt; no turn timer in M4 (a game rule
 - **T1 Ladders, ratings and the results log** (done 2026-10-12; `E16-log.md`): `[[ladder]]`,
   Glicko-2 (`rating`) with Glickman's example as its test vector, `<data>/ladders/<id>.log` read
   back at start, seasons by the ruleset hash; no wire change.
-- **T2 The queue and the match** (after T1): `h3_protocol::ladder` (the queue, the matcher, the
-  accept step, one queue per account, one unfinished ranked game per ladder), the messages, the
-  matched game created with both seats bound to their accounts; wire 14.
+- **T2 The queue and the match** (done 2026-10-12; `E16-log.md`): `h3_protocol::ladder` (the
+  queue, the matcher, the accept step, one queue per account, one unfinished ranked game per
+  ladder), the messages, the matched game created with both seats bound to their accounts; wire
+  14; until T3a and T3b SRV-STUB-3 and -4.
 - **T3a A ranked game's seats and forfeits** (after T2): no host; the disconnect grace and
   total, forfeits and no-shows in the journal (format 5), across a restart.
 - **T3b The rated end** (after T3a): verification before `GameEnded`, the result rated and
@@ -444,6 +445,15 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   season started only at a start whose ruleset is new; `rating` public, Glicko-2 with no
   deviation growth for inactivity; `exp` and `ln` behind a local `allow` of the workspace's ban
   (an adapter, ADR-0003 §3's reason does not apply: no rating is computed twice).
+- T2: the messages (`ListLadders`/`Ladders` with each ladder's season and waiting count, `Queue`/
+  `Queued`, `Dequeue` and `DeclineMatch` answered `Dequeued`, `AcceptMatch` answered by
+  `MatchReady` once both accepted, `MatchFound { ladder, accept_ms }`, `MatchCancelled`,
+  `Unqueued { Expired | Draining | Full }`, five refusals, `GameInfo::ladder`); the window (100 +
+  50 per 30 s of the shorter wait) and the greedy pairing by rating; the queues in memory only;
+  the matcher every second; a match's game created as the server's own (the limit in total, none
+  per address); a pool's scenarios as offers `<ladder>.<n>`, an `[[offer]]` so named refused; a
+  match's waiting game never leaving the lobby; the lobby's deadline waiting while a connection
+  is queued.
 
 ## Review list for the M3 checkpoint (passed 2026-10-12, SRV-Q18)
 

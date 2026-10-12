@@ -488,12 +488,20 @@ impl Config {
         Ok(())
     }
 
-    /// Each ladder checked; ids distinct (E16 M4 T1).
+    /// Each ladder checked; ids distinct (E16 M4 T1); no offer named as a ladder's pool names its
+    /// scenarios (`<ladder>.<n>`, E16 M4 T2).
     fn check_ladders(&self) -> Result<(), Error> {
         for (i, ladder) in self.ladders.iter().enumerate() {
             ladder.check()?;
             if self.ladders[..i].iter().any(|l| l.id == ladder.id) {
                 return Err(Error(format!("ladder `{}`: its id is taken", ladder.id)));
+            }
+            let prefix = format!("{}.", ladder.id);
+            if let Some(offer) = self.offers.iter().find(|o| o.id.starts_with(&prefix)) {
+                return Err(Error(format!(
+                    "offer `{}`: ladder `{}` names its pool's scenarios so",
+                    offer.id, ladder.id
+                )));
             }
         }
         Ok(())

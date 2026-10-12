@@ -996,6 +996,33 @@ pub struct GameInfo {
     /// The seats that belong to accounts, with their display names (E16 M3 T3); a seat an
     /// anonymous player or a bot holds is not named.
     pub seated: Vec<Seated>,
+    /// The ladder whose matchmaking created it (E16 M4 T2); `None` for a game a client created.
+    pub ladder: Option<String>,
+}
+
+/// A ladder as `ListLadders` shows it (E16 M4 T2; ADR-0019 point 4).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LadderInfo {
+    /// The ladder's id, as `Queue` names it.
+    pub id: String,
+    /// Its name.
+    pub name: String,
+    /// Its current season.
+    pub season: u32,
+    /// How many players wait in its queue, matched or not.
+    pub waiting: u32,
+}
+
+/// Why a player is no longer in a ladder's queue without having asked (E16 M4 T2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UnqueueReason {
+    /// The player did not accept its match in time.
+    Expired,
+    /// The server drains (E16 M2 T5a): it makes no new match.
+    Draining,
+    /// Both accepted, but the server has as many open games as it allows.
+    Full,
 }
 
 /// A question about the battle that only the server's rules answer (ADR-0018 point 10).
@@ -1164,6 +1191,35 @@ pub enum ClientMessage {
         /// Whether they may.
         listed: bool,
     },
+    /// The server's ladders (E16 M4 T2): answered `Ladders`. Needs no game.
+    ListLadders {
+        /// The client's sequence number.
+        seq: u32,
+    },
+    /// Wait in a ladder's queue for a match, as the logged-in account (E16 M4 T2; ADR-0019
+    /// point 5): answered `Queued`, or `Refused`. An account waits in one queue at a time.
+    Queue {
+        /// The client's sequence number.
+        seq: u32,
+        /// The ladder's id.
+        ladder: String,
+    },
+    /// Leave the queue, or decline the match found: answered `Dequeued`, or `Refused`.
+    Dequeue {
+        /// The client's sequence number.
+        seq: u32,
+    },
+    /// Accept the match found (`MatchFound`): once the other player accepts too, both hear
+    /// `MatchReady`; until then nothing answers. `Refused { NoMatch }` without a match.
+    AcceptMatch {
+        /// The client's sequence number.
+        seq: u32,
+    },
+    /// Decline the match found: answered `Dequeued` (the player leaves the queue), or `Refused`.
+    DeclineMatch {
+        /// The client's sequence number.
+        seq: u32,
+    },
 }
 
 /// Why a join, a game's creation or an account's request was refused; the connection stays open.
@@ -1201,6 +1257,16 @@ pub enum Refusal {
     NotLoggedIn,
     /// The connection is logged in already (E16 M3 T1).
     AlreadyLoggedIn,
+    /// The server has no ladder under this id (E16 M4 T2).
+    NoSuchLadder,
+    /// The account waits in a queue already, or for a match's answers (E16 M4 T2).
+    AlreadyQueued,
+    /// The account's ranked game on this ladder is not over (E16 M4 T2; ADR-0019 point 8).
+    InRankedGame,
+    /// The account waits in no queue (E16 M4 T2).
+    NotQueued,
+    /// The account has no match to answer (E16 M4 T2).
+    NoMatch,
 }
 
 /// Why the server closes the connection.
@@ -1411,6 +1477,51 @@ pub enum ServerMessage {
         display: String,
         /// Whether its finished games' replays may be listed.
         listed: bool,
+    },
+    /// The server's ladders (E16 M4 T2): `ListLadders`'s answer.
+    Ladders {
+        /// The client's sequence number.
+        seq: u32,
+        /// The ladders, by id.
+        ladders: Vec<LadderInfo>,
+    },
+    /// The account waits in the ladder's queue (E16 M4 T2).
+    Queued {
+        /// The client's sequence number.
+        seq: u32,
+        /// The ladder's id.
+        ladder: String,
+    },
+    /// The account left its queue, as it asked (`Dequeue`, `DeclineMatch`; E16 M4 T2).
+    Dequeued {
+        /// The client's sequence number.
+        seq: u32,
+    },
+    /// A match (E16 M4 T2): accept it (`AcceptMatch`) within `accept_ms`, or the player leaves the
+    /// queue.
+    MatchFound {
+        /// The ladder's id.
+        ladder: String,
+        /// How long the player has to accept, in milliseconds.
+        accept_ms: u64,
+    },
+    /// The match will not be played: the other player declined, did not accept in time or went
+    /// away (E16 M4 T2). The player waits in the queue again, its waiting time kept.
+    MatchCancelled {},
+    /// Both accepted (E16 M4 T2): the game is created, the seat the account's; take it with
+    /// `Join` (no token).
+    MatchReady {
+        /// The ladder's id.
+        ladder: String,
+        /// The game.
+        game: u32,
+        /// The account's seat.
+        seat: Seat,
+    },
+    /// The player is out of its queue without having asked (E16 M4 T2).
+    Unqueued {
+        /// Why.
+        reason: UnqueueReason,
     },
 }
 

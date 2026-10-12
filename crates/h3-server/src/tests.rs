@@ -497,6 +497,7 @@ async fn the_lobby_refuses_with_its_reason_and_frees_a_waiting_game() {
             open: vec![Seat::Defender],
             spectators: true,
             seated: vec![],
+            ladder: None,
         }]
     );
     let mut c = greeted(&running).await;
@@ -696,6 +697,7 @@ async fn a_game_stopped_mid_battle_resumes_after_a_restart_and_its_replay_verifi
             open: vec![],
             spectators: true,
             seated: vec![],
+            ladder: None,
         }],
         "the game is back, its seats taken"
     );
@@ -915,6 +917,7 @@ async fn a_paused_game_resumes_with_a_seats_token_also_after_a_restart() {
         open: vec![],
         spectators: false,
         seated: vec![],
+        ladder: None,
     };
     let mut attempts = 0;
     while listed(&running).await != [paused.clone()] {

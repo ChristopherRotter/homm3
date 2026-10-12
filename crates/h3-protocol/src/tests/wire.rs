@@ -130,6 +130,14 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
             seq: 22,
             listed: false,
         },
+        ClientMessage::ListLadders { seq: 23 },
+        ClientMessage::Queue {
+            seq: 24,
+            ladder: "arena".to_string(),
+        },
+        ClientMessage::Dequeue { seq: 25 },
+        ClientMessage::AcceptMatch { seq: 26 },
+        ClientMessage::DeclineMatch { seq: 27 },
     ];
     out.extend(
         commands()
@@ -258,6 +266,7 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                         seat: Seat::Defender,
                         display: "Alice".to_string(),
                     }],
+                    ladder: None,
                 },
                 GameInfo {
                     game: 4,
@@ -266,6 +275,7 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                     open: vec![],
                     spectators: false,
                     seated: vec![],
+                    ladder: Some("arena".to_string()),
                 },
             ],
         },
@@ -319,8 +329,47 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             Refusal::NameTaken,
             Refusal::NotLoggedIn,
             Refusal::AlreadyLoggedIn,
+            Refusal::NoSuchLadder,
+            Refusal::AlreadyQueued,
+            Refusal::InRankedGame,
+            Refusal::NotQueued,
+            Refusal::NoMatch,
         ]
         .map(|reason| ServerMessage::Refused { reason }),
+    );
+    out.extend([
+        ServerMessage::Ladders {
+            seq: 23,
+            ladders: vec![LadderInfo {
+                id: "arena".to_string(),
+                name: "The Arena".to_string(),
+                season: 2,
+                waiting: 3,
+            }],
+        },
+        ServerMessage::Queued {
+            seq: 24,
+            ladder: "arena".to_string(),
+        },
+        ServerMessage::Dequeued { seq: 25 },
+        ServerMessage::MatchFound {
+            ladder: "arena".to_string(),
+            accept_ms: 30_000,
+        },
+        ServerMessage::MatchCancelled {},
+        ServerMessage::MatchReady {
+            ladder: "arena".to_string(),
+            game: 9,
+            seat: Seat::Defender,
+        },
+    ]);
+    out.extend(
+        [
+            UnqueueReason::Expired,
+            UnqueueReason::Draining,
+            UnqueueReason::Full,
+        ]
+        .map(|reason| ServerMessage::Unqueued { reason }),
     );
     out.extend(
         [
@@ -423,10 +472,33 @@ fn the_json_is_serdes_default_enum_form() {
             seat: Seat::Attacker,
             display: "Alice".to_string(),
         }],
+        ladder: Some("arena".to_string()),
     };
     assert_eq!(
         serde_json::to_string(&info).unwrap(),
-        r#"{"game":3,"offer":"duel","phase":"Running","open":[],"spectators":true,"seated":[{"seat":"Attacker","display":"Alice"}]}"#
+        r#"{"game":3,"offer":"duel","phase":"Running","open":[],"spectators":true,"seated":[{"seat":"Attacker","display":"Alice"}],"ladder":"arena"}"#
+    );
+    // E16 M4 T2: the ladders' messages.
+    assert_eq!(
+        text(&ClientMessage::Queue {
+            seq: 4,
+            ladder: "arena".to_string()
+        }),
+        r#"{"Queue":{"seq":4,"ladder":"arena"}}"#
+    );
+    let server = |m: &ServerMessage| String::from_utf8(serde_json::to_vec(m).unwrap()).unwrap();
+    assert_eq!(
+        server(&ServerMessage::MatchFound {
+            ladder: "arena".to_string(),
+            accept_ms: 30_000
+        }),
+        r#"{"MatchFound":{"ladder":"arena","accept_ms":30000}}"#
+    );
+    assert_eq!(
+        server(&ServerMessage::Unqueued {
+            reason: UnqueueReason::Expired
+        }),
+        r#"{"Unqueued":{"reason":"Expired"}}"#
     );
     // E16 M3 T1: a login, keys and signatures as hex.
     assert_eq!(

@@ -1009,3 +1009,40 @@ how and why the work went.
   file's mode; rated lines read back bit for bit, a torn line cut, a season's reset; ten bad lines;
   a pool on two rulesets, an empty one); the configuration's checks and the example's ladder;
   end to end, a season per content change and an unknown account stopping the start.
+
+### M4 T2 — The queue and the match (2026-10-12)
+
+- **The queues, sans I/O** (`h3_protocol::ladder`, *provisional*): `Queues<C>` over the ladders
+  (id, name, season, accept time); a logged-in account waits in one queue at a time (`NotLoggedIn`,
+  `Draining`, `NoSuchLadder`, `AlreadyQueued` across ladders and connections, `InRankedGame` as
+  the host says); `tick` gives up matches past their due time (who accepted waits again,
+  `MatchCancelled`, its waiting time and its place kept; who did not is out, `Unqueued {
+  Expired }`), then pairs each ladder's players greedily by rating (ties by order) within
+  `window` of the shorter wait; `accept` (once per player; the second makes the `Matched`),
+  `decline` and `dequeue` (`Dequeued`, the other back), `closed`, `drain` (`Unqueued { Draining }`),
+  `list`, `waits` (by account), `holds` (by connection).
+- **The wire** (version 14): five client messages, seven server messages, five refusals,
+  `LadderInfo`, `UnqueueReason`, `GameInfo::ladder`; `Lobby::create_ranked` (the limit in total
+  only); `Session::reserve` (a seat its account's before anyone joins, journaled as `Taken` with
+  the account; nothing for a bot's seat or one taken already).
+- **The server**: a pool's scenarios compiled as offers `<ladder>.<n>` (`game::Offer::ladder`),
+  which a restore and a resume find beside the configured offers; the registry holds the queues,
+  each queued connection's channel (`(text, still queued)`), the matches' games not over (a match
+  over, or gone, frees its accounts) and the queues' clock; `registry::accept` creates an
+  accepted match's game (a pool's scenario and the sides by `os_u64`, `Lobby::create_ranked`, the
+  seats reserved on the game's thread and journaled before anything else) and tells both
+  `MatchReady` (or `Unqueued { Full | Draining }`); `match_every` ticks the queues every second;
+  a drain empties them. The connection's task reads its queue's channel, keeps the lobby's
+  deadline waiting while queued (restarted when it no longer is), leaves its queue when it
+  closes, and reads the account's rating (whole points) outside the registry's lock. A match's
+  game that waits for its players neither leaves the lobby when idle nor as abandoned (until
+  T3a's grace, SRV-STUB-3); nothing is rated (SRV-STUB-4).
+- **Tests** (`h3-protocol` 70 → 78, `h3-server` 77 → 80): the queues' five (who waits; the window
+  and its widening; both accepting; a decline, a `Dequeue`, a departure, an expiry with one or
+  no acceptance; a drain) and a model-based property (random requests: no account matched twice
+  or with itself, never outside the window, the counts agree; 5 000 cases once); the wire's
+  corpora and JSON forms; `create_ranked`; `reserve` (refused to others, taken by the accounts,
+  restored, not on a bot's seat). End to end: two players queue, accept, see their game listed
+  with its ladder, are refused a second match meanwhile, play it out and queue again; a decline,
+  an expiry and a departure put the other back, a queued connection outlasting the lobby's
+  deadline; a match's game restored after a restart with its ladder, re-taken by account.
