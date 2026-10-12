@@ -227,6 +227,7 @@ pub fn manifest(ruleset: &BattleRuleset) -> Manifest {
             .collect(),
         profile: String::from(ruleset.profile().as_str()),
         ruleset_hash: wide(ruleset.core_hash()),
+        battle_ruleset_hash: wide(ruleset.content_hash()),
         rng: Algorithm {
             name: String::from(RNG_ALGORITHM),
             version: RNG_VERSION,
@@ -248,6 +249,7 @@ pub fn offer(id: &str, scenario: &str, ruleset: &BattleRuleset, bots: Vec<Seat>)
         packs,
         profile,
         ruleset_hash,
+        battle_ruleset_hash,
         ..
     } = manifest(ruleset);
     Offer {
@@ -256,6 +258,7 @@ pub fn offer(id: &str, scenario: &str, ruleset: &BattleRuleset, bots: Vec<Seat>)
         packs,
         profile,
         ruleset_hash,
+        battle_ruleset_hash,
         bots,
     }
 }

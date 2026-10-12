@@ -684,7 +684,10 @@ fn the_manifest_names_what_the_replay_header_names() {
         .map(|p| (p.id.clone(), p.version.clone()))
         .collect();
     assert_eq!(packs, h.packs);
-    assert_eq!((m.profile, m.ruleset_hash.0), (h.profile, h.ruleset_hash));
+    assert_eq!(
+        (m.profile, m.ruleset_hash.0, m.battle_ruleset_hash.0),
+        (h.profile, h.ruleset_hash, h.battle_ruleset_hash)
+    );
     assert_eq!(
         (m.rng.name, m.rng.version),
         (h.rng_algorithm, h.rng_version)
@@ -704,8 +707,13 @@ fn the_manifest_names_what_the_replay_header_names() {
         ("pvp", "full")
     );
     assert_eq!(
-        (offer.packs, offer.profile, offer.ruleset_hash),
-        (m.packs, m.profile, m.ruleset_hash)
+        (
+            offer.packs,
+            offer.profile,
+            offer.ruleset_hash,
+            offer.battle_ruleset_hash
+        ),
+        (m.packs, m.profile, m.ruleset_hash, m.battle_ruleset_hash)
     );
     assert_eq!(offer.bots, [Seat::Defender]);
 }

@@ -944,9 +944,11 @@ pub struct Manifest {
     pub packs: Vec<PackRef>,
     /// The profile's key.
     pub profile: String,
-    /// The core ruleset's content hash (the replay header's `ruleset_hash`; the battle part's,
-    /// `battle_ruleset_hash`, is not on the wire yet: R01).
+    /// The core ruleset's content hash (the replay header's `ruleset_hash`).
     pub ruleset_hash: WireU64,
+    /// The battle part's content hash (the replay header's `battle_ruleset_hash`; ADR-0015
+    /// point 2: the manifest records every part's hash; protocol v21, R01).
+    pub battle_ruleset_hash: WireU64,
     /// The random number generator.
     pub rng: Algorithm,
     /// The state hash.
@@ -972,8 +974,10 @@ pub struct Offer {
     pub packs: Vec<PackRef>,
     /// The profile's key.
     pub profile: String,
-    /// The compiled ruleset's content hash (the manifest's).
+    /// The core ruleset's content hash (the manifest's).
     pub ruleset_hash: WireU64,
+    /// The battle part's content hash (the manifest's; protocol v21, R01).
+    pub battle_ruleset_hash: WireU64,
     /// The seats the server's bot plays.
     pub bots: Vec<Seat>,
 }
