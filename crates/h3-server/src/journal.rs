@@ -148,6 +148,50 @@ pub(crate) fn create_dir(dir: &Path) -> io::Result<()> {
     builder.create(dir)
 }
 
+/// Opens the log at `path` for appending, or creates it, its directory with it (owner-only, the
+/// directory synced for a new file), and reads it back: its complete lines, a last line a crash cut
+/// short cut from the file. For the player log and the ladders' results logs (E16 M3 T2a, M4 T1).
+pub(crate) fn open_log(path: &Path) -> io::Result<(File, String)> {
+    let dir = path.parent().unwrap_or(Path::new("."));
+    create_dir(dir)?;
+    let new = !path.exists();
+    let mut options = OpenOptions::new();
+    options.read(true).append(true).create(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    let file = options.open(path)?;
+    #[cfg(unix)]
+    if new {
+        File::open(dir).and_then(|d| d.sync_all())?;
+    }
+    let mut text = fs::read_to_string(path)?;
+    let complete = text.rfind('\n').map_or(0, |end| end + 1);
+    if complete < text.len() {
+        file.set_len(u64::try_from(complete).unwrap_or(u64::MAX))?;
+        file.sync_all()?;
+        text.truncate(complete);
+    }
+    Ok((file, text))
+}
+
+/// Appends `line` and its end to a log opened by [`open_log`] and syncs it. After a failure the
+/// line is cut off again where the file lets it (a refused change must not come back at the next
+/// start, E16 M3's review), and `file` is gone: nothing more is written.
+pub(crate) fn append_line(file: &mut Option<File>, line: &str) -> io::Result<()> {
+    let log = file
+        .as_mut()
+        .ok_or_else(|| io::Error::other("a write failed before"))?;
+    let before = log.metadata()?.len();
+    let written = log
+        .write_all(format!("{line}\n").as_bytes())
+        .and_then(|()| log.sync_data());
+    if written.is_err() {
+        let _ = log.set_len(before).and_then(|()| log.sync_data());
+        *file = None;
+    }
+    written
+}
+
 /// The journals' directory in the data directory `data`.
 pub(crate) fn dir(data: &Path) -> PathBuf {
     data.join("games")

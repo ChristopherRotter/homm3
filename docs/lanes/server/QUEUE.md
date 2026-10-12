@@ -4,21 +4,14 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, SRV-Q16; M3 done 2026-10-12, its checkpoint passed, SRV-Q18). M4 refined 2026-10-12 (SRV-Q19): ADR-0019 points 4–9 decided; the working detail in `E16-design.md` §11; cut below, each task about half a context, the inbox's M4 items folded in. Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`, each journal change `JOURNAL_FORMAT_VERSION`.
-
-### E16 M4 T1 — Ladders, ratings and the results log
-
-- **Scope:** `h3-server` only, no wire change. `[[ladder]]` in the configuration (`E16-design.md` §11: `id`, `name`, `scenarios`, `profile`, `accept_ms`, `grace_ms`, `grace_total_ms`, `pauses`, `pause_ms`, `spectators`; the pool compiled at start, one ruleset hash for all its scenarios, ids unique among ladders). `rating`: Glicko-2 as Glickman's paper gives it, one period per game, a draw a half. `<data>/ladders/<id>.log`: `Season`, `Rated`, `NoShow` lines (only `Season` is written in T1; the others are read and checked, so T3b only appends), read back at start into per-season tables (rating, deviation, volatility, games, wins, losses, draws), a torn last line cut, any other bad line stops the start (the error names the line, never its text); a ruleset hash other than the last season's starts the next season (ratings and volatilities kept, deviations 350). The example configuration gains a ladder.
-- **Acceptance:** the Definition of Done; Glickman's worked example (1500/200/0.06 against 1400/30, 1550/100, 1700/300: 1464.06/151.52/0.05999) and a draw's update; a table read back from `Rated` lines equals the one the updates built, bit for bit; a content change starts a season, deviations reset; a pool on two rulesets refused; a torn last line cut, a bad line refused.
-- **Depends on:** the M4 refinement (SRV-Q19).
-- **Status:** ready.
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, SRV-Q16; M3 done 2026-10-12, its checkpoint passed, SRV-Q18). M4 refined 2026-10-12 (SRV-Q19): ADR-0019 points 4–9 decided; the working detail in `E16-design.md` §11; cut below, each task about half a context, the inbox's M4 items folded in; T1 done 2026-10-12 (`[[ladder]]`, `rating`, the results log; `E16-log.md`). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`, each journal change `JOURNAL_FORMAT_VERSION`.
 
 ### E16 M4 T2 — The queue and the match
 
 - **Scope:** `h3-protocol` `ladder` (sans-I/O, 100 %): an account's queue entry (one queue at a time; refused while it has an unfinished ranked game on that ladder, which the host tells it, and for an anonymous connection); the matcher (by rating, ties by queue order, the window 100 + 50 per 30 s of the shorter wait; *provisional*); the accept step (`accept_ms`; who did not accept leaves, the other returns with its waiting time); a closed connection leaves its queue. The messages: `ListLadders`/`Ladders`, `Queue`/`Queued`, `Dequeue`, `MatchFound`, `AcceptMatch`, `DeclineMatch`, `MatchReady { game, seat }`, their refusals; `GameInfo::ladder`. `h3-server`: the queues in the registry, the matcher's tick, the accepted match created as a game from a scenario of the pool, the sides at random, both seats bound to their accounts at creation (no token; the players `Join` as their seat). Until T3a the game runs as an unranked one with bound seats; until T3b nothing is rated (an `SRV-STUB` each). Wire 14.
 - **Acceptance:** the Definition of Done; properties: the matcher pairs nobody twice, never an account with itself, never outside the window; end to end: two logged-in clients queue, accept, join and play; a decline and an expiry return the other; a second queue and an anonymous queue refused.
-- **Depends on:** T1.
-- **Status:** ready once T1 is done.
+- **Depends on:** T1 (done: `ladders::Ladders` holds the tables; keep the pool `Ladder::open` compiles and checks, which T1 drops).
+- **Status:** ready.
 
 ### E16 M4 T3a — A ranked game's seats and forfeits
 

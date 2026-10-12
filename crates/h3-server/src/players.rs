@@ -8,8 +8,8 @@
 //! Provisional (E16 M3 T2a, T2b): the layout, the names.
 
 use std::collections::BTreeMap;
-use std::fs::{self, File, OpenOptions};
-use std::io::{self, Write};
+use std::fs::File;
+use std::io;
 use std::path::Path;
 
 use h3_protocol::account::{self, KEY_BYTES};
@@ -104,26 +104,14 @@ impl Players {
     /// it, stops the start (an error that names the line, never its text).
     pub(crate) fn open(data: &Path) -> Result<Self, String> {
         let path = path(data);
-        let shown = |e: io::Error| format!("{}: {e}", path.display());
-        journal::create_dir(data).map_err(shown)?;
-        let new = !path.exists();
-        let mut options = OpenOptions::new();
-        options.read(true).append(true).create(true);
-        #[cfg(unix)]
-        std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-        let file = options.open(&path).map_err(shown)?;
-        #[cfg(unix)]
-        if new {
-            File::open(data).and_then(|d| d.sync_all()).map_err(shown)?;
-        }
-        let text = fs::read_to_string(&path).map_err(shown)?;
-        let complete = text.rfind('\n').map_or(0, |end| end + 1);
+        let (file, text) =
+            journal::open_log(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         let mut players = Self {
             accounts: BTreeMap::new(),
             displays: BTreeMap::new(),
             file: None,
         };
-        for (i, line) in text[..complete].lines().enumerate() {
+        for (i, line) in text.lines().enumerate() {
             let event = serde_json::from_str::<Event>(line).map_err(|e| journal::json(&e));
             event
                 .and_then(|event| {
@@ -132,12 +120,6 @@ impl Players {
                     Ok(())
                 })
                 .map_err(|e| format!("{} line {}: {e}", path.display(), i + 1))?;
-        }
-        if complete < text.len() {
-            let len = u64::try_from(complete).unwrap_or(u64::MAX);
-            file.set_len(len)
-                .and_then(|()| file.sync_all())
-                .map_err(shown)?;
         }
         players.file = Some(file);
         Ok(players)
@@ -240,28 +222,16 @@ impl Players {
 
     /// Writes `event`'s line and syncs it; after a failure nothing more is written.
     fn append(&mut self, event: &Event) -> io::Result<()> {
-        let file = self
-            .file
-            .as_mut()
-            .ok_or_else(|| io::Error::other("a write failed before"))?;
-        let mut text = serde_json::to_string(event).map_err(io::Error::other)?;
-        text.push('\n');
-        let before = file.metadata()?.len();
-        let written = file
-            .write_all(text.as_bytes())
-            .and_then(|()| file.sync_data());
-        if written.is_err() {
-            // The change is refused: its line, whole or not, must not come back at the next start
-            // (E16 M3's review). Cut it off if the file still lets us.
-            let _ = file.set_len(before).and_then(|()| file.sync_data());
-            self.file = None;
-        }
-        written
+        let text = serde_json::to_string(event).map_err(io::Error::other)?;
+        journal::append_line(&mut self.file, &text)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::fs::{self, OpenOptions};
+    use std::io::Write;
+
     use super::*;
 
     fn data() -> std::path::PathBuf {

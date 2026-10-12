@@ -210,8 +210,9 @@ contains seeds, tokens, nonces or signatures.
 Decided at the M4 refinement (ADR-0019 points 4–9, SRV-Q19); the names, numbers and line shapes
 below are the tasks' starting point, *provisional* until M4's review.
 
-- **A ladder** (`[[ladder]]`, M4 T1): `id` (as an offer's), `name`, `scenarios` (the pool: scenario
-  files on one ruleset; the start refuses a pool whose ruleset hashes differ), `profile` (as an
+- **A ladder** (`[[ladder]]`, code since M4 T1): `id` (1–32 of `a–z 0–9 _ -`), `name` (a display
+  name), `scenarios` (the pool: scenario files on one ruleset; the start refuses a pool whose
+  ruleset hashes differ), `profile` (as an
   offer's), `accept_ms` (30 s), `grace_ms` (5 min a disconnect), `grace_total_ms` (10 min per
   player and game), `pauses` (per player and game, 0 by default: none) and `pause_ms` (the
   longest), `spectators` (whether its games take them, with `[limits] spectators_per_game`).
@@ -220,14 +221,15 @@ below are the tasks' starting point, *provisional* until M4's review.
   line. At start a ruleset hash other than the last season's starts the next one (a log line
   and a `Season` line): every account keeps its rating and volatility, its deviation reset to
   350; earlier seasons stay in the log and their tables readable.
-- **The results log**, `<data>/ladders/<id>.log` (M4 T1, T3), JSON lines as the player log's
+- **The results log**, `<data>/ladders/<id>.log` (read and `Season` written since M4 T1; T3b
+  appends the rest), JSON lines as the player log's
   (owner-only, each synced before anything depends on it, read back at start, a torn last line
   cut, any other bad line stops the start): `Season`, `Rated { game, replay, accounts: [a, d],
   outcome, forfeit, ratings: [a, d] }` (each rating `{ rating, deviation, volatility }` after
   the game, as `f64`, which `serde_json` writes and reads back exactly), `NoShow { game, replay,
   accounts }`. The tables are rebuilt from the lines: a start never recomputes a rating, so a
   server moved to another platform keeps its ladders bit for bit.
-- **Rating** (`h3-server`'s `rating`, M4 T1): Glicko-2 as Glickman's paper gives it (rating
+- **Rating** (`h3-server`'s `rating`, code since M4 T1): Glicko-2 as Glickman's paper gives it (rating
   1500, deviation 350, volatility 0.06, τ = 0.5, the volatility by the Illinois iteration to
   ε = 10⁻⁶), the paper's worked example its test vector; one rating period per game for both
   players, applied in the order games end; a draw scores a half. No deviation growth for

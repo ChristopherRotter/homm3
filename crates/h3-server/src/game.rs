@@ -835,9 +835,10 @@ fn close_all(conns: &BTreeMap<ConnId, Outbox>, closed: &[ConnId], reason: Goodby
 }
 
 /// Game `game` reached the server's limit of commands without an end (E16 M3 T4a): it is void.
-/// Every connection in `conns` but those in `closed` hears it, the game leaves the lobby, its
-/// journal moves to `<data>/void/` (no replay is written), and the connections on their way hear
-/// it too.
+/// Every connection in `conns` but those in `closed` hears it, its journal moves to
+/// `<data>/void/` (no replay is written), the game leaves the lobby, and the connections on their
+/// way hear it too. The journal moves first, as on the other ways to the void: a game the lobby no
+/// longer lists has no journal left in `<data>/games/`.
 fn too_long(
     game: u32,
     (conns, closed): (&BTreeMap<ConnId, Outbox>, &[ConnId]),
@@ -846,13 +847,13 @@ fn too_long(
     inbox: &mut mpsc::Receiver<ToGame>,
 ) {
     close_all(conns, closed, GoodbyeReason::CommandLimit);
-    lock(registry).leave(game);
     if let Some(journal) = journal {
         let path = journal.path().to_path_buf();
         drop(journal);
         let why = "it reached the server's limit of commands without an end";
         journal::void(data, &path, &game.to_string(), why);
     }
+    lock(registry).leave(game);
     turn_away(inbox, GoodbyeReason::CommandLimit);
 }
 

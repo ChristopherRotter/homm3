@@ -3,7 +3,8 @@
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
 crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 done
 2026-10-11 (T1 to T5e), its checkpoint passed the same day (SRV-Q16); M3 done 2026-10-12 (T1 to
-T5), its checkpoint passed the same day (SRV-Q18); M4 refined 2026-10-12 (SRV-Q19), T1 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+T5), its checkpoint passed the same day (SRV-Q18); M4 refined 2026-10-12 (SRV-Q19); M4 T1 done,
+T2 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); [ADR-0019](../adr/0019-identity-and-ladders.md) (identity and ladders, accepted at the M3
 refinement, its ladder points decided at M4's); ADR draft `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -352,9 +353,9 @@ the ratings written to the ladder's results log, never recomputed; a disconnect'
 total per player and game (5 and 10 minutes by default), beyond either a forfeit; one unfinished
 ranked game per player per ladder, bots exempt; no turn timer in M4 (a game rule, `h3-game`).
 
-- **T1 Ladders, ratings and the results log** (ready): `[[ladder]]`, Glicko-2 with Glickman's
-  example as its test vector, `<data>/ladders/<id>.log` read back at start, seasons by the
-  ruleset hash; no wire change.
+- **T1 Ladders, ratings and the results log** (done 2026-10-12; `E16-log.md`): `[[ladder]]`,
+  Glicko-2 (`rating`) with Glickman's example as its test vector, `<data>/ladders/<id>.log` read
+  back at start, seasons by the ruleset hash; no wire change.
 - **T2 The queue and the match** (after T1): `h3_protocol::ladder` (the queue, the matcher, the
   accept step, one queue per account, one unfinished ranked game per ladder), the messages, the
   matched game created with both seats bound to their accounts; wire 14.
@@ -435,7 +436,14 @@ log and `QUEUE.md` are current.
 
 ## Review list for the M4 checkpoint
 
-Choices queued under the autonomy contract (details in `E16-log.md`): none yet.
+Choices queued under the autonomy contract (details in `E16-log.md`):
+
+- T1: `[[ladder]]`'s fields and defaults (`accept_ms` 30 s, `pauses` 0); a ladder's id as its
+  log's file name, its name under a display name's rules; the results log's lines (`Season`,
+  `Rated` with the ratings after the game as `f64`, `NoShow`), checked against the player log; a
+  season started only at a start whose ruleset is new; `rating` public, Glicko-2 with no
+  deviation growth for inactivity; `exp` and `ln` behind a local `allow` of the workspace's ban
+  (an adapter, ADR-0003 §3's reason does not apply: no rating is computed twice).
 
 ## Review list for the M3 checkpoint (passed 2026-10-12, SRV-Q18)
 

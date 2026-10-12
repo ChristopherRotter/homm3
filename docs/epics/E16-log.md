@@ -964,4 +964,48 @@ how and why the work went.
   agent's major finding is fixed (its record above); the lane HANDOFF, this log and `QUEUE.md`
   are current.
 - **The checkpoint**: the user's, SRV-Q18 (the review list, the inbox's placement, what comes
-  next).
+  next): passed 2026-10-12, the review list as built, the M3 inbox later, M4's refinement next
+  (SRV-Q19, `docs/OPEN-QUESTIONS.md`).
+
+### M4 T1 — Ladders, ratings and the results log (2026-10-12)
+
+- **The configuration** (*provisional*): `[[ladder]]` (`config::Ladder`): `id` (1–32 of `a–z
+  0–9 _ -`, the log's file name), `name` (a display name's rules), `scenarios` (relative to the
+  file), `profile`, `accept_ms` (30 s), `grace_ms` (5 min), `grace_total_ms` (10 min; the user,
+  SRV-Q19), `pauses` (0) and `pause_ms` (0, needed when `pauses` is not), `spectators` (true);
+  the bounds checked as the limits are; ids distinct; none by default. The example has `arena`.
+- **The pool**: each scenario compiled at start as an offer named by the ladder's id
+  (`game::Offer::load`), one ruleset hash (`content_hash`) for all or the start refuses; not kept
+  yet (T2 keeps it, when matches use it).
+- **Glicko-2** (`h3-server`'s public `rating`): Glickman's 2013 steps, his defaults, τ = 0.5, ε =
+  10⁻⁶, the Illinois iteration (`f(C)·f(B) ≤ 0`) bounded at 100 steps (*provisional*); `game`
+  rates one game for both players, `period` the general step; `Standing` (the rating, games, wins,
+  losses, draws, no-shows). `exp` and `ln` are banned in the workspace (ADR-0003 §3): two local
+  `#[allow(clippy::disallowed_methods)]` with the reason, as `Cargo.toml`'s lint header allows
+  adapters (review list). The test vector: Glickman's example within the paper's rounding (it
+  rounds μ' first: 1464.06 for 1464.0507) and to 10⁻⁹ against an independent Python
+  implementation of the same steps (1464.050670539, 151.516524124, 0.0599959843); a win between new
+  players, a draw between unequal ones, a period without games; a rating's JSON reads back bit
+  for bit.
+- **The results log** (`ladders.rs`, *provisional*): `<data>/ladders/<id>.log`, lines `Season {
+  season, ruleset }` (`0x` and 16 hex digits), `Rated { game, replay, accounts, outcome, forfeit,
+  ratings }`, `NoShow { game, replay, accounts }`; checked on reading (seasons in order from 1, a
+  game after a season, login names, two accounts, both known to the player log, valid ratings, no
+  forfeit drawn) and before writing; the tables per season (the rows of the accounts that played
+  or failed to show) and every account's latest rating across seasons. A new ruleset at start
+  writes the next `Season` (the first at a ladder's first start): ratings and volatilities kept,
+  deviations reset to 350; a log line says so. Only `Season` is written in T1; T3b appends the
+  others. One lock for every ladder.
+- **Shared log code**: `journal::open_log` and `journal::append_line` (open or create owner-only,
+  a torn last line cut; a write synced, cut off again after a failure, and nothing written after)
+  now serve the player log too.
+- **The server**: `start` opens the ladders after the accounts (an account a line names must be in
+  the player log); `Running::season` and `Running::standing` read them.
+- **A flaky test fixed**: the verify at the session's start failed `a_restored_game_past_a_lowered_
+  limit_is_void` under load: `game::too_long` took the game out of the lobby before moving its
+  journal to `void/`, so a test that saw the game leave could still count no void journal. The
+  journal now moves first, as on every other way to the void.
+- **Tests** (`h3-server` 77, +10): the rating's four; the log's four (seasons by ruleset, the
+  file's mode; rated lines read back bit for bit, a torn line cut, a season's reset; ten bad lines;
+  a pool on two rulesets, an empty one); the configuration's checks and the example's ladder;
+  end to end, a season per content change and an unknown account stopping the start.
