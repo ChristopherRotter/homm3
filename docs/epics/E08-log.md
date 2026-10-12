@@ -809,3 +809,52 @@ tile"; terrain to terrain all sources price by the tile left), so the batch need
 Open at T10c: scoring batches 1a and 1b (ADV-Q4, ADV-Q6, D-2's confirmation), the refinement of
 increment 2 (scenario loading and validation, pickups, the first visitable objects; the epic's
 sketch) with the queue's inbox sorted into it, the checkpoint that closes increment 1.
+
+### Checkpoint after T10a/T10b and T10c: batch 1 scored, increment 1 closed, increment 2 refined (2026-10-12, `adventure/e08-t10c`)
+
+The user merged T10a/T10b (#107), played batches 1a and 1b in SoD 4.0 Complete with plain HD and
+pushed the filled templates. The round (ADV-Q9): **user: all of T10c** (the scoring, the
+refinement, the closing checkpoint; one docs-only pull request, `cross-lane` for the two rows of
+`docs/experiments/README.md`).
+
+**T10c — batch 1 scored** (the specs' predictions against `experiments/results/E08-batch-1a.md`,
+`-1b.md`):
+
+| Encounter | Observed | Reading (engine) | VCMI | Wiki | Verdict |
+|---|---|---|---|---|---|
+| Q4a, day 1 | 2000 points left at Blue's turn start | 2000 | 1560 | 1560 | the reading; no first-day case |
+| Q4b, day 2 | 2000 | 2000 | 1560 | 1560 | the reading (the decisive one) |
+| Q4c (control) | not on the map played | 1560 | 1560 | — | the user's statement instead (below) |
+| D2a, road on grass → swamp | 9 green, 5 red | 9 | 9 | 8 | the reading and VCMI |
+| D2b, road on swamp → grass | 14 green, 2 red | 14 | 14 | 15 | the reading and VCMI |
+| C0, grass | 15 green, 1 red | 15 | 15 | 15 | the land table |
+| SA, 16 armies (load 1) | 123 ×4, 12 ×10, 13 ×1 (Crag Hack), 1 ×1 (Torosar) | 3.5, 10.6, 0.5, 1.4 | 13 never | war machine always | the reading |
+
+- The user read the hero's points directly (the points left, asked and confirmed) instead of
+  counting marks; 2000 means the Pikemen were dead (any speed-4 stack gives 1560), so Q4b's
+  unfilled battle line went as planned.
+- **Q4c was missing**: the map in the user's `experiments/out/` is a build from before the
+  review added Q4c (read back with `h3-map`: 12 heroes, no Rion, no scouts B3 and B4); the
+  template was regenerated after the review, the map not copied again. The user's statement
+  covers the control: dismissing or gaining a stack does not change the day's points. Hence
+  decision 18's stamp (a hash of the spec in the map's description and the template, from batch
+  2) and the lane trap.
+- **ADV-Q4 answered** (ADV-MOV-002 as built); **D-2 confirmed** (ADV-MOV-003); **ADV-Q6
+  answered**: independent rolls, the war machine rolled at 88 % with its slot (the reading and
+  VCMI; the wiki's 100 % refuted; on the map hero with increment 3). ADV-MOV-001 to -003 and
+  GAM-SET-001 carry `observation` sources and are `verified`; the survey's D-1 and D-2 rows and
+  §3.1 say so. No code changed.
+
+**Increment 1 closed** with T10b's audit (above) and the interim choices now confirmed: every
+criterion holds.
+
+**Increment 2 refined** (the user, 2026-10-12): the scope as proposed (decisions 13–18 in the
+epic): object types in the import, the treasury in `h3-game` (towns spend from it without
+depending on the adventure), pickups (resource piles, random resources, campfires), the
+**Cartographer** as the first pending decision (treasure chests moved to increment 3, where
+experience and artifacts exist), the Redwood Observatory, Pillar of Fire, Keymaster's tents with
+border guards and gates; starting resources by a difficulty level, the human row for every
+player (default, the survey may overrule). Not taken: a smaller increment without visitable
+objects, the week pulled forward, E09 first. Tasks T11a–T16 in the queue; the first round T11a
+with T11b. Inbox sorted: D-3 into T16, the stream watch into T13, the partly seen object into
+T11b/T12.

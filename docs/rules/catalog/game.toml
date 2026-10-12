@@ -6,8 +6,8 @@
 id       = "GAM-SET-001"
 title    = "The starting army of a hero without stacks of its own"
 context  = "game"
-status   = "implemented"
-summary  = "A hero the setup gives no stacks gets its hero type's starting army when the game is built, drawn from the setup stream: the first starting slot's stack always, the second slot's when a roll of 1-100 is at most 88, the third's when a second roll is at most 25 (chances as data), each count drawn between its bounds; the given stacks take the army's slots from 0 in order. A war machine takes its starting slot (always the second in the original's hero table, between the first stack and the others) and is rolled like a stack, but gives no stack; whether it is guaranteed, and the war machine itself on the map hero, are open until increment 3 (ADV-Q6). A hero type whose stacks do not fit the army is rejected at setup. The two rolls are independent (the code reading), so about 3 % of armies have the third stack without the second; VCMI uses one roll for both (ADV-Q6). E08 T6b: `h3_game::GameState::new`."
+status   = "verified"
+summary  = "A hero the setup gives no stacks gets its hero type's starting army when the game is built, drawn from the setup stream: the first starting slot's stack always, the second slot's when a roll of 1-100 is at most 88, the third's when a second roll is at most 25 (chances as data), each count drawn between its bounds; the given stacks take the army's slots from 0 in order. A war machine takes its starting slot (always the second in the original's hero table, between the first stack and the others) and is rolled like a stack (88 %, not guaranteed: the code reading and VCMI, batch 1b), but gives no stack; the war machine itself on the map hero comes with increment 3 (the hero details). A hero type whose stacks do not fit the army is rejected at setup. The two rolls are independent (the code reading, confirmed by batch 1b), so about 3 % of armies have the third stack without the second; VCMI's single roll refuted (ADV-Q6, E08 T10c). E08 T6b: `h3_game::GameState::new`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -21,7 +21,7 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php?title=Template:HeroNew&action=raw"
   retrieved  = "2026-10-10"
   confidence = "medium"
-  note       = "Agrees on the stacks' chances; says nothing about whether the rolls are independent; disagrees with the code reading on the war machine (100 % against 88 %; ADV-Q6, increment 3)."
+  note       = "Agrees on the stacks' chances; says nothing about whether the rolls are independent; disagrees with the code reading on the war machine (100 % against 88 %; refuted by batch 1b, ADV-Q6)."
 
   [[rule.source]]
   kind       = "vcmi"
@@ -30,6 +30,13 @@ numeric  = "integer"
   retrieved  = "2026-10-10"
   confidence = "medium"
   note       = "Agrees on the chances, the war machine's 88 % and the shift; disagrees on the rolls: one roll means the third stack never comes without the second (ADV-Q6)."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-1b.md SA, load 1 (SoD 4.0 Complete, plain HD, 2026-10-12): sixteen heroes placed with their type's defaults: 4 with all three starting slots, 10 with the first two, 1 with the first and third (Crag Hack: Goblins and Orcs, no Wolf Riders) and 1 with the first only (Torosar: Gremlins, no Ballista, no Stone Golems); the war machine on 8 of the 9 war-machine heroes"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+  note       = "Answers ADV-Q6: Crag Hack refutes VCMI's single roll, Torosar the wiki's guaranteed war machine; both fit the code reading (expected per 16 armies: 3.5, 10.6, 0.5, 1.4)."
 
 [[rule]]
 id       = "GAM-TRN-001"
