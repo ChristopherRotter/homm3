@@ -398,7 +398,7 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0xca39e2af5fabd024"
+ruleset_hash = "0xf365519700129800"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
@@ -444,4 +444,4 @@ count = 20
 
 [result]
 winner = "attacker"
-final_hash = "0xe39e695b374a32f0"
+final_hash = "0xab144f84a7999124"
