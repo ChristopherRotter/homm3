@@ -618,9 +618,14 @@ impl Link {
                 Routed::Reply(self.leaderboard(seq, ladder, own).await)
             }
             ClientMessage::Queue { seq, ladder, bots } => {
-                // Outside the registry's lock: the ladders have their own.
-                let rating =
-                    (login.as_deref()).map_or(0, |login| self.ladders.points(&ladder, login));
+                // Outside the registry's lock, and off the task (E16 M4 T7): the ladders' lock
+                // waits on a result's sync.
+                let (tables, asked, who) =
+                    (Arc::clone(&self.ladders), ladder.clone(), login.clone());
+                let rating = tokio::task::spawn_blocking(move || {
+                    who.map_or(0, |login| tables.points(&asked, &login))
+                });
+                let rating = rating.await.unwrap_or(0);
                 let to = self.to_me.clone();
                 // Left out: bots welcome (E16 M4 T5b, SRV-Q21).
                 let asked = (seq, ladder.as_str(), bots.unwrap_or(true));

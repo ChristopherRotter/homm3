@@ -11,7 +11,9 @@
 //!   `MatchFound`.
 //! - **The answers.** Both accept within the ladder's time: the host creates the game
 //!   ([`Matched`]). One declines, does not accept in time or goes away: it leaves the queue, and
-//!   the other waits again with its waiting time (`MatchCancelled`).
+//!   the other waits again with its waiting time (`MatchCancelled`). Who gave a match up may queue
+//!   again at once, but is paired with no one for [`BARRED_MS`] (E16 M4 T7): a player who declines
+//!   again and again does not keep another from every other match.
 //! - **The bots** (E16 M4 T5). A ladder's bots wait at all times, outside its queue: a player the
 //!   matcher left unpaired after [`Ladder::bot_after_ms`] plays the bot nearest in rating (ties by
 //!   the configuration's order), whatever the window. The bot accepts at once; it plays any number
@@ -19,9 +21,9 @@
 //!   (E16 M4 T5b, SRV-Q21) never plays one, however long it waits; `MatchFound` tells a player
 //!   whether its opponent is a bot.
 //!
-//! Provisional (E16 M4 T2, T5, T5b): the window, the greedy pairing, the queues in memory only (a
-//! restart empties them); a bot for whoever waited long enough, people first; the opt-out per
-//! queue, not stored.
+//! Provisional (E16 M4 T2, T5, T5b, T7): the window, the greedy pairing, the queues in memory only
+//! (a restart empties them); a bot for whoever waited long enough, people first; the opt-out per
+//! queue, not stored; the bar after a match given up, per ladder and account.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -36,6 +38,9 @@ pub const WINDOW: u32 = 100;
 pub const WIDEN: u32 = 50;
 /// How often the window widens, in milliseconds.
 pub const WIDEN_EVERY_MS: u64 = 30_000;
+/// How long an account that gave a match up (declined it, let it expire, went away) is paired with
+/// no one on that ladder, in milliseconds (E16 M4 T7).
+pub const BARRED_MS: u64 = 60_000;
 
 /// The window of two players whose shorter wait lasted `waited` milliseconds.
 pub fn window(waited: u64) -> u32 {
@@ -124,6 +129,9 @@ pub struct Queues<C> {
     order: u64,
     /// Whether the server drains (E16 M2 T5a): no one waits any more.
     draining: bool,
+    /// The accounts that gave a match up (E16 M4 T7): the ladder's index, the login name, and
+    /// until when the account is paired with no one there. Gone once it passed.
+    barred: Vec<(usize, String, u64)>,
 }
 
 impl<C: Copy + Eq> Queues<C> {
@@ -136,6 +144,7 @@ impl<C: Copy + Eq> Queues<C> {
             pending: Vec::new(),
             order: 0,
             draining: false,
+            barred: Vec::new(),
         }
     }
 
@@ -238,11 +247,16 @@ impl<C: Copy + Eq> Queues<C> {
         }
     }
 
-    /// Connection `conn` leaves its queue (`Dequeue`), or its match (as a decline): `Dequeued`,
-    /// or `Refused { NotQueued }`. The other player of a match waits again (`MatchCancelled` to
-    /// `told`).
-    pub fn dequeue(&mut self, conn: C, seq: u32, told: &mut Told<C>) -> ServerMessage {
-        if self.leave(conn, told) {
+    /// Connection `conn` leaves its queue (`Dequeue`), or its match at `now` (as a decline):
+    /// `Dequeued`, or `Refused { NotQueued }`. The other player of a match waits again
+    /// (`MatchCancelled` to `told`).
+    pub fn dequeue(
+        &mut self,
+        conn: C,
+        (seq, now): (u32, u64),
+        told: &mut Told<C>,
+    ) -> ServerMessage {
+        if self.leave(conn, now, told) {
             ServerMessage::Dequeued { seq }
         } else {
             ServerMessage::Refused {
@@ -251,15 +265,20 @@ impl<C: Copy + Eq> Queues<C> {
         }
     }
 
-    /// Connection `conn` declines its match (`DeclineMatch`): it leaves the queue (`Dequeued`),
-    /// and the other waits again; `Refused { NoMatch }` without a match.
-    pub fn decline(&mut self, conn: C, seq: u32, told: &mut Told<C>) -> ServerMessage {
+    /// Connection `conn` declines its match (`DeclineMatch`) at `now`: it leaves the queue
+    /// (`Dequeued`), and the other waits again; `Refused { NoMatch }` without a match.
+    pub fn decline(
+        &mut self,
+        conn: C,
+        (seq, now): (u32, u64),
+        told: &mut Told<C>,
+    ) -> ServerMessage {
         if self.matched(conn).is_none() {
             return ServerMessage::Refused {
                 reason: Refusal::NoMatch,
             };
         }
-        self.leave(conn, told);
+        self.leave(conn, now, told);
         ServerMessage::Dequeued { seq }
     }
 
@@ -283,9 +302,10 @@ impl<C: Copy + Eq> Queues<C> {
         }))
     }
 
-    /// Connection `conn` is gone: out of its queue; the other player of its match waits again.
-    pub fn closed(&mut self, conn: C, told: &mut Told<C>) {
-        self.leave(conn, told);
+    /// Connection `conn` is gone at `now`: out of its queue; the other player of its match waits
+    /// again.
+    pub fn closed(&mut self, conn: C, now: u64, told: &mut Told<C>) {
+        self.leave(conn, now, told);
     }
 
     /// The time is `now`: a match not accepted by both by its due time is given up (who did not
@@ -308,9 +328,11 @@ impl<C: Copy + Eq> Queues<C> {
                 } else {
                     let reason = UnqueueReason::Expired;
                     told.push((conn, ServerMessage::Unqueued { reason }));
+                    self.bar(pending.ladder, player.login, now);
                 }
             }
         }
+        self.barred.retain(|&(_, _, until)| until > now);
         for index in 0..self.ladders.len() {
             self.pair(index, now, told);
         }
@@ -334,9 +356,9 @@ impl<C: Copy + Eq> Queues<C> {
         (self.pending.iter()).position(|p| p.players.iter().any(|w| w.conn == Some(conn)))
     }
 
-    /// Takes connection `conn` out of its queue or its match, the other player of which waits
-    /// again; whether it was in one.
-    fn leave(&mut self, conn: C, told: &mut Told<C>) -> bool {
+    /// Takes connection `conn` out of its queue or its match at `now`, the other player of which
+    /// waits again, and it is barred (E16 M4 T7); whether it was in one.
+    fn leave(&mut self, conn: C, now: u64, told: &mut Told<C>) -> bool {
         for waiting in &mut self.waiting {
             if let Some(at) = waiting.iter().position(|w| w.conn == Some(conn)) {
                 waiting.remove(at);
@@ -349,12 +371,31 @@ impl<C: Copy + Eq> Queues<C> {
         let pending = self.pending.remove(at);
         for player in pending.players {
             // The other player waits again; a bot waits on, outside the queue (E16 M4 T5).
-            if let Some(other) = player.conn.filter(|other| *other != conn) {
-                told.push((other, ServerMessage::MatchCancelled {}));
-                self.requeue(pending.ladder, player);
+            match player.conn {
+                Some(other) if other != conn => {
+                    told.push((other, ServerMessage::MatchCancelled {}));
+                    self.requeue(pending.ladder, player);
+                }
+                Some(_) => self.bar(pending.ladder, player.login, now),
+                None => {}
             }
         }
         true
+    }
+
+    /// The account `login` gave a match on ladder `index` up at `now` (E16 M4 T7): paired with no
+    /// one there before [`BARRED_MS`] passed.
+    fn bar(&mut self, index: usize, login: String, now: u64) {
+        let until = now.saturating_add(BARRED_MS);
+        self.barred
+            .retain(|(at, barred, _)| (*at, barred) != (index, &login));
+        self.barred.push((index, login, until));
+    }
+
+    /// Whether the account `login` is paired with no one on ladder `index` at `now` yet.
+    fn is_barred(&self, index: usize, login: &str, now: u64) -> bool {
+        (self.barred.iter())
+            .any(|(at, barred, until)| (*at, barred.as_str()) == (index, login) && *until > now)
     }
 
     /// A matched player waits again in ladder `index`'s queue, in its place by the order it came
@@ -370,11 +411,13 @@ impl<C: Copy + Eq> Queues<C> {
     /// who waited the ladder's `bot_after_ms`, and did not opt out (E16 M4 T5b), with its nearest
     /// bot (E16 M4 T5).
     fn pair(&mut self, index: usize, now: u64, told: &mut Told<C>) {
+        // Who gave a match up waits on, paired with no one yet (E16 M4 T7).
+        let (mut left, mut by_rating): (Vec<_>, Vec<_>) = core::mem::take(&mut self.waiting[index])
+            .into_iter()
+            .partition(|w| self.is_barred(index, &w.login, now));
         let ladder = &self.ladders[index];
-        let mut by_rating = core::mem::take(&mut self.waiting[index]);
         // A player's place in the order is unique: so is each key (ADR-0003 §9).
         let _ = order::sort_by_unique_key(&mut by_rating, |w| (w.rating, w.order));
-        let mut left = Vec::new();
         let mut players = by_rating.into_iter().peekable();
         while let Some(first) = players.next() {
             let fits = |second: &Waiting<C>| {

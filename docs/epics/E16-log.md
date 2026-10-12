@@ -1280,3 +1280,92 @@ how and why the work went.
   with the opt-out ignored); the wire's corpora and JSON forms (`bots` left out). End to end:
   the lone player's bot match told `bot: true`; an opted-out player hears nothing for twice
   `bot_after_ms` and still waits (`Dequeue` answered `Dequeued`).
+
+### M4's reviewer agent (2026-10-12, in T7)
+
+- **The review**: a fresh, read-only agent over everything M4 changed in the two crates
+  (`7a71b90..`, about 7 000 lines); no major finding, 7 minor. Found sound: account-bound seats
+  (no token or other account takes one, live or paused), bot accounts refused at login, re-key and
+  `rebind` and their seats unjoinable, no token, seed or key leaked; the ranked end's order
+  (verify, archive, rate, journal) and a game rated once; forfeits and no-shows by the server's
+  clock only; the matcher (window, bots, opt-out, the answers, a drain; another connection of the
+  account cannot answer for the first); the pause by agreement's rules and due time; seasons,
+  leaderboards and Glicko-2's bounded loops; the lock rules; no panic from client input or from a
+  corrupted ladder log, `next-game` or journal; bounded queues, proposals and channels.
+- **Fixed** (*provisional* in their shape):
+  - **A player who declines again and again kept another from every match** (and from its bot:
+    people are paired first). Who gives a match up (a decline, an expiry, leaving it) may queue
+    again at once but is paired with no one on that ladder for `ladder::BARRED_MS` (60 s), per
+    ladder and account; no wire change, the player is not told. The property test: no one paired
+    while barred (checked to fail with the bar ignored).
+  - **A player queueing right after its game's end was refused `InRankedGame`**: the end was told
+    before the game left the registry's ranked games. `Registry::ended` now runs on the game's
+    thread before the end's frames go out.
+  - **A lost `next-game` handed out ids a ladder's log names**, and such a game went unrated
+    (`rate` took it for one rated already). At start the ids go beyond the logs' highest game
+    (`Ladders::last_game`).
+  - **The ladders' lock on async tasks**: the queue's rating and the matcher's bots are read
+    through `spawn_blocking` (`rate` holds the lock across a sync).
+  - **The design note said a match's seats are journaled before `MatchReady`**: they are
+    journaled on the game's thread before any join reaches it; the players hear `MatchReady` as the
+    game is created. The note and `06-security.md` now say so (a game whose journal cannot be
+    created ends, and its players find it gone).
+- **Left** (the inbox, the checkpoint's question SRV-Q22): an agreed pause resumed early by one
+  player is held for the other in memory only, so a restart before its due time lets the absent
+  player's grace start then (a forfeit may come before the pause's due time); finished, unrated
+  ranked journals re-run at a start are rated in the order their threads run, not the order the
+  games ended (only after a ladder log's write failed); a game that stops because its journal no
+  longer writes leaves the ranked games while its journal stays, so its players may start another
+  match on the ladder and the next start restores both.
+
+### M4 T7 — M4's closure (2026-10-12)
+
+- **The start.** #124 (T5b) had merged; the branch restarted from `master` (#123, the adventure
+  lane's, touched no server path; the scoped verify had no failing step, the workload unchanged).
+  **The user's choice**: the shared doc and the client lane's inbox ride T7's pull request as
+  separate commits, labelled `cross-lane` (as at M3's closure).
+- **The end-to-end test** (`two_players_queue_accept_and_play_a_rated_battle_through_a_restart`):
+  two players queue, accept and take their seats; after a command each (the duel's stacks start
+  out of each other's reach and one strike cannot end it, so the battle always goes on; each seat
+  counts the `Events` it hears to stop after the same command, `plays_until`) the server stops; at
+  the next start the match is listed with its ladder, both re-take their seats by account and play
+  to the end, rated as Glicko-2 rates it between new accounts; a player queues again at once; a
+  restart without `next-game` reads the same ratings back and hands out a higher game id.
+- **The shared change**: `docs/06-security.md`'s hosted games carry the ladders and ranked games
+  (who queues and what a client names, the seats bound before any join, no host and the pause by
+  agreement, absences on the server's clock, results rated by the server alone after the
+  verification and written once, the bots' keyless accounts and flags, the opt-out, the
+  leaderboards' names) and the server's pings among the bounds; "Not covered yet": the
+  verification item done, stalling (M5), a forfeit within a ping of a server-side drop, and
+  collusion between accounts added.
+- **The client lane's inbox** (cross-lane): queueing with the opt-out, the accept step,
+  reconnecting by account and the pings, a ranked game's ends and `Rating`, the pause by
+  agreement, the leaderboards.
+- **M4's exit criteria**, each shown (`h3-server`'s `tests/ladders.rs` unless named): the full
+  verify green, `h3-protocol` at 100 % (CI does not start for lack of minutes: the full local
+  verify, the pull request); two clients queue, accept and play a rated battle through a restart,
+  rated as Glicko-2 computes (its test vector, Glickman's example, in `rating.rs`) and the same
+  after another restart (the test above); a declined or expired match puts the other back
+  (`a_decline_an_expiry_or_a_departure_puts_the_other_back`); a second queue, a second ranked game
+  on the ladder and an anonymous queue refused (`two_players_queue_accept_and_play_their_match`); a
+  player back within the grace re-takes the seat by account, beyond the grace or the total
+  forfeits (`a_player_back_within_the_grace_…`, `a_player_away_beyond_the_grace_…`,
+  `a_player_away_beyond_the_total_…`); both away void, unrated
+  (`both_players_away_the_game_is_void`); a ranked game that does not verify unrated and its
+  players told (`a_ranked_game_that_does_not_verify_…`); a content change starts a season with the
+  deviations reset (`a_ladder_starts_a_season_when_its_content_changes`; the new season's first
+  rated game, its `Rating` from the carried rating and a deviation of 350, in
+  `the_leaderboard_pages_by_season_…`, added in T7); the leaderboard pages
+  by season (`the_leaderboard_pages_by_season_…`); a bot account plays a rated game, flagged
+  (`a_lone_player_plays_the_ladders_bot_…`); a pause by agreement within the ladder's bounds and
+  a forfeit after its due time (`a_pause_declined_then_agreed_…`,
+  `a_player_not_back_after_an_agreed_pause_forfeits`). And: `06-security.md` carries the ladders;
+  the client lane's inbox has the ladder's messages; the reviewer agent's findings fixed or left
+  for the checkpoint (above; no major one); the lane HANDOFF, this log and `QUEUE.md` are current.
+- **Tests** (`h3-protocol` 91 → 92, `h3-server` 99 → 100): the bar (a decline, an expiry, a
+  departure; per ladder); the property test's bars; the restart test; the leaderboard test's new
+  season played against a bot (Ann and Bob, 324 points apart after a forfeit, would wait 150 s
+  for the window).
+- **The checkpoint**: the user's, SRV-Q22: passed 2026-10-12; the review list as built; the
+  pause's hold across a restart a small task first (T8); the other two review items later; M6's
+  refinement next (M5 waits for E08's increment 3).

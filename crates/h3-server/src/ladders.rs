@@ -353,6 +353,15 @@ impl Ladders {
         self.ladders.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
+    /// The highest game id the ladders' logs name (0 for none; E16 M4 T7): the server hands out
+    /// higher ones, so a game whose `next-game` was lost is still rated once, never taken for one
+    /// the log names already.
+    pub(crate) fn last_game(&self) -> u32 {
+        let ladders = self.lock();
+        let games = ladders.values().filter_map(|l| l.results.games.last());
+        games.copied().max().unwrap_or(0)
+    }
+
     /// The ladder `id`'s current season.
     pub(crate) fn season(&self, id: &str) -> Option<u32> {
         let ladders = self.lock();
