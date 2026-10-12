@@ -2295,3 +2295,34 @@ records how and why the tasks went.
   two docs workers' `xtask` checks read each other's worktree (xtask takes the workspace root
   from its build): `check-exe-map` failed on the joined branch for an address the queue cited,
   fixed with a map entry (0x467130).
+
+### T11c: the closure (2026-10-12, increment 21)
+
+- **Shared first** (`shared/e04b-closure`): BACKLOG (E04b done), ADR-0014's working-detail line
+  and point 6's wording, ADR-0007's amendment on retiring a flag, `docs/04-rules-and-sources.md`
+  §4 (quirks that are the rule in every profile by decision; retired entries), `docs/06-security.md`
+  ("Not covered yet": a battle's hidden draws share the public rolls' generator), the global
+  HANDOFF's trap on target directories.
+- **The design note at closure:** `E04b-design.md` held no open section; each had been deleted by
+  the task that implemented it (T2's casting core, T3's effect list, T5's battlefield objects,
+  T6's raising and created stacks, T7's creature magic). The file is deleted. The working detail
+  is in the code documentation (`h3_battle`'s `magic`, `effects`, `obstacles`, `natural`, `raise`,
+  `created`, `casters` and `mana`; `h3_content`; `h3_heroes`), the rule catalog (BAT-MAG-001 to
+  069, HER-SPL-002 to 004, HER-BAT-011 to 017) and `packs/README.md`.
+- **Exit criteria:** 1, 5 and 6 were done earlier. 2 to 4 hold: T11a's audit stands, the review
+  widened the properties of 4 and left its disputed readings as questions with their experiments
+  (BAT-Q28, BAT-Q32 to BAT-Q35; batch 2g). 7: Linux green in the cloud sandbox with the original
+  data, before and after `master` was merged into the review's branch (all 15 steps); CI could
+  not run (GitHub refused the account's Actions jobs: its billing or spending limit).
+- **The Windows run (the user, 2026-10-12, the review's branch with that day's `master`):** the
+  workspace's verify failed in `h3-server` only, code the server lane had merged that day:
+  clippy on `unused variable: new` (`journal.rs:188`, read only under `cfg(unix)`), and the
+  tests `ladders::tests::rated_games_are_read_back_bit_for_bit` and
+  `players::tests::the_accounts_are_read_back_and_a_torn_line_is_dropped` (by this session's
+  reading, not run on Windows: `open_log` cuts a torn last line with `set_len` on a handle
+  opened for appending, which Windows refuses). E04b changed no file of that crate. **The user:**
+  pass it on to the server lane (its queue's inbox, in the closure's pull request) and close
+  E04b with the battle scope taken as passing on Windows; no scoped Windows run was recorded.
+- **What later epics inherit:** the queue's inbox by destination (E04c, E05, E08 to E10, battle
+  work without a task, the server lane's points); BAT-STUB-1 (the observation's mark for a
+  created stack that ran out of rounds) for the next observation-encoding bump.

@@ -4,11 +4,11 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `battle/e04b-t11b` (T11b's pull request); `battle/<task>` branches from `master`, merged at their checkpoint.
-- **E04b increment 21: T11a and T11b done** (T11b: the independent review, 87 findings, 24 fixes, wider properties, the flags of BAT-QUIRK-2 and BAT-QUIRK-9 retired by the user; `docs/epics/E04b-log.md`). Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
+- **Branch:** none in progress (`battle/e04b-t11c` is the closure's pull request); `battle/<task>` branches from `master`, merged at their checkpoint.
+- **E04b is closed** (2026-10-12; the review, T11b: 87 findings, 24 fixes, the flags of BAT-QUIRK-2 and BAT-QUIRK-9 retired). Records: `docs/epics/E04b-log.md`. Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
 - **Done:** T1–T10: every battle spell, creature magic, the hero's spells and masteries in the Heroes context, limits and defences, the opening spells and Eagle Eye, a complete observation, batches 2a–2f (BAT-MAG-001 to 069, HER-SPL-002 to 004, HER-BAT-015 to 017), all after the executable's code (`installation.md` §7.8–§7.24). Physical damage follows the executable's three truncated stages under Q-0005 (`h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's f32 bit pattern where it differs; Q45 (b)).
-- **Next: T11c, the closure:** a `shared/` pull request first (BACKLOG, ADR-0014, ADR-0007 on retiring a flag, `docs/04` §4, `docs/06`, the global HANDOFF's battle row), then the lane's (the epic's status, the design note deleted, the user's Windows run for exit criterion 7).
+- **Next, at the user's checkpoint:** E04c's refinement (sieges, special battlefields) or R01 (the content split, BACKLOG); batch 2g when the user plays it. The Windows verify was red in `h3-server` on 2026-10-12 (passed on to the server lane).
 - **Open for later tasks:** BAT-Q28 and BAT-Q32 to BAT-Q35 (the review's; none blocks), batch 2g and 49 wiki checks (`docs/experiments/README.md`; the review's agents had no wiki access), BAT-STUB-1 (the observation and a created stack that ran out of rounds); `QUEUE.md`'s inbox by destination; Q43.
 - **Versions (battle owns them):** state hash v41, ruleset hash v42, replay format v21, action encoding v11, C ABI v17, observation encoding v13; pack format v34. Next ids: BAT-Q36, BAT-QUIRK-22, BAT-STUB-2.
 - **Ownership:** `lanes.toml`; a seam change (`h3-kernel`, `h3-contracts`) is its own `shared/` pull request, merged first.
@@ -59,9 +59,9 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-### 2026-10-11 to 12 (fifty-second) — E04b increment 21: T11b, the review
+### 2026-10-11 to 12 (fifty-second) — E04b increment 21: T11b and T11c, the review and the closure
 
-The user: review and closure in one session, with agents; BAT-Q29 to BAT-Q31 answered (two quirk flags retired). Eleven reviews, 24 fixes, the tests and properties asked for, replays and baseline renewed. Detail: `docs/epics/E04b-log.md`.
+The user: review and closure in one session, with agents; BAT-Q29 to BAT-Q31 answered (two quirk flags retired); E04b closed with the battle scope taken as passing on Windows. Eleven reviews, 24 fixes, replays and baseline renewed. Detail: `docs/epics/E04b-log.md`.
 
 ### 2026-10-11 (fifty-first) — E04b increment 21: T11a
 
