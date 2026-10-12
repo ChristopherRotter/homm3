@@ -11,7 +11,8 @@
 # rolls every army anew.
 # The compiled map imports in the engine (h3-map's reader and import; a throwaway run, seeds 1
 # and 2), which draws the sixteen armies as GAM-SET-001 says (a war machine there gives no stack
-# yet).
+# yet). Reviewed before staging by an agent that had not written it (the slots told apart by
+# name, the Catapult every hero carries, the restart's fallback came from that review).
 
 [map]
 name = "E08 batch 1b"
@@ -22,7 +23,7 @@ instructions = [
     "Copy `E08-batch-1b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
     "Use the HD launcher with plain HD (HD+ off).",
     "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human. Nothing on this map moves or fights.",
-    "Each load: on Red's turn, open each Red hero's screen (its army is along the bottom, its war machines in the slots beside the figure) and write down which of its three starting slots it has; end the turn and do the same for Blue's heroes. Then load the map again (*System Options → Restart Scenario*; if the new load shows exactly the armies of the one before, start it from *New Game* instead).",
+    "Each load: on Red's turn, open each Red hero's screen (its army is along the bottom, its war machines in the slots beside the figure) and write down which of its three starting slots it has; end the turn and do the same for Blue's heroes. Then load the map again (*System Options → Restart Scenario*; if the game does not offer it in hot seat, or the new load shows exactly the armies of the one before, start the map from *New Game* instead).",
     "Fill in this file and keep it in the repo.",
 ]
 
@@ -32,7 +33,7 @@ title = "Starting armies, up to eight loads"
 questions = ["ADV-Q6", "GAM-SET-001"]
 procedure = [
     "Each hero's three starting slots, in the order of the hero table: Red: Christian (1 Pikemen, 2 Ballista, 3 Griffins), Rion (1 Pikemen, 2 First Aid Tent, 3 Griffins), Gem (1 Centaurs, 2 First Aid Tent, 3 Wood Elves), Torosar (1 Gremlins, 2 Ballista, 3 Stone Golems), Pyre (1 Imps, 2 Ballista, 3 Hell Hounds), Arlach (1 Troglodytes, 2 Ballista, 3 Beholders), Gurnisson (1 Goblins, 2 Ballista, 3 Orcs), Gerwulf (1 Gnolls, 2 Ballista, 3 Serpent Flies). Blue: Verdish (1 Gnolls, 2 First Aid Tent, 3 Serpent Flies), Orrin (1 Pikemen, 2 Archers, 3 Griffins), Mephala (1 Centaurs, 2 Dwarves, 3 Wood Elves), Fafner (1 Gremlins, 2 Stone Gargoyles, 3 Stone Golems), Rashka (1 Imps, 2 Gogs, 3 Hell Hounds), Tamika (1 Skeletons, 2 Walking Dead, 3 Wights), Crag Hack (1 Goblins, 2 Wolf Riders, 3 Orcs), Sephinroth (1 Troglodytes, 2 Harpies, 3 Beholders).",
-    "In each cell write the slots the hero has, by number: 123, 12, 13 or 1 (the creature counts do not matter; a war machine counts as its slot 2). Anything else (another creature, a fourth stack, a war machine without its slot) goes into the last line.",
+    "In each cell write the slots the hero has, by number: 123, 12, 13 or 1. Tell the slots apart by the creature's (or war machine's) name, never by its place in the army: when slot 2 is missing, the slot-3 creature moves up beside slot 1, and a war machine is never in the army at all. Every hero also carries a Catapult: ignore it. The creature counts do not matter. Anything else (a creature not in the hero's list, a fourth stack, a war machine other than the one listed) goes into the last line.",
     "Play eight loads. You may stop earlier once both have appeared: some hero with 13, and some war-machine hero (Red's eight and Verdish) without its war machine.",
 ]
 record = [

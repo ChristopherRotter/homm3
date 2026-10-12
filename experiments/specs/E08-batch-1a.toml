@@ -9,10 +9,13 @@
 # points, 11 and faster: 2000). A throwaway run of the compiled map through h3-map's reader and
 # import and the engine's reachable-tiles query (seeds 1 and 2) gave every hero 1560 points and
 # D2a 9, D2b 14, C0 15 steps east today, and both Q4 walkers 15 before their battle.
+# Reviewed before staging by an agent that had not written it: the Q4c control (points
+# recomputed on any change of the army would also give Q4a and Q4b 20), the path's last mark,
+# recovery saves and the margins of the counts came from that review.
 #
 # Every walker carries Castle creatures only (native terrain grass), has no skills and no
 # artifacts, and walks a straight row east. Scouts (heroes that never move) explore each row
-# beyond the farthest step any source predicts, so one click shows the whole path: the arrows
+# beyond the farthest step any source predicts, so one click shows the whole path: the marks
 # of the part a hero can walk today look different from the rest (green, then red). Map: grass,
 # a band of swamp over columns 20 to 32 from top to bottom, two short dirt roads.
 
@@ -24,10 +27,10 @@ terrain = "grass"
 instructions = [
     "Copy `E08-batch-1a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
     "Use the HD launcher with plain HD (HD+ off).",
-    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human. In the one battle per day you control both sides. Save right away.",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human. In the one battle per day you control both sides. Save right away (save 1), and again at the start of Red's turn on day 2 (save 2). If a battle does not go as its encounter says (an Angel dies, a Pikeman survives), load the save before it and play it again.",
     "Move only the hero an encounter names, and only as it says; the other heroes (the scouts among them) stay where they are for the whole map.",
-    "To count a path: select the hero, click once on the farthest explored tile straight east of it on its row (the last tile before the black shroud). The game draws the path as arrows: count the arrows of the part the hero can walk today (green) and of the rest (red). Then click the same tile again: the hero walks and should stop at the last green arrow. Write down both counts and anything that differs.",
-    "Order: day 1, Red's turn: Q4a's battle, then D2a, D2b and C0 in any order; end Red's turn. Day 1, Blue's turn: Q4a's walk; end the turn. Day 2, Red's turn: Q4b's battle; end the turn. Day 2, Blue's turn: Q4b's walk. Then the map is done.",
+    "To count a path: select the hero and click once on the farthest fully lit tile straight east of it on its row (not on the half-dark border of the black shroud: the game does not walk there). The game marks the path step by step: arrows, and a cross on the tile clicked. Count the marks of the part the hero can walk today (green) and of the rest (red), the cross as a step of its colour. The encounter says how many marks the whole path should have: if yours has fewer, click a tile further east. Then click the same tile again: the hero walks and should stop on the last green mark. Write down both counts and anything that differs.",
+    "Order: day 1, Red's turn: Q4a's battle, then D2a, D2b and C0 in any order; end Red's turn. Day 1, Blue's turn: Q4a's walk, then Q4c; end the turn. Day 2, Red's turn: save 2, Q4b's battle; end the turn. Day 2, Blue's turn: Q4b's walk. Then the map is done.",
     "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
 ]
 
@@ -59,24 +62,27 @@ questions = ["ADV-Q4", "ADV-MOV-002"]
 procedure = [
     "Day 1, Red's turn: Red's Q4a hero attacks the Blue hero next to it (east).",
     "In the battle: Red's Archers shoot Blue's Pikemen until all four are dead. Meanwhile Blue's Angels and Pikemen Defend at each of their turns (no attack, no move). Once the Pikemen are dead, Blue's Angels kill the Archers; Red's hero loses the battle (do not retreat or surrender). No Angel may die.",
-    "Day 1, Blue's turn: select Blue's Q4a hero (only Angels left) and count its path east as the instructions say: the farthest explored tile of its row lies about 27 tiles east (the two Blue scouts explored it).",
+    "Day 1, Blue's turn: select Blue's Q4a hero (only Angels left) and count its path east as the instructions say: the whole path to the farthest lit tile of its row has 27 marks (the Blue scouts explored the row).",
 ]
 record = [
     { field = "battle: Pikemen all dead, Angels all alive, Red's hero lost (yes/no)" },
-    { field = "Blue's Q4a hero, day 1: green arrows" },
-    { field = "red arrows" },
-    { field = "did the hero stop at the last green arrow" },
+    { field = "Blue's Q4a hero, day 1: green marks" },
+    { field = "red marks" },
+    { field = "did the hero stop on the last green mark" },
     { field = "anything odd" },
 ]
 predictions = """
 - The reading (the engine, ADV-MOV-002): a hero's points are set when its owner's turn starts
   (0x4C6FE0 → 0x4E4D90), from the slowest stack at that moment. Blue's turn starts after the
-  battle: Angels only, speed 12 → 2000 points → **20 green arrows** (20 × 100 on grass; 0 left).
+  battle: Angels only, speed 12 → 2000 points → **20 green** (20 × 100 on grass; 0 left).
 - VCMI 1.7.5 and the wiki ("only at the beginning of each day"): set at the day's start, before
-  Red's turn, with the Pikemen (speed 4) → 1560 → **15 green arrows** (60 points left, below a
+  Red's turn, with the Pikemen (speed 4) → 1560 → **15 green** (60 points left, below a
   step).
 - A third possibility, neither source: the map's load sets day 1's points for everybody and the
   turn start sets them only from day 2 on: 15 here and 20 in Q4b.
+- A fourth, neither source: points recomputed whenever the army changes: 20 here and in Q4b, as
+  the reading; Q4c tells them apart. (Recomputed after a battle but not after a dismissal would
+  still look like the reading; nothing suggests such a rule.)
 - Blue's hero: 4 Pikemen and 2 Angels; level 1 (500 for the hero and 200 for the Archers: 700
   experience, no level-up).
 """
@@ -116,13 +122,13 @@ questions = ["ADV-Q4", "ADV-MOV-002"]
 procedure = [
     "Day 1: nothing for this encounter (its heroes stay where they are).",
     "Day 2, Red's turn: Red's Q4b hero attacks the Blue hero next to it, and the battle goes as in Q4a: the Archers kill the four Pikemen while Blue's stacks Defend, then the Angels kill the Archers.",
-    "Day 2, Blue's turn: count Blue's Q4b hero's path east (its row lies four rows below Q4a's; the farthest explored tile is again about 27 tiles east).",
+    "Day 2, Blue's turn: count Blue's Q4b hero's path east (its row lies four rows below Q4a's; the whole path again has 27 marks).",
 ]
 record = [
     { field = "battle: Pikemen all dead, Angels all alive, Red's hero lost (yes/no)" },
-    { field = "Blue's Q4b hero, day 2: green arrows" },
-    { field = "red arrows" },
-    { field = "did the hero stop at the last green arrow" },
+    { field = "Blue's Q4b hero, day 2: green marks" },
+    { field = "red marks" },
+    { field = "did the hero stop on the last green mark" },
     { field = "anything odd" },
 ]
 predictions = """
@@ -143,6 +149,52 @@ specialty = "creature Monk"
 primary = [1, 1, 1, 1]
 army = [["Pikeman", 4], ["Angel", 2]]
 
+[[encounter]]
+id = "Q4c"
+title = "Day 1: the points after a slow stack is dismissed (control for Q4a and Q4b)"
+questions = ["ADV-Q4", "ADV-MOV-002"]
+procedure = [
+    "Day 1, Blue's turn: open Blue's Q4c hero (1 Pikeman and 1 Angel; four rows below Q4b's) and dismiss its Pikeman (select the stack, then the dismiss button), so that only the Angel is left.",
+    "Count its path east as the instructions say (the whole path has 27 marks), then walk.",
+]
+record = [
+    { field = "green marks" },
+    { field = "red marks" },
+    { field = "did the hero stop on the last green mark" },
+    { field = "anything odd" },
+]
+predictions = """
+- The reading and VCMI: a change of the army during the turn leaves the hero's points as they
+  are (the reading sets them at the turn's start, VCMI at the day's): 1560, set with the Pikeman
+  → **15 green**.
+- Points recomputed whenever the army changes: 2000 → **20 green**; then Q4a's and Q4b's 20 say
+  nothing about the timing.
+"""
+[encounter.hero]
+type = "Rion"
+specialty = "skill First Aid"
+owner = "blue"
+at = [41, 18]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1], ["Angel", 1]]
+# Two more Blue scouts: rows 14 and 18 from column 47 to 68.
+[[encounter.also]]
+type = "Mephala"
+specialty = "skill Armorer"
+owner = "blue"
+at = [52, 16]
+name = "Scout B3"
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Fafner"
+specialty = "creature Naga"
+owner = "blue"
+at = [63, 16]
+name = "Scout B4"
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 1]]
+
 # --- D-2: stepping off a road ----------------------------------------------------------------------
 
 [[encounter]]
@@ -150,12 +202,12 @@ id = "D2a"
 title = "Off a road on grass onto swamp"
 questions = ["ADV-Q3", "D-2", "ADV-MOV-003"]
 procedure = [
-    "Day 1, Red's turn: Red's D2a hero stands on the east end of a short dirt road, on grass; east of it the swamp begins. Count its path east (the scout explored the row up to about 14 tiles east).",
+    "Day 1, Red's turn: Red's D2a hero stands on the east end of a short dirt road, on grass; east of it the swamp begins. Count its path east (the scout explored the row: the whole path has 14 marks).",
 ]
 record = [
-    { field = "green arrows" },
-    { field = "red arrows" },
-    { field = "did the hero stop at the last green arrow" },
+    { field = "green marks" },
+    { field = "red marks" },
+    { field = "did the hero stop on the last green mark" },
     { field = "anything odd" },
 ]
 predictions = """
@@ -186,12 +238,12 @@ id = "D2b"
 title = "Off a road on swamp onto grass"
 questions = ["ADV-Q3", "D-2", "ADV-MOV-003"]
 procedure = [
-    "Day 1, Red's turn: Red's D2b hero stands on the east end of a short dirt road on the swamp band's last column; east of it is grass. Count its path east (explored up to about 16 tiles east).",
+    "Day 1, Red's turn: Red's D2b hero stands on the east end of a short dirt road on the swamp band's last column; east of it is grass. Count its path east (the whole path has 16 marks).",
 ]
 record = [
-    { field = "green arrows" },
-    { field = "red arrows" },
-    { field = "did the hero stop at the last green arrow" },
+    { field = "green marks" },
+    { field = "red marks" },
+    { field = "did the hero stop on the last green mark" },
     { field = "anything odd" },
 ]
 predictions = """
@@ -199,8 +251,9 @@ predictions = """
 - The reading and VCMI (the swamp under the road, not native: 175): 175 + 13 × 100 = 1475 →
   **14 green** (85 left).
 - The wiki (the terrain tile, grass: 100): 15 × 100 = 1500 → **15 green** (60 left).
-- D2a and D2b move in opposite directions under each source, so a miscount shows as a pair that
-  fits neither (9 and 15, or 8 and 14).
+- D2a and D2b move in opposite directions under each source. A pair that fits neither is not a
+  miscount when C0 reads 15: (8, 14) would mean the swamp prices every step off a road whichever
+  side it is on, (9, 15) the grass; no source says so.
 """
 [encounter.hero]
 type = "Tyris"
@@ -223,11 +276,12 @@ id = "C0"
 title = "Control: grass only, the land table"
 questions = ["ADV-MOV-001"]
 procedure = [
-    "Day 1, Red's turn: count Red's C0 hero's path east on grass (explored up to about 16 tiles east).",
+    "Day 1, Red's turn: count Red's C0 hero's path east on grass (the whole path has 16 marks).",
 ]
 record = [
-    { field = "green arrows" },
-    { field = "red arrows" },
+    { field = "green marks" },
+    { field = "red marks" },
+    { field = "did the hero stop on the last green mark" },
     { field = "anything odd" },
 ]
 predictions = """
