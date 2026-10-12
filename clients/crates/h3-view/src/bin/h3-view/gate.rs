@@ -240,19 +240,19 @@ fn identical(
     archives: &[LodArchive<'_>],
     dups: &BTreeMap<String, Vec<usize>>,
 ) -> BTreeMap<String, bool> {
-    dups.keys()
-        .map(|name| {
-            let copies: Vec<Option<Vec<u8>>> = archives
-                .iter()
-                .flat_map(|a| {
-                    a.entries()
-                        .iter()
-                        .filter(|e| e.name.eq_ignore_ascii_case(name))
-                        .map(|e| a.read(e).ok())
-                })
-                .collect();
-            let same = copies.windows(2).all(|w| w[0].is_some() && w[0] == w[1]);
-            (name.clone(), same)
+    let mut copies: BTreeMap<&str, Vec<Option<Vec<u8>>>> = BTreeMap::new();
+    for archive in archives {
+        for e in archive.entries() {
+            if let Some((name, _)) = dups.get_key_value(&e.name.to_ascii_uppercase()) {
+                copies.entry(name).or_default().push(archive.read(e).ok());
+            }
+        }
+    }
+    copies
+        .into_iter()
+        .map(|(name, bytes)| {
+            let same = bytes.windows(2).all(|w| w[0].is_some() && w[0] == w[1]);
+            (name.to_owned(), same)
         })
         .collect()
 }
