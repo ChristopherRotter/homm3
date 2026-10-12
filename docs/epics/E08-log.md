@@ -1157,5 +1157,9 @@ end to end with the env's action encoding v2 and the replay format v2.
   offer's price), isolation over purchases and decisions, the views against the events
   (decision, purchases, payments, reveal counts). The hygiene property stops after the viewer's
   own accepted offer (a reveal by terrain shows hidden tiles' terrain); an offer opened, refused
-  or declined shows nothing hidden, so the comparison goes on. Over 48 cases (four runs, counted
-  once): 9 to 16 offers opened, 13 or 14 refused, 4 or 5 accepted, 4 to 10 declined.
+  or declined shows nothing hidden, so the comparison goes on. With the visit steps it found
+  another player's move toward a pile the viewer never sees: the other game lacks the pile, and
+  the hero walks on in the viewer's sight where it stayed. Like a move one hero can pay and the
+  other cannot, an outcome that differs between the games (the actor's heroes on other tiles)
+  now stops the comparison (the shrunk case kept as a regression). Over 48 cases (four runs,
+  counted once): 9 to 16 offers opened, 13 or 14 refused, 4 or 5 accepted, 4 to 10 declined.
