@@ -34,6 +34,7 @@ name = "h3-view"
 version = "0.1.0"
 dependencies = [
  "h3-assets",
+ "h3-formats",
  "h3-render",
 ]
 

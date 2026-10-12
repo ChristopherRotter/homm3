@@ -23,6 +23,9 @@
 )]
 #![warn(missing_docs)]
 
+extern crate alloc;
+
+pub mod archive;
 pub mod def;
 pub mod msk;
 pub mod palette;
