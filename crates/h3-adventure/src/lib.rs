@@ -58,9 +58,10 @@ pub use persistent::BitGrid;
 pub use reach::Reach;
 pub use ruleset::{
     AdventureCompileError, AdventurePack, AdventureParams, AdventureParamsDef, AdventureRuleset,
-    KEY_COLOURS, MAX_GAIN, MAX_LAND_POINTS, MAX_PICKUP_AMOUNT, MAX_PLAYERS, ObjectKind,
-    ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, Passage, Pickup, PickupDef, RiverDef,
-    RiverId, RiverKind, RoadDef, RoadId, RoadKind, TerrainMovement, TerrainMovementDef, Visit,
+    KEY_COLOURS, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS, MAX_PICKUP_AMOUNT, MAX_PLAYERS,
+    ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, Passage, Pickup, PickupDef,
+    RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind, StartingResources,
+    StartingResourcesDef, TerrainMovement, TerrainMovementDef, Visit,
 };
 pub use setup::{
     AdventureSetup, ArmyError, HeroSetup, MapSetup, ObjectSetup, Pos, SetupError, StandError,
@@ -77,5 +78,6 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 4;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting
-/// stack chances. v4 (E08 T12a): the object types.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 4;
+/// stack chances. v4 (E08 T12a): the object types. v5 (E08 T13a): the starting resources by
+/// difficulty.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 5;

@@ -45,11 +45,19 @@ pub struct GameHeroSetup {
     pub army: HeroArmy,
 }
 
+/// The difficulty a map's import sets: 1, normal in the original packs. The game's difficulty is
+/// chosen when a game starts; a map's header holds only the map's rating (survey `E08-objects.md`
+/// §7.2; E08 decision 16).
+pub const DEFAULT_DIFFICULTY: u8 = 1;
+
 /// Everything a game is built from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameSetup {
     /// The players in colour order; a player's [`PlayerId`] is its index here.
     pub players: Vec<PlayerSetup>,
+    /// The game's difficulty: a row of the ruleset's starting resources, from 0 (easy; 4 is
+    /// impossible in the original packs). Every player starts with its human row (GAM-RES-002).
+    pub difficulty: u8,
     /// The static map.
     pub map: MapSetup,
     /// The heroes on the map; a hero's [`HeroId`] is its index here (the game's store of heroes).
@@ -59,6 +67,8 @@ pub struct GameSetup {
 /// Why a [`GameSetup`] cannot start a game.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameSetupError {
+    /// The ruleset has no starting resources for the difficulty.
+    Difficulty(u8),
     /// More players than a [`PlayerId`] can name; the number.
     Players(usize),
     /// The players' colours are not strictly increasing or reach past the ruleset's players;
@@ -78,6 +88,7 @@ pub enum GameSetupError {
 impl fmt::Display for GameSetupError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Difficulty(d) => write!(f, "the ruleset has no difficulty {d}"),
             Self::Players(n) => write!(f, "{n} players are too many"),
             Self::Colour(player) => write!(f, "player {player}'s colour is out of order"),
             Self::Heroes(n) => write!(f, "{n} heroes are too many"),
@@ -99,8 +110,9 @@ impl fmt::Display for GameSetupError {
 impl core::error::Error for GameSetupError {}
 
 impl GameSetup {
-    /// Checks the setup: the game's part (players in colour order within the ruleset's players,
-    /// known hero types, starting armies that can be drawn), then the adventure context's part
+    /// Checks the setup: the game's part (a difficulty the ruleset has, players in colour order
+    /// within the ruleset's players, known hero types, starting armies that can be drawn), then
+    /// the adventure context's part
     /// with its own checks. It builds the game as [`GameState::new`] does: whether a setup is
     /// valid does not depend on the seed, since every starting army it can draw is valid when its
     /// hero type's army has a first stack and no more stacks than the army's slots (the core

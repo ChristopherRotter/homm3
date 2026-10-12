@@ -9,7 +9,8 @@
 //! (E08 T6a); the state ([`GameState`]) with the starting armies' draw, the players' streams,
 //! sequential turns, the calendar, and [`apply`] with `EndTurn` (T6b); the adventure's commands
 //! (`MoveHero`, T7b); [`observe`] and [`project`] for a player [`Viewer`] (T8b1);
-//! [`legal_commands`] and, per hero, [`legal_moves`] (T8b2a).
+//! [`legal_commands`] and, per hero, [`legal_moves`] (T8b2a); each player's [`Treasury`] with
+//! the starting resources of the game's difficulty (T13a).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -37,6 +38,7 @@ mod observe;
 mod ruleset;
 mod setup;
 mod state;
+mod treasury;
 
 #[cfg(test)]
 mod tests;
@@ -45,10 +47,13 @@ pub use command::{Actor, GameCommand, GameCommandError, GameEvent, NoopSink, Sin
 pub use legal::{legal_commands, legal_moves};
 pub use observe::{GameObservation, PlayerView, Viewer, observe, project};
 pub use ruleset::{GameRuleset, RulesetMismatch};
-pub use setup::{GameHeroSetup, GameSetup, GameSetupError, HeroArmy, PlayerSetup};
+pub use setup::{
+    DEFAULT_DIFFICULTY, GameHeroSetup, GameSetup, GameSetupError, HeroArmy, PlayerSetup,
+};
 pub use state::GameState;
+pub use treasury::Treasury;
 
 /// Version of the game state's canonical hash encoding (`docs/08-work-process.md`, "Versions";
 /// owned by the adventure lane). Bump it with any change to what the hash covers. v1 (E08 T6b):
-/// the first encoding ([`GameState`]'s `CanonicalHash`).
-pub const GAME_STATE_HASH_VERSION: u32 = 1;
+/// the first encoding ([`GameState`]'s `CanonicalHash`). v2 (E08 T13a): each player's treasury.
+pub const GAME_STATE_HASH_VERSION: u32 = 2;

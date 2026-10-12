@@ -19,7 +19,8 @@ use h3_kernel::{Rng, StreamId};
 
 use crate::ruleset::{
     AdventurePack, AdventureParamsDef, AdventureRuleset, ObjectKindDef, ObjectTypeDef,
-    ObjectTypeId, Passage, PickupDef, RiverDef, RoadDef, RoadId, TerrainMovementDef, Visit,
+    ObjectTypeId, Passage, PickupDef, RiverDef, RoadDef, RoadId, StartingResourcesDef,
+    TerrainMovementDef, Visit,
 };
 use crate::setup::{AdventureSetup, HeroSetup, MapSetup, ObjectSetup, Pos, TileMask, TileSetup};
 use crate::state::AdventureState;
@@ -94,6 +95,14 @@ fn resources() -> Vec<ResourceDef> {
             name: "Resource".into(),
         })
         .collect()
+}
+
+/// The starting resources of [`rules`] and [`movement_rules`] (E08 T13a): one difficulty.
+fn starting_resources() -> Vec<StartingResourcesDef> {
+    vec![StartingResourcesDef {
+        human: vec![(key("t:gold"), 1000)],
+        computer: vec![],
+    }]
 }
 
 /// The object types of [`rules`] and [`movement_rules`] (E08 T12a), in handle order.
@@ -209,6 +218,7 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             army_slots: NonZeroU8::new(3).unwrap(),
             starting_stack_chances: vec![88, 25],
         }),
+        starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
     };
     let part = AdventureRuleset::compile(&core, &[part]).unwrap();
@@ -338,6 +348,7 @@ pub(crate) fn movement_rules_up_to(faithful: bool, size: u16) -> (Ruleset, Adven
             army_slots: NonZeroU8::new(7).unwrap(),
             starting_stack_chances: vec![88, 25],
         }),
+        starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
     };
     let part = AdventureRuleset::compile(&core, &[part]).unwrap();

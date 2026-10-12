@@ -217,10 +217,10 @@ pub(super) struct ObjectTables {
 }
 
 /// What a pack's definitions may reference: the core, the pack and its dependency closure.
-struct Scope<'a> {
-    core: &'a Ruleset,
-    pack: &'a str,
-    closure: &'a BTreeSet<String>,
+pub(super) struct Scope<'a> {
+    pub(super) core: &'a Ruleset,
+    pub(super) pack: &'a str,
+    pub(super) closure: &'a BTreeSet<String>,
 }
 
 impl Scope<'_> {
@@ -236,7 +236,7 @@ impl Scope<'_> {
         }
     }
 
-    fn resource(&self, key: &ContentKey) -> Result<ResourceId, AdventureCompileError> {
+    pub(super) fn resource(&self, key: &ContentKey) -> Result<ResourceId, AdventureCompileError> {
         self.reach(key)?;
         self.core
             .resources()
