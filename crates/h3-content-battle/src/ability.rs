@@ -10,14 +10,14 @@
 //! referenced: [`ContentKey`]s in packs ([`AbilityDef`]), handles once compiled
 //! ([`CompiledAbility`]).
 //!
-//! [`ContentKey`]: crate::ContentKey
+//! [`ContentKey`]: h3_content::ContentKey
 
 use h3_kernel::{CanonicalHash, StateHasher};
 
-use crate::flags::CreatureFlag;
-use crate::heroes::{SchoolId, SpellId};
-use crate::key::ContentKey;
-use crate::ruleset::CreatureTypeId;
+use h3_content::CreatureFlag;
+use h3_content::{SchoolId, SpellId};
+use h3_content::ContentKey;
+use h3_content::CreatureTypeId;
 
 /// Which stacks a battle-wide aura affects.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

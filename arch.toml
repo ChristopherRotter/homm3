@@ -116,6 +116,16 @@ external = []
 dev_deps = []
 dev_external = ["proptest"]
 
+# The battle's ruleset part (R01, ADR-0015 point 3): compiled on the core `h3-content` from one
+# battle pack per core pack, like the adventure's part.
+[crate.h3-content-battle]
+layer = "shared"
+logic = true
+deps = ["h3-kernel", "h3-content"]
+external = []
+dev_deps = []
+dev_external = ["proptest"]
+
 [crate.h3-contracts]
 layer = "shared"
 logic = true

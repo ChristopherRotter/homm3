@@ -6,6 +6,7 @@ exclude = ["clients"]
 members = [
     "crates/h3-kernel",
     "crates/h3-content",
+    "crates/h3-content-battle",
     "crates/h3-contracts",
     "crates/h3-battle",
     "crates/h3-heroes",
@@ -27,6 +28,7 @@ members = [
 default-members = [
     "crates/h3-kernel",
     "crates/h3-content",
+    "crates/h3-content-battle",
     "crates/h3-contracts",
     "crates/h3-battle",
     "crates/h3-heroes",
@@ -56,6 +58,7 @@ publish = false
 # Workspace crates (paths are the single source of truth; arch.toml declares which edges are allowed).
 h3-kernel = { path = "crates/h3-kernel" }
 h3-content = { path = "crates/h3-content" }
+h3-content-battle = { path = "crates/h3-content-battle" }
 h3-contracts = { path = "crates/h3-contracts" }
 h3-battle = { path = "crates/h3-battle" }
 h3-heroes = { path = "crates/h3-heroes" }

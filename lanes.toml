@@ -34,9 +34,10 @@ paths = [
     "xtask/",
     "scripts/",
     "benches/README.md",
-    # Seam and kernel crates.
+    # Seam and kernel crates; the core content every context reads (R01 decision 6).
     "crates/h3-kernel/",
     "crates/h3-contracts/",
+    "crates/h3-content/",
     # Project-wide docs and process.
     "AGENTS.md",
     "CLAUDE.md",
@@ -86,7 +87,7 @@ code = "BAT"
 paths = [
     "crates/h3-battle/",
     "crates/h3-heroes/",
-    "crates/h3-content/",
+    "crates/h3-content-battle/",
     "crates/h3-pack/",
     # Until the AI lane (E05).
     "crates/h3-sim/",

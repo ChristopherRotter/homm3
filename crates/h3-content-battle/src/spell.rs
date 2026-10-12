@@ -10,8 +10,8 @@
 
 use h3_kernel::{CanonicalHash, StateHasher};
 
-use crate::effect::FULL_BP;
-use crate::flags::CreatureFlags;
+use h3_content::FULL_BP;
+use h3_content::CreatureFlags;
 
 /// Most effects of one spell.
 pub const MAX_SPELL_EFFECTS: usize = 4;
@@ -316,7 +316,7 @@ pub enum SpellEffect {
     /// Creates a copy of the target stack, a living one of the caster's side, for some rounds
     /// (Clone; BAT-MAG-038, E04b T6b, v18).
     Clone,
-    /// Creates a stack of the spell's [`crate::Spell::summons`] creature on the caster's side
+    /// Creates a stack of the spell's [`crate::BattleSpell::summons`] creature on the caster's side
     /// (Summon Elemental; BAT-MAG-039, E04b T6b, v18).
     Summon,
 }
@@ -1167,7 +1167,7 @@ mod tests {
     use std::vec;
 
     use super::*;
-    use crate::flags::CreatureFlag;
+    use h3_content::CreatureFlag;
 
     #[test]
     fn names_round_trip() {
