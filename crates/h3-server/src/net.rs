@@ -617,12 +617,13 @@ impl Link {
                 let own = Asked::Own(login.unwrap_or_default());
                 Routed::Reply(self.leaderboard(seq, ladder, own).await)
             }
-            ClientMessage::Queue { seq, ladder } => {
+            ClientMessage::Queue { seq, ladder, bots } => {
                 // Outside the registry's lock: the ladders have their own.
                 let rating =
                     (login.as_deref()).map_or(0, |login| self.ladders.points(&ladder, login));
                 let to = self.to_me.clone();
-                let asked = (seq, ladder.as_str());
+                // Left out: bots welcome (E16 M4 T5b, SRV-Q21).
+                let asked = (seq, ladder.as_str(), bots.unwrap_or(true));
                 let (answer, waits) =
                     lock(&self.registry).queue(self.conn, asked, login.as_deref(), (rating, to));
                 self.queued = waits;

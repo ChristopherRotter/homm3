@@ -1252,3 +1252,31 @@ how and why the work went.
   ask refused, a pause agreed and both back in time playing on to the end; a player not back
   after the due time forfeiting after the pause and the grace; neither back: woken and void (a
   no-show each), not voided by a shorter `paused_game_ms`.
+
+### M4 T5b — A player's bot opt-out (2026-10-12, SRV-Q21)
+
+- **The start.** #120 (T6) had merged; the branch restarted from `master` (no other lane's
+  change since touches a server path). CI did not start on `master` for #118 or #120 (no
+  minutes; `05-testing.md`, "When CI cannot run"): the baseline was the full local verify.
+- **The queue** (`h3_protocol::ladder`, *provisional*): a waiting entry carries `bots` (whether
+  it may play a bot), kept through a match given up; the matcher gives a bot only to a player
+  left unpaired after `bot_after_ms` who did not opt out. An opted-out player pairs with people
+  by the window as before, however long it waits. `Queues::queue` takes `(seq, ladder, bots)`.
+- **The wire** (version 20): `ClientMessage::Queue::bots` (`Option<bool>`, `#[serde(default)]`:
+  left out or `None`, bots welcome); `ServerMessage::MatchFound::bot` (the opponent is a bot;
+  only the player of a bot match hears it `true`). No stored preference: the client sends it
+  with each `Queue`. Journal format unchanged (6).
+- **The server**: `net` passes `bots.unwrap_or(true)` to `Registry::queue`.
+- **Found on the way:** `a_game_past_its_command_limit_is_void` (M3 T4a) assumed no battle ends
+  within its limit of 6 commands, but a game's seed comes from the OS: the scoped verify drew an
+  attacker that won with the 6th. Its limit is now 1 (the stacks start out of reach: no first
+  command ends a battle). Its sibling `a_restored_game_past_a_lowered_limit_is_void` plays 3
+  turns before its restart, two of them strikes; a battle won in those would fail it too (not
+  seen; left as is).
+- **Tests** (`h3-protocol` 90 → 91, `h3-server` 99): an opted-out player waiting ten minutes on a
+  ladder with bots while another plays one, then matched with a person, declined and waiting on
+  for people; the bot tests' `MatchFound` flagged; the property test now on a ladder with bots
+  and random opt-outs (a bot match only for a waiting player who did not opt out; checked to fail
+  with the opt-out ignored); the wire's corpora and JSON forms (`bots` left out). End to end:
+  the lone player's bot match told `bot: true`; an opted-out player hears nothing for twice
+  `bot_after_ms` and still waits (`Dequeue` answered `Dequeued`).

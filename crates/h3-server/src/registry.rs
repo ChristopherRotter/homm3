@@ -177,19 +177,20 @@ impl Registry {
     }
 
     /// Connection `conn`, logged in as `login`, asks to wait in `ladder`'s queue, rated `rating`
-    /// (whole points), and hears from it through `to` (E16 M4 T2): the answer's text, and whether
-    /// the connection waits in a queue.
+    /// (whole points), playing a bot or not (`bots`, E16 M4 T5b), and hears from it through `to`
+    /// (E16 M4 T2): the answer's text, and whether the connection waits in a queue.
     pub(crate) fn queue(
         &mut self,
         conn: ConnId,
-        (seq, ladder): (u32, &str),
+        asked: (u32, &str, bool),
         login: Option<&str>,
         (rating, to): (i32, ToConn),
     ) -> (String, bool) {
         let mine = |accounts: &[String; 2]| accounts.iter().any(|a| Some(a.as_str()) == login);
+        let ladder = asked.1;
         let unfinished = (self.ranked.values()).any(|(l, accounts)| l == ladder && mine(accounts));
         let now = self.now();
-        let answer = (self.queues).queue(conn, (seq, ladder), login, (rating, unfinished), now);
+        let answer = (self.queues).queue(conn, asked, login, (rating, unfinished), now);
         self.queued.insert(conn, to);
         (codec::encode_text(&answer), self.queues.holds(conn))
     }

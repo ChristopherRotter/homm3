@@ -4,7 +4,7 @@ Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 acc
 crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 done
 2026-10-11 (T1 to T5e), its checkpoint passed the same day (SRV-Q16); M3 done 2026-10-12 (T1 to
 T5), its checkpoint passed the same day (SRV-Q18); M4 refined 2026-10-12 (SRV-Q19); M4 T1
-to T6 and SRV-Q20 done, T5b (SRV-Q21) next, then T7). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+to T6, T5b (SRV-Q21) and SRV-Q20 done, T7 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); [ADR-0019](../adr/0019-identity-and-ladders.md) (identity and ladders, accepted at the M3
 refinement, its ladder points decided at M4's); ADR draft `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -380,8 +380,8 @@ ranked game per player per ladder, bots exempt; no turn timer in M4 (a game rule
   `AnswerPause`/`PauseAnswered` within the ladder's `pauses` and `pause_ms`, the agreed length
   journaled (format 6), the absences held until the due time, the game woken then; one ask per
   seat until the game moves on, for unranked games' `Pause` too; wire 19.
-- **T5b A player's bot opt-out** (SRV-Q21, after T5): `Queue { …, bots }` and `MatchFound`
-  naming a bot.
+- **T5b A player's bot opt-out** (done 2026-10-12, SRV-Q21; `E16-log.md`): `Queue { …, bots }`
+  (`false`: people only, however long the wait), `MatchFound::bot`; wire 20.
 - **T7 Closure** (after T1–T6): the end-to-end test through a restart, `06-security.md`'s
   ladders, the client lane's note, the reviewer agent, the user's checkpoint.
 
@@ -514,6 +514,10 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   while the server was down wakes the game at its first sweep: the grace from the start); a woken
   game runs with its players away; an agreed pause never voided by `paused_game_ms`; `ms` a
   plain JSON number (at most a year); a bot never answers a proposal (it lapses).
+- T5b: `Queue::bots` an `Option<bool>` (left out or `None`: bots welcome), sent with each `Queue`
+  and kept through a match given up, not stored; `MatchFound::bot` told to the player of a bot
+  match (a person's match: `false` to both); an opted-out player still pairs with people only by
+  the window, which widens as before.
 
 ## Review list for the M3 checkpoint (passed 2026-10-12, SRV-Q18)
 

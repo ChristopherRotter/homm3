@@ -134,6 +134,13 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
         ClientMessage::Queue {
             seq: 24,
             ladder: "arena".to_string(),
+            bots: None,
+        },
+        // E16 M4 T5b.
+        ClientMessage::Queue {
+            seq: 24,
+            ladder: "arena".to_string(),
+            bots: Some(false),
         },
         ClientMessage::Dequeue { seq: 25 },
         ClientMessage::AcceptMatch { seq: 26 },
@@ -488,6 +495,7 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
         ServerMessage::MatchFound {
             ladder: "arena".to_string(),
             accept_ms: 30_000,
+            bot: true,
         },
         ServerMessage::MatchCancelled {},
         ServerMessage::MatchReady {
@@ -616,17 +624,28 @@ fn the_json_is_serdes_default_enum_form() {
     assert_eq!(
         text(&ClientMessage::Queue {
             seq: 4,
-            ladder: "arena".to_string()
+            ladder: "arena".to_string(),
+            bots: Some(false)
         }),
-        r#"{"Queue":{"seq":4,"ladder":"arena"}}"#
+        r#"{"Queue":{"seq":4,"ladder":"arena","bots":false}}"#
+    );
+    // E16 M4 T5b: `bots` left out welcomes them.
+    assert_eq!(
+        serde_json::from_str::<ClientMessage>(r#"{"Queue":{"seq":4,"ladder":"arena"}}"#).unwrap(),
+        ClientMessage::Queue {
+            seq: 4,
+            ladder: "arena".to_string(),
+            bots: None
+        }
     );
     let server = |m: &ServerMessage| String::from_utf8(serde_json::to_vec(m).unwrap()).unwrap();
     assert_eq!(
         server(&ServerMessage::MatchFound {
             ladder: "arena".to_string(),
-            accept_ms: 30_000
+            accept_ms: 30_000,
+            bot: false
         }),
-        r#"{"MatchFound":{"ladder":"arena","accept_ms":30000}}"#
+        r#"{"MatchFound":{"ladder":"arena","accept_ms":30000,"bot":false}}"#
     );
     assert_eq!(
         server(&ServerMessage::Unqueued {
