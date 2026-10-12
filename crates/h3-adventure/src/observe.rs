@@ -7,7 +7,8 @@
 //! and rivers, and under `ADV-QUIRK-1` (the `faithful` profile) also what objects cover there and
 //! the heroes standing there (ADV-FOG-005); nothing of any other tile. A typed object still on the
 //! map shows whole, its type and tiles, once the viewer sees any tile it covers so (ADR-0016 point
-//! 6, E08 T12b); its contents never show. Of a hero it sees its tile, owner and
+//! 6, E08 T12b); its contents never show, nor another player's purchases (its own Cartographer
+//! types bought show, T14b). Of a hero it sees its tile, owner and
 //! identity; its army and movement points only if the hero is its own (ADV-FOG-006). Other players'
 //! explored tiles, the seed and the streams never show: an event's projection names the viewer
 //! alone among the players who see it, and a step tells only the tiles the viewer sees the hero

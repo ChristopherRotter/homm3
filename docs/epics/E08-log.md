@@ -1113,3 +1113,49 @@ end to end with the env's action encoding v2 and the replay format v2.
   step's row (`dy`) live across the loop; testing the direction (3 to 5, live anyway) instead
   removed it: `reach-xl-144` 565 798 491 Ir (−0.15 %), `random-play-duel-36` 438 912 898 (−0.15 %),
   `fork-xl-144` +1.02 % as before T14a. No re-baseline.
+
+**T14b, first half — the Cartographer's offer as the first pending decision.**
+- **The visit** (ADV-VIS-001): entering a Cartographer whose type the visitor's owner has not
+  bought makes an offer, `AdventureOutcome.offer`: `Offer { hero, object_type, anchor, price }`,
+  the object by type and anchor (inbox T12b), so the offer is also what its owner sees. A type
+  already bought offers nothing (no event: the original's message is not modelled).
+- **The decision** (GAM-DEC-001, ADR-0017 points 6 and 10): `h3_game` opens the offer as the
+  actor's pending decision if its treasury can pay (`OfferOpened`), else `OfferRefused`; with one
+  open, `legal_commands` lists `Answer(Accept)` and `Answer(Decline)` only, `legal_moves` gives
+  nothing, and `EndTurn` or a move is rejected (`DecisionOpen`, after `NotYourTurn`).
+  `GameCommand::Answer` closes the actor's first decision, in its turn or not (`UnknownPlayer`,
+  then `NoDecision`): `OfferAnswered { accepted }`, and accepted, `ResourcePaid` per resource and
+  `AdventureState::accept_offer` (infallible): every tile of the type's terrains on every level
+  explored for the owner, `TilesRevealed { object_type, count }`, the type bought. All of them are
+  told to the owner alone. A decision blocks no one else (two players of one group, a decision
+  each, each answers its own). Agent's call (the brief): ADR-0017 point 10's checks at the answer
+  (the treasury can pay, the offer still stands) cannot fail in increment 2 and are not made, no
+  dead branch: nothing of the owner's but its answer runs while the decision is open, and no other
+  player's command reaches its treasury or purchases; the play properties apply every listed
+  answer at every step. T15's guard makes the second check reachable.
+- **State** (agent's calls): the purchases in the adventure state as the original's flags, a
+  byte of player bits per type in type order; the decisions in the game state in opening order.
+  Both are `None` until the first, then one block the forks share (never an empty list): a list
+  per fork cost `fork-xl-144` +2.65 % over T14a (356 300 056 Ir), a decision per player +2.94 %
+  (the players' clone and drop lost their plain copy); now 349 100 056 (+0.58 % over T14a, +1.60 %
+  on the baseline, not re-baselined). Query and random play unchanged (−0.14 %, −0.05 %).
+  Adventure state hash v5, game state hash v3; golden replays re-recorded (hashes only).
+- **Observation**: `AdventureObservation.bought` (the viewer's own purchases) and
+  `GameObservation.decision` (its first open decision, an `Offer`, price included); other
+  players' never show.
+- **Elsewhere**: the CLI's replay text reads and writes `<player> accept` and `<player> decline`
+  (format v1 still: nothing records an answer yet). The env is unchanged: with a decision open,
+  action encoding v1's masks are empty, and `random_rollout` would stop at an offer (no fixture map
+  has a Cartographer); encoding v2, the replay format v2 with the difficulty option and the
+  golden replays are the second half's.
+- **Properties**: plans draw a visitable land Cartographer for a quarter of their objects and a
+  difficulty (impossible, with no gold, in half the cases, so offers are refused until pickups
+  pay; the tests take the map's difficulty); random play gains `Visit` (a legal move onto or
+  toward a visitable tile) and arbitrary answers. Legality with decisions (the answers only, each
+  applies, no moves), `check_decisions` (an offer opens exactly when affordable, closes by its
+  answer, and only an accepted one buys), conservation with payments (exactly the answered
+  offer's price), isolation over purchases and decisions, the views against the events
+  (decision, purchases, payments, reveal counts). The hygiene property stops after the viewer's
+  own accepted offer (a reveal by terrain shows hidden tiles' terrain); an offer opened, refused
+  or declined shows nothing hidden, so the comparison goes on. Over 48 cases (four runs, counted
+  once): 9 to 16 offers opened, 13 or 14 refused, 4 or 5 accepted, 4 to 10 declined.

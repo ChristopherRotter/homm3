@@ -5,33 +5,32 @@ ADR-0017 amendments (E08 T11b; accepted at ADV-Q10, applied by #115). The task t
 section deletes it; the file goes when the epic closes. Facts and sources: survey
 `docs/rules/surveys/E08-objects.md`.
 
-## State and observation (T14, T15)
+## State and observation (T15)
 
 T12 built the types, the contents drawn at the build, the removed objects with the occupancy
 layer and `ObjectView` (type, anchor, masks; no index); T13 the treasuries, the pickups' visits
-from a neighbour, `ObjectRemoved` (by type and anchor) and the game's `ResourceGained`.
+from a neighbour, `ObjectRemoved` (by type and anchor) and the game's `ResourceGained`; T14b the
+Cartographer's purchases (`AdventureState::bought`, a byte of player bits per type), the offer as
+a pending decision (`h3_game::GameState::decision`, `GameCommand::Answer`), the events
+`OfferOpened`, `OfferRefused`, `OfferAnswered`, `ResourcePaid` and `TilesRevealed { object_type,
+count }` (the owner alone), and the viewer's purchases and open decision in the observation.
 
-- Per player: `bought: set of RevealTerrain types`, `keys: u8` (bit per key colour); the
-  observation shows the viewer's own (bought, key held).
-- Events (viewers resolved at emission): `OfferOpened`, `OfferRefused` (cannot pay),
-  `OfferAnswered` (the owner), `TilesRevealed { count }` (the owner), `KeyGained` (the owner).
+- Per player: `keys: u8` (bit per key colour); the observation shows the viewer's own.
+- Events (viewers resolved at emission): `KeyGained` (the owner); an observatory's reveal as
+  `TilesRevealed` (the owner).
+- The guard's offer (D-7) is a second kind of `Offer` (no price): `accept_offer` removes the guard
+  for everyone, and the check that the offer still stands (another player's key holder may have
+  removed it) becomes reachable once two players act in one group.
 
-## Outcome and decisions (T14)
-
-- `AdventureOutcome` (T13b: `gains`) gains `offer: Option<Offer>`;
-  `Offer { hero, object, price: Vec<(ResourceId, u32)> }` (the kind follows from the object; the
-  object named by its tile in what a player sees).
-- `AdventureState::check_offer(&Offer) -> Result<(), _>` and `accept_offer(&Offer, sink)`
-  (infallible): the reveal and the bought flag, or the guard's removal.
-- `GameState`: `decisions: Vec<PendingDecision>` (owner, offer) in opening order beside the
-  treasuries (T13a). `GameCommand::Answer(Answer::{Accept, Decline})`;
-  `GameCommandError::{NoDecision, DecisionOpen, CannotPay}`.
-
-## The env (T14)
+## The env (T14b, second half)
 
 Action encoding v2: entry 0 `EndTurn`, 1–8 hero slots, 9 `Accept`, 10 `Decline`; the tile head
 as in v1 for the hero entries, ignored otherwise. With a decision open the entry mask is 9 and
-10 only and the tile mask empty.
+10 only and the tile mask empty (v1's masks are then empty: `legal_commands` lists the two
+answers, `legal_moves` gives nothing). The open decision: `GameState::decision(player)` or the
+observation's `decision`; the commands `GameCommand::Answer(Answer::Accept | Answer::Decline)`.
+The replay's text commands `<player> accept` and `<player> decline` exist (`h3-cli`); the
+format's version and the difficulty option come with the env.
 
 ## Versions
 
@@ -39,7 +38,7 @@ as in v1 for the hero entries, ignored otherwise. With a decision open the entry
 |---|---|---|---|
 | `MAP_IMPORT_VERSION` | 1 | 3 | T12 (v2), T13a (v3, the setup's difficulty; done) |
 | adventure ruleset-part hash | v3 | v5 | T12 (v4), T13a (v5, the starting rows; done) |
-| adventure state hash | v3 | v4 | T12 (done; T13 and T14a added no state); T14b bumps if it adds state |
-| game state hash | v1 | v2 | T13a (done); T14 bumps again with the decisions |
-| action encoding | v1 | v2 | T14 |
-| adventure replay format | v1 | v2 if the answer needs it | T14 |
+| adventure state hash | v3 | v5 | T12 (v4), T14b (v5, the purchases; done) |
+| game state hash | v1 | v3 | T13a (v2), T14b (v3, the decisions; done) |
+| action encoding | v1 | v2 | T14b, second half |
+| adventure replay format | v1 | v2 (the difficulty option) | T14b, second half |
