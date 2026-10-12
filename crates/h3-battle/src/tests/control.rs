@@ -702,6 +702,66 @@ fn expert_dispel_reaches_hypnotized_stacks_in_every_profile() {
     }
 }
 
+/// E04b T11b review (F-r1-3): whether a spell without a target would affect some stack is asked
+/// of hypnotized stacks too, as the original's book asks it (the reviewer's reading of the check
+/// from 0x59ED5A: its target test 0x5A39C0 reads a stack's Hypnotize only for the hero that
+/// controls it; the mass handler passes over such stacks afterwards). The engine left out the
+/// stacks a mass version passes over: with no other stack in reach the spell was refused.
+// covers: BAT-MAG-003, BAT-MAG-026
+#[test]
+fn a_mass_version_is_cast_when_only_hypnotized_stacks_would_be_affected() {
+    let r = ruleset();
+    // The defender's only stack fights for the attacker, whose hero has the mass Slow and keeps
+    // `resistance` of every hostile spell off the stacks it controls.
+    let start = |resistance: u32| {
+        let mut hero = adept(&r, &["sloth"], 3);
+        hero.effects
+            .push(h3_contracts::BattleEffect::MagicResistance {
+                rate: Rate::bp(resistance),
+            });
+        let mut s = arena(
+            &r,
+            [Some(hero), None],
+            &[("fixed", 5, 2, 5)],
+            &[("fixed", 5, 9, 5)],
+            1,
+        );
+        give(&mut s, &r, (1, "hypnotize"), 1);
+        s
+    };
+    // The spell would affect the hypnotized stack, so it may be cast; the cast is paid for and
+    // reaches nobody, the mass version passing over that stack.
+    let mut s = start(0);
+    assert_eq!(
+        targets(&s, &r, BattleSide::Attacker, "sloth"),
+        [CastTarget::None]
+    );
+    let events = act(&mut s, &r, cast(&r, "sloth", CastTarget::None)).unwrap();
+    let kinds: Vec<EventKind> = events.iter().map(|e| e.kind).collect();
+    assert_eq!(
+        kinds,
+        [EventKind::SpellCast {
+            side: BattleSide::Attacker,
+            spell: spell(&r, "sloth"),
+            target: CastTarget::None,
+            second: CastTarget::None,
+        }]
+    );
+    assert_eq!(on(&s, &r, 1), ["hypnotize"]);
+    let hero = s.hero(BattleSide::Attacker).unwrap();
+    assert_eq!((hero.mana, hero.casts), (196, 1));
+    // The stack counts with the chance the cast has on it: when the hero that controls it
+    // resists all of the spell, nobody would be affected and the cast is refused.
+    let mut s = start(10_000);
+    assert_eq!(targets(&s, &r, BattleSide::Attacker, "sloth"), []);
+    let before = s.clone();
+    assert_eq!(
+        act(&mut s, &r, cast(&r, "sloth", CastTarget::None)),
+        Err(CommandError::InvalidSpellTarget)
+    );
+    assert_eq!(s, before);
+}
+
 // covers: BAT-MAG-026
 #[test]
 fn the_controllers_hero_resists_spells_on_a_hypnotized_stack() {

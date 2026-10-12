@@ -897,8 +897,8 @@ fn aimable(
 }
 
 /// The part of the original's target test beyond a stack's reach (BAT-MAG-003): an active timed
-/// effect if `spell` needs one (Dispel), and a share left after resistance above zero for a
-/// spell that is not positive and does not ignore immunity.
+/// effect if `spell` needs one (Dispel), and a chance above zero to be affected
+/// ([`has_chance`]).
 fn accepts(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -906,11 +906,25 @@ fn accepts(
     spell: SpellRef<'_>,
     s: StackId,
 ) -> bool {
-    let magic = &spell.1.magic;
-    (!magic.needs_effect || !state.effects.of(s).is_empty())
-        && (spell.1.polarity == SpellPolarity::Positive
-            || magic.ignores_immunity
-            || may_affect(state, ruleset, side, s))
+    (!spell.1.magic.needs_effect || !state.effects.of(s).is_empty())
+        && has_chance(state, ruleset, side, spell.1, s)
+}
+
+/// Whether `side`'s cast of `spell` has a chance above zero to affect stack `s`, which it can
+/// affect (BAT-MAG-003, BAT-MAG-008; the original's factor above 0, `installation.md` §7.8):
+/// always for a positive spell and for one that ignores immunity (Dispel), else if the share
+/// left after resistance and auras is above zero ([`may_affect`]). A stack that can only resist
+/// by a roll has one; a stack that always resists has none.
+fn has_chance(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    spell: &Spell,
+    s: StackId,
+) -> bool {
+    spell.polarity == SpellPolarity::Positive
+        || spell.magic.ignores_immunity
+        || may_affect(state, ruleset, side, s)
 }
 
 /// Whether the battle can cast `spell` at `mastery` as an opening spell (BAT-MAG-068, checked
@@ -1648,7 +1662,15 @@ fn has_target(
 /// while the side may summon its creature (BAT-MAG-039), an obstacle spell of a random shape
 /// whether or not a hex is free (BAT-MAG-032) but mines not while the other side's natives would
 /// see them (BAT-MAG-033), any other (a battle-wide spell, a mass version from the spell's mass
-/// mastery) if it reaches a stack.
+/// mastery) if it would affect some stack: a stack in its reach with a chance above zero to be
+/// affected ([`has_chance`]; one that always resists does not count). The original's book asks
+/// its target test of every hex before anything is paid and refuses the spell when no stack
+/// passes (0x59ED5A to 0x59EE03 with the factor of 0x5A39C0; E04b T11b review). That test reads
+/// a stack's Hypnotize only for the hero that controls it, so the hypnotized stacks a mass
+/// version passes over count here ([`in_reach`]): with no other stack the cast is paid for and
+/// reaches nobody. A stack with no active effect counts for the mass version of a spell that
+/// needs one when it is aimed (Expert Dispel: the original asks for an active spell below
+/// Expert only, BAT-MAG-016).
 fn no_target(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -1661,7 +1683,13 @@ fn no_target(
     }
     // rule: BAT-MAG-032
     spell.1.magic.obstacle_kind().map_or_else(
-        || stack_ids(state).any(|s| reachable(state, ruleset, side, (spell, mastery), s)),
+        || {
+            // rule: BAT-MAG-003
+            stack_ids(state).any(|s| {
+                in_reach(state, ruleset, side, (spell, mastery), s)
+                    && has_chance(state, ruleset, side, spell.1, s)
+            })
+        },
         |kind| obstacles::may_place(state, side, kind),
     )
 }

@@ -12,8 +12,8 @@ use super::spells::{arena, cast, mage, spell, stack};
 use super::support::*;
 use crate::effects::{DamageRoll, slowed};
 use crate::{
-    ActiveEffect, BattleState, CastTarget, Command, CommandError, Event, EventKind, StackId,
-    castable_spells, observe,
+    ActiveEffect, BattleState, CastTarget, CastTargets, Command, CommandError, Event, EventKind,
+    StackId, cast_targets, castable_spells, observe,
 };
 
 /// The effect events as `(target, spell name, rounds)` (`rounds` `Some(0)` for an end).
@@ -296,6 +296,96 @@ fn mass_versions_reach_their_side_and_spare_the_immune() {
     );
     let events = act(&mut s, &r, cast(&r, "sorrow", stack(2))).unwrap();
     assert_eq!(timed_events(&r, &events), [(2, "sorrow".into(), Some(3))]);
+}
+
+/// E04b T11b review (F-r1-3): a spell without a target is cast only while some stack in its
+/// reach would be affected with a chance above zero. The original's book asks its target test
+/// of every hex before anything is paid and refuses the spell when no stack passes (the
+/// reviewer's reading of 0x59ED5A to 0x59EE03 with the factor of 0x5A39C0). The engine asked
+/// only for a stack in reach: the cast took the mana and the round's cast, and every stack
+/// resisted.
+// covers: BAT-MAG-003, BAT-MAG-008
+#[test]
+fn a_spell_without_a_target_needs_a_stack_it_would_affect() {
+    let r = ruleset();
+    // The attacker's hero has the mass Slow (Expert) and the battle-wide storm; the defender's
+    // hero keeps `resistance` of every hostile spell off its two stacks. Ids: 0 the attacker's
+    // `own` stack; 1 and 2 the defender's.
+    let start = |own: &'static str, resistance: u32, seed: u64| {
+        let mut warded = hero(&r);
+        warded.effects = std::vec![BattleEffect::MagicResistance {
+            rate: Rate::bp(resistance)
+        }];
+        arena(
+            &r,
+            [Some(adept(&r, &["sloth", "storm"], 3)), Some(warded)],
+            &[(own, 1, 3, 5)],
+            &[("fixed", 1, 13, 5), ("fixed", 1, 13, 7)],
+            seed,
+        )
+    };
+    let castable = |s: &BattleState| -> Vec<h3_content::SpellId> {
+        castable_spells(s, &r, BattleSide::Attacker)
+            .iter()
+            .collect()
+    };
+    let spent = |s: &BattleState| {
+        let h = s.hero(BattleSide::Attacker).unwrap();
+        (h.mana, h.casts)
+    };
+    let (sloth, storm) = (spell(&r, "sloth"), spell(&r, "storm"));
+    // The enemy's stacks always resist and the caster's wyrm is immune to level-1 spells: no
+    // stack would be affected. Neither spell is castable or has a target, a cast is refused and
+    // nothing is spent.
+    let mut s = start("wyrm", 10_000, 1);
+    assert_eq!(castable(&s), []);
+    let mut targets = CastTargets::new();
+    for name in ["sloth", "storm"] {
+        cast_targets(&s, &r, BattleSide::Attacker, spell(&r, name), &mut targets);
+        assert!(targets.is_empty(), "{name}");
+        let before = s.clone();
+        assert_eq!(
+            act(&mut s, &r, cast(&r, name, CastTarget::None)),
+            Err(CommandError::InvalidSpellTarget),
+            "{name}"
+        );
+        assert_eq!(s, before, "{name}");
+    }
+    assert_eq!(spent(&s), (100, 0));
+    // One stack that accepts the storm, the caster's own, makes it castable: that stack is
+    // struck and the enemy's resist. The mass Slow reaches the enemy only and stays refused.
+    let mut s = start("fixed", 10_000, 1);
+    assert_eq!(castable(&s), [storm]);
+    let events = act(&mut s, &r, cast(&r, "storm", CastTarget::None)).unwrap();
+    let reached: Vec<(u8, bool)> = events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::SpellDamage { target, .. } => Some((target.0, true)),
+            EventKind::SpellResisted { target } => Some((target.0, false)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(reached, [(0, true), (1, false), (2, false)]);
+    assert_eq!(spent(&s), (95, 1));
+    // A stack that can only resist by a roll counts: with 99 % resistance each enemy stack
+    // keeps a chance of 1 %. Both spells are castable; the mass Slow is paid for, and each of
+    // the two stacks rolls: nearly always it resists, now and then it is slowed.
+    let (mut slowed, mut resisted) = (0, 0);
+    for seed in 1..=300 {
+        let mut s = start("wyrm", 9_900, seed);
+        assert_eq!(castable(&s), [storm, sloth]);
+        cast_targets(&s, &r, BattleSide::Attacker, sloth, &mut targets);
+        assert_eq!(targets.as_slice(), [CastTarget::None]);
+        let events = act(&mut s, &r, cast(&r, "sloth", CastTarget::None)).unwrap();
+        assert_eq!(spent(&s), (96, 1));
+        slowed += timed_events(&r, &events).len();
+        resisted += events
+            .iter()
+            .filter(|e| matches!(e.kind, EventKind::SpellResisted { .. }))
+            .count();
+    }
+    assert_eq!(slowed + resisted, 600);
+    assert!((1..=20).contains(&slowed), "{slowed}");
 }
 
 // covers: BAT-MAG-009, BAT-MAG-005
