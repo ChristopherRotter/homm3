@@ -2,8 +2,10 @@
 //! adventure the rest; its events become game events.
 
 use h3_adventure::{
-    AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, Viewers,
+    AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, MAX_GAIN,
+    ObjectSetup, TileMask, Viewers,
 };
+use h3_content::ResourceId;
 
 use super::*;
 
@@ -79,4 +81,50 @@ fn a_move_outside_the_turn_or_against_the_rules_changes_nothing() {
     );
     assert_eq!(error.to_string(), "hero 1 is not the player's");
     assert_eq!(state, before);
+}
+
+// covers: GAM-RES-001, ADV-PIK-001
+#[test]
+fn a_visits_gains_go_to_its_owner_s_treasury_and_are_told_to_it_alone() {
+    let rules = rules();
+    let mut setup = setup();
+    // A gold pile at (2, 0), next to red's hero at (1, 0) after one step.
+    setup.map.objects.push(ObjectSetup {
+        anchor: Pos::new(2, 0, 0),
+        blocked: TileMask::from_bits(1),
+        visitable: TileMask::from_bits(1),
+        object_type: rules.adventure().object_type_by_key("t:pile"),
+        amount: Some(7),
+    });
+    let mut state = GameState::new(&rules, &setup, 7).unwrap();
+    let gold = ResourceId::from_raw(0);
+    let path = [Pos::new(1, 0, 0), Pos::new(2, 0, 0)];
+    let events = play(&mut state, &rules, RED, move_hero(0, &path)).unwrap();
+    let gained = GameEvent::ResourceGained {
+        player: RED,
+        resource: gold,
+        amount: 700,
+    };
+    assert_eq!(events.last(), Some(&gained));
+    assert_eq!(state.treasury(RED).unwrap().amounts(), [2000 + 700]);
+    assert_eq!(state.treasury(BLUE).unwrap().amounts(), [2000]);
+    assert_eq!(project(&gained, Viewer::Player(RED)), Some(gained));
+    assert_eq!(project(&gained, Viewer::Player(BLUE)), None);
+    assert_eq!(
+        observe(&state, &rules, Viewer::Player(RED)).treasury,
+        [2700]
+    );
+}
+
+// covers: GAM-RES-001
+#[test]
+fn a_gain_saturates_at_the_cap() {
+    let gold = ResourceId::from_raw(0);
+    let mut treasury = Treasury::new(&[MAX_GAIN - 5]);
+    assert_eq!(treasury.gain(gold, 3), 3);
+    assert_eq!(treasury.gain(gold, u32::MAX), 2);
+    assert_eq!(treasury.amounts(), [MAX_GAIN]);
+    // A resource the ruleset does not have gains nothing.
+    assert_eq!(treasury.gain(ResourceId::from_raw(1), 9), 0);
+    assert_eq!(treasury.amount(ResourceId::from_raw(1)), 0);
 }

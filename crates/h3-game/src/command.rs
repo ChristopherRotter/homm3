@@ -7,6 +7,7 @@
 use core::fmt;
 
 use h3_adventure::{AdventureCommand, AdventureCommandError, AdventureEvent};
+use h3_content::ResourceId;
 use h3_contracts::PlayerId;
 
 use crate::{GameRuleset, GameState};
@@ -52,8 +53,9 @@ impl fmt::Display for GameCommandError {
 
 impl core::error::Error for GameCommandError {}
 
-/// What happened in the game. The game's own events are public facts: whose turn it is and the
-/// day; an adventure event carries the players who may see it (E08 T8a).
+/// What happened in the game. The game's own events are public facts (whose turn it is and the
+/// day) but a treasury's change, which its owner alone sees (E08 T13b); an adventure event
+/// carries the players who may see it (E08 T8a).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameEvent {
     /// A player ended its turn.
@@ -73,6 +75,16 @@ pub enum GameEvent {
     },
     /// Something happened on the adventure map.
     Adventure(AdventureEvent),
+    /// A player's treasury gained a resource (GAM-RES-001): one event per resource of a gain,
+    /// in the gain's order, after the context's events.
+    ResourceGained {
+        /// The player.
+        player: PlayerId,
+        /// The resource.
+        resource: ResourceId,
+        /// The amount the treasury actually gained (a gain saturates at 2³¹ − 1).
+        amount: u32,
+    },
 }
 
 /// Receiver of the game's events.
@@ -123,7 +135,7 @@ pub fn apply<S: Sink>(
         GameCommand::EndTurn => state.end_turn(rules, player, sink),
         GameCommand::Adventure(command) => {
             state.check_acting(player)?;
-            state
+            let outcome = state
                 .adventure_mut()
                 .apply(
                     rules.core(),
@@ -132,7 +144,9 @@ pub fn apply<S: Sink>(
                     &command,
                     &mut AdventureSink(sink),
                 )
-                .map_err(GameCommandError::Adventure)
+                .map_err(GameCommandError::Adventure)?;
+            state.gain(player, &outcome.gains, sink);
+            Ok(())
         }
     }
 }

@@ -32,6 +32,19 @@ impl Treasury {
         &self.amounts
     }
 
+    /// Adds `amount` of `resource`, saturating at [`MAX_GAIN`] (GAM-RES-001; `A-5` fixed): the
+    /// amount actually added (0 for a resource the ruleset does not have, which no rule gives).
+    // rule: GAM-RES-001
+    pub(crate) fn gain(&mut self, resource: ResourceId, amount: u32) -> u32 {
+        self.amounts
+            .get_mut(usize::from(resource.raw()))
+            .map_or(0, |held| {
+                let before = *held;
+                *held = held.saturating_add(amount).min(MAX_GAIN);
+                held.saturating_sub(before)
+            })
+    }
+
     /// The amount of `resource` (0 for a resource the ruleset does not have).
     pub fn amount(&self, resource: ResourceId) -> u32 {
         self.amounts

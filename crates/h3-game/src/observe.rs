@@ -73,12 +73,14 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
 }
 
 /// The event as `viewer` may see it, or `None` if it is hidden from it: the game's own events are
-/// public; an adventure event shows to the players who see it, naming the viewer alone among them
+/// public but a treasury's change, which shows to its owner only; an adventure event shows to the
+/// players who see it, naming the viewer alone among them
 /// ([`h3_adventure::AdventureEvent::project`]).
 pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
     let Viewer::Player(player) = viewer;
     match event {
         GameEvent::Adventure(event) => event.project(player).map(GameEvent::Adventure),
+        GameEvent::ResourceGained { player: owner, .. } => (*owner == player).then_some(*event),
         GameEvent::TurnEnded { .. }
         | GameEvent::DayStarted { .. }
         | GameEvent::TurnStarted { .. } => Some(*event),

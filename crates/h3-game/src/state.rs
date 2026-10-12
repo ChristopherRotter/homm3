@@ -7,6 +7,7 @@
 use alloc::vec::Vec;
 
 use h3_adventure::AdventureState;
+use h3_content::ResourceId;
 use h3_contracts::PlayerId;
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher, StreamId};
@@ -179,6 +180,25 @@ impl GameState {
     /// turn.
     pub fn is_acting(&self, player: PlayerId) -> bool {
         self.players.get(player.index()).is_some_and(|p| p.acting)
+    }
+
+    /// Adds a command's gains to `player`'s treasury (ADR-0017 point 10: the context applied the
+    /// command, and a gain cannot fail), each told to the player alone as the amount it added.
+    pub(crate) fn gain<S: Sink>(
+        &mut self,
+        player: PlayerId,
+        gains: &[(ResourceId, u32)],
+        sink: &mut S,
+    ) {
+        let treasury = &mut self.players[player.index()].treasury;
+        for &(resource, amount) in gains {
+            let amount = treasury.gain(resource, amount);
+            sink.emit(GameEvent::ResourceGained {
+                player,
+                resource,
+                amount,
+            });
+        }
     }
 
     /// A player's treasury, if the player exists (GAM-RES-001).

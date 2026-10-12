@@ -50,7 +50,8 @@ mod state;
 mod testing;
 
 pub use command::{
-    AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, Sink, Viewers,
+    AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
+    Sink, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, native_terrain};
 pub use observe::{AdventureObservation, HeroView, ObjectView, OwnHeroView, TileView};

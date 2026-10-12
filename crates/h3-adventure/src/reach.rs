@@ -14,6 +14,10 @@
 //! `E08-log.md`). Without the exception the search matches an exhaustive one exactly. Every path
 //! it reports is one `MoveHero` accepts, and it reports every tile one step away
 //! (property-tested); a client may send any other payable path.
+//!
+//! A tile a pickup is visited from (E08 T13b, ADV-OBJ-003) is a destination, never a tile on the
+//! way: the search reaches it, with the points the hero keeps after the visit on the tile before,
+//! and goes no further from it.
 
 use alloc::collections::BinaryHeap;
 use alloc::vec;
@@ -96,13 +100,22 @@ impl Reach {
                 if !state.is_explored(hero.owner, pos)
                     || occupied[next]
                     || !enterable_terrain(part, &to)
-                    || ((to.blocked || to.visitable) && {
-                        // An object still on the map covers it (the occupancy layer).
-                        let live = state.live(pos, to);
-                        live.blocked || live.visitable
-                    })
                 {
                     continue;
+                }
+                // What objects still on the map cover there (the occupancy layer): a visit ends
+                // the path (ADV-OBJ-003), a blocked tile or a visit not built yet stops it.
+                let mut visit = false;
+                if to.blocked || to.visitable {
+                    let live = state.live(pos, to);
+                    if live.visitable {
+                        if state.visit_at(part, pos).is_none() {
+                            continue;
+                        }
+                        visit = true;
+                    } else if live.blocked {
+                        continue;
+                    }
                 }
                 let Some(left) = points.checked_sub(pricing.step(&from, &to, dir % 2 == 1, points))
                 else {
@@ -112,7 +125,9 @@ impl Reach {
                 if reach.points[next].is_none_or(|best| left > best) {
                     reach.points[next] = Some(left);
                     reach.via[next] = dir as u8;
-                    queue.push((left, Reverse(next)));
+                    if !visit {
+                        queue.push((left, Reverse(next)));
+                    }
                 }
             }
         }
@@ -149,13 +164,14 @@ impl Reach {
     }
 
     /// The points the hero would have left on `pos` (on its own tile: its points now), if it can
-    /// reach it today.
+    /// reach it today; for a tile it visits a pickup from, the points it keeps after the visit on
+    /// the tile before.
     pub fn points_left(&self, pos: Pos) -> Option<u32> {
         self.slot(pos).and_then(|slot| self.points[slot])
     }
 
     /// The chosen path to `pos`, if the hero can reach it: the tiles it steps onto, in order,
-    /// without its own (empty for its own tile), as `MoveHero` takes them.
+    /// without its own (empty for its own tile), as `MoveHero` takes them (a visit's tile last).
     pub fn path(&self, pos: Pos) -> Option<Vec<Pos>> {
         let mut slot = self.slot(pos)?;
         self.points[slot]?;

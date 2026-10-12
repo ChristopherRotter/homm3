@@ -401,6 +401,8 @@ fn tile_of(
         'V' => (GRASS, None, Some((0, 1, None))),
         'T' => (GRASS, None, Some((1, 1, None))),
         'P' => (GRASS, None, Some((1, 1, Some(WOOD_PILE)))),
+        'F' => (GRASS, None, Some((1, 1, Some(FIRE)))),
+        'O' => (GRASS, None, Some((0, 1, Some(TOWER)))),
         _ => (GRASS, None, None),
     }
 }
@@ -409,7 +411,7 @@ fn tile_of(
 /// `levels` levels of equal height): `g` (or any other character) grass, `s` sand, `w` swamp, `~` sea, `#` rock; `G`, `S`,
 /// `W` the same with a cobblestone road, `d` grass with a dirt road; on grass, `B` an object's
 /// blocked tile, `V` its visitable tile, `T` both (a town's gate), `P` a wood pile blocking and
-/// visited on its tile.
+/// visited on its tile, `F` a fire likewise, `O` a tower's visitable tile (entered).
 pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> AdventureSetup {
     let height = rows.len() / usize::from(levels);
     let width = rows[0].chars().count();

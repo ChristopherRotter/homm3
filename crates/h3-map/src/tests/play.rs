@@ -2,12 +2,13 @@
 //! read back and imported, heroes of several players) and a random-play driver through
 //! `h3-game`, with the properties of what a command may do (`docs/05-testing.md`): atomicity,
 //! legality consistency (`legal_commands`, and `legal_moves` per hero), ownership isolation,
-//! clone equivalence and determinism. What a viewer may learn is T8b2b's ([`super::view`]), on the
-//! same maps and driver.
+//! conservation (armies; since E08 T13b treasuries, which change only by a visit's gains), clone
+//! equivalence and determinism. What a viewer may learn is T8b2b's ([`super::view`]), on the same
+//! maps and driver.
 
 use std::sync::{Arc, LazyLock};
 
-use h3_adventure::{AdventureCommand, Pos as TilePos, Reach};
+use h3_adventure::{AdventureCommand, AdventureEvent, AdventureEventKind, Pos as TilePos, Reach};
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
     Actor, GameCommand, GameCommandError, GameEvent, GameRuleset, GameState, Sink, apply,
@@ -417,6 +418,30 @@ fn as_move(command: &GameCommand) -> Option<(HeroId, &[TilePos])> {
     }
 }
 
+/// Where a move that `apply` accepted left its hero, from `start`, and whether it ended in a
+/// visit: the hero steps onto every tile of the path but a visit's, the last (ADV-OBJ-003), and
+/// the move emitted a step event per tile it stepped onto, then the visit's.
+fn landing(
+    start: TilePos,
+    path: &[TilePos],
+    events: &[GameEvent],
+) -> Result<(TilePos, bool), TestCaseError> {
+    let kind = |e: &GameEvent| match e {
+        GameEvent::Adventure(AdventureEvent { kind, .. }) => Some(*kind),
+        _ => None,
+    };
+    let steps = events
+        .iter()
+        .filter(|e| matches!(kind(e), Some(AdventureEventKind::HeroStepped { .. })))
+        .count();
+    let visited = events
+        .iter()
+        .any(|e| matches!(kind(e), Some(AdventureEventKind::ObjectRemoved { .. })));
+    prop_assert_eq!(steps + usize::from(visited), path.len());
+    let walked = &path[..steps];
+    Ok((walked.last().copied().unwrap_or(start), visited))
+}
+
 /// The player whose turn is running (sequential play: one at a time).
 pub(super) fn acting(state: &GameState) -> PlayerId {
     state.turn_group()[0]
@@ -624,10 +649,19 @@ fn check_legal(
             &mut events,
         );
         prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
-        prop_assert_eq!(events.len(), path.len());
+        let start = state.adventure().hero(hero).unwrap().pos;
+        let (at, visited) = landing(start, path, &events)?;
+        prop_assert_eq!(
+            at,
+            if visited {
+                path.len().checked_sub(2).map_or(start, |i| path[i])
+            } else {
+                to
+            }
+        );
         let moved = probe.adventure().hero(hero).unwrap();
         let points = reach_of(reaches, hero).points_left(to);
-        prop_assert_eq!((moved.pos, Some(moved.movement)), (to, points));
+        prop_assert_eq!((moved.pos, Some(moved.movement)), (at, points));
     }
     Ok(())
 }
@@ -659,12 +693,44 @@ fn check_unlisted(
 }
 
 /// Ownership isolation: a command of `actor` moves no other player's hero, changes no other
-/// player's army or explored tiles, and changes another player's heroes' points only when that
+/// player's army, explored tiles or treasury, and changes another player's heroes' points only when that
 /// player's turn starts (ADV-MOV-002).
 /// Conservation (`docs/05-testing.md`): increment 1 has no source or sink of creatures (no
 /// battle, recruitment or pickup; E08 T10b's audit), so an accepted command leaves every hero's
-/// army as it was, the actor's own included.
-fn check_conservation(before: &GameState, after: &GameState) -> Result<(), TestCaseError> {
+/// army as it was, the actor's own included. A treasury changes only by a visit's gains (E08
+/// T13b, ADR-0017's consequences): each player's by exactly the gains it was told, which come
+/// with an object leaving the map.
+fn check_conservation(
+    before: &GameState,
+    after: &GameState,
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let removed = events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectRemoved { .. },
+                ..
+            })
+        )
+    });
+    for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        let mut treasury = before.treasury(player).unwrap().amounts().to_vec();
+        for event in events {
+            if let GameEvent::ResourceGained {
+                player: owner,
+                resource,
+                amount,
+            } = *event
+            {
+                prop_assert!(removed, "{:?} without a visit", event);
+                if owner == player {
+                    treasury[usize::from(resource.raw())] += amount;
+                }
+            }
+        }
+        prop_assert_eq!(after.treasury(player).unwrap().amounts(), &treasury[..]);
+    }
     let armies = |state: &GameState| -> Vec<_> {
         state
             .adventure()
@@ -698,6 +764,7 @@ fn check_isolation(
     for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         if player != actor {
             prop_assert!(before.adventure().explored(player) == after.adventure().explored(player));
+            prop_assert_eq!(before.treasury(player), after.treasury(player));
         }
     }
     Ok(())
@@ -740,11 +807,15 @@ proptest! {
                 check_unlisted((&before, &state), actor, &command, &reaches)?;
             }
             if let Some((hero, path)) = as_move(&command) {
-                prop_assert_eq!(events.len(), path.len());
-                prop_assert_eq!(state.adventure().hero(hero).map(|h| h.pos), path.last().copied());
+                let start = before.adventure().hero(hero).unwrap().pos;
+                let (at, _) = landing(start, path, &events)?;
+                let gains = events.iter().filter(|e| matches!(e, GameEvent::ResourceGained { .. }));
+                let told = events.len() - gains.count();
+                prop_assert!(told == path.len());
+                prop_assert_eq!(state.adventure().hero(hero).map(|h| h.pos), Some(at));
             }
             check_isolation(&before, &state, actor, &events)?;
-            check_conservation(&before, &state)?;
+            check_conservation(&before, &state, &events)?;
         }
     }
 
