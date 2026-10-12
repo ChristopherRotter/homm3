@@ -323,3 +323,35 @@ The redraw 0x494440, after the background:
   VCMI's (§4.4, §4.6); the outline's rotation step and timing (M2).
 - Not read: the grid and shading options (0x493930); the count box's tint and text; the stack's
   byte +0x4F1; the palette effects; the siege branches (E04c).
+
+## 5. The asset tables' sources (M1 T4)
+
+What `h3-view harvest` reads (2026-10-13; the format: `clients/README.md`, "The asset tables"):
+
+- **Creatures:** the DEF name at +0xC of the creature records (0x6703B8 through 0x6747B0;
+  `h3_formats::exe::creature_table`). A shooter's projectile: the switch at 0x43DD83 in 0x43D9F0
+  (creatures 2–146: byte table 0x43DE84, jump table 0x43DE40), whose cases each load one name
+  (`mov ecx, imm32`); it runs only for the shooter flag 0x4. The same routine sets stack +0x16C =
+  267 − the top offset (+0x3C) of frame 0 of group 2, the value Chain Lightning's distance uses
+  (Q43; 0x446630).
+- **`cranim.txt`** (0x50C810, 0x50CA00; §4.3): 149 rows (creatures 0–148; the arrow tower has
+  none) from record 2, in groups of 14 (eight), 6, 14, 13 and 4 with three records between. Times
+  as the executable keeps them: atof, times 9000, 500, 500, 115 in 53-bit precision, truncated
+  (installation.md §7.10). Every missile angle in the file is whole, so the table holds degrees.
+- **Creature keys:** a pack's creature matches the `crtraits.txt` row of its singular name (from
+  record 2, blank records skipped, as `h3-harvest` reads it); all 144 match.
+- **Backgrounds** (0x4646D0, which sets the picture's name): a siege takes the town's
+  (0x63D2A0; E04c); else a special field 1–9 (manager +0x53C0) its picture (0x63D2C8), field 0
+  the shore (`CmBkBch.pcx`, 0x66FF40); else two heroes in boats `CmBkBoat.pcx` (0x66FF5C), a
+  battle on a ship (+0x53C6) `CmBkDeck.pcx` (0x66FF4C); else terrain t's picture
+  0x63D2F0[3t + v], v from 0x41ADB0, which looks at the adventure map around the battle (not
+  read: which variant a battle gets is open, T7 takes 0). Terrains 0–7 only: water and rock have
+  none (the gaps of `tests/tables.rs`).
+- **Obstacles:** the type table 0x63C7C8 (`def`, `rows` = height, `layer`) and the absolute table
+  0x63BEC0 (`pcx`, `at`), §4.4; keys `obstacle_<n>`: type n, absolute record n − 100 (VCMI's
+  numbering, as the packs).
+- **Expansions** (research item 6): an entry belongs to the table of the pack that defines its key
+  (`base` 121 creatures, the terrains, 78 obstacles; `ab` 23 creatures; `sod` none). The 47
+  obstacle types and 12 special battlefields no pack defines yet sit in `base.toml`, keyed as the
+  packs would key them. Which archive holds a file plays no part: the loader searches as the game
+  does (§3.1), and the gate finds all 307 names there.

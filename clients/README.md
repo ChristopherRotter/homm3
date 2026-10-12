@@ -9,7 +9,8 @@ public crates and, later, through the server's protocol.
 for palettes, PCX, DEF and MSK (`h3-assets`); the gate decodes every one of them in the user's
 archives (findings: `docs/epics/E17-design.md`). M1 T1 + T6 (2026-10-12): the code reading of
 the executable's drawing (design §3) and the compositor (`h3-render`) that follows it; `h3-view
-sprite` draws a DEF's group over an image into a PNG. Decisions: ADR-0020
+sprite` draws a DEF's group over an image into a PNG. M1 T5 + T4 (2026-10-13): the battle
+screen's reading (design §4) and the asset tables (`clients/assets/`, below). Decisions: ADR-0020
 and the epic file `docs/epics/E17-clients.md`; tasks in `docs/lanes/client/QUEUE.md`.
 
 ## Layout
@@ -29,7 +30,9 @@ search the parent directories).
   repository's `original-data/install`), decodes every PCX, PAL, DEF and MSK (it fails if one does
   not), prints the entries by extension and the times, and writes every entry with its verdict to
   `clients/out/gate/entries.tsv` and the inventory (findings, duplicates, names nothing mentions)
-  to `clients/out/gate/report.md`. A debug build takes about ten times as long.
+  to `clients/out/gate/report.md`; then it checks that every name in the asset tables
+  (`--tables <dir>`, default `clients/assets`) is found where the game searches it and decodes. A
+  debug build takes about ten times as long.
 - **A look at the drawers:** `cargo run --release -p h3-view -- sprite CPKMAN.DEF --group 2
   --background CmBkGrMt.pcx [--mirror]` draws every frame of one group of a DEF side by side over
   a PCX, as the battle draws a stack, into `clients/out/sprite/` (the base archives searched
@@ -41,8 +44,8 @@ search the parent directories).
 | `clients/scripts/check.sh` | the client's gates (local and CI) |
 | `clients/crates/h3-assets` | decoders: palettes, PCX, DEF, MSK (done), fonts, later sound and video; encoders for synthetic test assets (`build`); the gate's checks (`check`, `survey`); reads LOD archives through `crates/h3-formats` (a path dependency into the engine workspace) |
 | `clients/crates/h3-render` | the software compositor: the screen in a 16-bit pixel format, palettes truncated into it, the executable's frame drawers (shadows, outline and flag colours, mirroring, clipping), opaque images, PNG bytes |
-| `clients/crates/h3-view` | the scene model (messages to what is on screen at a time; the library) and its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the headless renderer, later the window |
-| `clients/assets/{base,ab,sod}.toml` | the asset tables per expansion: content keys to archive entry names, animation groups, offsets, asset fixes; identifiers and numbers only |
+| `clients/crates/h3-view` | the scene model (messages to what is on screen at a time; the library) and the asset tables' loader (`tables`); its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the tables' harvester, the headless renderer, later the window |
+| `clients/assets/{base,ab,sod}.toml` | the asset tables per expansion (below): content keys to archive entry names and the drawing's numbers, asset fixes; identifiers and numbers only |
 | `clients/out/` | local output (renders, reports); gitignored |
 
 The decoders, the compositor and the scene model are pure (no I/O, clock or threads; time is an
@@ -51,6 +54,38 @@ input) and tested on synthetic data: the libraries of `h3-assets`, `h3-render` a
 the sources and an allowlist of each pure crate's dependencies (the engine's `check-arch` does not
 see this workspace). `h3-view`'s binary holds the adapters. The first client is a battle replay
 viewer on the real assets; a full game record/replay viewer follows.
+
+## The asset tables
+
+One table per rule pack, `clients/assets/<pack>.toml` (ADR-0020 point 5), generated once by
+`cargo run --release -p h3-view -- harvest [--install <dir>] [--packs <dir>] [--out <dir>]` from
+the installation copy's `Heroes3.exe` and `H3bitmap.lod` (`cranim.txt`, `crtraits.txt`), keyed by
+the committed packs; afterwards they are source, edited by hand and reviewed as diffs. The client
+never reads the executable. Loader: `h3_view::tables` (pure); `tests/tables.rs` checks them
+against the packs; the gate checks their names against the archives. The format (*provisional*,
+on the M1 review list):
+
+- `[table]`: `id` (the pack's) and `depends` (the pack's dependencies). An expansion selection
+  is a table id: it loads that table and its dependencies, dependencies first; keys are
+  qualified by their table's id (`base:pikeman`). Unknown sections and fields, unknown or
+  circular dependencies and a key defined twice are errors.
+- `[battle]` (in exactly one table of a selection): `groups`, the creature DEF groups the battle
+  shows (`moving`, `mouse_over`, `standing`).
+- `[[creature]]`: `key`, `def` (the battle sprite), `times` (`cranim.txt`'s fidget interval, walk,
+  attack and flight distance as the executable keeps them: scaled by 9000, 500, 500, 115 and
+  truncated), optional `troop_count_offset`, `attack_climax`, `missile` (a shooter's projectile
+  DEF), `missile_offsets` (up, straight, down; x, y) and `missile_angles` (12, in degrees).
+- `[[battlefield]]`: `key` (a terrain's, or a special battlefield's while the packs define none)
+  and `backgrounds` (the pictures by the variant the adventure map picks).
+- `[[obstacle]]`: `key` (`obstacle_<n>`, the packs' numbering) and either `def`, `rows` (height in
+  hex rows) and `layer` (1: drawn before every stack, 0: in the row passes) for a usual obstacle,
+  or `pcx` and `at` (its top-left on the screen) for an absolute one.
+- `[[fix]]`: `id` (`CLT-QUIRK-<n>`), `source`, `target` (the key it changes), `summary`; the change's
+  own fields come with the first fix (none yet).
+
+Which table an entry belongs to is the pack that defines its key; the graphics no pack defines yet
+(special battlefields, their obstacles) sit in `base.toml`. Where the names and numbers come from:
+`docs/epics/E17-design.md` §5.
 
 ## Asset policy
 

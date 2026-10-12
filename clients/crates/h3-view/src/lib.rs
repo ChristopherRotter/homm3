@@ -20,4 +20,7 @@
 )]
 #![warn(missing_docs)]
 
+extern crate alloc;
+
 pub mod scene;
+pub mod tables;

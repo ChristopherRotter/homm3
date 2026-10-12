@@ -13,7 +13,10 @@ use std::path::{Path, PathBuf};
 const PURE: [(&str, &[&str]); 3] = [
     ("h3-assets", &["h3-formats"]),
     ("h3-render", &["h3-assets", "miniz_oxide"]),
-    ("h3-view", &["h3-assets", "h3-formats", "h3-render"]),
+    (
+        "h3-view",
+        &["h3-assets", "h3-formats", "h3-render", "serde", "toml"],
+    ),
 ];
 
 /// Attributes every pure crate root carries.
