@@ -25,7 +25,7 @@ Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace 
 - Git on the user's machine: get delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock` otherwise) and pass `-c user.name -c user.email`; it has no GitHub credentials, so it cannot push. A cloud session with GitHub attached pushes and opens pull requests through the REST API (GraphQL is blocked there).
 - The sandbox VM can restart mid-session (files stay, background jobs die): check `ps` and the logs before waiting on a background job.
 - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background and poll its log, or use `verify --summary` (full log in `target/verify/verify.log`). The inner loop is `verify --scope <lane> --quick`; CI runs the full verify.
-- The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with its own `CARGO_TARGET_DIR`. `pkill -f <pattern>` also kills the tool's own shell when the pattern is in the command line: kill by pid.
+- The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with a `CARGO_TARGET_DIR` of its own (never shared: `xtask` takes its root from its build). `pkill -f <pattern>` also kills the tool's own shell: kill by pid.
 - bench-check at 0 Ir: valgrind 3.22 read no symbols from the lld-linked `h3` (the gate links it with `-z norelro`).
 
 **Sources**
