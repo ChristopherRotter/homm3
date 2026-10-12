@@ -59,9 +59,9 @@ Client to server: M2: `ListGames { seq }` and `CreateGame { seq, offer, seat, sp
 M2 T3; no `Resume`: a seat's `Join` with its token resumes), `SetSpectators { seq, open }` (code
 since M2 T4c: the host's, until the game starts).
 M3: `Login`, `Rekey`, `Rename`, `SetListed` (code since M3 T1). M4 (§11): `ListLadders`,
-`Queue { seq, ladder }`, `Dequeue`, `AcceptMatch`, `DeclineMatch` (code since M4 T2);
-`Leaderboard { ladder, season, page }`, `Standing { ladder }`, `ProposePause { ms }`,
-`AnswerPause { accept }`.
+`Queue { seq, ladder, bots }`, `Dequeue`, `AcceptMatch`, `DeclineMatch` (code since M4 T2;
+`bots` since T5b); `Leaderboard { ladder, season, page }`, `Standing { ladder }`,
+`ProposePause { ms }`, `AnswerPause { accept }`.
 
 Server to client: M2: `Games { seq, offers, games }` and `GameCreated { seq, game }` (code since
 M2 T1; the refusals `NoSuchOffer` and `TooManyGames`), `PauseAsked { n, seat }` and
@@ -70,9 +70,10 @@ seq, open }`, `Goodbye { SpectatorsClosed }`, the reject codes `NotHost` and `Al
 and `GameInfo::spectators` (code since M2 T4c). No `StartGame`: a
 game starts when every seat is held at once (M1 T2's rule). M3:
 the welcome's challenge, `Account` (code since M3 T1). M4 (§11): `Ladders`, `Queued`,
-`Dequeued`, `MatchFound { ladder, accept_ms }`, `MatchCancelled`, `MatchReady { ladder, game,
-seat }`, `Unqueued { reason }`, `GameInfo::ladder`, the refusals `NoSuchLadder`, `AlreadyQueued`,
-`InRankedGame`, `NotQueued`, `NoMatch` (code since M4 T2); `LeaderboardPage`, `Rating`,
+`Dequeued`, `MatchFound { ladder, accept_ms, bot }`, `MatchCancelled`, `MatchReady { ladder,
+game, seat }`, `Unqueued { reason }`, `GameInfo::ladder`, the refusals `NoSuchLadder`,
+`AlreadyQueued`, `InRankedGame`, `NotQueued`, `NoMatch` (code since M4 T2; `bot` since T5b);
+`LeaderboardPage`, `Rating`,
 `PauseProposed`, a forfeit's result.
 
 ## 3. The client's content check (for the client lane, M2)
@@ -245,8 +246,8 @@ below are the tasks' starting point, *provisional* until M4's review.
   The matcher runs every second (the host passes the time): each ladder's players by rating
   (ties by the order they came in), neighbours paired when their distance is within the window
   of the shorter wait, 100 points plus 50 per 30 s waited (*provisional*). A pair gets
-  `MatchFound { ladder, accept_ms }`; both `AcceptMatch` (`MatchReady` then), or the one who did
-  not (a `DeclineMatch` or `Dequeue`, the deadline, a closed connection) leaves the queue
+  `MatchFound { ladder, accept_ms, bot }`; both `AcceptMatch` (`MatchReady` then), or the one who
+  did not (a `DeclineMatch` or `Dequeue`, the deadline, a closed connection) leaves the queue
   (`Dequeued`, or `Unqueued { Expired }`) and the other waits again with its waiting time
   (`MatchCancelled`). A drain empties the queues (`Unqueued { Draining }`). The queues live in
   memory only: a restart empties them. A queued connection hears its queue through a channel
@@ -305,8 +306,10 @@ below are the tasks' starting point, *provisional* until M4's review.
   rating, whatever the window; the bot accepts at once and plays any number of games at once.
   Its seat in the match's game is its account's (journaled as a player's), played by the
   server's bot; the game is rated for both. Flagged on the wire: `LadderInfo::bots`,
-  `Seated::bot`, `LeaderboardRow::bot`. A player opts out per queue (SRV-Q21, M4 T5b: `Queue {
-  …, bots }`), and `MatchFound` names a bot.
+  `Seated::bot`, `LeaderboardRow::bot`. A player opts out per queue (code since M4 T5b,
+  SRV-Q21): `Queue { …, bots: false }` waits for people only, whatever its wait (left out:
+  bots welcome; not stored, the client sends it with each `Queue`), and `MatchFound::bot` tells
+  a player whether its opponent is a bot, so it may decline knowingly.
 - **The pause by agreement** (code since M4 T6): `ProposePause { seq, ms }` within the
   ladder's `pause_ms` and the seat's remaining `pauses`, once per seat until the game moves on (a
   command applied), while no other proposal is open; `PauseProposed { n, seat, ms }` to every

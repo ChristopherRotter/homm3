@@ -4,10 +4,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M3 closed** (SRV-Q12, SRV-Q16, SRV-Q18). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided; the detail in `E16-design.md` §11; the tasks in `QUEUE.md`; no turn timer in M4 (a game rule, M5). **M4 T1–T6 and SRV-Q20 done** (#106–#118; T6: the pause by agreement). **Next: M4 T5b** (SRV-Q21, ready), then T7.
+- **M1–M3 closed** (SRV-Q12, SRV-Q16, SRV-Q18). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided; the detail in `E16-design.md` §11; the tasks in `QUEUE.md`; no turn timer in M4 (a game rule, M5). **M4 T1–T6, T5b and SRV-Q20 done** (#106–#120). **Next: M4 T7** (ready; M4's closure).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 19 since M4 T6's pause by agreement; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 6 since M4 T6's `PauseAgreed`; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 20 since M4 T5b's bot opt-out; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 6 since M4 T6's `PauseAgreed`; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. ADR-0019 (identity) was accepted at the M3 refinement; the discovery draft is decided at M6's.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -53,6 +53,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-12 — M4 T5b, a player's bot opt-out
+
+#120 merged. Built T5b (`E16-log.md`): `Queue::bots`, `MatchFound::bot`; wire 20.
+
 ### 2026-10-12 — M4 T6, the pause by agreement
 
 #118 merged. Built T6 (`E16-log.md`); SRV-Q21 → T5b; wire 19, journal 6.
@@ -60,7 +64,3 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ### 2026-10-12 — M4 T5, bots on ladders
 
 #114 merged. Built T5 (`E16-log.md`): `[[ladder.bot]]`, bot accounts; wire 18.
-
-### 2026-10-12 — M4 T4, leaderboards
-
-#112 merged. Built T4 (`E16-log.md`): leaderboards; wire 17.
