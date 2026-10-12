@@ -2,7 +2,6 @@
 //! Efreet Sultan's own Fire Shield (BAT-MAG-058) and the Psychic and Magic Elementals' half
 //! damage (BAT-DMG-010), after the original's code (`docs/formats/installation.md` §7.21).
 
-use std::collections::BTreeSet;
 use std::vec;
 use std::vec::Vec;
 
@@ -199,13 +198,14 @@ fn a_faerie_dragons_mirror_sends_a_heros_spell_away_at_its_chance() {
 
 // covers: BAT-MAG-057, BAT-MAG-049
 #[test]
-fn a_creatures_spell_at_a_dragon_is_sent_away_untested_with_quirk_bat_quirk_9() {
-    for (profile, untested) in [("t:faithful", false), ("t:mirrored", true)] {
+fn a_mirror_of_its_own_never_sends_a_creatures_spell_away() {
+    // E04b T11b review (r5a F-1; the user, BAT-Q29): only a hero's spell is ever sent away
+    // (`installation.md` §7.21), in every profile; the engine sent a creature's too, untested
+    // under the flag of BAT-QUIRK-9 (retired). The pixie's own mirror (100 %) leaves the
+    // boltling's bolt on the pixies: its wyrm beside it takes nothing.
+    for profile in ["t:faithful", "t:original"] {
         let r = ruleset_with(profile, |_| {});
-        let mut outcomes = BTreeSet::new();
         for seed in 0..24 {
-            // The pixie's own mirror (100 %) sends the bolt to the caster or to its wyrm,
-            // immune to level 1.
             let mut s = arena(
                 &r,
                 [None, None],
@@ -215,21 +215,16 @@ fn a_creatures_spell_at_a_dragon_is_sent_away_untested_with_quirk_bat_quirk_9() 
             );
             activate(&mut s, 0);
             let events = act(&mut s, &r, Command::CreatureCast { target: stack(2) }).unwrap();
-            let to = match redirected(&events).as_slice() {
-                [(2, to)] => *to,
-                other => panic!("{other:?}"),
-            };
-            let hit = events.iter().any(|e| {
-                matches!(e.kind, EventKind::SpellDamage { target, .. } if target == StackId(to))
-            });
-            outcomes.insert((to, hit));
+            assert!(redirected(&events).is_empty(), "{profile} {seed}");
+            let struck: Vec<StackId> = events
+                .iter()
+                .filter_map(|e| match e.kind {
+                    EventKind::SpellDamage { target, .. } => Some(target),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(struck, [StackId(2)], "{profile} {seed}");
         }
-        // The caster is hit; the wyrm only without a test.
-        assert_eq!(
-            outcomes,
-            BTreeSet::from([(0, true), (1, untested)]),
-            "{profile}"
-        );
     }
 }
 

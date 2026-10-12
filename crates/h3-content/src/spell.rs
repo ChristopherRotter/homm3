@@ -156,8 +156,9 @@ pub enum TimedChange {
     /// polarity; the first cast ends the stack's negative effects below level v (Anti-Magic;
     /// BAT-MAG-021, v10).
     SpellImmunity,
-    /// A single-target spell aimed at the stack from the other side goes, with a chance of v %, to
-    /// a random living stack of the caster's side instead (Magic Mirror; BAT-MAG-022, v10).
+    /// A single-target spell the other side's hero aims at the stack goes, with a chance of v %,
+    /// to a random living stack of the caster's side instead; a creature's spell never does
+    /// (Magic Mirror; BAT-MAG-022, v10).
     MagicMirror,
     /// A shooter counts half its creatures, at least one, for the damage of every strike (melee
     /// and retaliations too: survey S-09, the rule, Q53); from the first cast's Advanced mastery

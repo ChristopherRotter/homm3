@@ -207,6 +207,23 @@ fn quirk_flags_come_from_the_profile() {
             flag: "quirk.battle.x".into()
         }
     );
+    // A retired flag has no name in the engine's registry (ADR-0007: its position stays, its
+    // name goes): a profile that still names it, on or off, does not compile, nor does one that
+    // names its entry's empty name. Retired on 2026-10-12: BAT-QUIRK-9 (BAT-Q29).
+    for flag in ["quirk.battle.creature_mirror_untested", ""] {
+        for on in [true, false] {
+            let mut pack = base();
+            pack.profiles[1].quirks = vec![(flag.into(), on)];
+            assert_eq!(
+                Ruleset::compile(&[pack], "base:quirky").unwrap_err(),
+                CompileError::UnknownQuirk {
+                    profile: "base:quirky".into(),
+                    flag: flag.into()
+                },
+                "{flag:?} {on}"
+            );
+        }
+    }
 }
 
 #[test]

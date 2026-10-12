@@ -1547,10 +1547,6 @@ pub fn try_ruleset_from(
                 )],
             },
             ProfileDef {
-                key: ContentKey::new("t", "mirrored").unwrap(),
-                quirks: vec![(String::from("quirk.battle.creature_mirror_untested"), true)],
-            },
-            ProfileDef {
                 key: ContentKey::new("t", "clone_on_original").unwrap(),
                 quirks: vec![(String::from("quirk.battle.clone_on_its_original"), true)],
             },

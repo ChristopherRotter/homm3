@@ -17,10 +17,10 @@
 use core::num::NonZeroU32;
 
 use h3_content::{
-    Ability, CREATURE_MIRROR_UNTESTED, CreatureFlag, CreatureTypeId, EARLY_MASS_VERSION,
-    FIRST_PROTECTION, FULL_BP, MASS_CURE_SKIPS_HYPNOTIZED, MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS,
-    MAX_SPELLS, Ruleset, SINGLE_PRECISION_RATES, SpecialistBonus, Spell, SpellCategory,
-    SpellEffect, SpellId, SpellPolarity, SpellScope, SpellTarget, TargetSide, TimedChange,
+    Ability, CreatureFlag, CreatureTypeId, EARLY_MASS_VERSION, FIRST_PROTECTION, FULL_BP,
+    MASS_CURE_SKIPS_HYPNOTIZED, MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset,
+    SINGLE_PRECISION_RATES, SpecialistBonus, Spell, SpellCategory, SpellEffect, SpellId,
+    SpellPolarity, SpellScope, SpellTarget, TargetSide, TimedChange,
 };
 use h3_contracts::{BattleEffect, BattleHero, BattleSide, Rate};
 use h3_kernel::arith::{
@@ -2228,12 +2228,13 @@ pub(crate) fn mirror_chance(ruleset: &Ruleset, stack: &Stack) -> u8 {
     stack.spells.mirror.max(innate)
 }
 
-/// Where `cast`, aimed at stack `s`, goes (BAT-MAG-022): with Magic Mirror active on an enemy
-/// stack, or its creature's own (BAT-MAG-057), a draw below its chance sends the spell to a
-/// living stack of the caster's side drawn with equal chances, and a `SpellRedirected` event
+/// Where a hero's `cast`, aimed at stack `s`, goes (BAT-MAG-022): with Magic Mirror active on an
+/// enemy stack, or its creature's own (BAT-MAG-057), a draw below its chance sends the spell to
+/// a living stack of the caster's side drawn with equal chances, and a `SpellRedirected` event
 /// reports it; otherwise it stays (`None`). A spell that ignores immunity (Dispel) is never sent
-/// away. A creature's cast is sent away alike (BAT-MAG-049). (The original draws its chance for
-/// every cast at an enemy stack and leaves out arrow towers, E04c; `installation.md` §7.13.)
+/// away. Not asked for a creature's cast, which is never sent away ([`reach_stacks`],
+/// BAT-MAG-049). (The original draws its chance for every hero's cast at an enemy stack and
+/// leaves out arrow towers, E04c; `installation.md` §7.13.)
 // rule: BAT-MAG-022
 fn mirror<S: Sink>(
     state: &mut BattleState,
@@ -2402,8 +2403,8 @@ fn take_effect<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, cast: &Cast<
 }
 
 /// The stacks a cast that does not raise creatures reaches, and its effects on them (BAT-MAG-004
-/// to BAT-MAG-009, BAT-MAG-022, BAT-MAG-029): its target stack, mirrored and rolling first, its
-/// chain, Teleport's move, or the stacks of its area or of the battle.
+/// to BAT-MAG-009, BAT-MAG-022, BAT-MAG-029): its target stack, for a hero's cast mirrored and
+/// rolling first, its chain, Teleport's move, or the stacks of its area or of the battle.
 fn reach_stacks<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -2411,26 +2412,23 @@ fn reach_stacks<S: Sink>(
     sink: &mut S,
 ) {
     let spell = (cast.id, cast.spell);
-    let (target, mirrored) = match cast.target {
-        CastTarget::Stack(s) => {
-            let to = mirror(state, ruleset, cast, s, sink);
-            (CastTarget::Stack(to.unwrap_or(s)), to.is_some())
+    // Only a hero's spell is ever sent away by a Magic Mirror (BAT-MAG-022): a creature's cast
+    // always meets the stack it is aimed at (the original hands the redirect to a hero's cast
+    // alone, 0x479036 against 0x47936E, `installation.md` §7.21; so does VCMI's `isReflected`).
+    // rule: BAT-MAG-049
+    let target = match cast.target {
+        CastTarget::Stack(s) if cast.by.is_none() => {
+            CastTarget::Stack(mirror(state, ruleset, cast, s, sink).unwrap_or(s))
         }
-        other => (other, false),
+        other => other,
     };
     // The stack a hero's stack spell is aimed at rolls first: if it resists, the whole spell does
-    // (BAT-MAG-006, BAT-MAG-008); a creature's cast has no such roll (BAT-MAG-048, the original's
-    // 0x5A02EA); a stack a Magic Mirror sent the spell to that it cannot affect resists
-    // (BAT-MAG-022). A creature's spell sent away is tested and rolls alike, but with quirk
-    // BAT-QUIRK-9 it is not tested at all (the original tests no stack of a creature's cast,
-    // BAT-MAG-049). An area spell has no such roll: every stack in its area rolls once
-    // (BAT-MAG-007; batch 2a R3).
-    // rule: BAT-MAG-049
-    let untested =
-        mirrored && cast.by.is_some() && ruleset.quirks().is_enabled(CREATURE_MIRROR_UNTESTED);
-    let rolls = cast.by.is_none() || mirrored;
+    // (BAT-MAG-006, BAT-MAG-008); a stack a Magic Mirror sent the spell to rolls alike, and
+    // resists if the spell cannot affect it (BAT-MAG-022). A creature's cast has no such roll
+    // (BAT-MAG-048, the original's 0x5A02EA). An area spell has none either: every stack in its
+    // area rolls once (BAT-MAG-007; batch 2a R3).
+    let rolls = cast.by.is_none();
     if let CastTarget::Stack(s) = target
-        && !untested
         && (!affects_stack(state, ruleset, cast.side, spell, s)
             || !admits(state, ruleset, cast.side, (spell, cast.mastery), s)
             || (rolls && resists(state, ruleset, cast.side, cast.spell, s)))

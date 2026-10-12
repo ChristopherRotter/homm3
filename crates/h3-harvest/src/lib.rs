@@ -902,7 +902,6 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.obstacle_anchors\" = true, \
          \"quirk.battle.draws_avoid_hidden\" = true, \
          \"quirk.battle.sacrifice_tests_as_resurrection\" = true, \
-         \"quirk.battle.creature_mirror_untested\" = true, \
          \"quirk.battle.clone_on_its_original\" = true, \
          \"quirk.battle.periodic_first_stack\" = true, \
          \"quirk.content.roland_crusader_specialty\" = true, \
@@ -910,7 +909,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.adventure.diagonal_check_ignores_roads\" = true, \
          \"quirk.adventure.diagonal_check_ignores_native\" = true, \
          \"quirk.adventure.native_skips_leading_neutrals\" = true, \
-         \"quirk.adventure.fringe_shows_objects\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-9, BAT-QUIRK-13, BAT-QUIRK-19, ADV-QUIRK-1 to ADV-QUIRK-4\n",
+         \"quirk.adventure.fringe_shows_objects\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, ADV-QUIRK-1 to ADV-QUIRK-4\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -928,7 +927,6 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.obstacle_anchors\" = false, \
          \"quirk.battle.draws_avoid_hidden\" = false, \
          \"quirk.battle.sacrifice_tests_as_resurrection\" = false, \
-         \"quirk.battle.creature_mirror_untested\" = false, \
          \"quirk.battle.clone_on_its_original\" = false, \
          \"quirk.battle.periodic_first_stack\" = false, \
          \"quirk.content.roland_crusader_specialty\" = false, \
@@ -936,7 +934,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.adventure.diagonal_check_ignores_roads\" = false, \
          \"quirk.adventure.diagonal_check_ignores_native\" = false, \
          \"quirk.adventure.native_skips_leading_neutrals\" = false, \
-         \"quirk.adventure.fringe_shows_objects\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-9, BAT-QUIRK-13, BAT-QUIRK-19, ADV-QUIRK-1 to ADV-QUIRK-4\n",
+         \"quirk.adventure.fringe_shows_objects\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, ADV-QUIRK-1 to ADV-QUIRK-4\n",
     );
 
     // ab

@@ -3,6 +3,11 @@
 //! A quirk flag toggles a known deviation of the original game. Flags that change behavior need
 //! code that reads them, so the set of flags is a closed registry in code ([`REGISTRY`]); profiles
 //! (data) choose which flags are on. `exploit-fix` quirks never get a flag.
+//!
+//! A flag's index is its position in the registry and never changes: a ruleset hashes its flags
+//! as bits. A flag whose quirk turned out not to be one is retired: its position stays in the
+//! registry as an entry without a name (`RETIRED`), which no profile can name, no code reads and
+//! no later flag takes.
 
 /// Maximum number of quirk flags (they are stored as a bitset).
 pub const MAX_QUIRKS: usize = 64;
@@ -18,6 +23,10 @@ impl QuirkFlag {
     }
 }
 
+/// The entry of a registry position whose flag was retired: it has no name, so
+/// [`QuirkRegistry::lookup`] never finds it and [`QuirkRegistry::flags`] leaves it out.
+const RETIRED: &str = "";
+
 /// The closed list of quirk flags known to the engine: names like `quirk.battle.<name>`, with the
 /// flag's index equal to its position.
 #[derive(Debug, Clone, Copy)]
@@ -26,34 +35,44 @@ pub struct QuirkRegistry {
 }
 
 impl QuirkRegistry {
-    /// A registry over `names` (at most [`MAX_QUIRKS`] entries are addressable).
+    /// A registry over `names` (at most [`MAX_QUIRKS`] entries are addressable). An empty name
+    /// keeps the position of a retired flag.
     pub const fn new(names: &'static [&'static str]) -> Self {
         Self { names }
     }
 
-    /// Looks a flag up by name.
+    /// Looks a flag up by name. No name finds a retired position, the empty one included.
     pub fn lookup(&self, name: &str) -> Option<QuirkFlag> {
         self.names
             .iter()
             .take(MAX_QUIRKS)
-            .position(|n| *n == name)
+            .position(|n| *n != RETIRED && *n == name)
             .and_then(|i| u8::try_from(i).ok())
             .map(QuirkFlag)
     }
 
-    /// Number of registered flags.
+    /// The flags that exist, by index: every position but the retired ones.
+    pub fn flags(&self) -> impl Iterator<Item = QuirkFlag> + '_ {
+        (0u8..)
+            .zip(self.names.iter().take(MAX_QUIRKS))
+            .filter(|&(_, name)| *name != RETIRED)
+            .map(|(index, _)| QuirkFlag(index))
+    }
+
+    /// Number of positions: the flags that exist and the retired ones.
     pub fn len(&self) -> usize {
         self.names.len().min(MAX_QUIRKS)
     }
 
-    /// Whether no flags are registered.
+    /// Whether the registry has no position.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 }
 
 /// The engine's quirk registry. Add entries together with the ledger entry, the rule and its
-/// tests; a flag's index is its position here and must never change.
+/// tests; a flag's index is its position here and must never change. A flag is retired by
+/// putting `RETIRED` in its place, with a note of what it was.
 pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.no_luck_without_hero",
     "quirk.battle.single_precision_rates",
@@ -69,7 +88,10 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.obstacle_anchors",
     "quirk.battle.draws_avoid_hidden",
     "quirk.battle.sacrifice_tests_as_resurrection",
-    "quirk.battle.creature_mirror_untested",
+    // 14: `quirk.battle.creature_mirror_untested` (BAT-QUIRK-9), retired on 2026-10-12 (the user,
+    // BAT-Q29): the original's Magic Mirror never sends a creature's spell away, so there is no
+    // such quirk (`installation.md` §7.21).
+    RETIRED,
     "quirk.battle.clone_on_its_original",
     "quirk.battle.periodic_first_stack",
     "quirk.content.roland_crusader_specialty",
@@ -142,12 +164,6 @@ pub const DRAWS_AVOID_HIDDEN: QuirkFlag = QuirkFlag(12);
 /// `installation.md` §7.18). Off: the target is tested with Sacrifice's own level and
 /// conditions, without a hit-point minimum.
 pub const SACRIFICE_TESTS_AS_RESURRECTION: QuirkFlag = QuirkFlag(13);
-
-/// BAT-QUIRK-9: a creature's spell that Magic Mirror sends to a stack of the caster's side takes
-/// effect on that stack without a test: its immunities, Anti-Magic and resistance do not apply
-/// (the original tests no stack of a creature's cast, `installation.md` §7.21; BAT-MAG-049). Off:
-/// that stack is tested and rolls as the new target of a hero's cast does (BAT-MAG-022).
-pub const CREATURE_MIRROR_UNTESTED: QuirkFlag = QuirkFlag(14);
 
 /// BAT-QUIRK-7: Clone's place search counts the original's own hexes as free, so a crowded
 /// two-hex original can get its clone's place on itself: then no clone is made and the original
@@ -268,10 +284,6 @@ mod tests {
             Some(CLONE_ON_ITS_ORIGINAL)
         );
         assert_eq!(
-            REGISTRY.lookup("quirk.battle.creature_mirror_untested"),
-            Some(CREATURE_MIRROR_UNTESTED)
-        );
-        assert_eq!(
             REGISTRY.lookup("quirk.battle.no_luck_without_hero"),
             Some(NO_LUCK_WITHOUT_HERO)
         );
@@ -342,5 +354,26 @@ mod tests {
         assert!(q.is_enabled(b));
         assert_eq!(q.bits(), 2);
         assert!(!q.with(b, false).is_enabled(b));
+    }
+
+    #[test]
+    fn a_retired_flag_keeps_its_position_and_has_no_name() {
+        // Position 14 was `quirk.battle.creature_mirror_untested` (BAT-QUIRK-9, retired on
+        // 2026-10-12, BAT-Q29). Neither its old name nor the empty name of its entry finds it.
+        for name in ["quirk.battle.creature_mirror_untested", ""] {
+            assert_eq!(REGISTRY.lookup(name), None, "{name:?}");
+        }
+        // The position stays taken, so the flags after it keep their indices
+        // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
+        assert_eq!(REGISTRY.len(), 23);
+        assert_eq!(REGISTRY.names[14], RETIRED);
+        assert!(
+            REGISTRY
+                .flags()
+                .map(QuirkFlag::index)
+                .eq((0..23).filter(|i| *i != 14))
+        );
+        // A registry without retired flags has them all.
+        assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));
     }
 }

@@ -733,61 +733,78 @@ fn a_random_caster_draws_again_after_good_morale_and_after_waiting() {
     assert!(!drawn(&told));
 }
 
-// covers: BAT-MAG-049, BAT-MAG-022
+/// Whether a Magic Mirror sent a spell away or a stack resisted one in `events`.
+fn sent_away_or_resisted(events: &[Event]) -> bool {
+    events.iter().any(|e| {
+        matches!(
+            e.kind,
+            EventKind::SpellRedirected { .. } | EventKind::SpellResisted { .. }
+        )
+    })
+}
+
+// covers: BAT-MAG-049, BAT-MAG-048, BAT-MAG-022
 #[test]
-fn a_mirrored_random_cast_is_untested_with_quirk_bat_quirk_9() {
-    for (profile, untested) in [("t:faithful", false), ("t:mirrored", true)] {
+fn a_magic_mirror_never_sends_a_creatures_spell_away() {
+    // E04b T11b review (r5a F-1; the user, BAT-Q29): the original hands a mirror's redirect to a
+    // hero's cast alone (`installation.md` §7.21), so a stack's spell always meets the stack it
+    // is aimed at, in every profile. The engine sent it to a stack of the caster's side, which
+    // took it untested under the flag of BAT-QUIRK-9 (retired). The aimed stack has an Expert
+    // mirror (100 %): a hero's spell would never reach it.
+    for profile in ["t:faithful", "t:original"] {
         let r = ruleset_with(profile, |_| {});
-        // Where the mirror sends the bolt: to the caster itself or to its own immune wyrm, or
-        // its own dwarves (20 % resistance).
-        let mut outcomes = std::collections::BTreeSet::new();
-        for (own, seed) in [("wyrm", 0..30), ("dwarf", 30..90)]
-            .into_iter()
-            .flat_map(|(own, seeds)| seeds.map(move |seed| (own, seed)))
-        {
+        for seed in 0..20 {
+            // A random caster's bolt, beside its own wyrm (immune to level 1) or dwarves (20 %
+            // resistance): one boltling at Advanced, 5 × 10 + 20 on the aimed stack.
+            for own in ["wyrm", "dwarf"] {
+                let mut s = arena(
+                    &r,
+                    [None, None],
+                    &[("boltling", 1, 3, 5), (own, 3, 3, 7)],
+                    &[("fixed", 30, 13, 5)],
+                    seed,
+                );
+                give(&mut s, &r, (2, "mirror"), 3);
+                drawing(&mut s, &r, 0);
+                let events = act(&mut s, &r, at_stack(2)).unwrap();
+                assert!(!sent_away_or_resisted(&events), "{profile} {own} {seed}");
+                assert_eq!(damage(&events), vec![(2, 70, 70)], "{profile} {own} {seed}");
+            }
+            // Its chain starts at the aimed stack and jumps on from there.
             let mut s = arena(
                 &r,
                 [None, None],
-                &[("boltling", 1, 3, 5), (own, 3, 3, 7)],
-                &[("fixed", 3, 13, 5)],
+                &[("chainling", 1, 3, 5)],
+                &[("fixed", 30, 13, 5), ("fixed", 30, 13, 6)],
                 seed,
             );
-            give(&mut s, &r, (2, "mirror"), 3);
+            give(&mut s, &r, (1, "mirror"), 3);
             drawing(&mut s, &r, 0);
-            let events = act(&mut s, &r, at_stack(2)).unwrap();
-            let to = events
-                .iter()
-                .find_map(|e| match e.kind {
-                    EventKind::SpellRedirected { from, to } => {
-                        assert_eq!(from, StackId(2));
-                        Some(to.0)
-                    }
-                    _ => None,
-                })
-                .unwrap();
-            let resisted = events.iter().any(|e| {
-                e.kind
-                    == EventKind::SpellResisted {
-                        target: StackId(to),
-                    }
-            });
-            let hit = !damage(&events).is_empty();
-            assert_ne!(resisted, hit, "{profile} {own} {seed}");
-            match (to, own) {
-                // The caster is not immune and has no resistance.
-                (0, _) => assert!(hit),
-                // Immune: hit only without a test.
-                (_, "wyrm") => assert_eq!(hit, untested, "{profile} {seed}"),
-                // Resistance: never resisted without a test.
-                _ => assert!(hit || !untested, "{profile} {seed}"),
-            }
-            outcomes.insert((to, own, hit));
+            let events = act(&mut s, &r, at_stack(1)).unwrap();
+            assert!(!sent_away_or_resisted(&events), "{profile} {seed}");
+            assert_eq!(
+                damage(&events)[..2],
+                [(1, 70, 70), (2, 35, 35)],
+                "{profile} {seed}"
+            );
+            // A caster's own spell (BAT-MAG-048): Weaken at Basic, power 4, on the aimed dwarves,
+            // who do not roll.
+            let mut s = arena(
+                &r,
+                [None, None],
+                &[("warlock", 5, 2, 3)],
+                &[("dwarf", 5, 13, 5)],
+                seed,
+            );
+            give(&mut s, &r, (1, "mirror"), 3);
+            let events = act(&mut s, &r, at_stack(1)).unwrap();
+            assert!(!sent_away_or_resisted(&events), "{profile} {seed}");
+            assert_eq!(
+                applied(&events),
+                vec![(1, spell(&r, "weaken"), Some(4))],
+                "{profile} {seed}"
+            );
         }
-        // Both stacks were chosen; without the quirk the dwarves sometimes resisted.
-        assert!(outcomes.contains(&(0, "wyrm", true)));
-        assert!(outcomes.contains(&(1, "wyrm", untested)));
-        assert!(outcomes.contains(&(1, "dwarf", true)));
-        assert_eq!(outcomes.contains(&(1, "dwarf", false)), !untested);
     }
 }
 

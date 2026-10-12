@@ -474,7 +474,8 @@ taken reflect v % of their first stage onto the striker, BAT-MAG-018), `frenzy` 
 × v %, defense 0 when struck, BAT-MAG-019); since v10, E04b T4a: `spell_immunity` (no spell below
 level v reaches the stack unless it is a creature ability or ignores immunity; the first cast ends
 its negative effects below level v, BAT-MAG-021), `magic_mirror` (a stack spell aimed at it by
-the other side goes with a chance of v % to a random living stack of the caster's side,
+the other side's hero goes with a chance of v % to a random living stack of the caster's side; a
+creature's spell is never sent away,
 BAT-MAG-022); since v11, E04b T4b: `forgetfulness` (a shooter counts half its creatures, at
 least one, on every strike; from the first cast's Advanced mastery it cannot shoot,
 BAT-MAG-023), `blind` (the stack loses its turns; struck in melee while blind it retaliates
@@ -687,7 +688,11 @@ gap-fill file (`[heroes.params]`: 0/0/1/1, 99, 64).
 flags are off): the registered flags are in `h3_content::REGISTRY` and the quirks ledger
 (`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 and Q-0005 on,
 `strict-fixed` off (since E04b T8e also the data quirks' `quirk.content` flags, which only gated
-overrides read). Profile-level Tier-2 parameters are not implemented yet (backlog).
+overrides read). A flag the profile names must be registered (`CompileError::UnknownQuirk`). A
+retired flag is not: its position in the registry stays reserved, its name is gone, and a profile
+that still names it, on or off, does not compile; the pack format's version does not change when
+a flag comes or goes. Retired: `quirk.battle.creature_mirror_untested` (BAT-QUIRK-9, 2026-10-12).
+Profile-level Tier-2 parameters are not implemented yet (backlog).
 
 The compiled ruleset's canonical hash (encoding v15, `RULESET_HASH_VERSION`) covers packs,
 profile, quirks, resources, terrains, factions, obstacles, all creature fields including abilities

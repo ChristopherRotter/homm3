@@ -3120,7 +3120,6 @@ mod tests {
              \"quirk.battle.obstacle_anchors\" = true, \
              \"quirk.battle.draws_avoid_hidden\" = true, \
              \"quirk.battle.sacrifice_tests_as_resurrection\" = true, \
-             \"quirk.battle.creature_mirror_untested\" = true, \
              \"quirk.battle.clone_on_its_original\" = true, \
              \"quirk.battle.periodic_first_stack\" = true }",
             "quirks = { \"quirk.x\" = true }",
@@ -3130,6 +3129,23 @@ mod tests {
         assert!(matches!(
             compile(&[&quirky], "synthetic:faithful"),
             Err(PackError::Compile(_))
+        ));
+        // A retired flag is no flag any more (ADR-0007): a pack that still sets it, as the packs
+        // did until its retirement, does not compile. BAT-QUIRK-9, retired on 2026-10-12.
+        let retired = "quirk.battle.creature_mirror_untested";
+        let old = SYNTHETIC_PACK.replace(
+            "\"quirk.battle.periodic_first_stack\" = true }",
+            &format!("\"quirk.battle.periodic_first_stack\" = true, \"{retired}\" = true }}"),
+        );
+        let named = (retired.to_owned(), true);
+        assert!(
+            parse_pack(&old).unwrap().profiles[0]
+                .quirks
+                .contains(&named)
+        );
+        assert!(matches!(
+            compile(&[&old], "synthetic:faithful"),
+            Err(PackError::Compile(CompileError::UnknownQuirk { flag, .. })) if flag == retired
         ));
         let useless = SYNTHETIC_PACK.replace("id = \"spark\"", "id = \"spark\"\nuseful = \"nope\"");
         assert!(matches!(parse_pack(&useless), Err(PackError::Syntax(_))));
@@ -4567,12 +4583,17 @@ mod tests {
     }
 
     // covers: HER-BAT-008, HER-BAT-009, HER-BAT-010, BAT-HER-005, BAT-HER-006, BAT-HER-007
-    /// E04a exit criterion 3: with the harvested packs `faithful` turns every registered quirk
-    /// flag on and `strict-fixed` every one off, so the two profiles differ exactly by the quirks
-    /// of the ledger that have a flag, the data quirks' included (E04b T8e).
+    /// E04a exit criterion 3: with the harvested packs `faithful` turns on every quirk flag that
+    /// exists and `strict-fixed` none, so the two profiles differ exactly by the quirks of the
+    /// ledger that have a flag, the data quirks' included (E04b T8e). The position of a retired
+    /// flag is no flag, and no profile sets its bit: 14 (BAT-QUIRK-9, retired on 2026-10-12).
     #[test]
     fn the_profiles_differ_exactly_by_the_quirk_flags() {
-        let all = (1u64 << h3_content::REGISTRY.len()) - 1;
+        let registry = h3_content::REGISTRY;
+        let all = registry
+            .flags()
+            .fold(0u64, |bits, flag| bits | 1 << flag.index());
+        assert_eq!(all, ((1 << registry.len()) - 1) & !(1 << 14));
         for (profile, bits) in [("base:faithful", all), ("base:strict-fixed", 0)] {
             let r = compile(&[SOD_PACK, AB_PACK, BASE_PACK], profile).unwrap();
             assert_eq!(r.quirks().bits(), bits, "{profile}");
