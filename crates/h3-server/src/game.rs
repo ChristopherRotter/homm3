@@ -697,14 +697,8 @@ impl Prepared {
                 }
                 ToGame::Drain if session.started() => continue,
                 ToGame::Drain | ToGame::Stop => {
-                    close_all(&conns, &[], GoodbyeReason::Shutdown);
-                    if !session.started()
-                        && let Some(journal) = journal.take()
-                    {
-                        journal.remove();
-                    }
-                    lock(registry).leave(game);
-                    return turn_away(&mut inbox, GoodbyeReason::Shutdown);
+                    let started = session.started();
+                    return shut_down(game, (&conns, started, journal), registry, &mut inbox);
                 }
             }
             empty_since = if session.seated() {
@@ -774,7 +768,7 @@ impl Prepared {
             // Outside the registry's lock: the accounts' lock waits on the player log's writes.
             let renamed = (session.accounts() != named.each_ref().map(Option::as_deref))
                 .then(|| seated(&session, &stores.accounts));
-            let closed = {
+            let (closed, signal) = {
                 let mut registry = lock(registry);
                 if now != reported {
                     registry.report(game, now.clone());
@@ -784,7 +778,7 @@ impl Prepared {
                     registry.seat(game, seated);
                     named = owned(session.accounts());
                 }
-                registry.close_if_idle(game, reported.0)
+                (registry.close_if_idle(game, reported.0), registry.signal())
             };
             if closed {
                 // Outside the registry's lock (E16 M2 T5e): a removal is file I/O.
@@ -792,6 +786,11 @@ impl Prepared {
                     journal.remove();
                 }
                 return;
+            }
+            // A drain or a stop the full inbox missed (M2 T5e's review).
+            let started = session.started();
+            if matches!(signal, Some(ToGame::Stop)) || (signal.is_some() && !started) {
+                return shut_down(game, (&conns, started, journal), registry, &mut inbox);
             }
         }
         lock(registry).leave(game);
@@ -1020,6 +1019,23 @@ fn too_long(
     }
     lock(registry).leave(game);
     turn_away(inbox, GoodbyeReason::CommandLimit);
+}
+
+/// The server stops, or drains and the game never started (E16 M2 T5a): every connection hears it
+/// shuts down, the game leaves the lobby, and the journal of a game that never started goes (one
+/// that started stays for the next start).
+fn shut_down(
+    game: u32,
+    (conns, started, journal): (&BTreeMap<ConnId, Outbox>, bool, Option<Writer>),
+    registry: &Shared,
+    inbox: &mut mpsc::Receiver<ToGame>,
+) {
+    close_all(conns, &[], GoodbyeReason::Shutdown);
+    if !started && let Some(journal) = journal {
+        journal.remove();
+    }
+    lock(registry).leave(game);
+    turn_away(inbox, GoodbyeReason::Shutdown);
 }
 
 /// The journal stopped: every connection hears the server shuts down (for this game), and the game
