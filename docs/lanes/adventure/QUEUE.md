@@ -10,13 +10,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 - **Scope:** a survey `docs/rules/surveys/E08-objects.md` in the shape of `E08-adventure-core.md`: for resource piles, random resources, campfires, the Cartographer, the Redwood Observatory, the Pillar of Fire, Keymaster's tents, border guards and border gates: class and subclass (`docs/formats/h3m.md`, the reader's bodies), templates and visit mode (entered or visited from a neighbouring tile), effect, amounts and odds and **when they are drawn** (at setup or at the visit; decision 17), what the visitor and the other players see and learn, the events; the treasury (resource kinds, bounds) and starting resources by difficulty (decision 16: the human row for every player); what the import does with the classes that stay `Blocker`; disputes (to OPEN-QUESTIONS with a confirmation experiment for batch 2) and quirk candidates; proposed rule ids. Sources: the wiki and VCMI 1.7.5 first, code readings where they disagree or are silent on a point that matters (consensus before trust, `docs/04-rules-and-sources.md`; map entries for every cited address).
 - **Acceptance:** the survey with labelled sources; disputes and quirk candidates listed for the user; `check-exe-map` clean.
-- **Depends on:** — . **Status:** ready (round with T11b).
+- **Depends on:** — . **Status:** in progress (`adventure/e08-t11`, 2026-10-12 17:00 UTC; round with T11b).
 
 ### E08 T11b — ADR amendments: objects, visits, the treasury, pending decisions
 
 - **Scope:** drafts in `docs/lanes/adventure/adr-drafts/` amending ADR-0016 (object types and kinds from the ruleset part, the two visit modes, per-object state in the persistent object table and the tiles a removed object frees, what the observation shows of a typed object: tile by tile or whole once a tile is seen, VCMI `CGameState::isVisibleFor`, inbox T8b1) and ADR-0017 (the treasury in `GameState`, decision 14: how a gain or a cost passes between the game and the adventure; the pending decision's state, its answer command and the turn's legality while it is open, decision 15; the env's decision head and the action encoding v2; the versions that change). Short decisions, detail in a design note if needed (ADR index rule).
 - **Acceptance:** the drafts for the user at the checkpoint (accepted drafts go to `docs/adr/` in a `shared/` pull request).
-- **Depends on:** T11a (the visit modes and the draws). **Status:** ready (round with T11a).
+- **Depends on:** T11a (the visit modes and the draws). **Status:** in progress (`adventure/e08-t11`, 2026-10-12 17:00 UTC; round with T11a).
 
 ### E08 T12 — Object types in the import
 
