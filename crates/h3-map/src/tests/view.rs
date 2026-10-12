@@ -451,10 +451,12 @@ proptest! {
 
     /// Observation hygiene: two games that differ only in what a viewer never sees (the seed,
     /// the other players' armies and so their points, the tiles it never sees and what objects
-    /// cover there) show it the same observation, legal commands and moves after the same
-    /// commands, accept or reject its own commands alike and tell it the same events, as long as
-    /// the other players' commands are accepted in both or in neither (a move that one hero can
-    /// pay and the other cannot ends where the viewer may see it).
+    /// cover there, the objects' contents) show it the same observation, legal commands and moves
+    /// after the same commands, accept or reject its own commands alike and tell it the same
+    /// events, as long as the other players' commands are accepted in both or in neither (a move
+    /// that one hero can pay and the other cannot ends where the viewer may see it), and until
+    /// the viewer picks up an object: a pickup tells its visitor the contents (E08 T13b; survey
+    /// `E08-objects.md` §8), so the two games may then tell it other gains, and nothing else.
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in plan(),
@@ -518,7 +520,19 @@ proptest! {
             } else if ra.is_ok() != rb.is_ok() {
                 break;
             }
-            prop_assert_eq!(told(&ea, viewer), told(&eb, viewer));
+            let (ta, tb) = (told(&ea, viewer), told(&eb, viewer));
+            if actor == viewer && ta != tb {
+                // The viewer learned a pickup's contents: only what it gained may differ.
+                let blind = |events: Vec<GameEvent>| -> Vec<Option<GameEvent>> {
+                    events
+                        .into_iter()
+                        .map(|e| (!matches!(e, GameEvent::ResourceGained { .. })).then_some(e))
+                        .collect()
+                };
+                prop_assert_eq!(blind(ta), blind(tb));
+                break;
+            }
+            prop_assert_eq!(ta, tb);
             check_same(&a, &b, rules, viewer)?;
         }
     }
