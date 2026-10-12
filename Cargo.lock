@@ -468,6 +468,7 @@ name = "h3-experiment"
 version = "0.1.0"
 dependencies = [
  "h3-formats",
+ "h3-map",
  "serde",
  "toml",
 ]
@@ -538,7 +539,6 @@ dependencies = [
  "h3-adventure",
  "h3-content",
  "h3-contracts",
- "h3-formats",
  "h3-game",
  "h3-pack",
  "h3-pack-adventure",

@@ -4,9 +4,9 @@
 use std::path::Path;
 
 use h3_formats::exe;
-use h3_formats::h3m::{ARTIFACT_SLOTS, ObjectTemplate};
 use h3_formats::lod::LodArchive;
 use h3_formats::text::{TextTable, decode_windows_1252};
+use h3_map::writer::{ARTIFACT_SLOTS, ObjectTemplate};
 
 /// Object class of a fixed wandering monster (subclass = creature id).
 const MONSTER_CLASS: u32 = 54;
@@ -18,7 +18,7 @@ const RESOURCES: [&str; 7] = [
 ];
 
 /// An artifact row: its name and the slots it may be worn in (map slot order, see
-/// [`h3_formats::h3m::HeroArtifacts`]).
+/// [`h3_map::writer::HeroArtifacts`]).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Artifact {
     /// Name (`ARTRAITS.TXT`).

@@ -4,7 +4,7 @@
 //! opponent it fights, with a procedure and the values to record; or, for the adventure map's
 //! experiments (E08 T10a), heroes placed on chosen tiles of a map with rectangles of other
 //! terrains, some of them as their hero type makes them. [`build`] compiles a spec into a
-//! SoD map (written with [`h3_formats::h3m`]) and a results template the user fills in. Names
+//! SoD map (written with [`h3_map::writer`]) and a results template the user fills in. Names
 //! resolve against the original tables of the user's installation ([`Tables`]), so a spec reads
 //! like the game ("Archangel", "Basic Armorer") and a typo fails at build time instead of in the
 //! game.
@@ -14,7 +14,7 @@ pub mod tables;
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use h3_formats::h3m::{
+use h3_map::writer::{
     ARMY_SLOTS, ARTIFACT_SLOTS, Hero, HeroArtifacts, Map, MapObject, Monster, ObjectTemplate,
     PLAYERS, Patch, Player, Road, RoadKind, Terrain,
 };
@@ -903,7 +903,7 @@ mod tests {
         assert!(text.contains("- anything odd: "));
         assert!(text.contains("; Basic Armorer;"));
         assert!(!text.contains("secret"));
-        h3_formats::h3m::write(&map).expect("writable");
+        h3_map::writer::write(&map).expect("writable");
     }
 
     #[test]
@@ -1039,7 +1039,7 @@ mod tests {
         assert!(text.contains(
             "| hero | load 1 | load 2 |\n|---|---|---|\n| Twin |   |   |\n| Named |   |   |\n"
         ));
-        h3_formats::h3m::write(&map).expect("writable");
+        h3_map::writer::write(&map).expect("writable");
     }
 
     #[test]
