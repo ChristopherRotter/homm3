@@ -20,6 +20,8 @@ h3-render = { path = "crates/h3-render" }
 # Engine crates (public crates only, ADR-0020 point 1). A change the client needs in one of them
 # goes through that crate's lane.
 h3-formats = { path = "../crates/h3-formats" }
+# Test-only (the engine's version and features).
+proptest = { version = "1", default-features = false, features = ["std"] }
 
 # The engine's lints (root Cargo.toml), unchanged. The engine's clippy.toml and rustfmt.toml at the
 # repository root apply here too (both tools search the parent directories).

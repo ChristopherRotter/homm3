@@ -25,7 +25,27 @@
 extern crate alloc;
 
 pub mod archive;
+pub mod build;
 pub mod def;
 pub mod msk;
 pub mod palette;
 pub mod pcx;
+mod read;
+
+/// Why a decoder rejected its input. The decoders never panic: every malformed input ends in one
+/// of these.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Error {
+    /// The bytes end before a field, a table or a run of pixels the format needs.
+    Truncated,
+    /// The bytes go on after the format's content (formats with an exact length only).
+    TrailingBytes,
+    /// A magic value or a chunk identifier is not the format's.
+    Magic,
+    /// A field holds a value the decoder does not accept; names the field.
+    Field(&'static str),
+    /// A run of pixels goes past the end of its row or block (DEF).
+    Overrun,
+    /// A side of the image is longer than the decoder accepts ([`def::MAX_SIDE`]).
+    TooLarge,
+}
