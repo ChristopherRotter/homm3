@@ -14,7 +14,8 @@ use std::string::String;
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{Ruleset, SpellId};
+use h3_content::SpellId;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleHero, BattleSide};
 
 use super::spells::{arena, spell};
@@ -27,7 +28,7 @@ use crate::{
 };
 
 /// The active stack attacks `target` from `(x, y)`.
-fn hit(s: &mut BattleState, r: &Ruleset, target: u8, (x, y): (i32, i32)) -> Vec<Event> {
+fn hit(s: &mut BattleState, r: &BattleRuleset, target: u8, (x, y): (i32, i32)) -> Vec<Event> {
     act(
         s,
         r,
@@ -40,7 +41,7 @@ fn hit(s: &mut BattleState, r: &Ruleset, target: u8, (x, y): (i32, i32)) -> Vec<
 }
 
 /// Gives stack `id` the timed effect of `name` at `mastery` for five rounds.
-fn give(s: &mut BattleState, r: &Ruleset, (id, name): (u8, &str), mastery: u8) {
+fn give(s: &mut BattleState, r: &BattleRuleset, (id, name): (u8, &str), mastery: u8) {
     let spell_id = spell(r, name);
     let cast = TimedCast {
         id: spell_id,
@@ -53,7 +54,7 @@ fn give(s: &mut BattleState, r: &Ruleset, (id, name): (u8, &str), mastery: u8) {
 }
 
 /// The strike spells `events` report, as `(striker, target, spell name)`.
-fn strike_spells(r: &Ruleset, events: &[Event]) -> Vec<(u8, u8, String)> {
+fn strike_spells(r: &BattleRuleset, events: &[Event]) -> Vec<(u8, u8, String)> {
     events
         .iter()
         .filter_map(|e| match e.kind {
@@ -67,7 +68,7 @@ fn strike_spells(r: &Ruleset, events: &[Event]) -> Vec<(u8, u8, String)> {
         .collect()
 }
 
-fn name(r: &Ruleset, spell: SpellId) -> String {
+fn name(r: &BattleRuleset, spell: SpellId) -> String {
     r.spell(spell).unwrap().key.as_str()[2..].into()
 }
 
@@ -85,7 +86,7 @@ fn strikes(events: &[Event]) -> Vec<(u8, u8)> {
 }
 
 /// The names of the spells whose effects stack `id` has, sorted, with their rounds and values.
-fn on(s: &BattleState, r: &Ruleset, id: u8) -> Vec<(String, Option<u16>, u16)> {
+fn on(s: &BattleState, r: &BattleRuleset, id: u8) -> Vec<(String, Option<u16>, u16)> {
     let mut list: Vec<_> = s
         .effects()
         .iter()
@@ -97,7 +98,12 @@ fn on(s: &BattleState, r: &Ruleset, id: u8) -> Vec<(String, Option<u16>, u16)> {
 }
 
 /// A battle of `attacker` ×5 at (7, 5), active, against `defender` ×10 at (8, 5).
-fn duel(r: &Ruleset, attacker: &'static str, defender: &'static str, seed: u64) -> BattleState {
+fn duel(
+    r: &BattleRuleset,
+    attacker: &'static str,
+    defender: &'static str,
+    seed: u64,
+) -> BattleState {
     arena(
         r,
         [None, None],
@@ -369,8 +375,9 @@ fn a_thunderbolt_deals_its_damage_per_creature_as_the_spell_without_a_hero() {
 // covers: BAT-MAG-041
 #[test]
 fn a_thunderbolt_of_no_damage_does_nothing() {
-    use h3_content::{AbilityDef, ContentKey};
-    let one = |r: &Ruleset, striker: &'static str, target: &'static str| {
+    use h3_content::ContentKey;
+    use h3_content_battle::AbilityDef;
+    let one = |r: &BattleRuleset, striker: &'static str, target: &'static str| {
         arena(
             r,
             [None, None],
@@ -397,14 +404,17 @@ fn a_thunderbolt_of_no_damage_does_nothing() {
     let r = ruleset_from(
         "t:faithful",
         |_| {},
-        |pack| {
-            let blinder = pack.creatures.iter_mut().find(|c| c.key == key("blinder"));
+        |_, battle| {
+            let blinder = battle
+                .creatures
+                .iter_mut()
+                .find(|c| c.key == key("blinder"));
             let bolt = AbilityDef::SpellDamageAfterStrike {
                 spell: key("bolt"),
                 chance_percent: 100,
                 per_creature: 10,
             };
-            blinder.unwrap().info.abilities.push(bolt);
+            blinder.unwrap().abilities.push(bolt);
         },
     );
     let mut s = one(&r, "blinder", "diamond");
@@ -424,7 +434,7 @@ fn a_thunderbolt_of_no_damage_does_nothing() {
 // ---------------------------------------------------------------- BAT-MAG-043, BAT-MAG-044
 
 /// Starts a new round.
-fn new_round(s: &mut BattleState, r: &Ruleset) -> Vec<Event> {
+fn new_round(s: &mut BattleState, r: &BattleRuleset) -> Vec<Event> {
     let mut events = Vec::new();
     crate::turn::start_round(s, r, &mut events);
     events
@@ -449,7 +459,7 @@ fn damages(events: &[Event]) -> Vec<(u8, u8, u64)> {
 /// `attacker` ×5 at (7, 5) and `fixed` ×5 at (9, 5) against `defender` ×10 at (8, 5); the first
 /// attacker strikes it.
 fn struck(
-    r: &Ruleset,
+    r: &BattleRuleset,
     attacker: &'static str,
     defender: &'static str,
 ) -> (BattleState, Vec<Event>) {
@@ -710,8 +720,8 @@ fn poison_and_age_follow_the_originals_single_precision_values_with_quirk_q_0005
         let r = ruleset_from(
             profile,
             |_| {},
-            |pack| {
-                let serf = pack.creatures.iter_mut().find(|c| c.key == key("serf"));
+            |_, battle| {
+                let serf = battle.creatures.iter_mut().find(|c| c.key == key("serf"));
                 serf.unwrap().hit_points = 9;
             },
         );
@@ -764,7 +774,7 @@ fn poison_is_reported_when_age_ends_at_the_same_round_start() {
 // ---------------------------------------------------------------- BAT-MAG-045 to 047
 
 /// Whether `events` report the end of `t:tether` (Bind) on stack `id`.
-fn unbound(r: &Ruleset, events: &[Event], id: u8) -> bool {
+fn unbound(r: &BattleRuleset, events: &[Event], id: u8) -> bool {
     events.contains(&Event::public(EventKind::EffectEnded {
         target: StackId(id),
         spell: spell(r, "tether"),
@@ -773,7 +783,7 @@ fn unbound(r: &Ruleset, events: &[Event], id: u8) -> bool {
 
 /// Two binders at (7, 5) and (9, 5), `fixed` ×10 between them at (8, 5); the first has struck
 /// it, `fixed` ×5 waits at (3, 3).
-fn bound(r: &Ruleset, heroes: [Option<BattleHero>; 2]) -> BattleState {
+fn bound(r: &BattleRuleset, heroes: [Option<BattleHero>; 2]) -> BattleState {
     let mut s = arena(
         r,
         heroes,

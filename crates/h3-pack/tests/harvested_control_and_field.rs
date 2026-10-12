@@ -8,11 +8,12 @@ use h3_battle::{
     BattleState, CastTarget, CastTargets, Command, Direction, Event, EventKind, Field, Hex,
     StackId, apply, cast_targets,
 };
-use h3_content::{Formation, Ruleset, SkillId, SpellId};
+use h3_content::{Formation, SkillId, SpellId};
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 use h3_heroes::{HeroDetails, derive_battle_hero};
 
-fn sod(profile: &str) -> Ruleset {
+fn sod(profile: &str) -> BattleRuleset {
     h3_pack::compile(
         &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
         profile,
@@ -20,14 +21,14 @@ fn sod(profile: &str) -> Ruleset {
     .unwrap()
 }
 
-fn spell(r: &Ruleset, key: &str) -> SpellId {
+fn spell(r: &BattleRuleset, key: &str) -> SpellId {
     r.spell_by_key(key).unwrap()
 }
 
 /// `hero` at level 1 with attack and defense 0, `power` and `knowledge`, the skills `skills`, a
 /// worn Spell Book, knowing `spells`, with full mana.
 fn details(
-    r: &Ruleset,
+    r: &BattleRuleset,
     hero: &str,
     (power, knowledge): (u8, u8),
     skills: Vec<(SkillId, u8)>,
@@ -46,7 +47,7 @@ fn details(
     }
 }
 
-fn army(r: &Ruleset, stacks: &[(&str, u32)]) -> Army {
+fn army(r: &BattleRuleset, stacks: &[(&str, u32)]) -> Army {
     Army {
         stacks: stacks
             .iter()
@@ -63,7 +64,7 @@ fn army(r: &Ruleset, stacks: &[(&str, u32)]) -> Army {
 /// The battle of Red's `heroes[0]` with `attacker` against Blue's `heroes[1]` with `defender`,
 /// without obstacles.
 fn battle(
-    r: &Ruleset,
+    r: &BattleRuleset,
     heroes: [&HeroDetails; 2],
     attacker: &[(&str, u32)],
     defender: &[(&str, u32)],
@@ -83,7 +84,7 @@ fn battle(
 
 /// Stack `stack`, whose turn it is, does `command` for the side that commands it; returns the
 /// events.
-fn turn(s: &mut BattleState, r: &Ruleset, stack: u8, command: Command) -> Vec<Event> {
+fn turn(s: &mut BattleState, r: &BattleRuleset, stack: u8, command: Command) -> Vec<Event> {
     assert_eq!(s.active(), Some(StackId(stack)));
     let side = s.side_to_act().unwrap();
     let mut events = Vec::new();
@@ -92,7 +93,7 @@ fn turn(s: &mut BattleState, r: &Ruleset, stack: u8, command: Command) -> Vec<Ev
 }
 
 /// Every stack defends until one of `stacks` is active; returns that one.
-fn defend_until(s: &mut BattleState, r: &Ruleset, stacks: &[u8]) -> u8 {
+fn defend_until(s: &mut BattleState, r: &BattleRuleset, stacks: &[u8]) -> u8 {
     loop {
         let active = s.active().unwrap().0;
         if stacks.contains(&active) {

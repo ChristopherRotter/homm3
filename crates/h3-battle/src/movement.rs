@@ -7,7 +7,7 @@
 //! own current hexes do not block it). A walker's move ends at a position where it enters a pit
 //! its controller sees (Quicksand, BAT-MAG-032): it may stop there but not go on.
 
-use h3_content::MAX_FIELD_HEXES;
+use h3_content_battle::MAX_FIELD_HEXES;
 
 use crate::binds;
 use crate::geometry::{Field, Hex, HexSet};

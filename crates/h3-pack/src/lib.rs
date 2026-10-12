@@ -9,17 +9,23 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::num::NonZeroU32;
 
+use std::sync::Arc;
+
 use h3_content::{
-    AbilityDef, Affects, AreaShot, ArtifactClass, ArtifactDef, ArtifactSlotDef,
-    ArtifactSlotOverride, AuraTarget, BattleParamsDef, CompileError, ContentKey, ContentPack,
-    CreatureDef, CreatureFlag, CreatureFlags, CreatureInfoDef, CreatureOverride, CreaturePatch,
-    CreatureSelector, CreatureStat, CreatureTypeId, EffectDuration, EffectEnd, FactionDef,
+    Affects, ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactSlotOverride, CompileError,
+    ContentKey, ContentPack, CreatureDef, CreatureFlag, CreatureFlags, CreatureInfoDef,
+    CreatureOverride, CreaturePatch, CreatureSelector, CreatureStat, CreatureTypeId, FactionDef,
     Formation, HeroClassDef, HeroEffect, HeroEffectDef, HeroOverride, HeroParamsDef, HeroPatch,
-    HeroTypeDef, HexStep, KeyError, MASTERY_NAMES, MAX_ALIGNMENT_FACTIONS, ObstacleDef,
-    ObstacleKind, ObstacleShape, PackManifest, ProfileDef, ResourceDef, Ruleset, SPECIALIST_LEVELS,
-    SchoolId, SecondarySkillDef, SpecialistBonus, SpellArea, SpellCategory, SpellChain, SpellDef,
-    SpellEffect, SpellGrant, SpellId, SpellMagic, SpellPolarity, SpellSchoolDef, SpellScope,
-    SpellTarget, StartingStackDef, SurrenderDef, TargetConditions, TargetSide, TerrainDef,
+    HeroTypeDef, KeyError, MAX_ALIGNMENT_FACTIONS, PackManifest, ProfileDef, ResourceDef, Ruleset,
+    SchoolId, SecondarySkillDef, SpellCategory, SpellDef, SpellGrant, SpellId, SpellSchoolDef,
+    SpellScope, StartingStackDef, TerrainDef,
+};
+use h3_content_battle::{
+    AbilityDef, AreaShot, AuraTarget, BattleCompileError, BattleCreatureDef,
+    BattleCreatureOverride, BattleCreaturePatch, BattlePack, BattleParamsDef, BattleRuleset,
+    BattleSpellDef, EffectDuration, EffectEnd, HexStep, MASTERY_NAMES, ObstacleDef, ObstacleKind,
+    ObstacleShape, SPECIALIST_LEVELS, SpecialistBonus, SpellArea, SpellChain, SpellEffect,
+    SpellMagic, SpellPolarity, SpellTarget, SurrenderDef, TargetConditions, TargetSide,
     TimedChange, Usefulness,
 };
 use h3_contracts::{
@@ -53,8 +59,11 @@ pub enum PackError {
     Syntax(String),
     /// A key or id is malformed.
     Key(KeyError),
-    /// The packs do not compile into a ruleset.
+    /// The packs do not compile into a ruleset (the core, or the battle part with an error the
+    /// core also knows).
     Compile(CompileError),
+    /// The battle packs do not compile into the battle part of the ruleset (R01).
+    Battle(BattleCompileError),
     /// A scenario references a creature the ruleset does not define.
     UnknownCreature(String),
     /// A scenario references a terrain the ruleset does not define.
@@ -75,6 +84,7 @@ impl fmt::Display for PackError {
             Self::Syntax(e) => write!(f, "syntax: {e}"),
             Self::Key(e) => write!(f, "{e}"),
             Self::Compile(e) => write!(f, "{e}"),
+            Self::Battle(e) => write!(f, "{e}"),
             Self::UnknownCreature(k) => write!(f, "unknown creature `{k}`"),
             Self::UnknownTerrain(k) => write!(f, "unknown terrain `{k}`"),
             Self::UnknownFaction(k) => write!(f, "unknown faction `{k}`"),
@@ -96,6 +106,15 @@ impl From<KeyError> for PackError {
 impl From<CompileError> for PackError {
     fn from(e: CompileError) -> Self {
         Self::Compile(e)
+    }
+}
+
+impl From<BattleCompileError> for PackError {
+    fn from(e: BattleCompileError) -> Self {
+        match e {
+            BattleCompileError::Content(e) => Self::Compile(e),
+            e => Self::Battle(e),
+        }
     }
 }
 
@@ -1615,8 +1634,15 @@ struct ProfileDto {
     quirks: BTreeMap<String, bool>,
 }
 
-/// Parses a content pack.
+/// Parses a content pack: its core half (the battle half: [`parse_pack_parts`]).
 pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
+    parse_pack_parts(text).map(|(core, _)| core)
+}
+
+/// Parses a content pack into its two halves (R01): the core's [`ContentPack`] and the battle's
+/// [`BattlePack`] with the same manifest. A creature override splits by field; each half gets its
+/// own `fixes`.
+pub fn parse_pack_parts(text: &str) -> Result<(ContentPack, BattlePack), PackError> {
     let file: PackFile = toml::from_str(text).map_err(|e| PackError::Syntax(e.to_string()))?;
     let pack_id = file.pack.id;
     let named = |items: Vec<NamedDto>| {
@@ -1665,75 +1691,98 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
             })
         })
         .collect::<Result<Vec<_>, KeyError>>()?;
-    let creatures = file
-        .creature
-        .into_iter()
-        .map(|c| {
-            Ok(CreatureDef {
-                key: ContentKey::new(&pack_id, &c.id)?,
-                attack: c.attack,
-                defense: c.defense,
-                damage_min: c.damage[0],
-                damage_max: c.damage[1],
-                hit_points: c.hit_points,
-                speed: c.speed,
-                info: CreatureInfoDef {
-                    name: c.name,
-                    plural: c.plural,
-                    faction: c.faction.map(|f| reference(&pack_id, &f)).transpose()?,
-                    level: c.level,
-                    cost: cost(&pack_id, c.cost)?,
-                    growth: c.growth,
-                    horde_growth: c.horde_growth,
-                    fight_value: c.fight_value,
-                    ai_value: c.ai_value,
-                    shots: c.shots,
-                    casts: c.casts,
-                    adventure_count: c.adventure_count,
-                    flags: c.flags,
-                    abilities: abilities(&pack_id, c.abilities)?,
-                    upgrades: references(&pack_id, &c.upgrades)?,
-                },
-            })
-        })
-        .collect::<Result<Vec<_>, PackError>>()?;
-    let creature_overrides = file
-        .creature_override
-        .into_iter()
-        .map(|o| {
-            let faction = o
-                .faction
-                .map(|f| (!f.is_empty()).then(|| reference(&pack_id, &f)).transpose())
-                .transpose()?;
-            Ok(CreatureOverride {
-                target: ContentKey::parse(&o.target)?,
+    let mut creatures = Vec::with_capacity(file.creature.len());
+    let mut battle_creatures = Vec::with_capacity(file.creature.len());
+    for c in file.creature {
+        let key = ContentKey::new(&pack_id, &c.id)?;
+        let faction = c.faction.map(|f| reference(&pack_id, &f)).transpose()?;
+        let cost = cost(&pack_id, c.cost)?;
+        let abilities = abilities(&pack_id, c.abilities)?;
+        let upgrades = references(&pack_id, &c.upgrades)?;
+        battle_creatures.push(BattleCreatureDef {
+            key: key.clone(),
+            attack: c.attack,
+            defense: c.defense,
+            damage_min: c.damage[0],
+            damage_max: c.damage[1],
+            hit_points: c.hit_points,
+            shots: c.shots,
+            casts: c.casts,
+            abilities,
+        });
+        creatures.push(CreatureDef {
+            key,
+            speed: c.speed,
+            info: CreatureInfoDef {
+                name: c.name,
+                plural: c.plural,
+                faction,
+                level: c.level,
+                cost,
+                growth: c.growth,
+                horde_growth: c.horde_growth,
+                fight_value: c.fight_value,
+                ai_value: c.ai_value,
+                adventure_count: c.adventure_count,
+                flags: c.flags,
+                upgrades,
+            },
+        });
+    }
+    let mut creature_overrides = Vec::new();
+    let mut battle_overrides = Vec::new();
+    for o in file.creature_override {
+        let target = ContentKey::parse(&o.target)?;
+        let faction = o
+            .faction
+            .map(|f| (!f.is_empty()).then(|| reference(&pack_id, &f)).transpose())
+            .transpose()?;
+        let cost = o.cost.map(|c| cost(&pack_id, c)).transpose()?;
+        let abilities = o.abilities.map(|a| abilities(&pack_id, a)).transpose()?;
+        let upgrades = o.upgrades.map(|u| references(&pack_id, &u)).transpose()?;
+        let battle = BattleCreaturePatch {
+            attack: o.attack,
+            defense: o.defense,
+            damage_min: o.damage.map(|d| d[0]),
+            damage_max: o.damage.map(|d| d[1]),
+            hit_points: o.hit_points,
+            shots: o.shots,
+            casts: o.casts,
+            abilities,
+        };
+        let core = CreaturePatch {
+            speed: o.speed,
+            name: o.name,
+            plural: o.plural,
+            faction,
+            level: o.level,
+            cost,
+            growth: o.growth,
+            horde_growth: o.horde_growth,
+            fight_value: o.fight_value,
+            ai_value: o.ai_value,
+            adventure_count: o.adventure_count,
+            flags: o.flags,
+            upgrades,
+        };
+        // A half without changes is left out; an override without any keeps its core half (the
+        // core checks its target and gate).
+        let battle_empty = battle == BattleCreaturePatch::default();
+        if !battle_empty {
+            battle_overrides.push(BattleCreatureOverride {
+                target: target.clone(),
+                fixes: o.fixes.clone(),
+                patch: battle,
+            });
+        }
+        if battle_empty || core != CreaturePatch::default() {
+            creature_overrides.push(CreatureOverride {
+                target,
                 fixes: o.fixes,
-                patch: CreaturePatch {
-                    attack: o.attack,
-                    defense: o.defense,
-                    damage_min: o.damage.map(|d| d[0]),
-                    damage_max: o.damage.map(|d| d[1]),
-                    hit_points: o.hit_points,
-                    speed: o.speed,
-                    name: o.name,
-                    plural: o.plural,
-                    faction,
-                    level: o.level,
-                    cost: o.cost.map(|c| cost(&pack_id, c)).transpose()?,
-                    growth: o.growth,
-                    horde_growth: o.horde_growth,
-                    fight_value: o.fight_value,
-                    ai_value: o.ai_value,
-                    shots: o.shots,
-                    casts: o.casts,
-                    adventure_count: o.adventure_count,
-                    flags: o.flags,
-                    abilities: o.abilities.map(|a| abilities(&pack_id, a)).transpose()?,
-                    upgrades: o.upgrades.map(|u| references(&pack_id, &u)).transpose()?,
-                },
-            })
-        })
-        .collect::<Result<Vec<_>, PackError>>()?;
+                patch: core,
+            });
+        }
+    }
     let spell_schools = file
         .spell_school
         .into_iter()
@@ -1745,47 +1794,50 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
             })
         })
         .collect::<Result<Vec<_>, PackError>>()?;
-    let spells = file
-        .spell
-        .into_iter()
-        .map(|s| {
-            let magic = s.magic()?;
-            Ok(SpellDef {
-                key: ContentKey::new(&pack_id, &s.id)?,
-                name: s.name,
-                category: match s.category {
-                    SpellCategoryDto::Adventure => SpellCategory::Adventure,
-                    SpellCategoryDto::Combat => SpellCategory::Combat,
-                    SpellCategoryDto::Ability => SpellCategory::Ability,
-                },
-                level: s.level,
-                schools: references(&pack_id, &s.schools)?,
-                cost: s.cost,
-                power: s.power,
-                effect: s.effect,
-                magic,
-                counters: references(&pack_id, &s.counters)?,
-                dispels: references(&pack_id, &s.dispels)?,
-                spares: references(&pack_id, &s.spares)?,
-                tests_as: s
-                    .tests_as
-                    .as_deref()
-                    .map(|k| reference(&pack_id, k))
-                    .transpose()?,
-                summons: s
-                    .summons
-                    .as_deref()
-                    .map(|k| reference(&pack_id, k))
-                    .transpose()?,
-                granted_by_name_only: s.granted_by_name_only,
-                polarity: match s.polarity {
-                    SpellPolarityDto::Positive => SpellPolarity::Positive,
-                    SpellPolarityDto::Neutral => SpellPolarity::Neutral,
-                    SpellPolarityDto::Negative => SpellPolarity::Negative,
-                },
-            })
-        })
-        .collect::<Result<Vec<_>, PackError>>()?;
+    let mut spells = Vec::with_capacity(file.spell.len());
+    let mut battle_spells = Vec::with_capacity(file.spell.len());
+    for s in file.spell {
+        let magic = s.magic()?;
+        let key = ContentKey::new(&pack_id, &s.id)?;
+        let schools = references(&pack_id, &s.schools)?;
+        battle_spells.push(BattleSpellDef {
+            key: key.clone(),
+            polarity: match s.polarity {
+                SpellPolarityDto::Positive => SpellPolarity::Positive,
+                SpellPolarityDto::Neutral => SpellPolarity::Neutral,
+                SpellPolarityDto::Negative => SpellPolarity::Negative,
+            },
+            magic,
+            counters: references(&pack_id, &s.counters)?,
+            dispels: references(&pack_id, &s.dispels)?,
+            spares: references(&pack_id, &s.spares)?,
+            tests_as: s
+                .tests_as
+                .as_deref()
+                .map(|k| reference(&pack_id, k))
+                .transpose()?,
+            summons: s
+                .summons
+                .as_deref()
+                .map(|k| reference(&pack_id, k))
+                .transpose()?,
+        });
+        spells.push(SpellDef {
+            key,
+            name: s.name,
+            category: match s.category {
+                SpellCategoryDto::Adventure => SpellCategory::Adventure,
+                SpellCategoryDto::Combat => SpellCategory::Combat,
+                SpellCategoryDto::Ability => SpellCategory::Ability,
+            },
+            level: s.level,
+            schools,
+            cost: s.cost,
+            power: s.power,
+            effect: s.effect,
+            granted_by_name_only: s.granted_by_name_only,
+        });
+    }
     let skills = file
         .secondary_skill
         .into_iter()
@@ -1958,16 +2010,15 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         hero_casts_per_round: b.hero_casts_per_round,
         side_stack_limit: b.side_stack_limit,
     });
-    Ok(ContentPack {
-        manifest: PackManifest {
-            id: pack_id,
-            version: file.pack.version,
-            depends: file.pack.depends,
-        },
+    let manifest = PackManifest {
+        id: pack_id,
+        version: file.pack.version,
+        depends: file.pack.depends,
+    };
+    let core = ContentPack {
         resources,
         factions,
         terrains,
-        obstacles,
         creatures,
         creature_overrides,
         spell_schools,
@@ -1980,13 +2031,22 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         artifact_slot_overrides,
         artifacts,
         profiles,
-        battle,
         hero_params: file.hero_params.map(|p| HeroParamsDef {
             primary_min: p.primary_min,
             primary_max: p.primary_max,
             backpack: p.backpack,
         }),
-    })
+        ..ContentPack::new(manifest.clone())
+    };
+    let battle = BattlePack {
+        obstacles,
+        creatures: battle_creatures,
+        creature_overrides: battle_overrides,
+        spells: battle_spells,
+        battle,
+        ..BattlePack::new(manifest)
+    };
+    Ok((core, battle))
 }
 
 #[derive(Deserialize)]
@@ -3023,18 +3083,22 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, PackError> {
     })
 }
 
-/// Parses and compiles the enabled packs (any order) with a profile.
-pub fn compile(pack_texts: &[&str], profile: &str) -> Result<Ruleset, PackError> {
-    let packs = pack_texts
+/// Parses and compiles the enabled packs (any order) with a profile: the core ruleset first,
+/// then the battle part on it (R01).
+pub fn compile(pack_texts: &[&str], profile: &str) -> Result<BattleRuleset, PackError> {
+    let (core, battle): (Vec<_>, Vec<_>) = pack_texts
         .iter()
-        .map(|t| parse_pack(t))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(Ruleset::compile(&packs, profile)?)
+        .map(|t| parse_pack_parts(t))
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .unzip();
+    let core = Arc::new(Ruleset::compile(&core, profile)?);
+    Ok(BattleRuleset::compile(core, &battle)?)
 }
 
 /// The synthetic ruleset with its scenario resolved: the standard fixture for tests, benchmarks
 /// and the C ABI.
-pub fn synthetic(scenario_text: &str) -> Result<(Ruleset, BattleSetup), PackError> {
+pub fn synthetic(scenario_text: &str) -> Result<(BattleRuleset, BattleSetup), PackError> {
     let scenario = parse_scenario(scenario_text)?;
     let ruleset = compile(&[SYNTHETIC_PACK], &scenario.profile)?;
     let setup = scenario.resolve(&ruleset)?;
@@ -3153,8 +3217,10 @@ mod tests {
         }
         let useless = SYNTHETIC_PACK.replace("id = \"spark\"", "id = \"spark\"\nuseful = \"nope\"");
         assert!(matches!(parse_pack(&useless), Err(PackError::Syntax(_))));
-        let no_battle = parse_pack("[pack]\nid = \"x\"\nversion = \"1\"\n").unwrap();
-        assert!(no_battle.battle.is_none() && no_battle.creatures.is_empty());
+        let (no_core, no_battle) =
+            parse_pack_parts("[pack]\nid = \"x\"\nversion = \"1\"\n").unwrap();
+        assert!(no_battle.battle.is_none() && no_core.creatures.is_empty());
+        assert_eq!(no_battle.manifest, no_core.manifest);
     }
 
     #[test]
@@ -3910,7 +3976,7 @@ mod tests {
         ));
         assert!(compile(&[AB_PACK], profile).is_err());
         // Spot checks of the version differences (sources: crates/h3-harvest/data/gapfill.toml).
-        let gems_of = |r: &Ruleset, key: &str| {
+        let gems_of = |r: &BattleRuleset, key: &str| {
             let info = r.creature_info(r.creature_by_key(key).unwrap()).unwrap();
             info.cost
                 .iter()
@@ -3939,11 +4005,11 @@ mod tests {
         let cavalier = roe.creature_by_key("base:cavalier").unwrap();
         assert_eq!(
             roe.abilities(cavalier),
-            [h3_content::Ability::Jousting { percent_per_hex: 5 }]
+            [h3_content_battle::Ability::Jousting { percent_per_hex: 5 }]
         );
         // Hero content (E04a T3): RoE has 16 classes and 128 heroes, AB adds Conflux and 28
         // heroes, SoD Titan's Lightning Bolt.
-        let counts = |r: &Ruleset| {
+        let counts = |r: &BattleRuleset| {
             (
                 r.skills().len(),
                 r.spells().len(),
@@ -3994,7 +4060,7 @@ mod tests {
         assert!(sod.hero_type_by_key("ab:lord_haart_death_knight").is_some());
         // Artifacts (E04a T3b): RoE 127 with four misc positions, AB adds two, SoD the twelve
         // combinations and a fifth misc position.
-        let misc = |r: &Ruleset| {
+        let misc = |r: &BattleRuleset| {
             r.artifact_slot(r.artifact_slot_by_key("base:misc").unwrap())
                 .unwrap()
                 .count
@@ -4070,7 +4136,7 @@ mod tests {
         let info = r.creature_info(id).unwrap();
         assert_eq!(info.faction, None); // `faction = ""` makes it neutral
         assert_eq!(
-            (info.name.as_str(), stats.shots, info.casts),
+            (info.name.as_str(), stats.shots, stats.casts),
             ("Pike", 1, 2)
         );
         assert!(stats.flags.contains(CreatureFlag::Undead));
@@ -4113,10 +4179,10 @@ mod tests {
         let faithful = compile(&[&keeps, &ext], "synthetic:faithful").unwrap();
         let fixed = compile(&[&keeps, &ext], "synthetic:strict-fixed").unwrap();
         let spearman = fixed.creature_by_key("synthetic:spearman").unwrap();
-        let level = |r: &Ruleset| r.creature_info(spearman).unwrap().level;
+        let level = |r: &BattleRuleset| r.creature_info(spearman).unwrap().level;
         assert_eq!((level(&faithful), level(&fixed)), (1, 7));
         let brea = fixed.hero_type_by_key("synthetic:brea").unwrap();
-        let specialty = |r: &Ruleset, c: &str| {
+        let specialty = |r: &BattleRuleset, c: &str| {
             (
                 r.hero_type(brea).unwrap().specialty.clone(),
                 std::vec![HeroEffect::CreatureSpecialty {
@@ -4150,7 +4216,7 @@ mod tests {
 
     #[test]
     fn ability_syntax() {
-        use h3_content::{Ability, AreaShot, AuraTarget};
+        use h3_content_battle::{Ability, AreaShot, AuraTarget};
         // Every kind with its parameters; references follow the usual rules.
         let all = "abilities = [\
             { kind = \"hate\", creature = \"wisp\", percent = 50 }, \
@@ -4386,7 +4452,7 @@ mod tests {
         let profile = "base:faithful";
         let ab = compile(&[BASE_PACK, AB_PACK], profile).unwrap();
         let sod = compile(&[SOD_PACK, AB_PACK, BASE_PACK], profile).unwrap();
-        let details = |r: &Ruleset, worn: &[&str], backpack: &[&str]| {
+        let details = |r: &BattleRuleset, worn: &[&str], backpack: &[&str]| {
             let art = |k: &&str| r.artifact_by_key(k).unwrap();
             HeroDetails {
                 hero_type: r.hero_type_by_key("base:orrin").unwrap(),
@@ -4618,7 +4684,7 @@ mod tests {
             "ab:magma_elemental",
             "ab:energy_elemental",
         ];
-        let effects = |r: &Ruleset, hero: &str| {
+        let effects = |r: &BattleRuleset, hero: &str| {
             let details = HeroDetails {
                 hero_type: r.hero_type_by_key(hero).unwrap(),
                 level: 4,
@@ -5591,9 +5657,15 @@ mod tests {
         let key = ContentKey::parse("bad").unwrap_err();
         assert!(PackError::from(key).to_string().contains("not a valid key"));
         assert_eq!(
-            PackError::from(CompileError::MissingBattleParams).to_string(),
+            PackError::from(BattleCompileError::MissingBattleParams).to_string(),
             "no pack provides battle parameters"
         );
+        assert!(matches!(
+            PackError::from(BattleCompileError::Content(CompileError::UnknownProfile(
+                "a:b".into()
+            ))),
+            PackError::Compile(CompileError::UnknownProfile(_))
+        ));
         assert_eq!(
             PackError::UnknownTerrain("a:t".into()).to_string(),
             "unknown terrain `a:t`"

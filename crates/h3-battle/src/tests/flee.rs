@@ -12,7 +12,11 @@ use crate::{
 
 use BattleSide::{Attacker, Defender};
 
-fn legal(state: &BattleState, r: &h3_content::Ruleset, side: BattleSide) -> vec::Vec<Command> {
+fn legal(
+    state: &BattleState,
+    r: &h3_content_battle::BattleRuleset,
+    side: BattleSide,
+) -> vec::Vec<Command> {
     let mut out = LegalCommands::new();
     legal_commands(state, r, side, &mut out);
     out.as_slice().to_vec()
@@ -199,7 +203,7 @@ fn in_a_tactics_phase_too_a_side_leaves_only_for_itself() {
 
 /// Batch 1b R4: a hero with 7 Pikemen, a Pixie and a Ballista against a hero with Pikemen; the
 /// attacker has `funds`.
-fn r4(r: &h3_content::Ruleset, funds: u32) -> BattleState {
+fn r4(r: &h3_content_battle::BattleRuleset, funds: u32) -> BattleState {
     let s = BattleSetup {
         heroes: [Some(hero(r)), Some(hero(r))],
         war_machines: [vec![r.creature_by_key("t:ballista").unwrap()], vec![]],

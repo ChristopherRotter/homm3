@@ -5,18 +5,82 @@ use std::string::String;
 use std::vec;
 use std::vec::Vec;
 
+use std::sync::Arc;
+
 use h3_content::{
-    AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureFlag,
-    CreatureFlags, CreatureInfoDef, EffectDuration, EffectEnd, FactionDef, Formation, HeroClassDef,
-    HeroTypeDef, HexStep, ObstacleDef, ObstacleKind, ObstacleShape, PackManifest, ProfileDef,
-    ResourceDef, Ruleset, SpecialistBonus, SpellArea, SpellCategory, SpellChain, SpellDef,
-    SpellEffect, SpellMagic, SpellPolarity, SpellSchoolDef, SpellTarget, StartingStackDef,
-    SurrenderDef, TargetConditions, TargetSide, TerrainDef, TimedChange, Usefulness,
+    ContentKey, ContentPack, CreatureDef, CreatureFlag, CreatureFlags, CreatureInfoDef, FactionDef,
+    Formation, HeroClassDef, HeroTypeDef, PackManifest, ProfileDef, ResourceDef, Ruleset,
+    SpellCategory, SpellSchoolDef, StartingStackDef, TerrainDef,
+};
+use h3_content_battle::{
+    AbilityDef, AuraTarget, BattleCompileError, BattleCreatureDef, BattlePack, BattleParamsDef,
+    BattleRuleset, BattleSpellDef, EffectDuration, EffectEnd, HexStep, ObstacleDef, ObstacleKind,
+    ObstacleShape, SpecialistBonus, SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity,
+    SpellTarget, SurrenderDef, TargetConditions, TargetSide, TimedChange, Usefulness,
 };
 pub use h3_contracts::Rate;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
 
 use crate::{BattleState, Command, Event, Field, Hex, StackId, apply};
+
+/// A test spell as one row: the core's data row and the battle's, as the packs' text has them
+/// (R01); [`SpellDef::split`] parts them.
+#[derive(Debug, Clone)]
+pub struct SpellDef {
+    pub key: ContentKey,
+    pub name: String,
+    pub category: SpellCategory,
+    pub level: u8,
+    pub schools: Vec<ContentKey>,
+    pub cost: [u16; 4],
+    pub power: u16,
+    pub effect: [u16; 4],
+    pub granted_by_name_only: bool,
+    pub polarity: SpellPolarity,
+    pub magic: SpellMagic,
+    pub counters: Vec<ContentKey>,
+    pub dispels: Vec<ContentKey>,
+    pub spares: Vec<ContentKey>,
+    pub tests_as: Option<ContentKey>,
+    pub summons: Option<ContentKey>,
+}
+
+impl SpellDef {
+    /// The core's row and the battle's.
+    pub fn split(self) -> (h3_content::SpellDef, BattleSpellDef) {
+        (
+            h3_content::SpellDef {
+                key: self.key.clone(),
+                name: self.name,
+                category: self.category,
+                level: self.level,
+                schools: self.schools,
+                cost: self.cost,
+                power: self.power,
+                effect: self.effect,
+                granted_by_name_only: self.granted_by_name_only,
+            },
+            BattleSpellDef {
+                key: self.key,
+                polarity: self.polarity,
+                magic: self.magic,
+                counters: self.counters,
+                dispels: self.dispels,
+                spares: self.spares,
+                tests_as: self.tests_as,
+                summons: self.summons,
+            },
+        )
+    }
+}
+
+/// A test creature's traits: its core attributes and its battle row's abilities, shots and casts.
+struct Traits {
+    info: CreatureInfoDef,
+    abilities: Vec<AbilityDef>,
+    shots: u16,
+    casts: u8,
+}
 
 /// `(name, attack, defense, damage_min, damage_max, hit_points, speed, traits)`; traits are
 /// creature flag names, ability names (`teleports`, `jousting=5`, `hate=fixed:50`, …),
@@ -1001,7 +1065,7 @@ pub const CREATURES: &[Creature] = &[
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
-fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
+fn parse_traits(traits: &[&str]) -> Traits {
     let mut flags = Vec::new();
     let mut abilities = Vec::new();
     let mut shots = 0;
@@ -1061,10 +1125,10 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
             "teleports" => AbilityDef::Teleports,
             "no_distance_penalty" => AbilityDef::NoDistancePenalty,
             "fireball" => AbilityDef::AreaShot {
-                effect: h3_content::AreaShot::Fireball,
+                effect: h3_content_battle::AreaShot::Fireball,
             },
             "death_cloud" => AbilityDef::AreaShot {
-                effect: h3_content::AreaShot::DeathCloud,
+                effect: h3_content_battle::AreaShot::DeathCloud,
             },
             "hate" => {
                 let (target, percent) = value.split_once(':').unwrap();
@@ -1265,16 +1329,18 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
         };
         abilities.push(ability);
     }
-    CreatureInfoDef {
-        flags,
+    Traits {
+        info: CreatureInfoDef {
+            flags,
+            faction,
+            ai_value: ai,
+            upgrades,
+            level,
+            ..CreatureInfoDef::default()
+        },
         abilities,
         shots,
-        faction,
-        ai_value: ai,
-        upgrades,
-        level,
         casts,
-        ..CreatureInfoDef::default()
     }
 }
 
@@ -1362,14 +1428,14 @@ fn obstacle(
     }
 }
 
-pub fn ruleset() -> Ruleset {
+pub fn ruleset() -> BattleRuleset {
     ruleset_with("t:faithful", |_| {})
 }
 
 /// The masteries of a hero with these school levels (by school handle): every spell of `r` above
 /// none at the best of its schools' levels, the Heroes context's rule (HER-SPL-003) that the
 /// seam carries per spell since E04b T8a (BAT-Q19).
-pub fn masteries(r: &Ruleset, schools: [u8; 4]) -> Vec<(h3_content::SpellId, u8)> {
+pub fn masteries(r: &BattleRuleset, schools: [u8; 4]) -> Vec<(h3_content::SpellId, u8)> {
     r.spells()
         .iter()
         .enumerate()
@@ -1386,7 +1452,7 @@ pub fn masteries(r: &Ruleset, schools: [u8; 4]) -> Vec<(h3_content::SpellId, u8)
 }
 
 /// Sets the masteries of `side`'s hero (by index) in `s` as [`masteries`] gives them.
-pub fn set_masteries(s: &mut BattleState, side: usize, r: &Ruleset, schools: [u8; 4]) {
+pub fn set_masteries(s: &mut BattleState, side: usize, r: &BattleRuleset, schools: [u8; 4]) {
     if let Some(h) = s.heroes[side].as_mut() {
         h.magic.masteries = crate::magic::Masteries::of(&masteries(r, schools));
     }
@@ -1394,16 +1460,17 @@ pub fn set_masteries(s: &mut BattleState, side: usize, r: &Ruleset, schools: [u8
 
 /// The test ruleset with profile `profile` (`t:faithful` without quirks, `t:quirky` with
 /// Q-0003, `t:single` with Q-0005) and edited battle parameters.
-pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> Ruleset {
-    ruleset_from(profile, edit, |_| {})
+pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> BattleRuleset {
+    ruleset_from(profile, edit, |_, _| {})
 }
 
-/// [`ruleset_with`], with the pack patched before it is compiled (review repros only).
+/// [`ruleset_with`], with the pack's core and battle parts patched before they are compiled
+/// (review repros only).
 pub fn ruleset_from(
     profile: &str,
     edit: impl FnOnce(&mut BattleParamsDef),
-    patch: impl FnOnce(&mut ContentPack),
-) -> Ruleset {
+    patch: impl FnOnce(&mut ContentPack, &mut BattlePack),
+) -> BattleRuleset {
     try_ruleset_from(profile, edit, patch).unwrap()
 }
 
@@ -1411,34 +1478,74 @@ pub fn ruleset_from(
 pub fn try_ruleset_from(
     profile: &str,
     edit: impl FnOnce(&mut BattleParamsDef),
-    patch: impl FnOnce(&mut ContentPack),
-) -> Result<Ruleset, h3_content::CompileError> {
-    let creatures = CREATURES
-        .iter()
-        .map(
-            |&(name, attack, defense, damage_min, damage_max, hit_points, speed, traits)| {
-                CreatureDef {
-                    key: ContentKey::new("t", name).unwrap(),
-                    attack,
-                    defense,
-                    damage_min,
-                    damage_max,
-                    hit_points,
-                    speed,
-                    info: CreatureInfoDef {
-                        cost: COSTS
-                            .iter()
-                            .filter(|(n, _)| *n == name)
-                            .map(|&(_, gold)| (ContentKey::new("t", "gold").unwrap(), gold))
-                            .collect(),
-                        ..parse_traits(traits)
-                    },
-                }
+    patch: impl FnOnce(&mut ContentPack, &mut BattlePack),
+) -> Result<BattleRuleset, BattleCompileError> {
+    let mut creatures = Vec::new();
+    let mut battle_creatures = Vec::new();
+    for &(name, attack, defense, damage_min, damage_max, hit_points, speed, traits) in CREATURES {
+        let key = ContentKey::new("t", name).unwrap();
+        let traits = parse_traits(traits);
+        battle_creatures.push(BattleCreatureDef {
+            key: key.clone(),
+            attack,
+            defense,
+            damage_min,
+            damage_max,
+            hit_points,
+            shots: traits.shots,
+            casts: traits.casts,
+            abilities: traits.abilities,
+        });
+        creatures.push(CreatureDef {
+            key,
+            speed,
+            info: CreatureInfoDef {
+                cost: COSTS
+                    .iter()
+                    .filter(|(n, _)| *n == name)
+                    .map(|&(_, gold)| (ContentKey::new("t", "gold").unwrap(), gold))
+                    .collect(),
+                ..traits.info
             },
-        )
-        .collect();
+        });
+    }
     let mut battle = battle_params();
     edit(&mut battle);
+    let (spells, battle_spells): (Vec<_>, Vec<_>) = SPELLS
+        .iter()
+        .map(|&spell| spell_def(spell))
+        .chain(TIMED.iter().map(|&spell| timed_def(spell)))
+        .chain(other_defs())
+        .chain(control_defs())
+        .chain(field_defs())
+        .chain(raise_defs())
+        .chain(create_defs())
+        .chain(strike_defs())
+        .map(SpellDef::split)
+        .unzip();
+    let manifest = PackManifest {
+        id: String::from("t"),
+        version: String::from("1"),
+        depends: vec![],
+    };
+    let mut battle_pack = BattlePack {
+        obstacles: vec![
+            obstacle("stone", &["plain", "lava"], 2, 1, &[(0, 0), (1, 0)], false),
+            obstacle(
+                "cliff",
+                &["lava"],
+                0,
+                0,
+                &[(5, 4), (6, 4), (7, 4), (8, 4)],
+                true,
+            ),
+            obstacle("tower", &["tall"], 1, 10, &[(0, 0)], false),
+        ],
+        creatures: battle_creatures,
+        spells: battle_spells,
+        battle: Some(battle),
+        ..BattlePack::new(manifest.clone())
+    };
     let mut pack = ContentPack {
         creatures,
         factions: [
@@ -1460,18 +1567,6 @@ pub fn try_ruleset_from(
                 name: String::from(*t),
             })
             .collect(),
-        obstacles: vec![
-            obstacle("stone", &["plain", "lava"], 2, 1, &[(0, 0), (1, 0)], false),
-            obstacle(
-                "cliff",
-                &["lava"],
-                0,
-                0,
-                &[(5, 4), (6, 4), (7, 4), (8, 4)],
-                true,
-            ),
-            obstacle("tower", &["tall"], 1, 10, &[(0, 0)], false),
-        ],
         profiles: vec![
             ProfileDef {
                 key: ContentKey::new("t", "faithful").unwrap(),
@@ -1559,7 +1654,6 @@ pub fn try_ruleset_from(
                 ],
             },
         ],
-        battle: Some(battle),
         // Fire's protection is checked before air's (quirk Q-0007), against the pack order.
         spell_schools: [("air", 1), ("fire", 0)]
             .iter()
@@ -1569,17 +1663,7 @@ pub fn try_ruleset_from(
                 protection_rank,
             })
             .collect(),
-        spells: SPELLS
-            .iter()
-            .map(|&spell| spell_def(spell))
-            .chain(TIMED.iter().map(|&spell| timed_def(spell)))
-            .chain(other_defs())
-            .chain(control_defs())
-            .chain(field_defs())
-            .chain(raise_defs())
-            .chain(create_defs())
-            .chain(strike_defs())
-            .collect(),
+        spells,
         hero_classes: vec![HeroClassDef {
             key: ContentKey::new("t", "knight").unwrap(),
             name: String::from("Knight"),
@@ -1606,14 +1690,11 @@ pub fn try_ruleset_from(
             key: ContentKey::new("t", "gold").unwrap(),
             name: String::from("Gold"),
         }],
-        ..ContentPack::new(PackManifest {
-            id: String::from("t"),
-            version: String::from("1"),
-            depends: vec![],
-        })
+        ..ContentPack::new(manifest)
     };
-    patch(&mut pack);
-    Ruleset::compile(&[pack], profile)
+    patch(&mut pack, &mut battle_pack);
+    let core = Ruleset::compile(&[pack], profile)?;
+    BattleRuleset::compile(Arc::new(core), &[battle_pack])
 }
 
 /// A test spell: name, category, schools, target and side.
@@ -2701,7 +2782,7 @@ fn spell_def((name, category, schools, target, side): SpellSpec) -> SpellDef {
 /// `(slot, creature name, count)`.
 pub type Spec = (u8, &'static str, u32);
 
-pub fn army(rules: &Ruleset, spec: &[Spec]) -> Army {
+pub fn army(rules: &BattleRuleset, spec: &[Spec]) -> Army {
     Army {
         stacks: spec
             .iter()
@@ -2716,7 +2797,7 @@ pub fn army(rules: &Ruleset, spec: &[Spec]) -> Army {
 
 /// A battle hero of the test ruleset's only hero type with some primary skills and mana, without
 /// Tactics (so that no tactics phase runs, BAT-TAC-001).
-pub fn hero(rules: &Ruleset) -> BattleHero {
+pub fn hero(rules: &BattleRuleset) -> BattleHero {
     let mut hero = BattleHero::new(rules.hero_type_by_key("t:orrin").unwrap());
     [hero.attack, hero.defense, hero.power, hero.knowledge] = [3, 2, 1, 1];
     hero.magic.mana = 15;
@@ -2724,7 +2805,7 @@ pub fn hero(rules: &Ruleset) -> BattleHero {
     hero
 }
 
-pub fn setup(rules: &Ruleset, attacker: &[Spec], defender: &[Spec]) -> BattleSetup {
+pub fn setup(rules: &BattleRuleset, attacker: &[Spec], defender: &[Spec]) -> BattleSetup {
     BattleSetup {
         attacker: army(rules, attacker),
         defender: army(rules, defender),
@@ -2737,13 +2818,18 @@ pub fn setup(rules: &Ruleset, attacker: &[Spec], defender: &[Spec]) -> BattleSet
     }
 }
 
-pub fn battle(rules: &Ruleset, attacker: &[Spec], defender: &[Spec], seed: u64) -> BattleState {
+pub fn battle(
+    rules: &BattleRuleset,
+    attacker: &[Spec],
+    defender: &[Spec],
+    seed: u64,
+) -> BattleState {
     BattleState::new(rules, &setup(rules, attacker, defender), seed).unwrap()
 }
 
 /// A battle with obstacles at the given `(x, y)` hexes.
 pub fn battle_with_obstacles(
-    rules: &Ruleset,
+    rules: &BattleRuleset,
     attacker: &[Spec],
     defender: &[Spec],
     obstacles: &[(i32, i32)],
@@ -2761,16 +2847,16 @@ pub fn blocked(hexes: Vec<u8>) -> Vec<h3_contracts::Obstacle> {
     }]
 }
 
-pub fn field(rules: &Ruleset) -> Field {
+pub fn field(rules: &BattleRuleset) -> Field {
     Field::new(rules.battle().field)
 }
 
-pub fn at(rules: &Ruleset, x: i32, y: i32) -> Hex {
+pub fn at(rules: &BattleRuleset, x: i32, y: i32) -> Hex {
     field(rules).hex(x, y).unwrap()
 }
 
 /// Moves stack `id` to `(x, y)` directly (test setup only).
-pub fn place(state: &mut BattleState, rules: &Ruleset, id: u8, x: i32, y: i32) {
+pub fn place(state: &mut BattleState, rules: &BattleRuleset, id: u8, x: i32, y: i32) {
     state.stacks.as_mut_slice()[usize::from(id)].hex = at(rules, x, y);
 }
 
@@ -2782,7 +2868,7 @@ pub fn activate(state: &mut BattleState, id: u8) {
 /// Applies `command` for the side to act, returning the events.
 pub fn act(
     state: &mut BattleState,
-    rules: &Ruleset,
+    rules: &BattleRuleset,
     command: Command,
 ) -> Result<Vec<Event>, crate::CommandError> {
     let side = state.side_to_act().unwrap_or(BattleSide::Attacker);
@@ -2792,7 +2878,7 @@ pub fn act(
 }
 
 /// Lets the active stack defend until `id` is active.
-pub fn advance_to(state: &mut BattleState, rules: &Ruleset, id: u8) {
+pub fn advance_to(state: &mut BattleState, rules: &BattleRuleset, id: u8) {
     for _ in 0..64 {
         if state.active() == Some(StackId(id)) {
             return;
@@ -2803,7 +2889,7 @@ pub fn advance_to(state: &mut BattleState, rules: &Ruleset, id: u8) {
 }
 
 /// The order in which stacks act when everybody defends, for `turns` turns.
-pub fn order(state: &mut BattleState, rules: &Ruleset, turns: usize) -> Vec<u8> {
+pub fn order(state: &mut BattleState, rules: &BattleRuleset, turns: usize) -> Vec<u8> {
     (0..turns)
         .map(|_| {
             let id = state.active().unwrap().0;

@@ -1,7 +1,8 @@
 //! Leaving a battle: the price of a surrender (BAT-FLE-002). Whether a side may retreat at all
 //! is the heroes' business (`hero::may_retreat`, BAT-FLE-001).
 
-use h3_content::{FULL_BP, Ruleset, SINGLE_PRECISION_RATES, SurrenderParams};
+use h3_content::{FULL_BP, SINGLE_PRECISION_RATES};
+use h3_content_battle::{BattleRuleset, SurrenderParams};
 use h3_contracts::BattleSide;
 use h3_kernel::arith::{SINGLE_FRAC_BITS, single_precision};
 
@@ -12,7 +13,7 @@ use crate::state::BattleState;
 // rule: BAT-FLE-002
 pub(crate) fn surrender_terms(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
 ) -> Option<SurrenderParams> {
     ruleset
@@ -31,7 +32,7 @@ pub(crate) fn surrender_terms(
 // rule: BAT-FLE-002
 pub(crate) fn surrender_price(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
 ) -> Option<u32> {
     let params = surrender_terms(state, ruleset, side)?;

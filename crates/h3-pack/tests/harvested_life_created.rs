@@ -10,11 +10,12 @@ use h3_battle::{
     BattleResult, BattleState, CastTarget, Command, CommandError, Direction, Event, EventKind,
     Field, LegalCommands, NO_CORPSE, StackId, apply, castable_spells, legal_commands,
 };
-use h3_content::{Formation, Ruleset, SkillId, SpellId};
+use h3_content::{Formation, SkillId, SpellId};
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide, StackOrigin, StackRecord};
 use h3_heroes::{HeroDetails, derive_battle_hero, war_machines};
 
-fn sod() -> Ruleset {
+fn sod() -> BattleRuleset {
     h3_pack::compile(
         &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
         "base:faithful",
@@ -22,14 +23,14 @@ fn sod() -> Ruleset {
     .unwrap()
 }
 
-fn spell(r: &Ruleset, key: &str) -> SpellId {
+fn spell(r: &BattleRuleset, key: &str) -> SpellId {
     r.spell_by_key(key).unwrap()
 }
 
 /// `hero` at level 1 with attack and defense 0, `power` and `knowledge`, the skills `skills`,
 /// wearing a Spell Book and `worn`, knowing `spells`, with full mana.
 fn details(
-    r: &Ruleset,
+    r: &BattleRuleset,
     hero: &str,
     (power, knowledge): (u8, u8),
     skills: Vec<(SkillId, u8)>,
@@ -52,7 +53,7 @@ fn details(
     }
 }
 
-fn army(r: &Ruleset, stacks: &[(&str, u32)]) -> Army {
+fn army(r: &BattleRuleset, stacks: &[(&str, u32)]) -> Army {
     Army {
         stacks: stacks
             .iter()
@@ -70,7 +71,7 @@ fn army(r: &Ruleset, stacks: &[(&str, u32)]) -> Army {
 /// `heroes[1]` with `defender`, on `terrain`, without obstacles; each player has 30 000 gold (SU
 /// c's record).
 fn battle(
-    r: &Ruleset,
+    r: &BattleRuleset,
     heroes: [&HeroDetails; 2],
     attacker: &[(&str, u32)],
     defender: &[(&str, u32)],
@@ -91,7 +92,7 @@ fn battle(
 
 /// Stack `stack`, whose turn it is, does `command` for the side that commands it; returns the
 /// events.
-fn turn(s: &mut BattleState, r: &Ruleset, stack: u8, command: Command) -> Vec<Event> {
+fn turn(s: &mut BattleState, r: &BattleRuleset, stack: u8, command: Command) -> Vec<Event> {
     assert_eq!(s.active(), Some(StackId(stack)));
     let side = s.side_to_act().unwrap();
     let mut events = Vec::new();
@@ -113,7 +114,7 @@ fn stack(id: u8) -> CastTarget {
 
 /// The active stack attacks stack `enemy` if it can, else walks as far towards the other
 /// side's edge as it can.
-fn advance(s: &mut BattleState, r: &Ruleset, enemy: u8) {
+fn advance(s: &mut BattleState, r: &BattleRuleset, enemy: u8) {
     let field = Field::new(r.battle().field);
     let side = s.side_to_act().unwrap();
     let mut legal = LegalCommands::new();
@@ -133,7 +134,7 @@ fn advance(s: &mut BattleState, r: &Ruleset, enemy: u8) {
 }
 
 /// The stacks `events` report as created: `(stack, count, column, row)`.
-fn created(r: &Ruleset, events: &[Event]) -> Vec<(u8, u32, i32, i32)> {
+fn created(r: &BattleRuleset, events: &[Event]) -> Vec<(u8, u32, i32, i32)> {
     let field = Field::new(r.battle().field);
     events
         .iter()
@@ -351,14 +352,14 @@ fn batch_2d_cl1_clones_places_turns_shots_and_ends() {
 const SKELETONS: u8 = 9;
 
 /// The active stack Defends.
-fn defend(s: &mut BattleState, r: &Ruleset) {
+fn defend(s: &mut BattleState, r: &BattleRuleset) {
     let active = s.active().unwrap().0;
     turn(s, r, active, Command::Defend);
 }
 
 /// Red's hero summons Air Elementals in the active stack's turn; the new stack as
 /// `(stack, count, column, row)`.
-fn summon(s: &mut BattleState, r: &Ruleset) -> (u8, u32, i32, i32) {
+fn summon(s: &mut BattleState, r: &BattleRuleset) -> (u8, u32, i32, i32) {
     let active = s.active().unwrap().0;
     let air = spell(r, "base:air_elemental");
     let made = created(r, &turn(s, r, active, cast(air, CastTarget::None)));
@@ -367,7 +368,12 @@ fn summon(s: &mut BattleState, r: &Ruleset) -> (u8, u32, i32, i32) {
 }
 
 /// `key`'s record with `origin`, `start` and `end`.
-fn record(r: &Ruleset, origin: StackOrigin, key: &str, (start, end): (u32, u32)) -> StackRecord {
+fn record(
+    r: &BattleRuleset,
+    origin: StackOrigin,
+    key: &str,
+    (start, end): (u32, u32),
+) -> StackRecord {
     StackRecord {
         origin,
         creature: r.creature_by_key(key).unwrap(),
@@ -383,7 +389,7 @@ fn record(r: &Ruleset, origin: StackOrigin, key: &str, (start, end): (u32, u32))
 /// defense 10, speed 8) appears in column 1 and acts in round 1; E2 follows in round 2, in which
 /// the Peasants die of Death Ripple. Returns the battle at the start of round 3 and the rows of
 /// E1 and E2.
-fn su_after_two_rounds(r: &Ruleset) -> (BattleState, [i32; 2]) {
+fn su_after_two_rounds(r: &BattleRuleset) -> (BattleState, [i32; 2]) {
     let ripple = spell(r, "base:death_ripple");
     let octavia = details(
         r,

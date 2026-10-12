@@ -7,11 +7,12 @@ use h3_battle::{
     BattleState, CastTarget, Command, Event, EventKind, Field, LegalCommands, StackId, apply,
     legal_commands,
 };
-use h3_content::{Formation, Ruleset};
+use h3_content::Formation;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 use h3_heroes::{HeroDetails, derive_battle_hero};
 
-fn sod(profile: &str) -> Ruleset {
+fn sod(profile: &str) -> BattleRuleset {
     h3_pack::compile(
         &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
         profile,
@@ -21,7 +22,7 @@ fn sod(profile: &str) -> Ruleset {
 
 /// `hero` at level 1 with the primary skills `primary`, no skills, knowing `spells` (with a
 /// worn Spell Book if any), with full mana.
-fn details(r: &Ruleset, hero: &str, primary: [u8; 4], spells: &[&str]) -> HeroDetails {
+fn details(r: &BattleRuleset, hero: &str, primary: [u8; 4], spells: &[&str]) -> HeroDetails {
     HeroDetails {
         hero_type: r.hero_type_by_key(hero).unwrap(),
         level: 1,
@@ -39,7 +40,7 @@ fn details(r: &Ruleset, hero: &str, primary: [u8; 4], spells: &[&str]) -> HeroDe
     }
 }
 
-fn army(r: &Ruleset, creature: &str, count: u32) -> Army {
+fn army(r: &BattleRuleset, creature: &str, count: u32) -> Army {
     Army {
         stacks: vec![ArmyStack {
             slot: 0,
@@ -50,7 +51,7 @@ fn army(r: &Ruleset, creature: &str, count: u32) -> Army {
 }
 
 /// The side whose turn it is does `command`, with stack `stack` active; returns the events.
-fn turn(s: &mut BattleState, r: &Ruleset, stack: u8, command: Command) -> Vec<Event> {
+fn turn(s: &mut BattleState, r: &BattleRuleset, stack: u8, command: Command) -> Vec<Event> {
     assert_eq!(s.active(), Some(StackId(stack)));
     let side = s.side_to_act().unwrap();
     let mut events = Vec::new();

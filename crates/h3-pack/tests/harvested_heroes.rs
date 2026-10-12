@@ -11,9 +11,10 @@ use h3_battle::{
     observe, second_targets,
 };
 use h3_content::{
-    Ability, ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, HeroEffect, HeroTypeId,
-    Ruleset, SkillId, SpellCategory, SpellId, TerrainId,
+    ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, HeroEffect, HeroTypeId, SkillId,
+    SpellCategory, SpellId, TerrainId,
 };
+use h3_content_battle::{Ability, BattleRuleset};
 use h3_contracts::{
     Army, ArmyStack, BattleHero, BattleSetup, BattleSide, MAX_BATTLE_EFFECTS, Obstacle,
 };
@@ -30,7 +31,7 @@ fn pick(rng: &mut Rng, n: usize) -> usize {
 
 /// Valid details: a random hero type, level 1 to 255, primary skills 0 to 99, up to eight skills
 /// at random levels, and worn artifacts drawn at random, each kept if the details stay valid.
-fn details(r: &Ruleset, rng: &mut Rng) -> HeroDetails {
+fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
     let mut d = HeroDetails {
         hero_type: HeroTypeId::from_index(pick(rng, r.hero_types().len())).unwrap(),
         level: u8::try_from(1 + rng.below(255)).unwrap(),
@@ -165,7 +166,7 @@ fn random_legal_sod_heroes_derive_and_play() {
 
 /// [`details`] of a hero that casts: it wears a Spell Book (HER-BAT-011), has learned about half
 /// of the hero spells and has mana.
-fn casting_details(r: &Ruleset, rng: &mut Rng) -> HeroDetails {
+fn casting_details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
     let mut d = details(r, rng);
     let book = ArtifactInstance::from(r.artifact_by_key("base:spell_book").unwrap());
     if !d.worn.contains(&book) {
@@ -388,7 +389,7 @@ fn random_legal_sod_heroes_cast_and_play() {
 }
 
 /// Hero details of Solmyr wearing `worn` (keys), knowing Magic Arrow, with `skills`.
-fn wearing(sod: &Ruleset, worn: &[ArtifactInstance], skills: &[(&str, u8)]) -> HeroDetails {
+fn wearing(sod: &BattleRuleset, worn: &[ArtifactInstance], skills: &[(&str, u8)]) -> HeroDetails {
     HeroDetails {
         hero_type: sod.hero_type_by_key("base:solmyr").unwrap(),
         level: 10,

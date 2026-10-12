@@ -25,7 +25,8 @@
 
 use alloc::vec::Vec;
 
-use h3_content::{CreatureTypeId, Ruleset};
+use h3_content::CreatureTypeId;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::FixedVec;
 
@@ -160,12 +161,12 @@ impl Observation {
 
 /// The observation of `state` for `viewer`. `ruleset` must be the one the battle was built
 /// with (as for [`apply`](crate::apply)); the surrender rules read it.
-pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Observation {
+pub fn observe(state: &BattleState, ruleset: &BattleRuleset, viewer: BattleSide) -> Observation {
     observe_as(state, ruleset, Viewer::Side(viewer))
 }
 
 /// The observation of `state` for `viewer`, a side or a spectator (SRV-Q4); see [`observe`].
-pub fn observe_as(state: &BattleState, ruleset: &Ruleset, viewer: Viewer) -> Observation {
+pub fn observe_as(state: &BattleState, ruleset: &BattleRuleset, viewer: Viewer) -> Observation {
     let side = match viewer {
         Viewer::Side(side) => Some(side),
         Viewer::Spectator => None,
@@ -225,7 +226,7 @@ pub fn observe_as(state: &BattleState, ruleset: &Ruleset, viewer: Viewer) -> Obs
 /// The private part of `side`'s hero `h` (ADR-0013 point 9, ADR-0014 point 8, BAT-Q26).
 fn own_hero(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     h: &HeroRecord,
     side: BattleSide,
 ) -> OwnHeroView {

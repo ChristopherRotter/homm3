@@ -11,10 +11,9 @@
 //! stack's drawn spell and each side's rounds since its periodic cast are kept beside the stacks
 //! (the hot paths never read them).
 
-use h3_content::{
-    Ability, CreatureFlag, CreatureTypeId, PERIODIC_FIRST_STACK, Ruleset, Spell, SpellId,
-    SpellPolarity, Usefulness,
-};
+use h3_content::{CreatureFlag, CreatureTypeId, PERIODIC_FIRST_STACK, SpellId};
+use h3_content_battle::BattleSpell;
+use h3_content_battle::{Ability, BattleRuleset, SpellPolarity, Usefulness};
 use h3_contracts::BattleSide;
 use h3_kernel::{CanonicalHash, StateHasher};
 
@@ -63,7 +62,7 @@ pub(crate) enum Raiser {
 }
 
 /// What a stack of `creature` raises as its action, if its creature is a raiser.
-pub(crate) fn raiser(ruleset: &Ruleset, creature: CreatureTypeId) -> Option<Raiser> {
+pub(crate) fn raiser(ruleset: &BattleRuleset, creature: CreatureTypeId) -> Option<Raiser> {
     ruleset.abilities(creature).iter().find_map(|a| match *a {
         Ability::StackRaiser {
             spell,
@@ -105,7 +104,7 @@ pub(crate) struct CreatureSpell {
 /// (BAT-MAG-050).
 pub(crate) fn stack_cast(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     id: StackId,
 ) -> Option<CreatureSpell> {
     let stack = state.stack(id)?;
@@ -179,7 +178,7 @@ impl Default for Casts {
 
 impl Casts {
     /// The casts of `stacks` at the battle's start: their creatures' casts per battle.
-    pub(crate) fn at_start(ruleset: &Ruleset, stacks: &[Stack]) -> Self {
+    pub(crate) fn at_start(ruleset: &BattleRuleset, stacks: &[Stack]) -> Self {
         let mut out = Self::default();
         for (left, stack) in out.left.iter_mut().zip(stacks) {
             *left = per_battle(ruleset, stack.creature);
@@ -200,8 +199,8 @@ impl CanonicalHash for Casts {
 }
 
 /// The casts per battle of `creature` (its pack's `casts`).
-pub(crate) fn per_battle(ruleset: &Ruleset, creature: CreatureTypeId) -> u8 {
-    ruleset.creature_info(creature).map_or(0, |i| i.casts)
+pub(crate) fn per_battle(ruleset: &BattleRuleset, creature: CreatureTypeId) -> u8 {
+    ruleset.creature(creature).map_or(0, |c| c.casts)
 }
 
 /// At the activation of stack `id` for its side's command (BAT-MAG-049; the original's 0x465330
@@ -213,7 +212,7 @@ pub(crate) fn per_battle(ruleset: &Ruleset, creature: CreatureTypeId) -> u8 {
 // rule: BAT-MAG-049
 pub(crate) fn activated<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     id: StackId,
     sink: &mut S,
 ) {
@@ -278,7 +277,7 @@ pub(crate) fn round_started(state: &mut BattleState) {
 // rule: BAT-MAG-053
 pub(crate) fn periodic<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     id: StackId,
     sink: &mut S,
 ) {
@@ -330,10 +329,10 @@ pub(crate) fn periodic<S: Sink>(
 /// ([`counts`]), with their weights, in their creature's order (BAT-MAG-053).
 fn periodic_spells<'s, 'r: 's>(
     state: &'s BattleState,
-    ruleset: &'r Ruleset,
+    ruleset: &'r BattleRuleset,
     (caster, side): (StackId, BattleSide),
     first_only: bool,
-) -> impl Iterator<Item = ((SpellId, &'r Spell), u32)> + 's {
+) -> impl Iterator<Item = ((SpellId, &'r BattleSpell), u32)> + 's {
     ruleset
         .abilities(state.at(caster).creature)
         .iter()
@@ -353,9 +352,9 @@ fn periodic_spells<'s, 'r: 's>(
 // rule: BAT-MAG-053
 fn counts(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (side, first_only): (BattleSide, bool),
-    spell: (SpellId, &Spell),
+    spell: (SpellId, &BattleSpell),
 ) -> bool {
     let aimed = if spell.1.polarity == SpellPolarity::Negative {
         side.opponent()
@@ -382,7 +381,7 @@ fn counts(
 /// packs that no harvested creature has, so the Orb of Inhibition stops the Faerie Dragon too).
 fn ready(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
 ) -> Option<(StackId, CreatureSpell)> {
     // Most stacks have no casts: test that first (the random agent asks at every step).
@@ -404,7 +403,7 @@ fn ready(
 /// The spell stack `id` casts as its action, if its creature is a caster (BAT-MAG-048), whether or
 /// not it may cast now; for a random caster the spell it drew, while it is the active stack
 /// (BAT-MAG-049); for a helpful caster none before the cast (BAT-MAG-050).
-pub fn stack_spell(state: &BattleState, ruleset: &Ruleset, id: StackId) -> Option<CastSpell> {
+pub fn stack_spell(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> Option<CastSpell> {
     stack_cast(state, ruleset, id).map(|spell| spell.spell)
 }
 
@@ -413,7 +412,7 @@ pub fn stack_spell(state: &BattleState, ruleset: &Ruleset, id: StackId) -> Optio
 /// no casts left). Whether it has a target is [`creature_cast_targets`]'s.
 pub fn creature_cast_spell(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
 ) -> Option<CastSpell> {
     ready(state, ruleset, actor).map(|(_, spell)| spell.spell)
@@ -426,9 +425,9 @@ pub fn creature_cast_spell(
 // rule: BAT-MAG-050
 pub(crate) fn useful(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
-    (id, spell): (SpellId, &Spell),
+    (id, spell): (SpellId, &BattleSpell),
     s: StackId,
 ) -> bool {
     let field = Field::new(ruleset.battle().field);
@@ -476,7 +475,7 @@ pub(crate) fn useful(
 /// ([`useful`]), with their weights, in their creature's order (BAT-MAG-050).
 pub(crate) fn useful_spells<'a>(
     state: &'a BattleState,
-    ruleset: &'a Ruleset,
+    ruleset: &'a BattleRuleset,
     side: BattleSide,
     (caster, s): (StackId, StackId),
 ) -> impl Iterator<Item = (SpellId, u32)> + 'a {
@@ -498,7 +497,7 @@ pub(crate) fn useful_spells<'a>(
 // rule: BAT-MAG-050
 pub(crate) fn candidates(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     viewer: BattleSide,
 ) -> [u8; STACK_CAPACITY] {
     let mut out = [0; STACK_CAPACITY];
@@ -523,7 +522,7 @@ pub(crate) fn candidates(
 /// empty if the active stack may not cast ([`creature_cast_spell`]).
 pub fn creature_cast_targets(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
     out: &mut CastTargets,
 ) {
@@ -547,7 +546,7 @@ pub(crate) enum CreatureAction<'r> {
 /// its spell or its raise.
 pub(crate) fn plan<'r>(
     state: &BattleState,
-    ruleset: &'r Ruleset,
+    ruleset: &'r BattleRuleset,
     actor: BattleSide,
     target: CastTarget,
 ) -> Result<CreatureAction<'r>, CommandError> {
@@ -575,7 +574,7 @@ pub(crate) fn plan<'r>(
 // rule: BAT-MAG-051, BAT-MAG-052
 pub(crate) fn raise_target(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     caster: StackId,
     target: CastTarget,
@@ -610,7 +609,7 @@ pub(crate) fn raise_target(
 /// creatures' health and the raised creature's base health.
 pub(crate) fn corpse_count(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (caster, corpse): (StackId, StackId),
     (creature, per_creature): (CreatureTypeId, u16),
 ) -> u32 {
@@ -632,7 +631,7 @@ pub(crate) fn corpse_count(
 // rule: BAT-MAG-051, BAT-MAG-052
 pub(crate) fn raise<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (caster, target): (StackId, StackId),
     sink: &mut S,
 ) {

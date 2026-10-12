@@ -4,7 +4,9 @@
 //! A dead stack lies on its hexes as a corpse, the last to die on top
 //! ([`BattleState::corpse`]). The Phoenix's rebirth raises it the same way (BAT-MAG-059).
 
-use h3_content::{Ability, Ruleset, SACRIFICE_TESTS_AS_RESURRECTION, Spell};
+use h3_content::SACRIFICE_TESTS_AS_RESURRECTION;
+use h3_content_battle::BattleSpell;
+use h3_content_battle::{Ability, BattleRuleset};
 use h3_contracts::BattleSide;
 
 use crate::damage::resurrect;
@@ -86,7 +88,7 @@ pub(crate) const fn creature_test(spell: SpellRef<'_>, hit_points: u64) -> Raise
 /// (BAT-MAG-036).
 pub(crate) fn test_for<'r>(
     hero: &HeroRecord,
-    ruleset: &'r Ruleset,
+    ruleset: &'r BattleRuleset,
     ((id, spell), at): (SpellRef<'r>, u8),
 ) -> RaiseTest<'r> {
     let as_spell = spell
@@ -123,7 +125,7 @@ pub(crate) fn test_for<'r>(
 /// reach.
 fn eligible(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     test: RaiseTest<'_>,
     s: StackId,
@@ -143,7 +145,7 @@ fn eligible(
 /// a living stack (a dead one's timed effects ended at its death).
 fn can_affect(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     spell: SpellRef<'_>,
     s: StackId,
@@ -164,7 +166,7 @@ fn can_affect(
 // rule: BAT-MAG-036
 fn sacrifice_admits(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     own: SpellRef<'_>,
     s: StackId,
@@ -178,7 +180,7 @@ fn sacrifice_admits(
 /// which on one of its hexes lies above every other such corpse that passes the test.
 pub(crate) fn raisable(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     test: RaiseTest<'_>,
     s: StackId,
@@ -204,7 +206,7 @@ pub(crate) fn raisable(
 /// last corpse of a hex, 0x5A3CC0, 0x5A3F50, 0x5A3E40).
 fn on_top(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     s: StackId,
     qualifies: impl Fn(StackId) -> bool,
 ) -> bool {
@@ -237,7 +239,7 @@ fn on_top(
 /// one of its hexes; there is no spell test.
 pub(crate) fn corpse_raisable(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     s: StackId,
 ) -> bool {
@@ -263,7 +265,7 @@ fn covers(field: Field, state: &BattleState, t: StackId, set: HexSet) -> bool {
 /// spell level limit, its conditions, immunities and Anti-Magic).
 pub(crate) fn victim(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     spell: SpellRef<'_>,
     v: StackId,
@@ -287,7 +289,7 @@ pub(crate) fn victim(
 /// bit and writes no defense).
 pub(crate) fn raise<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (s, hit_points): (StackId, u64),
     temporary: bool,
     sink: &mut S,
@@ -310,7 +312,12 @@ pub(crate) fn raise<S: Sink>(
 /// on its hexes, leaves the corpses and gets its values recomputed from the effects it kept (the
 /// permanent ones: the timed ones ended at its death, by the end of the command it died in at
 /// the latest; BAT-MAG-010). Returns the hit points regained and the creatures brought back.
-fn revive(state: &mut BattleState, ruleset: &Ruleset, s: StackId, hit_points: u64) -> (u64, u32) {
+fn revive(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    s: StackId,
+    hit_points: u64,
+) -> (u64, u32) {
     let was_dead = !state.at(s).is_alive();
     let raised = resurrect(state.at_mut(s), hit_points);
     if was_dead && state.at(s).is_alive() {
@@ -334,7 +341,7 @@ fn revive(state: &mut BattleState, ruleset: &Ruleset, s: StackId, hit_points: u6
 /// that died earlier (a creature with more casts that drew none: the original would bring it
 /// back at a later check, alike; the Phoenix has one cast).
 // rule: BAT-MAG-059
-pub(crate) fn rebirths<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
+pub(crate) fn rebirths<S: Sink>(state: &mut BattleState, ruleset: &BattleRuleset, sink: &mut S) {
     for s in (0u8..).take(state.stacks.len()).map(StackId) {
         let stack = state.at(s);
         // The cheap tests first: most stacks cannot come back or are alive.
@@ -383,8 +390,8 @@ pub(crate) fn rebirths<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink
 /// the value plus the caster's specialist bonus for the stack (BAT-MAG-020, BAT-MAG-035).
 pub(crate) fn raise_value(
     state: &BattleState,
-    ruleset: &Ruleset,
-    (spell, own): (&Spell, SpellBonus),
+    ruleset: &BattleRuleset,
+    (spell, own): (&BattleSpell, SpellBonus),
     value: u64,
     s: StackId,
 ) -> u64 {
@@ -397,7 +404,7 @@ pub(crate) fn raise_value(
 /// creatures`, the creature's base hit points, not the stack's.
 pub(crate) fn sacrifice<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     v: StackId,
     value: u64,
     sink: &mut S,

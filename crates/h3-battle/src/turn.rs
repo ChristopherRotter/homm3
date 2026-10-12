@@ -9,7 +9,7 @@
 //! When every living stack has acted or passed blind, a new round starts and per-round flags are
 //! reset.
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::BattleSide;
 
 use crate::effects::Status;
@@ -71,7 +71,7 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
 /// became its own clone can vanish as its side's last one: the battle's end is checked after the
 /// clones (BAT-END-001; the original asks for the winner after every action, 0x479BDC).
 // rule: BAT-TRN-003, BAT-MAG-001
-pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
+pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &BattleRuleset, sink: &mut S) {
     state.round = state.round.saturating_add(1);
     state.wait_phase = false;
     // rule: BAT-MAG-053
@@ -116,7 +116,7 @@ pub(crate) enum TurnEnd {
 /// starting a new round if needed. Once the battle is over no stack is active.
 pub(crate) fn end_turn<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     mover: StackId,
     how: TurnEnd,
     sink: &mut S,
@@ -157,7 +157,7 @@ pub(crate) fn end_turn<S: Sink>(
 // rule: BAT-MOR-003
 fn morale_turn<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     id: StackId,
     sink: &mut S,
 ) -> bool {
@@ -180,7 +180,11 @@ fn morale_turn<S: Sink>(
 
 /// The next stack to act, starting a new round if every living stack has acted; none once the
 /// round's start ended the battle (a side's last stack vanished, BAT-MAG-038).
-fn pick<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) -> Option<StackId> {
+fn pick<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    sink: &mut S,
+) -> Option<StackId> {
     next_active(state).or_else(|| {
         start_round(state, ruleset, sink);
         next_active(state).filter(|_| state.result.is_none())
@@ -197,19 +201,32 @@ fn pick<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) -> Op
 /// While the battle is not over some stack is alive, so a stack is always found. The stack that
 /// awaits its side's command draws its spell if it is a random caster (BAT-MAG-049). Once a
 /// waited stack is activated, the round's wait phase has begun (BAT-MAG-056).
-pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
+pub(crate) fn activate_next<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    sink: &mut S,
+) {
     activate(state, ruleset, true, sink);
 }
 
 /// Activates the battle's first stack without a tactics phase as [`activate_next`] does, but
 /// without the bad-morale and Fear checks: the original's battle start picks it with them off
 /// (0x462A20's call of 0x465080 with argument 0; after a tactics phase they run, BAT-MOR-004).
-pub(crate) fn activate_first<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
+pub(crate) fn activate_first<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    sink: &mut S,
+) {
     activate(state, ruleset, false, sink);
 }
 
 /// [`activate_next`], with the freezing checks if `checks`.
-fn activate<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, mut checks: bool, sink: &mut S) {
+fn activate<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    mut checks: bool,
+    sink: &mut S,
+) {
     let mut next = pick(state, ruleset, sink);
     while let Some(id) = next {
         // The stacks the last action killed lie below any killed later (BAT-MAG-035): automatic
@@ -267,7 +284,12 @@ fn activate<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, mut checks: boo
 /// first activation the hero's opening spells (BAT-MAG-068), then a Wraith drains its enemy
 /// hero's mana (BAT-MAG-056), an Enchanter may cast (BAT-MAG-053).
 // rule: BAT-MAG-053, BAT-MAG-056, BAT-MAG-068
-fn activation<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, sink: &mut S) {
+fn activation<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+    sink: &mut S,
+) {
     crate::magic::opening(state, ruleset, id, sink);
     crate::mana::drain(state, ruleset, id, sink);
     crate::casters::periodic(state, ruleset, id, sink);
@@ -281,7 +303,12 @@ fn activation<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, 
 /// (BAT-MAG-025), each marked as having acted when its turn is over. Returns whether the stack
 /// awaits its side's command. (A periodic cast kills nothing: its spells have no damage, so the
 /// battle goes on.)
-fn begins<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, sink: &mut S) -> bool {
+fn begins<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+    sink: &mut S,
+) -> bool {
     activation(state, ruleset, id, sink);
     if state.at(id).has(StackTraits::WAR_MACHINE)
         && !war::is_commanded(state, Field::new(ruleset.battle().field), id)
@@ -304,7 +331,7 @@ fn begins<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, sink
 // rule: BAT-MAG-025
 pub(crate) fn berserk_turn<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     id: StackId,
     sink: &mut S,
 ) -> bool {
@@ -330,7 +357,7 @@ pub(crate) fn berserk_turn<S: Sink>(
 /// If a cast made the active stack berserk during its own turn, it takes its automatic turn at
 /// once (the original's battle loop checks the active stack, `installation.md` §7.14) and, unless
 /// it keeps the turn, its turn ends (BAT-MAG-025).
-pub(crate) fn berserk_now<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
+pub(crate) fn berserk_now<S: Sink>(state: &mut BattleState, ruleset: &BattleRuleset, sink: &mut S) {
     let Some(id) = state
         .active
         .filter(|&id| state.at(id).spells.status.contains(Status::BERSERK))

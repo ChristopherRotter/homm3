@@ -14,8 +14,11 @@
 use alloc::vec::Vec;
 
 use h3_content::{
-    COUNTERSTRIKE_EXTRA_ROUND, EffectDuration, EffectEnd, MAX_SPELL_SCHOOLS, Ruleset,
-    SINGLE_PRECISION_RATES, Spell, SpellCategory, SpellEffect, SpellId, SpellPolarity, TimedChange,
+    COUNTERSTRIKE_EXTRA_ROUND, MAX_SPELL_SCHOOLS, SINGLE_PRECISION_RATES, SpellCategory, SpellId,
+};
+use h3_content_battle::BattleSpell;
+use h3_content_battle::{
+    BattleRuleset, EffectDuration, EffectEnd, SpellEffect, SpellPolarity, TimedChange,
 };
 use h3_kernel::arith::{SINGLE_FRAC_BITS, single_precision};
 use h3_kernel::{CanonicalHash, StateHasher};
@@ -322,7 +325,7 @@ pub(crate) struct TimedCast<'r> {
     /// The spell.
     pub(crate) id: SpellId,
     /// Its data.
-    pub(crate) spell: &'r Spell,
+    pub(crate) spell: &'r BattleSpell,
     /// The caster's mastery.
     pub(crate) mastery: u8,
     /// The caster's power plus its duration bonus, at least 1 (BAT-MAG-010).
@@ -341,7 +344,7 @@ pub(crate) struct TimedCast<'r> {
 // rule: BAT-MAG-009
 pub(crate) fn apply<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     cast: TimedCast<'_>,
     s: StackId,
     sink: &mut S,
@@ -448,7 +451,7 @@ fn add_retaliations(stack: &mut Stack, v: u16) {
 /// and before the effects count down (BAT-MAG-015). With quirk Q-0008, as the original does,
 /// also an effect in its last round, which ends at this round start; without it, not.
 // rule: BAT-MAG-015
-pub(crate) fn round_retaliations(state: &mut BattleState, ruleset: &Ruleset) {
+pub(crate) fn round_retaliations(state: &mut BattleState, ruleset: &BattleRuleset) {
     let retaliations = SpellEffect::Timed(TimedChange::Retaliations);
     let last_round = ruleset.quirks().is_enabled(COUNTERSTRIKE_EXTRA_ROUND);
     let stacks = state.stacks.as_mut_slice();
@@ -521,8 +524,8 @@ fn end<S: Sink>(state: &mut BattleState, s: StackId, spell: SpellId, sink: &mut 
 // rule: BAT-MAG-016
 pub(crate) fn dispel<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
-    spell: &Spell,
+    ruleset: &BattleRuleset,
+    spell: &BattleSpell,
     s: StackId,
     sink: &mut S,
 ) {
@@ -534,7 +537,7 @@ pub(crate) fn dispel<S: Sink>(
 /// Whether `spell`'s dispel effect ends the active effect `e` (BAT-MAG-016): a timed one of its
 /// `dispels`, or, without that list, any timed one but those of its `spares`; for a dispel of
 /// positive spells only one of a positive spell (Dispel Helpful Spells, BAT-MAG-042).
-pub(crate) fn dispel_ends(ruleset: &Ruleset, spell: &Spell, e: &ActiveEffect) -> bool {
+pub(crate) fn dispel_ends(ruleset: &BattleRuleset, spell: &BattleSpell, e: &ActiveEffect) -> bool {
     e.rounds.is_some()
         && (!spell.magic.dispels_positive
             || ruleset
@@ -551,10 +554,10 @@ pub(crate) fn dispel_ends(ruleset: &Ruleset, spell: &Spell, e: &ActiveEffect) ->
 /// are recomputed if any ended.
 pub(crate) fn end_spells<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     s: StackId,
     sink: &mut S,
-    ends: impl Fn(&Spell) -> bool,
+    ends: impl Fn(&BattleSpell) -> bool,
 ) {
     if end_where(state, s, sink, |e| {
         ruleset.spell(e.spell).is_some_and(&ends)
@@ -594,7 +597,7 @@ fn end_where<S: Sink>(
 // rule: BAT-MAG-024, BAT-MAG-043
 pub(crate) fn damaged<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     s: StackId,
     sink: &mut S,
 ) {
@@ -619,7 +622,7 @@ pub(crate) fn damaged<S: Sink>(
 // rule: BAT-MAG-025
 pub(crate) fn attacked<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     s: StackId,
     sink: &mut S,
 ) {
@@ -640,7 +643,11 @@ pub(crate) fn attacked<S: Sink>(
 /// The share of its retaliation's damage, percent, that stack `s` deals while it loses its turns:
 /// Blind's value (BAT-MAG-024) or Paralyze's (BAT-MAG-043), the smaller if both; `None` if it
 /// is neither.
-pub(crate) fn retaliation_share(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u16> {
+pub(crate) fn retaliation_share(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    s: StackId,
+) -> Option<u16> {
     let shares = [TimedChange::Blind, TimedChange::Paralyze].map(SpellEffect::Timed);
     if !state.at(s).spells.status.contains(Status::NO_TURNS) {
         return None;
@@ -673,7 +680,7 @@ pub(crate) const fn stops_turns(change: TimedChange) -> bool {
 /// exact or, under quirk Q-0005, single precision as the original stores it; its hit points per
 /// creature under Poison and Age (BAT-MAG-044); whether it is bound (BAT-MAG-045). Then every
 /// stack's morale and luck are materialised again.
-pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) {
+pub(crate) fn recompute(state: &mut BattleState, ruleset: &BattleRuleset, s: StackId) {
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
     let mut values = SpellValues::default();
     let (mut attack, mut defense, mut speed) = (0i32, 0i32, 0i32);
@@ -814,7 +821,7 @@ pub(crate) fn slowed(speed: u8, percent: u8, single: bool) -> u8 {
 
 /// Whether the effect of `spell` counts down at its stack's own turn start (Frenzy,
 /// BAT-MAG-019) rather than at the round start.
-fn on_own_turn(ruleset: &Ruleset, spell: SpellId) -> bool {
+fn on_own_turn(ruleset: &BattleRuleset, spell: SpellId) -> bool {
     ruleset
         .spell(spell)
         .is_some_and(|sp| sp.magic.duration == EffectDuration::OwnTurn)
@@ -827,7 +834,7 @@ fn on_own_turn(ruleset: &Ruleset, spell: SpellId) -> bool {
 /// points fell below what they were once the ended effects were given back (an Age that ends
 /// at the same round start ends first, as in the original's countdown).
 // rule: BAT-MAG-010
-pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
+pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &BattleRuleset, sink: &mut S) {
     if state.effects.0.is_empty() {
         return;
     }
@@ -896,7 +903,7 @@ pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, si
 // rule: BAT-MAG-019
 pub(crate) fn own_turn<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     s: StackId,
     sink: &mut S,
 ) {
@@ -930,7 +937,7 @@ pub(crate) fn own_turn<S: Sink>(
 /// dead stack: the original's end routine refuses Disrupting Ray (0x444510 returns at once for
 /// it), Acid Breath only lowers the defense, and neither the death nor a raise gives the defense
 /// back, so a stack that is raised or reborn comes back with it (BAT-MAG-035, BAT-MAG-059).
-pub(crate) fn remove_dead(state: &mut BattleState, ruleset: &Ruleset) {
+pub(crate) fn remove_dead(state: &mut BattleState, ruleset: &BattleRuleset) {
     if state.effects.0.is_empty() {
         return;
     }

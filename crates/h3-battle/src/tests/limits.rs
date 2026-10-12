@@ -6,7 +6,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleEffect, BattleHero, BattleSetup, BattleSide};
 
 use super::spells::{arena, cast, mage, spell, stack};
@@ -24,14 +24,14 @@ const ORB: BattleEffect = BattleEffect::NoCasting;
 const CLOAK: BattleEffect = BattleEffect::SpellLevelLimit { max_level: 2 };
 
 /// A hero without spells whose effects are `effects`.
-fn wearer(r: &Ruleset, effects: &[BattleEffect]) -> Option<BattleHero> {
+fn wearer(r: &BattleRuleset, effects: &[BattleEffect]) -> Option<BattleHero> {
     let mut h = hero(r);
     h.effects = effects.to_vec();
     Some(h)
 }
 
 /// The spells of `names` as a set.
-fn set(r: &Ruleset, names: &[&str]) -> SpellSet {
+fn set(r: &BattleRuleset, names: &[&str]) -> SpellSet {
     let mut out = SpellSet::default();
     for name in names {
         out.insert(spell(r, name));
@@ -40,7 +40,7 @@ fn set(r: &Ruleset, names: &[&str]) -> SpellSet {
 }
 
 /// The stacks the active stack of `side` may cast at or raise now, by id or hex index.
-fn targets(s: &BattleState, r: &Ruleset, side: BattleSide) -> Vec<u8> {
+fn targets(s: &BattleState, r: &BattleRuleset, side: BattleSide) -> Vec<u8> {
     let mut out = CastTargets::new();
     creature_cast_targets(s, r, side, &mut out);
     out.iter()
@@ -53,7 +53,7 @@ fn targets(s: &BattleState, r: &Ruleset, side: BattleSide) -> Vec<u8> {
 }
 
 /// Deals `damage` to stack `id` as a strike would, and marks the corpses.
-fn hurt(s: &mut BattleState, r: &Ruleset, id: u8, damage: u64) {
+fn hurt(s: &mut BattleState, r: &BattleRuleset, id: u8, damage: u64) {
     let mut events = Vec::new();
     apply_damage(s.at_mut(StackId(id)), damage);
     effects::damaged(s, r, StackId(id), &mut events);
@@ -69,7 +69,7 @@ fn periodic(events: &[Event]) -> usize {
 }
 
 /// The active stack attacks `target` from `(x, y)`.
-fn hit(s: &mut BattleState, r: &Ruleset, target: u8, (x, y): (i32, i32)) -> Vec<Event> {
+fn hit(s: &mut BattleState, r: &BattleRuleset, target: u8, (x, y): (i32, i32)) -> Vec<Event> {
     act(
         s,
         r,

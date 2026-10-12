@@ -5,11 +5,12 @@
 //! §7.24) and without it (`base:strict-fixed`: exact).
 
 use h3_battle::{BattleState, observe};
-use h3_content::{Formation, Ruleset};
+use h3_content::Formation;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 use h3_heroes::{HeroDetails, derive_battle_hero};
 
-fn sod(profile: &str) -> Ruleset {
+fn sod(profile: &str) -> BattleRuleset {
     h3_pack::compile(
         &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
         profile,
@@ -19,7 +20,7 @@ fn sod(profile: &str) -> Ruleset {
 
 /// The Eagle Eye chance, percent, of `hero` at `level` with the skill at `skill` wearing
 /// `worn`, as a battle it leads shows it to its own side.
-fn chance(r: &Ruleset, (hero, level): (&str, u8), skill: u8, worn: &[&str]) -> u8 {
+fn chance(r: &BattleRuleset, (hero, level): (&str, u8), skill: u8, worn: &[&str]) -> u8 {
     let details = HeroDetails {
         hero_type: r.hero_type_by_key(hero).unwrap(),
         level,

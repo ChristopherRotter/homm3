@@ -5,7 +5,8 @@
 //! (`mana_channel`), and a Wraith takes mana from the enemy hero at its activations
 //! (`mana_drain`).
 
-use h3_content::{Ability, AuraTarget, Ruleset, Spell};
+use h3_content_battle::BattleSpell;
+use h3_content_battle::{Ability, AuraTarget, BattleRuleset};
 use h3_contracts::{BattleSetup, BattleSide};
 
 use crate::event::{Event, EventKind, Sink};
@@ -18,7 +19,7 @@ use crate::state::{BattleState, StackId, StackTraits};
 /// battle's end, not the battle's stacks: a stack that died still counts and a stack created in
 /// the battle never does (BAT-QUIRK-15, the rule).
 // rule: BAT-MAG-054
-pub(crate) fn cost_change(ruleset: &Ruleset, setup: &BattleSetup, side: BattleSide) -> i8 {
+pub(crate) fn cost_change(ruleset: &BattleRuleset, setup: &BattleSetup, side: BattleSide) -> i8 {
     let (mut up, mut down) = (0i8, 0i8);
     for army in BattleSide::BOTH {
         let own = army == side;
@@ -40,7 +41,7 @@ pub(crate) fn cost_change(ruleset: &Ruleset, setup: &BattleSetup, side: BattleSi
 /// at that mastery changed by the armies' `change` ([`cost_change`]), at least 1; a spell that
 /// costs nothing (Titan's Lightning Bolt) stays free.
 // rule: BAT-MAG-054
-pub(crate) fn cost(spell: &Spell, mastery: u8, change: i8) -> u16 {
+pub(crate) fn cost(spell: &BattleSpell, mastery: u8, change: i8) -> u16 {
     let base = spell.cost[usize::from(mastery)];
     if base == 0 {
         return 0;
@@ -58,7 +59,7 @@ pub(crate) fn cost(spell: &Spell, mastery: u8, change: i8) -> u16 {
 // rule: BAT-MAG-055
 pub(crate) fn channel<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (caster, cost): (BattleSide, u16),
     sink: &mut S,
 ) {
@@ -94,7 +95,7 @@ pub(crate) fn channel<S: Sink>(
 // rule: BAT-MAG-056
 pub(crate) fn drain<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     id: StackId,
     sink: &mut S,
 ) {

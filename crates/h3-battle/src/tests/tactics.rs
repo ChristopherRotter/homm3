@@ -3,7 +3,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BallistaControl, BattleHero, BattleSide, TentControl};
 
 use super::support::*;
@@ -13,21 +13,26 @@ use crate::{
 };
 
 /// The test hero with Tactics at `level`.
-fn tactician(r: &Ruleset, level: u8) -> BattleHero {
+fn tactician(r: &BattleRuleset, level: u8) -> BattleHero {
     let mut h = hero(r);
     h.tactics = level;
     h
 }
 
 /// A setup whose sides are led by heroes with these Tactics levels (`None`: no hero).
-fn led(r: &Ruleset, attacker: &[Spec], defender: &[Spec], levels: [Option<u8>; 2]) -> BattleSetup {
+fn led(
+    r: &BattleRuleset,
+    attacker: &[Spec],
+    defender: &[Spec],
+    levels: [Option<u8>; 2],
+) -> BattleSetup {
     BattleSetup {
         heroes: levels.map(|l| l.map(|l| tactician(r, l))),
         ..setup(r, attacker, defender)
     }
 }
 
-fn start(r: &Ruleset, s: &BattleSetup) -> (BattleState, Vec<Event>) {
+fn start(r: &BattleRuleset, s: &BattleSetup) -> (BattleState, Vec<Event>) {
     let mut events = Vec::new();
     let state = BattleState::start(r, s, 1, &mut events).unwrap();
     (state, events)
@@ -41,7 +46,7 @@ fn active(s: &BattleState) -> u8 {
     s.active().unwrap().0
 }
 
-fn moves(s: &BattleState, r: &Ruleset) -> Vec<Hex> {
+fn moves(s: &BattleState, r: &BattleRuleset) -> Vec<Hex> {
     let mut legal = LegalCommands::new();
     legal_commands(s, r, s.side_to_act().unwrap(), &mut legal);
     legal

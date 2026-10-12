@@ -4,7 +4,8 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{Ruleset, SpellScope};
+use h3_content::SpellScope;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleEffect, BattleSetup};
 
 use super::spells::{mage, spell};
@@ -15,7 +16,7 @@ use crate::{BattleState, CastTarget, Command, Event, EventKind, StackId};
 
 /// Gives stack `id` the timed effect of `name` cast at `mastery` for five rounds (Frenzy: by
 /// its own turns).
-fn give(s: &mut BattleState, r: &Ruleset, id: u8, name: &str, mastery: u8) {
+fn give(s: &mut BattleState, r: &BattleRuleset, id: u8, name: &str, mastery: u8) {
     let id_of = spell(r, name);
     let cast = TimedCast {
         id: id_of,
@@ -30,7 +31,7 @@ fn give(s: &mut BattleState, r: &Ruleset, id: u8, name: &str, mastery: u8) {
 /// A battle of `attacker` against `defender` with the stacks at `positions` (stack-id order),
 /// the first attacker stack active.
 fn field_of(
-    r: &Ruleset,
+    r: &BattleRuleset,
     attacker: &[Spec],
     defender: &[Spec],
     positions: &[(i32, i32)],
@@ -44,7 +45,7 @@ fn field_of(
 }
 
 /// The active stack attacks `target` from `(x, y)`.
-fn hit(s: &mut BattleState, r: &Ruleset, target: u8, (x, y): (i32, i32)) -> Vec<Event> {
+fn hit(s: &mut BattleState, r: &BattleRuleset, target: u8, (x, y): (i32, i32)) -> Vec<Event> {
     let from = at(r, x, y);
     act(
         s,
@@ -116,7 +117,7 @@ fn fire_shield_reflects_a_share_of_the_first_stage_capped_at_the_targets_health_
     assert_eq!(tank_reflects("t:original", 1), [(0, 20, 2)]);
     // 10 Fixed (stage 1: 20, dealt: 15) on a shielded Tank: with quirk Q-0010 4 back (20 % of
     // the first stage), without it 3 (of the damage dealt); batch 2b R3: 60 of 300, not 30.
-    let tank = |r: &Ruleset| {
+    let tank = |r: &BattleRuleset| {
         let mut s = field_of(r, &[(0, "fixed", 10)], &[(0, "tank", 1)], &[(7, 5), (8, 5)]);
         give(&mut s, r, 1, "fireshield", 1);
         let events = hit(&mut s, r, 1, (7, 5));

@@ -5,7 +5,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleHero, BattleResult, BattleSide, StackOrigin, StackRecord};
 
 use super::spells::{arena, mage, spell, stack};
@@ -22,7 +22,7 @@ use crate::{
 
 /// A mage with the spells that create stacks and Sacrifice, air mastery `air`, fire mastery
 /// `fire`, power 3, 100 mana.
-fn creator(r: &Ruleset, air: u8, fire: u8) -> BattleHero {
+fn creator(r: &BattleRuleset, air: u8, fire: u8) -> BattleHero {
     let mut h = mage(r, &["copy", "sprites", "serfs", "offering"]);
     h.magic.masteries = masteries(r, [air, fire, 0, 0]);
     h.magic.mana = 100;
@@ -30,7 +30,7 @@ fn creator(r: &Ruleset, air: u8, fire: u8) -> BattleHero {
 }
 
 /// The stacks `side` may aim `name` at now, by id.
-fn targets(s: &BattleState, r: &Ruleset, side: BattleSide, name: &str) -> Vec<u8> {
+fn targets(s: &BattleState, r: &BattleRuleset, side: BattleSide, name: &str) -> Vec<u8> {
     let mut out = CastTargets::new();
     cast_targets(s, r, side, spell(r, name), &mut out);
     out.iter()
@@ -44,7 +44,7 @@ fn targets(s: &BattleState, r: &Ruleset, side: BattleSide, name: &str) -> Vec<u8
 /// The side to act casts `name` at `target`; its hero may cast again this round.
 fn cast(
     s: &mut BattleState,
-    r: &Ruleset,
+    r: &BattleRuleset,
     name: &str,
     target: CastTarget,
 ) -> Result<Vec<Event>, CommandError> {
@@ -92,7 +92,7 @@ fn vanished(events: &[Event]) -> Vec<(u8, u32)> {
 }
 
 /// Deals `damage` to stack `id` as a strike would.
-fn hurt(s: &mut BattleState, r: &Ruleset, id: u8, damage: u64) -> Vec<Event> {
+fn hurt(s: &mut BattleState, r: &BattleRuleset, id: u8, damage: u64) -> Vec<Event> {
     let mut events = Vec::new();
     apply_damage(s.at_mut(StackId(id)), damage);
     effects::damaged(s, r, StackId(id), &mut events);
@@ -219,7 +219,7 @@ fn a_clone_goes_to_the_first_free_hex_along_the_rays() {
 /// serfs of the defender at (1, 0), every standable hex but the ogres', `free` and the serfs'
 /// blocked when `free` is given, else rows 3 to 7 from column 9 on but the ogres' hexes and the
 /// hex in front of them.
-fn walled(r: &Ruleset, ogres: u32, free: Option<&[(i32, i32)]>) -> BattleState {
+fn walled(r: &BattleRuleset, ogres: u32, free: Option<&[(i32, i32)]>) -> BattleState {
     let mut s = arena(
         r,
         [Some(creator(r, 1, 0)), None],
@@ -490,7 +490,7 @@ fn the_search_from_a_two_hex_stacks_head_skips_the_way_to_its_tail_in_rings_1_an
 #[test]
 fn a_clone_vanishes_when_its_rounds_run_out_or_its_original_dies() {
     let r = ruleset();
-    let new = |r: &Ruleset| {
+    let new = |r: &BattleRuleset| {
         let mut s = arena(
             r,
             [Some(creator(r, 1, 0)), None],
@@ -994,7 +994,7 @@ fn a_clone_takes_no_anti_magic_reflects_one_hit_point_and_is_struck_no_more_once
     guard.magic.mana = 100;
     // A Hydra (head at (7, 5)) next to the defender's serfs at (8, 5) and their clone, top left of
     // them at (7, 4).
-    let new = |r: &Ruleset| {
+    let new = |r: &BattleRuleset| {
         let mut s = arena(
             r,
             [None, Some(guard.clone())],

@@ -8,7 +8,7 @@
 
 use core::num::NonZeroU64;
 
-use h3_content::BattleParams;
+use h3_content_battle::BattleParams;
 use h3_contracts::Rate;
 use h3_kernel::Rng;
 use h3_kernel::arith::{

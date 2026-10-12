@@ -4,7 +4,8 @@
 
 use std::vec::Vec;
 
-use h3_content::{ObstacleKind, Ruleset, SpellScope};
+use h3_content::SpellScope;
+use h3_content_battle::{BattleRuleset, ObstacleKind};
 use h3_contracts::{BattleEffect, BattleHero, BattleResult, BattleSide};
 
 use super::spells::{arena, mage, spell, stack};
@@ -16,7 +17,7 @@ use crate::{
 };
 
 /// A mage with `spells`, the masteries `[air, fire]` and 100 mana.
-fn caster(r: &Ruleset, spells: &[&str], [air, fire]: [u8; 2]) -> BattleHero {
+fn caster(r: &BattleRuleset, spells: &[&str], [air, fire]: [u8; 2]) -> BattleHero {
     let mut h = mage(r, spells);
     h.magic.masteries = masteries(r, [air, fire, 0, 0]);
     h.magic.mana = 100;
@@ -24,7 +25,7 @@ fn caster(r: &Ruleset, spells: &[&str], [air, fire]: [u8; 2]) -> BattleHero {
 }
 
 /// The hexes at `cells` as a set.
-fn set(r: &Ruleset, cells: &[(i32, i32)]) -> HexSet {
+fn set(r: &BattleRuleset, cells: &[(i32, i32)]) -> HexSet {
     let mut out = HexSet::new();
     for &(x, y) in cells {
         out.insert(at(r, x, y));
@@ -33,7 +34,13 @@ fn set(r: &Ruleset, cells: &[(i32, i32)]) -> HexSet {
 }
 
 /// Makes stack `id` active and casts `name` at the hex `(x, y)` for its side; returns the events.
-fn raise(s: &mut BattleState, r: &Ruleset, id: u8, name: &str, (x, y): (i32, i32)) -> Vec<Event> {
+fn raise(
+    s: &mut BattleState,
+    r: &BattleRuleset,
+    id: u8,
+    name: &str,
+    (x, y): (i32, i32),
+) -> Vec<Event> {
     activate(s, id);
     act(
         s,
@@ -86,12 +93,12 @@ fn moves(events: &[Event]) -> Vec<(u8, Hex, Hex)> {
 }
 
 /// A walk of the active stack to `(x, y)`.
-fn walk(r: &Ruleset, (x, y): (i32, i32)) -> Command {
+fn walk(r: &BattleRuleset, (x, y): (i32, i32)) -> Command {
     Command::Move { to: at(r, x, y) }
 }
 
 /// Plays Defend for every stack until round `round` starts; returns the events.
-fn until_round(s: &mut BattleState, r: &Ruleset, round: u16) -> Vec<Event> {
+fn until_round(s: &mut BattleState, r: &BattleRuleset, round: u16) -> Vec<Event> {
     let mut events = Vec::new();
     while s.round() < round {
         events.extend(act(s, r, Command::Defend).unwrap());
@@ -249,7 +256,7 @@ fn fire_walls_are_one_obstacle_per_hex_and_mirrored_for_the_defender() {
 /// damage to each stack that enters one), then the attacker's stacks were placed: `attacker` and
 /// `defender` as in [`arena`], the first attacker stack active.
 fn burning_with(
-    r: &Ruleset,
+    r: &BattleRuleset,
     heroes: [Option<BattleHero>; 2],
     attacker: &[(&'static str, u32, i32, i32)],
     defender: &[(&'static str, u32, i32, i32)],
@@ -276,7 +283,7 @@ fn burning_with(
 
 /// [`burning_with`] the defender's caster only.
 fn burning(
-    r: &Ruleset,
+    r: &BattleRuleset,
     attacker: &[(&'static str, u32, i32, i32)],
     defender: &[(&'static str, u32, i32, i32)],
 ) -> BattleState {
@@ -628,7 +635,7 @@ fn berserk_stacks_burn_like_commanded_ones() {
 
 #[test]
 fn steps_and_targets_convert() {
-    use h3_content::HexStep;
+    use h3_content_battle::HexStep;
 
     use crate::Direction;
     let directions: Vec<Direction> = HexStep::ALL

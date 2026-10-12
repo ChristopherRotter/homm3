@@ -7,7 +7,8 @@ use std::vec::Vec;
 
 use core::num::NonZeroU32;
 
-use h3_content::{Ruleset, SpellId};
+use h3_content::SpellId;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleEffect, BattleHero, BattleResult, BattleSide, EagleEye, Rate};
 
 use super::spells::{arena, cast, mage, spell, stack};
@@ -16,7 +17,7 @@ use crate::magic::HeroMagic;
 use crate::{BattleState, HeroError, SetupError};
 
 /// A mage with the bolt and an Eagle Eye of `chance_bp` for `spells`.
-fn watcher(r: &Ruleset, chance_bp: u32, spells: &[&str]) -> BattleHero {
+fn watcher(r: &BattleRuleset, chance_bp: u32, spells: &[&str]) -> BattleHero {
     let mut h = mage(r, &["bolt"]);
     h.magic.eagle_eye = Some(EagleEye {
         chance: Rate::bp(chance_bp),
@@ -26,7 +27,7 @@ fn watcher(r: &Ruleset, chance_bp: u32, spells: &[&str]) -> BattleHero {
 }
 
 /// A battle of two mages, the attacker's stack active: `heroes`, one stack each.
-fn duel(r: &Ruleset, heroes: [Option<BattleHero>; 2], seed: u64) -> BattleState {
+fn duel(r: &BattleRuleset, heroes: [Option<BattleHero>; 2], seed: u64) -> BattleState {
     arena(
         r,
         heroes,

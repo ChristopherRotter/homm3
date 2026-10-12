@@ -137,7 +137,7 @@ dev_external = []
 [crate.h3-battle]
 layer = "domain"
 logic = true
-deps = ["h3-kernel", "h3-content", "h3-contracts"]
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts"]
 external = []
 dev_deps = []
 dev_external = ["proptest"]
@@ -193,10 +193,11 @@ external = ["serde", "toml"]
 dev_deps = []
 dev_external = []
 
+# h3-content-battle: the battle half of each pack.toml, until the pack splits (R01).
 [crate.h3-pack]
 layer = "adapter"
 logic = false
-deps = ["h3-kernel", "h3-content", "h3-contracts"]
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts"]
 external = ["serde", "toml"]
 dev_deps = ["h3-heroes", "h3-battle"]  # hero details and their battle effects checked against the harvested packs
 dev_external = []

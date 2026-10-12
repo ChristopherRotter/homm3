@@ -8,7 +8,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{BattleParamsDef, Ruleset};
+use h3_content_battle::{BattleParamsDef, BattleRuleset};
 
 use super::support::*;
 use crate::event::StrikeFlags;
@@ -37,7 +37,7 @@ fn values(s: &BattleState) -> Vec<(i8, i8)> {
     s.stacks().iter().map(|s| (s.morale, s.luck)).collect()
 }
 
-fn morale_of(r: &Ruleset, attacker: &[Spec]) -> Vec<i8> {
+fn morale_of(r: &BattleRuleset, attacker: &[Spec]) -> Vec<i8> {
     let s = battle(r, attacker, &[(0, "fixed", 1)], 1);
     s.stacks()[..attacker.len()]
         .iter()
@@ -57,7 +57,7 @@ fn bad(k: &EventKind) -> bool {
     matches!(k, EventKind::BadMorale { .. })
 }
 
-fn move_to(s: &mut BattleState, r: &Ruleset, x: i32, y: i32) -> Vec<Event> {
+fn move_to(s: &mut BattleState, r: &BattleRuleset, x: i32, y: i32) -> Vec<Event> {
     let to = at(r, x, y);
     act(s, r, Command::Move { to }).unwrap()
 }
@@ -249,7 +249,7 @@ fn strikes(events: &[Event]) -> Vec<(u8, u8, u64, StrikeFlags)> {
         .collect()
 }
 
-fn attack_from_7_5(s: &mut BattleState, r: &Ruleset, target: u8) -> Vec<Event> {
+fn attack_from_7_5(s: &mut BattleState, r: &BattleRuleset, target: u8) -> Vec<Event> {
     let from = at(r, 7, 5);
     act(
         s,
