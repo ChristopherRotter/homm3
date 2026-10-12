@@ -848,9 +848,12 @@ fn admits(
 }
 
 /// Whether the mass version of `spell` at `mastery` passes over stack `s` because it is
-/// hypnotized (BAT-MAG-026; the original's mass handler 0x5A66D0 and Expert Cure's loop skip
-/// them, `installation.md` §7.14): with quirk Q-0012 every mass version does, without it those
-/// whose dispel does not end the stack's Hypnotize (Cure's does).
+/// hypnotized (BAT-MAG-026, `installation.md` §7.14). The original's mass handler of the timed
+/// spells (0x5A66D0) and Expert Cure's loop skip hypnotized stacks; Dispel's own loop over both
+/// sides' stacks (from 0x5A160F) reads no Hypnotize. So the mass version of a spell that only
+/// dispels (Dispel) never does (BAT-MAG-016; E04b T11b review); of the others, with quirk Q-0012
+/// every one does, without it those whose dispel does not end the stack's Hypnotize (Cure's
+/// does).
 fn skips_hypnotized(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -859,7 +862,8 @@ fn skips_hypnotized(
 ) -> bool {
     let mass = spell.magic.target == SpellTarget::Stack
         && target_at(ruleset, spell, mastery) == SpellTarget::None;
-    if !mass {
+    // rule: BAT-MAG-016
+    if !mass || spell.magic.effects == [SpellEffect::Dispel] {
         return false;
     }
     let hypnosis = SpellEffect::Timed(TimedChange::Hypnotize);

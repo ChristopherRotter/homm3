@@ -111,9 +111,10 @@ pub const FIRE_SHIELD_FIRST_STAGE: QuirkFlag = QuirkFlag(6);
 /// Advanced (BAT-MAG-023).
 pub const EARLY_MASS_VERSION: QuirkFlag = QuirkFlag(7);
 
-/// Q-0012 (S-13): every mass version skips hypnotized stacks, also one whose dispel ends
+/// Q-0012 (S-13): a mass version skips hypnotized stacks also when its dispel would end their
 /// Hypnotize (Expert Cure), which the clean version lets reach the caster's hypnotized stacks
-/// (BAT-MAG-026).
+/// (BAT-MAG-026). Not the mass version of a spell that only dispels: Expert Dispel reaches
+/// hypnotized stacks with and without the flag, as the original's does (BAT-MAG-016).
 pub const MASS_CURE_SKIPS_HYPNOTIZED: QuirkFlag = QuirkFlag(8);
 
 /// BAT-QUIRK-1: a side sees the other side's hidden obstacles (Quicksand) if it had a stack on

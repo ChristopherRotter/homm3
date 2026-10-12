@@ -653,12 +653,53 @@ fn mass_versions_pass_over_hypnotized_stacks_and_expert_cure_only_with_q0012() {
         (hypnotized, hasted)
     };
     // Expert Cure reaches the caster's hypnotized stack without quirk Q-0012, not with it; the
-    // other mass versions never do.
+    // mass versions of the timed spells never do (Expert Dispel always does: the next test).
     assert_eq!(run("t:faithful", 3, CastTarget::None), (false, false));
     assert_eq!(run("t:hypnosis", 3, CastTarget::None), (true, false));
     // A single Cure from its owner ends Hypnotize in every profile.
     assert_eq!(run("t:faithful", 1, stack(1)), (false, false));
     assert_eq!(run("t:hypnosis", 1, stack(1)), (false, false));
+}
+
+/// E04b T11b review (F-r2a-2, F-r3-control-battlefield-3): Expert Dispel reaches hypnotized
+/// stacks in every profile. The original's Dispel has a loop of its own over both sides' stacks
+/// (the reviewers' reading of its handler 0x5A15CE), which tests no Hypnotize, unlike the mass
+/// handler of the timed spells and Expert Cure's loop; VCMI's Dispel has no such exception
+/// either. With quirk Q-0012 the engine passed over them, as if Dispel were Cure: a mass Dispel,
+/// the natural answer to Hypnotize, did nothing to it.
+// covers: BAT-MAG-016, BAT-MAG-026
+#[test]
+fn expert_dispel_reaches_hypnotized_stacks_in_every_profile() {
+    for profile in ["t:faithful", "t:hypnosis"] {
+        let r = ruleset_with(profile, |_| {});
+        // Ids: 0 fixed (attacker); 1 fixed (hypnotized and hastened), 2 fixed (defender). What
+        // stack 1 is left with after an Expert Dispel of the hero among `heroes`, cast in the
+        // turn of stack `active`: its effects and its controller.
+        let after = |heroes: [Option<BattleHero>; 2], active: u8| {
+            let mut s = arena(
+                &r,
+                heroes,
+                &[("fixed", 5, 2, 5)],
+                &[("fixed", 5, 9, 5), ("fixed", 5, 10, 7)],
+                1,
+            );
+            give(&mut s, &r, (1, "hypnotize"), 1);
+            give(&mut s, &r, (1, "haste"), 1);
+            assert_eq!(on(&s, &r, 1), ["haste", "hypnotize"]);
+            activate(&mut s, active);
+            act(&mut s, &r, cast(&r, "dispel", CastTarget::None)).unwrap();
+            (on(&s, &r, 1), s.stacks()[1].controller())
+        };
+        let hero = || Some(adept(&r, &["dispel"], 3));
+        // Whether its owner's hero casts or the hero of the side that controls it: its Hypnotize
+        // ends, and its other effect too.
+        let free = (Vec::new(), BattleSide::Defender);
+        assert_eq!(
+            [after([None, hero()], 2), after([hero(), None], 0)],
+            [free.clone(), free],
+            "{profile}"
+        );
+    }
 }
 
 // covers: BAT-MAG-026
