@@ -248,6 +248,122 @@ fn a_side_whose_first_stack_is_passed_over_casts_at_its_next_stack() {
     assert_eq!(s.active(), Some(StackId(3)));
 }
 
+// covers: BAT-MAG-068, BAT-MOR-004, BAT-MAG-060
+#[test]
+fn a_side_whose_first_stack_freezes_casts_at_the_first_stack_that_takes_its_turn() {
+    use h3_content::{AbilityDef, ContentKey};
+    // E04b T11b review (r6 F-6): bad morale and Fear pass a stack over before the activation
+    // that casts its side's opening spells, as the original activates only after its pick's
+    // checks. Over 40 battles each (only the defender has a hero, so the attacker's `fast` is
+    // the battle's first stack and the defender's two follow): when the defender's first stack
+    // freezes after the attacker's Defend and its second does not, the cast follows the second
+    // one's turn start; when both freeze, nothing is cast in that command.
+    let waited = |r: &Ruleset, setup: &BattleSetup, (first, second): (u8, u8)| {
+        let mut waited = 0;
+        for seed in 0..40 {
+            let mut s = BattleState::start(r, setup, seed, &mut Vec::<Event>::new()).unwrap();
+            let events = act(&mut s, r, Command::Defend).unwrap();
+            let frozen = |id: u8| {
+                let stack = StackId(id);
+                events.iter().position(|e| {
+                    e.kind == EventKind::BadMorale { stack }
+                        || e.kind == EventKind::Frightened { stack }
+                })
+            };
+            let started = |id: u8| {
+                let turn = EventKind::TurnStarted { stack: StackId(id) };
+                events.iter().position(|e| e.kind == turn).unwrap()
+            };
+            let cast = events.iter().position(|e| {
+                let defender = BattleSide::Defender;
+                matches!(e.kind, EventKind::OpeningSpell { side, .. } if side == defender)
+            });
+            match (frozen(first), frozen(second)) {
+                (None, _) => assert!(started(first) < cast.unwrap(), "{seed}"),
+                (Some(freeze), None) => {
+                    assert!(
+                        freeze < started(second) && started(second) < cast.unwrap(),
+                        "{seed}"
+                    );
+                    assert_eq!(s.active(), Some(StackId(second)), "{seed}");
+                    waited += 1;
+                }
+                (Some(_), Some(_)) => assert_eq!(cast, None, "{seed}"),
+            }
+        }
+        waited
+    };
+    // Bad morale: the defender's hero takes 3 morale from its stacks; a third of the picks of a
+    // stack with bad morale freeze it.
+    let r = ruleset_with("t:faithful", |b| b.bad_morale_chances = vec![8, 8, 8]);
+    let mut sad = [None, heroes(&r)[1].clone()];
+    sad[1].as_mut().unwrap().effects.push(BattleEffect::Morale {
+        amount: -3,
+        affects: h3_content::Affects::Own,
+    });
+    assert!(waited(&r, &armies(&r, sad), (2, 3)) > 0);
+    // Fear: a spook of the attacker's (stack 2, speed 4) frightens half of the picks of the
+    // defender's stacks (3 and 4).
+    let key = |name: &str| ContentKey::new("t", name).unwrap();
+    let r = ruleset_from(
+        "t:faithful",
+        |_| {},
+        |pack| {
+            let spook = pack.creatures.iter_mut().find(|c| c.key == key("spook"));
+            spook.unwrap().info.abilities = vec![AbilityDef::Fear { percent: 50 }];
+        },
+    );
+    let scared = BattleSetup {
+        heroes: [None, heroes(&r)[1].clone()],
+        ..setup(
+            &r,
+            &[(0, "fast", 10), (1, "slow", 10), (2, "spook", 1)],
+            &[(0, "dragon", 1), (1, "flyer", 10)],
+        )
+    };
+    assert!(waited(&r, &scared, (3, 4)) > 0);
+}
+
+// covers: BAT-MAG-068, BAT-MAG-053
+#[test]
+fn the_opening_spells_come_before_the_enchanters_own_cast() {
+    // E04b T11b review (r6 F-6): the activation casts the side's opening spells before the
+    // Enchanters count the spells that are of use. Chanters whose hero opens with Slow never
+    // draw Slow, which is on every enemy stack by then; without the hero they draw it in some
+    // of 60 battles.
+    let r = ruleset();
+    let slow = spell(&r, "sloth");
+    let drawn = |hero: Option<BattleHero>| {
+        let opens = hero.is_some();
+        let setup = BattleSetup {
+            heroes: [hero, None],
+            ..setup(&r, &[(0, "chanter", 5)], &[(0, "fixed", 10)])
+        };
+        let mut slows = 0;
+        for seed in 0..60 {
+            let mut events = Vec::new();
+            BattleState::start(&r, &setup, seed, &mut events).unwrap();
+            let opening = events
+                .iter()
+                .position(|e| matches!(e.kind, EventKind::OpeningSpell { .. }));
+            let (own, cast) = events
+                .iter()
+                .enumerate()
+                .find_map(|(i, e)| match e.kind {
+                    EventKind::PeriodicCast { spell, .. } => Some((i, spell)),
+                    _ => None,
+                })
+                .unwrap();
+            assert_eq!(opening.is_some(), opens, "{seed}");
+            assert!(opening.is_none_or(|o| o < own), "{seed}");
+            slows += u32::from(cast == slow);
+        }
+        slows
+    };
+    assert_eq!(drawn(Some(wearer(&r, vec![opening(&r, "sloth", 50)]))), 0);
+    assert!(drawn(None) > 0);
+}
+
 // covers: BAT-MAG-068
 #[test]
 fn the_opening_spells_wait_for_the_end_of_the_tactics_phase() {
