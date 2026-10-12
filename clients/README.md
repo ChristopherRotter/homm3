@@ -4,14 +4,18 @@ Everything with graphics, sound, input or a window lives here, outside the engin
 core (`crates/`) stays headless, deterministic and free of assets; clients use it through its
 public crates and, later, through the server's protocol.
 
-**State:** refined (E17, 2026-10-12), nothing built yet. Decisions: the epic file
-`docs/epics/E17-clients.md` and the ADR draft `docs/lanes/client/adr-drafts/client.md`; tasks in
-`docs/lanes/client/QUEUE.md`.
+**State:** E17 M0 in progress (2026-10-12): the workspace builds (M0 T1); the crates hold no code
+yet. Decisions: the epic file `docs/epics/E17-clients.md` and the ADR draft
+`docs/lanes/client/adr-drafts/client.md`; tasks in `docs/lanes/client/QUEUE.md`.
 
 ## Layout
 
 A separate Cargo workspace with its own `Cargo.toml` and `Cargo.lock`, excluded from the engine
-workspace (root `Cargo.toml`: `exclude = ["clients"]`) and with its own CI job. Planned (E17 M0):
+workspace (root `Cargo.toml`: `exclude = ["clients"]`) and with its own CI job. Run everything
+from `clients/`: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`,
+`cargo deny check`. The engine's lints are copied into `clients/Cargo.toml`; the engine's
+`clippy.toml`, `rustfmt.toml` and `rust-toolchain.toml` at the repository root apply as they are
+(the tools search the parent directories).
 
 | Path | What |
 |---|---|
@@ -23,8 +27,11 @@ workspace (root `Cargo.toml`: `exclude = ["clients"]`) and with its own CI job. 
 | `clients/out/` | local output (renders, reports); gitignored |
 
 The decoders, the compositor and the scene model are pure (no I/O, clock or threads; time is an
-input) and tested on synthetic data. The first client is a battle replay viewer on the real
-assets; a full game record/replay viewer follows.
+input) and tested on synthetic data: the libraries of `h3-assets`, `h3-render` and `h3-view` are
+`no_std` and carry the engine's logic lint header, which `h3-view`'s `tests/purity.rs` checks (the
+engine's `check-arch` does not see this workspace). `h3-view`'s binary holds the adapters. The
+first client is a battle replay viewer on the real assets; a full game record/replay viewer
+follows.
 
 ## Asset policy
 

@@ -1,0 +1,54 @@
+# The client workspace (E17, clients/README.md, ADR draft docs/lanes/client/adr-drafts/client.md).
+# Separate from the engine workspace (the root Cargo.toml excludes `clients`): its own lockfile,
+# deny policy and CI job. Engine crates are path dependencies; their `workspace = true` fields
+# resolve from the engine's root manifest.
+[workspace]
+resolver = "3"
+members = ["crates/h3-assets", "crates/h3-render", "crates/h3-view"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+license = "GPL-2.0-or-later"
+publish = false
+
+[workspace.dependencies]
+# Client crates.
+h3-assets = { path = "crates/h3-assets" }
+h3-render = { path = "crates/h3-render" }
+# Engine crates (public crates only, ADR draft point 1). A change the client needs in one of them
+# goes through that crate's lane.
+h3-formats = { path = "../crates/h3-formats" }
+
+# The engine's lints (root Cargo.toml), unchanged. The engine's clippy.toml and rustfmt.toml at the
+# repository root apply here too (both tools search the parent directories).
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_debug_implementations = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+disallowed_types = "deny"
+disallowed_methods = "deny"
+disallowed_macros = "deny"
+
+# The engine's codegen settings (overflow checks on in release too, ADR-0003 §6).
+[profile.dev]
+opt-level = 0
+debug = true
+overflow-checks = true
+panic = "unwind"
+
+[profile.release]
+opt-level = 3
+debug = false
+lto = "thin"
+codegen-units = 16
+overflow-checks = true
+panic = "unwind"

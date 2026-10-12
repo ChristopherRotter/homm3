@@ -1,0 +1,15 @@
+[package]
+name = "h3-view"
+description = "The viewer: the scene model (messages to what is on screen at a time; pure, the library) and its adapters (the binary: the real-asset gate, the headless renderer, later the window)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+h3-assets.workspace = true
+h3-render.workspace = true
+
+[lints]
+workspace = true
