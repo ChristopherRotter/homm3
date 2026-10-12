@@ -46,7 +46,9 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 
 ### Server lane (`SRV-Q<n>`)
 
-(no open questions)
+#### SRV-Q22 — M4's checkpoint (E16 M4 T7)
+
+**Context.** M4 is done (T1–T7 with T5b and SRV-Q20; `docs/epics/E16-log.md`, T7's entry maps each exit criterion to its test). A fresh reviewer agent found no major defect; five minor ones are fixed in T7 (among them a bar of 60 s after a match given up, so declining again and again keeps no one from a match). **Questions.** (a) The review list (`docs/epics/E16-server.md`, "Review list for the M4 checkpoint"): accepted as built? (b) The reviewer's finding left open (`docs/lanes/server/QUEUE.md`, the inbox's first item): an agreed pause resumed early by one player is held for the other in memory only, so a server restart before its due time lets the absent player forfeit before it (pauses are off unless a ladder sets `pauses`). Options: a small task now (journal the hold, format 7, with a rule for when it ends), or later. (c) The two other review items (the rating order after a failed log write; a game whose journal stops writing): later, as placed? (d) What next: M5 waits for E08's increment 3 (the adventure lane is in increment 2); options: M6's refinement (discovery: server keys, the signed welcome, peers; its ADR draft decided there), a hardening round over the inbox's "later" items, or the lane rests. **Recommendation:** (a) as built; (b) a small task first; (c) later; (d) M6's refinement.
 
 ### Client lane (`CLT-Q<n>`)
 
