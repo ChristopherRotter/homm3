@@ -43,6 +43,7 @@ Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-00
 
 ## Inbox
 
+- 2026-10-12 (M4 T3a, the user; **SRV-Q20**, open): eager disconnect detection by server-side pings, wanted eventually; until then a silent drop's grace starts after the idle timeout, and a server-side outage can void ranked games or, with a total nearly spent, cost one a forfeit. Settle before T3b's ratings go live if possible.
 - 2026-10-12 (the user, SRV-Q19; **M5**): the turn timer against a connected player who stalls is a game rule (`h3-game`; E08 decision 8's system commands for turn timers); until then a ranked battle can be stalled (the epic's risks).
 - 2026-10-11 (M2 T5b; **later**, M4's refinement: the server's own bots send no messages): a separate rate for automated clients: an operator raises `messages_per_second` and `messages_per_address` meanwhile.
 - 2026-10-11 (M3's review; **later**): the player log's readers (every login, the games' lookups of display names and preferences) wait behind a write's sync under its one lock; `account_changes_per_address` bounds the writes. Split the lock (a read lock for the accounts, the file's own for the writes) if logins stall under load. And a rename an old-key session sent before a re-key's commit can still land while its answer is off the task: refuse account requests whose connection's key is no longer the account's.
