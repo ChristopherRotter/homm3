@@ -35,21 +35,21 @@ Map file: `E08-batch-1b.h3m`. Fill in the blanks below and keep this file; an ag
 
 | hero | load 1 | load 2 | load 3 | load 4 | load 5 | load 6 | load 7 | load 8 |
 |---|---|---|---|---|---|---|---|---|
-| Christian |   |   |   |   |   |   |   |   |
-| Rion |   |   |   |   |   |   |   |   |
-| Gem |   |   |   |   |   |   |   |   |
-| Torosar |   |   |   |   |   |   |   |   |
-| Pyre |   |   |   |   |   |   |   |   |
-| Arlach |   |   |   |   |   |   |   |   |
-| Gurnisson |   |   |   |   |   |   |   |   |
-| Gerwulf |   |   |   |   |   |   |   |   |
-| Verdish |   |   |   |   |   |   |   |   |
-| Orrin |   |   |   |   |   |   |   |   |
-| Mephala |   |   |   |   |   |   |   |   |
-| Fafner |   |   |   |   |   |   |   |   |
-| Rashka |   |   |   |   |   |   |   |   |
-| Tamika |   |   |   |   |   |   |   |   |
-| Crag Hack |   |   |   |   |   |   |   |   |
-| Sephinroth |   |   |   |   |   |   |   |   |
+| Christian |12|   |   |   |   |   |   |   |
+| Rion |12|   |   |   |   |   |   |   |
+| Gem |123|   |   |   |   |   |   |   |
+| Torosar |1|   |   |   |   |   |   |   |
+| Pyre |12|   |   |   |   |   |   |   |
+| Arlach |12|   |   |   |   |   |   |   |
+| Gurnisson |12|   |   |   |   |   |   |   |
+| Gerwulf |123|   |   |   |   |   |   |   |
+| Verdish |123|   |   |   |   |   |   |   |
+| Orrin |12|   |   |   |   |   |   |   |
+| Mephala |12|   |   |   |   |   |   |   |
+| Fafner |123|   |   |   |   |   |   |   |
+| Rashka |12|   |   |   |   |   |   |   |
+| Tamika |12|   |   |   |   |   |   |   |
+| Crag Hack |13|   |   |   |   |   |   |   |
+| Sephinroth |12|   |   |   |   |   |   |   |
 
-- anything odd: 
+- anything odd:

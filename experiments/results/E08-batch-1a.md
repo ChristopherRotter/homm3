@@ -23,11 +23,12 @@ Map file: `E08-batch-1a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- battle: Pikemen all dead, Angels all alive, Red's hero lost (yes/no): 
-- Blue's Q4a hero, day 1: green marks: 
-- red marks: 
-- did the hero stop on the last green mark: 
-- anything odd: 
+- battle: Pikemen all dead, Angels all alive, Red's hero lost (yes/no): yes
+- ~Blue's Q4a hero, day 1: green marks: ~~
+- ~red marks: ~~
+- ~did the hero stop on the last green mark: ~~
+- Blue's Q4a hero, day 1, actual movement points: 2000
+- anything odd:
 
 ## Q4b — Day 2: the same after a new day (ADV-Q4, ADV-MOV-002)
 
@@ -40,11 +41,12 @@ Map file: `E08-batch-1a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- battle: Pikemen all dead, Angels all alive, Red's hero lost (yes/no): 
-- Blue's Q4b hero, day 2: green marks: 
-- red marks: 
-- did the hero stop on the last green mark: 
-- anything odd: 
+- battle: Pikemen all dead, Angels all alive, Red's hero lost (yes/no):
+- ~Blue's Q4b hero, day 2: green marks: ~~
+- ~red marks: ~~
+- ~did the hero stop on the last green mark: ~~
+- Blue's Q4b hero, day 2, actual movement points: 2000
+- anything odd:
 
 ## Q4c — Day 1: the points after a slow stack is dismissed (control for Q4a and Q4b) (ADV-Q4, ADV-MOV-002)
 
@@ -57,10 +59,10 @@ Map file: `E08-batch-1a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- green marks: 
-- red marks: 
-- did the hero stop on the last green mark: 
-- anything odd: 
+- green marks:
+- red marks:
+- did the hero stop on the last green mark:
+- anything odd: There is no Q4c hero at all, but I can testify that dismissing or otherwise getting rid of (or gaining) a stack does not affect the movement points for that very day
 
 ## D2a — Off a road on grass onto swamp (ADV-Q3, D-2, ADV-MOV-003)
 
@@ -71,10 +73,10 @@ Map file: `E08-batch-1a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- green marks: 
-- red marks: 
-- did the hero stop on the last green mark: 
-- anything odd: 
+- green marks: 9
+- red marks: 5
+- did the hero stop on the last green mark: yes
+- anything odd:
 
 ## D2b — Off a road on swamp onto grass (ADV-Q3, D-2, ADV-MOV-003)
 
@@ -85,10 +87,10 @@ Map file: `E08-batch-1a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- green marks: 
-- red marks: 
-- did the hero stop on the last green mark: 
-- anything odd: 
+- green marks: 14
+- red marks: 2
+- did the hero stop on the last green mark: yes
+- anything odd:
 
 ## C0 — Control: grass only, the land table (ADV-MOV-001)
 
@@ -99,7 +101,7 @@ Map file: `E08-batch-1a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- green marks: 
-- red marks: 
-- did the hero stop on the last green mark: 
-- anything odd: 
+- green marks: 15
+- red marks: 1
+- did the hero stop on the last green mark: yes
+- anything odd:
