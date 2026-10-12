@@ -387,8 +387,9 @@ ranked game per player per ladder, bots exempt; no turn timer in M4 (a game rule
   `06-security.md`'s ladders and pings, the client lane's note, the reviewer agent (no major
   finding; five minor fixed, the bar after a match given up among them), the user's checkpoint
   (passed, SRV-Q22).
-- **T8 An agreed pause's hold across a restart** (SRV-Q22 (b), after the checkpoint): the hold of
-  a pause resumed early journaled and re-applied at a restore; journal format 7.
+- **T8 An agreed pause's hold across a restart** (done 2026-10-12, SRV-Q22 (b); `E16-log.md`):
+  the hold of a pause resumed early journaled (`Held`) and re-applied at a restore, over at its
+  due time; journal format 7, no wire change.
 
 ## Exit criteria (M4)
 

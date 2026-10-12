@@ -4,10 +4,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22). M4's detail: `E16-design.md` §11 (ADR-0019 points 4–9; no turn timer: a game rule, M5). **Next: M4 T8** (the pause's hold across a restart), then M6's refinement.
+- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22), M4 T8 too (the hold of a pause resumed early, across a restart). M4's detail: `E16-design.md` §11 (ADR-0019 points 4–9; no turn timer: a game rule, M5). **Next: M6's refinement** (discovery; with the user, `QUEUE.md`).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 20 since M4 T5b's bot opt-out; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 6 since M4 T6's `PauseAgreed`; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 20 since M4 T5b's bot opt-out; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 7 since M4 T8's `Held`; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. ADR-0019 (identity) was accepted at the M3 refinement; the discovery draft is decided at M6's.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -23,12 +23,12 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - `postcard` (and any format that is not self-describing) cannot decode `#[serde(tag = ...)]`, `untagged` or `flatten`: keep the wire types in serde's default enum form (SRV-Q5).
 - A 64-bit integer on the wire travels as a string (JavaScript clients lose precision above 2^53).
 - A wildcard arm after every variant of an enum still counts as one uncovered region (llvm-cov), and `#[coverage(off)]` is unstable: no fallback arms in `h3-protocol` (ADR-0018 point 5 as amended).
-- A test client that picks uniformly among the legal commands rarely ends a battle of the `full` scenario (mostly moves; the defender's stacks regenerate): pick among the strikes when there are any (`tests/session.rs`, `play`).
+- A test client picking uniformly among legal commands rarely ends a `full` battle (mostly moves; stacks regenerate): pick strikes when there are any (`tests/session.rs`, `play`).
 - A test `Client` answers pings only while it reads: one unread beyond `ping_timeout_ms` is dropped, and its late pong draws a reset that drops its unread frames.
-- Automated clients answer every turn at once and exceed the default 20 messages per second and the address's 40: end-to-end tests that play raise both (`tests.rs`, `fast()`).
+- Automated clients exceed the default rates (20 messages/s, 40 per address): end-to-end tests that play raise both (`tests.rs`, `fast()`).
 - A frame the game marks `left` is acted on only if the task passed the game exactly that many messages (`Bound::passed`): a join pipelined behind a refused one may take a seat, and leaving then would drop its `Joined` and the seat's token.
 - A game leaves the lobby only under the registry's lock, after its bound connections are counted down (`registry.rs`): deciding by the game's own connection list races a join that is already queued.
-- A socket closed over unread data is reset, and the reset makes the peer drop what it has not read yet (a `Goodbye`): the transport's close reads on for the peer's close (`net.rs`, `LINGER`). The flooding test catches a regression only in most runs, not all.
+- A socket closed over unread data is reset, and the reset makes the peer drop what it has not read yet (a `Goodbye`): the transport's close reads on for the peer's close (`net.rs`, `LINGER`); the flooding test catches a regression in most runs only.
 - A journal's line holds tokens: errors from reading one name the line and column, never its text (serde_json's messages quote values); a log line never carries a hash either (`journal.rs`).
 - No file I/O under the registry's lock (T5e): a game creates or reads its journal on its own thread (`game::launch`), and a new or resumed game's own opening is queued under the lock (`registry::Opening::first`) before anything else reaches it.
 - A finished game's replay is written by `game::finish` into the archive's directory its spectator setting names (`archive::dir`) and must then join the registry's archive (`Registry::archived`): a replay written elsewhere is neither listed nor trimmed.
@@ -37,30 +37,31 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Write-ahead order in a game's thread: drain the session's entries and sync them before `deliver`; anything new that changes what a restart must redo needs an `Entry`, or the restore diverges from what clients were told (T3's resume is one: `Entry::Resumed`).
 - The observation's mapping (`map/mod.rs`) names every field of the engine's types in patterns, without `..`: a field left out gets `name: _` under a comment with its reason. A field read through a method (`s.attack_now`) still needs its pattern entry.
 - The workspace's clippy bans `std::time::Instant` and `SystemTime` in every crate: the server uses `tokio::time::Instant`, and a file's age is `fs::metadata(p)?.modified()?.elapsed()` (a `Duration`, no type named).
-- A `watch::Receiver` whose sender is gone makes `wait_for` fail at once, again and again: a select arm on it must then never resolve (`net::stopped`), or a dropped `Running` would stop every connection.
+- A `watch::Receiver` whose sender is gone fails `wait_for` at once, repeatedly: a select arm on it must then never resolve (`net::stopped`).
 - A paused game has no thread: the registry's `Hosted::Paused` holds its tokens, and `registry::bind` restores it for a join. A game's thread ignores `ToGame::Open` (nothing changed until the join), or a resuming game, still paused, would pause again before its join.
 - An account's request is answered through `spawn_blocking`, the player log under its own lock (`accounts.rs`): never take the registry's lock there, and keep the signature check before the lock. The lock waits on the log's syncs: a game's thread asks `Accounts::get` outside the registry's lock (`game::seated`), never a connection's task.
 - A running server holds `<data>/lock` (`Running`, until `shutdown` returns): a test that starts a second server on the same data directory must shut the first down; the crash tests start on a copy (`crashed()`).
-- `Key::derive` costs 64 MiB and about a second in a debug build: tests use `Key::from_seed`, the test vector alone derives.
+- `Key::derive` costs 64 MiB and ~1 s in a debug build: tests use `Key::from_seed`.
 - `f64::exp` and `ln` are banned workspace-wide (ADR-0003 §3): Glicko-2 calls them behind a local `allow` (`rating.rs`); a rating is written to the ladder's log and read back, never recomputed.
 - A queued connection hears its queue only through its own channel (`registry::ToConn`, `(text, still queued)`), sent under the registry's lock with `try_send`; a message for a connection that answers nothing (`AcceptMatch` while the other has not) is `Routed::Passed`.
 - A ranked game's time moves only through `Session::elapse`, which the game's thread calls before every message, closed connection and tick (`game::run`): a new event must call it first. A game's end is `Session::over` (a forfeit leaves `result()` empty).
 - A server's bot account has no `key` (T5): a login, a re-key and `rebind` must never match it.
 - A paused journal's last write starts its deadline and an agreed pause's due time: never append to one.
-- A ranked game's end is told only by the host's verdict (`publish_replay`/`withhold_replay`): a new way for one to end must reach `finish`. A ladder's log names a game once (by id; `<data>/next-game`): never hand out ids below `GameIds::last`.
+- A pause's hold returns at a restore from `agreed_pause()` (paused) or `held_pause()` (resumed early: `Held`, ended by `elapse`); `game::resume` re-applies either.
+- A ranked game's end is told only by the host's verdict (`publish_replay`/`withhold_replay`): a new way to end must reach `finish`. A ladder's log names a game once (`<data>/next-game`): never hand out ids below `GameIds::last`.
 - **The workload is lane-only and follows `master`** (55 % battle engine; the full verify does not measure it): `verify --scope server` measures it at each session's start; a drift from `master` is re-baselined (`cargo xtask bench-check --update --workload session-random-play-full`), the range named in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
 - Windows refuses `set_len` through an `append(true)` handle: logs open `write(true)` and write at their end (`journal::open_log`). Check with clippy `--target x86_64-pc-windows-gnu` (`rustup target add` works); Wine is no test of it.
 
 ## Recent sessions
 
+### 2026-10-12 — M4 T8, the pause's hold across a restart
+
+#130, #134 merged. Built T8 (`E16-log.md`): `Held`; journal 7.
+
 ### 2026-10-12 — M4 T7, M4's closure
 
-#124 merged. Built T7 (`E16-log.md`): restart test, 06-security, client note, review fixes. Then the logs on Windows.
+#124 merged. Built T7 (`E16-log.md`): restart test, 06-security, client note, review fixes; then the logs on Windows.
 
 ### 2026-10-12 — M4 T5b, a player's bot opt-out
 
 #120 merged. Built T5b (`E16-log.md`): the bot opt-out; wire 20.
-
-### 2026-10-12 — M4 T6, the pause by agreement
-
-#118 merged. Built T6 (`E16-log.md`); wire 19, journal 6.

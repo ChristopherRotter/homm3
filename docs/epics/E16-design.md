@@ -328,6 +328,15 @@ below are the tasks' starting point, *provisional* until M4's review.
   time that passed while the server was down wakes the game at the first sweep, so the grace runs
   from the start. `paused_game_ms` never voids a game in an agreed pause. Unranked games keep the
   host's `Pause`; another seat asks once until the game moves on.
+- **The hold across a restart** (code since M4 T8, SRV-Q22 (b)): a seat taken before the due time
+  journals the rest of the pause (`Held { ms }`, journal format 7); a restore re-applies what is
+  left of it after the journal's last write (`Session::held_pause`), so an absent player's grace
+  still runs from the due time. The hold ends when the session's clock first moves past the due
+  time (a message, a closed connection or the sweep), journaled as `Held { ms: 0 }`; a later start
+  re-applies nothing. *Provisional*: a restart between the due time and that write, or after
+  writes that followed the hold's line (commands), re-applies a little more than its true rest:
+  never less, so the downtime never counts against a player. A new pause agreed (both players
+  back) ends the hold.
 - **Stalling** is not answered in M4: a connected player may sit on a turn until the game's
   rules bring a turn timer (`h3-game`, M5; SRV-Q19).
 

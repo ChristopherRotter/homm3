@@ -1393,3 +1393,35 @@ how and why the work went.
   cut through an append handle either: it cannot show the fix. The user's Windows verify confirms
   it (the cause as Rust's Windows `OpenOptions` gives it: append mode drops `FILE_WRITE_DATA`,
   which `set_len` needs).
+
+### M4 T8 — An agreed pause's hold across a restart (2026-10-12, SRV-Q22 (b))
+
+- **The start.** #130 (T7) and #134 (the logs on Windows) had merged; the branch restarted from
+  `master`. The scoped verify on `master` had no failing step, the workload unchanged (no
+  re-baseline).
+- **The defect** (M4's reviewer): a seat taken during an agreed pause before its due time held
+  the other seat's absence until then in memory only (`Session::hold`); the journal's `Resumed`
+  ended the agreed pause, so a restart before the due time restored a running game with no hold,
+  and the absent player's grace ran from the restart (a forfeit before the pause's due time).
+- **The session** (`h3_protocol::session`, *provisional*): an early resume (a join in an agreed
+  pause with time left) journals `Entry::Held(rest)` after `Resumed` and keeps the rest
+  (`held_pause()`); a restore re-runs it. `elapse` ends the hold when the clock first reaches the
+  due time: `Entry::Held(0)`, and a later restore holds nothing. A new agreed pause (both seats
+  were back to agree) ends an earlier hold, at a restore too (`agree`).
+- **The server**: `game::resume` re-applies `agreed_pause()` or else `held_pause()`, less the time
+  since the journal's last write, as T6 does for a pause. **The journal** (format 7):
+  `Held { ms }`. No wire change.
+- ***Provisional*, when a journaled hold ends** (the queue's question): at the clock's first move
+  past the due time (a message, a closed connection, the sweep: at most a sweep late). A restart
+  before that write, or after commands written since the hold's line, re-applies a little more
+  than the true rest (the time between the hold's line and the last write is not subtracted):
+  never less, so neither the downtime nor the restart counts against a player. Exact rests would
+  need the journal to carry times; not worth it for a pause of minutes.
+- **Tests** (`h3-protocol` 92 → 93, `h3-server` 100 → 102): the session's hold journaled at an
+  early resume, none for a seat back at the due time, re-applied at a restore (Bob back beyond the
+  grace from the restart, before the due time: no forfeit), over at the due time and not
+  re-applied after, a player not back by it forfeiting after the grace, a new pause ending it; the
+  journal's line. End to end (`tests/ladders.rs`): an agreed pause, Ann back at once, a restart
+  before the due time; Bob back 2.5 s after it (the grace is 1 s) plays on to the end, no
+  forfeit; Bob not back forfeits only after the pause's due time and the grace. Both end-to-end
+  tests fail without the re-apply (checked).
