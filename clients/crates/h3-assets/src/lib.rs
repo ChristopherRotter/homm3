@@ -26,11 +26,13 @@ extern crate alloc;
 
 pub mod archive;
 pub mod build;
+pub mod check;
 pub mod def;
 pub mod msk;
 pub mod palette;
 pub mod pcx;
 mod read;
+pub mod survey;
 
 /// Why a decoder rejected its input. The decoders never panic: every malformed input ends in one
 /// of these.

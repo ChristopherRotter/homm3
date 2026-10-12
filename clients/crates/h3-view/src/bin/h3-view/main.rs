@@ -10,10 +10,12 @@ usage: h3-view <command> [options]
 
 commands:
   gate [--install <dir>] [--out <dir>]
-          the real-asset gate: opens the four LOD archives of an installation copy, reports their
-          entries by extension and the time to open them, and lists every entry in
-          <out>/gate/entries.tsv. <dir> defaults to $H3_INSTALL, then to the repository's
-          original-data/install; <out> to clients/out (gitignored).
+          the real-asset gate: opens the four LOD archives of an installation copy, decodes every
+          PCX, PAL, DEF and MSK in them (it fails if one does not decode), and writes every entry
+          with its verdict to <out>/gate/entries.tsv and the inventory (findings, duplicates,
+          names nothing mentions, timings) to <out>/gate/report.md. <dir> defaults to
+          $H3_INSTALL, then to the repository's original-data/install; <out> to clients/out
+          (gitignored). Build with --release for meaningful times (about 3 s, against 30 s).
   help    show this message
 ";
 
