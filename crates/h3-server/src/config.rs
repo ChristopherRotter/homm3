@@ -8,6 +8,7 @@
 //! checkpoint_every = 25              # a state hash in the journal every this many commands
 //! public_url = "wss://example.org"   # the server's id, which logins sign: what clients dial
 //! anonymous = true                   # whether a game may be joined or created without a login
+//! trusted_proxies = ["127.0.0.1"]    # reverse proxies whose X-Forwarded-For names the client
 //!
 //! [content]
 //! packs = "../packs"                 # the packs directory
@@ -28,6 +29,8 @@
 //! games = 16                         # games not over, in total
 //! games_per_address = 2              # games not over, created from one address
 //! failed_logins_per_address = 10     # a minute; beyond, the address's logins close
+//! account_changes_per_address = 20   # an hour: registrations, re-keys, renames, preferences
+//! commands_per_game = 10000          # a game that reaches it without an end is void
 //!
 //! [[offer]]                          # what a client may create a game from; at least one
 //! id = "duel"                        # as `CreateGame` names it
@@ -46,6 +49,7 @@
 //! Provisional (E16 M1 and M2 reviews): the format and the defaults.
 
 use std::fs;
+use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 
 use h3_protocol::codec::DEFAULT_MAX_CLIENT_FRAME;
@@ -99,6 +103,9 @@ pub struct Server {
     /// Whether a connection may join or create a game without logging in (E16 M3 T2a), with seat
     /// tokens as in M2.
     pub anonymous: bool,
+    /// The reverse proxies in front of the server (E16 M3 T4b): a connection from one of them
+    /// counts as the client its handshake's `X-Forwarded-For` names. None by default.
+    pub trusted_proxies: Vec<IpAddr>,
 }
 
 impl Default for Server {
@@ -110,6 +117,7 @@ impl Default for Server {
             shadow_instance: false,
             public_url: None,
             anonymous: true,
+            trusted_proxies: Vec::new(),
         }
     }
 }
@@ -140,6 +148,14 @@ pub struct Offer {
 
 /// A year in milliseconds: the longest deadline of an abandoned game.
 const YEAR_MS: u64 = 365 * 24 * 3_600_000;
+
+/// The most bytes one command adds to a replay's frame (E16 M3 T4a): its line in the replay's
+/// text (at most 48 bytes: `"A cast 65535 stack 65535 stack 65535",` indented) and a checkpoint's
+/// (at most 32), each doubled for the escapes of the frame's JSON.
+const REPLAY_BYTES_PER_COMMAND: usize = 160;
+
+/// The most bytes of a replay's frame besides its commands: the message, the header, the setup.
+const REPLAY_HEAD_BYTES: usize = 64 << 10;
 
 /// The bounds of the server (ADR-0018 point 9).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -186,6 +202,13 @@ pub struct Limits {
     /// Failed logins a minute from one address (E16 M3 T2a): a login beyond them, and any login
     /// from the address until the minute is over, closes its connection.
     pub failed_logins_per_address: u32,
+    /// Requests from one address an hour that may write the player log (E16 M3's review): a
+    /// registration, a re-key, a rename, a listing preference; the one beyond closes its
+    /// connection.
+    pub account_changes_per_address: u32,
+    /// Commands one game may hold (E16 M3 T4a): a game that reaches them without an end is void.
+    /// It bounds a game's journal, its memory and its replay, which must fit `outbound_bytes`.
+    pub commands_per_game: u32,
 }
 
 impl Default for Limits {
@@ -209,6 +232,8 @@ impl Default for Limits {
             empty_game_ms: 1_800_000,
             paused_game_ms: 259_200_000,
             failed_logins_per_address: 10,
+            account_changes_per_address: 20,
+            commands_per_game: 10_000,
         }
     }
 }
@@ -217,7 +242,8 @@ impl Limits {
     /// Checks every bound against its range: none is 0 but the spectators and the deadlines of
     /// abandoned games (0: none), a frame holds a hello, and the timeouts, the deadlines and the
     /// queue stay where the clock's and the channel's arithmetic hold; a game is a thread; a
-    /// fetched record fits in the outbound queue.
+    /// fetched record, and the replay of a game of `commands_per_game` commands, fit in the
+    /// outbound queue.
     fn check(&self) -> Result<(), Error> {
         let wide = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
         let bounds = [
@@ -269,6 +295,18 @@ impl Limits {
                 1,
                 u64::MAX,
             ),
+            (
+                "account_changes_per_address",
+                u64::from(self.account_changes_per_address),
+                1,
+                u64::MAX,
+            ),
+            (
+                "commands_per_game",
+                u64::from(self.commands_per_game),
+                1,
+                1_000_000,
+            ),
         ];
         for (name, value, min, max) in bounds {
             if !(min..=max).contains(&value) {
@@ -282,6 +320,17 @@ impl Limits {
             return Err(Error(format!(
                 "limits.record_bytes = {}: a record must fit twice in outbound_bytes = {}",
                 self.record_bytes, self.outbound_bytes
+            )));
+        }
+        let commands = usize::try_from(self.commands_per_game).unwrap_or(usize::MAX);
+        let replay = commands
+            .saturating_mul(REPLAY_BYTES_PER_COMMAND)
+            .saturating_add(REPLAY_HEAD_BYTES);
+        if replay > self.outbound_bytes {
+            return Err(Error(format!(
+                "limits.commands_per_game = {}: its replay (up to {replay} bytes) must fit in \
+                 outbound_bytes = {}",
+                self.commands_per_game, self.outbound_bytes
             )));
         }
         Ok(())

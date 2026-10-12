@@ -19,6 +19,16 @@
 //! - **A refused join** (E16 M2 T5b). A connection that holds nothing after its message (a join the
 //!   session refused) is told so with the answer, and its task leaves the game: it neither keeps
 //!   a waiting game listed nor escapes the lobby's deadline.
+//! - **Accounts** (E16 M3 T3). A connection opens the game with the account it is logged in as,
+//!   which the session binds the seats it takes to. The game names its seats' accounts in the
+//!   lobby by their display names as they stand whenever a seat's account changes (a rename shows
+//!   at the next one, *provisional*), and a finished game is listed only if its host left it open
+//!   to spectators and every seat's account lets its replays be listed.
+//! - **A game's bounds** (E16 M3 T4a). A game that reached `[limits] commands_per_game` commands
+//!   without an end is void: its connections hear `Goodbye { CommandLimit }`, it leaves the lobby
+//!   and its journal moves to `<data>/void/`, with no replay (a restored one too). A game that
+//!   waits for its players and none of whose seats is held any more leaves, whoever watches it:
+//!   its spectators hear `Goodbye { Abandoned }`.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -35,12 +45,15 @@ use h3_contracts::BattleSetup;
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::account::CHALLENGE_BYTES;
 use h3_protocol::session::{Bot, ConnId, Entry, GameConfig, Journal, Outbound, SeatKind, Session};
-use h3_protocol::wire::{self, ClientMessage, GameInfo, GoodbyeReason, Phase, Seat, ServerMessage};
+use h3_protocol::wire::{
+    self, ClientMessage, GameInfo, GoodbyeReason, Phase, Seat, Seated, ServerMessage,
+};
 use h3_protocol::{codec, map};
 use h3_sim::{Replay, ReplayError, ReplayHeader};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::Instant;
 
+use crate::accounts::Accounts;
 use crate::config::{self, BotSeat};
 use crate::journal::{self, JOURNAL_FORMAT_VERSION, Start, Writer};
 use crate::registry::{Hosted, Shared, lock};
@@ -144,6 +157,8 @@ pub(crate) enum ToGame {
         conn: ConnId,
         /// Its outbound queue for this game.
         to: Outbox,
+        /// The login name of the account it is logged in as (E16 M3 T3).
+        login: Option<String>,
     },
     /// A message the connection's hello gate let through.
     Message {
@@ -272,6 +287,10 @@ pub(crate) struct Prepared {
     data: PathBuf,
     /// How long its seats may all stay empty while it runs before it pauses (E16 M2 T5a).
     empty_game: Option<Duration>,
+    /// The commands it may hold (E16 M3 T4a): reaching them without an end voids it.
+    commands: usize,
+    /// The server's accounts (E16 M3 T3).
+    accounts: Arc<Accounts>,
     /// A new game or a restored one.
     begin: Begin,
 }
@@ -298,6 +317,11 @@ struct Restored {
     listing: Option<(mpsc::Sender<ToGame>, oneshot::Sender<()>)>,
 }
 
+/// The commands a game may hold (E16 M3 T4a).
+fn commands(limits: &config::Limits) -> usize {
+    usize::try_from(limits.commands_per_game).unwrap_or(usize::MAX)
+}
+
 /// A deadline of `ms` milliseconds; none for 0 (E16 M2 T5a).
 pub(crate) fn deadline(ms: u64) -> Option<Duration> {
     (ms > 0).then(|| Duration::from_millis(ms))
@@ -322,7 +346,7 @@ impl Prepared {
         offer: Arc<Offer>,
         game: u32,
         origin: IpAddr,
-        (server, limits): (&config::Server, &config::Limits),
+        (server, limits, accounts): (&config::Server, &config::Limits, Arc<Accounts>),
         watchable: bool,
     ) -> Result<Self, Error> {
         let mut setup = offer.setup.clone();
@@ -379,6 +403,8 @@ impl Prepared {
             replay_path,
             data: server.data.clone(),
             empty_game: deadline(limits.empty_game_ms),
+            commands: commands(limits),
+            accounts,
             begin: Begin::New(journal),
         })
     }
@@ -392,7 +418,7 @@ impl Prepared {
         offer: Arc<Offer>,
         path: &Path,
         read: journal::Read,
-        (server, limits): (&config::Server, &config::Limits),
+        (server, limits, accounts): (&config::Server, &config::Limits, Arc<Accounts>),
         listing: Option<(mpsc::Sender<ToGame>, oneshot::Sender<()>)>,
     ) -> Result<Self, String> {
         // The first line's replay holds the seed: its parsers' errors, which may quote it, stay
@@ -432,6 +458,8 @@ impl Prepared {
             replay_path,
             data: server.data.clone(),
             empty_game: deadline(limits.empty_game_ms),
+            commands: commands(limits),
+            accounts,
             begin: Begin::Restored(Restored {
                 path: path.to_path_buf(),
                 read,
@@ -465,6 +493,8 @@ impl Prepared {
             replay_path,
             data,
             empty_game,
+            commands,
+            accounts,
             begin,
         } = self;
         let game = config.game;
@@ -482,7 +512,7 @@ impl Prepared {
         let over = |session: &Session<'_>, journal: Writer| {
             finish(
                 (&offer.ruleset, &scenario, &replay_path, &data),
-                (game, registry),
+                (game, registry, &accounts),
                 session,
                 journal,
             )
@@ -497,7 +527,7 @@ impl Prepared {
                 }
             },
             Begin::Restored(restored) => {
-                let host = (data.as_path(), registry);
+                let host = (data.as_path(), registry, &*accounts);
                 let resumed = resume(&offer, (config, seats, &tokens), restored, host, over);
                 let Some(resumed) = resumed else {
                     return turn_away(&mut inbox, GoodbyeReason::Shutdown);
@@ -506,19 +536,30 @@ impl Prepared {
             }
         };
         let mut journal = Some(journal);
+        // Its last command reached the limit, and it is not over (E16 M3 T4a).
+        let past = |s: &Session<'_>| s.result().is_none() && s.journal().commands.len() >= commands;
+        if past(&session) {
+            let host = (data.as_path(), registry);
+            return too_long(game, (&BTreeMap::new(), &[]), journal, host, &mut inbox);
+        }
         let mut conns = BTreeMap::new();
         // How many messages each connection passed the game (E16 M2 T5b).
         let mut passed: BTreeMap<ConnId, u64> = BTreeMap::new();
         let mut out = Vec::new();
         let status = |s: &Session<'_>| (s.phase(), s.open_seats(), s.takes_spectators());
         let mut reported = status(&session);
+        // The seats' accounts the lobby names (E16 M3 T3); a restored game was listed with them.
+        let mut named = owned(session.accounts());
         let mut empty_since = (!session.seated()).then(Instant::now);
         while let Some(event) = inbox.blocking_recv() {
             let mut left = None;
             match event {
                 // Nothing changes for the session until the connection's join.
-                ToGame::Open { conn, to } => {
+                ToGame::Open { conn, to, login } => {
                     conns.insert(conn, to);
+                    if let Some(login) = login {
+                        session.logged_in(conn, login);
+                    }
                     continue;
                 }
                 ToGame::Message { conn, message } => {
@@ -579,9 +620,23 @@ impl Prepared {
             }
             if session.paused() {
                 close_all(&conns, &closed, GoodbyeReason::Paused);
-                lock(registry).pause(game, tokens);
+                lock(registry).pause(game, (tokens, owned(session.accounts())));
                 turn_away(&mut inbox, GoodbyeReason::Paused);
                 return eprintln!("h3-server: game {game} paused");
+            }
+            if past(&session) {
+                let host = (data.as_path(), registry);
+                return too_long(game, (&conns, &closed), journal, host, &mut inbox);
+            }
+            if session.phase() == Phase::Waiting && !session.seated() {
+                // Its spectators hear it, and a joiner whose join is still on its way; a connection
+                // whose join it refused leaves at its refusal and never reads the goodbye.
+                close_all(&conns, &closed, GoodbyeReason::Abandoned);
+                lock(registry).leave(game);
+                // Outside the registry's lock (E16 M2 T5e): a removal is file I/O.
+                journal.into_iter().for_each(Writer::remove);
+                turn_away(&mut inbox, GoodbyeReason::Abandoned);
+                return eprintln!("h3-server: game {game} abandoned before it started");
             }
             if session.result().is_some()
                 && let Some(journal) = journal.take()
@@ -592,11 +647,18 @@ impl Prepared {
                 }
             }
             let now = status(&session);
+            // Outside the registry's lock: the accounts' lock waits on the player log's writes.
+            let renamed = (session.accounts() != named.each_ref().map(Option::as_deref))
+                .then(|| seated(&session, &accounts));
             let closed = {
                 let mut registry = lock(registry);
                 if now != reported {
                     registry.report(game, now.clone());
                     reported = now;
+                }
+                if let Some(seated) = renamed {
+                    registry.seat(game, seated);
+                    named = owned(session.accounts());
                 }
                 registry.close_if_idle(game, reported.0)
             };
@@ -621,7 +683,7 @@ fn resume<'r>(
     offer: &'r Offer,
     (config, seats, tokens): (GameConfig, [SeatKind; 2], &[Option<String>; 2]),
     restored: Restored,
-    (data, registry): (&Path, &Shared),
+    (data, registry, accounts): (&Path, &Shared, &Accounts),
     over: impl FnOnce(&Session<'r>, Writer) -> Option<String>,
 ) -> Option<(Session<'r>, Writer)> {
     let Restored {
@@ -676,11 +738,13 @@ fn resume<'r>(
         phase: session.phase(),
         open: session.open_seats(),
         spectators: session.takes_spectators(),
+        seated: seated(&session, accounts),
     };
     let paused = session.paused();
     let hosted = if paused {
         Hosted::Paused {
             tokens: tokens.clone(),
+            accounts: owned(session.accounts()),
             since,
         }
     } else {
@@ -694,6 +758,22 @@ fn resume<'r>(
     }
     eprintln!("h3-server: game {game} restored");
     Some((session, journal))
+}
+
+/// The seats' accounts, owned.
+fn owned(accounts: [Option<&str>; 2]) -> [Option<String>; 2] {
+    accounts.map(|login| login.map(str::to_owned))
+}
+
+/// The seats of `session` that belong to accounts, with the accounts' display names as they stand
+/// (E16 M3 T3). Blocks on the player log: never under the registry's lock.
+fn seated(session: &Session<'_>, accounts: &Accounts) -> Vec<Seated> {
+    let seats = [Seat::Attacker, Seat::Defender].into_iter();
+    let named = seats.zip(session.accounts()).filter_map(|(seat, login)| {
+        let display = accounts.get(login?)?.display;
+        Some(Seated { seat, display })
+    });
+    named.collect()
 }
 
 /// Runs game `game` on its own OS thread until it leaves the lobby (E16 M2 T5e): `prepare` makes it
@@ -752,6 +832,28 @@ fn close_all(conns: &BTreeMap<ConnId, Outbox>, closed: &[ConnId], reason: Goodby
             });
         }
     }
+}
+
+/// Game `game` reached the server's limit of commands without an end (E16 M3 T4a): it is void.
+/// Every connection in `conns` but those in `closed` hears it, the game leaves the lobby, its
+/// journal moves to `<data>/void/` (no replay is written), and the connections on their way hear
+/// it too.
+fn too_long(
+    game: u32,
+    (conns, closed): (&BTreeMap<ConnId, Outbox>, &[ConnId]),
+    journal: Option<Writer>,
+    (data, registry): (&Path, &Shared),
+    inbox: &mut mpsc::Receiver<ToGame>,
+) {
+    close_all(conns, closed, GoodbyeReason::CommandLimit);
+    lock(registry).leave(game);
+    if let Some(journal) = journal {
+        let path = journal.path().to_path_buf();
+        drop(journal);
+        let why = "it reached the server's limit of commands without an end";
+        journal::void(data, &path, &game.to_string(), why);
+    }
+    turn_away(inbox, GoodbyeReason::CommandLimit);
 }
 
 /// The journal stopped: every connection hears the server shuts down (for this game), and the game
@@ -833,15 +935,18 @@ fn replay_text(
 /// replay's text for the participants, or `None`: withheld.
 fn finish(
     (ruleset, scenario, path, data): (&Ruleset, &str, &Path, &Path),
-    (game, registry): (u32, &Shared),
+    (game, registry, accounts): (u32, &Shared, &Accounts),
     session: &Session<'_>,
     journal: Writer,
 ) -> Option<String> {
     let journal_path = journal.path().to_path_buf();
     let (diagnosis, why) = match verify(ruleset, &journal_path, session) {
         Ok(text) => {
-            // The archive (E16 M2 T5d): listed if its host left it open to spectators.
-            let listed = session.watchable();
+            // The archive (E16 M2 T5d): listed if its host left it open to spectators and no
+            // seat's account opted out (E16 M3 T3; an account the log does not know cannot let it).
+            let mut logins = session.accounts().into_iter().flatten();
+            let listed = session.watchable()
+                && logins.all(|login| accounts.get(login).is_some_and(|a| a.listed));
             let dir = archive::dir(data, listed);
             let path = dir.join(path.file_name().unwrap_or_default());
             match archive::write(&path, &text) {
@@ -909,6 +1014,7 @@ fn verify(
             Entry::Command(side, command) => replay.commands.push((side, command)),
             Entry::Checkpoint(hash) => replay.checkpoints.push(hash),
             Entry::Taken(_)
+            | Entry::TakenBy(..)
             | Entry::Started
             | Entry::Paused
             | Entry::Resumed

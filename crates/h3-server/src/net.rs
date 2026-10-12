@@ -12,24 +12,43 @@
 //! The login (E16 M3 T2a): an account's request is answered off the task ([`Accounts`]: the
 //! signatures, the player log's sync). Failed logins count per address, also across its
 //! connections' lifetimes: beyond `failed_logins_per_address` a minute, a login closes its
-//! connection `RateLimited`, as does any login from the address until the minute is over.
+//! connection `RateLimited`, as does any login from the address until the minute is over. The
+//! requests that may write the player log (a registration, a re-key, a rename, a preference) count
+//! per address too: beyond `account_changes_per_address` an hour, one closes its connection
+//! `RateLimited` (E16 M3's review: each is a synced line, and the logins wait on the log's lock).
+//!
+//! Behind a reverse proxy (E16 M3 T4b): a connection from one of `[server] trusted_proxies`
+//! counts, after its handshake, as the client the last entry of its `X-Forwarded-For` header
+//! names (*provisional*: that header alone, its last entry); until then it holds a place in the
+//! total only. A forwarded header from any other peer is ignored. Every limit per address counts
+//! an IPv6 address by its /64 prefix, the block one host usually has ([`counted`]).
+//!
+//! Accounts in games (E16 M3 T3): a connection opens a game with the account it is logged in as.
+//! The server knows each account's logged-in connections and their keys: once one re-keyed the
+//! account, the others logged in with another key close (`Goodbye { Rekeyed }`), before anything
+//! else they sent is handled, so a session opened with a leaked password does not outlive the
+//! re-key.
 
 use std::collections::BTreeMap;
 use std::future::Future;
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv6Addr};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{FutureExt, SinkExt, StreamExt};
+use h3_protocol::account::KEY_BYTES;
 use h3_protocol::codec;
 use h3_protocol::connection::{AccountRequest, Connection, Host, Received};
 use h3_protocol::session::ConnId;
 use h3_protocol::wire::{ClientMessage, GoodbyeReason, Refusal, RejectCode, ServerMessage};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{mpsc, watch};
+use tokio::sync::{Notify, mpsc, watch};
 use tokio::time::{Instant, sleep_until, timeout};
 use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::tungstenite::handshake::server::{
+    Callback, ErrorResponse, Request, Response,
+};
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 use crate::accounts::Accounts;
@@ -151,6 +170,9 @@ impl Rate {
 /// The window of an address's failed logins (E16 M3 T2a).
 const FAILED_LOGINS_WINDOW: Duration = Duration::from_secs(60);
 
+/// The window of an address's requests that may write the player log (E16 M3's review).
+const ACCOUNT_CHANGES_WINDOW: Duration = Duration::from_secs(3600);
+
 /// The game a connection is bound to (E16 M2 T1): its inbox and the connection's queue for it, and
 /// how many messages the connection passed it (E16 M2 T5b: a refused join's frame names its
 /// number).
@@ -172,6 +194,8 @@ enum Wake {
     Idle,
     /// The server stops (E16 M2 T5a).
     Stop,
+    /// The connection's account re-keyed on another connection (E16 M3 T3).
+    Rekeyed,
 }
 
 /// Resolves once the server stops (E16 M2 T5a); never if the signal's sender is gone unset.
@@ -208,7 +232,43 @@ pub(crate) struct Service {
     /// Whether a connection may join or create a game without logging in (E16 M3 T2a).
     pub anonymous: bool,
     /// The accounts (E16 M3 T2a).
-    pub accounts: Accounts,
+    pub accounts: Arc<Accounts>,
+    /// The logged-in connections by account, each with the key it logged in with and what closes
+    /// it when another connection re-keys the account (E16 M3 T3).
+    pub sessions: Mutex<Sessions>,
+    /// The reverse proxies whose forwarded header names the client (E16 M3 T4b).
+    pub proxies: Vec<IpAddr>,
+}
+
+/// The logged-in connections by account (E16 M3 T3): the key each logged in with, and what closes
+/// it when the account re-keys elsewhere.
+pub(crate) type Sessions = BTreeMap<(String, ConnId), ([u8; KEY_BYTES], Arc<Notify>)>;
+
+impl Service {
+    /// The account's logged-in connections, locked.
+    fn sessions(&self) -> std::sync::MutexGuard<'_, Sessions> {
+        self.sessions.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// The account `login` re-keyed to `key` on `conn` (E16 M3 T3): every other connection logged
+    /// in as it with another key closes.
+    fn rekeyed(&self, login: &str, conn: ConnId, key: [u8; KEY_BYTES]) {
+        let mut sessions = self.sessions();
+        let from = (login.to_owned(), ConnId(0));
+        let to = (login.to_owned(), ConnId(u64::MAX));
+        for ((_, other), (with, rekeyed)) in sessions.range_mut(from..=to) {
+            if *other == conn {
+                *with = key;
+            } else if *with != key {
+                rekeyed.notify_one();
+            }
+        }
+    }
+}
+
+/// Whether the connection's account re-keyed on another connection (E16 M3 T3): takes the signal.
+fn kicked(rekeyed: &Notify) -> bool {
+    rekeyed.notified().now_or_never().is_some()
 }
 
 /// One connection's task: reads frames through the hello gate, answers the lobby's messages and
@@ -243,6 +303,8 @@ pub(crate) async fn serve<T: Transport>(
     // The deadline to be in a game: the hello's first, then the lobby's (E16 M2 T5b).
     let mut unjoined = Some(Instant::now() + Duration::from_millis(limits.hello_timeout_ms));
     let mut gate = Connection::new(limits.max_frame, challenge, server.anonymous);
+    // Notified when another connection re-keys the account this one logs in as (E16 M3 T3).
+    let rekeyed = Arc::new(Notify::new());
     let mut rate = Rate::new(limits.messages_per_second);
     let mut link = Link {
         conn,
@@ -264,6 +326,7 @@ pub(crate) async fn serve<T: Transport>(
             () = sleep_until(deadline) => Wake::Idle,
             () = until(lobby_due) => Wake::Idle,
             () = stopped(&mut stop) => Wake::Stop,
+            () = rekeyed.notified() => Wake::Rekeyed,
         };
         let now = Instant::now();
         let frame = match wake {
@@ -271,6 +334,8 @@ pub(crate) async fn serve<T: Transport>(
             Wake::Client(Some(_)) if !(rate.admit(now) && place.admit(now)) => {
                 goodbye(GoodbyeReason::RateLimited)
             }
+            // A re-key elsewhere closes the connection before it acts again (E16 M3's review).
+            Wake::Client(Some(_)) if kicked(&rekeyed) => goodbye(GoodbyeReason::Rekeyed),
             Wake::Client(Some(Incoming::Control)) => continue,
             Wake::Client(Some(Incoming::Binary)) => goodbye(GoodbyeReason::Malformed),
             Wake::Client(Some(Incoming::Text(text))) => {
@@ -281,7 +346,7 @@ pub(crate) async fn serve<T: Transport>(
                     unjoined = Some(now + lobby);
                 }
                 match received {
-                    Received::Game(message) => match link.route(message).await {
+                    Received::Game(message) => match link.route(message, gate.account()).await {
                         Routed::Reply(frame) => frame,
                         Routed::Passed => continue,
                         Routed::GameGone => break,
@@ -293,7 +358,8 @@ pub(crate) async fn serve<T: Transport>(
                         held: false,
                     },
                     Received::Account(request) => {
-                        account(&server, &mut gate, &place, request).await
+                        let at = (&place, conn, &rekeyed);
+                        account(&server, &mut gate, at, request).await
                     }
                 }
             }
@@ -309,6 +375,7 @@ pub(crate) async fn serve<T: Transport>(
             Wake::Game(None) => goodbye(GoodbyeReason::TooSlow),
             Wake::Idle => goodbye(GoodbyeReason::IdleTimeout),
             Wake::Stop => goodbye(GoodbyeReason::Shutdown),
+            Wake::Rekeyed => goodbye(GoodbyeReason::Rekeyed),
         };
         let sent = timeout(idle, transport.send(frame.text)).await;
         if frame.close || !matches!(sent, Ok(true)) {
@@ -316,34 +383,65 @@ pub(crate) async fn serve<T: Transport>(
         }
     }
     link.unbind().await;
+    if let Some(login) = gate.account() {
+        server.sessions().remove(&(login.to_owned(), conn));
+    }
     transport.close().await;
 }
 
 /// Answers an account's request (E16 M3 T2a) off the connection's task: the answer, or the
-/// connection's goodbye when its address failed too many logins.
+/// connection's goodbye when its address failed too many logins. A connection logged in is known
+/// by its account with `rekeyed`, which another connection's re-key of the account notifies; its
+/// own re-key notifies the others (E16 M3 T3).
 async fn account(
     server: &Arc<Service>,
     gate: &mut Connection,
-    place: &Place,
+    (place, conn, rekeyed): (&Place, ConnId, &Arc<Notify>),
     request: AccountRequest,
 ) -> Frame {
-    let (seq, login) = match &request {
-        AccountRequest::Login { seq, login, .. } => (*seq, Some(login.clone())),
+    // The login name and key of a login; whether the request may write the player log.
+    let (seq, login, changing) = match &request {
+        AccountRequest::Login {
+            seq,
+            login,
+            key,
+            display,
+            ..
+        } => (*seq, Some((login.clone(), *key)), display.is_some()),
         AccountRequest::Rekey { seq, .. }
         | AccountRequest::Rename { seq, .. }
-        | AccountRequest::SetListed { seq, .. } => (*seq, None),
+        | AccountRequest::SetListed { seq, .. } => (*seq, None, true),
     };
-    if login.is_some() && place.barred(Instant::now()) {
+    let now = Instant::now();
+    if (login.is_some() && place.barred(now)) || (changing && !place.changing(now)) {
         return goodbye(GoodbyeReason::RateLimited);
+    }
+    let rekey = match &request {
+        AccountRequest::Rekey { key, .. } => Some(*key),
+        _ => None,
+    };
+    // Known by its account before its key is checked: a re-key committed after the check reaches
+    // it (one committed before refuses the key).
+    let session = login.as_ref().map(|(login, _)| (login.clone(), conn));
+    if let (Some(session), Some((_, key))) = (&session, &login) {
+        let entry = (*key, Arc::clone(rekeyed));
+        server.sessions().insert(session.clone(), entry);
     }
     let shared = Arc::clone(server);
     let answer = tokio::task::spawn_blocking(move || shared.accounts.answer(request))
         .await
         .unwrap_or(Err(Refusal::BadLogin));
+    if let (Err(_), Some(session)) = (&answer, &session) {
+        server.sessions().remove(session);
+        // A re-key meanwhile signalled this attempt, not the account it may log in as later.
+        kicked(rekeyed);
+    }
     match answer {
-        Ok(account) => {
-            if let Some(login) = login {
+        Ok((account, changed)) => {
+            if let Some((login, _)) = login {
                 gate.logged_in(login);
+            } else if let (true, Some(login), Some(key)) = (changed, gate.account(), rekey) {
+                server.rekeyed(login, conn, key);
             }
             Frame {
                 text: codec::encode_text(&ServerMessage::Account {
@@ -386,8 +484,10 @@ struct Link {
 impl Link {
     /// Answers a lobby message, or passes a game message to the game it names or is bound to. A
     /// connection is in at most one game: joining or creating another leaves the first, as a
-    /// disconnect would (its seat waits for its token).
-    async fn route(&mut self, message: ClientMessage) -> Routed {
+    /// disconnect would (its seat waits for its token or its account). It opens a game logged in
+    /// as `login` (E16 M3 T3).
+    async fn route(&mut self, message: ClientMessage, login: Option<&str>) -> Routed {
+        let login = login.map(str::to_owned);
         match message {
             ClientMessage::ListGames { seq } => Routed::Reply(Frame {
                 text: lock(&self.registry).list(seq),
@@ -413,7 +513,8 @@ impl Link {
                 let watchable = spectators.unwrap_or(true);
                 let (to, from_game) = game::outbox(self.queue.0, self.queue.1);
                 let asked = (offer.as_str(), seat, watchable);
-                match registry::create(&self.registry, self.origin, asked, (self.conn, to)) {
+                let creator = (self.conn, to, login);
+                match registry::create(&self.registry, self.origin, asked, creator) {
                     Err(reason) => Routed::Reply(refused(reason)),
                     Ok((game, to_game)) => {
                         let created = ServerMessage::GameCreated { seq, game };
@@ -432,6 +533,7 @@ impl Link {
                 let opening = Opening {
                     conn: self.conn,
                     to,
+                    login,
                     join: message,
                 };
                 let asked = (game, seat, token.as_deref());
@@ -470,8 +572,14 @@ impl Link {
         first: Option<ServerMessage>,
     ) -> Routed {
         self.unbind().await;
-        if let Some(Opening { conn, to, join }) = opening {
-            let opened = to_game.send(ToGame::Open { conn, to }).await.is_ok()
+        if let Some(Opening {
+            conn,
+            to,
+            login,
+            join,
+        }) = opening
+        {
+            let opened = to_game.send(ToGame::Open { conn, to, login }).await.is_ok()
                 && to_game
                     .send(ToGame::Message {
                         conn,
@@ -597,6 +705,48 @@ struct Counts {
     total: usize,
     by_address: BTreeMap<IpAddr, Address>,
     failures: BTreeMap<IpAddr, Rate>,
+    /// The addresses' requests that may write the player log, kept beyond their connections for
+    /// the window (E16 M3's review).
+    changes: BTreeMap<IpAddr, Rate>,
+}
+
+/// The address a connection counts as in the limits per address (E16 M3 T4b): an IPv4 address
+/// itself, also one mapped into IPv6; an IPv6 address its /64 prefix, the block one host usually
+/// has, so that a host does not escape the limits by changing its interface identifier.
+pub(crate) fn counted(address: IpAddr) -> IpAddr {
+    match address.to_canonical() {
+        IpAddr::V6(v6) => IpAddr::V6(Ipv6Addr::from(u128::from(v6) & !u128::from(u64::MAX))),
+        v4 => v4,
+    }
+}
+
+/// The client's address a trusted proxy names in the handshake (E16 M3 T4b): the last entry of
+/// its last `X-Forwarded-For` header, the address the proxy itself saw; none if it does not read.
+fn forwarded_for(request: &Request) -> Option<IpAddr> {
+    let header = request
+        .headers()
+        .get_all("x-forwarded-for")
+        .iter()
+        .next_back()?;
+    let last = header.to_str().ok()?.rsplit(',').next()?.trim();
+    last.parse::<IpAddr>().ok()
+}
+
+/// What a handshake keeps of its request (E16 M3 T4b): the client a trusted proxy names.
+struct Forwarded {
+    /// Whether the peer is a trusted proxy: only then is the header read.
+    proxied: bool,
+    /// The client it names.
+    client: Arc<Mutex<Option<IpAddr>>>,
+}
+
+impl Callback for Forwarded {
+    fn on_request(self, request: &Request, response: Response) -> Result<Response, ErrorResponse> {
+        if self.proxied {
+            *self.client.lock().unwrap_or_else(PoisonError::into_inner) = forwarded_for(request);
+        }
+        Ok(response)
+    }
 }
 
 /// A counted connection; dropping it releases its place.
@@ -604,13 +754,19 @@ struct Counts {
 pub(crate) struct Place {
     counts: Arc<Mutex<Counts>>,
     address: IpAddr,
+    /// Whether it counts for its address too, or in the total only (E16 M3 T4b: a trusted proxy's
+    /// connection before its handshake names the client).
+    per_address: bool,
     /// The address's failed logins a minute.
     failed_logins: u32,
+    /// The address's requests that may write the player log, an hour.
+    account_changes: u32,
 }
 
 impl Place {
-    /// A place for a connection from `address`, if the limits leave one.
+    /// A place for a connection from `address` (as [`counted`]), if the limits leave one.
     fn take(counts: &Arc<Mutex<Counts>>, address: IpAddr, limits: &Limits) -> Option<Self> {
+        let address = counted(address);
         let mut c = counts.lock().unwrap_or_else(PoisonError::into_inner);
         let here = c.by_address.get(&address).map_or(0, |a| a.connections);
         if c.total >= limits.connections || here >= limits.connections_per_address {
@@ -628,7 +784,26 @@ impl Place {
         Some(Self {
             counts: Arc::clone(counts),
             address,
+            per_address: true,
             failed_logins: limits.failed_logins_per_address,
+            account_changes: limits.account_changes_per_address,
+        })
+    }
+
+    /// A place in the total only for a connection from the trusted proxy `proxy` (E16 M3 T4b),
+    /// until its handshake names the client, if the limit leaves one.
+    fn proxied(counts: &Arc<Mutex<Counts>>, proxy: IpAddr, limits: &Limits) -> Option<Self> {
+        let mut c = counts.lock().unwrap_or_else(PoisonError::into_inner);
+        if c.total >= limits.connections {
+            return None;
+        }
+        c.total += 1;
+        Some(Self {
+            counts: Arc::clone(counts),
+            address: proxy,
+            per_address: false,
+            failed_logins: limits.failed_logins_per_address,
+            account_changes: limits.account_changes_per_address,
         })
     }
 
@@ -650,6 +825,18 @@ impl Place {
             .admit(now)
     }
 
+    /// Counts a request of the address that may write the player log at `now`; `false` beyond its
+    /// limit (E16 M3's review). The addresses whose hour is over are forgotten.
+    fn changing(&self, now: Instant) -> bool {
+        let mut c = self.counts.lock().unwrap_or_else(PoisonError::into_inner);
+        c.changes.retain(|_, rate| !rate.over(now));
+        let limit = self.account_changes;
+        c.changes
+            .entry(self.address)
+            .or_insert_with(|| Rate::per(limit, ACCOUNT_CHANGES_WINDOW))
+            .admit(now)
+    }
+
     /// Counts a message of the address at `now`; `false` beyond its limit (E16 M2 T5b).
     fn admit(&self, now: Instant) -> bool {
         let mut c = self.counts.lock().unwrap_or_else(PoisonError::into_inner);
@@ -663,6 +850,9 @@ impl Drop for Place {
     fn drop(&mut self) {
         let mut c = self.counts.lock().unwrap_or_else(PoisonError::into_inner);
         c.total = c.total.saturating_sub(1);
+        if !self.per_address {
+            return;
+        }
         if let Some(a) = c.by_address.get_mut(&self.address) {
             a.connections = a.connections.saturating_sub(1);
             if a.connections == 0 {
@@ -673,8 +863,10 @@ impl Drop for Place {
 }
 
 /// Accepts connections until the server stops (`stop`, E16 M2 T5a): a connection beyond the
-/// limits is closed at once, every other one gets its WebSocket handshake and its task. Once
-/// stopped, it waits for the open connections to close, for a grace.
+/// limits is closed at once, every other one gets its WebSocket handshake and its task. A trusted
+/// proxy's connection is counted by its client's address after the handshake, and closed then if
+/// that address has no place (E16 M3 T4b). Once stopped, it waits for the open connections to
+/// close, for a grace.
 pub(crate) async fn listen(
     listener: TcpListener,
     registry: Shared,
@@ -692,20 +884,45 @@ pub(crate) async fn listen(
         let Ok((stream, peer)) = accepted else {
             continue;
         };
-        let Some(place) = Place::take(&counts, peer.ip(), &limits) else {
+        let peer = peer.ip().to_canonical();
+        let proxied = server.proxies.contains(&peer);
+        let place = if proxied {
+            Place::proxied(&counts, peer, &limits)
+        } else {
+            Place::take(&counts, peer, &limits)
+        };
+        let Some(place) = place else {
             drop(stream);
             continue;
         };
         next += 1;
         let conn = ConnId(next);
         let (registry, server, stop) = (Arc::clone(&registry), Arc::clone(&server), stop.clone());
+        let counts = Arc::clone(&counts);
         tokio::spawn(async move {
             let config = websocket_config(&limits);
-            let handshake = tokio_tungstenite::accept_async_with_config(stream, Some(config));
+            let client = Arc::new(Mutex::new(None));
+            let read = Forwarded {
+                proxied,
+                client: Arc::clone(&client),
+            };
+            let handshake =
+                tokio_tungstenite::accept_hdr_async_with_config(stream, read, Some(config));
             let idle = Duration::from_millis(limits.idle_timeout_ms);
-            if let Ok(Ok(socket)) = timeout(idle, handshake).await {
-                serve(socket, conn, place, registry, limits, server, stop).await;
-            }
+            let Ok(Ok(mut socket)) = timeout(idle, handshake).await else {
+                return;
+            };
+            let place = if proxied {
+                let client = client.lock().unwrap_or_else(PoisonError::into_inner).take();
+                drop(place);
+                match Place::take(&counts, client.unwrap_or(peer), &limits) {
+                    Some(place) => place,
+                    None => return Transport::close(&mut socket).await,
+                }
+            } else {
+                place
+            };
+            serve(socket, conn, place, registry, limits, server, stop).await;
         });
     }
     // Stopped: no new connection; the open ones close, each after its goodbye, within a grace.
@@ -727,6 +944,31 @@ mod tests {
 
     use super::*;
     use crate::registry::Registry;
+
+    #[test]
+    fn an_address_counts_by_its_ipv6_prefix() {
+        let ip = |text: &str| text.parse::<IpAddr>().unwrap();
+        assert_eq!(counted(ip("203.0.113.9")), ip("203.0.113.9"));
+        assert_eq!(counted(ip("::ffff:203.0.113.9")), ip("203.0.113.9"));
+        assert_eq!(counted(ip("2001:db8:1:2:3:4:5:6")), ip("2001:db8:1:2::"));
+    }
+
+    #[test]
+    fn a_proxys_header_names_the_client_by_its_last_entry() {
+        let forwarded = |headers: &[&str]| {
+            let mut request = Request::builder();
+            for value in headers {
+                request = request.header("X-Forwarded-For", *value);
+            }
+            forwarded_for(&request.body(()).unwrap())
+        };
+        let ip = |text: &str| Some(text.parse::<IpAddr>().unwrap());
+        assert_eq!(forwarded(&["203.0.113.1"]), ip("203.0.113.1"));
+        assert_eq!(forwarded(&["10.0.0.1, 203.0.113.1 "]), ip("203.0.113.1"));
+        assert_eq!(forwarded(&["10.0.0.1", "2001:db8::1"]), ip("2001:db8::1"));
+        assert_eq!(forwarded(&[]), None);
+        assert_eq!(forwarded(&["203.0.113.1, unknown"]), None);
+    }
 
     /// A transport over channels.
     #[derive(Debug)]
@@ -769,7 +1011,15 @@ mod tests {
                 games_per_address: 1,
                 ..Limits::default()
             };
-            let mut registry = Registry::new(vec![], &limits, crate::config::Server::default());
+            let accounts = Arc::new(
+                Accounts::open(
+                    &std::env::temp_dir().join(format!("h3-net-{:016x}", game::os_u64().unwrap())),
+                    Box::new(crate::accounts::Ed25519),
+                )
+                .unwrap(),
+            );
+            let server = crate::config::Server::default();
+            let mut registry = Registry::new(vec![], &limits, server, Arc::clone(&accounts));
             registry.host(7, game);
             let registry = Arc::new(Mutex::new(registry));
             let counts = Arc::new(Mutex::new(Counts::default()));
@@ -784,12 +1034,9 @@ mod tests {
                     program: String::from("s"),
                     id: String::from("ws://s"),
                     anonymous: true,
-                    accounts: Accounts::open(
-                        &std::env::temp_dir()
-                            .join(format!("h3-net-{:016x}", game::os_u64().unwrap())),
-                        Box::new(crate::accounts::Ed25519),
-                    )
-                    .unwrap(),
+                    accounts,
+                    sessions: Mutex::default(),
+                    proxies: Vec::new(),
                 }),
                 watch::channel(false).1,
             ));
@@ -831,10 +1078,10 @@ mod tests {
             });
             self.says(&join(seat));
             assert!(self.next().await.unwrap().contains("Welcome"));
-            let Some(ToGame::Open { conn, to }) = self.told().await else {
+            let Some(ToGame::Open { conn, to, login }) = self.told().await else {
                 panic!("no open")
             };
-            assert_eq!(conn, ConnId(4));
+            assert_eq!((conn, login), (ConnId(4), None));
             assert!(matches!(
                 self.told().await,
                 Some(ToGame::Message {

@@ -11,6 +11,8 @@ shadow_instance = false         # true: a second battle checks every command (E1
 # public_url = "wss://h3.example.org"   # the server's id, which logins sign: the address clients
                                         # dial (behind a TLS proxy); else ws:// and `bind`'s address
 anonymous = true                # false: a game is joined or created only after a login
+# trusted_proxies = ["127.0.0.1"]       # reverse proxies whose X-Forwarded-For (its last entry)
+                                        # names the client the limits count (README.md)
 
 [content]
 packs = "../../packs"
@@ -34,6 +36,8 @@ spectators_per_game = 8         # 0: no spectators; a game's host may close it t
 empty_game_ms = 1800000         # a running game whose seats all stay empty this long pauses (0: never)
 paused_game_ms = 259200000      # a paused game nobody resumes this long is void (0: never)
 failed_logins_per_address = 10  # a minute; beyond, the address's logins close their connection
+account_changes_per_address = 20  # an hour: registrations, re-keys, renames, preferences
+commands_per_game = 10000       # a game that reaches it without an end is void
 
 # What clients may create games from (`CreateGame { offer }`).
 [[offer]]

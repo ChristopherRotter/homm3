@@ -8,7 +8,8 @@
 //!
 //! At start, before the server listens, the games whose journals the data directory holds are
 //! restored and listed again (E16 M2 T2). A paused game has no thread: the registry keeps its
-//! seats' tokens, and a join with one restores it from its journal (E16 M2 T3).
+//! seats' tokens and accounts, and a join with a seat's token, or as its account, restores it from
+//! its journal (E16 M2 T3, M3 T3).
 //!
 //! The server's life (E16 M2 T5a): a sweep ticks every game's thread, which pauses a running game
 //! whose seats stayed empty, and voids a paused game nobody resumed in time; a drain refuses new
@@ -29,10 +30,11 @@ use std::{fs, io};
 use h3_protocol::codec;
 use h3_protocol::lobby::{self, Lobby};
 use h3_protocol::session::{self, ConnId};
-use h3_protocol::wire::{ClientMessage, GameInfo, Phase, Refusal, Seat};
+use h3_protocol::wire::{ClientMessage, GameInfo, Phase, Refusal, Seat, Seated};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::Instant;
 
+use crate::accounts::Accounts;
 use crate::archive::Archive;
 use crate::game::{self, Offer, Outbox, Prepared, ToGame};
 use crate::{Error, config, journal};
@@ -56,10 +58,12 @@ pub(crate) enum Hosted {
         to: mpsc::Sender<ToGame>,
         bound: usize,
     },
-    /// Paused (E16 M2 T3): its journal, the seats' tokens that resume it (none for the bot's), and
-    /// since when (E16 M2 T5a: its deadline).
+    /// Paused (E16 M2 T3): its journal, the seats' tokens that resume it (none for the bot's), the
+    /// accounts the seats belong to (E16 M3 T3: an account's seat resumes for the account alone),
+    /// and since when (E16 M2 T5a: its deadline).
     Paused {
         tokens: [Option<String>; 2],
+        accounts: [Option<String>; 2],
         since: Instant,
     },
 }
@@ -76,14 +80,18 @@ pub(crate) struct Registry {
     limits: config::Limits,
     /// The finished games' replays (E16 M2 T5d).
     archive: Archive,
+    /// The accounts (E16 M3 T3): a game's thread names its seats' accounts and asks their
+    /// preferences, never under the lock.
+    accounts: Arc<Accounts>,
 }
 
 impl Registry {
-    /// A registry of `offers` within `limits`, and no games.
+    /// A registry of `offers` within `limits`, and no games; its games' players are `accounts`.
     pub(crate) fn new(
         offers: Vec<Arc<Offer>>,
         limits: &config::Limits,
         server: config::Server,
+        accounts: Arc<Accounts>,
     ) -> Self {
         let infos = offers.iter().map(|o| o.info.clone()).collect();
         let games = lobby::Limits {
@@ -97,6 +105,7 @@ impl Registry {
             server,
             limits: *limits,
             archive: Archive::default(),
+            accounts,
         }
     }
 
@@ -205,6 +214,11 @@ impl Registry {
         self.lobby.update(game, status);
     }
 
+    /// The seats of game `game` that belong to accounts, with their display names (E16 M3 T3).
+    pub(crate) fn seat(&mut self, game: u32, seated: Vec<Seated>) {
+        self.lobby.seat(game, seated);
+    }
+
     /// Whether game `game`, in `phase`, leaves now: when it is not running and no connection is
     /// bound to it. Then it is gone from the lobby, and its thread ends.
     pub(crate) fn close_if_idle(&mut self, game: u32, phase: Phase) -> bool {
@@ -222,11 +236,21 @@ impl Registry {
         self.games.insert(game, hosted);
     }
 
-    /// Game `game` paused (E16 M2 T3): its thread ends, `tokens` resume it.
-    pub(crate) fn pause(&mut self, game: u32, tokens: [Option<String>; 2]) {
+    /// Game `game` paused (E16 M2 T3): its thread ends; `tokens`, and `accounts` for their seats,
+    /// resume it (E16 M3 T3).
+    pub(crate) fn pause(
+        &mut self,
+        game: u32,
+        (tokens, accounts): ([Option<String>; 2], [Option<String>; 2]),
+    ) {
         self.lobby.update(game, (Phase::Paused, Vec::new(), false));
         let since = Instant::now();
-        self.games.insert(game, Hosted::Paused { tokens, since });
+        let paused = Hosted::Paused {
+            tokens,
+            accounts,
+            since,
+        };
+        self.games.insert(game, paused);
     }
 
     /// Hosts a game whose inbox is `to`, outside the lobby (tests of the connection task).
@@ -243,13 +267,15 @@ impl Registry {
 }
 
 /// A connection's opening of a game it binds to (E16 M2 T5e): the connection, its outbound queue
-/// for the game and its join.
+/// for the game, the account it is logged in as (E16 M3 T3) and its join.
 #[derive(Debug)]
 pub(crate) struct Opening {
     /// The connection.
     pub conn: ConnId,
     /// Its outbound queue for the game.
     pub to: Outbox,
+    /// The login name of the account it is logged in as.
+    pub login: Option<String>,
     /// Its join.
     pub join: ClientMessage,
 }
@@ -260,8 +286,13 @@ impl Opening {
     /// reviewer's finding; a stranger's join cannot take a new game's creator's seat, nor make a
     /// resuming game pause again).
     fn first(self, inbox: &mpsc::Sender<ToGame>) {
-        let Self { conn, to, join } = self;
-        let _ = inbox.try_send(ToGame::Open { conn, to });
+        let Self {
+            conn,
+            to,
+            login,
+            join,
+        } = self;
+        let _ = inbox.try_send(ToGame::Open { conn, to, login });
         let _ = inbox.try_send(ToGame::Message {
             conn,
             message: join,
@@ -271,34 +302,42 @@ impl Opening {
 
 /// Creates a game of `offer` for a client at `origin`, whose creator takes `seat` and chose
 /// whether it takes spectators (`watchable`, E16 M2 T4c), and binds the creator (`conn`, its queue
-/// `to`) to it: the game's id and inbox, or why not. The creator's join is the game's first
-/// message; the game draws its secrets and creates its journal on its own thread
+/// `to`, its account's `login`) to it: the game's id and inbox, or why not. The creator's join is
+/// the game's first message; the game draws its secrets and creates its journal on its own thread
 /// ([`game::launch`]), so no file is written under the lock (E16 M2 T5e).
 pub(crate) fn create(
     shared: &Shared,
     origin: IpAddr,
     (offer, seat, watchable): (&str, Seat, bool),
-    (conn, to): (ConnId, Outbox),
+    (conn, to, login): (ConnId, Outbox, Option<String>),
 ) -> Result<(u32, mpsc::Sender<ToGame>), Refusal> {
     let mut registry = lock(shared);
     let listed = watchable && registry.limits.spectators_per_game > 0;
     let (game, index) = registry.lobby.create(origin, offer, seat, listed)?;
     let offer = Arc::clone(&registry.offers[index]);
     let (server, limits) = (registry.server.clone(), registry.limits);
-    let prepare = move || match Prepared::new(offer, game, origin, (&server, &limits), watchable) {
-        Ok(prepared) => Some(prepared),
-        Err(e) => {
-            eprintln!("h3-server: game {game} not created: {e}");
-            None
-        }
-    };
+    let accounts = Arc::clone(&registry.accounts);
+    let prepare =
+        move || match Prepared::new(offer, game, origin, (&server, &limits, accounts), watchable) {
+            Ok(prepared) => Some(prepared),
+            Err(e) => {
+                eprintln!("h3-server: game {game} not created: {e}");
+                None
+            }
+        };
     let (to_game, inbox) = mpsc::channel(GAME_INBOX);
     let join = ClientMessage::Join {
         game,
         seat,
         token: None,
     };
-    Opening { conn, to, join }.first(&to_game);
+    Opening {
+        conn,
+        to,
+        login,
+        join,
+    }
+    .first(&to_game);
     if let Err(e) = game::launch(game, prepare, inbox, Arc::clone(shared)) {
         eprintln!("h3-server: game {game} not created: {e}");
         registry.lobby.remove(game);
@@ -316,8 +355,9 @@ pub(crate) fn create(
 
 /// Binds a connection that joins `seat` of game `game` with `token`: the game's inbox, and the
 /// connection's `opening` back if its task is to pass it (a game that runs), or why not. A paused
-/// game is restored first (E16 M2 T3), only for a seat's token: a spectator, the bot's seat, a
-/// missing or another token are refused as a running game refuses them. It is restored on its own
+/// game is restored first (E16 M2 T3), only for a seat's token, or for its account (E16 M3 T3): a
+/// spectator, the bot's seat, a missing or another token, another account are refused as a
+/// running game refuses them (`session::refusal`). It is restored on its own
 /// thread ([`game::launch`]; E16 M2 T5e: no file read under the lock), the opening its first
 /// message; a paused journal that no longer restores is void, the game gone, and its joiner hears
 /// `Goodbye { Shutdown }`.
@@ -327,23 +367,28 @@ pub(crate) fn bind(
     opening: Opening,
 ) -> Result<(mpsc::Sender<ToGame>, Option<Opening>), Refusal> {
     let mut registry = lock(shared);
-    let tokens = match registry.games.get_mut(&game) {
+    let (tokens, accounts) = match registry.games.get_mut(&game) {
         None => return Err(Refusal::NoSuchGame),
         Some(Hosted::Live { to, bound }) => {
             *bound += 1;
             return Ok((to.clone(), Some(opening)));
         }
-        Some(Hosted::Paused { tokens, .. }) => tokens,
+        Some(Hosted::Paused {
+            tokens, accounts, ..
+        }) => (tokens, accounts),
     };
-    let expected = match seat {
-        Seat::Attacker => &tokens[0],
-        Seat::Defender => &tokens[1],
+    let index = match seat {
+        Seat::Attacker => 0,
+        Seat::Defender => 1,
         Seat::Spectator => return Err(Refusal::NoSpectators),
     };
-    match (expected, token) {
-        (Some(expected), Some(given)) if session::same_token(expected, given) => {}
-        (Some(_), Some(_)) => return Err(Refusal::BadToken),
-        (None, _) | (_, None) => return Err(Refusal::SeatTaken),
+    // The bot's seat has no token; a paused game started, so every player's seat was taken.
+    let Some(expected) = &tokens[index] else {
+        return Err(Refusal::SeatTaken);
+    };
+    let claim = (expected.as_str(), true, accounts[index].as_deref());
+    if let Some(reason) = session::refusal(claim, token, opening.login.as_deref()) {
+        return Err(reason);
     }
     let path = journal::dir(&registry.server.data).join(format!("{game}.journal"));
     let (offers, server, limits) = (
@@ -351,6 +396,7 @@ pub(crate) fn bind(
         registry.server.clone(),
         registry.limits,
     );
+    let accounts = Arc::clone(&registry.accounts);
     let prepare = move || {
         let prepared = journal::read(&path).and_then(|read| {
             let offer = offers
@@ -358,7 +404,7 @@ pub(crate) fn bind(
                 .find(|o| o.id == read.start.offer)
                 .cloned()
                 .ok_or_else(|| format!("the server offers no `{}` now", read.start.offer))?;
-            Prepared::restored(offer, &path, read, (&server, &limits), None)
+            Prepared::restored(offer, &path, read, (&server, &limits, accounts), None)
         });
         match prepared {
             Ok(prepared) => Some(prepared),
@@ -418,7 +464,8 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
                 .find(|o| o.id == read.start.offer)
                 .cloned()
                 .ok_or_else(|| format!("the server offers no `{}` now", read.start.offer))?;
-            let host = (&registry.server, &registry.limits);
+            let accounts = Arc::clone(&registry.accounts);
+            let host = (&registry.server, &registry.limits, accounts);
             Prepared::restored(offer, &path, read, host, Some((to, done)))
         });
         match prepared {

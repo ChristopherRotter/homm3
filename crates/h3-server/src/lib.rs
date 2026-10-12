@@ -130,7 +130,10 @@ pub fn server_name() -> String {
 /// each on its own thread.
 pub async fn start(config: &Config) -> Result<Running, Error> {
     let lock = lock(&config.server.data)?;
-    let accounts = accounts::Accounts::open(&config.server.data, Box::new(accounts::Ed25519))?;
+    let accounts = Arc::new(accounts::Accounts::open(
+        &config.server.data,
+        Box::new(accounts::Ed25519),
+    )?);
     let offers = config
         .offers
         .iter()
@@ -140,6 +143,7 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         offers,
         &config.limits,
         config.server.clone(),
+        Arc::clone(&accounts),
     )));
     registry::lock(&registry).load_archive();
     registry::restore(&registry).await?;
@@ -150,6 +154,14 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         .local_addr()
         .map_err(|e| Error(format!("bind {}: {e}", config.server.bind)))?;
     // The server's id: its public URL, else the address it listens on (E16 M3 T2a).
+    if config.server.public_url.is_none()
+        && (address.ip().is_unspecified() || !config.server.trusted_proxies.is_empty())
+    {
+        eprintln!(
+            "h3-server: no [server] public_url: logins sign ws://{address}, which clients that \
+             dial another address refuse to sign (E16 M3's review)"
+        );
+    }
     let server = Arc::new(net::Service {
         program: server_name(),
         id: config
@@ -159,6 +171,10 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
             .unwrap_or_else(|| format!("ws://{address}")),
         anonymous: config.server.anonymous,
         accounts,
+        sessions: Mutex::default(),
+        proxies: (config.server.trusted_proxies.iter())
+            .map(|proxy| proxy.to_canonical())
+            .collect(),
     });
     let (stop, stopping) = watch::channel(false);
     let sweeper = tokio::spawn(registry::sweep_every(Arc::clone(&registry), config.limits));

@@ -43,6 +43,8 @@ from inputs to outputs, with sockets, clock and files outside.
 6. **Identity is the seat of the connection**, never a payload field (commands name no side or
    player). A seat is taken, and re-taken after a disconnect, with a server-issued token (128 bits
    of OS randomness); accounts bind seats later (identity ADR); bot seats are the server's.
+   *Amended 2026-10-12 (E16 M3 T5):* since M3 T3 a seat a logged-in connection takes belongs to
+   its account (ADR-0019 point 1), re-taken by the account alone and by no token.
 7. **Everything outbound is projected per viewer** with the engine's `observe` and `project`.
    Spectators come with the battle's spectator viewer (before M2, SRV-Q4). Sequence numbers are
    per viewer. A command is acknowledged by the client's own sequence number: `Accepted` or
@@ -54,7 +56,8 @@ from inputs to outputs, with sockets, clock and files outside.
    game ends; before, a viewer may fetch its *record* (its own message log). *Amended 2026-10-11
    (SRV-Q15, E16 M2 T5d):* once a game ended and verified, its replay is public: any client lists
    the server's archive and downloads it without a game; a game whose host closed it to spectators
-   is archived unlisted, for the operator.
+   is archived unlisted, for the operator. *Amended 2026-10-12 (E16 M3 T5; the user's SRV-Q17,
+   ADR-0019 point 2):* so is a game one of whose seated accounts opted out of the listing.
 9. **Bounds, all configured:** frame size, messages per second per connection, one command in
    flight per seat, connections in total and per address, idle timeout. Decoder and session core
    are property-tested on arbitrary input and on mutated valid messages (*amended 2026-10-11*,

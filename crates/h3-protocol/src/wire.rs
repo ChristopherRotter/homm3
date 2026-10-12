@@ -963,8 +963,19 @@ pub enum Phase {
     Running,
     /// Over.
     Over,
-    /// Paused (E16 M2 T3): a seat's player resumes it by joining with the seat's token.
+    /// Paused (E16 M2 T3): a seat's player resumes it by joining with the seat's token, or as the
+    /// seat's account (E16 M3 T3).
     Paused,
+}
+
+/// A seat that belongs to an account, as the lobby shows it (E16 M3 T3).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Seated {
+    /// The seat.
+    pub seat: Seat,
+    /// The account's display name.
+    pub display: String,
 }
 
 /// One hosted game in the lobby's list.
@@ -982,6 +993,9 @@ pub struct GameInfo {
     /// Whether it takes spectators (E16 M2 T4c): its host's setting, on a server that takes them
     /// at all; a game watched by as many as the server allows refuses more.
     pub spectators: bool,
+    /// The seats that belong to accounts, with their display names (E16 M3 T3); a seat an
+    /// anonymous player or a bot holds is not named.
+    pub seated: Vec<Seated>,
 }
 
 /// A question about the battle that only the server's rules answer (ADR-0018 point 10).
@@ -1034,13 +1048,14 @@ pub enum ClientMessage {
         #[serde(default)]
         spectators: Option<bool>,
     },
-    /// Take a seat in a game, or re-take it with its token after a disconnect.
+    /// Take a seat in a game, or re-take it after a disconnect: with its token, or as the account
+    /// it belongs to (E16 M3 T3: a seat a logged-in connection took is its account's).
     Join {
         /// The game.
         game: u32,
         /// The seat asked for.
         seat: Seat,
-        /// The seat's token, to re-take it.
+        /// The seat's token, to re-take a seat that belongs to no account.
         token: Option<String>,
     },
     /// A battle command; `seq` is the client's own counter, echoed in the answer.
@@ -1156,7 +1171,8 @@ pub enum ClientMessage {
 pub enum Refusal {
     /// No game has this id.
     NoSuchGame,
-    /// Another connection holds the seat.
+    /// The seat is taken: a bot's, one taken before (re-taken with its token), or one that belongs
+    /// to another account (E16 M3 T3).
     SeatTaken,
     /// The token does not belong to the seat.
     BadToken,
@@ -1204,7 +1220,7 @@ pub enum GoodbyeReason {
     TooSlow,
     /// The client left.
     Left,
-    /// Another connection took the seat with its token.
+    /// Another connection took the seat with its token, or as its account (E16 M3 T3).
     Replaced,
     /// The server shuts down.
     Shutdown,
@@ -1212,6 +1228,15 @@ pub enum GoodbyeReason {
     Paused,
     /// The host closed the game to spectators (E16 M2 T4c).
     SpectatorsClosed,
+    /// The account re-keyed on another connection (E16 M3 T3): a connection logged in with its
+    /// former key closes; the player logs in again with the new one.
+    Rekeyed,
+    /// The game reached the server's limit of commands without an end (E16 M3 T4a): it is void,
+    /// with no result and no replay.
+    CommandLimit,
+    /// The game had not started and none of its seats is held any more (E16 M3 T4a): it is gone,
+    /// and its spectators with it.
+    Abandoned,
 }
 
 /// A message from the server. `n` counts the messages a viewer received from its game, so a gap
@@ -1242,7 +1267,8 @@ pub enum ServerMessage {
         game: u32,
         /// The seat it holds.
         seat: Seat,
-        /// The token that re-takes the seat after a disconnect (none for a spectator).
+        /// The token that re-takes the seat after a disconnect: none for a spectator, nor for a
+        /// seat that belongs to an account (E16 M3 T3), which its account re-takes.
         token: Option<String>,
         /// What the game is made of.
         manifest: Manifest,

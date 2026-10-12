@@ -8,7 +8,7 @@ use std::vec::Vec;
 use super::full;
 use crate::lobby::{Limits, Lobby};
 use crate::map;
-use crate::wire::{GameInfo, Offer, Phase, Refusal, Seat, ServerMessage};
+use crate::wire::{GameInfo, Offer, Phase, Refusal, Seat, Seated, ServerMessage};
 
 fn offers() -> Vec<Offer> {
     let (ruleset, _) = full();
@@ -56,6 +56,7 @@ fn games_are_created_from_offers_and_listed() {
                 phase: Phase::Waiting,
                 open: vec![Seat::Attacker, Seat::Defender],
                 spectators: true,
+                seated: vec![],
             },
             GameInfo {
                 game: 2,
@@ -63,6 +64,7 @@ fn games_are_created_from_offers_and_listed() {
                 phase: Phase::Waiting,
                 open: vec![Seat::Attacker],
                 spectators: false,
+                seated: vec![],
             },
         ]
     );
@@ -79,6 +81,17 @@ fn games_are_created_from_offers_and_listed() {
         games(&lobby).len(),
         2,
         "an unknown game is not listed by an update"
+    );
+    // E16 M3 T3: the host names the seats that belong to accounts.
+    let alice = vec![Seated {
+        seat: Seat::Attacker,
+        display: "Alice".to_string(),
+    }];
+    lobby.seat(1, alice.clone());
+    lobby.seat(9, alice.clone());
+    assert_eq!(
+        (games(&lobby)[0].seated.clone(), games(&lobby).len()),
+        (alice, 2)
     );
     // A removed game leaves the list; ids are never reused.
     lobby.remove(1);
@@ -135,6 +148,7 @@ fn restored_games_are_listed_again_and_counted() {
         phase: Phase::Running,
         open: vec![],
         spectators: true,
+        seated: vec![],
     };
     // Beyond the origin's limit, which the games were within when they were created.
     lobby.reopen(1, restored(7));

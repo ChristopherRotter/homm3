@@ -326,14 +326,21 @@ out of its replay's listing.
 - **T2b Re-keying, renames, the listing preference, the operator's rebind** (done 2026-10-11;
   `E16-log.md`): the three requests answered, each a line in the player log; `h3-server rebind`
   while the server is stopped, `<data>/lock` keeping one server or command at a time.
-- **T3 Seats bound to accounts**: a seat taken and re-taken by account, the journal's account,
-  the lobby's display names, the replay's listing by the seated accounts.
-- **T4a A game's bounds**: the commands-per-game limit (void beyond it), a waiting game whose
-  seats are all empty leaves.
-- **T4b Behind a reverse proxy**: the forwarded address from trusted proxies, limits per IPv6
-  prefix, the documented setup with TLS.
-- **T5 Closure**: `06-security.md`'s accounts, the client lane's note (the derivation, the
-  server's id), the reviewer agent, the user's checkpoint.
+- **T3 Seats bound to accounts** (done 2026-10-11; `E16-log.md`): a seat a logged-in connection
+  takes is its account's, re-taken by it alone without a token (`session::refusal`), also paused
+  and after a restart (journal format 4); the lobby's display names (`GameInfo::seated`); the
+  replay listed by the seated accounts' preferences; a re-key closes the account's other
+  connections (`Rekeyed`); wire version 13.
+- **T4a A game's bounds** (done 2026-10-11; `E16-log.md`): `[limits] commands_per_game` (a game
+  reaching it without an end void, `Goodbye { CommandLimit }`; its replay sized to fit
+  `outbound_bytes`); a waiting game without a held seat leaves, its spectators told
+  (`Abandoned`).
+- **T4b Behind a reverse proxy** (done 2026-10-11; `E16-log.md`): `[server] trusted_proxies`
+  (the client the last `X-Forwarded-For` entry names), every limit per address by IPv6 /64, the
+  operator's setup with TLS (`crates/h3-server/README.md`).
+- **T5 Closure** (done 2026-10-12 but the user's checkpoint, SRV-Q18; `E16-log.md`):
+  `06-security.md`'s accounts, ADR-0018 points 6 and 8 amended, the client lane's note, the exit
+  criteria checked, the reviewer agent (run before #105's pull request).
 
 ## Exit criteria (M3)
 
@@ -415,6 +422,26 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   <config.toml> <login> <public-key>` (the key checked as an Ed25519 key that is not weak);
   `<data>/lock` (`File::try_lock`), held by a running server for its life and by the command, so
   a second server on the same data directory does not start either.
+- T3: an account's seat taken by no token (`SeatTaken`, no new refusal) and its `Joined` without
+  one; the seat's account fixed at its first take (a login after opening the game does not bind
+  it); one account in both seats allowed; `Entry::TakenBy` beside `Entry::Taken`, the journal's
+  `Taken { side, account }`; `GameInfo::seated` (`Seated { seat, display }`, anonymous and bot
+  seats unnamed), its names as they stand at the seats' last change (a rename shows later); an
+  account the player log does not know keeps a replay unlisted; the replay's listing decided when
+  the game ends; `GoodbyeReason::Rekeyed` and the connections by account (`Service::sessions`).
+- T4a: `commands_per_game` (10 000) and the replay's size estimate (160 bytes a command, 64 KiB
+  besides) the configuration checks against `outbound_bytes`; the limit checked by the game's
+  thread after each step (a few bot commands past it possible); void at the limit (no draw, no
+  replay), `Goodbye { CommandLimit }` and `Abandoned`; a waiting game without a held seat leaves at
+  once, as one without connections did.
+- T4b: `trusted_proxies` as exact addresses (no ranges); `X-Forwarded-For` alone, its last entry
+  (not RFC 7239's `Forwarded`); a proxied connection counted in the total only until its
+  handshake; the proxy's own address without a header that reads; the /64 for every limit per
+  address, the lobby's included; the operator's page as the crate's README.
+- M3's reviewer (run before T5): `account_changes_per_address` (20 an hour; every request that
+  may write the player log, closing its connection beyond); the re-key's kick taken before a
+  client message and only for another key; a refused line truncated off the log; a warning
+  without `public_url` on an unspecified address or behind proxies.
 
 ## Review list for the M2 checkpoint (passed 2026-10-11, SRV-Q16)
 

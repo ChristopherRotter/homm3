@@ -254,6 +254,10 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                     phase: Phase::Waiting,
                     open: vec![Seat::Attacker],
                     spectators: true,
+                    seated: vec![Seated {
+                        seat: Seat::Defender,
+                        display: "Alice".to_string(),
+                    }],
                 },
                 GameInfo {
                     game: 4,
@@ -261,6 +265,7 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                     phase: Phase::Paused,
                     open: vec![],
                     spectators: false,
+                    seated: vec![],
                 },
             ],
         },
@@ -330,6 +335,9 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             GoodbyeReason::Shutdown,
             GoodbyeReason::Paused,
             GoodbyeReason::SpectatorsClosed,
+            GoodbyeReason::Rekeyed,
+            GoodbyeReason::CommandLimit,
+            GoodbyeReason::Abandoned,
         ]
         .map(|reason| ServerMessage::Goodbye { reason }),
     );
@@ -411,10 +419,14 @@ fn the_json_is_serdes_default_enum_form() {
         phase: Phase::Running,
         open: vec![],
         spectators: true,
+        seated: vec![Seated {
+            seat: Seat::Attacker,
+            display: "Alice".to_string(),
+        }],
     };
     assert_eq!(
         serde_json::to_string(&info).unwrap(),
-        r#"{"game":3,"offer":"duel","phase":"Running","open":[],"spectators":true}"#
+        r#"{"game":3,"offer":"duel","phase":"Running","open":[],"spectators":true,"seated":[{"seat":"Attacker","display":"Alice"}]}"#
     );
     // E16 M3 T1: a login, keys and signatures as hex.
     assert_eq!(

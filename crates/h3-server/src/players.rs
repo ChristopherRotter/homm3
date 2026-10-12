@@ -87,8 +87,9 @@ pub(crate) struct Players {
     accounts: BTreeMap<String, Account>,
     /// The login names by display name as it is compared ([`account::display_key`]).
     displays: BTreeMap<String, String>,
-    /// The log, open for appending; `None` once a write failed: nothing more is written, so a
-    /// line it cut short stays the last one, and the operator reads why on standard error.
+    /// The log, open for appending; `None` once a write failed: its line is cut off again where
+    /// the file allows (else a line it cut short stays the last one), nothing more is written, and
+    /// the operator reads why on standard error.
     file: Option<File>,
 }
 
@@ -245,10 +246,14 @@ impl Players {
             .ok_or_else(|| io::Error::other("a write failed before"))?;
         let mut text = serde_json::to_string(event).map_err(io::Error::other)?;
         text.push('\n');
+        let before = file.metadata()?.len();
         let written = file
             .write_all(text.as_bytes())
             .and_then(|()| file.sync_data());
         if written.is_err() {
+            // The change is refused: its line, whole or not, must not come back at the next start
+            // (E16 M3's review). Cut it off if the file still lets us.
+            let _ = file.set_len(before).and_then(|()| file.sync_data());
             self.file = None;
         }
         written

@@ -5,7 +5,8 @@
 //! header, the seed, the setup, the checkpoint interval). Every further line is one of the session
 //! core's entries ([`Entry`]): a seat taken, the start, an accepted command (in the replay's text
 //! form), a state hash, a pause and a resume (format 2, E16 M2 T3), whether the game takes
-//! spectators as it started (format 3, E16 M2 T4c).
+//! spectators as it started (format 3, E16 M2 T4c), the account a seat belongs to in its `Taken`
+//! line (format 4, E16 M3 T3).
 //!
 //! - **Write-ahead.** The game's thread appends the entries of each call and syncs them before it
 //!   sends that call's frames ([`Writer::append`]); a new journal is synced with its directory
@@ -30,7 +31,7 @@ use h3_protocol::session::Entry;
 use serde::{Deserialize, Serialize};
 
 /// The version of the journal's format: bumped when its lines change.
-pub const JOURNAL_FORMAT_VERSION: u32 = 3;
+pub const JOURNAL_FORMAT_VERSION: u32 = 4;
 
 /// The journal's first line: the game as it started.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -61,8 +62,12 @@ enum Side {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 enum Line {
-    /// [`Entry::Taken`].
-    Taken { side: Side },
+    /// [`Entry::Taken`], or [`Entry::TakenBy`] with the account's login name (E16 M3 T3).
+    Taken {
+        side: Side,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        account: Option<String>,
+    },
     /// [`Entry::Started`].
     Started {},
     /// [`Entry::Command`] in the replay's text form (`h3_cli::format_command`).
@@ -79,12 +84,18 @@ enum Line {
 
 impl Line {
     fn of(entry: Entry) -> Self {
+        let side = |side| match side {
+            BattleSide::Attacker => Side::Attacker,
+            BattleSide::Defender => Side::Defender,
+        };
         match entry {
-            Entry::Taken(BattleSide::Attacker) => Self::Taken {
-                side: Side::Attacker,
+            Entry::Taken(taken) => Self::Taken {
+                side: side(taken),
+                account: None,
             },
-            Entry::Taken(BattleSide::Defender) => Self::Taken {
-                side: Side::Defender,
+            Entry::TakenBy(taken, login) => Self::Taken {
+                side: side(taken),
+                account: Some(login),
             },
             Entry::Started => Self::Started {},
             Entry::Command(side, command) => Self::Command {
@@ -101,12 +112,16 @@ impl Line {
 
     fn entry(self) -> Result<Entry, String> {
         Ok(match self {
-            Self::Taken {
-                side: Side::Attacker,
-            } => Entry::Taken(BattleSide::Attacker),
-            Self::Taken {
-                side: Side::Defender,
-            } => Entry::Taken(BattleSide::Defender),
+            Self::Taken { side, account } => {
+                let side = match side {
+                    Side::Attacker => BattleSide::Attacker,
+                    Side::Defender => BattleSide::Defender,
+                };
+                match account {
+                    Some(login) => Entry::TakenBy(side, login),
+                    None => Entry::Taken(side),
+                }
+            }
             Self::Started {} => Entry::Started,
             Self::Command { command } => {
                 let (side, command) = h3_cli::parse_command(&command).map_err(|e| e.to_string())?;
@@ -316,7 +331,7 @@ mod tests {
         );
         let entries = [
             Entry::Taken(BattleSide::Attacker),
-            Entry::Taken(BattleSide::Defender),
+            Entry::TakenBy(BattleSide::Defender, String::from("alice")),
             Entry::Started,
             Entry::Command(BattleSide::Attacker, Command::Move { to: Hex(40) }),
             Entry::Command(BattleSide::Defender, Command::Wait),
@@ -325,7 +340,7 @@ mod tests {
             Entry::Resumed,
             Entry::Spectators(false),
         ];
-        writer.append(entries.into_iter()).unwrap();
+        writer.append(entries.clone().into_iter()).unwrap();
         writer.append(std::iter::empty()).unwrap();
         let path = writer.path().to_path_buf();
         assert_eq!(path, data.join("games/4.journal"));
@@ -338,6 +353,9 @@ mod tests {
             "{text}"
         );
         assert!(text.contains(r#"{"Checkpoint":{"hash":"0x0123456789abcdef"}}"#));
+        assert!(text.contains(
+            "{\"Taken\":{\"side\":\"Attacker\"}}\n{\"Taken\":{\"side\":\"Defender\",\"account\":\"alice\"}}\n"
+        ));
         assert!(
             text.ends_with(
                 "{\"Paused\":{}}\n{\"Resumed\":{}}\n{\"Spectators\":{\"open\":false}}\n"

@@ -19,6 +19,9 @@ use crate::config::{BotSeat, Config, Content, Limits, Offer, Server};
 use crate::{Running, bench, game, registry, start};
 
 mod accounts;
+mod bounds;
+mod proxy;
+mod seats;
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -50,6 +53,7 @@ fn config(limits: Limits) -> Config {
             shadow_instance: false,
             public_url: None,
             anonymous: true,
+            trusted_proxies: vec![],
         },
         content: Content {
             packs: root().join("packs"),
@@ -490,6 +494,7 @@ async fn the_lobby_refuses_with_its_reason_and_frees_a_waiting_game() {
             phase: Phase::Waiting,
             open: vec![Seat::Defender],
             spectators: true,
+            seated: vec![],
         }]
     );
     let mut c = greeted(&running).await;
@@ -639,14 +644,18 @@ async fn retaken(
     (client, sent)
 }
 
-/// A crash at this moment: a new data directory with a copy of the journals `data` holds now (the
-/// server syncs every line before it sends what depends on it).
+/// A crash at this moment: a new data directory with a copy of the journals and of the player log
+/// `data` holds now (the server syncs every line before it sends what depends on it).
 fn crashed(data: &Path) -> PathBuf {
     let copy = data.with_extension("restarted");
     std::fs::create_dir_all(copy.join("games")).unwrap();
     for entry in std::fs::read_dir(data.join("games")).unwrap() {
         let path = entry.unwrap().path();
         std::fs::copy(&path, copy.join("games").join(path.file_name().unwrap())).unwrap();
+    }
+    let players = data.join("players.log");
+    if players.exists() {
+        std::fs::copy(&players, copy.join("players.log")).unwrap();
     }
     copy
 }
@@ -684,6 +693,7 @@ async fn a_game_stopped_mid_battle_resumes_after_a_restart_and_its_replay_verifi
             phase: Phase::Running,
             open: vec![],
             spectators: true,
+            seated: vec![],
         }],
         "the game is back, its seats taken"
     );
@@ -902,6 +912,7 @@ async fn a_paused_game_resumes_with_a_seats_token_also_after_a_restart() {
         phase: Phase::Paused,
         open: vec![],
         spectators: false,
+        seated: vec![],
     };
     let mut attempts = 0;
     while listed(&running).await != [paused.clone()] {
@@ -1438,7 +1449,7 @@ async fn a_created_games_creator_joins_before_anyone_else() {
     // The creator's side of a creation, as its task does it, but nobody reads its queue yet.
     let (to, mut from_game) = game::outbox(16, 1 << 20);
     let asked = ("pvp", Seat::Attacker, true);
-    let creator = (ConnId(u64::MAX), to);
+    let creator = (ConnId(u64::MAX), to, None);
     let local = [127, 0, 0, 1].into();
     let (game, _) = registry::create(&running.registry, local, asked, creator).unwrap();
     let mut stranger = greeted(&running).await;
@@ -1618,6 +1629,9 @@ fn configurations_are_checked() {
         "empty_game_ms = 31536000001",
         "paused_game_ms = 31536000001",
         "failed_logins_per_address = 0",
+        "account_changes_per_address = 0",
+        "commands_per_game = 0",
+        "commands_per_game = 1000001",
     ] {
         let text = format!("{offer}[limits]\n{limit}");
         let error = refused(&text).unwrap_err();
@@ -1631,6 +1645,9 @@ fn configurations_are_checked() {
     );
     let doubled = refused(&format!("{offer}[limits]\nrecord_bytes = 1048576")).unwrap_err();
     assert!(doubled.0.contains("fit twice"), "{doubled}");
+    // A replay of the longest game fits in the outbound queue (E16 M3 T4a).
+    let long = refused(&format!("{offer}[limits]\ncommands_per_game = 20000")).unwrap_err();
+    assert!(long.0.contains("its replay"), "{long}");
     // The server's id is a WebSocket address (E16 M3 T2a).
     for url in [
         "",

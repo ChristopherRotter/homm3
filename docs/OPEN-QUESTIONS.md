@@ -52,7 +52,9 @@ Survey §3.1, GAM-SET-001. **The code reading** (0x4C9730): the second starting 
 
 ### Server lane (`SRV-Q<n>`)
 
-(no open questions)
+#### SRV-Q18 — M3's checkpoint (E16 M3 T5)
+
+M3 (accounts) is built and closed in #105 (T3–T5 with M3's reviewer agent; T1–T2b merged in #99, #101, #102); its exit criteria are checked in `docs/epics/E16-log.md` (M3 T5). To decide: (a) the **review list for the M3 checkpoint** (`docs/epics/E16-server.md`): the choices queued under the autonomy contract, among them the messages and the signed bytes, the names' rules, the player log's lines, `h3-server rebind` and the data directory's lock, an account's seat taken by no token, the lobby's names as they stood at the seats' last change, `commands_per_game` and the replay's size estimate, `trusted_proxies` with `X-Forwarded-For`'s last entry, `account_changes_per_address`; **recommendation: accept as built**. (b) The **inbox's M3 items** (`docs/lanes/server/QUEUE.md`): the player log's lock split if logins stall, a rename racing a re-key, the lobby's names after a rename: **recommendation: later, as placed**. (c) **What comes next**: M4's refinement (ranked battles: ladders, matchmaking, Glicko-2, forfeits, bot accounts; ADR-0019 points 4–9 are its direction, and the inbox's M4 items are waiting), or M6's server identity (the server keypair and the signed welcome can come early, same crates); **recommendation: M4's refinement, as SRV-Q10 ordered**.
 
 ### Client lane (`CLT-Q<n>`)
 

@@ -10,7 +10,8 @@
 //!   registration whose display name is taken, ignoring case, is refused `NameTaken`.
 //! - A logged-in account (E16 M3 T2b) re-keys with both keys' signatures over
 //!   `h3_protocol::account::rekey_message` (else `BadLogin`): from then on only the new key logs
-//!   in; its connections logged in already stay so. It renames itself to a display name no other
+//!   in. A re-key that changed the key says so, and the account's other connections, logged in
+//!   with the key it had, close (`net`, E16 M3 T3). It renames itself to a display name no other
 //!   account has, ignoring case (else `NameTaken`), and sets its listing preference.
 //! - Each change's line is synced before its answer: a change the server answered survives a
 //!   crash; a request that changes nothing writes none. A log that cannot be written refuses the
@@ -85,9 +86,11 @@ impl Accounts {
         })
     }
 
-    /// Answers an account's request whose form the hello gate checked: the account as it stands,
-    /// or why not. Blocks on the player log: call it off a connection's task.
-    pub(crate) fn answer(&self, request: AccountRequest) -> Result<Account, Refusal> {
+    /// Answers an account's request whose form the hello gate checked: the account as it stands
+    /// and whether its key changed (a re-key), or why not. Blocks on the player log: call it off a
+    /// connection's task.
+    pub(crate) fn answer(&self, request: AccountRequest) -> Result<(Account, bool), Refusal> {
+        let unchanged = |account| (account, false);
         match request {
             AccountRequest::Login {
                 login,
@@ -96,7 +99,9 @@ impl Accounts {
                 display,
                 signed,
                 ..
-            } => self.login(&login, &key, &signature, display.as_deref(), &signed),
+            } => self
+                .login(&login, &key, &signature, display.as_deref(), &signed)
+                .map(unchanged),
             AccountRequest::Rekey {
                 login,
                 key,
@@ -105,9 +110,20 @@ impl Accounts {
                 signed,
                 ..
             } => self.rekey(login, &key, (&by_old, &by_new), &signed),
-            AccountRequest::Rename { login, display, .. } => self.rename(login, display),
-            AccountRequest::SetListed { login, listed, .. } => self.set_listed(login, listed),
+            AccountRequest::Rename { login, display, .. } => {
+                self.rename(login, display).map(unchanged)
+            }
+            AccountRequest::SetListed { login, listed, .. } => {
+                self.set_listed(login, listed).map(unchanged)
+            }
         }
+    }
+
+    /// The account `login` as it stands, if the server knows it (E16 M3 T3: a game names its
+    /// seats' accounts in the lobby and asks their listing preferences). Blocks on the player log:
+    /// call it neither on a connection's task nor under the registry's lock.
+    pub(crate) fn get(&self, login: &str) -> Option<Account> {
+        self.players().get(login).cloned()
     }
 
     /// The player log, locked.
@@ -151,14 +167,15 @@ impl Accounts {
         )
     }
 
-    /// The logged-in account `login` re-keys to `key`, signed by its key so far and by `key`.
+    /// The logged-in account `login` re-keys to `key`, signed by its key so far and by `key`;
+    /// whether the key changed.
     fn rekey(
         &self,
         login: String,
         key: &[u8; KEY_BYTES],
         (by_old, by_new): (&[u8; SIGNATURE_BYTES], &[u8; SIGNATURE_BYTES]),
         signed: &[u8],
-    ) -> Result<Account, Refusal> {
+    ) -> Result<(Account, bool), Refusal> {
         if !self.authenticator.verify(key, signed, by_new) {
             return Err(Refusal::BadLogin);
         }
@@ -168,10 +185,10 @@ impl Accounts {
             return Err(Refusal::BadLogin);
         }
         if account.key == *key {
-            return Ok(account);
+            return Ok((account, false));
         }
         let key = Hex(*key);
-        record(&mut players, Event::Rekeyed { login, key })
+        record(&mut players, Event::Rekeyed { login, key }).map(|account| (account, true))
     }
 
     /// The logged-in account `login` takes the display name `display`.

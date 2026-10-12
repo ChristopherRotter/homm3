@@ -4,11 +4,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 closed (2026-10-11, SRV-Q12). M2 closed (2026-10-11, SRV-Q16):** T1–T5e merged (#67 … #96). **M3 refined (2026-10-11, SRV-Q17):** ADR-0019 accepted (a permanent login name that salts the key, a changeable display name, `ed25519-dalek` and `argon2`, anonymous play by configuration, any seated account opts out of its replay's listing; points 4–9 direction for M4); M3 cut into T1–T5 (`QUEUE.md`). **M3 T1 done** (the login on the wire, sans-I/O). **M3 T2a done** (logins checked: the `Authenticator`, Ed25519; `<data>/players.log`; `public_url`, `anonymous`, failed logins per address). **M3 T2b done** (re-keys, renames, the preference; `h3-server rebind`; `<data>/lock`). **Next: M3 T3** (seats bound to accounts; or T4a, independent); wire 12.
-- **For M4** (SRV-Q13, answered): ranked games one at a time per player, a pause only by agreement, its length negotiated within the ladder's bounds, the absent player forfeits at the due time; the reading of "one at a time" is confirmed at M4's refinement.
+- **M1 closed (2026-10-11, SRV-Q12). M2 closed (2026-10-11, SRV-Q16):** T1–T5e merged (#67 … #96). **M3 refined (2026-10-11, SRV-Q17):** ADR-0019 accepted (points 1–3 for M3, 4–9 direction for M4); M3 cut into T1–T5 (`QUEUE.md`). **M3 T1–T2b done** (the login on the wire; the `Authenticator`, `<data>/players.log`; re-keys, renames, the preference, `h3-server rebind`, `<data>/lock`). **M3 T3 done** (seats bound to accounts, `session::refusal`; the lobby's names; the listing by preference; a re-key closes the account's other connections). **M3 T4a done** (`commands_per_game`; a waiting game without a held seat leaves). **M3 T4b done** (`trusted_proxies`, limits by IPv6 /64, `crates/h3-server/README.md`). **M3 T5 done** in #105 (cross-lane: `06-security.md`, ADR-0018, the client's inbox) **but the user's checkpoint, SRV-Q18**; then M4's refinement; wire 13.
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 12 since M3 T1's login; 11 was M2 T5d's archive; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 3 since M2 T4c's spectator setting; 2 was M2 T3's pause lines; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 13 since M3 T3's seats by account; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 4 since M3 T3's account in `Taken`; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. ADR-0019 (identity) was accepted at the M3 refinement; the discovery draft is decided at M6's.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -40,12 +39,16 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - The workspace's clippy bans `std::time::Instant` and `SystemTime` in every crate: the server uses `tokio::time::Instant`, and a file's age is `fs::metadata(p)?.modified()?.elapsed()` (a `Duration`, no type named).
 - A `watch::Receiver` whose sender is gone makes `wait_for` fail at once, again and again: a select arm on it must then never resolve (`net::stopped`), or a dropped `Running` would stop every connection.
 - A paused game has no thread: the registry's `Hosted::Paused` holds its tokens, and `registry::bind` restores it for a join. A game's thread ignores `ToGame::Open` (nothing changed until the join), or a resuming game, still paused, would pause again before its join.
-- An account's request is answered through `spawn_blocking`, the player log under its own lock (`accounts.rs`): never take the registry's lock there, and keep the signature check before the lock.
+- An account's request is answered through `spawn_blocking`, the player log under its own lock (`accounts.rs`): never take the registry's lock there, and keep the signature check before the lock. The lock waits on the log's syncs: a game's thread asks `Accounts::get` outside the registry's lock (`game::seated`), never a connection's task.
 - A running server holds `<data>/lock` (`Running`, until `shutdown` returns): a test that starts a second server on the same data directory must shut the first down; the crash tests start on a copy (`crashed()`).
 - `Key::derive` costs 64 MiB and about a second in a debug build: tests use `Key::from_seed`, the test vector alone derives.
 - **The workload is lane-only and follows `master`:** 55 % of its count is the battle engine, so battle changes move it and the full verify (CI) does not measure it. At each session's start `verify --scope server` measures it; a drift there came from `master`: re-baseline (`cargo xtask bench-check --update --workload session-random-play-full`) and name the range in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
 
 ## Recent sessions
+
+### 2026-10-11 — M3 T3, T4a, T4b
+
+#102 had merged; the branch restarted from `master`. T3 (seats by account; a re-key closes the account's other connections), T4a, T4b and M3's reviewer (1 major, 5 minor, fixed) in one pull request, wire 13 (`E16-log.md`). Then T5 (the user: in #105, `cross-lane`).
 
 ### 2026-10-11 — M3 T2b, re-keys, renames, the preference, the rebind
 
@@ -54,7 +57,3 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ### 2026-10-11 — M3 T2a, the Authenticator and the player log
 
 #99 and #100 had merged. Built T2a (#101; `E16-log.md`, M3 T2a): `accounts.rs`, `players.rs`, the configuration's three fields, `client::Key` with the test vector (checked against Python's `argon2-cffi` and PyNaCl). The crates' shared lines made the pull request cross-lane (the user).
-
-### 2026-10-11 — M2 T5e, M2's checkpoint, M3's refinement, M3 T1
-
-M2's closure (#96; the reviewer agent's major fixed, `E16-log.md`, M2 T5e); the user passed M2's checkpoint (SRV-Q16) and refined M3 (SRV-Q17): ADR-0019 accepted, M3 cut. The draft salted the key with a renamable name, hence the two names. Then M3 T1 (#99).

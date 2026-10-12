@@ -806,3 +806,162 @@ how and why the work went.
   logs in after the start; the player log's events read back, a taken name and an unknown
   account refused unwritten, two more bad logs. The command smoke-tested by hand (usage, a bad
   key, an unknown account).
+
+### M3 T3 — Seats bound to accounts (2026-10-11)
+
+- **The start.** #102 (M3 T2b) had merged; the branch restarted from `master`. The baseline
+  `verify --scope server` passed from a worktree of `master` (bench-check without drift).
+- **The session core** (`h3-protocol`, *provisional*): the host's `Session::logged_in(conn,
+  login)` before a connection's join (forgotten at its disconnect). A seat taken the first time by
+  a logged-in connection belongs to the account (`SeatState::account`, the entry
+  `Entry::TakenBy(side, login)`; `Entry` lost `Copy`); one taken anonymously stays the token's
+  (`Entry::Taken`). Who may take a seat is one public function, `session::refusal((token, issued,
+  account), token, login)`, which the registry also applies to a paused game's seats: an account's
+  seat is its account's alone whatever the token (else `SeatTaken`, no new refusal); another seat
+  is taken without a token the first time and re-taken with it. An account's `Joined` carries no
+  token (the journal's first line still holds one per player seat, which takes nothing).
+  `Session::accounts()` names the seats' accounts. The account is fixed at the first take: a
+  connection that logs in after it opened a game plays that game as it opened it; one account may
+  hold both seats (playing oneself from two devices).
+- **The wire** (version 13): `GameInfo::seated` (`Seated { seat, display }`: the seats that belong
+  to accounts, by display name; anonymous and bot seats unnamed), `GoodbyeReason::Rekeyed`; the
+  docs of `Join`, `Joined`, `SeatTaken`, `Replaced`, `Phase::Paused`. `Lobby::seat(game, seated)`.
+- **The journal** (format 4): `Taken { side, account }`, the account left out for an anonymous
+  seat; a format-3 journal is void at start, as every older format is.
+- **The server**: `ToGame::Open` and `registry::Opening` carry the connection's login (the gate's,
+  when the task routes the join or the creation); the registry holds the `Arc<Accounts>`
+  (`Service` shares it), a paused game the seats' accounts (`Hosted::Paused::accounts`). A game's
+  thread names its seats in the lobby whenever their accounts change (`game::seated`, display
+  names as they stand, looked up on the game's thread outside the registry's lock; a rename shows
+  at the next change, *provisional*); a restored game is listed with them. `finish` lists a
+  replay only if the host left the game open and every seat's account lets it (an account the log
+  does not know cannot).
+- **A re-key closes the account's other connections** (the T2b inbox item): `Service::sessions`
+  maps (login, connection) to a `Notify`; a connection is entered before its login's key is
+  checked (removed if refused), so a re-key committed after the check reaches it; a re-key that
+  changed the key (`Accounts::answer` says so) notifies the account's other connections, which
+  close `Goodbye { Rekeyed }`; a re-key to the same key closes nothing.
+- **Tests**: `h3-protocol` 70 (+2): an account's seat re-taken by its account (replacing a holder,
+  any token), refused to another account, an anonymous connection and the token; an anonymous
+  seat's token for a logged-in connection; a login forgotten at the disconnect; the seats bound
+  again by a restore; `refusal`'s cases; the lobby's names; the wire's new field and reason.
+  `h3-server` 59 (+3, `tests/seats.rs`): a seat re-taken by its account after a drop, replaced,
+  paused and resumed by the account, after a crash (the journal and the player log), and refused
+  to another account, a stranger and the journal's token, then played to a replay that verifies
+  and is listed; the lobby names an account's seat and not an anonymous one; an opted-out account's
+  replay archived unlisted, listed after it opted in; a re-key closes the account's other
+  connection, the re-keying one and other accounts stay, a re-key to the same key closes nothing.
+  `crashed()` copies the player log too. The suite ran three times without a failure.
+- **Not done here**: ADR-0018 point 8's text still names only the host's setting (ADR-0019 point
+  2 carries the decision); its amendment joins `06-security.md`'s accounts in T5's shared change.
+
+### M3 T4a — A game's bounds (2026-10-11)
+
+- **The command limit** (*provisional*): `[limits] commands_per_game` (default 10 000, 1 to 1 000
+  000). The configuration refuses a limit whose longest replay would not fit `outbound_bytes`
+  (`REPLAY_BYTES_PER_COMMAND` 160: a command's line of at most 48 bytes and a checkpoint's of at
+  most 32, doubled for the frame's JSON escapes; `REPLAY_HEAD_BYTES` 64 KiB for the rest): the
+  default's bound is 1.6 MB of the 2 MiB. A game whose journal holds that many commands and that is
+  not over is void after the step that reached it: its connections hear `Goodbye { CommandLimit
+  }` after that step's frames, it leaves the lobby, its journal moves to `<data>/void/`, no replay
+  is written, and connections on their way to it hear the goodbye too. The bots' answers within
+  the step may take it a few commands past the limit; the check is the game thread's, not the
+  session core's. A game restored past the limit (a crash after the step's sync, or a lowered
+  limit) is void the same way at its start; a paused one when it resumes. The archived replay's
+  size is now bounded by the limit too.
+- **A waiting game without a held seat leaves** (the M2 review's item): after a step in which a
+  waiting game holds no seat (its creator left), it leaves the lobby even while spectators are
+  bound to it; they hear `Goodbye { Abandoned }`, a connection whose join it refused leaves on its
+  own, connections on their way hear the goodbye, its journal goes (it never started).
+- **The wire**: `GoodbyeReason::CommandLimit` and `Abandoned`; the version stays 13 within this
+  pull request (T3's).
+- **Tests** (`h3-server` 62, +3, `tests/bounds.rs`; the configuration test +3 cases): a bot game
+  with a limit of 6 is void (the player and a spectator told, no end, not listed, the journal void,
+  no replay); a game restored past a lowered limit is void at the start; a waiting game whose
+  creator left with a spectator watching leaves (the spectator told, nothing void).
+
+### M3 T4b — Behind a reverse proxy (2026-10-11)
+
+- **Trusted proxies** (*provisional*): `[server] trusted_proxies` (addresses, none by default,
+  compared after `to_canonical`). A connection from one of them holds a place in the total only
+  (`Place::proxied`) until its handshake; the handshake's callback (`Forwarded`, tungstenite's
+  `Callback`) reads the last entry of the last `X-Forwarded-For` header (the address the proxy
+  itself saw; a client cannot forge it through a proxy that sets or appends the header), then the
+  connection takes its place as that client, or as the proxy without a header that reads; a
+  client without a place is closed after the handshake (a direct one before it). The standard
+  `Forwarded` header is not read. A forwarded header from any other peer is ignored.
+- **IPv6 by prefix**: every limit per address (connections, messages, failed logins, the lobby's
+  games, the journal's origin) counts an IPv6 address by its /64 (`net::counted`), an IPv4-mapped
+  one as its IPv4 address.
+- **The operator's setup**: `crates/h3-server/README.md` (running, the data directory, the
+  signals, `rebind`; on the internet: loopback, `public_url`, `trusted_proxies`, the proxy's
+  WebSocket upgrade, header and idle timeout, with nginx and Caddy examples);
+  `server.example.toml` names the field.
+- **The client**: `Client::connect_forwarded(address, forwarded)` sends the header as a proxy
+  does.
+- **Tests** (`h3-server` 66, +4): two clients behind a trusted proxy each take their place with
+  one connection per address, the last entry counts, an IPv6 client by its /64, the proxy itself
+  without a header, a freed place taken again; behind an untrusted peer the header is ignored;
+  `counted` and `forwarded_for` (several entries and headers, none, garbage) unit-tested.
+
+### M3's reviewer agent (2026-10-11, before T5)
+
+- **The review** (T5's item, run before this pull request so that its fixes ride it): a fresh,
+  read-only agent over everything M3 changed in the two crates (`eb52954^1..`); 1 major, 5
+  minor. Nothing found in: acting as another account, taking an account's seat with a token,
+  forging an address through the proxy path, leaking tokens, keys or seeds, leaking counts,
+  lost wakeups, the registry's lock rules, the format-4 restore, panics from client input.
+- **Fixed** (*provisional* in their shape):
+  - (major) **Account changes had no limit**: registrations, re-keys, renames and preferences
+    each sync a line under the player log's lock, which every login waits on; one address could
+    grow the log, its memory and the start without bound. Now `[limits]
+    account_changes_per_address` (20 an hour, beyond the connections' lifetimes) counts every
+    request that may write a line (a login naming a display name included); the one beyond
+    closes its connection `RateLimited`; a login without a change still passes.
+  - **The re-key's kick before anything else**: a connection's next client message is handled
+    only after its kick is taken (`kicked`, a `Notify` permit taken without waiting): an old-key
+    session's pipelined join or rename does not slip in. `Service::sessions` keeps the key each
+    connection logged in with: only those with another key than the new one are kicked (a login
+    with the new key racing the re-key stays), the re-keying one's key is updated; a failed login
+    drops a signal a re-key gave it meanwhile.
+  - **A refused change's line cut off again** (`players::append`): a write or sync that failed
+    truncates the log back to its length before the line (and syncs) where the file allows, so a
+    whole line the server refused does not come back at the next start.
+  - **An abandoned waiting game tells every connection** (a joiner whose join is still on its
+    way heard `TooSlow`); one whose join it refused leaves at its refusal and never reads it.
+  - **A warning at start** without `public_url` when the server listens on an unspecified address
+    or behind trusted proxies: logins sign an address no client dials.
+- **Left** (the inbox): the player log's readers (logins, the games' lookups) still wait behind a
+  write's sync, now bounded by the rate; a rename an old-key session sent before the re-key's
+  commit, while its answer is off the task, can still land.
+- **Tests** (`h3-server` 67, +1): an address's account changes beyond the limit close its
+  connection, a registration too, a plain login passes; the configuration's range.
+
+### M3 T5 — M3's closure (2026-10-12)
+
+- **The user's choice**: T5 rides #105 as separate commits, the pull request labelled
+  `cross-lane` (the shared docs and the client lane's inbox).
+- **The shared change**: `docs/06-security.md`'s hosted games carry the accounts (the derivation,
+  the signed login, the strict check, the re-key closing the other sessions, the rebind, the
+  limits per address on failed logins and on changes), seats by account, the listing by the
+  seated accounts, the command limit, the abandoned waiting game, the proxies and the /64, the
+  exposure behind a TLS proxy, and "Not covered yet" brought up to date. ADR-0018 point 8 amended
+  (a game a seated account opted out of is archived unlisted, the user's SRV-Q17) and point 6
+  (seats bound to accounts since T3).
+- **The client lane's inbox** (cross-lane): the key's derivation with its test vector and the
+  cache, the login only for the id the client dialed, the re-key, seats by account, the new
+  goodbyes.
+- **M3's exit criteria**, each shown: the full verify green in CI on #105 (`h3-protocol` at
+  100 %); over loopback (`h3-server`'s tests): the registration and login with the derived key
+  and its test vector (`tests/accounts.rs`); logins for another server, with another challenge or
+  by another key refused (same); a seat re-taken by its account from a new connection, without a
+  token, also after a restart (`tests/seats.rs`); a re-keyed account logging in with its new key
+  only (`tests/accounts.rs`); a display name changed and unique (same); anonymous play as
+  configured (same); a game beyond its command limit void, a waiting game without a held seat
+  leaving (`tests/bounds.rs`); the client's address counted behind a trusted proxy
+  (`tests/proxy.rs`). And: `06-security.md` carries the accounts; the reverse-proxy setup is
+  documented (`crates/h3-server/README.md`); the client lane's inbox has the login; the reviewer
+  agent's major finding is fixed (its record above); the lane HANDOFF, this log and `QUEUE.md`
+  are current.
+- **The checkpoint**: the user's, SRV-Q18 (the review list, the inbox's placement, what comes
+  next).

@@ -13,6 +13,8 @@ use h3_protocol::codec;
 use h3_protocol::wire::{ClientMessage, Seat, ServerMessage};
 use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use crate::Error;
@@ -67,9 +69,26 @@ pub struct Client {
 impl Client {
     /// Connects to a server.
     pub async fn connect(address: SocketAddr) -> Result<Self, Error> {
-        let (socket, _) = tokio_tungstenite::connect_async(format!("ws://{address}"))
+        Self::connect_forwarded(address, None).await
+    }
+
+    /// Connects to the server at `address` as a reverse proxy does for the client `forwarded`,
+    /// naming it in the handshake's `X-Forwarded-For` header (E16 M3 T4b).
+    pub async fn connect_forwarded(
+        address: SocketAddr,
+        forwarded: Option<&str>,
+    ) -> Result<Self, Error> {
+        let failed = |e: &dyn std::fmt::Display| Error(format!("connect {address}: {e}"));
+        let mut request = format!("ws://{address}")
+            .into_client_request()
+            .map_err(|e| failed(&e))?;
+        if let Some(forwarded) = forwarded {
+            let value = HeaderValue::from_str(forwarded).map_err(|e| failed(&e))?;
+            request.headers_mut().insert("X-Forwarded-For", value);
+        }
+        let (socket, _) = tokio_tungstenite::connect_async(request)
             .await
-            .map_err(|e| Error(format!("connect {address}: {e}")))?;
+            .map_err(|e| failed(&e))?;
         Ok(Self {
             socket,
             welcome: None,
