@@ -50,7 +50,9 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 
 ### Client lane (`CLT-Q<n>`)
 
-(no open questions)
+#### CLT-Q1 — The walk's path in `Moved` (E17 refinement, needed by M2)
+
+**Context.** The original animates a walking stack hex by hex along its path (a flyer goes straight). The protocol's `Event::Moved { stack, from, to }` (and the engine's event behind it) carries only the start and end hex, so a viewer of a record cannot animate the walk. **Options:** (a) the engine's event carries the path, and the wire maps it (battle lane, then server lane: a new field breaks `h3-protocol`'s build until mapped, the global HANDOFF's trap; a replay and an encoding change perhaps); (b) the client recomputes the path with the engine's own pathfinding when its content matches the manifest (the server lane's content check, `E16-design.md` §3), and draws a straight move otherwise; (c) (a) only for the wire: the server computes the path when it maps the event. **Recommendation:** (a): the path is a fact of what happened, the replay is the truth, and every client (and the AI's observers) then shows the same walk without the content check. Not needed before M2; the battle and server lanes decide the shape.
 
 ## Answered
 
