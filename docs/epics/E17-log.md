@@ -148,7 +148,7 @@ One session with T6 (the user present; they chose T1, then T6). Branch
 
 ### M1 T6 — The compositor (2026-10-12)
 
-Same session as T1, on `client/e17-m1-compositor` (stacked on T1's branch). The code reading of
+Same session as T1, on `client/e17-m1-compositor` (pull request #136). The code reading of
 [`E17-design.md`](E17-design.md) §3 turned into code.
 
 - **`h3_render::screen`.** `PixelFormat` (red, green, blue widths, packed red high; `RGB565`,
