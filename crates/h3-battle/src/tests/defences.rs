@@ -287,6 +287,43 @@ fn the_stack_a_mirror_chose_rolls_for_resistance_and_dispel_is_never_sent_away()
 
 // covers: BAT-MAG-022
 #[test]
+fn a_mirror_draws_the_new_target_among_the_casters_war_machines_too() {
+    // E04b T11b review (r2b F-6): the stack a mirror sends a spell to is drawn among every
+    // living stack of the caster's side, war machines included (the original's draw leaves out
+    // arrow towers only, `installation.md` §7.13; VCMI's draw leaves war machines out).
+    let r = ruleset();
+    let machines =
+        ["ballista", "cart", "tent"].map(|m| r.creature_by_key(&std::format!("t:{m}")).unwrap());
+    let mut to = [0u32; 5];
+    for seed in 0..400 {
+        let setup = crate::BattleSetup {
+            heroes: [Some(adept(&r, &["bolt"], 0)), None],
+            war_machines: [machines.to_vec(), vec![]],
+            ..setup(&r, &[(0, "tank", 5)], &[(0, "tank", 5)])
+        };
+        let mut s = BattleState::new(&r, &setup, seed).unwrap();
+        // Ids: 0 the caster's Tanks, 1 to 3 its war machines, 4 the other side's Tanks under
+        // an Expert mirror (100 %).
+        assert!(
+            s.stacks()[1..4]
+                .iter()
+                .all(|m| m.has(crate::StackTraits::WAR_MACHINE))
+        );
+        activate(&mut s, 0);
+        give(&mut s, &r, (4, "mirror"), 3);
+        let events = act(&mut s, &r, cast(&r, "bolt", stack(4))).unwrap();
+        let sent = report(&events).0;
+        assert_eq!(sent.len(), 1, "{events:?}");
+        assert_eq!(sent[0].0, 4);
+        to[usize::from(sent[0].1)] += 1;
+    }
+    // Each of the caster's four stacks takes about a quarter of the 400 casts.
+    assert_eq!(to[4], 0);
+    assert!(to[..4].iter().all(|n| (70..=130).contains(n)), "{to:?}");
+}
+
+// covers: BAT-MAG-022
+#[test]
 fn a_mirror_redirects_with_its_chance_to_any_living_stack_of_the_caster() {
     let r = ruleset();
     let (mut sent, mut to) = (0, [0u32; 3]);

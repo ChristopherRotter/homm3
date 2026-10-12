@@ -7,11 +7,11 @@ use std::vec::Vec;
 use h3_content::{Ruleset, SpellScope};
 use h3_contracts::{BattleEffect, BattleSetup};
 
-use super::spells::spell;
+use super::spells::{mage, spell};
 use super::support::*;
 use crate::damage::frenzied;
 use crate::effects::TimedCast;
-use crate::{BattleState, Command, Event, EventKind, StackId};
+use crate::{BattleState, CastTarget, Command, Event, EventKind, StackId};
 
 /// Gives stack `id` the timed effect of `name` cast at `mastery` for five rounds (Frenzy: by
 /// its own turns).
@@ -348,6 +348,87 @@ fn frenzy_against_a_behemoth_counts_its_reduction_with_quirk_q0009() {
     assert_eq!(frenzied_strike("t:frenzy_single", Some(1), "behemoth"), 25);
     // Other abilities change nothing: 20 against 10.
     assert_eq!(frenzied_strike("t:frenzy", Some(1), "pikeman"), 30);
+}
+
+// covers: BAT-MAG-019
+#[test]
+fn a_frenzied_stack_that_waits_is_counted_once_a_round() {
+    // E04b T11b review (r2b F-6): Frenzy is counted at the stack's first turn start of a round,
+    // not at its turn after waiting, through real commands. A hero without attack and defense
+    // casts it (no mastery: 100 %) on its Nagas, whose strikes are never retaliated: ten of them
+    // (attack 10, defense 10, damage 2) deal a Titan (defense 20) 15, frenzied 20. Ids: 0 the
+    // Nagas beside the Titan, 1 Nagas far away, 2 the Titan (the fastest).
+    let r = ruleset();
+    let start = || {
+        let mut hero = mage(&r, &["frenzy"]);
+        (hero.attack, hero.defense) = (0, 0);
+        let setup = BattleSetup {
+            heroes: [Some(hero), None],
+            ..setup(&r, &[(0, "naga", 10), (1, "naga", 10)], &[(0, "titan", 1)])
+        };
+        let mut s = BattleState::new(&r, &setup, 1).unwrap();
+        for (id, (x, y)) in [(0, (7, 5)), (1, (3, 8)), (2, (8, 5))] {
+            place(&mut s, &r, id, x, y);
+        }
+        s
+    };
+    // Stack `id`, whose turn it is, does `command`.
+    let turn = |s: &mut BattleState, id: u8, command: Command| {
+        assert_eq!(s.active(), Some(StackId(id)));
+        act(s, &r, command).unwrap()
+    };
+    let frenzy = Command::Cast {
+        spell: spell(&r, "frenzy"),
+        target: CastTarget::Stack(StackId(0)),
+        second: CastTarget::None,
+    };
+    let strike = Command::Attack {
+        target: StackId(2),
+        from: at(&r, 7, 5),
+    };
+    // The turns Frenzy has left on stack 0.
+    let left = |s: &BattleState| {
+        s.effects()
+            .iter()
+            .find(|e| e.stack == StackId(0))
+            .map(|e| e.rounds)
+    };
+    // Cast on the active stack: one turn. The Nagas wait and strike in the wait phase, still
+    // frenzied: the turn after waiting takes nothing.
+    let mut s = start();
+    turn(&mut s, 2, Command::Wait);
+    turn(&mut s, 0, frenzy);
+    assert_eq!(left(&s), Some(Some(1)));
+    turn(&mut s, 0, Command::Wait);
+    turn(&mut s, 1, Command::Defend);
+    assert_eq!(strikes(&turn(&mut s, 0, strike)), [(0, 2, 20)]);
+    assert_eq!(left(&s), Some(Some(1)));
+    turn(&mut s, 2, Command::Defend);
+    // Round 2: their first turn start ends it.
+    turn(&mut s, 2, Command::Wait);
+    assert_eq!((s.round(), left(&s)), (2, None));
+    assert_eq!(strikes(&turn(&mut s, 0, strike)), [(0, 2, 15)]);
+    // Cast on a stack that has waited (in the other Nagas' turn): two turns. It strikes frenzied
+    // in the wait phase, which takes nothing, ...
+    let mut s = start();
+    turn(&mut s, 2, Command::Wait);
+    turn(&mut s, 0, Command::Wait);
+    turn(&mut s, 1, frenzy);
+    assert_eq!(left(&s), Some(Some(2)));
+    turn(&mut s, 1, Command::Defend);
+    assert_eq!(strikes(&turn(&mut s, 0, strike)), [(0, 2, 20)]);
+    assert_eq!(left(&s), Some(Some(2)));
+    turn(&mut s, 2, Command::Defend);
+    // ... and again in its next turn, whose start takes one; ...
+    turn(&mut s, 2, Command::Wait);
+    assert_eq!((s.round(), left(&s)), (2, Some(Some(1))));
+    assert_eq!(strikes(&turn(&mut s, 0, strike)), [(0, 2, 20)]);
+    turn(&mut s, 1, Command::Defend);
+    turn(&mut s, 2, Command::Defend);
+    // ... the turn start after that ends it.
+    turn(&mut s, 2, Command::Wait);
+    assert_eq!((s.round(), left(&s)), (3, None));
+    assert_eq!(strikes(&turn(&mut s, 0, strike)), [(0, 2, 15)]);
 }
 
 // covers: BAT-MAG-019
