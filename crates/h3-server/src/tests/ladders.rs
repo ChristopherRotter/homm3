@@ -6,7 +6,7 @@
 //! and forfeits (E16 M4 T3a): no host; a player back within the grace plays on; beyond the grace,
 //! or the total in several drops, a forfeit, whose replay verifies; both away, void; the time away
 //! across a restart. The leaderboards (E16 M4 T4): pages by season, one's own row, a display name
-//! changed. The bots (E16 M4 T5): a lone player plays one after the wait, told so (T5b), rated,
+//! changed, a new season's ratings carried with their deviations reset (T7). The bots (E16 M4 T5): a lone player plays one after the wait, told so (T5b), rated,
 //! flagged; a player who opted out (T5b) waits on. The pause by agreement (E16 M4 T6): declined,
 //! agreed and resumed in time, a player not back after its due time forfeits, neither back: void.
 //! M4's exit (E16 M4 T7): two players queue, accept and play a rated battle through a restart,
@@ -1064,6 +1064,12 @@ async fn the_leaderboard_pages_by_season_and_shows_ones_own_row() {
     // A content change starts season 2 with an empty leaderboard; the first season's is kept.
     let mut changed = config.clone();
     changed.ladders[0].profile = Some(String::from("synthetic:strict-fixed"));
+    changed.ladders[0].bots = vec![LadderBot {
+        login: String::from("randy"),
+        display: String::from("Randy"),
+        kind: BotKind::Random,
+    }];
+    changed.ladders[0].bot_after_ms = 0;
     let again = start(&changed).await.unwrap();
     let mut dan = greeted(&again).await;
     assert_eq!(
@@ -1074,6 +1080,22 @@ async fn the_leaderboard_pages_by_season_and_shows_ones_own_row() {
         ask(&mut dan, board(14, "arena", Some(1), 0)).await,
         page(14, 1, 2, vec![ann_row, rows[1].clone()])
     );
+    // The new season's first game (M4's exit, E16 M4 T7): Ann's rating carried, its deviation
+    // reset. She plays the ladder's bot, at once (Bob is too far below her to be paired soon).
+    let mut ann = player(&again, "ann", 1).await;
+    assert_eq!(ask(&mut ann, queue("arena")).await, queued());
+    assert_eq!(ann.recv().await, found_against(true));
+    let ready = ask(&mut ann, ClientMessage::AcceptMatch { seq: 3 }).await;
+    let Some(ServerMessage::MatchReady { game, seat, .. }) = ready else {
+        panic!("{ready:?}")
+    };
+    takes(&mut ann, game, seat).await;
+    let (mut ann, saw) = tokio::time::timeout(GAME_TIME, play(ann, 5)).await.unwrap();
+    let carried = won.new_season();
+    assert_eq!(points(carried).deviation, 350);
+    let score = score(end(&saw), side(seat));
+    let (after, _) = rating::game(carried, Rating::default(), score);
+    assert_eq!(rating(&mut ann).await, (points(carried), points(after)));
     again.shutdown().await;
     std::fs::remove_dir_all(&config.server.data).unwrap();
 }
