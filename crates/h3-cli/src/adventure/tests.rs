@@ -297,6 +297,19 @@ fn the_command_line_runs_and_verifies() {
             .unwrap()
             .contains("difficulty = 0\n")
     );
+    // Without `--record` the game is played and nothing is written.
+    cli::main(&args(&[
+        "run",
+        "--map",
+        DUEL,
+        "--root",
+        &root,
+        "--packs-dir",
+        &packs,
+        "--max-steps",
+        "3",
+    ]))
+    .unwrap();
     cli::main(&args(&[
         "verify",
         "--root",
@@ -386,7 +399,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
     let dir = root().display().to_string();
     let packs = format!("{dir}/packs");
     let args = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
-    for workload in ["play", "reach", "fork"] {
+    for (workload, agent) in [("play", "0"), ("play", "1"), ("reach", "1"), ("fork", "1")] {
         cli::main(&args(&[
             "bench",
             "--map",
@@ -404,9 +417,9 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             "--forks",
             "3",
             "--observe",
-            "1",
+            agent,
             "--masks",
-            "1",
+            agent,
             "--difficulty",
             "4",
         ]))
