@@ -1,5 +1,5 @@
 # cargo-deny policy of the client workspace: a copy of the engine's (root deny.toml, ADR-0009).
-# Kept identical until the M2 window/audio evaluation and the user's licence decision (ADR draft
+# Kept identical until the M2 window/audio evaluation and the user's licence decision (ADR-0020
 # point 4); a change to the engine's allowlist is copied here.
 #
 # The project is GPL-2.0-or-later. Dependencies must be compatible with GPL *version 2*, so

@@ -1,4 +1,4 @@
-//! The software compositor (E17, ADR draft `docs/lanes/client/adr-drafts/client.md` point 3):
+//! The software compositor (E17, ADR-0020 point 3):
 //! indexed sprites drawn into one frame in the original's screen pixel format, with the keyed
 //! colours (transparency, shadow, selection outline, player colours) applied as the executable
 //! applies them. The window and the PNG writer show that same frame; they are adapters, not here.

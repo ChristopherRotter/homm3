@@ -1,7 +1,6 @@
-//! The viewer's scene model (E17, ADR draft `docs/lanes/client/adr-drafts/client.md` points 2 and
-//! 8): `h3-protocol` messages and a time in, what is on screen at that time out, as a draw list for
-//! `h3-render`. The adapters (the real-asset gate, the headless renderer, later the window) are the
-//! binary's modules, not this library.
+//! The viewer's scene model (E17, ADR-0020 points 2 and 8): `h3-protocol` messages and a time in,
+//! what is on screen at that time out, as a draw list for `h3-render`. The adapters (the real-asset
+//! gate, the headless renderer, later the window) are the binary's modules, not this library.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`; time is an input. The header below
 //! is checked by `tests/purity.rs`.

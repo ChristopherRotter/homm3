@@ -1,4 +1,4 @@
-# The client workspace (E17, clients/README.md, ADR draft docs/lanes/client/adr-drafts/client.md).
+# The client workspace (E17, clients/README.md, ADR-0020).
 # Separate from the engine workspace (the root Cargo.toml excludes `clients`): its own lockfile,
 # deny policy and CI job. Engine crates are path dependencies; their `workspace = true` fields
 # resolve from the engine's root manifest.
@@ -17,7 +17,7 @@ publish = false
 # Client crates.
 h3-assets = { path = "crates/h3-assets" }
 h3-render = { path = "crates/h3-render" }
-# Engine crates (public crates only, ADR draft point 1). A change the client needs in one of them
+# Engine crates (public crates only, ADR-0020 point 1). A change the client needs in one of them
 # goes through that crate's lane.
 h3-formats = { path = "../crates/h3-formats" }
 

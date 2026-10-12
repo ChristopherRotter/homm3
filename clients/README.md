@@ -5,9 +5,8 @@ core (`crates/`) stays headless, deterministic and free of assets; clients use i
 public crates and, later, through the server's protocol.
 
 **State:** E17 M0 built (2026-10-12): the workspace, its gates (`scripts/check.sh`, the CI job
-`.github/workflows/clients.yml`) and the real-asset gate; no decoder yet (M1). Decisions: the epic
-file `docs/epics/E17-clients.md` and the ADR draft `docs/lanes/client/adr-drafts/client.md`; tasks
-in `docs/lanes/client/QUEUE.md`.
+`.github/workflows/clients.yml`) and the real-asset gate; no decoder yet (M1). Decisions: ADR-0020
+and the epic file `docs/epics/E17-clients.md`; tasks in `docs/lanes/client/QUEUE.md`.
 
 ## Layout
 

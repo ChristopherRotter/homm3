@@ -1,6 +1,5 @@
-//! Decoders for the original game's assets (E17, ADR draft `docs/lanes/client/adr-drafts/client.md`
-//! point 2): bytes in, typed data out. The LOD archives themselves are read by the engine's
-//! `h3-formats`; this crate decodes their entries.
+//! Decoders for the original game's assets (E17, ADR-0020 point 2): bytes in, typed data out. The
+//! LOD archives themselves are read by the engine's `h3-formats`; this crate decodes their entries.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`. Every decoder treats its input as
 //! untrusted bytes and never panics, whatever the input (`clippy::indexing_slicing` is denied on

@@ -4,11 +4,12 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 refined (2026-10-12).** Decisions: the epic file `docs/epics/E17-clients.md` ("Decisions", user) and the ADR draft `adr-drafts/client.md` (Proposed; accepted at M0's checkpoint). Milestones M0 (the workspace) and M1 (assets and a battle still, headless) are in `QUEUE.md`; M2 (the replay viewer, the window/audio evaluation) and M3 (fidelity) are sketched in the epic file. **Next: M0 T1 or M1 T1** (both ready; M1 T1 is a code reading, independent of M0).
+- **E17 M0 done (2026-10-12).** The workspace `clients/` builds (`h3-assets`, `h3-render`, `h3-view`; pure `no_std` libraries, adapters in `h3-view`'s binary), its gates are `clients/scripts/check.sh` (the full local check; the CI job `.github/workflows/clients.yml` runs the same), the real-asset gate is `cargo run -p h3-view -- gate` (from `clients/`). ADR-0020 accepted (point 7: loading at checkpoints). Record: `docs/epics/E17-log.md`. **Next: M1 T1 or M1 T2** (both ready; `QUEUE.md`).
+- **Pull requests waiting (2026-10-12), merge in this order:** `shared/ci-outage` (#119) and `shared/adr-0020-clients`, then `client/e17-m0`, then `shared/clients-ci` (its job runs `check.sh`, which the client branch adds).
 - The lane owns `clients/` (its own Cargo workspace, `clients/README.md`), `docs/epics/E17*` and this folder. Branches `client/<task>`. Ids: questions `CLT-Q<n>`, quirks (asset fixes) `CLT-QUIRK-<n>`, stubs `CLT-STUB-<n>`. ADR drafts go to `adr-drafts/` and get a number when the user accepts them.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
-- The lane needs the user's computer online: the original files are staged from `original-data/install/`, which since 2026-10-12 also holds `Data/{Heroes3,H3ab_ahd}.snd`, `Data/{VIDEO,H3ab_ahd}.vid` and `MP3/` (57 tracks), copied from the installation and verified identical (`docs/formats/installation.md` §2, battle-owned, still lists only the earlier copies).
-- **Open:** CLT-Q1 (the walk's path, needed by M2).
+- The lane needs the user's computer online: the original files are staged from `original-data/install/`, which since 2026-10-12 also holds `Data/{Heroes3,H3ab_ahd}.snd`, `Data/{VIDEO,H3ab_ahd}.vid` and `MP3/` (57 tracks), copied from the installation and verified identical (`docs/formats/installation.md` §2, battle-owned, still lists only the earlier copies). The gate needs `Data/H3sprite.lod` and `Data/H3ab_spr.lod` too, which `scripts/sandbox-setup.sh` does not copy: stage them and copy them into the clone's `original-data/install/Data/`.
+- **Open:** CLT-Q1 (the walk's path, needed by M2); CLT-Q2 (the table-only LOD reader in `h3-formats`, for the battle lane; until it lands the client reads whole archives).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -40,11 +41,15 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Standing traps
 
+- **CI may be out** (billing, 2026-10-12; `docs/05-testing.md` "When CI cannot run"): run `clients/scripts/check.sh` and record its result in the pull request. It needs `cargo-deny`, `cargo-llvm-cov` and the LLVM tools (in a sandbox, `LLVM_COV=/usr/lib/llvm-20/bin/llvm-cov LLVM_PROFDATA=/usr/lib/llvm-20/bin/llvm-profdata`, as `scripts/sandbox-verify.sh` sets them).
+- The coverage gate reads cargo-llvm-cov's summary; generic code can show false region misses there (the engine reads the merged view, `xtask/src/coverage.rs`): port that before blaming the tests.
+- A new dependency of a pure crate goes into `h3-view/tests/purity.rs`'s allowlist deliberately; a window or audio crate belongs in an adapter crate, not in `h3-view`'s pure library.
 - `winit`, `cpal` and `hound` are Apache-2.0-only, which `deny.toml` rejects (ADR-0009 point 3); so are, through them, Bevy, eframe and `rodio`. Not before the M2 evaluation and the user's licence decision.
-- `ci.yml` ignores `clients/**` (a push that changes only `clients/` starts no engine run): the client has its own job (M0 T2).
+- `ci.yml` ignores `clients/**`; the client's job `clients.yml` watches `clients/` and the engine crates the client builds, which `check.sh` keeps complete ("ci paths").
 - `h3-protocol` depends on `h3-battle`, `h3-content`, `h3-contracts` and `h3-kernel`: a path dependency on it builds those too, and their changes can break the client.
 - Never run the original game from the installation: it writes saves, settings and DDrawCompat's log into its folder. Reference captures use a full copy under `original-data/` (M3).
 
 ## Recent sessions
 
+- **2026-10-12, E17 M0 (the user present).** CI was out (billing): the user's rule that CI never blocks work went into the process docs (#119). Built the workspace, `check.sh` and the job, the real-asset gate (the user's four LODs: 11 981 entries, about 0.2 s); a fresh reviewer's twelve findings fixed or recorded. Checkpoint: ADR-0020 accepted, point 7 rewritten to loading at checkpoints; the table-only reader chosen over a memory map and whole reads (CLT-Q2). Four pull requests, merge order above.
 - **2026-10-12, E17a + E17 refinement (the user).** The asset notes dictated and recorded (above). Missing original files copied into `original-data/install/`. Refinement: Rust confirmed; a software compositor; the window/audio library chosen at M2 by an evaluation, GPLv3 for the client allowed if the winner needs it (the user decides then); asset tables per expansion, committed, no executable at run time; reference captures from a copy of the game through computer use; first milestone M0 + M1. ADR draft, epic file, queue, CLT-Q1 written.

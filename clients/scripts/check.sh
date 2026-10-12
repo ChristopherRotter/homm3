@@ -44,7 +44,7 @@ run 1 cargo test --locked --quiet
 step deny
 run 1 cargo deny --locked --all-features check
 
-# The deny policy stays the engine's until the user's licence decision at M2 (ADR draft point 4).
+# The deny policy stays the engine's until the user's licence decision at M2 (ADR-0020 point 4).
 step "deny policy"
 run 1 python3 -I -c '
 import sys, tomllib

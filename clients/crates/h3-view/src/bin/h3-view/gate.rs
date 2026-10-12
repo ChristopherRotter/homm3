@@ -1,6 +1,8 @@
 //! The real-asset gate (E17 M0 T3; extended by M1: every entry decodes, the inventory report). It
 //! runs only where the user's files are (ADR-0009): a copy of the installation, never the
-//! installation itself, which it would only read anyway.
+//! installation itself, which it would only read anyway. It reads whole archives, since
+//! `h3-formats` parses only a whole archive; with the table-only reader (CLT-Q2) it measures the
+//! client's real start instead: the directories only (ADR-0020 point 7).
 
 use std::fmt::Write as _;
 use std::fs;
