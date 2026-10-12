@@ -1088,3 +1088,39 @@ how and why the work went.
   replay verify`'s check and both queuing again; beyond the total in three drops each within the
   grace; both away (void, a spectator told); the time away across a restart (the forfeit at the
   total's rest, the restored match refusing another queue).
+
+### M4 T3b — The rated end (2026-10-12)
+
+- **The start.** #109 (T3a) had merged; the scoped verify on `master` had no failing step, the
+  workload unchanged (no re-baseline).
+- **The session core** (`h3_protocol::session`, *provisional*): a ranked game's end, by the
+  battle or by a forfeit (`Session::elapse`), is held until the host's verdict: `publish_replay`
+  tells it, `withhold_replay` tells `GameEnded { Unverified }` (both now take the frames' vector;
+  an unranked game's end is told at once, as before). `Session::rated(ladder, points, out)` sends
+  each seat's viewer `Rating` (numbered, in its record, also for a seat no connection holds);
+  spectators get none. `Lobby::skip(last)`: ids handed out in earlier lives.
+- **The wire** (version 16): `Outcome::Unverified {}` (only in `GameEnded`), `ServerMessage::Rating
+  { n, ladder, before, after }`, `Points { rating: i32, deviation: u32 }`.
+- **The server**: `game::Stores` (the accounts, the ladders, the ids) replaces the accounts in
+  the registry and the prepared games. The game's thread handles the end before it delivers the
+  call's frames (the journal synced first): `finish` verifies, archives the replay, rates
+  (`game::rate`: the forfeit a loss for who forfeited, both a no-show; the accounts' presence in
+  the player log asked before the ladders' lock), and only then removes the journal; a replay or
+  a result that does not write keeps it (the next start re-runs the game, which the log rates
+  once). `Ladders::rate` writes `Rated` (Glicko-2 over the ratings as they stand, one game) or
+  `NoShow`, checked against the tables and synced first; a game the log names already is not
+  rated again; reading a log, a game named twice stops the start. `ladders::points` rounds a
+  rating for the wire and the queue. `ids::GameIds`: `<data>/next-game` (decimal, written whole
+  through `journal::replace`, which the archive's write now uses too), raised on each new game's
+  thread before its journal exists and at start by every journal's id; the lobby skips to it.
+  SRV-STUB-4 resolved (`registry::report`).
+- **Tests** (`h3-protocol` 84 → 85, `h3-server` 85 → 90): the held ends (a forfeit told at the
+  verdict with the rating after it, in the absent seat's record; a forfeit withheld, told
+  `Unverified`; a no-show to a spectator; a retreat; a restored game's forfeit), `skip`; the wire's
+  corpora and JSON forms. `next-game` read back, raised only, bad files refused; a game rated
+  once as Glicko-2 rates it (a forfeit, a defender's win, a draw, a no-show, an unknown account and
+  ladder refused, the log read back); a duplicate game's line. End to end: a played game rated for
+  both (Glicko-2's values, the standings), the same after a restart, no id handed out twice; a
+  forfeit rated; a no-show counted, unrated; a ranked game whose journal changed told
+  `Unverified`, unrated, no `Rating`, its replay withheld; ids after a restart beyond a void
+  journal's.

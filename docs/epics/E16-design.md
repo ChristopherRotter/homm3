@@ -28,7 +28,8 @@ M1–M6 task turns its section into code and docs and deletes it here.
    the next `YourTurn`. A bot seat's turn is answered by the host's bot.
 7. A client that drops reconnects with `Join { game, seat, token }` and receives a fresh
    `Snapshot`; it discards its own state. Spectators reconnect without a token.
-8. `GameEnded { n, result }` to every viewer. Participants may send `FetchReplay { seq }` and
+8. `GameEnded { n, result }` to every viewer (a ranked game's once it verified, M4 T3b, then
+   `Rating` to its seats). Participants may send `FetchReplay { seq }` and
    get the full replay (`Rejected { NotOver }` before the end); any viewer may send
    `FetchRecord { seq }` and get its own message log, the *record* (since M2 T5c its latest
    messages within `[limits] record_bytes`, the header naming the first one kept). The server
@@ -133,9 +134,9 @@ T2a, `commands_per_game` (a game reaching it without an end is void) since M3 T4
 
 The journals (`<data>/games/<game>.journal`, open games), the replays (`<data>/replays/`,
 finished) and `<data>/void/` are code since M2 T2, `<data>/players.log` since M3 T2a, `<data>/lock`
-(held by a running server and by the operator's `rebind`) since M3 T2b. Still to
-come: `server-data/records/<game>/<viewer>.jsonl`, `<data>/ladders/<id>.log` and
-`<data>/next-game` (M4, §11), snapshots beside the logs. The log never
+(held by a running server and by the operator's `rebind`) since M3 T2b, `<data>/ladders/<id>.log`
+since M4 T1 and `<data>/next-game` since M4 T3b (§11). Still to come:
+`server-data/records/<game>/<viewer>.jsonl`, snapshots beside the logs. The log never
 contains seeds, tokens, nonces or signatures.
 
 ## 10. Accounts (M3)
@@ -224,8 +225,8 @@ below are the tasks' starting point, *provisional* until M4's review.
   line. At start a ruleset hash other than the last season's starts the next one (a log line
   and a `Season` line): every account keeps its rating and volatility, its deviation reset to
   350; earlier seasons stay in the log and their tables readable.
-- **The results log**, `<data>/ladders/<id>.log` (read and `Season` written since M4 T1; T3b
-  appends the rest), JSON lines as the player log's
+- **The results log**, `<data>/ladders/<id>.log` (read and `Season` written since M4 T1, the
+  rest since T3b), JSON lines as the player log's
   (owner-only, each synced before anything depends on it, read back at start, a torn last line
   cut, any other bad line stops the start): `Season`, `Rated { game, replay, accounts: [a, d],
   outcome, forfeit, ratings: [a, d] }` (each rating `{ rating, deviation, volatility }` after
@@ -272,11 +273,19 @@ below are the tasks' starting point, *provisional* until M4's review.
   game as a result of its own on the wire (`GameEnded` with `Outcome::Forfeit { side }`, or
   `Outcome::NoShow {}` when the other seat is empty too as one's grace runs out); the replay
   holds the commands up to it, its battle undecided (`winner = "none"`).
-- **The end of a ranked game** (M4 T3): verified first (§8), then `GameEnded`, then the result
-  rated and written (`Rated`), then `Rating { ladder, before, after }` to its seats; a game that
-  does not verify is void and unrated (its players told: the inbox's M2 item). Game ids stay
-  unique for the server's life (`<data>/next-game`, the inbox's M2 item), so a results line's
-  game names one game.
+- **The end of a ranked game** (code since M4 T3b): the session holds a ranked game's end,
+  by the battle or by a forfeit, until the host's verdict. Verified first (§8, the journal re-run
+  from disk); then `GameEnded` (or `Outcome::Unverified`: void, unrated, the replay withheld);
+  the replay archived; then the result written to the ladder's log (`Rated`, Glicko-2 over the
+  ratings as they stood, a forfeit with `forfeit`; both forfeited: `NoShow`, unrated) and
+  `Rating { n, ladder, before, after }` to each seat (numbered, in the viewer's record; whole
+  points: `Points { rating, deviation }`); only then does the journal go. A replay or a result
+  that does not write keeps the journal: the next start re-runs the game and writes them (a
+  replay a crash wrote already is written again under another name). The log names a game once
+  (`a game named twice` stops a start), so a re-run rates nothing twice. Game ids are unique for
+  the server's life: `<data>/next-game` holds an id beyond every one given, recorded on the
+  game's thread before its journal exists; at start the lobby follows it and every journal's id
+  (an id handed out just before a crash, with no journal yet, may come again: nothing names it).
 - **Leaderboards** (M4 T4): `Leaderboard { seq, ladder, season, page }` (the current season when
   left out) answered by a page of 50 rows: rank, display name, rating and deviation as whole
   numbers, games, wins, losses, draws, a bot flag; rows by rating, ties by login name; an account
