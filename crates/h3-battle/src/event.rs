@@ -245,7 +245,7 @@ pub enum EventKind {
         target: StackId,
     },
     /// A stack rose from a corpse (a Pit Lord's Demons, BAT-MAG-052): a new stack of the corpse's
-    /// side and army slot (a dead created stack's id may be reused); the corpse is gone.
+    /// side and army slot (a killed created stack's id may be reused); the corpse is gone.
     RoseFromCorpse {
         /// The new stack.
         stack: StackId,
@@ -427,7 +427,7 @@ pub enum EventKind {
     /// A spell created a stack (BAT-MAG-037): a clone of `original` (Clone, BAT-MAG-038) or a
     /// summoned one (Summon Elemental, BAT-MAG-039).
     StackCreated {
-        /// The new stack (a dead created stack's id may be reused).
+        /// The new stack (a killed created stack's id may be reused).
         stack: StackId,
         /// Its creature.
         creature: CreatureTypeId,

@@ -347,6 +347,57 @@ fn a_pit_lord_needs_a_slot_for_the_new_stack() {
     assert!(s.stacks()[4].has(StackTraits::RAISED) && !s.stacks()[4].is_created());
 }
 
+/// E04b T11b review (F-r4a-4): the record of a created stack whose rounds ran out is no slot for
+/// a Pit Lord's stack either: the original's stack creation takes only an empty record or a dead
+/// summoned stack with no creatures (0x47A100), and a stack that vanished at the end of its
+/// rounds keeps its count. The engine took any dead created stack's record.
+// covers: BAT-MAG-052, BAT-MAG-037
+#[test]
+fn a_pit_lord_finds_no_slot_in_a_clone_whose_rounds_ran_out() {
+    let r = ruleset_with("t:faithful", |b| b.side_stack_limit = 4);
+    // The fiend, dead serfs and three more serfs with their clone (stack 4): four stacks, the
+    // side's limit.
+    let start = || {
+        let mut hero = mage(&r, &["copy"]);
+        hero.magic.masteries = masteries(&r, [1, 0, 0, 0]);
+        let mut s = arena(
+            &r,
+            [Some(hero), None],
+            &[("fiend", 1, 5, 5), ("serf", 5, 8, 3), ("serf", 3, 8, 7)],
+            &[("fixed", 3, 13, 5)],
+            1,
+        );
+        hurt(&mut s, &r, 1, 1000);
+        let copy = Command::Cast {
+            spell: spell(&r, "copy"),
+            target: stack(2),
+            second: CastTarget::None,
+        };
+        act(&mut s, &r, copy).unwrap();
+        assert!(s.stacks()[4].has(StackTraits::CLONE));
+        assert!(targets(&s, &r, BattleSide::Attacker).is_empty());
+        s
+    };
+    // The clone's rounds run out: its record stays in use, and the fiend still finds no slot.
+    let mut s = start();
+    for _ in 0..3 {
+        crate::turn::start_round(&mut s, &r, &mut Vec::<Event>::new());
+    }
+    activate(&mut s, 0);
+    assert!(!s.stacks()[4].is_alive());
+    assert!(targets(&s, &r, BattleSide::Attacker).is_empty());
+    assert_eq!(
+        act(&mut s, &r, at_stack(1)),
+        Err(CommandError::InvalidSpellTarget)
+    );
+    // A killed clone leaves its record: the imps take it.
+    let mut s = start();
+    hurt(&mut s, &r, 4, 1);
+    assert_eq!(targets(&s, &r, BattleSide::Attacker), vec![1]);
+    let events = act(&mut s, &r, at_stack(1)).unwrap();
+    assert_eq!(risen(&events)[0].0, 4);
+}
+
 // covers: BAT-MAG-052, BAT-MAG-048
 #[test]
 fn a_hypnotized_pit_lord_raises_its_controllers_dead_for_its_controller() {

@@ -367,6 +367,58 @@ fn the_battle_ends_when_a_round_start_takes_a_sides_last_stack() {
     );
 }
 
+/// E04b T11b review (F-r4a-4): with quirk BAT-QUIRK-7 a stack that became its own clone keeps
+/// its record when its rounds run out, like every created stack that vanishes so: the original
+/// leaves its count, so the stack creation 0x47A100 passes over the record and the end of the
+/// battle still counts its losses. The engine gave the record, the army stack's own, to the next
+/// created stack, and the outcome lost the stack.
+// covers: BAT-MAG-037, BAT-MAG-038, BAT-END-003
+#[test]
+fn with_quirk_bat_quirk_7_a_vanished_original_keeps_its_record() {
+    let r = ruleset_with("t:clone_on_original", |_| {});
+    let mut s = walled(&r, 3, None);
+    // Sprites (stack 2) keep the attacker in the battle; the ogres become their own clone and
+    // lose one creature before their rounds run out.
+    let sprites =
+        |s: &mut BattleState| created(&cast(s, &r, "sprites", CastTarget::None).unwrap())[0].0;
+    assert_eq!(sprites(&mut s), 2);
+    let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
+    assert_eq!(turned(&events), vec![(0, 3)]);
+    let health = u64::from(s.stacks()[0].max_hp);
+    hurt(&mut s, &r, 0, health);
+    let mut events = Vec::new();
+    for _ in 0..3 {
+        crate::turn::start_round(&mut s, &r, &mut events);
+    }
+    assert_eq!(vanished(&events), vec![(0, 2)]);
+    assert!(!s.is_over());
+    // The next summoned stack takes a new record, not the ogres'.
+    activate(&mut s, 2);
+    assert_eq!(sprites(&mut s), 3);
+    let ogre = r.creature_by_key("t:ogre").unwrap();
+    assert_eq!((s.stacks()[0].creature, s.stacks()[0].count), (ogre, 0));
+    // The outcome still reports the ogres: one lost, two vanished with the stack.
+    hurt(&mut s, &r, 1, 1000);
+    crate::combat::check_end(&mut s, &mut Vec::<Event>::new());
+    let outcome = s.outcome().unwrap();
+    assert_eq!(outcome.result, BattleResult::Draw);
+    let sprite = r.creature_by_key("t:sprite").unwrap();
+    let record = |creature, start, end| StackRecord {
+        origin: StackOrigin::Created,
+        creature,
+        start,
+        end,
+    };
+    assert_eq!(
+        outcome.stacks[0],
+        vec![
+            record(ogre, 3, 2),
+            record(sprite, 6, 6),
+            record(sprite, 6, 6)
+        ]
+    );
+}
+
 // covers: BAT-MAG-038
 #[test]
 fn a_clone_never_shares_a_hex_with_its_original() {
@@ -585,6 +637,116 @@ fn a_side_creates_stacks_below_the_limit_and_reuses_dead_created_ones() {
     assert!(!castable.contains(spell(&r, "sprites")) && !castable.contains(spell(&r, "copy")));
     hurt(&mut s, &r, 4, 1000);
     assert!(!castable_spells(&s, &r, BattleSide::Attacker).contains(spell(&r, "sprites")));
+}
+
+/// E04b T11b review (F-r4a-4): a created stack whose rounds ran out keeps its record. The
+/// original's stack creation takes an empty record or one that holds a dead summoned stack with
+/// no creatures (the reviewer's reading of 0x47A100, 0x47A131 to 0x47A14A; `installation.md`
+/// §7.19), and a stack that vanishes at the end of its rounds keeps its count (its death leaves
+/// it, which BAT-END-003 relies on): only a killed created stack's record is taken again. The
+/// engine reused any dead created stack's record, so a later created stack took the expired
+/// stack's id and its place in the turn order, and the outcome lost the expired stack's record.
+// covers: BAT-MAG-037, BAT-MAG-038, BAT-END-003, BAT-TRN-001
+#[test]
+fn a_created_stack_whose_rounds_ran_out_keeps_its_record() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [Some(creator(&r, 1, 1)), None],
+        &[("serf", 10, 5, 5)],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    let sprites = |s: &mut BattleState| {
+        s.heroes[0].as_mut().unwrap().view.mana = 100;
+        created(&cast(s, &r, "sprites", CastTarget::None).unwrap())[0].0
+    };
+    // A clone of the serfs (stack 2), then sprites (stack 3); the clone's three rounds run out.
+    let clone = created(&cast(&mut s, &r, "copy", stack(0)).unwrap())[0].0;
+    assert_eq!((clone, sprites(&mut s)), (2, 3));
+    let mut events = Vec::new();
+    for _ in 0..3 {
+        crate::turn::start_round(&mut s, &r, &mut events);
+    }
+    assert_eq!(vanished(&events), vec![(2, 10)]);
+    assert!(!s.stacks()[2].is_alive());
+    // The next created stack takes a new record and not the clone's: its id is the last.
+    activate(&mut s, 0);
+    assert_eq!(sprites(&mut s), 4);
+    assert_eq!(s.stacks().len(), 5);
+    // So of two created stacks of equal speed the earlier one acts first (BAT-TRN-001: by id).
+    let both: Vec<u8> = order(&mut s.clone(), &r, 8)
+        .into_iter()
+        .filter(|id| [3, 4].contains(id))
+        .collect();
+    assert_eq!(both, [3, 4, 3, 4]);
+    // A killed created stack's record is taken as before: the first sprites die and the next
+    // stack takes their record, passing over the clone's.
+    hurt(&mut s, &r, 3, 1000);
+    mark_corpses(&mut s);
+    assert_eq!(sprites(&mut s), 3);
+    assert_eq!(s.stacks().len(), 5);
+    // The outcome keeps the clone's record with the creatures it vanished with, which were
+    // not killed (BAT-END-003).
+    hurt(&mut s, &r, 1, 1000);
+    crate::combat::check_end(&mut s, &mut Vec::<Event>::new());
+    let outcome = s.outcome().unwrap();
+    let (serf, sprite) = (
+        r.creature_by_key("t:serf").unwrap(),
+        r.creature_by_key("t:sprite").unwrap(),
+    );
+    let record = |origin, creature, start, end| StackRecord {
+        origin,
+        creature,
+        start,
+        end,
+    };
+    assert_eq!(
+        outcome.stacks[0],
+        vec![
+            record(StackOrigin::Army(0), serf, 10, 10),
+            record(StackOrigin::Created, serf, 10, 10),
+            record(StackOrigin::Created, sprite, 6, 6),
+            record(StackOrigin::Created, sprite, 6, 6),
+        ]
+    );
+}
+
+/// E04b T11b review (F-r4a-4): the records of created stacks whose rounds ran out stay in use,
+/// so they count towards the side's stack limit (the original's records in use never fall): a
+/// side that keeps cloning runs out of records. The engine reused the expired clone's record and
+/// never reached the limit so.
+// covers: BAT-MAG-037, BAT-MAG-038
+#[test]
+fn created_stacks_whose_rounds_ran_out_count_towards_the_limit() {
+    let r = ruleset_with("t:faithful", |b| b.side_stack_limit = 3);
+    let mut s = arena(
+        &r,
+        [Some(creator(&r, 1, 0)), None],
+        &[("serf", 10, 5, 5)],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    // Two clones, each after the one before ran out: with the army's stack, three records.
+    for id in [2, 3] {
+        s.heroes[0].as_mut().unwrap().view.mana = 100;
+        let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
+        assert_eq!(created(&events)[0].0, id);
+        let mut events = Vec::new();
+        for _ in 0..3 {
+            crate::turn::start_round(&mut s, &r, &mut events);
+        }
+        assert_eq!(vanished(&events), vec![(id, 10)]);
+        activate(&mut s, 0);
+    }
+    // The side is at its limit: no third clone, though the original stack is free again.
+    assert_eq!(s.stacks().len(), 4);
+    assert_eq!(targets(&s, &r, BattleSide::Attacker, "copy"), vec![]);
+    assert!(!castable_spells(&s, &r, BattleSide::Attacker).contains(spell(&r, "copy")));
+    assert_eq!(
+        cast(&mut s, &r, "copy", stack(0)),
+        Err(CommandError::InvalidSpellTarget)
+    );
 }
 
 // covers: BAT-MAG-037, BAT-MAG-010
