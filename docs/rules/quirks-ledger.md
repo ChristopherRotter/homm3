@@ -204,6 +204,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/pits.rs`, `an_attack_from_a_seen_pit_is_legal_only_with_bat_quirk_2`
 - Decided by / date: user, 2026-10-07 (E04b checkpoint before T5c, BAT-Q1)
+- Review (E04b T11b, 2026-10-12): the re-read finds that the original's interface never issues such a command (the part this entry marks "not read"): the cursor's attack slots take a neighbouring position only if neither its hex nor, for a two-hex stack, its other hex is among the stack's stops (0x474690, 0x4747BE to 0x474810), the attack's from-hex comes only from these slots (0x474A00), and the pathfinder's own marking of attack targets passes over a position on a stop for a query within one move, as the cursor's is (0x4B378D to 0x4B37D1). So no attack from a seen pit is offered to a player, and the flag's "on" variant adds commands that no path of the original's interface issues (`docs/formats/installation.md` §7.16); open as BAT-Q30.
 
 ### BAT-QUIRK-3 — A natural obstacle's anchor hex belongs to it
 - Class: fix-optional (user, 2026-10-07, OPEN-QUESTIONS Q55)
@@ -230,6 +231,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/remove.rs`, `random_draws_avoid_hidden_obstacles_only_with_bat_quirk_4`; the property test `hidden_obstacles_do_not_show` covers casts without it
 - Decided by / date: user, 2026-10-07 (E04b T5c2 checkpoint, BAT-Q4)
+- Review (E04b T11b, 2026-10-12): a leak of the same kind that no flag covers: a berserk stack's automatic turn (BAT-MAG-025) plans and walks by the pits its own side sees, hidden ones included, and its moves and strikes are public, so a detour, a farther target, a passed turn or, with BAT-QUIRK-2 on, a stop beside its target can show the other side where a hidden pit lies. The re-read finds the same in the original (its pathfinder takes the stops of the stack's side for every caller, 0x4B3384 to 0x4B33C4, 0x4B353E; `docs/formats/installation.md` §7.16); what its walk does when the only attack position lies on a pit its side sees was not read to the end. The engine is as the original here; whether automatic turns should plan only with the pits both sides see is open as BAT-Q31.
 
 ### BAT-QUIRK-5 — Sacrifice tests the stack it raises as Resurrection would
 - Class: fix-optional (user, 2026-10-08)
@@ -293,6 +295,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/casters.rs`, `a_mirrored_random_cast_is_untested_with_quirk_bat_quirk_9`
 - Decided by / date: user, 2026-10-08 (E04b T7b2a, BAT-Q11)
+- Review (E04b T11b, 2026-10-12): the re-read finds that the redirect never reaches a creature's cast, so the behaviour described above does not occur in the original: the redirect is drawn only in the player's targeting routine (0x59EC50, 0x59EE7A to 0x59EF8B), which stores the new hex in the manager's +0x48; the hero's action passes it to the cast routine as the second hex (0x479036 to 0x479056), but the creature's action passes only the target hex (0x47936E to 0x479382) and every cast of 0x448260 gives the cast routine the second hex −1. The Faerie Dragon's key path draws a redirect that is dropped; the mouse path draws none. VCMI 1.7.5 agrees (only a hero's spell is reflected, `lib/spells/BattleSpellMechanics.cpp` `isReflected`). The engine still redirects a creature's spell in both variants of the flag (`docs/formats/installation.md` §7.21); open as BAT-Q29.
 
 ### BAT-QUIRK-10 — The Master Genie's Slayer test counts dead stacks and only the first king level (E04b T7b2b)
 - Class: preserve, no flag: the rule in every profile (user, 2026-10-08, BAT-Q12)

@@ -371,7 +371,8 @@ given a hero, 0x5A790D):
 the *value before the caster's bonuses* halved by integer division at every jump, then step 1–3
 for that target (so the specialty divides by each target's level). The next target (0x5A61F0) is
 the stack not yet hit with the smallest `trunc(sqrt(dx² + dy²))`, searched defender's stacks
-first, then the attacker's, each by stack record, keeping the first on ties (strict `<`); each
+first, then the attacker's (the review's re-read below has the attacker's first), each by
+stack record, keeping the first on ties (strict `<`); each
 candidate is first tested like a spell target (below): when casting for real, a candidate that
 fails its resistance roll is skipped for that jump (it can be chosen at a later jump); an immune
 one is never chosen. `dx`, `dy` come from getters 0x446660/0x446630: the stack's hex record's
@@ -380,8 +381,47 @@ half of `267 − top offset of the creature's sprite frame` (a graphics value; i
 pixels, as the mouse-to-hex code at 0x464870 uses 44 × 42 pixel hexes and the bolt's animation
 length is derived from the same distance). Jumps per mastery from the table at 0x642274.
 
+**Review re-read (E04b T11b, 2026-10-12): the chain's search order.** The search 0x5A61F0 starts at
+the first side's data, the struck marks at +0x547C, the stack records at +0x54CC and the record
+count at +0x54BC (0x5A6223 to 0x5A622F), and after its loop over that side's records moves all three
+on by one side (0x5A6328 to 0x5A6331). The first side is side 0, the attacker's: the handler sets a
+struck stack's mark at +0x547C + 20 × its side (+0xF4) + its record index (+0xF8) (0x5A657E to
+0x5A659A). So **the attacker's stacks are searched first**, then the defender's, each by record, and
+the strict `<` keeps the earlier of two equally near (0x5A62F7): on a tie between a stack of each
+side the attacker's is struck first, where the sentence above has the defender's, and the two
+stacks' shares of the damage change places. The counter beside the loop, which runs from 1 to 0
+(0x5A6235, 0x5A6334) and which the first reading took for the side searched, is used once, as the
+caster's side of the candidate's test (the next paragraph). Not observed: batch 2a R2's tie is
+between two stacks of one side, and R1 has none. The reading stands alone: the wiki has a random
+choice among equally near stacks, VCMI 1.7.5 a tie-break by position
+(`lib/spells/effects/UnitEffect.cpp`, `BattleHex::getClosestTile`). On a later target that resists
+VCMI differs from this § in three more points (whether it resists is drawn once per cast; a skipped
+unit is out for the rest of the chain; the next target is the one nearest to the unit just
+examined): there the re-read confirmed this § (a candidate that fails its roll is passed for that
+jump only, 0x5A6272 to 0x5A6295; marks are written for struck stacks only) and the engine follows
+it; that conflict is on record in BAT-Q28 and in BAT-MAG-006's VCMI source. The engine searches the
+defender's stacks first (BAT-MAG-006): it does not follow this yet: BAT-Q28.
+
+**Review re-read (E04b T11b, 2026-10-12): which side a chain candidate is tested for.** That counter
+is the second argument of the candidate's test 0x5A8090, the caster's side (0x5A6269): 1 while side
+0's records are walked, 0 for side 1's. So every later candidate is tested as if the side opposite
+to its record had cast the spell, whoever cast it: the test's casting hero (+0x53CC by that
+argument, 0x5A80A1) is the hero opposite to the candidate, its controlling hero the candidate's own
+(0x442690), and 0x44A4D0 gets both. Chain Lightning is neutral, so the side tests do not notice
+(below); what changes is whose Orb of Vulnerability counts, since 0x44A746 asks both heroes it is
+given (§7.23): by this reading either hero's Orb opens every later target, the caster's own stacks
+included (the defender's hero wears the Orb: the attacker's chain strikes the attacker's own Black
+Dragons), where the first target is tested for the acting side (the roll at 0x5A02EA). Unsure, by
+the report (confidence medium): the consequence is traced only as far as that Orb test, readings
+about this Orb have needed an experiment before (BAT-Q21), and nothing was observed; neither VCMI
+nor the wiki was compared. The engine tests a candidate with the caster's hero and the hero of the
+candidate's controller, so at the caster's own stacks only the caster's Orb counts: it does not
+follow this yet: BAT-Q28.
+
 **Area spells** (0x5A4970): the stacks on the area's hexes (one entry per stack), each tested
-and rolled separately, then damaged with steps 1–3.
+and rolled separately, then damaged with steps 1–3. The handler takes step 1's hero from the
+acting side itself, whoever cast the spell, and so does the chain's (§7.21, the review re-read
+on a creature's area spell).
 
 **Can a spell affect a stack** (0x5A8090 → 0x44A4D0; returns a factor `f` in [0, 1], 0 =
 immune): absolute cases first: the stack's hero wears Power of the Dragon Father and the spell
@@ -480,6 +520,25 @@ Oppression; the value is clamped to ±3 only where it is used: the good-morale r
 the luck rolls (0x43F936, 0x441818). So a base beyond ±3 absorbs the spells: +5 under Expert
 Sorrow is +3. VCMI 1.7.5 (`lib/BasicTypes.cpp`) clamps the total once as well.
 
+**Review re-read (E04b T11b, 2026-10-12): the Defend bonus sits inside the defense.** The Defend
+action (the dispatcher's case at 0x479706) computes `max(1, defense × 20 / 100)` in whole numbers
+from the defense field +0xCC once (0x47974A to 0x479791), stores it at +0x4DC, adds it to +0xCC
+(0x4798C9 to 0x4798D7) and sets the stack's defending bit `0x8000000`; the stack's next turn start
+subtracts the stored amount again and clears the bit (0x446E74 to 0x446E8D). In the tactics phase
+and for a war machine the stored amount is 0 and the bit stays clear (0x479722 to 0x479735,
+0x4798C3). Nothing recomputes the amount: Stone Skin, Prayer, their ends and Disrupting Ray write
++0xCC itself (above), so a defense change between the Defend and the stack's next turn does not move
+the bonus, and whatever reads or floors the defense in that time meets the bonus inside it: a
+strike's defense (0x442590), Frenzy (§7.11), Disrupting Ray's floor at 0, and Acid Breath, whose
+test wants +0xCC above 0 (0x4407F8) and whose handler lowers +0xCC by 3, to 0 at least (0x5A1E70,
+§7.20). In numbers: defense 12, Defend (+2), then Expert Stone Skin (+6) gives 20, where a bonus
+taken from the defense of the moment gives 18 + 3 = 21; defense 0, Defend (+1): the breath lands (1
+to 0) and the next turn start leaves −1. Not observed. VCMI 1.7.5 adds 20 % of the unit's defense as
+a bonus of its own until the unit's next turn (`server/battles/BattleActionProcessor.cpp`
+`doDefendAction`), which follows the defense as the engine's does; the wiki's wording fits both, by
+the report. The engine takes the bonus from the defense at each strike and tests and lowers the
+defense without it (BAT-TRN-004, BAT-MAG-046): it does not follow this yet: BAT-Q28.
+
 **Ending.** At the start of every round (0x4760xx calls 0x447120 for every stack record of both
 sides, attacker's first; skipped in the tactics phase) each active spell of a living stack, in
 spell order, except Frenzy, either ends (duration 1) or loses a round. A stack that dies has
@@ -571,6 +630,16 @@ mass version does not roll). Magic Mirror never redirects Dispel (0x59EE99). Dis
 Spells (78) has a twin test (the Sphere, then a stack with an active spell of positive type) and
 handler (0x5A177E: ends the active spells whose table type is positive; T7).
 
+**Review re-read (E04b T11b, 2026-10-12): what counts as an active spell for Dispel's aim.** Below
+Expert the test above walks the stack's durations of the spell ids 10 to 80 and wants one that is
+not 0 (0x5A81A2 to 0x5A81B9). Acid Breath lowers the defense in its own handler, which never calls
+the apply routine 0x4448F0 (0x5A1E70 to 0x5A1F84, §7.20), so it leaves no duration: a stack whose
+only change is Acid Breath is no target for a Dispel below Expert. Disrupting Ray keeps its duration
+(§7.9), so a stack with only the Ray is one, though Dispel ends nothing on it. Not observed (the
+report: high for the code; rare in play, it takes Rust Dragons); neither VCMI nor the wiki was
+compared. The engine keeps Acid Breath as an effect and accepts such a stack, a cast that does
+nothing (BAT-MAG-016): it does not follow this yet: BAT-Q28.
+
 **Cure** (case at 0x5A17E6; 0x446500 per stack): first resets Slow's stored factor and the
 hit points (an aged stack's are recomputed, T7), then ends Curse, Weakness, Sorrow, Misfortune,
 Slow, Berserk, Hypnotize, Forgetfulness, Blind, Stone Gaze, Poison, Disease, Paralyze and Age
@@ -601,8 +670,24 @@ attacked stack only (a breath attack's second stack reflects nothing); for a mul
 striker (creature flag `0x80000`, the attack-all-adjacent loop 0x440310) it sums the values of
 every stack struck. After the strike and its kills (0x440BC0), a positive sum damages the
 striker (0x4409C0 → 0x444090) before the retaliation (0x441DC5), which follows only if the
-struck stack lives (0x441DD4; whether a striker killed by the reflection is still struck back
-was not read: the engine never retaliates against a dead stack).
+struck stack lives (0x441DD4; for a striker the reflection killed see the review re-read
+below).
+
+**Review re-read (E04b T11b, 2026-10-12): the retaliation at a striker the reflection killed.**
+After the first strike (0x441DC5), inside which the reflection is applied, the melee routine skips
+the retaliation only if the struck stack has no creatures left (0x441DD4), the attacker's creature
+allows none (flag `0x10000`, 0x441DDF), the struck stack is petrified (0x441DED) or has no
+retaliation left (0x441DF7), or the strike answered "no retaliation" (0x441E01). It does not ask
+whether the attacker has creatures left, though the second strike does (0x441EAF). So the struck
+stack strikes back at an attacker the reflection killed (0x441E3D) and one retaliation is taken
+(0x441E58 to 0x441E5F): the round's next attacker is not struck back. What that strike does was not
+followed beyond two points: the strike routine wants only a target pointer (0x4419EA), and the
+damage routine takes nothing from a stack without creatures (0x4440DE). Not observed (the report:
+medium to high for the path). VCMI 1.7.5 retaliates only against a living attacker
+(`server/battles/BattleActionProcessor.cpp` `doAttackAction`), as the engine; the wiki was not
+checked. If an experiment confirms it, it is an oddity of the original whose class is the user's to
+decide. The engine does not retaliate at a dead striker and spends no retaliation (BAT-RET-001): it
+does not follow this yet: BAT-Q28.
 
 **Frenzy** (spell 56; one target, a mind spell): 0x4448F0 sets its duration to 1 if the target is
 the active stack, else 2 (whatever the caster's power), and stores `v / 100` as `f32` (+0x498).
@@ -699,8 +784,9 @@ whatever its level.
 **Magic Mirror** (spell 36; effect 20, 20, 30, 40). 0x4448F0 stores `v` as an `i32` (+0x4E4).
 The chance getter 0x4487F0 returns `v` while the spell is active (duration +0x228), else 0; for
 a Faerie Dragon (creature 134) the larger of that and the table's `effect[0]` of spell 36 (20;
-T7). The redirect is decided where a player's cast is entered (0x59EC50, the spell book and the
-creature casters' button, at 0x59EE7A): for a cast that takes a target stack (0x59E060: the
+T7). The redirect is decided where a player's cast is entered (0x59EC50, from the spell book and
+for a Faerie Dragon's spell from its key and its dialog, at 0x59EE7A; a creature's action then
+drops it: §7.21, the review re-read): for a cast that takes a target stack (0x59E060: the
 single-target spells and the mass spells below their mass mastery, §7.8) whose target stack is
 not Dispel's, belongs to the other side and is alive, the game draws `r = random(1, 100)`
 (drawn for every such cast, with or without a mirror) and redirects when `r ≤ chance`. The new
@@ -757,7 +843,8 @@ Ending gives nothing back.
 **Blind** (spell 62; effect 50, 50, 25, 0; one target). 0x4448F0 stores `v / 100` as `f32`
 (+0x49C). Duration as §7.9. While active:
 - *No turns.* The battle loop (0x465080) picks the next stack by speed among those not done
-  (+0x84 bits 21, 25, 26) and, for a stack whose turn has started this round (+0x4F0), only if it
+  (+0x84 bits 21, 25, 26; the comparison and the wait phase: §7.21, the review re-reads) and, for
+  a stack whose turn has started this round (+0x4F0), only if it
   is not blind, petrified or paralysed; it then runs the stack's turn start 0x446E30 once per
   round (+0x4F0 set; the Defend bonus ends, regeneration, Frenzy's countdown, §7.11) and, if the
   stack is blind, petrified or paralysed, picks again without marking it done. No morale roll, no
@@ -970,11 +1057,69 @@ enters the hexes (§7.15: Fire Wall, Land Mine, the moat). Either way the walk r
 move and attack (0x478971) then skips the attack, also when the pit was the move's destination and
 seen (BAT-QUIRK-2). A flyer (0x4B49C0) and a teleporting creature (0x4B4E90) never test the pits;
 Teleport places the stack without entering. Standing on a pit has no further effect: the stack
-leaves it freely on its next turn.
+leaves it freely on its next turn (but for a two-hex stack walking on along its row: the review
+re-read below).
+
+**Review re-read (E04b T11b, 2026-10-12): a two-hex walker leaving a pit along its row.** The
+walker's tests differ in what they leave out. The stops array leaves out the hexes the stack stands
+on when the walk is planned (0x4B33D6 to 0x4B33F5), and the pathfinder does not count a stop that
+the stack already covers at the position it steps from (0x4B36ED to 0x4B3725). The walker's own
+Quicksand test leaves out nothing: at every step it reads the Quicksand bit of the hex its position
+moves to and, for a two-hex stack, of that position's other hex (the position ± 1 by the facing,
+0x4422C6 to 0x4422E8), and either bit reveals the pit, makes the step the last and the walk return
+false (0x442281 to 0x4422B8, 0x4422FD to 0x442334). After a step along its row a two-hex stack still
+covers one of its two former hexes. So a two-hex stack with one hex on a pit that walks on along its
+row with that hex leading is stopped again after one step, its other half now on the pit, and a move
+and attack ordered with that step loses its attack (0x478971); the turn after it is free. Walking
+the other way along the row, or leaving the row, it is free at once. The path and the cursor allow
+the whole move, since they go by the stops. Example: Cavaliers whose front hex stands on a pit are
+ordered three hexes forward: they advance one hex and stop, so the pit holds them two turns, not
+one. Not observed (the report: confidence medium, the code is plain but has no second source). VCMI
+1.7.5 passes the hexes a stack starts on (`server/battles/BattleActionProcessor.cpp` `moveStack`)
+and has a setting, off by default, that lets a two-hex unit moving one hex forward or back trigger
+obstacles (`oneHexTriggersObstacles`, `config/gameConfig.json`); the wiki was not checked. The
+engine leaves the start hexes out for the whole walk (BAT-MAG-032): it does not follow this yet:
+BAT-Q28.
+
+**Review re-read (E04b T11b, 2026-10-12): no attack is offered from a seen pit.** The interface's
+path, which the ledger's BAT-QUIRK-2 left unread. With the cursor on a stack to attack, 0x474690
+fills the active stack's twelve attack slots around it: a neighbouring position is taken only if the
+reach map marks it, the stack fits there (0x446C40) and neither the position's hex nor, for a
+two-hex stack, its other hex is in the stops array (0x4747BE to 0x474810; the same for a two-hex
+stack's shifted position, 0x47485F to 0x4748B5). 0x474A00 then takes the attack's from-hex from the
+slot the mouse points into, and from nowhere else (0x474B4F). The pathfinder's own marking of attack
+targets passes over a position with a hex on a stop in the same way when the range asked is within
+one move, as the cursor's is (0x4B378D to 0x4B37D1; for a longer range such a position counts, one
+move dearer, 0x4B378A). The stops are the pits the stack's side sees (above), so the original offers
+a player no attack that ends on a pit his side sees; the attack skipped after a stop ("The walker's
+stops", above) is reached only through a pit the side does not see, or through a two-hex stack's own
+pit hex (the re-read before this one). By the report the computer player's query refuses such an
+attack too (not re-read here); the wiki and VCMI were not compared. The engine lists and accepts
+such attacks while `quirk.battle.attack_from_seen_pit` is on, as it is in the faithful profile
+(BAT-QUIRK-2): it does not follow this yet: BAT-Q30.
 
 **Information the original gives away** (fixed, Q-0002): Fire Wall's and Force Field's target test
 (0x5A39C0) refuses a hex with the other side's hidden pit, so the cursor shows it; the stops of a
 hypnotized stack are its real side's, so its controller sees where the owner's pits lie.
+
+**Review re-read (E04b T11b, 2026-10-12): a berserk stack's turn and its own side's pits.** The
+pathfinder marks the stops for every caller (0x4B353E calls 0x4B3290), the berserk turn's two among
+them: the map over the whole field from which the turn takes its candidates (0x4B2DA0, §7.14) and
+the walk towards the chosen one (0x4222C0). The stops are those of the stack's real side (0x4B3384
+to 0x4B33C4: the pit's owner byte against the stack's +0xF4, or the revealed byte), its side's
+hidden pits included. So the original's berserk stack ranks its targets by paths around its own
+side's hidden pits and walks around them, in the open: the other side, who knows the rule and the
+field, can tell from a detour, a farther target or a turn without a move where such a pit lies. The
+review's security report did not read the original; the wiki and VCMI were not compared. The engine
+does the same (BAT-MAG-025 plans with the pits the stack's side sees), so here it follows the
+original. One corner was not read to its end. The berserk turn asks the pathfinder with a range
+above the stack's speed (127; 0x445582, 0x42232C), and for such a query a position on a stop does
+count as a place to attack from, one whole move dearer (0x4B378A to 0x4B3792), where the cursor's
+query within one move counts none (the re-read above). The walk then attacks only if the target's
+cost is within the stack's speed (0x4223E1) and otherwise walks towards it (0x41F580, not read): a
+berserk stack whose attack position lies on a pit its side sees does not strike that turn, and
+whether it ends its walk on that pit, as the engine's does while BAT-QUIRK-2 is on, is not known.
+Whether an automatic turn should plan only with the pits both sides see is open: BAT-Q31.
 
 ### 7.17 Code reading: Land Mine (E04b T5c2, 2026-10-07)
 
@@ -1044,6 +1189,21 @@ immunities (Gold Dragons, immune to levels 1–4, cannot be raised by Sacrifice;
 Resurrection's hit points at the caster's Earth mastery for the health test; and it must pass
 spell 40's own test too (below).
 
+**Review re-read (E04b T11b, 2026-10-12): the hero's raise spells search twice.** The cast routine
+finds the stack at the aimed hex as above (0x5A008D calls 0x5A3950), but the handler of Resurrection
+and Animate Dead does not raise that stack: it takes its position hex (+0x38) and runs the search
+again from there (0x5A1907 to 0x5A1928: 0x5A3F50 for Animate Dead, else 0x5A3CC0, with the acting
+side and that hex) and raises what the second search returns. A two-hex stack's position is one of
+its two hexes (the rear one, by the report's reading of 0x444297), and each hex keeps its own corpse
+list. So for a two-hex corpse A with a later corpse B of the same side on A's position hex, B
+passing the test: aimed at A's other hex, the first search finds A and the second B, and B is
+raised; A cannot be raised while B lies there. The rule that follows: a hero's raise spell raises a
+dead stack only if it is the topmost corpse on its own position hex that passes the test. Sacrifice
+(0x5A1A49) and the Archangel (0x4485BE, §7.21) raise the stack their one search found. Not observed
+(the report: medium to high); neither VCMI nor the wiki was compared. If an experiment confirms it,
+it is an oddity of the original whose class is the user's to decide. The engine raises the corpse
+aimed at through either of its hexes (BAT-MAG-035): it does not follow this yet: BAT-Q28.
+
 **Resurrection and Animate Dead** (0x5A1907): hit points `power × factor + effect[mastery]` plus
 the specialty bonus 0x4E5FF0 with the target's level (§7.12: `ceil((hero level div (c + 1)) × t ×
 0.03)`); temporary when the caster's mastery is below Advanced (Resurrection only). The raise
@@ -1053,10 +1213,28 @@ gives the count `ceil(total / health)` and the top creature's loss, both capped 
 capped at the start count and written nowhere else (0 at setup, 0x43D861; no loss lowers it). A
 dead stack comes back on its own hex (0x43EA70 revives it, 0x4687C0 places it) and leaves the
 corpse lists; at the end the raise clears the dead bit `0x200000` (0x5A7867) and touches no other
-flag, so a stack that had acted this round before it died stays done. Its spells ended at its
+flag, so a stack that had acted this round before it died stays done (and through later rounds
+while it lies dead: the review re-read below). Its spells ended at its
 death (0x444120 ends every active spell, then sets the dead bit), Disrupting Ray excepted (§7.9);
 the raise writes no defense, so Disrupting Ray's and Acid Breath's (§7.20) defense loss stays on a
 raised stack.
+
+**Review re-read (E04b T11b, 2026-10-12): a dead stack's round state is frozen.** The round start
+calls 0x447120 for every record with a creature type (0x476107), and 0x447120 returns at once for a
+record without creatures (0x44712D), before anything it does: clearing the bits good morale, waited
+and acted (`0x7000000`, 0x44713F) and the turn-started byte +0x4F0, and setting the retaliations
+(§7.10). The raise clears only the dead bit (above), and the pick passes over a record with the
+acted bit (0x46511C, §7.14). So a stack killed after it had acted keeps "acted" and the retaliations
+it died with through every round start while it lies dead: raised in a later round it gets no turn
+in that round, and acts again from the round start after it. A stack killed before it acted, and
+raised later, does act. (The start of a round's wait phase clears the waited bit of every record,
+dead ones too, 0x4652CD.) By the report nothing but the good-morale roll (0x4649E6) clears a battle
+stack's acted bit otherwise; its search of the whole code for the masks was not repeated here. Not
+observed (the report: confidence medium for want of an observation, the effect large in ordinary
+play if it holds). VCMI 1.7.5 resets every unit at a new round, dead or alive
+(`lib/battle/BattleInfo.cpp` `nextRound`, `lib/battle/CUnitState.cpp` `afterNewRound`), as the
+engine; the wiki was not checked. The engine resets dead stacks at every round start too, so a stack
+raised in a later round acts in it (BAT-MAG-035): it does not follow this yet: BAT-Q28.
 
 **Sacrifice** (0x5A199C): the victim is the living stack on the cast's second hex. 0x5A8090 (case
 0x5A8523) wants it living (`0x10`), not summoned (`0x400000`), not undead, with creatures, and of
@@ -1157,9 +1335,30 @@ summoned stack or clone counts as living. The winner (0x4762F0 with 0x4658B0 for
 side that has a living stack that is neither summoned nor a war machine and whose opponent
 retreated, surrendered or has no living stack apart from war machines; if neither side qualifies
 nobody wins: a side left with only summoned stacks and clones loses as well (the wiki's "both
-sides lose"), also when the other side retreated or surrendered. Batch 2d confirmed the clone's place (up-right for the attacker, up-left for the defender), its full shots, its end by any damage and by its rounds, a clone on its own crowded original (CL2: the original vanishes), the summons' rows, the reused record and the limit, the end against only summoned stacks by elimination, retreat and surrender (the surrender's gold is still paid), and Necromancy counting created stacks (NE: 7); the surrender price (not read) leaves created stacks out. The experience of the battle
+sides lose"), also when the other side retreated or surrendered. Batch 2d confirmed the clone's place (up-right for the attacker, up-left for the defender), its full shots, its end by any damage and by its rounds, a clone on its own crowded original (CL2: the original vanishes), the summons' rows, the reused record and the limit, the end against only summoned stacks by elimination, retreat and surrender (the surrender's gold is still paid), and Necromancy counting created stacks (NE: 7); the surrender price (read at the E04b T11b review, below) leaves created stacks out. The experience of the battle
 (0x46A350) counts no killed summoned stack, clone or war machine; Necromancy (0x4775E1) counts the
 killed creatures of every record, summoned stacks and clones included.
+
+**Review re-read (E04b T11b, 2026-10-12): the surrender price.** Read for the first time, in the
+battle window's handler of its surrender button (control 2001, 0x474FE9 to 0x47507F). Over the
+acting side's records 0 to 19 it passes over a record without a creature type or without creatures,
+one with the summoned bit `0x400000` (0x47501F; a clone has it too, above) and one with no more
+creatures than its temporary counter +0x54 (0x47502A), and for the rest adds `the creature's gold
+cost (the creature table's +0x38) × (creatures − temporary counter)`. Nothing asks for the
+war-machine flag: war machines count. The sum is halved as a whole number, towards 0, turned into a
+single-precision value, multiplied by the hero's factor and truncated (0x47506B to 0x47507F). The
+factor (0x4E4580) is `1 − discount`: the Diplomacy value of §7.4 (0, 0.2, 0.4, 0.6; grown `× (1 +
+0.05 × level)` for a Diplomacy specialist) plus 0.1 for each of the artifacts 66, 67 and 68 the hero
+wears (also as a part of a worn combination), every sum stored in single precision, at most 0.9. Two
+differences from the engine follow. Creatures raised for the battle only (Basic Resurrection, §7.18)
+are left out of the price: 5 of 10 Swordsmen at 300 gold cost 750, and after a raise to 8 still 750,
+where the full count gives 1 200. And the halving comes before the factor: one Pixie (25 gold) at a
+discount of 10 % costs `trunc(12 × 0.9)` = 10, where one division at the end gives 11 (the report
+found no such case with discounts of 20, 40 and 60 %). Batch 2d showed created stacks left out and
+war machines counted; the rest is not observed. VCMI 1.7.5 takes cost × count of the units from the
+army's slots (`lib/battle/Unit.cpp` `getRawSurrenderCost`); the wiki is silent, by the report. The
+engine counts every living creature of an army stack and divides once at the end (BAT-FLE-002): it
+does not follow this yet: BAT-Q28.
 
 ### 7.20 Code reading: creature magic after a strike (E04b T7a, 2026-10-08)
 
@@ -1241,7 +1440,8 @@ longer duration and the higher mastery. Per spell:
 - *Age*: the hit points per creature become `trunc(f32(H) × factor × f32(0.5) + f32(0.95))`
   (0x444FBE, as Poison's), with the same cap.
 - *Acid Breath* (0x5A1E70): defense − 3, at least 0, for the rest of the battle (no duration, no
-  entry in the active spells; each Rust Dragon strike lowers it again).
+  entry in the active spells; each Rust Dragon strike lowers it again). The defense it tests and
+  lowers has a defending stack's bonus inside it (§7.9, the review re-read).
 - *Dispel Helpful Spells* (0x5A177E): ends every active spell 10–69 whose table type is positive
   (0x444510).
 
@@ -1334,8 +1534,28 @@ packs), +0x4E0 a Faerie Dragon's spell.
 **The cast routine's arguments** (0x59FE30, §7.8): spell, target hex, caster kind (0 hero, 1
 creature), second hex, **mastery**, **power**. A hero's cast passes 0 and 3 and takes its own
 mastery and power; a creature's cast takes the arguments, and Magic Plains (battlefield type 1,
-E04c) raise its mastery to 3. A creature's cast has no hero bonuses, and the aimed stack never
-rolls for resistance (§7.8; area spells still roll per stack).
+E04c) raise its mastery to 3. A creature's cast has no hero bonuses in the handlers inside the
+cast routine (its area spells and Chain Lightning: the review re-read below), and the aimed
+stack never rolls for resistance (§7.8; area spells still roll per stack).
+
+**Review re-read (E04b T11b, 2026-10-12): the hero's damage bonuses in a creature's area spell and
+chain.** The cast routine keeps a casting hero that is null for caster kind 1 (0x59FE63 to
+0x59FE7B), and the damage handlers written inside it pass that one to the damage modifiers 0x5A78E0
+(Magic Arrow at 0x5A09DC; by the report Ice Bolt, Lightning Bolt, Implosion, Death Ripple and
+Destroy Undead alike), which apply the caster's bonuses 0x4E5760 only when given a hero (0x5A790D):
+a creature's bolt has none, as above. The handlers that are functions of their own are not told the
+caster kind and fetch a hero themselves: the area handler 0x5A4970 takes the hero of the acting side
+(+0x53CC by +0x132C0, 0x5A4A05 to 0x5A4A1F) and passes it as the casting hero for every stack it
+damages (0x5A4AB0 to 0x5A4AD2), Chain Lightning's handler 0x5A6360 does so for every target
+(0x5A6557 to 0x5A656E), and so does Armageddon's (0x5A4C5A to 0x5A4C90; no creature casts it).
+During a creature's cast the acting side is its controller's (0x465389, §7.14). So by this reading a
+Faerie Dragon's Fireball, Frost Ring, Inferno, Meteor Shower and Chain Lightning (46 of its 100
+draws) take the Orb, Sorcery and specialty bonuses of its side's hero (§7.8, step 1), and its Ice
+Bolt, Lightning Bolt and Magic Arrow do not: one dragon's Fireball under the Orb of Tempestuous Fire
+deals 120, not 80 (`5 × 10 + 30`, × 1.5), its Magic Arrow 70 either way. Not observed. VCMI 1.7.5
+gives a unit's cast no such bonus (`lib/battle/CUnitState.cpp` `getSpellBonus`); the wiki was not
+checked. The engine gives no creature's cast a hero's bonuses (BAT-MAG-048, BAT-MAG-049): it does
+not follow this yet: BAT-Q28.
 
 **The creature's cast action** (the action dispatcher's case 10, 0x47936E → 0x448260, stack,
 target hex; the action names no spell): it turns the stack towards the hex (animation only),
@@ -1413,12 +1633,14 @@ of 0x63B850 (pairs of spell and weight, ended by a negative spell) are summed, `
 walked down the pairs in table order (Ice Bolt, Lightning Bolt, Fireball, Magic Arrow, Frost
 Ring, Chain Lightning, Meteor Shower, Inferno) and the first pair whose weight takes it below 0 is
 stored at +0x4E0. Unless 0x46A4A0 answers (not read), a combat-log line names the creature and
-the spell, but only if the controller's side (+0xF4, flipped by +0x288) is a local human
-(+0x54A4[side]). The activation returns at once in the tactics phase (+0x13D68), and the battle
+the spell, but only if the controller's side (+0xF4, flipped by +0x288) is a human player's
+(+0x54A4[side]; the review re-read on bad morale, below). The activation returns at once in the
+tactics phase (+0x13D68), and the battle
 loop calls it again for a waited stack and after good morale (0x464920 clears the done bit
 `0x4000000` and sets `0x1000000`), so the dragon draws anew each time. +0x4E0 is read only for the
-active stack: its cast (0x448260), the creature caster's button (0x475CD8 → 0x59EC50(spell, 1)),
-0x468954 and the status line 0x492FD3; nothing shows another stack's drawn spell. *The target*
+active stack: its cast (0x448260), the F key's case (0x475CD8 → 0x59EC50(spell, 1); the earlier
+readings took it for a button), the stats dialog's cast button 0x468954 and the status line
+0x492FD3; nothing shows another stack's drawn spell. *The target*
 (0x4476C0, case 7 of the table 0x447A00 indexed by creature − 13: 13 Archangel and 51 Pit Lord
 case 0, 37 Master Genie 1, 91 Ogre Mage 2, 123, 125, 127, 129 the elementals 3 to 6, 134 the
 Faerie Dragon 7): a stack on the hex (0x4E7170) that 0x5A3C80(drawn spell, the controller's side,
@@ -1427,18 +1649,79 @@ own stack for a negative spell only, so Chain Lightning and the area spells (neu
 at the dragon's own stacks, unlike a hero's Chain Lightning (0x59F7BF). The cursor (0x4766EA)
 refuses the caster's own hexes and, for creature 134 only, calls 0x4476C0 over a stack of either
 side (0x4766FC); over an empty hex it goes to 0x47684B, whose cast test 0x4473D0 answers only for
-the Archangel and the Pit Lord: **the dragon never casts at an empty hex**, its area spells too,
-and a Frost Ring must be centred on a stack it can affect, which the ring then spares. *The cast*
-(0x448260, case 134): 0x59FE30(+0x4E0, hex, 1, −1, 2, 5 × creatures). *Magic Mirror*: the
-button enters the cast through 0x59EC50 with action 10 (+0x3C = 10 for its second argument 1),
-which decides the redirect as for a hero's cast (§7.13); 0x59FE30 then skips the test and roll at
-0x5A02CB for caster kind 1, the redirected stack included, and the damage handlers (Magic Arrow
-0x5A098A) damage that stack without an immunity test: an own Black Dragon or Earth Elemental
-takes the dragon's mirrored Magic Arrow or Lightning Bolt (quirk BAT-QUIRK-9). *Survey S-18*: a
+the Archangel and the Pit Lord: by the cursor **the dragon never casts at an empty hex**, its
+area spells too, and a Frost Ring must be centred on a stack it can affect, which the ring then
+spares (the F key aims otherwise: the review re-read below). *The cast*
+(0x448260, case 134): 0x59FE30(+0x4E0, hex, 1, −1, 2, 5 × creatures). *Magic Mirror*
+(corrected at the E04b T11b review, 2026-10-12: the reading of T7b2a had the redirect arrive at
+the cast): the key enters the cast through 0x59EC50 with action 10 (+0x3C = 10 for its second
+argument 1), which draws the redirect as for a hero's cast (§7.13), but the creature's action
+hands the new hex to nobody (the review re-read below). 0x59FE30 skips the test and roll at
+0x5A02CB for caster kind 1, and the damage handlers (Magic Arrow 0x5A098A) have no immunity
+test of their own; both only ever meet the aimed stack. So in the original no own Black Dragon
+or Earth Elemental takes the dragon's mirrored Magic Arrow or Lightning Bolt; quirk BAT-QUIRK-9
+and the engine still have it so (BAT-Q29). *Survey S-18*: a
 Magic Arrow from one dragon is 5 × 10 + 20 = 70 before the target's factors (§7.8), a hero's at
 least 20 (power ≥ 1, HER-DET-001), so neither falls below Gold Golems' 7 or Diamond Golems' 20;
 in SoD only a protection on a Diamond Golem cuts a power-1 Magic Arrow's 1 to 0, the truncation
 every spell takes (the user: not reproducible, no flag, BAT-Q11).
+
+**Review re-read (E04b T11b, 2026-10-12): Magic Mirror never redirects a creature's spell.** The
+redirect is drawn in one place, the player's targeting routine 0x59EC50 after its cursor loop
+(0x59EE7A to 0x59EF8B, §7.13), which stores the new target's hex in the manager's +0x48 (reset to −1
+at each entry, 0x59ECB0). Only the hero's action hands that field on: the dispatcher's case for
+action 1 passes +0x40, +0x44 and +0x48 to the cast routine as spell, hex and second hex (0x479036 to
+0x479056), and the cast routine looks for a redirected stack only when its second hex is not −1
+(0x5A0275 to 0x5A027E). The creature's action (action 10) passes the target hex +0x44 alone to
+0x448260 (0x47936E to 0x479382); every cast of 0x448260 gives the cast routine the second hex −1
+(the Faerie Dragon's at 0x448656), as do the Master Genie's (0x447FC4) and the Enchanters' at their
+activation (0x448249); 0x448260 has no other caller, and neither it nor the cast routine reads the
+manager's +0x48. So a redirect drawn on the Faerie Dragon's key path (the next paragraph) is
+dropped, the mouse path draws none (its click handler queues action 10 with +0x44, by the report),
+and no creature's spell is ever sent away: the skip at 0x5A02CB only ever meets the aimed stack, and
+the original has no behaviour of the kind BAT-QUIRK-9 describes. VCMI 1.7.5 agrees: only a hero's
+spell is reflected (`lib/spells/BattleSpellMechanics.cpp` `isReflected`); the wiki was not checked.
+The engine still redirects a creature's single-target spell at a stack under Magic Mirror, or at
+Faerie Dragons with their own 20 %, untested while `quirk.battle.creature_mirror_untested` is on and
+tested without it: it does not follow this yet: BAT-Q29.
+
+**Review re-read (E04b T11b, 2026-10-12): the Faerie Dragon's key path and its targets.** The
+original casts the drawn spell in two ways, and the reading above followed the mouse cursor alone.
+The other is the F key (the draw's log line names it, by the report): the key handler's case for key
+code 33 (0x475C17), outside the tactics phase and for an active stack of creature 134 with casts
+left (0x475C87 to 0x475CD2), calls the targeting routine 0x59EC50 with the drawn spell (0x475CE3)
+and, when it comes back with an action, makes it action 10 (0x475CF3); the stats dialog's cast
+button does the same (0x468954). On this path the spell is aimed as a hero's (§7.8): the area spells
+20 to 23 go to the handler 0x59EF9B and its cursor loop (0x59F700), which takes every hex outside
+the two side columns that 0x5A39C0 accepts, and 0x5A39C0 accepts every hex for them. The cast
+(0x448260's case) then asks only that the hex is on the field (0x448645). So by the key a Fireball,
+Frost Ring, Meteor Shower or Inferno (41 of 100 draws) may be aimed at an empty hex or an obstacle
+(and at the dragon's own hex, by the report); the mouse path gives the hexes of stacks the spell can
+affect, as above. For the single-target spells both paths ask the same stack test; for Chain
+Lightning the key refuses the acting side's stacks (0x59F7BF) and the mouse path does not. Neither
+path takes a hex in the side columns, by the report (the engine takes a two-hex target's hex there).
+VCMI 1.7.5 casts a unit's spell at the action's target, a location for an area spell
+(`server/battles/BattleActionProcessor.cpp` `doUnitSpellAction`); the wiki was not checked. Two
+corners are not settled: 0x59EC50 returns at once while the acting side's hero has cast this round
+(the mark +0x54B4, 0x59EC76; unless the byte +0x13D74 is set, which another report of the review
+found toggled by a menu command only), so then the mouse path alone is left; and it asks the acting
+side's hero for its mastery without a test that there is one (0x59ECB4), so what the key does for a
+side without a hero is not known (the report: probably a crash). Not observed. The engine takes the
+cursor's rule for every drawn spell (BAT-MAG-049): it does not follow this yet: BAT-Q32.
+
+**Review re-read (E04b T11b, 2026-10-12): the key path asks no "magic allowed" test.** The test
+0x41F890 (§7.23) has six call sites: the cursor's test 0x4476C0 (two), the empty-hex test 0x4473D0,
+the Enchanters' 0x447FE0, the computer player's 0x4396E0 and the cast routine, which asks it for
+caster kind 0 only (0x59FED5 skips it otherwise). The Faerie Dragon's key path (0x475C17, 0x59EC50
+and its cursor loop, action 10, 0x448260, the cast routine as kind 1) passes none of them, and by
+the report no other test of artifact 126 lies on it. So by this reading the Orb of Inhibition, an
+anti-magic garrison and Cursed Ground do not stop a Faerie Dragon's cast by the key, as the wiki
+says of the Orb and the garrison (§7.23); on Cursed Ground the effect test still answers 0 for every
+spell above level 1 (§7.8), so such a spell is cast and affects nothing. Batch 2e's row OI asked for
+a spell cursor over a stack, which is 0x4476C0's answer; the key was not pressed. Not observed (the
+report: medium to high for the reading). The engine lets the Orb of Inhibition stop the dragons
+(BAT-MAG-061, since batch 2e): it does not follow this yet: BAT-Q32, which reopens BAT-Q21's first
+point.
 
 **The Master Genie, re-read for T7b2b** (BAT-MAG-050, 2026-10-08). The target test 0x4476C0
 switches through the byte table 0x447A00 (creature − 13) to eight cases: 0 Archangel and Pit Lord,
@@ -1570,8 +1853,9 @@ its owner's hero.
 and spell 36's table value at no mastery (spell table +0x1354: 20). Only the cast's entry
 (0x59EC50, §7.13) and the AI's spell evaluation (0x43A670) ask it; Hypnotize's refusal (0x5A8090,
 case 60, 0x5A83A6) reads the spell's duration, so a Faerie Dragon can be hypnotized. The dragon's
-own mirror thus sends a hero's or a creature's single-target cast at it to a random living stack
-of the caster's side as the spell does (a creature's cast untested, BAT-QUIRK-9). *The Efreet
+own mirror thus sends a hero's single-target cast at it to a random living stack of the caster's
+side as the spell does; a creature's cast is never sent away (the review re-read above; the
+engine still redirects it, BAT-QUIRK-9, BAT-Q29). *The Efreet
 Sultan's shield* (0x443130, Fire Shield's factor): the stored `f32` (+0x4A0) while the spell's
 duration (+0x20C) is not 0, else 0.2 (an `f32`) for creature 53, else 0. The reflection 0x422440
 tests the same (the duration, else creature 53, 0x42244C) and runs as for the spell (§7.11): melee
@@ -1634,6 +1918,66 @@ stack its own action left blind, petrified or paralysed is passed over (0x465222
 started) until that ends, when it may act later in the round (BAT-MOR-003, the T7b4 review's
 finding). Such a stack picked in the wait phase is not checked for bad morale either, though it
 never waited: BAT-MOR-004 tested the stack's own waited bit (VCMI's test) until E04b T11a.
+
+**Review re-read (E04b T11b, 2026-10-12): bad morale and who commands the side.** The bad-morale
+check 0x464B40 (side, record), read in full for the first time: the stack's morale (+0x4E8) is
+clamped to ±3 and `random(1, 12)` is drawn; a draw above −morale ends the check (so 1, 2 or 3 of 12
+freeze: the catalog's 2, 4 and 6 of 24). Then the manager's byte +0x54A4 of the stack's real side is
+read (0x464BDB): if it is 0, a second draw `random(1, 4)` follows, and a 1 ends the check without a
+freeze (0x464BE6 to 0x464BF8). Only after that the acted bit is set (the sound and the log line
+follow, by the report). The battle's setup fills the byte per side (0x4639F0): for a side with a
+player, whether the byte +0xE2 of the player's record is set (0x4CE940, written at 0x463AA8), and 0
+for a side without a player (0x463AED). +0xE2 is the record's human flag by the adventure lane's own
+reading (0x4BADA0) and by H3API (`IsHuman`; the manager's field `isNotAI`); the byte beside it,
++0x54A6, wants the record's +0xE2 and +0xE1 both set (0x463ABD; H3API has both as human flags, the
+report takes +0x54A6 for the local human). So by this reading the stacks of a computer player and of
+a neutral army escape one freeze in four: 6.25 %, 12.5 % and 18.75 % at morale −1, −2 and −3, where
+a human's freeze at 8.3 %, 16.7 % and 25 %. Good morale (0x464920) and Fear (0x464D40) have no such
+branch, by the report. Unsure: what the two record bytes mean rests on those names and on the
+setter, not on a reading of how the game fills them; not observed. VCMI 1.7.5 rolls alike for every
+army (`server/battles/BattleFlowProcessor.cpp` `tryActivateMoralePenalty`), and the wiki, as the
+catalog quotes it, has no such rule. The engine rolls once for every side and is not told who
+commands one (BAT-MOR-004): it does not follow this yet: BAT-Q33.
+
+**Review re-read (E04b T11b, 2026-10-12): the order in the wait phase.** When the pick 0x465080
+finds no stack for the normal phase, it sets +0x13DE4, clears the waited bit of every record in use,
+of both sides, dead or alive (0x4652A7 to 0x4652E5), and picks again; from then on every stack that
+is not done (acted or dead) is a candidate alike, whether it had waited or not. The comparison
+0x464F50 puts a stack with the good-morale bit `0x1000000` first in either phase (0x464F60 to
+0x464F82), then the arrow tower and the Catapult (sieges), and of two speeds the higher first in the
+normal phase and the lower first while +0x13DE4 is set (0x464FDB to 0x465007). So a stack that comes
+to its first turn of the round in the wait phase (summoned or cloned in it, or seeing again in it)
+takes its place among the waited stacks by its speed, the slower first: stacks of speed 2 and 5
+wait, the slower acts in the wait phase and its hero summons elementals of speed 7: the stack of
+speed 5 acts before them. The pick runs no turn start (0x446E30) in the wait phase (0x465211 to
+0x46521D), so a stack first picked there gets none that round. The Wait button (control 2009, whose
+handler queues action 8, 0x4751B8) is given the control state 0x1000 while +0x13DE4 or the tactics
+phase is on (0x478755 to 0x478790: read as disabled; the state's meaning is H3API's guess). The
+dispatcher's case for action 8 (0x479906), which the report did not read, has no test of the phase
+at its head: it sets the waited bit, and nothing clears that bit again before the round ends, so a
+Wait that did arrive there in the wait phase would cost the stack its turn; whether the keyboard can
+send one was not read. Not observed (the report: confidence medium); neither VCMI nor the wiki was
+compared. The engine puts a stack that has not waited before every waited one, fastest first, in the
+wait phase too, and lets it Wait there and act once more (BAT-TRN-002): it does not follow this yet:
+BAT-Q28.
+
+**Review re-read (E04b T11b, 2026-10-12): a freeze and the side that acted last.** For two stacks of
+equal speed and different sides the comparison prefers the one whose side is not the manager's
++0x132B8 (0x46502A to 0x46504C; with equal sides the lower record). +0x132B8 and +0x132BC are the
+side and the record of the stack activated last: the activation writes them (0x465362), and the
+cursor and the key handler read them as the active stack (0x4746A7, 0x475C87). Besides the battle's
+setup the side is written only at the end of the tactics phase (0x474539, 0x475233, 0x475F6D: 1, so
+that on a tie the attacker's stack goes first), in the pick's Catapult case (0x4650BB, sieges) and,
+saved and restored, in the melee routine (0x441D54 and 0x441D87, 0x441F13 and 0x441F44). A stack
+that bad morale or Fear freezes goes back to the pick's loop without an activation (0x465283 to
+0x46529C), as a blind stack does, so its side is not recorded: after a freeze the tie-break still
+goes by the side of the stack that acted before it. Example: B's stack of speed 9 acts, A's stack of
+speed 6 freezes, and one stack of each side with speed 5 is left: A's goes first, B having acted
+last, where counting the freeze as A's action gives B's. Not observed (the report: confidence
+medium). VCMI 1.7.5 makes a frozen unit the active one (`server/battles/BattleFlowProcessor.cpp`
+`makeAutomaticAction`), as the engine; the wiki's wording fits both, by the report. The engine
+counts a frozen stack's side as the side that acted last (BAT-TRN-001): it does not follow this yet:
+BAT-Q28.
 
 **The other sources for the casting creatures** (compared at the E04b T11b review, 2026-10-12; the
 wiki was not consulted). VCMI 1.7.5 agrees on the Archangel (Expert Resurrection, 100 hit points
@@ -1703,7 +2047,8 @@ artifact in the 19 body positions or as a part of a worn combination (the backpa
 **Who may cast** (T8b1, BAT-MAG-061). 0x41F890(side, hero cast) answers 0 on Cursed Ground for
 a creature's cast (a hero's needs its spell book there instead; E04c), at an anti-magic garrison
 (+0x53C4; E04c) and **while either hero** (+0x53CC, +0x53D0) **wears the Orb of Inhibition**
-(126). Its callers are every cast there is: the hero's cast in the cast routine (0x59FEEF: a
+(126). Its callers are every cast there is but the Faerie Dragon's by the F key, which passes
+none of them (§7.21, the review re-read): the hero's cast in the cast routine (0x59FEEF: a
 message, no cast), the creature cast and raise test 0x4476C0 (twice: before the by-creature switch
 and in the Archangel's and the Pit Lord's case), the empty-hex test 0x4473D0, the Enchanters'
 cast 0x447FE0 (it returns 0 then, so the activation 0x465330 keeps the side's count; nothing is
@@ -1768,7 +2113,8 @@ and what it lifts and keeps, and on both heroes under the Orb of Inhibition and 
 They disagree on five points, open in BAT-Q21: Faerie Dragons under the Orb of Inhibition (the
 wiki: unaffected, as by the anti-magic garrison; VCMI blocks no creature cast; this reading found
 no path around 0x41F890, neither the human player's cursor 0x47670B nor the computer player's
-0x421280); the Unicorn aura under the Orb of Vulnerability (the wiki and VCMI negate it); the
+0x421280; the review's re-read found one, the F key: §7.21); the Unicorn aura under the Orb of
+Vulnerability (the wiki and VCMI negate it); the
 Troglodytes' and Gargoyles' immunities under it (VCMI lifts them); the Cloak against the strike's
 abilities and the Archangel (the wiki names the heroes only; VCMI bars creature casts, not
 abilities); the Dragon Father against level-0 abilities (VCMI never bars level 0). Until an
@@ -1793,7 +2139,8 @@ also lists the Troglodytes' Blind among the immunities the Orb keeps (BAT-Q21 po
 
 **Batch 2e** (the user, 2026-10-11, SoD with plain HD; `experiments/results/E04b-batch-2e.md`)
 observed this reading on BAT-Q22's three points (WM, OV) and on BAT-Q21's points 1, 3, 4 and 5: the
-Orb of Inhibition stops the Faerie Dragons (OI: no spell cursor in two rounds), the Troglodytes keep
+Orb of Inhibition stops the Faerie Dragons (OI: no spell cursor in two rounds; the cursor's path
+only, the F key was not pressed: §7.21, BAT-Q32), the Troglodytes keep
 Blind and the Gargoyles Poison under the Orb of Vulnerability (OV: 0 of 12 attacks), the Cloak bars
 the Archangel (RC) and, weakly, the Medusas' Stone Gaze (0 of 8) and the Dragon Father the bolt and
 Poison (DF: 0 of 3 and 0 of 4; the bolt is the strike's Lightning Bolt, a level-2 spell, §7.20, so
@@ -1802,6 +2149,19 @@ tries without the immunity). On point 2 it observed the wiki and VCMI: under the
 Vulnerability no stack beside the Unicorns resisted Expert Slow (UA: 12 of 12 slowed; 7 % to see
 that with the aura's × 0.8 kept), so this reading's aura in 0x5A8090 is either skipped on a path not
 read or the factor is applied elsewhere; the engine keeps the aura lifted.
+
+**Review re-read (E04b T11b, 2026-10-12): the aura under the Orb of Vulnerability, a second
+reading.** An independent re-read finds what point 4 says and no path around it. At 0x5A8592 to
+0x5A85CF, for a spell that is not positive at a stack whose aura list (+0x524) is not empty, the
+result of 0x44A4D0 is multiplied by the single-precision 0.8, with no artifact test; under the Orb
+0x44A4D0 returns 1 (0x44A746), so such a stack is affected with 80 %, and Expert Slow's mass handler
+0x5A66D0 rolls `random(1, 100)` against that. By the report the executable tests artifact 93 in two
+places only, both in 0x44A4D0, and 0x43EA70 fills the aura lists without an artifact test, at a
+walk's end too (0x4423BE), so the three stacks of batch 2e's row UA had theirs. Against the reading
+stands that row alone: 12 of 12 rolls slowed, which the reading allows in `0.8^12` = 6.9 % of the
+tries, in a battle without a control (the same set-up without the Orb, to show that it produces
+resists at all). The user decided with the wiki and VCMI (BAT-Q27). The engine lifts the aura under
+the Orb (BAT-MAG-066): it does not follow this reading: BAT-Q28.
 
 ### 7.24 Code reading: the opening spells and Eagle Eye (E04b T8c, T8d, 2026-10-10)
 
