@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12), M1 next. Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 under way (T2 and T3 done 2026-10-12). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M1 T1 or M1 T2 (both ready).
+are there). Next: M1 T1 (the code reading; T4–T6 wait for it).
 
 ## Goal
 
@@ -84,6 +84,9 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   standing on their hexes, facing correctly) from a record's snapshot.
 - **Exit:** the gate passes on the user's files; the still renders; the user compares it with the
   original and agrees (or the differences are listed as M2/M3 items).
+- **T2 + T3 done 2026-10-12** ([log](E17-log.md#m1-t2--t3--the-decoders-and-the-inventory-2026-10-12),
+  [design §1–2](E17-design.md)): the PAL, PCX, DEF and MSK decoders; the gate decodes every entry
+  of the user's four LODs (none fails) and writes the inventory report.
 
 ### M2 — the battle replay viewer
 
@@ -137,3 +140,8 @@ notes), HD layouts, the adventure map and the full game viewer, video.
 ## M1 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- `proptest` as a dev-dependency of `h3-assets` (the engine's 1.11.0; T2).
+- `h3_assets::build`, encoders for synthetic assets, as public API of `h3-assets` (T2, T3).
+- The decoders' strictness: exact lengths, an overrunning run is an error (no original file has
+  one; `E17-design.md` §1; T2, T3).
