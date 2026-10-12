@@ -108,7 +108,8 @@ pub(crate) struct Registry {
     /// Where each connection that queued hears from its queue.
     queued: BTreeMap<ConnId, ToConn>,
     /// The matches' games that are not over, with their ladders and their seats' accounts: an
-    /// account waits for no other match on the ladder meanwhile (ADR-0019 point 8).
+    /// account waits for no other match on the ladder meanwhile (ADR-0019 point 8). A game that
+    /// stopped with its journal kept stays here until the next start ([`Registry::stopped`]).
     ranked: BTreeMap<u32, (String, [String; 2])>,
     /// The queues' clock starts here.
     epoch: Instant,
@@ -543,6 +544,18 @@ impl Registry {
         self.lobby.remove(game);
         self.ranked.remove(&game);
     }
+
+    /// Game `game` is gone, but its journal stays for the next start (its journal no longer
+    /// writes, or its thread panicked): a match keeps its players from another on its ladder until
+    /// then (ADR-0019 point 8; M4's review), its ladder and seats' accounts `ranked` when the
+    /// registry does not hold them yet (a game restored at start).
+    pub(crate) fn stopped(&mut self, game: u32, ranked: Option<(String, [String; 2])>) {
+        let kept = self.ranked.remove(&game).or(ranked);
+        self.leave(game);
+        if let Some(kept) = kept {
+            self.ranked.insert(game, kept);
+        }
+    }
 }
 
 /// A connection's opening of a game it binds to (E16 M2 T5e): the connection, its outbound queue
@@ -818,5 +831,49 @@ pub(crate) async fn match_every(shared: Shared, ladders: Arc<Ladders>) {
         let bots = tokio::task::spawn_blocking(move || tables.bots());
         let bots = bots.await.unwrap_or_default();
         lock(&shared).tick_queues(&bots);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::accounts::{Accounts, Ed25519};
+    use crate::ids::GameIds;
+
+    #[test]
+    fn a_match_that_stopped_with_its_journal_kept_keeps_its_players() {
+        // M4's review: a match whose journal no longer writes, or whose thread panicked, keeps its
+        // players from another match on its ladder until the next start restores it.
+        let data =
+            std::env::temp_dir().join(format!("h3-registry-{:016x}", game::os_u64().unwrap()));
+        let server = config::Server {
+            data: data.clone(),
+            ..config::Server::default()
+        };
+        let stores = Stores {
+            accounts: Arc::new(Accounts::open(&data, Box::new(Ed25519)).unwrap()),
+            ladders: Arc::new(Ladders::default()),
+            ids: Arc::new(GameIds::open(&data).unwrap()),
+        };
+        let mut registry = Registry::new(vec![], &config::Limits::default(), server, stores);
+        let entry = || {
+            (
+                String::from("arena"),
+                [String::from("ann"), String::from("bob")],
+            )
+        };
+        // Restored at start, its journal not writing: named here.
+        registry.stopped(3, Some(entry()));
+        assert_eq!(registry.ranked.get(&3), Some(&entry()));
+        // Held already: kept.
+        registry.stopped(3, None);
+        assert_eq!(registry.ranked.get(&3), Some(&entry()));
+        // Gone with its journal: its players are free.
+        registry.leave(3);
+        assert!(registry.ranked.is_empty());
+        // Another game keeps nothing.
+        registry.stopped(4, None);
+        assert!(registry.ranked.is_empty());
+        let _ = fs::remove_dir_all(&data);
     }
 }

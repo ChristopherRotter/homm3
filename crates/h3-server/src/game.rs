@@ -851,7 +851,15 @@ fn resume<'r>(
         Ok(journal) => journal,
         Err(e) => {
             eprintln!("h3-server: game {game}: the journal does not write ({e}): not restored");
-            gone();
+            // A match keeps its players' ranked game until the next start restores it.
+            let ladder = offer.ladder.clone().filter(|_| !session.over());
+            let ranked = match (ladder, owned(session.accounts())) {
+                (Some(ladder), [Some(attacker), Some(defender)]) => {
+                    Some((ladder, [attacker, defender]))
+                }
+                _ => None,
+            };
+            lock(registry).stopped(game, ranked);
             return None;
         }
     };
@@ -963,14 +971,15 @@ pub(crate) fn launch(
 
 /// Takes its game out of the registry if the game's thread panics (E16 M2 T5e: the reviewer's
 /// finding): otherwise the lobby would list it, and count it against the limits, until the server
-/// stops. Its connections find their queues closed (`TooSlow`).
+/// stops. Its connections find their queues closed (`TooSlow`). Its journal stays for the next
+/// start, and a match its players' ranked game until then (`Registry::stopped`).
 struct Panicked<'a>(u32, &'a Shared);
 
 impl Drop for Panicked<'_> {
     fn drop(&mut self) {
         if thread::panicking() {
             eprintln!("h3-server: game {}: its thread panicked", self.0);
-            lock(self.1).leave(self.0);
+            lock(self.1).stopped(self.0, None);
         }
     }
 }
@@ -1014,10 +1023,11 @@ fn too_long(
 }
 
 /// The journal stopped: every connection hears the server shuts down (for this game), and the game
-/// leaves the lobby; its journal stays for the next start.
+/// leaves the lobby; its journal stays for the next start, and a match its players' ranked game
+/// until then (`Registry::stopped`).
 fn stop(conns: &BTreeMap<ConnId, Outbox>, registry: &Shared, game: u32) {
     close_all(conns, &[], GoodbyeReason::Shutdown);
-    lock(registry).leave(game);
+    lock(registry).stopped(game, None);
 }
 
 /// The game's thread ends (E16 M2 T3): no connection may come any more, and those already on the
