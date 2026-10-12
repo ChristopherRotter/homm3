@@ -150,6 +150,37 @@ fn an_archangel_raises_a_corpse_and_needs_the_health_of_one_creature() {
     assert_eq!((s.stacks()[1].count, s.corpse(StackId(1))), (10, 0));
 }
 
+// covers: BAT-MAG-051, BAT-MAG-035
+#[test]
+fn an_archangels_hit_points_equal_to_the_health_reach_it() {
+    // E04b T11b review (r5a F-7): two heralds raise 200 hit points, a seraph's health exactly:
+    // the seraphs that lost one are a target (the original tests "at most", 0x5A850C). A stack of
+    // 201 hit points per creature (set by hand) is none.
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[
+            ("herald", 2, 5, 5),
+            ("seraph", 2, 8, 3),
+            ("seraph", 2, 8, 7),
+        ],
+        &[("fixed", 3, 13, 5)],
+        1,
+    );
+    hurt(&mut s, &r, 1, 200);
+    hurt(&mut s, &r, 2, 200);
+    s.stacks.as_mut_slice()[2].max_hp = 201;
+    assert_eq!(targets(&s, &r, BattleSide::Attacker), vec![1]);
+    assert_eq!(
+        act(&mut s, &r, at_stack(2)),
+        Err(CommandError::InvalidSpellTarget)
+    );
+    let events = act(&mut s, &r, at_stack(1)).unwrap();
+    assert_eq!(raised(&events), vec![(1, 1, false)]);
+    assert_eq!(s.stacks()[1].count, 2);
+}
+
 // covers: BAT-MAG-052, BAT-MAG-037, BAT-END-003
 #[test]
 fn a_pit_lord_raises_imps_from_a_corpse_of_its_side_into_its_army_slot() {

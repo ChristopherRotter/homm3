@@ -539,6 +539,94 @@ fn a_drawn_area_spell_is_aimed_at_a_hex_of_a_stack_and_may_hit_the_caster() {
     assert_eq!(s.casts_left(StackId(0)), 1);
 }
 
+/// The stacks `events` report as resisting, in order.
+fn resisting(events: &[Event]) -> Vec<u8> {
+    events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::SpellResisted { target } => Some(target.0),
+            _ => None,
+        })
+        .collect()
+}
+
+// covers: BAT-MAG-049, BAT-MAG-048, BAT-MAG-008
+#[test]
+fn every_stack_in_a_creatures_area_rolls_for_resistance() {
+    // E04b T11b review (r5a F-7): a creature's area spell is aimed at a hex, so it has no stack
+    // "it is aimed at" that would not roll: the dwarves (20 %) on the aimed hex resist a fifth
+    // of 200 casts, as the dwarves beside it do; `fixed` on the other side never resists. One
+    // novaling at Advanced: 5 × 10 + 20.
+    let r = ruleset();
+    let mut resisted = [0u32; 2];
+    for seed in 0..200 {
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("novaling", 1, 3, 5)],
+            &[
+                ("dwarf", 30, 13, 5),
+                ("dwarf", 30, 14, 5),
+                ("fixed", 30, 12, 5),
+            ],
+            seed,
+        );
+        drawing(&mut s, &r, 0);
+        let target = CastTarget::Hex(at(&r, 13, 5));
+        let events = act(&mut s, &r, Command::CreatureCast { target }).unwrap();
+        let (resists, struck) = (resisting(&events), damage(&events));
+        for dwarves in [1, 2] {
+            let resisted_it = resists.contains(&dwarves);
+            assert_ne!(resisted_it, struck.contains(&(dwarves, 70, 70)), "{seed}");
+            resisted[usize::from(dwarves - 1)] += u32::from(resisted_it);
+        }
+        assert!(
+            struck.contains(&(3, 70, 70)) && !resists.contains(&3),
+            "{seed}"
+        );
+    }
+    assert!(
+        resisted.iter().all(|n| (20..=60).contains(n)),
+        "{resisted:?}"
+    );
+}
+
+// covers: BAT-MAG-049, BAT-MAG-048, BAT-MAG-006
+#[test]
+fn a_creatures_chain_strikes_its_first_stack_without_a_roll_and_rolls_at_every_jump() {
+    // E04b T11b review (r5a F-7): the dwarves a chainling's chain is aimed at never resist it
+    // (a hero's chain would be resisted as a whole a fifth of the time, BAT-MAG-006); the dwarves
+    // next to them, the nearest stack, roll when the chain looks for its next stack and are
+    // passed over a fifth of 200 times: the chain then jumps to `fixed`, two rows up. One
+    // chainling at Advanced: 5 × 10 + 20, halved at each jump.
+    let r = ruleset();
+    let mut passed_over = 0;
+    for seed in 0..200 {
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("chainling", 1, 3, 5)],
+            &[
+                ("dwarf", 30, 13, 5),
+                ("dwarf", 30, 13, 6),
+                ("fixed", 30, 13, 3),
+            ],
+            seed,
+        );
+        drawing(&mut s, &r, 0);
+        let events = act(&mut s, &r, at_stack(1)).unwrap();
+        let struck = damage(&events);
+        assert_eq!(struck.first(), Some(&(1, 70, 70)), "{seed}");
+        assert!(!resisting(&events).contains(&1), "{seed}");
+        match struck.get(1) {
+            Some((2, 35, 35)) => {}
+            Some((3, 35, 35)) => passed_over += 1,
+            other => panic!("{seed}: {other:?}"),
+        }
+    }
+    assert!((20..=60).contains(&passed_over), "{passed_over}");
+}
+
 // covers: BAT-MAG-049, BAT-MAG-004
 #[test]
 fn a_random_casters_power_is_its_creatures_times_its_power_per_creature() {
