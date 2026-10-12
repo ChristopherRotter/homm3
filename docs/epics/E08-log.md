@@ -1163,3 +1163,57 @@ end to end with the env's action encoding v2 and the replay format v2.
   other cannot, an outcome that differs between the games (the actor's heroes on other tiles)
   now stops the comparison (the shrunk case kept as a regression). Over 48 cases (four runs,
   counted once): 9 to 16 offers opened, 13 or 14 refused, 4 or 5 accepted, 4 to 10 declined.
+
+**T14b, second half — the env's answers and the game's difficulty in replays.**
+- **Action encoding v2** (ADR-0017 point 8): entries 0 `EndTurn`, 1–8 the hero slots, 9
+  `Accept`, 10 `Decline` (`ACCEPT`, `DECLINE`; `ENTRY_COUNT` 11). Only a move reads the tile
+  head: for `EndTurn` and the answers it is ignored (any tile decodes) and its mask is empty.
+  `legal_mask` sets the entries of `legal_commands`' commands and the slots with a legal move, so
+  with a decision open the answers are the only legal entries and every tile mask is empty.
+  Agent's call: `EndTurn`'s tile head is ignored too (v1 allowed it only 0), the design note's
+  "ignored otherwise": one rule for every entry without a tile. `action::encode` names a command
+  as an action (the hero's slot, the path's last tile); `decode` gives it back on the query's
+  paths, another path to the same tile becomes the query's. No C ABI (E05).
+- **The random agent** (`choose`): its entries are `legal_commands`' commands and the slots with
+  a move, one drawn uniformly as before, so it answers an open decision at even odds from its own
+  stream (agent's call: the uniform rule unchanged) and, without decisions, draws the same numbers
+  as v1 (the golden replays' commands and hashes are unchanged). `random_rollout`, the record and
+  the bench's rollouts play through offers.
+- **The difficulty** (the user, 2026-10-12): `AdventureEnv::reset_with_difficulty(seed,
+  difficulty)`, which later resets keep (`reset(seed)` keeps the last; a new env plays the
+  setup's, a map's import `DEFAULT_DIFFICULTY`), and `difficulty()`; the setup is copied only
+  when the difficulty changes. An unknown one is the game's build error,
+  `GameSetupError::Difficulty`, and leaves the env as it was: the difficulty is setup input,
+  checked as the rest of the setup. `h3 adventure run` and `bench` take `--difficulty N`
+  (default 1; a `u8`, an unknown row the setup's error); `verify` plays at the replay's.
+- **Replay format v2**: `Replay.difficulty`, beside the seed (agent's call: setup input like the
+  seed, not part of `ReplayHeader`, which `check` compares with the build; in the file the
+  `[replay]` table's `difficulty = n`, always written). `record_random` records the setup's,
+  `verify` builds the game at it whatever the map's import set (an unknown one is
+  `ReplayError::Setup`). The answers were already written (`<player> accept|decline`). Agent's call
+  (v1 files): as every battle format bump, a replay of another format version is refused,
+  `Incompatible("format_version")`; a v1 file has no difficulty and parses as normal (the battle
+  files' `serde(default)` for added fields), so the refusal is that typed one, given before the
+  map is read.
+- **Tests** (h3-sim): the duel with a land Cartographer near each hero, built in the tests (no
+  fixture map has one): on the nearest tile the hero reaches on day 1 by a last step not from
+  above. Fixed: the offer opened through `step`, the entry mask 9 and 10 only and no tile,
+  `EndTurn` and moves refused (`DecisionOpen`), the other player's answer `NoDecision`; a fork
+  during the decision declines while its parent accepts (payment, purchase, masks back); no
+  decision at impossible difficulty; the agent answers both ways and a rollout plays on; encode
+  and decode round-trip; the reset's difficulty; a replay with answers at easy difficulty
+  verifies against the import at normal (normal is another game, 9 the setup's error); the
+  random record keeps its difficulty. The env's property plays this map at any difficulty with a
+  pick that enters a Cartographer (26 steps with an open decision over its 16 cases): the masks
+  against `legal_commands` and `legal_moves`, every masked-in action steps as `apply` does with
+  its command, every masked-out one is refused and changes nothing. h3-cli: the option and its
+  errors, the difficulty and answers through the file, the v1 file's refusal. Line coverage of
+  both sub-paths: everything but the record's refusal closure (a bug path since T9b).
+- **Versions**: action encoding v2, adventure replay format v2. Increment 2's versions through
+  T14: `MAP_IMPORT_VERSION` 3, adventure ruleset-part hash v5, adventure state hash v5, game state
+  hash v3, action encoding v2, adventure replay format v2. Golden replays re-recorded (the format
+  line and the difficulty only) and a fourth, `duel-s3-easy-d7` (`--difficulty 0`: the duel has
+  no objects, so the difficulty shows in the treasuries).
+- **Measured** (`bench-check`): `reach-xl-144` 565 763 181 Ir (−0.15 %), `random-play-duel-36`
+  438 920 743 (−0.15 %; +0.002 % over T14a's), `fork-xl-144` 349 100 056 (+1.60 %, unchanged
+  since the first half). No re-baseline.
