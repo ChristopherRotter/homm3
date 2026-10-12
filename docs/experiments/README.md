@@ -31,6 +31,9 @@ Complete 4.0**; a rule settled here is `observation`-sourced with that version.
   `to` (inclusive), a rectangle of another terrain; a later patch covers an earlier one. The
   writer gives every tile an interior picture of its terrain (the ranges the game's own maps use,
   `docs/formats/h3m.md`), so the game draws a hard edge between two terrains.
+  `[[map.road]]` (E08 T10a): `kind` (dirt, gravel, cobblestone), `row`, `from` and `to` (the
+  west and east end's columns): a straight road of at least two tiles with the pictures the
+  game's own maps give such a road.
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `procedure`
   (steps), `record` (`field = "…"` for a value, `table = [columns]` + `rows`), `predictions`
   (for the evaluating agent; never shown in the template).

@@ -212,3 +212,8 @@ subterranean and lava 49–72, water 21–32, rock 0–7; in each range the firs
 about ten times as common as the others. The other pictures are the edges between terrains. The
 experiment writer (`h3_formats::h3m`) gives every tile one of the first eight interior pictures of
 its terrain, edges included, which the game draws as a hard edge.
+
+**Road pictures** of a straight east–west road (counted over the same maps, E08 T10a): 15 at
+the west end, 12 and 13 between, 15 at the east end with the road's mirror flag (bit 4 of the
+tile's flags, `0x10`); a north–south road uses 14 at its ends and 10 and 11 between. The
+experiment writer lays east–west roads only.

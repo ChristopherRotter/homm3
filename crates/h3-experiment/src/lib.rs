@@ -16,7 +16,7 @@ use std::fmt::Write as _;
 
 use h3_formats::h3m::{
     ARMY_SLOTS, ARTIFACT_SLOTS, Hero, HeroArtifacts, Map, MapObject, Monster, ObjectTemplate,
-    PLAYERS, Patch, Player, Terrain,
+    PLAYERS, Patch, Player, Road, RoadKind, Terrain,
 };
 use serde::Deserialize;
 
@@ -91,6 +91,23 @@ pub struct MapSpec {
     /// Rectangles of other terrains (`[[map.patch]]`, E08 T10a); a later one covers an earlier.
     #[serde(default)]
     pub patch: Vec<PatchSpec>,
+    /// Straight roads from west to east (`[[map.road]]`, E08 T10a).
+    #[serde(default)]
+    pub road: Vec<RoadSpec>,
+}
+
+/// A road on one row.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RoadSpec {
+    /// "dirt", "gravel" or "cobblestone".
+    pub kind: String,
+    /// Row.
+    pub row: u8,
+    /// West end's column.
+    pub from: u8,
+    /// East end's column, east of `from`.
+    pub to: u8,
 }
 
 /// A rectangle of the map with a terrain of its own.
@@ -278,6 +295,31 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
             })
         })
         .collect::<Result<Vec<_>, String>>()?;
+    let roads = spec
+        .map
+        .road
+        .iter()
+        .map(|r| {
+            let kind = match r.kind.as_str() {
+                "dirt" => RoadKind::Dirt,
+                "gravel" => RoadKind::Gravel,
+                "cobblestone" => RoadKind::Cobblestone,
+                other => return Err(format!("unknown road `{other}`")),
+            };
+            if r.from >= r.to || r.to >= size || r.row >= size {
+                return Err(format!(
+                    "road on row {} from {} to {}: one tile or less, or off the map",
+                    r.row, r.from, r.to
+                ));
+            }
+            Ok(Road {
+                kind,
+                row: r.row,
+                from: r.from,
+                to: r.to,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
     let columns = (size - 2 * ORIGIN) / COLUMN_STEP + 1;
     let capacity = usize::from(columns) * usize::from((size - 2 * ORIGIN) / ROW_STEP + 1);
     if spec.encounter.len() > capacity {
@@ -411,6 +453,7 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
         size,
         terrain: base,
         patches,
+        roads,
         players,
         objects,
     };
@@ -891,6 +934,11 @@ mod tests {
         terrain = "sand"
         from = [20, 0]
         to = [20, 0]
+        [[map.road]]
+        kind = "gravel"
+        row = 30
+        from = 17
+        to = 19
 
         [[encounter]]
         id = "W1"
@@ -940,6 +988,15 @@ mod tests {
                 }
             ]
         );
+        assert_eq!(
+            map.roads,
+            [Road {
+                kind: RoadKind::Gravel,
+                row: 30,
+                from: 17,
+                to: 19
+            }]
+        );
         let heroes: Vec<&Hero> = map
             .objects
             .iter()
@@ -982,6 +1039,14 @@ mod tests {
         assert!(fails("to = [32, 71]", "to = [19, 71]").contains("out of order"));
         assert!(fails("from = [20, 0]", "from = [20, 72]").contains("out of order"));
         assert!(fails("\"swamp\"", "\"water\"").contains("unknown terrain"));
+        assert!(fails("\"gravel\"", "\"paved\"").contains("unknown road"));
+        for (from, to) in [
+            ("from = 17", "from = 19"),
+            ("to = 19", "to = 72"),
+            ("row = 30", "row = 72"),
+        ] {
+            assert!(fails(from, to).contains("one tile or less, or off the map"));
+        }
         assert!(fails("at = [40, 8]\n", "").contains("needs `at`"));
         assert!(fails("at = [40, 8]", "at = [19, 30]").contains("two objects"));
         assert!(fails("at = [40, 8]", "at = [20, 30]").contains("two objects"));

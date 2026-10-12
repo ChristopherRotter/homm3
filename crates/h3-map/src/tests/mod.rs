@@ -698,6 +698,13 @@ fn maps_from_the_experiment_writer_read_back() {
                 to: (10, 0),
             },
         ],
+        // A dirt road ending on the swamp, as the movement experiments lay them.
+        roads: vec![w::Road {
+            kind: w::RoadKind::Dirt,
+            row: 7,
+            from: 8,
+            to: 10,
+        }],
         players,
         objects: vec![
             w::MapObject::Hero(hero),
@@ -754,6 +761,14 @@ fn maps_from_the_experiment_writer_read_back() {
             (first..first + 8).contains(&t.view),
             "picture of ({x}, {y})"
         );
+        let road = match (x, y) {
+            (8, 7) => (1, 15, 0),
+            (9, 7) => (1, 12, 0),
+            (10, 7) => (1, 15, 0x10),
+            _ => (0, 0, 0),
+        };
+        assert_eq!((t.road, t.road_dir, t.flags), road, "road of ({x}, {y})");
+        assert_eq!((t.river, t.river_dir), (0, 0));
     }
     // The heroes (written one column right of their tiles, docs/formats/h3m.md) and the monster.
     assert_eq!(m.objects.len(), 3);
