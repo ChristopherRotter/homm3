@@ -150,7 +150,8 @@ codes; raw pixels are drawn with their palette colour by every drawer below exce
 - **A battle stack** (0x43E140, read around its draw call only): its DEF frame (group +0x3C, frame
   +0x40) goes through 0x4951B0 to 0x47C9E0 with an outline colour from the game's 16-bit palette
   or none. When the stack's +0x44 is 0 the frame is mirrored and placed at the anchor's x minus the
-  DEF's width (+0x30) plus 196, else at x − 196; y − 267. T5 reads the anchor and the outline.
+  DEF's width (+0x30) plus 196, else at x − 196; y − 267. The anchor, the outline and the rest of
+  the battle screen: §4.
 
 ### 3.4 The decoders' open points
 
@@ -166,7 +167,159 @@ codes; raw pixels are drawn with their palette colour by every drawer below exce
 
 ### 3.5 Still open
 
-The outline colour's index and when it shows, the battle hero's and the obstacles' drawers (T5);
-the drawers 0x47D4F0, 0x47E820 and 0x47EF60 (a half blend, rotations, H3API's
-`DrawTransparent`) and how a PCX is drawn (index 0?) not read; DDrawCompat's expansion (licence
-first); 555 not modelled.
+The drawers 0x47D4F0, 0x47E820 and 0x47EF60 (a half blend, rotations, H3API's `DrawTransparent`)
+not read; how a 24-bit PCX is drawn, and an 8-bit one outside the cases of §4.4 (index 0 is
+transparent only when the caller asks), not read; DDrawCompat's expansion (licence first); 555 not
+modelled. The battle screen's open points: §4.7.
+
+## 4. The battle screen (M1 T5)
+
+Read 2026-10-13 in the user's `Heroes3.exe`, compared with VCMI 1.7.5 (`client/battle/`,
+`config/obstacles.json`). The path read: the battle's redraw 0x494440 (H3API's
+`H3CombatManager::Refresh`) as an ordinary battle shows it: no siege, not hidden (0x46A4A0), no
+replay of a network game; the siege branches are named, not read (E04c). Coordinates are screen
+pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
+
+### 4.1 The hexes
+
+- 0x4642D0 fills the screen box of each of the 187 hex records (row r = 0–10, column c = 0–16,
+  hex = 17r + c; e = 1 on even rows, which sit half a hex to the right, else 0), six `i16` from
+  +0x0: **anchor** x = left + 22, y = top + 42; left = 14 + 44c + 22e; top = 86 + 42r;
+  right = left + 44; bottom = top + 42; and +0xC = top + 52, the cell picture's bottom.
+- The anchor is where sprites stand: the hex's centre column, 42 px below its top (the cell
+  pictures `CCellGrd.pcx` and `CCellShd.pcx` are 45 × 52 and drawn at (left, top)).
+- The mouse's hex (0x4647A0) inverts the 44 × 42 grid inside x 14–761, y 86–557, with a test of
+  the hexagon's slanted edges (not read in detail).
+- VCMI's `hexPositionLocal` has the same box (x = 14 + 22e + 44c, y = 86 + 42r; 45 × 52).
+
+### 4.2 A stack's sprite
+
+- **The call:** the redraw calls 0x494F40 per hex, which calls 0x43E140 (stack, x, y, part) with
+  that hex record's anchor; 0x43E140 adds the stack's +0x104 to x and +0x100 to y (0 at rest; set
+  by animations, M2). Part 0 draws the sprite, part 1 the count box (§4.3).
+- **Which hex:** 0x494F40 skips a hex whose +0x1A equals the stack's facing (+0x44). The stack's
+  placement (0x4687C0; 0x43D8B0 at the start) writes +0x1A: −1 under a one-hex stack; under a
+  two-hex stack (facing 1) 0 at its position (+0x38) and 1 at its other hex position + 1, (facing
+  0) 1 at its position and 0 at position − 1. So every stack is drawn once, **from its position
+  hex**.
+- **Facing:** the setup sets +0x44 = 1 − side (0x43D846): the attacker 1, the defender 0. Facing 1
+  draws the frame as stored, its canvas's top-left at **(x − 196, y − 267)**; facing 0 draws it
+  mirrored at **(x − W + 196, y − 267)**, W the DEF's width (+0x30; 450 for every creature DEF).
+  The drawer reflects canvas column cx to W − 1 − cx (the client's `Placement::mirrored`), so the
+  creature's column 196 lands on x facing right and on x − 1 facing left.
+- **Two-hex stacks: the exe's position is the rear hex.** The other hex lies ahead of it (+1 for
+  the attacker, −1 for the defender), and the sprite is anchored at the rear. The engine's position
+  is the head (BAT-GEO-002), so **the client anchors a two-hex stack at the engine's tail hex**
+  (head − 1 for the attacker, head + 1 for the defender). VCMI does the same (its ±44 px shift).
+- In numbers, the canvas's top-left on hex (r, c): (−160 + 44c + 22e, −139 + 42r) facing right,
+  (−218 + 44c + 22e, −139 + 42r) facing left. VCMI's `getStackPositionAtHex` (base (−189, −139),
+  ±29) gives the same points.
+- **The drawer:** 0x4951B0 → 0x47BD60 → the shadowed drawer 0x47C9E0 (§3.3), source rectangle
+  (0, 0, W, H) of the DEF, group +0x3C, frame +0x40. A creature's shadow is part of its frame and is
+  drawn with it; the battle has no separate shadow pass.
+- **The outline:** the colour passed is entry k of `game.pal`'s 16-bit palette (0x6AACB0, loaded
+  at 0x4EE430 beside `Players.pal`, 0x6AACA8 and 0x6AACAC): k = 0x60 for the active stack (manager
+  +0x132C8), 0x70 when the stack's byte +0x4F1 is set or the mouse marks its hex (manager +0x132CC,
+  +0x132D0), else 0, whose colour is black, 0: no outline (0x43E23F to 0x43E272). `game.pal` holds
+  a yellow ramp at 96–103 ((255, 255, 0), 224, 192, 160, 128, 160, 192, 224) and a cyan one at
+  112–119 ((0, 255, 255), 223, 191, 159, 128, 160, 192, 224). The battle's idle step (0x4960D0)
+  rotates both ranges by one entry (0x522950 with −1: each entry takes its lower neighbour's colour,
+  the first the last's) and counts manager +0x13FFC up, at most once per 100 ms (not read in
+  detail). So the outline pulses with a period of eight steps; at time 0 it is (255, 255, 0).
+- **Palette effects** (0x43E280 to 0x43E4C7, each on the DEF's 16-bit palette, restored after the
+  draw): a clone (flag 0x800000), Stone Gaze (+0x2B0 > 0) and the flags 0x20000000 and 0x40000000
+  (with +0x450) recolour the frame; not read inside (M2, M3).
+- **Walking:** in group 0 a stack that does not fly moves its anchor by frame × 44 / n and
+  frame × 42 / n by its direction +0x48 (the switch at 0x43E1FE); M2.
+
+### 4.3 The count box
+
+- Part 1 of 0x43E140, called right after the sprite: drawn when the manager forces it (+0x13D34),
+  else only for a stack that is not dead (0x200000), not a war machine (creature flag 0x40), whose
+  +0x30 (H3API's `skipCountDraw`) is 0 and whose group is 1 or 2 (mouse-over, standing).
+- The picture `CmNumWin.pcx` (30 × 11; manager +0x13D54), index 0 transparent (0x4958E0 →
+  0x44FDB0), its top-left at the anchor plus:
+
+| | the hex ahead free | the hex ahead taken |
+|---|---|---|
+| facing right | (22 + 44w + t, −15) | (−15 + 44w, −15) |
+| facing left | (−52 − 44w − t, −30) | (−15 − 44w, −15) |
+
+  w = 1 for a two-hex stack, else 0; the hex ahead is the position ± (1 + w); it is taken when a
+  living stack whose +0x30 is 0 stands on it or it is blocked (flag 0x2); t is the creature's
+  troop-count offset: `CRANIM.TXT`'s cell 22 of the creature's row (counting from 0; VCMI's
+  `troopCountLocationOffset`), which 0x50CA00 stores at +0x3C of the creature's 0x54-byte
+  animation record (table 0x6998E0) and 0x43DA0F copies into the stack at +0x110 (so +0x14C).
+- Then the box is tinted (0x44E940 over its inner 28 × 9 pixels: no active spells (0.75, 0.8), else
+  by the spells' kinds; not read) and the count (+0x4C, or +0x50 when it is not −1) written in
+  `tiny.fnt` into the box (M3).
+- VCMI's `showStackAmountBox` gives the same four positions (its hex centre is the anchor −
+  (0, 16)) but leaves out t and counts every stack ahead as taking the hex, war machines included.
+
+### 4.4 Background and obstacles
+
+- **The background buffer** (manager +0x53B0, 800 × 556), composed once by 0x493CF0: the
+  battlefield picture (`CmBk*.pcx`, 800 × 556; which one: T4), whole (0x55CF00 with manager
+  +0x13464, H3API's `backgroundPcxName`; not read inside); the absolute obstacle, if manager
+  +0x53A0 ≥ 0: that record of the table 0x63BEC0 (34 records of 0x44 bytes: terrain bits +0x0,
+  screen x +0x4 and y +0x8, its blocked hexes as `u16` from +0xC ending in 0xFFFF, the PCX's name
+  +0x40), drawn at (x, y) with index 0 transparent (0x44FC70);
+  siege parts; then 0x493930 draws the grid and the shading of hexes (the cell pictures of §4.1,
+  by the options; not read in detail, M3). Each redraw starts by copying the buffer (or its dirty
+  rectangle) to the frame at (0, 0).
+- **The usual obstacles** are battle objects (manager +0x13D58) of the type table 0x63C7C8 (91
+  records of 0x14 bytes: terrain bits +0x0, special-field bits +0x2, height +0x4 and width +0x5 in
+  hexes, blocked count +0x6, **layer +0x7**, offsets +0x8, the DEF's name +0x10). 0x495500 draws
+  one with the plain drawer (0x47BCF0 → 0x47C570, runs skipped: obstacle DEFs, type 0x47, hold runs
+  of index 0 only, so no keyed shadow), never mirrored, group 0, frame = the step counter +0x13FFC
+  modulo the group's frame count, its canvas's top-left at **(left, top − 42 (height − 1))** of the
+  anchor hex (the obstacle's bottom-left hex).
+- **Layer:** 1 (55 types) are drawn in a pass of their own before every stack, 0 (36 types) in the
+  row passes (§4.5). VCMI's `obstacles.json` marks exactly these 36 `foreground`, with the same
+  sizes.
+- VCMI places an obstacle by its picture's height H instead (y = top + 42 − H + H mod 42, 42 higher
+  when the first blocked offset is negative or H mod 42 > 37): the same point for 90 of the 91, but
+  `ObRgS03.def` (type 42, rough; H = 79, height 2) 42 px lower than the exe.
+- Spell objects (Quicksand, Land Mine, Fire Wall, Force Field) go through the same passes; one
+  owned by a side shows only when revealed (+0xA) or seen by the acting side (0x49460A to
+  0x49463A).
+
+### 4.5 The heroes
+
+0x4952B0 draws a DEF through 0x47BD60 without an outline. Left: the flag `CmFlagL.def` (manager
++0x540C, frame +0x5414) at (29, 20), then the hero (+0x5404, group +0x53E4, frame +0x53EC) at
+(−43, −19); right: `CmFlagR.def` at (755, 20), then the hero mirrored at (693, −19); each only if the
+side has a hero (+0x53CC). Hero DEFs (`CH*.def`) are 150 × 175. VCMI centres the hero's frame in a
+64 × 136 box at the field's edge, which gives the same two points; its flags were not compared.
+
+### 4.6 The draw order
+
+The redraw 0x494440, after the background:
+
+1. Layer-1 obstacles, by anchor: rows top to bottom, columns 1–15 left to right.
+2. Siege parts (not read).
+3. The left flag and hero, then the right ones.
+4. For each row, top to bottom; in it for each pass 0–7; in it for each column 0–16, left to
+   right (right to left in a siege's rows 6–10): pass 0 a siege wall part (not read); pass 1 the
+   corpses on the hex, in their list's order (a two-hex corpse from one of its hexes, as a stack);
+   pass 2 the layer-0 obstacle anchored there; in every pass the living stack on the hex if its
+   **draw layer** (+0x8) equals the pass, then its count box.
+5. Siege towers, then the calls at 0x494AAC and 0x494ABC (not read); then the frame is shown.
+
+- The draw layer (H3API calls +0x8 "visibility") is 4 from the setup (0x43D750); 6 for the
+  attacker of a melee (0x441CC1); 3 or 7 by direction in 0x43F0B0 (directions 0 and 5: 3; 2 and 3:
+  7). So standing stacks draw in pass 4, after the corpses and obstacles of their row, and a
+  striking stack over its row's neighbours.
+- So a layer-0 obstacle covers the stacks of the rows above its anchor row, its anchor row's
+  stacks cover it, and every count box is drawn with its stack, under the stacks to its right in
+  the same row.
+- **VCMI differs** (`BattleRenderer`: by row, then layer CORPSES, WALLS, HEROES = STACKS,
+  OBSTACLES = STACK_AMOUNTS): a foreground obstacle is drawn after the stacks of its anchor row, and
+  the row's count boxes after all of its stacks; the heroes sit in the row passes.
+
+### 4.7 Open
+
+- To confirm with reference frames (M3): the obstacle `ObRgS03.def` and the draw order against
+  VCMI's (§4.4, §4.6); the outline's rotation step and timing (M2).
+- Not read: the grid and shading options (0x493930); the count box's tint and text; the stack's
+  byte +0x4F1; the palette effects; the siege branches (E04c).

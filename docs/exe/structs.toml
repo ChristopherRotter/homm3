@@ -12,12 +12,17 @@ summary = "A stack record of the battle manager (21 per side, from +0x54CC; H3AP
 refs = ["installation.md §7.7", "installation.md §7.9"]
 h3api = "H3CombatCreature"
 fields = [
+  { offset = 0x8, name = "draw_layer", type = "i32", summary = "the redraw pass that draws it (0x494F40): 4 from the setup, 6 for the attacker of a melee, 3 or 7 by direction (0x43F0B0); H3API calls it visibility", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x24, name = "clone_original", type = "i32", summary = "a clone's original (record index)", confidence = "read", refs = ["installation.md §7.19"] },
   { offset = 0x28, name = "clone", type = "i32", summary = "the original's clone (record index), -1 none", confidence = "read", refs = ["installation.md §7.19"] },
   { offset = 0x2C, name = "clone_rounds_left", type = "i32", summary = "a clone's rounds left", confidence = "read", refs = ["installation.md §7.19"] },
+  { offset = 0x30, name = "no_count_box", type = "u8", summary = "set: no count box (H3API skipCountDraw); a stack ahead with it set leaves the hex free for the box; who sets it not read", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x34, name = "creature", type = "i32", summary = "creature id", confidence = "inferred", refs = ["installation.md §7.21"] },
   { offset = 0x38, name = "position", type = "i32", summary = "hex 0..186", confidence = "read", refs = ["installation.md §7.19"] },
-  { offset = 0x44, name = "facing", type = "i32", summary = "where a two-hex stack's other hex lies (position +- 1)", confidence = "read", refs = ["installation.md §7.19"] },
+  { offset = 0x3C, name = "group", type = "i32", summary = "the DEF group shown (0 moving, 1 mouse-over, 2 standing: the count box only in 1 and 2)", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x40, name = "frame", type = "i32", summary = "the frame shown in that group", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x44, name = "facing", type = "i32", summary = "where a two-hex stack's other hex lies (position +- 1); 1 - side at the setup (0x43D846): 1 drawn as stored, 0 mirrored", confidence = "read", refs = ["installation.md §7.19"] },
+  { offset = 0x48, name = "direction", type = "i32", summary = "a move's direction (the walking offsets, 0x43E1FE; 0x43F0B0)", confidence = "inferred", refs = ["epics/E17-design.md §4"] },
   { offset = 0x4C, name = "count", type = "i32", summary = "creatures alive", confidence = "read", refs = ["installation.md §7.9"] },
   { offset = 0x54, name = "temporary_creatures", type = "i32", summary = "creatures raised temporarily (Basic Resurrection); capped at the start count, never lowered in battle", confidence = "read", refs = ["installation.md §7.18"] },
   { offset = 0x58, name = "top_lost_hit_points", type = "i32", summary = "hit points the top creature lost", confidence = "read", refs = ["installation.md §7.20", "installation.md §7.21"] },
@@ -38,6 +43,11 @@ fields = [
   { offset = 0xEC, name = "pending_spell", type = "i32", summary = "spell a strike put on it, cast after the animation; -1 none", confidence = "read", refs = ["installation.md §7.20"] },
   { offset = 0xF4, name = "side", type = "i32", summary = "the real side (owner), 0 attacker, 1 defender", confidence = "read", refs = ["installation.md §7.14", "installation.md §7.16"] },
   { offset = 0xF8, name = "record", type = "i32", summary = "the record's index within its side", confidence = "read", refs = ["installation.md §7.8", "installation.md §7.21"] },
+  { offset = 0x100, name = "y_offset", type = "i32", summary = "added to the anchor's y when drawn (animations; 0 at rest)", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x104, name = "x_offset", type = "i32", summary = "added to the anchor's x when drawn", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x110, name = "animation", type = "u8[0x54]", summary = "a copy of the creature's animation record (0x6998E0, 0x43D9F0)", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x14C, name = "troop_count_offset", type = "i32", summary = "the animation record's +0x3C (cranim.txt cell 22): the count box's extra x outside the hex", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x164, name = "def", type = "ptr", summary = "the creature's DEF (its width +0x30 places a mirrored frame)", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x194, name = "active_spells", type = "i32", summary = "number of active spells", confidence = "read", refs = ["installation.md §7.9"] },
   { offset = 0x198, name = "spell_duration", type = "i32[81]", summary = "rounds left per spell id (active while above 0)", confidence = "read", refs = ["installation.md §7.9"] },
   { offset = 0x220, name = "duration_anti_magic", type = "i32", summary = "Anti-Magic's duration (spell 34)", confidence = "read", refs = ["installation.md §7.13"] },
@@ -100,9 +110,18 @@ fields = [
   { offset = 0x48, name = "action_second_hex", type = "i32", summary = "a hero's cast: the second hex (Teleport's destination, Sacrifice's victim, Magic Mirror's new target, 0x59EF8B); -1 when a cast is entered (0x59ECB0); only the hero's cast action hands it to the cast routine (0x479036)", confidence = "read", refs = ["installation.md §7.13", "installation.md §7.21"] },
   { offset = 0x1C4, name = "hexes", type = "hex_record[187]", summary = "the hex records, stride 0x70", confidence = "read", refs = ["installation.md §7.15"] },
   { offset = 0x5394, name = "terrain", type = "i32", summary = "the battlefield's terrain", confidence = "read", refs = ["installation.md §7.16"] },
+  { offset = 0x53A0, name = "absolute_obstacle", type = "i32", summary = "the absolute obstacle (record of 0x63BEC0), -1 none", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x53AC, name = "field_copy", type = "pcx16*", summary = "a copy of the background's field area (58, 86, 683 x 472) before the hex overlays (0x493CF0)", confidence = "inferred", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x53B0, name = "background", type = "pcx16*", summary = "the background buffer, 800 x 556 (0x493CF0)", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x53B8, name = "background_composed", type = "i32", summary = "the buffer is composed (H3API calls it doNotDrawShade)", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x53C0, name = "special_field", type = "i32", summary = "special battlefield type (1 Magic Plains, 2 Cursed Ground)", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.21"] },
   { offset = 0x53C4, name = "anti_magic_garrison", type = "i32", summary = "set at the start for object 33 subtype 1", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x53CC, name = "heroes", type = "hero*[2]", summary = "each side's hero, null without one", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x53E4, name = "hero_groups", type = "i32[2]", summary = "each hero's DEF group", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x53EC, name = "hero_frames", type = "i32[2]", summary = "each hero's frame", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x5404, name = "hero_defs", type = "def*[2]", summary = "each hero's DEF", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x540C, name = "flag_defs", type = "def*[2]", summary = "CmFlagL.def, CmFlagR.def", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x5414, name = "flag_frames", type = "i32[2]", summary = "each flag's frame", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x547C, name = "spell_marks", type = "u8[2][20]", summary = "one byte per side and record, set and cleared by the damage spells' handlers: Chain Lightning marks each stack it struck (0x5A659A) and its search passes them over (0x5A6255)", confidence = "read", refs = ["installation.md §7.8"] },
   { offset = 0x54A4, name = "side_is_human", type = "u8[2]", summary = "per side: the human flag +0xE2 of the side's player record (0x463AA8), 0 for a side without a player; H3API: isNotAI. The bad-morale check gives a side with 0 a second draw (0x464BDB); the Faerie Dragon's draw message asks it (§7.21)", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x54A6, name = "side_player_flags", type = "u8[2]", summary = "per side: the player record's +0xE2 and +0xE1 both set (0x463ABD), 0 without a player; H3API: isHuman (the review took it for the local human; not read further)", confidence = "inferred", refs = ["installation.md §7.21"] },
@@ -118,9 +137,15 @@ fields = [
   { offset = 0x132B8, name = "last_activated_side", type = "i32", summary = "the real side of the stack activated last (0x465362); the turn order's tie-break prefers the other side (0x46502A); 1 after the tactics phase", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x132BC, name = "last_activated_record", type = "i32", summary = "the record index of the stack activated last (the active stack)", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x132C0, name = "acting_side", type = "i32", summary = "the side acting now", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x132C8, name = "active_stack", type = "stack*", summary = "the stack whose turn it is: outline 0x60", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x132CC, name = "mouse_highlight", type = "u8", summary = "with +0x132D0: the stack on that hex gets outline 0x70", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x132D0, name = "mouse_hex", type = "i32", summary = "the hex under the mouse", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x13464, name = "background_name", type = "char*", summary = "the battlefield picture's name (H3API)", confidence = "inferred", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x13D54, name = "count_box", type = "pcx*", summary = "CmNumWin.pcx", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x13D58, name = "objects", type = "vector<battle_object>", summary = "battlefield objects (begin +0x13D5C, end +0x13D60)", confidence = "read", refs = ["installation.md §7.15"] },
   { offset = 0x13D68, name = "tactics_phase", type = "i32", summary = "in the tactics phase", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x13DE4, name = "wait_phase", type = "u8", summary = "the round's wait phase: set when no stack is left to act (0x4652A7), cleared at the round start; no Wraith drain while set", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x13FFC, name = "step_counter", type = "i32", summary = "counted up by each idle step (0x4960D0); obstacle frames run by it", confidence = "read", refs = ["epics/E17-design.md §4"] },
 ]
 
 [[struct]]
@@ -130,9 +155,17 @@ summary = "A battlefield hex (187 from battle_manager +0x1C4; H3API's H3CombatSq
 refs = ["installation.md §7.15", "installation.md §7.18"]
 h3api = "H3CombatSquare"
 fields = [
+  { offset = 0x0, name = "x", type = "i16", summary = "the anchor's x: left + 22 (0x4642D0)", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x2, name = "y", type = "i16", summary = "the anchor's y: top + 42", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x4, name = "left", type = "i16", summary = "14 + 44 column + 22 on even rows", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x6, name = "top", type = "i16", summary = "86 + 42 row", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x8, name = "right", type = "i16", summary = "left + 44", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0xA, name = "bottom", type = "i16", summary = "top + 42", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0xC, name = "cell_bottom", type = "i16", summary = "top + 52", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x10, name = "flags", type = "u8", summary = "0x1 anchor, 0x2 blocked, 0x4 Quicksand, 0x8 Land Mine, 0x10 Fire Wall, 0x20 Force Field", confidence = "read", refs = ["installation.md §7.15"] },
   { offset = 0x14, name = "object", type = "i32", summary = "object index, -1 none", confidence = "read", refs = ["installation.md §7.15"] },
   { offset = 0x18, name = "stack", type = "stack ref", summary = "the living stack on it", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.18"] },
+  { offset = 0x1A, name = "two_hex_part", type = "i8", summary = "-1 under a one-hex stack; under a two-hex one, the hex where it equals the facing is not drawn from (0x4687C0, 0x494F40)", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x1C, name = "corpse_count", type = "i32", summary = "dead stacks lying on it (at most 14)", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.18"] },
   { offset = 0x20, name = "corpse_sides", type = "u8[14]", summary = "their sides", confidence = "read", refs = ["installation.md §7.18"] },
   { offset = 0x2E, name = "corpse_records", type = "u8[14]", summary = "their record indices", confidence = "read", refs = ["installation.md §7.18"] },
@@ -161,8 +194,14 @@ size = 0x14
 summary = "A battlefield object type: its blocked hexes as offsets from the anchor."
 refs = ["installation.md §7.15"]
 fields = [
+  { offset = 0x0, name = "terrains", type = "u16", summary = "terrain bits", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x2, name = "special_fields", type = "u16", summary = "special battlefield bits", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x4, name = "height", type = "u8", summary = "in hex rows: the DEF is drawn 42 x (height - 1) above the anchor's top", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x5, name = "width", type = "u8", summary = "in hexes", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x6, name = "hex_count", type = "u8", summary = "blocked hexes", confidence = "read" },
+  { offset = 0x7, name = "layer", type = "u8", summary = "1: drawn before every stack; 0: in the row passes", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x8, name = "hex_offsets", type = "i8[]", summary = "offsets from the anchor (odd/even row rule, BAT-GEO-004)", confidence = "read" },
+  { offset = 0x10, name = "name", type = "char*", summary = "the DEF's name", confidence = "read", refs = ["epics/E17-design.md §4"] },
 ]
 
 [[struct]]

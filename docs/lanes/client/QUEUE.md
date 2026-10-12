@@ -4,35 +4,28 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12; ADR-0020). M1 below (T1, T2, T3 and T6 done 2026-10-12: the code reading, the decoders, the gate's inventory, the compositor; `docs/epics/E17-design.md`), each task about half a context. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12; ADR-0020). M1 below (T1, T2, T3 and T6 done 2026-10-12: the code reading, the decoders, the gate's inventory, the compositor; T5 2026-10-13: the battle screen; `docs/epics/E17-design.md`), each task about half a context. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
 
 ### E17 M1 T4 — The asset tables
 
 - **Scope:** the tables' format (*queued for the review*): `clients/assets/{base,ab,sod}.toml` in the packs' dependency graph and keys; entries for creatures (key → DEF, its groups as the battle uses them, missile and offsets from `CRANIM.TXT`), battlefield backgrounds (by terrain and special field), obstacles; the fix entry (`CLT-QUIRK-<n>`, its source, its flag; none yet unless found). A harvesting tool in `clients/` (a bin; reads the user's executable and text tables once; the executable's addresses from `docs/exe/`) generates them. Which expansion each entry belongs to: the AB/SoD archives' split and the packs (research item 6). A loader with the tables' dependency rules (as `h3-pack`'s: unknown keys and fields are errors). The gate checks every name against the archives.
 - **Acceptance:** the Definition of Done; the tables load for each expansion selection; every key of the committed packs' creatures, battlefields and obstacles has an entry, or the gap is listed.
-- **Depends on:** T1 and T3 done (precedence: `E17-design.md` §3.1).
-- **Status:** ready.
-
-### E17 M1 T5 — Code reading: the battle screen
-
-- **Scope:** from the executable (and VCMI, compared): the battlefield's hex geometry in pixels, where a one- and a two-hex stack's sprite is anchored, facing and mirroring, the background and obstacle placement, the draw order (stacks, obstacles, shadows, the selection), the stack count box's position. Record in `E17-design.md`.
-- **Acceptance:** as T1.
-- **Depends on:** T1 done (the battle stack's draw call: `E17-design.md` §3.3).
+- **Depends on:** T1 and T3 done (precedence: `E17-design.md` §3.1). The executable's tables T5 found: the obstacle types (0x63C7C8: DEF names by type), the absolute obstacles (0x63BEC0: PCX names and points), `cranim.txt`'s fields (`E17-design.md` §4.3, §4.4).
 - **Status:** ready.
 
 ### E17 M1 T7 — A battle still
 
-- **Scope:** the battle's assets loaded as one checkpoint batch (ADR-0020 point 7: an archive set in the adapter, the directories at start, the batch's entries by offset; whole archives read until CLT-Q2's table-only reader lands); `h3-view render`: from a record's `Snapshot` (an `h3-protocol` message; a small adapter makes one by running `h3-protocol`'s session in-process on a scenario file as `h3 run` takes it, as a spectator) to a PNG in `clients/out/`: the background, obstacles, every stack in its standing frame on its hex, facing its side, with T5's geometry and draw order; layouts as data. Pure scene model (snapshot + tables + time 0 → draw list), adapters for files.
+- **Scope:** the battle's assets loaded as one checkpoint batch (ADR-0020 point 7: an archive set in the adapter, the directories at start, the batch's entries by offset; whole archives read until CLT-Q2's table-only reader lands); `h3-view render`: from a record's `Snapshot` (an `h3-protocol` message; a small adapter makes one by running `h3-protocol`'s session in-process on a scenario file as `h3 run` takes it, as a spectator) to a PNG in `clients/out/`: the background, obstacles, every stack in its standing frame on its hex, facing its side, with T5's geometry and draw order (`E17-design.md` §4: a two-hex stack anchored at the engine's tail hex; layer-1 obstacles before every stack, layer-0 ones in the row passes); layouts as data. Pure scene model (snapshot + tables + time 0 → draw list), adapters for files.
 - **Acceptance:** the Definition of Done; stills for three scenarios (one- and two-hex stacks, obstacles, both sides) rendered from the user's files and sent to the user.
-- **Depends on:** T4, T5 (T6 done: `h3-render`; `h3-view sprite` shows its use).
-- **Status:** waiting (T4, T5).
+- **Depends on:** T4 (T5, T6 done: `E17-design.md` §4; `h3-render`, `h3-view sprite` shows its use).
+- **Status:** waiting (T4).
 
 ### E17 M1 T8 — M1's closure
 
 - **Scope:** M1's exit criteria checked; the review list (epic file) completed; a fresh reviewer agent over M1; the user compares the stills with the original (the differences become M2/M3 items or fixes); the M2 refinement prepared (the window/audio evaluation's plan, CLT-Q1's state).
 - **Acceptance:** M1's exit (epic file).
 - **Depends on:** T1–T7.
-- **Status:** waiting (T1–T7).
+- **Status:** waiting (T4, T7).
 
 ## Inbox
 
