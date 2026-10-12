@@ -21,6 +21,11 @@ tests.
   Gate, Difficulty) waited for the user's approval and timed out. Each section names what the
   wiki must be checked for; D-5 (§3.1) is the one where it decides the consensus.
 
+**Second reading:** a fresh agent re-read the deciding code without this survey (2026-10-12)
+and confirmed §3.1's ranges, §3.3's setup and visit, §3.1's visit and 0x4E3600's wrap, §2.1's
+two class lists and the move's use of the first, and §7.2's tables (`docs/exe/README.md`,
+"Confirm before flagging").
+
 Where the reading and VCMI agree, the fact has its consensus (`docs/04-rules-and-sources.md`,
 "Consensus before trust"); where they disagree, §11 lists the dispute for the user.
 
@@ -46,8 +51,8 @@ are not the players' colours).
 **Instance data of the resource bodies** (census): 27 893 piles and random resources have a
 random amount (0), 185 a fixed one. A fixed gold amount counts in hundreds: VCMI's reader
 multiplies it by 100 (`lib/mapping/MapFormatH3M.cpp: readResource`, `amountMultiplier`), and the
-original's visit does the same (§3.1). Shipped fixed amounts run from 1 to 50 (gold 10 to 1 000,
-that is up to 100 000 gold). 44 bodies carry a message, 39 of them with guards; a guarded pile
+original's visit does the same (§3.1). Shipped fixed amounts of the other resources run from 1 to 30,
+gold's from 10 to 1 000 (1 000 to 100 000 gold). 44 bodies carry a message, 39 of them with guards; a guarded pile
 starts a battle before the pickup *(inc. 3)*. The original keeps a pile's amount in the low 19
 bits of the tile's word (the setup tests `& 0x7FFFF`, 0x4C1AE4) and flags guards in bit 31
 (0x4A4BF4); how the loader fits a larger file amount was not read, so T12 bounds the amount at
@@ -79,7 +84,9 @@ in the executable (0x41B500): "cannot be entered" (0x63AA58), "visitable from ab
   classes `blockVisit` (`CGResource::initObj`, `CGBorderGuard::initObj`, the campfire's
   `blockedVisitable`) and charges the step's price before such a visit
   (`server/CGameHandler.cpp: moveHero`, `tmh.movePoints` before `blockingVisit`; without D-3's
-  drop to 0, which the engine already follows, ADV-Q3).
+  drop to 0, which the engine already follows, ADV-Q3). Not read: a hero wearing Angel Wings
+  (artifact 72) or with hero field +0x112 set takes a further test first (0x4E5CE0, H3API's
+  `CanFlyOnTile`) *(inc. 3: flying, boats)*.
 - **Entered** (every other class; ours: 10, 13, 58, 60): the hero steps onto the visitable tile;
   the visit runs there and the move ends.
 - **The border gate** (212) is entered only by a player who holds its colour's key (the switch's

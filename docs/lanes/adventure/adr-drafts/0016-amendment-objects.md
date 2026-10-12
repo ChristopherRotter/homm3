@@ -72,6 +72,8 @@ object's removal is seen by the players that have explored a tile it covered."
   a `Blocker` (ADV-Q10, D-6).
 - Two players' commands can now write the same state (the same pile, guard): the epic file's
   inventory for simultaneous play (ADR-0017 point 7) lists it.
+- On acceptance `docs/03`'s glossary gains **object type**'s visit properties (entered, visited
+  from a neighbouring tile, visitable from above) and **occupancy**.
 
 ## Alternatives considered
 

@@ -4,24 +4,12 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint; the first round is T11a with T11b. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-### E08 T11a — Survey: increment 2's objects, the treasury, starting resources
-
-- **Scope:** a survey `docs/rules/surveys/E08-objects.md` in the shape of `E08-adventure-core.md`: for resource piles, random resources, campfires, the Cartographer, the Redwood Observatory, the Pillar of Fire, Keymaster's tents, border guards and border gates: class and subclass (`docs/formats/h3m.md`, the reader's bodies), templates and visit mode (entered or visited from a neighbouring tile), effect, amounts and odds and **when they are drawn** (at setup or at the visit; decision 17), what the visitor and the other players see and learn, the events; the treasury (resource kinds, bounds) and starting resources by difficulty (decision 16: the human row for every player); what the import does with the classes that stay `Blocker`; disputes (to OPEN-QUESTIONS with a confirmation experiment for batch 2) and quirk candidates; proposed rule ids. Sources: the wiki and VCMI 1.7.5 first, code readings where they disagree or are silent on a point that matters (consensus before trust, `docs/04-rules-and-sources.md`; map entries for every cited address).
-- **Acceptance:** the survey with labelled sources; disputes and quirk candidates listed for the user; `check-exe-map` clean.
-- **Depends on:** — . **Status:** in progress (`adventure/e08-t11`, 2026-10-12 17:00 UTC; round with T11b).
-
-### E08 T11b — ADR amendments: objects, visits, the treasury, pending decisions
-
-- **Scope:** drafts in `docs/lanes/adventure/adr-drafts/` amending ADR-0016 (object types and kinds from the ruleset part, the two visit modes, per-object state in the persistent object table and the tiles a removed object frees, what the observation shows of a typed object: tile by tile or whole once a tile is seen, VCMI `CGameState::isVisibleFor`, inbox T8b1) and ADR-0017 (the treasury in `GameState`, decision 14: how a gain or a cost passes between the game and the adventure; the pending decision's state, its answer command and the turn's legality while it is open, decision 15; the env's decision head and the action encoding v2; the versions that change). Short decisions, detail in a design note if needed (ADR index rule).
-- **Acceptance:** the drafts for the user at the checkpoint (accepted drafts go to `docs/adr/` in a `shared/` pull request).
-- **Depends on:** T11a (the visit modes and the draws). **Status:** in progress (`adventure/e08-t11`, 2026-10-12 17:00 UTC; round with T11a).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint. T11a (the survey `docs/rules/surveys/E08-objects.md`) and T11b (the ADR amendment drafts in `adr-drafts/`, detail in `docs/epics/E08-design.md`) are done and wait for the checkpoint (ADV-Q10). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ### E08 T12 — Object types in the import
 
 - **Scope:** object types and kinds in the adventure ruleset part (`packs/*/adventure.toml`, `h3-pack-adventure`; sources per type), the import's mapping from class and subclass (every other class a `Blocker`), instance data validated at setup (the rest of E07: amounts, owners, keys), random resources resolved as T11a found, the per-object state table (ADR-0016 point 1), the observation of typed objects as T11b decides; `MAP_IMPORT_VERSION` 2, the adventure state hash; the shipped maps' static layers still import and validate (`--with-original-data`).
-- **Depends on:** T11a, T11b accepted. **Status:** waiting (T11b).
+- **Depends on:** T11a, T11b accepted. **Status:** waiting (ADV-Q10: the drafts accepted; D-5 and D-6 decide the pile data and guarded piles).
 
 ### E08 T13 — Treasury and pickups
 
@@ -35,8 +23,8 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ### E08 T15 — Visitable objects
 
-- **Scope:** the Redwood Observatory and the Pillar of Fire (a reveal around the object), Keymaster's tents (a key per player and colour) with border guards (removed for a player with the key) and border gates (passable for such a player), the per-player object state in the observation.
-- **Depends on:** T13 (visits). **Status:** waiting (T13).
+- **Scope:** the Redwood Observatory and the Pillar of Fire (a reveal around the object), Keymaster's tents (a key per player and colour) with border guards (removed for everyone when a key holder accepts; the yes/no is a second offer if ADV-Q10's D-7 says so) and border gates (passable for such a player), the per-player object state in the observation.
+- **Depends on:** T13 (visits); T14 too if the guard's question is an offer (D-7). **Status:** waiting (T13).
 
 ### E08 T16 — Closure of increment 2
 
@@ -44,6 +32,11 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 - **Depends on:** T14, T15. **Status:** waiting.
 
 ## Inbox
+
+- 2026-10-12 (T11a): the wiki was not read for the objects survey (approval timed out): before T12/T13 write their rules' sources, read the wiki's Resources, Campfire, Cartographer, Redwood Observatory, Pillar of Fire, Keymaster's Tent, Border Guard, Border Gate and Difficulty pages (raw wikitext) and add them to the survey's facts where they agree or to ADV-Q10 where they do not.
+- 2026-10-12 (T11a): not read, each for the increment that needs it: the computer player's own handling of the Cartographer and observatories (the human path only), the guarded pile's path (0x4A4780, inc. 3), how the loader fits a pile amount above 0x7FFFF (T12 bounds it), the game flag +0x1F69D's 50/50 000 start (probably the tutorial), a weekly resource bonus for computer players (VCMI has one; inc. 4), the flying and boat test before a visit from a neighbour (0x4E5CE0, inc. 3).
+- 2026-10-12 (T11a): the original lets a hero visit the object it stands on again (the space bar); a "visit here" command would let a player re-ask a declined Cartographer without stepping off: with an increment that needs it.
+- 2026-10-12 (T11a): `docs/06-security.md`'s viewer knowledge list gains increment 2's rows (survey §8) with T13's observation.
 
 - 2026-10-12 (T10c): `docs/BACKLOG.md`'s E08 row still says "increment 1": update it (in progress, increment 2 refined) with the lane's next `shared/` pull request (T11b's accepted ADRs).
 

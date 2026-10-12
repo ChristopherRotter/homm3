@@ -63,6 +63,8 @@ action encoding to v2 and, if the answer command needs it, the adventure replay 
   by a visit's gain or an accepted offer's price.
 - Observation hygiene covers treasuries and decisions: another player's are never shown.
 - The env's action space grows by two entries; agents trained on v1 need retraining (none yet).
+- On acceptance `docs/03`'s glossary gains **treasury** and **offer** (a pending decision
+  answered yes or no, with an optional price) beside **pending decision**.
 
 ## Alternatives considered
 
