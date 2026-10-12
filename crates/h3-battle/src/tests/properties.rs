@@ -7,13 +7,16 @@
 //! The heroes cast, among the other spells, Berserk, Hypnotize and Blind (E04b T11b review,
 //! sec F-4): a stack's controller is not always its side, and some turns are automatic. The
 //! assertions are stated for the trusted actor and the controller (BAT-MAG-025, BAT-MAG-026).
+//! Half the heroes have hidden magic in force: casting limits, spell defences, the negation of
+//! immunities, opening spells, Eagle Eye (BAT-MAG-061 to BAT-MAG-069; private to their side,
+//! BAT-Q26).
 
 use std::num::NonZeroU32;
 use std::vec::Vec;
 
 use h3_content::{
-    Affects, CreatureFlag, CreatureSelector, CreatureStat, EffectDuration, Formation, ObstacleKind,
-    Ruleset, SchoolId, SpellCategory, SpellId, SpellScope, TimedChange,
+    Ability, Affects, CreatureFlag, CreatureSelector, CreatureStat, EffectDuration, Formation,
+    ObstacleKind, Ruleset, SchoolId, SpellCategory, SpellId, SpellScope, TimedChange,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -143,8 +146,190 @@ fn arb_army() -> impl Strategy<Value = ArmySpec> {
 
 /// `(slot, creature index, count)` per stack.
 type ArmySpec = Vec<(u8, u8, u32)>;
-/// Attacker, defender, obstacles, seed, steps.
-type Game = (ArmySpec, ArmySpec, Vec<u8>, u64, Vec<Step>);
+/// Attacker, defender, obstacles, seed, steps, the hidden magic of the attacker's and the
+/// defender's hero.
+type Game = (ArmySpec, ArmySpec, Vec<u8>, u64, Vec<Step>, [Hidden; 2]);
+
+/// The hidden magic of a generated hero (BAT-MAG-061 to BAT-MAG-069; private to its side,
+/// BAT-Q26), each part as [`conceal`] reads it.
+#[derive(Debug, Clone, Default)]
+struct Hidden {
+    /// No hero and no stack casts (BAT-MAG-061).
+    no_casting: bool,
+    /// The highest spell level the battle allows (BAT-MAG-062).
+    level_limit: Option<u8>,
+    /// A spell its stacks are immune to (BAT-MAG-063): 0 to 2 one of [`CONTROL_SPELLS`], else a
+    /// spell of the ruleset by index, modulo their number.
+    immune_to: Option<u16>,
+    /// The spell level up to which its stacks are immune (BAT-MAG-064).
+    immune_up_to: Option<u8>,
+    /// Its stacks are immune to mind spells (BAT-MAG-065).
+    mind_immunity: bool,
+    /// It negates immunities (BAT-MAG-066).
+    negates: bool,
+    /// Its opening spells (BAT-MAG-068): an index into [`openings`], modulo their number, and
+    /// the power.
+    opening: Vec<(u16, u16)>,
+    /// Its Eagle Eye (BAT-MAG-069): the chance (0, 40 or 100 %, by index) and the spells of its
+    /// book it may pick, a bit each.
+    eagle_eye: Option<(u8, u64)>,
+}
+
+/// A hero's hidden magic: none for half the heroes, so that most games play every spell; for
+/// the others each part with a chance of its own (no casting at all is rare: it stops every cast
+/// of its battle).
+fn arb_hidden() -> impl Strategy<Value = Hidden> {
+    use proptest::bool::weighted as with;
+    use proptest::option::weighted as some;
+    let parts = (
+        with(0.1),
+        some(0.2, 1u8..4),
+        some(0.3, prop_oneof![0u16..3, any::<u16>()]),
+        some(0.2, 1u8..3),
+        with(0.2),
+        with(0.2),
+        prop_oneof![2 => Just(Vec::new()), 1 => vec((any::<u16>(), 1u16..4), 1..3)],
+        some(0.3, (0u8..3, any::<u64>())),
+    );
+    let hidden = parts.prop_map(|parts| {
+        let (no_casting, level_limit, immune_to, immune_up_to, mind_immunity, negates, ..) = parts;
+        Hidden {
+            no_casting,
+            level_limit,
+            immune_to,
+            immune_up_to,
+            mind_immunity,
+            negates,
+            opening: parts.6,
+            eagle_eye: parts.7,
+        }
+    });
+    prop_oneof![Just(Hidden::default()), hidden]
+}
+
+/// Every spell of the ruleset with a mastery at which a hero may have it as an opening spell
+/// (BAT-MAG-068).
+fn openings(r: &Ruleset) -> Vec<(SpellId, u8)> {
+    (0..r.spells().len())
+        .filter_map(SpellId::from_index)
+        .flat_map(|id| (0..=3).map(move |mastery| (id, mastery)))
+        .filter(|&(id, mastery)| {
+            r.spell(id)
+                .is_some_and(|t| crate::magic::opens_with(r, t, mastery))
+        })
+        .collect()
+}
+
+/// Gives `hero` the hidden magic `hidden` (BAT-MAG-061 to BAT-MAG-069).
+fn conceal(r: &Ruleset, hero: &mut BattleHero, hidden: &Hidden) {
+    if hidden.no_casting {
+        hero.effects.push(BattleEffect::NoCasting);
+    }
+    if let Some(max_level) = hidden.level_limit {
+        hero.effects
+            .push(BattleEffect::SpellLevelLimit { max_level });
+    }
+    if let Some(i) = hidden.immune_to {
+        let i = usize::from(i);
+        let spell = CONTROL_SPELLS
+            .get(i)
+            .and_then(|key| r.spell_by_key(key))
+            .or_else(|| SpellId::from_index(i % r.spells().len()))
+            .unwrap();
+        hero.effects.push(BattleEffect::SpellImmunity { spell });
+    }
+    if let Some(max_level) = hidden.immune_up_to {
+        hero.effects
+            .push(BattleEffect::SpellLevelImmunity { max_level });
+    }
+    if hidden.mind_immunity {
+        hero.effects.push(BattleEffect::MindImmunity);
+    }
+    if hidden.negates {
+        hero.effects.push(BattleEffect::NegateImmunities);
+    }
+    let openings = openings(r);
+    for &(i, power) in &hidden.opening {
+        let (spell, mastery) = openings[usize::from(i) % openings.len()];
+        hero.effects.push(BattleEffect::OpeningSpell {
+            spell,
+            mastery,
+            power,
+        });
+    }
+    if let Some((chance, picks)) = hidden.eagle_eye {
+        let book = hero.magic.spell_book.clone().unwrap_or_default();
+        hero.magic.eagle_eye = Some(EagleEye {
+            chance: Rate::bp([0, 4000, 10_000][usize::from(chance % 3)]),
+            spells: (0..64)
+                .zip(book)
+                .filter(|(bit, _)| picks >> bit & 1 == 1)
+                .map(|(_, spell)| spell)
+                .collect(),
+        });
+    }
+}
+
+/// What the heroes of a setup do to all of its battle's magic, by the rules (BAT-MAG-061 to
+/// BAT-MAG-066), read from the setup.
+struct Limits {
+    /// A hero forbids every cast (BAT-MAG-061).
+    no_casting: bool,
+    /// The highest spell level the heroes allow (BAT-MAG-062).
+    max_level: u8,
+    /// Per side, what the stacks its hero controls are immune to: the spells, the spell level up
+    /// to which, and whether mind spells (BAT-MAG-063 to BAT-MAG-065).
+    immune: [(Vec<SpellId>, Option<u8>, bool); 2],
+    /// Per side, whether its hero negates immunities (BAT-MAG-066).
+    negates: [bool; 2],
+}
+
+impl Limits {
+    fn of(setup: &BattleSetup) -> Self {
+        let effects = |side: usize| setup.heroes[side].iter().flat_map(|h| h.effects.iter());
+        let all = || effects(0).chain(effects(1));
+        let limit = |e: &BattleEffect| match e {
+            BattleEffect::SpellLevelLimit { max_level } => Some(*max_level),
+            _ => None,
+        };
+        let spell = |e: &BattleEffect| match e {
+            BattleEffect::SpellImmunity { spell } => Some(*spell),
+            _ => None,
+        };
+        let level = |e: &BattleEffect| match e {
+            BattleEffect::SpellLevelImmunity { max_level } => Some(*max_level),
+            _ => None,
+        };
+        Self {
+            no_casting: all().any(|e| matches!(e, BattleEffect::NoCasting)),
+            max_level: all().filter_map(limit).min().unwrap_or(u8::MAX),
+            immune: [0, 1].map(|side| {
+                (
+                    effects(side).filter_map(spell).collect(),
+                    effects(side).filter_map(level).max(),
+                    effects(side).any(|e| matches!(e, BattleEffect::MindImmunity)),
+                )
+            }),
+            negates: [0, 1]
+                .map(|side| effects(side).any(|e| matches!(e, BattleEffect::NegateImmunities))),
+        }
+    }
+}
+
+/// The setup of a generated game: [`make_setup`] of its armies and obstacles from the word
+/// `machines` (its seed), each hero with its hidden magic.
+fn game_setup(
+    r: &Ruleset,
+    (attacker, defender, obstacles): (&ArmySpec, &ArmySpec, &[u8]),
+    machines: u64,
+    hidden: &[Hidden; 2],
+) -> BattleSetup {
+    let mut setup = make_setup(r, attacker, defender, obstacles, machines);
+    for (hero, hidden) in setup.heroes.iter_mut().zip(hidden) {
+        hero.iter_mut().for_each(|hero| conceal(r, hero, hidden));
+    }
+    setup
+}
 
 /// Up to eight obstacle hexes away from the edge columns (x in 2..=14 of the 17-wide field).
 fn arb_obstacles() -> impl Strategy<Value = Vec<u8>> {
@@ -172,6 +357,7 @@ fn arb_game() -> impl Strategy<Value = Game> {
         arb_obstacles(),
         any::<u64>(),
         vec(arb_step(), 1..160),
+        [arb_hidden(), arb_hidden()],
     )
 }
 
@@ -504,9 +690,10 @@ proptest! {
     /// casts (BAT-MAG-026), which turns are automatic (a berserk stack's, BAT-MAG-025; a war
     /// machine's, BAT-WAR-002), and what a command or such a turn may move and strike.
     #[test]
-    fn every_step_preserves_the_invariants((att, def, obstacles, seed, steps) in arb_game()) {
+    fn every_step_preserves_the_invariants((att, def, obstacles, seed, steps, hidden) in arb_game()) {
         let r = lively();
-        let setup = make_setup(&r, &att, &def, &obstacles, seed);
+        let setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
+        let limits = Limits::of(&setup);
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
         let mut legal = LegalCommands::new();
         for (turn, step) in steps.iter().enumerate() {
@@ -532,7 +719,11 @@ proptest! {
             let castable = castable_spells(&state, &r, actor);
             let mut targets = CastTargets::new();
             let mut seconds = CastTargets::new();
+            // No hero casts while a hero forbids casting, and none a spell above the heroes'
+            // level limit (BAT-MAG-061, BAT-MAG-062).
+            prop_assert!(!limits.no_casting || castable.is_empty());
             for spell in castable.iter() {
+                prop_assert!(r.spell(spell).unwrap().level <= limits.max_level);
                 cast_targets(&state, &r, actor, spell, &mut targets);
                 prop_assert!(!targets.is_empty());
                 for target in targets.iter() {
@@ -629,6 +820,23 @@ proptest! {
                         .collect();
                     let cast_now = matches!(cmd, Command::Cast { .. });
                     prop_assert_eq!(&casters, &[actor][..usize::from(cast_now)]);
+                    // The casting limits hold whoever casts (BAT-MAG-061, BAT-MAG-062). While a
+                    // hero forbids casting no hero and no stack casts or raises, on command or on
+                    // its own, but a stack whose creature ignores that; the opening spells and
+                    // the strikes' spells are no casts. No spell above the heroes' level limit
+                    // is cast or placed (and none takes effect on a stack: in the walk below).
+                    for e in &events {
+                        let ignores = |stack: StackId| r.abilities(state.stacks()[stack.index()].creature).contains(&Ability::IgnoresMagicBlock);
+                        let (cast, spell) = match e.kind {
+                            EventKind::SpellCast { spell, .. } | EventKind::PeriodicCast { spell, .. } => (true, Some(spell)),
+                            EventKind::StackCast { stack, spell, .. } => (!ignores(stack), Some(spell)),
+                            EventKind::CreatureRaise { .. } => (true, None),
+                            EventKind::OpeningSpell { spell, .. } | EventKind::ObstaclePlaced { spell, .. } => (false, Some(spell)),
+                            _ => (false, None),
+                        };
+                        prop_assert!(!(cast && limits.no_casting), "a cast while a hero forbids casting: {:?}", e.kind);
+                        prop_assert!(spell.is_none_or(|s| r.spell(s).unwrap().level <= limits.max_level), "above the level limit: {:?}", e.kind);
+                    }
                     let mover = before.active().unwrap();
                     // ... unless it killed the active stack, whose turn then ends (BAT-MAG-004,
                     // BAT-MAG-036), or made it berserk: it takes its automatic turn at once
@@ -670,6 +878,16 @@ proptest! {
                     let stunned = |live: &Tracked, id: StackId| under(&r, live, id, TimedChange::takes_turns);
                     let moves = matches!(cmd, Command::Move { .. } | Command::Attack { .. });
                     let mut live = tracked(&before);
+                    // The side that controls a stack under the effects of a list (BAT-MAG-026).
+                    let led = |list: &Tracked, id: StackId| {
+                        let other = under(&r, list, id, |c| c == TimedChange::Hypnotize);
+                        if other { side_of(id).opponent() } else { side_of(id) }
+                    };
+                    // The effects as the last cast found them (who controlled each stack then),
+                    // the side that cast (a stack casts for the side that controls it), and
+                    // for a strike's spell the stack it landed on.
+                    let mut at_cast = live.clone();
+                    let (mut caster, mut by_strike) = (None, None);
                     // The stack whose turn it is, whether it is still the turn the actor commands,
                     // the stack it last struck, the berserk stack that has yet to act, and the
                     // one that has attacked: its own attack ends its Berserk before the next turn
@@ -681,6 +899,16 @@ proptest! {
                     };
                     for (k, e) in events.iter().enumerate() {
                         let next = |n: usize| events.get(k + n).map(|e| e.kind);
+                        let cast = match e.kind {
+                            EventKind::SpellCast { side, .. } | EventKind::OpeningSpell { side, .. } => Some((side, None)),
+                            EventKind::StackCast { stack, .. } | EventKind::PeriodicCast { stack, .. } => Some((led(&live, stack), None)),
+                            EventKind::StrikeSpell { striker, target, spell } => Some((led(&live, striker), Some((target, spell)))),
+                            _ => None,
+                        };
+                        if let Some((side, strike)) = cast {
+                            at_cast.clone_from(&live);
+                            (caster, by_strike) = (Some(side), strike);
+                        }
                         match e.kind {
                             EventKind::TurnStarted { stack } => {
                                 prop_assert_eq!(due, None, "a berserk stack's turn left no trace");
@@ -688,9 +916,32 @@ proptest! {
                                 (acting, commanded, attacked) = (stack, false, None);
                                 due = Some(stack).filter(|&s| berserk(&r, &live, s));
                             }
-                            // A cast that makes the active stack berserk lets it take its
-                            // automatic turn at once (BAT-MAG-025).
+                            // No spell takes effect on a stack against the heroes' magic in
+                            // force, whoever casts it: none above the level limit (BAT-MAG-062);
+                            // none its controlling hero's immunities name (BAT-MAG-063), though
+                            // it skip the immunities otherwise; none up to that hero's immune
+                            // level (BAT-MAG-064) and no mind spell if that hero's stacks are
+                            // immune to them (BAT-MAG-065), unless the spell skips the
+                            // immunities (BAT-MAG-016), and the mind spell also when the hero of
+                            // the side that casts or the controlling hero negates immunities
+                            // (BAT-MAG-066: not the other side's hero for a side's spell at a
+                            // stack it controls). The controlling hero is that of the side that
+                            // controlled the stack when the spell was cast (BAT-MAG-026). Only
+                            // what a strike puts on a stack without a test asks nothing (Bind,
+                            // Acid Breath: BAT-MAG-045, BAT-MAG-046).
                             EventKind::EffectApplied { target, spell, .. } => {
+                                let cast = r.spell(spell).unwrap();
+                                let skips = cast.magic.ignores_immunity;
+                                let untested = skips && by_strike == Some((target, spell));
+                                let hero = led(&at_cast, target);
+                                let (spells, level, mind) = &limits.immune[hero.index()];
+                                let negated = [caster, Some(hero)].into_iter().flatten().any(|side| limits.negates[side.index()]);
+                                prop_assert!(untested || cast.level <= limits.max_level, "{spell:?} is above the level limit");
+                                prop_assert!(untested || !spells.contains(&spell), "{target:?} is immune to {spell:?}");
+                                prop_assert!(skips || level.is_none_or(|l| cast.level > l), "{target:?} is immune to the level of {spell:?}");
+                                prop_assert!(skips || negated || !(cast.magic.mind && *mind), "{target:?} is immune to mind spells");
+                                // A cast that makes the active stack berserk lets it take its
+                                // automatic turn at once (BAT-MAG-025).
                                 if !live.contains(&(target, spell)) {
                                     live.push((target, spell));
                                 }
@@ -905,10 +1156,12 @@ proptest! {
     /// to neither side nor a spectator; the private part of a side's hero (Tactics level, damage
     /// bonuses, how its war machines work, surrender discount, funds, its hidden magic: BAT-Q26)
     /// only to that side, and so does the spell its random caster drew (ADR-0014 point 8,
-    /// BAT-MAG-049); a spectator sees neither side's (SRV-Q4).
+    /// BAT-MAG-049); a spectator sees neither side's (SRV-Q4). Of a hero's hidden magic in force
+    /// the other side's observation shows nothing but what its own caster may cast (BAT-Q26: it
+    /// infers that magic from the casts its commands may not make).
     #[test]
     fn observations_do_not_depend_on_hidden_state(
-        (att, def, obstacles, seed, steps) in arb_game(),
+        (att, def, obstacles, seed, steps, hidden) in arb_game(),
         other_seed: u64,
         damage: [u16; 2],
         (reduction, chance, discount) in (0u16..=10_000, 0u16..=10_000, 0u16..=10_000),
@@ -916,7 +1169,8 @@ proptest! {
         (rounds, level, eagle) in (any::<u16>(), 1u8..=5, any::<u8>()),
     ) {
         let r = lively();
-        let (state, _, _) = play(&r, &make_setup(&r, &att, &def, &obstacles, seed), seed, &steps);
+        let setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
+        let (state, _, _) = play(&r, &setup, seed, &steps);
         let spectator = observe_as(&state, &r, Viewer::Spectator);
         let mut twin = state.clone();
         twin.rng = Rng::from_seed(other_seed);
@@ -953,21 +1207,16 @@ proptest! {
                 hero.magic.book = SpellSet::default();
                 hero.magic.masteries = crate::magic::Masteries::of(&masteries(&r, [3; 4]));
                 hero.magic.bonuses.all = Rate::bp(discount.into());
-                // The hidden magic (BAT-Q26): the rules read the limits and the defences through
-                // `BattleState::limits`, derived at the start, which the twin keeps.
+                // The hidden magic no rule reads at this state (BAT-Q26): how long its spells
+                // last, its opening spells, its Eagle Eye and what it picked, its stacks'
+                // resistance (no cast of the viewer's that an observation counts is hostile).
                 let m = &mut hero.magic;
                 m.resistance = u64::from(reduction);
                 m.duration_bonus = rounds;
-                m.no_casting = !m.no_casting;
-                m.level_limit = level;
-                m.defences.up_to_level = Some(level);
-                m.defences.mind = !m.defences.mind;
-                m.negates = !m.negates;
                 m.opening_due = !m.opening_due;
                 m.eagle_chance = eagle;
                 m.eagle_spells = SpellSet::default();
                 m.learned.insert(SpellId::from_raw(u16::from(level)));
-                m.defences.spells.insert(SpellId::from_raw(u16::from(level)));
                 if m.opening.is_empty() {
                     let opening = crate::Opening { spell: SpellId::from_raw(0), mastery: 3, power: rounds };
                     m.opening.push(opening).unwrap();
@@ -981,7 +1230,28 @@ proptest! {
                 (s, if twin.at(s).controller() == side { other } else { spell })
             });
             let viewer = side.opponent();
-            prop_assert_eq!(observe(&state, &r, viewer), observe(&twin, &r, viewer));
+            let seen = observe(&state, &r, viewer);
+            prop_assert_eq!(&seen, &observe(&twin, &r, viewer));
+            prop_assert_eq!(&spectator, &observe_as(&twin, &r, Viewer::Spectator));
+            // The hidden magic in force (BAT-MAG-061 to BAT-MAG-066): the hero's casting limits,
+            // its stacks' spell defences and its negation of immunities change, and the battle's
+            // limits with them. The other side's observation shows of it only what its own
+            // caster may cast at each stack (BAT-MAG-050): the casts its commands may not make
+            // (BAT-Q26). A spectator sees none of it.
+            for hero in twin.heroes[side.index()].iter_mut() {
+                let m = &mut hero.magic;
+                m.no_casting = !m.no_casting;
+                m.level_limit = level;
+                m.defences.up_to_level = Some(level);
+                m.defences.mind = !m.defences.mind;
+                m.defences.spells.insert(SpellId::from_raw(u16::from(level)));
+                m.negates = !m.negates;
+            }
+            twin.limits = crate::magic::MagicLimits::of(&twin.heroes);
+            let mut other = observe(&twin, &r, viewer);
+            prop_assert!(commander == Some(viewer) || other.cast_candidates == [0; crate::STACK_CAPACITY]);
+            other.cast_candidates = seen.cast_candidates;
+            prop_assert_eq!(&seen, &other);
             prop_assert_eq!(&spectator, &observe_as(&twin, &r, Viewer::Spectator));
         }
         // What a spectator sees is what both sides see: a side's view without its private part
@@ -995,6 +1265,97 @@ proptest! {
         prop_assert_eq!(&spectator, &seat);
     }
 
+    /// Observation hygiene through whole games for the two parts of a hero's hidden magic that
+    /// are no limit of a cast (BAT-Q26). Its Eagle Eye never shows (BAT-MAG-069): with a chance
+    /// of 0 and of 100 % (no draw either way) every command has the same result and the same
+    /// events, the other side and a spectator observe the same, its own side sees only its picks
+    /// differ, and with 100 % it has picked every spell the other hero cast. Its opening spells
+    /// show only when its side's first activation casts them (BAT-MAG-068: `OpeningSpell` tells
+    /// both sides): until then every result and every event is the same with them and without,
+    /// and so is what the other side and a spectator observe.
+    #[test]
+    fn a_heros_eagle_eye_and_unopened_spells_do_not_show(
+        (att, def, obstacles, seed, steps, hidden) in arb_game(),
+        side in prop_oneof![Just(BattleSide::Attacker), Just(BattleSide::Defender)],
+        opening in vec((any::<u16>(), 1u16..4), 1..3),
+    ) {
+        let r = lively();
+        // Both sides are led (bit 44 of the setup's word).
+        let setup = game_setup(&r, (&att, &def, &obstacles), seed | 1 << 44, &hidden);
+        let viewer = side.opponent();
+        let start = |change: &dyn Fn(&mut BattleHero)| {
+            let mut setup = setup.clone();
+            setup.heroes[side.index()].iter_mut().for_each(change);
+            let mut events = Vec::new();
+            let state = BattleState::start(&r, &setup, seed, &mut events).unwrap();
+            (state, events)
+        };
+        let mut legal = LegalCommands::new();
+
+        // covers: BAT-MAG-069
+        let book = setup.heroes[side.index()].as_ref().and_then(|h| h.magic.spell_book.clone()).unwrap();
+        let eagle = |chance: u32| start(&|hero| {
+            hero.magic.eagle_eye = Some(EagleEye { chance: Rate::bp(chance), spells: book.clone() });
+        });
+        let ((mut x, ex), (mut y, ey)) = (eagle(0), eagle(10_000));
+        prop_assert_eq!(ex, ey);
+        let mut cast = SpellSet::default();
+        for step in &steps {
+            let (actor, cmd) = resolve(&x, &r, step, &mut legal);
+            let (mut ex, mut ey) = (Vec::new(), Vec::new());
+            prop_assert_eq!(apply(&mut x, &r, actor, cmd, &mut ex), apply(&mut y, &r, actor, cmd, &mut ey));
+            prop_assert_eq!(&ex, &ey);
+            for e in &ex {
+                if let EventKind::SpellCast { side: caster, spell, .. } = e.kind && caster == viewer {
+                    cast.insert(spell);
+                }
+            }
+            prop_assert_eq!(observe(&x, &r, viewer), observe(&y, &r, viewer));
+            prop_assert_eq!(observe_as(&x, &r, Viewer::Spectator), observe_as(&y, &r, Viewer::Spectator));
+            let (mut own, other) = (observe(&x, &r, side), observe(&y, &r, side));
+            if let (Some(a), Some(b)) = (own.own_hero.as_mut(), other.own_hero.as_ref()) {
+                (a.learned, a.eagle_chance) = (b.learned, b.eagle_chance);
+            }
+            prop_assert_eq!(own, other);
+        }
+        let learned = |state: &BattleState| state.heroes[side.index()].map(|h| h.magic.learned);
+        prop_assert_eq!(learned(&x), Some(SpellSet::default()));
+        prop_assert_eq!(learned(&y), Some(cast));
+
+        // covers: BAT-MAG-068
+        let list = openings(&r);
+        let spells: Vec<BattleEffect> = opening.iter().map(|&(i, power)| {
+            let (spell, mastery) = list[usize::from(i) % list.len()];
+            BattleEffect::OpeningSpell { spell, mastery, power }
+        }).collect();
+        let opened = |with: bool| start(&|hero| {
+            hero.effects.retain(|e| !matches!(e, BattleEffect::OpeningSpell { .. }));
+            hero.effects.extend(spells.iter().filter(|_| with).cloned());
+        });
+        // The events before the hero's first opening spell, and whether it came.
+        let before = |events: &[Event]| {
+            let cast = events.iter().position(|e| matches!(e.kind, EventKind::OpeningSpell { side: s, .. } if s == side));
+            (cast.unwrap_or(events.len()), cast.is_some())
+        };
+        let ((mut x, mut ex), (mut y, mut ey)) = (opened(true), opened(false));
+        let mut steps = steps.iter();
+        loop {
+            let (k, cast) = before(&ex);
+            prop_assert_eq!(Some(&ex[..k]), ey.get(..k));
+            if cast {
+                break;
+            }
+            prop_assert_eq!(observe(&x, &r, viewer), observe(&y, &r, viewer));
+            prop_assert_eq!(observe_as(&x, &r, Viewer::Spectator), observe_as(&y, &r, Viewer::Spectator));
+            let Some(step) = steps.next() else {
+                break;
+            };
+            let (actor, cmd) = resolve(&x, &r, step, &mut legal);
+            (ex, ey) = (Vec::new(), Vec::new());
+            prop_assert_eq!(apply(&mut x, &r, actor, cmd, &mut ex), apply(&mut y, &r, actor, cmd, &mut ey));
+        }
+    }
+
     /// Observation hygiene for hidden obstacles (ADR-0014 point 7, BAT-MAG-031): what a side
     /// does not see changes neither its observation nor what it may do (its legal commands,
     /// castable spells and their targets), with the natives' sight of either profile; nor what
@@ -1006,7 +1367,7 @@ proptest! {
     /// games.
     #[test]
     fn hidden_obstacles_do_not_show(
-        (att, def, obstacles, seed, steps) in arb_game(),
+        (att, def, obstacles, seed, steps, hidden) in arb_game(),
         at_start: bool,
         anchors: bool,
         extra in proptest::collection::btree_set((1u8..16, 0u8..11), 0..6),
@@ -1021,7 +1382,7 @@ proptest! {
         // both sides are told, can show the other side where its own side's hidden pits lie
         // (the E04b T11b review's F-sec-1 part a and r3 F-11; by the reviewers' reading the
         // original does the same). What the engine should do there is open: BAT-Q31.
-        let mut setup = make_setup(&r, &att, &def, &obstacles, seed);
+        let mut setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
         let berserk = r.spell_by_key("t:berserk").unwrap();
         for book in setup.heroes.iter_mut().flatten().filter_map(|h| h.magic.spell_book.as_mut()) {
             book.retain(|&spell| spell != berserk);
@@ -1127,9 +1488,9 @@ proptest! {
 
     /// Clone equivalence: a clone taken mid-game evolves identically to the original.
     #[test]
-    fn clones_evolve_identically((att, def, obstacles, seed, steps) in arb_game(), split in 0usize..160) {
+    fn clones_evolve_identically((att, def, obstacles, seed, steps, hidden) in arb_game(), split in 0usize..160) {
         let r = lively();
-        let setup = make_setup(&r, &att, &def, &obstacles, seed);
+        let setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
         let split = split.min(steps.len());
         let (mut original, _, _) = play(&r, &setup, seed, &steps[..split]);
         let mut clone = original.clone();
@@ -1146,9 +1507,9 @@ proptest! {
 
     /// Determinism: the same inputs give the same events and state hashes.
     #[test]
-    fn replays_are_deterministic((att, def, obstacles, seed, steps) in arb_game()) {
+    fn replays_are_deterministic((att, def, obstacles, seed, steps, hidden) in arb_game()) {
         let r = lively();
-        let setup = make_setup(&r, &att, &def, &obstacles, seed);
+        let setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
         let first = play(&r, &setup, seed, &steps);
         let second = play(&r, &setup, seed, &steps);
         prop_assert_eq!(first.1, second.1);
@@ -1192,9 +1553,10 @@ proptest! {
     /// battle's outcome lists every stack once, in stack order per side, with its start and end
     /// counts; the survivors and war machines are exactly the records with creatures left.
     #[test]
-    fn outcomes_account_for_every_stack((att, def, obstacles, seed, steps) in arb_game()) {
+    fn outcomes_account_for_every_stack((att, def, obstacles, seed, steps, hidden) in arb_game()) {
         let r = lively();
-        let (mut state, _, _) = play(&r, &make_setup(&r, &att, &def, &obstacles, seed), seed, &steps);
+        let setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
+        let (mut state, _, _) = play(&r, &setup, seed, &steps);
         finish(&mut state, &r, seed, false);
         // A random game may never end (no rule ends a battle in which, say, a petrifying striker
         // keeps a stack frozen while a First Aid Tent heals what it deals): it tells nothing
@@ -1301,10 +1663,10 @@ proptest! {
     /// The lazy target choice of the Ballista (BAT-WAR-002) equals the eager reference ranking
     /// in every state of random games with ballistae on both sides.
     #[test]
-    fn the_lazy_ballista_target_equals_the_reference((att, def, obstacles, seed, steps) in arb_game()) {
+    fn the_lazy_ballista_target_equals_the_reference((att, def, obstacles, seed, steps, hidden) in arb_game()) {
         let r = lively();
         // Ballistae on both sides (bits 0 and 3), the other machines and formations at random.
-        let setup = make_setup(&r, &att, &def, &obstacles, seed | 0b1001);
+        let setup = game_setup(&r, (&att, &def, &obstacles), seed | 0b1001, &hidden);
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
         let mut legal = LegalCommands::new();
         let field = crate::Field::new(r.battle().field);
@@ -1529,14 +1891,7 @@ fn extreme_caster(r: &Ruleset, rng: &mut Rng) -> BattleHero {
                 .is_some_and(|t| t.category != SpellCategory::Ability)
         })
         .collect();
-    let openings: Vec<(SpellId, u8)> = spells
-        .iter()
-        .flat_map(|&id| (0..=3).map(move |mastery| (id, mastery)))
-        .filter(|&(id, mastery)| {
-            r.spell(id)
-                .is_some_and(|t| crate::magic::opens_with(r, t, mastery))
-        })
-        .collect();
+    let openings = openings(r);
     let mut h = hero(r);
     [h.attack, h.defense, h.power, h.knowledge] =
         [0; 4].map(|_| one_of(rng, &[0, 1, 7, 30, 99, 255]));
