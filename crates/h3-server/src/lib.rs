@@ -77,6 +77,8 @@ pub struct Running {
     stop: watch::Sender<bool>,
     /// The sweep of abandoned games (E16 M2 T5a).
     sweeper: JoinHandle<()>,
+    /// The ladders' matcher (E16 M4 T2).
+    matcher: JoinHandle<()>,
     /// The ladders (E16 M4 T1).
     ladders: Arc<ladders::Ladders>,
     /// The data directory's lock (E16 M3 T2b), held until the server stopped.
@@ -128,6 +130,7 @@ impl Running {
     pub async fn shutdown(self) {
         self.stop.send_replace(true);
         self.sweeper.abort();
+        self.matcher.abort();
         registry::lock(&self.registry).stop_all();
         let grace = tokio::time::Instant::now() + STOP_GRACE;
         while registry::lock(&self.registry).live() > 0 && tokio::time::Instant::now() < grace {
@@ -153,19 +156,19 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         Box::new(accounts::Ed25519),
     )?);
     let known = |login: &str| accounts.get(login).is_some();
-    let ladders = ladders::Ladders::open(
+    let ladders = Arc::new(ladders::Ladders::open(
         &config.ladders,
         &config.content.packs,
         &config.server.data,
         &known,
-    )?;
+    )?);
     let offers = config
         .offers
         .iter()
         .map(|offer| game::Offer::load(offer, &config.content.packs).map(Arc::new))
         .collect::<Result<Vec<_>, _>>()?;
     let registry = Arc::new(Mutex::new(Registry::new(
-        offers,
+        (offers, &ladders),
         &config.limits,
         config.server.clone(),
         Arc::clone(&accounts),
@@ -200,9 +203,11 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         proxies: (config.server.trusted_proxies.iter())
             .map(|proxy| proxy.to_canonical())
             .collect(),
+        ladders: Arc::clone(&ladders),
     });
     let (stop, stopping) = watch::channel(false);
     let sweeper = tokio::spawn(registry::sweep_every(Arc::clone(&registry), config.limits));
+    let matcher = tokio::spawn(registry::match_every(Arc::clone(&registry)));
     let shared = Arc::clone(&registry);
     let listener = tokio::spawn(net::listen(
         listener,
@@ -217,7 +222,8 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         registry,
         stop,
         sweeper,
-        ladders: Arc::new(ladders),
+        matcher,
+        ladders,
         _lock: lock,
     })
 }

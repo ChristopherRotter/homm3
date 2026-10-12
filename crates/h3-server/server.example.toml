@@ -50,7 +50,8 @@ scenario = "../../packs/synthetic/scenarios/duel.toml"
 bots = ["defender"]            # the server's random bot plays the defender
 
 # A ranked game configuration (E16 M4; ADR-0019): its pool on one ruleset, Glicko-2 ratings in
-# <data>/ladders/arena.log, a new season when its content changes. Matches come with M4 T2.
+# <data>/ladders/arena.log, a new season when its content changes. Logged-in players queue for it
+# and play the matches it makes (games of `arena.1`, `arena.2`); results are rated from M4 T3b on.
 [[ladder]]
 id = "arena"
 name = "Arena"

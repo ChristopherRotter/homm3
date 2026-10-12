@@ -57,6 +57,7 @@ fn games_are_created_from_offers_and_listed() {
                 open: vec![Seat::Attacker, Seat::Defender],
                 spectators: true,
                 seated: vec![],
+                ladder: None,
             },
             GameInfo {
                 game: 2,
@@ -65,6 +66,7 @@ fn games_are_created_from_offers_and_listed() {
                 open: vec![Seat::Attacker],
                 spectators: false,
                 seated: vec![],
+                ladder: None,
             },
         ]
     );
@@ -149,6 +151,7 @@ fn restored_games_are_listed_again_and_counted() {
         open: vec![],
         spectators: true,
         seated: vec![],
+        ladder: None,
     };
     // Beyond the origin's limit, which the games were within when they were created.
     lobby.reopen(1, restored(7));
@@ -196,4 +199,35 @@ fn a_draining_lobby_refuses_every_creation_and_counts_the_games_in_play() {
     lobby.remove(1);
     assert_eq!(lobby.in_play(), 0, "over and gone");
     assert_eq!(games(&lobby).len(), 2);
+}
+
+#[test]
+fn a_matchs_game_counts_against_the_servers_limit_only() {
+    let mut lobby = lobby(3, 1);
+    assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((1, 0)));
+    // The origin's limit is no match's concern; the server's is.
+    assert_eq!(lobby.create_ranked(0, ("arena.1", "arena"), true), Ok(2));
+    assert_eq!(lobby.create_ranked(0, ("arena.2", "arena"), false), Ok(3));
+    assert_eq!(
+        lobby.create_ranked(0, ("arena.1", "arena"), true),
+        Err(Refusal::TooManyGames)
+    );
+    let ranked = GameInfo {
+        game: 2,
+        offer: "arena.1".to_string(),
+        phase: Phase::Waiting,
+        open: vec![],
+        spectators: true,
+        seated: vec![],
+        ladder: Some("arena".to_string()),
+    };
+    assert_eq!(games(&lobby)[1], ranked);
+    // A game over makes room.
+    lobby.update(2, (Phase::Over, vec![], true));
+    assert_eq!(lobby.create_ranked(0, ("arena.1", "arena"), true), Ok(4));
+    lobby.drain();
+    assert_eq!(
+        lobby.create_ranked(0, ("arena.1", "arena"), true),
+        Err(Refusal::Draining)
+    );
 }

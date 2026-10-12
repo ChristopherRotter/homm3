@@ -58,8 +58,9 @@ Client to server: M2: `ListGames { seq }` and `CreateGame { seq, offer, seat, sp
 M2 T3; no `Resume`: a seat's `Join` with its token resumes), `SetSpectators { seq, open }` (code
 since M2 T4c: the host's, until the game starts).
 M3: `Login`, `Rekey`, `Rename`, `SetListed` (code since M3 T1). M4 (§11): `ListLadders`,
-`Queue { ladder }`, `Dequeue`, `AcceptMatch`, `DeclineMatch`, `Leaderboard { ladder, season,
-page }`, `Standing { ladder }`, `ProposePause { ms }`, `AnswerPause { accept }`.
+`Queue { seq, ladder }`, `Dequeue`, `AcceptMatch`, `DeclineMatch` (code since M4 T2);
+`Leaderboard { ladder, season, page }`, `Standing { ladder }`, `ProposePause { ms }`,
+`AnswerPause { accept }`.
 
 Server to client: M2: `Games { seq, offers, games }` and `GameCreated { seq, game }` (code since
 M2 T1; the refusals `NoSuchOffer` and `TooManyGames`), `PauseAsked { n, seat }` and
@@ -68,8 +69,10 @@ seq, open }`, `Goodbye { SpectatorsClosed }`, the reject codes `NotHost` and `Al
 and `GameInfo::spectators` (code since M2 T4c). No `StartGame`: a
 game starts when every seat is held at once (M1 T2's rule). M3:
 the welcome's challenge, `Account` (code since M3 T1). M4 (§11): `Ladders`, `Queued`,
-`MatchFound { ladder, accept_ms }`, `MatchReady { game, seat }`, `LeaderboardPage`, `Rating`,
-`PauseProposed`, a forfeit's result, `GameInfo::ladder`.
+`Dequeued`, `MatchFound { ladder, accept_ms }`, `MatchCancelled`, `MatchReady { ladder, game,
+seat }`, `Unqueued { reason }`, `GameInfo::ladder`, the refusals `NoSuchLadder`, `AlreadyQueued`,
+`InRankedGame`, `NotQueued`, `NoMatch` (code since M4 T2); `LeaderboardPage`, `Rating`,
+`PauseProposed`, a forfeit's result.
 
 ## 3. The client's content check (for the client lane, M2)
 
@@ -235,20 +238,27 @@ below are the tasks' starting point, *provisional* until M4's review.
   players, applied in the order games end; a draw scores a half. No deviation growth for
   inactivity in M4 (the server has no wall clock: the workspace bans `SystemTime`); a season's
   reset raises it.
-- **The queue** (`h3_protocol::ladder`, sans-I/O, M4 T2): a logged-in account waits in one
-  ladder's queue at a time; it is refused while it has an unfinished ranked game on that ladder
-  (running, waiting or paused). The matcher runs every second (the host passes the time): the
-  entries sorted by rating (ties by their order in the queue), neighbours paired when their
-  distance is within the window of the shorter wait, 100 points plus 50 per 30 s waited
-  (*provisional*). A pair gets `MatchFound { ladder, accept_ms }`; both `AcceptMatch` or the one
-  who did not (a `DeclineMatch`, the deadline, a closed connection) leaves the queue and the
-  other returns to it with its waiting time. A queue lives in memory only: a restart or a
-  closed connection empties it.
-- **The ranked game** (M4 T2, T3): created when both accept, from a scenario of the pool drawn
-  with OS randomness, the sides at random, both seats bound to the accounts at once (no token,
-  `Entry::Ranked` in the journal); the clients `Join` it as their seat. No host: no `Pause` by
-  one seat, no `SetSpectators`. Listed with its ladder (`GameInfo::ladder`). `empty_game_ms`
-  and `paused_game_ms` do not apply.
+- **The queue** (code since M4 T2: `h3_protocol::ladder`, sans-I/O; the registry in
+  `h3-server`): a logged-in account waits in one ladder's queue at a time; it is refused while
+  its match's game on that ladder is not over (`InRankedGame`; T3b counts restored games too).
+  The matcher runs every second (the host passes the time): each ladder's players by rating
+  (ties by the order they came in), neighbours paired when their distance is within the window
+  of the shorter wait, 100 points plus 50 per 30 s waited (*provisional*). A pair gets
+  `MatchFound { ladder, accept_ms }`; both `AcceptMatch` (`MatchReady` then), or the one who did
+  not (a `DeclineMatch` or `Dequeue`, the deadline, a closed connection) leaves the queue
+  (`Dequeued`, or `Unqueued { Expired }`) and the other waits again with its waiting time
+  (`MatchCancelled`). A drain empties the queues (`Unqueued { Draining }`). The queues live in
+  memory only: a restart empties them. A queued connection hears its queue through a channel
+  of its own, and the lobby's deadline waits while it is queued.
+- **The ranked game** (code since M4 T2 but the parts of T3a, SRV-STUB-3): created when both
+  accept, as the server's own (the limit in total applies, none per address; no room:
+  `Unqueued { Full }`), from a scenario of the pool drawn with OS randomness, the sides at
+  random, both seats the accounts' from the start (`Session::reserve`: `Taken` lines naming
+  them, journaled before the players hear `MatchReady`); the clients `Join` it as their seat. A
+  pool's scenario is an offer of its own, `<ladder>.<n>`, so a restart restores the game as any
+  other. Listed with its ladder (`GameInfo::ladder`); while it waits for its players it does not
+  leave the lobby, whatever their joins did. From T3a: no host (no `Pause` by one seat, no
+  `SetSpectators`), `Entry::Ranked`; `empty_game_ms` and `paused_game_ms` do not apply.
 - **Disconnects and forfeits** (M4 T3). A seat whose connections are all gone is absent: beyond
   `grace_ms` in one stretch, or `grace_total_ms` over the game, its player forfeits (a loss;
   both absent: void, `NoShow`, no rating changes). A game not yet started counts the same way
