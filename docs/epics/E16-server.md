@@ -338,8 +338,9 @@ out of its replay's listing.
 - **T4b Behind a reverse proxy** (done 2026-10-11; `E16-log.md`): `[server] trusted_proxies`
   (the client the last `X-Forwarded-For` entry names), every limit per address by IPv6 /64, the
   operator's setup with TLS (`crates/h3-server/README.md`).
-- **T5 Closure**: `06-security.md`'s accounts, the client lane's note (the derivation, the
-  server's id), the reviewer agent, the user's checkpoint.
+- **T5 Closure** (done 2026-10-12 but the user's checkpoint, SRV-Q18; `E16-log.md`):
+  `06-security.md`'s accounts, ADR-0018 points 6 and 8 amended, the client lane's note, the exit
+  criteria checked, the reviewer agent (run before #105's pull request).
 
 ## Exit criteria (M3)
 

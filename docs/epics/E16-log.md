@@ -936,3 +936,32 @@ how and why the work went.
   commit, while its answer is off the task, can still land.
 - **Tests** (`h3-server` 67, +1): an address's account changes beyond the limit close its
   connection, a registration too, a plain login passes; the configuration's range.
+
+### M3 T5 — M3's closure (2026-10-12)
+
+- **The user's choice**: T5 rides #105 as separate commits, the pull request labelled
+  `cross-lane` (the shared docs and the client lane's inbox).
+- **The shared change**: `docs/06-security.md`'s hosted games carry the accounts (the derivation,
+  the signed login, the strict check, the re-key closing the other sessions, the rebind, the
+  limits per address on failed logins and on changes), seats by account, the listing by the
+  seated accounts, the command limit, the abandoned waiting game, the proxies and the /64, the
+  exposure behind a TLS proxy, and "Not covered yet" brought up to date. ADR-0018 point 8 amended
+  (a game a seated account opted out of is archived unlisted, the user's SRV-Q17) and point 6
+  (seats bound to accounts since T3).
+- **The client lane's inbox** (cross-lane): the key's derivation with its test vector and the
+  cache, the login only for the id the client dialed, the re-key, seats by account, the new
+  goodbyes.
+- **M3's exit criteria**, each shown: the full verify green in CI on #105 (`h3-protocol` at
+  100 %); over loopback (`h3-server`'s tests): the registration and login with the derived key
+  and its test vector (`tests/accounts.rs`); logins for another server, with another challenge or
+  by another key refused (same); a seat re-taken by its account from a new connection, without a
+  token, also after a restart (`tests/seats.rs`); a re-keyed account logging in with its new key
+  only (`tests/accounts.rs`); a display name changed and unique (same); anonymous play as
+  configured (same); a game beyond its command limit void, a waiting game without a held seat
+  leaving (`tests/bounds.rs`); the client's address counted behind a trusted proxy
+  (`tests/proxy.rs`). And: `06-security.md` carries the accounts; the reverse-proxy setup is
+  documented (`crates/h3-server/README.md`); the client lane's inbox has the login; the reviewer
+  agent's major finding is fixed (its record above); the lane HANDOFF, this log and `QUEUE.md`
+  are current.
+- **The checkpoint**: the user's, SRV-Q18 (the review list, the inbox's placement, what comes
+  next).

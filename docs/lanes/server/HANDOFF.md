@@ -4,7 +4,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 closed (2026-10-11, SRV-Q12). M2 closed (2026-10-11, SRV-Q16):** T1–T5e merged (#67 … #96). **M3 refined (2026-10-11, SRV-Q17):** ADR-0019 accepted (points 1–3 for M3, 4–9 direction for M4); M3 cut into T1–T5 (`QUEUE.md`). **M3 T1–T2b done** (the login on the wire; the `Authenticator`, `<data>/players.log`; re-keys, renames, the preference, `h3-server rebind`, `<data>/lock`). **M3 T3 done** (seats bound to accounts, `session::refusal`; the lobby's names; the listing by preference; a re-key closes the account's other connections). **M3 T4a done** (`commands_per_game`; a waiting game without a held seat leaves). **M3 T4b done** (`trusted_proxies`, limits by IPv6 /64, `crates/h3-server/README.md`). **Next: M3 T5** (M3's closure: a shared change, the client lane's note, the reviewer agent, the user's checkpoint); wire 13.
+- **M1 closed (2026-10-11, SRV-Q12). M2 closed (2026-10-11, SRV-Q16):** T1–T5e merged (#67 … #96). **M3 refined (2026-10-11, SRV-Q17):** ADR-0019 accepted (points 1–3 for M3, 4–9 direction for M4); M3 cut into T1–T5 (`QUEUE.md`). **M3 T1–T2b done** (the login on the wire; the `Authenticator`, `<data>/players.log`; re-keys, renames, the preference, `h3-server rebind`, `<data>/lock`). **M3 T3 done** (seats bound to accounts, `session::refusal`; the lobby's names; the listing by preference; a re-key closes the account's other connections). **M3 T4a done** (`commands_per_game`; a waiting game without a held seat leaves). **M3 T4b done** (`trusted_proxies`, limits by IPv6 /64, `crates/h3-server/README.md`). **M3 T5 done** in #105 (cross-lane: `06-security.md`, ADR-0018, the client's inbox) **but the user's checkpoint, SRV-Q18**; then M4's refinement; wire 13.
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 13 since M3 T3's seats by account; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 4 since M3 T3's account in `Taken`; a journal of another format is void at start).
@@ -48,7 +48,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-11 — M3 T3, T4a, T4b
 
-#102 had merged; the branch restarted from `master`. T3 (seats by account; a re-key closes the account's other connections), T4a, T4b and M3's reviewer (1 major, 5 minor, fixed) in one pull request, wire 13 (`E16-log.md`). ADR-0018 point 8 and `06-security.md` wait for T5's shared change.
+#102 had merged; the branch restarted from `master`. T3 (seats by account; a re-key closes the account's other connections), T4a, T4b and M3's reviewer (1 major, 5 minor, fixed) in one pull request, wire 13 (`E16-log.md`). Then T5 (the user: in #105, `cross-lane`).
 
 ### 2026-10-11 — M3 T2b, re-keys, renames, the preference, the rebind
 
