@@ -4,10 +4,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M3 closed** (SRV-Q12, SRV-Q16, SRV-Q18). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided; the detail in `E16-design.md` §11; the tasks in `QUEUE.md`; no turn timer in M4 (a game rule, M5). **M4 T1 (#106), T2 (#108), T3a (#109), T3b (#111) and SRV-Q20 done** (T3b: verified before the end, rated and logged, `Rating`, `<data>/next-game`; wire 16; SRV-Q20: server-side pings). **Next: M4 T4, T5 or T6** (all ready).
+- **M1–M3 closed** (SRV-Q12, SRV-Q16, SRV-Q18). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided; the detail in `E16-design.md` §11; the tasks in `QUEUE.md`; no turn timer in M4 (a game rule, M5). **M4 T1 (#106), T2 (#108), T3a (#109), T3b (#111), SRV-Q20 (#112) and T4 done** (T4: leaderboards by season, one's own row; wire 17). **Next: M4 T5 or T6** (both ready), then T7.
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 16 since M4 T3b's `Rating`; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 5 since M4 T3a's `Ranked`, `Absent`, `Forfeit`; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 17 since M4 T4's leaderboards; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 5 since M4 T3a's `Ranked`, `Absent`, `Forfeit`; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. ADR-0019 (identity) was accepted at the M3 refinement; the discovery draft is decided at M6's.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -51,6 +51,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-12 — M4 T4, leaderboards
+
+#112 had merged. Built T4 (`E16-log.md`): pages by season, one's own row; wire 17.
+
 ### 2026-10-12 — SRV-Q20, the server's pings
 
 #111 merged; the user chose (a). Built (`E16-log.md`): `ping_every_ms`, `ping_timeout_ms`; no wire change.
@@ -58,7 +62,3 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ### 2026-10-12 — M4 T3b, the rated end
 
 #109 had merged. Built T3b (`E16-log.md`): the held end, `Rating`, `Ladders::rate`, `GameIds`; wire 16.
-
-### 2026-10-12 — M4 T3a, a ranked game's seats and forfeits
-
-#108 had merged. Built T3a: the grace, forfeits; journal 5, wire 15.
