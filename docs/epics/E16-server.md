@@ -2,10 +2,10 @@
 
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
 crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 done
-2026-10-11 (T1 to T5e), its checkpoint passed the same day (SRV-Q16); M3 refined 2026-10-11
-(SRV-Q17); M3 T1 done, T2a next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+2026-10-11 (T1 to T5e), its checkpoint passed the same day (SRV-Q16); M3 done 2026-10-12 (T1 to
+T5), its checkpoint passed the same day (SRV-Q18); M4 refined 2026-10-12 (SRV-Q19), T1 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); [ADR-0019](../adr/0019-identity-and-ladders.md) (identity and ladders, accepted at the M3
-refinement); ADR draft `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
+refinement, its ladder points decided at M4's); ADR draft `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
 
 **How the drafts become decisions.** Each ADR draft stays "Proposed" until the milestone that
@@ -224,7 +224,8 @@ M0 starts now, while E04b finishes (SRV-Q7).
 - **M4 Ranked battles:** ladders with pinned configurations and scenario pools, the
   matchmaking queue, Glicko-2, leaderboards and seasons, forfeits, the grace period and the
   pause limit, bot accounts on ladders, the results log; an end-to-end test of two clients
-  queueing and playing a rated battle through a server restart.
+  queueing and playing a rated battle through a server restart. Refined 2026-10-12 (SRV-Q19):
+  no turn timer (a game rule, M5).
 - **M5 The whole game** (after E08 increments 1 and 3): players as seats, turn groups, pending
   decisions, the per-player record; the server-side pieces E08 decision 8 lists (trusted
   system commands for disconnects and turn timers, sequence numbers against duplicates,
@@ -338,9 +339,51 @@ out of its replay's listing.
 - **T4b Behind a reverse proxy** (done 2026-10-11; `E16-log.md`): `[server] trusted_proxies`
   (the client the last `X-Forwarded-For` entry names), every limit per address by IPv6 /64, the
   operator's setup with TLS (`crates/h3-server/README.md`).
-- **T5 Closure** (done 2026-10-12 but the user's checkpoint, SRV-Q18; `E16-log.md`):
+- **T5 Closure** (done 2026-10-12, the checkpoint passed the same day, SRV-Q18; `E16-log.md`):
   `06-security.md`'s accounts, ADR-0018 points 6 and 8 amended, the client lane's note, the exit
   criteria checked, the reviewer agent (run before #105's pull request).
+
+## M4 tasks
+
+Cut at the M4 refinement (2026-10-12, SRV-Q19); the tasks in full: `docs/lanes/server/QUEUE.md`,
+the working detail: `E16-design.md` §11. ADR-0019 points 4–9 (decided at the refinement): a
+season follows the ladder's ruleset (ratings carried, deviations reset); one queue at a time;
+the ratings written to the ladder's results log, never recomputed; a disconnect's grace and a
+total per player and game (5 and 10 minutes by default), beyond either a forfeit; one unfinished
+ranked game per player per ladder, bots exempt; no turn timer in M4 (a game rule, `h3-game`).
+
+- **T1 Ladders, ratings and the results log** (ready): `[[ladder]]`, Glicko-2 with Glickman's
+  example as its test vector, `<data>/ladders/<id>.log` read back at start, seasons by the
+  ruleset hash; no wire change.
+- **T2 The queue and the match** (after T1): `h3_protocol::ladder` (the queue, the matcher, the
+  accept step, one queue per account, one unfinished ranked game per ladder), the messages, the
+  matched game created with both seats bound to their accounts; wire 14.
+- **T3a A ranked game's seats and forfeits** (after T2): no host; the disconnect grace and
+  total, forfeits and no-shows in the journal (format 5), across a restart.
+- **T3b The rated end** (after T3a): verification before `GameEnded`, the result rated and
+  logged, `Rating` to the seats, a void game's players told, game ids unique for the server's
+  life.
+- **T4 Leaderboards** (after T3b): pages by season, one's own standing.
+- **T5 Bots on ladders** (after T3b): bot accounts, the standing queue entry, flagged rows.
+- **T6 The pause by agreement** (after T3a): proposed and answered within the ladder's bounds,
+  the due time, the forfeit after it; one ask per seat until the game moves on.
+- **T7 Closure** (after T1–T6): the end-to-end test through a restart, `06-security.md`'s
+  ladders, the client lane's note, the reviewer agent, the user's checkpoint.
+
+## Exit criteria (M4)
+
+The full `cargo xtask verify` green in CI with `h3-protocol` under the 100 % gate, and shown in
+tests over loopback: two clients queue, accept and play a rated battle through a server
+restart, their ratings as Glicko-2's test vector computes them and the same after another
+restart; a declined or expired match puts the other player back in the queue; a second queue,
+or a second ranked game on the same ladder, is refused; an anonymous connection never queues;
+a player away within the grace re-takes the seat by account, beyond the grace or the total
+forfeits; both away: void, no rating change; a ranked game that does not verify is unrated and
+its players are told; a content change starts a season with the deviations reset; the
+leaderboard pages by season; a bot account plays a rated game, flagged; a pause by agreement
+within the ladder's bounds, and a forfeit after its due time. And: `06-security.md` carries the
+ladders; the client lane's inbox has the ladder's messages; a fresh reviewer agent's major
+findings are fixed; the lane HANDOFF, the epic log and `QUEUE.md` are current.
 
 ## Exit criteria (M3)
 
@@ -390,7 +433,11 @@ restart does to a viewer's numbers and record; the inbox's M2 items are decided;
 agent's major findings are fixed or recorded with the user's decision; the lane HANDOFF, the epic
 log and `QUEUE.md` are current.
 
-## Review list for the M3 checkpoint
+## Review list for the M4 checkpoint
+
+Choices queued under the autonomy contract (details in `E16-log.md`): none yet.
+
+## Review list for the M3 checkpoint (passed 2026-10-12, SRV-Q18)
 
 Choices queued under the autonomy contract (details in `E16-log.md`):
 
@@ -628,5 +675,7 @@ trust as direction.
 - Ladder abuse (smurfing, collusion, result farming) has no complete technical answer;
   verified journals, seat binding and rate limits cover the cheap attacks; the rest is the
   operator's.
+- A connected player can stall a ranked battle (SRV-Q19): M4 has no turn timer; the game's
+  rules bring one (`h3-game`, M5). Until then a ladder's operator hears of it from players.
 - Information leaks through channels the engine does not model (message timing, sizes):
   bounded by per-viewer sequence numbers and projection; timing stays out of scope for now.
