@@ -2117,11 +2117,33 @@ fn a_matchs_seats_belong_to_their_accounts_from_the_start() {
     // A restart re-binds both from the journal.
     let restored = Session::restore(&r, config(21), players(), &reserved).unwrap();
     assert_eq!(restored.accounts(), [Some("alice"), Some("bob")]);
-    // A bot's seat belongs to no account.
+    // A bot's seat belongs to the bot's account (E16 M4 T5); its bot plays it, and no connection
+    // takes it, not even one logged in as the account.
     let [attacker, _] = players();
     let mut s = host(&r, 21, [attacker, random_bot(3)]);
-    s.reserve(BattleSide::Defender, "bob".to_string());
-    assert_eq!((drained(&mut s), s.accounts()), (vec![], [None, None]));
+    s.reserve(BattleSide::Defender, "randy".to_string());
+    let reserved = drained(&mut s);
+    assert_eq!(
+        (&reserved[..], s.accounts()),
+        (
+            &[Entry::TakenBy(BattleSide::Defender, "randy".to_string())][..],
+            [None, Some("randy")]
+        )
+    );
+    assert_eq!(s.open_seats(), [Seat::Attacker]);
+    s.logged_in(A, "randy".to_string());
+    let refused = join(&mut s, A, Seat::Defender, None);
+    assert!(matches!(
+        to(&refused, A)[..],
+        [ServerMessage::Refused {
+            reason: Refusal::SeatTaken
+        }]
+    ));
+    join(&mut s, B, Seat::Attacker, None);
+    assert_eq!(s.phase(), Phase::Running);
+    let [attacker, _] = players();
+    let restored = Session::restore(&r, config(21), [attacker, random_bot(3)], &reserved).unwrap();
+    assert_eq!(restored.accounts(), [None, Some("randy")]);
 }
 
 /// A ranked game's grace in the tests (E16 M4 T3a): 1 s in one stretch, 1.5 s in total.

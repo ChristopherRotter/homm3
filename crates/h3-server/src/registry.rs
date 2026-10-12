@@ -44,7 +44,7 @@ use tokio::time::Instant;
 
 use crate::archive::Archive;
 use crate::game::{self, Offer, Outbox, Prepared, Stores, ToGame};
-use crate::ladders::Pool;
+use crate::ladders::{Ladders, Pool};
 use crate::{Error, config, journal};
 
 /// A game's inbox: messages waiting for the game's thread.
@@ -214,8 +214,12 @@ impl Registry {
         self.tell(told);
     }
 
-    /// The matcher's turn (E16 M4 T2): unanswered matches given up, the waiting paired.
-    pub(crate) fn tick_queues(&mut self) {
+    /// The matcher's turn (E16 M4 T2): unanswered matches given up, the waiting paired; with the
+    /// ladders' bots rated as `bots` says (E16 M4 T5: ladder, login name, whole points).
+    pub(crate) fn tick_queues(&mut self, bots: &[(String, String, i32)]) {
+        for (ladder, login, rating) in bots {
+            self.queues.rate(ladder, login, *rating);
+        }
         let mut told = Told::new();
         self.queues.tick(self.now(), &mut told);
         self.tell(told);
@@ -223,12 +227,13 @@ impl Registry {
 
     /// Creates the game of a match both players accepted (E16 M4 T2): a scenario of its ladder's
     /// pool and the sides at random (OS randomness), both seats its players' accounts from the
-    /// start. The game's id and each player's seat, or why not.
+    /// start; a bot's seat (`bots`, E16 M4 T5) its account's, played by the server's bot. The
+    /// game's id and each player's seat, or why not.
     fn create_match(
         &mut self,
         shared: &Shared,
         ladder: &str,
-        players: [String; 2],
+        (players, bots): ([String; 2], [bool; 2]),
     ) -> Result<(u32, [Seat; 2]), UnqueueReason> {
         let pool = self.pools.get(ladder).cloned();
         let random = game::os_u64().ok();
@@ -241,10 +246,14 @@ impl Registry {
             return Err(UnqueueReason::Full);
         };
         let [first, second] = players;
-        let (accounts, seats) = if random >> 63 == 1 {
-            ([second, first], [Seat::Defender, Seat::Attacker])
+        let (accounts, seats, bots) = if random >> 63 == 1 {
+            (
+                [second, first],
+                [Seat::Defender, Seat::Attacker],
+                [bots[1], bots[0]],
+            )
         } else {
-            ([first, second], [Seat::Attacker, Seat::Defender])
+            ([first, second], [Seat::Attacker, Seat::Defender], bots)
         };
         let listed = pool.spectators && self.limits.spectators_per_game > 0;
         // The server's own: no client's address, and none of the limits per address.
@@ -261,7 +270,8 @@ impl Registry {
         let host = move || (server, limits, stores);
         let prepare = move || {
             let (server, limits, stores) = host();
-            match Prepared::new(offer, game, origin, (&server, &limits, stores), watchable) {
+            let host = (&server, &limits, stores);
+            match Prepared::new(offer, game, origin, host, (watchable, bots)) {
                 Ok(prepared) => Some(prepared.reserved(reserved.map(Some))),
                 Err(e) => {
                     eprintln!("h3-server: game {game} not created: {e}");
@@ -517,14 +527,22 @@ pub(crate) fn create(
     let offer = Arc::clone(&registry.offers[index]);
     let (server, limits) = (registry.server.clone(), registry.limits);
     let stores = registry.stores.clone();
-    let prepare =
-        move || match Prepared::new(offer, game, origin, (&server, &limits, stores), watchable) {
+    let prepare = move || {
+        let bots = offer.bot_seats();
+        match Prepared::new(
+            offer,
+            game,
+            origin,
+            (&server, &limits, stores),
+            (watchable, bots),
+        ) {
             Ok(prepared) => Some(prepared),
             Err(e) => {
                 eprintln!("h3-server: game {game} not created: {e}");
                 None
             }
-        };
+        }
+    };
     let (to_game, inbox) = mpsc::channel(GAME_INBOX);
     let join = ClientMessage::Join {
         game,
@@ -716,30 +734,36 @@ pub(crate) fn accept(shared: &Shared, conn: ConnId) -> Option<String> {
         Ok(None) => return None,
         Ok(Some(matched)) => matched,
     };
+    // A bot has no connection (E16 M4 T5): the server's bot plays its seat.
     let [(a, first), (b, second)] = players;
-    let told = match registry.create_match(shared, &ladder, [first, second]) {
+    let bots = [a.is_none(), b.is_none()];
+    let told = match registry.create_match(shared, &ladder, ([first, second], bots)) {
         Ok((game, seats)) => [a, b]
             .into_iter()
             .zip(seats)
-            .map(|(conn, seat)| {
+            .filter_map(|(conn, seat)| {
                 let ladder = ladder.clone();
-                (conn, ServerMessage::MatchReady { ladder, game, seat })
+                Some((conn?, ServerMessage::MatchReady { ladder, game, seat }))
             })
             .collect(),
         Err(reason) => [a, b]
+            .into_iter()
+            .flatten()
             .map(|conn| (conn, ServerMessage::Unqueued { reason }))
-            .to_vec(),
+            .collect(),
     };
     registry.tell(told);
     None
 }
 
-/// Runs the matcher every [`MATCH_EVERY`] (E16 M4 T2), until the task is aborted.
-pub(crate) async fn match_every(shared: Shared) {
+/// Runs the matcher every [`MATCH_EVERY`] (E16 M4 T2), until the task is aborted; the ladders'
+/// bots rated as `ladders` holds them, read outside the registry's lock (E16 M4 T5).
+pub(crate) async fn match_every(shared: Shared, ladders: Arc<Ladders>) {
     let mut tick = tokio::time::interval(MATCH_EVERY);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         tick.tick().await;
-        lock(&shared).tick_queues();
+        let bots = ladders.bots();
+        lock(&shared).tick_queues(&bots);
     }
 }

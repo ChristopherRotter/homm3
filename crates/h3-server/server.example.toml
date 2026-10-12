@@ -60,3 +60,10 @@ name = "Arena"
 scenarios = ["../../packs/synthetic/scenarios/duel.toml", "../../packs/synthetic/scenarios/full.toml"]
 grace_ms = 300000               # a player away longer at once forfeits
 grace_total_ms = 600000         # a player away longer in all in one game forfeits
+bot_after_ms = 60000            # a player waiting this long without a match plays the bot
+
+# The server's bot on the ladder (E16 M4 T5): an account of its own that never logs in, rated and
+# listed (flagged) as any player.
+[[ladder.bot]]
+login = "randy"
+display = "Randy the Bot"

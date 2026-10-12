@@ -902,10 +902,10 @@ impl<'r> Session<'r> {
 
     /// The seat of `side` belongs to the account `login` from the start (E16 M4 T2: a match's
     /// game): no token is handed out for it, and only a connection logged in as the account takes
-    /// it. Does nothing to a seat taken already or a bot's.
+    /// it; a bot's seat belongs to the bot's account (E16 M4 T5), and its bot plays it. Does
+    /// nothing to a seat taken already.
     pub fn reserve(&mut self, side: BattleSide, login: String) {
-        let seat = &self.seats[side.index()];
-        if !seat.issued && matches!(seat.kind, SeatKind::Player { .. }) {
+        if !self.seats[side.index()].issued {
             self.taken(side, Some(login));
         }
     }

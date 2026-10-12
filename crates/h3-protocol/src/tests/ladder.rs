@@ -1,6 +1,6 @@
 //! The ladders' queues (E16 M4 T2): who may wait, the matcher's window, a match's answers, and,
 //! under random sequences of requests, that no account is matched twice, with itself or outside
-//! the window.
+//! the window. The bots (E16 M4 T5): a player who waited long enough plays the nearest.
 
 use std::collections::BTreeMap;
 use std::format;
@@ -10,21 +10,24 @@ use std::vec::Vec;
 
 use proptest::prelude::*;
 
-use crate::ladder::{Ladder, Matched, Queues, Told, WIDEN_EVERY_MS, WINDOW, window};
+use crate::ladder::{Ladder, LadderBot, Matched, Queues, Told, WIDEN_EVERY_MS, WINDOW, window};
 use crate::wire::{LadderInfo, Refusal, ServerMessage, UnqueueReason};
 
-/// Two ladders: `arena` and `pit`, 10 s to accept.
+/// The ladder `id`, 10 s to accept, without bots.
+fn ladder(id: &str, name: &str) -> Ladder {
+    Ladder {
+        id: id.to_string(),
+        name: name.to_string(),
+        season: 1,
+        accept_ms: 10_000,
+        bots: vec![],
+        bot_after_ms: 60_000,
+    }
+}
+
+/// Two ladders: `arena` and `pit`.
 fn queues() -> Queues<u8> {
-    Queues::new(
-        [("arena", "The Arena"), ("pit", "The Pit")]
-            .map(|(id, name)| Ladder {
-                id: id.to_string(),
-                name: name.to_string(),
-                season: 1,
-                accept_ms: 10_000,
-            })
-            .to_vec(),
-    )
+    Queues::new(vec![ladder("arena", "The Arena"), ladder("pit", "The Pit")])
 }
 
 fn queued(ladder: &str) -> ServerMessage {
@@ -72,12 +75,14 @@ fn an_account_waits_in_one_queue_once_logged_in() {
                     name: "The Arena".to_string(),
                     season: 1,
                     waiting: 0,
+                    bots: vec![],
                 },
                 LadderInfo {
                     id: "pit".to_string(),
                     name: "The Pit".to_string(),
                     season: 1,
                     waiting: 0,
+                    bots: vec![],
                 },
             ],
         }
@@ -167,7 +172,7 @@ fn both_accept_and_the_host_creates_the_game() {
     assert!(q.holds(1) && q.holds(2), "matched, they still wait");
     let matched = Matched {
         ladder: "pit".to_string(),
-        players: [(1, "ann".to_string()), (2, "bob".to_string())],
+        players: [(Some(1), "ann".to_string()), (Some(2), "bob".to_string())],
     };
     assert_eq!(q.accept(1), Ok(Some(matched)));
     assert!(!q.waits("ann") && !q.waits("bob"));
@@ -259,6 +264,91 @@ fn a_drain_empties_the_queues() {
         refused(Refusal::Draining)
     );
     assert_eq!(waiting(&q), [0, 0]);
+}
+
+/// The ladder `arena` with the bots Randy (1500) and Stan (1700), played after a minute's wait
+/// (E16 M4 T5), and `pit` without bots.
+fn with_bots() -> Queues<u8> {
+    let bot = |login: &str, display: &str, rating| LadderBot {
+        login: login.to_string(),
+        display: display.to_string(),
+        rating,
+    };
+    let arena = Ladder {
+        bots: vec![bot("randy", "Randy", 1500), bot("stan", "Stan", 1700)],
+        ..ladder("arena", "The Arena")
+    };
+    Queues::new(vec![arena, ladder("pit", "The Pit")])
+}
+
+#[test]
+fn a_player_who_waited_long_enough_plays_the_nearest_bot() {
+    let mut q = with_bots();
+    let ServerMessage::Ladders { ladders, .. } = q.list(5) else {
+        panic!("not a list of ladders")
+    };
+    assert_eq!(
+        ladders.iter().map(|l| l.bots.clone()).collect::<Vec<_>>(),
+        [vec!["Randy".to_string(), "Stan".to_string()], vec![]]
+    );
+    // Ann (1600) waits alone, as does Gus on the ladder without bots.
+    wait(&mut q, 1, ("ann", 1600), "arena", 0);
+    wait(&mut q, 7, ("gus", 1600), "pit", 0);
+    let mut told = Told::new();
+    q.tick(59_999, &mut told);
+    assert_eq!(told, []);
+    // After a minute she plays the nearest bot: Randy and Stan are as near, Randy comes first.
+    q.tick(60_000, &mut told);
+    assert_eq!(told, [(1, found("arena"))]);
+    assert_eq!(waiting(&q), [1, 1], "a bot is no player waiting");
+    // The bot accepted at once: her yes makes the match.
+    let matched = Matched {
+        ladder: "arena".to_string(),
+        players: [(Some(1), "ann".to_string()), (None, "randy".to_string())],
+    };
+    assert_eq!(q.accept(1), Ok(Some(matched)));
+    assert_eq!(waiting(&q), [0, 1]);
+    // Stan's rating changes on the arena (not on the pit's ladder): Bob (1600) plays him.
+    q.rate("arena", "stan", 1650);
+    q.rate("pit", "randy", 1600);
+    wait(&mut q, 2, ("bob", 1600), "arena", 60_000);
+    told.clear();
+    q.tick(120_000, &mut told);
+    assert_eq!(told, [(2, found("arena"))]);
+    // Bob declines: he leaves, the bot is told nothing.
+    told.clear();
+    assert_eq!(
+        q.decline(2, 3, &mut told),
+        ServerMessage::Dequeued { seq: 3 }
+    );
+    assert_eq!((told.clone(), q.waits("stan")), (vec![], false));
+    // Cid does not answer his bot: at the due time he is out; Dee's bot match ends in a drain.
+    wait(&mut q, 3, ("cid", 1500), "arena", 120_000);
+    q.tick(180_000, &mut told);
+    assert_eq!(told, [(3, found("arena"))]);
+    told.clear();
+    q.tick(190_000, &mut told);
+    let expired = ServerMessage::Unqueued {
+        reason: UnqueueReason::Expired,
+    };
+    assert_eq!(told, [(3, expired)]);
+    // People first: Eve and Fay, long waiting, play each other, not a bot.
+    wait(&mut q, 5, ("eve", 1500), "arena", 190_000);
+    wait(&mut q, 6, ("fay", 1500), "arena", 190_000);
+    told.clear();
+    q.tick(300_000, &mut told);
+    assert_eq!(told, [(5, found("arena")), (6, found("arena"))]);
+    // Their match expires; Dee, after her minute, plays a bot; a drain tells her and Gus only.
+    wait(&mut q, 4, ("dee", 1500), "arena", 300_000);
+    told.clear();
+    q.tick(360_000, &mut told);
+    assert_eq!(told[2..], [(4, found("arena"))], "{told:?}");
+    told.clear();
+    q.drain(&mut told);
+    let draining = ServerMessage::Unqueued {
+        reason: UnqueueReason::Draining,
+    };
+    assert_eq!(told, [(7, draining.clone()), (4, draining)]);
 }
 
 /// A request, as the property test makes them.
@@ -397,7 +487,7 @@ proptest! {
                 }
                 Op::Accept(conn) => {
                     if let Ok(Some(Matched { players: [(a, _), (b, _)], .. })) = q.accept(conn) {
-                        for player in [a, b] {
+                        for player in [a, b].into_iter().flatten() {
                             let matched = model.remove(&player);
                             prop_assert!(
                                 matches!(matched, Some(Where::Matched { .. })),

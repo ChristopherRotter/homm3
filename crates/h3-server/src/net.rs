@@ -757,7 +757,7 @@ impl Link {
             }?;
             let names = players.displays(board.rows.iter().map(|(_, login, _)| login.as_str()));
             let rows = (board.rows.into_iter().zip(names))
-                .map(|((rank, _, row), display)| LeaderboardRow {
+                .map(|((rank, _, row), (display, bot))| LeaderboardRow {
                     rank,
                     display,
                     rating: ladders::points(row.rating),
@@ -765,8 +765,7 @@ impl Link {
                     wins: row.wins,
                     losses: row.losses,
                     draws: row.draws,
-                    // The server's bots come with E16 M4 T5.
-                    bot: false,
+                    bot,
                 })
                 .collect::<Vec<_>>();
             let (season, total) = (board.season, board.total);
