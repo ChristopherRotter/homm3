@@ -4,19 +4,84 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-### Asset-notes session
+Epic: `docs/epics/E17-clients.md` (refined 2026-10-12; ADR draft `adr-drafts/client.md`). M0 and M1 below, each task about half a context. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation.
 
-- **Scope:** the user dictates their knowledge of the game's assets and their traps (formats, palettes, animation groups, fonts, sound, anything they know to go wrong); the agent records it in `HANDOFF.md` ("Asset notes") without judging it yet.
-- **Acceptance:** the user confirms the notes are complete enough to start the client refinement.
-- **Depends on:** Phase 0 merged.
-- **Status:** ready (a session with the user).
+### E17 M0 T1 — The workspace
 
-### Client refinement (E17)
+- **Scope:** `clients/Cargo.toml` (workspace, resolver 3, edition and lints as the engine's, `license = "GPL-2.0-or-later"`), `clients/Cargo.lock`, the crates `h3-assets`, `h3-render`, `h3-view` (a lib each, `h3-view` also a bin; empty modules with a doc comment saying what comes), a path dependency on `crates/h3-formats` from `h3-assets` (prove that the engine crate's `workspace = true` fields resolve from outside its workspace; if not, stop the line), `clients/deny.toml` (a copy of the engine's allowlist), `clients/.gitignore` (`/target`, `/out`), `clients/README.md` updated. Purity: the pure crates carry `#![forbid(unsafe_code)]` and no I/O; a small local check if the engine's `check-arch` cannot see `clients/` (*provisional*).
+- **Acceptance:** `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` and `cargo deny check` pass in `clients/`; the engine's `cargo xtask verify --scope client --summary` has no failing step.
+- **Depends on:** nothing.
+- **Status:** ready.
 
-- **Scope:** the refinement session with the user, from the asset notes and the agreed points in `HANDOFF.md`: the client ADR draft (language confirmed or argued against, the renderer, the `clients/` workspace layout), the walking skeleton (a battle replay viewer on the real assets), the autonomy contract, the first milestone and its tasks in this queue.
-- **Acceptance:** the user agreed the ADR draft's direction, the autonomy contract and the first milestone.
-- **Depends on:** the asset-notes session. Implementation waits until the battle actions are mostly stable (E04b); the user may start the asset and render-to-PNG layer earlier.
-- **Status:** waiting (asset notes).
+### E17 M0 T2 — The client CI job (shared)
+
+- **Scope:** a `shared/clients-ci` pull request: `.github/workflows/clients.yml` (`ci.yml` ignores `clients/**`), run on pull requests and `master` pushes that touch `clients/**` or the engine crates the client depends on (`h3-formats`, `h3-protocol` and its dependencies; list them from `cargo metadata`), weekly too; Linux only; fmt, clippy, test, `deny`, coverage of the pure crates at 100 % with the engine's exclusion conventions (`docs/05-testing.md`). In the same PR: `lanes.toml` gives the client lane `docs/rules/quirks-client.md` (the asset fixes' ledger) if the lane keeps its fixes' records there (decide with M1 T4 in mind; *provisional*).
+- **Acceptance:** the job runs green on that pull request (it may need T1 merged first: then T1's branch is its base); Actions minutes: one run per push, no matrix.
+- **Depends on:** T1.
+- **Status:** waiting (T1).
+
+### E17 M0 T3 — The real-asset gate and M0's closure
+
+- **Scope:** `h3-view gate` (or a bin of `h3-assets`; *provisional*): finds `original-data/install/` (argument, `H3_INSTALL`, or the repo root's folder), opens the four LODs through `h3-formats`, lists their entries, and reports the counts and the time; nothing decoded yet (M1). The checkpoint: a fresh reviewer agent over M0, then the user accepts the ADR draft (a `shared/` PR moves it to `docs/adr/` with the next number).
+- **Acceptance:** the gate runs on the user's files (sandbox: staged copies); M0's exit (epic file).
+- **Depends on:** T1, T2.
+- **Status:** waiting (T1).
+
+### E17 M1 T1 — Code reading: archives, screen format, keyed colours
+
+- **Scope:** from `Heroes3.exe` (`docs/exe/README.md`, `scripts/exe.py`; every cited address gets a `map.toml` entry): how the game looks up an entry name across the LODs and which archive wins (research item 1); the screen's pixel format (16-bit? 565 or 555?) and how a palette colour becomes a screen pixel (item 2: the user's off-colour pixels); how a DEF frame's indices are drawn: transparent, shadow (the operation on the pixel below, and where two shadows overlap), selection outline, player colours (item 8); how a 16-bit frame is shown on a 32-bit desktop where it matters for capture. Compare with VCMI where it has an answer. Record in `docs/epics/E17-design.md` (create it).
+- **Acceptance:** each question answered with addresses and our own words, or listed as open with what was tried; no code; the design note under 15 KB.
+- **Depends on:** nothing (may run before or beside M0).
+- **Status:** ready.
+
+### E17 M1 T2 — Palettes and PCX
+
+- **Scope:** `h3-assets`: the palette (`PAL`) and PCX decoders (8-bit indexed with its palette, 24-bit), as pure functions over bytes with bounded reads (no panic on any input: proptests); synthetic test images built in the tests. The gate decodes every PCX and PAL of the four LODs and reports failures.
+- **Acceptance:** the Definition of Done for the pure code (100 %); the gate passes on the user's files.
+- **Depends on:** M0 T1, T3.
+- **Status:** waiting (M0).
+
+### E17 M1 T3 — DEF and MSK
+
+- **Scope:** `h3-assets`: the DEF decoder (its type, palette, groups, frames; all four frame encodings; the frame's offset inside its full canvas), MSK; pure, bounded, proptested, synthetic sprites. The gate decodes every DEF and MSK and writes the inventory report to `clients/out/`: duplicates across archives (identical or not), entries no text table or executable string names (candidates for dead entries), names that break the patterns; the time to open everything and to decode all.
+- **Acceptance:** as T2; the report's findings summarised in `E17-design.md`.
+- **Depends on:** T2.
+- **Status:** waiting (T2).
+
+### E17 M1 T4 — The asset tables
+
+- **Scope:** the tables' format (*queued for the review*): `clients/assets/{base,ab,sod}.toml` in the packs' dependency graph and keys; entries for creatures (key → DEF, its groups as the battle uses them, missile and offsets from `CRANIM.TXT`), battlefield backgrounds (by terrain and special field), obstacles; the fix entry (`CLT-QUIRK-<n>`, its source, its flag; none yet unless found). A harvesting tool in `clients/` (a bin; reads the user's executable and text tables once; the executable's addresses from `docs/exe/`) generates them. Which expansion each entry belongs to: the AB/SoD archives' split and the packs (research item 6). A loader with the tables' dependency rules (as `h3-pack`'s: unknown keys and fields are errors). The gate checks every name against the archives.
+- **Acceptance:** the Definition of Done; the tables load for each expansion selection; every key of the committed packs' creatures, battlefields and obstacles has an entry, or the gap is listed.
+- **Depends on:** T3, T1 (precedence).
+- **Status:** waiting (T3).
+
+### E17 M1 T5 — Code reading: the battle screen
+
+- **Scope:** from the executable (and VCMI, compared): the battlefield's hex geometry in pixels, where a one- and a two-hex stack's sprite is anchored, facing and mirroring, the background and obstacle placement, the draw order (stacks, obstacles, shadows, the selection), the stack count box's position. Record in `E17-design.md`.
+- **Acceptance:** as T1.
+- **Depends on:** T1.
+- **Status:** waiting (T1).
+
+### E17 M1 T6 — The compositor
+
+- **Scope:** `h3-render`: the frame in the screen format T1 found, its size a parameter; blitting an indexed frame with its keyed colours as T1 found (shadow included), player colours, mirroring, clipping; a PNG writer as an adapter (*the `png` crate: queued for the review*). Synthetic tests, 100 %.
+- **Acceptance:** the Definition of Done; a test per keyed colour and for overlapping shadows.
+- **Depends on:** T1, T3.
+- **Status:** waiting (T1, T3).
+
+### E17 M1 T7 — A battle still
+
+- **Scope:** `h3-view render`: from a record's `Snapshot` (an `h3-protocol` message; a small adapter makes one by running `h3-protocol`'s session in-process on a scenario file as `h3 run` takes it, as a spectator) to a PNG in `clients/out/`: the background, obstacles, every stack in its standing frame on its hex, facing its side, with T5's geometry and draw order; layouts as data. Pure scene model (snapshot + tables + time 0 → draw list), adapters for files.
+- **Acceptance:** the Definition of Done; stills for three scenarios (one- and two-hex stacks, obstacles, both sides) rendered from the user's files and sent to the user.
+- **Depends on:** T4, T5, T6.
+- **Status:** waiting (T4–T6).
+
+### E17 M1 T8 — M1's closure
+
+- **Scope:** M1's exit criteria checked; the review list (epic file) completed; a fresh reviewer agent over M1; the user compares the stills with the original (the differences become M2/M3 items or fixes); the M2 refinement prepared (the window/audio evaluation's plan, CLT-Q1's state).
+- **Acceptance:** M1's exit (epic file).
+- **Depends on:** T1–T7.
+- **Status:** waiting (T1–T7).
 
 ## Inbox
 
