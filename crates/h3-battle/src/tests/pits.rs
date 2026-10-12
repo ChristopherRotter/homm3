@@ -232,6 +232,72 @@ fn quicksand_avoids_obstacles_stacks_and_corpses_and_is_cast_without_a_free_hex(
     assert_eq!(s.spell_obstacles().len(), 3);
 }
 
+/// E04b T11b review (F-r3-control-battlefield-8): the draw of the pits and the mines avoids a
+/// hex with a living stack or a corpse, not the hexes of a dead stack that left no corpse. The
+/// original's draw skips a hex that holds a living stack or has a corpse on it (the reviewer's
+/// reading of 0x5A03E3 to 0x5A03F3 and 0x5A05FB to 0x5A060D); a dead created stack leaves none
+/// (BAT-MAG-037), nor does a sacrificed stack (BAT-MAG-036) or a corpse the Pit Lords raised
+/// (BAT-MAG-052). The engine kept the hexes of every dead stack free.
+// covers: BAT-MAG-032, BAT-MAG-033
+#[test]
+fn pits_and_mines_may_lie_where_a_dead_stack_left_no_corpse() {
+    let r = ruleset();
+    let field = field(&r);
+    // Every standable hex is blocked but the stacks' and one other; the attacker's second stack,
+    // at (8, 2), is dead: a stack of its army, a summoned one, or one whose corpse is gone (a
+    // sacrifice, the Pit Lords). The hexes the Expert spell `name` then finds.
+    let found = |name: &str, summoned: bool, gone: bool| -> HexSet {
+        let hero = caster(&r, &["quicksand", "landmine"], [3, 3]);
+        let keep = [(1, 5), (15, 5), (8, 2), (5, 5)];
+        let keep: Vec<Hex> = keep.iter().map(|&(x, y)| at(&r, x, y)).collect();
+        let mut s = arena(
+            &r,
+            [Some(hero), None],
+            &[("fixed", 5, 1, 5), ("fixed", 5, 8, 2)],
+            &[("fixed", 5, 15, 5)],
+            3,
+        );
+        for h in (0u8..).take(field.hex_count()).map(Hex) {
+            if field.is_standable(h) && !keep.contains(&h) {
+                s.natural.block(h);
+            }
+        }
+        let dead = &mut s.stacks.as_mut_slice()[1];
+        dead.traits = dead.traits.with(crate::StackTraits::SUMMONED, summoned);
+        dead.count = 0;
+        dead.top_hp = 0;
+        crate::raise::mark_corpses(&mut s);
+        if gone {
+            s.raised.corpse[1] = crate::NO_CORPSE;
+        }
+        let command = Command::Cast {
+            spell: spell(&r, name),
+            target: CastTarget::None,
+            second: CastTarget::None,
+        };
+        act(&mut s, &r, command).unwrap();
+        s.spell_obstacles()
+            .iter()
+            .fold(HexSet::new(), |set, o| set.union(o.hexes))
+    };
+    for name in ["quicksand", "landmine"] {
+        // A dead stack of the army lies on its hex as a corpse: only the other hex is free.
+        assert_eq!(found(name, false, false), set(&r, &[(5, 5)]), "{name}");
+        // A dead summoned stack left no corpse: its hex takes a pit or a mine too.
+        assert_eq!(
+            found(name, true, false),
+            set(&r, &[(5, 5), (8, 2)]),
+            "{name}"
+        );
+        // Nor is a hex kept free once its corpse is gone.
+        assert_eq!(
+            found(name, false, true),
+            set(&r, &[(5, 5), (8, 2)]),
+            "{name}"
+        );
+    }
+}
+
 // covers: BAT-MAG-031
 #[test]
 fn hidden_pits_show_only_to_the_sides_that_see_them() {

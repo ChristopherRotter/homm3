@@ -26,7 +26,7 @@ use crate::event::{Event, EventKind, Sink, Visibility};
 use crate::geometry::{Direction, Field, Hex, HexSet};
 use crate::magic;
 use crate::movement;
-use crate::state::{BattleState, StackId, StackTraits, side_code};
+use crate::state::{BattleState, NO_CORPSE, StackId, StackTraits, side_code};
 
 /// Obstacles reserved with the first one and on every fork that has any (ADR-0014 point 5).
 pub const OBSTACLE_CAPACITY: usize = 8;
@@ -374,7 +374,10 @@ pub(crate) fn free(state: &BattleState, field: Field, side: BattleSide, hexes: &
 /// Up to `count` random hexes for `side`'s random obstacles (Quicksand, Land Mine; BAT-MAG-032;
 /// the original's 0x5A0354, `installation.md` §7.16), in the order drawn: each drawn with equal
 /// chances among the hexes not yet drawn that are outside the side columns, without a natural
-/// obstacle, an anchor hex (quirk BAT-QUIRK-3), a spell obstacle and a stack, living or dead. With
+/// obstacle, an anchor hex (quirk BAT-QUIRK-3), a spell obstacle, a living stack and a corpse.
+/// A dead stack that left no corpse (a created stack, a sacrificed one, a corpse the Pit Lords
+/// raised: [`NO_CORPSE`]) keeps no hex free: the original's draw skips a hex with a living stack
+/// or a corpse on it (0x5A03E3 to 0x5A03F3, 0x5A05FB to 0x5A060D; E04b T11b review). With
 /// quirk BAT-QUIRK-4 every spell obstacle counts, the other side's hidden ones too (which tells
 /// the caster where none lies); without it only those `side` sees, and a new one may go over a
 /// hidden one of the other side (Q-0002). The original draws from every hex and skips the
@@ -397,8 +400,11 @@ pub(crate) fn random_hexes(
         .blocked()
         .union(state.natural.anchors())
         .union(spells);
-    for s in state.stacks.iter() {
-        s.footprint(field).hexes().for_each(|h| taken.insert(h));
+    for (s, &corpse) in state.stacks.iter().zip(state.raised.corpse.iter()) {
+        // A stack whose death is not marked yet lies there like a corpse.
+        if s.is_alive() || corpse != NO_CORPSE {
+            s.footprint(field).hexes().for_each(|h| taken.insert(h));
+        }
     }
     let mut candidates = [Hex(0); MAX_FIELD_HEXES];
     let mut n = 0;
