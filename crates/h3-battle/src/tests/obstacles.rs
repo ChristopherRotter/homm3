@@ -437,6 +437,75 @@ fn a_stack_burns_again_when_it_acts_on_the_fire_without_moving() {
     assert_eq!(burns(&events), [(0, at(&r, 6, 5), 40, 4)]);
 }
 
+// covers: BAT-ATK-004, BAT-MAG-028, BAT-END-001, BAT-END-002
+#[test]
+fn a_stack_that_strikes_and_returns_burns_where_it_lands() {
+    let r = ruleset();
+    // The battle with `harpies` Harpies on the burning (6, 5) and `count` of `enemy` on (9, 5),
+    // after the Harpies' attack from (8, 5), and its events.
+    let strike = |harpies: u32, (enemy, count): (&'static str, u32)| {
+        let mut s = burning(&r, &[("harpy", harpies, 6, 5)], &[(enemy, count, 9, 5)]);
+        let attack = Command::Attack {
+            target: StackId(1),
+            from: at(&r, 8, 5),
+        };
+        let events = act(&mut s, &r, attack).unwrap();
+        (s, events)
+    };
+    let ended = |events: &[Event]| -> Vec<BattleResult> {
+        events
+            .iter()
+            .filter_map(|e| match e.kind {
+                EventKind::BattleEnded { result } => Some(result),
+                _ => None,
+            })
+            .collect()
+    };
+    // Leaving the burning hex burns nothing; the return is a flight like any other and enters
+    // the hex it lands on (the original returns through its move handler, 0x445950; the engine
+    // put the stack back without a burn: review r4b F-3, r3 F-6). Twenty Harpies kill four of
+    // twenty, lose three to the retaliation (32 of 200 hit points) and four more to the fire.
+    let (s, events) = strike(20, ("fixed", 20));
+    assert_eq!(
+        moves(&events),
+        [
+            (0, at(&r, 6, 5), at(&r, 8, 5)),
+            (0, at(&r, 8, 5), at(&r, 6, 5))
+        ]
+    );
+    assert_eq!(burns(&events), [(0, at(&r, 6, 5), 40, 4)]);
+    assert_eq!((s.stacks()[0].hex, s.stacks()[0].count), (at(&r, 6, 5), 13));
+    // The burn follows the return, which follows the strikes.
+    let last = |f: fn(&EventKind) -> bool| events.iter().rposition(|e| f(&e.kind)).unwrap();
+    let struck = last(|k| matches!(k, EventKind::Struck { .. }));
+    let moved = last(|k| matches!(k, EventKind::Moved { .. }));
+    let burnt = last(|k| matches!(k, EventKind::ObstacleTriggered { .. }));
+    assert!(struck < moved && moved < burnt);
+    assert_eq!((ended(&events), s.result()), (std::vec![], None));
+    // Three Harpies (28 hit points after the retaliation) die where they land: their side's
+    // last stack, so the battle ends, once.
+    let (s, events) = strike(3, ("fixed", 1));
+    assert_eq!(burns(&events), [(0, at(&r, 6, 5), 40, 3)]);
+    assert!(!s.stacks()[0].is_alive());
+    let lost = BattleResult::Victory(BattleSide::Defender);
+    assert_eq!((ended(&events), s.result()), (std::vec![lost], Some(lost)));
+    // The battle's end is checked when the action is over (the original checks nothing before
+    // the return, 0x4789F8): Harpies whose strike killed the last enemy stack still land and
+    // burn, and win,
+    let (s, events) = strike(20, ("flyer", 1));
+    assert_eq!(burns(&events), [(0, at(&r, 6, 5), 40, 4)]);
+    let won = BattleResult::Victory(BattleSide::Attacker);
+    assert_eq!((ended(&events), s.result()), (std::vec![won], Some(won)));
+    assert_eq!(s.stacks()[0].count, 16);
+    // or die there and leave no winner (BAT-END-002): four Harpies kill the one enemy (8 hit
+    // points) and burn.
+    let (s, events) = strike(4, ("flyer", 1));
+    assert_eq!(burns(&events), [(0, at(&r, 6, 5), 40, 4)]);
+    assert!(!s.stacks()[0].is_alive() && !s.stacks()[1].is_alive());
+    let draw = BattleResult::Draw;
+    assert_eq!((ended(&events), s.result()), (std::vec![draw], Some(draw)));
+}
+
 // covers: BAT-MAG-028
 #[test]
 fn fire_damage_follows_immunities_reductions_and_the_casters_bonuses() {

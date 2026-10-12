@@ -630,12 +630,14 @@ fn acts_on(state: &BattleState, ruleset: &Ruleset, s: StackId, hex: Hex) -> bool
 /// Stack `s` enters each of `hexes` in turn, while it lives: on each a Fire Wall burns it
 /// (BAT-MAG-028), then a mine may go off under it (BAT-MAG-033), as the original's 0x46A570
 /// (`installation.md` §7.15, §7.17); a stack either kills may be reborn (BAT-MAG-059), and the
-/// battle may end. Returns whether it still lives.
+/// battle may end: checked here if `ends`, else left to the action this is a part of
+/// ([`travel_back`]). Returns whether it still lives.
 fn enter<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
     s: StackId,
     hexes: [Option<Hex>; 2],
+    ends: bool,
     sink: &mut S,
 ) -> bool {
     for hex in hexes.into_iter().flatten() {
@@ -652,12 +654,14 @@ fn enter<S: Sink>(
             // rule: BAT-MAG-059
             crate::raise::rebirths(state, ruleset, sink);
             // Only this stack takes damage: the battle was not over before this burn.
-            check_end(state, sink);
+            if ends {
+                check_end(state, sink);
+            }
         }
         if state.at(s).is_alive()
             && let Some(i) = mine_under(state, ruleset, s, hex)
         {
-            explode(state, ruleset, (s, hex), i, sink);
+            explode(state, ruleset, (s, hex), i, ends, sink);
         }
     }
     state.at(s).is_alive()
@@ -665,13 +669,14 @@ fn enter<S: Sink>(
 
 /// The mine `i` goes off under stack `s` on `hex` (BAT-MAG-033): it is revealed and reported to
 /// both sides, does its spell's damage as a Fire Wall does (BAT-MAG-028) and is gone; the battle
-/// may end.
+/// may end (checked here if `ends`, as in [`enter`]).
 // rule: BAT-MAG-033
 fn explode<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
     (s, hex): (StackId, Hex),
     i: usize,
+    ends: bool,
     sink: &mut S,
 ) {
     let mine = state.spell_obstacles.list.remove(i);
@@ -694,7 +699,9 @@ fn explode<S: Sink>(
     // rule: BAT-MAG-059
     crate::raise::rebirths(state, ruleset, sink);
     // Only this stack takes damage: the battle was not over before.
-    check_end(state, sink);
+    if ends {
+        check_end(state, sink);
+    }
 }
 
 /// Moves stack `mover` from `from` to another free position `to` (BAT-MOV-001 to 003), reported
@@ -721,7 +728,32 @@ pub(crate) fn travel<S: Sink>(
         moved(state, mover, (from, to), sink);
         return true;
     }
-    travel_through(state, ruleset, mover, (from, to), sink)
+    travel_through(state, ruleset, mover, (from, to), true, sink)
+}
+
+/// The return of stack `mover` from `from` to the position `to` it started its turn on, after
+/// its strike (BAT-ATK-004): a move like any other ([`travel`]; the original returns through its
+/// move handler, 0x445950, a flight for the Harpies), so the stacks it binds are released
+/// (BAT-MAG-045) and the hexes it lands on, or walks over, burn it (BAT-MAG-028) and blow up
+/// under it (BAT-MAG-033). It is a part of the strike's action: the battle's end is not checked
+/// here but at the end of that action (the original has no check before the return, 0x4789F8),
+/// so a stack whose strike left the other side without stacks still lands.
+// rule: BAT-ATK-004, BAT-MAG-028, BAT-MAG-033
+pub(crate) fn travel_back<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    mover: StackId,
+    (from, to): (Hex, Hex),
+    sink: &mut S,
+) {
+    // rule: BAT-MAG-045
+    crate::binds::release(state, ruleset, mover, sink);
+    let o = &state.spell_obstacles;
+    if o.fire().is_empty() && !o.has_hidden() {
+        moved(state, mover, (from, to), sink);
+    } else {
+        travel_through(state, ruleset, mover, (from, to), false, sink);
+    }
 }
 
 /// Moves stack `mover` from `a` to `b`, reported.
@@ -734,13 +766,15 @@ fn moved<S: Sink>(state: &mut BattleState, mover: StackId, (a, b): (Hex, Hex), s
     }));
 }
 
-/// [`travel`] while a Fire Wall, a pit or a mine lies on the battlefield.
+/// [`travel`] while a Fire Wall, a pit or a mine lies on the battlefield; the battle's end is
+/// checked where the stack is hurt if `ends` ([`enter`]).
 #[inline(never)]
 fn travel_through<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
     mover: StackId,
     (from, to): (Hex, Hex),
+    ends: bool,
     sink: &mut S,
 ) -> bool {
     let field = Field::new(ruleset.battle().field);
@@ -791,10 +825,10 @@ fn travel_through<S: Sink>(
                 for hex in in_pit.into_iter().flatten() {
                     stuck(state, mover, hex, sink);
                 }
-                enter(state, ruleset, mover, new, sink);
+                enter(state, ruleset, mover, new, ends, sink);
                 return false;
             }
-            if !enter(state, ruleset, mover, new, sink) {
+            if !enter(state, ruleset, mover, new, ends, sink) {
                 return false;
             }
         }
@@ -860,5 +894,5 @@ fn stand_on<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackId, sin
     for (slot, hex) in on.iter_mut().zip(footprint.hexes()) {
         *slot = Some(hex);
     }
-    enter(state, ruleset, s, on, sink);
+    enter(state, ruleset, s, on, true, sink);
 }

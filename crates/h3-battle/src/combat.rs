@@ -704,9 +704,9 @@ fn pattern_hexes(field: Field, me: &Stack, fp: Footprint, victim: Footprint) -> 
 /// or none if the target was blind, BAT-MAG-024; none if the attack's spells stopped its turns,
 /// BAT-MAG-040), for creatures that strike twice a second attack unless the attacker now loses
 /// its turns (BAT-ATK-002), the return to `start` of creatures that strike and return unless the
-/// attacker now loses its turns or is bound (BAT-ATK-004, BAT-MAG-045), the end of the attacker's
-/// Berserk (BAT-MAG-025), the rebirths (BAT-MAG-059), then the end-of-battle check
-/// (BAT-END-001).
+/// attacker now loses its turns or is bound (BAT-ATK-004, BAT-MAG-045; a move that enters the
+/// hexes it lands on, BAT-MAG-028, BAT-MAG-033), the end of the attacker's Berserk
+/// (BAT-MAG-025), the rebirths (BAT-MAG-059), then the end-of-battle check (BAT-END-001).
 pub(crate) fn melee<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -764,13 +764,11 @@ pub(crate) fn melee<S: Sink>(
         && !me.spells.status.contains(Status::NO_TURNS)
         && !binds::is_bound(state, attacker)
     {
+        // The return is a move like any other and enters the hexes it lands on (the original's
+        // move handler, 0x445950: Fire Wall, then Land Mine); the battle's end waits for the
+        // end of this action.
         let from = me.hex;
-        state.at_mut(attacker).hex = start;
-        sink.emit(Event::public(EventKind::Moved {
-            stack: attacker,
-            from,
-            to: start,
-        }));
+        crate::obstacles::travel_back(state, ruleset, attacker, (from, start), sink);
     }
     effects::attacked(state, ruleset, attacker, sink);
     // rule: BAT-MAG-059

@@ -209,6 +209,35 @@ fn a_damage_spell_a_shot_and_a_mine_bring_the_rebirth_too() {
     let events = act(&mut s, &r, Command::Move { to: at(&r, 6, 5) }).unwrap();
     assert_eq!(reborn(&events), vec![(0, 1)]);
     assert_eq!((s.result(), s.stacks()[0].hex), (None, at(&r, 6, 5)));
+    // Firebirds that strike and return (the trait is set by hand) walk back onto an enemy mine
+    // under the hex they started on (placed there without entering it, as Teleport does): the
+    // return enters the hexes like any move (review r4b F-3), the three die of the mine's 40
+    // and one is reborn there, once; the battle goes on.
+    let mut s = battle(&r, &[(0, "firebird", 3)], &[(0, "fixed", 1)], 1);
+    place(&mut s, &r, 0, 6, 5);
+    place(&mut s, &r, 1, 9, 5);
+    activate(&mut s, 0);
+    let st = &mut s.stacks.as_mut_slice()[0];
+    st.traits = st.traits.with(StackTraits::STRIKE_AND_RETURN, true);
+    crate::obstacles::place(
+        &mut s,
+        (mine, ObstacleKind::Mine, &shape),
+        BattleSide::Defender,
+        (&hexes, 40),
+        &mut Vec::new(),
+    );
+    let attack = Command::Attack {
+        target: StackId(1),
+        from: at(&r, 8, 5),
+    };
+    let events = act(&mut s, &r, attack).unwrap();
+    assert_eq!(reborn(&events), vec![(0, 1)]);
+    let firebirds = s.stacks()[0];
+    assert_eq!(
+        (s.result(), firebirds.hex, firebirds.count),
+        (None, at(&r, 6, 5), 1)
+    );
+    assert!(firebirds.flags.contains(StackFlags::ACTED));
 }
 
 // covers: BAT-MAG-059, BAT-MAG-010

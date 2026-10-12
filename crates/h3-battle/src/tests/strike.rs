@@ -893,6 +893,32 @@ fn a_harpy_bound_or_blinded_by_the_retaliation_stays_where_it_struck() {
     act(&mut s, &r, Command::Move { to: at(&r, 3, 5) }).unwrap();
 }
 
+// covers: BAT-ATK-004, BAT-MAG-045
+#[test]
+fn a_binder_that_strikes_and_returns_releases_the_stack_it_bound() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("binder", 5, 5, 5)],
+        &[("fixed", 10, 8, 5), ("fixed", 1, 14, 2)],
+        1,
+    );
+    // No creature of the original both binds and returns: the trait is set by hand.
+    let st = &mut s.stacks.as_mut_slice()[0];
+    st.traits = st.traits.with(crate::StackTraits::STRIKE_AND_RETURN, true);
+    // The return is a move like any other (the original's move handler, which releases a
+    // binder's stacks at every move): the stack bound by the strike is free again.
+    let events = hit(&mut s, &r, 1, (7, 5));
+    assert_eq!(
+        strike_spells(&r, &events),
+        vec![(0, 1, String::from("tether"))]
+    );
+    assert_eq!(s.at(StackId(0)).hex, at(&r, 5, 5));
+    assert!(unbound(&r, &events, 1));
+    assert!(!crate::binds::is_bound(&s, StackId(1)));
+}
+
 // covers: BAT-MAG-045
 #[test]
 fn a_bound_shooter_still_shoots() {
