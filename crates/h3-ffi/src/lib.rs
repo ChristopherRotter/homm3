@@ -76,9 +76,10 @@ pub const H3_OK: i32 = 0;
 pub const H3_ERR_NULL: i32 = -1;
 /// An argument is out of range (side, scenario, buffer length).
 pub const H3_ERR_ARGUMENT: i32 = -2;
-/// The action index is not a valid action.
+/// The action of the side to move is not a valid action.
 pub const H3_ERR_INVALID_ACTION: i32 = -3;
-/// The action was rejected by the rules (not legal now, or not this side's turn).
+/// The action was rejected by the rules: not legal now, or not this side's turn (then whatever
+/// the action is: it is not decoded).
 pub const H3_ERR_REJECTED: i32 = -4;
 /// The episode is over; reset first.
 pub const H3_ERR_EPISODE_OVER: i32 = -5;
@@ -788,13 +789,20 @@ mod tests {
                 h3_env_step(env, 5, entry(0), std::ptr::null_mut()),
                 H3_ERR_ARGUMENT
             );
+            let mover = h3_env_to_move(env);
             assert_eq!(
-                h3_env_step(env, 0, entry(u32::MAX as usize), std::ptr::null_mut()),
+                h3_env_step(env, mover, entry(u32::MAX as usize), std::ptr::null_mut()),
                 H3_ERR_INVALID_ACTION
             );
-            let other = 1 - h3_env_to_move(env);
+            let other = 1 - mover;
             assert_eq!(
                 h3_env_step(env, other, entry(1), std::ptr::null_mut()),
+                H3_ERR_REJECTED
+            );
+            // Out of turn an action is not even decoded (E04b T11b review, F-sec-2: the kind of
+            // refusal told the other side a Faerie Dragon's drawn spell).
+            assert_eq!(
+                h3_env_step(env, other, entry(u32::MAX as usize), std::ptr::null_mut()),
                 H3_ERR_REJECTED
             );
             assert_eq!(

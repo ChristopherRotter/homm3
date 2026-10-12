@@ -284,6 +284,56 @@ fn negated_immunities_lift_the_creatures_immunities_and_all_resistance() {
     }
 }
 
+// covers: BAT-MAG-066, BAT-MAG-040
+#[test]
+fn the_hero_of_the_side_that_controls_a_striker_negates_immunities_for_its_strikes_spell() {
+    // E04b T11b review (r6 F-7): a strike's spell is tested for the side that controls the
+    // striker, so that side's hero's negation counts as a caster's does, and the struck stack's
+    // hero's as ever. Five blinders (Blind after every strike) strike a statue, immune to mind
+    // spells.
+    let r = ruleset();
+    let blind = spell(&r, "blind");
+    let orb = [BattleEffect::NegateImmunities];
+    // What a strike reports and leaves on the struck stack: nothing, or Blind.
+    let nothing = (Vec::new(), Vec::new());
+    let blinded = (Vec::from([blind]), Vec::from([blind]));
+    // The attacker's blinders at the defender's statue: no Blind without a negation; Blind with
+    // the attacker's hero's (the striker's side) and with the defender's alone (the statue's).
+    let struck = |attacker: &[BattleEffect], defender: &[BattleEffect]| {
+        let mut s = arena(
+            &r,
+            [wearing(&r, &[], attacker), wearing(&r, &[], defender)],
+            &[("blinder", 5, 7, 5)],
+            &[("statue", 10, 8, 5)],
+            1,
+        );
+        let events = hit(&mut s, &r, 1, (7, 5));
+        (strike_spells(&events), on(&s, 1))
+    };
+    assert_eq!(struck(&[], &[]), nothing);
+    assert_eq!(struck(&orb, &[]), blinded);
+    assert_eq!(struck(&[], &orb), blinded);
+    // The defender's blinders, hypnotized, strike the defender's statue for the attacker: the
+    // attacker's hero's negation counts, the controller's, though both stacks are the
+    // defender's.
+    let turned = |attacker: &[BattleEffect]| {
+        let mut s = arena(
+            &r,
+            [wearing(&r, &[], attacker), wearing(&r, &[], &[])],
+            &[("fixed", 1, 2, 5)],
+            &[("blinder", 5, 7, 5), ("statue", 10, 8, 5)],
+            1,
+        );
+        give(&mut s, &r, 1, "hypnotize");
+        activate(&mut s, 1);
+        assert_eq!(s.side_to_act(), Some(BattleSide::Attacker));
+        let events = hit(&mut s, &r, 2, (7, 5));
+        (strike_spells(&events), on(&s, 2))
+    };
+    assert_eq!(turned(&[]), nothing);
+    assert_eq!(turned(&orb), blinded);
+}
+
 // covers: BAT-MAG-066, BAT-MAG-063, BAT-MAG-064
 #[test]
 fn a_negation_asks_the_casters_and_the_controllers_hero_and_spares_the_heroes_defences() {

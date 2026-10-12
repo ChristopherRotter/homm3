@@ -1,6 +1,6 @@
 //! Hidden spell obstacles and Quicksand (E04b T5c1): who sees a hidden obstacle (BAT-MAG-031,
-//! quirk BAT-QUIRK-1) and Quicksand's pits, which stop a walker (BAT-MAG-032, quirk BAT-QUIRK-2),
-//! after the original's code (`docs/formats/installation.md` §7.16).
+//! quirk BAT-QUIRK-1) and Quicksand's pits, which stop a walker (BAT-MAG-032), after the
+//! original's code (`docs/formats/installation.md` §7.16).
 
 use std::vec::Vec;
 
@@ -232,6 +232,72 @@ fn quicksand_avoids_obstacles_stacks_and_corpses_and_is_cast_without_a_free_hex(
     assert_eq!(s.spell_obstacles().len(), 3);
 }
 
+/// E04b T11b review (F-r3-control-battlefield-8): the draw of the pits and the mines avoids a
+/// hex with a living stack or a corpse, not the hexes of a dead stack that left no corpse. The
+/// original's draw skips a hex that holds a living stack or has a corpse on it (the reviewer's
+/// reading of 0x5A03E3 to 0x5A03F3 and 0x5A05FB to 0x5A060D); a dead created stack leaves none
+/// (BAT-MAG-037), nor does a sacrificed stack (BAT-MAG-036) or a corpse the Pit Lords raised
+/// (BAT-MAG-052). The engine kept the hexes of every dead stack free.
+// covers: BAT-MAG-032, BAT-MAG-033
+#[test]
+fn pits_and_mines_may_lie_where_a_dead_stack_left_no_corpse() {
+    let r = ruleset();
+    let field = field(&r);
+    // Every standable hex is blocked but the stacks' and one other; the attacker's second stack,
+    // at (8, 2), is dead: a stack of its army, a summoned one, or one whose corpse is gone (a
+    // sacrifice, the Pit Lords). The hexes the Expert spell `name` then finds.
+    let found = |name: &str, summoned: bool, gone: bool| -> HexSet {
+        let hero = caster(&r, &["quicksand", "landmine"], [3, 3]);
+        let keep = [(1, 5), (15, 5), (8, 2), (5, 5)];
+        let keep: Vec<Hex> = keep.iter().map(|&(x, y)| at(&r, x, y)).collect();
+        let mut s = arena(
+            &r,
+            [Some(hero), None],
+            &[("fixed", 5, 1, 5), ("fixed", 5, 8, 2)],
+            &[("fixed", 5, 15, 5)],
+            3,
+        );
+        for h in (0u8..).take(field.hex_count()).map(Hex) {
+            if field.is_standable(h) && !keep.contains(&h) {
+                s.natural.block(h);
+            }
+        }
+        let dead = &mut s.stacks.as_mut_slice()[1];
+        dead.traits = dead.traits.with(crate::StackTraits::SUMMONED, summoned);
+        dead.count = 0;
+        dead.top_hp = 0;
+        crate::raise::mark_corpses(&mut s);
+        if gone {
+            s.raised.corpse[1] = crate::NO_CORPSE;
+        }
+        let command = Command::Cast {
+            spell: spell(&r, name),
+            target: CastTarget::None,
+            second: CastTarget::None,
+        };
+        act(&mut s, &r, command).unwrap();
+        s.spell_obstacles()
+            .iter()
+            .fold(HexSet::new(), |set, o| set.union(o.hexes))
+    };
+    for name in ["quicksand", "landmine"] {
+        // A dead stack of the army lies on its hex as a corpse: only the other hex is free.
+        assert_eq!(found(name, false, false), set(&r, &[(5, 5)]), "{name}");
+        // A dead summoned stack left no corpse: its hex takes a pit or a mine too.
+        assert_eq!(
+            found(name, true, false),
+            set(&r, &[(5, 5), (8, 2)]),
+            "{name}"
+        );
+        // Nor is a hex kept free once its corpse is gone.
+        assert_eq!(
+            found(name, false, true),
+            set(&r, &[(5, 5), (8, 2)]),
+            "{name}"
+        );
+    }
+}
+
 // covers: BAT-MAG-031
 #[test]
 fn hidden_pits_show_only_to_the_sides_that_see_them() {
@@ -370,9 +436,43 @@ fn a_two_hex_walker_stops_when_its_tail_enters_a_pit() {
 
 // covers: BAT-MAG-032
 #[test]
-fn an_attack_from_a_seen_pit_is_legal_only_with_bat_quirk_2() {
-    for (profile, legal_there) in [("t:faithful", false), ("t:pits", true)] {
+fn an_attack_whose_walk_stops_in_a_seen_pit_is_neither_listed_nor_accepted() {
+    // E04b T11b review (r3 F-4; the user, BAT-Q30): the original offers no attack from a position
+    // with a hex on a pit the stack's side sees (its cursor's attack positions and its
+    // pathfinder's attack marking leave them out, `installation.md` §7.16), so such an attack is
+    // legal in no profile. Under the flag of BAT-QUIRK-2 (retired) the engine listed and
+    // accepted it: the stack walked into the pit and did not strike.
+    for profile in ["t:faithful", "t:sight"] {
         let r = ruleset_with(profile, |_| {});
+        // The attack of stack 0 at stack 1 from `from`, a position within its reach where its
+        // walk stops: not listed, refused, and the state untouched.
+        let refused = |s: &mut BattleState, from: Hex| {
+            let reach =
+                crate::movement::reachable(s, field(&r), StackId(0), s.stack(StackId(0)).unwrap());
+            assert!(reach.can_move_to(from) && reach.stops_at(from), "{profile}");
+            let attack = Command::Attack {
+                target: StackId(1),
+                from,
+            };
+            assert!(!legal(s, &r).iter().any(|c| *c == attack), "{profile}");
+            // Other positions next to the target stay legal, and so does the move into the pit.
+            assert!(legal(s, &r).iter().any(|c| matches!(
+                *c,
+                Command::Attack { target: StackId(1), from: other } if other != from
+            )));
+            assert!(
+                legal(s, &r)
+                    .iter()
+                    .any(|c| *c == Command::Move { to: from })
+            );
+            let before = s.clone();
+            assert_eq!(
+                act(s, &r, attack),
+                Err(CommandError::Unreachable),
+                "{profile}"
+            );
+            assert_eq!(*s, before, "{profile}");
+        };
         let mut s = arena(
             &r,
             [None, None],
@@ -381,25 +481,48 @@ fn an_attack_from_a_seen_pit_is_legal_only_with_bat_quirk_2() {
             1,
         );
         pits(&mut s, &r, BattleSide::Attacker, &[(5, 5)]);
+        refused(&mut s, at(&r, 5, 5));
+        // A two-hex walker: the position whose other hex, its tail, lies on the pit.
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("wide", 5, 5, 4)],
+            &[("fixed", 5, 8, 5)],
+            1,
+        );
+        pits(&mut s, &r, BattleSide::Attacker, &[(6, 5)]);
+        refused(&mut s, at(&r, 7, 5));
+        // The hexes a stack starts on never stop it: standing in the pit, it attacks from there.
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("fixed", 5, 5, 5)],
+            &[("fixed", 5, 6, 5)],
+            1,
+        );
+        pits(&mut s, &r, BattleSide::Attacker, &[(5, 5)]);
         let attack = Command::Attack {
             target: StackId(1),
             from: at(&r, 5, 5),
         };
-        assert_eq!(legal(&s, &r).iter().any(|c| *c == attack), legal_there);
-        // Other positions next to the target stay legal.
-        assert!(legal(&s, &r).iter().any(|c| matches!(
-            *c,
-            Command::Attack { target: StackId(1), from } if from != at(&r, 5, 5)
-        )));
-        let got = act(&mut s, &r, attack);
-        if legal_there {
-            // The walk stops in the pit and the attack is skipped (the original's 0x478971).
-            let events = got.unwrap();
-            assert!(!struck(&events));
-            assert_eq!(s.stack(StackId(0)).unwrap().hex, at(&r, 5, 5));
-        } else {
-            assert_eq!(got, Err(CommandError::Unreachable));
-        }
+        assert!(legal(&s, &r).iter().any(|c| *c == attack), "{profile}");
+        assert!(struck(&act(&mut s, &r, attack).unwrap()), "{profile}");
+        // No pit stops a flyer: it lands on the pit and strikes.
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("flyer", 5, 2, 5)],
+            &[("fixed", 5, 6, 5)],
+            1,
+        );
+        pits(&mut s, &r, BattleSide::Attacker, &[(5, 5)]);
+        assert!(legal(&s, &r).iter().any(|c| *c == attack), "{profile}");
+        let events = act(&mut s, &r, attack).unwrap();
+        assert!(
+            struck(&events) && obstacle_events(&events).is_empty(),
+            "{profile}"
+        );
+        assert_eq!(s.stack(StackId(0)).unwrap().hex, at(&r, 5, 5));
     }
 }
 

@@ -207,6 +207,28 @@ fn quirk_flags_come_from_the_profile() {
             flag: "quirk.battle.x".into()
         }
     );
+    // A retired flag has no name in the engine's registry (ADR-0007: its position stays, its
+    // name goes): a profile that still names it, on or off, does not compile, nor does one that
+    // names its entry's empty name. Retired on 2026-10-12: BAT-QUIRK-2 (BAT-Q30) and BAT-QUIRK-9
+    // (BAT-Q29).
+    for flag in [
+        "quirk.battle.attack_from_seen_pit",
+        "quirk.battle.creature_mirror_untested",
+        "",
+    ] {
+        for on in [true, false] {
+            let mut pack = base();
+            pack.profiles[1].quirks = vec![(flag.into(), on)];
+            assert_eq!(
+                Ruleset::compile(&[pack], "base:quirky").unwrap_err(),
+                CompileError::UnknownQuirk {
+                    profile: "base:quirky".into(),
+                    flag: flag.into()
+                },
+                "{flag:?} {on}"
+            );
+        }
+    }
 }
 
 #[test]
@@ -1372,7 +1394,21 @@ fn terrains_native_terrains_and_obstacles() {
         expect(&[p], "base:faithful"),
         CompileError::KeyOutsidePack { .. }
     ));
-    let shapes: [(ObstacleDef, &str); 5] = [
+    // A usual obstacle is a removable piece of the battle, which holds 8 hexes (E04b T11b
+    // review, F-robust-5); an absolute one has no such bound.
+    let row = |hexes: i8, y: i8| -> Vec<(i8, i8)> { (0..hexes).map(|dx| (dx + 1, y)).collect() };
+    assert_eq!(MAX_USUAL_OBSTACLE_HEXES, 8);
+    for (blocked, absolute) in [(row(8, 0), false), (row(9, 4), true)] {
+        let mut p = base();
+        p.obstacles
+            .push(obstacle("base:o", &["base:grass"], &blocked, absolute));
+        assert!(Ruleset::compile(&[p], "base:faithful").is_ok());
+    }
+    let shapes: [(ObstacleDef, &str); 6] = [
+        (
+            obstacle("base:o", &["base:grass"], &row(9, 0), false),
+            "usual obstacles block at most 8 hexes",
+        ),
         (
             obstacle("base:o", &[], &[(0, 0)], false),
             "an obstacle needs at least one terrain and one blocked hex",

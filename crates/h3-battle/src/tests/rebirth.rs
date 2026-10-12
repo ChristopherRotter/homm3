@@ -209,6 +209,35 @@ fn a_damage_spell_a_shot_and_a_mine_bring_the_rebirth_too() {
     let events = act(&mut s, &r, Command::Move { to: at(&r, 6, 5) }).unwrap();
     assert_eq!(reborn(&events), vec![(0, 1)]);
     assert_eq!((s.result(), s.stacks()[0].hex), (None, at(&r, 6, 5)));
+    // Firebirds that strike and return (the trait is set by hand) walk back onto an enemy mine
+    // under the hex they started on (placed there without entering it, as Teleport does): the
+    // return enters the hexes like any move (review r4b F-3), the three die of the mine's 40
+    // and one is reborn there, once; the battle goes on.
+    let mut s = battle(&r, &[(0, "firebird", 3)], &[(0, "fixed", 1)], 1);
+    place(&mut s, &r, 0, 6, 5);
+    place(&mut s, &r, 1, 9, 5);
+    activate(&mut s, 0);
+    let st = &mut s.stacks.as_mut_slice()[0];
+    st.traits = st.traits.with(StackTraits::STRIKE_AND_RETURN, true);
+    crate::obstacles::place(
+        &mut s,
+        (mine, ObstacleKind::Mine, &shape),
+        BattleSide::Defender,
+        (&hexes, 40),
+        &mut Vec::new(),
+    );
+    let attack = Command::Attack {
+        target: StackId(1),
+        from: at(&r, 8, 5),
+    };
+    let events = act(&mut s, &r, attack).unwrap();
+    assert_eq!(reborn(&events), vec![(0, 1)]);
+    let firebirds = s.stacks()[0];
+    assert_eq!(
+        (s.result(), firebirds.hex, firebirds.count),
+        (None, at(&r, 6, 5), 1)
+    );
+    assert!(firebirds.flags.contains(StackFlags::ACTED));
 }
 
 // covers: BAT-MAG-059, BAT-MAG-010
@@ -239,6 +268,67 @@ fn a_reborn_phoenix_comes_back_without_the_effects_it_died_with() {
     assert_eq!(phoenix.spells.status, effects::Status::default());
     assert_eq!(phoenix.speed_now(), speed);
     assert!(s.effects().is_empty());
+}
+
+// covers: BAT-MAG-059, BAT-MAG-044
+#[test]
+fn an_aged_phoenix_comes_back_whole() {
+    let r = ruleset();
+    let mut s = battle(&r, &[(0, "fixed", 1)], &[(0, "phoenix", 10)], 1);
+    // Age halves the ten phoenixes' 10 hit points; they die aged.
+    let id = spell(&r, "wither");
+    let cast = effects::TimedCast {
+        id,
+        spell: r.spell(id).unwrap(),
+        mastery: 0,
+        rounds: 3,
+        own: crate::magic::SpellBonus::default(),
+    };
+    effects::apply(&mut s, &r, cast, StackId(1), &mut Vec::<Event>::new());
+    assert_eq!(s.stacks()[1].max_hp, 5);
+    kill(&mut s, &r, 1);
+    let mut events = Vec::new();
+    rebirths(&mut s, &r, &mut events);
+    // The death ended Age before the rebirth counted the hit points (review r5b F-1, r4b F-2):
+    // ten div 5 come back with their full 10 hit points each, not one.
+    let phoenix = s.stacks()[1];
+    assert_eq!((phoenix.count, phoenix.max_hp, phoenix.top_hp), (2, 10, 10));
+    assert_eq!(reborn(&events), vec![(1, 2)]);
+}
+
+// covers: BAT-MAG-059, BAT-MAG-010
+#[test]
+fn a_reborn_phoenix_keeps_the_permanent_effects_it_died_with() {
+    let r = ruleset();
+    let mut s = battle(&r, &[(0, "fixed", 1)], &[(0, "phoenix", 10)], 1);
+    // Two Expert Disrupting Rays (−5 each, for the rest of the battle) and a Haste; then the
+    // phoenixes die.
+    for name in ["ray", "ray", "haste"] {
+        let id = spell(&r, name);
+        let cast = effects::TimedCast {
+            id,
+            spell: r.spell(id).unwrap(),
+            mastery: 3,
+            rounds: 5,
+            own: crate::magic::SpellBonus::default(),
+        };
+        effects::apply(&mut s, &r, cast, StackId(1), &mut Vec::<Event>::new());
+    }
+    let (defense, speed) = (i32::from(s.stacks()[1].defense), s.stacks()[1].speed);
+    assert_eq!(s.stacks()[1].defense_now(), defense - 10);
+    kill(&mut s, &r, 1);
+    let mut events = Vec::new();
+    rebirths(&mut s, &r, &mut events);
+    assert_eq!(reborn(&events), vec![(1, 2)]);
+    // The death ended Haste; the rays stay through the death and the rebirth (review r5b F-2:
+    // the original's death and raise never give the defense back).
+    let phoenix = s.stacks()[1];
+    assert_eq!(
+        (phoenix.defense_now(), phoenix.speed_now()),
+        (defense - 10, speed)
+    );
+    let left: Vec<_> = s.effects().iter().map(|e| (e.spell, e.rounds)).collect();
+    assert_eq!(left, vec![(spell(&r, "ray"), None)]);
 }
 
 // covers: BAT-MAG-059, BAT-MAG-004

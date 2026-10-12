@@ -124,8 +124,9 @@ pub enum Ability<C, S, L> {
         /// Who is spared around the target.
         effect: AreaShot,
     },
-    /// War machine: on its turn it heals the top creature of an allied stack by a uniform
-    /// `min_hp..=max_hp` hit points (First Aid Tent; BAT-WAR-003).
+    /// War machine: on its turn it heals the top creature of a stack of its own side (also one
+    /// the other side controls, BAT-MAG-026) by a uniform `min_hp..=max_hp` hit points (First
+    /// Aid Tent; BAT-WAR-003).
     FirstAid {
         /// Least hit points healed (≥ 1).
         min_hp: u16,
@@ -172,8 +173,9 @@ pub enum Ability<C, S, L> {
         /// Chance, percent (1..=100).
         percent: u8,
     },
-    /// Adjacent allied stacks (not itself) resist hostile spells, the chance to be affected
-    /// multiplied by `100 − percent` % once however many such neighbours (Unicorns; BAT-MAG-008).
+    /// Adjacent stacks (not itself) of the side that controls it resist hostile spells, the
+    /// chance to be affected multiplied by `100 − percent` % once however many such neighbours
+    /// (Unicorns; BAT-MAG-008, BAT-MAG-026).
     MagicResistanceAura {
         /// Resistance, percent (1..=100).
         percent: u8,
@@ -364,12 +366,14 @@ pub enum Ability<C, S, L> {
     /// no morale or `fear` itself (one roll, the largest chance among the side's stacks): the
     /// Azure Dragon's 10 % (BAT-MAG-060, v29).
     Fear {
-        /// The chance, 1..=100.
+        /// The chance, 1..=99 (never certain: the frightened side must get to act).
         percent: u8,
     },
     /// The creature's casts ignore a hero's `NoCasting` (the Orb of Inhibition; the anti-magic
-    /// garrison with E04c): the Faerie Dragon, after the wiki and VCMI against the code reading
-    /// until an experiment settles it (BAT-MAG-061, BAT-Q21; v31).
+    /// garrison with E04c). An ability for packs: no harvested creature has it. The wiki and VCMI
+    /// give it to the Faerie Dragon; by the code reading and batch 2e's observation of the cast
+    /// by the mouse the Orb stops that cast too, and so does the engine (BAT-MAG-061, BAT-Q21;
+    /// the cast by the key was not tried; v31).
     IgnoresMagicBlock,
 }
 
@@ -715,8 +719,10 @@ impl<C, S, L> Ability<C, S, L> {
             Self::ManaChannel { percent } if !(1..=100).contains(percent) => {
                 Some("mana_channel percent must be 1..=100")
             }
-            Self::Fear { percent } if !(1..=100).contains(percent) => {
-                Some("fear percent must be 1..=100")
+            // A certain fear would let no stack of the other side ever act again, as a certain
+            // bad-morale freeze (BAT-MOR-004; E04b T11b review).
+            Self::Fear { percent } if !(1..=99).contains(percent) => {
+                Some("fear percent must be 1..=99")
             }
             Self::ManaDrain { amount: 0 } => Some("mana_drain amount must be at least 1"),
             Self::Rebirth { divisor: 0 } => Some("rebirth divisor must be at least 1"),
@@ -1406,12 +1412,16 @@ mod tests {
             },
             A::Rebirth { divisor: 0 },
             A::Fear { percent: 0 },
+            // E04b T11b review (F-robust-4): a certain fear lets no stack of the other side act.
+            A::Fear { percent: 100 },
             A::Fear { percent: 101 },
         ];
         for a in bad {
             assert!(a.parameter_error().is_some(), "{a:?}");
             assert!(list_error(&[a]).is_some());
         }
+        // The largest fear leaves a chance to act.
+        assert_eq!(A::Fear { percent: 99 }.parameter_error(), None);
     }
 
     #[test]

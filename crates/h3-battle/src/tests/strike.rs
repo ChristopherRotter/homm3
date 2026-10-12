@@ -362,6 +362,65 @@ fn a_thunderbolt_deals_its_damage_per_creature_as_the_spell_without_a_hero() {
     assert!(bolts.contains(&true) && bolts.contains(&false));
 }
 
+/// E04b T11b review (F-r4b-strike-magic-8 part a): a bolt whose damage comes to 0 does nothing,
+/// as the extra damage of BAT-MAG-047: no report and nothing that damage ends (the original
+/// leaves when the spell's damage on the target is not above 0, the reviewer's reading at
+/// 0x4411FD). One Thunderbird against Diamond Golems: a twentieth of 10.
+// covers: BAT-MAG-041
+#[test]
+fn a_thunderbolt_of_no_damage_does_nothing() {
+    use h3_content::{AbilityDef, ContentKey};
+    let one = |r: &Ruleset, striker: &'static str, target: &'static str| {
+        arena(
+            r,
+            [None, None],
+            &[(striker, 1, 7, 5)],
+            &[(target, 10, 8, 5)],
+            1,
+        )
+    };
+    let r = ruleset();
+    // One stormbird: 10 as `t:bolt`, of which `diamond` takes a twentieth, rounded down.
+    let mut s = one(&r, "stormbird", "diamond");
+    let events = hit(&mut s, &r, 1, (7, 5));
+    assert_eq!(strikes(&events), vec![(0, 1), (1, 0)]);
+    assert_eq!(strike_spells(&r, &events), vec![]);
+    assert_eq!(spell_damage(&events), vec![]);
+    // A quarter of it (`golem`: 2) is dealt and reported.
+    let mut s = one(&r, "stormbird", "golem");
+    let events = hit(&mut s, &r, 1, (7, 5));
+    assert_eq!(spell_damage(&events), vec![(1, 10, 2, 0)]);
+    assert_eq!(strike_spells(&r, &events).len(), 1);
+    // Nor does it end what damage ends: a strike that blinds and then bolts leaves the target
+    // blind (it used to wake it at once).
+    let key = |name: &str| ContentKey::new("t", name).unwrap();
+    let r = ruleset_from(
+        "t:faithful",
+        |_| {},
+        |pack| {
+            let blinder = pack.creatures.iter_mut().find(|c| c.key == key("blinder"));
+            let bolt = AbilityDef::SpellDamageAfterStrike {
+                spell: key("bolt"),
+                chance_percent: 100,
+                per_creature: 10,
+            };
+            blinder.unwrap().info.abilities.push(bolt);
+        },
+    );
+    let mut s = one(&r, "blinder", "diamond");
+    let events = hit(&mut s, &r, 1, (7, 5));
+    assert_eq!(
+        strike_spells(&r, &events),
+        vec![(0, 1, String::from("blind"))]
+    );
+    assert_eq!(spell_damage(&events), vec![]);
+    assert!(s.stacks()[1].spells.status.contains(Status::NO_TURNS));
+    // With damage the same strike's bolt ends the Blind it brought.
+    let mut s = one(&r, "blinder", "golem");
+    hit(&mut s, &r, 1, (7, 5));
+    assert!(!s.stacks()[1].spells.status.contains(Status::NO_TURNS));
+}
+
 // ---------------------------------------------------------------- BAT-MAG-043, BAT-MAG-044
 
 /// Starts a new round.
@@ -424,6 +483,39 @@ fn stone_gaze_stops_turns_halves_the_next_strike_and_ends_with_it() {
     let (mut s, _) = struck(&r, "gazer", "fixed");
     activate(&mut s, 1);
     assert_eq!(damages(&hit(&mut s, &r, 2, (9, 5)))[0], (1, 2, 5));
+}
+
+// covers: BAT-MAG-043
+#[test]
+fn a_shot_at_a_petrified_stack_is_halved_too() {
+    // E04b T11b review (r4b F-6): the original halves in stage 3 of its damage function for
+    // every strike, a shot too. Five gazers petrify ten `fixed`; ten archers with their damage
+    // fixed at 2 (attack 6 against defense 10: 20 less a tenth, 18) then shoot them for 9. The
+    // damage ended the petrification: their next shot deals the 18.
+    for profile in ["t:faithful", "t:single"] {
+        let r = ruleset_with(profile, |_| {});
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("gazer", 5, 7, 5), ("archer", 10, 3, 5)],
+            &[("fixed", 10, 8, 5)],
+            1,
+        );
+        let archers = &mut s.stacks.as_mut_slice()[1];
+        (archers.damage_min, archers.damage_max) = (2, 2);
+        hit(&mut s, &r, 2, (7, 5));
+        assert!(s.at(StackId(2)).spells.status.contains(Status::PETRIFIED));
+        let shot = Command::Shoot {
+            target: StackId(2),
+            at: at(&r, 8, 5),
+        };
+        for damage in [9, 18] {
+            activate(&mut s, 1);
+            let events = act(&mut s, &r, shot).unwrap();
+            assert_eq!(damages(&events), vec![(1, 2, damage)], "{profile}");
+            assert!(on(&s, &r, 2).is_empty());
+        }
+    }
 }
 
 // covers: BAT-MAG-043
@@ -604,6 +696,71 @@ fn poison_takes_a_tenth_at_the_strike_and_each_round_and_stays_until_a_cure() {
     assert_eq!(s.at(StackId(3)).max_hp, 10);
 }
 
+// covers: BAT-MAG-044
+#[test]
+fn poison_and_age_follow_the_originals_single_precision_values_with_quirk_q_0005() {
+    use h3_content::ContentKey;
+    // E04b T11b review (r4b F-6): a battle with hit points at which the two variants differ.
+    // Ten serfs of 9 hit points are poisoned by the wyverns' strike (9 × 0.9 + 0.95 → 9 either
+    // way) and aged by the ancients': exactly 9 × 0.9 × ½ + 0.95 = 5; the original's `f32`
+    // factor 0.89999998 and its `f32` 0.94999999 give 4.9999998, so 4 (Q-0005). Each strike
+    // deals 10: one serf dies and the top one has lost 1, then 2.
+    let key = |name: &str| ContentKey::new("t", name).unwrap();
+    for (profile, aged) in [("t:faithful", 5), ("t:single", 4)] {
+        let r = ruleset_from(
+            profile,
+            |_| {},
+            |pack| {
+                let serf = pack.creatures.iter_mut().find(|c| c.key == key("serf"));
+                serf.unwrap().hit_points = 9;
+            },
+        );
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("wyvern", 5, 7, 5), ("ancient", 5, 9, 5)],
+            &[("serf", 10, 8, 5)],
+            1,
+        );
+        let serfs = |s: &BattleState| {
+            let serfs = s.at(StackId(2));
+            (serfs.max_hp, serfs.top_hp, serfs.count)
+        };
+        hit(&mut s, &r, 2, (7, 5));
+        assert_eq!(serfs(&s), (9, 8, 9), "{profile}");
+        activate(&mut s, 1);
+        hit(&mut s, &r, 2, (9, 5));
+        assert_eq!(serfs(&s), (aged, aged - 2, 8), "{profile}");
+    }
+}
+
+// covers: BAT-MAG-044
+#[test]
+fn poison_is_reported_when_age_ends_at_the_same_round_start() {
+    let r = ruleset();
+    let mut s = duel(&r, "fixed", "serf", 1);
+    // Poison for three rounds (10 × 0.9 + 0.95 → 9) and Age in its last round (4.5 + 0.95 → 5).
+    for (name, rounds) in [("venom", 3), ("wither", 1)] {
+        let id = spell(&r, name);
+        let cast = TimedCast {
+            id,
+            spell: r.spell(id).unwrap(),
+            mastery: 0,
+            rounds,
+            own: SpellBonus::default(),
+        };
+        crate::effects::apply(&mut s, &r, cast, StackId(1), &mut Vec::<Event>::new());
+    }
+    assert_eq!(s.at(StackId(1)).max_hp, 5);
+    // The round start ends Age (9 again), then Poison takes its tenth (8): the fall is
+    // reported, as the original compares with the hit points after Age's end (review r4b F-8b;
+    // compared with the aged 5, the 8 looked like a gain and nothing was reported).
+    let events = new_round(&mut s, &r);
+    assert_eq!(poisoned(&events), vec![(1, 8)]);
+    assert_eq!(s.at(StackId(1)).max_hp, 8);
+    assert_eq!(on(&s, &r, 1), vec![(String::from("venom"), Some(2), 0)]);
+}
+
 // ---------------------------------------------------------------- BAT-MAG-045 to 047
 
 /// Whether `events` report the end of `t:tether` (Bind) on stack `id`.
@@ -691,6 +848,37 @@ fn bind_ends_when_its_last_binder_moves_or_dies() {
     // Now it moves.
     activate(&mut s, 3);
     act(&mut s, &r, Command::Move { to: at(&r, 8, 6) }).unwrap();
+}
+
+// covers: BAT-MAG-045
+#[test]
+fn bind_ends_after_its_rounds_and_leaves_the_stack_without_binders() {
+    // E04b T11b review (r4b F-6): 254 round starts leave one of Bind's 255 rounds; the next
+    // one ends it (reported). The stack may move again, and its binder, forgotten with the
+    // Bind, binds it anew with its next strike (one that still bound it would do nothing).
+    let r = ruleset();
+    let mut s = bound(&r, [None, None]);
+    let mut events = Vec::new();
+    for _ in 0..254 {
+        events.extend(new_round(&mut s, &r));
+    }
+    assert_eq!(on(&s, &r, 3), vec![(String::from("tether"), Some(1), 0)]);
+    assert!(crate::binds::is_bound(&s, StackId(3)) && !unbound(&r, &events, 3));
+    let events = new_round(&mut s, &r);
+    assert!(unbound(&r, &events, 3));
+    assert!(!crate::binds::is_bound(&s, StackId(3)));
+    assert!(on(&s, &r, 3).is_empty());
+    activate(&mut s, 3);
+    let mut legal = LegalCommands::new();
+    legal_commands(&s, &r, BattleSide::Defender, &mut legal);
+    assert!(legal.iter().any(|c| matches!(c, Command::Move { .. })));
+    activate(&mut s, 0);
+    let events = hit(&mut s, &r, 3, (7, 5));
+    assert_eq!(
+        strike_spells(&r, &events),
+        vec![(0, 3, String::from("tether"))]
+    );
+    assert_eq!(on(&s, &r, 3), vec![(String::from("tether"), Some(255), 0)]);
 }
 
 // covers: BAT-MAG-045
@@ -807,6 +995,32 @@ fn a_harpy_bound_or_blinded_by_the_retaliation_stays_where_it_struck() {
     act(&mut s, &r, Command::Move { to: at(&r, 3, 5) }).unwrap();
 }
 
+// covers: BAT-ATK-004, BAT-MAG-045
+#[test]
+fn a_binder_that_strikes_and_returns_releases_the_stack_it_bound() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("binder", 5, 5, 5)],
+        &[("fixed", 10, 8, 5), ("fixed", 1, 14, 2)],
+        1,
+    );
+    // No creature of the original both binds and returns: the trait is set by hand.
+    let st = &mut s.stacks.as_mut_slice()[0];
+    st.traits = st.traits.with(crate::StackTraits::STRIKE_AND_RETURN, true);
+    // The return is a move like any other (the original's move handler, which releases a
+    // binder's stacks at every move): the stack bound by the strike is free again.
+    let events = hit(&mut s, &r, 1, (7, 5));
+    assert_eq!(
+        strike_spells(&r, &events),
+        vec![(0, 1, String::from("tether"))]
+    );
+    assert_eq!(s.at(StackId(0)).hex, at(&r, 5, 5));
+    assert!(unbound(&r, &events, 1));
+    assert!(!crate::binds::is_bound(&s, StackId(1)));
+}
+
 // covers: BAT-MAG-045
 #[test]
 fn a_bound_shooter_still_shoots() {
@@ -907,6 +1121,29 @@ fn acid_breath_lowers_the_defense_by_three_for_the_battle_down_to_0() {
         strike_spells(&r, &events),
         vec![(0, 1, String::from("acid"))]
     );
+}
+
+// covers: BAT-MAG-046, BAT-MAG-010, BAT-MAG-035
+#[test]
+fn acid_breath_stays_on_a_stack_that_dies_and_is_raised() {
+    let r = ruleset();
+    let mut s = duel(&r, "corroder", "serf", 1);
+    hit(&mut s, &r, 1, (7, 5));
+    assert_eq!(s.at(StackId(1)).defense_now(), 7);
+    // The serfs die: the end of the command ends a dead stack's timed effects, and the breath
+    // is none (review r4b F-1: the original's death gives no defense back, nor does a raise).
+    let total = s.at(StackId(1)).total_hp();
+    crate::damage::apply_damage(s.at_mut(StackId(1)), total);
+    crate::effects::damaged(&mut s, &r, StackId(1), &mut Vec::<Event>::new());
+    crate::effects::remove_dead(&mut s, &r);
+    crate::raise::mark_corpses(&mut s);
+    assert_eq!(on(&s, &r, 1), vec![(String::from("acid"), None, 3)]);
+    assert_eq!(s.at(StackId(1)).defense_now(), 7);
+    let raise = (StackId(1), 20);
+    crate::raise::raise(&mut s, &r, raise, false, &mut Vec::<Event>::new());
+    let serfs = s.at(StackId(1));
+    assert_eq!((serfs.count, serfs.defense_now()), (2, 7));
+    assert_eq!(on(&s, &r, 1), vec![(String::from("acid"), None, 3)]);
 }
 
 // covers: BAT-MAG-047

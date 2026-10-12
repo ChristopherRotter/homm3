@@ -302,18 +302,20 @@ pub(crate) fn effective_defense(stack: &Stack, params: &BattleParams) -> i32 {
 }
 
 /// The defense a creature that ignores `percent` % of it sees: with quirk Q-0005 (`staged`) the
-/// executable's `defense − trunc(f32(defense) × f32(percent / 100))`, the share taken rounded
-/// toward 0 (`installation.md` §7.11; 7 against a Behemoth leaves 5); else `defense · (100 −
-/// percent) / 100` rounded toward 0 (Q19; 7 leaves 4).
+/// executable's `trunc(f32(defense) − f32(defense) × f32(percent / 100))`, the defense left
+/// computed from single-precision values and then rounded toward 0 (0x4425C8 to 0x4425F5: the
+/// share taken is never rounded on its own; 7 against a Behemoth leaves 4, and 10 leaves 5,
+/// as the stored 0.4 lies above 0.4); else `defense · (100 − percent) / 100` rounded toward 0
+/// (Q19; 7 leaves 4, 10 leaves 6).
 // rule: BAT-DMG-006
 pub(crate) fn reduced_defense(defense: i32, percent: u8, staged: bool) -> i32 {
     let percent = percent.min(100);
     if staged {
-        let taken = stored(u64::from(defense.unsigned_abs()), SINGLE_BITS)
-            .times(single(u16::from(percent), 100))
-            .trunc();
+        // The magnitude apart from the sign: the rounding is toward 0 either way.
+        let d = stored(u64::from(defense.unsigned_abs()), SINGLE_BITS);
+        let left = d.minus(d.times(single(u16::from(percent), 100))).trunc();
         // At most |defense|.
-        defense - defense.signum() * i32::try_from(taken).unwrap_or(0)
+        defense.signum() * i32::try_from(left).unwrap_or(0)
     } else {
         // At most |defense| · 100: no overflow for a defense of an `i16` sum.
         defense.saturating_mul(i32::from(100 - percent)) / 100

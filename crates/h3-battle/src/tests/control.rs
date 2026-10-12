@@ -13,8 +13,8 @@ use super::support::*;
 use crate::effects::TimedCast;
 use crate::state::StackFlags;
 use crate::{
-    BattleState, CastTarget, CastTargets, Command, Event, EventKind, LegalCommands, StackId,
-    Status, cast_targets, legal_commands,
+    BattleState, CastTarget, CastTargets, Command, CommandError, Event, EventKind, LegalCommands,
+    StackId, Status, cast_targets, legal_commands,
 };
 
 /// Gives stack `id` the timed effect of `name` at `mastery` for five rounds.
@@ -84,6 +84,13 @@ fn attacks(commands: &[Command], id: u8) -> bool {
         .any(|c| matches!(c, Command::Attack { target, .. } if target.0 == id))
 }
 
+/// Whether `commands` shoot at stack `id`.
+fn shoots(commands: &[Command], id: u8) -> bool {
+    commands
+        .iter()
+        .any(|c| matches!(c, Command::Shoot { target, .. } if target.0 == id))
+}
+
 /// Whether stack `id` has `status`.
 fn has(s: &BattleState, id: u8, status: Status) -> bool {
     s.stacks()[usize::from(id)].spells.status.contains(status)
@@ -94,6 +101,15 @@ fn berserk_now(s: &mut BattleState, r: &Ruleset) -> Vec<Event> {
     let mut events = Vec::new();
     crate::turn::berserk_now(s, r, &mut events);
     events
+}
+
+/// Places a Quicksand pit of `side` on `(x, y)` as its cast would (test setup only).
+fn pit(s: &mut BattleState, r: &Ruleset, side: BattleSide, (x, y): (i32, i32)) {
+    let id = spell(r, "quicksand");
+    let shape = r.spell(id).unwrap().magic.obstacle.clone().unwrap();
+    let placed = (id, h3_content::ObstacleKind::Pit, &shape);
+    let hexes = [at(r, x, y)];
+    crate::obstacles::place(s, placed, side, (&hexes, 0), &mut Vec::<Event>::new());
 }
 
 // covers: BAT-MAG-025
@@ -139,29 +155,39 @@ fn berserk_reaches_both_sides_around_its_hex_and_ends_hypnotize() {
 #[test]
 fn a_berserk_stack_attacks_the_nearest_stack_on_its_own_turn() {
     let r = ruleset();
+    // Ids: 0 fixed (berserk), 1 fixed (attacker); 2 brute, 3 slow (defender).
     let mut s = arena(
         &r,
         [None, None],
-        &[("brute", 5, 2, 1), ("fixed", 10, 5, 5), ("fixed", 10, 7, 5)],
-        &[("slow", 5, 12, 5)],
+        &[("fixed", 10, 5, 5), ("fixed", 10, 7, 5)],
+        &[("brute", 5, 2, 1), ("slow", 5, 12, 5)],
         1,
     );
-    give(&mut s, &r, (1, "berserk"), 1);
-    // Every other stack is its enemy: its own side may attack it, and not its other stacks.
+    give(&mut s, &r, (0, "berserk"), 1);
+    // Its own side may not attack it (E04b T11b review, F-r3-control-battlefield-2: this test
+    // had the attacker's brute attack it), nor its other stacks; the other side may, as ever.
+    activate(&mut s, 1);
     let commands = legal(&s, &r, BattleSide::Attacker);
-    assert!(attacks(&commands, 1) && !attacks(&commands, 2));
+    assert!(!attacks(&commands, 0) && attacks(&commands, 3));
+    let own = Command::Attack {
+        target: StackId(0),
+        from: at(&r, 6, 5),
+    };
+    assert_eq!(act(&mut s, &r, own), Err(CommandError::NotAnEnemy));
+    activate(&mut s, 2);
+    assert!(attacks(&legal(&s, &r, BattleSide::Defender), 0));
     let attack = Command::Attack {
-        target: StackId(1),
+        target: StackId(0),
         from: at(&r, 4, 5),
     };
     let events = act(&mut s, &r, attack).unwrap();
     // The brute's attack and the retaliation, which does not end Berserk; then the berserk
     // stack's own turn: it attacks the nearest stack, the brute next to it, and its Berserk ends.
-    assert_eq!(strikes(&events), [(0, 1), (1, 0), (1, 0), (0, 1)]);
+    assert_eq!(strikes(&events), [(2, 0), (0, 2), (0, 2), (2, 0)]);
     let ended = events.iter().position(|e| {
         e.kind
             == EventKind::EffectEnded {
-                target: StackId(1),
+                target: StackId(0),
                 spell: spell(&r, "berserk"),
             }
     });
@@ -172,8 +198,8 @@ fn a_berserk_stack_attacks_the_nearest_stack_on_its_own_turn() {
                 .rposition(|e| matches!(e.kind, EventKind::Struck { .. }))
                 .unwrap()
     );
-    assert!(s.stacks()[1].flags.contains(StackFlags::ACTED));
-    assert_eq!(s.active(), Some(StackId(2)));
+    assert!(s.stacks()[0].flags.contains(StackFlags::ACTED));
+    assert_eq!(s.active(), Some(StackId(1)));
     // Without the brute next to it, it walks to its own stack, the nearest, and attacks it.
     let mut s = arena(
         &r,
@@ -191,6 +217,74 @@ fn a_berserk_stack_attacks_the_nearest_stack_on_its_own_turn() {
     })));
     assert_eq!(strikes(&events), [(0, 1), (1, 0)]);
     assert!(!has(&s, 0, Status::BERSERK));
+}
+
+/// E04b T11b review (F-r3-control-battlefield-2): a berserk stack is not its own side's to
+/// attack or shoot (the original's cursor compares the target's own side with the acting side
+/// and has no Berserk test, the reviewers' reading of 0x476490; VCMI's `battleCanAttackUnit`
+/// has none either), while the other side attacks and shoots it as ever. Next to another stack it
+/// counts as that stack's enemy whatever the sides (the two callers of the original's 0x442880):
+/// it blocks a shooter and a multi-headed strike reaches it.
+// covers: BAT-MAG-025, BAT-RNG-001, BAT-ATK-003
+#[test]
+fn a_berserk_stack_is_no_target_of_its_own_side_and_an_enemy_next_to_any_stack() {
+    let r = ruleset();
+    // Ids: 0 archer above the berserk fixed (1), 2 archer far away (attacker); 3 archer beside
+    // the berserk stack, 4 archer far away (defender). Each archer beside it touches no other
+    // stack.
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("archer", 5, 7, 4), ("fixed", 5, 8, 5), ("archer", 5, 2, 1)],
+        &[("archer", 5, 9, 5), ("archer", 5, 14, 8)],
+        1,
+    );
+    let distance =
+        |a: (i32, i32), b: (i32, i32)| field(&r).distance(at(&r, a.0, a.1), at(&r, b.0, b.1));
+    assert_eq!((distance((7, 4), (8, 5)), distance((7, 4), (9, 5))), (1, 2));
+    give(&mut s, &r, (1, "berserk"), 1);
+    let shot = |target: u8, (x, y): (i32, i32)| Command::Shoot {
+        target: StackId(target),
+        at: at(&r, x, y),
+    };
+    // Its own side's archers beside it are blocked and may not strike it either.
+    let commands = legal(&s, &r, BattleSide::Attacker);
+    assert!(!commands.iter().any(|c| matches!(c, Command::Shoot { .. })));
+    assert!(!attacks(&commands, 1) && attacks(&commands, 3));
+    assert_eq!(
+        act(&mut s, &r, shot(4, (14, 8))),
+        Err(CommandError::CannotShoot)
+    );
+    // Those far away shoot the other side's stacks only.
+    activate(&mut s, 2);
+    let commands = legal(&s, &r, BattleSide::Attacker);
+    assert!(shoots(&commands, 3) && shoots(&commands, 4) && !shoots(&commands, 1));
+    assert_eq!(
+        act(&mut s, &r, shot(1, (8, 5))),
+        Err(CommandError::NotAnEnemy)
+    );
+    // The other side's archers beside it are blocked too and strike it; those far away shoot it.
+    activate(&mut s, 3);
+    let commands = legal(&s, &r, BattleSide::Defender);
+    assert!(!commands.iter().any(|c| matches!(c, Command::Shoot { .. })));
+    assert!(attacks(&commands, 1));
+    activate(&mut s, 4);
+    assert!(shoots(&legal(&s, &r, BattleSide::Defender), 1));
+    // A hydra strikes the berserk stack of its own side beside it with the stack it attacks.
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("hydra", 10, 7, 5), ("fixed", 10, 6, 4)],
+        &[("fixed", 10, 8, 5)],
+        1,
+    );
+    give(&mut s, &r, (1, "berserk"), 1);
+    let attack = Command::Attack {
+        target: StackId(2),
+        from: at(&r, 7, 5),
+    };
+    let events = act(&mut s, &r, attack).unwrap();
+    assert_eq!(strikes(&events)[..2], [(0, 2), (0, 1)]);
 }
 
 // covers: BAT-MAG-025
@@ -291,6 +385,53 @@ fn a_berserk_stack_out_of_reach_walks_towards_its_target_or_passes() {
     assert!(events.contains(&Event::public(EventKind::TurnPassed { stack: StackId(0) })));
 }
 
+// covers: BAT-MAG-025, BAT-MAG-032
+#[test]
+fn a_berserk_stack_does_not_attack_from_a_pit_its_side_sees() {
+    // E04b T11b review (r3 F-4; the user, BAT-Q30): no attack starts from a position where the
+    // walk stops in a pit the stack's side sees, a berserk stack's automatic one neither, in
+    // every profile (under the retired flag of BAT-QUIRK-2 it walked into the pit and did not
+    // strike). Ids: 0 fixed (berserk, the attacker's); 1 slow, three steps away, whose only free
+    // neighbouring hex holds the pit; 2 slow, four steps away (the defender's).
+    for profile in ["t:faithful", "t:sight"] {
+        let r = ruleset_with(profile, |_| {});
+        let battle = |pit_of: BattleSide| {
+            let mut s = arena(
+                &r,
+                [None, None],
+                &[("fixed", 10, 2, 5)],
+                &[("slow", 5, 6, 5), ("slow", 5, 2, 10)],
+                1,
+            );
+            let free = at(&r, 5, 5);
+            let around = field(&r).neighbors(at(&r, 6, 5));
+            for hex in around.into_iter().flatten().filter(|&hex| hex != free) {
+                s.natural.block(hex);
+            }
+            pit(&mut s, &r, pit_of, (5, 5));
+            give(&mut s, &r, (0, "berserk"), 1);
+            s
+        };
+        // Its own side's pit, which it sees: the nearer stack has no position to attack it from,
+        // so it walks to the farther one and attacks it.
+        let mut s = battle(BattleSide::Attacker);
+        let events = berserk_now(&mut s, &r);
+        assert_eq!(strikes(&events).first(), Some(&(0, 2)), "{profile}");
+        assert_ne!(s.stacks()[0].hex, at(&r, 5, 5));
+        // The other side's hidden pit, which it does not see: it goes for the nearer stack, is
+        // stopped in the pit, which shows itself, and does not strike (BAT-MAG-032).
+        let mut s = battle(BattleSide::Defender);
+        let events = berserk_now(&mut s, &r);
+        assert!(strikes(&events).is_empty(), "{profile}");
+        assert_eq!(s.stacks()[0].hex, at(&r, 5, 5));
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e.kind, EventKind::ObstacleRevealed { .. }))
+        );
+    }
+}
+
 // covers: BAT-MAG-025
 #[test]
 fn a_cast_that_makes_the_active_stack_berserk_lets_it_act_at_once() {
@@ -358,6 +499,28 @@ fn hypnotize_needs_full_hit_points_within_its_value_and_no_mirror() {
         targets(&s, &r, BattleSide::Attacker, "hypnotize"),
         [stack(1), stack(2)]
     );
+    // Full hit points equal to the limit are within it (the original compares with "at most",
+    // 0x5A83BA; E04b T11b review, r3 F-10): power 2 at Basic gives 2 × 25 + 10 = 60, batch 2c
+    // H1's limit. Six creatures of 10 hit points are a target; one hit point more is too much.
+    let mut hero = adept(&r, &["hypnotize"], 1);
+    hero.power = 2;
+    let mut s = arena(
+        &r,
+        [Some(hero), None],
+        &[("fixed", 5, 2, 5)],
+        &[("fixed", 6, 9, 3), ("fixed", 1, 9, 5), ("fixed", 7, 9, 7)],
+        1,
+    );
+    s.stacks.as_mut_slice()[2].max_hp = 61;
+    assert_eq!(
+        targets(&s, &r, BattleSide::Attacker, "hypnotize"),
+        [stack(1)]
+    );
+    s.stacks.as_mut_slice()[2].max_hp = 60;
+    assert_eq!(
+        targets(&s, &r, BattleSide::Attacker, "hypnotize"),
+        [stack(1), stack(2)]
+    );
 }
 
 // covers: BAT-MAG-026
@@ -411,6 +574,133 @@ fn a_hypnotized_stack_fights_for_the_other_side() {
     assert!(!attacks(&legal(&s, &r, BattleSide::Attacker), 0));
 }
 
+/// E04b T11b review (F-r3-control-battlefield-1, scenarios a and b): who may attack or shoot a
+/// stack is decided by the acting stack's controller against the other stack's own side, as the
+/// original's cursor and pathfinder (the reviewers' reading of 0x476490) and VCMI's
+/// `battleMatchOwner` have it; batch 2c row H1: "Blue's stacks cannot attack the hypnotized
+/// stack". The engine compared the two controllers, the other way round on both counts.
+// covers: BAT-MAG-026
+#[test]
+fn a_hypnotized_stack_is_attacked_by_the_side_that_controls_it_and_not_by_its_own() {
+    let r = ruleset();
+    // Ids: 0 fixed, 1 archer (attacker); 2 fixed (hypnotized), 3 fixed, 4 archer (defender).
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("fixed", 5, 8, 5), ("archer", 5, 2, 2)],
+        &[
+            ("fixed", 5, 9, 5),
+            ("fixed", 5, 10, 5),
+            ("archer", 5, 14, 8),
+        ],
+        1,
+    );
+    give(&mut s, &r, (2, "hypnotize"), 1);
+    // The attacker, who controls it, may attack and shoot it like any stack of the defender.
+    let commands = legal(&s, &r, BattleSide::Attacker);
+    assert!(attacks(&commands, 2) && attacks(&commands, 3));
+    activate(&mut s, 1);
+    let commands = legal(&s, &r, BattleSide::Attacker);
+    assert!(shoots(&commands, 2) && shoots(&commands, 3) && !shoots(&commands, 0));
+    // Its own side may neither attack nor shoot it.
+    activate(&mut s, 3);
+    let commands = legal(&s, &r, BattleSide::Defender);
+    assert!(!attacks(&commands, 2) && attacks(&commands, 0));
+    let attack = Command::Attack {
+        target: StackId(2),
+        from: at(&r, 10, 5),
+    };
+    assert_eq!(act(&mut s, &r, attack), Err(CommandError::NotAnEnemy));
+    activate(&mut s, 4);
+    let commands = legal(&s, &r, BattleSide::Defender);
+    assert!(!shoots(&commands, 2) && shoots(&commands, 0));
+    let shot = Command::Shoot {
+        target: StackId(2),
+        at: at(&r, 9, 5),
+    };
+    assert_eq!(act(&mut s, &r, shot), Err(CommandError::NotAnEnemy));
+    // The hypnotized stack itself attacks the stacks of its own side, another hypnotized one
+    // among them, and none of the side that commands it.
+    give(&mut s, &r, (3, "hypnotize"), 1);
+    activate(&mut s, 2);
+    let commands = legal(&s, &r, BattleSide::Attacker);
+    assert!(attacks(&commands, 3) && !attacks(&commands, 0));
+    // The attacker's attack on the stack it controls is carried out.
+    activate(&mut s, 0);
+    let attack = Command::Attack {
+        target: StackId(2),
+        from: at(&r, 8, 5),
+    };
+    let events = act(&mut s, &r, attack).unwrap();
+    assert_eq!(strikes(&events).first(), Some(&(0, 2)));
+}
+
+/// E04b T11b review (F-r3-control-battlefield-1, scenario c): next to another stack a
+/// hypnotized stack counts as the enemy of the stacks whose controller is not its own side (the
+/// two callers of the original's 0x442880, which takes the first stack's controller and the
+/// second stack's own side): it blocks the shooters of the side that controls it, not those of
+/// its own side, and a multi-headed strike of the side that controls it reaches it.
+// covers: BAT-MAG-026, BAT-RNG-001, BAT-ATK-003
+#[test]
+fn a_hypnotized_stack_blocks_and_is_struck_as_a_stack_of_its_own_side() {
+    let r = ruleset();
+    // Ids: 0 archer (attacker); 1 fixed (hypnotized) between it and 2 archer, 3 fixed (defender).
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("archer", 5, 7, 5)],
+        &[("fixed", 5, 8, 5), ("archer", 5, 9, 5), ("fixed", 5, 14, 1)],
+        1,
+    );
+    give(&mut s, &r, (1, "hypnotize"), 1);
+    // The attacker's archers are blocked by the stack their side controls, and strike it.
+    let commands = legal(&s, &r, BattleSide::Attacker);
+    assert!(!commands.iter().any(|c| matches!(c, Command::Shoot { .. })));
+    assert!(attacks(&commands, 1));
+    let shot = Command::Shoot {
+        target: StackId(3),
+        at: at(&r, 14, 1),
+    };
+    assert_eq!(act(&mut s, &r, shot), Err(CommandError::CannotShoot));
+    // The defender's archers beside it are free to shoot, though not at it.
+    activate(&mut s, 2);
+    let commands = legal(&s, &r, BattleSide::Defender);
+    assert!(shoots(&commands, 0) && !shoots(&commands, 1));
+    assert!(!commands.iter().any(|c| matches!(c, Command::Attack { .. })));
+    // The attacker's hydra strikes the hypnotized stack beside it with the stack it attacks.
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("hydra", 10, 7, 5)],
+        &[("fixed", 10, 8, 5), ("fixed", 10, 6, 4)],
+        1,
+    );
+    give(&mut s, &r, (2, "hypnotize"), 1);
+    let attack = Command::Attack {
+        target: StackId(1),
+        from: at(&r, 7, 5),
+    };
+    let events = act(&mut s, &r, attack).unwrap();
+    assert_eq!(strikes(&events), [(0, 1), (0, 2)]);
+    // The defender's hydra spares its own side's hypnotized stack beside it.
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("fixed", 10, 7, 5)],
+        &[("hydra", 10, 8, 5), ("fixed", 10, 8, 4)],
+        1,
+    );
+    assert_eq!(field(&r).distance(at(&r, 8, 4), at(&r, 8, 5)), 1);
+    give(&mut s, &r, (2, "hypnotize"), 1);
+    activate(&mut s, 1);
+    let attack = Command::Attack {
+        target: StackId(0),
+        from: at(&r, 8, 5),
+    };
+    let events = act(&mut s, &r, attack).unwrap();
+    assert_eq!(strikes(&events), [(1, 0)]);
+}
+
 // covers: BAT-MAG-026
 #[test]
 fn mass_versions_pass_over_hypnotized_stacks_and_expert_cure_only_with_q0012() {
@@ -441,12 +731,113 @@ fn mass_versions_pass_over_hypnotized_stacks_and_expert_cure_only_with_q0012() {
         (hypnotized, hasted)
     };
     // Expert Cure reaches the caster's hypnotized stack without quirk Q-0012, not with it; the
-    // other mass versions never do.
+    // mass versions of the timed spells never do (Expert Dispel always does: the next test).
     assert_eq!(run("t:faithful", 3, CastTarget::None), (false, false));
     assert_eq!(run("t:hypnosis", 3, CastTarget::None), (true, false));
     // A single Cure from its owner ends Hypnotize in every profile.
     assert_eq!(run("t:faithful", 1, stack(1)), (false, false));
     assert_eq!(run("t:hypnosis", 1, stack(1)), (false, false));
+}
+
+/// E04b T11b review (F-r2a-2, F-r3-control-battlefield-3): Expert Dispel reaches hypnotized
+/// stacks in every profile. The original's Dispel has a loop of its own over both sides' stacks
+/// (the reviewers' reading of its handler 0x5A15CE), which tests no Hypnotize, unlike the mass
+/// handler of the timed spells and Expert Cure's loop; VCMI's Dispel has no such exception
+/// either. With quirk Q-0012 the engine passed over them, as if Dispel were Cure: a mass Dispel,
+/// the natural answer to Hypnotize, did nothing to it.
+// covers: BAT-MAG-016, BAT-MAG-026
+#[test]
+fn expert_dispel_reaches_hypnotized_stacks_in_every_profile() {
+    for profile in ["t:faithful", "t:hypnosis"] {
+        let r = ruleset_with(profile, |_| {});
+        // Ids: 0 fixed (attacker); 1 fixed (hypnotized and hastened), 2 fixed (defender). What
+        // stack 1 is left with after an Expert Dispel of the hero among `heroes`, cast in the
+        // turn of stack `active`: its effects and its controller.
+        let after = |heroes: [Option<BattleHero>; 2], active: u8| {
+            let mut s = arena(
+                &r,
+                heroes,
+                &[("fixed", 5, 2, 5)],
+                &[("fixed", 5, 9, 5), ("fixed", 5, 10, 7)],
+                1,
+            );
+            give(&mut s, &r, (1, "hypnotize"), 1);
+            give(&mut s, &r, (1, "haste"), 1);
+            assert_eq!(on(&s, &r, 1), ["haste", "hypnotize"]);
+            activate(&mut s, active);
+            act(&mut s, &r, cast(&r, "dispel", CastTarget::None)).unwrap();
+            (on(&s, &r, 1), s.stacks()[1].controller())
+        };
+        let hero = || Some(adept(&r, &["dispel"], 3));
+        // Whether its owner's hero casts or the hero of the side that controls it: its Hypnotize
+        // ends, and its other effect too.
+        let free = (Vec::new(), BattleSide::Defender);
+        assert_eq!(
+            [after([None, hero()], 2), after([hero(), None], 0)],
+            [free.clone(), free],
+            "{profile}"
+        );
+    }
+}
+
+/// E04b T11b review (F-r1-3): whether a spell without a target would affect some stack is asked
+/// of hypnotized stacks too, as the original's book asks it (the reviewer's reading of the check
+/// from 0x59ED5A: its target test 0x5A39C0 reads a stack's Hypnotize only for the hero that
+/// controls it; the mass handler passes over such stacks afterwards). The engine left out the
+/// stacks a mass version passes over: with no other stack in reach the spell was refused.
+// covers: BAT-MAG-003, BAT-MAG-026
+#[test]
+fn a_mass_version_is_cast_when_only_hypnotized_stacks_would_be_affected() {
+    let r = ruleset();
+    // The defender's only stack fights for the attacker, whose hero has the mass Slow and keeps
+    // `resistance` of every hostile spell off the stacks it controls.
+    let start = |resistance: u32| {
+        let mut hero = adept(&r, &["sloth"], 3);
+        hero.effects
+            .push(h3_contracts::BattleEffect::MagicResistance {
+                rate: Rate::bp(resistance),
+            });
+        let mut s = arena(
+            &r,
+            [Some(hero), None],
+            &[("fixed", 5, 2, 5)],
+            &[("fixed", 5, 9, 5)],
+            1,
+        );
+        give(&mut s, &r, (1, "hypnotize"), 1);
+        s
+    };
+    // The spell would affect the hypnotized stack, so it may be cast; the cast is paid for and
+    // reaches nobody, the mass version passing over that stack.
+    let mut s = start(0);
+    assert_eq!(
+        targets(&s, &r, BattleSide::Attacker, "sloth"),
+        [CastTarget::None]
+    );
+    let events = act(&mut s, &r, cast(&r, "sloth", CastTarget::None)).unwrap();
+    let kinds: Vec<EventKind> = events.iter().map(|e| e.kind).collect();
+    assert_eq!(
+        kinds,
+        [EventKind::SpellCast {
+            side: BattleSide::Attacker,
+            spell: spell(&r, "sloth"),
+            target: CastTarget::None,
+            second: CastTarget::None,
+        }]
+    );
+    assert_eq!(on(&s, &r, 1), ["hypnotize"]);
+    let hero = s.hero(BattleSide::Attacker).unwrap();
+    assert_eq!((hero.mana, hero.casts), (196, 1));
+    // The stack counts with the chance the cast has on it: when the hero that controls it
+    // resists all of the spell, nobody would be affected and the cast is refused.
+    let mut s = start(10_000);
+    assert_eq!(targets(&s, &r, BattleSide::Attacker, "sloth"), []);
+    let before = s.clone();
+    assert_eq!(
+        act(&mut s, &r, cast(&r, "sloth", CastTarget::None)),
+        Err(CommandError::InvalidSpellTarget)
+    );
+    assert_eq!(s, before);
 }
 
 // covers: BAT-MAG-026

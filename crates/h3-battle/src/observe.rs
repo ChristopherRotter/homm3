@@ -18,6 +18,10 @@
 //! may know is in it, directly or through the ruleset's data. The RNG, the outcome's bookkeeping
 //! (the creatures a vanished clone took along, a surrender's price once paid) and the templates
 //! of the stacks a side's spells would create are not.
+//!
+//! One gap is registered (BAT-STUB-1, BAT-Q35): since the E04b T11b review a rule reads whether a
+//! dead created stack vanished when its rounds ran out (its record is then not reused,
+//! BAT-MAG-037), and the observation does not tell such a stack from a killed one.
 
 use alloc::vec::Vec;
 
@@ -179,6 +183,8 @@ pub fn observe_as(state: &BattleState, ruleset: &Ruleset, viewer: Viewer) -> Obs
         last_side_acted: state.last_side_acted,
         result: state.result,
         stacks: state.stacks,
+        // stub: BAT-STUB-1
+        // `state.created.vanished` (which dead created stacks ran out of rounds) is not shown yet.
         clone_rounds: state.created.rounds,
         clone_links: state.created.links(),
         summoned: state.created.summoned(),

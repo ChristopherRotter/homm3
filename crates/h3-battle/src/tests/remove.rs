@@ -261,6 +261,45 @@ fn an_anchor_hex_leads_to_the_obstacle_placed_last_until_a_removal_clears_it() {
     assert!(s.removable_obstacles().is_empty());
 }
 
+/// E04b T11b review (F-robust-2, F-r3-control-battlefield-7): Remove Obstacle is castable only
+/// while some hex leads to an obstacle. With quirk BAT-QUIRK-3 a removal clears the removed
+/// obstacle's anchor hex, which another obstacle may block: an obstacle left without a hex that
+/// leads to it stays for the rest of the battle and is no reason to list the spell.
+// covers: BAT-MAG-034, BAT-GEO-003
+#[test]
+fn remove_obstacle_is_castable_only_while_a_hex_leads_to_an_obstacle() {
+    let r = ruleset_with("t:anchors", |_| {});
+    let castable = |s: &BattleState| {
+        castable_spells(s, &r, BattleSide::Attacker).contains(spell(&r, "remove"))
+    };
+    // `first` and a stone on (8, 5) that is placed later and anchored on (7, 5), a hex of
+    // `first`: both hexes lead to the later stone, whose removal clears them.
+    let after_the_removal = |first: Piece<'_>| {
+        let later: Piece<'_> = (&[(8, 5)], Some((7, 5)));
+        let mut s = field_with(&r, caster(&r, &["remove"], 0), &[first, later]);
+        assert!(castable(&s));
+        assert!(targets(&s, &r, "remove").contains(at(&r, 7, 5)));
+        cast_at(&mut s, &r, "remove", (8, 5));
+        s.heroes[0].as_mut().unwrap().view.casts = 0;
+        assert_eq!(s.removable_obstacles().len(), 1);
+        assert!(s.obstacles().contains(at(&r, 7, 5)));
+        s
+    };
+    // The first stone blocks only its anchor (7, 5): no hex leads to it any more, the spell has
+    // no target and is not castable.
+    let s = after_the_removal((&[(7, 5)], Some((7, 5))));
+    assert!(targets(&s, &r, "remove").is_empty());
+    assert!(!castable(&s));
+    // A stone that keeps a blocked hex that was not cleared is found through it.
+    let s = after_the_removal((&[(7, 5), (7, 6)], Some((7, 5))));
+    assert_eq!(targets(&s, &r, "remove"), cells(&r, &[(7, 6)]));
+    assert!(castable(&s));
+    // One that keeps its anchor, through the anchor.
+    let s = after_the_removal((&[(7, 5)], Some((6, 5))));
+    assert_eq!(targets(&s, &r, "remove"), cells(&r, &[(6, 5)]));
+    assert!(castable(&s));
+}
+
 // covers: BAT-MAG-034, BAT-GEO-003
 #[test]
 fn an_obstacle_blocking_nothing_is_reached_only_through_its_anchor() {

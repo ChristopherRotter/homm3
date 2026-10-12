@@ -974,7 +974,8 @@ pub const CREATURES: &[Creature] = &[
         6,
         &["alive", "rebirth=3", "casts=2"],
     ),
-    // Fear (BAT-MAG-060): an azure that always frightens, a spook that rarely does.
+    // Fear (BAT-MAG-060): an azure that nearly always frightens (the compiler refuses a certain
+    // fear: tests pick seeds whose roll is not the one in a hundred), a spook that rarely does.
     (
         "azure",
         10,
@@ -983,7 +984,7 @@ pub const CREATURES: &[Creature] = &[
         2,
         10,
         6,
-        &["alive", "charge_immunity", "fear=100"],
+        &["alive", "charge_immunity", "fear=99"],
     ),
     ("spook", 10, 10, 2, 2, 10, 4, &["alive", "fear=1"]),
     // A thunderbolt by chance (BAT-MAG-041).
@@ -1394,6 +1395,24 @@ pub fn set_masteries(s: &mut BattleState, side: usize, r: &Ruleset, schools: [u8
 /// The test ruleset with profile `profile` (`t:faithful` without quirks, `t:quirky` with
 /// Q-0003, `t:single` with Q-0005) and edited battle parameters.
 pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> Ruleset {
+    ruleset_from(profile, edit, |_| {})
+}
+
+/// [`ruleset_with`], with the pack patched before it is compiled (review repros only).
+pub fn ruleset_from(
+    profile: &str,
+    edit: impl FnOnce(&mut BattleParamsDef),
+    patch: impl FnOnce(&mut ContentPack),
+) -> Ruleset {
+    try_ruleset_from(profile, edit, patch).unwrap()
+}
+
+/// [`ruleset_from`], or the compiler's refusal.
+pub fn try_ruleset_from(
+    profile: &str,
+    edit: impl FnOnce(&mut BattleParamsDef),
+    patch: impl FnOnce(&mut ContentPack),
+) -> Result<Ruleset, h3_content::CompileError> {
     let creatures = CREATURES
         .iter()
         .map(
@@ -1420,7 +1439,7 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
         .collect();
     let mut battle = battle_params();
     edit(&mut battle);
-    let pack = ContentPack {
+    let mut pack = ContentPack {
         creatures,
         factions: [
             ("castle", Some("plain")),
@@ -1479,6 +1498,13 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 quirks: vec![(String::from("quirk.battle.frenzy_reduced_defense"), true)],
             },
             ProfileDef {
+                key: ContentKey::new("t", "frenzy_single").unwrap(),
+                quirks: vec![
+                    (String::from("quirk.battle.frenzy_reduced_defense"), true),
+                    (String::from("quirk.battle.single_precision_rates"), true),
+                ],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "counterstrike").unwrap(),
                 quirks: vec![(String::from("quirk.battle.counterstrike_extra_round"), true)],
             },
@@ -1502,10 +1528,6 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 quirks: vec![(String::from("quirk.battle.natives_sight_at_start"), true)],
             },
             ProfileDef {
-                key: ContentKey::new("t", "pits").unwrap(),
-                quirks: vec![(String::from("quirk.battle.attack_from_seen_pit"), true)],
-            },
-            ProfileDef {
                 key: ContentKey::new("t", "anchors").unwrap(),
                 quirks: vec![(String::from("quirk.battle.obstacle_anchors"), true)],
             },
@@ -1519,10 +1541,6 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                     String::from("quirk.battle.sacrifice_tests_as_resurrection"),
                     true,
                 )],
-            },
-            ProfileDef {
-                key: ContentKey::new("t", "mirrored").unwrap(),
-                quirks: vec![(String::from("quirk.battle.creature_mirror_untested"), true)],
             },
             ProfileDef {
                 key: ContentKey::new("t", "clone_on_original").unwrap(),
@@ -1594,7 +1612,8 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             depends: vec![],
         })
     };
-    Ruleset::compile(&[pack], profile).unwrap()
+    patch(&mut pack);
+    Ruleset::compile(&[pack], profile)
 }
 
 /// A test spell: name, category, schools, target and side.
