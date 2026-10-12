@@ -209,6 +209,12 @@ impl StackTraits {
         if on { Self(self.0 | other.0) } else { self }
     }
 
+    /// The set without the traits of `other`.
+    #[must_use]
+    pub(crate) const fn without(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
+    }
+
     /// The raw bits.
     pub const fn bits(self) -> u32 {
         self.0

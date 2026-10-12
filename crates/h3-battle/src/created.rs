@@ -229,11 +229,12 @@ pub(crate) fn clone<S: Sink>(
         top_hp: max_hp,
         shots,
         retaliations_left: original.retaliations,
+        // A clone of a stack raised from a corpse (BAT-MAG-052) is not one itself.
         traits: original
             .traits
             .with(StackTraits::SUMMONED, true)
             .with(StackTraits::CLONE, true)
-            .with(StackTraits::RAISED, false),
+            .without(StackTraits::RAISED),
         flags: StackFlags::default(),
         spells: SpellValues::new(original.speed),
         ..original

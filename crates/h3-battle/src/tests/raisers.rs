@@ -237,6 +237,35 @@ fn a_pit_lord_raises_imps_from_a_corpse_of_its_side_into_its_army_slot() {
     );
 }
 
+// covers: BAT-MAG-038, BAT-MAG-052
+#[test]
+fn a_clone_of_raised_imps_is_not_raised_from_a_corpse() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("fiend", 2, 5, 5), ("serf", 8, 8, 3)],
+        &[("fixed", 3, 13, 5)],
+        1,
+    );
+    hurt(&mut s, &r, 1, 1000);
+    act(&mut s, &r, at_stack(1)).unwrap();
+    let imps = s.stacks()[3];
+    assert!(imps.has(StackTraits::RAISED) && !imps.is_created());
+    crate::created::clone(&mut s, &r, (StackId(3), 3), &mut Vec::<Event>::new());
+    // The clone is a stack the battle created, not one raised from a corpse (it kept its
+    // original's trait: review r4a F-8); its other traits are its original's.
+    let clone = s.stacks()[4];
+    assert!(clone.has(StackTraits::CLONE) && clone.is_created());
+    assert!(!clone.has(StackTraits::RAISED));
+    let created = StackTraits::SUMMONED.bits() | StackTraits::CLONE.bits();
+    assert_eq!(
+        clone.traits.bits(),
+        (imps.traits.bits() & !StackTraits::RAISED.bits()) | created
+    );
+    assert!(s.stacks()[3].has(StackTraits::RAISED));
+}
+
 // covers: BAT-MAG-052
 #[test]
 fn a_pit_lord_needs_a_living_creatures_corpse_on_free_hexes_worth_one_creature() {
