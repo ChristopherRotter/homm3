@@ -646,3 +646,98 @@ E13's macro-actions).
   unit test above); the module doc said `reset` takes a setup. Noted for T9b: the battle
   workload's `collect = "*random_rollout*"` matches the adventure's `random_rollout` too (both
   in `h3_sim`): the adventure workload needs a qualified pattern (inbox).
+
+### Checkpoint after T8b2b/T9a and T9b1 + T9b2 (2026-10-11, `adventure/e08-t9b`)
+
+The user merged T8b2b and T9a (#97, #98) and took (ADV-Q7) **T9b in two tasks with one checkpoint**: T9b1
+the replays, T9b2 the benchmarks (T10 next round). Asked with the cut: the CLI's wiring in
+battle-owned `h3-cli` files (`Cargo.toml`, `lib.rs`, `main.rs`): **user: `cross-lane`**; what a
+replay records, the game commands (the acting player and `EndTurn` or `MoveHero { hero, path }`)
+or the env's actions (entry and tile): after the pros and cons (commands are what the game
+accepts from any source, a server's or a client's path included, and survive action-encoding
+bumps and the hero slots' shifts; actions are compact and pin the env's path choice), **user:
+the game commands**; which benchmarks are gated: **user: all three** (random play, path
+searches, forks). The agent's own call: the commands live under `h3 adventure …`, which parses
+its own arguments (the battle's `Args` stays private to `main.rs`).
+
+**T9b1 — replays.**
+- **The model** (`h3_sim::adventure::replay`, `REPLAY_FORMAT_VERSION` 1): a header (packs,
+  profile, the core ruleset's and the adventure part's content hashes as ADR-0015 point 2 asks,
+  the RNG and hash algorithms, the game and adventure state-hash versions; the engine version
+  informational), the map as `MapRef` (path, the file's content hash — the kernel's FNV-1a over
+  its bytes — and `h3_map::MAP_IMPORT_VERSION`, ADV-Q2; the path is informational, the hash
+  names the file), the seed, the commands with the acting player, a checkpoint hash every N
+  commands, the final day and hash. `record_random` plays the env's random agent (the same
+  commands as `random_rollout`, tested); `verify` checks the header, the map, the checkpoint
+  count, then re-applies every command through `h3_game::apply` (not the env: a server's log
+  has no day limit) and compares the hashes and the day. `h3-sim` reads no maps (`arch.toml`
+  allows `h3-map` there only as a dev-dependency): the caller loads the file and passes its
+  `MapRef` and setup.
+- **The env** gained `step_decoded` (the command an action decoded to, for the record; one
+  query, as a step) and `step_command` (a game command, so a path of the player's own choice:
+  tested with a detour the query would not pick).
+- **The CLI** (`crates/h3-cli/src/adventure/`): `load_rules` (each pack's `pack.toml` and, where
+  it exists, `adventure.toml`; pack ids checked as keys; the same hashes as the embedded packs,
+  tested), `load_map` (a relative path without `..` below `--root`: a replay file is untrusted),
+  the TOML format v1 (`deny_unknown_fields`; commands as `<player> end-turn` and
+  `<player> move <hero> x,y,level …`), `h3 adventure run` (random agents, `--days` 28 by default,
+  `--record`) and `verify`. `main.rs` hands everything after `adventure` to
+  `h3_cli::adventure::cli::main`.
+- **Golden replays** (`fixtures/replays/adventure/`): `duel-s1-d28` (seed 1, 28 days, 136
+  commands), `duel-s2-d7` (42), `duel-s5-strict-d7` (strict-fixed, 46); re-run by
+  `crates/h3-cli/tests/adventure_replays.rs`, which `cargo xtask determinism` already listed
+  (debug, release, `target-cpu=native`).
+
+**T9b2 — benchmarks.**
+- **`h3 adventure bench`** (`bench.rs`): `--workload play` (inside `random_rollout`), `reach`
+  (every hero's reachable-tiles query of the acting player at each step of random play, inside
+  `reach_queries`; the play around it is not counted), `fork` (forks after `--days` of random
+  play, inside `fork_workload`); `--observe 1` and `--masks 1` add what an agent reads before
+  each step (wall time only).
+- **The XL map** (`fixtures/maps/e08-xl-144.h3m`, 8 883 bytes): 144 × 144 with an underground,
+  four heroes per player (two per level), the duel's patchwork and density (1 152 blockers).
+  The generator became `patchwork(side, mix, blockers)`; the duel's draws and bytes are
+  unchanged (its replays name it by hash).
+- **Gated workloads** (`benches/adventure/`, callgrind Ir, +2 %): `random-play-duel-36` (5 games
+  of 28 days) 510 210 757; `reach-xl-144` (2 games of 28 days, 1 920 queries) 657 381 227;
+  `fork-xl-144` (100 000 forks after 7 days) 343 600 056. The adventure's pattern is qualified
+  (`*adventure*random_rollout*`); the battle's `*random_rollout*` is unaffected (its run never
+  calls the adventure's), so tightening it is hygiene only.
+- **Measured** (release, the sandbox's Xeon vCPU, one core; wall time indicative):
+
+  | Measure | Duel 36 × 36 × 2 | XL 144 × 144 × 2 |
+  |---|---|---|
+  | random play, one step (agent, queries, `apply`) | 70.9 µs (14.1 k steps/s), ≈ 745 k Ir | 183 µs (5.5 k steps/s), ≈ 1.6 M Ir (four heroes per player) |
+  | + the acting player's observation before each step | +15 µs | +99 µs |
+  | + the entry and tile masks before each step | +70 µs (×2.0) | +131 µs (×1.7) |
+  | one reachable-tiles query | 27 µs, ≈ 263 k Ir | 33 µs, ≈ 342 k Ir |
+  | one fork | 0.22 µs, ≈ 2 200 Ir (4 heroes) | 0.37 µs, ≈ 3 400 Ir (8 heroes) |
+  | `GameState` / `AdventureEnv` size | 168 / 200 bytes | same |
+
+- **The inbox's performance items, decided from the numbers:**
+  - The masks query twice (`legal_mask`, then `tile_mask`, then the step's decode): an agent
+    reading both heads doubles the duel's step. Worth caching the current state's queries in the
+    env, but the mask API belongs to E05's batch API (or E13's macro-actions): queued there with
+    the numbers, not built.
+  - `observe` rebuilding every `TileView`: +21 % of a duel step, +54 % on XL. Queued for E13's
+    flat encoding (cached static planes), not built.
+  - The reveal's per-row writes: `fog::reveal` is 0.8 % of a random step: **closed**, no per-leaf
+    batch.
+  - New: the reachable-tiles query is 96 % of a random step (of a query: `Reach::search` 56 % on its
+    own, the step price 28 % with `diagonal_cost`'s 16 %, the heap 7 %; zeroing map-sized arrays
+    5 % of a step):
+    optimizing it is the first lever (inbox).
+  - Forks grow with the heroes (each hero's army is a `Vec`), not with the map: decision 6 holds.
+- **Review** (an independent agent, reading the diff): no bug in record or verify; checkpoint
+  math, refused steps, malformed input, determinism, the collect patterns and the duel map's
+  bytes checked. Fixed: a plain env step cloned its command (now only `step_decoded` does;
+  baselines re-taken, −0.02 %); `verify_file` read and parsed the map before comparing its hash,
+  with no size cap and no check that a link under the root stays below it (now: canonical path
+  inside the root, the reader's size limit before reading, the hash before parsing; tested,
+  the link case on Unix); `record_random` cut a record short on a refused action in release
+  builds and looped forever without a limit (now `RecordError::Refused` and `NoLimit`); no test
+  refused a command of the player's own through `step_command` (now: an empty path, a far step,
+  the hero's own tile, another player's turn, after the episode: hash, step count and events
+  unchanged); `patchwork` asserts whole patches; `*.h3m binary` in `.gitattributes` (shared PR:
+  a map is named by its bytes' hash). Kept: `verify` does not know an env's day limit, since a
+  replay certifies game commands (a server's log has none).

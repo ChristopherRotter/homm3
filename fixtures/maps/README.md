@@ -13,4 +13,5 @@ commit message.
 
 | File | Map | Played by |
 |---|---|---|
-| `e08-duel-36.h3m` | SoD, 36 × 36 with an underground; red and blue with two heroes each, one per level, their types' starting armies; terrain in 6 × 6 patches, a road per level, 72 blockers | `h3-sim`'s adventure env tests (E08 T9a); T9b's random-play benchmark and golden replays (decision 11) |
+| `e08-duel-36.h3m` | SoD, 36 × 36 with an underground; red and blue with two heroes each, one per level, their types' starting armies; terrain in 6 × 6 patches, a road per level, 72 blockers | `h3-sim`'s adventure env tests (E08 T9a); the golden replays in `fixtures/replays/adventure/`, the random-play benchmark (`benches/adventure/`; E08 T9b, decision 11) |
+| `e08-xl-144.h3m` | SoD, 144 × 144 with an underground (41 472 tiles); red and blue with four heroes each, two per level; the same patchwork, 1 152 blockers | the path-search and fork benchmarks (`benches/adventure/`; E08 T9b, decision 11) |

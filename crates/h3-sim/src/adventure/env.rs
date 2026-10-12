@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use h3_contracts::PlayerId;
 use h3_game::{
-    Actor, GameCommandError, GameObservation, GameRuleset, GameSetup, GameSetupError, GameState,
-    Sink, Viewer, apply, observe,
+    Actor, GameCommand, GameCommandError, GameObservation, GameRuleset, GameSetup, GameSetupError,
+    GameState, Sink, Viewer, apply, observe,
 };
 
 use super::action::{self, Action, EntryMask};
@@ -152,11 +152,52 @@ impl AdventureEnv {
         action: Action,
         sink: &mut S,
     ) -> Result<StepResult, StepError> {
+        let command = self.decode(player, action)?;
+        self.step_command(player, command, sink)
+    }
+
+    /// Like [`step_with`](Self::step_with), also returning the game command the action decoded to
+    /// (what a replay records, E08 T9b): one reachable-tiles query, as a step; the command is
+    /// cloned for the caller, which a plain step does not pay.
+    ///
+    /// # Errors
+    ///
+    /// A [`StepError`]; the environment is then unchanged and no event was emitted.
+    pub fn step_decoded<S: Sink>(
+        &mut self,
+        player: PlayerId,
+        action: Action,
+        sink: &mut S,
+    ) -> Result<(StepResult, GameCommand), StepError> {
+        let command = self.decode(player, action)?;
+        let result = self.step_command(player, command.clone(), sink)?;
+        Ok((result, command))
+    }
+
+    /// The command `action` decodes to for `player`, unless the episode is over.
+    fn decode(&self, player: PlayerId, action: Action) -> Result<GameCommand, StepError> {
         if self.is_done() {
             return Err(StepError::EpisodeOver);
         }
-        let command = action::decode(&self.state, &self.rules, player, action)
-            .ok_or(StepError::InvalidAction)?;
+        action::decode(&self.state, &self.rules, player, action).ok_or(StepError::InvalidAction)
+    }
+
+    /// Plays a game command for `player` as a step: a path of the player's own choice, which an
+    /// action cannot name (a client computes its own paths, T8b2a).
+    ///
+    /// # Errors
+    ///
+    /// [`StepError::EpisodeOver`] or [`StepError::Rejected`]; the environment is then unchanged
+    /// and no event was emitted.
+    pub fn step_command<S: Sink>(
+        &mut self,
+        player: PlayerId,
+        command: GameCommand,
+        sink: &mut S,
+    ) -> Result<StepResult, StepError> {
+        if self.is_done() {
+            return Err(StepError::EpisodeOver);
+        }
         apply(
             &mut self.state,
             &self.rules,

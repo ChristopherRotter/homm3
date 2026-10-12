@@ -5,6 +5,7 @@
 //!        [--checkpoint-every N] [--record <out.toml>]
 //! h3 verify [--packs-dir packs] <replay.toml>...
 //! h3 bench [--scenario <file>] [--packs-dir packs] [--games N] [--seed N] [--observe 0|1]
+//! h3 adventure run|verify|bench …   (h3_cli::adventure::cli)
 //! ```
 // The CLI is an adapter: it may use the clock (bench timing) and the environment.
 #![allow(clippy::disallowed_types, clippy::disallowed_methods)]
@@ -25,7 +26,8 @@ const USAGE: &str = "usage:
   h3 run --scenario <file> [--packs-dir packs] [--seed N] [--agent-seed N] [--max-steps N]
          [--checkpoint-every N] [--record <out.toml>]
   h3 verify [--packs-dir packs] <replay.toml>...
-  h3 bench [--scenario <file>] [--packs-dir packs] [--games N] [--seed N] [--observe 0|1]";
+  h3 bench [--scenario <file>] [--packs-dir packs] [--games N] [--seed N] [--observe 0|1]
+  h3 adventure run|verify|bench …   (`h3 adventure` lists them)";
 
 struct Args {
     positional: Vec<String>,
@@ -209,12 +211,17 @@ fn main() -> ExitCode {
         eprintln!("{USAGE}");
         return ExitCode::FAILURE;
     };
-    let result = Args::parse(rest).and_then(|args| match command.as_str() {
-        "run" => run(&args),
-        "verify" => verify(&args),
-        "bench" => bench(&args),
-        _ => Err(format!("unknown command `{command}`\n{USAGE}")),
-    });
+    // The adventure's commands parse their own arguments (adventure-owned, E08 T9b).
+    let result = if command == "adventure" {
+        h3_cli::adventure::cli::main(rest)
+    } else {
+        Args::parse(rest).and_then(|args| match command.as_str() {
+            "run" => run(&args),
+            "verify" => verify(&args),
+            "bench" => bench(&args),
+            _ => Err(format!("unknown command `{command}`\n{USAGE}")),
+        })
+    };
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {

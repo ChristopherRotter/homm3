@@ -22,6 +22,11 @@ h3-contracts.workspace = true
 h3-battle.workspace = true
 h3-pack.workspace = true
 h3-sim.workspace = true
+# The adventure commands (adventure-owned src/adventure/, E08 T9b).
+h3-adventure.workspace = true
+h3-game.workspace = true
+h3-map.workspace = true
+h3-pack-adventure.workspace = true
 serde.workspace = true
 toml.workspace = true
 

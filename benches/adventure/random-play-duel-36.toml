@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "5 random-vs-random games of 28 days on the generated duel map (E08 decision 11); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply)"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-duel-36.h3m",
+    "--workload",
+    "play",
+    "--games",
+    "5",
+    "--days",
+    "28",
+    "--seed",
+    "1",
+]
+collect = "*adventure*random_rollout*"
+instructions = 510210757
+threshold_percent = 2

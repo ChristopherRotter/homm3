@@ -82,6 +82,8 @@ use h3_pack::{HeroEntry, ObstacleEntry, PackError, ScenarioDef};
 use h3_sim::{Replay, ReplayError, ReplayHeader};
 use serde::{Deserialize, Serialize};
 
+pub mod adventure;
+
 /// Errors of the CLI library.
 #[derive(Debug)]
 pub enum CliError {
