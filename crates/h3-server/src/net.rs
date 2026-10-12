@@ -874,7 +874,9 @@ fn unbound(message: &ClientMessage) -> Frame {
         | ClientMessage::AcceptMatch { seq }
         | ClientMessage::DeclineMatch { seq }
         | ClientMessage::Leaderboard { seq, .. }
-        | ClientMessage::Standing { seq, .. } => *seq,
+        | ClientMessage::Standing { seq, .. }
+        | ClientMessage::ProposePause { seq, .. }
+        | ClientMessage::AnswerPause { seq, .. } => *seq,
         ClientMessage::Hello { .. } | ClientMessage::Ping { .. } | ClientMessage::Join { .. } => 0,
     };
     Frame {

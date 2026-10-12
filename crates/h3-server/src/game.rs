@@ -361,6 +361,8 @@ struct Restored {
     /// dropped when the re-run is done, however it went (the server listens after every one).
     /// `None` for a paused game a join resumes: the registry hosts it already (E16 M2 T3).
     listing: Option<(mpsc::Sender<ToGame>, oneshot::Sender<()>)>,
+    /// Whether the paused game wakes: its agreed pause is over (E16 M4 T6).
+    wake: bool,
 }
 
 /// The commands a game may hold (E16 M3 T4a).
@@ -528,8 +530,17 @@ impl Prepared {
                 path: path.to_path_buf(),
                 read,
                 listing,
+                wake: false,
             }),
         })
+    }
+
+    /// The paused game wakes as it is restored (E16 M4 T6): its agreed pause's due time came.
+    pub(crate) fn woken(mut self) -> Self {
+        if let Begin::Restored(restored) = &mut self.begin {
+            restored.wake = true;
+        }
+        self
     }
 
     /// Runs the game on its own OS thread until it leaves the lobby.
@@ -736,7 +747,8 @@ impl Prepared {
             }
             if session.paused() {
                 close_all(&conns, &closed, GoodbyeReason::Paused);
-                lock(registry).pause(game, (tokens, owned(session.accounts())));
+                let seats = (tokens, owned(session.accounts()));
+                lock(registry).pause(game, seats, session.agreed_pause());
                 turn_away(&mut inbox, GoodbyeReason::Paused);
                 return eprintln!("h3-server: game {game} paused");
             }
@@ -800,6 +812,7 @@ fn resume<'r>(
         path,
         read,
         listing,
+        wake,
     } = restored;
     let game = config.game;
     let gone = || lock(registry).leave(game);
@@ -819,6 +832,16 @@ fn resume<'r>(
             return None;
         }
     };
+    // An agreed pause (E16 M4 T6): the seats' absences count from its due time, what is left of it
+    // since the journal's last write; woken, the game runs on without its players.
+    let agreed = session.agreed_pause();
+    if let Some(ms) = agreed {
+        let passed = u64::try_from(paused_for.as_millis()).unwrap_or(u64::MAX);
+        session.hold(ms.saturating_sub(passed));
+    }
+    if wake {
+        session.wake();
+    }
     let reopened = Writer::reopen(&path, read.complete);
     let journal = match reopened.and_then(|mut j| j.append(session.drain_entries()).map(|()| j)) {
         Ok(journal) => journal,
@@ -839,7 +862,18 @@ fn resume<'r>(
         return None;
     }
     let Some((to, done)) = listing else {
-        eprintln!("h3-server: game {game} resumed");
+        if wake {
+            // No connection's join tells the lobby: the game does.
+            let status = (
+                session.phase(),
+                session.open_seats(),
+                session.takes_spectators(),
+            );
+            lock(registry).report(game, status);
+            eprintln!("h3-server: game {game} woke: its agreed pause is over");
+        } else {
+            eprintln!("h3-server: game {game} resumed");
+        }
         return Some((session, journal));
     };
     let info = GameInfo {
@@ -857,6 +891,7 @@ fn resume<'r>(
             tokens: tokens.clone(),
             accounts: owned(session.accounts()),
             since,
+            due: agreed.and_then(|ms| since.checked_add(Duration::from_millis(ms))),
         }
     } else {
         Hosted::Live { to, bound: 0 }
@@ -1196,7 +1231,8 @@ fn verify(
             | Entry::Spectators(_)
             | Entry::Ranked
             | Entry::Absent(..)
-            | Entry::Forfeit(_) => {}
+            | Entry::Forfeit(_)
+            | Entry::PauseAgreed(..) => {}
         }
     }
     replay.final_hash = session.state_hash();

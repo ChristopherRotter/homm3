@@ -57,6 +57,14 @@
 //!   (E16 M4 T3b), by the battle or by a forfeit, is held until the host's verdict: told once the
 //!   game verified, `Outcome::Unverified` if it did not; the host then tells each seat its rating
 //!   ([`Session::rated`]).
+//! - **The pause by agreement** (E16 M4 T6; ADR-0019 point 8). A ranked game's seat proposes a
+//!   pause (`ProposePause`) within its ladder's longest and its pauses left; every viewer hears
+//!   it, the other seat answers (`AnswerPause`) before the game moves on, or it lapses. Agreed, the
+//!   game pauses as a host's pause does, the length an entry. The host keeps the seats' absences
+//!   from counting until the pause's due time ([`Session::hold`]) and, if no seat was taken by
+//!   then, runs the game again with its players away ([`Session::wake`]). A seat asks once until
+//!   the game moves on, also an unranked game's seat that is not the host's (`Rejected {
+//!   AlreadyAsked }`).
 //! - **Integrity** (E16 M2 T3, `E16-design.md` §8). The host verifies a finished game before it
 //!   publishes the replay, and withholds it if the game does not verify
 //!   ([`Session::withhold_replay`]). With the *shadow instance* on ([`GameConfig::shadow`]), every
@@ -68,7 +76,8 @@
 //! frames as text, the record's layout, the entries, who pauses, a spectator's numbered
 //! rejections, a seat's account fixed when it is first taken, one account in both seats allowed,
 //! a void game when the other seat is empty as one's grace runs out, an unranked game's end told
-//! before its verification, `Rating` numbered (the epic's review list).
+//! before its verification, `Rating` numbered, a proposal lapsing when the game moves on and told
+//! to every viewer (the epic's review list).
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
@@ -167,6 +176,10 @@ pub struct Grace {
     pub stretch_ms: u64,
     /// The longest over the game, its stretches added up.
     pub total_ms: u64,
+    /// The pauses by agreement each player may propose in a game (E16 M4 T6).
+    pub pauses: u32,
+    /// The longest of them, in milliseconds.
+    pub pause_ms: u64,
 }
 
 /// The journal: everything the replay needs except its header (ADR-0018 point 12). Private to the
@@ -236,6 +249,9 @@ pub enum Entry {
     /// The side's seat stayed empty beyond the grace: its player forfeits (E16 M4 T3a). Both
     /// sides: the game is void, a no-show each.
     Forfeit(BattleSide),
+    /// The other seat agreed to the side's proposal to pause for this many milliseconds (E16 M4
+    /// T6): [`Entry::Paused`] follows.
+    PauseAgreed(BattleSide, u64),
 }
 
 /// Why a journal does not restore its game.
@@ -426,6 +442,17 @@ pub struct Session<'r> {
     forfeited: [bool; 2],
     /// A ranked game's end, held until the host's verdict (E16 M4 T3b).
     held: Option<Outcome>,
+    /// Whether each side asked for a pause since the game last moved on (E16 M4 T6).
+    asked: [bool; 2],
+    /// A ranked game's open proposal to pause: the side and the length (E16 M4 T6).
+    proposal: Option<(BattleSide, u64)>,
+    /// The agreed pauses each side proposed (E16 M4 T6).
+    pauses_used: [u32; 2],
+    /// The length of the agreed pause the game is in, until a seat is taken or it wakes (E16 M4
+    /// T6).
+    agreed: Option<u64>,
+    /// No seat's absence counts before this time of the host's clock (E16 M4 T6).
+    due: u64,
 }
 
 impl<'r> Session<'r> {
@@ -483,6 +510,11 @@ impl<'r> Session<'r> {
             clock: 0,
             forfeited: [false; 2],
             held: None,
+            asked: [false; 2],
+            proposal: None,
+            pauses_used: [0; 2],
+            agreed: None,
+            due: 0,
         })
     }
 
@@ -512,8 +544,11 @@ impl<'r> Session<'r> {
                 }
                 Entry::Paused | Entry::Resumed => {
                     session.paused = *entry == Entry::Paused;
+                    // An agreed pause lasts while the game is paused (E16 M4 T6).
+                    session.agreed = session.agreed.filter(|_| session.paused);
                     session.entries.push(entry.clone());
                 }
+                Entry::PauseAgreed(side, ms) => session.agree(side, ms),
                 Entry::Spectators(open) => {
                     session.watchable = open;
                     session.entries.push(Entry::Spectators(open));
@@ -559,6 +594,8 @@ impl<'r> Session<'r> {
             ClientMessage::FetchReplay { seq } => self.fetch_replay(conn, seq, out),
             ClientMessage::FetchRecord { seq } => self.fetch_record(conn, seq, out),
             ClientMessage::Pause { seq } => self.pause(conn, seq, out),
+            ClientMessage::ProposePause { seq, ms } => self.propose(conn, seq, ms, out),
+            ClientMessage::AnswerPause { seq, accept } => self.answer(conn, seq, accept, out),
             ClientMessage::SetSpectators { seq, open } => self.set_spectators(conn, seq, open, out),
             ClientMessage::Leave {} => {
                 self.disconnected(conn);
@@ -597,7 +634,7 @@ impl<'r> Session<'r> {
     /// account, and in a ranked game that is not over its absence runs from the host's clock (E16
     /// M4 T3a); a spectator stops watching.
     pub fn disconnected(&mut self, conn: ConnId) {
-        let away = (self.grace.is_some() && !self.over()).then_some(self.clock);
+        let away = (self.grace.is_some() && !self.over()).then_some(self.clock.max(self.due));
         for seat in &mut self.seats {
             if seat.holder.take_if(|holder| *holder == conn).is_some() {
                 seat.away = away;
@@ -809,6 +846,32 @@ impl<'r> Session<'r> {
         self.paused
     }
 
+    /// The length of the agreed pause the game is in (E16 M4 T6), in milliseconds: from its
+    /// journal's last write, the host holds the seats' absences until the pause's due time
+    /// ([`Session::hold`]) and wakes the game then if no seat was taken ([`Session::wake`]).
+    pub const fn agreed_pause(&self) -> Option<u64> {
+        self.agreed
+    }
+
+    /// No seat's absence counts before `ms` from now on the host's clock (E16 M4 T6): what is left
+    /// of an agreed pause as its game is restored. A player not back by then is away from then on.
+    pub fn hold(&mut self, ms: u64) {
+        let due = self.clock.saturating_add(ms);
+        self.due = due;
+        for seat in &mut self.seats {
+            seat.away = seat.away.map(|since| since.max(due));
+        }
+    }
+
+    /// An agreed pause's due time came, and no seat was taken (E16 M4 T6): the game runs again, its
+    /// players away (an entry). Nothing happens to a game in no agreed pause.
+    pub fn wake(&mut self) {
+        if self.agreed.take().is_some() {
+            self.paused = false;
+            self.entries.push(Entry::Resumed);
+        }
+    }
+
     /// The steps at which the shadow instance disagreed with the live battle since the last call
     /// (E16 M2 T3), each the number of the command that found it: the host logs them.
     pub fn drain_mismatches(&mut self) -> alloc::vec::Drain<'_, usize> {
@@ -873,6 +936,7 @@ impl<'r> Session<'r> {
             self.taken(side, login);
         }
         if core::mem::take(&mut self.paused) {
+            self.agreed = None;
             self.entries.push(Entry::Resumed);
         }
         out.push(reply(
@@ -1017,20 +1081,33 @@ impl<'r> Session<'r> {
         }
     }
 
-    /// `Pause`: the host's ask pauses a running game; another seat's is told to every viewer.
-    fn pause(&mut self, conn: ConnId, seq: u32, out: &mut Vec<Outbound>) {
+    /// The side of connection `conn`'s seat in a running game; else its rejection is sent.
+    fn running_seat(
+        &mut self,
+        conn: ConnId,
+        seq: u32,
+        out: &mut Vec<Outbound>,
+    ) -> Option<BattleSide> {
         let Some(side) = self.seat_of(conn) else {
-            return self.not_seated(conn, seq, out);
+            self.not_seated(conn, seq, out);
+            return None;
         };
         let code = match self.phase() {
-            Phase::Running => None,
-            Phase::Over => Some(RejectCode::BattleOver),
+            Phase::Running => return Some(side),
+            Phase::Over => RejectCode::BattleOver,
             // A game whose seats are held is not paused.
-            Phase::Waiting | Phase::Paused => Some(RejectCode::NotStarted),
+            Phase::Waiting | Phase::Paused => RejectCode::NotStarted,
         };
-        if let Some(code) = code {
-            return self.reject(side, seq, code, out);
-        }
+        self.reject(side, seq, code, out);
+        None
+    }
+
+    /// `Pause`: the host's ask pauses a running game; another seat's is told to every viewer, once
+    /// until the game moves on (E16 M4 T6).
+    fn pause(&mut self, conn: ConnId, seq: u32, out: &mut Vec<Outbound>) {
+        let Some(side) = self.running_seat(conn, seq, out) else {
+            return;
+        };
         // A ranked game has no host: it pauses only by agreement (ADR-0019 point 8; E16 M4 T6).
         if self.grace.is_some() {
             return self.reject(side, seq, RejectCode::NotHost, out);
@@ -1038,13 +1115,76 @@ impl<'r> Session<'r> {
         // The host or every seat may pause (`E16-design.md` §7); the host holds one of the two
         // seats, so its ask decides, and another seat's is for the host to hear.
         if self.host != Some(side) {
-            let seat = seat(side);
-            for viewer in BattleSide::BOTH {
-                self.send(viewer, |n| ServerMessage::PauseAsked { n, seat }, out);
+            if core::mem::replace(&mut self.asked[side.index()], true) {
+                return self.reject(side, seq, RejectCode::AlreadyAsked, out);
             }
-            return self.spectate(|n| ServerMessage::PauseAsked { n, seat }, out);
+            let seat = seat(side);
+            return self.tell_all(|n| ServerMessage::PauseAsked { n, seat }, out);
         }
         self.halt(out);
+    }
+
+    /// `ProposePause` (E16 M4 T6): a ranked game's seat proposes a pause of `ms` within its
+    /// ladder's longest and its pauses left, once until the game moves on, while no proposal is
+    /// open; every viewer hears it.
+    fn propose(&mut self, conn: ConnId, seq: u32, ms: u64, out: &mut Vec<Outbound>) {
+        let Some(side) = self.running_seat(conn, seq, out) else {
+            return;
+        };
+        let at = side.index();
+        let code = match self.grace {
+            None => Some(RejectCode::NotRanked),
+            Some(_) if self.asked[at] || self.proposal.is_some() => Some(RejectCode::AlreadyAsked),
+            Some(grace) if self.pauses_used[at] >= grace.pauses => Some(RejectCode::NoPausesLeft),
+            Some(grace) if ms == 0 || ms > grace.pause_ms => Some(RejectCode::BadPauseLength),
+            Some(_) => None,
+        };
+        if let Some(code) = code {
+            return self.reject(side, seq, code, out);
+        }
+        self.asked[at] = true;
+        self.proposal = Some((side, ms));
+        let seat = seat(side);
+        self.tell_all(|n| ServerMessage::PauseProposed { n, seat, ms }, out);
+    }
+
+    /// `AnswerPause` (E16 M4 T6): the seat answers the other's open proposal; every viewer hears
+    /// it, and agreed, the game pauses.
+    fn answer(&mut self, conn: ConnId, seq: u32, accept: bool, out: &mut Vec<Outbound>) {
+        let Some(side) = self.running_seat(conn, seq, out) else {
+            return;
+        };
+        if self.grace.is_none() {
+            return self.reject(side, seq, RejectCode::NotRanked, out);
+        }
+        let open = self.proposal.filter(|&(proposer, _)| proposer != side);
+        let Some((proposer, ms)) = open else {
+            return self.reject(side, seq, RejectCode::NoProposal, out);
+        };
+        self.proposal = None;
+        let seat = seat(side);
+        self.tell_all(|n| ServerMessage::PauseAnswered { n, seat, accept }, out);
+        if accept {
+            self.agree(proposer, ms);
+            self.halt(out);
+        }
+    }
+
+    /// The side's proposal to pause for `ms` was agreed (E16 M4 T6): it counts against the side's
+    /// pauses, and the game is in it until it resumes.
+    fn agree(&mut self, side: BattleSide, ms: u64) {
+        let used = &mut self.pauses_used[side.index()];
+        *used = used.saturating_add(1);
+        self.agreed = Some(ms);
+        self.entries.push(Entry::PauseAgreed(side, ms));
+    }
+
+    /// Every viewer, the seats' and the spectators', gets the message.
+    fn tell_all(&mut self, message: impl Fn(u32) -> ServerMessage, out: &mut Vec<Outbound>) {
+        for viewer in BattleSide::BOTH {
+            self.send(viewer, &message, out);
+        }
+        self.spectate(message, out);
     }
 
     /// Pauses the game: an entry, and every holder and spectator hears `Goodbye { Paused }`.
@@ -1136,6 +1276,10 @@ impl<'r> Session<'r> {
             }
         }
         applied?;
+        // The game moved on: each seat may ask for a pause again, an open proposal lapses (E16 M4
+        // T6).
+        self.asked = [false; 2];
+        self.proposal = None;
         self.journal
             .append(side, command, &self.state, &mut self.entries);
         Ok(events)
@@ -1171,10 +1315,7 @@ impl<'r> Session<'r> {
 
     /// Every viewer and spectator hears the game's end.
     fn tell_end(&mut self, result: Outcome, out: &mut Vec<Outbound>) {
-        for viewer in BattleSide::BOTH {
-            self.send(viewer, |n| ServerMessage::GameEnded { n, result }, out);
-        }
-        self.spectate(|n| ServerMessage::GameEnded { n, result }, out);
+        self.tell_all(|n| ServerMessage::GameEnded { n, result }, out);
     }
 
     /// After the battle started or changed: bots act while it is their turn; then the seat to
