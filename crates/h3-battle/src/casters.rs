@@ -378,7 +378,8 @@ fn counts(
 
 /// The active stack and its spell, if `actor` commands it outside the tactics phase and it may
 /// cast now (BAT-MAG-048): its creature is a caster, it has a cast left and no hero in the battle
-/// forbids casting, unless its creature ignores that (BAT-MAG-061; the Faerie Dragon, BAT-Q21).
+/// forbids casting, unless its creature has `ignores_magic_block` (BAT-MAG-061: an ability for
+/// packs that no harvested creature has, so the Orb of Inhibition stops the Faerie Dragon too).
 fn ready(
     state: &BattleState,
     ruleset: &Ruleset,

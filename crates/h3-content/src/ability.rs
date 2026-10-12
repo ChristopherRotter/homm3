@@ -370,8 +370,10 @@ pub enum Ability<C, S, L> {
         percent: u8,
     },
     /// The creature's casts ignore a hero's `NoCasting` (the Orb of Inhibition; the anti-magic
-    /// garrison with E04c): the Faerie Dragon, after the wiki and VCMI against the code reading
-    /// until an experiment settles it (BAT-MAG-061, BAT-Q21; v31).
+    /// garrison with E04c). An ability for packs: no harvested creature has it. The wiki and VCMI
+    /// give it to the Faerie Dragon; by the code reading and batch 2e's observation of the cast
+    /// by the mouse the Orb stops that cast too, and so does the engine (BAT-MAG-061, BAT-Q21;
+    /// the cast by the key was not tried; v31).
     IgnoresMagicBlock,
 }
 
