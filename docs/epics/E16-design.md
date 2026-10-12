@@ -287,11 +287,16 @@ below are the tasks' starting point, *provisional* until M4's review.
   the server's life: `<data>/next-game` holds an id beyond every one given, recorded on the
   game's thread before its journal exists; at start the lobby follows it and every journal's id
   (an id handed out just before a crash, with no journal yet, may come again: nothing names it).
-- **Leaderboards** (M4 T4): `Leaderboard { seq, ladder, season, page }` (the current season when
-  left out) answered by a page of 50 rows: rank, display name, rating and deviation as whole
-  numbers, games, wins, losses, draws, a bot flag; rows by rating, ties by login name; an account
-  appears after its first game of the season. `Standing { seq, ladder }` gives the asker's own
-  row. Ratings travel as whole numbers: `h3-protocol` holds no floats.
+- **Leaderboards** (code since M4 T4): `Leaderboard { seq, ladder, season, page }` (the current
+  season when left out, pages from 0; any connection, no login) answered by `LeaderboardPage {
+  seq, ladder, season, total, rows }`, a page of 50 rows (`LeaderboardRow`: rank, display name as
+  it stands, rating and deviation as whole numbers, games, wins, losses, draws, a bot flag), none
+  past the last; rows by the rating itself, the highest first, ties by login name; an account
+  appears after its first rated game of the season (a no-show does not list it). `Standing {
+  seq, ladder }`, logged in, gives the asker's own row in the current season with its rank
+  (`OwnStanding`, `None` before its first rated game). `Refused { NoSuchLadder | NoSuchSeason |
+  NotLoggedIn }`. Each season's order is kept beside its table, rebuilt from the log at start.
+  Ratings travel as whole numbers: `h3-protocol` holds no floats.
 - **Bots** (M4 T5): `[[ladder.bot]]` entries (`login`, `display`, which bot), registered in the
   player log as bot accounts with no key (they never log in), each a standing queue entry
   matched only with a player who waited `bot_after_ms` (60 s, *provisional*: people first),

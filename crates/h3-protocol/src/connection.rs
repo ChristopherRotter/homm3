@@ -8,7 +8,8 @@
 //!   names, the hex) and the connection's state (logged in or not), and hands the host what it is
 //!   to check ([`AccountRequest`]): the signatures over the exact bytes, the account against the
 //!   server's players. Only the host's yes ([`Connection::logged_in`]) logs the connection in. On
-//!   a server that takes no anonymous players, joining or creating a game waits for the login.
+//!   a server that takes no anonymous players, joining or creating a game waits for the login;
+//!   on any server, so does asking for one's own row on a leaderboard (E16 M4 T4).
 //!
 //! Provisional (E16 M1 T2, M3 T1): a message out of place (anything before the hello, a second
 //! hello) closes the connection with `Protocol`, as a client that does not follow this protocol;
@@ -197,6 +198,10 @@ impl Connection {
             (true, ClientMessage::Join { .. } | ClientMessage::CreateGame { .. })
                 if !self.anonymous && self.account.is_none() =>
             {
+                refused(Refusal::NotLoggedIn)
+            }
+            // One's own row on a leaderboard needs one's account (E16 M4 T4).
+            (true, ClientMessage::Standing { .. }) if self.account.is_none() => {
                 refused(Refusal::NotLoggedIn)
             }
             (true, message) => Received::Game(message),

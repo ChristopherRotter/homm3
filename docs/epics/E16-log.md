@@ -1145,3 +1145,32 @@ how and why the work went.
   pinged, told and closed within the timeout and leaves its game (a fake transport); the bounds'
   cases and the period's check; end to end: a ranked seat whose client stops reading forfeits in
   seconds (the idle timeout would have held it 5 minutes), its connection gone.
+
+### M4 T4 — Leaderboards (2026-10-12)
+
+- **The start.** #112 (SRV-Q20) had merged; the scoped verify on `master` had no failing step,
+  the workload unchanged (no re-baseline).
+- **The wire** (version 17, *provisional* names): `ClientMessage::Leaderboard { seq, ladder,
+  season, page }` (`season` `None` or left out: the current one; `page` from 0), answered
+  `LeaderboardPage { seq, ladder, season, total, rows }`; `ClientMessage::Standing { seq, ladder
+  }`, answered `OwnStanding { seq, ladder, season, total, row }` (`None` before the account's first
+  rated game of the season); a row is `LeaderboardRow { rank, display, rating: Points, games,
+  wins, losses, draws, bot }`; `Refusal::NoSuchSeason`. The gate (`Connection::receive`) refuses
+  `Standing` without a login (`NotLoggedIn`), on any server; a page needs none.
+- **The server** (`ladders.rs`, *provisional*): each season keeps its leaderboard in order beside
+  its table (`Season::order`, a set of `(Ahead(rating), login)`: by the rating itself, the highest
+  first, `f64::total_cmp`, ties by login name), moved by every `Rated` line, read back or new; a
+  row enters at its first rated game, so an account with only no-shows is not listed. A page is
+  `PAGE` (50) rows from the `page`-th, none past the last; one's own rank counts the rows ahead.
+  `Ladders::page` and `own` answer (a `Board`), refused `NoSuchLadder` or `NoSuchSeason`. The
+  connection's task reads them through `spawn_blocking` (the ladders' lock and the player log's
+  wait on their syncs) and names each row's display name as it stands (`Accounts::displays`, one
+  lock for a page). The bound is the page and the connection's message rate, as for the replay
+  lists. `bot` is false until T5 brings the server's bots.
+- **Tests** (`h3-protocol` 85 → 86, `h3-server` 92 → 94): the gate's login for one's own row; the
+  wire's corpora and JSON forms (a leaderboard's ask without a season, a page). A leaderboard of
+  120 accounts paged by rating, ties by login name, a row moved by a second win, ranks, a no-show
+  unlisted, the refusals, the same pages read back and an empty next season. End to end: a
+  forfeit's two rows on the first page, a page past the end, an unknown season and ladder; one's
+  own row (none for an account without a game, refused anonymous); a rename shown; after a
+  content change the new season's page empty and the first season's kept.

@@ -126,6 +126,17 @@ impl Accounts {
         self.players().get(login).cloned()
     }
 
+    /// The display names of the accounts `logins` as they stand, under one lock (E16 M4 T4: a
+    /// leaderboard's rows); an empty name for an account the server does not know (none: a ladder's
+    /// accounts are the player log's). Blocks on the player log: call it neither on a connection's
+    /// task nor under the registry's lock.
+    pub(crate) fn displays<'a>(&self, logins: impl IntoIterator<Item = &'a str>) -> Vec<String> {
+        let players = self.players();
+        (logins.into_iter())
+            .map(|login| (players.get(login)).map_or_else(String::new, |a| a.display.clone()))
+            .collect()
+    }
+
     /// The player log, locked.
     fn players(&self) -> std::sync::MutexGuard<'_, Players> {
         self.players.lock().unwrap_or_else(PoisonError::into_inner)

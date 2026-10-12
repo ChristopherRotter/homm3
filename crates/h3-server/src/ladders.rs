@@ -13,9 +13,15 @@
 //! 1, in the configuration's order; E16 M4 T2): its games' journals and replays name it, and a
 //! restart finds it again. No client creates a game of it: its games are the ladder's matches.
 //!
-//! Provisional (E16 M4 T1, T2): the layout, the names, one lock for every ladder; a season starts
-//! at the start of a server whose content changed, and only then.
+//! Each season's table keeps its leaderboard in order (E16 M4 T4): the accounts with a rated game
+//! in the season, by rating, the highest first, ties by login name. A client reads it a page of
+//! [`PAGE`] rows at a time, any season's, and its own row in the current one with its rank.
+//!
+//! Provisional (E16 M4 T1, T2, T4): the layout, the names, one lock for every ladder; a season
+//! starts at the start of a server whose content changed, and only then; a leaderboard goes by the
+//! rating itself, not by a bound below it (the rating less twice its deviation).
 
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -23,7 +29,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use h3_protocol::account;
 use h3_protocol::session::Grace;
-use h3_protocol::wire::Points;
+use h3_protocol::wire::{Points, Refusal};
 use serde::{Deserialize, Serialize};
 
 use crate::game::Offer;
@@ -82,6 +88,54 @@ struct Season {
     ruleset: u64,
     /// The accounts that played in it, by login name.
     table: BTreeMap<String, Standing>,
+    /// Its leaderboard (E16 M4 T4): the accounts with a rated game in it, by rating, the highest
+    /// first, ties by login name. Whatever changes a row's rating in `table` moves its entry here
+    /// too (`Results::update`), or a page and one's own rank disagree with the table.
+    order: BTreeSet<(Ahead, String)>,
+}
+
+/// A rating as a leaderboard orders it (E16 M4 T4): the highest first. A line's ratings are
+/// finite (checked), so the order is the numbers'.
+#[derive(Debug, Clone, Copy)]
+struct Ahead(f64);
+
+impl Ord for Ahead {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.0.total_cmp(&self.0)
+    }
+}
+
+impl PartialOrd for Ahead {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Ahead {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Eq for Ahead {}
+
+/// The rows a leaderboard's page lists at most (E16 M4 T4).
+pub(crate) const PAGE: usize = 50;
+
+/// A season's leaderboard as a request reads it (E16 M4 T4).
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct Board {
+    /// The season.
+    pub season: u32,
+    /// How many accounts it lists.
+    pub total: u32,
+    /// The rows asked for: each one's rank (the first 1), login name and row.
+    pub rows: Vec<(u32, String, Standing)>,
+}
+
+/// A count or a place on the wire: saturated (no ladder holds 2³² accounts).
+fn count(n: usize) -> u32 {
+    u32::try_from(n).unwrap_or(u32::MAX)
 }
 
 /// What a ladder's results log holds, read back.
@@ -160,6 +214,7 @@ impl Results {
                 self.seasons.push(Season {
                     ruleset: hash(&ruleset).unwrap_or_default(),
                     table: BTreeMap::new(),
+                    order: BTreeSet::new(),
                 });
             }
             Line::Rated {
@@ -180,7 +235,14 @@ impl Results {
                     let Some(season) = self.seasons.last_mut() else {
                         continue;
                     };
-                    let row = (season.table.entry(login)).or_insert_with(|| Standing::new(rating));
+                    let row = (season.table.entry(login.clone()))
+                        .or_insert_with(|| Standing::new(rating));
+                    // Its place on the leaderboard moves with its rating (E16 M4 T4); a row
+                    // without a rated game has none yet.
+                    season
+                        .order
+                        .remove(&(Ahead(row.rating.rating), login.clone()));
+                    season.order.insert((Ahead(rating.rating), login));
                     row.rating = rating;
                     row.games += 1;
                     match won {
@@ -207,6 +269,13 @@ impl Results {
     /// The account's rating as it stands: a new account's if it has none.
     fn rating(&self, login: &str) -> Rating {
         self.ratings.get(login).copied().unwrap_or_default()
+    }
+
+    /// The season `number` (the current one for `None`) and its number, if there is one.
+    fn season(&self, number: Option<u32>) -> Option<(u32, &Season)> {
+        let number = number.unwrap_or_else(|| count(self.seasons.len()));
+        let index = usize::try_from(number).ok()?.checked_sub(1)?;
+        Some((number, self.seasons.get(index)?))
     }
 }
 
@@ -380,9 +449,50 @@ impl Ladders {
     /// The account `login`'s row on the ladder `id` in the season `season`, if it played in it.
     pub(crate) fn standing(&self, id: &str, season: u32, login: &str) -> Option<Standing> {
         let ladders = self.lock();
-        let index = usize::try_from(season).ok()?.checked_sub(1)?;
-        let season = ladders.get(id)?.results.seasons.get(index)?;
+        let (_, season) = ladders.get(id)?.results.season(Some(season))?;
         season.table.get(login).copied()
+    }
+
+    /// A page of the ladder `id`'s leaderboard in the season `season` (the current one for `None`;
+    /// E16 M4 T4): [`PAGE`] rows from the `page`-th page (the first 0), none past the last. Refused
+    /// for a ladder or a season the server does not have.
+    pub(crate) fn page(&self, id: &str, season: Option<u32>, page: u32) -> Result<Board, Refusal> {
+        let ladders = self.lock();
+        let ladder = ladders.get(id).ok_or(Refusal::NoSuchLadder)?;
+        let (number, season) = ladder.results.season(season).ok_or(Refusal::NoSuchSeason)?;
+        let from = usize::try_from(page).map_or(usize::MAX, |page| page.saturating_mul(PAGE));
+        let rows = (season.order.iter().enumerate().skip(from).take(PAGE))
+            .filter_map(|(i, (_, login))| {
+                let row = season.table.get(login)?;
+                Some((count(i.saturating_add(1)), login.clone(), *row))
+            })
+            .collect();
+        Ok(Board {
+            season: number,
+            total: count(season.order.len()),
+            rows,
+        })
+    }
+
+    /// The account `login`'s own row on the ladder `id`'s leaderboard in its current season (E16
+    /// M4 T4): none before its first rated game of the season. Refused for a ladder the server
+    /// does not have.
+    pub(crate) fn own(&self, id: &str, login: &str) -> Result<Board, Refusal> {
+        let ladders = self.lock();
+        let ladder = ladders.get(id).ok_or(Refusal::NoSuchLadder)?;
+        let (number, season) = ladder.results.season(None).ok_or(Refusal::NoSuchSeason)?;
+        let row = (season.table.get(login))
+            .filter(|row| row.games > 0)
+            .map(|row| {
+                let place = (Ahead(row.rating.rating), login.to_owned());
+                let ahead = season.order.range(..place).count();
+                (count(ahead.saturating_add(1)), login.to_owned(), *row)
+            });
+        Ok(Board {
+            season: number,
+            total: count(season.order.len()),
+            rows: row.into_iter().collect(),
+        })
     }
 }
 
@@ -693,6 +803,109 @@ mod tests {
         let text = fs::read_to_string(path(&data, "arena")).unwrap();
         assert!(text.contains("\"forfeit\":true"), "{text}");
         assert_eq!(text.lines().count(), 5, "a season, three rated, a no-show");
+        fs::remove_dir_all(&data).unwrap();
+    }
+
+    #[test]
+    fn a_leaderboard_pages_by_rating_ties_by_login_name() {
+        // E16 M4 T4.
+        let data = data();
+        let known = |_: &str| true;
+        let ladders = Ladders::open(&[arena(None)], &root().join("packs"), &data, &known).unwrap();
+        let won = End::Result {
+            outcome: Outcome::Attacker,
+            forfeit: false,
+        };
+        let rate = |game: u32, winner: &str, loser: &str, end| {
+            let accounts = [String::from(winner), String::from(loser)];
+            let replay = format!("arena.1-game{game}-0123456789abcdef");
+            ladders
+                .rate("arena", (game, &replay), accounts, (end, &known))
+                .unwrap();
+        };
+        // Sixty winners, each over a new account: the winners tie, and so do the losers.
+        for i in 0..60 {
+            rate(i, &format!("won{i:02}"), &format!("lost{i:02}"), won);
+        }
+        let logins = |board: &Board| -> Vec<String> {
+            board
+                .rows
+                .iter()
+                .map(|(_, login, _)| login.clone())
+                .collect()
+        };
+        let names = |prefix: &str, range: std::ops::Range<u32>| -> Vec<String> {
+            range.map(|i| format!("{prefix}{i:02}")).collect()
+        };
+        let first = ladders.page("arena", None, 0).unwrap();
+        assert_eq!((first.season, first.total), (1, 120));
+        assert_eq!(logins(&first), names("won", 0..50));
+        assert_eq!(
+            first
+                .rows
+                .iter()
+                .map(|(rank, ..)| *rank)
+                .collect::<Vec<_>>(),
+            (1..=50).collect::<Vec<_>>()
+        );
+        let second = ladders.page("arena", Some(1), 1).unwrap();
+        assert_eq!(
+            logins(&second),
+            [names("won", 50..60), names("lost", 0..40)].concat()
+        );
+        assert_eq!(second.rows[10].0, 61);
+        assert_eq!(logins(&ladders.page("arena", None, 2).unwrap()).len(), 20);
+        for past in [3, u32::MAX] {
+            let page = ladders.page("arena", None, past).unwrap();
+            assert_eq!((page.total, page.rows), (120, vec![]));
+        }
+        // A second win lifts `won59` to the top: its row moves, the count stays.
+        rate(60, "won59", "lost59", won);
+        let own = |login: &str| ladders.own("arena", login).unwrap();
+        let top = own("won59");
+        assert_eq!((top.season, top.total), (1, 120));
+        assert_eq!(
+            top.rows
+                .iter()
+                .map(|(rank, login, row)| (*rank, login.as_str(), row.games, row.wins))
+                .collect::<Vec<_>>(),
+            [(1, "won59", 2, 2)]
+        );
+        assert_eq!(own("won00").rows[0].0, 2);
+        assert_eq!(own("lost59").rows[0].0, 120);
+        assert_eq!(
+            logins(&ladders.page("arena", None, 0).unwrap())[..2],
+            ["won59", "won00"]
+        );
+        // A no-show is no rated game: neither account is listed.
+        rate(61, "xavier", "yves", End::NoShow);
+        assert_eq!((own("xavier").total, own("xavier").rows), (120, vec![]));
+        assert_eq!(own("nobody").rows, vec![]);
+        // A ladder or a season the server does not have.
+        assert_eq!(ladders.page("pit", None, 0), Err(Refusal::NoSuchLadder));
+        assert_eq!(ladders.own("pit", "won00"), Err(Refusal::NoSuchLadder));
+        for season in [0, 2] {
+            let page = ladders.page("arena", Some(season), 0);
+            assert_eq!(page, Err(Refusal::NoSuchSeason));
+        }
+        let before = [0, 1, 2].map(|page| ladders.page("arena", None, page).unwrap());
+        drop(ladders);
+        // Read back, the same pages; the next season's leaderboard is empty, the last one's kept.
+        let ladders = Ladders::open(
+            &[arena(Some("synthetic:strict-fixed"))],
+            &root().join("packs"),
+            &data,
+            &known,
+        )
+        .unwrap();
+        assert_eq!(
+            [0, 1, 2].map(|page| ladders.page("arena", Some(1), page).unwrap()),
+            before
+        );
+        let next = ladders.page("arena", None, 0).unwrap();
+        assert_eq!((next.season, next.total, next.rows), (2, 0, vec![]));
+        let own = ladders.own("arena", "won59").unwrap();
+        assert_eq!((own.season, own.rows), (2, vec![]));
         fs::remove_dir_all(&data).unwrap();
     }
 

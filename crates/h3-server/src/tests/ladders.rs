@@ -5,9 +5,10 @@
 //! ladder are refused; a queued connection outlasts the lobby's deadline. A ranked game's seats
 //! and forfeits (E16 M4 T3a): no host; a player back within the grace plays on; beyond the grace,
 //! or the total in several drops, a forfeit, whose replay verifies; both away, void; the time away
-//! across a restart.
+//! across a restart. The leaderboards (E16 M4 T4): pages by season, one's own row, a display name
+//! changed.
 
-use h3_protocol::wire::{LadderInfo, Outcome, Points, Side, UnqueueReason};
+use h3_protocol::wire::{LadderInfo, LeaderboardRow, Outcome, Points, Side, UnqueueReason};
 
 use super::*;
 use crate::client::Key;
@@ -791,5 +792,118 @@ async fn a_seat_whose_client_falls_silent_is_noticed_by_its_pings() {
         .await
         .unwrap();
     running.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_leaderboard_pages_by_season_and_shows_ones_own_row() {
+    // E16 M4 T4. Bob forfeits: Ann wins, and both are listed, Ann first.
+    let config = graced(1_000, 60_000);
+    let running = start(&config).await.unwrap();
+    let ([mut ann, bob], _, _) = seated_match(&running).await;
+    bob.close().await;
+    ends(&mut ann).await;
+    rating(&mut ann).await;
+    let new = Rating::default();
+    let (won, lost) = rating::game(new, new, Score::Win);
+    let row = |rank, display: &str, rating, winner: bool| LeaderboardRow {
+        rank,
+        display: display.to_string(),
+        rating: points(rating),
+        games: 1,
+        wins: u32::from(winner),
+        losses: u32::from(!winner),
+        draws: 0,
+        bot: false,
+    };
+    let board = |seq, ladder: &str, season, page| ClientMessage::Leaderboard {
+        seq,
+        ladder: ladder.to_string(),
+        season,
+        page,
+    };
+    let page = |seq, season, total, rows| {
+        Some(ServerMessage::LeaderboardPage {
+            seq,
+            ladder: String::from("arena"),
+            season,
+            total,
+            rows,
+        })
+    };
+    // Any connection reads it, logged in or not, a page at a time.
+    let mut carol = greeted(&running).await;
+    let rows = vec![row(1, "Ann", won, true), row(2, "Bob", lost, false)];
+    assert_eq!(
+        ask(&mut carol, board(4, "arena", None, 0)).await,
+        page(4, 1, 2, rows.clone())
+    );
+    assert_eq!(
+        ask(&mut carol, board(5, "arena", Some(1), 1)).await,
+        page(5, 1, 2, vec![])
+    );
+    assert_eq!(
+        ask(&mut carol, board(6, "arena", Some(2), 0)).await,
+        refused(Refusal::NoSuchSeason)
+    );
+    assert_eq!(
+        ask(&mut carol, board(7, "pit", None, 0)).await,
+        refused(Refusal::NoSuchLadder)
+    );
+    // One's own row needs one's account; none before one's first rated game.
+    let standing = |seq| ClientMessage::Standing {
+        seq,
+        ladder: "arena".to_string(),
+    };
+    assert_eq!(
+        ask(&mut carol, standing(8)).await,
+        refused(Refusal::NotLoggedIn)
+    );
+    let own = |seq, row| {
+        Some(ServerMessage::OwnStanding {
+            seq,
+            ladder: String::from("arena"),
+            season: 1,
+            total: 2,
+            row,
+        })
+    };
+    let mut carol = player(&running, "carol", 3).await;
+    assert_eq!(ask(&mut carol, standing(9)).await, own(9, None));
+    let mut bob = player(&running, "bob", 2).await;
+    assert_eq!(
+        ask(&mut bob, standing(10)).await,
+        own(10, Some(rows[1].clone()))
+    );
+    // A display name changed shows.
+    let rename = ClientMessage::Rename {
+        seq: 11,
+        display: "Ann B".to_string(),
+    };
+    let renamed = ask(&mut ann, rename).await;
+    assert!(
+        matches!(renamed, Some(ServerMessage::Account { .. })),
+        "{renamed:?}"
+    );
+    let ann_row = row(1, "Ann B", won, true);
+    assert_eq!(
+        ask(&mut ann, standing(12)).await,
+        own(12, Some(ann_row.clone()))
+    );
+    running.shutdown().await;
+    // A content change starts season 2 with an empty leaderboard; the first season's is kept.
+    let mut changed = config.clone();
+    changed.ladders[0].profile = Some(String::from("synthetic:strict-fixed"));
+    let again = start(&changed).await.unwrap();
+    let mut dan = greeted(&again).await;
+    assert_eq!(
+        ask(&mut dan, board(13, "arena", None, 0)).await,
+        page(13, 2, 0, vec![])
+    );
+    assert_eq!(
+        ask(&mut dan, board(14, "arena", Some(1), 0)).await,
+        page(14, 1, 2, vec![ann_row, rows[1].clone()])
+    );
+    again.shutdown().await;
     std::fs::remove_dir_all(&config.server.data).unwrap();
 }

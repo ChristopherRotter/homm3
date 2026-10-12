@@ -580,7 +580,9 @@ impl<'r> Session<'r> {
             | ClientMessage::Queue { .. }
             | ClientMessage::Dequeue { .. }
             | ClientMessage::AcceptMatch { .. }
-            | ClientMessage::DeclineMatch { .. } => {}
+            | ClientMessage::DeclineMatch { .. }
+            | ClientMessage::Leaderboard { .. }
+            | ClientMessage::Standing { .. } => {}
         }
     }
 
