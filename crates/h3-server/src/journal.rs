@@ -6,7 +6,8 @@
 //! core's entries ([`Entry`]): a seat taken, the start, an accepted command (in the replay's text
 //! form), a state hash, a pause and a resume (format 2, E16 M2 T3), whether the game takes
 //! spectators as it started (format 3, E16 M2 T4c), the account a seat belongs to in its `Taken`
-//! line (format 4, E16 M3 T3).
+//! line (format 4, E16 M3 T3), a ranked game's mark, a seat's stretch without a connection and a
+//! forfeit (format 5, E16 M4 T3a).
 //!
 //! - **Write-ahead.** The game's thread appends the entries of each call and syncs them before it
 //!   sends that call's frames ([`Writer::append`]); a new journal is synced with its directory
@@ -31,7 +32,7 @@ use h3_protocol::session::Entry;
 use serde::{Deserialize, Serialize};
 
 /// The version of the journal's format: bumped when its lines change.
-pub const JOURNAL_FORMAT_VERSION: u32 = 4;
+pub const JOURNAL_FORMAT_VERSION: u32 = 5;
 
 /// The journal's first line: the game as it started.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,14 +81,33 @@ enum Line {
     Resumed {},
     /// [`Entry::Spectators`] (E16 M2 T4c).
     Spectators { open: bool },
+    /// [`Entry::Ranked`] (E16 M4 T3a).
+    Ranked {},
+    /// [`Entry::Absent`]: the stretch in milliseconds (E16 M4 T3a).
+    Absent { side: Side, ms: u64 },
+    /// [`Entry::Forfeit`] (E16 M4 T3a).
+    Forfeit { side: Side },
+}
+
+impl Side {
+    const fn of(side: BattleSide) -> Self {
+        match side {
+            BattleSide::Attacker => Self::Attacker,
+            BattleSide::Defender => Self::Defender,
+        }
+    }
+
+    const fn battle(self) -> BattleSide {
+        match self {
+            Self::Attacker => BattleSide::Attacker,
+            Self::Defender => BattleSide::Defender,
+        }
+    }
 }
 
 impl Line {
     fn of(entry: Entry) -> Self {
-        let side = |side| match side {
-            BattleSide::Attacker => Side::Attacker,
-            BattleSide::Defender => Side::Defender,
-        };
+        let side = Side::of;
         match entry {
             Entry::Taken(taken) => Self::Taken {
                 side: side(taken),
@@ -107,16 +127,19 @@ impl Line {
             Entry::Paused => Self::Paused {},
             Entry::Resumed => Self::Resumed {},
             Entry::Spectators(open) => Self::Spectators { open },
+            Entry::Ranked => Self::Ranked {},
+            Entry::Absent(away, ms) => Self::Absent {
+                side: side(away),
+                ms,
+            },
+            Entry::Forfeit(by) => Self::Forfeit { side: side(by) },
         }
     }
 
     fn entry(self) -> Result<Entry, String> {
         Ok(match self {
             Self::Taken { side, account } => {
-                let side = match side {
-                    Side::Attacker => BattleSide::Attacker,
-                    Side::Defender => BattleSide::Defender,
-                };
+                let side = side.battle();
                 match account {
                     Some(login) => Entry::TakenBy(side, login),
                     None => Entry::Taken(side),
@@ -135,6 +158,9 @@ impl Line {
             Self::Paused {} => Entry::Paused,
             Self::Resumed {} => Entry::Resumed,
             Self::Spectators { open } => Entry::Spectators(open),
+            Self::Ranked {} => Entry::Ranked,
+            Self::Absent { side, ms } => Entry::Absent(side.battle(), ms),
+            Self::Forfeit { side } => Entry::Forfeit(side.battle()),
         })
     }
 }
@@ -383,6 +409,9 @@ mod tests {
             Entry::Paused,
             Entry::Resumed,
             Entry::Spectators(false),
+            Entry::Ranked,
+            Entry::Absent(BattleSide::Defender, 1_500),
+            Entry::Forfeit(BattleSide::Attacker),
         ];
         writer.append(entries.clone().into_iter()).unwrap();
         writer.append(std::iter::empty()).unwrap();
@@ -401,8 +430,13 @@ mod tests {
             "{\"Taken\":{\"side\":\"Attacker\"}}\n{\"Taken\":{\"side\":\"Defender\",\"account\":\"alice\"}}\n"
         ));
         assert!(
+            text.contains("{\"Paused\":{}}\n{\"Resumed\":{}}\n{\"Spectators\":{\"open\":false}}\n"),
+            "{text}"
+        );
+        // E16 M4 T3a.
+        assert!(
             text.ends_with(
-                "{\"Paused\":{}}\n{\"Resumed\":{}}\n{\"Spectators\":{\"open\":false}}\n"
+                "{\"Ranked\":{}}\n{\"Absent\":{\"side\":\"Defender\",\"ms\":1500}}\n{\"Forfeit\":{\"side\":\"Attacker\"}}\n"
             ),
             "{text}"
         );

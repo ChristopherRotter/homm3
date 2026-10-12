@@ -22,6 +22,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use h3_protocol::account;
+use h3_protocol::session::Grace;
 use serde::{Deserialize, Serialize};
 
 use crate::game::Offer;
@@ -324,6 +325,10 @@ impl Ladder {
                 Offer::load(&offer, packs).map(|offer| {
                     Arc::new(Offer {
                         ladder: Some(config.id.clone()),
+                        grace: Some(Grace {
+                            stretch_ms: config.grace_ms,
+                            total_ms: config.grace_total_ms,
+                        }),
                         ..offer
                     })
                 })

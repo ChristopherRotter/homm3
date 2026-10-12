@@ -307,6 +307,16 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             reason: Refusal::NoSuchReplay,
         },
     ];
+    // E16 M4 T3a: a ranked game's ends by absence.
+    out.extend(
+        [
+            Outcome::Forfeit {
+                side: Side::Attacker,
+            },
+            Outcome::NoShow {},
+        ]
+        .map(|result| ServerMessage::GameEnded { n: 14, result }),
+    );
     out.extend(
         [RejectCode::NotHost, RejectCode::AlreadyStarted].map(|code| ServerMessage::Rejected {
             n: 13,
@@ -499,6 +509,23 @@ fn the_json_is_serdes_default_enum_form() {
             reason: UnqueueReason::Expired
         }),
         r#"{"Unqueued":{"reason":"Expired"}}"#
+    );
+    // E16 M4 T3a: a forfeit and a no-show.
+    assert_eq!(
+        server(&ServerMessage::GameEnded {
+            n: 3,
+            result: Outcome::Forfeit {
+                side: Side::Defender
+            }
+        }),
+        r#"{"GameEnded":{"n":3,"result":{"Forfeit":{"side":"Defender"}}}}"#
+    );
+    assert_eq!(
+        server(&ServerMessage::GameEnded {
+            n: 4,
+            result: Outcome::NoShow {}
+        }),
+        r#"{"GameEnded":{"n":4,"result":{"NoShow":{}}}}"#
     );
     // E16 M3 T1: a login, keys and signatures as hex.
     assert_eq!(

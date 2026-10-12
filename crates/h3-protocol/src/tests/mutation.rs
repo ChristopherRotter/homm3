@@ -207,6 +207,7 @@ fn running() -> Session<'static> {
         spectators: 2,
         watchable: true,
         record_bytes: 1 << 16,
+        ranked: None,
     };
     let seats = ["a", "b"].map(|token| SeatKind::Player {
         token: token.to_string(),

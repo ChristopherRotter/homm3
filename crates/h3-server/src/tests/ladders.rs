@@ -2,9 +2,12 @@
 //! matches (E16 M4 T2): two logged-in players queue, accept and play their match's game, listed
 //! with its ladder and restored after a restart; a decline, an expiry and a departure put the
 //! other back in the queue; an anonymous connection, a second queue and a second match on the
-//! ladder are refused; a queued connection outlasts the lobby's deadline.
+//! ladder are refused; a queued connection outlasts the lobby's deadline. A ranked game's seats
+//! and forfeits (E16 M4 T3a): no host; a player back within the grace plays on; beyond the grace,
+//! or the total in several drops, a forfeit, whose replay verifies; both away, void; the time away
+//! across a restart.
 
-use h3_protocol::wire::{LadderInfo, UnqueueReason};
+use h3_protocol::wire::{LadderInfo, Outcome, Side, UnqueueReason};
 
 use super::*;
 use crate::client::Key;
@@ -401,6 +404,225 @@ async fn a_matchs_game_is_restored_with_its_ladder() {
     takes(&mut ann, game, ann_seat).await;
     again.shutdown().await;
     running.shutdown().await;
+    for data in [&config.server.data, &restarted.server.data] {
+        std::fs::remove_dir_all(data).unwrap();
+    }
+}
+
+/// A server with the ladder `arena` whose players may be away `grace_ms` at once and `total_ms`
+/// in a game (E16 M4 T3a).
+fn graced(grace_ms: u64, total_ms: u64) -> Config {
+    let mut config = laddered(60_000);
+    config.ladders[0].grace_ms = grace_ms;
+    config.ladders[0].grace_total_ms = total_ms;
+    config
+}
+
+/// Ann and Bob, matched in `arena` and seated in their game: the clients, the game and their seats.
+async fn seated_match(running: &Running) -> ([Client; 2], u32, [Seat; 2]) {
+    let (mut ann, mut bob) = (
+        player(running, "ann", 1).await,
+        player(running, "bob", 2).await,
+    );
+    matched(&mut ann, &mut bob).await;
+    let (game, seats) = accepted(&mut ann, &mut bob).await;
+    takes(&mut ann, game, seats[0]).await;
+    takes(&mut bob, game, seats[1]).await;
+    ([ann, bob], game, seats)
+}
+
+/// The end of the game `client` hears, whatever comes before it.
+async fn ends(client: &mut Client) -> Outcome {
+    let end = async {
+        loop {
+            match client.recv().await {
+                Some(ServerMessage::GameEnded { result, .. }) => return result,
+                Some(_) => {}
+                None => panic!("closed before the end"),
+            }
+        }
+    };
+    tokio::time::timeout(GAME_TIME, end).await.unwrap()
+}
+
+/// The side a seat plays.
+fn side(seat: Seat) -> Side {
+    match seat {
+        Seat::Defender => Side::Defender,
+        Seat::Attacker | Seat::Spectator => Side::Attacker,
+    }
+}
+
+/// The client queues in `arena` as soon as its game, over, lets it.
+async fn queues_again(client: &mut Client) {
+    let mut attempts = 0;
+    while ask(client, queue("arena")).await != queued() {
+        attempts += 1;
+        assert!(attempts < 250, "never queued again");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_player_back_within_the_grace_retakes_the_seat_and_plays_on() {
+    let config = laddered(60_000);
+    let running = start(&config).await.unwrap();
+    let ([mut ann, bob], game, [ann_seat, _]) = seated_match(&running).await;
+    // A ranked game has no host: neither player pauses it alone (Ann's turn, if it is hers, comes
+    // again when she takes her seat again).
+    ann.send(&ClientMessage::Pause { seq: 7 }).await.unwrap();
+    loop {
+        match ann.recv().await {
+            Some(ServerMessage::Rejected { seq: 7, code, .. }) => {
+                assert_eq!(code, RejectCode::NotHost);
+                break;
+            }
+            Some(_) => {}
+            None => panic!("closed"),
+        }
+    }
+    // Ann drops and comes back on a new connection, as her account: the game goes on.
+    ann.close().await;
+    let mut ann = player(&running, "ann", 1).await;
+    takes(&mut ann, game, ann_seat).await;
+    let ((_, ann_saw), (_, bob_saw)) = tokio::join!(play(ann, 5), play(bob, 6));
+    for saw in [ann_saw, bob_saw] {
+        let result = end(&saw);
+        assert!(
+            !matches!(result, Outcome::Forfeit { .. } | Outcome::NoShow {}),
+            "{result:?}"
+        );
+    }
+    running.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_player_away_beyond_the_grace_forfeits_and_the_replay_holds_the_game_so_far() {
+    let config = graced(1_000, 60_000);
+    let running = start(&config).await.unwrap();
+    let ([mut ann, bob], game, [_, bob_seat]) = seated_match(&running).await;
+    bob.close().await;
+    let forfeit = Outcome::Forfeit {
+        side: side(bob_seat),
+    };
+    assert_eq!(ends(&mut ann).await, forfeit);
+    // The replay holds the battle as it stood, undecided, and verifies.
+    ann.send(&ClientMessage::FetchReplay { seq: 900 })
+        .await
+        .unwrap();
+    let Some(ServerMessage::Replay { replay, .. }) = ann.recv().await else {
+        panic!("no replay")
+    };
+    let path = replay_file(&config.server.data, game);
+    assert_eq!(replay, std::fs::read_to_string(&path).unwrap());
+    assert!(replay.contains("winner = \"none\""), "{replay}");
+    h3_cli::verify_file(&path, &config.content.packs).unwrap();
+    // Bob takes his seat in the game over; nothing more happens in it.
+    let mut bob = player(&running, "bob", 2).await;
+    takes(&mut bob, game, bob_seat).await;
+    let more = tokio::time::timeout(Duration::from_millis(300), bob.recv()).await;
+    assert!(more.is_err(), "{more:?}");
+    // Over, it keeps neither from the ladder.
+    queues_again(&mut ann).await;
+    queues_again(&mut bob).await;
+    running.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_player_away_beyond_the_total_in_several_drops_forfeits() {
+    // Each drop is shorter than the grace (4 s); the three add up beyond the total (2.5 s).
+    let config = graced(4_000, 2_500);
+    let running = start(&config).await.unwrap();
+    let ([ann, mut bob], game, [ann_seat, _]) = seated_match(&running).await;
+    let mut ann = Some(ann);
+    for _ in 0..2 {
+        ann.take().unwrap().close().await;
+        tokio::time::sleep(Duration::from_millis(900)).await;
+        let mut back = player(&running, "ann", 1).await;
+        takes(&mut back, game, ann_seat).await;
+        ann = Some(back);
+    }
+    let dropped = tokio::time::Instant::now();
+    ann.take().unwrap().close().await;
+    let forfeit = Outcome::Forfeit {
+        side: side(ann_seat),
+    };
+    assert_eq!(ends(&mut bob).await, forfeit);
+    assert!(
+        dropped.elapsed() < Duration::from_millis(4_000),
+        "the total, not the grace: {:?}",
+        dropped.elapsed()
+    );
+    running.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn both_players_away_the_game_is_void() {
+    let config = graced(1_000, 60_000);
+    let running = start(&config).await.unwrap();
+    let (mut ann, mut bob) = (
+        player(&running, "ann", 1).await,
+        player(&running, "bob", 2).await,
+    );
+    matched(&mut ann, &mut bob).await;
+    let (game, _) = accepted(&mut ann, &mut bob).await;
+    // Neither comes to the game, counted from its creation; its spectator hears it end.
+    let mut watcher = greeted(&running).await;
+    watcher.join(game, Seat::Spectator, None).await.unwrap();
+    assert!(matches!(
+        watcher.recv().await,
+        Some(ServerMessage::Joined { .. })
+    ));
+    assert_eq!(ends(&mut watcher).await, Outcome::NoShow {});
+    queues_again(&mut ann).await;
+    queues_again(&mut bob).await;
+    running.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_players_time_away_holds_across_a_restart() {
+    // Bob is away 3 s of his 4 s before the restart; after it, the rest of the total forfeits him,
+    // long before the grace (10 s) or a total counted afresh.
+    let config = graced(10_000, 4_000);
+    let running = start(&config).await.unwrap();
+    let ([_ann, bob], game, [ann_seat, bob_seat]) = seated_match(&running).await;
+    bob.close().await;
+    tokio::time::sleep(Duration::from_millis(3_000)).await;
+    let mut bob = player(&running, "bob", 2).await;
+    takes(&mut bob, game, bob_seat).await;
+    // The server stops; it starts again on the journals as they were.
+    let restarted = Config {
+        server: Server {
+            data: crashed(&config.server.data),
+            ..config.server.clone()
+        },
+        ..config.clone()
+    };
+    running.shutdown().await;
+    let again = start(&restarted).await.unwrap();
+    let begun = tokio::time::Instant::now();
+    let mut ann = player(&again, "ann", 1).await;
+    takes(&mut ann, game, ann_seat).await;
+    // The restored match keeps its players from another on the ladder.
+    let mut bob = player(&again, "bob", 2).await;
+    assert_eq!(
+        ask(&mut bob, queue("arena")).await,
+        refused(Refusal::InRankedGame)
+    );
+    let forfeit = Outcome::Forfeit {
+        side: side(bob_seat),
+    };
+    assert_eq!(ends(&mut ann).await, forfeit);
+    assert!(
+        begun.elapsed() < Duration::from_millis(3_500),
+        "the total held: {:?}",
+        begun.elapsed()
+    );
+    again.shutdown().await;
     for data in [&config.server.data, &restarted.server.data] {
         std::fs::remove_dir_all(data).unwrap();
     }

@@ -47,6 +47,13 @@
 //!   for the host to decide. A pause is an entry; every holder gets `Goodbye { Paused }`, and the
 //!   host may then drop the session: a paused game is its journal. A seat's join with its token
 //!   resumes a restored one ([`Session::paused`]), an entry too.
+//! - **Ranked games** (E16 M4 T3a; ADR-0019 points 6 and 8; [`GameConfig::ranked`]). No host:
+//!   `Pause` and `SetSpectators` are rejected `NotHost`. The host's clock ([`Session::elapse`])
+//!   times each player's seat while no connection holds it, from the session's start: a stretch
+//!   beyond the grace, or stretches beyond its total, forfeit (`GameEnded` with
+//!   `Outcome::Forfeit`, the battle left where it stood); if the other seat is empty too, the game
+//!   is void (`Outcome::NoShow`). A finished stretch is an entry, so a restore keeps the totals;
+//!   a stretch running at a restart starts afresh with the restored session.
 //! - **Integrity** (E16 M2 T3, `E16-design.md` §8). The host verifies a finished game before it
 //!   publishes the replay, and withholds it if the game does not verify
 //!   ([`Session::withhold_replay`]). With the *shadow instance* on ([`GameConfig::shadow`]), every
@@ -54,10 +61,10 @@
 //!   are rebuilt from the journal, which is the truth, and the command applied again
 //!   ([`Session::drain_mismatches`]).
 //!
-//! Provisional (E16 M1 T2, M2 T2–T4, M3 T3): the names, the connection numbering, frames as text,
-//! the record's layout, the entries, who pauses, a spectator's numbered rejections, a seat's
-//! account fixed when it is first taken, one account in both seats allowed (the epic's review
-//! list).
+//! Provisional (E16 M1 T2, M2 T2–T4, M3 T3, M4 T3a): the names, the connection numbering, frames
+//! as text, the record's layout, the entries, who pauses, a spectator's numbered rejections, a
+//! seat's account fixed when it is first taken, one account in both seats allowed, a void game
+//! when the other seat is empty as one's grace runs out (the epic's review list).
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
@@ -75,7 +82,7 @@ use crate::codec;
 use crate::map;
 use crate::wire::{
     ClientMessage, Command, GoodbyeReason, Manifest, Outcome, Phase, Query, RecordHeader, Refusal,
-    RejectCode, Seat, ServerMessage,
+    RejectCode, Seat, ServerMessage, Side,
 };
 
 /// A connection, as the host numbers them.
@@ -143,6 +150,19 @@ pub struct GameConfig {
     /// The most a viewer's record holds, in bytes of its lines (E16 M2 T5c): beyond it the oldest
     /// messages go; the newest is always kept.
     pub record_bytes: usize,
+    /// A ranked game's bounds of its players' absences (E16 M4 T3a): it has no host, and a seat
+    /// empty beyond them forfeits. `None` for an unranked game.
+    pub ranked: Option<Grace>,
+}
+
+/// How long a ranked game's seat may stay empty (E16 M4 T3a; ADR-0019 point 6), in milliseconds
+/// of the host's clock ([`Session::elapse`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Grace {
+    /// The longest in one stretch.
+    pub stretch_ms: u64,
+    /// The longest over the game, its stretches added up.
+    pub total_ms: u64,
 }
 
 /// The journal: everything the replay needs except its header (ADR-0018 point 12). Private to the
@@ -204,6 +224,14 @@ pub enum Entry {
     /// Whether the game takes spectators, as it started (E16 M2 T4c): made just before
     /// [`Entry::Started`], since its host may change it until then.
     Spectators(bool),
+    /// The game is ranked (E16 M4 T3a): its first entry, made by [`Session::new`].
+    Ranked,
+    /// The side's seat was empty for a stretch of this many milliseconds, which ended when a
+    /// connection took it again (E16 M4 T3a): a restart keeps the total.
+    Absent(BattleSide, u64),
+    /// The side's seat stayed empty beyond the grace: its player forfeits (E16 M4 T3a). Both
+    /// sides: the game is void, a no-show each.
+    Forfeit(BattleSide),
 }
 
 /// Why a journal does not restore its game.
@@ -314,6 +342,11 @@ struct SeatState {
     holder: Option<ConnId>,
     /// The side as a viewer.
     viewer: Viewer,
+    /// In a ranked game that is not over, since when no connection holds the player's seat (the
+    /// host's clock; E16 M4 T3a).
+    away: Option<u64>,
+    /// The milliseconds of its finished stretches without a connection (E16 M4 T3a).
+    absent: u64,
 }
 
 impl SeatState {
@@ -381,6 +414,12 @@ pub struct Session<'r> {
     record_bytes: usize,
     /// The login names of the logged-in connections, as the host said (E16 M3 T3).
     logins: BTreeMap<ConnId, String>,
+    /// A ranked game's grace (E16 M4 T3a).
+    grace: Option<Grace>,
+    /// The host's clock, in milliseconds since the session began (E16 M4 T3a).
+    clock: u64,
+    /// The sides whose players forfeited (E16 M4 T3a): the game is over.
+    forfeited: [bool; 2],
 }
 
 impl<'r> Session<'r> {
@@ -392,12 +431,16 @@ impl<'r> Session<'r> {
         seats: [SeatKind; 2],
     ) -> Result<Self, SetupError> {
         let state = BattleState::new(ruleset, &config.setup, config.seed)?;
+        // A ranked game's player seats are empty from its start (E16 M4 T3a).
+        let ranked = config.ranked.is_some();
         let seats = seats.map(|kind| SeatState {
+            away: (ranked && matches!(kind, SeatKind::Player { .. })).then_some(0),
             kind,
             issued: false,
             account: None,
             holder: None,
             viewer: Viewer::new(config.record_bytes),
+            absent: 0,
         });
         let shadow = config.shadow.then(|| {
             Box::new(Shadow {
@@ -419,7 +462,7 @@ impl<'r> Session<'r> {
                 checkpoint_every: config.checkpoint_every,
                 checkpoints: Vec::new(),
             },
-            entries: Vec::new(),
+            entries: config.ranked.map(|_| Entry::Ranked).into_iter().collect(),
             replay: Published::Not,
             host: None,
             paused: false,
@@ -430,6 +473,9 @@ impl<'r> Session<'r> {
             watchable: config.watchable,
             record_bytes: config.record_bytes,
             logins: BTreeMap::new(),
+            grace: config.ranked,
+            clock: 0,
+            forfeited: [false; 2],
         })
     }
 
@@ -465,13 +511,20 @@ impl<'r> Session<'r> {
                     session.watchable = open;
                     session.entries.push(Entry::Spectators(open));
                 }
+                Entry::Absent(side, ms) => {
+                    let seat = &mut session.seats[side.index()];
+                    seat.absent = seat.absent.saturating_add(ms);
+                    session.entries.push(Entry::Absent(side, ms));
+                }
+                Entry::Forfeit(side) => session.forfeit(side),
                 Entry::Command(side, command) => {
                     session
                         .apply(side, command)
                         .map_err(|error| RestoreError::Rejected { at, error })?;
                 }
-                // The re-run's own follows its command; the two are compared below.
-                Entry::Checkpoint(_) => {}
+                // The re-run's own follows its command, and a ranked game's is the first `new`
+                // made; the two are compared below.
+                Entry::Checkpoint(_) | Entry::Ranked => {}
             }
         }
         if !session.entries.starts_with(entries) {
@@ -482,7 +535,7 @@ impl<'r> Session<'r> {
             return Err(RestoreError::Diverged { at });
         }
         session.entries.drain(..entries.len());
-        if session.started {
+        if session.started && !session.over() {
             session.run_bots(&mut Vec::new());
         }
         Ok(session)
@@ -532,13 +585,86 @@ impl<'r> Session<'r> {
     }
 
     /// The connection `conn` is gone: its seat waits for a re-take with the token, or by its
-    /// account; a spectator stops watching.
+    /// account, and in a ranked game that is not over its absence runs from the host's clock (E16
+    /// M4 T3a); a spectator stops watching.
     pub fn disconnected(&mut self, conn: ConnId) {
+        let away = (self.grace.is_some() && !self.over()).then_some(self.clock);
         for seat in &mut self.seats {
-            seat.holder = seat.holder.filter(|&holder| holder != conn);
+            if seat.holder.take_if(|holder| *holder == conn).is_some() {
+                seat.away = away;
+            }
         }
         self.watchers.retain(|w| w.conn != conn);
         self.logins.remove(&conn);
+    }
+
+    /// The host's clock reads `now`, in milliseconds since the session began (E16 M4 T3a; a clock
+    /// that goes back is ignored): call it before every other call, and while nothing else
+    /// happens, often enough for the grace's precision. In a ranked game that is not over, a seat
+    /// empty beyond the grace in one stretch, or beyond its total, forfeits; if the other seat is
+    /// empty too, both do (void, a no-show each). Every viewer then hears `GameEnded` with the
+    /// forfeit. Whether the game ended now.
+    pub fn elapse(&mut self, now: u64, out: &mut Vec<Outbound>) -> bool {
+        self.clock = self.clock.max(now);
+        let clock = self.clock;
+        let Some(grace) = self.grace.filter(|_| !self.over()) else {
+            return false;
+        };
+        let beyond = self.seats.each_ref().map(|seat| {
+            seat.away.is_some_and(|since| {
+                let stretch = clock.saturating_sub(since);
+                stretch > grace.stretch_ms || seat.absent.saturating_add(stretch) > grace.total_ms
+            })
+        });
+        if beyond == [false; 2] {
+            return false;
+        }
+        let away = self.seats.each_ref().map(|seat| seat.away.is_some());
+        let sides = if away == [true; 2] { away } else { beyond };
+        for side in BattleSide::BOTH {
+            if sides[side.index()] {
+                self.forfeit(side);
+            }
+        }
+        let result = match sides {
+            [true, true] => Outcome::NoShow {},
+            [true, false] => Outcome::Forfeit {
+                side: Side::Attacker,
+            },
+            _ => Outcome::Forfeit {
+                side: Side::Defender,
+            },
+        };
+        for viewer in BattleSide::BOTH {
+            self.send(viewer, |n| ServerMessage::GameEnded { n, result }, out);
+        }
+        self.spectate(|n| ServerMessage::GameEnded { n, result }, out);
+        true
+    }
+
+    /// The side's player forfeits (E16 M4 T3a): the game is over, and no absence counts any more.
+    fn forfeit(&mut self, side: BattleSide) {
+        self.forfeited[side.index()] = true;
+        self.settle();
+        self.entries.push(Entry::Forfeit(side));
+    }
+
+    /// The game is over: no seat's absence runs any more (E16 M4 T3a).
+    fn settle(&mut self) {
+        for seat in &mut self.seats {
+            seat.away = None;
+        }
+    }
+
+    /// Whether the game is over: its battle ended, or a player forfeited (E16 M4 T3a).
+    pub fn over(&self) -> bool {
+        self.state.is_over() || self.forfeited != [false; 2]
+    }
+
+    /// The sides whose players forfeited, the attacker's first (E16 M4 T3a): one, a loss for it;
+    /// both, the game is void (a no-show each). The battle itself did not end.
+    pub const fn forfeited(&self) -> [bool; 2] {
+        self.forfeited
     }
 
     /// The login names of the accounts the attacker's and the defender's seat belong to (E16 M3
@@ -576,7 +702,7 @@ impl<'r> Session<'r> {
 
     /// Where the game is, for the lobby's list (E16 M2 T1).
     pub fn phase(&self) -> Phase {
-        if self.state.is_over() {
+        if self.over() {
             Phase::Over
         } else if self.paused {
             Phase::Paused
@@ -706,7 +832,14 @@ impl<'r> Session<'r> {
         if let Some(old) = held.holder.replace(conn) {
             out.push(goodbye(old, GoodbyeReason::Replaced));
         }
-        if !held.issued {
+        let issued = held.issued;
+        // A ranked game's seat is back: its stretch without a connection ends (E16 M4 T3a).
+        if let Some(since) = held.away.take() {
+            let ms = self.clock.saturating_sub(since);
+            held.absent = held.absent.saturating_add(ms);
+            self.entries.push(Entry::Absent(side, ms));
+        }
+        if !issued {
             self.taken(side, login);
         }
         if core::mem::take(&mut self.paused) {
@@ -723,6 +856,10 @@ impl<'r> Session<'r> {
         ));
         let observation = map::observe(&self.state, self.ruleset, side);
         self.send(side, |n| ServerMessage::Snapshot { n, observation }, out);
+        // Nothing more happens in a game that is over (a forfeit leaves its battle where it stood).
+        if self.over() {
+            return;
+        }
         if !self.started && self.seats.iter().all(SeatState::held) {
             self.started = true;
             self.entries.push(Entry::Spectators(self.watchable));
@@ -735,8 +872,7 @@ impl<'r> Session<'r> {
 
     /// The seat of `side` belongs to the account `login` from the start (E16 M4 T2: a match's
     /// game): no token is handed out for it, and only a connection logged in as the account takes
-    /// it. The first reserved is the game's host, as the first seat taken is (E16 M4 T3a takes the
-    /// host away from a ranked game). Does nothing to a seat taken already or a bot's.
+    /// it. Does nothing to a seat taken already or a bot's.
     pub fn reserve(&mut self, side: BattleSide, login: String) {
         let seat = &self.seats[side.index()];
         if !seat.issued && matches!(seat.kind, SeatKind::Player { .. }) {
@@ -746,12 +882,14 @@ impl<'r> Session<'r> {
 
     /// The seat of `side` was taken the first time, by a connection logged in as `login` if any:
     /// its token handed out, or it belongs to the account (E16 M3 T3); the first seat taken is the
-    /// host's.
+    /// host's, but for a ranked game, which has none (E16 M4 T3a).
     fn taken(&mut self, side: BattleSide, login: Option<String>) {
         let seat = &mut self.seats[side.index()];
         seat.issued = true;
         seat.account.clone_from(&login);
-        self.host.get_or_insert(side);
+        if self.grace.is_none() {
+            self.host.get_or_insert(side);
+        }
         self.entries.push(match login {
             Some(login) => Entry::TakenBy(side, login),
             None => Entry::Taken(side),
@@ -791,6 +929,11 @@ impl<'r> Session<'r> {
         if !self.started {
             return self.reject(side, seq, RejectCode::NotStarted, out);
         }
+        // Over by a forfeit, the battle did not end (E16 M4 T3a); over by its end, the engine
+        // would say the same.
+        if self.over() {
+            return self.reject(side, seq, RejectCode::BattleOver, out);
+        }
         let command = map::command_to_engine(command);
         match self.apply(side, command) {
             Err(error) => self.reject(side, seq, map::reject(error), out),
@@ -829,7 +972,7 @@ impl<'r> Session<'r> {
         let Some(side) = self.seat_of(conn) else {
             return self.not_seated(conn, seq, out);
         };
-        let published = if self.state.is_over() {
+        let published = if self.over() {
             &self.replay
         } else {
             &Published::Not
@@ -857,6 +1000,10 @@ impl<'r> Session<'r> {
         };
         if let Some(code) = code {
             return self.reject(side, seq, code, out);
+        }
+        // A ranked game has no host: it pauses only by agreement (ADR-0019 point 8; E16 M4 T6).
+        if self.grace.is_some() {
+            return self.reject(side, seq, RejectCode::NotHost, out);
         }
         // The host or every seat may pause (`E16-design.md` §7); the host holds one of the two
         // seats, so its ask decides, and another seat's is for the host to hear.
@@ -990,6 +1137,7 @@ impl<'r> Session<'r> {
             Some(side) => self.your_turn(side, out),
             None => {
                 // Over: the result is set.
+                self.settle();
                 let result = self.state.result().map_or(Outcome::Draw {}, map::outcome);
                 for viewer in BattleSide::BOTH {
                     self.send(viewer, |n| ServerMessage::GameEnded { n, result }, out);
