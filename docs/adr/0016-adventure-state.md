@@ -28,6 +28,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      through an `Option` or a sentinel held by the grid, never a static. Per-object state is a
      chunked table of the same shape in one dimension. A write copies at most the table and one
      leaf (`Arc::make_mut`, `alloc::sync::Arc`; `Arc`, not `Rc`, so a game stays `Send`).
+     Per-object state of increment 2 is whether the object is still on the map; per-player
+     state of object types (a Cartographer kind bought, the keys held) is a plain array per
+     player. A removal clears the object's tiles in a persistent occupancy layer (a grid as the
+     fog's) that the movement rules read; the static map keeps every footprint.
    - **Plain arrays** for the small, hot parts: heroes on the map, their armies, movement points.
 
    A fork is `Clone`: a few reference increments plus the plain arrays. The structures are
@@ -49,17 +53,33 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
-   typed parameters, and per-kind state in the persistent object table. The import maps the
-   original's class and subclass numbers to object-type keys; a type's kind and type-level
-   parameters come from the adventure ruleset part (data), instance-level ones from the map,
+   typed parameters, and per-kind state (point 1). The import maps the original's class and
+   subclass numbers to object-type keys; it is the only place that knows them. An object type
+   (adventure ruleset part, `adventure.toml`, sources per type) names its kind, the kind's
+   type-level parameters and two visit properties: **entered** or **visited from a neighbouring
+   tile**, and **visitable from above** or not. Instance parameters come from the map and are
    validated at setup. A rule with a rule id reads the kind; a new behaviour is a new variant
-   plus its rule. No scripting, and no code keyed by object names or class numbers outside the
-   import's mapping. A blocked tile cannot be entered. A visitable tile is visited by kind
-   either by entering it, which ends the move, or from a neighbouring tile without entering
-   (in VCMI, for example, resources, artifacts and monsters); increment 2's survey lists the
-   modes. **Increment 1 has one kind, `Blocker`, and no object types:** every
-   object blocks its blocked *and* its visitable tiles, a tile holding a hero blocks too
-   (meetings and battles come later), and a hero's own tile is always leavable.
+   plus its rule; no scripting, no code keyed by names or class numbers outside the import's
+   mapping. A class without a type is a `Blocker`: its blocked and visitable tiles block.
+   - **Visits.** A blocked tile cannot be entered. An entered object's visitable tile is
+     entered by a step, which visits it and ends the move. A step toward a neighbour-visited
+     object's visitable tile visits it from the tile the hero stands on: the step's price is
+     paid as if taken (ADV-MOV-006's rule included), the hero does not move, the move ends. A
+     path continues past no visitable tile, except where the object lets its owner's or key
+     holder's heroes pass (the border gate). An object not visitable from above is neither
+     entered from nor left toward the three tiles above its visitable tile.
+   - **Random contents are resolved when the game is built**, from the setup stream in object
+     order (ADR-0017 point 4), into the static map: a type gives the draw (a random
+     resource's resource, a pile's amount, a campfire's content). A rule that draws at a visit
+     draws from the visitor's stream (ADR-0017 point 4); increment 2 has none.
+   - A tile holding a hero still blocks other heroes (meetings and battles come later), and a
+     hero's own tile is always leavable.
+   - **Increment 2's kinds** (E08 decision 13): `Blocker`; `Pickup` (resources gained, then the
+     object leaves: piles, random resources, campfires); `RevealTerrain` (a price, a set of
+     terrains on every level, once per player and type: the Cartographers); `RevealArea` (a
+     radius around the visited tile, every visit: the Redwood Observatory, the Pillar of
+     Fire); `KeyTent`, `KeyGuard`, `KeyGate` (a key colour: the tent gives the key, the guard
+     leaves the map for everyone when a key holder accepts, the gate lets key holders pass).
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -73,7 +93,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    players who may see it (a move per step, since the fog changes during it), so `project`
    needs no state and a viewer learns of a move only where it can see it.
    Object contents beyond their appearance, other players' private state and all RNG state stay
-   hidden. The observation is materialised per viewer as flat planes; the env's encoding (T9)
+   hidden. An object is shown whole (its type, its tiles, the viewer's own state of its type)
+   once the viewer has explored any tile it covers (VCMI's `isVisibleFor`), or on the fringe
+   under `ADV-QUIRK-1`; tiles show live occupancy. Contents (amounts, a campfire's resource) and
+   other players' purchases and keys are never shown; an object's removal is seen by the players
+   that have explored a tile it covered. The observation is materialised per viewer as flat planes; the env's encoding (T9)
    reads those, never the grids. T8 writes the viewer knowledge list into `docs/06-security.md`
    (the adventure epic owns it), including the fringe case of a public appearance with hidden
    contents.
@@ -107,3 +131,7 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
 - 2026-10-11: point 1: the leaf size, measured against a flat per-player copy (E08 T5b,
   `02-architecture.md` §8): 32 × 32 tiles (the user). Full leaves share one leaf held by the
   grid, empty leaves are none.
+- 2026-10-12: point 4 rewritten (object types with their kinds and visit properties, visits,
+  random contents at setup, increment 2's kinds), points 1 and 6 extended (per-object and
+  per-player object state, the occupancy layer; what a viewer sees of objects) (E08 T11b, the
+  user at ADV-Q10; survey `E08-objects.md`).

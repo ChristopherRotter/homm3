@@ -28,6 +28,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    decisions; the context then validates its rules with the player as actor. A command touching
    several contexts validates in all of them before mutating any. Steps only the game triggers
    (start of a day, start of a turn) are infallible functions of the contexts, never commands.
+   `GameState` holds each player's **treasury**: an amount per resource kind of the core ruleset
+   (dense by `ResourceId`; kinds stay data, ADR-0006), never negative; a gain saturates at
+   2³¹ − 1 (the original wraps to 0, `A-5`, a state-corrupting bug fixed without a flag). The
+   starting treasury is the row of the setup's difficulty (`GameSetup`), every player the human
+   row (E08 decision 16); the rows are data compiled into `GameRuleset`.
 2. **Actors and viewers.** `Actor::Player(PlayerId)` for every player command, also a bot's;
    `Actor::System` for the server's trusted session layer only, with its own closed set of
    commands (end a player's turn, answer a pending decision with its default, remove a player)
@@ -50,7 +55,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    player's command draws only from that player's stream; the day advance draws from a game
    stream, and the random placeholders of a setup are resolved from a setup stream when the
    state is built (in increment 1 one: the starting army of a placed hero without stacks of its
-   own, E08 T6a). Agents' and bots' own choices stay outside the game
+   own, E08 T6a; increment 2 adds random resources, random pile amounts and campfires, ADR-0016
+   point 4; no command of increment 2 draws, so the streams' ownership isolation is not yet
+   exercised by commands). Agents' and bots' own choices stay outside the game
    state (the kernel's `AGENT` stream, in the env). The kernel's stream ids gain the per-player
    form (a shared change in T2). Where a battle's seed and obstacles come from is decided with
    the battle seam (increment 3), with the server lane, whose draft draws a hosted battle's
@@ -65,8 +72,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    owned by the players it involves (a battle against another player's hero: both). Its owners
    may answer outside their turn; while a player has one, its only legal commands are the
    decision's answers (in a battle, the battle's commands) and it cannot end its turn; it
-   blocks no one else. The engine never waits and never calls back. The first kind comes with
-   increment 2 (treasure chests).
+   blocks no one else. The engine never waits and never calls back. Increment 2 has two kinds,
+   both offers answered yes or no: the Cartographer's (a price, E08 decision 15) and the border
+   guard's passage (no price; ADV-Q10, D-7). A player's open decisions form a queue (at most one
+   in increment 2); `GameCommand::Answer` answers the first (`Accept` or `Decline`, additive
+   variants for later kinds), and a decline only closes it. While one is open, its owner's legal
+   commands are its answers only: no move, no `EndTurn`. The system actor's default answer is
+   `Decline`. Treasure chests wait for increment 3.
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -75,7 +87,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    counters) partitioned or accepted as order-dependent; under it, a command that conflicts with
    the authoritative order is rejected and leaves the state untouched. Until then, each piece of
    state that commands of two players can both write is listed in the epic file when it is
-   added: the inventory for that decision.
+   added: the inventory for that decision. Increment 2 adds an object two players can remove
+   (a pile, a border guard) and the per-player object state (purchases, keys), which only its
+   owner's commands write.
 8. **`AdventureEnv` lives in adventure-owned sub-paths of the battle lane's crates:**
    `crates/h3-sim/src/adventure/`, `crates/h3-cli/src/adventure/`, `fixtures/replays/adventure/`
    (`lanes.toml`, longest match), until the AI lane takes `h3-sim` at E05. It drives `h3-game`,
@@ -83,10 +97,23 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    seed), step, mask, fork, state hash. Its action is a destination among the reachable tiles of
    a hero (the env builds the path from the core's reachable-tiles query, an ADR-0006
    guardrail) or `EndTurn`, provisional until E13's macro-actions. No C ABI for it in E08 (E05,
-   with the batch API).
+   with the batch API). Action encoding v2: the entry head gains the answers after `EndTurn` and
+   the eight hero slots (`Accept`, `Decline`; the tile head is ignored for them); while a
+   decision is open the mask allows its answers only. The observation (`h3_game`'s view) shows
+   its owner the treasury and the open decision (kind, price).
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format and encodings (`h3-sim`'s sub-path, to the AI lane at E05).
+   Increment 2 bumps the game state hash to v2 (treasuries, decisions), the action encoding to
+   v2 and, if the answer command needs it, the adventure replay format (E08 T14).
+10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
+    its command gains for the actor and the offers it opens, each with its price. The context
+    never sees a treasury. The game adds the gains after the context applied (gains cannot fail,
+    so atomicity holds). An offer whose price the payer cannot pay is not opened (an event says
+    so to the payer); otherwise it becomes a pending decision. Accepting an offer: the context
+    checks it still stands, the game checks the price against the treasury, then pays and calls
+    the context's infallible acceptance; a rejected answer changes nothing. Towns (E09) use the
+    same outcome and the same check.
 
 ## Consequences
 
@@ -95,6 +122,8 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   cleaner signal, for simultaneous play the precondition of commuting.
 - Every game command needs a turn check and a pending-decision check; `legal_commands` and
   `apply` share them (property-tested). The env and the CLI go through the game like a server.
+- Conservation (increment 2): an army changes by no accepted command; a treasury only by a
+  visit's gain or an accepted offer's price. Observation hygiene covers treasuries and decisions.
 
 ## Alternatives considered
 
@@ -102,6 +131,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   simultaneous commands could never commute.
 - Modal prompts as callbacks or blocking calls: a prompt would hold the whole game, and a
   state waiting inside a call cannot be forked.
+- Lending the treasury to the context's `apply`, or the game checking a command's cost before
+  passing it on: the adventure would own a game concept, or the game would know each object's
+  prices (point 10).
+- Opening every offer and refusing an unpayable acceptance: the original refuses at the visit
+  (survey `E08-objects.md` §4); a decision that can only be declined is noise for an agent.
 - An env on `h3-adventure` directly: no turns, no day, and a second path beside the game's.
 - A separate adventure sim crate: a second env stack (batching, replay header) for the AI lane
   to merge at E05.
@@ -114,3 +148,6 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
 - 2026-10-10: point 3: a day's movement points are set at the start of each player's turn
   (ADV-MOV-002, E08 T6b: the original's code, the user's interim choice in ADV-Q4), so not every
   rule of increment 1 runs at the start of the day; the hooks themselves are unchanged.
+- 2026-10-12: points 1, 4 and 6–9 extended and point 10 added for increment 2: the treasury,
+  gains and costs by outcome, the first pending decisions (the Cartographer, the border guard),
+  the env's answers (E08 T11b, the user at ADV-Q10; survey `E08-objects.md`).

@@ -42,35 +42,7 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 
 ### Adventure lane (`ADV-Q<n>`)
 
-#### ADV-Q10 — T11a + T11b checkpoint: the ADR amendments, three disputes, one quirk, the next round (E08)
-
-Context: the survey `docs/rules/surveys/E08-objects.md` (a code reading of the human player's
-path, confirmed by a second reading, VCMI 1.7.5 and the wiki, which agrees with the reading
-wherever it speaks) and the drafts in `docs/lanes/adventure/adr-drafts/` (detail in
-`docs/epics/E08-design.md`).
-
-1. **The drafts.** ADR-0016: object types name a kind and two visit properties (entered or from a
-   neighbour; visitable from above or not) as data; a visit ends the move; random contents
-   resolved when the game is built; removals clear a persistent occupancy layer; objects shown
-   whole once a covered tile is explored. ADR-0017: the treasury in `GameState` (gains saturate);
-   the context reports gains and offers (with prices) in an outcome and never sees a treasury,
-   the game checks and pays; a decision queue per player answered by `Answer(Accept | Decline)`;
-   the env's entry head gains the two answers (encoding v2). **Recommended: accept both**; the
-   `shared/` pull request then applies them and updates `BACKLOG.md`'s E08 row.
-2. **D-5, a random pile's amount:** the reading and the wiki give wood and ore 5–10 and the rare
-   resources 3–6 (gold 500–1 000 everywhere); VCMI gives 6–10 and 3–5. **Recommended: the
-   reading**, which has the wiki's consensus; batch 2's experiment (30 random wood and 30 random
-   mercury piles, survey §11) only if you want an observation too.
-3. **D-6, guarded piles** (39 bodies in the shipped maps; a battle before the pickup):
-   **recommended: a typed `Unsupported` import error until battles exist**, or an inert
-   `Blocker` (the map plays, the pile cannot be taken).
-4. **D-7, the border guard's question:** the original asks humans yes/no and lets computers pass;
-   VCMI asks everyone, and the wiki shows the question to the key holder. **Recommended: a second offer of the same shape as the Cartographer's**
-   (declining keeps the road closed for others, a real choice), or no question (always pass).
-5. **A-5, the treasury's overflow:** a gain past 2³¹ − 1 wraps and drops the resource to 0
-   (0x4E3600). **Suggested: always fixed** (saturate, no flag), as a state-corrupting bug.
-6. **The next round:** T12 (object types in the import) alone (recommended: it fixes the data
-   and the import version the rest builds on), or T12 with T13.
+(no open questions)
 
 ### Server lane (`SRV-Q<n>`)
 
@@ -116,6 +88,7 @@ Newest first in each block. A lane adds an answered question at the top of its o
 
 ### Adventure lane (`ADV-Q<n>`)
 
+- *(2026-10-12, ADV-Q10, E08 T11a + T11b checkpoint)* **The ADR amendments, three disputes, one quirk, the next round.** The user merged #113 (the survey `docs/rules/surveys/E08-objects.md`, the drafts in `docs/lanes/adventure/adr-drafts/`). (1) The ADR-0016 amendment (object types with a kind and two visit properties as data, a visit ends the move, random contents resolved when the game is built, removals clear a persistent occupancy layer, objects shown whole once a covered tile is explored) and the ADR-0017 amendment (the treasury in `GameState`, gains and offers by outcome, a decision queue answered by `Answer(Accept | Decline)`, the env's encoding v2): **user: both accepted as written**, applied by the `shared/` pull request `shared/e08-inc2-adrs` with `BACKLOG.md`'s E08 row and the glossary. (2) D-5, a random pile's amount: **user: the code reading with the wiki** (wood and ore 5–10, mercury, sulfur, crystal and gems 3–6, gold 500–1 000; VCMI's 6–10 and 3–5 not taken), no experiment. (3) D-6, guarded piles (39 bodies in the shipped maps): **user: a typed `Unsupported` import error until battles exist** (increment 3). (4) D-7, the border guard's question: **user: a second offer of the Cartographer's shape** (no price; declining keeps the road closed for others). (5) A-5, the treasury's overflow (0x4E3600 wraps a gain past 2³¹ − 1 to 0): **user: always fixed** (saturate, no flag). (6) The round: **user: T12 in two parts, T12a (object types as data and in the import) and T12b (contents resolved at the build, the per-object state and occupancy, the observation of typed objects), one adventure pull request, the shared ADR pull request first**; T13 next round.
 - *(2026-10-12, ADV-Q9, E08 T10a/T10b checkpoint)* **T10c's round; the refinement of increment 2.** The user merged #107 and pushed batch 1's results. (Round) All of T10c in one docs-only pull request (recommended), the scoring alone, or T10c with increment 2's first task: **user: all of T10c**, and **`cross-lane`** for the two rows of `docs/experiments/README.md` (battle-owned). (Points read) **User:** the 2000 in Q4a/Q4b were the points left at the turn's start, not a maximum. (Scope) Increment 2 as proposed (object types, the treasury, pickups, one pending decision, a few visitable objects that touch only the map and the treasury; recommended), smaller without visitable objects, larger with the week and weekly objects, or E09 first: **user: as proposed.** (First decision) The Cartographer (pay to reveal a level; recommended), a treasure chest with experience and artifacts as plain data and stubs, or both: **user: the Cartographer**; chests go to increment 3. (Treasury) In `h3-game` with the players (recommended) or in `h3-adventure`: **user: `h3-game`.** Written into the epic as decisions 13–18 (starting resources by difficulty with the human row for every player is a default the survey may overrule); tasks T11a–T16 in the queue.
 - *(2026-10-12, ADV-Q4 and ADV-Q6, E08 T10c)* **Batch 1's results: when a day's movement points are set; the starting army's rolls and war machine.** The user played batches 1a and 1b in SoD 4.0 Complete with plain HD (`experiments/results/E08-batch-1a.md`, `-1b.md`). (ADV-Q4) Blue's hero that lost its Pikemen in a battle in Red's turn had 2000 points left at the start of Blue's turn, on day 1 and on day 2 (the user read the points left, not a maximum): points are set at the owner's turn start, **the code reading** (ADV-MOV-002 as built); the wiki's and VCMI's day start (1560) and a first-day special case refuted. The control Q4c was missing from the map played (a stale build in `experiments/out/`: the review added Q4c after the map was copied; read back with `h3-map`); the user's statement covers it: dismissing or gaining a stack does not change the day's points. D-2 (ADV-Q3) confirmed both ways (9 and 14 steps; the wiki's 8 and 15 refuted), the land table (C0, 15 steps). (ADV-Q6) Load 1 already showed both decisive armies: Crag Hack with his first and third stacks but not the second (**independent rolls**, the reading; VCMI's single roll refuted) and Torosar without his Ballista (**the war machine is rolled, 88 %**, the reading and VCMI; the wiki's 100 % refuted); the other fourteen fit (4 with all three, 10 with two, expected 3.5 and 10.6). Recorded as `observation` sources on ADV-MOV-001/-002/-003 and GAM-SET-001 (now `verified`). The war machine on the map hero stays with increment 3. Stale maps: **user: the compiler stamps a short hash of the spec into the map's description and the template with the next batch** (`cross-lane`, battle-owned `h3-experiment`); until then a lane trap.
 - *(2026-10-12, ADV-Q8, E08 T9b checkpoint)* **T10's round; the movement experiments' spec shape; the first adventure batch.** The user merged T9b (#103, #104). T10 bundles four parts (the spec shape and a batch, the exit-criteria audit and docs, the refinement of increment 2, the checkpoint); proposed: T10a (the spec shape and the batch) with T10b (the audit and the closure docs) now, T10c (scoring the batch and refining increment 2) next round. **User: T10a + T10b.** The spec shape (decision 12): extend the battle lane's `h3-experiment` and `h3_formats::h3m` as `cross-lane` (recommended), an adventure-owned compiler on `h3-map`'s test encoder, or wait for R01. **User: extend `h3-experiment`.** The batch: ADV-Q4, ADV-Q6 and D-2 (recommended), D-3 too, or the two open questions only. **User: ADV-Q4, ADV-Q6, D-2.** Correction told to the user the same day: D-2 is only in dispute for a step off a road (the wiki's "Road ⇄ Terrain move — terrain tile"), so the writer lays straight roads as well; D-3 stays out (one encounter more on the same map, for a later batch). Built in T10a (`E08-log.md`).
