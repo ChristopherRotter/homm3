@@ -51,7 +51,7 @@ Several agents work in parallel, **one agent at a time per lane** (`docs/08-work
 | battle | the current epic file (`docs/epics/E04b-battle-magic.md`), ADR-0014 | ADR-0003 (numbers), ADR-0012/0013, `docs/04-rules-and-sources.md`, the quirks ledger, `docs/exe/README.md` and `docs/formats/installation.md` §7 (code reading), `docs/experiments/README.md` |
 | adventure | `docs/03-domain.md`, the adventure epic file once refined | `docs/02-architecture.md`, ADR-0003/0004/0005/0006, `docs/04-rules-and-sources.md`, `docs/formats/h3m.md`, `docs/exe/README.md` (code reading) |
 | server | `docs/06-security.md`, ADR-0004, ADR-0008, ADR-0018 | ADR-0011 (encodings), `docs/02-architecture.md`, `h3-sim`'s action and observation encodings |
-| client | `clients/README.md`, ADR-0009, the asset notes in the lane HANDOFF | `docs/formats/installation.md` (archives), `docs/02-architecture.md` |
+| client | `clients/README.md`, ADR-0009, ADR-0020, the asset notes in the lane HANDOFF | `docs/formats/installation.md` (archives), `docs/02-architecture.md` |
 | shared | `docs/02-architecture.md`, `docs/05-testing.md`, `lanes.toml` | the ADRs the change touches |
 
 **Long unattended runs.** A lane runs as a chain of fresh contexts: a thin *runner* session hands each task of the lane's `QUEUE.md` to a fresh *worker* sub-agent and keeps only its short report (`docs/08-work-process.md`, "Queues and long runs": the brief, the report, the `in progress` mark that keeps a second runner out of the lane). Workers run `cargo xtask verify --scope <lane> --summary` and leave the full verify to CI.
