@@ -131,14 +131,14 @@ An *extension* (AB, SoD, later WoG/HotA) is a **content pack** (Tier 1–3 data)
 
   | Measure | Duel | XL | Target / threshold |
   |---|---|---|---|
-  | Random legal play, one step: agent + reachable-tiles queries + `apply` (`--workload play`) | ≈ 14.1 k steps/s (≈ 71 µs, ≈ 745 k Ir) | ≈ 5.5 k steps/s (≈ 183 µs, ≈ 1.6 M Ir) | ≥ 10 k steps/s/core on the duel (met); **gate +2 %**: `random-play-duel-36`, 510 210 757 Ir for 685 steps |
+  | Random legal play, one step: agent + reachable-tiles queries + `apply` (`--workload play`) | ≈ 14.1 k steps/s (≈ 71 µs, ≈ 745 k Ir) | ≈ 5.5 k steps/s (≈ 183 µs, ≈ 1.6 M Ir) | ≥ 10 k steps/s/core on the duel (met); **gate +2 %**: `random-play-duel-36`, 510 210 757 Ir for 685 steps (439 577 005 since E08 T13b) |
   | + the acting player's observation before each step (`--observe 1`) | +15 µs | +99 µs | — (cached static planes with E13's encoding) |
   | + the entry and tile masks before each step (`--masks 1`) | +70 µs (×2.0) | +131 µs (×1.7) | — (the env keeps the current state's queries with E05's batch API) |
-  | One reachable-tiles query (`--workload reach`) | ≈ 27 µs (≈ 263 k Ir) | ≈ 33 µs (≈ 342 k Ir) | < 50 µs on XL (met); **gate +2 %**: `reach-xl-144`, 657 381 227 Ir for 1 920 queries |
-  | `AdventureEnv::fork` (`--workload fork`) | ≈ 0.22 µs (≈ 2 200 Ir, 4 heroes) | ≈ 0.37 µs (≈ 3 400 Ir, 8 heroes) | < 1 µs on every map, growing with the heroes, not the tiles (met: each hero's army is a `Vec`); **gate +2 %**: `fork-xl-144`, 343 600 056 Ir for 100 000 forks |
-  | `GameState` / `AdventureEnv` size | 168 / 200 bytes | same | — |
+  | One reachable-tiles query (`--workload reach`) | ≈ 27 µs (≈ 263 k Ir) | ≈ 33 µs (≈ 342 k Ir) | < 50 µs on XL (met); **gate +2 %**: `reach-xl-144`, 657 381 227 Ir for 1 920 queries (566 626 021 since E08 T13b) |
+  | `AdventureEnv::fork` (`--workload fork`) | ≈ 0.22 µs (≈ 2 200 Ir, 4 heroes) | ≈ 0.37 µs (≈ 3 400 Ir, 8 heroes) | < 1 µs on every map, growing with the heroes, not the tiles (met: each hero's army is a `Vec`); **gate +2 %**: `fork-xl-144`, 343 600 056 Ir for 100 000 forks (+1.0 % with E08 T13's treasuries, one shared block) |
+  | `GameState` / `AdventureEnv` size | 168 / 200 bytes (192 / 224 since E08 T13) | same | — |
 
-  The reachable-tiles query is 96 % of a random step (`Reach::search` itself, the step price, the heap, zeroed map-sized arrays): the first lever when the adventure needs speed. The reveal is 0.8 %.
+  The reachable-tiles query is 96 % of a random step (`Reach::search` itself, the step price, the heap, zeroed map-sized arrays): the first lever when the adventure needs speed. The reveal is 0.8 %. E08 T13b: the diagonal step's price in one 128-bit multiplication instead of `isqrt` (equal for every cost, tested exhaustively) took 13.8 % off the query and random play; the baselines were updated (`E08-log.md`).
 - Benchmarks: `criterion` for local wall time (`cargo xtask bench`), plus instruction counts under valgrind/callgrind for the deterministic regression gate (`cargo xtask bench-check`, Linux only; counts are compared only for the toolchain and target recorded in the baseline). Chosen over `iai-callgrind` to avoid a runner binary that must match the library version; see ADR-0002.
 
 ## 9. Portability
