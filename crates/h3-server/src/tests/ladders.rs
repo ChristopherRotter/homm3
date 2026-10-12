@@ -6,7 +6,9 @@
 //! and forfeits (E16 M4 T3a): no host; a player back within the grace plays on; beyond the grace,
 //! or the total in several drops, a forfeit, whose replay verifies; both away, void; the time away
 //! across a restart. The leaderboards (E16 M4 T4): pages by season, one's own row, a display name
-//! changed. The bots (E16 M4 T5): a lone player plays one after the wait, rated, flagged.
+//! changed. The bots (E16 M4 T5): a lone player plays one after the wait, rated, flagged. The
+//! pause by agreement (E16 M4 T6): declined, agreed and resumed in time, a player not back after
+//! its due time forfeits, neither back: void.
 
 use h3_protocol::wire::{LadderInfo, LeaderboardRow, Outcome, Points, Seated, Side, UnqueueReason};
 
@@ -1116,5 +1118,165 @@ async fn a_lone_player_plays_the_ladders_bot_after_the_wait_rated_and_flagged() 
     }];
     let error = start(&clash).await.unwrap_err();
     assert!(error.0.contains("bot `ann`: a player's account"), "{error}");
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+/// A server with the ladder `arena` whose players may be away 1 s at once and propose `pauses`
+/// pauses of at most `pause_ms` (E16 M4 T6).
+fn pausing(pauses: u32, pause_ms: u64) -> Config {
+    let mut config = graced(1_000, 60_000);
+    config.ladders[0].pauses = pauses;
+    config.ladders[0].pause_ms = pause_ms;
+    config
+}
+
+/// The first message `client` hears that `wanted` takes, whatever comes before it.
+async fn heard(client: &mut Client, wanted: impl Fn(&ServerMessage) -> bool) -> ServerMessage {
+    let found = async {
+        loop {
+            match client.recv().await {
+                Some(message) if wanted(&message) => return message,
+                Some(_) => {}
+                None => panic!("closed"),
+            }
+        }
+    };
+    tokio::time::timeout(GAME_TIME, found).await.unwrap()
+}
+
+/// `seat` proposes a pause of `ms`, and `other` agrees: both hear the answer, then the goodbye.
+async fn agreed(proposer: &mut Client, other: &mut Client, ms: u64) {
+    let propose = ClientMessage::ProposePause { seq: 20, ms };
+    proposer.send(&propose).await.unwrap();
+    heard(other, |m| matches!(m, ServerMessage::PauseProposed { .. })).await;
+    let accept = ClientMessage::AnswerPause {
+        seq: 21,
+        accept: true,
+    };
+    other.send(&accept).await.unwrap();
+    for client in [proposer, other] {
+        let answered = |m: &ServerMessage| {
+            matches!(
+                m,
+                ServerMessage::PauseAnswered { accept: true, .. } | ServerMessage::Goodbye { .. }
+            )
+        };
+        assert!(matches!(
+            heard(client, answered).await,
+            ServerMessage::PauseAnswered { accept: true, .. }
+        ));
+        assert_eq!(
+            heard(client, |m| matches!(m, ServerMessage::Goodbye { .. })).await,
+            ServerMessage::Goodbye {
+                reason: GoodbyeReason::Paused
+            }
+        );
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_pause_declined_then_agreed_and_resumed_in_time() {
+    let config = pausing(1, 5_000);
+    let running = start(&config).await.unwrap();
+    let ([mut ann, mut bob], game, [ann_seat, bob_seat]) = seated_match(&running).await;
+    // Ann proposes, and asks no more until the game moves on; Bob declines.
+    let propose = |seq, ms| ClientMessage::ProposePause { seq, ms };
+    ann.send(&propose(10, 2_000)).await.unwrap();
+    let proposed = heard(&mut bob, |m| {
+        matches!(m, ServerMessage::PauseProposed { .. })
+    })
+    .await;
+    assert!(
+        matches!(proposed, ServerMessage::PauseProposed { ms: 2_000, seat, .. } if seat == ann_seat),
+        "{proposed:?}"
+    );
+    ann.send(&propose(11, 2_000)).await.unwrap();
+    let again = heard(&mut ann, |m| {
+        matches!(m, ServerMessage::Rejected { seq: 11, .. })
+    })
+    .await;
+    assert!(
+        matches!(
+            again,
+            ServerMessage::Rejected {
+                code: RejectCode::AlreadyAsked,
+                ..
+            }
+        ),
+        "{again:?}"
+    );
+    let decline = ClientMessage::AnswerPause {
+        seq: 12,
+        accept: false,
+    };
+    bob.send(&decline).await.unwrap();
+    let declined = heard(&mut ann, |m| {
+        matches!(m, ServerMessage::PauseAnswered { .. })
+    })
+    .await;
+    assert!(
+        matches!(declined, ServerMessage::PauseAnswered { accept: false, seat, .. } if seat == bob_seat),
+        "{declined:?}"
+    );
+    // Bob proposes; Ann agrees: the game pauses, listed so.
+    agreed(&mut bob, &mut ann, 3_000).await;
+    listed_as(&running, game, Some(Phase::Paused)).await;
+    // Both are back in time: the game plays on to its end, no forfeit.
+    let mut ann = player(&running, "ann", 1).await;
+    takes(&mut ann, game, ann_seat).await;
+    let mut bob = player(&running, "bob", 2).await;
+    takes(&mut bob, game, bob_seat).await;
+    let ((_, ann_saw), (_, bob_saw)) = tokio::join!(play(ann, 5), play(bob, 6));
+    for saw in [ann_saw, bob_saw] {
+        let result = end(&saw);
+        assert!(!matches!(result, Outcome::Forfeit { .. }), "{result:?}");
+    }
+    running.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_player_not_back_after_an_agreed_pause_forfeits() {
+    let config = pausing(1, 1_500);
+    let running = start(&config).await.unwrap();
+    let ([mut ann, mut bob], game, [ann_seat, bob_seat]) = seated_match(&running).await;
+    agreed(&mut ann, &mut bob, 1_500).await;
+    let paused = tokio::time::Instant::now();
+    // Ann is back at once; Bob's absence counts only from the due time, then the grace.
+    let mut ann = player(&running, "ann", 1).await;
+    takes(&mut ann, game, ann_seat).await;
+    let forfeit = Outcome::Forfeit {
+        side: side(bob_seat),
+    };
+    assert_eq!(ends(&mut ann).await, forfeit);
+    let waited = paused.elapsed();
+    assert!(
+        waited >= Duration::from_millis(2_300) && waited < Duration::from_secs(10),
+        "the pause, then the grace: {waited:?}"
+    );
+    running.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_paused_game_whose_players_are_not_back_wakes_and_is_void() {
+    // Neither comes back: at the due time the game runs on without them, and the grace ends it, a
+    // no-show each; the deadline of a paused game (here shorter) does not void it before.
+    let mut config = pausing(1, 1_000);
+    config.limits.paused_game_ms = 500;
+    let running = start(&config).await.unwrap();
+    let ([mut ann, mut bob], _, _) = seated_match(&running).await;
+    agreed(&mut ann, &mut bob, 1_000).await;
+    let no_show = |login| running.standing("arena", 1, login).map(|r| r.no_shows);
+    let mut attempts = 0;
+    while no_show("ann") != Some(1) {
+        attempts += 1;
+        assert!(attempts < 500, "never ended");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(no_show("bob"), Some(1));
+    let void = config.server.data.join("void");
+    assert!(!void.exists() || void.read_dir().unwrap().next().is_none());
+    running.shutdown().await;
     std::fs::remove_dir_all(&config.server.data).unwrap();
 }

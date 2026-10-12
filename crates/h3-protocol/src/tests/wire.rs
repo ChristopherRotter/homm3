@@ -155,6 +155,15 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
             seq: 30,
             ladder: "arena".to_string(),
         },
+        // E16 M4 T6.
+        ClientMessage::ProposePause {
+            seq: 31,
+            ms: 300_000,
+        },
+        ClientMessage::AnswerPause {
+            seq: 32,
+            accept: true,
+        },
     ];
     out.extend(
         commands()
@@ -375,6 +384,19 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             deviation: 0,
         },
     });
+    // E16 M4 T6: a pause proposed and answered.
+    out.extend([
+        ServerMessage::PauseProposed {
+            n: 16,
+            seat: Seat::Attacker,
+            ms: 300_000,
+        },
+        ServerMessage::PauseAnswered {
+            n: 17,
+            seat: Seat::Defender,
+            accept: false,
+        },
+    ]);
     // E16 M4 T4: a leaderboard's page, one's own row.
     out.extend([
         ServerMessage::LeaderboardPage {
@@ -407,7 +429,17 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
         },
     ]);
     out.extend(
-        [RejectCode::NotHost, RejectCode::AlreadyStarted].map(|code| ServerMessage::Rejected {
+        [
+            RejectCode::NotHost,
+            RejectCode::AlreadyStarted,
+            // E16 M4 T6.
+            RejectCode::NotRanked,
+            RejectCode::AlreadyAsked,
+            RejectCode::NoPausesLeft,
+            RejectCode::BadPauseLength,
+            RejectCode::NoProposal,
+        ]
+        .map(|code| ServerMessage::Rejected {
             n: 13,
             seq: 15,
             code,
@@ -641,6 +673,14 @@ fn the_json_is_serdes_default_enum_form() {
             }
         }),
         r#"{"Rating":{"n":6,"ladder":"arena","before":{"rating":1500,"deviation":350},"after":{"rating":1662,"deviation":290}}}"#
+    );
+    // E16 M4 T6: a proposal's length is a plain number (at most a year: far below 2^53).
+    assert_eq!(
+        text(&ClientMessage::ProposePause {
+            seq: 1,
+            ms: 600_000
+        }),
+        r#"{"ProposePause":{"seq":1,"ms":600000}}"#
     );
     // E16 M4 T4: a leaderboard's page; the season left out is the current one.
     assert_eq!(

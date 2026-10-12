@@ -220,6 +220,17 @@ pub enum RejectCode {
     NotHost,
     /// The game has started: its configuration is fixed (E16 M2 T4c).
     AlreadyStarted,
+    /// Only a ranked game pauses by agreement (E16 M4 T6); an unranked one has its host's `Pause`.
+    NotRanked,
+    /// The seat asked for a pause already since the game last moved on, or a proposal waits for
+    /// its answer (E16 M4 T6).
+    AlreadyAsked,
+    /// The seat proposed as many agreed pauses as its ladder allows in a game (E16 M4 T6).
+    NoPausesLeft,
+    /// The proposed pause is of no length, or longer than its ladder allows (E16 M4 T6).
+    BadPauseLength,
+    /// The other seat proposed no pause to answer (E16 M4 T6).
+    NoProposal,
 }
 
 /// The flags of a strike.
@@ -1248,6 +1259,23 @@ pub enum ClientMessage {
         /// The client's sequence number.
         seq: u32,
     },
+    /// Propose to pause the running ranked game for `ms` milliseconds (E16 M4 T6; ADR-0019 point
+    /// 8): within the ladder's longest pause and the seat's pauses left, once until the game moves
+    /// on. Every viewer hears `PauseProposed`, or the seat `Rejected`.
+    ProposePause {
+        /// The client's sequence number.
+        seq: u32,
+        /// The pause's length, in milliseconds.
+        ms: u64,
+    },
+    /// Answer the other seat's proposal (E16 M4 T6): every viewer hears `PauseAnswered`; agreed,
+    /// the game pauses until the proposal's length is over, then a player not back is away.
+    AnswerPause {
+        /// The client's sequence number.
+        seq: u32,
+        /// Whether the seat agrees.
+        accept: bool,
+    },
     /// A page of a ladder's leaderboard (E16 M4 T4): the accounts that played a rated game in the
     /// season, by rating, the highest first; answered `LeaderboardPage`, or `Refused` (no such
     /// ladder, no such season). Needs no game, nor a login.
@@ -1494,6 +1522,26 @@ pub enum ServerMessage {
         seq: u32,
         /// The new game's id.
         game: u32,
+    },
+    /// A seat proposed to pause the ranked game for `ms` milliseconds (E16 M4 T6): the other seat
+    /// answers with `AnswerPause` before the game moves on, or the proposal lapses.
+    PauseProposed {
+        /// The viewer's message number.
+        n: u32,
+        /// The seat that proposed.
+        seat: Seat,
+        /// The pause's length, in milliseconds.
+        ms: u64,
+    },
+    /// A seat answered the other's proposal to pause (E16 M4 T6); agreed, the game pauses
+    /// (`Goodbye { Paused }` follows).
+    PauseAnswered {
+        /// The viewer's message number.
+        n: u32,
+        /// The seat that answered.
+        seat: Seat,
+        /// Whether it agreed.
+        accept: bool,
     },
     /// A seat asked to pause the game (E16 M2 T3); the host's ask pauses it.
     PauseAsked {

@@ -2146,10 +2146,13 @@ fn a_matchs_seats_belong_to_their_accounts_from_the_start() {
     assert_eq!(restored.accounts(), [None, Some("randy")]);
 }
 
-/// A ranked game's grace in the tests (E16 M4 T3a): 1 s in one stretch, 1.5 s in total.
+/// A ranked game's grace in the tests (E16 M4 T3a): 1 s in one stretch, 1.5 s in total; one
+/// pause by agreement each, of at most a minute (E16 M4 T6).
 const GRACE: Grace = Grace {
     stretch_ms: 1_000,
     total_ms: 1_500,
+    pauses: 1,
+    pause_ms: 60_000,
 };
 
 /// Game 1, ranked with [`GRACE`] (the `full` scenario with `seed`): its seats alice's and bob's.
@@ -2552,4 +2555,229 @@ fn a_ranked_game_that_ends_counts_no_absence_after() {
     back(&mut s, 60_000, login);
     assert_eq!(drained(&mut s), []);
     assert_eq!(s.forfeited(), [false, false]);
+}
+
+/// Game 1 of the `full` scenario with `seed`, ranked with [`GRACE`] (E16 M4 T6).
+fn ranked_config(seed: u64) -> GameConfig {
+    GameConfig {
+        ranked: Some(GRACE),
+        ..config(seed)
+    }
+}
+
+/// The code of the last rejection `conn` got in `out`.
+fn rejected(out: &[Outbound], conn: ConnId) -> Option<RejectCode> {
+    match to(out, conn).last() {
+        Some(ServerMessage::Rejected { code, .. }) => Some(*code),
+        _ => None,
+    }
+}
+
+/// A spectator's connection.
+const W: ConnId = ConnId(3);
+
+#[test]
+fn a_ranked_games_seats_pause_by_agreement_within_its_bounds() {
+    // E16 M4 T6.
+    let r = ruleset();
+    let mut s = ranked(&r, 31);
+    let mut out = back(&mut s, 0, ALICE);
+    out.extend(back(&mut s, 0, BOB));
+    join(&mut s, W, Seat::Spectator, None);
+    let mut entries = drained(&mut s);
+    let propose = |seq, ms| ClientMessage::ProposePause { seq, ms };
+    let answer = |seq, accept| ClientMessage::AnswerPause { seq, accept };
+    // Out of its bounds; nothing to answer.
+    for ms in [0, 60_001] {
+        let out = send(&mut s, A, propose(1, ms));
+        assert_eq!(rejected(&out, A), Some(RejectCode::BadPauseLength));
+    }
+    let out_of_turn = send(&mut s, B, answer(2, true));
+    assert_eq!(rejected(&out_of_turn, B), Some(RejectCode::NoProposal));
+    // Alice proposes half a minute: every viewer hears it, the spectator too.
+    let proposed = send(&mut s, A, propose(3, 30_000));
+    for conn in [A, B, W] {
+        assert!(matches!(
+            to(&proposed, conn)[..],
+            [ServerMessage::PauseProposed {
+                seat: Seat::Attacker,
+                ms: 30_000,
+                ..
+            }]
+        ));
+    }
+    // Once until the game moves on, none while one is open, and no one answers their own.
+    let again = send(&mut s, A, propose(4, 1_000));
+    assert_eq!(rejected(&again, A), Some(RejectCode::AlreadyAsked));
+    let open = send(&mut s, B, propose(5, 1_000));
+    assert_eq!(rejected(&open, B), Some(RejectCode::AlreadyAsked));
+    let own = send(&mut s, A, answer(6, true));
+    assert_eq!(rejected(&own, A), Some(RejectCode::NoProposal));
+    // Bob declines: every viewer hears it, the game goes on, and Alice asks no more until it moves.
+    let declined = send(&mut s, B, answer(7, false));
+    for conn in [A, B, W] {
+        assert!(matches!(
+            to(&declined, conn)[..],
+            [ServerMessage::PauseAnswered {
+                seat: Seat::Defender,
+                accept: false,
+                ..
+            }]
+        ));
+    }
+    assert_eq!((s.phase(), drained(&mut s)), (Phase::Running, vec![]));
+    let again = send(&mut s, A, propose(8, 1_000));
+    assert_eq!(rejected(&again, A), Some(RejectCode::AlreadyAsked));
+    // A command moves the game on: Bob proposes, and his proposal lapses with the next command.
+    let mut rng = Rng::from_seed(7);
+    out = play(&mut s, out, &mut rng, 1);
+    let proposed = send(&mut s, B, propose(9, 10_000));
+    assert!(matches!(
+        to(&proposed, A)[..],
+        [ServerMessage::PauseProposed {
+            seat: Seat::Defender,
+            ..
+        }]
+    ));
+    out = play(&mut s, out, &mut rng, 1);
+    let lapsed = send(&mut s, A, answer(10, true));
+    assert_eq!(rejected(&lapsed, A), Some(RejectCode::NoProposal));
+    // Alice proposes again, Bob agrees: every viewer hears it, then the game pauses.
+    send(&mut s, A, propose(11, 30_000));
+    let agreed = send(&mut s, B, answer(12, true));
+    for conn in [A, B, W] {
+        assert!(matches!(
+            to(&agreed, conn)[..],
+            [
+                ServerMessage::PauseAnswered {
+                    seat: Seat::Defender,
+                    accept: true,
+                    ..
+                },
+                ServerMessage::Goodbye {
+                    reason: GoodbyeReason::Paused
+                }
+            ]
+        ));
+    }
+    assert_eq!((s.phase(), s.agreed_pause()), (Phase::Paused, Some(30_000)));
+    entries.extend(drained(&mut s));
+    assert_eq!(
+        entries[entries.len() - 2..],
+        [
+            Entry::PauseAgreed(BattleSide::Attacker, 30_000),
+            Entry::Paused
+        ]
+    );
+    let _ = out;
+    // Restored, it is in its pause; the host holds the absences until its due time (10 s of the
+    // pause passed while it was unloaded).
+    let restore = || Session::restore(&r, ranked_config(31), players(), &entries).unwrap();
+    let mut restored = restore();
+    assert_eq!(
+        (restored.phase(), restored.agreed_pause()),
+        (Phase::Paused, Some(30_000))
+    );
+    restored.hold(20_000);
+    // Alice is back early: the game runs, her pause is used; Bob is away from the due time on.
+    back(&mut restored, 5_000, ALICE);
+    assert_eq!(
+        (restored.phase(), restored.agreed_pause()),
+        (Phase::Running, None)
+    );
+    let used = send(&mut restored, A, propose(13, 1_000));
+    assert_eq!(rejected(&used, A), Some(RejectCode::NoPausesLeft));
+    assert!(!at(&mut restored, 21_000).0, "the grace from the due time");
+    assert!(at(&mut restored, 21_001).0);
+    assert_eq!(restored.forfeited(), [false, true]);
+    // Both back early, Alice gone again before the due time: her absence too starts at it.
+    let mut restored = restore();
+    restored.hold(20_000);
+    back(&mut restored, 1_000, ALICE);
+    back(&mut restored, 1_000, BOB);
+    gone(&mut restored, 2_000, A);
+    assert!(!at(&mut restored, 21_000).0);
+    assert!(at(&mut restored, 21_001).0);
+    assert_eq!(restored.forfeited(), [true, false]);
+}
+
+#[test]
+fn a_pause_whose_players_are_not_back_by_its_due_time_runs_on_without_them() {
+    // E16 M4 T6: the host wakes the game at the due time; neither comes, the game is void.
+    let r = ruleset();
+    let mut s = ranked(&r, 31);
+    back(&mut s, 0, ALICE);
+    back(&mut s, 0, BOB);
+    send(
+        &mut s,
+        B,
+        ClientMessage::ProposePause { seq: 1, ms: 60_000 },
+    );
+    send(
+        &mut s,
+        A,
+        ClientMessage::AnswerPause {
+            seq: 2,
+            accept: true,
+        },
+    );
+    let entries = drained(&mut s);
+    let mut s = Session::restore(&r, ranked_config(31), players(), &entries).unwrap();
+    s.hold(0);
+    s.wake();
+    assert_eq!(
+        (s.phase(), s.agreed_pause(), drained(&mut s)),
+        (Phase::Running, None, vec![Entry::Resumed])
+    );
+    // A game in no agreed pause does not wake.
+    s.wake();
+    assert_eq!(drained(&mut s), []);
+    assert!(!at(&mut s, 1_000).0);
+    assert!(at(&mut s, 1_001).0);
+    assert_eq!(s.forfeited(), [true, true]);
+}
+
+#[test]
+fn an_unranked_games_other_seat_asks_once_until_the_game_moves_on() {
+    // E16 M4 T6 (the M2 review's repeated `PauseAsked`).
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    // A connection in no seat proposes and answers nothing.
+    let unseated = send(&mut s, A, ClientMessage::ProposePause { seq: 1, ms: 1_000 });
+    assert_eq!(rejected(&unseated, A), Some(RejectCode::NotSeated));
+    let unseated = send(
+        &mut s,
+        A,
+        ClientMessage::AnswerPause {
+            seq: 2,
+            accept: true,
+        },
+    );
+    assert_eq!(rejected(&unseated, A), Some(RejectCode::NotSeated));
+    let out = started(&mut s);
+    let propose = send(&mut s, A, ClientMessage::ProposePause { seq: 1, ms: 1_000 });
+    assert_eq!(rejected(&propose, A), Some(RejectCode::NotRanked));
+    let answer = send(
+        &mut s,
+        B,
+        ClientMessage::AnswerPause {
+            seq: 2,
+            accept: true,
+        },
+    );
+    assert_eq!(rejected(&answer, B), Some(RejectCode::NotRanked));
+    let asked = |out: &[Outbound]| {
+        matches!(
+            to(out, A)[..],
+            [ServerMessage::PauseAsked {
+                seat: Seat::Defender,
+                ..
+            }]
+        )
+    };
+    assert!(asked(&send(&mut s, B, ClientMessage::Pause { seq: 3 })));
+    let again = send(&mut s, B, ClientMessage::Pause { seq: 4 });
+    assert_eq!(rejected(&again, B), Some(RejectCode::AlreadyAsked));
+    play(&mut s, out, &mut Rng::from_seed(3), 1);
+    assert!(asked(&send(&mut s, B, ClientMessage::Pause { seq: 5 })));
 }

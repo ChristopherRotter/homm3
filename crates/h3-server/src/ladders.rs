@@ -541,6 +541,8 @@ impl Ladder {
                         grace: Some(Grace {
                             stretch_ms: config.grace_ms,
                             total_ms: config.grace_total_ms,
+                            pauses: config.pauses,
+                            pause_ms: config.pause_ms,
                         }),
                         ..offer
                     })
