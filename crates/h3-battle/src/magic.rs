@@ -751,7 +751,10 @@ pub(crate) fn kept_off(stack: &Stack, spell: &Spell) -> bool {
 /// Whether a spell of `caster`'s side can affect the living stack `s` at all, wherever the caster
 /// stands (BAT-MAG-005, BAT-MAG-021, BAT-MAG-062): the battle's spell level limit does not bar
 /// the spell, its creature meets the spell's conditions and immunities with the heroes' part
-/// ([`Guard`]), and Anti-Magic does not keep the spell off it.
+/// ([`Guard`]), Anti-Magic does not keep the spell off it, and it is no clone if the spell
+/// makes its stacks immune to spells (Anti-Magic itself: whoever casts, a hero or a stack that
+/// draws its spell; the original's effect test 0x5A8090 has the clone test in the spell's own
+/// case, `installation.md` §7.13).
 pub(crate) fn affects_stack(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -764,6 +767,8 @@ pub(crate) fn affects_stack(
         && !barred(state, spell.1)
         && affects(ruleset, spell, stack.creature, Guard::of(state, caster, s))
         && !kept_off(stack, spell.1)
+        // rule: BAT-MAG-021
+        && !(stack.has(StackTraits::CLONE) && grants_immunity(spell.1))
 }
 
 /// Whether `side`'s cast of `spell` at `mastery` may reach stack `s` (BAT-MAG-003,
@@ -1075,8 +1080,8 @@ fn raise_test<'r>(
     })
 }
 
-/// Whether `spell` makes its stacks immune to spells (Anti-Magic): no clone takes it (BAT-MAG-021;
-/// the original's 0x5A8090, `installation.md` §7.13).
+/// Whether `spell` makes its stacks immune to spells (Anti-Magic): no clone takes it
+/// ([`affects_stack`], BAT-MAG-021; the original's 0x5A8090, `installation.md` §7.13).
 fn grants_immunity(spell: &Spell) -> bool {
     spell
         .magic
@@ -1085,9 +1090,9 @@ fn grants_immunity(spell: &Spell) -> bool {
 }
 
 /// Whether `side`'s cast of the stack spell `spell` at `mastery`, whose [`raise_test`] is `raise`,
-/// may be aimed at stack `s`: one of [`aimable`], for Clone also [`created::clonable`]
-/// (BAT-MAG-038), for Anti-Magic no clone (BAT-MAG-021), or for a spell that raises creatures one
-/// of [`raise::raisable`] (BAT-MAG-035, BAT-MAG-036), dead stacks included.
+/// may be aimed at stack `s`: one of [`aimable`] (for Anti-Magic no clone, BAT-MAG-021), for
+/// Clone also [`created::clonable`] (BAT-MAG-038), or for a spell that raises creatures one of
+/// [`raise::raisable`] (BAT-MAG-035, BAT-MAG-036), dead stacks included.
 fn stack_target(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -1103,8 +1108,6 @@ fn stack_target(
                 // rule: BAT-MAG-038
                 && (!spell.1.magic.clones()
                     || created::clonable(state, ruleset, side, (spell.1, mastery), s))
-                // rule: BAT-MAG-021
-                && !(state.at(s).has(StackTraits::CLONE) && grants_immunity(spell.1))
         }
     }
 }

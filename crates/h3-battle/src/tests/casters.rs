@@ -849,6 +849,29 @@ fn a_spell_is_useful_as_the_originals_test_says() {
     assert!(!is_useful(&s, &r, "slayer", 1));
 }
 
+// covers: BAT-MAG-021, BAT-MAG-050
+#[test]
+fn anti_magic_is_never_useful_on_a_clone() {
+    let r = ruleset();
+    // The enemy hero's spell book makes Anti-Magic useful (BAT-MAG-050).
+    let mut s = arena(
+        &r,
+        [None, Some(mage(&r, &["bolt"]))],
+        &[("jinn", 2, 3, 5), ("serf", 3, 3, 7)],
+        &[("fixed", 3, 13, 5)],
+        1,
+    );
+    crate::created::clone(&mut s, &r, (StackId(1), 3), &mut Vec::<Event>::new());
+    let clone = s.stacks()[3];
+    assert!(clone.has(crate::state::StackTraits::CLONE) && clone.side == BattleSide::Attacker);
+    assert!(is_useful(&s, &r, "antimagic", 1));
+    // The original's effect test gives 0 for Anti-Magic on a clone whoever casts (0x5A8090's
+    // case of spell 34): it is never useful there and never drawn. (The clone test sat in the
+    // hero's aim alone: review r2b F-3.) Any other spell is.
+    assert!(!is_useful(&s, &r, "antimagic", 3));
+    assert!(is_useful(&s, &r, "bless", 3) && is_useful(&s, &r, "airward", 3));
+}
+
 // covers: BAT-MAG-050
 #[test]
 fn the_enemy_decides_the_shields_protections_and_slayer() {
