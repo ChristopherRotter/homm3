@@ -800,3 +800,25 @@ fn formations_have_an_index() {
     assert_eq!([Formation::Loose.index(), Formation::Tight.index()], [0, 1]);
     assert_eq!(Formation::COUNT, 2);
 }
+
+#[test]
+fn selectors_match_flags_creatures_and_upgrades() {
+    use crate::effect::CreatureSelector;
+    let mut p = rich_base();
+    p.creatures[0].info.upgrades = vec![key("base:b")];
+    let r = Ruleset::compile(&[p], "base:faithful").unwrap();
+    let a = r.creature_by_key("base:a").unwrap();
+    let b = r.creature_by_key("base:b").unwrap();
+    let flying = CreatureSelector::Flag(CreatureFlag::Flying);
+    assert!(CreatureSelector::All.matches(&r, b));
+    assert!(flying.matches(&r, a) && !flying.matches(&r, b));
+    // A named creature takes its direct upgrades too.
+    assert!(CreatureSelector::Creature(a).matches(&r, a));
+    assert!(CreatureSelector::Creature(a).matches(&r, b));
+    assert!(!CreatureSelector::Creature(b).matches(&r, a));
+    assert_eq!(
+        r.faction_by_key("base:castle"),
+        Some(FactionId::from_raw(0))
+    );
+    assert_eq!(r.faction_by_key("base:tower"), None);
+}

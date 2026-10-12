@@ -1690,6 +1690,26 @@ mod tests {
     }
 
     #[test]
+    fn every_effect_kind_has_its_own_code() {
+        let mut effects = vec![
+            SpellEffect::Damage,
+            SpellEffect::Dispel,
+            SpellEffect::Heal,
+            SpellEffect::Teleport,
+            SpellEffect::RemoveObstacle,
+            SpellEffect::Raise,
+            SpellEffect::Sacrifice,
+            SpellEffect::Clone,
+            SpellEffect::Summon,
+        ];
+        effects.extend(TimedChange::ALL.map(SpellEffect::Timed));
+        effects.extend(ObstacleKind::ALL.map(SpellEffect::Obstacle));
+        let codes: alloc::collections::BTreeSet<[u8; 2]> =
+            effects.iter().map(|e| e.code()).collect();
+        assert_eq!(codes.len(), effects.len());
+    }
+
+    #[test]
     fn hash_covers_every_field() {
         let digest = h3_kernel::hash::hash_of::<SpellMagic>;
         let base = SpellMagic {

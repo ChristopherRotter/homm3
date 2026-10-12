@@ -409,13 +409,17 @@ impl Ruleset {
                 // lookup always succeeds. The patch goes onto a copy: a gated override's references
                 // are resolved in every profile, and it is kept (and then validated with the
                 // creature) only where it applies.
-                if let Some(info) = creature_info.get_mut(handle.index()) {
-                    let mut patched = info.clone();
-                    apply_patch(&o.patch, &mut patched, &scope, &creature_index)?;
-                    if apply {
-                        *info = patched;
-                    }
-                }
+                creature_info
+                    .get_mut(handle.index())
+                    .map(|info| {
+                        let mut patched = info.clone();
+                        apply_patch(&o.patch, &mut patched, &scope, &creature_index)?;
+                        if apply {
+                            *info = patched;
+                        }
+                        Ok(())
+                    })
+                    .transpose()?;
             }
         }
         for (i, (info, key)) in creature_info.iter().zip(&creature_keys).enumerate() {
