@@ -1243,6 +1243,28 @@ pub enum ClientMessage {
         /// The client's sequence number.
         seq: u32,
     },
+    /// A page of a ladder's leaderboard (E16 M4 T4): the accounts that played a rated game in the
+    /// season, by rating, the highest first; answered `LeaderboardPage`, or `Refused` (no such
+    /// ladder, no such season). Needs no game, nor a login.
+    Leaderboard {
+        /// The client's sequence number.
+        seq: u32,
+        /// The ladder's id.
+        ladder: String,
+        /// The season; `None`, or left out: the current one.
+        #[serde(default)]
+        season: Option<u32>,
+        /// The page, the first 0.
+        page: u32,
+    },
+    /// The logged-in account's own row on a ladder's leaderboard in its current season (E16 M4
+    /// T4): answered `OwnStanding`, or `Refused` (not logged in, no such ladder).
+    Standing {
+        /// The client's sequence number.
+        seq: u32,
+        /// The ladder's id.
+        ladder: String,
+    },
 }
 
 /// Why a join, a game's creation or an account's request was refused; the connection stays open.
@@ -1290,6 +1312,8 @@ pub enum Refusal {
     NotQueued,
     /// The account has no match to answer (E16 M4 T2).
     NoMatch,
+    /// The ladder has no season of this number yet (E16 M4 T4): its seasons count from 1.
+    NoSuchSeason,
 }
 
 /// Why the server closes the connection.
@@ -1558,6 +1582,55 @@ pub enum ServerMessage {
         /// The rating after it.
         after: Points,
     },
+    /// A page of a ladder's leaderboard (E16 M4 T4): `Leaderboard`'s answer.
+    LeaderboardPage {
+        /// The client's sequence number.
+        seq: u32,
+        /// The ladder's id.
+        ladder: String,
+        /// The season.
+        season: u32,
+        /// How many accounts the season's leaderboard lists.
+        total: u32,
+        /// The page's rows, by rank; none past the last page.
+        rows: Vec<LeaderboardRow>,
+    },
+    /// The logged-in account's own row on a ladder's leaderboard (E16 M4 T4): `Standing`'s answer.
+    OwnStanding {
+        /// The client's sequence number.
+        seq: u32,
+        /// The ladder's id.
+        ladder: String,
+        /// The current season.
+        season: u32,
+        /// How many accounts the season's leaderboard lists.
+        total: u32,
+        /// The account's row; `None` before its first rated game of the season.
+        row: Option<LeaderboardRow>,
+    },
+}
+
+/// An account's row on a ladder's leaderboard in a season (E16 M4 T4): rows go by rating, the
+/// highest first, ties by the accounts' login names.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LeaderboardRow {
+    /// Its place, the first 1.
+    pub rank: u32,
+    /// The account's display name as it stands.
+    pub display: String,
+    /// Its rating after its last game of the season.
+    pub rating: Points,
+    /// The games it played in the season, rated.
+    pub games: u32,
+    /// Of them, won.
+    pub wins: u32,
+    /// Lost.
+    pub losses: u32,
+    /// Drawn.
+    pub draws: u32,
+    /// Whether the account is one of the server's bots.
+    pub bot: bool,
 }
 
 /// One finished game in the archive (E16 M2 T5d).

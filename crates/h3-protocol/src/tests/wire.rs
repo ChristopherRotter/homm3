@@ -138,6 +138,23 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
         ClientMessage::Dequeue { seq: 25 },
         ClientMessage::AcceptMatch { seq: 26 },
         ClientMessage::DeclineMatch { seq: 27 },
+        // E16 M4 T4.
+        ClientMessage::Leaderboard {
+            seq: 28,
+            ladder: "arena".to_string(),
+            season: None,
+            page: 0,
+        },
+        ClientMessage::Leaderboard {
+            seq: 29,
+            ladder: "arena".to_string(),
+            season: Some(2),
+            page: 3,
+        },
+        ClientMessage::Standing {
+            seq: 30,
+            ladder: "arena".to_string(),
+        },
     ];
     out.extend(
         commands()
@@ -145,6 +162,23 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
             .map(|command| ClientMessage::Command { seq: 7, command }),
     );
     out
+}
+
+/// A leaderboard's row at `rank` (E16 M4 T4).
+fn row(rank: u32, bot: bool) -> LeaderboardRow {
+    LeaderboardRow {
+        rank,
+        display: "Ann B".to_string(),
+        rating: Points {
+            rating: 1662,
+            deviation: 290,
+        },
+        games: 3,
+        wins: 2,
+        losses: 0,
+        draws: 1,
+        bot,
+    }
 }
 
 /// One of every server message (several of some).
@@ -332,6 +366,37 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             deviation: 0,
         },
     });
+    // E16 M4 T4: a leaderboard's page, one's own row.
+    out.extend([
+        ServerMessage::LeaderboardPage {
+            seq: 28,
+            ladder: "arena".to_string(),
+            season: 1,
+            total: 2,
+            rows: vec![row(1, false), row(2, true)],
+        },
+        ServerMessage::LeaderboardPage {
+            seq: 29,
+            ladder: "arena".to_string(),
+            season: 2,
+            total: 0,
+            rows: vec![],
+        },
+        ServerMessage::OwnStanding {
+            seq: 30,
+            ladder: "arena".to_string(),
+            season: 1,
+            total: 2,
+            row: Some(row(2, true)),
+        },
+        ServerMessage::OwnStanding {
+            seq: 31,
+            ladder: "arena".to_string(),
+            season: 1,
+            total: 2,
+            row: None,
+        },
+    ]);
     out.extend(
         [RejectCode::NotHost, RejectCode::AlreadyStarted].map(|code| ServerMessage::Rejected {
             n: 13,
@@ -359,6 +424,7 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             Refusal::InRankedGame,
             Refusal::NotQueued,
             Refusal::NoMatch,
+            Refusal::NoSuchSeason,
         ]
         .map(|reason| ServerMessage::Refused { reason }),
     );
@@ -564,6 +630,29 @@ fn the_json_is_serdes_default_enum_form() {
             }
         }),
         r#"{"Rating":{"n":6,"ladder":"arena","before":{"rating":1500,"deviation":350},"after":{"rating":1662,"deviation":290}}}"#
+    );
+    // E16 M4 T4: a leaderboard's page; the season left out is the current one.
+    assert_eq!(
+        serde_json::from_str::<ClientMessage>(
+            r#"{"Leaderboard":{"seq":1,"ladder":"arena","page":0}}"#
+        )
+        .unwrap(),
+        ClientMessage::Leaderboard {
+            seq: 1,
+            ladder: "arena".to_string(),
+            season: None,
+            page: 0
+        }
+    );
+    assert_eq!(
+        server(&ServerMessage::LeaderboardPage {
+            seq: 1,
+            ladder: "arena".to_string(),
+            season: 2,
+            total: 1,
+            rows: vec![row(1, false)]
+        }),
+        r#"{"LeaderboardPage":{"seq":1,"ladder":"arena","season":2,"total":1,"rows":[{"rank":1,"display":"Ann B","rating":{"rating":1662,"deviation":290},"games":3,"wins":2,"losses":0,"draws":1,"bot":false}]}}"#
     );
     // E16 M3 T1: a login, keys and signatures as hex.
     assert_eq!(

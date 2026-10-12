@@ -269,6 +269,28 @@ fn without_anonymous_play_a_game_waits_for_the_login() {
     assert_eq!(receive(&mut greeted(true), &join), Received::Game(join));
 }
 
+/// E16 M4 T4: a leaderboard's page needs no login, one's own row on it does, on any server.
+#[test]
+fn ones_own_standing_needs_a_login_a_leaderboard_does_not() {
+    let board = ClientMessage::Leaderboard {
+        seq: 1,
+        ladder: "arena".to_string(),
+        season: None,
+        page: 0,
+    };
+    let standing = ClientMessage::Standing {
+        seq: 2,
+        ladder: "arena".to_string(),
+    };
+    for anonymous in [true, false] {
+        let mut c = greeted(anonymous);
+        assert_eq!(receive(&mut c, &board), Received::Game(board.clone()));
+        assert_eq!(receive(&mut c, &standing), refused(Refusal::NotLoggedIn));
+        c.logged_in("ann".to_string());
+        assert_eq!(receive(&mut c, &standing), Received::Game(standing.clone()));
+    }
+}
+
 proptest! {
     /// E16 M3 T1: whatever a client sends, the gate logs it in only on the host's yes, and hands
     /// the host no request for an account it is not logged in to.
