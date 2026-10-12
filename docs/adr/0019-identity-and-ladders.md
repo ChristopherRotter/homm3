@@ -2,10 +2,10 @@
 
 - Status: Accepted (user, 2026-10-11, the E16 M3 refinement, SRV-Q17; directions from SRV-Q8 to
   SRV-Q10 and SRV-Q13). Points 4 to 9 (ladders, matchmaking, rating, pauses on a ladder, bots)
-  are direction, amended at the M4 refinement.
-- Date: 2026-10-11 (drafted 2026-10-08)
-- Deciders: user; server lane sessions (E16 refinement, M3 refinement)
-- Working detail (names, derivation, login, the player log): [`docs/epics/E16-design.md`](../epics/E16-design.md) §10; options: [`docs/epics/E16-server.md`](../epics/E16-server.md)
+  amended and decided at the M4 refinement (user, 2026-10-12, SRV-Q19).
+- Date: 2026-10-11 (drafted 2026-10-08; amended 2026-10-12)
+- Deciders: user; server lane sessions (E16 refinement, M3 and M4 refinements)
+- Working detail (names, derivation, login, the player log: [`docs/epics/E16-design.md`](../epics/E16-design.md) §10; ladders §11); options: [`docs/epics/E16-server.md`](../epics/E16-server.md)
 
 <!-- Decisions only. Reasoning and options: docs/epics/E16-server.md; detail: E16-design.md. -->
 
@@ -46,36 +46,49 @@ database system to install.
    nothing is synchronized, there is no global ladder and none is planned. The same login name
    and password give the same key on every server, which is a convenience, not a link: each
    server's record of a player stands alone.
-4. **A ladder** is a fixed game configuration (its ruleset hash included), a scenario pool, a
-   rating system, a leaderboard and a season number. A content change on the server starts a
-   new season.
-5. **Matchmaking:** one queue per ladder; the matcher pairs players by rating distance with a
-   window that widens with waiting time; a match creates the game with a scenario from the pool
-   and random sides; both players accept within a time limit or return to the queue.
+4. **A ladder** is a fixed game configuration: one ruleset (packs and profile, its hash), a
+   scenario pool on it, the bounds of its games (the accept time, the disconnect grace, the
+   pauses), the rating system, a leaderboard and a season number. A change of the ruleset hash
+   starts a new season: each account keeps its rating, its deviation reset to the default, and
+   earlier seasons' leaderboards stay readable (the user, SRV-Q19). Only a logged-in account
+   plays on a ladder.
+5. **Matchmaking:** one queue per ladder, and an account waits in one queue at a time; the
+   matcher pairs players by rating distance with a window that widens with waiting time; a
+   match creates the game with a scenario from the pool, random sides and both seats bound to
+   the players' accounts; both accept within the ladder's time or the one who did not leaves the
+   queue and the other returns to it.
 6. **Rating: Glicko-2** with the published defaults, computed in `h3-server` (not game logic:
-   floats are allowed in adapters), updated in the order games end. A result counts only after
-   the game's journal re-ran and verified (ADR-0018, point 12) and only when both seats
-   were held by their players. A disconnect beyond the grace period is a forfeit; an abandoned
-   game is a loss for the absent player.
+   floats are allowed in adapters), one rating period per game, applied in the order games end;
+   the ratings after each game are written to the ladder's results log and read back at start,
+   never recomputed. A result counts only after the game's journal re-ran and verified
+   (ADR-0018, point 12) and only when both seats were held by their accounts. **Disconnects:** a
+   player who drops re-takes the seat by account and the game goes on where it stood; a
+   disconnect beyond the ladder's grace (by default 5 minutes each) or beyond its total (by
+   default 10 minutes per player and game) forfeits the game: a loss for the absent player
+   (both absent: void, a no-show each, no rating changes; the user, SRV-Q13, SRV-Q19). The
+   server's own downtime never counts. A turn timer against a connected player who stalls is a
+   game rule, deferred to the game's configuration (`h3-game`, E16 M5; the user, SRV-Q19).
 7. **Persistence is files, not a database system.** The data directory holds the game
    journals (ADR-0018, point 12) and append-only JSON-lines logs of players, name changes,
-   finished games and results, each line synced when written, rebuilt into memory at start,
-   with periodic snapshots to bound the start time. Ladder results are therefore durable,
-   crash-consistent (a torn last line is discarded) and readable with any text tool. An
-   embedded store is a later option for a server that outgrows in-memory tables (a heavy
-   dependency: a user decision then); journals and logs stay the source of truth either way.
+   finished games and results (one per ladder), each line synced when written, rebuilt into
+   memory at start, with periodic snapshots to bound the start time. Ladder results are
+   therefore durable, crash-consistent (a torn last line is discarded) and readable with any
+   text tool. An embedded store is a later option for a server that outgrows in-memory tables
+   (a heavy dependency: a user decision then); journals and logs stay the source of truth
+   either way.
 8. **Pause and resume.** An unranked game pauses when its host or all its seats ask; a ranked
    game has no host and pauses only when both players agree (one proposes, the other accepts)
-   and within the ladder's limit, else the absent player forfeits. A player whose ranked game
-   on the server is not over starts no other ranked game there (both rules the user's,
-   2026-10-11). The pause's length is proposed within the ladder's bounds and agreed; at its due
-   time the disconnect grace runs, and a player not back forfeits (both absent: void, a no-show
-   each; the user, SRV-Q13). A paused game is unloaded and listed as resumable for its
-   participants; it resumes from its journal when every seat is taken again (by account on a
-   ladder, by token otherwise).
-9. **Bots on ladders.** A server may enter its own bot seats (a scripted or trained agent)
-   under a bot account, flagged as such on the leaderboard: the AI plays people, and their
-   games become records.
+   and within the ladder's limit, else the absent player forfeits. A player has at most one
+   unfinished ranked game, running or paused, per ladder on a server and starts no other on
+   that ladder until it is over; unranked games are unaffected, the server's bot accounts
+   exempt (the user, SRV-Q13; per ladder since SRV-Q19). The pause's length is proposed within
+   the ladder's bounds and agreed; at its due time the disconnect grace runs, and a player not
+   back forfeits (both absent: void, a no-show each; the user, SRV-Q13). A paused game is
+   unloaded and listed as resumable for its participants; it resumes from its journal when
+   every seat is taken again (by account on a ladder, by token otherwise).
+9. **Bots on ladders.** A server may enter its own bots (a scripted or trained agent) under bot
+   accounts, flagged as such on the leaderboard, rated like players and exempt from the one
+   game per ladder: the AI plays people, and their games become records.
 10. **Internet hosting.** Session integrity over the internet needs TLS; the login does not (a
     signed challenge is not a secret). The server does not implement TLS: a reverse proxy in
     front of it is the documented setup; native TLS is a later option behind the transport
