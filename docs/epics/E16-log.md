@@ -1145,3 +1145,110 @@ how and why the work went.
   pinged, told and closed within the timeout and leaves its game (a fake transport); the bounds'
   cases and the period's check; end to end: a ranked seat whose client stops reading forfeits in
   seconds (the idle timeout would have held it 5 minutes), its connection gone.
+
+### M4 T4 — Leaderboards (2026-10-12)
+
+- **The start.** #112 (SRV-Q20) had merged; the scoped verify on `master` had no failing step,
+  the workload unchanged (no re-baseline).
+- **The wire** (version 17, *provisional* names): `ClientMessage::Leaderboard { seq, ladder,
+  season, page }` (`season` `None` or left out: the current one; `page` from 0), answered
+  `LeaderboardPage { seq, ladder, season, total, rows }`; `ClientMessage::Standing { seq, ladder
+  }`, answered `OwnStanding { seq, ladder, season, total, row }` (`None` before the account's first
+  rated game of the season); a row is `LeaderboardRow { rank, display, rating: Points, games,
+  wins, losses, draws, bot }`; `Refusal::NoSuchSeason`. The gate (`Connection::receive`) refuses
+  `Standing` without a login (`NotLoggedIn`), on any server; a page needs none.
+- **The server** (`ladders.rs`, *provisional*): each season keeps its leaderboard in order beside
+  its table (`Season::order`, a set of `(Ahead(rating), login)`: by the rating itself, the highest
+  first, `f64::total_cmp`, ties by login name), moved by every `Rated` line, read back or new; a
+  row enters at its first rated game, so an account with only no-shows is not listed. A page is
+  `PAGE` (50) rows from the `page`-th, none past the last; one's own rank counts the rows ahead.
+  `Ladders::page` and `own` answer (a `Board`), refused `NoSuchLadder` or `NoSuchSeason`. The
+  connection's task reads them through `spawn_blocking` (the ladders' lock and the player log's
+  wait on their syncs) and names each row's display name as it stands (`Accounts::displays`, one
+  lock for a page). The bound is the page and the connection's message rate, as for the replay
+  lists. `bot` is false until T5 brings the server's bots.
+- **Tests** (`h3-protocol` 85 → 86, `h3-server` 92 → 94): the gate's login for one's own row; the
+  wire's corpora and JSON forms (a leaderboard's ask without a season, a page). A leaderboard of
+  120 accounts paged by rating, ties by login name, a row moved by a second win, ranks, a no-show
+  unlisted, the refusals, the same pages read back and an empty next season. End to end: a
+  forfeit's two rows on the first page, a page past the end, an unknown season and ladder; one's
+  own row (none for an account without a game, refused anonymous); a rename shown; after a
+  content change the new season's page empty and the first season's kept.
+
+### M4 T5 — Bots on ladders (2026-10-12)
+
+- **The start.** #114 (T4) had merged; the branch restarted from `master` (T4's scoped verify
+  had no failing step, the workload unchanged; #113, the adventure lane's, touched no server
+  path).
+- **The queue** (`h3_protocol::ladder`, *provisional*): `Ladder::bots` (`LadderBot { login,
+  display, rating }`) and `bot_after_ms`; a waiting entry's connection is `Option` (`None`: a
+  bot). After the players are paired, each one left who waited `bot_after_ms` gets the bot
+  nearest in rating (`min_by_key`: the first of equally near ones, the configuration's order),
+  whatever the window: people first. The bot accepted at once (`MatchFound` to the player only);
+  a decline, an expiry or a drain tells only the player, and the bot, never queued, plays any
+  number of games at once. `Queues::rate(ladder, login, points)`: the host passes the bots'
+  ratings before each matcher's turn (`registry::match_every` reads them from `Ladders::bots`
+  outside the registry's lock). `Matched::players` names a bot with no connection.
+- **The session** (`Session::reserve`): a bot's seat belongs to its bot account too
+  (`Entry::TakenBy`, as a player's): `accounts()` names it, the lobby lists it, the end rates
+  it, and a restart restores it from the journal's tokens (`None`: the bot plays) and entries.
+  Journal format unchanged (5): the lines are the same.
+- **The wire** (version 18): `LadderInfo::bots` (the ladder's bots' display names),
+  `Seated::bot`; `LeaderboardRow::bot` set since T4.
+- **The server**: `[[ladder.bot]]` (`login`, `display`, `kind`, `random` the only one;
+  *provisional*), `bot_after_ms` (60 000; 0 to a year); names checked as an account's, a bot once
+  per ladder, the same entry on every ladder that lists it. The player log's `Bot { login,
+  display }` line: an account with no key (`Account::key` is an `Option`), which no login
+  matches, no re-key or `rebind` changes (`a bot's account`), and whose names are taken as any
+  account's. At start (`Accounts::bots`, before the ladders read their logs) a bot the log does
+  not know is registered, one whose display name changed renamed; a player's account under a
+  bot's login stops the start. `Prepared::new` takes the seats the server's bot plays (the
+  offer's, or the match's bot), so a bot match's journal holds no token for it. The lobby's and
+  the leaderboard's flags come from `Account::is_bot`.
+- **Found on the way:** a match's game never named its accounts in the lobby (T2 on): the game's
+  loop names seats only when they change, and a match's were set before its first look. The game
+  now names them right after the reservation.
+- **Tests** (`h3-protocol` 86 → 87, `h3-server` 94 → 96): the nearest bot after the wait (a
+  tie, a rating changed on one ladder only, a decline, an expiry, people first, a drain); a bot
+  seat's account reserved, restored, never taken by a connection; the wire's corpora and JSON
+  form. The player log's bot accounts (names, rename, no key change, read back); the
+  configuration's bot checks. End to end: a lone player matched with the bot after the wait, its
+  seat named and flagged in the lobby, the game rated for both, the bot's row flagged; no login
+  as the bot or under its name; a renamed bot at the next start; a bot under a player's login
+  stops the start; a human match's seats named in the lobby.
+
+### M4 T6 — The pause by agreement (2026-10-12)
+
+- **The start.** #118 (T5) had merged; the branch restarted from `master` (the shared and client
+  changes merged meanwhile touch no server path). During the task the user asked whether a
+  player may opt out of bots (SRV-Q21): per ladder as built, plus a per-queue opt-out and
+  `MatchFound` naming a bot; queued as T5b, outside this task.
+- **The session** (`h3_protocol::session`, *provisional*): `Grace` carries the ladder's `pauses`
+  and `pause_ms`. `ProposePause` from a running ranked game's seat (else `NotRanked`; the phase
+  as for `Pause`): once per seat until the game moves on and while no proposal is open
+  (`AlreadyAsked`), within the seat's pauses (`NoPausesLeft`) and the longest (`BadPauseLength`,
+  also 0); `PauseProposed` to every viewer. `AnswerPause` answers the other seat's open proposal
+  (`NoProposal` otherwise, also one's own); `PauseAnswered` to every viewer, and agreed:
+  `Entry::PauseAgreed(side, ms)` (the proposer's pause counted) and the host's pause (`halt`). A
+  command applied clears the asks and lapses an open proposal. `agreed_pause()` names the pause
+  a restored session is in; `hold(ms)` keeps every absence from counting before then (a seat
+  away, or gone later); `wake()` runs a game in an agreed pause again (`Resumed`), its players
+  away. An unranked game's other seat asks (`Pause`) once until the game moves on (the M2
+  review's repeated `PauseAsked`). `tell_all` sends to every viewer (`tell_end` uses it).
+- **The wire** (version 19): the two client messages, `PauseProposed`, `PauseAnswered`, five
+  `RejectCode`s. **The journal** (format 6): `PauseAgreed { side, ms }`.
+- **The server**: a game that pauses by agreement is listed paused with its due time
+  (`Hosted::Paused::due`, its pause after the journal's last write; at start, after a restart,
+  the same); a restore holds the absences for the rest of it (`game::resume`). The sweep
+  (`Registry::sweep`, now given the shared registry) wakes a paused game whose due time came:
+  restored on its thread without a join (`Registry::restorer`, shared with `bind`;
+  `Prepared::woken`), it reports itself running; `paused_game_ms` voids only games without a due
+  time. The example configuration shows `pauses` and `pause_ms`.
+- **Tests** (`h3-protocol` 87 → 90, `h3-server` 96 → 99): the session's bounds, the asks, a
+  decline, a lapse, an agreement told to the spectator too, the restore in its pause, the hold
+  for a player back early and for one gone again, the pauses used; a wake with neither back
+  (void) and one in no agreed pause (nothing); an unranked game's other seat asking once; the
+  wire's corpora and JSON form; the journal's line. End to end: a proposal declined, a second
+  ask refused, a pause agreed and both back in time playing on to the end; a player not back
+  after the due time forfeiting after the pause and the grace; neither back: woken and void (a
+  no-show each), not voided by a shorter `paused_game_ms`.

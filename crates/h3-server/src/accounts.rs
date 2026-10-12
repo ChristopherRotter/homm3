@@ -126,6 +126,53 @@ impl Accounts {
         self.players().get(login).cloned()
     }
 
+    /// The display names of the accounts `logins` as they stand, under one lock (E16 M4 T4: a
+    /// leaderboard's rows), each with whether it is a bot's (E16 M4 T5); an empty name for an
+    /// account the server does not know (none: a ladder's accounts are the player log's). Blocks
+    /// on the player log: call it neither on a connection's task nor under the registry's lock.
+    pub(crate) fn displays<'a>(
+        &self,
+        logins: impl IntoIterator<Item = &'a str>,
+    ) -> Vec<(String, bool)> {
+        let players = self.players();
+        (logins.into_iter())
+            .map(|login| {
+                (players.get(login))
+                    .map_or_else(Default::default, |a| (a.display.clone(), a.is_bot()))
+            })
+            .collect()
+    }
+
+    /// The configuration's bots (E16 M4 T5), each a login name and a display name: an account the
+    /// player log does not know is registered as a bot's, one whose display name changed renamed.
+    /// At start, before the ladders read their logs; an account of a player's under the name, a
+    /// display name another account has or a log that does not write stops the start.
+    pub(crate) fn bots<'a>(
+        &self,
+        bots: impl IntoIterator<Item = (&'a str, &'a str)>,
+    ) -> Result<(), Error> {
+        let mut players = self.players();
+        for (login, display) in bots {
+            let fail = |why: &dyn fmt::Display| Err(Error(format!("bot `{login}`: {why}")));
+            let event = match players.get(login) {
+                Some(account) if !account.is_bot() => return fail(&"a player's account"),
+                Some(account) if account.display == display => continue,
+                Some(_) => Event::Renamed {
+                    login: login.to_owned(),
+                    display: display.to_owned(),
+                },
+                None => Event::Bot {
+                    login: login.to_owned(),
+                    display: display.to_owned(),
+                },
+            };
+            if let Err(e) = players.record(event) {
+                return fail(&e);
+            }
+        }
+        Ok(())
+    }
+
     /// The player log, locked.
     fn players(&self) -> std::sync::MutexGuard<'_, Players> {
         self.players.lock().unwrap_or_else(PoisonError::into_inner)
@@ -145,7 +192,7 @@ impl Accounts {
         }
         let mut players = self.players();
         if let Some(account) = players.get(login) {
-            return if account.key == *key {
+            return if account.key == Some(*key) {
                 Ok(account.clone())
             } else {
                 Err(Refusal::BadLogin)
@@ -181,10 +228,12 @@ impl Accounts {
         }
         let mut players = self.players();
         let account = players.get(&login).cloned().ok_or(Refusal::BadLogin)?;
-        if !self.authenticator.verify(&account.key, signed, by_old) {
+        // A bot's account has no key (E16 M4 T5), and none logs in as it.
+        let old = account.key.ok_or(Refusal::BadLogin)?;
+        if !self.authenticator.verify(&old, signed, by_old) {
             return Err(Refusal::BadLogin);
         }
-        if account.key == *key {
+        if old == *key {
             return Ok((account, false));
         }
         let key = Hex(*key);

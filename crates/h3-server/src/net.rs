@@ -47,7 +47,9 @@ use h3_protocol::account::KEY_BYTES;
 use h3_protocol::codec;
 use h3_protocol::connection::{AccountRequest, Connection, Host, Received};
 use h3_protocol::session::ConnId;
-use h3_protocol::wire::{ClientMessage, GoodbyeReason, Refusal, RejectCode, ServerMessage};
+use h3_protocol::wire::{
+    ClientMessage, GoodbyeReason, LeaderboardRow, Refusal, RejectCode, ServerMessage,
+};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{Notify, mpsc, watch};
 use tokio::time::{Instant, sleep_until, timeout};
@@ -61,7 +63,7 @@ use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use crate::accounts::Accounts;
 use crate::config::Limits;
 use crate::game::{self, Frame, FromGame, ToGame};
-use crate::ladders::Ladders;
+use crate::ladders::{self, Ladders};
 use crate::registry::{self, Opening, Shared, ToConn, lock};
 
 /// What a transport received.
@@ -350,6 +352,7 @@ pub(crate) async fn serve<T: Transport>(
         queue: (limits.outbound_queue.max(1), limits.outbound_bytes),
         bound: None,
         ladders: Arc::clone(&server.ladders),
+        accounts: Arc::clone(&server.accounts),
         to_me,
         queued: false,
     };
@@ -566,6 +569,8 @@ struct Link {
     bound: Option<Bound>,
     /// The ladders, for the account's rating (E16 M4 T2).
     ladders: Arc<Ladders>,
+    /// The accounts, for the display names on a leaderboard (E16 M4 T4).
+    accounts: Arc<Accounts>,
     /// Where the connection hears from a ladder's queue.
     to_me: ToConn,
     /// Whether the connection waits in a ladder's queue, matched or not.
@@ -597,6 +602,20 @@ impl Link {
             }
             ClientMessage::ListLadders { seq } => {
                 Routed::Reply(text(lock(&self.registry).ladders(seq)))
+            }
+            ClientMessage::Leaderboard {
+                seq,
+                ladder,
+                season,
+                page,
+            } => Routed::Reply(
+                self.leaderboard(seq, ladder, Asked::Page { season, page })
+                    .await,
+            ),
+            // The gate let it through logged in only (`Connection::receive`).
+            ClientMessage::Standing { seq, ladder } => {
+                let own = Asked::Own(login.unwrap_or_default());
+                Routed::Reply(self.leaderboard(seq, ladder, own).await)
             }
             ClientMessage::Queue { seq, ladder } => {
                 // Outside the registry's lock: the ladders have their own.
@@ -726,6 +745,53 @@ impl Link {
         }
     }
 
+    /// The answer to `Leaderboard` or `Standing` on the ladder `ladder` (E16 M4 T4), read off the
+    /// connection's task: the ladders' lock and the player log's wait on their syncs. A row names
+    /// its account's display name as it stands.
+    async fn leaderboard(&self, seq: u32, ladder: String, asked: Asked) -> Frame {
+        let (tables, players) = (Arc::clone(&self.ladders), Arc::clone(&self.accounts));
+        let answer = tokio::task::spawn_blocking(move || -> Result<ServerMessage, Refusal> {
+            let board = match &asked {
+                Asked::Page { season, page } => tables.page(&ladder, *season, *page),
+                Asked::Own(login) => tables.own(&ladder, login),
+            }?;
+            let names = players.displays(board.rows.iter().map(|(_, login, _)| login.as_str()));
+            let rows = (board.rows.into_iter().zip(names))
+                .map(|((rank, _, row), (display, bot))| LeaderboardRow {
+                    rank,
+                    display,
+                    rating: ladders::points(row.rating),
+                    games: row.games,
+                    wins: row.wins,
+                    losses: row.losses,
+                    draws: row.draws,
+                    bot,
+                })
+                .collect::<Vec<_>>();
+            let (season, total) = (board.season, board.total);
+            Ok(match asked {
+                Asked::Page { .. } => ServerMessage::LeaderboardPage {
+                    seq,
+                    ladder,
+                    season,
+                    total,
+                    rows,
+                },
+                Asked::Own(_) => ServerMessage::OwnStanding {
+                    seq,
+                    ladder,
+                    season,
+                    total,
+                    row: rows.into_iter().next(),
+                },
+            })
+        });
+        match answer.await.unwrap_or(Err(Refusal::NoSuchLadder)) {
+            Ok(message) => text(codec::encode_text(&message)),
+            Err(reason) => refused(reason),
+        }
+    }
+
     /// Leaves the bound game, if any: the game hears the connection closed.
     async fn unbind(&mut self) {
         if let Some(bound) = self.bound.take() {
@@ -734,6 +800,14 @@ impl Link {
             let _ = bound.to_game.send(ToGame::Closed { conn }).await;
         }
     }
+}
+
+/// What a leaderboard's request asks for (E16 M4 T4).
+enum Asked {
+    /// A page of the season's (the current one for `None`).
+    Page { season: Option<u32>, page: u32 },
+    /// The account's own row in the current season.
+    Own(String),
 }
 
 /// The answer to `FetchArchived` (E16 M2 T5d): the archive's replay `id` read from its file off
@@ -798,7 +872,11 @@ fn unbound(message: &ClientMessage) -> Frame {
         | ClientMessage::Queue { seq, .. }
         | ClientMessage::Dequeue { seq }
         | ClientMessage::AcceptMatch { seq }
-        | ClientMessage::DeclineMatch { seq } => *seq,
+        | ClientMessage::DeclineMatch { seq }
+        | ClientMessage::Leaderboard { seq, .. }
+        | ClientMessage::Standing { seq, .. }
+        | ClientMessage::ProposePause { seq, .. }
+        | ClientMessage::AnswerPause { seq, .. } => *seq,
         ClientMessage::Hello { .. } | ClientMessage::Ping { .. } | ClientMessage::Join { .. } => 0,
     };
     Frame {

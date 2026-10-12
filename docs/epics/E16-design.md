@@ -287,20 +287,38 @@ below are the tasks' starting point, *provisional* until M4's review.
   the server's life: `<data>/next-game` holds an id beyond every one given, recorded on the
   game's thread before its journal exists; at start the lobby follows it and every journal's id
   (an id handed out just before a crash, with no journal yet, may come again: nothing names it).
-- **Leaderboards** (M4 T4): `Leaderboard { seq, ladder, season, page }` (the current season when
-  left out) answered by a page of 50 rows: rank, display name, rating and deviation as whole
-  numbers, games, wins, losses, draws, a bot flag; rows by rating, ties by login name; an account
-  appears after its first game of the season. `Standing { seq, ladder }` gives the asker's own
-  row. Ratings travel as whole numbers: `h3-protocol` holds no floats.
-- **Bots** (M4 T5): `[[ladder.bot]]` entries (`login`, `display`, which bot), registered in the
-  player log as bot accounts with no key (they never log in), each a standing queue entry
-  matched only with a player who waited `bot_after_ms` (60 s, *provisional*: people first),
-  playing any number of games at once, flagged on the leaderboard.
-- **The pause by agreement** (M4 T6): `ProposePause { seq, ms }` within the ladder's `pause_ms`
-  and the seat's remaining `pauses`, once per seat until the game moves on (the inbox's item);
-  `PauseProposed { n, seat, ms }` to the other seat, who answers `AnswerPause { seq, accept }`;
-  agreed, the game pauses with the length in the journal; at its due time (the journal's age,
-  as `paused_game_ms` reads it) the grace runs, from the start for a server that was down.
+- **Leaderboards** (code since M4 T4): `Leaderboard { seq, ladder, season, page }` (the current
+  season when left out, pages from 0; any connection, no login) answered by `LeaderboardPage {
+  seq, ladder, season, total, rows }`, a page of 50 rows (`LeaderboardRow`: rank, display name as
+  it stands, rating and deviation as whole numbers, games, wins, losses, draws, a bot flag), none
+  past the last; rows by the rating itself, the highest first, ties by login name; an account
+  appears after its first rated game of the season (a no-show does not list it). `Standing {
+  seq, ladder }`, logged in, gives the asker's own row in the current season with its rank
+  (`OwnStanding`, `None` before its first rated game). `Refused { NoSuchLadder | NoSuchSeason |
+  NotLoggedIn }`. Each season's order is kept beside its table, rebuilt from the log at start.
+  Ratings travel as whole numbers: `h3-protocol` holds no floats.
+- **Bots** (code since M4 T5): `[[ladder.bot]]` entries (`login`, `display`, `kind`: `random`,
+  the only bot so far), registered at start in the player log as bot accounts with no key
+  (`Bot { login, display }`: no one logs in as them, `rebind` refuses them; a changed display
+  name renamed), each a standing entry outside the queue: a player the matcher left unpaired
+  after the ladder's `bot_after_ms` (60 s, *provisional*: people first) plays the bot nearest in
+  rating, whatever the window; the bot accepts at once and plays any number of games at once.
+  Its seat in the match's game is its account's (journaled as a player's), played by the
+  server's bot; the game is rated for both. Flagged on the wire: `LadderInfo::bots`,
+  `Seated::bot`, `LeaderboardRow::bot`. A player opts out per queue (SRV-Q21, M4 T5b: `Queue {
+  …, bots }`), and `MatchFound` names a bot.
+- **The pause by agreement** (code since M4 T6): `ProposePause { seq, ms }` within the
+  ladder's `pause_ms` and the seat's remaining `pauses`, once per seat until the game moves on (a
+  command applied), while no other proposal is open; `PauseProposed { n, seat, ms }` to every
+  viewer; the other seat answers `AnswerPause { seq, accept }` (`PauseAnswered` to every viewer)
+  before the game moves on, or the proposal lapses. Agreed, the game pauses as a host's pause does,
+  `PauseAgreed { side, ms }` in the journal (format 6). Its due time is the pause's length after
+  the journal's last write (as `paused_game_ms` reads it): a game resumed before it counts no
+  absence until then (`Session::hold`); at it, the registry's sweep wakes a game no one took back
+  (`Session::wake`): it runs with its players away, and the grace ends it as any absence. A due
+  time that passed while the server was down wakes the game at the first sweep, so the grace runs
+  from the start. `paused_game_ms` never voids a game in an agreed pause. Unranked games keep the
+  host's `Pause`; another seat asks once until the game moves on.
 - **Stalling** is not answered in M4: a connected player may sit on a turn until the game's
   rules bring a turn timer (`h3-game`, M5; SRV-Q19).
 

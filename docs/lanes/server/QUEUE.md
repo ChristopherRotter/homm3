@@ -4,35 +4,21 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, SRV-Q16; M3 done 2026-10-12, its checkpoint passed, SRV-Q18). M4 refined 2026-10-12 (SRV-Q19): ADR-0019 points 4–9 decided; the working detail in `E16-design.md` §11; cut below, each task about half a context, the inbox's M4 items folded in; T1 done 2026-10-12 (`[[ladder]]`, `rating`, the results log); T2 done 2026-10-12 (the queues, the match's game, wire 14; `E16-log.md`); T3a done 2026-10-12 (no host, the grace, forfeits and no-shows, journal format 5, wire 15); T3b done 2026-10-12 (verified before the end, rated and logged, `Rating`, `<data>/next-game`, wire 16). SRV-Q20 done 2026-10-12 (server-side pings; the user). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`, each journal change `JOURNAL_FORMAT_VERSION`.
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, SRV-Q16; M3 done 2026-10-12, its checkpoint passed, SRV-Q18). M4 refined 2026-10-12 (SRV-Q19): ADR-0019 points 4–9 decided; the working detail in `E16-design.md` §11; cut below, each task about half a context, the inbox's M4 items folded in; T1 done 2026-10-12 (`[[ladder]]`, `rating`, the results log); T2 done 2026-10-12 (the queues, the match's game, wire 14; `E16-log.md`); T3a done 2026-10-12 (no host, the grace, forfeits and no-shows, journal format 5, wire 15); T3b done 2026-10-12 (verified before the end, rated and logged, `Rating`, `<data>/next-game`, wire 16). SRV-Q20 done 2026-10-12 (server-side pings; the user); T4 done 2026-10-12 (leaderboards, wire 17); T5 done 2026-10-12 (bots on ladders, wire 18); T6 done 2026-10-12 (the pause by agreement, wire 19, journal format 6); T5b added 2026-10-12 (SRV-Q21). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`, each journal change `JOURNAL_FORMAT_VERSION`.
 
-### E16 M4 T4 — Leaderboards
+### E16 M4 T5b — A player's bot opt-out (SRV-Q21)
 
-- **Scope:** `Leaderboard { seq, ladder, season, page }` (the current season when left out) answered by pages of 50 (rank, display name, rating and deviation as whole numbers, games, wins, losses, draws, the bot flag; by rating, ties by login name; an account listed after its first game of the season); `Standing { seq, ladder }`, the asker's row. Bounded like the replay lists (rate, page size).
-- **Acceptance:** the Definition of Done; end to end: pages after rated games, an earlier season's page, one's own standing; a display name changed shows.
-- **Depends on:** T3b (done: the tables per season, `Ladders::standing`).
-- **Status:** ready.
-
-### E16 M4 T5 — Bots on ladders
-
-- **Scope:** `[[ladder.bot]]` (`login`, `display`, which bot; *provisional*): bot accounts in the player log with no key (never log in), unique names as any account's; each a standing queue entry matched only with a player who waited `bot_after_ms` (60 s), exempt from the one-game rule, any number of games at once; flagged in `Ladders`, the lobby and the leaderboard. The server's bots send no messages, so the inbox's rate for automated seats stays for automated clients.
-- **Acceptance:** the Definition of Done; end to end: a lone player is matched with the bot after the wait, the game rated, the bot's row flagged.
-- **Depends on:** T3b (done: a bot's seat has no account, and `game::rate` leaves a game with a seat without one unrated: T5 rates the bot's account).
-- **Status:** ready.
-
-### E16 M4 T6 — The pause by agreement
-
-- **Scope:** `ProposePause { seq, ms }` within the ladder's `pause_ms` and the seat's remaining `pauses`, one ask per seat until the game moves on (the inbox's M2 T5e item; for unranked games too); `PauseProposed { n, seat, ms }` to the other seat, `AnswerPause { seq, accept }`; agreed, the game pauses with its length in the journal; at its due time the grace runs (from the start for a server that was down); a resumed game goes on. A ranked game's `Pause` is rejected `NotHost` since T3a and nothing pauses one yet: the registry's `paused_game_ms` sweep (`Registry::sweep`) must not void a paused ranked game, and the session's clock (`Session::elapse`, counting from the session's start) must count the grace from the due time.
-- **Acceptance:** the Definition of Done; end to end: a proposal declined, one accepted and resumed in time, one whose player is not back after the due time and the grace forfeits; a second ask before the game moved on refused.
-- **Depends on:** T3a (done).
+- **Scope:** `Queue { seq, ladder, bots }` (`bots: Option<bool>`, left out or `None`: bots welcome; *provisional*): a player who queued with `bots: false` is never matched with a bot, whatever its wait; `MatchFound` names whether the opponent is a bot (`bot: bool`), so a player who did not opt out may decline knowingly. No stored preference (the client sends it with each `Queue`). The per-ladder choice stays as built (no `[[ladder.bot]]`, no bots).
+- **Acceptance:** the Definition of Done; the queue's tests (an opted-out player waits on past `bot_after_ms`, a player who did not is matched with the bot and told so); end to end: `MatchFound { bot: true }` for a bot match, an opted-out lone player never matched.
+- **Depends on:** T5 (done).
 - **Status:** ready.
 
 ### E16 M4 T7 — M4's closure
 
 - **Scope:** the end-to-end test of the exit criteria (two clients queue and play a rated battle through a restart); `06-security.md`'s ladders and the server's pings (SRV-Q20; a shared change); the client lane's note (the ladder's messages, the accept step, reconnecting by account, the forfeit; an inbox line, cross-lane); M4's exit criteria checked; a fresh reviewer agent over M4; the user's checkpoint.
 - **Acceptance:** M4's exit (epic file).
-- **Depends on:** T1–T6.
-- **Status:** waiting (T1–T6).
+- **Depends on:** T1–T6 (done) and T5b.
+- **Status:** waiting (T5b).
 
 ## Inbox
 

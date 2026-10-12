@@ -220,6 +220,17 @@ pub enum RejectCode {
     NotHost,
     /// The game has started: its configuration is fixed (E16 M2 T4c).
     AlreadyStarted,
+    /// Only a ranked game pauses by agreement (E16 M4 T6); an unranked one has its host's `Pause`.
+    NotRanked,
+    /// The seat asked for a pause already since the game last moved on, or a proposal waits for
+    /// its answer (E16 M4 T6).
+    AlreadyAsked,
+    /// The seat proposed as many agreed pauses as its ladder allows in a game (E16 M4 T6).
+    NoPausesLeft,
+    /// The proposed pause is of no length, or longer than its ladder allows (E16 M4 T6).
+    BadPauseLength,
+    /// The other seat proposed no pause to answer (E16 M4 T6).
+    NoProposal,
 }
 
 /// The flags of a strike.
@@ -988,6 +999,8 @@ pub struct Seated {
     pub seat: Seat,
     /// The account's display name.
     pub display: String,
+    /// Whether the account is one of the server's bots (E16 M4 T5): its bot plays the seat.
+    pub bot: bool,
 }
 
 /// One hosted game in the lobby's list.
@@ -1024,6 +1037,9 @@ pub struct LadderInfo {
     pub season: u32,
     /// How many players wait in its queue, matched or not.
     pub waiting: u32,
+    /// The display names of the server's bots that play on it (E16 M4 T5): a player who waited
+    /// long enough without a match plays one of them.
+    pub bots: Vec<String>,
 }
 
 /// An account's rating on a ladder as the wire carries it (E16 M4 T3b): Glicko-2's rating and
@@ -1243,6 +1259,45 @@ pub enum ClientMessage {
         /// The client's sequence number.
         seq: u32,
     },
+    /// Propose to pause the running ranked game for `ms` milliseconds (E16 M4 T6; ADR-0019 point
+    /// 8): within the ladder's longest pause and the seat's pauses left, once until the game moves
+    /// on. Every viewer hears `PauseProposed`, or the seat `Rejected`.
+    ProposePause {
+        /// The client's sequence number.
+        seq: u32,
+        /// The pause's length, in milliseconds.
+        ms: u64,
+    },
+    /// Answer the other seat's proposal (E16 M4 T6): every viewer hears `PauseAnswered`; agreed,
+    /// the game pauses until the proposal's length is over, then a player not back is away.
+    AnswerPause {
+        /// The client's sequence number.
+        seq: u32,
+        /// Whether the seat agrees.
+        accept: bool,
+    },
+    /// A page of a ladder's leaderboard (E16 M4 T4): the accounts that played a rated game in the
+    /// season, by rating, the highest first; answered `LeaderboardPage`, or `Refused` (no such
+    /// ladder, no such season). Needs no game, nor a login.
+    Leaderboard {
+        /// The client's sequence number.
+        seq: u32,
+        /// The ladder's id.
+        ladder: String,
+        /// The season; `None`, or left out: the current one.
+        #[serde(default)]
+        season: Option<u32>,
+        /// The page, the first 0.
+        page: u32,
+    },
+    /// The logged-in account's own row on a ladder's leaderboard in its current season (E16 M4
+    /// T4): answered `OwnStanding`, or `Refused` (not logged in, no such ladder).
+    Standing {
+        /// The client's sequence number.
+        seq: u32,
+        /// The ladder's id.
+        ladder: String,
+    },
 }
 
 /// Why a join, a game's creation or an account's request was refused; the connection stays open.
@@ -1290,6 +1345,8 @@ pub enum Refusal {
     NotQueued,
     /// The account has no match to answer (E16 M4 T2).
     NoMatch,
+    /// The ladder has no season of this number yet (E16 M4 T4): its seasons count from 1.
+    NoSuchSeason,
 }
 
 /// Why the server closes the connection.
@@ -1466,6 +1523,26 @@ pub enum ServerMessage {
         /// The new game's id.
         game: u32,
     },
+    /// A seat proposed to pause the ranked game for `ms` milliseconds (E16 M4 T6): the other seat
+    /// answers with `AnswerPause` before the game moves on, or the proposal lapses.
+    PauseProposed {
+        /// The viewer's message number.
+        n: u32,
+        /// The seat that proposed.
+        seat: Seat,
+        /// The pause's length, in milliseconds.
+        ms: u64,
+    },
+    /// A seat answered the other's proposal to pause (E16 M4 T6); agreed, the game pauses
+    /// (`Goodbye { Paused }` follows).
+    PauseAnswered {
+        /// The viewer's message number.
+        n: u32,
+        /// The seat that answered.
+        seat: Seat,
+        /// Whether it agreed.
+        accept: bool,
+    },
     /// A seat asked to pause the game (E16 M2 T3); the host's ask pauses it.
     PauseAsked {
         /// The viewer's message number.
@@ -1558,6 +1635,55 @@ pub enum ServerMessage {
         /// The rating after it.
         after: Points,
     },
+    /// A page of a ladder's leaderboard (E16 M4 T4): `Leaderboard`'s answer.
+    LeaderboardPage {
+        /// The client's sequence number.
+        seq: u32,
+        /// The ladder's id.
+        ladder: String,
+        /// The season.
+        season: u32,
+        /// How many accounts the season's leaderboard lists.
+        total: u32,
+        /// The page's rows, by rank; none past the last page.
+        rows: Vec<LeaderboardRow>,
+    },
+    /// The logged-in account's own row on a ladder's leaderboard (E16 M4 T4): `Standing`'s answer.
+    OwnStanding {
+        /// The client's sequence number.
+        seq: u32,
+        /// The ladder's id.
+        ladder: String,
+        /// The current season.
+        season: u32,
+        /// How many accounts the season's leaderboard lists.
+        total: u32,
+        /// The account's row; `None` before its first rated game of the season.
+        row: Option<LeaderboardRow>,
+    },
+}
+
+/// An account's row on a ladder's leaderboard in a season (E16 M4 T4): rows go by rating, the
+/// highest first, ties by the accounts' login names.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LeaderboardRow {
+    /// Its place, the first 1.
+    pub rank: u32,
+    /// The account's display name as it stands.
+    pub display: String,
+    /// Its rating after its last game of the season.
+    pub rating: Points,
+    /// The games it played in the season, rated.
+    pub games: u32,
+    /// Of them, won.
+    pub wins: u32,
+    /// Lost.
+    pub losses: u32,
+    /// Drawn.
+    pub draws: u32,
+    /// Whether the account is one of the server's bots.
+    pub bot: bool,
 }
 
 /// One finished game in the archive (E16 M2 T5d).

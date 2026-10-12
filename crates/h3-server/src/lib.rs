@@ -157,6 +157,10 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         &config.server.data,
         Box::new(accounts::Ed25519),
     )?);
+    // The ladders' bots are accounts of their own (E16 M4 T5), before the ladders name them.
+    let bots = (config.ladders.iter().flat_map(|ladder| &ladder.bots))
+        .map(|bot| (bot.login.as_str(), bot.display.as_str()));
+    accounts.bots(bots)?;
     let known = |login: &str| accounts.get(login).is_some();
     let ladders = Arc::new(ladders::Ladders::open(
         &config.ladders,
@@ -221,7 +225,10 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         config.limits,
         grace,
     ));
-    let matcher = tokio::spawn(registry::match_every(Arc::clone(&registry)));
+    let matcher = tokio::spawn(registry::match_every(
+        Arc::clone(&registry),
+        Arc::clone(&ladders),
+    ));
     let shared = Arc::clone(&registry);
     let listener = tokio::spawn(net::listen(
         listener,

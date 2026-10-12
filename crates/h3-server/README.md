@@ -17,7 +17,9 @@ ratings after each rated game; a ladder whose content changed starts its next se
 start, every rating carried and its deviation reset) and a lock that keeps one server (or one
 `rebind`) on it at a time; keep it readable by the server's user only. A ladder's scenarios are
 offers of their own, `<ladder>.<n>` in the pool's order: its matches' journals and replays name
-them, and an `[[offer]]` may not be named so. The first signal drains the server (no new game,
+them, and an `[[offer]]` may not be named so. A ladder's bots (`[[ladder.bot]]`) are accounts in
+the player log without a key: no one logs in as them, `rebind` refuses them, and a start renames
+one whose display name the configuration changed. The first signal drains the server (no new game,
 the running ones play on), a second stops it at once; the journals stay, and the next start
 restores the running and paused games.
 

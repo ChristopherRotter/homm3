@@ -5,13 +5,16 @@
 //! ladder are refused; a queued connection outlasts the lobby's deadline. A ranked game's seats
 //! and forfeits (E16 M4 T3a): no host; a player back within the grace plays on; beyond the grace,
 //! or the total in several drops, a forfeit, whose replay verifies; both away, void; the time away
-//! across a restart.
+//! across a restart. The leaderboards (E16 M4 T4): pages by season, one's own row, a display name
+//! changed. The bots (E16 M4 T5): a lone player plays one after the wait, rated, flagged. The
+//! pause by agreement (E16 M4 T6): declined, agreed and resumed in time, a player not back after
+//! its due time forfeits, neither back: void.
 
-use h3_protocol::wire::{LadderInfo, Outcome, Points, Side, UnqueueReason};
+use h3_protocol::wire::{LadderInfo, LeaderboardRow, Outcome, Points, Seated, Side, UnqueueReason};
 
 use super::*;
 use crate::client::Key;
-use crate::config::Ladder;
+use crate::config::{BotKind, Ladder, LadderBot};
 use crate::ladders::points;
 use crate::rating::{self, Rating, Score};
 
@@ -86,6 +89,74 @@ fn ladders_are_configured_and_checked() {
     );
     let error = Config::parse(&named, &base).unwrap_err().0;
     assert!(error.contains("names its pool's scenarios so"), "{error}");
+    // E16 M4 T5: the ladder's bots.
+    assert_eq!(
+        (defaults.bots.clone(), defaults.bot_after_ms),
+        (vec![], 60_000)
+    );
+    let bot = |login: &str, display: &str| {
+        format!("[[ladder.bot]]\nlogin = \"{login}\"\ndisplay = \"{display}\"\n")
+    };
+    let botted = parse(&format!(
+        "{ladder}bot_after_ms = 0\n{}",
+        bot("randy", "Randy")
+    ));
+    let botted = botted.unwrap();
+    assert_eq!(
+        (
+            botted.ladders[0].bots.clone(),
+            botted.ladders[0].bot_after_ms
+        ),
+        (
+            vec![LadderBot {
+                login: String::from("randy"),
+                display: String::from("Randy"),
+                kind: BotKind::Random,
+            }],
+            0
+        )
+    );
+    let pit = ladder.replace("arena", "pit");
+    for (text, expected) in [
+        (
+            format!("{ladder}{}", bot("Randy", "Randy")),
+            "bot `Randy`: not a name",
+        ),
+        (
+            format!("{ladder}{}", bot("randy", " R")),
+            "bot `randy`: not a name",
+        ),
+        (
+            format!("{ladder}{}{}", bot("randy", "Randy"), bot("randy", "Randy")),
+            "bot `randy`: listed twice",
+        ),
+        (
+            format!(
+                "{ladder}{}{pit}{}",
+                bot("randy", "Randy"),
+                bot("randy", "Rand")
+            ),
+            "ladder `pit`: bot `randy` differs",
+        ),
+        (
+            format!("{ladder}{}kind = \"smart\"\n", bot("randy", "Randy")),
+            "unknown variant",
+        ),
+        (
+            format!("{ladder}bot_after_ms = 31536000001"),
+            "bot_after_ms",
+        ),
+    ] {
+        let error = refused(&text);
+        assert!(error.contains(expected), "{expected}: {error}");
+    }
+    // The same bot on two ladders, the same account on each.
+    let shared = format!(
+        "{ladder}{}{pit}{}",
+        bot("randy", "Randy"),
+        bot("randy", "Randy")
+    );
+    assert_eq!(parse(&shared).unwrap().ladders.len(), 2);
     let paused = parse(&format!("{ladder}pauses = 2\npause_ms = 600000")).unwrap();
     assert_eq!(
         (paused.ladders[0].pauses, paused.ladders[0].pause_ms),
@@ -251,6 +322,7 @@ async fn two_players_queue_accept_and_play_their_match() {
         name: String::from("Arena"),
         season: 1,
         waiting: 0,
+        bots: vec![],
     };
     assert_eq!(
         ladders,
@@ -305,6 +377,20 @@ async fn two_players_queue_accept_and_play_their_match() {
     assert_eq!(cid.recv().await, refused(Refusal::SeatTaken));
     takes(&mut ann, game, ann_seat).await;
     takes(&mut bob, game, bob_seat).await;
+    // The lobby names both seats' accounts, as it did from the game's start (E16 M4 T5).
+    let seated = (listed(&running).await.into_iter())
+        .find(|g| g.game == game)
+        .map(|g| g.seated);
+    let named = |seat, display: &str| Seated {
+        seat,
+        display: display.to_string(),
+        bot: false,
+    };
+    let mut expected = vec![named(ann_seat, "Ann"), named(bob_seat, "Bob")];
+    if bob_seat == Seat::Attacker {
+        expected.reverse();
+    }
+    assert_eq!(seated, Some(expected));
     let ((mut ann, ann_saw), (_, bob_saw)) = tokio::join!(play(ann, 5), play(bob, 6));
     for saw in [ann_saw, bob_saw] {
         assert!(matches!(saw.last(), Some(ServerMessage::GameEnded { .. })));
@@ -790,6 +876,407 @@ async fn a_seat_whose_client_falls_silent_is_noticed_by_its_pings() {
     tokio::time::timeout(Duration::from_secs(5), rest)
         .await
         .unwrap();
+    running.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_leaderboard_pages_by_season_and_shows_ones_own_row() {
+    // E16 M4 T4. Bob forfeits: Ann wins, and both are listed, Ann first.
+    let config = graced(1_000, 60_000);
+    let running = start(&config).await.unwrap();
+    let ([mut ann, bob], _, _) = seated_match(&running).await;
+    bob.close().await;
+    ends(&mut ann).await;
+    rating(&mut ann).await;
+    let new = Rating::default();
+    let (won, lost) = rating::game(new, new, Score::Win);
+    let row = |rank, display: &str, rating, winner: bool| LeaderboardRow {
+        rank,
+        display: display.to_string(),
+        rating: points(rating),
+        games: 1,
+        wins: u32::from(winner),
+        losses: u32::from(!winner),
+        draws: 0,
+        bot: false,
+    };
+    let board = |seq, ladder: &str, season, page| ClientMessage::Leaderboard {
+        seq,
+        ladder: ladder.to_string(),
+        season,
+        page,
+    };
+    let page = |seq, season, total, rows| {
+        Some(ServerMessage::LeaderboardPage {
+            seq,
+            ladder: String::from("arena"),
+            season,
+            total,
+            rows,
+        })
+    };
+    // Any connection reads it, logged in or not, a page at a time.
+    let mut carol = greeted(&running).await;
+    let rows = vec![row(1, "Ann", won, true), row(2, "Bob", lost, false)];
+    assert_eq!(
+        ask(&mut carol, board(4, "arena", None, 0)).await,
+        page(4, 1, 2, rows.clone())
+    );
+    assert_eq!(
+        ask(&mut carol, board(5, "arena", Some(1), 1)).await,
+        page(5, 1, 2, vec![])
+    );
+    assert_eq!(
+        ask(&mut carol, board(6, "arena", Some(2), 0)).await,
+        refused(Refusal::NoSuchSeason)
+    );
+    assert_eq!(
+        ask(&mut carol, board(7, "pit", None, 0)).await,
+        refused(Refusal::NoSuchLadder)
+    );
+    // One's own row needs one's account; none before one's first rated game.
+    let standing = |seq| ClientMessage::Standing {
+        seq,
+        ladder: "arena".to_string(),
+    };
+    assert_eq!(
+        ask(&mut carol, standing(8)).await,
+        refused(Refusal::NotLoggedIn)
+    );
+    let own = |seq, row| {
+        Some(ServerMessage::OwnStanding {
+            seq,
+            ladder: String::from("arena"),
+            season: 1,
+            total: 2,
+            row,
+        })
+    };
+    let mut carol = player(&running, "carol", 3).await;
+    assert_eq!(ask(&mut carol, standing(9)).await, own(9, None));
+    let mut bob = player(&running, "bob", 2).await;
+    assert_eq!(
+        ask(&mut bob, standing(10)).await,
+        own(10, Some(rows[1].clone()))
+    );
+    // A display name changed shows.
+    let rename = ClientMessage::Rename {
+        seq: 11,
+        display: "Ann B".to_string(),
+    };
+    let renamed = ask(&mut ann, rename).await;
+    assert!(
+        matches!(renamed, Some(ServerMessage::Account { .. })),
+        "{renamed:?}"
+    );
+    let ann_row = row(1, "Ann B", won, true);
+    assert_eq!(
+        ask(&mut ann, standing(12)).await,
+        own(12, Some(ann_row.clone()))
+    );
+    running.shutdown().await;
+    // A content change starts season 2 with an empty leaderboard; the first season's is kept.
+    let mut changed = config.clone();
+    changed.ladders[0].profile = Some(String::from("synthetic:strict-fixed"));
+    let again = start(&changed).await.unwrap();
+    let mut dan = greeted(&again).await;
+    assert_eq!(
+        ask(&mut dan, board(13, "arena", None, 0)).await,
+        page(13, 2, 0, vec![])
+    );
+    assert_eq!(
+        ask(&mut dan, board(14, "arena", Some(1), 0)).await,
+        page(14, 1, 2, vec![ann_row, rows[1].clone()])
+    );
+    again.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_lone_player_plays_the_ladders_bot_after_the_wait_rated_and_flagged() {
+    // E16 M4 T5: Randy, the ladder's bot, plays whoever waited 1.5 s without a match.
+    let mut config = laddered(60_000);
+    let randy = |display: &str| LadderBot {
+        login: String::from("randy"),
+        display: display.to_string(),
+        kind: BotKind::Random,
+    };
+    config.ladders[0].bots = vec![randy("Randy")];
+    config.ladders[0].bot_after_ms = 1_500;
+    let running = start(&config).await.unwrap();
+    let mut ann = player(&running, "ann", 1).await;
+    let ladders = ask(&mut ann, ClientMessage::ListLadders { seq: 4 }).await;
+    let Some(ServerMessage::Ladders { ladders, .. }) = ladders else {
+        panic!("{ladders:?}")
+    };
+    assert_eq!(ladders[0].bots, ["Randy"]);
+    // No one logs in as the bot, nor takes its name.
+    let mut other = greeted(&running).await;
+    let taken = other
+        .login(1, "randy", &Key::from_seed([9; 32]), Some("Randy Two"))
+        .await
+        .unwrap();
+    assert_eq!(taken, refused(Refusal::BadLogin));
+    let mut other = greeted(&running).await;
+    let taken = other
+        .login(1, "rand", &Key::from_seed([9; 32]), Some("RANDY"))
+        .await
+        .unwrap();
+    assert_eq!(taken, refused(Refusal::NameTaken));
+    // Ann waits alone: after the wait she is matched with Randy, who accepted already.
+    let waited = tokio::time::Instant::now();
+    assert_eq!(ask(&mut ann, queue("arena")).await, queued());
+    assert_eq!(ann.recv().await, found());
+    assert!(
+        waited.elapsed() >= Duration::from_millis(1_500),
+        "{:?}",
+        waited.elapsed()
+    );
+    let ready = ask(&mut ann, ClientMessage::AcceptMatch { seq: 3 }).await;
+    let Some(ServerMessage::MatchReady { game, seat, .. }) = ready else {
+        panic!("{ready:?}")
+    };
+    takes(&mut ann, game, seat).await;
+    // The lobby names the bot's seat, flagged.
+    let other_seat = match seat {
+        Seat::Attacker => Seat::Defender,
+        _ => Seat::Attacker,
+    };
+    let info = listed(&running).await.into_iter().find(|g| g.game == game);
+    let seated = info.map(|g| g.seated);
+    assert_eq!(
+        seated
+            .as_deref()
+            .map(|seated| seated.iter().find(|s| s.bot).cloned()),
+        Some(Some(Seated {
+            seat: other_seat,
+            display: String::from("Randy"),
+            bot: true,
+        }))
+    );
+    // The server's bot plays its seat to the end; the game is rated for both accounts.
+    let (mut ann, saw) = tokio::time::timeout(GAME_TIME, play(ann, 5)).await.unwrap();
+    let result = end(&saw);
+    let new = Rating::default();
+    let (ann_after, randy_after) = rating::game(new, new, score(result, side(seat)));
+    assert_eq!(rating(&mut ann).await, (points(new), points(ann_after)));
+    let row = |login| {
+        running
+            .standing("arena", 1, login)
+            .map(|s| (s.rating, s.games))
+    };
+    assert_eq!(
+        (row("ann"), row("randy")),
+        (Some((ann_after, 1)), Some((randy_after, 1)))
+    );
+    // Its row on the leaderboard is flagged.
+    let board = ClientMessage::Leaderboard {
+        seq: 6,
+        ladder: String::from("arena"),
+        season: None,
+        page: 0,
+    };
+    let page = ask(&mut ann, board.clone()).await;
+    let Some(ServerMessage::LeaderboardPage { rows, .. }) = page else {
+        panic!("{page:?}")
+    };
+    let flags: Vec<(&str, bool)> = rows.iter().map(|r| (r.display.as_str(), r.bot)).collect();
+    assert!(
+        flags.contains(&("Randy", true)) && flags.contains(&("Ann", false)),
+        "{flags:?}"
+    );
+    running.shutdown().await;
+    // The configuration renames the bot: its account is renamed at the next start, not added.
+    let mut renamed = config.clone();
+    renamed.ladders[0].bots = vec![randy("Randy Bot")];
+    let again = start(&renamed).await.unwrap();
+    let mut ann = player(&again, "ann", 1).await;
+    let page = ask(&mut ann, board).await;
+    let Some(ServerMessage::LeaderboardPage { rows, .. }) = page else {
+        panic!("{page:?}")
+    };
+    assert!(
+        rows.iter().any(|r| r.display == "Randy Bot" && r.bot),
+        "{rows:?}"
+    );
+    again.shutdown().await;
+    let log = std::fs::read_to_string(config.server.data.join("players.log")).unwrap();
+    assert_eq!(
+        (
+            log.matches("\"Bot\"").count(),
+            log.matches("\"Renamed\"").count()
+        ),
+        (1, 1),
+        "{log}"
+    );
+    // A bot named as a player's account stops the start.
+    let mut clash = config.clone();
+    clash.ladders[0].bots = vec![LadderBot {
+        login: String::from("ann"),
+        ..randy("Annie")
+    }];
+    let error = start(&clash).await.unwrap_err();
+    assert!(error.0.contains("bot `ann`: a player's account"), "{error}");
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+/// A server with the ladder `arena` whose players may be away 1 s at once and propose `pauses`
+/// pauses of at most `pause_ms` (E16 M4 T6).
+fn pausing(pauses: u32, pause_ms: u64) -> Config {
+    let mut config = graced(1_000, 60_000);
+    config.ladders[0].pauses = pauses;
+    config.ladders[0].pause_ms = pause_ms;
+    config
+}
+
+/// The first message `client` hears that `wanted` takes, whatever comes before it.
+async fn heard(client: &mut Client, wanted: impl Fn(&ServerMessage) -> bool) -> ServerMessage {
+    let found = async {
+        loop {
+            match client.recv().await {
+                Some(message) if wanted(&message) => return message,
+                Some(_) => {}
+                None => panic!("closed"),
+            }
+        }
+    };
+    tokio::time::timeout(GAME_TIME, found).await.unwrap()
+}
+
+/// `seat` proposes a pause of `ms`, and `other` agrees: both hear the answer, then the goodbye.
+async fn agreed(proposer: &mut Client, other: &mut Client, ms: u64) {
+    let propose = ClientMessage::ProposePause { seq: 20, ms };
+    proposer.send(&propose).await.unwrap();
+    heard(other, |m| matches!(m, ServerMessage::PauseProposed { .. })).await;
+    let accept = ClientMessage::AnswerPause {
+        seq: 21,
+        accept: true,
+    };
+    other.send(&accept).await.unwrap();
+    for client in [proposer, other] {
+        let answered = |m: &ServerMessage| {
+            matches!(
+                m,
+                ServerMessage::PauseAnswered { accept: true, .. } | ServerMessage::Goodbye { .. }
+            )
+        };
+        assert!(matches!(
+            heard(client, answered).await,
+            ServerMessage::PauseAnswered { accept: true, .. }
+        ));
+        assert_eq!(
+            heard(client, |m| matches!(m, ServerMessage::Goodbye { .. })).await,
+            ServerMessage::Goodbye {
+                reason: GoodbyeReason::Paused
+            }
+        );
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_pause_declined_then_agreed_and_resumed_in_time() {
+    let config = pausing(1, 5_000);
+    let running = start(&config).await.unwrap();
+    let ([mut ann, mut bob], game, [ann_seat, bob_seat]) = seated_match(&running).await;
+    // Ann proposes, and asks no more until the game moves on; Bob declines.
+    let propose = |seq, ms| ClientMessage::ProposePause { seq, ms };
+    ann.send(&propose(10, 2_000)).await.unwrap();
+    let proposed = heard(&mut bob, |m| {
+        matches!(m, ServerMessage::PauseProposed { .. })
+    })
+    .await;
+    assert!(
+        matches!(proposed, ServerMessage::PauseProposed { ms: 2_000, seat, .. } if seat == ann_seat),
+        "{proposed:?}"
+    );
+    ann.send(&propose(11, 2_000)).await.unwrap();
+    let again = heard(&mut ann, |m| {
+        matches!(m, ServerMessage::Rejected { seq: 11, .. })
+    })
+    .await;
+    assert!(
+        matches!(
+            again,
+            ServerMessage::Rejected {
+                code: RejectCode::AlreadyAsked,
+                ..
+            }
+        ),
+        "{again:?}"
+    );
+    let decline = ClientMessage::AnswerPause {
+        seq: 12,
+        accept: false,
+    };
+    bob.send(&decline).await.unwrap();
+    let declined = heard(&mut ann, |m| {
+        matches!(m, ServerMessage::PauseAnswered { .. })
+    })
+    .await;
+    assert!(
+        matches!(declined, ServerMessage::PauseAnswered { accept: false, seat, .. } if seat == bob_seat),
+        "{declined:?}"
+    );
+    // Bob proposes; Ann agrees: the game pauses, listed so.
+    agreed(&mut bob, &mut ann, 3_000).await;
+    listed_as(&running, game, Some(Phase::Paused)).await;
+    // Both are back in time: the game plays on to its end, no forfeit.
+    let mut ann = player(&running, "ann", 1).await;
+    takes(&mut ann, game, ann_seat).await;
+    let mut bob = player(&running, "bob", 2).await;
+    takes(&mut bob, game, bob_seat).await;
+    let ((_, ann_saw), (_, bob_saw)) = tokio::join!(play(ann, 5), play(bob, 6));
+    for saw in [ann_saw, bob_saw] {
+        let result = end(&saw);
+        assert!(!matches!(result, Outcome::Forfeit { .. }), "{result:?}");
+    }
+    running.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_player_not_back_after_an_agreed_pause_forfeits() {
+    let config = pausing(1, 1_500);
+    let running = start(&config).await.unwrap();
+    let ([mut ann, mut bob], game, [ann_seat, bob_seat]) = seated_match(&running).await;
+    agreed(&mut ann, &mut bob, 1_500).await;
+    let paused = tokio::time::Instant::now();
+    // Ann is back at once; Bob's absence counts only from the due time, then the grace.
+    let mut ann = player(&running, "ann", 1).await;
+    takes(&mut ann, game, ann_seat).await;
+    let forfeit = Outcome::Forfeit {
+        side: side(bob_seat),
+    };
+    assert_eq!(ends(&mut ann).await, forfeit);
+    let waited = paused.elapsed();
+    assert!(
+        waited >= Duration::from_millis(2_300) && waited < Duration::from_secs(10),
+        "the pause, then the grace: {waited:?}"
+    );
+    running.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_paused_game_whose_players_are_not_back_wakes_and_is_void() {
+    // Neither comes back: at the due time the game runs on without them, and the grace ends it, a
+    // no-show each; the deadline of a paused game (here shorter) does not void it before.
+    let mut config = pausing(1, 1_000);
+    config.limits.paused_game_ms = 500;
+    let running = start(&config).await.unwrap();
+    let ([mut ann, mut bob], _, _) = seated_match(&running).await;
+    agreed(&mut ann, &mut bob, 1_000).await;
+    let no_show = |login| running.standing("arena", 1, login).map(|r| r.no_shows);
+    let mut attempts = 0;
+    while no_show("ann") != Some(1) {
+        attempts += 1;
+        assert!(attempts < 500, "never ended");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(no_show("bob"), Some(1));
+    let void = config.server.data.join("void");
+    assert!(!void.exists() || void.read_dir().unwrap().next().is_none());
     running.shutdown().await;
     std::fs::remove_dir_all(&config.server.data).unwrap();
 }

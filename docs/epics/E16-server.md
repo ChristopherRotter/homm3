@@ -3,8 +3,8 @@
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
 crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 done
 2026-10-11 (T1 to T5e), its checkpoint passed the same day (SRV-Q16); M3 done 2026-10-12 (T1 to
-T5), its checkpoint passed the same day (SRV-Q18); M4 refined 2026-10-12 (SRV-Q19); M4 T1,
-T2 and T3a done, T3b next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+T5), its checkpoint passed the same day (SRV-Q18); M4 refined 2026-10-12 (SRV-Q19); M4 T1
+to T6 and SRV-Q20 done, T5b (SRV-Q21) next, then T7). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); [ADR-0019](../adr/0019-identity-and-ladders.md) (identity and ladders, accepted at the M3
 refinement, its ladder points decided at M4's); ADR draft `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -370,10 +370,18 @@ ranked game per player per ladder, bots exempt; no turn timer in M4 (a game rule
 - **SRV-Q20 Server-side pings** (done 2026-10-12, the user's choice (a); `E16-log.md`): a ping
   every `ping_every_ms`, a connection silent for `ping_timeout_ms` closes; a dropped seat is
   noticed in seconds, an outage ends void for both seats alike.
-- **T4 Leaderboards** (after T3b): pages by season, one's own standing.
-- **T5 Bots on ladders** (after T3b): bot accounts, the standing queue entry, flagged rows.
-- **T6 The pause by agreement** (after T3a): proposed and answered within the ladder's bounds,
-  the due time, the forfeit after it; one ask per seat until the game moves on.
+- **T4 Leaderboards** (done 2026-10-12; `E16-log.md`): `Leaderboard`/`LeaderboardPage` by
+  season, pages of 50 by rating (ties by login name), `Standing`/`OwnStanding` with its rank,
+  display names as they stand; wire 17.
+- **T5 Bots on ladders** (done 2026-10-12; `E16-log.md`): `[[ladder.bot]]`, bot accounts
+  without a key, the bot for a player who waited `bot_after_ms`, its seat its account's, rated,
+  flagged in the ladder list, the lobby and the leaderboard; wire 18.
+- **T6 The pause by agreement** (done 2026-10-12; `E16-log.md`): `ProposePause`/`PauseProposed`,
+  `AnswerPause`/`PauseAnswered` within the ladder's `pauses` and `pause_ms`, the agreed length
+  journaled (format 6), the absences held until the due time, the game woken then; one ask per
+  seat until the game moves on, for unranked games' `Pause` too; wire 19.
+- **T5b A player's bot opt-out** (SRV-Q21, after T5): `Queue { …, bots }` and `MatchFound`
+  naming a bot.
 - **T7 Closure** (after T1–T6): the end-to-end test through a restart, `06-security.md`'s
   ladders, the client lane's note, the reviewer agent, the user's checkpoint.
 
@@ -483,6 +491,29 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   ping, a pong), the server's own writes excused from the silence; the silent connection told
   `Goodbye { IdleTimeout }` within a moment (no new reason, no wire change); (b), the clocks
   standing still on a mass drop, not built.
+- T4: the messages (`Leaderboard { seq, ladder, season, page }` answered `LeaderboardPage { seq,
+  ladder, season, total, rows }`, `Standing { seq, ladder }` answered `OwnStanding { seq, ladder,
+  season, total, row }`, `LeaderboardRow`, `Refusal::NoSuchSeason`; pages from 0); one's own row
+  only for the current season and only logged in; a page needing no login; the order by the
+  rating itself (not the rating less twice its deviation), exact, ties by login name; listed from
+  the first rated game (no-shows alone do not list an account); no bound beyond the page of 50
+  and the message rate; `bot` false until T5.
+- T5: `[[ladder.bot]]` (`login`, `display`, `kind` with `random` the only one, not journaled: a
+  restart's bot is the random one) and `bot_after_ms` (60 s); the bot for whoever waited that
+  long, nearest in rating, outside the window; the bot accepting at once; the player log's `Bot`
+  line and `Account::key` an `Option`; a bot's display name from the configuration (renamed at
+  start), a player's account under a bot's login stopping the start; `LadderInfo::bots` as
+  display names, `Seated::bot`; the bots' ratings passed to the queues before each matcher's
+  turn; the lobby naming a match's accounts at creation (a fix).
+- T6: the messages (`ProposePause { seq, ms }`, `AnswerPause { seq, accept }`, `PauseProposed {
+  n, seat, ms }` and `PauseAnswered { n, seat, accept }` to every viewer, spectators too), five
+  rejections (`NotRanked`, `AlreadyAsked`, `NoPausesLeft`, `BadPauseLength`, `NoProposal`); one
+  proposal open at a time, lapsing when the game moves on (a command applied), no
+  counter-proposal; a pause counted against its proposer's `pauses`; the due time from the
+  journal's last write (as `paused_game_ms`), a restart's downtime counted (a due time passed
+  while the server was down wakes the game at its first sweep: the grace from the start); a woken
+  game runs with its players away; an agreed pause never voided by `paused_game_ms`; `ms` a
+  plain JSON number (at most a year); a bot never answers a proposal (it lapses).
 
 ## Review list for the M3 checkpoint (passed 2026-10-12, SRV-Q18)
 
