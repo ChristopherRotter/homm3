@@ -305,12 +305,20 @@ below are the tasks' starting point, *provisional* until M4's review.
   rating, whatever the window; the bot accepts at once and plays any number of games at once.
   Its seat in the match's game is its account's (journaled as a player's), played by the
   server's bot; the game is rated for both. Flagged on the wire: `LadderInfo::bots`,
-  `Seated::bot`, `LeaderboardRow::bot`.
-- **The pause by agreement** (M4 T6): `ProposePause { seq, ms }` within the ladder's `pause_ms`
-  and the seat's remaining `pauses`, once per seat until the game moves on (the inbox's item);
-  `PauseProposed { n, seat, ms }` to the other seat, who answers `AnswerPause { seq, accept }`;
-  agreed, the game pauses with the length in the journal; at its due time (the journal's age,
-  as `paused_game_ms` reads it) the grace runs, from the start for a server that was down.
+  `Seated::bot`, `LeaderboardRow::bot`. A player opts out per queue (SRV-Q21, M4 T5b: `Queue {
+  …, bots }`), and `MatchFound` names a bot.
+- **The pause by agreement** (code since M4 T6): `ProposePause { seq, ms }` within the
+  ladder's `pause_ms` and the seat's remaining `pauses`, once per seat until the game moves on (a
+  command applied), while no other proposal is open; `PauseProposed { n, seat, ms }` to every
+  viewer; the other seat answers `AnswerPause { seq, accept }` (`PauseAnswered` to every viewer)
+  before the game moves on, or the proposal lapses. Agreed, the game pauses as a host's pause does,
+  `PauseAgreed { side, ms }` in the journal (format 6). Its due time is the pause's length after
+  the journal's last write (as `paused_game_ms` reads it): a game resumed before it counts no
+  absence until then (`Session::hold`); at it, the registry's sweep wakes a game no one took back
+  (`Session::wake`): it runs with its players away, and the grace ends it as any absence. A due
+  time that passed while the server was down wakes the game at the first sweep, so the grace runs
+  from the start. `paused_game_ms` never voids a game in an agreed pause. Unranked games keep the
+  host's `Pause`; another seat asks once until the game moves on.
 - **Stalling** is not answered in M4: a connected player may sit on a turn until the game's
   rules bring a turn timer (`h3-game`, M5; SRV-Q19).
 

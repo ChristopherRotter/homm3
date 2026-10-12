@@ -1216,3 +1216,39 @@ how and why the work went.
   seat named and flagged in the lobby, the game rated for both, the bot's row flagged; no login
   as the bot or under its name; a renamed bot at the next start; a bot under a player's login
   stops the start; a human match's seats named in the lobby.
+
+### M4 T6 — The pause by agreement (2026-10-12)
+
+- **The start.** #118 (T5) had merged; the branch restarted from `master` (the shared and client
+  changes merged meanwhile touch no server path). During the task the user asked whether a
+  player may opt out of bots (SRV-Q21): per ladder as built, plus a per-queue opt-out and
+  `MatchFound` naming a bot; queued as T5b, outside this task.
+- **The session** (`h3_protocol::session`, *provisional*): `Grace` carries the ladder's `pauses`
+  and `pause_ms`. `ProposePause` from a running ranked game's seat (else `NotRanked`; the phase
+  as for `Pause`): once per seat until the game moves on and while no proposal is open
+  (`AlreadyAsked`), within the seat's pauses (`NoPausesLeft`) and the longest (`BadPauseLength`,
+  also 0); `PauseProposed` to every viewer. `AnswerPause` answers the other seat's open proposal
+  (`NoProposal` otherwise, also one's own); `PauseAnswered` to every viewer, and agreed:
+  `Entry::PauseAgreed(side, ms)` (the proposer's pause counted) and the host's pause (`halt`). A
+  command applied clears the asks and lapses an open proposal. `agreed_pause()` names the pause
+  a restored session is in; `hold(ms)` keeps every absence from counting before then (a seat
+  away, or gone later); `wake()` runs a game in an agreed pause again (`Resumed`), its players
+  away. An unranked game's other seat asks (`Pause`) once until the game moves on (the M2
+  review's repeated `PauseAsked`). `tell_all` sends to every viewer (`tell_end` uses it).
+- **The wire** (version 19): the two client messages, `PauseProposed`, `PauseAnswered`, five
+  `RejectCode`s. **The journal** (format 6): `PauseAgreed { side, ms }`.
+- **The server**: a game that pauses by agreement is listed paused with its due time
+  (`Hosted::Paused::due`, its pause after the journal's last write; at start, after a restart,
+  the same); a restore holds the absences for the rest of it (`game::resume`). The sweep
+  (`Registry::sweep`, now given the shared registry) wakes a paused game whose due time came:
+  restored on its thread without a join (`Registry::restorer`, shared with `bind`;
+  `Prepared::woken`), it reports itself running; `paused_game_ms` voids only games without a due
+  time. The example configuration shows `pauses` and `pause_ms`.
+- **Tests** (`h3-protocol` 87 → 90, `h3-server` 96 → 99): the session's bounds, the asks, a
+  decline, a lapse, an agreement told to the spectator too, the restore in its pause, the hold
+  for a player back early and for one gone again, the pauses used; a wake with neither back
+  (void) and one in no agreed pause (nothing); an unranked game's other seat asking once; the
+  wire's corpora and JSON form; the journal's line. End to end: a proposal declined, a second
+  ask refused, a pause agreed and both back in time playing on to the end; a player not back
+  after the due time forfeiting after the pause and the grace; neither back: woken and void (a
+  no-show each), not voided by a shorter `paused_game_ms`.
