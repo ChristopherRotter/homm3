@@ -22,7 +22,7 @@ use crate::session::{
     Bot, ConnId, Entry, GameConfig, Grace, Outbound, RestoreError, SeatKind, Session,
 };
 use crate::wire::{
-    ClientMessage, Command, GoodbyeReason, Outcome, Phase, Query, RecordHeader, Refusal,
+    ClientMessage, Command, GoodbyeReason, Outcome, Phase, Points, Query, RecordHeader, Refusal,
     RejectCode, Seat, ServerMessage, Side, Target,
 };
 
@@ -624,7 +624,9 @@ fn the_replay_reaches_the_seats_only_after_the_game() {
     let r = ruleset();
     let mut s = host(&r, 5, players());
     let out = started(&mut s);
-    s.publish_replay("early".to_string());
+    let mut told = Vec::new();
+    s.publish_replay("early".to_string(), &mut told);
+    assert_eq!(told, [], "an unranked game's end is told at once");
     let fetch = send(&mut s, A, ClientMessage::FetchReplay { seq: 6 });
     assert!(matches!(
         to(&fetch, A)[..],
@@ -636,7 +638,7 @@ fn the_replay_reaches_the_seats_only_after_the_game() {
     ));
     play(&mut s, out, &mut Rng::from_seed(1), 5000);
     assert!(s.result().is_some());
-    s.publish_replay("[header]".to_string());
+    s.publish_replay("[header]".to_string(), &mut Vec::new());
     let fetch = send(&mut s, B, ClientMessage::FetchReplay { seq: 7 });
     assert!(matches!(
         &to(&fetch, B)[..],
@@ -1198,7 +1200,9 @@ fn a_pause_is_refused_outside_a_running_game() {
     ));
     assert!(!drained(&mut s).contains(&Entry::Paused));
     // A game that did not verify withholds its replay.
-    s.withhold_replay();
+    let mut told = Vec::new();
+    s.withhold_replay(&mut told);
+    assert_eq!(told, []);
     assert!(matches!(
         to(&send(&mut s, B, ClientMessage::FetchReplay { seq: 4 }), B)[..],
         [ServerMessage::Rejected {
@@ -2234,6 +2238,19 @@ fn a_player_away_beyond_the_total_forfeits_the_game() {
     // At 1 501 ms in total he forfeits: Alice wins, the battle stays where it stood.
     let (ended, out) = at(&mut s, 1_651);
     assert!(ended);
+    assert_eq!(out, [], "the end waits for the host's verdict (E16 M4 T3b)");
+    assert_eq!(drained(&mut s), [Entry::Forfeit(BattleSide::Defender)]);
+    // No replay before the verdict; then the game verified: the end is told, and the ratings.
+    let fetch = send(&mut s, A, ClientMessage::FetchReplay { seq: 5 });
+    assert!(matches!(
+        to(&fetch, A)[..],
+        [ServerMessage::Rejected {
+            code: RejectCode::NotOver,
+            ..
+        }]
+    ));
+    let mut out = Vec::new();
+    s.publish_replay("[replay]".to_string(), &mut out);
     let forfeit = Outcome::Forfeit {
         side: Side::Defender,
     };
@@ -2241,7 +2258,23 @@ fn a_player_away_beyond_the_total_forfeits_the_game() {
         to(&out, A)[..],
         [ServerMessage::GameEnded { result, .. }] if result == forfeit
     ));
-    assert_eq!(drained(&mut s), [Entry::Forfeit(BattleSide::Defender)]);
+    let points = |rating, deviation| Points { rating, deviation };
+    let ratings = [
+        (points(1500, 350), points(1662, 290)),
+        (points(1500, 350), points(1338, 290)),
+    ];
+    let mut out = Vec::new();
+    s.rated("arena", ratings, &mut out);
+    assert_eq!(
+        to(&out, A),
+        [ServerMessage::Rating {
+            n: 5,
+            ladder: "arena".to_string(),
+            before: points(1500, 350),
+            after: points(1662, 290),
+        }]
+    );
+    assert_eq!(to(&out, B), [], "Bob is away");
     assert_eq!(
         (s.phase(), s.over(), s.forfeited(), s.result()),
         (Phase::Over, true, [false, true], None)
@@ -2281,19 +2314,11 @@ fn a_player_away_beyond_the_total_forfeits_the_game() {
         "{told:?}"
     );
     assert_eq!(drained(&mut s), [], "no stretch after the end");
-    // The record holds the end for the absent seat too.
+    // The record holds the end and the rating for the absent seat too.
     let (_, lines, _) = fetched_record(&mut s, B);
     assert!(lines.iter().any(|l| l.contains("Forfeit")), "{lines:?}");
-    // The replay comes once the host publishes it; it holds the commands up to the forfeit.
-    let fetch = send(&mut s, A, ClientMessage::FetchReplay { seq: 5 });
-    assert!(matches!(
-        to(&fetch, A)[..],
-        [ServerMessage::Rejected {
-            code: RejectCode::NotOver,
-            ..
-        }]
-    ));
-    s.publish_replay("[replay]".to_string());
+    assert!(lines.iter().any(|l| l.contains("1338")), "{lines:?}");
+    // The replay holds the commands up to the forfeit.
     let fetch = send(&mut s, A, ClientMessage::FetchReplay { seq: 6 });
     assert!(matches!(to(&fetch, A)[..], [ServerMessage::Replay { .. }]));
     replay(&r, &s).verify(&r).unwrap();
@@ -2325,22 +2350,26 @@ fn a_stretch_beyond_the_grace_forfeits_and_both_away_is_void() {
     gone(&mut s, 10, A);
     assert!(!at(&mut s, 1_010).0, "exactly the grace");
     let (ended, out) = at(&mut s, 1_011);
-    let forfeit = Outcome::Forfeit {
-        side: Side::Attacker,
-    };
-    assert!(ended);
-    assert!(matches!(
-        to(&out, B)[..],
-        [ServerMessage::GameEnded { result, .. }] if result == forfeit
-    ));
+    assert!(ended && out.is_empty());
     assert_eq!(s.forfeited(), [true, false]);
+    // The game does not verify (E16 M4 T3b): void, and Bob hears so.
+    let mut out = Vec::new();
+    s.withhold_replay(&mut out);
+    assert_eq!(
+        to(&out, B),
+        [ServerMessage::GameEnded {
+            n: 2,
+            result: Outcome::Unverified {}
+        }]
+    );
     // Nobody comes to a match's game: void, a no-show each; its spectator hears it.
     let mut s = ranked(&r, 34);
     let c = ConnId(3);
     join(&mut s, c, Seat::Spectator, None);
     assert!(!at(&mut s, 1_000).0);
-    let (ended, out) = at(&mut s, 1_001);
+    let (ended, mut out) = at(&mut s, 1_001);
     assert!(ended);
+    s.publish_replay("[replay]".to_string(), &mut out);
     assert!(matches!(
         to(&out, c)[..],
         [ServerMessage::GameEnded {
@@ -2422,8 +2451,9 @@ fn a_restore_keeps_the_totals_and_starts_a_stretch_afresh() {
     );
     // Bob's 800 ms before count: at 701 ms more he is beyond the total, not the stretch.
     assert!(!at(&mut restored, 700).0);
-    let (ended, out) = at(&mut restored, 701);
+    let (ended, mut out) = at(&mut restored, 701);
     assert!(ended);
+    restored.publish_replay("[replay]".to_string(), &mut out);
     let forfeit = Outcome::Forfeit {
         side: Side::Defender,
     };
@@ -2472,7 +2502,7 @@ fn a_ranked_game_that_ends_counts_no_absence_after() {
     let (actor, _) = turn(&out).unwrap();
     let other = if actor == A { B } else { A };
     gone(&mut s, 10, other);
-    send(
+    let retreat = send(
         &mut s,
         actor,
         ClientMessage::Command {
@@ -2481,6 +2511,17 @@ fn a_ranked_game_that_ends_counts_no_absence_after() {
         },
     );
     assert!(s.result().is_some());
+    let ended = |m: &ServerMessage| matches!(m, ServerMessage::GameEnded { .. });
+    assert!(!to(&retreat, actor).iter().any(ended), "held (E16 M4 T3b)");
+    let mut out = Vec::new();
+    s.publish_replay("[replay]".to_string(), &mut out);
+    assert!(matches!(
+        to(&out, actor)[..],
+        [ServerMessage::GameEnded {
+            result: Outcome::Retreat { .. },
+            ..
+        }]
+    ));
     drained(&mut s);
     // Over, nobody's absence counts: neither the running one nor a new one.
     s.disconnected(actor);

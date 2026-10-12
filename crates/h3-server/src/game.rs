@@ -34,6 +34,13 @@
 //!   (milliseconds since the thread began it, a restored one afresh) moves at every message, every
 //!   closed connection and every tick of the registry's sweep: a seat empty beyond the ladder's
 //!   grace forfeits, and the game ends as any other (its replay up to the forfeit).
+//! - **The rated end** (E16 M4 T3b). A ranked game is verified before its end is told (the session
+//!   holds it): a game that verifies hears its end, its replay is archived, its result is written
+//!   to its ladder's results log (a rating for each seat's account, or a no-show each) and each
+//!   seat hears its rating, and only then does its journal go; one that does not is void, unrated,
+//!   and its players hear `Outcome::Unverified`. A restart re-runs a journal that outlived the
+//!   end, and the log rates a game once (its id is unique for the server's life,
+//!   [`crate::ids`]).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -53,7 +60,7 @@ use h3_protocol::session::{
     Bot, ConnId, Entry, GameConfig, Grace, Journal, Outbound, SeatKind, Session,
 };
 use h3_protocol::wire::{
-    self, ClientMessage, GameInfo, GoodbyeReason, Phase, Seat, Seated, ServerMessage,
+    self, ClientMessage, GameInfo, GoodbyeReason, Phase, Points, Seat, Seated, ServerMessage,
 };
 use h3_protocol::{codec, map};
 use h3_sim::{Replay, ReplayError, ReplayHeader};
@@ -62,9 +69,27 @@ use tokio::time::Instant;
 
 use crate::accounts::Accounts;
 use crate::config::{self, BotSeat};
+use crate::ids::GameIds;
 use crate::journal::{self, JOURNAL_FORMAT_VERSION, Start, Writer};
+use crate::ladders::{self, End, Ladders};
 use crate::registry::{Hosted, Shared, lock};
 use crate::{Error, archive};
+
+/// The server's books a game reads and writes beside its journal: the accounts (E16 M3 T3), the
+/// ladders' results and the game ids (E16 M4 T3b).
+#[derive(Debug, Clone)]
+pub(crate) struct Stores {
+    /// The accounts.
+    pub accounts: Arc<Accounts>,
+    /// The ladders.
+    pub ladders: Arc<Ladders>,
+    /// The ids handed out.
+    pub ids: Arc<GameIds>,
+}
+
+/// What became of a finished game (E16 M4 T3b): the replay's text for its players and, if it was
+/// rated, each seat's rating before and after it (the attacker's first); `None`: void.
+type Verdict = Option<(String, Option<[(Points, Points); 2]>)>;
 
 /// A frame for a connection task.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -303,8 +328,8 @@ pub(crate) struct Prepared {
     empty_game: Option<Duration>,
     /// The commands it may hold (E16 M3 T4a): reaching them without an end voids it.
     commands: usize,
-    /// The server's accounts (E16 M3 T3).
-    accounts: Arc<Accounts>,
+    /// The server's books (E16 M3 T3, M4 T3b).
+    stores: Stores,
     /// The accounts the seats belong to from the start (E16 M4 T2: a match's game).
     reserved: [Option<String>; 2],
     /// A new game or a restored one.
@@ -368,7 +393,7 @@ impl Prepared {
         offer: Arc<Offer>,
         game: u32,
         origin: IpAddr,
-        (server, limits, accounts): (&config::Server, &config::Limits, Arc<Accounts>),
+        (server, limits, stores): (&config::Server, &config::Limits, Stores),
         watchable: bool,
     ) -> Result<Self, Error> {
         let mut setup = offer.setup.clone();
@@ -415,6 +440,8 @@ impl Prepared {
             tokens: tokens.clone(),
             replay: replay_text(&offer.ruleset, &offer.scenario, &begun, (0, None))?,
         };
+        // The id is the game's for the server's life before anything names it (E16 M4 T3b).
+        (stores.ids.reach(game)).map_err(|e| Error(format!("game {game}'s id: {e}")))?;
         let journal = Writer::create(&server.data, &start)
             .map_err(|e| Error(format!("game {game}'s journal: {e}")))?;
         let empty_game = empty_game(&offer, limits);
@@ -428,7 +455,7 @@ impl Prepared {
             data: server.data.clone(),
             empty_game,
             commands: commands(limits),
-            accounts,
+            stores,
             reserved: [None, None],
             begin: Begin::New(journal),
         })
@@ -449,7 +476,7 @@ impl Prepared {
         offer: Arc<Offer>,
         path: &Path,
         read: journal::Read,
-        (server, limits, accounts): (&config::Server, &config::Limits, Arc<Accounts>),
+        (server, limits, stores): (&config::Server, &config::Limits, Stores),
         listing: Option<(mpsc::Sender<ToGame>, oneshot::Sender<()>)>,
     ) -> Result<Self, String> {
         // The first line's replay holds the seed: its parsers' errors, which may quote it, stay
@@ -492,7 +519,7 @@ impl Prepared {
             data: server.data.clone(),
             empty_game,
             commands: commands(limits),
-            accounts,
+            stores,
             reserved: [None, None],
             begin: Begin::Restored(Restored {
                 path: path.to_path_buf(),
@@ -528,7 +555,7 @@ impl Prepared {
             data,
             empty_game,
             commands,
-            accounts,
+            stores,
             reserved,
             begin,
         } = self;
@@ -547,7 +574,7 @@ impl Prepared {
         let over = |session: &Session<'_>, journal: Writer| {
             finish(
                 (&offer.ruleset, &scenario, &replay_path, &data),
-                (game, registry, &accounts),
+                (game, registry, &stores, offer.ladder.as_deref()),
                 session,
                 journal,
             )
@@ -562,7 +589,7 @@ impl Prepared {
                 }
             },
             Begin::Restored(restored) => {
-                let host = (data.as_path(), registry, &*accounts);
+                let host = (data.as_path(), registry, &*stores.accounts);
                 let resumed = resume(&offer, (config, seats, &tokens), restored, host, over);
                 let Some(resumed) = resumed else {
                     return turn_away(&mut inbox, GoodbyeReason::Shutdown);
@@ -677,6 +704,20 @@ impl Prepared {
                      both battles were rebuilt from the journal"
                 );
             }
+            // Over: verified before a ranked game's end is told, then rated (E16 M4 T3b).
+            if session.over()
+                && let Some(journal) = journal.take()
+            {
+                match over(&session, journal) {
+                    Some((text, rated)) => {
+                        session.publish_replay(text, &mut out);
+                        if let (Some(points), Some(ladder)) = (rated, &offer.ladder) {
+                            session.rated(ladder, points, &mut out);
+                        }
+                    }
+                    None => session.withhold_replay(&mut out),
+                }
+            }
             let closed: Vec<ConnId> = out.iter().filter(|o| o.close).map(|o| o.to).collect();
             let last =
                 left.and_then(|(conn, k)| Some((out.iter().rposition(|o| o.to == conn)?, k)));
@@ -706,18 +747,10 @@ impl Prepared {
                 turn_away(&mut inbox, GoodbyeReason::Abandoned);
                 return eprintln!("h3-server: game {game} abandoned before it started");
             }
-            if session.over()
-                && let Some(journal) = journal.take()
-            {
-                match over(&session, journal) {
-                    Some(text) => session.publish_replay(text),
-                    None => session.withhold_replay(),
-                }
-            }
             let now = status(&session);
             // Outside the registry's lock: the accounts' lock waits on the player log's writes.
             let renamed = (session.accounts() != named.each_ref().map(Option::as_deref))
-                .then(|| seated(&session, &accounts));
+                .then(|| seated(&session, &stores.accounts));
             let closed = {
                 let mut registry = lock(registry);
                 if now != reported {
@@ -752,7 +785,7 @@ fn resume<'r>(
     (config, seats, tokens): (GameConfig, [SeatKind; 2], &[Option<String>; 2]),
     restored: Restored,
     (data, registry, accounts): (&Path, &Shared, &Accounts),
-    over: impl FnOnce(&Session<'r>, Writer) -> Option<String>,
+    over: impl FnOnce(&Session<'r>, Writer) -> Verdict,
 ) -> Option<(Session<'r>, Writer)> {
     let Restored {
         path,
@@ -998,17 +1031,18 @@ fn replay_text(
 }
 
 /// Game `game` is over (E16 M2 T3): it is verified first ([`verify`]). The replay of a game that
-/// verifies is written as the CLI's file, whole or not at all ([`archive::write`]), then its journal
-/// goes (the replay is the finished journal); a replay that does not write keeps the journal, which
-/// the next start re-runs to write it again. A game that does not verify is void: its journal moves to `<data>/void/`, and the
-/// replay of the game as it was played goes beside it, the diagnosis in its first line. The
-/// replay's text for the participants, or `None`: withheld.
+/// verifies is written as the CLI's file, whole or not at all ([`archive::write`]); a ranked game
+/// of the ladder `ladder` is then rated ([`rate`], E16 M4 T3b); then its journal goes (the replay
+/// is the finished journal). A replay or a result that does not write keeps the journal, which the
+/// next start re-runs to write them again (the log rates a game once). A game that does not verify
+/// is void: its journal moves to `<data>/void/`, and the replay of the game as it was played goes
+/// beside it, the diagnosis in its first line.
 fn finish(
     (ruleset, scenario, path, data): (&Ruleset, &str, &Path, &Path),
-    (game, registry, accounts): (u32, &Shared, &Accounts),
+    (game, registry, stores, ladder): (u32, &Shared, &Stores, Option<&str>),
     session: &Session<'_>,
     journal: Writer,
-) -> Option<String> {
+) -> Verdict {
     let journal_path = journal.path().to_path_buf();
     let (diagnosis, why) = match verify(ruleset, &journal_path, session) {
         Ok(text) => {
@@ -1016,18 +1050,25 @@ fn finish(
             // seat's account opted out (E16 M3 T3; an account the log does not know cannot let it).
             let mut logins = session.accounts().into_iter().flatten();
             let listed = session.watchable()
-                && logins.all(|login| accounts.get(login).is_some_and(|a| a.listed));
+                && logins.all(|login| stores.accounts.get(login).is_some_and(|a| a.listed));
             let dir = archive::dir(data, listed);
             let path = dir.join(path.file_name().unwrap_or_default());
-            match archive::write(&path, &text) {
-                Ok(()) => {
-                    eprintln!("h3-server: game {game} over, replay {}", path.display());
-                    journal.remove();
-                    lock(registry).archived(path, listed);
-                }
-                Err(e) => eprintln!("h3-server: replay {}: {e}", path.display()),
+            if let Err(e) = archive::write(&path, &text) {
+                eprintln!("h3-server: replay {}: {e}", path.display());
+                return Some((text, None));
             }
-            return Some(text);
+            eprintln!("h3-server: game {game} over, replay {}", path.display());
+            let replay = path.file_stem().unwrap_or_default().to_string_lossy();
+            let rated = ladder.map_or(Ok(None), |ladder| {
+                rate(session, (ladder, game, &replay), stores)
+                    .map_err(|e| format!("ladder `{ladder}`: the result does not write ({e})"))
+            });
+            match &rated {
+                Ok(_) => journal.remove(),
+                Err(e) => eprintln!("h3-server: game {game}: {e}: its journal stays"),
+            }
+            lock(registry).archived(path.clone(), listed);
+            return Some((text, rated.unwrap_or_default()));
         }
         Err(corrupt) => corrupt,
     };
@@ -1049,6 +1090,55 @@ fn finish(
         Err(e) => eprintln!("h3-server: game {game}: the replay as played: {}", e.0),
     }
     None
+}
+
+/// Rates the ranked game `session` on the ladder `ladder` (E16 M4 T3b), as game `game` whose
+/// replay is archived as `replay`: its seats' accounts as the game ended (a forfeit a loss for the
+/// one who forfeited; both: a no-show each). Each seat's rating before and after the game, in whole
+/// points; `None` for a no-show, a game its ladder rated already, or a seat without an account
+/// (none in a match's game); why the result does not write.
+fn rate(
+    session: &Session<'_>,
+    (ladder, game, replay): (&str, u32, &str),
+    stores: &Stores,
+) -> Result<Option<[(Points, Points); 2]>, String> {
+    let [Some(attacker), Some(defender)] = session.accounts() else {
+        eprintln!("h3-server: game {game}: a seat without an account: unrated");
+        return Ok(None);
+    };
+    let accounts = [attacker.to_owned(), defender.to_owned()];
+    // Asked before the ladders' lock: the player log's is never taken under it.
+    let known = accounts
+        .each_ref()
+        .map(|login| stores.accounts.get(login).is_some());
+    let known = |login: &str| accounts.iter().zip(known).any(|(a, k)| k && a == login);
+    let winner = |side: Option<BattleSide>| match side {
+        Some(BattleSide::Attacker) => ladders::Outcome::Attacker,
+        Some(BattleSide::Defender) => ladders::Outcome::Defender,
+        None => ladders::Outcome::Draw,
+    };
+    let end = match session.forfeited() {
+        [true, true] => End::NoShow,
+        [true, false] => End::Result {
+            outcome: winner(Some(BattleSide::Defender)),
+            forfeit: true,
+        },
+        [false, true] => End::Result {
+            outcome: winner(Some(BattleSide::Attacker)),
+            forfeit: true,
+        },
+        [false, false] => End::Result {
+            outcome: winner(session.result().and_then(|r| r.winner())),
+            forfeit: false,
+        },
+    };
+    let rated = (stores.ladders).rate(ladder, (game, replay), accounts.clone(), (end, &known))?;
+    if rated.is_some() {
+        eprintln!("h3-server: game {game} rated on ladder `{ladder}`");
+    }
+    Ok(rated.map(|ratings| {
+        ratings.map(|(before, after)| (ladders::points(before), ladders::points(after)))
+    }))
 }
 
 /// Verifies a finished game before its replay is published (E16 M2 T3, `E16-design.md` §8): the

@@ -53,7 +53,10 @@
 //!   beyond the grace, or stretches beyond its total, forfeit (`GameEnded` with
 //!   `Outcome::Forfeit`, the battle left where it stood); if the other seat is empty too, the game
 //!   is void (`Outcome::NoShow`). A finished stretch is an entry, so a restore keeps the totals;
-//!   a stretch running at a restart starts afresh with the restored session.
+//!   a stretch running at a restart starts afresh with the restored session. A ranked game's end
+//!   (E16 M4 T3b), by the battle or by a forfeit, is held until the host's verdict: told once the
+//!   game verified, `Outcome::Unverified` if it did not; the host then tells each seat its rating
+//!   ([`Session::rated`]).
 //! - **Integrity** (E16 M2 T3, `E16-design.md` §8). The host verifies a finished game before it
 //!   publishes the replay, and withholds it if the game does not verify
 //!   ([`Session::withhold_replay`]). With the *shadow instance* on ([`GameConfig::shadow`]), every
@@ -61,10 +64,11 @@
 //!   are rebuilt from the journal, which is the truth, and the command applied again
 //!   ([`Session::drain_mismatches`]).
 //!
-//! Provisional (E16 M1 T2, M2 T2–T4, M3 T3, M4 T3a): the names, the connection numbering, frames
-//! as text, the record's layout, the entries, who pauses, a spectator's numbered rejections, a
-//! seat's account fixed when it is first taken, one account in both seats allowed, a void game
-//! when the other seat is empty as one's grace runs out (the epic's review list).
+//! Provisional (E16 M1 T2, M2 T2–T4, M3 T3, M4 T3a, T3b): the names, the connection numbering,
+//! frames as text, the record's layout, the entries, who pauses, a spectator's numbered
+//! rejections, a seat's account fixed when it is first taken, one account in both seats allowed,
+//! a void game when the other seat is empty as one's grace runs out, an unranked game's end told
+//! before its verification, `Rating` numbered (the epic's review list).
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
@@ -81,8 +85,8 @@ use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
 use crate::map;
 use crate::wire::{
-    ClientMessage, Command, GoodbyeReason, Manifest, Outcome, Phase, Query, RecordHeader, Refusal,
-    RejectCode, Seat, ServerMessage, Side,
+    ClientMessage, Command, GoodbyeReason, Manifest, Outcome, Phase, Points, Query, RecordHeader,
+    Refusal, RejectCode, Seat, ServerMessage, Side,
 };
 
 /// A connection, as the host numbers them.
@@ -420,6 +424,8 @@ pub struct Session<'r> {
     clock: u64,
     /// The sides whose players forfeited (E16 M4 T3a): the game is over.
     forfeited: [bool; 2],
+    /// A ranked game's end, held until the host's verdict (E16 M4 T3b).
+    held: Option<Outcome>,
 }
 
 impl<'r> Session<'r> {
@@ -476,6 +482,7 @@ impl<'r> Session<'r> {
             grace: config.ranked,
             clock: 0,
             forfeited: [false; 2],
+            held: None,
         })
     }
 
@@ -635,10 +642,7 @@ impl<'r> Session<'r> {
                 side: Side::Defender,
             },
         };
-        for viewer in BattleSide::BOTH {
-            self.send(viewer, |n| ServerMessage::GameEnded { n, result }, out);
-        }
-        self.spectate(|n| ServerMessage::GameEnded { n, result }, out);
+        self.end(result, out);
         true
     }
 
@@ -762,15 +766,39 @@ impl<'r> Session<'r> {
     }
 
     /// The replay file's text, for the participants once the game is over (ADR-0018 point 8): a
-    /// `FetchReplay` before the end is refused even if the text is there.
-    pub fn publish_replay(&mut self, replay: String) {
+    /// `FetchReplay` before the end is refused even if the text is there. The game verified: a
+    /// ranked game's end is told now (E16 M4 T3b).
+    pub fn publish_replay(&mut self, replay: String, out: &mut Vec<Outbound>) {
         self.replay = Published::Replay(replay);
+        if let Some(result) = self.held.take() {
+            self.tell_end(result, out);
+        }
     }
 
     /// The game did not verify (E16 M2 T3): its replay is withheld, and a `FetchReplay` after the
-    /// end is rejected as `Unverified`.
-    pub fn withhold_replay(&mut self) {
+    /// end is rejected as `Unverified`. A ranked game's end is told as `Outcome::Unverified` (E16
+    /// M4 T3b): void, unrated.
+    pub fn withhold_replay(&mut self, out: &mut Vec<Outbound>) {
         self.replay = Published::Withheld;
+        if self.held.take().is_some() {
+            self.tell_end(Outcome::Unverified {}, out);
+        }
+    }
+
+    /// The seats' accounts were rated for the ranked game that ended and verified (E16 M4 T3b):
+    /// each seat's viewer hears its rating on `ladder` before and after the game (`points`, the
+    /// attacker's first). The spectators hear nothing of it.
+    pub fn rated(&mut self, ladder: &str, points: [(Points, Points); 2], out: &mut Vec<Outbound>) {
+        for (side, (before, after)) in BattleSide::BOTH.into_iter().zip(points) {
+            let ladder = String::from(ladder);
+            let rating = |n| ServerMessage::Rating {
+                n,
+                ladder,
+                before,
+                after,
+            };
+            self.send(side, rating, out);
+        }
     }
 
     /// Whether the game paused (E16 M2 T3), or a restored journal ended with its pause, and no
@@ -1129,6 +1157,24 @@ impl<'r> Session<'r> {
         }
     }
 
+    /// The game ended with `result`: every viewer and spectator hears it, a ranked game's once the
+    /// host's verdict came (E16 M4 T3b: [`Session::publish_replay`], [`Session::withhold_replay`]).
+    fn end(&mut self, result: Outcome, out: &mut Vec<Outbound>) {
+        if self.grace.is_some() {
+            self.held = Some(result);
+        } else {
+            self.tell_end(result, out);
+        }
+    }
+
+    /// Every viewer and spectator hears the game's end.
+    fn tell_end(&mut self, result: Outcome, out: &mut Vec<Outbound>) {
+        for viewer in BattleSide::BOTH {
+            self.send(viewer, |n| ServerMessage::GameEnded { n, result }, out);
+        }
+        self.spectate(|n| ServerMessage::GameEnded { n, result }, out);
+    }
+
     /// After the battle started or changed: bots act while it is their turn; then the seat to
     /// act gets its turn, or every viewer the end.
     fn advance(&mut self, out: &mut Vec<Outbound>) {
@@ -1139,10 +1185,7 @@ impl<'r> Session<'r> {
                 // Over: the result is set.
                 self.settle();
                 let result = self.state.result().map_or(Outcome::Draw {}, map::outcome);
-                for viewer in BattleSide::BOTH {
-                    self.send(viewer, |n| ServerMessage::GameEnded { n, result }, out);
-                }
-                self.spectate(|n| ServerMessage::GameEnded { n, result }, out);
+                self.end(result, out);
             }
         }
     }

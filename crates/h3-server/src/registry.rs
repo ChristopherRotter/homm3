@@ -42,10 +42,9 @@ use h3_protocol::wire::{
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::Instant;
 
-use crate::accounts::Accounts;
 use crate::archive::Archive;
-use crate::game::{self, Offer, Outbox, Prepared, ToGame};
-use crate::ladders::{Ladders, Pool};
+use crate::game::{self, Offer, Outbox, Prepared, Stores, ToGame};
+use crate::ladders::Pool;
 use crate::{Error, config, journal};
 
 /// A game's inbox: messages waiting for the game's thread.
@@ -96,9 +95,9 @@ pub(crate) struct Registry {
     limits: config::Limits,
     /// The finished games' replays (E16 M2 T5d).
     archive: Archive,
-    /// The accounts (E16 M3 T3): a game's thread names its seats' accounts and asks their
-    /// preferences, never under the lock.
-    accounts: Arc<Accounts>,
+    /// The server's books (E16 M3 T3, M4 T3b): a game's thread names its seats' accounts and asks
+    /// their preferences, records its id and rates its result, never under the lock.
+    stores: Stores,
     /// The ladders' pools by ladder (E16 M4 T2): a match's game draws from them, and a restored
     /// or resumed game finds its offer among them too.
     pools: BTreeMap<String, Pool>,
@@ -114,29 +113,31 @@ pub(crate) struct Registry {
 }
 
 impl Registry {
-    /// A registry of `offers` and of `ladders`' queues within `limits`, and no games; its games'
-    /// players are `accounts`.
+    /// A registry of `offers` and of the ladders' queues within `limits`, and no games; its games'
+    /// books are `stores` (their ids follow those handed out before, E16 M4 T3b).
     pub(crate) fn new(
-        (offers, ladders): (Vec<Arc<Offer>>, &Ladders),
+        offers: Vec<Arc<Offer>>,
         limits: &config::Limits,
         server: config::Server,
-        accounts: Arc<Accounts>,
+        stores: Stores,
     ) -> Self {
         let infos = offers.iter().map(|o| o.info.clone()).collect();
         let games = lobby::Limits {
             games: limits.games,
             games_per_origin: limits.games_per_address,
         };
+        let mut lobby = Lobby::new(infos, games);
+        lobby.skip(stores.ids.last());
         Self {
-            lobby: Lobby::new(infos, games),
+            lobby,
             offers,
             games: BTreeMap::new(),
             server,
             limits: *limits,
             archive: Archive::default(),
-            accounts,
-            pools: ladders.pools(),
-            queues: Queues::new(ladders.queues()),
+            pools: stores.ladders.pools(),
+            queues: Queues::new(stores.ladders.queues()),
+            stores,
             queued: BTreeMap::new(),
             ranked: BTreeMap::new(),
             epoch: Instant::now(),
@@ -255,12 +256,12 @@ impl Registry {
                 _ => UnqueueReason::Full,
             })?;
         let (server, limits) = (self.server.clone(), self.limits);
-        let (shared_accounts, reserved) = (Arc::clone(&self.accounts), accounts.clone());
+        let (stores, reserved) = (self.stores.clone(), accounts.clone());
         let watchable = pool.spectators;
-        let host = move || (server, limits, shared_accounts);
+        let host = move || (server, limits, stores);
         let prepare = move || {
-            let (server, limits, accounts) = host();
-            match Prepared::new(offer, game, origin, (&server, &limits, accounts), watchable) {
+            let (server, limits, stores) = host();
+            match Prepared::new(offer, game, origin, (&server, &limits, stores), watchable) {
                 Ok(prepared) => Some(prepared.reserved(reserved.map(Some))),
                 Err(e) => {
                     eprintln!("h3-server: game {game} not created: {e}");
@@ -389,9 +390,8 @@ impl Registry {
 
     /// Where game `game` is now: its phase, its open seats and whether it takes spectators.
     pub(crate) fn report(&mut self, game: u32, status: (Phase, Vec<Seat>, bool)) {
-        // A match that is over keeps its players from no other (E16 M4 T2); its result is rated
-        // from E16 M4 T3b on.
-        // stub: SRV-STUB-4
+        // A match that is over keeps its players from no other (E16 M4 T2); its thread rated its
+        // result before (E16 M4 T3b).
         if status.0 == Phase::Over {
             self.ranked.remove(&game);
         }
@@ -516,9 +516,9 @@ pub(crate) fn create(
     let (game, index) = registry.lobby.create(origin, offer, seat, listed)?;
     let offer = Arc::clone(&registry.offers[index]);
     let (server, limits) = (registry.server.clone(), registry.limits);
-    let accounts = Arc::clone(&registry.accounts);
+    let stores = registry.stores.clone();
     let prepare =
-        move || match Prepared::new(offer, game, origin, (&server, &limits, accounts), watchable) {
+        move || match Prepared::new(offer, game, origin, (&server, &limits, stores), watchable) {
             Ok(prepared) => Some(prepared),
             Err(e) => {
                 eprintln!("h3-server: game {game} not created: {e}");
@@ -592,7 +592,7 @@ pub(crate) fn bind(
     }
     let path = journal::dir(&registry.server.data).join(format!("{game}.journal"));
     let (offers, server, limits) = (registry.offers(), registry.server.clone(), registry.limits);
-    let accounts = Arc::clone(&registry.accounts);
+    let stores = registry.stores.clone();
     let prepare = move || {
         let prepared = journal::read(&path).and_then(|read| {
             let offer = offers
@@ -600,7 +600,7 @@ pub(crate) fn bind(
                 .find(|o| o.id == read.start.offer)
                 .cloned()
                 .ok_or_else(|| format!("the server offers no `{}` now", read.start.offer))?;
-            Prepared::restored(offer, &path, read, (&server, &limits, accounts), None)
+            Prepared::restored(offer, &path, read, (&server, &limits, stores), None)
         });
         match prepared {
             Ok(prepared) => Some(prepared),
@@ -630,9 +630,16 @@ pub(crate) fn bind(
 /// listens): each re-runs on its own thread, which lists it again if it goes on; this returns once
 /// every re-run is done. A journal that does not read, that names an offer the server no longer
 /// has, or whose engine or content identity is not the offer's, is void. A game thread that does
-/// not start stops the server's start.
+/// not start stops the server's start. Every journal's game id counts as handed out (E16 M4 T3b:
+/// a journal of a server from before `next-game`); one that does not record stops the start.
 pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
-    let data = lock(shared).server.data.clone();
+    let (data, ids) = {
+        let registry = lock(shared);
+        (
+            registry.server.data.clone(),
+            Arc::clone(&registry.stores.ids),
+        )
+    };
     let dir = journal::dir(&data);
     let listing = match fs::read_dir(&dir) {
         Ok(listing) => listing,
@@ -652,13 +659,17 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
             .unwrap_or_default();
         let (to, inbox) = mpsc::channel(GAME_INBOX);
         let (done, finished) = oneshot::channel();
-        let prepared = journal::read(&path).and_then(|read| {
+        let read = journal::read(&path);
+        if let Ok(read) = &read {
+            let recorded = ids.reach(read.start.game);
+            recorded.map_err(|e| Error(format!("{}: the game's id: {e}", data.display())))?;
+        }
+        let prepared = read.and_then(|read| {
             let registry = lock(shared);
             let offer = (registry.offers().into_iter())
                 .find(|o| o.id == read.start.offer)
                 .ok_or_else(|| format!("the server offers no `{}` now", read.start.offer))?;
-            let accounts = Arc::clone(&registry.accounts);
-            let host = (&registry.server, &registry.limits, accounts);
+            let host = (&registry.server, &registry.limits, registry.stores.clone());
             Prepared::restored(offer, &path, read, host, Some((to, done)))
         });
         match prepared {
@@ -672,6 +683,7 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
     for finished in restoring {
         let _ = finished.await;
     }
+    lock(shared).lobby.skip(ids.last());
     Ok(())
 }
 

@@ -9,11 +9,13 @@
 //! unique across restarts), the page of [`PAGE`], the order.
 
 use std::collections::VecDeque;
-use std::fs::{self, File};
-use std::io::{self, Write};
+use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 
 use h3_protocol::wire::ReplayInfo;
+
+use crate::journal;
 
 /// The replays a `Replays` page lists at most.
 pub(crate) const PAGE: usize = 50;
@@ -45,19 +47,9 @@ pub(crate) fn dir(data: &Path, listed: bool) -> PathBuf {
 }
 
 /// Writes a replay to `path` so that a crash leaves the whole file or none (E16 M2 T5e: the
-/// reviewer's finding): to a `.part` file beside it, synced, then renamed and its directory synced.
-/// Only then may the game's journal go.
+/// reviewer's finding; [`journal::replace`]). Only then may the game's journal go.
 pub(crate) fn write(path: &Path, text: &str) -> io::Result<()> {
-    let dir = path.parent().unwrap_or_else(|| Path::new("."));
-    fs::create_dir_all(dir)?;
-    let part = path.with_extension("toml.part");
-    let mut file = File::create(&part)?;
-    file.write_all(text.as_bytes())?;
-    file.sync_all()?;
-    fs::rename(&part, path)?;
-    #[cfg(unix)]
-    File::open(dir)?.sync_all()?;
-    Ok(())
+    journal::replace(path, text)
 }
 
 /// The replay's info from its file name, `<offer>-game<id>-<random>.toml`.
