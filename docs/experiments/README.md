@@ -173,12 +173,10 @@ by its controller (BAT-MAG-063); the original's cursor there is not read. From E
 whose blindness ends in the wait phase is not checked for bad morale (BAT-MOR-004, the code).
 
 **From the E04b review** (T11b, 2026-10-12; none staged: "batch 2g" in the battle queue's inbox).
-The review's code readings that stand against VCMI or the wiki, or alone (OPEN-QUESTIONS BAT-Q28 to
-BAT-Q33; the quirk candidates S-23 to S-27 of `docs/rules/surveys/E04b-magic.md` §16), grouped by
+The review's code readings that stand against VCMI or the wiki, or alone (OPEN-QUESTIONS BAT-Q28, BAT-Q32 and BAT-Q33; BAT-Q29 to BAT-Q31 are answered and the engine follows the readings there, so their rows are confirmations only; the quirk candidates S-23 to S-27 of `docs/rules/surveys/E04b-magic.md` §16), grouped by
 set-up ("row" is a row of BAT-Q28). *One Faerie Dragon session* (dragons led by a hero; the F key
 casts the drawn spell, the cursor is the control; it joins T7b2a's candidates above): F at a stack
-under Expert Magic Mirror, ten casts: none is sent away (the reading and VCMI) or about four are
-(the engine today; BAT-Q29); with Fireball or Frost Ring drawn, F and a click on an empty hex
+under Expert Magic Mirror, ten casts: none is sent away (the reading, VCMI, the wiki and the engine since BAT-Q29's answer); with Fireball or Frost Ring drawn, F and a click on an empty hex
 between two stacks: cast (the reading) or refused, and the two corners, F after the side's hero has
 cast this round and F for dragons without a hero (the reading: it reads a hero that is not there,
 so a battle that may crash; BAT-Q32); one dragon's Fireball under the Orb of Tempestuous Fire: 120
@@ -204,9 +202,9 @@ the Wolf Riders' front hex: the Swordsman comes back (the reading) or the Wolf R
 S-24); Basic Dispel's cursor on an own stack whose only effect is Acid Breath: refused (the
 reading) or offered (row 12); Frenzy on a stack that defends twice and then attacks: still frenzied
 (VCMI) or not (the reading; BAT-MAG-019; only if the wiki is silent); Berserk on a stack whose own
-side has a hidden pit on its short way: does it go round (the reading, BAT-Q31). The earlier
+side has a hidden pit on its short way: does it go round (the reading and the engine; BAT-Q31, answered: kept as the original). The earlier
 candidate "whether the interface offers an attack from a seen pit" (BAT-QUIRK-2) is answered by the
-review's reading: it offers none (BAT-Q30); one look at the cursor confirms it. Two rows on battles
+review's reading: it offers none, and the engine accepts none since BAT-Q30's answer; one look at the cursor confirms it. Two rows on battles
 that may crash or hang, only for their ledger lines: a Fire Wall removed at once by Expert Dispel,
 a Force Field cast onto its hexes, then the round in which the Fire Wall would have ended (S-26);
 elementals summoned in the wait phase and blinded before their turn (S-27). *Statistics rows:*
@@ -233,10 +231,8 @@ stacks preferred (row 1). Sorcery and its specialists: a worked number that tell
 (BAT-MAG-004, Q-0005). Unicorn: whose Unicorns protect a hypnotized stack (BAT-MAG-008). Spell
 book, Combat: can a mass or battle-wide spell that would affect nobody be cast (BAT-MAG-003).
 Faerie Dragon: do the hero's Sorcery, Orbs or specialty raise its area spells and chain (row 2);
-does Magic Mirror reflect its spells (BAT-Q29); can its area spells be aimed at an empty hex, and
-the wording on the Orb of Inhibition, the anti-magic garrison and Cursed Ground (BAT-Q32). Magic
-Mirror: "spells cast by creatures are not reflected"? (BAT-Q29); can the reflected spell go to the
-caster's war machines, and are the computer player's spells never reflected (BAT-MAG-022). Morale,
+can its area spells be aimed at an empty hex, and
+the wording on the Orb of Inhibition, the anti-magic garrison and Cursed Ground (BAT-Q32). Magic Mirror (checked 2026-10-12: the page says "Spells cast by creatures (unlike the ones cast by human-controlled heroes) will never be reflected", BAT-Q29): can the reflected spell go to the caster's war machines (BAT-MAG-022; the page's parenthesis fits the reading that the computer player's spells are never reflected). Morale,
 Luck and their four spells: does a base beyond ±3 absorb the spells (BAT-MAG-011); do computer or
 neutral armies freeze less often (BAT-Q33). Dispel, Hypnotize: does Expert Dispel end Hypnotize, on
 the caster's own stack too (BAT-MAG-016, 026). Disrupting Ray, Rust Dragon, Resurrection: does the

@@ -4,15 +4,15 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `battle/e04b-t11b`. Work on `battle/<task>` branches from `master`, merged at its checkpoint; HANDOFF content goes here.
-- **E04b increment 21 (the user): T11 in three parts; T11a done** (the fold-in and the exit-criteria audit: bad morale skipped for the whole wait phase, BAT-Q24 answered, 22 rules verified, the inbox by destination). Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
-- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. T1–T10 (the epic file lists each with its rules): every battle spell, creature magic, the hero's spells and masteries in the Heroes context, limits and defences, the opening spells and Eagle Eye, the data quirks, a complete observation, the casting workload, batches 2a–2f (BAT-MAG-001 to 069, HER-SPL-002 to 004, HER-BAT-015 to 017; Q-0006 to Q-0012, BAT-QUIRK-1 to 19), all after the executable's code (`installation.md` §7.8–§7.24). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
-- **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **In progress** (`battle/e04b-t11b`, 2026-10-11 19:55 UTC, fifty-second session): T11b, the independent review by fresh reviewer agents (nothing folded in yet; their reports are in the session's scratch folder), then T11c (the closure).
-- **Open for later tasks:** E04b's loose ends by destination (E04c, E05, E08–E10, battle without a task) in `QUEUE.md`'s inbox (T11a); Q43 (sprite offset, keep the approximation).
-- **Versions (battle owns them):** state hash v41, ruleset hash v42, replay format v21, action encoding v11, C ABI v17, observation encoding v13; pack format v34. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
-- **Ownership:** `h3-content` and `h3-pack` stay with battle until further notice (user, 2026-10-07); `h3-kernel` and `h3-contracts` are shared, so a seam change is its own `shared/` pull request, merged before the battle change that uses it.
-- Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
+- **Branch:** `battle/e04b-t11b` (T11b's pull request); `battle/<task>` branches from `master`, merged at their checkpoint.
+- **E04b increment 21: T11a and T11b done** (T11b: the independent review, 87 findings, 24 fixes, wider properties, the flags of BAT-QUIRK-2 and BAT-QUIRK-9 retired by the user; `docs/epics/E04b-log.md`). Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
+- **Done:** T1–T10: every battle spell, creature magic, the hero's spells and masteries in the Heroes context, limits and defences, the opening spells and Eagle Eye, a complete observation, batches 2a–2f (BAT-MAG-001 to 069, HER-SPL-002 to 004, HER-BAT-015 to 017), all after the executable's code (`installation.md` §7.8–§7.24). Physical damage follows the executable's three truncated stages under Q-0005 (`h3_kernel::arith::X87` at 53 bits).
+- **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's f32 bit pattern where it differs; Q45 (b)).
+- **Next: T11c, the closure:** a `shared/` pull request first (BACKLOG, ADR-0014, ADR-0007 on retiring a flag, `docs/04` §4, `docs/06`, the global HANDOFF's battle row), then the lane's (the epic's status, the design note deleted, the user's Windows run for exit criterion 7).
+- **Open for later tasks:** BAT-Q28 and BAT-Q32 to BAT-Q35 (the review's; none blocks), batch 2g and 49 wiki checks (`docs/experiments/README.md`; the review's agents had no wiki access), BAT-STUB-1 (the observation and a created stack that ran out of rounds); `QUEUE.md`'s inbox by destination; Q43.
+- **Versions (battle owns them):** state hash v41, ruleset hash v42, replay format v21, action encoding v11, C ABI v17, observation encoding v13; pack format v34. Next ids: BAT-Q36, BAT-QUIRK-22, BAT-STUB-2.
+- **Ownership:** `lanes.toml`; a seam change (`h3-kernel`, `h3-contracts`) is its own `shared/` pull request, merged first.
+- Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; the user plays experiment maps in SoD with plain HD and commits the results.
 
 ## Standing traps
 
@@ -30,11 +30,13 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 **Battle code and tests**
 - Stack ids: war machines follow the army in kind order (Ballista, Ammo Cart, Tent), not in the order of `BattleSetup.war_machines`.
 - Defend raises defense and spoils exact damage expectations: skip turns with `activate`. `BattleState::new` drops the first activation's events (use `start` where events matter). A test ruleset may not make bad morale certain (254/255).
-- Hidden obstacles leak through public events too: a hidden obstacle that does nothing must not change them (a mine that does not go off must not split a `Moved`). `hidden_obstacles_do_not_show` checks the acting side's commands and casts (its profiles leave BAT-QUIRK-4 off). `legal_commands` lists no casts: a property over legal commands must add `cast_targets` × `second_targets` itself.
+- Hidden obstacles leak through public events too: a hidden obstacle that does nothing must not change them (a mine that does not go off must not split a `Moved`). `hidden_obstacles_do_not_show` checks the acting side's commands and casts (its profiles leave BAT-QUIRK-4 off; no Berserk in its books, BAT-Q31); the automatic Ballista reads `movement::reachable_in_public`. `legal_commands` lists no casts: a property over legal commands must add `cast_targets` × `second_targets` itself.
 - Natural obstacles follow the original's hex records (`h3_battle::natural`): the piece listed last wins a shared hex, and a removal clears its hexes and anchor for every piece (0x466B30).
-- A dead stack's effects stay until the command's end (`effects::remove_dead`): code that brings a stack back within a command removes them first (the rebirth, T7c2b review). The battle's first activation runs without the freezing checks (`turn::activate_first`); good morale goes through `turn::morale_turn`.
+- A dead stack's timed effects stay until the command's end (`effects::remove_dead`), its permanent ones for good: code that brings a stack back within a command removes the timed ones first (the rebirth), and a reused record is cleared with `effects::forget`. The battle's first activation runs without the freezing checks (`turn::activate_first`); good morale goes through `turn::morale_turn`.
 - Hero spells and masteries come from `h3-heroes` (ADR-0013 point 2); the battle reads `BattleMagic` only. Tests: `support::masteries(r, [schools])`. A stack's spell test needs the casting side (`affects_stack`, `share`, `resists`: the heroes' `Guard`, BAT-MAG-066); battle-wide hero magic is `BattleState.limits`, derived at the start.
 - Rule code reads abilities via `ruleset.abilities(creature)`; per-attack booleans are `StackTraits` bits set at setup. `Stack.spells` holds the spells' values only: a creature's `innate_spell` is read where the original reads the creature (`magic::mirror_chance`, `magic::reflection`), not by Hypnotize, Dispel or usefulness tests. Two `skill_specialty` effects in one specialty are rejected.
+- Relations go by the acting stack's controller and the other stack's own side (`Stack::may_attack`; `is_hostile_to` only for blocking and multi-headed strikes). A created stack that ran out of rounds keeps its record (`created::reusable`).
+- A retired quirk flag keeps its `REGISTRY` position without a name (`flags()` lists the live ones). A flag that comes or goes changes the faithful ruleset hashes: the golden replays, and the adventure lane's faithful replays (a `cross-lane` header line).
 
 - The observation is complete since T9a: a new state field a rule reads goes into `observe_as` (public, own part or neither: ADR-0014 point 8), the flat encoding (version and ABI bump) and the hygiene property.
 - `h3-protocol`'s hygiene tests compare a viewer's frames across seeds on the `full` scenario up to the first hidden cast: no draw the viewer sees may come before it, public or its own (T9b: resistance on Brea's stacks, Eagle Eye listing Mire or Snare).
@@ -45,25 +47,22 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A stack can now die from another's death (a clone with its original, BAT-MAG-038): loops over targets fixed before damage skip dead stacks, and every path that kills calls `created::died` (`effects::damaged` after damage, the death stare, the sacrifice; it also releases binds).
 - Code added to `movement::reachable_within` can push `fits` out of line (T5c1, T6b): compare per-function profiles (`callgrind_annotate --inclusive=no`) of the old and new binaries on the old workload.
 - The random agent and `legal_mask` ask for the active stack's cast at every step: keep `casters::ready` a cheap early exit (casts left first; the targets' buffer only for a caster cost +2 % Ir in T7b1).
-- Before re-baselining, compare `h3 bench --games 20` step counts (a shorter workload looks like a speed-up; build the old commit in a `git worktree` with its own target dir; `git stash` keeps untracked files). The geometry hot path moves with unrelated codegen: compare per-function callgrind profiles (`--toggle-collect='*random_rollout*'`, read the out file's `summary:` line; run `h3 bench` where `packs/` resolves).
+- Before re-baselining, compare `h3 bench --games 20` step counts (a shorter workload looks like a speed-up; build the old commit in a `git worktree` with its own target dir). The geometry hot path moves with unrelated codegen: compare per-function callgrind profiles (`--toggle-collect='*random_rollout*'`, read the out file's `summary:` line; run `h3 bench` where `packs/` resolves).
 
-**Pull requests**
+**Process**
+- `xtask` takes the workspace root from its build: never share a target directory between worktrees (two workers' checks read each other's tree, T11b).
 - The user merges with merge commits; after a rebase-merge, rebase a stacked branch with `git rebase --onto origin/master <old base head>` and push with a lease.
 
 **Experiments in the original game**
 - The installation is read-only: maps go to the gitignored `experiments/out/`, the user copies them. Results hold for SoD; observation sources name the setup.
-- The `.h3m` writer knows dirt, grass and water tiles only (dirt: native to Necropolis only). A hero type once per map, at most eight heroes per player. Wandering monsters act on their own: use a Blue hero when the opponent must hold still. Check every move against the stack's speed (the armies start 14 columns apart). A single-alignment army has +1 morale: mix two where an extra turn would spoil a count. Every hero has a Catapult in the game; the hero screen shows no army-alignment morale.
+- The `.h3m` writer knows dirt, grass and water tiles only (dirt: native to Necropolis only). A hero type once per map, at most eight heroes per player. Wandering monsters act on their own: use a Blue hero when the opponent must hold still. Check every move against the stack's speed (14 columns apart at the start). A single-alignment army has +1 morale: mix two where an extra turn would spoil a count. Every hero has a Catapult; the hero screen shows no army-alignment morale.
 
 ## Recent sessions
 
+### 2026-10-11 to 12 (fifty-second) — E04b increment 21: T11b, the review
+
+The user: review and closure in one session, with agents; BAT-Q29 to BAT-Q31 answered (two quirk flags retired). Eleven reviews, 24 fixes, the tests and properties asked for, replays and baseline renewed. Detail: `docs/epics/E04b-log.md`.
+
 ### 2026-10-11 (fifty-first) — E04b increment 21: T11a
 
-The user: T11 in three parts; BAT-Q24 answered; bad morale skipped for the whole wait phase. Batch 2a's damage replayed, 22 rules verified, the inbox by destination. Detail: `docs/epics/E04b-log.md`.
-
-### 2026-10-11 (fiftieth) — E04b increment 20: T9b
-
-The user (BAT-Q27): T9b, then batch 2f; 2e's weak results decisive. The `full` heroes got T8's magic; replays re-seeded, `bench-check` re-baselined; ≈ 104 k steps/s, ≈ 69 k with `--observe 1`. Batch 2f staged and folded in: all as the engine and the code. Detail: `docs/epics/E04b-log.md`.
-
-### 2026-10-11 (forty-ninth) — E04b increment 19: T9a and the spectator viewer
-
-The user (BAT-Q26): T9a with SRV-Q4's spectator viewer, per-hex planes, a hero's hidden magic private to its side. `Observation` complete, `observe_as`, `project_as`; encoding v13, C ABI v17. Detail: `docs/epics/E04b-log.md`.
+The user: T11 in three parts; BAT-Q24 answered; bad morale skipped for the whole wait phase. 22 rules verified, the inbox by destination. Detail: the log.
