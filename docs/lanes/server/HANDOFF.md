@@ -4,7 +4,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M3 closed** (SRV-Q12, SRV-Q16, SRV-Q18). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided; the detail in `E16-design.md` §11; the tasks in `QUEUE.md`; no turn timer in M4 (a game rule, M5). **M4 done** (#106–#124, T7). **Next: M4's checkpoint** (SRV-Q22), then what it decides.
+- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22). M4's detail: `E16-design.md` §11 (ADR-0019 points 4–9; no turn timer: a game rule, M5). **M4 done** (#106–#130). **Next: M4 T8** (the pause's hold across a restart), then M6's refinement.
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 20 since M4 T5b's bot opt-out; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 6 since M4 T6's `PauseAgreed`; a journal of another format is void at start).

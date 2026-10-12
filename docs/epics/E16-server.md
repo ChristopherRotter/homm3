@@ -4,7 +4,8 @@ Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 acc
 crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 done
 2026-10-11 (T1 to T5e), its checkpoint passed the same day (SRV-Q16); M3 done 2026-10-12 (T1 to
 T5), its checkpoint passed the same day (SRV-Q18); M4 refined 2026-10-12 (SRV-Q19), done
-2026-10-12 (T1 to T7 with T5b and SRV-Q20), its checkpoint pending (SRV-Q22)). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+2026-10-12 (T1 to T7 with T5b and SRV-Q20), its checkpoint passed the same day (SRV-Q22): T8, then
+M6's refinement). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); [ADR-0019](../adr/0019-identity-and-ladders.md) (identity and ladders, accepted at the M3
 refinement, its ladder points decided at M4's); ADR draft `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -385,7 +386,9 @@ ranked game per player per ladder, bots exempt; no turn timer in M4 (a game rule
 - **T7 Closure** (done 2026-10-12; `E16-log.md`): a rated battle through a restart end to end,
   `06-security.md`'s ladders and pings, the client lane's note, the reviewer agent (no major
   finding; five minor fixed, the bar after a match given up among them), the user's checkpoint
-  (SRV-Q22).
+  (passed, SRV-Q22).
+- **T8 An agreed pause's hold across a restart** (SRV-Q22 (b), after the checkpoint): the hold of
+  a pause resumed early journaled and re-applied at a restore; journal format 7.
 
 ## Exit criteria (M4)
 
@@ -450,7 +453,7 @@ restart does to a viewer's numbers and record; the inbox's M2 items are decided;
 agent's major findings are fixed or recorded with the user's decision; the lane HANDOFF, the epic
 log and `QUEUE.md` are current.
 
-## Review list for the M4 checkpoint
+## Review list for the M4 checkpoint (passed 2026-10-12, SRV-Q22)
 
 Choices queued under the autonomy contract (details in `E16-log.md`):
 

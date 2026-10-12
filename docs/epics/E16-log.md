@@ -1366,4 +1366,6 @@ how and why the work went.
   departure; per ladder); the property test's bars; the restart test; the leaderboard test's new
   season played against a bot (Ann and Bob, 324 points apart after a forfeit, would wait 150 s
   for the window).
-- **The checkpoint**: the user's, SRV-Q22 (`docs/OPEN-QUESTIONS.md`).
+- **The checkpoint**: the user's, SRV-Q22: passed 2026-10-12; the review list as built; the
+  pause's hold across a restart a small task first (T8); the other two review items later; M6's
+  refinement next (M5 waits for E08's increment 3).
