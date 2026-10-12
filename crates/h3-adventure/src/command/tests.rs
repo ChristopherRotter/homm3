@@ -714,7 +714,7 @@ fn objects_visited_from_above_are_entered_and_left_across_their_top() {
 fn stacked(
     rules: &(Ruleset, AdventureRuleset),
     row: &str,
-    object_type: ObjectTypeId,
+    object_type: Option<ObjectTypeId>,
     at: Pos,
 ) -> Result<AdventureState, SetupError> {
     let mut setup = world(
@@ -726,7 +726,7 @@ fn stacked(
         ],
     );
     let mut object = setup.map.objects[0];
-    object.object_type = Some(object_type);
+    object.object_type = object_type;
     setup.map.objects.push(object);
     AdventureState::new(&rules.0, &rules.1, &setup, &mut draws())
 }
@@ -736,13 +736,13 @@ fn stacked(
 fn a_tile_visited_from_two_objects_visits_the_last_still_on_the_map() {
     let rules = movement_rules(true);
     // A pile, then a chart: the step enters the chart; the pile stays.
-    let mut state = stacked(&rules, "ggPggggggggggggg", CHART, p(0, 1)).unwrap();
+    let mut state = stacked(&rules, "ggPggggggggggggg", Some(CHART), p(0, 1)).unwrap();
     move_hero(&mut state, &rules, RED, 1, &[p(1, 1), p(2, 1)]).unwrap();
     assert_eq!(hero(&state, 1).0, p(2, 1));
     assert!(!state.is_removed(0));
     // A chart, then a pile: the step visits the pile from (1, 1); once the pile is gone, the
     // chart is entered.
-    let mut state = stacked(&rules, "ggCggggggggggggg", WOOD_PILE, p(0, 1)).unwrap();
+    let mut state = stacked(&rules, "ggCggggggggggggg", Some(WOOD_PILE), p(0, 1)).unwrap();
     move_hero(&mut state, &rules, RED, 1, &[p(1, 1), p(2, 1)]).unwrap();
     assert_eq!(hero(&state, 1).0, p(1, 1));
     assert!(state.is_removed(1));
@@ -750,19 +750,28 @@ fn a_tile_visited_from_two_objects_visits_the_last_still_on_the_map() {
     assert_eq!(hero(&state, 1).0, p(2, 1));
     // The last object decides the test from above too: a chart over an open chart is not
     // entered from above, an open chart over a chart is.
-    let state = stacked(&rules, "ggcggggggggggggg", CHART, p(2, 0)).unwrap();
+    let state = stacked(&rules, "ggcggggggggggggg", Some(CHART), p(2, 0)).unwrap();
     refused(
         &state,
         &rules,
         &[p(2, 1)],
         AdventureCommandError::FromAbove { step: 0 },
     );
-    let mut state = stacked(&rules, "ggCggggggggggggg", OPEN_CHART, p(2, 0)).unwrap();
+    let mut state = stacked(&rules, "ggCggggggggggggg", Some(OPEN_CHART), p(2, 0)).unwrap();
     move_hero(&mut state, &rules, RED, 1, &[p(2, 1)]).unwrap();
+    // A blocker over a pile: the tile is refused, as a blocker's is, and a hero may stand there.
+    let state = stacked(&rules, "ggPggggggggggggg", None, p(0, 1)).unwrap();
+    refused(
+        &state,
+        &rules,
+        &[p(1, 1), p(2, 1)],
+        AdventureCommandError::Visit { step: 1 },
+    );
+    assert!(stacked(&rules, "ggPggggggggggggg", None, p(2, 1)).is_ok());
     // And whether a hero may start there: on a pile under a chart, not on a chart under a pile.
-    assert!(stacked(&rules, "ggPggggggggggggg", CHART, p(2, 1)).is_ok());
+    assert!(stacked(&rules, "ggPggggggggggggg", Some(CHART), p(2, 1)).is_ok());
     assert_eq!(
-        stacked(&rules, "ggCggggggggggggg", WOOD_PILE, p(2, 1)),
+        stacked(&rules, "ggCggggggggggggg", Some(WOOD_PILE), p(2, 1)),
         Err(SetupError::HeroTile {
             hero: HeroId::new(1),
             error: StandError::Visited,

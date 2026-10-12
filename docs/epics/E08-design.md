@@ -39,7 +39,7 @@ as in v1 for the hero entries, ignored otherwise. With a decision open the entry
 |---|---|---|---|
 | `MAP_IMPORT_VERSION` | 1 | 3 | T12 (v2), T13a (v3, the setup's difficulty; done) |
 | adventure ruleset-part hash | v3 | v5 | T12 (v4), T13a (v5, the starting rows; done) |
-| adventure state hash | v3 | v4 | T12 (done; T13 added no state); T14 bumps if it adds state |
+| adventure state hash | v3 | v4 | T12 (done; T13 and T14a added no state); T14b bumps if it adds state |
 | game state hash | v1 | v2 | T13a (done); T14 bumps again with the decisions |
 | action encoding | v1 | v2 | T14 |
 | adventure replay format | v1 | v2 if the answer needs it | T14 |

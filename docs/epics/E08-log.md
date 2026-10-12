@@ -1060,3 +1060,56 @@ changed: only the computation, equal for every cost); every game at normal diffi
 adds a difficulty option with the replay format's bump (the user: yes). The round: T14 in two
 parts on one pull request, T14a the entered visit and ADV-OBJ-004, T14b the Cartographer's offer
 end to end with the env's action encoding v2 and the replay format v2.
+
+**T14a — the entered visit and not from above.**
+- **The entered visit** (ADV-OBJ-003's other half): a step onto the visitable tile of an object
+  whose type is entered (`Visit::Enter`) and whose visit is built enters it: priced as a step
+  (ADV-MOV-003 to -006, the drop to 0 included), its step event and reveal as any step's, the hero
+  stands there, and the move ends (`PastVisit` after it). The mode follows the type, the effect
+  the kind: `ObjectKind::visit_built` (pickups and, from T14a, `RevealTerrain`) is the one place
+  T14b and T15 extend, and `visit` dispatches on the kind (the Cartographer: nothing yet, no
+  outcome, no event). The observatories, tents, guards, gates and blockers keep `Visit`.
+- **ADV-OBJ-004**: an object whose type is not `from_above` closes the three steps across its
+  visitable tile's top, both ways (down onto it, up off it; walking: flying is increment 3, no
+  flag). `AdventureCommandError::FromAbove { step }`, checked after `Blocked` and before `Visit`.
+  Applied to every typed object by its setting, not only the entered ones (agent's call: the
+  original tests the class's flag; every neighbour-visited class is on its list, so the packs
+  change nothing); an untyped blocker has no setting and closes nothing (a town's gate stays
+  leavable upward until towns, E09).
+- **The query**: an entered object's tile is a destination with the points left on it, never
+  expanded, never reached from above; from the hero's own tile, when it closes upward, the three
+  steps up are skipped in the start's own expansion, peeled off the loop (`expand::<START>`,
+  inlined) so the hot loop has no test for it.
+- **Which object a tile visits** (T13's call 2 revisited with the user's leave; flagged for the
+  checkpoint): the original keeps one object per map tile (class, subclass, index; 0x505610 takes
+  the topmost object of the tile's draw list visited from it, the objects placed in map order at
+  load, 0x4FD690, 0x505B20), and the step, the visit and the test from above read that one (survey
+  §2.5). The engine takes the last object in map order still on the map, for both modes and for
+  ADV-OBJ-004; T13b's neighbour visit took the first (VCMI's `blockingVisit`; VCMI's entered visit,
+  `visitObjectOnTile`, takes the last). Not read: the draw order's equal-layer and lower-layer
+  cases (0x505230), which can put a later object under an earlier one.
+- **Setup** (the inbox's case from T13b's review; agent's call): `check_stand` refuses a tile
+  whose object (the one a visit concerns) is visited from a neighbour, built or not
+  (`StandError::Visited`): no move enters such a tile. A hero on an entered object's tile, or a
+  blocker's (a town's gate), stays allowed; ADV-OBJ-004 applies when it leaves. The import is
+  unchanged (such a map imports and fails validation; none does), `MAP_IMPORT_VERSION` stays 3.
+- **Shipped maps** (`original_data` counts stacked visitable tiles now): none of the 164 has a
+  tile visited from two or more objects (0 of 101 246 visitable tiles of the static layers, heroes
+  left out); the import's outcomes are unchanged (9 imported and valid; 129, 18, 5 and 3
+  unsupported).
+- **Properties**: a land Cartographer is the play properties' seventh kind (atomicity, legality
+  consistency, conservation, isolation, hygiene, clone equivalence and determinism hold with it);
+  random play entered a Cartographer 3 times in a run of 48 cases (counted once), and every later
+  step checks the query from its tile against `MoveHero`. The query property's maps have charts
+  of both settings and no hero on a pile. Fixed tests: entering (price, drop to 0, reveal,
+  `PastVisit`), not from above both ways, from-above types unaffected (an open chart, a pile), the
+  order (a pile and a chart stacked both ways, a removal, a blocker on top, the test from above
+  by the last object), the setup's refusal.
+- **Versions**: none bumped (no state, import or ruleset-part change; the charts of the tests are
+  test rules). Golden replays verify unchanged.
+- **Measured** (`bench-check`): the first build cost the query +1.03 % and random play +1.09 %;
+  the extra Ir were all in `Reach::search`'s own code, not the new calls (a variant with the old
+  loop and the new visit test cost the same). The test from above in the visit branch kept the
+  step's row (`dy`) live across the loop; testing the direction (3 to 5, live anyway) instead
+  removed it: `reach-xl-144` 565 798 491 Ir (−0.15 %), `random-play-duel-36` 438 912 898 (−0.15 %),
+  `fork-xl-144` +1.02 % as before T14a. No re-baseline.

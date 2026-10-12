@@ -158,7 +158,8 @@ impl Reach {
                 let live = state.live(pos, to);
                 if live.visitable {
                     match state.visit_at(part, pos) {
-                        Some(v) if v.from_above || dy <= 0 => visit = true,
+                        // Directions 3 to 5 step down (DIRECTIONS).
+                        Some(v) if v.from_above || !(3..=5).contains(&dir) => visit = true,
                         _ => continue,
                     }
                 } else if live.blocked {
