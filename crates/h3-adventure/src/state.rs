@@ -440,9 +440,10 @@ pub struct AdventureState {
     /// The Cartographer types bought (ADV-VIS-001, E08 T14b), in type order, each with a bit per
     /// player that bought it (bit `n` for the player with id `n`): the per-player state of object
     /// types as one small plain array (ADR-0016 point 1), laid out as the original's flags, a byte
-    /// of player bits per kind (game +0x4E372). Empty until a first purchase, so a fork copies
-    /// nothing more before.
-    bought: Vec<(ObjectTypeId, u8)>,
+    /// of player bits per kind (game +0x4E372). None until a first purchase, then shared by the
+    /// forks (a purchase builds it anew), so a fork costs nothing more before and a reference
+    /// count after (`bench-check`).
+    bought: Option<Arc<[(ObjectTypeId, u8)]>>,
 }
 
 impl AdventureState {
@@ -473,7 +474,7 @@ impl AdventureState {
             heroes: Vec::with_capacity(setup.heroes.len()),
             explored: vec![unexplored; usize::from(setup.players)],
             occupancy: None,
-            bought: Vec::new(),
+            bought: None,
         };
         for hero in &setup.heroes {
             state.place(core, part, hero)?;
@@ -784,26 +785,28 @@ impl AdventureState {
             seen_by: Viewers::NONE.with(player),
         });
         let player = bit(player);
-        match self
-            .bought
-            .binary_search_by_key(&offer.object_type, |&(ty, _)| ty)
-        {
-            Ok(at) => self.bought[at].1 |= player,
-            Err(at) => self.bought.insert(at, (offer.object_type, player)),
+        let mut bought = self.bought.as_deref().unwrap_or_default().to_vec();
+        match bought.binary_search_by_key(&offer.object_type, |&(ty, _)| ty) {
+            Ok(at) => bought[at].1 |= player,
+            Err(at) => bought.insert(at, (offer.object_type, player)),
         }
+        self.bought = Some(bought.into());
     }
 
     /// Whether `player` has bought the Cartographer type `object_type` (ADV-VIS-001).
     pub fn has_bought(&self, player: PlayerId, object_type: ObjectTypeId) -> bool {
-        self.bought
+        let bought = self.bought.as_deref().unwrap_or_default();
+        bought
             .binary_search_by_key(&object_type, |&(ty, _)| ty)
-            .is_ok_and(|at| self.bought[at].1 & bit(player) != 0)
+            .is_ok_and(|at| bought[at].1 & bit(player) != 0)
     }
 
     /// The Cartographer types `player` has bought, in type order (ADV-VIS-001).
     pub fn bought(&self, player: PlayerId) -> impl Iterator<Item = ObjectTypeId> + '_ {
         let player = bit(player);
         self.bought
+            .as_deref()
+            .unwrap_or_default()
             .iter()
             .filter(move |&&(_, players)| players & player != 0)
             .map(|&(ty, _)| ty)
@@ -1036,8 +1039,9 @@ impl CanonicalHash for AdventureState {
                 occupancy.hash_into(h);
             }
         }
-        h.write_len(self.bought.len());
-        for (object_type, players) in &self.bought {
+        let bought = self.bought.as_deref().unwrap_or_default();
+        h.write_len(bought.len());
+        for (object_type, players) in bought {
             object_type.hash_into(h);
             h.write_u8(*players);
         }

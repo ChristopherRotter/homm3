@@ -22,18 +22,20 @@ fn move_hero(hero: u16, path: &[Pos]) -> GameCommand {
     })
 }
 
-/// [`setup`] at `difficulty` (0: 3 000 gold, 1: 2 000) with a chart at (2, 0), entered from the
-/// side; red's hero stands at (0, 0), blue's at (2, 2).
+/// [`setup`] at `difficulty` (0: 3 000 gold, 1: 2 000) with charts at (2, 0) and (3, 2), entered
+/// from the side; red's hero stands at (0, 0), blue's at (2, 2).
 fn game(rules: &GameRuleset, difficulty: u8) -> GameState {
     let mut setup = setup();
     setup.difficulty = difficulty;
-    setup.map.objects.push(ObjectSetup {
-        anchor: Pos::new(2, 0, 0),
-        blocked: TileMask::from_bits(1),
-        visitable: TileMask::from_bits(1),
-        object_type: rules.adventure().object_type_by_key("t:chart"),
-        amount: None,
-    });
+    for anchor in [Pos::new(2, 0, 0), Pos::new(3, 2, 0)] {
+        setup.map.objects.push(ObjectSetup {
+            anchor,
+            blocked: TileMask::from_bits(1),
+            visitable: TileMask::from_bits(1),
+            object_type: rules.adventure().object_type_by_key("t:chart"),
+            amount: None,
+        });
+    }
     GameState::new(rules, &setup, 7).unwrap()
 }
 
@@ -221,17 +223,31 @@ fn a_decision_blocks_no_one_else() {
     state.set_schedule(&rules, vec![vec![RED, BLUE]]);
     let enter = [Pos::new(1, 0, 0), Pos::new(2, 0, 0)];
     play(&mut state, &rules, RED, move_hero(0, &enter)).unwrap();
-    // Blue, acting in the same group, moves and ends its turn; red's turn goes on until it
-    // answers, and the group's with it.
-    play(&mut state, &rules, BLUE, move_hero(1, &[Pos::new(2, 1, 0)])).unwrap();
-    play(&mut state, &rules, BLUE, GameCommand::EndTurn).unwrap();
-    assert!(state.is_acting(RED) && state.decision(RED).is_some());
+    // Blue, acting in the same group, moves on: into the other chart, a decision of its own.
+    play(&mut state, &rules, BLUE, move_hero(1, &[Pos::new(3, 2, 0)])).unwrap();
+    let (red, blue) = (state.decision(RED).unwrap(), state.decision(BLUE).unwrap());
     assert_eq!(
-        legal_commands(&state, &rules, Actor::Player(RED)),
+        (red.anchor, blue.anchor),
+        (Pos::new(2, 0, 0), Pos::new(3, 2, 0))
+    );
+    let seen = observe(&state, &rules, Viewer::Player(BLUE)).decision;
+    assert_eq!(seen.as_ref(), Some(blue));
+    // Each answers its own; red's answer leaves blue's open.
+    play(&mut state, &rules, RED, ACCEPT).unwrap();
+    assert!(state.decision(RED).is_none() && state.decision(BLUE).is_some());
+    assert_eq!(
+        legal_commands(&state, &rules, Actor::Player(BLUE)),
         [ACCEPT, DECLINE]
     );
-    play(&mut state, &rules, RED, ACCEPT).unwrap();
-    let events = play(&mut state, &rules, RED, GameCommand::EndTurn).unwrap();
+    assert_eq!(
+        play(&mut state, &rules, BLUE, GameCommand::EndTurn),
+        Err(GameCommandError::DecisionOpen)
+    );
+    // Red ends its turn; the group's turn goes on until blue answers and ends its turn.
+    play(&mut state, &rules, RED, GameCommand::EndTurn).unwrap();
+    play(&mut state, &rules, BLUE, DECLINE).unwrap();
+    assert_eq!(state.decision(BLUE), None);
+    let events = play(&mut state, &rules, BLUE, GameCommand::EndTurn).unwrap();
     assert!(events.contains(&GameEvent::DayStarted { day: 2 }));
 }
 

@@ -1,9 +1,10 @@
 //! The whole game's state (ADR-0017, E08 T6b): the players with their RNG streams, the day's
 //! schedule of turn groups, the calendar, the game's own stream, the treasuries (T13), the pending
-//! decisions (T14b) and the contexts' states (the adventure now). Built from a validated [`GameSetup`]; the steps only the game triggers
-//! (the start of a day, the start of a turn) are infallible, and commands go through
-//! [`crate::apply`].
+//! decisions (T14b) and the contexts' states (the adventure now). Built from a validated
+//! [`GameSetup`]; the steps only the game triggers (the start of a day, the start of a turn) are
+//! infallible, and commands go through [`crate::apply`].
 
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_adventure::{AdventureState, Offer};
@@ -27,8 +28,8 @@ struct PlayerState {
     acting: bool,
 }
 
-/// A pending decision (ADR-0017 point 6, GAM-DEC-001): what its owner must answer before
-/// anything else. Increment 2's are offers (ADV-VIS-001).
+/// A pending decision (ADR-0017 point 6, GAM-DEC-001; E08 T14b): what its owner must answer
+/// before anything else. Increment 2's are offers (ADV-VIS-001).
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Decision {
     /// The player who answers it.
@@ -45,10 +46,12 @@ pub struct GameState {
     players: Vec<PlayerState>,
     /// The players' resources (GAM-RES-001, E08 T13), by player id.
     treasuries: Treasuries,
-    /// The open decisions, in opening order (GAM-DEC-001, E08 T14b); a player has at most one in
-    /// increment 2 (no command but its answer runs while it is open). Empty most of the time, so
-    /// a fork copies nothing more.
-    decisions: Vec<Decision>,
+    /// The open decisions in opening order (GAM-DEC-001, E08 T14b); a player has at most one in
+    /// increment 2 (no command but its answer runs while it is open). None while no decision is
+    /// open, never an empty list (equal content compares equal), and shared by forks: a fork
+    /// costs nothing more without a decision and a reference count with one (`bench-check`; a
+    /// list per fork, or one per player, cost the XL fork benchmark 3 to 4 %).
+    decisions: Option<Arc<[Decision]>>,
     /// The day's schedule: turn groups in order, each the players who act together
     /// (ADR-0017 point 3). Sequential play, the only schedule of increment 1, is one player per
     /// group in player order.
@@ -103,7 +106,7 @@ impl GameState {
         let mut state = Self {
             seed,
             treasuries: Treasuries::new(players.len(), start.human()),
-            decisions: Vec::new(),
+            decisions: None,
             players,
             groups,
             group: 0,
@@ -172,10 +175,17 @@ impl GameState {
     pub(crate) fn open<S: Sink>(&mut self, player: PlayerId, offer: Offer, sink: &mut S) {
         let (hero, object_type, anchor) = (offer.hero, offer.object_type, offer.anchor);
         if self.treasuries.can_pay(player, &offer.price) {
-            self.decisions.push(Decision {
+            let decision = Decision {
                 owner: player,
                 offer,
-            });
+            };
+            let open = self
+                .decisions
+                .as_deref()
+                .unwrap_or_default()
+                .iter()
+                .cloned();
+            self.decisions = Some(open.chain([decision]).collect());
             sink.emit(GameEvent::OfferOpened {
                 player,
                 hero,
@@ -216,12 +226,19 @@ impl GameState {
         self.players
             .get(player.index())
             .ok_or(GameCommandError::UnknownPlayer(player))?;
-        let at = self
-            .decisions
+        let open = self.decisions.as_deref().unwrap_or_default();
+        let at = open
             .iter()
             .position(|d| d.owner == player)
             .ok_or(GameCommandError::NoDecision)?;
-        let Decision { offer, .. } = self.decisions.remove(at);
+        let offer = open[at].offer.clone();
+        let rest: Vec<Decision> = open
+            .iter()
+            .enumerate()
+            .filter(|&(i, _)| i != at)
+            .map(|(_, d)| d.clone())
+            .collect();
+        self.decisions = (!rest.is_empty()).then(|| rest.into());
         let accepted = answer == Answer::Accept;
         sink.emit(GameEvent::OfferAnswered {
             player,
@@ -252,6 +269,8 @@ impl GameState {
     /// decisions are offers): what its owner sees of it ([`crate::GameObservation::decision`]).
     pub fn decision(&self, player: PlayerId) -> Option<&Offer> {
         self.decisions
+            .as_deref()
+            .unwrap_or_default()
             .iter()
             .find(|d| d.owner == player)
             .map(|d| &d.offer)
@@ -369,8 +388,9 @@ impl CanonicalHash for GameState {
             player.rng.hash_into(h);
         }
         self.treasuries.hash_into(h);
-        h.write_len(self.decisions.len());
-        for Decision { owner, offer } in &self.decisions {
+        let decisions = self.decisions.as_deref().unwrap_or_default();
+        h.write_len(decisions.len());
+        for Decision { owner, offer } in decisions {
             h.write_u8(owner.raw());
             h.write_u16(offer.hero.raw());
             offer.object_type.hash_into(h);
