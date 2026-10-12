@@ -342,14 +342,19 @@ single precision (`f32`); `_ftol` (0x6179D4) truncates; 0x618CC7 is `ceil` (roun
 table at 0x5A2838 (targets at 0x5A27A0): one handler per damage spell 15–19 and 24–26, the four
 area spells 20–23 share 0x5A4970, Titan's Lightning Bolt (57) shares Lightning Bolt's. A
 single-target spell's value is `power × power factor + effect[mastery]`, passed through the
-damage-modifier function 0x5A78E0, which applies in this order:
+damage-modifier function 0x5A78E0, which applies in this order (step 1 only when the routine is
+given a hero, 0x5A790D):
 
 1. **The caster's bonuses** (0x4E5760, on the hero): `v = f32(value)`; `× 1.5` if the hero has
    the Orb of one of the spell's schools (checked air, earth, fire, water; at most once); `× (1 +
    Sorcery)` (the §7.4 table, grown by `× (1 + 0.05 × level)` for a Sorcery specialist); both
    products are stored as `f32`, **not truncated**; then, if the spell has a target stack, the
-   specialty bonus (0x4E5FF0) computed from `t = trunc(v)` is added as an integer and the result
-   truncated. Specialty bonus, for a hero whose specialty is this spell: by default
+   specialty bonus (0x4E5FF0) computed from `t = trunc(v)`, a whole number, is stored as an `f32`
+   and added to the stored `v` itself (not to `t`), and the sum, stored as an `f32` once more, is
+   truncated (0x4E5932 to 0x4E5944); without a target stack `v` is truncated as it is. A store
+   rounds to 24 bits, to nearest, so a product a hair below a whole number becomes that number
+   before the truncation (a Sorcery specialist's `f32` rate of 0.15999999642 on 50: 57.99999982 is
+   stored as 58). Specialty bonus, for a hero whose specialty is this spell: by default
    `ceil((hero level div creature level) × t × 0.03)` (integer division first; the creature
    level is the stack's 0-based level + 1); Magic Arrow `t >> 1` (Ciele, +50 %); Fire Wall `t`
    (Luna, +100 %); a few timed spells use their own tables (§7.12).
@@ -465,16 +470,22 @@ Bloodlust's `v` on a melee one while active (Slayer, T3b). Defense (0x442590): +
 and the Behemoths, T3b). Speed (0x448CD0, used for movement and the turn order): +0xC4; while
 slowed `max(1, trunc(f32(speed) × factor))` (0 for a war machine). Base damage per creature
 (0x443180): while blessed `max + v` for every creature (no roll), else while cursed `max(1, min
-− v)`, else the roll; a Ballista's range is already the hero-scaled one. Luck (0x43DF30): the
-base luck, clamped to ±3 by its own function, + Fortune's `v` − Misfortune's `v`, then the
-Halfling minimum; morale (0x43E003): 0 for creatures without morale, else the base morale clamped
-to ±3 + Mirth's `v` − Sorrow's `v`, then the Minotaurs' minimum and Spirit of Oppression; the
-rolls clamp both to ±3 again (0x4649AA, 0x43F936).
+− v)`, else the roll; a Ballista's range is already the hero-scaled one. Luck (0x43DF20): the
+base luck, **not clamped** (the routine pushes 0 for the base routine's clamp argument,
+0x43DF6D; 0x44B2D0 clamps to ±3 only when that argument is set, 0x44B380, and passes it on to the
+hero's routine), + Fortune's `v` − Misfortune's `v`, then the Halfling minimum; morale
+(0x43E000): 0 for creatures without morale, else the base morale, not clamped either (0x43E038;
+0x44AE60, 0x44B0B0), + Mirth's `v` − Sorrow's `v`, then the Minotaurs' minimum and Spirit of
+Oppression; the value is clamped to ±3 only where it is used: the good-morale roll (0x4649AA) and
+the luck rolls (0x43F936, 0x441818). So a base beyond ±3 absorbs the spells: +5 under Expert
+Sorrow is +3. VCMI 1.7.5 (`lib/BasicTypes.cpp`) clamps the total once as well.
 
 **Ending.** At the start of every round (0x4760xx calls 0x447120 for every stack record of both
 sides, attacker's first; skipped in the tactics phase) each active spell of a living stack, in
-spell order, except Frenzy, either ends (duration 1) or loses a round. A stack that dies loses
-all its spells (0x444120). Ending a spell (0x444510) restores what it changed: Weakness adds
+spell order, except Frenzy, either ends (duration 1) or loses a round. A stack that dies has
+every active spell ended (0x444120 calls 0x444510 for each, the loop 0x444228 to 0x444244): all
+but Disrupting Ray (below), whose duration and lowered defense stay on the dead record; no raise
+restores it (§7.18). Ending a spell (0x444510) restores what it changed: Weakness adds
 its stored value back, Stone Skin subtracts its value from the defense (not clamped, so the
 defense can go below 0 after a Disrupting Ray), Prayer subtracts from attack, defense and
 (unless a war machine) speed, Haste from speed; the others only stop being read. **Disrupting
@@ -604,10 +615,16 @@ Defend bonus included) reduced by a Behemoth's or Ancient Behemoth's share when 
 stack is one (quirk S-16, confirmed), and the siege moat's −3 (E04c). **Defense** when struck
 (0x442590 flag 1, used by the damage stages 0x4433A8 and 0x443BBD): 0 while frenzied.
 
-**Behemoths** (0x442590, read for S-16): against a Behemoth (creature 96) the defense is `D −
-trunc(f32(D) × f32(0.4))`, against an Ancient Behemoth (97) `D − trunc(f32(D) × f32(0.8))`: the
-share taken is truncated, so the defense left rounds up (D = 7: 5 and 2), not down as Q19 chose
-(4 and 1). The user (2026-10-07): follow it under quirk Q-0005, keep Q19 in strict-fixed.
+**Behemoths** (0x442590, read for S-16): against a Behemoth (creature 96) the defense is
+`trunc(f32(D) − f32(D) × f32(0.4))`, against an Ancient Behemoth (97) `trunc(f32(D) − f32(D) ×
+f32(0.8))` (0x4425C8 to 0x4425F5; the Ancient Behemoth's twin at 0x4425DE; the constants at
+0x63B8B0 and 0x63B8AC): the defense left is computed in single precision and only then
+truncated; the share taken is never rounded on its own. The result is Q19's except where D × 0.4
+(D × 0.8) is whole, where the stored constants, a hair above the decimals, leave one point less
+(D = 7: 4 and 1; D = 10: 5 against a Behemoth; D = 5: 0 against an Ancient Behemoth). VCMI's
+`floor(share × D) + 1` ignored points, at most D (`lib/battle/DamageCalculator.cpp`,
+`getTargetDefenseIgnored`), is the same number for every D from 1 to 300. The user (2026-10-07):
+follow the executable under quirk Q-0005, keep Q19 in strict-fixed.
 
 ### 7.12 Code reading: spell specialists (E04b T3c, 2026-10-07)
 
@@ -878,7 +895,10 @@ else, §7.16) and stops when it dies; a flyer (0x4B49C0) and a
 teleporting creature (0x4B4E90) enter only the hexes they land on. After an action that does not
 move the stack (defend 0x4798F3, wait 0x479AD6, a shot or melee attack from where it stands
 0x4792D7, 0x4789C7) the array is cleared and the stack's own hexes are entered again; a stack that
-moved and then attacked is not (0x478900 skips it). After a shot the battle's end is checked first
+moved and then attacked is not (0x478900 skips it). The Harpies' return (0x4789F8, §7.20) is the
+move routine again: the marks are cleared, the hexes the stack stands on are marked, and the
+flight enters the hexes it lands on (Fire Wall, then Land Mine; the start hex is no longer
+marked). Nothing tests the battle's end before the return. After a shot the battle's end is checked first
 (0x4762F0 → 0x465830) and nothing is entered once it is over; after a melee attack from where the
 stack stands no such check was found (the engine skips the burn once the battle is over there
 too). Arrow towers (creature 149) never enter.
@@ -1014,7 +1034,8 @@ stack. So a full stack that is only wounded is no target, and nor is a stack who
 have more health than the spell raises. **0x5A3CC0 tests with spell 38 whichever spell asked**,
 so Sacrifice's raised stack must be a valid Resurrection target: Resurrection's level 4 for the
 immunities (Gold Dragons, immune to levels 1–4, cannot be raised by Sacrifice; survey S-15) and
-Resurrection's hit points at the caster's Earth mastery for the health test.
+Resurrection's hit points at the caster's Earth mastery for the health test; and it must pass
+spell 40's own test too (below).
 
 **Resurrection and Animate Dead** (0x5A1907): hit points `power × factor + effect[mastery]` plus
 the specialty bonus 0x4E5FF0 with the target's level (§7.12: `ceil((hero level div (c + 1)) × t ×
@@ -1026,17 +1047,31 @@ capped at the start count and written nowhere else (0 at setup, 0x43D861; no los
 dead stack comes back on its own hex (0x43EA70 revives it, 0x4687C0 places it) and leaves the
 corpse lists; at the end the raise clears the dead bit `0x200000` (0x5A7867) and touches no other
 flag, so a stack that had acted this round before it died stays done. Its spells ended at its
-death (0x444120 ends every active spell, then sets the dead bit).
+death (0x444120 ends every active spell, then sets the dead bit), Disrupting Ray excepted (§7.9);
+the raise writes no defense, so Disrupting Ray's and Acid Breath's (§7.20) defense loss stays on a
+raised stack.
 
 **Sacrifice** (0x5A199C): the victim is the living stack on the cast's second hex. 0x5A8090 (case
 0x5A8523) wants it living (`0x10`), not summoned (`0x400000`), not undead, with creatures, and of
 the caster's side by both its controller (the other side while hypnotized) and its real side; the
-raised stack takes the immunity factor of spell 38 as above, the victim that of spell 40 (level
-5: no creature's spell-level immunity reaches it). The hit points are `(the victim's creature's
+raised stack takes the immunity factor of spell 38 as above (the finder) and then that of spell
+40 too: the target test 0x5A39C0 asks 0x5A8090 about the spell itself for the stack found, with
+its fifth argument set (the spell book 0x59F1FC, Sacrifice's first cursor 0x5A2D00 and the cast
+0x5A02EA all pass 1 for the stack to raise), which skips the controller's test (0x5A82B9) and in
+case 0x5A8523 wants the creature flag `0x10`, no flag `0x400000` and fewer creatures than at the
+start, then the general tests (the Fire school against fire immunity `0x4000`, 0x44A7BA; level
+5): Efreet, living or dead, and summoned stacks are never raised by Sacrifice. The victim takes
+the factor of spell 40 with the argument 0 (level 5: no creature's spell-level immunity reaches
+it). The hit points are `(the victim's creature's
 health from the creature table + effect[mastery] + power) × the victim's creatures`: the base
 health, not the stack's (+0xC0). The victim takes its whole health as damage (0x444090), is flagged
-sacrificed (no corpse) and the raised stack gets the hit points as a permanent raise. No code
-compares the victim with the raised stack (the second cursor, 0x59F700, was not read).
+sacrificed (no corpse) and the raised stack gets the hit points as a permanent raise. The victim
+is compared with the raised stack in Sacrifice's second cursor (0x5A2E90, a callback the spell
+book sets at 0x59F349, as the first cursor 0x5A2D00 at 0x59F32A): on a mouse move it asks the
+target test with the victim's argument (0x5A2F11: 0 where the first cursor passes 1, 0x5A2D7D)
+and then refuses the hex when the stack on it is the stack on the first target's hex (+0x44;
+0x5A2F3B to 0x5A2F63). With a dead first target no stack stands there, and every victim passes.
+Batch 2d RA1 observed the refusal.
 
 **The end of the battle** (0x4774E2, before the armies are rebuilt by 0x4641F0): for each side,
 every record 0–19 with a creature type and creatures loses its temporary creatures (`count −
@@ -1228,7 +1263,10 @@ so a bound stack moves only where the pathfinder is not asked: the Harpies' retu
 **Strike and return** (read at the T7a review): after the attack the action handler flies a Harpy
 or Harpy Hag (72, 73) that moved back to its start hex (0x4789F8, the move 0x445D10 → 0x445950)
 unless it is dead or its Blind (+0x290), Stone Gaze (+0x2B0) or Paralyze (+0x2C0) duration is
-above 0; Bind's (+0x2B8) is not tested. So a Harpy bound by the Dendroids' retaliation flies back
+above 0; Bind's (+0x2B8) is not tested. The return is a move like any other: 0x445950 needs a hex
+where the stack fits (0x446C40), clears the entered-hex marks and marks the hexes it stands on
+(0x46A520), and the flight (0x4B49C0) enters the hexes it lands on (§7.15), each damage followed
+by the rebirth check (§7.21). So a Harpy bound by the Dendroids' retaliation flies back
 and the flight's 0x43EE10 empties its lists without ending its Bind: no binder's move or death
 releases it any more, only Teleport, Dispel or its 255 rounds (survey S-14, the wiki's "bound down
 forever"; fixed in every profile, the user 2026-10-08: a bound stack does not return, BAT-ATK-004). Bind is ended by Dispel, not by Cure (§7.10). Bind and Acid Breath skip the test, so
@@ -1523,9 +1561,11 @@ one of the two.
 bit `0x200000`, casts left (+0xDC) above 0 and not a clone (`0x800000`): one cast less, count
 (+0x4C) and lost hit points (+0x58) set to 0, `n = start (+0x60) div 5` plus one for each of
 `start mod 5` draws with `rand() mod 5 = 0` (the C library's). Only if `n > 0`: the acted bit
-`0x4000000`, a sound, and the raise 0x5A7560 with `n × health (+0xC0)` hit points and its last
-argument 0, the *temporary* flag (§7.18): a permanent raise, so the creatures count as the
-stack's own at the battle's end (no `+0x54`). The raise revives the dead stack (0x43EA70), places
+`0x4000000`, a sound, and the raise 0x5A7560 with `n × health (+0xC0)` hit points (0x46959E to
+0x4695AD; the health as the death routine left it: 0x444120 has ended every timed spell, and
+Age's end 0x444740 gave the half back, so `n` whole creatures come back) and its last argument 0,
+the *temporary* flag (§7.18): a permanent raise, so the creatures count as the stack's own at the
+battle's end (no `+0x54`). The raise revives the dead stack (0x43EA70), places
 it on its hex +0x38 (0x4687C0 writes the hex records' stack fields, whatever stack they named) and
 removes its corpse from its hexes. A stack whose draws give 0 stays dead with its cast used.
 *Where it runs.* At the end of the strike action 0x445A60 (it shoots, for the Ballista (146), an
