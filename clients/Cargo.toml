@@ -20,6 +20,8 @@ h3-render = { path = "crates/h3-render" }
 # Engine crates (public crates only, ADR-0020 point 1). A change the client needs in one of them
 # goes through that crate's lane.
 h3-formats = { path = "../crates/h3-formats" }
+# Light dependencies (the engine's versions and features).
+miniz_oxide = { version = "0.8", default-features = false, features = ["with-alloc"] }
 # Test-only (the engine's version and features).
 proptest = { version = "1", default-features = false, features = ["std"] }
 
