@@ -944,7 +944,8 @@ pub struct Manifest {
     pub packs: Vec<PackRef>,
     /// The profile's key.
     pub profile: String,
-    /// The compiled ruleset's content hash.
+    /// The core ruleset's content hash (the replay header's `ruleset_hash`; the battle part's,
+    /// `battle_ruleset_hash`, is not on the wire yet: R01).
     pub ruleset_hash: WireU64,
     /// The random number generator.
     pub rng: Algorithm,

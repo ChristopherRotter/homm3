@@ -96,7 +96,8 @@ use h3_battle::{
     DamageRoll, HeroView, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Observation, OwnHeroView,
     STACK_CAPACITY, SpellObstacle, StackFlags, StackTraits, Status,
 };
-use h3_content::{MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS, MAX_SPELLS, ObstacleKind};
+use h3_content::{MAX_SPELL_SCHOOLS, MAX_SPELLS};
+use h3_content_battle::{MAX_FIELD_HEXES, ObstacleKind};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
@@ -901,7 +902,7 @@ mod tests {
     #[test]
     fn encodes_the_battlefield() {
         use h3_battle::{Hex, HexSet, SpellObstacle};
-        use h3_content::ObstacleKind::{Fire, Mine, Pit, Wall};
+        use h3_content_battle::ObstacleKind::{Fire, Mine, Pit, Wall};
         let (r, mut setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_DUEL).unwrap();
         // A removable obstacle on hexes 40 and 41 with its anchor 57, a fixed one on 60.
         setup.obstacles = std::vec![

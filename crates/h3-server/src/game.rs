@@ -52,7 +52,7 @@ use std::thread;
 use std::time::Duration;
 
 use h3_battle::{BattleSide, BattleState, LegalCommands};
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::BattleSetup;
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::account::CHALLENGE_BYTES;
@@ -240,7 +240,7 @@ impl Bot for RandomBot {
     fn command(
         &mut self,
         state: &BattleState,
-        ruleset: &Ruleset,
+        ruleset: &BattleRuleset,
         side: BattleSide,
         legal: &LegalCommands,
     ) -> h3_battle::Command {
@@ -256,7 +256,7 @@ pub struct Offer {
     /// The scenario's id (the replay file names it).
     pub scenario: String,
     /// The ruleset its games share.
-    pub ruleset: Arc<Ruleset>,
+    pub ruleset: Arc<BattleRuleset>,
     /// The battle, its obstacles not yet placed.
     pub setup: BattleSetup,
     /// Whether each game draws its own obstacles.
@@ -1062,7 +1062,7 @@ pub(crate) fn deliver(
 /// The replay `journal` holds as the CLI's file (ADR-0018 point 12), with the final hash and the
 /// result `end`.
 fn replay_text(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     scenario: &str,
     journal: &Journal,
     end: (u64, Option<h3_battle::BattleResult>),
@@ -1090,7 +1090,7 @@ fn replay_text(
 /// is void: its journal moves to `<data>/void/`, and the replay of the game as it was played goes
 /// beside it, the diagnosis in its first line.
 fn finish(
-    (ruleset, scenario, path, data): (&Ruleset, &str, &Path, &Path),
+    (ruleset, scenario, path, data): (&BattleRuleset, &str, &Path, &Path),
     (game, registry, stores, ladder): (u32, &Shared, &Stores, Option<&str>),
     session: &Session<'_>,
     journal: Writer,
@@ -1199,12 +1199,14 @@ fn rate(
 /// state hash and result. The replay as the CLI's file; else the diagnosis, which may name hashes
 /// (for the void directory, never a log line), and why without them (for the log).
 fn verify(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     journal: &Path,
     session: &Session<'_>,
 ) -> Result<String, (String, String)> {
     let alike = |why: String| (why.clone(), why);
-    if h3_kernel::hash::hash_of(ruleset) != ruleset.content_hash() {
+    if h3_kernel::hash::hash_of(ruleset) != ruleset.content_hash()
+        || h3_kernel::hash::hash_of(&**ruleset.core()) != ruleset.core_hash()
+    {
         return Err(alike(String::from(
             "the ruleset in memory changed since it was compiled",
         )));

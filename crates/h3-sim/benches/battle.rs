@@ -12,7 +12,7 @@ use h3_kernel::{Rng, StreamId};
 use h3_sim::action::HERO_CAST;
 use h3_sim::{ACTION_COUNT, Action, BattleEnv, OBSERVATION_LEN, observation};
 
-fn mid_game_states() -> (Arc<h3_content::Ruleset>, Vec<BattleState>) {
+fn mid_game_states() -> (Arc<h3_content_battle::BattleRuleset>, Vec<BattleState>) {
     let (ruleset, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
     let mut states = Vec::new();
     let mut legal = LegalCommands::new();

@@ -17,7 +17,8 @@ use h3_battle::{
     CastTargets, HeroView, Hex, HexSet, LegalCommands, Opening, OwnHeroView, SpellBonuses,
     SpellSet, SpellValues, StackFlags, StackId, StackTraits, StrikeFlags, TacticsPhase, Viewer,
 };
-use h3_content::{CreatureTypeId, Ruleset, SpellId};
+use h3_content::{CreatureTypeId, SpellId};
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BallistaControl, DamageBonuses, Rate, TentControl};
 use h3_kernel::hash::{HASH_ALGORITHM, HASH_VERSION};
 use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
@@ -127,7 +128,11 @@ pub fn command_to_engine(command: Command) -> h3_battle::Command {
 }
 
 /// The battle as `viewer`, a side or a spectator (E16 M2 T4), sees it, on the wire.
-pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: impl Into<Viewer>) -> Observation {
+pub fn observe(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    viewer: impl Into<Viewer>,
+) -> Observation {
     observation(&h3_battle::observe_as(state, ruleset, viewer.into()))
 }
 
@@ -143,14 +148,18 @@ pub fn events(events: &[h3_battle::Event], viewer: impl Into<Viewer>) -> Vec<Eve
 }
 
 /// The legal commands of `actor` now (casts are listed by [`castable`]).
-pub fn legal_commands(state: &BattleState, ruleset: &Ruleset, actor: BattleSide) -> Vec<Command> {
+pub fn legal_commands(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    actor: BattleSide,
+) -> Vec<Command> {
     let mut legal = LegalCommands::new();
     h3_battle::legal_commands(state, ruleset, actor, &mut legal);
     legal.iter().map(|&c| command(c)).collect()
 }
 
 /// The handles of the spells `actor`'s hero may cast now.
-pub fn castable(state: &BattleState, ruleset: &Ruleset, actor: BattleSide) -> Vec<u16> {
+pub fn castable(state: &BattleState, ruleset: &BattleRuleset, actor: BattleSide) -> Vec<u16> {
     h3_battle::castable_spells(state, ruleset, actor)
         .iter()
         .map(SpellId::raw)
@@ -160,7 +169,7 @@ pub fn castable(state: &BattleState, ruleset: &Ruleset, actor: BattleSide) -> Ve
 /// The answer to `query` for `actor`: the targets the server's rules allow.
 pub fn query(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
     query: Query,
 ) -> Vec<Target> {
@@ -181,7 +190,7 @@ pub fn query(
 }
 
 /// The ruleset's content keys by handle (the manifest's tables, ADR-0018 point 10).
-pub fn key_tables(ruleset: &Ruleset) -> KeyTables {
+pub fn key_tables(ruleset: &BattleRuleset) -> KeyTables {
     let texts = |keys: &mut dyn Iterator<Item = &h3_content::ContentKey>| {
         keys.map(|k| String::from(k.as_str())).collect()
     };
@@ -204,7 +213,7 @@ pub fn key_tables(ruleset: &Ruleset) -> KeyTables {
 
 /// What a game on `ruleset` is made of (ADR-0018 point 10): the replay header's fields
 /// (`h3_sim::ReplayHeader`), the field's size and the key tables.
-pub fn manifest(ruleset: &Ruleset) -> Manifest {
+pub fn manifest(ruleset: &BattleRuleset) -> Manifest {
     Manifest {
         protocol: PROTOCOL_VERSION,
         engine: String::from(env!("CARGO_PKG_VERSION")),
@@ -217,7 +226,7 @@ pub fn manifest(ruleset: &Ruleset) -> Manifest {
             })
             .collect(),
         profile: String::from(ruleset.profile().as_str()),
-        ruleset_hash: wide(ruleset.content_hash()),
+        ruleset_hash: wide(ruleset.core_hash()),
         rng: Algorithm {
             name: String::from(RNG_ALGORITHM),
             version: RNG_VERSION,
@@ -234,7 +243,7 @@ pub fn manifest(ruleset: &Ruleset) -> Manifest {
 
 /// An offer of the server (E16 M2 T1): the game configuration `id`, the scenario `scenario` on
 /// `ruleset`, with the server's bot in `bots`; what the manifest names, before anyone joins.
-pub fn offer(id: &str, scenario: &str, ruleset: &Ruleset, bots: Vec<Seat>) -> Offer {
+pub fn offer(id: &str, scenario: &str, ruleset: &BattleRuleset, bots: Vec<Seat>) -> Offer {
     let Manifest {
         packs,
         profile,
@@ -252,7 +261,7 @@ pub fn offer(id: &str, scenario: &str, ruleset: &Ruleset, bots: Vec<Seat>) -> Of
 }
 
 /// The battlefield's size.
-pub fn field(ruleset: &Ruleset) -> Field {
+pub fn field(ruleset: &BattleRuleset) -> Field {
     let field = &ruleset.battle().field;
     Field {
         width: field.width,

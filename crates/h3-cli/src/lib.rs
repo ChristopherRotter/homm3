@@ -11,7 +11,8 @@
 //! seed = "7"                      # u64 as a decimal string
 //! packs = [["synthetic", "0.1.0"]]
 //! profile = "synthetic:faithful"
-//! ruleset_hash = "0x…"
+//! ruleset_hash = "0x…"             # the core ruleset's content hash
+//! battle_ruleset_hash = "0x…"      # the battle part's (format 22, the content split)
 //! rng = "xoshiro256starstar+splitmix64"
 //! rng_version = 1
 //! hash = "fnv1a64-le"
@@ -75,7 +76,8 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use h3_battle::{CastTarget, Command, Hex, StackId};
-use h3_content::{CreatureTypeId, Ruleset, SpellId};
+use h3_content::{CreatureTypeId, SpellId};
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
 use h3_pack::{HeroEntry, ObstacleEntry, PackError, ScenarioDef};
@@ -119,7 +121,11 @@ fn read(path: &Path) -> Result<String, CliError> {
 
 /// Loads `<packs_dir>/<id>/pack.toml` for each id and compiles them with `profile`. Ids come
 /// from scenario and replay files, so they must be valid pack ids (no paths).
-pub fn load_ruleset(packs_dir: &Path, ids: &[String], profile: &str) -> Result<Ruleset, CliError> {
+pub fn load_ruleset(
+    packs_dir: &Path,
+    ids: &[String],
+    profile: &str,
+) -> Result<BattleRuleset, CliError> {
     let mut texts = Vec::new();
     for id in ids {
         h3_content::ContentKey::new(id, "pack")
@@ -137,7 +143,7 @@ pub fn load_scenario(
     path: &Path,
     packs_dir: &Path,
     seed: u64,
-) -> Result<(ScenarioDef, Ruleset, BattleSetup), CliError> {
+) -> Result<(ScenarioDef, BattleRuleset, BattleSetup), CliError> {
     let def =
         h3_pack::parse_scenario(&read(path)?).map_err(|e| CliError::Pack(path.to_path_buf(), e))?;
     let ruleset = load_ruleset(packs_dir, &def.packs, &def.profile)?;
@@ -176,6 +182,7 @@ struct Meta {
     packs: Vec<[String; 2]>,
     profile: String,
     ruleset_hash: String,
+    battle_ruleset_hash: String,
     rng: String,
     rng_version: u32,
     hash: String,
@@ -381,7 +388,7 @@ fn parse_result(s: &str) -> Result<Option<BattleResult>, CliError> {
 pub fn replay_to_toml(
     replay: &Replay,
     scenario: &str,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
 ) -> Result<String, CliError> {
     let stacks = |army: &Army| -> Vec<StackEntry> {
         army.stacks
@@ -427,6 +434,7 @@ pub fn replay_to_toml(
                 .collect(),
             profile: h.profile.clone(),
             ruleset_hash: hex64(h.ruleset_hash),
+            battle_ruleset_hash: hex64(h.battle_ruleset_hash),
             rng: h.rng_algorithm.clone(),
             rng_version: h.rng_version,
             hash: h.hash_algorithm.clone(),
@@ -505,7 +513,7 @@ impl ReplayDoc {
     }
 
     /// Converts into a [`Replay`], resolving creature keys against `ruleset`.
-    pub fn into_replay(self, ruleset: &Ruleset) -> Result<Replay, CliError> {
+    pub fn into_replay(self, ruleset: &BattleRuleset) -> Result<Replay, CliError> {
         let f = self.file;
         let m = f.replay;
         let army = |entries: &[StackEntry]| -> Result<Army, CliError> {
@@ -545,6 +553,7 @@ impl ReplayDoc {
             packs: m.packs.into_iter().map(|[id, v]| (id, v)).collect(),
             profile: m.profile,
             ruleset_hash: parse_hex64(&m.ruleset_hash)?,
+            battle_ruleset_hash: parse_hex64(&m.battle_ruleset_hash)?,
             rng_algorithm: m.rng,
             rng_version: m.rng_version,
             hash_algorithm: m.hash,

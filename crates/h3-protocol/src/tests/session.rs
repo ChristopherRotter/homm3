@@ -10,7 +10,8 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_battle::{BattleSide, BattleState, LegalCommands};
-use h3_content::{Ruleset, SpellId};
+use h3_content::SpellId;
+use h3_content_battle::BattleRuleset;
 use h3_kernel::{Rng, StreamId};
 use proptest::prelude::*;
 
@@ -38,7 +39,7 @@ impl Bot for RandomBot {
     fn command(
         &mut self,
         state: &BattleState,
-        ruleset: &Ruleset,
+        ruleset: &BattleRuleset,
         side: BattleSide,
         legal: &LegalCommands,
     ) -> h3_battle::Command {
@@ -54,7 +55,7 @@ impl Bot for WrongBot {
     fn command(
         &mut self,
         _: &BattleState,
-        _: &Ruleset,
+        _: &BattleRuleset,
         _: BattleSide,
         _: &LegalCommands,
     ) -> h3_battle::Command {
@@ -90,7 +91,7 @@ fn config(seed: u64) -> GameConfig {
 }
 
 /// A session of the `full` scenario with `seed`.
-fn host<'r>(r: &'r Ruleset, seed: u64, seats: [SeatKind; 2]) -> Session<'r> {
+fn host<'r>(r: &'r BattleRuleset, seed: u64, seats: [SeatKind; 2]) -> Session<'r> {
     Session::new(r, config(seed), seats).unwrap()
 }
 
@@ -99,7 +100,7 @@ fn drained(s: &mut Session<'_>) -> Vec<Entry> {
     s.drain_entries().collect()
 }
 
-fn ruleset() -> Ruleset {
+fn ruleset() -> BattleRuleset {
     full().0
 }
 
@@ -204,7 +205,7 @@ fn started(s: &mut Session<'_>) -> Vec<Outbound> {
 }
 
 /// The session's journal as the sim's replay.
-fn replay(r: &Ruleset, s: &Session<'_>) -> h3_sim::Replay {
+fn replay(r: &BattleRuleset, s: &Session<'_>) -> h3_sim::Replay {
     let journal = s.journal().clone();
     h3_sim::Replay {
         header: h3_sim::ReplayHeader::current(r),
@@ -794,7 +795,7 @@ fn a_setup_the_engine_refuses_hosts_no_game() {
 }
 
 /// Two players took their seats and sent `commands` commands; every entry, drained as it came.
-fn journaled(r: &Ruleset, commands: u32) -> (Session<'_>, Vec<Entry>) {
+fn journaled(r: &BattleRuleset, commands: u32) -> (Session<'_>, Vec<Entry>) {
     let mut s = host(r, 5, players());
     let first = join(&mut s, A, Seat::Attacker, None);
     let mut entries = drained(&mut s);
@@ -1648,7 +1649,7 @@ fn the_shadow_instance_rebuilds_a_faulty_battle_from_the_journal() {
 
 /// The hidden obstacles' spell of the defender's hero (a Quicksand) and of the attacker's (a Land
 /// Mine), by side.
-fn hidden_spell(r: &Ruleset, side: BattleSide) -> u16 {
+fn hidden_spell(r: &BattleRuleset, side: BattleSide) -> u16 {
     let key = match side {
         BattleSide::Attacker => "synthetic:snare",
         BattleSide::Defender => "synthetic:mire",
@@ -1671,7 +1672,7 @@ struct Seen {
 /// A spectator watches, then both players join a game with `seed`; the tactics phase ends; the
 /// side to act then places its hero's hidden obstacles; the other side's connection drops and
 /// comes back, and another spectator joins. Every frame of each viewer.
-fn hidden_cast(r: &Ruleset, seed: u64) -> Seen {
+fn hidden_cast(r: &BattleRuleset, seed: u64) -> Seen {
     let mut s = host(r, seed, players());
     let (early, late) = (ConnId(8), ConnId(9));
     let mut all = join(&mut s, early, Seat::Spectator, None);
@@ -2156,7 +2157,7 @@ const GRACE: Grace = Grace {
 };
 
 /// Game 1, ranked with [`GRACE`] (the `full` scenario with `seed`): its seats alice's and bob's.
-fn ranked(r: &Ruleset, seed: u64) -> Session<'_> {
+fn ranked(r: &BattleRuleset, seed: u64) -> Session<'_> {
     let config = GameConfig {
         ranked: Some(GRACE),
         ..config(seed)

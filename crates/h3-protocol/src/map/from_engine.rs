@@ -4,7 +4,7 @@
 //! fails this crate's build until its wire variant (`wire.rs`) and its arm here exist.
 
 use h3_battle::{CastTarget, CommandError, DamageRoll as EngineRoll, EventKind};
-use h3_content::ObstacleKind as EngineObstacle;
+use h3_content_battle::ObstacleKind as EngineObstacle;
 
 use super::{hexes, outcome, side, strike, wide};
 use crate::wire::{Command, DamageRoll, Event, ObstacleKind, RejectCode, Target};

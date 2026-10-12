@@ -4,7 +4,7 @@ use h3_battle::{
     BattleState, CastTargets, Command, LegalCommands, cast_targets, castable_spells,
     creature_cast_spell, creature_cast_targets, legal_commands, second_targets,
 };
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::{Rng, StreamId};
 
@@ -66,7 +66,7 @@ pub fn pick(
 /// [`crate::Replay::record_random`].
 pub fn choose(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     legal: &LegalCommands,
     rng: &mut Rng,

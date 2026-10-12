@@ -10,14 +10,16 @@ use h3_battle::{
     BATTLE_STATE_HASH_VERSION, BattleState, Command, CommandError, LegalCommands, NoopSink,
     SetupError, apply,
 };
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleResult, BattleSetup, BattleSide};
 use h3_kernel::hash::{HASH_ALGORITHM, HASH_VERSION};
 use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
 use h3_kernel::{Rng, StreamId};
 
-/// Version of the replay model (bump when fields change meaning).
-pub const REPLAY_FORMAT_VERSION: u32 = 21;
+/// Version of the replay model (bump when fields change meaning). 22: the header records the
+/// core ruleset's hash and the battle part's apart (`ruleset_hash`, `battle_ruleset_hash`; the
+/// content split, R01).
+pub const REPLAY_FORMAT_VERSION: u32 = 22;
 
 /// Identity of everything a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,8 +32,10 @@ pub struct ReplayHeader {
     pub packs: Vec<(String, String)>,
     /// Profile key.
     pub profile: String,
-    /// `Ruleset::content_hash` of the compiled ruleset.
+    /// The content hash of the core ruleset (`Ruleset::content_hash`).
     pub ruleset_hash: u64,
+    /// The content hash of the battle part compiled on it (`BattleRuleset::content_hash`).
+    pub battle_ruleset_hash: u64,
     /// PRNG algorithm id.
     pub rng_algorithm: String,
     /// PRNG version.
@@ -46,13 +50,14 @@ pub struct ReplayHeader {
 
 impl ReplayHeader {
     /// The header for recording with `ruleset` in this build.
-    pub fn current(ruleset: &Ruleset) -> Self {
+    pub fn current(ruleset: &BattleRuleset) -> Self {
         Self {
             format_version: REPLAY_FORMAT_VERSION,
             engine_version: env!("CARGO_PKG_VERSION").to_owned(),
             packs: ruleset.packs().to_vec(),
             profile: ruleset.profile().as_str().to_owned(),
-            ruleset_hash: ruleset.content_hash(),
+            ruleset_hash: ruleset.core_hash(),
+            battle_ruleset_hash: ruleset.content_hash(),
             rng_algorithm: RNG_ALGORITHM.to_owned(),
             rng_version: RNG_VERSION,
             hash_algorithm: HASH_ALGORITHM.to_owned(),
@@ -62,13 +67,17 @@ impl ReplayHeader {
     }
 
     /// Checks that this build and `ruleset` can verify a replay with this header.
-    pub fn check(&self, ruleset: &Ruleset) -> Result<(), ReplayError> {
+    pub fn check(&self, ruleset: &BattleRuleset) -> Result<(), ReplayError> {
         let now = Self::current(ruleset);
-        let fields: [(&'static str, bool); 8] = [
+        let fields: [(&'static str, bool); 9] = [
             ("format_version", self.format_version == now.format_version),
             ("packs", self.packs == now.packs),
             ("profile", self.profile == now.profile),
             ("ruleset_hash", self.ruleset_hash == now.ruleset_hash),
+            (
+                "battle_ruleset_hash",
+                self.battle_ruleset_hash == now.battle_ruleset_hash,
+            ),
             (
                 "rng",
                 self.rng_algorithm == now.rng_algorithm && self.rng_version == now.rng_version,
@@ -171,7 +180,7 @@ impl Replay {
     /// stream of `agent_seed`) for both sides, for at most `max_steps` commands (0 = no limit,
     /// as everywhere in the sim layer; a random game can take long).
     pub fn record_random(
-        ruleset: &Ruleset,
+        ruleset: &BattleRuleset,
         setup: BattleSetup,
         seed: u64,
         agent_seed: u64,
@@ -209,7 +218,7 @@ impl Replay {
     }
 
     /// Re-runs the replay and compares every recorded hash and the result.
-    pub fn verify(&self, ruleset: &Ruleset) -> Result<(), ReplayError> {
+    pub fn verify(&self, ruleset: &BattleRuleset) -> Result<(), ReplayError> {
         self.header.check(ruleset)?;
         let every = self.checkpoint_every as usize;
         let expected_checkpoints = self.commands.len().checked_div(every).unwrap_or(0);
@@ -254,7 +263,7 @@ impl Replay {
 mod tests {
     use super::*;
 
-    fn recorded() -> (Ruleset, Replay) {
+    fn recorded() -> (BattleRuleset, Replay) {
         let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_SKIRMISH).unwrap();
         let replay = Replay::record_random(&r, setup, 11, 12, 400, 25).unwrap();
         (r, replay)
@@ -341,6 +350,7 @@ mod tests {
             ),
             ("packs", |h| h.packs.clear()),
             ("ruleset_hash", |h| h.ruleset_hash ^= 1),
+            ("battle_ruleset_hash", |h| h.battle_ruleset_hash ^= 1),
             ("rng", |h| h.rng_version += 1),
             ("hash", |h| h.hash_algorithm.push('x')),
             ("battle_state_hash_version", |h| {

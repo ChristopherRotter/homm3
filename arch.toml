@@ -206,7 +206,7 @@ dev_external = []
 layer = "adapter"
 logic = false
 # h3-game and h3-adventure: AdventureEnv in the adventure-owned src/adventure/ (ADR-0017 point 8).
-deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle", "h3-adventure", "h3-game"]
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-adventure", "h3-game"]
 external = []
 dev_deps = ["h3-pack", "h3-map", "h3-pack-adventure"]
 dev_external = ["proptest", "criterion"]
@@ -223,7 +223,7 @@ dev_external = []
 layer = "adapter"
 logic = false
 # The adventure crates: the adventure commands in the adventure-owned src/adventure/ (ADR-0017 point 8).
-deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle", "h3-pack", "h3-sim", "h3-adventure", "h3-game", "h3-map", "h3-pack-adventure"]
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack", "h3-sim", "h3-adventure", "h3-game", "h3-map", "h3-pack-adventure"]
 external = ["serde", "toml"]
 dev_deps = []
 dev_external = []
@@ -234,7 +234,7 @@ dev_external = []
 [crate.h3-protocol]
 layer = "adapter"
 logic = true
-deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle"]
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle"]
 external = ["serde", "serde_json"]
 dev_deps = ["h3-pack", "h3-sim"]
 dev_external = ["proptest", "postcard"]
@@ -245,7 +245,7 @@ dev_external = ["proptest", "postcard"]
 [crate.h3-server]
 layer = "adapter"
 logic = false
-deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle", "h3-pack", "h3-sim", "h3-cli", "h3-protocol"]
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack", "h3-sim", "h3-cli", "h3-protocol"]
 external = ["serde", "serde_json", "toml", "tokio", "tokio-tungstenite", "futures-util", "getrandom", "ed25519-dalek", "argon2"]
 dev_deps = []
 dev_external = []

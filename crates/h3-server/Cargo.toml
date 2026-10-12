@@ -22,6 +22,7 @@ path = "src/bin/h3-server-bench.rs"
 [dependencies]
 h3-kernel.workspace = true
 h3-content.workspace = true
+h3-content-battle.workspace = true
 h3-contracts.workspace = true
 h3-battle.workspace = true
 h3-pack.workspace = true

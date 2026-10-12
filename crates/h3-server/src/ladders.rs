@@ -289,6 +289,15 @@ pub(crate) fn points(rating: Rating) -> Points {
     }
 }
 
+/// A ruleset's identity: its core's hash and its battle part's, folded into one (the content
+/// split, R01).
+fn identity(ruleset: &h3_content_battle::BattleRuleset) -> u64 {
+    let mut h = h3_kernel::hash::StateHasher::new();
+    h.write_u64(ruleset.core_hash());
+    h.write_u64(ruleset.content_hash());
+    h.finish()
+}
+
 /// A ruleset hash as a line writes it: `0x` and 16 hex digits.
 fn hash(text: &str) -> Option<u64> {
     let hex = text.strip_prefix("0x").filter(|hex| hex.len() == 16)?;
@@ -558,11 +567,11 @@ impl Ladder {
                 })
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let ruleset = pool.first().map(|offer| offer.ruleset.content_hash());
+        let ruleset = pool.first().map(|offer| identity(&offer.ruleset));
         let Some(ruleset) = ruleset else {
             return Err(at(&"no scenario"));
         };
-        if let Some(other) = pool.iter().find(|o| o.ruleset.content_hash() != ruleset) {
+        if let Some(other) = pool.iter().find(|o| identity(&o.ruleset) != ruleset) {
             return Err(at(&format!(
                 "{}: its scenarios are on different rulesets",
                 other.scenario

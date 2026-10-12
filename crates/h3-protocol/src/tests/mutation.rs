@@ -12,7 +12,7 @@ use std::sync::LazyLock;
 use std::vec::Vec;
 
 use h3_battle::BattleSetup;
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use proptest::prelude::*;
 
 use super::full;
@@ -35,7 +35,7 @@ static CLIENT: LazyLock<Vec<Vec<u8>>> =
     LazyLock::new(|| client_messages().into_iter().map(|m| encode(&m)).collect());
 
 /// The `full` scenario, once.
-static FULL: LazyLock<(Ruleset, BattleSetup)> = LazyLock::new(full);
+static FULL: LazyLock<(BattleRuleset, BattleSetup)> = LazyLock::new(full);
 
 /// Numbers a mutation puts in place of one in the frame: plausible ones (an id or a hex out of
 /// range) and extreme ones.

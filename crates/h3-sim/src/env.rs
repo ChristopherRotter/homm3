@@ -7,7 +7,7 @@ use h3_battle::{
     BattleState, CommandError, LegalCommands, NoopSink, Observation, SetupError, apply,
     generate_obstacles, observe,
 };
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
 
@@ -67,7 +67,7 @@ impl std::error::Error for StepError {}
 /// are shared, the state is a fixed-size value.
 #[derive(Debug, Clone)]
 pub struct BattleEnv {
-    ruleset: Arc<Ruleset>,
+    ruleset: Arc<BattleRuleset>,
     setup: Arc<BattleSetup>,
     /// Each episode gets obstacles generated for the setup's terrain from its seed.
     random_obstacles: bool,
@@ -81,7 +81,7 @@ impl BattleEnv {
     /// A new environment; the battle starts with `seed`. Episodes are truncated after
     /// `max_steps` accepted steps (0 = no limit).
     pub fn new(
-        ruleset: Arc<Ruleset>,
+        ruleset: Arc<BattleRuleset>,
         setup: Arc<BattleSetup>,
         seed: u64,
         max_steps: u32,
@@ -94,7 +94,7 @@ impl BattleEnv {
     /// `h3 run` does for a scenario with `random_obstacles` (BAT-GEO-004); the setup's own
     /// obstacles are replaced. Without a terrain the setup is used as it is.
     pub fn with_random_obstacles(
-        ruleset: Arc<Ruleset>,
+        ruleset: Arc<BattleRuleset>,
         setup: Arc<BattleSetup>,
         seed: u64,
         max_steps: u32,
@@ -103,7 +103,7 @@ impl BattleEnv {
     }
 
     fn build(
-        ruleset: Arc<Ruleset>,
+        ruleset: Arc<BattleRuleset>,
         setup: Arc<BattleSetup>,
         random_obstacles: bool,
         seed: u64,
@@ -123,7 +123,7 @@ impl BattleEnv {
 
     /// The first state of an episode with `seed`.
     fn episode(
-        ruleset: &Ruleset,
+        ruleset: &BattleRuleset,
         setup: &BattleSetup,
         random_obstacles: bool,
         seed: u64,
@@ -287,7 +287,7 @@ impl BattleEnv {
     }
 
     /// The ruleset.
-    pub fn ruleset(&self) -> &Arc<Ruleset> {
+    pub fn ruleset(&self) -> &Arc<BattleRuleset> {
         &self.ruleset
     }
 }
