@@ -122,6 +122,7 @@ impl Reach {
     /// Relaxes the steps from `slot`, reached with `points` left, in the eight directions; a
     /// tile reached with more points than before goes on the queue unless a visit ends the path
     /// there. `START` is the hero's own tile, whose steps up are skipped when `closed`.
+    // rule: ADV-OBJ-003, ADV-OBJ-004
     #[inline(always)]
     fn expand<const START: bool>(
         &mut self,
