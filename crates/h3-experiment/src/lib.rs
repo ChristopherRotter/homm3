@@ -254,6 +254,10 @@ pub struct Record {
     /// Empty rows of the table.
     #[serde(default)]
     pub rows: Option<u8>,
+    /// Rows with their first column filled in, one per label, after the empty ones (E08 T10a:
+    /// a row per hero).
+    #[serde(default)]
+    pub labels: Vec<String>,
 }
 
 /// Parses a spec.
@@ -735,8 +739,13 @@ fn encounter_text(
             }
             let _ = writeln!(out, "| {} |", columns.join(" | "));
             let _ = writeln!(out, "|{}", "---|".repeat(columns.len()));
-            for _ in 0..r.rows.unwrap_or(1) {
+            let empty = if r.labels.is_empty() { 1 } else { 0 };
+            for _ in 0..r.rows.unwrap_or(empty) {
                 let _ = writeln!(out, "|{}", "   |".repeat(columns.len()));
+            }
+            for label in &r.labels {
+                let rest = "   |".repeat(columns.len().saturating_sub(1));
+                let _ = writeln!(out, "| {label} |{rest}");
             }
             let _ = writeln!(out);
         }
@@ -966,6 +975,9 @@ mod tests {
         at = [42, 8]
         name = "Named"
         defaults = true
+        [[encounter.record]]
+        table = ["hero", "load 1", "load 2"]
+        labels = ["Twin", "Named"]
     "#;
 
     #[test]
@@ -1024,6 +1036,9 @@ mod tests {
         ));
         assert!(text.contains("- Red hero **Named** (Twin, specialty spell Spell 9): everything"));
         assert!(text.contains("- Opponent: Blue hero **W1** (Sylvia,"));
+        assert!(text.contains(
+            "| hero | load 1 | load 2 |\n|---|---|---|\n| Twin |   |   |\n| Named |   |   |\n"
+        ));
         h3_formats::h3m::write(&map).expect("writable");
     }
 

@@ -1,0 +1,143 @@
+# Experiment batch 1b (E08 T10a; the user, 2026-10-12): the starting army of a hero placed
+# without an army of its own (ADV-Q6, GAM-SET-001). The design in ADV-Q6 (eight players, three
+# loads) is cut to two players and up to eight loads: the same number of armies, half the turns.
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them. "The reading" is 0x4C9730 (docs/rules/catalog/game.toml,
+# GAM-SET-001; survey docs/rules/surveys/E08-adventure-core.md §3.1), which the engine builds.
+#
+# Sixteen heroes with everything their hero type's own (`defaults`): the nine heroes whose
+# starting army holds a war machine (in the second of its three slots) and seven others whose
+# three starting creatures differ, so that each slot can be told apart. Each load of the map
+# rolls every army anew.
+# The compiled map imports in the engine (h3-map's reader and import; a throwaway run, seeds 1
+# and 2), which draws the sixteen armies as GAM-SET-001 says (a war machine there gives no stack
+# yet).
+
+[map]
+name = "E08 batch 1b"
+description = "Engine-generated experiment map (E08, batch 1b): starting armies. Play it in hot seat with Red and Blue as human players and follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Copy `E08-batch-1b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human. Nothing on this map moves or fights.",
+    "Each load: on Red's turn, open each Red hero's screen (its army is along the bottom, its war machines in the slots beside the figure) and write down which of its three starting slots it has; end the turn and do the same for Blue's heroes. Then load the map again (*System Options → Restart Scenario*; if the new load shows exactly the armies of the one before, start it from *New Game* instead).",
+    "Fill in this file and keep it in the repo.",
+]
+
+[[encounter]]
+id = "SA"
+title = "Starting armies, up to eight loads"
+questions = ["ADV-Q6", "GAM-SET-001"]
+procedure = [
+    "Each hero's three starting slots, in the order of the hero table: Red: Christian (1 Pikemen, 2 Ballista, 3 Griffins), Rion (1 Pikemen, 2 First Aid Tent, 3 Griffins), Gem (1 Centaurs, 2 First Aid Tent, 3 Wood Elves), Torosar (1 Gremlins, 2 Ballista, 3 Stone Golems), Pyre (1 Imps, 2 Ballista, 3 Hell Hounds), Arlach (1 Troglodytes, 2 Ballista, 3 Beholders), Gurnisson (1 Goblins, 2 Ballista, 3 Orcs), Gerwulf (1 Gnolls, 2 Ballista, 3 Serpent Flies). Blue: Verdish (1 Gnolls, 2 First Aid Tent, 3 Serpent Flies), Orrin (1 Pikemen, 2 Archers, 3 Griffins), Mephala (1 Centaurs, 2 Dwarves, 3 Wood Elves), Fafner (1 Gremlins, 2 Stone Gargoyles, 3 Stone Golems), Rashka (1 Imps, 2 Gogs, 3 Hell Hounds), Tamika (1 Skeletons, 2 Walking Dead, 3 Wights), Crag Hack (1 Goblins, 2 Wolf Riders, 3 Orcs), Sephinroth (1 Troglodytes, 2 Harpies, 3 Beholders).",
+    "In each cell write the slots the hero has, by number: 123, 12, 13 or 1 (the creature counts do not matter; a war machine counts as its slot 2). Anything else (another creature, a fourth stack, a war machine without its slot) goes into the last line.",
+    "Play eight loads. You may stop earlier once both have appeared: some hero with 13, and some war-machine hero (Red's eight and Verdish) without its war machine.",
+]
+record = [
+    { table = ["hero", "load 1", "load 2", "load 3", "load 4", "load 5", "load 6", "load 7", "load 8"], labels = ["Christian", "Rion", "Gem", "Torosar", "Pyre", "Arlach", "Gurnisson", "Gerwulf", "Verdish", "Orrin", "Mephala", "Fafner", "Rashka", "Tamika", "Crag Hack", "Sephinroth"] },
+    { field = "anything odd" },
+]
+predictions = """
+- The reading (0x4C9730; the engine, GAM-SET-001): slot 1 always; slot 2 (creature or war
+  machine) when a roll of 1-100 is at most 88; slot 3 when a second, independent roll is at most
+  25. Per hero: 123 22 %, 12 66 %, 13 **3 %**, 1 9 %. Over 8 × 16 = 128 armies about 3.8 with
+  **13** (none at all: 2 %); about 8.6 of the 72 war-machine armies without the war machine.
+- VCMI 1.7.5 (`CGHeroInstance::initArmy`: one roll for every slot): 123 25 %, 12 63 %, 1 12 %,
+  **13 never**; the war machine like a creature slot (12 % without).
+- The wiki: 88 % for the second creature, 25 % for the third (independence not stated), the war
+  machine **always** (no war-machine hero without it).
+- Decides ADV-Q6 (a), the rolls' independence (any 13 refutes one roll; none in 128 speaks for
+  VCMI), and (b), the war machine's chance (any war-machine hero without it refutes the wiki's
+  100 %).
+"""
+[encounter.hero]
+type = "Christian"
+specialty = "creature Ballista"
+at = [3, 5]
+name = "Christian"
+defaults = true
+[[encounter.also]]
+type = "Rion"
+specialty = "skill First Aid"
+at = [7, 5]
+defaults = true
+[[encounter.also]]
+type = "Gem"
+specialty = "skill First Aid"
+at = [11, 5]
+defaults = true
+[[encounter.also]]
+type = "Torosar"
+specialty = "creature Ballista"
+at = [15, 5]
+defaults = true
+[[encounter.also]]
+type = "Pyre"
+specialty = "creature Ballista"
+at = [19, 5]
+defaults = true
+[[encounter.also]]
+type = "Arlach"
+specialty = "creature Ballista"
+at = [23, 5]
+defaults = true
+[[encounter.also]]
+type = "Gurnisson"
+specialty = "creature Ballista"
+at = [27, 5]
+defaults = true
+[[encounter.also]]
+type = "Gerwulf"
+specialty = "creature Ballista"
+at = [31, 5]
+defaults = true
+[[encounter.also]]
+type = "Verdish"
+specialty = "skill First Aid"
+owner = "blue"
+at = [3, 15]
+defaults = true
+[[encounter.also]]
+type = "Orrin"
+specialty = "skill Archery"
+owner = "blue"
+at = [7, 15]
+defaults = true
+[[encounter.also]]
+type = "Mephala"
+specialty = "skill Armorer"
+owner = "blue"
+at = [11, 15]
+defaults = true
+[[encounter.also]]
+type = "Fafner"
+specialty = "creature Naga"
+owner = "blue"
+at = [15, 15]
+defaults = true
+[[encounter.also]]
+type = "Rashka"
+specialty = "creature Efreeti"
+owner = "blue"
+at = [19, 15]
+defaults = true
+[[encounter.also]]
+type = "Tamika"
+specialty = "creature Black Knight"
+owner = "blue"
+at = [23, 15]
+defaults = true
+[[encounter.also]]
+type = "Crag Hack"
+specialty = "skill Offense"
+owner = "blue"
+at = [27, 15]
+defaults = true
+[[encounter.also]]
+type = "Sephinroth"
+specialty = "resource crystal"
+owner = "blue"
+at = [31, 15]
+defaults = true
