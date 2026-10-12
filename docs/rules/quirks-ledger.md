@@ -168,15 +168,15 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 
 ### Q-0012 — Expert Cure skips hypnotized stacks
 - Class: fix-optional (survey S-13, suggested class; confirmed for SoD by code reading; user, 2026-10-07, Q53)
-- Context / rules affected: battle, BAT-MAG-026, BAT-MAG-003
-- Original behavior: Expert Cure loops over the caster's own stacks and skips those under Hypnotize (0x5A1847), as the mass handler of every other mass version does (0x5A66D0), so it never frees a hypnotized stack; a single Cure from its owner reaches it (the side tests use the real side) and ends Hypnotize.
-- Intended/expected behavior: Expert Cure also cures the caster's hypnotized stacks and ends their Hypnotize (strict-fixed: a mass version whose dispel ends the stack's Hypnotize reaches it; the other mass versions still pass over hypnotized stacks).
+- Context / rules affected: battle, BAT-MAG-026, BAT-MAG-003, BAT-MAG-016
+- Original behavior: Expert Cure loops over the caster's own stacks and skips those under Hypnotize (0x5A1847), as the mass handler of the timed spells does (0x5A66D0), so it never frees a hypnotized stack; a single Cure from its owner reaches it (the side tests use the real side) and ends Hypnotize. Dispel's Expert loop (from 0x5A160F) has no such test, so Expert Dispel frees it in every profile (BAT-MAG-016).
+- Intended/expected behavior: Expert Cure also cures the caster's hypnotized stacks and ends their Hypnotize (strict-fixed: a mass version whose dispel ends the stack's Hypnotize reaches it; the mass version of a spell that only dispels, Dispel, reaches hypnotized stacks with and without the flag; the mass versions of the timed spells still pass over them).
 - Impact: gameplay-altering (small)
 - Community status: unknown ("may/may not be a bug", wiki Cure)
 - Sources: original-data, `docs/formats/installation.md` §7.14; wiki Cure (survey S-13); observation `experiments/results/E04b-batch-2c.md` H1 (SoD 4.0 Complete, plain HD, 2026-10-07: Hypnotize still listed after Expert Cure, which healed the caster's other Swordsmen to 35) and C1 (a Basic Cure ends it)
 - Flag: `quirk.battle.mass_cure_skips_hypnotized` (E04b T4c)
 - Defaults: faithful = on, strict-fixed = off
-- Regression test: `crates/h3-battle/src/tests/control.rs`, `mass_versions_pass_over_hypnotized_stacks_and_expert_cure_only_with_q0012`
+- Regression test: `crates/h3-battle/src/tests/control.rs`, `mass_versions_pass_over_hypnotized_stacks_and_expert_cure_only_with_q0012`; Expert Dispel with and without the flag: `expert_dispel_reaches_hypnotized_stacks_in_every_profile`
 - Decided by / date: user, 2026-10-07 (E04b T4a checkpoint, Q53)
 
 ### BAT-QUIRK-1 — The natives' sight of hidden obstacles is fixed at the battle's start
@@ -266,7 +266,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Sources: original-data, `docs/formats/installation.md` §7.19; observation `experiments/results/E04b-batch-2d.md` CL2 (SoD 4.0 Complete, plain HD, 2026-10-08: Clone on crowded two-hex Griffins and Wolf Riders, no clone, both gone at the start of round 3, the Griffins lost from Red's army); heroes3wog.net (https://heroes3wog.net/disappearing-clones-did-you-know-heroes-3-complete/, 2022, retrieved 2026-10-08); pikabu.ru (https://pikabu.ru/story/znaete_li_vyi_vsyo_o_klone_5870302, 2018, retrieved 2026-10-08); HD Mod (https://www.sites.google.com/site/heroes3hd/eng/original-game-bug-fixing, retrieved 2026-10-08)
 - Flag: `quirk.battle.clone_on_its_original` (E04b T6c)
 - Defaults: faithful = on, strict-fixed = off
-- Regression test: `crates/h3-battle/src/tests/created.rs`, `with_quirk_bat_quirk_7_a_crowded_original_becomes_its_own_clone` (on) and `a_crowded_two_hex_stack_is_never_covered_by_its_clone` (off)
+- Regression test: `crates/h3-battle/src/tests/created.rs`, `with_quirk_bat_quirk_7_a_crowded_original_becomes_its_own_clone` (on) and `a_crowded_two_hex_stack_is_never_covered_by_its_clone` (off); a turned original that vanishes as its side's last stack ends the battle at that round start (BAT-END-001): `the_battle_ends_when_a_round_start_takes_a_sides_last_stack`
 - Decided by / date: user, 2026-10-08 (batch 2d fold-in: a community search first; known, so fix-optional, as it would be always fixed if unknown). The agent had classified it exploit-fix in T6b.
 
 ### BAT-QUIRK-8 — A clone sharing a hex with its original (E04b batch 2d)

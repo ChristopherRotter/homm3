@@ -546,7 +546,9 @@ protection turns a damage of 100 into 69.
 
 **Dispel** (case at 0x5A15CE): on a target stack (below Expert) it ends every active spell but
 Poison (71), each through 0x444510, so Disrupting Ray stays; at Expert it does the same for every
-stack of both sides that it can affect (0x5A8090 above 0, **no resistance roll**), then removes
+stack of both sides that it can affect (0x5A8090 above 0, **no resistance roll**; its own loop
+from 0x5A160F, two passes over the sides' records, reads no Hypnotize: hypnotized stacks
+included, unlike the mass handler of the timed spells, §7.14), then removes
 every battlefield object whose type has one of the bits `0x3C` (the spell obstacles: Fire Wall,
 Force Field, Quicksand, Land Mine; T5). Which stacks it can affect (0x5A8090 for spell 35, re-read
 in E04b T3b1b): 0 if the stack's controlling hero (0x442690: the other side's while it is
@@ -760,8 +762,11 @@ around the target hex (0x5A4810, one entry per living stack), tests and rolls ea
 0x5A8090 (which, for a negative spell, refuses a stack of the caster's side) **makes an exception
 for spell 59**: Berserk also affects the caster's own stacks in its area. 0x4448F0 fixes the
 duration at 255 (quirk S-17) and ends Hypnotize first. While active:
-- every other stack is its enemy and it is every stack's enemy (0x442880 answers yes when either
-  stack is berserk);
+- beside another stack it counts as an enemy either way (0x442880 answers yes when either stack is
+  berserk; its only callers are the blocked-shooter test 0x469600 and the neighbour test of
+  multi-headed strikes, 0x523B20 through 0x523BB0). Who may attack or shoot it is the cursor's
+  test (0x476490: the target's own side against the acting side), which has no Berserk test, so
+  its own side cannot;
 - its turn is automatic (0x4745DF → 0x4456D0): the candidates (0x445490) are the other living
   stacks except arrow towers: for a stack that can shoot (as above, the Forgetfulness test
   included), by hex distance; otherwise, from the AI pathfinder's map over the whole field
@@ -781,23 +786,43 @@ own pathfinding; S-11 stays unconfirmed.
 else the limit is `power × 25 + effect[mastery] + the specialist bonus (0x4E5FF0, by the stack's
 level, of the limit)`, and the stack qualifies if `hit points per creature × creatures` (the full
 hit points, the top creature's wounds not counted) is at most the limit. Duration as §7.9.
-0x4448F0 ends Berserk first and rebuilds the stack's Unicorn aura lists (+0x514/+0x524, the
-adjacent Unicorns of the same controller; 0x43EA70), as its end does. While active, the stack's
-**controller** is the other side (0x442690 and the inline copies `side ^ hypnotized`): the
-controller commands its turns (the battle loop sets the acting side to it, 0x465389, so the
-controller's hero may cast during that turn), and these use the controller and its hero:
-friend and enemy (0x442880), the Offense or Archery and the Bless specialist of its strikes and
-the Armorer of strikes on it (stage 1 and 3, 0x443898, 0x443DE6), the hero's resistance and the
-Pendants against spells on it (0x5A8090 → 0x44A4D0), Dispel's Sphere test (§7.10), the target's
-hero in spell damage and Fire Shield (0x5A0D1C, 0x4224AF), the Unicorn aura. These keep the
-real side (+0xF4): the stack's statistics set at the battle's start (its hero's primary skills,
-morale and luck), the turn order's tie-break (0x46502A), and the side tests of spells (0x5A82F8):
-the owner may cast its positive spells on its hypnotized stack (Cure ends Hypnotize, §7.10) but no
-negative ones, the controller the other way round. Mass versions (0x5A66D0, §7.9) skip
-hypnotized stacks, and so does Expert Cure, which loops over the caster's own stacks (0x5A1847,
-+0x5754 = Hypnotize's duration): an Expert Cure never reaches them (quirk S-13), a single Cure
-does. VCMI 1.7.5 (`config/spells/ability.json`, `BattleInfo`) limits Hypnotize by the stack's
-remaining health.
+0x4448F0 ends Berserk first and rebuilds the stack's Unicorn aura lists (+0x514/+0x524: the
+adjacent Unicorns whose controller is the stack's real side, and for a Unicorn the neighbours
+whose real side is its controller; 0x43EA70, the Unicorn's side flipped by its own Hypnotize at
+0x43EAEE and 0x43EB9C, the other stack's +0xF4 as it is), as its end does. While active, the
+stack's **controller** is the other side (0x442690 and the inline copies `side ^ hypnotized`):
+the controller commands its turns (the battle loop sets the acting side to it, 0x465389, so the
+controller's hero may cast during that turn), and these use the controller and its hero: the
+Offense or Archery and the Bless specialist of its strikes and the Armorer of strikes on it
+(stage 1 and 3, 0x443898, 0x443DE6), the hero's resistance and the Pendants against spells on it
+(0x5A8090 → 0x44A4D0), Dispel's Sphere test (§7.10), the target's hero in spell damage and Fire
+Shield (0x5A0D1C, 0x4224AF). Relations between two stacks take the controller of the one and the
+real side (+0xF4) of the other: 0x442880 (the first stack's controller, the second's side; asked
+for the blocked shooter, 0x469600 with the shooter first, and for multi-headed strikes, 0x523B20
+with the striker first), the cursor 0x476490 (the acting side +0x132C0 against the target's side
+for an attack or a shot, equal sides for the tent's patient; the pathfinder's attack targets
+alike, 0x4B3801) and the aura lists (above). These keep the real side: the stack's statistics set
+at the battle's start (its hero's primary skills, morale and luck), the turn order's tie-break
+(0x46502A), the automatic tent's loop over its side's records (0x473EA0: the stack with the most
+lost hit points that is neither dead nor a war machine, no Hypnotize test), the shot's Ammo Cart
+test (0x43F9E1: the hero of the shooter's +0xF4 side) and the side tests of spells (0x5A82F8): the
+owner may cast its positive spells on its hypnotized stack (Cure ends Hypnotize, §7.10) but no
+negative ones, the controller the other way round. So the side that hypnotized a stack may attack
+and shoot it and its own side may not (batch 2c H1's remark), it blocks the shooters of the side
+that controls it, and its own side's Unicorns, tent and Ammo Cart go on serving it. The mass
+versions of the timed spells (0x5A66D0, §7.9) skip hypnotized stacks, and so does Expert Cure,
+which loops over the caster's own stacks (0x5A1847, +0x5754 = Hypnotize's duration): an Expert
+Cure never reaches them (quirk S-13), a single Cure does. Dispel's Expert loop (§7.10, from
+0x5A160F: two passes, one per side, over the side's records) reads no Hypnotize duration: an
+Expert Dispel reaches them and ends their Hypnotize. VCMI 1.7.5 limits Hypnotize by the stack's
+remaining health (`config/spells/timed.json`, `lib/spells/TargetCondition.cpp`
+`HealthValueCondition`) and agrees on who may attack and shoot whom (`battleMatchOwner`: the
+attacker's owner through hypnosis against the defender's own side), the tent, the Ammo Cart and a
+hypnotized stack's aura; it differs for hypnotized Unicorns (they go on protecting their own
+side), for a hypnotized shooter (blocked by the stacks of the side that controls it:
+`battleIsUnitBlocked` compares initial owners, and counts Berserk only on the shooter itself) and
+for multi-headed strikes (`getAttackedCreatures` compares both owners through hypnosis and has no
+Berserk term).
 
 ### 7.15 Code reading: battlefield objects, Force Field, Fire Wall, Teleport, Remove Obstacle (E04b T5a/T5b, 2026-10-07)
 
@@ -1216,8 +1241,9 @@ not be bound by that striker's next strike. The engine binds only a living T.
 - *Thunderbird*: a 20 % draw, then the test for **Lightning Bolt** (17) as above (so Earth and
   Magma Elementals are immune, the dragons' level immunity counts level 2); the damage is
   0x5A78E0 (§7.8) of `10 × S's creatures` for spell 17 without a hero: the target creature's
-  factors (Air and Storm Elementals double, the golems) and Protection from Air; then the hit
-  points are taken (0x444090) and the kills reported.
+  factors (Air and Storm Elementals double, the golems) and Protection from Air; then, if the
+  result is above 0 (else the case leaves without a report, 0x4411FD), the hit points are taken
+  (0x444090) and the kills reported.
 - *Serpent Fly, Dragon Fly*: if the test for Dispel Helpful Spells (78) passes (0x5A8090's own case:
   no if T's controller's hero wears the Sphere of Permanence, T8; yes if T has an active spell of
   positive type; no immunity, resistance or aura), it is cast at once (creature cast, mastery 0,
