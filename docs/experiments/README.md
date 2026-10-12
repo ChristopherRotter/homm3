@@ -179,48 +179,53 @@ set-up ("row" is a row of BAT-Q28). *One Faerie Dragon session* (dragons led by 
 casts the drawn spell, the cursor is the control; it joins T7b2a's candidates above): F at a stack
 under Expert Magic Mirror, ten casts: none is sent away (the reading and VCMI) or about four are
 (the engine today; BAT-Q29); with Fireball or Frost Ring drawn, F and a click on an empty hex
-between two stacks: cast or refused, and the two corners, F after the side's hero has cast this
-round and F for dragons without a hero (the reading: it reads a hero that is not there, so a battle
-that may crash; BAT-Q32); one dragon's Fireball under the Orb of Tempestuous Fire: 80 or 120, its
-Magic Arrow 70 either way (BAT-Q28 row 2); batch 2e's OI set-up again with F pressed on the
-dragons' turn (the batch tried only the cursor; BAT-Q32, BAT-Q21 point 1). *One row each:* Chain
-Lightning's tie: an enemy stack A as the first target, one stack of each side of one creature type
-(Q43's offset cancels) two hexes from A in A's row: the attacker's stack is struck second (the
-reading) or the defender's (row 1); defense 12, Defend, Expert Stone Skin, right-click: 20 or 21,
-and a defending stack of defense 0 struck by Rust Dragons: Acid Breath lands or not (row 3); an
-Archangel with 5 hit points left attacks 20 Efreet Sultans and dies of the reflection, then a
-second stack attacks the Sultans in that round: struck back or not (row 4, S-23); Cavaliers with
-their head hex on a seen Quicksand pit ordered three hexes along the row: one hex or three (row 5);
-a stack acts in round 1 and is killed, is raised in round 2 on another stack's turn: a turn in
-round 2 or none, with a control killed before it acted (row 6); the surrender dialog with 5 of 10
-Swordsmen (750) and after a Basic Resurrection to 8: 750 or 1 200 (row 7); stacks of speed 3 and 4
-wait, and in the slower one's turn of the wait phase its hero summons Air Elementals (speed 7): who
-acts next, and is Wait offered to them; with it, a stack frozen by bad morale followed by a speed
-tie across the sides: whose stack goes (rows 8, 9); Wolf Riders die, a Swordsman dies later on
-their rear hex, Resurrection aimed at the Wolf Riders' front hex: who comes back (row 10, S-24);
-Basic Dispel's cursor on an own stack whose only effect is Acid Breath (row 12); Frenzy on a stack
-that defends twice and then attacks: still frenzied (VCMI) or not (BAT-MAG-019; only if the wiki is
-silent); Berserk on a stack whose own side has a hidden pit on its short way: does it go round (the
-reading, BAT-Q31). The earlier candidate "whether the interface offers an attack from a seen pit"
-(BAT-QUIRK-2) is answered by the review's reading: it offers none (BAT-Q30); one look at the cursor
-confirms it. Two rows on battles that may crash or hang, only for their ledger lines: a Fire Wall
-removed at once by Expert Dispel, a Force Field cast onto its hexes, then the round in which the
-Fire Wall would have ended (S-26); elementals summoned in the wait phase and blinded before their
-turn (S-27). *Statistics rows:* neutral stacks at morale −3 over a few hundred activations: 25 % or
-18.75 % freeze (BAT-Q33, S-25); the strike's spells where VCMI contradicts the reading (BAT-Q28
-row 13; most are candidates "From T7a1" to "From T7a3" above): by counting, the Black and Dread
-Knights' and the Mummies' Curse (25 %; VCMI 20, 20 and 50 %) and the Rust Dragon's extra damage
-(20 %; VCMI 30 %); by one observation each, new here: a stack blinded by Unicorns retaliating at
-half, Stone Gaze resisted by Dwarves, Age on 25 hit points (13 or 12), Poison counted per round or
-per own turn; Dwarves beside the first target of a four-target Chain Lightning, the other stacks
-far: struck in about 99 % of the casts (a roll at every jump) or 80 % (VCMI: one roll per cast;
+between two stacks: cast (the reading) or refused, and the two corners, F after the side's hero has
+cast this round and F for dragons without a hero (the reading: it reads a hero that is not there,
+so a battle that may crash; BAT-Q32); one dragon's Fireball under the Orb of Tempestuous Fire: 120
+(the reading) or 80 (the engine and VCMI), its Magic Arrow 70 either way (BAT-Q28 row 2); batch
+2e's OI set-up again with F pressed on the dragons' turn (the batch tried only the cursor; BAT-Q32,
+BAT-Q21 point 1). *One row each:* Chain Lightning's tie: an enemy stack A as the first target, one
+stack of each side of one creature type (Q43's offset cancels) two hexes from A in A's row: the
+attacker's stack is struck second (the reading) or the defender's (row 1); defense 12, Defend,
+Expert Stone Skin, right-click: 20 (the reading) or 21, and a defending stack of defense 0 struck
+by Rust Dragons: Acid Breath lands (the reading) or not (row 3); an Archangel with 5 hit points
+left attacks 20 Efreet Sultans and dies of the reflection, then a second stack attacks the Sultans
+in that round: not struck back (the reading) or struck back (row 4, S-23); Cavaliers with their
+head hex on a seen Quicksand pit ordered three hexes along the row: one hex (the reading) or three
+(row 5); a stack acts in round 1 and is killed, is raised in round 2 on another stack's turn: no
+turn in round 2 (the reading) or one, with a control killed before it acted (row 6); the surrender
+dialog with 5 of 10 Swordsmen (750) and after a Basic Resurrection to 8: still 750 (the reading) or
+1 200 (row 7); stacks of speed 3 and 4 wait, and in the slower one's turn of the wait phase its
+hero summons Air Elementals (speed 7): the stack of speed 4 acts next (the reading) or the
+elementals, and is Wait offered to them (the reading: no); with it, a stack frozen by bad morale
+followed by a speed tie across the sides: the frozen stack's side goes first (the reading) or the
+other (rows 8, 9); Wolf Riders die, a Swordsman dies later on their rear hex, Resurrection aimed at
+the Wolf Riders' front hex: the Swordsman comes back (the reading) or the Wolf Riders (row 10,
+S-24); Basic Dispel's cursor on an own stack whose only effect is Acid Breath: refused (the
+reading) or offered (row 12); Frenzy on a stack that defends twice and then attacks: still frenzied
+(VCMI) or not (the reading; BAT-MAG-019; only if the wiki is silent); Berserk on a stack whose own
+side has a hidden pit on its short way: does it go round (the reading, BAT-Q31). The earlier
+candidate "whether the interface offers an attack from a seen pit" (BAT-QUIRK-2) is answered by the
+review's reading: it offers none (BAT-Q30); one look at the cursor confirms it. Two rows on battles
+that may crash or hang, only for their ledger lines: a Fire Wall removed at once by Expert Dispel,
+a Force Field cast onto its hexes, then the round in which the Fire Wall would have ended (S-26);
+elementals summoned in the wait phase and blinded before their turn (S-27). *Statistics rows:*
+neutral stacks at morale −3 over a few hundred activations: 18.75 % freeze (the reading) or 25 %
+(BAT-Q33, S-25); the strike's spells where VCMI contradicts the reading (BAT-Q28 row 13; most are
+candidates "From T7a1" to "From T7a3" above): by counting, the Black and Dread Knights' and the
+Mummies' Curse (25 %; VCMI 20, 20 and 50 %) and the Rust Dragon's extra damage (20 %; VCMI 30 %);
+by one observation each, new here: a stack blinded by Unicorns retaliating at half, Stone Gaze
+resisted by Dwarves, Age on 25 hit points (13, the reading, or 12), Poison counted per round or per
+own turn; Dwarves beside the first target of a four-target Chain Lightning, the other stacks far:
+struck in about 99 % of the casts (a roll at every jump) or 80 % (VCMI: one roll per cast;
 BAT-MAG-006). *The Orb of Vulnerability rows* (BAT-MAG-066; BAT-Q21 asked for experiments on this
 Orb): batch 2e's UA again with a control, the same battle without the Orb to show that the set-up
 produces resists, and at least 30 rolls beside the Unicorns with it (0.8^30 = 0.1 % under the
 reading; row 11); the defender's hero wears the Orb and the attacker's Chain Lightning jumps near
-the attacker's own Black Dragons: struck or not (row 11); A wears the Orb, B the Pendant of
-Negativity: A's Lightning Bolt cursor at B's stack (no target by the reading and the wiki, a hit in
-VCMI), and Slow from the Orb's owner at stacks under Power of the Dragon Father (BAT-MAG-063, 064).
+the attacker's own Black Dragons: struck (the reading) or not (row 11); A wears the Orb, B the
+Pendant of Negativity: A's Lightning Bolt cursor at B's stack (no target by the reading and the
+wiki, a hit in VCMI), and Slow from the Orb's owner at stacks under Power of the Dragon Father
+(BAT-MAG-063, 064).
 
 **Wiki checks the review asks for** (no wiki access in the review; each with its rule or question;
 "row" is a row of BAT-Q28). Chain Lightning: equal distances beyond "randomly chosen", and are own
