@@ -443,6 +443,28 @@ fn hypnotize_needs_full_hit_points_within_its_value_and_no_mirror() {
         targets(&s, &r, BattleSide::Attacker, "hypnotize"),
         [stack(1), stack(2)]
     );
+    // Full hit points equal to the limit are within it (the original compares with "at most",
+    // 0x5A83BA; E04b T11b review, r3 F-10): power 2 at Basic gives 2 × 25 + 10 = 60, batch 2c
+    // H1's limit. Six creatures of 10 hit points are a target; one hit point more is too much.
+    let mut hero = adept(&r, &["hypnotize"], 1);
+    hero.power = 2;
+    let mut s = arena(
+        &r,
+        [Some(hero), None],
+        &[("fixed", 5, 2, 5)],
+        &[("fixed", 6, 9, 3), ("fixed", 1, 9, 5), ("fixed", 7, 9, 7)],
+        1,
+    );
+    s.stacks.as_mut_slice()[2].max_hp = 61;
+    assert_eq!(
+        targets(&s, &r, BattleSide::Attacker, "hypnotize"),
+        [stack(1)]
+    );
+    s.stacks.as_mut_slice()[2].max_hp = 60;
+    assert_eq!(
+        targets(&s, &r, BattleSide::Attacker, "hypnotize"),
+        [stack(1), stack(2)]
+    );
 }
 
 // covers: BAT-MAG-026

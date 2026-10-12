@@ -800,6 +800,33 @@ fn expert_dispel_removes_every_spell_obstacle() {
 
 // covers: BAT-MOV-003
 #[test]
+fn of_two_shortest_paths_a_walker_takes_the_one_by_its_ends_first_neighbour() {
+    // E04b T11b review (r3 F-10): the tie between two equally short paths. From the end, a
+    // position's predecessor is its first neighbour one step nearer the start in the order
+    // right, bottom right, bottom left, left, top left, top right. Batch 2c F2 observed the
+    // first case for either side: two rows straight up, a walker passes its up-right neighbour.
+    let r = ruleset();
+    let field = field(&r);
+    let mut s = battle(&r, &[(0, "fixed", 1)], &[(0, "fixed", 1)], 1);
+    place(&mut s, &r, 0, 5, 5);
+    place(&mut s, &r, 1, 12, 5);
+    let cells = |id: u8, (x, y): (i32, i32)| -> Vec<(i32, i32)> {
+        let me = s.stacks()[usize::from(id)];
+        let (path, len) = crate::movement::path(&s, field, StackId(id), &me, at(&r, x, y));
+        path[..len].iter().map(|&h| field.coords(h)).collect()
+    };
+    // Up: the end's bottom right neighbour (the start's up-right one) comes before its bottom
+    // left one; the attacker's and the defender's walker alike.
+    assert_eq!(cells(0, (5, 3)), [(5, 4), (5, 3)]);
+    assert_eq!(cells(1, (12, 3)), [(12, 4), (12, 3)]);
+    // Down: the end's top left neighbour (the start's down-left one) comes before its top
+    // right one.
+    assert_eq!(cells(0, (5, 7)), [(4, 6), (5, 7)]);
+    assert_eq!(cells(1, (12, 7)), [(11, 6), (12, 7)]);
+}
+
+// covers: BAT-MOV-003
+#[test]
 fn a_walkers_path_is_a_shortest_one_chosen_from_its_end() {
     let r = ruleset();
     let s = battle_with_obstacles(
