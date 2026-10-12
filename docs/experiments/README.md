@@ -25,14 +25,22 @@ Complete 4.0**; a rule settled here is `observation`-sourced with that version.
 
 ## Spec format (`h3-experiment`, `crates/h3-experiment/src/lib.rs`)
 
-- `[map]`: `name`, `description`, `size` (36), `terrain` (dirt or grass; the tile pictures of
-  other terrains are not known yet, `docs/formats/h3m.md`), `instructions` (the template's
-  numbered introduction).
+- `[map]`: `name`, `description`, `size` (36, 72, 108 or 144), `terrain` (any land terrain; the
+  battlefield of every encounter on it), `instructions` (the template's numbered introduction).
+  `[[map.patch]]` (E08 T10a, the adventure map's experiments): `terrain`, `from = [column, row]`,
+  `to` (inclusive), a rectangle of another terrain; a later patch covers an earlier one. The
+  writer gives every tile an interior picture of its terrain (the ranges the game's own maps use,
+  `docs/formats/h3m.md`), so the game draws a hard edge between two terrains.
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `procedure`
   (steps), `record` (`field = "…"` for a value, `table = [columns]` + `rows`), `predictions`
   (for the evaluating agent; never shown in the template).
 - `[encounter.hero]`: `type` (name, or id if the name occurs twice), `specialty` (checked against
   the executable so that no hero with an interfering specialty slips in), `owner` (red/blue),
+  `at = [column, row]` (the hero's tile instead of the encounter's place in the grid; the
+  opponent stands one column east unless it has its own `at`), `defaults = true` (E08 T10a: army,
+  experience, primary and secondary skills, artifacts and spells all the hero type's own, as the
+  map editor places a hero; the spec then lists none of them, and `primary` is required only
+  without it),
   `experience`, `primary`, `skills` (`[name, level]`), `army` (`[creature, count]`), `artifacts`
   (slot name → artifact; slots are checked against `ARTRAITS.TXT`), `backpack` (artifact names,
   carried but not worn; E04b batch 2f), `spells` (`SPTRAITS.TXT`
@@ -40,8 +48,10 @@ Complete 4.0**; a rule settled here is `observation`-sourced with that version.
   replace the hero type's defaults, so heroes have no spell book unless one is listed. A hero
   starts with full mana: 10 × knowledge (no Intelligence), so knowledge sets the mana.
 - `[encounter.opponent]`: `monster` + `count` (a savage wandering monster that never flees) or
-  `[encounter.opponent.hero]` (a Blue hero). Encounters are laid out in a grid; a hero type may
-  appear once per map, a player may have eight heroes.
+  `[encounter.opponent.hero]` (a Blue hero). `[[encounter.also]]` (E08 T10a): more heroes of the
+  encounter, each with its own `at`, named as their hero type unless `name` is given (scouts that
+  explore a route, inspections of many heroes). Encounters are laid out in a grid; a hero type
+  may appear once per map, a player may have eight heroes, two objects never share a tile.
 
 Running a spec in our engine (to print predictions automatically) is not built (BACKLOG; Q37:
 revisit with the next batches, E04b); the predictions are computed by hand or with a script and
