@@ -31,8 +31,7 @@ impl Options {
     /// Parses `[--install <dir>] [--out <dir>]`; the defaults are `$H3_INSTALL`, then the
     /// repository's `original-data/install`, and `clients/out`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
-        // An adapter's ambient input, read once here (clippy.toml forbids it in logic).
-        #[allow(clippy::disallowed_methods)]
+        // An adapter's ambient input, read once here.
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         Self::parse_with(args, env)
     }
@@ -193,8 +192,11 @@ fn write(path: &Path, text: &str) -> Result<(), String> {
     fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-/// Runs `f` and measures its wall time (an adapter's clock; clippy.toml forbids it in logic).
-#[allow(clippy::disallowed_types)]
+/// Runs `f` and measures its wall time.
+#[expect(
+    clippy::disallowed_types,
+    reason = "an adapter's clock: the gate reports load times (clippy.toml forbids it in logic)"
+)]
 fn timed<T>(f: impl FnOnce() -> T) -> (T, Duration) {
     let start = std::time::Instant::now();
     let value = f();

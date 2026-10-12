@@ -20,14 +20,39 @@ done
 
 step() { echo "== $*"; }
 
+# Runs a command quietly: its last lines when it passes, all of its output when it fails.
+run() {
+    local tail_lines=$1 out
+    shift
+    if out=$("$@" 2>&1); then
+        [ "$tail_lines" -gt 0 ] && printf '%s\n' "$out" | tail -n "$tail_lines"
+        return 0
+    fi
+    printf '%s\n' "$out"
+    echo "== failed: $*" >&2
+    exit 1
+}
+
+# `--locked` everywhere: a change to the root Cargo.toml's workspace dependencies must not
+# re-resolve clients/Cargo.lock silently.
 step fmt
-cargo fmt --check
+run 0 cargo fmt --check
 step clippy
-cargo clippy --quiet --all-targets -- -D warnings
+run 0 cargo clippy --locked --all-targets -- -D warnings
 step test
-cargo test --quiet
+run 1 cargo test --locked --quiet
 step deny
-cargo deny --all-features check 2>&1 | tail -n 3
+run 1 cargo deny --locked --all-features check
+
+# The deny policy stays the engine's until the user's licence decision at M2 (ADR draft point 4).
+step "deny policy"
+run 1 python3 -I -c '
+import sys, tomllib
+a, b = (tomllib.load(open(p, "rb")) for p in sys.argv[1:])
+if a.get("licenses") != b.get("licenses") or a.get("sources") != b.get("sources"):
+    sys.exit("clients/deny.toml: [licenses] or [sources] differ from the root deny.toml")
+print("deny policy: as the engine'"'"'s")
+' deny.toml ../deny.toml
 
 # Coverage: 100 % of lines and regions in the pure crates' libraries (docs/05-testing.md). The
 # binaries under `src/bin/` are adapters (files, clock, printing), left out by design; an engine
@@ -37,30 +62,33 @@ cargo deny --all-features check 2>&1 | tail -n 3
 ignore='/src/bin/'
 if [ "$coverage" = true ]; then
     step "coverage (excluded: $ignore)"
-    cargo llvm-cov --quiet --workspace --all-targets --ignore-filename-regex "$ignore" \
-        --fail-under-lines 100 --fail-under-regions 100 --show-missing-lines --summary-only \
-        | tail -n 4
+    run 1 cargo llvm-cov --locked --quiet --workspace --all-targets \
+        --ignore-filename-regex "$ignore" --fail-under-lines 100 --fail-under-regions 100 \
+        --show-missing-lines --summary-only
 fi
 
-# The CI job's path filter must name every engine crate this workspace builds, so that a change to
-# one of them runs the job (E17 M0 T2).
+# The CI job's path filter must name every engine crate this workspace builds, in both of its
+# lists (push and pull_request), so that a change to one of them runs the job (E17 M0 T2).
 workflow=../.github/workflows/clients.yml
+step "ci paths"
 if [ -f "$workflow" ]; then
-    step "ci paths"
-    cargo metadata --format-version 1 --locked | python3 -I -c '
+    metadata=$(cargo metadata --locked --format-version 1)
+    run 1 python3 -I -c '
 import json, os, sys
 workflow = open(sys.argv[1]).read()
 root = os.path.realpath("..")
 missing = []
-for p in json.load(sys.stdin)["packages"]:
+for p in json.loads(sys.argv[2])["packages"]:
     if p["source"] is not None:
         continue
     d = os.path.relpath(os.path.dirname(os.path.realpath(p["manifest_path"])), root)
-    if not d.startswith("clients" + os.sep) and f"\"{d}/**\"" not in workflow:
+    if not d.startswith("clients" + os.sep) and workflow.count(f"\"{d}/**\"") != 2:
         missing.append(d)
 if missing:
-    sys.exit("clients.yml does not watch: " + ", ".join(sorted(missing)))
+    sys.exit("clients.yml does not watch (in both lists): " + ", ".join(sorted(missing)))
 print("ci paths: ok")
-' "$workflow"
+' "$workflow" "$metadata"
+else
+    echo "ci paths: skipped (no .github/workflows/clients.yml)"
 fi
 echo "== all gates passed"
