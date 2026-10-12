@@ -314,9 +314,24 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                 side: Side::Attacker,
             },
             Outcome::NoShow {},
+            // E16 M4 T3b.
+            Outcome::Unverified {},
         ]
         .map(|result| ServerMessage::GameEnded { n: 14, result }),
     );
+    // E16 M4 T3b: a seat's rating after its ranked game.
+    out.push(ServerMessage::Rating {
+        n: 15,
+        ladder: "arena".to_string(),
+        before: Points {
+            rating: 1500,
+            deviation: 350,
+        },
+        after: Points {
+            rating: -7,
+            deviation: 0,
+        },
+    });
     out.extend(
         [RejectCode::NotHost, RejectCode::AlreadyStarted].map(|code| ServerMessage::Rejected {
             n: 13,
@@ -526,6 +541,29 @@ fn the_json_is_serdes_default_enum_form() {
             result: Outcome::NoShow {}
         }),
         r#"{"GameEnded":{"n":4,"result":{"NoShow":{}}}}"#
+    );
+    // E16 M4 T3b: a void ranked game, a rating.
+    assert_eq!(
+        server(&ServerMessage::GameEnded {
+            n: 5,
+            result: Outcome::Unverified {}
+        }),
+        r#"{"GameEnded":{"n":5,"result":{"Unverified":{}}}}"#
+    );
+    assert_eq!(
+        server(&ServerMessage::Rating {
+            n: 6,
+            ladder: "arena".to_string(),
+            before: Points {
+                rating: 1500,
+                deviation: 350
+            },
+            after: Points {
+                rating: 1662,
+                deviation: 290
+            }
+        }),
+        r#"{"Rating":{"n":6,"ladder":"arena","before":{"rating":1500,"deviation":350},"after":{"rating":1662,"deviation":290}}}"#
     );
     // E16 M3 T1: a login, keys and signatures as hex.
     assert_eq!(

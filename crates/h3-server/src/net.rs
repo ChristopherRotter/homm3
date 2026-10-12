@@ -1026,6 +1026,7 @@ mod tests {
     use h3_protocol::wire::{Phase, Seat};
 
     use super::*;
+    use crate::ids::GameIds;
     use crate::registry::Registry;
 
     #[test]
@@ -1103,8 +1104,12 @@ mod tests {
             );
             let server = crate::config::Server::default();
             let ladders = Arc::new(Ladders::default());
-            let mut registry =
-                Registry::new((vec![], &ladders), &limits, server, Arc::clone(&accounts));
+            let stores = game::Stores {
+                accounts: Arc::clone(&accounts),
+                ladders: Arc::clone(&ladders),
+                ids: Arc::new(GameIds::open(&server.data).unwrap()),
+            };
+            let mut registry = Registry::new(vec![], &limits, server, stores);
             registry.host(7, game);
             let registry = Arc::new(Mutex::new(registry));
             let counts = Arc::new(Mutex::new(Counts::default()));

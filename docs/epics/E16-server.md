@@ -363,9 +363,10 @@ ranked game per player per ladder, bots exempt; no turn timer in M4 (a game rule
 - **T3a A ranked game's seats and forfeits** (done 2026-10-12; `E16-log.md`): no host; the
   session's clock, the disconnect grace and total, forfeits and no-shows (`Outcome::Forfeit`,
   `NoShow`) in the journal (format 5), across a restart; wire 15; SRV-STUB-3 resolved.
-- **T3b The rated end** (after T3a): verification before `GameEnded`, the result rated and
-  logged, `Rating` to the seats, a void game's players told, game ids unique for the server's
-  life.
+- **T3b The rated end** (done 2026-10-12; `E16-log.md`): a ranked game's end held until it
+  verified (`Outcome::Unverified` otherwise), the result rated and logged (`Rated`, `NoShow`),
+  `Rating` to the seats, game ids unique for the server's life (`<data>/next-game`); wire 16;
+  SRV-STUB-4 resolved.
 - **T4 Leaderboards** (after T3b): pages by season, one's own standing.
 - **T5 Bots on ladders** (after T3b): bot accounts, the standing queue entry, flagged rows.
 - **T6 The pause by agreement** (after T3a): proposed and answered within the ladder's bounds,
@@ -465,6 +466,15 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   `Entry::Ranked` a mark, the grace the ladder's configuration at each start; a waiting match's
   game still ends at a drain or a stop (gone, unrated); the restored matches back in the
   registry's ranked games at start (T3b's item, taken here).
+- T3b: only a ranked game's end waits for the verification (an unranked game's is told before,
+  as since M2 T3); a void ranked game told by `GameEnded { Unverified }` (not a goodbye: its
+  connections stay, as after any end); `Rating { n, ladder, before, after }` numbered and in the
+  record, to the seats only, `Points { rating, deviation }` as whole numbers (`i32`, `u32`);
+  the order verify, archive, rate, then the journal goes (a result that does not write keeps the
+  journal, a re-run's second copy of the replay accepted); a game named twice in a results log
+  stops the start; `<data>/next-game` written whole on each game's thread (one sync per game),
+  at start raised by every journal's id; a seat without an account in a ranked game left unrated
+  (none occurs).
 
 ## Review list for the M3 checkpoint (passed 2026-10-12, SRV-Q18)
 

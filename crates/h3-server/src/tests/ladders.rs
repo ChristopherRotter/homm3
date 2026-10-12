@@ -7,11 +7,13 @@
 //! or the total in several drops, a forfeit, whose replay verifies; both away, void; the time away
 //! across a restart.
 
-use h3_protocol::wire::{LadderInfo, Outcome, Side, UnqueueReason};
+use h3_protocol::wire::{LadderInfo, Outcome, Points, Side, UnqueueReason};
 
 use super::*;
 use crate::client::Key;
 use crate::config::Ladder;
+use crate::ladders::points;
+use crate::rating::{self, Rating, Score};
 
 fn arena(profile: Option<&str>) -> Ladder {
     let scenarios = root().join("packs/synthetic/scenarios");
@@ -307,6 +309,7 @@ async fn two_players_queue_accept_and_play_their_match() {
     for saw in [ann_saw, bob_saw] {
         assert!(matches!(saw.last(), Some(ServerMessage::GameEnded { .. })));
     }
+    rating(&mut ann).await;
     // Over, it keeps no one from the ladder.
     let mut attempts = 0;
     while ask(&mut ann, queue("arena")).await != queued() {
@@ -453,6 +456,38 @@ fn side(seat: Seat) -> Side {
     }
 }
 
+/// The rating `client` hears after its game's end (E16 M4 T3b): before and after it.
+async fn rating(client: &mut Client) -> (Points, Points) {
+    match client.recv().await {
+        Some(ServerMessage::Rating {
+            ladder,
+            before,
+            after,
+            ..
+        }) if ladder == "arena" => (before, after),
+        other => panic!("{other:?}"),
+    }
+}
+
+/// What a game that ended with `result` scores for the player of `side`.
+fn score(result: Outcome, side: Side) -> Score {
+    let won = |winner: Side| {
+        if winner == side {
+            Score::Win
+        } else {
+            Score::Loss
+        }
+    };
+    match result {
+        Outcome::Victory { side } => won(side),
+        Outcome::Retreat { side } | Outcome::Surrender { side } | Outcome::Forfeit { side } => {
+            won(side).reversed()
+        }
+        Outcome::Draw {} => Score::Draw,
+        Outcome::NoShow {} | Outcome::Unverified {} => panic!("unrated: {result:?}"),
+    }
+}
+
 /// The client queues in `arena` as soon as its game, over, lets it.
 async fn queues_again(client: &mut Client) {
     let mut attempts = 0;
@@ -507,6 +542,12 @@ async fn a_player_away_beyond_the_grace_forfeits_and_the_replay_holds_the_game_s
         side: side(bob_seat),
     };
     assert_eq!(ends(&mut ann).await, forfeit);
+    // Rated (E16 M4 T3b): a win for Ann, as Glicko-2 rates one game between new accounts.
+    let new = Rating::default();
+    let (won, lost) = rating::game(new, new, Score::Win);
+    assert_eq!(rating(&mut ann).await, (points(new), points(won)));
+    let standing = |login| running.standing("arena", 1, login).map(|s| s.rating);
+    assert_eq!((standing("ann"), standing("bob")), (Some(won), Some(lost)));
     // The replay holds the battle as it stood, undecided, and verifies.
     ann.send(&ClientMessage::FetchReplay { seq: 900 })
         .await
@@ -577,6 +618,14 @@ async fn both_players_away_the_game_is_void() {
         Some(ServerMessage::Joined { .. })
     ));
     assert_eq!(ends(&mut watcher).await, Outcome::NoShow {});
+    // Unrated, a no-show each in the ladder's table (E16 M4 T3b).
+    for login in ["ann", "bob"] {
+        let row = running.standing("arena", 1, login).unwrap();
+        assert_eq!(
+            (row.rating, row.games, row.no_shows),
+            (Rating::default(), 0, 1)
+        );
+    }
     queues_again(&mut ann).await;
     queues_again(&mut bob).await;
     running.shutdown().await;
@@ -626,4 +675,81 @@ async fn a_players_time_away_holds_across_a_restart() {
     for data in [&config.server.data, &restarted.server.data] {
         std::fs::remove_dir_all(data).unwrap();
     }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_played_game_is_rated_and_the_ratings_hold_across_a_restart() {
+    let config = laddered(60_000);
+    let running = start(&config).await.unwrap();
+    let ([ann, bob], first, [ann_seat, bob_seat]) = seated_match(&running).await;
+    let ((mut ann, ann_saw), (mut bob, bob_saw)) = tokio::join!(play(ann, 5), play(bob, 6));
+    let result = end(&ann_saw);
+    assert_eq!(result, end(&bob_saw));
+    // Each hears its rating after the end, as Glicko-2 rates the game between new accounts.
+    let new = Rating::default();
+    let (ann_after, bob_after) = rating::game(new, new, score(result, side(ann_seat)));
+    assert_eq!(
+        score(result, side(bob_seat)),
+        score(result, side(ann_seat)).reversed()
+    );
+    assert_eq!(rating(&mut ann).await, (points(new), points(ann_after)));
+    assert_eq!(rating(&mut bob).await, (points(new), points(bob_after)));
+    let row = |running: &Running, login| running.standing("arena", 1, login).unwrap();
+    let rows = [row(&running, "ann"), row(&running, "bob")];
+    assert_eq!(
+        rows.map(|r| (r.rating, r.games)),
+        [(ann_after, 1), (bob_after, 1)]
+    );
+    // The server stops and starts again: the ratings read back as they were written, and no game
+    // id is handed out twice.
+    running.shutdown().await;
+    let again = start(&config).await.unwrap();
+    assert_eq!([row(&again, "ann"), row(&again, "bob")], rows);
+    let (_, next, _) = created(&again, "pvp", Seat::Attacker).await;
+    assert!(next > first, "{next} after {first}");
+    let log = std::fs::read_to_string(config.server.data.join("ladders/arena.log")).unwrap();
+    assert_eq!(log.lines().count(), 2, "the season and the game: {log}");
+    assert!(log.contains(&format!("\"game\":{first},")), "{log}");
+    again.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_ranked_game_that_does_not_verify_is_void_unrated_and_its_players_told() {
+    let config = laddered(60_000);
+    let running = start(&config).await.unwrap();
+    let ([ann, bob], game, _) = seated_match(&running).await;
+    // The journal's seed changes under the game: its re-run cannot end as the game did.
+    let seed = |line: &str| {
+        let at = line.find("seed = \\\"")? + 9;
+        let end = at + line[at..].find('\\')? - 1;
+        let digit = if &line[end..=end] == "0" { "1" } else { "0" };
+        Some(format!("{}{digit}{}", &line[..end], &line[end + 1..]))
+    };
+    flip(&config.server.data, game, &seed);
+    let ((mut ann, ann_saw), (_, bob_saw)) = tokio::join!(play(ann, 5), play(bob, 6));
+    for saw in [&ann_saw, &bob_saw] {
+        assert_eq!(end(saw), Outcome::Unverified {});
+    }
+    // No rating follows, no row, the replay withheld.
+    ann.send(&ClientMessage::FetchReplay { seq: 900 })
+        .await
+        .unwrap();
+    assert!(
+        matches!(
+            ann.recv().await,
+            Some(ServerMessage::Rejected {
+                seq: 900,
+                code: RejectCode::Unverified,
+                ..
+            })
+        ),
+        "no rating"
+    );
+    assert_eq!(running.standing("arena", 1, "ann"), None);
+    assert!(config.server.data.join("void").read_dir().unwrap().count() > 0);
+    // Over, it keeps neither from the ladder.
+    queues_again(&mut ann).await;
+    running.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
 }
