@@ -7,14 +7,18 @@
 use h3_battle::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, StackId, apply, cast_targets,
 };
-use h3_content::{Formation, Ruleset, SpellCategory, SpellId};
-use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
+use h3_content::{Formation, HeroTypeId, Ruleset, SchoolId, SpellCategory, SpellId, SpellScope};
+use h3_contracts::{Army, ArmyStack, BattleEffect, BattleHero, BattleSetup, BattleSide, Rate};
 use h3_heroes::{HeroDetails, derive_battle_hero};
 
 fn sod() -> Ruleset {
+    sod_with("base:faithful")
+}
+
+fn sod_with(profile: &str) -> Ruleset {
     h3_pack::compile(
         &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
-        "base:faithful",
+        profile,
     )
     .unwrap()
 }
@@ -76,7 +80,16 @@ fn battle(
     defender: &[(&str, u32)],
     machines: &[&str],
 ) -> BattleState {
-    let hero = derive_battle_hero(details, r).unwrap();
+    led(
+        r,
+        derive_battle_hero(details, r).unwrap(),
+        defender,
+        machines,
+    )
+}
+
+/// [`battle`] with the battle hero `hero` as it is.
+fn led(r: &Ruleset, hero: BattleHero, defender: &[(&str, u32)], machines: &[&str]) -> BattleState {
     let setup = BattleSetup {
         attacker: army(r, &[("base:pikeman", 10)]),
         defender: army(r, defender),
@@ -105,6 +118,16 @@ fn battle(
 fn stack_of(s: &BattleState, r: &Ruleset, creature: &str) -> StackId {
     let c = r.creature_by_key(creature).unwrap();
     let i = s.stacks().iter().position(|t| t.creature == c).unwrap();
+    StackId(u8::try_from(i).unwrap())
+}
+
+/// The id of the defender's first stack.
+fn defenders_first(s: &BattleState) -> StackId {
+    let i = s
+        .stacks()
+        .iter()
+        .position(|t| t.side == BattleSide::Defender)
+        .unwrap();
     StackId(u8::try_from(i).unwrap())
 }
 
@@ -184,6 +207,90 @@ fn batch_2a_r4_r5_ice_bolt_damage_in_the_originals_order() {
             cast(&mut s, &r, ice, CastTarget::Stack(target)),
             [(target.0, damage)],
             "{creature}"
+        );
+    }
+}
+
+// covers: BAT-MAG-004, HER-BAT-012
+/// E04b T11b review (r1 F-2; from the executable's code at 0x4E5760 and exact rational arithmetic
+/// on its single-precision values, not observed in the game): a Sorcery specialist's grown rate
+/// can lie a hair below its decimal (level 12, Advanced: 0.15999999642), and the product a hair
+/// below a whole number (50 × 1.15999999642 = 57.99999982). The original stores the product as a
+/// single-precision number before it rounds down, and that number is the whole one: the damage
+/// is the exact rates' (the product's floor was one less: 57, 46, 110).
+#[test]
+fn a_sorcery_specialists_product_is_stored_as_a_single_before_it_is_rounded_down() {
+    for profile in ["base:faithful", "base:strict-fixed"] {
+        let r = sod_with(profile);
+        let arrow = spell(&r, "base:magic_arrow");
+        // Sandro with Advanced Sorcery and no magic school: 10 × power + 10, grown by
+        // 10 % × (1 + 5 % × level): 50 × 1.16, 40 × 1.175, 100 × 1.11.
+        for (level, power, damage) in [(12, 4, 58), (15, 3, 47), (2, 9, 111)] {
+            let mut sandro = details(
+                &r,
+                "base:sandro",
+                power,
+                2,
+                false,
+                &[],
+                &["base:magic_arrow"],
+            );
+            sandro.level = level;
+            sandro.skills = vec![(r.skill_by_key("base:sorcery").unwrap(), 2)];
+            let mut s = battle(&r, &sandro, &[("base:pikeman", 100)], &[]);
+            let target = defenders_first(&s);
+            assert_eq!(
+                cast(&mut s, &r, arrow, CastTarget::Stack(target)),
+                [(target.0, damage)],
+                "{profile} level {level}"
+            );
+        }
+    }
+}
+
+// covers: BAT-MAG-004, BAT-HER-001
+/// E04b T11b review (F-robust-3) with the original's spells and the default profile (quirk
+/// Q-0005 on): a hero of power 20 casts Implosion (75 per power + 100 = 1 600) with the largest
+/// spell damage rates the seam carries for every spell and for Earth spells. The battle accepts
+/// the hero and lists the cast; applying it overflowed in the battle's spell damage (a panic).
+/// The damage is the executable's arithmetic on the stored rates (429 496.71875 each), from exact
+/// rational arithmetic; with exact rates it is 1 600 × (1 + 429 496.7295)² rounded down.
+#[test]
+fn implosion_with_huge_spell_damage_rates_does_not_overflow() {
+    for (profile, damage) in [
+        ("base:faithful", 295_149_280_165_888),
+        ("base:strict-fixed", 295_149_279_433_048),
+    ] {
+        let r = sod_with(profile);
+        let implosion = spell(&r, "base:implosion");
+        let earth = r
+            .spell_schools()
+            .iter()
+            .position(|s| s.key.as_str() == "base:earth")
+            .and_then(SchoolId::from_index)
+            .unwrap();
+        let mut hero = BattleHero::new(HeroTypeId::from_index(0).unwrap());
+        hero.power = 20;
+        hero.magic.mana = 100;
+        hero.magic.spell_book = Some(vec![implosion]);
+        let rate = Rate::bp(u32::MAX);
+        hero.effects = vec![
+            BattleEffect::SpellDamage {
+                scope: SpellScope::All,
+                rate,
+            },
+            BattleEffect::SpellDamage {
+                scope: SpellScope::School(earth),
+                rate,
+            },
+        ];
+        let mut s = led(&r, hero, &[("base:pikeman", 10)], &[]);
+        let target = defenders_first(&s);
+        assert!(targets(&s, &r, implosion).contains(&CastTarget::Stack(target)));
+        assert_eq!(
+            cast(&mut s, &r, implosion, CastTarget::Stack(target)),
+            [(target.0, damage)],
+            "{profile}"
         );
     }
 }
