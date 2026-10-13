@@ -58,7 +58,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-13 — M6 T1, the server key and the signed welcome
 
-#146 merged. T1 (`E16-log.md`): `server.key`, `Signer`, the welcome's id per connection; wire 24.
+**#149 open** (T1, `E16-log.md`): the key, the signed welcome; wire 24. Check its mergeability first.
 
 ### 2026-10-13 — M6's refinement
 
