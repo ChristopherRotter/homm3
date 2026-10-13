@@ -1169,14 +1169,17 @@ end to end with the env's action encoding v2 and the replay format v2.
 
 **T14b, second half — the env's answers and the game's difficulty in replays.**
 - **Action encoding v2** (ADR-0017 point 8): entries 0 `EndTurn`, 1–8 the hero slots, 9
-  `Accept`, 10 `Decline` (`ACCEPT`, `DECLINE`; `ENTRY_COUNT` 11). Only a move reads the tile
-  head: for `EndTurn` and the answers it is ignored (any tile decodes) and its mask is empty.
-  `legal_mask` sets the entries of `legal_commands`' commands and the slots with a legal move, so
-  with a decision open the answers are the only legal entries and every tile mask is empty.
-  Agent's call: `EndTurn`'s tile head is ignored too (v1 allowed it only 0), the design note's
-  "ignored otherwise": one rule for every entry without a tile. `action::encode` names a command
-  as an action (the hero's slot, the path's last tile); `decode` gives it back on the query's
-  paths, another path to the same tile becomes the query's. No C ABI (E05).
+  `Accept`, 10 `Decline` (`ACCEPT`, `DECLINE`; `ENTRY_COUNT` 11). After a legal entry that takes
+  no tile (`EndTurn`, an answer) the tile head allows 0 alone, and such an entry decodes with tile
+  0 only (v1's rule for `EndTurn`, the battle's for non-cast entries); an illegal entry's tile mask
+  is empty. `legal_mask` sets the entries of `legal_commands`' commands and the slots with a legal
+  move, so with a decision open the answers are the only legal entries, each with tile 0 alone.
+  The review (runner's call, for the checkpoint): the first build ignored the tile head of these
+  entries with an empty mask, as the design note said, which gives a policy that always samples
+  the head a fully masked categorical (NaN) on exactly the entries a decision forces; reverted
+  before release, still v2. `action::encode` names a command as an action (the hero's slot, the
+  path's last tile); `decode` gives it back on the query's paths, another path to the same tile
+  becomes the query's. No C ABI (E05).
 - **The random agent** (`choose`): its entries are `legal_commands`' commands and the slots with
   a move, one drawn uniformly as before, so it answers an open decision at even odds from its own
   stream (agent's call: the uniform rule unchanged) and, without decisions, draws the same numbers
@@ -1191,7 +1194,8 @@ end to end with the env's action encoding v2 and the replay format v2.
   (default 1; a `u8`, an unknown row the setup's error); `verify` plays at the replay's.
 - **Replay format v2**: `Replay.difficulty`, beside the seed (agent's call: setup input like the
   seed, not part of `ReplayHeader`, which `check` compares with the build; in the file the
-  `[replay]` table's `difficulty = n`, always written). `record_random` records the setup's,
+  `[replay]` table's `difficulty = n`, always written; the review: a file of format v2 or later
+  without it is malformed, `Format`, not a game at normal difficulty). `record_random` records the setup's,
   `verify` builds the game at it whatever the map's import set (an unknown one is
   `ReplayError::Setup`). The answers were already written (`<player> accept|decline`). Agent's call
   (v1 files): as every battle format bump, a replay of another format version is refused,
@@ -1203,14 +1207,16 @@ end to end with the env's action encoding v2 and the replay format v2.
   above. Fixed: the offer opened through `step`, the entry mask 9 and 10 only and no tile,
   `EndTurn` and moves refused (`DecisionOpen`), the other player's answer `NoDecision`; a fork
   during the decision declines while its parent accepts (payment, purchase, masks back); no
-  decision at impossible difficulty; the agent answers both ways and a rollout plays on; encode
+  decision at impossible difficulty; the agent answers both ways and a rollout plays on; an
+  answer with another tile is refused (`InvalidAction`); encode
   and decode round-trip; the reset's difficulty; a replay with answers at easy difficulty
   verifies against the import at normal (normal is another game, 9 the setup's error); the
   random record keeps its difficulty. The env's property plays this map at any difficulty with a
   pick that enters a Cartographer (26 steps with an open decision over its 16 cases): the masks
   against `legal_commands` and `legal_moves`, every masked-in action steps as `apply` does with
   its command, every masked-out one is refused and changes nothing. h3-cli: the option and its
-  errors, the difficulty and answers through the file, the v1 file's refusal. Line coverage of
+  errors, the difficulty and answers through the file, the v1 file's refusal, a v2 file without
+  its difficulty. Line coverage of
   both sub-paths: everything but the record's refusal closure (a bug path since T9b).
 - **Versions**: action encoding v2, adventure replay format v2. Increment 2's versions through
   T14: `MAP_IMPORT_VERSION` 3, adventure ruleset-part hash v5, adventure state hash v5, game state

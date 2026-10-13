@@ -1,6 +1,6 @@
 //! The env with open decisions (E08 T14b, action encoding v2): a Cartographer's offer opens as
-//! its visitor's owner's decision, the entry mask then allows its two answers alone and every
-//! tile mask is empty, the answers step through the env, a fork carries the open decision, the
+//! its visitor's owner's decision, the entry mask then allows its two answers alone, each with
+//! tile 0 alone, the answers step through the env, a fork carries the open decision, the
 //! random agent answers, and a replay records the answers and the game's difficulty.
 
 use h3_game::{Answer, GameEvent, GameSetupError};
@@ -34,15 +34,22 @@ fn legal_entries(env: &AdventureEnv, player: PlayerId) -> Vec<usize> {
     (0..ENTRY_COUNT).filter(|&e| mask[e]).collect()
 }
 
-fn any_tile(env: &AdventureEnv, player: PlayerId) -> bool {
+/// The tiles of each entry's tile mask (one past the last entry too).
+fn legal_tiles(env: &AdventureEnv, player: PlayerId) -> Vec<Vec<u32>> {
     let mut tiles = Vec::new();
-    (0..=ENTRY_COUNT).any(|entry| {
-        env.tile_mask(player, entry, &mut tiles);
-        tiles.iter().any(|&t| t)
-    })
+    (0..=ENTRY_COUNT)
+        .map(|entry| {
+            env.tile_mask(player, entry, &mut tiles);
+            (0u32..)
+                .zip(&tiles)
+                .filter(|&(_, &t)| t)
+                .map(|(i, _)| i)
+                .collect()
+        })
+        .collect()
 }
 
-/// Decoding and encoding agree: `EndTurn` and the answers whatever the tile head holds, each
+/// Decoding and encoding agree: `EndTurn` and the answers with tile 0 alone, each
 /// legal move by its hero's slot and destination along the query's path; a move of another
 /// player's hero, without a step or off the map names no action of the player.
 #[test]
@@ -54,11 +61,12 @@ fn actions_and_commands_round_trip() {
         (Action::accept(), GameCommand::Answer(Answer::Accept)),
         (Action::decline(), GameCommand::Answer(Answer::Decline)),
     ] {
-        let any = Action { tile: 77, ..action };
         assert_eq!(
-            action::decode(state, rules, RED, any),
+            action::decode(state, rules, RED, action),
             Some(command.clone())
         );
+        let off = Action { tile: 77, ..action };
+        assert_eq!(action::decode(state, rules, RED, off), None);
         assert_eq!(action::encode(state, RED, &command), Some(action));
     }
     let past = Action {
@@ -89,7 +97,7 @@ fn actions_and_commands_round_trip() {
 }
 
 // covers: GAM-DEC-001
-/// While red's offer is open its answers are its only legal entries and no tile is legal;
+/// While red's offer is open its answers are its only legal entries, each with tile 0 alone;
 /// `EndTurn` and moves are refused, blue has nothing; a fork carries the decision, and each
 /// answer steps through the env and gives the masks back.
 #[test]
@@ -111,8 +119,12 @@ fn an_open_offer_is_answered_through_the_env() {
     assert_eq!(offer.price.len(), 1);
     assert_eq!(env.observation(BLUE).decision, None);
     assert_eq!(legal_entries(&env, RED), [ACCEPT, DECLINE]);
-    assert!(!any_tile(&env, RED));
+    for (entry, tiles) in legal_tiles(&env, RED).into_iter().enumerate() {
+        let answer = entry == ACCEPT || entry == DECLINE;
+        assert_eq!(tiles, if answer { vec![0] } else { Vec::new() }, "{entry}");
+    }
     assert_eq!(legal_entries(&env, BLUE), []);
+    assert!(legal_tiles(&env, BLUE).iter().all(Vec::is_empty));
     assert_eq!(env.to_move().collect::<Vec<_>>(), [RED]);
     let (hash, steps) = (env.state_hash(), env.steps());
     let open = Err(StepError::Rejected(GameCommandError::DecisionOpen));
@@ -147,15 +159,12 @@ fn an_open_offer_is_answered_through_the_env() {
     let gold = offer.price[0].0.index();
     let before = env.observation(RED).treasury[gold];
     let mut accepted = Vec::new();
-    env.step_with(
-        RED,
-        Action {
-            tile: 5,
-            ..Action::accept()
-        },
-        &mut accepted,
-    )
-    .unwrap();
+    let off = Action {
+        tile: 5,
+        ..Action::accept()
+    };
+    assert_eq!(env.step(RED, off), Err(StepError::InvalidAction));
+    env.step_with(RED, Action::accept(), &mut accepted).unwrap();
     assert!(
         accepted
             .iter()
@@ -166,7 +175,7 @@ fn an_open_offer_is_answered_through_the_env() {
     for e in [&mut env, &mut fork] {
         assert_eq!(e.observation(RED).decision, None);
         assert_eq!(legal_entries(e, RED)[0], END_TURN);
-        assert!(any_tile(e, RED));
+        assert!(!legal_tiles(e, RED)[MOVE_BASE].is_empty());
         assert_eq!(
             e.step(RED, Action::decline()).unwrap_err(),
             StepError::Rejected(GameCommandError::NoDecision)

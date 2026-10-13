@@ -3,8 +3,8 @@
 //! replay file format (TOML). The commands themselves are in [`cli`].
 //!
 //! Replay file format v2 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
-//! difficulty and the answers, E08 T14b: a v1 file reads as normal difficulty and is refused by
-//! its format version):
+//! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
+//! refused by its format version; a v2 file without one is malformed):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, with the acting player:
@@ -307,9 +307,9 @@ struct Meta {
     format: u32,
     engine: String,
     seed: String,
-    /// Format v2; a v1 file has none, reads as the import's and is refused by its version.
-    #[serde(default = "default_difficulty")]
-    difficulty: u8,
+    /// Since format v2 ([`DIFFICULTY_SINCE`]); a v1 file has none.
+    #[serde(default)]
+    difficulty: Option<u8>,
     packs: Vec<[String; 2]>,
     profile: String,
     ruleset_hash: String,
@@ -338,10 +338,9 @@ struct ResultEntry {
     final_hash: String,
 }
 
-/// The difficulty of a file without one (format v1, refused by its version).
-const fn default_difficulty() -> u8 {
-    h3_game::DEFAULT_DIFFICULTY
-}
+/// The first format version whose files name the game's difficulty: an earlier file has none and
+/// reads as the import's (it is refused by its version), a later one without it is malformed.
+const DIFFICULTY_SINCE: u32 = 2;
 
 /// The replay as TOML (format v2).
 ///
@@ -361,7 +360,7 @@ pub fn replay_to_toml(replay: &Replay) -> Result<String> {
             format: h.format_version,
             engine: h.engine_version.clone(),
             seed: replay.seed.to_string(),
-            difficulty: replay.difficulty,
+            difficulty: Some(replay.difficulty),
             packs: h
                 .packs
                 .iter()
@@ -396,11 +395,22 @@ pub fn replay_to_toml(replay: &Replay) -> Result<String> {
 ///
 /// # Errors
 ///
-/// [`AdventureCliError::Format`]: malformed TOML, an unknown key, a bad number, hash or command.
+/// [`AdventureCliError::Format`]: malformed TOML, an unknown key, a bad number, hash or command,
+/// no difficulty in a file of format v2 or later.
 pub fn parse_replay(text: &str) -> Result<Replay> {
     let f: ReplayFile =
         toml::from_str(text).map_err(|e| AdventureCliError::Format(e.to_string()))?;
     let m = f.replay;
+    let difficulty = match m.difficulty {
+        Some(difficulty) => difficulty,
+        None if m.format < DIFFICULTY_SINCE => h3_game::DEFAULT_DIFFICULTY,
+        None => {
+            return Err(AdventureCliError::Format(format!(
+                "format {} needs a difficulty",
+                m.format
+            )));
+        }
+    };
     Ok(Replay {
         header: ReplayHeader {
             format_version: m.format,
@@ -425,7 +435,7 @@ pub fn parse_replay(text: &str) -> Result<Replay> {
             .seed
             .parse()
             .map_err(|_| AdventureCliError::Format(format!("bad seed `{}`", m.seed)))?,
-        difficulty: m.difficulty,
+        difficulty,
         commands: f
             .commands
             .iter()

@@ -210,6 +210,10 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
         ),
         "{e}"
     );
+    // A v2 file without its difficulty is malformed, not a game at normal difficulty.
+    let e = verify(&text.replacen("difficulty = 0\n", "", 1)).unwrap_err();
+    assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
+    assert!(e.to_string().contains("format 2 needs a difficulty"), "{e}");
     std::fs::remove_dir_all(&tmp).unwrap();
     // Answers round-trip through the file.
     let mut answered = replay.clone();

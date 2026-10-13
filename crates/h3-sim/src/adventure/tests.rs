@@ -106,15 +106,14 @@ fn the_duel_starts_with_red_to_move_and_both_its_heroes_free() {
     );
     env.legal_mask(PlayerId::new(1), &mut mask);
     assert_eq!(mask, [false; ENTRY_COUNT]);
-    // Only a move reads the tile head (encoding v2): `EndTurn`'s mask is empty, legal or not.
-    let mut tiles = vec![true];
-    for player in [0, 1].map(PlayerId::new) {
-        env.tile_mask(player, END_TURN, &mut tiles);
-        assert_eq!(tiles.len(), env.tile_count());
-        assert!(!tiles.iter().any(|&t| t));
-    }
-    env.tile_mask(PlayerId::new(0), MOVE_BASE, &mut tiles);
-    assert!(tiles.iter().any(|&t| t));
+    // After a legal `EndTurn` the tile head allows 0 alone; after an illegal one nothing.
+    let mut tiles = Vec::new();
+    env.tile_mask(PlayerId::new(0), END_TURN, &mut tiles);
+    assert_eq!(tiles.len(), env.tile_count());
+    assert_eq!(tiles.iter().filter(|&&t| t).count(), 1);
+    assert!(tiles[0]);
+    env.tile_mask(PlayerId::new(1), END_TURN, &mut tiles);
+    assert!(!tiles.iter().any(|&t| t));
     assert_eq!(
         env.observation(PlayerId::new(1)),
         observe(
@@ -188,10 +187,10 @@ fn is_move(entry: usize) -> bool {
     (MOVE_BASE..ACCEPT).contains(&entry)
 }
 
-/// The masks of `player` agree with the game: the entries without a tile are the commands
-/// [`legal_commands`] lists (with an open decision its answers alone), their tile masks empty; a
-/// move's entry is legal exactly when its tile mask has a tile, its tiles the hero's legal moves
-/// but its own tile, each decoding to the query's path.
+/// The masks of `player` agree with the game: an entry is legal exactly when its tile mask has a
+/// tile; the entries without a tile are the commands [`legal_commands`] lists (with an open
+/// decision its answers alone), tile 0 alone their tile mask and the only tile they decode with;
+/// a move's tiles are the hero's legal moves but its own tile, each decoding to the query's path.
 fn check_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCaseError> {
     let (state, rules) = (env.state(), env.rules());
     let mut entries = [false; ENTRY_COUNT];
@@ -205,8 +204,9 @@ fn check_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCaseError
     for (entry, &legal) in entries.iter().enumerate() {
         env.tile_mask(player, entry, &mut tiles);
         prop_assert_eq!(tiles.len(), env.tile_count());
+        prop_assert_eq!(legal, tiles.iter().any(|&t| t), "entry {}", entry);
         if !is_move(entry) {
-            prop_assert!(!tiles.iter().any(|&t| t), "entry {}", entry);
+            prop_assert_eq!(tiles.iter().filter(|&&t| t).count(), usize::from(legal));
             let command = action::decode(state, rules, player, Action { entry, tile: 0 });
             prop_assert_eq!(
                 legal,
@@ -214,9 +214,10 @@ fn check_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCaseError
                 "entry {}",
                 entry
             );
+            let off = Action { entry, tile: 1 };
+            prop_assert_eq!(action::decode(state, rules, player, off), None);
             continue;
         }
-        prop_assert_eq!(legal, tiles.iter().any(|&t| t), "entry {}", entry);
         let Some(hero) = hero_in_slot(state, player, entry - MOVE_BASE) else {
             continue;
         };
@@ -314,7 +315,7 @@ proptest! {
             let mut tiles = Vec::new();
             env.tile_mask(player, action.entry, &mut tiles);
             let legal = entries.get(action.entry) == Some(&true)
-                && (!is_move(action.entry) || tiles.get(action.tile as usize) == Some(&true));
+                && tiles.get(action.tile as usize) == Some(&true);
             let command = action::decode(env.state(), env.rules(), player, action);
             let mut expected = env.state().clone();
             let applied = command.clone().map(|command| {

@@ -14,18 +14,19 @@
 //! [`HERO_SLOTS`] (the original allows a player eight heroes on the map); a hero's slot changes
 //! when a hero of a lower id joins or leaves the player (later increments). The tile head is a
 //! tile of the map, `(level × height + row) × width + column`, the observation's order; its size
-//! is the map's tile count ([`crate::adventure::AdventureEnv::tile_count`]). Only a move reads the
-//! tile head: for `EndTurn` and the answers it is ignored (any tile decodes) and its mask is
-//! empty. A move's destination is a tile the hero's reachable-tiles query lists, not its own; the
-//! action carries no path: the command takes the path the query chose (`h3_game::legal_moves`). A
-//! client may send any other path the hero can pay (`apply` checks each step); an agent of this
-//! encoding moves along the query's paths only. The heads' masks are conditioned on the entry
-//! ([`legal_mask`], [`tile_mask`]). While the player has an open decision its answers are its
-//! only legal entries (GAM-DEC-001: `h3_game::legal_commands` lists them alone and
-//! `h3_game::legal_moves` gives nothing), so every tile mask is empty.
+//! is the map's tile count ([`crate::adventure::AdventureEnv::tile_count`]). After an entry that
+//! takes no tile (`EndTurn`, the answers) the tile head allows exactly 0, as the battle's heads
+//! after a non-cast entry (a policy that always samples the head never meets an empty mask on a
+//! legal entry). A move's destination is a tile the hero's reachable-tiles query lists, not its
+//! own; the action carries no path: the command takes the path the query chose
+//! (`h3_game::legal_moves`). A client may send any other path the hero can pay (`apply` checks
+//! each step); an agent of this encoding moves along the query's paths only. The heads' masks are
+//! conditioned on the entry ([`legal_mask`], [`tile_mask`]); an illegal entry's tile mask is
+//! empty. While the player has an open decision its answers are its only legal entries
+//! (GAM-DEC-001: `h3_game::legal_commands` lists them alone and `h3_game::legal_moves` gives
+//! nothing), each with tile 0 alone.
 //!
-//! Version 2 (E08 T14b) appended the answers and made the tile head of `EndTurn` ignored
-//! (version 1 allowed it only 0).
+//! Version 2 (E08 T14b) appended the answers.
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
 use h3_contracts::{HeroId, PlayerId};
@@ -55,13 +56,12 @@ pub const ENTRY_COUNT: usize = DECLINE + 1;
 /// Which entries are legal.
 pub type EntryMask = [bool; ENTRY_COUNT];
 
-/// An action: an entry and its tile head (ignored but by a move; 0 by the constructors).
+/// An action: an entry and its tile head (0 for an entry that takes no tile).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Action {
     /// The entry.
     pub entry: usize,
-    /// The destination tile of a move, `(level × height + row) × width + column`; ignored
-    /// otherwise.
+    /// The destination tile of a move, `(level × height + row) × width + column`; 0 otherwise.
     pub tile: u32,
 }
 
@@ -166,8 +166,8 @@ pub fn legal_mask(state: &GameState, rules: &GameRuleset, player: PlayerId, mask
 }
 
 /// Fills `mask` (resized to the tile count) with the legal tiles of `player` after choosing
-/// `entry`: the reachable tiles but its own of a hero's legal move; none after any other entry
-/// (`EndTurn` and the answers ignore the tile head) or an illegal one.
+/// `entry`: 0 alone after a legal entry that takes no tile (`EndTurn`, an answer), the reachable
+/// tiles but its own of a hero's legal move; none after an illegal entry.
 pub fn tile_mask(
     state: &GameState,
     rules: &GameRuleset,
@@ -177,41 +177,53 @@ pub fn tile_mask(
 ) {
     mask.clear();
     mask.resize(tile_count(state), false);
-    let reach = entry
+    if let Some(command) = tileless(entry) {
+        mask[0] = legal_commands(state, rules, Actor::Player(player)).contains(&command);
+    } else if let Some(reach) = entry
         .checked_sub(MOVE_BASE)
-        .and_then(|slot| moves(state, rules, player, slot));
-    for (pos, _) in reach.iter().flat_map(Reach::tiles) {
-        if let Some(index) = tile_index(state, pos) {
-            mask[index as usize] = true;
+        .and_then(|slot| moves(state, rules, player, slot))
+    {
+        for (pos, _) in reach.tiles() {
+            if let Some(index) = tile_index(state, pos) {
+                mask[index as usize] = true;
+            }
         }
     }
 }
 
+/// The command of an entry that takes no tile: `EndTurn` or an answer.
+const fn tileless(entry: usize) -> Option<GameCommand> {
+    match entry {
+        END_TURN => Some(GameCommand::EndTurn),
+        ACCEPT => Some(GameCommand::Answer(Answer::Accept)),
+        DECLINE => Some(GameCommand::Answer(Answer::Decline)),
+        _ => None,
+    }
+}
+
 /// The command `player` issues with `action`, if the action names one: `EndTurn` or an answer
-/// (whatever the tile head holds), or a move of one of its heroes to a tile its reachable-tiles
-/// query lists (not its own) along the query's path. Whether the command may be issued now (whose
-/// turn it is, an open decision) is `apply`'s.
+/// with tile 0, or a move of one of its heroes to a tile its reachable-tiles query lists (not its
+/// own) along the query's path. Whether the command may be issued now (whose turn it is, an open
+/// decision) is `apply`'s.
 pub fn decode(
     state: &GameState,
     rules: &GameRuleset,
     player: PlayerId,
     action: Action,
 ) -> Option<GameCommand> {
-    let command = match action.entry {
-        END_TURN => GameCommand::EndTurn,
-        ACCEPT => GameCommand::Answer(Answer::Accept),
-        DECLINE => GameCommand::Answer(Answer::Decline),
-        entry => {
-            let hero = hero_in_slot(state, player, entry.checked_sub(MOVE_BASE)?)?;
-            let to = tile_pos(state, action.tile)?;
-            let reach = state
-                .adventure()
-                .reach(rules.core(), rules.adventure(), hero)?;
-            let path = reach.path(to).filter(|path| !path.is_empty())?;
-            GameCommand::Adventure(AdventureCommand::MoveHero { hero, path })
-        }
-    };
-    Some(command)
+    if let Some(command) = tileless(action.entry) {
+        return (action.tile == 0).then_some(command);
+    }
+    let hero = hero_in_slot(state, player, action.entry.checked_sub(MOVE_BASE)?)?;
+    let to = tile_pos(state, action.tile)?;
+    let reach = state
+        .adventure()
+        .reach(rules.core(), rules.adventure(), hero)?;
+    let path = reach.path(to).filter(|path| !path.is_empty())?;
+    Some(GameCommand::Adventure(AdventureCommand::MoveHero {
+        hero,
+        path,
+    }))
 }
 
 /// The action that names `command` of `player`, if one does: `EndTurn` and the answers by their
