@@ -10,7 +10,7 @@ id       = "BAT-GEO-001"
 title    = "Battlefield hex layout, neighbours and distance"
 context  = "battle"
 status   = "implemented"
-summary  = "The field is width x height hexes (original: 17 x 11 with one non-standable side column on each edge, i.e. 15 x 11 playable), hex = x + width*y. Even rows (0-based) are shifted half a hex right: left/right neighbours are (x-1,y)/(x+1,y); on even rows the upper/lower neighbours are x and x+1, on odd rows x-1 and x. Distance: with X = x + floor(y/2), dX = X2-X1, dY = y2-y1, distance = max(|dX|,|dY|) if dX and dY have the same sign, else |dX|+|dY|. Footprints of two-hex stacks: BAT-GEO-002; obstacles: BAT-GEO-003. Scope: no siege walls (sieges are later)."
+summary  = "The field is width x height hexes (original: 17 x 11 with one non-standable side column on each edge, i.e. 15 x 11 playable), hex = x + width*y. Even rows (0-based) are shifted half a hex right: left/right neighbours are (x-1,y)/(x+1,y); on even rows the upper/lower neighbours are x and x+1, on odd rows x-1 and x. Distance: with X = x + floor(y/2), dX = X2-X1, dY = y2-y1, distance = max(|dX|,|dY|) if dX and dY have the same sign, else |dX|+|dY|. Footprints of two-hex stacks: BAT-GEO-002; obstacles: BAT-GEO-003. A town's walls: BAT-SIE-002."
 numeric  = "integer"
 
   [[rule.source]]
@@ -486,7 +486,7 @@ id       = "BAT-MOV-001"
 title    = "Walking movement"
 context  = "battle"
 status   = "implemented"
-summary  = "A walking stack moves its position up to its speed in steps between neighbouring hexes (a two-hex stack's other hex comes along); after every step its whole footprint (BAT-GEO-002) must be on standable hexes that are neither obstacles (BAT-GEO-003) nor occupied by another living stack (its own hexes do not block it; dead stacks do not block; there is no zone of control). Moving to its own position is not a move. Flyers and teleporters: BAT-MOV-002. Scope: no quicksand, moat, land mines or fire walls (spells and sieges are later)."
+summary  = "A walking stack moves its position up to its speed in steps between neighbouring hexes (a two-hex stack's other hex comes along); after every step its whole footprint (BAT-GEO-002) must be on standable hexes that are neither obstacles (BAT-GEO-003) nor occupied by another living stack (its own hexes do not block it; dead stacks do not block; there is no zone of control). Moving to its own position is not a move. Flyers and teleporters: BAT-MOV-002. Quicksand, land mines and fire walls: BAT-MAG-028, BAT-MAG-032, BAT-MAG-033; a town's walls, gate and moat: BAT-SIE-002 to BAT-SIE-004."
 numeric  = "integer"
 
   [[rule.source]]
@@ -749,7 +749,7 @@ id       = "BAT-RNG-002"
 title    = "Distance penalty"
 context  = "battle"
 status   = "verified"
-summary  = "A shot deals half damage (a reduction of ranged_penalty_percent = 50 %, BAT-DMG-002) when no hex of the target is within ranged_full_damage_distance = 10 hexes of any hex of the shooter (the smallest distance between the two stacks: the original turns a two-hex shooter to face its target before it measures from its front hex, so a target behind it is measured from its rear hex; BAT-Q36), unless the shooter has the no_distance_penalty ability (Sharpshooter) or its hero's NoRangePenalty effect (Golden Bow, Bow of the Sharpshooter; BAT-HER-006). This includes the Ballista (observed, batch 1b R7; with the Golden Bow none, R8). Scope: siege walls (the obstacle penalty) come with sieges."
+summary  = "A shot deals half damage (a reduction of ranged_penalty_percent = 50 %, BAT-DMG-002) when no hex of the target is within ranged_full_damage_distance = 10 hexes of any hex of the shooter (the smallest distance between the two stacks: the original turns a two-hex shooter to face its target before it measures from its front hex, so a target behind it is measured from its rear hex; BAT-Q36), unless the shooter has the no_distance_penalty ability (Sharpshooter) or its hero's NoRangePenalty effect (Golden Bow, Bow of the Sharpshooter; BAT-HER-006). This includes the Ballista (observed, batch 1b R7; with the Golden Bow none, R8). A town's walls halve a shot too, multiplied with this one (BAT-SIE-008)."
 numeric  = "integer"
 
   [[rule.source]]

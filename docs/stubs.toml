@@ -22,7 +22,7 @@ epic   = "E05"
 [[stub]]
 id     = "BAT-STUB-2"
 where  = "crates/h3-battle/src/state.rs::BattleState::new"
-reason = "The battle does not read BattleSetup.siege yet (ADR-0023): a battle at a town plays as an ordinary battle until E04c's siege tasks build its rules (walls, gate and moat in T5, the Catapult in T6, the turrets in T7, the controls and the experience in T8)"
+reason = "The battle reads BattleSetup.siege's faction, fort and moat since E04c T5 (the walls, the gate, the moat and the Tower's mines, BAT-SIE-001 to BAT-SIE-008); the walls' hit points, the Catapult and Earthquake (T6), the turrets (T7), the structures, the Escape Tunnel, the town's morale and luck, Teleport's and the summons' limits, the controls and the experience (T8) are not read yet"
 epic   = "E04c"
 
 # --- adventure (ADV-STUB-<n>) ---

@@ -655,7 +655,7 @@ fn shot(s: &BattleState, r: &BattleRuleset, shooter: u8, target: u8) -> u64 {
 #[test]
 fn the_walls_halve_shots_from_outside_at_targets_inside() {
     // archer (attack 6) at fixed (defense 10), 10 creatures of 10 damage: 90, halved 45.
-    for profile in ["t:faithful", "t:quirky"] {
+    for profile in ["t:faithful", "t:single"] {
         let r = ruleset_with(profile, |_| {});
         let fort = town(&r, "t:castle", FortLevel::Fort, Moat::Absent);
         let damage = |shooter: (&'static str, i32, i32), target: (i32, i32)| {

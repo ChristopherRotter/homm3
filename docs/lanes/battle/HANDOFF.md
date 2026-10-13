@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 3, T5** (refined 2026-10-14, the epic's "T5"): T5a the seam **#183** (`shared/siege-seam`, ADR-0023; BAT-Q41), T5b towns on the experiment maps (`battle/e04c-t5b`, `cross-lane`), T5c the reading (`installation.md` §7.28; BAT-Q42: the code on D-8, D-10). **In progress: T5d** on `battle/e04c-t5` (stacked on #183). Then T5e (a siege batch by an agent).
-- **Merged:** #164, #169, #170, #171, #179, #180. E04b closed 2026-10-12.
-- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-2 (T5d), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
-- **Versions** (unchanged by T5a–T5c): battle state hash v45, battle part hash v2, replay format v25, action encoding v12, C ABI v19, observation encoding v15; shared: core ruleset hash v43, pack format v36, protocol v29. Next ids: BAT-Q43, BAT-QUIRK-22, BAT-STUB-3, BAT-TER-007, BAT-SIE-001; survey D-11, S-30.
+- **E04c T5** (the epic's "T5"): T5a (#183), T5b towns on the maps (**#184**, `cross-lane`), T5c the reading (§7.28), T5d walls, gate and moat (`battle/e04c-t5`, `cross-lane`: `h3-protocol`, `h3-view`). **Next: T5e**, a siege batch by an agent; then T6.
+- **Merged:** #164, #169, #170, #171, #179, #180, #183. E04b closed 2026-10-12.
+- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-2 (T6–T8), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
+- **Versions** (T5d): battle state hash v46, battle part hash v3, replay format v26, action encoding v12, C ABI v20, observation encoding v16; shared: core ruleset hash v43, pack format v37, protocol v30. Next ids: BAT-Q43, BAT-QUIRK-22, BAT-STUB-3, BAT-TER-007, BAT-SIE-009; survey D-11, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches are played by the user or an agent.
 
 ## Standing traps
@@ -33,6 +33,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Rule code reads abilities via `ruleset.abilities(creature)`; per-attack booleans are `StackTraits` bits set at setup. `Stack.spells` holds the spells' values only: a creature's `innate_spell` is read where the original reads the creature (`magic::mirror_chance`, `magic::reflection`), not by Hypnotize, Dispel or usefulness tests. Two `skill_specialty` effects in one specialty are rejected.
 - A two-hex stack's position is its rear hex (BAT-GEO-002): where VCMI measures at its head, use `Footprint::front` (placement, a shot's aim, the berserk shooter); a shot's distance is `footprint_distance` (the original turns its shooter, BAT-Q36); `hexes()` keeps the front hex first. Tests place two-hex stacks by the rear hex.
 - Relations go by the acting stack's controller and the other stack's own side (`Stack::may_attack`; `is_hostile_to` only for blocking and multi-headed strikes).
+- A town's gate opens in `obstacles::moved`: a quiet sink moves a walker in one step, so only a recording sink sees it open mid-walk; a rule reading the gate mid-walk belongs in `travel_through`.
 - A retired quirk flag keeps its `REGISTRY` position without a name (`flags()` lists the live ones). A flag that comes or goes changes the faithful ruleset hashes: the golden replays, and the adventure lane's faithful replays (a `cross-lane` header line).
 
 - The observation is complete since T9a: a new state field a rule reads goes into `observe_as` (public, own part or neither: ADR-0014 point 8), the flat encoding (version and ABI bump) and the hygiene property.
@@ -57,6 +58,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-14 (fifty-ninth) — E04c T5b, T5d: towns on the maps (#184), walls, gate and moat
+
+T5b's pull request; T5d rebased on #183's squash: the harvested siege data, the walls, gate, moat, the Tower's mines, the shot's wall test (BAT-SIE-001 to 008). Detail: `docs/epics/E04c-log.md`.
+
 ### 2026-10-14 (fifty-eighth) — E04c T5a to T5c: the siege seam, towns, the reading
 
 The seam's pull request #183 (ADR-0023; BAT-Q41: the faction by handle, `structures` by the code, the moat by the game's version); towns in the map writer (T5b); the walls', gate's and moat's reading (§7.28, D-8 to D-10, BAT-Q42). Detail: `docs/epics/E04c-log.md`.
@@ -64,7 +69,3 @@ The seam's pull request #183 (ADR-0023; BAT-Q41: the faction by handle, `structu
 ### 2026-10-13 (fifty-seventh) — E04c T3: the battlefield experiments run by an agent
 
 The user's cut (T3, then T4). T3: the writer's grounds and coast flag, `--only`; batches 3a and 3b run on the harness after batch 1a's R1 matched (#179). T4: the siege reading, survey and ADR draft; BAT-Q40 asked. Detail: `docs/epics/E04c-log.md`.
-
-### 2026-10-13 (fifty-sixth) — E04c refined; T1 and T2, the battlefields
-
-The user's answers (BAT-Q37); T1 (the readings, the survey, the ADR draft; #164); T2 built on the draft while the user was away, then adjusted to BAT-Q38 (ADR-0022, S-28); protocol v28 after master's v27. Detail: `docs/epics/E04c-log.md`.

@@ -119,3 +119,24 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   Mine under SoD rules); the shot's wall test on a column/row grid line. VCMI agrees but for D-8
   (the open gate) and D-10 (the floor at 0); the wiki sides with the code on D-9. **BAT-Q42 (the
   user): the code on D-8 and D-10.**
+- **T5d, the battle** (`battle/e04c-t5`, `cross-lane` for `h3-protocol` and the client's
+  `h3-view`): the battle part's `siege` field in `[battle]` (each row's wall, moat and second moat
+  hex, the gate, the defense penalty, the mines' power) and a `[[siege]]` record per town faction
+  (the moat's damage, the second row, the mines' spell), both harvested from the executable's
+  tables and five instruction operands (`h3_formats::exe::siege_data`, checked against their
+  opcodes); `no_wall_penalty` for the Mage, Arch Mage, Enchanter and Sharpshooter (gap-fill,
+  `exe-siege-walls`). The battle (`h3_battle::siege`): setup errors `UnknownSiege` and
+  `InvalidSiege`; the walls and the closed gate block (the defender passes while the bridges are
+  free of stacks and corpses), the gate opens on a defender's step onto 94–96 and closes after
+  every walk, flight, teleporting move, action and turn; the moat's stops (not the bridges for the
+  defender), its damage on entering (once per move) and on acting in place, its −3 defense (not
+  floored, not for the frenzied); the Tower's ten hidden mines laid after the sight is set; the
+  shot's halving on the column/row line in the original's x87 steps (`X87`, 1/17 of a cell), with
+  the hero's bow exempt (its `NoRangePenalty`). A recording sink sees the gate open and close
+  mid-walk, a quiet one only at the walk's end: the same state (tested). Versions: battle state
+  hash v46, battle part hash v3, pack format v37, replay format v26, observation encoding v16
+  (four globals, two planes), C ABI v20, protocol v30 (`wire::Siege`, three events). The
+  synthetic pack gets the field and a record for the vale (the Fortress's shape); the scenario
+  `siege` and the golden replay `siege-s7` (the defender out on both bridges and into the moat,
+  the attacker in both rows); the other replays changed only their hashes and versions. Rules
+  BAT-SIE-001 to BAT-SIE-008, 13 tests.

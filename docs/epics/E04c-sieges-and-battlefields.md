@@ -1,6 +1,6 @@
 # E04c — Sieges and special battlefields
 
-Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2 closed: T3 (#179), T4 (#180), BAT-Q39 and BAT-Q40 answered; increment 3, T5: the seam ADR-0023 (#183), towns on the experiment maps, the reading (BAT-Q41, BAT-Q42); next the battle's walls, gate and moat) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
+Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2 closed: T3 (#179), T4 (#180), BAT-Q39 and BAT-Q40 answered; increment 3, T5: the seam ADR-0023 (#183), towns on the experiment maps (#184), the reading (BAT-Q41, BAT-Q42), the battle's walls, gate and moat; next the siege batch T5e) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
 
@@ -71,7 +71,7 @@ banks' fixed layouts; HotA's fields (Cracked Ice, Dunes, Fields of Glory). AI (E
 request and towns on the experiment maps; siege batches run by an agent).
 
 - [ ] T5 Walls, gate and moat (the layout, movement and stops, shooting at and through walls, the
-  moat's damage, the Tower's mines). T5a (#183), T5b and T5c done; T5d and T5e next (below).
+  moat's damage, the Tower's mines). T5a (#183), T5b (#184), T5c and T5d done; T5e next (below).
 - [ ] T6 The Catapult, Ballistics and Earthquake (S-08).
 - [ ] T7 Arrow towers (S-06, S-07; Artillery's control).
 - [ ] T8 The siege's other rules (no retreat or surrender for the besieged, the spell cost's town
@@ -94,7 +94,8 @@ request and towns on the experiment maps; siege batches run by an agent).
   opening and closing; the moat's stop, damage on entering and on acting in place, and −3
   defense; the Tower's hidden mines; the shot's wall test; scenarios, replays and the CLI; catalog
   rules BAT-SIE-001 onwards; golden replays and the bench with the reason. The walls' hit points
-  join with T6, which damages them (ADR-0023 point 5).
+  join with T6, which damages them (ADR-0023 point 5). **Done:** BAT-SIE-001 to BAT-SIE-008
+  (the log has the record).
 - **T5e, a siege batch run by an agent** on the capture harness: the walk into the moat (stop,
   damage, defense), the gate, the Tower's mines; D-8's and D-10's confirmation rows.
 - Acceptance: every rule of §7.28 has a catalog rule with its sources and a test; battles without
