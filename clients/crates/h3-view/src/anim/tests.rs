@@ -32,6 +32,7 @@ fn look(times: [u32; 4], frames: &[(u32, u32)], top: i32) -> Look {
         climax: 0,
         missile_offsets: [[0, 0]; 3],
         top,
+        missile: None,
     }
 }
 
@@ -53,6 +54,12 @@ fn looks() -> BTreeMap<u16, Look> {
     );
     marksman.climax = 7;
     marksman.missile_offsets = [[34, -71], [38, -61], [17, -53]];
+    // `PLCBOWX.DEF`: 30 x 30, nine frames in group 0 (the user's archive; numbers only).
+    marksman.missile = Some(Missile {
+        def: "PLCBOWX.DEF".to_string(),
+        size: [30, 30],
+        angles: vec![90, 72, 45, 27, 0, -27, -45, -72, -90],
+    });
     let base = [
         (
             CHAMPION,
@@ -122,9 +129,10 @@ fn at(id: u8, side: Side, creature: u16, hex: u8, two_hex: bool) -> Stack {
     s
 }
 
-/// The snapshot with `stacks`.
+/// The snapshot with `stacks`, the first one active (the human's, as in the sequences).
 fn snapshot(stacks: Vec<Stack>) -> Observation {
     let mut o = observation();
+    o.active = stacks.first().map(|s| s.id);
     o.stacks = stacks;
     o
 }
@@ -215,9 +223,19 @@ fn the_walk_sequence_plays_as_recorded() {
         moved(0, 36, 37),
         moved(0, 37, 38),
         moved(0, 38, 39),
-        Event::TurnStarted { stack: 2 },
+        Event::TurnStarted { stack: 1 },
     ];
     let t = play(&o, &[(None, walk)]);
+    // T4b-1, the reference frames (§7.9): the Champions' outline until the walk's first frame
+    // shows, the Marksmen's from the walk's end; the opening's idle step, none while the walk
+    // plays, two at once when it ends, then one per 100 ms.
+    let outlined: Vec<Option<u8>> = [0, 99, 100, 2591, 2592].map(|t2| t.outlined(t2)).into();
+    assert_eq!(outlined, [Some(0), Some(0), None, None, Some(1)]);
+    let pulse: Vec<u32> = [0, 99, 2591, 2592, 2691, 2692, 2792]
+        .map(|t2| t.pulse(t2))
+        .into();
+    assert_eq!(pulse, [1, 1, 1, 3, 3, 4, 5]);
+    assert_eq!(t.projectile(500), None);
     assert_eq!(t.lines(), WALK);
     // What shows: the walk's first frame from 100 ms, standing from 2592; the next turn then.
     assert_eq!(t.at(99)[&0], still(2, 35));
@@ -229,7 +247,7 @@ fn the_walk_sequence_plays_as_recorded() {
     );
     assert_eq!(t.at(2592)[&0], still(2, 39));
     assert_eq!(t.end, 2592);
-    assert_eq!((t.active(0), t.active(2592)), (None, Some(2)));
+    assert_eq!((t.active(0), t.active(2592)), (None, Some(1)));
 }
 
 #[test]
@@ -250,8 +268,27 @@ fn the_shot_sequence_plays_as_recorded() {
         )],
     );
     assert_eq!(t.lines(), SHOT);
-    // The hit's first frame never shows: at 988 the second does.
+    // The hit's first frame never shows: at 988 the second does, the shooter standing.
     assert_eq!(t.at(988)[&2], pose(3, 1, 49));
+    assert_eq!(t.at(988)[&0], still(2, 35));
+    // T4b-1 (§7.9, the reference frames): the arrow's 14 steps every 33 ms from the climax
+    // frame, frame 4 (straight), its canvas centred on the start and moved by 40, 2 per step.
+    let arrow = |at: [i32; 2]| {
+        Some(Projectile {
+            def: "PLCBOWX.DEF".to_string(),
+            frame: 4,
+            at,
+            mirrored: false,
+        })
+    };
+    assert_eq!(t.projectile(525), None);
+    assert_eq!(t.projectile(526), arrow([125, 136]));
+    assert_eq!(t.projectile(559), arrow([166, 138]));
+    assert_eq!(t.projectile(987), arrow([658, 162]));
+    assert_eq!(t.projectile(988), None);
+    assert_eq!(t.projectile(2114), arrow([125, 136]));
+    assert_eq!(t.flights.len(), 2);
+    assert_eq!((t.outlined(99), t.outlined(100)), (Some(0), None));
 }
 
 #[test]
@@ -279,6 +316,14 @@ fn the_melee_sequence_plays_as_recorded() {
     ];
     let t = play(&o, &[(None, fly), (None, attack)]);
     assert_eq!(until(&t.lines(), 6000), MELEE);
+    // T4b-1 (§7.9, the reference frames): the flight's point moves on before each frame by
+    // f32 (352 / 3) / 7, truncated: the last of 21 frames is 351 pixels on, not 352.
+    let offsets: Vec<[i32; 2]> = [300, 358, 1402, 1460].map(|t2| t.at(t2)[&0].offset).into();
+    assert_eq!(offsets, [[16, 0], [33, 0], [335, 0], [351, 0]]);
+    // The computer's Wolf Riders: outlined with its idle step, until their first frame shows.
+    let outlined: Vec<Option<u8>> = [1818, 1918, 2017, 2018].map(|t2| t.outlined(t2)).into();
+    assert_eq!(outlined, [None, Some(2), Some(2), None]);
+    assert_eq!((t.pulse(1917), t.pulse(1918), t.pulse(5000)), (1, 2, 2));
 }
 
 #[test]
@@ -546,14 +591,14 @@ fn shots_without_a_climax_or_a_target() {
         timeline(&o, &commands, numbers, stage, Speed::default()).unwrap()
     };
     let shot = struck(0, 1, 1, flags(true, false, false));
-    // No climax: every frame before the projectile.
+    // No climax: every frame before the projectile, none left for the strike's loop.
     let t = run(&numbers, core::slice::from_ref(&shot));
     assert_eq!(
         t.keys
             .iter()
             .filter(|k| k.stack == 0 && k.pose.group == 15)
             .count(),
-        8 + 1
+        8
     );
     // A climax beyond the group: the same.
     numbers.get_mut(&MARKSMAN).unwrap().climax = 30;
@@ -610,4 +655,110 @@ fn differences_list_both_sides() {
     assert_eq!(differences("1\n3\n", "1\n2\n"), ["- 2", "+ 3"]);
     assert_eq!(differences("1\n2\n", "1\n"), ["+ 2"]);
     assert_eq!(differences("1\n", "1\n2\n"), ["- 2"]);
+}
+
+#[test]
+fn f32_values_round_as_the_x87_stores_them() {
+    let one = 1_i64 << F32_FRAC;
+    // Exact values stay; 352 / 3 rounds to the nearest f32, 15 379 115 / 2^17.
+    assert_eq!(f32_round(5, 1), 5 * one);
+    assert_eq!(f32_round(-5, 2), -5 * one / 2);
+    let third = f32_round(352, 3);
+    assert_eq!(third, 15_379_115 * (one >> 17));
+    // Between 2^20 and 2^21 an f32 steps by 1/8. Ties to even: 2^20 + 1/16 down to 2^20,
+    // 2^20 + 3/16 up to 2^20 + 1/4; a remainder past the half (+ 1/48) rounds up.
+    let (big, eighth) = (one << 20, one >> 3);
+    assert_eq!(f32_round((1 << 24) + 1, 16), big);
+    assert_eq!(f32_round((1 << 24) + 3, 16), big + 2 * eighth);
+    assert_eq!(f32_round(((1 << 24) + 1) * 3 + 1, 48), big + eighth);
+    assert_eq!(f32_trunc(-3 * one / 2), -1);
+    assert_eq!(f32_trunc(7 * one / 2), 3);
+}
+
+#[test]
+fn tangents_of_half_degrees_are_exact_enough() {
+    assert_eq!(tangent(0), 0);
+    assert!((tangent(90) - TAN_SCALE).abs() <= 2, "{}", tangent(90));
+    assert!((tangent(-90) + TAN_SCALE).abs() <= 2);
+    // tan(25°), the shot's threshold.
+    assert!((tangent(50) - TAN_25).abs() <= 2);
+    assert!(tangent(179) > 114 * TAN_SCALE);
+    assert_eq!((tangent(180), tangent(-180)), (i64::MAX, i64::MIN));
+}
+
+#[test]
+fn a_projectile_frame_follows_the_angle() {
+    let missile = Missile {
+        def: "A.DEF".to_string(),
+        size: [2, 2],
+        angles: vec![90, 72, 45, 27, 0, -27, -45, -72, -90],
+    };
+    let aim = |slope: [i64; 2]| Aim {
+        slope,
+        ..Aim::default()
+    };
+    // Straight: frame 4; 30° up: between the midpoints 36 and 13.5, frame 3 (27°); steeply
+    // down: frame 8.
+    assert_eq!(aim([100, 0]).frame(&missile), 4);
+    assert_eq!(aim([100, -58]).frame(&missile), 3);
+    assert_eq!(aim([1, 100]).frame(&missile), 8);
+    // dx 0: the target below is +90° (frame 0), above −90° (the last).
+    assert_eq!(aim([0, 5]).frame(&missile), 0);
+    assert_eq!(aim([0, -5]).frame(&missile), 8);
+    // A midpoint of 90°: every angle is at most it.
+    let up = Missile {
+        angles: vec![90, 90, 0],
+        ..missile
+    };
+    assert_eq!(aim([0, 5]).frame(&up), 1);
+}
+
+#[test]
+fn idle_steps_run_on_their_grid_and_catch_up() {
+    let mut steps = Vec::new();
+    let mut idle = Idle::default();
+    idle.run(250, |t| steps.push(t));
+    assert_eq!(steps, [0, 100, 200]);
+    // Held up 300 ms: twice at once, then on the new grid.
+    idle.from = 600;
+    idle.run(700, |t| steps.push(t));
+    assert_eq!(steps, [0, 100, 200, 600, 600, 700]);
+    // The computer's tick: at most one.
+    let mut idle = Idle { from: 0, next: 100 };
+    assert!(idle.once(1000, &mut steps));
+    assert_eq!(idle.next, 1000);
+    assert!(!idle.once(999, &mut steps));
+    // Without commands the steps go on from the opening.
+    let o = snapshot(vec![at(0, Side::Attacker, PIKEMAN, 35, false)]);
+    let t = play(&o, &[]);
+    assert_eq!(
+        (t.pulse(0), t.pulse(99), t.pulse(100), t.pulse(1000)),
+        (1, 1, 2, 11)
+    );
+}
+
+#[test]
+fn a_shooter_without_a_projectile_waits_as_one_flies() {
+    let mut numbers = looks();
+    numbers.get_mut(&MARKSMAN).unwrap().missile = None;
+    let layout = layout();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+    };
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 35, false),
+        at(2, Side::Defender, GOBLIN, 49, false),
+    ]);
+    let shot = [struck(0, 2, 3, flags(true, false, false))];
+    let commands = [Command {
+        at: None,
+        events: &shot,
+    }];
+    let t = timeline(&o, &commands, &numbers, stage, Speed::default()).unwrap();
+    assert!(t.flights.is_empty());
+    assert_eq!(t.projectile(600), None);
+    // The hit still starts after the 14 steps.
+    assert_eq!(t.at(988)[&2], pose(3, 1, 49));
 }

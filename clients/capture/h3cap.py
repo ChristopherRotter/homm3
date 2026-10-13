@@ -87,8 +87,9 @@ def snapshot(record):
     sys.exit(f"{record}: no snapshot")
 
 
-def count_boxes(observation):
-    """Each living stack's count box (design §4.3, 0x43E140 part 1): (x0, y0, x1, y1)."""
+def count_boxes(observation, showing=None):
+    """Each living stack's count box (design §4.3, 0x43E140 part 1): (x0, y0, x1, y1); with
+    `showing`, only the boxes of those stack ids (every living stack still takes its hexes)."""
     lay = layout()
     ax, ay = lay["anchor"]
     stacks = [s for s in observation["stacks"] if s["alive"] and not s["war_machine"]]
@@ -96,6 +97,8 @@ def count_boxes(observation):
     taken |= set(observation.get("obstacles", []))
     boxes = []
     for s in stacks:
+        if showing is not None and s["id"] not in showing:
+            continue
         row, column = divmod(s["hex"], WIDTH)
         x, y = hex_box(row, column, lay)
         x, y = x + ax, y + ay
@@ -108,6 +111,17 @@ def count_boxes(observation):
             dx, dy = (22 + 44 * w, -15) if right else (-52 - 44 * w, -30)
         boxes.append((x + dx, y + dy, x + dx + COUNT_BOX[0], y + dy + COUNT_BOX[1]))
     return boxes
+
+
+def boxes_at(observation, poses):
+    """The count boxes shown with the stacks' poses `poses` ({id: (group, hex)}): a living stack
+    standing or fidgeting (group 2 or 1) shows its box at its hex (design §4.3: 0x43E140 skips
+    the others); every one takes its hexes; `observation` gives each one's side and size and the
+    obstacles."""
+    moved = [dict(s, hex=poses[s["id"]][1]) for s in observation["stacks"]
+             if s["alive"] and s["id"] in poses]
+    showing = {i for i, (group, _) in poses.items() if group in (1, 2)}
+    return count_boxes({**observation, "stacks": moved}, showing)
 
 
 def mask(names, record=None, shape=(600, 800)):
@@ -133,15 +147,22 @@ def mask(names, record=None, shape=(600, 800)):
 def diff(capture, render, record=None, masks=(), out=None, quiet=False):
     """The pixels that differ outside the masks; prints the count and where they lie."""
     cap, ours = xwd565(capture), png565(render)
-    masked = mask(masks, record, cap.shape)
+    n, where = compare(cap, ours, mask(masks, record, cap.shape), out)
+    if not quiet:
+        print(f"differing: {n} of {int((~mask(masks, record, cap.shape)).sum())} unmasked pixels{where}")
+    return n
+
+
+def compare(cap, ours, masked, out=None):
+    """The count of pixels of `cap` and `ours` (5-6-5 arrays) that differ outside `masked`, and
+    where they lie (text); with `out`, writes the capture dimmed with them red, the masked parts
+    blue."""
     differ = (cap != ours) & ~masked
     n = int(differ.sum())
-    if not quiet:
-        where = ""
-        if n:
-            ys, xs = np.nonzero(differ)
-            where = f" in x {xs.min()}..{xs.max()}, y {ys.min()}..{ys.max()}"
-        print(f"differing: {n} of {int((~masked).sum())} unmasked pixels{where}")
+    where = ""
+    if n:
+        ys, xs = np.nonzero(differ)
+        where = f" in x {xs.min()}..{xs.max()}, y {ys.min()}..{ys.max()}"
     if out:
         rgb = np.stack(
             [(cap >> 11) << 3, ((cap >> 5) & 63) << 2, (cap & 31) << 3], axis=-1
@@ -153,7 +174,7 @@ def diff(capture, render, record=None, masks=(), out=None, quiet=False):
             input=rgb.astype(np.uint8).tobytes(),
             check=True,
         )
-    return n
+    return n, where
 
 
 # -- finding the obstacles ----------------------------------------------------------------------

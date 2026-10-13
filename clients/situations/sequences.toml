@@ -11,6 +11,8 @@
 # the actions did in the original, each a seat and a wire command (stack ids: the attacker's
 # stacks by slot, then the defender's; a two-hex stack's position is its rear hex);
 # `h3-view sequences` plays them and checks the viewer's timeline against the recorded one.
+# `frames` (E17 M2 T4b-1, design §7.9): the frame check's recorded counts, `<ms> <differing
+# pixels>` for every distinct battlefield the original showed (`h3drive.py frames`).
 
 [[sequence]]
 id = "walk"
@@ -18,6 +20,7 @@ scenario = "seq-walk.toml"
 actions = ["hex:40"]
 ms = 2700
 timeline = "timelines/walk.txt"
+frames = "timelines/walk-frames.txt"
 command = [{ seat = "Attacker", command = { Move = { to = 39 } } }]
 
 [[sequence]]
@@ -26,6 +29,7 @@ scenario = "seq-shot.toml"
 actions = ["hex:49"]
 ms = 3100
 timeline = "timelines/shot.txt"
+frames = "timelines/shot-frames.txt"
 command = [{ seat = "Attacker", command = { Shoot = { target = 2, at = 49 } } }]
 
 [[sequence]]
@@ -34,6 +38,7 @@ scenario = "seq-melee.toml"
 actions = ["hex:43"]
 ms = 6000
 timeline = "timelines/melee.txt"
+frames = "timelines/melee-frames.txt"
 command = [
     { seat = "Attacker", command = { Move = { to = 43 } } },
     { seat = "Defender", command = { Attack = { target = 0, from = 45 } } },

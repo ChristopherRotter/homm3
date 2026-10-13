@@ -31,6 +31,9 @@ pub struct BattleLayout {
     pub outline_palette: String,
     /// The active stack's outline: that palette's entry (0x60) before its range rotates.
     pub outline_active: u8,
+    /// The entries of the active outline's range, from `outline_active` on (8): each idle step
+    /// rotates them by one, each taking its lower neighbour's colour (0x522950, §4.2).
+    pub outline_ramp: u8,
 }
 
 impl BattleLayout {
@@ -45,6 +48,16 @@ impl BattleLayout {
             self.hex_origin[0] + self.hex_step[0] * i32::from(column) + shift,
             self.hex_origin[1] + self.hex_step[1] * i32::from(row),
         ]
+    }
+
+    /// The palette entry whose colour the active stack's outline shows after `steps` idle steps:
+    /// the range rotated `steps` times (*provisional*, E17 M2 T4b-1: the opening shows one step
+    /// on, design §6.2).
+    pub fn outline_after(&self, steps: u32) -> u8 {
+        let ramp = u32::from(self.outline_ramp.max(1));
+        let back = (ramp - steps % ramp) % ramp;
+        self.outline_active
+            .saturating_add(u8::try_from(back).unwrap_or(0))
     }
 
     /// Where a sprite on the hex in `row` and `column` stands (the hex record's anchor).
@@ -65,6 +78,7 @@ pub fn parse_battle(text: &str) -> Result<BattleLayout, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec::Vec;
 
     /// The committed native layout.
     const NATIVE: &str = include_str!("../../../layouts/battle.toml");
@@ -80,6 +94,17 @@ mod tests {
         assert_eq!(layout.anchor(5, 3), [14 + 132 + 22, 86 + 210 + 42]);
         assert_eq!(layout.outline_palette, "game.pal");
         assert_eq!(layout.outline_active, 0x60);
+        // §6.2: the opening (one step) shows entry 0x67 (224), the eighth step 0x60 (255).
+        let shown: Vec<u8> = (0..10).map(|s| layout.outline_after(s)).collect();
+        assert_eq!(
+            shown,
+            [0x60, 0x67, 0x66, 0x65, 0x64, 0x63, 0x62, 0x61, 0x60, 0x67]
+        );
+        let flat = BattleLayout {
+            outline_ramp: 0,
+            ..layout
+        };
+        assert_eq!(flat.outline_after(5), 0x60);
     }
 
     #[test]

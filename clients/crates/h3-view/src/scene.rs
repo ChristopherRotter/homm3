@@ -13,7 +13,7 @@ use core::fmt;
 
 use h3_protocol::wire::{Manifest, Observation, Side, Stack};
 
-use crate::anim::Pose;
+use crate::anim::{Pose, Projectile};
 use crate::layout::BattleLayout;
 use crate::tables::{ObstacleArt, Tables};
 
@@ -27,13 +27,18 @@ const STANDING: u8 = 4;
 /// The pass that draws the corpses (§4.6).
 const CORPSES: u8 = 1;
 
-/// The battle at a moment of its timeline (`crate::anim`): each stack's pose and the active stack.
+/// The battle at a moment of its timeline (`crate::anim`): each stack's pose, the active stack,
+/// the idle steps taken and the projectile in flight.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Moment {
     /// The stacks' poses, by id; a living stack without one stands on its hex.
     pub poses: BTreeMap<u8, Pose>,
     /// The active stack (its outline).
     pub active: Option<u8>,
+    /// The idle steps taken: the outline's colour rotates with them (§4.2).
+    pub pulse: u32,
+    /// The projectile in flight, drawn over everything (§7.9).
+    pub projectile: Option<Projectile>,
 }
 
 /// One thing drawn, in the order of the list.
@@ -69,6 +74,19 @@ pub enum Draw {
         x: i32,
         /// The canvas's top edge.
         y: i32,
+    },
+    /// A projectile's frame, drawn plain over the screen as it stands, runs skipped (§7.9).
+    Projectile {
+        /// The DEF.
+        def: String,
+        /// The frame in group 0.
+        frame: u32,
+        /// The canvas's left edge.
+        x: i32,
+        /// The canvas's top edge.
+        y: i32,
+        /// Reflected across its canvas.
+        mirrored: bool,
     },
     /// A creature's sprite with the shadow its frame holds, standing on a hex (§4.2).
     Creature {
@@ -139,8 +157,8 @@ pub fn battle(
     layout: &BattleLayout,
 ) -> Result<Vec<Draw>, SceneError> {
     let moment = Moment {
-        poses: BTreeMap::new(),
         active: observation.active,
+        ..Moment::default()
     };
     battle_at(observation, &moment, manifest, tables, layout)
 }
@@ -148,7 +166,8 @@ pub fn battle(
 /// The draw list of the battle `observation` shows at `moment` (E17 M2 T4a): as [`battle`],
 /// each stack in its pose, a stack the moment has dying or dead (its death's group) among the
 /// corpses (*provisional*: the original moves it to the corpses' list when its death ends);
-/// the outline on the moment's active stack.
+/// the outline on the moment's active stack in the colour its idle steps rotated to; the
+/// projectile last.
 ///
 /// # Errors
 /// As [`battle`].
@@ -255,6 +274,15 @@ pub fn battle_at(
             }
         }
     }
+    if let Some(p) = &moment.projectile {
+        list.push(Draw::Projectile {
+            def: p.def.clone(),
+            frame: p.frame,
+            x: p.at[0],
+            y: p.at[1],
+            mirrored: p.mirrored,
+        });
+    }
     Ok(list)
 }
 
@@ -289,7 +317,7 @@ fn creature(
         frame: pose.frame,
         anchor: [x + pose.offset[0], y + pose.offset[1]],
         mirrored: stack.side == Side::Defender,
-        outline: (moment.active == Some(stack.id)).then_some(layout.outline_active),
+        outline: (moment.active == Some(stack.id)).then(|| layout.outline_after(moment.pulse)),
     };
     let layer = if pose.group == u32::from(groups.death) {
         CORPSES

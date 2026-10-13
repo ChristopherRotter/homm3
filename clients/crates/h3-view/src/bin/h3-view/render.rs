@@ -246,7 +246,9 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             lines.push(format!("the timeline ends at {} ms", timeline.end));
             let moment = scene::Moment {
                 poses: timeline.at(t),
-                active: timeline.active(t).or(observation.active),
+                active: timeline.outlined(t),
+                pulse: timeline.pulse(t),
+                projectile: timeline.projectile(t),
             };
             scene::battle_at(observation, &moment, manifest, &tables, &layout)
         }
