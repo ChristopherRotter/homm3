@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 1** (BAT-Q37, 2026-10-13): T1 merged (#164); BAT-Q38 answered (ADR-0022; D-1, D-2 as the code; S-28 a quirk candidate). **T2 in two `cross-lane` pull requests:** `shared/battlefield-seam` (merge first), then `battle/e04c-t2`. Then the increment's checkpoint and the next cut (T3 needs special ground objects in the `.h3m` writer; sieges from T4; or CLT-Q1, queued).
+- **E04c increment 1** (BAT-Q37, 2026-10-13): T1 merged (#164); BAT-Q38 answered (ADR-0022; D-1, D-2 as the code; S-28 a quirk candidate). **T2 in two `cross-lane` pull requests:** #170 `shared/battlefield-seam` (merge first), then #171 `battle/e04c-t2`. Then the increment's checkpoint and the next cut (T3 needs special ground objects in the `.h3m` writer; sieges from T4; or CLT-Q1, queued).
 - **Merged:** #162, #156, #150, R01. **E04b is closed** (2026-10-12).
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later; T3's experiments (D-1 with S-28, D-2, D-4).
 - **Versions** (T2b): battle owns state hash v45, battle part hash v2, replay format v25, action encoding v12, C ABI v19, observation encoding v15; shared: core ruleset hash v43, pack format v36, protocol v28 (T2b's `cross-lane`, after the server's v27). Next ids: BAT-Q39, BAT-QUIRK-22, BAT-STUB-2, BAT-TER-007.
