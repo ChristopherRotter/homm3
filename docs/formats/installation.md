@@ -2247,10 +2247,11 @@ stack, moves the position onto its other hex: the stack keeps its two hexes, its
 hex behind it and its other hex the one ahead (the hexes' draw parts +0x1A are rewritten, the turn
 animated on request). Twelve routines turn stacks: a walk's step faces the step's direction
 (0x43F0B0: right for directions 0 to 2, left for 3 to 5; the walker 0x441FA0 turns back at its end
-to the facing it started with, when its flag argument is set, 0x4423A2); the melee attack turns its
-attacker before the strikes and back at its end (0x441D79, 0x441F36); the strike, the creature's
-cast, the attack after a move, the flight, the teleporting move and the raise call it too (not read
-whether they turn back).
+to the facing it started with, when its flag argument is set, 0x4423A2); the strike action turns
+its attacker to face the target (0x445C6A) and back after it (0x445C9B); the melee attack turns the
+struck stack to face its attacker (0x441D79) and back at its end unless the stack's flag bit 21 is
+set (0x441F36); the creature's cast, the attack after a move, the flight, the teleporting move and
+the raise call it too (not read whether they turn back).
 
 **The shot** (0x440160). An arrow tower takes its own path (0x465AD0). Any other shooter first
 compares the screen x (the hex record's first word) of the target's position hex with that of its
@@ -2285,4 +2286,8 @@ against VCMI; the user decided on 2026-10-13 (BAT-Q36) that the engine follows i
 and a confirmation row is queued (`docs/experiments/README.md`, batch 2g). Not read: whether the
 other routines that turn a stack measure anything at its turned front hex before turning back (the
 melee attack's breath and attack patterns: leads for a later reading; the engine measures those at
-the front hex by side, BAT-GEO-002).
+the front hex by side, BAT-GEO-002). **Second look** (a fresh agent's independent re-read of
+0x4466A0, 0x446720, 0x440160 and 0x467600, 2026-10-13): it agrees on every point above; it traced
+the damage path after the turn (0x43F900 → 0x443F40 → 0x443B90 → 0x443C96; the wall test 0x467510
+at 0x443C79 gets the turned front hex too) and found 0x443B90 also reached without a turn through
+0x443E30 from 0x437800 and 0x438910, likely the computer player's damage estimates (not read).
