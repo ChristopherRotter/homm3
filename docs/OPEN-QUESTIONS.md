@@ -83,34 +83,6 @@ The original casts a Faerie Dragon's drawn spell in two ways: the mouse cursor o
 
 The review's fix C3 follows the reading of 0x47A100: a created stack whose rounds ran out keeps its record, so no later created stack takes its id and it counts towards the side's stack limit (BAT-MAG-037, BAT-MAG-052; the wiki and VCMI are silent). The rule now reads the engine's mark of such a stack (`Created::vanished`), which the observation does not show: a killed clone and an expired one look alike but differ in whether a Pit Lord may raise at the limit and in the next created stack's id. Nothing hidden leaks (both ends are public events) and the legal mask stays exact, but the observation is no longer complete in ADR-0014 point 8's sense. Registered as BAT-STUB-1. **Options:** (a) keep the fix and add a per-stack public mark to the observation at the next observation-encoding bump (the flat encoding and the C ABI change, and the server's wire maps the observation: a `cross-lane` change); (b) take the fix out until then (one commit; the engine again reuses an expired stack's record, unlike the reading). **Recommendation:** (a) with E05's batch API or E04c, whichever bumps the encoding first. **Blocked:** nothing.
 
-#### BAT-Q40 — The siege seam: the review of the ADR draft (E04c T4)
-
-**Context.** T4 read what the battle takes from a town and gives back (`docs/formats/installation.md`
-§7.27), surveyed the siege's rule areas against VCMI and the wiki (`docs/rules/surveys/E04c-sieges.md`)
-and drafted the seam (`docs/lanes/battle/adr-drafts/sieges.md`). The questions for the review:
-
-1. **The draft:** `BattleSetup.siege: Option<Siege>` for every battle at a town (with or without a
-   fort), carrying derived facts (faction, fort level, moat absent/harmless/damaging, the town's
-   structures for the turrets, the Escape Tunnel, the defenders' morale and luck); the defending
-   hero's town bonuses applied to its `BattleHero` before the seam; no outcome field (ADR-0013 point
-   5's reserved outcome field dropped). **Recommendation:** accept.
-2. **Derived facts or the town's buildings at the seam.** (a) derived facts (the draft): the battle
-   never knows a building, the town context derives them (E09; scenarios give them until then); (b)
-   the built buildings cross the seam and the battle's content maps buildings to effects.
-   **Recommendation:** (a), as the battlefield (ADR-0022); the buildings are the town context's.
-3. **Maps before SoD (S-29).** The original keeps old rules for RoE and AB maps: a harmless moat, no
-   Stronghold moat (its siege then gets natural obstacles). (a) honour it through the derived moat
-   and obstacles (the draft); (b) SoD rules for every map. **Recommendation:** (a): no cost to the
-   battle, faithful to the maps the adventure lane imports.
-4. **D-5 and D-6:** the turrets' counts and the Catapult's table as the code and `BALLIST.TXT` (not
-   VCMI's tower formula, not the wiki's "Expert always hits"), each with a confirmation row in its
-   task. **Recommendation:** yes.
-5. **The cut and the experiments:** T5 walls, gate and moat (with the seam's `shared/` pull request
-   first); T6 the Catapult, Ballistics and Earthquake; T7 the arrow towers; T8 the other siege rules
-   and T9/T10 as planned. Siege batches need towns on the experiment maps: a writer step in `h3-map`
-   (`cross-lane`, as T3's), batches run by an agent where memory reads suffice. **Recommendation:**
-   as proposed; the next increment is T5 with the writer's towns.
-
 ### Adventure lane (`ADV-Q<n>`)
 
 #### ADV-Q12 — Increment 3's scope after the battles survey (E08 T17a checkpoint)
@@ -138,6 +110,7 @@ Newest first in each block. A lane adds an answered question at the top of its o
 
 ### Battle lane (`BAT-Q<n>`)
 
+- *(2026-10-13, BAT-Q40, E04c T4's review)* **The siege seam accepted; old maps honoured; the code and the table for D-5 and D-6; T5 next.** T4 read what the battle takes from a town (`installation.md` §7.27), surveyed the siege (`docs/rules/surveys/E04c-sieges.md`) and drafted the seam (`docs/lanes/battle/adr-drafts/sieges.md`). **User:** (1, 2) the draft accepted: `BattleSetup.siege: Option<Siege>` for every battle at a town, with derived facts (faction, fort level, moat absent/harmless/damaging, structures, Escape Tunnel, the defenders' morale and luck), the defending hero's town bonuses on its `BattleHero` before the seam, no outcome field; it is numbered as an ADR with the seam's `shared/` pull request; (3) maps before SoD keep the original's old rules through the derived moat and obstacles: S-29 is not a quirk, no flag; (4) D-5 (a tower's count) and D-6 (Expert Ballistics) as the code and `BALLIST.TXT`, each with a confirmation row in its task; (5) the next cut: T5, walls, gate and moat, starting with the seam's `shared/` pull request and towns on the experiment maps (`h3-map`'s writer, `cross-lane`), siege batches run by an agent.
 - *(2026-10-13, BAT-Q39, E04c T3)* **S-28 is not a quirk.** Batch 3a (run by an agent on the capture harness) showed the code's behaviour: on Cursed Ground an army of morale −3 has morale 0 (luck 0, no native bonus), so nobody freezes there; the game's texts say "No morale effects on cursed ground". The question was whether the lost negative morale is a `fix-optional` bug (the wiki: "Negates all positive morale effects"; VCMI: morale at most 0). **User:** not a quirk: the game's behaviour is the rule in every profile; S-28 is retired as "considered, not a quirk" (no engine change; BAT-TER-003, survey `E04c-battlefields.md` §5).
 - *(2026-10-13, BAT-Q38, E04c T1's review)* **The battlefield seam accepted (ADR-0022); D-1 and D-2 as the code.** T1 read and surveyed the special battlefields (`docs/formats/installation.md` §7.26, `docs/rules/surveys/E04c-battlefields.md`) and drafted the seam; T2 was built on the draft's recommendations meanwhile. **User:** (1) the draft accepted; asked whether the battlefield should be mandatory, since every battle of the original has one, the user kept it optional on the agent's advice: `None` is the terrain's ordinary battlefield (the original's −1), the key names the special ones (ADR-0022 point 2, the `BattleSetup.battlefield` docs); (2) D-1, Cursed Ground's morale 0 for every stack: the code stands, but the intent may have been only non-positive morale (the wiki's and VCMI's reading), which would make the lost negative morale a bug, `fix-optional`: to be investigated, quirk candidate S-28 (survey §5), with T3's experiment row; (3) D-2, Clover Field's +2 for towns 6–8 only: the code, with the distinction noted (the original's "neutral town alignment" against VCMI's neutral alignment, which also takes in the creatures without a town; BAT-TER-003, survey §5); (4) the cut as proposed: the seam in `shared/battlefield-seam` with ADR-0022, then `battle/e04c-t2`, both labelled `cross-lane` (the user: the seam's struct literals in battle crates, `h3-protocol` in the battle's).
 - *(2026-10-13, BAT-Q37, E04c refinement)* **E04c: the battlefields first, the seam reviewed first, the wiki allowed.** After E04b's closure and #162 the agent proposed E04c's refinement with three questions. **User:** (1) the first increment builds the special battlefields (the shore, the nine magic fields, a ship's deck, two boats, their obstacles; the anti-magic garrison with them), sieges in later increments; (2) T1 writes the survey and an ADR draft and stops for the user's review in the session, T2 builds on what is accepted; (3) the wiki may be read this session. Unchanged: one epic in increments with a checkpoint each (Q41's pattern). Recorded in `docs/epics/E04c-sieges-and-battlefields.md`; the review is BAT-Q38. #162's two checkpoint calls stand as built (the Faerie Dragon's Chain Lightning at its own stacks under the Orb stays with BAT-Q32 (1); the bonus test "aimed at a hex, or a chain").

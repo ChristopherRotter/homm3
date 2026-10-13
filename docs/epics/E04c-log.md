@@ -90,4 +90,6 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   D-7 (a town without a fort is still a town battle), S-29 (the map format's branch, not a bug).
 - **Draft:** `docs/lanes/battle/adr-drafts/sieges.md`: `BattleSetup.siege: Option<Siege>` with
   derived facts, the hero's bonuses before the seam, no outcome field. The review is BAT-Q40.
-
+- **The review** (BAT-Q40, the user): the draft accepted; old maps honoured (S-29 not a quirk);
+  D-5 and D-6 as the code and `BALLIST.TXT`; the next cut T5 (the seam's `shared/` pull request
+  with the ADR, towns on the experiment maps, walls, gate and moat).

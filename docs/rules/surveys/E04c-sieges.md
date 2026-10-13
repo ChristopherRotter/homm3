@@ -89,9 +89,11 @@ follows the result (the adventure lane).
 
 - **D-5 A tower's damage for an odd N.** `code` and `wiki`: half the keep's count, rounded up
   (6 + 2⌊N/2⌋ at the least); `vcmi`: 6 + N. Recommendation: the code, a confirmation row (T7).
+  **The user (BAT-Q40): the code.**
 - **D-6 Expert Ballistics.** `BALLIST.TXT`: Expert hits the wall 75 % of the time; the `wiki`'s
   Ballistics page: "always hits the intended target" (likely HotA's, the page does not say).
-  Recommendation: the table, read in T6 where the Catapult's shot reads it.
+  Recommendation: the table, read in T6 where the Catapult's shot reads it. **The user (BAT-Q40):
+  the table.**
 - **D-7 A battle at a town without a fort.** `code`: at a town all the same (no surrender, no
   retreat without the tunnel, +500 experience, the hero's and the stacks' town bonuses, the town's
   terrain); `vcmi`: also "defended town" for surrender and retreat; the `wiki`: "a usual
@@ -101,7 +103,8 @@ follows the result (the adventure lane).
   natural obstacles instead (`code`; the `wiki` on the versions). On a SoD map no siege has
   natural obstacles (`code`, `vcmi`). Not a bug: the original keeps the old rules for old maps.
   Recommendation: the derivation honours it (the seam's moat says "absent", "harmless" or
-  "damaging"; the obstacles are drawn before the seam as always); no flag.
+  "damaging"; the obstacles are drawn before the seam as always); no flag. **The user (BAT-Q40):
+  honoured; not a quirk.**
 - **S-06, S-07, S-08** (`E04-quirks.md`: the towers, Earthquake) are classified with T6 and T7.
 
 ## 5. Experiments

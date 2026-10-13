@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 2** (the user, 2026-10-13): T3 in **#179** (`cross-lane`: `h3-map`'s writer): batches 3a and 3b run by an agent; D-1, D-2, D-4 as the code, the defender's tile decides; BAT-Q39: S-28 not a quirk. T4 on `battle/e04c-t4` (stacked on #179): the siege survey, §7.27, the ADR draft; **BAT-Q40**, the review, waits for the user.
+- **E04c increment 2** (the user, 2026-10-13): T3 in **#179** (`cross-lane`: `h3-map`'s writer): batches 3a and 3b run by an agent; D-1, D-2, D-4 as the code, the defender's tile decides; BAT-Q39: S-28 not a quirk. T4 in **#180** (stacked on #179): the siege survey, §7.27, the ADR draft, accepted at BAT-Q40. Next: T5 (`QUEUE.md`).
 - **Merged:** #164, #169 (CLT-Q1, wire 29), #170, #171. E04b closed 2026-10-12.
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
 - **Versions** (unchanged by T3): battle state hash v45, battle part hash v2, replay format v25, action encoding v12, C ABI v19, observation encoding v15; shared: core ruleset hash v43, pack format v36, protocol v29. Next ids: BAT-Q41, BAT-QUIRK-22, BAT-STUB-2, BAT-TER-007; survey D-8, S-30.

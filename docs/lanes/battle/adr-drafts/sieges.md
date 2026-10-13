@@ -1,6 +1,7 @@
 # ADR draft — Sieges at the seam
 
-- Status: **draft** (E04c T4, 2026-10-13), for the user's review (OPEN-QUESTIONS BAT-Q40)
+- Status: **accepted** by the user at BAT-Q40 (2026-10-13); numbered as an ADR with the seam's
+  `shared/` pull request (T5's first step)
 - Context: the survey `docs/rules/surveys/E04c-sieges.md`; the code reading
   `docs/formats/installation.md` §7.27; ADR-0013 point 5 (the reserved `siege` fields), ADR-0022
   (the battlefield, derived before the seam)
