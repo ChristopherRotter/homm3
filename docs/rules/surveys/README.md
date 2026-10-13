@@ -25,6 +25,7 @@ The skill, artifact and battle surveys were compiled by sub-agents and reviewed 
 | File | Contents |
 |---|---|
 | [E04c-battlefields.md](E04c-battlefields.md) | just in time for the battlefield seam (BAT-Q37): the twelve special battlefields of the original (how each arises, terrain, effects), their effects compared across the code reading, the game's texts, VCMI and the wiki, the obstacles by battlefield (the executable's tables equal VCMI's), what the setup receives and who derives it, disputes D-1 to D-4, an outline of the sieges, experiment candidates |
+| [E04c-sieges.md](E04c-sieges.md) | just in time for the siege seam (E04c T4, BAT-Q40): what the original's battle takes from a town (fort level, moat, turrets, the defending hero's and the stacks' town bonuses, controls, experience) and gives back, the siege's rule areas compared across the code reading, the game's tables, VCMI and the wiki, what the setup receives and who derives it, disputes D-5 to D-7, quirk candidate S-29 (the map format's branch), experiments |
 
 ## E08 (E08 T1b, 2026-10-09; adventure lane)
 

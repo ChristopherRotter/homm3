@@ -1,0 +1,117 @@
+# E04c — sieges: survey (T4)
+
+The survey behind the siege seam (E04c T4, 2026-10-13): what the original's battle takes from a
+town and gives back, the rule areas of the siege with their sources compared, the disputes, and
+the cut of the siege increments. The detail readings of each area come with its task (T5–T8).
+
+Sources: `code` (the executable, `docs/formats/installation.md` §7.27, earlier §7.15 to §7.26);
+`original-data` (`CRTRAITS.TXT`, `BALLIST.TXT`); `vcmi` (VCMI 1.7.5: `lib/battle/BattleInfo.cpp`,
+`CBattleInfoEssentials.cpp`, `DamageCalculator.cpp`, `lib/mapObjects/CGTownInstance.cpp`,
+`config/buildingsLibrary.json`, `config/factions/*.json`); `wiki` (heroes.thelazy.net, read
+2026-10-13 with the user's approval: `Combat` (its Siege section), `Moat`, `Arrow tower`,
+`Ballistics`).
+
+## 1. A battle at a town in the original
+
+**Every battle at a town is "at a town"**, with or without a fort (`code`: the town is stored
+first, the fort level beside it). The fort level, the highest of Fort, Citadel and Castle built,
+adds the siege's parts:
+
+| Part | Fort | Citadel | Castle | Source |
+|---|---|---|---|---|
+| Walls (11 wall hexes blocked, 12 to 182), the gate | yes | yes | yes | `code` (hexes), `vcmi`, `wiki` |
+| Walls' hit points | 2 | 2 | 3 | `vcmi`; `code`: 18 parts from a per-town table, four +1 with a Castle (T5) |
+| The keep (an Arrow Tower stack at 254) | — | yes (2 hit points, `vcmi`) | yes | `code`, `vcmi` |
+| Upper and lower towers (255, 251) | — | — | yes (2 hit points each, `vcmi`) | `code`, `vcmi` |
+| The moat | — | yes | yes | `code`, `vcmi`, `wiki` |
+| The attacker's Catapult; no defender's Ballista | yes | yes | yes | `code`, `vcmi` (no Ballista "in a town") |
+
+Without a fort the battle is fought on the town's tile like any other, but still at the town: the
+town's native terrain, the defending hero's building bonuses, the defenders' morale from the
+Tavern, no surrender or retreat for the defender, +500 experience for the attacker (`code`). The
+special buildings (the Escape Tunnel, Brimstone Stormclouds, Blood Obelisk, Glyphs of Fear, the
+Brotherhood of the Sword) are tested in a second building set of the town (`code`, +0x158), the
+Tavern, the fort and the Grail in its built set: which buildings the second set holds is the town
+context's to read (E09).
+
+**Moat.** Not in a Tower (land mines instead), not in a Stronghold on a map made before SoD
+(`code`: the map's format; `wiki`: "Stronghold does not have a moat in RoE"). The Fortress's is two
+hexes wide. Damage on entering: 70 (Castle, Rampart, Necropolis, Stronghold, Conflux) or 90
+(Inferno, Dungeon, Fortress), straight to the hit points, and **only on SoD maps** (`code`: the map
+kind; `wiki`: "That effect was introduced in SoD"); the Tower's mines 150. The moat is a stop
+(`code` 0x4B3290); the `wiki` adds −3 defense and damage for each round a stack stays (T5).
+
+**Turrets.** The keep's count is 4 + the town's built buildings among a mask (`code`), each
+creature dealing 2–4 (`CRTRAITS.TXT`); a tower has half the keep's count, rounded up. With the
+`wiki`'s count N of "structures" (upgrades, Citadel and Castle not counted) and the Village Hall
+always built, the keep's count is 5 + N: the `wiki`'s keep damage (10 + 2N to 20 + 4N) and tower
+damage (6..12 + (2..4)·⌊N/2⌋) follow. `vcmi`: keep (10 + 2n)..(20 + 4n), tower (6 + n)..(12 + 2n).
+
+**The defending hero's bonuses** for the battle (`code`, restored at its end; mana capped at its
+value before): Tower's Grail +150 mana; Inferno's Brimstone Stormclouds +2 power; Dungeon's Grail
++12 power; Stronghold's Grail +20 attack; Fortress's Blood Obelisk +2 attack, Glyphs of Fear +2
+defense, its Grail +10 attack and defense. **The defenders' stacks**: Tavern +1 morale, Castle's
+Brotherhood of the Sword +2 more (`code`); luck from the town (Rampart's Fountain of Fortune by
+`vcmi` and the `wiki`; `code` not read).
+
+## 2. The rule areas compared
+
+| Area | `code` | `original-data` | `vcmi` | `wiki` | Increment |
+|---|---|---|---|---|---|
+| Fort levels, parts | as §1 | — | as §1 (`fortifications` per building) | Fort needed; Citadel, Castle improve | T5 |
+| Walls, gate, who passes | wall hexes; gate not read | — | wall parts, gate states | "flying creatures can fly over walls" | T5 |
+| Moat | as §1 | — | `moats.json`, `moatAbility` | as §1; stop, −3 defense, per-round damage | T5 |
+| Tower's land mines | 150 (table), Land Mine's machinery (0x4663BE) | — | `towerMoat` | "minimum 150 points of damage" | T5 |
+| Shooting through walls | 0x467510 not read; stage 2 halves | — | half damage over walls | towers bypass the penalties | T5 |
+| Catapult and Ballistics | the Catapult on hex 119; its shot not read | `BALLIST.TXT`: hit chances keep/tower/gate/wall none 5/10/25/50 %, Basic and Advanced 7/15/30/60 %, Expert 10/20/40/75 %; shots 1, 1, 2, 2; damage 0/1/2 by 10/60/30 % (none), 0/50/50 % (Basic, Advanced), always 2 (Expert) | from the same table | Basic: control; Advanced: two shots; Expert: "always hits the intended target" | T6 |
+| Earthquake | not read | `SPTRAITS.TXT` | spell config | damages walls | T6 |
+| Arrow towers | as §1 | stats in `CRTRAITS.TXT` | as §1 | as §1; no luck, defense ignored, no modifiers; Artillery controls | T7 (S-06, S-07) |
+| Defender's bonuses | as §1 | — | town buildings' bonuses | town pages | T8 |
+| Surrender, retreat | surrender never for the besieged; retreat only with the Escape Tunnel | — | the same | — | T8 |
+| Experience | +500 for the attacker at a town | — | — | +500 for a capture (`E04-battle.md` §4.2) | T8 |
+| Teleport, summoning, spell cost in sieges | §7.15, 0x467130, §7.21 (partly) | — | — | — | T8 |
+
+## 3. What the battle setup must receive, and who derives it
+
+The battle needs, for a battle at a town: that it is at a town (the controls, the experience), the
+town's faction (the moat's hexes and damage, the turrets' look, the battlefield picture), the fort
+level, whether the moat exists and whether it does damage (the map's format), the turrets'
+strength (the count of the town's buildings), whether the defender may retreat (the Escape
+Tunnel), and the defenders' morale and luck from the town. Everything else in §1 is the defending
+hero's (its primary skills and mana for the battle, derived before the seam like its other
+bonuses, ADR-0013 point 6) or the battle's own rules. The town's buildings belong to the town
+context (E09, not refined); its owner derives these facts, as the adventure lane derives the
+battlefield (ADR-0022). The battle reports nothing about the town: the walls are not kept (`code`:
+nothing written back to the town but the hero's restored skills; `vcmi` the same), and a capture
+follows the result (the adventure lane).
+
+## 4. Disputes and quirk candidates
+
+- **D-5 A tower's damage for an odd N.** `code` and `wiki`: half the keep's count, rounded up
+  (6 + 2⌊N/2⌋ at the least); `vcmi`: 6 + N. Recommendation: the code, a confirmation row (T7).
+  **The user (BAT-Q40): the code.**
+- **D-6 Expert Ballistics.** `BALLIST.TXT`: Expert hits the wall 75 % of the time; the `wiki`'s
+  Ballistics page: "always hits the intended target" (likely HotA's, the page does not say).
+  Recommendation: the table, read in T6 where the Catapult's shot reads it. **The user (BAT-Q40):
+  the table.**
+- **D-7 A battle at a town without a fort.** `code`: at a town all the same (no surrender, no
+  retreat without the tunnel, +500 experience, the hero's and the stacks' town bonuses, the town's
+  terrain); `vcmi`: also "defended town" for surrender and retreat; the `wiki`: "a usual
+  battlefield". Recommendation: the code; the seam keeps the town without a fort.
+- **S-29 The map format's branch** (candidate). A map made for RoE or AB, played in SoD: the moat
+  does no damage, the Stronghold has none and its siege with a Citadel or Castle gets the usual
+  natural obstacles instead (`code`; the `wiki` on the versions). On a SoD map no siege has
+  natural obstacles (`code`, `vcmi`). Not a bug: the original keeps the old rules for old maps.
+  Recommendation: the derivation honours it (the seam's moat says "absent", "harmless" or
+  "damaging"; the obstacles are drawn before the seam as always); no flag. **The user (BAT-Q40):
+  honoured; not a quirk.**
+- **S-06, S-07, S-08** (`E04-quirks.md`: the towers, Earthquake) are classified with T6 and T7.
+
+## 5. Experiments
+
+Siege batches need towns on the experiment maps (the writer places heroes, monsters, piles and
+grounds today, `docs/formats/h3m.md`): a town object with its buildings is the next writer step
+(`h3-map`, a `cross-lane` change as T3's). An agent's run reads the opening from memory as batch
+3 did: the turrets' counts (D-5, the count of buildings), the fort level, the moat flags, the
+defending hero's raised skills and the stacks' morale; the Catapult's hit table needs many shots
+and the shots' outcomes (T6).
