@@ -888,13 +888,45 @@ fn check_unlisted(
 /// battle, recruitment or pickup; E08 T10b's audit), so an accepted command leaves every hero's
 /// army as it was, the actor's own included. A treasury changes only by a visit's gains (E08
 /// T13b, ADR-0017's consequences): each player's by exactly the gains it was told, which come
-/// with an object leaving the map; and since T14b by an accepted offer's price, which its owner
-/// is told it paid, exactly the price of the decision it answered.
+/// with an object leaving the map, and (E08 T16a's audit) are exactly the contents drawn for the
+/// objects that left, in their order (ADV-PIK-001 to -003; a passed guard has none); and since
+/// T14b by an accepted offer's price, which its owner is told it paid, exactly the price of the
+/// decision it answered.
 fn check_conservation(
     before: &GameState,
     after: &GameState,
     events: &[GameEvent],
 ) -> Result<(), TestCaseError> {
+    let (map, adventure) = (before.adventure().map(), after.adventure());
+    let mut contents = Vec::new();
+    for event in events {
+        if let GameEvent::Adventure(AdventureEvent {
+            kind:
+                AdventureEventKind::ObjectRemoved {
+                    object_type,
+                    anchor,
+                },
+            ..
+        }) = *event
+        {
+            let left = map.objects().iter().enumerate().filter(|&(i, o)| {
+                (o.object_type, o.anchor) == (Some(object_type), anchor)
+                    && !before.adventure().is_removed(i)
+                    && adventure.is_removed(i)
+            });
+            contents.extend(left.flat_map(|(_, o)| o.contents.iter().copied()));
+        }
+    }
+    let gains: Vec<(ResourceId, u32)> = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::ResourceGained {
+                resource, amount, ..
+            } => Some((resource, amount)),
+            _ => None,
+        })
+        .collect();
+    prop_assert_eq!(&gains, &contents);
     let removed = events.iter().any(|e| {
         matches!(
             e,
