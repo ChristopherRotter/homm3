@@ -208,12 +208,11 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   The drawer reflects canvas column cx to W − 1 − cx (the client's `Placement::mirrored`), so the
   creature's column 196 lands on x facing right and on x − 1 facing left.
 - **Two-hex stacks: the exe's position is the rear hex.** The other hex lies ahead of it (+1 for
-  the attacker, −1 for the defender), and the sprite is anchored at the rear. The engine's position
-  is the head (BAT-GEO-002), so the client anchors a two-hex stack at the engine's tail hex
-  (head − 1 for the attacker, head + 1 for the defender). VCMI does the same (its ±44 px shift).
-  **The user decided (2026-10-13) that the engine follows the executable:** a two-hex stack's
-  position becomes its rear hex (the battle lane's QUEUE inbox, PR #144). Until that lands the
-  client converts in one place.
+  the attacker, −1 for the defender), and the sprite is anchored at the rear. VCMI, whose position
+  is the head, shifts by ±44 px to get there. **The user decided (2026-10-13) that the engine
+  follows the executable:** since PR #150 (BAT-GEO-002, protocol v23) the engine's position of a
+  two-hex stack is its rear hex, and the client anchors every stack at the engine's position
+  without a conversion (M1 T7).
 - In numbers, the canvas's top-left on hex (r, c): (−160 + 44c + 22e, −139 + 42r) facing right,
   (−218 + 44c + 22e, −139 + 42r) facing left. VCMI's `getStackPositionAtHex` (base (−189, −139),
   ±29) gives the same points.

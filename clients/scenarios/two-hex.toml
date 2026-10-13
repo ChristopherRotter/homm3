@@ -1,0 +1,40 @@
+# E17 M1 T7's second still: two-hex stacks on both sides (drawn from their rear hex,
+# docs/epics/E17-design.md §4.2), the rough battlefield, obstacles generated from the seed.
+# `cargo run --release -p h3-view -- render scenarios/two-hex.toml` from clients/.
+
+[scenario]
+id = "still-two-hex"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:rough"
+random_obstacles = true
+
+[[attacker]]
+slot = 0
+creature = "base:cavalier"
+count = 4
+
+[[attacker]]
+slot = 1
+creature = "base:griffin"
+count = 10
+
+[[attacker]]
+slot = 2
+creature = "base:centaur"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:black_dragon"
+count = 2
+
+[[defender]]
+slot = 1
+creature = "base:wolf_rider"
+count = 14
+
+[[defender]]
+slot = 2
+creature = "base:hydra"
+count = 3

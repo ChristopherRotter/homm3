@@ -585,7 +585,7 @@ fn write(path: &Path, text: &str) -> Result<(), String> {
     clippy::disallowed_types,
     reason = "an adapter's clock: the gate reports load times (clippy.toml forbids it in logic)"
 )]
-fn timed<T>(f: impl FnOnce() -> T) -> (T, Duration) {
+pub(crate) fn timed<T>(f: impl FnOnce() -> T) -> (T, Duration) {
     let start = std::time::Instant::now();
     let value = f();
     (value, start.elapsed())

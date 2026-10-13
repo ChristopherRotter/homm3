@@ -15,9 +15,22 @@ const PURE: [(&str, &[&str]); 3] = [
     ("h3-render", &["h3-assets", "miniz_oxide"]),
     (
         "h3-view",
-        &["h3-assets", "h3-formats", "h3-render", "serde", "toml"],
+        &[
+            "h3-assets",
+            "h3-formats",
+            "h3-protocol",
+            "h3-render",
+            "serde",
+            "toml",
+        ],
     ),
 ];
+
+/// Dependencies of a pure crate's package that only its binary (an adapter) uses: Cargo has no
+/// binary-only dependencies, so the library's sources must never name them (*provisional*, E17 M1
+/// T7: the headless renderer's scenario adapter).
+const BINARY_ONLY: [(&str, &[&str]); 1] =
+    [("h3-view", &["h3-battle", "h3-kernel", "h3-pack-battle"])];
 
 /// Attributes every pure crate root carries.
 const REQUIRED: [&str; 2] = ["#![no_std]", "#![forbid(unsafe_code)]"];
@@ -108,6 +121,19 @@ fn violations(source: &str, root: bool) -> Vec<String> {
     found
 }
 
+/// The binary-only dependencies a library source file names (as a path: `h3_battle::`, `use
+/// h3_battle`).
+fn names_binary_only(source: &str, binary_only: &[&str]) -> Vec<String> {
+    binary_only
+        .iter()
+        .map(|dep| dep.replace('-', "_"))
+        .filter(|krate| {
+            source.contains(&format!("{krate}::")) || source.contains(&format!("use {krate}"))
+        })
+        .map(|krate| format!("names `{krate}`, a dependency of the binary only"))
+        .collect()
+}
+
 #[test]
 fn pure_crates_stay_pure() {
     let mut problems = Vec::new();
@@ -120,15 +146,23 @@ fn pure_crates_stay_pure() {
             "{name}: no sources found in {}",
             dir.display()
         );
+        let binary_only: &[&str] = BINARY_ONLY
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map_or(&[], |(_, list)| list);
         for file in files {
             let root = file.ends_with("src/lib.rs");
-            for v in violations(&fs::read_to_string(&file).unwrap(), root) {
+            let source = fs::read_to_string(&file).unwrap();
+            for v in violations(&source, root) {
+                problems.push(format!("{}: {v}", file.display()));
+            }
+            for v in names_binary_only(&source, binary_only) {
                 problems.push(format!("{}: {v}", file.display()));
             }
         }
         let manifest = fs::read_to_string(dir.join("Cargo.toml")).unwrap();
         for dep in dependencies(&manifest) {
-            if !allowed.contains(&dep.as_str()) {
+            if !allowed.contains(&dep.as_str()) && !binary_only.contains(&dep.as_str()) {
                 problems.push(format!(
                     "{name}: dependency `{dep}` is not in its allowlist"
                 ));
@@ -159,4 +193,8 @@ fn the_checks_catch_what_they_should() {
     assert!(violations("#[cfg(test)]\nextern crate std;", false).is_empty());
     let manifest = "[package]\nname = \"x\"\n[dependencies]\n# c\na.workspace = true\nb = \"1\"\n\n[dev-dependencies]\nc = \"1\"\n";
     assert_eq!(dependencies(manifest), ["a", "b"]);
+    assert_eq!(
+        names_binary_only("use h3_x;\nh3_y::f();\nh3_z", &["h3-x", "h3-y", "h3-z"]).len(),
+        2
+    );
 }

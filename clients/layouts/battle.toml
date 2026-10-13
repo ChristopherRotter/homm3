@@ -1,0 +1,19 @@
+# The battle screen's layout at the native resolution (E17 M1 T7; ADR-0020 point 3). The numbers
+# are the executable's (docs/epics/E17-design.md §4, read 2026-10-13); an HD layout is another file
+# of this format. Loader: h3_view::layout (the format is provisional until the M1 review).
+
+frame = [800, 600]
+# The hex boxes (§4.1, 0x4642D0): left = 14 + 44 c + 22 e, top = 86 + 42 r, e = 1 on even rows.
+hex_origin = [14, 86]
+hex_step = [44, 42]
+even_row_shift = 22
+# Where sprites stand: the box's centre column, 42 px below its top (the hex record's anchor).
+anchor = [22, 42]
+# A creature's canvas (§4.2, 0x43E140): top-left at the anchor - (196, 267) facing right; mirrored
+# facing left, its left edge at the anchor's x - the DEF's width + 196.
+stack_canvas = [196, 267]
+# The layer-1 obstacles' pass reads these columns (§4.6, 0x494440).
+before_stacks_columns = [1, 15]
+# The outlines' palette and the active stack's entry (§4.2: 0x6AACB0, entry 0x60).
+outline_palette = "game.pal"
+outline_active = 96

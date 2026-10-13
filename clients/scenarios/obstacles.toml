@@ -1,0 +1,53 @@
+# E17 M1 T7's third still: obstacles placed by hand (BAT-GEO-003), each with its type, on the dirt
+# battlefield: the absolute obstacle (drawn into the background), layer-1 obstacles (drawn before
+# every stack) and layer-0 ones (drawn in their anchor row's passes, so over the stacks of the rows
+# above and under those of their own row; docs/epics/E17-design.md §4.4, §4.6); one- and two-hex
+# stacks on both sides. `cargo run --release -p h3-view -- render scenarios/obstacles.toml` from
+# clients/.
+
+[scenario]
+id = "still-obstacles"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:dirt"
+# Placed as the generator could place them (BAT-GEO-004: usual ones in columns 3-13, anchored on
+# their bottom-left hex), hexes row-major:
+obstacles = [
+    # The absolute obstacle 100 (ObDtL04.pcx): (12,4) (9-12,5) (3-8,6).
+    { hexes = [80, 94, 95, 96, 97, 105, 106, 107, 108, 109, 110], kind = "base:obstacle_100" },
+    # Obstacle 2 (ObDino3.def, layer 1, two rows) anchored at (3,3): under the champion's sprite.
+    { hexes = [37, 38, 39, 54, 55], anchor = 54, kind = "base:obstacle_2" },
+    # Obstacle 12 (ObDtS03.def, layer 0, three rows) anchored at (10,6): drawn in row 6's passes,
+    # after the stacks of rows 2 and 5 (its picture reaches up to row 4, beside the dread knight).
+    { hexes = [112, 113, 114, 115], anchor = 112, kind = "base:obstacle_12" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:champion"
+count = 3
+
+[[attacker]]
+slot = 1
+creature = "base:crusader"
+count = 9
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 11
+
+[[defender]]
+slot = 0
+creature = "base:bone_dragon"
+count = 2
+
+[[defender]]
+slot = 1
+creature = "base:dread_knight"
+count = 3
+
+[[defender]]
+slot = 2
+creature = "base:lich"
+count = 5
