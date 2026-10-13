@@ -3,7 +3,7 @@
 The full record of E16's finished milestones and tasks (what was built, agent decisions marked
 provisional, measurements, the review lists). **Not start-of-session reading:** the epic file keeps
 one line per done milestone; read the matching section here when a task builds on an earlier one
-or a decision is questioned. Decisions live in ADR-0018 and the ADR drafts; this log only records
+or a decision is questioned. Decisions live in ADR-0018, ADR-0019 and ADR-0021; this log only records
 how and why the work went.
 
 ## Done
@@ -1466,3 +1466,36 @@ rename (both "if it shows"), a separate rate for automated clients (a configurat
   the server's code; the merge was clean but for the queue's inbox. Its note asked for the design
   note's offer line: §3 and the server card (§12) name `battle_ruleset_hash` beside
   `ruleset_hash`.
+
+### M6's refinement (2026-10-13, SRV-Q23)
+
+- **The start.** `master` at #139 (the client lane's); the branch had nothing of its own. CI runs on
+  `master` fail within seconds without starting (minutes or billing, `05-testing.md` "When CI
+  cannot run"); the scoped verify had no failing step (exit 2, the workload within its band).
+- **What the refinement weighed** (the draft, the design note's §12, the code's hello and login):
+  the login's bytes already start with their purpose (`h3-login-v1`), so the welcome, the card and
+  the list get theirs and no signature serves two purposes; the welcome already names an `id` that
+  a login signs, so a hello naming the dialed address lets one server answer at several addresses
+  without changing ADR-0019 point 1; a card signed over its own text travels verbatim (no canonical
+  JSON); a server dials only configured addresses (peers, lists' servers), so a card can never make
+  it connect anywhere; the vouching chain is checkable from the cards alone.
+- **The licences behind the TLS question** (`cargo info`): `ring` 0.17 `Apache-2.0 AND ISC`;
+  `aws-lc-sys` 0.46 `… AND Apache-2.0 AND …`; `webpki-roots` `CDLA-Permissive-2.0` (not in
+  `deny.toml`); `openssl` `Apache-2.0`; `rustls` 0.23, `rustls-native-certs`, `tokio-rustls`,
+  `rustls-webpki`, `rustls-pki-types` with ISC or MIT among their options; `graviola` 0.4.1 and
+  `rustls-graviola` 0.4.0 `Apache-2.0 OR ISC OR MIT-0`. A scratch crate (the server's `tokio` and
+  `tokio-tungstenite` with `rustls-tls-native-roots`, `rustls` without default features plus
+  `std` and `tls12`, `rustls-graviola`, `rustls-native-certs`) adds 13 crates on Linux (`graviola`,
+  `rustls-graviola`, `rustls`, `rustls-webpki`, `rustls-pki-types`, `rustls-native-certs`,
+  `openssl-probe`, `tokio-rustls`, `getrandom` 0.3, `once_cell`, `subtle`, `untrusted`, `zeroize`),
+  no build script needing a C compiler, and `cargo deny check licenses` passes with the repo's
+  `deny.toml`; `ring` sits in its lock file but in no target's build. Graviola: x86_64 with `aes`,
+  `ssse3`, `avx`, `avx2`, `adx`, `bmi2`, `pclmulqdq` (CPUs since about 2014), aarch64 with `aes`,
+  `sha2`, `pmull`, `neon` (a Raspberry Pi 5, not a 4); "very new, exercise due caution".
+- **The user's answers** (SRV-Q23, asked in the session; the pros and cons of peering and lists
+  asked for and given): a TLS client now, `rustls` with `graviola`; mDNS later; a list names
+  servers by key and address; ADR-0021 in this pull request, a `shared:` commit, `cross-lane`.
+- **Recorded:** ADR-0021 (from the draft: points 1–3 sharpened, 4 the TLS client, 5 the lists, 6
+  mDNS among the not built), ADR-0018 point 2 (TLS outbound only), the ADR index; `E16-design.md`
+  §12 rewritten as the working detail; the epic's decisions, milestone, M6 tasks and exit criteria;
+  the queue's T1–T6; the threat table's leaked data directory (one secret from M6).
