@@ -8,8 +8,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **Pull requests waiting (2026-10-13):** #138 (T5, docs only), then T4's `client/e17-m1-t4-asset-tables`, stacked on it.
 - The lane owns `clients/` (its own Cargo workspace, `clients/README.md`), `docs/epics/E17*` and this folder. Branches `client/<task>`. Ids: questions `CLT-Q<n>`, quirks (asset fixes) `CLT-QUIRK-<n>`, stubs `CLT-STUB-<n>`. ADR drafts go to `adr-drafts/` and get a number when the user accepts them.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
-- The lane needs the user's computer online: the original files are staged from `original-data/install/`, which since 2026-10-12 also holds `Data/{Heroes3,H3ab_ahd}.snd`, `Data/{VIDEO,H3ab_ahd}.vid` and `MP3/` (57 tracks), copied from the installation and verified identical (`docs/formats/installation.md` §2, battle-owned, still lists only the earlier copies). The gate needs `Data/H3sprite.lod` and `Data/H3ab_spr.lod` too and reads `h3maped.exe` when present, which `scripts/sandbox-setup.sh` does not copy: stage them and copy them into the clone's `original-data/install/`.
-- **Open:** CLT-Q1 (the walk's path, needed by M2); CLT-Q2 (the table-only LOD reader in `h3-formats`, for the battle lane; until it lands the client reads whole archives).
+- The lane needs the user's computer online: stage the original files from `original-data/install/` (since 2026-10-12 also the sound, video and `MP3/` copies). The gate needs `Data/H3sprite.lod` and `Data/H3ab_spr.lod` and reads `h3maped.exe` when present, which `scripts/sandbox-setup.sh` does not copy: stage them into the clone's `original-data/install/`.
+- **Open:** the engine's two-hex position becomes the rear hex (the user, 2026-10-13; battle lane, PR #144): until then T7 converts head to rear in one place. CLT-Q1 (the walk's path, needed by M2); CLT-Q2 (the table-only LOD reader in `h3-formats`, for the battle lane; until it lands the client reads whole archives).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
