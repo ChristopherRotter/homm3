@@ -32,7 +32,8 @@
 //!
 //! The server's card (E16 M6 T2): a connection's `Describe` is answered off its task, with the
 //! card signed again once the last one is a minute old ([`crate::card`]); the card counts the open
-//! connections.
+//! connections. `ListPeers` (E16 M6 T3) is answered on the task, from the cards the server fetched
+//! of its peers ([`crate::peers`]).
 //!
 //! Accounts in games (E16 M3 T3): a connection opens a game with the account it is logged in as.
 //! The server knows each account's logged-in connections and their keys: once one re-keyed the
@@ -70,6 +71,7 @@ use crate::config::Limits;
 use crate::game::{self, Frame, FromGame, ToGame};
 use crate::key::ServerKey;
 use crate::ladders::{self, Ladders};
+use crate::peers::Peers;
 use crate::registry::{self, Opening, Shared, ToConn, lock};
 
 /// What a transport received.
@@ -279,6 +281,8 @@ pub(crate) struct Service {
     pub ladders: Arc<Ladders>,
     /// The server's card (E16 M6 T2).
     pub card: Cards,
+    /// The servers it vouches for and their cards, which it relays (E16 M6 T3).
+    pub peers: Arc<Peers>,
     /// The open connections, in total and per address, which the listener counts.
     pub counts: Arc<Mutex<Counts>>,
 }
@@ -438,6 +442,9 @@ pub(crate) async fn serve<T: Transport>(
                 match received {
                     Received::Game(ClientMessage::Describe { seq }) => {
                         describe(&server, &link.registry, seq).await
+                    }
+                    Received::Game(ClientMessage::ListPeers { seq, from }) => {
+                        relayed(&server, seq, from)
                     }
                     Received::Game(message) => match link.route(message, gate.account()).await {
                         Routed::Reply(frame) => frame,
@@ -601,6 +608,15 @@ async fn describe(server: &Arc<Service>, registry: &Shared, seq: u32) -> Frame {
         // The runtime shuts down.
         Err(_) => goodbye(GoodbyeReason::Shutdown),
     }
+}
+
+/// The answer to `ListPeers` (E16 M6 T3): a page of the cards the server relays that hold now.
+fn relayed(server: &Service, seq: u32, from: u32) -> Frame {
+    text(codec::encode_text(&server.peers.page(
+        seq,
+        from,
+        card::wall_ms(),
+    )))
 }
 
 /// What became of a message for the lobby or a game.
@@ -937,7 +953,8 @@ fn unbound(message: &ClientMessage) -> Frame {
         | ClientMessage::Standing { seq, .. }
         | ClientMessage::ProposePause { seq, .. }
         | ClientMessage::AnswerPause { seq, .. }
-        | ClientMessage::Describe { seq } => *seq,
+        | ClientMessage::Describe { seq }
+        | ClientMessage::ListPeers { seq, .. } => *seq,
         ClientMessage::Hello { .. } | ClientMessage::Ping { .. } | ClientMessage::Join { .. } => 0,
     };
     Frame {
@@ -1334,6 +1351,7 @@ mod tests {
                     proxies: Vec::new(),
                     ladders,
                     card,
+                    peers: Arc::new(Peers::new(&[], [0; 32]).unwrap()),
                     counts,
                 }),
                 watch::channel(false).1,

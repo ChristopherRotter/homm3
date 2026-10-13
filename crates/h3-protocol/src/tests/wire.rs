@@ -175,6 +175,8 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
         },
         // E16 M6 T2.
         ClientMessage::Describe { seq: 33 },
+        // E16 M6 T3.
+        ClientMessage::ListPeers { seq: 34, from: 50 },
     ];
     out.extend(
         commands()
@@ -445,6 +447,30 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
         ServerMessage::Described {
             seq: 33,
             card: crate::card::sign(&super::card::card(), &super::Fold),
+        },
+        // E16 M6 T3: a peer's card, and one vouched for further down, fetched for a list.
+        ServerMessage::Peers {
+            seq: 34,
+            from: 0,
+            total: 2,
+            entries: vec![
+                RelayedCard {
+                    card: crate::card::sign(&super::card::card(), &super::Fold),
+                    via: vec![],
+                    list: None,
+                },
+                RelayedCard {
+                    card: crate::card::sign(&super::card::card(), &super::Fold),
+                    via: vec!["11".repeat(32)],
+                    list: Some("22".repeat(32)),
+                },
+            ],
+        },
+        ServerMessage::Peers {
+            seq: 35,
+            from: 50,
+            total: 2,
+            entries: vec![],
         },
     ]);
     out.extend(

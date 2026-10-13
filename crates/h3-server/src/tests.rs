@@ -23,6 +23,7 @@ mod bounds;
 mod card;
 mod identity;
 mod ladders;
+mod peers;
 mod proxy;
 mod seats;
 
@@ -67,6 +68,7 @@ fn config(limits: Limits) -> Config {
         },
         limits,
         discovery: Discovery::default(),
+        peers: vec![],
         offers: vec![
             Offer {
                 id: String::from("pvp"),

@@ -38,6 +38,14 @@ futures-util.workspace = true
 getrandom.workspace = true
 ed25519-dalek.workspace = true
 argon2.workspace = true
+# The TLS client for the peers' cards (E16 M6 T3, ADR-0021 point 4).
+rustls.workspace = true
+rustls-graviola.workspace = true
+rustls-native-certs.workspace = true
+
+[dev-dependencies]
+# The tests' TLS endpoint in front of a peer (E16 M6 T3).
+tokio-rustls.workspace = true
 
 [lints]
 workspace = true

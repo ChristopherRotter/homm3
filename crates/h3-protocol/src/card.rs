@@ -9,7 +9,11 @@
 //! [`SKEW_MS`] ahead of it. That the card's key is the one expected (the welcome's, a configured
 //! peer's) is the reader's check.
 //!
-//! Provisional (E16 M6 T2): the bounds below and the error's grain.
+//! A server relays the cards of the servers it vouches for, its peers (E16 M6 T3; ADR-0021 point
+//! 3), with `ListPeers`, in pages of [`PAGE`]; a client checks each card relayed as any card, and
+//! the chain of vouching from the relaying server's own card to it ([`chain`]).
+//!
+//! Provisional (E16 M6 T2, T3): the bounds below and the error's grain.
 
 use crate::account::{self, KEY_BYTES, SIGNATURE_BYTES};
 use crate::codec;
@@ -42,6 +46,9 @@ pub const MAX_OPERATOR: usize = 256;
 
 /// How far a card's issue time may be ahead of its reader's clock (clock skew), in milliseconds.
 pub const SKEW_MS: u64 = 600_000;
+
+/// The most cards a page of `Peers` holds (E16 M6 T3).
+pub const PAGE: usize = 50;
 
 /// Why a signed card does not hold.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -150,4 +157,13 @@ pub fn read(
         return Err(CardError::Ahead);
     }
     Ok(card)
+}
+
+/// Whether `cards` is a chain of vouching (E16 M6 T3; ADR-0021 point 3): each card names the next
+/// one's key among its peers. A relayed card (`wire::RelayedCard`) holds when the relaying server's
+/// card, the cards of the keys its `via` names in that order, and the card itself are one; the
+/// reader checks each card as [`read`] does and that each of them is the one its key names.
+pub fn chain(cards: &[&ServerCard]) -> bool {
+    (cards.iter().zip(cards.iter().skip(1)))
+        .all(|(voucher, card)| voucher.peers.iter().any(|p| p.key == card.key))
 }

@@ -14,9 +14,15 @@
 //! description = "Ranked duels."      # the card's description (none by default)
 //! operator = "ann@example.org"       # how the operator is reached (none by default)
 //!
-//! [discovery]                        # the server's card (E16 M6 T2); defaults below
+//! [discovery]                        # the card and the peers' (E16 M6 T2, T3); defaults below
 //! card_ms = 86400000                 # a card holds this long after it is signed
 //! counts = true                      # the card names the open connections, games and players
+//! refresh_ms = 3600000               # the peers' cards are fetched at start and this often
+//! timeout_ms = 10000                 # a peer's card not fetched within it waits a round
+//!
+//! [[peer]]                           # a server vouched for (E16 M6 T3); none by default
+//! key = "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29"   # its public key
+//! address = "wss://h3.example.net"   # where its card is fetched: wss:// (TLS) or ws:// (a LAN)
 //!
 //! [content]
 //! packs = "../packs"                 # the packs directory
@@ -132,9 +138,13 @@ pub struct Config {
     /// The bounds (ADR-0018 point 9).
     #[serde(default)]
     pub limits: Limits,
-    /// The server's card (E16 M6 T2).
+    /// The server's card (E16 M6 T2) and its peers' (E16 M6 T3).
     #[serde(default)]
     pub discovery: Discovery,
+    /// The servers the operator vouches for (E16 M6 T3; ADR-0021 point 3), in the order its card
+    /// names them and relays their cards.
+    #[serde(rename = "peer", default)]
+    pub peers: Vec<Peer>,
     /// What a client may create a game from.
     #[serde(rename = "offer")]
     pub offers: Vec<Offer>,
@@ -198,7 +208,7 @@ impl Default for Server {
     }
 }
 
-/// The `[discovery]` section (E16 M6 T2; ADR-0021): the server's card.
+/// The `[discovery]` section (E16 M6 T2, T3; ADR-0021): the server's card and its peers'.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct Discovery {
@@ -207,6 +217,11 @@ pub struct Discovery {
     /// Whether the card names the open connections, the games that wait or run and each ladder's
     /// players (the accounts on its current season's leaderboard).
     pub counts: bool,
+    /// How often the peers' cards are fetched, from one round's start to the next's (E16 M6 T3),
+    /// in milliseconds: a minute to a day.
+    pub refresh_ms: u64,
+    /// How long one peer's fetch may take (E16 M6 T3), in milliseconds: a second to two minutes.
+    pub timeout_ms: u64,
 }
 
 impl Default for Discovery {
@@ -214,12 +229,33 @@ impl Default for Discovery {
         Self {
             card_ms: 86_400_000,
             counts: true,
+            refresh_ms: 3_600_000,
+            timeout_ms: 10_000,
         }
     }
 }
 
 /// The shortest and the longest time a card may hold (`[discovery] card_ms`).
 const CARD_MS: std::ops::RangeInclusive<u64> = 600_000..=2_592_000_000;
+
+/// The shortest and the longest time between rounds of fetches (`[discovery] refresh_ms`).
+const REFRESH_MS: std::ops::RangeInclusive<u64> = 60_000..=86_400_000;
+
+/// The shortest and the longest time a fetch may take (`[discovery] timeout_ms`).
+const TIMEOUT_MS: std::ops::RangeInclusive<u64> = 1_000..=120_000;
+
+/// One `[[peer]]` (E16 M6 T3; ADR-0021 point 3): a server the operator vouches for. The server
+/// fetches its card at `address` as a client would, checks that the key `key` answers there and
+/// signed the card, and relays it; its own card names the peer.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Peer {
+    /// Its public key, 64 lowercase hex digits (its card's `key`).
+    pub key: String,
+    /// Where its card is fetched: `wss://…` through the TLS client, `ws://…` on a LAN. Its welcome
+    /// names this address as its id, as its own `public_url` or one of its `addresses`.
+    pub address: String,
+}
 
 /// The `[content]` section.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -557,6 +593,7 @@ impl Config {
         let mut config: Self = toml::from_str(text).map_err(|e| Error(e.to_string()))?;
         config.limits.check()?;
         config.check_server()?;
+        config.check_peers()?;
         config.check_offers()?;
         config.check_ladders()?;
         config.server.data = base.join(&config.server.data);
@@ -622,6 +659,52 @@ impl Config {
                 CARD_MS.start(),
                 CARD_MS.end()
             )));
+        }
+        Ok(())
+    }
+
+    /// At most as many peers as a card names (E16 M6 T3), each with an Ed25519 key in hex and a
+    /// WebSocket address, no key or address twice; `[discovery] refresh_ms` and `timeout_ms` in
+    /// their ranges. That no peer has the server's own key is the start's check.
+    fn check_peers(&self) -> Result<(), Error> {
+        use crate::accounts::{Authenticator, Ed25519};
+        if self.peers.len() > card::MAX_PEERS {
+            return Err(Error(format!("at most {} [[peer]]", card::MAX_PEERS)));
+        }
+        for (i, peer) in self.peers.iter().enumerate() {
+            let key = h3_protocol::account::from_hex(&peer.key);
+            if !key.is_some_and(|key| Ed25519.accepts(&key)) {
+                return Err(Error(format!(
+                    "peer {i}: key = {:?}: not an Ed25519 public key in 64 lowercase hex digits",
+                    peer.key
+                )));
+            }
+            if !card::is_address(&peer.address) {
+                return Err(Error(format!(
+                    "peer {i}: address = {:?}: not a ws:// or wss:// address",
+                    peer.address
+                )));
+            }
+            let before = &self.peers[..i];
+            if before
+                .iter()
+                .any(|p| p.key == peer.key || p.address == peer.address)
+            {
+                return Err(Error(format!("peer {i}: its key or its address is taken")));
+            }
+        }
+        let discovery = &self.discovery;
+        for (key, value, range) in [
+            ("refresh_ms", discovery.refresh_ms, REFRESH_MS),
+            ("timeout_ms", discovery.timeout_ms, TIMEOUT_MS),
+        ] {
+            if !range.contains(&value) {
+                return Err(Error(format!(
+                    "discovery.{key} = {value}: from {} to {}",
+                    range.start(),
+                    range.end()
+                )));
+            }
         }
         Ok(())
     }

@@ -4,9 +4,13 @@
 //! ([`Client::recv`]): a client that reads nothing for the server's `ping_timeout_ms` is dropped
 //! as gone (SRV-Q20). Its hello names a fresh nonce and the address it dialed, and it checks the
 //! welcome's signature by the server's key, and the key against one it pinned (E16 M6 T1,
-//! ADR-0021 point 1), and the server's card by the welcome's key (E16 M6 T2). Provisional.
+//! ADR-0021 point 1), and the server's card by the welcome's key (E16 M6 T2), and each card the
+//! server relays with the chain that vouches for it (E16 M6 T3). A server fetching its peers' cards
+//! dials them through it (`Client::dial`, `wss://` through the TLS client, its reading bounded).
+//! Provisional.
 
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use argon2::{Algorithm, Argon2, Params, Version};
 use ed25519_dalek::{Signer, SigningKey};
@@ -14,12 +18,13 @@ use futures_util::{SinkExt, StreamExt};
 use h3_protocol::PROTOCOL_VERSION;
 use h3_protocol::account::{self, CHALLENGE_BYTES, KEY_BYTES, NONCE_BYTES, SIGNATURE_BYTES};
 use h3_protocol::codec;
-use h3_protocol::wire::{ClientMessage, Seat, ServerCard, ServerMessage, SignedCard};
+use h3_protocol::wire::{ClientMessage, RelayedCard, Seat, ServerCard, ServerMessage, SignedCard};
 use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::http::HeaderValue;
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
+use tokio_tungstenite::{Connector, MaybeTlsStream, WebSocketStream};
 
 use crate::Error;
 use crate::accounts::{Authenticator, Ed25519};
@@ -75,6 +80,9 @@ pub struct Client {
     /// The welcome's server id and challenge (E16 M3 T2a) and the server's key (E16 M6 T1), once
     /// the hello was answered.
     welcome: Option<(String, [u8; CHALLENGE_BYTES], [u8; KEY_BYTES])>,
+    /// The bytes it reads still, pings included, before it takes the connection for closed (E16
+    /// M6 T3: a peer's fetch); unbounded but for a fetch.
+    budget: usize,
 }
 
 impl Client {
@@ -105,6 +113,33 @@ impl Client {
             address: format!("ws://{address}"),
             pinned: None,
             welcome: None,
+            budget: usize::MAX,
+        })
+    }
+
+    /// Dials the server at `url` (`ws://` or `wss://`) as a server fetching a peer's card does (E16
+    /// M6 T3): `wss://` through the TLS client `tls`, reading frames of at most `frame` bytes and
+    /// `budget` bytes in all. Its hello names `url` as the address dialed.
+    pub(crate) async fn dial(
+        url: &str,
+        tls: Arc<rustls::ClientConfig>,
+        (frame, budget): (usize, usize),
+    ) -> Result<Self, Error> {
+        let bounds = WebSocketConfig::default()
+            .max_message_size(Some(frame))
+            .max_frame_size(Some(frame));
+        // The connector for `ws://` too: tokio-tungstenite dials that plain.
+        let connector = Some(Connector::Rustls(tls));
+        let (socket, _) =
+            tokio_tungstenite::connect_async_tls_with_config(url, Some(bounds), true, connector)
+                .await
+                .map_err(|e| Error(format!("connect: {e}")))?;
+        Ok(Self {
+            socket,
+            address: url.to_owned(),
+            pinned: None,
+            welcome: None,
+            budget,
         })
     }
 
@@ -138,15 +173,18 @@ impl Client {
             .map_err(|e| Error(format!("send: {e}")))
     }
 
-    /// The next message from the server; `None` once the connection closed.
+    /// The next message from the server; `None` once the connection closed, or once it read its
+    /// budget.
     pub async fn recv(&mut self) -> Option<ServerMessage> {
         loop {
-            match self.socket.next().await? {
-                Ok(Message::Text(text)) => {
+            let message = self.socket.next().await?.ok()?;
+            self.budget = self.budget.checked_sub(message.len())?;
+            match message {
+                Message::Text(text) => {
                     return codec::decode_server(text.as_bytes(), usize::MAX).ok();
                 }
-                Ok(Message::Ping(_) | Message::Pong(_) | Message::Frame(_)) => {}
-                Ok(Message::Binary(_) | Message::Close(_)) | Err(_) => return None,
+                Message::Ping(_) | Message::Pong(_) | Message::Frame(_) => {}
+                Message::Binary(_) | Message::Close(_) => return None,
             }
         }
     }
@@ -227,6 +265,55 @@ impl Client {
             )));
         }
         Ok((read, card))
+    }
+
+    /// A page of the cards the server relays (E16 M6 T3): asks with `ListPeers` from the `from`th;
+    /// the number of cards it relays and the page's, as they came.
+    pub async fn list_peers(
+        &mut self,
+        seq: u32,
+        from: u32,
+    ) -> Result<(u32, Vec<RelayedCard>), Error> {
+        self.send(&ClientMessage::ListPeers { seq, from }).await?;
+        match self.recv().await {
+            Some(ServerMessage::Peers {
+                seq: answered,
+                from: page,
+                total,
+                entries,
+            }) if answered == seq && page == from => Ok((total, entries)),
+            other => Err(Error(format!("no page of peers: {other:?}"))),
+        }
+    }
+
+    /// Every card the server relays (E16 M6 T3), page by page, each checked as a client checks it:
+    /// the card holds ([`card::verify`]), and the chain from the server's own card `own` (its
+    /// `Describe`) vouches for it ([`h3_protocol::card::chain`]). A card relayed from further than
+    /// a peer (`via`, E16 M6 T4) fails: this client does not check such chains yet.
+    pub async fn relayed(
+        &mut self,
+        own: &ServerCard,
+    ) -> Result<Vec<(ServerCard, RelayedCard)>, Error> {
+        let mut all = Vec::new();
+        loop {
+            let from = u32::try_from(all.len()).unwrap_or(u32::MAX);
+            let (total, entries) = self.list_peers(from, from).await?;
+            let last = entries.is_empty();
+            for entry in entries {
+                let read = card::verify(&entry.card, card::wall_ms())
+                    .map_err(|e| Error(format!("a relayed card does not hold: {e:?}")))?;
+                if !entry.via.is_empty() || !h3_protocol::card::chain(&[own, &read]) {
+                    return Err(Error(format!(
+                        "a relayed card its server does not vouch for: {}",
+                        read.key
+                    )));
+                }
+                all.push((read, entry));
+            }
+            if last || all.len() >= usize::try_from(total).unwrap_or(usize::MAX) {
+                return Ok(all);
+            }
+        }
     }
 
     /// Logs in as `login` by `key`, or registers the account as `display` (E16 M3 T2a): signs the
