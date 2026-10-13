@@ -52,6 +52,8 @@ fn chance(r: &BattleRuleset, (hero, level): (&str, u8), skill: u8, worn: &[&str]
         obstacles: vec![],
         heroes: [Some(derive_battle_hero(&details, r).unwrap()), None],
         terrain: None,
+        battlefield: None,
+        anti_magic: false,
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],

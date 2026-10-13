@@ -71,6 +71,8 @@ fn battle(r: &BattleRuleset, effects: Vec<BattleEffect>) -> BattleState {
         obstacles: vec![],
         heroes: [Some(caster(r, effects)), Some(defender)],
         terrain: None,
+        battlefield: None,
+        anti_magic: false,
         war_machines: [machines(), machines()],
         formations: [Formation::Loose; 2],
         funds: [0; 2],

@@ -1016,6 +1016,9 @@ impl ScenarioDef {
                     .transpose()?,
             ],
             terrain,
+            // E04c T2b gives scenarios a battlefield; until then none.
+            battlefield: None,
+            anti_magic: false,
             war_machines: [
                 machines(&self.war_machines[0])?,
                 machines(&self.war_machines[1])?,
