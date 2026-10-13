@@ -897,17 +897,18 @@ fn a_walk_faces_each_step_and_a_plain_move_turns_back() {
 
 #[test]
 fn a_flight_turns_by_columns() {
-    // A flight the other way by columns turns first (0x4B4A40), then flies; a plain move turns
-    // back before it stands (`stack_fly` 0x4B49F5), and stands once more.
+    // A flight the other way by columns turns first (0x4B4A40), then flies and stands
+    // (0x4B4E66); a plain move turns back (`stack_fly` 0x4B49F5) and stands once more
+    // (0x4B4A15).
     let mut angels = at(0, Side::Attacker, ANGEL, 83, false);
     angels.flies = true;
     let o = snapshot(vec![angels]);
     let t = play(&o, &[(None, vec![moved(0, 83, 69)])]);
-    assert_eq!(runs(&t, 0), [7, 10, 2, 20, 0, 21, 9, 8, 2]);
+    assert_eq!(runs(&t, 0), [7, 10, 2, 20, 0, 21, 2, 9, 8, 2]);
     let k = keys_of(&t, 0);
     assert!(k.contains(&(21, 0, 69, true, 4)));
     let standing = k.iter().filter(|k| k.0 == 2).count();
-    assert_eq!(standing, 3);
+    assert_eq!(standing, 4);
 }
 
 #[test]

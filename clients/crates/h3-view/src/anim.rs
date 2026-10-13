@@ -651,9 +651,9 @@ impl core::fmt::Display for AnimError {
 /// `looks` holds each creature's numbers by its handle.
 ///
 /// The first command is given at 0, the snapshot's moment (the harness clicks at the frozen
-/// opening); a later one without a time when the previous one's last frame showed, one tick
-/// later if it drew any (*provisional*: in the melee sequence the computer acts 100 ms after the
-/// Angels' last frame shows; after Wait or Defend the next stack acts at once, §7.4).
+/// opening); a later one without a time as soon as the previous one's last frame showed
+/// (*provisional*: in the melee sequence the computer acts as the flight's second standing frame
+/// shows, 0x4B4A15; after Wait or Defend the next stack acts at once, §7.4).
 ///
 /// # Errors
 /// A living stack whose creature has no [`Look`].
@@ -760,16 +760,11 @@ fn played(
     if let Some(f) = fidgets.as_mut() {
         f.reset(0, &player.bases(), &[]);
     }
-    let mut drew = false;
     let mut outlines = vec![(0, snapshot.active)];
     let mut waiting = snapshot.active;
     let (mut idle, mut steps) = (Idle::default(), Vec::new());
     for (i, command) in commands.iter().enumerate() {
-        let default = match (i, drew) {
-            (0, _) => 0,
-            (_, true) => player.clock.now + grid,
-            (_, false) => player.clock.now,
-        };
+        let default = if i == 0 { 0 } else { player.clock.now };
         player.clock.start(command.at.unwrap_or(default));
         // A command without a time after the first is the computer's: the loop did not tick
         // since the last one ended, but once when it acts, which outlines its stack until its
@@ -796,7 +791,6 @@ fn played(
         }
         let (before, turns) = (player.keys.len(), player.turns.len());
         player.command(command.events);
-        drew = player.keys.len() > before;
         // The outline goes with the command's first frame shown; a turn started brings its
         // stack's, unless the computer acts next.
         if let Some(first) = player.keys.get(before) {
@@ -1266,12 +1260,15 @@ impl Player<'_> {
                 p.offset = [f32_trunc(at[0]) - ax, f32_trunc(at[1]) - ay];
                 self.frame(&[(stack, p)], step);
             }
+            // The flight ends with group 21 and a frame standing (0x4B4E59, 0x4B4E66); then
+            // `stack_fly` turns a plain move back (0x4B49F5) and draws one more frame standing
+            // (0x4B4A15).
             for f in 0..live.look.count(g.move_end) {
                 self.frame(&[(stack, Self::posed(&live, g.move_end, f, end))], tick);
             }
             live.hex = end;
+            self.frame(&[(stack, self.standing(&live, end))], tick);
             self.stacks.insert(stack, live.clone());
-            // `stack_fly` 0x4B49F5: a plain move turns back before it stands.
             if turn_back && live.right != home {
                 live = self.turn(stack, live);
             }
