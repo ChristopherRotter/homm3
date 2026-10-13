@@ -1,0 +1,145 @@
+# The capture set (E17 M2 T1, *provisional*; clients/capture/README.md): the situations the
+# harness shows the original and compares with our renders, unattended
+# (`clients/capture/h3drive.py set`). Each names its scenario (beside this file; its map comes from
+# `h3-view situation`, Blue's hero on `tile`, default [11, 10]), the masks over what we do not draw
+# yet (`h3cap.py diff`), and per frame (ms after the opening, on the original's clock) the number
+# of pixels that differ outside the masks, with why. A run that counts another number fails: a
+# change, to be fixed or recorded deliberately.
+#
+# The situations: every land terrain's battlefield (its third background: nothing around the
+# battle, design §4.4), human-first openings (the Royal Griffins' outline), two-hex stacks facing
+# either way, the original's usual obstacles and, at tile (20, 20), an absolute one. The outline:
+# its pixels match exactly, its colour steps through game.pal's yellow ramp every 100 ms (design
+# §4.2, §6); the original's opening already shows the ramp's second entry, our still its first,
+# until the scene runs over time (M2 T3, T4).
+
+[[situation]]
+id = "grass"
+scenario = "grass.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 412
+why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+
+[[situation.frame]]
+at = 100
+differing = 412
+why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+
+[[situation.frame]]
+at = 200
+differing = 1945
+why = "the outline's colour; the Pikemen's idle animation (M2 T4)"
+
+[[situation.frame]]
+at = 300
+differing = 2036
+why = "the outline's colour; the Pikemen's idle animation (M2 T4)"
+
+[[situation.frame]]
+at = 400
+differing = 1832
+why = "the outline's colour; the Pikemen's idle animation (M2 T4)"
+
+[[situation.frame]]
+at = 500
+differing = 1832
+why = "the outline's colour; the Pikemen's idle animation (M2 T4)"
+
+[[situation.frame]]
+at = 600
+differing = 1695
+why = "the outline's colour; the Pikemen's idle animation (M2 T4)"
+
+[[situation.frame]]
+at = 700
+differing = 1283
+why = "the Pikemen's idle animation (M2 T4); the outline matches"
+
+[[situation.frame]]
+at = 800
+differing = 412
+why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+
+[[situation]]
+id = "dirt"
+scenario = "dirt.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 412
+why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+
+[[situation]]
+id = "sand"
+scenario = "sand.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 412
+why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+
+[[situation]]
+id = "snow"
+scenario = "snow.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 412
+why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+
+[[situation]]
+id = "swamp"
+scenario = "swamp.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 412
+why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+
+[[situation]]
+id = "rough"
+scenario = "rough.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 412
+why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+
+[[situation]]
+id = "subterranean"
+scenario = "subterranean.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 412
+why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+
+[[situation]]
+id = "lava"
+scenario = "lava.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 412
+why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+
+[[situation]]
+id = "dirt-absolute"
+scenario = "dirt-absolute.toml"
+tile = [20, 20]
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 412
+why = "the outline's colour, a step of its pulse (M2 T3, T4)"

@@ -27,7 +27,7 @@ times = [9000, 575, 500, 115]
 
 [[battlefield]]
 key = "grass"
-backgrounds = ["CmBkGrTr.pcx", "CmBkGrMt.pcx"]
+backgrounds = ["CmBkGrDd.pcx", "CmBkGrMt.pcx", "CmBkGrTr.pcx"]
 
 [[obstacle]]
 key = "obstacle_1"

@@ -1,0 +1,34 @@
+# E17 M2 T1: a situation of the capture set (set.toml) on snow: the human's Royal Griffins
+# (speed 9) open; the defender's stacks face left. The obstacles are the original's, found in its
+# capture (`h3cap.py find`).
+
+[scenario]
+id = "situation-snow"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:snow"
+obstacles = [
+    { hexes = [112, 113, 114], anchor = 112, kind = "base:obstacle_27" },
+    { hexes = [41, 42], anchor = 40, kind = "base:obstacle_29" },
+    { hexes = [146, 147, 148], anchor = 146, kind = "base:obstacle_31" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 4
+creature = "base:monk"
+count = 8
+
+[[defender]]
+slot = 1
+creature = "base:naga"
+count = 3
+
+[[defender]]
+slot = 5
+creature = "base:gremlin"
+count = 25

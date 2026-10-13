@@ -1,0 +1,33 @@
+# E17 M2 T1: a situation of the capture set (set.toml) on rough: the human's Royal Griffins
+# (speed 9) open; the defender's stacks face left. The obstacles are the original's, found in its
+# capture (`h3cap.py find`).
+
+[scenario]
+id = "situation-rough"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:rough"
+obstacles = [
+    { hexes = [94, 76, 60], anchor = 93, kind = "base:obstacle_15" },
+    { hexes = [46, 45, 44, 29, 28], anchor = 61, kind = "base:obstacle_41" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 4
+creature = "base:zealot"
+count = 6
+
+[[defender]]
+slot = 1
+creature = "base:ogre"
+count = 6
+
+[[defender]]
+slot = 5
+creature = "base:wolf_rider"
+count = 8

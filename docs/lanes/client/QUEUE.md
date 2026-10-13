@@ -4,14 +4,7 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too (`clients/README.md`, "Reference captures"). The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
-
-### E17 M2 T1 — The capture harness
-
-- **Scope:** the user's exhaustive diffs (2026-10-13), on M1 T8's capture (`clients/capture/`, design §6). Situations as maps the client generates on `h3-map`'s writer (a dependency of `h3-view`'s binary: `clients.yml`'s paths, a `shared/` PR first), armies chosen so the human's stack opens (an idle opening frame: the outline, its pulse); each situation's scenario rebuilt from the map and the capture (obstacles by `h3cap.py obstacles`, or by the engine's generator if it reproduces the original's); masks for what is not drawn yet; a situation set with each one's recorded differences; one command over the set, unattended. Decide whether the diff moves into Rust (`h3-view diff`).
-- **Acceptance:** at least one situation per terrain's background, a mirrored two-hex stack standing, an absolute obstacle and a human-first opening pass or list their differences; the outline checked; the set reruns from a fresh prefix with identical frames.
-- **Depends on:** M1 (done).
-- **Status:** ready.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context; T1 (the capture harness) done 2026-10-13. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
 
 ### E17 M2 T2 — The window, input and audio evaluation
 
@@ -22,10 +15,10 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 
 ### E17 M2 T3 — Code reading: the battle's animation timing
 
-- **Scope:** the original's frame rate and each animation's frame times (`cranim.txt`'s times as the executable scales them, design §5), walking speed, the attack, defend, wait and death sequences, projectiles (flight, angles), the outline's pulse and step, the idle fidget; compared with VCMI 1.7.5 and with the harness's bursts (frames at known times). Design §7.
+- **Scope:** the original's frame rate and each animation's frame times (`cranim.txt`'s times as the executable scales them, design §5), walking speed, the attack, defend, wait and death sequences, projectiles (flight, angles), the outline's pulse and step, the idle fidget; compared with VCMI 1.7.5 and with the harness's frames at exact times (the virtual clock steps by 1 ms: `clients/capture/README.md`, "Frame by frame"). Known from T1 (design §6.2): the outline steps every 100 ms through eight entries and the opening is already one step on; the grass situation's Pikemen fidget from about 200 to 700 ms. Sequences beyond the opening need the human's commands in the original (clicks on hexes: a recipe per command) and the AI's. Design §7.
 - **Acceptance:** each timing with its address (map entries, `check-exe-map`) and a capture or VCMI to confirm it.
-- **Depends on:** T1 for the captured sequences.
-- **Status:** ready after T1.
+- **Depends on:** T1 (done).
+- **Status:** ready.
 
 ### E17 M2 T4 — The scene over time
 
@@ -42,6 +35,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 - **Status:** waits.
 
 ## Inbox
+
+- 2026-10-13 (E17 M2 T1): **the capture set grows** (M3's reference set): background variants 0 and 1 need trees, mountains or dead vegetation around the battle (design §5: `h3-map`'s writer has no decorative objects yet: an adventure-lane change); special fields (magic plains and the like) and the shore; heroes and their flags, then the count boxes and the panel, each mask removed as it is drawn; the AI-first openings (the smoke battle) once the scene runs over time. CLT-Q4: how a record carries the background variant.
 
 - 2026-10-13 (the user, at E17 M1): **text through a string catalogue.** Every string the client shows comes from a key → string catalogue (nested JSON or similar), easy to translate, language packs swappable; not the original's bare text files. The agent's notes for the refinement (M3, with the fonts and the battle interface, where the first text appears): the original's text cannot be committed (ADR-0009), so the original's language is read at the checkpoint from the user's own `.TXT` entries through a committed catalogue of keys (key → archive entry, row, column), and a localized installation is a language pack of its own; the client's own strings (lobby, accounts, ladders: no original text) are committed in any language; a translation of the original's text is likely a derivative work (a licence question for the user before any is committed); the catalogue's format (flat or nested JSON, TOML, Fluent for plurals and cases) and how placeholders and plurals work; fonts: the original's are 8-bit bitmap fonts in a code page, so a language with other letters needs fonts of its own (or a modern renderer as a graphics option). An ADR-0020 amendment at that refinement.
 - 2026-10-13 (the user, at E17 M1): **graphics options.** Eventually the user chooses per effect whether it is drawn the original's dated but familiar way or a modern one (shadows first). The agent's notes: `faithful` stays the default and the only setting the reference frames check (ADR-0020 point 9); an option is a field of a settings value the compositor takes, never a fork of the scene model, so the draw list keeps naming what is drawn and only `h3-render` decides how; a modern shadow may want more than the 16-bit screen (alpha over a 24-bit frame), which ADR-0020 point 3 has to allow; independent of the asset fixes' `faithful`/`fixed` profile (point 6). An ADR-0020 amendment when the first option is built.

@@ -1,0 +1,35 @@
+# E17 M2 T1: a situation of the capture set (set.toml) on swamp: the human's Royal Griffins
+# (speed 9) open; the defender's stacks face left. The obstacles are the original's, found in its
+# capture (`h3cap.py find`).
+
+[scenario]
+id = "situation-swamp"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:swamp"
+obstacles = [
+    { hexes = [144, 145], anchor = 144, kind = "base:obstacle_19" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [114, 113, 112, 111, 110, 109, 108], anchor = 125, kind = "base:obstacle_35" },
+    { hexes = [60, 61], anchor = 60, kind = "base:obstacle_36" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 4
+creature = "base:cavalier"
+count = 3
+
+[[defender]]
+slot = 1
+creature = "base:basilisk"
+count = 4
+
+[[defender]]
+slot = 5
+creature = "base:gnoll"
+count = 20

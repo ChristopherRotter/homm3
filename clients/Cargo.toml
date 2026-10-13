@@ -27,6 +27,11 @@ h3-protocol = { path = "../crates/h3-protocol" }
 h3-battle = { path = "../crates/h3-battle" }
 h3-kernel = { path = "../crates/h3-kernel" }
 h3-pack-battle = { path = "../crates/h3-pack-battle" }
+# The capture harness's situations (E17 M2 T1, *provisional*, the M2 review list): a scenario's
+# battle as a map the original plays (`h3-view situation`), with h3-map's writer; and the ruleset's
+# type, which the scenario adapter names. Never in a pure crate.
+h3-content-battle = { path = "../crates/h3-content-battle" }
+h3-map = { path = "../crates/h3-map" }
 # Light dependencies (the engine's versions and features).
 miniz_oxide = { version = "0.8", default-features = false, features = ["with-alloc"] }
 # The asset tables' parser (E17 M1 T4): serde is the engine's (without std); toml is the engine's

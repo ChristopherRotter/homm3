@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The reference-capture setup (E17 M1 T8, *provisional*; clients/README.md, "Reference captures").
+# The reference-capture setup (E17 M1 T8, M2 T1; *provisional*; clients/capture/README.md).
 # Runs a copy of the original game under Wine on a virtual X display at 16 bits, so a capture is
 # the original's own 5-6-5 screen. Linux only (a cloud sandbox); never touches the installation.
 #
@@ -38,8 +38,8 @@ done
 printf '\0\0\0\0' > "$game/Data/VIDEO.VID"
 chmod -R u+w "$game"
 
-# 3. xdd.dll: DirectDrawCreate forwarded to Wine's ddraw.
-i686-w64-mingw32-gcc -shared -o "$game/xdd.dll" "$root/clients/capture/xdd.c" \
+# 3. xdd.dll: DirectDrawCreate forwarded to Wine's ddraw, and the virtual clock (xdd.c).
+i686-w64-mingw32-gcc -O2 -Wall -shared -o "$game/xdd.dll" "$root/clients/capture/xdd.c" \
     "$root/clients/capture/xdd.def" -Wl,--enable-stdcall-fixup
 
 # 4. The prefix, drive D: = the run directory, and the game's settings (the value names are the

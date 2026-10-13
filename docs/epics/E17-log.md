@@ -310,3 +310,46 @@ On `client/e17-m1-t8-closure`, the user present; with `shared/exe-map-clients` (
 - **M2 prepared:** the capture harness first; the window/audio evaluation's candidates and method
   (QUEUE); CLT-Q1 still unowned.
 - Gates: `check.sh` passes (100 %); CI could not run (billing).
+
+### M2 T1 — The capture harness (2026-10-13)
+
+On `client/e17-m2-t1-capture-harness`, the user present; with `shared/clients-ci-h3-map` (#161:
+the client job's paths name `h3-map`, `h3-adventure` and `h3-game`; the user agreed to T1's plan).
+
+- **The user's two asks** (mid-session): get through the menus into a situation with as few
+  screenshots as possible (the menus never move), and take frames at exactly the right time,
+  perhaps through a "time freeze" in the executable. Both done without touching the executable:
+- **The virtual clock** (`capture/xdd.c`; design §6.1). The GOG `Heroes3.exe` reads time only
+  through WINMM's `timeGetTime` (its import table; 6 call sites); our `xdd.dll`, which it loads at
+  start, points that slot at a clock the harness freezes and steps by milliseconds through a
+  command file, and acknowledges how often the game read it since (idle = it drew everything up
+  to that time). Measured: frozen, the game reads it about 170 000 times a second.
+- **The driver** (`capture/h3drive.py`): the recipes `to_scenario` and `into_battle` by fixed
+  coordinates; screens by 12 probe pixels each (`screens.toml`, learned with `learn`; the battle's
+  from both turns' panels); no fixed waits. Launch to a battle's opening in about 8 s (T8's script
+  waited 15 s for the menu alone). Two independent runs of the smoke battle gave pixel-identical
+  frames at 0, 100, 200, 500 and 1000 ms.
+- **Situations:** `h3-view situation` (the scenario adapter's ruleset and setup, now shared by
+  `render`: `scenario::battle`, `scenario::sides`; the creatures' original ids from
+  `crtraits.txt` by name, as `harvest` keys them). Heroes without skills (no Leadership morale,
+  no Tactics), artifacts or war machines; Orrin and Crag Hack (no spell book); `--tile` moves the
+  battle. `h3cap.py find` renders each obstacle type of the terrain alone and matches it at every
+  anchor (1.0 exact; above 0.9 partly covered; a look-alike scores about 0.5); `h3cap.py diff`
+  with masks (heroes' corners, count boxes from the record, panel). `battle.sh` and `h3cap.py
+  first`/`obstacles` gave way to `h3drive.py battle`/`set` and `h3cap.py find`.
+- **The set** (`clients/situations/set.toml`): grass (frames 0 to 800 ms), dirt, sand, snow,
+  swamp, rough, subterranean, lava, and dirt at tile (20, 20) with an absolute obstacle; 17
+  frames, about 70 s unattended. Everything outside the masks matches but the outline's colour
+  (412 pixels, its pulse) and the grass Pikemen's idle animation; recorded per frame. After a
+  fresh `setup.sh` all 17 frames came back pixel-identical (digests of the pixels: the XWD colour
+  map holds unset bytes).
+- **Fixed on the way:** dirt's background. 0x41ADB0 read (design §5): the variant comes from the
+  trees, mountains and dead vegetation around the battle; an empty surrounding gives the third
+  picture, which the scene now takes (it took the first, `CmBkDrDd.pcx` instead of
+  `CmBkDrTr.pcx` on dirt; grass and snow have the same picture first and third). CLT-Q4 asks how a
+  record should carry it.
+- **Findings for T3/T4** (design §6.2): the outline steps through the ramp every 100 ms, period
+  800 ms, the opening already one step on; the Pikemen fidget from about 200 to 700 ms; the
+  obstacles follow the battle's tile, not the armies or the clock.
+- **Decided (*provisional*):** the diff stays in Python (design §6.1).
+- Gates: see the pull request.

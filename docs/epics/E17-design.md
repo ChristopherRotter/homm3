@@ -325,9 +325,11 @@ The redraw 0x494440, after the background:
 ### 4.7 Open
 
 - To confirm with reference frames: the obstacle `ObRgS03.def` and the draw order against VCMI's
-  (§4.4, §4.6); the outline's rotation step and timing (M2). **Confirmed on grass (T8, §6):** the
-  background variant 0, a layer-0 obstacle over a layer-1 one, the obstacles' positions and the
-  one- and two-hex stacks' canvases, all exact.
+  (§4.4, §4.6). **Confirmed on grass (T8, §6):** a layer-0 obstacle over a layer-1 one, the
+  obstacles' positions and the one- and two-hex stacks' canvases, all exact. **Confirmed on every
+  land terrain (M2 T1, §6):** the backgrounds (variant 2, §5), the usual obstacles of each terrain,
+  an absolute one, two-hex stacks facing either way, the outline's pixels and its rotation (a step
+  per 100 ms through eight entries).
 - Not read: the grid and shading options (0x493930); the count box's tint and text; the stack's
   byte +0x4F1; the palette effects; the siege branches (E04c).
 
@@ -351,9 +353,18 @@ What `h3-view harvest` reads (2026-10-13; the format: `clients/README.md`, "The 
   (0x63D2A0; E04c); else a special field 1–9 (manager +0x53C0) its picture (0x63D2C8), field 0
   the shore (`CmBkBch.pcx`, 0x66FF40); else two heroes in boats `CmBkBoat.pcx` (0x66FF5C), a
   battle on a ship (+0x53C6) `CmBkDeck.pcx` (0x66FF4C); else terrain t's picture
-  0x63D2F0[3t + v], v from 0x41ADB0, which looks at the adventure map around the battle (not
-  read: which variant a battle gets is open, T7 takes 0). Terrains 0–7 only: water and rock have
-  none (the gaps of `tests/tables.rs`).
+  0x63D2F0[3t + v], v from 0x41ADB0 (M2 T1): it counts the tiles of the adventure map within 3 of
+  the battle's (x − 3 to x + 3, y − 3 to y + 3, clipped to the map) whose object class (+0x1E of
+  the record a helper gives for the tile, not read inside) is a tree-like one (114, 115, 135,
+  137, 155, 159, 160), a mountain-like one (123, 133, 134, 136, 157, 158) or dead vegetation (119),
+  by a byte table over classes 114–160. Variant 0 if dead vegetation outnumbers both others, 1 if
+  the mountains outnumber both, else 2: **an empty surrounding gives 2.** (By VCMI's class names:
+  brush, bush, oak, pine, willow, yucca trees, trees; hill, mound, mountain, outcropping, volcanic
+  vent, volcano; dead vegetation.) The terrains differ only where the pictures do: dirt (Dd, Mt,
+  Tr), grass and snow (Tr, Mt, Tr). A battle's record does not carry its surrounding (CLT-Q4), so
+  the scene takes variant 2; the capture set confirms it on all eight land terrains, dirt's
+  `CmBkDrTr.pcx` included. Terrains 0–7 only: water and rock have none (the gaps of
+  `tests/tables.rs`).
 - **Obstacles:** the type table 0x63C7C8 (`def`, `rows` = height, `layer`) and the absolute table
   0x63BEC0 (`pcx`, `at`), §4.4; keys `obstacle_<n>`: type n, absolute record n − 100 (VCMI's
   numbering, as the packs).
@@ -387,9 +398,58 @@ Findings of the first run:
 - **The opening frame.** The battle screen is complete in the first frame after the transition
   (`h3cap.py first`). A faster AI stack acts at once, so in the smoke battle the Wolf Riders are
   already in their move pose and show no outline; an idle opening needs the human's stack first.
-- **The smoke battle against `scenarios/smoke.toml`:** the background (variant 0), the pond (type
+- **The smoke battle against `scenarios/smoke.toml`:** the background (on grass variants 0 and 2
+  are the same picture; M2 T1 showed the original takes 2, §5), the pond (type
   22, layer 1), the rock (type 20, layer 0, drawn over the pond), the log (type 19) and the
   Archers, Pikemen and Goblins at their hexes match exactly. Differences: the heroes, the Ballista,
   the count boxes, the panel (not drawn yet), the moving Wolf Riders. Not checked yet: the active
   stack's outline (needs a human-first opening), the background variant on other terrains, the
   absolute obstacles, mirrored two-hex stacks standing.
+
+### 6.1 The harness (M2 T1)
+
+The runbook: `clients/capture/README.md`. What it rests on:
+
+- **The clock.** `Heroes3.exe` (GOG) imports one clock, WINMM's `timeGetTime` (6 call sites, two
+  more reads of its import slot), and no `GetTickCount`, `QueryPerformanceCounter` or timer; so
+  every animation runs on it. Our `xdd.dll`, which the game loads at start, points that import
+  slot at a virtual clock the harness freezes and steps by milliseconds (`xdd.c`); the executable
+  stays byte-identical. Frozen, the game keeps reading the clock (about 170 000 reads a second):
+  after a step, 20 reads mean it has drawn everything up to the new time. Only the battle runs on
+  the stepped clock; the menus run in real time.
+- **The driver** (`h3drive.py`): fixed coordinates through the menus, each screen recognised by 12
+  probe pixels (`screens.toml`), no fixed waits: from launch to a battle's opening in about 8 s.
+  The opening is the first 10 ms step at which the battle panel's probes match.
+- **Situations** (`clients/situations/`): `h3-view situation` writes a scenario's battle as a map
+  (two heroes side by side, no skills, artifacts or war machines); the original's obstacles come
+  back from the capture by `h3cap.py find` (each terrain's types rendered alone and matched at
+  every anchor); masks cover the heroes' corners, the count boxes (§4.3, from the record) and the
+  panel. The set runs unattended (nine situations in about 70 s) and fails when a frame's count of
+  differing pixels changes.
+- **Reproducible:** after a fresh `setup.sh` (a new prefix and run directory) all 17 frames of the
+  set came back pixel-identical. An XWD file's colour map holds bytes the X server leaves unset, so
+  the set digests the pixels.
+- **The diff stays in Python** (*provisional*): the harness runs only in a Linux sandbox with Wine
+  and the X tools, and no CI run can see an original file; an `h3-view diff` in Rust would add
+  code nothing else uses. Revisit if the comparison moves into the client's own binary (M3).
+
+### 6.2 Findings of the capture set (M2 T1)
+
+- **Every land terrain matches** outside the masks but for the outline's colour: the eight
+  backgrounds (variant 2, §5; dirt's `CmBkDrTr.pcx`, where variant 0 had been drawn), each
+  terrain's usual obstacles (21 types), an absolute one (`obstacle_100` on dirt), one- and two-hex
+  stacks facing either way (Royal Griffins and Cavaliers right; Wolf Riders, Black Knights,
+  Unicorns, Nagas, Basilisks, Manticores, Hell Hounds left).
+- **The obstacles depend on the battle's tile** (and its terrain), not on the armies or the
+  clock: the smoke battle and the grass situation, both at (11, 10), got the same three; on dirt
+  six other tiles gave six other sets, (20, 20) and (30, 30) an absolute obstacle. (The engine
+  draws them from the battle's seed, BAT-GEO-004; the original's generator was not read.)
+- **The outline.** Its pixels match exactly in every situation. Its colour steps through
+  `game.pal`'s yellow ramp (§4.2) once per 100 ms: at 0, 100, …, 800 ms after the opening the
+  original shows 224, 192, 160, 128, 160, 192, 224, 255, 224 (red = green, blue 0), so the
+  opening frame is already one step on and the period is 800 ms; at 700 ms (the ramp's first
+  entry) our still matches it exactly. When within each 100 ms the step falls: T3.
+- **Idle animation.** In the grass situation the Pikemen fidget from about 200 to 700 ms after the
+  opening, identically on every run; its other three stacks stand still for 800 ms. T3, T4.
+- **The panel** shows its buttons lit on the human's turn and dimmed on the computer's.
+

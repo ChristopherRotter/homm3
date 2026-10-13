@@ -1,0 +1,34 @@
+# E17 M2 T1: a situation of the capture set (set.toml) on dirt, the battle at tile (20, 20), where
+# the original places an absolute obstacle; the armies as dirt.toml's. The obstacles are the
+# original's, found in its capture (`h3cap.py find`).
+
+[scenario]
+id = "situation-dirt-absolute"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:dirt"
+obstacles = [
+    { hexes = [62, 63, 47, 46, 45], anchor = 62, kind = "base:obstacle_2" },
+    { hexes = [146, 147, 130], anchor = 145, kind = "base:obstacle_13" },
+    { hexes = [80, 94, 95, 96, 97, 105, 106, 107, 108, 109, 110], kind = "base:obstacle_100" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 4
+creature = "base:swordsman"
+count = 10
+
+[[defender]]
+slot = 1
+creature = "base:black_knight"
+count = 3
+
+[[defender]]
+slot = 5
+creature = "base:skeleton"
+count = 20

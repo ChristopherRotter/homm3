@@ -140,6 +140,14 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   defends; a frame at any time, headless.
 - The window adapter playing a record at the original's frame rate.
 - **Exit:** a record of a full battle plays in the window and renders headless frame by frame.
+- **T1 done 2026-10-13** ([log](E17-log.md#m2-t1--the-capture-harness-2026-10-13),
+  [design §6.1, §6.2](E17-design.md), runbook `clients/capture/README.md`): our `xdd.dll` takes
+  over the original's only clock import, so the harness freezes and steps the game's time by
+  milliseconds; a driver by fixed coordinates and probe pixels; `h3-view situation`; the capture
+  set (`clients/situations/set.toml`): every land terrain, human-first openings, two-hex stacks
+  facing either way, usual and absolute obstacles, all matching outside the masks but for the
+  outline's colour (its pulse, T3/T4) and an idle animation; reproducible from a fresh prefix. The
+  scene takes a terrain's third background (0x41ADB0 read; CLT-Q4).
 
 ### M3 — fidelity
 
@@ -164,7 +172,7 @@ viewer, video.
 | 2. The off-colour pixels; the screen format | M1 T1 (done: design §3.2) |
 | 3. Licences of MMArchive and homm3-unpacker before reading their code | stop the line: a question first, when a task wants them |
 | 4. The video archives | later |
-| 5. Capturing the original | M1 T8 (done: Wine in the sandbox, design §6); the harness M2 |
+| 5. Capturing the original | M1 T8 (done: Wine in the sandbox, design §6); M2 T1 (done: the harness, §6.1) |
 | 6. Per-expansion content and the ruleset profiles | M1 T4 |
 | 7. The HD patch as a source of fixes and for HD | M3, later |
 | 8. Shadows and the other keyed colours | M1 T1 (done: design §3.3) |
@@ -184,6 +192,9 @@ viewer, video.
 - **Wine is not Windows.** The captures run on Wine's DirectDraw; the exact match of the menu and
   the battlefield says it changes nothing there, but a difference only Wine could cause (timing,
   palette effects) would need a check on Windows.
+- **The background variant (CLT-Q4).** The original picks a battlefield's picture from the
+  adventure map around the battle; a battle's record does not carry it, so the viewer shows the
+  picture of an empty surrounding.
 - **Checkpoint loading needs an engine change (CLT-Q2).** Until the battle lane's table-only
   reader lands, the client reads whole archives (212 MiB, about 0.2 s warm).
 
@@ -229,3 +240,12 @@ choices are lifted.
 
 - The capture tooling (T8): Wine, Xvfb, xdotool, ImageMagick and mingw-w64 as sandbox tools;
   Python with numpy for `h3cap.py` (as `scripts/exe.py` uses Python); our own `xdd.dll` forwarder.
+- The virtual clock in `xdd.dll` (T1): it rewrites the running game's import slot of
+  `timeGetTime` in memory (no byte of the executable changes), driven through two files.
+- `h3-map` and `h3-content-battle` as dependencies of `h3-view`'s binary (T1: `h3-view situation`
+  writes maps with `h3-map`'s writer; the scenario adapter names the ruleset's type); with them
+  `h3-adventure` and `h3-game` enter the client's build and its CI paths (#161).
+- The probes' file `capture/screens.toml` (positions and 5-6-5 values of the original's screens:
+  numbers only, ADR-0009) and the set's format `situations/set.toml` (T1).
+- The diff and the obstacle finder stay in Python, not `h3-view diff` (T1, design §6.1).
+- The scene's background: a terrain's third picture, an empty surrounding's (T1; CLT-Q4).

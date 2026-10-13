@@ -46,9 +46,9 @@ search the parent directories).
   that record (`clients/out/render/<stem>-s<seed>.jsonl`); a record file (`.jsonl`) is read
   directly. Its first snapshot, the asset tables and `clients/layouts/battle.toml` give the draw
   list (`--list` prints it); the assets load as one checkpoint batch; the PNG goes to
-  `clients/out/render/`. Drawn so far: the background (variant 0), the obstacles, every living
-  stack standing on its hex, the active stack's outline; not yet the heroes, count boxes, corpses,
-  spell obstacles or the grid.
+  `clients/out/render/`. Drawn so far: the background (the picture of an empty surrounding,
+  CLT-Q4), the obstacles, every living stack standing on its hex, the active stack's outline; not
+  yet the heroes, count boxes, corpses, spell obstacles or the grid.
 
 | Path | What |
 |---|---|
@@ -56,11 +56,12 @@ search the parent directories).
 | `clients/scripts/check.sh` | the client's gates (local and CI) |
 | `clients/crates/h3-assets` | decoders: palettes, PCX, DEF, MSK (done), fonts, later sound and video; encoders for synthetic test assets (`build`); the gate's checks (`check`, `survey`); reads LOD archives through `crates/h3-formats` (a path dependency into the engine workspace) |
 | `clients/crates/h3-render` | the software compositor: the screen in a 16-bit pixel format, palettes truncated into it, the executable's frame drawers (shadows, outline and flag colours, mirroring, clipping), opaque images, PNG bytes |
-| `clients/crates/h3-view` | the scene model (the library: `record` reads a record, `scene` makes a snapshot's draw list, `batch` holds a checkpoint's decoded assets, `compose` draws the list into a frame; `tables` and `layout` load the asset tables and the layouts); its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the tables' harvester, `sprite`, the headless renderer `render` with its scenario adapter, later the window. Its package depends on `h3-protocol` (the library) and, for the scenario adapter only, on `h3-pack-battle`, `h3-battle` and `h3-kernel`, which `tests/purity.rs` keeps out of the library |
+| `clients/crates/h3-view` | the scene model (the library: `record` reads a record, `scene` makes a snapshot's draw list, `batch` holds a checkpoint's decoded assets, `compose` draws the list into a frame; `tables` and `layout` load the asset tables and the layouts); its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the tables' harvester, `sprite`, the headless renderer `render` with its scenario adapter, `situation` (a scenario's battle as a map for the original), later the window. Its package depends on `h3-protocol` (the library) and, for the adapters only, on `h3-pack-battle`, `h3-battle`, `h3-content-battle`, `h3-kernel` and `h3-map`, which `tests/purity.rs` keeps out of the library |
 | `clients/assets/{base,ab,sod}.toml` | the asset tables per expansion (below): content keys to archive entry names and the drawing's numbers, asset fixes; identifiers and numbers only |
 | `clients/layouts/battle.toml` | the battle screen's layout at the native resolution (ADR-0020 point 3: layouts are data): the frame, the hex boxes, where sprites stand, the stack canvas, the layer-1 pass's columns, the outline's palette entry (`docs/epics/E17-design.md` §4); an HD layout is another file of the same format (*provisional*) |
 | `clients/scenarios/*.toml` | the client's battle scenarios (the scenario format of `packs/README.md`) for `h3-view render`: the stills T7 renders, `smoke.toml` the captured smoke battle (T8) |
-| `clients/capture/` | the reference captures (below): `setup.sh`, `battle.sh`, `h3cap.py`, the `xdd.dll` forwarder's source |
+| `clients/capture/` | the reference captures (below; the runbook `capture/README.md`): `setup.sh`, the driver `h3drive.py` and its screens' probes, `h3cap.py` (diffs, obstacles), the `xdd.dll` source (forwarder and virtual clock) |
+| `clients/situations/` | the capture set (`set.toml`) and its situations' scenario files: what the harness shows the original, with each frame's recorded differences |
 | `clients/out/` | local output (renders, reports); gitignored |
 
 The decoders, the compositor and the scene model are pure (no I/O, clock or threads; time is an
@@ -106,28 +107,15 @@ Which table an entry belongs to is the pack that defines its key; the graphics n
 
 ## Reference captures
 
-*Provisional* (E17 M1 T8; ADR-0020 point 9; `docs/epics/E17-design.md` §6). The original runs
-unattended in a Linux sandbox under Wine, on a virtual X display at 16 bits, so an XWD dump of the
-display is the original's own 5-6-5 screen and compares exactly with our renders (truncated back
-to 5-6-5). It runs from a copy under `original-data/` (never the installation):
-
-1. `clients/capture/setup.sh [copy]` installs 32-bit Wine, Xvfb, xdotool and mingw-w64; makes the
-   run directory `original-data/wine/game` from the copy (`Heroes3.exe`, its five DLLs, the four
-   LODs, `Heroes3.snd`, `H3ab_ahd.snd`, `H3ab_ahd.vid`; `VIDEO.VID` becomes an empty archive);
-   builds `xdd.dll`, which forwards the GOG executable's DirectDraw import to Wine's; and writes the
-   game's settings (no intro, combat grid, hex or movement shade, no sound) into a Wine prefix.
-2. `clients/capture/battle.sh <map.h3m> <dir>` starts a single scenario on the map, steps the
-   selected hero east into the enemy hero and dumps a burst of frames (`f01.xwd`, …). The battle
-   lane's smoke map is such a map (`cargo run -p h3-map --example smoke_map -- <Objects.txt>
-   <map>`).
-3. `clients/capture/h3cap.py first <dir>` picks the opening frame; `h3cap.py diff <frame.xwd>
-   <render.png> --out <diff.png>` counts the differing pixels and marks them;
-   `h3cap.py obstacles` finds a capture's obstacles by matching each candidate type at every hex.
-
-The smoke battle (`scenarios/smoke.toml`): the background, the three obstacles and the stacks
-standing at their hexes match the capture pixel for pixel; what differs is what is not drawn yet
-(heroes, war machines, count boxes, the panel) and the AI's stack already moving. Captures stay in
-the sandbox or `clients/out/` and are never committed (ADR-0009).
+*Provisional* (E17 M1 T8, M2 T1; ADR-0020 point 9; `docs/epics/E17-design.md` §6). The original
+runs unattended in a Linux sandbox under Wine, on a virtual X display at 16 bits, from a copy under
+`original-data/` (never the installation); our `xdd.dll` takes over its clock, so every frame is
+taken at an exact game time, and a driver steers it by fixed coordinates, recognising screens by
+probe pixels. The capture set (`situations/set.toml`: every land terrain, human-first openings,
+two-hex stacks facing either way, usual and absolute obstacles) runs with one command and compares
+each frame with our render, outside masks over what we do not draw yet. The runbook, its common
+uses and its traps: [`capture/README.md`](capture/README.md). Captures stay in the sandbox or
+`clients/out/` and are never committed (ADR-0009).
 
 ## Asset policy
 

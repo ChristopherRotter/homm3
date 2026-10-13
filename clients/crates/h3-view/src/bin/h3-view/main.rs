@@ -6,6 +6,7 @@ mod gate;
 mod harvest;
 mod render;
 mod scenario;
+mod situation;
 mod sprite;
 
 use std::process::ExitCode;
@@ -39,6 +40,13 @@ commands:
           packs/; obstacles from the seed, default 1, when it asks) is run in-process as a
           spectator of h3-protocol's session first; that record is written beside the PNG
           (<stem>-s<seed>.jsonl). --list prints the draw list.
+  situation <scenario.toml> [--packs <dir>] [--install <dir>] [--out <file.h3m>]
+          writes the original's map for a scenario's battle, for the capture harness
+          (clients/capture/README.md): Red's hero (human) just west of Blue's (computer) on the
+          scenario's terrain, each with the scenario's stacks in their slots and its formation, no
+          skills, artifacts or war machines; stepping Red's hero east starts the battle. The
+          creatures' original ids from the installation's crtraits.txt; the map defaults to
+          clients/out/situation/<stem>.h3m.
   harvest [--install <dir>] [--packs <dir>] [--out <dir>]
           generates the asset tables (<out>/{base,ab,sod}.toml, default clients/out/harvest)
           from the installation copy's Heroes3.exe and H3bitmap.lod, keyed by the packs (default
@@ -63,6 +71,10 @@ fn main() -> ExitCode {
             },
             "render" => match render::Options::parse(rest) {
                 Ok(options) => render::run(&options),
+                Err(message) => usage_error(&message),
+            },
+            "situation" => match situation::Options::parse(rest) {
+                Ok(options) => situation::run(&options),
                 Err(message) => usage_error(&message),
             },
             "sprite" => match sprite::Options::parse(rest) {
