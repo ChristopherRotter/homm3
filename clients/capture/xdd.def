@@ -1,0 +1,3 @@
+LIBRARY xdd.dll
+EXPORTS
+DirectDrawCreate=ddraw.DirectDrawCreate

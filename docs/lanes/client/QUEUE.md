@@ -4,21 +4,49 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12; ADR-0020). M1 below (T1, T2, T3 and T6 done 2026-10-12: the code reading, the decoders, the gate's inventory, the compositor; T5, T4 and T7 2026-10-13: the battle screen, the asset tables, the battle still; `docs/epics/E17-design.md`), each task about half a context. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too (`clients/README.md`, "Reference captures"). The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
 
-### E17 M1 T8 — M1's closure
+### E17 M2 T1 — The capture harness
 
-- **Scope:** M1's exit criteria checked; the review list (epic file) completed; a fresh reviewer agent over M1; the user compares the stills with the original (the differences become M2/M3 items or fixes); the M2 refinement prepared (the window/audio evaluation's plan, CLT-Q1's state).
-- **Acceptance:** M1's exit (epic file).
-- **Depends on:** T1–T7 (done).
-- **Status:** ready. The stills: `clients/scenarios/*.toml`, rendered by `h3-view render` (sent to the user 2026-10-13); the user compares them with the original.
+- **Scope:** the user's exhaustive diffs (2026-10-13), on M1 T8's capture (`clients/capture/`, design §6). Situations as maps the client generates on `h3-map`'s writer (a dependency of `h3-view`'s binary: `clients.yml`'s paths, a `shared/` PR first), armies chosen so the human's stack opens (an idle opening frame: the outline, its pulse); each situation's scenario rebuilt from the map and the capture (obstacles by `h3cap.py obstacles`, or by the engine's generator if it reproduces the original's); masks for what is not drawn yet; a situation set with each one's recorded differences; one command over the set, unattended. Decide whether the diff moves into Rust (`h3-view diff`).
+- **Acceptance:** at least one situation per terrain's background, a mirrored two-hex stack standing, an absolute obstacle and a human-first opening pass or list their differences; the outline checked; the set reruns from a fresh prefix with identical frames.
+- **Depends on:** M1 (done).
+- **Status:** ready.
+
+### E17 M2 T2 — The window, input and audio evaluation
+
+- **Scope:** ADR-0020's choice "at M2 after an evaluation, on technical grounds". Candidates (`cargo info`, 2026-10-13): window, input and audio `sdl2` 0.38 and `sdl3` 0.20 (MIT; SDL itself zlib; a C library, bundled build or DLL); window and input `minifb` 0.29, `miniquad` 0.4 with `quad-snd` 0.2 (MIT or Apache-2.0); audio `tinyaudio` 2.0 (MIT), mixing `oddio` 0.7; MP3 `minimp3` 0.6 (MIT, C), `puremp3` 0.1 (MIT or CC0), `nanomp3` 0.2 (MIT or Apache-2.0). Outside the licence policy unless the user moves the client to GPLv3: `winit` 0.31 and `cpal` 0.18 (Apache-2.0 only; `cpal` also under `rodio` and `kira`), `symphonia` 0.6 (MPL-2.0, not in the allowlist). Criteria: licence; Windows and Linux; an 800 × 600 5-6-5 frame shown exactly (nearest, integer scaling); frame pacing at the original's frame times; mouse, keyboard, the game's own cursor; mixing 22 kHz effects with streamed MP3, latency; CI stays headless (an adapter crate); build weight; maintenance. Method: a spike adapter per finalist (two or three) on a throwaway branch (a still in a window, an effect, a music track), measured; an ADR draft in `adr-drafts/`.
+- **Acceptance:** the user's choice (and licence step, if any) recorded; stop the line until then (a heavy dependency).
+- **Depends on:** nothing; can run beside T1.
+- **Status:** ready.
+
+### E17 M2 T3 — Code reading: the battle's animation timing
+
+- **Scope:** the original's frame rate and each animation's frame times (`cranim.txt`'s times as the executable scales them, design §5), walking speed, the attack, defend, wait and death sequences, projectiles (flight, angles), the outline's pulse and step, the idle fidget; compared with VCMI 1.7.5 and with the harness's bursts (frames at known times). Design §7.
+- **Acceptance:** each timing with its address (map entries, `check-exe-map`) and a capture or VCMI to confirm it.
+- **Depends on:** T1 for the captured sequences.
+- **Status:** ready after T1.
+
+### E17 M2 T4 — The scene over time
+
+- **Scope:** a record's messages become animations at T3's timing; a frame at any time, headless (`h3-view render --at <ms>`); strikes, shots and projectiles, deaths, waits, defends; moves need the walk's path (**CLT-Q1, unowned**: the user decides its shape with the battle and server lanes, a `cross-lane` change). Each sequence checked against the harness.
+- **Acceptance:** a record of a full battle renders frame by frame headless; the harness's sequences pass or list their differences.
+- **Depends on:** T3; CLT-Q1 for moves.
+- **Status:** waits.
+
+### E17 M2 T5 — The window adapter and M2's closure
+
+- **Scope:** T2's library in an adapter crate, playing a record at the original's frame rate, with the game's cursor; M2's review list, a fresh reviewer, the M3 refinement prepared.
+- **Acceptance:** M2's exit (epic file).
+- **Depends on:** T2, T4.
+- **Status:** waits.
 
 ## Inbox
 
 - 2026-10-13 (the user, at E17 M1): **text through a string catalogue.** Every string the client shows comes from a key → string catalogue (nested JSON or similar), easy to translate, language packs swappable; not the original's bare text files. The agent's notes for the refinement (M3, with the fonts and the battle interface, where the first text appears): the original's text cannot be committed (ADR-0009), so the original's language is read at the checkpoint from the user's own `.TXT` entries through a committed catalogue of keys (key → archive entry, row, column), and a localized installation is a language pack of its own; the client's own strings (lobby, accounts, ladders: no original text) are committed in any language; a translation of the original's text is likely a derivative work (a licence question for the user before any is committed); the catalogue's format (flat or nested JSON, TOML, Fluent for plurals and cases) and how placeholders and plurals work; fonts: the original's are 8-bit bitmap fonts in a code page, so a language with other letters needs fonts of its own (or a modern renderer as a graphics option). An ADR-0020 amendment at that refinement.
 - 2026-10-13 (the user, at E17 M1): **graphics options.** Eventually the user chooses per effect whether it is drawn the original's dated but familiar way or a modern one (shadows first). The agent's notes: `faithful` stays the default and the only setting the reference frames check (ADR-0020 point 9); an option is a field of a settings value the compositor takes, never a fork of the scene model, so the draw list keeps naming what is drawn and only `h3-render` decides how; a modern shadow may want more than the 16-bit screen (alpha over a 24-bit frame), which ADR-0020 point 3 has to allow; independent of the asset fixes' `faithful`/`fixed` profile (point 6). An ADR-0020 amendment when the first option is built.
 
-- 2026-10-13 (E17 M1 T4): `cargo xtask check-exe-map` scans only `docs/` and `crates/` (`xtask/src/exemap.rs`, `CITING_DIRS`), so the addresses in `clients/` code are checked only through their citations in the design notes. Adding `clients` there is a small `shared/` pull request.
+- 2026-10-13 (E17 M1 T8, the reviewer): what the battle still does not draw yet, besides the count boxes (M3, fonts): the heroes (design §4.5) and the war machines (the smoke capture's Ballista); a battle on water or rock has no background in the tables (the ship decks, not mapped) and fails to render; an HD layout needs the battlefield's origin and viewport in the layout format.
 - 2026-10-12 (the user, at E17 M0): the adventure map's object draw order is surprisingly complicated; the user's own engine and VCMI (at the time) did not get it exactly right. Research item 9 (HANDOFF): a code reading of the executable's map drawing (the order of objects, their shadows, heroes and overlapping tiles) when the adventure map viewer is refined, with reference frames from the original to confirm.
 - 2026-10-12 (E17 M0 checkpoint, the user): **CLT-Q2**, a table-only LOD reader in `h3-formats` for the battle lane (`docs/OPEN-QUESTIONS.md`). When it lands, the client's archive set switches from whole reads to the directories at start and a batch's entries by offset; `h3-view gate` then measures that.
 - 2026-10-09 (server lane, SRV-Q3, the user): the server's first client is its own headless test client (M1); the client lane's viewer comes next. Proposal for the client refinement: the viewer reads `h3-protocol` messages live over the WebSocket or from a *record* file (one viewer's message log, JSON lines) with the same code, so the record format is the viewer's file format and one code path plays a live game and a recorded one. Open for the client ADR: whether the client workspace depends on `crates/h3-protocol` by path. Context: `docs/epics/E16-server.md`, `docs/epics/E16-design.md`.

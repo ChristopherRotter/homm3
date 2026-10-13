@@ -280,3 +280,33 @@ executable.
 - *Provisional* (review list): the layout's format and file; `h3-pack-battle`, `h3-battle` and
   `h3-kernel` as the binary's dependencies; the record's line bound; the removal rule.
 - Gates: `clients/scripts/check.sh` passes (coverage 100 %); CI could not run (billing).
+
+### M1 T8 — M1's closure (2026-10-13)
+
+On `client/e17-m1-t8-closure`, the user present; with `shared/exe-map-clients` (#154:
+`check-exe-map` scans `clients/` too, the user agreed).
+
+- **Exit checks on master:** `clients/scripts/check.sh` passed (100 %); the gate decoded all
+  11 981 entries and found the tables' 307 names; the three stills rendered.
+- **The fresh reviewer** (a sub-agent, read-only): 13 findings, each checked against the code.
+  Fixed: the obstacle removal rule was wrong (the engine drops a removed obstacle from the list, so
+  the rule could only hide one still on the field: dropped); a DEF frame could make the decoder
+  reserve 512 MiB (now at most 2^20 pixels; every real frame fits); a stack's placement saturates;
+  three tests that wrong code could pass (mirroring with the native offsets, layer-1 obstacles
+  before a stack above their row, exact pixels clipped at each edge); `h3-formats` binary-only in
+  `tests/purity.rs`; `harvest` writes to `clients/out/harvest` by default; usage text and
+  descriptions. Recorded: an HD layout's missing field origin, the record bound's wording, the fix
+  entry's missing flag and profile, water and rock battles without a background (inbox).
+- **The review list** accepted by the user, all 13 items.
+- **Reference captures** (the user: automatic, for exhaustive diffs; in the cloud sandbox under
+  Wine; design §6, `clients/README.md`): five DLLs copied read-only from the installation into
+  `original-data/install`; `clients/capture/` (`setup.sh`, `battle.sh`, `h3cap.py`, the `xdd.dll`
+  forwarder). The main menu proved the capture exact (5-6-5). The battle lane's smoke map gives a
+  battle in one key press; `scenarios/smoke.toml` rebuilds it, its obstacles found by
+  `h3cap.py obstacles`. **Background, obstacles and the standing stacks match pixel for pixel**; a
+  run from a fresh prefix reproduced the identical frame. Differences (M2/M3): heroes, war
+  machines, count boxes, the panel, the AI's moving stack; the outline is unchecked (the AI's
+  faster stack opens).
+- **M2 prepared:** the capture harness first; the window/audio evaluation's candidates and method
+  (QUEUE); CLT-Q1 still unowned.
+- Gates: `check.sh` passes (100 %); CI could not run (billing).
