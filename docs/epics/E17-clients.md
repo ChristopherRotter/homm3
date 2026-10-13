@@ -1,12 +1,12 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 in progress (T1, T3, T4a, T6 and T4b-1 done 2026-10-13). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 in progress (T1, T3, T4a, T6 and T4b-1 done 2026-10-13, T4b-2a 2026-10-14). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M2 T4b-2 (the scene over time completed: fidgets, turns, draw layers, a full
-battle frame by frame) or T2 (the window and audio evaluation).
+are there). Next: M2 T4b-2b (the turn sequence recorded, the walk-by difference, the remaining
+animations) or T2 (the window and audio evaluation).
 
 ## Goal
 
@@ -172,6 +172,15 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   time; walk and shot exact in every frame (the arrow at every step), melee 68 of 75 (the rest
   listed); the projectile, the outline's pulse and the idle steps built; the shooter's strike
   loop and the flight's points corrected.
+- **T4b-2a done 2026-10-14** ([log](E17-log.md#m2-t4b-2a--a-full-battle-frame-by-frame-2026-10-14),
+  [design §7.10](E17-design.md)): M2's headless exit: `h3-view play` has a bot fight a scenario to
+  its end and draws every frame of it headless (`scenarios/battle.toml`: 24 commands, about 1 100
+  frames in 3 s); turns read in the executable and built (walks, flights, both sides of a melee,
+  shooters, turning back; a turned two-hex stack on its other hex), the draw layers (walk 3/7,
+  striker 6, struck 5, corpses 1), fidgets from the viewer's own generator, a flight's two
+  standing frames. The three recorded sequences unchanged; the turn sequence is prepared
+  (`situations/seq-turn.toml`), its recording in the original moved to T4b-2b (the user's
+  computer was offline).
 
 ### M3 — fidelity
 
@@ -292,6 +301,20 @@ choices are lifted.
   without a time after the first counting as the computer's (its idle step and outline); f32
   arithmetic emulated in fixed point and tangents by series in the pure crate; the layout's
   `outline_ramp`.
+- `h3-view play` (T4b-2a): its bot (`bin/h3-view/bot.rs`: shoots, else strikes, else walks
+  toward the nearest enemy; the engine plays, the session replays the commands), its output
+  (`frames.txt`, one line per distinct frame; `f<ms>.png` with `--png`) and
+  `scenarios/battle.toml`.
+- The turns' and layers' model (T4b-2a, design §7.10): `Pose` carries the facing and the draw
+  layer; the asset tables' `turn_left` and `turn_right` groups; the struck stack's layer 5 from
+  the harness's reading (its writes not found), a shot's layers left at 4; a layer change without
+  a frame of its own shows with the next frame that does not draw that stack; a dying stack in
+  its layer's pass until the next frame, then among the corpses.
+- The fidgets (T4b-2a): the C library's `rand()` sequence seeded by the battle's seed, only for
+  stacks whose DEF has group 1, the stall draw also at a fidget's last step; the reference checks
+  without them.
+- A later command without a time starts as the previous one's last frame shows (T4b-2a: the
+  flight's second standing frame, 0x4B4A15, replaced T4a's extra tick).
 - The harness's adventure map (T6): `Show Route` on in `setup.sh`; the recipes' format
   (`capture/batches/*.toml`: steps, `record`, `expect`) and the filled template with its note on
   how it was played; every record read from the game's memory, not the screen; the adventure

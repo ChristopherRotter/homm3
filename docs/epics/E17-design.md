@@ -313,7 +313,7 @@ The redraw 0x494440, after the background:
 
 - The draw layer (H3API calls +0x8 "visibility") is 4 from the setup (0x43D750); 6 for the
   attacker of a melee (0x441CC1); 3 or 7 by direction in 0x43F0B0 (directions 0 and 5: 3; 2 and 3:
-  7). So standing stacks draw in pass 4, after the corpses and obstacles of their row, and a
+  7); 5 for a struck stack (the harness's reading, §7.9; the viewer draws them all, §7.10). So standing stacks draw in pass 4, after the corpses and obstacles of their row, and a
   striking stack over its row's neighbours.
 - So a layer-0 obstacle covers the stacks of the rows above its anchor row, its anchor row's
   stacks cover it, and every count box is drawn with its stack, under the stacks to its right in
@@ -589,8 +589,8 @@ A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F
   21, standing. Confirmed (sequence `melee`): the Angels (W 410, n 7, D 115) fly 352 pixels from
   hex 35 to 43 in k = 3 cycles of 58 ms frames from 300 ms; group 21 shows from 1518.
 - **A turn** (`stack_turn_around` 0x446720, animated): facing right, group 7, the flip, group 10;
-  facing left, group 9, the flip, group 8; each all its frames; then standing. Not in a sequence
-  yet.
+  facing left, group 9, the flip, group 8; each all its frames; then standing. When a stack turns:
+  §7.10. Not in a sequence yet.
 
 ### 7.4 Strikes and shots
 
@@ -691,11 +691,10 @@ without the original files. `h3-view render <record> --at <ms>` draws the poses 
   drawn among the corpses (pass 1). **Confirmed by the frame check (T4b-1, §7.9):** a walk's
   frame f drawn f × Δx / n and f × Δy / n along the step. **Corrected there:** the shooter's
   strike loop and the flight's points (§7.9).
-- **Not yet (T4b-2):** fidgets from the viewer's own generator; turns (§7.3) and the battle
-  lane's note that stacks turn to face their target for a strike or a shot; the draw layers of
-  walks (3, 7) and strikes (6, the struck stack 5: §7.9); the spells' sprites; Haste and Slow
-  (the walk time), rays, teleports, magic animations, deaths by spells, created stacks; the
-  difference §7.9 lists.
+- **Built in T4b-2a (§7.10):** turns, the draw layers, fidgets from the viewer's own generator,
+  a flight's two standing frames (which replaced the next command's default tick).
+- **Not yet (T4b-2b and later):** the spells' sprites; Haste and Slow (the walk time), rays,
+  teleports, magic animations, deaths by spells, created stacks; the difference §7.9 lists.
 
 ### 7.9 The frame check (M2 T4b-1)
 
@@ -745,7 +744,7 @@ listed below. What the check settled:
   record: a command without a time after the first counts as the computer's (*provisional*).
 - **The draw layers** read from memory (+0x8, `h3mem.py`): 4 throughout a straight walk or flight;
   the melee's striker 6 and the struck stack 5 during the strike, both 5 during the retaliation,
-  4 again after each (not drawn differently yet: T4b-2).
+  4 again after each (drawn since T4b-2a, §7.10).
 - **Memory against the screen:** after an animation the game processes a turn's start in the same
   millisecond after the harness's 20 clock reads, so a state read then can lag the screen by one
   step (the walk's idle counter read 1 at 2 592 while the screen shows the third step's colour).
@@ -756,3 +755,63 @@ Riders walk past the Angels: dark pixels at the Angels' outline edges (sword tip
 3 966 the Angels' count box at its usual place under the Wolf Riders' legs where the viewer's
 poses (the walk's end on hex 45) put it beside them. Not read yet: the redraw of a walk's frames
 near another stack.
+
+### 7.10 A whole battle: turns, layers, fidgets (M2 T4b-2a)
+
+`h3-view play <scenario | record>` draws a battle frame by frame headless, M2's headless exit: a
+scenario is fought to its end by a bot of the viewer's own in both seats (`bin/h3-view/bot.rs`:
+it shoots, else strikes, else walks toward the nearest enemy, the first such command the engine
+lists; the engine plays the battle, the protocol's session replays its commands for a
+spectator's record), its commands are played at the original's timing and every distinct frame
+is drawn (`Timeline::changes`: each pose's, projectile step's, outline's and idle step's time;
+`--png` writes them). `clients/scenarios/battle.toml` (walkers, two-hex stacks, fliers and
+shooters on both sides): 24 commands, 82 s, about 1 100 frames drawn in 3 s; `--to` past its end
+lets it idle. Read in `Heroes3.exe` for it:
+
+- **Facing and position.** A stack faces right (+0x44 = 1) or left; the setup faces the attacker
+  right. Turning around flips it and moves a two-hex stack's position (+0x38) onto its other hex:
+  + 1 for the attacker, − 1 for the defender (0x446720), so the stack keeps its hexes. The engine
+  keeps a two-hex stack's position by its side (BAT-GEO-002): the viewer adds that shift while a
+  stack is turned, and the timeline's lines show the executable's position. Between commands
+  every living stack faces as its side does (each turn is undone at its action's end).
+- **A walk** (`walk_step` 0x43F0B0): before each step the stack faces it, right for a step up and
+  right, right or down and right, left otherwise (0x43F0E5); the first step's turn is animated,
+  a later one only flips (its flag argument is the first step's). Its draw layer while it steps:
+  3 up, 7 down, 4 sideways (0x43F15E), set before group 20; 4 again on the new hex. A plain move
+  turns back at its end, animated, to the facing it started with (`stack_walk` 0x4423A2, its flag
+  set by the move action 0x479106); a move that strikes does not (0x478971).
+- **A flight** (0x4B4A40) turns first, animated, when its landing hex's column lies the other way
+  from its facing; ends with group 21 and one frame standing (0x4B4E66); a plain move then turns
+  back (`stack_fly` 0x4B49F5) and draws one more frame standing (0x4B4A15). That second frame is
+  what made the melee's computer act "one tick after" the flight in T4a's model: with it, a
+  later command without a time starts as soon as the last frame shows (*provisional*; the melee
+  sequence unchanged).
+- **A melee** (`move_and_attack` 0x478900, `strike_action` 0x445A60, `melee_attack` 0x441CB0):
+  after the move the striker turns, animated, if the target is not on its front side (0x445BCE:
+  the three hexes ahead of a one-hex stack, any neighbour of a two-hex stack's front hex; the
+  directions through 0x523DF0, the neighbours from the table at +0x13468); it takes draw layer 6
+  (0x441CC1); the target turns likewise to face it (0x4458B0, 0x441D79). Strike, retaliation,
+  second strike; the target turns back if it lives and turned (0x441F36), then, after the
+  Harpies' return, the striker (0x478A57).
+- **A shot** (`shot_action` 0x440160): the shooter turns, animated, when the target's position
+  lies right of its other hex while it faces left, or left while it faces right (by the hexes'
+  x); its shots; it turns back if it turned (0x4402F2). A two-hex target is aimed at by its
+  facing (0x43F323).
+- **Draw layers in the scene.** Each pose carries its layer, the pass of its position's row that
+  draws it (§4.6): the striker 6 in a command's first melee strike, 5 in a later one (the
+  retaliation, a second strike); the struck stacks 5 (the harness's reading, §7.9; their writes
+  were not found); a shot's 4 (not observed otherwise). A layer change without a frame of its own
+  (the striker's 6 before the target turns, back to 4 after a strike) shows with the next frame
+  that does not draw that stack (*provisional*). A dying stack plays its death in its layer's
+  pass and lies among the corpses (pass 1) from the next frame (*provisional*: the executable
+  moves it to the corpses' list when its death ends).
+- **Fidgets** (`anim::fidgeting`, §7.2): the executable's clocks and stalls on a generator of the
+  viewer's own (the C library's `rand()` sequence, seeded by the battle's seed); the reference
+  checks (`sequences`) take none. A stack an action drew stops fidgeting; a bystander's fidget
+  resumes after it. A bots' battle idles one tick between commands, so its fidgets show only
+  after its end; a record with times (a person thinking) shows them as the original does.
+- **Not drawn yet** (in a bots' battle on `battle.toml` nothing of it occurs): spells and their
+  animations, morale's and luck's animations, created stacks (summoned, cloned, risen), war
+  machines, heroes and count boxes (M3); a stack the record names that its first snapshot lacks
+  is not drawn.
+

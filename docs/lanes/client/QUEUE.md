@@ -4,7 +4,7 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context; T1 (the capture harness), T3 (the animation timing), T4a (the timeline), T6 (the adventure map's experiments, from the inbox) and T4b-1 (the frame check) done 2026-10-13. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context; T1 (the capture harness), T3 (the animation timing), T4a (the timeline), T6 (the adventure map's experiments, from the inbox) and T4b-1 (the frame check) done 2026-10-13, T4b-2a (a full battle headless) 2026-10-14. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
 
 ### E17 M2 T2 — The window, input and audio evaluation
 
@@ -13,25 +13,18 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 - **Depends on:** nothing; can run beside T1.
 - **Status:** ready.
 
-### E17 M2 T4b-2a — A full battle, frame by frame, headless
-
-- **Scope:** split from T4b-2 at the session's proposal (the user's choice, 2026-10-14, over the references first and T2). The host's two bots play a scenario to its end in-process, and `h3-view` draws every frame of its record headless at the original's timing (M2's headless exit). What a whole battle needs that the three sequences did not: turns (§7.3, `stack_turn_around` 0x446720; when a stack turns read in the executable and one turn sequence recorded in the original with its frames), the draw layers (§4.6: a walk 3 or 7 by direction, the striker 6, the struck stack 5, §7.9), fidgets from the viewer's own generator (§7.2), deaths and corpses over a whole battle; whatever the bots' battle shows that is not drawn yet becomes a listed stub.
-- **Acceptance:** a full battle's record renders frame by frame headless; the three recorded sequences still match as recorded (walk 42/42, shot 50/50, melee 68/75 or better); the turn sequence's frames match or their differences are listed.
-- **Depends on:** T4b-1 (done).
-- **Status:** in progress (`client/e17-m2-t4b2a-full-battle`, 2026-10-13 22:20 UTC).
-
 ### E17 M2 T4b-2b — The scene over time, completed
 
-- **Scope:** what T4b-2a leaves: the melee's listed difference (3 504–3 966 ms: the Wolf Riders walking past the Angels; read the redraw of a walk's frames near another stack); deaths by anything but a strike, created stacks; Haste and Slow (the walk time); new sequences for the rest of §7.7 (a death, a defending stack, a shot up and down), each with its frames recorded; the inbox's capture set by time.
+- **Scope:** what T4b-2a (2026-10-14, design §7.10) left. **First the turn sequence:** `situations/seq-turn.toml` is prepared (the Angels fly to hex 83 and strike the Wolf Riders on 99 and 100; the engine's command `Attack { target = 1, from = 83 }`; in the original a click on hex 100's upper right part, about (708, 308), should choose that side: check the Angels land on 83); record it (`h3drive.py sequence`, then its entry in `sequences.toml`, its timeline and frames), the computer's next action included if it acts in the window (its engine command added). It checks the turns, the turned two-hex position, the melee's layers and the flight's two standing frames. Then: the melee's listed difference (3 504–3 966 ms: the Wolf Riders walking past the Angels; lead: `stack_play_group` redraws only the walker's dirty rectangle, 0x446A06–0x446BB3); a walk's turn (a two-hex walker turning on its first step and flipping later); deaths by anything but a strike, created stacks; Haste and Slow (the walk time); new sequences for the rest of §7.7 (a death, a defending stack, a shot up and down), each with its frames recorded; the inbox's capture set by time.
 - **Acceptance:** every recorded sequence's frames match the original outside the masks, or their differences are listed.
-- **Depends on:** T4b-2a.
-- **Status:** waits.
+- **Depends on:** T4b-2a (done).
+- **Status:** ready.
 
 ### E17 M2 T5 — The window adapter and M2's closure
 
 - **Scope:** T2's library in an adapter crate, playing a record at the original's frame rate, with the game's cursor; M2's review list, a fresh reviewer, the M3 refinement prepared.
 - **Acceptance:** M2's exit (epic file).
-- **Depends on:** T2, T4b-2a (M2's headless exit); T4b-2b may follow it.
+- **Depends on:** T2; T4b-2a (done 2026-10-14: M2's headless exit); T4b-2b may follow it.
 - **Status:** waits.
 
 ## Inbox

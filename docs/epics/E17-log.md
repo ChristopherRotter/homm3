@@ -481,3 +481,44 @@ rest of the scene (`QUEUE.md`).
   striker 6, struck 5), deaths by spells, created stacks, Haste and Slow, a full battle frame by
   frame headless; the walk-by difference.
 - Gates: see the pull request.
+
+### M2 T4b-2a — A full battle, frame by frame (2026-10-14)
+
+On `client/e17-m2-t4b2a-full-battle`, the user present at the start. T4b-2 split in two (the
+session's proposal, the user's choice over the references first and T2): T4b-2a a whole battle
+headless with what it needs, T4b-2b the rest (`QUEUE.md`).
+
+- **Built:** `h3-view play <scenario | record>`: a bot of the viewer's own (`bin/h3-view/bot.rs`)
+  fights a scenario to its end in the engine, the protocol's session replays its commands for a
+  spectator's record, and every distinct frame is drawn (`Timeline::changes`, `Moment::at`,
+  `anim::commands`; `--png`, `--from`, `--to`, past the end the battle idles);
+  `clients/scenarios/battle.toml`. In `h3_view::anim`: facing and the executable's position of a
+  turned two-hex stack (`Live::position`, `covers`), animated turns and flips, turning back, the
+  front side's test (`faces`, `Stage::neighbor` from the layout's anchors), the shooter's turn,
+  `Pose::mirrored` and `Pose::layer` (the scene draws each pose in its layer's pass), the pending
+  layer changes, fidgets (`anim::fidgeting`, `Fidgets`), a flight's second standing frame. The
+  asset tables' `turn_left` and `turn_right` groups.
+- **Read** (design §7.10, the address map): `stack_turn_around` 0x446720's groups and position
+  shift; `walk_step`'s turn per step (animated on the first only) and layers; `stack_walk`'s turn
+  back (0x4423A2) and who sets its flag (the move action 0x479106, not the attack 0x478971);
+  `move_and_attack`'s saved facing and turn back (0x478A57); `strike_action`'s choice of side and
+  turn (0x445BCE to 0x445C9B) through `stack_neighbor` 0x523DF0 and `hex_neighbor` 0x523D90;
+  `melee_attack`'s target turn and turn back (0x441D79, 0x441F36) through `stack_direction_to`
+  0x4458B0; the flight's turn by columns (0x4B4A53) and its two standing frames (0x4B4E66,
+  0x4B4A15); `stack_fly`'s turn back; `stack_animation_backdrop` 0x446830; `stack_play_group`'s
+  dirty rectangle (a lead for the walk-by difference). The struck stack's layer 5: no write found
+  (the harness's reading stands).
+- **Changed:** T4a's provisional "a later command starts one tick after a command that drew": the
+  flight's second standing frame explains the melee's timing, so a later command without a time
+  starts as the last frame shows; the three sequences still give their recorded timelines.
+- **Checked:** the three recorded timelines (`h3-view sequences`) unchanged; `play
+  scenarios/battle.toml`: 24 commands, about 82 s of battle, about 1 100 distinct frames drawn in
+  about 3 s; the unit tests cover each turn case (walk, flight, melee from either side, shot) and
+  the fidgets; the library at 100 % coverage. Turns looked at in the bots' battle (the Wolf
+  Riders' turn before their strike).
+- **Not done:** the turn sequence in the original (`situations/seq-turn.toml` prepared: the
+  Angels fly to hex 83 and strike the Wolf Riders on 99 and 100, both turn): the user's computer
+  went offline before the harness's files could be staged; moved to T4b-2b.
+- **Decided (*provisional*, the review list):** the bot and `play`'s formats; the layers' model;
+  the fidget generator; the next command's start.
+- Gates: see the pull request.
