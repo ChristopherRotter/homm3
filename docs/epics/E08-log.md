@@ -1650,3 +1650,35 @@ without the survey and confirmed it. Findings:
 
 For the user (ADV-Q12): joining and fleeing in increment 3, battles between two players' heroes,
 custom experience, D-8 to D-13, A-6, the treasures' artifacts; then T17b.
+
+### Checkpoint after T17a and T17b: the ADR amendment drafts for increment 3 (2026-10-13, `adventure/e08-t17b`)
+
+The user merged #177 and answered ADV-Q12 (OPEN-QUESTIONS, answered; the epic's decisions 22–24):
+monsters join and flee, the join offer skipped as declined while the group finds no room (a feature
+to-do for increment 4's army management, `ADV-STUB-2` when built); heroes of two players fight, a
+capture placed as VCMI places it; heroes with an experience of 1 000 or more and treasures with an
+artifact `Unsupported`; D-8 to D-13 each as the reading (asked one by one); A-6 always fixed. On
+D-12 the user asked whether `random_between`'s upper bound is exclusive: re-read, it is not
+(0x50B230: a + rand() mod (b − a + 1); 0x4BFE94 passes 0 and 0x32, then adds 0x28: 40–90). The
+round: T17b whole, with the client lane's inbox line in the same pull request (`cross-lane`). CI
+could not start (billing): the local verify stood in.
+
+**T17b — ADR amendment drafts** in `docs/lanes/adventure/adr-drafts/`: `0017-increment-3.md`
+(points 1, 2, 4, 6, 8–10 extended, point 11 new: the store of heroes and the adventure profile,
+the system actor for a battle side without an owner, the obstacles from the tile and the battle's
+seed from the attacker's stream, chained offers and battles as decisions, the env's battle phase
+and neutral seat, battles through the game and their outcome) and `0016-increment-3.md` (points
+1, 3, 4, 6: a guarding object's army left, enemy heroes visited as a battle, the monster and ground
+kinds, guarded tiles, the monster's answer, the split by the tile, guarded piles, what a viewer
+sees). ADR-0013 unchanged (its points 1, 2 and 5 already foresee the store, the derivations and
+the orchestrator's outcome). Detail and the proposed cut in `E08-design.md` (§1–§11): five rounds,
+T18a + T18b (the shared groundwork; the store of heroes), T19a + T19b (battles with hero against
+hero; the env), T20a + T20b (monsters; their answer and battle), T21 + T22a (guarded piles, the
+audit; batch E3), T22b (the closure).
+- **Found:** the creatures' adventure-map ranges are harvested already (`adventure_count`,
+  `CRTRAITS.TXT` columns 21 and 22, `h3_content::CreatureInfo`): T17a's "harvest needed" was
+  wrong; the survey (§1.5, §14) and the queue's inbox corrected. The survey's §12 counted 138
+  compliant and friendly monsters; §1.1's census gives 174 (136 + 38): corrected.
+- **New for the user (ADV-Q13):** accept the drafts; who plays an unowned battle side (the system
+  actor recommended); the `h3-heroes` handover's timing (increment 4 recommended); the cut.
+- Inbox: the no-room feature to-do; the client lane's inbox gets increment 3's harness needs.
