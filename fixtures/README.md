@@ -19,6 +19,7 @@ cross-platform determinism check (ADR-0003 §11, E01 exit criterion 2).
 | `full-s3-a1766.toml` | full | 3 | 1766 (E04b T9b, replacing `full-s3-a116`: a stack is sacrificed to raise another; a stack is created and vanishes; the Fiends raise Spearmen from a corpse; a resisted spell) |
 | `full-s3-a303.toml` | full | 3 | 303 (E04b T9b, replacing `full-s3-a762`: a stack is created and vanishes; Blink; mines or pits go off; creatures cast; a raise) |
 | `full-s3-a2378.toml` | full | 3 | 2378 (E04b T9b, replacing `full-s3-a959`: sixteen mines or pits go off; the Fiends raise Spearmen from a corpse; a spell heals seven times) |
+| `field-s5.toml` | field | 5 | 6 (E04c T2b: the skirmish's armies on the special battlefield `synthetic:hallow`, its own obstacle type drawn, the vale's morale raised) |
 
 Regenerate (only when a change *intentionally* alters game behavior, the synthetic pack, or an
 algorithm/encoding version — say so in the commit message):
@@ -26,7 +27,8 @@ algorithm/encoding version — say so in the commit message):
 ```sh
 cargo build -p h3-cli
 for spec in "duel 1 1 duel-s1" "skirmish 7 8 skirmish-s7" "full 3 4 full-s3" "full 3 1367 full-s3-a1367" \
-    "full 3 242 full-s3-a242" "full 3 1766 full-s3-a1766" "full 3 303 full-s3-a303" "full 3 2378 full-s3-a2378"; do
+    "full 3 242 full-s3-a242" "full 3 1766 full-s3-a1766" "full 3 303 full-s3-a303" "full 3 2378 full-s3-a2378" \
+    "field 5 6 field-s5"; do
   set -- $spec
   ./target/debug/h3 run --scenario packs/synthetic/scenarios/$1.toml --seed $2 --agent-seed $3 \
     --max-steps 2000 --checkpoint-every 25 --record fixtures/replays/$4.toml

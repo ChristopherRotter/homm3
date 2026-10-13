@@ -1,7 +1,7 @@
 //! The battle's ruleset part (R01; ADR-0006, ADR-0015 point 3): the battle rows of creatures and
-//! spells, creature abilities (ADR-0012), what spells do in battle (ADR-0014), obstacle types and
-//! the battle parameters, compiled into a [`BattleRuleset`] on a core `h3_content::Ruleset` from
-//! one [`BattlePack`] per core pack.
+//! spells, creature abilities (ADR-0012), what spells do in battle (ADR-0014), special
+//! battlefields (E04c), obstacle types and the battle parameters, compiled into a
+//! [`BattleRuleset`] on a core `h3_content::Ruleset` from one [`BattlePack`] per core pack.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -24,6 +24,7 @@
 extern crate alloc;
 
 mod ability;
+mod battlefield;
 mod error;
 mod pack;
 mod params;
@@ -32,6 +33,10 @@ mod spell;
 
 pub use ability::{
     Ability, AbilityDef, AreaShot, AuraTarget, CompiledAbility, MAX_RAISED_CREATURES,
+};
+pub use battlefield::{
+    Battlefield, BattlefieldDef, BattlefieldId, FactionChange, FactionChangeDef,
+    MAX_BATTLEFIELD_CHANGE,
 };
 pub use error::BattleCompileError;
 pub use pack::{

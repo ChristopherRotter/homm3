@@ -26,7 +26,7 @@
 use alloc::vec::Vec;
 
 use h3_content::CreatureTypeId;
-use h3_content_battle::{BattleRuleset, ObstacleTypeId};
+use h3_content_battle::{BattleRuleset, BattlefieldId, ObstacleTypeId};
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::FixedVec;
 
@@ -139,6 +139,10 @@ pub struct Observation {
     pub own_hero: Option<OwnHeroView>,
     /// The battlefield's terrain (public).
     pub terrain: Option<h3_content::TerrainId>,
+    /// The special battlefield, if any (public; BAT-TER-002).
+    pub battlefield: Option<BattlefieldId>,
+    /// The battle is at an anti-magic garrison (public; BAT-MAG-061).
+    pub anti_magic: bool,
     /// The timed effects on stacks, by stack and spell (public; BAT-MAG-009).
     pub effects: Vec<ActiveEffect>,
     /// The spell obstacles the viewer sees, in the order they were placed (BAT-MAG-027; Force
@@ -221,6 +225,8 @@ pub fn observe_as(state: &BattleState, ruleset: &BattleRuleset, viewer: Viewer) 
             .and_then(|side| state.heroes[side.index()])
             .map(|h| own_hero(state, ruleset, &h, seat)),
         terrain: state.terrain,
+        battlefield: state.battlefield,
+        anti_magic: state.anti_magic,
         effects: state.effects().to_vec(),
         // rule: BAT-MAG-031
         spell_obstacles: obstacles::observed(state, side),

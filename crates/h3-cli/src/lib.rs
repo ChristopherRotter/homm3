@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v24 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v25 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 24
+//! format = 25
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -22,6 +22,8 @@
 //!
 //! [setup]                         # the rest of the setup (fields default when absent)
 //! terrain = "base:grass"          # the battlefield's terrain (omitted when none)
+//! battlefield = "base:shore"      # the special battlefield (format 25; omitted when none)
+//! anti_magic = true               # at an anti-magic garrison (format 25; omitted when not)
 //! attacker_war_machines = ["base:ballista"]  # war machines per side (omitted when none)
 //! tight_formation = ["defender"]  # sides in tight formation (omitted when none)
 //! attacker_funds = 2000           # what a side can pay for a surrender (format 10; omitted
@@ -77,7 +79,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use h3_battle::{CastTarget, Command, Hex, StackId};
-use h3_content::{CreatureTypeId, SpellId};
+use h3_content::{ContentKey, CreatureTypeId, SpellId};
 use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
@@ -130,7 +132,7 @@ pub fn load_ruleset(
 ) -> Result<BattleRuleset, CliError> {
     let mut texts = Vec::new();
     for id in ids {
-        h3_content::ContentKey::new(id, "pack")
+        ContentKey::new(id, "pack")
             .map_err(|_| CliError::Format(format!("invalid pack id `{id}`")))?;
         let dir = packs_dir.join(id);
         let battle = dir.join("battle.toml");
@@ -161,9 +163,9 @@ pub fn load_scenario(
     let mut setup = def
         .resolve(&ruleset)
         .map_err(|e| CliError::Pack(path.to_path_buf(), e))?;
-    if let (true, Some(terrain)) = (def.random_obstacles, setup.terrain) {
+    if def.random_obstacles {
         let mut rng = Rng::for_stream(seed, StreamId::OBSTACLES);
-        setup.obstacles = h3_battle::generate_obstacles(&ruleset, terrain, &mut rng);
+        setup.obstacles = h3_battle::generate_setup_obstacles(&ruleset, &setup, &mut rng);
     }
     Ok((def, ruleset, setup))
 }
@@ -207,6 +209,10 @@ struct Meta {
 struct SetupEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     terrain: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    battlefield: Option<String>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    anti_magic: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     attacker_war_machines: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -253,6 +259,10 @@ fn parse_hex64(s: &str) -> Result<u64, CliError> {
 
 fn is_zero(value: &u32) -> bool {
     *value == 0
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 fn side_letter(side: BattleSide) -> &'static str {
@@ -465,6 +475,12 @@ pub fn replay_to_toml(
                 .terrain
                 .and_then(|t| ruleset.terrains().get(t.index()))
                 .map(|t| t.key.as_str().to_owned()),
+            battlefield: replay
+                .setup
+                .battlefield
+                .as_ref()
+                .map(|k| k.as_str().to_owned()),
+            anti_magic: replay.setup.anti_magic,
             attacker_war_machines: keys(&replay.setup.war_machines[0]),
             defender_war_machines: keys(&replay.setup.war_machines[1]),
             tight_formation: h3_pack_battle::tight_sides(replay.setup.formations),
@@ -601,9 +617,14 @@ impl ReplayDoc {
                             .ok_or_else(|| CliError::Format(format!("unknown terrain `{t}`")))
                     })
                     .transpose()?,
-                // E04c T2b records the battlefield in replays; until then none.
-                battlefield: None,
-                anti_magic: false,
+                battlefield: f
+                    .setup
+                    .battlefield
+                    .as_deref()
+                    .map(ContentKey::parse)
+                    .transpose()
+                    .map_err(|e| CliError::Format(e.to_string()))?,
+                anti_magic: f.setup.anti_magic,
                 war_machines: [
                     machines(&f.setup.attacker_war_machines)?,
                     machines(&f.setup.defender_war_machines)?,

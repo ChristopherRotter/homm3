@@ -7,3 +7,208 @@
 [table]
 id = "sod"
 depends = ["ab"]
+
+[[obstacle]]
+key = "obstacle_61"
+def = "ObHGs00.def"
+rows = 1
+layer = 0
+
+[[obstacle]]
+key = "obstacle_62"
+def = "ObHGs01.def"
+rows = 1
+layer = 0
+
+[[obstacle]]
+key = "obstacle_63"
+def = "ObHGs02.def"
+rows = 3
+layer = 0
+
+[[obstacle]]
+key = "obstacle_64"
+def = "ObHGs03.def"
+rows = 2
+layer = 0
+
+[[obstacle]]
+key = "obstacle_65"
+def = "ObHGs04.def"
+rows = 3
+layer = 0
+
+[[obstacle]]
+key = "obstacle_66"
+def = "ObEFs00.def"
+rows = 1
+layer = 0
+
+[[obstacle]]
+key = "obstacle_67"
+def = "ObEFs01.def"
+rows = 1
+layer = 0
+
+[[obstacle]]
+key = "obstacle_68"
+def = "ObEFs02.def"
+rows = 2
+layer = 0
+
+[[obstacle]]
+key = "obstacle_69"
+def = "ObEFs03.def"
+rows = 2
+layer = 0
+
+[[obstacle]]
+key = "obstacle_70"
+def = "ObEFs04.def"
+rows = 2
+layer = 0
+
+[[obstacle]]
+key = "obstacle_71"
+def = "ObCFs00.def"
+rows = 1
+layer = 1
+
+[[obstacle]]
+key = "obstacle_72"
+def = "ObCFs01.def"
+rows = 1
+layer = 1
+
+[[obstacle]]
+key = "obstacle_73"
+def = "ObCFs02.def"
+rows = 2
+layer = 1
+
+[[obstacle]]
+key = "obstacle_74"
+def = "ObCFs03.def"
+rows = 2
+layer = 1
+
+[[obstacle]]
+key = "obstacle_75"
+def = "ObLPs00.def"
+rows = 1
+layer = 1
+
+[[obstacle]]
+key = "obstacle_76"
+def = "ObLPs01.def"
+rows = 1
+layer = 1
+
+[[obstacle]]
+key = "obstacle_77"
+def = "ObLPs02.def"
+rows = 2
+layer = 1
+
+[[obstacle]]
+key = "obstacle_78"
+def = "ObLPs03.def"
+rows = 2
+layer = 1
+
+[[obstacle]]
+key = "obstacle_79"
+def = "ObFFs00.def"
+rows = 1
+layer = 0
+
+[[obstacle]]
+key = "obstacle_80"
+def = "ObFFs01.def"
+rows = 1
+layer = 0
+
+[[obstacle]]
+key = "obstacle_81"
+def = "ObFFs02.def"
+rows = 2
+layer = 0
+
+[[obstacle]]
+key = "obstacle_82"
+def = "ObFFs03.def"
+rows = 2
+layer = 0
+
+[[obstacle]]
+key = "obstacle_83"
+def = "ObFFs04.def"
+rows = 3
+layer = 0
+
+[[obstacle]]
+key = "obstacle_84"
+def = "ObRLs00.def"
+rows = 1
+layer = 0
+
+[[obstacle]]
+key = "obstacle_85"
+def = "ObRLs01.def"
+rows = 1
+layer = 0
+
+[[obstacle]]
+key = "obstacle_86"
+def = "ObRLs02.def"
+rows = 1
+layer = 0
+
+[[obstacle]]
+key = "obstacle_87"
+def = "ObRLs03.def"
+rows = 2
+layer = 0
+
+[[obstacle]]
+key = "obstacle_88"
+def = "ObMCs00.def"
+rows = 1
+layer = 1
+
+[[obstacle]]
+key = "obstacle_89"
+def = "ObMCs01.def"
+rows = 2
+layer = 1
+
+[[obstacle]]
+key = "obstacle_90"
+def = "ObMCs02.def"
+rows = 2
+layer = 1
+
+[[obstacle]]
+key = "obstacle_129"
+pcx = "ObCFL00.pcx"
+at = [304, 264]
+
+[[obstacle]]
+key = "obstacle_130"
+pcx = "ObLPL00.pcx"
+at = [256, 257]
+
+[[obstacle]]
+key = "obstacle_131"
+pcx = "ObFFL00.pcx"
+at = [257, 255]
+
+[[obstacle]]
+key = "obstacle_132"
+pcx = "ObRLL00.pcx"
+at = [277, 218]
+
+[[obstacle]]
+key = "obstacle_133"
+pcx = "ObMCL00.pcx"
+at = [300, 214]

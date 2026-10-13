@@ -1,6 +1,6 @@
 # E04c — Sieges and special battlefields
 
-Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1: T1 done, waiting for the user's review of the ADR draft, BAT-Q38; then T2) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
+Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1: T1 done; T2 built on the ADR draft as recommended, both waiting for the user's review, BAT-Q38) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
 
@@ -49,12 +49,12 @@ banks' fixed layouts; HotA's fields (Cracked Ice, Dunes, Fields of Glory). AI (E
 
 **Increment 1** (BAT-Q37): T1, then T2 after the user's review.
 
-- [x] **T1 Battlefield survey and ADR draft** — done 2026-10-13: the code reading
+- [x] **T1 Battlefield survey and ADR draft** — done 2026-10-13 (record: [`E04c-log.md`](E04c-log.md)): the code reading
   (`installation.md` §7.26: the setup 0x4643B0, morale and luck by field, the native bonus, the
   mastery raise, the obstacle choice, the boats' hexes), the survey `docs/rules/surveys/E04c-battlefields.md`
   (the twelve battlefields, the sources compared, disputes D-1 to D-4), the ADR draft
   `docs/lanes/battle/adr-drafts/battlefields.md`; the review's questions BAT-Q38.
-- [ ] **T2 The battlefields** (refined below; two pull requests: the seam in a `shared/` one first).
+- [x] **T2 The battlefields** — built 2026-10-13 on the draft's recommendations (BAT-Q38 open): T2a `shared/battlefield-seam`, T2b `battle/e04c-t2`; BAT-TER-002 to BAT-TER-006, BAT-GEO-004 amended; the obstacle types harvested from the executable; record: [`E04c-log.md`](E04c-log.md).
 - [ ] T3 Experiments for the battlefields (D-1, D-2, D-4; the `.h3m` writer needs the special
   ground objects, the adventure lane's `h3-map`).
 - [ ] T4 Siege survey and seam (the siege input on the setup and outcome: fort level, walls, gate,

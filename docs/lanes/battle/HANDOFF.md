@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 1** (BAT-Q37, 2026-10-13): **T1 done** on `battle/e04c-t1`: the code reading (`installation.md` §7.26), the survey `E04c-battlefields.md`, the ADR draft `adr-drafts/battlefields.md`, the epic file. **Waiting for the user's review (BAT-Q38)**; then T2 (the epic's T2: the seam in a `shared/` pull request first).
-- **Merged:** #162 (the Faerie Dragon's two readings, BAT-QUIRK-1 retired), #156, #150, R01. **E04b is closed** (2026-10-12).
-- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
-- **Versions:** battle owns state hash v44, battle part hash v1, replay format v24, action encoding v12, C ABI v18, observation encoding v14; shared: core ruleset hash v43, pack format v35. Next ids: BAT-Q39, BAT-QUIRK-22, BAT-STUB-2, BAT-TER-002.
+- **E04c increment 1** (BAT-Q37, 2026-10-13): **T1** on `battle/e04c-t1` (#164: the reading §7.26, the survey `E04c-battlefields.md`, the ADR draft `adr-drafts/battlefields.md`, the epic file and log); **T2 built** on the draft's recommendations: T2a `shared/battlefield-seam` (merge first), T2b `battle/e04c-t2` (stacked on both, `cross-lane`). **All wait for the user's review (BAT-Q38)**; adjust T2 to the answers, then open T2's pull requests.
+- **Merged:** #162, #156, #150, R01. **E04b is closed** (2026-10-12).
+- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later; T3's experiments (D-1, D-2, D-4).
+- **Versions** (T2b): battle owns state hash v45, battle part hash v2, replay format v25, action encoding v12, C ABI v19, observation encoding v15; shared: core ruleset hash v43, pack format v36, protocol v27 (T2b's `cross-lane`). Next ids: BAT-Q39, BAT-QUIRK-22, BAT-STUB-2, BAT-TER-007.
 - **Ownership:** `lanes.toml`; a seam change is its own `shared/` pull request, merged first.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; the user plays experiment maps in SoD with plain HD and commits the results.
 
@@ -59,7 +59,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-13 (fifty-sixth) — E04c refined; T1, the battlefields read and surveyed
 
-The user's answers (BAT-Q37); the setup, morale, luck, mastery and obstacle readings (the executable's obstacle tables equal VCMI's); the ADR draft; stopped for BAT-Q38. Detail: the pull request.
+The user's answers (BAT-Q37); T1 (the readings, the survey, the ADR draft) for BAT-Q38; while the user was away, T2 built on the draft's recommendations, not yet in a pull request. Detail: `docs/epics/E04c-log.md`.
 
 ### 2026-10-13 (fifty-fifth) — the wiki checks; the shot's distance; the user's answers
 

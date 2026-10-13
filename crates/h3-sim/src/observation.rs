@@ -1,4 +1,4 @@
-//! Flat observation encoding (version 13) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 15) of a per-viewer [`Observation`].
 //!
 //! Layout, in this order: [`GLOBALS`] global features; the public part of the two heroes,
 //! [`HERO_PUBLIC_FEATURES`] each (the viewer's, then the opponent's); the private part of the
@@ -22,8 +22,9 @@
 //! since the opponent's (both at most 255, which every battle starts with), the round's wait
 //! phase has begun, the side that took the last turn (1 viewer, 2 opponent, 0 none yet), the
 //! terrain's handle + 1 (0 none), the creature the viewer's Summon Elemental casts are bound to
-//! as handle + 1 (0 none yet), the opponent's, a spectator's observation]` (BAT-TAC-001,
-//! BAT-FLE-001, BAT-FLE-002, BAT-MAG-049, BAT-MAG-053, BAT-MAG-039).
+//! as handle + 1 (0 none yet), the opponent's, a spectator's observation, the special
+//! battlefield's handle + 1 (0 none), the battle is at an anti-magic garrison]` (BAT-TAC-001,
+//! BAT-FLE-001, BAT-FLE-002, BAT-MAG-049, BAT-MAG-053, BAT-MAG-039, BAT-TER-002, BAT-MAG-061).
 //! Public hero part, zeros for a side without a hero (which gets no lucky strikes in profiles
 //! with quirk Q-0003): `[led by a hero, hero type handle, attack, defense, power, knowledge,
 //! mana, max mana, commands its Ballista, commands its First Aid Tent, casts this round,
@@ -92,7 +93,8 @@
 //! bonuses and the hidden magic; the globals from the wait phase on, the cost change, the
 //! per-stack features from the start count on, the materialised effects and each effect's
 //! mastery. v14: a two-hex stack's `x`, `y` are its rear hex, its position as in the original
-//! (BAT-GEO-002), no longer its front hex.
+//! (BAT-GEO-002), no longer its front hex. v15 (E04c T2b): the special battlefield and the
+//! anti-magic garrison as the last two globals.
 
 use h3_battle::{
     DamageRoll, HeroView, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Observation, OwnHeroView,
@@ -104,10 +106,10 @@ use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 14;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 15;
 
 /// Global features.
-pub const GLOBALS: usize = 20;
+pub const GLOBALS: usize = 22;
 /// The public features of a hero.
 pub const HERO_PUBLIC_FEATURES: usize = 13;
 /// The values of the viewer's hero's private part before its spell bonuses.
@@ -339,6 +341,8 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
         handle(obs.summoned[own].map(|c| c.raw())),
         handle(obs.summoned[other].map(|c| c.raw())),
         flag(obs.spectator),
+        handle(obs.battlefield.map(|b| b.raw())),
+        flag(obs.anti_magic),
     ]);
     let (viewer, opponent) = out[HEROES..OWN_HERO].split_at_mut(HERO_PUBLIC_FEATURES);
     encode_hero(obs.heroes[own], obs.cost_change[own], viewer);
@@ -487,13 +491,14 @@ mod tests {
         encode(&obs, r.battle().field.width, &mut out).unwrap();
         // Round 1, the defender's view, the attacker to act; no tactics phase, no heroes, so no
         // retreat or surrender; no periodic cast yet on either side (BAT-MAG-053).
-        // Not in the wait phase, no turn taken yet, the meadow, no summons, a side's view.
+        // Not in the wait phase, no turn taken yet, the meadow, no summons, a side's view, no
+        // special battlefield, no anti-magic garrison.
         let meadow = f32::from(r.terrain_by_key("synthetic:meadow").unwrap().raw()) + 1.0;
         assert_eq!(
             out[..GLOBALS],
             [
                 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 255.0, 255.0, 0.0, 0.0,
-                meadow, 0.0, 0.0, 0.0
+                meadow, 0.0, 0.0, 0.0, 0.0, 0.0
             ]
         );
         assert!(out[HEROES..FIELD].iter().all(|v| *v == 0.0));
@@ -553,7 +558,7 @@ mod tests {
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
         assert_eq!(
             OBSERVATION_LEN,
-            20 + 2 * 13 + (64 + 4 * 128) + 14 * 255 + (47 + 27 + 3 * 8) * 42
+            22 + 2 * 13 + (64 + 4 * 128) + 14 * 255 + (47 + 27 + 3 * 8) * 42
         );
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).
@@ -717,7 +722,7 @@ mod tests {
                 Attacker,
                 [
                     0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0, 0.0,
-                    0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ],
                 brea,
                 corwin,
@@ -730,7 +735,7 @@ mod tests {
                 Defender,
                 [
                     0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0, 0.0,
-                    0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ],
                 corwin,
                 brea,
@@ -813,9 +818,15 @@ mod tests {
         // A spectator: the flag, and no private part (SRV-Q4).
         let spectator = h3_battle::observe_as(&s, &r, h3_battle::Viewer::Spectator);
         encode(&spectator, 17, &mut out).unwrap();
-        assert_eq!((out[1], out[GLOBALS - 1]), (1.0, 1.0));
+        assert_eq!((out[1], out[GLOBALS - 3]), (1.0, 1.0));
         assert_eq!(hero(&out, 0), brea);
         assert!(own(&out).iter().all(|v| *v == 0.0));
+        // A special battlefield and an anti-magic garrison, the last two globals (E04c T2b).
+        let mut field = spectator;
+        field.battlefield = h3_content_battle::BattlefieldId::from_index(1);
+        field.anti_magic = true;
+        encode(&field, 17, &mut out).unwrap();
+        assert_eq!(out[GLOBALS - 2..GLOBALS], [2.0, 1.0]);
     }
 
     #[test]

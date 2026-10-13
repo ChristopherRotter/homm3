@@ -1,4 +1,5 @@
-//! Terrain: the native-terrain bonus (BAT-TER-001) and random obstacles (BAT-GEO-004).
+//! Terrain: the native-terrain bonus (BAT-TER-001) and random obstacles (BAT-GEO-004), both as a
+//! special battlefield changes them (E04c: BAT-TER-002, BAT-TER-006).
 //!
 //! Obstacle generation runs *before* the battle starts (the caller puts the hexes into
 //! `BattleSetup::obstacles`, 03-domain "Seams"), with a random stream the caller chooses
@@ -9,8 +10,8 @@
 use alloc::vec::Vec;
 
 use h3_content::{CreatureTypeId, TerrainId};
-use h3_content_battle::{BattleRuleset, ObstacleType};
-use h3_contracts::Obstacle;
+use h3_content_battle::{BattleRuleset, BattlefieldId, ObstacleType};
+use h3_contracts::{BattleSetup, Obstacle};
 use h3_kernel::Rng;
 
 use crate::geometry::{Field, Hex, HexSet};
@@ -29,6 +30,20 @@ pub(crate) fn is_native(
         .and_then(|f| ruleset.factions().get(f.index()))
         .and_then(|f| f.native_terrain);
     native.is_some() && native == terrain
+}
+
+/// The terrain whose natives get the native bonus in a battle of `setup`: its terrain, none on a
+/// battlefield with `no_native` (BAT-TER-006; the original's 0x43D7C1: no stack is native on
+/// Cursed Ground). An unknown battlefield key counts as none (the setup refuses it).
+// rule: BAT-TER-006
+pub(crate) fn native_terrain(ruleset: &BattleRuleset, setup: &BattleSetup) -> Option<TerrainId> {
+    let no_native = setup
+        .battlefield
+        .as_ref()
+        .and_then(|k| ruleset.battlefield_by_key(k.as_str()))
+        .and_then(|b| ruleset.battlefield(b))
+        .is_some_and(|b| b.no_native);
+    setup.terrain.filter(|_| !no_native)
 }
 
 /// One of `items`, uniformly, or `None` if there are none.
@@ -77,26 +92,76 @@ fn placement(
     Some(hexes)
 }
 
-/// Generates the obstacles of a battle on `terrain` (BAT-GEO-004), in the order placed, each
-/// with its hexes in hex order and its type's key: block 5–12 hexes; with 40 % chance first place one absolute
-/// obstacle of the terrain (it counts half its hexes; no anchor); then, while hexes remain to be
-/// blocked, place a uniformly chosen usual obstacle of the terrain at a uniformly chosen allowed
-/// anchor (rows 1 to `height − 2`; the obstacle keeps it), stopping early if no obstacle or no
-/// anchor is left.
-// rule: BAT-GEO-004
+/// Generates the obstacles of a battle on `terrain` without a special battlefield (BAT-GEO-004):
+/// [`generate_battlefield_obstacles`] with none.
 pub fn generate_obstacles(
     ruleset: &BattleRuleset,
     terrain: TerrainId,
     rng: &mut Rng,
 ) -> Vec<Obstacle> {
+    generate_battlefield_obstacles(ruleset, terrain, None, rng)
+}
+
+/// Generates the obstacles of a battle of `setup` on its terrain and its special battlefield
+/// (BAT-GEO-004), or none without a terrain. An unknown battlefield key counts as none (the setup
+/// refuses it when the battle starts).
+pub fn generate_setup_obstacles(
+    ruleset: &BattleRuleset,
+    setup: &BattleSetup,
+    rng: &mut Rng,
+) -> Vec<Obstacle> {
+    let battlefield = setup
+        .battlefield
+        .as_ref()
+        .and_then(|k| ruleset.battlefield_by_key(k.as_str()));
+    setup.terrain.map_or_else(Vec::new, |t| {
+        generate_battlefield_obstacles(ruleset, t, battlefield, rng)
+    })
+}
+
+/// Generates the obstacles of a battle on `terrain` and `battlefield` (BAT-GEO-004), in the order
+/// placed, each with its hexes in hex order and its type's key. A battlefield with fixed blocked
+/// hexes (two boats) gets them as one absolute obstacle without a type, and nothing else. Otherwise
+/// the obstacle types are the battlefield's own when it has them, else the terrain's (the
+/// original's 0x466290, `installation.md` §7.26), and: block 5–12 hexes; with 40 % chance first
+/// place one absolute obstacle of those types (it counts half its hexes; no anchor); then, while
+/// hexes remain to be blocked, place a uniformly chosen usual obstacle at a uniformly chosen
+/// allowed anchor (rows 1 to `height − 2`; the obstacle keeps it), stopping early if no obstacle
+/// or no anchor is left. An unknown battlefield counts as none.
+// rule: BAT-GEO-004
+pub fn generate_battlefield_obstacles(
+    ruleset: &BattleRuleset,
+    terrain: TerrainId,
+    battlefield: Option<BattlefieldId>,
+    rng: &mut Rng,
+) -> Vec<Obstacle> {
     let params = ruleset.battle().field;
     let field = Field::new(params);
     let (width, height) = (i32::from(params.width), i32::from(params.height));
+    let battlefield = battlefield.and_then(|b| ruleset.battlefield(b).map(|f| (b, f)));
+    if let Some((_, f)) = battlefield.filter(|(_, f)| !f.blocked.is_empty()) {
+        // The compiler checked that they are distinct standable hexes of the field.
+        let hexes = f.blocked.iter().fold(HexSet::new(), |mut set, &h| {
+            set.insert(Hex(h));
+            set
+        });
+        return alloc::vec![Obstacle {
+            hexes: hexes.iter().map(|h| h.0).collect(),
+            anchor: None,
+            kind: None,
+        }];
+    }
+    let own = battlefield.filter(|(_, f)| f.own_obstacles).map(|(b, _)| b);
     let of_terrain = |absolute: bool| -> Vec<&ObstacleType> {
         ruleset
             .obstacles()
             .iter()
-            .filter(|o| o.absolute == absolute && o.terrains.contains(&terrain))
+            .filter(|o| {
+                o.absolute == absolute
+                    && own.map_or(o.terrains.contains(&terrain), |b| {
+                        o.battlefields.contains(&b)
+                    })
+            })
             .collect()
     };
     let mut blocked = HexSet::new();

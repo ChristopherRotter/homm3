@@ -30,3 +30,278 @@ polarity = "negative"
 target = "stack"
 side = "enemy"
 effects = [{ kind = "damage" }]
+
+[[battlefield]]
+id = "holy_ground"
+own_obstacles = true
+morale = [{ factions = ["base:castle", "base:rampart", "base:tower"], amount = 1 }, { factions = ["base:inferno", "base:necropolis", "base:dungeon"], amount = -1 }]
+
+[[battlefield]]
+id = "evil_fog"
+own_obstacles = true
+morale = [{ factions = ["base:castle", "base:rampart", "base:tower"], amount = -1 }, { factions = ["base:inferno", "base:necropolis", "base:dungeon"], amount = 1 }]
+
+[[battlefield]]
+id = "clover_field"
+own_obstacles = true
+luck = [{ factions = ["base:stronghold", "base:fortress", "ab:conflux"], amount = 2 }]
+
+[[battlefield]]
+id = "lucid_pools"
+own_obstacles = true
+expert_schools = ["base:water"]
+
+[[battlefield]]
+id = "fiery_fields"
+own_obstacles = true
+expert_schools = ["base:fire"]
+
+[[battlefield]]
+id = "rocklands"
+own_obstacles = true
+expert_schools = ["base:earth"]
+
+[[battlefield]]
+id = "magic_clouds"
+own_obstacles = true
+expert_schools = ["base:air"]
+
+[[obstacle]]
+id = "obstacle_61"
+battlefields = ["holy_ground"]
+width = 1
+height = 1
+blocked = [[0, 0]]
+
+[[obstacle]]
+id = "obstacle_62"
+battlefields = ["holy_ground"]
+width = 2
+height = 1
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_63"
+battlefields = ["holy_ground"]
+width = 3
+height = 3
+blocked = [[1, 0]]
+
+[[obstacle]]
+id = "obstacle_64"
+battlefields = ["holy_ground"]
+width = 3
+height = 2
+blocked = [[0, 0], [1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_65"
+battlefields = ["holy_ground"]
+width = 4
+height = 3
+blocked = [[0, 0], [1, 0], [2, 0], [3, 0]]
+
+[[obstacle]]
+id = "obstacle_66"
+battlefields = ["evil_fog"]
+width = 1
+height = 1
+blocked = [[0, 0]]
+
+[[obstacle]]
+id = "obstacle_67"
+battlefields = ["evil_fog"]
+width = 2
+height = 1
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_68"
+battlefields = ["evil_fog"]
+width = 3
+height = 2
+blocked = [[0, 0], [1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_69"
+battlefields = ["evil_fog"]
+width = 4
+height = 2
+blocked = [[1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_70"
+battlefields = ["evil_fog"]
+width = 6
+height = 2
+blocked = [[1, 0], [2, 0], [3, 0], [5, -1], [4, -1]]
+
+[[obstacle]]
+id = "obstacle_71"
+battlefields = ["clover_field"]
+width = 1
+height = 1
+blocked = [[0, 0]]
+
+[[obstacle]]
+id = "obstacle_72"
+battlefields = ["clover_field"]
+width = 3
+height = 1
+blocked = [[0, 0], [1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_73"
+battlefields = ["clover_field"]
+width = 3
+height = 2
+blocked = [[1, 0], [2, 0], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_74"
+battlefields = ["clover_field"]
+width = 4
+height = 2
+blocked = [[0, 0], [1, 0], [2, 0], [3, -1], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_75"
+battlefields = ["lucid_pools"]
+width = 1
+height = 1
+blocked = [[0, 0]]
+
+[[obstacle]]
+id = "obstacle_76"
+battlefields = ["lucid_pools"]
+width = 2
+height = 1
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_77"
+battlefields = ["lucid_pools"]
+width = 3
+height = 2
+blocked = [[0, 0], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_78"
+battlefields = ["lucid_pools"]
+width = 5
+height = 2
+blocked = [[1, 0], [2, 0], [3, 0], [4, -1], [3, -1], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_79"
+battlefields = ["fiery_fields"]
+width = 1
+height = 1
+blocked = [[0, 0]]
+
+[[obstacle]]
+id = "obstacle_80"
+battlefields = ["fiery_fields"]
+width = 2
+height = 1
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_81"
+battlefields = ["fiery_fields"]
+width = 3
+height = 2
+blocked = [[0, 0], [1, 0], [2, 0], [2, -1]]
+
+[[obstacle]]
+id = "obstacle_82"
+battlefields = ["fiery_fields"]
+width = 4
+height = 2
+blocked = [[1, 0], [2, 0], [3, 0], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_83"
+battlefields = ["fiery_fields"]
+width = 3
+height = 3
+blocked = [[0, 0], [1, 0], [2, 0], [3, 0], [3, -1], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_84"
+battlefields = ["rocklands"]
+width = 1
+height = 1
+blocked = [[0, 0]]
+
+[[obstacle]]
+id = "obstacle_85"
+battlefields = ["rocklands"]
+width = 2
+height = 1
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_86"
+battlefields = ["rocklands"]
+width = 3
+height = 1
+blocked = [[0, 0], [1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_87"
+battlefields = ["rocklands"]
+width = 4
+height = 2
+blocked = [[1, 0], [2, 0], [3, 0], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_88"
+battlefields = ["magic_clouds"]
+width = 1
+height = 1
+blocked = [[0, 0]]
+
+[[obstacle]]
+id = "obstacle_89"
+battlefields = ["magic_clouds"]
+width = 2
+height = 2
+blocked = [[1, 0], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_90"
+battlefields = ["magic_clouds"]
+width = 4
+height = 2
+blocked = [[0, 0], [1, 0], [3, -1], [2, -1]]
+
+[[obstacle]]
+id = "obstacle_129"
+battlefields = ["clover_field"]
+absolute = true
+blocked = [[8, 4], [9, 4], [7, 5], [8, 5], [9, 5], [10, 5], [7, 6], [8, 6], [9, 6]]
+
+[[obstacle]]
+id = "obstacle_130"
+battlefields = ["lucid_pools"]
+absolute = true
+blocked = [[8, 4], [9, 4], [10, 4], [7, 5], [8, 5], [9, 5], [5, 6], [6, 6], [7, 6]]
+
+[[obstacle]]
+id = "obstacle_131"
+battlefields = ["fiery_fields"]
+absolute = true
+blocked = [[8, 4], [9, 4], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [6, 6], [7, 6], [8, 6], [9, 6]]
+
+[[obstacle]]
+id = "obstacle_132"
+battlefields = ["rocklands"]
+absolute = true
+blocked = [[9, 3], [10, 3], [7, 4], [8, 4], [9, 4], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5]]
+
+[[obstacle]]
+id = "obstacle_133"
+battlefields = ["magic_clouds"]
+absolute = true
+blocked = [[8, 3], [9, 3], [6, 4], [7, 4], [8, 4], [8, 5], [9, 5], [10, 5], [9, 6], [10, 6]]

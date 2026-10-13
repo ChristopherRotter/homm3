@@ -99,7 +99,7 @@ id       = "BAT-GEO-004"
 title    = "Random obstacles"
 context  = "battle"
 status   = "implemented"
-summary  = "Before a battle on a terrain, its obstacles are generated (the caller puts them into the setup, BAT-GEO-003, in the order placed, each with its hexes in hex order and its type's key): pick 5..=12 hexes to block; with 40 % chance place one absolute obstacle of the terrain (fixed hexes, no anchor; it counts half its hex count); then, while hexes remain to be blocked, choose a usual obstacle of the terrain uniformly and an allowed anchor uniformly, block its hexes (the obstacle keeps its anchor) and subtract their count; stop when the terrain has no usual obstacle or the chosen one has no allowed anchor. An anchor (the obstacle's bottom-left hex) lies in rows 1..=height-2 (row height-2 only up to column width-2), needs more rows above it than the obstacle's height, column >= 1 and column + width <= field width - 2, and must not be blocked; every blocked hex (dx, dy from the anchor; from an odd row, hexes in even rows shift one column left) must be on the field, free, and in columns 3..=field width - 4, so the two columns next to each army's starting column stay free. Obstacle types (terrains, width, height, blocked hexes, absolute flag) are content; a usual type blocks at most 8 hexes (the compiler refuses more: a removable piece of the battle holds 8, BAT-GEO-003), an absolute one any number. Random numbers come from the caller's stream (OBSTACLES in the tools); the original seeds this from the map tile. Scope: special battlefields (magic terrains, coast, ship) and their obstacles are E04; sieges have no random obstacles."
+summary  = "Before a battle on a terrain, its obstacles are generated (the caller puts them into the setup, BAT-GEO-003, in the order placed, each with its hexes in hex order and its type's key): pick 5..=12 hexes to block; with 40 % chance place one absolute obstacle of the terrain (fixed hexes, no anchor; it counts half its hex count); then, while hexes remain to be blocked, choose a usual obstacle of the terrain uniformly and an allowed anchor uniformly, block its hexes (the obstacle keeps its anchor) and subtract their count; stop when the terrain has no usual obstacle or the chosen one has no allowed anchor. An anchor (the obstacle's bottom-left hex) lies in rows 1..=height-2 (row height-2 only up to column width-2), needs more rows above it than the obstacle's height, column >= 1 and column + width <= field width - 2, and must not be blocked; every blocked hex (dx, dy from the anchor; from an odd row, hexes in even rows shift one column left) must be on the field, free, and in columns 3..=field width - 4, so the two columns next to each army's starting column stay free. Obstacle types (terrains, width, height, blocked hexes, absolute flag) are content; a usual type blocks at most 8 hexes (the compiler refuses more: a removable piece of the battle holds 8, BAT-GEO-003), an absolute one any number. Random numbers come from the caller's stream (OBSTACLES in the tools); the original seeds this from the map tile. On a special battlefield (BAT-TER-002) with its own obstacles the types are those listing it, not the terrain's (the original's mask is the field's bit, 0x466290, installation.md §7.26); a battlefield with fixed blocked hexes (two boats) gets them as one absolute obstacle without a type and no random obstacle; the others (a ship's deck) take the terrain's. Scope: sieges have no random obstacles."
 numeric  = "integer"
 
   [[rule.source]]
@@ -297,7 +297,7 @@ id       = "BAT-TER-001"
 title    = "Native terrain"
 context  = "battle"
 status   = "implemented"
-summary  = "A battle may have a terrain (BattleSetup.terrain). Stacks of creatures whose faction's native terrain is that terrain get +1 attack, +1 defense and +1 speed for the whole battle (Castle, Rampart, Conflux: grass; Tower: snow; Inferno: lava; Necropolis: dirt; Dungeon: subterranean; Stronghold: rough; Fortress: swamp). Neutral creatures have no native terrain. Applied to the stack's stats when the battle starts."
+summary  = "A battle may have a terrain (BattleSetup.terrain). Stacks of creatures whose faction's native terrain is that terrain get +1 attack, +1 defense and +1 speed for the whole battle (Castle, Rampart, Conflux: grass; Tower: snow; Inferno: lava; Necropolis: dirt; Dungeon: subterranean; Stronghold: rough; Fortress: swamp). Neutral creatures have no native terrain. Applied to the stack's stats when the battle starts. A special battlefield may cancel it (BAT-TER-006)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -324,6 +324,145 @@ numeric  = "integer"
   ref        = "experiments/results/E04b-batch-2d.md NE, SU (SoD 4.0 Complete, plain HD, 2026-10-08): on grass, Archangels 31/31/19 and Pixies 3/3/8 in the army; Air Elementals in the army 10/10/8, summoned Air Elementals 10/10/8 and Earth Elementals 11/11/5: the four elementals are Conflux natives on grass, as the engine has them (the code reading of 0x43D730, installation.md §7.19, predicted 9/9/7 and speed 4: the game setting it tests is on in this setup, or the reading is wrong)"
   retrieved  = "2026-10-08"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-TER-002"
+title    = "Special battlefields and the anti-magic garrison"
+context  = "battle"
+status   = "implemented"
+summary  = "A battle may be fought on a special battlefield (BattleSetup.battlefield: the key of a battlefield of the ruleset's battle part; E04c, the battlefield ADR draft) and at an anti-magic garrison (BattleSetup.anti_magic). The battle never derives them: the caller does (the original's order, docs/rules/surveys/E04c-battlefields.md §4), and draws the obstacles for them before the seam (BAT-GEO-004). An unknown battlefield key is a setup error (SetupError::UnknownBattlefield). The battlefield's rules are content, one typed field per rule: morale and luck (BAT-TER-003), the casting limits (BAT-TER-004), the mastery raise (BAT-TER-005), the native bonus (BAT-TER-006), the obstacle types (BAT-GEO-004). The original's twelve (the packs): the shore, Magic Plains, Cursed Ground, a ship's deck and two boats in base; Holy Ground, Evil Fog, Clover Field, Lucid Pools, Fiery Fields, Rocklands and Magic Clouds in sod. Both facts are public: they join the observation."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.26): 0x4643B0 at the battle's start sets the terrain +0x5394, the special field +0x53C0 (-1 none, 0 the shore, 1 Magic Plains, 2 Cursed Ground, 3 Holy Ground, 4 Evil Fog, 5 Clover Field, 6 Lucid Pools, 7 Fiery Fields, 8 Rocklands, 9 Magic Clouds, by the tile's special ground through the switch at 0x46453E), a battle on a ship +0x53C6 and an anti-magic garrison +0x53C4 (object 33, subtype 1); the picture 0x4646D0 follows them (two heroes in boats, the deck, the shore)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/battlefields.json: sand_shore, magic_plains, cursed_ground, holy_ground, evil_fog, clover_field, lucid_pools, fiery_fields, rocklands, magic_clouds, ship, ship_to_ship; lib/gameState/CGameState.cpp battleGetBattlefieldType: the special object first, a coastal tile is sand_shore"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/battlefields.json"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combat: the battlefields, Boat ('both heroes are in boats') and Boat (Deck); Terrain: the magical terrains"
+  url        = "https://heroes.thelazy.net/index.php/Combat"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-TER-003"
+title    = "Morale and luck on a special battlefield"
+context  = "battle"
+status   = "implemented"
+summary  = "A battlefield's morale and luck changes reach a stack by its creature's faction (never a creature without one) and are part of the stack's own sum, after Mirth, Sorrow, Fortune and Misfortune and before the side's caps and the creatures' minimums (BAT-MOR-001, BAT-LCK-001); a battlefield with no_morale or no_luck sets every stack's morale or luck to 0, whatever its sources, minimums included. The original's: Holy Ground +1 morale for Castle, Rampart and Tower creatures and -1 for Inferno, Necropolis and Dungeon ones, Evil Fog the reverse, Clover Field +2 luck for Stronghold, Fortress and Conflux ones, Cursed Ground morale and luck 0 (so no stack freezes from bad morale there: dispute D-1, BAT-Q38)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.26): 0x469750, the only caller of 0x43E000 (a stack's morale) and 0x43DF20 (its luck), passes the field: on field 2 both are 0 before anything else (0x43E00F, 0x43DF2B); field 3 +1 for towns 0-2 and -1 for 3-5, field 4 the reverse (byte tables 0x43E118, 0x43E130), after Mirth and Sorrow and before the Minotaurs' minimum and Spirit of Oppression; field 5 +2 luck for towns 6-8 (0x43DFF4) before the Halflings' minimum; creatures without a town (above 8) never"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "ARRAYTXT.TXT (H3bitmap.lod): 'No morale effects on cursed ground', 'No luck effects on cursed ground', 'Creature of neutral town alignment on Clover Field +2', 'Creature of good town alignment on Holy Ground +1', 'Creature of evil town alignment on Holy Ground -1' and Evil Fog's two"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/battlefields.json: holy_ground and evil_fog MORALE +-1 by alignment, clover_field LUCK +2 for alignment neutral (neutral creatures included: disagrees, D-2), cursed_ground MORALE at most 0 and NO_LUCK (negative morale stays: disagrees, D-1)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/battlefields.json"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Terrain: Holy Ground and Evil Fog +-1 morale by alignment; Cursed Ground 'Negates all positive morale effects' (disagrees, D-1); Clover Field contradicts itself on neutral creatures"
+  url        = "https://heroes.thelazy.net/index.php/Terrain"
+  retrieved  = "2026-10-13"
+  confidence = "low"
+
+[[rule]]
+id       = "BAT-TER-004"
+title    = "The casting limits of a special battlefield"
+context  = "battle"
+status   = "implemented"
+summary  = "A battlefield's spell level limit joins the heroes' (BAT-MAG-062): no hero casts a spell above it (SpellLevelBarred) and no spell above it takes effect on a stack, creature abilities and the strike's spells included. A battlefield with no_creature_casts stops every creature cast and raise as an action (CannotCast) and every periodic cast, but not a creature that ignores the magic block (the Faerie Dragon's key path), as the Orb does (BAT-MAG-061); a hero still casts there. At an anti-magic garrison neither side casts, as under the Orb of Inhibition (BAT-MAG-061). The original's Cursed Ground: level 1, no creature casts."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.26): 0x41F890(side, hero cast) answers 0 for a creature's cast on field 2 and for every cast at an anti-magic garrison (+0x53C4), and needs the hero's worn spell book on every field; the hero's book refuses a spell above level 1 on field 2 (0x59EB11); the effect test 0x5A8090 answers 0 for a spell above level 1 there (0x5A80D1); the Faerie Dragon's key path asks none of them (§7.21)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "GENRLTXT.TXT (H3bitmap.lod): 'You cannot cast spells over level one here' (Cursed Ground)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Terrain: Cursed Ground blocks hero spells above level 1, creatures cannot cast spells"
+  url        = "https://heroes.thelazy.net/index.php/Terrain"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/battlefields.json cursed_ground BLOCK_MAGIC_ABOVE 1 (every caster; creature casts of level 1 allowed: disagrees on creature casts)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/battlefields.json"
+  retrieved  = "2026-10-13"
+  confidence = "low"
+
+[[rule]]
+id       = "BAT-TER-005"
+title    = "The mastery raise of a special battlefield"
+context  = "battle"
+status   = "implemented"
+summary  = "On a battlefield that raises a school, a hero casts every spell of that school at Expert, whatever its derived mastery (BAT-MAG-002; the spell's cost, value, area and mass version follow): the mastery is the original's at cast time with the field, so the hero's derived masteries (h3_heroes::spell_masteries) stay battlefield-free. On a battlefield that raises the other casts, a creature's cast, a periodic cast and the strike's spells are at Expert too. The original's: Magic Plains raises every school and the other casts; Lucid Pools water, Fiery Fields fire, Rocklands earth and Magic Clouds air, for heroes only."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.26): 0x4E5080 with the field: 0x4E5100 gives Expert on field 1 for every school and on fields 6-9 for water, fire, earth, air, else the hero's levels; every reader passes +0x53C0 (the cost, the cast routine 0x59FEA2, Dispel's test 0x5A8167); a cast of kind 1 (a creature's, the strike's spells) or 2 (an opening spell) takes its argument, Expert on field 1 only (0x59FEBC)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Terrain: Magic Plains 'Cause all spells to be cast at expert level', creature spellcasting included; the elemental fields their school at expert, 'Spells cast by creatures are not affected'"
+  url        = "https://heroes.thelazy.net/index.php/Terrain"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/battlefields.json MAGIC_SCHOOL_SKILL 3 (magic_plains any school, the four elemental fields their school; heroes only: disagrees on Magic Plains' creature casts, D-3)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/battlefields.json"
+  retrieved  = "2026-10-13"
+  confidence = "low"
+
+[[rule]]
+id       = "BAT-TER-006"
+title    = "No native bonus on a special battlefield"
+context  = "battle"
+status   = "implemented"
+summary  = "On a battlefield with no_native no stack fights on its native terrain (BAT-TER-001): no +1 attack, defense and speed, and no side sees the other's hidden obstacles through its natives (BAT-MAG-031). The original's Cursed Ground."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.26): the stack's setup 0x43D730: no stack is native on field 2 (0x43D7C1), else native when its town's native terrain is +0x5394"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Terrain: Cursed Ground 'Disables all native terrain bonuses'"
+  url        = "https://heroes.thelazy.net/index.php/Terrain"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
 
 [[rule]]
 id       = "BAT-MOV-001"
@@ -3552,7 +3691,7 @@ id       = "BAT-MAG-061"
 title    = "No casting (the Orb of Inhibition)"
 context  = "battle"
 status   = "verified"
-summary  = "While a hero in the battle has a NoCasting effect (either side's; the Orb of Inhibition, HER-BAT-015) neither side casts: a hero's spell is refused (CastingForbidden, after the round's cast check), no creature casts or raises as its action (CannotCast; the Archangel, the Pit Lord), no periodic cast happens (the Enchanters: their side's count stays). A random caster still draws its spell at its activation (BAT-MAG-049; the original's draw does not ask) but may not cast it, unless its creature has `ignores_magic_block`: the Faerie Dragon casts under the Orb, as the F key does in the original (its path asks no 'magic allowed' test, installation.md §7.21) and the wiki says (the user, BAT-Q32 (2)); batch 2e's row OI tried the cursor, which the Orb stops. Not modelled: on the key path a Chain Lightning refuses the caster's side's stacks and the area spells take any hex (BAT-Q32 (1)). The strike's creature magic (BAT-MAG-040 to BAT-MAG-047) is no cast and stays."
+summary  = "While a hero in the battle has a NoCasting effect (either side's; the Orb of Inhibition, HER-BAT-015) neither side casts: a hero's spell is refused (CastingForbidden, after the round's cast check), no creature casts or raises as its action (CannotCast; the Archangel, the Pit Lord), no periodic cast happens (the Enchanters: their side's count stays). A random caster still draws its spell at its activation (BAT-MAG-049; the original's draw does not ask) but may not cast it, unless its creature has `ignores_magic_block`: the Faerie Dragon casts under the Orb, as the F key does in the original (its path asks no 'magic allowed' test, installation.md §7.21) and the wiki says (the user, BAT-Q32 (2)); batch 2e's row OI tried the cursor, which the Orb stops. Not modelled: on the key path a Chain Lightning refuses the caster's side's stacks and the area spells take any hex (BAT-Q32 (1)). The strike's creature magic (BAT-MAG-040 to BAT-MAG-047) is no cast and stays. At an anti-magic garrison (BattleSetup.anti_magic, BAT-TER-002) the same holds without a hero's effect (BAT-TER-004)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3585,7 +3724,7 @@ id       = "BAT-MAG-062"
 title    = "The spell level limit (Recanter's Cloak)"
 context  = "battle"
 status   = "verified"
-summary  = "While a hero in the battle has a SpellLevelLimit effect (either side's; Recanter's Cloak: 2, HER-BAT-015) no spell above the smallest such level takes part: a hero's spell above it is refused (SpellLevelBarred, after the round's cast check and BAT-MAG-061), and it affects no stack whoever casts it (BAT-MAG-005: before every other test, positive spells too): a creature's cast has no target, a periodic cast does not count, the strike's ability spells above it do nothing (Stone Gaze 3, Paralyze 4, Age 5), an Archangel raises nothing (its test is Resurrection's, level 4). The Pit Lord's raise has no spell test and stays."
+summary  = "While a hero in the battle has a SpellLevelLimit effect (either side's; Recanter's Cloak: 2, HER-BAT-015) no spell above the smallest such level takes part: a hero's spell above it is refused (SpellLevelBarred, after the round's cast check and BAT-MAG-061), and it affects no stack whoever casts it (BAT-MAG-005: before every other test, positive spells too): a creature's cast has no target, a periodic cast does not count, the strike's ability spells above it do nothing (Stone Gaze 3, Paralyze 4, Age 5), an Archangel raises nothing (its test is Resurrection's, level 4). The Pit Lord's raise has no spell test and stays. A special battlefield's limit joins the heroes' (BAT-TER-004)."
 numeric  = "integer"
 
   [[rule.source]]
