@@ -1456,3 +1456,90 @@ round.
   in the procedure's order, every amount within 5–10 and 3–6. Compiled again after the last
   change to the spec: the map in `experiments/out/` and the template carry the same stamp.
 - Not shown in the template, as before: the predictions (in the spec, for the evaluating agent).
+
+**T16a — the maps with objects, the replays, the benchmarks, the exit criteria** (a worker).
+- **The maps** (`h3-map`'s `tests/fixtures.rs`): increment 2's typed objects drawn from each
+  plan's generator after the terrain and the blockers, which so stayed as they were (terrain,
+  blocker and hero records and the first four templates byte for byte, checked against the old
+  files); in map order the objects follow the blockers. `Placer` draws an anchor until every
+  tile of the object is free land off the roads (a guard's or a gate's visitable tile on its
+  road) and its visitable tile keeps two free neighbours it is reached from not from above
+  (ADV-OBJ-004), which later objects leave free: no object covers a hero or another object, so
+  setup takes both maps (no hero on a visited tile or a gate, no shared anchor). The density is
+  the shipped maps' (a throwaway count over the 164 staged maps: increment 2's classes cover
+  3.7 % of the land tiles on 36 × 36 maps, 3.0 % on 72, 2.5 % on 108, 2.9 % on 144; random
+  resources and piles nine in ten): the duel 66 objects (2.9 % of 2 263 land tiles), the XL
+  16 times as many (1 056, 3.0 % of 34 903). The duel: within each surface hero's first reveal a
+  pile, a random resource, a green Keymaster's tent and a land Cartographer, within each
+  underground hero's a pile, a random resource, a red tent and a campfire (5–6 typed objects in
+  each hero's day-1 reach of 45–81 tiles); a green guard and gate on the surface road, a red
+  pair on the underground road; anywhere else 22 more piles (the seven resources, drawn amounts
+  but one gold pile of a fixed 300), 20 random resources, 2 campfires, a Redwood Observatory
+  (surface) and a Pillar of Fire (underground). The XL: the same beside its eight heroes, four
+  guards and four gates of the level's colour on each road, the rest anywhere on its level
+  (tents, guards and gates green on the surface, red underground; 28 more Cartographers, 16
+  observatories of each kind) or the map. `play.rs`'s `KINDS` gains eleven kinds only the maps
+  lay out (the strategy draws the first nine, `PLAYED`, as before); `lay_out`'s one typed object
+  per anchor and type compares class and subclass (two kinds share the gold pile's type). The
+  duel's file 756 → 1 273 bytes, the XL's 8 883 → 13 551; `fixtures/maps/README.md` updated.
+- **What plays the duel**: `h3-sim`'s adventure tests and `h3-cli`'s pass on the new map
+  unchanged (no expectation depended on the empty map); only the module doc of `h3-sim`'s
+  tests changed (`chart_setup` still adds a Cartographer on the nearest tile beside each hero,
+  underground too: the duel's own two are farther).
+- **Golden replays**, re-recorded with their documented options (seeds, days, difficulty,
+  profile): every hash changed with the map's; commands `duel-s1-d28` 136 → 130 (74 moves, 56
+  ends), `duel-s2-d7` 42 → 42, `duel-s5-strict-d7` 46 → 43, `duel-s3-easy-d7` 34 → 34. They
+  verify in debug and release and in the scoped verify's determinism step. What they meet:
+
+  | Replay | Pickups (gains) | Removals | Keys | Offers opened / refused / accepted / declined | `OfferGone` | Reveals | Gates crossed |
+  |---|---|---|---|---|---|---|---|
+  | `duel-s1-d28` | 1 crystal pile (1) | 1 | 1 green | 0 / 0 / 0 / 0 | 0 | 0 | 0 |
+  | `duel-s2-d7` | a campfire, a sulfur pile (3) | 2 | 0 | 0 | 0 | 0 | 0 |
+  | `duel-s5-strict-d7` | 1 gold pile (1) | 1 | 1 green | 0 | 0 | 0 | 0 |
+  | `duel-s3-easy-d7` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+  **No replay meets an offer.** Random play's moves seldom end on an object: the agent picks a
+  destination uniformly in the hero's reach, which every step's reveal widens, so 74 moves in
+  28 days meet two objects at a density of 3 % (`OfferGone` needs two players in one turn
+  group, never in sequential play). Proposal, not built: a fifth golden replay recorded by an
+  agent that prefers visits (an `h3 adventure run` option: when a reachable tile is a visit,
+  move there at even odds, as `play.rs`'s `Step::Visit` does), so that the matrix replays both
+  offers accepted and declined, keys, a guard passed and a gate crossed; or a replay of a
+  scripted command list built by a test on the duel.
+- **Benchmarks** re-baselined (no engine code changed; the workloads' maps did):
+
+  | Workload | Before (baseline) | After | Per unit |
+  |---|---|---|---|
+  | `random-play-duel-36` | 439 577 005 Ir (685 steps) | 391 603 057 (667), −10.9 % | 640 k → 587 k Ir per step |
+  | `reach-xl-144` | 566 626 021 (1 920 queries) | 551 030 247 (1 904), −2.8 % | 294 k → 289 k per query |
+  | `fork-xl-144` | 343 600 056 | 349 400 056, +1.7 % (+1.6 % since T15a's keys) | 3 490 → 3 494 per fork |
+
+  Objects cover tiles and end paths, so a query searches less. Not gated (callgrind): a duel
+  query 241 k → 224 k Ir, an XL step 1.395 M → 1.392 M, a duel fork 2 253 → 2 261. Wall time
+  (release, best of nine, the old and the new maps alternating with one binary; runs of one
+  measure vary by up to a third on the sandbox's shared vCPU): duel step 64.9 → 70.0 µs, + the
+  observation +20 → +16 µs, + the masks +59 → +50 µs; XL step 147 → 161 µs, + the observation
+  +256 → +543 µs, + the masks +119 → +144 µs; query 23.8 → 24.4 µs (duel), 27.2 → 29.7 µs (XL);
+  fork 0.27 → 0.29 µs, 0.32 → 0.34 µs; `GameState` / `AdventureEnv` 216 / 248 bytes, unchanged.
+  New: the XL observation's object list costs ≈ 1.6 M Ir per observation (every typed object's
+  tiles tested for explored or fringe, the fringe test reading eight neighbours of each hidden
+  tile; the observation of an XL step +75 %): a lever for E13's encoding (inbox). The rows of
+  `docs/02-architecture.md` §8 follow in a `shared/` pull request.
+- **Increment 2's exit criteria** (the epic's list, checked on 2026-10-13):
+
+  | Criterion | State |
+  |---|---|
+  | ADR amendments accepted | ADR-0016 and ADR-0017 amendments (2026-10-12, #115) |
+  | Full verify green in CI, logic crates at 100 % | CI cannot start (GitHub billing): the runner's full local verify stands in; this task's scoped verify passes every step but `check-lane` (T16b's battle paths, by design), with `h3-adventure` and `h3-game` at 100 % |
+  | Atomicity | `h3-map` `play.rs` `every_step_keeps_the_commands_invariants` (48 cases × up to 40 steps, both profiles) on plans with piles, campfires, a Redwood Observatory, a Cartographer, red tents, guards and gates; `h3-sim` `a_refused_command_changes_nothing` on the duel with objects |
+  | Legality consistency, pending decisions included | `check_legal`/`check_unlisted` (answers alone while a decision is open, `Decline` alone when it no longer stands); `h3-sim` `steps_agree_with_the_masks_and_the_game` with a Cartographer beside each hero; `h3-game` `tests/decisions.rs` (a stale offer, `OfferGone`: only `set_schedule` builds two players in one group, the inbox) |
+  | Ownership isolation: treasuries; streams if a command draws | `check_isolation`: the other players' treasuries, purchases, decisions, keys, explored tiles, heroes; no command draws (every draw is at setup, ADV-PIK-001 to -003 from the setup stream; a player's stream is only hashed in `h3-game`), so the streams' part is void; the hygiene property varies the seed |
+  | Conservation | `check_conservation`: every army unchanged by every accepted command; a treasury changes by the told gains, which come with a removal, and an accepted offer's price; **added here**: the gains are exactly the drawn contents of the objects that left, in order (checked to fail on a gain off by one) |
+  | Observation hygiene (typed objects, treasuries) | `view.rs` `a_viewer_learns_nothing_it_cannot_see` (seeds, armies, hidden tiles and objects' contents differ; the viewer's treasury in its observation) and `views_move_as_the_events_say` |
+  | Clone equivalence, determinism | `play.rs` `forks_evolve_as_their_parent`, `replays_are_deterministic`; `h3-sim`'s env forks and rollouts on the duel with objects; the golden replays |
+  | Objects the properties play | every kind of increment 2 by its kind (pickup, reveal by terrain, reveal around, key tent, key guard, key gate); not the random resource, whose drawn pile type shows (the hygiene property would see the seed): its draw is `h3-adventure`'s unit tests', and since T16a the env tests and the replays play 24 on the duel |
+  | Golden replays on a duel with objects in the determinism matrix | four, re-recorded above; they meet pickups and keys, no offer (the proposal above) |
+  | Benchmarks re-baselined | the three, above; §8 in a `shared/` pull request |
+  | Every new rule `implemented` with sources | 12 ADV (ADV-OBJ-002 to -005, ADV-PIK-001 to -003, ADV-VIS-001 to -005) and 3 GAM (GAM-RES-001, -002, GAM-DEC-001), each `implemented` with two to four sources (`check-rules` ok); ADV-PIK-001's ranges (D-5) wait for batch 2 |
+  | Batch 2 staged and scored | staged (T16b), scored in T16c |
+  | HANDOFF, epic log, `QUEUE.md` current | this log; the HANDOFF and the queue with the round |
