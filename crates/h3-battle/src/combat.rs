@@ -414,12 +414,10 @@ fn penalty(
 ) -> Option<u16> {
     if flags.contains(StrikeFlags::RANGED) {
         // rule: BAT-RNG-002
-        // Measured from the striker's front hex (its position as VCMI names it).
-        let from = striker.footprint(field).front;
-        let near = victim
-            .footprint(field)
-            .hexes()
-            .any(|h| field.distance(from, h) <= u32::from(params.ranged_full_damage_distance));
+        // Between the nearest hexes of both stacks: the original turns a shooter to face its
+        // target before it measures from its front hex (0x440160, 0x446720, 0x467600).
+        let near = field.footprint_distance(striker.footprint(field), victim.footprint(field))
+            <= u32::from(params.ranged_full_damage_distance);
         (!near && !striker.has(StackTraits::NO_DISTANCE_PENALTY))
             .then(|| u16::from(params.ranged_penalty_percent))
     } else {

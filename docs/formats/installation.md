@@ -2232,3 +2232,57 @@ took its turn, its blinded first stack passed over (AD), and under an Orb of Inh
 winner learned only with a worn Spell Book (EB: none from the backpack) and only up to Wisdom + 2
 (EL: Bless, not Air Shield, without Wisdom; EW: Air Shield with Basic Wisdom), as 0x469FE0 reads.
 The message after the battle names every pick, the unlearned ones too.
+
+### 7.25 Code reading: a stack's facing and a shot's full-damage distance (2026-10-13)
+
+Read at the user's question after #150 (does the original measure a shot's distance from the front
+hex, also for a shooter that walked past its target?). Insight only, nothing copied (Q29). Caller
+path: the human player's shot action (0x440160), the damage's stage 2 (0x443B90) and the cursor
+(0x476490); not the computer player's own routines.
+
+**Facing.** A stack's facing +0x44 is 1 (right) or 0 (left); the setup sets 1 − side (0x43D846).
+A stack's other hex (0x4466A0) is its position +0x38 for a one-hex stack, else the position + 1
+facing right and − 1 facing left. **Turning around** (0x446720) flips the facing and, for a two-hex
+stack, moves the position onto its other hex: the stack keeps its two hexes, its position stays the
+hex behind it and its other hex the one ahead (the hexes' draw parts +0x1A are rewritten, the turn
+animated on request). Twelve routines turn stacks: a walk's step faces the step's direction
+(0x43F0B0: right for directions 0 to 2, left for 3 to 5; the walker 0x441FA0 turns back at its end
+to the facing it started with, when its flag argument is set, 0x4423A2); the melee attack turns its
+attacker before the strikes and back at its end (0x441D79, 0x441F36); the strike, the creature's
+cast, the attack after a move, the flight, the teleporting move and the raise call it too (not read
+whether they turn back).
+
+**The shot** (0x440160). An arrow tower takes its own path (0x465AD0). Any other shooter first
+compares the screen x (the hex record's first word) of the target's position hex with that of its
+own other hex: a target to the right turns a shooter facing left around, a target to the left one
+facing right; equal x, no turn. Then it shoots (0x43F900, which computes the damage), and at the
+end turns back if its facing changed (0x4402DC).
+
+**The full-damage distance** (0x467600, shooter and target; called by the damage's stage 2 at
+0x443C96 and by the cursor at 0x4767E6). No halving when the shooter's side's hero (the other
+side's while the shooter is hypnotized, +0x288) wears artifact 91 (Golden Bow) or 137 (Bow of the
+Sharpshooter), nor for creatures 149 (arrow tower) and 137 (Sharpshooter). Otherwise the hex
+distance (the usual hex metric) from the shooter's other hex to the target's position; at most 10
+is full damage; else, for a two-hex target, the distance to its other hex decides the same way;
+both above 10, the shot is halved.
+
+**Consequence.** The damage is computed after the turn, so the distance runs from the shooter's
+hex on the target's side to the target's nearest hex. A brute force over every placement of a
+two-hex shooter of either side and a one- or two-hex target of either side on the 17 × 11 field,
+not overlapping (252 120 pairs), gives exactly the smallest hex distance between the two stacks
+(the turn's screen-x test never picks the farther hex). The engine had measured from the front hex
+by side (VCMI's head, never turned): it differed on 7 084 pairs, a target behind the shooter 10
+hexes from its rear hex and 11 from its front hex, which it halved. The cursor tests without
+turning: its half-damage cursor (0xF) reads the shooter's current facing, so it can show the broken
+arrow over a target that the shot will strike in full (presentation; not modelled). Two-hex
+shooters: Medusas and Medusa Queens, Ice Elementals (AB) and the Ballista (whose targets are never
+behind it).
+
+**Sources.** VCMI 1.7.5 measures from the shooter's position (its head) to the target's nearest
+hex (`CBattleInfoCallback::battleHasDistancePenalty`, `isEnemyUnitWithinSpecifiedRange`): as the
+engine did. The wiki is silent on the hex ("Ranged attack": beyond 10 hexes). The reading stands
+against VCMI; the user decided on 2026-10-13 (BAT-Q36) that the engine follows it (BAT-RNG-002),
+and a confirmation row is queued (`docs/experiments/README.md`, batch 2g). Not read: whether the
+other routines that turn a stack measure anything at its turned front hex before turning back (the
+melee attack's breath and attack patterns: leads for a later reading; the engine measures those at
+the front hex by side, BAT-GEO-002).
