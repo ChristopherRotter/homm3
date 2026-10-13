@@ -48,6 +48,8 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
             protocol: PROTOCOL_VERSION,
             client: "test".to_string(),
             name: "Ann".to_string(),
+            nonce: "09".repeat(32),
+            address: "wss://h3.example.org".to_string(),
         },
         ClientMessage::Join {
             game: 1,
@@ -228,6 +230,8 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             server: "h3-server 0.1.0".to_string(),
             id: "wss://h3.example.org".to_string(),
             challenge: "07".repeat(32),
+            key: "5a".repeat(32),
+            signature: "0b".repeat(64),
         },
         ServerMessage::Account {
             seq: 18,

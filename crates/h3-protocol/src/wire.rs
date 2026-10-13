@@ -1091,7 +1091,8 @@ pub enum Query {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub enum ClientMessage {
-    /// The first message: the client's protocol version and names.
+    /// The first message: the client's protocol version and names, and what the welcome signs
+    /// (E16 M6 T1, ADR-0021 point 1).
     Hello {
         /// [`crate::PROTOCOL_VERSION`] of the client.
         protocol: u32,
@@ -1099,6 +1100,11 @@ pub enum ClientMessage {
         client: String,
         /// The player's display name.
         name: String,
+        /// A fresh nonce of the client's, 32 bytes as lowercase hex, which the welcome signs.
+        nonce: String,
+        /// The address the client dialed (`ws://…` or `wss://…`): the welcome's id when it is one
+        /// of the server's addresses.
+        address: String,
     },
     /// The server's offers and games (E16 M2 T1).
     ListGames {
@@ -1410,6 +1416,12 @@ pub enum ServerMessage {
         id: String,
         /// This connection's challenge for a login (E16 M3 T1), 32 bytes as lowercase hex.
         challenge: String,
+        /// The server's public key (E16 M6 T1, ADR-0021 point 1), 32 bytes as lowercase hex: the
+        /// server's identity across its addresses, which a client pins on first contact.
+        key: String,
+        /// The key's signature over the id, the hello's nonce and the challenge
+        /// ([`crate::account::welcome_message`]), 64 bytes as lowercase hex.
+        signature: String,
     },
     /// The connection closes.
     Goodbye {

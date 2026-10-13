@@ -1,6 +1,6 @@
 # h3-server
 
-Hosts the engine's battles for untrusted clients over WebSocket (E16, ADR-0018, ADR-0019). The
+Hosts the engine's battles for untrusted clients over WebSocket (E16, ADR-0018, ADR-0019, ADR-0021). The
 working detail is in `docs/epics/E16-design.md`; this page is for the operator.
 
 ## Running
@@ -14,8 +14,15 @@ The configuration's format, every field with its default, is in `src/config.rs`;
 `server.example.toml`. The data directory holds the games' journals, the finished games'
 replays, the player log, each ladder's results log (`ladders/<id>.log`: its seasons and the
 ratings after each rated game; a ladder whose content changed starts its next season at the next
-start, every rating carried and its deviation reset) and a lock that keeps one server (or one
-`rebind`) on it at a time; keep it readable by the server's user only. A ladder's scenarios are
+start, every rating carried and its deviation reset), the server's key and a lock that keeps one
+server (or one `rebind`) on it at a time; keep it readable by the server's user only.
+
+**The server's key** (`server.key`, ADR-0021 point 1) is written at the first start and is the
+server's identity: every welcome carries the public key and a signature by it, and clients pin
+the key on first contact, as SSH does. It is the data directory's one secret: whoever holds it can
+speak as the server (not as a player). Back it up; a lost key is a new identity, whose welcome
+every client that pinned the old one refuses. A start stops at a key file it cannot read or
+parse, and never writes a new one over it. A ladder's scenarios are
 offers of their own, `<ladder>.<n>` in the pool's order: its matches' journals and replays name
 them, and an `[[offer]]` may not be named so. A ladder's bots (`[[ladder.bot]]`) are accounts in
 the player log without a key: no one logs in as them, `rebind` refuses them, and a start renames
@@ -31,7 +38,9 @@ terminates TLS (ADR-0019 point 10): logins are safe without TLS, a session is no
 1. **Listen on loopback**: `bind = "127.0.0.1:7878"` (the default).
 2. **Name the address clients dial**: `public_url = "wss://h3.example.org"`. A login signs the
    server's id, and a client signs only if the id is the address it dialed: without the public
-   URL every login through the proxy is refused.
+   URL every login through the proxy is refused. A server reached at other addresses too (a LAN
+   address, a second name) lists them: `addresses = ["ws://192.168.1.5:7878"]`; a client that
+   dialed one of them gets it as the id.
 3. **Trust the proxy's address**: `trusted_proxies = ["127.0.0.1"]`. Then a connection from it
    counts, in every limit per address, as the client whose address the last entry of its
    `X-Forwarded-For` header names (without a header that reads, as the proxy). An IPv6 client

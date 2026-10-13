@@ -1499,3 +1499,35 @@ rename (both "if it shows"), a separate rate for automated clients (a configurat
   mDNS among the not built), ADR-0018 point 2 (TLS outbound only), the ADR index; `E16-design.md`
   §12 rewritten as the working detail; the epic's decisions, milestone, M6 tasks and exit criteria;
   the queue's T1–T6; the threat table's leaked data directory (one secret from M6).
+
+### M6 T1 — The server key and the signed welcome (2026-10-13)
+
+- **The start.** #146 (the refinement) merged; the branch restarted from `master`; the server's code
+  was the code of the session's first scoped verify (no failing step).
+- **The key** (`h3-server`'s `key.rs`): `<data>/server.key`, the Ed25519 seed as hex and a newline,
+  written at the first start from OS randomness (a `.part` file with mode 0600 on Unix, synced,
+  renamed, its directory synced), read at every start after the data directory's lock; a file that
+  does not read or parse stops the start and is never written over. `ServerKey`'s `Debug` names the
+  public key only. *Provisional*: the file's name and form.
+- **The welcome** (`h3-protocol`): `Hello { …, nonce, address }`, `Welcome { …, key, signature }`;
+  `account::welcome_message(id, nonce, challenge)` starts with `h3-welcome-v1`. The gate signs
+  through the host's `Signer` (`Debug + Sync`: a host's connections share it; this crate still holds
+  no cryptography); `Host` gains `addresses` (the server's other addresses) and `signer`. The id is
+  now the connection's (`Connection::id`, set by the hello): the dialed address when it is one of
+  `addresses`, else `Host::id`; logins and re-keys sign it. A hello whose nonce is not 32 bytes of
+  hex closes with `Protocol`. Wire 22.
+- **The server**: `[server] addresses` (each checked as `public_url` is), the `Service` holds the key
+  and the addresses; the workload's gate signs with a stand-in (`bench::Unsigned`: it counts the
+  session core, not Ed25519).
+- **The test client** names a fresh nonce and the address it dialed (`ws://` and the socket, or
+  `dialed`), verifies every welcome's signature by its key (strict Ed25519, the accounts'
+  `Authenticator`) and refuses a key other than one it `pin`ned; `server_key` reads it. Every
+  end-to-end test's hello now checks the signature. `crashed()` copies the key with the journals.
+- **Tests** (`h3-protocol` 93 → 96, `h3-server` 106 → 111): the welcome's bytes; the id by the
+  dialed address and the login's bytes with it; a hello without a nonce; the key written once with
+  its mode, read back, never replaced, signing as Ed25519; end to end, the key across a restart, a
+  pinned key refused by another data directory's server, a key file that does not parse stopping
+  the start, logins at each address and one signed for another address refused. Clippy also for
+  `x86_64-pc-windows-gnu`.
+- **Docs**: the operator's notes (the key, `addresses`), `server.example.toml`; the design note's
+  T1 bullets pruned.

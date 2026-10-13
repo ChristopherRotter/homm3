@@ -417,8 +417,9 @@ card; peers by key and address, fetched over TLS (`rustls` with `graviola`), nev
 learnt from a card; the vouching chain checkable from the cards; lists of servers signed by a
 list's key; mDNS later.
 
-- **T1 The server key and the signed welcome:** `<data>/server.key`, the hello's nonce and
-  address, `[server] addresses`, the welcome's key and signature; wire 22.
+- **T1 The server key and the signed welcome** (done 2026-10-13; `E16-log.md`): `<data>/server.key`,
+  the hello's nonce and dialed address, `[server] addresses`, the welcome's key and signature, the
+  test client's check and pin; wire 22.
 - **T2 The card and `Describe`:** `ServerCard` and `SignedCard`, the card's configuration, the
   wall clock, `h3-server card`; wire 23.
 - **T3 Peers, the fetch and `ListPeers`:** `[[peer]]`, the TLS client (a `shared:` commit: the

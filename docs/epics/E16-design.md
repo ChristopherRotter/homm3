@@ -13,8 +13,9 @@ M1–M6 task turns its section into code and docs and deletes it here.
    battle from the setup with the game seed. The obstacle seed is then forgotten. The journal
    is opened with the header, the seed and the setup (M2; in M1 the same data is kept in
    memory and written as the replay at the end).
-3. A client opens a WebSocket and sends `Hello { protocol, client, name }`. A protocol mismatch
-   gets `Goodbye { reason: Protocol }`. Otherwise `Welcome { protocol, server }`.
+3. A client opens a WebSocket and sends `Hello { protocol, client, name, nonce, address }`. A
+   protocol mismatch gets `Goodbye { reason: Protocol }`. Otherwise `Welcome { protocol, server,
+   id, challenge, key, signature }` (M3 T1, M6 T1).
 4. The client sends `Join { game, seat: Attacker | Defender | Spectator, token }` and gets
    `Joined { game, seat, token, manifest }` (no token for a spectator) or `Refused { reason }`,
    then `Snapshot { n, observation }` with the projected observation for its viewer.
@@ -356,19 +357,10 @@ signatures lowercase hex, as for accounts (`h3_protocol::account`). Each signed 
 with its purpose and version (`h3-welcome-v1`, `h3-card-v1`, `h3-list-v1`), texts length-prefixed
 as `login_message` does; `h3-protocol` builds the bytes, `h3-server` and clients sign and verify.
 
-- **Server key** (T1). `<data>/server.key`: the Ed25519 seed as hex, one line, written at first
-  start from OS randomness (a temporary file, then a rename; mode 0600 on Unix). A start refuses a
-  key file it cannot read or parse: it never writes a new one over it (a new key is a new
-  identity). The key is the data directory's one secret (`crates/h3-server/README.md`, the
-  operator's notes; `06-security.md` at M6's closure).
-- **The signed welcome** (T1). `Hello { protocol, client, name, nonce, address }`: `nonce` 32
-  bytes from the client, `address` the URL it dialed. `[server] addresses` (the URLs clients dial;
-  `public_url` becomes its first entry, read as before when alone) names the server's own. The
-  welcome's `id` is `address` when it is one of them, otherwise the first; `Welcome { …, key,
-  signature }` with `signature = sign(welcome_message(id, nonce, challenge))`. The client checks
-  `id` against what it dialed (as for a login today), verifies the signature with `key`, and pins
-  `key` per address (the client lane's; the test client verifies and pins). A login still signs
-  `id`, so one server answers logins at each of its addresses.
+- **Server key and the signed welcome** (T1, built: `h3-server`'s `key.rs`, `h3_protocol::connection`'s
+  welcome and `Signer`, `account::welcome_message`; `[server] addresses` are the server's addresses
+  beside `public_url`). For later tasks: the card's `addresses` are `public_url` (or `ws://` and the
+  bound address) and `addresses`; the test client verifies every welcome and pins with `pin`.
 - **Card** (T2). `ServerCard { key, name, description, addresses, protocol, engine, content:
   [{ packs, profile, ruleset_hash, battle_ruleset_hash }], ladders: [{ id, name, season, players
   }], players_online, games_open, anonymous, operator, issued, expires, peers: [{ key, address

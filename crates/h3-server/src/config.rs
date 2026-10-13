@@ -147,6 +147,10 @@ pub struct Server {
     /// The server's id (E16 M3 T2a; ADR-0019 point 1): the address its clients dial (`ws://` or
     /// `wss://`), which a login signs; without one, `ws://` and the address it listens on.
     pub public_url: Option<String>,
+    /// The server's other addresses (E16 M6 T1; ADR-0021 point 1), as `public_url`'s: a client that
+    /// dialed one of them gets it as the server's id in the welcome, and its login signs it (a LAN
+    /// address beside the public one, a second name). None by default.
+    pub addresses: Vec<String>,
     /// Whether a connection may join or create a game without logging in (E16 M3 T2a), with seat
     /// tokens as in M2.
     pub anonymous: bool,
@@ -163,6 +167,7 @@ impl Default for Server {
             checkpoint_every: 25,
             shadow_instance: false,
             public_url: None,
+            addresses: Vec::new(),
             anonymous: true,
             trusted_proxies: Vec::new(),
         }
@@ -520,20 +525,21 @@ impl Config {
         Ok(config)
     }
 
-    /// A public URL is a WebSocket address: `ws://` or `wss://`, then at most 200 visible ASCII
-    /// characters.
+    /// A public URL, and each of the other addresses, is a WebSocket address: `ws://` or `wss://`,
+    /// then at most 200 visible ASCII characters.
     fn check_server(&self) -> Result<(), Error> {
-        let Some(url) = &self.server.public_url else {
-            return Ok(());
-        };
-        let rest = url
-            .strip_prefix("ws://")
-            .or_else(|| url.strip_prefix("wss://"))
-            .unwrap_or_default();
-        if rest.is_empty() || rest.len() > 200 || !rest.bytes().all(|b| b.is_ascii_graphic()) {
-            return Err(Error(format!(
-                "server.public_url = {url:?}: not a ws:// or wss:// address"
-            )));
+        let urls = (self.server.public_url.iter().map(|url| ("public_url", url)))
+            .chain(self.server.addresses.iter().map(|url| ("addresses", url)));
+        for (key, url) in urls {
+            let rest = url
+                .strip_prefix("ws://")
+                .or_else(|| url.strip_prefix("wss://"))
+                .unwrap_or_default();
+            if rest.is_empty() || rest.len() > 200 || !rest.bytes().all(|b| b.is_ascii_graphic()) {
+                return Err(Error(format!(
+                    "server.{key} = {url:?}: not a ws:// or wss:// address"
+                )));
+            }
         }
         Ok(())
     }

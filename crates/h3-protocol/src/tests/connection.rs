@@ -1,7 +1,8 @@
 //! A connection's own messages: the hello gates everything, the ping is answered, and a frame
 //! that does not decode or comes out of place closes the connection (E16 M1 T2). The login
 //! (E16 M3 T1): the gate checks an account's request's form and the connection's state, hands the
-//! host what to check, and logs in only on the host's yes.
+//! host what to check, and logs in only on the host's yes. The welcome (E16 M6 T1): signed by the
+//! host's key over the id the hello's address picks, its nonce and the challenge.
 
 use std::string::{String, ToString};
 use std::vec::Vec;
@@ -9,23 +10,50 @@ use std::vec::Vec;
 use proptest::prelude::*;
 
 use crate::PROTOCOL_VERSION;
-use crate::account::{self, login_message, rekey_message};
+use crate::account::{self, login_message, rekey_message, welcome_message};
 use crate::codec::{DEFAULT_MAX_CLIENT_FRAME, encode};
-use crate::connection::{AccountRequest, Connection, Host, Received};
+use crate::connection::{AccountRequest, Connection, Host, Received, Signer};
 use crate::wire::{ClientMessage, GoodbyeReason, Refusal, Seat};
+
+use super::Fold;
 
 const HOST: Host<'static> = Host {
     program: "h3-server 0.1.0",
     id: "wss://h3.example.org",
+    addresses: &[],
+    signer: &Fold,
 };
 
 const CHALLENGE: [u8; 32] = [7; 32];
 
-fn hello(protocol: u32) -> ClientMessage {
+/// The nonce of every hello.
+const NONCE: [u8; 32] = [9; 32];
+
+/// A hello in `protocol` that dialed `address`.
+fn hello_at(protocol: u32, address: &str) -> ClientMessage {
     ClientMessage::Hello {
         protocol,
         client: "test".to_string(),
         name: "Ann".to_string(),
+        nonce: account::to_hex(&NONCE),
+        address: address.to_string(),
+    }
+}
+
+fn hello(protocol: u32) -> ClientMessage {
+    hello_at(protocol, HOST.id)
+}
+
+/// The welcome a hello gets that names the server as `id`.
+fn welcome(id: &str) -> Received {
+    let challenge = "07".repeat(32);
+    let key = "5a".repeat(32);
+    let signature = account::to_hex(&Fold.sign(&welcome_message(id, &NONCE, &CHALLENGE)));
+    Received::Reply {
+        frame: std::format!(
+            r#"{{"Welcome":{{"protocol":{PROTOCOL_VERSION},"server":"h3-server 0.1.0","id":"{id}","challenge":"{challenge}","key":"{key}","signature":"{signature}"}}}}"#
+        ),
+        close: false,
     }
 }
 
@@ -70,17 +98,7 @@ fn login(login: &str, key: &str, signature: &str, display: Option<&str>) -> Clie
 fn the_hello_is_welcomed_then_the_game_gets_the_rest() {
     let mut c = Connection::new(DEFAULT_MAX_CLIENT_FRAME, CHALLENGE, true);
     assert!(!c.greeted());
-    let challenge = "07".repeat(32);
-    let welcome = std::format!(
-        r#"{{"Welcome":{{"protocol":{PROTOCOL_VERSION},"server":"h3-server 0.1.0","id":"wss://h3.example.org","challenge":"{challenge}"}}}}"#
-    );
-    assert_eq!(
-        receive(&mut c, &hello(PROTOCOL_VERSION)),
-        Received::Reply {
-            frame: welcome,
-            close: false
-        }
-    );
+    assert_eq!(receive(&mut c, &hello(PROTOCOL_VERSION)), welcome(HOST.id));
     assert!(c.greeted());
     assert_eq!(
         receive(&mut c, &ClientMessage::Ping { nonce: 4 }),
@@ -108,6 +126,60 @@ fn another_version_or_a_message_before_the_hello_closes_the_connection() {
     ] {
         let mut c = Connection::new(DEFAULT_MAX_CLIENT_FRAME, CHALLENGE, true);
         assert_eq!(receive(&mut c, &first), goodbye(GoodbyeReason::Protocol));
+        assert!(!c.greeted());
+    }
+}
+
+/// E16 M6 T1: a client that dialed another of the server's addresses gets it as the id, and its
+/// login signs it; an address the server does not have gets the first.
+#[test]
+fn the_welcome_names_the_address_dialed_when_it_is_the_servers() {
+    let lan = [String::from("ws://192.168.1.5:7878")];
+    let host = Host {
+        addresses: &lan,
+        ..HOST
+    };
+    for (dialed, id) in [
+        ("ws://192.168.1.5:7878", "ws://192.168.1.5:7878"),
+        ("ws://h3.example.net", HOST.id),
+        (HOST.id, HOST.id),
+    ] {
+        let mut c = Connection::new(DEFAULT_MAX_CLIENT_FRAME, CHALLENGE, true);
+        let frame = encode(&hello_at(PROTOCOL_VERSION, dialed));
+        assert_eq!(c.receive(&frame, &host), welcome(id), "{dialed}");
+        let request = c.receive(
+            &encode(&login("ann", &"11".repeat(32), &"22".repeat(64), None)),
+            &host,
+        );
+        let Received::Account(AccountRequest::Login { signed, .. }) = request else {
+            panic!("{request:?}")
+        };
+        assert_eq!(
+            signed,
+            login_message(id, &CHALLENGE, "ann", None),
+            "{dialed}"
+        );
+    }
+}
+
+/// E16 M6 T1: a hello whose nonce is not 32 bytes of hex closes the connection.
+#[test]
+fn a_hello_without_a_nonce_closes_the_connection() {
+    for nonce in [
+        String::new(),
+        "09".repeat(31),
+        "09".repeat(33),
+        "0G".repeat(32),
+    ] {
+        let mut c = Connection::new(DEFAULT_MAX_CLIENT_FRAME, CHALLENGE, true);
+        let hello = ClientMessage::Hello {
+            protocol: PROTOCOL_VERSION,
+            client: String::new(),
+            name: String::new(),
+            nonce,
+            address: HOST.id.to_string(),
+        };
+        assert_eq!(receive(&mut c, &hello), goodbye(GoodbyeReason::Protocol));
         assert!(!c.greeted());
     }
 }
@@ -374,4 +446,15 @@ fn a_login_and_a_rekey_sign_their_purpose_the_server_the_challenge_and_the_names
     rekey.extend_from_slice(b"ann");
     rekey.extend_from_slice(&[9; 32]);
     assert_eq!(rekey_message("id", &[1; 32], "ann", &[9; 32]), rekey);
+}
+
+/// E16 M6 T1: a welcome signs its purpose, the server's id, the hello's nonce and the challenge.
+#[test]
+fn a_welcome_signs_its_purpose_the_id_the_nonce_and_the_challenge() {
+    let mut expected: Vec<u8> = b"h3-welcome-v1".to_vec();
+    expected.extend_from_slice(&[0, 0, 0, 2]);
+    expected.extend_from_slice(b"id");
+    expected.extend_from_slice(&[9; 32]);
+    expected.extend_from_slice(&[1; 32]);
+    assert_eq!(welcome_message("id", &[9; 32], &[1; 32]), expected);
 }

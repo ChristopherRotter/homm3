@@ -47,9 +47,9 @@ pub mod wire;
 
 /// The version of the wire protocol: sent in the hello and bumped on every change of the messages
 /// or their encoding (ADR-0018 point 4). Before 1.0 a server accepts exactly its own version.
-/// v21 (R01, the content split): the manifest and the offers carry the battle part's hash beside
-/// the core's.
-pub const PROTOCOL_VERSION: u32 = 21;
+/// v22 (E16 M6 T1, ADR-0021 point 1): the hello names a nonce and the address the client dialed;
+/// the welcome carries the server's key and its signature.
+pub const PROTOCOL_VERSION: u32 = 22;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

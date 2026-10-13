@@ -12,8 +12,9 @@ use h3_battle::BattleSetup;
 use h3_content_battle::BattleRuleset;
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::PROTOCOL_VERSION;
+use h3_protocol::account::{KEY_BYTES, SIGNATURE_BYTES};
 use h3_protocol::codec::{self, DEFAULT_MAX_CLIENT_FRAME};
-use h3_protocol::connection::{Connection, Host, Received};
+use h3_protocol::connection::{Connection, Host, Received, Signer};
 use h3_protocol::session::{ConnId, GameConfig, Outbound, SeatKind, Session};
 use h3_protocol::wire::{ClientMessage, Command, Seat, ServerMessage};
 
@@ -43,6 +44,21 @@ pub struct Totals {
     pub bytes_out: u64,
 }
 
+/// The workload's stand-in for the server's key (E16 M6 T1): the workload counts the session core
+/// and the gate, not Ed25519, whose cost is the same for every hello.
+#[derive(Debug)]
+struct Unsigned;
+
+impl Signer for Unsigned {
+    fn key(&self) -> [u8; KEY_BYTES] {
+        [0; KEY_BYTES]
+    }
+
+    fn sign(&self, _: &[u8]) -> [u8; SIGNATURE_BYTES] {
+        [0; SIGNATURE_BYTES]
+    }
+}
+
 /// One client frame through the server: the connection's hello gate, then the session core; the
 /// frames to send go to `out`. Never inlined: `cargo xtask bench-check` counts inside it.
 #[inline(never)]
@@ -56,6 +72,8 @@ pub fn serve_frame(
     let host = Host {
         program: "h3-server bench",
         id: "ws://bench",
+        addresses: &[],
+        signer: &Unsigned,
     };
     match connection.receive(frame, &host) {
         Received::Game(message) => session.handle(conn, message, out),
@@ -152,6 +170,8 @@ pub fn play_game(
             protocol: PROTOCOL_VERSION,
             client: String::from("h3-server bench client"),
             name: format!("bench {seat}"),
+            nonce: "00".repeat(32),
+            address: String::from("ws://bench"),
         };
         send(&mut session, seat, &hello);
         let join = ClientMessage::Join {
