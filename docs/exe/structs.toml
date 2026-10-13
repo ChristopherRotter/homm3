@@ -162,6 +162,7 @@ fields = [
   { offset = 0x132D0, name = "mouse_hex", type = "i32", summary = "the hex under the mouse", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x132F4, name = "fort_level", type = "i32", summary = "above 0 in a siege (the town's picture, the siege obstacles); its values not read here", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x13464, name = "background_name", type = "char*", summary = "the battlefield picture's name (H3API)", confidence = "inferred", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x13D48, name = "winner", type = "i32", summary = "the winning side after the battle (0 the attacker, 1 the defender), read by the adventure map's battle", confidence = "inferred", refs = ["rules/surveys/E08-battles.md §4.2"] },
   { offset = 0x13D54, name = "count_box", type = "pcx*", summary = "CmNumWin.pcx", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x13D58, name = "objects", type = "vector<battle_object>", summary = "battlefield objects (begin +0x13D5C, end +0x13D60)", confidence = "read", refs = ["installation.md §7.15"] },
   { offset = 0x13D68, name = "tactics_phase", type = "i32", summary = "in the tactics phase", confidence = "read", refs = ["installation.md §7.21"] },
@@ -238,6 +239,12 @@ fields = [
   { offset = 0x8, name = "sound_prefix", type = "char*", summary = "sound name prefix", confidence = "read" },
   { offset = 0xC, name = "def_name", type = "char*", summary = "DEF name", confidence = "read" },
   { offset = 0x10, name = "flags", type = "u32", summary = "ability flags (installation.md §5)", confidence = "read" },
+  { offset = 0x14, name = "name_singular", type = "char*", summary = "singular name", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.2"] },
+  { offset = 0x18, name = "name_plural", type = "char*", summary = "plural name", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.2"] },
+  { offset = 0x38, name = "cost_gold", type = "i32", summary = "gold cost (the last of the seven costs from +0x20)", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.2"] },
+  { offset = 0x40, name = "ai_value", type = "i32", summary = "AI value: an army's value and a monster's strength", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.1"] },
+  { offset = 0x6C, name = "adv_map_low", type = "i32", summary = "the smallest random count of a wandering monster (CRTRAITS AdvMap Low)", confidence = "read", refs = ["rules/surveys/E08-battles.md §1.5"] },
+  { offset = 0x70, name = "adv_map_high", type = "i32", summary = "the largest random count of a wandering monster (CRTRAITS AdvMap High)", confidence = "read", refs = ["rules/surveys/E08-battles.md §1.5"] },
 ]
 
 [[struct]]
@@ -301,8 +308,13 @@ fields = [
   { offset = 0x23, name = "name", type = "char[13]", summary = "the hero's name (an experiment map's custom name: D3a, Wood 1); observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x49, name = "day_points", type = "i32", summary = "the movement points the day began with; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x4D, name = "points", type = "i32", summary = "the movement points left (rules/surveys/E08-adventure-core.md §1.1); the harness reads them for an experiment's record", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x51, name = "experience", type = "u32", summary = "experience; random 40-90 at a new game", confidence = "read", refs = ["rules/surveys/E08-battles.md §6.2"] },
+  { offset = 0x55, name = "hero_level", type = "u16", summary = "the hero's level; copied with a custom experience from the map", confidence = "read", refs = ["rules/surveys/E08-battles.md §6.3"] },
+  { offset = 0x8F, name = "level_seed", type = "u8", summary = "random 1-255 at a new game; the level-up offers' seed (not read)", confidence = "read", refs = ["rules/surveys/E08-battles.md §6.2"] },
   { offset = 0x91, name = "army", type = "army", summary = "the hero's army (seven creature types, then seven counts)", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0xC9, name = "secondary_skill_levels", type = "u8[28]", summary = "level per secondary skill id", confidence = "read", refs = ["installation.md §7.4"] },
+  { offset = 0x112, name = "fly_power", type = "i32", summary = "-1 unless flying by a spell; with Angel Wings a guard attacks only at the move's destination (H3API flyPower)", confidence = "inferred", refs = ["rules/surveys/E08-battles.md §2.2"] },
+  { offset = 0x476, name = "primary_skills", type = "i8[4]", summary = "Attack, Defense, Spell Power, Knowledge with the worn artifacts' bonuses", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.1"] },
 ]
 
 [[struct]]
@@ -360,7 +372,7 @@ summary = "A tile of the adventure map (game +0x1FC40; H3API's H3MapItem); only 
 refs = ["rules/surveys/E08-objects.md"]
 h3api = "H3MapItem"
 fields = [
-  { offset = 0x0, name = "word", type = "u32", summary = "the class's data on the object's entrance tile: a pile's amount (low 19 bits) and guards flag (bit 31), a campfire's resource (low 4 bits) and amount (bits 4 up)", confidence = "read", refs = ["rules/surveys/E08-objects.md §3"] },
+  { offset = 0x0, name = "word", type = "u32", summary = "the class's data on the object's entrance tile: a pile's amount (low 19 bits) and guards flag (bit 31), a campfire's resource (low 4 bits) and amount (bits 4 up), a monster's count (bits 0-11), aggression (12-16), never flees (17), does not grow (18), message index (19-26) and message flag (31)", confidence = "read", refs = ["rules/surveys/E08-objects.md §3", "rules/surveys/E08-battles.md §1.2"] },
   { offset = 0x4, name = "terrain", type = "u8", summary = "terrain code 0-9", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0xD, name = "access", type = "u8", summary = "0x01 cannot be entered, 0x10 an object's entrance (visitable) tile (H3API's names)", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
   { offset = 0xE, name = "draw_list", type = "vector", summary = "the objects drawn on the tile, bottom to top (4-byte entries: object index u16, footprint cell, layer); 0x505610 takes the tile's object from it", confidence = "read", refs = ["rules/surveys/E08-objects.md §2.5"] },
