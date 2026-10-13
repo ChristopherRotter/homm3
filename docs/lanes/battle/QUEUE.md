@@ -6,11 +6,12 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epics/E04b-battle-magic.md`; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27).
 
-**E04c increment 1** (the user, 2026-10-13, BAT-Q37; `docs/epics/E04c-sieges-and-battlefields.md`): T1 done (#164); BAT-Q38 answered (ADR-0022); T2 in its two pull requests (`shared/battlefield-seam` first, then `battle/e04c-t2`), then the increment's checkpoint and the next cut. The inbox's E04c bullets on Cursed Ground, Magic Plains, the elemental fields' mastery and special battlefield 2's native bonus are done by T2; their siege bullets wait for T4 onwards.
+**E04c increment 1** (the user, 2026-10-13, BAT-Q37; `docs/epics/E04c-sieges-and-battlefields.md`): T1 and T2 done (#164, #170, #171). The inbox's E04c bullets on Cursed Ground, Magic Plains, the elemental fields' mastery and special battlefield 2's native bonus are done by T2; their siege bullets wait for T4 onwards.
+
+**E04c increment 2** (the user, 2026-10-13): T3 done (`battle/e04c-t3`, `cross-lane` for `h3-map`'s writer; batches 3a and 3b run by an agent); BAT-Q39 (S-28) open for the user. Next: **T4, the siege survey and seam** (the code reading, VCMI and the wiki; the survey `docs/rules/surveys/E04c-sieges.md`; an ADR draft for the siege input on the setup and outcome), stopping for the user's review as T1 did.
 
 ## Inbox
 
-- 2026-10-13 (CLT-Q1, decided (a) by the user at the client lane's E17 M2 T3; needed by its M2 T4): **the walk's path in `Moved`.** The engine's event carries every hex the stack enters in order (the start excluded, the end included), the wire maps it (`cross-lane`, a protocol step); BAT-MOV-001, the replays it changes. The shape and timing are the battle lane's to propose (OPEN-QUESTIONS CLT-Q1).
 - 2026-09-30 (E01): `Trace` sink for rule-level explanations ("explain this damage number", 02-architecture §10).
 - 2026-09-30 (E01): profile-level Tier-2 overrides (still deferred after E02; content-pack override rules were done in E02 T3; E04b builds them for data quirks: Q-0006 (Roland's specialty) and survey S-05 (the elementals' levels), user Q35). *(E04b T8; where it is decided: ADR-0014, T1.)* *(Data quirks done in E04b T8e: overrides gated by `quirk.content` flags, ADR-0007 amended; profile-level parameters still deferred.)*
 - 2026-10-01 (E02): war machines (Catapult, Ballista, First Aid Tent, Ammo Cart, Arrow Tower) are not harvested (speed 0, no damage for most): model them with heroes/sieges (E03/E04) and extend the harvester. *(E03 T8: Ballista, First Aid Tent and Ammo Cart harvested and implemented; Catapult and Arrow Tower remain for sieges, E04.)*

@@ -83,6 +83,28 @@ The original casts a Faerie Dragon's drawn spell in two ways: the mouse cursor o
 
 The review's fix C3 follows the reading of 0x47A100: a created stack whose rounds ran out keeps its record, so no later created stack takes its id and it counts towards the side's stack limit (BAT-MAG-037, BAT-MAG-052; the wiki and VCMI are silent). The rule now reads the engine's mark of such a stack (`Created::vanished`), which the observation does not show: a killed clone and an expired one look alike but differ in whether a Pit Lord may raise at the limit and in the next created stack's id. Nothing hidden leaks (both ends are public events) and the legal mask stays exact, but the observation is no longer complete in ADR-0014 point 8's sense. Registered as BAT-STUB-1. **Options:** (a) keep the fix and add a per-stack public mark to the observation at the next observation-encoding bump (the flat encoding and the C ABI change, and the server's wire maps the observation: a `cross-lane` change); (b) take the fix out until then (one commit; the engine again reuses an expired stack's record, unlike the reading). **Recommendation:** (a) with E05's batch API or E04c, whichever bumps the encoding first. **Blocked:** nothing.
 
+#### BAT-Q39 — S-28: is Cursed Ground's lost negative morale a bug? (E04c T3, batch 3a)
+
+**Context.** BAT-Q38 (2): the engine follows the code, every stack's morale 0 on Cursed Ground
+(0x43E00F), and the user suspected the intent was only "no positive morale" (the wiki: "Negates
+all positive morale effects"; VCMI: morale at most 0), which would make the lost negative morale a
+`fix-optional` bug (survey `E04c-battlefields.md` §5, S-28). **Observed** (batch 3a, run by an
+agent on the capture harness, 2026-10-13): an army of morale −3 (four alignments and an undead
+stack) has morale −3 on grass (G) and **0** on Cursed Ground (CG, and the SoD picture CS), so it can
+never freeze there; luck 0 too, and no native bonus. The game's own texts say "No morale effects on
+cursed ground" and "No luck effects on cursed ground" (`ARRAYTXT.TXT`), which describes this.
+
+**Options:** (a) not a quirk: the game's behaviour is the rule in every profile, S-28 retired as
+"considered, not a quirk" (no change to the engine); (b) a `fix-optional` quirk BAT-QUIRK-22 with a
+flag (`quirk.battle.cursed_ground_keeps_bad_morale`, off in `faithful`): a profile with it fixed
+keeps negative morale on Cursed Ground (a content change: `no_morale` becomes "at most 0" there;
+the faithful ruleset hash unchanged, the fixed profiles' hashes change).
+
+**Recommendation:** (a). The game's own text says "no morale effects", which is what the code does
+for negative morale as well; nothing in the code or the texts points to a slip (the morale routine
+tests the field first, before any source, on purpose). The wiki's wording describes what players
+see most (losing a positive morale); VCMI's choice is its own.
+
 ### Adventure lane (`ADV-Q<n>`)
 
 (no open questions)

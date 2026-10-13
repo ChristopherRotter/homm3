@@ -90,16 +90,25 @@ next to water → sand and the shore; else the tile's terrain; then a special gr
 replaces the field (the shore's too), and an anti-magic garrison sets its flag. The client lane's
 pictures follow the same facts (`E17-design.md` §5; CLT-Q4 is the dirt, grass and snow variant).
 
+**The battle's tile is the defender's** (`observation`, batch 3b, E04c T3): a hero attacking a
+monster that stands on a Clover Field fights on it, a hero standing on one attacking a monster
+beside it does not; the same for the shore (a monster next to water: sand and the shore; only the
+hero next to water: the tile's grass). The SoD pictures 223 and 230 make Cursed Ground and Magic
+Plains battles (batch 3a CS, MS: D-4). The coast is the map file's tile flag `0x40`
+(`docs/formats/h3m.md`): a map without it has no shore battles.
+
 ## 5. Disputes and quirks
 
-- **D-1 Cursed Ground and negative morale.** `code` and the game's texts: morale 0 for everyone,
+- **D-1 Cursed Ground and negative morale.** **Settled as the code** (batch 3a CG, `observation`).
+  `code` and the game's texts: morale 0 for everyone,
   so no stack freezes from bad morale there. `vcmi` and `wiki`: only positive morale is negated.
   Real gameplay impact (an undead-mixed army never freezes on Cursed Ground). Recommendation: the
   code (the rank of a reading, `docs/04-rules-and-sources.md` §2, backed by the game's own text),
   with a confirmation row in the next experiment batch (a reading against VCMI and the wiki).
   **The user (BAT-Q38): the code**, but the intent may have been only non-positive morale (the
   wiki's and VCMI's reading), which would make the lost negative morale a bug: candidate S-28.
-- **D-2 Clover Field and neutral creatures.** `code` and the texts: only towns 6–8; `vcmi`: neutral
+- **D-2 Clover Field and neutral creatures.** **Settled as the code** (batch 3a CF, `observation`:
+  Peasants 0, Goblins, Gnolls and Pixies +2). `code` and the texts: only towns 6–8; `vcmi`: neutral
   creatures too. Recommendation: the code, a confirmation row. **The user (BAT-Q38): the code, the
   distinction noted:** the original's "neutral" is the towns' alignment (Stronghold, Fortress,
   Conflux), VCMI's the creatures' (`alignment` `neutral` also takes in the creatures without a
@@ -108,17 +117,20 @@ pictures follow the same facts (`E17-design.md` §5; CLT-Q4 is the dirt, grass a
   opening spells too; `vcmi`: heroes only. Recommendation: the code (the reading, the wiki agree).
 - **D-4 The SoD objects 223 (Cursed Ground) and 230 (Magic Plains).** 0x4FCE20 knows only 21 and
   46. The map loader is not read; if it does not turn 223 and 230 into 21 and 46, a battle on the
-  SoD versions would have no field. For the adventure lane's derivation; a reading of the loader
-  or an experiment settles it.
+  SoD versions would have no field. **Settled** (batch 3a CS and MS, `observation`): a battle on
+  either is a Cursed Ground (field 2) or Magic Plains (field 1) battle, as on 21 and 46; so the
+  loader (or another path) maps them. For the adventure lane's derivation.
 - **S-22** (underground battles always subterranean, `E04-quirks.md`, classified `preserve`):
   confirmed by the reading (0x464451). The adventure lane's derivation implements it.
 - **S-28 Cursed Ground's morale 0 for everyone** (quirk candidate, the user at BAT-Q38; to be
   investigated). The code and the text give every stack morale 0, negative morale included; the
   field's intent may have been "no positive morale" (the wiki and VCMI), which would make the lost
-  negative morale a bug, `fix-optional` (a flag keeping negative morale, off in `faithful`). Next:
-  T3's row for D-1 shows what the game does; whether it is a bug, and gets a flag (Q30), is the
-  user's call then. Until then the engine follows the code (BAT-TER-003). Nothing else in §1
-  looks like a bug; the fields' texts describe what the code does.
+  negative morale a bug, `fix-optional` (a flag keeping negative morale, off in `faithful`).
+  **Observed** (batch 3a CG): the game gives an army of morale −3 morale 0 there (luck 0, no native
+  bonus): the behaviour is the code's. Whether it is a bug and gets a flag (Q30) is the user's
+  call: OPEN-QUESTIONS BAT-Q39 (recommendation: not a quirk). The engine follows the game
+  (BAT-TER-003). Nothing else in §1 looks like a bug; the fields' texts describe what the code
+  does.
 
 ## 6. Sieges (outline for a later increment)
 
@@ -137,3 +149,9 @@ For the next batch the user plays (SoD; the `.h3m` writer needs the special grou
 D-1 and S-28 (an army with negative morale on Cursed Ground: does it freeze?), D-2 (neutral creatures on
 Clover Field: luck +2?), D-4 (a battle on object 223 and on 230), and one control per field family
 (a Holy Ground morale value, an elemental field's Expert spell).
+
+**Played** (E04c T3, 2026-10-13): batches 3a and 3b, run by an agent on the capture harness
+(`docs/experiments/README.md`): D-1, D-2 and D-4 settled, the controls (Holy Ground, Magic Plains,
+Lucid Pools) as the code, and whose tile decides (the defender's). Left: Evil Fog, the elemental
+fields' Expert mastery of the hero's spells, a creature's Expert cast on Magic Plains (D-3: the
+code and the wiki agree) and the deck and the boats (not stageable without boats on the map).
