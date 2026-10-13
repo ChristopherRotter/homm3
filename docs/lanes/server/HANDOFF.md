@@ -59,7 +59,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-13 — M6 T2, the card and `Describe`
 
-Branch `claude/brave-lamport-a7xpps` (T2, `E16-log.md`): the card, `Describe`, wire 25; journal 8 (the rear hex). Check its pull request first.
+**#155 open** (T2, `E16-log.md`): the card, `Describe`, wire 25; journal 8 (the rear hex). Check its mergeability first.
 
 ### 2026-10-13 — M6 T1, the server key and the signed welcome
 
