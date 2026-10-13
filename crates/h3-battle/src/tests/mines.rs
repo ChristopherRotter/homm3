@@ -252,16 +252,15 @@ fn an_enemy_walker_sets_off_an_unseen_mine_and_walks_on() {
     mines(&mut s, &r, BattleSide::Defender, &[(6, 5), (9, 9)]);
     assert!(seen(&s, &r, BattleSide::Attacker).is_empty());
     let events = act(&mut s, &r, walk(&r, (8, 5))).unwrap();
-    // 40 damage, four of ten creatures; reported in two moves, split where it went off.
+    // 40 damage, four of ten creatures; reported hex by hex, the blast where it went off.
     assert_eq!(blasts(&events), [(0, at(&r, 6, 5), 40, 4)]);
     assert_eq!(obstacle_events(&events), BOOM);
-    assert_eq!(
-        moves(&events),
-        [
-            (0, at(&r, 4, 5), at(&r, 6, 5)),
-            (0, at(&r, 6, 5), at(&r, 8, 5))
-        ]
-    );
+    assert_eq!(moves(&events), row_walk(&r, 0, 5, 4, 8));
+    let blast = events
+        .iter()
+        .position(|e| !matches!(e.kind, EventKind::Moved { .. }))
+        .unwrap();
+    assert_eq!(moves(&events[..blast]), row_walk(&r, 0, 5, 4, 6));
     assert_eq!((s.stacks()[0].count, s.stacks()[0].hex), (6, at(&r, 8, 5)));
     // That mine is gone, the other stays hidden.
     assert_eq!(all(&s), {
@@ -281,7 +280,7 @@ fn an_enemy_walker_sets_off_an_unseen_mine_and_walks_on() {
     mines(&mut s, &r, BattleSide::Defender, &[(6, 5)]);
     let events = act(&mut s, &r, walk(&r, (8, 5))).unwrap();
     assert_eq!(blasts(&events), [(0, at(&r, 6, 5), 40, 4)]);
-    assert_eq!(moves(&events), [(0, at(&r, 4, 5), at(&r, 6, 5))]);
+    assert_eq!(moves(&events), row_walk(&r, 0, 5, 4, 6));
     assert!(events.contains(&Event::public(EventKind::BattleEnded {
         result: BattleResult::Victory(BattleSide::Defender)
     })));
@@ -348,7 +347,7 @@ fn a_negation_by_the_mines_side_sets_them_off_under_a_wholly_resistant_walker() 
 fn own_stacks_and_immune_stacks_cross_mines_without_a_trace() {
     let r = ruleset();
     // The defender's walker over its own mine, the fire-immune Ember over the other side's:
-    // one move each, nothing reported, the mine stays hidden from the attacker.
+    // hex by hex each, nothing else reported, the mine stays hidden from the attacker.
     let mut s = arena(
         &r,
         [None, None],
@@ -359,11 +358,11 @@ fn own_stacks_and_immune_stacks_cross_mines_without_a_trace() {
     mines(&mut s, &r, BattleSide::Defender, &[(6, 5), (8, 7)]);
     let events = act(&mut s, &r, walk(&r, (8, 5))).unwrap();
     assert!(obstacle_events(&events).is_empty());
-    assert_eq!(moves(&events), [(0, at(&r, 4, 5), at(&r, 8, 5))]);
+    assert_eq!(moves(&events), row_walk(&r, 0, 5, 4, 8));
     activate(&mut s, 1);
     let events = act(&mut s, &r, walk(&r, (6, 7))).unwrap();
     assert!(obstacle_events(&events).is_empty());
-    assert_eq!(moves(&events), [(1, at(&r, 10, 7), at(&r, 6, 7))]);
+    assert_eq!(moves(&events), row_walk(&r, 1, 7, 10, 6));
     assert_eq!(all(&s).len(), 2);
     assert!(seen(&s, &r, BattleSide::Attacker).is_empty());
 }
@@ -383,6 +382,7 @@ fn a_flyer_sets_off_only_the_mine_it_lands_on() {
     let events = act(&mut s, &r, walk(&r, (8, 5))).unwrap();
     // 40 damage of 8 hit points each: five of ten.
     assert_eq!(blasts(&events), [(0, at(&r, 8, 5), 40, 5)]);
+    // One move: a flyer's is not reported hex by hex (BAT-MOV-003).
     assert_eq!(moves(&events), [(0, at(&r, 4, 5), at(&r, 8, 5))]);
     assert_eq!(all(&s).len(), 1);
 }

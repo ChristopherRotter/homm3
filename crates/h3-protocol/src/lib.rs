@@ -57,8 +57,9 @@ pub mod wire;
 /// 1): the hello names a nonce and the address the client dialed; the welcome carries the server's
 /// key and its signature. v25 (E16 M6 T2, ADR-0021 point 2): `Describe` and `Described`, the
 /// server's signed card. v26 (E16 M6 T3, ADR-0021 point 3): `ListPeers` and `Peers`, the cards a
-/// server relays.
-pub const PROTOCOL_VERSION: u32 = 26;
+/// server relays. v27 (E17 CLT-Q1): a walker's `Moved` comes hex by hex, one per position of its
+/// path (BAT-MOV-003); the message is unchanged, its meaning is new.
+pub const PROTOCOL_VERSION: u32 = 27;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

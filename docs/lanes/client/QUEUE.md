@@ -15,10 +15,10 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 
 ### E17 M2 T4 — The scene over time
 
-- **Scope:** a record's messages become animations at the original's timing (design §7: the frame deadline and its grid, the idle step, each group's frame time, the strike's iterations, the shot's frames and projectile, the fidgets from the viewer's own generator); a frame at any time, headless (`h3-view render --at <ms>`); strikes, shots and projectiles, deaths, turns; moves need the walk's path (**CLT-Q1, decided (a)** by the user, 2026-10-13: the battle lane adds the path to the engine's `Moved`, then the wire maps it; until it lands, flights and the other sequences first). Two checks against the harness (design §7.6): the viewer's timeline of a sequence against the recorded one (`clients/situations/sequences.toml`), and the captured frames against our render of the original's poses read from its memory (`capture/h3mem.py`).
+- **Scope:** a record's messages become animations at the original's timing (design §7: the frame deadline and its grid, the idle step, each group's frame time, the strike's iterations, the shot's frames and projectile, the fidgets from the viewer's own generator); a frame at any time, headless (`h3-view render --at <ms>`); strikes, shots and projectiles, deaths, turns; moves: a walker's `Moved` comes hex by hex, one per position of its path, a flyer's in one (CLT-Q1, built 2026-10-13, wire v27; consecutive `Moved` of one stack in one command are one walk: group 20 before the first, group 21 after the last). Two checks against the harness (design §7.6): the viewer's timeline of a sequence against the recorded one (`clients/situations/sequences.toml`), and the captured frames against our render of the original's poses read from its memory (`capture/h3mem.py`).
 - **Acceptance:** a record of a full battle renders frame by frame headless; the recorded sequences' timelines match, or list their differences; frames at the sequences' times match outside the masks.
-- **Depends on:** T3 (done); CLT-Q1's implementation for walks.
-- **Status:** ready (walks wait for CLT-Q1's change).
+- **Depends on:** T3 (done); CLT-Q1 (built 2026-10-13, `battle/clt-q1-walk-path`).
+- **Status:** ready.
 
 ### E17 M2 T5 — The window adapter and M2's closure
 
@@ -30,7 +30,6 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 ## Inbox
 
 - 2026-10-13 (E17 M2 T3): **the timing's remainder** (design §7.7). Not read: the teleporting move, a ray's drawing, the spells' and magic animations' frames (H3API's PlayMagicAnimation), whether hovering starts group 1, the heroes' idle groups, the arrow towers', catapult's and first aid tent's actions, the sounds' timing. Not in a sequence yet: a turn, a death, Haste and Slow, a defending stack's reaction, shots up and down, a ray. Each a sequence (`h3drive.py sequence`) when T4 or M3 needs it.
-- 2026-10-13 (E17 M2 T3, for the battle lane): in the original the idle fidgets draw from the rules' generator (design §7.2), so how long a player waits changes later rolls; an experiment that compares the original's random outcomes must keep its timing fixed (the harness's frozen clock does).
 
 - 2026-10-13 (E17 M2 T1): **the capture set grows** (M3's reference set): background variants 0 and 1 need trees, mountains or dead vegetation around the battle (design §5: `h3-map`'s writer has no decorative objects yet: an adventure-lane change); special fields (magic plains and the like) and the shore; heroes and their flags, then the count boxes and the panel, each mask removed as it is drawn; the AI-first openings (the smoke battle) once the scene runs over time. CLT-Q4: how a record carries the background variant.
 
