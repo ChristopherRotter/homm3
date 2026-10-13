@@ -486,13 +486,14 @@ batch") does it on the harness; everything a record holds is read from the game'
 - **Selecting a hero.** A click on another of the player's heroes routes the selected one to it
   (a meeting): the harness clicks the hero list (rows 32 pixels apart) and checks the selected
   hero in memory. Ending a turn: key `e` (the move reminder is off).
-- **Batch 2 against the user's results** (2026-10-13; the same `Heroes3.exe` under Wine,
-  without the HD mod the user plays with): D3a–D3d as the user recorded them, all 13 fields (50
-  then a green step to 0; 0 and a red mark, no step; 100; 0), the paths 13 green marks each;
-  twice, the same. D5's 32 piles: wood 5–10 (a 5 and two 10s), mercury 3–6 (five 6s), as the
-  user's; the amounts differ from run to run (the piles are drawn at the game's start, which runs
-  in real time). The starting amounts differ by difficulty: the user played Easy (30 wood, 15
-  mercury, plus the random bonus), the harness Normal (20, 10).
+- **Batch 2 against the user's results** (2026-10-13; the same `Heroes3.exe` under Wine, without
+  the HD mod the user plays with): D3a–D3d as the user recorded them, all 13 fields (50 then a
+  green step to 0; 0 and a red mark, no step; 100; 0), the paths 13 green marks each; in three
+  runs, the last from a fresh prefix (`setup.sh` anew). D5's 32 piles: in each run wood 5–10 and
+  mercury 3–6, with a wood pile of 5 and a mercury pile of 6, as the user's; the amounts differ
+  from run to run (the piles are drawn at the game's start, which runs in real time). The starting
+  amounts differ by difficulty: the user played Easy (30 wood, 15 mercury, plus the random bonus),
+  the harness Normal (20, 10).
 - **Not built yet:** scrolling the hero list (more than five heroes), the underground, a visit
   that asks a question (a Yes/No dialog), a battle started from the map (the adventure lane's
   increment 3: monsters and battles), a second day.

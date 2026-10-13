@@ -330,10 +330,10 @@ def batch(recipe_path, map_path=None, out=None):
     recipe = tomllib.loads(recipe_path.read_text())
     spec = ROOT / recipe["spec"]
     name = spec.stem
-    out = Path(out) if out else ROOT / "clients" / "out" / "batches" / name
+    out = Path(out).resolve() if out else ROOT / "clients" / "out" / "batches" / name
     out.mkdir(parents=True, exist_ok=True)
     if map_path:
-        map_path, template = Path(map_path), None
+        map_path, template = Path(map_path).resolve(), None
     else:
         map_path, template = compile_spec(spec, out, name)
     want = stamp(spec)

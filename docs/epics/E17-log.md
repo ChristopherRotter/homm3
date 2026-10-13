@@ -438,8 +438,8 @@ then the user played them. Not in the queue's tasks before (the inbox only).
 - **Observed** (design §6.3; `structs.toml`, `map.toml`, `inferred`): the hero, player and
   adventure manager fields; the path's frames (1–25 green, 26–50 red); the view's geometry and
   the minimap's.
-- **Checked:** E08 batch 2 on the harness: D3a–D3d as the user's results, all 13 fields, in two
-  runs; D5's 32 piles within 5–10 and 3–6 (one wood pile of 5, five mercury piles of 6); the
+- **Checked:** E08 batch 2 on the harness: D3a–D3d as the user's results, all 13 fields, in three
+  runs; D5's 32 piles within 5–10 and 3–6 (each run with a wood pile of 5 and a mercury pile of 6, as the user's); the
   starting amounts differ by difficulty (the user: Easy).
 - **Decided (*provisional*, the review list):** the recipe format, `Show Route`, memory over the
   screen, the rest after 1.5 s.
