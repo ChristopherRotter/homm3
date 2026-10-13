@@ -8,7 +8,7 @@ use std::string::String;
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleEffect, BattleHero, BattleSetup, BattleSide};
 
 use super::spells::spell;
@@ -18,7 +18,7 @@ use crate::{
 };
 
 /// The opening spell `name` at Expert with `power`.
-fn opening(r: &Ruleset, name: &str, power: u16) -> BattleEffect {
+fn opening(r: &BattleRuleset, name: &str, power: u16) -> BattleEffect {
     BattleEffect::OpeningSpell {
         spell: spell(r, name),
         mastery: 3,
@@ -27,7 +27,7 @@ fn opening(r: &Ruleset, name: &str, power: u16) -> BattleEffect {
 }
 
 /// The test hero with `effects`, a spell book with the bolt and mana 15.
-fn wearer(r: &Ruleset, effects: Vec<BattleEffect>) -> BattleHero {
+fn wearer(r: &BattleRuleset, effects: Vec<BattleEffect>) -> BattleHero {
     let mut h = hero(r);
     h.effects = effects;
     h.magic.spell_book = Some(vec![spell(r, "bolt")]);
@@ -37,7 +37,7 @@ fn wearer(r: &Ruleset, effects: Vec<BattleEffect>) -> BattleHero {
 
 /// Angelic Alliance's opening (Prayer, power 10) with a duration bonus of 2 for the attacker,
 /// Armor of the Damned's (Slow and Curse, power 50) for the defender.
-fn heroes(r: &Ruleset) -> [Option<BattleHero>; 2] {
+fn heroes(r: &BattleRuleset) -> [Option<BattleHero>; 2] {
     [
         Some(wearer(
             r,
@@ -56,7 +56,7 @@ fn heroes(r: &Ruleset) -> [Option<BattleHero>; 2] {
 /// The attacker's fast and slow stacks against the defender's dragon and flyer: the turn order
 /// is the attacker's 0 (speed 9), the defender's 2 (8) and 3 (7), then the attacker's 1 (2, 6
 /// with Expert Prayer).
-fn armies(r: &Ruleset, heroes: [Option<BattleHero>; 2]) -> BattleSetup {
+fn armies(r: &BattleRuleset, heroes: [Option<BattleHero>; 2]) -> BattleSetup {
     BattleSetup {
         heroes,
         ..setup(
@@ -67,7 +67,7 @@ fn armies(r: &Ruleset, heroes: [Option<BattleHero>; 2]) -> BattleSetup {
     }
 }
 
-fn start(r: &Ruleset, setup: &BattleSetup) -> (BattleState, Vec<Event>) {
+fn start(r: &BattleRuleset, setup: &BattleSetup) -> (BattleState, Vec<Event>) {
     let mut events = Vec::new();
     let s = BattleState::start(r, setup, 1, &mut events).unwrap();
     (s, events)
@@ -75,7 +75,7 @@ fn start(r: &Ruleset, setup: &BattleSetup) -> (BattleState, Vec<Event>) {
 
 /// The opening spells and the effects they gave, as `(side or stack, spell name, rounds)`, in
 /// order: `OpeningSpell` as `(side index + 100, spell, 0)`.
-fn openings(r: &Ruleset, events: &[Event]) -> Vec<(u8, String, u16)> {
+fn openings(r: &BattleRuleset, events: &[Event]) -> Vec<(u8, String, u16)> {
     let name = |id| {
         r.spell(id)
             .unwrap()
@@ -251,14 +251,15 @@ fn a_side_whose_first_stack_is_passed_over_casts_at_its_next_stack() {
 // covers: BAT-MAG-068, BAT-MOR-004, BAT-MAG-060
 #[test]
 fn a_side_whose_first_stack_freezes_casts_at_the_first_stack_that_takes_its_turn() {
-    use h3_content::{AbilityDef, ContentKey};
+    use h3_content::ContentKey;
+    use h3_content_battle::AbilityDef;
     // E04b T11b review (r6 F-6): bad morale and Fear pass a stack over before the activation
     // that casts its side's opening spells, as the original activates only after its pick's
     // checks. Over 40 battles each (only the defender has a hero, so the attacker's `fast` is
     // the battle's first stack and the defender's two follow): when the defender's first stack
     // freezes after the attacker's Defend and its second does not, the cast follows the second
     // one's turn start; when both freeze, nothing is cast in that command.
-    let waited = |r: &Ruleset, setup: &BattleSetup, (first, second): (u8, u8)| {
+    let waited = |r: &BattleRuleset, setup: &BattleSetup, (first, second): (u8, u8)| {
         let mut waited = 0;
         for seed in 0..40 {
             let mut s = BattleState::start(r, setup, seed, &mut Vec::<Event>::new()).unwrap();
@@ -308,9 +309,9 @@ fn a_side_whose_first_stack_freezes_casts_at_the_first_stack_that_takes_its_turn
     let r = ruleset_from(
         "t:faithful",
         |_| {},
-        |pack| {
-            let spook = pack.creatures.iter_mut().find(|c| c.key == key("spook"));
-            spook.unwrap().info.abilities = vec![AbilityDef::Fear { percent: 50 }];
+        |_, battle| {
+            let spook = battle.creatures.iter_mut().find(|c| c.key == key("spook"));
+            spook.unwrap().abilities = vec![AbilityDef::Fear { percent: 50 }];
         },
     );
     let scared = BattleSetup {

@@ -68,8 +68,8 @@ time per lane**. A lane owns paths; everything else it may not change in its own
 
 **Ownership** (`lanes.toml`; the longest matching pattern decides):
 
-- **battle:** `h3-battle`, `h3-heroes`, `h3-content` and `h3-pack` (until further notice, user
-  2026-10-07), `h3-sim`, `h3-ffi` and `h3-cli` (until an AI lane exists at E05), the formats/tools
+- **battle:** `h3-battle`, `h3-heroes`, the battle part `h3-content-battle` and its pack adapter
+  `h3-pack-battle` (since R01; the core `h3-content` and `h3-pack` are shared), `h3-sim`, `h3-ffi` and `h3-cli` (until an AI lane exists at E05), the formats/tools
   crates `h3-formats`, `h3-harvest`, `h3-experiment` and `docs/formats/` (until a formats/tools
   lane opens), packs, fixtures, experiments, `benches/battle/`, the BAT and HER rules, the quirks
   ledger, the surveys, the epics E01–E06. `h3-heroes` moves to adventure with a handover
@@ -117,8 +117,9 @@ conflict on rebase and bumps again.
 | Version | Where | Owner |
 |---|---|---|
 | battle state hash | `BATTLE_STATE_HASH_VERSION`, `h3-battle` | battle |
-| ruleset hash | `RULESET_HASH_VERSION`, `h3-content` | battle (with `h3-content`) |
-| pack format | `packs/README.md` | battle (with `h3-pack`) |
+| core ruleset hash | `RULESET_HASH_VERSION`, `h3-content` | shared (with `h3-content`, R01) |
+| battle ruleset-part hash | `BATTLE_RULESET_HASH_VERSION`, `h3-content-battle` | battle |
+| pack format (`core.toml`, `battle.toml`) | `packs/README.md` | shared (with `h3-pack`; the battle file with `h3-pack-battle`) |
 | replay format, action and observation encodings | `h3-sim` | battle (AI lane from E05) |
 | C ABI | `H3_ABI_VERSION`, `h3-ffi` | battle (AI lane from E05) |
 | kernel RNG and hash | `RNG_VERSION`, `HASH_VERSION`, `h3-kernel` | shared |

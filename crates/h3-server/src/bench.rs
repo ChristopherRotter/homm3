@@ -9,7 +9,7 @@
 //! tests play, so that battles end), fixed tokens, no queries or fetches.
 
 use h3_battle::BattleSetup;
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::PROTOCOL_VERSION;
 use h3_protocol::codec::{self, DEFAULT_MAX_CLIENT_FRAME};
@@ -104,7 +104,7 @@ fn turn(out: &[Outbound]) -> Option<(usize, Vec<Command>)> {
 /// Plays one hosted battle of `setup` with `seed`: both clients say hello and take their seats,
 /// then answer every `YourTurn`, until the game ends or `max_commands` were sent.
 pub fn play_game(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     setup: &BattleSetup,
     seed: u64,
     max_commands: u32,
@@ -174,7 +174,7 @@ pub fn play_game(
 
 /// The workload: `games` hosted battles of `setup`, game `g` with the seed `seed + g`.
 pub fn run(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     setup: &BattleSetup,
     seed: u64,
     games: u64,

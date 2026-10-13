@@ -5,7 +5,7 @@ use std::string::String;
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleEffect, BattleHero, BattleSide, Rate};
 
 use super::spells::{arena, cast, mage, spell, stack};
@@ -18,7 +18,7 @@ use crate::{
 };
 
 /// A mage with `spells`, the air mastery `mastery` and enough mana.
-fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
+fn adept(r: &BattleRuleset, spells: &[&str], mastery: u8) -> BattleHero {
     let mut h = mage(r, spells);
     h.magic.masteries = masteries(r, [mastery, 0, 0, 0]);
     h.magic.mana = 200;
@@ -26,7 +26,7 @@ fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
 }
 
 /// Gives stack `id` the timed effect of `name` at `mastery` for five rounds.
-fn give(s: &mut BattleState, r: &Ruleset, (id, name): (u8, &str), mastery: u8) {
+fn give(s: &mut BattleState, r: &BattleRuleset, (id, name): (u8, &str), mastery: u8) {
     let spell_id = spell(r, name);
     let cast = TimedCast {
         id: spell_id,
@@ -39,7 +39,7 @@ fn give(s: &mut BattleState, r: &Ruleset, (id, name): (u8, &str), mastery: u8) {
 }
 
 /// The names of the spells whose effects stack `id` has, sorted.
-fn on(s: &BattleState, r: &Ruleset, id: u8) -> Vec<String> {
+fn on(s: &BattleState, r: &BattleRuleset, id: u8) -> Vec<String> {
     let mut names: Vec<String> = s
         .effects()
         .iter()
@@ -51,13 +51,13 @@ fn on(s: &BattleState, r: &Ruleset, id: u8) -> Vec<String> {
 }
 
 /// Starts a new round and gives the turn to stack `id`.
-fn next_round(s: &mut BattleState, r: &Ruleset, id: u8) {
+fn next_round(s: &mut BattleState, r: &BattleRuleset, id: u8) {
     crate::turn::start_round(s, r, &mut Vec::<Event>::new());
     activate(s, id);
 }
 
 /// The stack targets of `name` for `side` now.
-fn targets(s: &BattleState, r: &Ruleset, side: BattleSide, name: &str) -> Vec<CastTarget> {
+fn targets(s: &BattleState, r: &BattleRuleset, side: BattleSide, name: &str) -> Vec<CastTarget> {
     let mut out = CastTargets::new();
     cast_targets(s, r, side, spell(r, name), &mut out);
     out.as_slice().to_vec()

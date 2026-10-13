@@ -24,6 +24,7 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22): the review list as built; T8 first,
 
 ## Inbox
 
+- 2026-10-13 (R01, the content split, from the battle lane; `cross-lane`): the server loads `BattleRuleset` (`h3-content-battle`, compiled on the core `Ruleset`; packs as `core.toml` + `battle.toml` through `h3-pack-battle`); `Manifest` and `Offer` carry `battle_ruleset_hash` beside the core's `ruleset_hash` (protocol v21, ADR-0015 point 2); a ladder's ruleset identity folds both (`ladders.rs::identity`). `E16-design.md`'s offer line names only `ruleset_hash`: update it with the lane's next docs.
 - 2026-10-12 (M4's review; **later**): finished, unrated ranked journals that a start re-runs (only after a ladder log's write failed) are rated in the order their threads run, not the order the games ended; Glicko-2 depends on it. Re-run them one after another by id before the others start.
 - 2026-10-12 (M4's review; **later**): a game that stops because its journal no longer writes (or whose thread panics) leaves the registry's ranked games while its journal stays: its players may start another match on the ladder, and the next start restores both. Keep the entry until the journal is gone.
 - 2026-10-12 (the user, SRV-Q19; **M5**): the turn timer against a connected player who stalls is a game rule (`h3-game`; E08 decision 8's system commands for turn timers); until then a ranked battle can be stalled (the epic's risks).

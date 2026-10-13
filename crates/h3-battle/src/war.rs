@@ -9,7 +9,8 @@
 use core::cmp::Ordering;
 
 use h3_content::FULL_BP;
-use h3_content::{Ability, Ruleset, SINGLE_PRECISION_RATES};
+use h3_content::SINGLE_PRECISION_RATES;
+use h3_content_battle::{Ability, BattleRuleset};
 use h3_contracts::{BallistaControl, TentControl};
 use h3_kernel::FixedVec;
 use h3_kernel::arith::{X87, cmp_fractions, mul_div_floor};
@@ -81,7 +82,12 @@ pub(crate) fn patients(state: &BattleState, healer: StackId) -> FixedVec<StackId
 }
 
 /// The automatic turn of war machine `id` (BAT-WAR-002/003): heal, shoot, or nothing.
-pub(crate) fn act<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, sink: &mut S) {
+pub(crate) fn act<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+    sink: &mut S,
+) {
     let field = Field::new(ruleset.battle().field);
     if state.at(id).has(StackTraits::FIRST_AID) {
         first_aid(state, ruleset, id, sink);
@@ -139,7 +145,7 @@ struct Candidate {
 /// 2^99 and the denominator below 2^33.
 pub(crate) fn value(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     shooter: StackId,
     target: StackId,
 ) -> (u128, u128) {
@@ -167,7 +173,7 @@ pub(crate) fn value(
 // rule: BAT-WAR-002
 pub(crate) fn shooting_target(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     field: Field,
     shooter: StackId,
 ) -> Option<StackId> {
@@ -211,7 +217,7 @@ pub(crate) fn shooting_target(
 /// The First Aid Tent's automatic turn (BAT-WAR-003): a uniformly chosen patient
 /// ([`is_patient`]) is healed ([`heal`]); nothing happens without patients.
 // rule: BAT-WAR-003
-fn first_aid<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, sink: &mut S) {
+fn first_aid<S: Sink>(state: &mut BattleState, ruleset: &BattleRuleset, id: StackId, sink: &mut S) {
     let hurt = patients(state, id);
     let n = u32::try_from(hurt.len()).unwrap_or(u32::MAX);
     if n == 0 {
@@ -233,7 +239,7 @@ fn first_aid<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, s
 // rule: BAT-WAR-003, BAT-WAR-007
 pub(crate) fn heal<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     healer: StackId,
     target: StackId,
     sink: &mut S,

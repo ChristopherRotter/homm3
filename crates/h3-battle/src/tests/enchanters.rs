@@ -4,7 +4,8 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{Ruleset, SpellId};
+use h3_content::SpellId;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleSetup, BattleSide};
 
 use super::spells::spell;
@@ -35,14 +36,14 @@ fn applied(events: &[Event]) -> Vec<(u8, Option<u16>)> {
 }
 
 /// Starts a battle of `setup`, returning the state and the events of its start.
-fn start(r: &Ruleset, setup: &BattleSetup, seed: u64) -> (BattleState, Vec<Event>) {
+fn start(r: &BattleRuleset, setup: &BattleSetup, seed: u64) -> (BattleState, Vec<Event>) {
     let mut events = Vec::new();
     let s = BattleState::start(r, setup, seed, &mut events).unwrap();
     (s, events)
 }
 
 /// Lets every stack defend for `turns` turns, returning each periodic cast with its round.
-fn defend(s: &mut BattleState, r: &Ruleset, turns: usize) -> Vec<(u16, u8, SpellId)> {
+fn defend(s: &mut BattleState, r: &BattleRuleset, turns: usize) -> Vec<(u16, u8, SpellId)> {
     let mut out = Vec::new();
     for _ in 0..turns {
         let events = act(s, r, Command::Defend).unwrap();
@@ -58,7 +59,7 @@ fn defend(s: &mut BattleState, r: &Ruleset, turns: usize) -> Vec<(u16, u8, Spell
 /// The test Enchanter's spells that count when its side's first stack is a full-health
 /// shooter and the enemy's first a melee stack: Haste, Slow, Stone Skin, Bless and Weakness
 /// (not Air Shield: no enemy shoots; not Bloodlust: a shooter; not Cure: nobody wounded).
-fn counted(r: &Ruleset) -> [SpellId; 5] {
+fn counted(r: &BattleRuleset) -> [SpellId; 5] {
     ["haste", "sloth", "skin", "bless", "weaken"].map(|n| spell(r, n))
 }
 
@@ -208,7 +209,7 @@ fn a_dead_first_stack_accepts_nothing_with_quirk_bat_quirk_13() {
         stack.count = 0;
         stack.top_hp = 0;
     };
-    let draws = |r: &Ruleset, dead: usize| {
+    let draws = |r: &BattleRuleset, dead: usize| {
         (1..=12)
             .flat_map(|seed| {
                 let mut s = BattleState::new(r, &setup, seed).unwrap();

@@ -104,7 +104,7 @@ fn read_text(path: &Path) -> Result<String> {
     std::fs::read_to_string(path).map_err(|e| AdventureCliError::Io(path.to_path_buf(), e))
 }
 
-/// Loads `<packs_dir>/<id>/pack.toml` and, where it exists, `<id>/adventure.toml` for each id and
+/// Loads `<packs_dir>/<id>/core.toml` and, where it exists, `<id>/adventure.toml` for each id and
 /// compiles them with `profile` into the game's rules. Ids come from replay files, so they must be
 /// valid pack ids (no paths).
 ///
@@ -123,7 +123,7 @@ pub fn load_rules(packs_dir: &Path, ids: &[String], profile: &str) -> Result<Gam
         } else {
             String::new()
         };
-        texts.push((read_text(&dir.join("pack.toml"))?, adventure));
+        texts.push((read_text(&dir.join("core.toml"))?, adventure));
     }
     let refs: Vec<(&str, &str)> = texts
         .iter()

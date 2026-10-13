@@ -583,9 +583,9 @@ fn the_errors_and_reasons_read_well() {
 fn pack_ids(kind: &str) -> Vec<(u16, String)> {
     let mut ids = Vec::new();
     for (pack, text) in [
-        ("base", h3_pack::BASE_PACK),
-        ("ab", h3_pack::AB_PACK),
-        ("sod", h3_pack::SOD_PACK),
+        ("base", h3_pack::BASE_CORE),
+        ("ab", h3_pack::AB_CORE),
+        ("sod", h3_pack::SOD_CORE),
     ] {
         let mut lines = text.lines();
         while let Some(line) = lines.next() {

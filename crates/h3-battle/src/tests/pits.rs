@@ -4,7 +4,7 @@
 
 use std::vec::Vec;
 
-use h3_content::{ObstacleKind, Ruleset};
+use h3_content_battle::{BattleRuleset, ObstacleKind};
 use h3_contracts::{BattleHero, BattleSetup, BattleSide};
 
 use super::spells::{arena, mage, spell};
@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// A mage with `spells`, the masteries `[air, fire]` and 100 mana.
-fn caster(r: &Ruleset, spells: &[&str], [air, fire]: [u8; 2]) -> BattleHero {
+fn caster(r: &BattleRuleset, spells: &[&str], [air, fire]: [u8; 2]) -> BattleHero {
     let mut h = mage(r, spells);
     h.magic.masteries = masteries(r, [air, fire, 0, 0]);
     h.magic.mana = 100;
@@ -23,7 +23,7 @@ fn caster(r: &Ruleset, spells: &[&str], [air, fire]: [u8; 2]) -> BattleHero {
 }
 
 /// The hexes at `cells` as a set.
-fn set(r: &Ruleset, cells: &[(i32, i32)]) -> HexSet {
+fn set(r: &BattleRuleset, cells: &[(i32, i32)]) -> HexSet {
     let mut out = HexSet::new();
     for &(x, y) in cells {
         out.insert(at(r, x, y));
@@ -33,7 +33,12 @@ fn set(r: &Ruleset, cells: &[(i32, i32)]) -> HexSet {
 
 /// Places `side`'s Quicksand pits on `cells` as its cast would (test setup only; the cast draws
 /// its hexes at random); returns the events.
-fn pits(s: &mut BattleState, r: &Ruleset, side: BattleSide, cells: &[(i32, i32)]) -> Vec<Event> {
+fn pits(
+    s: &mut BattleState,
+    r: &BattleRuleset,
+    side: BattleSide,
+    cells: &[(i32, i32)],
+) -> Vec<Event> {
     let id = spell(r, "quicksand");
     let shape = r.spell(id).unwrap().magic.obstacle.clone().unwrap();
     let hexes: Vec<Hex> = cells.iter().map(|&(x, y)| at(r, x, y)).collect();
@@ -49,7 +54,7 @@ fn pits(s: &mut BattleState, r: &Ruleset, side: BattleSide, cells: &[(i32, i32)]
 }
 
 /// Casts Quicksand for the side of the active stack `id`; returns the events.
-fn quicksand(s: &mut BattleState, r: &Ruleset, id: u8) -> Vec<Event> {
+fn quicksand(s: &mut BattleState, r: &BattleRuleset, id: u8) -> Vec<Event> {
     activate(s, id);
     act(
         s,
@@ -64,7 +69,7 @@ fn quicksand(s: &mut BattleState, r: &Ruleset, id: u8) -> Vec<Event> {
 }
 
 /// The hexes of the pits `viewer` observes.
-fn seen(s: &BattleState, r: &Ruleset, viewer: BattleSide) -> HexSet {
+fn seen(s: &BattleState, r: &BattleRuleset, viewer: BattleSide) -> HexSet {
     observe(s, r, viewer)
         .spell_obstacles
         .iter()
@@ -108,7 +113,7 @@ fn struck(events: &[Event]) -> bool {
 }
 
 /// The legal commands of the side to act.
-fn legal(s: &BattleState, r: &Ruleset) -> LegalCommands {
+fn legal(s: &BattleState, r: &BattleRuleset) -> LegalCommands {
     let mut out = LegalCommands::new();
     legal_commands(s, r, s.side_to_act().unwrap(), &mut out);
     out
@@ -117,7 +122,7 @@ fn legal(s: &BattleState, r: &Ruleset) -> LegalCommands {
 /// A battle on the plain (Castle's native terrain) with heroes and the stacks placed at `(x, y)`,
 /// as [`arena`]; the first attacker stack is active.
 fn on_plain(
-    r: &Ruleset,
+    r: &BattleRuleset,
     heroes: [Option<BattleHero>; 2],
     attacker: &[(&'static str, u32, i32, i32)],
     defender: &[(&'static str, u32, i32, i32)],

@@ -10,11 +10,12 @@ use h3_battle::{
     BattleState, CastTarget, Command, LegalCommands, NoopSink, StackId, StackTraits, apply,
     castable_spells, legal_commands,
 };
-use h3_content::{Formation, Ruleset, SpellId};
+use h3_content::{Formation, SpellId};
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
 use h3_heroes::{HeroDetails, derive_battle_hero, war_machines};
 
-fn caster(r: &Ruleset, hero: &str, mana: u16, spell: SpellId) -> BattleHero {
+fn caster(r: &BattleRuleset, hero: &str, mana: u16, spell: SpellId) -> BattleHero {
     let mut h = BattleHero::new(r.hero_type_by_key(hero).unwrap());
     h.power = 1;
     h.magic.mana = mana;
@@ -23,7 +24,7 @@ fn caster(r: &Ruleset, hero: &str, mana: u16, spell: SpellId) -> BattleHero {
     h
 }
 
-fn army(r: &Ruleset, stacks: &[(u8, &str, u32)]) -> Army {
+fn army(r: &BattleRuleset, stacks: &[(u8, &str, u32)]) -> Army {
     Army {
         stacks: stacks
             .iter()
@@ -41,7 +42,7 @@ fn mana(s: &BattleState, side: BattleSide) -> u16 {
 }
 
 /// The side to act casts `spell` at `target`, then its active stack defends.
-fn cast_then_defend(s: &mut BattleState, r: &Ruleset, spell: SpellId, target: u8) {
+fn cast_then_defend(s: &mut BattleState, r: &BattleRuleset, spell: SpellId, target: u8) {
     let side = s.side_to_act().unwrap();
     let cast = Command::Cast {
         spell,
@@ -55,8 +56,12 @@ fn cast_then_defend(s: &mut BattleState, r: &Ruleset, spell: SpellId, target: u8
 // covers: BAT-MAG-054, BAT-MAG-055
 #[test]
 fn batch_2a_r6_spell_costs_and_the_familiars_channel() {
-    let r = h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+    let r = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         "base:faithful",
     )
     .unwrap();
@@ -121,8 +126,12 @@ fn batch_2a_r6_spell_costs_and_the_familiars_channel() {
 /// dead (the Mages shot it in round 2 after the Ballista's turn: they wait here).
 #[test]
 fn batch_2a_r6_the_hero_casts_in_his_ballistas_turn() {
-    let r = h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+    let r = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         "base:faithful",
     )
     .unwrap();

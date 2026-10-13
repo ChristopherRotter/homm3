@@ -7,7 +7,8 @@
 
 use alloc::boxed::Box;
 
-use h3_content::{Ruleset, SpellId};
+use h3_content::SpellId;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleResult, BattleSide};
 
 use crate::casters;
@@ -155,7 +156,7 @@ enum Plan<'r> {
 /// `legal_commands` consistency tests (docs/06-security.md "Legal-command consistency").
 pub fn validate(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
     command: Command,
 ) -> Result<(), CommandError> {
@@ -180,7 +181,7 @@ fn enemy(
 
 fn plan<'r>(
     state: &BattleState,
-    ruleset: &'r Ruleset,
+    ruleset: &'r BattleRuleset,
     actor: BattleSide,
     command: Command,
 ) -> Result<Plan<'r>, CommandError> {
@@ -326,7 +327,7 @@ fn retreat(state: &BattleState, side: BattleSide) -> Result<Plan<'static>, Comma
 // rule: BAT-FLE-002
 fn surrender(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
 ) -> Result<Plan<'static>, CommandError> {
     let Some(price) = state.surrender_price(ruleset, side) else {
@@ -345,7 +346,7 @@ fn surrender(
 // rule: BAT-TAC-001, BAT-TAC-002
 fn plan_tactics(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (phase, actor): (TacticsPhase, BattleSide),
     (id, mover): (StackId, &Stack),
     command: Command,
@@ -386,7 +387,7 @@ fn plan_tactics(
 /// command). On error the state is unchanged. Events go to `sink`.
 pub fn apply<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
     command: Command,
     sink: &mut S,

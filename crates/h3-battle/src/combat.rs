@@ -8,9 +8,9 @@
 //! second attack.
 
 use h3_content::{
-    Ability, BattleParams, CompiledAbility, CreatureFlag, FIRE_SHIELD_FIRST_STAGE,
-    FRENZY_REDUCED_DEFENSE, FULL_BP, Ruleset, SINGLE_PRECISION_RATES, TimedChange,
+    CreatureFlag, FIRE_SHIELD_FIRST_STAGE, FRENZY_REDUCED_DEFENSE, FULL_BP, SINGLE_PRECISION_RATES,
 };
+use h3_content_battle::{Ability, BattleParams, BattleRuleset, CompiledAbility, TimedChange};
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::arith::mul_div_floor;
 
@@ -104,7 +104,7 @@ struct Blow {
 }
 
 /// Whether the creature of `stack` has an ability matching `f`.
-fn has_ability(ruleset: &Ruleset, stack: &Stack, f: fn(&CompiledAbility) -> bool) -> bool {
+fn has_ability(ruleset: &BattleRuleset, stack: &Stack, f: fn(&CompiledAbility) -> bool) -> bool {
     ruleset.abilities(stack.creature).iter().any(f)
 }
 
@@ -115,7 +115,7 @@ fn has_ability(ruleset: &Ruleset, stack: &Stack, f: fn(&CompiledAbility) -> bool
 /// points lost.
 fn strike<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (attacker, target): (StackId, StackId),
     flags: StrikeFlags,
     blow: Blow,
@@ -182,7 +182,7 @@ fn strike<S: Sink>(
 }
 
 /// Whether damage follows the executable's stages (quirk Q-0005).
-fn staged(ruleset: &Ruleset) -> bool {
+fn staged(ruleset: &BattleRuleset) -> bool {
     ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES)
 }
 
@@ -190,7 +190,7 @@ fn staged(ruleset: &Ruleset) -> bool {
 /// change them and the heroes' damage bonuses), and its flags with the luck and death-blow flags
 /// added.
 fn strike_inputs(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     heroes: &[Option<HeroRecord>; 2],
     (striker, victim): (&Stack, &Stack),
     (flags, (slayer_bonus, blessing)): (StrikeFlags, SpecialistTerms),
@@ -305,7 +305,7 @@ type SpecialistTerms = (i32, Option<Specialist>);
 /// controller (BAT-MAG-026) as a specialist in its Slayer, the bonus of Slayer's value by the
 /// stack's level, and in its Bless.
 // rule: BAT-MAG-020
-fn specialist_terms(state: &BattleState, ruleset: &Ruleset, s: StackId) -> SpecialistTerms {
+fn specialist_terms(state: &BattleState, ruleset: &BattleRuleset, s: StackId) -> SpecialistTerms {
     let striker = state.at(s);
     let blessed = matches!(striker.spells.damage, DamageRoll::Maximum(_));
     let hero = state.heroes[striker.controller().index()]
@@ -340,7 +340,7 @@ fn specialist_terms(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Speci
 /// The defense a frenzied `striker` adds to its attack (BAT-MAG-019): its defense with the Defend
 /// bonus and, with quirk Q-0009 (S-16), as `victim` sees it: reduced by the share a Behemoth
 /// ignores (BAT-DMG-006), as the original computes it (`installation.md` §7.11).
-fn frenzy_defense(ruleset: &Ruleset, striker: &Stack, victim: &Stack) -> i32 {
+fn frenzy_defense(ruleset: &BattleRuleset, striker: &Stack, victim: &Stack) -> i32 {
     let mut defense = effective_defense(striker, ruleset.battle());
     if ruleset.quirks().is_enabled(FRENZY_REDUCED_DEFENSE) {
         for ability in ruleset.abilities(victim.creature) {
@@ -355,7 +355,7 @@ fn frenzy_defense(ruleset: &Ruleset, striker: &Stack, victim: &Stack) -> i32 {
 /// Whether Slayer cast at `mastery` counts against `victim`'s creature (BAT-MAG-014): king 1 at
 /// any mastery, king 2 from Advanced, king 3 at Expert (`installation.md` §7.10). Without Slayer
 /// its bonus is 0, so the answer does not matter.
-fn slays(ruleset: &Ruleset, mastery: u8, victim: &Stack) -> bool {
+fn slays(ruleset: &BattleRuleset, mastery: u8, victim: &Stack) -> bool {
     ruleset.creature(victim.creature).is_some_and(|c| {
         c.flags.contains(CreatureFlag::King1)
             || (c.flags.contains(CreatureFlag::King2) && mastery >= 2)
@@ -369,7 +369,7 @@ fn slays(ruleset: &Ruleset, mastery: u8, victim: &Stack) -> bool {
 /// BAT-MAG-011).
 pub(crate) fn shot_damage_range(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     attacker: StackId,
     target: StackId,
 ) -> (u64, u64) {
@@ -435,7 +435,7 @@ fn penalty(
 /// the target's turns (it then does not retaliate).
 fn attack<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     pair: (StackId, StackId),
     others: &Targets,
     (flags, charge, retaliation_percent): (StrikeFlags, u8, u16),
@@ -519,7 +519,7 @@ fn attack<S: Sink>(
 // rule: BAT-MAG-018
 fn reflect<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     stack: StackId,
     damage: u64,
     sink: &mut S,
@@ -561,7 +561,7 @@ pub(crate) const STARE_ROLL_LIMIT: u32 = 65_536;
 // rule: BAT-DMG-009
 fn death_stare<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (attacker, target): (StackId, StackId),
     chance: u8,
     sink: &mut S,
@@ -709,7 +709,7 @@ fn pattern_hexes(field: Field, me: &Stack, fp: Footprint, victim: Footprint) -> 
 /// (BAT-MAG-025), the rebirths (BAT-MAG-059), then the end-of-battle check (BAT-END-001).
 pub(crate) fn melee<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     attacker: StackId,
     target: StackId,
     start: Hex,
@@ -785,7 +785,7 @@ pub(crate) fn melee<S: Sink>(
 // rule: BAT-RET-001, BAT-RET-002, BAT-RET-003, BAT-MAG-024, BAT-MAG-043
 fn retaliate<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (retaliator, attacker): (StackId, StackId),
     blind: Option<u16>,
     sink: &mut S,
@@ -833,7 +833,7 @@ fn retaliate<S: Sink>(
 // rule: BAT-RNG-001
 pub(crate) fn shoot<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     shooter: StackId,
     target: StackId,
     at: Hex,

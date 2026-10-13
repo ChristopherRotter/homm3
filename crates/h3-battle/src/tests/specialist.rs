@@ -3,7 +3,8 @@
 
 use std::vec::Vec;
 
-use h3_content::{ContentKey, Ruleset};
+use h3_content::ContentKey;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleEffect, BattleHero};
 
 use super::spells::{arena, cast, mage, spell, stack};
@@ -13,7 +14,7 @@ use crate::magic::SpellBonus;
 use crate::{BattleState, Command, Event, StackId};
 
 /// The specialty in `name` of a hero at `level` (3 % per level, as every original one).
-fn specialty(r: &Ruleset, name: &str, level: u8) -> BattleEffect {
+fn specialty(r: &BattleRuleset, name: &str, level: u8) -> BattleEffect {
     BattleEffect::SpellSpecialty {
         spell: spell(r, name),
         bp_per_level: 300,
@@ -22,7 +23,12 @@ fn specialty(r: &Ruleset, name: &str, level: u8) -> BattleEffect {
 }
 
 /// A mage with `spells`, Basic or better air (`mastery`), plenty of mana and `specialties`.
-fn specialist(r: &Ruleset, spells: &[&str], mastery: u8, specialties: &[(&str, u8)]) -> BattleHero {
+fn specialist(
+    r: &BattleRuleset,
+    spells: &[&str],
+    mastery: u8,
+    specialties: &[(&str, u8)],
+) -> BattleHero {
     let mut h = mage(r, spells);
     h.magic.masteries = masteries(r, [mastery, 0, 0, 0]);
     h.magic.mana = 100;
@@ -34,7 +40,7 @@ fn specialist(r: &Ruleset, spells: &[&str], mastery: u8, specialties: &[(&str, u
 }
 
 /// The bonuses of a level-10 specialist in `name` (none: no specialty).
-fn own(r: &Ruleset, name: Option<&str>) -> SpellBonus {
+fn own(r: &BattleRuleset, name: Option<&str>) -> SpellBonus {
     name.map_or_else(SpellBonus::default, |n| SpellBonus {
         spell: spell(r, n),
         damage_bp: 0,
@@ -47,7 +53,7 @@ fn own(r: &Ruleset, name: Option<&str>) -> SpellBonus {
 /// `own`; returns the effect's value.
 fn give(
     s: &mut BattleState,
-    r: &Ruleset,
+    r: &BattleRuleset,
     (id, name): (u8, &str),
     mastery: u8,
     own: SpellBonus,
@@ -69,7 +75,7 @@ fn give(
 }
 
 /// Own stacks of creature levels 1, 3, 5 and 7, and one enemy.
-fn levels(r: &Ruleset) -> BattleState {
+fn levels(r: &BattleRuleset) -> BattleState {
     arena(
         r,
         [None, None],
@@ -170,7 +176,7 @@ fn weakness_ray_and_fortune_follow_their_own_rules() {
 }
 
 /// The damage range of 10 Archers shooting at `target` after their hero cast `name` on them.
-fn shot_after(r: &Ruleset, hero: BattleHero, name: &str, target: &'static str) -> (u64, u64) {
+fn shot_after(r: &BattleRuleset, hero: BattleHero, name: &str, target: &'static str) -> (u64, u64) {
     let mut s = arena(
         r,
         [Some(hero), None],
@@ -219,10 +225,11 @@ fn a_huge_slayer_specialty_does_not_overflow_the_attack() {
     let r = ruleset_from(
         "t:faithful",
         |_| {},
-        |pack| {
+        |pack, battle| {
             let slayer = ContentKey::new("t", "slayer").unwrap();
             let def = pack.spells.iter_mut().find(|s| s.key == slayer).unwrap();
             def.effect = [30_000; 4];
+            let def = battle.spells.iter_mut().find(|s| s.key == slayer).unwrap();
             def.magic.specialist = None;
         },
     );

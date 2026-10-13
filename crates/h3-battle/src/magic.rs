@@ -17,10 +17,14 @@
 use core::num::NonZeroU32;
 
 use h3_content::{
-    Ability, CreatureFlag, CreatureTypeId, EARLY_MASS_VERSION, FIRST_PROTECTION, FULL_BP,
-    MASS_CURE_SKIPS_HYPNOTIZED, MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset,
-    SINGLE_PRECISION_RATES, SpecialistBonus, Spell, SpellCategory, SpellEffect, SpellId,
-    SpellPolarity, SpellScope, SpellTarget, TargetSide, TimedChange,
+    CreatureFlag, CreatureTypeId, EARLY_MASS_VERSION, FIRST_PROTECTION, FULL_BP,
+    MASS_CURE_SKIPS_HYPNOTIZED, MAX_SPELL_SCHOOLS, MAX_SPELLS, SINGLE_PRECISION_RATES,
+    SpellCategory, SpellId, SpellScope,
+};
+use h3_content_battle::BattleSpell;
+use h3_content_battle::{
+    Ability, BattleRuleset, MAX_FIELD_HEXES, SpecialistBonus, SpellEffect, SpellPolarity,
+    SpellTarget, TargetSide, TimedChange,
 };
 use h3_contracts::{BattleEffect, BattleHero, BattleSide, Rate};
 use h3_kernel::arith::{
@@ -261,7 +265,7 @@ const fn scale(single: bool) -> u64 {
 
 /// A hero's [`HeroMagic::resistance`] in basis points, truncated (observations, BAT-Q26): at
 /// most [`FULL_BP`], as the resistance is.
-pub(crate) fn resistance_bp(ruleset: &Ruleset, resistance: u64) -> u32 {
+pub(crate) fn resistance_bp(ruleset: &BattleRuleset, resistance: u64) -> u32 {
     let one = scale(ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES));
     let bp = mul_div_floor(resistance.min(one), u64::from(FULL_BP), one).unwrap_or(0);
     u32::try_from(bp).unwrap_or(0)
@@ -554,7 +558,7 @@ pub type CastTargets = FixedVec<CastTarget, MAX_CAST_TARGETS>;
 pub(crate) struct Cast<'r> {
     side: BattleSide,
     id: SpellId,
-    spell: &'r Spell,
+    spell: &'r BattleSpell,
     cost: u16,
     mastery: u8,
     target: CastTarget,
@@ -582,7 +586,7 @@ pub(crate) struct Cast<'r> {
 /// Whether the battle implements the effects of `spell`: every effect kind is implemented
 /// (damage since E04b T2, timed changes since T3a, dispel and heal since T3b1b), so a spell is
 /// castable once it has effects.
-fn implemented(spell: &Spell) -> bool {
+fn implemented(spell: &BattleSpell) -> bool {
     !spell.magic.effects.is_empty()
 }
 
@@ -599,10 +603,10 @@ pub(crate) fn mastery(hero: &HeroRecord, spell: SpellId) -> u8 {
 // rule: BAT-MAG-001
 fn check_spell<'s, 'r>(
     state: &'s BattleState,
-    ruleset: &'r Ruleset,
+    ruleset: &'r BattleRuleset,
     side: BattleSide,
     id: SpellId,
-) -> Result<(&'r Spell, &'s HeroRecord, u8, u16), CommandError> {
+) -> Result<(&'r BattleSpell, &'s HeroRecord, u8, u16), CommandError> {
     let hero = state.heroes[side.index()]
         .as_ref()
         .filter(|h| h.magic.book.contains(id))
@@ -636,7 +640,7 @@ fn check_spell<'s, 'r>(
 }
 
 /// A spell together with its handle.
-pub(crate) type SpellRef<'r> = (SpellId, &'r Spell);
+pub(crate) type SpellRef<'r> = (SpellId, &'r BattleSpell);
 
 /// Whether a hero in the battle forbids every cast (BAT-MAG-061; the original's 0x41F890 and the
 /// hero's book button 0x59E900 refuse while either hero wears the Orb of Inhibition (126),
@@ -652,7 +656,7 @@ pub(crate) fn casting_forbidden(state: &BattleState) -> bool {
 /// spell above level 2, creature abilities included, while either hero wears Recanter's Cloak
 /// (83), `installation.md` §7.23): its level is above a hero's `SpellLevelLimit`.
 // rule: BAT-MAG-062
-pub(crate) fn barred(state: &BattleState, spell: &Spell) -> bool {
+pub(crate) fn barred(state: &BattleState, spell: &BattleSpell) -> bool {
     spell.level > state.limits.max_level
 }
 
@@ -702,7 +706,7 @@ impl Guard {
 /// itself.
 // rule: BAT-MAG-005, BAT-MAG-063, BAT-MAG-064, BAT-MAG-065, BAT-MAG-066, BAT-MAG-067
 pub(crate) fn affects(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (id, spell): SpellRef<'_>,
     creature: CreatureTypeId,
     guard: Guard,
@@ -742,7 +746,7 @@ pub(crate) fn affects(
 /// bounds, whatever its polarity, unless the spell is a creature ability or ignores immunity
 /// (Dispel; the original tests both before Anti-Magic, `installation.md` §7.13).
 // rule: BAT-MAG-021
-pub(crate) fn kept_off(stack: &Stack, spell: &Spell) -> bool {
+pub(crate) fn kept_off(stack: &Stack, spell: &BattleSpell) -> bool {
     spell.level < stack.spells.spell_immunity
         && spell.category != SpellCategory::Ability
         && !spell.magic.ignores_immunity
@@ -757,7 +761,7 @@ pub(crate) fn kept_off(stack: &Stack, spell: &Spell) -> bool {
 /// case, `installation.md` §7.13).
 pub(crate) fn affects_stack(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     caster: BattleSide,
     spell: SpellRef<'_>,
     s: StackId,
@@ -779,7 +783,7 @@ pub(crate) fn affects_stack(
 #[inline(always)]
 fn reachable(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     (spell, mastery): (SpellRef<'_>, u8),
     s: StackId,
@@ -794,7 +798,7 @@ fn reachable(
 #[inline(always)]
 fn in_reach(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     (spell, mastery): (SpellRef<'_>, u8),
     s: StackId,
@@ -820,7 +824,7 @@ fn in_reach(
 // rule: BAT-MAG-026
 fn admits(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     ((id, spell), mastery): (SpellRef<'_>, u8),
     s: StackId,
@@ -861,7 +865,7 @@ fn admits(
 /// does).
 fn skips_hypnotized(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     ((_, spell), mastery): (SpellRef<'_>, u8),
     s: StackId,
 ) -> bool {
@@ -888,7 +892,7 @@ fn skips_hypnotized(
 /// §7.8: a stack that always resists is no target).
 fn aimable(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     (spell, mastery): (SpellRef<'_>, u8),
     s: StackId,
@@ -901,7 +905,7 @@ fn aimable(
 /// ([`has_chance`]).
 fn accepts(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     spell: SpellRef<'_>,
     s: StackId,
@@ -917,9 +921,9 @@ fn accepts(
 /// by a roll has one; a stack that always resists has none.
 fn has_chance(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
-    spell: &Spell,
+    spell: &BattleSpell,
     s: StackId,
 ) -> bool {
     spell.polarity == SpellPolarity::Positive
@@ -930,7 +934,7 @@ fn has_chance(
 /// Whether the battle can cast `spell` at `mastery` as an opening spell (BAT-MAG-068, checked
 /// with the hero, BAT-HER-001): a hero's spell without a target at that mastery (a mass version
 /// or a battle-wide spell) whose effects only change, dispel or heal stacks.
-pub(crate) fn opens_with(ruleset: &Ruleset, spell: &Spell, mastery: u8) -> bool {
+pub(crate) fn opens_with(ruleset: &BattleRuleset, spell: &BattleSpell, mastery: u8) -> bool {
     spell.category != SpellCategory::Ability
         && implemented(spell)
         && target_at(ruleset, spell, mastery) == SpellTarget::None
@@ -953,7 +957,7 @@ pub(crate) fn opens_with(ruleset: &Ruleset, spell: &Spell, mastery: u8) -> bool 
 // rule: BAT-MAG-068
 pub(crate) fn opening<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     id: StackId,
     sink: &mut S,
 ) {
@@ -1045,7 +1049,7 @@ fn stack_ids(state: &BattleState) -> impl Iterator<Item = StackId> + use<> {
 
 /// The distances from an area's centre that the area of `spell` at `mastery` covers: from
 /// `inner` to the radius (BAT-MAG-007; a hex spell without an area covers its hex).
-fn area(spell: &Spell, mastery: u8) -> (u32, u32) {
+fn area(spell: &BattleSpell, mastery: u8) -> (u32, u32) {
     spell.magic.area.map_or((0, 0), |a| {
         (
             u32::from(a.inner),
@@ -1065,7 +1069,7 @@ fn in_area(field: Field, centre: Hex, (inner, radius): (u32, u32), footprint: Fo
 /// The stacks `side`'s cast of `spell` at `mastery` aimed at `hex` reaches, by id (BAT-MAG-007).
 fn area_stacks<'a>(
     state: &'a BattleState,
-    ruleset: &'a Ruleset,
+    ruleset: &'a BattleRuleset,
     side: BattleSide,
     (spell, mastery): (SpellRef<'a>, u8),
     hex: Hex,
@@ -1083,7 +1087,7 @@ fn area_stacks<'a>(
 /// without a hero).
 fn raise_test<'r>(
     state: &BattleState,
-    ruleset: &'r Ruleset,
+    ruleset: &'r BattleRuleset,
     side: BattleSide,
     (spell, mastery): (SpellRef<'r>, u8),
 ) -> Option<Option<raise::RaiseTest<'r>>> {
@@ -1096,7 +1100,7 @@ fn raise_test<'r>(
 
 /// Whether `spell` makes its stacks immune to spells (Anti-Magic): no clone takes it
 /// ([`affects_stack`], BAT-MAG-021; the original's 0x5A8090, `installation.md` §7.13).
-fn grants_immunity(spell: &Spell) -> bool {
+fn grants_immunity(spell: &BattleSpell) -> bool {
     spell
         .magic
         .effects
@@ -1109,7 +1113,7 @@ fn grants_immunity(spell: &Spell) -> bool {
 /// [`raise::raisable`] (BAT-MAG-035, BAT-MAG-036), dead stacks included.
 fn stack_target(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     ((spell, mastery), raise): ((SpellRef<'_>, u8), Option<Option<raise::RaiseTest<'_>>>),
     s: StackId,
@@ -1136,7 +1140,7 @@ fn stack_target(
 // rule: BAT-MAG-003
 fn first_target(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     (spell, mastery): (SpellRef<'_>, u8),
     target: CastTarget,
@@ -1176,7 +1180,7 @@ fn first_target(
 // rule: BAT-MAG-029
 fn second_target(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     spell: SpellRef<'_>,
     (target, second): (CastTarget, CastTarget),
@@ -1201,7 +1205,7 @@ fn second_target(
 /// ([`first_target`], [`second_target`]).
 fn check_target(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     (spell, mastery): (SpellRef<'_>, u8),
     (target, second): (CastTarget, CastTarget),
@@ -1219,7 +1223,7 @@ fn check_target(
 /// every target of a spell without one does.
 fn has_second(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     spell: SpellRef<'_>,
     target: CastTarget,
@@ -1236,7 +1240,7 @@ fn has_second(
 }
 
 /// Every hex of the field as a target.
-fn hex_targets(ruleset: &Ruleset) -> impl Iterator<Item = CastTarget> + use<> {
+fn hex_targets(ruleset: &BattleRuleset) -> impl Iterator<Item = CastTarget> + use<> {
     (0u8..)
         .take(Field::new(ruleset.battle().field).hex_count())
         .map(|h| CastTarget::Hex(Hex(h)))
@@ -1245,13 +1249,13 @@ fn hex_targets(ruleset: &Ruleset) -> impl Iterator<Item = CastTarget> + use<> {
 /// What a cast of `spell` at `mastery` is aimed at (BAT-MAG-003): nothing for its mass version,
 /// which starts at the original's earlier mastery with quirk Q-0011 (BAT-MAG-023: Forgetfulness
 /// from Advanced), else at the fixed one.
-fn target_at(ruleset: &Ruleset, spell: &Spell, mastery: u8) -> SpellTarget {
+fn target_at(ruleset: &BattleRuleset, spell: &BattleSpell, mastery: u8) -> SpellTarget {
     let early = ruleset.quirks().is_enabled(EARLY_MASS_VERSION);
     spell.magic.target_at(mastery, early)
 }
 
 /// `power × power factor + effect[mastery]` of `hero`'s cast (BAT-MAG-004).
-pub(crate) fn base_value(hero: &HeroRecord, spell: &Spell, mastery: u8) -> u64 {
+pub(crate) fn base_value(hero: &HeroRecord, spell: &BattleSpell, mastery: u8) -> u64 {
     u64::from(hero.view.power) * u64::from(spell.power)
         + u64::from(spell.effect[usize::from(mastery)])
 }
@@ -1260,7 +1264,7 @@ pub(crate) fn base_value(hero: &HeroRecord, spell: &Spell, mastery: u8) -> u64 {
 /// `side` awaits a command outside the tactics phase.
 pub(crate) fn plan_cast<'r>(
     state: &BattleState,
-    ruleset: &'r Ruleset,
+    ruleset: &'r BattleRuleset,
     side: BattleSide,
     id: SpellId,
     (target, second): (CastTarget, CastTarget),
@@ -1303,7 +1307,7 @@ pub(crate) fn plan_cast<'r>(
 // rule: BAT-MAG-048
 pub(crate) fn creature_target(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     (caster, spell): (StackId, CreatureSpell),
     target: CastTarget,
@@ -1332,7 +1336,7 @@ pub(crate) fn creature_target(
 // rule: BAT-MAG-050
 fn helpful_target(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     caster: StackId,
     target: CastTarget,
@@ -1354,7 +1358,7 @@ fn helpful_target(
 /// auras is above zero unless the spell is positive (BAT-MAG-008).
 pub(crate) fn affectable(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     spell: SpellRef<'_>,
     s: StackId,
@@ -1374,7 +1378,7 @@ pub(crate) fn affectable(
 /// ([`affectable`]), by id (BAT-MAG-049).
 fn drawn_stacks<'a>(
     state: &'a BattleState,
-    ruleset: &'a Ruleset,
+    ruleset: &'a BattleRuleset,
     side: BattleSide,
     (caster, spell): (StackId, SpellRef<'a>),
 ) -> impl Iterator<Item = StackId> + 'a {
@@ -1389,7 +1393,7 @@ fn drawn_stacks<'a>(
 // rule: BAT-MAG-049
 fn drawn_target(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     (caster, (spell, mastery)): (StackId, (SpellRef<'_>, u8)),
     target: CastTarget,
@@ -1413,7 +1417,7 @@ fn drawn_target(
 /// index.
 pub(crate) fn creature_targets(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     (caster, spell): (StackId, CreatureSpell),
     out: &mut CastTargets,
@@ -1454,7 +1458,7 @@ pub(crate) fn creature_targets(
 /// hero's bonuses or cost; its timed effects last `power` rounds.
 pub(crate) fn plan_creature_cast<'r>(
     state: &BattleState,
-    ruleset: &'r Ruleset,
+    ruleset: &'r BattleRuleset,
     side: BattleSide,
     (caster, spell): (StackId, CreatureSpell),
     target: CastTarget,
@@ -1528,7 +1532,11 @@ pub(crate) fn periodic_cast<'r>(
 /// ([`casters::useful`]), each with the chance of its weight (the Master Genie's are all 1: the
 /// original's `random(1, n)` over them in spell order), at the caster's mastery and power.
 // rule: BAT-MAG-050
-fn draw_useful<'r>(state: &mut BattleState, ruleset: &'r Ruleset, cast: Cast<'r>) -> Cast<'r> {
+fn draw_useful<'r>(
+    state: &mut BattleState,
+    ruleset: &'r BattleRuleset,
+    cast: Cast<'r>,
+) -> Cast<'r> {
     // Validated: a stack's cast at a stack with a useful spell.
     let pair = (
         cast.by.unwrap_or_default(),
@@ -1566,7 +1574,7 @@ fn may_cast_now(state: &BattleState, actor: BattleSide) -> bool {
 /// stacks by id, hexes by index, or none. Empty if the hero may not cast the spell now.
 pub fn cast_targets(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
     spell: SpellId,
     out: &mut CastTargets,
@@ -1598,7 +1606,7 @@ pub fn cast_targets(
 /// target of the cast now.
 pub fn second_targets(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
     (spell, target): (SpellId, CastTarget),
     out: &mut CastTargets,
@@ -1635,7 +1643,7 @@ pub fn second_targets(
 /// an obstacle spell needs a hex where its shape fits and a remove spell an obstacle it removes.
 fn has_target(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
     (spell, mastery): (SpellRef<'_>, u8),
 ) -> bool {
@@ -1673,7 +1681,7 @@ fn has_target(
 /// Expert only, BAT-MAG-016).
 fn no_target(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     (spell, mastery): (SpellRef<'_>, u8),
 ) -> bool {
@@ -1696,7 +1704,11 @@ fn no_target(
 
 /// The spells `actor`'s hero may cast now: those with at least one target in
 /// [`cast_targets`] (empty if it is not `actor`'s turn, in the tactics phase or without a hero).
-pub fn castable_spells(state: &BattleState, ruleset: &Ruleset, actor: BattleSide) -> SpellSet {
+pub fn castable_spells(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    actor: BattleSide,
+) -> SpellSet {
     let mut out = SpellSet::default();
     let Some(hero) = state.heroes[actor.index()].as_ref() else {
         return out;
@@ -1728,7 +1740,7 @@ fn grow(value: u64, bp: u64) -> u64 {
 /// rates are exact, or single precision with quirk Q-0005. Saturates.
 // rule: BAT-MAG-004
 pub(crate) fn spell_damage(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (spell, hero): (SpellRef<'_>, Option<&SpellBonuses>),
     value: u64,
     (creature, protection): (CreatureTypeId, &[u8; MAX_SPELL_SCHOOLS]),
@@ -1765,7 +1777,7 @@ pub(crate) fn spell_damage(
 /// value and any rates.
 // rule: BAT-MAG-004
 fn caster_stage(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     ((id, spell), b): (SpellRef<'_>, &SpellBonuses),
     value: u64,
     creature: CreatureTypeId,
@@ -1826,8 +1838,8 @@ impl Specialist {
     /// The specialty of a hero whose bonuses for `spell` are `own`, on a stack of `creature`;
     /// `None` if it has no specialty in the spell.
     pub(crate) fn of(
-        ruleset: &Ruleset,
-        spell: &Spell,
+        ruleset: &BattleRuleset,
+        spell: &BattleSpell,
         own: SpellBonus,
         creature: CreatureTypeId,
     ) -> Option<Self> {
@@ -1863,8 +1875,8 @@ impl Specialist {
 /// the hero's bonuses for the spell: [`Specialist::bonus`], 0 without a specialty in the spell
 /// (BAT-MAG-020).
 pub(crate) fn specialist_bonus(
-    ruleset: &Ruleset,
-    spell: &Spell,
+    ruleset: &BattleRuleset,
+    spell: &BattleSpell,
     own: SpellBonus,
     creature: CreatureTypeId,
     t: u64,
@@ -1884,7 +1896,7 @@ pub(crate) fn specialist_bonus(
 // rule: BAT-MAG-018, BAT-MAG-058
 pub(crate) fn reflection(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (striker, target): (&Stack, StackId),
     first: u64,
 ) -> u64 {
@@ -1932,8 +1944,8 @@ pub(crate) fn reflection(
 /// damage times its share, rounded down, as `f32` values with quirk Q-0005.
 // rule: BAT-MAG-013
 fn protected(
-    ruleset: &Ruleset,
-    spell: &Spell,
+    ruleset: &BattleRuleset,
+    spell: &BattleSpell,
     damage: u64,
     protection: &[u8; MAX_SPELL_SCHOOLS],
 ) -> u64 {
@@ -1969,7 +1981,12 @@ fn protected(
 /// are negated (BAT-MAG-066: the original returns before both). With quirk Q-0005 the values are
 /// single precision and the difference is rounded to it, as the original's x87 code computes it
 /// (`installation.md` §7.8).
-fn share(state: &BattleState, ruleset: &Ruleset, caster: BattleSide, s: StackId) -> (u64, u64) {
+fn share(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    caster: BattleSide,
+    s: StackId,
+) -> (u64, u64) {
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
     let one = scale(single);
     // rule: BAT-MAG-066
@@ -1996,7 +2013,12 @@ fn share(state: &BattleState, ruleset: &Ruleset, caster: BattleSide, s: StackId)
 /// its [`share`] is above zero and no aura keeps all of it off; always when the immunities are
 /// negated, which lifts the aura too (BAT-MAG-066: the wiki and VCMI against the code reading
 /// until an experiment settles it, BAT-Q21).
-fn may_affect(state: &BattleState, ruleset: &Ruleset, caster: BattleSide, s: StackId) -> bool {
+fn may_affect(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    caster: BattleSide,
+    s: StackId,
+) -> bool {
     Guard::of(state, caster, s).negated
         || (share(state, ruleset, caster, s).0 > 0 && aura(state, ruleset, s) != Some(100))
 }
@@ -2010,7 +2032,7 @@ fn percent_rate(single: bool, percent: u8) -> u64 {
 /// is `s`'s own side, percent (BAT-MAG-008, BAT-MAG-026; the original's aura lists compare the
 /// Unicorn's side through its Hypnotize with the other stack's own side, 0x43EA70): a hypnotized
 /// stack keeps its side's aura, hypnotized Unicorns protect the side that commands them.
-fn aura(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u8> {
+fn aura(state: &BattleState, ruleset: &BattleRuleset, s: StackId) -> Option<u8> {
     let field = Field::new(ruleset.battle().field);
     let stack = state.at(s);
     let footprint = stack.footprint(field);
@@ -2043,9 +2065,9 @@ fn aura(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u8> {
 // rule: BAT-MAG-008
 pub(crate) fn affect_chance(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     caster: BattleSide,
-    spell: &Spell,
+    spell: &BattleSpell,
     s: StackId,
 ) -> u32 {
     // rule: BAT-MAG-066
@@ -2066,9 +2088,9 @@ pub(crate) fn affect_chance(
 /// to be affected is neither 0 nor 100.
 pub(crate) fn resists(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     caster: BattleSide,
-    spell: &Spell,
+    spell: &BattleSpell,
     s: StackId,
 ) -> bool {
     let chance = affect_chance(state, ruleset, caster, spell, s);
@@ -2085,7 +2107,7 @@ pub(crate) fn resists(
 /// resets the hit points and ends the effects before it heals, `installation.md` §7.10).
 fn affect<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     cast: &Cast<'_>,
     (s, value): (StackId, u64),
     sink: &mut S,
@@ -2178,7 +2200,7 @@ fn screen_centre(state: &BattleState, field: Field, s: StackId) -> (i64, i64) {
 // rule: BAT-MAG-006
 fn next_in_chain(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (caster, spell): (BattleSide, SpellRef<'_>),
     from: StackId,
     struck: &[bool; STACK_CAPACITY],
@@ -2207,10 +2229,10 @@ fn next_in_chain(
 /// The innate spell of `creature` with the timed change `change` (ability `innate_spell`): the
 /// spell and its value, the first such ability's (BAT-MAG-057, BAT-MAG-058).
 pub(crate) fn innate(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     creature: CreatureTypeId,
     change: TimedChange,
-) -> Option<(SpellId, &Spell, u8)> {
+) -> Option<(SpellId, &BattleSpell, u8)> {
     ruleset.abilities(creature).iter().find_map(|a| match *a {
         Ability::InnateSpell { spell, value } => ruleset
             .spell(spell)
@@ -2223,7 +2245,7 @@ pub(crate) fn innate(
 /// Magic Mirror's chance on `stack`, percent: the spell's while it is active (BAT-MAG-022), at
 /// least an innate mirror's (the Faerie Dragon's 20 %, BAT-MAG-057; the original's 0x4487F0).
 // rule: BAT-MAG-057
-pub(crate) fn mirror_chance(ruleset: &Ruleset, stack: &Stack) -> u8 {
+pub(crate) fn mirror_chance(ruleset: &BattleRuleset, stack: &Stack) -> u8 {
     let innate = innate(ruleset, stack.creature, TimedChange::MagicMirror).map_or(0, |i| i.2);
     stack.spells.mirror.max(innate)
 }
@@ -2238,7 +2260,7 @@ pub(crate) fn mirror_chance(ruleset: &Ruleset, stack: &Stack) -> u8 {
 // rule: BAT-MAG-022
 fn mirror<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     cast: &Cast<'_>,
     s: StackId,
     sink: &mut S,
@@ -2267,7 +2289,7 @@ fn mirror<S: Sink>(
 /// stack keeps its turn after its hero's cast.
 pub(crate) fn apply_cast<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     cast: Cast<'_>,
     sink: &mut S,
 ) {
@@ -2322,7 +2344,12 @@ pub(crate) fn apply_cast<S: Sink>(
 
 /// The effect of the validated `cast` (BAT-MAG-004 to BAT-MAG-039): obstacles placed or removed,
 /// stacks raised, cloned or summoned, or the spell's effects on the stacks it reaches.
-fn take_effect<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, cast: &Cast<'_>, sink: &mut S) {
+fn take_effect<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    cast: &Cast<'_>,
+    sink: &mut S,
+) {
     let magic = &cast.spell.magic;
     if magic.removes_obstacles() {
         // rule: BAT-MAG-034
@@ -2407,7 +2434,7 @@ fn take_effect<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, cast: &Cast<
 /// rolling first, its chain, Teleport's move, or the stacks of its area or of the battle.
 fn reach_stacks<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     cast: &Cast<'_>,
     sink: &mut S,
 ) {
@@ -2493,7 +2520,7 @@ fn reach_stacks<S: Sink>(
 // rule: BAT-MAG-029
 fn teleport<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     s: StackId,
     to: Hex,
     sink: &mut S,
@@ -2509,7 +2536,12 @@ fn teleport<S: Sink>(
 /// 0x59FB40, `installation.md` §7.15, §7.17): the spell can affect the stack (BAT-MAG-005,
 /// BAT-MAG-021) and its share after resistance is above 0 (BAT-MAG-008); there is no resistance
 /// roll.
-pub(crate) fn hurts(state: &BattleState, ruleset: &Ruleset, o: &SpellObstacle, s: StackId) -> bool {
+pub(crate) fn hurts(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    o: &SpellObstacle,
+    s: StackId,
+) -> bool {
     ruleset.spell(o.spell).is_some_and(|spell| {
         affects_stack(state, ruleset, o.side, (o.spell, spell), s)
             && share(state, ruleset, o.side, s).0 > 0
@@ -2524,7 +2556,7 @@ pub(crate) fn hurts(state: &BattleState, ruleset: &Ruleset, o: &SpellObstacle, s
 // rule: BAT-MAG-028
 pub(crate) fn burn<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     fire: &SpellObstacle,
     s: StackId,
     sink: &mut S,

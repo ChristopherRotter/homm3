@@ -4,7 +4,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{BattleParamsDef, Ruleset};
+use h3_content_battle::{BattleParamsDef, BattleRuleset};
 
 use super::spells::spell;
 use super::support::*;
@@ -13,7 +13,7 @@ use crate::state::StackFlags;
 use crate::{BattleState, Command, Event, EventKind, StackId};
 
 /// Puts stack `id` under the other side's control (Hypnotize, BAT-MAG-026).
-fn hypnotize(s: &mut BattleState, r: &Ruleset, id: u8) {
+fn hypnotize(s: &mut BattleState, r: &BattleRuleset, id: u8) {
     let id_spell = spell(r, "hypnotize");
     let cast = crate::effects::TimedCast {
         id: id_spell,
@@ -103,42 +103,49 @@ fn fear_takes_the_largest_chance_of_the_living_frighteners_outside_the_wait_phas
 // covers: BAT-MAG-024, BAT-MAG-043, BAT-MAG-060
 #[test]
 fn a_pack_cannot_take_every_turn_away_for_ever() {
-    use h3_content::{AbilityDef, CompileError, ContentKey, EffectDuration};
+    use h3_content::{CompileError, ContentKey};
+    use h3_content_battle::{AbilityDef, EffectDuration};
     let key = |name: &str| ContentKey::new("t", name).unwrap();
     // A timed effect that takes a stack's turns away must end.
     for spell in ["blind", "petrify", "paralysis"] {
         let refused = try_ruleset_from(
             "t:faithful",
             |_| {},
-            |pack| {
-                let def = pack.spells.iter_mut().find(|s| s.key == key(spell));
+            |_, battle| {
+                let def = battle.spells.iter_mut().find(|s| s.key == key(spell));
                 def.unwrap().magic.duration = EffectDuration::Permanent;
             },
         );
         assert_eq!(
             refused.err(),
-            Some(CompileError::InvalidContent {
-                kind: "spell",
-                key: std::format!("t:{spell}"),
-                reason: "an effect that takes a stack's turns away cannot be permanent",
-            })
+            Some(
+                CompileError::InvalidContent {
+                    kind: "spell",
+                    key: std::format!("t:{spell}"),
+                    reason: "an effect that takes a stack's turns away cannot be permanent",
+                }
+                .into()
+            )
         );
     }
     // A fear must leave the other side a chance to act.
     let refused = try_ruleset_from(
         "t:faithful",
         |_| {},
-        |pack| {
-            let azure = pack.creatures.iter_mut().find(|c| c.key == key("azure"));
-            azure.unwrap().info.abilities = vec![AbilityDef::Fear { percent: 100 }];
+        |_, battle| {
+            let azure = battle.creatures.iter_mut().find(|c| c.key == key("azure"));
+            azure.unwrap().abilities = vec![AbilityDef::Fear { percent: 100 }];
         },
     );
     assert_eq!(
         refused.err(),
-        Some(CompileError::InvalidCreature {
-            key: std::string::String::from("t:azure"),
-            reason: "fear percent must be 1..=99",
-        })
+        Some(
+            CompileError::InvalidCreature {
+                key: std::string::String::from("t:azure"),
+                reason: "fear percent must be 1..=99",
+            }
+            .into()
+        )
     );
 }
 

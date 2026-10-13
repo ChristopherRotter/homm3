@@ -45,10 +45,12 @@ Rules:
 crates/
   h3-kernel/       handles, FixedVec, PRNG + streams, canonical state hashing, kernel::num, order, arith; modifier primitives (ADR-0012)
   h3-contracts/    seam types: BattleSide, Army, BattleSetup, BattleOutcome, ...
-  h3-content/      definition model (creatures, ...), content-pack model, quirk registry, Ruleset compiler (pure: takes parsed data)
+  h3-content/      the core ruleset every context reads: keys, packs, profiles and quirks, resources, factions, terrains, creature identity, spells' rows, the hero content (pure; R01)
+  h3-content-battle/  the battle's ruleset part on top of the core: battle stats, abilities, obstacles, battle magic, battle parameters (pure; R01)
   h3-battle/       battle context
   h3-heroes/       heroes context: HeroDetails, their validation, war machines; the translation to BattleHero (E04a T4)
-  h3-pack/         content-pack and scenario text format (TOML) → content definitions / BattleSetup   (adapter, E01)
+  h3-pack/         packs/*/core.toml → the core's definitions (adapter, E01; split by R01)
+  h3-pack-battle/  packs/*/battle.toml and the battle scenarios → the battle part's definitions / BattleSetup (adapter, R01)
   h3-adventure/    adventure context: map, heroes on the map, movement, objects, fog of war; its ruleset part (E08, ADR-0015/0016)
   h3-town/ h3-magic/                                (later, split out when they earn it)
   h3-game/         application: the whole game's setup and state, players, turn groups, calendar, RNG streams, routing, projections (E08, ADR-0017)

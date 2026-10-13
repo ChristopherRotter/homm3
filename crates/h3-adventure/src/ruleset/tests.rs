@@ -14,7 +14,7 @@ use h3_content::{ContentPack, ProfileDef, ResourceDef, ResourceId, Ruleset, Terr
 use h3_kernel::hash::hash_of;
 
 use super::*;
-use crate::testing::{battle, key, manifest};
+use crate::testing::{key, manifest};
 
 fn cost(value: u16) -> NonZeroU16 {
     NonZeroU16::new(value).unwrap()
@@ -34,8 +34,7 @@ fn resource(k: &str) -> ResourceDef {
     }
 }
 
-/// Core packs: `t` (three terrains, the resources `t:wood` and `t:gold`, the battle parameters
-/// and the profile), `u` (depends on `t`, one terrain, the resource `u:gem`) and `v` (no
+/// Core packs: `t` (three terrains, the resources `t:wood` and `t:gold` and the profile), `u` (depends on `t`, one terrain, the resource `u:gem`) and `v` (no
 /// dependencies, no terrains).
 fn core() -> Ruleset {
     let t = ContentPack {
@@ -45,7 +44,6 @@ fn core() -> Ruleset {
             key: key("t:faithful"),
             quirks: vec![],
         }],
-        battle: Some(battle()),
         ..ContentPack::new(manifest("t", &[]))
     };
     let u = ContentPack {

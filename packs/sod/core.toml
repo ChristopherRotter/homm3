@@ -17,26 +17,6 @@ cost = { "base:gems" = 1, "base:gold" = 3000 }
 target = "base:archangel"
 cost = { "base:gems" = 3, "base:gold" = 5000 }
 
-[[creature_override]]
-target = "base:cerberus"
-damage = [2, 7]
-
-[[creature_override]]
-target = "base:air_elemental"
-abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "ab:magma_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_immunity", spell = "base:blind" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }, { kind = "spell_vulnerability", percent = 100, spell = "sod:titans_lightning_bolt" }]
-
-[[creature_override]]
-target = "base:earth_elemental"
-abilities = [{ kind = "hate", creature = "base:air_elemental", percent = 100 }, { kind = "hate", creature = "ab:storm_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:lightning_bolt" }, { kind = "spell_immunity", spell = "base:chain_lightning" }, { kind = "spell_immunity", spell = "base:armageddon" }, { kind = "spell_vulnerability", percent = 100, spell = "base:meteor_shower" }, { kind = "spell_immunity", spell = "sod:titans_lightning_bolt" }]
-
-[[creature_override]]
-target = "ab:magma_elemental"
-abilities = [{ kind = "hate", creature = "base:air_elemental", percent = 100 }, { kind = "hate", creature = "ab:storm_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:lightning_bolt" }, { kind = "spell_immunity", spell = "base:chain_lightning" }, { kind = "spell_immunity", spell = "base:armageddon" }, { kind = "spell_vulnerability", percent = 100, spell = "base:meteor_shower" }, { kind = "spell_immunity", spell = "sod:titans_lightning_bolt" }, { kind = "spell_caster", mastery = 2, power = 6, spell = "base:prot_from_earth" }]
-
-[[creature_override]]
-target = "ab:storm_elemental"
-abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "ab:magma_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_immunity", spell = "base:blind" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }, { kind = "spell_vulnerability", percent = 100, spell = "sod:titans_lightning_bolt" }, { kind = "spell_caster", mastery = 2, power = 6, spell = "base:protection_from_air" }]
-
 [[spell]]
 id = "titans_lightning_bolt"  # original id 57
 name = "Titan's Lightning Bolt"
@@ -46,11 +26,7 @@ schools = ["base:air"]
 cost = [0, 0, 0, 0]
 power = 0
 effect = [600, 600, 600, 600]
-polarity = "negative"
 granted_by_name_only = true
-target = "stack"
-side = "enemy"
-effects = [{ kind = "damage" }]
 
 [[artifact_slot_override]]
 target = "base:misc"

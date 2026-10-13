@@ -6,19 +6,24 @@
 //! (`docs/formats/installation.md` §7.23).
 
 use h3_battle::{BattleState, CastTargets, Command, Event, apply, cast_targets};
-use h3_content::{Formation, Ruleset};
+use h3_content::Formation;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, ArmyStack, BattleEffect, BattleHero, BattleSetup, BattleSide};
 
-fn sod() -> Ruleset {
-    h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+fn sod() -> BattleRuleset {
+    h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         "base:faithful",
     )
     .unwrap()
 }
 
 /// A hero with power 10, 100 mana, the eight spells in its book and `effects`.
-fn caster(r: &Ruleset, effects: Vec<BattleEffect>) -> BattleHero {
+fn caster(r: &BattleRuleset, effects: Vec<BattleEffect>) -> BattleHero {
     let mut h = BattleHero::new(r.hero_type_by_key("base:solmyr").unwrap());
     h.power = 10;
     h.magic.mana = 100;
@@ -41,7 +46,7 @@ const SPELLS: [&str; 8] = [
 
 /// Both sides field one creature of each of `CREATURES` and the three war machines; the
 /// attacker's hero has `effects` and acts first.
-fn battle(r: &Ruleset, effects: Vec<BattleEffect>) -> BattleState {
+fn battle(r: &BattleRuleset, effects: Vec<BattleEffect>) -> BattleState {
     let army = || Army {
         stacks: CREATURES
             .iter()
@@ -88,7 +93,7 @@ const CREATURES: [&str; 6] = [
 ];
 
 /// The creatures the attacker's hero may cast `spell` at now, by key (the war machines short).
-fn targets(s: &BattleState, r: &Ruleset, spell: &str) -> Vec<String> {
+fn targets(s: &BattleState, r: &BattleRuleset, spell: &str) -> Vec<String> {
     let mut out = CastTargets::new();
     cast_targets(
         s,

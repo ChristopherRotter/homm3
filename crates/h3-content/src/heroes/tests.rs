@@ -1,6 +1,5 @@
 extern crate std;
 
-use std::format;
 use std::vec;
 use std::vec::Vec;
 
@@ -11,8 +10,7 @@ use crate::pack::{
     SpellSchoolDef, StartingStackDef,
 };
 use crate::ruleset::Ruleset;
-use crate::ruleset::tests::{battle_def, creature, faction, key, manifest};
-use crate::spell::{SpellEffect, SpellMagic, SpellTarget, TimedChange};
+use crate::ruleset::tests::{creature, faction, key, manifest};
 
 fn school(k: &str) -> SpellSchoolDef {
     SpellSchoolDef {
@@ -32,17 +30,6 @@ fn spell(k: &str, schools: &[&str]) -> SpellDef {
         cost: [5, 4, 4, 4],
         power: 10,
         effect: [10, 10, 20, 30],
-        polarity: SpellPolarity::Negative,
-        magic: SpellMagic {
-            target: SpellTarget::Stack,
-            effects: vec![SpellEffect::Damage],
-            ..SpellMagic::default()
-        },
-        counters: vec![],
-        dispels: vec![],
-        spares: vec![],
-        tests_as: None,
-        summons: None,
         granted_by_name_only: false,
     }
 }
@@ -100,8 +87,6 @@ fn levels(effect: impl Fn(u16) -> HeroEffectDef) -> [Vec<HeroEffectDef>; 3] {
 /// skills, a class and a hero, plus the creatures they refer to.
 fn pack() -> ContentPack {
     let mut cart = creature("t:cart");
-    cart.damage_min = 0;
-    cart.damage_max = 0;
     cart.speed = 0;
     cart.info.flags = vec!["war_machine".into()];
     let mut peasant = creature("t:peasant");
@@ -110,7 +95,6 @@ fn pack() -> ContentPack {
     let mut ability = spell("t:gaze", &[]);
     ability.category = SpellCategory::Ability;
     ability.level = 0;
-    ability.magic = SpellMagic::default();
     ContentPack {
         factions: vec![faction("t:town")],
         creatures: vec![peasant, creature("t:farmer"), cart],
@@ -129,7 +113,6 @@ fn pack() -> ContentPack {
             key: key("t:faithful"),
             quirks: vec![],
         }],
-        battle: Some(battle_def()),
         ..ContentPack::new(manifest("t", &[]))
     }
 }
@@ -158,11 +141,7 @@ fn names_round_trip() {
     for c in SpellCategory::ALL {
         assert_eq!(SpellCategory::from_name(c.name()), Some(c));
     }
-    for p in SpellPolarity::ALL {
-        assert_eq!(SpellPolarity::from_name(p.name()), Some(p));
-    }
     assert_eq!(SpellCategory::from_name("hero"), None);
-    assert_eq!(SpellPolarity::from_name("evil"), None);
 }
 
 #[test]
@@ -178,7 +157,6 @@ fn compiles_every_kind_with_resolved_references() {
         (s.cost, s.power, s.effect),
         ([5, 4, 4, 4], 10, [10, 10, 20, 30])
     );
-    assert_eq!(s.polarity, SpellPolarity::Negative);
     assert_eq!(r.spells().len(), 2);
 
     let archery = r.skill_by_key("t:archery").unwrap();
@@ -214,544 +192,6 @@ fn compiles_every_kind_with_resolved_references() {
     );
     assert!(r.upgrades(Handle::from_raw(99)).is_empty());
     assert!(r.hero_type(Handle::from_raw(9)).is_none());
-}
-
-/// A timed spell `k` of the test pack's air school.
-fn timed(k: &str) -> SpellDef {
-    let mut s = spell(k, &["t:air"]);
-    s.magic.effects = vec![SpellEffect::Timed(TimedChange::Speed)];
-    s
-}
-
-#[test]
-fn counters_resolve_within_and_across_packs() {
-    let mut p = pack();
-    // `t:haste` names `t:slow`, which comes after it.
-    let mut haste = timed("t:haste");
-    haste.counters = vec![key("t:slow")];
-    let mut slow = timed("t:slow");
-    slow.counters = vec![key("t:haste")];
-    p.spells.extend([haste, slow]);
-    let r = compile(&[p.clone()]).unwrap();
-    let id = |k: &str| r.spell_by_key(k).unwrap();
-    assert_eq!(r.spell(id("t:haste")).unwrap().counters, vec![id("t:slow")]);
-    assert_eq!(r.spell(id("t:slow")).unwrap().counters, vec![id("t:haste")]);
-    assert!(r.spell(id("t:bolt")).unwrap().counters.is_empty());
-    let mut later = timed("u:rush");
-    later.counters = vec![key("t:slow")];
-    let ext = ContentPack {
-        spells: vec![later],
-        ..ContentPack::new(manifest("u", &["t"]))
-    };
-    let r2 = compile(&[p.clone(), ext]).unwrap();
-    let rush = r2.spell_by_key("u:rush").unwrap();
-    assert_eq!(r2.spell(rush).unwrap().counters, vec![id("t:slow")]);
-    let mut other = p.clone();
-    other.spells[3].counters.clear();
-    assert_ne!(compile(&[other]).unwrap().content_hash(), r.content_hash());
-}
-
-#[test]
-fn counters_are_checked() {
-    let reason = "counters need a timed effect and may not name the spell itself";
-    let mut p = pack();
-    let mut haste = timed("t:haste");
-    haste.counters = vec![key("t:haste")];
-    p.spells.push(haste);
-    assert_eq!(fails(p), invalid("spell", "t:haste", reason));
-    let mut p = pack();
-    p.spells[0].counters = vec![key("t:gaze")];
-    assert_eq!(fails(p), invalid("spell", "t:bolt", reason));
-    let mut p = pack();
-    p.spells[0].counters = vec![key("t:nope")];
-    assert_eq!(
-        fails(p),
-        CompileError::UnknownReference {
-            kind: "spell",
-            key: "t:nope".into()
-        }
-    );
-    let mut p = pack();
-    let mut haste = timed("t:haste");
-    haste.counters = vec![key("t:bolt"), key("t:bolt")];
-    p.spells.push(haste);
-    assert_eq!(fails(p), CompileError::DuplicateKey("t:bolt".into()));
-}
-
-/// A dispel spell `k` of the test pack's air school.
-fn dispel(k: &str) -> SpellDef {
-    let mut s = spell(k, &["t:air"]);
-    s.magic.effects = vec![SpellEffect::Dispel];
-    s
-}
-
-#[test]
-fn dispel_lists_resolve_and_are_checked() {
-    let mut p = pack();
-    // `t:purge` spares `t:haste`, which comes after it; `t:mend` ends only `t:haste`.
-    let mut purge = dispel("t:purge");
-    purge.spares = vec![key("t:haste")];
-    let mut mend = dispel("t:mend");
-    mend.dispels = vec![key("t:haste")];
-    p.spells.extend([purge, mend, timed("t:haste")]);
-    let r = compile(&[p.clone()]).unwrap();
-    let id = |k: &str| r.spell_by_key(k).unwrap();
-    assert_eq!(r.spell(id("t:purge")).unwrap().spares, vec![id("t:haste")]);
-    assert_eq!(r.spell(id("t:mend")).unwrap().dispels, vec![id("t:haste")]);
-    assert!(r.spell(id("t:purge")).unwrap().dispels.is_empty());
-    for (i, field) in [(2, "spares"), (3, "dispels")] {
-        let mut other = p.clone();
-        if field == "spares" {
-            other.spells[i].spares.clear();
-        } else {
-            other.spells[i].dispels.clear();
-        }
-        assert_ne!(compile(&[other]).unwrap().content_hash(), r.content_hash());
-    }
-    let reason = "dispels or spares (not both) need a dispel effect";
-    let mut both = p.clone();
-    both.spells[2].dispels = vec![key("t:haste")];
-    assert_eq!(fails(both), invalid("spell", "t:purge", reason));
-    let mut timed_only = p.clone();
-    timed_only.spells[4].spares = vec![key("t:purge")];
-    assert_eq!(fails(timed_only), invalid("spell", "t:haste", reason));
-    let mut timed_only = p.clone();
-    timed_only.spells[4].dispels = vec![key("t:purge")];
-    assert_eq!(fails(timed_only), invalid("spell", "t:haste", reason));
-    let unknown = CompileError::UnknownReference {
-        kind: "spell",
-        key: "t:nope".into(),
-    };
-    let mut bad = p.clone();
-    bad.spells[2].spares = vec![key("t:nope")];
-    assert_eq!(fails(bad), unknown);
-    let mut bad = p;
-    bad.spells[3].dispels = vec![key("t:nope")];
-    assert_eq!(fails(bad), unknown);
-}
-
-/// A stack spell of `effect` (v17: raise, sacrifice).
-fn raising(k: &str, effect: SpellEffect) -> SpellDef {
-    let mut s = spell(k, &["t:air"]);
-    s.magic.target = SpellTarget::Stack;
-    s.magic.effects = vec![effect];
-    s
-}
-
-#[test]
-fn a_sacrifice_names_the_raise_spell_it_is_tested_as() {
-    let mut p = pack();
-    // `t:offer` names `t:rise`, which comes after it.
-    let mut offer = raising("t:offer", SpellEffect::Sacrifice);
-    offer.tests_as = Some(key("t:rise"));
-    p.spells
-        .extend([offer, raising("t:rise", SpellEffect::Raise)]);
-    let r = compile(&[p.clone()]).unwrap();
-    let id = |k: &str| r.spell_by_key(k).unwrap();
-    assert_eq!(r.spell(id("t:offer")).unwrap().tests_as, Some(id("t:rise")));
-    assert_eq!(r.spell(id("t:rise")).unwrap().tests_as, None);
-    let reason = "a sacrifice effect needs tests_as, a spell with a raise effect";
-    let first = p.spells.len() - 2;
-    let mut missing = p.clone();
-    missing.spells[first].tests_as = None;
-    assert_eq!(fails(missing), invalid("spell", "t:offer", reason));
-    let mut not_a_raise = p.clone();
-    not_a_raise.spells[first].tests_as = Some(key("t:offer"));
-    assert_eq!(fails(not_a_raise), invalid("spell", "t:offer", reason));
-    let mut no_sacrifice = p.clone();
-    no_sacrifice.spells[first + 1].tests_as = Some(key("t:rise"));
-    assert_eq!(fails(no_sacrifice), invalid("spell", "t:rise", reason));
-    let mut unknown = p.clone();
-    unknown.spells[first].tests_as = Some(key("t:nope"));
-    assert_eq!(
-        fails(unknown),
-        CompileError::UnknownReference {
-            kind: "spell",
-            key: "t:nope".into(),
-        }
-    );
-    let mut other = p;
-    other.spells[first].tests_as = None;
-    other.spells[first].magic.effects = vec![SpellEffect::Raise];
-    assert_ne!(compile(&[other]).unwrap().content_hash(), r.content_hash());
-}
-
-#[test]
-fn strike_abilities_name_spells_that_do_what_they_need() {
-    use crate::ability::AbilityDef;
-    let mut p = pack();
-    let mut unbless = dispel("t:unbless");
-    unbless.magic.dispels_positive = true;
-    p.spells.extend([timed("t:haste"), unbless]);
-    let after = |spell: &str| AbilityDef::SpellAfterStrike {
-        spell: key(spell),
-        chance_percent: 20,
-        mastery: 0,
-        rounds: 3,
-        living: false,
-        unless_active: false,
-        defended: false,
-    };
-    let damage = |spell: &str| AbilityDef::SpellDamageAfterStrike {
-        spell: key(spell),
-        chance_percent: 20,
-        per_creature: 10,
-    };
-    p.creatures[0].info.abilities = vec![after("t:haste"), after("t:unbless"), damage("t:bolt")];
-    let r = compile(&[p.clone()]).unwrap();
-    let unbless = r.spell_by_key("t:unbless").unwrap();
-    assert!(r.spell(unbless).unwrap().magic.dispels_positive);
-    let invalid = |reason| CompileError::InvalidCreature {
-        key: "t:peasant".into(),
-        reason,
-    };
-    for (ability, reason) in [
-        (
-            after("t:bolt"),
-            "spell_after_strike needs a spell with timed or dispel effects only",
-        ),
-        (
-            after("t:gaze"),
-            "spell_after_strike needs a spell with timed or dispel effects only",
-        ),
-        (
-            damage("t:haste"),
-            "spell_damage_after_strike needs a spell with a damage effect",
-        ),
-    ] {
-        let mut bad = p.clone();
-        bad.creatures[0].info.abilities = vec![ability];
-        assert_eq!(fails(bad), invalid(reason));
-    }
-    let mut no_dispel = p;
-    no_dispel.spells[2].magic.dispels_positive = true;
-    assert_eq!(
-        fails(no_dispel),
-        invalid_spell("t:haste", "dispels_positive needs a dispel effect")
-    );
-}
-
-#[test]
-fn a_casters_spell_takes_a_target_stack_at_its_mastery() {
-    use crate::ability::{Ability, AbilityDef};
-    let mut p = pack();
-    // Haste: one stack below Expert, all of them from Expert (its mass version); with quirk
-    // Q-0011's earlier mass version from Advanced (`mass_from`, `fixed_mass_from` without it).
-    let mut haste = timed("t:haste");
-    haste.magic.mass_from = Some(2);
-    haste.magic.fixed_mass_from = Some(3);
-    let mut charm = timed("t:charm");
-    charm.magic.health_limit = true;
-    let mut wall = timed("t:wall");
-    wall.magic.target = SpellTarget::Hex;
-    p.spells
-        .extend([haste, charm, wall, raising("t:rise", SpellEffect::Raise)]);
-    let caster = |spell: &str, mastery| AbilityDef::SpellCaster {
-        spell: key(spell),
-        mastery,
-        power: 6,
-    };
-    for ok in [caster("t:bolt", 3), caster("t:haste", 1)] {
-        let mut good = p.clone();
-        good.creatures[0].info.abilities = vec![ok];
-        let r = compile(&[good]).unwrap();
-        let peasant = r.creature_by_key("t:peasant").unwrap();
-        assert!(matches!(
-            r.abilities(peasant),
-            [Ability::SpellCaster { power: 6, .. }]
-        ));
-    }
-    let reason = "spell_caster needs a spell with damage, timed, dispel or heal effects and no \
-                  health limit that takes a target stack at its mastery";
-    for bad_ability in [
-        caster("t:gaze", 0),
-        caster("t:haste", 2),
-        caster("t:haste", 3),
-        caster("t:charm", 0),
-        caster("t:wall", 0),
-        caster("t:rise", 0),
-    ] {
-        let mut bad = p.clone();
-        bad.creatures[0].info.abilities = vec![bad_ability];
-        assert_eq!(
-            fails(bad),
-            CompileError::InvalidCreature {
-                key: "t:peasant".into(),
-                reason,
-            }
-        );
-    }
-}
-
-#[test]
-fn a_random_casters_drawn_spells_take_a_stack_or_a_hex_at_its_mastery() {
-    use crate::ability::{Ability, AbilityDef};
-    let mut p = pack();
-    let mut haste = timed("t:haste");
-    haste.magic.mass_from = Some(3);
-    let mut charm = timed("t:charm");
-    charm.magic.health_limit = true;
-    let mut wall = timed("t:wall");
-    wall.magic.target = SpellTarget::Hex;
-    // An Armageddon: damage without a target.
-    let mut doom = spell("t:doom", &["t:air"]);
-    doom.magic.target = SpellTarget::None;
-    p.spells.extend([
-        haste,
-        charm,
-        wall,
-        raising("t:rise", SpellEffect::Raise),
-        doom,
-    ]);
-    let random = |mastery| AbilityDef::RandomSpellCaster {
-        mastery,
-        power_per_creature: 5,
-    };
-    let drawn = |spell: &str| AbilityDef::DrawnSpell {
-        spell: key(spell),
-        weight: 10,
-    };
-    // A stack spell, a hex spell and one whose mass version starts above the caster's mastery,
-    // listed before or after their caster (BAT-MAG-049).
-    for ok in [
-        vec![
-            random(2),
-            drawn("t:bolt"),
-            drawn("t:wall"),
-            drawn("t:haste"),
-        ],
-        vec![drawn("t:haste"), random(2)],
-    ] {
-        let mut good = p.clone();
-        good.creatures[0].info.abilities = ok;
-        let r = compile(&[good]).unwrap();
-        let peasant = r.creature_by_key("t:peasant").unwrap();
-        assert!(
-            r.abilities(peasant)
-                .iter()
-                .any(|a| matches!(a, Ability::DrawnSpell { weight: 10, .. }))
-        );
-    }
-    let reason = "drawn_spell needs a spell with damage, timed, dispel or heal effects and no \
-                  health limit or obstacle that takes a target stack or hex (for a helpful \
-                  caster a stack; for a periodic caster no target, and no damage) at its \
-                  caster's mastery";
-    let helpful = AbilityDef::HelpfulSpellCaster {
-        mastery: 2,
-        power: 6,
-    };
-    let mut good = p.clone();
-    good.creatures[0].info.abilities = vec![drawn("t:haste"), helpful.clone()];
-    assert!(compile(&[good]).is_ok());
-    // A periodic caster's spells take no target at its mastery: a mass version (BAT-MAG-053).
-    let periodic = |mastery| AbilityDef::PeriodicSpellCaster {
-        rounds: 3,
-        mastery,
-        power: 3,
-    };
-    let mut good = p.clone();
-    good.creatures[0].info.abilities = vec![periodic(3), drawn("t:haste")];
-    let r = compile(&[good]).unwrap();
-    let peasant = r.creature_by_key("t:peasant").unwrap();
-    assert!(matches!(
-        r.abilities(peasant),
-        [Ability::PeriodicSpellCaster { rounds: 3, .. }, ..]
-    ));
-    for bad_abilities in [
-        vec![random(2), drawn("t:gaze")],
-        vec![random(2), drawn("t:charm")],
-        vec![random(2), drawn("t:rise")],
-        vec![random(3), drawn("t:haste")],
-        vec![helpful, drawn("t:wall")],
-        vec![periodic(2), drawn("t:haste")],
-        vec![periodic(3), drawn("t:bolt")],
-        vec![periodic(3), drawn("t:doom")],
-    ] {
-        let mut bad = p.clone();
-        bad.creatures[0].info.abilities = bad_abilities;
-        assert_eq!(
-            fails(bad),
-            CompileError::InvalidCreature {
-                key: "t:peasant".into(),
-                reason,
-            }
-        );
-    }
-}
-
-#[test]
-fn a_corpse_raiser_raises_one_one_hex_creature() {
-    use crate::ability::{Ability, AbilityDef};
-    let raiser = |creature: &str| AbilityDef::CorpseRaiser {
-        creature: key(creature),
-        hit_points_per_creature: 50,
-    };
-    let mut p = pack();
-    p.creatures[0].info.abilities = vec![raiser("t:farmer")];
-    p.creatures[1].info.abilities = vec![raiser("t:farmer")];
-    let r = compile(&[p.clone()]).unwrap();
-    let peasant = r.creature_by_key("t:peasant").unwrap();
-    assert!(matches!(
-        r.abilities(peasant),
-        [Ability::CorpseRaiser {
-            hit_points_per_creature: 50,
-            ..
-        }]
-    ));
-    // At most one creature raised from corpses in a ruleset (BAT-MAG-052).
-    let mut two = p.clone();
-    two.creatures[1].info.abilities = vec![raiser("t:peasant")];
-    assert_eq!(
-        fails(two),
-        CompileError::TooManyEntries("corpse_raiser creature")
-    );
-    let mut wide = p;
-    wide.creatures[1].info.flags.push("two_hex".into());
-    assert_eq!(
-        fails(wide),
-        CompileError::InvalidCreature {
-            key: "t:peasant".into(),
-            reason: "corpse_raiser needs a one-hex creature",
-        }
-    );
-}
-
-#[test]
-fn a_stack_raiser_needs_a_raise_spell() {
-    use crate::ability::{Ability, AbilityDef};
-    let mut p = pack();
-    let mut offer = raising("t:offer", SpellEffect::Sacrifice);
-    offer.tests_as = Some(key("t:rise"));
-    p.spells
-        .extend([raising("t:rise", SpellEffect::Raise), offer]);
-    let raiser = |spell: &str| AbilityDef::StackRaiser {
-        spell: key(spell),
-        hit_points_per_creature: 100,
-    };
-    let mut good = p.clone();
-    good.creatures[0].info.abilities = vec![raiser("t:rise")];
-    let r = compile(&[good]).unwrap();
-    let peasant = r.creature_by_key("t:peasant").unwrap();
-    assert!(matches!(
-        r.abilities(peasant),
-        [Ability::StackRaiser {
-            hit_points_per_creature: 100,
-            ..
-        }]
-    ));
-    for spell in ["t:offer", "t:bolt"] {
-        let mut bad = p.clone();
-        bad.creatures[0].info.abilities = vec![raiser(spell)];
-        assert_eq!(
-            fails(bad),
-            CompileError::InvalidCreature {
-                key: "t:peasant".into(),
-                reason: "stack_raiser needs a spell with a raise effect",
-            }
-        );
-    }
-}
-
-#[test]
-fn an_innate_spell_is_a_fire_shield_or_a_magic_mirror() {
-    use crate::ability::{Ability, AbilityDef};
-    let mut p = pack();
-    let with = |k: &str, change| {
-        let mut s = timed(k);
-        s.magic.effects = vec![SpellEffect::Timed(change)];
-        s
-    };
-    p.spells.extend([
-        with("t:shield", TimedChange::FireShield),
-        with("t:mirror", TimedChange::MagicMirror),
-        timed("t:haste"),
-    ]);
-    let innate = |spell: &str| AbilityDef::InnateSpell {
-        spell: key(spell),
-        value: 20,
-    };
-    let mut good = p.clone();
-    good.creatures[0].info.abilities = vec![innate("t:shield"), innate("t:mirror")];
-    let r = compile(&[good]).unwrap();
-    let peasant = r.creature_by_key("t:peasant").unwrap();
-    let (shield, mirror) = (
-        r.spell_by_key("t:shield").unwrap(),
-        r.spell_by_key("t:mirror").unwrap(),
-    );
-    assert_eq!(
-        r.abilities(peasant),
-        [
-            Ability::InnateSpell {
-                spell: shield,
-                value: 20
-            },
-            Ability::InnateSpell {
-                spell: mirror,
-                value: 20
-            }
-        ]
-    );
-    for spell in ["t:haste", "t:bolt"] {
-        let mut bad = p.clone();
-        bad.creatures[0].info.abilities = vec![innate(spell)];
-        assert_eq!(
-            fails(bad),
-            CompileError::InvalidCreature {
-                key: "t:peasant".into(),
-                reason: "innate_spell needs a spell with a timed fire_shield or magic_mirror \
-                         change",
-            }
-        );
-    }
-}
-
-fn invalid_spell(k: &str, reason: &'static str) -> CompileError {
-    invalid("spell", k, reason)
-}
-
-#[test]
-fn a_summon_spell_names_its_creature() {
-    let mut p = pack();
-    let mut conjure = spell("t:conjure", &["t:air"]);
-    conjure.magic = SpellMagic {
-        effects: vec![SpellEffect::Summon],
-        ..SpellMagic::default()
-    };
-    conjure.summons = Some(key("t:farmer"));
-    p.spells.push(conjure);
-    let r = compile(&[p.clone()]).unwrap();
-    let id = r.spell_by_key("t:conjure").unwrap();
-    let farmer = r.creature_by_key("t:farmer").unwrap();
-    assert_eq!(r.spell(id).unwrap().summons, Some(farmer));
-    let reason = "a summon effect and the creature it summons go together";
-    let last = p.spells.len() - 1;
-    let mut missing = p.clone();
-    missing.spells[last].summons = None;
-    assert_eq!(fails(missing), invalid("spell", "t:conjure", reason));
-    let mut no_summon = p.clone();
-    no_summon.spells[0].summons = Some(key("t:farmer"));
-    let first = no_summon.spells[0].key.clone();
-    assert_eq!(fails(no_summon), invalid("spell", first.as_str(), reason));
-    let mut unknown = p.clone();
-    unknown.spells[last].summons = Some(key("t:nope"));
-    assert_eq!(
-        fails(unknown),
-        CompileError::UnknownReference {
-            kind: "creature",
-            key: "t:nope".into(),
-        }
-    );
-    let mut other = p.clone();
-    other.spells[last].summons = Some(key("t:peasant"));
-    assert_ne!(compile(&[other]).unwrap().content_hash(), r.content_hash());
-    // At most `MAX_SUMMON_SPELLS` (4) summon spells.
-    let mut many = p;
-    for i in 0..MAX_SUMMON_SPELLS {
-        let mut extra = many.spells[last].clone();
-        extra.key = key(&format!("t:conjure{i}"));
-        many.spells.push(extra);
-    }
-    assert_eq!(fails(many), CompileError::TooManyEntries("summon spell"));
 }
 
 #[test]
@@ -880,11 +320,10 @@ fn every_effect_kind_resolves_and_the_hash_sees_all_content() {
     assert!(SpellGrant::Spell(bolt).gives(&n, bolt));
 
     // Every kind of entry contributes to the hash.
-    let changes: [fn(&mut ContentPack); 8] = [
+    let changes: [fn(&mut ContentPack); 7] = [
         |p| p.spell_schools[0].name = "X".into(),
         |p| p.spells[0].effect[3] = 31,
         |p| p.spells[0].granted_by_name_only = true,
-        |p| p.spells[0].magic.target = SpellTarget::None,
         |p| p.skills[0].levels[0] = vec![HeroEffect::RangedDamage { bp: 999 }],
         |p| p.hero_classes[0].skill_weights[0].1 = 6,
         |p| p.heroes[0].army[0].count = [10, 21],
@@ -1241,14 +680,6 @@ fn invalid_entries_are_rejected() {
             ),
         ),
         (
-            |p| p.spells[0].category = SpellCategory::Adventure,
-            invalid("spell", "t:bolt", "adventure spells have no battle effects"),
-        ),
-        (
-            |p| p.spells[1].magic.target = SpellTarget::Hex,
-            invalid("spell", "t:gaze", "targeting without effects"),
-        ),
-        (
             |p| p.spells[1].schools = vec![key("t:air")],
             invalid(
                 "spell",
@@ -1289,17 +720,6 @@ fn invalid_entries_are_rejected() {
         (
             |p| p.heroes[0].spell_book = false,
             invalid("hero type", "t:orrin", "starting spells need a spell book"),
-        ),
-        (
-            |p| {
-                let stack = p.heroes[0].army[0].clone();
-                p.heroes[0].army = vec![stack; 4];
-            },
-            invalid(
-                "hero type",
-                "t:orrin",
-                "more starting stacks than army slots",
-            ),
         ),
         (
             |p| p.heroes[0].army[1].count = [0, 0],
@@ -1427,8 +847,6 @@ fn a_later_override_can_invalidate_a_hero() {
         target: key("t:cart"),
         patch: crate::CreaturePatch {
             flags: Some(vec![]),
-            damage_min: Some(1),
-            damage_max: Some(1),
             speed: Some(1),
             ..Default::default()
         },
@@ -1531,11 +949,6 @@ fn data_quirk_packs() -> [ContentPack; 2] {
         fixes: Some("quirk.content.levels".into()),
         patch: crate::CreaturePatch {
             level: Some(5),
-            attack: Some(9),
-            abilities: Some(vec![crate::AbilityDef::Hate {
-                target: key("t:peasant"),
-                percent: 50,
-            }]),
             ..Default::default()
         },
     });
@@ -1563,13 +976,9 @@ fn gated_overrides_apply_only_where_the_profile_fixes_the_quirk() {
     let orrin = faithful.hero_type_by_key("t:orrin").unwrap();
     // `faithful` keeps the original's values: the gated overrides change nothing.
     assert_eq!(faithful.creature_info(farmer), plain.creature_info(farmer));
-    assert_eq!(faithful.creature(farmer), plain.creature(farmer));
-    assert_eq!(faithful.abilities(farmer), plain.abilities(farmer));
     assert_eq!(faithful.hero_type(orrin), plain.hero_type(orrin));
     // `fixed` turns both flags off (the specialty's by leaving it out): both overrides apply.
     assert_eq!(fixed.creature_info(farmer).unwrap().level, 5);
-    assert_eq!(fixed.creature(farmer).unwrap().attack, 9);
-    assert_eq!(fixed.abilities(farmer).len(), 1);
     assert!(matches!(
         fixed.hero_type(orrin).unwrap().specialty.as_slice(),
         [HeroEffect::CreatureStat { .. }]

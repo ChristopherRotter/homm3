@@ -12,7 +12,12 @@ use crate::damage::{Strike, apply_damage, base_damage, effective_defense};
 use crate::event::StrikeFlags;
 
 /// Damage of `base` with only the attack/defense factor, exact decimal rates (BAT-DMG-002).
-fn modified_damage(base: u64, attack: u16, defense: u16, p: &h3_content::BattleParams) -> u64 {
+fn modified_damage(
+    base: u64,
+    attack: u16,
+    defense: u16,
+    p: &h3_content_battle::BattleParams,
+) -> u64 {
     Strike::new(attack.into(), defense.into()).damage(base, p, false)
 }
 
@@ -22,7 +27,7 @@ fn staged_damage(
     base: u64,
     (attack, defense): (u16, u16),
     (penalty_percent, armorer_bp): (u16, u16),
-    p: &h3_content::BattleParams,
+    p: &h3_content_battle::BattleParams,
 ) -> u64 {
     let mut s = Strike::new(attack.into(), defense.into());
     s.penalty_percent = penalty_percent;
@@ -640,7 +645,7 @@ fn the_staged_damage_reproduces_batch_2b() {
 
 /// Exact damage (no stages) of `base` with equal attack and defense and Armorer in basis
 /// points.
-fn modified_damage_reduced(base: u64, armorer_bp: u16, p: &h3_content::BattleParams) -> u64 {
+fn modified_damage_reduced(base: u64, armorer_bp: u16, p: &h3_content_battle::BattleParams) -> u64 {
     let mut s = Strike::new(0, 0);
     s.hero_reduction = Rate::bp(armorer_bp.into());
     s.damage(base, p, false)

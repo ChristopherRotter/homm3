@@ -8,7 +8,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{Ability, CompiledAbility, Ruleset};
+use h3_content_battle::{Ability, BattleRuleset, CompiledAbility};
 use h3_contracts::{BattleResult, BattleSide};
 
 use super::support::*;
@@ -49,7 +49,7 @@ fn targets_of(events: &[Event], attacker: u8) -> Vec<u8> {
 }
 
 /// The active stack attacks `target` from `(x, y)`.
-fn hit(s: &mut BattleState, r: &Ruleset, target: u8, (x, y): (i32, i32)) -> Vec<Event> {
+fn hit(s: &mut BattleState, r: &BattleRuleset, target: u8, (x, y): (i32, i32)) -> Vec<Event> {
     let from = at(r, x, y);
     act(
         s,
@@ -63,7 +63,7 @@ fn hit(s: &mut BattleState, r: &Ruleset, target: u8, (x, y): (i32, i32)) -> Vec<
 }
 
 /// Places the stacks of `s` at the given positions, in stack-id order.
-fn arrange(s: &mut BattleState, r: &Ruleset, positions: &[(i32, i32)]) {
+fn arrange(s: &mut BattleState, r: &BattleRuleset, positions: &[(i32, i32)]) {
     for (id, &(x, y)) in (0u8..).zip(positions) {
         place(s, r, id, x, y);
     }
@@ -178,7 +178,7 @@ fn retaliations_per_round_come_from_the_abilities() {
 
 /// Three tanks attack the defender `name` ×10 in turn; returns whether each attack was
 /// retaliated, and the battle.
-fn three_attacks(r: &Ruleset, name: &'static str) -> (Vec<bool>, BattleState) {
+fn three_attacks(r: &BattleRuleset, name: &'static str) -> (Vec<bool>, BattleState) {
     let mut s = battle(
         r,
         &[(0, "tank", 1), (1, "tank", 1), (2, "tank", 1)],

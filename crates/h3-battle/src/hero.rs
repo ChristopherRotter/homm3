@@ -9,9 +9,10 @@
 use core::num::NonZeroU32;
 
 use h3_content::{
-    CreatureFlag, CreatureSelector, CreatureStat, CreatureType, CreatureTypeId, FULL_BP,
-    HeroTypeId, MAX_SKILL_LEVEL, Ruleset, SINGLE_PRECISION_RATES, SpellCategory, SpellScope,
+    CreatureFlag, CreatureSelector, CreatureStat, CreatureTypeId, FULL_BP, HeroTypeId,
+    MAX_SKILL_LEVEL, SINGLE_PRECISION_RATES, SpellCategory, SpellScope,
 };
+use h3_content_battle::{BattleRuleset, CreatureType};
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS, Rate,
     StatOp, TentControl,
@@ -151,7 +152,7 @@ pub(crate) fn may_retreat(heroes: &[Option<HeroRecord>; 2], side: BattleSide) ->
 /// `PercentBp`, down for `PercentBpDown`). War machines keep their speed (batch 1b R8).
 // rule: BAT-HER-005
 pub(crate) fn stat_changes(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     hero: Option<&BattleHero>,
     (id, creature): (CreatureTypeId, &CreatureType),
 ) -> [i64; 6] {
@@ -202,7 +203,7 @@ pub(crate) fn stat_changes(
 /// points of the matching `Regeneration` effects (0 without one).
 // rule: BAT-HER-006
 pub(crate) fn trait_effects(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     hero: Option<&BattleHero>,
     id: CreatureTypeId,
     mut traits: StackTraits,
@@ -287,7 +288,7 @@ pub(crate) fn hash_rate(h: &mut StateHasher, r: Rate) {
 /// `funds`.
 // rule: BAT-HER-001
 pub(crate) fn check(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     hero: &BattleHero,
     funds: u32,

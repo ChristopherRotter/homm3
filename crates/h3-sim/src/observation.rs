@@ -96,7 +96,8 @@ use h3_battle::{
     DamageRoll, HeroView, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Observation, OwnHeroView,
     STACK_CAPACITY, SpellObstacle, StackFlags, StackTraits, Status,
 };
-use h3_content::{MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS, MAX_SPELLS, ObstacleKind};
+use h3_content::{MAX_SPELL_SCHOOLS, MAX_SPELLS};
+use h3_content_battle::{MAX_FIELD_HEXES, ObstacleKind};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
@@ -477,7 +478,7 @@ mod tests {
 
     #[test]
     fn encodes_globals_and_stacks() {
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_DUEL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_DUEL).unwrap();
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let obs = observe(&s, &r, BattleSide::Defender);
         let mut out = vec![9.0; OBSERVATION_LEN + 3];
@@ -575,7 +576,7 @@ mod tests {
     #[test]
     fn encodes_the_heroes_and_shows_the_private_part_only_to_its_side() {
         use BattleSide::{Attacker, Defender};
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let mut out = vec![0.0; OBSERVATION_LEN];
         // Both sides are led by a hero (`full.toml`): Brea's Tactics give her a tactics phase
@@ -816,7 +817,7 @@ mod tests {
 
     #[test]
     fn encodes_morale_luck_shots_war_machines_and_traits_from_heroes() {
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let mut out = vec![0.0; OBSERVATION_LEN];
         encode(&observe(&s, &r, BattleSide::Attacker), 17, &mut out).unwrap();
@@ -852,7 +853,7 @@ mod tests {
     #[test]
     fn encodes_the_timed_effects_of_stacks() {
         use h3_battle::{ActiveEffect, StackId};
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let mut obs = observe(&s, &r, BattleSide::Attacker);
         let spell = |k: &str| r.spell_by_key(k).unwrap();
@@ -901,8 +902,8 @@ mod tests {
     #[test]
     fn encodes_the_battlefield() {
         use h3_battle::{Hex, HexSet, SpellObstacle};
-        use h3_content::ObstacleKind::{Fire, Mine, Pit, Wall};
-        let (r, mut setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_DUEL).unwrap();
+        use h3_content_battle::ObstacleKind::{Fire, Mine, Pit, Wall};
+        let (r, mut setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_DUEL).unwrap();
         // A removable obstacle on hexes 40 and 41 with its anchor 57, a fixed one on 60.
         setup.obstacles = std::vec![
             h3_contracts::Obstacle {
@@ -985,7 +986,7 @@ mod tests {
     #[test]
     fn encodes_the_hidden_magic_and_what_the_battle_keeps_per_stack() {
         use h3_battle::{Opening, SpellBonus, StackId, Status};
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let mut obs = observe(&s, &r, BattleSide::Defender);
         let spell = |k: &str| r.spell_by_key(k).unwrap();

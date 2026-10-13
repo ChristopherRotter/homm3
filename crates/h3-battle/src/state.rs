@@ -3,9 +3,11 @@
 
 use alloc::vec::Vec;
 use h3_content::{
-    Ability, AreaShot, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS, MAX_SIDE_STACKS,
-    NATIVES_SIGHT_AT_START, OBSTACLE_ANCHORS, Ruleset, TerrainId, UNLIMITED_BALLISTA_SHOTS,
-    WAR_MACHINE_KINDS,
+    CreatureFlag, CreatureTypeId, MAX_ARMY_SLOTS, NATIVES_SIGHT_AT_START, OBSTACLE_ANCHORS,
+    TerrainId, UNLIMITED_BALLISTA_SHOTS,
+};
+use h3_content_battle::{
+    Ability, AreaShot, BattleRuleset, CreatureType, MAX_SIDE_STACKS, WAR_MACHINE_KINDS,
 };
 
 use h3_contracts::{
@@ -221,10 +223,13 @@ impl StackTraits {
     }
 
     /// The traits of a creature type.
-    pub(crate) fn of(creature: &CreatureType, abilities: &[h3_content::CompiledAbility]) -> Self {
+    pub(crate) fn of(
+        creature: &CreatureType,
+        abilities: &[h3_content_battle::CompiledAbility],
+    ) -> Self {
         let flags = creature.flags;
         let has = |f| flags.contains(f);
-        let ability = |f: fn(&h3_content::CompiledAbility) -> bool| abilities.iter().any(f);
+        let ability = |f: fn(&h3_content_battle::CompiledAbility) -> bool| abilities.iter().any(f);
         Self::default()
             .with(Self::TWO_HEX, has(CreatureFlag::TwoHex))
             .with(
@@ -313,9 +318,9 @@ impl StackTraits {
 /// (Ballista), an ammunition supply (Ammo Cart) or first aid (First Aid Tent).
 fn war_machine_kind(
     creature: &CreatureType,
-    abilities: &[h3_content::CompiledAbility],
+    abilities: &[h3_content_battle::CompiledAbility],
 ) -> Option<usize> {
-    let has = |f: fn(&h3_content::CompiledAbility) -> bool| abilities.iter().any(f);
+    let has = |f: fn(&h3_content_battle::CompiledAbility) -> bool| abilities.iter().any(f);
     if !creature.flags.contains(CreatureFlag::WarMachine) {
         None
     } else if creature.flags.contains(CreatureFlag::Shooter) {
@@ -333,7 +338,7 @@ fn war_machine_kind(
 /// the defender) and reserved in `taken` (BAT-WAR-001).
 // rule: BAT-WAR-001
 fn war_machines(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     field: Field,
     setup: &BattleSetup,
     side: BattleSide,
@@ -380,7 +385,7 @@ fn war_machines(
 /// for Summon Elemental (BAT-MAG-039), then one of each creature the corpse raisers of either
 /// army raise (BAT-MAG-052: a hypnotized raiser raises for the other side).
 fn templates(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     setup: &BattleSetup,
     side: BattleSide,
     hero: Option<&HeroRecord>,
@@ -428,7 +433,7 @@ pub const UNLIMITED_RETALIATIONS: u8 = u8::MAX;
 /// Retaliations per round of a creature: one, `1 + count` with extra retaliations, or
 /// unlimited (BAT-RET-003).
 // rule: BAT-RET-003
-pub(crate) fn retaliations_per_round(abilities: &[h3_content::CompiledAbility]) -> u8 {
+pub(crate) fn retaliations_per_round(abilities: &[h3_content_battle::CompiledAbility]) -> u8 {
     abilities.iter().fold(1, |n, a| match a {
         Ability::ExtraRetaliations { count } => {
             count.saturating_add(1).min(UNLIMITED_RETALIATIONS - 1)
@@ -533,7 +538,7 @@ impl Stack {
     /// the damage grown by the hero's attack (BAT-WAR-005), the hero's statistic effects
     /// (BAT-HER-005), and its traits and retaliations.
     fn new(
-        ruleset: &Ruleset,
+        ruleset: &BattleRuleset,
         setup: &BattleSetup,
         (id, creature): (CreatureTypeId, &CreatureType),
         side: BattleSide,
@@ -837,7 +842,11 @@ impl BattleState {
     /// starts the tactics phase (BAT-TAC-001) or activates the first stack. The events of that
     /// start (the phase, bad morale, war machines acting before any command) are dropped; use
     /// [`BattleState::start`] to receive them.
-    pub fn new(ruleset: &Ruleset, setup: &BattleSetup, seed: u64) -> Result<Self, SetupError> {
+    pub fn new(
+        ruleset: &BattleRuleset,
+        setup: &BattleSetup,
+        seed: u64,
+    ) -> Result<Self, SetupError> {
         Self::start(ruleset, setup, seed, &mut NoopSink)
     }
 
@@ -846,7 +855,7 @@ impl BattleState {
     /// first command (a bad-morale
     /// freeze, BAT-MOR-004; war machines acting, BAT-WAR-002/003; even the end of the battle).
     pub fn start<S: Sink>(
-        ruleset: &Ruleset,
+        ruleset: &BattleRuleset,
         setup: &BattleSetup,
         seed: u64,
         sink: &mut S,
@@ -1021,20 +1030,20 @@ impl BattleState {
     /// Whether `side` may surrender at all (BAT-FLE-002; public, ADR-0013 point 9): it may
     /// retreat, the enemy is led by a hero and the ruleset prices surrenders. Whether it can pay
     /// is private ([`may_surrender`](Self::may_surrender)).
-    pub fn surrender_possible(&self, ruleset: &Ruleset, side: BattleSide) -> bool {
+    pub fn surrender_possible(&self, ruleset: &BattleRuleset, side: BattleSide) -> bool {
         flee::surrender_terms(self, ruleset, side).is_some()
     }
 
     /// The price of `side`'s surrender, if it may surrender at all (BAT-FLE-002): it may retreat,
     /// the enemy is led by a hero and the ruleset prices surrenders. Depends on the side's
     /// private discount: show it to that side only.
-    pub fn surrender_price(&self, ruleset: &Ruleset, side: BattleSide) -> Option<u32> {
+    pub fn surrender_price(&self, ruleset: &BattleRuleset, side: BattleSide) -> Option<u32> {
         flee::surrender_price(self, ruleset, side)
     }
 
     /// Whether `side` may surrender now (BAT-FLE-002): its surrender has a price and its funds
     /// cover it. Private to the side.
-    pub fn may_surrender(&self, ruleset: &Ruleset, side: BattleSide) -> bool {
+    pub fn may_surrender(&self, ruleset: &BattleRuleset, side: BattleSide) -> bool {
         self.surrender_price(ruleset, side)
             .is_some_and(|price| self.heroes[side.index()].is_some_and(|h| h.funds >= price))
     }

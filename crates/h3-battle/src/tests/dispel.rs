@@ -3,7 +3,7 @@
 
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleHero, BattleSide};
 
 use super::spells::{arena, cast, mage, spell, stack};
@@ -16,7 +16,7 @@ use crate::{
 };
 
 /// A mage with Dispel, Cure and Haste, the air mastery `mastery` and enough mana.
-fn adept(r: &Ruleset, mastery: u8) -> BattleHero {
+fn adept(r: &BattleRuleset, mastery: u8) -> BattleHero {
     let mut h = mage(r, &["dispel", "cure", "haste"]);
     h.magic.masteries = masteries(r, [mastery, 0, 0, 0]);
     h.magic.mana = 100;
@@ -24,7 +24,7 @@ fn adept(r: &Ruleset, mastery: u8) -> BattleHero {
 }
 
 /// Gives stack `id` the timed effect of `name` for five rounds.
-fn give(s: &mut BattleState, r: &Ruleset, id: u8, name: &str) {
+fn give(s: &mut BattleState, r: &BattleRuleset, id: u8, name: &str) {
     let id_of = spell(r, name);
     let cast = TimedCast {
         id: id_of,
@@ -37,7 +37,7 @@ fn give(s: &mut BattleState, r: &Ruleset, id: u8, name: &str) {
 }
 
 /// The names of the spells whose effects stack `id` has, by spell.
-fn on(s: &BattleState, r: &Ruleset, id: u8) -> Vec<std::string::String> {
+fn on(s: &BattleState, r: &BattleRuleset, id: u8) -> Vec<std::string::String> {
     s.effects()
         .iter()
         .filter(|e| e.stack == StackId(id))
@@ -49,7 +49,7 @@ fn on(s: &BattleState, r: &Ruleset, id: u8) -> Vec<std::string::String> {
 type EndsAndHeals = (Vec<(u8, std::string::String)>, Vec<(u8, u32)>);
 
 /// The ended effects (`(stack, spell name)`) and the heals (`(stack, hit points)`) in `events`.
-fn ends_and_heals(r: &Ruleset, events: &[Event]) -> EndsAndHeals {
+fn ends_and_heals(r: &BattleRuleset, events: &[Event]) -> EndsAndHeals {
     let mut ends = Vec::new();
     let mut heals = Vec::new();
     for e in events {
@@ -65,7 +65,7 @@ fn ends_and_heals(r: &Ruleset, events: &[Event]) -> EndsAndHeals {
 }
 
 /// The stack targets of `name` for the attacker now.
-fn targets(s: &BattleState, r: &Ruleset, name: &str) -> Vec<CastTarget> {
+fn targets(s: &BattleState, r: &BattleRuleset, name: &str) -> Vec<CastTarget> {
     let mut out = CastTargets::new();
     cast_targets(s, r, BattleSide::Attacker, spell(r, name), &mut out);
     out.as_slice().to_vec()

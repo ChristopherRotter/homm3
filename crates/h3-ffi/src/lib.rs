@@ -223,13 +223,13 @@ pub extern "C" fn h3_observation_len() -> u32 {
 pub extern "C" fn h3_env_create_synthetic(scenario: u32, seed: u64, max_steps: u32) -> *mut H3Env {
     let created = catch_unwind(|| {
         let text = match scenario {
-            0 => h3_pack::SYNTHETIC_DUEL,
-            1 => h3_pack::SYNTHETIC_SKIRMISH,
-            2 => h3_pack::SYNTHETIC_FULL,
+            0 => h3_pack_battle::SYNTHETIC_DUEL,
+            1 => h3_pack_battle::SYNTHETIC_SKIRMISH,
+            2 => h3_pack_battle::SYNTHETIC_FULL,
             _ => return None,
         };
-        let random_obstacles = h3_pack::parse_scenario(text).ok()?.random_obstacles;
-        let (ruleset, setup) = h3_pack::synthetic(text).ok()?;
+        let random_obstacles = h3_pack_battle::parse_scenario(text).ok()?.random_obstacles;
+        let (ruleset, setup) = h3_pack_battle::synthetic(text).ok()?;
         let (ruleset, setup) = (Arc::new(ruleset), Arc::new(setup));
         let env = if random_obstacles {
             BattleEnv::with_random_obstacles(ruleset, setup, seed, max_steps)

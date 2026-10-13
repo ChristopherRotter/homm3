@@ -20,13 +20,7 @@ name = "Pixie"
 plural = "Pixies"
 faction = "conflux"
 level = 1
-attack = 2
-defense = 2
-damage = [1, 2]
-hit_points = 3
 speed = 7
-shots = 0
-casts = 0
 cost = { "base:gold" = 25 }
 growth = 20
 horde_growth = 10
@@ -42,13 +36,7 @@ name = "Sprite"
 plural = "Sprites"
 faction = "conflux"
 level = 1
-attack = 2
-defense = 2
-damage = [1, 3]
-hit_points = 3
 speed = 9
-shots = 0
-casts = 0
 cost = { "base:gold" = 30 }
 growth = 20
 horde_growth = 10
@@ -63,13 +51,7 @@ name = "Psychic Elemental"
 plural = "Psychic Elementals"
 faction = "conflux"
 level = 6
-attack = 15
-defense = 13
-damage = [10, 20]
-hit_points = 75
 speed = 7
-shots = 0
-casts = 0
 cost = { "base:gold" = 750 }
 growth = 2
 horde_growth = 0
@@ -77,7 +59,6 @@ fight_value = 1431
 ai_value = 1669
 adventure_count = [8, 16]
 flags = ["mind_immune", "no_enemy_retaliation", "no_morale", "multi_headed"]
-abilities = [{ kind = "attacks_all_adjacent" }, { kind = "damage_penalty_by_flag", flag = "mind_immune", percent = 50 }]
 upgrades = ["magic_elemental"]
 
 [[creature]]
@@ -86,13 +67,7 @@ name = "Magic Elemental"
 plural = "Magic Elementals"
 faction = "conflux"
 level = 6
-attack = 15
-defense = 13
-damage = [15, 25]
-hit_points = 80
 speed = 9
-shots = 0
-casts = 0
 cost = { "base:gold" = 800 }
 growth = 2
 horde_growth = 0
@@ -100,7 +75,6 @@ fight_value = 1724
 ai_value = 2012
 adventure_count = [8, 12]
 flags = ["mind_immune", "no_enemy_retaliation", "no_morale", "multi_headed"]
-abilities = [{ kind = "attacks_all_adjacent" }, { kind = "spell_level_immunity", max_level = 5 }, { kind = "damage_penalty", creature = "magic_elemental", percent = 50 }, { kind = "damage_penalty", creature = "base:black_dragon", percent = 50 }]
 
 [[creature]]
 id = "ice_elemental"  # original id 123
@@ -108,13 +82,7 @@ name = "Ice Elemental"
 plural = "Ice Elementals"
 faction = "conflux"
 level = 4
-attack = 8
-defense = 10
-damage = [3, 7]
-hit_points = 30
 speed = 6
-shots = 24
-casts = 3
 cost = { "base:gold" = 375 }
 growth = 6
 horde_growth = 0
@@ -122,7 +90,6 @@ fight_value = 315
 ai_value = 380
 adventure_count = [12, 20]
 flags = ["two_hex", "shooter", "mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "base:fire_elemental", percent = 100 }, { kind = "hate", creature = "energy_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:ice_bolt" }, { kind = "spell_immunity", spell = "base:frost_ring" }, { kind = "spell_vulnerability", percent = 100, spell = "base:fireball" }, { kind = "spell_vulnerability", percent = 100, spell = "base:inferno" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }, { kind = "spell_caster", mastery = 2, power = 6, spell = "base:prot_from_water" }]
 
 [[creature]]
 id = "magma_elemental"  # original id 125
@@ -130,13 +97,7 @@ name = "Magma Elemental"
 plural = "Magma Elementals"
 faction = "conflux"
 level = 3
-attack = 11
-defense = 11
-damage = [6, 10]
-hit_points = 40
 speed = 6
-shots = 0
-casts = 3
 cost = { "base:gold" = 500 }
 growth = 4
 horde_growth = 0
@@ -144,7 +105,6 @@ fight_value = 490
 ai_value = 490
 adventure_count = [16, 25]
 flags = ["mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "base:air_elemental", percent = 100 }, { kind = "hate", creature = "storm_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:lightning_bolt" }, { kind = "spell_immunity", spell = "base:chain_lightning" }, { kind = "spell_immunity", spell = "base:armageddon" }, { kind = "spell_vulnerability", percent = 100, spell = "base:meteor_shower" }, { kind = "spell_caster", mastery = 2, power = 6, spell = "base:prot_from_earth" }]
 
 [[creature]]
 id = "storm_elemental"  # original id 127
@@ -152,13 +112,7 @@ name = "Storm Elemental"
 plural = "Storm Elementals"
 faction = "conflux"
 level = 2
-attack = 9
-defense = 9
-damage = [2, 8]
-hit_points = 25
 speed = 8
-shots = 24
-casts = 3
 cost = { "base:gold" = 275 }
 growth = 6
 horde_growth = 0
@@ -166,7 +120,6 @@ fight_value = 324
 ai_value = 486
 adventure_count = [6, 12]
 flags = ["shooter", "mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "magma_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_immunity", spell = "base:blind" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }, { kind = "spell_caster", mastery = 2, power = 6, spell = "base:protection_from_air" }]
 
 [[creature]]
 id = "energy_elemental"  # original id 129
@@ -174,13 +127,7 @@ name = "Energy Elemental"
 plural = "Energy Elementals"
 faction = "conflux"
 level = 5
-attack = 12
-defense = 8
-damage = [4, 6]
-hit_points = 35
 speed = 8
-shots = 0
-casts = 3
 cost = { "base:gold" = 400 }
 growth = 5
 horde_growth = 0
@@ -188,7 +135,6 @@ fight_value = 360
 ai_value = 470
 adventure_count = [12, 25]
 flags = ["flying", "mind_immune", "fire_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "base:water_elemental", percent = 100 }, { kind = "hate", creature = "ice_elemental", percent = 100 }, { kind = "school_immunity", school = "base:fire" }, { kind = "spell_vulnerability", percent = 100, spell = "base:ice_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:frost_ring" }, { kind = "spell_caster", mastery = 2, power = 6, spell = "base:protection_from_fire" }]
 
 [[creature]]
 id = "firebird"  # original id 130
@@ -196,13 +142,7 @@ name = "Firebird"
 plural = "Firebirds"
 faction = "conflux"
 level = 7
-attack = 18
-defense = 18
-damage = [30, 40]
-hit_points = 150
 speed = 15
-shots = 0
-casts = 0
 cost = { "base:gold" = 1500 }
 growth = 2
 horde_growth = 0
@@ -210,7 +150,6 @@ fight_value = 3248
 ai_value = 4547
 adventure_count = [4, 10]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "fire_immune"]
-abilities = [{ kind = "school_immunity", school = "base:fire" }]
 upgrades = ["phoenix"]
 
 [[creature]]
@@ -219,13 +158,7 @@ name = "Phoenix"
 plural = "Phoenixes"
 faction = "conflux"
 level = 7
-attack = 21
-defense = 18
-damage = [30, 40]
-hit_points = 200
 speed = 21
-shots = 0
-casts = 1
 cost = { "base:mercury" = 1, "base:gold" = 2000 }
 growth = 2
 horde_growth = 0
@@ -233,20 +166,13 @@ fight_value = 4929
 ai_value = 6721
 adventure_count = [4, 10]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "fire_immune"]
-abilities = [{ kind = "school_immunity", school = "base:fire" }, { kind = "rebirth", divisor = 5 }]
 
 [[creature]]
 id = "azure_dragon"  # original id 132
 name = "Azure Dragon"
 plural = "Azure Dragons"
 level = 7
-attack = 50
-defense = 50
-damage = [70, 80]
-hit_points = 1000
 speed = 19
-shots = 0
-casts = 0
 cost = { "base:mercury" = 20, "base:gold" = 30000 }
 growth = 1
 horde_growth = 0
@@ -254,20 +180,13 @@ fight_value = 56315
 ai_value = 78845
 adventure_count = [1, 3]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "dragon"]
-abilities = [{ kind = "spell_level_immunity", max_level = 3 }, { kind = "fear", percent = 10 }]
 
 [[creature]]
 id = "crystal_dragon"  # original id 133
 name = "Crystal Dragon"
 plural = "Crystal Dragons"
 level = 7
-attack = 40
-defense = 40
-damage = [60, 75]
-hit_points = 800
 speed = 16
-shots = 0
-casts = 0
 cost = { "base:crystal" = 10, "base:gold" = 20000 }
 growth = 1
 horde_growth = 0
@@ -275,20 +194,13 @@ fight_value = 30260
 ai_value = 39338
 adventure_count = [1, 3]
 flags = ["two_hex", "alive", "king_1", "dragon"]
-abilities = [{ kind = "magic_resistance", percent = 20 }]
 
 [[creature]]
 id = "faerie_dragon"  # original id 134
 name = "Faerie Dragon"
 plural = "Faerie Dragons"
 level = 7
-attack = 20
-defense = 20
-damage = [20, 30]
-hit_points = 500
 speed = 15
-shots = 0
-casts = 5
 cost = { "base:gems" = 8, "base:gold" = 10000 }
 growth = 1
 horde_growth = 0
@@ -296,20 +208,13 @@ fight_value = 16317
 ai_value = 19580
 adventure_count = [1, 3]
 flags = ["two_hex", "flying", "alive", "king_1", "dragon"]
-abilities = [{ kind = "random_spell_caster", mastery = 2, power_per_creature = 5 }, { kind = "drawn_spell", spell = "base:ice_bolt", weight = 22 }, { kind = "drawn_spell", spell = "base:lightning_bolt", weight = 22 }, { kind = "drawn_spell", spell = "base:fireball", weight = 21 }, { kind = "drawn_spell", spell = "base:magic_arrow", weight = 10 }, { kind = "drawn_spell", spell = "base:frost_ring", weight = 10 }, { kind = "drawn_spell", spell = "base:chain_lightning", weight = 5 }, { kind = "drawn_spell", spell = "base:meteor_shower", weight = 5 }, { kind = "drawn_spell", spell = "base:inferno", weight = 5 }, { kind = "innate_spell", spell = "base:magic_mirror", value = 20 }]
 
 [[creature]]
 id = "rust_dragon"  # original id 135
 name = "Rust Dragon"
 plural = "Rust Dragons"
 level = 7
-attack = 30
-defense = 30
-damage = [50, 50]
-hit_points = 750
 speed = 17
-shots = 0
-casts = 0
 cost = { "base:sulfur" = 14, "base:gold" = 15000 }
 growth = 1
 horde_growth = 0
@@ -317,20 +222,13 @@ fight_value = 24030
 ai_value = 26433
 adventure_count = [1, 3]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "dragon"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 100, defended = true, mastery = 0, rounds = 3, spell = "base:acid_breath" }, { kind = "damage_after_strike", chance_percent = 20, percent = 50 }]
 
 [[creature]]
 id = "enchanter"  # original id 136
 name = "Enchanter"
 plural = "Enchanters"
 level = 6
-attack = 17
-defense = 12
-damage = [14, 14]
-hit_points = 30
 speed = 9
-shots = 32
-casts = 0
 cost = { "base:gold" = 750 }
 growth = 2
 horde_growth = 0
@@ -338,20 +236,13 @@ fight_value = 805
 ai_value = 1210
 adventure_count = [5, 12]
 flags = ["shooter", "alive", "no_melee_penalty"]
-abilities = [{ kind = "periodic_spell_caster", mastery = 3, power = 3, rounds = 3 }, { kind = "drawn_spell", spell = "base:haste", weight = 15 }, { kind = "drawn_spell", spell = "base:air_shield", weight = 10 }, { kind = "drawn_spell", spell = "base:slow", weight = 10 }, { kind = "drawn_spell", spell = "base:stone_skin", weight = 15 }, { kind = "drawn_spell", spell = "base:bloodlust", weight = 5 }, { kind = "drawn_spell", spell = "base:bless", weight = 15 }, { kind = "drawn_spell", spell = "base:cure", weight = 10 }, { kind = "drawn_spell", spell = "base:weakness", weight = 4 }]
 
 [[creature]]
 id = "sharpshooter"  # original id 137
 name = "Sharpshooter"
 plural = "Sharpshooters"
 level = 4
-attack = 12
-defense = 10
-damage = [8, 10]
-hit_points = 15
 speed = 9
-shots = 32
-casts = 0
 cost = { "base:gold" = 400 }
 growth = 4
 horde_growth = 0
@@ -359,20 +250,13 @@ fight_value = 415
 ai_value = 585
 adventure_count = [5, 12]
 flags = ["shooter", "alive"]
-abilities = [{ kind = "no_distance_penalty" }]
 
 [[creature]]
 id = "halfling"  # original id 138
 name = "Halfling"
 plural = "Halflings"
 level = 1
-attack = 4
-defense = 2
-damage = [1, 3]
-hit_points = 4
 speed = 5
-shots = 24
-casts = 0
 cost = { "base:gold" = 40 }
 growth = 15
 horde_growth = 0
@@ -380,20 +264,13 @@ fight_value = 60
 ai_value = 75
 adventure_count = [20, 50]
 flags = ["shooter", "alive"]
-abilities = [{ kind = "minimum_luck", value = 1 }]
 
 [[creature]]
 id = "peasant"  # original id 139
 name = "Peasant"
 plural = "Peasants"
 level = 1
-attack = 1
-defense = 1
-damage = [1, 1]
-hit_points = 1
 speed = 3
-shots = 0
-casts = 0
 cost = { "base:gold" = 10 }
 growth = 25
 horde_growth = 0
@@ -407,13 +284,7 @@ id = "boar"  # original id 140
 name = "Boar"
 plural = "Boars"
 level = 2
-attack = 6
-defense = 5
-damage = [2, 3]
-hit_points = 15
 speed = 6
-shots = 0
-casts = 0
 cost = { "base:gold" = 150 }
 growth = 8
 horde_growth = 0
@@ -427,13 +298,7 @@ id = "mummy"  # original id 141
 name = "Mummy"
 plural = "Mummies"
 level = 3
-attack = 7
-defense = 7
-damage = [3, 5]
-hit_points = 30
 speed = 5
-shots = 0
-casts = 0
 cost = { "base:gold" = 300 }
 growth = 7
 horde_growth = 0
@@ -441,20 +306,13 @@ fight_value = 270
 ai_value = 270
 adventure_count = [12, 25]
 flags = ["mind_immune", "no_morale", "undead"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 25, mastery = 0, rounds = 3, spell = "base:curse" }]
 
 [[creature]]
 id = "nomad"  # original id 142
 name = "Nomad"
 plural = "Nomads"
 level = 3
-attack = 9
-defense = 8
-damage = [2, 6]
-hit_points = 30
 speed = 7
-shots = 0
-casts = 0
 cost = { "base:gold" = 200 }
 growth = 7
 horde_growth = 0
@@ -468,13 +326,7 @@ id = "rogue"  # original id 143
 name = "Rogue"
 plural = "Rogues"
 level = 2
-attack = 8
-defense = 3
-damage = [2, 4]
-hit_points = 10
 speed = 6
-shots = 0
-casts = 0
 cost = { "base:gold" = 100 }
 growth = 8
 horde_growth = 0
@@ -488,13 +340,7 @@ id = "troll"  # original id 144
 name = "Troll"
 plural = "Trolls"
 level = 5
-attack = 14
-defense = 7
-damage = [10, 15]
-hit_points = 40
 speed = 7
-shots = 0
-casts = 0
 cost = { "base:gold" = 500 }
 growth = 3
 horde_growth = 0
@@ -502,34 +348,29 @@ fight_value = 1024
 ai_value = 1024
 adventure_count = [8, 12]
 flags = ["alive"]
-abilities = [{ kind = "regeneration" }]
 
 [[creature_override]]
 target = "base:air_elemental"
 faction = "conflux"
 level = 2
-abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "magma_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_immunity", spell = "base:blind" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 upgrades = ["storm_elemental"]
 
 [[creature_override]]
 target = "base:earth_elemental"
 faction = "conflux"
 level = 5
-abilities = [{ kind = "hate", creature = "base:air_elemental", percent = 100 }, { kind = "hate", creature = "storm_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:lightning_bolt" }, { kind = "spell_immunity", spell = "base:chain_lightning" }, { kind = "spell_immunity", spell = "base:armageddon" }, { kind = "spell_vulnerability", percent = 100, spell = "base:meteor_shower" }]
 upgrades = ["magma_elemental"]
 
 [[creature_override]]
 target = "base:fire_elemental"
 faction = "conflux"
 level = 4
-abilities = [{ kind = "hate", creature = "base:water_elemental", percent = 100 }, { kind = "hate", creature = "ice_elemental", percent = 100 }, { kind = "school_immunity", school = "base:fire" }, { kind = "spell_vulnerability", percent = 100, spell = "base:ice_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:frost_ring" }]
 upgrades = ["energy_elemental"]
 
 [[creature_override]]
 target = "base:water_elemental"
 faction = "conflux"
 level = 3
-abilities = [{ kind = "hate", creature = "base:fire_elemental", percent = 100 }, { kind = "hate", creature = "energy_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:ice_bolt" }, { kind = "spell_immunity", spell = "base:frost_ring" }, { kind = "spell_vulnerability", percent = 100, spell = "base:fireball" }, { kind = "spell_vulnerability", percent = 100, spell = "base:inferno" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 upgrades = ["ice_elemental"]
 
 [[creature_override]]

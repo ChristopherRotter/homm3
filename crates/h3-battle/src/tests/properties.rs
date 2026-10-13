@@ -15,9 +15,11 @@ use std::num::NonZeroU32;
 use std::vec::Vec;
 
 use h3_content::{
-    Ability, Affects, BattleParamsDef, ContentKey, CreatureFlag, CreatureSelector, CreatureStat,
-    EffectDuration, Formation, ObstacleKind, ProfileDef, Ruleset, SchoolId, SpellCategory, SpellId,
-    SpellScope, TimedChange,
+    Affects, ContentKey, CreatureFlag, CreatureSelector, CreatureStat, Formation, ProfileDef,
+    SchoolId, SpellCategory, SpellId, SpellScope,
+};
+use h3_content_battle::{
+    Ability, BattleParamsDef, BattleRuleset, EffectDuration, ObstacleKind, TimedChange,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleResult, BattleSetup,
@@ -40,7 +42,7 @@ use crate::{
 
 /// The test ruleset with frequent good and bad morale and luck (a 4-sided die) and the quirk
 /// Q-0003 on, so that generated games exercise them.
-fn lively() -> Ruleset {
+fn lively() -> BattleRuleset {
     lively_with("t:quirky")
 }
 
@@ -56,15 +58,15 @@ fn enliven(b: &mut BattleParamsDef) {
 }
 
 /// [`lively`] with the profile `profile`.
-fn lively_with(profile: &str) -> Ruleset {
+fn lively_with(profile: &str) -> BattleRuleset {
     ruleset_with(profile, enliven)
 }
 
 /// [`lively`] with a profile of its own that has the quirks `quirks` (their keys after
 /// `quirk.battle.`) together: the test pack's profiles have one quirk each, a real pack's
 /// several.
-fn lively_mix(quirks: &[&str]) -> Ruleset {
-    ruleset_from("t:mix", enliven, |pack| {
+fn lively_mix(quirks: &[&str]) -> BattleRuleset {
+    ruleset_from("t:mix", enliven, |pack, _| {
         pack.profiles.push(ProfileDef {
             key: ContentKey::new("t", "mix").unwrap(),
             quirks: quirks
@@ -233,7 +235,7 @@ fn arb_hidden() -> impl Strategy<Value = Hidden> {
 
 /// Every spell of the ruleset with a mastery at which a hero may have it as an opening spell
 /// (BAT-MAG-068).
-fn openings(r: &Ruleset) -> Vec<(SpellId, u8)> {
+fn openings(r: &BattleRuleset) -> Vec<(SpellId, u8)> {
     (0..r.spells().len())
         .filter_map(SpellId::from_index)
         .flat_map(|id| (0..=3).map(move |mastery| (id, mastery)))
@@ -245,7 +247,7 @@ fn openings(r: &Ruleset) -> Vec<(SpellId, u8)> {
 }
 
 /// Gives `hero` the hidden magic `hidden` (BAT-MAG-061 to BAT-MAG-069).
-fn conceal(r: &Ruleset, hero: &mut BattleHero, hidden: &Hidden) {
+fn conceal(r: &BattleRuleset, hero: &mut BattleHero, hidden: &Hidden) {
     if hidden.no_casting {
         hero.effects.push(BattleEffect::NoCasting);
     }
@@ -343,7 +345,7 @@ impl Limits {
 /// The setup of a generated game: [`make_setup`] of its armies and obstacles from the word
 /// `machines` (its seed), each hero with its hidden magic.
 fn game_setup(
-    r: &Ruleset,
+    r: &BattleRuleset,
     (attacker, defender, obstacles): (&ArmySpec, &ArmySpec, &[u8]),
     machines: u64,
     hidden: &[Hidden; 2],
@@ -404,7 +406,7 @@ fn arb_game() -> impl Strategy<Value = Game> {
 /// of 1 (Hypnotize takes a stack of at most power × 25 + 10 to 50 hit points), bits 4–5 and 6–7
 /// the defender's air and fire masteries (Berserk's area and Blind's retaliation are by mastery).
 fn make_setup(
-    r: &Ruleset,
+    r: &BattleRuleset,
     attacker: &[(u8, u8, u32)],
     defender: &[(u8, u8, u32)],
     obstacles: &[u8],
@@ -553,7 +555,7 @@ fn make_setup(
 /// all its targets if it accepts none.
 fn aimed(
     state: &BattleState,
-    r: &Ruleset,
+    r: &BattleRuleset,
     (side, spell): (BattleSide, SpellId),
     n: u16,
     prefer: impl Fn(&CastTarget) -> bool,
@@ -578,7 +580,7 @@ fn aimed(
 /// every free hex up to two hexes from it is blocked, but the one ahead of its head. Clone, cast
 /// at it, then finds no place for a clone before the stack's own hexes, which count as free with
 /// quirk BAT-QUIRK-7: the stack becomes its own clone (BAT-MAG-038).
-fn crowd(state: &mut BattleState, r: &Ruleset) {
+fn crowd(state: &mut BattleState, r: &BattleRuleset) {
     let field = crate::Field::new(r.battle().field);
     let wide = |led: bool| {
         let fits = |s: &&crate::Stack| {
@@ -607,7 +609,7 @@ fn crowd(state: &mut BattleState, r: &Ruleset) {
 /// for a stack of the other side that it hypnotized.
 fn resolve(
     state: &BattleState,
-    r: &Ruleset,
+    r: &BattleRuleset,
     step: &Step,
     legal: &mut LegalCommands,
 ) -> (BattleSide, Command) {
@@ -685,20 +687,20 @@ fn resolve(
 }
 
 /// The timed changes `spell` puts on a stack.
-fn changes(r: &Ruleset, spell: SpellId) -> impl Iterator<Item = TimedChange> + '_ {
+fn changes(r: &BattleRuleset, spell: SpellId) -> impl Iterator<Item = TimedChange> + '_ {
     r.spell(spell)
         .into_iter()
         .flat_map(|s| s.magic.effects.iter().filter_map(|e| e.timed()))
 }
 
 /// Whether `spell` puts the timed change `change` on a stack.
-fn has_change(r: &Ruleset, spell: SpellId, change: TimedChange) -> bool {
+fn has_change(r: &BattleRuleset, spell: SpellId, change: TimedChange) -> bool {
     changes(r, spell).any(|c| c == change)
 }
 
 /// Whether `spell`'s effects last for the rest of the battle: such an effect stays on a stack
 /// that dies (BAT-MAG-010).
-fn is_permanent(r: &Ruleset, spell: SpellId) -> bool {
+fn is_permanent(r: &BattleRuleset, spell: SpellId) -> bool {
     r.spell(spell)
         .is_some_and(|s| s.magic.duration == EffectDuration::Permanent)
 }
@@ -715,7 +717,7 @@ fn tracked(state: &BattleState) -> Tracked {
 /// Whether an effect of `list` on stack `id` is of a spell with a timed change that `test`
 /// accepts.
 fn under(
-    r: &Ruleset,
+    r: &BattleRuleset,
     list: &[(StackId, SpellId)],
     id: StackId,
     test: fn(TimedChange) -> bool,
@@ -725,13 +727,13 @@ fn under(
 }
 
 /// Whether Berserk is among `list`'s effects on stack `id` (BAT-MAG-025).
-fn berserk(r: &Ruleset, list: &[(StackId, SpellId)], id: StackId) -> bool {
+fn berserk(r: &BattleRuleset, list: &[(StackId, SpellId)], id: StackId) -> bool {
     under(r, list, id, |c| c == TimedChange::Berserk)
 }
 
 /// The side that commands stack `id`, by the rule (BAT-MAG-026): its own, or the other side while
 /// a Hypnotize is active on it; read from the effect list, not from what the stack keeps.
-fn controller_by_rule(state: &BattleState, r: &Ruleset, id: StackId) -> BattleSide {
+fn controller_by_rule(state: &BattleState, r: &BattleRuleset, id: StackId) -> BattleSide {
     let side = state.stacks()[id.index()].side;
     let hypnotized = state
         .effects()
@@ -742,7 +744,7 @@ fn controller_by_rule(state: &BattleState, r: &Ruleset, id: StackId) -> BattleSi
 
 /// Plays a game, returning the final state, the event log and the state hash after every step.
 fn play(
-    r: &Ruleset,
+    r: &BattleRuleset,
     setup: &BattleSetup,
     seed: u64,
     steps: &[Step],
@@ -1660,7 +1662,7 @@ proptest! {
 
 /// Plays `state` on with random legal commands, attacks first, until the battle is over (or a
 /// step limit): with `leave` the commands that leave the battle are among them.
-fn finish(state: &mut BattleState, r: &Ruleset, seed: u64, leave: bool) {
+fn finish(state: &mut BattleState, r: &BattleRuleset, seed: u64, leave: bool) {
     let mut agent = Rng::for_stream(seed, h3_kernel::StreamId::AGENT);
     let mut legal = LegalCommands::new();
     for _ in 0..5_000 {
@@ -1771,7 +1773,7 @@ fn random_legal_play_finishes_battles() {
 
 /// The Ballista's target by the full ranking of BAT-WAR-002 (VCMI's order, every key evaluated
 /// eagerly): not a war machine, then could attack next turn, then value, then the lower id.
-fn reference_target(state: &BattleState, r: &Ruleset, shooter: StackId) -> Option<StackId> {
+fn reference_target(state: &BattleState, r: &BattleRuleset, shooter: StackId) -> Option<StackId> {
     let field = crate::Field::new(r.battle().field);
     let side = state.stacks()[shooter.index()].side;
     (0u8..)
@@ -1833,7 +1835,7 @@ type ExtremeEffect = (u8, u8, usize, u8, i16, u8);
 /// A battle effect from its generated parts; every kind except `NoRetreat` and the alignment
 /// groups (both covered by `make_setup` and `tests/heroes.rs`).
 fn extreme_effect(
-    r: &Ruleset,
+    r: &BattleRuleset,
     &(kind, selector, creature, stat, amount, affects): &ExtremeEffect,
 ) -> BattleEffect {
     let creatures = match selector {
@@ -2019,7 +2021,7 @@ fn extreme_rate(rng: &mut Rng) -> Rate {
 /// groups, the magic ones (E04b) with extreme rates, levels and powers (the spell damage
 /// bonuses too, whatever the ruleset's rates: the spell damage saturates since the E04b T11b
 /// review's finding F-robust-3 was fixed).
-fn extreme_caster(r: &Ruleset, rng: &mut Rng) -> BattleHero {
+fn extreme_caster(r: &BattleRuleset, rng: &mut Rng) -> BattleHero {
     let spells: Vec<SpellId> = (0..r.spells().len())
         .filter_map(SpellId::from_index)
         .collect();
@@ -2163,7 +2165,7 @@ fn extreme_caster(r: &Ruleset, rng: &mut Rng) -> BattleHero {
 /// target (BAT-MAG-048), else a legal command (a strike one time in four; with `leave` the
 /// commands that leave the battle too). Every command is accepted. Returns the numbers of the
 /// heroes' and the stacks' casts.
-fn play_casting(state: &mut BattleState, r: &Ruleset, seed: u64, leave: bool) -> (u32, u32) {
+fn play_casting(state: &mut BattleState, r: &BattleRuleset, seed: u64, leave: bool) -> (u32, u32) {
     let mut agent = Rng::for_stream(seed, h3_kernel::StreamId::AGENT);
     let mut legal = LegalCommands::new();
     let mut targets = CastTargets::new();

@@ -6,7 +6,7 @@
 //! (`docs/formats/installation.md` §7.14); the engine uses its own reachability instead (survey
 //! S-11 unconfirmed, OPEN-QUESTIONS Q53).
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_kernel::FixedVec;
 
 use crate::binds;
@@ -36,7 +36,7 @@ type Choice = (StackId, Hex, u32);
 // rule: BAT-MAG-025
 pub(crate) fn berserk<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     id: StackId,
     sink: &mut S,
 ) -> bool {

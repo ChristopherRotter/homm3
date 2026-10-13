@@ -5,7 +5,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{ArmyStack, BattleResult, BattleSide, StackOrigin, StackRecord};
 
 use super::spells::{arena, mage, spell, stack};
@@ -21,7 +21,7 @@ use crate::{
 };
 
 /// The stacks the active stack of `side` may raise now, by id.
-fn targets(s: &BattleState, r: &Ruleset, side: BattleSide) -> Vec<u8> {
+fn targets(s: &BattleState, r: &BattleRuleset, side: BattleSide) -> Vec<u8> {
     let mut out = CastTargets::new();
     creature_cast_targets(s, r, side, &mut out);
     out.iter()
@@ -38,7 +38,7 @@ fn at_stack(id: u8) -> Command {
 }
 
 /// Deals `damage` to stack `id` as a strike would, and marks the corpses.
-fn hurt(s: &mut BattleState, r: &Ruleset, id: u8, damage: u64) {
+fn hurt(s: &mut BattleState, r: &BattleRuleset, id: u8, damage: u64) {
     let mut events = Vec::new();
     apply_damage(s.at_mut(StackId(id)), damage);
     effects::damaged(s, r, StackId(id), &mut events);

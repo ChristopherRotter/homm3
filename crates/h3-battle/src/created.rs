@@ -3,10 +3,9 @@
 //! summons a stack of the spell's creature (BAT-MAG-039). Both take the slot of a killed created
 //! stack of the side or a new one, while the side has fewer stacks than the limit (BAT-MAG-037).
 
-use h3_content::{
-    CLONE_ON_ITS_ORIGINAL, CreatureTypeId, MAX_FIELD_HEXES, MAX_RAISED_CREATURES,
-    MAX_SUMMON_SPELLS, Ruleset, Spell,
-};
+use h3_content::{CLONE_ON_ITS_ORIGINAL, CreatureTypeId};
+use h3_content_battle::BattleSpell;
+use h3_content_battle::{BattleRuleset, MAX_FIELD_HEXES, MAX_RAISED_CREATURES, MAX_SUMMON_SPELLS};
 use h3_contracts::BattleSide;
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
@@ -89,7 +88,7 @@ impl CanonicalHash for Created {
 
 /// Whether `side` may create a stack now (BAT-MAG-037; the original's spell book, §7.7): it has
 /// fewer stacks than the battle's side stack limit, dead ones included.
-fn has_room(state: &BattleState, ruleset: &Ruleset, side: BattleSide) -> bool {
+fn has_room(state: &BattleState, ruleset: &BattleRuleset, side: BattleSide) -> bool {
     let stacks = state.stacks.iter().filter(|s| s.side == side).count();
     stacks < usize::from(ruleset.battle().side_stack_limit)
 }
@@ -101,7 +100,7 @@ fn has_room(state: &BattleState, ruleset: &Ruleset, side: BattleSide) -> bool {
 /// BAT-QUIRK-12.)
 pub(crate) fn has_slot(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (side, creature): (BattleSide, CreatureTypeId),
 ) -> bool {
     state.created.templates[side.index()]
@@ -136,7 +135,7 @@ fn reusable(state: &BattleState, side: BattleSide) -> Option<StackId> {
 /// raiser of either army raises the creature).
 pub(crate) fn raise_corpse<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (side, corpse): (BattleSide, StackId),
     (creature, count): (CreatureTypeId, u32),
     sink: &mut S,
@@ -175,9 +174,9 @@ pub(crate) fn raise_corpse<S: Sink>(
 /// effect[mastery].
 pub(crate) fn clonable(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
-    (spell, mastery): (&Spell, u8),
+    (spell, mastery): (&BattleSpell, u8),
     s: StackId,
 ) -> bool {
     let stack = state.at(s);
@@ -194,9 +193,9 @@ pub(crate) fn clonable(
 /// the side has room for a stack and has summoned no other creature in this battle.
 pub(crate) fn may_summon(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
-    spell: &Spell,
+    spell: &BattleSpell,
 ) -> bool {
     spell.summons.is_some_and(|c| {
         state.created.summoned[side.index()].is_none_or(|bound| bound == c)
@@ -219,7 +218,7 @@ enum ClonePlace {
 /// turns the original into one ([`turn`]).
 pub(crate) fn clone<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (s, rounds): (StackId, u16),
     sink: &mut S,
 ) {
@@ -363,7 +362,7 @@ fn fits(field: Field, taken: HexSet, (at, two_hex): (Hex, bool), side: BattleSid
 /// creature, so the side has its template.
 pub(crate) fn summon<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (side, creature): (BattleSide, CreatureTypeId),
     count: u32,
     sink: &mut S,
@@ -419,7 +418,7 @@ pub(crate) fn summon<S: Sink>(
 /// Puts the created `stack` into the battle (BAT-MAG-037; the original's 0x47A100): in the slot of
 /// its side's first killed created stack ([`reusable`]), else in a new one; morale and luck as
 /// its side's stacks have them. Returns its id.
-fn add(state: &mut BattleState, ruleset: &Ruleset, stack: Stack) -> StackId {
+fn add(state: &mut BattleState, ruleset: &BattleRuleset, stack: Stack) -> StackId {
     let id = if let Some(id) = reusable(state, stack.side) {
         // A reused record is set up from scratch (the original's 0x47A100): nothing of the dead
         // stack's effects stays, neither the timed ones the command's end has not removed yet nor
@@ -461,7 +460,12 @@ fn created<S: Sink>(state: &BattleState, id: StackId, original: Option<StackId>,
 /// After stack `s` took damage or lost creatures, if it died (the original's 0x444120): the stacks
 /// it binds are released (BAT-MAG-045); a dead clone leaves its original free to be cloned again,
 /// a dead original takes its clone with it (BAT-MAG-038).
-pub(crate) fn died<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackId, sink: &mut S) {
+pub(crate) fn died<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    s: StackId,
+    sink: &mut S,
+) {
     if state.at(s).is_alive() {
         return;
     }
@@ -482,7 +486,7 @@ pub(crate) fn died<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: Stack
 
 /// Clone `c` vanishes (BAT-MAG-038): all its creatures are gone, without a corpse; the stacks it
 /// binds are released (BAT-MAG-045).
-fn vanish<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, c: StackId, sink: &mut S) {
+fn vanish<S: Sink>(state: &mut BattleState, ruleset: &BattleRuleset, c: StackId, sink: &mut S) {
     let clone = state.at_mut(c);
     let creatures = clone.count;
     clone.count = 0;
@@ -499,7 +503,7 @@ fn vanish<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, c: StackId, sink:
 /// At a round's start, after the timed effects (BAT-MAG-038; the original's 0x447120): every
 /// living clone (one with rounds left) loses a round, and one left with none vanishes, freeing its
 /// original; it keeps the creatures it vanished with as not killed (BAT-Q13).
-pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
+pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &BattleRuleset, sink: &mut S) {
     for i in 0..state.stacks.len() {
         let rounds = &mut state.created.rounds[i];
         if *rounds == 0 {

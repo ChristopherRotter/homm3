@@ -47,7 +47,8 @@ use h3_battle::{
     LegalCommands, STACK_CAPACITY, StackId, cast_targets, castable_spells, creature_cast_spell,
     creature_cast_targets, second_targets, stack_spell,
 };
-use h3_content::{MAX_FIELD_HEXES, MAX_SPELLS, Ruleset, SpellId};
+use h3_content::{MAX_SPELLS, SpellId};
+use h3_content_battle::{BattleRuleset, MAX_FIELD_HEXES};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above.
@@ -153,7 +154,7 @@ fn target_at(index: u16) -> Option<CastTarget> {
 /// The canonical attack positions of the active stack against `target`.
 fn positions(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     target: StackId,
 ) -> Option<[Option<Hex>; ATTACK_SLOTS]> {
     let field = Field::new(ruleset.battle().field);
@@ -167,7 +168,7 @@ fn positions(
 }
 
 /// The dense entry of a command other than a cast.
-fn encode_entry(state: &BattleState, ruleset: &Ruleset, command: Command) -> Option<usize> {
+fn encode_entry(state: &BattleState, ruleset: &BattleRuleset, command: Command) -> Option<usize> {
     match command {
         Command::Wait => Some(0),
         Command::Defend => Some(1),
@@ -210,7 +211,7 @@ fn spell_head(spell: CastSpell) -> u16 {
 }
 
 /// The spell head of the active stack's cast: its creature's spell (BAT-MAG-048 to BAT-MAG-050).
-fn active_spell(state: &BattleState, ruleset: &Ruleset) -> Option<u16> {
+fn active_spell(state: &BattleState, ruleset: &BattleRuleset) -> Option<u16> {
     state
         .active()
         .and_then(|id| stack_spell(state, ruleset, id))
@@ -221,7 +222,7 @@ fn active_spell(state: &BattleState, ruleset: &Ruleset) -> Option<u16> {
 /// stack's shape, so encoding needs the state; returns `None` for commands that cannot be
 /// expressed (no active stack, unknown target, a position that is not an attack position, a
 /// spell or target beyond the heads).
-pub fn encode(state: &BattleState, ruleset: &Ruleset, command: Command) -> Option<Action> {
+pub fn encode(state: &BattleState, ruleset: &BattleRuleset, command: Command) -> Option<Action> {
     if let Command::Cast {
         spell,
         target,
@@ -247,7 +248,7 @@ pub fn encode(state: &BattleState, ruleset: &Ruleset, command: Command) -> Optio
 }
 
 /// Decodes the dense entry `entry` into a command for the current state.
-fn decode_entry(state: &BattleState, ruleset: &Ruleset, entry: usize) -> Option<Command> {
+fn decode_entry(state: &BattleState, ruleset: &BattleRuleset, entry: usize) -> Option<Command> {
     match entry {
         0 => Some(Command::Wait),
         1 => Some(Command::Defend),
@@ -283,7 +284,7 @@ fn decode_entry(state: &BattleState, ruleset: &Ruleset, entry: usize) -> Option<
 /// Decodes an action into a command for the current state (`None` if an index is out of range,
 /// a non-cast entry has a non-zero head, or the slot holds no attack position). The result
 /// still has to pass validation.
-pub fn decode(state: &BattleState, ruleset: &Ruleset, action: Action) -> Option<Command> {
+pub fn decode(state: &BattleState, ruleset: &BattleRuleset, action: Action) -> Option<Command> {
     let entry = action.entry as usize;
     if entry == HERO_CAST {
         if usize::from(action.spell) >= SPELL_COUNT {
@@ -314,7 +315,7 @@ pub fn decode(state: &BattleState, ruleset: &Ruleset, action: Action) -> Option<
 /// ([`creature_cast_targets`]).
 pub fn legal_mask(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
     legal: &mut LegalCommands,
     mask: &mut ActionMask,
@@ -331,7 +332,7 @@ pub fn legal_mask(
 }
 
 /// Whether the active stack of `actor` may cast at some target now (BAT-MAG-048).
-fn creature_cast_possible(state: &BattleState, ruleset: &Ruleset, actor: BattleSide) -> bool {
+fn creature_cast_possible(state: &BattleState, ruleset: &BattleRuleset, actor: BattleSide) -> bool {
     // Most stacks may not cast: skip the targets' buffer for them.
     creature_cast_spell(state, ruleset, actor).is_some_and(|_| {
         let mut targets = CastTargets::new();
@@ -343,7 +344,7 @@ fn creature_cast_possible(state: &BattleState, ruleset: &Ruleset, actor: BattleS
 /// Whether `entry` is a legal non-cast entry of `actor`.
 fn legal_entry(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
     entry: usize,
     legal: &mut LegalCommands,
@@ -359,7 +360,7 @@ fn legal_entry(
 /// legal entry, nothing otherwise.
 pub fn spell_mask(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
     entry: usize,
     legal: &mut LegalCommands,
@@ -387,7 +388,7 @@ pub fn spell_mask(
 /// entry with spell 0, nothing otherwise.
 pub fn target_mask(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
     (entry, spell): (usize, u16),
     legal: &mut LegalCommands,
@@ -431,7 +432,7 @@ pub fn target_mask(
 /// ([`CREATURE_CAST`] included); nothing otherwise.
 pub fn second_mask(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
     (entry, spell, target): (usize, u16, u16),
     legal: &mut LegalCommands,
@@ -466,8 +467,8 @@ mod tests {
     use super::*;
     use h3_battle::NoopSink;
 
-    fn env() -> (Ruleset, BattleState) {
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_SKIRMISH).unwrap();
+    fn env() -> (BattleRuleset, BattleState) {
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_SKIRMISH).unwrap();
         let s = BattleState::new(&r, &setup, 1).unwrap();
         (r, s)
     }
@@ -490,8 +491,8 @@ mod tests {
 
     /// The full scenario played until the attacker's hero may cast (Brea, whose book has the
     /// most spells, Blink's teleport among them).
-    fn until_a_cast() -> (Ruleset, BattleState, BattleSide) {
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+    fn until_a_cast() -> (BattleRuleset, BattleState, BattleSide) {
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
         let mut s = BattleState::new(&r, &setup, 3).unwrap();
         let mut legal = LegalCommands::new();
         for _ in 0..200 {
@@ -726,7 +727,7 @@ mod tests {
     #[test]
     fn shots_round_trip_including_tail_aims() {
         use h3_contracts::{Army, ArmyStack, BattleSetup};
-        let r = h3_pack::compile(&[h3_pack::BASE_PACK], "base:faithful").unwrap();
+        let r = h3_pack_battle::compile(&[h3_pack_battle::BASE_PACK], "base:faithful").unwrap();
         let stack = |key: &str, count| Army {
             stacks: vec![ArmyStack {
                 slot: 0,
@@ -771,7 +772,7 @@ mod tests {
     }
 
     /// The skirmish played (defending) until the active stack may cast (a Wisp's Hasten).
-    fn until_a_stack_casts() -> (Ruleset, BattleState, BattleSide) {
+    fn until_a_stack_casts() -> (BattleRuleset, BattleState, BattleSide) {
         let (r, mut s) = env();
         let mut legal = LegalCommands::new();
         for _ in 0..200 {
@@ -904,14 +905,15 @@ mod tests {
     #[test]
     fn a_draw_at_the_cast_names_no_spell() {
         // The skirmish's Wisps as helpful casters (BAT-MAG-050): their spell head allows only 0.
-        let pack = h3_pack::SYNTHETIC_PACK.replace(
+        let battle = h3_pack_battle::SYNTHETIC_BATTLE.replace(
             "{ kind = \"spell_caster\", spell = \"hasten\", mastery = 2, power = 6 },",
             "{ kind = \"helpful_spell_caster\", mastery = 2, power = 6 }, \
              { kind = \"drawn_spell\", spell = \"hasten\", weight = 1 },",
         );
-        assert_ne!(pack, h3_pack::SYNTHETIC_PACK);
-        let scenario = h3_pack::parse_scenario(h3_pack::SYNTHETIC_SKIRMISH).unwrap();
-        let r = h3_pack::compile(&[&pack], &scenario.profile).unwrap();
+        assert_ne!(battle, h3_pack_battle::SYNTHETIC_BATTLE);
+        let scenario = h3_pack_battle::parse_scenario(h3_pack_battle::SYNTHETIC_SKIRMISH).unwrap();
+        let pack = (h3_pack_battle::SYNTHETIC_PACK.0, battle.as_str());
+        let r = h3_pack_battle::compile(&[pack], &scenario.profile).unwrap();
         let mut s = BattleState::new(&r, &scenario.resolve(&r).unwrap(), 1).unwrap();
         let mut legal = LegalCommands::new();
         let side = loop {
@@ -950,7 +952,7 @@ mod tests {
     #[test]
     fn heals_of_the_commanded_tent_round_trip() {
         // The full scenario's attacker commands its tent (BAT-WAR-007): play until it may heal.
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
         let mut s = BattleState::new(&r, &setup, 3).unwrap();
         let mut legal = LegalCommands::new();
         let mut mask = [false; ACTION_COUNT];
@@ -998,7 +1000,7 @@ mod tests {
     #[test]
     fn tactics_commands_round_trip() {
         // The full scenario's attacker has Advanced Tactics, the defender none (BAT-TAC-001).
-        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
         let s = BattleState::new(&r, &setup, 3).unwrap();
         assert!(s.tactics().is_some());
         let mut legal = LegalCommands::new();

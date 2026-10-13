@@ -5,7 +5,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{ObstacleKind, Ruleset};
+use h3_content_battle::{BattleRuleset, ObstacleKind};
 use h3_contracts::{BattleEffect, BattleSide, EagleEye, Rate};
 
 use super::spells::{arena, mage, spell};
@@ -16,7 +16,7 @@ use crate::{
 };
 
 /// Two stacks a side, the attacker's first active.
-fn duel(r: &Ruleset, heroes: [Option<h3_contracts::BattleHero>; 2]) -> BattleState {
+fn duel(r: &BattleRuleset, heroes: [Option<h3_contracts::BattleHero>; 2]) -> BattleState {
     arena(
         r,
         heroes,
@@ -27,7 +27,7 @@ fn duel(r: &Ruleset, heroes: [Option<h3_contracts::BattleHero>; 2]) -> BattleSta
 }
 
 /// Places a hidden Quicksand of `side` on `hex`.
-fn pit(s: &mut BattleState, r: &Ruleset, side: BattleSide, hex: Hex) {
+fn pit(s: &mut BattleState, r: &BattleRuleset, side: BattleSide, hex: Hex) {
     let id = spell(r, "quicksand");
     let shape = r.spell(id).unwrap().magic.obstacle.clone().unwrap();
     let placed = (id, ObstacleKind::Pit, &shape);

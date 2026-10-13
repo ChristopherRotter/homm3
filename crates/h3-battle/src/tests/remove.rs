@@ -6,7 +6,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{ObstacleKind, Ruleset};
+use h3_content_battle::{BattleRuleset, ObstacleKind};
 use h3_contracts::{BattleHero, BattleSide, Obstacle};
 
 use super::spells::{mage, spell};
@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// A mage with `spells`, air mastery `air` and 100 mana.
-fn caster(r: &Ruleset, spells: &[&str], air: u8) -> BattleHero {
+fn caster(r: &BattleRuleset, spells: &[&str], air: u8) -> BattleHero {
     let mut h = mage(r, spells);
     h.magic.masteries = masteries(r, [air, 0, 0, 0]);
     h.magic.mana = 100;
@@ -29,7 +29,7 @@ type Piece<'a> = (&'a [(i32, i32)], Option<(i32, i32)>);
 
 /// A battle with the attacker's hero `hero`, a serf per side at (2, 5) and (14, 5), and the
 /// natural obstacles `obstacles`; the attacker is active.
-fn field_with(r: &Ruleset, hero: BattleHero, obstacles: &[Piece<'_>]) -> BattleState {
+fn field_with(r: &BattleRuleset, hero: BattleHero, obstacles: &[Piece<'_>]) -> BattleState {
     let setup = BattleSetup {
         heroes: [Some(hero), None],
         obstacles: obstacles
@@ -49,7 +49,7 @@ fn field_with(r: &Ruleset, hero: BattleHero, obstacles: &[Piece<'_>]) -> BattleS
 }
 
 /// The hexes `name` may be cast at by the attacker now.
-fn targets(s: &BattleState, r: &Ruleset, name: &str) -> HexSet {
+fn targets(s: &BattleState, r: &BattleRuleset, name: &str) -> HexSet {
     let mut out = CastTargets::new();
     cast_targets(s, r, BattleSide::Attacker, spell(r, name), &mut out);
     out.iter().fold(HexSet::new(), |mut set, t| {
@@ -61,7 +61,7 @@ fn targets(s: &BattleState, r: &Ruleset, name: &str) -> HexSet {
 }
 
 /// The hexes at `cells` as a set.
-fn cells(r: &Ruleset, cells: &[(i32, i32)]) -> HexSet {
+fn cells(r: &BattleRuleset, cells: &[(i32, i32)]) -> HexSet {
     cells.iter().fold(HexSet::new(), |mut set, &(x, y)| {
         set.insert(at(r, x, y));
         set
@@ -69,7 +69,7 @@ fn cells(r: &Ruleset, cells: &[(i32, i32)]) -> HexSet {
 }
 
 /// The attacker casts `name` at `target` (its hero may cast again); returns the events.
-fn cast_on(s: &mut BattleState, r: &Ruleset, name: &str, target: CastTarget) -> Vec<Event> {
+fn cast_on(s: &mut BattleState, r: &BattleRuleset, name: &str, target: CastTarget) -> Vec<Event> {
     s.heroes[0].as_mut().unwrap().view.casts = 0;
     activate(s, 0);
     act(
@@ -85,12 +85,18 @@ fn cast_on(s: &mut BattleState, r: &Ruleset, name: &str, target: CastTarget) -> 
 }
 
 /// The attacker casts `name` at the hex `(x, y)`; returns the events.
-fn cast_at(s: &mut BattleState, r: &Ruleset, name: &str, (x, y): (i32, i32)) -> Vec<Event> {
+fn cast_at(s: &mut BattleState, r: &BattleRuleset, name: &str, (x, y): (i32, i32)) -> Vec<Event> {
     cast_on(s, r, name, CastTarget::Hex(at(r, x, y)))
 }
 
 /// Places one obstacle of `kind` for `side` on `(x, y)` (as the spell would).
-fn put(s: &mut BattleState, r: &Ruleset, side: BattleSide, kind: ObstacleKind, (x, y): (i32, i32)) {
+fn put(
+    s: &mut BattleState,
+    r: &BattleRuleset,
+    side: BattleSide,
+    kind: ObstacleKind,
+    (x, y): (i32, i32),
+) {
     let key = match kind {
         ObstacleKind::Wall => "wall",
         ObstacleKind::Fire => "firewall",

@@ -4,7 +4,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleHero, BattleSide};
 
 use super::spells::{arena, cast, mage, spell, stack};
@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// Gives stack `id` the timed effect of `name` at `mastery` for five rounds.
-fn give(s: &mut BattleState, r: &Ruleset, (id, name): (u8, &str), mastery: u8) {
+fn give(s: &mut BattleState, r: &BattleRuleset, (id, name): (u8, &str), mastery: u8) {
     let spell_id = spell(r, name);
     let cast = TimedCast {
         id: spell_id,
@@ -46,7 +46,7 @@ fn strikes(events: &[Event]) -> Vec<(u8, u8, u64)> {
 }
 
 /// Whether `events` report that `name`'s effect on stack `id` ended.
-fn ended(r: &Ruleset, events: &[Event], id: u8, name: &str) -> bool {
+fn ended(r: &BattleRuleset, events: &[Event], id: u8, name: &str) -> bool {
     events.iter().any(|e| {
         e.kind
             == EventKind::EffectEnded {
@@ -57,7 +57,7 @@ fn ended(r: &Ruleset, events: &[Event], id: u8, name: &str) -> bool {
 }
 
 /// A mage with `spells`, the air mastery `mastery` and enough mana.
-fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
+fn adept(r: &BattleRuleset, spells: &[&str], mastery: u8) -> BattleHero {
     let mut h = mage(r, spells);
     h.magic.masteries = masteries(r, [mastery, 0, 0, 0]);
     h.magic.mana = 200;
@@ -67,7 +67,7 @@ fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
 /// The damage of one shot (`melee` false) or melee attack of `count` blessed archers (which
 /// deal 3 each) on `fixed`, with Forgetfulness cast at `forget` (`None`: none), and of the
 /// retaliation it draws.
-fn archers(r: &Ruleset, count: u32, forget: Option<u8>, melee: bool) -> Vec<(u8, u8, u64)> {
+fn archers(r: &BattleRuleset, count: u32, forget: Option<u8>, melee: bool) -> Vec<(u8, u8, u64)> {
     let x = if melee { 3 } else { 9 };
     let mut s = arena(
         r,
@@ -193,7 +193,7 @@ fn forgetfulness_from_advanced_keeps_shooters_from_shooting() {
 // covers: BAT-MAG-023
 #[test]
 fn forgetfulness_reaches_enemy_shooters_and_is_mass_from_advanced_with_its_quirk() {
-    let targets = |r: &Ruleset, mastery: u8| {
+    let targets = |r: &BattleRuleset, mastery: u8| {
         let s = arena(
             r,
             [Some(adept(r, &["forget"], mastery)), None],

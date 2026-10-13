@@ -5,7 +5,8 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{Ruleset, SpellScope};
+use h3_content::SpellScope;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleEffect, BattleHero, BattleSetup, BattleSide, Rate};
 
 use super::spells::{arena, cast, mage, spell, stack};
@@ -14,7 +15,7 @@ use crate::effects::TimedCast;
 use crate::{BattleState, CastTargets, Command, Event, EventKind, StackId, cast_targets};
 
 /// Gives stack `id` the timed effect of `name` at `mastery` for five rounds.
-fn give(s: &mut BattleState, r: &Ruleset, (id, name): (u8, &str), mastery: u8) {
+fn give(s: &mut BattleState, r: &BattleRuleset, (id, name): (u8, &str), mastery: u8) {
     let spell_id = spell(r, name);
     let cast = TimedCast {
         id: spell_id,
@@ -27,7 +28,7 @@ fn give(s: &mut BattleState, r: &Ruleset, (id, name): (u8, &str), mastery: u8) {
 }
 
 /// A mage with `spells`, every school's mastery `mastery` and enough mana.
-fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
+fn adept(r: &BattleRuleset, spells: &[&str], mastery: u8) -> BattleHero {
     let mut h = mage(r, spells);
     h.magic.masteries = masteries(r, [mastery; 4]);
     h.magic.mana = 200;
@@ -35,7 +36,7 @@ fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
 }
 
 /// Whether a helpful caster of `side` may cast `name` on stack `target` (BAT-MAG-050).
-fn useful(s: &BattleState, r: &Ruleset, side: BattleSide, name: &str, target: u8) -> bool {
+fn useful(s: &BattleState, r: &BattleRuleset, side: BattleSide, name: &str, target: u8) -> bool {
     let id = spell(r, name);
     crate::casters::useful(s, r, side, (id, r.spell(id).unwrap()), StackId(target))
 }
@@ -80,7 +81,7 @@ fn first_strike(events: &[Event]) -> u64 {
 /// A battle of `attacker` against `defender` without heroes, the stacks at `positions`
 /// (stack-id order), the first attacker stack active.
 fn field_of(
-    r: &Ruleset,
+    r: &BattleRuleset,
     attacker: &[Spec],
     defender: &[Spec],
     positions: &[(i32, i32)],
@@ -94,7 +95,7 @@ fn field_of(
 }
 
 /// The active stack attacks `target` from `(x, y)`.
-fn hit(s: &mut BattleState, r: &Ruleset, target: u8, (x, y): (i32, i32)) -> Vec<Event> {
+fn hit(s: &mut BattleState, r: &BattleRuleset, target: u8, (x, y): (i32, i32)) -> Vec<Event> {
     let from = at(r, x, y);
     act(
         s,
@@ -230,7 +231,7 @@ fn a_mirror_of_its_own_never_sends_a_creatures_spell_away() {
 
 /// The reflection of 100 Fixed (stage 1: 200, dealt: 150) striking `count` Sultans (100 hit
 /// points each, their own shield 25 %) with the spell cast on them at `mastery` (none: not).
-fn sultans_reflect(r: &Ruleset, count: u32, mastery: Option<u8>) -> Vec<(u8, u64, u32)> {
+fn sultans_reflect(r: &BattleRuleset, count: u32, mastery: Option<u8>) -> Vec<(u8, u64, u32)> {
     let mut s = field_of(
         r,
         &[(0, "fixed", 100)],

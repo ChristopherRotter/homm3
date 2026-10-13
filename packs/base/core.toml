@@ -123,13 +123,7 @@ name = "Pikeman"
 plural = "Pikemen"
 faction = "castle"
 level = 1
-attack = 4
-defense = 5
-damage = [1, 3]
-hit_points = 10
 speed = 4
-shots = 0
-casts = 0
 cost = { gold = 60 }
 growth = 14
 horde_growth = 0
@@ -137,7 +131,6 @@ fight_value = 100
 ai_value = 80
 adventure_count = [20, 50]
 flags = ["alive"]
-abilities = [{ kind = "charge_immunity" }]
 upgrades = ["halberdier"]
 
 [[creature]]
@@ -146,13 +139,7 @@ name = "Halberdier"
 plural = "Halberdiers"
 faction = "castle"
 level = 1
-attack = 6
-defense = 5
-damage = [2, 3]
-hit_points = 10
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 75 }
 growth = 14
 horde_growth = 0
@@ -160,7 +147,6 @@ fight_value = 115
 ai_value = 115
 adventure_count = [20, 30]
 flags = ["alive"]
-abilities = [{ kind = "charge_immunity" }]
 
 [[creature]]
 id = "archer"  # original id 2
@@ -168,13 +154,7 @@ name = "Archer"
 plural = "Archers"
 faction = "castle"
 level = 2
-attack = 6
-defense = 3
-damage = [2, 3]
-hit_points = 10
 speed = 4
-shots = 12
-casts = 0
 cost = { gold = 100 }
 growth = 9
 horde_growth = 0
@@ -190,13 +170,7 @@ name = "Marksman"
 plural = "Marksmen"
 faction = "castle"
 level = 2
-attack = 6
-defense = 3
-damage = [2, 3]
-hit_points = 10
 speed = 6
-shots = 24
-casts = 0
 cost = { gold = 150 }
 growth = 9
 horde_growth = 0
@@ -211,13 +185,7 @@ name = "Griffin"
 plural = "Griffins"
 faction = "castle"
 level = 3
-attack = 8
-defense = 8
-damage = [3, 6]
-hit_points = 25
 speed = 6
-shots = 0
-casts = 0
 cost = { gold = 200 }
 growth = 7
 horde_growth = 3
@@ -225,7 +193,6 @@ fight_value = 324
 ai_value = 351
 adventure_count = [12, 25]
 flags = ["two_hex", "flying", "alive"]
-abilities = [{ kind = "extra_retaliations", count = 1 }]
 upgrades = ["royal_griffin"]
 
 [[creature]]
@@ -234,13 +201,7 @@ name = "Royal Griffin"
 plural = "Royal Griffins"
 faction = "castle"
 level = 3
-attack = 9
-defense = 9
-damage = [3, 6]
-hit_points = 25
 speed = 9
-shots = 0
-casts = 0
 cost = { gold = 240 }
 growth = 7
 horde_growth = 3
@@ -248,7 +209,6 @@ fight_value = 364
 ai_value = 448
 adventure_count = [12, 20]
 flags = ["two_hex", "flying", "alive"]
-abilities = [{ kind = "unlimited_retaliations" }]
 
 [[creature]]
 id = "swordsman"  # original id 6
@@ -256,13 +216,7 @@ name = "Swordsman"
 plural = "Swordsmen"
 faction = "castle"
 level = 4
-attack = 10
-defense = 12
-damage = [6, 9]
-hit_points = 35
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 300 }
 growth = 4
 horde_growth = 0
@@ -278,13 +232,7 @@ name = "Crusader"
 plural = "Crusaders"
 faction = "castle"
 level = 4
-attack = 12
-defense = 12
-damage = [7, 10]
-hit_points = 35
 speed = 6
-shots = 0
-casts = 0
 cost = { gold = 400 }
 growth = 4
 horde_growth = 0
@@ -299,13 +247,7 @@ name = "Monk"
 plural = "Monks"
 faction = "castle"
 level = 5
-attack = 12
-defense = 7
-damage = [10, 12]
-hit_points = 30
 speed = 5
-shots = 12
-casts = 0
 cost = { gold = 400 }
 growth = 3
 horde_growth = 0
@@ -321,13 +263,7 @@ name = "Zealot"
 plural = "Zealots"
 faction = "castle"
 level = 5
-attack = 12
-defense = 10
-damage = [10, 12]
-hit_points = 30
 speed = 7
-shots = 24
-casts = 0
 cost = { gold = 450 }
 growth = 3
 horde_growth = 0
@@ -342,13 +278,7 @@ name = "Cavalier"
 plural = "Cavaliers"
 faction = "castle"
 level = 6
-attack = 15
-defense = 15
-damage = [15, 25]
-hit_points = 100
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 1000 }
 growth = 2
 horde_growth = 0
@@ -356,7 +286,6 @@ fight_value = 1668
 ai_value = 1946
 adventure_count = [5, 12]
 flags = ["two_hex", "alive"]
-abilities = [{ kind = "jousting", percent_per_hex = 5 }]
 upgrades = ["champion"]
 
 [[creature]]
@@ -365,13 +294,7 @@ name = "Champion"
 plural = "Champions"
 faction = "castle"
 level = 6
-attack = 16
-defense = 16
-damage = [20, 25]
-hit_points = 100
 speed = 9
-shots = 0
-casts = 0
 cost = { gold = 1200 }
 growth = 2
 horde_growth = 0
@@ -379,7 +302,6 @@ fight_value = 1800
 ai_value = 2100
 adventure_count = [5, 10]
 flags = ["two_hex", "alive"]
-abilities = [{ kind = "jousting", percent_per_hex = 5 }]
 
 [[creature]]
 id = "angel"  # original id 12
@@ -387,13 +309,7 @@ name = "Angel"
 plural = "Angels"
 faction = "castle"
 level = 7
-attack = 20
-defense = 20
-damage = [50, 50]
-hit_points = 200
 speed = 12
-shots = 0
-casts = 0
 cost = { gold = 3000 }
 growth = 1
 horde_growth = 0
@@ -401,7 +317,6 @@ fight_value = 3585
 ai_value = 5019
 adventure_count = [4, 10]
 flags = ["flying", "alive", "king_2"]
-abilities = [{ kind = "morale_aura", affects = "allies", amount = 1 }, { kind = "hate", creature = "devil", percent = 50 }, { kind = "hate", creature = "arch_devil", percent = 50 }]
 upgrades = ["archangel"]
 
 [[creature]]
@@ -410,13 +325,7 @@ name = "Archangel"
 plural = "Archangels"
 faction = "castle"
 level = 7
-attack = 30
-defense = 30
-damage = [50, 50]
-hit_points = 250
 speed = 18
-shots = 0
-casts = 1
 cost = { gold = 5000 }
 growth = 1
 horde_growth = 0
@@ -424,7 +333,6 @@ fight_value = 6033
 ai_value = 8776
 adventure_count = [3, 8]
 flags = ["two_hex", "flying", "alive", "king_2"]
-abilities = [{ kind = "morale_aura", affects = "allies", amount = 1 }, { kind = "hate", creature = "devil", percent = 50 }, { kind = "hate", creature = "arch_devil", percent = 50 }, { kind = "stack_raiser", hit_points_per_creature = 100, spell = "base:resurrection" }]
 
 [[creature]]
 id = "centaur"  # original id 14
@@ -432,13 +340,7 @@ name = "Centaur"
 plural = "Centaurs"
 faction = "rampart"
 level = 1
-attack = 5
-defense = 3
-damage = [2, 3]
-hit_points = 8
 speed = 6
-shots = 0
-casts = 0
 cost = { gold = 70 }
 growth = 14
 horde_growth = 0
@@ -454,13 +356,7 @@ name = "Centaur Captain"
 plural = "Centaur Captains"
 faction = "rampart"
 level = 1
-attack = 6
-defense = 3
-damage = [2, 3]
-hit_points = 10
 speed = 8
-shots = 0
-casts = 0
 cost = { gold = 90 }
 growth = 14
 horde_growth = 0
@@ -475,13 +371,7 @@ name = "Dwarf"
 plural = "Dwarves"
 faction = "rampart"
 level = 2
-attack = 6
-defense = 7
-damage = [2, 4]
-hit_points = 20
 speed = 3
-shots = 0
-casts = 0
 cost = { gold = 120 }
 growth = 8
 horde_growth = 4
@@ -489,7 +379,6 @@ fight_value = 194
 ai_value = 138
 adventure_count = [16, 30]
 flags = ["alive"]
-abilities = [{ kind = "magic_resistance", percent = 20 }]
 upgrades = ["battle_dwarf"]
 
 [[creature]]
@@ -498,13 +387,7 @@ name = "Battle Dwarf"
 plural = "Battle Dwarves"
 faction = "rampart"
 level = 2
-attack = 7
-defense = 7
-damage = [2, 4]
-hit_points = 20
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 150 }
 growth = 8
 horde_growth = 4
@@ -512,7 +395,6 @@ fight_value = 209
 ai_value = 209
 adventure_count = [16, 25]
 flags = ["alive"]
-abilities = [{ kind = "magic_resistance", percent = 40 }]
 
 [[creature]]
 id = "wood_elf"  # original id 18
@@ -520,13 +402,7 @@ name = "Wood Elf"
 plural = "Wood Elves"
 faction = "rampart"
 level = 3
-attack = 9
-defense = 5
-damage = [3, 5]
-hit_points = 15
 speed = 6
-shots = 24
-casts = 0
 cost = { gold = 200 }
 growth = 7
 horde_growth = 0
@@ -542,13 +418,7 @@ name = "Grand Elf"
 plural = "Grand Elves"
 faction = "rampart"
 level = 3
-attack = 9
-defense = 5
-damage = [3, 5]
-hit_points = 15
 speed = 7
-shots = 24
-casts = 0
 cost = { gold = 225 }
 growth = 7
 horde_growth = 0
@@ -563,13 +433,7 @@ name = "Pegasus"
 plural = "Pegasi"
 faction = "rampart"
 level = 4
-attack = 9
-defense = 8
-damage = [5, 9]
-hit_points = 30
 speed = 8
-shots = 0
-casts = 0
 cost = { gold = 250 }
 growth = 5
 horde_growth = 0
@@ -577,7 +441,6 @@ fight_value = 407
 ai_value = 518
 adventure_count = [10, 20]
 flags = ["two_hex", "flying", "alive"]
-abilities = [{ kind = "spell_cost", affects = "enemies", amount = 2 }]
 upgrades = ["silver_pegasus"]
 
 [[creature]]
@@ -586,13 +449,7 @@ name = "Silver Pegasus"
 plural = "Silver Pegasi"
 faction = "rampart"
 level = 4
-attack = 9
-defense = 10
-damage = [5, 9]
-hit_points = 30
 speed = 12
-shots = 0
-casts = 0
 cost = { gold = 275 }
 growth = 5
 horde_growth = 0
@@ -600,7 +457,6 @@ fight_value = 418
 ai_value = 532
 adventure_count = [10, 16]
 flags = ["two_hex", "flying", "alive"]
-abilities = [{ kind = "spell_cost", affects = "enemies", amount = 2 }]
 
 [[creature]]
 id = "dendroid_guard"  # original id 22
@@ -608,13 +464,7 @@ name = "Dendroid Guard"
 plural = "Dendroid Guards"
 faction = "rampart"
 level = 5
-attack = 9
-defense = 12
-damage = [10, 14]
-hit_points = 55
 speed = 3
-shots = 0
-casts = 0
 cost = { gold = 350 }
 growth = 3
 horde_growth = 2
@@ -622,7 +472,6 @@ fight_value = 690
 ai_value = 517
 adventure_count = [8, 16]
 flags = ["alive"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 100, mastery = 0, rounds = 3, spell = "base:bind" }]
 upgrades = ["dendroid_soldier"]
 
 [[creature]]
@@ -631,13 +480,7 @@ name = "Dendroid Soldier"
 plural = "Dendroid Soldiers"
 faction = "rampart"
 level = 5
-attack = 9
-defense = 12
-damage = [10, 14]
-hit_points = 65
 speed = 4
-shots = 0
-casts = 0
 cost = { gold = 425 }
 growth = 3
 horde_growth = 2
@@ -645,7 +488,6 @@ fight_value = 765
 ai_value = 803
 adventure_count = [8, 12]
 flags = ["alive"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 100, mastery = 0, rounds = 3, spell = "base:bind" }]
 
 [[creature]]
 id = "unicorn"  # original id 24
@@ -653,13 +495,7 @@ name = "Unicorn"
 plural = "Unicorns"
 faction = "rampart"
 level = 6
-attack = 15
-defense = 14
-damage = [18, 22]
-hit_points = 90
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 850 }
 growth = 2
 horde_growth = 0
@@ -667,7 +503,6 @@ fight_value = 1548
 ai_value = 1806
 adventure_count = [5, 12]
 flags = ["two_hex", "alive"]
-abilities = [{ kind = "magic_resistance_aura", percent = 20 }, { kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:blind" }]
 upgrades = ["war_unicorn"]
 
 [[creature]]
@@ -676,13 +511,7 @@ name = "War Unicorn"
 plural = "War Unicorns"
 faction = "rampart"
 level = 6
-attack = 15
-defense = 14
-damage = [18, 22]
-hit_points = 110
 speed = 9
-shots = 0
-casts = 0
 cost = { gold = 950 }
 growth = 2
 horde_growth = 0
@@ -690,7 +519,6 @@ fight_value = 1740
 ai_value = 2030
 adventure_count = [5, 10]
 flags = ["two_hex", "alive"]
-abilities = [{ kind = "magic_resistance_aura", percent = 20 }, { kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:blind" }]
 
 [[creature]]
 id = "green_dragon"  # original id 26
@@ -698,13 +526,7 @@ name = "Green Dragon"
 plural = "Green Dragons"
 faction = "rampart"
 level = 7
-attack = 18
-defense = 18
-damage = [40, 50]
-hit_points = 180
 speed = 10
-shots = 0
-casts = 0
 cost = { crystal = 1, gold = 2400 }
 growth = 1
 horde_growth = 0
@@ -712,7 +534,6 @@ fight_value = 3654
 ai_value = 4872
 adventure_count = [4, 10]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "dragon"]
-abilities = [{ kind = "spell_level_immunity", max_level = 3 }]
 upgrades = ["gold_dragon"]
 
 [[creature]]
@@ -721,13 +542,7 @@ name = "Gold Dragon"
 plural = "Gold Dragons"
 faction = "rampart"
 level = 7
-attack = 27
-defense = 27
-damage = [40, 50]
-hit_points = 250
 speed = 16
-shots = 0
-casts = 0
 cost = { crystal = 2, gold = 4000 }
 growth = 1
 horde_growth = 0
@@ -735,7 +550,6 @@ fight_value = 6220
 ai_value = 8613
 adventure_count = [3, 8]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "dragon"]
-abilities = [{ kind = "spell_level_immunity", max_level = 4 }]
 
 [[creature]]
 id = "gremlin"  # original id 28
@@ -743,13 +557,7 @@ name = "Gremlin"
 plural = "Gremlins"
 faction = "tower"
 level = 1
-attack = 3
-defense = 3
-damage = [1, 2]
-hit_points = 4
 speed = 4
-shots = 0
-casts = 0
 cost = { gold = 30 }
 growth = 16
 horde_growth = 0
@@ -765,13 +573,7 @@ name = "Master Gremlin"
 plural = "Master Gremlins"
 faction = "tower"
 level = 1
-attack = 4
-defense = 4
-damage = [1, 2]
-hit_points = 4
 speed = 5
-shots = 8
-casts = 0
 cost = { gold = 40 }
 growth = 16
 horde_growth = 0
@@ -786,13 +588,7 @@ name = "Stone Gargoyle"
 plural = "Stone Gargoyles"
 faction = "tower"
 level = 2
-attack = 6
-defense = 6
-damage = [2, 3]
-hit_points = 16
 speed = 6
-shots = 0
-casts = 0
 cost = { gold = 130 }
 growth = 9
 horde_growth = 4
@@ -800,7 +596,6 @@ fight_value = 150
 ai_value = 165
 adventure_count = [16, 30]
 flags = ["flying"]
-abilities = [{ kind = "spell_immunity", absolute = true, spell = "base:poison" }]
 upgrades = ["obsidian_gargoyle"]
 
 [[creature]]
@@ -809,13 +604,7 @@ name = "Obsidian Gargoyle"
 plural = "Obsidian Gargoyles"
 faction = "tower"
 level = 2
-attack = 7
-defense = 7
-damage = [2, 3]
-hit_points = 16
 speed = 9
-shots = 0
-casts = 0
 cost = { gold = 160 }
 growth = 9
 horde_growth = 4
@@ -823,7 +612,6 @@ fight_value = 155
 ai_value = 201
 adventure_count = [16, 25]
 flags = ["flying"]
-abilities = [{ kind = "spell_immunity", absolute = true, spell = "base:poison" }]
 
 [[creature]]
 id = "stone_golem"  # original id 32
@@ -831,13 +619,7 @@ name = "Stone Golem"
 plural = "Stone Golems"
 faction = "tower"
 level = 3
-attack = 7
-defense = 10
-damage = [4, 5]
-hit_points = 30
 speed = 3
-shots = 0
-casts = 0
 cost = { gold = 150 }
 growth = 6
 horde_growth = 0
@@ -845,7 +627,6 @@ fight_value = 339
 ai_value = 250
 adventure_count = [12, 25]
 flags = ["mind_immune", "no_morale"]
-abilities = [{ kind = "spell_damage_reduction", percent = 50 }]
 upgrades = ["iron_golem"]
 
 [[creature]]
@@ -854,13 +635,7 @@ name = "Iron Golem"
 plural = "Iron Golems"
 faction = "tower"
 level = 3
-attack = 9
-defense = 10
-damage = [4, 5]
-hit_points = 35
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 200 }
 growth = 6
 horde_growth = 0
@@ -868,7 +643,6 @@ fight_value = 412
 ai_value = 412
 adventure_count = [12, 20]
 flags = ["mind_immune", "no_morale"]
-abilities = [{ kind = "spell_damage_reduction", percent = 75 }]
 
 [[creature]]
 id = "mage"  # original id 34
@@ -876,13 +650,7 @@ name = "Mage"
 plural = "Magi"
 faction = "tower"
 level = 4
-attack = 11
-defense = 8
-damage = [7, 9]
-hit_points = 25
 speed = 5
-shots = 24
-casts = 0
 cost = { gold = 350 }
 growth = 4
 horde_growth = 0
@@ -890,7 +658,6 @@ fight_value = 418
 ai_value = 570
 adventure_count = [10, 20]
 flags = ["shooter", "alive", "no_melee_penalty"]
-abilities = [{ kind = "spell_cost", affects = "allies", amount = -2 }]
 upgrades = ["arch_mage"]
 
 [[creature]]
@@ -899,13 +666,7 @@ name = "Arch Mage"
 plural = "Arch Magi"
 faction = "tower"
 level = 4
-attack = 12
-defense = 9
-damage = [7, 9]
-hit_points = 30
 speed = 7
-shots = 24
-casts = 0
 cost = { gold = 450 }
 growth = 4
 horde_growth = 0
@@ -913,7 +674,6 @@ fight_value = 467
 ai_value = 680
 adventure_count = [10, 16]
 flags = ["shooter", "alive", "no_melee_penalty"]
-abilities = [{ kind = "spell_cost", affects = "allies", amount = -2 }]
 
 [[creature]]
 id = "genie"  # original id 36
@@ -921,13 +681,7 @@ name = "Genie"
 plural = "Genies"
 faction = "tower"
 level = 5
-attack = 12
-defense = 12
-damage = [13, 16]
-hit_points = 40
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 550 }
 growth = 3
 horde_growth = 0
@@ -935,7 +689,6 @@ fight_value = 680
 ai_value = 884
 adventure_count = [8, 16]
 flags = ["flying", "alive"]
-abilities = [{ kind = "hate", creature = "efreeti", percent = 50 }, { kind = "hate", creature = "efreet_sultan", percent = 50 }]
 upgrades = ["master_genie"]
 
 [[creature]]
@@ -944,13 +697,7 @@ name = "Master Genie"
 plural = "Master Genies"
 faction = "tower"
 level = 5
-attack = 12
-defense = 12
-damage = [13, 16]
-hit_points = 40
 speed = 11
-shots = 0
-casts = 3
 cost = { gold = 600 }
 growth = 3
 horde_growth = 0
@@ -958,7 +705,6 @@ fight_value = 748
 ai_value = 942
 adventure_count = [8, 12]
 flags = ["flying", "alive"]
-abilities = [{ kind = "hate", creature = "efreeti", percent = 50 }, { kind = "hate", creature = "efreet_sultan", percent = 50 }, { kind = "helpful_spell_caster", mastery = 2, power = 6 }, { kind = "drawn_spell", spell = "base:shield", weight = 1 }, { kind = "drawn_spell", spell = "base:air_shield", weight = 1 }, { kind = "drawn_spell", spell = "base:fire_shield", weight = 1 }, { kind = "drawn_spell", spell = "base:protection_from_air", weight = 1 }, { kind = "drawn_spell", spell = "base:protection_from_fire", weight = 1 }, { kind = "drawn_spell", spell = "base:prot_from_water", weight = 1 }, { kind = "drawn_spell", spell = "base:prot_from_earth", weight = 1 }, { kind = "drawn_spell", spell = "base:anti_magic", weight = 1 }, { kind = "drawn_spell", spell = "base:magic_mirror", weight = 1 }, { kind = "drawn_spell", spell = "base:cure", weight = 1 }, { kind = "drawn_spell", spell = "base:bless", weight = 1 }, { kind = "drawn_spell", spell = "base:bloodlust", weight = 1 }, { kind = "drawn_spell", spell = "base:precision", weight = 1 }, { kind = "drawn_spell", spell = "base:stone_skin", weight = 1 }, { kind = "drawn_spell", spell = "base:prayer", weight = 1 }, { kind = "drawn_spell", spell = "base:mirth", weight = 1 }, { kind = "drawn_spell", spell = "base:fortune", weight = 1 }, { kind = "drawn_spell", spell = "base:haste", weight = 1 }, { kind = "drawn_spell", spell = "base:slayer", weight = 1 }, { kind = "drawn_spell", spell = "base:frenzy", weight = 1 }, { kind = "drawn_spell", spell = "base:counterstrike", weight = 1 }]
 
 [[creature]]
 id = "naga"  # original id 38
@@ -966,13 +712,7 @@ name = "Naga"
 plural = "Nagas"
 faction = "tower"
 level = 6
-attack = 16
-defense = 13
-damage = [20, 20]
-hit_points = 110
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 1100 }
 growth = 2
 horde_growth = 0
@@ -988,13 +728,7 @@ name = "Naga Queen"
 plural = "Naga Queens"
 faction = "tower"
 level = 6
-attack = 16
-defense = 13
-damage = [30, 30]
-hit_points = 110
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 1600 }
 growth = 2
 horde_growth = 0
@@ -1009,13 +743,7 @@ name = "Giant"
 plural = "Giants"
 faction = "tower"
 level = 7
-attack = 19
-defense = 16
-damage = [40, 60]
-hit_points = 150
 speed = 7
-shots = 0
-casts = 0
 cost = { gems = 1, gold = 2000 }
 growth = 1
 horde_growth = 0
@@ -1031,13 +759,7 @@ name = "Titan"
 plural = "Titans"
 faction = "tower"
 level = 7
-attack = 24
-defense = 24
-damage = [40, 60]
-hit_points = 300
 speed = 11
-shots = 24
-casts = 0
 cost = { gems = 2, gold = 5000 }
 growth = 1
 horde_growth = 0
@@ -1045,7 +767,6 @@ fight_value = 5000
 ai_value = 7500
 adventure_count = [3, 8]
 flags = ["shooter", "alive", "king_3", "mind_immune", "no_melee_penalty"]
-abilities = [{ kind = "hate", creature = "black_dragon", percent = 50 }]
 
 [[creature]]
 id = "imp"  # original id 42
@@ -1053,13 +774,7 @@ name = "Imp"
 plural = "Imps"
 faction = "inferno"
 level = 1
-attack = 2
-defense = 3
-damage = [1, 2]
-hit_points = 4
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 50 }
 growth = 15
 horde_growth = 8
@@ -1075,13 +790,7 @@ name = "Familiar"
 plural = "Familiars"
 faction = "inferno"
 level = 1
-attack = 4
-defense = 4
-damage = [1, 2]
-hit_points = 4
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 60 }
 growth = 15
 horde_growth = 8
@@ -1089,7 +798,6 @@ fight_value = 60
 ai_value = 60
 adventure_count = [20, 30]
 flags = ["alive"]
-abilities = [{ kind = "mana_channel", percent = 20 }]
 
 [[creature]]
 id = "gog"  # original id 44
@@ -1097,13 +805,7 @@ name = "Gog"
 plural = "Gogs"
 faction = "inferno"
 level = 2
-attack = 6
-defense = 4
-damage = [2, 4]
-hit_points = 13
 speed = 4
-shots = 12
-casts = 0
 cost = { gold = 125 }
 growth = 8
 horde_growth = 0
@@ -1119,13 +821,7 @@ name = "Magog"
 plural = "Magogs"
 faction = "inferno"
 level = 2
-attack = 7
-defense = 4
-damage = [2, 4]
-hit_points = 13
 speed = 6
-shots = 24
-casts = 0
 cost = { gold = 175 }
 growth = 8
 horde_growth = 0
@@ -1133,7 +829,6 @@ fight_value = 210
 ai_value = 240
 adventure_count = [16, 25]
 flags = ["shooter", "alive", "area_attack"]
-abilities = [{ kind = "area_shot", effect = "fireball" }]
 
 [[creature]]
 id = "hell_hound"  # original id 46
@@ -1141,13 +836,7 @@ name = "Hell Hound"
 plural = "Hell Hounds"
 faction = "inferno"
 level = 3
-attack = 10
-defense = 6
-damage = [2, 7]
-hit_points = 25
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 200 }
 growth = 5
 horde_growth = 3
@@ -1163,13 +852,7 @@ name = "Cerberus"
 plural = "Cerberi"
 faction = "inferno"
 level = 3
-attack = 10
-defense = 8
-damage = [2, 5]
-hit_points = 25
 speed = 8
-shots = 0
-casts = 0
 cost = { gold = 250 }
 growth = 5
 horde_growth = 3
@@ -1177,7 +860,6 @@ fight_value = 308
 ai_value = 392
 adventure_count = [12, 20]
 flags = ["two_hex", "alive", "no_enemy_retaliation", "multi_headed"]
-abilities = [{ kind = "three_headed_attack" }]
 
 [[creature]]
 id = "demon"  # original id 48
@@ -1185,13 +867,7 @@ name = "Demon"
 plural = "Demons"
 faction = "inferno"
 level = 4
-attack = 10
-defense = 10
-damage = [7, 9]
-hit_points = 35
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 250 }
 growth = 4
 horde_growth = 0
@@ -1207,13 +883,7 @@ name = "Horned Demon"
 plural = "Horned Demons"
 faction = "inferno"
 level = 4
-attack = 10
-defense = 10
-damage = [7, 9]
-hit_points = 40
 speed = 6
-shots = 0
-casts = 0
 cost = { gold = 270 }
 growth = 4
 horde_growth = 0
@@ -1228,13 +898,7 @@ name = "Pit Fiend"
 plural = "Pit Fiends"
 faction = "inferno"
 level = 5
-attack = 13
-defense = 13
-damage = [13, 17]
-hit_points = 45
 speed = 6
-shots = 0
-casts = 0
 cost = { gold = 500 }
 growth = 3
 horde_growth = 0
@@ -1250,13 +914,7 @@ name = "Pit Lord"
 plural = "Pit Lords"
 faction = "inferno"
 level = 5
-attack = 13
-defense = 13
-damage = [13, 17]
-hit_points = 45
 speed = 7
-shots = 0
-casts = 1
 cost = { gold = 700 }
 growth = 3
 horde_growth = 0
@@ -1264,7 +922,6 @@ fight_value = 1071
 ai_value = 1224
 adventure_count = [8, 12]
 flags = ["alive"]
-abilities = [{ kind = "corpse_raiser", creature = "demon", hit_points_per_creature = 50 }]
 
 [[creature]]
 id = "efreeti"  # original id 52
@@ -1272,13 +929,7 @@ name = "Efreeti"
 plural = "Efreet"
 faction = "inferno"
 level = 6
-attack = 16
-defense = 12
-damage = [16, 24]
-hit_points = 90
 speed = 9
-shots = 0
-casts = 0
 cost = { gold = 900 }
 growth = 2
 horde_growth = 0
@@ -1286,7 +937,6 @@ fight_value = 1413
 ai_value = 1670
 adventure_count = [5, 12]
 flags = ["flying", "alive", "fire_immune"]
-abilities = [{ kind = "hate", creature = "genie", percent = 50 }, { kind = "hate", creature = "master_genie", percent = 50 }, { kind = "school_immunity", school = "base:fire" }]
 upgrades = ["efreet_sultan"]
 
 [[creature]]
@@ -1295,13 +945,7 @@ name = "Efreet Sultan"
 plural = "Efreet Sultans"
 faction = "inferno"
 level = 6
-attack = 16
-defense = 14
-damage = [16, 24]
-hit_points = 90
 speed = 13
-shots = 0
-casts = 0
 cost = { gold = 1100 }
 growth = 2
 horde_growth = 0
@@ -1309,7 +953,6 @@ fight_value = 1584
 ai_value = 1848
 adventure_count = [5, 10]
 flags = ["flying", "alive", "fire_immune"]
-abilities = [{ kind = "hate", creature = "genie", percent = 50 }, { kind = "hate", creature = "master_genie", percent = 50 }, { kind = "school_immunity", school = "base:fire" }, { kind = "innate_spell", spell = "base:fire_shield", value = 20 }]
 
 [[creature]]
 id = "devil"  # original id 54
@@ -1317,13 +960,7 @@ name = "Devil"
 plural = "Devils"
 faction = "inferno"
 level = 7
-attack = 19
-defense = 21
-damage = [30, 40]
-hit_points = 160
 speed = 11
-shots = 0
-casts = 0
 cost = { mercury = 1, gold = 2700 }
 growth = 1
 horde_growth = 0
@@ -1331,7 +968,6 @@ fight_value = 3759
 ai_value = 5101
 adventure_count = [4, 10]
 flags = ["alive", "king_2", "no_enemy_retaliation"]
-abilities = [{ kind = "teleports" }, { kind = "luck_aura", affects = "enemies", amount = -1 }, { kind = "hate", creature = "angel", percent = 50 }, { kind = "hate", creature = "archangel", percent = 50 }]
 upgrades = ["arch_devil"]
 
 [[creature]]
@@ -1340,13 +976,7 @@ name = "Arch Devil"
 plural = "Arch Devils"
 faction = "inferno"
 level = 7
-attack = 26
-defense = 28
-damage = [30, 40]
-hit_points = 200
 speed = 17
-shots = 0
-casts = 0
 cost = { mercury = 2, gold = 4500 }
 growth = 1
 horde_growth = 0
@@ -1354,7 +984,6 @@ fight_value = 5243
 ai_value = 7115
 adventure_count = [3, 8]
 flags = ["alive", "king_2", "no_enemy_retaliation"]
-abilities = [{ kind = "teleports" }, { kind = "luck_aura", affects = "enemies", amount = -1 }, { kind = "hate", creature = "angel", percent = 50 }, { kind = "hate", creature = "archangel", percent = 50 }]
 
 [[creature]]
 id = "skeleton"  # original id 56
@@ -1362,13 +991,7 @@ name = "Skeleton"
 plural = "Skeletons"
 faction = "necropolis"
 level = 1
-attack = 5
-defense = 4
-damage = [1, 3]
-hit_points = 6
 speed = 4
-shots = 0
-casts = 0
 cost = { gold = 60 }
 growth = 12
 horde_growth = 6
@@ -1384,13 +1007,7 @@ name = "Skeleton Warrior"
 plural = "Skeleton Warriors"
 faction = "necropolis"
 level = 1
-attack = 6
-defense = 6
-damage = [1, 3]
-hit_points = 6
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 70 }
 growth = 12
 horde_growth = 6
@@ -1405,13 +1022,7 @@ name = "Walking Dead"
 plural = "Walking Dead"
 faction = "necropolis"
 level = 2
-attack = 5
-defense = 5
-damage = [2, 3]
-hit_points = 15
 speed = 3
-shots = 0
-casts = 0
 cost = { gold = 100 }
 growth = 8
 horde_growth = 0
@@ -1427,13 +1038,7 @@ name = "Zombie"
 plural = "Zombies"
 faction = "necropolis"
 level = 2
-attack = 5
-defense = 5
-damage = [2, 3]
-hit_points = 20
 speed = 4
-shots = 0
-casts = 0
 cost = { gold = 125 }
 growth = 8
 horde_growth = 0
@@ -1441,7 +1046,6 @@ fight_value = 160
 ai_value = 128
 adventure_count = [16, 25]
 flags = ["mind_immune", "no_morale", "undead"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 20, living = true, mastery = 0, rounds = 3, spell = "base:disease" }]
 
 [[creature]]
 id = "wight"  # original id 60
@@ -1449,13 +1053,7 @@ name = "Wight"
 plural = "Wights"
 faction = "necropolis"
 level = 3
-attack = 7
-defense = 7
-damage = [3, 5]
-hit_points = 18
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 200 }
 growth = 7
 horde_growth = 0
@@ -1463,7 +1061,6 @@ fight_value = 231
 ai_value = 252
 adventure_count = [12, 25]
 flags = ["flying", "mind_immune", "no_morale", "undead"]
-abilities = [{ kind = "regeneration" }]
 upgrades = ["wraith"]
 
 [[creature]]
@@ -1472,13 +1069,7 @@ name = "Wraith"
 plural = "Wraiths"
 faction = "necropolis"
 level = 3
-attack = 7
-defense = 7
-damage = [3, 5]
-hit_points = 18
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 230 }
 growth = 7
 horde_growth = 0
@@ -1486,7 +1077,6 @@ fight_value = 252
 ai_value = 315
 adventure_count = [12, 20]
 flags = ["flying", "mind_immune", "no_morale", "undead"]
-abilities = [{ kind = "regeneration" }, { kind = "mana_drain", amount = 2 }]
 
 [[creature]]
 id = "vampire"  # original id 62
@@ -1494,13 +1084,7 @@ name = "Vampire"
 plural = "Vampires"
 faction = "necropolis"
 level = 4
-attack = 10
-defense = 9
-damage = [5, 8]
-hit_points = 30
 speed = 6
-shots = 0
-casts = 0
 cost = { gold = 360 }
 growth = 4
 horde_growth = 0
@@ -1516,13 +1100,7 @@ name = "Vampire Lord"
 plural = "Vampire Lords"
 faction = "necropolis"
 level = 4
-attack = 10
-defense = 10
-damage = [5, 8]
-hit_points = 40
 speed = 9
-shots = 0
-casts = 0
 cost = { gold = 500 }
 growth = 4
 horde_growth = 0
@@ -1530,7 +1108,6 @@ fight_value = 652
 ai_value = 783
 adventure_count = [10, 16]
 flags = ["flying", "mind_immune", "no_enemy_retaliation", "no_morale", "undead"]
-abilities = [{ kind = "life_drain", percent = 100 }]
 
 [[creature]]
 id = "lich"  # original id 64
@@ -1538,13 +1115,7 @@ name = "Lich"
 plural = "Liches"
 faction = "necropolis"
 level = 5
-attack = 13
-defense = 10
-damage = [11, 13]
-hit_points = 30
 speed = 6
-shots = 12
-casts = 0
 cost = { gold = 550 }
 growth = 3
 horde_growth = 0
@@ -1552,7 +1123,6 @@ fight_value = 742
 ai_value = 848
 adventure_count = [8, 16]
 flags = ["shooter", "mind_immune", "no_morale", "undead", "area_attack"]
-abilities = [{ kind = "area_shot", effect = "death_cloud" }]
 upgrades = ["power_lich"]
 
 [[creature]]
@@ -1561,13 +1131,7 @@ name = "Power Lich"
 plural = "Power Liches"
 faction = "necropolis"
 level = 5
-attack = 13
-defense = 10
-damage = [11, 15]
-hit_points = 40
 speed = 7
-shots = 24
-casts = 0
 cost = { gold = 600 }
 growth = 3
 horde_growth = 0
@@ -1575,7 +1139,6 @@ fight_value = 889
 ai_value = 1079
 adventure_count = [8, 12]
 flags = ["shooter", "mind_immune", "no_morale", "undead", "area_attack"]
-abilities = [{ kind = "area_shot", effect = "death_cloud" }]
 
 [[creature]]
 id = "black_knight"  # original id 66
@@ -1583,13 +1146,7 @@ name = "Black Knight"
 plural = "Black Knights"
 faction = "necropolis"
 level = 6
-attack = 16
-defense = 16
-damage = [15, 30]
-hit_points = 120
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 1200 }
 growth = 2
 horde_growth = 0
@@ -1597,7 +1154,6 @@ fight_value = 1753
 ai_value = 2087
 adventure_count = [5, 12]
 flags = ["two_hex", "mind_immune", "no_morale", "undead"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 25, mastery = 0, rounds = 3, spell = "base:curse" }]
 upgrades = ["dread_knight"]
 
 [[creature]]
@@ -1606,13 +1162,7 @@ name = "Dread Knight"
 plural = "Dread Knights"
 faction = "necropolis"
 level = 6
-attack = 18
-defense = 18
-damage = [15, 30]
-hit_points = 120
 speed = 9
-shots = 0
-casts = 0
 cost = { gold = 1500 }
 growth = 2
 horde_growth = 0
@@ -1620,7 +1170,6 @@ fight_value = 2029
 ai_value = 2382
 adventure_count = [5, 10]
 flags = ["two_hex", "mind_immune", "no_morale", "undead"]
-abilities = [{ kind = "death_blow", chance_percent = 20 }, { kind = "spell_after_strike", chance_percent = 25, mastery = 0, rounds = 3, spell = "base:curse" }]
 
 [[creature]]
 id = "bone_dragon"  # original id 68
@@ -1628,13 +1177,7 @@ name = "Bone Dragon"
 plural = "Bone Dragons"
 faction = "necropolis"
 level = 7
-attack = 17
-defense = 15
-damage = [25, 50]
-hit_points = 150
 speed = 9
-shots = 0
-casts = 0
 cost = { gold = 1800 }
 growth = 1
 horde_growth = 0
@@ -1642,7 +1185,6 @@ fight_value = 2420
 ai_value = 3388
 adventure_count = [4, 10]
 flags = ["two_hex", "flying", "king_1", "mind_immune", "no_morale", "undead", "dragon"]
-abilities = [{ kind = "morale_aura", affects = "enemies", amount = -1 }]
 upgrades = ["ghost_dragon"]
 
 [[creature]]
@@ -1651,13 +1193,7 @@ name = "Ghost Dragon"
 plural = "Ghost Dragons"
 faction = "necropolis"
 level = 7
-attack = 19
-defense = 17
-damage = [25, 50]
-hit_points = 200
 speed = 14
-shots = 0
-casts = 0
 cost = { mercury = 1, gold = 3000 }
 growth = 1
 horde_growth = 0
@@ -1665,7 +1201,6 @@ fight_value = 3228
 ai_value = 4696
 adventure_count = [3, 8]
 flags = ["two_hex", "flying", "king_1", "mind_immune", "no_morale", "undead", "dragon"]
-abilities = [{ kind = "morale_aura", affects = "enemies", amount = -1 }, { kind = "spell_after_strike", chance_percent = 20, living = true, mastery = 0, rounds = 3, spell = "base:age" }]
 
 [[creature]]
 id = "troglodyte"  # original id 70
@@ -1673,13 +1208,7 @@ name = "Troglodyte"
 plural = "Troglodytes"
 faction = "dungeon"
 level = 1
-attack = 4
-defense = 3
-damage = [1, 3]
-hit_points = 5
 speed = 4
-shots = 0
-casts = 0
 cost = { gold = 50 }
 growth = 14
 horde_growth = 7
@@ -1687,7 +1216,6 @@ fight_value = 73
 ai_value = 59
 adventure_count = [20, 50]
 flags = ["alive"]
-abilities = [{ kind = "spell_immunity", absolute = true, spell = "base:blind" }, { kind = "spell_immunity", absolute = true, spell = "base:stone_gaze" }]
 upgrades = ["infernal_troglodyte"]
 
 [[creature]]
@@ -1696,13 +1224,7 @@ name = "Infernal Troglodyte"
 plural = "Infernal Troglodytes"
 faction = "dungeon"
 level = 1
-attack = 5
-defense = 4
-damage = [1, 3]
-hit_points = 6
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 65 }
 growth = 14
 horde_growth = 7
@@ -1710,7 +1232,6 @@ fight_value = 84
 ai_value = 84
 adventure_count = [20, 30]
 flags = ["alive"]
-abilities = [{ kind = "spell_immunity", absolute = true, spell = "base:blind" }, { kind = "spell_immunity", absolute = true, spell = "base:stone_gaze" }]
 
 [[creature]]
 id = "harpy"  # original id 72
@@ -1718,13 +1239,7 @@ name = "Harpy"
 plural = "Harpies"
 faction = "dungeon"
 level = 2
-attack = 6
-defense = 5
-damage = [1, 4]
-hit_points = 14
 speed = 6
-shots = 0
-casts = 0
 cost = { gold = 130 }
 growth = 8
 horde_growth = 0
@@ -1732,7 +1247,6 @@ fight_value = 140
 ai_value = 154
 adventure_count = [16, 30]
 flags = ["flying", "alive"]
-abilities = [{ kind = "strike_and_return" }]
 upgrades = ["harpy_hag"]
 
 [[creature]]
@@ -1741,13 +1255,7 @@ name = "Harpy Hag"
 plural = "Harpy Hags"
 faction = "dungeon"
 level = 2
-attack = 6
-defense = 6
-damage = [1, 4]
-hit_points = 14
 speed = 9
-shots = 0
-casts = 0
 cost = { gold = 170 }
 growth = 8
 horde_growth = 0
@@ -1755,7 +1263,6 @@ fight_value = 196
 ai_value = 238
 adventure_count = [16, 25]
 flags = ["flying", "alive", "no_enemy_retaliation"]
-abilities = [{ kind = "strike_and_return" }]
 
 [[creature]]
 id = "beholder"  # original id 74
@@ -1763,13 +1270,7 @@ name = "Beholder"
 plural = "Beholders"
 faction = "dungeon"
 level = 3
-attack = 9
-defense = 7
-damage = [3, 5]
-hit_points = 22
 speed = 5
-shots = 12
-casts = 0
 cost = { gold = 250 }
 growth = 7
 horde_growth = 0
@@ -1785,13 +1286,7 @@ name = "Evil Eye"
 plural = "Evil Eyes"
 faction = "dungeon"
 level = 3
-attack = 10
-defense = 8
-damage = [3, 5]
-hit_points = 22
 speed = 7
-shots = 24
-casts = 0
 cost = { gold = 280 }
 growth = 7
 horde_growth = 0
@@ -1806,13 +1301,7 @@ name = "Medusa"
 plural = "Medusas"
 faction = "dungeon"
 level = 4
-attack = 9
-defense = 9
-damage = [6, 8]
-hit_points = 25
 speed = 5
-shots = 4
-casts = 0
 cost = { gold = 300 }
 growth = 4
 horde_growth = 0
@@ -1820,7 +1309,6 @@ fight_value = 379
 ai_value = 517
 adventure_count = [10, 20]
 flags = ["two_hex", "shooter", "alive", "no_melee_penalty"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:stone_gaze" }]
 upgrades = ["medusa_queen"]
 
 [[creature]]
@@ -1829,13 +1317,7 @@ name = "Medusa Queen"
 plural = "Medusa Queens"
 faction = "dungeon"
 level = 4
-attack = 10
-defense = 10
-damage = [6, 8]
-hit_points = 30
 speed = 6
-shots = 8
-casts = 0
 cost = { gold = 330 }
 growth = 4
 horde_growth = 0
@@ -1843,7 +1325,6 @@ fight_value = 423
 ai_value = 577
 adventure_count = [10, 16]
 flags = ["two_hex", "shooter", "alive", "no_melee_penalty"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:stone_gaze" }]
 
 [[creature]]
 id = "minotaur"  # original id 78
@@ -1851,13 +1332,7 @@ name = "Minotaur"
 plural = "Minotaurs"
 faction = "dungeon"
 level = 5
-attack = 14
-defense = 12
-damage = [12, 20]
-hit_points = 50
 speed = 6
-shots = 0
-casts = 0
 cost = { gold = 500 }
 growth = 3
 horde_growth = 0
@@ -1865,7 +1340,6 @@ fight_value = 835
 ai_value = 835
 adventure_count = [8, 16]
 flags = ["alive"]
-abilities = [{ kind = "minimum_morale", value = 1 }]
 upgrades = ["minotaur_king"]
 
 [[creature]]
@@ -1874,13 +1348,7 @@ name = "Minotaur King"
 plural = "Minotaur Kings"
 faction = "dungeon"
 level = 5
-attack = 15
-defense = 15
-damage = [12, 20]
-hit_points = 50
 speed = 8
-shots = 0
-casts = 0
 cost = { gold = 575 }
 growth = 3
 horde_growth = 0
@@ -1888,7 +1356,6 @@ fight_value = 890
 ai_value = 1068
 adventure_count = [8, 12]
 flags = ["alive"]
-abilities = [{ kind = "minimum_morale", value = 1 }]
 
 [[creature]]
 id = "manticore"  # original id 80
@@ -1896,13 +1363,7 @@ name = "Manticore"
 plural = "Manticores"
 faction = "dungeon"
 level = 6
-attack = 15
-defense = 13
-damage = [14, 20]
-hit_points = 80
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 850 }
 growth = 2
 horde_growth = 0
@@ -1918,13 +1379,7 @@ name = "Scorpicore"
 plural = "Scorpicores"
 faction = "dungeon"
 level = 6
-attack = 16
-defense = 14
-damage = [14, 20]
-hit_points = 80
 speed = 11
-shots = 0
-casts = 0
 cost = { gold = 1050 }
 growth = 2
 horde_growth = 0
@@ -1932,7 +1387,6 @@ fight_value = 1248
 ai_value = 1589
 adventure_count = [5, 10]
 flags = ["two_hex", "flying", "alive"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:paralyze" }]
 
 [[creature]]
 id = "red_dragon"  # original id 82
@@ -1940,13 +1394,7 @@ name = "Red Dragon"
 plural = "Red Dragons"
 faction = "dungeon"
 level = 7
-attack = 19
-defense = 19
-damage = [40, 50]
-hit_points = 180
 speed = 11
-shots = 0
-casts = 0
 cost = { sulfur = 1, gold = 2500 }
 growth = 1
 horde_growth = 0
@@ -1954,7 +1402,6 @@ fight_value = 3762
 ai_value = 4702
 adventure_count = [4, 10]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "dragon"]
-abilities = [{ kind = "spell_level_immunity", max_level = 3 }]
 upgrades = ["black_dragon"]
 
 [[creature]]
@@ -1963,13 +1410,7 @@ name = "Black Dragon"
 plural = "Black Dragons"
 faction = "dungeon"
 level = 7
-attack = 25
-defense = 25
-damage = [40, 50]
-hit_points = 300
 speed = 15
-shots = 0
-casts = 0
 cost = { sulfur = 2, gold = 4000 }
 growth = 1
 horde_growth = 0
@@ -1977,7 +1418,6 @@ fight_value = 6783
 ai_value = 8721
 adventure_count = [3, 8]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "mind_immune", "dragon"]
-abilities = [{ kind = "hate", creature = "titan", percent = 50 }, { kind = "spell_level_immunity", max_level = 5 }]
 
 [[creature]]
 id = "goblin"  # original id 84
@@ -1985,13 +1425,7 @@ name = "Goblin"
 plural = "Goblins"
 faction = "stronghold"
 level = 1
-attack = 4
-defense = 2
-damage = [1, 2]
-hit_points = 5
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 40 }
 growth = 15
 horde_growth = 8
@@ -2007,13 +1441,7 @@ name = "Hobgoblin"
 plural = "Hobgoblins"
 faction = "stronghold"
 level = 1
-attack = 5
-defense = 3
-damage = [1, 2]
-hit_points = 5
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 50 }
 growth = 15
 horde_growth = 8
@@ -2028,13 +1456,7 @@ name = "Wolf Rider"
 plural = "Wolf Riders"
 faction = "stronghold"
 level = 2
-attack = 7
-defense = 5
-damage = [2, 4]
-hit_points = 10
 speed = 6
-shots = 0
-casts = 0
 cost = { gold = 100 }
 growth = 9
 horde_growth = 0
@@ -2050,13 +1472,7 @@ name = "Wolf Raider"
 plural = "Wolf Raiders"
 faction = "stronghold"
 level = 2
-attack = 8
-defense = 5
-damage = [3, 4]
-hit_points = 10
 speed = 8
-shots = 0
-casts = 0
 cost = { gold = 140 }
 growth = 9
 horde_growth = 0
@@ -2071,13 +1487,7 @@ name = "Orc"
 plural = "Orcs"
 faction = "stronghold"
 level = 3
-attack = 8
-defense = 4
-damage = [2, 5]
-hit_points = 15
 speed = 4
-shots = 12
-casts = 0
 cost = { gold = 150 }
 growth = 7
 horde_growth = 0
@@ -2093,13 +1503,7 @@ name = "Orc Chieftain"
 plural = "Orc Chieftains"
 faction = "stronghold"
 level = 3
-attack = 8
-defense = 4
-damage = [2, 5]
-hit_points = 20
 speed = 5
-shots = 24
-casts = 0
 cost = { gold = 165 }
 growth = 7
 horde_growth = 0
@@ -2114,13 +1518,7 @@ name = "Ogre"
 plural = "Ogres"
 faction = "stronghold"
 level = 4
-attack = 13
-defense = 7
-damage = [6, 12]
-hit_points = 40
 speed = 4
-shots = 0
-casts = 0
 cost = { gold = 300 }
 growth = 4
 horde_growth = 0
@@ -2136,13 +1534,7 @@ name = "Ogre Mage"
 plural = "Ogre Magi"
 faction = "stronghold"
 level = 4
-attack = 13
-defense = 7
-damage = [6, 12]
-hit_points = 60
 speed = 5
-shots = 0
-casts = 3
 cost = { gold = 400 }
 growth = 4
 horde_growth = 0
@@ -2150,7 +1542,6 @@ fight_value = 672
 ai_value = 672
 adventure_count = [10, 16]
 flags = ["alive"]
-abilities = [{ kind = "spell_caster", mastery = 2, power = 6, spell = "base:bloodlust" }]
 
 [[creature]]
 id = "roc"  # original id 92
@@ -2158,13 +1549,7 @@ name = "Roc"
 plural = "Rocs"
 faction = "stronghold"
 level = 5
-attack = 13
-defense = 11
-damage = [11, 15]
-hit_points = 60
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 600 }
 growth = 3
 horde_growth = 0
@@ -2180,13 +1565,7 @@ name = "Thunderbird"
 plural = "Thunderbirds"
 faction = "stronghold"
 level = 5
-attack = 13
-defense = 11
-damage = [11, 15]
-hit_points = 60
 speed = 11
-shots = 0
-casts = 0
 cost = { gold = 700 }
 growth = 3
 horde_growth = 0
@@ -2194,7 +1573,6 @@ fight_value = 869
 ai_value = 1106
 adventure_count = [8, 12]
 flags = ["two_hex", "flying", "alive"]
-abilities = [{ kind = "spell_damage_after_strike", chance_percent = 20, per_creature = 10, spell = "base:lightning_bolt" }]
 
 [[creature]]
 id = "cyclops"  # original id 94
@@ -2202,13 +1580,7 @@ name = "Cyclops"
 plural = "Cyclopes"
 faction = "stronghold"
 level = 6
-attack = 15
-defense = 12
-damage = [16, 20]
-hit_points = 70
 speed = 6
-shots = 16
-casts = 0
 cost = { gold = 750 }
 growth = 2
 horde_growth = 0
@@ -2224,13 +1596,7 @@ name = "Cyclops King"
 plural = "Cyclops Kings"
 faction = "stronghold"
 level = 6
-attack = 17
-defense = 13
-damage = [16, 20]
-hit_points = 70
 speed = 8
-shots = 24
-casts = 0
 cost = { gold = 1100 }
 growth = 2
 horde_growth = 0
@@ -2245,13 +1611,7 @@ name = "Behemoth"
 plural = "Behemoths"
 faction = "stronghold"
 level = 7
-attack = 17
-defense = 17
-damage = [30, 50]
-hit_points = 160
 speed = 6
-shots = 0
-casts = 0
 cost = { gold = 1500 }
 growth = 1
 horde_growth = 0
@@ -2259,7 +1619,6 @@ fight_value = 3162
 ai_value = 3162
 adventure_count = [4, 10]
 flags = ["two_hex", "alive", "king_1"]
-abilities = [{ kind = "defense_reduction", percent = 40 }]
 upgrades = ["ancient_behemoth"]
 
 [[creature]]
@@ -2268,13 +1627,7 @@ name = "Ancient Behemoth"
 plural = "Ancient Behemoths"
 faction = "stronghold"
 level = 7
-attack = 19
-defense = 19
-damage = [30, 50]
-hit_points = 300
 speed = 9
-shots = 0
-casts = 0
 cost = { crystal = 1, gold = 3000 }
 growth = 1
 horde_growth = 0
@@ -2282,7 +1635,6 @@ fight_value = 5397
 ai_value = 6168
 adventure_count = [3, 8]
 flags = ["two_hex", "alive", "king_1"]
-abilities = [{ kind = "defense_reduction", percent = 80 }]
 
 [[creature]]
 id = "gnoll"  # original id 98
@@ -2290,13 +1642,7 @@ name = "Gnoll"
 plural = "Gnolls"
 faction = "fortress"
 level = 1
-attack = 3
-defense = 5
-damage = [2, 3]
-hit_points = 6
 speed = 4
-shots = 0
-casts = 0
 cost = { gold = 50 }
 growth = 12
 horde_growth = 6
@@ -2312,13 +1658,7 @@ name = "Gnoll Marauder"
 plural = "Gnoll Marauders"
 faction = "fortress"
 level = 1
-attack = 4
-defense = 6
-damage = [2, 3]
-hit_points = 6
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 70 }
 growth = 12
 horde_growth = 6
@@ -2333,13 +1673,7 @@ name = "Lizardman"
 plural = "Lizardmen"
 faction = "fortress"
 level = 2
-attack = 5
-defense = 6
-damage = [2, 3]
-hit_points = 14
 speed = 4
-shots = 12
-casts = 0
 cost = { gold = 110 }
 growth = 9
 horde_growth = 0
@@ -2355,13 +1689,7 @@ name = "Lizard Warrior"
 plural = "Lizard Warriors"
 faction = "fortress"
 level = 2
-attack = 6
-defense = 8
-damage = [2, 5]
-hit_points = 15
 speed = 5
-shots = 24
-casts = 0
 cost = { gold = 140 }
 growth = 9
 horde_growth = 0
@@ -2376,13 +1704,7 @@ name = "Gorgon"
 plural = "Gorgons"
 faction = "fortress"
 level = 5
-attack = 10
-defense = 14
-damage = [12, 16]
-hit_points = 70
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 525 }
 growth = 3
 horde_growth = 0
@@ -2398,13 +1720,7 @@ name = "Mighty Gorgon"
 plural = "Mighty Gorgons"
 faction = "fortress"
 level = 5
-attack = 11
-defense = 16
-damage = [12, 16]
-hit_points = 70
 speed = 6
-shots = 0
-casts = 0
 cost = { gold = 600 }
 growth = 3
 horde_growth = 0
@@ -2412,7 +1728,6 @@ fight_value = 1028
 ai_value = 1028
 adventure_count = [12, 20]
 flags = ["two_hex", "alive"]
-abilities = [{ kind = "death_stare", chance_percent = 10 }]
 
 [[creature]]
 id = "serpent_fly"  # original id 104
@@ -2420,13 +1735,7 @@ name = "Serpent Fly"
 plural = "Serpent Flies"
 faction = "fortress"
 level = 3
-attack = 7
-defense = 9
-damage = [2, 5]
-hit_points = 20
 speed = 9
-shots = 0
-casts = 0
 cost = { gold = 220 }
 growth = 8
 horde_growth = 0
@@ -2434,7 +1743,6 @@ fight_value = 215
 ai_value = 268
 adventure_count = [10, 20]
 flags = ["flying", "alive"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 100, mastery = 0, rounds = 3, spell = "base:dispel_helpful_spells" }]
 upgrades = ["dragon_fly"]
 
 [[creature]]
@@ -2443,13 +1751,7 @@ name = "Dragon Fly"
 plural = "Dragon Flies"
 faction = "fortress"
 level = 3
-attack = 8
-defense = 10
-damage = [2, 5]
-hit_points = 20
 speed = 13
-shots = 0
-casts = 0
 cost = { gold = 240 }
 growth = 8
 horde_growth = 0
@@ -2457,7 +1759,6 @@ fight_value = 250
 ai_value = 312
 adventure_count = [10, 16]
 flags = ["flying", "alive"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 100, mastery = 0, rounds = 3, spell = "base:dispel_helpful_spells" }, { kind = "spell_after_strike", chance_percent = 100, mastery = 2, rounds = 3, spell = "base:weakness", unless_active = true }]
 
 [[creature]]
 id = "basilisk"  # original id 106
@@ -2465,13 +1766,7 @@ name = "Basilisk"
 plural = "Basilisks"
 faction = "fortress"
 level = 4
-attack = 11
-defense = 11
-damage = [6, 10]
-hit_points = 35
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 325 }
 growth = 4
 horde_growth = 0
@@ -2479,7 +1774,6 @@ fight_value = 506
 ai_value = 552
 adventure_count = [8, 16]
 flags = ["two_hex", "alive"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:stone_gaze" }]
 upgrades = ["greater_basilisk"]
 
 [[creature]]
@@ -2488,13 +1782,7 @@ name = "Greater Basilisk"
 plural = "Greater Basilisks"
 faction = "fortress"
 level = 4
-attack = 12
-defense = 12
-damage = [6, 10]
-hit_points = 40
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 400 }
 growth = 4
 horde_growth = 0
@@ -2502,7 +1790,6 @@ fight_value = 561
 ai_value = 714
 adventure_count = [8, 12]
 flags = ["two_hex", "alive"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:stone_gaze" }]
 
 [[creature]]
 id = "wyvern"  # original id 108
@@ -2510,13 +1797,7 @@ name = "Wyvern"
 plural = "Wyverns"
 faction = "fortress"
 level = 6
-attack = 14
-defense = 14
-damage = [14, 18]
-hit_points = 70
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 800 }
 growth = 2
 horde_growth = 0
@@ -2532,13 +1813,7 @@ name = "Wyvern Monarch"
 plural = "Wyvern Monarchs"
 faction = "fortress"
 level = 6
-attack = 14
-defense = 14
-damage = [18, 22]
-hit_points = 70
 speed = 11
-shots = 0
-casts = 0
 cost = { gold = 1100 }
 growth = 2
 horde_growth = 0
@@ -2546,7 +1821,6 @@ fight_value = 1181
 ai_value = 1518
 adventure_count = [5, 10]
 flags = ["two_hex", "flying", "alive"]
-abilities = [{ kind = "spell_after_strike", chance_percent = 30, living = true, mastery = 0, rounds = 3, spell = "base:poison" }]
 
 [[creature]]
 id = "hydra"  # original id 110
@@ -2554,13 +1828,7 @@ name = "Hydra"
 plural = "Hydras"
 faction = "fortress"
 level = 7
-attack = 16
-defense = 18
-damage = [25, 45]
-hit_points = 175
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 2200 }
 growth = 1
 horde_growth = 0
@@ -2568,7 +1836,6 @@ fight_value = 4120
 ai_value = 4120
 adventure_count = [4, 10]
 flags = ["two_hex", "alive", "king_1", "no_enemy_retaliation", "multi_headed"]
-abilities = [{ kind = "attacks_all_adjacent" }]
 upgrades = ["chaos_hydra"]
 
 [[creature]]
@@ -2577,13 +1844,7 @@ name = "Chaos Hydra"
 plural = "Chaos Hydras"
 faction = "fortress"
 level = 7
-attack = 18
-defense = 20
-damage = [25, 45]
-hit_points = 250
 speed = 7
-shots = 0
-casts = 0
 cost = { sulfur = 1, gold = 3500 }
 growth = 1
 horde_growth = 0
@@ -2591,20 +1852,13 @@ fight_value = 5272
 ai_value = 5931
 adventure_count = [3, 8]
 flags = ["two_hex", "alive", "king_1", "no_enemy_retaliation", "multi_headed"]
-abilities = [{ kind = "attacks_all_adjacent" }]
 
 [[creature]]
 id = "air_elemental"  # original id 112
 name = "Air Elemental"
 plural = "Air Elementals"
 level = 4
-attack = 9
-defense = 9
-damage = [2, 8]
-hit_points = 25
 speed = 7
-shots = 0
-casts = 0
 cost = { gold = 250 }
 growth = 6
 horde_growth = 0
@@ -2612,20 +1866,13 @@ fight_value = 324
 ai_value = 356
 adventure_count = [8, 12]
 flags = ["mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "earth_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_immunity", spell = "base:blind" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 
 [[creature]]
 id = "earth_elemental"  # original id 113
 name = "Earth Elemental"
 plural = "Earth Elementals"
 level = 5
-attack = 10
-defense = 10
-damage = [4, 8]
-hit_points = 40
 speed = 4
-shots = 0
-casts = 0
 cost = { gold = 400 }
 growth = 4
 horde_growth = 0
@@ -2633,20 +1880,13 @@ fight_value = 415
 ai_value = 330
 adventure_count = [16, 30]
 flags = ["mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "air_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:lightning_bolt" }, { kind = "spell_immunity", spell = "base:chain_lightning" }, { kind = "spell_immunity", spell = "base:armageddon" }, { kind = "spell_vulnerability", percent = 100, spell = "base:meteor_shower" }]
 
 [[creature]]
 id = "fire_elemental"  # original id 114
 name = "Fire Elemental"
 plural = "Fire Elementals"
 level = 4
-attack = 10
-defense = 8
-damage = [4, 6]
-hit_points = 35
 speed = 6
-shots = 0
-casts = 0
 cost = { gold = 350 }
 growth = 5
 horde_growth = 0
@@ -2654,20 +1894,13 @@ fight_value = 345
 ai_value = 345
 adventure_count = [16, 25]
 flags = ["mind_immune", "fire_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "water_elemental", percent = 100 }, { kind = "school_immunity", school = "base:fire" }, { kind = "spell_vulnerability", percent = 100, spell = "base:ice_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:frost_ring" }]
 
 [[creature]]
 id = "water_elemental"  # original id 115
 name = "Water Elemental"
 plural = "Water Elementals"
 level = 4
-attack = 8
-defense = 10
-damage = [3, 7]
-hit_points = 30
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 300 }
 growth = 6
 horde_growth = 0
@@ -2675,20 +1908,13 @@ fight_value = 315
 ai_value = 315
 adventure_count = [12, 25]
 flags = ["two_hex", "mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "fire_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:ice_bolt" }, { kind = "spell_immunity", spell = "base:frost_ring" }, { kind = "spell_vulnerability", percent = 100, spell = "base:fireball" }, { kind = "spell_vulnerability", percent = 100, spell = "base:inferno" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 
 [[creature]]
 id = "gold_golem"  # original id 116
 name = "Gold Golem"
 plural = "Gold Golems"
 level = 5
-attack = 11
-defense = 12
-damage = [8, 10]
-hit_points = 50
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 500 }
 growth = 3
 horde_growth = 0
@@ -2696,20 +1922,13 @@ fight_value = 600
 ai_value = 600
 adventure_count = [10, 16]
 flags = ["mind_immune", "no_morale"]
-abilities = [{ kind = "spell_damage_reduction", percent = 85 }]
 
 [[creature]]
 id = "diamond_golem"  # original id 117
 name = "Diamond Golem"
 plural = "Diamond Golems"
 level = 6
-attack = 13
-defense = 12
-damage = [10, 14]
-hit_points = 60
 speed = 5
-shots = 0
-casts = 0
 cost = { gold = 750 }
 growth = 2
 horde_growth = 0
@@ -2717,20 +1936,13 @@ fight_value = 775
 ai_value = 775
 adventure_count = [8, 12]
 flags = ["mind_immune", "no_morale"]
-abilities = [{ kind = "spell_damage_reduction", percent = 95 }]
 
 [[creature]]
 id = "ballista"  # original id 146
 name = "Ballista"
 plural = "Ballistas"
 level = 5
-attack = 10
-defense = 10
-damage = [2, 3]
-hit_points = 250
 speed = 0
-shots = 24
-casts = 0
 cost = { gold = 2500 }
 growth = 0
 horde_growth = 0
@@ -2744,13 +1956,7 @@ id = "first_aid_tent"  # original id 147
 name = "First Aid Tent"
 plural = "First Aid Tents"
 level = 1
-attack = 0
-defense = 0
-damage = [0, 0]
-hit_points = 75
 speed = 0
-shots = 0
-casts = 0
 cost = { gold = 750 }
 growth = 0
 horde_growth = 0
@@ -2758,20 +1964,13 @@ fight_value = 10
 ai_value = 300
 adventure_count = [0, 0]
 flags = ["two_hex", "war_machine", "mind_immune", "no_morale"]
-abilities = [{ kind = "first_aid", max_hp = 25, min_hp = 1 }]
 
 [[creature]]
 id = "ammo_cart"  # original id 148
 name = "Ammo Cart"
 plural = "Ammo Carts"
 level = 1
-attack = 0
-defense = 5
-damage = [0, 0]
-hit_points = 100
 speed = 0
-shots = 0
-casts = 0
 cost = { gold = 1000 }
 growth = 0
 horde_growth = 0
@@ -2779,7 +1978,6 @@ fight_value = 5
 ai_value = 400
 adventure_count = [0, 0]
 flags = ["war_machine", "mind_immune", "no_morale"]
-abilities = [{ kind = "ammo_supply" }]
 
 [[secondary_skill]]
 id = "pathfinding"
@@ -2970,7 +2168,6 @@ schools = ["water"]
 cost = [8, 7, 7, 7]
 power = 0
 effect = [50, 50, 75, 100]
-polarity = "neutral"
 
 [[spell]]
 id = "scuttle_boat"  # original id 1
@@ -2981,7 +2178,6 @@ schools = ["water"]
 cost = [8, 6, 6, 6]
 power = 0
 effect = [50, 50, 75, 100]
-polarity = "neutral"
 
 [[spell]]
 id = "visions"  # original id 2
@@ -2992,7 +2188,6 @@ schools = ["earth", "water", "fire", "air"]
 cost = [4, 2, 2, 2]
 power = 0
 effect = [1, 1, 2, 3]
-polarity = "neutral"
 
 [[spell]]
 id = "view_earth"  # original id 3
@@ -3003,7 +2198,6 @@ schools = ["earth"]
 cost = [2, 1, 1, 1]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "neutral"
 
 [[spell]]
 id = "disguise"  # original id 4
@@ -3014,7 +2208,6 @@ schools = ["air"]
 cost = [4, 2, 2, 2]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "neutral"
 
 [[spell]]
 id = "view_air"  # original id 5
@@ -3025,7 +2218,6 @@ schools = ["air"]
 cost = [2, 1, 1, 1]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "neutral"
 
 [[spell]]
 id = "fly"  # original id 6
@@ -3036,7 +2228,6 @@ schools = ["air"]
 cost = [20, 15, 15, 15]
 power = 0
 effect = [60, 60, 80, 100]
-polarity = "neutral"
 
 [[spell]]
 id = "water_walk"  # original id 7
@@ -3047,7 +2238,6 @@ schools = ["water"]
 cost = [12, 8, 8, 8]
 power = 0
 effect = [60, 60, 80, 100]
-polarity = "neutral"
 
 [[spell]]
 id = "dimension_door"  # original id 8
@@ -3058,7 +2248,6 @@ schools = ["air"]
 cost = [25, 20, 20, 20]
 power = 0
 effect = [1, 2, 3, 4]
-polarity = "neutral"
 
 [[spell]]
 id = "town_portal"  # original id 9
@@ -3069,7 +2258,6 @@ schools = ["earth"]
 cost = [16, 12, 12, 12]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "neutral"
 
 [[spell]]
 id = "quicksand"  # original id 10
@@ -3080,9 +2268,6 @@ schools = ["earth"]
 cost = [8, 6, 6, 6]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "neutral"
-obstacle = { hexes = [4, 4, 6, 8], random = true, separate = true }
-effects = [{ kind = "obstacle", obstacle = "pit" }]
 
 [[spell]]
 id = "land_mine"  # original id 11
@@ -3093,9 +2278,6 @@ schools = ["fire"]
 cost = [18, 15, 15, 15]
 power = 10
 effect = [25, 25, 50, 100]
-polarity = "neutral"
-obstacle = { hexes = [4, 4, 6, 8], random = true, separate = true }
-effects = [{ kind = "obstacle", obstacle = "mine" }]
 
 [[spell]]
 id = "force_field"  # original id 12
@@ -3106,10 +2288,6 @@ schools = ["earth"]
 cost = [12, 9, 9, 9]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "neutral"
-target = "hex"
-obstacle = { hexes = [2, 2, 3, 3], rounds = 2, steps = ["top_right", "top_left"] }
-effects = [{ kind = "obstacle", obstacle = "wall" }]
 
 [[spell]]
 id = "fire_wall"  # original id 13
@@ -3120,10 +2298,6 @@ schools = ["fire"]
 cost = [8, 6, 6, 6]
 power = 10
 effect = [10, 10, 20, 50]
-polarity = "neutral"
-target = "hex"
-obstacle = { hexes = [2, 2, 3, 3], mirrored = true, rounds = 2, separate = true, steps = ["top_right", "top_left"] }
-effects = [{ kind = "obstacle", obstacle = "fire" }]
 
 [[spell]]
 id = "earthquake"  # original id 14
@@ -3134,7 +2308,6 @@ schools = ["earth"]
 cost = [20, 17, 17, 17]
 power = 1
 effect = [2, 2, 3, 4]
-polarity = "neutral"
 
 [[spell]]
 id = "magic_arrow"  # original id 15
@@ -3145,10 +2318,6 @@ schools = ["earth", "water", "fire", "air"]
 cost = [5, 4, 4, 4]
 power = 10
 effect = [10, 10, 20, 30]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "ice_bolt"  # original id 16
@@ -3159,10 +2328,6 @@ schools = ["water"]
 cost = [8, 6, 6, 6]
 power = 20
 effect = [10, 10, 20, 50]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "lightning_bolt"  # original id 17
@@ -3173,10 +2338,6 @@ schools = ["air"]
 cost = [10, 8, 8, 8]
 power = 25
 effect = [10, 10, 20, 50]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "implosion"  # original id 18
@@ -3187,11 +2348,6 @@ schools = ["earth"]
 cost = [30, 25, 25, 25]
 power = 75
 effect = [100, 100, 200, 300]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-excludes = ["war_machine"]
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "chain_lightning"  # original id 19
@@ -3202,11 +2358,6 @@ schools = ["air"]
 cost = [24, 20, 20, 20]
 power = 40
 effect = [25, 25, 50, 100]
-polarity = "neutral"
-target = "stack"
-side = "enemy"
-chain = { factor_bp = 5000, targets = [4, 4, 5, 5] }
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "frost_ring"  # original id 20
@@ -3217,10 +2368,6 @@ schools = ["water"]
 cost = [12, 9, 9, 9]
 power = 10
 effect = [15, 15, 30, 60]
-polarity = "neutral"
-target = "hex"
-area = { inner = 1, radius = [1, 1, 1, 1] }
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "fireball"  # original id 21
@@ -3231,10 +2378,6 @@ schools = ["fire"]
 cost = [15, 12, 12, 12]
 power = 10
 effect = [15, 15, 30, 60]
-polarity = "neutral"
-target = "hex"
-area = { radius = [1, 1, 1, 1] }
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "inferno"  # original id 22
@@ -3245,10 +2388,6 @@ schools = ["fire"]
 cost = [16, 12, 12, 12]
 power = 10
 effect = [20, 20, 40, 80]
-polarity = "neutral"
-target = "hex"
-area = { radius = [2, 2, 2, 2] }
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "meteor_shower"  # original id 23
@@ -3259,10 +2398,6 @@ schools = ["earth"]
 cost = [16, 12, 12, 12]
 power = 25
 effect = [25, 25, 50, 100]
-polarity = "neutral"
-target = "hex"
-area = { radius = [1, 1, 1, 1] }
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "death_ripple"  # original id 24
@@ -3273,9 +2408,6 @@ schools = ["earth"]
 cost = [10, 8, 8, 8]
 power = 5
 effect = [10, 10, 20, 30]
-polarity = "neutral"
-excludes = ["undead", "war_machine"]
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "destroy_undead"  # original id 25
@@ -3286,9 +2418,6 @@ schools = ["air"]
 cost = [15, 12, 12, 12]
 power = 10
 effect = [10, 10, 20, 50]
-polarity = "neutral"
-requires = ["undead"]
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "armageddon"  # original id 26
@@ -3299,8 +2428,6 @@ schools = ["fire"]
 cost = [24, 20, 20, 20]
 power = 50
 effect = [30, 30, 60, 120]
-polarity = "neutral"
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "shield"  # original id 27
@@ -3311,12 +2438,6 @@ schools = ["earth"]
 cost = [5, 4, 4, 4]
 power = 0
 effect = [85, 85, 70, 70]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-effects = [{ kind = "timed", change = "melee_protection" }]
-useful = "enemy_melee"
 
 [[spell]]
 id = "air_shield"  # original id 28
@@ -3327,12 +2448,6 @@ schools = ["air"]
 cost = [12, 9, 9, 9]
 power = 0
 effect = [75, 75, 50, 50]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-effects = [{ kind = "timed", change = "ranged_protection" }]
-useful = "enemy_shooter"
 
 [[spell]]
 id = "fire_shield"  # original id 29
@@ -3343,11 +2458,6 @@ schools = ["fire"]
 cost = [16, 12, 12, 12]
 power = 0
 effect = [20, 20, 25, 30]
-polarity = "positive"
-target = "stack"
-side = "own"
-effects = [{ kind = "timed", change = "fire_shield" }]
-useful = "enemy_melee"
 
 [[spell]]
 id = "protection_from_air"  # original id 30
@@ -3358,12 +2468,6 @@ schools = ["air"]
 cost = [7, 5, 5, 5]
 power = 0
 effect = [70, 70, 50, 50]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-effects = [{ kind = "timed", change = "school_protection" }]
-useful = "enemy_spell_book"
 
 [[spell]]
 id = "protection_from_fire"  # original id 31
@@ -3374,12 +2478,6 @@ schools = ["fire"]
 cost = [5, 4, 4, 4]
 power = 0
 effect = [70, 70, 50, 50]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-effects = [{ kind = "timed", change = "school_protection" }]
-useful = "enemy_spell_book"
 
 [[spell]]
 id = "prot_from_water"  # original id 32
@@ -3390,12 +2488,6 @@ schools = ["water"]
 cost = [5, 4, 4, 4]
 power = 0
 effect = [70, 70, 50, 50]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-effects = [{ kind = "timed", change = "school_protection" }]
-useful = "enemy_spell_book"
 
 [[spell]]
 id = "prot_from_earth"  # original id 33
@@ -3406,12 +2498,6 @@ schools = ["earth"]
 cost = [12, 9, 9, 9]
 power = 0
 effect = [70, 70, 50, 50]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-effects = [{ kind = "timed", change = "school_protection" }]
-useful = "enemy_spell_book"
 
 [[spell]]
 id = "anti_magic"  # original id 34
@@ -3422,11 +2508,6 @@ schools = ["earth"]
 cost = [15, 12, 12, 12]
 power = 0
 effect = [4, 4, 5, 6]
-polarity = "positive"
-target = "stack"
-side = "own"
-effects = [{ kind = "timed", change = "spell_immunity" }]
-useful = "enemy_spell_book"
 
 [[spell]]
 id = "dispel"  # original id 35
@@ -3437,16 +2518,6 @@ schools = ["water"]
 cost = [5, 4, 4, 4]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "neutral"
-target = "stack"
-side = "own"
-mass = "expert"
-any_side = "advanced"
-clears_obstacles = "expert"
-needs_effect = true
-ignores_immunity = true
-spares = ["poison"]
-effects = [{ kind = "dispel" }]
 
 [[spell]]
 id = "magic_mirror"  # original id 36
@@ -3457,11 +2528,6 @@ schools = ["air"]
 cost = [25, 20, 20, 20]
 power = 0
 effect = [20, 20, 30, 40]
-polarity = "positive"
-target = "stack"
-side = "own"
-effects = [{ kind = "timed", change = "magic_mirror" }]
-useful = "enemy_spell_book"
 
 [[spell]]
 id = "cure"  # original id 37
@@ -3472,14 +2538,6 @@ schools = ["water"]
 cost = [6, 5, 5, 5]
 power = 5
 effect = [10, 10, 20, 30]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-restores_health = true
-dispels = ["curse", "weakness", "sorrow", "misfortune", "slow", "berserk", "hypnotize", "forgetfulness", "blind", "stone_gaze", "poison", "disease", "paralyze", "age"]
-effects = [{ kind = "dispel" }, { kind = "heal" }]
-useful = "wounded"
 
 [[spell]]
 id = "resurrection"  # original id 38
@@ -3490,13 +2548,6 @@ schools = ["earth"]
 cost = [20, 16, 16, 16]
 power = 50
 effect = [40, 40, 80, 160]
-polarity = "positive"
-target = "stack"
-side = "own"
-requires = ["alive"]
-excludes = ["war_machine"]
-temporary_below = "advanced"
-effects = [{ kind = "raise" }]
 
 [[spell]]
 id = "animate_dead"  # original id 39
@@ -3507,12 +2558,6 @@ schools = ["earth"]
 cost = [15, 12, 12, 12]
 power = 50
 effect = [30, 30, 60, 160]
-polarity = "positive"
-target = "stack"
-side = "own"
-requires = ["undead"]
-excludes = ["war_machine"]
-effects = [{ kind = "raise" }]
 
 [[spell]]
 id = "sacrifice"  # original id 40
@@ -3523,13 +2568,6 @@ schools = ["fire"]
 cost = [25, 20, 20, 20]
 power = 1
 effect = [3, 3, 6, 10]
-polarity = "positive"
-target = "stack"
-side = "own"
-requires = ["alive"]
-excludes = ["undead", "war_machine"]
-tests_as = "resurrection"
-effects = [{ kind = "sacrifice" }]
 
 [[spell]]
 id = "bless"  # original id 41
@@ -3540,14 +2578,6 @@ schools = ["water"]
 cost = [5, 4, 4, 4]
 power = 0
 effect = [0, 0, 1, 1]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-excludes = ["undead"]
-needs_damage = true
-counters = ["curse"]
-effects = [{ kind = "timed", change = "maximum_damage" }]
 
 [[spell]]
 id = "curse"  # original id 42
@@ -3558,14 +2588,6 @@ schools = ["fire"]
 cost = [6, 5, 5, 5]
 power = 0
 effect = [0, 0, 1, 1]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mass = "expert"
-excludes = ["undead"]
-needs_damage = true
-counters = ["bless"]
-effects = [{ kind = "timed", change = "minimum_damage" }]
 
 [[spell]]
 id = "bloodlust"  # original id 43
@@ -3576,14 +2598,6 @@ schools = ["fire"]
 cost = [5, 4, 4, 4]
 power = 0
 effect = [3, 3, 6, 6]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-excludes = ["war_machine"]
-effects = [{ kind = "timed", change = "melee_attack" }]
-specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
-useful = "melee"
 
 [[spell]]
 id = "precision"  # original id 44
@@ -3594,14 +2608,6 @@ schools = ["air"]
 cost = [8, 6, 6, 6]
 power = 0
 effect = [3, 3, 6, 6]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-requires = ["shooter"]
-effects = [{ kind = "timed", change = "ranged_attack" }]
-specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
-useful = "shooting"
 
 [[spell]]
 id = "weakness"  # original id 45
@@ -3612,12 +2618,6 @@ schools = ["water"]
 cost = [8, 6, 6, 6]
 power = 0
 effect = [3, 3, 6, 6]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mass = "expert"
-effects = [{ kind = "timed", change = "attack_loss" }]
-specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 
 [[spell]]
 id = "stone_skin"  # original id 46
@@ -3628,12 +2628,6 @@ schools = ["earth"]
 cost = [5, 4, 4, 4]
 power = 0
 effect = [3, 3, 6, 6]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-effects = [{ kind = "timed", change = "defense" }]
-specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 
 [[spell]]
 id = "disrupting_ray"  # original id 47
@@ -3644,13 +2638,6 @@ schools = ["air"]
 cost = [10, 8, 8, 8]
 power = 0
 effect = [3, 3, 4, 5]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-duration = "permanent"
-cumulative = true
-effects = [{ kind = "timed", change = "defense_loss" }]
-specialist = { amount = 2, kind = "fixed" }
 
 [[spell]]
 id = "prayer"  # original id 48
@@ -3661,13 +2648,6 @@ schools = ["water"]
 cost = [16, 12, 12, 12]
 power = 0
 effect = [2, 2, 4, 4]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-effects = [{ kind = "timed", change = "attack" }, { kind = "timed", change = "defense" }, { kind = "timed", change = "speed" }]
-specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
-useful = "not_acted"
 
 [[spell]]
 id = "mirth"  # original id 49
@@ -3678,13 +2658,6 @@ schools = ["water"]
 cost = [12, 9, 9, 9]
 power = 0
 effect = [1, 1, 2, 2]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-mind = true
-excludes = ["no_morale"]
-effects = [{ kind = "timed", change = "morale" }]
 
 [[spell]]
 id = "sorrow"  # original id 50
@@ -3695,13 +2668,6 @@ schools = ["earth"]
 cost = [16, 12, 12, 12]
 power = 0
 effect = [1, 1, 2, 2]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mass = "expert"
-mind = true
-excludes = ["no_morale"]
-effects = [{ kind = "timed", change = "morale_loss" }]
 
 [[spell]]
 id = "fortune"  # original id 51
@@ -3712,13 +2678,6 @@ schools = ["air"]
 cost = [7, 5, 5, 5]
 power = 0
 effect = [1, 1, 2, 2]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-needs_damage = true
-effects = [{ kind = "timed", change = "luck" }]
-specialist = { kind = "total", value = 3 }
 
 [[spell]]
 id = "misfortune"  # original id 52
@@ -3729,12 +2688,6 @@ schools = ["fire"]
 cost = [12, 9, 9, 9]
 power = 0
 effect = [1, 1, 2, 2]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mass = "expert"
-needs_damage = true
-effects = [{ kind = "timed", change = "luck_loss" }]
 
 [[spell]]
 id = "haste"  # original id 53
@@ -3745,14 +2698,6 @@ schools = ["air"]
 cost = [6, 5, 5, 5]
 power = 0
 effect = [3, 3, 5, 5]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-excludes = ["war_machine"]
-counters = ["slow"]
-effects = [{ kind = "timed", change = "speed" }]
-specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 
 [[spell]]
 id = "slow"  # original id 54
@@ -3763,13 +2708,6 @@ schools = ["earth"]
 cost = [6, 5, 5, 5]
 power = 0
 effect = [75, 75, 50, 50]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mass = "expert"
-excludes = ["war_machine"]
-counters = ["haste"]
-effects = [{ kind = "timed", change = "speed_percent" }]
 
 [[spell]]
 id = "slayer"  # original id 55
@@ -3780,13 +2718,6 @@ schools = ["fire"]
 cost = [16, 12, 12, 12]
 power = 0
 effect = [8, 8, 8, 8]
-polarity = "positive"
-target = "stack"
-side = "own"
-needs_damage = true
-effects = [{ kind = "timed", change = "slayer" }]
-specialist = { kind = "creature_level", values = [4, 3, 2, 1, 0, 0, 0] }
-useful = "enemy_king"
 
 [[spell]]
 id = "frenzy"  # original id 56
@@ -3797,12 +2728,6 @@ schools = ["fire"]
 cost = [16, 12, 12, 12]
 power = 0
 effect = [100, 100, 150, 200]
-polarity = "positive"
-target = "stack"
-side = "own"
-mind = true
-duration = "own_turn"
-effects = [{ kind = "timed", change = "frenzy" }]
 
 [[spell]]
 id = "counterstrike"  # original id 58
@@ -3813,12 +2738,6 @@ schools = ["air"]
 cost = [24, 20, 20, 20]
 power = 0
 effect = [1, 1, 2, 2]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-excludes = ["war_machine"]
-effects = [{ kind = "timed", change = "retaliations" }]
 
 [[spell]]
 id = "berserk"  # original id 59
@@ -3829,16 +2748,6 @@ schools = ["fire"]
 cost = [20, 16, 16, 16]
 power = 0
 effect = [0, 0, 1, 2]
-polarity = "negative"
-target = "hex"
-area = { radius = [0, 0, 1, 2] }
-mind = true
-excludes = ["war_machine"]
-duration = "fixed"
-fixed_rounds = 255
-ends = "own_attack"
-counters = ["hypnotize"]
-effects = [{ kind = "timed", change = "berserk" }]
 
 [[spell]]
 id = "hypnotize"  # original id 60
@@ -3849,15 +2758,6 @@ schools = ["air"]
 cost = [18, 15, 15, 15]
 power = 25
 effect = [10, 10, 20, 50]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mind = true
-excludes = ["war_machine"]
-counters = ["berserk"]
-health_limit = true
-refuses = ["magic_mirror"]
-effects = [{ kind = "timed", change = "hypnotize" }]
 
 [[spell]]
 id = "forgetfulness"  # original id 61
@@ -3868,15 +2768,6 @@ schools = ["water"]
 cost = [12, 9, 9, 9]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mass = "advanced"
-fixed_mass = "expert"
-mind = true
-requires = ["shooter"]
-excludes = ["war_machine"]
-effects = [{ kind = "timed", change = "forgetfulness" }]
 
 [[spell]]
 id = "blind"  # original id 62
@@ -3887,13 +2778,6 @@ schools = ["fire"]
 cost = [10, 8, 8, 8]
 power = 0
 effect = [50, 50, 25, 0]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mind = true
-excludes = ["undead", "war_machine"]
-ends = "damaged"
-effects = [{ kind = "timed", change = "blind" }]
 
 [[spell]]
 id = "teleport"  # original id 63
@@ -3904,11 +2788,6 @@ schools = ["water"]
 cost = [15, 12, 6, 3]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "positive"
-target = "stack"
-side = "own"
-excludes = ["war_machine"]
-effects = [{ kind = "teleport" }]
 
 [[spell]]
 id = "remove_obstacle"  # original id 64
@@ -3919,10 +2798,6 @@ schools = ["water"]
 cost = [7, 5, 5, 5]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "neutral"
-target = "hex"
-removes = { fire = "advanced", mine = "expert", pit = "expert", wall = "expert" }
-effects = [{ kind = "remove_obstacle" }]
 
 [[spell]]
 id = "clone"  # original id 65
@@ -3933,11 +2808,6 @@ schools = ["water"]
 cost = [24, 20, 20, 20]
 power = 0
 effect = [5, 5, 6, 7]
-polarity = "positive"
-target = "stack"
-side = "own"
-excludes = ["war_machine"]
-effects = [{ kind = "clone" }]
 
 [[spell]]
 id = "fire_elemental"  # original id 66
@@ -3948,9 +2818,6 @@ schools = ["fire"]
 cost = [25, 20, 20, 20]
 power = 0
 effect = [2, 2, 3, 4]
-polarity = "neutral"
-summons = "fire_elemental"
-effects = [{ kind = "summon" }]
 
 [[spell]]
 id = "earth_elemental"  # original id 67
@@ -3961,9 +2828,6 @@ schools = ["earth"]
 cost = [25, 20, 20, 20]
 power = 0
 effect = [2, 2, 3, 4]
-polarity = "neutral"
-summons = "earth_elemental"
-effects = [{ kind = "summon" }]
 
 [[spell]]
 id = "water_elemental"  # original id 68
@@ -3974,9 +2838,6 @@ schools = ["water"]
 cost = [25, 20, 20, 20]
 power = 0
 effect = [2, 2, 3, 4]
-polarity = "neutral"
-summons = "water_elemental"
-effects = [{ kind = "summon" }]
 
 [[spell]]
 id = "air_elemental"  # original id 69
@@ -3987,9 +2848,6 @@ schools = ["air"]
 cost = [25, 20, 20, 20]
 power = 0
 effect = [2, 2, 3, 4]
-polarity = "neutral"
-summons = "air_elemental"
-effects = [{ kind = "summon" }]
 
 [[spell]]
 id = "stone_gaze"  # original id 70
@@ -3999,12 +2857,6 @@ level = 3
 cost = [0, 0, 0, 0]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-excludes = ["war_machine"]
-ends = "damaged"
-effects = [{ kind = "timed", change = "petrify" }]
 
 [[spell]]
 id = "poison"  # original id 71
@@ -4014,12 +2866,6 @@ level = 0
 cost = [0, 0, 0, 0]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-requires = ["alive"]
-excludes = ["war_machine"]
-effects = [{ kind = "timed", change = "poison" }]
 
 [[spell]]
 id = "bind"  # original id 72
@@ -4029,14 +2875,6 @@ level = 0
 cost = [0, 0, 0, 0]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-excludes = ["war_machine"]
-duration = "fixed"
-fixed_rounds = 255
-ignores_immunity = true
-effects = [{ kind = "timed", change = "bind" }]
 
 [[spell]]
 id = "disease"  # original id 73
@@ -4046,11 +2884,6 @@ level = 2
 cost = [0, 0, 0, 0]
 power = 0
 effect = [2, 2, 2, 2]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-excludes = ["war_machine"]
-effects = [{ kind = "timed", change = "attack_loss" }, { kind = "timed", change = "defense_loss" }]
 
 [[spell]]
 id = "paralyze"  # original id 74
@@ -4060,12 +2893,6 @@ level = 4
 cost = [0, 0, 0, 0]
 power = 0
 effect = [25, 25, 25, 25]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-excludes = ["war_machine"]
-ends = "damaged"
-effects = [{ kind = "timed", change = "paralyze" }]
 
 [[spell]]
 id = "age"  # original id 75
@@ -4075,11 +2902,6 @@ level = 5
 cost = [0, 0, 0, 0]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-excludes = ["war_machine"]
-effects = [{ kind = "timed", change = "age" }]
 
 [[spell]]
 id = "death_cloud"  # original id 76
@@ -4089,7 +2911,6 @@ level = 0
 cost = [0, 0, 0, 0]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "neutral"
 
 [[spell]]
 id = "thunderbolt"  # original id 77
@@ -4099,7 +2920,6 @@ level = 0
 cost = [0, 0, 0, 0]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "negative"
 
 [[spell]]
 id = "dispel_helpful_spells"  # original id 78
@@ -4109,12 +2929,6 @@ level = 0
 cost = [0, 0, 0, 0]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-ignores_immunity = true
-dispels_positive = true
-effects = [{ kind = "dispel" }]
 
 [[spell]]
 id = "death_stare"  # original id 79
@@ -4124,7 +2938,6 @@ level = 0
 cost = [0, 0, 0, 0]
 power = 0
 effect = [0, 0, 0, 0]
-polarity = "negative"
 
 [[spell]]
 id = "acid_breath"  # original id 80
@@ -4134,13 +2947,6 @@ level = 0
 cost = [0, 0, 0, 0]
 power = 0
 effect = [3, 3, 3, 3]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-duration = "permanent"
-cumulative = true
-ignores_immunity = true
-effects = [{ kind = "timed", change = "defense_loss" }]
 
 [[hero_class]]
 id = "knight"
@@ -6516,559 +5322,6 @@ class = "relic"
 cost = { "gold" = 20000 }
 slot = "misc"
 effects = [{ kind = "no_casting" }]
-
-[[obstacle]]
-id = "obstacle_0"
-terrains = ["dirt"]
-width = 2
-height = 1
-blocked = [[0, 0], [1, 0]]
-
-[[obstacle]]
-id = "obstacle_1"
-terrains = ["dirt", "desert", "rough", "subterranean"]
-width = 3
-height = 2
-blocked = [[0, 0], [1, 0], [2, 0]]
-
-[[obstacle]]
-id = "obstacle_2"
-terrains = ["dirt"]
-width = 4
-height = 2
-blocked = [[0, 0], [1, 0], [3, -1], [2, -1], [1, -1]]
-
-[[obstacle]]
-id = "obstacle_3"
-terrains = ["dirt", "rough"]
-width = 2
-height = 1
-blocked = [[0, 0], [1, 0]]
-
-[[obstacle]]
-id = "obstacle_4"
-terrains = ["dirt", "rough", "subterranean"]
-width = 2
-height = 1
-blocked = [[0, 0], [1, 0]]
-
-[[obstacle]]
-id = "obstacle_5"
-terrains = ["dirt"]
-width = 4
-height = 2
-blocked = [[1, 0], [2, 0], [3, 0]]
-
-[[obstacle]]
-id = "obstacle_6"
-terrains = ["dirt"]
-width = 3
-height = 2
-blocked = [[2, -1], [1, -1]]
-
-[[obstacle]]
-id = "obstacle_7"
-terrains = ["dirt"]
-width = 2
-height = 2
-blocked = [[0, 0], [1, 0]]
-
-[[obstacle]]
-id = "obstacle_8"
-terrains = ["dirt"]
-width = 2
-height = 2
-blocked = [[1, -1]]
-
-[[obstacle]]
-id = "obstacle_9"
-terrains = ["dirt"]
-width = 2
-height = 2
-blocked = [[0, 0], [1, 0]]
-
-[[obstacle]]
-id = "obstacle_10"
-terrains = ["dirt"]
-width = 2
-height = 2
-blocked = [[0, 0], [1, 0]]
-
-[[obstacle]]
-id = "obstacle_11"
-terrains = ["dirt"]
-width = 2
-height = 1
-blocked = [[0, 0], [1, 0]]
-
-[[obstacle]]
-id = "obstacle_12"
-terrains = ["dirt", "rough"]
-width = 3
-height = 3
-blocked = [[0, 0], [1, 0], [2, 0], [3, 0]]
-
-[[obstacle]]
-id = "obstacle_13"
-terrains = ["dirt", "rough"]
-width = 3
-height = 2
-blocked = [[1, 0], [2, 0], [2, -1]]
-
-[[obstacle]]
-id = "obstacle_14"
-terrains = ["dirt", "rough"]
-width = 3
-height = 2
-blocked = [[2, 0], [2, -1], [1, -1]]
-
-[[obstacle]]
-id = "obstacle_15"
-terrains = ["dirt", "rough"]
-width = 3
-height = 3
-blocked = [[1, 0], [1, -1], [1, -2]]
-
-[[obstacle]]
-id = "obstacle_16"
-terrains = ["desert"]
-width = 4
-height = 4
-blocked = [[2, -1], [1, -1], [2, -2], [1, -2], [3, -3], [2, -3]]
-
-[[obstacle]]
-id = "obstacle_17"
-terrains = ["desert"]
-width = 3
-height = 2
-blocked = [[1, 0], [2, -1], [1, -1]]
-
-[[obstacle]]
-id = "obstacle_18"
-terrains = ["desert"]
-width = 4
-height = 2
-blocked = [[1, 0], [2, 0], [3, 0], [2, -1], [1, -1]]
-
-[[obstacle]]
-id = "obstacle_19"
-terrains = ["grass", "swamp"]
-width = 2
-height = 1
-blocked = [[0, 0], [1, 0]]
-
-[[obstacle]]
-id = "obstacle_20"
-terrains = ["grass", "swamp"]
-width = 2
-height = 2
-blocked = [[0, 0], [1, 0]]
-
-[[obstacle]]
-id = "obstacle_21"
-terrains = ["grass", "swamp"]
-width = 1
-height = 1
-blocked = [[0, 0]]
-
-[[obstacle]]
-id = "obstacle_22"
-terrains = ["grass"]
-width = 6
-height = 2
-blocked = [[1, 0], [2, 0], [3, 0], [4, 0], [4, -1], [3, -1], [2, -1], [1, -1]]
-
-[[obstacle]]
-id = "obstacle_23"
-terrains = ["grass"]
-width = 7
-height = 1
-blocked = [[1, 0], [2, 0]]
-
-[[obstacle]]
-id = "obstacle_24"
-terrains = ["snow"]
-width = 3
-height = 1
-blocked = [[0, 0], [1, 0], [2, 0]]
-
-[[obstacle]]
-id = "obstacle_25"
-terrains = ["snow"]
-width = 5
-height = 1
-blocked = [[1, 0], [2, 0], [3, 0], [4, 0]]
-
-[[obstacle]]
-id = "obstacle_26"
-terrains = ["snow"]
-width = 3
-height = 3
-blocked = [[0, 0], [1, -1], [1, -2]]
-
-[[obstacle]]
-id = "obstacle_27"
-terrains = ["snow"]
-width = 3
-height = 1
-blocked = [[0, 0], [1, 0], [2, 0]]
-
-[[obstacle]]
-id = "obstacle_28"
-terrains = ["snow"]
-width = 3
-height = 1
-blocked = [[1, 0]]
-
-[[obstacle]]
-id = "obstacle_29"
-terrains = ["snow"]
-width = 3
-height = 2
-blocked = [[1, 0], [2, 0]]
-
-[[obstacle]]
-id = "obstacle_30"
-terrains = ["snow"]
-width = 2
-height = 1
-blocked = [[0, 0], [1, 0]]
-
-[[obstacle]]
-id = "obstacle_31"
-terrains = ["snow"]
-width = 3
-height = 2
-blocked = [[0, 0], [1, 0], [2, 0]]
-
-[[obstacle]]
-id = "obstacle_32"
-terrains = ["snow"]
-width = 7
-height = 2
-blocked = [[2, 0], [3, 0], [4, 0], [5, 0], [4, -1], [3, -1], [2, -1], [1, -1]]
-
-[[obstacle]]
-id = "obstacle_33"
-terrains = ["snow"]
-width = 5
-height = 5
-blocked = [[3, 0], [4, -1], [3, -1], [2, -1], [1, -2], [2, -3], [2, -4]]
-
-[[obstacle]]
-id = "obstacle_34"
-terrains = ["swamp"]
-width = 2
-height = 2
-blocked = [[0, 0]]
-
-[[obstacle]]
-id = "obstacle_35"
-terrains = ["swamp"]
-width = 8
-height = 3
-blocked = [[7, -1], [6, -1], [5, -1], [4, -1], [3, -1], [2, -1], [1, -1]]
-
-[[obstacle]]
-id = "obstacle_36"
-terrains = ["swamp"]
-width = 2
-height = 1
-blocked = [[0, 0], [1, 0]]
-
-[[obstacle]]
-id = "obstacle_37"
-terrains = ["swamp"]
-width = 3
-height = 1
-blocked = [[0, 0], [1, 0], [2, 0]]
-
-[[obstacle]]
-id = "obstacle_38"
-terrains = ["swamp"]
-width = 5
-height = 4
-blocked = [[4, -1], [3, -1], [2, -1], [1, -1], [4, -2], [3, -2], [2, -2], [1, -2]]
-
-[[obstacle]]
-id = "obstacle_39"
-terrains = ["swamp"]
-width = 4
-height = 3
-blocked = [[1, -1], [0, -1], [3, -2], [2, -2], [1, -2], [0, -2]]
-
-[[obstacle]]
-id = "obstacle_40"
-terrains = ["rough"]
-width = 2
-height = 2
-blocked = [[0, 0], [1, 0], [1, -1]]
-
-[[obstacle]]
-id = "obstacle_41"
-terrains = ["rough"]
-width = 4
-height = 3
-blocked = [[3, -1], [2, -1], [1, -1], [2, -2], [1, -2]]
-
-[[obstacle]]
-id = "obstacle_42"
-terrains = ["rough"]
-width = 3
-height = 2
-blocked = [[1, 0], [2, 0], [2, -1], [1, -1]]
-
-[[obstacle]]
-id = "obstacle_43"
-terrains = ["rough"]
-width = 3
-height = 3
-blocked = [[1, -1], [2, -2], [1, -2]]
-
-[[obstacle]]
-id = "obstacle_44"
-terrains = ["rough"]
-width = 3
-height = 3
-blocked = [[2, -1], [1, -1], [2, -2]]
-
-[[obstacle]]
-id = "obstacle_45"
-terrains = ["subterranean"]
-width = 3
-height = 3
-blocked = [[0, 0], [1, 0], [2, 0], [2, -1], [1, -1]]
-
-[[obstacle]]
-id = "obstacle_46"
-terrains = ["subterranean"]
-width = 3
-height = 2
-blocked = [[0, 0], [1, 0], [2, 0]]
-
-[[obstacle]]
-id = "obstacle_47"
-terrains = ["subterranean"]
-width = 4
-height = 3
-blocked = [[0, 0], [1, 0], [2, 0], [3, 0], [3, -1], [2, -1], [1, -1]]
-
-[[obstacle]]
-id = "obstacle_48"
-terrains = ["lava"]
-width = 4
-height = 3
-blocked = [[3, -1], [2, -2], [1, -2]]
-
-[[obstacle]]
-id = "obstacle_49"
-terrains = ["lava"]
-width = 4
-height = 2
-blocked = [[0, 0], [1, 0], [2, 0], [3, -1], [2, -1], [1, -1]]
-
-[[obstacle]]
-id = "obstacle_50"
-terrains = ["lava"]
-width = 5
-height = 3
-blocked = [[4, -1], [3, -1], [2, -1], [4, -2], [3, -2], [2, -2], [1, -2]]
-
-[[obstacle]]
-id = "obstacle_51"
-terrains = ["lava"]
-width = 3
-height = 2
-blocked = [[0, 0], [1, 0], [2, 0]]
-
-[[obstacle]]
-id = "obstacle_52"
-terrains = ["lava"]
-width = 4
-height = 4
-blocked = [[3, -1], [2, -1], [2, -2], [1, -2], [2, -3], [1, -3]]
-
-[[obstacle]]
-id = "obstacle_53"
-terrains = ["lava"]
-width = 5
-height = 3
-blocked = [[4, -1], [3, -1], [2, -1], [1, -1], [4, -2], [3, -2]]
-
-[[obstacle]]
-id = "obstacle_54"
-terrains = ["lava"]
-width = 5
-height = 3
-blocked = [[4, -1], [3, -1], [2, -1], [1, -1], [3, -2], [2, -2], [1, -2]]
-
-[[obstacle]]
-id = "obstacle_100"
-terrains = ["dirt"]
-absolute = true
-blocked = [[12, 4], [9, 5], [10, 5], [11, 5], [12, 5], [3, 6], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6]]
-
-[[obstacle]]
-id = "obstacle_101"
-terrains = ["dirt"]
-absolute = true
-blocked = [[5, 4], [6, 5], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6], [11, 6]]
-
-[[obstacle]]
-id = "obstacle_102"
-terrains = ["dirt"]
-absolute = true
-blocked = [[9, 3], [10, 3], [11, 3], [12, 3], [13, 3], [4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [4, 8], [5, 8], [6, 8], [7, 8], [8, 8], [9, 8], [10, 8], [11, 8], [12, 8], [13, 8]]
-
-[[obstacle]]
-id = "obstacle_103"
-terrains = ["dirt"]
-absolute = true
-blocked = [[3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [13, 5]]
-
-[[obstacle]]
-id = "obstacle_104"
-terrains = ["dirt"]
-absolute = true
-blocked = [[8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5]]
-
-[[obstacle]]
-id = "obstacle_105"
-terrains = ["grass"]
-absolute = true
-blocked = [[4, 3], [5, 3], [6, 3], [7, 3], [7, 4], [8, 4], [9, 4], [10, 5], [10, 6], [11, 6], [12, 7]]
-
-[[obstacle]]
-id = "obstacle_106"
-terrains = ["grass"]
-absolute = true
-blocked = [[13, 4], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [4, 6], [5, 6], [4, 7]]
-
-[[obstacle]]
-id = "obstacle_107"
-terrains = ["snow"]
-absolute = true
-blocked = [[8, 4], [9, 4], [10, 4], [11, 4], [6, 5], [7, 5], [8, 5], [12, 5], [13, 5], [4, 6], [5, 6], [6, 6]]
-
-[[obstacle]]
-id = "obstacle_108"
-terrains = ["snow"]
-absolute = true
-blocked = [[7, 2], [8, 2], [9, 2], [7, 3], [7, 4], [7, 5], [6, 6], [7, 7], [7, 8]]
-
-[[obstacle]]
-id = "obstacle_109"
-terrains = ["swamp"]
-absolute = true
-blocked = [[6, 2], [7, 2], [7, 3], [8, 3], [6, 4], [7, 4], [7, 5], [8, 5], [7, 6], [8, 6], [9, 6], [8, 7], [9, 7], [10, 7], [11, 7]]
-
-[[obstacle]]
-id = "obstacle_110"
-terrains = ["swamp"]
-absolute = true
-blocked = [[9, 2], [9, 3], [10, 3], [9, 4], [8, 5], [9, 5], [10, 5], [7, 6], [8, 6], [7, 7], [8, 7]]
-
-[[obstacle]]
-id = "obstacle_111"
-terrains = ["swamp"]
-absolute = true
-blocked = [[6, 4], [7, 4], [8, 4], [9, 4], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [7, 6], [8, 6], [9, 6], [10, 6]]
-
-[[obstacle]]
-id = "obstacle_112"
-terrains = ["lava"]
-absolute = true
-blocked = [[9, 4], [10, 4], [11, 4], [12, 4], [13, 4], [6, 5], [7, 5], [8, 5], [9, 5], [3, 6], [4, 6], [5, 6]]
-
-[[obstacle]]
-id = "obstacle_113"
-terrains = ["lava"]
-absolute = true
-blocked = [[9, 2], [9, 3], [10, 3], [8, 4], [9, 4], [8, 5], [7, 6], [7, 7], [8, 7], [6, 8], [7, 8]]
-
-[[obstacle]]
-id = "obstacle_114"
-terrains = ["rough"]
-absolute = true
-blocked = [[4, 3], [4, 4], [5, 5], [5, 6], [6, 7], [7, 7], [8, 7], [9, 7], [10, 7], [11, 7], [12, 7], [13, 7]]
-
-[[obstacle]]
-id = "obstacle_115"
-terrains = ["rough"]
-absolute = true
-blocked = [[7, 2], [8, 3], [8, 4], [9, 5], [9, 6], [10, 7], [7, 8], [8, 8], [9, 8]]
-
-[[obstacle]]
-id = "obstacle_116"
-terrains = ["rough"]
-absolute = true
-blocked = [[6, 2], [7, 2], [8, 2], [9, 2], [7, 3], [7, 4], [8, 5], [8, 6], [9, 7], [9, 8]]
-
-[[obstacle]]
-id = "obstacle_117"
-terrains = ["rough"]
-absolute = true
-blocked = [[4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [13, 4], [4, 5], [3, 6]]
-
-[[obstacle]]
-id = "obstacle_118"
-terrains = ["rough"]
-absolute = true
-blocked = [[4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5]]
-
-[[obstacle]]
-id = "obstacle_119"
-terrains = ["rough"]
-absolute = true
-blocked = [[5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [6, 5], [7, 5], [8, 5], [9, 5]]
-
-[[obstacle]]
-id = "obstacle_120"
-terrains = ["rough"]
-absolute = true
-blocked = [[6, 1], [6, 2], [7, 3], [7, 4], [8, 5], [8, 6], [9, 7], [9, 8], [10, 9]]
-
-[[obstacle]]
-id = "obstacle_121"
-terrains = ["rough"]
-absolute = true
-blocked = [[4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5]]
-
-[[obstacle]]
-id = "obstacle_122"
-terrains = ["rough"]
-absolute = true
-blocked = [[5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6]]
-
-# Battle parameters (Tier 2): rule ids in docs/rules/catalog/battle.toml; the formations
-# are the original's loose and tight formations (sources in the gap-fill file).
-[battle]
-field_width = 17
-field_height = 11
-side_columns = 1
-army_slots = 7
-damage_roll_samples = 10
-attack_bonus_per_point_percent = 5
-attack_bonus_cap_percent = 300
-defense_reduction_per_point_permille = 25
-defense_reduction_cap_permille = 700
-defend_bonus_percent = 20
-defend_bonus_min = 1
-ranged_full_damage_distance = 10
-ranged_penalty_percent = 50
-melee_penalty_percent = 50
-morale_dice = 24
-good_morale_chances = [1, 2, 3]
-bad_morale_chances = [2, 4, 6]
-luck_dice = 24
-good_luck_chances = [1, 2, 3]
-war_machine_positions = [[1, 3], [1, 1], [1, 9]]
-loose_formation = [[5], [2, 8], [2, 5, 8], [0, 4, 6, 10], [0, 2, 5, 8, 10], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
-tight_formation = [[5], [4, 6], [4, 5, 6], [2, 4, 6, 8], [2, 4, 5, 6, 8], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
-tactics_zone_columns = [3, 5, 7]
-surrender = { resource = "gold", cost_percent = 50 }
-hero_casts_per_round = 1
-side_stack_limit = 20
 
 # Hero parameters (Tier 2): rule ids in docs/rules/catalog/heroes.toml (sources in the
 # gap-fill file).

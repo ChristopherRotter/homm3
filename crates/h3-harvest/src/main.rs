@@ -1,10 +1,10 @@
 //! `h3-harvest --install <dir> --out <packs dir> [--check]`
 //!
 //! Reads the installation (or a copy, e.g. `original-data/install`), writes
-//! `<out>/{base,ab,sod}/pack.toml`. With `--check` nothing is written; the command fails if the
-//! files under `<out>` differ from a fresh harvest (used by `cargo xtask verify
-//! --with-original-data`). The installation is only ever read: an `--out` inside `--install` is
-//! refused.
+//! `<out>/{base,ab,sod}/core.toml` and `battle.toml` (pack format v35). With `--check` nothing
+//! is written; the command fails if the files under `<out>` differ from a fresh harvest (used by
+//! `cargo xtask verify --with-original-data`). The installation is only ever read: an `--out`
+//! inside `--install` is refused.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -63,8 +63,12 @@ fn run() -> Result<bool, String> {
         eprintln!("note: {line}");
     }
     let mut same = true;
-    for (id, text) in &result.packs {
-        let path = args.out.join(id).join("pack.toml");
+    let files = result
+        .packs
+        .iter()
+        .flat_map(|(id, (core, battle))| [(id, "core.toml", core), (id, "battle.toml", battle)]);
+    for (id, file, text) in files {
+        let path = args.out.join(id).join(file);
         if args.check {
             let existing = std::fs::read_to_string(&path).unwrap_or_default();
             if existing.replace("\r\n", "\n") != *text {

@@ -5,7 +5,7 @@ use std::string::String;
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleHero, BattleSide, Rate};
 
 use super::spells::{arena, cast, mage, spell, stack};
@@ -18,7 +18,7 @@ use crate::{
 };
 
 /// Gives stack `id` the timed effect of `name` at `mastery` for five rounds.
-fn give(s: &mut BattleState, r: &Ruleset, (id, name): (u8, &str), mastery: u8) {
+fn give(s: &mut BattleState, r: &BattleRuleset, (id, name): (u8, &str), mastery: u8) {
     let spell_id = spell(r, name);
     let cast = TimedCast {
         id: spell_id,
@@ -31,7 +31,7 @@ fn give(s: &mut BattleState, r: &Ruleset, (id, name): (u8, &str), mastery: u8) {
 }
 
 /// A mage with `spells`, the air mastery `mastery` and enough mana.
-fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
+fn adept(r: &BattleRuleset, spells: &[&str], mastery: u8) -> BattleHero {
     let mut h = mage(r, spells);
     h.magic.masteries = masteries(r, [mastery, 0, 0, 0]);
     h.magic.mana = 200;
@@ -39,7 +39,7 @@ fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
 }
 
 /// The names of the spells whose effects stack `id` has, sorted.
-fn on(s: &BattleState, r: &Ruleset, id: u8) -> Vec<String> {
+fn on(s: &BattleState, r: &BattleRuleset, id: u8) -> Vec<String> {
     let mut names: Vec<String> = s
         .effects()
         .iter()
@@ -64,14 +64,14 @@ fn strikes(events: &[Event]) -> Vec<(u8, u8)> {
 }
 
 /// The stack targets of `name` for `side` now.
-fn targets(s: &BattleState, r: &Ruleset, side: BattleSide, name: &str) -> Vec<CastTarget> {
+fn targets(s: &BattleState, r: &BattleRuleset, side: BattleSide, name: &str) -> Vec<CastTarget> {
     let mut out = CastTargets::new();
     cast_targets(s, r, side, spell(r, name), &mut out);
     out.as_slice().to_vec()
 }
 
 /// The legal commands of `side` now.
-fn legal(s: &BattleState, r: &Ruleset, side: BattleSide) -> Vec<Command> {
+fn legal(s: &BattleState, r: &BattleRuleset, side: BattleSide) -> Vec<Command> {
     let mut out = LegalCommands::new();
     legal_commands(s, r, side, &mut out);
     out.as_slice().to_vec()
@@ -97,17 +97,17 @@ fn has(s: &BattleState, id: u8, status: Status) -> bool {
 }
 
 /// The active berserk stack takes its automatic turn now; returns the events.
-fn berserk_now(s: &mut BattleState, r: &Ruleset) -> Vec<Event> {
+fn berserk_now(s: &mut BattleState, r: &BattleRuleset) -> Vec<Event> {
     let mut events = Vec::new();
     crate::turn::berserk_now(s, r, &mut events);
     events
 }
 
 /// Places a Quicksand pit of `side` on `(x, y)` as its cast would (test setup only).
-fn pit(s: &mut BattleState, r: &Ruleset, side: BattleSide, (x, y): (i32, i32)) {
+fn pit(s: &mut BattleState, r: &BattleRuleset, side: BattleSide, (x, y): (i32, i32)) {
     let id = spell(r, "quicksand");
     let shape = r.spell(id).unwrap().magic.obstacle.clone().unwrap();
-    let placed = (id, h3_content::ObstacleKind::Pit, &shape);
+    let placed = (id, h3_content_battle::ObstacleKind::Pit, &shape);
     let hexes = [at(r, x, y)];
     crate::obstacles::place(s, placed, side, (&hexes, 0), &mut Vec::<Event>::new());
 }

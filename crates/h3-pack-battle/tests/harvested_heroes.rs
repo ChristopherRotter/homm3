@@ -11,9 +11,10 @@ use h3_battle::{
     observe, second_targets,
 };
 use h3_content::{
-    Ability, ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, HeroEffect, HeroTypeId,
-    Ruleset, SkillId, SpellCategory, SpellId, TerrainId,
+    ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, HeroEffect, HeroTypeId, SkillId,
+    SpellCategory, SpellId, TerrainId,
 };
+use h3_content_battle::{Ability, BattleRuleset};
 use h3_contracts::{
     Army, ArmyStack, BattleHero, BattleSetup, BattleSide, MAX_BATTLE_EFFECTS, Obstacle,
 };
@@ -30,7 +31,7 @@ fn pick(rng: &mut Rng, n: usize) -> usize {
 
 /// Valid details: a random hero type, level 1 to 255, primary skills 0 to 99, up to eight skills
 /// at random levels, and worn artifacts drawn at random, each kept if the details stay valid.
-fn details(r: &Ruleset, rng: &mut Rng) -> HeroDetails {
+fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
     let mut d = HeroDetails {
         hero_type: HeroTypeId::from_index(pick(rng, r.hero_types().len())).unwrap(),
         level: u8::try_from(1 + rng.below(255)).unwrap(),
@@ -99,8 +100,12 @@ fn army(rng: &mut Rng, pool: &[CreatureTypeId]) -> Army {
 // covers: HER-BAT-001, BAT-HER-001
 #[test]
 fn random_legal_sod_heroes_derive_and_play() {
-    let sod = h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+    let sod = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         "base:faithful",
     )
     .unwrap();
@@ -165,7 +170,7 @@ fn random_legal_sod_heroes_derive_and_play() {
 
 /// [`details`] of a hero that casts: it wears a Spell Book (HER-BAT-011), has learned about half
 /// of the hero spells and has mana.
-fn casting_details(r: &Ruleset, rng: &mut Rng) -> HeroDetails {
+fn casting_details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
     let mut d = details(r, rng);
     let book = ArtifactInstance::from(r.artifact_by_key("base:spell_book").unwrap());
     if !d.worn.contains(&book) {
@@ -191,8 +196,12 @@ fn casting_details(r: &Ruleset, rng: &mut Rng) -> HeroDetails {
 /// castable (it was, without a target).
 #[test]
 fn remove_obstacle_keeps_a_target_while_it_is_castable() {
-    let r = h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+    let r = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         "base:faithful",
     )
     .unwrap();
@@ -270,8 +279,12 @@ fn remove_obstacle_keeps_a_target_while_it_is_castable() {
 fn random_legal_sod_heroes_cast_and_play() {
     let mut casts = (0, 0);
     for profile in ["base:faithful", "base:strict-fixed"] {
-        let sod = h3_pack::compile(
-            &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+        let sod = h3_pack_battle::compile(
+            &[
+                h3_pack_battle::SOD_PACK,
+                h3_pack_battle::AB_PACK,
+                h3_pack_battle::BASE_PACK,
+            ],
             profile,
         )
         .unwrap();
@@ -388,7 +401,7 @@ fn random_legal_sod_heroes_cast_and_play() {
 }
 
 /// Hero details of Solmyr wearing `worn` (keys), knowing Magic Arrow, with `skills`.
-fn wearing(sod: &Ruleset, worn: &[ArtifactInstance], skills: &[(&str, u8)]) -> HeroDetails {
+fn wearing(sod: &BattleRuleset, worn: &[ArtifactInstance], skills: &[(&str, u8)]) -> HeroDetails {
     HeroDetails {
         hero_type: sod.hero_type_by_key("base:solmyr").unwrap(),
         level: 10,
@@ -408,8 +421,12 @@ fn wearing(sod: &Ruleset, worn: &[ArtifactInstance], skills: &[(&str, u8)]) -> H
 // covers: HER-SPL-002, HER-SPL-003, HER-ART-003
 #[test]
 fn the_harvested_artifacts_give_the_originals_spells() {
-    let sod = h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+    let sod = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         "base:faithful",
     )
     .unwrap();

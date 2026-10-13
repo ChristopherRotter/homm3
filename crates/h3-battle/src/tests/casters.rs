@@ -4,7 +4,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::BattleSide;
 
 use super::spells::{arena, mage, spell, stack};
@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// The stacks the active stack of `side` may cast at now, by id.
-fn targets(s: &BattleState, r: &Ruleset, side: BattleSide) -> Vec<u8> {
+fn targets(s: &BattleState, r: &BattleRuleset, side: BattleSide) -> Vec<u8> {
     let mut out = CastTargets::new();
     creature_cast_targets(s, r, side, &mut out);
     out.iter()
@@ -298,7 +298,7 @@ fn a_created_stack_has_its_creatures_casts() {
 
 /// Activates stack `id` as the battle does for its side's command (a random caster draws its
 /// spell, BAT-MAG-049), returning the events.
-fn drawing(s: &mut BattleState, r: &Ruleset, id: u8) -> Vec<Event> {
+fn drawing(s: &mut BattleState, r: &BattleRuleset, id: u8) -> Vec<Event> {
     activate(s, id);
     let mut events = Vec::new();
     crate::casters::activated(s, r, StackId(id), &mut events);
@@ -306,7 +306,7 @@ fn drawing(s: &mut BattleState, r: &Ruleset, id: u8) -> Vec<Event> {
 }
 
 /// The hexes the active stack of `side` may cast at now, by index.
-fn hexes(s: &BattleState, r: &Ruleset, side: BattleSide) -> Vec<u8> {
+fn hexes(s: &BattleState, r: &BattleRuleset, side: BattleSide) -> Vec<u8> {
     let mut out = CastTargets::new();
     creature_cast_targets(s, r, side, &mut out);
     out.iter()
@@ -334,7 +334,7 @@ fn damage(events: &[Event]) -> Vec<(u8, u64, u64)> {
 }
 
 /// Puts the timed spell `name` at `mastery` on stack `id` (five rounds).
-fn give(s: &mut BattleState, r: &Ruleset, (id, name): (u8, &str), mastery: u8) {
+fn give(s: &mut BattleState, r: &BattleRuleset, (id, name): (u8, &str), mastery: u8) {
     let spell_id = spell(r, name);
     let cast = crate::effects::TimedCast {
         id: spell_id,
@@ -809,7 +809,7 @@ fn a_magic_mirror_never_sends_a_creatures_spell_away() {
 }
 
 /// Whether `name` is useful on stack `target` for a helpful caster of the attacker (BAT-MAG-050).
-fn is_useful(s: &BattleState, r: &Ruleset, name: &str, target: u8) -> bool {
+fn is_useful(s: &BattleState, r: &BattleRuleset, name: &str, target: u8) -> bool {
     let id = spell(r, name);
     crate::casters::useful(
         s,
