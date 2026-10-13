@@ -4,8 +4,8 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **#156 `battle/wiki-checks`, checkpoint passed (2026-10-13), waiting for the merge:** the review's 49 wiki checks (`docs/experiments/README.md`, "The wiki checks"); a shot's distance between the nearest hexes (BAT-Q36, `installation.md` §7.25).
-- **`battle/faerie-dragon-and-natives`, stacked on #156, `cross-lane`, waits for the user's checkpoint:** the user's answers built: a stack's area spell or chain takes its controller's hero's bonuses (BAT-Q28 row 2, BAT-MAG-048); the Faerie Dragon casts under the Orb of Inhibition (BAT-Q32 (2), `ignores_magic_block`); BAT-QUIRK-1 retired (BAT-Q34). Later: S-23, S-24; the knights' Curse stays as the code until batch 2g.
+- **#156 merged** (2026-10-13, squashed as `784f911`): the review's 49 wiki checks (`docs/experiments/README.md`, "The wiki checks"); a shot's distance between the nearest hexes (BAT-Q36, `installation.md` §7.25).
+- **`battle/faerie-dragon-and-natives` (`cross-lane`) waits for the user's checkpoint:** the user's answers built: a stack's area spell or chain takes its controller's hero's bonuses (BAT-Q28 row 2, BAT-MAG-048); the Faerie Dragon casts under the Orb of Inhibition (BAT-Q32 (2), `ignores_magic_block`); BAT-QUIRK-1 retired (BAT-Q34). Later: S-23, S-24; the knights' Curse stays as the code until batch 2g.
 - **Merged:** #150 (the rear hex, BAT-GEO-002); R01 (#137, #141: the lane owns `h3-content-battle`, `h3-pack-battle`). **E04b is closed** (2026-10-12).
 - **Next:** E04c's refinement (sieges, special battlefields); batch 2g when the user plays it.
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox by destination, Q43.
