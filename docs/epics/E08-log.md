@@ -1226,3 +1226,18 @@ end to end with the env's action encoding v2 and the replay format v2.
 - **Measured** (`bench-check`): `reach-xl-144` 565 763 181 Ir (−0.15 %), `random-play-duel-36`
   438 920 743 (−0.15 %; +0.002 % over T14a's), `fork-xl-144` 349 100 056 (+1.60 %, unchanged
   since the first half). No re-baseline.
+
+**Review and closure of the round** (runner).
+- **Independent review** (an agent that had not seen the work; read the diff, ran checks in a
+  worktree): no bug in the engine. Checked and passed: atomicity of every rejection path, the
+  masks and `legal_*` against `apply` (decision open, outside the turn, other players), the
+  from-above test in the query against `MoveHero`, one visit order everywhere (`tile_object`),
+  copy-on-write of the decisions and purchases (`None` and empty hash alike), the reveal against
+  a brute-force reference on four two-level maps, replay v2's difficulty on verify. Three
+  findings, all fixed: the hygiene stop compared absolute tiles, which the property's own
+  `moved` variation makes differ (26 stops at 600 cases, 21 of them spurious; now 14, 2); the
+  tile mask was empty after `EndTurn` and the answers, a NaN for a masked softmax (tile 0 again,
+  runner's call); a v2 replay without its difficulty read as normal (now a format error).
+  Residual risks to the inbox (`accept_offer` trusts its offer; T15's gate and the mode).
+- **The full local verify** (CI out of minutes) with `--with-original-data` passed before the
+  review's fixes; again on the branch's head before the pull request (its result there).

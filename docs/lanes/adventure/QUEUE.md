@@ -4,20 +4,12 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint. T11a, T11b (ADV-Q10 answered, the ADRs amended), T12 and T13 (each in two parts) are done; T14 in two parts is in progress. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-### E08 T14 — The Cartographer: the first pending decision
-
-Split with the user on 2026-10-12 (T13's checkpoint) into T14a and T14b, one pull request (`adventure/e08-t14`).
-
-- **T14a scope, the entered visit:** a step onto an entered object's visitable tile enters it and ends the move (ADV-OBJ-003's other half; the path's last step, `PastVisit` otherwise) and ADV-OBJ-004 (an entered object not visitable from above is neither entered from nor left toward the three tiles above), both moved from T13; `check_step`, `visit_at` and the query's destination test grow the mode. Which object a tile holding several visits: read the original (which object the tile records), compare VCMI (`visitObjectOnTile` the last in map order, `blockingVisit` the first); if one order serves both modes, T13's neighbour order (call 2) follows it (the user, 2026-10-12: may be revisited, flagged at the checkpoint). The inbox's setup case (a hero on a neighbour-visited object's tile) and the shipped-map count of stacked visitable tiles. A kind is entered only once its visit is built: the Cartographer from T14a (its offer in T14b, same pull request); the observatories and tents keep refusing the step (`Visit`) until T15.
-- **T14b scope, the Cartographer's offer:** the offer as a pending decision of its visitor's owner (ADV-VIS-001; `E08-design.md` "Outcome and decisions"), the answer command (accept: the cost from the treasury, the kind revealed on both levels, the bought flag; decline), legality while it is open (its answers only, no `EndTurn`), events and the observation (the viewer's own bought kinds and open offer), atomicity and legality consistency with decisions; the hygiene property's stop after the viewer's own pickup extends to its own offers; the env's action encoding v2 (a decision head), the replay format v2 with a **difficulty option** (the replay header, the env's reset, the CLI; the user, 2026-10-12), golden replays re-recorded; versions per the design note.
-- **Depends on:** T13 (checkpoint passed 2026-10-12). **Status:** in progress (`adventure/e08-t14`, 2026-10-12 21:27 UTC).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint. T11a, T11b (ADV-Q10 answered, the ADRs amended), T12, T13 and T14 (each in two parts) are done; T14 waits for its checkpoint. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ### E08 T15 — Visitable objects
 
 - **Scope:** the Redwood Observatory and the Pillar of Fire (a reveal around the object), Keymaster's tents (a key per player and colour) with border guards (removed for everyone when a key holder accepts; the yes/no is a second offer if ADV-Q10's D-7 says so) and border gates (passable for such a player), the per-player object state in the observation.
-- **Depends on:** T13 (visits); T14 (the entered visit; the guard's question is an offer, D-7). **Status:** waiting (T14).
+- **Depends on:** T13 (visits); T14 (the entered visit, `visit_built`; the guard's question is an offer, D-7). **Status:** waiting (T14's checkpoint).
 
 ### E08 T16 — Closure of increment 2
 
@@ -26,6 +18,14 @@ Split with the user on 2026-10-12 (T13's checkpoint) into T14a and T14b, one pul
 
 ## Inbox
 
+- 2026-10-13 (T14 review): T15's border gate (entered by a key holder, otherwise visited from a neighbour) breaks "the visit mode follows the type": give the mode a per-player test in `visit_at`, `check_step` and the query together. Also a future entered pickup or removable entered object could leave a hero on a tile whose next live object is neighbour-visited, a state setup refuses: decide with T15.
+- 2026-10-13 (T14 review): `AdventureState::accept_offer` is `pub` and trusts its `Offer` (another type would be marked bought without a reveal); only `h3-game` calls it. Narrow it if a second caller appears.
+- 2026-10-13 (T14b): the original's "already bought" message has no event (a visit to a bought kind tells nothing).
+- 2026-10-13 (T14b, measured): fork levers: the heroes' clone is 15 % of `fork-xl-144` (an allocation per army), the schedule's `Vec<Vec<PlayerId>>` 3.6 %.
+- 2026-10-13 (T14a): the draw-list order at 0x505230 (equal and lower layers) was not read; it could make the original visit an earlier object on a stacked tile. No shipped map stacks visitable tiles (0 of 101 246).
+- 2026-10-13 (T14a): untyped blockers have no from-above setting, so a hero on a town's gate leaves upward: type the town classes with E09.
+- 2026-10-13 (T14a): what the original does with a map that puts a hero on a pickup's tile was not read; setup's refusal (`StandError::Visited`) relies on the editor preventing it.
+- 2026-10-13 (T14a): random play enters a Cartographer about 3 times per 48 cases (T14b's plans raise offers to 9–16); place heroes beside Cartographers if more is wanted.
 - 2026-10-12 (T12b): `ObjectView` has no object index (it would count unseen objects); T14's offer and its events name the object by its visitable tile or anchor, not by index, in what a player sees.
 - 2026-10-12 (T12b, not measured): `remove_object` scans every object for each tile it frees (other objects covering it); a per-tile cover count in the static map if pickups show up in a profile.
 - 2026-10-12 (T12a): the guards record of a pile counts even when empty (`Unsupported`); read the loader (0x4A4BF4's flag) with increment 3's guarded piles.
