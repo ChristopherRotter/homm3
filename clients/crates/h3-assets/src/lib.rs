@@ -48,6 +48,6 @@ pub enum Error {
     Field(&'static str),
     /// A run of pixels goes past the end of its row or block (DEF).
     Overrun,
-    /// A side of the image is longer than the decoder accepts ([`def::MAX_SIDE`]).
+    /// The image is larger than the decoder accepts ([`def::MAX_SIDE`], [`def::MAX_PIXELS`]).
     TooLarge,
 }

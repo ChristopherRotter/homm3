@@ -11,7 +11,9 @@ archives (findings: `docs/epics/E17-design.md`). M1 T1 + T6 (2026-10-12): the co
 the executable's drawing (design §3) and the compositor (`h3-render`) that follows it; `h3-view
 sprite` draws a DEF's group over an image into a PNG. M1 T5 + T4 (2026-10-13): the battle
 screen's reading (design §4) and the asset tables (`clients/assets/`, below). M1 T7 (2026-10-13):
-`h3-view render`, a battle still from a record or a scenario file. Decisions: ADR-0020
+`h3-view render`, a battle still from a record or a scenario file. M1 T8 (2026-10-13): reference
+captures of the original, run under Wine in a sandbox, and the first exact diff (below).
+Decisions: ADR-0020
 and the epic file `docs/epics/E17-clients.md`; tasks in `docs/lanes/client/QUEUE.md`.
 
 ## Layout
@@ -57,7 +59,8 @@ search the parent directories).
 | `clients/crates/h3-view` | the scene model (the library: `record` reads a record, `scene` makes a snapshot's draw list, `batch` holds a checkpoint's decoded assets, `compose` draws the list into a frame; `tables` and `layout` load the asset tables and the layouts); its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the tables' harvester, `sprite`, the headless renderer `render` with its scenario adapter, later the window. Its package depends on `h3-protocol` (the library) and, for the scenario adapter only, on `h3-pack-battle`, `h3-battle` and `h3-kernel`, which `tests/purity.rs` keeps out of the library |
 | `clients/assets/{base,ab,sod}.toml` | the asset tables per expansion (below): content keys to archive entry names and the drawing's numbers, asset fixes; identifiers and numbers only |
 | `clients/layouts/battle.toml` | the battle screen's layout at the native resolution (ADR-0020 point 3: layouts are data): the frame, the hex boxes, where sprites stand, the stack canvas, the layer-1 pass's columns, the outline's palette entry (`docs/epics/E17-design.md` §4); an HD layout is another file of the same format (*provisional*) |
-| `clients/scenarios/*.toml` | the client's battle scenarios (the scenario format of `packs/README.md`) for `h3-view render`: the stills T7 renders |
+| `clients/scenarios/*.toml` | the client's battle scenarios (the scenario format of `packs/README.md`) for `h3-view render`: the stills T7 renders, `smoke.toml` the captured smoke battle (T8) |
+| `clients/capture/` | the reference captures (below): `setup.sh`, `battle.sh`, `h3cap.py`, the `xdd.dll` forwarder's source |
 | `clients/out/` | local output (renders, reports); gitignored |
 
 The decoders, the compositor and the scene model are pure (no I/O, clock or threads; time is an
@@ -72,7 +75,9 @@ viewer on the real assets; a full game record/replay viewer follows.
 One table per rule pack, `clients/assets/<pack>.toml` (ADR-0020 point 5), generated once by
 `cargo run --release -p h3-view -- harvest [--install <dir>] [--packs <dir>] [--out <dir>]` from
 the installation copy's `Heroes3.exe` and `H3bitmap.lod` (`cranim.txt`, `crtraits.txt`), keyed by
-the committed packs; afterwards they are source, edited by hand and reviewed as diffs. The client
+the committed packs (its default `--out` is `clients/out/harvest`, so a fresh harvest is diffed
+against the committed tables, never written over them); afterwards they are source, edited by hand
+and reviewed as diffs. The client
 never reads the executable. Loader: `h3_view::tables` (pure); `tests/tables.rs` checks them
 against the packs; the gate checks their names against the archives. The format (*provisional*,
 on the M1 review list):
@@ -98,6 +103,31 @@ on the M1 review list):
 Which table an entry belongs to is the pack that defines its key; the graphics no pack defines yet
 (special battlefields, their obstacles) sit in `base.toml`. Where the names and numbers come from:
 `docs/epics/E17-design.md` §5.
+
+## Reference captures
+
+*Provisional* (E17 M1 T8; ADR-0020 point 9; `docs/epics/E17-design.md` §6). The original runs
+unattended in a Linux sandbox under Wine, on a virtual X display at 16 bits, so an XWD dump of the
+display is the original's own 5-6-5 screen and compares exactly with our renders (truncated back
+to 5-6-5). It runs from a copy under `original-data/` (never the installation):
+
+1. `clients/capture/setup.sh [copy]` installs 32-bit Wine, Xvfb, xdotool and mingw-w64; makes the
+   run directory `original-data/wine/game` from the copy (`Heroes3.exe`, its five DLLs, the four
+   LODs, `Heroes3.snd`, `H3ab_ahd.snd`, `H3ab_ahd.vid`; `VIDEO.VID` becomes an empty archive);
+   builds `xdd.dll`, which forwards the GOG executable's DirectDraw import to Wine's; and writes the
+   game's settings (no intro, combat grid, hex or movement shade, no sound) into a Wine prefix.
+2. `clients/capture/battle.sh <map.h3m> <dir>` starts a single scenario on the map, steps the
+   selected hero east into the enemy hero and dumps a burst of frames (`f01.xwd`, …). The battle
+   lane's smoke map is such a map (`cargo run -p h3-map --example smoke_map -- <Objects.txt>
+   <map>`).
+3. `clients/capture/h3cap.py first <dir>` picks the opening frame; `h3cap.py diff <frame.xwd>
+   <render.png> --out <diff.png>` counts the differing pixels and marks them;
+   `h3cap.py obstacles` finds a capture's obstacles by matching each candidate type at every hex.
+
+The smoke battle (`scenarios/smoke.toml`): the background, the three obstacles and the stacks
+standing at their hexes match the capture pixel for pixel; what differs is what is not drawn yet
+(heroes, war machines, count boxes, the panel) and the AI's stack already moving. Captures stay in
+the sandbox or `clients/out/` and are never committed (ADR-0009).
 
 ## Asset policy
 

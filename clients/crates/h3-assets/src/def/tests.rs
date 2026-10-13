@@ -155,6 +155,11 @@ fn frame_headers_are_checked() {
     let mut bad = good.clone();
     bad[20..24].copy_from_slice(&(MAX_SIDE + 1).to_le_bytes());
     assert_eq!(decode_frame(&bad, 0), Err(Error::TooLarge));
+    // Both sides within MAX_SIDE, but more pixels than MAX_PIXELS: refused before any is read.
+    let mut bad = good.clone();
+    bad[16..20].copy_from_slice(&2048_u32.to_le_bytes());
+    bad[20..24].copy_from_slice(&(MAX_PIXELS / 2048 + 1).to_le_bytes());
+    assert_eq!(decode_frame(&bad, 0), Err(Error::TooLarge));
     // `size` beyond the file; `size` shorter than the rows.
     assert_eq!(
         decode_frame(&good[..good.len() - 1], 0),

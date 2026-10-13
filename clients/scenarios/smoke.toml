@@ -1,0 +1,44 @@
+# E17 M1 T8: the battle of the battle lane's smoke map (`cargo run -p h3-map --example smoke_map`,
+# docs/experiments/README.md), rebuilt to compare with the original's opening frame
+# (clients/README.md, "Reference captures"): Smoke Red (Archers 20, Pikemen 10, loose) steps onto
+# Smoke Blue (Goblins 30, Wolf Riders 10, loose) on grass. The original placed the same obstacles
+# on every run; `h3cap.py obstacles` found each by matching every grass type at every hex against
+# the capture (the log and the rock exactly, the pond where the rock leaves it visible). Left out:
+# the heroes and Red's Ballista (not drawn yet). On 2026-10-13 the background, the three obstacles
+# and the Archers, Pikemen and Goblins matched the capture pixel for pixel.
+# `cargo run --release -p h3-view -- render scenarios/smoke.toml` from clients/.
+
+[scenario]
+id = "capture-smoke"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+# Anchored as found; the blocked hexes from each type's shape (one row up: half a hex left).
+obstacles = [
+    # The pond (ObGrS01.def, layer 1, two rows) at (4,6).
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    # The rock (ObGRk01.def, layer 0, two rows) at (5,6): drawn over the pond.
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    # The log (ObGLg01.def, layer 1) at (7,3).
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:archer"
+count = 20
+
+[[attacker]]
+slot = 1
+creature = "base:pikeman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 30
+
+[[defender]]
+slot = 1
+creature = "base:wolf_rider"
+count = 10

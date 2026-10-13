@@ -107,8 +107,9 @@ struct Placed {
 
 /// The draw list of the battle `observation` shows, at time 0: the background with the absolute
 /// obstacle, the layer-1 obstacles, then each row's passes with its layer-0 obstacles and its
-/// living stacks (§4.6). A natural obstacle without a type is not drawn, nor one whose every hex
-/// a removal cleared (*provisional*: removals come with M2). Left out until later tasks: the
+/// living stacks (§4.6). A natural obstacle without a type is not drawn; a removed one is no
+/// longer in the observation's list (the engine drops it), so every listed one is drawn, whatever
+/// hexes a removal cleared. Left out until later tasks: the
 /// heroes and flags, the count boxes (M3, with `tiny.fnt`), corpses, spell obstacles, the grid.
 ///
 /// # Errors
@@ -151,11 +152,7 @@ pub fn battle(
     }
     let mut placed = Vec::new();
     for o in &observation.removable_obstacles {
-        let gone = o
-            .hexes
-            .iter()
-            .all(|h| observation.obstacles_cleared.contains(h));
-        let Some(handle) = o.kind.filter(|_| !gone) else {
+        let Some(handle) = o.kind else {
             continue;
         };
         let (key, art) = obstacle(manifest, tables, handle)?;

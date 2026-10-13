@@ -1,6 +1,7 @@
-//! `h3-view harvest` (E17 M1 T4): generates the asset tables `clients/assets/{base,ab,sod}.toml`
-//! once from the user's `Heroes3.exe` and `H3bitmap.lod` (`cranim.txt`, `crtraits.txt`), keyed by
-//! the committed packs (`packs/<id>/core.toml` and `battle.toml`). Afterwards the tables are maintained as source
+//! `h3-view harvest` (E17 M1 T4): generates the asset tables (`{base,ab,sod}.toml`, committed in
+//! `clients/assets/`) from the user's `Heroes3.exe` and `H3bitmap.lod` (`cranim.txt`,
+//! `crtraits.txt`), keyed by the committed packs (`packs/<id>/core.toml` and `battle.toml`); by
+//! default into `clients/out/harvest` (T8). Afterwards the tables are maintained as source
 //! (ADR-0020 point 5); the client never reads the executable. An adapter: it reads files and
 //! writes text. The executable's addresses: `docs/exe/map.toml`; what they hold:
 //! `docs/epics/E17-design.md` §4 and §5.
@@ -74,7 +75,9 @@ pub struct Options {
 
 impl Options {
     /// Parses `[--install <dir>] [--packs <dir>] [--out <dir>]`; the defaults are `$H3_INSTALL`,
-    /// then the repository's `original-data/install`, the repository's `packs`, `clients/assets`.
+    /// then the repository's `original-data/install`, the repository's `packs`, `clients/out/harvest`
+    /// (never `clients/assets`, whose tables are source edited by hand: a fresh harvest is diffed
+    /// against them, *provisional*, E17 M1 T8).
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -97,7 +100,7 @@ impl Options {
                 .or(env)
                 .unwrap_or_else(|| manifest.join("../../../original-data/install")),
             packs: packs.unwrap_or_else(|| manifest.join("../../../packs")),
-            out: out.unwrap_or_else(|| manifest.join("../../assets")),
+            out: out.unwrap_or_else(|| manifest.join("../../out/harvest")),
         })
     }
 }

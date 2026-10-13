@@ -47,7 +47,8 @@ holds the byte layouts.
 
 **Decoder policy** (*provisional*, E17 M1 T2): exact lengths where every file is exact (PCX, MSK,
 the RIFF size); a run past its row's or block's end is an error (no file has one); sides above
-16 384 are rejected; nothing is allocated that the input cannot fill. Raw palettes: the keyed
+16 384 and DEF frames above 2^20 pixels are rejected (T8: runs and shared rows make more pixels
+than the input holds, so the pixel cap bounds a frame's memory; every real frame fits). Raw palettes: the keyed
 indices (transparency, shadow, …) are the compositor's (T1, T6).
 
 ## 2. The inventory (M1 T3)
@@ -114,7 +115,9 @@ confirm the drawing rules before a fix rests on them alone.
 - **Capture and diff:** the 16-bit frame reaches a 32-bit desktop expanded by DDrawCompat or the
   driver (how: a licence question before reading DDrawCompat's code). An expansion that keeps the
   top bits (a shift, bit replication) is undone exactly by truncating the capture back to 565, so
-  the M3 diff compares 565 values.
+  the M3 diff compares 565 values. **Confirmed (T8, §6):** under Wine on a 16-bit X display the
+  surface reports 565, and the original's main menu equals our truncation of `GamSelBk.pcx` (24-bit)
+  in every pixel outside its overlays (410 017 pixels, no near-miss).
 
 ### 3.3 Drawing a DEF frame (research item 8)
 
@@ -321,8 +324,10 @@ The redraw 0x494440, after the background:
 
 ### 4.7 Open
 
-- To confirm with reference frames (M3): the obstacle `ObRgS03.def` and the draw order against
-  VCMI's (§4.4, §4.6); the outline's rotation step and timing (M2).
+- To confirm with reference frames: the obstacle `ObRgS03.def` and the draw order against VCMI's
+  (§4.4, §4.6); the outline's rotation step and timing (M2). **Confirmed on grass (T8, §6):** the
+  background variant 0, a layer-0 obstacle over a layer-1 one, the obstacles' positions and the
+  one- and two-hex stacks' canvases, all exact.
 - Not read: the grid and shading options (0x493930); the count box's tint and text; the stack's
   byte +0x4F1; the palette effects; the siege branches (E04c).
 
@@ -357,3 +362,34 @@ What `h3-view harvest` reads (2026-10-13; the format: `clients/README.md`, "The 
   obstacle types and 12 special battlefields no pack defines yet sit in `base.toml`, keyed as the
   packs would key them. Which archive holds a file plays no part: the loader searches as the game
   does (§3.1), and the gate finds all 307 names there.
+
+## 6. Reference captures (M1 T8)
+
+The user (2026-10-13): captures must be automatic, for exhaustive diffs; they run in the cloud
+sandbox under Wine (`clients/README.md`, "Reference captures"; the scripts in `clients/capture/`).
+Findings of the first run:
+
+- **Running it.** Wine 9.0 (32-bit prefix) on Xvfb at 800 × 600 × 16, full-screen mode. The GOG
+  `Heroes3.exe` imports `DirectDrawCreate` from `xdd.dll` (DDrawCompat there, not read); a
+  forwarder to Wine's ddraw replaces it. Besides the LODs it needs `Heroes3.snd`, `H3ab_ahd.snd`,
+  `H3ab_ahd.vid` and five DLLs; `VIDEO.VID` (629 MB, intro videos) can be an empty archive.
+- **Settings** live under `HKLM\SOFTWARE\New World Computing\Heroes of Might and Magic® III\1.0`
+  (the executable's value names): `Show Intro`, `Show Combat Grid`, `Show Combat Mouse Hex`,
+  `Combat Shade Level`, `Main Game Full Screen`, the volumes and others; `setup.sh` writes them.
+- **Input.** Clicks reach the game as on Windows. The arrow keys move the selected hero (not the
+  view); a cursor at a screen edge scrolls the adventure map, so the scripts keep it inside. The
+  hero-list portrait of the selected hero opens the hero screen.
+- **Exactness.** An XWD dump of the display is the screen's 5-6-5 values; the main menu proved it
+  exact (§3.2).
+- **Determinism.** Two runs of the smoke map placed the same obstacles and gave identical opening
+  frames (pixel for pixel): the battle's setup does not depend on the clock here, so a situation
+  replays exactly.
+- **The opening frame.** The battle screen is complete in the first frame after the transition
+  (`h3cap.py first`). A faster AI stack acts at once, so in the smoke battle the Wolf Riders are
+  already in their move pose and show no outline; an idle opening needs the human's stack first.
+- **The smoke battle against `scenarios/smoke.toml`:** the background (variant 0), the pond (type
+  22, layer 1), the rock (type 20, layer 0, drawn over the pond), the log (type 19) and the
+  Archers, Pikemen and Goblins at their hexes match exactly. Differences: the heroes, the Ballista,
+  the count boxes, the panel (not drawn yet), the moving Wolf Riders. Not checked yet: the active
+  stack's outline (needs a human-first opening), the background variant on other terrains, the
+  absolute obstacles, mirrored two-hex stacks standing.

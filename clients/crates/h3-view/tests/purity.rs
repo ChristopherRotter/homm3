@@ -15,22 +15,18 @@ const PURE: [(&str, &[&str]); 3] = [
     ("h3-render", &["h3-assets", "miniz_oxide"]),
     (
         "h3-view",
-        &[
-            "h3-assets",
-            "h3-formats",
-            "h3-protocol",
-            "h3-render",
-            "serde",
-            "toml",
-        ],
+        &["h3-assets", "h3-protocol", "h3-render", "serde", "toml"],
     ),
 ];
 
 /// Dependencies of a pure crate's package that only its binary (an adapter) uses: Cargo has no
 /// binary-only dependencies, so the library's sources must never name them (*provisional*, E17 M1
-/// T7: the headless renderer's scenario adapter).
-const BINARY_ONLY: [(&str, &[&str]); 1] =
-    [("h3-view", &["h3-battle", "h3-kernel", "h3-pack-battle"])];
+/// T7: the headless renderer's scenario adapter; T8: `h3-formats`, whose archive and executable
+/// readers only the adapters use).
+const BINARY_ONLY: [(&str, &[&str]); 1] = [(
+    "h3-view",
+    &["h3-battle", "h3-formats", "h3-kernel", "h3-pack-battle"],
+)];
 
 /// Attributes every pure crate root carries.
 const REQUIRED: [&str; 2] = ["#![no_std]", "#![forbid(unsafe_code)]"];

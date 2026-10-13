@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 under way (T1, T2, T3 and T6 done 2026-10-12, T5, T4 and T7 2026-10-13). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 next. Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M1 T8 (M1's closure: the review, the user's comparison of the stills).
+are there). Next: M2 T1 (the capture harness).
 
 ## Goal
 
@@ -24,9 +24,14 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
   evaluation, the client may move to GPLv3 (its own `deny.toml`), the user deciding at M2.
 - **Asset tables per expansion, committed** (`clients/assets/{base,ab,sod}.toml`); no reading of
   the executable at run time.
-- **Reference captures:** an agent may run a full copy of the original game from `original-data/`
-  on the user's machine through computer use. Never from the installation: running the game writes
-  into its folder (saves, settings, DDrawCompat's log).
+- **Reference captures:** automatic (2026-10-13: the user cannot take screenshots for exhaustive
+  diffs): the agent runs a copy of the original from `original-data/` unattended in the cloud
+  sandbox under Wine and dumps the 16-bit screen (`clients/capture/`, design §6); this replaces
+  the earlier plan of computer use on the user's machine. Never from the installation: running
+  the game writes into its folder (saves, settings, DDrawCompat's log).
+- **M1's exit through the automated diff** (2026-10-13): the stills are compared with the
+  original by the first automated diff, which passes or lists its differences, not by the user's
+  eye.
 - **First milestone: M0 + M1** as below: headless, independent of the battle lane, starting now.
 - **Loading at checkpoints** (M0 checkpoint): at start only the archives' directories; at each
   checkpoint (the client opens, a game starts, a battle starts, …) one batch of every asset the
@@ -91,8 +96,8 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
 - The asset tables' format and their first content: creatures, battlefields and obstacles.
 - The compositor and `h3-view render`: a PNG of a battle still (the background, obstacles, stacks
   standing on their hexes, facing correctly) from a record's snapshot.
-- **Exit:** the gate passes on the user's files; the still renders; the user compares it with the
-  original and agrees (or the differences are listed as M2/M3 items).
+- **Exit:** the gate passes on the user's files; the still renders; the first automated diff
+  against the original passes or lists its differences as M2/M3 items (the user, 2026-10-13).
 - **T2 + T3 done 2026-10-12** ([log](E17-log.md#m1-t2--t3--the-decoders-and-the-inventory-2026-10-12),
   [design §1–2](E17-design.md)): the PAL, PCX, DEF and MSK decoders; the gate decodes every entry
   of the user's four LODs (none fails) and writes the inventory report.
@@ -117,9 +122,18 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   absolute one, every living stack standing on its hex (two-hex stacks from their rear hex), the
   active stack's outline; the layout is data (`clients/layouts/battle.toml`); three stills from
   the user's files (`clients/scenarios/`).
+- **T8 done 2026-10-13** ([log](E17-log.md#m1-t8--m1s-closure-2026-10-13), [design §6](E17-design.md)):
+  a fresh reviewer's 13 findings (two bugs fixed: the obstacle removal rule, the DEF frame's
+  memory); the review list accepted; the original captured automatically under Wine in the
+  sandbox (`clients/capture/`); the smoke battle's background, obstacles and stacks match it pixel
+  for pixel; the differences (heroes, war machines, count boxes, the panel, moving stacks, the
+  outline unchecked) are M2/M3 items. **M1 done.**
 
 ### M2 — the battle replay viewer
 
+- The capture harness (first, the user's requirement for exhaustive diffs): situations as
+  generated maps, human-first openings, the scenario rebuilt from the capture, masks for what is
+  not drawn yet, a situation set with recorded differences, unattended in the sandbox.
 - The window, input and audio evaluation and the user's choice (and licence step, if any).
 - The scene model: messages to animations at the original's timing (`CRANIM.TXT`, the
   executable), moves (CLT-Q1, the walk's path), strikes, shots and projectiles, deaths, waits and
@@ -129,8 +143,8 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
 
 ### M3 — fidelity
 
-- The reference capture setup (a full copy of the game under `original-data/`, computer use, the
-  exact capture method), a representative situation set, the exact diff harness.
+- A representative situation set over the harness (M1 T8 built the capture, M2 the harness):
+  every battlefield, the absolute obstacles, sieges later, animation sequences.
 - Fonts, the string catalogue and the language packs, and the battle interface (panel, log, stack
   counts, cursors).
 - Sound effects and music.
@@ -150,7 +164,7 @@ viewer, video.
 | 2. The off-colour pixels; the screen format | M1 T1 (done: design §3.2) |
 | 3. Licences of MMArchive and homm3-unpacker before reading their code | stop the line: a question first, when a task wants them |
 | 4. The video archives | later |
-| 5. Capturing the original | M3 (agreed: a copy under `original-data/`, computer use) |
+| 5. Capturing the original | M1 T8 (done: Wine in the sandbox, design §6); the harness M2 |
 | 6. Per-expansion content and the ruleset profiles | M1 T4 |
 | 7. The HD patch as a source of fixes and for HD | M3, later |
 | 8. Shadows and the other keyed colours | M1 T1 (done: design §3.3) |
@@ -166,18 +180,22 @@ viewer, video.
   client and may break it. The client CI job runs when those crates change (since T7 the client
   builds `h3-protocol`, `h3-pack-battle` and their engine dependencies).
 - **The sandbox needs the user's computer online** for the original files (staged one LOD per
-  call).
+  call; the captures also need the five DLLs, the sound archives and `H3ab_ahd.vid`).
+- **Wine is not Windows.** The captures run on Wine's DirectDraw; the exact match of the menu and
+  the battlefield says it changes nothing there, but a difference only Wine could cause (timing,
+  palette effects) would need a check on Windows.
 - **Checkpoint loading needs an engine change (CLT-Q2).** Until the battle lane's table-only
   reader lands, the client reads whole archives (212 MiB, about 0.2 s warm).
 
 ## M1 review list
 
-(Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+**Accepted by the user, 2026-10-13 (T8), every item as listed;** the *provisional* marks of these
+choices are lifted.
 
 - `proptest` as a dev-dependency of `h3-assets` (the engine's 1.11.0; T2).
 - `h3_assets::build`, encoders for synthetic assets, as public API of `h3-assets` (T2, T3).
 - The decoders' strictness: exact lengths, an overrunning run is an error (no original file has
-  one; `E17-design.md` §1; T2, T3).
+  one; `E17-design.md` §1; T2, T3); a DEF frame holds at most 2^20 pixels (T8).
 - `miniz_oxide` (already in the lockfile through `h3-formats`; the engine's version and features)
   as a dependency of `h3-render` for the PNG encoder, instead of the `png` crate (T6).
 - `h3_assets::def::Frame::runs`, a public field: which pixels came from runs, which the drawers
@@ -186,17 +204,28 @@ viewer, video.
 - The asset tables' format (`clients/README.md`, "The asset tables"; T4): keys qualified at load;
   `cranim.txt`'s times as the executable's scaled integers, angles in degrees; the special
   battlefields keyed by VCMI's names and the 47 obstacle types no pack defines kept in
-  `base.toml`; only the three DEF groups read so far in `[battle]`; the fix entry's fields.
+  `base.toml`; only the three DEF groups read so far in `[battle]`; the fix entry's fields (its
+  flag and the `faithful`/`fixed` profile of ADR-0020 point 6 come with the first fix).
 - `toml` 1.1 (without std; the engine's 0.8 needs std) and `serde` (the engine's, without std) as
   dependencies of `h3-view` for the pure loader (T4).
 - The harvester keys creatures by their `crtraits.txt` singular name, as `h3-harvest` does (T4).
 - `h3-protocol` as a dependency of `h3-view`'s library (ADR-0020 point 1), and `h3-pack-battle`,
-  `h3-battle`, `h3-kernel` as dependencies of its binary only (the scenario adapter; checked by
+  `h3-battle`, `h3-kernel` (and, since T8, `h3-formats`) as dependencies of its binary only (the scenario adapter; checked by
   `tests/purity.rs`), rather than `h3-cli`'s library, which builds the adventure crates too; the
   client job now watches those crates (#152) (T7).
 - The layouts' format and place: `clients/layouts/<screen>.toml`, one file per screen and
-  resolution, apart from the asset tables (T7).
-- A record's line bounded at 16 MiB; the record format and protocol version must be the
+  resolution, apart from the asset tables (T7); an HD layout will need the battlefield's origin and
+  viewport (not in the format yet).
+- The record parser rejects a line over 16 MiB (the adapter reads a local file whole; a live
+  connection bounds each message, M2); the record format and protocol version must be the
   client's own (T7).
-- A natural obstacle is drawn until a removal clears every hex it blocks (T7; M2 reads the
-  removal's events).
+- ~~A natural obstacle is drawn until a removal clears every hex it blocks~~: dropped in T8 (the
+  reviewer: the engine drops a removed obstacle from the list; every listed one is drawn).
+- `harvest` writes to `clients/out/harvest` by default, never over the committed tables (T8).
+
+## M2 review list
+
+(Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- The capture tooling (T8): Wine, Xvfb, xdotool, ImageMagick and mingw-w64 as sandbox tools;
+  Python with numpy for `h3cap.py` (as `scripts/exe.py` uses Python); our own `xdd.dll` forwarder.

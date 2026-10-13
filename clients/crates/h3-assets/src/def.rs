@@ -34,8 +34,12 @@ use crate::palette::{PALETTE_BYTES, Palette};
 use crate::read::{array, index, slice, u8_at, u16_at, u32_at, u32s};
 
 /// The longest side of a frame the decoder accepts (*provisional*: the game's largest is 800).
-/// It bounds the decoder's loops; memory is bounded by the input, since every pixel needs input.
 pub const MAX_SIDE: u32 = 1 << 14;
+
+/// The most pixels a frame may hold (*provisional*, E17 M1 T8: the screen holds 800 × 600; every
+/// frame of the user's archives fits, `h3-view gate`). It bounds a frame's memory: runs and rows
+/// that share their bytes make far more pixels than the input holds.
+pub const MAX_PIXELS: u32 = 1 << 20;
 
 /// The length of a frame name in the group table.
 pub const NAME_BYTES: usize = 13;
@@ -229,7 +233,7 @@ pub fn decode_frame(bytes: &[u8], offset: u32) -> Result<Frame, Error> {
             top.cast_signed(),
         )
     };
-    if width > MAX_SIDE || height > MAX_SIDE {
+    if width > MAX_SIDE || height > MAX_SIDE || width * height > MAX_PIXELS {
         return Err(Error::TooLarge);
     }
     let data = slice(bytes, at.saturating_add(header), index(size)).ok_or(Error::Truncated)?;
