@@ -1,11 +1,11 @@
-//! Accounts and the server's key on the wire (E16 M3 T1, M6 T1; ADR-0019 point 1, ADR-0021 point
-//! 1, `docs/epics/E16-design.md` §10, §12): the rules of a login name and of a display name, keys
-//! and signatures as hex, and the bytes a login, a re-key and a welcome sign. A client derives its
+//! Accounts and the server's key on the wire (E16 M3 T1, M6 T1, T2; ADR-0019 point 1, ADR-0021
+//! points 1 and 2, `docs/epics/E16-design.md` §10, §12): the rules of a login name and of a display
+//! name, keys and signatures as hex, and the bytes a login, a re-key, a welcome and a card sign. A client derives its
 //! Ed25519 key from its login name and password; the host checks the signatures (`h3-server`'s
 //! `Authenticator`) and signs its welcomes with its own key: this crate holds no cryptography.
 //! Each signed message starts with its purpose and version, so no signature serves another.
 //!
-//! Provisional (E16 M3 T1, M6 T1): a display name's rules (ASCII keeps lookalike letters off the
+//! Provisional (E16 M3 T1, M6 T1, T2): a display name's rules (ASCII keeps lookalike letters off the
 //! leaderboards), the signed bytes' layout.
 
 use alloc::string::String;
@@ -31,6 +31,9 @@ const REKEY: &[u8] = b"h3-rekey-v1";
 
 /// What a welcome signs first (E16 M6 T1).
 const WELCOME: &[u8] = b"h3-welcome-v1";
+
+/// What a server's card signs first (E16 M6 T2).
+const CARD: &[u8] = b"h3-card-v1";
 
 /// Whether `login` is a login name: 3 to 20 of `a`–`z`, `0`–`9`, `_` and `-`. A client lowercases
 /// what its player typed: the key's derivation is salted with exactly this text, so the server
@@ -141,5 +144,13 @@ pub fn welcome_message(
     push_text(&mut out, id);
     out.extend_from_slice(nonce);
     out.extend_from_slice(challenge);
+    out
+}
+
+/// The bytes the server's key signs in its card (E16 M6 T2, ADR-0021 point 2): its purpose and the
+/// card's text (`crate::wire::SignedCard::card`), exactly as it travels.
+pub fn card_message(text: &str) -> Vec<u8> {
+    let mut out = Vec::from(CARD);
+    push_text(&mut out, text);
     out
 }

@@ -173,6 +173,8 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
             seq: 32,
             accept: true,
         },
+        // E16 M6 T2.
+        ClientMessage::Describe { seq: 33 },
     ];
     out.extend(
         commands()
@@ -438,6 +440,11 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             season: 1,
             total: 2,
             row: None,
+        },
+        // E16 M6 T2.
+        ServerMessage::Described {
+            seq: 33,
+            card: crate::card::sign(&super::card::card(), &super::Fold),
         },
     ]);
     out.extend(

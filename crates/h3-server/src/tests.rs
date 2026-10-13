@@ -15,11 +15,12 @@ use h3_protocol::wire::{
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::client::Client;
-use crate::config::{BotSeat, Config, Content, Limits, Offer, Server};
+use crate::config::{BotSeat, Config, Content, Discovery, Limits, Offer, Server};
 use crate::{Running, bench, game, registry, start};
 
 mod accounts;
 mod bounds;
+mod card;
 mod identity;
 mod ladders;
 mod proxy;
@@ -57,11 +58,15 @@ fn config(limits: Limits) -> Config {
             addresses: vec![],
             anonymous: true,
             trusted_proxies: vec![],
+            name: None,
+            description: String::new(),
+            operator: String::new(),
         },
         content: Content {
             packs: root().join("packs"),
         },
         limits,
+        discovery: Discovery::default(),
         offers: vec![
             Offer {
                 id: String::from("pvp"),
