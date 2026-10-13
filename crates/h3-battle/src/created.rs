@@ -11,7 +11,7 @@ use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
 use crate::effects::{self, SpellValues};
 use crate::event::{Event, EventKind, Sink};
-use crate::geometry::{Direction, Field, Hex, HexSet};
+use crate::geometry::{Direction, Field, Footprint, Hex, HexSet};
 use crate::morale;
 use crate::state::{
     BattleState, CREATED_SLOT, NO_CORPSE, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits,
@@ -129,8 +129,8 @@ fn reusable(state: &BattleState, side: BattleSide) -> Option<StackId> {
 /// A stack of `count` creatures of `creature` rises for `side` from the corpse of stack `corpse`
 /// (BAT-MAG-052; the original's 0x5A7390, `installation.md` §7.21): the corpse is gone, and the
 /// new stack, as `side` would have it at the battle's start, takes a killed created stack's slot
-/// or a new one (BAT-MAG-037) and the corpse's army slot, on the corpse's position (its tail, or
-/// its only hex). It is an army stack of that slot ([`StackTraits::RAISED`]), no created one. The
+/// or a new one (BAT-MAG-037) and the corpse's army slot, on the corpse's position (BAT-GEO-002).
+/// It is an army stack of that slot ([`StackTraits::RAISED`]), no created one. The
 /// side has a slot for it ([`has_slot`]), and its template ([`Created::templates`]: a corpse
 /// raiser of either army raises the creature).
 pub(crate) fn raise_corpse<S: Sink>(
@@ -140,10 +140,8 @@ pub(crate) fn raise_corpse<S: Sink>(
     (creature, count): (CreatureTypeId, u32),
     sink: &mut S,
 ) {
-    let field = Field::new(ruleset.battle().field);
     let dead = *state.at(corpse);
-    let fp = dead.footprint(field);
-    let hex = fp.tail.unwrap_or(fp.head);
+    let hex = dead.hex;
     state.raised.corpse[corpse.index()] = NO_CORPSE;
     let template = state.created.templates[side.index()]
         .iter()
@@ -206,7 +204,7 @@ pub(crate) fn may_summon(
 /// Where Clone puts the clone of a stack ([`clone_place`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ClonePlace {
-    /// A place for the clone, by its head.
+    /// A place for the clone, by its position.
     At(Hex),
     /// The original's own hexes (quirk BAT-QUIRK-7): the original becomes the clone.
     Original,
@@ -224,8 +222,8 @@ pub(crate) fn clone<S: Sink>(
 ) {
     let field = Field::new(ruleset.battle().field);
     let on_original = ruleset.quirks().is_enabled(CLONE_ON_ITS_ORIGINAL);
-    let head = match clone_place(state, field, s, on_original) {
-        Some(ClonePlace::At(head)) => head,
+    let position = match clone_place(state, field, s, on_original) {
+        Some(ClonePlace::At(position)) => position,
         // rule: BAT-MAG-038
         Some(ClonePlace::Original) => return turn(state, (s, rounds), sink),
         None => return,
@@ -235,7 +233,7 @@ pub(crate) fn clone<S: Sink>(
     // Set up as a new stack, without its original's Poison and Age (BAT-MAG-044).
     let max_hp = crate::vitality::start_hit_points(state, s);
     let stack = Stack {
-        hex: head,
+        hex: position,
         slot: CREATED_SLOT,
         base_count: original.count,
         max_hp,
@@ -275,15 +273,15 @@ fn turn<S: Sink>(state: &mut BattleState, (s, rounds): (StackId, u16), sink: &mu
     }));
 }
 
-/// Where the clone of stack `s` goes (BAT-MAG-038; the original's 0x5A6C70, §7.19): in rings 1
-/// to 10, from the stack's position (its tail, or its only hex) and, for a two-hex stack, from its
-/// head, along the six directions (from top right clockwise for the attacker, from top left
-/// anticlockwise for the defender), the hexes up to the ring's number away; the first where the
-/// clone fits. Skipped: right and left of the position in ring 1, and from the head towards the
-/// tail in rings 1 and 2. With quirk BAT-QUIRK-7 (`on_original`) the stack's own hexes count as
-/// free, as in the original: a place whose position is one of them is [`ClonePlace::Original`];
-/// without it they are taken. A place whose other hex is one of them, where the original would
-/// put both stacks on one hex, is skipped either way (BAT-QUIRK-8).
+/// Where the clone of stack `s` goes (BAT-MAG-038; the original's 0x5A6C70, §7.19): in rings 1 to
+/// 10, from the stack's position (BAT-GEO-002) and, for a two-hex stack, from its other hex, along
+/// the six directions (from top right clockwise for the attacker, from top left anticlockwise for
+/// the defender), the hexes up to the ring's number away; the first where the clone fits with its
+/// position there. Skipped: right and left of the position in ring 1, and from the other hex
+/// towards the position in rings 1 and 2. With quirk BAT-QUIRK-7 (`on_original`) the stack's own
+/// hexes count as free, as in the original: a place whose position is one of them is
+/// [`ClonePlace::Original`]; without it they are taken. A place whose other hex is one of them,
+/// where the original would put both stacks on one hex, is skipped either way (BAT-QUIRK-8).
 fn clone_place(
     state: &BattleState,
     field: Field,
@@ -294,10 +292,10 @@ fn clone_place(
     let stack = state.at(s);
     let two_hex = stack.has(StackTraits::TWO_HEX);
     let fp = stack.footprint(field);
-    let starts = [fp.tail.unwrap_or(fp.head), fp.head];
+    let starts = [fp.position(), fp.front];
     let taken = state.blocked_for(field, if on_original { s } else { StackId(u8::MAX) });
     let own = |h: Hex| fp.hexes().any(|o| o == h);
-    let (order, toward_tail) = match stack.side {
+    let (order, backwards) = match stack.side {
         BattleSide::Attacker => (
             [TopRight, Right, BottomRight, BottomLeft, Left, TopLeft],
             Left,
@@ -308,12 +306,12 @@ fn clone_place(
         ),
     };
     for ring in 1..=CLONE_RINGS {
-        for (from_head, &start) in starts.iter().take(1 + usize::from(two_hex)).enumerate() {
+        for (from_other, &start) in starts.iter().take(1 + usize::from(two_hex)).enumerate() {
             for d in order {
-                let skipped = if from_head == 0 {
+                let skipped = if from_other == 0 {
                     ring == 1 && matches!(d, Left | Right)
                 } else {
-                    ring <= 2 && d == toward_tail
+                    ring <= 2 && d == backwards
                 };
                 if skipped {
                     continue;
@@ -327,7 +325,7 @@ fn clone_place(
                     match fits(field, taken, (hex, two_hex), stack.side) {
                         // rule: BAT-MAG-038
                         Some(_) if own(hex) => return Some(ClonePlace::Original),
-                        Some(head) if !own(head) => return Some(ClonePlace::At(head)),
+                        Some(fp) if !own(fp.front) => return Some(ClonePlace::At(hex)),
                         _ => {}
                     }
                 }
@@ -337,21 +335,18 @@ fn clone_place(
     None
 }
 
-/// The head of a stack of `side` whose position (its tail, or its only hex) is `at`, if it fits
-/// (the original's 0x446C40): its hexes are standable and none is in `taken`.
-fn fits(field: Field, taken: HexSet, (at, two_hex): (Hex, bool), side: BattleSide) -> Option<Hex> {
-    let head = if two_hex {
-        field.neighbor(at, Field::head_direction(side))?
-    } else {
-        at
-    };
-    field
-        .footprint(head, two_hex, side)
-        .filter(|fp| {
-            fp.hexes()
-                .all(|h| field.is_standable(h) && !taken.contains(h))
-        })
-        .map(|fp| fp.head)
+/// The footprint of a stack of `side` whose position is `at`, if it fits (the original's
+/// 0x446C40): its hexes are standable and none is in `taken`.
+fn fits(
+    field: Field,
+    taken: HexSet,
+    (at, two_hex): (Hex, bool),
+    side: BattleSide,
+) -> Option<Footprint> {
+    field.footprint(at, two_hex, side).filter(|fp| {
+        fp.hexes()
+            .all(|h| field.is_standable(h) && !taken.contains(h))
+    })
 }
 
 /// Summons `count` creatures of `creature` for `side` (BAT-MAG-039; the original's 0x5A7080):
@@ -387,23 +382,23 @@ pub(crate) fn summon<S: Sink>(
             BattleSide::Attacker => first + i,
             BattleSide::Defender => last - i,
         };
-        let mut heads: FixedVec<Hex, { MAX_FIELD_HEXES }> = FixedVec::new();
-        for head in (0..rows).filter_map(|y| {
+        let mut positions: FixedVec<Hex, { MAX_FIELD_HEXES }> = FixedVec::new();
+        for position in (0..rows).filter_map(|y| {
             field
                 .hex(x, y)
-                .and_then(|h| fits(field, taken, (h, two_hex), side))
+                .filter(|&h| fits(field, taken, (h, two_hex), side).is_some())
         }) {
             // At most one per hex of the field.
-            let _ = heads.push(head);
+            let _ = positions.push(position);
         }
-        if heads.is_empty() || count == 0 {
+        if positions.is_empty() || count == 0 {
             continue;
         }
         // At most the field's hexes, within `u32`.
-        let len = u32::try_from(heads.len()).unwrap_or(u32::MAX);
+        let len = u32::try_from(positions.len()).unwrap_or(u32::MAX);
         let pick = usize::try_from(state.rng.below(len)).unwrap_or(0);
         let stack = Stack {
-            hex: heads.as_slice()[pick],
+            hex: positions.as_slice()[pick],
             count,
             base_count: count,
             traits: template.traits.with(StackTraits::SUMMONED, true),

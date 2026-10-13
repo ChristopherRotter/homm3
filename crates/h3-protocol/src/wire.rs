@@ -97,14 +97,14 @@ pub enum Command {
     Attack {
         /// The enemy stack.
         target: u8,
-        /// The head position to strike from.
+        /// The position to strike from (a two-hex stack's rear hex).
         from: u8,
     },
     /// Shoot at `target`.
     Shoot {
         /// The enemy stack.
         target: u8,
-        /// The target's hex aimed at: its head, or (area shots) its tail.
+        /// The target's hex aimed at: its front hex, or (area shots) a two-hex target's rear hex.
         at: u8,
     },
     /// Postpone the turn to the wait phase.
@@ -538,7 +538,7 @@ pub struct Stack {
     pub slot: u8,
     /// Its creature's handle.
     pub creature: u16,
-    /// Its head hex.
+    /// Its position: its hex, or a two-hex stack's rear hex.
     pub hex: u8,
     /// Whether it has creatures left.
     pub alive: bool,

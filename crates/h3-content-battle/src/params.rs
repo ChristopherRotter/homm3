@@ -100,8 +100,9 @@ pub struct BattleParams {
     pub luck_dice: u8,
     /// Lucky-strike chances by luck level; luck is at most `levels()` (BAT-LCK-001/002).
     pub good_luck: RollTable,
-    /// Head hexes `(x, y)` of the attacker's war machines by kind (shooting machine, ammo
-    /// supply, first aid); the defender's are mirrored (BAT-WAR-001).
+    /// Front hexes `(x, y)` of the attacker's war machines by kind (shooting machine, ammo
+    /// supply, first aid; a two-hex machine's position is the hex behind it, BAT-GEO-002); the
+    /// defender's are mirrored (BAT-WAR-001).
     pub war_machine_positions: [(u8, u8); WAR_MACHINE_KINDS],
     /// Starting rows by formation ([`Formation::index`]), army size and stack index.
     formations: [[[u8; MAX_ARMY_SLOTS]; MAX_ARMY_SLOTS]; Formation::COUNT],
@@ -208,18 +209,18 @@ pub(crate) fn compile_battle(
         return invalid("war_machine_positions needs 3 hexes [x, y] on the field");
     }
     // rule: BAT-WAR-001
-    // Any machine may be two hexes wide, with its tail on the hex behind its head (x - 1 for
-    // the attacker, x + 1 for the mirrored defender): every footprint must fit the field, and
-    // no two footprints of either side may share a hex.
+    // Any machine may be two hexes wide, with its position, its rear hex, behind the front hex
+    // given (x - 1 for the attacker, x + 1 for the mirrored defender): every footprint must fit
+    // the field, and no two footprints of either side may share a hex.
     let mut machine_hexes: BTreeSet<(usize, usize)> = BTreeSet::new();
     for &[x, y] in &def.war_machine_positions {
         let (x, y) = (usize::from(x), usize::from(y));
-        let Some(tail) = x.checked_sub(1) else {
+        let Some(rear) = x.checked_sub(1) else {
             return invalid("war machine positions need room for a two-hex machine behind them");
         };
-        // `x < w`, so the mirrored head and its tail `w - x` stay on the field.
+        // `x < w`, so the mirrored front hex and its rear hex `w - x` stay on the field.
         let mirrored = w - 1 - x;
-        for hex in [(x, y), (tail, y), (mirrored, y), (w - x, y)] {
+        for hex in [(x, y), (rear, y), (mirrored, y), (w - x, y)] {
             if !machine_hexes.insert(hex) {
                 return invalid("war machine positions overlap (as two-hex footprints)");
             }

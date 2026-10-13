@@ -396,17 +396,28 @@ fn a_walking_path_may_leave_the_zone() {
 
 // covers: BAT-TAC-002
 #[test]
-fn two_hex_stacks_are_placed_by_their_head() {
+fn two_hex_stacks_are_placed_with_both_hexes_in_the_zone() {
     let r = ruleset();
     let s = led(&r, &[(0, "wide", 5)], &[(0, "fixed", 5)], [Some(1), None]);
     let (state, _) = start(&r, &s);
-    // The tail stands behind the head, so the head needs a column behind it in the field.
+    // The zone is columns 1 to 3; the front hex stands right of the position, so positions are
+    // in columns 1 and 2 only.
     let columns: Vec<i32> = moves(&state, &r)
         .iter()
         .map(|&h| field(&r).coords(h).0)
         .collect();
-    assert!(columns.contains(&2) && columns.contains(&3));
-    assert!(columns.iter().all(|x| (2..=3).contains(x)));
+    assert!(columns.contains(&1) && columns.contains(&2));
+    assert!(columns.iter().all(|x| (1..=2).contains(x)));
+    // The defender's zone is columns 13 to 15, its front hex left of its position: positions in
+    // columns 14 and 15.
+    let s = led(&r, &[(0, "fixed", 5)], &[(0, "wide", 5)], [None, Some(1)]);
+    let (state, _) = start(&r, &s);
+    let columns: Vec<i32> = moves(&state, &r)
+        .iter()
+        .map(|&h| field(&r).coords(h).0)
+        .collect();
+    assert!(columns.contains(&14) && columns.contains(&15));
+    assert!(columns.iter().all(|x| (14..=15).contains(x)));
 }
 
 // covers: BAT-TAC-002

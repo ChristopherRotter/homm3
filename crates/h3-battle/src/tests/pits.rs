@@ -417,19 +417,20 @@ fn a_walker_goes_around_a_seen_pit_and_may_stop_in_it() {
 
 // covers: BAT-MAG-032
 #[test]
-fn a_two_hex_walker_stops_when_its_tail_enters_a_pit() {
+fn a_two_hex_walker_stops_when_its_rear_hex_enters_a_pit() {
     let r = ruleset();
-    // The attacker's tail is left of its head: walking left, the tail enters (4, 5) first.
+    // The attacker's position, its rear hex, is left of its front hex: walking left, the rear
+    // hex enters (4, 5) first.
     let mut s = arena(
         &r,
         [None, None],
-        &[("wide", 5, 6, 5)],
+        &[("wide", 5, 5, 5)],
         &[("fixed", 5, 12, 5)],
         1,
     );
     pits(&mut s, &r, BattleSide::Defender, &[(4, 5)]);
-    let events = act(&mut s, &r, Command::Move { to: at(&r, 3, 5) }).unwrap();
-    assert_eq!(moves(&events), [(0, at(&r, 6, 5), at(&r, 5, 5))]);
+    let events = act(&mut s, &r, Command::Move { to: at(&r, 2, 5) }).unwrap();
+    assert_eq!(moves(&events), [(0, at(&r, 5, 5), at(&r, 4, 5))]);
     assert_eq!(
         obstacle_events(&events),
         [
@@ -487,16 +488,17 @@ fn an_attack_whose_walk_stops_in_a_seen_pit_is_neither_listed_nor_accepted() {
         );
         pits(&mut s, &r, BattleSide::Attacker, &[(5, 5)]);
         refused(&mut s, at(&r, 5, 5));
-        // A two-hex walker: the position whose other hex, its tail, lies on the pit.
+        // A two-hex walker: the position whose rear hex lies on the pit, its front hex next to
+        // the target.
         let mut s = arena(
             &r,
             [None, None],
-            &[("wide", 5, 5, 4)],
+            &[("wide", 5, 4, 4)],
             &[("fixed", 5, 8, 5)],
             1,
         );
         pits(&mut s, &r, BattleSide::Attacker, &[(6, 5)]);
-        refused(&mut s, at(&r, 7, 5));
+        refused(&mut s, at(&r, 6, 5));
         // The hexes a stack starts on never stop it: standing in the pit, it attacks from there.
         let mut s = arena(
             &r,

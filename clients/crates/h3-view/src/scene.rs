@@ -220,17 +220,6 @@ pub fn battle(
     Ok(list)
 }
 
-/// A stack's position hex, as the executable's (§4.2): a two-hex stack's rear hex. The engine's
-/// position is the head (BAT-GEO-002) until the battle lane makes it the rear hex (the user,
-/// 2026-10-13; PR #150): the one place that converts.
-pub fn position(stack: &Stack) -> u8 {
-    match (stack.two_hex, stack.side) {
-        (false, _) => stack.hex,
-        (true, Side::Attacker) => stack.hex.saturating_sub(1),
-        (true, Side::Defender) => stack.hex.saturating_add(1),
-    }
-}
-
 /// A living stack's position (row, column), its draw layer and its draw.
 fn creature(
     stack: &Stack,
@@ -245,7 +234,9 @@ fn creature(
         .creatures
         .get(key)
         .ok_or_else(|| SceneError::Key(key.to_string()))?;
-    let (row, column) = at(position(stack));
+    // Drawn once, from its position (§4.2): the engine's position is the executable's, a two-hex
+    // stack's rear hex (BAT-GEO-002 since PR #150, protocol v23).
+    let (row, column) = at(stack.hex);
     let draw = Draw::Creature {
         def: entry.def.clone(),
         group: u32::from(tables.battle.groups.standing),

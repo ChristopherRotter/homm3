@@ -110,7 +110,7 @@ caster's own war machine (VCMI never does) and Sorrow surviving a Basic Anti-Mag
 Q55 with T5a's and T4c's candidates (the user, Q56); the others above still wait. From T5c1
 (Quicksand, read in the code, `docs/formats/installation.md` §7.16): the pits by mastery (4, 4, 6,
 8) and none on a corpse's hex; the natives' sight fixed at the battle's start (BAT-QUIRK-1: a side
-whose natives died still sees Quicksand cast later); a two-hex walker stopped by its tail; whether
+whose natives died still sees Quicksand cast later); a two-hex walker stopped by its rear hex; whether
 the interface offers an attack from a seen pit and what happens (BAT-QUIRK-2); Fire Wall's cursor
 refused on the other side's hidden pit (Q-0002); a hypnotized walker stopped by its owner's pit
 without revealing it. From T5c2 (Land Mine, `installation.md` §7.17): the spell book refusing Land
@@ -189,7 +189,7 @@ Expert Stone Skin, right-click: 20 (the reading) or 21, and a defending stack of
 by Rust Dragons: Acid Breath lands (the reading) or not (row 3); an Archangel with 5 hit points
 left attacks 20 Efreet Sultans and dies of the reflection, then a second stack attacks the Sultans
 in that round: not struck back (the reading) or struck back (row 4, S-23); Cavaliers with their
-head hex on a seen Quicksand pit ordered three hexes along the row: one hex (the reading) or three
+front hex on a seen Quicksand pit ordered three hexes along the row: one hex (the reading) or three
 (row 5); a stack acts in round 1 and is killed, is raised in round 2 on another stack's turn: no
 turn in round 2 (the reading) or one, with a control killed before it acted (row 6); the surrender
 dialog with 5 of 10 Swordsmen (750) and after a Basic Resurrection to 8: still 750 (the reading) or

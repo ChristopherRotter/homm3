@@ -88,15 +88,15 @@ fn each_side_uses_its_own_formation() {
     setup.formations = [Formation::Tight, Formation::Loose];
     let s = BattleState::new(&r, &setup, 1).unwrap();
     let hexes: Vec<Hex> = s.stacks().iter().map(|st| st.hex).collect();
-    // Tight, four stacks: rows [2, 4, 6, 8]; the two-hex stack's head stands one column in.
-    // Loose, three stacks: rows [2, 5, 8].
+    // Tight, four stacks: rows [2, 4, 6, 8]; the two-hex stack's front hex stands one column in,
+    // its position in the edge column. Loose, three stacks: rows [2, 5, 8].
     assert_eq!(
         hexes,
         vec![
             at(&r, 1, 2),
             at(&r, 1, 4),
             at(&r, 1, 6),
-            at(&r, 2, 8),
+            at(&r, 1, 8),
             at(&r, 15, 2),
             at(&r, 15, 5),
             at(&r, 15, 8),

@@ -163,9 +163,9 @@ pub(crate) fn battle_view() -> Observation {
     dead.alive = false;
     o.stacks = vec![
         stack(0, Side::Attacker, 0, hex(4, 0), false),
-        // Two-hex: the engine's head; drawn from the rear hex.
-        stack(1, Side::Attacker, 1, hex(4, 10), true),
-        stack(2, Side::Defender, 1, hex(3, 15), true),
+        // Two-hex: the engine's position is the rear hex, drawn from (BAT-GEO-002, protocol v23).
+        stack(1, Side::Attacker, 1, hex(4, 9), true),
+        stack(2, Side::Defender, 1, hex(3, 16), true),
         dead,
     ];
     o
@@ -205,10 +205,10 @@ fn the_battle_is_drawn_in_the_executables_order() {
                 x: bx,
                 y: by
             },
-            // Row 3: the defender's dragon, its rear hex (head + 1).
+            // Row 3: the defender's dragon, from its position (its rear hex).
             creature("CBDRGN.DEF", 3, 16, true, None),
             // Row 4: the layer-0 obstacle in pass 2, raised by its second row; then the stacks
-            // in pass 4, left to right, the attacker's dragon from its rear hex (head - 1).
+            // in pass 4, left to right, the attacker's dragon from its rear hex.
             Draw::Obstacle {
                 def: "Front.def".to_string(),
                 group: 0,
@@ -226,18 +226,6 @@ fn the_battle_is_drawn_in_the_executables_order() {
 fn an_empty_battle_draws_nothing() {
     let list = battle(&observation(), &keys(), &tables(), &layout()).unwrap();
     assert_eq!(list, []);
-}
-
-#[test]
-fn a_position_is_the_rear_hex() {
-    for (side, two_hex, head, position_hex) in [
-        (Side::Attacker, false, 40, 40),
-        (Side::Defender, false, 40, 40),
-        (Side::Attacker, true, 40, 39),
-        (Side::Defender, true, 40, 41),
-    ] {
-        assert_eq!(position(&stack(0, side, 0, head, two_hex)), position_hex);
-    }
 }
 
 #[test]

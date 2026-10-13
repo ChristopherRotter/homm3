@@ -482,18 +482,18 @@ fn a_stack_that_strikes_and_returns_sets_off_the_mine_it_lands_on() {
 #[test]
 fn a_two_hex_walker_sets_off_a_mine_once() {
     let r = ruleset();
-    // Its head enters (6, 5); its tail, which follows, enters no hex twice in one move.
+    // Its front hex enters (6, 5); its rear hex, which follows, enters no hex twice in one move.
     let mut s = arena(
         &r,
         [None, None],
-        &[("wide", 4, 4, 5)],
+        &[("wide", 4, 3, 5)],
         &[("fixed", 5, 14, 9)],
         1,
     );
     mines(&mut s, &r, BattleSide::Defender, &[(6, 5)]);
-    let events = act(&mut s, &r, walk(&r, (9, 5))).unwrap();
+    let events = act(&mut s, &r, walk(&r, (8, 5))).unwrap();
     assert_eq!(blasts(&events), [(0, at(&r, 6, 5), 40, 1)]);
-    assert_eq!(s.stacks()[0].hex, at(&r, 9, 5));
+    assert_eq!(s.stacks()[0].hex, at(&r, 8, 5));
 }
 
 // covers: BAT-MAG-033

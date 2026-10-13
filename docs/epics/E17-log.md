@@ -252,8 +252,10 @@ executable.
   columns, then per row passes 0–7 over the columns: the layer-0 obstacles in pass 2, the living
   stacks in pass 4 (their standing draw layer). A stack: the tables' standing group, frame 0,
   at its position hex's anchor, mirrored for the defender, the active stack outlined with
-  `game.pal`'s entry 0x60. A two-hex stack is drawn from its rear hex: `scene::position`, the one
-  conversion from the engine's head until PR #150. A natural obstacle without a type is not
+  `game.pal`'s entry 0x60. A two-hex stack is drawn from its rear hex, the engine's position since
+  PR #150 (protocol v23; merged during T7: the branch first converted the engine's head in one
+  function, then dropped it, and the three stills came out byte-identical). A natural obstacle
+  without a type is not
   drawn, nor one whose every hex a removal cleared (*provisional*, M2). Handles the manifest
   lacks, keys the tables lack and an obstacle type of the wrong kind are errors.
 - **The batch and the compositor** (`h3_view::batch`, `h3_view::compose`, pure): a checkpoint's

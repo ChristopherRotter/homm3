@@ -30,51 +30,64 @@ fn legal_commands_for(
 
 // covers: BAT-GEO-002
 #[test]
-fn two_hex_footprints_extend_behind_the_head() {
+fn two_hex_footprints_extend_in_front_of_the_position() {
     let r = ruleset();
     let f = field(&r);
-    let head = at(&r, 5, 5);
-    assert_eq!(
-        f.footprint(head, true, BattleSide::Attacker),
-        Some(Footprint {
-            head,
-            tail: Some(at(&r, 4, 5))
-        })
-    );
-    assert_eq!(
-        f.footprint(head, true, BattleSide::Defender),
-        Some(Footprint {
-            head,
-            tail: Some(at(&r, 6, 5))
-        })
-    );
-    assert_eq!(
-        f.footprint(head, false, BattleSide::Defender),
-        Some(Footprint { head, tail: None })
-    );
-    // A tail off the field, or a head off the field, has no footprint.
-    assert_eq!(f.footprint(at(&r, 0, 3), true, BattleSide::Attacker), None);
-    assert_eq!(f.footprint(at(&r, 16, 3), true, BattleSide::Defender), None);
-    assert_eq!(f.footprint(Hex(200), false, BattleSide::Attacker), None);
-    let fp = f.footprint(head, true, BattleSide::Attacker).unwrap();
-    assert!(fp.covers(at(&r, 4, 5)) && fp.covers(head) && !fp.covers(at(&r, 6, 5)));
-    assert_eq!(fp.hexes().collect::<Vec<_>>(), [head, at(&r, 4, 5)]);
-    // Distance between footprints is the smallest hex distance.
-    let other = Footprint {
-        head: at(&r, 8, 5),
-        tail: None,
+    let position = at(&r, 5, 5);
+    let one = |position| Footprint {
+        front: position,
+        rear: None,
     };
-    assert_eq!(f.footprint_distance(fp, other), 3);
-    assert!(!f.touches(fp, other));
-    assert!(f.touches(
-        fp,
-        Footprint {
-            head: at(&r, 6, 5),
-            tail: None
+    assert_eq!(
+        f.footprint(position, true, BattleSide::Attacker),
+        Some(Footprint {
+            front: at(&r, 6, 5),
+            rear: Some(position)
+        })
+    );
+    assert_eq!(
+        f.footprint(position, true, BattleSide::Defender),
+        Some(Footprint {
+            front: at(&r, 4, 5),
+            rear: Some(position)
+        })
+    );
+    assert_eq!(
+        f.footprint(position, false, BattleSide::Defender),
+        Some(one(position))
+    );
+    // A position or other hex off the field has no footprint.
+    assert_eq!(f.footprint(at(&r, 16, 3), true, BattleSide::Attacker), None);
+    assert_eq!(f.footprint(at(&r, 0, 3), true, BattleSide::Defender), None);
+    assert_eq!(f.footprint(Hex(200), false, BattleSide::Attacker), None);
+    let fp = f.footprint(position, true, BattleSide::Attacker).unwrap();
+    assert!(fp.covers(at(&r, 6, 5)) && fp.covers(position) && !fp.covers(at(&r, 4, 5)));
+    // The front hex first, then the rear hex (the position).
+    assert_eq!(fp.position(), position);
+    assert_eq!(fp.hexes().collect::<Vec<_>>(), [at(&r, 6, 5), position]);
+    assert_eq!(one(position).position(), position);
+    assert_eq!(one(position).hexes().collect::<Vec<_>>(), [position]);
+    // A footprint from its front hex.
+    for side in BattleSide::BOTH {
+        for two_hex in [false, true] {
+            let fp = f.footprint(position, two_hex, side).unwrap();
+            assert_eq!(f.footprint_at_front(fp.front, two_hex, side), Some(fp));
         }
-    ));
+    }
+    assert_eq!(
+        f.footprint_at_front(at(&r, 0, 3), true, BattleSide::Attacker),
+        None
+    );
+    assert_eq!(
+        f.footprint_at_front(Hex(200), false, BattleSide::Attacker),
+        None
+    );
+    // Distance between footprints is the smallest hex distance.
+    assert_eq!(f.footprint_distance(fp, one(at(&r, 9, 5))), 3);
+    assert!(!f.touches(fp, one(at(&r, 9, 5))));
+    assert!(f.touches(fp, one(at(&r, 7, 5))));
     // Overlap is not touching.
-    assert!(!f.touches(fp, Footprint { head, tail: None }));
+    assert!(!f.touches(fp, one(position)));
 }
 
 // covers: BAT-GEO-002, BAT-ATK-001
@@ -97,7 +110,7 @@ fn attack_positions_cover_every_touching_position_once() {
     // One-hex attacker: the 6 neighbours of a one-hex target, the 8 of a two-hex one.
     assert_eq!(count(false, BattleSide::Attacker, single), 6);
     assert_eq!(count(false, BattleSide::Attacker, double), 8);
-    // Two-hex attacker: also positions where only its tail touches (either side's tail).
+    // Two-hex attacker: also positions where only its rear hex touches (either side's).
     for side in BattleSide::BOTH {
         assert_eq!(count(true, side, single), 8);
         assert_eq!(count(true, side, double), 10);
@@ -116,7 +129,7 @@ fn attack_positions_cover_every_touching_position_once() {
             let fp = f.footprint(*p, two_hex, side).unwrap();
             assert!(f.touches(fp, target));
         }
-        // Brute force: every touching head appears.
+        // Brute force: every touching position appears.
         let all = (0..187u8)
             .filter_map(|h| f.footprint(Hex(h), two_hex, side))
             .filter(|fp| f.touches(*fp, target))
@@ -179,7 +192,7 @@ fn hex_sets() {
 #[test]
 fn two_hex_stacks_and_obstacles_shift_the_starting_position() {
     let r = ruleset();
-    // Formation [2, 5, 8]: the two-hex stack's tail takes the edge column.
+    // Formation [2, 5, 8]: the two-hex stack's position (its rear hex) takes the edge column.
     let s = battle_with_obstacles(
         &r,
         &[(0, "wide", 1), (1, "fixed", 1), (2, "fixed", 1)],
@@ -189,13 +202,13 @@ fn two_hex_stacks_and_obstacles_shift_the_starting_position() {
         &[(1, 5)],
     );
     let st = s.stacks();
-    assert_eq!(st[0].hex, at(&r, 2, 2));
-    assert_eq!(st[0].footprint(field(&r)).tail, Some(at(&r, 1, 2)));
+    assert_eq!(st[0].hex, at(&r, 1, 2));
+    assert_eq!(st[0].footprint(field(&r)).front, at(&r, 2, 2));
     assert_eq!(st[1].hex, at(&r, 2, 5));
     assert_eq!(st[2].hex, at(&r, 1, 8));
-    // Defender: formation [3, 7] in column 15, a two-hex head one column further in.
-    assert_eq!(st[3].hex, at(&r, 14, 3));
-    assert_eq!(st[3].footprint(field(&r)).tail, Some(at(&r, 15, 3)));
+    // Defender: formation [3, 7] in column 15, a two-hex stack's front hex one column further in.
+    assert_eq!(st[3].hex, at(&r, 15, 3));
+    assert_eq!(st[3].footprint(field(&r)).front, at(&r, 14, 3));
     assert_eq!(st[4].hex, at(&r, 15, 7));
 }
 
@@ -255,26 +268,31 @@ fn obstacles_block_walkers() {
 fn two_hex_walkers_need_room_for_both_hexes() {
     let r = ruleset();
     let mut s = battle(&r, &[(0, "wide", 1)], &[(0, "slow", 1)], 1);
-    // wide (speed 5) has its head at (2, 5) and tail at (1, 5).
-    assert_eq!(s.stacks()[0].hex, at(&r, 2, 5));
-    // Its head cannot stand in column 1: the tail would be in the side column.
+    // wide (speed 5) has its position, its rear hex, at (1, 5) and its front hex at (2, 5).
+    assert_eq!(s.stacks()[0].hex, at(&r, 1, 5));
+    // Its position cannot be in column 0: the rear hex would be in the side column.
     assert_eq!(
-        act(&mut s.clone(), &r, Command::Move { to: at(&r, 1, 4) }),
+        act(&mut s.clone(), &r, Command::Move { to: at(&r, 0, 4) }),
+        Err(CommandError::InvalidHex)
+    );
+    // Nor in column 15: the front hex would be in the other side column.
+    place(&mut s, &r, 0, 13, 5);
+    assert_eq!(
+        act(&mut s.clone(), &r, Command::Move { to: at(&r, 15, 4) }),
         Err(CommandError::Unreachable)
     );
-    // A one-hex gap is too small: block (5, 5)'s left neighbour region except one hex.
+    place(&mut s, &r, 0, 1, 5);
+    // Room for one hex is too small: with a stack on (4, 5), the position (3, 5) would put the
+    // front hex on it.
     place(&mut s, &r, 1, 4, 5);
     assert_eq!(
-        act(&mut s.clone(), &r, Command::Move { to: at(&r, 5, 5) }),
+        act(&mut s.clone(), &r, Command::Move { to: at(&r, 3, 5) }),
         Err(CommandError::Unreachable)
     );
-    // Moving one hex back is fine: its own hexes do not block it.
-    let mut back = s.clone();
-    act(&mut back, &r, Command::Move { to: at(&r, 3, 5) }).unwrap();
-    assert_eq!(
-        back.stacks()[0].footprint(field(&r)).tail,
-        Some(at(&r, 2, 5))
-    );
+    // Moving one hex on is fine: its own hexes do not block it.
+    let mut on = s.clone();
+    act(&mut on, &r, Command::Move { to: at(&r, 2, 5) }).unwrap();
+    assert_eq!(on.stacks()[0].footprint(field(&r)).front, at(&r, 3, 5));
 }
 
 // ---------------------------------------------------------------- BAT-MOV-002 flying
@@ -304,14 +322,15 @@ fn flyers_and_teleporters_ignore_what_lies_between() {
         act(&mut s.clone(), &r, Command::Move { to: at(&r, 5, 5) }),
         Err(CommandError::Unreachable)
     );
-    // Two-hex flyers need room for both hexes where they land.
+    // Two-hex flyers need room for both hexes where they land: at (5, 5) the front hex would be
+    // the other stack's.
     let mut s = battle(&r, &[(0, "dragon", 1)], &[(0, "slow", 1)], 1);
     place(&mut s, &r, 1, 6, 5);
     assert_eq!(
-        act(&mut s.clone(), &r, Command::Move { to: at(&r, 7, 5) }),
+        act(&mut s.clone(), &r, Command::Move { to: at(&r, 5, 5) }),
         Err(CommandError::Unreachable)
     );
-    act(&mut s, &r, Command::Move { to: at(&r, 8, 5) }).unwrap();
+    act(&mut s, &r, Command::Move { to: at(&r, 7, 5) }).unwrap();
 }
 
 // ---------------------------------------------------------------- BAT-ATK-001 attack positions
@@ -320,10 +339,10 @@ fn flyers_and_teleporters_ignore_what_lies_between() {
 #[test]
 fn two_hex_stacks_attack_and_are_attacked_on_every_side() {
     let r = ruleset();
-    // A one-hex attacker hits a two-hex target from behind its tail.
+    // A one-hex attacker hits a two-hex target from behind its rear hex.
     let mut s = battle(&r, &[(0, "fast", 1)], &[(0, "wide", 1)], 1);
     activate(&mut s, 0);
-    place(&mut s, &r, 1, 8, 5); // defender head (8, 5), tail (9, 5)
+    place(&mut s, &r, 1, 9, 5); // defender position (rear hex) (9, 5), front hex (8, 5)
     place(&mut s, &r, 0, 12, 5);
     let behind = Command::Attack {
         target: StackId(1),
@@ -331,16 +350,16 @@ fn two_hex_stacks_attack_and_are_attacked_on_every_side() {
     };
     assert!(legal(&s, &r).contains(&behind));
     act(&mut s.clone(), &r, behind).unwrap();
-    // A two-hex attacker can strike with only its tail touching the target.
+    // A two-hex attacker can strike with only its rear hex touching the target.
     let mut s = battle(&r, &[(0, "wide", 1)], &[(0, "slow", 1)], 1);
     activate(&mut s, 0);
-    place(&mut s, &r, 1, 4, 5); // target at (4, 5); attacker head (2, 5), tail (1, 5)
-    let tail_touch = Command::Attack {
+    place(&mut s, &r, 1, 4, 5); // target at (4, 5); attacker at (1, 5), front hex (2, 5)
+    let rear_touch = Command::Attack {
         target: StackId(1),
-        from: at(&r, 6, 5), // head (6, 5), tail (5, 5) next to the target
+        from: at(&r, 5, 5), // position (5, 5) next to the target, front hex (6, 5)
     };
-    assert!(legal(&s, &r).contains(&tail_touch));
-    act(&mut s.clone(), &r, tail_touch).unwrap();
+    assert!(legal(&s, &r).contains(&rear_touch));
+    act(&mut s.clone(), &r, rear_touch).unwrap();
     // Positions whose footprint is not on standable hexes are invalid, far ones not adjacent.
     let mut edge = s.clone();
     place(&mut edge, &r, 1, 2, 7);
@@ -350,7 +369,7 @@ fn two_hex_stacks_attack_and_are_attacked_on_every_side() {
             &r,
             Command::Attack {
                 target: StackId(1),
-                from: at(&r, 1, 7)
+                from: at(&r, 0, 7)
             }
         ),
         Err(CommandError::InvalidHex)
@@ -361,7 +380,7 @@ fn two_hex_stacks_attack_and_are_attacked_on_every_side() {
             &r,
             Command::Attack {
                 target: StackId(1),
-                from: at(&r, 9, 5)
+                from: at(&r, 8, 5)
             }
         ),
         Err(CommandError::NotAdjacent)

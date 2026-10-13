@@ -93,8 +93,9 @@ fn batch_2b_r3_the_fire_shield_reflects_a_fifth_of_the_first_stage() {
         // Stacks: 0 the Naga Queens (speed 7, two hexes), 1 the Peasants (speed 3).
         let (nagas, peasants) = (0, 1);
         let (_, row) = field.coords(s.stacks()[0].hex);
-        // Round 1: the Naga Queens walk seven hexes along their row.
-        let to = field.hex(9, row).unwrap();
+        // Round 1: the Naga Queens walk seven hexes along their row (from their position, the
+        // rear hex in column 1).
+        let to = field.hex(8, row).unwrap();
         turn(&mut s, &r, nagas, Command::Move { to });
         // The Peasants' turn: Blue's Fire Shield on them (16 of its 20 spell points), then one
         // hex towards the Naga Queens.
