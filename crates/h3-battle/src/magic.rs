@@ -25,7 +25,7 @@ use h3_content_battle::{
     Ability, BattleRuleset, MAX_FIELD_HEXES, SpecialistBonus, SpellEffect, SpellPolarity,
     SpellTarget, TargetSide, TimedChange,
 };
-use h3_content_battle::{BattleSpell, Battlefield, MAX_MASTERY};
+use h3_content_battle::{BattleSpell, Battlefield, BattlefieldId, MAX_MASTERY};
 use h3_contracts::{BattleEffect, BattleHero, BattleSide, Rate};
 use h3_kernel::arith::{
     SINGLE_BITS, SINGLE_FRAC_BITS, X87, mul_div_floor, round_single, single_precision,

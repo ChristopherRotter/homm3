@@ -249,6 +249,14 @@ fn engine_events() -> Vec<K> {
             from: Hex(1),
             to: Hex(40),
         },
+        K::GateOpened,
+        K::GateClosed,
+        K::MoatDamage {
+            stack: s,
+            hex: Hex(44),
+            damage: 70,
+            kills: 1,
+        },
         K::BattleEnded {
             result: BattleResult::Retreat(BattleSide::Attacker),
         },

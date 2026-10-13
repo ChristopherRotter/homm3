@@ -3,7 +3,7 @@
 
 use super::*;
 use h3_formats::exe::{
-    AbsoluteObstacleRecord, HeroRecord, ObstacleData, ObstacleTypeRecord, SkillValue,
+    AbsoluteObstacleRecord, HeroRecord, ObstacleData, ObstacleTypeRecord, SiegeData, SkillValue,
     SpecialtyRecord,
 };
 
@@ -99,8 +99,26 @@ fn inputs() -> Inputs {
         terrains: single(&["Mud", "Ice"]),
         hero_data: hero_data(),
         obstacles: obstacles(),
+        siege: siege(),
         hero_tables: hero_tables(),
         artifact_tables: artifact_tables(),
+    }
+}
+
+/// The executable's siege tables: two rows, a damage for each of the three towns, the second
+/// moat row for Gamma (an `ab` town), the mines of spell 0 for Beta.
+fn siege() -> SiegeData {
+    SiegeData {
+        walls: vec![12, 29],
+        moat: vec![11, 28],
+        second_moat: vec![10, 27],
+        moat_damage: vec![70, 150, 90],
+        gate: 29,
+        moat_defense_penalty: 3,
+        mine_power: 3,
+        second_moat_town: 2,
+        mines_town: 1,
+        mines_spell: 0,
     }
 }
 

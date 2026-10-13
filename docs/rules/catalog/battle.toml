@@ -4000,3 +4000,191 @@ numeric  = "integer"
   ref        = "experiments/results/E04b-batch-2f.md EL, EB, EW (SoD 4.0 Complete, plain HD, 2026-10-11): an Advanced Eagle Eye picked a level-3 spell (Air Shield) and a level-1 one (Bless) from the enemy hero's casts; the message after the won battle names every pick ('Through eagle-eyed observation, EL is able to learn Air Shield and Bless.'), even those the hero then does not learn (BAT-Q24); the chance was not measured"
   retrieved  = "2026-10-11"
   confidence = "medium"
+
+[[rule]]
+id       = "BAT-SIE-001"
+title    = "A battle at a town: its siege record and field"
+context  = "battle"
+status   = "implemented"
+summary  = "A battle may be fought at a town (BattleSetup.siege, ADR-0023): the town's faction, its fort level (none, Fort, Citadel, Castle), its moat (absent, harmless, damaging: decided by the game's version, the caller's), the structures, the Escape Tunnel, the town's morale and luck. The battle reads its faction's siege record of the ruleset's battle part (moat damage, the second moat row, land mines instead of a moat) and the siege's field of the battle parameters (each row's wall, moat and second moat hex, the gate's hex, the moat's defense penalty, the mines' power); a faction without a record, or a ruleset without the field, is a setup error (SetupError::UnknownSiege), as is a moat below a Citadel or a natural obstacle on the walls, the moat or the mines (SetupError::InvalidSiege). A siege with a Fort has no random obstacles (BAT-GEO-004). The town's facts and the walls, the gate and the moat are public: they join the observation. Scope (BAT-STUB-2): the walls' hit points, the Catapult and Earthquake (T6), the turrets (T7), the town's morale, luck, Escape Tunnel and spell limits (T8)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.27, §7.28): 0x4639F0 sets the fort level +0x132F4, the moat flags +0x53A8 (a Citadel or Castle, by the game's version for the Stronghold) and +0x53A9 (town type 7, the Fortress), the gate +0x53A4 = 3; 0x466290 takes the siege's own path (the walls 0x63BD00, no random obstacles, the Tower's mines)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/BattleInfo.cpp setupBattle: a town with a fort gets walls (EWallState), a moat by the town's moat hexes (config/factions/*.json town.moatHexes, moatAbility), no random obstacles"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-SIE-002"
+title    = "The walls block"
+context  = "battle"
+status   = "implemented"
+summary  = "A town with a Fort has walls: one wall hex per row (the original's 12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182), the gate's among them (BAT-SIE-003). No stack stands on, walks through or lands on a wall hex other than the gate's; the setup places no stack there. A hex left of its row's wall hex is outside the walls, the wall hex and the hexes right of it inside (BAT-SIE-008). Every wall stands for the whole battle until the Catapult and Earthquake can destroy parts (T6, BAT-STUB-2)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.28): at a siege's start (0x46637E) the 11 hexes of 0x63BD00 get the blocked bit 0x2, which hex_blocked 0x469A10 reads; a destroyed part clears it (0x465990)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Siege - Heroes 3 wiki: the walls, the towers and the gate; the attacker must breach the walls or the gate"
+  url        = "https://heroes.thelazy.net/index.php/Siege"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-SIE-003"
+title    = "The gate"
+context  = "battle"
+status   = "implemented"
+summary  = "A town with a Fort has a gate on the gate's hex (96), closed at the start; its drawbridge's hex is the moat hex before it (95), the outer bridge's the second moat row's hex on that row (94). While the gate is closed the gate's and the drawbridge's hexes block every stack (BAT-SIE-002), except a stack its controller commands for the defender when no living stack and no corpse lies on the drawbridge's or the outer bridge's hex (the outer bridge's tested in every town, as in the original). Such a stack that stands on the gate's, the drawbridge's or the outer bridge's hex (either hex of a two-hex stack; a walk's step, a flight's landing) while the gate is closed opens it (event GateOpened). After every walk, flight or teleporting move, at the end of every action and at every turn's end an open gate closes (event GateClosed) unless a living stack or a corpse lies on the gate's or the drawbridge's hex, or with a second moat row on the outer bridge's. While open neither hex blocks. Scope: a summoned elemental opening it, the Catapult and Earthquake destroying it (T6, T8)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.28): hex_blocked 0x469A10 (hexes 95 and 96; the acting side 1 passes when 95 and 94 hold no living stack and no corpse), the opening 0x467130 -> 0x4671C0 (the walk 0x442186, the flight 0x4B4A8C), the closing 0x4672E0 after a walk, a flight, a teleporting move and every action (0x4423F2, 0x4B4A29, 0x4B4EF9, 0x479C65)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp battleGetAccessibility, server/battles/BattleActionProcessor.cpp: the gate (EGateState CLOSED, OPENED) opens for the defender's stack on the gate's or bridge hex and closes when they are free (a Force Field on 94 keeps it closed; only living stacks keep it open)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-SIE-004"
+title    = "The moat stops walkers"
+context  = "battle"
+status   = "implemented"
+summary  = "A town with a Citadel or Castle and a moat (BattleSetup.siege.moat not absent; not a town whose record has mines instead, BAT-SIE-007) has the moat's hexes: one per row left of the wall (the original's 11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181) and with the record's second row also those left of it (the Fortress's 10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180); the drawbridge's and the outer bridge's hexes are moat hexes only while the gate is closed. A walker's walk stops on the first moat hex it enters (not one of its own hexes; flyers and teleporters do not stop); the drawbridge's and the outer bridge's hexes are no stop for a stack its controller commands for the defender. The moat's hexes are public."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.27, §7.28): is_moat_hex 0x469DC0 (0x63BCE8 with the moat flag, 0x63BCF4 with the Fortress flag, 95 and 94 only while the gate +0x53A4 is 3), the walker's stops 0x4B3290 (not for flyers and the teleporting Devils, 0x4B32BC; 95 and 94 not for the defender)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Moat - Heroes 3 wiki: a creature entering the moat stops; flying creatures are not affected; the Fortress has a double moat"
+  url        = "https://heroes.thelazy.net/index.php/Moat"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/factions/*.json town.moatHexes (fortress: two rows); lib/battle/CBattleInfoCallback.cpp getStoppers: moat hexes stop walkers"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/factions"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-SIE-005"
+title    = "The damaging moat"
+context  = "battle"
+status   = "implemented"
+summary  = "In a damaging moat (BattleSetup.siege.moat damaging: under SoD rules, the caller's) a stack of either side that enters a moat hex takes the record's moat damage (70 Castle, Rampart, Necropolis, Stronghold, Conflux; 90 Inferno, Dungeon, Fortress) straight to its hit points (no defense, no resistance), at most once per move for a two-hex stack; it takes it again when it waits, defends, shoots or attacks from where it stands in the moat and when a flight or teleporting move lands it there (the original's re-entry). The damage's ends follow as after a Fire Wall's burn: the Phoenix's rebirth, the battle's end (event MoatDamage). A harmless moat deals none."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.27, §7.28): moat_damage 0x469E50 from enter_hex 0x46A570 under mapKind 2 only, the damage 0x63BD18 by town type (70, 70, 150, 90, 70, 90, 70, 90, 70) to the hit points through 0x444090, the rebirth check after; the re-entry 0x441F70 (wait, defend, shot, attack in place) and after a flight or teleporting move (0x4B4A1E, 0x4B4EEE)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Moat - Heroes 3 wiki (SoD): the moat deals damage to creatures entering it (70, 90 for Inferno, Dungeon and Fortress)"
+  url        = "https://heroes.thelazy.net/index.php/Moat"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/factions/*.json town.moatAbility (castleMoat 70, infernoMoat 90 …); server/battles/BattleActionProcessor.cpp: the moat's damage on entering"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/factions"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-SIE-006"
+title    = "The moat lowers the defense"
+context  = "battle"
+status   = "implemented"
+summary  = "A struck stack with either hex on a moat hex (BAT-SIE-004; a harmless moat too, not the Tower's mines) has the field's moat defense penalty (3) less defense against the strike, after its other reductions and not floored at 0 (D-10, the code: a stack with defense below 3 gives its attacker the larger difference); not for a frenzied stack, whose defense is 0 (BAT-MAG-019)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.28): stack_defense_against 0x442590 subtracts 3 (0x442646) when is_moat_hex holds for either hex, after the Behemoths' reduction and the frenzy's 0, without a floor"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/factions/*.json moat bonus: PRIMARY_SKILL defense -3 while in the moat; a stack's defense is floored at 0 (differs below 3, survey D-10)"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/factions"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-SIE-007"
+title    = "The Tower's land mines"
+context  = "battle"
+status   = "implemented"
+summary  = "A town whose record names mines (the Tower) has no moat: with a Citadel or Castle and a moat in the setup (BAT-SIE-001) the defender gets a hidden mine of the record's spell (Land Mine) on each moat hex but the drawbridge's, lasting the spell's rounds (the battle), placed after the sides' sight is set. Each mine's value: with a damaging moat (SoD rules) the record's moat damage (150), or the defending hero's damage of the spell if larger; else the defending hero's, or without a hero the spell's at the field's mine power (3) and no mastery. The hero's damage is the spell's base value for its mastery on the battlefield (BAT-TER-005) and power, without its damage bonuses. The mines are the defender's Land Mines from then on (BAT-MAG-033)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.28): 0x4663BE, a Tower (town type 2) with a fort level of 2 or more, places a Land Mine (spell 11) object on each moat hex but 95, owned by side 1 and hidden, its damage max(150, the hero's) under SoD rules, else the hero's or the spell's at power 3 (0x466460) and mastery 0 (0x5A7890 without a hero)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Tower - Heroes 3 wiki: instead of a moat the Tower has land mines, 'minimum 150 points of damage'"
+  url        = "https://heroes.thelazy.net/index.php/Tower"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/factions/tower.json town.moatAbility: the land mines' damage 150 always (differs for a stronger hero, survey D-9)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/factions/tower.json"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-SIE-008"
+title    = "The walls halve shots"
+context  = "battle"
+status   = "implemented"
+summary  = "In a battle with walls a shot is halved (a reduction of 50 % multiplied with the distance's, BAT-RNG-002: a quarter beyond the full-damage distance) when the shooter's hex, turned to face the target as the original turns it (its front or rear hex, BAT-Q36), is outside the walls on its row, the target's position is inside on its row, and the straight line between them on the column/row grid meets a wall: from the shooter's column and row in 17 × the larger difference steps of 1/17 of a cell along the longer axis and the matching fraction along the other (single-precision values, the original's x87 arithmetic, ADR-0003), each position truncated to a hex, a step on the gate's hex blocks while the gate is closed and any other wall hex blocks (D-8, the code: a line through the open gate is free). Not for a shooter with no_wall_penalty (Mage, Arch Mage, Enchanter, Sharpshooter) or whose hero has the NoRangePenalty effect (the Golden Bow, the Bow of the Sharpshooter; BAT-HER-006)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.25, §7.28): shot_wall_test 0x467510 (outside left of 0x63BD00's hex, exempt creatures 34, 35, 136, 137, 149 and artifacts 91, 137), siege_line_clear 0x467840 (17 steps per cell in f32, truncated, hex 96 while the gate is 3), the damage's stage 2 halves at 0x443C79 with the distance's"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Obstacle - Heroes 3 wiki: shooting over the walls halves the damage; Sharpshooters, Mages, Arch Mages, Enchanters and the Golden Bow are not affected"
+  url        = "https://heroes.thelazy.net/index.php/Obstacle"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp battleHasWallPenalty, battleHasPenaltyOnLine: the hexes of the shortest path, the gate blocking while it stands (differs through the open gate, survey D-8); NO_WALL_PENALTY in config/creatures"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "medium"

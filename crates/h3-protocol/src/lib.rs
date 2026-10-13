@@ -63,8 +63,10 @@ pub mod wire;
 /// servers a server serves. v28 (E04c T2b, ADR-0022): the observation names the special
 /// battlefield and the anti-magic garrison; the key tables list the battlefields. v29 (E17
 /// CLT-Q1): a walker's `Moved` comes hex by hex, one per position of its path (BAT-MOV-003); the
-/// message is unchanged, its meaning is new.
-pub const PROTOCOL_VERSION: u32 = 29;
+/// message is unchanged, its meaning is new. v30 (E04c T5, ADR-0023): the observation names the
+/// town the battle is fought at (`wire::Siege`); the events `GateOpened`, `GateClosed`,
+/// `MoatDamage`.
+pub const PROTOCOL_VERSION: u32 = 30;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

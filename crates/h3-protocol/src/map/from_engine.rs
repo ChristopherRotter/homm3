@@ -377,6 +377,19 @@ pub fn event(kind: &EventKind) -> Event {
             from: from.0,
             to: to.0,
         },
+        K::GateOpened => Event::GateOpened {},
+        K::GateClosed => Event::GateClosed {},
+        K::MoatDamage {
+            stack,
+            hex,
+            damage,
+            kills,
+        } => Event::MoatDamage {
+            stack: stack.0,
+            hex: hex.0,
+            damage: wide(damage),
+            kills,
+        },
         K::BattleEnded { result } => Event::BattleEnded {
             result: outcome(result),
         },

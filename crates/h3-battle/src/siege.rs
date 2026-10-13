@@ -268,12 +268,13 @@ fn lies(state: &BattleState, field: Field, hex: Hex) -> bool {
 /// original's 0x469A10): the wall hexes but the gate's always; while the gate is closed the
 /// gate's and the drawbridge's too, but for a stack its controller commands for the defender
 /// when no living stack and no corpse lies on the drawbridge's or the outer bridge's hex, in
-/// every town (the mover on one of them included, as the original reads the hexes).
+/// every town (the mover on one of them included, as the original reads the hexes). Without a
+/// mover (a stack being placed) the closed gate blocks.
 // rule: BAT-SIE-002, BAT-SIE-003
-pub(crate) fn blocked_for(state: &BattleState, mover: &Stack) -> HexSet {
+pub(crate) fn blocked_for(state: &BattleState, mover: Option<&Stack>) -> HexSet {
     state.siege.map_or(HexSet::new(), |s| {
         let passes = !s.gate_open
-            && mover.controller() == BattleSide::Defender
+            && mover.is_some_and(|m| m.controller() == BattleSide::Defender)
             && !lies(state, s.field, s.bridge)
             && !lies(state, s.field, s.outer_bridge);
         blocks(&s, passes)

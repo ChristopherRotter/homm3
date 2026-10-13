@@ -29,7 +29,7 @@ use crate::PROTOCOL_VERSION;
 use crate::wire::{
     Algorithm, Ballista, BookSpell, Command, Defences, Effect, Event, Field, Hero, KeyTables,
     Manifest, Observation, Offer, OpeningSpell, Outcome, OwnHero, PackRef, Query,
-    RemovableObstacle, Seat, Side, SideView, SpellBonus, SpellObstacle, Stack, Strike, Tactics,
+    RemovableObstacle, Seat, Side, SideView, Siege, SpellBonus, SpellObstacle, Stack, Strike, Tactics,
     Target, WireU64,
 };
 
@@ -315,6 +315,7 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
         terrain,
         battlefield,
         anti_magic,
+        siege,
         effects,
         spell_obstacles,
     } = o;
@@ -359,6 +360,14 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
         terrain: terrain.map(h3_content::TerrainId::raw),
         battlefield: battlefield.map(h3_content_battle::BattlefieldId::raw),
         anti_magic: *anti_magic,
+        siege: siege.map(|s| Siege {
+            faction: s.faction.raw(),
+            fort: s.fort as u8,
+            moat: s.moat_kind as u8,
+            gate_open: s.gate_open,
+            walls: hexes(s.walls()),
+            moat_hexes: hexes(s.moat()),
+        }),
         sides: [
             side_view(BattleSide::Attacker),
             side_view(BattleSide::Defender),

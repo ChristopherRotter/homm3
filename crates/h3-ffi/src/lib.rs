@@ -54,8 +54,9 @@ use h3_sim::{
 /// action encoding v12 and observation encoding v13 → v14 (a two-hex stack's position is its rear
 /// hex, BAT-GEO-002); no function changes. v19 (E04c T2b): observation encoding v15 (two
 /// globals: the special battlefield, the anti-magic garrison; `h3_observation_len` grows); no
-/// function changes.
-pub const H3_ABI_VERSION: u32 = 19;
+/// function changes. v20 (E04c T5): observation encoding v16 (the town's four globals and two
+/// battlefield planes; `h3_observation_len` grows); no function changes.
+pub const H3_ABI_VERSION: u32 = 20;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;

@@ -148,6 +148,7 @@ pub(crate) mod tests {
             terrain: None,
             battlefield: None,
             anti_magic: false,
+            siege: None,
             sides: [side, side],
             own_hero: None,
             stacks: Vec::new(),

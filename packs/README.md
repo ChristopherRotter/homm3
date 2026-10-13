@@ -6,7 +6,7 @@ Human-editable content packs (ADR-0006). Keys are namespaced `pack:name`. Since 
 | File | Holds | Parsed by, compiled by |
 |---|---|---|
 | `core.toml` | the `[pack]` manifest; resources, factions, terrains, creatures (identity and non-battle data: name, faction, level, speed, cost, growth, values, flags, upgrades), creature overrides' core halves, spell schools, spells (name, category, level, schools, cost, power, effect, `granted_by_name_only`), secondary skills, hero classes, heroes, hero overrides, artifact slots and their overrides, artifacts, `[hero_params]`, profiles | `h3-pack` into a `ContentPack`; `h3-content` into the core `Ruleset` |
-| `battle.toml` | no manifest (it belongs to its folder's `core.toml`): `[battle]`, special battlefields (v36), obstacles, each creature's battle data (`[[creature]]` with its `id`: attack, defense, damage, hit points, shots, casts, abilities), creature overrides' battle halves (`target`, `fixes` and those fields), each spell's battle magic (`[[spell]]` with its `id`: polarity and every targeting and effect field) | `h3-pack-battle` into a `BattlePack`; `h3-content-battle` into the `BattleRuleset` on the core |
+| `battle.toml` | no manifest (it belongs to its folder's `core.toml`): `[battle]`, special battlefields (v36), sieges (v37), obstacles, each creature's battle data (`[[creature]]` with its `id`: attack, defense, damage, hit points, shots, casts, abilities), creature overrides' battle halves (`target`, `fixes` and those fields), each spell's battle magic (`[[spell]]` with its `id`: polarity and every targeting and effect field) | `h3-pack-battle` into a `BattlePack`; `h3-content-battle` into the `BattleRuleset` on the core |
 | `adventure.toml` | the adventure map's data (owned by the adventure lane; format: `crates/h3-pack-adventure/src/lib.rs`) | `h3-pack-adventure` |
 
 The TOML keys are the same in either file; the sections below show each table with all its
@@ -87,6 +87,15 @@ morale = [{ factions = ["vale"], amount = 1 }]  # per list of factions, -3..=3 a
 # no_creature_casts = true       # no creature cast, raise or periodic cast (BAT-TER-004)
 expert_schools = ["storm"]       # a hero's spells of these schools at Expert (BAT-TER-005)
 # expert_other_casts = true      # creature, periodic and strike spells at Expert (BAT-TER-005)
+
+[[siege]]                        # a town faction's siege (pack format v37, E04c T5; BAT-SIE-001):
+faction = "vale"                 # a battle at its town reads this record (`BattleSetup.siege`);
+                                 # one per faction, the field `siege` of `[battle]` required
+moat_damage = 70                 # the damaging moat's damage on entering (BAT-SIE-005), at most
+                                 # 10 000; with `mines` their least value
+# second_moat = true             # the moat's second row (the Fortress, BAT-SIE-004)
+# mines = "fire:land_mine"       # instead of a moat: land mines of this spell (one that places
+                                 # mines; not with `second_moat`; the Tower, BAT-SIE-007)
 
 [[obstacle]]                     # obstacle types (E03, BAT-GEO-004)
 id = "crag"
@@ -192,6 +201,7 @@ errors:
 | `morale_aura`, `luck_aura` | `amount`, `affects` (`allies`/`enemies`) | battle-wide morale/luck change; equal auras do not stack (BAT-MOR-001, BAT-LCK-001) |
 | `minimum_morale`, `minimum_luck` | `value` | lower bound of its morale/luck (BAT-MOR-001, BAT-LCK-001) |
 | `no_distance_penalty` | — | its shots have no distance penalty (BAT-RNG-002) |
+| `no_wall_penalty` | — | since v37: its shots are not halved by a town's walls (BAT-SIE-008) |
 | `area_shot` | `effect` (`fireball`/`death_cloud`) | its shots also hit the stacks around the target (requires flag `area_attack`; BAT-RNG-004) |
 | `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine only (requires flag `war_machine`; First Aid Tent): on its turn heals the top creature of a random hurt stack of its own side (also one the other side controls, BAT-MAG-026) by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
 | `ammo_supply` | — | war machine only (requires flag `war_machine`; Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
@@ -706,7 +716,13 @@ the side's living stacks; `{ resource = "gold", cost_percent = 50 }` in `base`; 
 side can surrender; BAT-FLE-002, ruleset hash v13). Since E04b T2b `hero_casts_per_round` (how
 many spells a hero may cast per round, 1 in `base`; BAT-MAG-001, ruleset hash v15). Since E04b
 T6b `side_stack_limit` (a side creates stacks, Clone and Summon Elemental, only while it has fewer
-stacks, dead ones included; 20 in `base`, at most 21; BAT-MAG-037, ruleset hash v27).
+stacks, dead ones included; 20 in `base`, at most 21; BAT-MAG-037, ruleset hash v27). Since E04c
+T5 (pack format v37, battle part hash v3) the optional `siege = { walls, gate, moat, second_moat,
+moat_defense_penalty, mine_power }`: the siege's field, each list one standable hex per row, left
+to right the second moat row's, the moat's, the wall's, the gate one of the walls; the defense a
+stack loses in the moat and the town's mines' power without a hero before SoD (BAT-SIE-002 to
+BAT-SIE-007; `base` harvests the executable's tables, `installation.md` §7.27, §7.28). Records of
+`[[siege]]` need it.
 
 **Hero parameters** (`[hero_params]`, Tier 2, E04a T4a; at most one enabled pack provides them,
 a ruleset without them cannot validate hero details): `primary_min` (four values, attack,

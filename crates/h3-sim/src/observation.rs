@@ -1,4 +1,4 @@
-//! Flat observation encoding (version 15) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 16) of a per-viewer [`Observation`].
 //!
 //! Layout, in this order: [`GLOBALS`] global features; the public part of the two heroes,
 //! [`HERO_PUBLIC_FEATURES`] each (the viewer's, then the opponent's); the private part of the
@@ -23,8 +23,11 @@
 //! phase has begun, the side that took the last turn (1 viewer, 2 opponent, 0 none yet), the
 //! terrain's handle + 1 (0 none), the creature the viewer's Summon Elemental casts are bound to
 //! as handle + 1 (0 none yet), the opponent's, a spectator's observation, the special
-//! battlefield's handle + 1 (0 none), the battle is at an anti-magic garrison]` (BAT-TAC-001,
-//! BAT-FLE-001, BAT-FLE-002, BAT-MAG-049, BAT-MAG-053, BAT-MAG-039, BAT-TER-002, BAT-MAG-061).
+//! battlefield's handle + 1 (0 none), the battle is at an anti-magic garrison, the town the
+//! battle is fought at as its faction's handle + 1 (0: not at a town), its fort level (0 none, 1
+//! Fort, 2 Citadel, 3 Castle), its moat (0 absent, 1 harmless, 2 damaging), the gate is open]`
+//! (BAT-TAC-001, BAT-FLE-001, BAT-FLE-002, BAT-MAG-049, BAT-MAG-053, BAT-MAG-039, BAT-TER-002,
+//! BAT-MAG-061, BAT-SIE-001, BAT-SIE-003).
 //! Public hero part, zeros for a side without a hero (which gets no lucky strikes in profiles
 //! with quirk Q-0003): `[led by a hero, hero type handle, attack, defense, power, knowledge,
 //! mana, max mana, commands its Ballista, commands its First Aid Tent, casts this round,
@@ -50,7 +53,9 @@
 //! (BAT-MAG-031; a side has at most one on a hex) `[Force Field, Fire Wall, Quicksand, Land
 //! Mine]` as the rounds left (−1: for the rest of the battle; 0: none) and their value (Fire
 //! Wall's or a mine's damage value, BAT-MAG-028, BAT-MAG-033), then the viewer's spell obstacle
-//! here is seen by the opponent.
+//! here is seen by the opponent; then the town's `[wall hex (the gate's included), moat hex now
+//! (the bridges only while the gate is closed)]` (BAT-SIE-002, BAT-SIE-004; the town's mines are
+//! the defender's Land Mines above, BAT-SIE-007).
 //! Per stack: `[present, alive, own, creature handle, count, top_hp, max_hp, attack, defense,
 //! damage_min, damage_max, speed, x, y (its position: a two-hex stack's rear hex), acted,
 //! waited, retaliated, defending, active, morale, luck, shots, retaliations left (255 =
@@ -94,7 +99,8 @@
 //! per-stack features from the start count on, the materialised effects and each effect's
 //! mastery. v14: a two-hex stack's `x`, `y` are its rear hex, its position as in the original
 //! (BAT-GEO-002), no longer its front hex. v15 (E04c T2b): the special battlefield and the
-//! anti-magic garrison as the last two globals.
+//! anti-magic garrison as the last two globals. v16 (E04c T5): the town's four globals and its
+//! two planes.
 
 use h3_battle::{
     DamageRoll, HeroView, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Observation, OwnHeroView,
@@ -106,10 +112,10 @@ use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 15;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 16;
 
 /// Global features.
-pub const GLOBALS: usize = 22;
+pub const GLOBALS: usize = 26;
 /// The public features of a hero.
 pub const HERO_PUBLIC_FEATURES: usize = 13;
 /// The values of the viewer's hero's private part before its spell bonuses.
@@ -120,7 +126,11 @@ pub const OWN_HERO_VALUES: usize =
 /// Features of the viewer's hero's private part.
 pub const OWN_HERO_FEATURES: usize = OWN_HERO_VALUES + 4 * MAX_SPELLS;
 /// Planes of the battlefield.
-pub const HEX_PLANES: usize = 3 + 2 * OWNER_PLANES + 1;
+pub const HEX_PLANES: usize = SIEGE_PLANES + 2;
+/// The plane of the viewer's spell obstacles the opponent sees.
+const REVEALED_PLANE: usize = 3 + 2 * OWNER_PLANES;
+/// The first of the town's planes.
+const SIEGE_PLANES: usize = REVEALED_PLANE + 1;
 /// The planes of one side's spell obstacles: one per kind, then the value.
 const OWNER_PLANES: usize = ObstacleKind::COUNT + 1;
 /// Effects per stack the encoding shows.
@@ -284,6 +294,11 @@ fn encode_field(obs: &Observation, out: &mut [f32]) {
     for o in &obs.spell_obstacles {
         encode_obstacle(obs.viewer, o, &mut plane);
     }
+    // rule: BAT-SIE-002, BAT-SIE-004
+    for s in &obs.siege {
+        s.walls().iter().for_each(|hex| plane(SIEGE_PLANES, hex, 1.0));
+        s.moat().iter().for_each(|hex| plane(SIEGE_PLANES + 1, hex, 1.0));
+    }
 }
 
 /// Writes spell obstacle `o` as `viewer` sees it with `plane`.
@@ -300,7 +315,7 @@ fn encode_obstacle(
         plane(base + kind, hex, left);
         plane(base + ObstacleKind::COUNT, hex, o.value as f32);
         if own {
-            plane(HEX_PLANES - 1, hex, flag(o.revealed));
+            plane(REVEALED_PLANE, hex, flag(o.revealed));
         }
     }
 }
@@ -343,6 +358,10 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
         flag(obs.spectator),
         handle(obs.battlefield.map(|b| b.raw())),
         flag(obs.anti_magic),
+        handle(obs.siege.map(|s| s.faction.raw())),
+        obs.siege.map_or(0.0, |s| f32::from(s.fort as u8)),
+        obs.siege.map_or(0.0, |s| f32::from(s.moat_kind as u8)),
+        flag(obs.siege.is_some_and(|s| s.gate_open)),
     ]);
     let (viewer, opponent) = out[HEROES..OWN_HERO].split_at_mut(HERO_PUBLIC_FEATURES);
     encode_hero(obs.heroes[own], obs.cost_change[own], viewer);
@@ -996,7 +1015,7 @@ mod tests {
         assert_eq!(on(theirs + 3), [(74, -1.0)]);
         assert_eq!(on(theirs + 4), [(71, 25.0), (74, 40.0)]);
         // Which of the viewer's the attacker sees: all but the hidden pit.
-        assert_eq!(on(HEX_PLANES - 1), [(70, 1.0), (73, 1.0), (74, 1.0)]);
+        assert_eq!(on(REVEALED_PLANE), [(70, 1.0), (73, 1.0), (74, 1.0)]);
     }
 
     #[test]
