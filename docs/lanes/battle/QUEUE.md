@@ -6,7 +6,7 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epics/E04b-battle-magic.md`; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27).
 
-**E04c increment 1** (the user, 2026-10-13, BAT-Q37; `docs/epics/E04c-sieges-and-battlefields.md`): T1 (the battlefield survey and the ADR draft) done; **T2 (the battlefields) waits for the user's review, BAT-Q38**, then runs as the epic's T2: T2a the seam (`shared/battlefield-seam`, merged first), T2b the battle (`battle/e04c-t2`, `cross-lane` for `h3-protocol`). The inbox's E04c bullets on Cursed Ground, Magic Plains, the elemental fields' mastery and special battlefield 2's native bonus are T2's; their siege bullets wait for T4 onwards.
+**E04c increment 1** (the user, 2026-10-13, BAT-Q37; `docs/epics/E04c-sieges-and-battlefields.md`): T1 done (#164); BAT-Q38 answered (ADR-0022); T2 in its two pull requests (`shared/battlefield-seam` first, then `battle/e04c-t2`), then the increment's checkpoint and the next cut. The inbox's E04c bullets on Cursed Ground, Magic Plains, the elemental fields' mastery and special battlefield 2's native bonus are done by T2; their siege bullets wait for T4 onwards.
 
 ## Inbox
 
