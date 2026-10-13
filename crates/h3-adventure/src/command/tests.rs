@@ -8,16 +8,19 @@ use std::string::{String, ToString};
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content::{ResourceId, Ruleset};
 use h3_contracts::{HeroId, PlayerId};
 
 use super::*;
 use crate::fog::reveal;
 use crate::persistent::BitGrid;
 use crate::ruleset::AdventureRuleset;
+use crate::ruleset::ObjectTypeId;
+use crate::setup::SetupError;
 use crate::state::AdventureState;
 use crate::testing::{
-    FIRE, GNOLL, PEASANT, WOOD_PILE, hero_at, movement_rules, world, world_state,
+    CHART, FIRE, GNOLL, OPEN_CHART, PEASANT, WOOD_PILE, draws, hero_at, movement_rules, world,
+    world_state,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -281,6 +284,10 @@ fn errors_display() {
             E::Visit { step: 0 },
             "step 0 goes to a tile no visit is built for",
         ),
+        (
+            E::FromAbove { step: 3 },
+            "step 3 crosses the top of an object's visitable tile",
+        ),
         (E::PastVisit { step: 2 }, "step 2 follows a visit"),
         (
             E::TooFewPoints {
@@ -326,8 +333,7 @@ fn each_hero_reveals_its_surroundings_to_its_owner_at_the_start() {
             hero_at(3, 1, blue, &[PEASANT]),
         ],
     );
-    let state =
-        AdventureState::new(&rules.0, &rules.1, &setup, &mut crate::testing::draws()).unwrap();
+    let state = AdventureState::new(&rules.0, &rules.1, &setup, &mut draws()).unwrap();
     assert_eq!(state.explored(RED), Some(&disks(16, 2, &[red_a, red_b])));
     assert_eq!(state.explored(BLUE), Some(&disks(16, 2, &[blue])));
     // Radius 5: (2, 7) is 5 below the hero, (2, 8) 6.
@@ -576,4 +582,377 @@ fn a_visit_ends_the_move_and_only_pickups_are_visited_yet() {
             AdventureCommandError::Visit { step: 1 }
         );
     }
+}
+
+/// Red's hero at `at` on three rows of grass whose middle one holds `chart` at (2, 1), blue's at
+/// (12, 2).
+fn chart_world(rules: &(Ruleset, AdventureRuleset), chart: char, at: Pos) -> AdventureState {
+    let middle = std::format!("gg{chart}ggggggggggggg");
+    world_state(
+        rules,
+        &["gggggggggggggggg", &middle, "gggggggggggggggg"],
+        vec![
+            hero_at(1, 0, at, &[PEASANT]),
+            hero_at(2, 1, p(12, 2), &[PEASANT]),
+        ],
+    )
+}
+
+/// `path` of red's hero 1 is rejected with `error` and changes nothing.
+fn refused(
+    state: &AdventureState,
+    rules: &(Ruleset, AdventureRuleset),
+    path: &[Pos],
+    error: AdventureCommandError,
+) {
+    let mut moved = state.clone();
+    assert_eq!(move_hero(&mut moved, rules, RED, 1, path), Err(error));
+    assert_eq!(&moved, state);
+}
+
+// covers: ADV-OBJ-003, ADV-MOV-006
+#[test]
+fn a_step_onto_a_chart_enters_it_and_ends_the_move() {
+    for faithful in [true, false] {
+        let rules = movement_rules(faithful);
+        let mut state = visit_world(&rules, "ggCggggggggggggg");
+        let mut events = Vec::new();
+        let command = AdventureCommand::MoveHero {
+            hero: HeroId::new(1),
+            path: vec![p(1, 0), p(2, 0)],
+        };
+        let outcome = state
+            .apply(&rules.0, &rules.1, RED, &command, &mut events)
+            .unwrap();
+        // The hero stands on the chart's tile, both steps paid as steps are; the visit gains and
+        // removes nothing, and offers the chart's type (E08 T14b).
+        assert!(outcome.gains.is_empty());
+        assert!(outcome.offer.is_some());
+        assert_eq!(hero(&state, 1), (p(2, 0), 1300 - 200));
+        assert!(!state.is_removed(0));
+        assert_eq!(events.len(), 2);
+        assert!(matches!(
+            events[1].kind,
+            AdventureEventKind::HeroStepped { to: Some(to), .. } if to == p(2, 0)
+        ));
+        // The step onto the chart reveals around it (ADV-FOG-003).
+        assert!(state.is_explored(RED, p(7, 0)));
+        // A visit ends the move.
+        refused(
+            &visit_world(&rules, "ggCggggggggggggg"),
+            &rules,
+            &[p(1, 0), p(2, 0), p(3, 0)],
+            AdventureCommandError::PastVisit { step: 2 },
+        );
+        // The hero leaves the chart sideways and enters it again; with points below the cheapest
+        // next step, those are lost there as anywhere (ADV-MOV-006).
+        move_hero(&mut state, &rules, RED, 1, &[p(3, 0)]).unwrap();
+        state.set_movement(HeroId::new(1), 150);
+        move_hero(&mut state, &rules, RED, 1, &[p(2, 0)]).unwrap();
+        assert_eq!(hero(&state, 1), (p(2, 0), 0));
+    }
+}
+
+/// Red's hero 1 at (1, 1) and blue's hero 2 at (14, 1) on two levels of three rows: a chart at
+/// (2, 1) and an open chart at (12, 1) on the first level, grass, sand, sea and rock around.
+fn reveal_world(rules: &(Ruleset, AdventureRuleset)) -> AdventureState {
+    let rows = [
+        "gggggggggggggsss",
+        "ggCggggggggg~cgg",
+        "gggggggggggg##gg",
+        "ssssssssgggggggg",
+        "gg~~~~~~~#####gs",
+        "gggggggggggggggg",
+    ];
+    let heroes = vec![
+        hero_at(1, 0, p(1, 1), &[PEASANT]),
+        hero_at(2, 1, p(14, 1), &[PEASANT]),
+    ];
+    AdventureState::new(&rules.0, &rules.1, &world(&rows, 2, heroes), &mut draws()).unwrap()
+}
+
+/// `player`'s hero `hero` steps onto `to` and back off it to `back`, then onto `to` again: the
+/// outcome of the last step.
+fn enter(
+    state: &mut AdventureState,
+    rules: &(Ruleset, AdventureRuleset),
+    (player, hero): (PlayerId, u16),
+    to: Pos,
+) -> AdventureOutcome {
+    state.set_movement(HeroId::new(hero), 1000);
+    let command = AdventureCommand::MoveHero {
+        hero: HeroId::new(hero),
+        path: vec![to],
+    };
+    state
+        .apply(&rules.0, &rules.1, player, &command, &mut Vec::new())
+        .unwrap()
+}
+
+// covers: ADV-VIS-001
+#[test]
+fn a_chart_offers_its_reveal_once_per_player_and_type() {
+    let rules = movement_rules(false);
+    let mut state = reveal_world(&rules);
+    let gold = ResourceId::from_raw(1);
+    // Entering the chart offers its type for its price.
+    let before = state.clone();
+    let offer = enter(&mut state, &rules, (RED, 1), p(2, 1)).offer.unwrap();
+    assert_eq!(
+        offer,
+        Offer {
+            hero: HeroId::new(1),
+            object_type: CHART,
+            anchor: p(2, 1),
+            price: vec![(gold, 1000)],
+        }
+    );
+    assert!(!state.has_bought(RED, CHART));
+    // Accepted: every grass tile of both levels is explored for red, told to red alone with the
+    // number it had not explored; no other terrain, and nothing for blue.
+    let map = state.map().clone();
+    let grass = |pos: Pos| map.tile(pos).unwrap().terrain == crate::testing::GRASS;
+    let explored = |state: &AdventureState, player| state.explored(player).unwrap().count();
+    let (red, blue) = (explored(&state, RED), explored(&state, BLUE));
+    let tiles: Vec<Pos> = (0..2u8)
+        .flat_map(|level| {
+            (0..3u16).flat_map(move |y| (0..16u16).map(move |x| Pos::new(x, y, level)))
+        })
+        .collect();
+    let new = tiles
+        .iter()
+        .filter(|&&pos| grass(pos) && !state.is_explored(RED, pos))
+        .count();
+    let hidden: Vec<Pos> = tiles
+        .iter()
+        .copied()
+        .filter(|&pos| !grass(pos) && !state.is_explored(RED, pos))
+        .collect();
+    assert!(new > 20 && !hidden.is_empty(), "{new} {hidden:?}");
+    let mut events = Vec::new();
+    state.accept_offer(&rules.1, RED, &offer, &mut events);
+    assert_eq!(
+        events,
+        vec![AdventureEvent {
+            kind: AdventureEventKind::TilesRevealed {
+                object_type: CHART,
+                count: u32::try_from(new).unwrap(),
+            },
+            seen_by: Viewers::NONE.with(RED),
+        }]
+    );
+    assert_eq!(events[0].project(RED), Some(events[0]));
+    assert_eq!(events[0].project(BLUE), None);
+    assert_eq!(explored(&state, RED), red + u32::try_from(new).unwrap());
+    assert!(
+        tiles
+            .iter()
+            .all(|&pos| !grass(pos) || state.is_explored(RED, pos))
+    );
+    assert!(hidden.iter().all(|&pos| !state.is_explored(RED, pos)));
+    assert_eq!(explored(&state, BLUE), blue);
+    assert!(state.has_bought(RED, CHART) && !state.has_bought(BLUE, CHART));
+    assert_eq!(state.bought(RED).collect::<Vec<_>>(), [CHART]);
+    assert_eq!(state.bought(BLUE).count(), 0);
+    // The viewer sees its own purchases only.
+    assert_eq!(state.observe(&rules.0, RED).bought, [CHART]);
+    assert!(state.observe(&rules.0, BLUE).bought.is_empty());
+    assert!(state.observe(&rules.0, PlayerId::new(2)).bought.is_empty());
+    assert_ne!(state.state_hash(), before.state_hash());
+    // Bought: a later visit offers nothing; another type still offers.
+    enter(&mut state, &rules, (RED, 1), p(1, 1));
+    assert_eq!(
+        enter(&mut state, &rules, (RED, 1), p(2, 1)),
+        AdventureOutcome::default()
+    );
+    let open = enter(&mut state, &rules, (BLUE, 2), p(13, 1))
+        .offer
+        .unwrap();
+    assert_eq!((open.object_type, open.anchor), (OPEN_CHART, p(13, 1)));
+    // Blue buys the open chart, then the chart; red's purchase stays its own.
+    state.accept_offer(&rules.1, BLUE, &open, &mut Vec::new());
+    let chart = Offer {
+        hero: HeroId::new(2),
+        ..offer.clone()
+    };
+    state.accept_offer(&rules.1, BLUE, &chart, &mut Vec::new());
+    assert_eq!(state.bought(BLUE).collect::<Vec<_>>(), [CHART, OPEN_CHART]);
+    assert_eq!(state.bought(RED).collect::<Vec<_>>(), [CHART]);
+    assert!(!state.has_bought(RED, OPEN_CHART));
+    // Equal purchases hash equal, whatever their order.
+    let mut other = reveal_world(&rules);
+    other.accept_offer(&rules.1, BLUE, &chart, &mut Vec::new());
+    other.accept_offer(&rules.1, RED, &offer, &mut Vec::new());
+    other.accept_offer(&rules.1, BLUE, &open, &mut Vec::new());
+    let mut moved = reveal_world(&rules);
+    moved.accept_offer(&rules.1, RED, &offer, &mut Vec::new());
+    assert_eq!(other.bought(RED).collect::<Vec<_>>(), [CHART]);
+    assert_ne!(other.state_hash(), moved.state_hash());
+    // A kind other than a Cartographer reveals nothing by terrain.
+    let pile = rules.1.object_type(WOOD_PILE).unwrap();
+    assert_eq!(pile.kind.reveal_terrain(), None);
+}
+
+// covers: ADV-OBJ-004
+#[test]
+fn a_chart_is_neither_entered_from_nor_left_toward_the_tiles_above() {
+    let rules = movement_rules(true);
+    let from = AdventureCommandError::FromAbove { step: 0 };
+    let next = AdventureCommandError::FromAbove { step: 1 };
+    // From above: down, down-right and down-left onto the chart.
+    let above = chart_world(&rules, 'C', p(2, 0));
+    refused(&above, &rules, &[p(2, 1)], from);
+    refused(&above, &rules, &[p(1, 0), p(2, 1)], next);
+    refused(&above, &rules, &[p(3, 0), p(2, 1)], next);
+    // From the side and from below it is entered.
+    let mut state = above.clone();
+    move_hero(&mut state, &rules, RED, 1, &[p(1, 0), p(1, 1), p(2, 1)]).unwrap();
+    assert_eq!(hero(&state, 1).0, p(2, 1));
+    let mut state = chart_world(&rules, 'C', p(1, 2));
+    move_hero(&mut state, &rules, RED, 1, &[p(2, 2), p(2, 1)]).unwrap();
+    // Standing on it, the hero leaves it toward none of the three tiles above.
+    for up in [p(1, 0), p(2, 0), p(3, 0)] {
+        refused(&state, &rules, &[up], from);
+    }
+    for side in [p(1, 1), p(3, 1), p(1, 2), p(2, 2), p(3, 2)] {
+        move_hero(&mut state.clone(), &rules, RED, 1, &[side]).unwrap();
+    }
+    // A hero placed on it at the start too.
+    let placed = chart_world(&rules, 'C', p(2, 1));
+    refused(&placed, &rules, &[p(2, 0)], from);
+    move_hero(&mut placed.clone(), &rules, RED, 1, &[p(2, 2)]).unwrap();
+}
+
+// covers: ADV-OBJ-004
+#[test]
+fn objects_visited_from_above_are_entered_and_left_across_their_top() {
+    let rules = movement_rules(true);
+    // An open chart from above, and up off it.
+    let mut state = chart_world(&rules, 'c', p(2, 0));
+    move_hero(&mut state, &rules, RED, 1, &[p(2, 1)]).unwrap();
+    assert_eq!(hero(&state, 1).0, p(2, 1));
+    move_hero(&mut state, &rules, RED, 1, &[p(3, 0)]).unwrap();
+    // A pile from above, visited from the tile above.
+    let mut state = chart_world(&rules, 'P', p(1, 0));
+    let outcome = state
+        .apply(
+            &rules.0,
+            &rules.1,
+            RED,
+            &AdventureCommand::MoveHero {
+                hero: HeroId::new(1),
+                path: vec![p(2, 1)],
+            },
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert_eq!(outcome.gains.len(), 1);
+    assert_eq!(hero(&state, 1).0, p(1, 0));
+}
+
+/// The world of [`chart_world`] with `row` as its middle row, its first object at (2, 1), and
+/// a second object of `object_type` over it, later in map order.
+fn stacked(
+    rules: &(Ruleset, AdventureRuleset),
+    row: &str,
+    object_type: Option<ObjectTypeId>,
+    at: Pos,
+) -> Result<AdventureState, SetupError> {
+    let mut setup = world(
+        &["gggggggggggggggg", row, "gggggggggggggggg"],
+        1,
+        vec![
+            hero_at(1, 0, at, &[PEASANT]),
+            hero_at(2, 1, p(12, 2), &[PEASANT]),
+        ],
+    );
+    let mut object = setup.map.objects[0];
+    object.object_type = object_type;
+    setup.map.objects.push(object);
+    AdventureState::new(&rules.0, &rules.1, &setup, &mut draws())
+}
+
+// covers: ADV-OBJ-003, ADV-OBJ-004
+#[test]
+fn a_tile_visited_from_two_objects_visits_the_last_still_on_the_map() {
+    let rules = movement_rules(true);
+    // A pile, then a chart: the step enters the chart; the pile stays.
+    let mut state = stacked(&rules, "ggPggggggggggggg", Some(CHART), p(0, 1)).unwrap();
+    move_hero(&mut state, &rules, RED, 1, &[p(1, 1), p(2, 1)]).unwrap();
+    assert_eq!(hero(&state, 1).0, p(2, 1));
+    assert!(!state.is_removed(0));
+    // A chart, then a pile: the step visits the pile from (1, 1); once the pile is gone, the
+    // chart is entered.
+    let mut state = stacked(&rules, "ggCggggggggggggg", Some(WOOD_PILE), p(0, 1)).unwrap();
+    move_hero(&mut state, &rules, RED, 1, &[p(1, 1), p(2, 1)]).unwrap();
+    assert_eq!(hero(&state, 1).0, p(1, 1));
+    assert!(state.is_removed(1));
+    move_hero(&mut state, &rules, RED, 1, &[p(2, 1)]).unwrap();
+    assert_eq!(hero(&state, 1).0, p(2, 1));
+    // The last object decides the test from above too: a chart over an open chart is not
+    // entered from above, an open chart over a chart is.
+    let state = stacked(&rules, "ggcggggggggggggg", Some(CHART), p(2, 0)).unwrap();
+    refused(
+        &state,
+        &rules,
+        &[p(2, 1)],
+        AdventureCommandError::FromAbove { step: 0 },
+    );
+    let mut state = stacked(&rules, "ggCggggggggggggg", Some(OPEN_CHART), p(2, 0)).unwrap();
+    move_hero(&mut state, &rules, RED, 1, &[p(2, 1)]).unwrap();
+    // A blocker over a pile: the tile is refused, as a blocker's is, and a hero may stand there.
+    let state = stacked(&rules, "ggPggggggggggggg", None, p(0, 1)).unwrap();
+    refused(
+        &state,
+        &rules,
+        &[p(1, 1), p(2, 1)],
+        AdventureCommandError::Visit { step: 1 },
+    );
+    assert!(stacked(&rules, "ggPggggggggggggg", None, p(2, 1)).is_ok());
+    // And whether a hero may start there: on a pile under a chart, not on a chart under a pile.
+    assert!(stacked(&rules, "ggPggggggggggggg", Some(CHART), p(2, 1)).is_ok());
+    assert_eq!(
+        stacked(&rules, "ggCggggggggggggg", Some(WOOD_PILE), p(2, 1)),
+        Err(SetupError::HeroTile {
+            hero: HeroId::new(1),
+            error: StandError::Visited,
+        })
+    );
+}
+
+// covers: ADV-MAP-001, ADV-OBJ-003
+#[test]
+fn no_hero_starts_on_the_tile_of_an_object_visited_from_a_neighbour() {
+    let rules = movement_rules(true);
+    let start = |row: &str| {
+        AdventureState::new(
+            &rules.0,
+            &rules.1,
+            &world(&[row], 1, vec![hero_at(1, 0, p(1, 0), &[PEASANT])]),
+            &mut draws(),
+        )
+    };
+    // A pile, a fire, a guard (visited from a neighbour, built or not).
+    for row in ["gPg", "gFg", "gKg"] {
+        assert_eq!(
+            start(row).map(|_| ()),
+            Err(SetupError::HeroTile {
+                hero: HeroId::new(1),
+                error: StandError::Visited,
+            }),
+            "{row}"
+        );
+    }
+    // Entered objects (built or not) and a blocker's visitable tiles, like a town's gate.
+    for row in ["gCg", "gcg", "gOg", "gVg", "gTg"] {
+        assert!(start(row).is_ok(), "{row}");
+    }
+    // Once the pile is gone, its tile is one to stand on.
+    let mut state = visit_world(&rules, "gPgggggggggggggg");
+    assert_eq!(
+        state.check_stand(&rules.1, p(1, 0)),
+        Err(StandError::Visited)
+    );
+    move_hero(&mut state, &rules, RED, 1, &[p(1, 0)]).unwrap();
+    assert_eq!(state.check_stand(&rules.1, p(1, 0)), Ok(()));
 }

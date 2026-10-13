@@ -75,9 +75,13 @@ pub(crate) const ANY_PILE: ObjectTypeId = ObjectTypeId::from_raw(2);
 pub(crate) const FIRE: ObjectTypeId = ObjectTypeId::from_raw(3);
 pub(crate) const TOWER: ObjectTypeId = ObjectTypeId::from_raw(4);
 pub(crate) const GUARD: ObjectTypeId = ObjectTypeId::from_raw(5);
+pub(crate) const CHART: ObjectTypeId = ObjectTypeId::from_raw(6);
+pub(crate) const OPEN_CHART: ObjectTypeId = ObjectTypeId::from_raw(7);
 
 /// [`rules`]' object types: a wood pile (3–6), a gold pile (5–10 × 100), a random pile of the two,
-/// a fire (2–3 wood and 100 gold per wood), a tower revealing radius 3 and a guard of key 0.
+/// a fire (2–3 wood and 100 gold per wood), a tower revealing radius 3, a guard of key 0, and two
+/// Cartographers of grass for 1 000 gold (E08 T14a): a chart not visited from above, as the
+/// original's, and an open chart that is.
 fn object_types() -> Vec<ObjectTypeDef> {
     let n = |v| NonZeroU32::new(v).unwrap();
     let ty = |k: &str, visit, kind| ObjectTypeDef {
@@ -129,7 +133,20 @@ fn object_types() -> Vec<ObjectTypeDef> {
             Visit::Neighbour,
             ObjectKindDef::KeyGuard { key: 0 },
         ),
+        ty("t:chart", Visit::Enter, chart()),
+        ObjectTypeDef {
+            from_above: true,
+            ..ty("t:open_chart", Visit::Enter, chart())
+        },
     ]
+}
+
+/// A Cartographer's kind: grass for 1 000 gold.
+fn chart() -> ObjectKindDef {
+    ObjectKindDef::RevealTerrain {
+        terrains: vec![key("t:grass")],
+        price: vec![(key("t:gold"), 1000)],
+    }
 }
 
 /// The rules the setup and state tests use: the terrains `t:grass` (land), `t:sea` (water) and
@@ -371,6 +388,8 @@ fn tile_of(
         'F' => (GRASS, None, Some((1, 1, Some(FIRE)))),
         'O' => (GRASS, None, Some((0, 1, Some(TOWER)))),
         'K' => (GRASS, None, Some((1, 1, Some(GUARD)))),
+        'C' => (GRASS, None, Some((1, 1, Some(CHART)))),
+        'c' => (GRASS, None, Some((1, 1, Some(OPEN_CHART)))),
         _ => (GRASS, None, None),
     }
 }
@@ -380,7 +399,8 @@ fn tile_of(
 /// `W` the same with a cobblestone road, `d` grass with a dirt road; on grass, `B` an object's
 /// blocked tile, `V` its visitable tile, `T` both (a town's gate), `P` a wood pile blocking and
 /// visited on its tile, `F` a fire likewise, `O` a tower's visitable tile (entered), `K` a guard
-/// blocking and visited on its tile.
+/// blocking and visited on its tile, `C` a chart (a Cartographer not visited from above) likewise,
+/// `c` an open chart (one that is) likewise.
 pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> AdventureSetup {
     let height = rows.len() / usize::from(levels);
     let width = rows[0].chars().count();

@@ -1,13 +1,13 @@
 //! What a viewer may know of the whole game (ADR-0017 points 1 and 2, E08 T8b1;
 //! `docs/06-security.md`, "Information hiding"): the game's public facts (the day, the players'
 //! colours, whose turn is running), the viewer's own treasury (E08 T13a; other players' never
-//! show) and each context's observation for the viewer, and the
+//! show) and open decision (T14b), each context's observation for the viewer, and the
 //! projection of the game's events. The seed, the streams and the state hash never show
 //! (ADR-0017 point 5).
 
 use alloc::vec::Vec;
 
-use h3_adventure::AdventureObservation;
+use h3_adventure::{AdventureObservation, Offer};
 use h3_contracts::PlayerId;
 
 use crate::command::GameEvent;
@@ -35,6 +35,10 @@ pub struct GameObservation {
     /// The viewer's treasury, by resource in the core's order (GAM-RES-001); empty for a viewer
     /// that is not a player of the game.
     pub treasury: Vec<u32>,
+    /// The viewer's first open decision (GAM-DEC-001, E08 T14b): an offer, its object named by
+    /// type and anchor, with its price; other players' never show. While it is open the
+    /// viewer's only legal commands are its answers.
+    pub decision: Option<Offer>,
     /// The adventure map as the viewer sees it.
     pub adventure: AdventureObservation,
 }
@@ -68,19 +72,24 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
         treasury: state
             .treasury(player)
             .map_or_else(Vec::new, <[u32]>::to_vec),
+        decision: state.decision(player).cloned(),
         adventure: state.adventure().observe(rules.core(), player),
     }
 }
 
 /// The event as `viewer` may see it, or `None` if it is hidden from it: the game's own events are
-/// public but a treasury's change, which shows to its owner only; an adventure event shows to the
-/// players who see it, naming the viewer alone among them
+/// public but a treasury's change and an offer's, which show to their owner only (E08 T13b,
+/// T14b); an adventure event shows to the players who see it, naming the viewer alone among them
 /// ([`h3_adventure::AdventureEvent::project`]).
 pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
     let Viewer::Player(player) = viewer;
     match event {
         GameEvent::Adventure(event) => event.project(player).map(GameEvent::Adventure),
-        GameEvent::ResourceGained { player: owner, .. } => (*owner == player).then_some(*event),
+        GameEvent::ResourceGained { player: owner, .. }
+        | GameEvent::ResourcePaid { player: owner, .. }
+        | GameEvent::OfferOpened { player: owner, .. }
+        | GameEvent::OfferRefused { player: owner, .. }
+        | GameEvent::OfferAnswered { player: owner, .. } => (*owner == player).then_some(*event),
         GameEvent::TurnEnded { .. }
         | GameEvent::DayStarted { .. }
         | GameEvent::TurnStarted { .. } => Some(*event),

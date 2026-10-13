@@ -2,13 +2,13 @@
 //! events and their sink. A game command wraps a context's command or is the game's own; the game
 //! checks turn and phase, the context its rules (E08 T6b: `EndTurn`; T7b: the adventure's
 //! `MoveHero`; `observe` and `project` are in `observe.rs`, T8b1; `legal_commands` in
-//! `legal.rs`, T8b2a).
+//! `legal.rs`, T8b2a; T14b: the pending decisions and their answers, in `state.rs`).
 
 use core::fmt;
 
-use h3_adventure::{AdventureCommand, AdventureCommandError, AdventureEvent};
+use h3_adventure::{AdventureCommand, AdventureCommandError, AdventureEvent, ObjectTypeId, Pos};
 use h3_content::ResourceId;
-use h3_contracts::PlayerId;
+use h3_contracts::{HeroId, PlayerId};
 
 use crate::{GameRuleset, GameState};
 
@@ -28,6 +28,19 @@ pub enum GameCommand {
     EndTurn,
     /// A command to the adventure context, given in the actor's turn.
     Adventure(AdventureCommand),
+    /// Answers the actor's first open decision (ADR-0017 point 6, GAM-DEC-001; E08 T14b), in its
+    /// turn or not.
+    Answer(Answer),
+}
+
+/// An answer to a pending decision (ADR-0017 point 6): increment 2's decisions are offers,
+/// answered yes or no; later kinds add variants.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Answer {
+    /// Yes: the offer's price is paid and the offer carried out.
+    Accept,
+    /// No: the decision closes and nothing else changes (a later visit asks again).
+    Decline,
 }
 
 /// Why a command was rejected; a rejected command changes nothing.
@@ -37,6 +50,10 @@ pub enum GameCommandError {
     UnknownPlayer(PlayerId),
     /// The actor's turn is not running.
     NotYourTurn(PlayerId),
+    /// The actor has an open decision: its only legal commands are the answers (GAM-DEC-001).
+    DecisionOpen,
+    /// An answer, but the actor has no open decision.
+    NoDecision,
     /// The adventure context rejected the command.
     Adventure(AdventureCommandError),
 }
@@ -46,6 +63,8 @@ impl fmt::Display for GameCommandError {
         match self {
             Self::UnknownPlayer(p) => write!(f, "player {} is not in the game", p.raw()),
             Self::NotYourTurn(p) => write!(f, "it is not player {}'s turn", p.raw()),
+            Self::DecisionOpen => f.write_str("an open decision waits for its answer"),
+            Self::NoDecision => f.write_str("no decision is open"),
             Self::Adventure(error) => write!(f, "{error}"),
         }
     }
@@ -54,8 +73,9 @@ impl fmt::Display for GameCommandError {
 impl core::error::Error for GameCommandError {}
 
 /// What happened in the game. The game's own events are public facts (whose turn it is and the
-/// day) but a treasury's change, which its owner alone sees (E08 T13b); an adventure event
-/// carries the players who may see it (E08 T8a).
+/// day) but a treasury's change and an offer's, which their owner alone sees (E08 T13b, T14b); an
+/// adventure event carries the players who may see it (E08 T8a). An offer is named as the
+/// observation names its object, by type and anchor, never by index (ADR-0016 point 6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameEvent {
     /// A player ended its turn.
@@ -85,6 +105,52 @@ pub enum GameEvent {
         /// The amount the treasury actually gained (a gain saturates at 2³¹ − 1).
         amount: u32,
     },
+    /// A visit's offer opened as a pending decision of its player (GAM-DEC-001, ADV-VIS-001):
+    /// its treasury can pay the price, which the object's type gives.
+    OfferOpened {
+        /// The player.
+        player: PlayerId,
+        /// The hero whose visit made the offer.
+        hero: HeroId,
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// The object's anchor.
+        anchor: Pos,
+    },
+    /// A visit's offer did not open: its player's treasury cannot pay the price (ADR-0017 point
+    /// 10; ADV-VIS-001, the original's message).
+    OfferRefused {
+        /// The player.
+        player: PlayerId,
+        /// The hero whose visit made the offer.
+        hero: HeroId,
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// The object's anchor.
+        anchor: Pos,
+    },
+    /// A player answered its open decision, which closed (GAM-DEC-001). An accepted offer's
+    /// payment and effect follow.
+    OfferAnswered {
+        /// The player.
+        player: PlayerId,
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// The object's anchor.
+        anchor: Pos,
+        /// Whether the player accepted.
+        accepted: bool,
+    },
+    /// A player's treasury paid a resource of an accepted offer's price (GAM-RES-001): one event
+    /// per resource of the price, in its order.
+    ResourcePaid {
+        /// The player.
+        player: PlayerId,
+        /// The resource.
+        resource: ResourceId,
+        /// The amount paid.
+        amount: u32,
+    },
 }
 
 /// Receiver of the game's events.
@@ -109,7 +175,7 @@ impl Sink for alloc::vec::Vec<GameEvent> {
 }
 
 /// The adventure context's sink inside a game's: its events become game events.
-struct AdventureSink<'a, S>(&'a mut S);
+pub(crate) struct AdventureSink<'a, S>(pub(crate) &'a mut S);
 
 impl<S: Sink> h3_adventure::Sink for AdventureSink<'_, S> {
     fn emit(&mut self, event: AdventureEvent) {
@@ -133,8 +199,9 @@ pub fn apply<S: Sink>(
     let Actor::Player(player) = actor;
     match command {
         GameCommand::EndTurn => state.end_turn(rules, player, sink),
+        GameCommand::Answer(answer) => state.answer(rules, player, answer, sink),
         GameCommand::Adventure(command) => {
-            state.check_acting(player)?;
+            state.check_ready(player)?;
             let outcome = state
                 .adventure_mut()
                 .apply(
@@ -146,6 +213,9 @@ pub fn apply<S: Sink>(
                 )
                 .map_err(GameCommandError::Adventure)?;
             state.gain(player, &outcome.gains, sink);
+            if let Some(offer) = outcome.offer {
+                state.open(player, offer, sink);
+            }
             Ok(())
         }
     }

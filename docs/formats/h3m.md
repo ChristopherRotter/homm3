@@ -161,6 +161,8 @@ content and draws nothing; it rejects what the current increment cannot represen
   Unsupported: a random hero (class 70), a campaign placeholder (214), a random stack (the 14 codes
   below the format's "none"), a hero standing on a town's blocked tile (VCMI moves it to its own
   town's entrance, an "H3M format quirk", `CGameState::placeHeroesInTowns`; towns are E09).
+  A hero on the visitable tile of an object visited from a neighbouring tile (a pile, a campfire,
+  a border guard) imports but fails validation (ADV-MAP-001, E08 T14a); no shipped map has one.
   Ignored until hero details exist (increment 3, `ADV-STUB-1`): name, portrait, experience,
   skills, artifacts, spells, primary skills, formation, patrol, biography, sex.
 
@@ -170,7 +172,9 @@ validate whole (`Adventures of Jared Haret`, `Faeries`, `Knee Deep in the Dead`,
 `Race for Ardintinny`, `Tutorial.tut`, `Unholy Quest` and the user's `Untitled` and
 `experiment`); 129 are unsupported for a hero generated at a main town, 18 for a random hero, 5 for
 a guarded resource pile (`Myth and Legend` among them, whole in v1), 3 for a hero standing in a town
-(the first reason found counts: players, the static layer, then the heroes).
+(the first reason found counts: players, the static layer, then the heroes). E08 T14a's run (import v3,
+the same outcomes): no tile of a static layer is the visitable tile of two or more objects (0 of
+101 246 visitable tiles, heroes left out; which object such a tile visits: ADV-OBJ-003).
 
 ## The subset we write (E04a T2)
 

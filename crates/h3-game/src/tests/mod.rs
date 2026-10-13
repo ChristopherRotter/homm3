@@ -1,9 +1,11 @@
 //! Tests of the game's rules bundle and setup (E08 T6a); the state, the starting armies' draw
 //! and the turns in `state.rs` (T6b); the observation and the projection in `observe.rs`
-//! (T8b1); the legal commands in `legal.rs` (T8b2a). The rulesets are built in code (an application crate takes no pack adapter as a
+//! (T8b1); the legal commands in `legal.rs` (T8b2a); the pending decisions in `decisions.rs`
+//! (T14b). The rulesets are built in code (an application crate takes no pack adapter as a
 //! dev-dependency); the core still needs battle parameters until the content split (ADR-0015
 //! point 3).
 
+mod decisions;
 mod legal;
 mod moves;
 mod observe;
@@ -166,17 +168,30 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                 passage: Passage::Impassable,
             },
         ],
-        object_types: vec![ObjectTypeDef {
-            key: key("t:pile"),
-            name: "Pile".into(),
-            visit: Visit::Neighbour,
-            from_above: true,
-            kind: ObjectKindDef::Pickup(PickupDef::Resource {
-                resource: key("t:gold"),
-                amount: [5, 10],
-                multiplier: NonZeroU32::new(100).unwrap(),
-            }),
-        }],
+        // A gold pile, and a Cartographer of grass for 2 500 gold (E08 T14b).
+        object_types: vec![
+            ObjectTypeDef {
+                key: key("t:pile"),
+                name: "Pile".into(),
+                visit: Visit::Neighbour,
+                from_above: true,
+                kind: ObjectKindDef::Pickup(PickupDef::Resource {
+                    resource: key("t:gold"),
+                    amount: [5, 10],
+                    multiplier: NonZeroU32::new(100).unwrap(),
+                }),
+            },
+            ObjectTypeDef {
+                key: key("t:chart"),
+                name: "Chart".into(),
+                visit: Visit::Enter,
+                from_above: false,
+                kind: ObjectKindDef::RevealTerrain {
+                    terrains: vec![key("t:grass")],
+                    price: vec![(key("t:gold"), 2500)],
+                },
+            },
+        ],
         params: Some(AdventureParamsDef {
             native_cost: cost,
             land_points: vec![1300, 1360, 1430, 1500],

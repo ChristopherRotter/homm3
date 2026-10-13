@@ -7,7 +7,8 @@
 //!   masks, fork, state hash, a player's observation (`h3_game`'s view as it is: a flat encoding
 //!   waits for E13's macro-actions).
 //! * [`action`]: the factorized action (an entry and a destination tile) and its masks, built from
-//!   the reachable-tiles query (provisional until E13's macro-actions).
+//!   the reachable-tiles query and the open decision's answers (provisional until E13's
+//!   macro-actions).
 //! * [`rollout`]: the uniformly random legal agent.
 //! * [`replay`]: the adventure replay model (T9b): the rules' identity, the map by content hash,
 //!   the seed, the game commands and state hashes.
@@ -18,7 +19,8 @@ pub mod replay;
 pub mod rollout;
 
 pub use action::{
-    ACTION_ENCODING_VERSION, Action, END_TURN, ENTRY_COUNT, EntryMask, HERO_SLOTS, MOVE_BASE,
+    ACCEPT, ACTION_ENCODING_VERSION, Action, DECLINE, END_TURN, ENTRY_COUNT, EntryMask, HERO_SLOTS,
+    MOVE_BASE,
 };
 pub use env::{AdventureEnv, StepError, StepResult};
 pub use rollout::{RolloutResult, random_rollout};

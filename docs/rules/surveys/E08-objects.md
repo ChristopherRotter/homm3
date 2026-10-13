@@ -132,6 +132,27 @@ A picked-up pile, a campfire and a passed border guard leave the map (0x4AABB0, 
 visit; not read inside); VCMI `removeObject`. Their blocked tiles become free for everyone; the
 removable list (0x63A9D0) holds 9, 12, 76, 79 and 212 (the gate is never removed by a visit).
 
+### 2.5 Which object a tile visits (E08 T14a)
+
+A map tile records one object: its class (+0x1E), subclass (+0x22), data word (+0x0) and index
+(+0x24; `structs.toml`'s `map_item`). 0x505610 sets them from the tile's draw list (+0xE), the
+objects drawn there bottom to top: walking it from the top, the first object whose template marks
+the tile visitable. At load every object is placed in map order (0x4FD690 calls 0x505B20 per
+object, which inserts its draw entries with 0x505230 and recomputes each tile), so the last object
+in map order wins unless the draw order puts it under an earlier one (0x505230 appends an entry
+whose layer byte is above the last one's; an equal layer compares footprints, a lower one goes
+earlier: not read). A removal recomputes the tile the same way. The step (§2.1), the visit
+(0x4A84F0's switch on the tile's class) and the pathfinder's test from above (§2.3, through
+0x4FCBD0) all read that one object, so one order serves both modes, and the mode follows the
+object. VCMI keeps every object of a tile: `visitObjectOnTile` visits the last
+(`visitableObjects.back()`) after an entering step, `blockingVisit` the first blocking one, and
+`canMoveBetween` tests every blocking visitable one from above.
+
+The engine (T14a): the last object in map order still on the map, for both modes and for §2.3;
+T13b's neighbour visit took the first (VCMI's), changed with the user's leave (2026-10-12). It
+matters for no shipped map: none of the 164 has a tile visited from two objects (0 of 101 246
+visitable tiles, heroes left out; `crates/h3-map/examples/original_data.rs`).
+
 ## 3. Pickups
 
 ### 3.1 Resource piles (class 79)

@@ -202,7 +202,7 @@ id       = "ADV-MOV-007"
 title    = "Where a hero may step"
 context  = "adventure"
 status   = "implemented"
-summary  = "A hero steps to one of the eight neighbouring tiles on the same level inside the map, onto a tile it may stand on (ADV-MAP-001): land terrain (water only by boat, not before boats exist; rock never), no object's blocked tile, no other hero. In increment 1 an object's visitable tile is not entered either (a visit ends a move and comes with increment 2, ADR-0016 point 4). A hero's own tile is always left, a town's gate too. E08 T4: the passages; T7b: `MoveHero` and the reachable-tiles query."
+summary  = "A hero steps to one of the eight neighbouring tiles on the same level inside the map, onto a tile it may stand on (ADV-MAP-001): land terrain (water only by boat, not before boats exist; rock never), no object's blocked tile, no other hero. In increment 1 an object's visitable tile is not entered either (a visit ends a move and comes with increment 2, ADR-0016 point 4). A hero's own tile is always left, a town's gate too. E08 T4: the passages; T7b: `MoveHero` and the reachable-tiles query. Increment 2: a step onto a visitable tile visits its object (ADV-OBJ-003; E08 T13b, T14a), and an object not visited from above closes the steps across its tile's top (ADV-OBJ-004, T14a)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -385,8 +385,14 @@ id       = "ADV-MAP-001"
 title    = "Where a hero may stand"
 context  = "adventure"
 status   = "implemented"
-summary  = "A hero stands on a tile of the map whose terrain is walked on land (not water without a boat, never rock), which no object blocks unless an object is visited from it, and no other hero stands on. A visitable tile is allowed even where a mask also blocks it (a hero may start on a town's gate, which the town's masks mark both ways; VCMI asks for visitable first). One check for the setup and for movement (ADR-0015 point 4): a setup that breaks it is rejected; T7's steps add the visitable tiles of increment 1 and the step rules (ADV-MOV-007). E08 T5a."
+summary  = "A hero stands on a tile of the map whose terrain is walked on land (not water without a boat, never rock), which no object blocks unless an object is visited from it, and no other hero stands on. A visitable tile is allowed even where a mask also blocks it (a hero may start on a town's gate, which the town's masks mark both ways; VCMI asks for visitable first). One check for the setup and for movement (ADR-0015 point 4): a setup that breaks it is rejected; T7's steps add the visitable tiles of increment 1 and the step rules (ADV-MOV-007). E08 T5a. E08 T14a: the setup also refuses a tile whose object (the one a visit there concerns, ADV-OBJ-003) is visited from a neighbouring tile (`StandError::Visited`): no move enters such a tile, and the editor places no hero on one (no shipped map does; the 9 that import whole stay valid); a hero placed on an entered object's tile stays allowed, and ADV-OBJ-004 applies when it leaves."
 numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T11a, survey docs/rules/surveys/E08-objects.md §2.1): hero_move_step (0x4805E0) never moves a hero onto the visitable tile of a class on the 'cannot be entered' list (0x63AA58); it visits from the tile before (0x480240)"
+  confidence = "medium"
+  note       = "E08 T14a's setup refusal rests on it: what the original does with a map that places a hero there was not read (the editor prevents it)."
 
   [[rule.source]]
   kind       = "vcmi"
@@ -429,10 +435,10 @@ numeric  = "integer"
 
 [[rule]]
 id       = "ADV-OBJ-003"
-title    = "Visit modes: a step toward a neighbour-visited object visits it from the tile before"
+title    = "Visit modes: an object's visitable tile is entered, or visited from the tile before"
 context  = "adventure"
 status   = "implemented"
-summary  = "A tile an object is visited from ends a path: a step onto it visits the object, and no step follows (`PastVisit`). An object of a type visited from a neighbouring tile (piles, random resources, campfires, border guards; a border gate for a holder without its key) is not entered: the step toward its visitable tile is paid as if taken (ADV-MOV-003's price, and ADV-MOV-006's drop to 0 below the cheapest next step from that tile), the hero stays on its tile, and the visit runs. Which object: the first in map order still on the map that is visited from the tile (VCMI's order; an agent's call while no shipped map is known to stack visitable tiles). E08 T13b builds the neighbour visit for pickups; a step onto any other object's visitable tile (a blocker's, or one whose visit a later task builds) is rejected (`Visit`), and the reachable-tiles query offers a pickup's tile as a destination, never a tile on the way. The entered mode (the hero steps onto the tile; the Cartographer, observatories, tents) comes with E08 T14, together with ADV-OBJ-004."
+summary  = "A tile an object is visited from ends a path: a step onto it visits the object, and no step follows (`PastVisit`). An object of a type visited from a neighbouring tile (piles, random resources, campfires, border guards; a border gate for a holder without its key) is not entered: the step toward its visitable tile is paid as if taken (ADV-MOV-003's price, and ADV-MOV-006's drop to 0 below the cheapest next step from that tile), the hero stays on its tile, and the visit runs. Any other type is entered: the step onto the tile is priced as a step (ADV-MOV-003 to ADV-MOV-006), the hero stands there, and the visit runs. Which object a tile visits: the last in map order still on the map that is visited from it, for both modes (one object per tile, as the original's map tile records; VCMI takes the last for an entered tile, the first for a neighbour visit); its type decides the mode. No shipped map has a tile visited from two objects (E08 T14a: 0 of 101 246 visitable tiles over the 164 maps). A visit runs only once its kind's is built (`ObjectKind::visit_built`; ADR-0016 point 4); any other visitable tile is refused (`Visit`): a blocker's, the observatories', tents', guards' and gates' (E08 T15). E08 T13b: the neighbour mode for pickups; T14a: the entered mode, built for the Cartographer (no effect until T14b's offer), the order, and the reachable-tiles query's destinations in both modes (never a tile on the way)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -441,12 +447,38 @@ numeric  = "integer"
   confidence = "high"
 
   [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T14a, survey §2.5): a map tile records one object, its class, subclass and index (tile_refresh_object 0x505610: the topmost object of the tile's draw list visited from it), set as each object is placed in map order at load (0x4FD690, 0x505B20); the step, the visit (visit_object 0x4A84F0 switches on the tile's class) and the pathfinder (tile_object_class 0x4FCBD0) read that one object. The draw order (0x505230) can put a later object under an earlier one: not read; the engine takes the last in map order"
+  confidence = "medium"
+
+  [[rule.source]]
   kind       = "vcmi"
-  ref        = "server/CGameHandler.cpp moveHero: blockingVisit visits the first blocking-visitable object of the tile after charging the step's points (tmh.movePoints), without the drop to 0; lib/pathfinder/PathfindingRules.cpp MovementAfterDestinationRule: a visit ends the path; CGResource::initObj and the campfire mark blockVisit"
+  ref        = "server/CGameHandler.cpp moveHero: blockingVisit visits the first blocking-visitable object of the tile after charging the step's points (tmh.movePoints), without the drop to 0; visitObjectOnTile visits the tile's last visitable object (visitableObjects.back()) after an entering step; lib/pathfinder/PathfindingRules.cpp MovementAfterDestinationRule: a visit ends the path; CGResource::initObj and the campfire mark blockVisit"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
   retrieved  = "2026-10-12"
   confidence = "high"
-  note       = "Agrees on the mode, the price and the end of the path; the drop to 0 is ADV-Q3's reading (D-3)."
+  note       = "Agrees on the modes, the price and the end of the path; the drop to 0 is ADV-Q3's reading (D-3). On a tile visited from two objects VCMI's neighbour visit takes the first, the engine the last (the original's one object per tile; E08 T14a, the user's leave of 2026-10-12)."
+
+[[rule]]
+id       = "ADV-OBJ-004"
+title    = "Not from above: no step onto or off an object's visitable tile across its top"
+context  = "adventure"
+status   = "implemented"
+summary  = "An object whose type is not visited from above (`from_above` false; in the packs the entered Cartographers, observatories and Keymaster's tents, the original's classes 10, 13, 58 and 60) is not entered from the three tiles above its visitable tile (a step down, down-left or down-right onto it), and a walking hero standing on that tile does not step up, up-left or up-right off it. The object is the one a visit of the tile concerns (ADV-OBJ-003: the last in map order still on the map); an untyped blocker has no setting and closes nothing. `MoveHero` rejects such a step (`FromAbove`), the reachable-tiles query neither reaches the tile from above nor leaves it upward. Flying (which may leave upward) comes with increment 3. E08 T14a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T11a, survey docs/rules/surveys/E08-objects.md §2.3): pathfinder_expand (0x4B2300) skips a step in directions 3-5 of step_directions (0x678150) onto a tile whose class is not on the 'visitable from above' list (0x63AB00; settings +0x1 at 0x4B26B1) and sets the 'walking blocked' flag for directions 7, 0 and 1 off such a tile (0x4B2682); the list holds 9, 12, 76, 79 and 212, not 10, 13, 58 or 60. E08 T14a: both tests read the tile's one recorded class (tile_object_class 0x4FCBD0)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapping/CMap.cpp canMoveBetween: checkForVisitableDir both ways (into the destination and out of the source) against each blocking visitable object's template (isVisitableFrom); ObjectTemplate.cpp isOnVisitableFromTopList (the same classes for ours)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/CMap.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+  note       = "Agrees for a walking hero; VCMI tests every blocking visitable object of the tile, the original the tile's one."
 
 [[rule]]
 id       = "ADV-OBJ-005"
@@ -547,8 +579,8 @@ numeric  = "integer"
 id       = "ADV-VIS-001"
 title    = "The Cartographers"
 context  = "adventure"
-status   = "specified"
-summary  = "A Cartographer offers its visitor's owner, once per player and kind, to reveal every tile of its terrains on both levels for 1 000 gold: water; dirt, sand, grass, snow, swamp, rough and lava; subterranean (rock in none). With less gold there is no offer; declining keeps the offer for a later visit (T14). Data: packs/base/adventure.toml (cartographer_*)."
+status   = "implemented"
+summary  = "A Cartographer offers its visitor's owner, once per player and kind, to reveal every tile of its terrains on both levels for 1 000 gold: water; dirt, sand, grass, snow, swamp, rough and lava; subterranean (rock in none). With less gold there is no offer (the owner is told so); declining keeps the offer for a later visit. A kind already bought offers nothing. Data: packs/base/adventure.toml (cartographer_*). E08 T14b: the visit's `Offer` in `AdventureOutcome`, opened as a pending decision by `h3_game` (GAM-DEC-001) or refused (`OfferRefused`); accepted, the price is paid and `AdventureState::accept_offer` explores the kind's terrains for the owner (`TilesRevealed`, the owner alone) and marks the kind bought (a byte of player bits per type, as the original's flags); the owner's observation shows its purchases and open offer. The water Cartographer stands in the water and is unreachable without boats (increment 3)."
 numeric  = "integer"
 
   [[rule.source]]

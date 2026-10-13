@@ -1049,3 +1049,199 @@ already current).
   566 626 021 Ir, `random-play-duel-36` 510 210 757 → 439 577 005 Ir; `fork-xl-144` +1.0 %
   (343 600 056 → 347 100 056, under the gate, not re-baselined). `docs/02-architecture.md` §8's
   numbers follow in #125 (a shared path).
+
+### Checkpoint after T13a + T13b and T14a + T14b: the Cartographer (2026-10-12, `adventure/e08-t14`)
+
+The user merged #125 and #132 and accepted T13's four calls: the starting rows in the adventure
+part; the neighbour visit takes the first object in map order (T14a may revisit it: if the
+original visits one order in both modes, the neighbour visit follows it, flagged at the next
+checkpoint); the diagonal cost in one multiplication with the two re-baselines (asked first what
+changed: only the computation, equal for every cost); every game at normal difficulty until T14b
+adds a difficulty option with the replay format's bump (the user: yes). The round: T14 in two
+parts on one pull request, T14a the entered visit and ADV-OBJ-004, T14b the Cartographer's offer
+end to end with the env's action encoding v2 and the replay format v2.
+
+**T14a — the entered visit and not from above.**
+- **The entered visit** (ADV-OBJ-003's other half): a step onto the visitable tile of an object
+  whose type is entered (`Visit::Enter`) and whose visit is built enters it: priced as a step
+  (ADV-MOV-003 to -006, the drop to 0 included), its step event and reveal as any step's, the hero
+  stands there, and the move ends (`PastVisit` after it). The mode follows the type, the effect
+  the kind: `ObjectKind::visit_built` (pickups and, from T14a, `RevealTerrain`) is the one place
+  T14b and T15 extend, and `visit` dispatches on the kind (the Cartographer: nothing yet, no
+  outcome, no event). The observatories, tents, guards, gates and blockers keep `Visit`.
+- **ADV-OBJ-004**: an object whose type is not `from_above` closes the three steps across its
+  visitable tile's top, both ways (down onto it, up off it; walking: flying is increment 3, no
+  flag). `AdventureCommandError::FromAbove { step }`, checked after `Blocked` and before `Visit`.
+  Applied to every typed object by its setting, not only the entered ones (agent's call: the
+  original tests the class's flag; every neighbour-visited class is on its list, so the packs
+  change nothing); an untyped blocker has no setting and closes nothing (a town's gate stays
+  leavable upward until towns, E09).
+- **The query**: an entered object's tile is a destination with the points left on it, never
+  expanded, never reached from above; from the hero's own tile, when it closes upward, the three
+  steps up are skipped in the start's own expansion, peeled off the loop (`expand::<START>`,
+  inlined) so the hot loop has no test for it.
+- **Which object a tile visits** (T13's call 2 revisited with the user's leave; flagged for the
+  checkpoint): the original keeps one object per map tile (class, subclass, index; 0x505610 takes
+  the topmost object of the tile's draw list visited from it, the objects placed in map order at
+  load, 0x4FD690, 0x505B20), and the step, the visit and the test from above read that one (survey
+  §2.5). The engine takes the last object in map order still on the map, for both modes and for
+  ADV-OBJ-004; T13b's neighbour visit took the first (VCMI's `blockingVisit`; VCMI's entered visit,
+  `visitObjectOnTile`, takes the last). Not read: the draw order's equal-layer and lower-layer
+  cases (0x505230), which can put a later object under an earlier one.
+- **Setup** (the inbox's case from T13b's review; agent's call): `check_stand` refuses a tile
+  whose object (the one a visit concerns) is visited from a neighbour, built or not
+  (`StandError::Visited`): no move enters such a tile. A hero on an entered object's tile, or a
+  blocker's (a town's gate), stays allowed; ADV-OBJ-004 applies when it leaves. The import is
+  unchanged (such a map imports and fails validation; none does), `MAP_IMPORT_VERSION` stays 3.
+- **Shipped maps** (`original_data` counts stacked visitable tiles now): none of the 164 has a
+  tile visited from two or more objects (0 of 101 246 visitable tiles of the static layers, heroes
+  left out); the import's outcomes are unchanged (9 imported and valid; 129, 18, 5 and 3
+  unsupported).
+- **Properties**: a land Cartographer is the play properties' seventh kind (atomicity, legality
+  consistency, conservation, isolation, hygiene, clone equivalence and determinism hold with it);
+  random play entered a Cartographer 3 times in a run of 48 cases (counted once), and every later
+  step checks the query from its tile against `MoveHero`. The query property's maps have charts
+  of both settings and no hero on a pile. Fixed tests: entering (price, drop to 0, reveal,
+  `PastVisit`), not from above both ways, from-above types unaffected (an open chart, a pile), the
+  order (a pile and a chart stacked both ways, a removal, a blocker on top, the test from above
+  by the last object), the setup's refusal.
+- **Versions**: none bumped (no state, import or ruleset-part change; the charts of the tests are
+  test rules). Golden replays verify unchanged.
+- **Measured** (`bench-check`): the first build cost the query +1.03 % and random play +1.09 %;
+  the extra Ir were all in `Reach::search`'s own code, not the new calls (a variant with the old
+  loop and the new visit test cost the same). The test from above in the visit branch kept the
+  step's row (`dy`) live across the loop; testing the direction (3 to 5, live anyway) instead
+  removed it: `reach-xl-144` 565 798 491 Ir (−0.15 %), `random-play-duel-36` 438 912 898 (−0.15 %),
+  `fork-xl-144` +1.02 % as before T14a. No re-baseline.
+
+**T14b, first half — the Cartographer's offer as the first pending decision.**
+- **The visit** (ADV-VIS-001): entering a Cartographer whose type the visitor's owner has not
+  bought makes an offer, `AdventureOutcome.offer`: `Offer { hero, object_type, anchor, price }`,
+  the object by type and anchor (inbox T12b), so the offer is also what its owner sees. A type
+  already bought offers nothing (no event: the original's message is not modelled).
+- **The decision** (GAM-DEC-001, ADR-0017 points 6 and 10): `h3_game` opens the offer as the
+  actor's pending decision if its treasury can pay (`OfferOpened`), else `OfferRefused`; with one
+  open, `legal_commands` lists `Answer(Accept)` and `Answer(Decline)` only, `legal_moves` gives
+  nothing, and `EndTurn` or a move is rejected (`DecisionOpen`, after `NotYourTurn`).
+  `GameCommand::Answer` closes the actor's first decision, in its turn or not (`UnknownPlayer`,
+  then `NoDecision`): `OfferAnswered { accepted }`, and accepted, `ResourcePaid` per resource and
+  `AdventureState::accept_offer` (infallible): every tile of the type's terrains on every level
+  explored for the owner, `TilesRevealed { object_type, count }`, the type bought. All of them are
+  told to the owner alone. A decision blocks no one else (two players of one group, a decision
+  each, each answers its own). Agent's call (the brief): ADR-0017 point 10's checks at the answer
+  (the treasury can pay, the offer still stands) cannot fail in increment 2 and are not made, no
+  dead branch: nothing of the owner's but its answer runs while the decision is open, and no other
+  player's command reaches its treasury or purchases; the play properties apply every listed
+  answer at every step. T15's guard makes the second check reachable.
+- **State** (agent's calls): the purchases in the adventure state as the original's flags, a
+  byte of player bits per type in type order; the decisions in the game state in opening order.
+  Both are `None` until the first, then one block the forks share (never an empty list): a list
+  per fork cost `fork-xl-144` +2.65 % over T14a (356 300 056 Ir), a decision per player +2.94 %
+  (the players' clone and drop lost their plain copy); now 349 100 056 (+0.58 % over T14a, +1.60 %
+  on the baseline, not re-baselined). Query and random play unchanged (−0.14 %, −0.05 %).
+  Adventure state hash v5, game state hash v3; golden replays re-recorded (hashes only).
+- **Observation**: `AdventureObservation.bought` (the viewer's own purchases) and
+  `GameObservation.decision` (its first open decision, an `Offer`, price included); other
+  players' never show.
+- **Elsewhere**: the CLI's replay text reads and writes `<player> accept` and `<player> decline`
+  (format v1 still: nothing records an answer yet). The env is unchanged: with a decision open,
+  action encoding v1's masks are empty, and `random_rollout` would stop at an offer (no fixture map
+  has a Cartographer); encoding v2, the replay format v2 with the difficulty option and the
+  golden replays are the second half's.
+- **Properties**: plans draw a visitable land Cartographer for a quarter of their objects and a
+  difficulty (impossible, with no gold, in half the cases, so offers are refused until pickups
+  pay; the tests take the map's difficulty); random play gains `Visit` (a legal move onto or
+  toward a visitable tile) and arbitrary answers. Legality with decisions (the answers only, each
+  applies, no moves), `check_decisions` (an offer opens exactly when affordable, closes by its
+  answer, and only an accepted one buys), conservation with payments (exactly the answered
+  offer's price), isolation over purchases and decisions, the views against the events
+  (decision, purchases, payments, reveal counts). The hygiene property stops after the viewer's
+  own accepted offer (a reveal by terrain shows hidden tiles' terrain); an offer opened, refused
+  or declined shows nothing hidden, so the comparison goes on. With the visit steps it found
+  another player's move toward a pile the viewer never sees: the other game lacks the pile, and
+  the hero walks on in the viewer's sight where it stayed. Like a move one hero can pay and the
+  other cannot, an outcome that differs between the games now stops the comparison (the shrunk
+  case kept as a regression): after the review, the command's effect (accepted, each of the
+  actor's heroes' displacement, the steps told, the decisions), not where the heroes stand, which
+  the `moved` variation changes from the start (600 cases: 14 such stops, none on an `EndTurn`,
+  against 26 by absolute tiles, 21 of them on tiles that differed before). Over 48 cases (four runs,
+  counted once): 9 to 16 offers opened, 13 or 14 refused, 4 or 5 accepted, 4 to 10 declined.
+
+**T14b, second half — the env's answers and the game's difficulty in replays.**
+- **Action encoding v2** (ADR-0017 point 8): entries 0 `EndTurn`, 1–8 the hero slots, 9
+  `Accept`, 10 `Decline` (`ACCEPT`, `DECLINE`; `ENTRY_COUNT` 11). After a legal entry that takes
+  no tile (`EndTurn`, an answer) the tile head allows 0 alone, and such an entry decodes with tile
+  0 only (v1's rule for `EndTurn`, the battle's for non-cast entries); an illegal entry's tile mask
+  is empty. `legal_mask` sets the entries of `legal_commands`' commands and the slots with a legal
+  move, so with a decision open the answers are the only legal entries, each with tile 0 alone.
+  The review (runner's call, for the checkpoint): the first build ignored the tile head of these
+  entries with an empty mask, as the design note said, which gives a policy that always samples
+  the head a fully masked categorical (NaN) on exactly the entries a decision forces; reverted
+  before release, still v2. `action::encode` names a command as an action (the hero's slot, the
+  path's last tile); `decode` gives it back on the query's paths, another path to the same tile
+  becomes the query's. No C ABI (E05).
+- **The random agent** (`choose`): its entries are `legal_commands`' commands and the slots with
+  a move, one drawn uniformly as before, so it answers an open decision at even odds from its own
+  stream (agent's call: the uniform rule unchanged) and, without decisions, draws the same numbers
+  as v1 (the golden replays' commands and hashes are unchanged). `random_rollout`, the record and
+  the bench's rollouts play through offers.
+- **The difficulty** (the user, 2026-10-12): `AdventureEnv::reset_with_difficulty(seed,
+  difficulty)`, which later resets keep (`reset(seed)` keeps the last; a new env plays the
+  setup's, a map's import `DEFAULT_DIFFICULTY`), and `difficulty()`; the setup is copied only
+  when the difficulty changes. An unknown one is the game's build error,
+  `GameSetupError::Difficulty`, and leaves the env as it was: the difficulty is setup input,
+  checked as the rest of the setup. `h3 adventure run` and `bench` take `--difficulty N`
+  (default 1; a `u8`, an unknown row the setup's error); `verify` plays at the replay's.
+- **Replay format v2**: `Replay.difficulty`, beside the seed (agent's call: setup input like the
+  seed, not part of `ReplayHeader`, which `check` compares with the build; in the file the
+  `[replay]` table's `difficulty = n`, always written; the review: a file of format v2 or later
+  without it is malformed, `Format`, not a game at normal difficulty). `record_random` records the setup's,
+  `verify` builds the game at it whatever the map's import set (an unknown one is
+  `ReplayError::Setup`). The answers were already written (`<player> accept|decline`). Agent's call
+  (v1 files): as every battle format bump, a replay of another format version is refused,
+  `Incompatible("format_version")`; a v1 file has no difficulty and parses as normal (the battle
+  files' `serde(default)` for added fields), so the refusal is that typed one, given before the
+  map is read.
+- **Tests** (h3-sim): the duel with a land Cartographer near each hero, built in the tests (no
+  fixture map has one): on the nearest tile the hero reaches on day 1 by a last step not from
+  above. Fixed: the offer opened through `step`, the entry mask 9 and 10 only and no tile,
+  `EndTurn` and moves refused (`DecisionOpen`), the other player's answer `NoDecision`; a fork
+  during the decision declines while its parent accepts (payment, purchase, masks back); no
+  decision at impossible difficulty; the agent answers both ways and a rollout plays on; an
+  answer with another tile is refused (`InvalidAction`); encode
+  and decode round-trip; the reset's difficulty; a replay with answers at easy difficulty
+  verifies against the import at normal (normal is another game, 9 the setup's error); the
+  random record keeps its difficulty. The env's property plays this map at any difficulty with a
+  pick that enters a Cartographer (26 steps with an open decision over its 16 cases): the masks
+  against `legal_commands` and `legal_moves`, every masked-in action steps as `apply` does with
+  its command, every masked-out one is refused and changes nothing. h3-cli: the option and its
+  errors, the difficulty and answers through the file, the v1 file's refusal, a v2 file without
+  its difficulty. Line coverage of
+  both sub-paths: everything but the record's refusal closure (a bug path since T9b).
+- **Versions**: action encoding v2, adventure replay format v2. Increment 2's versions through
+  T14: `MAP_IMPORT_VERSION` 3, adventure ruleset-part hash v5, adventure state hash v5, game state
+  hash v3, action encoding v2, adventure replay format v2. Golden replays re-recorded (the format
+  line and the difficulty only) and a fourth, `duel-s3-easy-d7` (`--difficulty 0`: the duel has
+  no objects, so the difficulty shows in the treasuries).
+- **Measured** (`bench-check`): `reach-xl-144` 565 763 181 Ir (−0.15 %), `random-play-duel-36`
+  438 920 743 (−0.15 %; +0.002 % over T14a's), `fork-xl-144` 349 100 056 (+1.60 %, unchanged
+  since the first half). No re-baseline.
+
+**Review and closure of the round** (runner).
+- **Independent review** (an agent that had not seen the work; read the diff, ran checks in a
+  worktree): no bug in the engine. Checked and passed: atomicity of every rejection path, the
+  masks and `legal_*` against `apply` (decision open, outside the turn, other players), the
+  from-above test in the query against `MoveHero`, one visit order everywhere (`tile_object`),
+  copy-on-write of the decisions and purchases (`None` and empty hash alike), the reveal against
+  a brute-force reference on four two-level maps, replay v2's difficulty on verify. Three
+  findings, all fixed: the hygiene stop compared absolute tiles, which the property's own
+  `moved` variation makes differ (26 stops at 600 cases, 21 of them spurious; now 14, 2); the
+  tile mask was empty after `EndTurn` and the answers, a NaN for a masked softmax (tile 0 again,
+  runner's call); a v2 replay without its difficulty read as normal (now a format error).
+  Residual risks to the inbox (`accept_offer` trusts its offer; T15's gate and the mode).
+- **The full verify's coverage run** drew a case T13b's view property models wrongly (not the
+  engine): two campfires of other shapes on one anchor share the name a viewer sees (type and
+  anchor), so after the visited one left, told by that name, the other still showed it; plans now
+  lay out one typed object per kind and anchor (the shrunk case kept as a regression).
+- **The full local verify** (CI out of minutes) with `--with-original-data` passed before the
+  review's fixes; again on the branch's head before the pull request (its result there).

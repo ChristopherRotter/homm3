@@ -4,7 +4,8 @@
 //! it cannot see) and the observation's consistency with the events it is told.
 
 use h3_adventure::{
-    AdventureEvent, AdventureEventKind, ObjectView, Pos as TilePos, TileMask, TileView, Viewers,
+    AdventureEvent, AdventureEventKind, ObjectView, Offer, Pos as TilePos, TileMask, TileView,
+    Viewers,
 };
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
@@ -277,8 +278,11 @@ fn depth(view: &TileView) -> u8 {
 /// not told the tile entered takes the hero out of its sight); a hero shows without a step only
 /// on a tile the viewer did not see before. The viewer forgets nothing: a tile's view only
 /// deepens, and keeps what it showed; an object it saw leaves its view only as an object removal
-/// it is told (E08 T13b), and its treasury changes only by the gains it is told, which are its
-/// own. Its planes change only by its own command (`own`).
+/// it is told (E08 T13b), and its treasury changes only by the gains and payments it is told,
+/// which are its own. Its open decision and its purchases change only as its offers' events say:
+/// an offer it is told opened is its decision, an answer closes it, an accepted one adds the type
+/// to its purchases (E08 T14b); a reveal it is told explores at least that many more tiles. Its
+/// planes change only by its own command (`own`).
 fn check_told(
     viewer: PlayerId,
     (before, after): (&GameObservation, &GameObservation),
@@ -299,8 +303,52 @@ fn check_told(
     let mut stepped = Vec::new();
     let mut removed = Vec::new();
     let mut treasury = before.treasury.clone();
+    let named = |o: &Offer| (o.hero, o.object_type, o.anchor);
+    let mut decision = before.decision.as_ref().map(named);
+    let mut bought = before.adventure.bought.clone();
+    let mut revealed = 0;
     for event in told {
         match *event {
+            GameEvent::OfferOpened {
+                player,
+                hero,
+                object_type,
+                anchor,
+            } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(decision.is_none());
+                decision = Some((hero, object_type, anchor));
+            }
+            GameEvent::OfferRefused { player, .. } => prop_assert_eq!(player, viewer),
+            GameEvent::OfferAnswered {
+                player,
+                object_type,
+                anchor,
+                accepted,
+            } => {
+                prop_assert_eq!(player, viewer);
+                let (_, ty, at) = decision.take().unwrap();
+                prop_assert_eq!((ty, at), (object_type, anchor));
+                if accepted {
+                    bought.push(object_type);
+                    bought.sort();
+                }
+            }
+            GameEvent::ResourcePaid {
+                player,
+                resource,
+                amount,
+            } => {
+                prop_assert_eq!(player, viewer);
+                treasury[usize::from(resource.raw())] -= amount;
+            }
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::TilesRevealed { count, .. },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, Viewers::NONE.with(viewer));
+                revealed += count;
+            }
             GameEvent::Adventure(AdventureEvent {
                 kind:
                     AdventureEventKind::ObjectRemoved {
@@ -385,6 +433,10 @@ fn check_told(
         }
     }
     prop_assert_eq!(&after.treasury, &treasury);
+    prop_assert_eq!(after.decision.as_ref().map(named), decision);
+    prop_assert_eq!(&after.adventure.bought, &bought);
+    let ones = |planes: &[u64]| planes.iter().map(|w| w.count_ones()).sum::<u32>();
+    prop_assert!(ones(&after.adventure.explored) >= ones(&before.adventure.explored) + revealed);
     let named = |o: &ObjectView| (o.object_type, o.anchor);
     for object in &after.adventure.objects {
         prop_assert!(!removed.contains(&named(object)), "{:?} removed", object);
@@ -446,6 +498,67 @@ fn check_told(
     Ok(())
 }
 
+/// The tiles of `player`'s heroes, by id.
+fn tiles(game: &GameState, player: PlayerId) -> Vec<(HeroId, TilePos)> {
+    let heroes = game.adventure().heroes().iter();
+    heroes
+        .filter(|h| h.owner == player)
+        .map(|h| (h.id, h.pos))
+        .collect()
+}
+
+/// Whether a command was accepted, each hero's move (id, columns, rows, levels), the steps told
+/// and the decisions opened (0), refused (1), declined (2) or accepted (3).
+type Outcome = (bool, Vec<(HeroId, i32, i32, i32)>, usize, Vec<u8>);
+
+/// What a command of `player` did in a game, as the hygiene test compares it between two games
+/// (E08 T14b's review): whether it was accepted, how far each of the player's heroes moved from
+/// its tile `before` (columns, rows, levels), how many steps the game told, and the decisions it
+/// opened, refused or closed. Where the heroes stand is left out: the test may put them on other
+/// tiles in the other game from the start.
+fn outcome(
+    (player, accepted): (PlayerId, bool),
+    before: &[(HeroId, TilePos)],
+    after: &GameState,
+    events: &[GameEvent],
+) -> Outcome {
+    let moved = before
+        .iter()
+        .zip(tiles(after, player))
+        .map(|(&(id, from), (_, to))| {
+            let d = |a: u16, b: u16| i32::from(b) - i32::from(a);
+            (
+                id,
+                d(from.x, to.x),
+                d(from.y, to.y),
+                i32::from(to.level) - i32::from(from.level),
+            )
+        })
+        .collect();
+    let steps = events
+        .iter()
+        .filter(|e| {
+            matches!(
+                e,
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::HeroStepped { .. },
+                    ..
+                })
+            )
+        })
+        .count();
+    let decisions = events
+        .iter()
+        .filter_map(|e| match e {
+            GameEvent::OfferOpened { .. } => Some(0),
+            GameEvent::OfferRefused { .. } => Some(1),
+            GameEvent::OfferAnswered { accepted, .. } => Some(2 + u8::from(*accepted)),
+            _ => None,
+        })
+        .collect();
+    (accepted, moved, steps, decisions)
+}
+
 proptest! {
     #![proptest_config(ProptestConfig { cases: 48, ..ProptestConfig::default() })]
 
@@ -453,10 +566,16 @@ proptest! {
     /// the other players' armies and so their points, the tiles it never sees and what objects
     /// cover there, the objects' contents) show it the same observation, legal commands and moves
     /// after the same commands, accept or reject its own commands alike and tell it the same
-    /// events, as long as the other players' commands are accepted in both or in neither (a move
-    /// that one hero can pay and the other cannot ends where the viewer may see it), and until
+    /// events, as long as the other players' commands have the same outcome in both ([`outcome`]:
+    /// accepted in both or in neither, their heroes moved alike, the same steps and decisions; a
+    /// move that one hero can pay and the other cannot, or that visits a pile from its neighbour
+    /// in one game and walks onto the pile's tile in the other, which lacks it, ends where the
+    /// viewer may see it), and until
     /// the viewer picks up an object: a pickup tells its visitor the contents (E08 T13b; survey
-    /// `E08-objects.md` §8), so the two games may then tell it other gains, and nothing else.
+    /// `E08-objects.md` §8), so the two games may then tell it other gains, and nothing else; or
+    /// until it accepts an offer: a Cartographer reveals tiles by their terrain, hidden ones
+    /// included, so the two games may then tell it other counts (E08 T14b). An offer opened,
+    /// refused or declined tells it nothing hidden.
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in plan(),
@@ -513,20 +632,38 @@ proptest! {
             let legal = options(&a, rules);
             let (actor, command) = resolve(&a, &legal, step);
             let (mut ea, mut eb) = (Vec::new(), Vec::new());
+            let (from_a, from_b) = (tiles(&a, actor), tiles(&b, actor));
             let ra = apply(&mut a, rules, Actor::Player(actor), command.clone(), &mut ea);
             let rb = apply(&mut b, rules, Actor::Player(actor), command, &mut eb);
             if actor == viewer {
                 prop_assert_eq!(ra, rb);
-            } else if ra.is_ok() != rb.is_ok() {
+            } else if outcome((actor, ra.is_ok()), &from_a, &a, &ea)
+                != outcome((actor, rb.is_ok()), &from_b, &b, &eb)
+            {
+                // The other player's command did not do the same in both games.
                 break;
             }
             let (ta, tb) = (told(&ea, viewer), told(&eb, viewer));
-            if actor == viewer && ta != tb {
-                // The viewer learned a pickup's contents: only what it gained may differ.
+            let bought = ta
+                .iter()
+                .any(|e| matches!(e, GameEvent::OfferAnswered { accepted: true, .. }));
+            if actor == viewer && (ta != tb || bought) {
+                // The viewer learned a pickup's contents or bought a reveal: only what it gained
+                // and how many tiles it explored may differ.
                 let blind = |events: Vec<GameEvent>| -> Vec<Option<GameEvent>> {
                     events
                         .into_iter()
-                        .map(|e| (!matches!(e, GameEvent::ResourceGained { .. })).then_some(e))
+                        .map(|e| {
+                            (!matches!(
+                                e,
+                                GameEvent::ResourceGained { .. }
+                                    | GameEvent::Adventure(AdventureEvent {
+                                        kind: AdventureEventKind::TilesRevealed { .. },
+                                        ..
+                                    })
+                            ))
+                            .then_some(e)
+                        })
                         .collect()
                 };
                 prop_assert_eq!(blind(ta), blind(tb));
@@ -582,6 +719,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         heroes: vec![((1, 1, 0), None), ((6, 6, 0), None)],
         hero_types: 0,
         blockers: vec![((4, 1, 0), 0), ((1, 5, 0), 1)],
+        difficulty: 1,
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -652,6 +790,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         ],
         hero_types: 0,
         blockers: vec![((3, 1, 0), 3), ((1, 3, 0), 9)],
+        difficulty: 1,
     };
     let m = lay_out(&plan);
     let red = PlayerId::new(0);

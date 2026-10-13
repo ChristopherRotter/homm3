@@ -143,3 +143,21 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Difficulty_level"
   retrieved  = "2026-10-12"
   confidence = "medium"
+
+[[rule]]
+id       = "GAM-DEC-001"
+title    = "A pending decision: its owner's only legal commands are its answers"
+context  = "game"
+status   = "implemented"
+summary  = "What needs a player's answer is a pending decision in the game's state, owned by that player and kept in opening order (increment 2: a Cartographer's offer, ADV-VIS-001; a border guard's with T15). While a player has an open decision its only legal commands are the answers, Accept and Decline (`legal_commands`), it has no legal moves, and `EndTurn` or a move is rejected (`DecisionOpen`) and changes nothing; it blocks no other player. An answer closes the player's first decision, in its turn or not; answering with none open is rejected (`NoDecision`). Accepting pays the offer's price from the treasury and carries the offer out; declining changes nothing else, and a later visit asks again. An offer whose price the treasury cannot pay is not opened (`OfferRefused`, to its owner only). The checks at the answer that ADR-0017 point 10 lists (the treasury can pay, the offer still stands) cannot fail in increment 2: nothing but the owner's answer runs for it while the decision is open, and no other player's command reaches its treasury or purchases. The opening, the answer and the payment are told to the owner alone; the owner's observation shows its open decision (the object by type and anchor, the price). E08 T14b: `GameCommand::Answer`, `GameState::decision`, `GameObservation::decision`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 point 6 (pending decisions: the owner's only legal commands are the answers, no blocking prompt, a decline only closes) and point 10 (an offer opens only if the payer can pay, else it is told so; accepting pays and calls the context's acceptance)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe: the Cartographer's visit (0x4A8A14) asks a yes/no question (a message box of mode 2) that the player answers before play goes on, and shows a message instead when the gold is short; survey E08-objects.md §4 and §10"
+  confidence = "high"

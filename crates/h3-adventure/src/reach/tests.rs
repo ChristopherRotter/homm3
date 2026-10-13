@@ -198,6 +198,7 @@ fn the_query_stays_on_the_heros_level() {
 /// The tiles of the property's maps, weighted toward walkable ones.
 const TILES: &[char] = &[
     'g', 'g', 'g', 'g', 's', 's', 'w', 'w', 'G', 'G', 'S', 'W', 'd', '~', '#', 'B', 'V', 'T', 'P',
+    'C', 'c',
 ];
 const CREATURES: [h3_content::CreatureTypeId; 4] = [PIKEMAN, GNOLL, PEASANT, WOLF];
 
@@ -239,7 +240,8 @@ fn the_query_keeps_to_the_explored_tiles() {
 proptest! {
     /// On random maps, armies and profiles, from the hero's tile and after up to three moves
     /// along reported paths: every reported path is accepted and ends with the reported points,
-    /// on its last tile or, for a pile's visit, on the tile before; the tile of an accepted
+    /// on its last tile (a chart's entered, E08 T14a) or, for a pile's visit, on the tile before;
+    /// the tile of an accepted
     /// one-step move is reported with at least the points it leaves; a rejected move changes
     /// nothing; the query is deterministic.
     #[test]
@@ -258,7 +260,8 @@ proptest! {
         let mut grid: Vec<Vec<char>> = (0..height)
             .map(|y| (0..width).map(|x| TILES[cells[y * 8 + x]]).collect())
             .collect();
-        let standable = |c: char| !matches!(c, '~' | '#' | 'B');
+        // No hero stands on a pile's tile (ADV-MAP-001); one may on a chart's (E08 T14a).
+        let standable = |c: char| !matches!(c, '~' | '#' | 'B' | 'P');
         if !standable(grid[hy][hx]) {
             grid[hy][hx] = 'g';
         }
@@ -344,4 +347,57 @@ fn the_tiles_a_removed_object_frees_are_reached_and_walked() {
     assert!(open.points_left(p(2, 1)).is_some());
     assert_eq!(open.points_left(p(1, 0)), None);
     walk(&mut state, &rules, 1, vec![p(1, 1), p(2, 1)]).unwrap();
+}
+
+/// Red's hero at `at` on three rows of grass whose middle one holds `chart` at (2, 1).
+fn chart_world(rules: &(Ruleset, AdventureRuleset), chart: char, at: Pos) -> AdventureState {
+    let middle = std::format!("gg{chart}ggggggggggggg");
+    world_state(
+        rules,
+        &["gggggggggggggggg", &middle, "gggggggggggggggg"],
+        vec![hero_at(1, 0, at, &[PEASANT])],
+    )
+}
+
+// covers: ADV-OBJ-003
+#[test]
+fn a_chart_is_a_destination_with_the_points_left_on_it() {
+    let rules = movement_rules(false);
+    let state = world_state(
+        &rules,
+        &["ggCggggg"],
+        vec![hero_at(1, 0, p(0, 0), &[PEASANT])],
+    );
+    let reach = reach(&state, &rules, 1);
+    assert_eq!(reach.points_left(p(2, 0)), Some(1300 - 200));
+    assert_eq!(reach.path(p(2, 0)), Some(vec![p(1, 0), p(2, 0)]));
+    // Nothing past it: the path ends at the visit.
+    assert_eq!(reach.points_left(p(3, 0)), None);
+    let mut moved = state.clone();
+    walk(&mut moved, &rules, 1, reach.path(p(2, 0)).unwrap()).unwrap();
+    assert_eq!(moved.hero(HeroId::new(1)).unwrap().movement, 1100);
+}
+
+// covers: ADV-OBJ-004
+#[test]
+fn the_query_keeps_off_a_chart_s_top() {
+    let rules = movement_rules(false);
+    // From above, the chart is reached around a corner: a diagonal and a step along the row.
+    let reach_above = reach(&chart_world(&rules, 'C', p(2, 0)), &rules, 1);
+    assert_eq!(reach_above.points_left(p(2, 1)), Some(1300 - 141 - 100));
+    let path = reach_above.path(p(2, 1)).unwrap();
+    assert_eq!((path.len(), path[0].y), (2, 1));
+    // An open chart, straight down.
+    let open = reach(&chart_world(&rules, 'c', p(2, 0)), &rules, 1);
+    assert_eq!(open.path(p(2, 1)), Some(vec![p(2, 1)]));
+    // Standing on a chart, the hero reaches the three tiles above only around a corner; on an
+    // open chart, straight up.
+    let on = reach(&chart_world(&rules, 'C', p(2, 1)), &rules, 1);
+    for up in [p(1, 0), p(2, 0), p(3, 0)] {
+        assert_eq!(on.path(up).map(|path| path.len()), Some(2), "{up:?}");
+    }
+    assert_eq!(on.points_left(p(2, 0)), Some(1300 - 100 - 141));
+    assert_eq!(on.path(p(2, 2)), Some(vec![p(2, 2)]));
+    let on_open = reach(&chart_world(&rules, 'c', p(2, 1)), &rules, 1);
+    assert_eq!(on_open.path(p(2, 0)), Some(vec![p(2, 0)]));
 }

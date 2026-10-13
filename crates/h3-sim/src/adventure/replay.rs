@@ -1,6 +1,7 @@
 //! Adventure replays (ADR-0004 point 9, ADR-0015 "a replay names its map", E08 T9b): the rules'
-//! identity, the map by content hash and path plus the import version (ADV-Q2), the seed, the
-//! game commands in the authoritative order with the acting player, and state hashes.
+//! identity, the map by content hash and path plus the import version (ADV-Q2), the seed and the
+//! game's difficulty (format v2, E08 T14b), the game commands in the authoritative order with the
+//! acting player (answers to decisions included), and state hashes.
 //!
 //! A replay records **game commands**, not the env's actions (the user, 2026-10-11): what the game
 //! accepts from any source (the env, a server game, a client with a path of its own), so the
@@ -24,8 +25,10 @@ use super::env::{AdventureEnv, StepError};
 use super::rollout::choose;
 
 /// Version of the adventure replay model (bump when fields change meaning). Owned by the
-/// adventure lane (`docs/08-work-process.md`, the versions table).
-pub const REPLAY_FORMAT_VERSION: u32 = 1;
+/// adventure lane (`docs/08-work-process.md`, the versions table). Version 2 (E08 T14b): the
+/// game's difficulty and the answers to decisions; a replay of another version is refused
+/// ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 2;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -143,6 +146,9 @@ pub struct Replay {
     pub map: MapRef,
     /// The game's seed.
     pub seed: u64,
+    /// The game's difficulty (`GameSetup::difficulty`, E08 T14b): verifying builds the game at
+    /// it, whatever the map's import sets.
+    pub difficulty: u8,
     /// Accepted commands in order, with the acting player.
     pub commands: Vec<(PlayerId, GameCommand)>,
     /// A checkpoint hash is recorded after every `checkpoint_every` commands (0 = none).
@@ -262,8 +268,9 @@ pub struct RecordOptions {
 
 impl Replay {
     /// Records a game on `map` played by the uniformly random legal agent
-    /// ([`super::rollout::choose`]) for every player, as [`super::random_rollout`] plays it.
-    /// Increment 1's games end only by a limit: give `max_days` or `max_steps`.
+    /// ([`super::rollout::choose`]) for every player, as [`super::random_rollout`] plays it, at
+    /// the setup's difficulty. Increment 1's games end only by a limit: give `max_days` or
+    /// `max_steps`.
     ///
     /// # Errors
     ///
@@ -306,6 +313,7 @@ impl Replay {
             header: ReplayHeader::current(rules),
             map,
             seed: options.seed,
+            difficulty: env.difficulty(),
             commands,
             checkpoint_every: options.checkpoint_every,
             checkpoints,
@@ -316,7 +324,7 @@ impl Replay {
 
     /// Re-runs the replay through `h3-game` and compares every recorded hash and the final day.
     /// `map` names the file the caller loaded (its content hash and this build's import version)
-    /// and `setup` is that file's import.
+    /// and `setup` is that file's import; the game is built at the replay's difficulty.
     ///
     /// # Errors
     ///
@@ -339,7 +347,11 @@ impl Replay {
         if self.checkpoints.len() != expected_checkpoints {
             return Err(ReplayError::CheckpointCount);
         }
-        let mut state = GameState::new(rules, setup, self.seed).map_err(ReplayError::Setup)?;
+        let setup = GameSetup {
+            difficulty: self.difficulty,
+            ..setup.clone()
+        };
+        let mut state = GameState::new(rules, &setup, self.seed).map_err(ReplayError::Setup)?;
         let mut next_checkpoint = self.checkpoints.iter();
         for (i, (player, command)) in self.commands.iter().enumerate() {
             apply(

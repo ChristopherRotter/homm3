@@ -3,19 +3,23 @@
 //!
 //! ```text
 //! h3 adventure run --map <file.h3m> [--packs-dir packs] [--root .] [--profile base:faithful]
-//!                  [--seed N] [--agent-seed N] [--days N] [--max-steps N]
+//!                  [--difficulty 1] [--seed N] [--agent-seed N] [--days N] [--max-steps N]
 //!                  [--checkpoint-every N] [--record <out.toml>]
 //! h3 adventure verify [--packs-dir packs] [--root .] <replay.toml>...
 //! h3 adventure bench --map <file.h3m> [--workload play|reach|fork] [--packs-dir packs] [--root .]
-//!                    [--profile base:faithful] [--games N] [--days N] [--seed N] [--forks N]
-//!                    [--observe 0|1] [--masks 0|1]
+//!                    [--profile base:faithful] [--difficulty 1] [--games N] [--days N]
+//!                    [--seed N] [--forks N] [--observe 0|1] [--masks 0|1]
 //! ```
 //!
 //! `--root` is the directory map paths are relative to (the repository's root for the fixtures);
-//! a replay records the path as given.
+//! a replay records the path as given. `--difficulty` is the game's (E08 T14b: a row of the
+//! rules' starting resources, 0 easy to 4 impossible in the original packs; default 1, normal, as
+//! a map's import sets it), checked by the game's build like the rest of the setup; a replay
+//! records it and `verify` plays at it.
 
 use std::path::PathBuf;
 
+use h3_game::DEFAULT_DIFFICULTY;
 use h3_sim::adventure::replay::RecordOptions;
 
 use super::bench::{BenchOptions, Workload};
@@ -24,12 +28,12 @@ use super::{DEFAULT_PROFILE, RunOptions, run_random, verify_file};
 /// The adventure commands' usage.
 pub const USAGE: &str = "usage:
   h3 adventure run --map <file.h3m> [--packs-dir packs] [--root .] [--profile base:faithful]
-                   [--seed N] [--agent-seed N] [--days N] [--max-steps N]
+                   [--difficulty 1] [--seed N] [--agent-seed N] [--days N] [--max-steps N]
                    [--checkpoint-every N] [--record <out.toml>]
   h3 adventure verify [--packs-dir packs] [--root .] <replay.toml>...
   h3 adventure bench --map <file.h3m> [--workload play|reach|fork] [--packs-dir packs] [--root .]
-                     [--profile base:faithful] [--games N] [--days N] [--seed N] [--forks N]
-                     [--observe 0|1] [--masks 0|1]";
+                     [--profile base:faithful] [--difficulty 1] [--games N] [--days N]
+                     [--seed N] [--forks N] [--observe 0|1] [--masks 0|1]";
 
 /// Parsed arguments: `--name value` options and positional words.
 struct Args {
@@ -110,6 +114,7 @@ fn run(args: &Args) -> Result<(), String> {
         "packs-dir",
         "root",
         "profile",
+        "difficulty",
         "seed",
         "agent-seed",
         "days",
@@ -120,6 +125,7 @@ fn run(args: &Args) -> Result<(), String> {
     let options = RunOptions {
         map: args.get("map").ok_or("--map is required")?.to_owned(),
         profile: args.get("profile").unwrap_or(DEFAULT_PROFILE).to_owned(),
+        difficulty: args.num("difficulty", DEFAULT_DIFFICULTY)?,
         record: RecordOptions {
             seed: args.num("seed", 1)?,
             agent_seed: args.num("agent-seed", 1)?,
@@ -180,6 +186,7 @@ fn bench(args: &Args) -> Result<(), String> {
         "packs-dir",
         "root",
         "profile",
+        "difficulty",
         "games",
         "days",
         "seed",
@@ -196,6 +203,7 @@ fn bench(args: &Args) -> Result<(), String> {
     let options = BenchOptions {
         map: args.get("map").ok_or("--map is required")?.to_owned(),
         profile: args.get("profile").unwrap_or(DEFAULT_PROFILE).to_owned(),
+        difficulty: args.num("difficulty", DEFAULT_DIFFICULTY)?,
         workload,
         games: args.num("games", 10)?,
         days: args.num("days", 28)?,

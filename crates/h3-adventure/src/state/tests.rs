@@ -512,7 +512,7 @@ fn each_broken_invariant_is_its_own_error() {
         SetupError::ObjectLevel(1)
     );
     assert_eq!(
-        error(|s| s.map.objects[1].object_type = Some(ObjectTypeId::from_raw(6))),
+        error(|s| s.map.objects[1].object_type = Some(ObjectTypeId::from_raw(8))),
         SetupError::UnknownObjectType(1)
     );
     assert_eq!(
@@ -617,6 +617,10 @@ fn the_errors_read_well() {
         (StandError::Terrain, "the terrain is not walked on land"),
         (StandError::Blocked, "an object blocks the tile"),
         (StandError::Occupied, "another hero stands there"),
+        (
+            StandError::Visited,
+            "the tile's object is visited from a neighbouring tile",
+        ),
     ];
     for (error, text) in stands {
         assert_eq!(

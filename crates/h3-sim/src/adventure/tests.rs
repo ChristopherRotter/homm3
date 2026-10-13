@@ -1,13 +1,17 @@
 //! Tests of the adventure environment on the committed generated map `fixtures/maps/e08-duel-36.h3m`
 //! (`h3-map`'s `tests/fixtures.rs` lays it out): the masks against the game's legal commands and
-//! moves, steps against `apply`, refused actions, forks, determinism, the day limit.
+//! moves, steps against `apply`, refused actions, forks, determinism, the day limit; with a land
+//! Cartographer beside each hero (built here: no fixture map has one), the open decisions
+//! ([`decisions`]).
 
 use std::sync::{Arc, LazyLock};
 
 use h3_adventure::AdventureCommand;
+use h3_adventure::{ObjectSetup, TileMask};
 use h3_contracts::PlayerId;
 use h3_game::{
-    Actor, GameCommand, GameCommandError, GameRuleset, GameSetup, apply, legal_moves, observe,
+    Actor, GameCommand, GameCommandError, GameRuleset, GameSetup, GameState, apply, legal_commands,
+    legal_moves, observe,
 };
 use h3_kernel::{Rng, StreamId};
 use proptest::prelude::*;
@@ -15,6 +19,8 @@ use proptest::prelude::*;
 use super::action::{self, hero_in_slot, tile_index, tile_pos};
 use super::rollout::choose;
 use super::*;
+
+mod decisions;
 
 const DUEL: &[u8] = include_bytes!("../../../../fixtures/maps/e08-duel-36.h3m");
 
@@ -34,6 +40,48 @@ fn setup(rules: &GameRuleset) -> Arc<GameSetup> {
 
 static DUEL_SETUP: LazyLock<Arc<GameSetup>> = LazyLock::new(|| setup(&FAITHFUL));
 
+/// The duel at `difficulty` with a land Cartographer near each hero: on the nearest tile it
+/// reaches on day 1 by a last step not from above (a Cartographer is not entered from above,
+/// ADV-OBJ-004).
+fn chart_setup(rules: &GameRuleset, difficulty: u8) -> Arc<GameSetup> {
+    let mut setup = GameSetup::clone(&setup(rules));
+    setup.difficulty = difficulty;
+    let chart = rules
+        .adventure()
+        .object_type_by_key("base:cartographer_land");
+    assert!(chart.is_some(), "the original packs' land Cartographer");
+    let state = GameState::new(rules, &setup, 0).unwrap();
+    for hero in state.adventure().heroes() {
+        let reach = state
+            .adventure()
+            .reach(rules.core(), rules.adventure(), hero.id)
+            .unwrap();
+        let (_, anchor) = reach
+            .tiles()
+            .filter_map(|(pos, _)| {
+                let path = reach.path(pos)?;
+                let before = path.len().checked_sub(2).map_or(hero.pos, |i| path[i]);
+                (before.y >= pos.y).then_some((path.len(), pos))
+            })
+            .min_by_key(|&(steps, _)| steps)
+            .unwrap();
+        setup.map.objects.push(ObjectSetup {
+            anchor,
+            blocked: TileMask::from_bits(1),
+            visitable: TileMask::from_bits(1),
+            object_type: chart,
+            amount: None,
+        });
+    }
+    Arc::new(setup)
+}
+
+/// The tiles of [`chart_setup`]'s Cartographers.
+fn charts(setup: &GameSetup) -> Vec<h3_adventure::Pos> {
+    let n = setup.map.objects.len() - setup.heroes.len();
+    setup.map.objects[n..].iter().map(|o| o.anchor).collect()
+}
+
 fn env(seed: u64, max_days: u32) -> AdventureEnv {
     AdventureEnv::new(FAITHFUL.clone(), Arc::clone(&DUEL_SETUP), seed, max_days).unwrap()
 }
@@ -52,10 +100,13 @@ fn the_duel_starts_with_red_to_move_and_both_its_heroes_free() {
     env.legal_mask(PlayerId::new(0), &mut mask);
     assert_eq!(
         mask,
-        [true, true, true, false, false, false, false, false, false]
+        [
+            true, true, true, false, false, false, false, false, false, false, false
+        ]
     );
     env.legal_mask(PlayerId::new(1), &mut mask);
     assert_eq!(mask, [false; ENTRY_COUNT]);
+    // After a legal `EndTurn` the tile head allows 0 alone; after an illegal one nothing.
     let mut tiles = Vec::new();
     env.tile_mask(PlayerId::new(0), END_TURN, &mut tiles);
     assert_eq!(tiles.len(), env.tile_count());
@@ -84,8 +135,12 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
+    assert_eq!(ACTION_ENCODING_VERSION, 2);
+    assert_eq!((ACCEPT, DECLINE, ENTRY_COUNT), (9, 10, 11));
     assert_eq!(Action::end_turn(), Action::default());
     assert_eq!(Action::move_to(2, 9), Action { entry: 3, tile: 9 });
+    assert_eq!(Action::accept(), Action { entry: 9, tile: 0 });
+    assert_eq!(Action::decline(), Action { entry: 10, tile: 0 });
     assert_eq!(hero_in_slot(state, PlayerId::new(0), HERO_SLOTS), None);
     assert_eq!(hero_in_slot(state, PlayerId::new(1), 2), None);
     assert!(hero_in_slot(state, PlayerId::new(1), 1).is_some());
@@ -106,6 +161,9 @@ fn tiles_and_actions_encode_as_documented() {
 enum Pick {
     /// The acting player's legal action, as the random agent picks it from this stream.
     Legal(u64),
+    /// The acting player's first hero that can enter a Cartographer of [`chart_setup`] does so;
+    /// else as `Legal(0)`.
+    Chart,
     /// An arbitrary action of the acting player (`None`) or of a player of the game or the one
     /// after the last: the entry and tile modulo one more than their counts.
     Free {
@@ -118,27 +176,49 @@ enum Pick {
 fn pick() -> impl Strategy<Value = Pick> {
     prop_oneof![
         4 => any::<u64>().prop_map(Pick::Legal),
+        1 => Just(Pick::Chart),
         1 => (proptest::option::of(any::<u8>()), any::<u8>(), any::<u32>())
             .prop_map(|(player, entry, tile)| Pick::Free { player, entry, tile }),
     ]
 }
 
+/// Whether `entry` is a hero's move, the only entry that reads the tile head.
+fn is_move(entry: usize) -> bool {
+    (MOVE_BASE..ACCEPT).contains(&entry)
+}
+
 /// The masks of `player` agree with the game: an entry is legal exactly when its tile mask has a
-/// tile; a move's tiles are its hero's legal moves but its own tile, and each decodes to the
-/// query's path.
+/// tile; the entries without a tile are the commands [`legal_commands`] lists (with an open
+/// decision its answers alone), tile 0 alone their tile mask and the only tile they decode with;
+/// a move's tiles are the hero's legal moves but its own tile, each decoding to the query's path.
 fn check_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCaseError> {
     let (state, rules) = (env.state(), env.rules());
     let mut entries = [false; ENTRY_COUNT];
     env.legal_mask(player, &mut entries);
+    let commands = legal_commands(state, rules, Actor::Player(player));
+    if state.decision(player).is_some() {
+        let legal: Vec<usize> = (0..ENTRY_COUNT).filter(|&e| entries[e]).collect();
+        prop_assert_eq!(legal, [ACCEPT, DECLINE]);
+    }
     let mut tiles = Vec::new();
     for (entry, &legal) in entries.iter().enumerate() {
         env.tile_mask(player, entry, &mut tiles);
         prop_assert_eq!(tiles.len(), env.tile_count());
         prop_assert_eq!(legal, tiles.iter().any(|&t| t), "entry {}", entry);
-        let Some(hero) = entry
-            .checked_sub(MOVE_BASE)
-            .and_then(|slot| hero_in_slot(state, player, slot))
-        else {
+        if !is_move(entry) {
+            prop_assert_eq!(tiles.iter().filter(|&&t| t).count(), usize::from(legal));
+            let command = action::decode(state, rules, player, Action { entry, tile: 0 });
+            prop_assert_eq!(
+                legal,
+                commands.contains(&command.unwrap()),
+                "entry {}",
+                entry
+            );
+            let off = Action { entry, tile: 1 };
+            prop_assert_eq!(action::decode(state, rules, player, off), None);
+            continue;
+        }
+        let Some(hero) = hero_in_slot(state, player, entry - MOVE_BASE) else {
             continue;
         };
         let reach = legal_moves(state, rules, Actor::Player(player), hero);
@@ -154,33 +234,59 @@ fn check_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCaseError
             .collect();
         prop_assert_eq!(&masked, &listed);
         for &tile in masked.iter().step_by(17) {
-            let command = action::decode(state, rules, player, Action { entry, tile });
+            let action = Action { entry, tile };
+            let command = action::decode(state, rules, player, action);
             let path = reach
                 .as_ref()
                 .and_then(|r| r.path(tile_pos(state, tile).unwrap()));
             prop_assert_eq!(
-                command,
-                path.map(|path| GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }))
+                &command,
+                &path.map(|path| GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }))
+            );
+            prop_assert_eq!(
+                action::encode(state, player, &command.unwrap()),
+                Some(action)
             );
         }
     }
     Ok(())
 }
 
+/// The acting player's move onto one of `charts`, if one of its heroes can make it.
+fn enter_chart(
+    env: &AdventureEnv,
+    player: PlayerId,
+    charts: &[h3_adventure::Pos],
+) -> Option<Action> {
+    let mut tiles = Vec::new();
+    (0..HERO_SLOTS).find_map(|slot| {
+        env.tile_mask(player, MOVE_BASE + slot, &mut tiles);
+        charts
+            .iter()
+            .filter_map(|&pos| tile_index(env.state(), pos))
+            .find(|&tile| tiles[tile as usize])
+            .map(|tile| Action::move_to(slot, tile))
+    })
+}
+
 proptest! {
     #![proptest_config(ProptestConfig { cases: 16, ..ProptestConfig::default() })]
 
-    /// Random play of legal and arbitrary actions: the masks agree with the game for every
-    /// player; a legal action is accepted and does what `apply` does with its command; an action
-    /// outside the masks is refused and leaves the environment as it was.
+    /// Random play of legal and arbitrary actions on the duel with a Cartographer beside each
+    /// hero, at any difficulty (4, impossible, cannot pay an offer): the masks agree with the
+    /// game for every player; a legal action is accepted and does what `apply` does with its
+    /// command; an action outside the masks is refused and leaves the environment as it was.
     #[test]
     fn steps_agree_with_the_masks_and_the_game(
         seed in any::<u64>(),
         strict in any::<bool>(),
+        difficulty in 0u8..5,
         picks in proptest::collection::vec(pick(), 1..60),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
-        let mut env = AdventureEnv::new(rules.clone(), setup(rules), seed, 0).unwrap();
+        let setup = chart_setup(rules, difficulty);
+        let charts = charts(&setup);
+        let mut env = AdventureEnv::new(rules.clone(), setup, seed, 0).unwrap();
         let players = u8::try_from(env.state().players()).unwrap();
         for pick in &picks {
             for player in (0..players).map(PlayerId::new) {
@@ -191,6 +297,11 @@ proptest! {
                 Pick::Legal(stream) => {
                     let mut rng = Rng::for_stream(stream, StreamId::AGENT);
                     (actor, choose(&env, actor, &mut rng))
+                }
+                Pick::Chart => {
+                    let mut rng = Rng::for_stream(0, StreamId::AGENT);
+                    let chart = enter_chart(&env, actor, &charts);
+                    (actor, chart.unwrap_or_else(|| choose(&env, actor, &mut rng)))
                 }
                 Pick::Free { player, entry, tile } => {
                     let player = player.map_or(actor, |p| PlayerId::new(p % (players + 1)));
@@ -484,12 +595,18 @@ fn a_path_of_the_players_own_choice_steps_and_replays() {
     .unwrap();
     let own = GameCommand::Adventure(AdventureCommand::MoveHero { hero, path: detour });
     assert_ne!(own, canonical);
+    // The action names the destination: the own path encodes to the query's.
+    assert_eq!(
+        action::encode(e.state(), player, &own),
+        action::encode(e.state(), player, &canonical)
+    );
     e.step_command(player, own.clone(), &mut h3_game::NoopSink)
         .unwrap();
     let replay = replay::Replay {
         header: replay::ReplayHeader::current(&FAITHFUL),
         map: duel_map(),
         seed: 1,
+        difficulty: h3_game::DEFAULT_DIFFICULTY,
         commands: vec![(player, own)],
         checkpoint_every: 0,
         checkpoints: Vec::new(),
