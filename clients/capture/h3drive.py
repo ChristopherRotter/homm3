@@ -502,7 +502,9 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         act(game, a)
     states.append(state(now))
     for _ in range(ms):
-        now = game.clock("step 1")
+        # 500 reads, not 20: under load the computer's turn can start after 20 reads at the new
+        # time (its draw read a step late, the runbook's "Traps"); 500 cost about 3 ms a step.
+        now = game.clock("step 1", settle_reads=500)
         states.append(state(now))
     if frames:
         with open(Path(out) / "frames.jsonl", "w") as f:

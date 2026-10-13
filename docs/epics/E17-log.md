@@ -468,7 +468,10 @@ rest of the scene (`QUEUE.md`).
   `shot_angle_group`'s frame (0x469957), `stack_flight_animation`'s points (0x4B4BA3 to
   0x4B4D5D), `strike_animation`'s set-up for a shooter (0x468A3D).
 - **Checked** (design §7.9): walk 42 frames and shot 50 exact; melee 68 of 75; the 7 others (the
-  Wolf Riders walking past the Angels) listed for T4b-2. T4a's walk offsets confirmed; its
+  Wolf Riders walking past the Angels) listed for T4b-2; three full runs (two from scratch, one
+  after merging master with the battle lane's map writer change) gave the same counts. Under a
+  build's load `sequences` once read the melee's computer frame a millisecond late: its steps now
+  wait for 500 clock reads (runbook "Traps"). T4a's walk offsets confirmed; its
   shooter frames and flight points corrected; the outline and idle steps modelled from the
   frames.
 - **Decided (*provisional*, the review list):** a command without a time after the first counts

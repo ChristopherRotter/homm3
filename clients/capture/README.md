@@ -224,3 +224,7 @@ design §7.1.
   then is one step behind; the frame check draws the viewer's own timeline for that reason.
 - Inside an animation the memory holds the frame drawn, the screen the one shown (design §7.1):
   never render the memory's poses as the screen at that time.
+- Under load (a build beside it) a sequence once read the computer's first frame a millisecond
+  late (`melee`: 1919 for 1918, `CHANGED`): the turn's start ran after the 20 clock reads the
+  driver then waited for. A sequence's steps now wait for 500 reads; still, run `sequences` and
+  `frames` on an otherwise idle machine and rerun a one-line change before believing it.
