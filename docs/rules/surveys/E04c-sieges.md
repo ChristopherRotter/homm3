@@ -28,7 +28,11 @@ adds the siege's parts:
 
 Without a fort the battle is fought on the town's tile like any other, but still at the town: the
 town's native terrain, the defending hero's building bonuses, the defenders' morale from the
-Tavern, no surrender or retreat for the defender, +500 experience for the attacker (`code`).
+Tavern, no surrender or retreat for the defender, +500 experience for the attacker (`code`). The
+special buildings (the Escape Tunnel, Brimstone Stormclouds, Blood Obelisk, Glyphs of Fear, the
+Brotherhood of the Sword) are tested in a second building set of the town (`code`, +0x158), the
+Tavern, the fort and the Grail in its built set: which buildings the second set holds is the town
+context's to read (E09).
 
 **Moat.** Not in a Tower (land mines instead), not in a Stronghold on a map made before SoD
 (`code`: the map's format; `wiki`: "Stronghold does not have a moat in RoE"). The Fortress's is two

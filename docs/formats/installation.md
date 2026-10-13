@@ -2401,9 +2401,12 @@ the shot penalty through walls (0x467510), the Tower's land mines (0x4663BE), Ea
 with its increment (T5–T8).
 
 **The town and the fort level.** The side setup stores the town (+0x53C8) for every battle at a
-town, with or without a fort (0x463C1A), and the fort level +0x132F4 from the highest of the town's
-built buildings 7, 8 and 9 (`+0x150`, the per-building masks 0x66CD98): **1** Fort, **2** Citadel,
-**3** Castle, 0 without one. Every reader of the town then tests the pointer, some the level too.
+town, with or without a fort (0x463C1A), and the fort level +0x132F4 from the town's built buildings
+(`+0x150`, the per-building masks 0x66CD98), testing 7, 8 and 9 in that order: **1** Fort, **2**
+Citadel, **3** Castle, 0 without one (so a town holds one of the three bits: an upgrade replaces its
+predecessor's, not read). The town's special buildings (ids 17, 21, 22) are tested in a second
+set, `+0x158` (H3API's `IsBuildingBuilt` with its flag reads it; what it holds beyond the built
+special buildings is not read); the Tavern, the fort and the Grail in `+0x150`. Every reader of the town then tests the pointer, some the level too.
 The town alone (any level): the battlefield's terrain is its faction's native one (§7.26 case 1),
 the defending hero's bonuses below, the morale and luck below, the controls and the experience
 below. A fort level above 0: the siege picture (0x4646D0), the attacker's Catapult, no defender's
@@ -2458,5 +2461,5 @@ of Fortune by VCMI and the wiki).
 the defender of a battle at a town. Retreat needs the side's hero and is refused to the defender at
 a town unless the town is a Stronghold with building 17 (the Escape Tunnel).
 
-**Experience** (0x46A405): the attacker's side gets +500 in a battle at a town (any fort level;
-the −500 of 0x46A3FC, with two globals, not read).
+**Experience** (0x46A405): the attacker's side gets +500 in a battle at a town (any fort level),
+beside the +500 for a defeated hero (0x46A3DF; the −500 of 0x46A3FC, with two globals, not read).
