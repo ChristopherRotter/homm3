@@ -4,36 +4,36 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint. T11a, T11b (ADV-Q10 answered, the ADRs amended), T12, T13 and T14 (each in two parts) are done; T15 and T16 (T16a–T16c) are done; **increment 2 closed** on 2026-10-13. **Increment 3** (monsters and battles) refined with the user the same day (decisions 19–21): T17a done (the survey), T17b done (the ADR amendment drafts, the design note, the cut below: proposed, for the user at ADV-Q13). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint. T11a, T11b (ADV-Q10 answered, the ADRs amended), T12, T13 and T14 (each in two parts) are done; T15 and T16 (T16a–T16c) are done; **increment 2 closed** on 2026-10-13. **Increment 3** (monsters and battles) refined with the user the same day (decisions 19–21): T17a done (the survey), T17b done (the ADR amendment drafts, the design note, the cut below; accepted with the user's changes at ADV-Q13, decisions 25–27). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ### E08 T18a — The shared groundwork for increment 3 (`shared/`)
 
-Proposed by T17b (`docs/epics/E08-design.md` §10, §11), for the user at ADV-Q13.
+Cut at T17b, confirmed by the user at ADV-Q13 (`docs/epics/E08-design.md` §10, §11; decisions 25–27).
 
-- **Scope:** one `shared/` pull request, merged before T18b: `arch.toml` (`h3-game` gains `h3-heroes`, `h3-battle`, `h3-content-battle`); `h3_contracts::AdventureProfile` (Attack, Defense, the join bonus; design §2); `h3_content` hero-effect kinds for Necromancy, Learning, Intelligence and Diplomacy's join bonus (design §10), each with its pack syntax and validation.
+- **Scope:** one `shared/` pull request, merged before T18b: the accepted amendments of ADR-0013, -0015, -0016 and -0017 applied from `docs/lanes/adventure/adr-drafts/` (the drafts then deleted) with the glossary's new terms (`docs/03-domain.md`); `arch.toml` (`h3-heroes` in the `shared` layer; `h3-adventure` gains `h3-heroes`; `h3-game` gains `h3-heroes`, `h3-battle`, `h3-content-battle`; design §2); `h3_content` hero-effect kinds for Necromancy, Learning, Intelligence and Diplomacy's join bonus (design §10), each with its pack syntax and validation.
 - **Acceptance:** the full verify green on the branch (a `shared/` branch runs it whole); the kinds documented in `packs/README.md`'s effect list; no pack uses them yet. Definition of Done (`docs/05-testing.md`).
-- **Depends on:** ADV-Q13 (the drafts accepted, the cut confirmed). **Status:** waiting (ADV-Q13).
+- **Depends on:** #181 merged. **Status:** waiting (#181).
 
-### E08 T18b — The store of heroes, their defaults and profiles, the import of their customisations
+### E08 T18b — The store of heroes, their defaults, reads and changes, the import of their customisations
 
-- **Scope:** design §1 and §2: `GameState`'s heroes' details (GAM-HER-001), the setup's customisations and defaults (experience 40–90 from the setup stream, D-12; spell points full), validation by `h3-heroes`, the adventure profile on the hero on the map, the game's difficulty in `AdventureSetup`, the import of the hero bodies (`ADV-STUB-1` closed; `Unsupported` for an experience of 1 000 or more), the owner's observation of its heroes' details; `cross-lane`: the values of T18a's kinds in the packs (Intelligence's and Diplomacy's levels) and `h3-heroes`' `adventure_profile` and maximum spell points. Versions: game state hash v5, adventure state hash v7, import v4 (first bumps of the increment).
+- **Scope:** design §1 and §2: `GameState`'s heroes' details (GAM-HER-001), the setup's customisations and defaults (experience 40–90 from the setup stream, D-12; spell points full), validation by `h3-heroes`, the store passed by reference to the adventure's commands and queries, `HeroChange`, the formation on the hero on the map, the game's difficulty in `AdventureSetup`, the import of the hero bodies (`ADV-STUB-1` closed; `Unsupported` for an experience of 1 000 or more), the owner's observation of its heroes' details; `cross-lane`: the values of T18a's kinds in the packs (Intelligence's and Diplomacy's levels) and `h3-heroes`' `attack_defense`, `join_bonus`, the maximum spell points and `HeroChange` (until the handover, decision 25). Versions: game state hash v5, adventure state hash v7, import v4 (first bumps of the increment).
 - **Acceptance:** every shipped map's static layer still imports and validates; the maps with placed heroes import their customisations or fail with the typed error; GAM-HER-001 `implemented` with sources; the env, replays (re-recorded if the hash moved) and benchmarks (`fork-xl-144` with the heroes' store measured) green. Definition of Done.
-- **Depends on:** T18a merged. **Status:** waiting (ADV-Q13).
+- **Depends on:** T18a merged. **Status:** waiting (#181).
 
 ### E08 T19a, T19b — Battles through the game (hero against hero); the env and replays with battles
 
-- **Scope:** T19a design §5, §6 (GAM-BAT-001 to -005: the battle as a decision, `GameCommand::Battle`, the unowned side by `Actor::System`, the setup from the tile, the seeds, events, the observation, applying the outcome; `cross-lane`: Necromancy's and Learning's values, `h3-heroes`' Necromancy share, Learning factor and the capture's placement); T19b design §8 (encoding v3, the neutral seat, replay format v3, golden replays with hero battles, the properties with a battle open, the benchmarks).
-- **Acceptance:** the increment's exit criteria for what T19 builds; Definition of Done. **Depends on:** T18b. **Status:** waiting (ADV-Q13).
+- **Scope:** T19a design §5, §6 (GAM-BAT-001 to -005: the battle as a decision, `GameCommand::Battle`, the unowned side by `Actor::System`, the setup from the tile, the seeds (`ADV-QUIRK-5`'s flag), events, the observation, applying the outcome; `cross-lane`: Necromancy's and Learning's values, `h3-heroes`' Necromancy share, Learning factor and the capture's placement); T19b design §8 (encoding v3, the neutral seat, replay format v3, golden replays with hero battles, the properties with a battle open, the benchmarks).
+- **Acceptance:** the increment's exit criteria for what T19 builds; Definition of Done. **Depends on:** T18b. **Status:** waiting (#181).
 
 ### E08 T20a, T20b — Monsters on the map; the monster's answer and its battle
 
-- **Scope:** T20a design §3 (ADV-MON-001 to -006, the ground kinds; D-4 read first); T20b design §4 and the split (ADV-MON-007 to -010, `ADV-STUB-2` at the no-slot skip, A-6 fixed), golden replays with monsters.
-- **Acceptance:** as T19's. **Depends on:** T19a, T19b. **Status:** waiting (ADV-Q13).
+- **Scope:** T20a design §3 (ADV-MON-001 to -006, the ground kinds; D-4 read first); T20b design §4 and the split (ADV-MON-007 to -010, `ADV-QUIRK-6`'s flag, `ADV-STUB-2` at the no-slot skip, A-6 fixed), golden replays with monsters.
+- **Acceptance:** as T19's. **Depends on:** T19a, T19b. **Status:** waiting (#181).
 
 ### E08 T21, T22a, T22b — Guarded piles and the audit; batch E3; the closure
 
 - **Scope:** T21 design §7 (ADV-PIK-004; D-6 lifted), the maps with monsters, replays and benchmarks re-baselined, the exit criteria audited; T22a batch E3's spec (`cross-lane` `h3-experiment`: monsters, custom heroes, the difficulty; survey §13) with the client lane's recipes, run on its harness or by the user; T22b batch E3 scored, increment 3 closed, increment 4 refined.
-- **Acceptance:** the increment's exit criteria. **Depends on:** T20b. **Status:** waiting (ADV-Q13).
+- **Acceptance:** the increment's exit criteria. **Depends on:** T20b. **Status:** waiting (#181).
 
 ## Inbox
 

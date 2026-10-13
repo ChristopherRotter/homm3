@@ -517,7 +517,8 @@ in the engine (as increment 2's offers).
 
 *Decided at the checkpoint (ADV-Q12, 2026-10-13; the epic's decisions 22–24):* joining and fleeing
 yes, hero against hero yes, custom experience and treasures with an artifact `Unsupported`, D-8 to
-D-13 as the reading, A-6 always fixed. The drafts: T17b (`docs/lanes/adventure/adr-drafts/`).
+D-13 as the reading, A-6 always fixed; at ADV-Q13 the tile's obstacles and split fix-optional
+(`ADV-QUIRK-5`, `ADV-QUIRK-6`). The drafts: T17b (`docs/lanes/adventure/adr-drafts/`).
 
 - **Monsters joining and fleeing** (decision 19's open part): three more offer kinds of
   increment 2's shape (§11), the decision's inputs (§3.1: power in single precision, sympathy by

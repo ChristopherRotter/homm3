@@ -1,8 +1,9 @@
 # ADR-0016 amendment draft: monsters, guarded tiles and objects, the split, what a viewer sees
 
-- Status: Proposed (E08 T17b, 2026-10-13); amends ADR-0016 (Accepted 2026-10-10, amended
-  2026-10-11 and 2026-10-12)
-- Deciders: user + adventure lane (E08 increment 3: decisions 19–24; ADV-Q11, ADV-Q12)
+- Status: Accepted by the user at ADV-Q13 (2026-10-13; drafted in E08 T17b, revised after the
+  review), to be applied by T18a; amends ADR-0016 (Accepted 2026-10-10, amended 2026-10-11 and
+  2026-10-12)
+- Deciders: user + adventure lane (E08 increment 3: decisions 19–27; ADV-Q11 to ADV-Q13)
 - Input: survey `docs/rules/surveys/E08-battles.md`; working detail `docs/epics/E08-design.md`
   (§3–§7). On acceptance a `shared/` pull request writes the points below into ADR-0016 and
   adds the revision line at the end.
@@ -25,14 +26,15 @@ contents drawn at setup) carries all of it.
 **Point 1, extended (per-object state).** Per-object state gains a guarding object's **army
 left**: a monster's count, a guarded object's guards, written when a battle it survives ends
 (its static part keeps what setup drew). A monster keeps the survivors of all its stacks, an
-upgraded stack's as its own creature (A-6 fixed, decision 23). Heroes on the map gain their
-**adventure profile** (ADR-0017 point 1), a plain value the game sets, and keep their army's
-**formation** with the army (`HeroDetails` holds no army, ADR-0013 point 1).
+upgraded stack's as its own creature (A-6 fixed, decision 23). Heroes on the map keep their
+army's **formation** with the army (`HeroDetails` holds no army, ADR-0013 point 1).
 
-**Point 3, amended (the profile).** Its last sentence becomes: what the adventure's rules need
-of a hero's details arrives through the adventure profile (E08 decision 5), set by the game: in
-increment 3 what the monster's answer reads (Attack, Defense, the Diplomacy join bonus), the
-movement and scouting parts with increment 4 (decision 19). The adventure owns the hero on the
+**Point 3, amended (a hero's details).** Its last sentence becomes: a hero's details are
+`h3-heroes`' model (the ADR-0013 amendment draft), kept in the game's store; the adventure reads
+them by reference (the game passes the store to its commands and queries) through `h3-heroes`'
+derivations, and returns what a visit changes in a hero as typed hero changes in its outcome,
+which the game applies (ADR-0017 points 1 and 10; no adventure profile, decision 25). The
+adventure owns the hero on the
 map and its army; a battle's outcome reaches them through the game's infallible application
 (ADR-0017 point 11).
 
@@ -50,15 +52,18 @@ leavable. New:
   original's 3 × 3 scan and its order, survey §2.1): a step onto a guarded tile ends the move and
   visits the guard; a path continues past no guarded tile but its start.
 - **The monster's answer** (ADV-MON-007) is the adventure's rule: its inputs are the visiting
-  hero's army and adventure profile, the monster, and the game's difficulty (a static input of the
+  hero's army and details (Attack, Defense, Diplomacy's join bonus, through `h3-heroes`), the
+  monster, and the game's difficulty (a static input of the
   adventure's setup); its outcomes are a battle or an offer (join, join for gold, pursue; survey
   §3.2); the monster leaves the map after a declined pursuit, or when it joins. A group that joins
   becomes one stack of the hero's army (with a stack of its creature, else in a free slot), its
   treasure's resources go to the owner; with neither, the join offer is skipped as declined (a
   feature to-do, decision 22).
-- **The split** (ADV-MON-009): a monster's stacks in its battle are a function of its tile, its
-  count and the visitor's army, by the original's generator (the C runtime's, seeded from the
-  tile, survey §4.1) written as the rule; it draws from no stream.
+- **The split** (ADV-MON-009): a monster's stacks in its battle follow from its count and the
+  visitor's army by the original's table and two draws; in `faithful` the draws are the
+  original's generator (the C runtime's, seeded from the tile, survey §4.1) written as the rule,
+  so the split is a function of the tile and the armies (`ADV-QUIRK-6`, fix-optional, decision
+  26); in `strict-fixed` they come from the attacking player's stream.
 - **Guarded objects** (ADV-PIK-004): a pile's guards record from the map (up to seven stacks and
   an optional question); without guards a plain pile. A question is an offer, no question a
   battle at once; the guards fight unsplit; after a won battle the pile is picked up.
@@ -79,23 +84,24 @@ knowledge list in `docs/06-security.md` gains these rows when they are built.
 
 - Rules keep reading kinds: the import's class mapping stays the only place that knows class
   numbers; the split's generator lives in its rule, not the kernel.
-- A monster's split needs no player's dice: a visit of the same tile with the same armies splits
-  the same way (the original's fixed split, survey §4.1); the battle's own seed is the attacker's
-  draw (ADR-0017 point 4).
+- In `faithful` a monster's split needs no player's dice: a visit of the same tile with the same
+  armies splits the same way (the original's fixed split, survey §4.1); in `strict-fixed` it costs
+  the attacker two draws. The battle's own seed is the attacker's draw in both (ADR-0017 point 4).
 - The adventure ruleset part (v6) gains the monster and ground kinds; the import (v4) types the
   monster classes and guarded piles, lifting D-6's `Unsupported`.
 
 ## Alternatives considered
 
-- Drawing the split from the visitor's stream: unlike the original, a re-visit would split
-  differently, and the visitor's dice would move.
+- The split from the tile in every profile: predictable, so an attacker tunes its army to the
+  split (the user, ADV-Q13); from a stream in every profile: unlike the original's fixed split.
 - Monsters as their own context: they are map objects with a visit; the battle is the game's.
 - Showing a monster's exact count: the original shows the word only (survey §9).
 
 ## Revision history line (for ADR-0016)
 
 - 2026-10-1x: points 1, 4 and 6 extended and point 3 amended for increment 3: a guarding object's
-  army left, the heroes' adventure profile and formation, enemy heroes visited from a neighbour as
-  a battle, the monster and ground kinds, guarded tiles, the monster's answer, the split by the
-  tile, guarded piles, what a viewer sees of monsters, heroes and battles (E08 T17b, the user at
-  ADV-Q13; survey `E08-battles.md`).
+  army left, the heroes' formation, a hero's details read by reference and changed through hero
+  changes, enemy heroes visited from a neighbour as a battle, the monster and ground kinds,
+  guarded tiles, the monster's answer, the split by the profile (ADV-QUIRK-6), guarded piles, what
+  a viewer sees of monsters, heroes and battles (E08 T17b, the user at ADV-Q12 and ADV-Q13; survey
+  `E08-battles.md`).

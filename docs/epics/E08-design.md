@@ -1,8 +1,9 @@
 # E08 design note: increment 3
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind the ADR-0016 and
-ADR-0017 amendment drafts for increment 3 (E08 T17b; `docs/lanes/adventure/adr-drafts/`, for the
-user at ADV-Q13). The task that builds a section deletes it; the file goes when the epic closes.
+ADR-0017 amendment drafts for increment 3 and the ADR-0013 one (E08 T17b;
+`docs/lanes/adventure/adr-drafts/`; accepted by the user at ADV-Q13 with its changes). The task
+that builds a section deletes it; the file goes when the epic closes.
 Facts and sources: survey `docs/rules/surveys/E08-battles.md` (§ numbers below are the survey's
 unless they name this note). Increment 2's note went with T15b; its versions are in `E08-log.md`.
 
@@ -35,17 +36,24 @@ unless they name this note). Increment 2's note went with T15b; its versions are
 - Observation: the owner sees its heroes' details (experience, primary and secondary skills,
   artifacts, spells, spell points); other players see identity, owner and class (§9).
 
-## 2. The adventure profile (decision 5, now; T18a, T18b)
+## 2. Reading and changing a hero's details (the hero model, decision 25; T18a, T18b)
 
-- `h3_contracts::AdventureProfile { attack: u8, defense: u8, join_bonus: u8 }` (shared), derived
-  by `h3_heroes::adventure_profile(&details, &ruleset)` (cross-lane: the effective Attack and
-  Defense, as the original's hero record +0x476/+0x477 holds them, clamped 0–99 — the building
-  task reads whether +0x476 includes the artifacts; the join bonus 0–3 from a new hero-effect
-  kind, VCMI's `WANDERING_CREATURES_JOIN_BONUS`: Diplomacy 1, 2, 3 by level, so no code reads the
-  skill by name, ADR-0016 point 4). Decision 5's type, early: increment 4 adds the movement and
-  scouting parts (decision 19).
-- Kept in `HeroOnMap.profile` (adventure state hash v7), set when the game is built and after
-  every outcome that changes the details (a captured artifact can raise Attack).
+- `h3-heroes` in the `shared` layer (`arch.toml`, T18a; the ADR-0013 amendment draft):
+  `h3-adventure` and `h3-game` depend on it, `h3-battle` never. No adventure profile (decision 5
+  withdrawn).
+- Reads: the game passes its store (`&HeroStore`, the heroes' `Arc<HeroDetails>` by `HeroId`) to
+  `AdventureState::apply` and the queries (`reach`; the observation for the owner's heroes). The
+  adventure reads the visiting hero's details only through `h3-heroes`' derivations: in increment
+  3 `attack_defense` (the effective Attack and Defense, as the original's hero record
+  +0x476/+0x477 holds them, clamped 0–99 — the building task reads whether +0x476 includes the
+  artifacts) and `join_bonus` (0–3, from a new hero-effect kind, VCMI's
+  `WANDERING_CREATURES_JOIN_BONUS`: Diplomacy 1, 2, 3 by level, so no code reads the skill by name,
+  ADR-0016 point 4); increment 4 adds movement and scouting.
+- Writes: `h3_heroes::HeroChange` (increment 3: `GainExperience(u32)`, `SetSpellPoints(u16)`,
+  `LearnSpell(SpellId)`, `AddArtifact(ArtifactTypeId)` placed by the capture rule,
+  `RemoveArtifact(slot or backpack index)`), each checked by `h3_heroes::check_change` (the caller
+  checks first, so the game's `apply_change` is infallible). Increment 3's adventure visits change
+  no hero (a joining group changes the army only); the battle's outcome does (§5).
 - The game's difficulty reaches the adventure as a static input (`AdventureSetup.difficulty`),
   read only by ADV-MON-007's Easy rule (D-10: every player on Easy).
 
@@ -85,7 +93,7 @@ unless they name this note). Increment 2's note went with T15b; its versions are
   operations, ADR-0003); strength = AI value × count; r = power / strength in single precision;
   St by the thresholds with D-8 (r > 0.5 for −1); Sy with D-9 (the own type counts; the related
   type by faction and level, so `BAT-QUIRK-19` breaks the elementals' pairs in `faithful`); L
-  the profile's join bonus, +1 (at most 3) on Easy (D-10); M the aggression; never flees.
+  `h3_heroes::join_bonus`, +1 (at most 3) on Easy (D-10); M the aggression; never flees.
 - The decision (§3.2) as a function returning `MonsterAnswer::{Fight, OfferJoin,
   OfferJoinForGold(price), OfferPursue}` (the monster leaves only after a declined pursuit or by
   joining); the chain continues in `AdventureState::decline_offer` (new, infallible):
@@ -117,14 +125,20 @@ unless they name this note). Increment 2's note went with T15b; its versions are
   `terrain` the defender's tile's; `battlefield` in the original's order (E04c §4): underground →
   subterranean; a tile next to water → sand and the shore; a `Ground` object on the tile replaces
   the field (sieges, boats and mines do not occur in increment 3); `obstacles` from
-  `generate_setup_obstacles` with `Rng::from_seed(u64::from(110_291 x + 167_801 y + 81_569))`
-  (wrapping u32 arithmetic, the defender's tile, the level not included); `funds` the owners'
-  gold; formations from the heroes on the map. The seed: `next_u64` of the attacker's stream.
+  `generate_setup_obstacles` with `Rng::from_seed(s)`: under `ADV-QUIRK-5` (`faithful`)
+  s = `u64::from(110_291 x + 167_801 y + 81_569)` (wrapping u32 arithmetic, the defender's tile,
+  the level not included), else (`strict-fixed`) the attacker's stream's `next_u64`; `funds` the
+  owners' gold; formations from the heroes on the map. The battle's seed: `next_u64` of the
+  attacker's stream (drawn first, so both profiles draw it alike). The split's two draws
+  (ADV-MON-009): the tile's C-runtime generator under `ADV-QUIRK-6`, else two
+  `range_inclusive(1, 100)` from the attacker's stream.
 - Events: `GameEvent::Battle { event, seen_by: Viewers }` (a side's event to its owner, a public
   one to both owners); the start and the end as game events (`BattleStarted`, `BattleEnded` with
   the result) seen by the owners; other players see the removals afterwards.
-- Observation: `GameObservation.battle: Option<h3_battle::Observation>` for its owner's side;
-  the env's neutral policy reads `h3_battle::observe_as(.., Viewer::Side(defender))`.
+- Observation: `GameObservation.battle: Option<h3_battle::Observation>` for its owner's side.
+  The neutral seat's policy runs in the trusted host and may read the whole `BattleState` (the
+  original's battle AI does; the battle lane ports it, decision 27); the env's stand-in plays at
+  random.
 - Applying the outcome (GAM-BAT-002, -003; §8, `E04-battle.md` §4): survivors to the armies (a
   damaged top creature forgotten); experience to the winner's hero only: killed creatures' hit
   points (no war machines) + 500 for a defeated hero (not after a retreat or surrender), ×
@@ -136,7 +150,7 @@ unless they name this note). Increment 2's note went with T15b; its versions are
   a hero that lost, retreated or surrendered leaves the map, a draw both; a beaten monster's
   treasure (resources) to the winner's owner and the monster off the map (ADV-MON-010); a monster
   that survives keeps every stack's survivors, an upgraded stack's as its own creature (A-6 fixed,
-  decision 23); the profile refreshed.
+  decision 23). The heroes' part as `HeroChange`s through `h3-heroes` (§2).
   One infallible function per context, called in a fixed order (adventure, heroes, treasuries).
 - Not in increment 3: CLT-Q4's background variant (trees, mountains and dead vegetation within 3
   tiles) needs those decorations typed (E12's long tail); viewers keep the third picture.
@@ -164,38 +178,44 @@ unless they name this note). Increment 2's note went with T15b; its versions are
   Battle(h3_sim::action::Action)}`, a phase per state; the masks of the other phase are empty.
 - `to_move()` yields seats (`Seat::{Player(PlayerId), Neutral}`): the acting players without a
   battle and, for each open battle, its side to act's owner or the neutral seat; `step` for the
-  neutral seat takes a battle
-  action and issues it as `Actor::System`. `random_rollout` plays every seat at random.
+  neutral seat takes a battle action and issues it as `Actor::System`. `random_rollout` plays
+  every seat at random; the original's battle AI replaces the neutral seat's stand-in when the
+  battle lane has ported it (decision 27), and until then results against monsters are
+  provisional.
 - Replay format v3: each command with its actor; golden replays with hero battles (T19b) and
   monsters (T20b); the property plans (`crates/h3-map/src/tests/play.rs`) play battles to the end.
 - Benchmarks: the three workloads re-baselined with battles; `fork-xl-144` with a battle open.
 
 ## 9. Versions
 
-Game state hash v5 (heroes' details, battles, offer kinds); adventure state hash v7 (profiles,
-monsters' static data and army left, the difficulty); adventure ruleset part v6 (monster and
+Game state hash v5 (heroes' details, battles, offer kinds); adventure state hash v7 (the
+formation, monsters' static data and army left, the difficulty); adventure ruleset part v6 (monster and
 ground kinds); map import v4 (monsters, guarded piles, hero customisations); action encoding v3;
 adventure replay format v3. Each bumps once in the task that first changes it.
 
 ## 10. Shared and cross-lane work
 
-- `shared/` (T18a): `arch.toml` (`h3-game` → `h3-heroes`, `h3-battle`, `h3-content-battle`);
-  `h3_contracts::AdventureProfile`; `h3_content` hero-effect kinds for Necromancy (raise share by
+- `shared/` (T18a): the accepted ADR amendments applied (ADR-0013, -0015, -0016, -0017 and the
+  glossary); `arch.toml` (`h3-heroes` in the `shared` layer; `h3-adventure` → `h3-heroes`;
+  `h3-game` → `h3-heroes`, `h3-battle`, `h3-content-battle`); `h3_content` hero-effect kinds for Necromancy (raise share by
   level), Learning (experience share), Intelligence (spell points share) and Diplomacy's join
   bonus (§2).
 - `cross-lane` (battle-owned): the effects' values in the packs (the harvester's gap-fill; the
   skills' levels, Isra's and Vidomina's specialties, the necromancy artifacts' parts for increment
-  4), `h3-heroes`' new derivations (`adventure_profile`, the maximum spell points, the Necromancy
-  share, the Learning factor, the capture's placement); `h3-experiment`'s spec for batch E3
+  4), `h3-heroes`' additions (`attack_defense`, `join_bonus`, the maximum spell points, the Necromancy
+  share, the Learning factor, the capture's placement, `HeroChange` and its check); `h3-experiment`'s spec for batch E3
   (monsters, custom heroes, the difficulty); the client lane's recipes (its inbox, 2026-10-13).
-  **The handover of `h3-heroes`** stays with increment 4 (progression) unless the user moves it
-  forward (ADV-Q13).
+  **The handover of `h3-heroes`**: as soon as the battle lane is done with it (the user,
+  ADV-Q13; the battle lane's inbox asks it to say when), a `shared/` change of `lanes.toml`; the
+  additions above are `cross-lane` until then.
+- The battle lane (its inbox): the original's battle AI, the faithful policy of the neutral seat
+  and of a computer player's battles (decision 27).
 
-## 11. Proposed cut of the building tasks (for ADV-Q13)
+## 11. The building tasks (confirmed at ADV-Q13)
 
 | Round | Tasks | Content |
 |---|---|---|
-| 1 | T18a + T18b | the shared groundwork (§10); the store of heroes, defaults, profiles, the import of hero customisations (§1, §2) |
+| 1 | T18a + T18b | the shared groundwork with the ADR amendments (§10); the store of heroes, defaults, reads and changes, the import of hero customisations (§1, §2) |
 | 2 | T19a + T19b | battles through the game, hero against hero, the unowned side (§5, §6); the env, replays and properties with battles (§8) |
 | 3 | T20a + T20b | monsters on the map, guarded tiles, grounds (§3); the monster's answer, offers, joining, the split, its battle (§4) |
 | 4 | T21 + T22a | guarded piles and the maps with monsters, replays, benchmarks, the audit (§7); batch E3's spec and run (cross-lane, the client lane's recipes) |

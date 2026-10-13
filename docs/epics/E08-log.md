@@ -1682,3 +1682,19 @@ audit; batch E3), T22b (the closure).
 - **New for the user (ADV-Q13):** accept the drafts; who plays an unowned battle side (the system
   actor recommended); the `h3-heroes` handover's timing (increment 4 recommended); the cut.
 - Inbox: the no-room feature to-do; the client lane's inbox gets increment 3's harness needs.
+
+**ADV-Q13, the user's review of #181 (the same evening):** everything as drafted but four points,
+applied to the drafts before the merge (decisions 25–27). (1) *Does the hero split still have a
+justification?* `HeroDetails` has no runtime user yet (staged battles and the CLI write
+`BattleHero`; only its own tests and the pack tests use it). The battle seam and one record per
+hero with properties derived once hold; a peer domain the adventure may not see does not (from
+increment 4 the adventure reads and writes heroes most, towns follow): **`h3-heroes` becomes the
+hero model in the `shared` layer**, the store stays in `h3-game`, contexts read by reference and
+return typed `HeroChange`s; decision 5's profile withdrawn; a third draft
+(`adr-drafts/0013-increment-3.md`, also ADR-0015 point 1). (2) Predictable obstacles are
+exploitable: **fix-optional** (`ADV-QUIRK-5`), and the split likewise with its own flag
+(`ADV-QUIRK-6`); the obstacles' tile seed re-read at 0x463A08 with the call site's arguments
+(x and y from the position word, the level not used). (3) The system actor for unowned sides:
+fine; **the original's battle AI must be recreated** (the battle lane's inbox). (4) **`h3-heroes`
+moves as soon as the battle lane is done with it** (the battle lane's inbox asks when). T18a now
+also applies the accepted ADR amendments.
