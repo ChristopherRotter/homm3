@@ -1351,7 +1351,9 @@ mod tests {
                     proxies: Vec::new(),
                     ladders,
                     card,
-                    peers: Arc::new(Peers::new(&[], [0; 32]).unwrap()),
+                    peers: Arc::new(
+                        Peers::new(&[], &crate::config::Discovery::default(), [0; 32]).unwrap(),
+                    ),
                     counts,
                 }),
                 watch::channel(false).1,

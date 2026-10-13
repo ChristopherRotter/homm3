@@ -426,7 +426,10 @@ list's key; mDNS later.
 - **T3 Peers, the fetch and `ListPeers`** (done 2026-10-13; `E16-log.md`): `[[peer]]`,
   `[discovery] refresh_ms` and `timeout_ms`, the TLS client (a `shared:` commit), the fetch and its
   bounds, the cache, `ListPeers`/`Peers`, `card::chain`; wire 26.
-- **T4 Beyond the peers:** the peers' own cards to `depth`, each link checked, the `cards` bound.
+- **T4 Beyond the peers** (done 2026-10-13; `E16-log.md`): the cards the peers relay, to
+  `[discovery] depth` hops and at most `cards`, each with its `via` checked against the cards at
+  the fetch and again against what the server serves; the test client checks each chain; no wire
+  change.
 - **T5 Lists:** `<data>/lists/`, the listed servers fetched, `Lists`, the list tools; a wire bump.
 - **T6 Closure:** `06-security.md`'s discovery and the client lane's inbox (`cross-lane`), the
   operator's notes, the exit criteria shown, the reviewer agent, the user's checkpoint.
@@ -473,6 +476,12 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   skipped; the last good card kept until it expires; `RelayedCard { card, via, list }`, pages of
   50, `card::chain`; the OS roots read only when a peer is at `wss://` (`SSL_CERT_FILE` and
   `SSL_CERT_DIR` honoured); the test certificates in hex in the test, valid until 2126.
+- T4: `[discovery] depth` (2; 1 to 4) and `cards` (200; 1 to 1000); a fetch reads at most `cards`
+  of a peer's cards, its frames up to a page of 50 cards (851 KiB) and its bytes bounded by the
+  pages; the chain checked at the fetch against the peer's cards and again against what the server
+  serves (a link's card may come from a shorter chain); a card a peer relays for a list not
+  relayed on (until T5); a card served until the first card of its chain expires; memory up to
+  `[[peer]]` × `cards` cards; one log line per dropped card.
 
 ## Exit criteria (M4)
 

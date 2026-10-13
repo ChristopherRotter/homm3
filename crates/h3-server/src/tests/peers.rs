@@ -1,10 +1,13 @@
-//! The peers over loopback (E16 M6 T3; ADR-0021 point 3): a server fetches the cards of the
+//! The peers over loopback (E16 M6 T3, T4; ADR-0021 point 3): a server fetches the cards of the
 //! servers its configuration vouches for and relays them with `ListPeers`, its own card naming
 //! them; a peer whose key is not the configured one, that names itself at another address, or
 //! whose card is forged, expired or another server's is not relayed, and the fetch says why (the
 //! log line); a peer that goes down keeps its last good card; a peer behind a TLS proxy is fetched
 //! at `wss://`, its certificate checked against the roots the server was given; the peers'
-//! configuration is bounded.
+//! configuration is bounded. Beyond the peers (T4): the server relays what its peers relay, to
+//! `depth` hops and at most `cards`, each card with the chain that vouches for it, which the test
+//! client checks; it never dials a server it only read of; a card a peer relays outside its own
+//! vouching, or forged, is dropped, and the fetch says why.
 //!
 //! The test certificates (P-256, valid until 2126; never use them elsewhere) were made with:
 //!
@@ -26,8 +29,9 @@ use std::sync::Arc;
 
 use futures_util::{SinkExt, StreamExt};
 use h3_protocol::account;
+use h3_protocol::card::PAGE;
 use h3_protocol::connection::{Connection, Host, Received, Signer};
-use h3_protocol::wire::{CardPeer, ServerCard, SignedCard, WireU64};
+use h3_protocol::wire::{CardPeer, RelayedCard, ServerCard, SignedCard, WireU64};
 use rustls::RootCertStore;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
 use tokio::net::{TcpListener, TcpStream};
@@ -181,7 +185,7 @@ async fn a_server_relays_the_cards_of_the_peers_it_vouches_for() {
 }
 
 /// What `running` relays, unchecked.
-async fn relayed_by(running: &Running) -> Vec<h3_protocol::wire::RelayedCard> {
+async fn relayed_by(running: &Running) -> Vec<RelayedCard> {
     greeted(running).await.list_peers(1, 0).await.unwrap().1
 }
 
@@ -230,14 +234,14 @@ async fn a_peer_whose_key_is_another_or_that_names_another_address_is_not_relaye
     b.shutdown().await;
 }
 
-/// A peer that answers each hello with a welcome by the key of `seed`, and each `Describe` with
-/// `card` as it is: its address.
-async fn fake(seed: [u8; 32], card: SignedCard) -> SocketAddr {
+/// A peer that answers each hello with a welcome by the key of `seed`, each `Describe` with
+/// `card` as it is and each `ListPeers` with a page of `relays`: its address.
+async fn fake(seed: [u8; 32], card: SignedCard, relays: Vec<RelayedCard>) -> SocketAddr {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
     tokio::spawn(async move {
         while let Ok((tcp, _)) = listener.accept().await {
-            let card = card.clone();
+            let (card, relays) = (card.clone(), relays.clone());
             tokio::spawn(async move {
                 let mut socket = tokio_tungstenite::accept_async(tcp).await.unwrap();
                 let key = ServerKey::from_seed(seed);
@@ -255,6 +259,18 @@ async fn fake(seed: [u8; 32], card: SignedCard) -> SocketAddr {
                         Received::Game(ClientMessage::Describe { seq }) => {
                             let card = card.clone();
                             codec::encode_text(&ServerMessage::Described { seq, card })
+                        }
+                        Received::Game(ClientMessage::ListPeers { seq, from }) => {
+                            let entries = (relays.iter().skip(from as usize).take(PAGE))
+                                .cloned()
+                                .collect();
+                            let total = relays.len() as u32;
+                            codec::encode_text(&ServerMessage::Peers {
+                                seq,
+                                from,
+                                total,
+                                entries,
+                            })
                         }
                         _ => return,
                     };
@@ -307,7 +323,7 @@ async fn a_forged_expired_or_foreign_card_is_not_relayed() {
     ];
     let mut peers = Vec::new();
     for (card, why) in cases {
-        let address = fake(seed, card).await;
+        let address = fake(seed, card, vec![]).await;
         let fake = Peer {
             key: account::to_hex(&key.key()),
             address: format!("ws://{address}"),
@@ -317,7 +333,7 @@ async fn a_forged_expired_or_foreign_card_is_not_relayed() {
         peers.push(fake);
     }
     // A fake peer whose card is good is relayed: the fakes differ in their cards alone.
-    let address = fake(seed, signed(&good, seed)).await;
+    let address = fake(seed, signed(&good, seed), vec![]).await;
     let honest = Peer {
         key: account::to_hex(&key.key()),
         address: format!("ws://{address}"),
@@ -327,6 +343,155 @@ async fn a_forged_expired_or_foreign_card_is_not_relayed() {
     rounds(&a, 2).await;
     assert!(relayed_by(&a).await.is_empty());
     a.shutdown().await;
+}
+
+/// What `running` relays, each card checked by its client with its chain: each card's key and
+/// its `via`.
+async fn chains(running: &Running) -> Vec<(String, Vec<String>)> {
+    let mut client = greeted(running).await;
+    let (own, _) = client.describe(1).await.unwrap();
+    (client.relayed(&own).await.unwrap().into_iter())
+        .map(|(card, entry)| (card.key, entry.via))
+        .collect()
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_server_relays_what_its_peers_relay_to_depth_each_card_with_its_chain() {
+    // A → B → C → D: each vouches for the next.
+    let d = start(&fetching(vec![])).await.unwrap();
+    let c = start(&fetching(vec![peer(&d).await])).await.unwrap();
+    rounds(&c, 1).await;
+    let b = start(&fetching(vec![peer(&c).await])).await.unwrap();
+    rounds(&b, 1).await;
+    let (kb, kc, kd) = (key_of(&b).await, key_of(&c).await, key_of(&d).await);
+    // B relays C, and D through C (at the default depth, 2).
+    let through_c = (kd.clone(), vec![kc.clone()]);
+    assert_eq!(chains(&b).await, [(kc.clone(), vec![]), through_c]);
+    // C and D go down: A learns of them only through B, and dials B alone.
+    let pb = peer(&b).await;
+    c.shutdown().await;
+    d.shutdown().await;
+    let a = start(&fetching(vec![pb.clone()])).await.unwrap();
+    rounds(&a, 1).await;
+    let (to_b, through_b) = ((kb.clone(), vec![]), (kc.clone(), vec![kb.clone()]));
+    assert_eq!(chains(&a).await, [to_b.clone(), through_b.clone()]);
+    // Three hops: D too, by the chain A → B → C → D, which the client checked card by card.
+    let mut deeper = fetching(vec![pb.clone()]);
+    deeper.discovery.depth = 3;
+    let a3 = start(&deeper).await.unwrap();
+    rounds(&a3, 1).await;
+    let through_b_c = (kd, vec![kb, kc]);
+    assert_eq!(chains(&a3).await, [to_b.clone(), through_b, through_b_c]);
+    // At most `cards`, the nearer first.
+    let mut bounded = fetching(vec![pb]);
+    (bounded.discovery.depth, bounded.discovery.cards) = (3, 1);
+    let a1 = start(&bounded).await.unwrap();
+    rounds(&a1, 1).await;
+    assert_eq!(chains(&a1).await, [to_b]);
+    for server in [a, a3, a1, b] {
+        server.shutdown().await;
+    }
+}
+
+/// The key of the seed `n`…`n`, in hex.
+fn key_hex(n: u8) -> String {
+    account::to_hex(&ServerKey::from_seed([n; 32]).key())
+}
+
+/// A card of the key of the seed `n`…`n` that holds for a day, vouching for those of `vouches`, as
+/// that key signed it.
+fn vouching(n: u8, vouches: &[u8]) -> SignedCard {
+    let now = wall_ms();
+    let mut card = card_of([n; 32], (now, now + 86_400_000));
+    card.peers = (vouches.iter())
+        .map(|&v| CardPeer {
+            key: key_hex(v),
+            address: format!("ws://s{v}"),
+        })
+        .collect();
+    h3_protocol::card::sign(&card, &ServerKey::from_seed([n; 32]))
+}
+
+/// `card` relayed with the keys of the seeds `via`.
+fn relayed_as(card: SignedCard, via: &[u8]) -> RelayedCard {
+    RelayedCard {
+        card,
+        via: via.iter().map(|&v| key_hex(v)).collect(),
+        list: None,
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_card_a_peer_relays_outside_its_vouching_or_forged_is_dropped() {
+    // B (seed 1) vouches for C (3), which vouches for D (4); no one vouches for X (5) or Y (6).
+    let honest = vec![
+        relayed_as(vouching(3, &[4]), &[]),
+        relayed_as(vouching(4, &[]), &[3]),
+    ];
+    let mut forged = vouching(3, &[4]);
+    forged.card = forged.card.replace("\"Test\"", "\"Tost\"");
+    let mut relays = honest.clone();
+    relays.extend([
+        relayed_as(vouching(5, &[]), &[]),
+        relayed_as(vouching(6, &[]), &[3]),
+        relayed_as(forged, &[]),
+    ]);
+    let pb = Peer {
+        key: key_hex(1),
+        address: format!("ws://{}", fake([1; 32], vouching(1, &[3]), relays).await),
+    };
+    // The fetch keeps C and D, and says why it drops the others.
+    let (_, dropped) = fetch_now(&pb, test_tls()).await.unwrap();
+    let chain = |n: u8| {
+        let key = key_hex(n);
+        format!("a card it relays is dropped: the chain to {key} does not hold")
+    };
+    let forged = String::from("a card it relays is dropped: it does not hold (Signature)");
+    assert_eq!(dropped, [forged, chain(5), chain(6)]);
+    let mut deeper = fetching(vec![pb]);
+    deeper.discovery.depth = 3;
+    let a = start(&deeper).await.unwrap();
+    rounds(&a, 1).await;
+    let b = (key_hex(1), vec![]);
+    let c = (key_hex(3), vec![key_hex(1)]);
+    let d = (key_hex(4), vec![key_hex(1), key_hex(3)]);
+    assert_eq!(chains(&a).await, [b, c, d]);
+    a.shutdown().await;
+}
+
+/// A client that said hello to the server at `address`, and its card.
+async fn greeted_at(address: SocketAddr) -> (Client, ServerCard) {
+    let mut client = Client::connect(address).await.unwrap();
+    client.hello("test").await.unwrap();
+    let (card, _) = client.describe(1).await.unwrap();
+    (client, card)
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_client_checks_each_chain_a_server_relays() {
+    let honest = vec![
+        relayed_as(vouching(3, &[4]), &[]),
+        relayed_as(vouching(4, &[]), &[3]),
+    ];
+    let address = fake([1; 32], vouching(1, &[3]), honest.clone()).await;
+    let (mut client, own) = greeted_at(address).await;
+    let checked = client.relayed(&own).await.unwrap();
+    assert_eq!(checked.len(), 2);
+    // Each fails: a card its server does not vouch for; one whose voucher does not; one through a
+    // card the server does not relay.
+    for (bad, failing) in [
+        (relayed_as(vouching(5, &[]), &[]), 5),
+        (relayed_as(vouching(6, &[]), &[3]), 6),
+        (relayed_as(vouching(4, &[]), &[7]), 4),
+    ] {
+        let mut relays = honest.clone();
+        relays.push(bad);
+        let address = fake([1; 32], vouching(1, &[3]), relays).await;
+        let (mut client, own) = greeted_at(address).await;
+        let error = client.relayed(&own).await.unwrap_err();
+        let expected = format!("its chain does not vouch for: {}", key_hex(failing));
+        assert!(error.0.contains(&expected), "{error}");
+    }
 }
 
 /// A TLS proxy in front of `to` with the test certificate, as an operator's reverse proxy is: its
@@ -419,18 +584,22 @@ fn the_peers_configuration_is_bounded() {
         |key: &str, address: &str| format!("[[peer]]\nkey = \"{key}\"\naddress = \"{address}\"\n");
     let defaults = parse("", "").unwrap();
     assert!(defaults.peers.is_empty());
-    assert_eq!(
-        (defaults.discovery.refresh_ms, defaults.discovery.timeout_ms),
-        (3_600_000, 10_000)
-    );
+    let discovery = |d: &Config| {
+        let d = d.discovery;
+        (d.refresh_ms, d.timeout_ms, d.depth, d.cards)
+    };
+    assert_eq!(discovery(&defaults), (3_600_000, 10_000, 2, 200));
     let two = entry(&key(1), "wss://h3.example.net") + &entry(&key(2), "ws://192.168.1.6:7878");
-    let set = parse(&two, "refresh_ms = 60000\ntimeout_ms = 1000").unwrap();
+    let set = parse(
+        &two,
+        "refresh_ms = 60000\ntimeout_ms = 1000\ndepth = 4\ncards = 1000",
+    )
+    .unwrap();
     assert_eq!(set.peers.len(), 2);
     assert_eq!(set.peers[1].address, "ws://192.168.1.6:7878");
-    assert_eq!(
-        (set.discovery.refresh_ms, set.discovery.timeout_ms),
-        (60_000, 1_000)
-    );
+    assert_eq!(discovery(&set), (60_000, 1_000, 4, 1000));
+    let least = discovery(&parse("", "depth = 1\ncards = 1").unwrap());
+    assert_eq!((least.2, least.3), (1, 1));
     let many: String = (0..=64u8)
         .map(|n| entry(&key(n), &format!("ws://h{n}")))
         .collect();
@@ -458,6 +627,18 @@ fn the_peers_configuration_is_bounded() {
         ),
         (String::new(), "timeout_ms = 999", "discovery.timeout_ms"),
         (String::new(), "timeout_ms = 120001", "discovery.timeout_ms"),
+        (
+            String::new(),
+            "depth = 0",
+            "discovery.depth = 0: from 1 to 4",
+        ),
+        (String::new(), "depth = 5", "discovery.depth"),
+        (
+            String::new(),
+            "cards = 0",
+            "discovery.cards = 0: from 1 to 1000",
+        ),
+        (String::new(), "cards = 1001", "discovery.cards"),
         (entry(&key(1), "ws://a") + "port = 1\n", "", "unknown field"),
     ] {
         let parsed = parse(&peers, discovery).unwrap_err();

@@ -5,9 +5,9 @@
 //! as gone (SRV-Q20). Its hello names a fresh nonce and the address it dialed, and it checks the
 //! welcome's signature by the server's key, and the key against one it pinned (E16 M6 T1,
 //! ADR-0021 point 1), and the server's card by the welcome's key (E16 M6 T2), and each card the
-//! server relays with the chain that vouches for it (E16 M6 T3). A server fetching its peers' cards
-//! dials them through it (`Client::dial`, `wss://` through the TLS client, its reading bounded).
-//! Provisional.
+//! server relays with the chain that vouches for it (E16 M6 T3, T4). A server fetching its peers'
+//! cards dials them through it (`Client::dial`, `wss://` through the TLS client, its reading
+//! bounded). Provisional.
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -286,10 +286,10 @@ impl Client {
         }
     }
 
-    /// Every card the server relays (E16 M6 T3), page by page, each checked as a client checks it:
-    /// the card holds ([`card::verify`]), and the chain from the server's own card `own` (its
-    /// `Describe`) vouches for it ([`h3_protocol::card::chain`]). A card relayed from further than
-    /// a peer (`via`, E16 M6 T4) fails: this client does not check such chains yet.
+    /// Every card the server relays (E16 M6 T3, T4), page by page, each checked as a client checks
+    /// it: the card holds ([`card::verify`]), and the chain vouches for it from the server's own
+    /// card `own` (its `Describe`) through the cards its `via` names, which the server relays too
+    /// ([`h3_protocol::card::chain`]).
     pub async fn relayed(
         &mut self,
         own: &ServerCard,
@@ -302,18 +302,27 @@ impl Client {
             for entry in entries {
                 let read = card::verify(&entry.card, card::wall_ms())
                     .map_err(|e| Error(format!("a relayed card does not hold: {e:?}")))?;
-                if !entry.via.is_empty() || !h3_protocol::card::chain(&[own, &read]) {
-                    return Err(Error(format!(
-                        "a relayed card its server does not vouch for: {}",
-                        read.key
-                    )));
-                }
                 all.push((read, entry));
             }
             if last || all.len() >= usize::try_from(total).unwrap_or(usize::MAX) {
-                return Ok(all);
+                break;
             }
         }
+        let relayed = |key: &String| all.iter().map(|(card, _)| card).find(|c| c.key == *key);
+        for (read, entry) in &all {
+            let links: Option<Vec<&ServerCard>> = entry.via.iter().map(relayed).collect();
+            let chain = links.map(|links| {
+                let chain = std::iter::once(own).chain(links).chain([read]);
+                chain.collect::<Vec<_>>()
+            });
+            if !chain.is_some_and(|chain| h3_protocol::card::chain(&chain)) {
+                return Err(Error(format!(
+                    "a relayed card its chain does not vouch for: {}",
+                    read.key
+                )));
+            }
+        }
+        Ok(all)
     }
 
     /// Logs in as `login` by `key`, or registers the account as `display` (E16 M3 T2a): signs the

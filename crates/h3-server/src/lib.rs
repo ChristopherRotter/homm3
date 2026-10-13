@@ -180,7 +180,11 @@ pub(crate) async fn launch(
     // The server's identity (E16 M6 T1): its key, written at the first start.
     let key = key::ServerKey::open(&config.server.data)?;
     // The servers it vouches for, whose cards it fetches (E16 M6 T3).
-    let peers = Arc::new(peers::Peers::new(&config.peers, key.key())?);
+    let peers = Arc::new(peers::Peers::new(
+        &config.peers,
+        &config.discovery,
+        key.key(),
+    )?);
     let secure = (config.peers.iter()).any(|peer| peer.address.starts_with("wss://"));
     let tls = peers::tls(if secure {
         roots()
