@@ -381,7 +381,8 @@ as `login_message` does; `h3-protocol` builds the bytes, `h3-server` and clients
   or naming another id than the address dialed; a fetch reads frames of at most `peers::FRAME` (a
   page of 50 cards of `CARD_FRAME`, 2 × 8 KiB + 1 KiB each: a card's text escaped in a frame takes
   at most twice its bytes) and `peers::budget(cards)` in all (two card frames, then a frame per
-  page); `launch(config, roots)` lets tests pass their own roots. *Provisional*: the
+  page); `launch(config, roots)` lets tests pass their own roots, which `peers::Tls` reads at the
+  first fetch at `wss://`, a peer's or a listed server's (M6's review). *Provisional*: the
   hello's name is the server's id; a peer of another protocol version answers `Goodbye {
   Protocol }` and is skipped. `[[peer]] key = "…" address = "wss://…"` (or `ws://` on a LAN).
   `[discovery] refresh_ms` (an hour), `depth` (2), `cards` (200), `timeout_ms` (10 s per peer).
@@ -424,7 +425,8 @@ as `login_message` does; `h3-protocol` builds the bytes, `h3-server` and clients
   does not hold, a second list of one key and any beyond 16 are skipped and logged. A list's
   servers are fetched as configured peers are, at depth 1 (their own cards only), after the
   peers: each key once (the first list's), neither the server's own nor a peer's, at most `cards`
-  less the peers; a server named again at the same address keeps its last good card. What
+  less the peers; a server named again at the same address keeps its last good card; a card that
+  does not name the address its list names is not taken (the client's `list::names`, M6's review). What
   `ListPeers` serves puts them after the peers' own cards and before the peers' relays, marked
   with the list's key, each until it or its list expires. `Lists { seq }` → `ListsAre { seq, lists
   }` gives the signed lists that hold, so a client checks a listed card's membership

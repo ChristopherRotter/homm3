@@ -433,8 +433,10 @@ list's key; mDNS later.
 - **T5 Lists** (done 2026-10-13; `E16-log.md`): `ServerList`, `SignedList` and their bounds,
   `<data>/lists/` read each round, the listed servers fetched and relayed marked with the list's
   key, `Lists`/`ListsAre`, `h3-server list-key` and `sign-list`; wire 27.
-- **T6 Closure:** `06-security.md`'s discovery and the client lane's inbox (`cross-lane`), the
-  operator's notes, the exit criteria shown, the reviewer agent, the user's checkpoint.
+- **T6 Closure** (done 2026-10-13 but the checkpoint; `E16-log.md`): `06-security.md`'s discovery
+  and the client lane's inbox (`cross-lane`), the threat table's rows, the exit criteria shown, the
+  reviewer agent (two major findings and four minor fixed: the roots for a listed `wss://` server,
+  a listed card naming its address); the user's checkpoint (SRV-Q24).
 
 ## Exit criteria (M6)
 
@@ -492,6 +494,10 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   peers' relays, each once, never a peer, within `cards` less the peers, at depth 1; a card a peer
   relays for its list not relayed on; the TOML list (`name`, `valid_days` 1 to 366, `[[server]]`);
   `list-key` reading an existing key file; the key file's error text now "not a key" for both.
+- T6 (the reviewer's fixes): the OS roots read at the first fetch at `wss://`, a peer's or a listed
+  server's (no longer at start, for peers only); a listed server's card taken only if it names the
+  address its list names (a peer's card is checked by its chain alone); the card's default name the
+  id's first 64 bytes; a list's file opened only if it is a regular file, read within its bound.
 
 ## Exit criteria (M4)
 
