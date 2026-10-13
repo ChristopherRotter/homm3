@@ -253,7 +253,10 @@ M0 starts now, while E04b finishes (SRV-Q7).
   client-side server browser is the client lane's (the record of what it needs goes to CLT);
   mDNS later, with it.
 - **Later:** native TLS (the TLS client's crates serve it too), mDNS on the LAN (with the
-  client lane's server browser), agent seats with the sim encodings for an external policy process,
+  client lane's server browser), agent seats with the sim encodings for an external policy process (the user, 2026-10-13: once the RL
+  agent is in the works, better in training), signed game results (the server's key signs each
+  verified result and its replay's hash: records anyone can check, tournaments across servers; the
+  user, 2026-10-13), the web portal's operator role (E21) and packaging (E22),
   content delivery, an embedded store if needed, state saves across upgrades once ADR-0004's
   save format exists, address resolution by key through a DHT if vouching no longer scales.
 
