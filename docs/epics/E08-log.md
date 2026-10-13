@@ -1605,3 +1605,48 @@ for the harness (decision 21). Not taken: the whole sketch at once, heroes witho
 first. Level-ups, the adventure profile and chests moved to increment 4, the week to increment 5.
 Inbox sorted: the adventure profile's items (Scouting, the step price's omissions, flying before
 a neighbour visit) to increment 4; the hero details', guarded piles' and outcome items to T17a.
+
+### Checkpoint after T16c and T17a: the battles survey (2026-10-13, `adventure/e08-t17a`)
+
+The user merged T16c (#172, after the shared #168) and took **T17a alone** for this round (over
+T17a with T17b), T17b in the next round, drafted for the scope picked from the survey. CI could
+not start (billing); the full local verify with the original data stood in, green on `master`
+(`8dd6920`) before the change.
+
+**T17a — survey** `docs/rules/surveys/E08-battles.md`, from a code reading of the human player's
+path (a visit of a monster and a step onto a guarded tile, both into 0x4A7740), VCMI 1.7.5, the
+wiki (Wandering creature, Diplomacy; through the summarising tool, which would not quote more than
+125 characters) and a census of the 164 shipped maps. A fresh agent re-read the deciding code
+without the survey and confirmed it. Findings:
+- **The monster's answer** (§3): the hero's power (army value times
+  √((1 + 0.05 D)(1 + 0.05 A))) over the monster's strength in single precision gives a step
+  (11, ⌊2r − 2⌋, −1, −2, −3); with sympathy (0, 1, 2) and Diplomacy against the aggression:
+  fight, join free, join for gold (offered only when affordable), else the fight at C = M or for a
+  monster that never flees, else the offer to let it flee. VCMI ported it; three disputes: the
+  boundary r = 0.5 (D-8), VCMI 1.7.5 not counting the monster's own type for sympathy (D-9), Easy
+  shifting Diplomacy one level up (the reading and the wiki; VCMI lacks it, D-10).
+- **The split** (§4.1): `srand(248071 x + 276589 y + 310111 z + 155303)` of the monster's tile,
+  2–7 stacks by the army ratio, a first draw for ±1, a second for the upgraded middle stack:
+  a function of the tile and the armies. VCMI reproduces the first draw exactly and approximates
+  the second (41 of 41 472 tiles differ, D-11). The battle's obstacles are seeded from the tile as
+  well (`battle_side_setup`, the same expression as VCMI's `RandGen`); the engine draws them from a
+  kernel stream today.
+- **After a battle the monster survives** its count is the survivors of its own type: the upgraded
+  stack's survivors vanish (A-6, the wiki's bug; VCMI fixes it).
+- **Guarded tiles** (§2): the 3 × 3 scan column by column, water to water, not from above; the
+  first guarded tile ends a path and the move; the reading, VCMI and the wiki agree.
+- **Guarded piles** (§5): an empty guards record is a plain pile (3 shipped piles); a message asks,
+  no message fights at once; the guards fight unsplit; VCMI agrees.
+- **Heroes' details** (§6): two layers in the map; defaults; the default experience 40–90 (VCMI
+  40–89, D-12); 42 of 116 placed heroes have a custom experience, all of at least 1 000, which
+  increment 3 must refuse or import at level 1 (the original's level at load not read).
+- **Hero against hero** (§7): a battle at once, both players; a surrender's gold goes to the enemy
+  player (VCMI only takes it, D-13); a beaten, retreated or surrendered hero leaves the map (the
+  pool and defeat are E09's and E10's); no town condition on retreat or surrender found.
+- The census: 14 021 monsters in 162 maps (13 239 random counts; the largest fixed 3 000), 36
+  guarded piles, 832 map-wide hero type entries (15 with gameplay fields).
+- 38 address-map entries (and six updated), fields of `creature_record`, `hero`,
+  `battle_manager` and `map_item`'s word; `check-exe-map` clean.
+
+For the user (ADV-Q12): joining and fleeing in increment 3, battles between two players' heroes,
+custom experience, D-8 to D-13, A-6, the treasures' artifacts; then T17b.
