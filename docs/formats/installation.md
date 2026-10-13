@@ -2294,3 +2294,96 @@ the front hex by side, BAT-GEO-002). **Second look** (a fresh agent's independen
 the damage path after the turn (0x43F900 → 0x443F40 → 0x443B90 → 0x443C96; the wall test 0x467510
 at 0x443C79 gets the turned front hex too) and found 0x443B90 also reached without a turn through
 0x443E30 from 0x437800 and 0x438910, likely the computer player's damage estimates (not read).
+
+### 7.26 Code reading: the battlefield (E04c T1, 2026-10-13)
+
+Read for E04c T1 (the battlefields; `docs/rules/surveys/E04c-battlefields.md`). Insight only,
+nothing copied (Q29). Caller path: the battle's start (0x462A20) for the setup, the obstacles and
+the background; the stack routines for morale and luck; the human player's casts (the book button,
+the cast routine) for magic. The computer player's routines (0x4396E0, 0x43C330 to 0x43C944) read
+the same fields and were not followed.
+
+**The battle manager's battlefield fields**, set by 0x4643B0 at the battle's start: the terrain
++0x5394, the special field +0x53C0 (−1 none, 0 the shore, 1–9 below), the anti-magic garrison
++0x53C4, a battle on a ship +0x53C6. The routine starts with field −1 and both flags clear, then
+takes the **terrain** from the first case that applies:
+
+1. A siege (the town +0x53C8): the town's faction's native terrain (0x5C1440, table 0x643698).
+2. Either hero (+0x53CC, +0x53D0) with the flag 0x40000 at +0x105 (in a boat: two of them are the
+   "boats" picture below), or the battle's map tile (+0x53BC) is the entrance (tile +0xD bit 0x10)
+   of a Shipwreck (class 85) or a Derelict Ship (24): **water** (8), and the ship flag +0x53C6.
+3. The battle's map position (+0x13FF0) on the underground level: **subterranean** (6). This is
+   survey S-22: every underground battle, whatever the tile's terrain.
+4. The entrance of a mine (class 53) whose record (0x4FCC30, the game's mine list at +0x4E38C, 0x40
+   bytes each) has type 4 (crystal) or 6 (gold) at +1, or a nonzero byte +2 (the abandoned mine):
+   **subterranean**.
+5. A tile with bit 0x2 of +0xD (next to water: the shore's use names it): **sand** (1), and field
+   **0** (the shore).
+6. Otherwise the tile's own terrain (+0x4, signed byte).
+
+Then, in every case, the tile's **special ground** (0x4FCE20) by a switch on the class (0x46453E):
+Cursed Ground (21) field 2, Magic Plains (46) field 1, Clover Field (222) 5, Evil Fog (224) 4,
+Fiery Fields (226) 7, Holy Ground (227) 3, Lucid Pools (228) 6, Magic Clouds (229) 9, Rocklands
+(231) 8; a garrison (33) sets +0x53C4 when its subtype is 1 (anti-magic); anything else changes
+nothing (Favorable Winds 225 among them). So a special ground replaces the shore's field 0 and
+keeps the terrain the cases gave (a Cursed Ground on the shore fights on sand), and a garrison is
+never a special field. 0x4FCE20 answers 33 for an anti-magic garrison's tile or a hero standing in
+one; otherwise it walks the tile's objects from the last to the first and answers the first class
+among 21, 46, 222, 224–229 and 231; Cursed Ground (223) and Magic Plains (230), the SoD objects,
+are not in its list (the map loader is not read: it probably gives them the classes 21 and 46).
+
+**The picture** (0x4646D0, `docs/epics/E17-design.md` §5): a siege the town's; a field 1–9 its
+own; both heroes in boats `CmBkBoat.pcx`; the ship flag `CmBkDeck.pcx`; field 0 `CmBkBch.pcx`;
+else the terrain's by the surroundings' variant.
+
+**Morale and luck** (0x469750 passes +0x53C0 to both routines, their only caller).
+- 0x43E000, a stack's morale: on field 2 (Cursed Ground) the morale is **0**, whatever its sources
+  (0x43E00F, before anything else); a creature without morale 0. Otherwise the base (army, hero),
+  + Mirth − Sorrow, then **by the creature's town** +0x74: field 3 (Holy Ground) +1 for towns 0–2
+  (Castle, Rampart, Tower) and −1 for 3–5 (Inferno, Necropolis, Dungeon); field 4 (Evil Fog) the
+  opposite; towns 6–8 and creatures without a town (above 8 unsigned) nothing (byte tables
+  0x43E118, 0x43E130). Then the Minotaurs' minimum 1 and Spirit of Oppression (84) on either hero.
+- 0x43DF20, a stack's luck: on field 2 the luck is **0**, as with Hourglass of the Evil Hour (85)
+  on either hero (0x43DF2B to 0x43DF5E: no Fortune, no Halfling minimum). Otherwise the base,
+  + Fortune − Misfortune, then field 5 (Clover Field) **+2 for towns 6–8** (Stronghold, Fortress,
+  Conflux; table 0x43DFF4), creatures without a town nothing; then the Halflings' minimum 1.
+- The game's own texts agree (`ARRAYTXT.TXT`): "No morale effects on cursed ground", "No luck
+  effects on cursed ground", "Creature of neutral town alignment on Clover Field +2", "Creature of
+  good town alignment on Holy Ground +1" and the other three.
+
+**Native terrain** (0x43D730, the stack's setup): no stack is native on field 2 (0x43D7C1); else
+native when its town's native terrain is +0x5394 (+1 speed, attack and defense, §7.16).
+
+**Magic** (the readings of §7.21 to §7.24, with the field):
+- The hero's mastery of a spell is 0x4E5080 with the field: Expert for every school on field 1
+  (Magic Plains), for water, fire, earth and air on fields 6, 7, 8 and 9 (Lucid Pools, Fiery
+  Fields, Rocklands, Magic Clouds), else its school levels (0x4E5100). Every reader passes +0x53C0:
+  the cost (§7.21), the cast routine (0x59FEA2), Dispel's test (0x5A8167), the cursors.
+- A cast that is not a hero's (caster kind 1, a creature's, also the strike's spells of §7.20; kind
+  2, an opening spell) takes the mastery argument, **Expert on field 1 only** (0x59FEBC).
+- Field 2 (Cursed Ground): no creature's cast (0x41F890 with flag 0, §7.23: the creature casts,
+  raises and periodic casts); the hero's book refuses a spell above level 1 (0x59EB11); the effect
+  test 0x5A8090 answers 0 for a spell above level 1 (0x5A80D1), so above level 1 no strike spell,
+  creature cast or opening spell takes effect. A hero's cast needs its worn spell book on every
+  field (0x41F8C3; the review's r6 point).
+- The anti-magic garrison (+0x53C4): 0x41F890 answers 0 for every cast, the hero's and the
+  creatures' (as the Orb of Inhibition; the Faerie Dragon's key path asks nothing, §7.21).
+
+**Obstacles** (0x466290, the battle's start; a siege takes its own path, 0x4662DD, not read here;
++0x53C5 set skips all obstacles, not read which battles set it).
+- **Both heroes in boats** on water: the 32 hexes of the table 0x63D368 get the blocked bit 0x2,
+  as an absolute obstacle's (0x466710 to 0x46673D), and nothing else is placed: 6–9, 24–26, 58–60,
+  75–77, 92–94, 109–111, 126–128, 159–163, 176–180 (VCMI's `ship_to_ship` lists the same).
+- Otherwise a count of hexes to block, `random(5, 12)` (a siege of a town of type 6 can reach
+  this path with another range; sieges are not read here), and a **mask**: the field's bit
+  `1 << field` when +0x53C0 is not −1 (the shore included), else the terrain's bit
+  `1 << terrain`. With `random(1, 100) ≤ 40` the absolute obstacles (0x4668A0) by the mask, the
+  count reduced by half what they blocked; then usual obstacle types drawn without repetition
+  (the sampler 0x50C6E0 over the types 0 to 90) until one has the mask's bit among its terrain
+  bits (+0x0) or its field bits (+0x2), placed by 0x466010, until the blocked hexes reach the
+  count. So on a special field **only the field's obstacles** appear, and a ship's deck (field −1,
+  terrain water) takes the types with the water bit (type 55 alone).
+- The two tables (usual types 0x63C7C8, absolute obstacles 0x63BEC0) equal VCMI 1.7.5's
+  `config/obstacles.json` in every type's terrains, fields, size and blocked hexes (checked
+  2026-10-13, 91 + 34 records); VCMI calls the water bit of type 55 the battlefield `ship`.
+- Not read: how 0x466010 and 0x4668A0 choose positions (the engine keeps VCMI's, BAT-GEO-004).

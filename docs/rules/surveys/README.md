@@ -20,6 +20,12 @@ The skill, artifact and battle surveys were compiled by sub-agents and reviewed 
 |---|---|
 | [E04b-magic.md](E04b-magic.md) | just-in-time survey for ADR-0014 (Q41): the spell table and its decoded flags, casting by a hero (book, once per round, mastery, cost, mana), effect kinds and targeting, durations, the resolution order (immunity, resistance, Magic Mirror, damage modifiers), stacks created in battle, hidden obstacles, creature magic, quirks by task, disputes M-1 to M-6, experiment candidates for batch 2a. Per-spell numbers are left to the tasks. |
 
+## E04c (E04c T1, 2026-10-13)
+
+| File | Contents |
+|---|---|
+| [E04c-battlefields.md](E04c-battlefields.md) | just in time for the battlefield seam (BAT-Q37): the twelve special battlefields of the original (how each arises, terrain, effects), their effects compared across the code reading, the game's texts, VCMI and the wiki, the obstacles by battlefield (the executable's tables equal VCMI's), what the setup receives and who derives it, disputes D-1 to D-4, an outline of the sieges, experiment candidates |
+
 ## E08 (E08 T1b, 2026-10-09; adventure lane)
 
 | File | Contents |
