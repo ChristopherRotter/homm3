@@ -18,19 +18,20 @@ soon (E08 increment 3), so the seam and its data must suit the adventure lane's 
 
 ## Decision
 
-1. **Battlefields are content.** A battlefield is a core content key, `h3_content::BattlefieldId`
-   (core part, like `TerrainId`; `base`: shore, Magic Plains, Cursed Ground, deck, boats; `sod`:
-   the seven SoD fields). Its battle rules are data in the battle part (`h3-content-battle`), in
-   closed typed fields, each read by one rule: morale and luck changes per list of factions; morale
-   and luck set to 0; no native bonus; a spell level limit; no creature casts; the schools whose
-   hero spells are cast at Expert; Expert for the other casts; obstacles of its own or of the
-   terrain; fixed blocked hexes instead of random obstacles. An obstacle type lists its
-   battlefields beside its terrains.
-2. **The seam.** `BattleSetup` gains `battlefield: Option<BattlefieldId>` and `anti_magic: bool`
-   (the battle is at an anti-magic garrison). `terrain` keeps its meaning (the native bonus, and
-   the obstacles when the battlefield has none of its own). The battle checks the key against the
-   ruleset and reads its data; it never derives the battlefield. Whoever starts a battle derives
-   it (the adventure lane's orchestrator: the original's order is the survey's §4); the sieges add
+1. **Battlefields are content of the battle part.** A battlefield is a `[[battlefield]]` of a
+   pack's `battle.toml`, compiled by `h3-content-battle` (`base`: shore, Magic Plains, Cursed
+   Ground, deck, boats; `sod`: the seven SoD fields). Its rules are closed typed fields, each read
+   by one rule: morale and luck changes per list of factions; morale and luck set to 0; no native
+   bonus; a spell level limit; no creature casts; the schools whose hero spells are cast at Expert;
+   Expert for the other casts; obstacles of its own or of the terrain; fixed blocked hexes instead
+   of random obstacles. An obstacle type lists its battlefields beside its terrains.
+2. **The seam.** `BattleSetup` gains `battlefield: Option<ContentKey>` (the battlefield's key, as
+   an obstacle's type is named: `h3-contracts` does not depend on the battle part, ADR-0015) and
+   `anti_magic: bool` (the battle is at an anti-magic garrison). `terrain` keeps its meaning (the
+   native bonus, and the obstacles when the battlefield has none of its own). The battle resolves
+   the key against its ruleset at setup (an unknown key is a setup error) and never derives the
+   battlefield. Whoever starts a battle derives it (the adventure lane's orchestrator, which can
+   keep the key with its object types: the original's order is the survey's §4); the sieges add
    their own field at their increment, through an amendment or their own ADR.
 3. **Obstacles stay before the seam** (BAT-GEO-003): the generator takes the battlefield and picks
    from the battlefield's types when it has its own, else the terrain's; for a battlefield with
@@ -56,8 +57,9 @@ soon (E08 increment 3), so the seam and its data must suit the adventure lane's 
 
 - A new battlefield or a changed value is a pack change; a new kind of effect is one typed field,
   one compiler check and one rule.
-- Versions: pack format, core and battle ruleset hashes, state hash, replay format, observation
-  encoding and C ABI; golden replays re-recorded. `h3-protocol` maps the two new facts (a
+- Versions: pack format, the battle ruleset part's hash, state hash, replay format, observation
+  encoding and C ABI; golden replays re-recorded. The core part (`h3-content`, `h3-pack`) does not
+  change; the shared change is the two fields in `h3-contracts`. `h3-protocol` maps the two new facts (a
   `cross-lane` change). Battles without a battlefield play as before.
 - The adventure lane's queue gets the derivation (survey §4, D-4), the client lane's a note that
   records now carry the battlefield (its pictures; CLT-Q4 stays for the terrain variants).
@@ -70,6 +72,8 @@ soon (E08 increment 3), so the seam and its data must suit the adventure lane's 
 
 - A closed `Battlefield` enum in `h3-contracts` with the rules in code: twelve variants that differ
   only in values; against ADR-0006's data-first tiers.
+- A core content id (`BattlefieldId`, like `TerrainId`): a shared change to `h3-content` and
+  `h3-pack` for a key only the battle reads; the adventure map needs the key, not the rules.
 - The battlefield's effects as hero-like `BattleEffect`s passed through the setup: the caller would
   copy data the ruleset already has, and could pass a mix no battlefield has.
 - The raise in `h3-heroes` with the battlefield's schools as an argument: the battle could no longer

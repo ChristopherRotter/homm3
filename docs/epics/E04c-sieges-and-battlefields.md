@@ -69,12 +69,11 @@ banks' fixed layouts; HotA's fields (Cracked Ice, Dunes, Fields of Glory). AI (E
 
 ### T2 — The battlefields (refined 2026-10-13; after the review of the ADR draft)
 
-- **T2a, the seam** (`shared/battlefield-seam`, merged first): `BattlefieldId` and `[[battlefield]]`
-  in the core part (key, name) in `h3-content` and `h3-pack`; `BattleSetup.battlefield` and
-  `.anti_magic` in `h3-contracts`; pack format and core ruleset hash bumped; every constructor of
-  `BattleSetup` updated (no battlefield).
+- **T2a, the seam** (`shared/battlefield-seam`, merged first): `BattleSetup.battlefield`
+  (`Option<ContentKey>`) and `.anti_magic` in `h3-contracts`, documented and defaulted (every
+  constructor outside the battle lane uses the default); BACKLOG's E04c row `in-progress`.
 - **T2b, the battle** (`battle/e04c-t2`, `cross-lane` for `h3-protocol`): the battle part's
-  battlefield data and the obstacle types' battlefields; the harvester reads the executable's two
+  `[[battlefield]]` (pack format v36) and the obstacle types' battlefields; the harvester reads the executable's two
   obstacle tables (types and fields) and gap-fills the battlefields' effects; packs regenerated
   (`base` shore, Magic Plains, Cursed Ground, deck, boats; `sod` the seven); the rules: morale and
   luck, the native bonus, the magic limits and the anti-magic garrison, the mastery raise, the
