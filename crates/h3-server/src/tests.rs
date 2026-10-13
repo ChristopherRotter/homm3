@@ -23,6 +23,7 @@ mod bounds;
 mod card;
 mod identity;
 mod ladders;
+mod lists;
 mod peers;
 mod proxy;
 mod seats;

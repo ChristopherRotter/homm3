@@ -63,6 +63,31 @@ the first card of its chain expires. The server still dials only its configured 
 of the servers beyond them from their cards alone. It holds up to `cards` relayed cards of each
 peer (each at most 8 KiB), so up to the number of peers times `cards` in memory.
 
+**Lists of servers** (ADR-0021 point 5): a list names servers by key and address and is signed
+by the list's key; anyone may make one (a community, a tournament), and players choose which list
+keys they trust. Make a key with `h3-server list-key community.key` (it prints the public key;
+an existing key file is read, never replaced; keep it secret), write the servers into a TOML
+file:
+
+```toml
+name = "Community"          # one line, at most 64 bytes
+valid_days = 30             # the signed list holds this long (1 to 366 days)
+
+[[server]]
+key = "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29"
+address = "wss://h3.example.net"   # an address the server answers at, as its id
+```
+
+and sign it with `h3-server sign-list --key community.key community.toml > community.json`
+(at most 128 servers, no key twice). A server serves the lists placed in `<data>/lists/` (files
+ending in `.json`, at most 16, read at start and at each refresh in their names' order). It skips
+and logs a file that does not read, a list that is forged, malformed or expired, and a second
+list of the same key. It fetches the listed servers' cards as it fetches its peers' (their own
+cards only, at the addresses the list names, after the peers, each server once, never one that is
+a peer, within `cards`) and relays them marked with the list's key; any client gets the lists
+with `Lists` and checks that a list names each such card. Re-sign a list before it expires;
+removing its file drops its servers at the next refresh.
+
 **The TLS client** (ADR-0021 point 4) fetches a `wss://` peer through `rustls` with the
 pure-Rust graviola cryptography, checking the peer's certificate against the operating system's
 root certificates (or those `SSL_CERT_FILE` or `SSL_CERT_DIR` name); `ws://` is plain, for a

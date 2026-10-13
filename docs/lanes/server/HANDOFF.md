@@ -4,11 +4,11 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22). **M6** (SRV-Q23, ADR-0021, `E16-design.md` §12): T1 (the key, the welcome), T2 (the card), T3 (peers, `ListPeers`) and T4 (the chain beyond the peers) done. **Next: M6 T5** (lists). M5 waits for E08's increment 3.
+- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22). **M6** (SRV-Q23, ADR-0021, `E16-design.md` §12): T1 (the key, the welcome), T2 (the card), T3 (peers, `ListPeers`), T4 (the chain) and T5 (lists) done. **Next: M6 T6** (closure, checkpoint). M5 waits for E08's increment 3.
 - **The TLS client** (ADR-0021 point 4, `peers.rs`): rustls over graviola and the OS roots, no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 26 since M6 T3; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 8 since BAT-GEO-002's rear hex; another format's journal is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 27 since M6 T5; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 8 since BAT-GEO-002's rear hex; another format's journal is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -55,10 +55,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A card travels as the text its key signed (`SignedCard::card`): relay it verbatim. The server re-signs its own a minute old (`card::RESIGN`).
 - Windows refuses `set_len` through an `append(true)` handle: logs open `write(true)` and write at their end (`journal::open_log`). Check with clippy `--target x86_64-pc-windows-gnu`; Wine is no test.
 - A `wss://` dial passes `Connector::Rustls` (`Client::dial`), or tokio-tungstenite builds a default `ClientConfig` and panics (no process-wide provider). Graviola panics on a processor without its extensions: its calls run in a task of their own (`peers::fetch_every`).
-- `ListPeers` serves `peers::relay`'s rebuild, each chain checked against the served cards: T5's lists go through it. A fetch below `depth` pages `ListPeers`: a fake peer must answer it (`tests/peers.rs`).
+- `ListPeers` serves `peers::relay`'s rebuild (peers, listed servers, chains), chains checked against served cards. A fetch below `depth` pages `ListPeers`: a fake peer must answer it (`tests/peers.rs`).
 
 ## Recent sessions
 
-### 2026-10-13 — M6 T4, the chain beyond the peers
+### 2026-10-13 — M6 T5, lists of servers
 
-**#165 open** (`E16-log.md`): the peers' relays to `depth`, chains checked; no wire change. Check its mergeability.
+**#167 open** (`E16-log.md`): lists, the listed servers fetched, `Lists`, the tools; wire 27. Check its mergeability.
