@@ -5,8 +5,9 @@
 //! conservation (armies; since E08 T13b treasuries, which change only by a visit's gains, and
 //! since T14b an accepted offer's price), clone equivalence and determinism; since T14b with the
 //! pending decisions (a Cartographer's offer) and their answers; since T15a with observatories,
-//! Keymaster's tents and their keys, and border guards with the second offer. What a viewer may
-//! learn is T8b2b's ([`super::view`]), on the same maps and driver.
+//! Keymaster's tents and their keys, and border guards with the second offer; since T15b with
+//! border gates, crossed by their key's holders and visited from a neighbour by the others. What
+//! a viewer may learn is T8b2b's ([`super::view`]), on the same maps and driver.
 
 use std::sync::{Arc, LazyLock};
 
@@ -62,9 +63,9 @@ pub(super) const BLOCKER_CLASS: u32 = 124;
 /// The kinds of objects a plan lays out (E08 T12b): the blocker, then typed objects whose drawn
 /// contents no viewer sees, as class, subclass and a resource body's amount: a wood pile of a
 /// drawn amount, 300 gold, a campfire, a Redwood Observatory, the red Keymaster's tent, (E08
-/// T14a) a land Cartographer, entered and not from above, and (T15a) the red border guard. No
-/// random resource: its drawn pile type shows.
-pub(super) const KINDS: [(u32, u32, Option<u32>); 8] = [
+/// T14a) a land Cartographer, entered and not from above, (T15a) the red border guard and (T15b)
+/// the red border gate. No random resource: its drawn pile type shows.
+pub(super) const KINDS: [(u32, u32, Option<u32>); 9] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -73,6 +74,7 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 8] = [
     (10, 2, None),
     (13, 1, None),
     (9, 2, None),
+    (212, 2, None),
 ];
 /// The objects a plan may lay out: object `i` has the shape `BLOCKERS[i % 3]` and the kind
 /// `KINDS[i / 3]`, and the template `1 + i` (the blockers keep templates 1 to 3).
@@ -80,16 +82,19 @@ pub(super) const OBJECTS: usize = BLOCKERS.len() * KINDS.len();
 /// The land Cartographers of a shape with a visitable tile (E08 T14b): a plan draws them more
 /// often, so that random play enters charts.
 const CHARTS: [usize; 2] = [BLOCKERS.len() * 6 + 1, BLOCKERS.len() * 6 + 2];
-/// The observatories, red tents and red guards of a shape with a visitable tile (E08 T15a): a
-/// plan draws them more often too, and puts a tent and a guard near its first hero in three cases
-/// of four, so that random play takes keys and passes guards.
-const KEYS: [usize; 6] = [
+/// The observatories, red tents, red guards and (E08 T15b) red gates of a shape with a visitable
+/// tile (T15a): a plan draws them more often too, and puts a tent, a guard and a gate near its
+/// first hero in three cases of four, so that random play takes keys, passes guards and meets
+/// gates with and without the key.
+const KEYS: [usize; 8] = [
     BLOCKERS.len() * 4 + 1,
     BLOCKERS.len() * 4 + 2,
     BLOCKERS.len() * 5 + 1,
     BLOCKERS.len() * 5 + 2,
     BLOCKERS.len() * 7 + 1,
     BLOCKERS.len() * 7 + 2,
+    BLOCKERS.len() * 8 + 1,
+    BLOCKERS.len() * 8 + 2,
 ];
 
 /// A template mask's tiles, as `(column, row)` left of and above the anchor.
@@ -187,9 +192,12 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 difficulty,
                 keyring,
             )| {
-                // In three plans of four a red tent within three tiles of the first hero and a red
+                // In three plans of four a red tent within three tiles of the first hero, a red
                 // guard whose visitable tile is two columns east of the tent, a row up, level or
-                // down (E08 T15a), so that random play passes guards as well as taking keys.
+                // down (E08 T15a), and a red gate whose visitable tile (blocked by its own mask,
+                // as the guard's) is the one below the tent's (T15b): the tent is not entered
+                // from above, so a hero leaving it downward crosses or stops on the gate with the
+                // key, and one coming from below without the key visits it.
                 if let Some(((dx, dy), row)) = keyring {
                     let ((hx, hy, hz), _) = heroes[0];
                     let levels = 1 + u8::from(two_levels);
@@ -197,6 +205,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     let (tx, ty) = (at(hx, dx), at(hy, dy));
                     blockers.push(((tx, ty, hz % levels), KEYS[3]));
                     blockers.push(((at(tx, 6), at(ty, row + 2), hz % levels), KEYS[4]));
+                    blockers.push(((at(tx, 4), at(ty, 4), hz % levels), KEYS[6]));
                 }
                 Plan {
                     version,
@@ -376,9 +385,9 @@ fn toward(pos: TilePos, direction: u8) -> TilePos {
 pub(super) enum Step {
     /// The acting player's `n`-th option ([`options`]), modulo their number.
     Legal(u16),
-    /// The acting player's `n`-th option that moves a hero onto or toward an object's visitable
-    /// tile (modulo their number; E08 T14b), or as `Legal(n)` if none does: visits are rare among
-    /// the reachable tiles.
+    /// The acting player's `n`-th option that moves a hero onto, toward or (E08 T15b: a gate with
+    /// its key, a removed object's tile) across an object's visitable tile (modulo their number;
+    /// T14b), or as `Legal(n)` if none does: visits are rare among the reachable tiles.
     Visit(u16),
     /// The acting player ends its turn.
     EndTurn,
@@ -581,9 +590,13 @@ pub(super) fn resolve(
     let heroes = u16::try_from(state.adventure().heroes().len()).unwrap();
     let visits = |command: &&GameCommand| {
         as_move(command).is_some_and(|(_, path)| {
-            path.last()
-                .and_then(|&to| state.adventure().map().tile(to))
-                .is_some_and(|tile| tile.visitable)
+            path.iter().any(|&to| {
+                state
+                    .adventure()
+                    .map()
+                    .tile(to)
+                    .is_some_and(|tile| tile.visitable)
+            })
         })
     };
     match step {
