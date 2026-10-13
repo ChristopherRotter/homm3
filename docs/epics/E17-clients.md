@@ -282,10 +282,16 @@ choices are lifted.
   generator, design §7.2); reference frames compared against the original's poses (T3, for T4).
 - The asset tables' `groups` with every battle group the animations use, and the sequences'
   engine commands (`[[sequence.command]]`: a seat and a wire command) (T4a).
-- The timeline's *provisional* choices (design §7.8): the next command's default start, the
-  shooter's frames in the strike loop, at least A + 1 iterations, the strike's group by rows, the
-  walk's and the flight's pixel offsets, the flight's cycles' rounding, a dying stack among the
-  corpses (T4a).
+- The timeline's *provisional* choices (design §7.8): the next command's default start, at
+  least A + 1 iterations, the strike's group by rows, the flight's cycles' rounding, a dying stack
+  among the corpses (T4a; the shooter's frames and the flight's points corrected and the walk's
+  offsets confirmed by T4b-1's frame check).
+- The frame check (T4b-1, design §7.9): the viewer's own timeline drawn against the original's
+  screen (memory only for fidgets); the counts per frame as the recorded format
+  (`timelines/<id>-frames.txt`); the frames kept as compressed numpy arrays, local only; a command
+  without a time after the first counting as the computer's (its idle step and outline); f32
+  arithmetic emulated in fixed point and tangents by series in the pure crate; the layout's
+  `outline_ramp`.
 - The harness's adventure map (T6): `Show Route` on in `setup.sh`; the recipes' format
   (`capture/batches/*.toml`: steps, `record`, `expect`) and the filled template with its note on
   how it was played; every record read from the game's memory, not the screen; the adventure
