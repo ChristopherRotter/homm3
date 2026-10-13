@@ -38,7 +38,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-13 — T15 checkpoint, T16b + T16a (in progress)
 
-Every T15 call accepted; the user's cut: T16b (the stamp, piles in the spec, batch 2 with D-3 and D-5's pile check) first, then T16a (maps with objects, replays, baselines, the audit), one `cross-lane` pull request. **In progress:** T16b on `adventure/e08-t16`.
+Every T15 call accepted. The user's cut: T16b (the stamp, batch 2: D-3 and D-5's piles), then T16a (maps, replays, baselines, audit), one `cross-lane` pull request. **In progress:** T16b.
 
 ### 2026-10-13 — T14 checkpoint and T15a + T15b: observatories, keys, guards, gates
 
@@ -46,4 +46,4 @@ Every T14 call accepted; T15 cut into T15a and T15b. CI cannot start (billing): 
 
 ### 2026-10-13 — T13 checkpoint and T14a + T14b: the Cartographer
 
-Built: the entered visit and ADV-OBJ-004; one object per tile, the last in map order (T13b's neighbour order changed); the Cartographer's offer as a pending decision; action encoding v2, replay format v2 with the difficulty. Review fixes: the hygiene stop, tile 0 for entries without a tile. Detail: `E08-log.md`.
+Built: the entered visit, one object per tile, the Cartographer's offer as a pending decision, action encoding v2, replay format v2. Detail: `E08-log.md`.
