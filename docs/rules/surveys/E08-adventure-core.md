@@ -335,7 +335,7 @@ contact rule, with HD's day limits as parameters.
 |---|---|---|---|---|
 | D-1 | Movement points: at the start of the day for all players, or at the start of each player's turn | wiki and VCMI say start of day; the original's call sites (read in T6b) say start of the owner's turn | T6/T7 (which hook) | read in T6b (§1.1); the user chose the reading; confirmed by batch 1a (ADV-Q4, E08 T10c) |
 | D-2 | Stepping off a road: the destination's terrain or the terrain under the road | wiki vs VCMI; read in T7a: the terrain under the road (VCMI's side) | T7 | read (§1.2); the user chose the reading (ADV-Q3, 2026-10-11); confirmed by batch 1a (E08 T10c) |
-| D-3 | Does a step that leaves fewer points than its straight cost take all the points | VCMI only; read in T7a: the points drop to 0 below the cheapest next step instead | T7 | read (§1.3); a conflict with VCMI: the user chose the reading (ADV-Q3, 2026-10-11) |
+| D-3 | Does a step that leaves fewer points than its straight cost take all the points | VCMI only; read in T7a: the points drop to 0 below the cheapest next step instead | T7 | read (§1.3); a conflict with VCMI: the user chose the reading (ADV-Q3, 2026-10-11); **confirmed by batch 2** (E08 T16c, 2026-10-13: 50 points kept on a cobblestone road and 100 on snow, 50 dropped to 0 on a dirt road and on snow) |
 | D-4 | Points for speeds 0–2 | wiki vs VCMI; no army creature is that slow | T4 (data only) | settled in T4: `movement.txt` has the wiki's row (§1.1) |
 | F-1 | Shape of the revealed area | VCMI; read in E08 T8a: the same disk | T8 | settled: read (§2), VCMI agrees (ADV-Q5) |
 
