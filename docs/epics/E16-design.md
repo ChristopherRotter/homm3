@@ -79,15 +79,20 @@ game, seat }`, `Unqueued { reason }`, `GameInfo::ladder`, the refusals `NoSuchLa
 ## 3. The client's content check (for the client lane, M2)
 
 Compile the manifest's packs and profile locally if the client has them and compare the
-ruleset hash: equal means local previews are safe; different or absent means server queries
-only and a visible note. The server never reads anything from this check.
+ruleset hashes (`ruleset_hash`, the core's, and `battle_ruleset_hash`, the battle part's, since
+R01's content split, protocol v21): both equal means local previews are safe; different or
+absent means server queries only and a visible note. The server never reads anything from this
+check.
 
 ## 7. Journals: restore, pause, resume, upgrades (M2)
 
 - **Content, write-ahead, restore at start** are code since M2 T2 (`h3-server/src/journal.rs`,
   `registry::restore`; `Session::restore` in `h3-protocol`; the record in `E16-log.md`): a journal
   per game in `<data>/games/`, its entries synced before the frames that depend on them, re-run
-  at start, a journal that does not match or re-run moved to `<data>/void/`.
+  at start one after another by game id (since M4's review items: finished, unrated ranked games
+  are rated in that order), a journal that does not match or re-run moved to `<data>/void/`. A
+  game that stops with its journal kept (it no longer writes, its thread panicked) keeps a match's
+  players from another match on its ladder until the next start.
 - **Pause and resume** are code since M2 T3 (the record in `E16-log.md`): unranked, the host's
   `Pause` pauses, a paused game is its journal, a seat's join with its token restores it (or as
   the seat's account, M3 T3). Since
@@ -96,7 +101,8 @@ only and a visible note. The server never reads anything from this check.
   agree, within the ladder's limit (M4 T6, §11).
 - **Upgrades.** A drain mode refuses new games and lets open ones finish; the operator then
   upgrades. Code since M2 T5a: the first SIGINT or SIGTERM drains (`Refused { Draining }` for a
-  creation, a waiting game ends, running and paused ones go on), the server stops once none
+  creation, a waiting game ends, running and paused ones go on; a game whose full inbox missed
+  the signal asks the registry after its next message), the server stops once none
   waits or runs, a second signal stops it at once; stopped, the connections hear
   `Goodbye { Shutdown }` and the journals stay for the next start. Games left open across an upgrade whose engine or content identity changed are
   void. When state saves exist (ADR-0004 point 9, an adventure-lane topic for long games), a
@@ -190,7 +196,9 @@ contains seeds, tokens, nonces or signatures.
   as an Ed25519 key, a `Rebound` line.
 - **Renames and the preference** (M3 T2b). `Rename` takes a display name no other account has,
   ignoring case (one's own in another case is free; else `NameTaken`); `SetListed` sets
-  `listed`. Each answered `Account`; a request that changes nothing writes no line.
+  `listed`. Each answered `Account`; a request that changes nothing writes no line. Either is
+  refused (`BadLogin`) from a connection whose key the account re-keyed from meanwhile (since
+  M4's review items: a rename on its way as a re-key elsewhere commits).
 - **Privacy.** A public key and a login name are shown to their owner only (a fingerprint in the
   client); other clients see display names. Anonymous connections may never queue for a ladder.
 - **Seats bound to accounts** (built in M3 T3). A connection opens a game with the account it is
@@ -328,6 +336,15 @@ below are the tasks' starting point, *provisional* until M4's review.
   time that passed while the server was down wakes the game at the first sweep, so the grace runs
   from the start. `paused_game_ms` never voids a game in an agreed pause. Unranked games keep the
   host's `Pause`; another seat asks once until the game moves on.
+- **The hold across a restart** (code since M4 T8, SRV-Q22 (b)): a seat taken before the due time
+  journals the rest of the pause (`Held { ms }`, journal format 7); a restore re-applies what is
+  left of it after the journal's last write (`Session::held_pause`), so an absent player's grace
+  still runs from the due time. The hold ends when the session's clock first moves past the due
+  time (a message, a closed connection or the sweep), journaled as `Held { ms: 0 }`; a later start
+  re-applies nothing. *Provisional*: a restart between the due time and that write, or after
+  writes that followed the hold's line (commands), re-applies a little more than its true rest:
+  never less, so the downtime never counts against a player. A new pause agreed (both players
+  back) ends the hold.
 - **Stalling** is not answered in M4: a connected player may sit on a turn until the game's
   rules bring a turn timer (`h3-game`, M5; SRV-Q19).
 
@@ -338,7 +355,8 @@ below are the tasks' starting point, *provisional* until M4's review.
   `sign(server_key, nonce || key || address)`. The client pins the key per address on first
   contact and refuses a changed key until the player confirms.
 - **Card.** `ServerCard { key, name, description, addresses, protocol, engine, content:
-  [(packs, profile, ruleset_hash)], ladders: [(id, name, season, players)], players_online,
+  [(packs, profile, ruleset_hash, battle_ruleset_hash)], ladders: [(id, name, season, players)],
+  players_online,
   games_open, anonymous, operator, issued, expires, peers: [(key, address)] }` with a
   signature over the canonical JSON; expiry a day by default; `Describe` returns it.
 - **Peers.** `[[peer]] key = "…" address = "…"` in the configuration. Every hour (and at

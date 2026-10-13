@@ -515,8 +515,14 @@ async fn account(
         let entry = (*key, Arc::clone(rekeyed));
         server.sessions().insert(session.clone(), entry);
     }
+    // The key the connection logged in with, or re-keyed to: a change from a connection whose key
+    // the account re-keyed from elsewhere meanwhile is refused (M3's review).
+    let by = gate.account().and_then(|login| {
+        let sessions = server.sessions();
+        sessions.get(&(login.to_owned(), conn)).map(|(key, _)| *key)
+    });
     let shared = Arc::clone(server);
-    let answer = tokio::task::spawn_blocking(move || shared.accounts.answer(request))
+    let answer = tokio::task::spawn_blocking(move || shared.accounts.answer(request, by))
         .await
         .unwrap_or(Err(Refusal::BadLogin));
     if let (Err(_), Some(session)) = (&answer, &session) {

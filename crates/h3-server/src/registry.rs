@@ -108,10 +108,15 @@ pub(crate) struct Registry {
     /// Where each connection that queued hears from its queue.
     queued: BTreeMap<ConnId, ToConn>,
     /// The matches' games that are not over, with their ladders and their seats' accounts: an
-    /// account waits for no other match on the ladder meanwhile (ADR-0019 point 8).
+    /// account waits for no other match on the ladder meanwhile (ADR-0019 point 8). A game that
+    /// stopped with its journal kept stays here until the next start ([`Registry::stopped`]).
     ranked: BTreeMap<u32, (String, [String; 2])>,
     /// The queues' clock starts here.
     epoch: Instant,
+    /// Whether the server drains, or stops (M2 T5e's review): a game's thread asks after each
+    /// message ([`Registry::signal`]), as the signal sent to a full inbox is lost.
+    draining: bool,
+    stopping: bool,
 }
 
 impl Registry {
@@ -143,6 +148,8 @@ impl Registry {
             queued: BTreeMap::new(),
             ranked: BTreeMap::new(),
             epoch: Instant::now(),
+            draining: false,
+            stopping: false,
         }
     }
 
@@ -328,6 +335,7 @@ impl Registry {
     /// it (a waiting one ends; a running one plays on).
     pub(crate) fn drain(&mut self) {
         self.lobby.drain();
+        self.draining = true;
         self.tell_all(|| ToGame::Drain);
         // The queues empty, and match no one any more (E16 M4 T2).
         let mut told = Told::new();
@@ -348,7 +356,21 @@ impl Registry {
 
     /// Every game's thread ends, their journals kept for the next start (E16 M2 T5a).
     pub(crate) fn stop_all(&mut self) {
+        self.stopping = true;
         self.tell_all(|| ToGame::Stop);
+    }
+
+    /// Whether the server stops (`ToGame::Stop`) or drains (`ToGame::Drain`): a game's thread
+    /// asks after each message, so a signal its full inbox missed still reaches it (M2 T5e's
+    /// review; a missed `Tick` waits for the next sweep).
+    pub(crate) const fn signal(&self) -> Option<ToGame> {
+        if self.stopping {
+            Some(ToGame::Stop)
+        } else if self.draining {
+            Some(ToGame::Drain)
+        } else {
+            None
+        }
     }
 
     /// The deadlines of abandoned games at `now` (E16 M2 T5a): every game's thread is ticked (it
@@ -433,7 +455,8 @@ impl Registry {
         }
     }
 
-    /// Every live game's thread gets `message` (one that is too busy to take it misses it).
+    /// Every live game's thread gets `message` (one that is too busy to take it misses it: it
+    /// asks for a drain or a stop itself, [`Registry::signal`]).
     fn tell_all(&self, message: impl Fn() -> ToGame) {
         for hosted in self.games.values() {
             if let Hosted::Live { to, .. } = hosted {
@@ -542,6 +565,18 @@ impl Registry {
         self.games.remove(&game);
         self.lobby.remove(game);
         self.ranked.remove(&game);
+    }
+
+    /// Game `game` is gone, but its journal stays for the next start (its journal no longer
+    /// writes, or its thread panicked): a match keeps its players from another on its ladder until
+    /// then (ADR-0019 point 8; M4's review), its ladder and seats' accounts `ranked` when the
+    /// registry does not hold them yet (a game restored at start).
+    pub(crate) fn stopped(&mut self, game: u32, ranked: Option<(String, [String; 2])>) {
+        let kept = self.ranked.remove(&game).or(ranked);
+        self.leave(game);
+        if let Some(kept) = kept {
+            self.ranked.insert(game, kept);
+        }
     }
 }
 
@@ -695,11 +730,13 @@ pub(crate) fn bind(
 }
 
 /// Restores the games whose journals the data directory holds (E16 M2 T2; call before the server
-/// listens): each re-runs on its own thread, which lists it again if it goes on; this returns once
-/// every re-run is done. A journal that does not read, that names an offer the server no longer
-/// has, or whose engine or content identity is not the offer's, is void. A game thread that does
-/// not start stops the server's start. Every journal's game id counts as handed out (E16 M4 T3b:
-/// a journal of a server from before `next-game`); one that does not record stops the start.
+/// listens): each re-runs on its own thread, which lists it again if it goes on, one after another
+/// by game id (M4's review: finished, unrated ranked games are rated in that order, and Glicko-2
+/// depends on it); this returns once every re-run is done. A journal that does not read, that
+/// names an offer the server no longer has, or whose engine or content identity is not the
+/// offer's, is void. A game thread that does not start stops the server's start. Every journal's
+/// game id counts as handed out (E16 M4 T3b: a journal of a server from before `next-game`); one
+/// that does not record stops the start.
 pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
     let (data, ids) = {
         let registry = lock(shared);
@@ -718,8 +755,12 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
         .filter_map(|entry| entry.ok().map(|entry| entry.path()))
         .filter(|path| path.extension().is_some_and(|e| e == "journal"))
         .collect();
-    paths.sort();
-    let mut restoring = Vec::new();
+    // By game id, not by name ("10" before "9"); a name that is no id last, the path the tie-break.
+    let id = |path: &PathBuf| {
+        let stem = path.file_stem().and_then(|s| s.to_str());
+        stem.and_then(|s| s.parse::<u32>().ok())
+    };
+    paths.sort_by_cached_key(|path| (id(path).is_none(), id(path), path.clone()));
     for path in paths {
         let name = path
             .file_stem()
@@ -743,13 +784,10 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
         match prepared {
             Ok(prepared) => {
                 prepared.spawn(inbox, Arc::clone(shared))?;
-                restoring.push(finished);
+                let _ = finished.await;
             }
             Err(why) => journal::void(&data, &path, &name, &why),
         }
-    }
-    for finished in restoring {
-        let _ = finished.await;
     }
     lock(shared).lobby.skip(ids.last());
     Ok(())
@@ -818,5 +856,72 @@ pub(crate) async fn match_every(shared: Shared, ladders: Arc<Ladders>) {
         let bots = tokio::task::spawn_blocking(move || tables.bots());
         let bots = bots.await.unwrap_or_default();
         lock(&shared).tick_queues(&bots);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::accounts::{Accounts, Ed25519};
+    use crate::ids::GameIds;
+
+    /// A registry without offers, its books in a fresh directory (removed by the caller).
+    fn registry() -> (Registry, PathBuf) {
+        let data =
+            std::env::temp_dir().join(format!("h3-registry-{:016x}", game::os_u64().unwrap()));
+        let server = config::Server {
+            data: data.clone(),
+            ..config::Server::default()
+        };
+        let stores = Stores {
+            accounts: Arc::new(Accounts::open(&data, Box::new(Ed25519)).unwrap()),
+            ladders: Arc::new(Ladders::default()),
+            ids: Arc::new(GameIds::open(&data).unwrap()),
+        };
+        let limits = config::Limits::default();
+        (Registry::new(vec![], &limits, server, stores), data)
+    }
+
+    #[test]
+    fn a_drain_or_a_stop_a_full_inbox_missed_is_still_told() {
+        // M2 T5e's review: the signal sent to a full inbox is lost; the game's thread asks.
+        let (mut registry, data) = registry();
+        let (to, mut inbox) = mpsc::channel(1);
+        registry.host(7, to.clone());
+        to.try_send(ToGame::Tick).unwrap();
+        assert!(registry.signal().is_none());
+        registry.drain();
+        assert!(matches!(registry.signal(), Some(ToGame::Drain)));
+        registry.stop_all();
+        assert!(matches!(registry.signal(), Some(ToGame::Stop)));
+        assert!(matches!(inbox.try_recv(), Ok(ToGame::Tick)));
+        assert!(inbox.try_recv().is_err(), "both missed");
+        let _ = fs::remove_dir_all(&data);
+    }
+
+    #[test]
+    fn a_match_that_stopped_with_its_journal_kept_keeps_its_players() {
+        // M4's review: a match whose journal no longer writes, or whose thread panicked, keeps its
+        // players from another match on its ladder until the next start restores it.
+        let (mut registry, data) = registry();
+        let entry = || {
+            (
+                String::from("arena"),
+                [String::from("ann"), String::from("bob")],
+            )
+        };
+        // Restored at start, its journal not writing: named here.
+        registry.stopped(3, Some(entry()));
+        assert_eq!(registry.ranked.get(&3), Some(&entry()));
+        // Held already: kept.
+        registry.stopped(3, None);
+        assert_eq!(registry.ranked.get(&3), Some(&entry()));
+        // Gone with its journal: its players are free.
+        registry.leave(3);
+        assert!(registry.ranked.is_empty());
+        // Another game keeps nothing.
+        registry.stopped(4, None);
+        assert!(registry.ranked.is_empty());
+        let _ = fs::remove_dir_all(&data);
     }
 }

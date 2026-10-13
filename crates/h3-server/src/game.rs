@@ -697,14 +697,8 @@ impl Prepared {
                 }
                 ToGame::Drain if session.started() => continue,
                 ToGame::Drain | ToGame::Stop => {
-                    close_all(&conns, &[], GoodbyeReason::Shutdown);
-                    if !session.started()
-                        && let Some(journal) = journal.take()
-                    {
-                        journal.remove();
-                    }
-                    lock(registry).leave(game);
-                    return turn_away(&mut inbox, GoodbyeReason::Shutdown);
+                    let started = session.started();
+                    return shut_down(game, (&conns, started, journal), registry, &mut inbox);
                 }
             }
             empty_since = if session.seated() {
@@ -774,7 +768,7 @@ impl Prepared {
             // Outside the registry's lock: the accounts' lock waits on the player log's writes.
             let renamed = (session.accounts() != named.each_ref().map(Option::as_deref))
                 .then(|| seated(&session, &stores.accounts));
-            let closed = {
+            let (closed, signal) = {
                 let mut registry = lock(registry);
                 if now != reported {
                     registry.report(game, now.clone());
@@ -784,7 +778,7 @@ impl Prepared {
                     registry.seat(game, seated);
                     named = owned(session.accounts());
                 }
-                registry.close_if_idle(game, reported.0)
+                (registry.close_if_idle(game, reported.0), registry.signal())
             };
             if closed {
                 // Outside the registry's lock (E16 M2 T5e): a removal is file I/O.
@@ -792,6 +786,11 @@ impl Prepared {
                     journal.remove();
                 }
                 return;
+            }
+            // A drain or a stop the full inbox missed (M2 T5e's review).
+            let started = session.started();
+            if matches!(signal, Some(ToGame::Stop)) || (signal.is_some() && !started) {
+                return shut_down(game, (&conns, started, journal), registry, &mut inbox);
             }
         }
         lock(registry).leave(game);
@@ -834,10 +833,12 @@ fn resume<'r>(
             return None;
         }
     };
-    // An agreed pause (E16 M4 T6): the seats' absences count from its due time, what is left of it
-    // since the journal's last write; woken, the game runs on without its players.
+    // An agreed pause (E16 M4 T6), or its hold after a seat was taken before its due time (E16 M4
+    // T8): the seats' absences count from its due time, what is left of it since the journal's
+    // last write (a hold's later writes not subtracted: never less than its true rest); woken, the
+    // game runs on without its players.
     let agreed = session.agreed_pause();
-    if let Some(ms) = agreed {
+    if let Some(ms) = agreed.or(session.held_pause()) {
         let passed = u64::try_from(paused_for.as_millis()).unwrap_or(u64::MAX);
         session.hold(ms.saturating_sub(passed));
     }
@@ -849,7 +850,15 @@ fn resume<'r>(
         Ok(journal) => journal,
         Err(e) => {
             eprintln!("h3-server: game {game}: the journal does not write ({e}): not restored");
-            gone();
+            // A match keeps its players' ranked game until the next start restores it.
+            let ladder = offer.ladder.clone().filter(|_| !session.over());
+            let ranked = match (ladder, owned(session.accounts())) {
+                (Some(ladder), [Some(attacker), Some(defender)]) => {
+                    Some((ladder, [attacker, defender]))
+                }
+                _ => None,
+            };
+            lock(registry).stopped(game, ranked);
             return None;
         }
     };
@@ -961,14 +970,15 @@ pub(crate) fn launch(
 
 /// Takes its game out of the registry if the game's thread panics (E16 M2 T5e: the reviewer's
 /// finding): otherwise the lobby would list it, and count it against the limits, until the server
-/// stops. Its connections find their queues closed (`TooSlow`).
+/// stops. Its connections find their queues closed (`TooSlow`). Its journal stays for the next
+/// start, and a match its players' ranked game until then (`Registry::stopped`).
 struct Panicked<'a>(u32, &'a Shared);
 
 impl Drop for Panicked<'_> {
     fn drop(&mut self) {
         if thread::panicking() {
             eprintln!("h3-server: game {}: its thread panicked", self.0);
-            lock(self.1).leave(self.0);
+            lock(self.1).stopped(self.0, None);
         }
     }
 }
@@ -1011,11 +1021,29 @@ fn too_long(
     turn_away(inbox, GoodbyeReason::CommandLimit);
 }
 
+/// The server stops, or drains and the game never started (E16 M2 T5a): every connection hears it
+/// shuts down, the game leaves the lobby, and the journal of a game that never started goes (one
+/// that started stays for the next start).
+fn shut_down(
+    game: u32,
+    (conns, started, journal): (&BTreeMap<ConnId, Outbox>, bool, Option<Writer>),
+    registry: &Shared,
+    inbox: &mut mpsc::Receiver<ToGame>,
+) {
+    close_all(conns, &[], GoodbyeReason::Shutdown);
+    if !started && let Some(journal) = journal {
+        journal.remove();
+    }
+    lock(registry).leave(game);
+    turn_away(inbox, GoodbyeReason::Shutdown);
+}
+
 /// The journal stopped: every connection hears the server shuts down (for this game), and the game
-/// leaves the lobby; its journal stays for the next start.
+/// leaves the lobby; its journal stays for the next start, and a match its players' ranked game
+/// until then (`Registry::stopped`).
 fn stop(conns: &BTreeMap<ConnId, Outbox>, registry: &Shared, game: u32) {
     close_all(conns, &[], GoodbyeReason::Shutdown);
-    lock(registry).leave(game);
+    lock(registry).stopped(game, None);
 }
 
 /// The game's thread ends (E16 M2 T3): no connection may come any more, and those already on the
@@ -1236,7 +1264,8 @@ fn verify(
             | Entry::Ranked
             | Entry::Absent(..)
             | Entry::Forfeit(_)
-            | Entry::PauseAgreed(..) => {}
+            | Entry::PauseAgreed(..)
+            | Entry::Held(_) => {}
         }
     }
     replay.final_hash = session.state_hash();

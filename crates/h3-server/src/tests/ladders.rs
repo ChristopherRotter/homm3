@@ -1401,3 +1401,149 @@ async fn a_paused_game_whose_players_are_not_back_wakes_and_is_void() {
     running.shutdown().await;
     std::fs::remove_dir_all(&config.server.data).unwrap();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn finished_unrated_games_a_start_re_runs_are_rated_by_game_id() {
+    // M4's review: games over but unrated (their ladder's log did not write) are rated at the next
+    // start one after another by id, as Glicko-2 needs; ids 9 and 10, whose names sort the other
+    // way. Each journal is taken as its players sat down and given a forfeit by hand.
+    let config = graced(1_000, 60_000);
+    std::fs::create_dir_all(&config.server.data).unwrap();
+    std::fs::write(config.server.data.join("next-game"), "9\n").unwrap();
+    let running = start(&config).await.unwrap();
+    let journal = |game| std::fs::read_to_string(journal_file(&config.server.data, game)).unwrap();
+    let forfeit = |seat| format!("{{\"Forfeit\":{{\"side\":\"{:?}\"}}}}\n", side(seat));
+    let ([ann, bob], first, [_, bob_seat]) = seated_match(&running).await;
+    let first_journal = journal(first) + &forfeit(bob_seat);
+    // Both leave: void, no rating changes, and Ann may queue again.
+    ann.close().await;
+    bob.close().await;
+    let mut attempts = 0;
+    while running.standing("arena", 1, "ann").map(|s| s.no_shows) != Some(1) {
+        attempts += 1;
+        assert!(attempts < 500, "never ended");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let (mut ann, mut carl) = (
+        player(&running, "ann", 1).await,
+        player(&running, "carl", 3).await,
+    );
+    matched(&mut ann, &mut carl).await;
+    let (second, [ann_seat, carl_seat]) = accepted(&mut ann, &mut carl).await;
+    takes(&mut ann, second, ann_seat).await;
+    takes(&mut carl, second, carl_seat).await;
+    let second_journal = journal(second) + &forfeit(carl_seat);
+    assert_eq!((first, second), (9, 10));
+    running.shutdown().await;
+    // A start on both journals and the player log.
+    let data = config.server.data.with_extension("rerun");
+    std::fs::create_dir_all(data.join("games")).unwrap();
+    std::fs::write(journal_file(&data, first), first_journal).unwrap();
+    std::fs::write(journal_file(&data, second), second_journal).unwrap();
+    std::fs::copy(
+        config.server.data.join("players.log"),
+        data.join("players.log"),
+    )
+    .unwrap();
+    let rerun = Config {
+        server: Server {
+            data: data.clone(),
+            ..config.server.clone()
+        },
+        ..config.clone()
+    };
+    let again = start(&rerun).await.unwrap();
+    let log = std::fs::read_to_string(data.join("ladders/arena.log")).unwrap();
+    let at = |game: u32| {
+        log.find(&format!("{{\"Rated\":{{\"game\":{game},"))
+            .unwrap()
+    };
+    assert!(at(first) < at(second), "{log}");
+    assert_eq!(again.standing("arena", 1, "ann").map(|s| s.wins), Some(2));
+    again.shutdown().await;
+    for data in [&config.server.data, &data] {
+        std::fs::remove_dir_all(data).unwrap();
+    }
+}
+
+/// The agreed pause's length in the tests of its hold across a restart (E16 M4 T8).
+const HELD_MS: u64 = 8_000;
+
+/// Ann and Bob agree on a pause of [`HELD_MS`], and Ann is back at once; the server stops before
+/// its due time and starts again on the journals as they were (E16 M4 T8). The restarted server,
+/// both data directories, the game, Bob's seat, when the pause began, and Ann in her seat again.
+async fn held_through_a_restart() -> (
+    Running,
+    [PathBuf; 2],
+    u32,
+    Seat,
+    tokio::time::Instant,
+    Client,
+) {
+    let config = pausing(1, HELD_MS);
+    let running = start(&config).await.unwrap();
+    let ([mut ann, mut bob], game, [ann_seat, bob_seat]) = seated_match(&running).await;
+    agreed(&mut ann, &mut bob, HELD_MS).await;
+    let paused = tokio::time::Instant::now();
+    let mut ann = player(&running, "ann", 1).await;
+    takes(&mut ann, game, ann_seat).await;
+    let restarted = Config {
+        server: Server {
+            data: crashed(&config.server.data),
+            ..config.server.clone()
+        },
+        ..config.clone()
+    };
+    running.shutdown().await;
+    let again = start(&restarted).await.unwrap();
+    let mut ann = player(&again, "ann", 1).await;
+    takes(&mut ann, game, ann_seat).await;
+    let data = [config.server.data, restarted.server.data];
+    (again, data, game, bob_seat, paused, ann)
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_agreed_pause_resumed_early_holds_the_absences_across_a_restart() {
+    // SRV-Q22 (b): Bob is back beyond the grace (1 s) from the restart, before the pause's due
+    // time: the game plays on to its end, no forfeit.
+    let (again, data, game, bob_seat, paused, ann) = held_through_a_restart().await;
+    tokio::time::sleep(Duration::from_millis(2_500)).await;
+    let mut bob = player(&again, "bob", 2).await;
+    takes(&mut bob, game, bob_seat).await;
+    assert!(
+        paused.elapsed() < Duration::from_millis(HELD_MS),
+        "before the due time: {:?}",
+        paused.elapsed()
+    );
+    // A forfeit would have been rated before Bob's join reached the game.
+    assert!(again.standing("arena", 1, "bob").is_none(), "no forfeit");
+    let played = async { tokio::join!(play(ann, 5), play(bob, 6)) };
+    let ((_, ann_saw), (_, bob_saw)) = tokio::time::timeout(GAME_TIME, played).await.unwrap();
+    for saw in [ann_saw, bob_saw] {
+        let result = end(&saw);
+        assert!(!matches!(result, Outcome::Forfeit { .. }), "{result:?}");
+    }
+    again.shutdown().await;
+    for data in data {
+        std::fs::remove_dir_all(data).unwrap();
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_player_not_back_by_a_held_pauses_due_time_forfeits_after_a_restart() {
+    // Bob does not come back: his absence counts from the due time, then the grace forfeits him.
+    let (again, data, _, bob_seat, paused, mut ann) = held_through_a_restart().await;
+    let forfeit = Outcome::Forfeit {
+        side: side(bob_seat),
+    };
+    assert_eq!(ends(&mut ann).await, forfeit);
+    let waited = paused.elapsed();
+    assert!(
+        waited >= Duration::from_millis(HELD_MS + 800) && waited < Duration::from_secs(20),
+        "the pause, then the grace: {waited:?}"
+    );
+    again.shutdown().await;
+    for data in data {
+        std::fs::remove_dir_all(data).unwrap();
+    }
+}

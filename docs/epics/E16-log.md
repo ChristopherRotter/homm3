@@ -1393,3 +1393,76 @@ how and why the work went.
   cut through an append handle either: it cannot show the fix. The user's Windows verify confirms
   it (the cause as Rust's Windows `OpenOptions` gives it: append mode drops `FILE_WRITE_DATA`,
   which `set_len` needs).
+
+### M4 T8 — An agreed pause's hold across a restart (2026-10-12, SRV-Q22 (b))
+
+- **The start.** #130 (T7) and #134 (the logs on Windows) had merged; the branch restarted from
+  `master`. The scoped verify on `master` had no failing step, the workload unchanged (no
+  re-baseline).
+- **The defect** (M4's reviewer): a seat taken during an agreed pause before its due time held
+  the other seat's absence until then in memory only (`Session::hold`); the journal's `Resumed`
+  ended the agreed pause, so a restart before the due time restored a running game with no hold,
+  and the absent player's grace ran from the restart (a forfeit before the pause's due time).
+- **The session** (`h3_protocol::session`, *provisional*): an early resume (a join in an agreed
+  pause with time left) journals `Entry::Held(rest)` after `Resumed` and keeps the rest
+  (`held_pause()`); a restore re-runs it. `elapse` ends the hold when the clock first reaches the
+  due time: `Entry::Held(0)`, and a later restore holds nothing. A new agreed pause (both seats
+  were back to agree) ends an earlier hold, at a restore too (`agree`).
+- **The server**: `game::resume` re-applies `agreed_pause()` or else `held_pause()`, less the time
+  since the journal's last write, as T6 does for a pause. **The journal** (format 7):
+  `Held { ms }`. No wire change.
+- ***Provisional*, when a journaled hold ends** (the queue's question): at the clock's first move
+  past the due time (a message, a closed connection, the sweep: at most a sweep late). A restart
+  before that write, or after commands written since the hold's line, re-applies a little more
+  than the true rest (the time between the hold's line and the last write is not subtracted):
+  never less, so neither the downtime nor the restart counts against a player. Exact rests would
+  need the journal to carry times; not worth it for a pause of minutes.
+- **Tests** (`h3-protocol` 92 → 93, `h3-server` 100 → 102): the session's hold journaled at an
+  early resume, none for a seat back at the due time, re-applied at a restore (Bob back beyond the
+  grace from the restart, before the due time: no forfeit), over at the due time and not
+  re-applied after, a player not back by it forfeiting after the grace, a new pause ending it; the
+  journal's line. End to end (`tests/ladders.rs`): an agreed pause, Ann back at once, a restart
+  before the due time; Bob back 2.5 s after it (the grace is 1 s) plays on to the end, no
+  forfeit; Bob not back forfeits only after the pause's due time and the grace. Both end-to-end
+  tests fail without the re-apply (checked).
+
+### M4's review items (2026-10-12, after T8, the user's request)
+
+The user asked for the open items that need no decision of theirs, in T8's pull request. Taken
+from the inbox: the two review items SRV-Q22 left for later, and two older ones inside the lane.
+Left: the turn timer (M5, a game rule), the player log's lock split and the lobby's names after a
+rename (both "if it shows"), a separate rate for automated clients (a configuration choice).
+
+- **A match that stops with its journal kept** (M4's reviewer): a game whose journal no longer
+  writes, or whose thread panics, left `Registry::ranked` while its journal stayed, so its players
+  could start another match on the ladder and the next start restored both. `Registry::stopped`
+  takes it out of the lobby and keeps the entry until the next start; `game::stop`, the panic
+  guard and a restore whose journal does not reopen for writing (it names the entry, which a start
+  does not hold yet) use it. *Provisional*: also for a match that never started (its journal goes
+  at the next start; its players wait for it). Tested on the registry (`Registry::stopped`): a
+  journal that stops writing cannot be made portably in a test (the sandbox runs as root, and the
+  game holds its file open).
+- **The rating order at a start** (M4's reviewer): `registry::restore` re-runs each journal to its
+  end, or until its game is listed again, before the next, sorted by game id (by name, "10" came
+  before "9"); finished, unrated ranked games are rated in that order. The server does not listen
+  yet, so no restored game moves meanwhile. Tested end to end: two journals of ids 9 and 10
+  sharing a player, taken as the players sat down and given forfeits by hand, rated in id order at
+  a start (the test fails with the order by name).
+- **A drain or a stop a full inbox missed** (M2 T5e's review): the registry remembers that it
+  drains or stops (`Registry::signal`), and a game's thread asks under the lock it takes after each
+  message anyway, then acts as on the signal (`game::shut_down`, shared with the signal's arm). A
+  missed `Tick` still waits for the next sweep. Tested on the registry (a full inbox misses both
+  signals, the registry tells them).
+- **A rename racing a re-key** (M3's review): the connection's task passes the key it logged in
+  with (or re-keyed to, its `Sessions` entry) with the request, and the player log refuses a rename
+  or a listing change (`BadLogin`) unless that key is the account's, under the log's lock. A stale
+  re-key was refused already by its old-key signature. Tested on `Accounts`: the old key, and none,
+  refused; the new key changes. `docs/06-security.md` says so (its own commit; the pull request
+  labelled `cross-lane` with the user's consent, 2026-10-13).
+- **Found, left in the inbox**: a ranked game over whose ladder log did not write keeps its
+  journal, but its players may play another match before the next start rates it.
+- **Tests** (`h3-server` 102 → 106).
+- **The merge of `master`** (2026-10-13): R01's content split (cross-lane, protocol v21) touched
+  the server's code; the merge was clean but for the queue's inbox. Its note asked for the design
+  note's offer line: §3 and the server card (§12) name `battle_ruleset_hash` beside
+  `ruleset_hash`.

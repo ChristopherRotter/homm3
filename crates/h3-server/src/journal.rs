@@ -7,7 +7,8 @@
 //! form), a state hash, a pause and a resume (format 2, E16 M2 T3), whether the game takes
 //! spectators as it started (format 3, E16 M2 T4c), the account a seat belongs to in its `Taken`
 //! line (format 4, E16 M3 T3), a ranked game's mark, a seat's stretch without a connection and a
-//! forfeit (format 5, E16 M4 T3a), a pause by agreement and its length (format 6, E16 M4 T6).
+//! forfeit (format 5, E16 M4 T3a), a pause by agreement and its length (format 6, E16 M4 T6), the
+//! hold of a pause resumed before its due time (format 7, E16 M4 T8).
 //!
 //! - **Write-ahead.** The game's thread appends the entries of each call and syncs them before it
 //!   sends that call's frames ([`Writer::append`]); a new journal is synced with its directory
@@ -33,7 +34,7 @@ use h3_protocol::session::Entry;
 use serde::{Deserialize, Serialize};
 
 /// The version of the journal's format: bumped when its lines change.
-pub const JOURNAL_FORMAT_VERSION: u32 = 6;
+pub const JOURNAL_FORMAT_VERSION: u32 = 7;
 
 /// The journal's first line: the game as it started.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -90,6 +91,8 @@ enum Line {
     Forfeit { side: Side },
     /// [`Entry::PauseAgreed`]: the side that proposed and the length in milliseconds (E16 M4 T6).
     PauseAgreed { side: Side, ms: u64 },
+    /// [`Entry::Held`]: the rest of the pause in milliseconds, 0 at its due time (E16 M4 T8).
+    Held { ms: u64 },
 }
 
 impl Side {
@@ -137,6 +140,7 @@ impl Line {
             },
             Entry::Forfeit(by) => Self::Forfeit { side: side(by) },
             Entry::PauseAgreed(by, ms) => Self::PauseAgreed { side: side(by), ms },
+            Entry::Held(ms) => Self::Held { ms },
         }
     }
 
@@ -166,6 +170,7 @@ impl Line {
             Self::Absent { side, ms } => Entry::Absent(side.battle(), ms),
             Self::Forfeit { side } => Entry::Forfeit(side.battle()),
             Self::PauseAgreed { side, ms } => Entry::PauseAgreed(side.battle(), ms),
+            Self::Held { ms } => Entry::Held(ms),
         })
     }
 }
@@ -442,6 +447,8 @@ mod tests {
             Entry::Absent(BattleSide::Defender, 1_500),
             Entry::Forfeit(BattleSide::Attacker),
             Entry::PauseAgreed(BattleSide::Defender, 600_000),
+            Entry::Held(540_000),
+            Entry::Held(0),
         ];
         writer.append(entries.clone().into_iter()).unwrap();
         writer.append(std::iter::empty()).unwrap();
@@ -466,7 +473,7 @@ mod tests {
         // E16 M4 T3a.
         assert!(
             text.ends_with(
-                "{\"Ranked\":{}}\n{\"Absent\":{\"side\":\"Defender\",\"ms\":1500}}\n{\"Forfeit\":{\"side\":\"Attacker\"}}\n{\"PauseAgreed\":{\"side\":\"Defender\",\"ms\":600000}}\n"
+                "{\"Ranked\":{}}\n{\"Absent\":{\"side\":\"Defender\",\"ms\":1500}}\n{\"Forfeit\":{\"side\":\"Attacker\"}}\n{\"PauseAgreed\":{\"side\":\"Defender\",\"ms\":600000}}\n{\"Held\":{\"ms\":540000}}\n{\"Held\":{\"ms\":0}}\n"
             ),
             "{text}"
         );
