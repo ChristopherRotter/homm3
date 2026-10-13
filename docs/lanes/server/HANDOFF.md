@@ -61,4 +61,4 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-13 — M6 T4, the chain beyond the peers
 
-**PR open** (`E16-log.md`): the peers' relays to `depth`, chains checked; no wire change. Check its mergeability.
+**#165 open** (`E16-log.md`): the peers' relays to `depth`, chains checked; no wire change. Check its mergeability.
