@@ -48,8 +48,8 @@ pub struct SpellObstacle {
     /// any bonus (BAT-MAG-028, BAT-MAG-033); 0 for other kinds.
     pub value: u64,
     /// Both sides see it (BAT-MAG-031): a kind that is not hidden, a hidden one placed while the
-    /// other side had natives at the battle's start (quirk BAT-QUIRK-1), or one a stack of the
-    /// side that did not see it ran into (Quicksand, BAT-MAG-032; a mine goes off and is gone,
+    /// other side had natives at the battle's start, or one a stack of the side that did not see
+    /// it ran into (Quicksand, BAT-MAG-032; a mine goes off and is gone,
     /// BAT-MAG-033).
     pub revealed: bool,
 }
@@ -79,9 +79,6 @@ pub struct SpellObstacles {
     mines: HexSet,
     /// Whether each side had a stack on its native terrain at the battle's start.
     natives: [bool; 2],
-    /// Quirk BAT-QUIRK-1 fixed: a side sees hidden obstacles while it has a living native stack,
-    /// instead of by `natives` when they are placed.
-    live_sight: bool,
 }
 
 impl SpellObstacles {
@@ -94,15 +91,13 @@ impl SpellObstacles {
             pits: HexSet::new(),
             mines: HexSet::new(),
             natives: [false; 2],
-            live_sight: false,
         }
     }
 
     /// Sets the sides' sight of hidden obstacles at the battle's start (BAT-MAG-031): which
-    /// sides had natives, and whether the living natives decide instead (BAT-QUIRK-1 fixed).
-    pub(crate) const fn set_sight(&mut self, natives: [bool; 2], live: bool) {
+    /// sides had natives.
+    pub(crate) const fn set_sight(&mut self, natives: [bool; 2]) {
         self.natives = natives;
-        self.live_sight = live;
     }
 
     /// Every obstacle, in the order they were placed.
@@ -196,14 +191,13 @@ impl Clone for SpellObstacles {
             pits: self.pits,
             mines: self.mines,
             natives: self.natives,
-            live_sight: self.live_sight,
         }
     }
 }
 
 impl CanonicalHash for SpellObstacles {
     /// Count, then the obstacles in order (the hex sets follow from them), then the sight: the
-    /// natives of each side and the live sight (state hash v27).
+    /// natives of each side (state hash v44).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_len(self.list.len());
         for o in &self.list {
@@ -211,30 +205,14 @@ impl CanonicalHash for SpellObstacles {
         }
         h.write_bool(self.natives[0]);
         h.write_bool(self.natives[1]);
-        h.write_bool(self.live_sight);
     }
-}
-
-/// Whether `viewer` sees every hidden obstacle because of its natives now: with quirk
-/// BAT-QUIRK-1 fixed, while it has a living stack on its native terrain (BAT-MAG-031).
-fn natives_see(state: &BattleState, viewer: BattleSide) -> bool {
-    state.spell_obstacles.live_sight
-        && state
-            .stacks
-            .iter()
-            .any(|s| s.side == viewer && s.is_alive() && s.has(StackTraits::NATIVE))
 }
 
 /// Whether `viewer` would see a hidden obstacle the other side places now because of its natives
-/// (BAT-MAG-031): it had natives at the battle's start (quirk BAT-QUIRK-1), or, with the quirk
-/// fixed, it has a living stack on its native terrain.
+/// (BAT-MAG-031): it had natives at the battle's start, whether they live or not (the original's
+/// timing, 0x46402C; BAT-QUIRK-1 retired, BAT-Q34).
 fn natives_sight(state: &BattleState, viewer: BattleSide) -> bool {
-    let o = &state.spell_obstacles;
-    if o.live_sight {
-        natives_see(state, viewer)
-    } else {
-        o.natives[viewer.index()]
-    }
+    state.spell_obstacles.natives[viewer.index()]
 }
 
 /// Whether `side`'s hero may place obstacles of kind `kind` now (BAT-MAG-033; the original's
@@ -245,16 +223,16 @@ pub(crate) fn may_place(state: &BattleState, side: BattleSide, kind: ObstacleKin
     kind != ObstacleKind::Mine || !natives_sight(state, side.opponent())
 }
 
-/// Whether `viewer` sees obstacle `o` (BAT-MAG-031; ADR-0014 point 7): its own, a revealed one,
-/// or any while its natives see (quirk BAT-QUIRK-1 fixed).
+/// Whether `viewer` sees obstacle `o` (BAT-MAG-031; ADR-0014 point 7): its own or a revealed one
+/// (an obstacle the natives see is placed revealed).
 // rule: BAT-MAG-031
-pub(crate) fn sees(state: &BattleState, viewer: BattleSide, o: &SpellObstacle) -> bool {
-    o.side == viewer || o.revealed || natives_see(state, viewer)
+pub(crate) fn sees(viewer: BattleSide, o: &SpellObstacle) -> bool {
+    o.side == viewer || o.revealed
 }
 
 /// Who may see an event about obstacle `o`: both sides if the other side sees it, else its side.
-fn visibility(state: &BattleState, o: &SpellObstacle) -> Visibility {
-    if sees(state, o.side.opponent(), o) {
+fn visibility(o: &SpellObstacle) -> Visibility {
+    if sees(o.side.opponent(), o) {
         Visibility::Public
     } else {
         Visibility::Side(o.side)
@@ -262,18 +240,15 @@ fn visibility(state: &BattleState, o: &SpellObstacle) -> Visibility {
 }
 
 /// The spell obstacles `viewer` sees, in the order they were placed, as observations show them
-/// (BAT-MAG-031): with `revealed` set when the other side of the obstacle's sees it now. A
-/// spectator (`None`) sees those both sides see.
+/// (BAT-MAG-031): `revealed` set when the other side of the obstacle's sees it. A spectator
+/// (`None`) sees those both sides see.
 pub(crate) fn observed(state: &BattleState, viewer: Option<BattleSide>) -> Vec<SpellObstacle> {
     state
         .spell_obstacles
         .list
         .iter()
-        .map(|o| SpellObstacle {
-            revealed: sees(state, o.side.opponent(), o),
-            ..*o
-        })
-        .filter(|o| viewer.map_or(o.revealed, |viewer| o.side == viewer || o.revealed))
+        .filter(|o| viewer.map_or(o.revealed, |viewer| sees(viewer, o)))
+        .copied()
         .collect()
 }
 
@@ -284,7 +259,7 @@ pub(crate) fn seen_by(state: &BattleState, viewer: BattleSide) -> Vec<SpellObsta
         .spell_obstacles
         .list
         .iter()
-        .filter(|o| sees(state, viewer, o))
+        .filter(|o| sees(viewer, o))
         .copied()
         .collect()
 }
@@ -298,7 +273,7 @@ pub(crate) fn seen_pits(state: &BattleState, viewer: BattleSide) -> HexSet {
         .spell_obstacles
         .list
         .iter()
-        .filter(|o| o.kind == ObstacleKind::Pit && sees(state, viewer, o))
+        .filter(|o| o.kind == ObstacleKind::Pit && sees(viewer, o))
         .fold(HexSet::new(), |set, o| set.union(o.hexes))
 }
 
@@ -310,7 +285,7 @@ pub(crate) fn public_pits(state: &BattleState) -> HexSet {
         .spell_obstacles
         .list
         .iter()
-        .filter(|o| o.kind == ObstacleKind::Pit && sees(state, o.side.opponent(), o))
+        .filter(|o| o.kind == ObstacleKind::Pit && sees(o.side.opponent(), o))
         .fold(HexSet::new(), |set, o| set.union(o.hexes))
 }
 
@@ -346,7 +321,7 @@ fn seen_hexes(state: &BattleState, side: BattleSide) -> HexSet {
     if o.has_hidden() {
         o.list
             .iter()
-            .filter(|o| sees(state, side, o))
+            .filter(|o| sees(side, o))
             .fold(HexSet::new(), |set, o| set.union(o.hexes))
     } else {
         o.hexes()
@@ -430,8 +405,8 @@ pub(crate) fn random_hexes(
 /// Places the obstacles of kind `kind` and shape `shape` of `side`'s cast of `id` on `hexes` with
 /// the value `value` (BAT-MAG-027): one per hex for a separate shape (Fire Wall, Quicksand, Land
 /// Mine), else one over all; each reported to the sides that see it (BAT-MAG-031). A hidden kind
-/// is revealed at once if the other side had natives at the battle's start (quirk BAT-QUIRK-1;
-/// the original's 0x5A0442, `installation.md` §7.16; mines are never cast then, BAT-MAG-033).
+/// is revealed at once if the other side had natives at the battle's start (the original's
+/// 0x5A0442, `installation.md` §7.16; mines are never cast then, BAT-MAG-033).
 pub(crate) fn place<S: Sink>(
     state: &mut BattleState,
     (id, kind, shape): (SpellId, ObstacleKind, &ObstacleShape),
@@ -442,8 +417,7 @@ pub(crate) fn place<S: Sink>(
     let value = if kind.has_value() { value } else { 0 };
     let sight = &state.spell_obstacles;
     // rule: BAT-MAG-031
-    let revealed =
-        !kind.is_hidden() || (!sight.live_sight && sight.natives[side.opponent().index()]);
+    let revealed = !kind.is_hidden() || sight.natives[side.opponent().index()];
     let make = |set: HexSet| SpellObstacle {
         spell: id,
         kind,
@@ -460,7 +434,7 @@ pub(crate) fn place<S: Sink>(
         }
         list.push(o);
         sink.emit(Event {
-            visibility: visibility(state, &o),
+            visibility: visibility(&o),
             kind: EventKind::ObstaclePlaced {
                 side,
                 spell: id,
@@ -490,12 +464,10 @@ fn remove<S: Sink>(
     sink: &mut S,
 ) {
     let before = state.spell_obstacles.list.len();
-    let natives = BattleSide::BOTH.map(|side| natives_see(state, side));
     state.spell_obstacles.list.retain_mut(|o| {
         let removed = gone(o);
         if removed {
-            let other = o.side.opponent();
-            let visibility = if o.revealed || natives[other.index()] {
+            let visibility = if o.revealed {
                 Visibility::Public
             } else {
                 Visibility::Side(o.side)
@@ -550,9 +522,11 @@ pub(crate) fn removable(
     hex: Hex,
 ) -> bool {
     state.natural.removable_at(hex).is_some()
-        || state.spell_obstacles.list.iter().any(|o| {
-            o.hexes.contains(hex) && magic.removes_at(o.kind, mastery) && sees(state, side, o)
-        })
+        || state
+            .spell_obstacles
+            .list
+            .iter()
+            .any(|o| o.hexes.contains(hex) && magic.removes_at(o.kind, mastery) && sees(side, o))
 }
 
 /// Whether [`removable`] holds for some hex (BAT-MAG-034), without testing every hex: a
@@ -568,7 +542,7 @@ pub(crate) fn any_removable(
             .spell_obstacles
             .list
             .iter()
-            .any(|o| magic.removes_at(o.kind, mastery) && sees(state, side, o))
+            .any(|o| magic.removes_at(o.kind, mastery) && sees(side, o))
 }
 
 /// Removes what `side`'s validated remove cast `magic` at `mastery` finds on `hex`
@@ -592,14 +566,9 @@ pub(crate) fn remove_at<S: Sink>(
         }));
         return;
     }
-    let natives = natives_see(state, side);
     remove(
         state,
-        |o| {
-            o.hexes.contains(hex)
-                && magic.removes_at(o.kind, mastery)
-                && (o.side == side || o.revealed || natives)
-        },
+        |o| o.hexes.contains(hex) && magic.removes_at(o.kind, mastery) && sees(side, o),
         sink,
     );
 }
@@ -619,7 +588,7 @@ fn mine_under(state: &BattleState, ruleset: &BattleRuleset, s: StackId, hex: Hex
     state.spell_obstacles.list.iter().position(|o| {
         o.kind == ObstacleKind::Mine
             && o.hexes.contains(hex)
-            && !sees(state, side, o)
+            && !sees(side, o)
             && magic::hurts(state, ruleset, o, s)
     })
 }
@@ -854,7 +823,7 @@ fn stuck<S: Sink>(state: &mut BattleState, mover: StackId, hex: Hex, sink: &mut 
         if pit.kind != ObstacleKind::Pit || !pit.hexes.contains(hex) {
             continue;
         }
-        if !sees(state, viewer, &pit) {
+        if !sees(viewer, &pit) {
             state.spell_obstacles.list[i].revealed = true;
             sink.emit(Event::public(EventKind::ObstacleRevealed {
                 side: pit.side,
@@ -864,7 +833,7 @@ fn stuck<S: Sink>(state: &mut BattleState, mover: StackId, hex: Hex, sink: &mut 
         }
         let pit = state.spell_obstacles.list[i];
         sink.emit(Event {
-            visibility: visibility(state, &pit),
+            visibility: visibility(&pit),
             kind: EventKind::ObstacleTriggered {
                 stack: mover,
                 spell: pit.spell,

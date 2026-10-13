@@ -179,18 +179,19 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Regression test: `crates/h3-battle/src/tests/control.rs`, `mass_versions_pass_over_hypnotized_stacks_and_expert_cure_only_with_q0012`; Expert Dispel with and without the flag: `expert_dispel_reaches_hypnotized_stacks_in_every_profile`
 - Decided by / date: user, 2026-10-07 (E04b T4a checkpoint, Q53)
 
-### BAT-QUIRK-1 — The natives' sight of hidden obstacles is fixed at the battle's start
-- Class: fix-optional (user, 2026-10-07, BAT-Q1)
-- Context / rules affected: battle, BAT-MAG-031 (ADR-0014 point 7, amended)
-- Original behavior: at the battle's start the original sets one byte per side (+0x1329C, 0x46402C): whether any of its stacks fights on its native terrain. When Quicksand or a Land Mine is placed, the object is revealed to both sides if the other side's byte is set (0x5A0442). Nothing writes the byte again: a side whose natives die keeps seeing what is placed later, and stacks created later change nothing.
-- Intended/expected behavior: a side sees the other side's hidden obstacles while it has a living stack on its native terrain, so its sight comes and goes with its natives (strict-fixed; the engine's own variant). VCMI stands between the two: its `battleHasNativeStack` asks each time but counts every stack of the side that is no ghost, dead ones included, so there the sight does not end when the natives die (as in the original) and comes with natives that appear later (unlike it); the wiki's Land Mine line ("if the enemy started the battle with a unit on its native terrain") fits the original's timing.
-- Impact: gameplay-altering (small)
-- Community status: unknown (the wiki describes the natives' sight without timing)
-- Sources: original-data, `docs/formats/installation.md` §7.16; VCMI 1.7.5 `lib/battle/CObstacleInstance.cpp` L152–L162 and `lib/battle/CBattleInfoEssentials.cpp` L107–L126 (survey E04b-magic; re-read 2026-10-12)
-- Flag: `quirk.battle.natives_sight_at_start` (E04b T5c1)
-- Defaults: faithful = on, strict-fixed = off
-- Regression test: `crates/h3-battle/src/tests/pits.rs`, `natives_at_the_start_reveal_the_other_sides_pits_with_bat_quirk_1`, `living_natives_see_the_other_sides_pits_without_bat_quirk_1`
-- Decided by / date: user, 2026-10-07 (E04b checkpoint before T5c, BAT-Q1). Review (E04b T11b, 2026-10-12): at that decision this entry described VCMI as testing the living natives; VCMI counts dead natives too (above), so the variant without the flag follows neither VCMI nor the wiki.
+### BAT-QUIRK-1 — The natives' sight of hidden obstacles is fixed at the battle's start (retired: not a quirk)
+- Class: none: considered, not a quirk (retired by the user, 2026-10-13, BAT-Q34; before: fix-optional, user, 2026-10-07, BAT-Q1)
+- Context / rules affected: battle, BAT-MAG-031, BAT-MAG-033 (ADR-0014 point 7, amended)
+- Original behavior: at the battle's start the original sets one byte per side (+0x1329C, 0x46402C): whether any of its stacks fights on its native terrain. When Quicksand or a Land Mine is placed, the object is revealed to both sides if the other side's byte is set (0x5A0442), and Land Mine is refused while it is (0x59ECEE). Nothing writes the byte again: a side whose natives die keeps seeing what is placed later, and stacks created later change nothing.
+- Engine behavior: the original's, in every profile (BAT-MAG-031).
+- Why it is no quirk: the flag's other variant (a side sees while it has a living native stack) was the engine's own design, kept as the "fix" when the code was read. No source describes it: VCMI 1.7.5 asks each time but counts dead natives too (`lib/battle/CBattleInfoEssentials.cpp` L107–L126), the wiki's Land Mine page says "started the battle with" (the original's timing) and its Quicksand page names no timing ("unless the hero has a creature fighting on native terrain"; the wiki checks, 2026-10-13).
+- Impact: none (the engine follows the original)
+- Community status: the wiki describes the original's timing (Land Mine)
+- Sources: original-data, `docs/formats/installation.md` §7.16; VCMI 1.7.5 `lib/battle/CObstacleInstance.cpp` L152–L162 and `lib/battle/CBattleInfoEssentials.cpp` L107–L126; the wiki's Land Mine and Quicksand pages
+- Flag: none; retired: `quirk.battle.natives_sight_at_start` (E04b T5c1 to 2026-10-13). Its position 9 in `h3_content::REGISTRY` stays reserved and a profile that names it does not compile (`CompileError::UnknownQuirk`)
+- Defaults: none (no flag)
+- Regression test: `crates/h3-battle/src/tests/pits.rs`, `natives_at_the_start_reveal_the_other_sides_pits`, `without_natives_at_the_start_the_other_sides_pits_stay_hidden`; `crates/h3-battle/src/tests/mines.rs`, `land_mine_is_refused_while_the_other_sides_natives_would_see_the_mines`; the retired name: `crates/h3-content/src/quirks.rs`, `a_retired_flag_keeps_its_position_and_has_no_name`
+- Decided by / date: user, 2026-10-07 (E04b checkpoint before T5c, BAT-Q1); review (E04b T11b, 2026-10-12): at that decision this entry described VCMI as testing the living natives, which it does not; retired: user, 2026-10-13 (BAT-Q34)
 
 ### BAT-QUIRK-2 — An attack from a seen Quicksand pit (retired: not a quirk)
 - Class: none: considered, not a quirk (retired by the user, 2026-10-12, BAT-Q30; before: fix-optional, user, 2026-10-07, BAT-Q1)

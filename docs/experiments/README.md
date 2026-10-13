@@ -197,9 +197,9 @@ under Expert Magic Mirror, ten casts: none is sent away (the reading, VCMI, the 
 between two stacks: cast (the reading) or refused, and the two corners, F after the side's hero has
 cast this round and F for dragons without a hero (the reading: it reads a hero that is not there,
 so a battle that may crash; BAT-Q32); one dragon's Fireball under the Orb of Tempestuous Fire: 120
-(the reading) or 80 (the engine and VCMI), its Magic Arrow 70 either way (BAT-Q28 row 2); batch
-2e's OI set-up again with F pressed on the dragons' turn (the batch tried only the cursor; BAT-Q32,
-BAT-Q21 point 1). *One row each:* Chain Lightning's tie: an enemy stack A as the first target, one
+(the reading and the engine since 2026-10-13) or 80 (VCMI), its Magic Arrow 70 either way (BAT-Q28
+row 2); batch 2e's OI set-up again with F pressed on the dragons' turn: cast (the reading and the
+engine since 2026-10-13) or refused (the batch tried only the cursor; BAT-Q32, BAT-Q21 point 1). *One row each:* Chain Lightning's tie: an enemy stack A as the first target, one
 stack of each side of one creature type (Q43's offset cancels) two hexes from A in A's row: the
 attacker's stack is struck second (the reading) or the defender's (row 1); defense 12, Defend,
 Expert Stone Skin, right-click: 20 (the reading) or 21, and a defending stack of defense 0 struck

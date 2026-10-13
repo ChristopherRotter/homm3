@@ -316,7 +316,8 @@ fn state_hash_is_pinned() {
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 43);
+    // v44: the obstacles' sight lost its live-natives flag (BAT-QUIRK-1 retired, BAT-Q34).
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 44);
 }
 
-const GOLDEN: u64 = 0x1d92_07fe_6b45_73f5;
+const GOLDEN: u64 = 0x8d2b_796b_e38a_9bff;

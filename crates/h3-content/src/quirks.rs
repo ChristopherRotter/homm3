@@ -83,7 +83,10 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.fire_shield_first_stage",
     "quirk.battle.early_mass_version",
     "quirk.battle.mass_cure_skips_hypnotized",
-    "quirk.battle.natives_sight_at_start",
+    // 9: `quirk.battle.natives_sight_at_start` (BAT-QUIRK-1), retired on 2026-10-13 (the user,
+    // BAT-Q34): the natives' sight fixed at the battle's start is the original's rule, and no
+    // source describes the variant without it (`installation.md` §7.16).
+    RETIRED,
     // 10: `quirk.battle.attack_from_seen_pit` (BAT-QUIRK-2), retired on 2026-10-12 (the user,
     // BAT-Q30): the original offers no attack from a pit the stack's side sees, so there is no
     // such quirk (`installation.md` §7.16).
@@ -141,11 +144,6 @@ pub const EARLY_MASS_VERSION: QuirkFlag = QuirkFlag(7);
 /// (BAT-MAG-026). Not the mass version of a spell that only dispels: Expert Dispel reaches
 /// hypnotized stacks with and without the flag, as the original's does (BAT-MAG-016).
 pub const MASS_CURE_SKIPS_HYPNOTIZED: QuirkFlag = QuirkFlag(8);
-
-/// BAT-QUIRK-1: a side sees the other side's hidden obstacles (Quicksand) if it had a stack on
-/// its native terrain at the battle's start, given to each obstacle when it is placed; natives
-/// that die or appear later change nothing (BAT-MAG-031). Off: while it has a living one.
-pub const NATIVES_SIGHT_AT_START: QuirkFlag = QuirkFlag(9);
 
 /// BAT-QUIRK-3: a removable natural obstacle's anchor hex is part of it even where the obstacle
 /// does not block it: it takes no Fire Wall, Force Field, pit or mine, and Remove Obstacle aimed at
@@ -319,10 +317,6 @@ mod tests {
             Some(MASS_CURE_SKIPS_HYPNOTIZED)
         );
         assert_eq!(
-            REGISTRY.lookup("quirk.battle.natives_sight_at_start"),
-            Some(NATIVES_SIGHT_AT_START)
-        );
-        assert_eq!(
             REGISTRY.lookup("quirk.battle.obstacle_anchors"),
             Some(OBSTACLE_ANCHORS)
         );
@@ -355,8 +349,11 @@ mod tests {
     fn a_retired_flag_keeps_its_position_and_has_no_name() {
         // Positions 10 and 14 were `quirk.battle.attack_from_seen_pit` (BAT-QUIRK-2, BAT-Q30)
         // and `quirk.battle.creature_mirror_untested` (BAT-QUIRK-9, BAT-Q29), both retired on
-        // 2026-10-12. Neither their old names nor the empty name of their entries find them.
+        // 2026-10-12, position 9 `quirk.battle.natives_sight_at_start` (BAT-QUIRK-1, BAT-Q34),
+        // retired on 2026-10-13. Neither their old names nor the empty name of their entries
+        // find them.
         for name in [
+            "quirk.battle.natives_sight_at_start",
             "quirk.battle.attack_from_seen_pit",
             "quirk.battle.creature_mirror_untested",
             "",
@@ -366,12 +363,15 @@ mod tests {
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
         assert_eq!(REGISTRY.len(), 23);
-        assert_eq!([REGISTRY.names[10], REGISTRY.names[14]], [RETIRED; 2]);
+        assert_eq!(
+            [REGISTRY.names[9], REGISTRY.names[10], REGISTRY.names[14]],
+            [RETIRED; 3]
+        );
         assert!(
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..23).filter(|i| ![10, 14].contains(i)))
+                .eq((0..23).filter(|i| ![9, 10, 14].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

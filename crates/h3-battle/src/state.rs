@@ -3,8 +3,8 @@
 
 use alloc::vec::Vec;
 use h3_content::{
-    CreatureFlag, CreatureTypeId, MAX_ARMY_SLOTS, NATIVES_SIGHT_AT_START, OBSTACLE_ANCHORS,
-    TerrainId, UNLIMITED_BALLISTA_SHOTS,
+    CreatureFlag, CreatureTypeId, MAX_ARMY_SLOTS, OBSTACLE_ANCHORS, TerrainId,
+    UNLIMITED_BALLISTA_SHOTS,
 };
 use h3_content_battle::{
     Ability, AreaShot, BattleRuleset, CreatureType, MAX_SIDE_STACKS, WAR_MACHINE_KINDS,
@@ -55,7 +55,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 43;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 44;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -987,8 +987,7 @@ impl BattleState {
                 .iter()
                 .any(|s| s.side == side && s.has(StackTraits::NATIVE))
         });
-        let at_start = ruleset.quirks().is_enabled(NATIVES_SIGHT_AT_START);
-        state.spell_obstacles.set_sight(natives, !at_start);
+        state.spell_obstacles.set_sight(natives);
         // rule: BAT-TAC-001
         if let Some(phase) = tactics::phase(ruleset, &state.heroes) {
             // Round 0: the tactics phase; `EndTactics` starts round 1 (BAT-TAC-002).
