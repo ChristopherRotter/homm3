@@ -152,7 +152,11 @@ impl CanonicalHash for SiegeState {
 pub(crate) fn setup(
     ruleset: &BattleRuleset,
     field: Field,
-    (setup, heroes, battlefield): (&BattleSetup, &[Option<HeroRecord>; 2], Option<BattlefieldId>),
+    (setup, heroes, battlefield): (
+        &BattleSetup,
+        &[Option<HeroRecord>; 2],
+        Option<BattlefieldId>,
+    ),
     obstacles: HexSet,
 ) -> Result<Option<(SiegeState, Option<TownMines>)>, SetupError> {
     let Some(town) = setup.siege else {
@@ -206,7 +210,11 @@ pub(crate) fn setup(
                 spell: id,
                 hexes: set(&mut sf.moat.iter().filter(|&&h| h != bridge)),
                 value,
-                rounds: spell.magic.obstacle.as_ref().map_or(0, |shape| shape.rounds),
+                rounds: spell
+                    .magic
+                    .obstacle
+                    .as_ref()
+                    .map_or(0, |shape| shape.rounds),
             }
         });
     let kept = line
@@ -369,7 +377,10 @@ pub(crate) fn entered<S: Sink>(state: &mut BattleState, mover: StackId, sink: &m
 /// the original's 0x4672E0).
 // rule: BAT-SIE-003
 pub(crate) fn close_gate<S: Sink>(state: &mut BattleState, sink: &mut S) {
-    let Some(s) = state.siege.filter(|s| s.gate_open && s.fort >= FortLevel::Fort) else {
+    let Some(s) = state
+        .siege
+        .filter(|s| s.gate_open && s.fort >= FortLevel::Fort)
+    else {
         return;
     };
     let held = lies(state, s.field, s.gate)
@@ -423,7 +434,7 @@ fn turned_front(field: Field, shooter: &Stack, target: Hex) -> Hex {
     // Right of the front hex, or level with it for a stack facing right.
     let attacker = u8::from(shooter.side == BattleSide::Attacker);
     let right = (tx, attacker) > (front, 0);
-    let mut hexes = fp.hexes();
+    let hexes = fp.hexes();
     if right { hexes.max() } else { hexes.min() }.unwrap_or(fp.front)
 }
 

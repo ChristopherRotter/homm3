@@ -301,7 +301,7 @@ const ENGINE_ERRORS: [CommandError; 29] = {
 #[test]
 fn every_engine_kind_has_its_wire_kind_of_the_same_name() {
     let events = engine_events();
-    assert_eq!(events.len(), 48, "the mapped event kinds");
+    assert_eq!(events.len(), 51, "the mapped event kinds");
     for kind in &events {
         let wire = map::events(&[EngineEvent::public(*kind)], BattleSide::Attacker);
         assert_eq!(kind_name(&wire[0]), kind_name(kind));
@@ -499,6 +499,31 @@ fn the_observation_carries_the_viewers_battle() {
     // The attacker sees its own hero's private part, never the defender's.
     let a = map::observe(&state, &ruleset, BattleSide::Attacker);
     assert_ne!(a.own_hero, o.own_hero);
+}
+
+#[test]
+fn the_observation_names_the_town() {
+    // The synthetic siege (E04c T5, v30): the vale's Citadel with a damaging moat of two rows.
+    let (ruleset, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_SIEGE).unwrap();
+    let state = BattleState::new(&ruleset, &setup, 7).unwrap();
+    let o = map::observe(&state, &ruleset, BattleSide::Attacker);
+    let vale = ruleset.faction_by_key("synthetic:vale").unwrap();
+    let town = o.siege.unwrap();
+    assert_eq!(
+        (town.faction, town.fort, town.moat, town.gate_open),
+        (vale.raw(), 2, 2, false)
+    );
+    assert_eq!(
+        town.walls,
+        vec![12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182]
+    );
+    assert_eq!(town.moat_hexes.len(), 22);
+    let (ruleset, state) = battle();
+    assert!(
+        map::observe(&state, &ruleset, BattleSide::Attacker)
+            .siege
+            .is_none()
+    );
 }
 
 #[test]

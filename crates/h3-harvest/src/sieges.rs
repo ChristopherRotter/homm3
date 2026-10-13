@@ -42,12 +42,17 @@ pub fn write(
         ("mines", data.mines_town),
     ] {
         if usize::from(town) >= towns.len() {
-            return Err(format!("Heroes3.exe: the {what}' town type {town} is no town"));
+            return Err(format!(
+                "Heroes3.exe: the {what}' town type {town} is no town"
+            ));
         }
     }
-    let (mines, mines_pack) = spells
-        .get(usize::from(data.mines_spell))
-        .ok_or_else(|| format!("Heroes3.exe: the mines' spell {} is no spell", data.mines_spell))?;
+    let (mines, mines_pack) = spells.get(usize::from(data.mines_spell)).ok_or_else(|| {
+        format!(
+            "Heroes3.exe: the mines' spell {} is no spell",
+            data.mines_spell
+        )
+    })?;
     let list = |hexes: &[u8]| {
         hexes
             .iter()
@@ -142,7 +147,12 @@ mod tests {
             mines_town: 2,
             ..data()
         };
-        assert!(write(&d, &towns(), &spells()).unwrap().ab.contains("mines = \"base:mine\""));
+        assert!(
+            write(&d, &towns(), &spells())
+                .unwrap()
+                .ab
+                .contains("mines = \"base:mine\"")
+        );
     }
 
     #[test]
@@ -152,10 +162,7 @@ mod tests {
         };
         let mut d = data();
         d.moat_damage.pop();
-        assert_eq!(
-            err(d, &spells()),
-            "Heroes3.exe: 2 moat damages for 3 towns"
-        );
+        assert_eq!(err(d, &spells()), "Heroes3.exe: 2 moat damages for 3 towns");
         let d = SiegeData {
             mines_town: 3,
             ..data()

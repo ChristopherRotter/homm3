@@ -20,7 +20,7 @@ use crate::damage::{
 use crate::effects::{self, DamageRoll, Status};
 use crate::event::{Event, EventKind, Sink, StrikeFlags};
 use crate::geometry::{Direction, Field, Footprint, Hex, HexSet};
-use crate::hero::{self, HeroRecord};
+use crate::hero;
 use crate::magic::Specialist;
 use crate::state::{
     BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,
@@ -141,13 +141,7 @@ fn strike<S: Sink>(
         ),
     };
     let terms = specialist_terms(state, ruleset, attacker);
-    let (inputs, flags) = strike_inputs(
-        ruleset,
-        state,
-        (&striker, &victim),
-        (flags, terms),
-        blow,
-    );
+    let (inputs, flags) = strike_inputs(ruleset, state, (&striker, &victim), (flags, terms), blow);
     let staged = staged(ruleset);
     let damage = inputs.damage(base, params, staged);
     let lost = damage.min(victim.total_hp());

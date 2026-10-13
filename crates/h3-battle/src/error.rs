@@ -190,9 +190,9 @@ impl fmt::Display for SetupError {
             Self::UnknownTerrain => f.write_str("the terrain is not part of the ruleset"),
             Self::UnknownBattlefield => f.write_str("the battlefield is not part of the ruleset"),
             Self::UnknownSiege => f.write_str("the town's faction has no siege in the ruleset"),
-            Self::InvalidSiege => {
-                f.write_str("the siege has a moat below a Citadel or an obstacle on its walls or moat")
-            }
+            Self::InvalidSiege => f.write_str(
+                "the siege has a moat below a Citadel or an obstacle on its walls or moat",
+            ),
             Self::InvalidHero { side, error } => write!(f, "{side:?} hero: {error}"),
         }
     }

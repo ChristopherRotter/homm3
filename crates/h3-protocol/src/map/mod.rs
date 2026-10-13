@@ -29,8 +29,8 @@ use crate::PROTOCOL_VERSION;
 use crate::wire::{
     Algorithm, Ballista, BookSpell, Command, Defences, Effect, Event, Field, Hero, KeyTables,
     Manifest, Observation, Offer, OpeningSpell, Outcome, OwnHero, PackRef, Query,
-    RemovableObstacle, Seat, Side, SideView, Siege, SpellBonus, SpellObstacle, Stack, Strike, Tactics,
-    Target, WireU64,
+    RemovableObstacle, Seat, Side, SideView, Siege, SpellBonus, SpellObstacle, Stack, Strike,
+    Tactics, Target, WireU64,
 };
 
 /// A battle side on the wire.

@@ -13,8 +13,8 @@ use alloc::vec::Vec;
 use core::ops::Deref;
 
 use h3_content::{
-    CompileError, ContentKey, CreatureFlag, CreatureFlags, CreatureInfo, CreatureTypeId,
-    FactionId, QuirkRegistry, REGISTRY, Ruleset, SchoolId, SpellCategory, SpellId, TerrainId,
+    CompileError, ContentKey, CreatureFlag, CreatureFlags, CreatureInfo, CreatureTypeId, FactionId,
+    QuirkRegistry, REGISTRY, Ruleset, SchoolId, SpellCategory, SpellId, TerrainId,
     override_applies,
 };
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
@@ -25,7 +25,9 @@ use crate::error::BattleCompileError;
 use crate::pack::{BattleCreaturePatch, BattlePack, BattleParamsDef, BattleSpellDef};
 use crate::params::{self, BattleParams, MAX_AURA_VALUES, SurrenderParams};
 use crate::siege::{self, Siege, SiegeField};
-use crate::spell::{ObstacleKind, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange};
+use crate::spell::{
+    ObstacleKind, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange,
+};
 
 /// Version of the battle part's hash encoding. Bump when the encoding below changes.
 pub const BATTLE_RULESET_HASH_VERSION: u32 = 3;

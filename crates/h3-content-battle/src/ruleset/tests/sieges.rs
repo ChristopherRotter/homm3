@@ -128,6 +128,10 @@ fn the_field_and_the_records_compile() {
 fn the_hash_covers_the_sieges() {
     let hash = |p: Pack| compile(&[p], "base:faithful").unwrap().content_hash();
     let with = hash(sieges());
+    // Golden value: pins the sieges' encoding (battle part v3; bump BATTLE_RULESET_HASH_VERSION
+    // when it changes).
+    assert_eq!(with, GOLDEN, "got {with:#018x}");
+    assert_eq!(crate::BATTLE_RULESET_HASH_VERSION, 3);
     assert_ne!(with, hash(base()));
     let mut p = sieges();
     p.battle.sieges[0].moat_damage = 71;
@@ -136,6 +140,8 @@ fn the_hash_covers_the_sieges() {
     p.battle.sieges.clear();
     assert_ne!(hash(p), with);
 }
+
+const GOLDEN: u64 = 0x53af_102e_7d31_b170;
 
 #[test]
 fn field_errors() {

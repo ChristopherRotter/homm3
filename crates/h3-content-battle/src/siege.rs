@@ -173,7 +173,9 @@ pub(crate) fn compile(
         return Err(invalid("the moat's damage is at most 10 000"));
     }
     if mines.is_some() && def.second_moat {
-        return Err(invalid("land mines take the moat's place: no second moat row"));
+        return Err(invalid(
+            "land mines take the moat's place: no second moat row",
+        ));
     }
     Ok(Siege {
         faction,

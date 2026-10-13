@@ -17,10 +17,10 @@ use h3_content::{
 use h3_content_battle::{
     AbilityDef, AreaShot, AuraTarget, BattleCompileError, BattleCreatureDef,
     BattleCreatureOverride, BattleCreaturePatch, BattlePack, BattleParamsDef, BattleRuleset,
-    BattleSpellDef, BattlefieldDef, EffectDuration, SiegeDef, SiegeFieldDef, EffectEnd, FactionChangeDef, HexStep,
-    MASTERY_NAMES, ObstacleDef, ObstacleKind, ObstacleShape, SPECIALIST_LEVELS, SpecialistBonus,
-    SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, SurrenderDef,
-    TargetConditions, TargetSide, TimedChange, Usefulness,
+    BattleSpellDef, BattlefieldDef, EffectDuration, EffectEnd, FactionChangeDef, HexStep,
+    MASTERY_NAMES, ObstacleDef, ObstacleKind, ObstacleShape, SPECIALIST_LEVELS, SiegeDef,
+    SiegeFieldDef, SpecialistBonus, SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity,
+    SpellTarget, SurrenderDef, TargetConditions, TargetSide, TimedChange, Usefulness,
 };
 use h3_contracts::BattleSetup;
 use h3_pack::{PackError, reference, references};
@@ -57,6 +57,8 @@ pub const SYNTHETIC_SKIRMISH: &str =
 pub const SYNTHETIC_DUEL: &str = include_str!("../../../packs/synthetic/scenarios/duel.toml");
 /// Synthetic scenario: seven stacks per side.
 pub const SYNTHETIC_FULL: &str = include_str!("../../../packs/synthetic/scenarios/full.toml");
+/// Synthetic scenario: the skirmish's armies at a town (E04c T5).
+pub const SYNTHETIC_SIEGE: &str = include_str!("../../../packs/synthetic/scenarios/siege.toml");
 
 /// Errors of this adapter. The core's errors keep their variants (`Syntax`, `Key`, `Compile`),
 /// so a pack error reads the same whichever of its files it is in.

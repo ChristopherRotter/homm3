@@ -14,10 +14,10 @@ use h3_content::{
 };
 use h3_content_battle::{
     AbilityDef, AuraTarget, BattleCompileError, BattleCreatureDef, BattlePack, BattleParamsDef,
-    BattleRuleset, BattleSpellDef, BattlefieldDef, SiegeDef, SiegeFieldDef, EffectDuration, EffectEnd, FactionChangeDef,
-    HexStep, ObstacleDef, ObstacleKind, ObstacleShape, SpecialistBonus, SpellArea, SpellChain,
-    SpellEffect, SpellMagic, SpellPolarity, SpellTarget, SurrenderDef, TargetConditions,
-    TargetSide, TimedChange, Usefulness,
+    BattleRuleset, BattleSpellDef, BattlefieldDef, EffectDuration, EffectEnd, FactionChangeDef,
+    HexStep, ObstacleDef, ObstacleKind, ObstacleShape, SiegeDef, SiegeFieldDef, SpecialistBonus,
+    SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, SurrenderDef,
+    TargetConditions, TargetSide, TimedChange, Usefulness,
 };
 pub use h3_contracts::Rate;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
@@ -1074,6 +1074,17 @@ pub const CREATURES: &[Creature] = &[
         4,
         &["two_hex", "shooter", "shots=12"],
     ),
+    // A shooter the walls do not halve (BAT-SIE-008, the Mage's kind).
+    (
+        "mage_s",
+        6,
+        3,
+        2,
+        3,
+        10,
+        4,
+        &["shooter", "shots=12", "no_wall_penalty"],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -1136,6 +1147,7 @@ fn parse_traits(traits: &[&str]) -> Traits {
             "minimum_luck" => AbilityDef::MinimumLuck { value: signed() },
             "teleports" => AbilityDef::Teleports,
             "no_distance_penalty" => AbilityDef::NoDistancePenalty,
+            "no_wall_penalty" => AbilityDef::NoWallPenalty,
             "fireball" => AbilityDef::AreaShot {
                 effect: h3_content_battle::AreaShot::Fireball,
             },

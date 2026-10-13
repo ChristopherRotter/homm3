@@ -295,9 +295,13 @@ fn encode_field(obs: &Observation, out: &mut [f32]) {
         encode_obstacle(obs.viewer, o, &mut plane);
     }
     // rule: BAT-SIE-002, BAT-SIE-004
-    for s in &obs.siege {
-        s.walls().iter().for_each(|hex| plane(SIEGE_PLANES, hex, 1.0));
-        s.moat().iter().for_each(|hex| plane(SIEGE_PLANES + 1, hex, 1.0));
+    if let Some(s) = &obs.siege {
+        s.walls()
+            .iter()
+            .for_each(|hex| plane(SIEGE_PLANES, hex, 1.0));
+        s.moat()
+            .iter()
+            .for_each(|hex| plane(SIEGE_PLANES + 1, hex, 1.0));
     }
 }
 
@@ -511,13 +515,13 @@ mod tests {
         // Round 1, the defender's view, the attacker to act; no tactics phase, no heroes, so no
         // retreat or surrender; no periodic cast yet on either side (BAT-MAG-053).
         // Not in the wait phase, no turn taken yet, the meadow, no summons, a side's view, no
-        // special battlefield, no anti-magic garrison.
+        // special battlefield, no anti-magic garrison, not at a town.
         let meadow = f32::from(r.terrain_by_key("synthetic:meadow").unwrap().raw()) + 1.0;
         assert_eq!(
             out[..GLOBALS],
             [
                 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 255.0, 255.0, 0.0, 0.0,
-                meadow, 0.0, 0.0, 0.0, 0.0, 0.0
+                meadow, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
             ]
         );
         assert!(out[HEROES..FIELD].iter().all(|v| *v == 0.0));
@@ -577,7 +581,7 @@ mod tests {
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
         assert_eq!(
             OBSERVATION_LEN,
-            22 + 2 * 13 + (64 + 4 * 128) + 14 * 255 + (47 + 27 + 3 * 8) * 42
+            26 + 2 * 13 + (64 + 4 * 128) + 16 * 255 + (47 + 27 + 3 * 8) * 42
         );
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).
@@ -741,7 +745,7 @@ mod tests {
                 Attacker,
                 [
                     0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0, 0.0,
-                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ],
                 brea,
                 corwin,
@@ -754,7 +758,7 @@ mod tests {
                 Defender,
                 [
                     0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0, 0.0,
-                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ],
                 corwin,
                 brea,
@@ -837,15 +841,48 @@ mod tests {
         // A spectator: the flag, and no private part (SRV-Q4).
         let spectator = h3_battle::observe_as(&s, &r, h3_battle::Viewer::Spectator);
         encode(&spectator, 17, &mut out).unwrap();
-        assert_eq!((out[1], out[GLOBALS - 3]), (1.0, 1.0));
+        assert_eq!((out[1], out[19]), (1.0, 1.0));
         assert_eq!(hero(&out, 0), brea);
         assert!(own(&out).iter().all(|v| *v == 0.0));
-        // A special battlefield and an anti-magic garrison, the last two globals (E04c T2b).
+        // A special battlefield and an anti-magic garrison (E04c T2b).
         let mut field = spectator;
         field.battlefield = h3_content_battle::BattlefieldId::from_index(1);
         field.anti_magic = true;
         encode(&field, 17, &mut out).unwrap();
-        assert_eq!(out[GLOBALS - 2..GLOBALS], [2.0, 1.0]);
+        assert_eq!(out[20..22], [2.0, 1.0]);
+    }
+
+    #[test]
+    fn encodes_the_town() {
+        // The vale's Citadel with a damaging moat of two rows (E04c T5): the town's globals and
+        // planes, the gate closed, then open.
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_SIEGE).unwrap();
+        let s = BattleState::new(&r, &setup, 1).unwrap();
+        let mut obs = observe(&s, &r, BattleSide::Attacker);
+        let mut out = vec![0.0; OBSERVATION_LEN];
+        encode(&obs, 17, &mut out).unwrap();
+        let vale = f32::from(r.faction_by_key("synthetic:vale").unwrap().raw()) + 1.0;
+        assert_eq!(out[GLOBALS - 4..GLOBALS], [vale, 2.0, 2.0, 0.0]);
+        let on = |out: &[f32], p: usize| -> Vec<usize> {
+            let plane = &out[FIELD + p * MAX_FIELD_HEXES..FIELD + (p + 1) * MAX_FIELD_HEXES];
+            (0..MAX_FIELD_HEXES).filter(|&h| plane[h] == 1.0).collect()
+        };
+        assert_eq!(
+            on(&out, SIEGE_PLANES),
+            [12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182]
+        );
+        let moat = on(&out, SIEGE_PLANES + 1);
+        assert_eq!(moat.len(), 22);
+        assert!(moat.contains(&94) && moat.contains(&95));
+        // An open gate lowers the drawbridge over the bridges' hexes.
+        let mut town = obs.siege.unwrap();
+        town.gate_open = true;
+        obs.siege = Some(town);
+        encode(&obs, 17, &mut out).unwrap();
+        assert_eq!(out[GLOBALS - 1], 1.0);
+        let moat = on(&out, SIEGE_PLANES + 1);
+        assert_eq!(moat.len(), 20);
+        assert!(!moat.contains(&94) && !moat.contains(&95));
     }
 
     #[test]

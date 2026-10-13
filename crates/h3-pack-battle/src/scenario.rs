@@ -944,11 +944,10 @@ impl SiegeEntry {
             .factions()
             .get(siege.faction.index())
             .ok_or_else(|| BattlePackError::Syntax("unknown siege faction".to_owned()))?;
-        let name = |table: &[(&'static str, _)], i: usize| table[i].0.to_owned();
         Ok(Self {
             faction: faction.key.as_str().to_owned(),
-            fort: name(&FORT_LEVELS, siege.fort as usize),
-            moat: name(&MOATS, siege.moat as usize),
+            fort: FORT_LEVELS[siege.fort as usize].0.to_owned(),
+            moat: MOATS[siege.moat as usize].0.to_owned(),
             structures: siege.structures,
             escape_tunnel: siege.escape_tunnel,
             morale: siege.morale,
@@ -961,16 +960,9 @@ impl SiegeEntry {
     /// # Errors
     /// An unknown faction, fort level or moat.
     pub fn to_siege(&self, ruleset: &Ruleset) -> Result<Siege, BattlePackError> {
-        let faction = ruleset
-            .faction_by_key(&self.faction)
-            .ok_or_else(|| BattlePackError::Syntax(format!("unknown faction `{}`", self.faction)))?;
-        let pick = |table: &[(&'static str, _)], name: &str, what: &str| {
-            table
-                .iter()
-                .find(|(n, _)| *n == name)
-                .map(|&(_, v)| v)
-                .ok_or_else(|| BattlePackError::Syntax(format!("unknown {what} `{name}`")))
-        };
+        let faction = ruleset.faction_by_key(&self.faction).ok_or_else(|| {
+            BattlePackError::Syntax(format!("unknown faction `{}`", self.faction))
+        })?;
         Ok(Siege {
             faction,
             fort: pick(&FORT_LEVELS, &self.fort, "fort level")?,
@@ -981,6 +973,15 @@ impl SiegeEntry {
             luck: self.luck,
         })
     }
+}
+
+/// The value named `name` in `table`.
+fn pick<T: Copy>(table: &[(&str, T)], name: &str, what: &str) -> Result<T, BattlePackError> {
+    table
+        .iter()
+        .find(|(n, _)| *n == name)
+        .map(|&(_, v)| v)
+        .ok_or_else(|| BattlePackError::Syntax(format!("unknown {what} `{name}`")))
 }
 
 /// A parsed scenario whose creature references are not yet resolved against a ruleset.

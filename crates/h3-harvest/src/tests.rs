@@ -105,20 +105,25 @@ fn inputs() -> Inputs {
     }
 }
 
-/// The executable's siege tables: two rows, a damage for each of the three towns, the second
-/// moat row for Gamma (an `ab` town), the mines of spell 0 for Beta.
+/// The executable's siege tables: the original's eleven rows, a damage for each of the three
+/// towns, the second moat row for Gamma (an `ab` town), Mine's mines (spell 3) for Beta.
 fn siege() -> SiegeData {
+    let row = |col: u8| {
+        (0..11)
+            .map(|r| 17 * r + col + u8::from(r % 2 == 0))
+            .collect()
+    };
     SiegeData {
-        walls: vec![12, 29],
-        moat: vec![11, 28],
-        second_moat: vec![10, 27],
+        walls: row(11),
+        moat: row(10),
+        second_moat: row(9),
         moat_damage: vec![70, 150, 90],
-        gate: 29,
+        gate: 96,
         moat_defense_penalty: 3,
         mine_power: 3,
         second_moat_town: 2,
         mines_town: 1,
-        mines_spell: 0,
+        mines_spell: 3,
     }
 }
 
@@ -284,9 +289,10 @@ fn hero_data() -> HeroData {
             specialty(7, 0, 5, 5, 0),
             specialty(2, 6, 0, 0, 0),
         ],
-        spell_types: vec![0, -1, 1],
-        // Look: adventure; Zap: one stack, damage; Bolt: damage to every stack.
-        spell_flags: vec![0x2, 0x8211, 0x2_0201],
+        spell_types: vec![0, -1, 1, 0],
+        // Look: adventure; Zap: one stack, damage; Bolt: damage to every stack; Mine: random
+        // mines (a town's, E04c T5).
+        spell_flags: vec![0x2, 0x8211, 0x2_0201, 0x81],
         skill_values: vec![
             (9, int([0, 1, 2, 3])),
             (6, int([0, 1, 2, 3])),
@@ -359,10 +365,11 @@ fn hero_tables() -> heroes::Tables {
         group("Combat Spells"),
         spell("Zap", [" ", " ", "x", "x"]),
         spell("Bolt", ["", "", "", "x"]),
+        spell("Mine", ["", "", "x", ""]),
     ]);
     let mut ab = sod.clone();
-    let last = ab.len() - 1;
-    ab[last] = spell("Old (disabled)", [" ", " ", " ", " "]);
+    let bolt = ab.len() - 2;
+    ab[bolt] = spell("Old (disabled)", [" ", " ", " ", " "]);
     heroes::Tables {
         classes: table(&classes),
         heroes: table(&heroes),
@@ -594,6 +601,12 @@ sources = ["s"]
 [[spells.targeting]]
 spell = "Bolt"
 requires = ["undead", "alive"]
+sources = ["s"]
+
+[[spells.obstacle]]
+spell = "Mine"
+obstacle = "mine"
+shape = { hexes = [4, 4, 6, 8], random = true, separate = true }
 sources = ["s"]
 
 [[spells.specialist]]
@@ -940,13 +953,33 @@ fn inconsistencies_are_errors() {
 }
 
 #[test]
+fn harvests_the_sieges() {
+    let h = harvest(&inputs(), &gap()).unwrap();
+    let (base, ab, sod) = (pack(&h, "base"), pack(&h, "ab"), pack(&h, "sod"));
+    // The field in `[battle]` and a record per town in its pack's battle file (E04c T5).
+    assert!(base.battle.contains("siege = { walls = [12, 28, 46,"));
+    assert!(
+        base.battle
+            .contains("[[siege]]\nfaction = \"beta\"\nmoat_damage = 150\nmines = \"mine\"\n")
+    );
+    assert!(
+        ab.battle
+            .contains("[[siege]]\nfaction = \"gamma\"\nmoat_damage = 90\nsecond_moat = true\n")
+    );
+    assert!(!base.core.contains("[[siege]]"));
+    let r = compile(&[base, ab, sod], "base:faithful").unwrap();
+    assert_eq!(r.sieges().len(), 3);
+    assert_eq!(r.siege_field().map(|f| f.gate), Some(96));
+}
+
+#[test]
 fn harvests_hero_content() {
     let h = harvest(&inputs(), &gap()).unwrap();
     let (base, ab, sod) = (pack(&h, "base"), pack(&h, "ab"), pack(&h, "sod"));
     let r = compile(&[base, ab, sod], "base:faithful").unwrap();
     assert_eq!(r.skills().len(), 28);
     assert_eq!(r.spell_schools().len(), 4);
-    assert_eq!(r.spells().len(), 3);
+    assert_eq!(r.spells().len(), 4);
     assert_eq!(r.hero_classes().len(), 6);
     assert_eq!(r.hero_types().len(), 7);
     // Skill effects from the value tables and the gap-fill file.
@@ -1052,11 +1085,11 @@ fn hero_content_errors() {
     );
     fails(
         &|i| i.hero_data.spell_types.pop().map(drop).unwrap(),
-        "the executable has 2",
+        "the executable has 3",
     );
     fails(
         &|i| i.hero_data.spell_flags.pop().map(drop).unwrap(),
-        "spell `Bolt`: no flag word",
+        "spell `Mine`: no flag word",
     );
     fails(
         &|i| i.hero_data.spell_flags[1] = 0x2,

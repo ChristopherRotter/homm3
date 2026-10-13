@@ -1032,7 +1032,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 48] {
+    fn all() -> [A; 49] {
         [
             A::Hate {
                 target: 3,
