@@ -29,7 +29,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use h3_protocol::account;
 use h3_protocol::session::Grace;
-use h3_protocol::wire::{Points, Refusal};
+use h3_protocol::wire::{CardLadder, Points, Refusal};
 use serde::{Deserialize, Serialize};
 
 use crate::game::Offer;
@@ -134,7 +134,7 @@ pub(crate) struct Board {
 }
 
 /// A count or a place on the wire: saturated (no ladder holds 2³² accounts).
-fn count(n: usize) -> u32 {
+pub(crate) fn count(n: usize) -> u32 {
     u32::try_from(n).unwrap_or(u32::MAX)
 }
 
@@ -395,6 +395,23 @@ impl Ladders {
                     })
                     .collect(),
                 bot_after_ms: ladder.config.bot_after_ms,
+            })
+            .collect()
+    }
+
+    /// The ladders as the server's card names them (E16 M6 T2): each with its current season and
+    /// the accounts on that season's leaderboard.
+    pub(crate) fn cards(&self) -> Vec<CardLadder> {
+        let ladders = self.lock();
+        (ladders.iter())
+            .map(|(id, ladder)| {
+                let current = ladder.results.season(None).map(|(_, s)| s.order.len());
+                CardLadder {
+                    id: id.clone(),
+                    name: ladder.config.name.clone(),
+                    season: u32::try_from(ladder.results.seasons.len()).unwrap_or(u32::MAX),
+                    players: Some(count(current.unwrap_or(0))),
+                }
             })
             .collect()
     }

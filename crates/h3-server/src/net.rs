@@ -30,6 +30,10 @@
 //! total only. A forwarded header from any other peer is ignored. Every limit per address counts
 //! an IPv6 address by its /64 prefix, the block one host usually has ([`counted`]).
 //!
+//! The server's card (E16 M6 T2): a connection's `Describe` is answered off its task, with the
+//! card signed again once the last one is a minute old ([`crate::card`]); the card counts the open
+//! connections.
+//!
 //! Accounts in games (E16 M3 T3): a connection opens a game with the account it is logged in as.
 //! The server knows each account's logged-in connections and their keys: once one re-keyed the
 //! account, the others logged in with another key close (`Goodbye { Rekeyed }`), before anything
@@ -48,7 +52,7 @@ use h3_protocol::codec;
 use h3_protocol::connection::{AccountRequest, Connection, Host, Received};
 use h3_protocol::session::ConnId;
 use h3_protocol::wire::{
-    ClientMessage, GoodbyeReason, LeaderboardRow, Refusal, RejectCode, ServerMessage,
+    ClientMessage, GoodbyeReason, LeaderboardRow, Refusal, RejectCode, ServerMessage, SignedCard,
 };
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{Notify, mpsc, watch};
@@ -61,6 +65,7 @@ use tokio_tungstenite::tungstenite::handshake::server::{
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 use crate::accounts::Accounts;
+use crate::card::{self, Cards};
 use crate::config::Limits;
 use crate::game::{self, Frame, FromGame, ToGame};
 use crate::key::ServerKey;
@@ -272,6 +277,10 @@ pub(crate) struct Service {
     pub proxies: Vec<IpAddr>,
     /// The ladders (E16 M4 T2): a queue goes by an account's rating on its ladder.
     pub ladders: Arc<Ladders>,
+    /// The server's card (E16 M6 T2).
+    pub card: Cards,
+    /// The open connections, in total and per address, which the listener counts.
+    pub counts: Arc<Mutex<Counts>>,
 }
 
 /// The logged-in connections by account (E16 M3 T3): the key each logged in with, and what closes
@@ -282,6 +291,24 @@ impl Service {
     /// The account's logged-in connections, locked.
     fn sessions(&self) -> std::sync::MutexGuard<'_, Sessions> {
         self.sessions.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// The server's card as it stands (E16 M6 T2): the last one signed while it is younger than a
+    /// minute, else a new one with the counts as they stand. Takes the registry's lock and the
+    /// ladders' (which waits on a result's sync): call it off a connection's task.
+    fn signed_card(&self, registry: &Shared) -> SignedCard {
+        let live = || card::Live {
+            players_online: ladders::count(
+                self.counts
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .total,
+            ),
+            games_open: ladders::count(lock(registry).in_play()),
+            ladders: self.ladders.cards(),
+        };
+        let now = (Instant::now(), card::wall_ms());
+        self.card.signed(now, &self.key, live)
     }
 
     /// The account `login` re-keyed to `key` on `conn` (E16 M3 T3): every other connection logged
@@ -409,6 +436,9 @@ pub(crate) async fn serve<T: Transport>(
                     unjoined = Some(now + lobby);
                 }
                 match received {
+                    Received::Game(ClientMessage::Describe { seq }) => {
+                        describe(&server, &link.registry, seq).await
+                    }
                     Received::Game(message) => match link.route(message, gate.account()).await {
                         Routed::Reply(frame) => frame,
                         Routed::Passed => continue,
@@ -559,6 +589,17 @@ async fn account(
             goodbye(GoodbyeReason::RateLimited)
         }
         Err(reason) => refused(reason),
+    }
+}
+
+/// The answer to `Describe` (E16 M6 T2): the server's card, signed off the connection's task.
+async fn describe(server: &Arc<Service>, registry: &Shared, seq: u32) -> Frame {
+    let (server, registry) = (Arc::clone(server), Arc::clone(registry));
+    let card = tokio::task::spawn_blocking(move || server.signed_card(&registry));
+    match card.await {
+        Ok(card) => text(codec::encode_text(&ServerMessage::Described { seq, card })),
+        // The runtime shuts down.
+        Err(_) => goodbye(GoodbyeReason::Shutdown),
     }
 }
 
@@ -895,7 +936,8 @@ fn unbound(message: &ClientMessage) -> Frame {
         | ClientMessage::Leaderboard { seq, .. }
         | ClientMessage::Standing { seq, .. }
         | ClientMessage::ProposePause { seq, .. }
-        | ClientMessage::AnswerPause { seq, .. } => *seq,
+        | ClientMessage::AnswerPause { seq, .. }
+        | ClientMessage::Describe { seq } => *seq,
         ClientMessage::Hello { .. } | ClientMessage::Ping { .. } | ClientMessage::Join { .. } => 0,
     };
     Frame {
@@ -930,7 +972,7 @@ struct Address {
 /// The open connections, in total and per address; the addresses' failed logins (E16 M3 T2a),
 /// kept beyond their connections for the window.
 #[derive(Debug, Default)]
-struct Counts {
+pub(crate) struct Counts {
     total: usize,
     by_address: BTreeMap<IpAddr, Address>,
     failures: BTreeMap<IpAddr, Rate>,
@@ -1103,7 +1145,7 @@ pub(crate) async fn listen(
     server: Arc<Service>,
     mut stop: watch::Receiver<bool>,
 ) {
-    let counts = Arc::new(Mutex::new(Counts::default()));
+    let counts = Arc::clone(&server.counts);
     let mut next = 0u64;
     loop {
         let accepted = tokio::select! {
@@ -1272,6 +1314,9 @@ mod tests {
             let registry = Arc::new(Mutex::new(registry));
             let counts = Arc::new(Mutex::new(Counts::default()));
             let place = Place::take(&counts, [127, 0, 0, 1].into(), &limits).unwrap();
+            let key = ServerKey::from_seed([5; 32]);
+            let template = card::tests::template(&key);
+            let card = Cards::new(template, (86_400_000, true), Vec::new()).unwrap();
             let task = tokio::spawn(serve(
                 Fake { inbound, outbound },
                 ConnId(4),
@@ -1282,12 +1327,14 @@ mod tests {
                     program: String::from("s"),
                     id: String::from("ws://s"),
                     addresses: Vec::new(),
-                    key: ServerKey::from_seed([5; 32]),
+                    key,
                     anonymous: true,
                     accounts,
                     sessions: Mutex::default(),
                     proxies: Vec::new(),
                     ladders,
+                    card,
+                    counts,
                 }),
                 watch::channel(false).1,
             ));

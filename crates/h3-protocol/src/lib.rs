@@ -12,7 +12,8 @@
 //!   bot hook, the viewers' records and the journal (M1 T2);
 //! - [`lobby`]: the server's offers and games, created within limits and listed (M2 T1);
 //! - [`account`]: login and display names, keys as hex, the bytes a login signs (M3 T1);
-//! - [`ladder`]: the ladders' queues, the matcher and a match's answers (M4 T2).
+//! - [`ladder`]: the ladders' queues, the matcher and a match's answers (M4 T2);
+//! - [`card`]: the server's signed card, its bounds and its reading (M6 T2).
 //!
 //! Logic crate in the adapter layer (ADR-0018 point 1): pure, deterministic, `no_std` + `alloc`
 //! (ADR-0003, ADR-0005). The lint header below is required and checked by `cargo xtask check-arch`.
@@ -37,6 +38,7 @@ extern crate alloc;
 extern crate std;
 
 pub mod account;
+pub mod card;
 pub mod codec;
 pub mod connection;
 pub mod ladder;
@@ -52,8 +54,9 @@ pub mod wire;
 /// tables list the obstacle types. v23: a two-hex stack's position (its hex, the hexes of moves
 /// and attacks) is its rear hex, as in the original (BAT-GEO-002). v24 (E16 M6 T1, ADR-0021 point
 /// 1): the hello names a nonce and the address the client dialed; the welcome carries the server's
-/// key and its signature.
-pub const PROTOCOL_VERSION: u32 = 24;
+/// key and its signature. v25 (E16 M6 T2, ADR-0021 point 2): `Describe` and `Described`, the
+/// server's signed card.
+pub const PROTOCOL_VERSION: u32 = 25;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

@@ -636,7 +636,8 @@ impl<'r> Session<'r> {
             | ClientMessage::AcceptMatch { .. }
             | ClientMessage::DeclineMatch { .. }
             | ClientMessage::Leaderboard { .. }
-            | ClientMessage::Standing { .. } => {}
+            | ClientMessage::Standing { .. }
+            | ClientMessage::Describe { .. } => {}
         }
     }
 

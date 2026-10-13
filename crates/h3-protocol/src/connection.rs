@@ -1,7 +1,8 @@
 //! A connection's own messages (ADR-0018 points 4 and 9): the hello, the ping, the frames that
 //! do not decode, and the requests about an account (E16 M3 T1, ADR-0019 point 1). Everything
-//! else goes to the host: the lobby's messages and the game's ([`crate::session`]). One per
-//! connection; the host feeds it every frame the client sends.
+//! else goes to the host: the lobby's messages, `Describe` (the server's card, E16 M6 T2,
+//! [`crate::card`]; no login needed) and the game's ([`crate::session`]). One per connection; the
+//! host feeds it every frame the client sends.
 //!
 //! - **The welcome** (E16 M6 T1, ADR-0021 point 1). The hello names a nonce and the address the
 //!   client dialed; the welcome names the server's id on this connection (that address when it is

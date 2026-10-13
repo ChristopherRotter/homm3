@@ -8,7 +8,10 @@
 //! spectators as it started (format 3, E16 M2 T4c), the account a seat belongs to in its `Taken`
 //! line (format 4, E16 M3 T3), a ranked game's mark, a seat's stretch without a connection and a
 //! forfeit (format 5, E16 M4 T3a), a pause by agreement and its length (format 6, E16 M4 T6), the
-//! hold of a pause resumed before its due time (format 7, E16 M4 T8).
+//! hold of a pause resumed before its due time (format 7, E16 M4 T8). Format 8 (2026-10-13,
+//! BAT-GEO-002) changes no line: a two-hex stack's position is now its rear hex, so the commands of
+//! a journal written before (its moves' and attacks' hexes) would re-run as other commands; such a
+//! journal is void at start rather than restored into a game its clients never saw.
 //!
 //! - **Write-ahead.** The game's thread appends the entries of each call and syncs them before it
 //!   sends that call's frames ([`Writer::append`]); a new journal is synced with its directory
@@ -34,7 +37,7 @@ use h3_protocol::session::Entry;
 use serde::{Deserialize, Serialize};
 
 /// The version of the journal's format: bumped when its lines change.
-pub const JOURNAL_FORMAT_VERSION: u32 = 7;
+pub const JOURNAL_FORMAT_VERSION: u32 = 8;
 
 /// The journal's first line: the game as it started.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
