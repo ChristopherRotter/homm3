@@ -1258,3 +1258,64 @@ second offer, **T15b** the border gates alone (the only change to movement and t
 benchmark check is its own). The merged branches `adventure/e08-t14` and
 `adventure/e08-easy-replay-hash` stay on GitHub (the user). CI still cannot start (GitHub: failed
 payments or the spending limit), so the full local verify stands in again.
+
+**T15a — observatories, Keymaster's tents, border guards with the second offer** (a worker).
+- **Built kinds** (ADR-0016 point 4): `ObjectKind::visit_built` became `ObjectKind::effect`, an
+  `Effect` per kind whose visit is built (pickup, Cartographer, observatory, tent, guard; the gate
+  `None`, T15b's), carried by the step's visit, so `visit` dispatches on it with no dead arm (agent's
+  call). The data and the import were already T12a's (`reveal_area = { radius = 20 }`, the tents
+  and guards by colour): no ruleset-part or import change.
+- **Observatories** (ADV-VIS-002): entered, not from above; after the step's own reveal, the disk of
+  the type's radius around the visited tile on its level (`fog::reveal`) for the owner and
+  `TilesRevealed { object_type, count }` to it alone, at every visit, also with 0 new tiles (agent's
+  call: every visit tells).
+- **Keys** (ADV-VIS-003): entered, not from above; the colour's key for the owner, `KeyGained { key }`
+  to it alone; a held key gives and tells nothing (as T14's call 5). State as the original's, a byte
+  of player bits per colour (+0x4E364), in one block with the purchases (`state/flags.rs`: `Flags`
+  behind one `Option<Arc>`, none until the first purchase or key; agent's call: one field instead of
+  a second, the fork pays nothing more). `AdventureState::{has_key, keys}`,
+  `AdventureObservation::keys` (the viewer's own, a bit per colour). Adventure state hash v6 (the
+  keys after the purchases, eight bytes; equal content hashes equal before the first write).
+- **Border guards** (ADV-VIS-004): visited from a neighbour; without the key nothing and no event
+  (flagged: the original's message is not modelled); with it an offer, `Offer { hero, object_type,
+  anchor, kind }` with `OfferKind::Reveal { price }` (the Cartographer's) or `OfferKind::Pass` (no
+  price), `Offer::price()` (agent's call: the price moved into the kind). `h3_game` opens it as the
+  owner's decision (no price, never refused). Accepted: `accept_offer` (now with the core, for the
+  viewers) takes the guard off the map, `ObjectRemoved` to the players that see it, its tiles freed.
+- **The offer still stands** (ADR-0017 point 10): `AdventureState::offer_stands`, its object still on
+  the map, the last in map order with the offer's type and anchor (agent's call: one test for both
+  kinds; a Cartographer never leaves; the 164 shipped maps have no two typed objects of one type on
+  one anchor, below). The game checks it at an acceptance: otherwise `GameCommandError::OfferGone`,
+  nothing changes, and `legal_commands` lists `Decline` alone (agent's call: the new variant). The
+  stale case needs two players of one turn group, so only `h3-game`'s tests reach it (the
+  test-only `set_schedule`): both take the key and visit the guard, the first passes, the second's
+  acceptance is refused and its decline closes the decision. Game state hash v4 (a decision's offer
+  kind, 0 a reveal with its price, 1 a passage).
+- **Inventory** (ADR-0017 point 7) in the epic file: the objects two players' commands can remove (a
+  pickup, a border guard); purchases and keys only by their owner's.
+- **Shipped maps** (`original_data`, the inbox's count): typed objects of one type on one anchor,
+  each after the first: **0** in the 164 maps (and 0 of 101 246 stacked visitable tiles, as before).
+- **Properties** (`h3-map`): the red border guard is the plans' eighth kind; plans draw observatories,
+  red tents and red guards of a visitable shape more often and, in three cases of four, put a red
+  tent within three tiles of the first hero with a red guard visited from two columns east of it.
+  `landing` reads a neighbour visit from the steps told (a step fewer, the last tile visitable, at
+  most one visit event); `check_decisions` checks both kinds (a guard's offer only to a key holder,
+  an accepted one removes the guard, an accepted Cartographer's buys) and the keys (only by
+  `KeyGained`, each new); isolation over keys; the views against the events with keys and the kinds
+  of accepted offers. Hygiene: the comparison goes on after the viewer's own observatory visit
+  (agent's call, against the brief's stop: the disk is the same tiles in both games, and the
+  property compared 3 to 5 such visits per run of 48 cases, none differing). Counted over 48 cases
+  (temporary counters, three runs of the final plans): 17 to 28 keys taken, 8 to 15 observatory
+  visits, 3 to 7 guard offers, 2 to 4 accepted, 0 to 4 declined; stale answers 0 (sequential play
+  cannot make one). The
+  query's property (`h3-adventure`) has towers, tents, guards and gates. Fixed tests: the disk and
+  its count (both levels, a revisit with 0), the key once per player (its event, the observation,
+  equal keys hashing equal in either order), the guard without and with the key, the acceptance and
+  a stale acceptance's no-op, a gate still `Visit`; through the game: the guard's offer without a
+  price, its decline and acceptance, the stale case.
+- **Versions**: adventure state hash v6, game state hash v4; the ruleset-part hash (v5), the import
+  (v3), the action encoding (v2) and the replay format (v2) unchanged. Golden replays re-recorded
+  (hashes and versions only; their commands unchanged).
+- **Measured** (`bench-check`): `fork-xl-144` 349 000 056 Ir (+1.57 % on the baseline, −0.03 % on
+  T14b's: the flags' thin pointer), `random-play-duel-36` 437 705 073 (−0.43 %), `reach-xl-144`
+  565 723 829 (−0.16 %). No re-baseline.

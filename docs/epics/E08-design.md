@@ -3,22 +3,16 @@
 A handover, not binding (`docs/adr/README.md`): the working detail behind the ADR-0016 and
 ADR-0017 amendments (E08 T11b; accepted at ADV-Q10, applied by #115). The task that builds a
 section deletes it; the file goes when the epic closes. Facts and sources: survey
-`docs/rules/surveys/E08-objects.md`. The versions increment 2 bumped through T14 are listed in
-`E08-log.md` (T14b's second half).
+`docs/rules/surveys/E08-objects.md`. The versions increment 2 bumped are listed in `E08-log.md`
+(T14b's second half, T15a).
 
-## State and observation (T15)
+## Border gates (T15b)
 
-T12 built the types, the contents drawn at the build, the removed objects with the occupancy
-layer and `ObjectView` (type, anchor, masks; no index); T13 the treasuries, the pickups' visits
-from a neighbour, `ObjectRemoved` (by type and anchor) and the game's `ResourceGained`; T14b the
-Cartographer's purchases (`AdventureState::bought`, a byte of player bits per type), the offer as
-a pending decision (`h3_game::GameState::decision`, `GameCommand::Answer`), the events
-`OfferOpened`, `OfferRefused`, `OfferAnswered`, `ResourcePaid` and `TilesRevealed { object_type,
-count }` (the owner alone), and the viewer's purchases and open decision in the observation.
-
-- Per player: `keys: u8` (bit per key colour); the observation shows the viewer's own.
-- Events (viewers resolved at emission): `KeyGained` (the owner); an observatory's reveal as
-  `TilesRevealed` (the owner).
-- The guard's offer (D-7) is a second kind of `Offer` (no price): `accept_offer` removes the guard
-  for everyone, and the check that the offer still stands (another player's key holder may have
-  removed it) becomes reachable once two players act in one group.
+T15a built the keys (`AdventureState::has_key`, `keys`; a byte of player bits per colour in
+`state/flags.rs`), the observatories and the guards with their offer (`OfferKind::Pass`,
+`offer_stands`); `ObjectKind::effect` gives `None` for a gate, so a step onto one is still
+`Visit`. Left for T15b: the gate entered and crossed like a free tile by a key holder's heroes
+(it does not end a move) and visited from a neighbour by the others, so the visit mode becomes
+per player in `visit_at`, `check_step` and the query together (inbox, T14 review; the query's
+`Search` has the owner), and setup's refusal for a hero on a gate's tile (`StandError::Visited`
+follows the type's mode today).
