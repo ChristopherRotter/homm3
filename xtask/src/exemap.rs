@@ -20,7 +20,10 @@ pub const STRUCTS: &str = "docs/exe/structs.toml";
 /// Names ported from H3API (generated; guesses).
 pub const H3API: &str = "docs/exe/h3api.toml";
 /// Directories whose text files may cite addresses (the map's own directory is left out).
-pub const CITING_DIRS: &[&str] = &["docs", "crates"];
+pub const CITING_DIRS: &[&str] = &["docs", "crates", "clients"];
+/// Directories under [`CITING_DIRS`] left out: the map's own and the client's local output
+/// (gitignored reports and renders), besides every `target`.
+const SKIPPED_DIRS: [&str; 2] = ["docs/exe", "clients/out"];
 /// File types scanned for citations.
 pub const CITING_EXTENSIONS: &[&str] = &["md", "toml", "rs"];
 
@@ -317,8 +320,11 @@ pub fn uncovered(
         .collect()
 }
 
-fn text_files(dir: &Path, skip: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
-    if !dir.is_dir() || dir == skip || dir.file_name().is_some_and(|n| n == "target") {
+fn text_files(dir: &Path, skip: &[PathBuf], out: &mut Vec<PathBuf>) -> Result<(), String> {
+    if !dir.is_dir()
+        || skip.iter().any(|s| s == dir)
+        || dir.file_name().is_some_and(|n| n == "target")
+    {
         return Ok(());
     }
     for entry in fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))? {
@@ -338,7 +344,7 @@ fn text_files(dir: &Path, skip: &Path, out: &mut Vec<PathBuf>) -> Result<(), Str
 
 /// Every citation under [`CITING_DIRS`] of `root`.
 pub fn citations(root: &Path, img: &Image) -> Result<BTreeMap<u32, BTreeSet<String>>, String> {
-    let skip = root.join("docs/exe");
+    let skip = SKIPPED_DIRS.map(|d| root.join(d));
     let mut files = Vec::new();
     for dir in CITING_DIRS {
         text_files(&root.join(dir), &skip, &mut files)?;
@@ -561,9 +567,12 @@ mod tests {
         dir.write("docs/exe/README.md", "0x50C7C0 is H3API's\n");
         dir.write("crates/c/src/lib.rs", "// 0x401008\n");
         dir.write("crates/c/notes.txt", "0x5A8091\n");
+        dir.write("clients/crates/v/src/lib.rs", "// 0x5A8092\n");
+        dir.write("clients/out/gate/report.md", "0x5A8093\n");
         let problems = check(dir.path()).unwrap();
-        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert_eq!(problems.len(), 2, "{problems:?}");
         assert!(problems[0].starts_with("0x5A8090 is cited in docs/a.md"));
+        assert!(problems[1].starts_with("0x5A8092 is cited in clients/crates/v/src/lib.rs"));
         dir.write(H3API, "not toml");
         assert!(check(dir.path()).is_err());
     }
