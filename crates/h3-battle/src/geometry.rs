@@ -100,26 +100,36 @@ impl CanonicalHash for HexSet {
     }
 }
 
-/// The hexes a stack covers: its head (the hex its position names) and, for two-hex stacks, the
-/// tail behind it — left of the head for the attacker, right of it for the defender
-/// (BAT-GEO-002).
+/// The hexes a stack covers: the hex its position names and, for two-hex stacks, the other hex
+/// in front of it — right of the position for the attacker, left of it for the defender. A
+/// two-hex stack's position is its rear hex, as in the original (stack +0x38, BAT-GEO-002).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Footprint {
-    /// The head hex.
-    pub head: Hex,
-    /// The tail hex of a two-hex stack.
-    pub tail: Option<Hex>,
+    /// The front hex, the one the stack faces the enemy with: a one-hex stack's position, a
+    /// two-hex stack's other hex.
+    pub front: Hex,
+    /// A two-hex stack's rear hex, its position.
+    pub rear: Option<Hex>,
 }
 
 impl Footprint {
-    /// The covered hexes (head first).
+    /// The position: a one-hex stack's hex, a two-hex stack's rear hex.
+    pub const fn position(self) -> Hex {
+        match self.rear {
+            Some(h) => h,
+            None => self.front,
+        }
+    }
+
+    /// The covered hexes, the front hex first (the order walks over them keep: a fire obstacle
+    /// or a mine under the front hex comes first, BAT-MAG-028, BAT-MAG-033).
     pub fn hexes(self) -> impl Iterator<Item = Hex> {
-        core::iter::once(self.head).chain(self.tail)
+        core::iter::once(self.front).chain(self.rear)
     }
 
     /// Whether the footprint covers `hex`.
     pub fn covers(self, hex: Hex) -> bool {
-        self.head == hex || self.tail == Some(hex)
+        self.front == hex || self.rear == Some(hex)
     }
 }
 
@@ -302,33 +312,57 @@ impl Field {
         self.distance(a, b) == 1
     }
 
-    /// The direction from the head of a two-hex stack of `side` towards its front: right for
-    /// the attacker, left for the defender. The tail lies the opposite way.
-    pub const fn head_direction(side: BattleSide) -> Direction {
+    /// The direction from a two-hex stack's position (its rear hex) to its other hex, towards
+    /// the enemy: right for the attacker, left for the defender.
+    pub const fn front_direction(side: BattleSide) -> Direction {
         match side {
             BattleSide::Attacker => Direction::Right,
             BattleSide::Defender => Direction::Left,
         }
     }
 
-    /// The footprint of a stack of `side` whose head stands on `head`, or `None` if `head` or the
-    /// tail of a two-hex stack is off the field.
+    /// The footprint of a stack of `side` whose position is `position` (a two-hex stack's rear
+    /// hex), or `None` if the position or a two-hex stack's other hex is off the field.
     // rule: BAT-GEO-002
-    pub fn footprint(self, head: Hex, two_hex: bool, side: BattleSide) -> Option<Footprint> {
-        if !self.contains(head) {
+    #[inline]
+    pub fn footprint(self, position: Hex, two_hex: bool, side: BattleSide) -> Option<Footprint> {
+        if !self.contains(position) {
             return None;
         }
         if !two_hex {
-            return Some(Footprint { head, tail: None });
+            return Some(Footprint {
+                front: position,
+                rear: None,
+            });
         }
-        let back = match side {
-            BattleSide::Attacker => Direction::Left,
-            BattleSide::Defender => Direction::Right,
-        };
-        self.neighbor(head, back).map(|tail| Footprint {
-            head,
-            tail: Some(tail),
-        })
+        self.neighbor(position, Self::front_direction(side))
+            .map(|front| Footprint {
+                front,
+                rear: Some(position),
+            })
+    }
+
+    /// The footprint of a stack of `side` whose front hex ([`Footprint::front`]) is `front`, or
+    /// `None` if a hex of it is off the field.
+    #[inline]
+    pub fn footprint_at_front(
+        self,
+        front: Hex,
+        two_hex: bool,
+        side: BattleSide,
+    ) -> Option<Footprint> {
+        if !self.contains(front) {
+            return None;
+        }
+        if !two_hex {
+            return Some(Footprint { front, rear: None });
+        }
+        // The position lies behind the front hex: the opposite direction, half a turn.
+        self.neighbor(front, Self::front_direction(side).turned(3))
+            .map(|rear| Footprint {
+                front,
+                rear: Some(rear),
+            })
     }
 
     /// Smallest distance between a hex of `a` and a hex of `b`.
@@ -347,12 +381,12 @@ impl Field {
     }
 
     /// The canonical attack positions of an attacker (`two_hex`, `side`) against the footprint
-    /// `target`: head hexes from which the attacker's footprint touches the target. Slot
-    /// `k = (i · 6 + d) · 2 + v`: `i` is the target hex (0 head, 1 tail), `d` the direction
-    /// ([`Direction::ALL`]) from it to the contact hex `n`, `v = 0` the attacker's head on `n`,
-    /// `v = 1` its tail on `n` (two-hex attackers only). A slot is `None` where the position is
-    /// off the field, overlaps the target, or repeats an earlier slot, so every position appears
-    /// once. Occupancy and reach are not considered.
+    /// `target`: positions from which the attacker's footprint touches the target. Slot
+    /// `k = (i · 6 + d) · 2 + v`: `i` is the target hex (0 its front hex, 1 a two-hex target's
+    /// rear hex), `d` the direction ([`Direction::ALL`]) from it to the contact hex `n`, `v = 0`
+    /// the attacker's front hex on `n`, `v = 1` its rear hex on `n` (two-hex attackers only). A
+    /// slot is `None` where the position is off the field, overlaps the target, or repeats an
+    /// earlier slot, so every position appears once. Occupancy and reach are not considered.
     pub fn attack_positions(
         self,
         two_hex: bool,
@@ -360,7 +394,7 @@ impl Field {
         target: Footprint,
     ) -> [Option<Hex>; ATTACK_SLOTS] {
         let mut out = [None; ATTACK_SLOTS];
-        let target_hexes = [Some(target.head), target.tail];
+        let target_hexes = [Some(target.front), target.rear];
         // Positions found so far (every position is kept in its first slot only).
         let mut seen = [Hex(0); ATTACK_SLOTS];
         let mut seen_len = 0;
@@ -373,17 +407,16 @@ impl Field {
             else {
                 continue;
             };
-            let head = if v == 0 {
-                Some(contact)
-            } else {
-                self.neighbor(contact, Self::head_direction(side))
-            };
             // The contact hex neighbours the target, so the footprint touches it unless they
-            // overlap (for `v = 1` the footprint's tail is the contact hex itself).
-            let position = head
-                .and_then(|h| self.footprint(h, two_hex, side))
+            // overlap (for `v = 1` the footprint's rear hex, its position, is the contact hex).
+            let footprint = if v == 0 {
+                self.footprint_at_front(contact, two_hex, side)
+            } else {
+                self.footprint(contact, two_hex, side)
+            };
+            let position = footprint
                 .filter(|fp| !fp.hexes().any(|h| target.covers(h)))
-                .map(|fp| fp.head);
+                .map(Footprint::position);
             if let Some(p) = position.filter(|p| !seen[..seen_len].contains(p)) {
                 seen[seen_len] = p;
                 seen_len += 1;

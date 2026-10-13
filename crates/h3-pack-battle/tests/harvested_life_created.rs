@@ -517,8 +517,9 @@ fn batch_2d_su_summons_until_the_limit_and_a_side_of_elementals_loses() {
     // nobody's way, and E1's row was free again after its death (no corpse). Then column 2.
     let columns: Vec<i32> = places.iter().map(|p| p.0).collect();
     assert_eq!(columns, [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2]);
+    // The cart's hex, the two-hex tent's position in the side column (its front hex on (1, 9)).
     let machines = [s.stacks()[7].hex, s.stacks()[8].hex].map(|h| field.coords(h));
-    assert_eq!(machines, [(1, 1), (1, 9)]);
+    assert_eq!(machines, [(1, 1), (0, 9)]);
     let mut rows: Vec<i32> = places[..10].iter().map(|p| p.1).collect();
     rows.sort_unstable();
     let mut expected = vec![0, 2, 3, 4, 5, 6, 7, 8, 10, row1];

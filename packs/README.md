@@ -674,12 +674,12 @@ and since E03 `ranged_full_damage_distance`, `ranged_penalty_percent`, `melee_pe
 `bad_morale_chances`, `luck_dice`, `good_luck_chances` (chances out of the die's sides per level,
 bad-morale chances below the die's sides so that no stack freezes for certain,
 at most 8 levels; the table lengths bound morale and luck, BAT-MOR-001..004, BAT-LCK-001/002),
-and `war_machine_positions` (E03 T8: three head hexes `[x, y]` of the attacker's war machines by
+and `war_machine_positions` (E03 T8: three front hexes `[x, y]` of the attacker's war machines by
 kind — shooting machine, ammo supply, first aid — mirrored for the defender, BAT-WAR-001). A war
 machine's kind follows from its data: flag `shooter`, ability `ammo_supply` or ability
 `first_aid`. Since E04a T4a the compiler also checks that the positions leave room for two-hex
-machines: each head hex has a hex behind it on the field, and no two footprints of either side
-(the defender's mirrored) share a hex. Since E04a T8 `tactics_zone_columns` (one width per skill
+machines: each front hex has a hex behind it on the field (a two-hex machine's position), and no
+two footprints of either side (the defender's mirrored) share a hex. Since E04a T8 `tactics_zone_columns` (one width per skill
 level: the tactics zone of a side whose Tactics level exceeds the enemy's by `d` is
 `tactics_zone_columns[d - 1]` columns wide, each between 1 and the standable columns; `[3, 5, 7]`
 in `base`, BAT-TAC-001; ruleset hash v12). Since E04a T9b the optional `surrender = { resource,

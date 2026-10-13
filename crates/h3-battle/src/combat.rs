@@ -414,9 +414,12 @@ fn penalty(
 ) -> Option<u16> {
     if flags.contains(StrikeFlags::RANGED) {
         // rule: BAT-RNG-002
-        let near = victim.footprint(field).hexes().any(|h| {
-            field.distance(striker.hex, h) <= u32::from(params.ranged_full_damage_distance)
-        });
+        // Measured from the striker's front hex (its position as VCMI names it).
+        let from = striker.footprint(field).front;
+        let near = victim
+            .footprint(field)
+            .hexes()
+            .any(|h| field.distance(from, h) <= u32::from(params.ranged_full_damage_distance));
         (!near && !striker.has(StackTraits::NO_DISTANCE_PENALTY))
             .then(|| u16::from(params.ranged_penalty_percent))
     } else {
@@ -646,29 +649,30 @@ fn melee_secondaries(
 /// footprint `fp`, attacking the stack at `victim`.
 ///
 /// Ported from VCMI `CBattleInfoCallback::getPotentiallyAttackableHexes` (1.7.5): the pattern
-/// starts at the attacker's head, or at its tail if the head does not touch the target; the
-/// attack direction points at the target's tail if that is adjacent, else at its head. Each
+/// starts at the attacker's front hex, or at its rear hex if the front does not touch the target
+/// (VCMI's head and tail); the attack direction points at the target's rear hex if that is
+/// adjacent, else at its front hex. Each
 /// pattern is a walk of directions turned relative to the attack direction; a walk whose first
 /// step would enter the attacker starts one step further, on the attacked hex. Hexes of the
 /// attacker are never hit.
 fn pattern_hexes(field: Field, me: &Stack, fp: Footprint, victim: Footprint) -> (HexSet, HexSet) {
     let mut enemy = HexSet::new();
     let mut any = HexSet::new();
-    let head = Footprint {
-        head: fp.head,
-        tail: None,
+    let front = Footprint {
+        front: fp.front,
+        rear: None,
     };
-    // A footprint that touches the target with its tail only is two-hex.
-    let origin = if field.touches(head, victim) {
-        fp.head
+    // A footprint that touches the target with its rear hex only is two-hex.
+    let origin = if field.touches(front, victim) {
+        fp.front
     } else {
-        fp.tail.unwrap_or(fp.head)
+        fp.position()
     };
     // The origin touches the target, so one of the directions exists.
     let dir = victim
-        .tail
+        .rear
         .and_then(|t| field.direction(origin, t))
-        .or_else(|| field.direction(origin, victim.head))
+        .or_else(|| field.direction(origin, victim.front))
         .unwrap_or(Direction::Right);
     let walk = |first: u8, more: &[u8]| {
         let start = if field

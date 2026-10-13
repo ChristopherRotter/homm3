@@ -338,7 +338,8 @@ fn the_hash_is_stable_and_sees_every_part() {
         edit(|p| set_kind(p, 6, ObjectKindDef::KeyTent { key: 1 })),
         edit(|p| set_kind(p, 7, ObjectKindDef::KeyGuard { key: 2 })),
         edit(|p| set_kind(p, 8, ObjectKindDef::KeyGate { key: 6 })),
-        edit(|p| set_kind(p, 6, ObjectKindDef::KeyGuard { key: 0 })),
+        // A guard (visited from a neighbour) becomes a tent of its key: only the kind differs.
+        edit(|p| set_kind(p, 7, ObjectKindDef::KeyTent { key: 1 })),
         edit(|p| set_kind(p, 7, ObjectKindDef::KeyGate { key: 1 })),
         edit(|p| set_kind(p, 8, ObjectKindDef::KeyTent { key: 7 })),
         edit(|p| set_kind(p, 5, ObjectKindDef::KeyTent { key: 4 })),
@@ -660,6 +661,30 @@ fn object_type_parameters_are_checked() {
         invalid(8, ObjectKindDef::KeyGate { key: u8::MAX }),
         key_reason
     );
+    // A gate is crossed, so it is visited from above (E08 T15b); a guard need not be.
+    let error = compile_err(&edit(|p| pack(p, "t").object_types[8].from_above = false));
+    assert_eq!(
+        error,
+        AdventureCompileError::InvalidObjectType {
+            key: "t:gate".into(),
+            reason: "a key gate is not visited from above",
+        }
+    );
+    compile(&edit(|p| pack(p, "t").object_types[7].from_above = false)).unwrap();
+    // Guards and gates block the players without their key, so they are never entered (the
+    // review of E08 T15).
+    for (index, key) in [(7, "t:guard"), (8, "t:gate")] {
+        let error = compile_err(&edit(|p| {
+            pack(p, "t").object_types[index].visit = Visit::Enter
+        }));
+        assert_eq!(
+            error,
+            AdventureCompileError::InvalidObjectType {
+                key: key.into(),
+                reason: "a key guard or gate is not visited from a neighbour",
+            }
+        );
+    }
 }
 
 #[test]

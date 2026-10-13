@@ -19,7 +19,10 @@
 //! search reaches it and goes no further from it, with the points the hero keeps after the visit
 //! (a pickup's on the tile before, E08 T13b; a Cartographer's on its tile, T14a). Neither such a
 //! tile of an object not visited from above is reached from the three tiles above it, nor are
-//! those tiles reached from it when the hero stands there (ADV-OBJ-004, T14a).
+//! those tiles reached from it when the hero stands there (ADV-OBJ-004, T14a). A border gate whose
+//! key the hero's owner holds is not visited: its tile is one like any other, on the way or at
+//! the end (ADV-VIS-005, T15b); a gate is visited from above (the ruleset part requires it), so
+//! the search goes on from it in every direction.
 
 use alloc::collections::BinaryHeap;
 use alloc::vec;
@@ -122,7 +125,7 @@ impl Reach {
     /// Relaxes the steps from `slot`, reached with `points` left, in the eight directions; a
     /// tile reached with more points than before goes on the queue unless a visit ends the path
     /// there. `START` is the hero's own tile, whose steps up are skipped when `closed`.
-    // rule: ADV-OBJ-003, ADV-OBJ-004
+    // rule: ADV-OBJ-003, ADV-OBJ-004, ADV-VIS-005
     #[inline(always)]
     fn expand<const START: bool>(
         &mut self,
@@ -153,14 +156,15 @@ impl Reach {
             }
             // What objects still on the map cover there (the occupancy layer): a visit ends
             // the path (ADV-OBJ-003), a blocked tile, a visit not built yet or one entered from
-            // above against ADV-OBJ-004 stops it.
+            // above against ADV-OBJ-004 stops it, and a gate the owner holds the key of is
+            // crossed (ADV-VIS-005): `visit_at` with the owner, as `MoveHero`'s step.
             let mut visit = false;
             if to.blocked || to.visitable {
                 let live = state.live(pos, to);
                 if live.visitable {
-                    match state.visit_at(part, pos) {
+                    match state.visit_at(part, search.owner, pos) {
                         // Directions 3 to 5 step down (DIRECTIONS).
-                        Some(v) if v.from_above || !(3..=5).contains(&dir) => visit = true,
+                        Some(v) if v.from_above || !(3..=5).contains(&dir) => visit = !v.pass,
                         _ => continue,
                     }
                 } else if live.blocked {

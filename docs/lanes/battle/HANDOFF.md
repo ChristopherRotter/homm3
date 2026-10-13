@@ -4,13 +4,13 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **R01 (the content split) waits for the user's checkpoint** (2026-10-13; `docs/epics/R01-content-split.md`): #137 (R01a) merges first, then R01b (`shared/r01b-content-split`). The lane owns `h3-content-battle` (`BattleRuleset`, derefs to the core) and `h3-pack-battle`; `h3-content`, `h3-pack` are shared.
-- **E04b is closed** (2026-10-12). Records: `docs/epics/E04b-log.md`. Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
-- **Done (E04b):** battle magic complete after the executable's code (`installation.md` §7.8–§7.24). Physical damage follows its three truncated stages under Q-0005 (`h3_kernel::arith::X87`, 53 bits).
-- **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's f32 bit pattern where it differs; Q45 (b)).
-- **Next after R01, at the user's checkpoint:** E04c's refinement (sieges, special battlefields); batch 2g when the user plays it. The Windows verify was red in `h3-server` on 2026-10-12 (passed on to the server lane).
-- **Open for later tasks:** BAT-Q28 and BAT-Q32 to BAT-Q35 (the review's; none blocks), batch 2g and 49 wiki checks (`docs/experiments/README.md`; the review's agents had no wiki access), BAT-STUB-1 (the observation and a created stack that ran out of rounds); `QUEUE.md`'s inbox by destination; Q43.
-- **Versions:** battle owns state hash v41, battle part hash v1, replay format v22, action encoding v11, C ABI v17, observation encoding v13; shared: core ruleset hash v43, pack format v35. Next ids: BAT-Q36, BAT-QUIRK-22, BAT-STUB-2.
+- **The rear hex as a two-hex stack's position waits for the user's checkpoint** (2026-10-13, `battle/rear-hex-position`, `cross-lane`; BAT-GEO-002): a renaming, the same games; its calls are in the pull request.
+- **R01 is merged** (#137, #141; `docs/epics/R01-content-split.md`): the lane owns `h3-content-battle` (`BattleRuleset`, derefs to the core) and `h3-pack-battle`; `h3-content`, `h3-pack` are shared.
+- **E04b is closed** (2026-10-12; `docs/epics/E04b-log.md`): battle magic after the executable's code (`installation.md` §7.8–§7.24); physical damage in three truncated stages under Q-0005 (`h3_kernel::arith::X87`, 53 bits).
+- **Hero rates** cross the seam as `h3_contracts::Rate` (basis points, plus the original's f32 bits under Q-0005; Q45 (b)).
+- **Next, at the user's checkpoint:** E04c's refinement (sieges, special battlefields); batch 2g when the user plays it.
+- **Open for later tasks:** BAT-Q28, BAT-Q32 to BAT-Q35 (none blocks), batch 2g and 49 wiki checks (`docs/experiments/README.md`), BAT-STUB-1 (an expired created stack in the observation), `QUEUE.md`'s inbox by destination, Q43.
+- **Versions:** battle owns state hash v43, battle part hash v1, replay format v24, action encoding v12, C ABI v18, observation encoding v14; shared: core ruleset hash v43, pack format v35. Next ids: BAT-Q36, BAT-QUIRK-22, BAT-STUB-2.
 - **Ownership:** `lanes.toml`; a seam change (`h3-kernel`, `h3-contracts`) is its own `shared/` pull request, merged first.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; the user plays experiment maps in SoD with plain HD and commits the results.
 
@@ -35,6 +35,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A dead stack's timed effects stay until the command's end (`effects::remove_dead`), its permanent ones for good: code that brings a stack back within a command removes the timed ones first (the rebirth), and a reused record is cleared with `effects::forget`. The battle's first activation runs without the freezing checks (`turn::activate_first`); good morale goes through `turn::morale_turn`.
 - Hero spells and masteries come from `h3-heroes` (ADR-0013 point 2); the battle reads `BattleMagic` only. Tests: `support::masteries(r, [schools])`. A stack's spell test needs the casting side (`affects_stack`, `share`, `resists`: the heroes' `Guard`, BAT-MAG-066); battle-wide hero magic is `BattleState.limits`, derived at the start.
 - Rule code reads abilities via `ruleset.abilities(creature)`; per-attack booleans are `StackTraits` bits set at setup. `Stack.spells` holds the spells' values only: a creature's `innate_spell` is read where the original reads the creature (`magic::mirror_chance`, `magic::reflection`), not by Hypnotize, Dispel or usefulness tests. Two `skill_specialty` effects in one specialty are rejected.
+- A two-hex stack's position is its rear hex (BAT-GEO-002): where VCMI measures at its head, use `Footprint::front` (placement, a shot's aim and distance, the berserk shooter); `hexes()` keeps the front hex first. Tests place two-hex stacks by the rear hex.
 - Relations go by the acting stack's controller and the other stack's own side (`Stack::may_attack`; `is_hostile_to` only for blocking and multi-headed strikes). A created stack that ran out of rounds keeps its record (`created::reusable`).
 - A retired quirk flag keeps its `REGISTRY` position without a name (`flags()` lists the live ones). A flag that comes or goes changes the faithful ruleset hashes: the golden replays, and the adventure lane's faithful replays (a `cross-lane` header line).
 
@@ -59,10 +60,14 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-13 (fifty-fourth) — the rear hex as a two-hex stack's position
+
+The user left the choice to the agent: the queued rear-hex change. Encodings, replays, protocol and the battle baseline (−2.8 % Ir) renewed; 800 random battles and the golden seeds play master's games. Detail: the pull request.
+
 ### 2026-10-12 to 13 (fifty-third) — R01, the content split
 
-The user left the choice to the agent: R01. R01a moved the writer (#137); R01b split the content, the pack adapter and the pack files, with a worker per part. Behaviour unchanged (replay headers only); the manifest carries both hashes (protocol v21). Detail: the design note.
+R01: the writer moved (#137); the content, the pack adapter and the pack files split (#141); behaviour unchanged, protocol v21. Detail: the design note.
 
-### 2026-10-11 to 12 (fifty-second) — E04b increment 21: T11b and T11c, the review and the closure
+### 2026-10-11 to 12 (fifty-second) — E04b's review and closure
 
-The user: review and closure in one session, with agents; BAT-Q29 to BAT-Q31 answered (two quirk flags retired); E04b closed with the battle scope taken as passing on Windows. Eleven reviews, 24 fixes, replays and baseline renewed. Detail: `docs/epics/E04b-log.md`.
+Eleven reviews, 24 fixes, E04b closed (BAT-Q29 to BAT-Q31 answered). Detail: `docs/epics/E04b-log.md`.

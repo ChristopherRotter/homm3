@@ -419,13 +419,13 @@ list's key; mDNS later.
 
 - **T1 The server key and the signed welcome** (done 2026-10-13; `E16-log.md`): `<data>/server.key`,
   the hello's nonce and dialed address, `[server] addresses`, the welcome's key and signature, the
-  test client's check and pin; wire 22.
+  test client's check and pin; wire 24.
 - **T2 The card and `Describe`:** `ServerCard` and `SignedCard`, the card's configuration, the
-  wall clock, `h3-server card`; wire 23.
+  wall clock, `h3-server card`; a wire bump.
 - **T3 Peers, the fetch and `ListPeers`:** `[[peer]]`, the TLS client (a `shared:` commit: the
-  workspace's entries), the fetch's bounds, the cache, `ListPeers`; wire 24.
+  workspace's entries), the fetch's bounds, the cache, `ListPeers`; a wire bump.
 - **T4 Beyond the peers:** the peers' own cards to `depth`, each link checked, the `cards` bound.
-- **T5 Lists:** `<data>/lists/`, the listed servers fetched, `Lists`, the list tools; wire 25.
+- **T5 Lists:** `<data>/lists/`, the listed servers fetched, `Lists`, the list tools; a wire bump.
 - **T6 Closure:** `06-security.md`'s discovery and the client lane's inbox (`cross-lane`), the
   operator's notes, the exit criteria shown, the reviewer agent, the user's checkpoint.
 

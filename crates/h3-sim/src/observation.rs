@@ -51,8 +51,9 @@
 //! Wall's or a mine's damage value, BAT-MAG-028, BAT-MAG-033), then the viewer's spell obstacle
 //! here is seen by the opponent.
 //! Per stack: `[present, alive, own, creature handle, count, top_hp, max_hp, attack, defense,
-//! damage_min, damage_max, speed, x, y, acted, waited, retaliated, defending, active, morale,
-//! luck, shots, retaliations left (255 = unlimited), had good morale this round, two-hex,
+//! damage_min, damage_max, speed, x, y (its position: a two-hex stack's rear hex), acted,
+//! waited, retaliated, defending, active, morale, luck, shots, retaliations left (255 =
+//! unlimited), had good morale this round, two-hex,
 //! flies, shooter, war machine, no distance penalty, shoots when adjacent, the hero's
 //! regeneration in hit points, created in battle, clone, the clone's rounds left, casts left, the
 //! spells the active stack's cast could draw for it, creatures at the start (the resurrection
@@ -90,7 +91,8 @@
 //! v13 (E04b T9a): complete; the battlefield planes; the private part once, with the spell
 //! bonuses and the hidden magic; the globals from the wait phase on, the cost change, the
 //! per-stack features from the start count on, the materialised effects and each effect's
-//! mastery.
+//! mastery. v14: a two-hex stack's `x`, `y` are its rear hex, its position as in the original
+//! (BAT-GEO-002), no longer its front hex.
 
 use h3_battle::{
     DamageRoll, HeroView, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Observation, OwnHeroView,
@@ -102,7 +104,7 @@ use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 13;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 14;
 
 /// Global features.
 pub const GLOBALS: usize = 20;
@@ -510,11 +512,12 @@ mod tests {
                 .iter()
                 .all(|v| *v == 0.0)
         );
-        // Stack 0: the attacker's two-hex brute ×8, head at (2, 5) (tail in column 1), active.
+        // Stack 0: the attacker's two-hex brute ×8 at (1, 5) (its front hex in column 2),
+        // active.
         let s0 = stack(&out, 0);
         assert_eq!(s0[0..3], [1.0, 1.0, 0.0]);
         assert_eq!(s0[4], 8.0);
-        assert_eq!((s0[12], s0[13]), (2.0, 5.0));
+        assert_eq!((s0[12], s0[13]), (1.0, 5.0));
         assert_eq!(s0[18], 1.0);
         // Morale +1 (one-faction army, BAT-MOR-002), luck 0, no shots, one retaliation, two-hex
         // walker, nothing from a hero.
@@ -909,10 +912,12 @@ mod tests {
             h3_contracts::Obstacle {
                 hexes: std::vec![40, 41],
                 anchor: Some(57),
+                kind: None,
             },
             h3_contracts::Obstacle {
                 hexes: std::vec![60],
                 anchor: None,
+                kind: None,
             },
         ];
         let s = BattleState::new(&r, &setup, 1).unwrap();

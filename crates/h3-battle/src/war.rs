@@ -94,7 +94,7 @@ pub(crate) fn act<S: Sink>(
     } else if can_shoot(state, field, id) {
         // While the battle goes on there is a living enemy to shoot at.
         shooting_target(state, ruleset, field, id)
-            .map(|target| (target, state.at(target).hex))
+            .map(|target| (target, state.at(target).footprint(field).front))
             .into_iter()
             .for_each(|(target, at)| shoot(state, ruleset, id, target, at, sink));
     }

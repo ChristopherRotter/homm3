@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v22 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v24 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 22
+//! format = 24
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -30,6 +30,7 @@
 //! [[setup.obstacles]]             # the natural obstacles (format 18: pieces; omitted when none)
 //! hexes = [40, 41]                #   the hexes it blocks
 //! anchor = 40                     #   a removable obstacle's anchor hex (omitted when none)
+//! kind = "synthetic:boulder"      #   its obstacle type (format 23; omitted when unknown)
 //!
 //! [setup.attacker_hero]           # the battle hero per side (format 3; omitted when none):
 //! hero_type = "base:orrin"        #   the fields of `h3_pack_battle::HeroEntry`
@@ -584,7 +585,8 @@ impl ReplayDoc {
                     .obstacles
                     .iter()
                     .map(ObstacleEntry::to_obstacle)
-                    .collect(),
+                    .collect::<Result<_, _>>()
+                    .map_err(|e| CliError::Format(e.to_string()))?,
                 heroes: [
                     hero(f.setup.attacker_hero.as_ref())?,
                     hero(f.setup.defender_hero.as_ref())?,

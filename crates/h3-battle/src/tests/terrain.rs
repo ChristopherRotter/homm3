@@ -1,6 +1,7 @@
 //! Tests of the native-terrain bonus (BAT-TER-001) and obstacle generation (BAT-GEO-004).
 
 use std::collections::BTreeSet;
+use std::string::String;
 use std::vec::Vec;
 
 use h3_content_battle::BattleRuleset;
@@ -128,6 +129,13 @@ fn absolute_obstacles_appear_with_their_chance_and_count_half() {
             // An absolute obstacle comes first and has no anchor: no spell removes it.
             let first = &pieces(&r, "lava", seed)[0];
             assert_eq!((&first.hexes, first.anchor), (&cliff, None));
+            // Each piece names its type (E17 M1, CLT-Q3): the cliff, then stones.
+            let kinds: Vec<_> = pieces(&r, "lava", seed)
+                .iter()
+                .map(|p| p.kind.as_ref().map(|k| String::from(k.as_str())))
+                .collect();
+            assert_eq!(kinds[0].as_deref(), Some("t:cliff"));
+            assert!(kinds[1..].iter().all(|k| k.as_deref() == Some("t:stone")));
             // The cliff counts 2 of 5..=12, the stones fill 3..=10: 2..=5 stones.
             assert!((8..=14).contains(&hexes.len()), "{hexes:?}");
         }
@@ -193,7 +201,7 @@ fn the_battle_accepts_every_generated_battlefield() {
     assert_eq!(
         with_ridge(most + 1).err(),
         Some(BattleCompileError::InvalidObstacle {
-            key: std::string::String::from("t:ridge"),
+            key: String::from("t:ridge"),
             reason: "usual obstacles block at most 8 hexes",
         })
     );

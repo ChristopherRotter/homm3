@@ -20,18 +20,18 @@ use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId, StackTraits};
 /// A range beyond any battlefield: a walk of every reachable position.
 const ANY_RANGE: u8 = u8::MAX - 1;
 
-/// A stack a berserk stack may attack: its id, where to attack it from (its head hex for a
-/// shot), the distance.
+/// A stack a berserk stack may attack: its id, where to attack it from (the hex aimed at, its
+/// front hex, for a shot), the distance.
 type Choice = (StackId, Hex, u32);
 
 /// The automatic turn of the berserk stack `id` (BAT-MAG-025; the original's 0x4456D0,
-/// `installation.md` §7.14). Its candidates are every other living stack: by hex distance from its
-/// head if it can shoot (BAT-RNG-001, BAT-MAG-023), else those with an attack position it can walk
-/// or fly to, by the steps to the nearest such position (the first in canonical order on ties).
-/// One of the nearest is drawn with equal chances. A shooter shoots at it; a stack that reaches
-/// the position this turn walks there and attacks; one that does not walks towards it as far as
-/// its speed takes it. A bound stack does not move: its candidates are those next to it
-/// (BAT-MAG-045). Without candidates, or unable to move, its turn passes (`TurnPassed`).
+/// `installation.md` §7.14). Its candidates are every other living stack: by hex distance between
+/// the front hexes (BAT-GEO-002) if it can shoot (BAT-RNG-001, BAT-MAG-023), else those with an
+/// attack position it can walk or fly to, by the steps to the nearest such position (the first in
+/// canonical order on ties). One of the nearest is drawn with equal chances. A shooter shoots at
+/// it; a stack that reaches the position this turn walks there and attacks; one that does not walks
+/// towards it as far as its speed takes it. A bound stack does not move: its candidates are those
+/// next to it (BAT-MAG-045). Without candidates, or unable to move, its turn passes (`TurnPassed`).
 /// Returns whether it moved, attacked or shot.
 // rule: BAT-MAG-025
 pub(crate) fn berserk<S: Sink>(
@@ -42,6 +42,7 @@ pub(crate) fn berserk<S: Sink>(
 ) -> bool {
     let field = Field::new(ruleset.battle().field);
     let me = *state.at(id);
+    let front = me.footprint(field).front;
     let shooting = can_shoot(state, field, id);
     // rule: BAT-MAG-045
     let range = if binds::is_bound(state, id) {
@@ -56,7 +57,8 @@ pub(crate) fn berserk<S: Sink>(
         .filter(|&(i, t)| i != id.0 && t.is_alive())
         .filter_map(|(i, t)| {
             let choice = if shooting {
-                Some((t.hex, field.distance(me.hex, t.hex)))
+                let at = t.footprint(field).front;
+                Some((at, field.distance(front, at)))
             } else {
                 attack_position(field, &me, t, &reach)
             };

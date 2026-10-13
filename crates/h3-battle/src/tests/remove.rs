@@ -6,6 +6,7 @@
 use std::vec;
 use std::vec::Vec;
 
+use h3_content::ContentKey;
 use h3_content_battle::{BattleRuleset, ObstacleKind};
 use h3_contracts::{BattleHero, BattleSide, Obstacle};
 
@@ -37,6 +38,7 @@ fn field_with(r: &BattleRuleset, hero: BattleHero, obstacles: &[Piece<'_>]) -> B
             .map(|&(hexes, anchor)| Obstacle {
                 hexes: hexes.iter().map(|&(x, y)| at(r, x, y).0).collect(),
                 anchor: anchor.map(|(x, y)| at(r, x, y).0),
+                kind: None,
             })
             .collect(),
         ..setup(r, &[(0, "serf", 1)], &[(0, "serf", 1)])
@@ -420,7 +422,11 @@ fn obstacle_pieces_are_validated() {
         };
         BattleState::new(&r, &s, 1)
     };
-    let piece = |hexes: Vec<u8>, anchor| Obstacle { hexes, anchor };
+    let piece = |hexes: Vec<u8>, anchor| Obstacle {
+        hexes,
+        anchor,
+        kind: None,
+    };
     // An anchor in a side column or off the field.
     assert_eq!(
         start(vec![piece(vec![40], Some(0))]).unwrap_err(),
@@ -455,4 +461,49 @@ fn obstacle_pieces_are_validated() {
     assert!(start(many[..16].to_vec()).is_ok());
     // An anchor may lie on another obstacle's hex, and a piece may block nothing.
     assert!(start(vec![piece(vec![40], None), piece(vec![], Some(40))]).is_ok());
+    // A named type (E17 M1, CLT-Q3): one of the ruleset's, absolute without an anchor and usual
+    // with one, at most one absolute obstacle with a type.
+    let typed = |hexes: Vec<u8>, anchor, kind: &str| Obstacle {
+        kind: ContentKey::parse(kind).ok(),
+        ..piece(hexes, anchor)
+    };
+    assert_eq!(
+        start(vec![
+            piece(vec![40], None),
+            typed(vec![41], Some(41), "t:nothing")
+        ])
+        .unwrap_err(),
+        SetupError::InvalidObstacleType(1)
+    );
+    assert_eq!(
+        start(vec![typed(vec![40], None, "t:stone")]).unwrap_err(),
+        SetupError::InvalidObstacleType(0)
+    );
+    assert_eq!(
+        start(vec![typed(vec![40], Some(40), "t:cliff")]).unwrap_err(),
+        SetupError::InvalidObstacleType(0)
+    );
+    assert_eq!(
+        start(vec![
+            typed(vec![40], None, "t:cliff"),
+            typed(vec![41], None, "t:cliff")
+        ])
+        .unwrap_err(),
+        SetupError::TooManyObstacles
+    );
+    let s = start(vec![
+        typed(vec![40], None, "t:cliff"),
+        typed(vec![41], Some(41), "t:stone"),
+        piece(vec![42], Some(42)),
+    ])
+    .unwrap();
+    let o = observe(&s, &r, BattleSide::Attacker);
+    assert_eq!(o.absolute_obstacle, r.obstacle_by_key("t:cliff"));
+    let kinds: Vec<_> = o.removable_obstacles.iter().map(|p| p.kind()).collect();
+    assert_eq!(kinds, [r.obstacle_by_key("t:stone"), None]);
+    assert!(
+        observe(&start(vec![]).unwrap(), &r, BattleSide::Attacker)
+            .absolute_obstacle
+            .is_none()
+    );
 }

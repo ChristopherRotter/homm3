@@ -1515,7 +1515,8 @@ rename (both "if it shows"), a separate rate for automated clients (a configurat
   no cryptography); `Host` gains `addresses` (the server's other addresses) and `signer`. The id is
   now the connection's (`Connection::id`, set by the hello): the dialed address when it is one of
   `addresses`, else `Host::id`; logins and re-keys sign it. A hello whose nonce is not 32 bytes of
-  hex closes with `Protocol`. Wire 22.
+  hex closes with `Protocol`. Wire 24 (the merge of `master`: 22 and 23 went to the obstacle
+  types, CLT-Q3, and the rear hex, BAT-GEO-002, while T1's pull request was open).
 - **The server**: `[server] addresses` (each checked as `public_url` is), the `Service` holds the key
   and the addresses; the workload's gate signs with a stand-in (`bench::Unsigned`: it counts the
   session core, not Ed25519).

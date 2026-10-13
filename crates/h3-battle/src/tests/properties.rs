@@ -372,6 +372,7 @@ fn pieces(hexes: &[u8]) -> Vec<h3_contracts::Obstacle> {
         .map(|&h| h3_contracts::Obstacle {
             hexes: std::vec![h],
             anchor: [None, Some(h), Some(h - 1)][usize::from(h % 3)],
+            kind: None,
         })
         .collect()
 }
@@ -594,7 +595,7 @@ fn crowd(state: &mut BattleState, r: &BattleRuleset) {
         return;
     };
     let own = stack.footprint(field);
-    let ahead = field.neighbor(own.head, crate::Field::head_direction(stack.side));
+    let ahead = field.neighbor(own.front, crate::Field::front_direction(stack.side));
     let taken = state.living_hexes(field);
     for hex in (0..=u8::MAX).map(Hex).take(field.hex_count()) {
         let near = own.hexes().any(|h| field.distance(h, hex) <= 2);

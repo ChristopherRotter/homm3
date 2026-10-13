@@ -55,7 +55,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 41;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 43;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -334,8 +334,8 @@ fn war_machine_kind(
     }
 }
 
-/// The war machine stacks of `side`, by kind, placed at the ruleset's positions (mirrored for
-/// the defender) and reserved in `taken` (BAT-WAR-001).
+/// The war machine stacks of `side`, by kind, placed with their front hexes on the ruleset's
+/// hexes (mirrored for the defender) and reserved in `taken` (BAT-WAR-001).
 // rule: BAT-WAR-001
 fn war_machines(
     ruleset: &BattleRuleset,
@@ -360,15 +360,15 @@ fn war_machines(
             BattleSide::Attacker => i32::from(x),
             BattleSide::Defender => i32::from(params.field.width) - 1 - i32::from(x),
         };
-        // The compiler checked that the positions are on the field.
-        let head = field.hex(x, i32::from(y)).unwrap_or_default();
+        // The compiler checked that the front hexes are on the field, with room behind them.
+        let front = field.hex(x, i32::from(y)).unwrap_or_default();
         let two_hex = creature.flags.contains(CreatureFlag::TwoHex);
         let fp = field
-            .footprint(head, two_hex, side)
+            .footprint_at_front(front, two_hex, side)
             .filter(|fp| !fp.hexes().any(|h| taken.contains(h)))
             .ok_or(SetupError::NoRoom { side, slot })?;
         fp.hexes().for_each(|h| taken.insert(h));
-        let mut stack = Stack::new(ruleset, setup, (id, creature), side, slot, head, 1);
+        let mut stack = Stack::new(ruleset, setup, (id, creature), side, slot, fp.position(), 1);
         // rule: BAT-WAR-002
         stack.traits = stack.traits.with(
             StackTraits::UNLIMITED_SHOTS,
@@ -454,7 +454,7 @@ pub struct Stack {
     /// Army slot it came from (war machines: `MAX_ARMY_SLOTS` + kind; created stacks:
     /// [`CREATED_SLOT`]).
     pub slot: u8,
-    /// Position.
+    /// Position: a one-hex stack's hex, a two-hex stack's rear hex (BAT-GEO-002).
     pub hex: Hex,
     /// Living creatures (0 = dead).
     pub count: u32,
@@ -708,8 +708,8 @@ impl Stack {
         field
             .footprint(self.hex, self.is_two_hex(), self.side)
             .unwrap_or(Footprint {
-                head: self.hex,
-                tail: None,
+                front: self.hex,
+                rear: None,
             })
     }
 
@@ -863,6 +863,7 @@ impl BattleState {
         let params = ruleset.battle();
         let field = Field::new(params.field);
         let natural = NaturalObstacles::new(
+            ruleset,
             field,
             &setup.obstacles,
             ruleset.quirks().is_enabled(OBSTACLE_ANCHORS),
@@ -930,7 +931,7 @@ impl BattleState {
                 // rule: BAT-SET-001
                 let desired = field.hex(column, i32::from(row)).unwrap_or_default();
                 let two_hex = creature.flags.contains(CreatureFlag::TwoHex);
-                let head = closest_free(field, desired, two_hex, side, taken)
+                let position = closest_free(field, desired, two_hex, side, taken)
                     .ok_or(SetupError::NoRoom { side, slot: s.slot })?;
                 let stack = Stack::new(
                     ruleset,
@@ -938,7 +939,7 @@ impl BattleState {
                     (s.creature, creature),
                     side,
                     s.slot,
-                    head,
+                    position,
                     s.count,
                 );
                 stack.footprint(field).hexes().for_each(|h| taken.insert(h));
@@ -1289,15 +1290,19 @@ impl BattleState {
     /// status bits. v26 (E04b T5a): the spell obstacles after the effect list. v28 (E04b T5b):
     /// the obstacles as the blocked hexes, the removable obstacles (count; each anchor, count,
     /// hexes) and whether anchors belong to them. v36 (E04b T6c): per stack the creatures it
-    /// vanished with, after the clones' rounds.
+    /// vanished with, after the clones' rounds. v42 (E17 M1, CLT-Q3): each removable obstacle's
+    /// type after its hexes, the absolute obstacle's type after whether anchors belong. v43: a
+    /// two-hex stack's position is its rear hex (BAT-GEO-002), so the same field hashes
+    /// differently.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }
 }
 
-/// The head hex closest to `desired` where a stack of this shape fits: every hex of its
-/// footprint standable and not `taken`. Ties go to the column nearer the centre of the field,
-/// then the row nearer `desired`'s, then the lower hex index (BAT-SET-001).
+/// The position where a stack of this shape fits (every hex of its footprint standable and not
+/// `taken`) with its front hex ([`Footprint::front`]) closest to `desired`. Ties go to the column
+/// nearer the centre of the field, then the row nearer `desired`'s, then the lower hex index
+/// (BAT-SET-001).
 // rule: BAT-SET-001
 pub(crate) fn closest_free(
     field: Field,
@@ -1314,15 +1319,21 @@ pub(crate) fn closest_free(
             fp.hexes()
                 .all(|h| field.is_standable(h) && !taken.contains(h))
         })
-        .map(|fp| fp.head)
-        .min_by_key(|&h| {
-            let (x, y) = field.coords(h);
+        .min_by_key(|fp| {
+            let front = fp.front;
+            let (x, y) = field.coords(front);
             let toward_centre = match side {
                 BattleSide::Attacker => -x,
                 BattleSide::Defender => x,
             };
-            (field.distance(desired, h), toward_centre, (y - dy).abs(), h)
+            (
+                field.distance(desired, front),
+                toward_centre,
+                (y - dy).abs(),
+                front,
+            )
         })
+        .map(|fp| fp.position())
 }
 
 impl CanonicalHash for BattleState {

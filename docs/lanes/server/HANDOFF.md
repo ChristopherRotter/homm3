@@ -8,7 +8,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **The TLS client** (ADR-0021 point 4, T3): `rustls`, `rustls-graviola`, `rustls-native-certs`; `ring` and `aws-lc` are not GPLv2-compatible (`cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 22 since M6 T1's signed welcome; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 7 since M4 T8's `Held`; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 24 since M6 T1's signed welcome, after the obstacle types' 22 and the rear hex's 23; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 7 since M4 T8's `Held`; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -58,7 +58,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-13 — M6 T1, the server key and the signed welcome
 
-#146 merged. T1 (`E16-log.md`): `server.key`, `Signer`, the welcome's id per connection; wire 22.
+#146 merged. T1 (`E16-log.md`): `server.key`, `Signer`, the welcome's id per connection; wire 24.
 
 ### 2026-10-13 — M6's refinement
 

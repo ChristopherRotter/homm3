@@ -262,10 +262,11 @@ fn scenario_errors() {
     assert_eq!(empty.id, "e");
     assert!(empty.packs.is_empty());
     assert_eq!(parse_scenario(SYNTHETIC_DUEL).unwrap().packs, ["synthetic"]);
-    // Obstacles as pieces (E04b T5b): the hexes and an optional anchor.
+    // Obstacles as pieces (E04b T5b): the hexes, an optional anchor and an optional type
+    // (E17 M1, CLT-Q3).
     let pieces = parse_scenario(
         "[scenario]\nid = \"e\"\npacks = []\nprofile = \"a:b\"\n\
-         obstacles = [{ hexes = [58, 75], anchor = 57 }, { hexes = [93] }]\n",
+         obstacles = [{ hexes = [58, 75], anchor = 57, kind = \"a:rock\" }, { hexes = [93] }]\n",
     )
     .unwrap();
     assert_eq!(
@@ -273,16 +274,28 @@ fn scenario_errors() {
         [
             Obstacle {
                 hexes: vec![58, 75],
-                anchor: Some(57)
+                anchor: Some(57),
+                kind: ContentKey::parse("a:rock").ok(),
             },
             Obstacle {
                 hexes: vec![93],
-                anchor: None
+                anchor: None,
+                kind: None,
             }
         ]
     );
-    let entry = ObstacleEntry::of(&pieces.obstacles[0]);
-    assert_eq!(entry.to_obstacle(), pieces.obstacles[0]);
+    for piece in &pieces.obstacles {
+        let entry = ObstacleEntry::of(piece);
+        assert_eq!(entry.to_obstacle().as_ref(), Ok(piece));
+    }
+    assert_eq!(
+        parse_scenario(
+            "[scenario]\nid = \"e\"\npacks = []\nprofile = \"a:b\"\n\
+             obstacles = [{ hexes = [1], kind = \"rock\" }]\n"
+        )
+        .unwrap_err(),
+        BattlePackError::Syntax("bad obstacle type `rock`".to_owned())
+    );
     assert!(
         parse_scenario(
             "[scenario]\nid = \"e\"\npacks = []\nprofile = \"a:b\"\n\

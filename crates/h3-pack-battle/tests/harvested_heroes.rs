@@ -15,9 +15,7 @@ use h3_content::{
     SpellCategory, SpellId, TerrainId,
 };
 use h3_content_battle::{Ability, BattleRuleset};
-use h3_contracts::{
-    Army, ArmyStack, BattleHero, BattleSetup, BattleSide, MAX_BATTLE_EFFECTS, Obstacle,
-};
+use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide, MAX_BATTLE_EFFECTS};
 use h3_heroes::{
     ArtifactInstance, HeroDetails, available_spells, derive_battle_hero, spell_masteries, validate,
     war_machines,
@@ -209,14 +207,16 @@ fn remove_obstacle_keeps_a_target_while_it_is_castable() {
     let grass = r.terrain_by_key("base:grass").unwrap();
     let mut stream = Rng::for_stream(888, StreamId::OBSTACLES);
     let obstacles = generate_obstacles(&r, grass, &mut stream);
-    let piece = |hexes: &[u8], anchor| Obstacle {
-        hexes: hexes.to_vec(),
-        anchor: Some(anchor),
-    };
+    let piece = |hexes: &[u8], anchor| (hexes.to_vec(), Some(anchor));
     assert_eq!(
-        obstacles[3..],
+        obstacles[3..]
+            .iter()
+            .map(|o| (o.hexes.clone(), o.anchor))
+            .collect::<Vec<_>>(),
         [piece(&[109, 110], 108), piece(&[108], 108)]
     );
+    // Each piece names its type (E17 M1, CLT-Q3).
+    assert!(obstacles.iter().all(|o| o.kind.is_some()));
     // Ten Pikemen each; the attacker's hero knows Remove Obstacle and has mana for every cast.
     let army = || Army {
         stacks: vec![ArmyStack {

@@ -2,7 +2,8 @@
 //! type names its kind, a closed enum with typed parameters, and two visit properties; the packs
 //! define the types (`adventure.toml`, `[[object_type]]`) and this module compiles them into the
 //! ruleset part. The rules that read a kind come with the tasks that build them (pickups T13, the
-//! Cartographer T14, the other visitable objects T15); the setup draws random contents (T12b).
+//! Cartographer T14, the observatories, tents and guards T15a, the gates T15b); the setup draws
+//! random contents (T12b).
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
@@ -104,13 +105,41 @@ pub enum ObjectKind {
     },
 }
 
+/// What a visit of an object does, for the kinds whose visit is built ([`ObjectKind::effect`]):
+/// the kind's parameters a visit reads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Effect<'k> {
+    /// Its contents gained, then it leaves the map (a pickup, ADV-PIK-001 to ADV-PIK-003).
+    Pickup,
+    /// An offer of its terrains' reveal for this price, once per player and type (a
+    /// Cartographer, ADV-VIS-001).
+    Chart(&'k [(ResourceId, u32)]),
+    /// The tiles within this radius of the visited tile revealed (an observatory, ADV-VIS-002).
+    Reveal(u8),
+    /// This key for the visitor's owner (a Keymaster's tent, ADV-VIS-003).
+    Tent(u8),
+    /// For a holder of this key, an offer to pass (a border guard, ADV-VIS-004).
+    Guard(u8),
+    /// For a holder of this key, a tile like any other, crossed without a visit; for another
+    /// player, a visit that does nothing (a border gate, ADV-VIS-005).
+    Gate(u8),
+}
+
 impl ObjectKind {
-    /// Whether a visit of this kind is built (ADR-0016 point 4; ADV-OBJ-003): the one place a
-    /// task that builds a kind's visit extends. A step onto the visitable tile of an object whose
-    /// visit is not built is rejected (`Visit`). E08 T13b: the pickups; T14a and T14b: the
-    /// Cartographer, entered, with its offer; T15: the observatories, tents, guards and gates.
-    pub(crate) const fn visit_built(&self) -> bool {
-        matches!(self, Self::Pickup(_) | Self::RevealTerrain { .. })
+    /// What a visit of this kind does, if its visit is built (ADR-0016 point 4; ADV-OBJ-003):
+    /// the one place a task that builds a kind's visit extends. A step onto the visitable tile of
+    /// an object whose visit is not built is rejected (`Visit`). E08 T13b: the pickups; T14a and
+    /// T14b: the Cartographer, entered, with its offer; T15a: the observatories, the tents and the
+    /// guards with their offer; T15b: the gates, which are not visited by their key's holders.
+    pub(crate) fn effect(&self) -> Option<Effect<'_>> {
+        match self {
+            Self::Pickup(_) => Some(Effect::Pickup),
+            Self::RevealTerrain { price, .. } => Some(Effect::Chart(price)),
+            Self::RevealArea { radius } => Some(Effect::Reveal(*radius)),
+            Self::KeyTent { key } => Some(Effect::Tent(*key)),
+            Self::KeyGuard { key } => Some(Effect::Guard(*key)),
+            Self::KeyGate { key } => Some(Effect::Gate(*key)),
+        }
     }
 
     /// The terrains and price of a [`Self::RevealTerrain`] (a Cartographer, ADV-VIS-001); none
@@ -210,7 +239,7 @@ pub enum ObjectKindDef {
         /// The key colour.
         key: u8,
     },
-    /// [`ObjectKind::KeyGate`].
+    /// [`ObjectKind::KeyGate`]: its type visited from above (its key's holders cross it).
     KeyGate {
         /// The key colour.
         key: u8,
@@ -303,6 +332,25 @@ pub(super) fn compile_object_types(
             reason,
         };
         let kind = compile_kind(&scope, &tables.index, &def.kind)?.map_err(invalid)?;
+        // Its key's holders cross a gate (ADV-VIS-005), so a walking hero also leaves its tile
+        // upward: the original's class 212 is on the "visitable from above" list (survey
+        // `E08-objects.md` §2.3), and the reachable-tiles query tests ADV-OBJ-004 on a path's
+        // first tile only.
+        if matches!(kind, ObjectKind::KeyGate { .. }) && !def.from_above {
+            return Err(invalid("a key gate is not visited from above"));
+        }
+        // A guard or a gate blocks the players without its key: an entered one would let such a
+        // hero stand on it and walk on past it (survey `E08-objects.md` §2.1: classes 9 and 212
+        // are visited from a neighbour; the review of E08 T15).
+        if matches!(
+            kind,
+            ObjectKind::KeyGuard { .. } | ObjectKind::KeyGate { .. }
+        ) && def.visit != Visit::Neighbour
+        {
+            return Err(invalid(
+                "a key guard or gate is not visited from a neighbour",
+            ));
+        }
         tables.types.push(ObjectType {
             key: def.key.clone(),
             name: def.name.clone(),

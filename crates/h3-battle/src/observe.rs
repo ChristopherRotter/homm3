@@ -26,7 +26,7 @@
 use alloc::vec::Vec;
 
 use h3_content::CreatureTypeId;
-use h3_content_battle::BattleRuleset;
+use h3_content_battle::{BattleRuleset, ObstacleTypeId};
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::FixedVec;
 
@@ -119,8 +119,11 @@ pub struct Observation {
     pub periodic_rounds: [u8; 2],
     /// Hexes blocked by natural obstacles (public).
     pub obstacles: HexSet,
-    /// The natural obstacles a spell can remove, with their anchors (public; BAT-MAG-034).
+    /// The natural obstacles a spell can remove, with their anchors and types (public;
+    /// BAT-MAG-034).
     pub removable_obstacles: FixedVec<RemovableObstacle, MAX_REMOVABLE_OBSTACLES>,
+    /// The absolute obstacle's type, if the setup named one (public; for viewers, BAT-GEO-003).
+    pub absolute_obstacle: Option<ObstacleTypeId>,
     /// The anchor hexes that belong to their obstacles (quirk BAT-QUIRK-3; public, BAT-GEO-003).
     pub obstacle_anchors: HexSet,
     /// The hexes a removal of a natural obstacle cleared: they lead to no obstacle any more
@@ -208,6 +211,7 @@ pub fn observe_as(state: &BattleState, ruleset: &BattleRuleset, viewer: Viewer) 
         periodic_rounds: state.casts.periodic,
         obstacles: state.obstacles(),
         removable_obstacles: state.natural.removable_list(),
+        absolute_obstacle: state.natural.absolute(),
         obstacle_anchors: state.natural.anchors(),
         obstacles_cleared: state.natural.cleared(),
         heroes: BattleSide::BOTH.map(|side| state.hero(side)),

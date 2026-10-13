@@ -274,14 +274,14 @@ fn a_berserk_stack_is_no_target_of_its_own_side_and_an_enemy_next_to_any_stack()
     let mut s = arena(
         &r,
         [None, None],
-        &[("hydra", 10, 7, 5), ("fixed", 10, 6, 4)],
+        &[("hydra", 10, 6, 5), ("fixed", 10, 6, 4)],
         &[("fixed", 10, 8, 5)],
         1,
     );
     give(&mut s, &r, (1, "berserk"), 1);
     let attack = Command::Attack {
         target: StackId(2),
-        from: at(&r, 7, 5),
+        from: at(&r, 6, 5),
     };
     let events = act(&mut s, &r, attack).unwrap();
     assert_eq!(strikes(&events)[..2], [(0, 2), (0, 1)]);
@@ -671,14 +671,14 @@ fn a_hypnotized_stack_blocks_and_is_struck_as_a_stack_of_its_own_side() {
     let mut s = arena(
         &r,
         [None, None],
-        &[("hydra", 10, 7, 5)],
+        &[("hydra", 10, 6, 5)],
         &[("fixed", 10, 8, 5), ("fixed", 10, 6, 4)],
         1,
     );
     give(&mut s, &r, (2, "hypnotize"), 1);
     let attack = Command::Attack {
         target: StackId(1),
-        from: at(&r, 7, 5),
+        from: at(&r, 6, 5),
     };
     let events = act(&mut s, &r, attack).unwrap();
     assert_eq!(strikes(&events), [(0, 1), (0, 2)]);
@@ -687,7 +687,7 @@ fn a_hypnotized_stack_blocks_and_is_struck_as_a_stack_of_its_own_side() {
         &r,
         [None, None],
         &[("fixed", 10, 7, 5)],
-        &[("hydra", 10, 8, 5), ("fixed", 10, 8, 4)],
+        &[("hydra", 10, 9, 5), ("fixed", 10, 8, 4)],
         1,
     );
     assert_eq!(field(&r).distance(at(&r, 8, 4), at(&r, 8, 5)), 1);
@@ -695,7 +695,7 @@ fn a_hypnotized_stack_blocks_and_is_struck_as_a_stack_of_its_own_side() {
     activate(&mut s, 1);
     let attack = Command::Attack {
         target: StackId(0),
-        from: at(&r, 8, 5),
+        from: at(&r, 9, 5),
     };
     let events = act(&mut s, &r, attack).unwrap();
     assert_eq!(strikes(&events), [(1, 0)]);

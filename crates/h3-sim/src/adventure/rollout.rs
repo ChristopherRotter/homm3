@@ -50,9 +50,9 @@ pub fn random_rollout(env: &mut AdventureEnv, agent_seed: u64, max_steps: u32) -
 
 /// The agent's choice for `player`: a uniform legal entry, then for a move a uniform tile of the
 /// hero's tile mask, as an agent samples the factorized action head by head. The entries without a
-/// tile are the commands [`legal_commands`] lists: `EndTurn`, or with an open decision its two
-/// answers alone, one of them at even odds (GAM-DEC-001; E08 T14b). `EndTurn` when the player has
-/// no legal entry.
+/// tile are the commands [`legal_commands`] lists: `EndTurn`, or with an open decision its answers
+/// alone (`Decline`, and `Accept` while the offer stands), each at even odds (GAM-DEC-001; E08
+/// T14b, T15a). `EndTurn` when the player has no legal entry.
 pub fn choose(env: &AdventureEnv, player: PlayerId, rng: &mut Rng) -> Action {
     let (state, rules) = (env.state(), env.rules());
     let commands = legal_commands(state, rules, Actor::Player(player));

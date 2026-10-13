@@ -186,16 +186,17 @@ fn shots_and_fire_immune_strikers_are_not_burnt() {
 #[test]
 fn a_breath_burns_on_its_target_only_a_multi_headed_striker_on_every_stack() {
     let r = ruleset();
-    // The drake's target (2) and the stack behind it (1) are shielded: only 2 reflects.
+    // The drake (position 6,5) attacks 2; its target and the stack behind it (1) are shielded:
+    // only 2 reflects.
     let mut s = field_of(
         &r,
         &[(0, "drake", 10), (1, "serf", 10)],
         &[(0, "fixed", 10)],
-        &[(7, 5), (9, 5), (8, 5)],
+        &[(6, 5), (9, 5), (8, 5)],
     );
     give(&mut s, &r, 1, "fireshield", 1);
     give(&mut s, &r, 2, "fireshield", 1);
-    let events = hit(&mut s, &r, 2, (7, 5));
+    let events = hit(&mut s, &r, 2, (6, 5));
     assert_eq!(reflected(&events), [(0, 4, 0)]);
     // A hydra striking three shielded stacks takes back 4 from each, at once.
     let mut s = field_of(
@@ -207,12 +208,12 @@ fn a_breath_burns_on_its_target_only_a_multi_headed_striker_on_every_stack() {
             (2, "fixed", 10),
             (3, "fixed", 10),
         ],
-        &[(7, 5), (7, 6), (8, 5), (5, 5), (6, 4), (10, 5)],
+        &[(6, 5), (7, 6), (8, 5), (5, 5), (6, 4), (10, 5)],
     );
     for id in 2..6 {
         give(&mut s, &r, id, "fireshield", 1);
     }
-    let events = hit(&mut s, &r, 2, (7, 5));
+    let events = hit(&mut s, &r, 2, (6, 5));
     assert_eq!(strikes(&events).len(), 3);
     assert_eq!(reflected(&events), [(0, 12, 1)]);
 }

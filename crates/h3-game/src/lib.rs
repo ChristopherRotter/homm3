@@ -11,7 +11,8 @@
 //! (`MoveHero`, T7b); [`observe`] and [`project`] for a player [`Viewer`] (T8b1);
 //! [`legal_commands`] and, per hero, [`legal_moves`] (T8b2a); each player's treasury with the
 //! starting resources of the game's difficulty (T13a) and the gains of visits (T13b); pending
-//! decisions, the Cartographer's offer, and their answers ([`Answer`], T14b).
+//! decisions, the Cartographer's offer, and their answers ([`Answer`], T14b); the border guard's
+//! offer, whose acceptance checks that it still stands (T15a).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -56,5 +57,5 @@ pub use state::GameState;
 /// Version of the game state's canonical hash encoding (`docs/08-work-process.md`, "Versions";
 /// owned by the adventure lane). Bump it with any change to what the hash covers. v1 (E08 T6b):
 /// the first encoding ([`GameState`]'s `CanonicalHash`). v2 (E08 T13a): each player's treasury.
-/// v3 (E08 T14b): the pending decisions.
-pub const GAME_STATE_HASH_VERSION: u32 = 3;
+/// v3 (E08 T14b): the pending decisions. v4 (E08 T15a): an offer's kind.
+pub const GAME_STATE_HASH_VERSION: u32 = 4;

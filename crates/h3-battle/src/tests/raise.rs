@@ -167,7 +167,7 @@ fn resurrection_from_advanced_raises_for_good_and_needs_one_creatures_health() {
     let mut s = arena(
         &r,
         [Some(weak), None],
-        &[("ogre", 2, 2, 3), ("ogre", 2, 2, 7)],
+        &[("ogre", 2, 1, 3), ("ogre", 2, 1, 7)],
         &[("serf", 1, 14, 5)],
         1,
     );
@@ -282,7 +282,7 @@ fn a_corpse_is_raised_only_from_a_free_hex_and_from_the_top() {
             ("serf", 2, 5, 5),
             ("serf", 3, 7, 5),
             ("ghoul", 2, 9, 5),
-            ("ogre", 2, 11, 7),
+            ("ogre", 2, 10, 7),
         ],
         &[("serf", 1, 14, 1)],
         1,
@@ -306,12 +306,9 @@ fn a_corpse_is_raised_only_from_a_free_hex_and_from_the_top() {
     kill(&mut s, &r, 4);
     let ogre = s.stacks()[4];
     assert_eq!(targets(&s, &r, "rise"), vec![2, 4]);
-    let tail = ogre
-        .footprint(field(&r))
-        .hexes()
-        .find(|&h| h != ogre.hex)
-        .unwrap();
-    s.stacks.as_mut_slice()[0].hex = tail;
+    let other = ogre.footprint(field(&r)).front;
+    assert_ne!(other, ogre.hex);
+    s.stacks.as_mut_slice()[0].hex = other;
     assert_eq!(targets(&s, &r, "rise"), vec![2]);
 }
 
@@ -566,7 +563,7 @@ fn a_corpse_under_a_wall_or_below_corpses_that_do_not_count() {
     let mut s = arena(
         &r,
         [Some(raiser(&r, 3, 0)), None],
-        &[("fixed", 1, 2, 1), ("serf", 2, 5, 5), ("ogre", 2, 9, 5)],
+        &[("fixed", 1, 2, 1), ("serf", 2, 5, 5), ("ogre", 2, 8, 5)],
         &[("serf", 1, 14, 1), ("serf", 1, 13, 9)],
         1,
     );
@@ -575,17 +572,14 @@ fn a_corpse_under_a_wall_or_below_corpses_that_do_not_count() {
     place(&mut s, &r, 3, 5, 5);
     kill(&mut s, &r, 3);
     assert_eq!(targets(&s, &r, "rise"), vec![1]);
-    // A two-hex corpse above them whose other hex is held does not hide them either.
-    place(&mut s, &r, 2, 5, 5);
+    // A two-hex corpse above them whose other hex is held does not hide them either: the ogres
+    // at (4, 5), their front hex on the serfs.
+    place(&mut s, &r, 2, 4, 5);
     kill(&mut s, &r, 2);
     let ogre = s.stacks()[2];
-    let tail = ogre
-        .footprint(field(&r))
-        .hexes()
-        .find(|&h| h != ogre.hex)
-        .unwrap();
+    assert_eq!(ogre.footprint(field(&r)).front, at(&r, 5, 5));
     assert_eq!(targets(&s, &r, "rise"), vec![2]);
-    s.stacks.as_mut_slice()[4].hex = tail;
+    s.stacks.as_mut_slice()[4].hex = ogre.hex;
     assert_eq!(targets(&s, &r, "rise"), vec![1]);
     // A wall over the hex (Force Field) keeps every corpse there.
     let wall = spell(&r, "wall");

@@ -78,7 +78,7 @@ fn placement(
 }
 
 /// Generates the obstacles of a battle on `terrain` (BAT-GEO-004), in the order placed, each
-/// with its hexes in hex order: block 5–12 hexes; with 40 % chance first place one absolute
+/// with its hexes in hex order and its type's key: block 5–12 hexes; with 40 % chance first place one absolute
 /// obstacle of the terrain (it counts half its hexes; no anchor); then, while hexes remain to be
 /// blocked, place a uniformly chosen usual obstacle of the terrain at a uniformly chosen allowed
 /// anchor (rows 1 to `height − 2`; the obstacle keeps it), stopping early if no obstacle or no
@@ -101,9 +101,10 @@ pub fn generate_obstacles(
     };
     let mut blocked = HexSet::new();
     let mut out = Vec::new();
-    let piece = |hexes: HexSet, anchor: Option<Hex>| Obstacle {
+    let piece = |o: &ObstacleType, hexes: HexSet, anchor: Option<Hex>| Obstacle {
         hexes: hexes.iter().map(|h| h.0).collect(),
         anchor: anchor.map(|a| a.0),
+        kind: Some(o.key.clone()),
     };
     // 5..=12 always fits in an i32.
     let mut to_block = i32::try_from(rng.range_inclusive(5, 12)).unwrap_or(0);
@@ -120,7 +121,7 @@ pub fn generate_obstacles(
                 set
             });
         blocked = blocked.union(hexes);
-        out.push(piece(hexes, None));
+        out.push(piece(o, hexes, None));
         to_block -= i32::try_from(o.blocked.len() / 2).unwrap_or(i32::MAX);
     }
     let usual = of_terrain(false);
@@ -138,7 +139,7 @@ pub fn generate_obstacles(
             break;
         };
         blocked = blocked.union(hexes);
-        out.push(piece(hexes, Some(anchor)));
+        out.push(piece(o, hexes, Some(anchor)));
         to_block -= i32::try_from(o.blocked.len()).unwrap_or(i32::MAX);
     }
     out
