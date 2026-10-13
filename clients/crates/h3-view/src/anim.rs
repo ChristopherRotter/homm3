@@ -6,10 +6,14 @@
 //! [`Timeline::at`] is what shows at any time, [`Timeline::lines`] the capture harness's
 //! timeline format (design §7.6), which the recorded sequences check.
 //!
-//! *Provisional* (the M2 review list): the next command's default start, the shooter's frames in
-//! the strike loop, the walk's and the flight's pixel offsets, the flight's cycles rounding.
-//! Not yet (T4b): fidgets and the idle step, turns, the draw layers of walks and strikes, the
-//! projectile's and the spells' sprites, deaths other than by a strike, created stacks.
+//! T4b-1 (design §7.9) added the projectile's flights, the idle steps and the outlined stack, and
+//! checked every frame of the recorded sequences against the original's screen (the walk's
+//! offsets confirmed; the shooter's strike loop and the flight's points corrected).
+//!
+//! *Provisional* (the M2 review list): the next command's default start, a command without a
+//! time counting as the computer's (the idle step and the outline), the flight's cycles rounding.
+//! Not yet (T4b-2): fidgets, turns, the draw layers of walks and strikes, the spells' sprites,
+//! deaths other than by a strike, created stacks.
 
 use alloc::collections::BTreeMap;
 use alloc::format;

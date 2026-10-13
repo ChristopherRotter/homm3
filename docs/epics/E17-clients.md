@@ -1,12 +1,12 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 in progress (T1, T3, T4a and T6 done 2026-10-13). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 in progress (T1, T3, T4a, T6 and T4b-1 done 2026-10-13). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M2 T4b (the scene over time, completed and checked frame by frame) or T2
-(the window and audio evaluation).
+are there). Next: M2 T4b-2 (the scene over time completed: fidgets, turns, draw layers, a full
+battle frame by frame) or T2 (the window and audio evaluation).
 
 ## Goal
 
@@ -166,6 +166,12 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   adventure map (`capture/h3adv.py batch`): hot seat, heroes from the hero list, a tile clicked
   twice, turns, each record read from the game's memory into the batch's results template. E08
   batch 2: D3a–D3d as the user's results, every field; D5's piles within their ranges.
+- **T4b-1 done 2026-10-13** ([log](E17-log.md#m2-t4b-1--the-frame-check-2026-10-13),
+  [design §7.9](E17-design.md)): the frame check (`capture/h3drive.py frames`): every distinct
+  battlefield of the recorded sequences in the original against the viewer's frame at the same
+  time; walk and shot exact in every frame (the arrow at every step), melee 68 of 75 (the rest
+  listed); the projectile, the outline's pulse and the idle steps built; the shooter's strike
+  loop and the flight's points corrected.
 
 ### M3 — fidelity
 
@@ -208,6 +214,9 @@ viewer, video.
 - **Wine is not Windows.** The captures run on Wine's DirectDraw; the exact match of the menu and
   the battlefield says it changes nothing there, but a difference only Wine could cause (timing,
   palette effects) would need a check on Windows.
+- **A record does not say who acts** (T4b-1): the original ticks its idle steps and outlines the
+  active stack differently on a player's turn and the computer's; the viewer guesses from the
+  commands' times (design §7.9). A record of a live game may need the seats' kinds.
 - **The background variant (CLT-Q4).** The original picks a battlefield's picture from the
   adventure map around the battle; a battle's record does not carry it, so the viewer shows the
   picture of an empty surrounding.

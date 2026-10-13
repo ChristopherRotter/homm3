@@ -1,6 +1,6 @@
 # Reference captures: the runbook
 
-*Provisional* (E17 M1 T8, M2 T1, T3, T6; ADR-0020 point 9; findings in `docs/epics/E17-design.md` §6).
+*Provisional* (E17 M1 T8, M2 T1, T3, T6, T4b-1; ADR-0020 point 9; findings in `docs/epics/E17-design.md` §6).
 The original game runs unattended in a Linux sandbox under Wine, on a virtual X display at 16 bits,
 so an XWD dump of the display is the original's own 5-6-5 screen and compares exactly with our
 renders. A script steers it through its menus by fixed coordinates and recognises each screen by a
@@ -17,10 +17,10 @@ enter git (they stay in the sandbox or `clients/out/`).
 |---|---|
 | `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`); builds `xdd.dll`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
 | `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, and the **virtual clock** (below). |
-| `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`. |
+| `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
-| `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture). |
-| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks and each stack's group, frame, hex; the adventure map's players, heroes, view and path (below). |
+| `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
+| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, and each stack's group, frame, hex, offsets and draw layer; the adventure map's players, heroes, view and path (below). |
 | `h3adv.py` | The adventure map (M2 T6): hot seat, heroes, tiles clicked twice, turns; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
@@ -98,6 +98,23 @@ state, with `--screen` a digest of the battlefield's pixels) and `<out>/timeline
 change of a stack's group, frame or hex). `sequences` replays the recorded ones and fails when a
 timeline changes; add one like a situation (its entry, `new`, then copy its timeline into
 `timelines/`).
+
+**The frame check** (M2 T4b-1, design §7.9): from `clients/`,
+
+```
+python3 capture/h3drive.py frames [--only <id>] [--out <dir>] [--reuse]
+```
+
+For each recorded sequence: its battle in the original, stepped 1 ms at a time, keeping every
+distinct battlefield (`<dir>/<id>/frames/t<ms>.npz` and their states in `frames.jsonl`); the
+viewer's frame at each of those times (`h3-view sequences <id> --frames <dir>`: `ours/`, and what it
+drew in `ours.txt`); the masked diff of each pair (panel, heroes, the count boxes where the drawn
+poses show them), written to `frames.txt` and, for a frame that differs, `diff/t<ms>.png`; each
+line compared with the sequence's recorded `timelines/<id>-frames.txt` (`ok`, `new`, `CHANGED`;
+exit 1 on a change). `--reuse` keeps the original's frames from an earlier run and only redraws
+and compares (after a change to the viewer). About 11 minutes for the three sequences (default
+`<dir>`: `clients/out/frames`). Only a fidget comes from the original's memory; everything else is
+the viewer's own timeline.
 
 **An experiment batch on the adventure map** (M2 T6; `docs/experiments/README.md`): from
 `clients/`,
@@ -202,3 +219,8 @@ design §7.1.
   ("you have lost your last town"); `dismiss` and `end_turn` click every OK.
 - The adventure map walks in real time (the clock runs); a walk is over when the hero, its points
   and its player's resources rest for 1.5 s. Keep heavy builds off the machine while a batch runs.
+- The game's memory can lag its screen by a step: after an animation it starts the next turn in
+  the same millisecond after the 20 clock reads the driver waits for (design §7.9). A state read
+  then is one step behind; the frame check draws the viewer's own timeline for that reason.
+- Inside an animation the memory holds the frame drawn, the screen the one shown (design §7.1):
+  never render the memory's poses as the screen at that time.

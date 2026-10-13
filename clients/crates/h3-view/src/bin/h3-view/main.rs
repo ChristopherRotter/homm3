@@ -53,11 +53,14 @@ commands:
           creatures' original ids from the installation's crtraits.txt; the map defaults to
           clients/out/situation/<stem>.h3m.
   sequences [<id>] [--speed <0-2>] [--packs <dir>] [--install <dir>] [--out <dir>]
+            [--frames <dir>]
           the recorded sequences (clients/situations/sequences.toml): each sequence's scenario
           played in-process with its engine commands, timed by the viewer at the original's
           timing (h3_view::anim) and compared with the timeline the capture harness recorded in
           the original (at speed 0); writes each record and timeline to <out> (default
-          clients/out/sequences) and exits 1 when one differs.
+          clients/out/sequences) and exits 1 when one differs. --frames: also draws the viewer's
+          frame at each time the harness kept a frame of the original (<dir>/<id>/frames.toml,
+          from `h3drive.py frames`) into <dir>/<id>/ours/, and what it drew into ours.txt.
   harvest [--install <dir>] [--packs <dir>] [--out <dir>]
           generates the asset tables (<out>/{base,ab,sod}.toml, default clients/out/harvest)
           from the installation copy's Heroes3.exe and H3bitmap.lod, keyed by the packs (default

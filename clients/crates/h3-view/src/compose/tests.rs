@@ -213,3 +213,36 @@ fn what_the_batch_lacks_is_an_error() {
     );
     assert_eq!(gone("x").to_string(), "not in the batch: x");
 }
+
+#[test]
+fn a_projectile_is_drawn_plain_and_mirrored_toward_the_left() {
+    // T4b-1 (§7.9): group 0's frame, its run skipped, reflected across its canvas.
+    let p = palette(&[(3, RED), (4, WHITE)]);
+    let arrow = build::def(
+        0x40,
+        (2, 1),
+        &p,
+        &[(0, &[("f", 0)])],
+        &[row(&[3, 4], &[false, false])],
+    );
+    let mut b = batch();
+    b.add("Pr.def", &arrow).unwrap();
+    let shot = |x, mirrored| Draw::Projectile {
+        def: "PR.DEF".to_string(),
+        frame: 0,
+        x,
+        y: 0,
+        mirrored,
+    };
+    let background = Draw::Background {
+        picture: "bg.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    let screen = compose(&[background, shot(0, false), shot(2, true)], &b, &small()).unwrap();
+    let [bl, r, w] = [BLUE, RED, WHITE].map(|c| FORMAT.pack(c));
+    assert_eq!(screen.pixels()[..6], [r, w, w, r, bl, bl]);
+    // A frame the DEF lacks.
+    let missing = compose(&[shot(0, false)], &batch(), &small()).unwrap_err();
+    assert_eq!(missing, ComposeError::Missing("PR.DEF".into()));
+}

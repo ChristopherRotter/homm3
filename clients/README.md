@@ -14,7 +14,8 @@ screen's reading (design §4) and the asset tables (`clients/assets/`, below). M
 `h3-view render`, a battle still from a record or a scenario file. M1 T8 (2026-10-13): reference
 captures of the original, run under Wine in a sandbox, and the first exact diff (below). M2 T1,
 T3 (2026-10-13): the capture harness and the animation timing. M2 T4a (2026-10-13): the scene
-over time (`anim`), checked against the recorded sequences, and `render --at`.
+over time (`anim`), checked against the recorded sequences, and `render --at`. M2 T4b-1
+(2026-10-13): the frame check, every frame of the recorded sequences against the original's.
 Decisions: ADR-0020
 and the epic file `docs/epics/E17-clients.md`; tasks in `docs/lanes/client/QUEUE.md`.
 
@@ -59,6 +60,10 @@ search the parent directories).
   original (`docs/epics/E17-design.md` §7.8); it exits 1 on a difference and writes the records
   and timelines to `clients/out/sequences/`. The unit tests replay the same three sequences from
   their numbers, without the original files.
+- **The frame check** (E17 M2 T4b-1, design §7.9): `python3 capture/h3drive.py frames` (from
+  `clients/`, in a sandbox with the harness) keeps every distinct battlefield the original shows
+  in each recorded sequence, draws the viewer's frame at the same times (`h3-view sequences
+  --frames`) and compares them with masks against the counts in `situations/timelines/`.
 
 | Path | What |
 |---|---|

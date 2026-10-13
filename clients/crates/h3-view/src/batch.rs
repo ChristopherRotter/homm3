@@ -177,10 +177,27 @@ mod tests {
                 outline: None,
             },
             picture("BG.pcx"),
+            Draw::Projectile {
+                def: "PlcBowX.def".to_string(),
+                frame: 0,
+                x: 0,
+                y: 0,
+                mirrored: false,
+            },
         ];
         let layout = crate::scene::tests::layout();
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
-        assert_eq!(names, ["ABS.PCX", "BG.PCX", "CR.DEF", "GAME.PAL", "OB.DEF"]);
+        assert_eq!(
+            names,
+            [
+                "ABS.PCX",
+                "BG.PCX",
+                "CR.DEF",
+                "GAME.PAL",
+                "OB.DEF",
+                "PLCBOWX.DEF"
+            ]
+        );
     }
 
     #[test]
