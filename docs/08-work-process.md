@@ -197,7 +197,14 @@ Agents usually work in a cloud sandbox cloned from GitHub.
 
 1. **Clone** the working branch: `git clone --depth 1 --branch <branch> <remote> homm3`
    (`git fetch origin master` before pushing, so the push sends a thin pack; `check-lane` and
-   doc-drift need `master`).
+   doc-drift need `master`). Such a clone tracks only the branch it cloned: a lane branch it
+   creates and pushes gets no `origin/<branch>`, and the session's stop hook then reports the
+   pushed commits as "unpushed … and no remote branch". Step 3's `sandbox-setup.sh` makes the
+   clone track every branch name first, so this does not happen. If it does (a clone set up
+   without it), nothing is lost and there is nothing to report to the user:
+   `git config --replace-all remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'`, then
+   `git fetch origin <branch>`; when in doubt, `git ls-remote origin refs/heads/<branch>` shows
+   the pushed commit.
 2. **Original data** (needed for code reading, the harvester and `verify --with-original-data`):
    when the session is linked to the user's computer, get read access to the user's repo folder
    (`D:\Users\Christopher\Source\Repos\homm3`) and stage `original-data/install/Heroes3.exe`,
@@ -206,9 +213,10 @@ Agents usually work in a cloud sandbox cloned from GitHub.
    map reader also `original-data/install/Maps/*` (164 files, at most 50 per staging call; the
    user's copy of the installation's `Maps`, 2026-10-10). Without the link, the user may upload
    them; otherwise the session only prepares (Q48).
-3. **Setup:** `scripts/sandbox-setup.sh` links the image's `stable` toolchain as the pinned one,
-   copies the staged files into `original-data/` and starts the tool installs (with `capstone` and
-   `pefile` for the code-reading tool `scripts/exe.py`, `docs/exe/README.md`) and the baseline
+3. **Setup:** `scripts/sandbox-setup.sh` makes the clone track every branch name first, links
+   the image's `stable` toolchain as the pinned one, copies the staged files into `original-data/`
+   and starts the tool installs (with `capstone` and `pefile` for the code-reading tool
+   `scripts/exe.py`, `docs/exe/README.md`) and the baseline
    verify in the background (about 15 minutes; read the docs meanwhile, then check
    `tail -n 3 target/sandbox/verify.log`). Later runs: `cargo xtask verify --scope <lane>
    --summary` for the lane's loop, or the full
