@@ -54,6 +54,7 @@ fn chance(r: &BattleRuleset, (hero, level): (&str, u8), skill: u8, worn: &[&str]
         terrain: None,
         battlefield: None,
         anti_magic: false,
+        siege: None,
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],

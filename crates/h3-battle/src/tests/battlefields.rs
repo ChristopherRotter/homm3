@@ -81,6 +81,7 @@ fn the_battlefield_is_a_known_key_and_public() {
     let setup = BattleSetup {
         battlefield: key("t:holy"),
         anti_magic: true,
+        siege: None,
         ..setup(&r, &[(0, "fixed", 1)], &[(0, "fixed", 1)])
     };
     let holy = BattleState::new(&r, &setup, 1).unwrap();

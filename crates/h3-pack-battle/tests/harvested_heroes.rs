@@ -130,6 +130,7 @@ fn random_legal_sod_heroes_derive_and_play() {
             obstacles: vec![],
             battlefield: None,
             anti_magic: false,
+            siege: None,
             war_machines: [
                 war_machines(&details[0], &sod),
                 if led {
@@ -238,6 +239,7 @@ fn remove_obstacle_keeps_a_target_while_it_is_castable() {
         terrain: Some(grass),
         battlefield: None,
         anti_magic: false,
+        siege: None,
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],
@@ -351,6 +353,7 @@ fn random_legal_sod_heroes_cast_and_play() {
                 obstacles,
                 battlefield: None,
                 anti_magic: false,
+                siege: None,
                 war_machines: [
                     war_machines(&details[0], &sod),
                     war_machines(&details[1], &sod),
