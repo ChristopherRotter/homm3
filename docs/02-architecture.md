@@ -129,18 +129,21 @@ An *extension* (AB, SoD, later WoG/HotA) is a **content pack** (Tier 1–3 data)
   | read every tile | 41 772 | 52 469 | 1 329 426 | 1 500 214 |
 
   Chosen: 32 × 32 leaves (the user): a fork costs the same on every map, a write copies the table and one 128-byte leaf; per-tile reads lose 13–25 %, so observation planes are built word by word (T8). The gated fork workload came with E08 T9b (below).
-- **Adventure env (measured in E08 T9b, 2026-10-11)** — same hardware and profile; the generated maps `fixtures/maps/e08-duel-36.h3m` (36 × 36 × 2, two heroes per player) and `e08-xl-144.h3m` (144 × 144 × 2, four per player), the env's random agent (`h3 adventure bench`):
+- **Adventure env (measured in E08 T9b, 2026-10-11)**" through the paragraph ending
+"the baselines were updated (`E08-log.md`)."), from E08 T16a (2026-10-13). -->
+
+- **Adventure env (measured in E08 T9b, 2026-10-11; again in E08 T16a, 2026-10-13, on the maps with increment 2's objects)** — same hardware and profile; the generated maps `fixtures/maps/e08-duel-36.h3m` (36 × 36 × 2, two heroes per player, 66 typed objects since T16a) and `e08-xl-144.h3m` (144 × 144 × 2, four per player, 1 056), the env's random agent (`h3 adventure bench`). Wall time is the best of nine runs on the sandbox's shared vCPU (runs of one measure vary by up to a third); the instruction counts are exact:
 
   | Measure | Duel | XL | Target / threshold |
   |---|---|---|---|
-  | Random legal play, one step: agent + reachable-tiles queries + `apply` (`--workload play`) | ≈ 14.1 k steps/s (≈ 71 µs, ≈ 745 k Ir) | ≈ 5.5 k steps/s (≈ 183 µs, ≈ 1.6 M Ir) | ≥ 10 k steps/s/core on the duel (met); **gate +2 %**: `random-play-duel-36`, 510 210 757 Ir for 685 steps (439 577 005 since E08 T13b) |
-  | + the acting player's observation before each step (`--observe 1`) | +15 µs | +99 µs | — (cached static planes with E13's encoding) |
-  | + the entry and tile masks before each step (`--masks 1`) | +70 µs (×2.0) | +131 µs (×1.7) | — (the env keeps the current state's queries with E05's batch API) |
-  | One reachable-tiles query (`--workload reach`) | ≈ 27 µs (≈ 263 k Ir) | ≈ 33 µs (≈ 342 k Ir) | < 50 µs on XL (met); **gate +2 %**: `reach-xl-144`, 657 381 227 Ir for 1 920 queries (566 626 021 since E08 T13b) |
-  | `AdventureEnv::fork` (`--workload fork`) | ≈ 0.22 µs (≈ 2 200 Ir, 4 heroes) | ≈ 0.37 µs (≈ 3 400 Ir, 8 heroes) | < 1 µs on every map, growing with the heroes, not the tiles (met: each hero's army is a `Vec`); **gate +2 %**: `fork-xl-144`, 343 600 056 Ir for 100 000 forks (+1.0 % with E08 T13's treasuries, one shared block) |
-  | `GameState` / `AdventureEnv` size | 168 / 200 bytes (192 / 224 since E08 T13) | same | — |
+  | Random legal play, one step: agent + reachable-tiles queries + `apply` (`--workload play`) | ≈ 14.3 k steps/s (≈ 70 µs, ≈ 587 k Ir) | ≈ 6.2 k steps/s (≈ 161 µs, ≈ 1.39 M Ir) | ≥ 10 k steps/s/core on the duel (met); **gate +2 %**: `random-play-duel-36`, 391 603 057 Ir for 667 steps since E08 T16a (510 210 757 for 685 at T9b; 439 577 005 since T13b) |
+  | + the acting player's observation before each step (`--observe 1`) | +16 µs | +543 µs (+256 µs without objects: the object list tests every typed object's tiles for explored or fringe, ≈ 1.6 M Ir per observation with 1 056 objects) | — (cached static planes with E13's encoding) |
+  | + the entry and tile masks before each step (`--masks 1`) | +50 µs (×1.7) | +144 µs (×1.9) | — (the env keeps the current state's queries with E05's batch API) |
+  | One reachable-tiles query (`--workload reach`) | ≈ 24 µs (≈ 224 k Ir) | ≈ 30 µs (≈ 289 k Ir) | < 50 µs on XL (met); **gate +2 %**: `reach-xl-144`, 551 030 247 Ir for 1 904 queries since E08 T16a (657 381 227 for 1 920 at T9b; 566 626 021 since T13b) |
+  | `AdventureEnv::fork` (`--workload fork`) | ≈ 0.29 µs (≈ 2 260 Ir, 4 heroes) | ≈ 0.34 µs (≈ 3 490 Ir, 8 heroes) | < 1 µs on every map, growing with the heroes, not the tiles (met: each hero's army is a `Vec`); **gate +2 %**: `fork-xl-144`, 349 400 056 Ir for 100 000 forks since E08 T16a (343 600 056 at T9b) |
+  | `GameState` / `AdventureEnv` size | 216 / 248 bytes since E08 T14–T15 (168 / 200 at T9b; 192 / 224 with T13's treasuries) | same | — |
 
-  The reachable-tiles query is 96 % of a random step (`Reach::search` itself, the step price, the heap, zeroed map-sized arrays): the first lever when the adventure needs speed. The reveal is 0.8 %. E08 T13b: the diagonal step's price in one 128-bit multiplication instead of `isqrt` (equal for every cost, tested exhaustively) took 13.8 % off the query and random play; the baselines were updated (`E08-log.md`).
+  The reachable-tiles query is 96 % of a random step (`Reach::search` itself, the step price, the heap, zeroed map-sized arrays): the first lever when the adventure needs speed. The reveal is 0.8 %. E08 T13b: the diagonal step's price in one 128-bit multiplication instead of `isqrt` (equal for every cost, tested exhaustively) took 13.8 % off the query and random play; the baselines were updated (`E08-log.md`). E08 T16a: the maps' objects cover tiles and end paths, so a duel step costs 8 % fewer instructions (640 k → 587 k Ir) and an XL query 2 % fewer (294 k → 289 k); a fork is unchanged (3 490 Ir); the baselines were updated (`E08-log.md`).
 - Benchmarks: `criterion` for local wall time (`cargo xtask bench`), plus instruction counts under valgrind/callgrind for the deterministic regression gate (`cargo xtask bench-check`, Linux only; counts are compared only for the toolchain and target recorded in the baseline). Chosen over `iai-callgrind` to avoid a runner binary that must match the library version; see ADR-0002.
 
 ## 9. Portability
