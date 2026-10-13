@@ -1663,6 +1663,41 @@ proptest! {
         prop_assert_eq!(first.2, second.2);
         prop_assert_eq!(first.0, second.0);
     }
+
+    /// A walk is reported hex by hex (BAT-MOV-003): within one command each `Moved` of a stack
+    /// starts where its previous one ended, and a walker's goes one step, to a neighbouring
+    /// position (a placement in the tactics phase is one move, BAT-TAC-002). A sink that keeps nothing leaves the same state and the same answer (the path is
+    /// worked out only to be reported).
+    #[test]
+    fn walks_are_reported_hex_by_hex((att, def, obstacles, seed, steps, hidden) in arb_game()) {
+        let r = lively();
+        let setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
+        let field = crate::geometry::Field::new(r.battle().field);
+        let mut state = BattleState::new(&r, &setup, seed).unwrap();
+        let mut quiet = state.clone();
+        let mut legal = LegalCommands::new();
+        for step in &steps {
+            let (actor, cmd) = resolve(&state, &r, step, &mut legal);
+            let placing = state.tactics.is_some();
+            let mut events = Vec::new();
+            let applied = apply(&mut state, &r, actor, cmd, &mut events);
+            prop_assert_eq!(applied, apply(&mut quiet, &r, actor, cmd, &mut crate::NoopSink));
+            prop_assert_eq!(state.state_hash(), quiet.state_hash());
+            let mut last: Option<(StackId, Hex)> = None;
+            for kind in events.iter().map(|e| e.kind) {
+                let EventKind::Moved { stack, from, to } = kind else {
+                    continue;
+                };
+                if !placing && !state.stacks()[stack.index()].has(crate::StackTraits::FLIES) {
+                    prop_assert_eq!(field.distance(from, to), 1, "{:?}", kind);
+                }
+                if let Some((_, at)) = last.filter(|&(s, _)| s == stack) {
+                    prop_assert_eq!(at, from, "{:?}", kind);
+                }
+                last = Some((stack, to));
+            }
+        }
+    }
 }
 
 /// Plays `state` on with random legal commands, attacks first, until the battle is over (or a

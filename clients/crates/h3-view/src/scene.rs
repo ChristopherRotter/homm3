@@ -6,12 +6,14 @@
 //! how each is drawn, so a later graphics option changes only the compositor (the user,
 //! 2026-10-13).
 
+use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 
 use h3_protocol::wire::{Manifest, Observation, Side, Stack};
 
+use crate::anim::Pose;
 use crate::layout::BattleLayout;
 use crate::tables::{ObstacleArt, Tables};
 
@@ -22,6 +24,17 @@ const PASSES: u8 = 8;
 const OBSTACLE_PASS: u8 = 2;
 /// A standing stack's draw layer, the pass it is drawn in (+0x8 = 4 from the setup, 0x43D750).
 const STANDING: u8 = 4;
+/// The pass that draws the corpses (§4.6).
+const CORPSES: u8 = 1;
+
+/// The battle at a moment of its timeline (`crate::anim`): each stack's pose and the active stack.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Moment {
+    /// The stacks' poses, by id; a living stack without one stands on its hex.
+    pub poses: BTreeMap<u8, Pose>,
+    /// The active stack (its outline).
+    pub active: Option<u8>,
+}
 
 /// One thing drawn, in the order of the list.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -125,6 +138,27 @@ pub fn battle(
     tables: &Tables,
     layout: &BattleLayout,
 ) -> Result<Vec<Draw>, SceneError> {
+    let moment = Moment {
+        poses: BTreeMap::new(),
+        active: observation.active,
+    };
+    battle_at(observation, &moment, manifest, tables, layout)
+}
+
+/// The draw list of the battle `observation` shows at `moment` (E17 M2 T4a): as [`battle`],
+/// each stack in its pose, a stack the moment has dying or dead (its death's group) among the
+/// corpses (*provisional*: the original moves it to the corpses' list when its death ends);
+/// the outline on the moment's active stack.
+///
+/// # Errors
+/// As [`battle`].
+pub fn battle_at(
+    observation: &Observation,
+    moment: &Moment,
+    manifest: &Manifest,
+    tables: &Tables,
+    layout: &BattleLayout,
+) -> Result<Vec<Draw>, SceneError> {
     let keys = &manifest.keys;
     let (width, height) = (manifest.field.width, manifest.field.height);
     let at = |hex: u8| (hex / width.max(1), hex % width.max(1));
@@ -202,8 +236,8 @@ pub fn battle(
     let stacks = observation
         .stacks
         .iter()
-        .filter(|s| s.alive)
-        .map(|s| creature(s, manifest, tables, layout, observation.active, at))
+        .filter(|s| s.alive || moment.poses.contains_key(&s.id))
+        .map(|s| creature(s, moment, manifest, tables, layout, at))
         .collect::<Result<Vec<_>, _>>()?;
     for row in 0..height {
         for pass in 0..PASSES {
@@ -224,13 +258,13 @@ pub fn battle(
     Ok(list)
 }
 
-/// A living stack's position (row, column), its draw layer and its draw.
+/// A stack's position (row, column), its draw layer and its draw, in its pose at `moment`.
 fn creature(
     stack: &Stack,
+    moment: &Moment,
     manifest: &Manifest,
     tables: &Tables,
     layout: &BattleLayout,
-    active: Option<u8>,
     at: impl Fn(u8) -> (u8, u8),
 ) -> Result<((u8, u8), u8, Draw), SceneError> {
     let key = key(&manifest.keys.creatures, "creatures", stack.creature)?;
@@ -239,17 +273,30 @@ fn creature(
         .get(key)
         .ok_or_else(|| SceneError::Key(key.to_string()))?;
     // Drawn once, from its position (§4.2): the engine's position is the executable's, a two-hex
-    // stack's rear hex (BAT-GEO-002 since PR #150, protocol v23).
-    let (row, column) = at(stack.hex);
+    // stack's rear hex (BAT-GEO-002 since PR #150, protocol v23); moved by its pose's offset.
+    let groups = tables.battle.groups;
+    let pose = moment.poses.get(&stack.id).copied().unwrap_or(Pose {
+        group: u32::from(groups.standing),
+        frame: 0,
+        hex: stack.hex,
+        offset: [0, 0],
+    });
+    let (row, column) = at(pose.hex);
+    let [x, y] = layout.anchor(row, column);
     let draw = Draw::Creature {
         def: entry.def.clone(),
-        group: u32::from(tables.battle.groups.standing),
-        frame: 0,
-        anchor: layout.anchor(row, column),
+        group: pose.group,
+        frame: pose.frame,
+        anchor: [x + pose.offset[0], y + pose.offset[1]],
         mirrored: stack.side == Side::Defender,
-        outline: (active == Some(stack.id)).then_some(layout.outline_active),
+        outline: (moment.active == Some(stack.id)).then_some(layout.outline_active),
     };
-    Ok(((row, column), STANDING, draw))
+    let layer = if pose.group == u32::from(groups.death) {
+        CORPSES
+    } else {
+        STANDING
+    };
+    Ok(((row, column), layer, draw))
 }
 
 /// The key of `handle` in a manifest's key table.

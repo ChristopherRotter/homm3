@@ -337,11 +337,14 @@ fn a_berserk_stack_out_of_reach_walks_towards_its_target_or_passes() {
     );
     give(&mut s, &r, (0, "berserk"), 1);
     let events = berserk_now(&mut s, &r);
-    assert!(events.contains(&Event::public(EventKind::Moved {
-        stack: StackId(0),
-        from: at(&r, 2, 5),
-        to: at(&r, 4, 5),
-    })));
+    // Hex by hex (BAT-MOV-003).
+    for c in 2..4 {
+        assert!(events.contains(&Event::public(EventKind::Moved {
+            stack: StackId(0),
+            from: at(&r, c, 5),
+            to: at(&r, c + 1, 5),
+        })));
+    }
     assert!(strikes(&events).is_empty());
     assert!(has(&s, 0, Status::BERSERK));
     assert!(s.stacks()[0].flags.contains(StackFlags::ACTED));

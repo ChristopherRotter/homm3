@@ -61,8 +61,10 @@ pub mod wire;
 /// server's signed card. v26 (E16 M6 T3, ADR-0021 point 3): `ListPeers` and `Peers`, the cards a
 /// server relays. v27 (E16 M6 T5, ADR-0021 point 5): `Lists` and `ListsAre`, the signed lists of
 /// servers a server serves. v28 (E04c T2b, ADR-0022): the observation names the special
-/// battlefield and the anti-magic garrison; the key tables list the battlefields.
-pub const PROTOCOL_VERSION: u32 = 28;
+/// battlefield and the anti-magic garrison; the key tables list the battlefields. v29 (E17
+/// CLT-Q1): a walker's `Moved` comes hex by hex, one per position of its path (BAT-MOV-003); the
+/// message is unchanged, its meaning is new.
+pub const PROTOCOL_VERSION: u32 = 29;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.
