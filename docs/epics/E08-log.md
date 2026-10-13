@@ -1559,3 +1559,49 @@ round.
   | Every new rule `implemented` with sources | 12 ADV (ADV-OBJ-002 to -005, ADV-PIK-001 to -003, ADV-VIS-001 to -005) and 3 GAM (GAM-RES-001, -002, GAM-DEC-001), each `implemented` with two to four sources (`check-rules` ok); ADV-PIK-001's ranges (D-5) wait for batch 2 |
   | Batch 2 staged and scored | staged (T16b), scored in T16c |
   | HANDOFF, epic log, `QUEUE.md` current | this log; the HANDOFF and the queue with the round |
+
+### Checkpoint after T16b + T16a and T16c: batch 2 scored, increment 2 closed, increment 3 refined (2026-10-13, `adventure/e08-t16c`)
+
+The user merged T16b + T16a (#158, after the shared #157), played batch 2 in SoD 4.0 Complete
+with plain HD and pushed the filled template (stamp `59a4b43d`, the map's matched). T16c in one
+pull request (`cross-lane` for `docs/experiments/README.md` and the client lane's inbox line, both
+the user's).
+
+**T16c — batch 2 scored** (the spec's predictions against `experiments/results/E08-batch-2.md`):
+
+| Encounter | Observed | Reading (engine) | VCMI | Wiki | Verdict |
+|---|---|---|---|---|---|
+| D3a, sand onto a cobblestone road with 200 | 50, the next tile green, stepped, 0 | 50, a step, 0 | 0, no step | 50, a step | the reading (VCMI refuted) |
+| D3b, the same onto a dirt road | 0, red, no step | 0, no step | 0, no step | 50, no step | the reading (the wiki refuted) |
+| D3c, 100 left on snow from sand | 100 | 100 | 0 | 100 | the reading (VCMI refuted) |
+| D3d, 50 left on snow from sand | 0 | 0 | 0 | 50 | the reading (the wiki refuted) |
+| D5w, 16 random wood piles | 5, 6, 6, 5, 7, 5, 7, 8, 9, 9, 7, 9, 9, 7, 8, 6 | 5–10 | 6–10 | 5–10 | the reading and the wiki (VCMI refuted: three of 5) |
+| D5m, 16 random mercury piles | 3, 5, 3, 5, 4, 6, 6, 4, 5, 5, 4, 3, 3, 3, 6, 6 | 3–6 | 3–5 | 3–6 | the reading and the wiki (VCMI refuted: four of 6) |
+
+- The amounts are the rises of the resource bar after each pickup (start 39 wood, 15 mercury).
+  Nothing odd was noted; the review's caveats (four piles taken without moving, more points in
+  the original's order) did not show in the results.
+- **D-3 confirmed** (ADV-MOV-006, now `verified`, an `observation` source): the points left after
+  a step drop to 0 only below the cheapest straight step from the new tile (0x481182); VCMI 1.7.5
+  (`pointsLeft < getTileMovementCost(dst, src)`) and the wiki (no drop) are refuted. The diagonal
+  exception in the same rule rests on the reading. A regression test pins the four encounters in
+  the engine's own terms (a Peasant's 1 300 points on the test world:
+  `the_points_left_after_a_step_reproduce_batch_2`). **D-5 confirmed** (ADV-PIK-001, now
+  `verified`). The surveys' D-3 and D-5 rows and `docs/experiments/README.md`'s row say so.
+- **Experiments by agents** (the user): the client lane's capture harness is a good basis for
+  agents to perform the experiments themselves. Noted in `docs/experiments/README.md` ("Agents
+  running a batch themselves": what a batch needs before it relies on it, the cross-check with a
+  batch the user played, the run's setup in the source), the global HANDOFF's sources and the
+  `observation` source kind (`shared/experiments-by-agents`, #168); the harness's adventure part
+  in the client lane's inbox at high priority (the user).
+
+**Increment 2 closed**: T16a's audit held every criterion but batch 2's scoring, now done.
+
+**Increment 3 refined** (the user, ADV-Q11): monsters and battles (decision 19: heroes' details
+in the game, wandering monsters and guarded piles, battles through `h3-game`, applying outcomes;
+the dispositions and a battle between two players' heroes sized by the survey and decided at its
+checkpoint), the first round a survey and the ADR amendment drafts (decision 20), batches planned
+for the harness (decision 21). Not taken: the whole sketch at once, heroes without battles, towns
+first. Level-ups, the adventure profile and chests moved to increment 4, the week to increment 5.
+Inbox sorted: the adventure profile's items (Scouting, the step price's omissions, flying before
+a neighbour visit) to increment 4; the hero details', guarded piles' and outcome items to T17a.
