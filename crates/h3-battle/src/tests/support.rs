@@ -14,9 +14,10 @@ use h3_content::{
 };
 use h3_content_battle::{
     AbilityDef, AuraTarget, BattleCompileError, BattleCreatureDef, BattlePack, BattleParamsDef,
-    BattleRuleset, BattleSpellDef, EffectDuration, EffectEnd, HexStep, ObstacleDef, ObstacleKind,
-    ObstacleShape, SpecialistBonus, SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity,
-    SpellTarget, SurrenderDef, TargetConditions, TargetSide, TimedChange, Usefulness,
+    BattleRuleset, BattleSpellDef, BattlefieldDef, EffectDuration, EffectEnd, FactionChangeDef,
+    HexStep, ObstacleDef, ObstacleKind, ObstacleShape, SpecialistBonus, SpellArea, SpellChain,
+    SpellEffect, SpellMagic, SpellPolarity, SpellTarget, SurrenderDef, TargetConditions,
+    TargetSide, TimedChange, Usefulness,
 };
 pub use h3_contracts::Rate;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
@@ -1432,6 +1433,7 @@ fn obstacle(
             .iter()
             .map(|t| ContentKey::new("t", t).unwrap())
             .collect(),
+        battlefields: Vec::new(),
         width,
         height,
         blocked: blocked.to_vec(),
@@ -1441,6 +1443,68 @@ fn obstacle(
 
 pub fn ruleset() -> BattleRuleset {
     ruleset_with("t:faithful", |_| {})
+}
+
+/// The test ruleset's special battlefields (E04c T2b): Cursed Ground's, Magic Plains' and an
+/// elemental field's rules, the morale and luck of Holy Ground and Clover Field by faction, a
+/// shore with its own obstacle (`reef`), two boats' fixed hexes and a deck without rules.
+fn battlefield_defs() -> Vec<BattlefieldDef> {
+    let key = |n: &str| ContentKey::new("t", n).unwrap();
+    let field = |n: &str| BattlefieldDef {
+        key: key(n),
+        own_obstacles: false,
+        blocked: vec![],
+        morale: vec![],
+        luck: vec![],
+        no_morale: false,
+        no_luck: false,
+        no_native: false,
+        max_spell_level: None,
+        no_creature_casts: false,
+        expert_schools: vec![],
+        expert_other_casts: false,
+    };
+    let change = |factions: &[&str], amount| FactionChangeDef {
+        factions: factions.iter().map(|f| key(f)).collect(),
+        amount,
+    };
+    vec![
+        BattlefieldDef {
+            own_obstacles: true,
+            no_morale: true,
+            no_luck: true,
+            no_native: true,
+            max_spell_level: Some(1),
+            no_creature_casts: true,
+            ..field("cursed")
+        },
+        BattlefieldDef {
+            expert_schools: vec![key("air"), key("fire")],
+            expert_other_casts: true,
+            ..field("plains")
+        },
+        BattlefieldDef {
+            expert_schools: vec![key("fire")],
+            ..field("fiery")
+        },
+        BattlefieldDef {
+            morale: vec![change(&["castle"], 1), change(&["inferno"], -1)],
+            ..field("holy")
+        },
+        BattlefieldDef {
+            luck: vec![change(&["necropolis"], 2)],
+            ..field("clover")
+        },
+        BattlefieldDef {
+            own_obstacles: true,
+            ..field("shore")
+        },
+        BattlefieldDef {
+            blocked: vec![26, 27, 43, 44],
+            ..field("boats")
+        },
+        field("deck"),
+    ]
 }
 
 /// The masteries of a hero with these school levels (by school handle): every spell of `r` above
@@ -1551,7 +1615,12 @@ pub fn try_ruleset_from(
                 true,
             ),
             obstacle("tower", &["tall"], 1, 10, &[(0, 0)], false),
+            ObstacleDef {
+                battlefields: vec![ContentKey::new("t", "shore").unwrap()],
+                ..obstacle("reef", &[], 2, 1, &[(0, 0), (1, 0)], false)
+            },
         ],
+        battlefields: battlefield_defs(),
         creatures: battle_creatures,
         spells: battle_spells,
         battle: Some(battle),

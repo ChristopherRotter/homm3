@@ -1382,7 +1382,11 @@ proptest! {
                 m.defences.spells.insert(SpellId::from_raw(u16::from(level)));
                 m.negates = !m.negates;
             }
-            twin.limits = crate::magic::MagicLimits::of(&twin.heroes);
+            twin.limits = crate::magic::MagicLimits::of(
+                &twin.heroes,
+                twin.battlefield.and_then(|b| r.battlefield(b)),
+                twin.anti_magic,
+            );
             let mut other = observe(&twin, &r, viewer);
             prop_assert!(commander == Some(viewer) || other.cast_candidates == [0; crate::STACK_CAPACITY]);
             other.cast_candidates = seen.cast_candidates;

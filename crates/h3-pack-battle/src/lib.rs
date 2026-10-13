@@ -1,5 +1,5 @@
 //! Adapter: parses the battle part of human-editable content packs (`battle.toml`, pack format
-//! v35, R01) and the battle scenarios (TOML) into the battle's definitions and battle setups
+//! v36: v35, R01, and the special battlefields of E04c T2b) and the battle scenarios (TOML) into the battle's definitions and battle setups
 //! (ADR-0006). A pack's `battle.toml` has no manifest: it belongs to the core pack of its folder
 //! (`core.toml`, parsed by `h3-pack`), as `adventure.toml` does. Pack text is untrusted input:
 //! parsing is strict (unknown fields are errors, numbers must fit their types) and every
@@ -17,10 +17,10 @@ use h3_content::{
 use h3_content_battle::{
     AbilityDef, AreaShot, AuraTarget, BattleCompileError, BattleCreatureDef,
     BattleCreatureOverride, BattleCreaturePatch, BattlePack, BattleParamsDef, BattleRuleset,
-    BattleSpellDef, EffectDuration, EffectEnd, HexStep, MASTERY_NAMES, ObstacleDef, ObstacleKind,
-    ObstacleShape, SPECIALIST_LEVELS, SpecialistBonus, SpellArea, SpellChain, SpellEffect,
-    SpellMagic, SpellPolarity, SpellTarget, SurrenderDef, TargetConditions, TargetSide,
-    TimedChange, Usefulness,
+    BattleSpellDef, BattlefieldDef, EffectDuration, EffectEnd, FactionChangeDef, HexStep,
+    MASTERY_NAMES, ObstacleDef, ObstacleKind, ObstacleShape, SPECIALIST_LEVELS, SpecialistBonus,
+    SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, SurrenderDef,
+    TargetConditions, TargetSide, TimedChange, Usefulness,
 };
 use h3_contracts::BattleSetup;
 use h3_pack::{PackError, reference, references};
@@ -141,6 +141,8 @@ impl From<BattleCompileError> for BattlePackError {
 struct BattleFile {
     battle: Option<BattleDto>,
     #[serde(default)]
+    battlefield: Vec<BattlefieldDto>,
+    #[serde(default)]
     obstacle: Vec<ObstacleDto>,
     #[serde(default)]
     creature: Vec<CreatureDto>,
@@ -154,7 +156,11 @@ struct BattleFile {
 #[serde(deny_unknown_fields)]
 struct ObstacleDto {
     id: String,
+    #[serde(default)]
     terrains: Vec<String>,
+    /// Pack format v36 (E04c T2b).
+    #[serde(default)]
+    battlefields: Vec<String>,
     #[serde(default)]
     width: u8,
     #[serde(default)]
@@ -162,6 +168,43 @@ struct ObstacleDto {
     blocked: Vec<[i8; 2]>,
     #[serde(default)]
     absolute: bool,
+}
+
+/// `[[battlefield]]` (pack format v36, E04c T2b): a special battlefield's rules
+/// (`h3_content_battle::BattlefieldDef`).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BattlefieldDto {
+    id: String,
+    #[serde(default)]
+    own_obstacles: bool,
+    #[serde(default)]
+    blocked: Vec<u8>,
+    #[serde(default)]
+    morale: Vec<FactionChangeDto>,
+    #[serde(default)]
+    luck: Vec<FactionChangeDto>,
+    #[serde(default)]
+    no_morale: bool,
+    #[serde(default)]
+    no_luck: bool,
+    #[serde(default)]
+    no_native: bool,
+    max_spell_level: Option<u8>,
+    #[serde(default)]
+    no_creature_casts: bool,
+    #[serde(default)]
+    expert_schools: Vec<String>,
+    #[serde(default)]
+    expert_other_casts: bool,
+}
+
+/// `{ factions = ["castle", "rampart"], amount = 1 }`.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FactionChangeDto {
+    factions: Vec<String>,
+    amount: i8,
 }
 
 #[derive(Deserialize)]
@@ -952,6 +995,36 @@ pub fn parse_battle(manifest: &PackManifest, text: &str) -> Result<BattlePack, B
     let file: BattleFile =
         toml::from_str(text).map_err(|e| BattlePackError::Syntax(e.to_string()))?;
     let pack_id = manifest.id.as_str();
+    let changes = |list: Vec<FactionChangeDto>| {
+        list.into_iter()
+            .map(|c| {
+                Ok(FactionChangeDef {
+                    factions: references(pack_id, &c.factions)?,
+                    amount: c.amount,
+                })
+            })
+            .collect::<Result<Vec<_>, KeyError>>()
+    };
+    let battlefields = file
+        .battlefield
+        .into_iter()
+        .map(|b| {
+            Ok(BattlefieldDef {
+                key: ContentKey::new(pack_id, &b.id)?,
+                own_obstacles: b.own_obstacles,
+                blocked: b.blocked,
+                morale: changes(b.morale)?,
+                luck: changes(b.luck)?,
+                no_morale: b.no_morale,
+                no_luck: b.no_luck,
+                no_native: b.no_native,
+                max_spell_level: b.max_spell_level,
+                no_creature_casts: b.no_creature_casts,
+                expert_schools: references(pack_id, &b.expert_schools)?,
+                expert_other_casts: b.expert_other_casts,
+            })
+        })
+        .collect::<Result<Vec<_>, KeyError>>()?;
     let obstacles = file
         .obstacle
         .into_iter()
@@ -959,6 +1032,7 @@ pub fn parse_battle(manifest: &PackManifest, text: &str) -> Result<BattlePack, B
             Ok(ObstacleDef {
                 key: ContentKey::new(pack_id, &o.id)?,
                 terrains: references(pack_id, &o.terrains)?,
+                battlefields: references(pack_id, &o.battlefields)?,
                 width: o.width,
                 height: o.height,
                 blocked: o.blocked.into_iter().map(|[a, b]| (a, b)).collect(),
@@ -1066,6 +1140,7 @@ pub fn parse_battle(manifest: &PackManifest, text: &str) -> Result<BattlePack, B
         })
         .transpose()?;
     Ok(BattlePack {
+        battlefields,
         obstacles,
         creatures,
         creature_overrides,

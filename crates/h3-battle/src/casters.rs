@@ -101,30 +101,32 @@ pub(crate) struct CreatureSpell {
 /// What stack `id` casts as its action now, if its creature is a caster (BAT-MAG-048): its
 /// `spell_caster` ability's spell; for a random caster the spell it drew at this activation, if it
 /// is the active stack and drew one (BAT-MAG-049); for a helpful caster a draw at the cast
-/// (BAT-MAG-050).
+/// (BAT-MAG-050). A battlefield may raise the mastery (BAT-TER-005).
 pub(crate) fn stack_cast(
     state: &BattleState,
     ruleset: &BattleRuleset,
     id: StackId,
 ) -> Option<CreatureSpell> {
     let stack = state.stack(id)?;
+    // rule: BAT-TER-005
+    let mastery = |m| magic::other_mastery(state, m);
     ruleset
         .abilities(stack.creature)
         .iter()
         .find_map(|a| match *a {
             Ability::SpellCaster {
                 spell,
-                mastery,
+                mastery: m,
                 power,
             } => Some(CreatureSpell {
                 spell: CastSpell::Named(spell),
-                mastery,
+                mastery: mastery(m),
                 power: u32::from(power),
                 drawn: false,
             }),
-            Ability::HelpfulSpellCaster { mastery, power } => Some(CreatureSpell {
+            Ability::HelpfulSpellCaster { mastery: m, power } => Some(CreatureSpell {
                 spell: CastSpell::AtResolution,
-                mastery,
+                mastery: mastery(m),
                 power: u32::from(power),
                 drawn: false,
             }),
@@ -135,7 +137,7 @@ pub(crate) fn stack_cast(
                 drawn: false,
             }),
             Ability::RandomSpellCaster {
-                mastery,
+                mastery: m,
                 power_per_creature,
             } => state
                 .casts
@@ -143,7 +145,7 @@ pub(crate) fn stack_cast(
                 .filter(|&(s, _)| s == id && state.active == Some(id))
                 .map(|(_, spell)| CreatureSpell {
                     spell: CastSpell::Named(spell),
-                    mastery,
+                    mastery: mastery(m),
                     power: u32::from(power_per_creature).saturating_mul(stack.count),
                     drawn: true,
                 }),
@@ -300,8 +302,8 @@ pub(crate) fn periodic<S: Sink>(
             _ => None,
         })
         .unwrap_or((u8::MAX, 0, 0));
-    // rule: BAT-MAG-061
-    if state.casts.periodic[side.index()] < rounds || magic::casting_forbidden(state) {
+    // rule: BAT-MAG-061, BAT-TER-004
+    if state.casts.periodic[side.index()] < rounds || magic::creature_casting_forbidden(state) {
         return;
     }
     let first_only = ruleset.quirks().is_enabled(PERIODIC_FIRST_STACK);
@@ -320,6 +322,8 @@ pub(crate) fn periodic<S: Sink>(
     });
     drawn.into_iter().for_each(|(spell, _)| {
         state.casts.periodic[side.index()] = 0;
+        // rule: BAT-TER-005
+        let mastery = magic::other_mastery(state, mastery);
         let cast = magic::periodic_cast(side, (id, spell), (mastery, power));
         magic::apply_cast(state, ruleset, cast, sink);
     });
@@ -387,9 +391,9 @@ fn ready(
     // Most stacks have no casts: test that first (the random agent asks at every step).
     let id = state.active.filter(|id| state.casts.left[id.index()] > 0)?;
     let stack = state.at(id);
-    // rule: BAT-MAG-061
+    // rule: BAT-MAG-061, BAT-TER-004
     let blocked = || {
-        magic::casting_forbidden(state)
+        magic::creature_casting_forbidden(state)
             && !ruleset
                 .abilities(stack.creature)
                 .contains(&Ability::IgnoresMagicBlock)

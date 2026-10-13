@@ -17,6 +17,7 @@ use crate::pack::{
 };
 use crate::params::{MAX_ROLL_LEVELS, RollTable};
 
+mod battlefields;
 mod spells;
 
 // ---- Test support: a core pack with its battle part (R01) ----
@@ -187,6 +188,7 @@ fn obstacle(k: &str, terrains: &[&str], blocked: &[(i8, i8)], absolute: bool) ->
     ObstacleDef {
         key: key(k),
         terrains: terrains.iter().map(|t| key(t)).collect(),
+        battlefields: Vec::new(),
         width: 2,
         height: 1,
         blocked: blocked.to_vec(),
@@ -532,7 +534,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0x766d_c95d_771e_afdb;
+const GOLDEN_BASE_HASH: u64 = 0x8195_f0b1_6764_3bc8;
 
 #[test]
 fn battle_params_are_unique_and_required() {
@@ -1216,11 +1218,11 @@ fn obstacles() {
         ),
         (
             obstacle("base:o", &[], &[(0, 0)], false),
-            "an obstacle needs at least one terrain and one blocked hex",
+            "an obstacle needs a terrain or a battlefield and one blocked hex",
         ),
         (
             obstacle("base:o", &["base:grass"], &[], false),
-            "an obstacle needs at least one terrain and one blocked hex",
+            "an obstacle needs a terrain or a battlefield and one blocked hex",
         ),
         (
             obstacle("base:o", &["base:grass"], &[(0, 1)], false),

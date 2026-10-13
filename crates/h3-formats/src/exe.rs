@@ -20,6 +20,25 @@ pub struct KnownBuild {
     pub creature_count: usize,
     /// Hero, specialty, skill-value and spell tables (E04a T3).
     pub heroes: HeroTables,
+    /// The battlefield's obstacle tables (E04c T2b).
+    pub obstacles: ObstacleTables,
+}
+
+/// Where a build keeps its battlefield obstacle tables (`docs/formats/installation.md` §7.26).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ObstacleTables {
+    /// Virtual address of the usual obstacle types (0x14 bytes each).
+    pub types_va: u32,
+    /// Number of usual obstacle types.
+    pub type_count: usize,
+    /// Virtual address of the absolute obstacles (0x44 bytes each).
+    pub absolute_va: u32,
+    /// Number of absolute obstacles.
+    pub absolute_count: usize,
+    /// Virtual address of the hexes blocked when both heroes are in boats (`i32` each).
+    pub boats_va: u32,
+    /// Number of those hexes.
+    pub boats_count: usize,
 }
 
 /// Where a build keeps its hero-related static tables (`docs/formats/installation.md` §7).
@@ -159,7 +178,150 @@ pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
         artifact_primary_va: 0x0063_E758,
         artifact_count: 144,
     },
+    obstacles: ObstacleTables {
+        types_va: 0x0063_C7C8,
+        type_count: 91,
+        absolute_va: 0x0063_BEC0,
+        absolute_count: 34,
+        boats_va: 0x0063_D368,
+        boats_count: 32,
+    },
 }];
+
+/// Size of one usual obstacle type record (§7.26).
+pub const OBSTACLE_TYPE_SIZE: usize = 0x14;
+/// Size of one absolute obstacle record (§7.26).
+pub const ABSOLUTE_OBSTACLE_SIZE: usize = 0x44;
+/// Most hexes a usual obstacle type blocks (its offsets field holds eight).
+const MAX_TYPE_HEXES: usize = 8;
+/// Most hexes an absolute obstacle record holds (+0xC to its name pointer at +0x40).
+const MAX_ABSOLUTE_HEXES: usize = 26;
+
+/// One usual obstacle type (§7.26): where it may appear and the hexes it blocks.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObstacleTypeRecord {
+    /// Terrain bits (bit `t` for terrain `t` of `TERRNAME.txt`; bit 8 water, the ship's deck).
+    pub terrains: u16,
+    /// Special field bits (bit 0 the shore, 1–9 the magic fields, §7.26).
+    pub fields: u16,
+    /// Rows it needs above its anchor.
+    pub height: u8,
+    /// Columns it needs from its anchor.
+    pub width: u8,
+    /// The blocked hexes as offsets from the anchor on the 17-column field (the original's
+    /// numbering: −17 is the hex above in the same column parity).
+    pub blocked: Vec<i8>,
+}
+
+/// One absolute obstacle (§7.26): where it may appear and its fixed hexes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AbsoluteObstacleRecord {
+    /// Terrain bits, as [`ObstacleTypeRecord::terrains`].
+    pub terrains: u16,
+    /// Special field bits, as [`ObstacleTypeRecord::fields`].
+    pub fields: u16,
+    /// The hexes it blocks, by hex number.
+    pub blocked: Vec<u16>,
+}
+
+/// The battlefield's obstacle tables of a build (§7.26).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObstacleData {
+    /// The usual obstacle types, by type number.
+    pub types: Vec<ObstacleTypeRecord>,
+    /// The absolute obstacles, by record number.
+    pub absolute: Vec<AbsoluteObstacleRecord>,
+    /// The hexes blocked when both heroes are in boats.
+    pub boats: Vec<u16>,
+}
+
+/// Reads the obstacle tables of a known build.
+///
+/// # Errors
+/// Unknown build, unmapped tables, or values outside the ranges the tables use.
+pub fn obstacle_data(data: &[u8]) -> Result<ObstacleData, FormatError> {
+    let (build, image) = identify(data)?;
+    obstacle_data_at(&image, &build.obstacles)
+}
+
+/// Reads the tables described by `t` (exposed for tests with synthetic images).
+///
+/// # Errors
+/// As [`obstacle_data`], without the build check.
+pub fn obstacle_data_at(
+    image: &PeImage<'_>,
+    t: &ObstacleTables,
+) -> Result<ObstacleData, FormatError> {
+    let at = |va: u32, what: &'static str| {
+        image.file_offset(va).ok_or(FormatError::OutOfRange {
+            what,
+            value: u64::from(va),
+        })
+    };
+    let byte = |off: usize, what: &'static str| {
+        image
+            .data
+            .get(off)
+            .copied()
+            .ok_or(FormatError::Truncated { what, offset: off })
+    };
+    let base = at(t.types_va, "obstacle type table address")?;
+    let mut types = Vec::with_capacity(t.type_count.min(1024));
+    for i in 0..t.type_count {
+        let r = base + i * OBSTACLE_TYPE_SIZE;
+        let count = usize::from(byte(r + 6, "obstacle type")?);
+        if count == 0 || count > MAX_TYPE_HEXES {
+            return Err(FormatError::OutOfRange {
+                what: "obstacle type hex count",
+                value: count as u64,
+            });
+        }
+        let blocked = (0..count)
+            .map(|k| byte(r + 8 + k, "obstacle type").map(|b| i8::from_le_bytes([b])))
+            .collect::<Result<_, _>>()?;
+        types.push(ObstacleTypeRecord {
+            terrains: le::u16_at(image.data, r, "obstacle type")?,
+            fields: le::u16_at(image.data, r + 2, "obstacle type")?,
+            height: byte(r + 4, "obstacle type")?,
+            width: byte(r + 5, "obstacle type")?,
+            blocked,
+        });
+    }
+    let base = at(t.absolute_va, "absolute obstacle table address")?;
+    let mut absolute = Vec::with_capacity(t.absolute_count.min(1024));
+    for i in 0..t.absolute_count {
+        let r = base + i * ABSOLUTE_OBSTACLE_SIZE;
+        // The hexes end at 0xFFFF or where the record's name pointer begins (+0x40).
+        let mut blocked = Vec::new();
+        for k in 0..MAX_ABSOLUTE_HEXES {
+            let hex = le::u16_at(image.data, r + 0xC + 2 * k, "absolute obstacle")?;
+            if hex == u16::MAX {
+                break;
+            }
+            blocked.push(hex);
+        }
+        absolute.push(AbsoluteObstacleRecord {
+            terrains: le::u16_at(image.data, r, "absolute obstacle")?,
+            fields: le::u16_at(image.data, r + 2, "absolute obstacle")?,
+            blocked,
+        });
+    }
+    let base = at(t.boats_va, "boats hex table address")?;
+    let boats = (0..t.boats_count)
+        .map(|i| {
+            let hex = le::i32_at(image.data, base + 4 * i, "boats hex table")?;
+            u16::try_from(hex).map_err(|_| FormatError::OutOfRange {
+                what: "boats hex",
+                value: u64::from(hex.unsigned_abs()),
+            })
+        })
+        .collect::<Result<_, _>>()?;
+    Ok(ObstacleData {
+        types,
+        absolute,
+        boats,
+    })
+}
 
 /// Size of one hero record (§7.1).
 pub const HERO_RECORD_SIZE: usize = 92;
@@ -669,6 +831,109 @@ mod tests {
         // Reading past the section is an error, not a panic.
         assert!(creature_table_at(&pe, va, 3).is_err());
         assert!(creature_table_at(&pe, 0x10, 1).is_err());
+    }
+
+    /// A payload with two usual obstacle types, two absolute obstacles (one with a full hex
+    /// list) and three boats' hexes, from RVA 0x1000.
+    fn obstacle_payload() -> (Vec<u8>, ObstacleTables) {
+        let mut p = Vec::new();
+        for (terrains, fields, height, width, hexes) in [
+            (0x63u16, 1u16, 2u8, 3u8, &[0i8, 1, 2][..]),
+            (0, 0x200, 2, 4, &[0, 1, -14, -15]),
+        ] {
+            let mut r = vec![0u8; OBSTACLE_TYPE_SIZE];
+            r[0..2].copy_from_slice(&terrains.to_le_bytes());
+            r[2..4].copy_from_slice(&fields.to_le_bytes());
+            r[4] = height;
+            r[5] = width;
+            r[6] = u8::try_from(hexes.len()).unwrap();
+            for (k, h) in hexes.iter().enumerate() {
+                r[8 + k] = h.to_le_bytes()[0];
+            }
+            p.extend_from_slice(&r);
+        }
+        let absolute_va = 0x0040_1000 + u32::try_from(p.len()).unwrap();
+        for (terrains, fields, hexes) in [
+            (1u16, 0u16, vec![80u16, 94, 95, 0xFFFF]),
+            (0, 0x20, (100..126).collect::<Vec<_>>()),
+        ] {
+            let mut r = vec![0u8; ABSOLUTE_OBSTACLE_SIZE];
+            r[0..2].copy_from_slice(&terrains.to_le_bytes());
+            r[2..4].copy_from_slice(&fields.to_le_bytes());
+            for (k, h) in hexes.iter().enumerate() {
+                r[0xC + 2 * k..0xE + 2 * k].copy_from_slice(&h.to_le_bytes());
+            }
+            p.extend_from_slice(&r);
+        }
+        let boats_va = 0x0040_1000 + u32::try_from(p.len()).unwrap();
+        for hex in [6i32, 7, 180] {
+            p.extend_from_slice(&hex.to_le_bytes());
+        }
+        let tables = ObstacleTables {
+            types_va: 0x0040_1000,
+            type_count: 2,
+            absolute_va,
+            absolute_count: 2,
+            boats_va,
+            boats_count: 3,
+        };
+        (p, tables)
+    }
+
+    #[test]
+    fn reads_the_obstacle_tables_from_a_synthetic_image() {
+        let (p, t) = obstacle_payload();
+        let img = build_test_image(1, &p);
+        let pe = PeImage::parse(&img).unwrap();
+        let data = obstacle_data_at(&pe, &t).unwrap();
+        assert_eq!(
+            data.types[1],
+            ObstacleTypeRecord {
+                terrains: 0,
+                fields: 0x200,
+                height: 2,
+                width: 4,
+                blocked: vec![0, 1, -14, -15],
+            }
+        );
+        assert_eq!((data.types[0].terrains, data.types[0].fields), (0x63, 1));
+        assert_eq!(data.absolute[0].blocked, [80, 94, 95]);
+        assert_eq!(data.absolute[1].blocked.len(), 26);
+        assert_eq!(data.absolute[1].fields, 0x20);
+        assert_eq!(data.boats, [6, 7, 180]);
+        // Out of range: a hex count of 0 or 9, a negative boats hex, an unmapped table.
+        for (at, value) in [(6, 0u8), (6, 9)] {
+            let mut bad = p.clone();
+            bad[at] = value;
+            let img = build_test_image(1, &bad);
+            let pe = PeImage::parse(&img).unwrap();
+            assert!(obstacle_data_at(&pe, &t).is_err());
+        }
+        let mut bad = p.clone();
+        let at = usize::try_from(t.boats_va - 0x0040_1000).unwrap();
+        bad[at..at + 4].copy_from_slice(&(-1i32).to_le_bytes());
+        let img = build_test_image(1, &bad);
+        assert!(obstacle_data_at(&PeImage::parse(&img).unwrap(), &t).is_err());
+        for t in [
+            ObstacleTables {
+                types_va: 0x10,
+                ..t
+            },
+            ObstacleTables {
+                absolute_va: 0x10,
+                ..t
+            },
+            ObstacleTables {
+                boats_va: 0x10,
+                ..t
+            },
+            ObstacleTables {
+                type_count: 99,
+                ..t
+            },
+        ] {
+            assert!(obstacle_data_at(&pe, &t).is_err());
+        }
     }
 
     /// A payload with one hero record, one specialty record, two spell records, two skill

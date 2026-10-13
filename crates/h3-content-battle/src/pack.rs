@@ -1,5 +1,5 @@
 //! The battle's part of a content pack as authored (Tier 1 data and Tier 2 parameters, ADR-0006),
-//! before compilation: obstacles, battle parameters, and the battle rows of the pack's creatures
+//! before compilation: special battlefields, obstacles, battle parameters, and the battle rows of the pack's creatures
 //! and spells (R01). Each belongs to the core pack whose manifest it carries; the core's
 //! [`ContentPack`](h3_content::ContentPack) holds the rest.
 //!
@@ -12,6 +12,7 @@ use alloc::vec::Vec;
 use h3_content::{ContentKey, PackManifest};
 
 use crate::ability::AbilityDef;
+use crate::battlefield::BattlefieldDef;
 use crate::spell::{SpellMagic, SpellPolarity};
 
 /// A battlefield obstacle type (E03, BAT-GEO-004).
@@ -19,8 +20,11 @@ use crate::spell::{SpellMagic, SpellPolarity};
 pub struct ObstacleDef {
     /// Namespaced key.
     pub key: ContentKey,
-    /// Terrains it can appear on (at least one).
+    /// Terrains it can appear on.
     pub terrains: Vec<ContentKey>,
+    /// Special battlefields with their own obstacles it can appear on (E04c, BAT-GEO-004); at
+    /// least one terrain or battlefield.
+    pub battlefields: Vec<ContentKey>,
     /// Usual obstacles: free hexes needed to the right of its anchor (including it).
     pub width: u8,
     /// Usual obstacles: rows needed above its anchor.
@@ -193,6 +197,8 @@ pub struct BattleSpellDef {
 pub struct BattlePack {
     /// The core pack's manifest (identity and dependencies).
     pub manifest: PackManifest,
+    /// Special battlefields (E04c).
+    pub battlefields: Vec<BattlefieldDef>,
     /// Obstacle types.
     pub obstacles: Vec<ObstacleDef>,
     /// The battle rows of the core pack's creatures.
@@ -210,6 +216,7 @@ impl BattlePack {
     pub fn new(manifest: PackManifest) -> Self {
         Self {
             manifest,
+            battlefields: Vec::new(),
             obstacles: Vec::new(),
             creatures: Vec::new(),
             creature_overrides: Vec::new(),

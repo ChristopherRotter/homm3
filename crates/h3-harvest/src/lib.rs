@@ -12,6 +12,7 @@
 //! Layouts: `docs/formats/installation.md`; pack format: `packs/README.md`.
 
 pub mod artifacts;
+pub mod battlefields;
 pub mod gapfill;
 pub mod heroes;
 pub mod split;
@@ -20,7 +21,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::Path;
 
-use h3_formats::exe::{CreatureRecord, HeroData};
+use h3_formats::exe::{CreatureRecord, HeroData, ObstacleData};
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 
@@ -53,6 +54,8 @@ pub struct Inputs {
     pub terrains: TextTable,
     /// The executable's hero-related tables (E04a T3).
     pub hero_data: HeroData,
+    /// The executable's obstacle tables (E04c T2b).
+    pub obstacles: ObstacleData,
     /// Hero content text tables (E04a T3).
     pub hero_tables: heroes::Tables,
     /// Artifact text tables (E04a T3b).
@@ -75,6 +78,8 @@ impl Inputs {
             h3_formats::exe::creature_table(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
         let hero_data =
             h3_formats::exe::hero_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
+        let obstacles =
+            h3_formats::exe::obstacle_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
         let sod = read("Data/H3bitmap.lod")?;
         let ab = read("Data/H3ab_bmp.lod")?;
         let table = |data: &[u8], archive: &str, name: &str| -> Result<TextTable, String> {
@@ -93,6 +98,7 @@ impl Inputs {
             resources: table(&sod, "H3bitmap.lod", "RESTYPES.TXT")?,
             terrains: table(&sod, "H3bitmap.lod", "TERRNAME.txt")?,
             hero_data,
+            obstacles,
             hero_tables: heroes::Tables {
                 classes: table(&sod, "H3bitmap.lod", "HCTRAITS.TXT")?,
                 heroes: table(&sod, "H3bitmap.lod", "HOTRAITS.TXT")?,
@@ -409,32 +415,6 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             return Err(format!("gapfill: native terrain of `{}` twice", n.faction));
         }
     }
-    let mut obstacles = String::new();
-    for o in &gap.obstacles.list {
-        let ts = o
-            .terrains
-            .iter()
-            .map(|t| terrain_key(t).map(|k| format!("\"{k}\"")))
-            .collect::<Result<Vec<_>, _>>()?;
-        let blocked: Vec<String> = o
-            .blocked
-            .iter()
-            .map(|[a, b]| format!("[{a}, {b}]"))
-            .collect();
-        let _ = write!(
-            obstacles,
-            "\n[[obstacle]]\nid = \"obstacle_{}\"\nterrains = [{}]\n",
-            o.id,
-            ts.join(", ")
-        );
-        if o.absolute {
-            obstacles.push_str("absolute = true\n");
-        } else {
-            let _ = writeln!(obstacles, "width = {}\nheight = {}", o.width, o.height);
-        }
-        let _ = writeln!(obstacles, "blocked = [{}]", blocked.join(", "));
-    }
-
     // Creatures.
     let by_name = |name: &str| -> Result<usize, String> {
         sod_rows
@@ -731,6 +711,8 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
         .map(|(t, n)| (key_of(n), if ab_towns.contains(&t) { "ab" } else { "base" }))
         .collect();
     let upgrades = heroes::upgrades(&inputs.exe, &creature_refs, gap)?;
+    // Special battlefields and obstacle types (E04c T2b).
+    let fields = battlefields::write(&inputs.obstacles, &gap.battlefield, &terrains, &town_refs)?;
     let ctx = Context {
         creatures: &creature_refs,
         towns: &town_refs,
@@ -886,7 +868,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     base.push_str(level_fixes.get("base").map_or("", String::as_str));
     base.push_str(&hero_packs.base);
     base.push_str(&artifact_packs.base);
-    base.push_str(&obstacles);
+    base.push_str(&fields.base);
     write_battle(&mut base, gap);
     write_hero_params(&mut base, gap);
     base.push_str(
@@ -999,6 +981,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     }
     sod.push_str(&hero_packs.sod);
     sod.push_str(&artifact_packs.sod);
+    sod.push_str(&fields.sod);
 
     // Each pack splits into its core and battle files (pack format v35, R01).
     let (base, ab, sod) = (split(&base), split(&ab), split(&sod));

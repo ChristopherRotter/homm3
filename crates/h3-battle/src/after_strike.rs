@@ -77,7 +77,8 @@ pub(crate) fn cast<S: Sink>(
                         target,
                         spell,
                     }));
-                    let cast = (mastery, rounds);
+                    // rule: BAT-TER-005
+                    let cast = (magic::other_mastery(state, mastery), rounds);
                     stopped |= apply(state, ruleset, (spell, data), cast, target, sink);
                 }
             }
