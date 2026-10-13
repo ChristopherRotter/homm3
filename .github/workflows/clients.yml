@@ -22,6 +22,14 @@ on:
       - "clippy.toml"
       - "rustfmt.toml"
       - "crates/h3-formats/**"
+      - "crates/h3-protocol/**"
+      - "crates/h3-pack-battle/**"
+      - "crates/h3-battle/**"
+      - "crates/h3-content/**"
+      - "crates/h3-content-battle/**"
+      - "crates/h3-contracts/**"
+      - "crates/h3-kernel/**"
+      - "crates/h3-pack/**"
       - "!**.md"
   pull_request:
     types: [opened, synchronize, reopened]
@@ -34,6 +42,14 @@ on:
       - "clippy.toml"
       - "rustfmt.toml"
       - "crates/h3-formats/**"
+      - "crates/h3-protocol/**"
+      - "crates/h3-pack-battle/**"
+      - "crates/h3-battle/**"
+      - "crates/h3-content/**"
+      - "crates/h3-content-battle/**"
+      - "crates/h3-contracts/**"
+      - "crates/h3-kernel/**"
+      - "crates/h3-pack/**"
       - "!**.md"
   workflow_dispatch:
   schedule:
