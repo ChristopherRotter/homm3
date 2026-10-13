@@ -1498,14 +1498,16 @@ round.
   | `duel-s5-strict-d7` | 1 gold pile (1) | 1 | 1 green | 0 | 0 | 0 | 0 |
   | `duel-s3-easy-d7` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-  **No replay meets an offer.** Random play's moves seldom end on an object: the agent picks a
-  destination uniformly in the hero's reach, which every step's reveal widens, so 74 moves in
-  28 days meet two objects at a density of 3 % (`OfferGone` needs two players in one turn
-  group, never in sequential play). Proposal, not built: a fifth golden replay recorded by an
-  agent that prefers visits (an `h3 adventure run` option: when a reachable tile is a visit,
-  move there at even odds, as `play.rs`'s `Step::Visit` does), so that the matrix replays both
-  offers accepted and declined, keys, a guard passed and a gate crossed; or a replay of a
-  scripted command list built by a test on the duel.
+  **None of the four meets an offer.** Random play's moves seldom end on an object: the agent
+  picks a destination uniformly in the hero's reach, which every step's reveal widens, so 74
+  moves in 28 days meet two objects at a density of 3 % (`OfferGone` needs two players in one
+  turn group, never in sequential play). **Two more replays (runner)**, chosen from a search over
+  the same agent's seeds instead of a new agent (`--seed N --agent-seed N --days 28`, N up to
+  1 200: about one game in four answers an offer, 2 of 927 meet a guard's pass): `duel-s892-d28`
+  (154 commands) accepts a Cartographer's offer (1 000 gold paid, a level revealed), takes a key
+  and accepts a border guard's pass (the guard removed); `duel-s988-d28` (138 commands) declines
+  an offer, accepts one and visits an observatory. The matrix now replays both answers and both
+  offer kinds; a gate crossing still has no event of its own.
 - **Benchmarks** re-baselined (no engine code changed; the workloads' maps did):
 
   | Workload | Before (baseline) | After | Per unit |
@@ -1538,7 +1540,7 @@ round.
   | Observation hygiene (typed objects, treasuries) | `view.rs` `a_viewer_learns_nothing_it_cannot_see` (seeds, armies, hidden tiles and objects' contents differ; the viewer's treasury in its observation) and `views_move_as_the_events_say` |
   | Clone equivalence, determinism | `play.rs` `forks_evolve_as_their_parent`, `replays_are_deterministic`; `h3-sim`'s env forks and rollouts on the duel with objects; the golden replays |
   | Objects the properties play | every kind of increment 2 by its kind (pickup, reveal by terrain, reveal around, key tent, key guard, key gate); not the random resource, whose drawn pile type shows (the hygiene property would see the seed): its draw is `h3-adventure`'s unit tests', and since T16a the env tests and the replays play 24 on the duel |
-  | Golden replays on a duel with objects in the determinism matrix | four, re-recorded above; they meet pickups and keys, no offer (the proposal above) |
+  | Golden replays on a duel with objects in the determinism matrix | six: the four re-recorded and two chosen by seed (above); pickups, keys, both answers, both offer kinds, an observatory |
   | Benchmarks re-baselined | the three, above; §8 in a `shared/` pull request |
   | Every new rule `implemented` with sources | 12 ADV (ADV-OBJ-002 to -005, ADV-PIK-001 to -003, ADV-VIS-001 to -005) and 3 GAM (GAM-RES-001, -002, GAM-DEC-001), each `implemented` with two to four sources (`check-rules` ok); ADV-PIK-001's ranges (D-5) wait for batch 2 |
   | Batch 2 staged and scored | staged (T16b), scored in T16c |

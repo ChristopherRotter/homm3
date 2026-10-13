@@ -11,8 +11,12 @@
 //! difficulty, which `verify` plays at, shows in the treasuries). All four were re-recorded with
 //! the same options in E08 T16a, when the duel got increment 2's typed objects: the 28-day replay
 //! picks up a crystal pile and takes the green key, `duel-s2-d7` a campfire and a sulfur pile,
-//! the strict one a gold pile and the green key; no replay meets an offer (random play's moves
-//! seldom end on an object: the T16a log).
+//! the strict one a gold pile and the green key; none of these four meets an offer (random play's
+//! moves seldom end on an object: the T16a log). So two more were chosen from a search over
+//! seeds (`--seed N --agent-seed N --days 28` for N up to 1 200, E08 T16a): `duel-s892-d28`
+//! accepts a Cartographer's offer (paid, a level revealed), takes a key and accepts a border
+//! guard's pass (the guard removed), and `duel-s988-d28` declines an offer, accepts one and
+//! visits an observatory, so the matrix replays both answers and both offer kinds.
 
 use std::path::PathBuf;
 
@@ -27,7 +31,7 @@ fn golden_adventure_replays_reproduce_their_hashes() {
         .collect();
     files.sort();
     assert!(
-        files.len() >= 4,
+        files.len() >= 6,
         "expected the E08 replay fixtures in {}",
         dir.display()
     );
