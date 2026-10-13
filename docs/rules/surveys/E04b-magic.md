@@ -344,7 +344,12 @@ brackets, the review's finding (report, number).
   creatures, as it does before the second strike (0x441EAF). An attacker that died of the
   reflection is struck back: the blow kills nothing and the struck stack has spent a retaliation.
 - Against it: VCMI 1.7.5 strikes back only at a living attacker
-  (`server/battles/BattleActionProcessor.cpp` L326); the wiki was not checked.
+  (`server/battles/BattleActionProcessor.cpp` L326).
+- For it (the wiki checks, 2026-10-13): Horn of the Abyss fixed it, so the original has it: "Fixed
+  a bug: when attacking stack died from Fire Shield, retaliation strike into nowhere still
+  happened" (the HotA changelog, 1.7.1,
+  https://heroes.thelazy.net/index.php/Horn_of_the_Abyss_(Changelog)); the Fire Shield page is
+  silent.
 - Would confirm it: one Archangel with 5 hit points left attacks 20 Efreet Sultans and dies of the
   reflection; a second stack attacks the Sultans in the same round and is struck back (clean) or
   not (the reading). Or a second agent's re-read of 0x441DC5–0x441E5F.
@@ -360,7 +365,12 @@ brackets, the review's finding (report, number).
   what this second search returns. So when a later corpse B lies on the rear hex of a two-hex
   corpse A, a raise aimed at either hex of A brings back B, and A cannot be raised while B lies
   there. Sacrifice (0x5A1A49) and the Archangel (0x4485BE) raise the stack they found.
-- Other sources: none compared; the reading stands alone.
+- For it (the wiki checks, 2026-10-13): Horn of the Abyss fixed it, so the original has it: "A bug
+  has been fixed for the situations where the hind hex of a two-hex creature's corpse would be
+  covered by a one-hex creature's corpse; in this event, it would be impossible to target the big
+  creature with the Resurrection and Raise Dead spells, even when pointing at its front hex" (the
+  HotA changelog, 1.5.4, https://heroes.thelazy.net/index.php/Horn_of_the_Abyss_(Changelog)).
+  VCMI was not compared.
 - Would confirm it: Wolf Riders die; a Swordsman dies later on their rear hex; Resurrection aimed
   at the Wolf Riders' front hex: who comes back? Or a second agent's re-read of the handler and
   its two searches (0x5A3CC0, 0x5A3F50).
