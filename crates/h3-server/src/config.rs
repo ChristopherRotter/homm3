@@ -14,11 +14,13 @@
 //! description = "Ranked duels."      # the card's description (none by default)
 //! operator = "ann@example.org"       # how the operator is reached (none by default)
 //!
-//! [discovery]                        # the card and the peers' (E16 M6 T2, T3); defaults below
+//! [discovery]                        # the card and the peers' (E16 M6 T2–T4); defaults below
 //! card_ms = 86400000                 # a card holds this long after it is signed
 //! counts = true                      # the card names the open connections, games and players
 //! refresh_ms = 3600000               # the peers' cards are fetched at start and this often
 //! timeout_ms = 10000                 # a peer's card not fetched within it waits a round
+//! depth = 2                          # the cards relayed: the peers' (1), the ones they relay (2)…
+//! cards = 200                        # the most cards relayed, the nearer first
 //!
 //! [[peer]]                           # a server vouched for (E16 M6 T3); none by default
 //! key = "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29"   # its public key
@@ -82,6 +84,7 @@
 //!
 //! Provisional (E16 M1 and M2 reviews): the format and the defaults.
 
+use std::fmt;
 use std::fs;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
@@ -208,7 +211,7 @@ impl Default for Server {
     }
 }
 
-/// The `[discovery]` section (E16 M6 T2, T3; ADR-0021): the server's card and its peers'.
+/// The `[discovery]` section (E16 M6 T2–T4; ADR-0021): the server's card and its peers'.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct Discovery {
@@ -222,6 +225,12 @@ pub struct Discovery {
     pub refresh_ms: u64,
     /// How long one peer's fetch may take (E16 M6 T3), in milliseconds: a second to two minutes.
     pub timeout_ms: u64,
+    /// How far the cards relayed reach (E16 M6 T4), in hops of vouching: 1, the peers' own cards;
+    /// 2, also the cards the peers relay of their own peers; each further hop one more. 1 to 4.
+    pub depth: usize,
+    /// The most cards relayed (E16 M6 T4), the nearer hops first: 1 to 1000. A fetch reads at most
+    /// as many of the cards a peer relays.
+    pub cards: usize,
 }
 
 impl Default for Discovery {
@@ -231,6 +240,8 @@ impl Default for Discovery {
             counts: true,
             refresh_ms: 3_600_000,
             timeout_ms: 10_000,
+            depth: 2,
+            cards: 200,
         }
     }
 }
@@ -243,6 +254,12 @@ const REFRESH_MS: std::ops::RangeInclusive<u64> = 60_000..=86_400_000;
 
 /// The shortest and the longest time a fetch may take (`[discovery] timeout_ms`).
 const TIMEOUT_MS: std::ops::RangeInclusive<u64> = 1_000..=120_000;
+
+/// The fewest and the most hops of vouching the cards relayed reach (`[discovery] depth`).
+const DEPTH: std::ops::RangeInclusive<usize> = 1..=4;
+
+/// The fewest and the most cards relayed (`[discovery] cards`).
+const CARDS: std::ops::RangeInclusive<usize> = 1..=1000;
 
 /// One `[[peer]]` (E16 M6 T3; ADR-0021 point 3): a server the operator vouches for. The server
 /// fetches its card at `address` as a client would, checks that the key `key` answers there and
@@ -664,8 +681,8 @@ impl Config {
     }
 
     /// At most as many peers as a card names (E16 M6 T3), each with an Ed25519 key in hex and a
-    /// WebSocket address, no key or address twice; `[discovery] refresh_ms` and `timeout_ms` in
-    /// their ranges. That no peer has the server's own key is the start's check.
+    /// WebSocket address, no key or address twice; `[discovery] refresh_ms`, `timeout_ms`, `depth`
+    /// and `cards` in their ranges. That no peer has the server's own key is the start's check.
     fn check_peers(&self) -> Result<(), Error> {
         use crate::accounts::{Authenticator, Ed25519};
         if self.peers.len() > card::MAX_PEERS {
@@ -694,19 +711,10 @@ impl Config {
             }
         }
         let discovery = &self.discovery;
-        for (key, value, range) in [
-            ("refresh_ms", discovery.refresh_ms, REFRESH_MS),
-            ("timeout_ms", discovery.timeout_ms, TIMEOUT_MS),
-        ] {
-            if !range.contains(&value) {
-                return Err(Error(format!(
-                    "discovery.{key} = {value}: from {} to {}",
-                    range.start(),
-                    range.end()
-                )));
-            }
-        }
-        Ok(())
+        within("refresh_ms", discovery.refresh_ms, REFRESH_MS)?;
+        within("timeout_ms", discovery.timeout_ms, TIMEOUT_MS)?;
+        within("depth", discovery.depth, DEPTH)?;
+        within("cards", discovery.cards, CARDS)
     }
 
     /// At least one offer; ids present and distinct; a player's seat in each.
@@ -764,4 +772,20 @@ impl Config {
         let base = path.parent().unwrap_or(Path::new("."));
         Self::parse(&text, base).map_err(|e| Error(format!("{}: {e}", path.display())))
     }
+}
+
+/// Whether `[discovery] <key> = value` is in `range`, or why not.
+fn within<T: PartialOrd + fmt::Display>(
+    key: &str,
+    value: T,
+    range: std::ops::RangeInclusive<T>,
+) -> Result<(), Error> {
+    if range.contains(&value) {
+        return Ok(());
+    }
+    Err(Error(format!(
+        "discovery.{key} = {value}: from {} to {}",
+        range.start(),
+        range.end()
+    )))
 }
