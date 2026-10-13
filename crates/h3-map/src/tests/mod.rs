@@ -637,6 +637,52 @@ fn read_bounds_the_file_and_inflates_it() {
 
 // --- the experiment writer's maps (h3-formats, until the writer moves here) ---
 
+/// E04c T3: land next to water (any of the eight neighbours) carries the coastal flag 0x40, as in
+/// every one of the game's own maps; water and other land do not. The map's edge has no water.
+#[test]
+fn the_experiment_writer_marks_the_coast() {
+    use crate::writer as w;
+    let mut players: [Option<w::Player>; w::PLAYERS] = Default::default();
+    players[0] = Some(w::Player {
+        human: true,
+        computer: true,
+        towns: 1,
+    });
+    let map = w::Map {
+        name: "Coast".to_owned(),
+        description: String::new(),
+        size: 36,
+        terrain: w::Terrain::Grass,
+        patches: vec![
+            w::Patch {
+                terrain: w::Terrain::Water,
+                from: (0, 0),
+                to: (1, 0),
+            },
+            w::Patch {
+                terrain: w::Terrain::Water,
+                from: (20, 20),
+                to: (20, 21),
+            },
+        ],
+        roads: vec![],
+        players,
+        objects: vec![],
+    };
+    let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
+    for (index, t) in m.terrain.tiles.iter().enumerate() {
+        let (x, y) = (index % 36, index / 36);
+        let water = matches!((x, y), (0..=1, 0) | (20, 20..=21));
+        let near = (x <= 2 && y <= 1) || ((19..=21).contains(&x) && (19..=22).contains(&y));
+        let coastal = if near && !water { 0x40 } else { 0 };
+        assert_eq!(
+            (t.terrain == 8, t.flags),
+            (water, coastal),
+            "tile ({x}, {y})"
+        );
+    }
+}
+
 #[test]
 fn maps_from_the_experiment_writer_read_back() {
     use crate::writer as w;

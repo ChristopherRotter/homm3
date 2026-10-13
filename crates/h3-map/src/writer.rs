@@ -419,6 +419,10 @@ impl Road {
 
 /// A tile's flag that mirrors its road picture left to right.
 const ROAD_MIRRORED: u8 = 0x10;
+/// A land tile's flag: water lies on one of its eight neighbours (E04c T3: every land tile next
+/// to water in the game's own maps has it and no other tile does; the game reads the coast, the
+/// shore battlefield's tiles, from it, batch 3b).
+const COASTAL: u8 = 0x40;
 
 /// A map: one level, a base terrain, rectangles of other terrains and roads.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -697,16 +701,22 @@ fn write_player(
 
 fn write_terrain(out: &mut Out, map: &Map) {
     let size = usize::from(map.size);
+    let terrain_at = |x: u8, y: u8| {
+        map.patches
+            .iter()
+            .rev()
+            .find(|patch| patch.covers(x, y))
+            .map_or(map.terrain, |patch| patch.terrain)
+    };
+    let coastal = |x: u8, y: u8| {
+        let near = |c: u8| c.saturating_sub(1)..=c.saturating_add(1).min(map.size - 1);
+        near(y).any(|ny| near(x).any(|nx| terrain_at(nx, ny) == Terrain::Water))
+    };
     for (index, (y, x)) in (0..map.size)
         .flat_map(|y| (0..map.size).map(move |x| (y, x)))
         .enumerate()
     {
-        let terrain = map
-            .patches
-            .iter()
-            .rev()
-            .find(|patch| patch.covers(x, y))
-            .map_or(map.terrain, |patch| patch.terrain);
+        let terrain = terrain_at(x, y);
         // A deterministic spread over the eight interior pictures (the editor picks randomly).
         let variant = ((index * 7 + index / size * 3) % 8) as u8;
         let road = map
@@ -714,7 +724,10 @@ fn write_terrain(out: &mut Out, map: &Map) {
             .iter()
             .filter(|road| road.row == y)
             .find_map(|road| Some((road.kind as u8, road.picture(x)?)));
-        let (kind, (picture, flags)) = road.unwrap_or((0, (0, 0)));
+        let (kind, (picture, mut flags)) = road.unwrap_or((0, (0, 0)));
+        if terrain != Terrain::Water && coastal(x, y) {
+            flags |= COASTAL;
+        }
         out.bytes(&[
             terrain as u8,
             terrain.interior_view() + variant,

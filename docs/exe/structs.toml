@@ -104,7 +104,8 @@ fields = [
   { offset = 0x4DC, name = "defend_bonus", type = "i32", summary = "the Defend bonus as stored at Defend: max(1, defense x 20 / 100), 0 in the tactics phase and for a war machine; it sits inside +0xCC until the stack's next turn start takes it off (0x47974A to 0x4798D7, 0x446E74)", confidence = "read", refs = ["installation.md §7.9"] },
   { offset = 0x4E0, name = "faerie_dragon_spell", type = "i32", summary = "a Faerie Dragon's drawn spell", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x4E4, name = "magic_mirror_value", type = "i32", summary = "Magic Mirror's v (the chance)", confidence = "read", refs = ["installation.md §7.13"] },
-  { offset = 0x4E8, name = "morale", type = "i32", summary = "the stack's morale; the bad-morale check clamps it to +-3 for its draw (0x464B40)", confidence = "read", refs = ["installation.md §7.9", "installation.md §7.21"] },
+  { offset = 0x4E8, name = "morale", type = "i32", summary = "the stack's morale; the bad-morale check clamps it to +-3 for its draw (0x464B40); set by 0x43E000 through 0x469750 at the battle's start and after every action", confidence = "read", refs = ["installation.md §7.9", "installation.md §7.21", "installation.md §7.26"] },
+  { offset = 0x4EC, name = "luck", type = "i32", summary = "the stack's luck, set by 0x43DF20 through 0x469750 at the battle's start (0x462E19) and after every action (0x479D16); read from memory in batch 3 (E04c T3)", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x4F0, name = "turn_started", type = "i32", summary = "the stack's turn started this round (cleared at the round start)", confidence = "read", refs = ["installation.md §7.11", "installation.md §7.14"] },
   { offset = 0x4F4, name = "binds", type = "list", summary = "the stacks this stack binds", confidence = "read", refs = ["installation.md §7.20"] },
   { offset = 0x504, name = "bound_by", type = "list", summary = "the stacks that bind this stack", confidence = "read", refs = ["installation.md §7.20"] },
@@ -296,6 +297,7 @@ fields = [
   { offset = 0x18, name = "spell_points", type = "i16", summary = "spell points (mana); a Familiars' channel may raise it above the maximum", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x91, name = "army", type = "army", summary = "the hero's army (seven creature types, then seven counts)", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0xC9, name = "secondary_skill_levels", type = "u8[28]", summary = "level per secondary skill id", confidence = "read", refs = ["installation.md §7.4"] },
+  { offset = 0x12D, name = "worn_artifacts", type = "artifact[19]", summary = "the worn artifacts by slot, 8 bytes each (id, -1 for none; then a subtype, a scroll's spell); 0x4D91F0 walks them", confidence = "read", refs = ["installation.md §7.26"] },
 ]
 
 [[struct]]

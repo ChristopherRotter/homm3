@@ -51,7 +51,8 @@ is listed in the runbook; the user's computer must be online for it.
 - `[map]`: `name`, `description`, `size` (36, 72, 108 or 144), `terrain` (any land terrain; the
   battlefield of every encounter on it), `instructions` (the template's numbered introduction).
   `[[map.patch]]` (E08 T10a, the adventure map's experiments): `terrain`, `from = [column, row]`,
-  `to` (inclusive), a rectangle of another terrain; a later patch covers an earlier one. The
+  `to` (inclusive), a rectangle of another terrain (also `water`, E04c T3: the coast); a later
+  patch covers an earlier one. The
   writer gives every tile an interior picture of its terrain (the ranges the game's own maps use,
   `docs/formats/h3m.md`), so the game draws a hard edge between two terrains.
   `[[map.road]]` (E08 T10a): `kind` (dirt, gravel, cobblestone), `row`, `from` and `to` (the
@@ -64,6 +65,13 @@ is listed in the runbook; the user's computer must be online for it.
   from `from` to `to`, the template from `Objects.txt` (class 79). A pile is visited from a
   neighbouring tile and the visit ends the move; the template does not list piles, the
   encounters' procedures say where they are.
+  `[[map.ground]]` (E04c T3): `picture` (a special ground's picture in `Objects.txt`: `AVXcrsd0`
+  Cursed Ground 21, `AVXplns0` Magic Plains 46, `AVXcf0` Clover Field 222, `AVXcg1`–`7` and
+  `AVXmp1`–`7` the SoD Cursed Ground 223 and Magic Plains 230, `AVXef0`, `AVXff0`, `AVXhg0`,
+  `AVXlp0`, `AVXmc0`, `AVXrk0` the other fields, `AVXfw0` Favorable Winds) and `at = [column,
+  row]`, its bottom-right tile. The picture covers its width leftwards and its height upwards, every
+  tile of it (its `.msk`): the `0` pictures 6 × 4, `AVXcg5` and `AVXmp5` 3 × 3. Heroes and
+  monsters stand on it; the grounds are written first, so they are drawn below.
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `procedure`
   (steps), `record` (`field = "…"` for a value, `table = [columns]` + `rows`, or `labels` for rows whose
   first column is filled in), `predictions`
@@ -86,6 +94,15 @@ is listed in the runbook; the user's computer must be online for it.
   encounter, each with its own `at`, named as their hero type unless `name` is given (scouts that
   explore a route, inspections of many heroes). Encounters are laid out in a grid; a hero type
   may appear once per map, a player may have eight heroes, two objects never share a tile.
+
+**One encounter's map** (E04c T3): `--only <id>` instead of `--template` writes a map with that
+encounter alone, in its place (the others are still checked; grounds, patches and piles stay): the
+capture harness steps the only hero into its opponent. `experiments/agent/opening.py <out>
+<maps…>` opens each map's battle under Wine and prints, as one JSON line per map, what the battle
+manager and each stack hold at the opening (the special field +0x53C0, the terrain, the anti-magic
+and ship flags; per stack creature, count, speed, native flag, morale +0x4E8 and luck +0x4EC, set
+by 0x469750 at the start). `experiments/agent/crosscheck_r1.py` replays batch 1a's R1 (six attacks,
+damage from the Golems' hit points) as the harness's cross-check.
 
 Running a spec in our engine (to print predictions automatically) is not built (BACKLOG; Q37:
 revisit with the next batches, E04b); the predictions are computed by hand or with a script and
