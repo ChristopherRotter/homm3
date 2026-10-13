@@ -62,7 +62,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-13 (fifty-fourth) — the rear hex as a two-hex stack's position
 
-The user left the choice to the agent: the queued rear-hex change. `Footprint { position, other }`; encodings, replays and protocol bumped; 800 random battles and the golden seeds play master's games. Detail: the pull request.
+The user left the choice to the agent: the queued rear-hex change. Encodings, replays, protocol and the battle baseline (−2.8 % Ir) renewed; 800 random battles and the golden seeds play master's games. Detail: the pull request.
 
 ### 2026-10-12 to 13 (fifty-third) — R01, the content split
 
