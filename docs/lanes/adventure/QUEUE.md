@@ -18,6 +18,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-13 (T14 verify): two typed objects of one type on one anchor are told apart by nothing a player sees (`ObjectView` and `ObjectRemoved` name an object by type and anchor; the property `views_move_as_the_events_say` found it with two campfires, a test assumption since T13b): the play maps now lay out one typed object per type and anchor. Count such pairs in the shipped maps with the next `original_data` run; if any exist, name objects in what a player sees by something stable (the masks, or a per-viewer index).
 - 2026-10-13 (T14 review): T15's border gate (entered by a key holder, otherwise visited from a neighbour) breaks "the visit mode follows the type": give the mode a per-player test in `visit_at`, `check_step` and the query together. Also a future entered pickup or removable entered object could leave a hero on a tile whose next live object is neighbour-visited, a state setup refuses: decide with T15.
 - 2026-10-13 (T14 review): `AdventureState::accept_offer` is `pub` and trusts its `Offer` (another type would be marked bought without a reveal); only `h3-game` calls it. Narrow it if a second caller appears.
 - 2026-10-13 (T14b): the original's "already bought" message has no event (a visit to a bought kind tells nothing).
