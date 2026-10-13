@@ -217,7 +217,7 @@ fn the_cards_configuration_is_bounded() {
         ),
         ("", "card_ms = 599999", "discovery.card_ms"),
         ("", "card_ms = 2592000001", "discovery.card_ms"),
-        ("", "cards = 1", "unknown field"),
+        ("", "hops = 1", "unknown field"),
     ] {
         let parsed = parse(server, discovery).unwrap_err();
         assert!(parsed.0.contains(error), "{server} {discovery}: {parsed}");

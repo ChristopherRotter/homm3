@@ -4,7 +4,7 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context; T1 (the capture harness) done 2026-10-13. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context; T1 (the capture harness) and T3 (the animation timing) done 2026-10-13. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
 
 ### E17 M2 T2 — The window, input and audio evaluation
 
@@ -13,19 +13,12 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 - **Depends on:** nothing; can run beside T1.
 - **Status:** ready.
 
-### E17 M2 T3 — Code reading: the battle's animation timing
-
-- **Scope:** the original's frame rate and each animation's frame times (`cranim.txt`'s times as the executable scales them, design §5), walking speed, the attack, defend, wait and death sequences, projectiles (flight, angles), the outline's pulse and step, the idle fidget; compared with VCMI 1.7.5 and with the harness's frames at exact times (the virtual clock steps by 1 ms: `clients/capture/README.md`, "Frame by frame"). Known from T1 (design §6.2): the outline steps every 100 ms through eight entries and the opening is already one step on; the grass situation's Pikemen fidget from about 200 to 700 ms. Sequences beyond the opening need the human's commands in the original (clicks on hexes: a recipe per command) and the AI's. Design §7.
-- **Acceptance:** each timing with its address (map entries, `check-exe-map`) and a capture or VCMI to confirm it.
-- **Depends on:** T1 (done).
-- **Status:** ready.
-
 ### E17 M2 T4 — The scene over time
 
-- **Scope:** a record's messages become animations at T3's timing; a frame at any time, headless (`h3-view render --at <ms>`); strikes, shots and projectiles, deaths, waits, defends; moves need the walk's path (**CLT-Q1, unowned**: the user decides its shape with the battle and server lanes, a `cross-lane` change). Each sequence checked against the harness.
-- **Acceptance:** a record of a full battle renders frame by frame headless; the harness's sequences pass or list their differences.
-- **Depends on:** T3; CLT-Q1 for moves.
-- **Status:** waits.
+- **Scope:** a record's messages become animations at the original's timing (design §7: the frame deadline and its grid, the idle step, each group's frame time, the strike's iterations, the shot's frames and projectile, the fidgets from the viewer's own generator); a frame at any time, headless (`h3-view render --at <ms>`); strikes, shots and projectiles, deaths, turns; moves need the walk's path (**CLT-Q1, decided (a)** by the user, 2026-10-13: the battle lane adds the path to the engine's `Moved`, then the wire maps it; until it lands, flights and the other sequences first). Two checks against the harness (design §7.6): the viewer's timeline of a sequence against the recorded one (`clients/situations/sequences.toml`), and the captured frames against our render of the original's poses read from its memory (`capture/h3mem.py`).
+- **Acceptance:** a record of a full battle renders frame by frame headless; the recorded sequences' timelines match, or list their differences; frames at the sequences' times match outside the masks.
+- **Depends on:** T3 (done); CLT-Q1's implementation for walks.
+- **Status:** ready (walks wait for CLT-Q1's change).
 
 ### E17 M2 T5 — The window adapter and M2's closure
 
@@ -37,6 +30,9 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 ## Inbox
 
 - 2026-10-13 (the battle lane, E04c T2b; its `cross-lane` pull request): **the battle names its special battlefield.** The observation carries `battlefield` (a handle into the key tables' new `battlefields`, protocol v27) and `anti_magic`, replays `battlefield`: the scene can take the special pictures of 0x4646D0 from the battle's facts (a field 1–9 its own, the shore, two boats, the deck). The packs' keys are `base:shore`, `base:magic_plains`, `base:cursed_ground`, `base:deck`, `base:boats` and `sod:holy_ground` … `sod:magic_clouds`; the asset tables' special battlefields still carry VCMI's names under `base`. The pull request moved the 35 SoD obstacle types to `assets/sod.toml` with the packs' keys (every type is in a pack now; the tables test) and added the two new observation fields to `record.rs`'s test observation; `E17-design.md` §5's sentence on the 47 types no pack defines is stale.
+- 2026-10-13 (E17 M2 T3): **the timing's remainder** (design §7.7). Not read: the teleporting move, a ray's drawing, the spells' and magic animations' frames (H3API's PlayMagicAnimation), whether hovering starts group 1, the heroes' idle groups, the arrow towers', catapult's and first aid tent's actions, the sounds' timing. Not in a sequence yet: a turn, a death, Haste and Slow, a defending stack's reaction, shots up and down, a ray. Each a sequence (`h3drive.py sequence`) when T4 or M3 needs it.
+- 2026-10-13 (E17 M2 T3, for the battle lane): in the original the idle fidgets draw from the rules' generator (design §7.2), so how long a player waits changes later rolls; an experiment that compares the original's random outcomes must keep its timing fixed (the harness's frozen clock does).
+
 - 2026-10-13 (E17 M2 T1): **the capture set grows** (M3's reference set): background variants 0 and 1 need trees, mountains or dead vegetation around the battle (design §5: `h3-map`'s writer has no decorative objects yet: an adventure-lane change); special fields (magic plains and the like) and the shore; heroes and their flags, then the count boxes and the panel, each mask removed as it is drawn; the AI-first openings (the smoke battle) once the scene runs over time. CLT-Q4: how a record carries the background variant.
 
 - 2026-10-13 (the user, at E17 M1): **text through a string catalogue.** Every string the client shows comes from a key → string catalogue (nested JSON or similar), easy to translate, language packs swappable; not the original's bare text files. The agent's notes for the refinement (M3, with the fonts and the battle interface, where the first text appears): the original's text cannot be committed (ADR-0009), so the original's language is read at the checkpoint from the user's own `.TXT` entries through a committed catalogue of keys (key → archive entry, row, column), and a localized installation is a language pack of its own; the client's own strings (lobby, accounts, ladders: no original text) are committed in any language; a translation of the original's text is likely a derivative work (a licence question for the user before any is committed); the catalogue's format (flat or nested JSON, TOML, Fluent for plurals and cases) and how placeholders and plurals work; fonts: the original's are 8-bit bitmap fonts in a code page, so a language with other letters needs fonts of its own (or a modern renderer as a graphics option). An ADR-0020 amendment at that refinement.

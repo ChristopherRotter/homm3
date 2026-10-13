@@ -1658,3 +1658,49 @@ were written in; the archive's older replays are the battle lane's replay format
   server's own key stops the start; the OS roots read.
 - **Docs**: the operator's notes (peers, the TLS client and its processors), `server.example.toml`,
   `config.rs`'s format, the design note's §2 catalogue and §12 bullets, the M6 review list.
+
+### M6 T4 — Beyond the peers: the chain (2026-10-13)
+
+- **The start.** #160 (T3) merged; `master` equalled the session's branch. The baseline
+  `verify --scope server` ran on `master` in a worktree of its own (the session's edits had begun
+  in the clone): every step passed (exit 2 by design).
+- **No wire change.** `RelayedCard::via` (T3) now carries keys; `PROTOCOL_VERSION` stays 26, and
+  `h3-protocol` is unchanged (`card::chain` is the check a client and the server run).
+- **The configuration**: `[discovery] depth` (2; 1 to 4: 1 the peers' own cards, each more one hop
+  further) and `cards` (200; 1 to 1000: the most cards relayed, and the most of a peer's cards a
+  fetch reads).
+- **The fetch** (`peers::fetch`): after `Describe`, below `depth` it pages the peer's `ListPeers`
+  (`peers::listing`, at most `cards`). Its frames are bounded by a page of 50 cards (`FRAME`, 50 ×
+  (2 × 8 KiB + 1 KiB) + 1 KiB, 851 KiB) and its bytes by `budget(cards)` (two card frames for the
+  welcome and the card, a frame per page: 3.4 MiB at 200). `vouched` keeps a card the peer relays
+  when it has no `list` (a card the peer fetched for a list is not vouched by it: T5 decides), its
+  `via` leaves this server's chain within `depth`, it holds (`card::verify`), and the chain from
+  the peer's card through the cards its `via` names (found among the peer's other cards that
+  hold, the first of a key) to it holds (`card::chain`); a card that does not hold or whose chain
+  does not is dropped, one log line each (`h3-server: peer <address>: a card it relays is
+  dropped: …`, naming the card's key, which its bounds check made hex). A card beyond `depth` is
+  not read. A failed fetch keeps the peer's last good card and relays; a round prunes the expired.
+- **What `ListPeers` serves** (`peers::relay`, rebuilt after each fetch and each round): the peers'
+  own cards in the configuration's order, then their relays by the length of their `via` (none
+  first), the peers in order, each peer's in its order; each key once (the first is the shortest
+  chain), the server's own never; at most `cards`. Each chain is checked again against the cards
+  served before it (`through`): a link's card may be another fetch's (a peer that is also relayed
+  deeper, or a shorter chain), and the client checks the chain with the card served, so a chain
+  the served cards do not carry is not served. A card is served until the first card of its chain
+  is no longer served (`until`, the least of the chain's), so a client always finds every link.
+  Mutual peers are quiet: a peer relaying this server's card or cards through it costs no log.
+- **The test client**: `relayed` reads every page, checks each card, then each chain from the
+  server's card through the relayed cards its `via` names; it no longer refuses a `via`.
+- **Tests** (`h3-server` 132 → 140): `relay`'s order, depth and `cards` bounds; a key once by its
+  shortest chain and the own card never; a chain re-checked against the served cards (a peer's own
+  newer card that stopped vouching); the chain's expiry and the prune; `vouched` on signed cards
+  (a forged card, two chains that do not hold, a link not relayed, a list's card, depth 1 to 3,
+  expiry). Over loopback: A → B → C → D with C and D shut down before A starts (A learns of them
+  through B alone and dials B only): depth 2 serves B and C via B, depth 3 adds D via B and C, and
+  `cards = 1` B alone, each chain checked by the test client; a fake B relaying cards outside its
+  vouching and a forged one: the fetch drops them and says why, A serves B, C and D; the test
+  client refuses a chain its server does not vouch for, one whose voucher does not, and one through
+  a card not relayed; the configuration's new bounds. T2's test of an unknown `[discovery]` key
+  named `cards`, now a key: it names `hops`.
+- **Docs**: the operator's notes (beyond the peers, the memory bound), `server.example.toml`,
+  `config.rs`'s format, the design note's §12, the M6 review list.
