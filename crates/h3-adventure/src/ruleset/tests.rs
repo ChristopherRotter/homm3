@@ -660,6 +660,16 @@ fn object_type_parameters_are_checked() {
         invalid(8, ObjectKindDef::KeyGate { key: u8::MAX }),
         key_reason
     );
+    // A gate is crossed, so it is visited from above (E08 T15b); a guard need not be.
+    let error = compile_err(&edit(|p| pack(p, "t").object_types[8].from_above = false));
+    assert_eq!(
+        error,
+        AdventureCompileError::InvalidObjectType {
+            key: "t:gate".into(),
+            reason: "a key gate is not visited from above",
+        }
+    );
+    compile(&edit(|p| pack(p, "t").object_types[7].from_above = false)).unwrap();
 }
 
 #[test]

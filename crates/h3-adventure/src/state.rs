@@ -402,15 +402,18 @@ impl CanonicalHash for Pos {
     }
 }
 
-/// What a step visits (ADV-OBJ-003): the object, by index in the static map, its type, the tile
-/// it is visited from, how it is visited, whether it may be from above (ADV-OBJ-004) and what the
-/// visit does.
+/// What a player's step onto an object's visitable tile meets (ADV-OBJ-003): the object, by index
+/// in the static map, its type, the tile it is visited from, how it is visited, whether the player
+/// passes it instead (a border gate whose key it holds, ADV-VIS-005: the step does not visit, the
+/// tile is crossed like any other), whether it may be from above (ADV-OBJ-004) and what the visit
+/// does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct StepVisit<'p> {
     pub(crate) object: usize,
     pub(crate) object_type: ObjectTypeId,
     pub(crate) tile: Pos,
     pub(crate) mode: Visit,
+    pub(crate) pass: bool,
     pub(crate) from_above: bool,
     pub(crate) effect: Effect<'p>,
 }
@@ -555,7 +558,9 @@ impl AdventureState {
     /// hero stands on. A visitable tile is allowed even where a mask also blocks it (a hero may
     /// stand on a town's entrance, which the town's masks mark both ways), unless its object is
     /// visited from a neighbouring tile: no move ever enters such a tile (ADV-OBJ-003), so a setup
-    /// may not place a hero there either (E08 T14a).
+    /// may not place a hero there either (E08 T14a). A border gate's tile is such a tile: only its
+    /// key's holders cross it (ADV-VIS-005, T15b), and no player holds a key at a setup; a hero a
+    /// move stops on a gate leaves it as any tile.
     ///
     /// # Errors
     ///
@@ -623,7 +628,8 @@ impl AdventureState {
     /// path's last (ADV-OBJ-003) and visits it ([`Self::visit`]): an entered object's tile (the
     /// Cartographer's, E08 T14a) the hero steps onto; toward a neighbour-visited object's (a
     /// pickup's, T13b) the step is paid as if taken (ADV-MOV-006's rule included) and the hero
-    /// stays on the tile before.
+    /// stays on the tile before. A border gate whose key the player holds is not visited: the step
+    /// crosses it as any tile, and the path may go on or end there (ADV-VIS-005, T15b).
     // rule: ADV-MOV-006, ADV-MOV-007, ADV-FOG-003, ADV-OBJ-003
     fn move_hero<S: Sink>(
         &mut self,
@@ -704,8 +710,11 @@ impl AdventureState {
     /// the number it had not explored, at every visit. A Keymaster's tent (ADV-VIS-003): its key
     /// for the player, told to it alone, unless it holds it (then nothing, no event). A border
     /// guard (ADV-VIS-004): for a holder of its key an offer to pass, without a price; for another
-    /// player nothing (the original's message is not modelled).
+    /// player nothing (the original's message is not modelled). A border gate (ADV-VIS-005, E08
+    /// T15b), visited by a player without its key (its holders cross it, [`Self::visit_at`]):
+    /// nothing, as the guard's (the original's message is not modelled).
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
+    // rule: ADV-VIS-005
     fn visit<S: Sink>(
         &mut self,
         core: &Ruleset,
@@ -758,6 +767,7 @@ impl AdventureState {
             Effect::Guard(key) => {
                 outcome.offer = self.has_key(player, key).then(|| offer(OfferKind::Pass));
             }
+            Effect::Gate(_) => {}
         }
         outcome
     }
@@ -945,12 +955,19 @@ impl AdventureState {
         part.object_type(id).map(|ty| (index, id, ty))
     }
 
-    /// What a step onto `pos` visits, if its visit is built ([`ObjectKind::effect`]): the
-    /// object of [`Self::tile_object`], how it is visited and what the visit does. The caller has
-    /// checked that `pos` is visitable as it stands now.
+    /// What a step of `player`'s hero onto `pos` meets, if the visit of its object is built
+    /// ([`ObjectKind::effect`]): the object of [`Self::tile_object`], how it is visited, whether
+    /// the player passes it instead and what the visit does. The visit mode is the type's, but per
+    /// player: a border gate whose key `player` holds is passed, not visited (ADV-VIS-005, E08
+    /// T15b; the original's step, 0x480EE2, and its pathfinder, 0x56ABB1, test the player's key
+    /// bit). `MoveHero` and the reachable-tiles query both ask here. The caller has checked that
+    /// `pos` is visitable as it stands now.
+    // rule: ADV-VIS-005
+    #[inline]
     pub(crate) fn visit_at<'p>(
         &self,
         part: &'p AdventureRuleset,
+        player: PlayerId,
         pos: Pos,
     ) -> Option<StepVisit<'p>> {
         let (object, object_type, ty) = self.tile_object(part, pos)?;
@@ -959,6 +976,7 @@ impl AdventureState {
             object_type,
             tile: pos,
             mode: ty.visit,
+            pass: matches!(effect, Effect::Gate(key) if self.has_key(player, key)),
             from_above: ty.from_above,
             effect,
         })
@@ -993,8 +1011,8 @@ impl AdventureState {
     /// being public), then one it may stand on (ADV-MOV-007), then not onto or off an object's
     /// tile across its top (ADV-OBJ-004); the tile, and the object the step visits if an object
     /// is visited from it (ADR-0016 point 4: a pickup's visit since E08 T13b, the Cartographer's
-    /// since T14a). The explored test comes first, so a rejection tells nothing about a hidden
-    /// tile.
+    /// since T14a), none for a border gate the player passes (ADV-VIS-005, T15b). The explored test
+    /// comes first, so a rejection tells nothing about a hidden tile.
     // rule: ADV-MOV-007, ADV-MOV-008, ADV-OBJ-004
     fn check_step<'p>(
         &self,
@@ -1023,8 +1041,8 @@ impl AdventureState {
         if !tile.visitable {
             return Ok((tile, None));
         }
-        self.visit_at(part, pos)
-            .map(|object| (tile, Some(object)))
+        self.visit_at(part, player, pos)
+            .map(|object| (tile, (!object.pass).then_some(object)))
             .ok_or(AdventureCommandError::Visit { step })
     }
 
@@ -1180,6 +1198,11 @@ impl AdventureState {
             .iter_mut()
             .filter(|h| h.id == hero)
             .for_each(|h| h.movement = points);
+    }
+
+    /// Gives `player` the key of `colour` (tests of the border gates, E08 T15b).
+    pub(crate) fn give_key(&mut self, player: PlayerId, colour: u8) {
+        Arc::make_mut(self.flags.get_or_insert_with(Arc::default)).give_key(player, colour);
     }
 
     /// Explores every tile for every player (tests of movement that walk past the tiles the

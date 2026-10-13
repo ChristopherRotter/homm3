@@ -240,11 +240,12 @@ fn the_query_keeps_to_the_explored_tiles() {
 proptest! {
     /// On random maps, armies and profiles, from the hero's tile and after up to three moves
     /// along reported paths: every reported path is accepted and ends with the reported points,
-    /// on its last tile (a chart's, a tower's or a tent's entered, E08 T14a, T15a) or, for a
-    /// pile's or a guard's visit, on the tile before, one event per step and at most one for the
-    /// visit (a gate's visit is not built: never reported); the tile of an accepted
-    /// one-step move is reported with at least the points it leaves; a rejected move changes
-    /// nothing; the query is deterministic.
+    /// on its last tile (a chart's, a tower's or a tent's entered, E08 T14a, T15a; a gate's
+    /// crossed or stopped on by a holder of its key, T15b) or, for a pile's, a guard's or (without
+    /// the key) a gate's visit, on the tile before, one event per step and at most one for the
+    /// visit; the tile of an accepted one-step move is reported with at least the points it
+    /// leaves; a rejected move changes nothing; the query is deterministic. The hero's owner
+    /// holds the gates' key from the start in half the cases, and takes it at a tent in others.
     #[test]
     fn the_query_and_move_hero_agree(
         cells in proptest::collection::vec(0usize..TILES.len(), 64),
@@ -255,6 +256,7 @@ proptest! {
         creatures in proptest::collection::vec(0usize..4, 1..4),
         faithful in any::<bool>(),
         picks in proptest::collection::vec(0usize..1000, 0..4),
+        key in any::<bool>(),
     ) {
         let rules = movement_rules(faithful);
         let (hx, hy) = (start.0 % width, start.1 % height);
@@ -279,6 +281,9 @@ proptest! {
         let rows: Vec<String> = grid.iter().map(|row| row.iter().collect()).collect();
         let rows: Vec<&str> = rows.iter().map(String::as_str).collect();
         let mut state = world_state(&rules, &rows, heroes);
+        if key {
+            state.give_key(RED, 0);
+        }
         for round in 0..=picks.len() {
             let reach = reach(&state, &rules, 1);
             prop_assert_eq!(&reach, &state.reach(&rules.0, &rules.1, HeroId::new(1)).unwrap());
@@ -291,10 +296,11 @@ proptest! {
                     .iter()
                     .filter(|e| matches!(e.kind, AdventureEventKind::HeroStepped { .. }))
                     .count();
-                // A visit from the tile before steps one tile less.
+                // A visit from the tile before steps one tile less; a gate the owner holds the
+                // key of is no visit.
                 let visit = state
-                    .visit_at(&rules.1, pos)
-                    .is_some_and(|v| v.mode == crate::ruleset::Visit::Neighbour);
+                    .visit_at(&rules.1, RED, pos)
+                    .is_some_and(|v| !v.pass && v.mode == crate::ruleset::Visit::Neighbour);
                 prop_assert_eq!(steps + usize::from(visit), path.len());
                 prop_assert!(events.len() <= steps + 1);
                 let at = match path.len().checked_sub(2) {
@@ -408,4 +414,44 @@ fn the_query_keeps_off_a_chart_s_top() {
     assert_eq!(on.path(p(2, 2)), Some(vec![p(2, 2)]));
     let on_open = reach(&chart_world(&rules, 'c', p(2, 1)), &rules, 1);
     assert_eq!(on_open.path(p(2, 0)), Some(vec![p(2, 0)]));
+}
+
+// covers: ADV-VIS-005, ADV-OBJ-003
+#[test]
+fn a_gate_is_crossed_by_its_key_s_holders_only() {
+    // A wall of rock at column 1 with a gate of key 0 in it; the hero at (0, 1).
+    let rules = movement_rules(false);
+    let mut state = world_state(
+        &rules,
+        &["g#ggg", "gXggg", "g#ggg"],
+        vec![hero_at(1, 0, p(0, 1), &[PEASANT])],
+    );
+    state.explore_all();
+    // Without the key the gate is a destination, the visit's from (0, 1): nothing past it.
+    let shut = reach(&state, &rules, 1);
+    assert_eq!(shut.points_left(p(1, 1)), Some(1300 - 100));
+    assert_eq!(shut.path(p(1, 1)), Some(vec![p(1, 1)]));
+    assert!((2..5).all(|x| shut.points_left(p(x, 1)).is_none()));
+    // With it the gate's tile is one like any other: on the way, and an end too.
+    state.give_key(RED, 0);
+    let open = reach(&state, &rules, 1);
+    assert_eq!(open.points_left(p(1, 1)), Some(1300 - 100));
+    assert_eq!(open.points_left(p(4, 1)), Some(1300 - 400));
+    let path = open.path(p(3, 0)).unwrap();
+    assert_eq!((path.len(), path[0]), (3, p(1, 1)));
+    for to in [p(1, 1), p(4, 1)] {
+        let mut moved = state.clone();
+        walk(&mut moved, &rules, 1, open.path(to).unwrap()).unwrap();
+        let hero = moved.hero(HeroId::new(1)).unwrap();
+        assert_eq!((hero.pos, Some(hero.movement)), (to, open.points_left(to)));
+    }
+    // A key of another colour opens nothing.
+    let mut other = world_state(
+        &rules,
+        &["g#ggg", "gXggg", "g#ggg"],
+        vec![hero_at(1, 0, p(0, 1), &[PEASANT])],
+    );
+    other.explore_all();
+    other.give_key(RED, 1);
+    assert_eq!(reach(&other, &rules, 1), shut);
 }

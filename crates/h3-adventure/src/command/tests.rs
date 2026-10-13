@@ -557,7 +557,7 @@ fn a_visit_from_the_hero_s_own_tile_moves_nothing_and_a_fire_gives_two_resources
 
 // covers: ADV-OBJ-003
 #[test]
-fn a_visit_ends_the_move_and_a_gate_s_is_not_built_yet() {
+fn a_visit_ends_the_move_and_a_blocker_s_is_not_built() {
     let rules = movement_rules(true);
     let rejected = |row: &str, path: &[Pos]| {
         let state = visit_world(&rules, row);
@@ -570,8 +570,8 @@ fn a_visit_ends_the_move_and_a_gate_s_is_not_built_yet() {
         rejected("gPgggggggggggggg", &[p(1, 0), p(2, 0)]),
         AdventureCommandError::PastVisit { step: 1 }
     );
-    // A gate (E08 T15b builds its visit) and two blockers' visitable tiles.
-    for row in ["gXgggggggggggggg", "gVgggggggggggggg", "gTgggggggggggggg"] {
+    // Two blockers' visitable tiles (every typed kind's visit is built since E08 T15b).
+    for row in ["gVgggggggggggggg", "gTgggggggggggggg"] {
         assert_eq!(
             rejected(row, &[p(0, 1), p(1, 0)]),
             AdventureCommandError::Visit { step: 1 }
@@ -930,8 +930,9 @@ fn no_hero_starts_on_the_tile_of_an_object_visited_from_a_neighbour() {
             &mut draws(),
         )
     };
-    // A pile, a fire, a guard (visited from a neighbour, built or not).
-    for row in ["gPg", "gFg", "gKg"] {
+    // A pile, a fire, a guard, a gate (visited from a neighbour; a gate's key's holders cross
+    // it, E08 T15b, but no player holds a key at the start).
+    for row in ["gPg", "gFg", "gKg", "gXg"] {
         assert_eq!(
             start(row).map(|_| ()),
             Err(SetupError::HeroTile {
@@ -1233,4 +1234,92 @@ fn a_border_guard_offers_its_key_s_holders_to_pass() {
     visit_by(&mut other, &rules, (RED, 1), &tent);
     let (_, outcome) = visit_by(&mut other, &rules, (RED, 1), &back);
     assert!(outcome.offer.is_some() && !other.is_removed(0));
+}
+
+/// Red's hero 1 at (0, 1) and blue's 2 at (12, 2) on three rows of grass: a gate of key 0 at
+/// (3, 1) and a tent of key 0 at (7, 1).
+fn gate_world(rules: &(Ruleset, AdventureRuleset)) -> AdventureState {
+    world_state(
+        rules,
+        &["gggggggggggggggg", "gggXgggYgggggggg", "gggggggggggggggg"],
+        vec![
+            hero_at(1, 0, p(0, 1), &[PEASANT]),
+            hero_at(2, 1, p(12, 2), &[PEASANT]),
+        ],
+    )
+}
+
+// covers: ADV-VIS-005, ADV-OBJ-003, ADV-MOV-006
+#[test]
+fn a_border_gate_lets_its_key_s_holders_cross_it() {
+    let rules = movement_rules(false);
+    let mut state = gate_world(&rules);
+    // Without the key: the hero visits the gate from (2, 1), pays the step and stays; nothing
+    // else happens, and nothing is told.
+    let (events, outcome) = visit_by(&mut state, &rules, (RED, 1), &[p(1, 1), p(2, 1), p(3, 1)]);
+    assert_eq!((events, outcome), (vec![], AdventureOutcome::default()));
+    assert_eq!(hero(&state, 1), (p(2, 1), 1000 - 300));
+    refused(
+        &gate_world(&rules),
+        &rules,
+        &[p(1, 1), p(2, 1), p(3, 1), p(4, 1)],
+        AdventureCommandError::PastVisit { step: 3 },
+    );
+    // The visit's step pays as a step does: points below the cheapest next step are lost.
+    let mut poor = state.clone();
+    poor.set_movement(HeroId::new(1), 150);
+    move_hero(&mut poor, &rules, RED, 1, &[p(3, 1)]).unwrap();
+    assert_eq!(hero(&poor, 1), (p(2, 1), 0));
+    // With the key (red's hero takes it at the tent), the gate's tile is crossed as any tile:
+    // a step event per tile, nothing else, and the move goes on.
+    visit_by(
+        &mut state,
+        &rules,
+        (RED, 1),
+        &[p(3, 2), p(4, 2), p(5, 2), p(6, 2), p(7, 1)],
+    );
+    assert!(state.has_key(RED, 0));
+    let back = [p(6, 1), p(5, 1), p(4, 1), p(3, 1), p(2, 1), p(1, 1)];
+    state.set_movement(HeroId::new(1), 1000);
+    let events = move_hero(&mut state, &rules, RED, 1, &back).unwrap();
+    assert_eq!(events.len(), back.len());
+    assert!(
+        events
+            .iter()
+            .all(|e| matches!(e.kind, AdventureEventKind::HeroStepped { .. }))
+    );
+    assert_eq!(hero(&state, 1), (p(1, 1), 1000 - 600));
+    // A move may end on it, and the hero leaves it as any tile, upward too (a gate is visited
+    // from above).
+    let (events, outcome) = visit_by(&mut state, &rules, (RED, 1), &[p(2, 1), p(3, 1)]);
+    assert_eq!((events, outcome), (vec![], AdventureOutcome::default()));
+    assert_eq!(hero(&state, 1).0, p(3, 1));
+    let mut up = state.clone();
+    move_hero(&mut up, &rules, RED, 1, &[p(4, 0)]).unwrap();
+    assert_eq!(hero(&up, 1).0, p(4, 0));
+    // Blue holds no key: its step onto the gate is the hero's tile while red's hero stands there,
+    // then a visit from (4, 2) that does nothing.
+    state.explore_all();
+    let walk: Vec<Pos> = (4..12).rev().map(|x| p(x, 2)).collect();
+    visit_by(&mut state, &rules, (BLUE, 2), &walk);
+    let mut events = Vec::new();
+    let onto = AdventureCommand::MoveHero {
+        hero: HeroId::new(2),
+        path: vec![p(3, 1)],
+    };
+    let before = state.clone();
+    assert_eq!(
+        state.apply(&rules.0, &rules.1, BLUE, &onto, &mut events),
+        Err(AdventureCommandError::Blocked {
+            step: 0,
+            error: StandError::Occupied,
+        })
+    );
+    assert_eq!(state, before);
+    move_hero(&mut state, &rules, RED, 1, &[p(3, 0)]).unwrap();
+    let (events, outcome) = visit_by(&mut state, &rules, (BLUE, 2), &[p(3, 1)]);
+    assert_eq!((events, outcome), (vec![], AdventureOutcome::default()));
+    assert_eq!(hero(&state, 2), (p(4, 2), 1000 - 141));
+    // The gate never leaves the map.
+    assert!(!state.is_removed(0));
 }

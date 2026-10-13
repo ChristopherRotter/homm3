@@ -120,6 +120,9 @@ pub(crate) enum Effect<'k> {
     Tent(u8),
     /// For a holder of this key, an offer to pass (a border guard, ADV-VIS-004).
     Guard(u8),
+    /// For a holder of this key, a tile like any other, crossed without a visit; for another
+    /// player, a visit that does nothing (a border gate, ADV-VIS-005).
+    Gate(u8),
 }
 
 impl ObjectKind {
@@ -127,7 +130,7 @@ impl ObjectKind {
     /// the one place a task that builds a kind's visit extends. A step onto the visitable tile of
     /// an object whose visit is not built is rejected (`Visit`). E08 T13b: the pickups; T14a and
     /// T14b: the Cartographer, entered, with its offer; T15a: the observatories, the tents and the
-    /// guards with their offer; the gates are T15b's.
+    /// guards with their offer; T15b: the gates, which are not visited by their key's holders.
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
             Self::Pickup(_) => Some(Effect::Pickup),
@@ -135,7 +138,7 @@ impl ObjectKind {
             Self::RevealArea { radius } => Some(Effect::Reveal(*radius)),
             Self::KeyTent { key } => Some(Effect::Tent(*key)),
             Self::KeyGuard { key } => Some(Effect::Guard(*key)),
-            Self::KeyGate { .. } => None,
+            Self::KeyGate { key } => Some(Effect::Gate(*key)),
         }
     }
 
@@ -236,7 +239,7 @@ pub enum ObjectKindDef {
         /// The key colour.
         key: u8,
     },
-    /// [`ObjectKind::KeyGate`].
+    /// [`ObjectKind::KeyGate`]: its type visited from above (its key's holders cross it).
     KeyGate {
         /// The key colour.
         key: u8,
@@ -329,6 +332,13 @@ pub(super) fn compile_object_types(
             reason,
         };
         let kind = compile_kind(&scope, &tables.index, &def.kind)?.map_err(invalid)?;
+        // Its key's holders cross a gate (ADV-VIS-005), so a walking hero also leaves its tile
+        // upward: the original's class 212 is on the "visitable from above" list (survey
+        // `E08-objects.md` §2.3), and the reachable-tiles query tests ADV-OBJ-004 on a path's
+        // first tile only.
+        if matches!(kind, ObjectKind::KeyGate { .. }) && !def.from_above {
+            return Err(invalid("a key gate is not visited from above"));
+        }
         tables.types.push(ObjectType {
             key: def.key.clone(),
             name: def.name.clone(),

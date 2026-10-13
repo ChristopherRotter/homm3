@@ -1,7 +1,8 @@
 //! The adventure context's commands, their errors, outcomes and events (ADR-0017 point 1:
 //! `h3-game` checks turn and phase, then passes a player's command here with the player as actor;
 //! E08 T7b: `MoveHero`; T13b: its visits and their outcome, ADR-0017 point 10; T14b: the
-//! Cartographer's offer; T15a: the observatories, the keys and the border guard's offer). A
+//! Cartographer's offer; T15a: the observatories, the keys and the border guard's offer; T15b: the
+//! border gates). A
 //! rejected command changes nothing and emits nothing. An event carries the players who may see
 //! it, resolved when it is emitted (ADR-0016 point 6; E08 T8a).
 
@@ -21,10 +22,11 @@ pub enum AdventureCommand {
     /// tile a neighbour of the one before (the first of the hero's), each step paid from the
     /// points left. The path is validated step by step and rejected whole: a step the hero
     /// cannot pay is a rejection, not the original's stop that wastes the rest (survey §1.3).
-    /// Its last step may visit an object (ADV-OBJ-003): a step toward a pickup's or a border
-    /// guard's visitable tile visits it from the tile before, which the hero does not leave (E08
-    /// T13b, T15a); a step onto a Cartographer's, an observatory's or a Keymaster's tent's enters
-    /// it (T14a, T15a).
+    /// Its last step may visit an object (ADV-OBJ-003): a step toward a pickup's, a border
+    /// guard's or a border gate's visitable tile visits it from the tile before, which the hero
+    /// does not leave (E08 T13b, T15a, T15b); a step onto a Cartographer's, an observatory's or a
+    /// Keymaster's tent's enters it (T14a, T15a). A border gate whose key the player holds is
+    /// crossed as any tile, anywhere on the path (ADV-VIS-005, T15b).
     MoveHero {
         /// The hero.
         hero: HeroId,
@@ -61,8 +63,8 @@ pub enum AdventureCommandError {
         /// Why.
         error: StandError,
     },
-    /// A step's tile is one an object is visited from whose visit is not built: a blocker's, or
-    /// a border gate's (E08 T15b builds it; ADR-0016 point 4).
+    /// A step's tile is one an object is visited from whose visit is not built: a blocker's (a
+    /// class without a type, ADR-0016 point 4; every typed kind's visit is built since E08 T15b).
     Visit {
         /// The step.
         step: usize,
