@@ -85,6 +85,8 @@ fn batch_2b_r3_the_fire_shield_reflects_a_fifth_of_the_first_stage() {
             obstacles: vec![],
             heroes: [&aine, &sephinroth].map(|d| Some(derive_battle_hero(d, &r).unwrap())),
             terrain: None,
+            battlefield: None,
+            anti_magic: false,
             war_machines: [vec![], vec![]],
             formations: [Formation::Loose; 2],
             funds: [0; 2],

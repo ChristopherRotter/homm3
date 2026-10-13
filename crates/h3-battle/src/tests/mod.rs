@@ -3,6 +3,7 @@
 
 mod abilities;
 mod actions;
+mod battlefields;
 mod casters;
 mod commands;
 mod control;

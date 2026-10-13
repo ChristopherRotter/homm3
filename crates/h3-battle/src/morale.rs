@@ -16,7 +16,7 @@ use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use h3_content::{Affects, CreatureFlag, CreatureTypeId, NO_LUCK_WITHOUT_HERO};
-use h3_content_battle::{Ability, AuraTarget, BattleRuleset, MAX_AURA_VALUES};
+use h3_content_battle::{Ability, AuraTarget, BattleRuleset, Battlefield, MAX_AURA_VALUES};
 use h3_contracts::{BattleEffect, BattleHero, BattleSide};
 use h3_kernel::modifier::evaluate;
 use h3_kernel::{
@@ -284,25 +284,28 @@ pub(crate) fn setup(
     materialize(state, ruleset);
 }
 
-/// Recomputes every stack's morale and luck: the changes on its side and those of its timed
-/// effects (Mirth, Sorrow, Fortune, Misfortune; BAT-MAG-011) summed without a clamp, as the
-/// original's stack routines ask the base routines not to clamp (0x43DF20, 0x43E000), then the
-/// side's caps and its creature's minimums, then clamped once to the range the rolls read:
-/// morale to `[-bad levels, good levels]`, luck to `[0, good levels]` (there is no bad luck
-/// before HotA). The original clamps where it uses the value (the rolls, the stack window); the
-/// stack's fields hold the clamped value, which the rolls and the observation read. Creatures
-/// with flag `no_morale` have morale 0 (BAT-MOR-001, BAT-LCK-001).
-// rule: BAT-MOR-001, BAT-LCK-001, BAT-MAG-011
+/// Recomputes every stack's morale and luck: the changes on its side, those of its timed
+/// effects (Mirth, Sorrow, Fortune, Misfortune; BAT-MAG-011) and the battlefield's for its
+/// creature's faction (BAT-TER-003) summed without a clamp, as the original's stack routines ask
+/// the base routines not to clamp (0x43DF20, 0x43E000), then the side's caps and its creature's
+/// minimums, then clamped once to the range the rolls read: morale to `[-bad levels, good
+/// levels]`, luck to `[0, good levels]` (there is no bad luck before HotA). The original clamps
+/// where it uses the value (the rolls, the stack window); the stack's fields hold the clamped
+/// value, which the rolls and the observation read. Creatures with flag `no_morale` have morale
+/// 0 (BAT-MOR-001, BAT-LCK-001); on a battlefield with `no_morale` or `no_luck` every stack has
+/// 0 (BAT-TER-003: the original's 0x43E00F and 0x43DF2B return 0 before anything else).
+// rule: BAT-MOR-001, BAT-LCK-001, BAT-MAG-011, BAT-TER-003
 pub(crate) fn materialize(state: &mut BattleState, ruleset: &BattleRuleset) {
     let params = ruleset.battle();
     let pool = state.modifiers;
+    let field = state.battlefield.and_then(|b| ruleset.battlefield(b));
     let good_morale = i32::from(params.good_morale.levels());
     let bad_morale = i32::from(params.bad_morale.levels());
     let good_luck = i32::from(params.good_luck.levels());
     for s in state.stacks.as_mut_slice() {
         let bearer = Bearer::Side(s.side);
         let abilities = ruleset.abilities(s.creature);
-        let value = |stat: Stat, spells: i8| {
+        let value = |stat: Stat, own: i32| {
             let minimum = abilities.iter().filter_map(move |a| match (stat, *a) {
                 (Stat::Morale, Ability::MinimumMorale { value })
                 | (Stat::Luck, Ability::MinimumLuck { value }) => {
@@ -314,17 +317,29 @@ pub(crate) fn materialize(state: &mut BattleState, ruleset: &BattleRuleset) {
                 .iter()
                 .filter(move |m| m.stat == stat && m.bearer == bearer)
                 .map(|m| (m.op, m.amount));
-            evaluate(i32::from(spells), mods.chain(minimum))
+            evaluate(own, mods.chain(minimum))
         };
-        let morale = value(Stat::Morale, s.spells.morale).clamp(-bad_morale, good_morale);
-        let luck = value(Stat::Luck, s.spells.luck).clamp(0, good_luck);
+        let faction = ruleset.creature_info(s.creature).and_then(|i| i.faction);
+        let (field_morale, field_luck) = field.map_or((0, 0), |f| {
+            (
+                Battlefield::change(&f.morale, faction),
+                Battlefield::change(&f.luck, faction),
+            )
+        });
+        let morale = value(Stat::Morale, i32::from(s.spells.morale) + field_morale)
+            .clamp(-bad_morale, good_morale);
+        let luck = value(Stat::Luck, i32::from(s.spells.luck) + field_luck).clamp(0, good_luck);
         // Both are within ±MAX_ROLL_LEVELS.
-        s.morale = if s.has(StackTraits::NO_MORALE) {
+        s.morale = if s.has(StackTraits::NO_MORALE) || field.is_some_and(|f| f.no_morale) {
             0
         } else {
             i8::try_from(morale).unwrap_or(0)
         };
-        s.luck = i8::try_from(luck).unwrap_or(0);
+        s.luck = if field.is_some_and(|f| f.no_luck) {
+            0
+        } else {
+            i8::try_from(luck).unwrap_or(0)
+        };
     }
 }
 

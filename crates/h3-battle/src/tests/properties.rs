@@ -540,6 +540,8 @@ fn make_setup(
             2 => r.terrain_by_key("t:lava"),
             _ => None,
         },
+        battlefield: None,
+        anti_magic: false,
         war_machines,
         funds: [48, 56].map(|bit| u32::try_from((machines >> bit) & 0xff).unwrap() * 100),
         formations: [6, 7].map(|bit| {
@@ -1380,7 +1382,11 @@ proptest! {
                 m.defences.spells.insert(SpellId::from_raw(u16::from(level)));
                 m.negates = !m.negates;
             }
-            twin.limits = crate::magic::MagicLimits::of(&twin.heroes);
+            twin.limits = crate::magic::MagicLimits::of(
+                &twin.heroes,
+                twin.battlefield.and_then(|b| r.battlefield(b)),
+                twin.anti_magic,
+            );
             let mut other = observe(&twin, &r, viewer);
             prop_assert!(commander == Some(viewer) || other.cast_candidates == [0; crate::STACK_CAPACITY]);
             other.cast_candidates = seen.cast_candidates;

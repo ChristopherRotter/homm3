@@ -136,7 +136,7 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   not drawn yet, a situation set with recorded differences, unattended in the sandbox.
 - The window, input and audio evaluation and the user's choice (and licence step, if any).
 - The scene model: messages to animations at the original's timing (`CRANIM.TXT`, the
-  executable), moves (a walk hex by hex: CLT-Q1, built 2026-10-13, wire v28), strikes, shots
+  executable), moves (a walk hex by hex: CLT-Q1, built 2026-10-13, wire v29), strikes, shots
   and projectiles, deaths, waits and defends; a frame at any time, headless.
 - The window adapter playing a record at the original's frame rate.
 - **Exit:** a record of a full battle plays in the window and renders headless frame by frame.

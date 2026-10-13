@@ -70,6 +70,8 @@ pub enum SetupError {
     },
     /// The battlefield's terrain is not part of the ruleset (BAT-TER-001).
     UnknownTerrain,
+    /// The special battlefield is not a battlefield of the ruleset (BAT-TER-002).
+    UnknownBattlefield,
     /// A side's hero cannot be used (BAT-HER-001).
     InvalidHero {
         /// The side.
@@ -181,6 +183,7 @@ impl fmt::Display for SetupError {
                 write!(f, "{side:?} war machine is not supported or listed twice")
             }
             Self::UnknownTerrain => f.write_str("the terrain is not part of the ruleset"),
+            Self::UnknownBattlefield => f.write_str("the battlefield is not part of the ruleset"),
             Self::InvalidHero { side, error } => write!(f, "{side:?} hero: {error}"),
         }
     }
@@ -381,6 +384,10 @@ mod tests {
         assert_eq!(
             SetupError::UnknownTerrain.to_string(),
             "the terrain is not part of the ruleset"
+        );
+        assert_eq!(
+            SetupError::UnknownBattlefield.to_string(),
+            "the battlefield is not part of the ruleset"
         );
         assert_eq!(
             SetupError::InvalidHero {

@@ -87,6 +87,7 @@ pub(crate) const fn creature_test(spell: SpellRef<'_>, hit_points: u64) -> Raise
 /// then the sacrifice's own of the stack found; else its own alone, without hit points
 /// (BAT-MAG-036).
 pub(crate) fn test_for<'r>(
+    state: &BattleState,
     hero: &HeroRecord,
     ruleset: &'r BattleRuleset,
     ((id, spell), at): (SpellRef<'r>, u8),
@@ -104,7 +105,7 @@ pub(crate) fn test_for<'r>(
         (true, Some((t, s))) => RaiseTest {
             spell: (t, s),
             hit_points: Some((
-                base_value(hero, s, mastery(hero, t)),
+                base_value(hero, s, mastery(state, ruleset, hero, t)),
                 hero.magic.bonuses.spell(t),
             )),
             own: Some((id, spell)),

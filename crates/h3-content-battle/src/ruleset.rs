@@ -20,13 +20,14 @@ use h3_content::{
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
 use crate::ability::{self, Ability, AbilityDef, CompiledAbility};
+use crate::battlefield::{self, Battlefield, BattlefieldId};
 use crate::error::BattleCompileError;
 use crate::pack::{BattleCreaturePatch, BattlePack, BattleParamsDef, BattleSpellDef};
 use crate::params::{self, BattleParams, MAX_AURA_VALUES, SurrenderParams};
 use crate::spell::{SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange};
 
 /// Version of the battle part's hash encoding. Bump when the encoding below changes.
-pub const BATTLE_RULESET_HASH_VERSION: u32 = 1;
+pub const BATTLE_RULESET_HASH_VERSION: u32 = 2;
 
 /// Most spells with a summon effect in a ruleset (the battle keeps a side's stack of each
 /// creature its hero can summon from the battle's start, E04b T6b; four in the original).
@@ -66,6 +67,8 @@ pub struct ObstacleType {
     pub key: ContentKey,
     /// Terrains it can appear on.
     pub terrains: Vec<TerrainId>,
+    /// Special battlefields with their own obstacles it can appear on (E04c).
+    pub battlefields: Vec<BattlefieldId>,
     /// Usual obstacles: free hexes needed to the right of the anchor.
     pub width: u8,
     /// Usual obstacles: rows needed above the anchor.
@@ -154,6 +157,7 @@ impl Default for SpellRow {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BattleRuleset {
     core: Arc<Ruleset>,
+    battlefields: Vec<Battlefield>,
     obstacles: Vec<ObstacleType>,
     creatures: Vec<CreatureType>,
     abilities: Vec<Vec<CompiledAbility>>,
@@ -168,6 +172,7 @@ type Row = (CreatureType, Vec<CompiledAbility>);
 
 /// The tables being filled while the packs compile, by core handle.
 struct Tables<'a> {
+    battlefields: Vec<Battlefield>,
     obstacles: Vec<ObstacleType>,
     obstacle_index: BTreeMap<String, Handle<ObstacleType>>,
     creatures: Vec<Option<Row>>,
@@ -208,6 +213,17 @@ impl Scope<'_> {
 
     fn spell(&self, key: &ContentKey) -> Result<SpellId, CompileError> {
         self.resolve(key, "spell", |k| self.core.spell_by_key(k))
+    }
+
+    /// A battlefield of the closure, among those compiled so far (a pack's own come first).
+    fn battlefield(
+        &self,
+        key: &ContentKey,
+        compiled: &[Battlefield],
+    ) -> Result<BattlefieldId, CompileError> {
+        self.resolve(key, "battlefield", |k| {
+            find(compiled.iter().map(|b| &b.key), k)
+        })
     }
 
     fn school(&self, key: &ContentKey) -> Result<SchoolId, CompileError> {
@@ -266,6 +282,7 @@ impl BattleRuleset {
     ) -> Result<Self, BattleCompileError> {
         let order = load_order(&core, packs)?;
         let mut tables = Tables {
+            battlefields: Vec::new(),
             obstacles: Vec::new(),
             obstacle_index: BTreeMap::new(),
             creatures: (0..core.creature_count()).map(|_| None).collect(),
@@ -347,6 +364,9 @@ impl BattleRuleset {
         for o in &tables.obstacles {
             validate_obstacle(o, &battle)?;
         }
+        for b in &tables.battlefields {
+            battlefield::validate(b, &battle)?;
+        }
         // Battle modifier pools are sized by the number of distinct aura values (ADR-0012 §3).
         let auras: BTreeSet<u32> = abilities
             .iter()
@@ -358,6 +378,7 @@ impl BattleRuleset {
         }
         let mut part = Self {
             core,
+            battlefields: tables.battlefields,
             obstacles: tables.obstacles,
             creatures,
             abilities,
@@ -408,6 +429,21 @@ impl BattleRuleset {
         self.spells.get(id.index())
     }
 
+    /// Special battlefields, in load order (a [`BattlefieldId`] indexes this slice).
+    pub fn battlefields(&self) -> &[Battlefield] {
+        &self.battlefields
+    }
+
+    /// A special battlefield.
+    pub fn battlefield(&self, id: BattlefieldId) -> Option<&Battlefield> {
+        self.battlefields.get(id.index())
+    }
+
+    /// The special battlefield with key `key` (`pack:name`).
+    pub fn battlefield_by_key(&self, key: &str) -> Option<BattlefieldId> {
+        find(self.battlefields.iter().map(|b| &b.key), key)
+    }
+
     /// Obstacle types, in load order (an [`ObstacleTypeId`] indexes this slice).
     pub fn obstacles(&self) -> &[ObstacleType] {
         &self.obstacles
@@ -441,9 +477,9 @@ impl Deref for BattleRuleset {
 }
 
 impl CanonicalHash for BattleRuleset {
-    /// Encoding v1 (R01, the content split; the battle data the core's v42 encoded): version;
-    /// obstacles (key, terrains as length + handles, width, height, blocked pairs, absolute
-    /// flag); creatures in handle order (attack, defense, damage min and max, hit points, shots,
+    /// Encoding v2 (E04c T2b; v1: R01, the content split, without battlefields): version; the
+    /// special battlefields (`Battlefield`'s encoding); obstacles (key, terrains as length +
+    /// handles, battlefields as length + handles, width, height, blocked pairs, absolute flag); creatures in handle order (attack, defense, damage min and max, hit points, shots,
     /// casts, the abilities as length + each ability's encoding); the battle parameters in field
     /// order (each roll table as length + all 8 entries, the war machine positions, the full
     /// formation tables loose then tight, the tactics zone widths, the surrender as presence
@@ -453,12 +489,20 @@ impl CanonicalHash for BattleRuleset {
     /// part of it: replays record both hashes.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(BATTLE_RULESET_HASH_VERSION);
+        h.write_len(self.battlefields.len());
+        for b in &self.battlefields {
+            b.hash_into(h);
+        }
         h.write_len(self.obstacles.len());
         for o in &self.obstacles {
             o.key.as_str().hash_into(h);
             h.write_len(o.terrains.len());
             for t in &o.terrains {
                 t.hash_into(h);
+            }
+            h.write_len(o.battlefields.len());
+            for b in &o.battlefields {
+                b.hash_into(h);
             }
             h.write_u8(o.width);
             h.write_u8(o.height);
@@ -586,6 +630,20 @@ fn compile_pack<'a>(
     tables: &mut Tables<'a>,
 ) -> Result<(), BattleCompileError> {
     let id = scope.pack;
+    for def in &pack.battlefields {
+        check_namespace(&def.key, id)?;
+        if find::<Battlefield>(tables.battlefields.iter().map(|b| &b.key), def.key.as_str())
+            .is_some()
+        {
+            return Err(CompileError::DuplicateKey(String::from(def.key.as_str())).into());
+        }
+        let b = battlefield::compile(
+            def,
+            |k| scope.resolve(k, "faction", |k| scope.core.faction_by_key(k)),
+            |k| scope.school(k),
+        )?;
+        tables.battlefields.push(b);
+    }
     for def in &pack.obstacles {
         check_namespace(&def.key, id)?;
         let handle = Handle::<ObstacleType>::from_index(tables.obstacles.len())
@@ -602,9 +660,15 @@ fn compile_pack<'a>(
             .iter()
             .map(|t| scope.resolve(t, "terrain", |k| scope.core.terrain_by_key(k)))
             .collect::<Result<_, _>>()?;
+        let battlefields = def
+            .battlefields
+            .iter()
+            .map(|b| scope.battlefield(b, &tables.battlefields))
+            .collect::<Result<_, _>>()?;
         tables.obstacles.push(ObstacleType {
             key: def.key.clone(),
             terrains,
+            battlefields,
             width: def.width,
             height: def.height,
             blocked: def.blocked.clone(),
@@ -975,7 +1039,8 @@ fn validate_raised(
     Ok(())
 }
 
-/// Checks an obstacle type against the battlefield: at least one terrain and one blocked hex;
+/// Checks an obstacle type against the battlefield: at least one terrain or special battlefield
+/// and one blocked hex;
 /// usual obstacles need a width and height of at least 1, blocked hexes no lower than the
 /// anchor (`dy <= 0`) and at most [`MAX_USUAL_OBSTACLE_HEXES`] of them; absolute obstacles block
 /// standable hexes of the field.
@@ -986,8 +1051,8 @@ fn validate_obstacle(o: &ObstacleType, battle: &BattleParams) -> Result<(), Batt
             reason,
         })
     };
-    if o.terrains.is_empty() || o.blocked.is_empty() {
-        return invalid("an obstacle needs at least one terrain and one blocked hex");
+    if (o.terrains.is_empty() && o.battlefields.is_empty()) || o.blocked.is_empty() {
+        return invalid("an obstacle needs a terrain or a battlefield and one blocked hex");
     }
     let f = battle.field;
     if o.absolute {

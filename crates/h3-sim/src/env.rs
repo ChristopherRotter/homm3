@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use h3_battle::{
     BattleState, CommandError, LegalCommands, NoopSink, Observation, SetupError, apply,
-    generate_obstacles, observe,
+    generate_setup_obstacles, observe,
 };
 use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleResult, BattleSetup, BattleSide};
@@ -90,7 +90,8 @@ impl BattleEnv {
     }
 
     /// Like [`new`](BattleEnv::new), but every episode (this one and each [`reset`](Self::reset))
-    /// gets obstacles generated for the setup's terrain from stream `OBSTACLES` of its seed, as
+    /// gets obstacles generated for the setup's terrain and battlefield from stream `OBSTACLES` of
+    /// its seed, as
     /// `h3 run` does for a scenario with `random_obstacles` (BAT-GEO-004); the setup's own
     /// obstacles are replaced. Without a terrain the setup is used as it is.
     pub fn with_random_obstacles(
@@ -129,10 +130,10 @@ impl BattleEnv {
         seed: u64,
     ) -> Result<BattleState, SetupError> {
         match (random_obstacles, setup.terrain) {
-            (true, Some(terrain)) => {
+            (true, Some(_)) => {
                 let mut rng = Rng::for_stream(seed, StreamId::OBSTACLES);
                 let episode = BattleSetup {
-                    obstacles: generate_obstacles(ruleset, terrain, &mut rng),
+                    obstacles: generate_setup_obstacles(ruleset, setup, &mut rng),
                     ..setup.clone()
                 };
                 BattleState::new(ruleset, &episode, seed)
@@ -310,7 +311,7 @@ mod tests {
         let (r, setup) = (Arc::new(r), Arc::new(setup));
         let expected = |seed| {
             let mut rng = Rng::for_stream(seed, StreamId::OBSTACLES);
-            let pieces = generate_obstacles(&r, terrain, &mut rng);
+            let pieces = h3_battle::generate_obstacles(&r, terrain, &mut rng);
             let mut set = h3_battle::HexSet::new();
             pieces
                 .iter()

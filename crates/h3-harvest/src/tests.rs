@@ -2,7 +2,10 @@
 //! `cargo xtask verify --with-original-data`).
 
 use super::*;
-use h3_formats::exe::{HeroRecord, SkillValue, SpecialtyRecord};
+use h3_formats::exe::{
+    AbsoluteObstacleRecord, HeroRecord, ObstacleData, ObstacleTypeRecord, SkillValue,
+    SpecialtyRecord,
+};
 
 fn table(rows: &[Vec<String>]) -> TextTable {
     TextTable {
@@ -95,8 +98,39 @@ fn inputs() -> Inputs {
         ]),
         terrains: single(&["Mud", "Ice"]),
         hero_data: hero_data(),
+        obstacles: obstacles(),
         hero_tables: hero_tables(),
         artifact_tables: artifact_tables(),
+    }
+}
+
+/// The executable's obstacle tables: a usual type on Mud and the field 0 battlefield (the
+/// offsets 0 and −16: the anchor and the hex up and right), one on the field 1 battlefield of
+/// `sod` only, an absolute one on Mud and Ice (hex 73: column 5, row 4), and two boats' hexes.
+fn obstacles() -> ObstacleData {
+    ObstacleData {
+        types: vec![
+            ObstacleTypeRecord {
+                terrains: 0b01,
+                fields: 0b01,
+                height: 1,
+                width: 2,
+                blocked: vec![0, -16],
+            },
+            ObstacleTypeRecord {
+                terrains: 0,
+                fields: 0b10,
+                height: 2,
+                width: 3,
+                blocked: vec![1, -33],
+            },
+        ],
+        absolute: vec![AbsoluteObstacleRecord {
+            terrains: 0b11,
+            fields: 0,
+            blocked: vec![73],
+        }],
+        boats: vec![40, 41],
     }
 }
 
@@ -421,12 +455,31 @@ sources = ["s"]
 harvest = ["Unit 148"]
 sources = ["s"]
 
-[obstacles]
+[[battlefield]]
+id = "glade"
+pack = "base"
+field = 0
+no_morale = true
+no_luck = true
+no_native = true
+max_spell_level = 1
+no_creature_casts = true
+expert_other_casts = true
+morale = [{ towns = ["Alpha"], amount = 1 }]
 sources = ["s"]
-list = [
-    { id = 0, terrains = ["Mud"], width = 2, height = 1, blocked = [[0, 0], [1, -1]] },
-    { id = 7, terrains = ["Mud", "Ice"], absolute = true, blocked = [[5, 4]] },
-]
+
+[[battlefield]]
+id = "raft"
+pack = "base"
+boats = true
+sources = ["s"]
+
+[[battlefield]]
+id = "mire"
+pack = "sod"
+field = 1
+luck = [{ towns = ["Alpha", "Gamma"], amount = 2 }]
+sources = ["s"]
 
 [heroes]
 upgrades = [["Unit 26", "Unit 30"]]
@@ -585,9 +638,34 @@ fn harvests_three_packs_that_compile_and_are_deterministic() {
     let ice = r.terrain_by_key("base:ice").unwrap();
     let natives: Vec<_> = r.factions().iter().map(|f| f.native_terrain).collect();
     assert_eq!(natives, [Some(mud), None, Some(ice)]);
-    assert_eq!(r.obstacles().len(), 2);
+    // Obstacle types from the executable's tables, base's first (E04c T2b).
+    let keys: Vec<&str> = r.obstacles().iter().map(|o| o.key.as_str()).collect();
+    assert_eq!(
+        keys,
+        ["base:obstacle_0", "base:obstacle_100", "sod:obstacle_1"]
+    );
     assert_eq!(r.obstacles()[0].blocked, vec![(0, 0), (1, -1)]);
+    assert_eq!(r.obstacles()[0].terrains, [mud]);
     assert!(r.obstacles()[1].absolute);
+    assert_eq!(r.obstacles()[1].blocked, vec![(5, 4)]);
+    assert_eq!(r.obstacles()[1].terrains, [mud, ice]);
+    assert_eq!(r.obstacles()[2].blocked, vec![(1, 0), (1, -2)]);
+    // Battlefields from the gap-fill file, with the obstacles of their field (E04c T2b).
+    let keys: Vec<&str> = r.battlefields().iter().map(|b| b.key.as_str()).collect();
+    assert_eq!(keys, ["base:glade", "base:raft", "sod:mire"]);
+    let glade = r.battlefield_by_key("base:glade").unwrap();
+    assert_eq!(r.obstacles()[0].battlefields, [glade]);
+    let g = r.battlefield(glade).unwrap();
+    assert!(g.own_obstacles && g.no_morale && g.no_luck && g.no_native && g.no_creature_casts);
+    assert!(g.expert_other_casts && g.max_spell_level == 1 && g.morale[0].amount == 1);
+    assert_eq!(r.battlefields()[1].blocked, [40, 41]);
+    assert!(!r.battlefields()[1].own_obstacles);
+    let mire = &r.battlefields()[2];
+    assert_eq!(mire.luck[0].factions.len(), 2);
+    assert!(
+        sod.battle
+            .contains("factions = [\"base:alpha\", \"ab:gamma\"]")
+    );
     // AB creatures live in `ab`, RoE creatures in `base`.
     assert!(r.creature_by_key("ab:unit_20").is_some());
     assert!(r.creature_by_key("ab:unit_30").is_some());
@@ -798,9 +876,29 @@ fn inconsistencies_are_errors() {
             "native terrain of `Alpha` twice",
         ),
         (
-            "terrains = [\"Mud\"], width",
-            "terrains = [\"Sand\"], width",
-            "unknown terrain `Sand`",
+            "towns = [\"Alpha\"], amount = 1",
+            "towns = [\"Delta\"], amount = 1",
+            "unknown town `Delta`",
+        ),
+        (
+            "pack = \"sod\"",
+            "pack = \"ab\"",
+            "battlefield `mire` in pack `ab`",
+        ),
+        (
+            "id = \"raft\"",
+            "id = \"glade\"",
+            "battlefield `glade` twice",
+        ),
+        (
+            "field = 1",
+            "field = 0",
+            "two battlefields with field Some(0)",
+        ),
+        (
+            "field = 1",
+            "field = 5",
+            "field bit 1 without a battlefield",
         ),
     ] {
         let g = GapFill::parse(&GAP.replace(from, to)).unwrap();
@@ -809,6 +907,18 @@ fn inconsistencies_are_errors() {
             "{error}"
         );
     }
+    // Obstacle tables the packs cannot express (E04c T2b).
+    let mut i = inputs();
+    i.obstacles.types[0].terrains = 0b100;
+    let error = harvest(&i, &gap()).unwrap_err();
+    assert!(error.contains("terrain bit 2 without a terrain"), "{error}");
+    let mut i = inputs();
+    i.obstacles.types[1].terrains = 0b1;
+    let error = harvest(&i, &gap()).unwrap_err();
+    assert!(
+        error.contains("on a sod battlefield and on base"),
+        "{error}"
+    );
 }
 
 #[test]

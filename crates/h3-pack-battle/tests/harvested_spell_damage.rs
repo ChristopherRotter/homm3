@@ -107,6 +107,8 @@ fn led(
         obstacles: vec![],
         heroes: [Some(hero), None],
         terrain: None,
+        battlefield: None,
+        anti_magic: false,
         war_machines: [
             vec![],
             machines
@@ -343,6 +345,8 @@ fn batch_2a_r1_r2_chain_lightning_by_the_screen_distance_and_the_army_slot() {
             obstacles: vec![],
             heroes: [&caster, &tactician].map(|d| Some(derive_battle_hero(d, &r).unwrap())),
             terrain: None,
+            battlefield: None,
+            anti_magic: false,
             war_machines: [vec![], vec![]],
             formations: [Formation::Loose; 2],
             funds: [0; 2],

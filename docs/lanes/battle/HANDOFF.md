@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 1** (BAT-Q37, 2026-10-13): **T1 done** on `battle/e04c-t1`: the code reading (`installation.md` §7.26), the survey `E04c-battlefields.md`, the ADR draft `adr-drafts/battlefields.md`, the epic file. **Waiting for the user's review (BAT-Q38)**; then T2 (the epic's T2: the seam in a `shared/` pull request first).
-- **Merged:** #162 (the Faerie Dragon's two readings, BAT-QUIRK-1 retired), #156, #150, R01. **E04b is closed** (2026-10-12).
-- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
-- **Versions:** battle owns state hash v44, battle part hash v1, replay format v24, action encoding v12, C ABI v18, observation encoding v14; shared: core ruleset hash v43, pack format v35. Next ids: BAT-Q39, BAT-QUIRK-22, BAT-STUB-2, BAT-TER-002.
+- **E04c increment 1** (BAT-Q37, 2026-10-13): T1 merged (#164); BAT-Q38 answered (ADR-0022; D-1, D-2 as the code; S-28 a quirk candidate). **T2 in two `cross-lane` pull requests:** #170 `shared/battlefield-seam` (merge first), then #171 `battle/e04c-t2`. Then the increment's checkpoint and the next cut (T3 needs special ground objects in the `.h3m` writer; sieges from T4; or CLT-Q1, queued).
+- **Merged:** #162, #156, #150, R01. **E04b is closed** (2026-10-12).
+- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later; T3's experiments (D-1 with S-28, D-2, D-4).
+- **Versions** (T2b): battle owns state hash v45, battle part hash v2, replay format v25, action encoding v12, C ABI v19, observation encoding v15; shared: core ruleset hash v43, pack format v36, protocol v28 (T2b's `cross-lane`, after the server's v27). Next ids: BAT-Q39, BAT-QUIRK-22, BAT-STUB-2, BAT-TER-007.
 - **Ownership:** `lanes.toml`; a seam change is its own `shared/` pull request, merged first.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; the user plays experiment maps in SoD with plain HD and commits the results.
 
@@ -49,7 +49,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 **Process**
 - `xtask` takes the workspace root from its build: never share a target directory between worktrees (two workers' checks read each other's tree, T11b).
-- The user merges with merge commits; after a rebase-merge, rebase a stacked branch with `git rebase --onto origin/master <old base head>` and push with a lease.
+- The user merges with merge commits or squashes (#164: merge master into a stacked branch, keep its side of its own files); after a rebase-merge, `git rebase --onto origin/master <old base head>`. Fetch master again before opening a pull request that bumps a shared version (#167 took protocol v27).
 
 **Experiments in the original game**
 - The installation is read-only: maps go to the gitignored `experiments/out/`, the user copies them. Results hold for SoD; observation sources name the setup.
@@ -57,9 +57,9 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-### 2026-10-13 (fifty-sixth) — E04c refined; T1, the battlefields read and surveyed
+### 2026-10-13 (fifty-sixth) — E04c refined; T1 and T2, the battlefields
 
-The user's answers (BAT-Q37); the setup, morale, luck, mastery and obstacle readings (the executable's obstacle tables equal VCMI's); the ADR draft; stopped for BAT-Q38. Detail: the pull request.
+The user's answers (BAT-Q37); T1 (the readings, the survey, the ADR draft; #164); T2 built on the draft while the user was away, then adjusted to BAT-Q38 (ADR-0022, S-28); protocol v28 after master's v27. Detail: `docs/epics/E04c-log.md`.
 
 ### 2026-10-13 (fifty-fifth) — the wiki checks; the shot's distance; the user's answers
 
