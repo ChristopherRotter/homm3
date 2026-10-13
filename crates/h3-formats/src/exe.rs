@@ -837,9 +837,10 @@ mod tests {
     /// list) and three boats' hexes, from RVA 0x1000.
     fn obstacle_payload() -> (Vec<u8>, ObstacleTables) {
         let mut p = Vec::new();
-        for (terrains, fields, height, width, hexes) in
-            [(0x63u16, 1u16, 2u8, 3u8, &[0i8, 1, 2][..]), (0, 0x200, 2, 4, &[0, 1, -14, -15])]
-        {
+        for (terrains, fields, height, width, hexes) in [
+            (0x63u16, 1u16, 2u8, 3u8, &[0i8, 1, 2][..]),
+            (0, 0x200, 2, 4, &[0, 1, -14, -15]),
+        ] {
             let mut r = vec![0u8; OBSTACLE_TYPE_SIZE];
             r[0..2].copy_from_slice(&terrains.to_le_bytes());
             r[2..4].copy_from_slice(&fields.to_le_bytes());
@@ -914,10 +915,22 @@ mod tests {
         let img = build_test_image(1, &bad);
         assert!(obstacle_data_at(&PeImage::parse(&img).unwrap(), &t).is_err());
         for t in [
-            ObstacleTables { types_va: 0x10, ..t },
-            ObstacleTables { absolute_va: 0x10, ..t },
-            ObstacleTables { boats_va: 0x10, ..t },
-            ObstacleTables { type_count: 99, ..t },
+            ObstacleTables {
+                types_va: 0x10,
+                ..t
+            },
+            ObstacleTables {
+                absolute_va: 0x10,
+                ..t
+            },
+            ObstacleTables {
+                boats_va: 0x10,
+                ..t
+            },
+            ObstacleTables {
+                type_count: 99,
+                ..t
+            },
         ] {
             assert!(obstacle_data_at(&pe, &t).is_err());
         }
