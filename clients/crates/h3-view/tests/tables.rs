@@ -30,7 +30,7 @@ const SPECIAL: [&str; 12] = [
     "ship",
 ];
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 struct Pack {
     #[serde(default)]
     creature: Vec<Keyed>,
@@ -86,8 +86,17 @@ fn every_pack_key_has_an_entry() {
     let mut defined = BTreeSet::new();
     let mut missing = Vec::new();
     for id in PACKS {
-        let text = fs::read_to_string(root().join(format!("packs/{id}/pack.toml"))).unwrap();
-        let pack: Pack = toml::from_str(&text).unwrap();
+        // The keys: creatures and terrains in core.toml, obstacles in battle.toml.
+        let read = |file: &str| -> Pack {
+            let path = root().join(format!("packs/{id}/{file}"));
+            fs::read_to_string(path).map_or(Pack::default(), |t| toml::from_str(&t).unwrap())
+        };
+        let (core, battle) = (read("core.toml"), read("battle.toml"));
+        let pack = Pack {
+            creature: core.creature,
+            terrain: core.terrain,
+            obstacle: battle.obstacle,
+        };
         let lists = [
             (&pack.creature, &creatures),
             (&pack.terrain, &fields),
