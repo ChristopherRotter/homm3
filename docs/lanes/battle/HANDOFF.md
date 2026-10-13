@@ -4,12 +4,11 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 1** (BAT-Q37, 2026-10-13): T1 merged (#164); BAT-Q38 answered (ADR-0022; D-1, D-2 as the code; S-28 a quirk candidate). **T2 in two `cross-lane` pull requests:** #170 `shared/battlefield-seam` (merge first), then #171 `battle/e04c-t2`. Then the increment's checkpoint and the next cut (T3 needs special ground objects in the `.h3m` writer; sieges from T4; or CLT-Q1, queued).
-- **Merged:** #162, #156, #150, R01. **E04b is closed** (2026-10-12).
-- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later; T3's experiments (D-1 with S-28, D-2, D-4).
-- **Versions** (T2b): battle owns state hash v45, battle part hash v2, replay format v25, action encoding v12, C ABI v19, observation encoding v15; shared: core ruleset hash v43, pack format v36, protocol v28 (T2b's `cross-lane`, after the server's v27). Next ids: BAT-Q39, BAT-QUIRK-22, BAT-STUB-2, BAT-TER-007.
-- **Ownership:** `lanes.toml`; a seam change is its own `shared/` pull request, merged first.
-- Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; the user plays experiment maps in SoD with plain HD and commits the results.
+- **E04c increment 2** (the user, 2026-10-13): T3 done on `battle/e04c-t3` (`cross-lane`: `h3-map`'s writer): batches 3a and 3b run by an agent on the capture harness; D-1, D-2, D-4 as the code, the defender's tile decides; BAT-Q39: S-28 not a quirk. Next: **T4**, the siege survey and seam, stopping for the user's review.
+- **Merged:** #164, #169 (CLT-Q1, wire 29), #170, #171. E04b closed 2026-10-12.
+- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
+- **Versions** (unchanged by T3): battle state hash v45, battle part hash v2, replay format v25, action encoding v12, C ABI v19, observation encoding v15; shared: core ruleset hash v43, pack format v36, protocol v29. Next ids: BAT-Q40, BAT-QUIRK-22, BAT-STUB-2, BAT-TER-007.
+- Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches are played by the user or an agent.
 
 ## Standing traps
 
@@ -53,9 +52,14 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 **Experiments in the original game**
 - The installation is read-only: maps go to the gitignored `experiments/out/`, the user copies them. Results hold for SoD; observation sources name the setup.
-- The `.h3m` writer knows dirt, grass and water tiles only (dirt: native to Necropolis only). A hero type once per map, at most eight heroes per player. Wandering monsters act on their own: use a Blue hero when the opponent must hold still. Check every move against the stack's speed (14 columns apart at the start). A single-alignment army has +1 morale: mix two where an extra turn would spoil a count. Every hero has a Catapult; the hero screen shows no army-alignment morale.
+- Agent runs (`experiments/agent/`): one map per encounter (`--only`); the random starting bonus may arm the hero: `opening.py` replays such a battle (for the global HANDOFF at the next shared change). A worktree runs the harness through a symlinked `original-data`.
+- The `.h3m` writer: land terrains, water patches (with the coast flag), roads, piles, special grounds (`[[map.ground]]`). A hero type once per map, at most eight heroes per player. Wandering monsters act on their own: use a Blue hero when the opponent must hold still. Check every move against the stack's speed (14 columns apart at the start). A single-alignment army has +1 morale: mix two where an extra turn would spoil a count. Every hero has a Catapult; the hero screen shows no army-alignment morale.
 
 ## Recent sessions
+
+### 2026-10-13 (fifty-seventh) — E04c T3: the battlefield experiments run by an agent
+
+The user's cut (T3, then T4). The writer's grounds and coast flag, `--only`; batches 3a and 3b run on the capture harness after batch 1a's R1 matched: D-1, D-2, D-4 as the code, the defender's tile; BAT-Q39 asked. Detail: `docs/epics/E04c-log.md`.
 
 ### 2026-10-13 (fifty-sixth) — E04c refined; T1 and T2, the battlefields
 
@@ -63,8 +67,4 @@ The user's answers (BAT-Q37); T1 (the readings, the survey, the ADR draft; #164)
 
 ### 2026-10-13 (fifty-fifth) — the wiki checks; the shot's distance; the user's answers
 
-The wiki checks and BAT-Q36 (#156); at its checkpoint the user's answers, built on a stacked branch: the Faerie Dragon's two readings, BAT-QUIRK-1 retired. Detail: the pull requests.
-
-### 2026-10-13 (fifty-fourth) — the rear hex as a two-hex stack's position
-
-The queued rear-hex change: encodings, replays, protocol and the battle baseline (−2.8 % Ir) renewed; master's games replayed. Detail: #150.
+The wiki checks, BAT-Q36 (#156); the Faerie Dragon's readings, BAT-QUIRK-1 retired (#162).

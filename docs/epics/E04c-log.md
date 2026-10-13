@@ -45,3 +45,30 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   `fix-optional`, to be investigated with T3's row); D-2 as the code with the alignment
   distinction noted (BAT-TER-003); the cut as proposed, both pull requests `cross-lane`. T1
   merged as #164 meanwhile. No code changed after the answers but the doc comments.
+
+## T3 — the battlefield experiments (2026-10-13, increment 2)
+
+- **The user's cut** (after #170, #171): T3's preparation, then T4; the writer's change from the
+  battle lane as `cross-lane`; the batch played by an agent on the client lane's capture harness
+  (the first battle batch so). CLT-Q1 had been built meanwhile by another session (#169, wire 29).
+- **Writer** (`h3-map`): `MapObject::Ground`, the special grounds (classes 21, 46, 222–231)
+  without a body, written first; the coast flag `0x40` on land next to water (every one of the 164
+  shipped maps has it on exactly those tiles; without it batch 3b's first run had no shore).
+  **Compiler** (`h3-experiment`): `[[map.ground]]` (picture, bottom-right tile; every tile of the
+  pictures is drawn, their `.msk`), water patches, `--only <id>` (one encounter's map in its place).
+- **The harness** (`experiments/agent/opening.py`): opens each map's battle under Wine and reads
+  the opening from memory: morale +0x4E8 and luck +0x4EC (0x469750 fills them at the start and
+  after every action), speed, native flag, the field +0x53C0, the terrain, the hero's worn
+  artifacts. Cross-check: batch 1a's R1 replayed (`crosscheck_r1.py`) gave the user's 105 to 630.
+  Trap: the single scenario's random starting bonus gives the hero an artifact a third of the
+  time (the first TM run read morale +2); such a battle is played again.
+- **3a** (predictions: the engine at 3a4d9ff, as the code): all as predicted. Cursed Ground:
+  morale and luck 0 for every stack, the army's −3 included, no native bonus (D-1; S-28 observed,
+  not a quirk: the user at BAT-Q39); the SoD pictures 223 and 230 fight on Cursed Ground and Magic
+  Plains (D-4); Clover Field +2 luck for Goblins, Gnolls, Pixies and none for Peasants (D-2, VCMI
+  refuted); Holy Ground +1 Castle, −1 Inferno; Magic Plains and Lucid Pools as fields 1 and 6.
+- **3b:** the defender's tile decides: a monster on Clover Field (TM) or next to water (SHM) gives
+  the field, the hero's tile (TH, SHH) does not. For the adventure lane (its queue's inbox).
+- **Docs:** BAT-TER-003 and BAT-TER-006 `verified`, BAT-TER-002 an observation; the survey's D-1,
+  D-2, D-4 settled and §4's tile; `installation.md` §7.26 (where morale and luck are stored);
+  `structs.toml` (the stack's luck, the hero's worn artifacts); `h3m.md` (the coast flag).

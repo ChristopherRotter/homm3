@@ -352,12 +352,18 @@ numeric  = "integer"
   retrieved  = "2026-10-13"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3a.md and 3b.md (SoD 4.0 Complete under Wine without HD, run by an agent on the capture harness, values read from memory at the battle's start, 2026-10-13): a battle on Cursed Ground, Magic Plains, Clover Field, Holy Ground and Lucid Pools is fought on the fields 2, 1, 5, 3 and 6 (the battle manager's +0x53C0), the SoD pictures of Cursed Ground (object 223) and Magic Plains (230) too (D-4); a Peasant next to water is attacked on the shore (field 0, sand); the defender's map tile decides both (3b TM, TH, SH, SHH, SHM)"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-TER-003"
 title    = "Morale and luck on a special battlefield"
 context  = "battle"
-status   = "implemented"
-summary  = "A battlefield's morale and luck changes reach a stack by its creature's faction (never a creature without one) and are part of the stack's own sum, after Mirth, Sorrow, Fortune and Misfortune and before the side's caps and the creatures' minimums (BAT-MOR-001, BAT-LCK-001); a battlefield with no_morale or no_luck sets every stack's morale or luck to 0, whatever its sources, minimums included. The original's: Holy Ground +1 morale for Castle, Rampart and Tower creatures and -1 for Inferno, Necropolis and Dungeon ones, Evil Fog the reverse, Clover Field +2 luck for Stronghold, Fortress and Conflux ones (the original's 'neutral town alignment': not VCMI's neutral alignment, which also takes in the creatures without a town; those get nothing here, dispute D-2, the user at BAT-Q38), Cursed Ground morale and luck 0 (so no stack freezes from bad morale there: dispute D-1, the user at BAT-Q38: the code stands; that the intent was only non-positive morale, and the lost negative morale a fix-optional bug, is quirk candidate S-28, to be investigated)."
+status   = "verified"
+summary  = "A battlefield's morale and luck changes reach a stack by its creature's faction (never a creature without one) and are part of the stack's own sum, after Mirth, Sorrow, Fortune and Misfortune and before the side's caps and the creatures' minimums (BAT-MOR-001, BAT-LCK-001); a battlefield with no_morale or no_luck sets every stack's morale or luck to 0, whatever its sources, minimums included. The original's: Holy Ground +1 morale for Castle, Rampart and Tower creatures and -1 for Inferno, Necropolis and Dungeon ones, Evil Fog the reverse, Clover Field +2 luck for Stronghold, Fortress and Conflux ones (the original's 'neutral town alignment': not VCMI's neutral alignment, which also takes in the creatures without a town; those get nothing here, dispute D-2, the user at BAT-Q38; observed in batch 3a), Cursed Ground morale and luck 0 (so no stack freezes from bad morale there: dispute D-1, the user at BAT-Q38: the code stands, and batch 3a observed it: the game gives a stack of morale -3 morale 0 there; the user at BAT-Q39: not a quirk, the rule in every profile; S-28 retired)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -383,6 +389,12 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Terrain"
   retrieved  = "2026-10-13"
   confidence = "low"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3a.md (SoD 4.0 Complete under Wine without HD, run by an agent on the capture harness, the stacks' morale +0x4E8 and luck +0x4EC read at the battle's start, 2026-10-13): CG, an army of morale -3 with Clover of Fortune (G on grass: -3, -3, -3, 0, luck +1): on Cursed Ground every stack morale 0 and luck 0, the monster too (D-1, S-28: negative morale is lost, nobody can freeze); CF: on Clover Field luck +2 for Goblins, Gnolls and Pixies, 0 for Peasants (Red's and the monster) and Pikemen (D-2: as the code, not VCMI); HG: on Holy Ground Pikemen +1, Imps -1, Goblins and Peasants 0 against the army's -2. Evil Fog not staged (the same code with the opposite table)"
+  retrieved  = "2026-10-13"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-TER-004"
@@ -447,7 +459,7 @@ numeric  = "integer"
 id       = "BAT-TER-006"
 title    = "No native bonus on a special battlefield"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "On a battlefield with no_native no stack fights on its native terrain (BAT-TER-001): no +1 attack, defense and speed, and no side sees the other's hidden obstacles through its natives (BAT-MAG-031). The original's Cursed Ground."
 numeric  = "integer"
 
@@ -463,6 +475,11 @@ numeric  = "integer"
   retrieved  = "2026-10-13"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3a.md (SoD 4.0 Complete under Wine without HD, run by an agent, 2026-10-13): the Pikemen and Centaurs, native on grass (speed 5 and 7 with the flag +0x4D8 set in G), fight on the grass Cursed Ground (CG, CS) without it: speed 4 and 6, the flag clear"
+  retrieved  = "2026-10-13"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MOV-001"

@@ -40,8 +40,8 @@ recognises screens by probe pixels (`h3drive.py`), runs it on a virtual clock (`
 reads its state from memory (`h3mem.py`: the battle's stacks; the adventure map's heroes,
 players and paths; the address map in `docs/exe/`). Before a batch relies on it: plan it with the
 batch (recipes for the batch's own clicks and memory reads for what the template asks),
-cross-check the first run against a batch the user already played (the battle's E04a batch 1a
-is still to do), and record the run's setup in the source (the same Complete 4.0 `Heroes3.exe`,
+cross-check the first run against a batch the user already played (the battle's E04a batch 1a:
+its R1 matched the user's log, E04c T3), and record the run's setup in the source (the same Complete 4.0 `Heroes3.exe`,
 but under Wine and without the HD mod the user plays with). The staging it needs (the
 executable, its DLLs, the LODs and sound archives) is listed in the runbook; the user's computer
 must be online for it.
@@ -62,12 +62,20 @@ yet: the hero list's scrolling (more than five heroes per player), the undergrou
 dialogs, battles started from the map, more than one day: the client lane builds them when a
 batch needs them (its queue's inbox).
 
+**The battle's openings** (E04c T3): `experiments/agent/opening.py` (below, "One encounter's
+map"). **Trap: the starting bonus.** The harness begins a single scenario with its default, a
+random starting bonus, which a third of the time gives the hero an artifact (seen: Necklace of
+Swiftness, Clover of Fortune, Cape of Conjuring, and a +1 morale): read the hero's worn artifacts
+(hero +0x12D) and play a battle again when one appears (`opening.py --allow`). The first battle
+batches run so: E04c 3a and 3b.
+
 ## Spec format (`h3-experiment`, `crates/h3-experiment/src/lib.rs`)
 
 - `[map]`: `name`, `description`, `size` (36, 72, 108 or 144), `terrain` (any land terrain; the
   battlefield of every encounter on it), `instructions` (the template's numbered introduction).
   `[[map.patch]]` (E08 T10a, the adventure map's experiments): `terrain`, `from = [column, row]`,
-  `to` (inclusive), a rectangle of another terrain; a later patch covers an earlier one. The
+  `to` (inclusive), a rectangle of another terrain (also `water`, E04c T3: the coast); a later
+  patch covers an earlier one. The
   writer gives every tile an interior picture of its terrain (the ranges the game's own maps use,
   `docs/formats/h3m.md`), so the game draws a hard edge between two terrains.
   `[[map.road]]` (E08 T10a): `kind` (dirt, gravel, cobblestone), `row`, `from` and `to` (the
@@ -80,6 +88,13 @@ batch needs them (its queue's inbox).
   from `from` to `to`, the template from `Objects.txt` (class 79). A pile is visited from a
   neighbouring tile and the visit ends the move; the template does not list piles, the
   encounters' procedures say where they are.
+  `[[map.ground]]` (E04c T3): `picture` (a special ground's picture in `Objects.txt`: `AVXcrsd0`
+  Cursed Ground 21, `AVXplns0` Magic Plains 46, `AVXcf0` Clover Field 222, `AVXcg1`–`7` and
+  `AVXmp1`–`7` the SoD Cursed Ground 223 and Magic Plains 230, `AVXef0`, `AVXff0`, `AVXhg0`,
+  `AVXlp0`, `AVXmc0`, `AVXrk0` the other fields, `AVXfw0` Favorable Winds) and `at = [column,
+  row]`, its bottom-right tile. The picture covers its width leftwards and its height upwards, every
+  tile of it (its `.msk`): the `0` pictures 6 × 4, `AVXcg5` and `AVXmp5` 3 × 3. Heroes and
+  monsters stand on it; the grounds are written first, so they are drawn below.
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `procedure`
   (steps), `record` (`field = "…"` for a value, `table = [columns]` + `rows`, or `labels` for rows whose
   first column is filled in), `predictions`
@@ -103,6 +118,15 @@ batch needs them (its queue's inbox).
   explore a route, inspections of many heroes). Encounters are laid out in a grid; a hero type
   may appear once per map, a player may have eight heroes, two objects never share a tile.
 
+**One encounter's map** (E04c T3): `--only <id>` instead of `--template` writes a map with that
+encounter alone, in its place (the others are still checked; grounds, patches and piles stay): the
+capture harness steps the only hero into its opponent. `experiments/agent/opening.py <out>
+<maps…>` opens each map's battle under Wine and prints, as one JSON line per map, what the battle
+manager and each stack hold at the opening (the special field +0x53C0, the terrain, the anti-magic
+and ship flags; per stack creature, count, speed, native flag, morale +0x4E8 and luck +0x4EC, set
+by 0x469750 at the start). `experiments/agent/crosscheck_r1.py` replays batch 1a's R1 (six attacks,
+damage from the Golems' hit points) as the harness's cross-check.
+
 Running a spec in our engine (to print predictions automatically) is not built (BACKLOG; Q37:
 revisit with the next batches, E04b); the predictions are computed by hand or with a script and
 written into the spec.
@@ -120,6 +144,8 @@ written into the spec.
 | 2d (`E04b-batch-2d`) | where a clone appears, its turn, shots, rounds and death by any damage, and the surrender price with a clone (CL1; BAT-MAG-038, BAT-FLE-002); a clone on its own crowded two-hex original (CL2, BAT-QUIRK-7); Resurrection's and Sacrifice's targets (RA1, BAT-QUIRK-5, S-15) and corpses (RA4); Basic Resurrection's temporary creatures at the battle's end, with a Ballista too (RA2, RA3; BAT-QUIRK-6, S-20); Necromancy and experience from created stacks, the elementals' native terrain (NE; BAT-Q7, BAT-TER-001); Summon Elemental's place, a dead elemental's slot, the limit of 20 stacks, a side left with only elementals against an elimination, a retreat and a surrender (SU; BAT-MAG-037/039, BAT-Q7) | **evaluated** (2026-10-08): as the code reading everywhere but the elementals' native terrain (natives on grass, as the engine; the reading of 0x43D730 refuted); the engine's surrender price refuted (created stacks left out; fixed); BAT-QUIRK-7 observed (fix-optional), BAT-Q7 answered; `docs/epics/E04b-log.md` (batch 2d folded in) |
 | 2e (`E04b-batch-2e`) | the code reading of the casting limits and the spell defences where the wiki or VCMI disagree (BAT-Q21, BAT-Q22): the Faerie Dragons and Ogre Magi under the Orb of Inhibition (OI), Blind at Troglodytes, Mirth and Sorrow at golems and elementals and Poison at Gargoyles under the Orb of Vulnerability (OV), the Unicorn aura under it (UA, mass Slow four times), Recanter's Cloak against Stone Gaze and the Archangel (RC), Power of the Dragon Father against Poison and the Thunderbirds' bolt with the Death Stare as a control (DF), Bless, Curse, Precision, Fortune, Misfortune and Slayer at the war machines (WM; BAT-MAG-061, 062, 064, 066, 067) | **evaluated** (2026-10-11): the code reading everywhere but the Unicorn aura, which the Orb lifts as the wiki and VCMI say (12 of 12 slowed); the Faerie Dragons are stopped by the Orb of Inhibition (the engine followed the wiki and VCMI: fixed); RC's Stone Gaze (8 attacks) and DF's bolt and Poison (3 and 4) are weak, as no save in battle allowed the planned tries, but decisive with UA's aura (the user, BAT-Q27); `docs/epics/E04b-log.md` (batch 2e folded in) |
 | 2f (`E04b-batch-2f`) | increment 17's opening-spell candidates and T8b's leftovers (BAT-Q27): when the defender's Armor of the Damned casts with its first stack blinded (AD; the code and the wiki against VCMI, BAT-Q23) and under the Orb of Inhibition (AO); BAT-Q24's learning after a won battle: a level-1 and a level-3 spell without Wisdom (EL), a spell book in the backpack (EB), Basic Wisdom as the control (EW); Power of the Dragon Father against its hero's Bless (DF), the Pendant of Second Sight against the Unicorns' Blind (PS), a hypnotized stack and its owner's Pendant of Life against Death Ripple (HP; BAT-MAG-063, 064, 068, 069) | **evaluated** (2026-10-11): every point as the engine and the code: the opening spells at the first stack that takes its turn and under the Orb; Eagle Eye's learning needs a worn book and Wisdom + 2 (BAT-Q24: the code, against VCMI; the message names the unlearned picks too); the Dragon Father, the Pendant (0 blinds in 41 attacks) and the controller's Pendant as predicted; `docs/epics/E04b-log.md` (batch 2f folded in) |
+| 3a (`E04c-batch-3a`) | the special battlefields (E04c T3): morale, luck and the native bonus on Cursed Ground against plain grass with an army of morale −3 (D-1, S-28; BAT-TER-003, 006), the SoD pictures of Cursed Ground and Magic Plains (D-4), Clover Field with Stronghold, Fortress, Conflux and town-less creatures (D-2), Holy Ground, Magic Plains and Lucid Pools as controls | **evaluated** (2026-10-13), **run by an agent** on the capture harness (the first battle batch so; batch 1a's R1 replayed first as the cross-check): every value as the code reading: Cursed Ground morale and luck 0 for every stack, −3 included, and no native bonus; the SoD pictures make the fields 2 and 1; Clover Field +2 for towns 6–8 only (VCMI refuted); S-28 not a quirk (BAT-Q39). `docs/epics/E04c-log.md`, T3 |
+| 3b (`E04c-batch-3b`) | which tile decides the battlefield, the attacker's or the defender's, for a Clover Field and for the shore (the adventure lane's derivation, survey §4) | **evaluated** (2026-10-13), run by an agent: the defender's tile for both; the first run found no shore at all, as our writer did not set the coast flag `0x40` that every game map has (now written, `docs/formats/h3m.md`). `docs/epics/E04c-log.md`, T3 |
 | E08 1a (`E08-batch-1a`) | the adventure map's first batch (E08 T10a): when a day's movement points are set, two hot-seat battles that take a slow stack out of an army in the other player's turn, on day 1 and day 2, and a dismissed slow stack as their control (ADV-Q4, ADV-MOV-002); which tile prices a step off a road, on grass onto swamp and on swamp onto grass (ADV-Q3's D-2, ADV-MOV-003); the land table as a control (ADV-MOV-001). Paths are counted by their marks: scouts explore each walker's row beyond the farthest predicted step. Both specs were reviewed by a second agent before staging | **evaluated** (2026-10-12): as the code reading everywhere: points set at the owner's turn start on day 1 and day 2 (2000, not 1560; ADV-Q4 answered), off a road the tile left prices the step both ways (9 and 14 steps), the land table (15). The map played was a stale build without Q4c (the review's control); the user's statement stands in for it (no change of the day's points when a stack is dismissed or gained). `docs/epics/E08-log.md`, T10c |
 | E08 1b (`E08-batch-1b`) | the starting army of sixteen heroes placed with everything their hero type's own, over up to eight loads: the independence of the second and third slots' rolls and the war machine's chance (ADV-Q6, GAM-SET-001) | **evaluated** (2026-10-12): one load sufficed: a hero with its third stack but not its second (VCMI's single roll refuted) and a war-machine hero without its war machine (the wiki's 100 % refuted), as the code reading; ADV-Q6 answered; `docs/epics/E08-log.md`, T10c |
 | E08 2 (`E08-batch-2`) | the adventure map's second batch (E08 T16b), the first with the stamp: the points left after a step (D-3, ADV-Q3; ADV-MOV-006): sand onto a cobblestone road with 200 points (the survey's example: 50 left and one more road step by the reading and the wiki, 0 and no step by VCMI), onto a dirt road as the control (no step for any source; 0 left by the reading and VCMI, 50 by the wiki), 100 and 50 points left off a road (100 by the reading and the wiki, 0 by VCMI; 0, 0 and 50); the amounts of random resource piles (D-5, ADV-Q10; ADV-PIK-001): 16 wood and 16 mercury piles picked up one by one (a wood pile of 5 or a mercury pile of 6 refutes VCMI's ranges; neither in 32 refutes the reading, 0.054 % under it). Hot seat, one day: Red walks, Blue collects | **evaluated** (2026-10-13): as the code reading everywhere: D3a 50 points kept on a cobblestone road and a further step (VCMI: 0), D3b 0 on a dirt road and no step (the wiki: 50), D3c 100 kept on snow (VCMI: 0), D3d 50 dropped to 0 (the wiki: 50); D-5's piles: wood 5–9 with three of 5, mercury 3–6 with four of 6 (VCMI's ranges refuted). The stamp matched. `docs/epics/E08-log.md`, T16c |

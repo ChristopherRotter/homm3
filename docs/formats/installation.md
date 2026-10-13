@@ -2336,7 +2336,9 @@ are not in its list (the map loader is not read: it probably gives them the clas
 own; both heroes in boats `CmBkBoat.pcx`; the ship flag `CmBkDeck.pcx`; field 0 `CmBkBch.pcx`;
 else the terrain's by the surroundings' variant.
 
-**Morale and luck** (0x469750 passes +0x53C0 to both routines, their only caller).
+**Morale and luck** (0x469750 passes +0x53C0 to both routines, their only caller; they store the
+results in the stack's +0x4E8 and +0x4EC; 0x469750 runs at the battle's start, 0x462E19, and after
+every action, 0x479D16: E04c T3 read them from memory in batch 3).
 - 0x43E000, a stack's morale: on field 2 (Cursed Ground) the morale is **0**, whatever its sources
   (0x43E00F, before anything else); a creature without morale 0. Otherwise the base (army, hero),
   + Mirth − Sorrow, then **by the creature's town** +0x74: field 3 (Holy Ground) +1 for towns 0–2
