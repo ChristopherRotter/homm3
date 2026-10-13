@@ -112,8 +112,17 @@ batches run so: E04c 3a and 3b.
   names, ids below 70; needs a worn `spell book`, E04b batch 2a). Skills, artifacts and spells
   replace the hero type's defaults, so heroes have no spell book unless one is listed. A hero
   starts with full mana: 10 × knowledge (no Intelligence), so knowledge sets the mana.
-- `[encounter.opponent]`: `monster` + `count` (a savage wandering monster that never flees) or
-  `[encounter.opponent.hero]` (a Blue hero). `[[encounter.also]]` (E08 T10a): more heroes of the
+- `[encounter.opponent]`: `monster` + `count` (a savage wandering monster that never flees),
+  `[encounter.opponent.hero]` (a Blue hero) or `[encounter.opponent.town]` (E04c T5b: a siege): its
+  entrance is the tile north of the encounter's hero, its picture needs 5 columns west of the
+  entrance, 2 east and 5 rows north (give the hero `at`); `faction` (castle … conflux), `owner`
+  (`blue`, the default, or `neutral`), `buildings` (the built ones by name: `fort`, `citadel`,
+  `castle`, `tavern`, `town hall`, `mage guild 1`, `dwelling 1`, `upgraded dwelling 1`, `horde 1`,
+  … and the faction's special buildings, `escape tunnel`, `brotherhood of the sword`, …; the
+  Village Hall always; absent, the editor's standard set without a fort), `garrison`
+  (`[creature, count]`, at most seven; empty, the editor's default) and `tight`; with an
+  `[encounter.opponent.hero]` beside it, that hero is the town's visiting hero, on its entrance.
+  `[[encounter.also]]` (E08 T10a): more heroes of the
   encounter, each with its own `at`, named as their hero type unless `name` is given (scouts that
   explore a route, inspections of many heroes). Encounters are laid out in a grid; a hero type
   may appear once per map, a player may have eight heroes, two objects never share a tile.

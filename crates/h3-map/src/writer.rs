@@ -1,8 +1,9 @@
 //! Writer for the subset of the SoD map format (`.h3m`, version `0x1C`) that staged experiments
 //! need (E04a T2, OPEN-QUESTIONS Q28): one level of a base terrain with rectangles of other
-//! terrains and straight east-west roads (E08 T10a), players without towns, heroes with custom armies, skills, artifacts, spells
-//! and primary skills (or their hero type's own), wandering monsters and resource piles (E08
-//! T16b).
+//! terrains and straight east-west roads (E08 T10a), players without a main town, heroes with
+//! custom armies, skills, artifacts, spells and primary skills (or their hero type's own),
+//! wandering monsters, resource piles (E08 T16b), special grounds (E04c T3) and towns of a fixed
+//! faction (E04c T5b).
 //!
 //! Layout notes are in `docs/formats/h3m.md`. The field order follows VCMI 1.7.5's map reader
 //! (`lib/mapping/MapFormatH3M.cpp`, `MapReaderH3M.cpp`, `ObjectTemplate::readMap`; GPL-2.0-or-later,
@@ -75,6 +76,14 @@ const RESOURCE_COUNT: u32 = 7;
 /// (225), Fiery Fields (226), Holy Ground (227), Lucid Pools (228), Magic Clouds (229),
 /// Rocklands (231); `Objects.txt` lists their pictures.
 pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231];
+/// Object class of a town of a fixed faction (subclass = faction, `TOWNTYPE.TXT` order: Castle 0
+/// … Conflux 8; E04c T5b).
+pub const TOWN_OBJECT: u32 = 98;
+/// Factions a town may have.
+pub const FACTION_COUNT: u32 = 9;
+/// Buildings a map's town lists (bits 0–40 of its six bytes; `docs/formats/h3m.md`, "Town
+/// buildings").
+pub const MAP_BUILDINGS: u8 = 41;
 /// The largest fixed amount a pile may hold: the original keeps it in 19 bits, and setup refuses
 /// more (`h3_adventure::MAX_PICKUP_AMOUNT`, mirrored here: the writer does not depend on the
 /// adventure crate). Gold counts in hundreds.
@@ -349,6 +358,44 @@ pub struct Ground {
     pub template: ObjectTemplate,
 }
 
+/// A town of a fixed faction placed on the map (E04c T5b: siege experiments), without a name,
+/// events or required and banned spells.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Town {
+    /// The object's position: the bottom-right tile of its picture. Its entrance, the one visitable
+    /// tile, is two columns left of it on its row (the towns' templates in `Objects.txt`); a hero
+    /// on the entrance is the town's visiting hero.
+    pub tile: (u8, u8),
+    /// Template (class [`TOWN_OBJECT`] and the faction as subclass, from `Objects.txt`).
+    pub template: ObjectTemplate,
+    /// Owning player (0 = red … 7 = pink), `None` for a neutral town.
+    pub owner: Option<u8>,
+    /// Garrison (creature id, count) per slot; `None` = the editor's default.
+    pub garrison: Option<[Option<(u16, u16)>; ARMY_SLOTS]>,
+    /// The garrison's tight formation.
+    pub tight_formation: bool,
+    /// Buildings.
+    pub buildings: TownBuildings,
+}
+
+/// A town's buildings as a map stores them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TownBuildings {
+    /// The editor's standard set, with or without a Fort.
+    Standard {
+        /// A Fort is built.
+        fort: bool,
+    },
+    /// Chosen buildings: a bit per building in the map's order (bit `j` of byte `i` is building
+    /// `8i + j`, below [`MAP_BUILDINGS`]; `docs/formats/h3m.md`, "Town buildings").
+    Custom {
+        /// Built.
+        built: [u8; 6],
+        /// Forbidden.
+        forbidden: [u8; 6],
+    },
+}
+
 /// An object placed on the map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MapObject {
@@ -360,6 +407,8 @@ pub enum MapObject {
     Pile(Pile),
     /// A special ground.
     Ground(Ground),
+    /// A town.
+    Town(Town),
 }
 
 /// A rectangle of tiles with a terrain of its own (E08 T10a: movement experiments).
@@ -496,6 +545,7 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
             MapObject::Monster(monster) => write_monster(&mut out, monster, identifier),
             MapObject::Pile(pile) => write_pile(&mut out, pile),
             MapObject::Ground(_) => {} // no body
+            MapObject::Town(town) => write_town(&mut out, town, identifier),
         }
     }
     out.u32(0); // no timed events
@@ -550,6 +600,7 @@ fn validate(map: &Map) -> Result<(), WriteError> {
             MapObject::Monster(monster) => monster.tile,
             MapObject::Pile(pile) => pile.tile,
             MapObject::Ground(ground) => ground.tile,
+            MapObject::Town(town) => town.tile,
         };
         if x >= map.size || y >= map.size {
             return Err(out_of_range(
@@ -562,6 +613,7 @@ fn validate(map: &Map) -> Result<(), WriteError> {
             MapObject::Monster(monster) => validate_monster(monster)?,
             MapObject::Pile(pile) => validate_pile(pile)?,
             MapObject::Ground(ground) => validate_ground(ground)?,
+            MapObject::Town(town) => validate_town(map, town)?,
         }
     }
     Ok(())
@@ -652,6 +704,39 @@ fn validate_ground(ground: &Ground) -> Result<(), WriteError> {
     } else {
         Err(out_of_range("ground object class", ground.template.class))
     }
+}
+
+fn validate_town(map: &Map, town: &Town) -> Result<(), WriteError> {
+    if town.template.class != TOWN_OBJECT {
+        return Err(out_of_range("town object class", town.template.class));
+    }
+    if town.template.subclass >= FACTION_COUNT {
+        return Err(out_of_range("town faction", town.template.subclass));
+    }
+    if let Some(owner) = town.owner
+        && map
+            .players
+            .get(usize::from(owner))
+            .and_then(Option::as_ref)
+            .is_none()
+    {
+        return Err(out_of_range("town owner (no playable player)", owner));
+    }
+    for &(creature, count) in town.garrison.iter().flatten().flatten() {
+        if creature >= CREATURE_COUNT {
+            return Err(out_of_range("creature", creature));
+        }
+        if count == 0 {
+            return Err(out_of_range("stack size", count));
+        }
+    }
+    if let TownBuildings::Custom { built, forbidden } = &town.buildings {
+        let last = MAP_BUILDINGS % 8;
+        if built[5] >> last != 0 || forbidden[5] >> last != 0 {
+            return Err(out_of_range("town building (bit)", MAP_BUILDINGS));
+        }
+    }
+    Ok(())
 }
 
 fn write_player(
@@ -746,6 +831,7 @@ fn object_template(object: &MapObject) -> ObjectTemplate {
         MapObject::Monster(monster) => monster.template.clone(),
         MapObject::Pile(pile) => pile.template.clone(),
         MapObject::Ground(ground) => ground.template.clone(),
+        MapObject::Town(town) => town.template.clone(),
     }
 }
 
@@ -769,6 +855,7 @@ fn position(object: &MapObject) -> (u8, u8) {
         MapObject::Monster(monster) => monster.tile,
         MapObject::Pile(pile) => pile.tile,
         MapObject::Ground(ground) => ground.tile,
+        MapObject::Town(town) => town.tile,
     }
 }
 
@@ -842,6 +929,39 @@ fn write_pile(out: &mut Out, pile: &Pile) {
     out.bool(false); // no message (and so no guards)
     out.u32(pile.amount);
     out.bytes(&[0; 4]);
+}
+
+/// A town's body (`docs/formats/h3m.md`, classes 77 and 98): no name, no required or banned
+/// spells, no events, the alignment of its owner.
+fn write_town(out: &mut Out, town: &Town, identifier: u32) {
+    out.u32(identifier);
+    out.u8(town.owner.unwrap_or(0xff));
+    out.bool(false); // no custom name
+    out.bool(town.garrison.is_some());
+    if let Some(garrison) = &town.garrison {
+        for slot in garrison {
+            let (creature, count) = slot.unwrap_or((0xffff, 0));
+            out.u16(creature);
+            out.u16(count);
+        }
+    }
+    out.bool(town.tight_formation);
+    match &town.buildings {
+        TownBuildings::Standard { fort } => {
+            out.bool(false);
+            out.bool(*fort);
+        }
+        TownBuildings::Custom { built, forbidden } => {
+            out.bool(true);
+            out.bytes(built);
+            out.bytes(forbidden);
+        }
+    }
+    out.bytes(&[0; 9]); // no required spells
+    out.bytes(&[0; 9]); // no banned spells
+    out.u32(0); // no events
+    out.u8(0xff); // alignment: the owner's
+    out.bytes(&[0; 3]);
 }
 
 fn len32(len: usize) -> u32 {
@@ -1170,6 +1290,85 @@ mod tests {
             monster.tile = (36, 0);
         }
         assert!(write(&map).is_err());
+    }
+
+    const STRONGHOLD: &str = "AVCstrx0.def 000001110000011110001111111111111111111111111111 \
+                              001000000000000000000000000000000000000000000000 011111111 \
+                              011111111 98 6 1 0";
+
+    #[test]
+    fn towns_are_written_with_the_editor_s_body_and_checked() {
+        let town = Town {
+            tile: (12, 9),
+            template: ObjectTemplate::from_objects_txt(STRONGHOLD).unwrap(),
+            owner: Some(0),
+            garrison: Some([Some((1, 25)), None, None, None, None, None, None]),
+            tight_formation: true,
+            buildings: TownBuildings::Custom {
+                built: [0x58, 0, 0x04, 0, 0, 0x01],
+                forbidden: [0; 6],
+            },
+        };
+        let mut map = smoke_like_map();
+        map.objects.push(MapObject::Town(town.clone()));
+        let out = write(&map).unwrap();
+        let mut body = vec![];
+        body.extend_from_slice(&3u32.to_le_bytes()); // the third object's identifier
+        body.extend_from_slice(&[0, 0, 1]); // red, no name, a garrison
+        body.extend_from_slice(&[1, 0, 25, 0]);
+        body.extend_from_slice(&[0xff, 0xff, 0, 0].repeat(6));
+        body.extend_from_slice(&[1, 1, 0x58, 0, 0x04, 0, 0, 0x01]); // tight, custom, built
+        body.extend_from_slice(&[0; 6 + 9 + 9 + 4]); // forbidden, spells, events
+        body.extend_from_slice(&[0xff, 0, 0, 0, 0, 0, 0, 0]); // alignment, 3 unused, no events
+        assert!(out.ends_with(&body));
+        // A neutral town with the standard buildings and a fort, its default garrison.
+        let mut map = smoke_like_map();
+        map.objects.push(MapObject::Town(Town {
+            owner: None,
+            garrison: None,
+            tight_formation: false,
+            buildings: TownBuildings::Standard { fort: true },
+            ..town.clone()
+        }));
+        let out = write(&map).unwrap();
+        let mut body = 3u32.to_le_bytes().to_vec();
+        body.extend_from_slice(&[0xff, 0, 0, 0, 0, 1]);
+        body.extend_from_slice(&[0; 9 + 9 + 4]);
+        body.extend_from_slice(&[0xff, 0, 0, 0, 0, 0, 0, 0]);
+        assert!(out.ends_with(&body));
+        let with_town = |f: &dyn Fn(&mut Town)| {
+            let mut town = town.clone();
+            f(&mut town);
+            let mut map = smoke_like_map();
+            map.objects.push(MapObject::Town(town));
+            write(&map).map(|_| ())
+        };
+        let fails = |f: &dyn Fn(&mut Town), what: &str| match with_town(f) {
+            Err(WriteError::OutOfRange { what: w, .. }) => assert_eq!(w, what),
+            other => panic!("{what}: {other:?}"),
+        };
+        fails(&|t| t.template.class = 77, "town object class");
+        fails(&|t| t.template.subclass = 9, "town faction");
+        fails(&|t| t.owner = Some(2), "town owner (no playable player)");
+        fails(&|t| t.owner = Some(8), "town owner (no playable player)");
+        fails(
+            &|t| t.garrison = Some([Some((145, 1)); ARMY_SLOTS]),
+            "creature",
+        );
+        fails(
+            &|t| t.garrison = Some([Some((1, 0)); ARMY_SLOTS]),
+            "stack size",
+        );
+        let bit = |built: [u8; 6], forbidden: [u8; 6]| {
+            move |t: &mut Town| t.buildings = TownBuildings::Custom { built, forbidden }
+        };
+        fails(&bit([0, 0, 0, 0, 0, 0x02], [0; 6]), "town building (bit)");
+        fails(&bit([0; 6], [0, 0, 0, 0, 0, 0x80]), "town building (bit)");
+        fails(&|t| t.tile = (36, 9), "object tile");
+        assert_eq!(
+            with_town(&bit([0xff, 0xff, 0xff, 0xff, 0xff, 0x01], [0; 6])),
+            Ok(())
+        );
     }
 
     const WOOD: &str = "AVTwood0.def 011111111111111111111111111111111111111111111111 \
