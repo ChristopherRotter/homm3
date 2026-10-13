@@ -747,6 +747,7 @@ mod tests {
             terrain: None,
             battlefield: None,
             anti_magic: false,
+            siege: None,
             war_machines: [vec![], vec![]],
             formations: Default::default(),
             funds: [0; 2],

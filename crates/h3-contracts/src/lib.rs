@@ -22,6 +22,7 @@ extern crate alloc;
 
 mod hero;
 mod ids;
+mod siege;
 
 use alloc::vec::Vec;
 
@@ -30,6 +31,7 @@ pub use hero::{
     EagleEye, FactionGroup, MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
 };
 pub use ids::{HeroId, PlayerId};
+pub use siege::{FortLevel, Moat, Siege};
 
 use h3_content::{ContentKey, CreatureTypeId, Formation, SpellId, TerrainId};
 
@@ -129,6 +131,11 @@ pub struct BattleSetup {
     pub battlefield: Option<ContentKey>,
     /// The battle is at an anti-magic garrison (E04c): neither side casts (BAT-MAG-061). Public.
     pub anti_magic: bool,
+    /// The town, if the battle is fought at one (E04c, ADR-0023), with or without a fort: the
+    /// defender is the town's side. Derived before the seam from the town's buildings and the
+    /// map, as the battlefield is; the defending hero's town bonuses are already on its
+    /// [`BattleHero`]. Public.
+    pub siege: Option<Siege>,
     /// War machines per side (indexed by [`BattleSide::index`]): creature types with flag
     /// `war_machine`, at most one of each kind (E03, BAT-WAR-001); a hero's come from its
     /// artifacts (`h3_heroes::war_machines`).
@@ -333,6 +340,15 @@ mod tests {
             terrain: None,
             battlefield: ContentKey::parse("base:cursed_ground").ok(),
             anti_magic: true,
+            siege: Some(Siege {
+                faction: h3_content::FactionId::from_raw(7),
+                fort: FortLevel::Castle,
+                moat: Moat::Damaging,
+                structures: 12,
+                escape_tunnel: false,
+                morale: 1,
+                luck: 0,
+            }),
             war_machines: [vec![], vec![]],
             formations: [Formation::Tight, Formation::Loose],
             funds: [1000, 0],
@@ -344,6 +360,9 @@ mod tests {
         assert_eq!(Obstacle::default().anchor, None);
         assert!(setup.anti_magic && setup.battlefield.is_some());
         let plain = BattleSetup::default();
-        assert!(!plain.anti_magic && plain.battlefield.is_none());
+        assert!(!plain.anti_magic && plain.battlefield.is_none() && plain.siege.is_none());
+        assert_eq!(setup.siege.map(|siege| siege.fort), Some(FortLevel::Castle));
+        assert!(FortLevel::None < FortLevel::Fort && FortLevel::Fort < FortLevel::Citadel);
+        assert!(Moat::Absent < Moat::Harmless && Moat::Harmless < Moat::Damaging);
     }
 }

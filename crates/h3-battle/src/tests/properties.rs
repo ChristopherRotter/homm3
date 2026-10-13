@@ -542,6 +542,7 @@ fn make_setup(
         },
         battlefield: None,
         anti_magic: false,
+        siege: None,
         war_machines,
         funds: [48, 56].map(|bit| u32::try_from((machines >> bit) & 0xff).unwrap() * 100),
         formations: [6, 7].map(|bit| {

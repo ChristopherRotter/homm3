@@ -109,6 +109,7 @@ fn led(
         terrain: None,
         battlefield: None,
         anti_magic: false,
+        siege: None,
         war_machines: [
             vec![],
             machines
@@ -347,6 +348,7 @@ fn batch_2a_r1_r2_chain_lightning_by_the_screen_distance_and_the_army_slot() {
             terrain: None,
             battlefield: None,
             anti_magic: false,
+            siege: None,
             war_machines: [vec![], vec![]],
             formations: [Formation::Loose; 2],
             funds: [0; 2],

@@ -1025,6 +1025,7 @@ impl ScenarioDef {
             terrain,
             battlefield: self.battlefield.clone(),
             anti_magic: self.anti_magic,
+            siege: None,
             war_machines: [
                 machines(&self.war_machines[0])?,
                 machines(&self.war_machines[1])?,

@@ -89,6 +89,7 @@ fn battle(
         terrain: terrain.map(|t| r.terrain_by_key(t).unwrap()),
         battlefield: None,
         anti_magic: false,
+        siege: None,
         war_machines: heroes.map(|d| war_machines(d, r)),
         formations: [Formation::Loose; 2],
         funds: [30_000; 2],

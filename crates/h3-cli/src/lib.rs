@@ -625,6 +625,7 @@ impl ReplayDoc {
                     .transpose()
                     .map_err(|e| CliError::Format(e.to_string()))?,
                 anti_magic: f.setup.anti_magic,
+                siege: None,
                 war_machines: [
                     machines(&f.setup.attacker_war_machines)?,
                     machines(&f.setup.defender_war_machines)?,

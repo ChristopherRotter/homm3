@@ -87,6 +87,7 @@ fn batch_2b_r3_the_fire_shield_reflects_a_fifth_of_the_first_stage() {
             terrain: None,
             battlefield: None,
             anti_magic: false,
+            siege: None,
             war_machines: [vec![], vec![]],
             formations: [Formation::Loose; 2],
             funds: [0; 2],

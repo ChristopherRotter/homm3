@@ -1878,6 +1878,7 @@ fn harvested_hero_effects_reproduce_the_experiments() {
             terrain: None,
             battlefield: None,
             anti_magic: false,
+            siege: None,
             war_machines: [war_machines(&details, &sod), vec![]],
             formations: [Formation::Loose; 2],
             funds: [0; 2],
