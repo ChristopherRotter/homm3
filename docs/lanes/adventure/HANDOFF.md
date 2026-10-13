@@ -4,7 +4,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Current state
 
-- **E08**: increment 1 (T1a–T10c) **closed** 2026-10-12; **increment 2** (decisions 13–18; T11–T16, #123 to #158) **closed** 2026-10-13 (T16c). **Increment 3** (monsters and battles, decisions 19–21, ADV-Q11) refined: T17a (survey) + T17b (ADR drafts) next. **Open:** T16c's pull request (`adventure/e08-t16c`, `cross-lane`) and the shared #168. Records: `E08-log.md`.
+- **E08**: increment 1 (T1a–T10c) **closed** 2026-10-12; **increment 2** (decisions 13–18; T11–T16, #123 to #158) **closed** 2026-10-13 (T16c). **Increment 3** (monsters and battles, decisions 19–21, ADV-Q11) refined: T17a (the survey) this round (the user, at T16c's checkpoint; #172 and #168 merged), T17b (ADR drafts) next. Records: `E08-log.md`.
 - **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 3, `docs/formats/h3m.md` "Import": object types by class and subclass, a pile's fixed amount, guarded piles `Unsupported`, the default difficulty). Every shipped map's static layer imports and validates; 9 maps import whole, the rest are typed `Unsupported`. `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on `original-data/install/Maps` (staged 50 per call).
 - **Objects** (T12–T15): types in the ruleset part (`ruleset/objects.rs`, ADV-OBJ-002); contents drawn when the game is built (ADV-PIK-001 to -003); removed objects and freed tiles (`state/occupancy.rs`); `ObjectView`s (no index). Visits (ADV-OBJ-003): pickups from a neighbour (T13b), the Cartographer, observatories and tents entered, guards from a neighbour (T14a, T15a), gates crossed by a key holder, else from a neighbour (T15b: the mode per player, `visit_at(part, player, pos)`), the last live object in map order per tile (`tile_object`), `PastVisit`; ADV-OBJ-004 both ways (`FromAbove`); gains and the offer in `AdventureOutcome`, `ObjectRemoved` (ADV-OBJ-005), the query's destinations. Purchases and keys (player bits, `state/flags.rs`; ADV-VIS-001, -003); the observatory's disk (-002); offers `Reveal { price }` and `Pass` (-004), `offer_stands`.
 - **Setups and state:** `h3_adventure::{AdventureSetup, AdventureState}` (static map behind an `Arc`, heroes by id with their movement points, state hash v6; ADV-MAP-001, ADV-MOV-001/-002); `h3_game::{GameRuleset, GameSetup, GameState}`: the starting armies (GAM-SET-001), a stream per player, sequential turn groups, day 1, `apply` with `EndTurn` and `Adventure(MoveHero)` (GAM-TRN-001/002, GAM-CAL-001), treasuries in one shared block (T13: GAM-RES-001/-002, `GameSetup.difficulty`, gains with `ResourceGained` to the owner), pending decisions (T14b: GAM-DEC-001, `Answer`, only its answers legal while open; `OfferGone` when the object left, then `Decline` only), game state hash v4. `GameSetup::validate` builds with seed 0.
@@ -17,7 +17,6 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Adventure ruleset part** (v5 since T13a): terrains, roads, rivers, native cost, land table, base scouting radius, the setup bounds (`max_players` ≤ `MAX_PLAYERS` = 8), the starting stack chances, the object types, the starting resources by difficulty.
 - **Readings** (surveys `E08-adventure-core.md`, `E08-objects.md`): conflicts with the wiki or VCMI go to the user ("consensus before trust").
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), the amendments of ADR-0016 and -0017 for increment 2 (2026-10-12, #115).
-- **Waiting for the user:** T16c's checkpoint.
 - **Fuzzing is stable-only** (user, 2026-10-10): property tests on arbitrary bytes.
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
 - **Ownership:** the four crates, `src/adventure/` in `h3-sim` and `h3-cli` (their `Cargo.toml`, `lib.rs` and `h3-cli`'s `main.rs` are battle's: `cross-lane`), `crates/h3-cli/tests/adventure_replays.rs`, `fixtures/replays/adventure/`, `fixtures/maps/`, `benches/adventure/`, each pack's `adventure.toml`, `docs/formats/h3m.md`, `docs/rules/catalog/{adventure,game,town}.toml`. `h3-heroes` moves to this lane when hero progression starts (increment 3).
@@ -36,6 +35,10 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Recent sessions
 
+### 2026-10-13 — T16c checkpoint and T17a: the survey of monsters and battles (in progress)
+
+The user took T17a alone (T17b next round). **In progress:** the code reading is done; the survey `E08-battles.md`, the map entries and the closing docs are next.
+
 ### 2026-10-13 — T16 checkpoint and T16c: batch 2 scored, increment 3 refined
 
 Batch 2 as the code reading (a regression test for D3a–D3d). The user: experiments by agents on the client lane's harness (noted in the experiments README, the global HANDOFF, the client lane's inbox), increment 3 = monsters and battles, survey + ADR drafts first.
@@ -43,7 +46,3 @@ Batch 2 as the code reading (a regression test for D3a–D3d). The user: experim
 ### 2026-10-13 — T15 checkpoint and T16b + T16a: batch 2, maps with objects
 
 Workers built T16b (stamp, piles, batch 2) and T16a (maps with objects, replays, baselines, audit); the runner added two replays by seed.
-
-### 2026-10-13 — T14 checkpoint and T15a + T15b: observatories, keys, guards, gates
-
-Workers built T15a (state v6, game v4) and T15b; review fixes: `SharedAnchor`, guards and gates neighbour-visited.
