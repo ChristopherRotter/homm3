@@ -1,32 +1,37 @@
 //! `h3-experiment <spec.toml> --install <dir> --map <out.h3m> --template <out.md>`
+//! `h3-experiment <spec.toml> --install <dir> --map <out.h3m> --only <encounter>`
 //!
 //! Compiles an experiment spec into a SoD map and the results template (E04a T2,
-//! `docs/experiments/README.md`). The installation (or its copy, `original-data/install`) is only
-//! read; outputs inside it are refused.
+//! `docs/experiments/README.md`); with `--only`, a map with that one encounter in its place and
+//! no template (E04c T3: a battle for the capture harness). The installation (or its copy,
+//! `original-data/install`) is only read; outputs inside it are refused.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use h3_experiment::{Tables, build, parse};
+use h3_experiment::{Tables, build_only, parse};
 
-const USAGE: &str = "usage: h3-experiment <spec.toml> --install <dir> --map <out.h3m> --template <out.md>\n       h3-experiment --install <dir> --list heroes|creatures|skills|artifacts|spells";
+const USAGE: &str = "usage: h3-experiment <spec.toml> --install <dir> --map <out.h3m> --template <out.md>\n       h3-experiment <spec.toml> --install <dir> --map <out.h3m> --only <encounter>\n       h3-experiment --install <dir> --list heroes|creatures|skills|artifacts|spells";
 
 struct Args {
     spec: PathBuf,
     install: PathBuf,
     map: PathBuf,
-    template: PathBuf,
+    /// The results template; none with `only`.
+    template: Option<PathBuf>,
+    only: Option<String>,
 }
 
 fn parse_args() -> Result<Args, String> {
     let mut spec = None;
-    let (mut install, mut map, mut template) = (None, None, None);
+    let (mut install, mut map, mut template, mut only) = (None, None, None, None);
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--install" => install = args.next().map(PathBuf::from),
             "--map" => map = args.next().map(PathBuf::from),
             "--template" => template = args.next().map(PathBuf::from),
+            "--only" => only = args.next(),
             "-h" | "--help" => return Err(USAGE.into()),
             other if !other.starts_with("--") && spec.is_none() => {
                 spec = Some(PathBuf::from(other))
@@ -34,11 +39,16 @@ fn parse_args() -> Result<Args, String> {
             other => return Err(format!("unknown argument `{other}`\n{USAGE}")),
         }
     }
+    // A full build writes the template; a single encounter's map has none.
+    if template.is_some() == only.is_some() {
+        return Err(USAGE.into());
+    }
     Ok(Args {
         spec: spec.ok_or(USAGE)?,
         install: install.ok_or(USAGE)?,
         map: map.ok_or(USAGE)?,
-        template: template.ok_or(USAGE)?,
+        template,
+        only,
     })
 }
 
@@ -86,7 +96,8 @@ fn run() -> Result<(), String> {
         return list(Path::new(install), what);
     }
     let args = parse_args()?;
-    for out in [&args.map, &args.template] {
+    let outputs: Vec<&PathBuf> = std::iter::once(&args.map).chain(&args.template).collect();
+    for out in &outputs {
         if inside(out, &args.install) {
             return Err(format!(
                 "{} is inside the installation, which is read-only",
@@ -102,23 +113,29 @@ fn run() -> Result<(), String> {
         .map
         .file_name()
         .map_or_else(String::new, |f| f.to_string_lossy().into_owned());
-    let (map, template) = build(&spec, &tables, &file)?;
+    let (map, template) = build_only(&spec, &tables, &file, args.only.as_deref())?;
     let bytes = h3_map::writer::write(&map).map_err(|e| format!("map: {e}"))?;
-    for out in [&args.map, &args.template] {
+    for out in &outputs {
         if let Some(dir) = out.parent().filter(|d| !d.as_os_str().is_empty()) {
             std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         }
     }
     std::fs::write(&args.map, h3_map::writer::gzip(&bytes))
         .map_err(|e| format!("{}: {e}", args.map.display()))?;
-    std::fs::write(&args.template, template)
-        .map_err(|e| format!("{}: {e}", args.template.display()))?;
+    if let Some(path) = &args.template {
+        std::fs::write(path, template).map_err(|e| format!("{}: {e}", path.display()))?;
+    }
     println!(
-        "wrote {} ({} encounters, {} bytes uncompressed) and {}",
+        "wrote {} ({}, {} bytes uncompressed){}",
         args.map.display(),
-        spec.encounter.len(),
+        args.only.as_ref().map_or_else(
+            || format!("{} encounters", spec.encounter.len()),
+            |id| format!("encounter {id} only")
+        ),
         bytes.len(),
-        args.template.display()
+        args.template
+            .as_ref()
+            .map_or_else(String::new, |t| format!(" and {}", t.display()))
     );
     Ok(())
 }

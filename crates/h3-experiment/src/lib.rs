@@ -16,8 +16,8 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
 use h3_map::writer::{
-    ARMY_SLOTS, ARTIFACT_SLOTS, Hero, HeroArtifacts, Map, MapObject, Monster, ObjectTemplate,
-    PLAYERS, Patch, Pile, Player, Road, RoadKind, Terrain,
+    ARMY_SLOTS, ARTIFACT_SLOTS, Ground, Hero, HeroArtifacts, Map, MapObject, Monster,
+    ObjectTemplate, PLAYERS, Patch, Pile, Player, Road, RoadKind, Terrain,
 };
 use serde::Deserialize;
 
@@ -101,6 +101,22 @@ pub struct MapSpec {
     /// Rows of resource piles (`[[map.pile]]`, E08 T16b).
     #[serde(default)]
     pub pile: Vec<PileSpec>,
+    /// Special grounds (`[[map.ground]]`, E04c T3): Cursed Ground, Magic Plains, Clover Field, ….
+    #[serde(default)]
+    pub ground: Vec<GroundSpec>,
+}
+
+/// A special ground: one of its pictures, placed with its bottom-right tile on `at`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GroundSpec {
+    /// The picture's name in `Objects.txt` (`AVXcf0` or `AVXcf0.def`, any case), which names the
+    /// class (Clover Field 222, the SoD Cursed Ground 223, …).
+    pub picture: String,
+    /// The object's position, `[column, row]`: the picture's bottom-right tile. The picture covers
+    /// its width to the left and its height upwards (its `.msk`: the `0` pictures 6 x 4, the SoD
+    /// pictures `AVXcg5` and `AVXmp5` 3 x 3).
+    pub at: [u8; 2],
 }
 
 /// Resource piles of one resource on one row, one per tile from `from` to `to`.
@@ -311,6 +327,24 @@ pub fn stamp(text: &str) -> String {
 /// # Errors
 /// Unknown names, values outside the game's ranges, too many encounters or heroes.
 pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, String), String> {
+    build_only(spec, tables, map_file, None)
+}
+
+/// [`build`], with only the encounter `only` on the map when given (the others still checked and
+/// in the template, their places left empty): the map for one battle, which the capture harness
+/// starts with its only hero (`docs/experiments/README.md`, "Agents running a batch").
+///
+/// # Errors
+/// As [`build`]; and an `only` that names no encounter.
+pub fn build_only(
+    spec: &Spec,
+    tables: &Tables,
+    map_file: &str,
+    only: Option<&str>,
+) -> Result<(Map, String), String> {
+    if let Some(id) = only.filter(|id| !spec.encounter.iter().any(|e| e.id == *id)) {
+        return Err(format!("no encounter `{id}`"));
+    }
     let size = spec.map.size;
     if ![36, 72, 108, 144].contains(&size) {
         return Err(format!("map size {size} (36, 72, 108 or 144)"));
@@ -369,7 +403,13 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
             spec.encounter.len()
         ));
     }
-    let mut objects = Vec::new();
+    // The grounds first: the objects after them are drawn above them.
+    let mut objects = spec
+        .map
+        .ground
+        .iter()
+        .map(|g| ground(g, tables, size))
+        .collect::<Result<Vec<_>, String>>()?;
     let mut used_types = Vec::new();
     let mut heroes_per_player = [0usize; PLAYERS];
     let mut text = String::new();
@@ -391,6 +431,7 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
     }
     for (index, enc) in spec.encounter.iter().enumerate() {
         let index = u8::try_from(index).map_err(|_| "too many encounters".to_owned())?;
+        let first_object = objects.len();
         let x = ORIGIN + (index % columns) * COLUMN_STEP;
         let y = ORIGIN + (index / columns) * ROW_STEP;
         let ctx = |e: String| format!("encounter {}: {e}", enc.id);
@@ -465,16 +506,21 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
             }
         };
         encounter_text(&mut text, enc, &own, against.as_deref(), &more);
+        if only.is_some_and(|id| id != enc.id) {
+            objects.truncate(first_object);
+        }
     }
     for p in &spec.map.pile {
         objects.extend(piles(p, tables, size)?);
     }
+    // Heroes and monsters stand on grounds; two grounds may overlap (the game takes the last).
     let mut tiles: Vec<(u8, u8)> = objects
         .iter()
-        .map(|o| match o {
-            MapObject::Hero(h) => h.tile,
-            MapObject::Monster(m) => m.tile,
-            MapObject::Pile(p) => p.tile,
+        .filter_map(|o| match o {
+            MapObject::Hero(h) => Some(h.tile),
+            MapObject::Monster(m) => Some(m.tile),
+            MapObject::Pile(p) => Some(p.tile),
+            MapObject::Ground(_) => None,
         })
         .collect();
     tiles.sort_unstable();
@@ -539,6 +585,26 @@ fn piles(p: &PileSpec, tables: &Tables, size: u8) -> Result<Vec<MapObject>, Stri
             })
         })
         .collect())
+}
+
+/// A special ground by its picture's name.
+fn ground(g: &GroundSpec, tables: &Tables, size: u8) -> Result<MapObject, String> {
+    let name = g.picture.to_ascii_lowercase();
+    let name = name.strip_suffix(".def").unwrap_or(&name);
+    let template = tables
+        .grounds
+        .iter()
+        .find(|t| t.def.to_ascii_lowercase().strip_suffix(".def") == Some(name))
+        .cloned()
+        .ok_or_else(|| format!("no special-ground picture `{}`", g.picture))?;
+    let [x, y] = g.at;
+    if x >= size || y >= size {
+        return Err(format!("ground `{}` at {:?}: off the map", g.picture, g.at));
+    }
+    Ok(MapObject::Ground(Ground {
+        tile: (x, y),
+        template,
+    }))
 }
 
 fn terrain(name: &str) -> Result<Terrain, String> {
@@ -888,6 +954,13 @@ mod tests {
                     )
                 })
                 .to_vec(),
+            grounds: vec![
+                ObjectTemplate::from_objects_txt(
+                    "AVXcf0.def 111111111111111111111111111111111111111111111111 \
+                     000000000000000000000000000000000000000000000000 111111111 011111111 222 0 0 1",
+                )
+                .expect("template"),
+            ],
         }
     }
 
@@ -946,6 +1019,55 @@ mod tests {
         artifacts = { "spell book" = "Spell Book" }
         spells = ["Spell 0", "Spell 9", "Spell 69"]
     "#;
+
+    #[test]
+    fn grounds_come_first_and_only_keeps_one_encounter_in_its_place() {
+        let text = SPEC.replace(
+            "instructions = [\"Start it.\"]",
+            "instructions = [\"Start it.\"]\n[[map.ground]]\npicture = \"avxCF0.def\"\nat = [6, 4]\n\
+             [[map.ground]]\npicture = \"AVXcf0\"\nat = [12, 4]",
+        );
+        let spec = parse(&text).expect("spec");
+        let (map, template) = build(&spec, &tables(), "t.h3m").expect("build");
+        let tiles: Vec<_> = map.objects[..2]
+            .iter()
+            .map(|o| match o {
+                MapObject::Ground(g) => (g.tile, g.template.class),
+                other => panic!("not a ground: {other:?}"),
+            })
+            .collect();
+        assert_eq!(tiles, [((6, 4), 222), ((12, 4), 222)]);
+        assert_eq!(map.objects.len(), 7);
+        // Only B1: the grounds, then its hero and its opponent where the whole map has them; the
+        // template still lists every encounter.
+        let (one, same) = build_only(&spec, &tables(), "t.h3m", Some("B1")).expect("only");
+        assert_eq!(same, template);
+        assert_eq!(one.objects[..2], map.objects[..2]);
+        assert_eq!(one.objects[2..], map.objects[4..6]);
+        assert!(one.players[1].is_some());
+        let err = build_only(&spec, &tables(), "t.h3m", Some("X")).unwrap_err();
+        assert_eq!(err, "no encounter `X`");
+        for (picture, at, error) in [
+            ("AVXzz0", "[1, 1]", "no special-ground picture `AVXzz0`"),
+            (
+                "AVXcf0",
+                "[36, 1]",
+                "ground `AVXcf0` at [36, 1]: off the map",
+            ),
+            (
+                "AVXcf0",
+                "[1, 36]",
+                "ground `AVXcf0` at [1, 36]: off the map",
+            ),
+        ] {
+            let bad = SPEC.replace(
+                "instructions = [\"Start it.\"]",
+                &format!("[[map.ground]]\npicture = \"{picture}\"\nat = {at}"),
+            );
+            let spec = parse(&bad).expect("spec");
+            assert_eq!(build(&spec, &tables(), "t.h3m").unwrap_err(), error);
+        }
+    }
 
     #[test]
     fn builds_map_and_template() {
@@ -1167,7 +1289,7 @@ mod tests {
             .filter_map(|o| match o {
                 MapObject::Hero(h) => Some(h),
                 MapObject::Monster(_) => panic!("no monsters"),
-                MapObject::Pile(_) => None,
+                MapObject::Pile(_) | MapObject::Ground(_) => None,
             })
             .collect();
         // The encounter's hero, its `also` heroes, then the opponent beside the hero.

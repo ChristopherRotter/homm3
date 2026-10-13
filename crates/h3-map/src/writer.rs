@@ -70,6 +70,11 @@ const MONSTER_OBJECTS: [u32; 5] = [54, 71, 162, 163, 164];
 const PILE_OBJECT: u32 = 79;
 /// Resources a pile may hold.
 const RESOURCE_COUNT: u32 = 7;
+/// Object classes of the special grounds, whose objects have no body (E04c T3): Cursed Ground
+/// (21, SoD 223), Magic Plains (46, SoD 230), Clover Field (222), Evil Fog (224), Favorable Winds
+/// (225), Fiery Fields (226), Holy Ground (227), Lucid Pools (228), Magic Clouds (229),
+/// Rocklands (231); `Objects.txt` lists their pictures.
+pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231];
 /// The largest fixed amount a pile may hold: the original keeps it in 19 bits, and setup refuses
 /// more (`h3_adventure::MAX_PICKUP_AMOUNT`, mirrored here: the writer does not depend on the
 /// adventure crate). Gold counts in hundreds.
@@ -333,6 +338,17 @@ pub struct Pile {
     pub amount: u32,
 }
 
+/// A special ground placed on the map (E04c T3): an object without a body, which heroes and
+/// monsters stand on.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Ground {
+    /// The object's position: the bottom-right tile of its picture (the picture covers the tiles
+    /// to the left and above, as its `.msk` says).
+    pub tile: (u8, u8),
+    /// Template (a class of [`GROUND_OBJECTS`], from `Objects.txt`).
+    pub template: ObjectTemplate,
+}
+
 /// An object placed on the map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MapObject {
@@ -342,6 +358,8 @@ pub enum MapObject {
     Monster(Monster),
     /// A resource pile.
     Pile(Pile),
+    /// A special ground.
+    Ground(Ground),
 }
 
 /// A rectangle of tiles with a terrain of its own (E08 T10a: movement experiments).
@@ -473,6 +491,7 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
             MapObject::Hero(hero) => write_hero(&mut out, hero, identifier)?,
             MapObject::Monster(monster) => write_monster(&mut out, monster, identifier),
             MapObject::Pile(pile) => write_pile(&mut out, pile),
+            MapObject::Ground(_) => {} // no body
         }
     }
     out.u32(0); // no timed events
@@ -526,6 +545,7 @@ fn validate(map: &Map) -> Result<(), WriteError> {
             MapObject::Hero(hero) => hero.tile,
             MapObject::Monster(monster) => monster.tile,
             MapObject::Pile(pile) => pile.tile,
+            MapObject::Ground(ground) => ground.tile,
         };
         if x >= map.size || y >= map.size {
             return Err(out_of_range(
@@ -537,6 +557,7 @@ fn validate(map: &Map) -> Result<(), WriteError> {
             MapObject::Hero(hero) => validate_hero(map, hero)?,
             MapObject::Monster(monster) => validate_monster(monster)?,
             MapObject::Pile(pile) => validate_pile(pile)?,
+            MapObject::Ground(ground) => validate_ground(ground)?,
         }
     }
     Ok(())
@@ -621,6 +642,14 @@ fn validate_pile(pile: &Pile) -> Result<(), WriteError> {
     Ok(())
 }
 
+fn validate_ground(ground: &Ground) -> Result<(), WriteError> {
+    if GROUND_OBJECTS.contains(&ground.template.class) {
+        Ok(())
+    } else {
+        Err(out_of_range("ground object class", ground.template.class))
+    }
+}
+
 fn write_player(
     out: &mut Out,
     map: &Map,
@@ -703,6 +732,7 @@ fn object_template(object: &MapObject) -> ObjectTemplate {
         MapObject::Hero(hero) => ObjectTemplate::hero(hero.class),
         MapObject::Monster(monster) => monster.template.clone(),
         MapObject::Pile(pile) => pile.template.clone(),
+        MapObject::Ground(ground) => ground.template.clone(),
     }
 }
 
@@ -725,6 +755,7 @@ fn position(object: &MapObject) -> (u8, u8) {
         MapObject::Hero(hero) => (hero.tile.0.saturating_add(1), hero.tile.1),
         MapObject::Monster(monster) => monster.tile,
         MapObject::Pile(pile) => pile.tile,
+        MapObject::Ground(ground) => ground.tile,
     }
 }
 
@@ -913,6 +944,39 @@ mod tests {
                 }),
             ],
         }
+    }
+
+    #[test]
+    fn a_ground_needs_a_ground_class_and_writes_no_body() {
+        let template = ObjectTemplate::from_objects_txt(
+            "AVXcg5.def 111111111111111111111111111111111111111111111111 \
+             000000000000000000000000000000000000000000000000 111111111 011111111 223 0 0 1",
+        )
+        .unwrap();
+        let mut map = smoke_like_map();
+        map.objects = vec![MapObject::Ground(Ground {
+            tile: (5, 5),
+            template: template.clone(),
+        })];
+        let bytes = write(&map).unwrap();
+        // The objects end the file but for the events' count: one object at its position, template
+        // 0, five unused bytes and no body.
+        let tail = [1, 0, 0, 0, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        assert_eq!(&bytes[bytes.len() - tail.len()..], &tail[..]);
+        map.objects = vec![MapObject::Ground(Ground {
+            tile: (5, 5),
+            template: ObjectTemplate {
+                class: 79,
+                ..template
+            },
+        })];
+        assert_eq!(
+            write(&map),
+            Err(WriteError::OutOfRange {
+                what: "ground object class",
+                value: 79
+            })
+        );
     }
 
     #[test]
