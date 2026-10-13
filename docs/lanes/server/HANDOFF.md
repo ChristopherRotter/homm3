@@ -59,6 +59,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-13 — M6 T6, M6's closure (in progress)
+
+#167 (T5) merged. Branch `claude/stoic-cerf-sqmh9o`: done `06-security.md`'s discovery and the client lane's inbox note (two `cross-lane` commits), the threat table's rows. Next: the reviewer agent's findings fixed, the exit criteria in the log, the checkpoint (SRV-Q24), the full local verify, the pull request (label `cross-lane`).
+
 ### 2026-10-13 — M6 T5, lists of servers
 
-**#167 open** (`E16-log.md`): lists, the listed servers fetched, `Lists`, the tools; wire 27. Check its mergeability.
+#167 (`E16-log.md`): lists, the listed servers fetched, `Lists`, the tools; wire 27.

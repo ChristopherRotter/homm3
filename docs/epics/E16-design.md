@@ -463,4 +463,6 @@ as `login_message` does; `h3-protocol` builds the bytes, `h3-server` and clients
 | A forged or replayed server card | signed by the server's key, with issue and expiry times; relayers cannot alter it |
 | Connecting to an impostor | the key pinned on first contact and the signed welcome; TLS for the channel on the internet |
 | Discovery spam | only vouched cards are relayed, with hop and count bounds; the chain is shown; the player chooses |
+| A hostile peer | it is dialed only at its configured address and must answer with its configured key; its frames, pages and time are bounded; a card it relays is kept only if it verifies and its chain holds from the peer's own card; what it relays for its lists stays its own |
+| A forged or stale list | signed by the list's key, with issue and expiry times and bounds; skipped and logged otherwise; the client chooses which list keys to trust and checks that a list names each card marked with it |
 | Browsing reveals the player's address | cards are relayed by servers the player already knows; a new server is contacted only on the player's choice |
