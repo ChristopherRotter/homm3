@@ -1,0 +1,33 @@
+# E17 M2 T3: a sequence of the recorded timelines (sequences.toml): the human's Champions (speed 9, a two-hex walker) walk four hexes: move start, four cycles of the moving group, move end. On grass at the
+# capture set's tile, so the original's obstacles are the grass situation's (grass.toml).
+
+[scenario]
+id = "sequence-walk"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:champion"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15

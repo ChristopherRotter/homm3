@@ -448,8 +448,170 @@ The runbook: `clients/capture/README.md`. What it rests on:
   `game.pal`'s yellow ramp (§4.2) once per 100 ms: at 0, 100, …, 800 ms after the opening the
   original shows 224, 192, 160, 128, 160, 192, 224, 255, 224 (red = green, blue 0), so the
   opening frame is already one step on and the period is 800 ms; at 700 ms (the ramp's first
-  entry) our still matches it exactly. When within each 100 ms the step falls: T3.
+  entry) our still matches it exactly. The step falls exactly on the opening's 100 ms grid (§7.1).
 - **Idle animation.** In the grass situation the Pikemen fidget from about 200 to 700 ms after the
-  opening, identically on every run; its other three stacks stand still for 800 ms. T3, T4.
+  opening, identically on every run; its other three stacks stand still for 800 ms. Why: §7.2.
 - **The panel** shows its buttons lit on the human's turn and dimmed on the computer's.
 
+
+## 7. Animation timing (M2 T3)
+
+Read in `Heroes3.exe` and confirmed in the original through the harness: its clock stepped 1 ms
+at a time while `capture/h3mem.py` reads each stack's group and frame from the game's memory
+(§7.6). The three recorded sequences (`clients/situations/sequences.toml`: a walk, two shots, a
+flight with a melee strike and the retaliation) and the grass situation's idle field confirm every
+number below at combat speed 0; a walk confirmed speeds 1 and 2. Times are milliseconds of the
+game's one clock (0x4F82E0, WINMM's `timeGetTime`). VCMI 1.7.5's choices: §7.5.
+
+### 7.1 Clocks and frames
+
+- **The combat speed** (the setting `Combat Speed`, 0 to 2, default 0; 0x6987EC) picks a factor
+  F of 0x63CF7C, f32 1.0, 0.63 or 0.40. Every battle animation's time T becomes trunc(T x F), the
+  f32 operands multiplied at the x87's 53 bits (installation.md §7.10): 100 ms gives 100, **62**
+  (not 63) and 40; 150 gives 150, 94, 60; 33 gives 33, 20, 13; 115 gives 115, 72, 46. The idle
+  step (below) is not scaled.
+- **The frame deadline** 0x698998. A frame of an animation is drawn, then waits for the deadline
+  (`wait_until` 0x4F82F0), which then moves on by max(the frame's time, the lateness), and only
+  then shows (`stack_play_group` 0x446940; `battle_redraw` 0x494440 with its wait flag, for the
+  strikes and the shot). While nothing animates, the battle's tick 0x474040 keeps the deadline on
+  a grid of trunc(100 F) ms from the battle's start (0x462FA5). So:
+  - an animation's first frame shows at the next grid point, up to trunc(100 F) after the
+    command (the click at the frozen opening: the walk's first frame at 100 ms);
+  - a group's first frame shows at the deadline the previous frame set, so a change of frame
+    time takes effect one frame late;
+  - waits outside the deadline (the projectile's steps, the pause before a retaliation, §7.4)
+    leave it behind: the next animation's first iterations show at once, one after the other.
+- **The idle step** 0x4960D0 runs every 100 ms whatever F (its time 0x6989B8; the tick calls it):
+  the first at the opening itself, so the opening frame is already one step on (§6.2), then
+  exactly at 100, 200, … ms (stepping 99 → 100 shows it at 100). An animation stops it; after
+  one, it runs twice at the same moment (its time had fallen behind by more than 100 ms) and then
+  keeps the new grid. Its changes show at once.
+- **Reading the harness** (§7.6): a stack's state read at t is, inside an animation, the frame
+  drawn at t and shown from the next deadline (the screen at the walk's 0 to 99 ms still shows
+  the standing frame; group 20's frame 0 shows at 100, when memory already holds frame 1); from
+  the idle step, the frame shown at t.
+
+### 7.2 Standing, fidgets and the outline
+
+- **Standing** is group 2's frame 0; group 2's other frames never show.
+- **The outline's pulse**: each idle step rotates `game.pal` 0x60-0x67 (the active stack's
+  outline) and 0x70-0x77 (the mouse's stack) by one entry, eight entries in 800 ms (§6.2).
+- **Fidgets** (group 1), per stack with fidget interval t (+0x154, `cranim.txt` x 9000, i.e.
+  9000 ms for most creatures) whose DEF has a group 1, unless blind, petrified, paralysed or an
+  arrow tower:
+  - at the battle's start (0x479F30), and again after every action (seven copies in the action
+    dispatcher 0x478D80, one in `move_and_attack` 0x478900, one in a routine of the battle loop,
+    0x474573), every stack's fidget clock +0xFC = now + 2r - t, r = random(50, t): its next
+    fidget starts at the first idle step after now + 2r, 100 ms to 2t later;
+  - then one frame per idle step, each advance skipped when a draw of 0..100 gives less than 8
+    (a stall, 8 in 101);
+  - after its last frame it stands again, and its clock becomes trunc(now + r'/2 - t/4), r' =
+    random(0, t): the next fidget starts 0.75 t to 1.25 t later (strictly after; 0x4960D0).
+  Confirmed in the grass situation: the Pikemen's r = 51 puts their fidget at the second idle
+  step (200 ms), its four frames with two stalls end at 800 ms, the new clock fits r' = 8486; the
+  other stacks drew r = 8341, 7057 and 7450 (fidgets due after 16.7, 14.1 and 14.9 s). In the
+  walk's situation with a longer walk (to hex 45, done at 4832 ms) every clock was drawn again
+  then: the Goblins' r = 698 and the Marksmen's r = 2250 put their fidgets (nine frames, one per
+  100 ms) at 6232 and 9432 ms, the first idle steps after 4832 + 2r.
+- **The draws come from the rules' generator**: the start's through `random_between`, the
+  fidgets' through 0x50B1D0, which outside network play is the same C library `rand()` the
+  battle's rolls use (in a network game it takes the clock instead). In the original, how long a
+  player waits (each fidget draws) changes the later damage, luck and morale rolls. The engine
+  has its own generator (ADR-0003), so the viewer must draw its fidgets from a generator of its
+  own; they cannot match the original's frame for frame, and the reference diff takes the
+  original's poses instead (§7.6).
+- The heroes have idle clocks of their own (+0x53FC, set at the start; an idle group after 4 500
+  ms; read in part).
+
+### 7.3 Moves
+
+W is a stack's walk time (+0x158, `cranim.txt` x 500, ms per hex), n its DEF's frames in group 0.
+A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F) a frame.
+
+- **A walk** (`walk_step` 0x43F0B0 per hex): before the first hex group 20 (move start), then per
+  hex one full cycle of group 0, the stack drawn frame x 44 / n and x 42 / n along the step
+  (§4.2); after the last hex group 21 (move end), then standing. A walk stopped early (Quicksand,
+  a mine) ends the same way where it stops. Haste makes W trunc(W0 x 0.65), Slow trunc(W0 x 1.5)
+  (W0 the stack's own, +0x68; 0x444CE5, 0x444D3A); their end restores it.
+  Confirmed (sequence `walk`): the Champions (W 450, n 8) show group 20's three frames at 100,
+  200 and 300 ms, group 0 every 56 ms from 400 over four hexes, group 21 at 2192 to 2492, standing
+  at 2592; at speed 1 the frames are 62 and 35 ms apart, at speed 2 40 and 22.
+- **A flight** (`stack_flight_animation` 0x4B4A40): group 20, then k = (d + D/2) / D cycles of
+  group 0 at the walk's frame time along the straight line between the hexes (d their distance
+  in pixels, D the flight distance +0x160, `cranim.txt` x 115), the hex taken at the end; group
+  21, standing. Confirmed (sequence `melee`): the Angels (W 410, n 7, D 115) fly 352 pixels from
+  hex 35 to 43 in k = 3 cycles of 58 ms frames from 300 ms; group 21 shows from 1518.
+- **A turn** (`stack_turn_around` 0x446720, animated): facing right, group 7, the flip, group 10;
+  facing left, group 9, the flip, group 8; each all its frames; then standing. Not in a sequence
+  yet.
+
+### 7.4 Strikes and shots
+
+- **A strike's animation** (`strike_animation` 0x468990, H3API's ApplyAnimationToLastHitArmy):
+  L iterations of trunc(100 F) on the frame deadline, L = max(a magic animation's frames,
+  A + R - 1), A the striker's group's frames, R the longest reaction's. The striker plays its
+  group from iteration 0: by the strike's direction 11 (up), 12 (straight), 13 (down), 17-19 for
+  a strike on two stacks (`melee_strike` 0x441AAF). Each struck stack reacts once the iterations
+  left are no more than its reaction's frames, so the reactions end with the loop (with one
+  striker they start at its second-to-last frame, iteration L - 1 - R = A - 2): death 5 (its last
+  frame stays: the corpse), defend 4 (a defending stack), else hit 3; then they stand. The
+  pending spells are cast afterwards. Before a retaliation and before a second strike
+  `melee_attack` waits trunc(150 F) (0x441E05, 0x441EB6) outside the deadline, so the next
+  strike's first iteration shows at once.
+  Confirmed (sequence `melee`, times shown): the Wolf Riders walk four hexes and strike (group
+  12, 7 frames) from 4166 ms; the Angels' hit (6 frames) starts at iteration 5; after 12
+  iterations the Angels strike back: 150 ms after the strike's last frame shows (5266 ms) their group
+  12's frame 0 shows at once (5416), then every 100 ms; the Wolf Riders' hit (7 frames) from
+  iteration 4.
+- **A shot** (`shot_animation` 0x43F2C0): the shot group (14 up, 15 straight, 16 down by the
+  angle, 0x469880) up to its climax frame c (+0x150, `cranim.txt` cell 23; all frames without
+  one), each frame trunc(trunc(A / c) x F), A the attack time (+0x15C, x 500; only shots use
+  it). Then the projectile in trunc((d + 20) / 40) steps over the d pixels to the target, each
+  trunc(33 F) ms from its own start, outside the deadline (about 1 200 pixels a second); a ray
+  shooter waits trunc(115 F) and draws its ray (not read). Then `strike_animation`: the shooter
+  plays its group out while the target reacts; the deadline being behind, the reaction's first
+  frame shows for no time at all.
+  Confirmed (sequence `shot`): the Marksmen (A 500, c 7) show their 71 ms frames from 100 ms, the
+  arrow's 14 steps every 33 ms from 526, the Goblins' hit from 988 (frame 0 never shown, then 100
+  ms apart); the second shot (Marksmen shoot twice) starts 100 ms after the first's hit ends.
+- **Defend and Wait** have no animation: the next stack acts at the same millisecond (the grass
+  situation, keys `d` and `w`: the Wolf Riders' walk starts at once).
+
+### 7.5 VCMI 1.7.5
+
+`client/battle/CreatureAnimation.cpp` (`AnimationControls`), `BattleStacksController.cpp`:
+
+| What | `Heroes3.exe` | VCMI |
+|---|---|---|
+| a frame (melee, hit, defend, death, turn, move start and end) | trunc(100 F) | 100 ms / factor |
+| speeds | durations x 1.0, 0.63, 0.40 | factor 1, 2, 3 (its comment guesses 36/60/100) |
+| walking | one cycle of group 0 per hex, W / n a frame | frames 100 x W/500 ms apart, hexes W apart: the hex speed agrees, the frames are not tied to the step |
+| shot | A / c a frame up to the climax, then 100 ms | every frame 100 x A/500 ms |
+| projectile | steps of 40 pixels every 33 F ms | 1 250 pixels a second, smooth |
+| flight | k cycles of group 0 (D pixels each) at W / n | 250 / (W/500) pixels a second (its comment: "H3 uses Walk Animation Time"; both are used) |
+| fidget | the clock and draws of §7.2, stalls | after each idle cycle, a draw against the interval; on mouse-over |
+| deadline effects | the grid, late first frames, the reaction's lost frame 0, the idle step's catch-up | none |
+
+The engine-side facts agree (melee ignores the attack time, as VCMI's comment says); VCMI's
+timing is an approximation where the executable is exact.
+
+### 7.6 The original's state (the harness)
+
+`capture/h3mem.py` reads the running game's memory through `/proc/<pid>/mem` (Wine maps the
+executable at its image base): the clocks, and per stack its creature, hex, group, frame,
+facing, offsets and times (`structs.toml`). It writes nothing. `h3drive.py sequence` steps the
+clock 1 ms at a time after actions at the frozen clock (`hex:<n>` clicks a hex, a key, a click)
+and logs every change; `h3drive.py sequences` replays the recorded ones and fails when a
+timeline changes (two runs after a fresh start agreed). For T4 this gives two checks that need no
+eye: the viewer's timeline of a record against the original's, and each captured frame against
+our render of the **original's poses** read at that moment, which also covers fidgets and stalls
+the viewer's own generator cannot reproduce.
+
+### 7.7 Open
+
+- Not read: the teleporting move, a ray's drawing (H3API's DrawRay), the spells' and the magic
+  animations' frames (H3API's PlayMagicAnimation), mouse-over (whether hovering starts group 1),
+  the heroes' idle groups, the arrow towers' and the catapult's shots, the first aid tent, the
+  sounds' timing.
+- Not in a sequence yet: a turn, a death, Haste and Slow, a defending stack's reaction, a shot
+  up or down, a ray.
