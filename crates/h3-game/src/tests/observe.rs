@@ -60,12 +60,15 @@ fn a_player_observes_the_public_facts_and_the_map_as_it_sees_it() {
 
 #[test]
 fn an_observation_does_not_depend_on_the_seed_where_the_viewer_cannot_see_it() {
-    // The seed draws blue's starting army, which red never sees (nor blue's points, which the
-    // army sets); blue sees its own.
+    // The seed draws blue's starting army and both heroes' experience: red never sees blue's
+    // (nor blue's points, which the army sets), and its own hero's experience is the setup's
+    // here; blue sees its own.
     let rules = rules();
+    let mut fixed = setup();
+    fixed.heroes[0].details.experience = Some(50);
     let red = |seed| {
         observe(
-            &GameState::new(&rules, &setup(), seed).unwrap(),
+            &GameState::new(&rules, &fixed, seed).unwrap(),
             &rules,
             Viewer::Player(RED),
         )

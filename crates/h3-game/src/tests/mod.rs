@@ -6,6 +6,7 @@
 //! point 3).
 
 mod decisions;
+mod heroes;
 mod legal;
 mod moves;
 mod observe;
@@ -26,9 +27,10 @@ use h3_adventure::{
     TerrainMovementDef, TileSetup, Visit,
 };
 use h3_content::{
-    ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId, FactionDef,
-    HeroClassDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, Ruleset,
-    StartingStackDef, TerrainDef, TerrainId,
+    ArtifactClass, ArtifactDef, ArtifactSlotDef, ContentKey, ContentPack, CreatureDef,
+    CreatureInfoDef, CreatureTypeId, FactionDef, Formation, HeroClassDef, HeroEffect,
+    HeroParamsDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, Ruleset,
+    SecondarySkillDef, StartingStackDef, TerrainDef, TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
@@ -133,6 +135,12 @@ fn core(extra: bool) -> Ruleset {
                 &[("t:imp", [1, 1]), ("t:gog", [2, 2])],
                 &["t:cart"],
             ),
+            // A spell book and Expert Wits (E08 T18b).
+            HeroTypeDef {
+                skills: vec![(key("t:wits"), 3)],
+                spell_book: true,
+                ..hero_type("t:sage", &[("t:imp", [1, 1])], &[])
+            },
         ],
         resources: vec![ResourceDef {
             key: key("t:gold"),
@@ -142,9 +150,59 @@ fn core(extra: bool) -> Ruleset {
             key: key("t:faithful"),
             quirks: vec![],
         }],
+        // The hero model's content (E08 T18b): a book and a machine slot, the spell book, the
+        // cart's artifact, a charm without slot, Wits (+25/50/100 % spell points) and the hero parameters.
+        artifact_slots: [("t:book_slot", 1), ("t:machine", 1)]
+            .iter()
+            .map(|&(k, count)| ArtifactSlotDef {
+                key: key(k),
+                name: "Slot".into(),
+                count,
+                backpack: false,
+            })
+            .collect(),
+        artifacts: vec![
+            ArtifactDef {
+                effects: vec![HeroEffect::SpellBook],
+                ..artifact("t:book", "t:book_slot")
+            },
+            ArtifactDef {
+                war_machine: Some(key("t:cart")),
+                ..artifact("t:cart_art", "t:machine")
+            },
+            // Carried in the backpack only.
+            ArtifactDef {
+                slot: None,
+                ..artifact("t:charm", "t:machine")
+            },
+        ],
+        skills: vec![SecondarySkillDef {
+            key: key("t:wits"),
+            name: "Wits".into(),
+            levels: [2500, 5000, 10_000].map(|bp| vec![HeroEffect::MaxMana { bp }]),
+        }],
+        hero_params: Some(HeroParamsDef {
+            primary_min: [0, 0, 1, 1],
+            primary_max: 99,
+            backpack: 64,
+        }),
         ..ContentPack::new(manifest())
     };
     Ruleset::compile(&[pack], "t:faithful").unwrap()
+}
+
+fn artifact(k: &str, slot: &str) -> ArtifactDef {
+    ArtifactDef {
+        key: key(k),
+        name: "Artifact".into(),
+        class: ArtifactClass::Treasure,
+        cost: vec![],
+        slot: Some(key(slot)),
+        war_machine: None,
+        needs_skill: None,
+        effects: vec![],
+        parts: vec![],
+    }
 }
 
 /// The adventure part for `core`: maps up to 4 × 4 on one level, three players, armies of two
@@ -276,12 +334,16 @@ fn setup() -> GameSetup {
                     creature: IMP,
                     count: 9,
                 }]),
+                formation: Formation::Loose,
+                details: HeroDetailsSetup::default(),
             },
             GameHeroSetup {
                 hero_type: ORRIN,
                 owner: PlayerId::new(1),
                 pos: Pos::new(2, 2, 0),
                 army: HeroArmy::Starting,
+                formation: Formation::Loose,
+                details: HeroDetailsSetup::default(),
             },
         ],
     }
@@ -338,12 +400,12 @@ fn the_game_checks_its_part_before_the_adventure() {
         GameSetupError::Adventure(SetupError::HeroTile { .. })
     ));
     assert_eq!(
-        error(|s| s.heroes[1].hero_type = HeroTypeId::from_raw(4)),
+        error(|s| s.heroes[1].hero_type = HeroTypeId::from_raw(5)),
         GameSetupError::UnknownHeroType(HeroId::new(1))
     );
     assert_eq!(
         error(|s| {
-            s.heroes[0].hero_type = HeroTypeId::from_raw(4);
+            s.heroes[0].hero_type = HeroTypeId::from_raw(5);
             s.heroes[0].army = HeroArmy::Starting;
         }),
         GameSetupError::UnknownHeroType(HeroId::new(0))
@@ -434,6 +496,10 @@ fn the_errors_read_well() {
         (
             GameSetupError::StartingArmy(hero),
             "hero 2's starting army does not fit an army",
+        ),
+        (
+            GameSetupError::Hero(hero, h3_heroes::DetailsError::LevelZero),
+            "hero 2: the level must be at least 1",
         ),
         (
             GameSetupError::Adventure(SetupError::Players(0)),

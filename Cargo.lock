@@ -564,6 +564,7 @@ dependencies = [
  "h3-adventure",
  "h3-content",
  "h3-contracts",
+ "h3-heroes",
  "h3-kernel",
  "proptest",
 ]

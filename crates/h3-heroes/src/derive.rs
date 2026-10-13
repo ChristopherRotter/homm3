@@ -7,8 +7,8 @@ use core::num::NonZeroU32;
 
 use h3_content::{
     Affects, ArtifactTypeId, CompiledHeroEffect, CreatureSelector, CreatureStat, CreatureTypeId,
-    FULL_BP, HeroEffect, HeroParams, Ruleset, SINGLE_PRECISION_RATES, SchoolId, SpellCategory, SpellId,
-    SpellScope,
+    FULL_BP, HeroEffect, HeroParams, Ruleset, SINGLE_PRECISION_RATES, SchoolId, SpellCategory,
+    SpellId, SpellScope,
 };
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleMagic, DamageBonuses, EagleEye, FactionGroup,
@@ -349,10 +349,11 @@ pub const MANA_PER_KNOWLEDGE: u32 = 10;
 /// refuses) takes Knowledge as given: validate first.
 pub fn max_mana(details: &HeroDetails, ruleset: &Ruleset) -> u16 {
     // rule: HER-MAN-001
-    let knowledge = ruleset.hero_params().map_or(
-        details.primary[PrimarySkill::Knowledge.index()],
-        |params| effective_primary(details, ruleset, params, PrimarySkill::Knowledge),
-    );
+    let knowledge = ruleset
+        .hero_params()
+        .map_or(details.primary[PrimarySkill::Knowledge.index()], |params| {
+            effective_primary(details, ruleset, params, PrimarySkill::Knowledge)
+        });
     let base = MANA_PER_KNOWLEDGE * u32::from(knowledge);
     let mut sum = RateSum::default();
     for (effect, growth) in grown_effects(details, ruleset) {
