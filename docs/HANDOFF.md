@@ -1,6 +1,6 @@
 # HANDOFF
 
-Read first, then the lane's HANDOFF (`AGENTS.md`): the lane index and the traps of every lane; a lane's state lives in its own HANDOFF only. Rules: `docs/08-work-process.md` ("Lanes", "Keeping the start-of-session reading small"); `cargo xtask check-docs` keeps it under 6 000 bytes. Change it in a `shared/` pull request.
+Read first, then the lane's HANDOFF (`AGENTS.md`): the lane index and the traps of every lane; a lane's state lives in its own HANDOFF only. Rules: `docs/08-work-process.md` ("Lanes", "Keeping the start-of-session reading small"); `check-docs` keeps it under 6 000 bytes; change it in a `shared/` pull request.
 
 ## Lanes
 
@@ -13,7 +13,7 @@ Read first, then the lane's HANDOFF (`AGENTS.md`): the lane index and the traps 
 
 Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content` and `h3-pack` (R01), workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md` and `docs/stubs.toml` (one block per lane), `Cargo.lock`, `docs/exe/map.toml` and `structs.toml` (one line per entry).
 
-- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: when minutes or billing run out, runs fail unstarted and the full local verify stands in; CI never blocks work, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full verify on Linux for pull requests and `master` (never twice for the same code nor for docs only) and weekly `cargo deny check advisories`. Changes reach `master` by pull request only, **opened only when its branch is ready for merging**; each push to an open one runs CI: merge `master` into it only after `master`'s latest run finished.
+- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: out of minutes or billing, runs fail unstarted and the full local verify stands in; CI never blocks work, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full verify for pull requests and `master` (once per code, not for docs only) and weekly `cargo deny check advisories`. Changes reach `master` by pull request only, **opened only when its branch is ready for merging**; each push to an open one runs CI: merge `master` into it only after `master`'s latest run finished.
 
 ## Traps for every lane
 
@@ -21,17 +21,18 @@ Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `
 - **Hero-level properties** (a hero's available spells, a spell's mastery) are derived once in `h3-heroes` (ADR-0013 point 2, BAT-Q19): the adventure map calls the same functions, never a copy.
 
 **Sandbox and sync**
-- Original files in a cloud session: stage the user's `original-data/` through the device link (`08-work-process.md` "Cloud sandbox"; one large LOD per call), then `scripts/sandbox-setup.sh`. Without the link the session only prepares (Q48). Fetch `master` before a push so it is thin.
-- Git on the user's machine: get delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock` otherwise) and pass `-c user.name -c user.email`; it has no GitHub credentials, so it cannot push. A cloud session with GitHub attached pushes and opens pull requests by the REST API (GraphQL is blocked).
+- Original files: stage the user's `original-data/` through the device link (`08-work-process.md` "Cloud sandbox"; one LOD per call), then `scripts/sandbox-setup.sh`; without the link a session only prepares (Q48). Fetch `master` before a push (a thin pack).
+- **Stop hook "… no remote branch"** after a push: the clone lacks `origin/<branch>`; nothing is lost. Don't report it; fix: `git config --replace-all remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'; git fetch origin <branch>`.
+- Git on the user's machine: delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock`), `-c user.name -c user.email`; no GitHub credentials there. Cloud sessions open pull requests by the REST API (GraphQL is blocked).
 - The VM can restart (files stay, background jobs die): check `ps` before waiting.
 - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background and poll its log, or `verify --summary` (full log `target/verify/verify.log`); the inner loop is `verify --scope <lane> --quick`.
-- The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with a `CARGO_TARGET_DIR` of its own (never shared: `xtask` takes its root from its build; ~14 GB each, the disk holds two: remove a finished one). `pkill -f <pattern>` also kills the tool's own shell: kill by pid.
+- The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with a `CARGO_TARGET_DIR` of its own (never shared: `xtask` takes its root from its build; ~14 GB each: remove a finished one). `pkill -f <pattern>` also kills the tool's own shell: kill by pid.
 - bench-check at 0 Ir: valgrind 3.22 found no symbols in the lld-linked `h3` (the gate links with `-z norelro`).
 
 **Sources**
 - The wiki is reachable only through WebFetch (summarised) and needs the user's approval per session: ask for verbatim quotes, use `index.php?title=<Page>&action=raw` and `index.php?search=<term>&fulltext=1`; ask for the `swh` template's SoD argument, the summariser otherwise reports HotA.
 - VCMI 1.7.5: `git clone --depth 1 --branch 1.7.5 https://github.com/vcmi/vcmi.git` works through the proxy.
-- Experiments: agents may run batches in the original themselves on the client lane's harness, the game under Wine (the user, 2026-10-13; `docs/experiments/README.md`).
+- Experiments: agents play batches on the client lane's harness (`experiments/README.md`).
 - Code reading (Q29, Q57): stage `Heroes3.exe`, `pip install capstone pefile`, then `scripts/exe.py lookup|fn|switch|callers|refs|grep` with the address map (`docs/exe/README.md`); every address cited in docs or code needs a map entry (`check-exe-map`; `scripts/exe.py cited`). `fn` prints a long function only sliced (`--around`, `--from/--to`): never read `map.toml` or `h3api.toml` whole. The tool prints each float constant's width; the x87 runs at 53 bits (`installation.md` §7.10).
 
 **Coverage, lints, formatting**
