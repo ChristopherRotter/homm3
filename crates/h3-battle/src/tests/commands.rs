@@ -301,10 +301,11 @@ fn state_hash_is_pinned() {
         spells: vec![bolt],
     });
     led.magic.masteries = masteries(&r, [2, 1, 0, 0]);
-    // One removable obstacle (v28): a stone with its anchor beside it.
+    // One removable obstacle (v28): a stone with its anchor beside it, and its type (v42).
     let stone = h3_contracts::Obstacle {
         hexes: vec![at(&r, 7, 4).0, at(&r, 8, 4).0],
         anchor: Some(at(&r, 6, 4).0),
+        kind: h3_content::ContentKey::parse("t:stone").ok(),
     };
     let setup = BattleSetup {
         heroes: [Some(led), None],
@@ -315,7 +316,7 @@ fn state_hash_is_pinned() {
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 42);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 43);
 }
 
-const GOLDEN: u64 = 0xd81f_d842_f177_cb51;
+const GOLDEN: u64 = 0x1d92_07fe_6b45_73f5;

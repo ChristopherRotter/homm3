@@ -283,21 +283,21 @@ commands = [
     "D attack 1 73",
 ]
 checkpoints = [
-    "0x57c9d55103e71f3c",
-    "0x7d1606266c0a15c8",
-    "0xe63e2a0cfd50f006",
-    "0x0a47e657051e6380",
-    "0x8a350622160ceaa2",
-    "0x91e9f5e29e252555",
-    "0x7419b6a4c0e5b2b4",
-    "0x848011953f3b8dcb",
-    "0x72ab2c381a6ff443",
-    "0x1bf042666dfaf133",
-    "0x4c5e5fcc2ba8ff49",
+    "0x5c89697655188109",
+    "0x97df0c1df8517a8f",
+    "0x71de9822320e3ef7",
+    "0x390eeef34c01d44b",
+    "0x24c5fc82aa1587a3",
+    "0x3e65d32dd6beeb14",
+    "0x45cf98574bd0d349",
+    "0x8b83b3cd1aef0176",
+    "0xc846bf65737433fa",
+    "0xe205e2b8bd0cbbf0",
+    "0x0721270d9f979cd4",
 ]
 
 [replay]
-format = 23
+format = 24
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -312,7 +312,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 42
+battle_state_hash_version = 43
 checkpoint_every = 25
 
 [setup]
@@ -681,4 +681,4 @@ count = 4
 
 [result]
 winner = "defender"
-final_hash = "0xe29d337090bc86c1"
+final_hash = "0x449c3e8810de7c22"

@@ -10,7 +10,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points, plus the original's f32 bits under Q-0005; Q45 (b)).
 - **Next, at the user's checkpoint:** E04c's refinement (sieges, special battlefields); batch 2g when the user plays it.
 - **Open for later tasks:** BAT-Q28, BAT-Q32 to BAT-Q35 (none blocks), batch 2g and 49 wiki checks (`docs/experiments/README.md`), BAT-STUB-1 (an expired created stack in the observation), `QUEUE.md`'s inbox by destination, Q43.
-- **Versions:** battle owns state hash v42, battle part hash v1, replay format v23, action encoding v12, C ABI v18, observation encoding v14; shared: core ruleset hash v43, pack format v35. Next ids: BAT-Q36, BAT-QUIRK-22, BAT-STUB-2.
+- **Versions:** battle owns state hash v43, battle part hash v1, replay format v24, action encoding v12, C ABI v18, observation encoding v14; shared: core ruleset hash v43, pack format v35. Next ids: BAT-Q36, BAT-QUIRK-22, BAT-STUB-2.
 - **Ownership:** `lanes.toml`; a seam change (`h3-kernel`, `h3-contracts`) is its own `shared/` pull request, merged first.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; the user plays experiment maps in SoD with plain HD and commits the results.
 

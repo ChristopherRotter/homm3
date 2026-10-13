@@ -437,9 +437,17 @@ fn events_are_projected_for_their_viewer() {
 #[test]
 fn the_observation_carries_the_viewers_battle() {
     let (ruleset, mut setup) = full();
+    let key = |k: &str| h3_content::ContentKey::parse(k).ok();
     setup.obstacles.push(Obstacle {
         hexes: vec![60, 61],
         anchor: Some(60),
+        kind: key("synthetic:boulder"),
+    });
+    // An absolute obstacle's type (v22), here over no hex.
+    setup.obstacles.push(Obstacle {
+        hexes: vec![],
+        anchor: None,
+        kind: key("synthetic:ridge"),
     });
     let state = BattleState::new(&ruleset, &setup, 7).unwrap();
     let engine = h3_battle::observe(&state, &ruleset, BattleSide::Defender);
@@ -471,6 +479,15 @@ fn the_observation_carries_the_viewers_battle() {
         engine.removable_obstacles.len()
     );
     assert!(!o.removable_obstacles.is_empty());
+    // The obstacles' types, by handle (v22).
+    let handle = |k: &str| ruleset.obstacle_by_key(k).map(h3_kernel::Handle::raw);
+    assert!(
+        o.removable_obstacles
+            .iter()
+            .any(|r| r.anchor == 60 && r.kind == handle("synthetic:boulder"))
+    );
+    assert_eq!(o.absolute_obstacle, handle("synthetic:ridge"));
+    assert!(o.absolute_obstacle.is_some());
     // The attacker sees its own hero's private part, never the defender's.
     let a = map::observe(&state, &ruleset, BattleSide::Attacker);
     assert_ne!(a.own_hero, o.own_hero);
@@ -726,6 +743,10 @@ fn the_key_tables_follow_the_handles() {
     ];
     assert!(kinds.iter().all(|k| !k.is_empty()));
     assert_eq!(keys.hero_types.len(), ruleset.hero_types().len());
+    assert!(!keys.obstacles.is_empty());
+    for (i, key) in keys.obstacles.iter().enumerate() {
+        assert_eq!(ruleset.obstacle_by_key(key).map(|o| o.index()), Some(i));
+    }
     let field = map::field(&ruleset);
     let params = ruleset.battle().field;
     assert_eq!((field.width, field.height), (params.width, params.height));

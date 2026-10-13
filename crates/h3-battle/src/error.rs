@@ -42,8 +42,12 @@ pub enum SetupError {
     /// An obstacle's anchor hex is outside the standable field (E04b T5b).
     InvalidAnchor(u8),
     /// More removable obstacles than a battle holds, or one with more hexes than a removable
-    /// obstacle has (E04b T5b; `MAX_REMOVABLE_OBSTACLES`, `MAX_REMOVABLE_HEXES`).
+    /// obstacle has (E04b T5b; `MAX_REMOVABLE_OBSTACLES`, `MAX_REMOVABLE_HEXES`), or a second
+    /// absolute obstacle with a type.
     TooManyObstacles,
+    /// The obstacle at this index of the setup names a type the ruleset lacks, or an absolute
+    /// type with an anchor or a usual one without.
+    InvalidObstacleType(u8),
     /// No free hex is left for a stack.
     NoRoom {
         /// The side.
@@ -161,7 +165,13 @@ impl fmt::Display for SetupError {
             Self::InvalidAnchor(hex) => write!(f, "obstacle anchor {hex} is not a standable hex"),
             Self::TooManyObstacles => write!(
                 f,
-                "more than 16 removable obstacles, or one blocking more than 8 hexes"
+                "more than 16 removable obstacles, one blocking more than 8 hexes, or two \
+                 absolute obstacles with a type"
+            ),
+            Self::InvalidObstacleType(i) => write!(
+                f,
+                "obstacle {i} names an unknown type, or an absolute one with an anchor or a \
+                 usual one without"
             ),
             Self::NoRoom { side, slot } => write!(f, "no free hex for {side:?} slot {slot}"),
             Self::WarMachineInArmy { side, slot } => {
@@ -340,7 +350,13 @@ mod tests {
         );
         assert_eq!(
             SetupError::TooManyObstacles.to_string(),
-            "more than 16 removable obstacles, or one blocking more than 8 hexes"
+            "more than 16 removable obstacles, one blocking more than 8 hexes, or two absolute \
+             obstacles with a type"
+        );
+        assert_eq!(
+            SetupError::InvalidObstacleType(2).to_string(),
+            "obstacle 2 names an unknown type, or an absolute one with an anchor or a usual one \
+             without"
         );
         assert_eq!(
             SetupError::NoRoom {

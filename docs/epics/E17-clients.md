@@ -5,7 +5,7 @@ done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at t
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M1 T7 (a battle still), then T8.
+are there). Next: M1 T7 (a battle still, after the obstacles' types: CLT-Q3), then T8.
 
 ## Goal
 
@@ -14,7 +14,7 @@ down to the pixel and the frame: first a battle replay viewer, later a full game
 viewer and playable clients. Everything with graphics, sound, input or a window lives in
 `clients/`, outside the core.
 
-## Decisions (user, 2026-10-12)
+## Decisions (user, 2026-10-12; 2026-10-13 where dated)
 
 - **Rust**, confirmed; the `clients/` workspace as Phase 0 laid it out.
 - **A software compositor** into a frame in the original's screen format; render-to-PNG writes
@@ -33,6 +33,15 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
   coming screens need, read by offset; nothing loads while a screen is shown. The bytes come from a
   table-only reader in `h3-formats` (CLT-Q2, the battle lane), chosen over memory-mapped files and
   whole-archive reads; until it lands the adapter reads whole archives (ADR-0020 point 7).
+- **Text through a string catalogue** (2026-10-13): every string the client shows is an entry of
+  a key → string catalogue (nested JSON or similar), easy to translate; language packs swap. The
+  original's text stays uncommitted (ADR-0009): its language comes from the user's own files
+  through a committed catalogue of keys. Refined with M3's fonts (QUEUE inbox: the agent's notes).
+- **Graphics options** (2026-10-13), eventually: per effect the original's way or a modern one
+  (shadows first); `faithful` is the default and the reference. The draw list names what is
+  drawn, the compositor decides how (QUEUE inbox).
+- **The natural obstacles' types first** (2026-10-13, CLT-Q3): the engine dropped them at
+  generation; a `cross-lane` change carries them to the wire before T7 draws obstacles.
 
 ## The ideas in plain words
 
@@ -116,14 +125,16 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
 
 - The reference capture setup (a full copy of the game under `original-data/`, computer use, the
   exact capture method), a representative situation set, the exact diff harness.
-- Fonts and the battle interface (panel, log, stack counts, cursors).
+- Fonts, the string catalogue and the language packs, and the battle interface (panel, log, stack
+  counts, cursors).
 - Sound effects and music.
 - **Exit:** the reference set passes, or each difference is a listed fix or a classified quirk.
 
 ### Later (refined when they come up)
 
 Spell effects, live play against a server (the content check, accounts; the server lane's inbox
-notes), HD layouts, the adventure map and the full game viewer, video.
+notes), HD layouts, graphics options beyond `faithful`, the adventure map and the full game
+viewer, video.
 
 ## Research items from the asset notes
 

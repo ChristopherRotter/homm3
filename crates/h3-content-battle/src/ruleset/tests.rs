@@ -1157,6 +1157,10 @@ fn obstacles() {
         (&[grass, lava][..], 2, false)
     );
     assert_eq!(r.obstacles()[1].blocked, vec![(5, 4), (6, 4)]);
+    // By key and by handle.
+    let rock = r.obstacle_by_key("base:rock").unwrap();
+    assert_eq!(r.obstacle(rock), Some(o));
+    assert_eq!(r.obstacle_by_key("base:nothing"), None);
     // Errors: unknown terrain, duplicate key, a key outside the pack, too many, invalid shapes.
     let mut p = base();
     p.battle.obstacles.push(p.battle.obstacles[0].clone());
