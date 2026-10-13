@@ -37,7 +37,26 @@ with `Describe` after its hello, without a login; the server signs a new one whe
 last one is a minute old. `h3-server card server.toml` asks the running server for it (at `bind`,
 on loopback for `0.0.0.0`) and prints it, for a web page: refresh the page's copy before it
 expires. A card that would break its bounds (`h3_protocol::card`: 8 KiB, 16 rulesets and 16
-ladders, names of 64 bytes) stops the start.
+ladders, names of 64 bytes, 64 peers) stops the start.
+
+**Peers** (ADR-0021 point 3): the servers the operator vouches for, each a `[[peer]]` with its
+key (its card's `key`, which its operator can read off `h3-server card`) and the address the
+server fetches its card at. The card names them, and the server fetches their cards at start
+and every `[discovery] refresh_ms` (an hour), one after the other, each within `timeout_ms`
+(10 s), and relays them to any client that asks (`ListPeers`, after the hello, without a
+login). A fetch checks that the configured key answers at the configured address (the peer's
+welcome names that address as its id: its `public_url`, or one of its `addresses`) and signed
+the card; a peer that fails is logged and its last good card is relayed until it expires. The
+server dials only the addresses in its configuration, never one it read in a card. A peer runs
+the same protocol version (before 1.0 a server greets only its own).
+
+**The TLS client** (ADR-0021 point 4) fetches a `wss://` peer through `rustls` with the
+pure-Rust graviola cryptography, checking the peer's certificate against the operating system's
+root certificates (or those `SSL_CERT_FILE` or `SSL_CERT_DIR` name); `ws://` is plain, for a
+LAN. Graviola runs on x86_64 processors with AES-NI, PCLMULQDQ, BMI1, ADX, AVX and AVX2 (about
+2013 on) and on aarch64 with NEON and the AES, PMULL and SHA-2 extensions, and does not build for
+other architectures; on an older processor every `wss://` fetch fails and is logged, and the
+server serves on.
 
 A ladder's scenarios are
 offers of their own, `<ladder>.<n>` in the pool's order: its matches' journals and replays name

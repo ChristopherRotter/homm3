@@ -14,7 +14,8 @@
 //!   `Authenticator` (Ed25519), and `players`, the player log they are kept in (M3 T2a, T2b);
 //!   [`rebind`], the operator's;
 //! - `key`: the server's key, its identity, which signs its welcomes (E16 M6 T1), and `card`, the
-//!   server's signed card (E16 M6 T2);
+//!   server's signed card (E16 M6 T2); `peers`, the servers it vouches for, whose cards it fetches
+//!   (with its TLS client) and relays (E16 M6 T3);
 //! - `ladders`: the ranked game configurations, their scenario pools and results logs, and
 //!   [`rating`], Glicko-2 (E16 M4 T1); `ids`, the game ids unique for the server's life (E16 M4
 //!   T3b);
@@ -31,7 +32,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use h3_protocol::wire::{CardContent, ServerCard, WireU64};
+use h3_protocol::wire::{CardContent, CardPeer, ServerCard, WireU64};
 use tokio::net::TcpListener;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
@@ -48,6 +49,7 @@ mod journal;
 mod key;
 mod ladders;
 mod net;
+mod peers;
 mod players;
 pub mod rating;
 mod registry;
@@ -86,6 +88,11 @@ pub struct Running {
     sweeper: JoinHandle<()>,
     /// The ladders' matcher (E16 M4 T2).
     matcher: JoinHandle<()>,
+    /// The fetch of the peers' cards (E16 M6 T3).
+    fetcher: JoinHandle<()>,
+    /// The peers and their cards (E16 M6 T3): the tests wait on their fetches.
+    #[cfg(test)]
+    peers: Arc<peers::Peers>,
     /// The ladders (E16 M4 T1).
     ladders: Arc<ladders::Ladders>,
     /// The data directory's lock (E16 M3 T2b), held until the server stopped.
@@ -138,6 +145,7 @@ impl Running {
         self.stop.send_replace(true);
         self.sweeper.abort();
         self.matcher.abort();
+        self.fetcher.abort();
         registry::lock(&self.registry).stop_all();
         let grace = tokio::time::Instant::now() + STOP_GRACE;
         while registry::lock(&self.registry).live() > 0 && tokio::time::Instant::now() < grace {
@@ -155,11 +163,30 @@ pub fn server_name() -> String {
 /// Compiles the offers, reads the accounts back, compiles the ladders and reads their results back
 /// (a ladder whose content changed starts a season), restores the games the data directory's
 /// journals hold, and listens: call from a `tokio` runtime. Games are created by clients (`CreateGame`),
-/// each on its own thread.
+/// each on its own thread. The peers' cards are fetched from the start on (E16 M6 T3), at `wss://`
+/// checked against the operating system's root certificates.
 pub async fn start(config: &Config) -> Result<Running, Error> {
+    launch(config, peers::os_roots).await
+}
+
+/// [`start`], the TLS client checking a `wss://` peer's certificate against the roots `roots`
+/// gives, asked only if a peer is at `wss://` (tests pass a root of their own).
+pub(crate) async fn launch(
+    config: &Config,
+    roots: fn() -> rustls::RootCertStore,
+) -> Result<Running, Error> {
+    use h3_protocol::connection::Signer as _;
     let lock = lock(&config.server.data)?;
     // The server's identity (E16 M6 T1): its key, written at the first start.
     let key = key::ServerKey::open(&config.server.data)?;
+    // The servers it vouches for, whose cards it fetches (E16 M6 T3).
+    let peers = Arc::new(peers::Peers::new(&config.peers, key.key())?);
+    let secure = (config.peers.iter()).any(|peer| peer.address.starts_with("wss://"));
+    let tls = peers::tls(if secure {
+        roots()
+    } else {
+        rustls::RootCertStore::empty()
+    })?;
     let accounts = Arc::new(accounts::Accounts::open(
         &config.server.data,
         Box::new(accounts::Ed25519),
@@ -235,8 +262,15 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
             .collect(),
         ladders: Arc::clone(&ladders),
         card,
+        peers: Arc::clone(&peers),
         counts: Arc::default(),
     });
+    let fetcher = tokio::spawn(peers::fetch_every(
+        Arc::clone(&peers),
+        tls,
+        config.discovery,
+        server.id.clone(),
+    ));
     let (stop, stopping) = watch::channel(false);
     let grace = (config.ladders.iter())
         .flat_map(|ladder| [ladder.grace_ms, ladder.grace_total_ms])
@@ -265,6 +299,9 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         stop,
         sweeper,
         matcher,
+        fetcher,
+        #[cfg(test)]
+        peers,
         ladders,
         _lock: lock,
     })
@@ -285,7 +322,7 @@ fn card_content(offers: &[Arc<game::Offer>], ladders: &ladders::Ladders) -> Vec<
 
 /// The server's card as its configuration makes it (E16 M6 T2), its times, counts and ladders left
 /// to each signing: named by the configuration (its id by default), at the server's id `id` and its
-/// other addresses, with the rulesets `content`.
+/// other addresses, with the rulesets `content`, vouching for its peers (E16 M6 T3).
 fn card_template(
     config: &Config,
     id: &str,
@@ -294,6 +331,12 @@ fn card_template(
 ) -> ServerCard {
     use h3_protocol::connection::Signer as _;
     let server = &config.server;
+    let peers = (config.peers.iter())
+        .map(|peer| CardPeer {
+            key: peer.key.clone(),
+            address: peer.address.clone(),
+        })
+        .collect();
     ServerCard {
         key: h3_protocol::account::to_hex(&key.key()),
         name: server.name.clone().unwrap_or_else(|| id.to_owned()),
@@ -311,7 +354,7 @@ fn card_template(
         operator: server.operator.clone(),
         issued: WireU64(0),
         expires: WireU64(0),
-        peers: Vec::new(),
+        peers,
     }
 }
 

@@ -18,9 +18,15 @@ name = "An example server"      # its card's name (the server's id by default)
 description = "Synthetic battles against players and the bot."   # lines end in \n
 # operator = "ops@example.org"  # how players reach the operator, on the card
 
-[discovery]                     # the server's signed card (README.md, ADR-0021 point 2)
+[discovery]                     # the server's signed card and its peers' (README.md, ADR-0021)
 card_ms = 86400000              # a card holds this long after it is signed (10 min to 30 days)
 counts = true                   # false: no connection, game or player counts on the card
+refresh_ms = 3600000            # the peers' cards are fetched at start and this often (1 min to 1 day)
+timeout_ms = 10000              # one peer's fetch may take this long (1 s to 2 min)
+
+# [[peer]]                      # a server this one vouches for: its card names it, relays its card
+# key = "…"                     # its public key, 64 hex digits (the `key` of its `h3-server card`)
+# address = "wss://h3.example.net"   # where its card is fetched: wss:// (TLS) or ws:// (a LAN)
 
 [content]
 packs = "../../packs"

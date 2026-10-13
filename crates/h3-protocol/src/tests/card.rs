@@ -1,6 +1,6 @@
 //! The server's card (E16 M6 T2; ADR-0021 point 2): signed over its purpose and its text, read
 //! back only when its own key's signature verifies, it has not expired and was not issued too far
-//! ahead, and within its bounds.
+//! ahead, and within its bounds; the chain of vouching of a relayed card (E16 M6 T3).
 
 use std::string::{String, ToString};
 use std::vec;
@@ -11,7 +11,7 @@ use proptest::prelude::*;
 use crate::account::{self, card_message};
 use crate::card::{
     CardError, MAX_ADDRESSES, MAX_CARD_BYTES, MAX_DESCRIPTION, MAX_LISTED, MAX_OPERATOR, MAX_PACKS,
-    MAX_PEERS, MAX_TEXT, SKEW_MS, fits, is_address, read, sign,
+    MAX_PEERS, MAX_TEXT, SKEW_MS, chain, fits, is_address, read, sign,
 };
 use crate::codec;
 use crate::connection::Signer;
@@ -316,6 +316,35 @@ fn an_address_is_a_websocket_url() {
     ] {
         assert!(!is_address(bad), "{bad}");
     }
+}
+
+/// E16 M6 T3: a chain holds when each card names the next one's key among its peers, whatever
+/// the addresses; a single card, and none, are chains.
+#[test]
+fn a_chain_vouches_card_by_card() {
+    let server = |key: &str, peers: &[&str]| ServerCard {
+        key: key.repeat(32),
+        peers: (peers.iter())
+            .map(|peer| CardPeer {
+                key: peer.repeat(32),
+                address: "ws://elsewhere".to_string(),
+            })
+            .collect(),
+        ..card()
+    };
+    let (a, b, c) = (
+        server("aa", &["bb", "dd"]),
+        server("bb", &["cc"]),
+        server("cc", &[]),
+    );
+    assert!(chain(&[&a, &b]));
+    assert!(chain(&[&a, &b, &c]));
+    assert!(chain(&[&c]));
+    assert!(chain(&[]));
+    // A card its voucher does not name, a link left out, a chain backwards.
+    assert!(!chain(&[&b, &a]));
+    assert!(!chain(&[&a, &c]));
+    assert!(!chain(&[&c, &b, &a]));
 }
 
 proptest! {

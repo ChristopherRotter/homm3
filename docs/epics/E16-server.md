@@ -423,8 +423,9 @@ list's key; mDNS later.
 - **T2 The card and `Describe`** (done 2026-10-13; `E16-log.md`): `ServerCard`, `SignedCard` and
   their bounds, `Describe`/`Described`, `[server] name`, `description`, `operator`, `[discovery]`,
   the wall clock, `h3-server card`; wire 25.
-- **T3 Peers, the fetch and `ListPeers`:** `[[peer]]`, the TLS client (a `shared:` commit: the
-  workspace's entries), the fetch's bounds, the cache, `ListPeers`; a wire bump.
+- **T3 Peers, the fetch and `ListPeers`** (done 2026-10-13; `E16-log.md`): `[[peer]]`,
+  `[discovery] refresh_ms` and `timeout_ms`, the TLS client (a `shared:` commit), the fetch and its
+  bounds, the cache, `ListPeers`/`Peers`, `card::chain`; wire 26.
 - **T4 Beyond the peers:** the peers' own cards to `depth`, each link checked, the `cards` bound.
 - **T5 Lists:** `<data>/lists/`, the listed servers fetched, `Lists`, the list tools; a wire bump.
 - **T6 Closure:** `06-security.md`'s discovery and the client lane's inbox (`cross-lane`), the
@@ -462,6 +463,16 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   the counts count (the open connections, the games waiting or running, each ladder's current
   leaderboard); `h3-server card` asking the running server on loopback; the wall clock behind one
   local `allow`.
+- T3: `tokio-rustls` (no default features) as `h3-server`'s dev-dependency for the tests' TLS
+  endpoint (in the tree already); `[[peer]] key address` (at most 64, no key or address twice,
+  not the server's own key); `[discovery] refresh_ms` (an hour; a minute to a day, from a round's
+  start) and `timeout_ms` (10 s; a second to two minutes); one fetch at a time in the
+  configuration's order, each a task of its own (graviola's panic on an older processor fails the
+  fetch, logged); the welcome's id must be the address dialed; a fetch's bounds (a frame of 2 × 8
+  KiB + 1 KiB, two in all); the hello's name (the server's id); a peer of another protocol version
+  skipped; the last good card kept until it expires; `RelayedCard { card, via, list }`, pages of
+  50, `card::chain`; the OS roots read only when a peer is at `wss://` (`SSL_CERT_FILE` and
+  `SSL_CERT_DIR` honoured); the test certificates in hex in the test, valid until 2126.
 
 ## Exit criteria (M4)
 

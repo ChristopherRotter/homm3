@@ -1327,6 +1327,15 @@ pub enum ClientMessage {
         /// The client's sequence number.
         seq: u32,
     },
+    /// The cards the server relays (E16 M6 T3; ADR-0021 point 3): its peers', as it fetched them;
+    /// answered `Peers`, a page of at most [`crate::card::PAGE`] from the `from`th. Needs no game,
+    /// nor a login.
+    ListPeers {
+        /// The client's sequence number.
+        seq: u32,
+        /// The page's first entry, the first 0.
+        from: u32,
+    },
 }
 
 /// Why a join, a game's creation or an account's request was refused; the connection stays open.
@@ -1705,6 +1714,33 @@ pub enum ServerMessage {
         /// The signed card.
         card: SignedCard,
     },
+    /// A page of the cards the server relays (E16 M6 T3): `ListPeers`' answer.
+    Peers {
+        /// The client's sequence number.
+        seq: u32,
+        /// The page's first entry, as asked.
+        from: u32,
+        /// How many cards the server relays.
+        total: u32,
+        /// The page's cards, in the server's order (its peers in its configuration's); none past
+        /// the last page.
+        entries: Vec<RelayedCard>,
+    },
+}
+
+/// A card a server relays (E16 M6 T3; `E16-design.md` §12): as its key signed it, with the keys
+/// that vouch for it, which a client checks against the cards themselves ([`crate::card::chain`]).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RelayedCard {
+    /// The card.
+    pub card: SignedCard,
+    /// The keys from the relaying server's peer down to the server that vouches for the card, 32
+    /// bytes as lowercase hex each; none for a card of the relaying server's own peers, which its
+    /// own card names.
+    pub via: Vec<String>,
+    /// The key of the list the card was fetched for (E16 M6 T5); `None` for a peer's card.
+    pub list: Option<String>,
 }
 
 /// A server's description of itself (E16 M6 T2; ADR-0021 point 2, `E16-design.md` §12), signed by
@@ -1744,7 +1780,7 @@ pub struct ServerCard {
     pub issued: WireU64,
     /// When it expires, likewise: a client and a relayer drop it then.
     pub expires: WireU64,
-    /// The servers it vouches for (E16 M6 T3).
+    /// The servers it vouches for (E16 M6 T3), its configuration's peers in its order.
     pub peers: Vec<CardPeer>,
 }
 

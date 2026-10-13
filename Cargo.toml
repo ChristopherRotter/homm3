@@ -85,11 +85,11 @@ miniz_oxide = { version = "0.8", default-features = false, features = ["with-all
 proptest = { version = "1", default-features = false, features = ["std"] }
 criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
 # The server (E16, ADR-0018 point 3): the runtime with only the features the shell needs, WebSocket
-# without TLS, and OS randomness for seeds and tokens. Licenses: MIT (tokio, tokio-tungstenite), MIT
+# served without TLS (its TLS client below), and OS randomness for seeds and tokens. Licenses: MIT (tokio, tokio-tungstenite), MIT
 # OR Apache-2.0 (futures-util, getrandom). `h3-protocol` takes `serde` and `serde_json` without
 # `std` in its own manifest (ADR-0018 point 1): these entries enable it.
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "net", "time", "sync", "macros", "signal"] }
-tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect"] }
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect", "rustls-tls-native-roots"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 getrandom = "0.3"
 # Accounts (E16 M3, ADR-0019 point 1; the user, SRV-Q17): the server checks Ed25519 signatures;
@@ -97,6 +97,16 @@ getrandom = "0.3"
 # BSD-3-Clause (ed25519-dalek), MIT OR Apache-2.0 (argon2).
 ed25519-dalek = "3"
 argon2 = { version = "0.6", default-features = false, features = ["alloc", "zeroize"] }
+# The server's TLS client (E16 M6 T3, ADR-0021 point 4; the user, SRV-Q23): it fetches its peers'
+# cards at `wss://` through `tokio-tungstenite`'s rustls feature, with the pure-Rust graviola backend
+# and the operating system's roots. `ring` and `aws-lc` are not GPLv2-compatible: no default
+# features here, nor in the test's TLS endpoint (`tokio-rustls`, dev only). Licenses: Apache-2.0
+# OR ISC OR MIT-0 (rustls-graviola, graviola), Apache-2.0 OR ISC OR MIT (rustls,
+# rustls-native-certs), MIT OR Apache-2.0 (tokio-rustls).
+rustls = { version = "0.23", default-features = false, features = ["std", "tls12"] }
+rustls-graviola = "0.4"
+rustls-native-certs = "0.8"
+tokio-rustls = { version = "0.26", default-features = false }
 # Test-only: the wire types round-trip in a format that is not self-describing (ADR-0018 point 4;
 # provisional, E16 M1 review). License: MIT OR Apache-2.0.
 postcard = { version = "1", default-features = false, features = ["alloc"] }

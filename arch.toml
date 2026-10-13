@@ -256,9 +256,9 @@ dev_external = ["proptest", "postcard"]
 layer = "adapter"
 logic = false
 deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-cli", "h3-protocol"]
-external = ["serde", "serde_json", "toml", "tokio", "tokio-tungstenite", "futures-util", "getrandom", "ed25519-dalek", "argon2"]
+external = ["serde", "serde_json", "toml", "tokio", "tokio-tungstenite", "futures-util", "getrandom", "ed25519-dalek", "argon2", "rustls", "rustls-graviola", "rustls-native-certs"]
 dev_deps = []
-dev_external = []
+dev_external = ["tokio-rustls"]
 
 # Readers for the original game's files; used only by the harvesting tool (E02, Q13).
 [crate.h3-formats]
