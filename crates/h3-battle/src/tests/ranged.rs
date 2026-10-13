@@ -213,6 +213,45 @@ fn shots_beyond_ten_hexes_deal_half_damage() {
     assert_eq!(damage(&wide, 11), 100);
 }
 
+// covers: BAT-RNG-002
+#[test]
+fn a_two_hex_shooter_measures_from_its_hex_nearest_the_target() {
+    // The original turns a shooter towards its target before it measures (0x440160): a target
+    // behind a two-hex shooter is measured from its rear hex. medusa attack 6 vs fixed defense
+    // 10: 90 at full damage, 45 at half.
+    let r = ruleset();
+    let medusa: &[Spec] = &[(0, "medusa", 10)];
+    let fixed: &[Spec] = &[(0, "fixed", 10)];
+    // The shot of the medusa (stack `shooter`, its rear hex on (`from`, 5)) at the fixed stack
+    // on (`x`, 5).
+    let damage = |attacker: &[Spec], defender: &[Spec], shooter: u8, from: i32, x: i32| {
+        let mut s = battle(&r, attacker, defender, 1);
+        activate(&mut s, shooter);
+        fixed_damage(&mut s, shooter, 10);
+        place(&mut s, &r, shooter, from, 5);
+        place(&mut s, &r, 1 - shooter, x, 5);
+        strikes(&fire(&mut s, &r, 1 - shooter).unwrap())[0].1
+    };
+    // The attacker's medusa on (2, 5) has its front hex on (3, 5): ahead of it, a target 10 hexes
+    // from the front hex is near, 11 far.
+    assert_eq!(damage(medusa, fixed, 0, 2, 13), 90);
+    assert_eq!(damage(medusa, fixed, 0, 2, 14), 45);
+    // On (12, 5), front hex (13, 5): behind it, 10 hexes from the rear hex (11 from the front
+    // hex) is near, 11 far.
+    assert_eq!(damage(medusa, fixed, 0, 12, 2), 90);
+    assert_eq!(damage(medusa, fixed, 0, 12, 1), 45);
+    // The defender's medusa on (14, 5) has its front hex on (13, 5): ahead, 10 near and 11 far.
+    assert_eq!(damage(fixed, medusa, 1, 14, 3), 90);
+    assert_eq!(damage(fixed, medusa, 1, 14, 2), 45);
+    // On (4, 5), front hex (3, 5): behind it, 10 hexes from the rear hex is near, 11 far.
+    let mut s = battle(&r, fixed, medusa, 1);
+    place(&mut s, &r, 1, 4, 5);
+    let field = crate::Field::new(r.battle().field);
+    assert_eq!(s.stacks()[1].footprint(field).front, at(&r, 3, 5));
+    assert_eq!(damage(fixed, medusa, 1, 4, 14), 90);
+    assert_eq!(damage(fixed, medusa, 1, 4, 15), 45);
+}
+
 // covers: BAT-RNG-003
 #[test]
 fn shooters_deal_half_damage_in_melee_unless_exempt() {

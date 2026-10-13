@@ -1062,6 +1062,17 @@ pub const CREATURES: &[Creature] = &[
         5,
         &["alive", "spell_damage_after_strike=bolt:50:10"],
     ),
+    // A two-hex shooter (Medusas; BAT-RNG-002), the archer's numbers.
+    (
+        "medusa",
+        6,
+        3,
+        2,
+        3,
+        10,
+        4,
+        &["two_hex", "shooter", "shots=12"],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.

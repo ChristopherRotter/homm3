@@ -242,57 +242,83 @@ Pendant of Negativity: A's Lightning Bolt cursor at B's stack (no target by the 
 wiki, a hit in VCMI), and Slow from the Orb's owner at stacks under Power of the Dragon Father
 (BAT-MAG-063, 064).
 
-**Wiki checks the review asks for** (no wiki access in the review; each with its rule or question;
-"row" is a row of BAT-Q28). Chain Lightning: equal distances beyond "randomly chosen", and are own
-stacks preferred (row 1). Sorcery and its specialists: a worked number that tells 58 from 57
-(BAT-MAG-004, Q-0005). Unicorn: whose Unicorns protect a hypnotized stack (BAT-MAG-008). Spell
-book, Combat: can a mass or battle-wide spell that would affect nobody be cast (BAT-MAG-003).
-Faerie Dragon: do the hero's Sorcery, Orbs or specialty raise its area spells and chain (row 2);
-can its area spells be aimed at an empty hex, and
-the wording on the Orb of Inhibition, the anti-magic garrison and Cursed Ground (BAT-Q32). Magic Mirror (checked 2026-10-12: the page says "Spells cast by creatures (unlike the ones cast by human-controlled heroes) will never be reflected", BAT-Q29): can the reflected spell go to the caster's war machines (BAT-MAG-022; the page's parenthesis fits the reading that the computer player's spells are never reflected). Morale,
-Luck and their four spells: does a base beyond ±3 absorb the spells (BAT-MAG-011); do computer or
-neutral armies freeze less often (BAT-Q33). Dispel, Hypnotize: does Expert Dispel end Hypnotize, on
-the caster's own stack too (BAT-MAG-016, 026). Disrupting Ray, Rust Dragon, Resurrection: does the
-defense loss survive death and a raise (BAT-MAG-010, 046). Defend, Stone Skin, Prayer: is the +20 %
-fixed when the stack defends (row 3). Slayer: the list at no skill (BAT-MAG-014). Behemoth, Ancient
-Behemoth: the rounding of the defense reduction (defense 10: 5 or 6; BAT-DMG-006, Q-0005). Frenzy:
-how long it lasts, and does a retaliation end it (BAT-MAG-019). Fire Shield: a retaliation against
-an attacker the shield killed, and the HotA changelog (row 4, S-23). Anti-Magic: which active
-spells the cast removes, and are the own side's spells blocked too (BAT-MAG-021). Adela (the Bless
-specialty): the levels divided first (VCMI multiplies first; BAT-MAG-020). Hypnotize: who may
-attack a hypnotized stack, does it block the hypnotizer's shooters, the First Aid Tent and the Ammo
-Cart for it (BAT-MAG-026). Berserk: can a player attack or shoot his own berserk stack
-(BAT-MAG-025). Quicksand: is a two-hex creature stopped a second time, and can a creature in a pit
-attack by stepping one hex (row 5). Quicksand, Land Mine: the natives' sight for a side that
-"started the battle with" natives, or only while they live (BAT-QUIRK-1, whose strict-fixed variant
-follows neither that wording nor VCMI, which counts dead natives too). Harpy, Fire Wall: is a Harpy
-burnt when it returns onto a Fire Wall hex (BAT-ATK-004). Remove Obstacle, Dispel, Fire Wall, Force
-Field: a crash, or a later obstacle vanishing, after a timed obstacle was removed early (S-26).
-Resurrection, Archangel: does a stack raised in a later round act if it had acted in the round it
-died, and the HotA changelog (row 6). Sacrifice with Efreet, Efreet Sultans or a Phoenix: may a
-fire-immune creature be raised (BAT-MAG-036, BAT-QUIRK-5). Surrender: is the price taken from
-creatures raised by Basic Resurrection (row 7). Clone: do expired clones count towards a side's 20
-stacks (BAT-MAG-037). The strike's spells (BAT-MAG-040 to 047, row 13): Black Knight, Dread Knight,
-Mummy: the chance of Curse; Rust Dragon: the chance of the extra damage; Unicorn: the level of its
-Blind (a retaliation at half, or none); Dragon Fly: the level of its Weakness (−3 or −6);
-Thunderbird: is the bolt treated as Lightning Bolt (immunities, Protection from Air, Anti-Magic);
-Stone Gaze: can Dwarves or a hero's Resistance resist it, the retaliation against the attack that
-frees the stack, is a shot halved; Paralyze: the retaliation at 25 %; Poison: per round or per
-turn, the floor, do the hit points stay lowered, Cure and Dispel; Age: the rounding (25 to 13 or
-12); Bind: what frees the stack. BAT-ATK-004's two wiki quotations (the reviewer could not check
-them). Ogre Mage: the duration of its Bloodlust (6; VCMI 3; BAT-MAG-048). Master Genie: the
-duration (6; VCMI 5), Frenzy in the list, Prayer's and Slayer's conditions (BAT-MAG-050).
-Enchanter: the eight spells and the round of the first cast (BAT-MAG-053). Azure Dragon: who is
-immune to Fear (the Gargoyles decide), its chance, a stack that waited (BAT-MAG-060). Phoenix: the
-rebirth's numbers, once per battle, does a failed rebirth use it up (BAT-MAG-059). Psychic and
-Magic Elemental: the half damage (BAT-DMG-010 has no source beside the reading). Combat: the
-wait-phase order of a stack that did not wait, and can it wait; does a frozen stack count as its
-side's chance to act (rows 8, 9). Familiar, Mage, Pegasus, Wraith: can mana go above the maximum
-through the channel (BAT-MAG-055). Orb of Vulnerability: the sentence on artifact immunities and on
-the Unicorns' aura, and does either cite a test (row 11; BAT-MAG-063, 064, 066). Recanter's Cloak,
-Power of the Dragon Father: statements on creature abilities (BAT-MAG-062, 064). Eagle Eye (SoD):
-does any page give the odd values 43 % and 64 % (BAT-MAG-069, Q-0005). Badge of Courage: "immunity
-to mind spells" for SoD (BAT-MAG-065).
+**The wiki checks** (the review's 49 wanted checks, done 2026-10-13 with the user's approval:
+raw pages of heroes.thelazy.net through WebFetch, verbatim quotes; SoD arguments of `swh`). Each
+outcome names the rule or question; pages without a link are `https://heroes.thelazy.net/index.php/<Page>`.
+- *The wiki agrees with the engine* (a wiki source for the rule; no change): Dispel (Basic own,
+  Advanced any, Expert all units; "Spells/Abilities unaffected by Dispel: Disrupting Ray, Acid
+  Breath"; Hypnotize lists Dispel among the spells that end it: BAT-MAG-016, 026); Disrupting Ray
+  ("the target was killed and resurrected the disrupting ray effect still remains", BAT-MAG-010);
+  Slayer unskilled ("only ... when fighting Dragons, Hydras and Behemoths", BAT-MAG-014); Frenzy
+  ("Until target troop's action turn in the next round", BAT-MAG-019; VCMI: to its first strike);
+  Anti-Magic ("removes negative spell effects (e.g. Curse) but not positive", BAT-MAG-021; its own
+  side blocked only in user commentary); Adela ("3% for every N hero levels, where N is the level of
+  the target creature": the levels divided first, BAT-MAG-020); Hypnotize ("a ranged hypnotised
+  unit can be blocked by its previous owner's troops", "retaliates as normal", BAT-MAG-026);
+  Sacrifice (Efreet, Efreet Sultans and Phoenixes among the creatures "immune to Sacrifice (or
+  resurrection via Sacrifice)"; Gold Dragons sacrificed, not raised; the victim "non-summoned,
+  non-hypnotized and non-cloned", BAT-MAG-036); the strike's spells: Mummies 25 %, Rust Dragon 20 %,
+  the Unicorns' Basic Blind (retaliation at 50 %), the Dragon Flies' Advanced Weakness, Paralyze's
+  retaliation at "a quarter", a petrified stack halved "both melee and ranged" and striking back at
+  full strength, Poison 10 % "for every combat round", at most 50 %, "the maximum health remains
+  decreased", ended by Cure only, Age "down to 50% (rounded up)", Bind until the Dendroids "move or
+  perish" or Dispel or Teleport, the Thunderbird's bolt raised by neither Sorcery nor the Orb
+  (BAT-MAG-040 to 047; BAT-Q28 row 13); BAT-ATK-004's two quotations (both verbatim); the Ogre Magi's
+  and Master Genies' power 6 at Advanced, Frenzy in the Genies' list, no Slayer without level 7
+  troops (BAT-MAG-048, 050); the Enchanters' eight spells at Expert every three rounds for three
+  rounds (BAT-MAG-053; the page's Stone Skin "11.9%" is a slip: its column then sums to 94.2 %, the
+  engine's weight 15 gives 17.9 %), and "the spell relevance is calculated based on stats of the
+  first stack only (fixed in HotA)" (BAT-QUIRK-13); Fear's immune list without Gargoyles, 10 %, "only
+  at the beginning of enemy stack's turn" (BAT-MAG-060); the Phoenixes' rebirth "divided by 5" plus
+  20 % for each remaining one, once per combat (BAT-MAG-059); the elementals' half damage ("not
+  halved against targets affected by Anti-Magic", BAT-DMG-010's first wiki source); Familiars'
+  20 % "rounded down", once whatever the stacks; Mages and Pegasi counting "if ... present at the
+  beginning of the combat" (BAT-MAG-055, BAT-QUIRK-15); the Orb of Vulnerability ("Does not affect
+  ... the immunities given by artifacts"; it negates the Unicorns' aura: BAT-MAG-063, 064, 066;
+  row 11); the Paralyze and Petrifying attack pages ("negated by the Recanter's Cloak and Cursed
+  Ground, but not by the Orb of Inhibition", BAT-MAG-062); the Badge of Courage ("Immunity to mind
+  spells (removed in Horn of the Abyss)", BAT-MAG-065); Fire Shield ("only the stronger Fire Shield
+  takes effect", BAT-MAG-058); the Ammo Cart ("until the Ammo Cart is destroyed, after which their
+  shots will deplete as normal", BAT-WAR-004, against the review's r3 reading); the HotA changelog's
+  1.7.1 "if you summon 20 stacks and then destroy some of them, you still can't summon new stacks"
+  (dead ones counted, BAT-MAG-037) and 1.7.0 "AI-controlled heroes' spells were not reflected by
+  the Magic Mirror" (BAT-MAG-022's note).
+- *The wiki sides with the reading against the engine* (decisions for the user, OPEN-QUESTIONS):
+  the Faerie Dragons' area spells and Chain Lightning take the hero's Sorcery and orbs, their bolts
+  do not (Sorcery, Faerie Dragon; BAT-Q28 row 2); the Orb of Inhibition and the anti-magic garrison
+  do not stop them ("must press F or G", BAT-Q32); the retaliation at a striker the Fire Shield
+  killed and the raise of the corpse on a two-hex corpse's rear hex, fixed as bugs in HotA 1.7.1 and
+  1.5.4 (rows 4 and 10, S-23 and S-24); the natives' sight as the original times it (Land Mine
+  "started the battle with"; Quicksand "has a creature fighting on native terrain": BAT-Q34).
+- *The wiki contradicts the engine and the reading:* the Black and Dread Knights' Curse at 20 %
+  (as VCMI; the code draws 25 % for knights and Mummies alike, re-read at 0x440702); the strike's
+  Curse "Advanced" (the code: mastery 0, power 3; a cursed stack's minimum − 1 or its minimum).
+- *Silent* (the experiments stay): Chain Lightning's ties beyond "randomly chosen" and its roll per
+  jump (row 1); a worked Sorcery number (BAT-MAG-004); the Unicorns' aura for a hypnotized stack
+  (BAT-MAG-008); a mass or battle-wide spell that affects nobody (BAT-MAG-003; HotA 1.8.0 made
+  Berserk refuse an area without a creature); the Faerie Dragons' area spells at an empty hex in
+  SoD (the page has it under HotA, BAT-Q32); Magic Mirror and war machines (BAT-MAG-022); a morale
+  or luck base beyond ±3 under the four spells (BAT-MAG-011); computer and neutral sides' morale
+  (BAT-Q33); Acid Breath after death and a raise (BAT-MAG-046); the Defend bonus under later
+  spells (row 3); the Behemoths' rounding (BAT-DMG-006); a retaliation ending Frenzy; the Fire
+  Shield page itself (row 4); who may attack an own berserk stack (BAT-MAG-025); a two-hex stack
+  in a pit and an attack from a pit (row 5); a Harpy returning onto a Fire Wall (BAT-ATK-004); a
+  timed obstacle removed early (S-26); a raised stack's turn (row 6); the surrender price of raised
+  creatures (row 7: "half the recruitment cost of the remaining creatures"); expired clones and the
+  20 stacks (BAT-MAG-037); the Thunderbird's bolt against immunities; Stone Gaze against
+  resistance; a failed rebirth (BAT-MAG-059); the wait phase's order and a frozen stack in the
+  speed tie (rows 8, 9: "The units naturally cannot wait again" is about the second phase); mana
+  above the maximum (BAT-MAG-055); the Dragon Father against creature abilities (BAT-MAG-064);
+  Eagle Eye's 43 % and 64 % (classic 30, 40, 50 %; BAT-MAG-069); the Enchanters' first round; the
+  First Aid Tent's patient ("the top creature of an allied stack", chosen by the computer).
+
+**From BAT-Q36** (2026-10-13; `installation.md` §7.25): a two-hex shooter's shot at a target behind
+it, 10 hexes from its rear hex and 11 from its front hex: full damage (the reading, the engine since
+BAT-Q36) or half (VCMI); e.g. the attacker's Medusas on (12, 5) shooting a stack on (2, 5), a
+control on (1, 5). **From the wiki checks:** Swordsmen (damage 6 to 9) cursed by Black Knights strike for 6
+per creature before the attack and defense factor (the reading: Curse at mastery 0) or 5 (the
+wiki's Advanced Curse, value 1, BAT-MAG-011); the statistics row on the knights' 25 % above carries
+the wiki's 20 % too.
 
 The smoke map is generated by `cargo run -p h3-map --example smoke_map --
 original-data/extracted/H3bitmap/Objects.txt experiments/out/E04a-smoke.h3m`.

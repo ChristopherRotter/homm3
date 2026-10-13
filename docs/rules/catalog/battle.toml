@@ -593,7 +593,7 @@ id       = "BAT-RNG-002"
 title    = "Distance penalty"
 context  = "battle"
 status   = "verified"
-summary  = "A shot deals half damage (a reduction of ranged_penalty_percent = 50 %, BAT-DMG-002) when no hex of the target is within ranged_full_damage_distance = 10 hexes of the shooter's position, unless the shooter has the no_distance_penalty ability (Sharpshooter) or its hero's NoRangePenalty effect (Golden Bow, Bow of the Sharpshooter; BAT-HER-006). This includes the Ballista (observed, batch 1b R7; with the Golden Bow none, R8). Scope: siege walls (the obstacle penalty) come with sieges."
+summary  = "A shot deals half damage (a reduction of ranged_penalty_percent = 50 %, BAT-DMG-002) when no hex of the target is within ranged_full_damage_distance = 10 hexes of any hex of the shooter (the smallest distance between the two stacks: the original turns a two-hex shooter to face its target before it measures from its front hex, so a target behind it is measured from its rear hex; BAT-Q36), unless the shooter has the no_distance_penalty ability (Sharpshooter) or its hero's NoRangePenalty effect (Golden Bow, Bow of the Sharpshooter; BAT-HER-006). This includes the Ballista (observed, batch 1b R7; with the Golden Bow none, R8). Scope: siege walls (the obstacle penalty) come with sieges."
 numeric  = "integer"
 
   [[rule.source]]
@@ -609,6 +609,13 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
   retrieved  = "2026-10-01"
   confidence = "high"
+  note       = "VCMI measures from a two-hex shooter's position, its head, which never turns: a target behind the shooter 10 hexes from its rear hex is halved there, not in the original (BAT-Q36)"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.25): the shot action 0x440160 turns the shooter to face the target (0x446720, by the screen x of the target's position hex against the shooter's other hex) before the damage; 0x467600 measures from the shooter's other hex by its current facing (0x4466A0) to the target's position, then to a two-hex target's other hex, halving above 10 for both; no halving with artifact 91 or 137 on the side's hero or for creatures 149 and 137. Over every placement on the field this is the smallest distance between the two stacks"
+  confidence = "high"
+  note       = "the user (2026-10-13, BAT-Q36): the engine follows the reading; a confirmation row in batch 2g (a two-hex shooter's target behind it at 10 hexes from its rear hex)"
 
   [[rule.source]]
   kind       = "observation"
@@ -951,6 +958,13 @@ numeric  = "integer"
   confidence = "medium"
   note       = "VCMI leaves the halves out; the executable's code is the source."
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Psychic Elemental and Magic Elemental page: \"Psychic Elementals do half damage to units immune to Mind spells\"; \"Magic Elementals do half damage to units immune to magic\" (user commentary: only to the completely immune, Black Dragons and Magic Elementals); \"the damage is not halved against targets affected by Anti-Magic\" (agrees)"
+  url        = "https://heroes.thelazy.net/index.php/Psychic_Elemental_and_Magic_Elemental"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-RET-001"
 title    = "Retaliation"
@@ -972,6 +986,13 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CUnitState.cpp"
   retrieved  = "2026-09-30"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Horn of the Abyss changelog 1.7.1: \"Fixed a bug: when attacking stack died from Fire Shield, retaliation strike into nowhere still happened\" (disagrees: the original strikes back at a striker the reflection killed, survey S-23, BAT-Q28 row 4)"
+  url        = "https://heroes.thelazy.net/index.php/Horn_of_the_Abyss_(Changelog)"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
 
 [[rule]]
 id       = "BAT-RET-002"
@@ -1389,6 +1410,13 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/CStack.cpp#L308-L327"
   retrieved  = "2026-10-12"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "War Machine page: \"unlimited shots for creatures and War Machines with ranged attacks ... until the Ammo Cart is destroyed, after which their shots will deplete as normal\"; in a creature bank \"it still provides unlimited ammo\" (agrees; against the review's reading that 0x43F9E1 tests only the hero's artifact)"
+  url        = "https://heroes.thelazy.net/index.php/War_Machine"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
 
 [[rule]]
 id       = "BAT-WAR-005"
@@ -2152,6 +2180,13 @@ numeric  = "integer"
   retrieved  = "2026-10-07"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Disrupting Ray page: \"The effect of each cast stays until combat ends\"; \"the target was killed and resurrected the disrupting ray effect still remains\"; \"immune to dispel/cure\" (agrees)"
+  url        = "https://heroes.thelazy.net/index.php/Disrupting_Ray"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-011"
 title    = "What a stack's timed effects change"
@@ -2253,6 +2288,13 @@ numeric  = "integer"
   retrieved  = "2026-10-12"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Slayer page: Basic \"Behemoths, Dragons, Hydras\", Advanced also Angels and Devils, Expert also Giants (SoD); \"Typically (without Fire Magic skill) it will only have an effect when fighting Dragons, Hydras and Behemoths\" (agrees)"
+  url        = "https://heroes.thelazy.net/index.php/Slayer"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-015"
 title    = "Counterstrike"
@@ -2299,6 +2341,13 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/other.json"
   retrieved  = "2026-10-06"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Dispel page: Basic a friendly unit, Advanced a friendly or enemy unit, Expert all units; \"Spells/Abilities unaffected by Dispel: Disrupting Ray, Acid Breath\"; Expert also removes Fire Walls, Force Fields, Land Mines and Quicksand; the Hypnotize page lists Dispel among the spells that end it (agrees)"
+  url        = "https://heroes.thelazy.net/index.php/Dispel"
+  retrieved  = "2026-10-13"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MAG-017"
@@ -2369,6 +2418,13 @@ numeric  = "integer"
   retrieved  = "2026-10-12"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Frenzy page: duration \"Until target troop's action turn in the next round\"; attack + 100, 150, 200 % of the defense, defense 0 (agrees; VCMI ends it at the first strike); silent on a retaliation"
+  url        = "https://heroes.thelazy.net/index.php/Frenzy"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-020"
 title    = "Spell specialists"
@@ -2390,6 +2446,13 @@ numeric  = "integer"
   retrieved  = "2026-10-07"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Adela page: Bless's damage \"+3% for every N hero levels, where N is the level of the target creature\" (SoD argument of swh; the levels divided first, agrees); no rounding given"
+  url        = "https://heroes.thelazy.net/index.php/Adela"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-021"
 title    = "Anti-Magic"
@@ -2408,6 +2471,13 @@ numeric  = "integer"
   ref        = "config/spells/timed.json antiMagic: LEVEL_SPELL_IMMUNITY 3/3/4/5 (spells up to that level) and a dispel of negative and neutral effects of every level"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
   retrieved  = "2026-10-07"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Anti-Magic page: immune to spells of level 1-3, 1-4, 1-5; \"Anti-Magic also removes negative spell effects (e.g. Curse) but not positive spell effects (e.g. Bless)\"; Dispel goes through (agrees); the own side's spells blocked only in user commentary"
+  url        = "https://heroes.thelazy.net/index.php/Anti-Magic"
+  retrieved  = "2026-10-13"
   confidence = "medium"
 
 [[rule]]
@@ -2436,6 +2506,13 @@ numeric  = "integer"
   ref        = "lib/spells/BattleSpellMechanics.cpp isReflected (a hero's direct negative spell, random(0, 99) < MAGIC_MIRROR), reflect and getRandomUnit (a random valid unit of the caster's side other than war machines; an immune one resists)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/BattleSpellMechanics.cpp"
   retrieved  = "2026-10-07"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Horn of the Abyss changelog 1.7.0: \"Fixed a bug: AI-controlled heroes' spells were not reflected by the Magic Mirror\" (the original's computer player is never redirected, as the note); the Magic Mirror page is silent on war machines"
+  url        = "https://heroes.thelazy.net/index.php/Horn_of_the_Abyss_(Changelog)"
+  retrieved  = "2026-10-13"
   confidence = "medium"
 
 [[rule]]
@@ -2563,6 +2640,13 @@ numeric  = "integer"
   retrieved  = "2026-10-07"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Hypnotize page: \"puts an enemy creature stack under the caster's control\"; \"the unit retaliates as normal\"; \"The hypnotised unit does not block enemy shooters\"; \"a ranged hypnotised unit can be blocked by its previous owner's troops\" (agrees); the HP test \"as if it was full health\"; Berserk and Dispel end it"
+  url        = "https://heroes.thelazy.net/index.php/Hypnotize"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-027"
 title    = "Spell obstacles and Force Field"
@@ -2656,6 +2740,13 @@ quirks   = ["BAT-QUIRK-1", "Q-0002"]
   retrieved  = "2026-10-12"
   confidence = "medium"
   note       = "the wiki's Land Mine line (BAT-MAG-033: 'started the battle with a unit on its native terrain') fits the original's timing"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Quicksand page: \"They are invisible to enemy hero, unless the hero has a creature fighting on native terrain. Once a pit is stepped on, it is revealed for all to see\" (neither the battle's start nor the natives' lives; with the Land Mine page's \"started the battle with\", no source describes the strict-fixed variant: BAT-Q34)"
+  url        = "https://heroes.thelazy.net/index.php/Quicksand"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
 
 [[rule]]
 id       = "BAT-MAG-032"
@@ -2760,6 +2851,13 @@ quirks   = ["BAT-QUIRK-6"]
   retrieved  = "2026-10-08"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Horn of the Abyss changelog 1.5.4: \"A bug has been fixed for the situations where the hind hex of a two-hex creature's corpse would be covered by a one-hex creature's corpse; in this event, it would be impossible to target the big creature with the Resurrection and Raise Dead spells, even when pointing at its front hex\" (disagrees, as the review's reading: survey S-24, BAT-Q28 row 10)"
+  url        = "https://heroes.thelazy.net/index.php/Horn_of_the_Abyss_(Changelog)"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-036"
 title    = "Sacrifice"
@@ -2787,6 +2885,13 @@ quirks   = ["BAT-QUIRK-5"]
   retrieved  = "2026-10-08"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Sacrifice page: Efreet and Efreet Sultans and Phoenixes among the \"Creatures immune to Sacrifice (or resurrection via Sacrifice)\"; Gold Dragons \"can be sacrificed but not resurrected\"; the victim \"non-undead, non-bloodless, non-summoned, non-hyponotized and non-cloned\" (agrees)"
+  url        = "https://heroes.thelazy.net/index.php/Sacrifice"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-037"
 title    = "Stacks created in battle"
@@ -2812,6 +2917,13 @@ numeric  = "integer"
   ref        = "experiments/results/E04b-batch-2d.md CL1, SU (SoD 4.0 Complete, plain HD, 2026-10-08): both clones and every summoned stack act in the round they appear; SU's E3 took E1's dead record and acted before E2 in round 4 (equal speed); 12 Air Elemental casts with 9 records (7 Peasants and two war machines) until the limit, the 13th refused ('Because SU has already summoned Air Elementals, no other elementals will come to her aid.') and still refused after another elemental stack died"
   retrieved  = "2026-10-08"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Horn of the Abyss changelog 1.7.1: \"Fixed a bug: if you summon 20 stacks and then destroy some of them, you still can't summon new stacks\" (the original counts dead stacks towards the limit, agrees); the Clone page is silent on expired clones"
+  url        = "https://heroes.thelazy.net/index.php/Horn_of_the_Abyss_(Changelog)"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
 
 [[rule]]
 id       = "BAT-MAG-038"
@@ -2900,6 +3012,13 @@ numeric  = "integer"
   retrieved  = "2026-10-12"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Creature pages: Mummy \"25% chance to curse their target stack for 3 rounds at advanced level\"; Unicorn and War Unicorn \"20% chance to cast Basic Blind ... for 3 rounds\" (Blind page: Basic retaliates at 50 %); Serpent Fly and Dragon Fly \"cast Weakness at advanced level after attack\" (agree); Black Knight and Dread Knight \"a 20% chance to afflict a target stack with Advanced Curse\" (disagrees twice: the code draws 25 % at mastery 0, 0x440702 and 0x468990; BAT-Q28 row 13)"
+  url        = "https://heroes.thelazy.net/index.php/Black_Knight_and_Dread_Knight"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-041"
 title    = "A damage spell after a melee strike"
@@ -2918,6 +3037,13 @@ numeric  = "integer"
   ref        = "config/creatures/stronghold.json L266-L277: thunderbolt after an attack with 20 %, 10 per creature: as the rule. VCMI: the bolt is a spell of its own (config/spells/ability.json L294-L318, thunderbolt, index 77), not Lightning Bolt, so what holds for Lightning Bolt (the Earth and Magma Elementals' immunity, the dragons' level immunity against a level-2 spell, Protection from Air) is not asked there; the executable tests and deals it as Lightning Bolt, spell 17 (0x4411D4, 0x4411F5); not followed, the code reading decides: BAT-Q28"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/stronghold.json#L266-L277"
   retrieved  = "2026-10-12"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Roc and Thunderbird page: 20 % \"before the enemy has a chance to retaliate\", 10 per Thunderbird; \"Orb of the Firmament doesn't increase the damage\", \"Sorcery doesn't increase the damage\" (agrees: no hero bonuses); silent on immunities"
+  url        = "https://heroes.thelazy.net/index.php/Roc_and_Thunderbird"
+  retrieved  = "2026-10-13"
   confidence = "medium"
 
 [[rule]]
@@ -2960,6 +3086,13 @@ numeric  = "integer"
   retrieved  = "2026-10-12"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Petrifying attack page: 20 %, 3 rounds \"or until the petrified stack is attacked\"; \"it takes half damage (both melee and ranged attacks) and retaliates at full strength\"; Manticore and Scorpicore: a paralyzed stack takes full damage but retaliates \"at only a quarter of their strength\" (agree); silent on resistance"
+  url        = "https://heroes.thelazy.net/index.php/Petrifying_attack"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-044"
 title    = "Poison and Age"
@@ -2981,6 +3114,13 @@ quirks   = ["Q-0005"]
   retrieved  = "2026-10-12"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Poisonous page: \"maximum health is decreased by 10% for every combat round for three rounds\"; \"only up to 50%\"; \"the maximum health remains decreased\"; \"can only be removed with the Cure spell\"; Bone Dragon and Ghost Dragon: Aging \"down to 50% (rounded up)\", 3 rounds, Cure or Dispel (agree)"
+  url        = "https://heroes.thelazy.net/index.php/Poisonous"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-045"
 title    = "Bind"
@@ -3001,6 +3141,13 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp#L905-L933"
   retrieved  = "2026-10-12"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Dendroid Guard and Dendroid Soldier page: \"unable to move until the stack of Dendroids that entangled them moves or perishes, though the effect can also be removed with Dispel or Teleport spells\"; Anti-Magic does not protect (agrees)"
+  url        = "https://heroes.thelazy.net/index.php/Dendroid_Guard_and_Dendroid_Soldier"
+  retrieved  = "2026-10-13"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MAG-046"
@@ -3042,6 +3189,13 @@ numeric  = "integer"
   retrieved  = "2026-10-12"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Rust Dragon page: Acid Breath \"has a 20% chance to cause 25 additional damage per attacking unit\" (agrees; VCMI 30 %)"
+  url        = "https://heroes.thelazy.net/index.php/Rust_Dragon"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-048"
 title    = "A creature's cast"
@@ -3060,6 +3214,13 @@ numeric  = "integer"
   ref        = "config/creatures/stronghold.json L185-L207 ogreMage: SPELLCASTER bloodlust at level 2, CASTS 3; server/battles/BattleFlowProcessor.cpp L767-L815 onActionMade: a unit's spell is a unit action and rolls good morale: as the rule. VCMI differs in three points: the Ogre Mage's CREATURE_ENCHANT_POWER is 3 (its Bloodlust lasts 3 rounds), where the executable passes power 6 (0x4486A7); after a unit's spell the obstacles act on the unit (server/battles/BattleActionProcessor.cpp L734-L735), where the executable's case does not re-enter the stack's hexes (no 0x441F70 after 0x47936E); every unit rolls magic resistance against a negative spell whatever the caster (lib/spells/BattleSpellMechanics.cpp L454-L464), where the executable skips the aimed stack's roll for a creature's cast (0x5A02CB); not followed, the code reading decides: BAT-Q28"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/stronghold.json#L185-L207"
   retrieved  = "2026-10-12"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Ogre and Ogre Mage page: \"Ogre Magi cast Bloodlust at 6 power at advanced level, 3 times per battle\" (6 rounds by the power, agrees; VCMI 3)"
+  url        = "https://heroes.thelazy.net/index.php/Ogre_and_Ogre_Mage"
+  retrieved  = "2026-10-13"
   confidence = "medium"
 
 [[rule]]
@@ -3089,6 +3250,13 @@ numeric  = "integer"
   retrieved  = "2026-10-12"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Sorcery page: \"Sorcery also boosts damage spells cast by creatures under the hero's control\"; Faerie Dragon page: Magic Arrow, Ice Bolt and Lightning Bolt \"are not affected by damage increases from the hero's Sorcery secondary skill or elemental orbs equipped\"; \"Faerie Dragons are unaffected by the Orb of Inhibition and Anti-Magic Garrisons\", \"the player must press F or G\" (both disagree, as the review's readings: BAT-Q28 row 2, BAT-Q32); \"Area-of-effect spells can be targeted at any hex\" only under HotA"
+  url        = "https://heroes.thelazy.net/index.php/Sorcery"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-050"
 title    = "A helpful caster's draw at the cast (Master Genie)"
@@ -3114,6 +3282,13 @@ numeric  = "integer"
   ref        = "Master Genie - Heroes 3 wiki: casts a random beneficial spell on a friendly unit, three times per battle, at Advanced level"
   url        = "https://heroes.thelazy.net/index.php/Master_Genie"
   retrieved  = "2026-10-08"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Genie and Master Genie page: \"advanced level ... with a spell power of 6\" (6 rounds, agrees; VCMI 5); Frenzy, Prayer and Slayer in the spell table; \"They will not cast Slayer if no level 7 troops are present\""
+  url        = "https://heroes.thelazy.net/index.php/Genie_and_Master_Genie"
+  retrieved  = "2026-10-13"
   confidence = "medium"
 
 [[rule]]
@@ -3239,6 +3414,13 @@ quirks   = ["BAT-QUIRK-16"]
   retrieved  = "2026-10-12"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Imp and Familiar page: \"20% of the points the enemy hero uses for the spell (rounded down)\", once whatever the number of stacks; Mage and Arch Mage, Pegasus and Silver Pegasus: they count \"if ... present at the beginning of the combat\" and after they die (agree); silent on the maximum"
+  url        = "https://heroes.thelazy.net/index.php/Imp_and_Familiar"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-056"
 title    = "Mana drain at a stack's activation (Wraiths)"
@@ -3299,6 +3481,13 @@ numeric  = "integer"
   retrieved  = "2026-10-09"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Fire Shield page: \"Efreet Sultans have an natural Fire Shield equivalent to the Basic Fire Shield\"; \"When affected by a Fire Shield spell, only the stronger Fire Shield takes effect\" (agrees)"
+  url        = "https://heroes.thelazy.net/index.php/Fire_Shield"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-059"
 title    = "The Phoenix's rebirth"
@@ -3319,6 +3508,13 @@ numeric  = "integer"
   retrieved  = "2026-10-12"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Firebird and Phoenix page: \"The ability works only once per combat per stack\"; \"The number of Phoenixes reborn is equal to the number of phoenixes in the initial stack, divided by 5\"; \"Each of the remaining phoenixes has a 20% chance to be reborn\" (agrees); silent on a failed rebirth"
+  url        = "https://heroes.thelazy.net/index.php/Firebird_and_Phoenix"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-060"
 title    = "Fear"
@@ -3337,6 +3533,13 @@ numeric  = "integer"
   ref        = "config/creatures/neutral.json L95-L108 (the Azure Dragon's FEARFUL 10 for the opposite side) and server/battles/BattleFlowProcessor.cpp L356-L376, L965-L975: rolled at the unit's activation after bad morale, the turn lost: as the rule. VCMI differs in two points: only LIVING units are frightened (the bonus's limiter), so not the Stone and Obsidian Gargoyles, which the executable frightens (they have neither the no-morale flag 0x20000 nor are they creature 132, 0x464D4C to 0x464D57); it rolls at every activation, the round's wait phase included, where the executable's pick skips the check in the wait phase; not followed, the code reading decides: BAT-Q28"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp#L965-L975"
   retrieved  = "2026-10-12"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Azure Dragon page: Fear \"only at the beginning of enemy stack's turn\", \"10% chance ... regardless of the number of Azure Dragons\"; immune: Azure Dragons, golems, elementals, undead, war machines (no Gargoyles: agrees with the code; VCMI spares them)"
+  url        = "https://heroes.thelazy.net/index.php/Azure_Dragon"
+  retrieved  = "2026-10-13"
   confidence = "medium"
 
 [[rule]]
@@ -3403,6 +3606,13 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E04b-batch-2e.md RC (SoD 4.0 Complete, plain HD, 2026-10-11): against Recanter's Cloak the Archangel gets no resurrection cursor over its dead Peasants, and 8 melee attacks of Medusa Queens petrify no Pikeman (20 % each without the Cloak: 17 % to see none; the game cannot be saved in battle, so the batch's 18 attacks were not reached)"
   retrieved  = "2026-10-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Manticore and Scorpicore, Petrifying attack pages: Paralyzing Venom and petrifying attacks \"are negated by the Recanter's Cloak and Cursed Ground, but not by the Orb of Inhibition\" (agree: the Cloak stops the ability spells above level 2)"
+  url        = "https://heroes.thelazy.net/index.php/Manticore_and_Scorpicore"
+  retrieved  = "2026-10-13"
   confidence = "medium"
 
 [[rule]]
