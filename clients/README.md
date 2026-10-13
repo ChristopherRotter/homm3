@@ -88,7 +88,8 @@ on the M1 review list):
   qualified by their table's id (`base:pikeman`). Unknown sections and fields, unknown or
   circular dependencies and a key defined twice are errors.
 - `[battle]` (in exactly one table of a selection): `groups`, the creature DEF groups the battle
-  shows (`moving`, `mouse_over`, `standing`).
+  shows (`moving`, `mouse_over`, `standing`, the reactions `hit`, `defend`, `death`, `strike` and
+  `shoot` up, straight and down, `move_start`, `move_end`; design §7).
 - `[[creature]]`: `key`, `def` (the battle sprite), `times` (`cranim.txt`'s fidget interval, walk,
   attack and flight distance as the executable keeps them: scaled by 9000, 500, 500, 115 and
   truncated), optional `troop_count_offset`, `attack_climax`, `missile` (a shooter's projectile

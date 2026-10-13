@@ -120,7 +120,7 @@ pub fn run(options: &Options) -> ExitCode {
     }
 }
 
-fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
+pub fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
     }
@@ -128,7 +128,7 @@ fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
 }
 
 /// The archives of `install`, read whole (CLT-Q2), each with its name.
-fn read_archives(install: &Path) -> Result<Vec<(&'static str, Vec<u8>)>, String> {
+pub fn read_archives(install: &Path) -> Result<Vec<(&'static str, Vec<u8>)>, String> {
     let data = find_ci(install, "Data").map_err(|e| format!("{}: {e}", install.display()))?;
     SPRITES
         .iter()
@@ -143,7 +143,7 @@ fn read_archives(install: &Path) -> Result<Vec<(&'static str, Vec<u8>)>, String>
 }
 
 /// The entry `name` from the first archive of its search list that holds it.
-fn lookup(archives: &[(&str, LodArchive<'_>)], name: &str) -> Result<Vec<u8>, String> {
+pub fn lookup(archives: &[(&str, LodArchive<'_>)], name: &str) -> Result<Vec<u8>, String> {
     let list: &[&str] = if name.to_ascii_uppercase().ends_with(".DEF") {
         &SPRITES
     } else {
