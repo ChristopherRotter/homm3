@@ -1160,8 +1160,11 @@ end to end with the env's action encoding v2 and the replay format v2.
   or declined shows nothing hidden, so the comparison goes on. With the visit steps it found
   another player's move toward a pile the viewer never sees: the other game lacks the pile, and
   the hero walks on in the viewer's sight where it stayed. Like a move one hero can pay and the
-  other cannot, an outcome that differs between the games (the actor's heroes on other tiles)
-  now stops the comparison (the shrunk case kept as a regression). Over 48 cases (four runs,
+  other cannot, an outcome that differs between the games now stops the comparison (the shrunk
+  case kept as a regression): after the review, the command's effect (accepted, each of the
+  actor's heroes' displacement, the steps told, the decisions), not where the heroes stand, which
+  the `moved` variation changes from the start (600 cases: 14 such stops, none on an `EndTurn`,
+  against 26 by absolute tiles, 21 of them on tiles that differed before). Over 48 cases (four runs,
   counted once): 9 to 16 offers opened, 13 or 14 refused, 4 or 5 accepted, 4 to 10 declined.
 
 **T14b, second half — the env's answers and the game's difficulty in replays.**

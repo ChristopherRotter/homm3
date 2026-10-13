@@ -498,6 +498,67 @@ fn check_told(
     Ok(())
 }
 
+/// The tiles of `player`'s heroes, by id.
+fn tiles(game: &GameState, player: PlayerId) -> Vec<(HeroId, TilePos)> {
+    let heroes = game.adventure().heroes().iter();
+    heroes
+        .filter(|h| h.owner == player)
+        .map(|h| (h.id, h.pos))
+        .collect()
+}
+
+/// Whether a command was accepted, each hero's move (id, columns, rows, levels), the steps told
+/// and the decisions opened (0), refused (1), declined (2) or accepted (3).
+type Outcome = (bool, Vec<(HeroId, i32, i32, i32)>, usize, Vec<u8>);
+
+/// What a command of `player` did in a game, as the hygiene test compares it between two games
+/// (E08 T14b's review): whether it was accepted, how far each of the player's heroes moved from
+/// its tile `before` (columns, rows, levels), how many steps the game told, and the decisions it
+/// opened, refused or closed. Where the heroes stand is left out: the test may put them on other
+/// tiles in the other game from the start.
+fn outcome(
+    (player, accepted): (PlayerId, bool),
+    before: &[(HeroId, TilePos)],
+    after: &GameState,
+    events: &[GameEvent],
+) -> Outcome {
+    let moved = before
+        .iter()
+        .zip(tiles(after, player))
+        .map(|(&(id, from), (_, to))| {
+            let d = |a: u16, b: u16| i32::from(b) - i32::from(a);
+            (
+                id,
+                d(from.x, to.x),
+                d(from.y, to.y),
+                i32::from(to.level) - i32::from(from.level),
+            )
+        })
+        .collect();
+    let steps = events
+        .iter()
+        .filter(|e| {
+            matches!(
+                e,
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::HeroStepped { .. },
+                    ..
+                })
+            )
+        })
+        .count();
+    let decisions = events
+        .iter()
+        .filter_map(|e| match e {
+            GameEvent::OfferOpened { .. } => Some(0),
+            GameEvent::OfferRefused { .. } => Some(1),
+            GameEvent::OfferAnswered { accepted, .. } => Some(2 + u8::from(*accepted)),
+            _ => None,
+        })
+        .collect();
+    (accepted, moved, steps, decisions)
+}
+
 proptest! {
     #![proptest_config(ProptestConfig { cases: 48, ..ProptestConfig::default() })]
 
@@ -505,10 +566,11 @@ proptest! {
     /// the other players' armies and so their points, the tiles it never sees and what objects
     /// cover there, the objects' contents) show it the same observation, legal commands and moves
     /// after the same commands, accept or reject its own commands alike and tell it the same
-    /// events, as long as the other players' commands have the same outcome in both: accepted in
-    /// both or in neither, their heroes on the same tiles after (a move that one hero can pay and
-    /// the other cannot, or that visits a pile from its neighbour in one game and walks onto the
-    /// pile's tile in the other, which lacks it, ends where the viewer may see it), and until
+    /// events, as long as the other players' commands have the same outcome in both ([`outcome`]:
+    /// accepted in both or in neither, their heroes moved alike, the same steps and decisions; a
+    /// move that one hero can pay and the other cannot, or that visits a pile from its neighbour
+    /// in one game and walks onto the pile's tile in the other, which lacks it, ends where the
+    /// viewer may see it), and until
     /// the viewer picks up an object: a pickup tells its visitor the contents (E08 T13b; survey
     /// `E08-objects.md` §8), so the two games may then tell it other gains, and nothing else; or
     /// until it accepts an offer: a Cartographer reveals tiles by their terrain, hidden ones
@@ -570,15 +632,15 @@ proptest! {
             let legal = options(&a, rules);
             let (actor, command) = resolve(&a, &legal, step);
             let (mut ea, mut eb) = (Vec::new(), Vec::new());
+            let (from_a, from_b) = (tiles(&a, actor), tiles(&b, actor));
             let ra = apply(&mut a, rules, Actor::Player(actor), command.clone(), &mut ea);
             let rb = apply(&mut b, rules, Actor::Player(actor), command, &mut eb);
-            let tiles = |game: &GameState| -> Vec<(HeroId, TilePos)> {
-                let heroes = game.adventure().heroes().iter();
-                heroes.filter(|h| h.owner == actor).map(|h| (h.id, h.pos)).collect()
-            };
             if actor == viewer {
                 prop_assert_eq!(ra, rb);
-            } else if ra.is_ok() != rb.is_ok() || tiles(&a) != tiles(&b) {
+            } else if outcome((actor, ra.is_ok()), &from_a, &a, &ea)
+                != outcome((actor, rb.is_ok()), &from_b, &b, &eb)
+            {
+                // The other player's command did not do the same in both games.
                 break;
             }
             let (ta, tb) = (told(&ea, viewer), told(&eb, viewer));
