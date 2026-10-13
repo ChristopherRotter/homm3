@@ -189,7 +189,8 @@ fn is_move(entry: usize) -> bool {
 
 /// The masks of `player` agree with the game: an entry is legal exactly when its tile mask has a
 /// tile; the entries without a tile are the commands [`legal_commands`] lists (with an open
-/// decision its answers alone), tile 0 alone their tile mask and the only tile they decode with;
+/// decision its answers alone: `Decline`, and `Accept` while the offer stands), tile 0 alone their
+/// tile mask and the only tile they decode with;
 /// a move's tiles are the hero's legal moves but its own tile, each decoding to the query's path.
 fn check_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCaseError> {
     let (state, rules) = (env.state(), env.rules());
@@ -198,7 +199,11 @@ fn check_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCaseError
     let commands = legal_commands(state, rules, Actor::Player(player));
     if state.decision(player).is_some() {
         let legal: Vec<usize> = (0..ENTRY_COUNT).filter(|&e| entries[e]).collect();
-        prop_assert_eq!(legal, [ACCEPT, DECLINE]);
+        prop_assert!(
+            legal.contains(&DECLINE) && legal.iter().all(|&e| e == ACCEPT || e == DECLINE),
+            "{:?}",
+            legal
+        );
     }
     let mut tiles = Vec::new();
     for (entry, &legal) in entries.iter().enumerate() {

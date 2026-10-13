@@ -7,8 +7,9 @@
 //! and rivers, and under `ADV-QUIRK-1` (the `faithful` profile) also what objects cover there and
 //! the heroes standing there (ADV-FOG-005); nothing of any other tile. A typed object still on the
 //! map shows whole, its type and tiles, once the viewer sees any tile it covers so (ADR-0016 point
-//! 6, E08 T12b); its contents never show, nor another player's purchases (its own Cartographer
-//! types bought show, T14b). Of a hero it sees its tile, owner and
+//! 6, E08 T12b); its contents never show, nor another player's purchases or keys (its own
+//! Cartographer types bought show, T14b, and its own keys, T15a). Of a hero it sees its tile,
+//! owner and
 //! identity; its army and movement points only if the hero is its own (ADV-FOG-006). Other players'
 //! explored tiles, the seed and the streams never show: an event's projection names the viewer
 //! alone among the players who see it, and a step tells only the tiles the viewer sees the hero
@@ -54,6 +55,9 @@ pub struct AdventureObservation {
     /// The Cartographer types the viewer has bought, in type order (ADV-VIS-001, E08 T14b);
     /// other players' purchases never show (ADR-0016 point 6).
     pub bought: Vec<ObjectTypeId>,
+    /// The keys the viewer holds, bit `c` for the colour `c` (ADV-VIS-003, E08 T15a); other
+    /// players' keys never show (ADR-0016 point 6).
+    pub keys: u8,
 }
 
 impl AdventureObservation {
@@ -159,8 +163,9 @@ pub struct OwnHeroView {
 impl AdventureState {
     /// What `viewer` may know of the adventure map (ADV-FOG-004 to ADV-FOG-006): its sight's
     /// planes, built word by word from its explored grid, then each tile's view, the heroes and
-    /// the typed objects it sees, and the Cartographer types it bought (E08 T14b). A viewer that
-    /// is not a player of the game sees no tile, no hero, no object and no purchase.
+    /// the typed objects it sees, the Cartographer types it bought (E08 T14b) and the keys it
+    /// holds (T15a). A viewer that is not a player of the game sees no tile, no hero, no object, no
+    /// purchase and no key.
     // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006
     pub fn observe(&self, core: &Ruleset, viewer: PlayerId) -> AdventureObservation {
         let map = self.map();
@@ -181,6 +186,7 @@ impl AdventureState {
             heroes: Vec::new(),
             objects: Vec::new(),
             bought: self.bought(viewer).collect(),
+            keys: self.keys(viewer),
         };
         let row_tiles = usize::from(width);
         // A tile as it stands now; only a tile an object covered can differ from the static map's.
@@ -276,7 +282,8 @@ impl AdventureEvent {
                     seen_to: seen_to.intersection(alone),
                 },
                 AdventureEventKind::ObjectRemoved { .. }
-                | AdventureEventKind::TilesRevealed { .. } => self.kind,
+                | AdventureEventKind::TilesRevealed { .. }
+                | AdventureEventKind::KeyGained { .. } => self.kind,
             },
             seen_by: alone,
         })

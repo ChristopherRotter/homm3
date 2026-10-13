@@ -5,7 +5,8 @@
 //! represent is counted by its reason (`Unsupported`). Prints what the input bounds were set from
 //! (`docs/formats/h3m.md`, "Input bounds"), the import's counts ("Import") and the maps with a
 //! tile that is the visitable tile of two or more objects (E08 T14a: which object a step there
-//! visits, ADV-OBJ-003).
+//! visits, ADV-OBJ-003) and the typed objects of one type on one anchor (E08 T15a: what a player
+//! sees names a typed object by its type and anchor, ADR-0016 point 6).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -25,13 +26,15 @@ use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 
 /// The largest value of each bounded quantity over all maps, with the map it came from; how many
 /// objects of each body kind the maps hold; how many tiles objects are visited from; each map
-/// with stacked visitable tiles, with the classes on each such tile in map order.
+/// with stacked visitable tiles, with the classes on each such tile in map order; each map with
+/// typed objects that share their type and anchor with an earlier one, with how many.
 #[derive(Default)]
 struct Peaks(
     BTreeMap<&'static str, (usize, String)>,
     BTreeMap<&'static str, usize>,
     usize,
     BTreeMap<String, Vec<Vec<u32>>>,
+    BTreeMap<String, usize>,
 );
 
 impl Peaks {
@@ -120,6 +123,14 @@ fn main() -> ExitCode {
     for (map, tiles) in &peaks.3 {
         println!("    {map}: {}", tiles.len());
     }
+    println!(
+        "  typed objects of one type on one anchor (each after the first): {} in {} maps",
+        peaks.4.values().sum::<usize>(),
+        peaks.4.len()
+    );
+    for (map, twins) in &peaks.4 {
+        println!("    {map}: {twins}");
+    }
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -179,6 +190,10 @@ fn check(
     if !stacked.is_empty() {
         peaks.3.insert(name.to_owned(), stacked);
     }
+    let twins = twins(&setup.map);
+    if twins > 0 {
+        peaks.4.insert(name.to_owned(), twins);
+    }
     let outcome = match import(&map, rules) {
         Ok(setup) => {
             setup
@@ -226,6 +241,21 @@ fn stacked(map: &RawMap, setup: &MapSetup) -> (usize, Vec<Vec<u32>>) {
         .filter(|classes| classes.len() > 1)
         .collect();
     (visitable, stacked)
+}
+
+/// How many typed objects of the static layer share their type and anchor with an earlier one (a
+/// random resource counted by its random type, before the draw).
+fn twins(setup: &MapSetup) -> usize {
+    let mut seen = BTreeMap::<_, usize>::new();
+    for object in &setup.objects {
+        if let Some(object_type) = object.object_type {
+            let anchor = object.anchor;
+            *seen
+                .entry((object_type, anchor.level, anchor.y, anchor.x))
+                .or_default() += 1;
+        }
+    }
+    seen.values().map(|n| n - 1).sum()
 }
 
 fn note(map: &RawMap, peaks: &mut Peaks, name: &str) {

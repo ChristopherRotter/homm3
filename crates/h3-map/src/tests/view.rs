@@ -4,8 +4,8 @@
 //! it cannot see) and the observation's consistency with the events it is told.
 
 use h3_adventure::{
-    AdventureEvent, AdventureEventKind, ObjectView, Offer, Pos as TilePos, TileMask, TileView,
-    Viewers,
+    AdventureEvent, AdventureEventKind, ObjectView, Offer, OfferKind, Pos as TilePos, TileMask,
+    TileView, Viewers,
 };
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
@@ -280,9 +280,10 @@ fn depth(view: &TileView) -> u8 {
 /// deepens, and keeps what it showed; an object it saw leaves its view only as an object removal
 /// it is told (E08 T13b), and its treasury changes only by the gains and payments it is told,
 /// which are its own. Its open decision and its purchases change only as its offers' events say:
-/// an offer it is told opened is its decision, an answer closes it, an accepted one adds the type
-/// to its purchases (E08 T14b); a reveal it is told explores at least that many more tiles. Its
-/// planes change only by its own command (`own`).
+/// an offer it is told opened is its decision, an answer closes it, an accepted Cartographer's
+/// adds the type to its purchases (E08 T14b); a reveal it is told explores at least that many
+/// more tiles; its keys change only by the keys it is told it gained (T15a). Its planes change
+/// only by its own command (`own`).
 fn check_told(
     viewer: PlayerId,
     (before, after): (&GameObservation, &GameObservation),
@@ -306,6 +307,7 @@ fn check_told(
     let named = |o: &Offer| (o.hero, o.object_type, o.anchor);
     let mut decision = before.decision.as_ref().map(named);
     let mut bought = before.adventure.bought.clone();
+    let mut keys = before.adventure.keys;
     let mut revealed = 0;
     for event in told {
         match *event {
@@ -329,7 +331,9 @@ fn check_told(
                 prop_assert_eq!(player, viewer);
                 let (_, ty, at) = decision.take().unwrap();
                 prop_assert_eq!((ty, at), (object_type, anchor));
-                if accepted {
+                // The offer was open before the answer: the observation showed its kind.
+                let kind = before.decision.as_ref().map(|o| &o.kind);
+                if accepted && matches!(kind, Some(OfferKind::Reveal { .. })) {
                     bought.push(object_type);
                     bought.sort();
                 }
@@ -348,6 +352,13 @@ fn check_told(
             }) => {
                 prop_assert_eq!(seen_by, Viewers::NONE.with(viewer));
                 revealed += count;
+            }
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::KeyGained { key },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, Viewers::NONE.with(viewer));
+                keys |= 1 << key;
             }
             GameEvent::Adventure(AdventureEvent {
                 kind:
@@ -435,6 +446,7 @@ fn check_told(
     prop_assert_eq!(&after.treasury, &treasury);
     prop_assert_eq!(after.decision.as_ref().map(named), decision);
     prop_assert_eq!(&after.adventure.bought, &bought);
+    prop_assert_eq!(after.adventure.keys, keys);
     let ones = |planes: &[u64]| planes.iter().map(|w| w.count_ones()).sum::<u32>();
     prop_assert!(ones(&after.adventure.explored) >= ones(&before.adventure.explored) + revealed);
     let named = |o: &ObjectView| (o.object_type, o.anchor);
@@ -575,7 +587,8 @@ proptest! {
     /// `E08-objects.md` §8), so the two games may then tell it other gains, and nothing else; or
     /// until it accepts an offer: a Cartographer reveals tiles by their terrain, hidden ones
     /// included, so the two games may then tell it other counts (E08 T14b). An offer opened,
-    /// refused or declined tells it nothing hidden.
+    /// refused or declined tells it nothing hidden, nor does a key or a guard's passage, and an
+    /// observatory's disk (T15a) is the same tiles in both games: the comparison goes on.
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in plan(),

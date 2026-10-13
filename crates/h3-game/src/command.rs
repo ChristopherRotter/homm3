@@ -54,6 +54,9 @@ pub enum GameCommandError {
     DecisionOpen,
     /// An answer, but the actor has no open decision.
     NoDecision,
+    /// An acceptance of an offer that no longer stands (ADR-0017 point 10): a border guard
+    /// another player passed has left the map (E08 T15a); declining is the only legal answer.
+    OfferGone,
     /// The adventure context rejected the command.
     Adventure(AdventureCommandError),
 }
@@ -65,6 +68,7 @@ impl fmt::Display for GameCommandError {
             Self::NotYourTurn(p) => write!(f, "it is not player {}'s turn", p.raw()),
             Self::DecisionOpen => f.write_str("an open decision waits for its answer"),
             Self::NoDecision => f.write_str("no decision is open"),
+            Self::OfferGone => f.write_str("the offer no longer stands"),
             Self::Adventure(error) => write!(f, "{error}"),
         }
     }

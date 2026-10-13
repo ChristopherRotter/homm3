@@ -1,8 +1,10 @@
 //! The adventure context's commands, their errors, outcomes and events (ADR-0017 point 1:
 //! `h3-game` checks turn and phase, then passes a player's command here with the player as actor;
 //! E08 T7b: `MoveHero`; T13b: its visits and their outcome, ADR-0017 point 10; T14b: the
-//! Cartographer's offer). A rejected command changes nothing and emits nothing. An event carries the players who may see it, resolved when
-//! it is emitted (ADR-0016 point 6; E08 T8a).
+//! Cartographer's offer; T15a: the observatories, the keys and the border guard's offer; T15b: the
+//! border gates). A
+//! rejected command changes nothing and emits nothing. An event carries the players who may see
+//! it, resolved when it is emitted (ADR-0016 point 6; E08 T8a).
 
 use alloc::vec::Vec;
 use core::fmt;
@@ -20,9 +22,11 @@ pub enum AdventureCommand {
     /// tile a neighbour of the one before (the first of the hero's), each step paid from the
     /// points left. The path is validated step by step and rejected whole: a step the hero
     /// cannot pay is a rejection, not the original's stop that wastes the rest (survey §1.3).
-    /// Its last step may visit an object (ADV-OBJ-003): a step toward a pickup's visitable tile
-    /// visits it from the tile before, which the hero does not leave (E08 T13b); a step onto a
-    /// Cartographer's enters it (T14a).
+    /// Its last step may visit an object (ADV-OBJ-003): a step toward a pickup's, a border
+    /// guard's or a border gate's visitable tile visits it from the tile before, which the hero
+    /// does not leave (E08 T13b, T15a, T15b); a step onto a Cartographer's, an observatory's or a
+    /// Keymaster's tent's enters it (T14a, T15a). A border gate whose key the player holds is
+    /// crossed as any tile, anywhere on the path (ADV-VIS-005, T15b).
     MoveHero {
         /// The hero.
         hero: HeroId,
@@ -59,9 +63,8 @@ pub enum AdventureCommandError {
         /// Why.
         error: StandError,
     },
-    /// A step's tile is one an object is visited from whose visit is not built: a blocker's, or
-    /// an object's other than a pickup or a Cartographer (the other visitable objects' come with
-    /// E08 T15; ADR-0016 point 4).
+    /// A step's tile is one an object is visited from whose visit is not built: a blocker's (a
+    /// class without a type, ADR-0016 point 4; every typed kind's visit is built since E08 T15b).
     Visit {
         /// The step.
         step: usize,
@@ -120,32 +123,57 @@ impl core::error::Error for AdventureCommandError {}
 /// What an accepted command gives its player beyond the map (ADR-0017 point 10): the resources it
 /// gains, which the game adds to the player's treasury (the context never sees a treasury), and
 /// the offer it opens, which the game opens as a pending decision if the player can pay its price
-/// (E08 T14b).
+/// (E08 T14b; a border guard's has none, T15a).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AdventureOutcome {
     /// Each resource gained with its amount, in the order the rule gives them (a campfire's
     /// resource, then its gold).
     pub gains: Vec<(ResourceId, u32)>,
     /// The offer the command's visit makes its player, if any: a Cartographer's whose type the
-    /// player has not bought (ADV-VIS-001).
+    /// player has not bought (ADV-VIS-001), a border guard's whose key the player holds
+    /// (ADV-VIS-004).
     pub offer: Option<Offer>,
 }
 
 /// An offer a visit makes to its visitor's owner, answered yes or no (ADR-0017 points 6 and 10;
-/// E08 T14b): a Cartographer's reveal of its terrains for its price (ADV-VIS-001). The object is
-/// named as the observation names it, by type and anchor, never by index (ADR-0016 point 6), so
-/// the offer is also what its owner sees of it. Only the context makes offers;
-/// [`crate::AdventureState::accept_offer`] trusts the one it is given.
+/// E08 T14b, T15a). The object is named as the observation names it, by type and anchor, never by
+/// index (ADR-0016 point 6), so the offer is also what its owner sees of it. Only the context
+/// makes offers; [`crate::AdventureState::accept_offer`] trusts the one it is given, once
+/// [`crate::AdventureState::offer_stands`] says it still stands.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Offer {
     /// The hero whose visit made it.
     pub hero: HeroId,
-    /// The object's type: the kind on offer.
+    /// The object's type.
     pub object_type: ObjectTypeId,
     /// The object's anchor (the bottom right tile its masks are relative to).
     pub anchor: Pos,
-    /// The price, by resource in the core's order, each amount at least 1 (the type's).
-    pub price: Vec<(ResourceId, u32)>,
+    /// What is on offer.
+    pub kind: OfferKind,
+}
+
+impl Offer {
+    /// The price, by resource in the core's order: a Cartographer's, none for a border guard's.
+    pub fn price(&self) -> &[(ResourceId, u32)] {
+        match &self.kind {
+            OfferKind::Reveal { price } => price,
+            OfferKind::Pass => &[],
+        }
+    }
+}
+
+/// What an offer offers (ADR-0017 point 6: increment 2's two kinds of decision).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OfferKind {
+    /// A Cartographer's reveal of its type's terrains, for the type's price, each amount at least
+    /// 1 (ADV-VIS-001, E08 T14b).
+    Reveal {
+        /// The price, by resource in the core's order.
+        price: Vec<(ResourceId, u32)>,
+    },
+    /// A border guard's passage, without a price: accepted, the guard leaves the map for everyone
+    /// (ADV-VIS-004, E08 T15a; D-7 in ADV-Q10).
+    Pass,
 }
 
 /// The players who may see an event (ADR-0016 point 6): a set of players, resolved when the event
@@ -187,8 +215,8 @@ impl Viewers {
     }
 }
 
-/// The bit of `player` in [`Viewers`] and in the players who bought a type (E08 T14b), none for an
-/// id of eight or more.
+/// The bit of `player` in [`Viewers`], in the players who bought a type (E08 T14b) and in those
+/// who hold a key (T15a), none for an id of eight or more.
 pub(crate) const fn bit(player: PlayerId) -> u8 {
     match 1u8.checked_shl(player.raw() as u32) {
         Some(bit) => bit,
@@ -229,7 +257,8 @@ pub enum AdventureEventKind {
         /// The players that see the hero on the tile it entered (likewise).
         seen_to: Viewers,
     },
-    /// An object left the map (ADV-OBJ-005; a pickup in E08 T13b). Seen by the players that see
+    /// An object left the map (ADV-OBJ-005; a pickup in E08 T13b, an accepted border guard in
+    /// T15a). Seen by the players that see
     /// it there, as the observation shows it: those that have explored a tile it covers and,
     /// under `ADV-QUIRK-1`, those with such a tile on their fringe. Named as the observation
     /// names it, by type and anchor, never by index (ADR-0016 point 6).
@@ -240,12 +269,19 @@ pub enum AdventureEventKind {
         anchor: Pos,
     },
     /// Tiles became explored for a player by an object's reveal (ADV-VIS-001: an accepted
-    /// Cartographer's, E08 T14b). Seen by that player alone, as its explored tiles are.
+    /// Cartographer's, E08 T14b; ADV-VIS-002: an observatory's at every visit, T15a). Seen by that
+    /// player alone, as its explored tiles are.
     TilesRevealed {
         /// The revealing object's type: for a Cartographer, the kind its player now has bought.
         object_type: ObjectTypeId,
         /// How many tiles the player had not explored before.
         count: u32,
+    },
+    /// A player got the key of a colour by a Keymaster's tent's visit (ADV-VIS-003, E08 T15a);
+    /// not told when it already held it. Seen by that player alone, as its keys are.
+    KeyGained {
+        /// The key's colour, below [`crate::KEY_COLOURS`].
+        key: u8,
     },
 }
 

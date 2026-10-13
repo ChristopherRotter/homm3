@@ -1,9 +1,11 @@
 //! Tests of the pending decisions (E08 T14b; ADR-0017 points 6 and 10): a Cartographer's offer
 //! opens as its visitor's owner's decision if its treasury can pay, the answers are then the
-//! owner's only legal commands, and an accepted offer is paid and carried out.
+//! owner's only legal commands, and an accepted offer is paid and carried out; a border guard's
+//! offer (T15a) has no price, and its acceptance checks that it still stands.
 
 use h3_adventure::{
-    AdventureCommand, AdventureEvent, AdventureEventKind, ObjectSetup, Offer, TileMask, Viewers,
+    AdventureCommand, AdventureEvent, AdventureEventKind, ObjectSetup, Offer, OfferKind, TileMask,
+    Viewers,
 };
 use h3_content::ResourceId;
 
@@ -94,7 +96,9 @@ fn an_open_offer_leaves_its_owner_its_answers_only() {
         hero: HeroId::new(0),
         object_type: chart,
         anchor: Pos::new(2, 0, 0),
-        price: vec![(GOLD, 2500)],
+        kind: OfferKind::Reveal {
+            price: vec![(GOLD, 2500)],
+        },
     };
     assert_eq!(state.decision(RED), Some(&offer));
     assert_eq!(state.decision(BLUE), None);
@@ -280,4 +284,168 @@ fn the_decision_errors_read_well() {
         GameCommandError::NoDecision.to_string(),
         "no decision is open"
     );
+    assert_eq!(
+        GameCommandError::OfferGone.to_string(),
+        "the offer no longer stands"
+    );
+}
+
+/// [`setup`] with a tent at (1, 0) and a guard at (3, 0), both of key 0 and blocking their tile;
+/// red's hero stands at (0, 0), blue's at (2, 2).
+fn keys_game(rules: &GameRuleset) -> GameState {
+    let mut setup = setup();
+    for (x, ty) in [(1, "t:tent"), (3, "t:guard")] {
+        setup.map.objects.push(ObjectSetup {
+            anchor: Pos::new(x, 0, 0),
+            blocked: TileMask::from_bits(1),
+            visitable: TileMask::from_bits(1),
+            object_type: rules.adventure().object_type_by_key(ty),
+            amount: None,
+        });
+    }
+    GameState::new(rules, &setup, 7).unwrap()
+}
+
+/// The adventure events among `events`, but the steps.
+fn told_beside_steps(events: Vec<GameEvent>) -> Vec<AdventureEventKind> {
+    after_steps(events)
+        .into_iter()
+        .filter_map(|e| match e {
+            GameEvent::Adventure(AdventureEvent { kind, .. }) => Some(kind),
+            _ => None,
+        })
+        .collect()
+}
+
+// covers: GAM-DEC-001, ADV-VIS-003, ADV-VIS-004
+#[test]
+fn a_guard_offers_its_key_s_holders_to_pass_without_a_price() {
+    let rules = rules();
+    let guard = rules.adventure().object_type_by_key("t:guard").unwrap();
+    let mut state = keys_game(&rules);
+    let red = Actor::Player(RED);
+    // Without the key, the guard's visit from (2, 1) does nothing.
+    let toward = [Pos::new(1, 1, 0), Pos::new(2, 1, 0), Pos::new(3, 0, 0)];
+    let events = play(&mut state, &rules, RED, move_hero(0, &toward)).unwrap();
+    assert_eq!(after_steps(events), []);
+    assert_eq!(state.decision(RED), None);
+    // Red takes the key at the tent: told to red alone, seen in red's observation only.
+    let mut state = keys_game(&rules);
+    let events = play(&mut state, &rules, RED, move_hero(0, &[Pos::new(1, 0, 0)])).unwrap();
+    assert_eq!(
+        told_beside_steps(events),
+        [AdventureEventKind::KeyGained { key: 0 }]
+    );
+    assert_eq!(
+        observe(&state, &rules, Viewer::Player(RED)).adventure.keys,
+        1
+    );
+    assert_eq!(
+        observe(&state, &rules, Viewer::Player(BLUE)).adventure.keys,
+        0
+    );
+    // With it, the guard's visit opens an offer to pass, without a price, at any treasury.
+    let toward = [Pos::new(2, 1, 0), Pos::new(3, 0, 0)];
+    let events = play(&mut state, &rules, RED, move_hero(0, &toward)).unwrap();
+    let opened = GameEvent::OfferOpened {
+        player: RED,
+        hero: HeroId::new(0),
+        object_type: guard,
+        anchor: Pos::new(3, 0, 0),
+    };
+    assert_eq!(after_steps(events), [opened]);
+    let offer = Offer {
+        hero: HeroId::new(0),
+        object_type: guard,
+        anchor: Pos::new(3, 0, 0),
+        kind: OfferKind::Pass,
+    };
+    assert_eq!(state.decision(RED), Some(&offer));
+    assert_eq!(
+        observe(&state, &rules, Viewer::Player(RED)).decision,
+        Some(offer)
+    );
+    assert_eq!(legal_commands(&state, &rules, red), [ACCEPT, DECLINE]);
+    // Declined, the guard stays; accepted, it leaves the map for everyone, and nothing is paid.
+    let mut declined = state.clone();
+    play(&mut declined, &rules, RED, DECLINE).unwrap();
+    assert!(
+        declined
+            .adventure()
+            .observe(rules.core(), RED)
+            .objects
+            .iter()
+            .any(|o| o.object_type == guard)
+    );
+    let events = play(&mut state, &rules, RED, ACCEPT).unwrap();
+    assert_eq!(
+        events,
+        [
+            GameEvent::OfferAnswered {
+                player: RED,
+                object_type: guard,
+                anchor: Pos::new(3, 0, 0),
+                accepted: true,
+            },
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectRemoved {
+                    object_type: guard,
+                    anchor: Pos::new(3, 0, 0),
+                },
+                seen_by: Viewers::NONE.with(RED).with(BLUE),
+            }),
+        ]
+    );
+    assert_eq!(state.treasury(RED), Some(&[2000][..]));
+    // Its tile is free: red's hero steps onto it.
+    play(&mut state, &rules, RED, move_hero(0, &[Pos::new(3, 0, 0)])).unwrap();
+}
+
+// covers: GAM-DEC-001, ADV-VIS-004
+#[test]
+fn an_offer_another_player_s_acceptance_withdrew_may_only_be_declined() {
+    let rules = rules();
+    let guard = rules.adventure().object_type_by_key("t:guard").unwrap();
+    let mut state = keys_game(&rules);
+    state.set_schedule(&rules, vec![vec![RED, BLUE]]);
+    // Both take the key and visit the guard in the same group's turn: two offers to pass it.
+    play(&mut state, &rules, RED, move_hero(0, &[Pos::new(1, 0, 0)])).unwrap();
+    let toward = [Pos::new(2, 1, 0), Pos::new(3, 0, 0)];
+    play(&mut state, &rules, RED, move_hero(0, &toward)).unwrap();
+    let tent = [Pos::new(1, 1, 0), Pos::new(1, 0, 0)];
+    play(&mut state, &rules, BLUE, move_hero(1, &tent)).unwrap();
+    let toward = [Pos::new(2, 0, 0), Pos::new(3, 0, 0)];
+    play(&mut state, &rules, BLUE, move_hero(1, &toward)).unwrap();
+    let blue = Actor::Player(BLUE);
+    assert_eq!(legal_commands(&state, &rules, blue), [ACCEPT, DECLINE]);
+    // Red passes first: the guard leaves the map, and blue's offer no longer stands.
+    play(&mut state, &rules, RED, ACCEPT).unwrap();
+    let offer = state.decision(BLUE).unwrap().clone();
+    assert_eq!(
+        (offer.object_type, offer.kind.clone()),
+        (guard, OfferKind::Pass)
+    );
+    assert!(!state.adventure().offer_stands(&offer));
+    assert_eq!(legal_commands(&state, &rules, blue), [DECLINE]);
+    assert_eq!(
+        play(&mut state, &rules, BLUE, ACCEPT),
+        Err(GameCommandError::OfferGone)
+    );
+    assert_eq!(
+        observe(&state, &rules, Viewer::Player(BLUE)).decision,
+        Some(offer)
+    );
+    // Declining closes it; blue then walks over the guard's tile.
+    let events = play(&mut state, &rules, BLUE, DECLINE).unwrap();
+    assert_eq!(
+        events,
+        [GameEvent::OfferAnswered {
+            player: BLUE,
+            object_type: guard,
+            anchor: Pos::new(3, 0, 0),
+            accepted: false,
+        }]
+    );
+    assert_eq!(legal_commands(&state, &rules, blue), [GameCommand::EndTurn]);
+    play(&mut state, &rules, BLUE, move_hero(1, &[Pos::new(3, 0, 0)])).unwrap();
 }

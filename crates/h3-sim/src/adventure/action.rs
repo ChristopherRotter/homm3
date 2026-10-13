@@ -152,7 +152,8 @@ pub fn moves(
 }
 
 /// Fills `mask` with the legal entries of `player`: the commands [`legal_commands`] lists
-/// (`EndTurn` while its turn runs, or with an open decision its two answers alone), and each hero
+/// (`EndTurn` while its turn runs, or with an open decision its answers alone: `Decline`, and
+/// `Accept` while the offer stands, E08 T15a), and each hero
 /// slot with a tile to move to ([`legal_moves`]: none with a decision open).
 pub fn legal_mask(state: &GameState, rules: &GameRuleset, player: PlayerId, mask: &mut EntryMask) {
     mask.fill(false);
