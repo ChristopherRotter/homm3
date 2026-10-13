@@ -330,6 +330,34 @@ fn hidden_pits_show_only_to_the_sides_that_see_them() {
     }
 }
 
+// covers: BAT-MOV-003, BAT-MAG-031
+#[test]
+fn a_walker_walks_around_its_own_sides_pit_in_public() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("fixed", 5, 2, 5)],
+        &[("fixed", 5, 12, 5)],
+        1,
+    );
+    pits(&mut s, &r, BattleSide::Attacker, &[(4, 5)]);
+    let events = act(&mut s, &r, Command::Move { to: at(&r, 6, 5) }).unwrap();
+    // Around the pit its side sees, hex by hex, and every step public: the defender, who does
+    // not see the pit, sees the detour (the original shows both players the walk; the user,
+    // 2026-10-13, CLT-Q1). The pit stays hidden from it otherwise.
+    let walk = moves(&events);
+    assert_eq!(walk.len(), 5);
+    assert!(walk.iter().all(|&(_, _, to)| to != at(&r, 4, 5)));
+    assert!(
+        events
+            .iter()
+            .filter(|e| matches!(e.kind, EventKind::Moved { .. }))
+            .all(|e| e.visibility == Visibility::Public)
+    );
+    assert!(obstacle_events(&events).is_empty());
+    assert_eq!(s.stack(StackId(0)).unwrap().hex, at(&r, 6, 5));
+}
 // covers: BAT-MAG-032
 #[test]
 fn a_walker_stops_in_an_unseen_pit_and_reveals_it() {
@@ -349,7 +377,7 @@ fn a_walker_stops_in_an_unseen_pit_and_reveals_it() {
             .any(|c| *c == Command::Move { to: at(&r, 7, 5) })
     );
     let events = act(&mut s, &r, Command::Move { to: at(&r, 7, 5) }).unwrap();
-    assert_eq!(moves(&events), [(0, at(&r, 2, 5), at(&r, 5, 5))]);
+    assert_eq!(moves(&events), row_walk(&r, 0, 5, 2, 5));
     assert_eq!(s.stack(StackId(0)).unwrap().hex, at(&r, 5, 5));
     assert_eq!(
         obstacle_events(&events),

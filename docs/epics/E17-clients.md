@@ -1,11 +1,12 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 in progress (T1 and T3 done 2026-10-13). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 in progress (T1, T3 and T4a done 2026-10-13). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M2 T2 (the window and audio evaluation) or T4 (the scene over time).
+are there). Next: M2 T4b (the scene over time, completed and checked frame by frame) or T2
+(the window and audio evaluation).
 
 ## Goal
 
@@ -136,8 +137,8 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   not drawn yet, a situation set with recorded differences, unattended in the sandbox.
 - The window, input and audio evaluation and the user's choice (and licence step, if any).
 - The scene model: messages to animations at the original's timing (`CRANIM.TXT`, the
-  executable), moves (CLT-Q1, the walk's path), strikes, shots and projectiles, deaths, waits and
-  defends; a frame at any time, headless.
+  executable), moves (a walk hex by hex: CLT-Q1, built 2026-10-13, wire v29), strikes, shots
+  and projectiles, deaths, waits and defends; a frame at any time, headless.
 - The window adapter playing a record at the original's frame rate.
 - **Exit:** a record of a full battle plays in the window and renders headless frame by frame.
 - **T1 done 2026-10-13** ([log](E17-log.md#m2-t1--the-capture-harness-2026-10-13),
@@ -154,6 +155,12 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   address and confirmed in the original to the millisecond: the harness reads the game's battle
   state from its memory (`capture/h3mem.py`) and replays recorded timelines
   (`situations/sequences.toml`). CLT-Q1 decided (a) by the user.
+- **CLT-Q1 built 2026-10-13** (the user's request, `cross-lane`, #169): the engine reports a
+  walk hex by hex, the wire is v29 (`OPEN-QUESTIONS.md`, answered).
+- **T4a done 2026-10-13** ([log](E17-log.md#m2-t4a--the-scene-over-time-the-timeline-2026-10-13),
+  [design §7.8](E17-design.md)): `h3_view::anim` plays a record's commands at the original's
+  timing; `h3-view sequences` checks the viewer's timeline against the three recorded sequences:
+  all three as recorded, every line; `render --at <ms>`.
 
 ### M3 — fidelity
 
@@ -186,9 +193,6 @@ viewer, video.
 
 ## Risks and known gaps
 
-- **The walk's path (CLT-Q1).** `Moved` carries only the start and end hex; the walking animation
-  needs every hex. Decided (the user, 2026-10-13): the engine's event carries it (battle lane,
-  then the wire); needed by M2 T4's walks.
 - **Graphics per expansion.** The Complete edition holds only SoD-era graphics: a RoE ruleset
   still shows SoD art.
 - **Engine churn.** `h3-protocol` depends on `h3-battle`; the engine's frequent changes rebuild the
@@ -262,3 +266,9 @@ choices are lifted.
   renamed in the address map after reading them whole (T3).
 - The viewer's fidgets from a generator of its own (the original draws them from its rules'
   generator, design §7.2); reference frames compared against the original's poses (T3, for T4).
+- The asset tables' `groups` with every battle group the animations use, and the sequences'
+  engine commands (`[[sequence.command]]`: a seat and a wire command) (T4a).
+- The timeline's *provisional* choices (design §7.8): the next command's default start, the
+  shooter's frames in the strike loop, at least A + 1 iterations, the strike's group by rows, the
+  walk's and the flight's pixel offsets, the flight's cycles' rounding, a dying stack among the
+  corpses (T4a).

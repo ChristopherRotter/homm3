@@ -9,12 +9,14 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_formats::lod::LodArchive;
+use h3_protocol::wire::ServerMessage;
+use h3_view::anim::{self, Speed};
 use h3_view::batch::{self, Batch};
 use h3_view::compose::compose;
 use h3_view::{layout, record, scene};
 
-use crate::assets;
 use crate::gate::{find_ci, timed};
+use crate::{assets, motion};
 
 /// The archives, the base ones first: a DEF is searched in the sprite archives, anything else in
 /// the bitmap ones (`docs/epics/E17-design.md` §3.1).
@@ -30,11 +32,14 @@ pub struct Options {
     install: PathBuf,
     out: Option<PathBuf>,
     list: bool,
+    at: Option<u32>,
+    speed: u8,
 }
 
 impl Options {
     /// Parses `<scenario.toml | record.jsonl> [--seed <n>] [--packs <dir>] [--install <dir>]
-    /// [--out <file.png>] [--list]`; the installation defaults as the gate's.
+    /// [--out <file.png>] [--list] [--at <ms>] [--speed <0-2>]`; the installation defaults as
+    /// the gate's.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         Self::parse_with(args, env)
@@ -44,6 +49,7 @@ impl Options {
         let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
         let (mut input, mut seed, mut packs, mut install, mut out, mut list) =
             (None, 1, None, None, None, false);
+        let (mut at, mut speed) = (None, 0);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -60,6 +66,18 @@ impl Options {
                 "--install" => install = Some(PathBuf::from(value()?)),
                 "--out" => out = Some(PathBuf::from(value()?)),
                 "--list" => list = true,
+                "--at" => {
+                    let v = value()?;
+                    at = Some(v.parse().map_err(|_| format!("render: bad time `{v}`"))?);
+                }
+                "--speed" => {
+                    let v = value()?;
+                    speed = v
+                        .parse()
+                        .ok()
+                        .filter(|s| *s <= 2)
+                        .ok_or(format!("render: bad speed `{v}`"))?;
+                }
                 flag if flag.starts_with("--") => {
                     return Err(format!("render: unknown option `{flag}`"));
                 }
@@ -76,6 +94,8 @@ impl Options {
                 .unwrap_or_else(|| manifest.join("../../../original-data/install")),
             out,
             list,
+            at,
+            speed,
         })
     }
 
@@ -93,10 +113,11 @@ impl Options {
                 .input
                 .file_stem()
                 .map_or_else(|| "still".into(), |s| s.to_string_lossy());
+            let at = self.at.map_or_else(String::new, |t| format!("-{t}ms"));
             let name = if self.scenario() {
-                format!("{stem}-s{}.png", self.seed)
+                format!("{stem}-s{}{at}.png", self.seed)
             } else {
-                format!("{stem}.png")
+                format!("{stem}{at}.png")
             };
             Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../out/render")
@@ -120,7 +141,7 @@ pub fn run(options: &Options) -> ExitCode {
     }
 }
 
-fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
+pub fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
     }
@@ -128,7 +149,7 @@ fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
 }
 
 /// The archives of `install`, read whole (CLT-Q2), each with its name.
-fn read_archives(install: &Path) -> Result<Vec<(&'static str, Vec<u8>)>, String> {
+pub fn read_archives(install: &Path) -> Result<Vec<(&'static str, Vec<u8>)>, String> {
     let data = find_ci(install, "Data").map_err(|e| format!("{}: {e}", install.display()))?;
     SPRITES
         .iter()
@@ -143,7 +164,7 @@ fn read_archives(install: &Path) -> Result<Vec<(&'static str, Vec<u8>)>, String>
 }
 
 /// The entry `name` from the first archive of its search list that holds it.
-fn lookup(archives: &[(&str, LodArchive<'_>)], name: &str) -> Result<Vec<u8>, String> {
+pub fn lookup(archives: &[(&str, LodArchive<'_>)], name: &str) -> Result<Vec<u8>, String> {
     let list: &[&str] = if name.to_ascii_uppercase().ends_with(".DEF") {
         &SPRITES
     } else {
@@ -187,7 +208,6 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         &fs::read_to_string(&layout_path).map_err(|e| format!("{}: {e}", layout_path.display()))?,
     )
     .map_err(|e| format!("{}: {e}", layout_path.display()))?;
-    let list = scene::battle(observation, manifest, &tables, &layout).map_err(|e| e.to_string())?;
     // The checkpoint: the archives (whole, CLT-Q2), then the batch.
     let (bytes, read) = timed(|| read_archives(&options.install));
     let bytes = bytes?;
@@ -199,6 +219,39 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 .map_err(|e| format!("{name}: {e:?}"))
         })
         .collect::<Result<Vec<_>, _>>()?;
+    let list = match options.at {
+        None => scene::battle(observation, manifest, &tables, &layout),
+        Some(t) => {
+            // The record's commands at the original's timing (E17 M2 T4a, `h3_view::anim`).
+            let looks = motion::looks(&record, &tables, &archives)?;
+            let stage = motion::stage(&record, &tables, &layout);
+            let commands: Vec<anim::Command<'_>> = record
+                .messages
+                .iter()
+                .filter_map(|m| match m {
+                    ServerMessage::Events { events, .. } => {
+                        Some(anim::Command { at: None, events })
+                    }
+                    _ => None,
+                })
+                .collect();
+            let timeline = anim::timeline(
+                observation,
+                &commands,
+                &looks,
+                stage,
+                Speed::new(options.speed),
+            )
+            .map_err(|e| e.to_string())?;
+            lines.push(format!("the timeline ends at {} ms", timeline.end));
+            let moment = scene::Moment {
+                poses: timeline.at(t),
+                active: timeline.active(t).or(observation.active),
+            };
+            scene::battle_at(observation, &moment, manifest, &tables, &layout)
+        }
+    }
+    .map_err(|e| e.to_string())?;
     let names = batch::names(&list, &layout);
     let (batch, loaded) = timed(|| {
         let mut batch = Batch::default();
@@ -264,9 +317,15 @@ mod tests {
         let o = Options::parse_with(&args(&["r.jsonl", "--install", "/i"]), None).unwrap();
         assert!(o.png().ends_with("out/render/r.png"));
         assert_eq!(o.install, PathBuf::from("/i"));
+        let o =
+            Options::parse_with(&args(&["a.toml", "--at", "250", "--speed", "2"]), None).unwrap();
+        assert_eq!((o.at, o.speed), (Some(250), 2));
+        assert!(o.png().ends_with("out/render/a-s1-250ms.png"));
         for bad in [
             &["--seed"][..],
             &["--seed", "x", "a.toml"],
+            &["--at", "soon", "a.toml"],
+            &["--speed", "3", "a.toml"],
             &["--what"],
             &["a.toml", "b.toml"],
             &[],
@@ -317,7 +376,7 @@ mod tests {
         )
         .unwrap();
         let mut snapshot = record::parse(&text).unwrap().messages.remove(0);
-        if let h3_protocol::wire::ServerMessage::Snapshot { observation, .. } = &mut snapshot {
+        if let ServerMessage::Snapshot { observation, .. } = &mut snapshot {
             observation.stacks.clear();
             observation.removable_obstacles.clear();
             observation.absolute_obstacle = None;
@@ -358,6 +417,17 @@ mod tests {
         );
         let png = fs::read(root.join("out/still.png")).unwrap();
         assert_eq!(png[16..24], [0, 0, 3, 32, 0, 0, 2, 88]); // 800 x 600
+        // At a time: the record's (no) commands played first.
+        let later = Options {
+            at: Some(500),
+            ..Options { ..options }
+        };
+        let lines = render(&later).unwrap();
+        assert!(
+            lines.contains(&"the timeline ends at 0 ms".to_owned()),
+            "{lines:?}"
+        );
+        let options = Options { at: None, ..later };
         // A record without a snapshot, and an archive without the palette.
         let header = empty_record().lines().next().unwrap().to_owned();
         fs::write(root.join("bare.jsonl"), &header).unwrap();

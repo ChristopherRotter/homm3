@@ -2934,6 +2934,19 @@ pub fn at(rules: &BattleRuleset, x: i32, y: i32) -> Hex {
     field(rules).hex(x, y).unwrap()
 }
 
+/// A walk of stack `id` along row `y` from column `from` to column `to`, as its `Moved` events
+/// report it: one `(stack, from, to)` per hex (BAT-MOV-003).
+pub fn row_walk(rules: &BattleRuleset, id: u8, y: i32, from: i32, to: i32) -> Vec<(u8, Hex, Hex)> {
+    let step = if to < from { -1 } else { 1 };
+    let mut out = Vec::new();
+    let mut x = from;
+    while x != to {
+        out.push((id, at(rules, x, y), at(rules, x + step, y)));
+        x += step;
+    }
+    out
+}
+
 /// Moves stack `id` to `(x, y)` directly (test setup only).
 pub fn place(state: &mut BattleState, rules: &BattleRuleset, id: u8, x: i32, y: i32) {
     state.stacks.as_mut_slice()[usize::from(id)].hex = at(rules, x, y);

@@ -4,8 +4,10 @@
 mod assets;
 mod gate;
 mod harvest;
+mod motion;
 mod render;
 mod scenario;
+mod sequences;
 mod situation;
 mod sprite;
 
@@ -31,7 +33,7 @@ commands:
           below), and writes a PNG (default clients/out/sprite/<name>-<group>.png). The base
           archives are searched before the AB ones, as the game does.
   render <scenario.toml | record.jsonl> [--seed <n>] [--packs <dir>] [--install <dir>]
-         [--out <file.png>] [--list]
+         [--out <file.png>] [--list] [--at <ms>] [--speed <0-2>]
           draws a battle still: the battle at its start as the record's first snapshot shows it
           (the background, the obstacles, every living stack standing on its hex; no heroes,
           count boxes or corpses yet), with its assets loaded as one checkpoint batch, and writes
@@ -39,7 +41,10 @@ commands:
           scenario file (as `h3 run` reads it, its packs from <dir>, default the repository's
           packs/; obstacles from the seed, default 1, when it asks) is run in-process as a
           spectator of h3-protocol's session first; that record is written beside the PNG
-          (<stem>-s<seed>.jsonl). --list prints the draw list.
+          (<stem>-s<seed>.jsonl). --list prints the draw list. --at draws the battle <ms>
+          after the record's start, its commands played at the original's timing at combat
+          speed --speed (default 0; h3_view::anim): each stack in its pose then
+          (<stem>[-s<seed>]-<ms>ms.png).
   situation <scenario.toml> [--packs <dir>] [--install <dir>] [--out <file.h3m>]
           writes the original's map for a scenario's battle, for the capture harness
           (clients/capture/README.md): Red's hero (human) just west of Blue's (computer) on the
@@ -47,6 +52,12 @@ commands:
           skills, artifacts or war machines; stepping Red's hero east starts the battle. The
           creatures' original ids from the installation's crtraits.txt; the map defaults to
           clients/out/situation/<stem>.h3m.
+  sequences [<id>] [--speed <0-2>] [--packs <dir>] [--install <dir>] [--out <dir>]
+          the recorded sequences (clients/situations/sequences.toml): each sequence's scenario
+          played in-process with its engine commands, timed by the viewer at the original's
+          timing (h3_view::anim) and compared with the timeline the capture harness recorded in
+          the original (at speed 0); writes each record and timeline to <out> (default
+          clients/out/sequences) and exits 1 when one differs.
   harvest [--install <dir>] [--packs <dir>] [--out <dir>]
           generates the asset tables (<out>/{base,ab,sod}.toml, default clients/out/harvest)
           from the installation copy's Heroes3.exe and H3bitmap.lod, keyed by the packs (default
@@ -71,6 +82,10 @@ fn main() -> ExitCode {
             },
             "render" => match render::Options::parse(rest) {
                 Ok(options) => render::run(&options),
+                Err(message) => usage_error(&message),
+            },
+            "sequences" => match sequences::Options::parse(rest) {
+                Ok(options) => sequences::run(&options),
                 Err(message) => usage_error(&message),
             },
             "situation" => match situation::Options::parse(rest) {

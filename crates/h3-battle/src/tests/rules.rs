@@ -319,7 +319,7 @@ fn defending_ends_the_turn_and_lasts_until_the_next_activation() {
 
 // ---------------------------------------------------------------- BAT-MOV-001 movement
 
-// covers: BAT-MOV-001
+// covers: BAT-MOV-001, BAT-MOV-003
 #[test]
 fn walkers_move_up_to_speed_along_free_hexes() {
     let r = ruleset();
@@ -331,14 +331,17 @@ fn walkers_move_up_to_speed_along_free_hexes() {
         Err(CommandError::Unreachable)
     );
     let events = act(&mut s, &r, Command::Move { to: at(&r, 6, 5) }).unwrap();
-    assert_eq!(
-        events[0],
-        Event::public(EventKind::Moved {
-            stack: StackId(0),
-            from: at(&r, 1, 5),
-            to: at(&r, 6, 5)
+    // Reported hex by hex along the row (BAT-MOV-003).
+    let steps: Vec<Event> = (1..6)
+        .map(|c| {
+            Event::public(EventKind::Moved {
+                stack: StackId(0),
+                from: at(&r, c, 5),
+                to: at(&r, c + 1, 5),
+            })
         })
-    );
+        .collect();
+    assert_eq!(events[..5], steps[..]);
     assert_eq!(s.stacks()[0].hex, at(&r, 6, 5));
 }
 
@@ -417,16 +420,18 @@ fn melee_attacks_move_to_an_adjacent_hex_first() {
         },
     )
     .unwrap();
-    assert_eq!(
-        events[0],
-        Event::public(EventKind::Moved {
-            stack: StackId(0),
-            from: at(&r, 1, 5),
-            to: at(&r, 4, 5)
+    let steps: Vec<Event> = (1..4)
+        .map(|c| {
+            Event::public(EventKind::Moved {
+                stack: StackId(0),
+                from: at(&r, c, 5),
+                to: at(&r, c + 1, 5),
+            })
         })
-    );
+        .collect();
+    assert_eq!(events[..3], steps[..]);
     assert!(matches!(
-        events[1].kind,
+        events[3].kind,
         EventKind::Struck {
             attacker: StackId(0),
             target: StackId(1),
