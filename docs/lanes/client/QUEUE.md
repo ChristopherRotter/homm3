@@ -13,18 +13,25 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 - **Depends on:** nothing; can run beside T1.
 - **Status:** ready.
 
-### E17 M2 T4b-2 — The scene over time, completed
+### E17 M2 T4b-2a — A full battle, frame by frame, headless
 
-- **Scope:** T4a built the timeline, T4b-1 (2026-10-13, design §7.9) the frame check (`capture/h3drive.py frames`: every distinct battlefield of a recorded sequence against the viewer's frame; walk and shot exact, melee 68 of 75), the projectile, the idle steps and the outline's pulse. Left: fidgets from the viewer's own generator (§7.2; the check takes the original's from memory until then); turns (§7.3; the battle lane's note: a stack turns to face its target for a strike or a shot, the struck stack its attacker, and turns back); the draw layers (§4.6: a walk 3 or 7 by direction, the striker 6, the struck stack 5 as memory shows, §7.9); the melee's listed difference (3 504–3 966 ms: the Wolf Riders walking past the Angels; read the redraw of a walk's frames near another stack); deaths by anything but a strike, created stacks; Haste and Slow (the walk time). New sequences for what §7.7 lists (a turn, a death, a defending stack, a shot up and down), each with its frames recorded. A full battle's record (a scenario played to its end in-process) rendered frame by frame headless.
-- **Acceptance:** M2's headless exit: a record of a full battle renders frame by frame; every recorded sequence's frames match the original outside the masks, or their differences are listed.
+- **Scope:** split from T4b-2 at the session's proposal (the user's choice, 2026-10-14, over the references first and T2). The host's two bots play a scenario to its end in-process, and `h3-view` draws every frame of its record headless at the original's timing (M2's headless exit). What a whole battle needs that the three sequences did not: turns (§7.3, `stack_turn_around` 0x446720; when a stack turns read in the executable and one turn sequence recorded in the original with its frames), the draw layers (§4.6: a walk 3 or 7 by direction, the striker 6, the struck stack 5, §7.9), fidgets from the viewer's own generator (§7.2), deaths and corpses over a whole battle; whatever the bots' battle shows that is not drawn yet becomes a listed stub.
+- **Acceptance:** a full battle's record renders frame by frame headless; the three recorded sequences still match as recorded (walk 42/42, shot 50/50, melee 68/75 or better); the turn sequence's frames match or their differences are listed.
 - **Depends on:** T4b-1 (done).
-- **Status:** ready.
+- **Status:** in progress (`client/e17-m2-t4b2a-full-battle`, 2026-10-13 22:20 UTC).
+
+### E17 M2 T4b-2b — The scene over time, completed
+
+- **Scope:** what T4b-2a leaves: the melee's listed difference (3 504–3 966 ms: the Wolf Riders walking past the Angels; read the redraw of a walk's frames near another stack); deaths by anything but a strike, created stacks; Haste and Slow (the walk time); new sequences for the rest of §7.7 (a death, a defending stack, a shot up and down), each with its frames recorded; the inbox's capture set by time.
+- **Acceptance:** every recorded sequence's frames match the original outside the masks, or their differences are listed.
+- **Depends on:** T4b-2a.
+- **Status:** waits.
 
 ### E17 M2 T5 — The window adapter and M2's closure
 
 - **Scope:** T2's library in an adapter crate, playing a record at the original's frame rate, with the game's cursor; M2's review list, a fresh reviewer, the M3 refinement prepared.
 - **Acceptance:** M2's exit (epic file).
-- **Depends on:** T2, T4b-2.
+- **Depends on:** T2, T4b-2a (M2's headless exit); T4b-2b may follow it.
 - **Status:** waits.
 
 ## Inbox
