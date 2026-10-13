@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 under way (T1, T2, T3 and T6 done 2026-10-12, T5 2026-10-13). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 under way (T1, T2, T3 and T6 done 2026-10-12, T5 and T4 2026-10-13). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M1 T4 (the asset tables), then T7.
+are there). Next: M1 T7 (a battle still), then T8.
 
 ## Goal
 
@@ -97,6 +97,11 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   [design §4](E17-design.md)): the hex boxes, a stack's canvas by facing (a two-hex stack anchored
   at its rear hex), the count box, background and obstacles, the heroes, the draw order; VCMI
   agrees except for one obstacle's height and the order inside a row.
+- **T4 done 2026-10-13** ([log](E17-log.md#m1-t4--the-asset-tables-2026-10-13),
+  [design §5](E17-design.md)): `clients/assets/{base,ab,sod}.toml` (144 creatures, the
+  battlefields, 125 obstacle types), `h3-view harvest`, the pure loader `h3_view::tables`; every
+  pack key has an entry but water's and rock's backgrounds (none in the original); the gate finds
+  and decodes all 307 names.
 
 ### M2 — the battle replay viewer
 
@@ -160,3 +165,10 @@ notes), HD layouts, the adventure map and the full game viewer, video.
 - `h3_assets::def::Frame::runs`, a public field: which pixels came from runs, which the drawers
   need; the synthetic encoder follows it (T6).
 - A PNG widens each 16-bit channel by repeating its bits; comparisons stay in 565 (T6).
+- The asset tables' format (`clients/README.md`, "The asset tables"; T4): keys qualified at load;
+  `cranim.txt`'s times as the executable's scaled integers, angles in degrees; the special
+  battlefields keyed by VCMI's names and the 47 obstacle types no pack defines kept in
+  `base.toml`; only the three DEF groups read so far in `[battle]`; the fix entry's fields.
+- `toml` 1.1 (without std; the engine's 0.8 needs std) and `serde` (the engine's, without std) as
+  dependencies of `h3-view` for the pure loader (T4).
+- The harvester keys creatures by their `crtraits.txt` singular name, as `h3-harvest` does (T4).

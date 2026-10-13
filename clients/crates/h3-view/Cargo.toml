@@ -11,6 +11,8 @@ publish.workspace = true
 h3-assets.workspace = true
 h3-formats.workspace = true
 h3-render.workspace = true
+serde.workspace = true
+toml.workspace = true
 
 [lints]
 workspace = true

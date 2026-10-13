@@ -19,6 +19,8 @@ use h3_assets::check::{Decoded, EntryCheck, check_entry};
 use h3_assets::survey::{self, Mention, Mentions};
 use h3_formats::lod::LodArchive;
 
+use crate::assets;
+
 /// The four LOD archives of the Complete edition, in the order the gate reports them.
 const ARCHIVES: [&str; 4] = [
     "H3bitmap.lod",
@@ -32,11 +34,13 @@ const ARCHIVES: [&str; 4] = [
 pub struct Options {
     install: PathBuf,
     out: PathBuf,
+    tables: PathBuf,
 }
 
 impl Options {
-    /// Parses `[--install <dir>] [--out <dir>]`; the defaults are `$H3_INSTALL`, then the
-    /// repository's `original-data/install`, and `clients/out`.
+    /// Parses `[--install <dir>] [--out <dir>] [--tables <dir>]`; the defaults are
+    /// `$H3_INSTALL`, then the repository's `original-data/install`, `clients/out` and
+    /// `clients/assets`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         // An adapter's ambient input, read once here.
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
@@ -47,11 +51,13 @@ impl Options {
         let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
         let mut install = None;
         let mut out = None;
+        let mut tables = None;
         let mut rest = args.iter();
         while let Some(flag) = rest.next() {
             let slot = match flag.as_str() {
                 "--install" => &mut install,
                 "--out" => &mut out,
+                "--tables" => &mut tables,
                 other => return Err(format!("gate: unknown option `{other}`")),
             };
             let value = rest
@@ -64,6 +70,7 @@ impl Options {
                 .or(env)
                 .unwrap_or_else(|| manifest.join("../../../original-data/install")),
             out: out.unwrap_or_else(|| manifest.join("../../out")),
+            tables: tables.unwrap_or_else(assets::default_dir),
         })
     }
 }
@@ -219,6 +226,20 @@ fn gate(options: &Options) -> Result<(), String> {
             "{failed} entries did not decode (entries.tsv, column `decoded`)"
         ));
     }
+    // The asset tables (E17 M1 T4): every name found where the game searches it, and decoded.
+    let tables = assets::load(&options.tables, assets::ALL)?;
+    let decoded = checked
+        .iter()
+        .map(|c| {
+            let ok = matches!(&c.check, Ok(k) if k.decoded.is_ok());
+            ((c.archive, c.name.to_ascii_uppercase()), ok)
+        })
+        .collect();
+    let (names, problems) = assets::check(&tables, &decoded);
+    if !problems.is_empty() {
+        return Err(format!("asset tables: {}", problems.join("; ")));
+    }
+    println!("gate: the asset tables' {names} names are found and decode");
     Ok(())
 }
 
@@ -586,14 +607,19 @@ mod tests {
         assert!(o.out.ends_with("../../out"));
         let o = Options::parse_with(&[], None).unwrap();
         assert!(o.install.ends_with("original-data/install"));
+        assert!(o.tables.ends_with("../../assets"));
         let o = Options::parse_with(
-            &args(&["--install", "/a", "--out", "/b"]),
+            &args(&["--install", "/a", "--out", "/b", "--tables", "/c"]),
             Some("/e".into()),
         )
         .unwrap();
         assert_eq!(
-            (o.install, o.out),
-            (PathBuf::from("/a"), PathBuf::from("/b"))
+            (o.install, o.out, o.tables),
+            (
+                PathBuf::from("/a"),
+                PathBuf::from("/b"),
+                PathBuf::from("/c")
+            )
         );
     }
 
@@ -646,9 +672,21 @@ mod tests {
             fs::write(data.join(name.to_ascii_lowercase()), lod).unwrap();
         }
         fs::write(install.join("HEROES3.EXE"), b"\0x.def\0").unwrap();
+        let tables = root.join("tables");
+        fs::create_dir_all(&tables).unwrap();
+        let header =
+            |id: &str, depends: &str| format!("[table]\nid = \"{id}\"\ndepends = [{depends}]\n");
+        let base = header("base", "")
+            + "[battle]\ngroups = { moving = 0, mouse_over = 1, standing = 2 }\n\
+               [[creature]]\nkey = \"x\"\ndef = \"x.def\"\ntimes = [0, 0, 0, 0]\n\
+               [[battlefield]]\nkey = \"dirt\"\nbackgrounds = [\"Y.PCX\"]\n";
+        fs::write(tables.join("base.toml"), &base).unwrap();
+        fs::write(tables.join("ab.toml"), header("ab", "\"base\"")).unwrap();
+        fs::write(tables.join("sod.toml"), header("sod", "\"ab\"")).unwrap();
         let options = Options {
             install,
             out: root.join("out"),
+            tables: tables.clone(),
         };
         gate(&options).unwrap();
         let listing = fs::read_to_string(root.join("out/gate/entries.tsv")).unwrap();
@@ -660,6 +698,9 @@ mod tests {
         assert!(
             report.contains("3 names appear more than once (3 with identical bytes, 0 different)")
         );
+        // A name of the tables the archives lack fails the gate.
+        fs::write(tables.join("base.toml"), base.replace("x.def", "z.def")).unwrap();
+        assert!(gate(&options).unwrap_err().contains("Z.DEF: in no archive"));
         // A broken entry fails the gate; the listing is still written.
         let lod = build(200, &[("bad.def", &[1, 2, 3], false)]);
         fs::write(data.join("h3sprite.lod"), lod).unwrap();

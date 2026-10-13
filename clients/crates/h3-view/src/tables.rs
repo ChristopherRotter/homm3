@@ -1,0 +1,738 @@
+//! The asset tables (E17 M1 T4; ADR-0020 points 5 and 6): `clients/assets/<id>.toml`, one per
+//! rule pack (`base`, `ab`, `sod`), in the packs' dependency graph and key namespace. They map the
+//! engine's content keys to archive entry names and the numbers the drawing needs, and hold the
+//! asset fixes. Identifiers and numbers only (ADR-0009). The format is described in
+//! `clients/README.md` ("The asset tables"); it is *provisional* until the M1 review.
+//!
+//! [`parse`] reads one file; [`load`] takes an expansion selection (the id of the topmost table,
+//! as a ruleset names its topmost pack) and merges it with its dependencies into one [`Tables`],
+//! keys qualified by their table's id (`base:pikeman`). As `h3-pack` does for the packs, unknown
+//! sections and fields are errors, and so are unknown or circular dependencies and a key defined
+//! twice.
+
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::format;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use core::fmt;
+
+use serde::Deserialize;
+
+/// One table file as written.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TableFile {
+    /// The table's id and dependencies.
+    pub table: Header,
+    /// The battle screen's settings (one table of a selection holds them).
+    #[serde(default)]
+    pub battle: Option<Battle>,
+    /// Creatures, by key.
+    #[serde(default)]
+    pub creature: Vec<Creature>,
+    /// Battlefield backgrounds, by terrain key.
+    #[serde(default)]
+    pub battlefield: Vec<Battlefield>,
+    /// Obstacle graphics, by key.
+    #[serde(default)]
+    pub obstacle: Vec<ObstacleEntry>,
+    /// Asset fixes.
+    #[serde(default)]
+    pub fix: Vec<Fix>,
+}
+
+/// A table's id (its pack's) and the tables it builds on.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Header {
+    /// The table's id: its pack's.
+    pub id: String,
+    /// The ids of the tables it depends on (its pack's dependencies).
+    pub depends: Vec<String>,
+}
+
+/// The battle screen's settings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Battle {
+    /// The creature DEF groups the battle shows.
+    pub groups: Groups,
+}
+
+/// The creature DEF groups the battle uses (`docs/epics/E17-design.md` §4.2, §4.3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Groups {
+    /// Walking.
+    pub moving: u8,
+    /// The mouse over the stack.
+    pub mouse_over: u8,
+    /// Standing.
+    pub standing: u8,
+}
+
+/// A creature's battle graphics.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Creature {
+    /// The content key in the table's namespace.
+    pub key: String,
+    /// The battle sprite.
+    pub def: String,
+    /// `cranim.txt`'s four times as the executable keeps them (fidget interval, walk, attack,
+    /// flight distance; scaled by 9000, 500, 500 and 115 and truncated, 0x50CA00).
+    pub times: [u32; 4],
+    /// Extra x of the count box outside the hex (`cranim.txt`, §4.3).
+    #[serde(default)]
+    pub troop_count_offset: i32,
+    /// The attack's climax frame (`cranim.txt`).
+    #[serde(default)]
+    pub attack_climax: u32,
+    /// A shooter's projectile.
+    #[serde(default)]
+    pub missile: Option<String>,
+    /// Where the projectile starts, up, straight and down (x, y).
+    #[serde(default)]
+    pub missile_offsets: [[i16; 2]; 3],
+    /// The projectile frames' angles in degrees, from high to low.
+    #[serde(default)]
+    pub missile_angles: [i16; 12],
+}
+
+/// A battlefield's background pictures.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Battlefield {
+    /// The terrain key (or a special battlefield's name, while the packs have none).
+    pub key: String,
+    /// The pictures, by the variant the adventure map picks (0x41ADB0).
+    pub backgrounds: Vec<String>,
+}
+
+/// An obstacle's graphics as written: a usual obstacle names a DEF, its height in hex rows and
+/// its layer; an absolute one a picture and its screen position.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ObstacleEntry {
+    /// The content key in the table's namespace.
+    pub key: String,
+    /// A usual obstacle's DEF.
+    #[serde(default)]
+    pub def: Option<String>,
+    /// A usual obstacle's height in hex rows.
+    #[serde(default)]
+    pub rows: Option<u8>,
+    /// A usual obstacle's layer: 1 drawn before every stack, 0 in the row passes.
+    #[serde(default)]
+    pub layer: Option<u8>,
+    /// An absolute obstacle's picture.
+    #[serde(default)]
+    pub pcx: Option<String>,
+    /// An absolute obstacle's screen position (x, y).
+    #[serde(default)]
+    pub at: Option<[i16; 2]>,
+}
+
+/// An asset fix (ADR-0020 point 6): an id, its source and what it changes. The change itself gets
+/// its fields with the first fix.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Fix {
+    /// `CLT-QUIRK-<n>`.
+    pub id: String,
+    /// A code reading or a reference frame.
+    pub source: String,
+    /// The key of the entry it changes.
+    pub target: String,
+    /// What it changes, in words.
+    pub summary: String,
+}
+
+/// An obstacle's graphics, checked.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ObstacleArt {
+    /// A DEF drawn at its anchor hex (§4.4).
+    Usual {
+        /// The DEF.
+        def: String,
+        /// Its height in hex rows.
+        rows: u8,
+        /// Drawn before every stack (true) or in the row passes.
+        before_stacks: bool,
+    },
+    /// A picture in the background at a fixed point.
+    Absolute {
+        /// The picture.
+        pcx: String,
+        /// Its top-left corner.
+        at: [i16; 2],
+    },
+}
+
+/// A selection's tables, merged; keys qualified by their table's id.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Tables {
+    /// The tables loaded, dependencies first.
+    pub order: Vec<String>,
+    /// The battle screen's settings.
+    pub battle: Battle,
+    /// Creatures.
+    pub creatures: BTreeMap<String, Creature>,
+    /// Battlefields.
+    pub battlefields: BTreeMap<String, Battlefield>,
+    /// Obstacles.
+    pub obstacles: BTreeMap<String, ObstacleArt>,
+    /// Fixes, by id.
+    pub fixes: BTreeMap<String, Fix>,
+}
+
+impl Tables {
+    /// Every archive entry name the tables mention, upper-cased, each once.
+    pub fn names(&self) -> BTreeSet<String> {
+        let creatures = self
+            .creatures
+            .values()
+            .flat_map(|c| core::iter::once(&c.def).chain(&c.missile));
+        let fields = self.battlefields.values().flat_map(|b| &b.backgrounds);
+        let obstacles = self.obstacles.values().map(|o| match o {
+            ObstacleArt::Usual { def, .. } => def,
+            ObstacleArt::Absolute { pcx, .. } => pcx,
+        });
+        creatures
+            .chain(fields)
+            .chain(obstacles)
+            .map(|n| n.to_ascii_uppercase())
+            .collect()
+    }
+}
+
+/// Why tables do not load.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TableError {
+    /// A file is not valid TOML or not in the format (the parser's message).
+    Syntax(String),
+    /// Two files have the same id.
+    DuplicateTable(String),
+    /// The selection or a dependency names no file.
+    UnknownTable(String),
+    /// The dependencies go round through this table.
+    Cycle(String),
+    /// No table of the selection holds `[battle]`, or two do.
+    Battle(usize),
+    /// A key (qualified) or a fix id is defined twice.
+    DuplicateKey(String),
+    /// An entry breaks a rule: its key and the rule.
+    Entry(String, String),
+}
+
+impl fmt::Display for TableError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Syntax(m) => write!(f, "not a table: {m}"),
+            Self::DuplicateTable(id) => write!(f, "two tables have the id `{id}`"),
+            Self::UnknownTable(id) => write!(f, "no table has the id `{id}`"),
+            Self::Cycle(id) => write!(f, "the dependencies go round through `{id}`"),
+            Self::Battle(n) => write!(f, "{n} tables of the selection hold [battle], not one"),
+            Self::DuplicateKey(key) => write!(f, "`{key}` is defined twice"),
+            Self::Entry(key, rule) => write!(f, "`{key}`: {rule}"),
+        }
+    }
+}
+
+/// Parses one table file.
+///
+/// # Errors
+/// [`TableError::Syntax`]: not TOML, an unknown section or field, a missing or mistyped one.
+pub fn parse(text: &str) -> Result<TableFile, TableError> {
+    toml::from_str(text).map_err(|e| TableError::Syntax(e.to_string()))
+}
+
+/// Loads the selection `top` (a table id) and its dependencies from `files` into one [`Tables`].
+///
+/// # Errors
+/// The [`TableError`] of the first rule broken.
+pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
+    let mut by_id = BTreeMap::new();
+    for file in files {
+        if by_id.insert(file.table.id.as_str(), file).is_some() {
+            return Err(TableError::DuplicateTable(file.table.id.clone()));
+        }
+    }
+    let mut order = Vec::new();
+    visit(&by_id, top, &mut Vec::new(), &mut order)?;
+    let selected: Vec<&TableFile> = order
+        .iter()
+        .filter_map(|id| by_id.get(id))
+        .copied()
+        .collect();
+    let battles: Vec<Battle> = selected.iter().filter_map(|f| f.battle).collect();
+    let [battle] = battles[..] else {
+        return Err(TableError::Battle(battles.len()));
+    };
+    let mut tables = Tables {
+        order: order.iter().map(|id| (*id).to_string()).collect(),
+        battle,
+        creatures: BTreeMap::new(),
+        battlefields: BTreeMap::new(),
+        obstacles: BTreeMap::new(),
+        fixes: BTreeMap::new(),
+    };
+    for file in selected {
+        let id = &file.table.id;
+        for c in &file.creature {
+            let key = qualify(id, &c.key)?;
+            names(&key, &[(&c.def, ".DEF")])?;
+            if let Some(m) = &c.missile {
+                names(&key, &[(m, ".DEF")])?;
+            }
+            insert(&mut tables.creatures, key, c.clone())?;
+        }
+        for b in &file.battlefield {
+            let key = qualify(id, &b.key)?;
+            if b.backgrounds.is_empty() {
+                return Err(entry(&key, "no background"));
+            }
+            for name in &b.backgrounds {
+                names(&key, &[(name, ".PCX")])?;
+            }
+            insert(&mut tables.battlefields, key, b.clone())?;
+        }
+        for o in &file.obstacle {
+            let key = qualify(id, &o.key)?;
+            let art = obstacle(&key, o)?;
+            insert(&mut tables.obstacles, key, art)?;
+        }
+        for x in &file.fix {
+            if !x.id.starts_with("CLT-QUIRK-") {
+                return Err(entry(&x.id, "a fix's id is CLT-QUIRK-<n>"));
+            }
+            insert(&mut tables.fixes, x.id.clone(), x.clone())?;
+        }
+    }
+    Ok(tables)
+}
+
+/// Depth first: dependencies before the table; `path` holds the tables being visited.
+fn visit<'a>(
+    by_id: &BTreeMap<&'a str, &'a TableFile>,
+    id: &str,
+    path: &mut Vec<&'a str>,
+    order: &mut Vec<&'a str>,
+) -> Result<(), TableError> {
+    let Some((&key, file)) = by_id.get_key_value(id) else {
+        return Err(TableError::UnknownTable(id.to_string()));
+    };
+    if order.contains(&key) {
+        return Ok(());
+    }
+    if path.contains(&key) {
+        return Err(TableError::Cycle(id.to_string()));
+    }
+    path.push(key);
+    for dep in &file.table.depends {
+        visit(by_id, dep, path, order)?;
+    }
+    path.pop();
+    order.push(key);
+    Ok(())
+}
+
+/// The key qualified by its table's id; a key is a pack's key, without a namespace.
+fn qualify(table: &str, key: &str) -> Result<String, TableError> {
+    let qualified = format!("{table}:{key}");
+    if key.is_empty() || key.contains(':') {
+        return Err(entry(
+            &qualified,
+            "a key is a pack's key, without its namespace",
+        ));
+    }
+    Ok(qualified)
+}
+
+fn insert<T>(map: &mut BTreeMap<String, T>, key: String, value: T) -> Result<(), TableError> {
+    if map.contains_key(&key) {
+        return Err(TableError::DuplicateKey(key));
+    }
+    map.insert(key, value);
+    Ok(())
+}
+
+/// Each name ends in its extension (upper or lower case) and has a stem.
+fn names(key: &str, list: &[(&String, &str)]) -> Result<(), TableError> {
+    for (name, ext) in list {
+        let upper = name.to_ascii_uppercase();
+        if upper.len() <= ext.len() || !upper.ends_with(ext) {
+            return Err(entry(key, &format!("`{name}` is not a {} name", &ext[1..])));
+        }
+    }
+    Ok(())
+}
+
+fn obstacle(key: &str, o: &ObstacleEntry) -> Result<ObstacleArt, TableError> {
+    match (&o.def, o.rows, o.layer, &o.pcx, o.at) {
+        (Some(def), Some(rows), Some(layer), None, None) => {
+            names(key, &[(def, ".DEF")])?;
+            if rows == 0 || layer > 1 {
+                return Err(entry(key, "rows from 1, layer 0 or 1"));
+            }
+            Ok(ObstacleArt::Usual {
+                def: def.clone(),
+                rows,
+                before_stacks: layer == 1,
+            })
+        }
+        (None, None, None, Some(pcx), Some(at)) => {
+            names(key, &[(pcx, ".PCX")])?;
+            Ok(ObstacleArt::Absolute {
+                pcx: pcx.clone(),
+                at,
+            })
+        }
+        _ => Err(entry(
+            key,
+            "an obstacle has def, rows and layer, or pcx and at",
+        )),
+    }
+}
+
+fn entry(key: &str, rule: &str) -> TableError {
+    TableError::Entry(key.to_string(), rule.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloc::vec;
+
+    const BASE: &str = r#"
+[table]
+id = "base"
+depends = []
+
+[battle]
+groups = { moving = 0, mouse_over = 1, standing = 2 }
+
+[[creature]]
+key = "pikeman"
+def = "CPKMAN.DEF"
+times = [9000, 575, 500, 115]
+
+[[creature]]
+key = "archer"
+def = "clcbow.def"
+times = [9000, 500, 500, 115]
+troop_count_offset = -3
+attack_climax = 7
+missile = "PLCBOWX.DEF"
+missile_offsets = [[38, -65], [36, -59], [21, -50]]
+missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+
+[[battlefield]]
+key = "dirt"
+backgrounds = ["CmBkDrDd.pcx", "CmBkDrMt.pcx", "CmBkDrTr.pcx"]
+
+[[obstacle]]
+key = "obstacle_0"
+def = "ObDino1.def"
+rows = 1
+layer = 1
+
+[[obstacle]]
+key = "obstacle_100"
+pcx = "ObDtL04.pcx"
+at = [124, 254]
+"#;
+
+    fn file(id: &str, depends: &[&str]) -> TableFile {
+        TableFile {
+            table: Header {
+                id: id.to_string(),
+                depends: depends.iter().map(|d| (*d).to_string()).collect(),
+            },
+            battle: None,
+            creature: Vec::new(),
+            battlefield: Vec::new(),
+            obstacle: Vec::new(),
+            fix: Vec::new(),
+        }
+    }
+
+    fn base() -> TableFile {
+        parse(BASE).unwrap()
+    }
+
+    fn obstacle_entry(key: &str) -> ObstacleEntry {
+        ObstacleEntry {
+            key: key.to_string(),
+            def: None,
+            rows: None,
+            layer: None,
+            pcx: None,
+            at: None,
+        }
+    }
+
+    fn fix(id: &str) -> Fix {
+        Fix {
+            id: id.to_string(),
+            source: "a reference frame".to_string(),
+            target: "base:pikeman".to_string(),
+            summary: "one pixel".to_string(),
+        }
+    }
+
+    fn rule(files: &[TableFile], top: &str) -> TableError {
+        load(files, top).unwrap_err()
+    }
+
+    #[test]
+    fn a_selection_merges_its_tables_dependencies_first() {
+        let mut ab = file("ab", &["base"]);
+        ab.creature.push(base().creature[0].clone());
+        ab.fix.push(fix("CLT-QUIRK-1"));
+        let mut sod = file("sod", &["ab", "base"]);
+        sod.obstacle.push(ObstacleEntry {
+            def: Some("ObDino2.def".to_string()),
+            rows: Some(2),
+            layer: Some(0),
+            ..obstacle_entry("obstacle_1")
+        });
+        let files = vec![sod, ab, base()];
+        let t = load(&files, "sod").unwrap();
+        assert_eq!(t.order, ["base", "ab", "sod"]);
+        assert_eq!(t.battle.groups.standing, 2);
+        assert_eq!(
+            t.creatures.keys().collect::<Vec<_>>(),
+            ["ab:pikeman", "base:archer", "base:pikeman"]
+        );
+        let archer = &t.creatures["base:archer"];
+        assert_eq!(archer.missile.as_deref(), Some("PLCBOWX.DEF"));
+        assert_eq!(archer.missile_offsets[2], [21, -50]);
+        assert_eq!(archer.missile_angles[8], -90);
+        assert_eq!(archer.troop_count_offset, -3);
+        let pikeman = &t.creatures["base:pikeman"];
+        assert_eq!(
+            (pikeman.times, pikeman.attack_climax),
+            ([9000, 575, 500, 115], 0)
+        );
+        assert_eq!(pikeman.missile_angles, [0; 12]);
+        assert_eq!(t.battlefields["base:dirt"].backgrounds.len(), 3);
+        assert_eq!(
+            t.obstacles["base:obstacle_0"],
+            ObstacleArt::Usual {
+                def: "ObDino1.def".to_string(),
+                rows: 1,
+                before_stacks: true
+            }
+        );
+        assert_eq!(
+            t.obstacles["sod:obstacle_1"],
+            ObstacleArt::Usual {
+                def: "ObDino2.def".to_string(),
+                rows: 2,
+                before_stacks: false
+            }
+        );
+        assert_eq!(
+            t.obstacles["base:obstacle_100"],
+            ObstacleArt::Absolute {
+                pcx: "ObDtL04.pcx".to_string(),
+                at: [124, 254]
+            }
+        );
+        assert_eq!(t.fixes["CLT-QUIRK-1"].target, "base:pikeman");
+        let names: Vec<String> = t.names().into_iter().collect();
+        assert_eq!(
+            names,
+            [
+                "CLCBOW.DEF",
+                "CMBKDRDD.PCX",
+                "CMBKDRMT.PCX",
+                "CMBKDRTR.PCX",
+                "CPKMAN.DEF",
+                "OBDINO1.DEF",
+                "OBDINO2.DEF",
+                "OBDTL04.PCX",
+                "PLCBOWX.DEF"
+            ]
+        );
+        // A selection loads only what it depends on.
+        assert_eq!(load(&files, "base").unwrap().order, ["base"]);
+    }
+
+    #[test]
+    fn unknown_or_missing_fields_are_errors() {
+        for text in [
+            "[table]\nid = \"x\"\ndepends = []\n[sounds]\n",
+            "[table]\nid = \"x\"\ndepends = []\nextra = 1\n",
+            "[table]\nid = \"x\"\n",
+            "[table]\nid = \"x\"\ndepends = []\n[[creature]]\nkey = \"a\"\ndef = \"A.DEF\"\n",
+            "not toml",
+        ] {
+            let error = parse(text).unwrap_err().to_string();
+            assert!(error.starts_with("not a table: "), "{text}");
+        }
+    }
+
+    #[test]
+    fn the_dependency_graph_is_checked() {
+        assert_eq!(
+            rule(&[base(), base()], "base"),
+            TableError::DuplicateTable("base".to_string())
+        );
+        assert_eq!(
+            rule(&[base()], "ab"),
+            TableError::UnknownTable("ab".to_string())
+        );
+        assert_eq!(
+            rule(&[base(), file("ab", &["hota"])], "ab"),
+            TableError::UnknownTable("hota".to_string())
+        );
+        let looped = [file("a", &["b"]), file("b", &["a"])];
+        assert_eq!(rule(&looped, "a"), TableError::Cycle("a".to_string()));
+        assert_eq!(rule(&[file("a", &[])], "a"), TableError::Battle(0));
+        let mut twice = file("ab", &["base"]);
+        twice.battle = base().battle;
+        assert_eq!(rule(&[base(), twice], "ab"), TableError::Battle(2));
+    }
+
+    #[test]
+    fn keys_are_unique_and_unqualified() {
+        let mut b = base();
+        b.creature.push(b.creature[0].clone());
+        assert_eq!(
+            rule(&[b], "base"),
+            TableError::DuplicateKey("base:pikeman".to_string())
+        );
+        type Rekey = fn(&mut TableFile, &str);
+        let lists: [Rekey; 3] = [
+            |b, k| b.creature[0].key = k.to_string(),
+            |b, k| b.battlefield[0].key = k.to_string(),
+            |b, k| b.obstacle[0].key = k.to_string(),
+        ];
+        for rekey in lists {
+            for (key, shown) in [("", "base:"), ("base:x", "base:base:x")] {
+                let mut b = base();
+                rekey(&mut b, key);
+                assert_eq!(
+                    rule(&[b], "base").to_string(),
+                    format!("`{shown}`: a key is a pack's key, without its namespace")
+                );
+            }
+        }
+        let mut b = base();
+        b.battlefield.push(b.battlefield[0].clone());
+        assert_eq!(
+            rule(&[b], "base"),
+            TableError::DuplicateKey("base:dirt".to_string())
+        );
+        let mut b = base();
+        b.obstacle[1].key = "obstacle_0".to_string();
+        assert_eq!(
+            rule(&[b], "base"),
+            TableError::DuplicateKey("base:obstacle_0".to_string())
+        );
+        let mut b = base();
+        b.fix = vec![fix("CLT-QUIRK-1"), fix("CLT-QUIRK-1")];
+        assert_eq!(
+            rule(&[b], "base"),
+            TableError::DuplicateKey("CLT-QUIRK-1".to_string())
+        );
+        let mut b = base();
+        b.fix = vec![fix("BAT-QUIRK-1")];
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`BAT-QUIRK-1`: a fix's id is CLT-QUIRK-<n>"
+        );
+    }
+
+    #[test]
+    fn names_and_shapes_are_checked() {
+        type Change = fn(&mut TableFile);
+        let shape = "an obstacle has def, rows and layer, or pcx and at";
+        let broken: [(Change, &str, &str); 10] = [
+            (
+                |b| b.creature[0].def = "CPKMAN.PCX".to_string(),
+                "pikeman",
+                "`CPKMAN.PCX` is not a DEF name",
+            ),
+            (
+                |b| b.creature[0].def = ".def".to_string(),
+                "pikeman",
+                "`.def` is not a DEF name",
+            ),
+            (
+                |b| b.creature[1].missile = Some("arrow".to_string()),
+                "archer",
+                "`arrow` is not a DEF name",
+            ),
+            (
+                |b| b.battlefield[0].backgrounds.clear(),
+                "dirt",
+                "no background",
+            ),
+            (
+                |b| b.battlefield[0].backgrounds[1] = "CmBkDrMt.def".to_string(),
+                "dirt",
+                "`CmBkDrMt.def` is not a PCX name",
+            ),
+            (
+                |b| b.obstacle[0].rows = Some(0),
+                "obstacle_0",
+                "rows from 1, layer 0 or 1",
+            ),
+            (
+                |b| b.obstacle[0].layer = Some(2),
+                "obstacle_0",
+                "rows from 1, layer 0 or 1",
+            ),
+            (
+                |b| b.obstacle[0].def = Some("ObDino1.pcx".to_string()),
+                "obstacle_0",
+                "`ObDino1.pcx` is not a DEF name",
+            ),
+            (
+                |b| b.obstacle[1].pcx = Some("ObDtL04.def".to_string()),
+                "obstacle_100",
+                "`ObDtL04.def` is not a PCX name",
+            ),
+            (|b| b.obstacle[1].rows = Some(1), "obstacle_100", shape),
+        ];
+        for (change, key, message) in broken {
+            let mut b = base();
+            change(&mut b);
+            assert_eq!(
+                rule(&[b], "base"),
+                TableError::Entry(format!("base:{key}"), message.to_string())
+            );
+        }
+    }
+
+    #[test]
+    fn errors_say_what_broke() {
+        let shown: Vec<String> = [
+            TableError::Syntax("x".to_string()),
+            TableError::DuplicateTable("a".to_string()),
+            TableError::UnknownTable("a".to_string()),
+            TableError::Cycle("a".to_string()),
+            TableError::Battle(2),
+            TableError::DuplicateKey("a:b".to_string()),
+            TableError::Entry("a:b".to_string(), "rule".to_string()),
+        ]
+        .iter()
+        .map(|e| format!("{e}"))
+        .collect();
+        assert_eq!(
+            shown,
+            [
+                "not a table: x",
+                "two tables have the id `a`",
+                "no table has the id `a`",
+                "the dependencies go round through `a`",
+                "2 tables of the selection hold [battle], not one",
+                "`a:b` is defined twice",
+                "`a:b`: rule",
+            ]
+        );
+    }
+}

@@ -207,3 +207,26 @@ fields in `structs.toml`.
 - **Not read** (§4.7): the grid and shading options, the count box's tint and text, the stack's
   byte +0x4F1, the palette effects, the siege branches.
 - Gates: `scripts/exe.py check` and `cargo xtask check-exe-map` (every cited address covered).
+
+### M1 T4 — The asset tables (2026-10-13)
+
+Same session as T5, on `client/e17-m1-t4-asset-tables` (stacked on T5's branch). Sources in
+[`E17-design.md`](E17-design.md) §5; the format in `clients/README.md`.
+
+- **The tables.** `clients/assets/base.toml` (the `[battle]` groups, 121 creatures, the 8
+  terrains with pictures, 12 special battlefields, 125 obstacle types), `ab.toml` (23 creatures),
+  `sod.toml` (the header: SoD adds no key with graphics). 30 shooters' projectiles; `cranim.txt`'s
+  numbers per creature.
+- **`h3_view::tables`** (pure, `no_std`): `parse` (toml 1.1 without std, serde, unknown fields
+  rejected) and `load` (a selection's tables, dependencies first; unknown and circular
+  dependencies, `[battle]` not exactly once, keys twice, malformed names and obstacle shapes are
+  errors); `Tables::names` for the gate.
+- **`h3-view harvest`** (an adapter): reads the executable through `h3_formats::exe` (the
+  creature table, the projectile switch's code bytes, the obstacle and background tables) and
+  `cranim.txt`, `crtraits.txt` through `h3_formats::text`; keys from the packs; prints the gaps.
+- **Checks.** `tests/tables.rs` (in CI): each selection loads; every pack key has an entry but
+  `base:water` and `base:rock`; extras are the special battlefields and obstacle types. The gate
+  (`--tables`): all 307 names found in the first archive of their search list and decoded.
+- *Provisional* (review list): the format, the dependencies, the keying by names.
+- Gates: `clients/scripts/check.sh` passes; the real-asset gate passes on the user's files; CI
+  could not run (billing).
