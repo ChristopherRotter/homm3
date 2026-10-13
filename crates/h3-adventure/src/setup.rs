@@ -230,6 +230,9 @@ pub enum SetupError {
     /// The object at this index has an amount its type does not take, or one outside 1 to
     /// [`crate::MAX_PICKUP_AMOUNT`].
     ObjectAmount(usize),
+    /// The object at this index has the type and anchor of an earlier typed object (a player
+    /// names a typed object by both).
+    SharedAnchor(usize),
     /// More objects than the state tracks (32 × 65 535); the number.
     Objects(usize),
     /// Two heroes share this id.
@@ -276,6 +279,12 @@ impl fmt::Display for SetupError {
             }
             Self::ObjectAmount(object) => {
                 write!(f, "object {object} has an amount its type does not take")
+            }
+            Self::SharedAnchor(object) => {
+                write!(
+                    f,
+                    "object {object} shares its type and anchor with an earlier one"
+                )
             }
             Self::Objects(n) => write!(f, "{n} objects are too many"),
             Self::DuplicateHero(hero) => write!(f, "hero {} is placed twice", hero.raw()),

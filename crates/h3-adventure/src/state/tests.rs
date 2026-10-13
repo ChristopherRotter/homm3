@@ -519,6 +519,30 @@ fn each_broken_invariant_is_its_own_error() {
         error(|s| s.map.objects[0].amount = Some(1)),
         SetupError::ObjectAmount(0)
     );
+    // Two typed objects of one type on one anchor share the name a player sees (the review of
+    // E08 T15), whatever their shapes; untyped twins and other types on the anchor are fine.
+    let twins = |s: &mut AdventureSetup, second| {
+        s.map.objects[1].object_type = Some(TOWER);
+        let mut twin = s.map.objects[1].clone();
+        twin.blocked = mask(&[(1, 0)]);
+        twin.visitable = mask(&[(1, 0)]);
+        twin.object_type = second;
+        s.map.objects.push(twin);
+    };
+    assert_eq!(
+        error(|s| twins(s, Some(TOWER))),
+        SetupError::SharedAnchor(2)
+    );
+    let mut setup = setup();
+    twins(&mut setup, None);
+    build(&setup).unwrap();
+    let mut setup = self::setup();
+    twins(&mut setup, Some(FIRE));
+    build(&setup).unwrap();
+    let mut setup = self::setup();
+    let untyped = setup.map.objects[1].clone();
+    setup.map.objects.push(untyped);
+    build(&setup).unwrap();
     assert_eq!(
         error(|s| s.heroes[1].id = HeroId::new(5)),
         SetupError::DuplicateHero(HeroId::new(5))
@@ -601,6 +625,10 @@ fn the_errors_read_well() {
         (
             SetupError::ObjectAmount(3),
             "object 3 has an amount its type does not take",
+        ),
+        (
+            SetupError::SharedAnchor(3),
+            "object 3 shares its type and anchor with an earlier one",
         ),
         (SetupError::Objects(9), "9 objects are too many"),
         (SetupError::DuplicateHero(hero), "hero 4 is placed twice"),

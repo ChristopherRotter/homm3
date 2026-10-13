@@ -339,6 +339,18 @@ pub(super) fn compile_object_types(
         if matches!(kind, ObjectKind::KeyGate { .. }) && !def.from_above {
             return Err(invalid("a key gate is not visited from above"));
         }
+        // A guard or a gate blocks the players without its key: an entered one would let such a
+        // hero stand on it and walk on past it (survey `E08-objects.md` §2.1: classes 9 and 212
+        // are visited from a neighbour; the review of E08 T15).
+        if matches!(
+            kind,
+            ObjectKind::KeyGuard { .. } | ObjectKind::KeyGate { .. }
+        ) && def.visit != Visit::Neighbour
+        {
+            return Err(invalid(
+                "a key guard or gate is not visited from a neighbour",
+            ));
+        }
         tables.types.push(ObjectType {
             key: def.key.clone(),
             name: def.name.clone(),

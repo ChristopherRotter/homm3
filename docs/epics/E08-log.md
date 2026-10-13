@@ -1376,3 +1376,31 @@ payments or the spending limit), so the full local verify stands in again.
   from the search (786 660 Ir of its own over 58 248 calls, from the XL map's blockers, and
   +0.5 M in the search); `#[inline]` on it restores T15a's code. An out-of-line helper for the whole
   object branch cost more (+0.68 %, +0.89 %). No re-baseline.
+
+**Review and closure of the round** (runner).
+- **Independent review** (an agent that had not seen the work; read the diff, traced the cases,
+  ran throwaway tests in a worktree; the query against `MoveHero` at 100 000 cases in release):
+  no defect a shipped pack or map reaches. Checked and passed: atomicity of every rejection
+  (moves onto and through gates and guards, the answers with `OfferGone`), `MoveHero` against the
+  query for gates with and without the key (crossing, stopping, leaving upward, starting on a gate,
+  a gate under another hero, two gates of other keys), the masks and `legal_*` against `apply` in
+  the stale case, the viewers of `KeyGained`, `TilesRevealed`, the offers and a guard's
+  `ObjectRemoved`, T15a's call to let the hygiene comparison go on after the viewer's own
+  observatory (sound: every disk tile is explored in the property's reference run, so `vary`
+  leaves it alone), the flags' copy-on-write and both hash bumps. Three findings, all fixed:
+  - Two guards of one type on one anchor: accepting one's passage removed the other (`offer_stands`
+    and `accept_offer` take the last object with the offer's type and anchor). Setup now refuses
+    two typed objects of one type on one anchor, `SetupError::SharedAnchor` (runner's call, for the
+    checkpoint: a player names a typed object by both, ADR-0016 point 6, so this also settles the
+    T14 verify's naming case; none of the 164 shipped maps has one, T15a's count; the play plans
+    already lay out one per kind and anchor). Random resources are checked by their own type,
+    before the draw: two different random piles on one anchor could still draw one type (a name
+    shared by pickups only, which no offer names).
+  - The ruleset accepted an entered guard or gate, which a player without the key would stand on
+    and walk past: a key guard or gate type must now be visited from a neighbour ("a key guard or
+    gate is not visited from a neighbour"; every pack's are).
+  - Wording: the env's mask and agent docs said "its two answers"; `check_masks` asserted both
+    answers with any decision open, which a turn group with a stale offer would break: now
+    `Decline`, and `Accept` while the offer stands.
+- **The full local verify** (CI cannot start: billing) with `--with-original-data` on the branch's
+  head before the pull request (its result there).

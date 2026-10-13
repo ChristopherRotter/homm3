@@ -6,7 +6,7 @@
 //! of it is the observation's (`observe.rs`, T8b1). Nothing sees the sharing: equality, `Clone`, `Debug` and the canonical hash
 //! see content only (ADR-0016 point 2).
 
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -184,6 +184,11 @@ impl StaticMap {
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
             return Err(SetupError::Objects(setup.objects.len()));
         }
+        // What a player sees and is told names a typed object by its type and anchor, never by
+        // its index (ADR-0016 point 6), and an offer names its object so: two typed objects of
+        // one type on one anchor would share that name (the review of E08 T15: accepting one
+        // guard's passage could remove the other). The 164 shipped maps have none (T15a).
+        let mut named = BTreeSet::new();
         for (index, object) in setup.objects.iter().enumerate() {
             if object.anchor.level >= map.levels {
                 return Err(SetupError::ObjectLevel(index));
@@ -202,6 +207,11 @@ impl StaticMap {
                 .is_some_and(|a| !(takes && (1..=MAX_PICKUP_AMOUNT).contains(&a)))
             {
                 return Err(SetupError::ObjectAmount(index));
+            }
+            if let Some(id) = object.object_type
+                && !named.insert((id.raw(), object.anchor))
+            {
+                return Err(SetupError::SharedAnchor(index));
             }
             map.place(object);
         }
