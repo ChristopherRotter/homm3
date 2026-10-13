@@ -1380,7 +1380,7 @@ mod tests {
         let eight = format!(
             "{}garrison = [{}]\n{}",
             &SIEGE[..SIEGE.find("garrison").expect("garrison")],
-            vec!["[\"Pikeman\", 1]"; 8].join(", "),
+            ["[\"Pikeman\", 1]"; 8].join(", "),
             &SIEGE[SIEGE.find("tight").expect("tight")..hero_part],
         );
         let err = build(&parse(&eight).expect("spec"), &tables(), "t.h3m").unwrap_err();
@@ -1721,7 +1721,7 @@ mod tests {
             .filter_map(|o| match o {
                 MapObject::Hero(h) => Some(h),
                 MapObject::Monster(_) => panic!("no monsters"),
-                MapObject::Pile(_) | MapObject::Ground(_) => None,
+                MapObject::Pile(_) | MapObject::Ground(_) | MapObject::Town(_) => None,
             })
             .collect();
         // The encounter's hero, its `also` heroes, then the opponent beside the hero.
