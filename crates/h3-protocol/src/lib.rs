@@ -48,8 +48,9 @@ pub mod wire;
 /// The version of the wire protocol: sent in the hello and bumped on every change of the messages
 /// or their encoding (ADR-0018 point 4). Before 1.0 a server accepts exactly its own version.
 /// v21 (R01, the content split): the manifest and the offers carry the battle part's hash beside
-/// the core's.
-pub const PROTOCOL_VERSION: u32 = 21;
+/// the core's. v22 (E17 M1, CLT-Q3): the observation names the natural obstacles' types, the key
+/// tables list the obstacle types.
+pub const PROTOCOL_VERSION: u32 = 22;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

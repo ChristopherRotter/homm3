@@ -251,20 +251,20 @@ commands = [
     "A shoot 9 142",
 ]
 checkpoints = [
-    "0xc2dad7b568c6dfe8",
-    "0x2ec5eacd99431f28",
-    "0x83405a7ab8a794ae",
-    "0xc044f91ef972e043",
-    "0x9f29bc07e226edfb",
-    "0x2f13c8e0df074d91",
-    "0x1e078f6405d32f35",
-    "0xe0dd16eb5b7ab851",
-    "0xbc7b128301bfd8ce",
-    "0x71fa9ea1a9eca0ed",
+    "0x489225188e1372c9",
+    "0x0aada17c1a51b8eb",
+    "0x0b88ecbb9b957c2d",
+    "0x089e105ecd2fa5b0",
+    "0x73081ff27a874e42",
+    "0xf8690cb4f2fae4fe",
+    "0xdfaafc9c79d1c100",
+    "0xc37334d2786e861e",
+    "0xb3cf9f5ad53ee691",
+    "0xa859c20311c713d2",
 ]
 
 [replay]
-format = 22
+format = 23
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -279,7 +279,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 41
+battle_state_hash_version = 42
 checkpoint_every = 25
 
 [setup]
@@ -648,4 +648,4 @@ count = 4
 
 [result]
 winner = "attacker"
-final_hash = "0x71fa9ea1a9eca0ed"
+final_hash = "0xa859c20311c713d2"

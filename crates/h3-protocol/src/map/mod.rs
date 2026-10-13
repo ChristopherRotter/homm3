@@ -18,7 +18,7 @@ use h3_battle::{
     SpellSet, SpellValues, StackFlags, StackId, StackTraits, StrikeFlags, TacticsPhase, Viewer,
 };
 use h3_content::{CreatureTypeId, SpellId};
-use h3_content_battle::BattleRuleset;
+use h3_content_battle::{BattleRuleset, ObstacleTypeId};
 use h3_contracts::{BallistaControl, DamageBonuses, Rate, TentControl};
 use h3_kernel::hash::{HASH_ALGORITHM, HASH_VERSION};
 use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
@@ -208,6 +208,7 @@ pub fn key_tables(ruleset: &BattleRuleset) -> KeyTables {
         artifacts: texts(&mut ruleset.artifacts().iter().map(|a| &a.key)),
         factions: texts(&mut ruleset.factions().iter().map(|f| &f.key)),
         terrains: texts(&mut ruleset.terrains().iter().map(|t| &t.key)),
+        obstacles: texts(&mut ruleset.obstacles().iter().map(|o| &o.key)),
     }
 }
 
@@ -304,6 +305,7 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
         periodic_rounds,
         obstacles,
         removable_obstacles,
+        absolute_obstacle,
         obstacle_anchors,
         obstacles_cleared,
         heroes,
@@ -369,8 +371,10 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
             .map(|r| RemovableObstacle {
                 anchor: r.anchor().0,
                 hexes: r.hexes().iter().map(|h| h.0).collect(),
+                kind: r.kind().map(ObstacleTypeId::raw),
             })
             .collect(),
+        absolute_obstacle: absolute_obstacle.map(ObstacleTypeId::raw),
         obstacles_cleared: hexes(*obstacles_cleared),
         spell_obstacles: spell_obstacles.iter().map(spell_obstacle).collect(),
     }

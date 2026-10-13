@@ -247,7 +247,7 @@ fn walled(r: &BattleRuleset, ogres: u32, free: Option<&[(i32, i32)]>) -> BattleS
     .filter(|h| !keep.contains(h))
     .map(|h| h.0)
     .collect();
-    s.natural = NaturalObstacles::new(field, &blocked(walls), false).unwrap();
+    s.natural = NaturalObstacles::new(r, field, &blocked(walls), false).unwrap();
     s
 }
 
@@ -287,7 +287,7 @@ fn a_crowded_two_hex_stack_is_never_covered_by_its_clone() {
         .filter(|&h| field.is_standable(crate::geometry::Hex(h)))
         .filter(|&h| h != at(&r, 14, 5).0 && h != at(&r, 1, 0).0)
         .collect();
-    s.natural = NaturalObstacles::new(field, &blocked(walls), false).unwrap();
+    s.natural = NaturalObstacles::new(&r, field, &blocked(walls), false).unwrap();
     let mana = s.hero(BattleSide::Attacker).unwrap().mana;
     let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
     assert_eq!((created(&events), s.stacks().len()), (vec![], 2));
@@ -580,7 +580,7 @@ fn summon_elemental_places_effect_times_power_creatures_in_the_first_free_column
     activate(&mut s, 1);
     let field = Field::new(r.battle().field);
     let column: Vec<u8> = (0..11).map(|y| at(&r, 15, y).0).collect();
-    s.natural = NaturalObstacles::new(field, &blocked(column), false).unwrap();
+    s.natural = NaturalObstacles::new(&r, field, &blocked(column), false).unwrap();
     cast(&mut s, &r, "serfs", CastTarget::None).unwrap();
     let serfs = s.stacks()[4];
     assert_eq!(
@@ -607,7 +607,7 @@ fn a_summoned_stack_takes_a_random_fitting_row_and_none_without_a_place() {
             &[("serf", 1, 10, 5)],
             seed,
         );
-        s.natural = NaturalObstacles::new(field, &blocked(walls), false).unwrap();
+        s.natural = NaturalObstacles::new(&r, field, &blocked(walls), false).unwrap();
         s
     };
     let mut rows = [0u32; 11];

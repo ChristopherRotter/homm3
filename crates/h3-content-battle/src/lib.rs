@@ -44,7 +44,7 @@ pub use params::{
 };
 pub use ruleset::{
     BATTLE_RULESET_HASH_VERSION, BattleRuleset, BattleSpell, CreatureType, MAX_SUMMON_SPELLS,
-    MAX_USUAL_OBSTACLE_HEXES, ObstacleType,
+    MAX_USUAL_OBSTACLE_HEXES, ObstacleType, ObstacleTypeId,
 };
 pub use spell::{
     EffectDuration, EffectEnd, HexStep, MASTERY_NAMES, MAX_AREA_RADIUS, MAX_CHAIN_TARGETS,

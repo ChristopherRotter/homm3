@@ -813,6 +813,9 @@ pub struct RemovableObstacle {
     pub anchor: u8,
     /// The hexes it blocks.
     pub hexes: Vec<u8>,
+    /// Its obstacle type's handle ([`KeyTables::obstacles`]), if the battle's setup named one
+    /// (v22): which picture a client draws.
+    pub kind: Option<u16>,
 }
 
 /// A spell's obstacle the viewer sees.
@@ -873,6 +876,9 @@ pub struct Observation {
     pub obstacle_anchors: Vec<u8>,
     /// The natural obstacles a spell can remove.
     pub removable_obstacles: Vec<RemovableObstacle>,
+    /// The absolute obstacle's type handle ([`KeyTables::obstacles`]), if the battle's setup named
+    /// one (v22): its hexes are among [`Self::obstacles`], its place is its type's.
+    pub absolute_obstacle: Option<u16>,
     /// The hexes a removal of a natural obstacle cleared: they lead to no obstacle any more.
     pub obstacles_cleared: Vec<u8>,
     /// The spell obstacles the viewer sees, in the order they were placed.
@@ -928,6 +934,8 @@ pub struct KeyTables {
     pub factions: Vec<String>,
     /// Terrains.
     pub terrains: Vec<String>,
+    /// Obstacle types (v22; the battle's ruleset part).
+    pub obstacles: Vec<String>,
 }
 
 /// What a game is made of, sent at join (ADR-0018 point 10): the replay header's fields, the
