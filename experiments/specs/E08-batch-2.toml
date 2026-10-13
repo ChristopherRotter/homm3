@@ -1,0 +1,353 @@
+# Experiment batch 2 (E08 T16b; the user, 2026-10-13): the points left after a step (D-3,
+# ADV-Q3) and the amounts of random resource piles (D-5, ADV-Q10). Both were settled by the code
+# reading before this batch (the user chose the reading: ADV-Q3 on 2026-10-11, ADV-Q10 on
+# 2026-10-12); the batch confirms them in the original or refutes them.
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them. "The reading" is the code reading in
+# docs/rules/surveys/E08-adventure-core.md §1.3 (D-3: 0x481182 sets the points left to 0 when
+# they are fewer than the cheapest straight step from the new tile, 0x4B1880: its road's cost,
+# else 100) and docs/rules/surveys/E08-objects.md §3.1 (D-5: 0x4C1AD1 draws 5-10 wood or ore and
+# 3-6 of a rare resource at setup), which the engine builds (ADV-MOV-006, ADV-PIK-001). Costs from
+# packs/base/adventure.toml: sand and snow 150, grass 100 (native to Castle creatures, 100 anyway),
+# a step from terrain onto a road priced by the terrain left, road to road 50 (cobblestone) or 75
+# (dirt); an army of Angels (speed 12) has 2000 points a day (ADV-MOV-001, -002). A throwaway run
+# of the compiled map through h3-map's reader and import and the engine (seeds 1 to 3) gave every
+# prediction marked "the reading" below: the reachable-tiles query's path to each D-3 destination
+# straight east, D3a 50 points and a further road step to 0, D3b 0 and no step, D3c 100, D3d 0;
+# 16 random wood and 16 random mercury piles, each collector spending 1246 of 2000 points in the
+# procedure's order, the amounts within 5-10 and 3-6 (E08 T16b, E08-log.md).
+#
+# D-3 (Red, day 1): four walkers with one Angel each (not native to sand or snow: ADV-MOV-004), no
+# skills, no artifacts, walk 13 steps straight east on their row; no diagonal step anywhere (the
+# diagonal exception, ADV-MOV-006, A-2/A-3, stays out of the way). The original's path preview
+# (0x56B440) does not apply the drop to 0, so the observation is the walk: where the hero stops and
+# the points it shows. Two scouts (heroes that never move) explore the walkers' rows beyond the
+# destinations, so each destination can be clicked from the start. Map: sand; a grass band for the
+# piles; single tiles of grass (D3c's start) and snow (the D3c and D3d destinations, a marker that
+# prices as sand).
+# D-5 (Blue, day 1): 16 random wood piles and 16 random mercury piles, two rows of four on either
+# side of each of four collectors (one Angel each, on grass).
+
+[map]
+name = "E08 batch 2"
+description = "Engine-generated experiment map (E08, batch 2): the points left after a step, random resource piles. Hot seat, Red and Blue human; follow the results template."
+size = 72
+terrain = "sand"
+instructions = [
+    "Copy `E08-batch-2.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), and again at the start of Blue's turn (save 2). If a walk or a pickup goes wrong (a wrong tile clicked), load the save before it and do the encounters of that turn again.",
+    "Move only the hero an encounter names, and only as it says; the scouts never move.",
+    "A click on a tile shows the hero's path (arrows and a cross on the tile clicked); a second click on the same tile makes the hero go. Read a hero's movement points left as you did in batch 1a.",
+    "Order: day 1, Red's turn: D3a, D3b, D3c and D3d in any order; end the turn. Day 1, Blue's turn: save 2, then D5w and D5m. Then the map is done: one day, no battle.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# The pile collectors' grass band (D-5).
+[[map.patch]]
+terrain = "grass"
+from = [0, 36]
+to = [71, 71]
+
+# D3c's start: one grass tile (its first step costs 100, not 150).
+[[map.patch]]
+terrain = "grass"
+from = [6, 14]
+to = [6, 14]
+
+# The D3c and D3d destinations: one snow tile each, 13 tiles east of the walker.
+[[map.patch]]
+terrain = "snow"
+from = [19, 14]
+to = [19, 14]
+
+[[map.patch]]
+terrain = "snow"
+from = [19, 18]
+to = [19, 18]
+
+# D3a: a cobblestone road from the walker's 13th tile east.
+[[map.road]]
+kind = "cobblestone"
+row = 6
+from = 19
+to = 23
+
+# D3b: the same with a dirt road.
+[[map.road]]
+kind = "dirt"
+row = 10
+from = 19
+to = 23
+
+# D5w: wood piles, two rows of four around each of Blue's wood collectors.
+[[map.pile]]
+resource = "wood"
+row = 41
+from = 6
+to = 9
+
+[[map.pile]]
+resource = "wood"
+row = 43
+from = 6
+to = 9
+
+[[map.pile]]
+resource = "wood"
+row = 47
+from = 6
+to = 9
+
+[[map.pile]]
+resource = "wood"
+row = 49
+from = 6
+to = 9
+
+# D5m: mercury piles, the same around Blue's mercury collectors.
+[[map.pile]]
+resource = "mercury"
+row = 53
+from = 6
+to = 9
+
+[[map.pile]]
+resource = "mercury"
+row = 55
+from = 6
+to = 9
+
+[[map.pile]]
+resource = "mercury"
+row = 59
+from = 6
+to = 9
+
+[[map.pile]]
+resource = "mercury"
+row = 61
+from = 6
+to = 9
+
+# --- D-3: the points left after a step -------------------------------------------------------------
+
+[[encounter]]
+id = "D3a"
+title = "Sand onto a cobblestone road with 200 points left (the survey's example)"
+questions = ["ADV-Q3", "D-3", "ADV-MOV-006"]
+procedure = [
+    "Day 1, Red's turn: select Red's hero D3a. It stands on sand; 13 tiles east of it on its row a cobblestone road begins.",
+    "Click once on the road's first (westernmost) tile: the path runs straight east and has 13 marks, all of the colour of today's moves. Click it again: the hero walks there.",
+    "Read D3a's movement points left.",
+    "Click once on the next road tile east (the road's second tile) and note the colour of its mark. Click it again: does the hero step onto it? If it does, read its movement points left again.",
+]
+record = [
+    { field = "did D3a stop on the road's first tile (yes/no)" },
+    { field = "movement points left there" },
+    { field = "the next road tile's mark (green/red)" },
+    { field = "did the hero step onto it (yes/no)" },
+    { field = "movement points left after that step (if it stepped)" },
+    { field = "anything odd" },
+]
+predictions = """
+- 2000 points (one Angel). Steps 1-12 on sand, 150 each: 200 left on the tile before the road.
+  Step 13 onto the road, priced by the sand left (all sources; the wiki's "Road <-> Terrain move -
+  terrain tile" is the sand too): 150, 50 left.
+- The reading (the engine, ADV-MOV-006): 50 is not fewer than the cheapest straight step from the
+  road tile (its road, 50), so **50 points** stay; the next road step costs 50: **it steps**
+  (green mark), **0** left on the road's second tile.
+- The wiki (no drop): **50**, **it steps**, 0 left. The reading and the wiki agree here.
+- VCMI 1.7.5 (CPathfinderHelper::getMovementCost, checkLast: the step takes all points when fewer
+  than its own straight cost, 150, remain): **0 points**, **no step** (red mark; a second click
+  leaves the hero where it is).
+- 50 and a step: the reading (or the wiki); 0 and no step: VCMI's rule is the original's (the
+  reading refuted). 50 without a step, or 0 with one, fits no source.
+"""
+[encounter.hero]
+type = "Valeska"
+specialty = "creature Archer"
+at = [6, 6]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+# Red's scout for rows 6 and 10: it explores both rows from column 11 to 21.
+[[encounter.also]]
+type = "Adela"
+specialty = "spell Bless"
+at = [16, 8]
+name = "Scout R1"
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 1]]
+
+[[encounter]]
+id = "D3b"
+title = "Control: the same onto a dirt road"
+questions = ["ADV-Q3", "D-3", "ADV-MOV-006"]
+procedure = [
+    "Day 1, Red's turn: select Red's hero D3b (four rows below D3a). 13 tiles east of it on its row a dirt road begins.",
+    "Click once on the road's first tile (13 marks), again: the hero walks there.",
+    "Read D3b's movement points left.",
+    "Click once on the road's second tile and note the colour of its mark. Click it again: does the hero step onto it?",
+]
+record = [
+    { field = "did D3b stop on the road's first tile (yes/no)" },
+    { field = "movement points left there" },
+    { field = "the next road tile's mark (green/red)" },
+    { field = "did the hero step onto it (yes/no)" },
+    { field = "anything odd" },
+]
+predictions = """
+- As D3a up to the road: 50 points left after step 13. A dirt road step costs 75: **no step for
+  any source** (red mark), the control of D3a's step.
+- The reading: 50 is fewer than the road's 75: **0 points**. VCMI: fewer than 150: **0**. The
+  wiki: **50**.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [6, 10]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+[[encounter]]
+id = "D3c"
+title = "100 points left on a tile without a road"
+questions = ["ADV-Q3", "D-3", "ADV-MOV-006"]
+procedure = [
+    "Day 1, Red's turn: select Red's hero D3c (four rows below D3b). It stands on a single grass tile; 13 tiles east of it on its row lies a single snow tile.",
+    "Click once on the snow tile (13 marks), again: the hero walks there.",
+    "Read D3c's movement points left.",
+]
+record = [
+    { field = "did D3c stop on the snow tile (yes/no)" },
+    { field = "movement points left there" },
+    { field = "anything odd" },
+]
+predictions = """
+- 2000 points. Step 1 from grass (native, 100), steps 2-13 from sand (150 each; the snow tile's
+  own cost prices only steps off it): 100 + 12 x 150 = 1900, 100 left on the snow tile. No source
+  allows a further step (150 from snow; the diagonal exception needs at least the snow's 150).
+- The reading: 100 is not fewer than the cheapest straight step from a tile without a road (100):
+  **100 points**. The wiki: **100**. VCMI: fewer than the step's own straight cost (150):
+  **0 points**.
+- The reading against VCMI without a step involved: only the points shown differ.
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+at = [6, 14]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+# Red's scout for rows 14 and 18: columns 11 to 21.
+[[encounter.also]]
+type = "Cuthbert"
+specialty = "spell Weakness"
+at = [16, 16]
+name = "Scout R2"
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 1]]
+
+[[encounter]]
+id = "D3d"
+title = "50 points left on a tile without a road"
+questions = ["ADV-Q3", "D-3", "ADV-MOV-006"]
+procedure = [
+    "Day 1, Red's turn: select Red's hero D3d (four rows below D3c). It stands on sand; 13 tiles east of it on its row lies a single snow tile.",
+    "Click once on the snow tile (13 marks), again: the hero walks there.",
+    "Read D3d's movement points left.",
+]
+record = [
+    { field = "did D3d stop on the snow tile (yes/no)" },
+    { field = "movement points left there" },
+    { field = "anything odd" },
+]
+predictions = """
+- 2000 points, 13 steps from sand (150 each): 1950, 50 left on the snow tile; no further step for
+  any source.
+- The reading: 50 is fewer than 100: **0 points**. VCMI: fewer than 150: **0**. The wiki: **50**.
+- With D3c it brackets the reading's threshold off a road: kept at 100 (D3c), dropped at 50.
+"""
+[encounter.hero]
+type = "Tyris"
+specialty = "creature Cavalier"
+at = [6, 18]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+# --- D-5: random resource piles ----------------------------------------------------------------------
+
+[[encounter]]
+id = "D5w"
+title = "Sixteen random wood piles"
+questions = ["ADV-Q10", "D-5", "ADV-PIK-001"]
+procedure = [
+    "Day 1, Blue's turn (after save 2): select Blue's hero Wood 1. Write the wood shown in the resource bar (at the bottom of the screen) in the row `start`.",
+    "Wood 1 stands between two rows of four wood piles. Pick them up column by column from west to east (its own column first), in each column the north pile first: click the pile once, then again; the hero picks it up from a tile beside it (for the first two piles without moving). After each pickup write the wood shown in the resource bar in the next row (1 to 8).",
+    "Then Blue's hero Wood 2 (six rows further south) the same way, rows 9 to 16.",
+]
+record = [
+    { table = ["pile", "wood in the resource bar after it"], labels = ["start", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"] },
+    { field = "anything odd" },
+]
+predictions = """
+- The amount of each pile is the rise of the wood count. The reading (0x4C1AD1, the engine's
+  ADV-PIK-001) and the wiki ("5-10 units of Wood"): each pile 5 to 10, uniform. VCMI 1.7.5
+  (config/objects/moddables.json): 6 to 10.
+- **A pile of 5 refutes VCMI's range.** Under the reading at least one of 16 piles shows 5 with
+  1 - (5/6)^16 = 94.6 %. Any amount outside 5-10 refutes both.
+- Every pickup costs at most 241 points (a step and a diagonal visit); in the procedure's order
+  a collector spends 1246 of its 2000 points (the engine).
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+owner = "blue"
+at = [6, 42]
+name = "Wood 1"
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+[[encounter.also]]
+type = "Mephala"
+specialty = "skill Armorer"
+owner = "blue"
+at = [6, 48]
+name = "Wood 2"
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+[[encounter]]
+id = "D5m"
+title = "Sixteen random mercury piles"
+questions = ["ADV-Q10", "D-5", "ADV-PIK-001"]
+procedure = [
+    "Day 1, Blue's turn, after D5w: select Blue's hero Mercury 1 (six rows below Wood 2). Write the mercury shown in the resource bar in the row `start`.",
+    "Pick up its eight mercury piles as in D5w (column by column from west to east, north first) and write the mercury shown after each pickup in the rows 1 to 8.",
+    "Then Blue's hero Mercury 2 (six rows further south) the same way, rows 9 to 16.",
+]
+record = [
+    { table = ["pile", "mercury in the resource bar after it"], labels = ["start", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"] },
+    { field = "anything odd" },
+]
+predictions = """
+- The reading and the wiki ("3-6 units" of mercury): each pile 3 to 6, uniform. VCMI: 3 to 5.
+- **A pile of 6 refutes VCMI's range**: under the reading at least one of 16 shows 6 with
+  1 - (3/4)^16 = 99.0 %. Any amount outside 3-6 refutes both.
+- With D5w: no wood pile of 5 and no mercury pile of 6 in 16 + 16 refutes the reading (and the
+  wiki): under the reading that happens with (5/6)^16 x (3/4)^16 = 0.054 %.
+"""
+[encounter.hero]
+type = "Rion"
+specialty = "skill First Aid"
+owner = "blue"
+at = [6, 54]
+name = "Mercury 1"
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+[[encounter.also]]
+type = "Ingham"
+specialty = "creature Monk"
+owner = "blue"
+at = [6, 60]
+name = "Mercury 2"
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
