@@ -79,8 +79,10 @@ game, seat }`, `Unqueued { reason }`, `GameInfo::ladder`, the refusals `NoSuchLa
 ## 3. The client's content check (for the client lane, M2)
 
 Compile the manifest's packs and profile locally if the client has them and compare the
-ruleset hash: equal means local previews are safe; different or absent means server queries
-only and a visible note. The server never reads anything from this check.
+ruleset hashes (`ruleset_hash`, the core's, and `battle_ruleset_hash`, the battle part's, since
+R01's content split, protocol v21): both equal means local previews are safe; different or
+absent means server queries only and a visible note. The server never reads anything from this
+check.
 
 ## 7. Journals: restore, pause, resume, upgrades (M2)
 
@@ -353,7 +355,8 @@ below are the tasks' starting point, *provisional* until M4's review.
   `sign(server_key, nonce || key || address)`. The client pins the key per address on first
   contact and refuses a changed key until the player confirms.
 - **Card.** `ServerCard { key, name, description, addresses, protocol, engine, content:
-  [(packs, profile, ruleset_hash)], ladders: [(id, name, season, players)], players_online,
+  [(packs, profile, ruleset_hash, battle_ruleset_hash)], ladders: [(id, name, season, players)],
+  players_online,
   games_open, anonymous, operator, issued, expires, peers: [(key, address)] }` with a
   signature over the canonical JSON; expiry a day by default; `Describe` returns it.
 - **Peers.** `[[peer]] key = "…" address = "…"` in the configuration. Every hour (and at

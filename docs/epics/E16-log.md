@@ -1457,8 +1457,12 @@ rename (both "if it shows"), a separate rate for automated clients (a configurat
   with (or re-keyed to, its `Sessions` entry) with the request, and the player log refuses a rename
   or a listing change (`BadLogin`) unless that key is the account's, under the log's lock. A stale
   re-key was refused already by its old-key signature. Tested on `Accounts`: the old key, and none,
-  refused; the new key changes. `docs/06-security.md` still lists the race as not covered: a
-  shared file, its line goes in the next `shared/` change (the inbox).
+  refused; the new key changes. `docs/06-security.md` says so (its own commit; the pull request
+  labelled `cross-lane` with the user's consent, 2026-10-13).
 - **Found, left in the inbox**: a ranked game over whose ladder log did not write keeps its
   journal, but its players may play another match before the next start rates it.
 - **Tests** (`h3-server` 102 → 106).
+- **The merge of `master`** (2026-10-13): R01's content split (cross-lane, protocol v21) touched
+  the server's code; the merge was clean but for the queue's inbox. Its note asked for the design
+  note's offer line: §3 and the server card (§12) name `battle_ruleset_hash` beside
+  `ruleset_hash`.

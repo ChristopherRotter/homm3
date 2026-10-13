@@ -7,7 +7,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22), M4 T8 and four review items too (`E16-log.md`). M4's detail: `E16-design.md` §11 (ADR-0019 points 4–9; no turn timer: a game rule, M5). **Next: M6's refinement** (discovery; with the user, `QUEUE.md`).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 20 since M4 T5b's bot opt-out; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 7 since M4 T8's `Held`; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 21 since R01's battle ruleset hash; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 7 since M4 T8's `Held`; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. ADR-0019 (identity) was accepted at the M3 refinement; the discovery draft is decided at M6's.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -56,7 +56,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-12 — M4 T8, the pause's hold across a restart
 
-#130, #134 merged. T8 (`E16-log.md`): `Held`, journal 7; then four review items.
+#130, #134 merged. T8 (`E16-log.md`): `Held`, journal 7; then four review items; #140 (`cross-lane`: 06-security).
 
 ### 2026-10-12 — M4 T7, M4's closure
 
