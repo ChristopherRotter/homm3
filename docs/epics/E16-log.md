@@ -1842,4 +1842,7 @@ were written in; the archive's older replays are the battle lane's replay format
   carries discovery; the client lane's inbox has what a server browser needs; the operator's notes
   carry the key, peers, lists and the TLS client's platforms; the reviewer agent's major findings
   fixed (above); the lane HANDOFF, this log and `QUEUE.md` are current.
-- **The checkpoint**: the user's, SRV-Q24 (`docs/OPEN-QUESTIONS.md`).
+- **The checkpoint**: the user's, SRV-Q24: passed 2026-10-13 ("The choices are sound, all
+  accepted"): the review list as built, the reviewer's two left findings as left. Next, the user's
+  wish: what the ecosystem around the server needs, talked through with the user (M5 waits for
+  E08's increment 3). #169 (CLT-Q1, wire 29) merged meanwhile; `master` merged into #173.
