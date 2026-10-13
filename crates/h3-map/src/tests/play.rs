@@ -4,13 +4,15 @@
 //! legality consistency (`legal_commands`, and `legal_moves` per hero), ownership isolation,
 //! conservation (armies; since E08 T13b treasuries, which change only by a visit's gains, and
 //! since T14b an accepted offer's price), clone equivalence and determinism; since T14b with the
-//! pending decisions (a Cartographer's offer) and their answers. What a viewer may learn is
-//! T8b2b's ([`super::view`]), on the same maps and driver.
+//! pending decisions (a Cartographer's offer) and their answers; since T15a with observatories,
+//! Keymaster's tents and their keys, and border guards with the second offer. What a viewer may
+//! learn is T8b2b's ([`super::view`]), on the same maps and driver.
 
 use std::sync::{Arc, LazyLock};
 
 use h3_adventure::{
-    AdventureCommand, AdventureEvent, AdventureEventKind, ObjectKind, Offer, Pos as TilePos, Reach,
+    AdventureCommand, AdventureEvent, AdventureEventKind, ObjectKind, Offer, OfferKind,
+    Pos as TilePos, Reach, Viewers,
 };
 use h3_content::ResourceId;
 use h3_contracts::{HeroId, PlayerId};
@@ -59,10 +61,10 @@ pub(super) const BLOCKERS: [(Mask, Mask); 3] = [
 pub(super) const BLOCKER_CLASS: u32 = 124;
 /// The kinds of objects a plan lays out (E08 T12b): the blocker, then typed objects whose drawn
 /// contents no viewer sees, as class, subclass and a resource body's amount: a wood pile of a
-/// drawn amount, 300 gold, a campfire, a Redwood Observatory, the red Keymaster's tent and (E08
-/// T14a) a land Cartographer, entered and not from above. No random resource: its drawn pile type
-/// shows.
-pub(super) const KINDS: [(u32, u32, Option<u32>); 7] = [
+/// drawn amount, 300 gold, a campfire, a Redwood Observatory, the red Keymaster's tent, (E08
+/// T14a) a land Cartographer, entered and not from above, and (T15a) the red border guard. No
+/// random resource: its drawn pile type shows.
+pub(super) const KINDS: [(u32, u32, Option<u32>); 8] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -70,6 +72,7 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 7] = [
     (58, 0, None),
     (10, 2, None),
     (13, 1, None),
+    (9, 2, None),
 ];
 /// The objects a plan may lay out: object `i` has the shape `BLOCKERS[i % 3]` and the kind
 /// `KINDS[i / 3]`, and the template `1 + i` (the blockers keep templates 1 to 3).
@@ -77,6 +80,17 @@ pub(super) const OBJECTS: usize = BLOCKERS.len() * KINDS.len();
 /// The land Cartographers of a shape with a visitable tile (E08 T14b): a plan draws them more
 /// often, so that random play enters charts.
 const CHARTS: [usize; 2] = [BLOCKERS.len() * 6 + 1, BLOCKERS.len() * 6 + 2];
+/// The observatories, red tents and red guards of a shape with a visitable tile (E08 T15a): a
+/// plan draws them more often too, and puts a tent and a guard near its first hero in three cases
+/// of four, so that random play takes keys and passes guards.
+const KEYS: [usize; 6] = [
+    BLOCKERS.len() * 4 + 1,
+    BLOCKERS.len() * 4 + 2,
+    BLOCKERS.len() * 5 + 1,
+    BLOCKERS.len() * 5 + 2,
+    BLOCKERS.len() * 7 + 1,
+    BLOCKERS.len() * 7 + 2,
+];
 
 /// A template mask's tiles, as `(column, row)` left of and above the anchor.
 pub(super) type Mask = &'static [(u8, u8)];
@@ -148,11 +162,16 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
         vec(
             (
                 any::<(u8, u8, u8)>(),
-                prop_oneof![3 => 0..OBJECTS, 1 => proptest::sample::select(&CHARTS[..])],
+                prop_oneof![
+                    3 => 0..OBJECTS,
+                    1 => proptest::sample::select(&CHARTS[..]),
+                    2 => proptest::sample::select(&KEYS[..]),
+                ],
             ),
             0..=8,
         ),
         prop_oneof![Just(4), 0u8..4],
+        proptest::option::weighted(0.75, ((0u8..7, 0u8..7), 0u8..3)),
     )
         .prop_map(
             |(
@@ -164,9 +183,21 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 humans,
                 heroes,
                 hero_types,
-                blockers,
+                mut blockers,
                 difficulty,
+                keyring,
             )| {
+                // In three plans of four a red tent within three tiles of the first hero and a red
+                // guard whose visitable tile is two columns east of the tent, a row up, level or
+                // down (E08 T15a), so that random play passes guards as well as taking keys.
+                if let Some(((dx, dy), row)) = keyring {
+                    let ((hx, hy, hz), _) = heroes[0];
+                    let levels = 1 + u8::from(two_levels);
+                    let at = |h: u8, d: u8| (h % side + side + d - 3) % side;
+                    let (tx, ty) = (at(hx, dx), at(hy, dy));
+                    blockers.push(((tx, ty, hz % levels), KEYS[3]));
+                    blockers.push(((at(tx, 6), at(ty, row + 2), hz % levels), KEYS[4]));
+                }
                 Plan {
                     version,
                     side,
@@ -479,28 +510,43 @@ fn as_move(command: &GameCommand) -> Option<(HeroId, &[TilePos])> {
     }
 }
 
-/// Where a move that `apply` accepted left its hero, from `start`, and whether it ended in a
-/// visit: the hero steps onto every tile of the path but a visit's, the last (ADV-OBJ-003), and
-/// the move emitted a step event per tile it stepped onto, then the visit's.
+/// Where a move that `apply` accepted on `before` left its hero, from `start`, and whether it
+/// visited an object from the tile before its last: the hero steps onto every tile of the path
+/// but a neighbour visit's, the last (ADV-OBJ-003), which is a visitable tile; the move emitted a
+/// step event per tile it stepped onto, then at most one adventure event of the visit.
 fn landing(
+    before: &GameState,
     start: TilePos,
     path: &[TilePos],
     events: &[GameEvent],
 ) -> Result<(TilePos, bool), TestCaseError> {
-    let kind = |e: &GameEvent| match e {
-        GameEvent::Adventure(AdventureEvent { kind, .. }) => Some(*kind),
-        _ => None,
-    };
-    let steps = events
+    let kinds: Vec<AdventureEventKind> = events
         .iter()
-        .filter(|e| matches!(kind(e), Some(AdventureEventKind::HeroStepped { .. })))
+        .filter_map(|e| match e {
+            GameEvent::Adventure(AdventureEvent { kind, .. }) => Some(*kind),
+            _ => None,
+        })
+        .collect();
+    let steps = kinds
+        .iter()
+        .take_while(|k| matches!(k, AdventureEventKind::HeroStepped { .. }))
         .count();
-    let visited = events
-        .iter()
-        .any(|e| matches!(kind(e), Some(AdventureEventKind::ObjectRemoved { .. })));
-    prop_assert_eq!(steps + usize::from(visited), path.len());
+    prop_assert!(kinds.len() <= steps + 1, "{:?}", kinds);
+    let stays = steps + 1 == path.len();
+    prop_assert!(
+        steps == path.len() || stays,
+        "{} steps of {:?}",
+        steps,
+        path
+    );
+    if stays {
+        let last = path
+            .last()
+            .and_then(|&to| before.adventure().map().tile(to));
+        prop_assert!(last.is_some_and(|tile| tile.visitable));
+    }
     let walked = &path[..steps];
-    Ok((walked.last().copied().unwrap_or(start), visited))
+    Ok((walked.last().copied().unwrap_or(start), stays))
 }
 
 /// The player whose turn is running (sequential play: one at a time).
@@ -693,10 +739,11 @@ const ANSWERS: [GameCommand; 2] = [
 
 /// Legality consistency, before a step: only the acting player has legal commands, `EndTurn`, or
 /// with an open decision (only ever the acting player's in sequential play) its answers and
-/// nothing else (GAM-DEC-001, E08 T14b); its legal moves are the query of each of its own heroes
-/// while no decision is open, and nobody has any for another player's; every listed answer
-/// applies and closes the decision; every option's move applies and leaves the hero on its last
-/// tile with the points the query reports there, one event per step.
+/// nothing else (GAM-DEC-001, E08 T14b), `Decline` alone if the offer no longer stands (T15a;
+/// never in sequential play); its legal moves are the query of each of its own heroes while no
+/// decision is open, and nobody has any for another player's; every listed answer applies and
+/// closes the decision; every option's move applies and leaves the hero on its last tile with the
+/// points the query reports there, one event per step.
 fn check_legal(
     state: &GameState,
     rules: &GameRuleset,
@@ -705,13 +752,17 @@ fn check_legal(
 ) -> Result<(), TestCaseError> {
     let actor = acting(state);
     let decided = state.decision(actor).is_some();
+    let answers = match state.decision(actor) {
+        Some(offer) if !state.adventure().offer_stands(offer) => &ANSWERS[1..],
+        _ => &ANSWERS[..],
+    };
     for player in (0..=state.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         let listed = legal_commands(state, rules, Actor::Player(player));
         prop_assert!(player == actor || state.decision(player).is_none());
         let expected = if player != actor {
             Vec::new()
         } else if decided {
-            ANSWERS.to_vec()
+            answers.to_vec()
         } else {
             vec![GameCommand::EndTurn]
         };
@@ -725,8 +776,8 @@ fn check_legal(
         }
     }
     if decided {
-        prop_assert_eq!(legal, &ANSWERS[..]);
-        for answer in &ANSWERS {
+        prop_assert_eq!(legal, answers);
+        for answer in answers {
             let mut probe = state.clone();
             let result = apply(
                 &mut probe,
@@ -756,7 +807,7 @@ fn check_legal(
         );
         prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
         let start = state.adventure().hero(hero).unwrap().pos;
-        let (at, visited) = landing(start, path, &events)?;
+        let (at, visited) = landing(state, start, path, &events)?;
         prop_assert_eq!(
             at,
             if visited {
@@ -799,8 +850,9 @@ fn check_unlisted(
 }
 
 /// Ownership isolation: a command of `actor` moves no other player's hero, changes no other
-/// player's army, explored tiles, treasury, purchases or open decision (E08 T14b), and changes
-/// another player's heroes' points only when that player's turn starts (ADV-MOV-002).
+/// player's army, explored tiles, treasury, purchases, open decision (E08 T14b) or keys (T15a),
+/// and changes another player's heroes' points only when that player's turn starts
+/// (ADV-MOV-002).
 /// Conservation (`docs/05-testing.md`): increment 1 has no source or sink of creatures (no
 /// battle, recruitment or pickup; E08 T10b's audit), so an accepted command leaves every hero's
 /// army as it was, the actor's own included. A treasury changes only by a visit's gains (E08
@@ -860,7 +912,7 @@ fn check_conservation(
         }
         prop_assert_eq!(after.treasury(player).unwrap(), &treasury[..]);
         if accepted == Some(player) {
-            prop_assert_eq!(&paid, &before.decision(player).unwrap().price);
+            prop_assert_eq!(&paid[..], before.decision(player).unwrap().price());
         }
     }
     let armies = |state: &GameState| -> Vec<_> {
@@ -875,28 +927,21 @@ fn check_conservation(
     Ok(())
 }
 
-/// The pending decisions (GAM-DEC-001, ADV-VIS-001; E08 T14b), after an accepted command of
-/// `actor`: an offer opens, as the actor's decision, only when it was told so and could pay the
-/// price, the object's type's (the actor's treasury after the command holds it), or is refused
-/// when it could not; an answer closes the decision it names, and only an accepted one adds the
-/// type to the actor's purchases; nothing else changes either. An offer comes only from a move
-/// that enters a Cartographer whose type the actor has not bought.
+/// The pending decisions (GAM-DEC-001, ADV-VIS-001, ADV-VIS-004; E08 T14b, T15a) and the keys
+/// (ADV-VIS-003), after an accepted command of `actor`: an offer opens, as the actor's decision,
+/// only when it was told so and could pay the price, the object's type's (the actor's treasury
+/// after the command holds it), or is refused when it could not; a Cartographer's offers its
+/// reveal for its price to a player that has not bought its type, a border guard's its passage
+/// without a price to a holder of its key; an answer closes the decision it names; only an
+/// accepted Cartographer's adds the type to the actor's purchases, and only an accepted guard's
+/// removes the guard, told as its removal; the actor's keys grow only by the keys it is told it
+/// gained, each one it did not hold; nothing else changes either.
 fn check_decisions(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
     actor: PlayerId,
     events: &[GameEvent],
 ) -> Result<(), TestCaseError> {
-    let price = |object_type| {
-        rules
-            .adventure()
-            .object_type(object_type)
-            .map(|ty| match &ty.kind {
-                ObjectKind::RevealTerrain { price, .. } => price.clone(),
-                _ => Vec::new(),
-            })
-            .unwrap()
-    };
     let affords = |state: &GameState, price: &[(ResourceId, u32)]| {
         let held = state.treasury(actor).unwrap();
         price
@@ -905,6 +950,8 @@ fn check_decisions(
     };
     let mut decision = before.decision(actor).cloned();
     let mut bought: Vec<_> = before.adventure().bought(actor).collect();
+    let mut keys = before.adventure().keys(actor);
+    let mut passed = None;
     for event in events {
         match *event {
             GameEvent::OfferOpened {
@@ -921,18 +968,31 @@ fn check_decisions(
             } => {
                 let opened = matches!(event, GameEvent::OfferOpened { .. });
                 prop_assert_eq!(player, actor);
-                prop_assert!(decision.is_none() && !bought.contains(&object_type));
+                prop_assert!(decision.is_none());
                 prop_assert_eq!(after.adventure().hero(hero).map(|h| h.owner), Some(actor));
-                let price = price(object_type);
-                prop_assert!(!price.is_empty(), "{:?} offers no Cartographer", event);
-                prop_assert_eq!(affords(after, &price), opened, "{:?}", event);
+                let kind = &rules.adventure().object_type(object_type).unwrap().kind;
+                let kind = match kind {
+                    ObjectKind::RevealTerrain { price, .. } => {
+                        prop_assert!(!bought.contains(&object_type));
+                        OfferKind::Reveal {
+                            price: price.clone(),
+                        }
+                    }
+                    ObjectKind::KeyGuard { key } => {
+                        prop_assert!(keys >> key & 1 == 1, "{:?} without the key", event);
+                        OfferKind::Pass
+                    }
+                    _ => return Err(fail(format!("{event:?} offers no offer"))),
+                };
+                let offer = Offer {
+                    hero,
+                    object_type,
+                    anchor,
+                    kind,
+                };
+                prop_assert_eq!(affords(after, offer.price()), opened, "{:?}", event);
                 if opened {
-                    decision = Some(Offer {
-                        hero,
-                        object_type,
-                        anchor,
-                        price,
-                    });
+                    decision = Some(offer);
                 }
             }
             GameEvent::OfferAnswered {
@@ -944,16 +1004,40 @@ fn check_decisions(
                 prop_assert_eq!(player, actor);
                 let open = decision.take().unwrap();
                 prop_assert_eq!((open.object_type, open.anchor), (object_type, anchor));
-                if accepted {
-                    bought.push(object_type);
-                    bought.sort();
+                match (accepted, open.kind) {
+                    (true, OfferKind::Reveal { .. }) => {
+                        bought.push(object_type);
+                        bought.sort();
+                    }
+                    (true, OfferKind::Pass) => passed = Some((object_type, anchor)),
+                    (false, _) => {}
                 }
+            }
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::KeyGained { key },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, Viewers::NONE.with(actor));
+                prop_assert!(keys >> key & 1 == 0, "{:?} held", event);
+                keys |= 1 << key;
+            }
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::ObjectRemoved {
+                        object_type,
+                        anchor,
+                    },
+                ..
+            }) if passed.is_some() => {
+                prop_assert_eq!(passed.take(), Some((object_type, anchor)));
             }
             _ => {}
         }
     }
+    prop_assert_eq!(passed, None);
     prop_assert_eq!(after.decision(actor), decision.as_ref());
     prop_assert!(after.adventure().bought(actor).eq(bought));
+    prop_assert_eq!(after.adventure().keys(actor), keys);
     Ok(())
 }
 
@@ -986,6 +1070,10 @@ fn check_isolation(
                     .eq(after.adventure().bought(player))
             );
             prop_assert_eq!(before.decision(player), after.decision(player));
+            prop_assert_eq!(
+                before.adventure().keys(player),
+                after.adventure().keys(player)
+            );
         }
     }
     Ok(())
@@ -1029,9 +1117,7 @@ proptest! {
             }
             if let Some((hero, path)) = as_move(&command) {
                 let start = before.adventure().hero(hero).unwrap().pos;
-                let (at, _) = landing(start, path, &events)?;
-                let told = events.iter().filter(|e| matches!(e, GameEvent::Adventure(_)));
-                prop_assert!(told.count() == path.len());
+                let (at, _) = landing(&before, start, path, &events)?;
                 prop_assert_eq!(state.adventure().hero(hero).map(|h| h.pos), Some(at));
             }
             check_decisions(rules, (&before, &state), actor, &events)?;

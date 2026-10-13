@@ -606,8 +606,8 @@ numeric  = "integer"
 id       = "ADV-VIS-002"
 title    = "The Redwood Observatory and the Pillar of Fire"
 context  = "adventure"
-status   = "specified"
-summary  = "At every visit the Redwood Observatory and the Pillar of Fire reveal to the visitor's owner the tiles within radius 20 of the visited tile on its level (ADV-FOG-002's disk), at no cost (T15). Data: packs/base/adventure.toml."
+status   = "implemented"
+summary  = "At every visit the Redwood Observatory and the Pillar of Fire reveal to the visitor's owner the tiles within radius 20 of the visited tile on its level (ADV-FOG-002's disk), at no cost; entered, not from above. Data: packs/base/adventure.toml (`reveal_area = { radius = 20 }`; the radius is the type's). E08 T15a: the entered visit (`Effect::Reveal`) explores the disk for the owner after the step's own reveal and tells it alone `TilesRevealed { object_type, count }`, the tiles it had not explored (0 on a later visit that adds none)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -633,8 +633,8 @@ numeric  = "integer"
 id       = "ADV-VIS-003"
 title    = "Keymaster's tents"
 context  = "adventure"
-status   = "specified"
-summary  = "A Keymaster's tent gives its visitor's owner the key of its colour (eight colours), at no cost (T15). Data: packs/base/adventure.toml (keymaster_*)."
+status   = "implemented"
+summary  = "A Keymaster's tent gives its visitor's owner the key of its colour (eight colours), at no cost; entered, not from above. A player that holds the key gets nothing and is told nothing (the original's message is not modelled). Data: packs/base/adventure.toml (keymaster_*). E08 T15a: the keys as the original's, a byte of player bits per colour in the adventure state (with the purchases, one block the forks share, none until the first; adventure state hash v6); `KeyGained { key }` to the owner alone; the owner's observation shows its own keys (`AdventureObservation::keys`, a bit per colour), never another player's."
 numeric  = "integer"
 
   [[rule.source]]
@@ -660,8 +660,8 @@ numeric  = "integer"
 id       = "ADV-VIS-004"
 title    = "Border guards"
 context  = "adventure"
-status   = "specified"
-summary  = "A border guard is visited from a neighbouring tile; a visitor whose owner holds its key is offered to pass (a second offer, no price; ADV-Q10, D-7), and accepting removes the guard from the map for everyone (T15). Data: packs/base/adventure.toml (border_guard_*)."
+status   = "implemented"
+summary  = "A border guard is visited from a neighbouring tile (the step is paid, the hero stays, the move ends); a visitor whose owner holds its key is offered to pass (a second offer, no price; ADV-Q10, D-7), and accepting removes the guard from the map for everyone, its tiles freed; a visitor without the key gets nothing and is told nothing (the original's message is not modelled). Every player is asked, the computer players too (the engine has no human/computer distinction; survey §10). Data: packs/base/adventure.toml (border_guard_*). E08 T15a: `OfferKind::Pass`, opened by `h3_game` as the owner's pending decision (GAM-DEC-001; no price, so always opened); accepted, `AdventureState::accept_offer` takes the guard off the map (`ObjectRemoved`, seen by the players that see it); the acceptance checks that the guard is still on the map (another player of the same turn group may have passed it first), else it is rejected (`OfferGone`) and only `Decline` is legal."
 numeric  = "integer"
 
   [[rule.source]]

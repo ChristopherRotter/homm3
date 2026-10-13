@@ -16,19 +16,23 @@ use crate::command::{Actor, Answer, GameCommand};
 use crate::{GameRuleset, GameState};
 
 /// The commands `actor` may issue now but its moves: with an open decision its answers,
-/// `Accept` then `Decline`, in its turn or not, and nothing else (GAM-DEC-001); otherwise
-/// `EndTurn`. Empty for a player whose turn is not running or who is not in the game, by
-/// `apply`'s own checks (ADR-0017's consequence). The moves are [`legal_moves`].
+/// `Accept` then `Decline`, in its turn or not, and nothing else (GAM-DEC-001); `Decline` alone
+/// when the offer no longer stands (ADR-0017 point 10: a border guard another player of the group
+/// passed, E08 T15a); otherwise `EndTurn`. Empty for a player whose turn is not running or who is
+/// not in the game, by `apply`'s own checks (ADR-0017's consequence). The moves are
+/// [`legal_moves`].
 // rule: GAM-DEC-001
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
     // Nothing listed yet reads the rules; the commands of later increments will.
     let _ = rules;
     let Actor::Player(player) = actor;
-    if state.decision(player).is_some() {
-        return vec![
-            GameCommand::Answer(Answer::Accept),
-            GameCommand::Answer(Answer::Decline),
-        ];
+    if let Some(offer) = state.decision(player) {
+        let accept = state.adventure().offer_stands(offer);
+        return [Answer::Accept, Answer::Decline]
+            .into_iter()
+            .filter(|&answer| accept || answer == Answer::Decline)
+            .map(GameCommand::Answer)
+            .collect();
     }
     if state.check_acting(player).is_err() {
         return Vec::new();

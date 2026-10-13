@@ -198,7 +198,7 @@ fn the_query_stays_on_the_heros_level() {
 /// The tiles of the property's maps, weighted toward walkable ones.
 const TILES: &[char] = &[
     'g', 'g', 'g', 'g', 's', 's', 'w', 'w', 'G', 'G', 'S', 'W', 'd', '~', '#', 'B', 'V', 'T', 'P',
-    'C', 'c',
+    'C', 'c', 'O', 'Y', 'K', 'X',
 ];
 const CREATURES: [h3_content::CreatureTypeId; 4] = [PIKEMAN, GNOLL, PEASANT, WOLF];
 
@@ -240,8 +240,9 @@ fn the_query_keeps_to_the_explored_tiles() {
 proptest! {
     /// On random maps, armies and profiles, from the hero's tile and after up to three moves
     /// along reported paths: every reported path is accepted and ends with the reported points,
-    /// on its last tile (a chart's entered, E08 T14a) or, for a pile's visit, on the tile before;
-    /// the tile of an accepted
+    /// on its last tile (a chart's, a tower's or a tent's entered, E08 T14a, T15a) or, for a
+    /// pile's or a guard's visit, on the tile before, one event per step and at most one for the
+    /// visit (a gate's visit is not built: never reported); the tile of an accepted
     /// one-step move is reported with at least the points it leaves; a rejected move changes
     /// nothing; the query is deterministic.
     #[test]
@@ -260,8 +261,9 @@ proptest! {
         let mut grid: Vec<Vec<char>> = (0..height)
             .map(|y| (0..width).map(|x| TILES[cells[y * 8 + x]]).collect())
             .collect();
-        // No hero stands on a pile's tile (ADV-MAP-001); one may on a chart's (E08 T14a).
-        let standable = |c: char| !matches!(c, '~' | '#' | 'B' | 'P');
+        // No hero stands on a pile's, a guard's or a gate's tile (ADV-MAP-001); one may on a
+        // chart's, a tower's or a tent's (E08 T14a).
+        let standable = |c: char| !matches!(c, '~' | '#' | 'B' | 'P' | 'K' | 'X');
         if !standable(grid[hy][hx]) {
             grid[hy][hx] = 'g';
         }
@@ -284,11 +286,17 @@ proptest! {
             for (pos, left) in reach.tiles() {
                 let path = reach.path(pos).unwrap();
                 let mut moved = state.clone();
-                let events = walk(&mut moved, &rules, 1, path.clone());
-                prop_assert_eq!(events.as_ref().map(Vec::len), Ok(path.len()));
-                let visit = events.unwrap().last().is_some_and(|e| {
-                    matches!(e.kind, AdventureEventKind::ObjectRemoved { .. })
-                });
+                let events = walk(&mut moved, &rules, 1, path.clone()).unwrap();
+                let steps = events
+                    .iter()
+                    .filter(|e| matches!(e.kind, AdventureEventKind::HeroStepped { .. }))
+                    .count();
+                // A visit from the tile before steps one tile less.
+                let visit = state
+                    .visit_at(&rules.1, pos)
+                    .is_some_and(|v| v.mode == crate::ruleset::Visit::Neighbour);
+                prop_assert_eq!(steps + usize::from(visit), path.len());
+                prop_assert!(events.len() <= steps + 1);
                 let at = match path.len().checked_sub(2) {
                     _ if !visit => pos,
                     Some(before) => path[before],

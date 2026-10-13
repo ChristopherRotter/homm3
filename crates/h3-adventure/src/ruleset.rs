@@ -28,6 +28,7 @@ use crate::ADVENTURE_RULESET_HASH_VERSION;
 mod objects;
 mod starting;
 
+pub(crate) use objects::Effect;
 pub use objects::{
     KEY_COLOURS, MAX_GAIN, MAX_PICKUP_AMOUNT, ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef,
     ObjectTypeId, Pickup, PickupDef, Visit,

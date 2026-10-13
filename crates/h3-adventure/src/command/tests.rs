@@ -19,8 +19,8 @@ use crate::ruleset::ObjectTypeId;
 use crate::setup::SetupError;
 use crate::state::AdventureState;
 use crate::testing::{
-    CHART, FIRE, GNOLL, OPEN_CHART, PEASANT, WOOD_PILE, draws, hero_at, movement_rules, world,
-    world_state,
+    CHART, FIRE, GNOLL, GUARD, OPEN_CHART, PEASANT, TOWER, WOOD_PILE, draws, hero_at,
+    movement_rules, world, world_state,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -557,7 +557,7 @@ fn a_visit_from_the_hero_s_own_tile_moves_nothing_and_a_fire_gives_two_resources
 
 // covers: ADV-OBJ-003
 #[test]
-fn a_visit_ends_the_move_and_only_pickups_are_visited_yet() {
+fn a_visit_ends_the_move_and_a_gate_s_is_not_built_yet() {
     let rules = movement_rules(true);
     let rejected = |row: &str, path: &[Pos]| {
         let state = visit_world(&rules, row);
@@ -570,13 +570,8 @@ fn a_visit_ends_the_move_and_only_pickups_are_visited_yet() {
         rejected("gPgggggggggggggg", &[p(1, 0), p(2, 0)]),
         AdventureCommandError::PastVisit { step: 1 }
     );
-    // A tower and a guard (E08 T15 builds their visits) and two blockers' visitable tiles.
-    for row in [
-        "gOgggggggggggggg",
-        "gKgggggggggggggg",
-        "gVgggggggggggggg",
-        "gTgggggggggggggg",
-    ] {
+    // A gate (E08 T15b builds its visit) and two blockers' visitable tiles.
+    for row in ["gXgggggggggggggg", "gVgggggggggggggg", "gTgggggggggggggg"] {
         assert_eq!(
             rejected(row, &[p(0, 1), p(1, 0)]),
             AdventureCommandError::Visit { step: 1 }
@@ -704,9 +699,12 @@ fn a_chart_offers_its_reveal_once_per_player_and_type() {
             hero: HeroId::new(1),
             object_type: CHART,
             anchor: p(2, 1),
-            price: vec![(gold, 1000)],
+            kind: OfferKind::Reveal {
+                price: vec![(gold, 1000)],
+            },
         }
     );
+    assert_eq!(offer.price(), [(gold, 1000)]);
     assert!(!state.has_bought(RED, CHART));
     // Accepted: every grass tile of both levels is explored for red, told to red alone with the
     // number it had not explored; no other terrain, and nothing for blue.
@@ -730,7 +728,7 @@ fn a_chart_offers_its_reveal_once_per_player_and_type() {
         .collect();
     assert!(new > 20 && !hidden.is_empty(), "{new} {hidden:?}");
     let mut events = Vec::new();
-    state.accept_offer(&rules.1, RED, &offer, &mut events);
+    state.accept_offer(&rules.0, &rules.1, RED, &offer, &mut events);
     assert_eq!(
         events,
         vec![AdventureEvent {
@@ -770,22 +768,22 @@ fn a_chart_offers_its_reveal_once_per_player_and_type() {
         .unwrap();
     assert_eq!((open.object_type, open.anchor), (OPEN_CHART, p(13, 1)));
     // Blue buys the open chart, then the chart; red's purchase stays its own.
-    state.accept_offer(&rules.1, BLUE, &open, &mut Vec::new());
+    state.accept_offer(&rules.0, &rules.1, BLUE, &open, &mut Vec::new());
     let chart = Offer {
         hero: HeroId::new(2),
         ..offer.clone()
     };
-    state.accept_offer(&rules.1, BLUE, &chart, &mut Vec::new());
+    state.accept_offer(&rules.0, &rules.1, BLUE, &chart, &mut Vec::new());
     assert_eq!(state.bought(BLUE).collect::<Vec<_>>(), [CHART, OPEN_CHART]);
     assert_eq!(state.bought(RED).collect::<Vec<_>>(), [CHART]);
     assert!(!state.has_bought(RED, OPEN_CHART));
     // Equal purchases hash equal, whatever their order.
     let mut other = reveal_world(&rules);
-    other.accept_offer(&rules.1, BLUE, &chart, &mut Vec::new());
-    other.accept_offer(&rules.1, RED, &offer, &mut Vec::new());
-    other.accept_offer(&rules.1, BLUE, &open, &mut Vec::new());
+    other.accept_offer(&rules.0, &rules.1, BLUE, &chart, &mut Vec::new());
+    other.accept_offer(&rules.0, &rules.1, RED, &offer, &mut Vec::new());
+    other.accept_offer(&rules.0, &rules.1, BLUE, &open, &mut Vec::new());
     let mut moved = reveal_world(&rules);
-    moved.accept_offer(&rules.1, RED, &offer, &mut Vec::new());
+    moved.accept_offer(&rules.0, &rules.1, RED, &offer, &mut Vec::new());
     assert_eq!(other.bought(RED).collect::<Vec<_>>(), [CHART]);
     assert_ne!(other.state_hash(), moved.state_hash());
     // A kind other than a Cartographer reveals nothing by terrain.
@@ -955,4 +953,284 @@ fn no_hero_starts_on_the_tile_of_an_object_visited_from_a_neighbour() {
     );
     move_hero(&mut state, &rules, RED, 1, &[p(1, 0)]).unwrap();
     assert_eq!(state.check_stand(&rules.1, p(1, 0)), Ok(()));
+}
+
+/// The adventure events of `state`'s red hero 1 moving along `path` with 1 000 points, after its
+/// steps; its outcome.
+fn visit_by(
+    state: &mut AdventureState,
+    rules: &(Ruleset, AdventureRuleset),
+    (player, hero): (PlayerId, u16),
+    path: &[Pos],
+) -> (Vec<AdventureEvent>, AdventureOutcome) {
+    state.set_movement(HeroId::new(hero), 1000);
+    let mut events = Vec::new();
+    let command = AdventureCommand::MoveHero {
+        hero: HeroId::new(hero),
+        path: path.to_vec(),
+    };
+    let outcome = state
+        .apply(&rules.0, &rules.1, player, &command, &mut events)
+        .unwrap();
+    events.retain(|e| !matches!(e.kind, AdventureEventKind::HeroStepped { .. }));
+    (events, outcome)
+}
+
+// covers: ADV-VIS-002, ADV-OBJ-003
+#[test]
+fn an_observatory_reveals_the_disk_around_it_at_every_visit() {
+    let rules = movement_rules(false);
+    // Two levels of 16 × 16; a tower (radius 8) at (8, 8) on the first; red's hero at (4, 8),
+    // blue's at (15, 15) on the second.
+    let mut rows = grass(32);
+    rows[8].replace_range(8..9, "O");
+    let rows: Vec<&str> = rows.iter().map(String::as_str).collect();
+    let heroes = vec![
+        hero_at(1, 0, p(4, 8), &[PEASANT]),
+        hero_at(2, 1, Pos::new(15, 15, 1), &[PEASANT]),
+    ];
+    let mut state =
+        AdventureState::new(&rules.0, &rules.1, &world(&rows, 2, heroes), &mut draws()).unwrap();
+    let blue = state.explored(BLUE).cloned();
+    let path: Vec<Pos> = (5..=8).map(|x| p(x, 8)).collect();
+    let mut events = move_hero(&mut state, &rules, RED, 1, &path).unwrap();
+    // The hero enters the tower: its steps, then the reveal, told to red alone with the number
+    // of tiles the steps had not explored; the radius on the tower's level only.
+    let mut centres = vec![p(4, 8)];
+    centres.extend(&path);
+    let stepped = disks(16, 2, &centres);
+    let mut expected = stepped.clone();
+    reveal(&mut expected, p(8, 8), 8);
+    let reveal_event = events.pop().unwrap();
+    assert_eq!(events.len(), path.len());
+    assert_eq!(
+        reveal_event,
+        AdventureEvent {
+            kind: AdventureEventKind::TilesRevealed {
+                object_type: TOWER,
+                count: expected.count() - stepped.count(),
+            },
+            seen_by: Viewers::NONE.with(RED),
+        }
+    );
+    assert!(expected.count() - stepped.count() > 50);
+    assert_eq!(reveal_event.project(BLUE), None);
+    assert_eq!(state.explored(RED), Some(&expected));
+    assert!(state.is_explored(RED, p(8, 0)) && !state.is_explored(RED, p(0, 0)));
+    assert!(!state.is_explored(RED, Pos::new(8, 8, 1)));
+    assert_eq!(state.explored(BLUE).cloned(), blue);
+    assert_eq!(hero(&state, 1).0, p(8, 8));
+    // Every visit reveals again: nothing is left to explore, and red is told so.
+    let mut again = state.clone();
+    move_hero(&mut again, &rules, RED, 1, &[p(9, 8)]).unwrap();
+    let (events, outcome) = visit_by(&mut again, &rules, (RED, 1), &[p(8, 8)]);
+    assert_eq!(outcome, AdventureOutcome::default());
+    assert_eq!(
+        events,
+        [AdventureEvent {
+            kind: AdventureEventKind::TilesRevealed {
+                object_type: TOWER,
+                count: 0,
+            },
+            seen_by: Viewers::NONE.with(RED),
+        }]
+    );
+    assert_eq!(again.explored(RED), Some(&expected));
+    // A visit ends the move.
+    refused(
+        &state,
+        &rules,
+        &[p(9, 8), p(8, 8), p(7, 8)],
+        AdventureCommandError::PastVisit { step: 2 },
+    );
+}
+
+// covers: ADV-VIS-003
+#[test]
+fn a_tent_gives_its_key_to_its_visitor_s_owner_once() {
+    let rules = movement_rules(true);
+    let mut state = visit_world(&rules, "ggYggggggggggggg");
+    let before = state.clone();
+    assert_eq!((state.keys(RED), state.has_key(RED, 0)), (0, false));
+    let (events, outcome) = visit_by(&mut state, &rules, (RED, 1), &[p(1, 0), p(2, 0)]);
+    // Red's hero enters the tent: red holds key 0, told to red alone.
+    let gained = AdventureEvent {
+        kind: AdventureEventKind::KeyGained { key: 0 },
+        seen_by: Viewers::NONE.with(RED),
+    };
+    assert_eq!(
+        (events, outcome),
+        (vec![gained], AdventureOutcome::default())
+    );
+    assert_eq!(gained.project(RED), Some(gained));
+    assert_eq!(gained.project(BLUE), None);
+    assert_eq!(hero(&state, 1).0, p(2, 0));
+    assert!(state.has_key(RED, 0) && !state.has_key(BLUE, 0));
+    assert!(!state.has_key(RED, 1) && !state.has_key(RED, 8));
+    assert_eq!((state.keys(RED), state.keys(BLUE)), (1, 0));
+    assert!(!state.is_removed(0));
+    assert_ne!(state.state_hash(), before.state_hash());
+    // The viewer sees its own keys only.
+    assert_eq!(state.observe(&rules.0, RED).keys, 1);
+    assert_eq!(state.observe(&rules.0, BLUE).keys, 0);
+    assert_eq!(state.observe(&rules.0, PlayerId::new(2)).keys, 0);
+    // Held: a later visit gives nothing and tells nothing.
+    move_hero(&mut state, &rules, RED, 1, &[p(3, 0)]).unwrap();
+    let held = state.clone();
+    let (events, _) = visit_by(&mut state, &rules, (RED, 1), &[p(2, 0)]);
+    assert!(events.is_empty());
+    assert_eq!(state.keys(RED), held.keys(RED));
+    // Blue's hero enters it too: blue's own key, red's unchanged.
+    move_hero(&mut state, &rules, RED, 1, &[p(3, 1)]).unwrap();
+    let (events, _) = visit_by(&mut state, &rules, (BLUE, 2), &[p(7, 0), p(6, 0), p(5, 0)]);
+    assert!(events.is_empty());
+    let (events, _) = visit_by(&mut state, &rules, (BLUE, 2), &[p(4, 0), p(3, 0), p(2, 0)]);
+    assert_eq!(
+        events,
+        [AdventureEvent {
+            kind: AdventureEventKind::KeyGained { key: 0 },
+            seen_by: Viewers::NONE.with(BLUE),
+        }]
+    );
+    assert_eq!((state.keys(RED), state.keys(BLUE)), (1, 1));
+    // Equal keys hash equal, whatever the order they came in.
+    let go = |state: &mut AdventureState, (player, hero): (PlayerId, u16), path: &[Pos]| {
+        visit_by(state, &rules, (player, hero), path);
+    };
+    let (red_in, red_out) = ([p(1, 0), p(2, 0)], [p(3, 1)]);
+    let blue_in = [p(7, 0), p(6, 0), p(5, 0), p(4, 0), p(3, 0), p(2, 0)];
+    let blue_out = [p(1, 1)];
+    let mut red_first = visit_world(&rules, "ggYggggggggggggg");
+    red_first.explore_all();
+    let mut blue_first = red_first.clone();
+    go(&mut red_first, (RED, 1), &red_in);
+    go(&mut red_first, (RED, 1), &red_out);
+    go(&mut red_first, (BLUE, 2), &blue_in);
+    go(&mut red_first, (BLUE, 2), &blue_out);
+    go(&mut blue_first, (BLUE, 2), &blue_in);
+    go(&mut blue_first, (BLUE, 2), &blue_out);
+    go(&mut blue_first, (RED, 1), &red_in);
+    go(&mut blue_first, (RED, 1), &red_out);
+    for state in [&mut red_first, &mut blue_first] {
+        state.set_movement(HeroId::new(1), 1000);
+        state.set_movement(HeroId::new(2), 1000);
+    }
+    assert_eq!((red_first.keys(RED), red_first.keys(BLUE)), (1, 1));
+    assert_eq!(red_first, blue_first);
+    assert_eq!(red_first.state_hash(), blue_first.state_hash());
+}
+
+/// Red's hero 1 at (0, 0) and blue's 2 at (12, 1) on two rows of grass: a guard of key 0 at
+/// (3, 0) and a tent of key 0 at (7, 0).
+fn guard_world(rules: &(Ruleset, AdventureRuleset)) -> AdventureState {
+    world_state(
+        rules,
+        &["gggKgggYgggggggg", "gggggggggggggggg"],
+        vec![
+            hero_at(1, 0, p(0, 0), &[PEASANT]),
+            hero_at(2, 1, p(12, 1), &[PEASANT]),
+        ],
+    )
+}
+
+// covers: ADV-VIS-004, ADV-OBJ-003, ADV-OBJ-005
+#[test]
+fn a_border_guard_offers_its_key_s_holders_to_pass() {
+    let rules = movement_rules(false);
+    let mut state = guard_world(&rules);
+    // Without the key: the hero visits the guard from (2, 0), pays the step and stays; nothing
+    // else happens, and nothing is told.
+    let (events, outcome) = visit_by(&mut state, &rules, (RED, 1), &[p(1, 0), p(2, 0), p(3, 0)]);
+    assert_eq!((events, outcome), (vec![], AdventureOutcome::default()));
+    assert_eq!(hero(&state, 1), (p(2, 0), 1000 - 300));
+    refused(
+        &guard_world(&rules),
+        &rules,
+        &[p(1, 0), p(2, 0), p(3, 0), p(4, 0)],
+        AdventureCommandError::PastVisit { step: 3 },
+    );
+    // With the key: an offer to pass, without a price.
+    let around = [p(3, 1), p(4, 1), p(5, 1), p(6, 1), p(7, 0)];
+    visit_by(&mut state, &rules, (RED, 1), &around);
+    assert!(state.has_key(RED, 0));
+    let back = [p(6, 1), p(5, 1), p(4, 1), p(3, 0)];
+    let (events, outcome) = visit_by(&mut state, &rules, (RED, 1), &back);
+    let offer = Offer {
+        hero: HeroId::new(1),
+        object_type: GUARD,
+        anchor: p(3, 0),
+        kind: OfferKind::Pass,
+    };
+    assert!(events.is_empty() && outcome.gains.is_empty());
+    assert_eq!(outcome.offer.as_ref(), Some(&offer));
+    assert_eq!(offer.price(), []);
+    assert_eq!(hero(&state, 1).0, p(4, 1));
+    assert!(state.offer_stands(&offer));
+    // Accepted: the guard leaves the map for everyone, told to the players that see it (red
+    // alone: blue's hero, nine columns off, has not explored its tile), and its tile is free.
+    let mut events = Vec::new();
+    state.accept_offer(&rules.0, &rules.1, RED, &offer, &mut events);
+    assert_eq!(
+        events,
+        [AdventureEvent {
+            kind: AdventureEventKind::ObjectRemoved {
+                object_type: GUARD,
+                anchor: p(3, 0),
+            },
+            seen_by: Viewers::NONE.with(RED),
+        }]
+    );
+    assert!(state.is_removed(0) && !state.offer_stands(&offer));
+    assert!(
+        state
+            .observe(&rules.0, RED)
+            .objects
+            .iter()
+            .all(|o| o.object_type != GUARD)
+    );
+    // Another player passes too: blue walks over the guard's tile.
+    state.explore_all();
+    let blue = [
+        p(11, 1),
+        p(10, 1),
+        p(9, 1),
+        p(8, 1),
+        p(7, 1),
+        p(6, 1),
+        p(5, 1),
+        p(4, 0),
+        p(3, 0),
+    ];
+    let mut events = Vec::new();
+    state.set_movement(HeroId::new(2), 1300);
+    let command = AdventureCommand::MoveHero {
+        hero: HeroId::new(2),
+        path: blue.to_vec(),
+    };
+    state
+        .apply(&rules.0, &rules.1, BLUE, &command, &mut events)
+        .unwrap();
+    assert_eq!(hero(&state, 2).0, p(3, 0));
+    // An offer that no longer stands carries nothing out (the game rejects its acceptance
+    // first, ADR-0017 point 10).
+    let gone = state.clone();
+    let mut events = Vec::new();
+    state.accept_offer(&rules.0, &rules.1, RED, &offer, &mut events);
+    assert!(events.is_empty());
+    assert_eq!(state, gone);
+    // Declining needs nothing of the context: the guard stays until a key holder accepts.
+    let mut other = guard_world(&rules);
+    other.explore_all();
+    let tent = [
+        p(1, 1),
+        p(2, 1),
+        p(3, 1),
+        p(4, 1),
+        p(5, 1),
+        p(6, 1),
+        p(7, 0),
+    ];
+    visit_by(&mut other, &rules, (RED, 1), &tent);
+    let (_, outcome) = visit_by(&mut other, &rules, (RED, 1), &back);
+    assert!(outcome.offer.is_some() && !other.is_removed(0));
 }

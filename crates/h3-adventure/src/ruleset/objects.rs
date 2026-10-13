@@ -2,7 +2,8 @@
 //! type names its kind, a closed enum with typed parameters, and two visit properties; the packs
 //! define the types (`adventure.toml`, `[[object_type]]`) and this module compiles them into the
 //! ruleset part. The rules that read a kind come with the tasks that build them (pickups T13, the
-//! Cartographer T14, the other visitable objects T15); the setup draws random contents (T12b).
+//! Cartographer T14, the observatories, tents and guards T15a, the gates T15b); the setup draws
+//! random contents (T12b).
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
@@ -104,13 +105,38 @@ pub enum ObjectKind {
     },
 }
 
+/// What a visit of an object does, for the kinds whose visit is built ([`ObjectKind::effect`]):
+/// the kind's parameters a visit reads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Effect<'k> {
+    /// Its contents gained, then it leaves the map (a pickup, ADV-PIK-001 to ADV-PIK-003).
+    Pickup,
+    /// An offer of its terrains' reveal for this price, once per player and type (a
+    /// Cartographer, ADV-VIS-001).
+    Chart(&'k [(ResourceId, u32)]),
+    /// The tiles within this radius of the visited tile revealed (an observatory, ADV-VIS-002).
+    Reveal(u8),
+    /// This key for the visitor's owner (a Keymaster's tent, ADV-VIS-003).
+    Tent(u8),
+    /// For a holder of this key, an offer to pass (a border guard, ADV-VIS-004).
+    Guard(u8),
+}
+
 impl ObjectKind {
-    /// Whether a visit of this kind is built (ADR-0016 point 4; ADV-OBJ-003): the one place a
-    /// task that builds a kind's visit extends. A step onto the visitable tile of an object whose
-    /// visit is not built is rejected (`Visit`). E08 T13b: the pickups; T14a and T14b: the
-    /// Cartographer, entered, with its offer; T15: the observatories, tents, guards and gates.
-    pub(crate) const fn visit_built(&self) -> bool {
-        matches!(self, Self::Pickup(_) | Self::RevealTerrain { .. })
+    /// What a visit of this kind does, if its visit is built (ADR-0016 point 4; ADV-OBJ-003):
+    /// the one place a task that builds a kind's visit extends. A step onto the visitable tile of
+    /// an object whose visit is not built is rejected (`Visit`). E08 T13b: the pickups; T14a and
+    /// T14b: the Cartographer, entered, with its offer; T15a: the observatories, the tents and the
+    /// guards with their offer; the gates are T15b's.
+    pub(crate) fn effect(&self) -> Option<Effect<'_>> {
+        match self {
+            Self::Pickup(_) => Some(Effect::Pickup),
+            Self::RevealTerrain { price, .. } => Some(Effect::Chart(price)),
+            Self::RevealArea { radius } => Some(Effect::Reveal(*radius)),
+            Self::KeyTent { key } => Some(Effect::Tent(*key)),
+            Self::KeyGuard { key } => Some(Effect::Guard(*key)),
+            Self::KeyGate { .. } => None,
+        }
     }
 
     /// The terrains and price of a [`Self::RevealTerrain`] (a Cartographer, ADV-VIS-001); none
