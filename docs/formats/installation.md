@@ -2539,3 +2539,11 @@ steps, the position truncated to a hex each step); the line is blocked by the ga
 the gate is closed, and by any wall hex that still has its blocked bit. The halving multiplies
 with the distance's (§7.10 stage 2): a shot from beyond the full-damage distance through a wall
 does a quarter. 0x467840 also decides Teleport below Expert in sieges (0x5A3764, T8).
+
+**Harvested** (E04c T5d, `h3_formats::exe::siege_data`): the tables 0x63BD00, 0x63BCE8, 0x63BCF4
+and 0x63BD18, and six one-byte operands, each read after its instruction's opcode bytes are
+checked: the gate's hex (`cmp eax, 0x60` at 0x469A20), the moat's defense penalty (`sub ebx, 3`
+at 0x442646), the mines' power (`push 3` at 0x466460), the second row's town type (`cmp al, 7`
+at 0x463BAE), the mines' town type (`cmp byte [eax+4], 2` at 0x4663C4) and spell (`push 0xB` at
+0x466462). The harvester writes the siege's field into `[battle]` and a `[[siege]]` record per
+town type.
