@@ -200,8 +200,9 @@ fn a_clone_goes_to_the_first_free_hex_along_the_rays() {
         ),
         Some(at(&r, 4, 4).0)
     );
-    // A two-hex stack's clone stands on the row above, its tail top right of the stack's tail.
-    assert_eq!(place_of(&[("ogre", 2, 6, 5)], 0), Some(at(&r, 6, 4).0));
+    // A two-hex stack's clone stands on the row above, its position (rear hex) top right of the
+    // stack's position.
+    assert_eq!(place_of(&[("ogre", 2, 5, 5)], 0), Some(at(&r, 5, 4).0));
     // The defender's clone: from top left anticlockwise.
     let mut s = arena(
         &r,
@@ -215,15 +216,15 @@ fn a_clone_goes_to_the_first_free_hex_along_the_rays() {
     assert_eq!(created(&events), vec![(2, 5, at(&r, 9, 4).0, Some(1))]);
 }
 
-/// An arena with `ogres` (tail 13, head 14, row 5) of the attacker's under a Clone caster, the
-/// serfs of the defender at (1, 0), every standable hex but the ogres', `free` and the serfs'
-/// blocked when `free` is given, else rows 3 to 7 from column 9 on but the ogres' hexes and the
-/// hex in front of them.
+/// An arena with `ogres` (position 13, front hex 14, row 5) of the attacker's under a Clone caster,
+/// the serfs of the defender at (1, 0), every standable hex but the ogres', `free` and the serfs'
+/// blocked when `free` is given, else rows 3 to 7 from column 9 on but the ogres' hexes and the hex
+/// in front of them.
 fn walled(r: &BattleRuleset, ogres: u32, free: Option<&[(i32, i32)]>) -> BattleState {
     let mut s = arena(
         r,
         [Some(creator(r, 1, 0)), None],
-        &[("ogre", ogres, 14, 5)],
+        &[("ogre", ogres, 13, 5)],
         &[("serf", 1, 1, 0)],
         1,
     );
@@ -266,12 +267,12 @@ fn turned(events: &[Event]) -> Vec<(u8, u16)> {
 #[test]
 fn a_crowded_two_hex_stack_is_never_covered_by_its_clone() {
     // Quirk BAT-QUIRK-7 fixed: rows 3 to 7 blocked from column 9 on but for the ogres and the hex
-    // in front of them. The original would take the ogres' head as the clone's position in ring
-    // 2; the engine goes on to ring 3, top right.
+    // in front of them. The original would take the ogres' front hex as the clone's position in
+    // ring 2; the engine goes on to ring 3, top right.
     let r = ruleset();
     let mut s = walled(&r, 2, None);
     let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
-    assert_eq!(created(&events), vec![(2, 2, at(&r, 15, 2).0, Some(0))]);
+    assert_eq!(created(&events), vec![(2, 2, at(&r, 14, 2).0, Some(0))]);
     assert_eq!(turned(&events), vec![]);
     // Fully walled in: no place, the mana is spent all the same.
     let field = Field::new(r.battle().field);
@@ -297,7 +298,7 @@ fn a_crowded_two_hex_stack_is_never_covered_by_its_clone() {
 // covers: BAT-MAG-038, BAT-MAG-037, BAT-END-003
 #[test]
 fn with_quirk_bat_quirk_7_a_crowded_original_becomes_its_own_clone() {
-    // The clone's place in ring 2 is the ogres' head: no clone, the ogres are summoned for the
+    // The clone's place in ring 2 is the ogres' front hex: no clone, the ogres are summoned for the
     // clone's three rounds and no longer of the army; damage does not take all of them.
     let r = ruleset_with("t:clone_on_original", |_| {});
     let mut s = walled(&r, 3, None);
@@ -438,14 +439,14 @@ fn with_quirk_bat_quirk_7_a_vanished_original_keeps_its_record() {
 fn a_clone_never_shares_a_hex_with_its_original() {
     // Quirk BAT-QUIRK-8, in every profile: only the ogres' hexes and the two hexes behind them
     // are free. With BAT-QUIRK-7 the first place that fits in ring 2 has its front hex on the
-    // ogres' tail; it is skipped, and the clone stands right behind them.
+    // ogres' rear hex; it is skipped, and the clone stands right behind them.
     for profile in ["t:faithful", "t:clone_on_original"] {
         let r = ruleset_with(profile, |_| {});
         let mut s = walled(&r, 2, Some(&[(12, 5), (11, 5)]));
         let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
         assert_eq!(
             created(&events),
-            vec![(2, 2, at(&r, 12, 5).0, Some(0))],
+            vec![(2, 2, at(&r, 11, 5).0, Some(0))],
             "{profile}"
         );
     }
@@ -453,28 +454,28 @@ fn a_clone_never_shares_a_hex_with_its_original() {
 
 // covers: BAT-MAG-038
 #[test]
-fn the_search_from_a_two_hex_stacks_head_skips_the_way_to_its_tail_in_rings_1_and_2() {
-    // E04b T11b review (r4a F-10): only the ogres' hexes (tail (13, 5), head (14, 5)) and a
-    // place three hexes to their left are free. From the head, the hexes towards the tail are
-    // not tried in rings 1 and 2: there the place would be the ogres' own position, which with
-    // quirk BAT-QUIRK-7 counts as free and would turn them into their own clone. So the search
-    // reaches ring 3, whose way from the tail comes first, and the clone stands on the free
-    // place, in either profile.
+fn the_search_from_a_two_hex_stacks_front_hex_skips_the_way_back_in_rings_1_and_2() {
+    // E04b T11b review (r4a F-10): only the ogres' hexes (position (13, 5), front hex (14, 5))
+    // and a place three hexes to their left are free. From the front hex, the hexes towards the
+    // position are not tried in rings 1 and 2: there the place would be the ogres' own
+    // position, which with quirk BAT-QUIRK-7 counts as free and would turn them into their own
+    // clone. So the search reaches ring 3, whose way from the position comes first, and the
+    // clone stands on the free place, in either profile.
     for profile in ["t:faithful", "t:clone_on_original"] {
         let r = ruleset_with(profile, |_| {});
         let mut s = walled(&r, 2, Some(&[(10, 5), (11, 5)]));
         let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
         assert_eq!(
             (created(&events), turned(&events)),
-            (vec![(2, 2, at(&r, 11, 5).0, Some(0))], vec![]),
+            (vec![(2, 2, at(&r, 10, 5).0, Some(0))], vec![]),
             "{profile}"
         );
     }
-    // Ring 3 does try the way from the head to the tail. With the free place one hex further
-    // left (ring 4) the search comes to the ogres' own position first: with the quirk they
-    // become their own clone for the cast's three rounds; without it their hexes are taken and
-    // the clone stands on the free place.
-    let place = at(&ruleset(), 10, 5).0;
+    // Ring 3 does try the way back from the front hex. With the free place one hex further left
+    // (ring 4) the search comes to the ogres' own position first: with the quirk they become
+    // their own clone for the cast's three rounds; without it their hexes are taken and the
+    // clone stands on the free place.
+    let place = at(&ruleset(), 9, 5).0;
     for (profile, expected) in [
         ("t:faithful", (vec![(2, 2, place, Some(0))], vec![])),
         ("t:clone_on_original", (vec![], vec![(0, 3)])),
@@ -992,13 +993,13 @@ fn a_clone_takes_no_anti_magic_reflects_one_hit_point_and_is_struck_no_more_once
     let r = ruleset();
     let mut guard = mage(&r, &["antimagic", "copy"]);
     guard.magic.mana = 100;
-    // A Hydra (head at (7, 5)) next to the defender's serfs at (8, 5) and their clone, top left of
-    // them at (7, 4).
+    // A Hydra (position (6, 5), front hex (7, 5)) next to the defender's serfs at (8, 5) and
+    // their clone, top left of them at (7, 4).
     let new = |r: &BattleRuleset| {
         let mut s = arena(
             r,
             [None, Some(guard.clone())],
-            &[("hydra", 10, 7, 5)],
+            &[("hydra", 10, 6, 5)],
             &[("serf", 1, 8, 5)],
             1,
         );
@@ -1016,7 +1017,7 @@ fn a_clone_takes_no_anti_magic_reflects_one_hit_point_and_is_struck_no_more_once
         &r,
         Command::Attack {
             target: StackId(1),
-            from: at(&r, 7, 5),
+            from: at(&r, 6, 5),
         },
     )
     .unwrap();
@@ -1041,7 +1042,7 @@ fn a_clone_takes_no_anti_magic_reflects_one_hit_point_and_is_struck_no_more_once
         &r,
         Command::Attack {
             target: StackId(2),
-            from: at(&r, 7, 5),
+            from: at(&r, 6, 5),
         },
     )
     .unwrap();

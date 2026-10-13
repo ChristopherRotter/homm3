@@ -114,17 +114,18 @@ fn war_machines_stand_at_their_places_after_the_army() {
         placed,
         [
             ("serf", 0, (1, 5)),
-            ("ballista", 16, (1, 3)),
+            ("ballista", 16, (0, 3)),
             ("cart", 17, (1, 1)),
-            ("tent", 18, (1, 9)),
+            ("tent", 18, (0, 9)),
             ("serf", 0, (15, 5)),
-            ("ballista", 16, (15, 3)),
-            ("tent", 18, (15, 9)),
+            ("ballista", 16, (16, 3)),
+            ("tent", 18, (16, 9)),
         ]
     );
-    // Two-hex machines reach into the side columns.
-    assert_eq!(s.stacks()[1].footprint(field(&r)).tail, Some(at(&r, 0, 3)));
-    assert_eq!(s.stacks()[6].footprint(field(&r)).tail, Some(at(&r, 16, 9)));
+    // Two-hex machines reach into the side columns with their positions, their front hexes on
+    // the ruleset's hexes.
+    assert_eq!(s.stacks()[1].footprint(field(&r)).front, at(&r, 1, 3));
+    assert_eq!(s.stacks()[6].footprint(field(&r)).front, at(&r, 15, 9));
     // War machines are not affected by morale and not part of the army's alignment.
     assert!(
         s.stacks()[1].has(StackTraits::NO_MORALE) && s.stacks()[1].has(StackTraits::WAR_MACHINE)
@@ -166,7 +167,7 @@ fn war_machine_setups_are_validated() {
     bad.war_machines[0].push(h3_content::CreatureTypeId::from_raw(999));
     assert_eq!(BattleState::new(&r, &bad, 1).unwrap_err(), invalid);
     // The compiler keeps the machines' places apart (BAT-WAR-001), but an obstacle of the setup
-    // can still stand on one: the Ballista's head hex (1, 3) is hex 52.
+    // can still stand on one: the Ballista's front hex (1, 3), the ruleset's hex, is hex 52.
     let mut s = with_machines(&r, serf, serf, [&["ballista"], &[]]);
     s.obstacles = blocked(vec![52]);
     assert_eq!(
@@ -623,7 +624,7 @@ fn to_ballista(s: &mut BattleState, r: &BattleRuleset) {
 }
 
 fn shoot_at(s: &mut BattleState, r: &BattleRuleset, target: u8) -> Vec<Event> {
-    let at = s.stacks()[usize::from(target)].hex;
+    let at = s.stacks()[usize::from(target)].footprint(field(r)).front;
     act(
         s,
         r,
@@ -643,7 +644,7 @@ fn a_commanded_ballista_waits_for_its_sides_command() {
     assert_eq!(s.side_to_act(), Some(BattleSide::Attacker));
     let mut legal = crate::LegalCommands::new();
     crate::legal_commands(&s, &r, BattleSide::Attacker, &mut legal);
-    let at = |id: usize| s.stacks()[id].hex;
+    let at = |id: usize| s.stacks()[id].footprint(field(&r)).front;
     // Wait, Defend and a shot at every enemy, the enemy's war machine included; no moves; the
     // hero's side may retreat (BAT-FLE-001).
     assert_eq!(

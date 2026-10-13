@@ -359,7 +359,7 @@ fn area_and_battle_wide_spells_strike_every_stack_they_reach() {
         arena(
             &r,
             [Some(mage(&r, &book)), None],
-            &[("fixed", 5, 9, 5), ("wide", 2, 3, 5)],
+            &[("fixed", 5, 9, 5), ("wide", 2, 2, 5)],
             &[
                 ("fixed", 5, 10, 5),
                 ("fixed", 5, 11, 5),
@@ -421,27 +421,29 @@ fn chain_lightning_jumps_to_the_nearest_stack_on_the_screen() {
         1,
     );
     assert_eq!(chain(&mut s, 1), [(1, 40), (3, 20), (2, 10)]);
-    // A two-hex stack's centre is half a hex towards its tail (BAT-MAG-006): the attacker's
-    // tail is on its left. On row 4 (even rows sit 22 pixels right, the same for all here) the
-    // attacker's two-hex stack with its head on (10,4) is centred at x 440, 66 pixels from the
-    // target (8,4) at 374, nearer than the one-hex stack (6,4) at 286 (88); without the offset
-    // both would be 88 away and the lower id would win.
+    // A two-hex stack's centre is half a hex from its position towards its other hex
+    // (BAT-MAG-006): the attacker's other hex is on its right. On row 4 (even rows sit 22 pixels
+    // right, the same for all here) the attacker's two-hex stack at (9,4), its front hex on
+    // (10,4), is centred at x 440, 66 pixels from the target (8,4) at 374, nearer than the
+    // one-hex stack (6,4) at 286 (88); centred on its front hex both would be 88 away and the
+    // lower id would win.
     let mut s = arena(
         &r,
         [Some(mage(&r, &["chain"])), None],
-        &[("tank", 5, 6, 4), ("wide", 5, 10, 4)],
+        &[("tank", 5, 6, 4), ("wide", 5, 9, 4)],
         &[("tank", 5, 8, 4)],
         1,
     );
     assert_eq!(chain(&mut s, 2), [(2, 40), (1, 20), (0, 10)]);
-    // The defender's tail is on its right: its two-hex stack with its head on (11,5) is centred
-    // at x 506, 154 pixels from the target (8,5) at 352, farther than the one-hex stack (5,5) at
-    // 220 (132); without the offset the two would tie and the lower id (2) would win.
+    // The defender's other hex is on its left: its two-hex stack at (12,5), its front hex on
+    // (11,5), is centred at x 506, 154 pixels from the target (8,5) at 352, farther than the
+    // one-hex stack (5,5) at 220 (132); centred on its front hex the two would tie and the lower
+    // id (2) would win.
     let mut s = arena(
         &r,
         [Some(mage(&r, &["chain"])), None],
         &[("fixed", 1, 2, 1)],
-        &[("tank", 5, 8, 5), ("wide", 5, 11, 5), ("tank", 5, 5, 5)],
+        &[("tank", 5, 8, 5), ("wide", 5, 12, 5), ("tank", 5, 5, 5)],
         1,
     );
     assert_eq!(chain(&mut s, 1), [(1, 40), (3, 20), (0, 10)]);

@@ -283,11 +283,21 @@ fn lucky_strikes_add_the_base_damage_again_on_the_target_only() {
         &[(0, "fixed", 10)],
         1,
     );
-    place(&mut s, &r, 0, 7, 5);
+    // The drake's position (6, 5), its front hex (7, 5).
+    place(&mut s, &r, 0, 6, 5);
     place(&mut s, &r, 1, 9, 5);
     place(&mut s, &r, 2, 8, 5);
     stack(&mut s, 0).luck = 1;
-    let events = attack_from_7_5(&mut s, &r, 2);
+    let from = at(&r, 6, 5);
+    let events = act(
+        &mut s,
+        &r,
+        Command::Attack {
+            target: StackId(2),
+            from,
+        },
+    )
+    .unwrap();
     assert_eq!(
         &strikes(&events)[..2],
         &[(0, 2, 40, l), (0, 1, 20, StrikeFlags::SECONDARY)]

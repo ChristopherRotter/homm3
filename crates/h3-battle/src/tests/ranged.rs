@@ -34,13 +34,14 @@ fn strikes(events: &[Event]) -> Vec<(u8, u64, StrikeFlags)> {
 }
 
 fn shoot(target: u8, s: &BattleState) -> Command {
+    let field = crate::Field::new(ruleset().battle().field);
     Command::Shoot {
         target: StackId(target),
-        at: s.stacks()[usize::from(target)].hex,
+        at: s.stacks()[usize::from(target)].footprint(field).front,
     }
 }
 
-/// Shoots at `target`'s head with the active stack.
+/// Shoots at `target`'s front hex with the active stack.
 fn fire(
     s: &mut BattleState,
     r: &h3_content_battle::BattleRuleset,
@@ -206,10 +207,10 @@ fn shots_beyond_ten_hexes_deal_half_damage() {
     let mut wide = battle(&r, &[(0, "archer", 10)], &[(0, "wide", 10)], 1);
     activate(&mut wide, 0);
     fixed_damage(&mut wide, 0, 10);
-    // wide (defense 6, two hexes: head (12, 5), tail (13, 5)) is farther than 10; head (10, 5)
-    // with tail (11, 5) is near. archer attack 6 = defense 6: 100 base.
-    assert_eq!(damage(&wide, 12), 50);
-    assert_eq!(damage(&wide, 10), 100);
+    // wide (defense 6, two hexes: position (13, 5), front hex (12, 5)) is farther than 10; at
+    // (11, 5), its front hex on (10, 5), it is near. archer attack 6 = defense 6: 100 base.
+    assert_eq!(damage(&wide, 13), 50);
+    assert_eq!(damage(&wide, 11), 100);
 }
 
 // covers: BAT-RNG-003
@@ -305,7 +306,7 @@ fn fireballs_hit_everyone_around_the_target_except_the_fire_immune() {
 
 // covers: BAT-RNG-004
 #[test]
-fn death_clouds_spare_the_non_living_and_area_shots_may_aim_at_a_tail() {
+fn death_clouds_spare_the_non_living_and_area_shots_may_aim_at_a_rear_hex() {
     let r = ruleset();
     let mut s = battle(
         &r,
@@ -316,28 +317,28 @@ fn death_clouds_spare_the_non_living_and_area_shots_may_aim_at_a_tail() {
     activate(&mut s, 0);
     place(&mut s, &r, 1, 8, 5); // target (alive)
     place(&mut s, &r, 2, 9, 5); // `fixed` has no `alive` flag: spared
-    place(&mut s, &r, 3, 6, 5); // wide: head (6, 5), tail (7, 5) next to the target: alive? no
+    place(&mut s, &r, 3, 7, 5); // wide: front (6, 5), rear (7, 5) next to the target: alive? no
     let st = strikes(&fire(&mut s.clone(), &r, 1).unwrap());
     assert_eq!(st.iter().map(|x| x.0).collect::<Vec<_>>(), [1]);
-    // Aim at the two-hex target's tail: the area moves with it.
-    let tail = s.stacks()[3].footprint(field(&r)).tail.unwrap();
+    // Aim at the two-hex target's rear hex: the area moves with it.
+    let rear = s.stacks()[3].footprint(field(&r)).rear.unwrap();
     let aim = Command::Shoot {
         target: StackId(3),
-        at: tail,
+        at: rear,
     };
     assert!(legal(&s, &r).contains(&aim));
     act(&mut s.clone(), &r, aim).unwrap();
-    // Other shooters must aim at the head; nobody may aim off the target.
+    // Other shooters must aim at the front hex; nobody may aim off the target.
     let mut a = battle(&r, &[(0, "archer", 10)], &[(0, "wide", 5)], 1);
     activate(&mut a, 0);
-    let tail = a.stacks()[1].footprint(field(&r)).tail.unwrap();
+    let rear = a.stacks()[1].footprint(field(&r)).rear.unwrap();
     assert_eq!(
         act(
             &mut a.clone(),
             &r,
             Command::Shoot {
                 target: StackId(1),
-                at: tail
+                at: rear
             }
         ),
         Err(CommandError::NotOnTarget)

@@ -362,7 +362,7 @@ fn a_random_caster_draws_its_spell_by_weight_and_only_its_controller_is_told() {
         let mut s = arena(
             &r,
             [None, None],
-            &[("dragonet", 2, 3, 5)],
+            &[("dragonet", 2, 2, 5)],
             &[("fixed", 3, 13, 5)],
             seed,
         );
@@ -494,13 +494,13 @@ fn a_drawn_area_spell_is_aimed_at_a_hex_of_a_stack_and_may_hit_the_caster() {
     let mut s = arena(
         &r,
         [None, None],
-        &[("novaling", 2, 3, 5), ("ogre", 1, 5, 5)],
+        &[("novaling", 2, 3, 5), ("ogre", 1, 4, 5)],
         &[("fixed", 3, 13, 5), ("ember", 3, 13, 7)],
         1,
     );
     drawing(&mut s, &r, 0);
-    // The two-hex ogre's tail and head, the enemy's hex; not the caster's, not the fire-immune
-    // ember's, never an empty hex.
+    // The two-hex ogre's rear and front hexes, the enemy's hex; not the caster's, not the
+    // fire-immune ember's, never an empty hex.
     let hex = |x: i32, y: i32| at(&r, x, y).0;
     assert_eq!(
         hexes(&s, &r, BattleSide::Attacker),
@@ -516,7 +516,7 @@ fn a_drawn_area_spell_is_aimed_at_a_hex_of_a_stack_and_may_hit_the_caster() {
             Err(CommandError::InvalidSpellTarget)
         );
     }
-    // Aimed at the ogre's tail beside the caster: the area reaches both; power 5 × 2 creatures:
+    // Aimed at the ogre's rear hex beside the caster: the area reaches both; power 5 × 2 creatures:
     // 10 × 10 + 20 at Advanced.
     let events = act(
         &mut s,

@@ -85,7 +85,7 @@ fn an_archangel_raises_another_stack_of_its_side_for_good() {
     let mut s = arena(
         &r,
         [None, None],
-        &[("herald", 2, 5, 5), ("serf", 10, 8, 3), ("serf", 4, 8, 7)],
+        &[("herald", 2, 4, 5), ("serf", 10, 8, 3), ("serf", 4, 8, 7)],
         &[("fixed", 3, 13, 5)],
         1,
     );
@@ -123,9 +123,9 @@ fn an_archangel_raises_a_corpse_and_needs_the_health_of_one_creature() {
         &r,
         [None, None],
         &[
-            ("herald", 2, 5, 5),
+            ("herald", 2, 4, 5),
             ("serf", 10, 8, 3),
-            ("ogre", 3, 8, 7),
+            ("ogre", 3, 7, 7),
             ("seraph", 2, 8, 9),
         ],
         &[("fixed", 3, 13, 5)],
@@ -161,7 +161,7 @@ fn an_archangels_hit_points_equal_to_the_health_reach_it() {
         &r,
         [None, None],
         &[
-            ("herald", 2, 5, 5),
+            ("herald", 2, 4, 5),
             ("seraph", 2, 8, 3),
             ("seraph", 2, 8, 7),
         ],

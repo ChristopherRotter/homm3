@@ -226,8 +226,8 @@ fn unlimited_retaliations_never_run_out() {
 #[test]
 fn attacking_all_adjacent_hits_every_touching_enemy_also_when_retaliating() {
     let r = ruleset();
-    // 0 = hydra (head 7,5, tail 6,5), 1 = allied serf; defenders 2 (target), 3 and 4 touch the
-    // hydra, 5 does not.
+    // 0 = hydra (position 6,5, front hex 7,5), 1 = allied serf; defenders 2 (target), 3 and 4
+    // touch the hydra, 5 does not.
     let mut s = battle(
         &r,
         &[(0, "hydra", 10), (1, "serf", 10)],
@@ -242,9 +242,9 @@ fn attacking_all_adjacent_hits_every_touching_enemy_also_when_retaliating() {
     arrange(
         &mut s,
         &r,
-        &[(7, 5), (7, 6), (8, 5), (5, 5), (6, 4), (10, 5)],
+        &[(6, 5), (7, 6), (8, 5), (5, 5), (6, 4), (10, 5)],
     );
-    let events = hit(&mut s, &r, 2, (7, 5));
+    let events = hit(&mut s, &r, 2, (6, 5));
     assert_eq!(
         strikes(&events),
         vec![(0, 2, 20, 2, N), (0, 3, 20, 2, S), (0, 4, 20, 2, S),]
@@ -263,11 +263,11 @@ fn attacking_all_adjacent_hits_every_touching_enemy_also_when_retaliating() {
     );
 }
 
-/// The enemies hit by a cerberus (head at `head`, tail to its left) attacking defender stack 2
-/// with an ally (stack 1) at `ally`, defender stacks at `enemies` (ids 3, 4, …), and the target at
-/// `target`; the target is `wide` if set.
+/// The enemies hit by a cerberus (position at `position`, its front hex to the right) attacking
+/// defender stack 2 with an ally (stack 1) at `ally`, defender stacks at `enemies` (ids 3, 4, …),
+/// and the target at `target`; the target is `wide` if set.
 fn cerberus_hits(
-    head: (i32, i32),
+    position: (i32, i32),
     ally: (i32, i32),
     target: (i32, i32),
     wide: bool,
@@ -279,32 +279,32 @@ fn cerberus_hits(
         defenders.push((u8::try_from(slot).unwrap(), "fixed", 10));
     }
     let mut s = battle(&r, &[(0, "cerberus", 10), (1, "serf", 10)], &defenders, 1);
-    let mut positions = vec![head, ally, target];
+    let mut positions = vec![position, ally, target];
     positions.extend_from_slice(enemies);
     arrange(&mut s, &r, &positions);
-    let events = hit(&mut s, &r, 2, head);
+    let events = hit(&mut s, &r, 2, position);
     targets_of(&events, 0)
 }
 
 // covers: BAT-ATK-003
 #[test]
 fn three_headed_attacks_hit_the_enemies_beside_the_attacked_hex() {
-    // Attacking right: the hexes below-right and above-right of the head. The ally above is
-    // spared, the enemy touching the tail is not in the pattern. No retaliation follows.
+    // Attacking right: the hexes below-right and above-right of the front hex. The ally above
+    // is spared, the enemy touching the rear hex is not in the pattern. No retaliation follows.
     assert_eq!(
-        cerberus_hits((7, 5), (7, 4), (8, 5), false, &[(7, 6), (6, 4)]),
+        cerberus_hits((6, 5), (7, 4), (8, 5), false, &[(7, 6), (6, 4)]),
         vec![2, 3]
     );
-    // Attacking below-left of the head: turning towards the tail would enter the attacker, so
-    // that walk starts on the attacked hex and continues left.
+    // Attacking below-left of the front hex: turning towards the rear hex would enter the
+    // attacker, so that walk starts on the attacked hex and continues left.
     assert_eq!(
-        cerberus_hits((7, 5), (3, 3), (6, 6), false, &[(5, 6), (7, 6)]),
+        cerberus_hits((6, 5), (3, 3), (6, 6), false, &[(5, 6), (7, 6)]),
         vec![2, 3, 4]
     );
-    // A two-hex target whose tail is adjacent is attacked towards the tail: the pattern turns
-    // from there (the head of the target is the target itself).
+    // A two-hex target whose rear hex is adjacent is attacked towards the rear hex: the pattern
+    // turns from there (the target's front hex is the target itself).
     assert_eq!(
-        cerberus_hits((8, 5), (3, 3), (7, 4), true, &[(9, 5), (6, 4)]),
+        cerberus_hits((7, 5), (3, 3), (8, 4), true, &[(9, 5), (6, 4)]),
         vec![2, 3]
     );
 }
@@ -313,37 +313,37 @@ fn three_headed_attacks_hit_the_enemies_beside_the_attacked_hex() {
 #[test]
 fn breath_attacks_also_hit_the_stack_behind_friend_or_foe() {
     let r = ruleset();
-    // 0 = drake (head 7,5), 1 = allied serf behind the target 2.
+    // 0 = drake (position 6,5, front hex 7,5), 1 = allied serf behind the target 2.
     let mut s = battle(
         &r,
         &[(0, "drake", 10), (1, "serf", 10)],
         &[(0, "fixed", 10)],
         1,
     );
-    arrange(&mut s, &r, &[(7, 5), (9, 5), (8, 5)]);
-    let events = hit(&mut s, &r, 2, (7, 5));
+    arrange(&mut s, &r, &[(6, 5), (9, 5), (8, 5)]);
+    let events = hit(&mut s, &r, 2, (6, 5));
     assert_eq!(
         strikes(&events),
         vec![(0, 2, 20, 2, N), (0, 1, 20, 2, S), (2, 0, 16, 1, R)]
     );
-    // Behind a two-hex target lies its own tail: it is not hit twice, and the stack behind the
-    // tail is out of reach.
+    // Behind a two-hex target lies its own rear hex: it is not hit twice, and the stack behind
+    // the rear hex is out of reach.
     let mut s = battle(
         &r,
         &[(0, "drake", 10)],
         &[(0, "wide", 10), (1, "fixed", 10)],
         1,
     );
-    arrange(&mut s, &r, &[(7, 5), (8, 5), (10, 5)]);
-    let events = hit(&mut s, &r, 1, (7, 5));
+    arrange(&mut s, &r, &[(6, 5), (9, 5), (10, 5)]);
+    let events = hit(&mut s, &r, 1, (6, 5));
     assert_eq!(targets_of(&events, 0), vec![1]);
     assert!(strikes(&events)[1].4.contains(R));
     // Off the field behind the target: only the target is hit.
     let mut s = battle(&r, &[(0, "drake", 10)], &[(0, "fixed", 10)], 1);
-    arrange(&mut s, &r, &[(7, 1), (7, 0)]);
-    let events = hit(&mut s, &r, 1, (7, 1));
+    arrange(&mut s, &r, &[(6, 1), (7, 0)]);
+    let events = hit(&mut s, &r, 1, (6, 1));
     assert_eq!(targets_of(&events, 0), vec![1]);
-    // A drake whose tail (6,5) alone touches the target breathes from its tail: the stack
+    // A drake whose rear hex (6,5) alone touches the target breathes from there: the stack
     // behind the target, further left, is hit too.
     let mut s = battle(
         &r,
@@ -351,8 +351,8 @@ fn breath_attacks_also_hit_the_stack_behind_friend_or_foe() {
         &[(0, "fixed", 10), (1, "fixed", 10)],
         1,
     );
-    arrange(&mut s, &r, &[(7, 5), (5, 5), (4, 5)]);
-    let events = hit(&mut s, &r, 1, (7, 5));
+    arrange(&mut s, &r, &[(6, 5), (5, 5), (4, 5)]);
+    let events = hit(&mut s, &r, 1, (6, 5));
     assert_eq!(targets_of(&events, 0), vec![1, 2]);
 }
 
