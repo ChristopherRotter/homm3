@@ -6,6 +6,9 @@
 # STAGED_REPO_DIR is where the staging tool put the user's repo files
 # (default /mnt/user-data/uploads/homm3).
 #
+# 0. Makes the clone track every branch name: a single-branch clone (`--depth 1`) stores no
+#    `origin/<branch>` for a pushed lane branch, and the session's stop hook then reports pushed
+#    commits as unpushed (docs/08-work-process.md, "Cloud sandbox"). Fetches stay explicit.
 # 1. Links the image's `stable` toolchain as the pinned one (static.rust-lang.org is blocked).
 # 2. Copies the staged original-data files into this clone's gitignored original-data/.
 # 3. In the background: installs llvm-20 (coverage), cargo-deny and cargo-llvm-cov, capstone and
@@ -18,6 +21,14 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 staged="${1:-/mnt/user-data/uploads/homm3}"
 logs="$root/target/sandbox"
 mkdir -p "$logs"
+
+# 0. Git: every branch name tracked, the current branch's remote ref fetched if it exists.
+git -C "$root" config --replace-all remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+branch="$(git -C "$root" branch --show-current)"
+if [ -n "$branch" ] && git -C "$root" ls-remote --exit-code --heads origin "$branch" > /dev/null 2>&1; then
+    git -C "$root" fetch -q origin "$branch"
+fi
+echo "git: every branch tracked (origin/${branch:-?} after its first push)"
 
 # 1. Toolchain.
 channel="$(sed -n 's/^channel *= *"\(.*\)"/\1/p' "$root/rust-toolchain.toml")"
