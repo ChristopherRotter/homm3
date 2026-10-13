@@ -308,9 +308,9 @@ fn fire_burns_a_walker_on_each_hex_it_enters() {
         ]
     );
     assert_eq!(s.stacks()[0].count, 6);
-    // A two-hex stack enters each hex once: its tail follows its head through (6, 5).
-    let mut s = burning(&r, &[("wide", 10, 4, 5)], &[("fixed", 5, 14, 9)]);
-    let events = act(&mut s, &r, walk(&r, (9, 5))).unwrap();
+    // A two-hex stack enters each hex once: its rear hex follows its front hex through (6, 5).
+    let mut s = burning(&r, &[("wide", 10, 3, 5)], &[("fixed", 5, 14, 9)]);
+    let events = act(&mut s, &r, walk(&r, (8, 5))).unwrap();
     assert_eq!(burns(&events), [(0, at(&r, 6, 5), 40, 1)]);
     // Stopping on a burning hex burns once; leaving a hex it started on does not burn.
     let mut s = burning(&r, &[("fixed", 10, 5, 5)], &[("fixed", 5, 14, 9)]);
@@ -544,7 +544,7 @@ fn fire_damage_follows_immunities_reductions_and_the_casters_bonuses() {
 fn a_two_hex_stack_burns_on_each_burning_hex_it_stands_on() {
     let r = ruleset();
     // The defender's fire on (6, 6) and (6, 5), the attacker's on (7, 5) and (7, 4): a two-hex
-    // attacker with its head on (7, 5) stands on (7, 5) and (6, 5), and burns twice, its head's
+    // attacker at the position (6, 5) stands on (7, 5) and (6, 5), and burns twice, its front
     // hex first (40 each from either hero).
     let heroes = [
         Some(caster(&r, &["firewall"], [0, 1])),
@@ -554,11 +554,11 @@ fn a_two_hex_stack_burns_on_each_burning_hex_it_stands_on() {
         let mut s = burning_with(
             &r,
             heroes.clone(),
-            &[("wide", count, 3, 9)],
+            &[("wide", count, 2, 9)],
             &[("fixed", 5, 14, 9)],
         );
         raise(&mut s, &r, 0, "firewall", (7, 5));
-        place(&mut s, &r, 0, 7, 5);
+        place(&mut s, &r, 0, 6, 5);
         activate(&mut s, 0);
         act(&mut s, &r, Command::Defend).unwrap()
     };
@@ -566,7 +566,7 @@ fn a_two_hex_stack_burns_on_each_burning_hex_it_stands_on() {
         burns(&stand(4)),
         [(0, at(&r, 7, 5), 40, 1), (0, at(&r, 6, 5), 40, 2)]
     );
-    // One creature of 25 hit points dies on its head's hex: the tail's does not burn it.
+    // One creature of 25 hit points dies on its front hex: the rear hex does not burn it.
     let events = stand(1);
     assert_eq!(burns(&events), [(0, at(&r, 7, 5), 40, 1)]);
     assert!(events.contains(&Event::public(EventKind::BattleEnded {
@@ -664,7 +664,7 @@ fn teleport_moves_an_own_stack_to_a_free_position() {
     let mut s = arena(
         &r,
         heroes,
-        &[("fixed", 10, 2, 5), ("wide", 5, 3, 7)],
+        &[("fixed", 10, 2, 5), ("wide", 5, 2, 7)],
         &[("fixed", 5, 12, 5)],
         1,
     );
@@ -689,10 +689,10 @@ fn teleport_moves_an_own_stack_to_a_free_position() {
     for h in [(2, 5), (3, 7), (2, 7), (12, 5), (0, 3)] {
         assert!(!out.as_slice().contains(&CastTarget::Hex(at(&r, h.0, h.1))));
     }
-    // The two-hex stack needs room for its tail.
+    // The two-hex stack needs room for its front hex.
     second_targets(&s, &r, BattleSide::Attacker, (teleport, stack(1)), &mut out);
-    assert!(!out.as_slice().contains(&CastTarget::Hex(at(&r, 1, 3))));
-    assert!(out.as_slice().contains(&CastTarget::Hex(at(&r, 2, 3))));
+    assert!(!out.as_slice().contains(&CastTarget::Hex(at(&r, 15, 3))));
+    assert!(out.as_slice().contains(&CastTarget::Hex(at(&r, 14, 3))));
     // Onto the fire: no burn (0x5A1B4D enters no hex).
     let go = |to: CastTarget| Command::Cast {
         spell: teleport,

@@ -21,16 +21,16 @@ pub const MAX_LEGAL_COMMANDS: usize = 4 + MAX_FIELD_HEXES + ATTACK_SLOTS * STACK
 /// Fixed-capacity buffer for [`legal_commands`] (no allocation in the hot path).
 pub type LegalCommands = FixedVec<Command, MAX_LEGAL_COMMANDS>;
 
-/// Fills `out` with every command `actor` may issue now (empty if the active stack's controller
-/// is not `actor`, BAT-MAG-026, or the battle is over). In the tactics phase: Wait, `EndTactics`, then the placements in the zone
-/// by hex (BAT-TAC-002). Otherwise: Wait, Defend, moves by hex, then per enemy stack its shots (a
-/// stack that can shoot, BAT-RNG-001: head, then tail for area shots) or its melee attacks by
-/// canonical position slot (`Field::attack_positions`; never for war machines, BAT-WAR-001),
-/// then for a commanded First Aid Tent its heals by stack id (BAT-WAR-007). Last in both cases,
-/// Retreat if the side may retreat (BAT-FLE-001) and Surrender if it may surrender and can pay
-/// (BAT-FLE-002). Casts are not listed: a hero's are [`crate::cast_targets`] ×
-/// [`crate::second_targets`] (BAT-MAG-001), a stack's [`crate::creature_cast_targets`]
-/// (BAT-MAG-048).
+/// Fills `out` with every command `actor` may issue now (empty if the active stack's controller is
+/// not `actor`, BAT-MAG-026, or the battle is over). In the tactics phase: Wait, `EndTactics`, then
+/// the placements in the zone by hex (BAT-TAC-002). Otherwise: Wait, Defend, moves by hex, then per
+/// enemy stack its shots (a stack that can shoot, BAT-RNG-001: its front hex, then for area shots a
+/// two-hex target's rear hex) or its melee attacks by canonical position slot
+/// (`Field::attack_positions`; never for war machines, BAT-WAR-001), then for a commanded First Aid
+/// Tent its heals by stack id (BAT-WAR-007). Last in both cases, Retreat if the side may retreat
+/// (BAT-FLE-001) and Surrender if it may surrender and can pay (BAT-FLE-002). Casts are not listed:
+/// a hero's are [`crate::cast_targets`] × [`crate::second_targets`] (BAT-MAG-001), a stack's
+/// [`crate::creature_cast_targets`] (BAT-MAG-048).
 pub fn legal_commands(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -53,7 +53,7 @@ pub fn legal_commands(
         let reach = tactics::reach(state, field, id, &mover);
         for i in 0..field.hex_count() {
             let hex = Hex(u8::try_from(i).unwrap_or(u8::MAX));
-            if phase.contains(field, hex) && reach.can_move_to(hex) {
+            if phase.holds(field, &mover, hex) && reach.can_move_to(hex) {
                 let _ = out.push(Command::Move { to: hex });
             }
         }
@@ -101,8 +101,8 @@ fn turn_commands(
         let fp = target.footprint(field);
         if shooting {
             let aims = [
-                Some(fp.head),
-                fp.tail.filter(|_| mover.has(StackTraits::AREA_SHOT)),
+                Some(fp.front()),
+                fp.rear().filter(|_| mover.has(StackTraits::AREA_SHOT)),
             ];
             for at in aims.into_iter().flatten() {
                 let _ = out.push(Command::Shoot {

@@ -158,7 +158,7 @@ fn a_hero_without_casting_forbids_both_sides_creature_casts_and_raises() {
         let mut s = arena(
             &r,
             heroes,
-            &[("herald", 2, 5, 5), ("serf", 10, 8, 3)],
+            &[("herald", 2, 4, 5), ("serf", 10, 8, 3)],
             &[("fixed", 3, 13, 5)],
             1,
         );
@@ -173,7 +173,7 @@ fn a_hero_without_casting_forbids_both_sides_creature_casts_and_raises() {
     let mut s = arena(
         &r,
         [None, None],
-        &[("herald", 2, 5, 5), ("serf", 10, 8, 3)],
+        &[("herald", 2, 4, 5), ("serf", 10, 8, 3)],
         &[("fixed", 3, 13, 5)],
         1,
     );
@@ -356,7 +356,7 @@ fn a_spell_level_limit_bars_creature_casts_and_the_archangels_raise() {
     let mut s = arena(
         &r,
         [cloak(), None],
-        &[("herald", 2, 5, 5), ("serf", 10, 8, 3)],
+        &[("herald", 2, 4, 5), ("serf", 10, 8, 3)],
         &[("fixed", 3, 13, 5)],
         1,
     );

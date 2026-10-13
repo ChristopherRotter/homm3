@@ -14,15 +14,15 @@
 //! are conditioned on the earlier choices ([`legal_mask`], [`spell_mask`], [`target_mask`],
 //! [`second_mask`]); after a legal non-cast entry each head allows exactly 0.
 //!
-//! Entries, version 10 (independent of the ruleset, so agents see a fixed-size action space):
+//! Entries, version 12 (independent of the ruleset, so agents see a fixed-size action space):
 //!
 //! | entry | action |
 //! |---|---|
 //! | 0 | Wait |
 //! | 1 | Defend |
-//! | 2 + h, h < 255 | Move to hex `h` (the head of a two-hex stack) |
+//! | 2 + h, h < 255 | Move to the position `h` (a two-hex stack's rear hex, BAT-GEO-002) |
 //! | 257 + 24·s + k | Attack stack `s` from its canonical attack position `k` (`Field::attack_positions` for the active stack's shape) |
-//! | 1265 + 2·s + a | Shoot at stack `s`, aiming at its head (`a = 0`) or tail (`a = 1`) |
+//! | 1265 + 2·s + a | Shoot at stack `s`, aiming at its front hex (`a = 0`) or a two-hex stack's rear hex (`a = 1`) |
 //! | 1349 + s | Heal stack `s` (the commanded First Aid Tent, BAT-WAR-007) |
 //! | 1391 | End the tactics phase (BAT-TAC-002) |
 //! | 1392 | Retreat (BAT-FLE-001) |
@@ -40,7 +40,10 @@
 //! (E04a T9a) Retreat and version 8 (E04a T9b) Surrender. Version 9 (E04b T2c) grew the stack
 //! slots to 42 (21 per side, ADR-0014 point 6), appended the two cast entries and added the
 //! spell and target heads. Version 10 (E04b T5a) uses the second target head (Teleport).
-//! Version 11 (E04b T7b1) makes the stack's cast legal.
+//! Version 11 (E04b T7b1) makes the stack's cast legal. Version 12 (the rear hex as a two-hex
+//! stack's position, as in the original) names a two-hex stack's rear hex in the move entries and
+//! the attack positions (whose slots keep their geometry); the shots keep the front hex at
+//! `a = 0`.
 
 use h3_battle::{
     ATTACK_SLOTS, BattleState, CastSpell, CastTarget, CastTargets, Command, Field, Hex,
@@ -52,7 +55,7 @@ use h3_content_battle::{BattleRuleset, MAX_FIELD_HEXES};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 11;
+pub const ACTION_ENCODING_VERSION: u32 = 12;
 
 const MOVE_BASE: usize = 2;
 const ATTACK_BASE: usize = MOVE_BASE + MAX_FIELD_HEXES;
@@ -182,9 +185,9 @@ fn encode_entry(state: &BattleState, ruleset: &BattleRuleset, command: Command) 
         Command::Shoot { target, at } => {
             let field = Field::new(ruleset.battle().field);
             let fp = state.stack(target)?.footprint(field);
-            let aim = if at == fp.head {
+            let aim = if at == fp.front() {
                 0
-            } else if fp.tail == Some(at) {
+            } else if fp.rear() == Some(at) {
                 1
             } else {
                 return None;
@@ -265,9 +268,9 @@ fn decode_entry(state: &BattleState, ruleset: &BattleRuleset, entry: usize) -> O
             let field = Field::new(ruleset.battle().field);
             let fp = state.stack(target)?.footprint(field);
             let at = if (a - SHOOT_BASE).is_multiple_of(2) {
-                fp.head
+                fp.front()
             } else {
-                fp.tail?
+                fp.rear()?
             };
             Some(Command::Shoot { target, at })
         }
@@ -517,7 +520,7 @@ mod tests {
         assert_eq!((END_TACTICS, RETREAT, SURRENDER), (1391, 1392, 1393));
         assert_eq!((HERO_CAST, CREATURE_CAST), (1394, 1395));
         assert_eq!((SPELL_COUNT, TARGET_COUNT), (128, 298));
-        assert_eq!(ACTION_ENCODING_VERSION, 11);
+        assert_eq!(ACTION_ENCODING_VERSION, 12);
         assert_eq!(decode_index(SURRENDER), Some(Command::Surrender));
         assert_eq!(decode_index(CREATURE_CAST), None);
         assert_eq!(Action::entry(usize::MAX).entry, u32::MAX);
@@ -756,7 +759,7 @@ mod tests {
             .copied()
             .filter(|c| matches!(c, Command::Shoot { .. }))
             .collect();
-        assert_eq!(shots.len(), 2, "head and tail of the two-hex hydra");
+        assert_eq!(shots.len(), 2, "front and rear hex of the two-hex hydra");
         for c in shots {
             let a = encode(&s, &r, c).unwrap();
             assert!(mask[a.entry as usize]);
@@ -767,7 +770,7 @@ mod tests {
             at: Hex(0),
         };
         assert_eq!(encode(&s, &r, off), None);
-        // A one-hex target has no tail aim.
+        // A one-hex target has no rear-hex aim.
         assert_eq!(decode(&s, &r, at(SHOOT_BASE + 1)), None);
     }
 
@@ -1044,7 +1047,7 @@ mod tests {
             decode(&s, &r, at(2 + 17)),
             Some(Command::Move { to: Hex(17) })
         );
-        // A one-hex target has no tail slots.
+        // A one-hex target has no rear-hex slots.
         let one_hex = s.stacks().iter().position(|t| !t.is_two_hex()).unwrap();
         assert_eq!(
             decode(&s, &r, at(ATTACK_BASE + ATTACK_SLOTS * one_hex + 12)),

@@ -1,11 +1,12 @@
 //! Movement (BAT-MOV-001 walking, BAT-MOV-002 flying and teleporting, BAT-MOV-003 a walker's
 //! path).
 //!
-//! A position is the hex of a stack's head; a two-hex stack's tail follows it (BAT-GEO-002). A
-//! position is free for a stack when every hex of its footprint there is standable and not
-//! blocked by an obstacle (a Force Field among them, BAT-MAG-027) or another living stack (its
-//! own current hexes do not block it). A walker's move ends at a position where it enters a pit
-//! its controller sees (Quicksand, BAT-MAG-032): it may stop there but not go on.
+//! A position is a one-hex stack's hex or a two-hex stack's rear hex, whose other hex comes along
+//! in front of it (BAT-GEO-002). A position is free for a stack when every hex of its footprint
+//! there is standable and not blocked by an obstacle (a Force Field among them, BAT-MAG-027) or
+//! another living stack (its own current hexes do not block it). A walker's move ends at a position
+//! where it enters a pit its controller sees (Quicksand, BAT-MAG-032): it may stop there but not go
+//! on.
 
 use h3_content_battle::MAX_FIELD_HEXES;
 
@@ -45,16 +46,16 @@ impl Reach {
     }
 }
 
-/// Whether a stack shaped like `mover` fits with its head on `hex`: every hex of the footprint is
+/// Whether a stack shaped like `mover` fits at the position `hex`: every hex of the footprint is
 /// standable and not in `blocked`.
 #[inline]
 pub(crate) fn fits(field: Field, mover: &Stack, hex: Hex, blocked: HexSet) -> bool {
-    // Head and tail tested directly: the footprint's hex iterator is not always inlined in this
-    // hot path (BACKLOG, codegen swings).
+    // Both hexes tested directly: the footprint's hex iterator is not always inlined in this hot
+    // path (BACKLOG, codegen swings).
     let free = |h: Hex| field.is_standable(h) && !blocked.contains(h);
     field
         .footprint(hex, mover.is_two_hex(), mover.side)
-        .is_some_and(|fp| free(fp.head) && fp.tail.is_none_or(free))
+        .is_some_and(|fp| free(fp.position) && fp.other.is_none_or(free))
 }
 
 /// Computes where `mover` (stack `id`) can move this turn: within its speed now (BAT-MAG-011),
@@ -175,7 +176,7 @@ fn reach(
     reach
 }
 
-/// Whether `mover` with its head on `hex` covers a hex of `pits`.
+/// Whether `mover` at the position `hex` covers a hex of `pits`.
 fn enters(field: Field, mover: &Stack, hex: Hex, pits: HexSet) -> bool {
     field
         .footprint(hex, mover.is_two_hex(), mover.side)

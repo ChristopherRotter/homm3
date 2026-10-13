@@ -46,6 +46,14 @@ impl TacticsPhase {
             }
         }
     }
+
+    /// Whether a stack shaped like `stack` lies in the zone at `position` with its whole
+    /// footprint (BAT-GEO-002, BAT-TAC-002).
+    pub(crate) fn holds(self, field: Field, stack: &Stack, position: Hex) -> bool {
+        field
+            .footprint(position, stack.is_two_hex(), stack.side)
+            .is_some_and(|fp| fp.hexes().all(|h| self.contains(field, h)))
+    }
 }
 
 impl CanonicalHash for TacticsPhase {

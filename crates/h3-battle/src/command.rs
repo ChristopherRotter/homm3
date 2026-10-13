@@ -32,21 +32,22 @@ use crate::war;
 pub enum Command {
     /// Walk to a hex (BAT-MOV-001).
     Move {
-        /// Destination.
+        /// The destination position (BAT-GEO-002).
         to: Hex,
     },
     /// Walk to `from` (or stay, if already there) and strike `target` in melee (BAT-ATK-001).
     Attack {
         /// The enemy stack.
         target: StackId,
-        /// The head position to strike from; the footprint there must touch the target.
+        /// The position to strike from (BAT-GEO-002); the footprint there must touch the target.
         from: Hex,
     },
     /// Shoot at `target` (BAT-RNG-001).
     Shoot {
         /// The enemy stack.
         target: StackId,
-        /// The target's hex aimed at: its head, or (area shots only) its tail (BAT-RNG-004).
+        /// The target's hex aimed at: its front hex, or (area shots only) a two-hex target's rear
+        /// hex (BAT-RNG-004).
         at: Hex,
     },
     /// Postpone the turn to the wait phase (BAT-TRN-002).
@@ -287,7 +288,7 @@ fn plan<'r>(
             }
             let fp = state.at(target).footprint(field);
             // rule: BAT-RNG-004
-            let aimable = at == fp.head || (mover.has(StackTraits::AREA_SHOT) && fp.covers(at));
+            let aimable = at == fp.front() || (mover.has(StackTraits::AREA_SHOT) && fp.covers(at));
             if !aimable {
                 return Err(CommandError::NotOnTarget);
             }
@@ -357,7 +358,7 @@ fn plan_tactics(
             if !field.is_standable(to) {
                 return Err(CommandError::InvalidHex);
             }
-            if !phase.contains(field, to) {
+            if !phase.holds(field, mover, to) {
                 return Err(CommandError::OutsideZone);
             }
             if !tactics::reach(state, field, id, mover).can_move_to(to) {

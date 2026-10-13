@@ -2178,19 +2178,19 @@ fn resisted<S: Sink>(s: StackId, sink: &mut S) {
 }
 
 /// A stack's centre on the original's battle screen (BAT-MAG-006): hexes 44 × 42 pixels, even
-/// rows shifted half a hex to the right, a two-hex stack's centre half a hex towards its tail.
-/// (The original also lifts each stack by half its sprite's height, which is not modelled,
-/// OPEN-QUESTIONS Q43.)
+/// rows shifted half a hex to the right, a two-hex stack's centre half a hex from its position
+/// towards its other hex. (The original also lifts each stack by half its sprite's height, which
+/// is not modelled, OPEN-QUESTIONS Q43.)
 fn screen_centre(state: &BattleState, field: Field, s: StackId) -> (i64, i64) {
     let stack = state.at(s);
     let (col, row) = field.coords(stack.hex);
     let shift = if row % 2 == 0 { 22 } else { 0 };
-    let tail = match (stack.is_two_hex(), stack.side) {
+    let other = match (stack.is_two_hex(), stack.side) {
         (false, _) => 0,
-        (true, BattleSide::Attacker) => -22,
-        (true, BattleSide::Defender) => 22,
+        (true, BattleSide::Attacker) => 22,
+        (true, BattleSide::Defender) => -22,
     };
-    (i64::from(44 * col + shift + tail), i64::from(42 * row))
+    (i64::from(44 * col + shift + other), i64::from(42 * row))
 }
 
 /// The next stack Chain Lightning jumps to from `from` (BAT-MAG-006): among the living stacks

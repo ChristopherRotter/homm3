@@ -18,8 +18,9 @@ use h3_kernel::{Rng, StreamId};
 
 /// Version of the replay model (bump when fields change meaning). 22: the header records the
 /// core ruleset's hash and the battle part's apart (`ruleset_hash`, `battle_ruleset_hash`; the
-/// content split, R01).
-pub const REPLAY_FORMAT_VERSION: u32 = 22;
+/// content split, R01). 23: a two-hex stack's moves and attack positions name its rear hex, its
+/// position as in the original (BAT-GEO-002).
+pub const REPLAY_FORMAT_VERSION: u32 = 23;
 
 /// Identity of everything a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]
