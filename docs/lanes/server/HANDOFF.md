@@ -60,4 +60,4 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-13 — M6 T3, peers, the fetch and `ListPeers`
 
-**PR open** (`E16-log.md`; `cross-lane`: a `shared:` first commit): peers, the fetch, `ListPeers`, wire 26. Check its mergeability.
+**#160 open** (`E16-log.md`; `cross-lane`: a `shared:` first commit): peers, the fetch, `ListPeers`, wire 26. Check its mergeability.
