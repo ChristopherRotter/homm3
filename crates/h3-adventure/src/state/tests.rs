@@ -523,7 +523,7 @@ fn each_broken_invariant_is_its_own_error() {
     // E08 T15), whatever their shapes; untyped twins and other types on the anchor are fine.
     let twins = |s: &mut AdventureSetup, second| {
         s.map.objects[1].object_type = Some(TOWER);
-        let mut twin = s.map.objects[1].clone();
+        let mut twin = s.map.objects[1];
         twin.blocked = mask(&[(1, 0)]);
         twin.visitable = mask(&[(1, 0)]);
         twin.object_type = second;
@@ -540,7 +540,7 @@ fn each_broken_invariant_is_its_own_error() {
     twins(&mut setup, Some(FIRE));
     build(&setup).unwrap();
     let mut setup = self::setup();
-    let untyped = setup.map.objects[1].clone();
+    let untyped = setup.map.objects[1];
     setup.map.objects.push(untyped);
     build(&setup).unwrap();
     assert_eq!(
