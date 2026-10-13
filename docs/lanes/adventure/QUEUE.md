@@ -4,12 +4,17 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint. T11a, T11b (ADV-Q10 answered, the ADRs amended), T12, T13 and T14 (each in two parts) are done; T14 waits for its checkpoint. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint. T11a, T11b (ADV-Q10 answered, the ADRs amended), T12, T13 and T14 (each in two parts) are done; T15 is split in two (the user, 2026-10-13), one pull request. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T15 — Visitable objects
+### E08 T15a — Observatories, Keymaster's tents, border guards
 
-- **Scope:** the Redwood Observatory and the Pillar of Fire (a reveal around the object), Keymaster's tents (a key per player and colour) with border guards (removed for everyone when a key holder accepts; the yes/no is a second offer if ADV-Q10's D-7 says so) and border gates (passable for such a player), the per-player object state in the observation.
-- **Depends on:** T13 (visits); T14 (the entered visit, `visit_built`; the guard's question is an offer, D-7). **Status:** waiting (T14's checkpoint).
+- **Scope:** the Redwood Observatory and the Pillar of Fire (entered; every visit reveals the disk of radius 20 around the visited tile for the visitor's owner, ADV-VIS-002), Keymaster's tents (entered; the colour's key for the owner, ADV-VIS-003), border guards (visited from a neighbour; with the colour's key a second offer without a price, D-7; accepted, the guard leaves the map for everyone; the answer checks that the offer still stands, ADR-0017 point 10; ADV-VIS-004), the keys in the observation and their events (`E08-design.md`), the inventory of state two players' commands can write (ADR-0017 point 7), the shipped maps' count of typed objects of one type on one anchor (inbox, T14 verify).
+- **Depends on:** T14. **Status:** in progress (`adventure/e08-t15`, 2026-10-13T07:12Z).
+
+### E08 T15b — Border gates
+
+- **Scope:** border gates (ADV-VIS-005): a key holder's heroes enter and cross the gate like a free tile (it does not end a move), others visit it from the neighbouring tile; the visit mode becomes per player in `visit_at`, `check_step` and the reachable-tiles query together (inbox, T14 review), the setup's refusal for a hero on a gate's tile, the benchmarks measured against the baselines.
+- **Depends on:** T15a (the keys). **Status:** in progress (`adventure/e08-t15`, after T15a).
 
 ### E08 T16 — Closure of increment 2
 

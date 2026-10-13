@@ -1245,3 +1245,16 @@ end to end with the env's action encoding v2 and the replay format v2.
   lay out one typed object per kind and anchor (the shrunk case kept as a regression).
 - **The full local verify** (CI out of minutes) with `--with-original-data` passed before the
   review's fixes; again on the branch's head before the pull request (its result there).
+
+### Checkpoint after T14a + T14b and T15a + T15b: observatories, keys, guards and gates (2026-10-13, `adventure/e08-t15`)
+
+The user merged #142, #143 and #145 (the easy golden replay's ruleset hash after R01b) and
+accepted all of T14's calls: one object per tile, the last live one in map order, for both modes,
+and setup's refusal of a hero on a neighbour-visited object's tile; tile 0 for the entries without
+a tile; v1 replays refused, v2 needing the difficulty; no `CannotPay` at the answer; no event for a
+kind already bought; one typed object per type and anchor in the play maps. The round: T15 in two
+parts on one pull request, **T15a** the observatories, Keymaster's tents and border guards with the
+second offer, **T15b** the border gates alone (the only change to movement and the query, so its
+benchmark check is its own). The merged branches `adventure/e08-t14` and
+`adventure/e08-easy-replay-hash` stay on GitHub (the user). CI still cannot start (GitHub: failed
+payments or the spending limit), so the full local verify stands in again.
