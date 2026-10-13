@@ -4,10 +4,11 @@ Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 acc
 crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 done
 2026-10-11 (T1 to T5e), its checkpoint passed the same day (SRV-Q16); M3 done 2026-10-12 (T1 to
 T5), its checkpoint passed the same day (SRV-Q18); M4 refined 2026-10-12 (SRV-Q19), done
-2026-10-12 (T1 to T7 with T5b and SRV-Q20), its checkpoint passed the same day (SRV-Q22): T8, then
-M6's refinement). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+2026-10-12 (T1 to T7 with T5b and SRV-Q20), its checkpoint passed the same day (SRV-Q22), T8 after
+it; M6 refined 2026-10-13 (SRV-Q23)). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); [ADR-0019](../adr/0019-identity-and-ladders.md) (identity and ladders, accepted at the M3
-refinement, its ladder points decided at M4's); ADR draft `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
+refinement, its ladder points decided at M4's); [ADR-0021](../adr/0021-server-discovery.md)
+(discovery, accepted at the M6 refinement). Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
 
 **How the drafts become decisions.** Each ADR draft stays "Proposed" until the milestone that
@@ -199,6 +200,17 @@ question):
   contact, as SSH does; browsing reveals the player's address to no unknown server, because
   known servers relay the cards; spam is bounded by vouching. What it does not give: a
   judgement of a server's quality, which stays the player's.
+- *Decided at the M6 refinement* (SRV-Q23, ADR-0021). (Peering) Internet servers sit behind a
+  TLS proxy, so a server's fetch of its peers' cards needs a TLS client; options: a plain `ws://`
+  peering address (cards are signed, so no TLS is needed for integrity, but every operator
+  exposes a second, unencrypted endpoint), a TLS client, LAN peers only. **User: a TLS client
+  now**; `ring` (`Apache-2.0 AND ISC`) and `aws-lc-sys` are not GPLv2-compatible, so **`rustls`
+  with the pure-Rust `graviola` backend and the OS roots** (13 crates, `cargo deny` passes with
+  today's `deny.toml`; x86_64 and aarch64 with crypto extensions only). (mDNS) **User: later**,
+  with the client lane's server browser. (Lists) A list of signed cards expires with its cards
+  (a day); **user: a list names servers by key and address**, signed by the list's key, and a
+  server fetches the listed servers' cards as it fetches its peers'. (The ADR) **User: accepted
+  as ADR-0021 in the lane's pull request, a `shared:` commit, label `cross-lane`.**
 
 ## Milestones
 
@@ -233,11 +245,13 @@ M0 starts now, while E04b finishes (SRV-Q7).
   system commands for disconnects and turn timers, sequence numbers against duplicates,
   concurrent battles); `h3-game`'s surface as the adventure lane's game-orchestration draft gives it (points 1, 2, 6; SRV-Q6); long journals and the case for
   state saves measured.
-- **M6 Discovery:** the server keypair and the signed welcome (can come with M3, same crate),
-  the server card and `Describe`, peers in the configuration, the peer crawl with its bounds,
-  `ListPeers`, signed lists from files, mDNS on the LAN as a feature; a client-side server
-  browser is the client lane's (the record of what it needs goes to CLT).
-- **Later:** native TLS, agent seats with the sim encodings for an external policy process,
+- **M6 Discovery** (refined 2026-10-13, SRV-Q23, ADR-0021): the server keypair and the signed
+  welcome, the server card and `Describe`, peers in the configuration, the peer fetch with its TLS
+  client and bounds, `ListPeers` with the vouching chain, signed lists of servers from files; a
+  client-side server browser is the client lane's (the record of what it needs goes to CLT);
+  mDNS later, with it.
+- **Later:** native TLS (the TLS client's crates serve it too), mDNS on the LAN (with the
+  client lane's server browser), agent seats with the sim encodings for an external policy process,
   content delivery, an embedded store if needed, state saves across upgrades once ADR-0004's
   save format exists, address resolution by key through a DHT if vouching no longer scales.
 
@@ -394,6 +408,40 @@ ranked game per player per ladder, bots exempt; no turn timer in M4 (a game rule
   with its journal kept keeps its players until the next start; a start re-runs the journals one
   by one by game id; and from the inbox, a drain or a stop a full inbox missed, a rename racing a
   re-key.
+
+## M6 tasks
+
+Cut at the M6 refinement (2026-10-13, SRV-Q23); the tasks in full: `docs/lanes/server/QUEUE.md`,
+the working detail: `E16-design.md` §12. ADR-0021: a server key and a signed welcome; a signed
+card; peers by key and address, fetched over TLS (`rustls` with `graviola`), never an address
+learnt from a card; the vouching chain checkable from the cards; lists of servers signed by a
+list's key; mDNS later.
+
+- **T1 The server key and the signed welcome:** `<data>/server.key`, the hello's nonce and
+  address, `[server] addresses`, the welcome's key and signature; wire 22.
+- **T2 The card and `Describe`:** `ServerCard` and `SignedCard`, the card's configuration, the
+  wall clock, `h3-server card`; wire 23.
+- **T3 Peers, the fetch and `ListPeers`:** `[[peer]]`, the TLS client (a `shared:` commit: the
+  workspace's entries), the fetch's bounds, the cache, `ListPeers`; wire 24.
+- **T4 Beyond the peers:** the peers' own cards to `depth`, each link checked, the `cards` bound.
+- **T5 Lists:** `<data>/lists/`, the listed servers fetched, `Lists`, the list tools; wire 25.
+- **T6 Closure:** `06-security.md`'s discovery and the client lane's inbox (`cross-lane`), the
+  operator's notes, the exit criteria shown, the reviewer agent, the user's checkpoint.
+
+## Exit criteria (M6)
+
+The full `cargo xtask verify` green (in CI, or the full local verify while CI cannot run) with
+`h3-protocol` under the 100 % gate, and shown in tests over loopback: a client verifies the
+welcome's signature at each of the server's addresses and refuses a changed key at an address it
+pinned; the key survives a restart, a key file that does not parse stops the start; a card
+verifies, and a tampered, expired or foreign card fails; three servers A → B → C: A serves B
+(vouched by A) and C (via B), each link checkable from the cards, and A never dials C; a card a
+peer serves outside its own vouching, or forged, is dropped and logged; the depth and count
+bounds hold; a peer fetched at `wss://` (a test certificate and a test root); a list's servers
+appear marked with its key, an expired or forged list is skipped. And: `06-security.md` carries
+discovery; the client lane's inbox has what a server browser needs; the operator's notes carry the
+key, peers, lists and the TLS client's platforms; a fresh reviewer agent's major findings are
+fixed; the lane HANDOFF, the epic log and `QUEUE.md` are current.
 
 ## Exit criteria (M4)
 

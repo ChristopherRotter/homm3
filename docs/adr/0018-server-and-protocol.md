@@ -23,7 +23,8 @@ from inputs to outputs, with sockets, clock and files outside.
    `alloc`, `check-arch`, the 100 % gate), so the decoder at the trust boundary is panic-free.
    `h3-server` is the shell: sockets, clock, OS randomness, files, configuration, bot seats.
 2. **Transport: WebSocket** (`tokio-tungstenite`), one connection per client, one message per text
-   frame. No HTTP API (lobby and ladder are messages too); no TLS in the server (a reverse proxy).
+   frame. No HTTP API (lobby and ladder are messages too); no TLS on the serving side (a reverse
+   proxy); outbound, the peer fetch's TLS client (ADR-0021 point 4, amended at E16 M6's refinement).
 3. **`tokio` for the connections, an OS thread per game** (SRV-Q5). A task per connection waits on
    socket, outbound queue and idle timer; each game's engine runs single-threaded on its own OS
    thread, never on the runtime's workers; channels are bounded, a connection whose outbound queue
