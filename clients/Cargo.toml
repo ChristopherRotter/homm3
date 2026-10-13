@@ -20,6 +20,13 @@ h3-render = { path = "crates/h3-render" }
 # Engine crates (public crates only, ADR-0020 point 1). A change the client needs in one of them
 # goes through that crate's lane.
 h3-formats = { path = "../crates/h3-formats" }
+# The record's types and the sans-I/O session (E17 M1 T7): the viewer's input (ADR-0020 point 8).
+h3-protocol = { path = "../crates/h3-protocol" }
+# The headless renderer's scenario adapter only (E17 M1 T7, *provisional*, the M1 review list): a
+# scenario file and its packs become a battle setup, as `h3 run` reads them; never in a pure crate.
+h3-battle = { path = "../crates/h3-battle" }
+h3-kernel = { path = "../crates/h3-kernel" }
+h3-pack-battle = { path = "../crates/h3-pack-battle" }
 # Light dependencies (the engine's versions and features).
 miniz_oxide = { version = "0.8", default-features = false, features = ["with-alloc"] }
 # The asset tables' parser (E17 M1 T4): serde is the engine's (without std); toml is the engine's

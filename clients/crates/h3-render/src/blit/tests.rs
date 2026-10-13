@@ -332,4 +332,10 @@ fn images_are_drawn_opaque_and_clipped() {
     });
     draw_image(&mut s, &rgb, 0, -1);
     assert_eq!(s.pixels(), [0x07E0, 0xF800, 0]);
+    // Keyed: an 8-bit image's index 0 leaves the screen as it was; a 24-bit one is opaque.
+    let mut s = screen(3, 1);
+    draw_image_keyed(&mut s, &indexed, 1, 0);
+    assert_eq!(s.pixels(), [WHITE, 0xF800, WHITE]);
+    draw_image_keyed(&mut s, &rgb, 2, -1);
+    assert_eq!(s.pixels(), [WHITE, 0xF800, 0x07E0]);
 }
