@@ -58,6 +58,7 @@ name = "h3-render"
 version = "0.1.0"
 dependencies = [
  "h3-assets",
+ "miniz_oxide",
 ]
 
 [[package]]

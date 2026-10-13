@@ -7,7 +7,9 @@ public crates and, later, through the server's protocol.
 **State:** E17 M0 built (2026-10-12): the workspace, its gates (`scripts/check.sh`, the CI job
 `.github/workflows/clients.yml`) and the real-asset gate. M1 T2 + T3 (2026-10-12): the decoders
 for palettes, PCX, DEF and MSK (`h3-assets`); the gate decodes every one of them in the user's
-archives (findings: `docs/epics/E17-design.md`). Decisions: ADR-0020
+archives (findings: `docs/epics/E17-design.md`). M1 T1 + T6 (2026-10-12): the code reading of
+the executable's drawing (design §3) and the compositor (`h3-render`) that follows it; `h3-view
+sprite` draws a DEF's group over an image into a PNG. Decisions: ADR-0020
 and the epic file `docs/epics/E17-clients.md`; tasks in `docs/lanes/client/QUEUE.md`.
 
 ## Layout
@@ -28,13 +30,17 @@ search the parent directories).
   not), prints the entries by extension and the times, and writes every entry with its verdict to
   `clients/out/gate/entries.tsv` and the inventory (findings, duplicates, names nothing mentions)
   to `clients/out/gate/report.md`. A debug build takes about ten times as long.
+- **A look at the drawers:** `cargo run --release -p h3-view -- sprite CPKMAN.DEF --group 2
+  --background CmBkGrMt.pcx [--mirror]` draws every frame of one group of a DEF side by side over
+  a PCX, as the battle draws a stack, into `clients/out/sprite/` (the base archives searched
+  first, as the game does).
 
 | Path | What |
 |---|---|
 | `clients/Cargo.toml`, `clients/Cargo.lock`, `clients/deny.toml` | the client workspace (`deny.toml`: the engine's policy, kept identical by `check.sh` until M2) |
 | `clients/scripts/check.sh` | the client's gates (local and CI) |
 | `clients/crates/h3-assets` | decoders: palettes, PCX, DEF, MSK (done), fonts, later sound and video; encoders for synthetic test assets (`build`); the gate's checks (`check`, `survey`); reads LOD archives through `crates/h3-formats` (a path dependency into the engine workspace) |
-| `clients/crates/h3-render` | the software compositor: indexed sprites into a frame in the original's screen format; PNG output |
+| `clients/crates/h3-render` | the software compositor: the screen in a 16-bit pixel format, palettes truncated into it, the executable's frame drawers (shadows, outline and flag colours, mirroring, clipping), opaque images, PNG bytes |
 | `clients/crates/h3-view` | the scene model (messages to what is on screen at a time; the library) and its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the headless renderer, later the window |
 | `clients/assets/{base,ab,sod}.toml` | the asset tables per expansion: content keys to archive entry names, animation groups, offsets, asset fixes; identifiers and numbers only |
 | `clients/out/` | local output (renders, reports); gitignored |

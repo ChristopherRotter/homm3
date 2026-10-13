@@ -538,7 +538,7 @@ fn report(
 }
 
 /// The entry of `dir` named `name`, ignoring ASCII case (installations differ in case).
-fn find_ci(dir: &Path, name: &str) -> io::Result<PathBuf> {
+pub fn find_ci(dir: &Path, name: &str) -> io::Result<PathBuf> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
         if entry
@@ -623,6 +623,7 @@ mod tests {
             width: 2,
             height: 1,
             pixels: vec![1, 2],
+            runs: vec![false, false],
             short_header: false,
         };
         let def = build::def(

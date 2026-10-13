@@ -1369,3 +1369,27 @@ how and why the work went.
 - **The checkpoint**: the user's, SRV-Q22: passed 2026-10-12; the review list as built; the
   pause's hold across a restart a small task first (T8); the other two review items later; M6's
   refinement next (M5 waits for E08's increment 3).
+
+### The logs on Windows (2026-10-12, after M4's checkpoint)
+
+- **The report** (the battle lane's handover, the user's `verify --with-original-data` on Windows):
+  `h3-server` failed clippy (`unused variable: new` in `journal::open_log`, read only under
+  `cfg(unix)`) and two tests (`rated_games_are_read_back_bit_for_bit`,
+  `the_accounts_are_read_back_and_a_torn_line_is_dropped`). CI runs on Linux only.
+- **The cause**: `open_log` opened the player log and the ladders' results logs with
+  `append(true)`, which on Windows grants no write-data access: cutting a torn last line
+  (`set_len`, also `append_line`'s cut after a failed write) is refused. The game journals were
+  not affected (`Writer::reopen` opens with `write(true)`).
+- **The fix**: the logs open with `write(true)` (no append mode) and write at their end: `open_log`
+  seeks to it after the cut, `append_line` seeks to it before each line and takes the length
+  before it from there (one writer per log: the data directory's lock and the log's own). `new`
+  exists only on Unix.
+- **Shown in the sandbox**: `rustup target add x86_64-pc-windows-gnu` works here; `cargo clippy
+  --target x86_64-pc-windows-gnu --workspace --all-targets -- -D warnings` reproduced the clippy
+  error on `master` and is clean with the fix. The tests are not: under Wine (`wine64`,
+  `gcc-mingw-w64-x86-64`) the Windows build's tests fail on `master` and with the fix alike, all
+  at the same step, a test's `remove_dir_all` while its log is still open (Wine lacks the POSIX
+  delete Windows 10 gives Rust; the user's Windows run passed those), and Wine does not refuse a
+  cut through an append handle either: it cannot show the fix. The user's Windows verify confirms
+  it (the cause as Rust's Windows `OpenOptions` gives it: append mode drops `FILE_WRITE_DATA`,
+  which `set_len` needs).

@@ -182,15 +182,20 @@ pub(crate) fn create_dir(dir: &Path) -> io::Result<()> {
 /// Opens the log at `path` for appending, or creates it, its directory with it (owner-only, the
 /// directory synced for a new file), and reads it back: its complete lines, a last line a crash cut
 /// short cut from the file. For the player log and the ladders' results logs (E16 M3 T2a, M4 T1).
+///
+/// Opened for writing, not in append mode: Windows refuses to cut a file through a handle opened
+/// to append (no write-data access), and the log is cut here and in [`append_line`]. One writer
+/// per log (the data directory's lock, the log's own lock) appends by writing at its end.
 pub(crate) fn open_log(path: &Path) -> io::Result<(File, String)> {
     let dir = path.parent().unwrap_or(Path::new("."));
     create_dir(dir)?;
+    #[cfg(unix)]
     let new = !path.exists();
     let mut options = OpenOptions::new();
-    options.read(true).append(true).create(true);
+    options.read(true).write(true).create(true).truncate(false);
     #[cfg(unix)]
     std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-    let file = options.open(path)?;
+    let mut file = options.open(path)?;
     #[cfg(unix)]
     if new {
         File::open(dir).and_then(|d| d.sync_all())?;
@@ -202,6 +207,7 @@ pub(crate) fn open_log(path: &Path) -> io::Result<(File, String)> {
         file.sync_all()?;
         text.truncate(complete);
     }
+    io::Seek::seek(&mut file, io::SeekFrom::End(0))?;
     Ok((file, text))
 }
 
@@ -212,7 +218,8 @@ pub(crate) fn append_line(file: &mut Option<File>, line: &str) -> io::Result<()>
     let log = file
         .as_mut()
         .ok_or_else(|| io::Error::other("a write failed before"))?;
-    let before = log.metadata()?.len();
+    // At the end, whatever the handle's position: its length before the line.
+    let before = io::Seek::seek(log, io::SeekFrom::End(0))?;
     let written = log
         .write_all(format!("{line}\n").as_bytes())
         .and_then(|()| log.sync_data());
