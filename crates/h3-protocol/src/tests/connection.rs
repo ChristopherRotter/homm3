@@ -363,14 +363,15 @@ fn ones_own_standing_needs_a_login_a_leaderboard_does_not() {
     }
 }
 
-/// E16 M6 T2, T3: the server's card, and the cards it relays, are the host's to answer after the
-/// hello, without a login on any server; before the hello, `Describe` and `ListPeers` close the
-/// connection as any message does.
+/// E16 M6 T2, T3, T5: the server's card, the cards it relays and its lists of servers are the
+/// host's to answer after the hello, without a login on any server; before the hello, `Describe`,
+/// `ListPeers` and `Lists` close the connection as any message does.
 #[test]
 fn the_cards_need_the_hello_not_a_login() {
     for asked in [
         ClientMessage::Describe { seq: 1 },
         ClientMessage::ListPeers { seq: 2, from: 0 },
+        ClientMessage::Lists { seq: 3 },
     ] {
         let mut c = Connection::new(DEFAULT_MAX_CLIENT_FRAME, CHALLENGE, false);
         assert_eq!(receive(&mut c, &asked), goodbye(GoodbyeReason::Protocol));

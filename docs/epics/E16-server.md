@@ -430,7 +430,9 @@ list's key; mDNS later.
   `[discovery] depth` hops and at most `cards`, each with its `via` checked against the cards at
   the fetch and again against what the server serves; the test client checks each chain; no wire
   change.
-- **T5 Lists:** `<data>/lists/`, the listed servers fetched, `Lists`, the list tools; a wire bump.
+- **T5 Lists** (done 2026-10-13; `E16-log.md`): `ServerList`, `SignedList` and their bounds,
+  `<data>/lists/` read each round, the listed servers fetched and relayed marked with the list's
+  key, `Lists`/`ListsAre`, `h3-server list-key` and `sign-list`; wire 27.
 - **T6 Closure:** `06-security.md`'s discovery and the client lane's inbox (`cross-lane`), the
   operator's notes, the exit criteria shown, the reviewer agent, the user's checkpoint.
 
@@ -482,6 +484,14 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   serves (a link's card may come from a shorter chain); a card a peer relays for a list not
   relayed on (until T5); a card served until the first card of its chain expires; memory up to
   `[[peer]]` × `cards` cards; one log line per dropped card.
+- T5: `Lists { seq }` → `ListsAre { seq, lists }` (all at once, at most 16); a list's bounds (32
+  KiB of text, 128 servers, no key twice, a name of 64 bytes), `list::names` (the list names the
+  card's key at one of the card's addresses); one reader behind cards and lists
+  (`card::read_signed`, the error `CardError`); `<data>/lists/*.json` in their names' order, a
+  second list of one key skipped; the listed servers after the peers' own cards and before the
+  peers' relays, each once, never a peer, within `cards` less the peers, at depth 1; a card a peer
+  relays for its list not relayed on; the TOML list (`name`, `valid_days` 1 to 366, `[[server]]`);
+  `list-key` reading an existing key file; the key file's error text now "not a key" for both.
 
 ## Exit criteria (M4)
 

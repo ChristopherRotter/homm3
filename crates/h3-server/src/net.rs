@@ -32,8 +32,9 @@
 //!
 //! The server's card (E16 M6 T2): a connection's `Describe` is answered off its task, with the
 //! card signed again once the last one is a minute old ([`crate::card`]); the card counts the open
-//! connections. `ListPeers` (E16 M6 T3) is answered on the task, from the cards the server fetched
-//! of its peers ([`crate::peers`]).
+//! connections. `ListPeers` (E16 M6 T3) and `Lists` (T5) are answered on the task, from the cards
+//! the server fetched of its peers and of the servers its lists name, and from those lists
+//! ([`crate::peers`]).
 //!
 //! Accounts in games (E16 M3 T3): a connection opens a game with the account it is logged in as.
 //! The server knows each account's logged-in connections and their keys: once one re-keyed the
@@ -446,6 +447,7 @@ pub(crate) async fn serve<T: Transport>(
                     Received::Game(ClientMessage::ListPeers { seq, from }) => {
                         relayed(&server, seq, from)
                     }
+                    Received::Game(ClientMessage::Lists { seq }) => lists(&server, seq),
                     Received::Game(message) => match link.route(message, gate.account()).await {
                         Routed::Reply(frame) => frame,
                         Routed::Passed => continue,
@@ -617,6 +619,13 @@ fn relayed(server: &Service, seq: u32, from: u32) -> Frame {
         from,
         card::wall_ms(),
     )))
+}
+
+/// The answer to `Lists` (E16 M6 T5): the lists of servers the server serves that hold now.
+fn lists(server: &Service, seq: u32) -> Frame {
+    text(codec::encode_text(
+        &server.peers.lists(seq, card::wall_ms()),
+    ))
 }
 
 /// What became of a message for the lobby or a game.
@@ -954,7 +963,8 @@ fn unbound(message: &ClientMessage) -> Frame {
         | ClientMessage::ProposePause { seq, .. }
         | ClientMessage::AnswerPause { seq, .. }
         | ClientMessage::Describe { seq }
-        | ClientMessage::ListPeers { seq, .. } => *seq,
+        | ClientMessage::ListPeers { seq, .. }
+        | ClientMessage::Lists { seq } => *seq,
         ClientMessage::Hello { .. } | ClientMessage::Ping { .. } | ClientMessage::Join { .. } => 0,
     };
     Frame {
