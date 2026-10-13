@@ -724,6 +724,16 @@ fn maps_from_the_experiment_writer_read_back() {
                 spells: None,
                 primary: None,
             }),
+            // A random mercury pile (E08 T16b: the piles of batch 2).
+            w::MapObject::Pile(w::Pile {
+                tile: (15, 20),
+                template: w::ObjectTemplate::from_objects_txt(
+                    "AVTmerc0.def 011111111111111111111111111111111111111111111111 \
+                     100000000000000000000000000000000000000000000000 111111111 000000001 79 1 5 0",
+                )
+                .unwrap(),
+                amount: 0,
+            }),
         ],
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
@@ -770,8 +780,9 @@ fn maps_from_the_experiment_writer_read_back() {
         assert_eq!((t.road, t.road_dir, t.flags), road, "road of ({x}, {y})");
         assert_eq!((t.river, t.river_dir), (0, 0));
     }
-    // The heroes (written one column right of their tiles, docs/formats/h3m.md) and the monster.
-    assert_eq!(m.objects.len(), 3);
+    // The heroes (written one column right of their tiles, docs/formats/h3m.md), the monster and
+    // the pile.
+    assert_eq!(m.objects.len(), 4);
     let hero_template = &m.templates[m.objects[0].template as usize];
     assert_eq!((hero_template.class, hero_template.subclass), (34, 0));
     assert_eq!(m.objects[0].pos, Pos { x: 4, y: 4, z: 0 });
@@ -807,7 +818,30 @@ fn maps_from_the_experiment_writer_read_back() {
     assert_eq!((h.experience, h.secondary_skills.as_ref()), (None, None));
     assert_eq!((h.army.as_ref(), h.artifacts.as_ref()), (None, None));
     assert_eq!((h.spells.as_ref(), h.primary_skills), (None, None));
+    let pile_template = &m.templates[m.objects[3].template as usize];
+    assert_eq!((pile_template.class, pile_template.subclass), (79, 1));
+    assert_eq!(m.objects[3].pos, Pos { x: 15, y: 20, z: 0 });
+    assert_eq!(
+        m.objects[3].body,
+        Body::Resource {
+            message: None,
+            amount: 0
+        }
+    );
     assert!(m.events.is_empty());
+    // The import types the pile as random mercury: no fixed amount, drawn when the game starts.
+    // Heroes leave the objects for the setup's heroes: the monster, then the pile.
+    let setup = crate::import(&m, &import::SOD).unwrap();
+    assert_eq!(setup.map.objects.len(), 2);
+    let pile = &setup.map.objects[1];
+    assert_eq!(
+        pile.object_type,
+        import::SOD
+            .adventure()
+            .object_type_by_key("base:pile_mercury")
+    );
+    assert!(pile.object_type.is_some());
+    assert_eq!(pile.amount, None);
 }
 
 // --- properties ---

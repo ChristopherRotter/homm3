@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*reach_queries*"
-instructions = 566626021
+instructions = 551030247
 threshold_percent = 2

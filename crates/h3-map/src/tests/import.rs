@@ -25,7 +25,7 @@ fn rules(packs: usize) -> GameRuleset {
     GameRuleset::new(Arc::new(core), Arc::new(part)).unwrap()
 }
 
-static SOD: LazyLock<GameRuleset> = LazyLock::new(|| rules(3));
+pub(super) static SOD: LazyLock<GameRuleset> = LazyLock::new(|| rules(3));
 
 /// A template mask in the file's encoding marking these `(column, row)` tiles of the anchor:
 /// bit `j` of byte `i` is the tile `7 − j` columns left of and `5 − i` rows above it.

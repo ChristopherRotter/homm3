@@ -64,8 +64,10 @@ pub(super) const BLOCKER_CLASS: u32 = 124;
 /// contents no viewer sees, as class, subclass and a resource body's amount: a wood pile of a
 /// drawn amount, 300 gold, a campfire, a Redwood Observatory, the red Keymaster's tent, (E08
 /// T14a) a land Cartographer, entered and not from above, (T15a) the red border guard and (T15b)
-/// the red border gate. No random resource: its drawn pile type shows.
-pub(super) const KINDS: [(u32, u32, Option<u32>); 9] = [
+/// the red border gate. No random resource: its drawn pile type shows. The kinds after the first
+/// [`PLAYED`] only the committed maps lay out (E08 T16a, `fixtures.rs`): the other piles of a
+/// drawn amount, a random resource, the Pillar of Fire, and the green tent, guard and gate.
+pub(super) const KINDS: [(u32, u32, Option<u32>); 20] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -75,10 +77,24 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 9] = [
     (13, 1, None),
     (9, 2, None),
     (212, 2, None),
+    (79, 1, Some(0)),
+    (79, 2, Some(0)),
+    (79, 3, Some(0)),
+    (79, 4, Some(0)),
+    (79, 5, Some(0)),
+    (79, 6, Some(0)),
+    (76, 0, Some(0)),
+    (60, 0, None),
+    (10, 1, None),
+    (9, 1, None),
+    (212, 1, None),
 ];
+/// The kinds the strategy's plans draw: the first nine.
+const PLAYED: usize = 9;
 /// The objects a plan may lay out: object `i` has the shape `BLOCKERS[i % 3]` and the kind
-/// `KINDS[i / 3]`, and the template `1 + i` (the blockers keep templates 1 to 3).
-pub(super) const OBJECTS: usize = BLOCKERS.len() * KINDS.len();
+/// `KINDS[i / 3]`, and the template `1 + i` (the blockers keep templates 1 to 3). The strategy
+/// draws the first `OBJECTS`, of the [`PLAYED`] kinds.
+pub(super) const OBJECTS: usize = BLOCKERS.len() * PLAYED;
 /// The land Cartographers of a shape with a visitable tile (E08 T14b): a plan draws them more
 /// often, so that random play enters charts.
 const CHARTS: [usize; 2] = [BLOCKERS.len() * 6 + 1, BLOCKERS.len() * 6 + 2];
@@ -281,8 +297,9 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             tile.terrain = 2;
         }
     }
-    // The typed objects laid out, by kind and anchor.
-    let mut typed: Vec<(usize, Spot)> = Vec::new();
+    // The typed objects laid out, by class and subclass (a kind's type; two kinds share the gold
+    // pile's, E08 T16a) and anchor.
+    let mut typed: Vec<((u32, u32), Spot)> = Vec::new();
     for &((x, y, z), shape) in &plan.blockers {
         let (ax, ay, az) = (x % side, y % side, z % levels);
         let (blocked, visitable) = BLOCKERS[shape % BLOCKERS.len()];
@@ -298,10 +315,11 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         // not say which of the two left the view (the T13b view property failed on two campfires
         // of other shapes on one anchor). The engine removes the visited one either way.
         let kind = shape / BLOCKERS.len();
-        let twin = kind > 0 && typed.contains(&(kind, (ax, ay, az)));
+        let (class, subclass, _) = KINDS[kind];
+        let twin = kind > 0 && typed.contains(&((class, subclass), (ax, ay, az)));
         if !twin && !heroes.iter().any(covers) {
             if kind > 0 {
-                typed.push((kind, (ax, ay, az)));
+                typed.push(((class, subclass), (ax, ay, az)));
             }
             let template = 1 + u32::try_from(shape).unwrap();
             let body = KINDS[shape / BLOCKERS.len()]
@@ -870,13 +888,45 @@ fn check_unlisted(
 /// battle, recruitment or pickup; E08 T10b's audit), so an accepted command leaves every hero's
 /// army as it was, the actor's own included. A treasury changes only by a visit's gains (E08
 /// T13b, ADR-0017's consequences): each player's by exactly the gains it was told, which come
-/// with an object leaving the map; and since T14b by an accepted offer's price, which its owner
-/// is told it paid, exactly the price of the decision it answered.
+/// with an object leaving the map, and (E08 T16a's audit) are exactly the contents drawn for the
+/// objects that left, in their order (ADV-PIK-001 to -003; a passed guard has none); and since
+/// T14b by an accepted offer's price, which its owner is told it paid, exactly the price of the
+/// decision it answered.
 fn check_conservation(
     before: &GameState,
     after: &GameState,
     events: &[GameEvent],
 ) -> Result<(), TestCaseError> {
+    let (map, adventure) = (before.adventure().map(), after.adventure());
+    let mut contents = Vec::new();
+    for event in events {
+        if let GameEvent::Adventure(AdventureEvent {
+            kind:
+                AdventureEventKind::ObjectRemoved {
+                    object_type,
+                    anchor,
+                },
+            ..
+        }) = *event
+        {
+            let left = map.objects().iter().enumerate().filter(|&(i, o)| {
+                (o.object_type, o.anchor) == (Some(object_type), anchor)
+                    && !before.adventure().is_removed(i)
+                    && adventure.is_removed(i)
+            });
+            contents.extend(left.flat_map(|(_, o)| o.contents.iter().copied()));
+        }
+    }
+    let gains: Vec<(ResourceId, u32)> = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::ResourceGained {
+                resource, amount, ..
+            } => Some((resource, amount)),
+            _ => None,
+        })
+        .collect();
+    prop_assert_eq!(&gains, &contents);
     let removed = events.iter().any(|e| {
         matches!(
             e,

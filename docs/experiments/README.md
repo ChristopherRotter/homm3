@@ -17,6 +17,15 @@ Complete 4.0**; a rule settled here is `observation`-sourced with that version.
    The map goes into the gitignored `experiments/out/`; the **results template** is committed.
    `--list heroes|creatures|skills|artifacts|spells` prints the names a spec may use (heroes with
    class and specialty).
+   **The stamp** (E08 decision 18, from batch 2): 8 hex digits of the CRC-32 of the spec's text,
+   Windows line endings made Unix ones (a Windows and a Linux checkout agree). The map's
+   description starts with `Stamp <hex>.` (the scenario list shows it) and the template's top
+   says `**Stamp `<hex>`.**`; the user compares them before playing. A mismatch means the map
+   is not from the template's build (batch 1a's stale map, T10c): compile again and copy the map
+   in the same step. An agent checks a map in hand by reading its description back (`h3-map`) or
+   by the stamp of the committed spec (`h3_experiment::stamp`). The stamp covers the spec's text
+   only, not the compiler or the installation's tables: after a compiler change, compile every
+   staged batch again before the user plays it.
 2. The user copies the map into the game's `Maps` folder, plays it as the template says and fills
    in the template in the repo.
 3. The agent evaluates the filled template against the spec's predictions and records the result
@@ -34,6 +43,13 @@ Complete 4.0**; a rule settled here is `observation`-sourced with that version.
   `[[map.road]]` (E08 T10a): `kind` (dirt, gravel, cobblestone), `row`, `from` and `to` (the
   west and east end's columns): a straight road of at least two tiles with the pictures the
   game's own maps give such a road.
+  `[[map.pile]]` (E08 T16b): `resource` (wood, mercury, ore, sulfur, crystal, gems, gold),
+  `row`, `from` and `to` (columns, inclusive; equal for one pile) and `amount` (as the map stores
+  it: gold in hundreds, at most 524 287 (`0x7FFFF`, refused above); 0, the default, is drawn when
+  the game starts): a resource pile on every tile of the row
+  from `from` to `to`, the template from `Objects.txt` (class 79). A pile is visited from a
+  neighbouring tile and the visit ends the move; the template does not list piles, the
+  encounters' procedures say where they are.
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `procedure`
   (steps), `record` (`field = "…"` for a value, `table = [columns]` + `rows`, or `labels` for rows whose
   first column is filled in), `predictions`
@@ -76,6 +92,7 @@ written into the spec.
 | 2f (`E04b-batch-2f`) | increment 17's opening-spell candidates and T8b's leftovers (BAT-Q27): when the defender's Armor of the Damned casts with its first stack blinded (AD; the code and the wiki against VCMI, BAT-Q23) and under the Orb of Inhibition (AO); BAT-Q24's learning after a won battle: a level-1 and a level-3 spell without Wisdom (EL), a spell book in the backpack (EB), Basic Wisdom as the control (EW); Power of the Dragon Father against its hero's Bless (DF), the Pendant of Second Sight against the Unicorns' Blind (PS), a hypnotized stack and its owner's Pendant of Life against Death Ripple (HP; BAT-MAG-063, 064, 068, 069) | **evaluated** (2026-10-11): every point as the engine and the code: the opening spells at the first stack that takes its turn and under the Orb; Eagle Eye's learning needs a worn book and Wisdom + 2 (BAT-Q24: the code, against VCMI; the message names the unlearned picks too); the Dragon Father, the Pendant (0 blinds in 41 attacks) and the controller's Pendant as predicted; `docs/epics/E04b-log.md` (batch 2f folded in) |
 | E08 1a (`E08-batch-1a`) | the adventure map's first batch (E08 T10a): when a day's movement points are set, two hot-seat battles that take a slow stack out of an army in the other player's turn, on day 1 and day 2, and a dismissed slow stack as their control (ADV-Q4, ADV-MOV-002); which tile prices a step off a road, on grass onto swamp and on swamp onto grass (ADV-Q3's D-2, ADV-MOV-003); the land table as a control (ADV-MOV-001). Paths are counted by their marks: scouts explore each walker's row beyond the farthest predicted step. Both specs were reviewed by a second agent before staging | **evaluated** (2026-10-12): as the code reading everywhere: points set at the owner's turn start on day 1 and day 2 (2000, not 1560; ADV-Q4 answered), off a road the tile left prices the step both ways (9 and 14 steps), the land table (15). The map played was a stale build without Q4c (the review's control); the user's statement stands in for it (no change of the day's points when a stack is dismissed or gained). `docs/epics/E08-log.md`, T10c |
 | E08 1b (`E08-batch-1b`) | the starting army of sixteen heroes placed with everything their hero type's own, over up to eight loads: the independence of the second and third slots' rolls and the war machine's chance (ADV-Q6, GAM-SET-001) | **evaluated** (2026-10-12): one load sufficed: a hero with its third stack but not its second (VCMI's single roll refuted) and a war-machine hero without its war machine (the wiki's 100 % refuted), as the code reading; ADV-Q6 answered; `docs/epics/E08-log.md`, T10c |
+| E08 2 (`E08-batch-2`) | the adventure map's second batch (E08 T16b), the first with the stamp: the points left after a step (D-3, ADV-Q3; ADV-MOV-006): sand onto a cobblestone road with 200 points (the survey's example: 50 left and one more road step by the reading and the wiki, 0 and no step by VCMI), onto a dirt road as the control (no step for any source; 0 left by the reading and VCMI, 50 by the wiki), 100 and 50 points left off a road (100 by the reading and the wiki, 0 by VCMI; 0, 0 and 50); the amounts of random resource piles (D-5, ADV-Q10; ADV-PIK-001): 16 wood and 16 mercury piles picked up one by one (a wood pile of 5 or a mercury pile of 6 refutes VCMI's ranges; neither in 32 refutes the reading, 0.054 % under it). Hot seat, one day: Red walks, Blue collects | **staged** (2026-10-13): stamp `59a4b43d`; checked through `h3-map` and the engine (`docs/epics/E08-log.md`, T16b); waiting for the user's play |
 
 **How the user plays** (2026-10-03): the Complete edition's `Heroes3.exe` started through a HotA
 installation's HD Mod launcher (HD Mod 5.6 R9). The HD Mod's always-on changes are crash fixes; its

@@ -86,7 +86,7 @@ byte, SoD's human bool, a computer bool, u16 first day, u16 interval, 16 unused 
 | 33, 219 garrison | u32 owner, army, from AB a removable bool, 8 unused |
 | 5 artifact, 65–69 random artifacts | message |
 | 93 spell scroll | message, u32 spell |
-| 76, 79 resource | message, u32 amount, 4 unused |
+| 76, 79 resource | message, u32 amount, 4 unused (the experiment writer's class-79 piles: no message, E08 T16b) |
 | 77, 98 town | from AB a u32 identifier; owner; name (bool + string); garrison (bool + army); formation; buildings (bool: built and forbidden, 6 bytes each; else a has-fort bool); from AB the required spells (9 bytes); the banned spells (9 bytes, every version); u32-counted town events (timed event, 6 building bytes, 7 × u16 creatures, 4 unused); SoD's alignment byte; 3 unused |
 | 53, 220 mine | subclass below 7: u32 owner; else (abandoned) 4 bytes of possible resources |
 | 17–20 dwellings, 42 lighthouse, 87 shipyard | u32 owner |
@@ -236,3 +236,10 @@ its terrain, edges included, which the game draws as a hard edge.
 the west end, 12 and 13 between, 15 at the east end with the road's mirror flag (bit 4 of the
 tile's flags, `0x10`); a north–south road uses 14 at its ends and 10 and 11 between. The
 experiment writer lays east–west roads only.
+
+**What the experiment writer writes** (`h3_map::writer`): one level, a base terrain with
+rectangles of other terrains, east–west roads, players without towns (Red and, with heroes of its
+own, Blue), heroes (their own fields or their hero type's), wandering monsters (class 54) and,
+since E08 T16b, resource piles (class 79 by resource, the template from `Objects.txt`, the body
+without a message: amount 0 is drawn when the game starts). `h3-map`'s read-back test reads each
+kind back and imports a random pile as its typed pile without an amount.

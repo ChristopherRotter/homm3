@@ -1,8 +1,8 @@
 //! Tests of the adventure environment on the committed generated map `fixtures/maps/e08-duel-36.h3m`
 //! (`h3-map`'s `tests/fixtures.rs` lays it out): the masks against the game's legal commands and
-//! moves, steps against `apply`, refused actions, forks, determinism, the day limit; with a land
-//! Cartographer beside each hero (built here: no fixture map has one), the open decisions
-//! ([`decisions`]).
+//! moves, steps against `apply`, refused actions, forks, determinism, the day limit (since E08
+//! T16a on the duel's typed objects too); with a land Cartographer beside each hero (built here on
+//! the nearest tile, also for the underground heroes: the duel's own two are farther), the open decisions ([`decisions`]).
 
 use std::sync::{Arc, LazyLock};
 
