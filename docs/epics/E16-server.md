@@ -420,8 +420,9 @@ list's key; mDNS later.
 - **T1 The server key and the signed welcome** (done 2026-10-13; `E16-log.md`): `<data>/server.key`,
   the hello's nonce and dialed address, `[server] addresses`, the welcome's key and signature, the
   test client's check and pin; wire 24.
-- **T2 The card and `Describe`:** `ServerCard` and `SignedCard`, the card's configuration, the
-  wall clock, `h3-server card`; a wire bump.
+- **T2 The card and `Describe`** (done 2026-10-13; `E16-log.md`): `ServerCard`, `SignedCard` and
+  their bounds, `Describe`/`Described`, `[server] name`, `description`, `operator`, `[discovery]`,
+  the wall clock, `h3-server card`; wire 25.
 - **T3 Peers, the fetch and `ListPeers`:** `[[peer]]`, the TLS client (a `shared:` commit: the
   workspace's entries), the fetch's bounds, the cache, `ListPeers`; a wire bump.
 - **T4 Beyond the peers:** the peers' own cards to `depth`, each link checked, the `cards` bound.
@@ -443,6 +444,24 @@ appear marked with its key, an expired or forged list is skipped. And: `06-secur
 discovery; the client lane's inbox has what a server browser needs; the operator's notes carry the
 key, peers, lists and the TLS client's platforms; a fresh reviewer agent's major findings are
 fixed; the lane HANDOFF, the epic log and `QUEUE.md` are current.
+
+## Review list for the M6 checkpoint
+
+Choices queued under the autonomy contract (details in `E16-log.md`):
+
+- T1: `<data>/server.key` (the seed as hex, mode 0600, never replaced); the hello's `nonce` and
+  `address`, the welcome's `key` and `signature` over `h3-welcome-v1`, the id and the challenge;
+  `[server] addresses`, the id per connection.
+- T2: `Describe`/`Described` after the hello, without a login; `ServerCard`'s fields (the counts
+  `Option`al, `null` under `[discovery] counts = false`) and `SignedCard` (the text as signed after
+  `h3-card-v1`); the bounds (8 KiB, 8 addresses, 64 peers, 16 rulesets of at most 16 packs, 16
+  ladders, names, ids and versions of 64 bytes, a description of 1024 and an operator contact of
+  256, no control characters but the description's `\n`, 10 minutes' clock skew); `[server] name`
+  (the server's id by default), `description`, `operator`, `[discovery] card_ms` (a day; 10 minutes
+  to 30 days) and `counts` (on); a card re-signed when asked and its last one a minute old; what
+  the counts count (the open connections, the games waiting or running, each ladder's current
+  leaderboard); `h3-server card` asking the running server on loopback; the wall clock behind one
+  local `allow`.
 
 ## Exit criteria (M4)
 

@@ -28,6 +28,17 @@ pub(crate) struct ServerKey(SigningKey);
 impl ServerKey {
     /// The key in the data directory `data`'s key file, written there first if there is none.
     pub(crate) fn open(data: &Path) -> Result<Self, Error> {
+        Self::read(data, true)
+    }
+
+    /// The key in the data directory `data`'s key file, which must be there (E16 M6 T2: the
+    /// operator's `h3-server card` names the running server by it).
+    pub(crate) fn existing(data: &Path) -> Result<Self, Error> {
+        Self::read(data, false)
+    }
+
+    /// The key in `data`'s key file, written there first if there is none and `create`.
+    fn read(data: &Path, create: bool) -> Result<Self, Error> {
         let path = data.join(KEY_FILE);
         let failed = |e: &dyn fmt::Display| Error(format!("{}: {e}", path.display()));
         match fs::read_to_string(&path) {
@@ -39,7 +50,7 @@ impl ServerKey {
                           so the server does not replace it",
                     )
                 }),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            Err(e) if e.kind() == io::ErrorKind::NotFound && create => {
                 let mut seed = [0u8; 32];
                 getrandom::fill(&mut seed).map_err(|e| failed(&format!("OS randomness: {e}")))?;
                 write_private(&path, &format!("{}\n", account::to_hex(&seed)))

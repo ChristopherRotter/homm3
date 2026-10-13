@@ -9,6 +9,14 @@
 //! public_url = "wss://example.org"   # the server's id, which logins sign: what clients dial
 //! anonymous = true                   # whether a game may be joined or created without a login
 //! trusted_proxies = ["127.0.0.1"]    # reverse proxies whose X-Forwarded-For names the client
+//! addresses = ["ws://192.168.1.5:7878"]  # the server's other addresses (E16 M6 T1), at most 7
+//! name = "Ann's arena"               # the card's name (E16 M6 T2); the server's id by default
+//! description = "Ranked duels."      # the card's description (none by default)
+//! operator = "ann@example.org"       # how the operator is reached (none by default)
+//!
+//! [discovery]                        # the server's card (E16 M6 T2); defaults below
+//! card_ms = 86400000                 # a card holds this long after it is signed
+//! counts = true                      # the card names the open connections, games and players
 //!
 //! [content]
 //! packs = "../packs"                 # the packs directory
@@ -72,6 +80,7 @@ use std::fs;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 
+use h3_protocol::card;
 use h3_protocol::codec::DEFAULT_MAX_CLIENT_FRAME;
 use serde::Deserialize;
 
@@ -123,6 +132,9 @@ pub struct Config {
     /// The bounds (ADR-0018 point 9).
     #[serde(default)]
     pub limits: Limits,
+    /// The server's card (E16 M6 T2).
+    #[serde(default)]
+    pub discovery: Discovery,
     /// What a client may create a game from.
     #[serde(rename = "offer")]
     pub offers: Vec<Offer>,
@@ -157,6 +169,15 @@ pub struct Server {
     /// The reverse proxies in front of the server (E16 M3 T4b): a connection from one of them
     /// counts as the client its handshake's `X-Forwarded-For` names. None by default.
     pub trusted_proxies: Vec<IpAddr>,
+    /// The server's name on its card (E16 M6 T2): one line of at most 64 bytes; the server's id
+    /// by default.
+    pub name: Option<String>,
+    /// What the server is about, on its card (E16 M6 T2): at most 1024 bytes, lines ending in
+    /// `\n`. None by default.
+    pub description: String,
+    /// How its operator is reached, on its card (E16 M6 T2): one line of at most 256 bytes. None
+    /// by default.
+    pub operator: String,
 }
 
 impl Default for Server {
@@ -170,9 +191,35 @@ impl Default for Server {
             addresses: Vec::new(),
             anonymous: true,
             trusted_proxies: Vec::new(),
+            name: None,
+            description: String::new(),
+            operator: String::new(),
         }
     }
 }
+
+/// The `[discovery]` section (E16 M6 T2; ADR-0021): the server's card.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+pub struct Discovery {
+    /// How long a card holds after it is signed, in milliseconds: 10 minutes to 30 days.
+    pub card_ms: u64,
+    /// Whether the card names the open connections, the games that wait or run and each ladder's
+    /// players (the accounts on its current season's leaderboard).
+    pub counts: bool,
+}
+
+impl Default for Discovery {
+    fn default() -> Self {
+        Self {
+            card_ms: 86_400_000,
+            counts: true,
+        }
+    }
+}
+
+/// The shortest and the longest time a card may hold (`[discovery] card_ms`).
+const CARD_MS: std::ops::RangeInclusive<u64> = 600_000..=2_592_000_000;
 
 /// The `[content]` section.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -526,20 +573,55 @@ impl Config {
     }
 
     /// A public URL, and each of the other addresses, is a WebSocket address: `ws://` or `wss://`,
-    /// then at most 200 visible ASCII characters.
+    /// then at most 200 visible ASCII characters (`h3_protocol::card::is_address`); a card names at
+    /// most 8 addresses, the server's id among them. The card's texts keep the card's bounds (E16
+    /// M6 T2), and `[discovery] card_ms` its range.
     fn check_server(&self) -> Result<(), Error> {
         let urls = (self.server.public_url.iter().map(|url| ("public_url", url)))
             .chain(self.server.addresses.iter().map(|url| ("addresses", url)));
         for (key, url) in urls {
-            let rest = url
-                .strip_prefix("ws://")
-                .or_else(|| url.strip_prefix("wss://"))
-                .unwrap_or_default();
-            if rest.is_empty() || rest.len() > 200 || !rest.bytes().all(|b| b.is_ascii_graphic()) {
+            if !card::is_address(url) {
                 return Err(Error(format!(
                     "server.{key} = {url:?}: not a ws:// or wss:// address"
                 )));
             }
+        }
+        if self.server.addresses.len() >= card::MAX_ADDRESSES {
+            return Err(Error(format!(
+                "server.addresses: at most {} besides the server's id",
+                card::MAX_ADDRESSES - 1
+            )));
+        }
+        let line = |text: &str| !text.chars().any(char::is_control);
+        let name = self.server.name.as_deref();
+        if name.is_some_and(|name| name.is_empty() || name.len() > card::MAX_TEXT || !line(name)) {
+            return Err(Error(format!(
+                "server.name: one line of 1 to {} bytes",
+                card::MAX_TEXT
+            )));
+        }
+        let description = &self.server.description;
+        let lines = description.chars().all(|c| c == '\n' || !c.is_control());
+        if description.len() > card::MAX_DESCRIPTION || !lines {
+            return Err(Error(format!(
+                "server.description: at most {} bytes, lines ending in \\n",
+                card::MAX_DESCRIPTION
+            )));
+        }
+        let operator = &self.server.operator;
+        if operator.len() > card::MAX_OPERATOR || !line(operator) {
+            return Err(Error(format!(
+                "server.operator: one line of at most {} bytes",
+                card::MAX_OPERATOR
+            )));
+        }
+        if !CARD_MS.contains(&self.discovery.card_ms) {
+            return Err(Error(format!(
+                "discovery.card_ms = {}: from {} to {}",
+                self.discovery.card_ms,
+                CARD_MS.start(),
+                CARD_MS.end()
+            )));
         }
         Ok(())
     }

@@ -1321,6 +1321,12 @@ pub enum ClientMessage {
         /// The ladder's id.
         ladder: String,
     },
+    /// The server's signed card (E16 M6 T2; ADR-0021 point 2): answered `Described`. Needs no game,
+    /// nor a login.
+    Describe {
+        /// The client's sequence number.
+        seq: u32,
+    },
 }
 
 /// Why a join, a game's creation or an account's request was refused; the connection stays open.
@@ -1692,6 +1698,103 @@ pub enum ServerMessage {
         /// The account's row; `None` before its first rated game of the season.
         row: Option<LeaderboardRow>,
     },
+    /// The server's card, as its key signed it (E16 M6 T2): `Describe`'s answer.
+    Described {
+        /// The client's sequence number.
+        seq: u32,
+        /// The signed card.
+        card: SignedCard,
+    },
+}
+
+/// A server's description of itself (E16 M6 T2; ADR-0021 point 2, `E16-design.md` §12), signed by
+/// its key: what a client shows before it connects to play, and what servers relay for each other.
+/// It travels as [`SignedCard`], whose text a relayer passes on verbatim; [`crate::card`] bounds
+/// and reads it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ServerCard {
+    /// The server's public key, 32 bytes as lowercase hex: its identity, which signs the card and
+    /// its welcomes.
+    pub key: String,
+    /// The server's name.
+    pub name: String,
+    /// What it is about, in its operator's words (lines end in `\n`).
+    pub description: String,
+    /// The addresses its clients dial (`ws://…` or `wss://…`), its public one first.
+    pub addresses: Vec<String>,
+    /// [`crate::PROTOCOL_VERSION`] of the server.
+    pub protocol: u32,
+    /// The engine's version (informational).
+    pub engine: String,
+    /// The content its games are made of: each ruleset of its offers and ladders once.
+    pub content: Vec<CardContent>,
+    /// Its ladders.
+    pub ladders: Vec<CardLadder>,
+    /// Its open connections when it signed the card; `None` on a server that keeps its counts off
+    /// its card, or a card signed with no server running.
+    pub players_online: Option<u32>,
+    /// Its games that wait for players or run; `None` as `players_online`.
+    pub games_open: Option<u32>,
+    /// Whether a game may be joined or created without a login.
+    pub anonymous: bool,
+    /// How its operator is reached (free text).
+    pub operator: String,
+    /// When the card was signed, in milliseconds since the Unix epoch.
+    pub issued: WireU64,
+    /// When it expires, likewise: a client and a relayer drop it then.
+    pub expires: WireU64,
+    /// The servers it vouches for (E16 M6 T3).
+    pub peers: Vec<CardPeer>,
+}
+
+/// A ruleset a server's games are made of, as its card names it (E16 M6 T2): the manifest's.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CardContent {
+    /// The packs, in load order.
+    pub packs: Vec<PackRef>,
+    /// The profile's key.
+    pub profile: String,
+    /// The core ruleset's content hash.
+    pub ruleset_hash: WireU64,
+    /// The battle part's content hash.
+    pub battle_ruleset_hash: WireU64,
+}
+
+/// A ladder as a server's card names it (E16 M6 T2).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CardLadder {
+    /// The ladder's id.
+    pub id: String,
+    /// Its name.
+    pub name: String,
+    /// Its current season.
+    pub season: u32,
+    /// The accounts on its current season's leaderboard; `None` as the card's `players_online`.
+    pub players: Option<u32>,
+}
+
+/// A server another vouches for (E16 M6 T3): its key and the address its operator configured.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CardPeer {
+    /// Its public key, 32 bytes as lowercase hex.
+    pub key: String,
+    /// Its address (`ws://…` or `wss://…`).
+    pub address: String,
+}
+
+/// A server's card as it travels (E16 M6 T2): `card` is the card's JSON text exactly as its key
+/// signed it ([`crate::account::card_message`]), parsed only to read it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SignedCard {
+    /// The card's text.
+    pub card: String,
+    /// The key's signature over it, 64 bytes as lowercase hex.
+    pub signature: String,
 }
 
 /// An account's row on a ladder's leaderboard in a season (E16 M4 T4): rows go by rating, the
