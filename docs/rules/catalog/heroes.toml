@@ -596,3 +596,23 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json"
   retrieved  = "2026-10-10"
   confidence = "medium"
+
+[[rule]]
+id       = "HER-MAN-001"
+title    = "A hero's maximum spell points"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero's maximum spell points are 10 x its effective Knowledge (HER-BAT-001: the base and its worn artifacts', at least 1, at most 99) grown by the sum of its max_mana effects (Intelligence 25/50/100 %, an Intelligence specialist's grown by 5 % of itself per level, as HER-BAT-004's growth), rounded down. Under quirk Q-0005 the rate is the original's single-precision value: trunc((1 + f32(r x (1 + 0.05 x level))) x 10 K), so a specialist can have one point less (level 1, Basic, Knowledge 8: 100, not 101). A hero starts the game with them (GAM-HER-001). E08 T18b: `h3_heroes::max_mana`."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T18b; survey E08-battles.md §6.2): map_hero_setup 0x486C5C to 0x486C98 clamps Knowledge (+0x479) to 1-99 and sets the spell points (+0x18) to crt_ftol(0x4E48B0() x f32(10 x K)); the Intelligence getter 0x4E48B0 returns 1 + f32(table[level] x (1 + 0.05f x level)) for a skill specialist of skill 24, else 1 + table[level], the table 0x63EA88 holding 0, 0.25, 0.50, 1.00 (installation.md §7.4)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGHeroInstance.cpp L1167-L1170 manaLimit: Knowledge x MANA_PER_KNOWLEDGE_PERCENTAGE / 100; config/gameConfig.json L845 the base 1000 %; config/skills.json L754-L782 Intelligence 25/50/100 PERCENT_TO_BASE"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L1167-L1170"
+  retrieved  = "2026-10-14"
+  confidence = "high"

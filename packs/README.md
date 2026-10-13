@@ -642,12 +642,12 @@ theirs (the derivation, HER-BAT-001). Identical artifacts count once, except `pr
 **What the harvested hero content leaves out** (the harvester's report lists it; sources and
 layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfill.toml`):
 
-- Skills without effects yet: Intelligence, Mysticism, Wisdom, Ballistics (E04c), Necromancy
-  and Learning (outcome application, E08–E10), and the adventure skills. Their
-  `[[secondary_skill]]` entries exist without levels. The magic school skills give
-  `school_mastery` (gap-fill), Sorcery `spell_damage`, Resistance `magic_resistance` and Eagle Eye
-  `eagle_eye` with the level limit the skill's level + 1 (the executable's value tables, E04b T2a,
-  T2d and T8d).
+- Skills without effects yet: Mysticism, Wisdom, Ballistics (E04c), Diplomacy's join bonus
+  (E08 T20a) and the adventure skills. Their `[[secondary_skill]]` entries exist without levels.
+  The magic school skills give `school_mastery` (gap-fill), Sorcery `spell_damage`, Resistance
+  `magic_resistance` and Eagle Eye `eagle_eye` with the level limit the skill's level + 1 (the
+  executable's value tables, E04b T2a, T2d and T8d); since v37 (E08 T18b) Necromancy
+  `necromancy`, Learning `experience_gain` and Intelligence `max_mana` (their tables, §7.4).
 - Specialties not modelled: 13 resource and 2 creature-upgrade specialties (adventure), Adrienne
   (none). Spell specialties are `spell_specialty` with the SoD growth of 3 % per level (gap-fill
   `[heroes.spell_specialty]`), Ciele's and Luna's a fixed `spell_damage` (+50 % Magic Arrow,

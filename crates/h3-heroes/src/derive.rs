@@ -7,14 +7,14 @@ use core::num::NonZeroU32;
 
 use h3_content::{
     Affects, ArtifactTypeId, CompiledHeroEffect, CreatureSelector, CreatureStat, CreatureTypeId,
-    FULL_BP, HeroEffect, Ruleset, SINGLE_PRECISION_RATES, SchoolId, SpellCategory, SpellId,
+    FULL_BP, HeroEffect, HeroParams, Ruleset, SINGLE_PRECISION_RATES, SchoolId, SpellCategory, SpellId,
     SpellScope,
 };
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleMagic, DamageBonuses, EagleEye, FactionGroup,
     MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
 };
-use h3_kernel::arith::{SINGLE_BITS, X87};
+use h3_kernel::arith::{SINGLE_BITS, X87, mul_div_floor};
 
 use crate::details::{HeroDetails, PrimarySkill, check};
 use crate::error::DetailsError;
@@ -44,25 +44,7 @@ pub fn derive_battle_hero(
     let mut hero = BattleHero::new(details.hero_type);
 
     // rule: HER-BAT-001
-    let mut total = details.primary.map(i32::from);
-    for effect in effects(details, ruleset, Count::PerCopy) {
-        if let HeroEffect::PrimarySkills {
-            attack,
-            defense,
-            power,
-            knowledge,
-        } = *effect
-        {
-            for (t, change) in total.iter_mut().zip([attack, defense, power, knowledge]) {
-                *t = t.saturating_add(i32::from(change));
-            }
-        }
-    }
-    let effective = |skill: PrimarySkill| {
-        let min = params.primary_min[skill.index()];
-        let value = total[skill.index()].clamp(i32::from(min), i32::from(params.primary_max));
-        u8::try_from(value).unwrap_or(params.primary_max)
-    };
+    let effective = |skill: PrimarySkill| effective_primary(details, ruleset, params, skill);
     hero.attack = effective(PrimarySkill::Attack);
     hero.defense = effective(PrimarySkill::Defense);
     hero.power = effective(PrimarySkill::Power);
@@ -325,6 +307,67 @@ fn spell_defences(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect>
     out.extend(mind.then_some(BattleEffect::MindImmunity));
     out.extend(negates.then_some(BattleEffect::NegateImmunities));
     out
+}
+
+/// An effective primary skill (HER-BAT-001): the base value plus the `primary_skills` effects of
+/// every worn copy, between the ruleset's minimum and maximum.
+fn effective_primary(
+    details: &HeroDetails,
+    ruleset: &Ruleset,
+    params: &HeroParams,
+    skill: PrimarySkill,
+) -> u8 {
+    let mut total = i32::from(details.primary[skill.index()]);
+    for effect in effects(details, ruleset, Count::PerCopy) {
+        if let HeroEffect::PrimarySkills {
+            attack,
+            defense,
+            power,
+            knowledge,
+        } = *effect
+        {
+            let change = [attack, defense, power, knowledge][skill.index()];
+            total = total.saturating_add(i32::from(change));
+        }
+    }
+    let min = params.primary_min[skill.index()];
+    let value = total.clamp(i32::from(min), i32::from(params.primary_max));
+    u8::try_from(value).unwrap_or(params.primary_max)
+}
+
+/// Spell points per point of effective Knowledge (HER-MAN-001; the original's `10 × Knowledge`,
+/// 0x486C80).
+pub const MANA_PER_KNOWLEDGE: u32 = 10;
+
+/// The hero's maximum spell points (HER-MAN-001, E08 T18b): [`MANA_PER_KNOWLEDGE`] times its
+/// effective Knowledge (HER-BAT-001's: base and artifacts, between the ruleset's bounds), grown
+/// by the sum of the `max_mana` values of [`grown_effects`] (Intelligence, grown by an
+/// Intelligence specialty: 5 % of itself per level), rounded down; with quirk Q-0005 the
+/// original's single-precision rate: `trunc((1 + f32(r × (1 + 0.05 × level))) × 10 K)` in its
+/// x87 arithmetic (the getter 0x4E48B0, its caller 0x486C7B). Artifacts and skills the ruleset
+/// does not know count for nothing, and a ruleset without hero parameters (which validation
+/// refuses) takes Knowledge as given: validate first.
+pub fn max_mana(details: &HeroDetails, ruleset: &Ruleset) -> u16 {
+    // rule: HER-MAN-001
+    let knowledge = ruleset.hero_params().map_or(
+        details.primary[PrimarySkill::Knowledge.index()],
+        |params| effective_primary(details, ruleset, params, PrimarySkill::Knowledge),
+    );
+    let base = MANA_PER_KNOWLEDGE * u32::from(knowledge);
+    let mut sum = RateSum::default();
+    for (effect, growth) in grown_effects(details, ruleset) {
+        if let HeroEffect::MaxMana { bp } = *effect {
+            sum.add(bp.into(), growth, single_precision(ruleset));
+        }
+    }
+    let points = match sum.single {
+        Some(rate) => X87::ONE.plus(rate).times(X87::int(base.into())).trunc(),
+        None => {
+            let gain = mul_div_floor(base.into(), sum.bp, FULL_BP.into()).unwrap_or(u64::MAX);
+            u64::from(base).saturating_add(gain)
+        }
+    };
+    u16::try_from(points).unwrap_or(u16::MAX)
 }
 
 /// The surrender discount (HER-BAT-007): the sum of the grown values of the surrender discounts

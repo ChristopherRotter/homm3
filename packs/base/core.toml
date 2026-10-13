@@ -2045,6 +2045,9 @@ expert = [{ kind = "eagle_eye", bp = 6000, max_level = 4 }]
 [[secondary_skill]]
 id = "necromancy"
 name = "Necromancy"
+basic = [{ kind = "necromancy", bp = 1000 }]
+advanced = [{ kind = "necromancy", bp = 2000 }]
+expert = [{ kind = "necromancy", bp = 3000 }]
 
 [[secondary_skill]]
 id = "estates"
@@ -2099,6 +2102,9 @@ expert = [{ kind = "artillery", double_damage_chance_bp = 10000, shots = 2 }]
 [[secondary_skill]]
 id = "learning"
 name = "Learning"
+basic = [{ kind = "experience_gain", bp = 500 }]
+advanced = [{ kind = "experience_gain", bp = 1000 }]
+expert = [{ kind = "experience_gain", bp = 1500 }]
 
 [[secondary_skill]]
 id = "offense"
@@ -2117,6 +2123,9 @@ expert = [{ kind = "damage_reduction", bp = 1500 }]
 [[secondary_skill]]
 id = "intelligence"
 name = "Intelligence"
+basic = [{ kind = "max_mana", bp = 2500 }]
+advanced = [{ kind = "max_mana", bp = 5000 }]
+expert = [{ kind = "max_mana", bp = 10000 }]
 
 [[secondary_skill]]
 id = "sorcery"

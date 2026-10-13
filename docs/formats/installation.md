@@ -249,7 +249,9 @@ These are original data and rank above VCMI and the wiki; all agree with the ski
 with VCMI except where noted in the skills survey. The harvester (E04a T3) turns the tables of
 Luck, Leadership, Archery, Offense, Armorer, Diplomacy and First Aid into the skills' hero effects
 (fractions as basis points, each checked to be a whole number of them) and the growth constant
-0.05 into the skill specialties' 500 bp per level; Logistics is not read.
+0.05 into the skill specialties' 500 bp per level; Logistics is not read. E04b adds Sorcery,
+Resistance and Eagle Eye, E08 T18b Necromancy (`necromancy`), Learning (`experience_gain`) and
+Intelligence (`max_mana`).
 
 ### 7.5 Code reading: First Aid Tent heal
 

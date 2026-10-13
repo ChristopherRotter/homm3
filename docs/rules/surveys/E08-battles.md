@@ -380,7 +380,11 @@ original's hero and class tables, `docs/formats/installation.md` §7.1):
 - **The catapult**: every hero gets one (`vcmi`: "everyone has a catapult"); the original was not
   read; it matters in sieges only (E04c).
 - **Spell points and movement**: full (`vcmi`: `manaLimit`, `movementPointsLimit`); movement as
-  ADV-MOV-001.
+  ADV-MOV-001. *(E08 T18b)* `original-data` (`map_hero_setup`, 0x486C5C to 0x486C98): the spell
+  points are trunc(i × f32(10 K)), K the hero's Knowledge (+0x479) clamped to 1–99 and i the
+  Intelligence getter (0x4E48B0): 1 + f32(table[level] × (1 + 0.05 × level for an Intelligence
+  specialist)), the table 0, 0.25, 0.5, 1.0 (0x63EA88); `vcmi` `manaLimit`: K × (1000 % + 25, 50 or
+  100 % of it) / 100, truncated: the same but for the specialist's single precision (HER-MAN-001).
 - **The level-up seed** (hero +0x8F): `random_between(1, 255)` per hero at a new game; the
   original's level-up offers come from it *(inc. 4)*.
 
