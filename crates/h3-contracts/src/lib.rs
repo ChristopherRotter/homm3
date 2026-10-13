@@ -119,11 +119,13 @@ pub struct BattleSetup {
     /// The battlefield's terrain, if any: creatures of factions native to it get the native
     /// terrain bonus (BAT-TER-001). Obstacles for it are generated before the seam (BAT-GEO-004).
     pub terrain: Option<TerrainId>,
-    /// The special battlefield, if any (E04c; the shore, a magic field, a ship's deck, two boats):
-    /// the key of a battlefield of the battle's ruleset part (`base:cursed_ground`), by key as an
-    /// obstacle's type, because battlefields belong to the battle part (ADR-0015 point 3). Its
-    /// rules are battle content (BAT-TER-002); the caller derives which one applies and draws the
-    /// obstacles for it before the seam (BAT-GEO-004). Public.
+    /// The special battlefield, if any (E04c, ADR-0022; the shore, a magic field, a ship's deck,
+    /// two boats). Every battle has a battlefield: `None` is the terrain's ordinary one (the
+    /// original's −1), a key names a special one, a battlefield of the battle's ruleset part
+    /// (`base:cursed_ground`), by key as an obstacle's type, because battlefields belong to the
+    /// battle part (ADR-0015 point 3). Its rules are battle content (BAT-TER-002); the caller
+    /// derives which one applies and draws the obstacles for it before the seam (BAT-GEO-004).
+    /// Public.
     pub battlefield: Option<ContentKey>,
     /// The battle is at an anti-magic garrison (E04c): neither side casts (BAT-MAG-061). Public.
     pub anti_magic: bool,
