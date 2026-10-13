@@ -8,7 +8,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **The TLS client** (ADR-0021 point 4, `peers::Tls`): rustls over graviola, the OS roots read at the first `wss://` fetch; no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 27 since M6 T5; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 8 since BAT-GEO-002's rear hex; another format's journal is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 28 since E04c T2b, the battle lane's; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 8 since BAT-GEO-002's rear hex; another format's journal is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -61,4 +61,4 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-13 — M6 T6, M6's closure
 
-Branch `claude/stoic-cerf-sqmh9o` (`E16-log.md`): `06-security.md`'s discovery and the client lane's inbox (`cross-lane` commits); the reviewer's two major findings (a list's `wss://` servers never fetched; a listed card not naming its address relayed) and four minor fixed; SRV-Q24 asked. The full local verify stands in for CI (billing).
+**#173 open** (`E16-log.md`): `06-security.md`'s discovery and the client lane's inbox (`cross-lane` commits); the reviewer's two major findings (a list's `wss://` servers never fetched; a listed card not naming its address relayed) and four minor fixed; SRV-Q24 asked. The full local verify stands in for CI (billing).
