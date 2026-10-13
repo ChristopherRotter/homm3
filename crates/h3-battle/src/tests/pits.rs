@@ -1,5 +1,5 @@
-//! Hidden spell obstacles and Quicksand (E04b T5c1): who sees a hidden obstacle (BAT-MAG-031,
-//! quirk BAT-QUIRK-1) and Quicksand's pits, which stop a walker (BAT-MAG-032), after the
+//! Hidden spell obstacles and Quicksand (E04b T5c1): who sees a hidden obstacle (BAT-MAG-031;
+//! BAT-QUIRK-1, retired) and Quicksand's pits, which stop a walker (BAT-MAG-032), after the
 //! original's code (`docs/formats/installation.md` §7.16).
 
 use std::vec::Vec;
@@ -448,7 +448,7 @@ fn an_attack_whose_walk_stops_in_a_seen_pit_is_neither_listed_nor_accepted() {
     // pathfinder's attack marking leave them out, `installation.md` §7.16), so such an attack is
     // legal in no profile. Under the flag of BAT-QUIRK-2 (retired) the engine listed and
     // accepted it: the stack walked into the pit and did not strike.
-    for profile in ["t:faithful", "t:sight"] {
+    for profile in ["t:faithful", "t:quirky"] {
         let r = ruleset_with(profile, |_| {});
         // The attack of stack 0 at stack 1 from `from`, a position within its reach where its
         // walk stops: not listed, refused, and the state untouched.
@@ -561,8 +561,9 @@ fn a_move_and_attack_into_an_unseen_pit_stops_without_the_attack() {
 
 // covers: BAT-MAG-031
 #[test]
-fn natives_at_the_start_reveal_the_other_sides_pits_with_bat_quirk_1() {
-    let r = ruleset_with("t:sight", |_| {});
+fn natives_at_the_start_reveal_the_other_sides_pits() {
+    // The original's timing in every profile (BAT-QUIRK-1 retired, BAT-Q34; 0x46402C, 0x5A0442).
+    let r = ruleset();
     let hero = caster(&r, &["quicksand"], [1, 0]);
     // Castle's Pikemen fight on their native plain for the defender.
     let mut s = on_plain(
@@ -594,34 +595,30 @@ fn natives_at_the_start_reveal_the_other_sides_pits_with_bat_quirk_1() {
 
 // covers: BAT-MAG-031
 #[test]
-fn living_natives_see_the_other_sides_pits_without_bat_quirk_1() {
+fn without_natives_at_the_start_the_other_sides_pits_stay_hidden() {
     let r = ruleset();
     let hero = caster(&r, &["quicksand", "dispel"], [3, 0]);
+    // No defender stack fights on its native terrain.
     let mut s = on_plain(
         &r,
         [Some(hero), None],
         &[("fixed", 5, 2, 5)],
-        &[("pikeman_c", 5, 12, 5), ("fixed", 5, 12, 7)],
+        &[("fixed", 5, 12, 5), ("fixed", 5, 12, 7)],
     );
     let pit = at(&r, 10, 5);
     pits(&mut s, &r, BattleSide::Attacker, &[(10, 5)]);
     let events = quicksand(&mut s, &r, 0);
-    // Not revealed, but seen while the native lives.
+    // Told to the caster's side only, and not seen by the other.
     assert_eq!(
         obstacle_events(&events),
-        std::vec![("placed", Visibility::Public); 8]
+        std::vec![("placed", Visibility::Side(BattleSide::Attacker)); 8]
     );
     assert!(s.spell_obstacles().iter().all(|o| !o.revealed));
-    assert_eq!(seen(&s, &r, BattleSide::Defender).len(), 9);
-    // Its walkers see them too: a walk ends in the pit.
+    assert!(seen(&s, &r, BattleSide::Defender).is_empty());
+    // Its walkers do not stop there.
     let reach = |s: &BattleState| {
         crate::movement::reachable(s, field(&r), StackId(2), s.stack(StackId(2)).unwrap())
     };
-    assert!(reach(&s).stops_at(pit));
-    // The native dies: the defender no longer sees them.
-    s.stacks.as_mut_slice()[1].count = 0;
-    s.stacks.as_mut_slice()[1].top_hp = 0;
-    assert!(seen(&s, &r, BattleSide::Defender).is_empty());
     assert!(!reach(&s).stops_at(pit));
     // Expert Dispel removes them, told to the attacker only.
     s.heroes[0].as_mut().unwrap().view.casts = 0;

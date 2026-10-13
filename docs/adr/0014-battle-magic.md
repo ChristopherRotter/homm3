@@ -80,10 +80,9 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    outcome's end counts; permanent ones do.
 7. **Hidden battlefield objects have an owner side.** A viewer sees a spell obstacle if it is the
    owner, the obstacle is revealed or of a visible kind (Force Field, Fire Wall), or the viewer's side
-   has natives: as the original by default, a side that had a stack on its native terrain at the
-   battle start sees the other side's hidden objects from their placement on, whatever happens to
-   its natives later; with quirk BAT-QUIRK-1 fixed, while it has a living stack on its native
-   terrain (this changes during a battle). Observations project
+   has natives: as the original, a side that had a stack on its native terrain at the battle start
+   sees the other side's hidden objects from their placement on, whatever happens to its natives
+   later. Observations project
    hidden objects away, their placement events are `Visibility::Side` (ADR-0004 §6), and legality
    never uses what the acting side cannot see. A command may therefore resolve differently from
    what its side expected (user, Q42): a move, or a move and attack, into an unseen Quicksand pit
@@ -194,3 +193,6 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
   spell (Sacrifice's test reads Resurrection's, BAT-QUIRK-5; `installation.md` §7.22).
 - 2026-10-11: point 8 amended (E04b T9a; the user, BAT-Q26): a hero's hidden magic is private to
   its side; a spectator sees what is public to both sides (SRV-Q4).
+- 2026-10-13: point 7 amended (the user, BAT-Q34): BAT-QUIRK-1 retired. The natives' sight fixed
+  at the battle start is the original's rule in every profile; the living-natives variant, which
+  no source describes, is gone (ADR-0007's procedure for a retired flag).

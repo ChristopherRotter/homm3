@@ -202,7 +202,7 @@ errors:
 | `damage_penalty_by_flag` | `flag` (a creature flag), `percent` (1..=100) | since v28: as `damage_penalty`, against creatures with flag `flag`: the Psychic Elemental's half against mind-immune creatures (BAT-DMG-010). Several for different flags |
 | `rebirth` | `divisor` (≥ 1) | since v29: after the action that killed its stack (a strike, a cast, a mine's or Fire Wall's damage), if the stack has a cast left (its creature's `casts`) and is not a clone (nor a sacrificed one, BAT-QUIRK-17), one cast is used and the stack comes back for good on its hexes, without the effects it died with, with its count at the battle's start div `divisor` creatures, plus one for each of the count mod `divisor` others with a 1-in-`divisor` chance; it counts as having acted this round, and no creature comes back if none is drawn (the cast is used either way): the Phoenix's fifth (BAT-MAG-059) |
 | `fear` | `percent` (1..=99: never certain, so that the frightened side gets to act) | since v29: while its stack lives, a stack of the other side (taken from the frightened stack's controller; the frightening stacks count by their real side, BAT-QUIRK-18) that is picked to act outside the round's wait phase, after the bad-morale check and not at the battle's first activation without a tactics phase, is frozen with `percent` % chance (one roll, the largest chance among the side's living stacks with `fear`): it loses its turn and counts as having acted. Creatures without morale and those with `fear` are never frozen: the Azure Dragon's 10 % (BAT-MAG-060) |
-| `ignores_magic_block` | — | since v31: the creature's casts ignore a hero's `no_casting` (the Orb of Inhibition): no harvested creature has it: batch 2e observed the code reading, under which the Orb stops the Faerie Dragon too, against the wiki and VCMI (BAT-MAG-061, BAT-Q21) |
+| `ignores_magic_block` | — | since v31: the creature's casts ignore a hero's `no_casting` (the Orb of Inhibition): the Faerie Dragon, whose F key casts under the Orb in the original, as the wiki says (BAT-MAG-061; the user, BAT-Q32 (2), 2026-10-13; batch 2e's cursor row saw the Orb stop the cursor) |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
 dependency closure) and may name creatures defined later in the same pack. At most one entry of
@@ -705,7 +705,8 @@ overrides read). A flag the profile names must be registered (`CompileError::Unk
 retired flag is not: its position in the registry stays reserved, its name is gone, and a profile
 that still names it, on or off, does not compile; the pack format's version does not change when
 a flag comes or goes. Retired: `quirk.battle.attack_from_seen_pit` (BAT-QUIRK-2) and
-`quirk.battle.creature_mirror_untested` (BAT-QUIRK-9), both on 2026-10-12.
+`quirk.battle.creature_mirror_untested` (BAT-QUIRK-9), both on 2026-10-12;
+`quirk.battle.natives_sight_at_start` (BAT-QUIRK-1) on 2026-10-13.
 Profile-level Tier-2 parameters are not implemented yet (backlog).
 
 The compiled ruleset's canonical hash (encoding v15, `RULESET_HASH_VERSION`) covers packs,

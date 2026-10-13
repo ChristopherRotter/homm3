@@ -1493,25 +1493,23 @@ proptest! {
     /// does not see changes neither its observation nor what it may do (its legal commands,
     /// castable spells and their targets, its active stack's cast and its targets); nor what
     /// its commands report to it while no hidden obstacle shows itself (a pit it runs into, a
-    /// mine that goes off: BAT-MAG-032, BAT-MAG-033; a native it raises gives its side sight
-    /// without quirk BAT-QUIRK-1, BAT-MAG-031), its hero's and its stack's casts included:
+    /// mine that goes off: BAT-MAG-032, BAT-MAG-033; the natives' sight is fixed at the start,
+    /// BAT-MAG-031), its hero's and its stack's casts included:
     /// without quirk BAT-QUIRK-4 a random obstacle spell draws among the hexes its side sees
     /// free (BAT-MAG-032), and Remove Obstacle finds only what the caster sees (BAT-MAG-034).
-    /// In four profiles: the natives' sight fixed at the start (BAT-QUIRK-1), anchors
-    /// (BAT-QUIRK-3), neither of the two, and the two together, as a pack's faithful profile has
-    /// them.
+    /// In three profiles: anchors (BAT-QUIRK-3), none, and anchors with another quirk, as a
+    /// pack's faithful profile has them (the natives' sight is fixed at the start in every
+    /// profile since BAT-QUIRK-1 was retired, BAT-Q34).
     #[test]
     fn hidden_obstacles_do_not_show(
         (att, def, obstacles, seed, steps, hidden) in arb_game(),
-        profile in 0usize..4,
+        profile in 0usize..3,
         extra in proptest::collection::btree_set((1u8..16, 0u8..11), 0..6),
     ) {
-        let quirks = ["natives_sight_at_start", "obstacle_anchors"];
         let r = match profile {
-            0 => lively_with("t:sight"),
-            1 => lively_with("t:anchors"),
-            2 => lively_with("t:quirky"),
-            _ => lively_mix(&quirks),
+            0 => lively_with("t:anchors"),
+            1 => lively_with("t:quirky"),
+            _ => lively_mix(&["obstacle_anchors", "no_luck_without_hero"]),
         };
         // The one property without Berserk in the heroes' books (the others play it). A berserk
         // stack's automatic turn is planned with the pits its own side sees, so its walk, which

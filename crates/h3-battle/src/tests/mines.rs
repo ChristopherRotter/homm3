@@ -205,7 +205,7 @@ fn land_mine_is_refused_while_the_other_sides_natives_would_see_the_mines() {
         s.stacks.as_mut_slice()[id].count = 0;
         s.stacks.as_mut_slice()[id].top_hp = 0;
     };
-    for profile in ["t:sight", "t:quirky"] {
+    for profile in ["t:faithful", "t:quirky"] {
         let r = ruleset_with(profile, |_| {});
         let hero = || Some(caster(&r, &["landmine"], [0, 1]));
         // Castle's Pikemen fight on their native plain for the defender: refused.
@@ -220,11 +220,9 @@ fn land_mine_is_refused_while_the_other_sides_natives_would_see_the_mines() {
             act(&mut s.clone(), &r, land_mine(&r)),
             Err(CommandError::InvalidSpellTarget)
         );
-        // The native dies: with BAT-QUIRK-1 the start decides (still refused), without it the
-        // living natives (cast).
+        // The native dies: the start decides, still refused (BAT-QUIRK-1 retired, BAT-Q34).
         kill(&mut s, 1);
-        let at_start = profile == "t:sight";
-        assert_eq!(castable(&r, &s), !at_start, "{profile}");
+        assert!(!castable(&r, &s), "{profile}");
         // The caster's own natives change nothing: without the defender's, it is cast.
         let mut s = on_plain(
             &r,
@@ -517,31 +515,6 @@ fn a_hypnotized_stack_is_spared_by_its_own_sides_mines_only() {
     let events = act(&mut s, &r, walk(&r, (7, 5))).unwrap();
     assert_eq!(blasts(&events), [(1, at(&r, 8, 5), 40, 4)]);
     assert_eq!(all(&s).len(), 1);
-}
-
-// covers: BAT-MAG-033, BAT-MAG-031
-#[test]
-fn a_mine_seen_through_living_natives_does_not_go_off() {
-    let r = ruleset();
-    // Without BAT-QUIRK-1 the defender's living Pikemen show it the attacker's mines (placed
-    // here as a cast before they came would): its walkers cross them.
-    let mut s = on_plain(
-        &r,
-        [None, None],
-        &[("fixed", 5, 2, 9)],
-        &[("fixed", 10, 12, 5), ("pikeman_c", 5, 14, 9)],
-    );
-    mines(&mut s, &r, BattleSide::Attacker, &[(10, 5), (9, 7)]);
-    assert_eq!(seen(&s, &r, BattleSide::Defender).len(), 2);
-    activate(&mut s, 1);
-    let events = act(&mut s, &r, walk(&r, (8, 5))).unwrap();
-    assert!(obstacle_events(&events).is_empty());
-    // The natives die: the next mine goes off.
-    s.stacks.as_mut_slice()[2].count = 0;
-    s.stacks.as_mut_slice()[2].top_hp = 0;
-    activate(&mut s, 1);
-    let events = act(&mut s, &r, walk(&r, (9, 7))).unwrap();
-    assert_eq!(blasts(&events), [(1, at(&r, 9, 7), 40, 4)]);
 }
 
 // covers: BAT-MAG-031, BAT-MAG-033

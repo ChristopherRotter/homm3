@@ -1028,7 +1028,7 @@ start (0x46402C) the battle sets one byte per side at +0x1329C: whether any of t
 that byte. Nothing writes it again; it is read only when Quicksand or a Land Mine is placed and by
 Land Mine's cast test (T5c2): an object placed by side `s` gets the revealed flag (+0xA, shown to
 both sides) if the other side's byte is set. Natives that die or appear later change nothing
-(BAT-QUIRK-1). VCMI 1.7.5 asks each time whether the side has a native stack, dead ones included
+(the engine's rule in every profile since BAT-QUIRK-1 was retired, BAT-Q34). VCMI 1.7.5 asks each time whether the side has a native stack, dead ones included
 (`battleHasNativeStack`, `lib/battle/CBattleInfoEssentials.cpp`: every stack that is no ghost): as
 the original for natives that die, unlike it for natives that appear later.
 
@@ -1543,8 +1543,10 @@ draws) take the Orb, Sorcery and specialty bonuses of its side's hero (§7.8, st
 Bolt, Lightning Bolt and Magic Arrow do not: one dragon's Fireball under the Orb of Tempestuous Fire
 deals 120, not 80 (`5 × 10 + 30`, × 1.5), its Magic Arrow 70 either way. Not observed. VCMI 1.7.5
 gives a unit's cast no such bonus (`lib/battle/CUnitState.cpp` `getSpellBonus`); the wiki was not
-checked. The engine gives no creature's cast a hero's bonuses (BAT-MAG-048, BAT-MAG-049): it does
-not follow this yet: BAT-Q28.
+checked; the wiki agrees (Sorcery: "Sorcery also boosts damage spells cast by creatures under the
+hero's control"; Faerie Dragon: the bolts take neither Sorcery nor the orbs; the wiki checks,
+2026-10-13). The engine follows the reading since the user's decision of 2026-10-13 (BAT-Q28 row
+2; BAT-MAG-048, BAT-MAG-049).
 
 **The creature's cast action** (the action dispatcher's case 10, 0x47936E → 0x448260, stack,
 target hex; the action names no spell): it turns the stack towards the hex (animation only),
@@ -1704,9 +1706,10 @@ anti-magic garrison and Cursed Ground do not stop a Faerie Dragon's cast by the 
 says of the Orb and the garrison (§7.23); on Cursed Ground the effect test still answers 0 for every
 spell above level 1 (§7.8), so such a spell is cast and affects nothing. Batch 2e's row OI asked for
 a spell cursor over a stack, which is 0x4476C0's answer; the key was not pressed. Not observed (the
-report: medium to high for the reading). The engine lets the Orb of Inhibition stop the dragons
-(BAT-MAG-061, since batch 2e): it does not follow this yet: BAT-Q32, which reopens BAT-Q21's first
-point.
+report: medium to high for the reading). The wiki agrees (the wiki checks, 2026-10-13), and the
+engine follows the reading since the user's decision of 2026-10-13 (BAT-Q32 (2)): the Faerie
+Dragon has `ignores_magic_block` (BAT-MAG-061). The key path's own targets are not modelled
+(BAT-Q32 (1)): under the Orb the engine still offers the cursor's.
 
 **The Master Genie, re-read for T7b2b** (BAT-MAG-050, 2026-10-08). The target test 0x4476C0
 switches through the byte table 0x447A00 (creature − 13) to eight cases: 0 Archangel and Pit Lord,

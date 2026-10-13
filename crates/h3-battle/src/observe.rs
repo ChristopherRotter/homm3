@@ -144,7 +144,7 @@ pub struct Observation {
     /// The spell obstacles the viewer sees, in the order they were placed (BAT-MAG-027; Force
     /// Field and Fire Wall are public, a hidden one only when the viewer sees it, BAT-MAG-031); a
     /// spectator's, those both sides see. Here `revealed` tells whether the other side of the
-    /// obstacle's sees it now (its natives included, BAT-MAG-031).
+    /// obstacle's sees it (a hidden one placed while its natives saw included, BAT-MAG-031).
     pub spell_obstacles: Vec<SpellObstacle>,
 }
 

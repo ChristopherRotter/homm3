@@ -1630,10 +1630,6 @@ pub fn try_ruleset_from(
                 )],
             },
             ProfileDef {
-                key: ContentKey::new("t", "sight").unwrap(),
-                quirks: vec![(String::from("quirk.battle.natives_sight_at_start"), true)],
-            },
-            ProfileDef {
                 key: ContentKey::new("t", "anchors").unwrap(),
                 quirks: vec![(String::from("quirk.battle.obstacle_anchors"), true)],
             },

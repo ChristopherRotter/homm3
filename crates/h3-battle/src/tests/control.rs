@@ -393,7 +393,7 @@ fn a_berserk_stack_does_not_attack_from_a_pit_its_side_sees() {
     // every profile (under the retired flag of BAT-QUIRK-2 it walked into the pit and did not
     // strike). Ids: 0 fixed (berserk, the attacker's); 1 slow, three steps away, whose only free
     // neighbouring hex holds the pit; 2 slow, four steps away (the defender's).
-    for profile in ["t:faithful", "t:sight"] {
+    for profile in ["t:faithful", "t:quirky"] {
         let r = ruleset_with(profile, |_| {});
         let battle = |pit_of: BattleSide| {
             let mut s = arena(
