@@ -235,7 +235,7 @@ async fn a_peer_whose_key_is_another_or_that_names_another_address_is_not_relaye
 }
 
 /// A peer that answers each hello with a welcome by the key of `seed`, each `Describe` with
-/// `card` as it is and each `ListPeers` with a page of `relays`: its address.
+/// `card` as it is, each `ListPeers` with a page of `relays` and `Lists` with none: its address.
 async fn fake(seed: [u8; 32], card: SignedCard, relays: Vec<RelayedCard>) -> SocketAddr {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
@@ -259,6 +259,10 @@ async fn fake(seed: [u8; 32], card: SignedCard, relays: Vec<RelayedCard>) -> Soc
                         Received::Game(ClientMessage::Describe { seq }) => {
                             let card = card.clone();
                             codec::encode_text(&ServerMessage::Described { seq, card })
+                        }
+                        Received::Game(ClientMessage::Lists { seq }) => {
+                            let lists = vec![];
+                            codec::encode_text(&ServerMessage::ListsAre { seq, lists })
                         }
                         Received::Game(ClientMessage::ListPeers { seq, from }) => {
                             let entries = (relays.iter().skip(from as usize).take(PAGE))
@@ -492,6 +496,14 @@ async fn a_client_checks_each_chain_a_server_relays() {
         let expected = format!("its chain does not vouch for: {}", key_hex(failing));
         assert!(error.0.contains(&expected), "{error}");
     }
+    // A card marked with a list the server does not give (E16 M6 T5): its list does not name it.
+    let mut listed = relayed_as(vouching(5, &[]), &[]);
+    listed.list = Some(key_hex(9));
+    let address = fake([1; 32], vouching(1, &[3]), vec![listed]).await;
+    let (mut client, own) = greeted_at(address).await;
+    let error = client.relayed(&own).await.unwrap_err();
+    let expected = format!("its list does not name: {}", key_hex(5));
+    assert!(error.0.contains(&expected), "{error}");
 }
 
 /// A TLS proxy in front of `to` with the test certificate, as an operator's reverse proxy is: its

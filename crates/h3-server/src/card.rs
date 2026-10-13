@@ -139,8 +139,9 @@ pub(crate) fn verify(signed: &SignedCard, now: u64) -> Result<ServerCard, CardEr
     })
 }
 
-/// The wall clock: milliseconds since the Unix epoch (0 before it). A card's issue and expiry
-/// times are the server's one use of it; its games, timers and limits run on `tokio`'s clock.
+/// The wall clock: milliseconds since the Unix epoch (0 before it). The issue and expiry times of
+/// cards and of lists of servers are the server's one use of it; its games, timers and limits run
+/// on `tokio`'s clock.
 // The workspace bans the system clock for game logic (ADR-0003 §10); a card's times are not game
 // logic: they say when the card was signed, for clients and other servers to judge its age.
 #[allow(clippy::disallowed_types)]
