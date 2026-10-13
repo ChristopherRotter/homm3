@@ -38,7 +38,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-13 — T15 checkpoint, T16b + T16a (in progress)
 
-Every T15 call accepted. The user's cut: T16b (the stamp, batch 2: D-3 and D-5's piles), then T16a (maps, replays, baselines, audit), one `cross-lane` pull request. **In progress:** T16b.
+Every T15 call accepted. The user's cut: T16b (the stamp, batch 2: D-3 and D-5's piles), then T16a (maps, replays, baselines, audit), one `cross-lane` PR. **In progress:** T16b.
 
 ### 2026-10-13 — T14 checkpoint and T15a + T15b: observatories, keys, guards, gates
 
