@@ -47,7 +47,8 @@ holds the byte layouts.
 
 **Decoder policy** (*provisional*, E17 M1 T2): exact lengths where every file is exact (PCX, MSK,
 the RIFF size); a run past its row's or block's end is an error (no file has one); sides above
-16 384 are rejected; nothing is allocated that the input cannot fill. Raw palettes: the keyed
+16 384 and DEF frames above 2^20 pixels are rejected (T8: runs and shared rows make more pixels
+than the input holds, so the pixel cap bounds a frame's memory; every real frame fits). Raw palettes: the keyed
 indices (transparency, shadow, …) are the compositor's (T1, T6).
 
 ## 2. The inventory (M1 T3)

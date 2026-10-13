@@ -14,14 +14,15 @@ const USAGE: &str = "\
 usage: h3-view <command> [options]
 
 commands:
-  gate [--install <dir>] [--out <dir>]
+  gate [--install <dir>] [--out <dir>] [--tables <dir>]
           the real-asset gate: opens the four LOD archives of an installation copy, decodes every
           PCX, PAL, DEF and MSK in them (it fails if one does not decode), and writes every entry
           with its verdict to <out>/gate/entries.tsv and the inventory (findings, duplicates,
           names nothing mentions, timings) to <out>/gate/report.md, and checks that every name
-          in the asset tables (clients/assets) is found and decodes. <dir> defaults to
-          $H3_INSTALL, then to the repository's original-data/install; <out> to clients/out
-          (gitignored). Build with --release for meaningful times (about 3 s, against 30 s).
+          in the asset tables (<tables>, default clients/assets) is found and decodes. <dir>
+          defaults to $H3_INSTALL, then to the repository's original-data/install; <out> to
+          clients/out (gitignored). Build with --release for meaningful times (about 3 s,
+          against 30 s).
   sprite <name.def> [--group <id>] [--background <name.pcx>] [--mirror] [--install <dir>]
          [--out <file>]
           draws every frame of one group of a DEF (the first by default) side by side, each on
@@ -33,14 +34,16 @@ commands:
           draws a battle still: the battle at its start as the record's first snapshot shows it
           (the background, the obstacles, every living stack standing on its hex; no heroes,
           count boxes or corpses yet), with its assets loaded as one checkpoint batch, and writes
-          a PNG (default clients/out/render/<stem>.png). A scenario file (as `h3 run` reads it,
-          its packs from <dir>, default the repository's packs/; obstacles from the seed, default
-          1, when it asks) is run in-process as a spectator of h3-protocol's session first; that
-          record is written beside the PNG (<stem>-s<seed>.jsonl). --list prints the draw list.
+          a PNG (default clients/out/render/<stem>.png; <stem>-s<seed>.png from a scenario). A
+          scenario file (as `h3 run` reads it, its packs from <dir>, default the repository's
+          packs/; obstacles from the seed, default 1, when it asks) is run in-process as a
+          spectator of h3-protocol's session first; that record is written beside the PNG
+          (<stem>-s<seed>.jsonl). --list prints the draw list.
   harvest [--install <dir>] [--packs <dir>] [--out <dir>]
-          generates the asset tables (<out>/{base,ab,sod}.toml, default clients/assets) from the
-          installation copy's Heroes3.exe and H3bitmap.lod, keyed by the packs (default the
-          repository's packs/); prints the gaps. Run once; the tables are then edited as source.
+          generates the asset tables (<out>/{base,ab,sod}.toml, default clients/out/harvest)
+          from the installation copy's Heroes3.exe and H3bitmap.lod, keyed by the packs (default
+          the repository's packs/); prints the gaps. The committed tables (clients/assets) are
+          source edited by hand: diff a fresh harvest against them, never overwrite them.
   help    show this message
 ";
 

@@ -250,8 +250,17 @@ fn pixels_outside_the_canvas_or_the_screen_are_clipped() {
     assert_eq!(row(&s, 0), [WHITE; 3]);
     assert_eq!(row(&s, 1), [grey(2), grey(3), WHITE]);
     assert_eq!(row(&s, 2), [WHITE; 3]);
-    // Off the screen on every side: nothing drawn, nothing breaks.
-    for (x, y) in [(-2, 0), (2, 0), (0, -3), (0, 2), (i32::MIN, i32::MAX)] {
+    // Partly or wholly off the screen on every side: exactly the visible pixels are drawn (no
+    // row wraps into its neighbour), nothing breaks.
+    let cases: [((i32, i32), &[usize]); 6] = [
+        ((-2, 0), &[]),
+        ((-1, 1), &[3, 6]),
+        ((2, 0), &[2, 5]),
+        ((0, -3), &[]),
+        ((0, 2), &[6, 7]),
+        ((i32::MIN, i32::MAX), &[]),
+    ];
+    for ((x, y), expected) in cases {
         let mut s = screen(3, 3);
         let f = frame(2, 0, 0, (2, 2), vec![9; 4], vec![]);
         draw_frame(
@@ -265,8 +274,8 @@ fn pixels_outside_the_canvas_or_the_screen_are_clipped() {
             },
             plain,
         );
-        let drawn = s.pixels().iter().filter(|&&p| p != WHITE).count();
-        assert!(drawn <= 2, "{x} {y}: {drawn}");
+        let drawn: Vec<usize> = (0..9).filter(|&i| s.pixels()[i] != WHITE).collect();
+        assert_eq!(drawn, expected, "{x} {y}");
     }
 }
 

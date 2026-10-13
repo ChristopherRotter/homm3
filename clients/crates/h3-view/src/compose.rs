@@ -89,14 +89,15 @@ pub fn compose(
                 let (sprite, frame) = frame_of(batch, def, *group, *frame)?;
                 let [dx, dy] = layout.stack_canvas;
                 let width = i32::try_from(sprite.def.width).unwrap_or(i32::MAX);
+                // Saturating: a hostile DEF width or a far anchor clips instead of overflowing.
                 let x = if *mirrored {
-                    anchor[0] - width + dx
+                    anchor[0].saturating_sub(width).saturating_add(dx)
                 } else {
-                    anchor[0] - dx
+                    anchor[0].saturating_sub(dx)
                 };
                 let at = Placement {
                     x,
-                    y: anchor[1] - dy,
+                    y: anchor[1].saturating_sub(dy),
                     mirrored: *mirrored,
                 };
                 let colour = match outline {

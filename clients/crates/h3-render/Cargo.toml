@@ -1,6 +1,6 @@
 [package]
 name = "h3-render"
-description = "The software compositor: indexed sprites into a frame in the original's screen format, with its keyed colours. Pure; the PNG writer is an adapter."
+description = "The software compositor: indexed sprites into a frame in the original's screen format, with its keyed colours. Pure: the PNG encoder makes bytes; writing them to a file is an adapter's."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

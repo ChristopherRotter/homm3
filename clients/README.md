@@ -72,7 +72,9 @@ viewer on the real assets; a full game record/replay viewer follows.
 One table per rule pack, `clients/assets/<pack>.toml` (ADR-0020 point 5), generated once by
 `cargo run --release -p h3-view -- harvest [--install <dir>] [--packs <dir>] [--out <dir>]` from
 the installation copy's `Heroes3.exe` and `H3bitmap.lod` (`cranim.txt`, `crtraits.txt`), keyed by
-the committed packs; afterwards they are source, edited by hand and reviewed as diffs. The client
+the committed packs (its default `--out` is `clients/out/harvest`, so a fresh harvest is diffed
+against the committed tables, never written over them); afterwards they are source, edited by hand
+and reviewed as diffs. The client
 never reads the executable. Loader: `h3_view::tables` (pure); `tests/tables.rs` checks them
 against the packs; the gate checks their names against the archives. The format (*provisional*,
 on the M1 review list):

@@ -142,7 +142,7 @@ const fn hex(row: u8, column: u8) -> u8 {
     17 * row + column
 }
 
-/// The battle of the order test: obstacles of both layers and stacks on rows 3 and 4.
+/// The battle of the order test: obstacles of both layers and stacks on rows 1, 3 and 4.
 pub(crate) fn battle_view() -> Observation {
     let mut o = observation();
     o.terrain = Some(0);
@@ -155,7 +155,8 @@ pub(crate) fn battle_view() -> Observation {
         removable(hex(4, 8), &[hex(4, 8), hex(3, 8)], Some(1)),
         // No type: not drawn.
         removable(hex(6, 6), &[hex(6, 6)], None),
-        // Every hex cleared: not drawn.
+        // Its hexes in the cleared set (an anchor another removal cleared, BAT-QUIRK-3): still
+        // listed, so still on the field and drawn (a removed obstacle leaves the list).
         removable(hex(7, 6), &[hex(7, 6), hex(7, 7)], Some(1)),
     ];
     o.obstacles_cleared = vec![hex(7, 6), hex(7, 7)];
@@ -167,6 +168,8 @@ pub(crate) fn battle_view() -> Observation {
         stack(1, Side::Attacker, 1, hex(4, 9), true),
         stack(2, Side::Defender, 1, hex(3, 16), true),
         dead,
+        // Above the layer-1 obstacles' rows: still drawn after them (§4.6 step 1).
+        stack(4, Side::Attacker, 0, hex(1, 2), false),
     ];
     o
 }
@@ -185,6 +188,7 @@ fn the_battle_is_drawn_in_the_executables_order() {
     };
     let [bx, by] = layout.hex_box(3, 5);
     let [fx, fy] = layout.hex_box(4, 8);
+    let [gx, gy] = layout.hex_box(7, 6);
     assert_eq!(
         list,
         [
@@ -205,6 +209,8 @@ fn the_battle_is_drawn_in_the_executables_order() {
                 x: bx,
                 y: by
             },
+            // Row 1: a stack above the layer-1 obstacle's row, drawn after it all the same.
+            creature("CPKMAN.DEF", 1, 2, false, None),
             // Row 3: the defender's dragon, from its position (its rear hex).
             creature("CBDRGN.DEF", 3, 16, true, None),
             // Row 4: the layer-0 obstacle in pass 2, raised by its second row; then the stacks
@@ -218,6 +224,14 @@ fn the_battle_is_drawn_in_the_executables_order() {
             },
             creature("CPKMAN.DEF", 4, 0, false, Some(0x60)),
             creature("CBDRGN.DEF", 4, 9, false, None),
+            // Row 7: the layer-0 obstacle whose hexes are in the cleared set.
+            Draw::Obstacle {
+                def: "Front.def".to_string(),
+                group: 0,
+                frame: 0,
+                x: gx,
+                y: gy - 42
+            },
         ]
     );
 }

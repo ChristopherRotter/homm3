@@ -1,5 +1,6 @@
 use super::*;
 use alloc::string::ToString;
+use alloc::vec;
 use alloc::vec::Vec;
 use h3_assets::build;
 use h3_assets::def::Encoding;
@@ -123,6 +124,46 @@ fn each_draw_takes_its_drawer() {
     let screen = compose(&list, &batch(), &small()).unwrap();
     let [b, g, r, w, y] = [BLUE, GREEN, RED, WHITE, YELLOW].map(|c| FORMAT.pack(c));
     assert_eq!(screen.pixels(), [b, g, r, b, b, b, w, y, b, b, w, b]);
+}
+
+#[test]
+fn a_stack_is_placed_by_facing_with_the_native_offsets() {
+    // §4.2: the canvas at the anchor minus (196, 267); mirrored, its left edge at the anchor's x
+    // minus 254 for a DEF 450 wide, so canvas column 0 lands at x + 195.
+    let layout = BattleLayout {
+        frame: [460, 8],
+        stack_canvas: [196, 267],
+        ..layout()
+    };
+    let one = Frame {
+        encoding: Encoding::Rows,
+        full_width: 450,
+        full_height: 1,
+        left: 0,
+        top: 0,
+        width: 1,
+        height: 1,
+        pixels: vec![4],
+        runs: vec![false],
+        short_header: false,
+    };
+    let p = palette(&[(4, WHITE)]);
+    let mut batch = Batch::default();
+    let wide = build::def(0x42, (450, 1), &p, &[(2, &[("f", 0)])], &[one]);
+    batch.add("Wide.def", &wide).unwrap();
+    let white = FORMAT.pack(WHITE);
+    let drawn = |anchor: [i32; 2], mirrored: bool| {
+        let list = [creature_of("WIDE.DEF", anchor, mirrored, None)];
+        let screen = compose(&list, &batch, &layout).unwrap();
+        let at: Vec<usize> = (0..screen.pixels().len())
+            .filter(|&i| screen.pixels()[i] == white)
+            .collect();
+        at
+    };
+    assert_eq!(drawn([200, 270], false), [3 * 460 + 4]);
+    assert_eq!(drawn([200, 270], true), [3 * 460 + 395]);
+    // Far off the screen: the placement saturates, nothing is drawn, nothing overflows.
+    assert!(drawn([i32::MIN, i32::MIN], true).is_empty());
 }
 
 #[test]
