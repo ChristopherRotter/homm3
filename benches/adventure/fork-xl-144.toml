@@ -26,5 +26,5 @@ args = [
     "1",
 ]
 collect = "*fork_workload*"
-instructions = 343600056
+instructions = 349400056
 threshold_percent = 2
