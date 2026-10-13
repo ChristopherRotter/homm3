@@ -57,3 +57,29 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-adventure/src/movement/tests.rs` (E08 T7b)
 - Decided by / date: confirmed and classified 2026-10-11 (the user, E08 T7b)
+
+### ADV-QUIRK-5 — A battle's obstacles follow from its tile
+- Class: fix-optional (the user, 2026-10-13, ADV-Q13: exploitable, if mildly)
+- Context / rules affected: game, GAM-BAT-001 (the battle's setup from the adventure map; E08 T19a)
+- Original behavior: before the battlefield and its obstacles are set up, `battle_side_setup` seeds the C runtime's generator with 110 291 x + 167 801 y + 81 569 (32-bit, the battle's tile, the level not included; 0x463A08, the coordinates from the position word at 0x4AE27C), so every battle on a tile gets the same obstacles whoever fights there and however often.
+- Intended/expected behavior: the obstacles are not known before the battle starts: drawn from the attacking player's stream, server-only (E08 decision 9).
+- Impact: exploit (mild): a defending hero can pick the tile it stands on for a layout that suits its army; an attacker, or an agent that has learned the tile's layout over many episodes, knows the battlefield before it commits. In the original the same is learnable by reloading, which the tile seed was probably meant to make useless.
+- Community status: not on the wiki's pages read (Wandering creature, Diplomacy); VCMI reproduces it (`BattleInfo::setupBattle` seeds its `RandGen` with the same expression).
+- Sources: code reading 0x463A08 (E08 T17a, survey `E08-battles.md` §4.2), re-read with the call site's arguments 2026-10-13 (E08 T17b); VCMI 1.7.5 `lib/battle/BattleInfo.cpp`.
+- Flag: `quirk.adventure.obstacles_from_tile` (its number with E08 T19a)
+- Defaults: faithful = on (from the tile; the layouts match the original's once the battle lane ports its generator), strict-fixed = off (the attacker's stream)
+- Regression test: with E08 T19a
+- Decided by / date: classified by the user 2026-10-13 (ADV-Q13; the epic's decision 26)
+
+### ADV-QUIRK-6 — A monster's split follows from its tile
+- Class: fix-optional (the user, 2026-10-13, ADV-Q13; its own flag, apart from ADV-QUIRK-5)
+- Context / rules affected: adventure, ADV-MON-009 (the split into stacks; E08 T20b)
+- Original behavior: `monster_battle` seeds the C runtime's generator with 248 071 x + 276 589 y + 310 111 z + 155 303 (the monster's visitable tile, 0x4AC580); the first draw moves the number of stacks by one (at most 20: one fewer; at least 80: one more), the second (at most 50) upgrades the middle stack of a town's unupgraded creature. With the armies' ratio, which picks the base number from a table, the split is a function of the tile and the two armies.
+- Intended/expected behavior: the two draws come from the attacking player's stream, server-only; the table by the armies' ratio stays.
+- Impact: exploit (mild): a player can work out the exact stacks before it attacks and tune its army (the ratio) to get a split it likes; a re-visit always splits the same way.
+- Community status: known: the wiki says the split varies but "is not random"; VCMI reproduces the first draw exactly (`hashByPosition`) and approximates the second (D-11).
+- Sources: code reading 0x4AC580 (E08 T17a, survey `E08-battles.md` §4.1), confirmed by an independent second reading (a fresh agent, 2026-10-13); wiki Wandering creature (https://heroes.thelazy.net/index.php/Wandering_creature); VCMI 1.7.5 `lib/mapObjects/CGCreature.cpp`.
+- Flag: `quirk.adventure.split_from_tile` (its number with E08 T20b)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: with E08 T20b
+- Decided by / date: classified by the user 2026-10-13 (ADV-Q13; the epic's decision 26)
