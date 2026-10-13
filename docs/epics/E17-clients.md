@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 next. Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 in progress (T1 and T3 done 2026-10-13). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M2 T1 (the capture harness).
+are there). Next: M2 T2 (the window and audio evaluation) or T4 (the scene over time).
 
 ## Goal
 
@@ -148,6 +148,12 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   facing either way, usual and absolute obstacles, all matching outside the masks but for the
   outline's colour (its pulse, T3/T4) and an idle animation; reproducible from a fresh prefix. The
   scene takes a terrain's third background (0x41ADB0 read; CLT-Q4).
+- **T3 done 2026-10-13** ([log](E17-log.md#m2-t3--code-reading-the-battles-animation-timing-2026-10-13),
+  [design §7](E17-design.md)): the frame deadline and the idle step, the combat speed's factors,
+  walks, flights, turns, strikes and their reactions, shots and projectiles, fidgets, each with its
+  address and confirmed in the original to the millisecond: the harness reads the game's battle
+  state from its memory (`capture/h3mem.py`) and replays recorded timelines
+  (`situations/sequences.toml`). CLT-Q1 decided (a) by the user.
 
 ### M3 — fidelity
 
@@ -181,7 +187,8 @@ viewer, video.
 ## Risks and known gaps
 
 - **The walk's path (CLT-Q1).** `Moved` carries only the start and end hex; the walking animation
-  needs every hex. Needed by M2.
+  needs every hex. Decided (the user, 2026-10-13): the engine's event carries it (battle lane,
+  then the wire); needed by M2 T4's walks.
 - **Graphics per expansion.** The Complete edition holds only SoD-era graphics: a RoE ruleset
   still shows SoD art.
 - **Engine churn.** `h3-protocol` depends on `h3-battle`; the engine's frequent changes rebuild the
@@ -249,3 +256,9 @@ choices are lifted.
   numbers only, ADR-0009) and the set's format `situations/set.toml` (T1).
 - The diff and the obstacle finder stay in Python, not `h3-view diff` (T1, design §6.1).
 - The scene's background: a terrain's third picture, an empty surrounding's (T1; CLT-Q4).
+- Reading the running original's memory (`capture/h3mem.py`, read only, under Wine) and the
+  recorded sequences' format (`situations/sequences.toml`, `timelines/`: numbers only) (T3).
+- `walk_step` (was `stack_layer_by_direction`) and `strike_animation` (was `cast_pending_spells`)
+  renamed in the address map after reading them whole (T3).
+- The viewer's fidgets from a generator of its own (the original draws them from its rules'
+  generator, design §7.2); reference frames compared against the original's poses (T3, for T4).

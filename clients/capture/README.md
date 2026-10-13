@@ -1,6 +1,6 @@
 # Reference captures: the runbook
 
-*Provisional* (E17 M1 T8, M2 T1; ADR-0020 point 9; findings in `docs/epics/E17-design.md` §6).
+*Provisional* (E17 M1 T8, M2 T1, T3; ADR-0020 point 9; findings in `docs/epics/E17-design.md` §6).
 The original game runs unattended in a Linux sandbox under Wine, on a virtual X display at 16 bits,
 so an XWD dump of the display is the original's own 5-6-5 screen and compares exactly with our
 renders. A script steers it through its menus by fixed coordinates and recognises each screen by a
@@ -20,7 +20,8 @@ enter git (they stay in the sandbox or `clients/out/`).
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture). |
-| `../situations/` | The capture set: `set.toml` and its situations' scenario files. |
+| `h3mem.py` | Reads the running game's battle state from its memory: the clocks, each stack's group, frame, hex (below). |
+| `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
 | `h3-view situation` | Writes the original's map for a scenario's battle (`cargo run --release -p h3-view -- help`). |
 
 Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINKW32.DLL`,
@@ -81,6 +82,21 @@ for ms in range(1, 101):
 game.stop()
 ```
 
+**A sequence frame by frame** (no screenshots): from `clients/`,
+
+```
+python3 capture/h3drive.py sequence out/walk.h3m out/walk --action hex:40 --ms 2700 [--pre <ms>] [--screen]
+python3 capture/h3drive.py sequences [--only walk]
+```
+
+`sequence` opens the battle, steps the clock `--pre` ms, performs the actions at the frozen clock
+(`hex:<n>` clicks a hex at `hex_point`, `key:d` defends, `click:x,y`, `move:x,y`, `step:<ms>`) and
+then steps 1 ms at a time, reading the game's state after each step: `<out>/states.jsonl` (every
+state, with `--screen` a digest of the battlefield's pixels) and `<out>/timeline.txt` (one line per
+change of a stack's group, frame or hex). `sequences` replays the recorded ones and fails when a
+timeline changes; add one like a situation (its entry, `new`, then copy its timeline into
+`timelines/`).
+
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`
 records its probes from the part of the screen that tells it apart (`--also`: the same screen in
@@ -109,6 +125,14 @@ folder's `clock/`), it runs in real time until a command arrives in `ctl`, one l
 stopped clock is idle at that time: `Game.clock` waits for 20 reads, `Game.settled` for two equal
 dumps (Wine may draw a moment later).
 
+## The original's state
+
+`h3mem.py` opens the game's `/proc/<pid>/mem` (Wine maps `Heroes3.exe` at its image base, so the
+map's addresses hold): the frame deadline and the idle step's time, the combat speed, and per
+stack its creature, hex, group, frame, facing, offsets and times (`docs/exe/structs.toml`). It
+only reads. `python3 capture/h3mem.py` prints them as JSON while a battle runs; `Mem` is the
+library. How to read a state (drawn now, shown at the next deadline): design §7.1.
+
 ## Traps
 
 - The game draws its own cursor: probes keep 50 px away from where it rests, and the recipes
@@ -119,3 +143,9 @@ dumps (Wine may draw a moment later).
 - The menus run in real time; only the battle runs on the stepped clock. Two runs still agree:
   the battle's setup does not depend on the clock (observed: the obstacles follow the tile).
 - Display `:99` belongs to the driver; `setup.sh` uses `:98` for `wineboot`.
+- A click at the frozen clock acts at once and the computer's reply too (the AI acts in the same
+  millisecond); a sequence's timeline therefore also holds the computer's moves. A click on an
+  enemy the active stack cannot reach may still end its turn (seen once with Angels): click
+  reachable hexes.
+- The combat speed lives in the prefix's registry (`Combat Speed`, 0 to 2, not set by
+  `setup.sh`: 0); a run at another speed sets it with `wine regedit` and puts it back.

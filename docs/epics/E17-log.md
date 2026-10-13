@@ -353,3 +353,37 @@ the client job's paths name `h3-map`, `h3-adventure` and `h3-game`; the user agr
   obstacles follow the battle's tile, not the armies or the clock.
 - **Decided (*provisional*):** the diff stays in Python (design §6.1).
 - Gates: see the pull request.
+
+### M2 T3 — Code reading: the battle's animation timing (2026-10-13)
+
+On `client/e17-m2-t3-animation-timing`, the user present (T3 chosen over T2 at the session's
+start). The user decided **CLT-Q1: (a)**, the engine's `Moved` carries the path (for the battle
+and server lanes; `OPEN-QUESTIONS.md`).
+
+- **Read** (design §7; `docs/exe/map.toml`, `structs.toml`): the battle's tick 0x474040 and the
+  frame deadline 0x698998, the idle step 0x4960D0 (read whole now) and its time 0x6989B8, the
+  combat speed 0x6987EC and its factors 0x63CF7C, `stack_play_group` 0x446940, `walk_step`
+  0x43F0B0 (was `stack_layer_by_direction`), the turn's groups (0x446720), the flight 0x4B4A40,
+  `strike_animation` 0x468990 (was `cast_pending_spells`; H3API's ApplyAnimationToLastHitArmy),
+  the melee strike's group and pauses, the shot's frames and projectile (0x43F2C0), the fidget
+  clocks (0x479F30 and its copies after every action), the waits 0x4F82F0 and 0x4F83C0, the
+  cosmetic draw 0x50B1D0. 21 map entries, 16 record fields.
+- **The original's state:** under Wine the game's memory is readable at its addresses;
+  `capture/h3mem.py` reads the clocks and every stack's group, frame and hex, so the harness
+  confirms a timing to the millisecond without a screenshot. `h3drive.py sequence` (actions at
+  the frozen clock, then 1 ms steps) and `sequences` (replays the recorded timelines,
+  `situations/sequences.toml`: walk, shot, melee; fails on a change). A rerun reproduced all
+  three exactly.
+- **Confirmed:** every formula of design §7 at speed 0 (a walk, a flight, two shots, a melee
+  strike and its retaliation, Defend and Wait, the idle steps and fidgets of the grass
+  situation), and the walk at speeds 1 (62 and 35 ms: trunc(100 x 0.63f) is 62) and 2 (40, 22).
+- **Findings beyond the queue's list:** the first frame of an animation waits for the deadline
+  grid; waits outside the deadline make the next frames show at once (the hit after a shot loses
+  its frame 0); the idle step runs twice after a long animation; fidgets are scheduled by a clock
+  per stack, redrawn after every action, stall 8 times in 101, and draw from the rules'
+  generator (the original's later rolls depend on how long a player waits); melee ignores the
+  attack time; Defend and Wait do not animate. VCMI 1.7.5 approximates most of it (§7.5).
+- **Decided (*provisional*):** reading the game's memory in the harness (read only); the
+  sequences' format (numbers only); the timeline as the T4 check of timing, the original's poses
+  read from memory as the T4 check of frames (§7.6).
+- Gates: see the pull request.
