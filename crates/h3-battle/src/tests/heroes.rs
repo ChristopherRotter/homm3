@@ -21,7 +21,10 @@ use crate::{
     SetupError, StackId, observe,
 };
 
-fn with_heroes(r: &h3_content::Ruleset, heroes: [Option<BattleHero>; 2]) -> BattleSetup {
+fn with_heroes(
+    r: &h3_content_battle::BattleRuleset,
+    heroes: [Option<BattleHero>; 2],
+) -> BattleSetup {
     BattleSetup {
         heroes,
         ..setup(r, &[(0, "fixed", 10)], &[(0, "fixed", 10)])
@@ -29,7 +32,7 @@ fn with_heroes(r: &h3_content::Ruleset, heroes: [Option<BattleHero>; 2]) -> Batt
 }
 
 /// Every effect variant, the selectors by creature type, flag and all.
-fn every_effect(r: &h3_content::Ruleset) -> Vec<BattleEffect> {
+fn every_effect(r: &h3_content_battle::BattleRuleset) -> Vec<BattleEffect> {
     let fixed = CreatureSelector::Creature(r.creature_by_key("t:fixed").unwrap());
     vec![
         BattleEffect::Morale {
@@ -251,7 +254,10 @@ fn values_no_real_hero_could_have_are_accepted() {
 }
 
 /// A change to a valid hero and the error it causes.
-type Case = (fn(&h3_content::Ruleset, &mut BattleHero), HeroError);
+type Case = (
+    fn(&h3_content_battle::BattleRuleset, &mut BattleHero),
+    HeroError,
+);
 
 // covers: BAT-HER-001
 #[test]
@@ -889,7 +895,7 @@ fn hero_morale_and_luck_effects_reach_the_sides_they_name() {
 #[test]
 fn hero_damage_bonuses_raise_the_sides_strikes_and_reduce_the_strikes_against_it() {
     // Heroes without attack and defense, with the given damage bonuses (basis points).
-    let led = |r: &h3_content::Ruleset, ranged_bp, melee_bp, reduction_bp| {
+    let led = |r: &h3_content_battle::BattleRuleset, ranged_bp, melee_bp, reduction_bp| {
         let mut h = hero(r);
         [h.attack, h.defense] = [0, 0];
         h.damage = DamageBonuses {
@@ -901,7 +907,7 @@ fn hero_damage_bonuses_raise_the_sides_strikes_and_reduce_the_strikes_against_it
     };
     // Melee: 10 fixed (2 damage, attack = defense) strike 10 fixed; the target's 8 survivors
     // retaliate.
-    let melee = |r: &h3_content::Ruleset, heroes: [Option<BattleHero>; 2]| {
+    let melee = |r: &h3_content_battle::BattleRuleset, heroes: [Option<BattleHero>; 2]| {
         let mut b = BattleState::new(r, &with_heroes(r, heroes), 1).unwrap();
         place(&mut b, r, 0, 7, 5);
         place(&mut b, r, 1, 8, 5);

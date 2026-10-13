@@ -5,7 +5,8 @@
 
 use std::vec::Vec;
 
-use h3_content::{BattleParamsDef, Ruleset, SpellId};
+use h3_content::SpellId;
+use h3_content_battle::{BattleParamsDef, BattleRuleset};
 use h3_contracts::{BattleHero, BattleSetup, BattleSide};
 
 use super::support::*;
@@ -13,13 +14,13 @@ use crate::{
     BattleState, CastTarget, Command, CommandError, Event, EventKind, StackFlags, StackId, Status,
 };
 
-fn spell(r: &Ruleset, name: &str) -> SpellId {
+fn spell(r: &BattleRuleset, name: &str) -> SpellId {
     r.spell_by_key(&std::format!("t:{name}")).unwrap()
 }
 
 /// A hero with spell power 3, 15 mana and the test Magic Arrow (`bolt`: 5 mana without a
 /// mastery, 4 from Basic; power × 10 + 10 damage).
-fn mage(r: &Ruleset) -> BattleHero {
+fn mage(r: &BattleRuleset) -> BattleHero {
     let mut h = hero(r);
     h.power = 3;
     h.magic.spell_book = Some(std::vec![spell(r, "bolt")]);
@@ -28,7 +29,7 @@ fn mage(r: &Ruleset) -> BattleHero {
 
 /// Starts a battle with `heroes`, returning it and the events of its start.
 fn led(
-    r: &Ruleset,
+    r: &BattleRuleset,
     heroes: [Option<BattleHero>; 2],
     attacker: &[Spec],
     defender: &[Spec],
@@ -43,7 +44,7 @@ fn led(
 }
 
 /// The attacker's first stack takes the turn and its hero casts `bolt` at stack `target`.
-fn bolt(s: &mut BattleState, r: &Ruleset, target: u8) -> Result<Vec<Event>, CommandError> {
+fn bolt(s: &mut BattleState, r: &BattleRuleset, target: u8) -> Result<Vec<Event>, CommandError> {
     activate(s, 0);
     act(
         s,
@@ -61,7 +62,7 @@ fn mana(s: &BattleState, side: BattleSide) -> u16 {
 }
 
 /// The mana the attacker's hero pays for `bolt` at stack `target` now, without changing `s`.
-fn cost(s: &BattleState, r: &Ruleset, target: u8) -> u16 {
+fn cost(s: &BattleState, r: &BattleRuleset, target: u8) -> u16 {
     let mut probe = s.clone();
     let before = mana(&probe, BattleSide::Attacker);
     bolt(&mut probe, r, target).unwrap();
@@ -89,7 +90,7 @@ fn drained(events: &[Event]) -> Vec<(u8, BattleSide, u16)> {
 }
 
 /// Puts the test spell `name`'s effect on stack `id` for 5 rounds, as a cast at no mastery would.
-fn put(s: &mut BattleState, r: &Ruleset, name: &str, id: u8) {
+fn put(s: &mut BattleState, r: &BattleRuleset, name: &str, id: u8) {
     let id_spell = spell(r, name);
     let cast = crate::effects::TimedCast {
         id: id_spell,
@@ -102,7 +103,7 @@ fn put(s: &mut BattleState, r: &Ruleset, name: &str, id: u8) {
 }
 
 /// Puts stack `id` under the other side's control (Hypnotize, BAT-MAG-026).
-fn hypnotize(s: &mut BattleState, r: &Ruleset, id: u8) {
+fn hypnotize(s: &mut BattleState, r: &BattleRuleset, id: u8) {
     put(s, r, "hypnotize", id);
     let status = s.stacks()[usize::from(id)].spells.status;
     assert!(status.contains(Status::HYPNOTIZED));

@@ -17,6 +17,7 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22): the review list as built; T8 first 
 
 ## Inbox
 
+- 2026-10-13 (R01, the content split, from the battle lane; `cross-lane`): the server loads `BattleRuleset` (`h3-content-battle`, compiled on the core `Ruleset`; packs as `core.toml` + `battle.toml` through `h3-pack-battle`); `Manifest` and `Offer` carry `battle_ruleset_hash` beside the core's `ruleset_hash` (protocol v21, ADR-0015 point 2); a ladder's ruleset identity folds both (`ladders.rs::identity`). `E16-design.md`'s offer line names only `ruleset_hash`: update it with the lane's next docs.
 - 2026-10-12 (after T8, for the next `shared/` change): `docs/06-security.md`'s "Not covered yet" still names a rename an old-key connection sent just before its account's re-key; refused since 2026-10-12 (`E16-log.md`, "M4's review items"): drop it there.
 - 2026-10-12 (after T8; **later**): a ranked game over whose result did not write (its ladder's log failed) keeps its journal, but its players may play another match on the ladder before the next start rates it, after the newer game. Keep its players out of the ladder until then if logs ever fail in practice.
 - 2026-10-12 (the user, SRV-Q19; **M5**): the turn timer against a connected player who stalls is a game rule (`h3-game`; E08 decision 8's system commands for turn timers); until then a ranked battle can be stalled (the epic's risks).

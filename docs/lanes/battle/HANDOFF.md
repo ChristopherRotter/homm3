@@ -4,23 +4,23 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** none in progress (`battle/e04b-t11c` is the closure's pull request); `battle/<task>` branches from `master`, merged at their checkpoint.
-- **E04b is closed** (2026-10-12; the review, T11b: 87 findings, 24 fixes, the flags of BAT-QUIRK-2 and BAT-QUIRK-9 retired). Records: `docs/epics/E04b-log.md`. Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
-- **Done:** T1–T10: every battle spell, creature magic, the hero's spells and masteries in the Heroes context, limits and defences, the opening spells and Eagle Eye, a complete observation, batches 2a–2f (BAT-MAG-001 to 069, HER-SPL-002 to 004, HER-BAT-015 to 017), all after the executable's code (`installation.md` §7.8–§7.24). Physical damage follows the executable's three truncated stages under Q-0005 (`h3_kernel::arith::X87` at 53 bits).
+- **R01 (the content split) waits for the user's checkpoint** (2026-10-13; `docs/epics/R01-content-split.md`): #137 (R01a) merges first, then R01b (`shared/r01b-content-split`). The lane owns `h3-content-battle` (`BattleRuleset`, derefs to the core) and `h3-pack-battle`; `h3-content`, `h3-pack` are shared.
+- **E04b is closed** (2026-10-12). Records: `docs/epics/E04b-log.md`. Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
+- **Done (E04b):** battle magic complete after the executable's code (`installation.md` §7.8–§7.24). Physical damage follows its three truncated stages under Q-0005 (`h3_kernel::arith::X87`, 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's f32 bit pattern where it differs; Q45 (b)).
-- **Next, at the user's checkpoint:** E04c's refinement (sieges, special battlefields) or R01 (the content split, BACKLOG); batch 2g when the user plays it. The Windows verify was red in `h3-server` on 2026-10-12 (passed on to the server lane).
+- **Next after R01, at the user's checkpoint:** E04c's refinement (sieges, special battlefields); batch 2g when the user plays it. The Windows verify was red in `h3-server` on 2026-10-12 (passed on to the server lane).
 - **Open for later tasks:** BAT-Q28 and BAT-Q32 to BAT-Q35 (the review's; none blocks), batch 2g and 49 wiki checks (`docs/experiments/README.md`; the review's agents had no wiki access), BAT-STUB-1 (the observation and a created stack that ran out of rounds); `QUEUE.md`'s inbox by destination; Q43.
-- **Versions (battle owns them):** state hash v41, ruleset hash v42, replay format v21, action encoding v11, C ABI v17, observation encoding v13; pack format v34. Next ids: BAT-Q36, BAT-QUIRK-22, BAT-STUB-2.
+- **Versions:** battle owns state hash v41, battle part hash v1, replay format v22, action encoding v11, C ABI v17, observation encoding v13; shared: core ruleset hash v43, pack format v35. Next ids: BAT-Q36, BAT-QUIRK-22, BAT-STUB-2.
 - **Ownership:** `lanes.toml`; a seam change (`h3-kernel`, `h3-contracts`) is its own `shared/` pull request, merged first.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; the user plays experiment maps in SoD with plain HD and commits the results.
 
 ## Standing traps
 
 **Content and packs**
-- `packs/base|ab|sod` are generated: change `crates/h3-harvest` or its gap-fill file and re-run the harvester (`cargo run -p h3-harvest -- --install original-data/install --out packs`); never edit them by hand. Harvested keys may coincide across kinds (`base:ballista` is a creature and an artifact).
+- `packs/base|ab|sod` are generated (`core.toml`, `battle.toml`): change `crates/h3-harvest` or its gap-fill file and re-run the harvester (`cargo run -p h3-harvest -- --install original-data/install --out packs`); never edit them by hand. Harvested keys may coincide across kinds (`base:ballista` is a creature and an artifact).
 
 - A data quirk's value stays in the pack; its fix is an override gated by a `quirk.content` flag, read only by the compiler (ADR-0007).
-- Tests patch the synthetic pack by text (`SYNTHETIC_PACK.replace`): a patch that no longer matches does nothing, silently (T7c1); assert that the text changed. To pick replay seeds, count events per agent seed with a throwaway test in `crates/h3-cli/tests` (`run_random`, then re-apply the commands with an event sink).
+- Tests patch the synthetic pack by text (`h3-pack-battle`'s `Texts`): each patch asserts it matched; a text in both files names its file. To pick replay seeds, count events per agent seed with a throwaway test in `crates/h3-cli/tests` (`run_random`, then re-apply the commands with an event sink).
 
 **Code reading**
 - Edit docs with targeted replacements, never by rewriting a file from memory (T7a2 lost `QUEUE.md`'s inbox so).
@@ -59,10 +59,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-12 to 13 (fifty-third) — R01, the content split
+
+The user left the choice to the agent: R01. R01a moved the writer (#137); R01b split the content, the pack adapter and the pack files, with a worker per part. Behaviour unchanged (replay headers only); the manifest carries both hashes (protocol v21). Detail: the design note.
+
 ### 2026-10-11 to 12 (fifty-second) — E04b increment 21: T11b and T11c, the review and the closure
 
 The user: review and closure in one session, with agents; BAT-Q29 to BAT-Q31 answered (two quirk flags retired); E04b closed with the battle scope taken as passing on Windows. Eleven reviews, 24 fixes, replays and baseline renewed. Detail: `docs/epics/E04b-log.md`.
-
-### 2026-10-11 (fifty-first) — E04b increment 21: T11a
-
-The user: T11 in three parts; BAT-Q24 answered; bad morale skipped for the whole wait phase. 22 rules verified, the inbox by destination. Detail: the log.

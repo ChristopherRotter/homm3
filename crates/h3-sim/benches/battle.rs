@@ -12,8 +12,8 @@ use h3_kernel::{Rng, StreamId};
 use h3_sim::action::HERO_CAST;
 use h3_sim::{ACTION_COUNT, Action, BattleEnv, OBSERVATION_LEN, observation};
 
-fn mid_game_states() -> (Arc<h3_content::Ruleset>, Vec<BattleState>) {
-    let (ruleset, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+fn mid_game_states() -> (Arc<h3_content_battle::BattleRuleset>, Vec<BattleState>) {
+    let (ruleset, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
     let mut states = Vec::new();
     let mut legal = LegalCommands::new();
     for seed in 0..32u64 {
@@ -94,7 +94,7 @@ fn benches(c: &mut Criterion) {
         b.iter(|| black_box(black_box(s).state_hash()))
     });
 
-    let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+    let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
     let env = BattleEnv::new(Arc::new(r), Arc::new(setup), 1, 0).unwrap();
     c.bench_function("BattleEnv::fork", |b| {
         b.iter(|| black_box(black_box(&env).fork()))

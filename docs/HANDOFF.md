@@ -6,14 +6,14 @@ Read first, then the lane's HANDOFF (`AGENTS.md`): the lane index plus the traps
 
 | Lane | Owns (`lanes.toml`) | State, traps, tasks |
 |---|---|---|
-| battle | `h3-battle`, `h3-heroes`, `h3-content`, `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
+| battle | `h3-battle`, `h3-heroes`, `h3-content-battle`, `h3-pack-battle`, `h3-sim`, `h3-ffi`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
 | adventure | `h3-adventure`, `h3-game`, `h3-map`, `h3-pack-adventure`; `src/adventure/` in `h3-sim` and `h3-cli`, `fixtures/replays/adventure/`, `docs/formats/h3m.md` | [HANDOFF](lanes/adventure/HANDOFF.md), [QUEUE](lanes/adventure/QUEUE.md) |
 | server | `h3-protocol`, `h3-server` | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
 | client | `clients/` (own Cargo workspace) | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
 
-Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md` and `docs/stubs.toml` (one block per lane), `Cargo.lock`, `docs/exe/map.toml` and `structs.toml` (one line per entry).
+Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content` and `h3-pack` (R01), workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md` and `docs/stubs.toml` (one block per lane), `Cargo.lock`, `docs/exe/map.toml` and `structs.toml` (one line per entry).
 
-- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: Actions minutes are scarce; when they or billing run out, runs fail unstarted and the full local verify stands in: CI never blocks work, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full `cargo xtask verify` on Linux for pull requests and `master`, but never twice for the same code nor for a docs-only pull request, and weekly `cargo deny check advisories`. Changes reach `master` by pull request only; **open a pull request only when its branch is ready for merging**. Each push to an open one runs CI: merge `master` into it only after `master`'s latest run finished.
+- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: Actions minutes are scarce; when they or billing run out, runs fail unstarted and the full local verify stands in: CI never blocks work, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full verify on Linux for pull requests and `master` (never twice for the same code nor for docs only), and weekly `cargo deny check advisories`. Changes reach `master` by pull request only; **open a pull request only when its branch is ready for merging**. Each push to an open one runs CI: merge `master` into it only after `master`'s latest run finished.
 
 ## Traps for every lane
 
@@ -21,11 +21,11 @@ Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace 
 - **Hero-level properties** (a hero's available spells, a spell's mastery) are derived once in `h3-heroes` (ADR-0013 point 2, BAT-Q19): the adventure map calls the same functions, never a copy.
 
 **Sandbox and sync**
-- Original files in a cloud session: stage them from the user's repo folder (`D:\Users\Christopher\Source\Repos\homm3\original-data`, read access through the device link; one large LOD per staging call), then `scripts/sandbox-setup.sh`. Without the link the session only prepares (Q48). Sync is `git push` (fetch `master` first so the push is thin).
+- Original files in a cloud session: stage the user's `original-data/` through the device link (`08-work-process.md` "Cloud sandbox"; one large LOD per call), then `scripts/sandbox-setup.sh`. Without the link the session only prepares (Q48). Sync is `git push` (fetch `master` first so the push is thin).
 - Git on the user's machine: get delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock` otherwise) and pass `-c user.name -c user.email`; it has no GitHub credentials, so it cannot push. A cloud session with GitHub attached pushes and opens pull requests through the REST API (GraphQL is blocked there).
-- The sandbox VM can restart mid-session (files stay, background jobs die): check `ps` and the logs before waiting on a background job.
+- The VM can restart (files stay, background jobs die): check `ps` before waiting on a job.
 - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background and poll its log, or use `verify --summary` (full log in `target/verify/verify.log`). The inner loop is `verify --scope <lane> --quick`; CI runs the full verify.
-- The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with a `CARGO_TARGET_DIR` of its own (never shared: `xtask` takes its root from its build). `pkill -f <pattern>` also kills the tool's own shell: kill by pid.
+- The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with a `CARGO_TARGET_DIR` of its own (never shared: `xtask` takes its root from its build; ~14 GB each, the disk holds two: remove a finished one). `pkill -f <pattern>` also kills the tool's own shell: kill by pid.
 - bench-check at 0 Ir: valgrind 3.22 read no symbols from the lld-linked `h3` (the gate links it with `-z norelro`).
 
 **Sources**

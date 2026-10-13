@@ -2,19 +2,23 @@
 //! with their adventure files and `.h3m` maps from disk, recording random games and the adventure
 //! replay file format (TOML). The commands themselves are in [`cli`].
 //!
-//! Replay file format v1 (`fixtures/replays/adventure/*.toml` are examples):
+//! Replay file format v2 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
+//! refused by its format version; a v2 file without one is malformed):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, with the acting player:
 //!     "0 move 1 5,7,0 6,8,0",         #   `<player> move <hero> <x>,<y>,<level> …` (the path
 //!     "0 end-turn",                   #   without the hero's own tile), `<player> end-turn`
+//!     "1 accept",                     #   `<player> accept` or `decline`: an answer
 //! ]
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 1
+//! format = 2
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
+//! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
 //! packs = [["base", "1.0.0"], ["ab", "1.0.0"], ["sod", "1.0.0"]]
 //! profile = "base:faithful"
 //! ruleset_hash = "0x…"                # the core ruleset's content hash
@@ -23,8 +27,8 @@
 //! rng_version = 1
 //! hash = "fnv1a64-le"
 //! hash_version = 1
-//! game_state_hash_version = 1
-//! adventure_state_hash_version = 4
+//! game_state_hash_version = 3
+//! adventure_state_hash_version = 5
 //! checkpoint_every = 25
 //!
 //! [map]                               # how the replay names its map (ADV-Q2)
@@ -48,7 +52,7 @@ use std::sync::Arc;
 
 use h3_adventure::{AdventureCommand, Pos};
 use h3_contracts::{HeroId, PlayerId};
-use h3_game::{GameCommand, GameRuleset, GameSetup};
+use h3_game::{Answer, GameCommand, GameRuleset, GameSetup};
 use h3_sim::adventure::replay::{
     MapRef, RecordError, RecordOptions, Replay, ReplayError, ReplayHeader, map_content_hash,
 };
@@ -104,7 +108,7 @@ fn read_text(path: &Path) -> Result<String> {
     std::fs::read_to_string(path).map_err(|e| AdventureCliError::Io(path.to_path_buf(), e))
 }
 
-/// Loads `<packs_dir>/<id>/pack.toml` and, where it exists, `<id>/adventure.toml` for each id and
+/// Loads `<packs_dir>/<id>/core.toml` and, where it exists, `<id>/adventure.toml` for each id and
 /// compiles them with `profile` into the game's rules. Ids come from replay files, so they must be
 /// valid pack ids (no paths).
 ///
@@ -123,7 +127,7 @@ pub fn load_rules(packs_dir: &Path, ids: &[String], profile: &str) -> Result<Gam
         } else {
             String::new()
         };
-        texts.push((read_text(&dir.join("pack.toml"))?, adventure));
+        texts.push((read_text(&dir.join("core.toml"))?, adventure));
     }
     let refs: Vec<(&str, &str)> = texts
         .iter()
@@ -221,10 +225,13 @@ fn parse_hex64(s: &str) -> Result<u64> {
         .ok_or_else(|| AdventureCliError::Format(format!("bad hash `{s}`")))
 }
 
-/// A command as a replay file writes it (format v1, the module's docs).
+/// A command as a replay file writes it (format v2, the module's docs).
 pub fn format_command(player: PlayerId, command: &GameCommand) -> String {
     match command {
         GameCommand::EndTurn => format!("{} end-turn", player.raw()),
+        // E08 T14b: an answer to the player's open decision (format v2).
+        GameCommand::Answer(Answer::Accept) => format!("{} accept", player.raw()),
+        GameCommand::Answer(Answer::Decline) => format!("{} decline", player.raw()),
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => {
             let mut text = format!("{} move {}", player.raw(), hero.raw());
             for pos in path {
@@ -250,6 +257,8 @@ pub fn parse_command(text: &str) -> Result<(PlayerId, GameCommand)> {
         .ok_or_else(bad)?;
     let command = match words.next() {
         Some("end-turn") => GameCommand::EndTurn,
+        Some("accept") => GameCommand::Answer(Answer::Accept),
+        Some("decline") => GameCommand::Answer(Answer::Decline),
         Some("move") => {
             let hero = words
                 .next()
@@ -298,6 +307,9 @@ struct Meta {
     format: u32,
     engine: String,
     seed: String,
+    /// Since format v2 ([`DIFFICULTY_SINCE`]); a v1 file has none.
+    #[serde(default)]
+    difficulty: Option<u8>,
     packs: Vec<[String; 2]>,
     profile: String,
     ruleset_hash: String,
@@ -326,7 +338,11 @@ struct ResultEntry {
     final_hash: String,
 }
 
-/// The replay as TOML (format v1).
+/// The first format version whose files name the game's difficulty: an earlier file has none and
+/// reads as the import's (it is refused by its version), a later one without it is malformed.
+const DIFFICULTY_SINCE: u32 = 2;
+
+/// The replay as TOML (format v2).
 ///
 /// # Errors
 ///
@@ -344,6 +360,7 @@ pub fn replay_to_toml(replay: &Replay) -> Result<String> {
             format: h.format_version,
             engine: h.engine_version.clone(),
             seed: replay.seed.to_string(),
+            difficulty: Some(replay.difficulty),
             packs: h
                 .packs
                 .iter()
@@ -373,15 +390,27 @@ pub fn replay_to_toml(replay: &Replay) -> Result<String> {
     toml::to_string_pretty(&file).map_err(|e| AdventureCliError::Format(e.to_string()))
 }
 
-/// Parses a replay file (format v1). Its rules and map are loaded by [`verify_file`].
+/// Parses a replay file (format v2; a v1 file parses, and [`ReplayHeader::check`] refuses it).
+/// Its rules and map are loaded by [`verify_file`].
 ///
 /// # Errors
 ///
-/// [`AdventureCliError::Format`]: malformed TOML, an unknown key, a bad number, hash or command.
+/// [`AdventureCliError::Format`]: malformed TOML, an unknown key, a bad number, hash or command,
+/// no difficulty in a file of format v2 or later.
 pub fn parse_replay(text: &str) -> Result<Replay> {
     let f: ReplayFile =
         toml::from_str(text).map_err(|e| AdventureCliError::Format(e.to_string()))?;
     let m = f.replay;
+    let difficulty = match m.difficulty {
+        Some(difficulty) => difficulty,
+        None if m.format < DIFFICULTY_SINCE => h3_game::DEFAULT_DIFFICULTY,
+        None => {
+            return Err(AdventureCliError::Format(format!(
+                "format {} needs a difficulty",
+                m.format
+            )));
+        }
+    };
     Ok(Replay {
         header: ReplayHeader {
             format_version: m.format,
@@ -406,6 +435,7 @@ pub fn parse_replay(text: &str) -> Result<Replay> {
             .seed
             .parse()
             .map_err(|_| AdventureCliError::Format(format!("bad seed `{}`", m.seed)))?,
+        difficulty,
         commands: f
             .commands
             .iter()
@@ -435,7 +465,8 @@ pub struct Verified {
     pub final_hash: u64,
 }
 
-/// Loads a replay file, its packs from `packs_dir` and its map below `root`, and verifies it.
+/// Loads a replay file, its packs from `packs_dir` and its map below `root`, and verifies it at
+/// the replay's difficulty.
 ///
 /// # Errors
 ///
@@ -481,11 +512,15 @@ pub struct RunOptions {
     pub map: String,
     /// The profile key.
     pub profile: String,
+    /// The game's difficulty (setup input, checked by the game's build: an unknown one is the
+    /// setup's error).
+    pub difficulty: u8,
     /// The game and the agent ([`RecordOptions`]).
     pub record: RecordOptions,
 }
 
-/// Plays a game of uniformly random legal agents on a map and returns the replay and its TOML.
+/// Plays a game of uniformly random legal agents on a map at the options' difficulty and returns
+/// the replay and its TOML.
 ///
 /// # Errors
 ///
@@ -493,7 +528,8 @@ pub struct RunOptions {
 pub fn run_random(packs_dir: &Path, root: &Path, options: &RunOptions) -> Result<(Replay, String)> {
     let ids: Vec<String> = DEFAULT_PACKS.iter().map(|&s| s.to_owned()).collect();
     let rules = load_rules(packs_dir, &ids, &options.profile)?;
-    let (map, setup) = load_map(root, &options.map, &rules)?;
+    let (map, mut setup) = load_map(root, &options.map, &rules)?;
+    setup.difficulty = options.difficulty;
     let replay = Replay::record_random(&rules, Arc::new(setup), map, options.record)
         .map_err(AdventureCliError::Record)?;
     let text = replay_to_toml(&replay)?;

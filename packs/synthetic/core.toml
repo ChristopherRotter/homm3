@@ -1,57 +1,11 @@
 # Synthetic content pack for tests and the walking skeleton. Invented creatures with neutral names;
 # numbers are chosen to exercise the rules, not taken from the original game.
+# This file: the manifest and the core data (pack format v35, R01); the battle data: battle.toml.
 
 [pack]
 id = "synthetic"
 version = "0.1.0"
 depends = []
-
-# Battle parameters (Tier 2). Values of the rule parameters follow the sourced rules in
-# docs/rules/catalog/battle.toml; the field and formation are skeleton choices.
-[battle]
-field_width = 17                            # BAT-GEO-001: 15 standable columns + 2 side columns
-field_height = 11
-side_columns = 1
-army_slots = 7
-damage_roll_samples = 10                    # BAT-DMG-001
-attack_bonus_per_point_percent = 5          # BAT-DMG-002
-attack_bonus_cap_percent = 300              # BAT-DMG-002 (+300 %, user decision Q11)
-defense_reduction_per_point_permille = 25   # BAT-DMG-002
-defense_reduction_cap_permille = 700        # BAT-DMG-002
-defend_bonus_percent = 20                   # BAT-TRN-004
-defend_bonus_min = 1                        # BAT-TRN-004
-ranged_full_damage_distance = 10            # BAT-RNG-002
-ranged_penalty_percent = 50                 # BAT-RNG-002
-melee_penalty_percent = 50                  # BAT-RNG-003
-morale_dice = 24                            # BAT-MOR-003/004: chances out of 24
-good_morale_chances = [1, 2, 3]             # BAT-MOR-003: morale +1..+3
-bad_morale_chances = [2, 4, 6]              # BAT-MOR-004: morale -1..-3
-luck_dice = 24                              # BAT-LCK-002
-good_luck_chances = [1, 2, 3]               # BAT-LCK-002: luck +1..+3 (no bad luck before HotA)
-war_machine_positions = [[1, 3], [1, 1], [1, 9]]   # BAT-WAR-001: shooting, ammo, first aid
-# BAT-SET-001: *_formation[n-1] = starting rows of an army with n stacks, in slot order.
-loose_formation = [
-    [5],
-    [3, 7],
-    [2, 5, 8],
-    [1, 4, 6, 9],
-    [0, 2, 5, 8, 10],
-    [0, 2, 4, 6, 8, 10],
-    [0, 2, 4, 5, 6, 8, 10],
-]
-tight_formation = [
-    [5],
-    [4, 6],
-    [4, 5, 6],
-    [3, 4, 6, 7],
-    [3, 4, 5, 6, 7],
-    [2, 3, 4, 6, 7, 8],
-    [2, 3, 4, 5, 6, 7, 8],
-]
-tactics_zone_columns = [3, 5, 7]            # BAT-TAC-001: zone width by Tactics level difference
-surrender = { resource = "coin", cost_percent = 50 }  # BAT-FLE-002: half the coin cost
-hero_casts_per_round = 1                    # BAT-MAG-001 (pack format v4)
-side_stack_limit = 20                       # BAT-MAG-037 (pack format v18)
 
 # Content of pack format v2 (E02): resource kinds, factions and the non-battle creature fields.
 # Invented names; the values only exercise the format.
@@ -77,36 +31,12 @@ id = "vale"
 name = "Vale"
 native_terrain = "meadow"
 
-[[obstacle]]
-id = "boulder"
-terrains = ["meadow", "ash"]
-width = 2
-height = 1
-blocked = [[0, 0], [1, 0]]          # [dx, dy] from the anchor (bottom-left hex)
-
-[[obstacle]]
-id = "crag"
-terrains = ["meadow"]
-width = 3
-height = 2
-blocked = [[0, 0], [1, 0], [1, -1]]
-
-[[obstacle]]
-id = "ridge"
-terrains = ["ash"]
-absolute = true
-blocked = [[8, 3], [8, 4], [8, 5], [8, 6]]   # [x, y] on the field
-
 [[creature]]
 id = "spearman"
 name = "Spearman"
 plural = "Spearmen"
 faction = "vale"
 level = 1
-attack = 4
-defense = 5
-damage = [1, 3]
-hit_points = 10
 speed = 4
 cost = { coin = 50 }
 growth = 12
@@ -121,10 +51,6 @@ name = "Brute"
 plural = "Brutes"
 faction = "synthetic:vale"
 level = 2
-attack = 7
-defense = 4
-damage = [2, 5]
-hit_points = 18
 speed = 5
 cost = { coin = 120, shard = 1 }
 growth = 7
@@ -133,54 +59,19 @@ fight_value = 220
 ai_value = 250
 adventure_count = [10, 25]
 flags = ["alive", "two_hex", "king_1"]     # king_1: Smiting counts against it (BAT-MAG-014)
-casts = 1                   # format v29: its rebirth's (BAT-MAG-059)
-# Format v19: spells after a melee strike (BAT-MAG-040 to BAT-MAG-042); v20: the statuses; v21:
-# Bind, Acid Breath and the extra damage (BAT-MAG-045 to BAT-MAG-047).
-abilities = [
-    { kind = "spell_after_strike", spell = "glare", chance_percent = 100, mastery = 0, rounds = 3 },
-    { kind = "spell_after_strike", spell = "dazzle", chance_percent = 20, mastery = 0, rounds = 3, unless_active = true },
-    { kind = "spell_after_strike", spell = "bane", chance_percent = 25, mastery = 0, rounds = 3, living = true },
-    { kind = "spell_damage_after_strike", spell = "spark", chance_percent = 20, per_creature = 2 },
-    { kind = "spell_after_strike", spell = "freeze", chance_percent = 10, mastery = 0, rounds = 3 },
-    { kind = "spell_after_strike", spell = "numb", chance_percent = 10, mastery = 0, rounds = 3 },
-    { kind = "spell_after_strike", spell = "rot", chance_percent = 10, mastery = 0, rounds = 3, living = true },
-    { kind = "spell_after_strike", spell = "wane", chance_percent = 10, mastery = 0, rounds = 3, living = true },
-    { kind = "spell_after_strike", spell = "taint", chance_percent = 30, mastery = 0, rounds = 3, living = true },
-    { kind = "spell_after_strike", spell = "tangle", chance_percent = 25, mastery = 0, rounds = 3 },
-    { kind = "spell_after_strike", spell = "etch", chance_percent = 30, mastery = 0, rounds = 3, defended = true },
-    { kind = "damage_after_strike", chance_percent = 20, percent = 50 },
-    # Format v27: in an army, its own hero's spells cost 2 less (the Mages, BAT-MAG-054).
-    { kind = "spell_cost", amount = -2, affects = "allies" },
-    # Format v29: once a battle, after the action that killed it, a fifth comes back (the
-    # Phoenix's rebirth, BAT-MAG-059).
-    { kind = "rebirth", divisor = 5 },
-]
 
 [[creature]]
 id = "wisp"                 # neutral (no faction)
 name = "Wisp"
 plural = "Wisps"
 level = 1
-attack = 3
-defense = 2
-damage = [1, 2]
-hit_points = 4
 speed = 9
-shots = 8
-casts = 2
 cost = { coin = 40 }
 growth = 10
 fight_value = 60
 ai_value = 65
 adventure_count = [15, 30]
 flags = ["flying", "shooter", "no_morale"]
-# Format v22: casts Hasten as its action, twice a battle, at Advanced with power 6 (BAT-MAG-048);
-# v27: while it lives, its hero gains a fifth of the other hero's cost after each cast (the
-# Familiars' channel, BAT-MAG-055).
-abilities = [
-    { kind = "spell_caster", spell = "hasten", mastery = 2, power = 6 },
-    { kind = "mana_channel", percent = 20 },
-]
 
 # War machines (E03 T8/T9, BAT-WAR-001..004): one of each kind, controlled by the engine.
 [[creature]]
@@ -188,12 +79,7 @@ id = "bolt_thrower"         # shooting kind (BAT-WAR-002)
 name = "Bolt Thrower"
 plural = "Bolt Throwers"
 level = 3
-attack = 6
-defense = 6
-damage = [3, 4]
-hit_points = 120
 speed = 0
-shots = 12
 ai_value = 300
 flags = ["two_hex", "shooter", "war_machine", "no_morale"]
 
@@ -201,37 +87,23 @@ flags = ["two_hex", "shooter", "war_machine", "no_morale"]
 id = "supply_wagon"         # ammo-supply kind: its side's shots are unlimited (BAT-WAR-004)
 name = "Supply Wagon"
 plural = "Supply Wagons"
-attack = 0
-defense = 3
-damage = [0, 0]
-hit_points = 60
 speed = 0
 ai_value = 150
 flags = ["war_machine", "no_morale"]
-abilities = [{ kind = "ammo_supply" }]
 
 [[creature]]
 id = "aid_tent"             # first-aid kind (BAT-WAR-003)
 name = "Aid Tent"
 plural = "Aid Tents"
-attack = 0
-defense = 0
-damage = [0, 0]
-hit_points = 50
 speed = 0
 ai_value = 120
 flags = ["two_hex", "war_machine", "no_morale"]
-abilities = [{ kind = "first_aid", min_hp = 1, max_hp = 10 }]
 
 [[creature]]
 id = "shade"                # format v18: summoned by Conjure (BAT-MAG-039), not living
 name = "Shade"
 plural = "Shades"
 level = 2
-attack = 5
-defense = 5
-damage = [2, 4]
-hit_points = 15
 speed = 6
 cost = { coin = 100 }
 growth = 6
@@ -245,151 +117,65 @@ id = "drake"                # neutral (no faction)
 name = "Drake"
 plural = "Drakes"
 level = 5
-attack = 12
-defense = 12
-damage = [6, 10]
-hit_points = 60
 speed = 8
-casts = 3
 cost = { coin = 900 }
 growth = 2
 fight_value = 1400
 ai_value = 1500
 adventure_count = [2, 5]
 flags = ["alive", "two_hex", "flying"]
-# Format v23: at each activation while it has casts left it draws Spark, Cinders or Arc by weight
-# and may cast it at Advanced with power 2 per creature, at any stack but itself the spell can
-# affect (a Faerie Dragon's random spell, BAT-MAG-049).
-# Format v28: its own Magic Mirror (Glass) of 20 % while the spell is not on it with more (a
-# Faerie Dragon's mirror, BAT-MAG-057).
-# Format v29: the enemy's stacks freeze with 10 % chance when picked to act (an Azure Dragon's
-# Fear, BAT-MAG-060).
-abilities = [
-    { kind = "random_spell_caster", mastery = 2, power_per_creature = 2 },
-    { kind = "drawn_spell", spell = "spark", weight = 5 },
-    { kind = "drawn_spell", spell = "cinders", weight = 3 },
-    { kind = "drawn_spell", spell = "arc", weight = 2 },
-    { kind = "innate_spell", spell = "glass", value = 20 },
-    { kind = "fear", percent = 10 },
-]
 
 [[creature]]
 id = "djinn"                # neutral (no faction)
 name = "Djinn"
 plural = "Djinns"
 level = 3
-attack = 9
-defense = 8
-damage = [3, 6]
-hit_points = 30
 speed = 7
-casts = 3
 cost = { coin = 400 }
 growth = 4
 fight_value = 500
 ai_value = 550
 adventure_count = [4, 8]
 flags = ["alive", "flying"]
-# Format v24: casts at another own stack a spell drawn at the cast among those useful for it, at
-# Advanced with power 6, three times a battle (a Master Genie's draw, BAT-MAG-050).
-# Format v27: in an army, the enemy hero's spells cost 2 more (the Pegasi, BAT-MAG-054).
-# Format v28: half damage to two-hex creatures (a Psychic Elemental's half by flag, BAT-DMG-010).
-abilities = [
-    { kind = "spell_cost", amount = 2, affects = "enemies" },
-    { kind = "damage_penalty_by_flag", flag = "two_hex", percent = 50 },
-    { kind = "helpful_spell_caster", mastery = 2, power = 6 },
-    { kind = "drawn_spell", spell = "hasten", weight = 1 },
-    { kind = "drawn_spell", spell = "fury", weight = 1 },
-    { kind = "drawn_spell", spell = "boon", weight = 1 },
-    { kind = "drawn_spell", spell = "aegis", weight = 1 },
-    { kind = "drawn_spell", spell = "hallow", weight = 1 },
-    { kind = "drawn_spell", spell = "smiting", weight = 1 },
-    { kind = "drawn_spell", spell = "mend", weight = 1 },
-]
 
 [[creature]]
 id = "seraph"               # neutral (no faction)
 name = "Seraph"
 plural = "Seraphs"
 level = 7
-attack = 20
-defense = 20
-damage = [20, 25]
-hit_points = 120
 speed = 9
-casts = 1
 cost = { coin = 3000 }
 growth = 1
 fight_value = 4000
 ai_value = 4500
 adventure_count = [1, 3]
 flags = ["alive", "two_hex", "flying"]
-# Format v25: once a battle raises another stack of its side, living or dead, for good by 100 hit
-# points per creature under Revive's test (an Archangel's raise, BAT-MAG-051).
-abilities = [{ kind = "stack_raiser", spell = "revive", hit_points_per_creature = 100 }]
 
 [[creature]]
 id = "fiend"                # neutral (no faction)
 name = "Fiend"
 plural = "Fiends"
 level = 5
-attack = 13
-defense = 13
-damage = [13, 17]
-hit_points = 45
 speed = 7
-casts = 1
 cost = { coin = 700 }
 growth = 3
 fight_value = 1000
 ai_value = 1200
 adventure_count = [3, 6]
 flags = ["alive"]           # living, so its corpse can raise Spearmen too
-# Format v25: once a battle raises Spearmen from a corpse of a living creature's stack of its
-# side, with 50 hit points per creature, into that stack's army slot (a Pit Lord's Demons,
-# BAT-MAG-052).
-# Format v27: at its activations of a round's normal phase, the enemy hero loses 2 mana (a
-# Wraith's drain, BAT-MAG-056).
-# Format v28: its own Fire Shield (Blaze) of 20 % while the spell is not on it with more (an
-# Efreet Sultan's shield, BAT-MAG-058).
-abilities = [
-    { kind = "corpse_raiser", creature = "spearman", hit_points_per_creature = 50 },
-    { kind = "mana_drain", amount = 2 },
-    { kind = "innate_spell", spell = "blaze", value = 20 },
-]
 
 [[creature]]
 id = "chanter"              # neutral (no faction)
 name = "Chanter"
 plural = "Chanters"
 level = 6
-attack = 17
-defense = 12
-damage = [14, 14]
-hit_points = 30
 speed = 9
-shots = 32
-casts = 0
 cost = { coin = 750 }
 growth = 2
 fight_value = 1200
 ai_value = 1400
 adventure_count = [2, 4]
 flags = ["alive", "shooter"]
-# Format v26: no action; at its activation, once in three round starts of its side, casts at
-# Expert with power 3 a spell drawn by weight among those useful on its side's first stack (on the
-# enemy's first one for Drag and Gloom): an Enchanter's cast, BAT-MAG-053.
-# Format v28: half damage to Djinns (a Magic Elemental's half, BAT-DMG-010).
-abilities = [
-    { kind = "periodic_spell_caster", rounds = 3, mastery = 3, power = 3 },
-    { kind = "damage_penalty", creature = "djinn", percent = 50 },
-    { kind = "drawn_spell", spell = "hasten", weight = 15 },
-    { kind = "drawn_spell", spell = "aegis", weight = 10 },
-    { kind = "drawn_spell", spell = "drag", weight = 10 },
-    { kind = "drawn_spell", spell = "fury", weight = 5 },
-    { kind = "drawn_spell", spell = "mend", weight = 10 },
-    { kind = "drawn_spell", spell = "gloom", weight = 4 },
-]
 
 # ---- Hero content (pack format v3, E04a T3): invented schools, spells, skills, classes and heroes.
 # Every hero-effect kind appears at least once. Spells carry their battle magic since format v4
@@ -413,10 +199,6 @@ schools = ["storm"]
 cost = [6, 5, 5, 5]                 # mana by mastery: none, basic, advanced, expert
 power = 10
 effect = [10, 10, 20, 30]
-polarity = "negative"
-target = "stack"                    # none (default) | stack | hex
-side = "enemy"                      # whose stacks it reaches: any (default) | enemy | own
-effects = [{ kind = "damage" }]     # none: not castable yet
 
 [[spell]]
 id = "cinders"
@@ -427,11 +209,6 @@ schools = ["storm"]
 cost = [12, 10, 10, 10]
 power = 10
 effect = [15, 15, 30, 60]
-polarity = "negative"
-target = "hex"
-area = { radius = [1, 1, 1, 2] }    # hexes at distance inner (default 0) to radius[mastery]
-excludes = ["war_machine"]          # creature flags a stack may not have
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "arc"
@@ -442,10 +219,6 @@ schools = ["storm"]
 cost = [10, 8, 8, 8]
 power = 25
 effect = [25, 25, 50, 100]
-polarity = "negative"
-target = "stack"
-chain = { targets = [3, 3, 4, 4], factor_bp = 5000 }  # stacks struck by mastery; each next takes half
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "blight"
@@ -456,9 +229,6 @@ schools = ["stone"]
 cost = [20, 18, 18, 18]
 power = 30
 effect = [40, 40, 80, 120]
-polarity = "negative"
-requires = ["alive"]                # creature flags a stack needs; target none: every such stack
-effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "ward"
@@ -468,7 +238,6 @@ level = 2
 schools = ["stone", "storm"]
 cost = [8, 6, 6, 6]
 effect = [3, 3, 6, 6]
-polarity = "positive"
 
 [[spell]]
 id = "farsight"
@@ -478,7 +247,6 @@ level = 1
 schools = ["stone"]
 cost = [2, 1, 1, 1]
 effect = [0, 0, 0, 0]
-polarity = "neutral"
 
 [[spell]]
 id = "glare"                        # a creature ability: no school, may have level 0
@@ -487,12 +255,6 @@ category = "ability"
 level = 0
 cost = [0, 0, 0, 0]
 effect = [0, 0, 0, 0]
-polarity = "negative"
-target = "stack"                    # format v19: cast by the Brutes' strikes (BAT-MAG-042):
-side = "enemy"                      #   it ends positive spells only, on any stack with one
-ignores_immunity = true
-dispels_positive = true
-effects = [{ kind = "dispel" }]
 
 # Timed spells (pack format v5, E04b T3a): every timed change, a mass version, a mind spell,
 # counters and a permanent cumulative spell appear at least once.
@@ -504,16 +266,6 @@ level = 1
 schools = ["storm"]
 cost = [6, 5, 5, 5]
 effect = [3, 3, 5, 5]               # v by mastery
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"                     # from Expert no target: every stack it may reach
-excludes = ["war_machine"]
-counters = ["drag"]                 # a cast ends these spells' effects
-effects = [{ kind = "timed", change = "speed" }]
-# v9: what a specialist in it adds, by the stack's creature level 1 to 7 (or a fixed `amount`,
-# or a `total` the value becomes); without it a specialty scales the value by the hero's level
-specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 
 [[spell]]
 id = "drag"
@@ -523,13 +275,6 @@ level = 1
 schools = ["storm"]
 cost = [6, 5, 5, 5]
 effect = [75, 75, 50, 50]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mass = "expert"
-excludes = ["war_machine"]
-counters = ["hasten"]
-effects = [{ kind = "timed", change = "speed_percent" }]
 
 [[spell]]
 id = "fury"
@@ -539,18 +284,6 @@ level = 2
 schools = ["storm"]
 cost = [8, 6, 6, 6]
 effect = [1, 1, 2, 2]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-mind = true                         # mind_immune creatures are immune
-effects = [
-    { kind = "timed", change = "melee_attack" },
-    { kind = "timed", change = "ranged_attack" },
-    { kind = "timed", change = "morale" },
-    { kind = "timed", change = "luck" },
-]
-useful = "melee"                 # format v24: when a helpful caster finds it useful (BAT-MAG-050)
 
 [[spell]]
 id = "zeal"
@@ -560,15 +293,6 @@ level = 3
 schools = ["stone"]
 cost = [12, 10, 10, 10]
 effect = [2, 2, 4, 4]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-effects = [
-    { kind = "timed", change = "attack" },
-    { kind = "timed", change = "defense" },
-    { kind = "timed", change = "speed" },
-]
 
 [[spell]]
 id = "gloom"
@@ -578,16 +302,6 @@ level = 2
 schools = ["stone"]
 cost = [8, 6, 6, 6]
 effect = [1, 1, 2, 2]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mass = "expert"
-mind = true
-effects = [
-    { kind = "timed", change = "attack_loss" },
-    { kind = "timed", change = "morale_loss" },
-    { kind = "timed", change = "luck_loss" },
-]
 
 [[spell]]
 id = "boon"
@@ -597,14 +311,6 @@ level = 1
 schools = ["stone"]
 cost = [5, 4, 4, 4]
 effect = [0, 0, 1, 1]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-counters = ["bane"]
-excludes = ["undead"]
-needs_damage = true                 # format v32: not the Aid Tent or the Supply Wagon (BAT-MAG-067)
-effects = [{ kind = "timed", change = "maximum_damage" }]
 
 [[spell]]
 id = "bane"
@@ -614,14 +320,6 @@ level = 1
 schools = ["stone"]
 cost = [5, 4, 4, 4]
 effect = [0, 0, 1, 1]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mass = "expert"
-counters = ["boon"]
-excludes = ["undead"]
-needs_damage = true                 # format v32: not the Aid Tent or the Supply Wagon (BAT-MAG-067)
-effects = [{ kind = "timed", change = "minimum_damage" }]
 
 [[spell]]
 id = "corrode"
@@ -631,13 +329,6 @@ level = 2
 schools = ["stone"]
 cost = [10, 8, 8, 8]
 effect = [3, 3, 4, 5]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-duration = "permanent"              # rounds (default) | permanent
-cumulative = true                   # every cast applies its changes again
-effects = [{ kind = "timed", change = "defense_loss" }]
-specialist = { kind = "fixed", amount = 2 }
 
 # E04b T3b1 (pack format v6): protections, Slayer and extra retaliations.
 [[spell]]
@@ -648,15 +339,6 @@ level = 2
 schools = ["stone"]
 cost = [8, 6, 6, 6]
 effect = [80, 80, 60, 60]           # percent of melee and ranged damage let through
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-effects = [
-    { kind = "timed", change = "melee_protection" },
-    { kind = "timed", change = "ranged_protection" },
-]
-useful = "enemy_melee"                 # format v24: when a helpful caster finds it useful (BAT-MAG-050)
 
 [[spell]]
 id = "hallow"
@@ -666,12 +348,6 @@ level = 1
 schools = ["storm"]
 cost = [5, 4, 4, 4]
 effect = [70, 70, 50, 50]           # percent of storm spells' damage let through
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-effects = [{ kind = "timed", change = "school_protection" }]
-useful = "enemy_spell_book"                 # format v24: when a helpful caster finds it useful (BAT-MAG-050)
 
 [[spell]]
 id = "smiting"
@@ -681,12 +357,6 @@ level = 2
 schools = ["storm"]
 cost = [8, 6, 6, 6]
 effect = [6, 6, 6, 6]               # attack against king creatures
-polarity = "positive"
-target = "stack"
-side = "own"
-effects = [{ kind = "timed", change = "slayer" }]
-specialist = { kind = "creature_level", values = [4, 3, 2, 1, 0, 0, 0] }
-useful = "enemy_king"                 # format v24: when a helpful caster finds it useful (BAT-MAG-050)
 
 [[spell]]
 id = "riposte"
@@ -696,12 +366,6 @@ level = 2
 schools = ["storm"]
 cost = [10, 8, 8, 8]
 effect = [1, 1, 2, 2]               # extra retaliations per round
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-excludes = ["war_machine"]
-effects = [{ kind = "timed", change = "retaliations" }]
 
 [[spell]]                           # format v7 (E04b T3b1b): a dispel like the original's Dispel
 id = "purge"
@@ -711,16 +375,6 @@ level = 1
 schools = ["stone"]
 cost = [5, 4, 4, 4]
 effect = [0, 0, 0, 0]
-polarity = "neutral"
-target = "stack"
-side = "own"
-any_side = "advanced"               # either side from Advanced
-needs_effect = true                 # a stack it is aimed at needs an effect
-ignores_immunity = true             # no immunity, resistance or aura
-mass = "expert"
-spares = ["drag"]                   # it ends every effect but Drag's
-clears_obstacles = "expert"         # v13: at Expert it also removes every spell obstacle
-effects = [{ kind = "dispel" }]
 
 [[spell]]                           # format v7: a heal that ends three spells, like Cure
 id = "mend"
@@ -731,14 +385,6 @@ schools = ["storm"]
 cost = [6, 5, 5, 5]
 power = 5
 effect = [10, 10, 20, 30]
-polarity = "positive"
-target = "stack"
-side = "own"
-mass = "expert"
-dispels = ["drag", "bane", "gloom"] # it ends only these
-restores_health = true              # format v20: gives back what Taint took first (BAT-MAG-044)
-effects = [{ kind = "dispel" }, { kind = "heal" }]
-useful = "wounded"                 # format v24: when a helpful caster finds it useful (BAT-MAG-050)
 
 [[spell]]                           # format v8 (E04b T3b2): a Fire Shield
 id = "blaze"
@@ -748,10 +394,6 @@ level = 2
 schools = ["storm"]
 cost = [12, 10, 10, 10]
 effect = [20, 20, 25, 30]           # reflected share of a melee strike's first stage, percent
-polarity = "positive"
-target = "stack"
-side = "own"
-effects = [{ kind = "timed", change = "fire_shield" }]
 
 [[spell]]                           # format v8: a Frenzy, through the stack's next turn
 id = "rage"
@@ -761,12 +403,6 @@ level = 2
 schools = ["stone"]
 cost = [12, 10, 10, 10]
 effect = [100, 100, 150, 200]       # share of the defense added to the attack, percent
-polarity = "positive"
-target = "stack"
-side = "own"
-mind = true
-duration = "own_turn"
-effects = [{ kind = "timed", change = "frenzy" }]
 
 [[spell]]                           # format v10: an Anti-Magic
 id = "veil"
@@ -776,10 +412,6 @@ level = 3
 schools = ["stone"]
 cost = [12, 10, 10, 10]
 effect = [3, 3, 4, 5]               # spells below this level are kept off the stack
-polarity = "positive"
-target = "stack"
-side = "own"
-effects = [{ kind = "timed", change = "spell_immunity" }]
 
 [[spell]]                           # format v10: a Magic Mirror
 id = "glass"
@@ -789,10 +421,6 @@ level = 4
 schools = ["storm"]
 cost = [16, 14, 14, 14]
 effect = [20, 20, 30, 40]           # chance to send a spell aimed at the stack elsewhere, percent
-polarity = "positive"
-target = "stack"
-side = "own"
-effects = [{ kind = "timed", change = "magic_mirror" }]
 
 [[spell]]                           # format v11: a Forgetfulness
 id = "haze"
@@ -802,15 +430,6 @@ level = 3
 schools = ["storm"]
 cost = [12, 9, 9, 9]
 effect = [0, 0, 0, 0]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mass = "advanced"                   # the original's; with quirk Q-0011 off from Expert
-fixed_mass = "expert"
-mind = true
-requires = ["shooter"]
-excludes = ["war_machine"]
-effects = [{ kind = "timed", change = "forgetfulness" }]
 
 [[spell]]                           # format v11: a Blind, ended by any damage
 id = "dazzle"
@@ -820,13 +439,6 @@ level = 2
 schools = ["stone"]
 cost = [10, 8, 8, 8]
 effect = [50, 50, 25, 0]            # share of the retaliation's damage, percent
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mind = true
-excludes = ["undead", "war_machine"]
-ends = "damaged"
-effects = [{ kind = "timed", change = "blind" }]
 
 [[spell]]                           # format v12: a Berserk, on every stack around its hex
 id = "rampage"
@@ -836,16 +448,6 @@ level = 4
 schools = ["stone"]
 cost = [20, 16, 16, 16]
 effect = [0, 0, 1, 2]
-polarity = "negative"
-target = "hex"
-area = { radius = [0, 0, 1, 2] }
-mind = true
-excludes = ["war_machine"]
-duration = "fixed"
-fixed_rounds = 255
-ends = "own_attack"
-counters = ["charm"]
-effects = [{ kind = "timed", change = "berserk" }]
 
 [[spell]]                           # format v12: a Hypnotize, up to power × 25 + effect hit points
 id = "charm"
@@ -856,15 +458,6 @@ schools = ["storm"]
 cost = [18, 15, 15, 15]
 power = 25
 effect = [10, 10, 20, 50]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-mind = true
-excludes = ["war_machine"]
-health_limit = true
-refuses = ["magic_mirror"]
-counters = ["rampage"]
-effects = [{ kind = "timed", change = "hypnotize" }]
 
 [[spell]]                           # format v13 (E04b T5a): a Force Field, 2 hexes, 3 from Advanced
 id = "bulwark"
@@ -874,10 +467,6 @@ level = 3
 schools = ["stone"]
 cost = [12, 9, 9, 9]
 effect = [0, 0, 0, 0]
-polarity = "neutral"
-target = "hex"
-obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], rounds = 2 }
-effects = [{ kind = "obstacle", obstacle = "wall" }]
 
 [[spell]]                           # format v13: a Fire Wall, one obstacle per hex, mirrored for
 id = "scorch"                       # the defender
@@ -888,10 +477,6 @@ schools = ["storm"]
 cost = [8, 6, 6, 6]
 power = 10
 effect = [10, 10, 20, 50]
-polarity = "neutral"
-target = "hex"
-obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true, separate = true, rounds = 2 }
-effects = [{ kind = "obstacle", obstacle = "fire" }]
 
 [[spell]]                           # format v13: a Teleport (target: an own stack; second target:
 id = "blink"                        # the hex it goes to)
@@ -901,11 +486,6 @@ level = 3
 schools = ["storm"]
 cost = [15, 12, 6, 3]
 effect = [0, 0, 0, 0]
-polarity = "positive"
-target = "stack"
-side = "own"
-excludes = ["war_machine"]
-effects = [{ kind = "teleport" }]
 
 [[spell]]                           # format v14: a Quicksand, random pits for the whole battle,
 id = "mire"                         # hidden from the other side (no target)
@@ -915,9 +495,6 @@ level = 2
 schools = ["stone"]
 cost = [8, 6, 6, 6]
 effect = [0, 0, 0, 0]
-polarity = "neutral"
-obstacle = { hexes = [4, 4, 6, 8], random = true, separate = true }
-effects = [{ kind = "obstacle", obstacle = "pit" }]
 
 [[spell]]                           # format v15: a Land Mine, random mines for the whole battle,
 id = "snare"                        # hidden from the other side, whose stacks they damage (no target)
@@ -928,9 +505,6 @@ schools = ["storm"]
 cost = [18, 15, 15, 15]
 power = 10
 effect = [25, 25, 50, 100]
-polarity = "neutral"
-obstacle = { hexes = [4, 4, 6, 8], random = true, separate = true }
-effects = [{ kind = "obstacle", obstacle = "mine" }]
 
 [[spell]]                           # format v16 (E04b T5b): a Remove Obstacle, a natural obstacle
 id = "uproot"                       # at every mastery, Fire Wall from Advanced, any at Expert
@@ -940,10 +514,6 @@ level = 2
 schools = ["stone"]
 cost = [7, 5, 5, 5]
 effect = [0, 0, 0, 0]
-polarity = "neutral"
-target = "hex"
-removes = { fire = "advanced", wall = "expert", pit = "expert", mine = "expert" }
-effects = [{ kind = "remove_obstacle" }]
 
 [[spell]]                           # format v17 (E04b T6a): a Resurrection, a living stack of
 id = "revive"                       # the caster's side, dead or alive; for the battle below Advanced
@@ -954,13 +524,6 @@ schools = ["stone"]
 cost = [20, 16, 16, 16]
 power = 50
 effect = [40, 40, 80, 160]
-polarity = "positive"
-target = "stack"
-side = "own"
-requires = ["alive"]
-excludes = ["war_machine"]
-temporary_below = "advanced"
-effects = [{ kind = "raise" }]
 
 [[spell]]                           # format v17: a Sacrifice (second target: the victim), its target
 id = "offer"                        # tested as Revive's under BAT-QUIRK-5
@@ -971,13 +534,6 @@ schools = ["storm"]
 cost = [25, 20, 20, 20]
 power = 1
 effect = [3, 3, 6, 10]
-polarity = "positive"
-target = "stack"
-side = "own"
-requires = ["alive"]
-excludes = ["undead", "war_machine"]
-tests_as = "revive"
-effects = [{ kind = "sacrifice" }]
 
 [[spell]]                           # format v18 (E04b T6b): a Clone, of a stack up to level 1, 1, 2, 3
 id = "copy"                         # by mastery, for the caster's power in rounds
@@ -988,11 +544,6 @@ schools = ["storm"]
 cost = [24, 20, 20, 20]
 power = 0
 effect = [1, 1, 2, 3]
-polarity = "positive"
-target = "stack"
-side = "own"
-excludes = ["war_machine"]
-effects = [{ kind = "clone" }]
 
 [[spell]]                           # format v18: a Summon Elemental, effect × power Shades on the
 id = "conjure"                      # caster's side (no target)
@@ -1003,9 +554,6 @@ schools = ["stone"]
 cost = [25, 20, 20, 20]
 power = 0
 effect = [2, 2, 3, 4]
-polarity = "neutral"
-summons = "shade"
-effects = [{ kind = "summon" }]
 
 # Format v20: the strike's statuses (BAT-MAG-043, BAT-MAG-044), cast by the Brutes' strikes.
 [[spell]]
@@ -1015,12 +563,6 @@ category = "ability"
 level = 3
 cost = [0, 0, 0, 0]
 effect = [0, 0, 0, 0]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-excludes = ["war_machine"]
-ends = "damaged"
-effects = [{ kind = "timed", change = "petrify" }]
 
 [[spell]]
 id = "numb"                         # a Paralyze: no turns, retaliates at 25 %, ends when struck
@@ -1029,12 +571,6 @@ category = "ability"
 level = 4
 cost = [0, 0, 0, 0]
 effect = [25, 25, 25, 25]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-excludes = ["war_machine"]
-ends = "damaged"
-effects = [{ kind = "timed", change = "paralyze" }]
 
 [[spell]]
 id = "rot"                          # a Disease: −2 attack and defense
@@ -1043,11 +579,6 @@ category = "ability"
 level = 2
 cost = [0, 0, 0, 0]
 effect = [2, 2, 2, 2]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-excludes = ["war_machine"]
-effects = [{ kind = "timed", change = "attack_loss" }, { kind = "timed", change = "defense_loss" }]
 
 [[spell]]
 id = "wane"                         # an Age: half the hit points per creature
@@ -1056,11 +587,6 @@ category = "ability"
 level = 5
 cost = [0, 0, 0, 0]
 effect = [0, 0, 0, 0]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-excludes = ["war_machine"]
-effects = [{ kind = "timed", change = "age" }]
 
 [[spell]]
 id = "taint"                        # a Poison: a tenth of the hit points per creature each round
@@ -1069,12 +595,6 @@ category = "ability"
 level = 0
 cost = [0, 0, 0, 0]
 effect = [0, 0, 0, 0]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-requires = ["alive"]
-excludes = ["war_machine"]
-effects = [{ kind = "timed", change = "poison" }]
 
 # Format v21: Bind and Acid Breath (BAT-MAG-045, BAT-MAG-046), cast by the Brutes' strikes without
 # a test.
@@ -1085,13 +605,6 @@ category = "ability"
 level = 0
 cost = [0, 0, 0, 0]
 effect = [0, 0, 0, 0]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-duration = "fixed"
-fixed_rounds = 255
-ignores_immunity = true
-effects = [{ kind = "timed", change = "bind" }]
 
 [[spell]]
 id = "etch"                         # an Acid Breath: −1 defense for the battle, at every strike
@@ -1100,13 +613,6 @@ category = "ability"
 level = 0
 cost = [0, 0, 0, 0]
 effect = [1, 1, 1, 1]
-polarity = "negative"
-target = "stack"
-side = "enemy"
-duration = "permanent"
-cumulative = true
-ignores_immunity = true
-effects = [{ kind = "timed", change = "defense_loss" }]
 
 [[secondary_skill]]
 id = "marksmanship"

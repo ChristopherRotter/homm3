@@ -1,7 +1,7 @@
 //! Legal commands (ADR-0004 §7): the exact set of commands `apply` accepts for an actor, built
 //! from the same reachability and adjacency rules. Consistency with `apply` is property-tested.
 
-use h3_content::{MAX_FIELD_HEXES, Ruleset};
+use h3_content_battle::{BattleRuleset, MAX_FIELD_HEXES};
 use h3_contracts::BattleSide;
 use h3_kernel::FixedVec;
 
@@ -33,7 +33,7 @@ pub type LegalCommands = FixedVec<Command, MAX_LEGAL_COMMANDS>;
 /// (BAT-MAG-048).
 pub fn legal_commands(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     actor: BattleSide,
     out: &mut LegalCommands,
 ) {

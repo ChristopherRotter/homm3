@@ -59,8 +59,8 @@ pub struct AdventureEnv {
 }
 
 impl AdventureEnv {
-    /// A new environment; the game starts with `seed`. Episodes are truncated when day
-    /// `max_days + 1` starts, after `max_days` whole days (0 = no limit).
+    /// A new environment; the game starts with `seed` at the setup's difficulty. Episodes are
+    /// truncated when day `max_days + 1` starts, after `max_days` whole days (0 = no limit).
     ///
     /// # Errors
     ///
@@ -81,15 +81,41 @@ impl AdventureEnv {
         })
     }
 
-    /// Restarts the game with a new seed.
+    /// Restarts the game with a new seed at the last game's difficulty.
     ///
     /// # Errors
     ///
-    /// The setup's [`GameSetupError`] (none, since [`new`](Self::new) built it).
+    /// The setup's [`GameSetupError`] (none, since the last game was built from it).
     pub fn reset(&mut self, seed: u64) -> Result<(), GameSetupError> {
-        self.state = GameState::new(&self.rules, &self.setup, seed)?;
+        self.reset_with_difficulty(seed, self.difficulty())
+    }
+
+    /// Restarts the game with a new seed at `difficulty`, which later resets keep (E08 T14b; a
+    /// map's import sets [`h3_game::DEFAULT_DIFFICULTY`]). The difficulty is setup input, checked
+    /// by the game's build as the rest of the setup.
+    ///
+    /// # Errors
+    ///
+    /// The setup's [`GameSetupError`]: [`GameSetupError::Difficulty`] for a difficulty the rules
+    /// have no starting resources for. The environment is then unchanged.
+    pub fn reset_with_difficulty(
+        &mut self,
+        seed: u64,
+        difficulty: u8,
+    ) -> Result<(), GameSetupError> {
+        let mut setup = Arc::clone(&self.setup);
+        if setup.difficulty != difficulty {
+            Arc::make_mut(&mut setup).difficulty = difficulty;
+        }
+        self.state = GameState::new(&self.rules, &setup, seed)?;
+        self.setup = setup;
         self.steps = 0;
         Ok(())
+    }
+
+    /// The game's difficulty (`GameSetup::difficulty`).
+    pub fn difficulty(&self) -> u8 {
+        self.setup.difficulty
     }
 
     /// Whether the episode is over: the day limit passed.

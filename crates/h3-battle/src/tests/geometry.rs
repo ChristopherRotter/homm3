@@ -12,13 +12,17 @@ use super::support::*;
 use crate::geometry::{ATTACK_SLOTS, Footprint, HexSet};
 use crate::{BattleState, Command, CommandError, Hex, LegalCommands, SetupError, StackId};
 
-fn legal(s: &BattleState, r: &h3_content::Ruleset) -> Vec<Command> {
+fn legal(s: &BattleState, r: &h3_content_battle::BattleRuleset) -> Vec<Command> {
     let mut out = LegalCommands::new();
     legal_commands_for(s, r, &mut out);
     out.iter().copied().collect()
 }
 
-fn legal_commands_for(s: &BattleState, r: &h3_content::Ruleset, out: &mut LegalCommands) {
+fn legal_commands_for(
+    s: &BattleState,
+    r: &h3_content_battle::BattleRuleset,
+    out: &mut LegalCommands,
+) {
     crate::legal_commands(s, r, s.side_to_act().unwrap(), out);
 }
 

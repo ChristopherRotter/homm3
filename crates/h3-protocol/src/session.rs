@@ -91,7 +91,7 @@ use core::fmt;
 use h3_battle::{
     BattleSetup, BattleSide, BattleState, CommandError, LegalCommands, NoopSink, SetupError,
 };
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 
 use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
@@ -126,7 +126,7 @@ pub trait Bot: fmt::Debug {
     fn command(
         &mut self,
         state: &BattleState,
-        ruleset: &Ruleset,
+        ruleset: &BattleRuleset,
         side: BattleSide,
         legal: &LegalCommands,
     ) -> h3_battle::Command;
@@ -406,7 +406,7 @@ enum Published {
 #[derive(Debug)]
 pub struct Session<'r> {
     /// The server's ruleset, the only one in the game (ADR-0018 point 10).
-    ruleset: &'r Ruleset,
+    ruleset: &'r BattleRuleset,
     /// The game's id.
     game: u32,
     /// What the game is made of, sent with every `Joined`.
@@ -469,7 +469,7 @@ impl<'r> Session<'r> {
     /// Hosts the battle of `config` with `seats` (attacker, defender). Nothing is sent until a
     /// connection joins; a game with two bot seats never starts.
     pub fn new(
-        ruleset: &'r Ruleset,
+        ruleset: &'r BattleRuleset,
         config: GameConfig,
         seats: [SeatKind; 2],
     ) -> Result<Self, SetupError> {
@@ -541,7 +541,7 @@ impl<'r> Session<'r> {
     /// pause was resumed before its due time, which had not come, keeps the hold for the host to
     /// re-apply ([`Session::held_pause`]).
     pub fn restore(
-        ruleset: &'r Ruleset,
+        ruleset: &'r BattleRuleset,
         config: GameConfig,
         seats: [SeatKind; 2],
         entries: &[Entry],

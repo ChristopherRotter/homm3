@@ -1,5 +1,6 @@
 # Synthetic expansion pack (E02 pack format v2): exercises dependencies and overrides the way the
 # harvested `ab` and `sod` packs do. Invented names and numbers.
+# This file: the manifest and the core data (pack format v35, R01); the battle data: battle.toml.
 
 [pack]
 id = "synthetic-ext"
@@ -16,10 +17,6 @@ name = "Lurker"
 plural = "Lurkers"
 faction = "marsh"
 level = 3
-attack = 6
-defense = 6
-damage = [3, 4]
-hit_points = 20
 speed = 6
 cost = { "synthetic:coin" = 200 }
 growth = 5

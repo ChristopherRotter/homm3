@@ -10,8 +10,37 @@
 
 use h3_kernel::{CanonicalHash, StateHasher};
 
-use crate::effect::FULL_BP;
-use crate::flags::CreatureFlags;
+use h3_content::{CreatureFlags, FULL_BP};
+
+/// Whether a spell is good or bad for its target (the executable's spell table).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SpellPolarity {
+    /// Helps its target.
+    Positive,
+    /// Neither (summons, battlefield spells, adventure spells).
+    Neutral,
+    /// Harms its target.
+    Negative,
+}
+
+impl SpellPolarity {
+    /// All values, in code order.
+    pub const ALL: [Self; 3] = [Self::Positive, Self::Neutral, Self::Negative];
+
+    /// Pack name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Positive => "positive",
+            Self::Neutral => "neutral",
+            Self::Negative => "negative",
+        }
+    }
+
+    /// Looks a value up by its pack name.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|p| p.name() == name)
+    }
+}
 
 /// Most effects of one spell.
 pub const MAX_SPELL_EFFECTS: usize = 4;
@@ -316,7 +345,7 @@ pub enum SpellEffect {
     /// Creates a copy of the target stack, a living one of the caster's side, for some rounds
     /// (Clone; BAT-MAG-038, E04b T6b, v18).
     Clone,
-    /// Creates a stack of the spell's [`crate::Spell::summons`] creature on the caster's side
+    /// Creates a stack of the spell's [`crate::BattleSpell::summons`] creature on the caster's side
     /// (Summon Elemental; BAT-MAG-039, E04b T6b, v18).
     Summon,
 }
@@ -1167,7 +1196,7 @@ mod tests {
     use std::vec;
 
     use super::*;
-    use crate::flags::CreatureFlag;
+    use h3_content::CreatureFlag;
 
     #[test]
     fn names_round_trip() {
@@ -1658,6 +1687,26 @@ mod tests {
         assert_eq!(SpecialistBonus::Fixed(2).bonus(3, 5), 2);
         assert_eq!(SpecialistBonus::Total(3).bonus(3, 1), 2);
         assert_eq!(SpecialistBonus::Total(3).bonus(3, 5), -2);
+    }
+
+    #[test]
+    fn every_effect_kind_has_its_own_code() {
+        let mut effects = vec![
+            SpellEffect::Damage,
+            SpellEffect::Dispel,
+            SpellEffect::Heal,
+            SpellEffect::Teleport,
+            SpellEffect::RemoveObstacle,
+            SpellEffect::Raise,
+            SpellEffect::Sacrifice,
+            SpellEffect::Clone,
+            SpellEffect::Summon,
+        ];
+        effects.extend(TimedChange::ALL.map(SpellEffect::Timed));
+        effects.extend(ObstacleKind::ALL.map(SpellEffect::Obstacle));
+        let codes: alloc::collections::BTreeSet<[u8; 2]> =
+            effects.iter().map(|e| e.code()).collect();
+        assert_eq!(codes.len(), effects.len());
     }
 
     #[test]

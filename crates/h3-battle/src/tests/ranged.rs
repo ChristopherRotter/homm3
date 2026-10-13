@@ -43,14 +43,14 @@ fn shoot(target: u8, s: &BattleState) -> Command {
 /// Shoots at `target`'s head with the active stack.
 fn fire(
     s: &mut BattleState,
-    r: &h3_content::Ruleset,
+    r: &h3_content_battle::BattleRuleset,
     target: u8,
 ) -> Result<Vec<Event>, CommandError> {
     let c = shoot(target, s);
     act(s, r, c)
 }
 
-fn legal(s: &BattleState, r: &h3_content::Ruleset) -> Vec<Command> {
+fn legal(s: &BattleState, r: &h3_content_battle::BattleRuleset) -> Vec<Command> {
     let mut out = LegalCommands::new();
     crate::legal_commands(s, r, s.side_to_act().unwrap(), &mut out);
     out.iter().copied().collect()

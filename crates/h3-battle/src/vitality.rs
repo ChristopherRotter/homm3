@@ -5,7 +5,8 @@
 //! are recomputed from the stack's start value, the factor and Age; the top creature keeps its
 //! lost hit points, at least 1 left. Kept beside the stacks (the hot paths never read it).
 
-use h3_content::{Ruleset, SINGLE_PRECISION_RATES};
+use h3_content::SINGLE_PRECISION_RATES;
+use h3_content_battle::BattleRuleset;
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
 use h3_kernel::{CanonicalHash, StateHasher};
 
@@ -76,7 +77,12 @@ pub(crate) fn hit_points(base: u32, tenths: u8, aged: bool, single: bool) -> u32
 /// Sets stack `s`'s hit points per creature from its start value, its poison and whether it is
 /// `aged` (BAT-MAG-044); a stack that neither ever changes keeps them. The top creature keeps
 /// the hit points it lost, at least 1 left.
-pub(crate) fn materialize(state: &mut BattleState, ruleset: &Ruleset, s: StackId, aged: bool) {
+pub(crate) fn materialize(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    s: StackId,
+    aged: bool,
+) {
     let i = s.index();
     let tenths = state.vitality.poison[i];
     if state.vitality.base[i] == 0 {

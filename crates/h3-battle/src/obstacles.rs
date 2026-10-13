@@ -15,9 +15,8 @@
 
 use alloc::vec::Vec;
 
-use h3_content::{
-    DRAWS_AVOID_HIDDEN, MAX_FIELD_HEXES, ObstacleKind, ObstacleShape, Ruleset, SpellId, SpellMagic,
-};
+use h3_content::{DRAWS_AVOID_HIDDEN, SpellId};
+use h3_content_battle::{BattleRuleset, MAX_FIELD_HEXES, ObstacleKind, ObstacleShape, SpellMagic};
 use h3_contracts::BattleSide;
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
@@ -323,7 +322,7 @@ pub(crate) fn shape_hexes(
     shape: &ObstacleShape,
     (side, mastery): (BattleSide, u8),
     target: Hex,
-) -> Option<FixedVec<Hex, { h3_content::MAX_OBSTACLE_HEXES }>> {
+) -> Option<FixedVec<Hex, { h3_content_battle::MAX_OBSTACLE_HEXES }>> {
     let count = usize::from(shape.hexes[usize::from(mastery)]);
     let mut out = FixedVec::new();
     let mut at = target;
@@ -385,10 +384,10 @@ pub(crate) fn free(state: &BattleState, field: Field, side: BattleSide, hexes: &
 // rule: BAT-MAG-032
 pub(crate) fn random_hexes(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     side: BattleSide,
     count: u8,
-) -> FixedVec<Hex, { h3_content::MAX_OBSTACLE_HEXES }> {
+) -> FixedVec<Hex, { h3_content_battle::MAX_OBSTACLE_HEXES }> {
     let field = Field::new(ruleset.battle().field);
     let spells = if ruleset.quirks().is_enabled(DRAWS_AVOID_HIDDEN) {
         state.spell_obstacles.hexes()
@@ -615,7 +614,7 @@ pub(crate) fn clear<S: Sink>(state: &mut BattleState, sink: &mut S) {
 /// 0x59FB40, `installation.md` §7.17): one its side does not see (not its own, not revealed, not
 /// seen by its natives; the stack's own side even when it is hypnotized) and whose spell hurts it
 /// (an immune stack crosses and the mine stays as it was).
-fn mine_under(state: &BattleState, ruleset: &Ruleset, s: StackId, hex: Hex) -> Option<usize> {
+fn mine_under(state: &BattleState, ruleset: &BattleRuleset, s: StackId, hex: Hex) -> Option<usize> {
     let side = state.at(s).side;
     state.spell_obstacles.list.iter().position(|o| {
         o.kind == ObstacleKind::Mine
@@ -628,7 +627,7 @@ fn mine_under(state: &BattleState, ruleset: &Ruleset, s: StackId, hex: Hex) -> O
 /// Whether entering `hex` acts on stack `s`: a Fire Wall burns there (BAT-MAG-028) or a mine
 /// goes off under it (BAT-MAG-033). A mine that does not go off changes nothing, not even how the
 /// move is reported.
-fn acts_on(state: &BattleState, ruleset: &Ruleset, s: StackId, hex: Hex) -> bool {
+fn acts_on(state: &BattleState, ruleset: &BattleRuleset, s: StackId, hex: Hex) -> bool {
     let o = &state.spell_obstacles;
     o.fire.contains(hex) || (o.mines.contains(hex) && mine_under(state, ruleset, s, hex).is_some())
 }
@@ -640,7 +639,7 @@ fn acts_on(state: &BattleState, ruleset: &Ruleset, s: StackId, hex: Hex) -> bool
 /// ([`travel_back`]). Returns whether it still lives.
 fn enter<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     s: StackId,
     hexes: [Option<Hex>; 2],
     ends: bool,
@@ -679,7 +678,7 @@ fn enter<S: Sink>(
 // rule: BAT-MAG-033
 fn explode<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (s, hex): (StackId, Hex),
     i: usize,
     ends: bool,
@@ -722,7 +721,7 @@ fn explode<S: Sink>(
 #[inline]
 pub(crate) fn travel<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     mover: StackId,
     (from, to): (Hex, Hex),
     sink: &mut S,
@@ -747,7 +746,7 @@ pub(crate) fn travel<S: Sink>(
 // rule: BAT-ATK-004, BAT-MAG-028, BAT-MAG-033
 pub(crate) fn travel_back<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     mover: StackId,
     (from, to): (Hex, Hex),
     sink: &mut S,
@@ -777,7 +776,7 @@ fn moved<S: Sink>(state: &mut BattleState, mover: StackId, (a, b): (Hex, Hex), s
 #[inline(never)]
 fn travel_through<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     mover: StackId,
     (from, to): (Hex, Hex),
     ends: bool,
@@ -881,7 +880,12 @@ fn stuck<S: Sink>(state: &mut BattleState, mover: StackId, hex: Hex, sink: &mut 
 /// there by Teleport, or it was immune when it came; BAT-MAG-033), unless the battle is over.
 // rule: BAT-MAG-028, BAT-MAG-033
 #[inline]
-pub(crate) fn stand<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackId, sink: &mut S) {
+pub(crate) fn stand<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    s: StackId,
+    sink: &mut S,
+) {
     let o = &state.spell_obstacles;
     if !o.fire().is_empty() || !o.mines().is_empty() {
         stand_on(state, ruleset, s, sink);
@@ -890,7 +894,7 @@ pub(crate) fn stand<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: Stac
 
 /// [`stand`] while a Fire Wall or a mine lies on the battlefield.
 #[inline(never)]
-fn stand_on<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackId, sink: &mut S) {
+fn stand_on<S: Sink>(state: &mut BattleState, ruleset: &BattleRuleset, s: StackId, sink: &mut S) {
     if state.result.is_some() || !state.at(s).is_alive() {
         return;
     }

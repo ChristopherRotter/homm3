@@ -4,7 +4,7 @@
 //! is teleported, when it is teleported, or as an effect ends (Dispel, its 255 rounds). Kept
 //! beside the stacks: the hot paths read one mask.
 
-use h3_content::{Ruleset, SpellEffect, TimedChange};
+use h3_content_battle::{BattleRuleset, SpellEffect, TimedChange};
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::effects;
@@ -85,7 +85,7 @@ pub(crate) fn materialize(state: &mut BattleState, s: StackId, bound: bool) {
 // rule: BAT-MAG-045
 pub(crate) fn release<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     binder: StackId,
     sink: &mut S,
 ) {
@@ -111,7 +111,12 @@ pub(crate) fn release<S: Sink>(
 }
 
 /// Ends the Bind on stack `s`, reported (Teleport, BAT-MAG-045; the end of its binders).
-pub(crate) fn end<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackId, sink: &mut S) {
+pub(crate) fn end<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    s: StackId,
+    sink: &mut S,
+) {
     let bind = SpellEffect::Timed(TimedChange::Bind);
     effects::end_spells(state, ruleset, s, sink, |sp| {
         sp.magic.effects.contains(&bind)
@@ -120,7 +125,12 @@ pub(crate) fn end<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackI
 
 /// After stack `s` died (the original's 0x444120 calls 0x43EE10): the stacks it binds are
 /// released, and it is no longer under Bind (a dead stack loses its timed effects, BAT-MAG-010).
-pub(crate) fn died<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackId, sink: &mut S) {
+pub(crate) fn died<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    s: StackId,
+    sink: &mut S,
+) {
     release(state, ruleset, s, sink);
     materialize(state, s, false);
 }

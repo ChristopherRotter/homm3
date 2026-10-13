@@ -3,7 +3,7 @@
 
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::BattleHero;
 
 use super::spells::{arena, cast, mage, stack};
@@ -11,7 +11,7 @@ use super::support::*;
 use crate::{BattleState, Command, Event, EventKind, StackFlags, StackId};
 
 /// A mage with `spells`, the air and fire masteries `air` and `fire` and enough mana.
-fn adept(r: &Ruleset, spells: &[&str], (air, fire): (u8, u8)) -> BattleHero {
+fn adept(r: &BattleRuleset, spells: &[&str], (air, fire): (u8, u8)) -> BattleHero {
     let mut h = mage(r, spells);
     h.magic.masteries = masteries(r, [air, fire, 0, 0]);
     h.magic.mana = 100;
@@ -19,7 +19,7 @@ fn adept(r: &Ruleset, spells: &[&str], (air, fire): (u8, u8)) -> BattleHero {
 }
 
 /// Starts a new round and gives the turn to stack `id`.
-fn next_round(s: &mut BattleState, r: &Ruleset, id: u8) {
+fn next_round(s: &mut BattleState, r: &BattleRuleset, id: u8) {
     let mut events: Vec<Event> = Vec::new();
     crate::turn::start_round(s, r, &mut events);
     activate(s, id);

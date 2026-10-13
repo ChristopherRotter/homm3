@@ -1,9 +1,11 @@
 //! Tests of the game's rules bundle and setup (E08 T6a); the state, the starting armies' draw
 //! and the turns in `state.rs` (T6b); the observation and the projection in `observe.rs`
-//! (T8b1); the legal commands in `legal.rs` (T8b2a). The rulesets are built in code (an application crate takes no pack adapter as a
+//! (T8b1); the legal commands in `legal.rs` (T8b2a); the pending decisions in `decisions.rs`
+//! (T14b). The rulesets are built in code (an application crate takes no pack adapter as a
 //! dev-dependency); the core still needs battle parameters until the content split (ADR-0015
 //! point 3).
 
+mod decisions;
 mod legal;
 mod moves;
 mod observe;
@@ -24,9 +26,9 @@ use h3_adventure::{
     TerrainMovementDef, TileSetup, Visit,
 };
 use h3_content::{
-    BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId,
-    FactionDef, HeroClassDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef,
-    Ruleset, StartingStackDef, TerrainDef, TerrainId,
+    ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId, FactionDef,
+    HeroClassDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, Ruleset,
+    StartingStackDef, TerrainDef, TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
@@ -37,45 +39,9 @@ fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()
 }
 
-fn battle() -> BattleParamsDef {
-    BattleParamsDef {
-        field_width: 17,
-        field_height: 11,
-        side_columns: 1,
-        army_slots: 3,
-        damage_roll_samples: 10,
-        attack_bonus_per_point_percent: 5,
-        attack_bonus_cap_percent: 300,
-        defense_reduction_per_point_permille: 25,
-        defense_reduction_cap_permille: 700,
-        defend_bonus_percent: 20,
-        defend_bonus_min: 1,
-        ranged_full_damage_distance: 10,
-        ranged_penalty_percent: 50,
-        melee_penalty_percent: 50,
-        morale_dice: 24,
-        good_morale_chances: vec![1, 2, 3],
-        bad_morale_chances: vec![2, 4, 6],
-        luck_dice: 24,
-        good_luck_chances: vec![1, 2, 3],
-        war_machine_positions: vec![[1, 3], [1, 1], [1, 9]],
-        loose_formation: vec![vec![5], vec![3, 7], vec![2, 5, 8]],
-        tight_formation: vec![vec![5], vec![4, 6], vec![4, 5, 6]],
-        tactics_zone_columns: vec![3, 5, 7],
-        surrender: None,
-        hero_casts_per_round: 1,
-        side_stack_limit: 20,
-    }
-}
-
 fn creature(k: &str, speed: u8) -> CreatureDef {
     CreatureDef {
         key: key(k),
-        attack: 1,
-        defense: 1,
-        damage_min: 1,
-        damage_max: 1,
-        hit_points: 1,
         speed,
         info: CreatureInfoDef::default(),
     }
@@ -176,7 +142,6 @@ fn core(extra: bool) -> Ruleset {
             key: key("t:faithful"),
             quirks: vec![],
         }],
-        battle: Some(battle()),
         ..ContentPack::new(manifest())
     };
     Ruleset::compile(&[pack], "t:faithful").unwrap()
@@ -203,17 +168,30 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                 passage: Passage::Impassable,
             },
         ],
-        object_types: vec![ObjectTypeDef {
-            key: key("t:pile"),
-            name: "Pile".into(),
-            visit: Visit::Neighbour,
-            from_above: true,
-            kind: ObjectKindDef::Pickup(PickupDef::Resource {
-                resource: key("t:gold"),
-                amount: [5, 10],
-                multiplier: NonZeroU32::new(100).unwrap(),
-            }),
-        }],
+        // A gold pile, and a Cartographer of grass for 2 500 gold (E08 T14b).
+        object_types: vec![
+            ObjectTypeDef {
+                key: key("t:pile"),
+                name: "Pile".into(),
+                visit: Visit::Neighbour,
+                from_above: true,
+                kind: ObjectKindDef::Pickup(PickupDef::Resource {
+                    resource: key("t:gold"),
+                    amount: [5, 10],
+                    multiplier: NonZeroU32::new(100).unwrap(),
+                }),
+            },
+            ObjectTypeDef {
+                key: key("t:chart"),
+                name: "Chart".into(),
+                visit: Visit::Enter,
+                from_above: false,
+                kind: ObjectKindDef::RevealTerrain {
+                    terrains: vec![key("t:grass")],
+                    price: vec![(key("t:gold"), 2500)],
+                },
+            },
+        ],
         params: Some(AdventureParamsDef {
             native_cost: cost,
             land_points: vec![1300, 1360, 1430, 1500],

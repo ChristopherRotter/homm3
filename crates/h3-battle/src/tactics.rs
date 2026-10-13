@@ -7,7 +7,7 @@
 //! when every stack has had its turn the next round of the phase starts. `EndTactics` starts
 //! round 1. War machines are not placed.
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::BattleSide;
 use h3_kernel::{CanonicalHash, StateHasher};
 
@@ -59,7 +59,10 @@ impl CanonicalHash for TacticsPhase {
 /// the enemy's gets a zone as wide as the ruleset's entry for the difference; equal levels
 /// cancel, and a side without a hero has level 0.
 // rule: BAT-TAC-001
-pub(crate) fn phase(ruleset: &Ruleset, heroes: &[Option<HeroRecord>; 2]) -> Option<TacticsPhase> {
+pub(crate) fn phase(
+    ruleset: &BattleRuleset,
+    heroes: &[Option<HeroRecord>; 2],
+) -> Option<TacticsPhase> {
     let level = |side: BattleSide| heroes[side.index()].map_or(0, |h| h.tactics);
     let (attacker, defender) = (level(BattleSide::Attacker), level(BattleSide::Defender));
     let (side, difference) = match attacker.cmp(&defender) {
@@ -163,7 +166,7 @@ pub(crate) fn skip<S: Sink>(
 }
 
 /// Ends the phase: round 1 starts and its first stack is activated as usual.
-pub(crate) fn end<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
+pub(crate) fn end<S: Sink>(state: &mut BattleState, ruleset: &BattleRuleset, sink: &mut S) {
     state.tactics = None;
     sink.emit(Event::public(EventKind::TacticsEnded));
     turn::start_round(state, ruleset, sink);

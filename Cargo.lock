@@ -424,6 +424,7 @@ name = "h3-battle"
 version = "0.1.0"
 dependencies = [
  "h3-content",
+ "h3-content-battle",
  "h3-contracts",
  "h3-kernel",
  "proptest",
@@ -436,12 +437,13 @@ dependencies = [
  "h3-adventure",
  "h3-battle",
  "h3-content",
+ "h3-content-battle",
  "h3-contracts",
  "h3-game",
  "h3-kernel",
  "h3-map",
- "h3-pack",
  "h3-pack-adventure",
+ "h3-pack-battle",
  "h3-sim",
  "serde",
  "toml",
@@ -451,6 +453,15 @@ dependencies = [
 name = "h3-content"
 version = "0.1.0"
 dependencies = [
+ "h3-kernel",
+ "proptest",
+]
+
+[[package]]
+name = "h3-content-battle"
+version = "0.1.0"
+dependencies = [
+ "h3-content",
  "h3-kernel",
  "proptest",
 ]
@@ -468,6 +479,7 @@ name = "h3-experiment"
 version = "0.1.0"
 dependencies = [
  "h3-formats",
+ "h3-map",
  "serde",
  "toml",
 ]
@@ -480,7 +492,7 @@ dependencies = [
  "h3-content",
  "h3-contracts",
  "h3-kernel",
- "h3-pack",
+ "h3-pack-battle",
  "h3-sim",
 ]
 
@@ -508,8 +520,9 @@ name = "h3-harvest"
 version = "0.1.0"
 dependencies = [
  "h3-content",
+ "h3-content-battle",
  "h3-formats",
- "h3-pack",
+ "h3-pack-battle",
  "serde",
  "toml",
 ]
@@ -538,7 +551,6 @@ dependencies = [
  "h3-adventure",
  "h3-content",
  "h3-contracts",
- "h3-formats",
  "h3-game",
  "h3-pack",
  "h3-pack-adventure",
@@ -550,10 +562,7 @@ dependencies = [
 name = "h3-pack"
 version = "0.1.0"
 dependencies = [
- "h3-battle",
  "h3-content",
- "h3-contracts",
- "h3-heroes",
  "h3-kernel",
  "serde",
  "toml",
@@ -571,14 +580,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-pack-battle"
+version = "0.1.0"
+dependencies = [
+ "h3-battle",
+ "h3-content",
+ "h3-content-battle",
+ "h3-contracts",
+ "h3-heroes",
+ "h3-kernel",
+ "h3-pack",
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "h3-protocol"
 version = "0.1.0"
 dependencies = [
  "h3-battle",
  "h3-content",
+ "h3-content-battle",
  "h3-contracts",
  "h3-kernel",
- "h3-pack",
+ "h3-pack-battle",
  "h3-sim",
  "postcard",
  "proptest",
@@ -597,9 +622,10 @@ dependencies = [
  "h3-battle",
  "h3-cli",
  "h3-content",
+ "h3-content-battle",
  "h3-contracts",
  "h3-kernel",
- "h3-pack",
+ "h3-pack-battle",
  "h3-protocol",
  "h3-sim",
  "serde",
@@ -617,12 +643,13 @@ dependencies = [
  "h3-adventure",
  "h3-battle",
  "h3-content",
+ "h3-content-battle",
  "h3-contracts",
  "h3-game",
  "h3-kernel",
  "h3-map",
- "h3-pack",
  "h3-pack-adventure",
+ "h3-pack-battle",
  "proptest",
 ]
 

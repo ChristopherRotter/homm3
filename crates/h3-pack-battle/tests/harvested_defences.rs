@@ -10,24 +10,29 @@ use h3_battle::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, StackId, apply, cast_targets,
     creature_cast_targets,
 };
-use h3_content::{Formation, Ruleset, SpellId};
+use h3_content::{Formation, SpellId};
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, ArmyStack, BattleEffect, BattleHero, BattleSetup, BattleSide};
 use h3_heroes::{HeroDetails, derive_battle_hero};
 
-fn sod() -> Ruleset {
-    h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+fn sod() -> BattleRuleset {
+    h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         "base:faithful",
     )
     .unwrap()
 }
 
-fn spell(r: &Ruleset, key: &str) -> SpellId {
+fn spell(r: &BattleRuleset, key: &str) -> SpellId {
     r.spell_by_key(key).unwrap()
 }
 
 /// A hero with power 10, 100 mana, `spells` in its book and `effects`.
-fn caster(r: &Ruleset, spells: &[SpellId], effects: Vec<BattleEffect>) -> BattleHero {
+fn caster(r: &BattleRuleset, spells: &[SpellId], effects: Vec<BattleEffect>) -> BattleHero {
     let mut h = BattleHero::new(r.hero_type_by_key("base:solmyr").unwrap());
     h.power = 10;
     h.magic.mana = 100;
@@ -39,7 +44,7 @@ fn caster(r: &Ruleset, spells: &[SpellId], effects: Vec<BattleEffect>) -> Battle
 
 /// A battle of a Pikeman against `defender`, one creature per stack, the attacker's hero
 /// `hero`; the Pikeman acts first.
-fn battle(r: &Ruleset, hero: BattleHero, defender: &[&str]) -> BattleState {
+fn battle(r: &BattleRuleset, hero: BattleHero, defender: &[&str]) -> BattleState {
     let setup = BattleSetup {
         attacker: Army {
             stacks: vec![ArmyStack {
@@ -75,7 +80,7 @@ fn battle(r: &Ruleset, hero: BattleHero, defender: &[&str]) -> BattleState {
 }
 
 /// The stacks the attacker's hero may cast `spell` at now, by id.
-fn targets(s: &BattleState, r: &Ruleset, spell: SpellId) -> Vec<u8> {
+fn targets(s: &BattleState, r: &BattleRuleset, spell: SpellId) -> Vec<u8> {
     let mut out = CastTargets::new();
     cast_targets(s, r, BattleSide::Attacker, spell, &mut out);
     out.iter()
@@ -140,8 +145,12 @@ fn a_faerie_dragons_spell_is_never_sent_away_by_the_other_dragons_mirror() {
     // profile as without quirks. The engine sent one such spell in five to a stack of the
     // caster's side, untested in `faithful` (the retired flag of BAT-QUIRK-9).
     for profile in ["base:faithful", "base:strict-fixed"] {
-        let r = h3_pack::compile(
-            &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+        let r = h3_pack_battle::compile(
+            &[
+                h3_pack_battle::SOD_PACK,
+                h3_pack_battle::AB_PACK,
+                h3_pack_battle::BASE_PACK,
+            ],
             profile,
         )
         .unwrap();
@@ -256,7 +265,7 @@ fn the_artifacts_give_the_originals_defences() {
     let dragon = r.creature_by_key("ab:faerie_dragon").unwrap();
     assert!(
         !r.abilities(dragon)
-            .contains(&h3_content::Ability::IgnoresMagicBlock)
+            .contains(&h3_content_battle::Ability::IgnoresMagicBlock)
     );
     // The casting limits (HER-BAT-015) and the Dragon Father's levels.
     assert_eq!(

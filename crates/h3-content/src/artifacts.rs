@@ -20,7 +20,7 @@ use crate::flags::CreatureFlag;
 use crate::heroes::{HeroContent, Refs, SkillId, distinct, invalid};
 use crate::key::ContentKey;
 use crate::pack::ContentPack;
-use crate::ruleset::{CreatureType, CreatureTypeId, ResourceId};
+use crate::ruleset::{CreatureInfo, CreatureTypeId, ResourceId};
 
 /// Most positions one slot may have.
 pub const MAX_SLOT_COUNT: u8 = 8;
@@ -260,7 +260,7 @@ impl HeroContent {
     /// may change what fits).
     pub(crate) fn validate_artifacts(
         &self,
-        creatures: &[CreatureType],
+        creatures: &[CreatureInfo],
     ) -> Result<(), CompileError> {
         for s in &self.slots.items {
             if !(1..=MAX_SLOT_COUNT).contains(&s.count) {

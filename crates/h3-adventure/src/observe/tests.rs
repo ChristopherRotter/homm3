@@ -342,7 +342,8 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
             .map(|e| {
                 e.project(BLUE).map(|e| match e.kind {
                     AdventureEventKind::HeroStepped { from, to, .. } => (from, to),
-                    AdventureEventKind::ObjectRemoved { .. } => (None, None),
+                    AdventureEventKind::ObjectRemoved { .. }
+                    | AdventureEventKind::TilesRevealed { .. } => (None, None),
                 })
             })
             .collect();

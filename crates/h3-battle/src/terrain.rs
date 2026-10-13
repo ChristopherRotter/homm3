@@ -8,7 +8,8 @@
 
 use alloc::vec::Vec;
 
-use h3_content::{CreatureTypeId, ObstacleType, Ruleset, TerrainId};
+use h3_content::{CreatureTypeId, TerrainId};
+use h3_content_battle::{BattleRuleset, ObstacleType};
 use h3_contracts::Obstacle;
 use h3_kernel::Rng;
 
@@ -18,7 +19,7 @@ use crate::geometry::{Field, Hex, HexSet};
 /// terrain is the battle's (neutral creatures have none) (BAT-TER-001).
 // rule: BAT-TER-001
 pub(crate) fn is_native(
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     creature: CreatureTypeId,
     terrain: Option<TerrainId>,
 ) -> bool {
@@ -83,7 +84,11 @@ fn placement(
 /// anchor (rows 1 to `height − 2`; the obstacle keeps it), stopping early if no obstacle or no
 /// anchor is left.
 // rule: BAT-GEO-004
-pub fn generate_obstacles(ruleset: &Ruleset, terrain: TerrainId, rng: &mut Rng) -> Vec<Obstacle> {
+pub fn generate_obstacles(
+    ruleset: &BattleRuleset,
+    terrain: TerrainId,
+    rng: &mut Rng,
+) -> Vec<Obstacle> {
     let params = ruleset.battle().field;
     let field = Field::new(params);
     let (width, height) = (i32::from(params.width), i32::from(params.height));

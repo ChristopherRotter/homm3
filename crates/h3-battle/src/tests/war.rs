@@ -3,7 +3,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BallistaControl, BattleHero, BattleResult, BattleSide, TentControl};
 
 use super::support::*;
@@ -13,12 +13,12 @@ use crate::{
     StackTraits,
 };
 
-fn creature(r: &Ruleset, name: &str) -> h3_content::CreatureTypeId {
+fn creature(r: &BattleRuleset, name: &str) -> h3_content::CreatureTypeId {
     r.creature_by_key(&std::format!("t:{name}")).unwrap()
 }
 
 fn with_machines(
-    r: &Ruleset,
+    r: &BattleRuleset,
     attacker: &[Spec],
     defender: &[Spec],
     machines: [&[&str]; 2],
@@ -29,7 +29,7 @@ fn with_machines(
     }
 }
 
-fn start(r: &Ruleset, s: &BattleSetup, seed: u64) -> BattleState {
+fn start(r: &BattleRuleset, s: &BattleSetup, seed: u64) -> BattleState {
     BattleState::new(r, s, seed).unwrap()
 }
 
@@ -63,7 +63,7 @@ fn healed(events: &[Event]) -> Vec<(u8, u8, u32)> {
 }
 
 /// Lets every active stack defend until a round has passed; returns all events.
-fn defend_round(s: &mut BattleState, r: &Ruleset) -> Vec<Event> {
+fn defend_round(s: &mut BattleState, r: &BattleRuleset) -> Vec<Event> {
     let round = s.round();
     let mut events = Vec::new();
     while s.round() == round && !s.is_over() {
@@ -74,7 +74,7 @@ fn defend_round(s: &mut BattleState, r: &Ruleset) -> Vec<Event> {
 
 /// Gives stack `id` the timed effect of `name` (Hypnotize: the other side controls it,
 /// BAT-MAG-026; Berserk, BAT-MAG-025) for five rounds.
-fn give(s: &mut BattleState, r: &Ruleset, id: u8, name: &str) {
+fn give(s: &mut BattleState, r: &BattleRuleset, id: u8, name: &str) {
     let spell = r.spell_by_key(&std::format!("t:{name}")).unwrap();
     let cast = crate::effects::TimedCast {
         id: spell,
@@ -360,7 +360,7 @@ fn the_ballista_prefers_creatures_threats_and_value() {
 // covers: BAT-WAR-002, BAT-MAG-031
 #[test]
 fn the_automatic_ballista_does_not_show_hidden_pits() {
-    use h3_content::ObstacleKind;
+    use h3_content_battle::ObstacleKind;
     let r = ruleset();
     // Ids: 0, 1 fixed (attacker); 2, 3 tank, 4 ballista (defender).
     let mut setup = with_machines(
@@ -559,7 +559,7 @@ fn under_quirk_q_0004_the_ballista_shoots_on_without_shots() {
 // ---------------------------------------------------------------- BAT-WAR-005 hero's attack
 
 /// A hero for the attacker with `attack` and, if `ballista` is set, Artillery.
-fn led(r: &Ruleset, attack: u8, ballista: Option<(u8, u16)>) -> BattleHero {
+fn led(r: &BattleRuleset, attack: u8, ballista: Option<(u8, u16)>) -> BattleHero {
     let mut h = hero(r);
     h.attack = attack;
     h.war_machines.ballista = ballista.map(|(shots, chance)| BallistaControl {
@@ -602,7 +602,7 @@ fn a_hero_multiplies_its_war_machines_damage_by_its_attack_plus_one() {
 
 /// A battle where the attacker's hero commands its Ballista (`shots`, `chance`): 0 = serf,
 /// 1 = ballista (attacker); 2 = `enemy`, 3 = the defender's ballista.
-fn commanded(enemy: Spec, shots: u8, chance: u16, seed: u64) -> (Ruleset, BattleState) {
+fn commanded(enemy: Spec, shots: u8, chance: u16, seed: u64) -> (BattleRuleset, BattleState) {
     let r = ruleset();
     let mut setup = with_machines(
         &r,
@@ -616,13 +616,13 @@ fn commanded(enemy: Spec, shots: u8, chance: u16, seed: u64) -> (Ruleset, Battle
 }
 
 /// Lets every stack defend until the attacker's Ballista (stack 1) is active.
-fn to_ballista(s: &mut BattleState, r: &Ruleset) {
+fn to_ballista(s: &mut BattleState, r: &BattleRuleset) {
     while s.active() != Some(StackId(1)) {
         act(s, r, Command::Defend).unwrap();
     }
 }
 
-fn shoot_at(s: &mut BattleState, r: &Ruleset, target: u8) -> Vec<Event> {
+fn shoot_at(s: &mut BattleState, r: &BattleRuleset, target: u8) -> Vec<Event> {
     let at = s.stacks()[usize::from(target)].hex;
     act(
         s,
@@ -859,12 +859,12 @@ fn the_tent_heals_its_own_sides_stacks_whoever_controls_them() {
 
 /// A battle where the attacker's hero commands its tent with `bonus`: 0 = tank ×3 (top creature
 /// at 50 of 100 hit points), 1 = serf, 2 = ballista (hurt), 3 = tent (attacker); 4 = `enemy`.
-fn nursed(bonus: u32, enemy: Spec, seed: u64) -> (Ruleset, BattleState) {
+fn nursed(bonus: u32, enemy: Spec, seed: u64) -> (BattleRuleset, BattleState) {
     nursed_in("t:faithful", Rate::bp(bonus), enemy, seed)
 }
 
 /// [`nursed`] in profile `profile` with the heal bonus `bonus`.
-fn nursed_in(profile: &str, bonus: Rate, enemy: Spec, seed: u64) -> (Ruleset, BattleState) {
+fn nursed_in(profile: &str, bonus: Rate, enemy: Spec, seed: u64) -> (BattleRuleset, BattleState) {
     let r = ruleset_with(profile, |_| {});
     let mut setup = with_machines(
         &r,
@@ -882,7 +882,7 @@ fn nursed_in(profile: &str, bonus: Rate, enemy: Spec, seed: u64) -> (Ruleset, Ba
 }
 
 /// Lets every stack defend until stack `id` is active; returns the events.
-fn defend_until(s: &mut BattleState, r: &Ruleset, id: u8) -> Vec<Event> {
+fn defend_until(s: &mut BattleState, r: &BattleRuleset, id: u8) -> Vec<Event> {
     let mut events = Vec::new();
     while s.active() != Some(StackId(id)) {
         events.extend(act(s, r, Command::Defend).unwrap());

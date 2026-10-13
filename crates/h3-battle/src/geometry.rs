@@ -9,7 +9,7 @@
 //! rightmost columns exist (the original keeps heroes and war machines there) but no stack can
 //! stand in them.
 
-use h3_content::{FieldParams, HexStep};
+use h3_content_battle::{FieldParams, HexStep};
 use h3_contracts::BattleSide;
 use h3_kernel::{CanonicalHash, StateHasher};
 

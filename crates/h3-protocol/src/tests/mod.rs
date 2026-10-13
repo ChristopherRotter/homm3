@@ -12,15 +12,15 @@ mod session;
 mod wire;
 
 use h3_battle::{BattleSetup, BattleState};
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 
 /// The synthetic `full` scenario: seven stacks a side, both led by casting heroes.
-fn full() -> (Ruleset, BattleSetup) {
-    h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap()
+fn full() -> (BattleRuleset, BattleSetup) {
+    h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap()
 }
 
 /// A battle of the `full` scenario.
-fn battle() -> (Ruleset, BattleState) {
+fn battle() -> (BattleRuleset, BattleState) {
     let (ruleset, setup) = full();
     let state = BattleState::new(&ruleset, &setup, 7).unwrap();
     (ruleset, state)

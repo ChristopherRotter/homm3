@@ -11,7 +11,8 @@ use h3_battle::{
     SpellObstacle as EngineObstacle, SpellSet, StackFlags, StackId, StackTraits, StrikeFlags,
     TacticsPhase, Visibility,
 };
-use h3_content::{CreatureTypeId, ObstacleKind as EngineKind, SpellId, TerrainId};
+use h3_content::{CreatureTypeId, SpellId, TerrainId};
+use h3_content_battle::ObstacleKind as EngineKind;
 use h3_contracts::{BallistaControl, Obstacle, Rate, TentControl};
 
 use super::{battle, full};

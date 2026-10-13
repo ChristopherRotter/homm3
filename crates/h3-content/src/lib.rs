@@ -1,4 +1,5 @@
-//! Content definitions, content-pack model and the pure `Ruleset` compiler (ADR-0006).
+//! Content definitions, content-pack model and the pure `Ruleset` compiler (ADR-0006): the core
+//! every context reads (ADR-0015 point 3). The battle's part is `h3-content-battle` (R01).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -20,7 +21,6 @@
 
 extern crate alloc;
 
-mod ability;
 mod artifacts;
 mod effect;
 mod error;
@@ -30,11 +30,7 @@ mod key;
 mod pack;
 mod quirks;
 mod ruleset;
-mod spell;
 
-pub use ability::{
-    Ability, AbilityDef, AreaShot, AuraTarget, CompiledAbility, MAX_RAISED_CREATURES,
-};
 pub use artifacts::{
     ArtifactClass, ArtifactSlot, ArtifactSlotId, ArtifactType, ArtifactTypeId, MAX_PARTS,
     MAX_SLOT_COUNT, MAX_SLOT_POSITIONS,
@@ -47,15 +43,15 @@ pub use error::CompileError;
 pub use flags::{CreatureFlag, CreatureFlags};
 pub use heroes::{
     HeroClass, HeroClassId, HeroParams, HeroType, HeroTypeId, MAX_HERO_SKILLS, MAX_SPELL_LEVEL,
-    MAX_SPELL_SCHOOLS, MAX_SPELLS, MAX_SUMMON_SPELLS, SchoolId, SecondarySkill, SkillId, Spell,
-    SpellCategory, SpellId, SpellPolarity, SpellSchool, StartingStack,
+    MAX_SPELL_SCHOOLS, MAX_SPELLS, SchoolId, SecondarySkill, SkillId, Spell, SpellCategory,
+    SpellId, SpellSchool, StartingStack,
 };
 pub use key::{ContentKey, KeyError};
 pub use pack::{
-    ArtifactDef, ArtifactSlotDef, ArtifactSlotOverride, BattleParamsDef, ContentPack, CreatureDef,
-    CreatureInfoDef, CreatureOverride, CreaturePatch, FactionDef, HeroClassDef, HeroOverride,
-    HeroParamsDef, HeroPatch, HeroTypeDef, ObstacleDef, PackManifest, ProfileDef, ResourceDef,
-    SecondarySkillDef, SpellDef, SpellSchoolDef, StartingStackDef, SurrenderDef, TerrainDef,
+    ArtifactDef, ArtifactSlotDef, ArtifactSlotOverride, ContentPack, CreatureDef, CreatureInfoDef,
+    CreatureOverride, CreaturePatch, FactionDef, HeroClassDef, HeroOverride, HeroParamsDef,
+    HeroPatch, HeroTypeDef, PackManifest, ProfileDef, ResourceDef, SecondarySkillDef, SpellDef,
+    SpellSchoolDef, StartingStackDef, TerrainDef,
 };
 pub use quirks::{
     CLONE_ON_ITS_ORIGINAL, COUNTERSTRIKE_EXTRA_ROUND, DATA_QUIRK_PREFIX,
@@ -67,14 +63,7 @@ pub use quirks::{
     SACRIFICE_TESTS_AS_RESURRECTION, SINGLE_PRECISION_RATES, UNLIMITED_BALLISTA_SHOTS,
 };
 pub use ruleset::{
-    BattleParams, CreatureInfo, CreatureType, CreatureTypeId, FactionId, FactionInfo, FieldParams,
-    Formation, MAX_ARMY_SLOTS, MAX_AURA_VALUES, MAX_FIELD_HEXES, MAX_ROLL_LEVELS, MAX_SIDE_STACKS,
-    MAX_UPGRADES, MAX_USUAL_OBSTACLE_HEXES, ObstacleType, RULESET_HASH_VERSION, ResourceId,
-    ResourceInfo, RollTable, Ruleset, SurrenderParams, TerrainId, TerrainInfo, WAR_MACHINE_KINDS,
-};
-pub use spell::{
-    EffectDuration, EffectEnd, HexStep, MASTERY_NAMES, MAX_AREA_RADIUS, MAX_CHAIN_TARGETS,
-    MAX_MASTERY, MAX_OBSTACLE_HEXES, MAX_SPELL_EFFECTS, ObstacleKind, ObstacleShape,
-    SPECIALIST_LEVELS, SpecialistBonus, SpellArea, SpellChain, SpellEffect, SpellMagic,
-    SpellTarget, TargetConditions, TargetSide, TimedChange, Usefulness,
+    CreatureInfo, CreatureTypeId, FactionId, FactionInfo, Formation, MAX_ARMY_SLOTS, MAX_UPGRADES,
+    RULESET_HASH_VERSION, ResourceId, ResourceInfo, Ruleset, TerrainId, TerrainInfo,
+    override_applies,
 };

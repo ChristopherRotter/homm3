@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{ObstacleKind, Ruleset};
+use h3_content_battle::{BattleRuleset, ObstacleKind};
 use h3_contracts::{BattleHero, BattleResult, BattleSide};
 
 use super::spells::{arena, mage, spell, stack};
@@ -30,21 +30,21 @@ fn reborn(events: &[Event]) -> Vec<(u8, u32)> {
 }
 
 /// The active stack attacks stack `target` from where it stands.
-fn strike(s: &mut BattleState, r: &Ruleset, target: u8) -> Vec<Event> {
+fn strike(s: &mut BattleState, r: &BattleRuleset, target: u8) -> Vec<Event> {
     let from = s.stacks()[usize::from(s.active().unwrap().0)].hex;
     let target = StackId(target);
     act(s, r, Command::Attack { target, from }).unwrap()
 }
 
 /// Kills stack `id` outright, as a strike would, without the rebirth check.
-fn kill(s: &mut BattleState, r: &Ruleset, id: u8) {
+fn kill(s: &mut BattleState, r: &BattleRuleset, id: u8) {
     let total = s.stacks()[usize::from(id)].total_hp();
     apply_damage(s.at_mut(StackId(id)), total);
     effects::damaged(s, r, StackId(id), &mut Vec::<Event>::new());
 }
 
 /// A mage with `spells`, every school at `mastery`, power 3 and 100 mana.
-fn caster(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
+fn caster(r: &BattleRuleset, spells: &[&str], mastery: u8) -> BattleHero {
     let mut h = mage(r, spells);
     h.magic.masteries = masteries(r, [mastery; 4]);
     h.magic.mana = 100;

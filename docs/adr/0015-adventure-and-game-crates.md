@@ -35,7 +35,7 @@ input that must not build a state no sequence of commands could build (`docs/06-
    version. A part references core entities by handle, and its source references them by key
    (context data hangs off the core entity). Pack folders get one file per context
    (`core.toml`, `battle.toml`, `adventure.toml`); increment 1 adds `adventure.toml` beside
-   today's `pack.toml`, hand-written source the harvester never touches (E08 decision 10).
+   the pack's file, hand-written source the harvester never touches (E08 decision 10).
    `h3-game`'s `GameRuleset` bundles the core ruleset and the parts; replay headers and the
    server's manifest record every part's hash.
 3. **The content split waits for E04b.** Until it closes, adventure crates use only the core
@@ -84,6 +84,26 @@ input that must not build a state no sequence of commands could build (`docs/06-
   to its journal) plus `h3-map`'s import version; verifying re-imports the map, and an import
   change bumps that version (ADV-Q2). Shipped maps never enter git (ADR-0009).
 
+## Amendment — R01, the content split (2026-10-13; proposed, for the user to confirm)
+
+Point 3 carried out (BACKLOG R01; detail in `docs/epics/R01-content-split.md`):
+
+1. **The cut.** The core keeps, beside point 3's list, the whole hero content (classes, types and
+   specialties, secondary skills, artifacts, their effects: the hero context's vocabulary, which
+   `h3-heroes` translates to both seams), the creatures' flags and `Formation`.
+   `h3-content-battle` holds the battle part: creature battle stats, casts and abilities, the
+   spells' battle magic (polarity, effects, counters, dispels, spares, `tests_as`, `summons`),
+   obstacle types and the battle parameters.
+2. **`BattleRuleset`** is compiled on a core like `AdventureRuleset` (point 2: its own hash, the
+   core's recorded beside it) and also keeps the `Arc` of its core and dereferences to it; its
+   creature and spell rows carry copies of the core fields the battle reads.
+3. **Packs:** each folder holds `core.toml` (with the manifest), `battle.toml` and
+   `adventure.toml`; adapters `h3-pack` (core), `h3-pack-battle`, `h3-pack-adventure`.
+4. **Owners:** `h3-content` and `h3-pack` are shared paths; `h3-content-battle` and
+   `h3-pack-battle` the battle lane's.
+5. **Versions:** core ruleset hash v43, battle part hash v1, pack format v35, battle replay
+   format v22; the server's manifest and offers carry both hashes (protocol v21).
+
 ## Alternatives considered
 
 - Players, turns and calendar in `h3-adventure` (the first proposal): every later context
@@ -103,3 +123,4 @@ input that must not build a state no sequence of commands could build (`docs/06-
 
 - 2026-10-10: Accepted (E08 T1a draft; ADV-Q1 and ADV-Q2 answered as recommended; parsers
   property-tested on stable until `cargo-fuzz` is set up).
+- 2026-10-13: Amendment R01 (the content split), proposed.

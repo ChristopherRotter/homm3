@@ -31,16 +31,18 @@ Tools for the full gate: `cargo install cargo-deny cargo-llvm-cov --locked`,
 | Path | What |
 |---|---|
 | `crates/h3-kernel` | ids/handles, fixed-capacity storage, PRNG streams, canonical hashing, `kernel::num` |
-| `crates/h3-content` | content definitions and the pure `Ruleset` compiler |
+| `crates/h3-content` | the core content definitions and the pure `Ruleset` compiler |
+| `crates/h3-content-battle` | the battle's ruleset part (`BattleRuleset`) compiled on the core |
 | `crates/h3-contracts` | seam types between contexts (`BattleSetup`, `BattleOutcome`) |
 | `crates/h3-battle` | the battle context |
-| `crates/h3-pack` | TOML content packs and scenarios (adapter) |
+| `crates/h3-pack` | the packs' `core.toml` (adapter) |
+| `crates/h3-pack-battle` | the packs' `battle.toml` and the battle scenarios (adapter) |
 | `crates/h3-sim` | RL environment, action/observation encodings, replays (adapter) |
 | `crates/h3-ffi` | C ABI (`include/h3.h`) |
 | `crates/h3-cli` | `h3` command-line tool |
 | `crates/h3-protocol` | the server's wire messages, codec and sans-I/O session core (adapter, logic; E16) |
 | `crates/h3-server` | `h3-server`: hosts games for clients over WebSocket (adapter; E16) |
-| `crates/h3-formats` | readers for the original game's files (LOD, TXT, exe tables), used by the harvester, and the `.h3m` writer for experiment maps (adapter) |
+| `crates/h3-formats` | readers for the original game's files (LOD, TXT, exe tables), used by the harvester (adapter) |
 | `crates/h3-harvest` | harvester: original files → committed packs `base`/`ab`/`sod` (tool) |
 | `crates/h3-experiment` | experiment compiler: spec → `.h3m` map + results template for the user (tool) |
 | `xtask` | `cargo xtask verify` and the individual gates, `check-lane` |

@@ -1,6 +1,5 @@
 //! Test fixtures shared by the crate's tests. The core rulesets are built in code (domain crates
-//! take no pack adapter as a dev-dependency); the core still needs battle parameters until the
-//! content split (ADR-0015 point 3).
+//! take no pack adapter as a dev-dependency).
 
 extern crate std;
 
@@ -11,8 +10,8 @@ use std::vec::Vec;
 use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
 use h3_content::{
-    BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId,
-    FactionDef, PackManifest, ProfileDef, ResourceDef, Ruleset, TerrainDef, TerrainId,
+    ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId, FactionDef,
+    PackManifest, ProfileDef, ResourceDef, Ruleset, TerrainDef, TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_kernel::{Rng, StreamId};
@@ -42,45 +41,9 @@ pub(crate) fn manifest(id: &str, depends: &[&str]) -> PackManifest {
     }
 }
 
-pub(crate) fn battle() -> BattleParamsDef {
-    BattleParamsDef {
-        field_width: 17,
-        field_height: 11,
-        side_columns: 1,
-        army_slots: 3,
-        damage_roll_samples: 10,
-        attack_bonus_per_point_percent: 5,
-        attack_bonus_cap_percent: 300,
-        defense_reduction_per_point_permille: 25,
-        defense_reduction_cap_permille: 700,
-        defend_bonus_percent: 20,
-        defend_bonus_min: 1,
-        ranged_full_damage_distance: 10,
-        ranged_penalty_percent: 50,
-        melee_penalty_percent: 50,
-        morale_dice: 24,
-        good_morale_chances: vec![1, 2, 3],
-        bad_morale_chances: vec![2, 4, 6],
-        luck_dice: 24,
-        good_luck_chances: vec![1, 2, 3],
-        war_machine_positions: vec![[1, 3], [1, 1], [1, 9]],
-        loose_formation: vec![vec![5], vec![3, 7], vec![2, 5, 8]],
-        tight_formation: vec![vec![5], vec![4, 6], vec![4, 5, 6]],
-        tactics_zone_columns: vec![3, 5, 7],
-        surrender: None,
-        hero_casts_per_round: 1,
-        side_stack_limit: 20,
-    }
-}
-
 fn creature(k: &str, speed: u8) -> CreatureDef {
     CreatureDef {
         key: key(k),
-        attack: 1,
-        defense: 1,
-        damage_min: 1,
-        damage_max: 1,
-        hit_points: 1,
         speed,
         info: CreatureInfoDef::default(),
     }
@@ -112,9 +75,13 @@ pub(crate) const ANY_PILE: ObjectTypeId = ObjectTypeId::from_raw(2);
 pub(crate) const FIRE: ObjectTypeId = ObjectTypeId::from_raw(3);
 pub(crate) const TOWER: ObjectTypeId = ObjectTypeId::from_raw(4);
 pub(crate) const GUARD: ObjectTypeId = ObjectTypeId::from_raw(5);
+pub(crate) const CHART: ObjectTypeId = ObjectTypeId::from_raw(6);
+pub(crate) const OPEN_CHART: ObjectTypeId = ObjectTypeId::from_raw(7);
 
 /// [`rules`]' object types: a wood pile (3–6), a gold pile (5–10 × 100), a random pile of the two,
-/// a fire (2–3 wood and 100 gold per wood), a tower revealing radius 3 and a guard of key 0.
+/// a fire (2–3 wood and 100 gold per wood), a tower revealing radius 3, a guard of key 0, and two
+/// Cartographers of grass for 1 000 gold (E08 T14a): a chart not visited from above, as the
+/// original's, and an open chart that is.
 fn object_types() -> Vec<ObjectTypeDef> {
     let n = |v| NonZeroU32::new(v).unwrap();
     let ty = |k: &str, visit, kind| ObjectTypeDef {
@@ -166,7 +133,20 @@ fn object_types() -> Vec<ObjectTypeDef> {
             Visit::Neighbour,
             ObjectKindDef::KeyGuard { key: 0 },
         ),
+        ty("t:chart", Visit::Enter, chart()),
+        ObjectTypeDef {
+            from_above: true,
+            ..ty("t:open_chart", Visit::Enter, chart())
+        },
     ]
+}
+
+/// A Cartographer's kind: grass for 1 000 gold.
+fn chart() -> ObjectKindDef {
+    ObjectKindDef::RevealTerrain {
+        terrains: vec![key("t:grass")],
+        price: vec![(key("t:gold"), 1000)],
+    }
 }
 
 /// The rules the setup and state tests use: the terrains `t:grass` (land), `t:sea` (water) and
@@ -189,7 +169,6 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             key: key("t:faithful"),
             quirks: vec![],
         }],
-        battle: Some(battle()),
         ..ContentPack::new(manifest("t", &[]))
     };
     let core = Ruleset::compile(&[core], "t:faithful").unwrap();
@@ -315,7 +294,6 @@ pub(crate) fn movement_rules_up_to(faithful: bool, size: u16) -> (Ruleset, Adven
                 quirks: vec![],
             },
         ],
-        battle: Some(battle()),
         ..ContentPack::new(manifest("t", &[]))
     };
     let profile = if faithful { "t:faithful" } else { "t:strict" };
@@ -410,6 +388,8 @@ fn tile_of(
         'F' => (GRASS, None, Some((1, 1, Some(FIRE)))),
         'O' => (GRASS, None, Some((0, 1, Some(TOWER)))),
         'K' => (GRASS, None, Some((1, 1, Some(GUARD)))),
+        'C' => (GRASS, None, Some((1, 1, Some(CHART)))),
+        'c' => (GRASS, None, Some((1, 1, Some(OPEN_CHART)))),
         _ => (GRASS, None, None),
     }
 }
@@ -419,7 +399,8 @@ fn tile_of(
 /// `W` the same with a cobblestone road, `d` grass with a dirt road; on grass, `B` an object's
 /// blocked tile, `V` its visitable tile, `T` both (a town's gate), `P` a wood pile blocking and
 /// visited on its tile, `F` a fire likewise, `O` a tower's visitable tile (entered), `K` a guard
-/// blocking and visited on its tile.
+/// blocking and visited on its tile, `C` a chart (a Cartographer not visited from above) likewise,
+/// `c` an open chart (one that is) likewise.
 pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> AdventureSetup {
     let height = rows.len() / usize::from(levels);
     let width = rows[0].chars().count();

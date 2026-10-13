@@ -1,7 +1,7 @@
 //! The format's codes and the content keys they stand for (ADR-0016 point 4: the import is the
 //! only place that knows the original's numbers). Creatures and hero types follow the original
 //! ids the packs record beside each entry (`# original id N`; a test keeps the tables in step
-//! with `packs/*/pack.toml`).
+//! with `packs/*/core.toml`).
 
 /// Terrains by `.h3m` code (0 to 9; `docs/formats/h3m.md`).
 pub(crate) const TERRAINS: [&str; 10] = [

@@ -1365,6 +1365,14 @@ mod tests {
             list_error(&raises, false),
             Some("an effect is listed twice")
         );
+        let immunity = |spell| E::SpellImmunity { spell };
+        let mut immunities = std::vec![immunity(1), immunity(2)];
+        assert_eq!(list_error(&immunities, false), None);
+        immunities.push(immunity(2));
+        assert_eq!(
+            list_error(&immunities, false),
+            Some("an effect is listed twice")
+        );
         let scrolls = [E::Scroll, E::Scroll];
         assert_eq!(
             list_error(&scrolls, false),
@@ -1507,6 +1515,24 @@ mod tests {
         }
         assert_eq!(Affects::from_name("allies"), None);
         assert_eq!(CreatureStat::from_name("luck"), None);
+    }
+
+    #[test]
+    fn every_compiled_kind_hashes_apart() {
+        use h3_kernel::Handle;
+        let mut seen = alloc::collections::BTreeSet::new();
+        for e in every() {
+            let compiled: CompiledHeroEffect = e
+                .try_map(
+                    |v| Ok::<_, ()>(Handle::from_raw(u16::from(*v))),
+                    |v| Ok(Handle::from_raw(u16::from(*v))),
+                    |v| Ok(Handle::from_raw(u16::from(*v))),
+                    |v| Ok(Handle::from_raw(u16::from(*v))),
+                    |v| Ok(Handle::from_raw(u16::from(*v))),
+                )
+                .unwrap();
+            assert!(seen.insert(h3_kernel::hash::hash_of(&compiled)), "{e:?}");
+        }
     }
 
     #[test]

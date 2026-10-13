@@ -71,6 +71,28 @@ impl Treasuries {
                 held.saturating_sub(before)
             })
     }
+
+    /// Whether `player`'s treasury holds at least `price`, each resource's amount (ADR-0017 point
+    /// 10); a resource the ruleset does not have, or a player without a treasury, holds none.
+    pub(crate) fn can_pay(&self, player: PlayerId, price: &[(ResourceId, u32)]) -> bool {
+        price.iter().all(|&(resource, amount)| {
+            self.slot(player, usize::from(resource.raw()))
+                .is_some_and(|at| self.amounts[at] >= amount)
+        })
+    }
+
+    /// Takes `amount` of `resource` from `player`'s treasury, never below 0 (GAM-RES-001): the
+    /// amount actually taken. The game pays only a price [`Self::can_pay`] allowed.
+    // rule: GAM-RES-001
+    pub(crate) fn pay(&mut self, player: PlayerId, resource: ResourceId, amount: u32) -> u32 {
+        self.slot(player, usize::from(resource.raw()))
+            .map_or(0, |at| {
+                let held = &mut Arc::make_mut(&mut self.amounts)[at];
+                let before = *held;
+                *held = held.saturating_sub(amount);
+                before - *held
+            })
+    }
 }
 
 impl CanonicalHash for Treasuries {

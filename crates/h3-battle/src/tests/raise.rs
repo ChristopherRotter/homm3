@@ -5,7 +5,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleHero, BattleResult, BattleSide};
 
 use super::spells::{arena, mage, spell, stack};
@@ -18,7 +18,7 @@ use crate::{
 };
 
 /// A mage with the raising spells, air mastery `air`, fire mastery `fire`, power 3, 100 mana.
-fn raiser(r: &Ruleset, air: u8, fire: u8) -> BattleHero {
+fn raiser(r: &BattleRuleset, air: u8, fire: u8) -> BattleHero {
     let mut h = mage(r, &["rise", "animate", "offering"]);
     h.magic.masteries = masteries(r, [air, fire, 0, 0]);
     h.magic.mana = 100;
@@ -26,7 +26,7 @@ fn raiser(r: &Ruleset, air: u8, fire: u8) -> BattleHero {
 }
 
 /// Kills stack `id` as a command would, and marks its corpse.
-fn kill(s: &mut BattleState, r: &Ruleset, id: u8) {
+fn kill(s: &mut BattleState, r: &BattleRuleset, id: u8) {
     let stack = &mut s.stacks.as_mut_slice()[usize::from(id)];
     stack.count = 0;
     stack.top_hp = 0;
@@ -35,7 +35,7 @@ fn kill(s: &mut BattleState, r: &Ruleset, id: u8) {
 }
 
 /// The stacks the attacker may aim `name` at now, by id.
-fn targets(s: &BattleState, r: &Ruleset, name: &str) -> Vec<u8> {
+fn targets(s: &BattleState, r: &BattleRuleset, name: &str) -> Vec<u8> {
     let mut out = CastTargets::new();
     cast_targets(s, r, BattleSide::Attacker, spell(r, name), &mut out);
     out.iter()
@@ -47,7 +47,7 @@ fn targets(s: &BattleState, r: &Ruleset, name: &str) -> Vec<u8> {
 }
 
 /// The victims the attacker may sacrifice to raise stack `target`, by id.
-fn victims(s: &BattleState, r: &Ruleset, target: u8) -> Vec<u8> {
+fn victims(s: &BattleState, r: &BattleRuleset, target: u8) -> Vec<u8> {
     let mut out = CastTargets::new();
     let cast = (spell(r, "offering"), stack(target));
     second_targets(s, r, BattleSide::Attacker, cast, &mut out);
@@ -62,7 +62,7 @@ fn victims(s: &BattleState, r: &Ruleset, target: u8) -> Vec<u8> {
 /// The attacker casts `name` at `target` with the second target `second`.
 fn cast(
     s: &mut BattleState,
-    r: &Ruleset,
+    r: &BattleRuleset,
     name: &str,
     (target, second): (CastTarget, CastTarget),
 ) -> Result<Vec<Event>, CommandError> {
@@ -593,7 +593,7 @@ fn a_corpse_under_a_wall_or_below_corpses_that_do_not_count() {
     let hexes = [at(&r, 5, 5)];
     crate::obstacles::place(
         &mut s,
-        (wall, h3_content::ObstacleKind::Wall, &shape),
+        (wall, h3_content_battle::ObstacleKind::Wall, &shape),
         BattleSide::Defender,
         (&hexes, 0),
         &mut Vec::<Event>::new(),

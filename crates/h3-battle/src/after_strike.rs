@@ -13,7 +13,9 @@
 //! berserk striker's own stacks may be struck) and without Magic Mirror. Bind and Acid Breath
 //! (spells that ignore immunity) are cast without any test.
 
-use h3_content::{Ability, Ruleset, Spell, SpellEffect, SpellId, TimedChange};
+use h3_content::SpellId;
+use h3_content_battle::BattleSpell;
+use h3_content_battle::{Ability, BattleRuleset, SpellEffect, TimedChange};
 
 use crate::binds;
 use crate::damage::apply_damage;
@@ -43,7 +45,7 @@ struct Conditions {
 /// `installation.md` §7.20).
 pub(crate) fn cast<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (striker, target): (StackId, StackId),
     sink: &mut S,
 ) -> bool {
@@ -122,8 +124,8 @@ pub(crate) fn cast<S: Sink>(
 // rule: BAT-MAG-040
 fn spell_after_strike(
     state: &mut BattleState,
-    ruleset: &Ruleset,
-    (id, spell): (SpellId, &Spell),
+    ruleset: &BattleRuleset,
+    (id, spell): (SpellId, &BattleSpell),
     c: Conditions,
     (striker, target): (StackId, StackId),
 ) -> bool {
@@ -167,8 +169,8 @@ fn spell_after_strike(
 /// hero's bonuses (BAT-MAG-009). Returns whether it stops the target's turns.
 fn apply<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
-    (id, spell): (SpellId, &Spell),
+    ruleset: &BattleRuleset,
+    (id, spell): (SpellId, &BattleSpell),
     (mastery, rounds): (u8, u8),
     target: StackId,
     sink: &mut S,
@@ -200,8 +202,8 @@ fn apply<S: Sink>(
 // rule: BAT-MAG-041
 fn damage_lands(
     state: &mut BattleState,
-    ruleset: &Ruleset,
-    (id, spell): (SpellId, &Spell),
+    ruleset: &BattleRuleset,
+    (id, spell): (SpellId, &BattleSpell),
     chance: u8,
     (striker, target): (StackId, StackId),
 ) -> bool {
@@ -219,8 +221,8 @@ fn damage_lands(
 /// ends (BAT-MAG-024, BAT-MAG-038).
 fn thunderbolt<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
-    (id, spell): (SpellId, &Spell),
+    ruleset: &BattleRuleset,
+    (id, spell): (SpellId, &BattleSpell),
     per_creature: u16,
     (striker, target): (StackId, StackId),
     sink: &mut S,
@@ -261,7 +263,7 @@ fn thunderbolt<S: Sink>(
 // rule: BAT-MAG-047
 fn extra_damage<S: Sink>(
     state: &mut BattleState,
-    ruleset: &Ruleset,
+    ruleset: &BattleRuleset,
     (striker, target): (StackId, StackId),
     (chance, percent): (u8, u8),
     sink: &mut S,

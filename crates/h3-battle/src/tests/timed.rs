@@ -5,7 +5,7 @@
 use std::vec::Vec;
 
 use h3_content::Affects;
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleEffect, BattleHero, BattleSide};
 
 use super::spells::{arena, cast, mage, spell, stack};
@@ -17,7 +17,10 @@ use crate::{
 };
 
 /// The effect events as `(target, spell name, rounds)` (`rounds` `Some(0)` for an end).
-fn timed_events(r: &Ruleset, events: &[Event]) -> Vec<(u8, std::string::String, Option<u16>)> {
+fn timed_events(
+    r: &BattleRuleset,
+    events: &[Event],
+) -> Vec<(u8, std::string::String, Option<u16>)> {
     let name = |id: h3_content::SpellId| {
         r.spell(id)
             .unwrap()
@@ -41,7 +44,7 @@ fn timed_events(r: &Ruleset, events: &[Event]) -> Vec<(u8, std::string::String, 
 }
 
 /// A mage with `spells` and the air mastery `mastery`.
-fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
+fn adept(r: &BattleRuleset, spells: &[&str], mastery: u8) -> BattleHero {
     let mut h = mage(r, spells);
     h.magic.masteries = masteries(r, [mastery, 0, 0, 0]);
     h.magic.mana = 100;
@@ -49,14 +52,14 @@ fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
 }
 
 /// Starts a new round with `s`'s ruleset, returning its events.
-fn new_round(s: &mut BattleState, r: &Ruleset) -> Vec<Event> {
+fn new_round(s: &mut BattleState, r: &BattleRuleset) -> Vec<Event> {
     let mut events = Vec::new();
     crate::turn::start_round(s, r, &mut events);
     events
 }
 
 /// The entry of `spell` on stack `id`, if any.
-fn entry(s: &BattleState, r: &Ruleset, id: u8, name: &str) -> Option<ActiveEffect> {
+fn entry(s: &BattleState, r: &BattleRuleset, id: u8, name: &str) -> Option<ActiveEffect> {
     s.effects()
         .iter()
         .find(|e| e.stack == StackId(id) && e.spell == spell(r, name))

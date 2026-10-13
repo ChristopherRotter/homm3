@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_kernel::{Rng, StreamId};
 
 use super::support::*;
@@ -11,11 +11,11 @@ use crate::geometry::Direction;
 use crate::terrain::generate_obstacles;
 use crate::{BattleSetup, BattleState, MAX_REMOVABLE_HEXES};
 
-fn terrain(r: &Ruleset, name: &str) -> h3_content::TerrainId {
+fn terrain(r: &BattleRuleset, name: &str) -> h3_content::TerrainId {
     r.terrain_by_key(&std::format!("t:{name}")).unwrap()
 }
 
-fn pieces(r: &Ruleset, name: &str, seed: u64) -> Vec<h3_contracts::Obstacle> {
+fn pieces(r: &BattleRuleset, name: &str, seed: u64) -> Vec<h3_contracts::Obstacle> {
     generate_obstacles(
         r,
         terrain(r, name),
@@ -24,7 +24,7 @@ fn pieces(r: &Ruleset, name: &str, seed: u64) -> Vec<h3_contracts::Obstacle> {
 }
 
 /// The generated obstacles' hexes, in hex order.
-fn generate(r: &Ruleset, name: &str, seed: u64) -> Vec<u8> {
+fn generate(r: &BattleRuleset, name: &str, seed: u64) -> Vec<u8> {
     let mut hexes: Vec<u8> = pieces(r, name, seed)
         .into_iter()
         .flat_map(|o| o.hexes)
@@ -154,14 +154,15 @@ fn generation_stops_without_obstacles_or_places() {
 // covers: BAT-GEO-004, BAT-GEO-003
 #[test]
 fn the_battle_accepts_every_generated_battlefield() {
-    use h3_content::{CompileError, ContentKey, ObstacleDef};
+    use h3_content::ContentKey;
+    use h3_content_battle::{BattleCompileError, ObstacleDef};
     // A row of `hexes` hexes from its anchor, on the terrain without other obstacles.
     let with_ridge = |hexes: u8| {
         try_ruleset_from(
             "t:faithful",
             |_| {},
-            |pack| {
-                pack.obstacles.push(ObstacleDef {
+            |_, battle| {
+                battle.obstacles.push(ObstacleDef {
                     key: ContentKey::new("t", "ridge").unwrap(),
                     terrains: std::vec![ContentKey::new("t", "void").unwrap()],
                     width: hexes,
@@ -191,7 +192,7 @@ fn the_battle_accepts_every_generated_battlefield() {
     }
     assert_eq!(
         with_ridge(most + 1).err(),
-        Some(CompileError::InvalidObstacle {
+        Some(BattleCompileError::InvalidObstacle {
             key: std::string::String::from("t:ridge"),
             reason: "usual obstacles block at most 8 hexes",
         })
@@ -204,7 +205,7 @@ fn obstacle_offsets_follow_the_hex_rows() {
     // (1, −1) is the top-right neighbour of the anchor in odd and even rows alike.
     let r = ruleset_with("t:faithful", |_| {});
     let f = field(&r);
-    let o = h3_content::ObstacleType {
+    let o = h3_content_battle::ObstacleType {
         key: h3_content::ContentKey::new("t", "o").unwrap(),
         terrains: Vec::new(),
         width: 2,

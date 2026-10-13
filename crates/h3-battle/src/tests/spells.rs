@@ -4,7 +4,8 @@
 
 use std::vec::Vec;
 
-use h3_content::{Ruleset, SpellId};
+use h3_content::SpellId;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleEffect, BattleHero, BattleSetup, BattleSide};
 
 use super::support::*;
@@ -14,12 +15,12 @@ use crate::{
     cast_targets, castable_spells,
 };
 
-pub(super) fn spell(r: &Ruleset, name: &str) -> SpellId {
+pub(super) fn spell(r: &BattleRuleset, name: &str) -> SpellId {
     r.spell_by_key(&std::format!("t:{name}")).unwrap()
 }
 
 /// A hero with spell power 3, 15 mana and `spells` in its book.
-pub(super) fn mage(r: &Ruleset, spells: &[&str]) -> BattleHero {
+pub(super) fn mage(r: &BattleRuleset, spells: &[&str]) -> BattleHero {
     let mut h = hero(r);
     h.power = 3;
     h.magic.spell_book = Some(spells.iter().map(|s| spell(r, s)).collect());
@@ -29,7 +30,7 @@ pub(super) fn mage(r: &Ruleset, spells: &[&str]) -> BattleHero {
 /// A battle with heroes and the stacks placed at `(x, y)`: `attacker` and `defender` as
 /// `(creature, count, x, y)`. The first attacker stack is active.
 pub(super) fn arena(
-    r: &Ruleset,
+    r: &BattleRuleset,
     heroes: [Option<BattleHero>; 2],
     attacker: &[(&'static str, u32, i32, i32)],
     defender: &[(&'static str, u32, i32, i32)],
@@ -53,7 +54,7 @@ pub(super) fn arena(
     s
 }
 
-pub(super) fn cast(r: &Ruleset, name: &str, target: CastTarget) -> Command {
+pub(super) fn cast(r: &BattleRuleset, name: &str, target: CastTarget) -> Command {
     Command::Cast {
         spell: spell(r, name),
         target,
@@ -200,7 +201,7 @@ fn resistance_adds_the_heros_to_the_creatures_and_the_aura_multiplies() {
     };
     let bolt = r.spell(spell(&r, "bolt")).unwrap();
     let rally = r.spell(spell(&r, "rally")).unwrap();
-    let chance = |rules: &Ruleset, defender: Option<BattleHero>, id: u8| {
+    let chance = |rules: &BattleRuleset, defender: Option<BattleHero>, id: u8| {
         let s = arena(
             rules,
             [Some(mage(rules, &["bolt"])), defender],
@@ -316,7 +317,7 @@ fn the_aura_protects_the_stacks_of_the_side_that_controls_the_unicorns() {
 /// Casts `name` at `target` in battles with seeds `1..=n` against Dwarves (id 1) beside a stack
 /// without resistance (id 2); returns how often the Dwarves resisted and how often the spell did
 /// nothing at all.
-fn dwarves_resisting(r: &Ruleset, name: &str, target: CastTarget, n: u64) -> (usize, usize) {
+fn dwarves_resisting(r: &BattleRuleset, name: &str, target: CastTarget, n: u64) -> (usize, usize) {
     let (mut dwarves, mut nothing) = (0, 0);
     for seed in 1..=n {
         let mut s = arena(

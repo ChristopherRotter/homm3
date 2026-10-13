@@ -3,7 +3,8 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{Ruleset, SchoolId, SpellId, SpellScope};
+use h3_content::{SchoolId, SpellId, SpellScope};
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleResult, BattleSetup, BattleSide,
 };
@@ -14,12 +15,12 @@ use crate::{
     SetupError, SpellBonus, SpellSet, StackId, cast_targets, castable_spells, observe,
 };
 
-fn spell(r: &Ruleset, name: &str) -> SpellId {
+fn spell(r: &BattleRuleset, name: &str) -> SpellId {
     r.spell_by_key(&std::format!("t:{name}")).unwrap()
 }
 
 /// A hero with spell power 3, 15 mana and `spells` in its book.
-fn mage(r: &Ruleset, spells: &[&str]) -> BattleHero {
+fn mage(r: &BattleRuleset, spells: &[&str]) -> BattleHero {
     let mut h = hero(r);
     h.power = 3;
     h.magic.spell_book = Some(spells.iter().map(|s| spell(r, s)).collect());
@@ -27,7 +28,7 @@ fn mage(r: &Ruleset, spells: &[&str]) -> BattleHero {
 }
 
 fn led(
-    r: &Ruleset,
+    r: &BattleRuleset,
     heroes: [Option<BattleHero>; 2],
     attacker: &[Spec],
     defender: &[Spec],
@@ -39,7 +40,7 @@ fn led(
     BattleState::new(r, &setup, 1).unwrap()
 }
 
-fn cast(r: &Ruleset, name: &str, target: u8) -> Command {
+fn cast(r: &BattleRuleset, name: &str, target: u8) -> Command {
     Command::Cast {
         spell: spell(r, name),
         target: CastTarget::Stack(StackId(target)),
@@ -607,7 +608,7 @@ fn the_casters_products_are_stored_as_singles_with_quirk_q0005() {
 
 /// A battle of ten `fixed` each in `profile`; the attacker's hero has the bolt at power 255
 /// (2 560) and gains `all` for every spell and `school` for the bolt's school.
-fn bolt_caster(profile: &str, all: Rate, school: Rate) -> (Ruleset, BattleState) {
+fn bolt_caster(profile: &str, all: Rate, school: Rate) -> (BattleRuleset, BattleState) {
     let r = ruleset_with(profile, |_| {});
     let mut h = mage(&r, &["bolt"]);
     h.power = 255;

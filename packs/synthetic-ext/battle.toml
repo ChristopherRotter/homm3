@@ -1,0 +1,10 @@
+# Synthetic expansion pack (E02 pack format v2): exercises dependencies and overrides the way the
+# harvested `ab` and `sod` packs do. Invented names and numbers.
+# This file: the battle data (pack format v35, R01); the manifest and the core data: core.toml.
+
+[[creature]]
+id = "lurker"
+attack = 6
+defense = 6
+damage = [3, 4]
+hit_points = 20

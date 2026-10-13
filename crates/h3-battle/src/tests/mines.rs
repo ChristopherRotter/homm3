@@ -4,7 +4,7 @@
 
 use std::vec::Vec;
 
-use h3_content::{ObstacleKind, Ruleset};
+use h3_content_battle::{BattleRuleset, ObstacleKind};
 use h3_contracts::{BattleEffect, BattleHero, BattleResult, BattleSetup, BattleSide};
 
 use super::spells::{arena, mage, spell};
@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// A mage with `spells`, the masteries `[air, fire]` and 100 mana.
-fn caster(r: &Ruleset, spells: &[&str], [air, fire]: [u8; 2]) -> BattleHero {
+fn caster(r: &BattleRuleset, spells: &[&str], [air, fire]: [u8; 2]) -> BattleHero {
     let mut h = mage(r, spells);
     h.magic.masteries = masteries(r, [air, fire, 0, 0]);
     h.magic.mana = 100;
@@ -24,7 +24,7 @@ fn caster(r: &Ruleset, spells: &[&str], [air, fire]: [u8; 2]) -> BattleHero {
 
 /// Places `side`'s mines of the value 40 on `cells` as its cast would (test setup only; the cast
 /// draws its hexes at random).
-fn mines(s: &mut BattleState, r: &Ruleset, side: BattleSide, cells: &[(i32, i32)]) {
+fn mines(s: &mut BattleState, r: &BattleRuleset, side: BattleSide, cells: &[(i32, i32)]) {
     let id = spell(r, "landmine");
     let shape = r.spell(id).unwrap().magic.obstacle.clone().unwrap();
     let hexes: Vec<Hex> = cells.iter().map(|&(x, y)| at(r, x, y)).collect();
@@ -38,7 +38,7 @@ fn mines(s: &mut BattleState, r: &Ruleset, side: BattleSide, cells: &[(i32, i32)
 }
 
 /// The command to cast Land Mine.
-fn land_mine(r: &Ruleset) -> Command {
+fn land_mine(r: &BattleRuleset) -> Command {
     Command::Cast {
         spell: spell(r, "landmine"),
         target: CastTarget::None,
@@ -47,7 +47,7 @@ fn land_mine(r: &Ruleset) -> Command {
 }
 
 /// The hexes of the mines `viewer` observes.
-fn seen(s: &BattleState, r: &Ruleset, viewer: BattleSide) -> HexSet {
+fn seen(s: &BattleState, r: &BattleRuleset, viewer: BattleSide) -> HexSet {
     observe(s, r, viewer)
         .spell_obstacles
         .iter()
@@ -119,14 +119,14 @@ fn moves(events: &[Event]) -> Vec<(u8, Hex, Hex)> {
 }
 
 /// A walk of the active stack to `(x, y)`.
-fn walk(r: &Ruleset, (x, y): (i32, i32)) -> Command {
+fn walk(r: &BattleRuleset, (x, y): (i32, i32)) -> Command {
     Command::Move { to: at(r, x, y) }
 }
 
 /// A battle on the plain (Castle's native terrain) with heroes and the stacks placed at `(x, y)`,
 /// as [`arena`]; the first attacker stack is active.
 fn on_plain(
-    r: &Ruleset,
+    r: &BattleRuleset,
     heroes: [Option<BattleHero>; 2],
     attacker: &[(&'static str, u32, i32, i32)],
     defender: &[(&'static str, u32, i32, i32)],
@@ -198,7 +198,7 @@ fn land_mine_hides_mines_by_mastery_with_the_spells_value_for_the_whole_battle()
 // covers: BAT-MAG-033, BAT-MAG-031
 #[test]
 fn land_mine_is_refused_while_the_other_sides_natives_would_see_the_mines() {
-    let castable = |r: &Ruleset, s: &BattleState| {
+    let castable = |r: &BattleRuleset, s: &BattleState| {
         castable_spells(s, r, BattleSide::Attacker).contains(spell(r, "landmine"))
     };
     let kill = |s: &mut BattleState, id: usize| {

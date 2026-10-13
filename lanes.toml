@@ -11,10 +11,12 @@
 # Every tracked path must have an owner: a new top-level file or directory is added here first
 # (a shared change).
 #
-# Ownership decided by the user on 2026-10-07: all of `h3-content` and `h3-pack` stay with battle
-# until further notice. The formats/tools crates (`h3-formats`, `h3-harvest`, `h3-experiment`) are
-# battle's until a formats/tools lane opens; an AI lane takes `h3-sim`/`h3-ffi` at E05. The epics
-# E11, E15 and E18–E20 have no lane yet: their files get a pattern here when they start.
+# Ownership decided by the user on 2026-10-07: `h3-content` and `h3-pack` stayed with battle until
+# the content split (R01 decision 6) made these core crates shared paths; the battle's parts
+# (`h3-content-battle`, `h3-pack-battle`) are battle's. The formats/tools crates (`h3-formats`,
+# `h3-harvest`, `h3-experiment`) are battle's until a formats/tools lane opens; an AI lane takes
+# `h3-sim`/`h3-ffi` at E05. The epics E11, E15 and E18–E20 have no lane yet: their files get a
+# pattern here when they start.
 
 [shared]
 paths = [
@@ -34,9 +36,11 @@ paths = [
     "xtask/",
     "scripts/",
     "benches/README.md",
-    # Seam and kernel crates.
+    # Seam and kernel crates; the core content every context reads (R01 decision 6).
     "crates/h3-kernel/",
     "crates/h3-contracts/",
+    "crates/h3-content/",
+    "crates/h3-pack/",
     # Project-wide docs and process.
     "AGENTS.md",
     "CLAUDE.md",
@@ -53,6 +57,8 @@ paths = [
     "docs/08-work-process.md",
     "docs/BACKLOG.md",
     "docs/HANDOFF.md",
+    # Shared refactors' design notes (BACKLOG's R rows; R01 the content split).
+    "docs/epics/R0*",
     "docs/pull_request_template.md",
     "docs/adr/",
     "docs/rules/catalog/README.md",
@@ -84,8 +90,8 @@ code = "BAT"
 paths = [
     "crates/h3-battle/",
     "crates/h3-heroes/",
-    "crates/h3-content/",
-    "crates/h3-pack/",
+    "crates/h3-content-battle/",
+    "crates/h3-pack-battle/",
     # Until the AI lane (E05).
     "crates/h3-sim/",
     "crates/h3-ffi/",

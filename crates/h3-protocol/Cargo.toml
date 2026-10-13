@@ -10,6 +10,7 @@ publish.workspace = true
 [dependencies]
 h3-kernel.workspace = true
 h3-content.workspace = true
+h3-content-battle.workspace = true
 h3-contracts.workspace = true
 h3-battle.workspace = true
 # no_std + alloc (ADR-0018 point 1): not inherited, the workspace entries enable `std`.
@@ -17,7 +18,7 @@ serde = { version = "1", default-features = false, features = ["derive", "alloc"
 serde_json = { version = "1", default-features = false, features = ["alloc"] }
 
 [dev-dependencies]
-h3-pack.workspace = true
+h3-pack-battle.workspace = true
 proptest.workspace = true
 h3-sim.workspace = true
 # Provisional (E16 M1 review): the wire types round-trip in a format that is not self-describing.

@@ -6,7 +6,7 @@
 
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleEffect, BattleHero, BattleSide};
 
 use super::spells::{arena, cast, mage, spell, stack};
@@ -18,7 +18,7 @@ use crate::{
 };
 
 /// A mage with `spells` and the effects `effects`.
-fn wearing(r: &Ruleset, spells: &[&str], effects: &[BattleEffect]) -> Option<BattleHero> {
+fn wearing(r: &BattleRuleset, spells: &[&str], effects: &[BattleEffect]) -> Option<BattleHero> {
     let mut h = mage(r, spells);
     h.magic.mana = 100;
     h.effects = effects.to_vec();
@@ -26,7 +26,7 @@ fn wearing(r: &Ruleset, spells: &[&str], effects: &[BattleEffect]) -> Option<Bat
 }
 
 /// The stacks `side`'s hero may cast `name` at now, by id.
-fn targets(s: &BattleState, r: &Ruleset, side: BattleSide, name: &str) -> Vec<u8> {
+fn targets(s: &BattleState, r: &BattleRuleset, side: BattleSide, name: &str) -> Vec<u8> {
     let mut out = CastTargets::new();
     cast_targets(s, r, side, spell(r, name), &mut out);
     out.iter()
@@ -35,7 +35,7 @@ fn targets(s: &BattleState, r: &Ruleset, side: BattleSide, name: &str) -> Vec<u8
 }
 
 /// Gives stack `id` the timed effect of `name` at Basic for five rounds.
-fn give(s: &mut BattleState, r: &Ruleset, id: u8, name: &str) {
+fn give(s: &mut BattleState, r: &BattleRuleset, id: u8, name: &str) {
     let spell_id = spell(r, name);
     let cast = TimedCast {
         id: spell_id,
@@ -68,7 +68,7 @@ fn strike_spells(events: &[Event]) -> Vec<h3_content::SpellId> {
 }
 
 /// The active stack attacks `target` from `(x, y)`.
-fn hit(s: &mut BattleState, r: &Ruleset, target: u8, (x, y): (i32, i32)) -> Vec<Event> {
+fn hit(s: &mut BattleState, r: &BattleRuleset, target: u8, (x, y): (i32, i32)) -> Vec<Event> {
     act(
         s,
         r,

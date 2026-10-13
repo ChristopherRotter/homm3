@@ -209,6 +209,7 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
         }],
         profile: "synthetic:faithful".to_string(),
         ruleset_hash: WireU64(u64::MAX),
+        battle_ruleset_hash: WireU64(u64::MAX - 1),
         rng: Algorithm {
             name: "pcg".to_string(),
             version: 1,

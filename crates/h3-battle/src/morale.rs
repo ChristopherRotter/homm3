@@ -15,10 +15,8 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use h3_content::{
-    Ability, Affects, AuraTarget, CreatureFlag, CreatureTypeId, MAX_AURA_VALUES,
-    NO_LUCK_WITHOUT_HERO, Ruleset,
-};
+use h3_content::{Affects, CreatureFlag, CreatureTypeId, NO_LUCK_WITHOUT_HERO};
+use h3_content_battle::{Ability, AuraTarget, BattleRuleset, MAX_AURA_VALUES};
 use h3_contracts::{BattleEffect, BattleHero, BattleSide};
 use h3_kernel::modifier::evaluate;
 use h3_kernel::{
@@ -220,7 +218,11 @@ fn alignment_groups(hero: Option<&BattleHero>) -> Vec<BTreeSet<u16>> {
 /// luck: army alignment and undead (BAT-MOR-002), morale and luck auras (BAT-MOR-001,
 /// BAT-LCK-001) and the heroes' morale and luck effects (BAT-HER-003).
 // rule: BAT-MOR-001, BAT-MOR-002, BAT-LCK-001
-pub(crate) fn setup(state: &mut BattleState, ruleset: &Ruleset, heroes: &[Option<BattleHero>; 2]) {
+pub(crate) fn setup(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    heroes: &[Option<BattleHero>; 2],
+) {
     for side in BattleSide::BOTH {
         // War machines are not part of the army (VCMI counts the army's slots).
         let army = || {
@@ -291,7 +293,7 @@ pub(crate) fn setup(state: &mut BattleState, ruleset: &Ruleset, heroes: &[Option
 /// stack's fields hold the clamped value, which the rolls and the observation read. Creatures
 /// with flag `no_morale` have morale 0 (BAT-MOR-001, BAT-LCK-001).
 // rule: BAT-MOR-001, BAT-LCK-001, BAT-MAG-011
-pub(crate) fn materialize(state: &mut BattleState, ruleset: &Ruleset) {
+pub(crate) fn materialize(state: &mut BattleState, ruleset: &BattleRuleset) {
     let params = ruleset.battle();
     let pool = state.modifiers;
     let good_morale = i32::from(params.good_morale.levels());
@@ -335,7 +337,7 @@ fn roll(state: &mut BattleState, dice: u8, chance: u8) -> bool {
 /// turn from good morale: positive morale, alive, no good-morale turn yet this round, and the
 /// roll succeeds (BAT-MOR-003).
 // rule: BAT-MOR-003
-pub(crate) fn good_morale(state: &mut BattleState, ruleset: &Ruleset, id: StackId) -> bool {
+pub(crate) fn good_morale(state: &mut BattleState, ruleset: &BattleRuleset, id: StackId) -> bool {
     let s = state.at(id);
     if s.morale <= 0 || !s.is_alive() || s.flags.contains(StackFlags::HAD_MORALE) {
         return false;
@@ -350,7 +352,7 @@ pub(crate) fn good_morale(state: &mut BattleState, ruleset: &Ruleset, id: StackI
 /// even a stack that never waited (one whose blindness ended there): the original's pick skips
 /// the check for the whole phase (+0x13DE4, the site 0x465283), as it skips Fear.
 // rule: BAT-MOR-004
-pub(crate) fn bad_morale(state: &mut BattleState, ruleset: &Ruleset, id: StackId) -> bool {
+pub(crate) fn bad_morale(state: &mut BattleState, ruleset: &BattleRuleset, id: StackId) -> bool {
     let s = state.at(id);
     if s.morale >= 0 || state.wait_phase {
         return false;
@@ -366,7 +368,7 @@ pub(crate) fn bad_morale(state: &mut BattleState, ruleset: &Ruleset, id: StackId
 /// hypnotized Azure Dragon frightens its controller's stacks: BAT-QUIRK-18, the rule), give one
 /// roll at their largest chance.
 // rule: BAT-MAG-060
-pub(crate) fn frightened(state: &mut BattleState, ruleset: &Ruleset, id: StackId) -> bool {
+pub(crate) fn frightened(state: &mut BattleState, ruleset: &BattleRuleset, id: StackId) -> bool {
     let s = state.at(id);
     if state.wait_phase || s.has(StackTraits::NO_MORALE) || s.has(StackTraits::FEAR) {
         return false;
@@ -383,7 +385,7 @@ pub(crate) fn frightened(state: &mut BattleState, ruleset: &Ruleset, id: StackId
 }
 
 /// The chance of `creature`'s `fear` ability, 0 without one.
-fn fear(ruleset: &Ruleset, creature: CreatureTypeId) -> u8 {
+fn fear(ruleset: &BattleRuleset, creature: CreatureTypeId) -> u8 {
     ruleset
         .abilities(creature)
         .iter()
@@ -397,7 +399,7 @@ fn fear(ruleset: &Ruleset, creature: CreatureTypeId) -> u8 {
 /// Whether the attack of stack `id` is a lucky strike: positive luck, the side may have luck
 /// (quirk Q-0003: not without a hero), and the roll succeeds (BAT-LCK-002).
 // rule: BAT-LCK-002
-pub(crate) fn lucky(state: &mut BattleState, ruleset: &Ruleset, id: StackId) -> bool {
+pub(crate) fn lucky(state: &mut BattleState, ruleset: &BattleRuleset, id: StackId) -> bool {
     let s = state.at(id);
     let heroless = !state.has_hero(s.side);
     if s.luck <= 0 || (heroless && ruleset.quirks().is_enabled(NO_LUCK_WITHOUT_HERO)) {

@@ -19,8 +19,7 @@ use crate::error::CompileError;
 use crate::flags::CreatureFlag;
 use crate::key::ContentKey;
 use crate::pack::{ContentPack, HeroParamsDef};
-use crate::ruleset::{CreatureType, CreatureTypeId, FactionId, ResourceId};
-use crate::spell::SpellMagic;
+use crate::ruleset::{CreatureInfo, CreatureTypeId, FactionId, ResourceId};
 
 /// Highest spell level.
 pub const MAX_SPELL_LEVEL: u8 = 5;
@@ -28,9 +27,6 @@ pub const MAX_SPELL_LEVEL: u8 = 5;
 pub const MAX_SPELLS: usize = 128;
 /// Most spell schools (a hero keeps one mastery per school, its `school_mastery` effects).
 pub const MAX_SPELL_SCHOOLS: usize = 4;
-/// Most spells with a summon effect in a ruleset (the battle keeps a side's stack of each
-/// creature its hero can summon from the battle's start, E04b T6b; four in the original).
-pub const MAX_SUMMON_SPELLS: usize = 4;
 /// Most secondary skills a hero can have.
 pub const MAX_HERO_SKILLS: usize = 8;
 
@@ -64,36 +60,6 @@ impl SpellCategory {
     }
 }
 
-/// Whether a spell is good or bad for its target (the executable's spell table).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum SpellPolarity {
-    /// Helps its target.
-    Positive,
-    /// Neither (summons, battlefield spells, adventure spells).
-    Neutral,
-    /// Harms its target.
-    Negative,
-}
-
-impl SpellPolarity {
-    /// All values, in code order.
-    pub const ALL: [Self; 3] = [Self::Positive, Self::Neutral, Self::Negative];
-
-    /// Pack name.
-    pub const fn name(self) -> &'static str {
-        match self {
-            Self::Positive => "positive",
-            Self::Neutral => "neutral",
-            Self::Negative => "negative",
-        }
-    }
-
-    /// Looks a value up by its pack name.
-    pub fn from_name(name: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|p| p.name() == name)
-    }
-}
-
 /// A compiled spell school.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpellSchool {
@@ -109,7 +75,8 @@ pub struct SpellSchool {
 /// Handle of a spell school in a [`crate::Ruleset`].
 pub type SchoolId = Handle<SpellSchool>;
 
-/// A compiled spell: its data row and what it does in battle (E04b).
+/// A compiled spell: its data row (E04a T3). What it does in battle is `h3-content-battle`'s
+/// `BattleSpell` (R01).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Spell {
     /// Key.
@@ -128,24 +95,6 @@ pub struct Spell {
     pub power: u16,
     /// Base effect value by mastery.
     pub effect: [u16; 4],
-    /// Good or bad for its target.
-    pub polarity: SpellPolarity,
-    /// Targeting and effects in battle.
-    pub magic: SpellMagic,
-    /// Spells whose effects a cast ends on each stack it affects (pack format v5; Bless and
-    /// Curse, Haste and Slow).
-    pub counters: Vec<SpellId>,
-    /// The only spells whose effects its dispel effect ends (pack format v7; Cure's fourteen).
-    pub dispels: Vec<SpellId>,
-    /// Spells whose effects its dispel effect spares when `dispels` is empty (pack format v7;
-    /// Dispel spares Poison).
-    pub spares: Vec<SpellId>,
-    /// The raise spell whose target test a sacrifice effect's target takes under quirk
-    /// BAT-QUIRK-5 (pack format v17; Sacrifice: Resurrection, `installation.md` §7.18).
-    pub tests_as: Option<SpellId>,
-    /// The creature a summon effect summons (pack format v18; the Summon Elemental spells, their
-    /// elementals, `installation.md` §7.19).
-    pub summons: Option<CreatureTypeId>,
     /// Only a grant naming the spell gives it, never one by school or level (pack format v30;
     /// Titan's Lightning Bolt, the spell flag `0x2000`, `installation.md` §7.22; HER-SPL-002).
     pub granted_by_name_only: bool,
@@ -451,41 +400,8 @@ impl HeroContent {
                 cost: def.cost,
                 power: def.power,
                 effect: def.effect,
-                polarity: def.polarity,
-                magic: def.magic.clone(),
-                counters: Vec::new(),
-                dispels: Vec::new(),
-                spares: Vec::new(),
-                tests_as: None,
-                summons: def
-                    .summons
-                    .as_ref()
-                    .map(|c| refs.resolve(c, refs.creatures, "creature"))
-                    .transpose()?,
                 granted_by_name_only: def.granted_by_name_only,
             });
-        }
-        // Counters and dispel lists may name a later spell of the same pack, so all are
-        // registered first.
-        let lists = pack
-            .spells
-            .iter()
-            .map(|def| {
-                let list = |keys| distinct(refs, keys, &self.spells.index, "spell");
-                Ok((
-                    (list(&def.counters)?, list(&def.dispels)?),
-                    (list(&def.spares)?, list(def.tests_as.as_slice())?),
-                ))
-            })
-            .collect::<Result<Vec<_>, CompileError>>()?;
-        let first = self.spells.items.len() - pack.spells.len();
-        for (s, ((counters, dispels), (spares, tests_as))) in
-            self.spells.items.iter_mut().skip(first).zip(lists)
-        {
-            s.counters = counters;
-            s.dispels = dispels;
-            s.spares = spares;
-            s.tests_as = tests_as.first().copied();
         }
         // Skills may refer to each other (from T3b on), so all are registered first.
         for def in &pack.skills {
@@ -605,11 +521,7 @@ impl HeroContent {
 
     /// Validates the compiled content once all packs are loaded (creature overrides of later
     /// packs may change what a hero refers to).
-    pub(crate) fn validate(
-        &self,
-        creatures: &[CreatureType],
-        army_slots: u8,
-    ) -> Result<(), CompileError> {
+    pub(crate) fn validate(&self, creatures: &[CreatureInfo]) -> Result<(), CompileError> {
         let flag = |id: CreatureTypeId, f: CreatureFlag| {
             creatures
                 .get(id.index())
@@ -638,55 +550,6 @@ impl HeroContent {
                     "hero spells need a school, creature abilities have none",
                 ));
             }
-            if let Some(reason) = s.magic.error(s.category != SpellCategory::Adventure) {
-                return Err(invalid("spell", &s.key, reason));
-            }
-            let own = self.spells.index.get(s.key.as_str()).copied();
-            if !s.counters.is_empty()
-                && (!s.magic.is_timed() || own.is_some_and(|id| s.counters.contains(&id)))
-            {
-                return Err(invalid(
-                    "spell",
-                    &s.key,
-                    "counters need a timed effect and may not name the spell itself",
-                ));
-            }
-            let lists = (s.dispels.is_empty(), s.spares.is_empty());
-            if lists != (true, true) && (!s.magic.dispels() || lists == (false, false)) {
-                return Err(invalid(
-                    "spell",
-                    &s.key,
-                    "dispels or spares (not both) need a dispel effect",
-                ));
-            }
-            let raise_test = s
-                .tests_as
-                .and_then(|t| self.spells.items.get(t.index()))
-                .is_none_or(|t| t.magic.raises());
-            if s.tests_as.is_some() != s.magic.sacrifices() || !raise_test {
-                return Err(invalid(
-                    "spell",
-                    &s.key,
-                    "a sacrifice effect needs tests_as, a spell with a raise effect",
-                ));
-            }
-            if s.summons.is_some() != s.magic.summons() {
-                return Err(invalid(
-                    "spell",
-                    &s.key,
-                    "a summon effect and the creature it summons go together",
-                ));
-            }
-        }
-        if self
-            .spells
-            .items
-            .iter()
-            .filter(|s| s.summons.is_some())
-            .count()
-            > MAX_SUMMON_SPELLS
-        {
-            return Err(CompileError::TooManyEntries("summon spell"));
         }
         for skill in &self.skills.items {
             if let Some(reason) = skill.levels.iter().find_map(|l| {
@@ -720,8 +583,6 @@ impl HeroContent {
                 Some("skill levels must be 1..=3")
             } else if !h.spells.is_empty() && !h.spell_book {
                 Some("starting spells need a spell book")
-            } else if h.army.len() > usize::from(army_slots) {
-                Some("more starting stacks than army slots")
             } else if h
                 .army
                 .iter()
@@ -754,8 +615,9 @@ impl HeroContent {
 }
 
 impl CanonicalHash for HeroContent {
-    /// Schools (key, name, protection rank (v18)); spells (key, name, category, level, schools, cost, power, effect,
-    /// polarity, magic (v14), counters (v17), dispels and spares (v19), tests as (v26), summons (v27), granted by name only (v39)); skills (key, name, the three effect lists); classes (key, name, faction,
+    /// Schools (key, name, protection rank (v18)); spells (key, name, category, level, schools,
+    /// cost, power, effect, granted by name only (v39); v43: the battle fields left with the
+    /// content split, R01); skills (key, name, the three effect lists); classes (key, name, faction,
     /// primary, gains, weights); hero types (key, name, class, skills, spell book, spells,
     /// army, war machines, specialty); then the artifact content (`hash_artifacts`); then the
     /// hero parameters as presence flag + fields (v11).
@@ -776,13 +638,6 @@ impl CanonicalHash for HeroContent {
             for v in s.cost.iter().chain([&s.power]).chain(&s.effect) {
                 h.write_u16(*v);
             }
-            h.write_u8(s.polarity as u8);
-            s.magic.hash_into(h);
-            s.counters.hash_into(h);
-            s.dispels.hash_into(h);
-            s.spares.hash_into(h);
-            s.tests_as.hash_into(h);
-            s.summons.hash_into(h);
             h.write_bool(s.granted_by_name_only);
         }
         h.write_len(self.skills.items.len());

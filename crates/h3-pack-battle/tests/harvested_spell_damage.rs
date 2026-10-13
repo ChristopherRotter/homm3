@@ -8,30 +8,35 @@ use h3_battle::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, Field, StackId, apply,
     cast_targets,
 };
-use h3_content::{Formation, HeroTypeId, Ruleset, SchoolId, SpellCategory, SpellId, SpellScope};
+use h3_content::{Formation, HeroTypeId, SchoolId, SpellCategory, SpellId, SpellScope};
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, ArmyStack, BattleEffect, BattleHero, BattleSetup, BattleSide, Rate};
 use h3_heroes::{HeroDetails, derive_battle_hero};
 
-fn sod() -> Ruleset {
+fn sod() -> BattleRuleset {
     sod_with("base:faithful")
 }
 
-fn sod_with(profile: &str) -> Ruleset {
-    h3_pack::compile(
-        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+fn sod_with(profile: &str) -> BattleRuleset {
+    h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
         profile,
     )
     .unwrap()
 }
 
-fn spell(r: &Ruleset, key: &str) -> SpellId {
+fn spell(r: &BattleRuleset, key: &str) -> SpellId {
     r.spell_by_key(key).unwrap()
 }
 
 /// `hero` at level 1 with attack and defense 0, `power` and `knowledge`, Basic Sorcery if
 /// `sorcery`, wearing a Spell Book and `worn`, knowing `spells`, with full mana.
 fn details(
-    r: &Ruleset,
+    r: &BattleRuleset,
     hero: &str,
     power: u8,
     knowledge: u8,
@@ -59,7 +64,7 @@ fn details(
     }
 }
 
-fn army(r: &Ruleset, stacks: &[(&str, u32)]) -> Army {
+fn army(r: &BattleRuleset, stacks: &[(&str, u32)]) -> Army {
     Army {
         stacks: stacks
             .iter()
@@ -76,7 +81,7 @@ fn army(r: &Ruleset, stacks: &[(&str, u32)]) -> Army {
 /// Ten Pikemen led by the hero of `details` against `defender` (no hero), the defender's war
 /// machines `machines`; the battle runs until the Pikemen await a command.
 fn battle(
-    r: &Ruleset,
+    r: &BattleRuleset,
     details: &HeroDetails,
     defender: &[(&str, u32)],
     machines: &[&str],
@@ -90,7 +95,12 @@ fn battle(
 }
 
 /// [`battle`] with the battle hero `hero` as it is.
-fn led(r: &Ruleset, hero: BattleHero, defender: &[(&str, u32)], machines: &[&str]) -> BattleState {
+fn led(
+    r: &BattleRuleset,
+    hero: BattleHero,
+    defender: &[(&str, u32)],
+    machines: &[&str],
+) -> BattleState {
     let setup = BattleSetup {
         attacker: army(r, &[("base:pikeman", 10)]),
         defender: army(r, defender),
@@ -116,7 +126,7 @@ fn led(r: &Ruleset, hero: BattleHero, defender: &[(&str, u32)], machines: &[&str
 }
 
 /// The id of the first stack of `creature`.
-fn stack_of(s: &BattleState, r: &Ruleset, creature: &str) -> StackId {
+fn stack_of(s: &BattleState, r: &BattleRuleset, creature: &str) -> StackId {
     let c = r.creature_by_key(creature).unwrap();
     let i = s.stacks().iter().position(|t| t.creature == c).unwrap();
     StackId(u8::try_from(i).unwrap())
@@ -133,14 +143,19 @@ fn defenders_first(s: &BattleState) -> StackId {
 }
 
 /// Where the attacker's hero may cast `spell` now.
-fn targets(s: &BattleState, r: &Ruleset, spell: SpellId) -> Vec<CastTarget> {
+fn targets(s: &BattleState, r: &BattleRuleset, spell: SpellId) -> Vec<CastTarget> {
     let mut out = CastTargets::new();
     cast_targets(s, r, BattleSide::Attacker, spell, &mut out);
     out.iter().copied().collect()
 }
 
 /// The attacker's hero casts `spell` at `target`: the damage of each stack struck.
-fn cast(s: &mut BattleState, r: &Ruleset, spell: SpellId, target: CastTarget) -> Vec<(u8, u64)> {
+fn cast(
+    s: &mut BattleState,
+    r: &BattleRuleset,
+    spell: SpellId,
+    target: CastTarget,
+) -> Vec<(u8, u64)> {
     let mut events = Vec::<Event>::new();
     let cast = Command::Cast {
         spell,

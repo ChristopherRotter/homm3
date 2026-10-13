@@ -9,9 +9,37 @@
 //! game. The output is a whole map file: [`write`] produces the uncompressed bytes, [`gzip`]
 //! wraps them the way the game stores maps.
 //!
-//! Every value is validated before anything is written; [`write`] never panics.
+//! Every value is validated before anything is written; [`write`] never panics. The writer moved
+//! here from `h3-formats` with the content split (R01a, ADR-0015 point 3).
 
-use crate::FormatError;
+use std::fmt;
+
+use crate::gzip::crc32;
+
+/// Why a map could not be written.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WriteError {
+    /// A value is outside the range the format or the map allows.
+    OutOfRange {
+        /// What was being written.
+        what: &'static str,
+        /// The offending value.
+        value: u64,
+    },
+    /// An `Objects.txt` template line is malformed.
+    Template(&'static str),
+}
+
+impl fmt::Display for WriteError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::OutOfRange { what, value } => write!(f, "{what} out of range: {value}"),
+            Self::Template(message) => write!(f, "Objects.txt template: {message}"),
+        }
+    }
+}
+
+impl std::error::Error for WriteError {}
 
 /// Format version of The Shadow of Death maps.
 pub const SOD_FORMAT: u32 = 0x1C;
@@ -125,9 +153,9 @@ impl ObjectTemplate {
     /// 9-character terrain masks, class, subclass, group, priority, separated by spaces).
     ///
     /// # Errors
-    /// [`FormatError::Text`] if the line is malformed.
-    pub fn from_objects_txt(line: &str) -> Result<Self, FormatError> {
-        let bad = |message| FormatError::Text { record: 0, message };
+    /// [`WriteError::Template`] if the line is malformed.
+    pub fn from_objects_txt(line: &str) -> Result<Self, WriteError> {
+        let bad = WriteError::Template;
         let fields: Vec<&str> = line.split_whitespace().collect();
         let [
             def,
@@ -174,7 +202,7 @@ impl ObjectTemplate {
         }
     }
 
-    fn write(&self, out: &mut Out) -> Result<(), FormatError> {
+    fn write(&self, out: &mut Out) -> Result<(), WriteError> {
         out.string(&self.def)?;
         out.bytes(&self.passable);
         out.bytes(&self.visitable);
@@ -189,9 +217,10 @@ impl ObjectTemplate {
     }
 }
 
-/// `Objects.txt` masks are 6 rows of 8 characters, top left first; map files store them as 6
-/// bytes whose bit `j` of byte `i` is character `47 − (8i + j)` (VCMI `ObjectTemplate::readTxt`
-/// and `readMap` agree on this mapping).
+/// `Objects.txt` masks are 48 characters, the anchor first: character `8r + c` is the tile `c`
+/// columns left of and `r` rows above the bottom right corner (`docs/formats/h3m.md`, "Template
+/// masks"); map files store them as 6 bytes whose bit `j` of byte `i` is character `47 − (8i + j)`
+/// (VCMI `ObjectTemplate::readTxt` and `readMap` agree on this mapping).
 fn mask_from_text(text: &str) -> Option<[u8; 6]> {
     let chars = text.as_bytes();
     if chars.len() != 48 || !chars.iter().all(|c| matches!(c, b'0' | b'1')) {
@@ -374,9 +403,9 @@ pub struct Map {
 /// Writes `map` as an uncompressed SoD map.
 ///
 /// # Errors
-/// [`FormatError::OutOfRange`] if a value does not fit the format or the map (tile outside the
+/// [`WriteError::OutOfRange`] if a value does not fit the format or the map (tile outside the
 /// map, unknown hero, too many skills, an owner without a playable player, …).
-pub fn write(map: &Map) -> Result<Vec<u8>, FormatError> {
+pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
     validate(map)?;
     let mut out = Out::default();
     out.u32(SOD_FORMAT);
@@ -436,27 +465,14 @@ pub fn gzip(data: &[u8]) -> Vec<u8> {
     out
 }
 
-/// CRC-32 (IEEE 802.3, reflected, polynomial 0xEDB88320), as gzip uses it.
-pub fn crc32(data: &[u8]) -> u32 {
-    let mut crc = !0u32;
-    for &byte in data {
-        crc ^= u32::from(byte);
-        for _ in 0..8 {
-            let mask = (crc & 1).wrapping_neg();
-            crc = (crc >> 1) ^ (0xedb8_8320 & mask);
-        }
-    }
-    !crc
-}
-
-fn out_of_range(what: &'static str, value: impl TryInto<u64>) -> FormatError {
-    FormatError::OutOfRange {
+fn out_of_range(what: &'static str, value: impl TryInto<u64>) -> WriteError {
+    WriteError::OutOfRange {
         what,
         value: value.try_into().unwrap_or(u64::MAX),
     }
 }
 
-fn validate(map: &Map) -> Result<(), FormatError> {
+fn validate(map: &Map) -> Result<(), WriteError> {
     if ![36, 72, 108, 144].contains(&map.size) {
         return Err(out_of_range("map size", map.size));
     }
@@ -500,7 +516,7 @@ fn validate(map: &Map) -> Result<(), FormatError> {
     Ok(())
 }
 
-fn validate_hero(map: &Map, hero: &Hero) -> Result<(), FormatError> {
+fn validate_hero(map: &Map, hero: &Hero) -> Result<(), WriteError> {
     if map
         .players
         .get(usize::from(hero.owner))
@@ -556,7 +572,7 @@ fn validate_hero(map: &Map, hero: &Hero) -> Result<(), FormatError> {
     Ok(())
 }
 
-fn validate_monster(monster: &Monster) -> Result<(), FormatError> {
+fn validate_monster(monster: &Monster) -> Result<(), WriteError> {
     if !MONSTER_OBJECTS.contains(&monster.template.class) {
         return Err(out_of_range("monster object class", monster.template.class));
     }
@@ -571,7 +587,7 @@ fn write_player(
     map: &Map,
     colour: usize,
     player: Option<&Player>,
-) -> Result<(), FormatError> {
+) -> Result<(), WriteError> {
     let Some(player) = player else {
         // Nobody plays this colour: the game skips 13 bytes; the editor writes the fields of an
         // empty player there (no town, no main hero).
@@ -671,7 +687,7 @@ fn position(object: &MapObject) -> (u8, u8) {
     }
 }
 
-fn write_hero(out: &mut Out, hero: &Hero, identifier: u32) -> Result<(), FormatError> {
+fn write_hero(out: &mut Out, hero: &Hero, identifier: u32) -> Result<(), WriteError> {
     out.u32(identifier);
     out.u8(hero.owner);
     out.u8(hero.hero_type);
@@ -760,7 +776,7 @@ impl Out {
         self.0.extend_from_slice(bytes);
     }
     /// A length-prefixed Windows-1252 string; characters outside Latin-1 are rejected.
-    fn string(&mut self, text: &str) -> Result<(), FormatError> {
+    fn string(&mut self, text: &str) -> Result<(), WriteError> {
         let mut encoded = Vec::with_capacity(text.len());
         for c in text.chars() {
             let code = u32::from(c);

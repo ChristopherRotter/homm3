@@ -1,9 +1,9 @@
 //! The uniformly random legal agent of the adventure (E08 T9a; T9b's benchmark workload and
-//! golden replays play it).
+//! golden replays play it; it answers an open decision since T14b).
 
 use h3_adventure::Reach;
 use h3_contracts::PlayerId;
-use h3_game::{Actor, GameCommand, legal_commands};
+use h3_game::{Actor, legal_commands};
 use h3_kernel::{Rng, StreamId};
 
 use super::action::{self, Action, HERO_SLOTS, tile_index};
@@ -49,18 +49,23 @@ pub fn random_rollout(env: &mut AdventureEnv, agent_seed: u64, max_steps: u32) -
 }
 
 /// The agent's choice for `player`: a uniform legal entry, then for a move a uniform tile of the
-/// hero's tile mask, as an agent samples the factorized action head by head; `EndTurn` when the
-/// player has no legal entry.
+/// hero's tile mask, as an agent samples the factorized action head by head. The entries without a
+/// tile are the commands [`legal_commands`] lists: `EndTurn`, or with an open decision its two
+/// answers alone, one of them at even odds (GAM-DEC-001; E08 T14b). `EndTurn` when the player has
+/// no legal entry.
 pub fn choose(env: &AdventureEnv, player: PlayerId, rng: &mut Rng) -> Action {
     let (state, rules) = (env.state(), env.rules());
-    let end = legal_commands(state, rules, Actor::Player(player)).contains(&GameCommand::EndTurn);
+    let commands = legal_commands(state, rules, Actor::Player(player));
     let moves: Vec<(usize, Reach)> = (0..HERO_SLOTS)
         .filter_map(|slot| action::moves(state, rules, player, slot).map(|reach| (slot, reach)))
         .collect();
-    let entries = usize::from(end) + moves.len();
+    let entries = commands.len() + moves.len();
     let i = rng.below(u32::try_from(entries).unwrap_or(u32::MAX)) as usize;
-    let Some((slot, reach)) = i.checked_sub(usize::from(end)).and_then(|m| moves.get(m)) else {
-        return Action::end_turn();
+    let Some((slot, reach)) = i.checked_sub(commands.len()).and_then(|m| moves.get(m)) else {
+        return commands
+            .get(i)
+            .and_then(|command| action::encode(state, player, command))
+            .unwrap_or_else(Action::end_turn);
     };
     let tiles = u32::try_from(reach.tiles().count()).unwrap_or(u32::MAX);
     let k = rng.below(tiles) as usize;

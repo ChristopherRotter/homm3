@@ -19,14 +19,14 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 use crate::ADVENTURE_STATE_HASH_VERSION;
 use crate::command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    Sink, Viewers,
+    Offer, Sink, Viewers, bit,
 };
 use crate::fog::{on_fringe, reveal};
-use crate::movement::{Pricing, day_points, direction};
+use crate::movement::{DIRECTIONS, Pricing, day_points, direction};
 use crate::persistent::BitGrid;
 use crate::ruleset::{
-    AdventureRuleset, MAX_PICKUP_AMOUNT, ObjectKind, ObjectTypeId, Passage, Pickup, RiverId,
-    RoadId, Visit,
+    AdventureRuleset, MAX_PICKUP_AMOUNT, ObjectKind, ObjectType, ObjectTypeId, Passage, Pickup,
+    RiverId, RoadId, Visit,
 };
 use crate::setup::{
     AdventureSetup, ArmyError, HeroSetup, MapSetup, ObjectSetup, Pos, SetupError, StandError,
@@ -348,7 +348,8 @@ impl StaticMap {
     }
 
     /// The objects visited from `pos`, by index in map order, if a typed one is among them (none
-    /// for a tile only blockers are visited from, or one off the map).
+    /// for a tile only blockers are visited from, or one off the map). A visit concerns the last
+    /// of them still on the map ([`AdventureState::visit_at`], E08 T14a).
     pub fn visited_from(&self, pos: Pos) -> &[usize] {
         self.index(pos)
             .filter(|&index| self.typed_visits[index / 64] >> (index % 64) & 1 == 1)
@@ -399,6 +400,16 @@ impl CanonicalHash for Pos {
     }
 }
 
+/// What a step visits (ADV-OBJ-003): the object, by index in the static map, its type, how it
+/// is visited and whether it may be from above (ADV-OBJ-004).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct StepVisit {
+    pub(crate) object: usize,
+    pub(crate) object_type: ObjectTypeId,
+    pub(crate) mode: Visit,
+    pub(crate) from_above: bool,
+}
+
 /// A hero on the adventure map (ADR-0016 point 3): its id, owner, tile, army and movement points.
 /// The hero's details stay in `h3-heroes`, kept by `h3-game`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -426,6 +437,13 @@ pub struct AdventureState {
     /// The objects that left the map and the tiles they freed (ADR-0016 point 1); none until an
     /// object leaves, so a fork and a tile's read cost nothing more before (`bench-check`).
     occupancy: Option<Arc<Occupancy>>,
+    /// The Cartographer types bought (ADV-VIS-001, E08 T14b), in type order, each with a bit per
+    /// player that bought it (bit `n` for the player with id `n`): the per-player state of object
+    /// types as one small plain array (ADR-0016 point 1), laid out as the original's flags, a byte
+    /// of player bits per kind (game +0x4E372). None until a first purchase, then shared by the
+    /// forks (a purchase builds it anew), so a fork costs nothing more before and a reference
+    /// count after (`bench-check`).
+    bought: Option<Arc<[(ObjectTypeId, u8)]>>,
 }
 
 impl AdventureState {
@@ -456,6 +474,7 @@ impl AdventureState {
             heroes: Vec::with_capacity(setup.heroes.len()),
             explored: vec![unexplored; usize::from(setup.players)],
             occupancy: None,
+            bought: None,
         };
         for hero in &setup.heroes {
             state.place(core, part, hero)?;
@@ -531,14 +550,20 @@ impl AdventureState {
     /// Whether a hero may stand on `pos` (ADV-MAP-001): a tile of the map whose terrain is
     /// walked on land, which no object blocks unless an object is visited from it, and no other
     /// hero stands on. A visitable tile is allowed even where a mask also blocks it (a hero may
-    /// stand on a town's entrance, which the town's masks mark both ways).
+    /// stand on a town's entrance, which the town's masks mark both ways), unless its object is
+    /// visited from a neighbouring tile: no move ever enters such a tile (ADV-OBJ-003), so a setup
+    /// may not place a hero there either (E08 T14a).
     ///
     /// # Errors
     ///
     /// Why it may not, checked in the order of [`StandError`].
     // rule: ADV-MAP-001
     pub fn check_stand(&self, part: &AdventureRuleset, pos: Pos) -> Result<(), StandError> {
-        self.check_tile(part, pos, None).map(|_| ())
+        self.check_tile(part, pos, None)?;
+        match self.tile_object(part, pos) {
+            Some((_, _, ty)) if ty.visit == Visit::Neighbour => Err(StandError::Visited),
+            _ => Ok(()),
+        }
     }
 
     /// [`Self::check_stand`] for `mover`, which may stand where it already stands; the tile.
@@ -591,9 +616,11 @@ impl AdventureState {
     /// tiles the player has explored when it gives the command), then the hero stands on its last
     /// tile with the points left; each step reveals the tiles around the tile it enters
     /// (ADV-FOG-003) and emits its event, seen by the players that see the hero on either of its
-    /// tiles (ADV-FOG-004, ADV-FOG-005). A step toward a tile a pickup is visited from is the
-    /// path's last (ADV-OBJ-003): it is paid as if taken (ADV-MOV-006's rule included), the hero
-    /// stays on the tile before, and the pickup is visited ([`Self::visit`]).
+    /// tiles (ADV-FOG-004, ADV-FOG-005). A step onto a tile an object is visited from is the
+    /// path's last (ADV-OBJ-003) and visits it ([`Self::visit`]): an entered object's tile (the
+    /// Cartographer's, E08 T14a) the hero steps onto; toward a neighbour-visited object's (a
+    /// pickup's, T13b) the step is paid as if taken (ADV-MOV-006's rule included) and the hero
+    /// stays on the tile before.
     // rule: ADV-MOV-006, ADV-MOV-007, ADV-FOG-003, ADV-OBJ-003
     fn move_hero<S: Sink>(
         &mut self,
@@ -622,20 +649,21 @@ impl AdventureState {
             if visit.is_some() {
                 return Err(AdventureCommandError::PastVisit { step });
             }
-            let diagonal =
-                direction(at, next).ok_or(AdventureCommandError::NotNeighbour { step })? % 2 == 1;
-            let (to, visited) = self.check_step(part, player, id, next, step)?;
-            let cost = pricing.step(&from, &to, diagonal, points);
+            let direction =
+                direction(at, next).ok_or(AdventureCommandError::NotNeighbour { step })?;
+            let (to, visited) = self.check_step(part, player, id, (at, next), direction, step)?;
+            let cost = pricing.step(&from, &to, direction % 2 == 1, points);
             let left = points
                 .checked_sub(cost)
                 .ok_or(AdventureCommandError::TooFewPoints { step, cost, points })?;
             points = pricing.left_after(&to, left);
-            match visited {
-                Some(object) => visit = Some(object),
-                None => (at, from) = (next, to),
+            if visited.is_none_or(|v| v.mode == Visit::Enter) {
+                (at, from) = (next, to);
             }
+            visit = visited;
         }
-        let walked = &path[..path.len() - usize::from(visit.is_some())];
+        let stays = visit.is_some_and(|v| v.mode == Visit::Neighbour);
+        let walked = &path[..path.len() - usize::from(stays)];
         let hero = &mut self.heroes[index];
         hero.pos = at;
         hero.movement = points;
@@ -659,32 +687,129 @@ impl AdventureState {
             });
             from = to;
         }
-        Ok(visit.map_or_else(AdventureOutcome::default, |object| {
-            self.visit(core, object, sink)
+        Ok(visit.map_or_else(AdventureOutcome::default, |visit| {
+            self.visit(core, part, (player, id), visit, sink)
         }))
     }
 
-    /// A pickup's visit (ADV-PIK-001, ADV-PIK-003): the visitor's owner gains its contents, and
-    /// it leaves the map ([`Self::remove_object`], ADV-OBJ-005), told to the players that see it
-    /// there.
-    // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005
+    /// An object's visit by `player`'s hero `hero`, by the object's kind. A pickup (ADV-PIK-001,
+    /// ADV-PIK-003): the visitor's owner gains its contents, and it leaves the map
+    /// ([`Self::remove_object`], ADV-OBJ-005), told to the players that see it there. A
+    /// Cartographer, the other kind whose visit is built (ADV-VIS-001, E08 T14b): an offer of its
+    /// reveal for its price, unless the player has bought its type; the game opens it if the
+    /// player can pay (ADR-0017 point 10).
+    // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001
     fn visit<S: Sink>(
         &mut self,
         core: &Ruleset,
-        (index, object_type): (usize, ObjectTypeId),
+        part: &AdventureRuleset,
+        (player, hero): (PlayerId, HeroId),
+        visit: StepVisit,
         sink: &mut S,
     ) -> AdventureOutcome {
-        let object = &self.map.objects()[index];
-        let gains = object.contents.clone();
-        sink.emit(AdventureEvent {
-            kind: AdventureEventKind::ObjectRemoved {
-                object_type,
+        let kind = part.object_type(visit.object_type).map(|ty| &ty.kind);
+        let object = &self.map.objects()[visit.object];
+        if let Some(ObjectKind::Pickup(_)) = kind {
+            let gains = object.contents.clone();
+            sink.emit(AdventureEvent {
+                kind: AdventureEventKind::ObjectRemoved {
+                    object_type: visit.object_type,
+                    anchor: object.anchor,
+                },
+                seen_by: self.object_viewers(core, object),
+            });
+            self.remove_object(visit.object);
+            return AdventureOutcome { gains, offer: None };
+        }
+        let offer = kind
+            .and_then(ObjectKind::reveal_terrain)
+            .filter(|_| !self.has_bought(player, visit.object_type))
+            .map(|(_, price)| Offer {
+                hero,
+                object_type: visit.object_type,
                 anchor: object.anchor,
+                price: price.to_vec(),
+            });
+        AdventureOutcome {
+            gains: Vec::new(),
+            offer,
+        }
+    }
+
+    /// Accepts `offer`, made to `player` by a visit (ADR-0017 point 10: the game has paid its
+    /// price): every tile of the map, on every level, whose terrain is among the Cartographer's
+    /// terrains becomes explored for `player`, told to it alone with the number of tiles it had
+    /// not explored, and the player has bought the type, so no later visit of an object of the
+    /// type makes it an offer (ADV-VIS-001). Infallible, and with no check that the offer still
+    /// stands: it was made for a type the player had not bought, and while it is open nothing of
+    /// the player's but its answer runs (ADR-0017 point 6) and no other player's command buys for
+    /// it.
+    // rule: ADV-VIS-001
+    pub fn accept_offer<S: Sink>(
+        &mut self,
+        part: &AdventureRuleset,
+        player: PlayerId,
+        offer: &Offer,
+        sink: &mut S,
+    ) {
+        let terrains = part
+            .object_type(offer.object_type)
+            .and_then(|ty| ty.kind.reveal_terrain())
+            .map_or(&[][..], |(terrains, _)| terrains);
+        let map = &self.map;
+        let (width, height) = (usize::from(map.width()), usize::from(map.height()));
+        let at = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
+        let reveals = |tile: &StaticTile| terrains.contains(&tile.terrain);
+        let grid = &mut self.explored[usize::from(player.raw())];
+        let before = grid.count();
+        for (row, tiles) in map.tiles().chunks_exact(width).enumerate() {
+            let level = u8::try_from(row / height).unwrap_or(u8::MAX);
+            let mut x = 0;
+            // Row by row, a run of tiles of the terrains at a time.
+            for run in tiles.chunk_by(|a, b| reveals(a) == reveals(b)) {
+                if reveals(&run[0]) {
+                    grid.set_run(
+                        Pos::new(at(x), at(row % height), level),
+                        at(run.len()),
+                        true,
+                    );
+                }
+                x += run.len();
+            }
+        }
+        sink.emit(AdventureEvent {
+            kind: AdventureEventKind::TilesRevealed {
+                object_type: offer.object_type,
+                count: grid.count() - before,
             },
-            seen_by: self.object_viewers(core, object),
+            seen_by: Viewers::NONE.with(player),
         });
-        self.remove_object(index);
-        AdventureOutcome { gains }
+        let player = bit(player);
+        let mut bought = self.bought.as_deref().unwrap_or_default().to_vec();
+        match bought.binary_search_by_key(&offer.object_type, |&(ty, _)| ty) {
+            Ok(at) => bought[at].1 |= player,
+            Err(at) => bought.insert(at, (offer.object_type, player)),
+        }
+        self.bought = Some(bought.into());
+    }
+
+    /// Whether `player` has bought the Cartographer type `object_type` (ADV-VIS-001).
+    pub fn has_bought(&self, player: PlayerId, object_type: ObjectTypeId) -> bool {
+        let bought = self.bought.as_deref().unwrap_or_default();
+        bought
+            .binary_search_by_key(&object_type, |&(ty, _)| ty)
+            .is_ok_and(|at| bought[at].1 & bit(player) != 0)
+    }
+
+    /// The Cartographer types `player` has bought, in type order (ADV-VIS-001).
+    pub fn bought(&self, player: PlayerId) -> impl Iterator<Item = ObjectTypeId> + '_ {
+        let player = bit(player);
+        self.bought
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .filter(move |&&(_, players)| players & player != 0)
+            .map(|&(ty, _)| ty)
     }
 
     /// Who sees `object` on the map, as the observation shows it (ADV-FOG-004, ADV-FOG-005):
@@ -703,31 +828,49 @@ impl AdventureState {
             .fold(Viewers::NONE, |viewers, (_, player)| viewers.with(player))
     }
 
-    /// The object a step onto `pos` visits, with its type, if its visit is built: the first
-    /// object in map order still on the map that is visited from `pos` (VCMI's `blockingVisit`
-    /// takes the first such object of the tile), if it is a pickup visited from a neighbouring
-    /// tile (E08 T13b; ADR-0016 point 4). The caller has checked that `pos` is visitable as it
-    /// stands now.
-    pub(crate) fn visit_at(
+    /// The object a visit at `pos` concerns, with its type: the last object in map order still on
+    /// the map that is visited from `pos`, if it has a type (E08 T14a; ADV-OBJ-003). The original
+    /// keeps one object per tile (the map tile's class, 0x4FCBD0), the topmost one drawn there that
+    /// is visited from it (0x505610), the objects placed in map order when the map loads
+    /// (0x4FD690, 0x505B20); the step, the visit and the pathfinder's test from above all read
+    /// that one, so a single order serves both visit modes here. VCMI visits the last of the tile
+    /// when it is entered (`visitObjectOnTile`), the first when it is not (`blockingVisit`).
+    fn tile_object<'p>(
         &self,
-        part: &AdventureRuleset,
+        part: &'p AdventureRuleset,
         pos: Pos,
-    ) -> Option<(usize, ObjectTypeId)> {
-        let built = |id: &ObjectTypeId| {
-            part.object_type(*id).is_some_and(|ty| {
-                matches!(
-                    (ty.visit, &ty.kind),
-                    (Visit::Neighbour, ObjectKind::Pickup(_))
-                )
-            })
-        };
-        self.map
+    ) -> Option<(usize, ObjectTypeId, &'p ObjectType)> {
+        let index = self
+            .map
             .visited_from(pos)
             .iter()
+            .rev()
             .copied()
-            .find(|&index| !self.is_removed(index))
-            .and_then(|index| self.map.objects()[index].object_type.map(|id| (index, id)))
-            .filter(|(_, id)| built(id))
+            .find(|&index| !self.is_removed(index))?;
+        let id = self.map.objects()[index].object_type?;
+        part.object_type(id).map(|ty| (index, id, ty))
+    }
+
+    /// What a step onto `pos` visits, if its visit is built ([`ObjectKind::visit_built`]): the
+    /// object of [`Self::tile_object`] and how it is visited. The caller has checked that `pos`
+    /// is visitable as it stands now.
+    pub(crate) fn visit_at(&self, part: &AdventureRuleset, pos: Pos) -> Option<StepVisit> {
+        self.tile_object(part, pos)
+            .filter(|(_, _, ty)| ty.kind.visit_built())
+            .map(|(object, object_type, ty)| StepVisit {
+                object,
+                object_type,
+                mode: ty.visit,
+                from_above: ty.from_above,
+            })
+    }
+
+    /// Whether `pos` is the visitable tile of an object not visited from above (ADV-OBJ-004): a
+    /// walking hero neither steps onto it from, nor leaves it toward, the three tiles above it.
+    // rule: ADV-OBJ-004
+    pub(crate) fn closed_above(&self, part: &AdventureRuleset, pos: Pos) -> bool {
+        self.tile_object(part, pos)
+            .is_some_and(|(_, _, ty)| !ty.from_above)
     }
 
     /// Who sees a hero of `owner` on `pos`, a tile of the map (ADV-FOG-004, ADV-FOG-005, as the
@@ -746,26 +889,38 @@ impl AdventureState {
             .fold(Viewers::NONE, |viewers, (_, player)| viewers.with(player))
     }
 
-    /// Whether `player`'s hero `mover` may step onto `pos`: a tile the player has explored
-    /// (ADV-MOV-008; a tile off the map is not asked about, the map's size being public), then
-    /// one it may stand on (ADV-MOV-007); the tile, and the object the step visits if an object
-    /// is visited from it (ADR-0016 point 4: only a pickup's visit is built, E08 T13b). The
-    /// explored test comes first, so a rejection tells nothing about a hidden tile.
-    // rule: ADV-MOV-007, ADV-MOV-008
+    /// Whether `player`'s hero `mover` may step from `from` onto `pos`, in `direction`: a tile the
+    /// player has explored (ADV-MOV-008; a tile off the map is not asked about, the map's size
+    /// being public), then one it may stand on (ADV-MOV-007), then not onto or off an object's
+    /// tile across its top (ADV-OBJ-004); the tile, and the object the step visits if an object
+    /// is visited from it (ADR-0016 point 4: a pickup's visit since E08 T13b, the Cartographer's
+    /// since T14a). The explored test comes first, so a rejection tells nothing about a hidden
+    /// tile.
+    // rule: ADV-MOV-007, ADV-MOV-008, ADV-OBJ-004
     fn check_step(
         &self,
         part: &AdventureRuleset,
         player: PlayerId,
         mover: HeroId,
-        pos: Pos,
+        (from, pos): (Pos, Pos),
+        direction: usize,
         step: usize,
-    ) -> Result<(StaticTile, Option<(usize, ObjectTypeId)>), AdventureCommandError> {
+    ) -> Result<(StaticTile, Option<StepVisit>), AdventureCommandError> {
         if self.map.tile(pos).is_some() && !self.is_explored(player, pos) {
             return Err(AdventureCommandError::Unexplored { step });
         }
         let tile = self
             .check_tile(part, pos, Some(mover))
             .map_err(|error| AdventureCommandError::Blocked { step, error })?;
+        // A step down enters `pos` from above; a step up leaves `from` across its top.
+        let across = match DIRECTIONS[direction].1 {
+            1 => Some(pos),
+            -1 => Some(from),
+            _ => None,
+        };
+        if across.is_some_and(|at| self.closed_above(part, at)) {
+            return Err(AdventureCommandError::FromAbove { step });
+        }
         if !tile.visitable {
             return Ok((tile, None));
         }
@@ -848,12 +1003,14 @@ impl AdventureState {
 }
 
 impl CanonicalHash for AdventureState {
-    /// Encoding v4 (E08 T12; v1 was T5a's, v2 T6b's, v3 T8a's): version; the static map's content
-    /// hash (since v4 with the objects' types and contents); the number of players; the heroes by
-    /// id (id, owner, tile, the army's stacks by slot: slot, creature, count; since v2 the
-    /// movement points left); since v3 each player's explored tiles, by player id ([`BitGrid`]'s
-    /// encoding); since v4 the objects that left the map (0 for none, else 1 and [`Occupancy`]'s
-    /// encoding; there is an occupancy only once an object has left).
+    /// Encoding v5 (E08 T14b; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's): version; the static
+    /// map's content hash (since v4 with the objects' types and contents); the number of players;
+    /// the heroes by id (id, owner, tile, the army's stacks by slot: slot, creature, count; since
+    /// v2 the movement points left); since v3 each player's explored tiles, by player id
+    /// ([`BitGrid`]'s encoding); since v4 the objects that left the map (0 for none, else 1 and
+    /// [`Occupancy`]'s encoding; there is an occupancy only once an object has left); since v5 the
+    /// Cartographer types bought, as length and entries in type order (the type, then its byte of
+    /// player bits).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
         h.write_u64(self.map.content_hash());
@@ -881,6 +1038,12 @@ impl CanonicalHash for AdventureState {
                 h.write_u8(1);
                 occupancy.hash_into(h);
             }
+        }
+        let bought = self.bought.as_deref().unwrap_or_default();
+        h.write_len(bought.len());
+        for (object_type, players) in bought {
+            object_type.hash_into(h);
+            h.write_u8(*players);
         }
     }
 }

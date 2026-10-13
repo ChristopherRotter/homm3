@@ -4,17 +4,12 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint. T11a, T11b (ADV-Q10 answered, the ADRs amended), T12 and T13 (each in two parts) are done; T13 waits for its checkpoint. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-### E08 T14 — The Cartographer: the first pending decision
-
-- **Scope:** the entered visit (a step onto an entered object's visitable tile enters it and ends the move: ADV-OBJ-003's other half) and ADV-OBJ-004 (an entered object not visitable from above is neither entered from nor left toward the three tiles above), both moved from T13 (the user, 2026-10-12); `check_step`, `visit_at` and the query's destination test grow the mode (which object an entered tile visits: VCMI's `visitObjectOnTile` takes the last in map order, T13b's neighbour visit the first; decide and record). The Cartographer's offer as a pending decision of its visitor's owner, the answer command (accept: the cost from the treasury, the level revealed; decline), legality while it is open (its answers only, no `EndTurn`), atomicity and legality consistency with decisions; the env's action encoding v2 (a decision head), the replay format if the new command needs it, golden replays re-recorded. The hygiene property's stop after the viewer's own pickup (T13b) extends to its own offers (a price it can pay in one game and not the other).
-- **Depends on:** T13. **Status:** waiting (T13's checkpoint).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint. T11a, T11b (ADV-Q10 answered, the ADRs amended), T12, T13 and T14 (each in two parts) are done; T14 waits for its checkpoint. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ### E08 T15 — Visitable objects
 
 - **Scope:** the Redwood Observatory and the Pillar of Fire (a reveal around the object), Keymaster's tents (a key per player and colour) with border guards (removed for everyone when a key holder accepts; the yes/no is a second offer if ADV-Q10's D-7 says so) and border gates (passable for such a player), the per-player object state in the observation.
-- **Depends on:** T13 (visits); T14 (the entered visit; the guard's question is an offer, D-7). **Status:** waiting (T14).
+- **Depends on:** T13 (visits); T14 (the entered visit, `visit_built`; the guard's question is an offer, D-7). **Status:** waiting (T14's checkpoint).
 
 ### E08 T16 — Closure of increment 2
 
@@ -23,10 +18,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
-- 2026-10-12 (T13a): every game plays at the default difficulty (normal): the env, the CLI and the replay format have no difficulty option; add one with T14's replay format bump if wanted.
-- 2026-10-12 (T13a, agent's call): the starting rows compile into the adventure part (beside GAM-SET-001's chances), which `GameRuleset` bundles, not into a field of `GameRuleset` of their own; move them if a game part of the packs appears.
-- 2026-10-12 (T13b review): setup lets a hero start on a pickup's visitable tile (ADV-MAP-001 allows visitable tiles, for towns' entrances); there no other hero can visit it, and its own hero collects it only by stepping off and back (`MoveHero` accepts it, the query does not offer it). Decide with T14's entered visits whether setup refuses a hero on a neighbour-visited object's tile (the original cannot enter one).
-- 2026-10-12 (T13b, not checked): whether a shipped map stacks two objects' visitable tiles on one tile (the neighbour visit takes the first in map order, VCMI's `blockingVisit`): count it in `examples/original_data.rs` with the next shipped-map run.
+- 2026-10-13 (T14 verify): two typed objects of one type on one anchor are told apart by nothing a player sees (`ObjectView` and `ObjectRemoved` name an object by type and anchor; the property `views_move_as_the_events_say` found it with two campfires, a test assumption since T13b): the play maps now lay out one typed object per type and anchor. Count such pairs in the shipped maps with the next `original_data` run; if any exist, name objects in what a player sees by something stable (the masks, or a per-viewer index).
+- 2026-10-13 (T14 review): T15's border gate (entered by a key holder, otherwise visited from a neighbour) breaks "the visit mode follows the type": give the mode a per-player test in `visit_at`, `check_step` and the query together. Also a future entered pickup or removable entered object could leave a hero on a tile whose next live object is neighbour-visited, a state setup refuses: decide with T15.
+- 2026-10-13 (T14 review): `AdventureState::accept_offer` is `pub` and trusts its `Offer` (another type would be marked bought without a reveal); only `h3-game` calls it. Narrow it if a second caller appears.
+- 2026-10-13 (T14b): the original's "already bought" message has no event (a visit to a bought kind tells nothing).
+- 2026-10-13 (T14b, measured): fork levers: the heroes' clone is 15 % of `fork-xl-144` (an allocation per army), the schedule's `Vec<Vec<PlayerId>>` 3.6 %.
+- 2026-10-13 (T14a): the draw-list order at 0x505230 (equal and lower layers) was not read; it could make the original visit an earlier object on a stacked tile. No shipped map stacks visitable tiles (0 of 101 246).
+- 2026-10-13 (T14a): untyped blockers have no from-above setting, so a hero on a town's gate leaves upward: type the town classes with E09.
+- 2026-10-13 (T14a): what the original does with a map that puts a hero on a pickup's tile was not read; setup's refusal (`StandError::Visited`) relies on the editor preventing it.
+- 2026-10-13 (T14a): random play enters a Cartographer about 3 times per 48 cases (T14b's plans raise offers to 9–16); place heroes beside Cartographers if more is wanted.
 - 2026-10-12 (T12b): `ObjectView` has no object index (it would count unseen objects); T14's offer and its events name the object by its visitable tile or anchor, not by index, in what a player sees.
 - 2026-10-12 (T12b, not measured): `remove_object` scans every object for each tile it frees (other objects covering it); a per-tile cover count in the static map if pickups show up in a profile.
 - 2026-10-12 (T12a): the guards record of a pile counts even when empty (`Unsupported`); read the loader (0x4A4BF4's flag) with increment 3's guarded piles.
@@ -58,7 +58,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 - 2026-10-10 (T5a/T6a): for E09 (towns): a hero placed on a town's blocked tile is the town's visiting hero (VCMI `CGameState::placeHeroesInTowns` moves it to its own town's entrance, an "H3M format quirk"; 3 shipped maps), and a hero generated at a main town (129 maps); both are `Unsupported` in the import until towns exist.
 - 2026-10-10 (T5a/T6a): not checked yet, each for the increment that needs it: a hero type placed twice on one map, the most heroes a player may have on the map (8 in the original; with recruiting), a war machine in a hero's custom army (battle content; with the battle seam, increment 3).
-- 2026-10-10 (T5a): `h3_formats::h3m`'s comment on `mask_from_text` says `Objects.txt` masks are "top left first"; they are anchor first (VCMI `readTxt`; `docs/formats/h3m.md` corrected). The writer's code is right; fix the comment when the writer moves into `h3-map` (battle-owned until then).
 
 - 2026-10-10 (T4): check `packs/base/adventure.toml`'s land table against the installation's `movement.txt` under `--with-original-data` (an `examples/original_data.rs` in `h3-pack-adventure` needs `h3-formats` as a dev-dependency to read the LOD: a shared `arch.toml` change), or harvest the table when adventure data is harvested.
 - 2026-10-10 (T3b): ~~fixtures in `fixtures/maps/` from the user's editor maps, so CI reads real editor output~~ dropped by the user (2026-10-11: too little gain for the time); reconsider only if a reader or import bug shows up that real editor output in CI would have caught. The shipped maps stay the reader's test, locally (`verify --with-original-data`).
