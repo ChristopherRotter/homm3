@@ -27,7 +27,7 @@ Commands (ADDR is hexadecimal, `0x5A8090` or `5a8090`; NAME is a map or H3API na
   data ADDR [--type T] [--count N] [--stride S]
                              values in the image (T: u8 i8 u16 i16 u32 i32 f32 f64 ptr str)
   listing [--out PATH]       the whole annotated listing (default original-data/exe/heroes3.asm)
-  cited                      addresses cited in docs/ and crates/ that no map entry covers
+  cited                      addresses cited in docs/, crates/ and clients/ that no map entry covers
   check [--fix-sizes]        the map against the executable (starts, sizes, kinds)
   stats                      how much of the executable the map names
   port-h3api DIR             regenerate docs/exe/h3api.toml from an H3API clone (README)
@@ -818,16 +818,17 @@ def cmd_listing(args) -> None:
 
 
 def cited_addresses() -> dict[int, list[str]]:
-    """Image addresses cited under docs/ and crates/ (as `cargo xtask check-exe-map` scans)."""
+    """Image addresses cited under docs/, crates/ and clients/ (as `cargo xtask check-exe-map` scans)."""
     image = load_toml(MAP).get("image", {})
     low, high = image.get("text_start", 0x401000), image.get("end", 0x6B6000)
     ignore = set(image.get("ignore", []))
     found: dict[int, list[str]] = defaultdict(list)
-    for top in ("docs", "crates"):
+    for top in ("docs", "crates", "clients"):
         for path in sorted((ROOT / top).rglob("*")):
             name = path.relative_to(ROOT).as_posix()
             if (path.suffix not in (".md", ".toml", ".rs") or name.startswith("docs/exe/")
-                    or "/target/" in name or not path.is_file()):
+                    or name.startswith("clients/out/") or "/target/" in name
+                    or not path.is_file()):
                 continue
             for m in CITE_RE.finditer(path.read_text(encoding="utf-8", errors="replace")):
                 va = int(m.group(1), 16)
