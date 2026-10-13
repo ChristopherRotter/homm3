@@ -61,4 +61,4 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-13 — M6 T5, lists of servers
 
-**PR open** (`E16-log.md`): lists, the listed servers fetched, `Lists`, the tools; wire 27. Check its mergeability.
+**#167 open** (`E16-log.md`): lists, the listed servers fetched, `Lists`, the tools; wire 27. Check its mergeability.
