@@ -172,7 +172,7 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
 }
 
 /// [`start`], the TLS client checking a `wss://` peer's certificate against the roots `roots`
-/// gives, asked only if a peer is at `wss://` (tests pass a root of their own).
+/// gives, asked only at the first fetch at `wss://` (tests pass a root of their own).
 pub(crate) async fn launch(
     config: &Config,
     roots: fn() -> rustls::RootCertStore,
@@ -187,12 +187,7 @@ pub(crate) async fn launch(
         &config.discovery,
         key.key(),
     )?);
-    let secure = (config.peers.iter()).any(|peer| peer.address.starts_with("wss://"));
-    let tls = peers::tls(if secure {
-        roots()
-    } else {
-        rustls::RootCertStore::empty()
-    })?;
+    let tls = peers::Tls::new(roots)?;
     let accounts = Arc::new(accounts::Accounts::open(
         &config.server.data,
         Box::new(accounts::Ed25519),
@@ -328,7 +323,7 @@ fn card_content(offers: &[Arc<game::Offer>], ladders: &ladders::Ladders) -> Vec<
 }
 
 /// The server's card as its configuration makes it (E16 M6 T2), its times, counts and ladders left
-/// to each signing: named by the configuration (its id by default), at the server's id `id` and its
+/// to each signing: named by the configuration (its id's first 64 bytes by default), at the server's id `id` and its
 /// other addresses, with the rulesets `content`, vouching for its peers (E16 M6 T3).
 fn card_template(
     config: &Config,
@@ -346,7 +341,13 @@ fn card_template(
         .collect();
     ServerCard {
         key: h3_protocol::account::to_hex(&key.key()),
-        name: server.name.clone().unwrap_or_else(|| id.to_owned()),
+        // The id by default, cut to a name's bound (E16 M6's review: a `public_url` may be longer).
+        name: server.name.clone().unwrap_or_else(|| {
+            (id.char_indices())
+                .take_while(|(at, c)| at + c.len_utf8() <= h3_protocol::card::MAX_TEXT)
+                .map(|(_, c)| c)
+                .collect()
+        }),
         description: server.description.clone(),
         addresses: std::iter::once(id.to_owned())
             .chain(server.addresses.iter().filter(|a| *a != id).cloned())

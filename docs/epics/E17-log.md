@@ -387,3 +387,64 @@ and server lanes; `OPEN-QUESTIONS.md`).
   sequences' format (numbers only); the timeline as the T4 check of timing, the original's poses
   read from memory as the T4 check of frames (§7.6).
 - Gates: see the pull request.
+
+### CLT-Q1 — The walk's path, built (2026-10-13)
+
+On `battle/clt-q1-walk-path` (#169, `cross-lane`), the user present: the user chose CLT-Q1 over
+T4 for the session's start, then the shape (one `Moved` per hex, `EventKind` unchanged) and the
+path public (a detour around a pit only the walker's side sees shows it, as in the original).
+`h3-battle`: `obstacles::go` and `travel_through` report every position of a walker's path,
+`Sink::RECORDS` skips the path for `NoopSink` (the simulation unchanged; `bench-check` passed
+without a re-baseline); a placement stays one move. The property `walks_are_reported_hex_by_hex`.
+The wire is v29 (the server's lists took 27 and E04c T2b 28 meanwhile: merged). Docs: BAT-MOV-003, BAT-MAG-031,
+the battle lane's inbox, the server lane's version notes.
+
+### M2 T4a — The scene over time: the timeline (2026-10-13)
+
+On `client/e17-m2-t4a-timeline` (from CLT-Q1's branch), the user present.
+
+- **Built:** `h3_view::anim` (pure): `Speed` (the factors exact in integers: the f32 mantissas
+  over powers of two), the clock (the deadline on its grid, waits outside it), walks hex by hex,
+  flights in k cycles, melee strikes with their reactions (hit, defend, death) and the pause
+  before a retaliation or a second strike, shots (the group by the angle, frames to the climax,
+  the projectile's steps, the loop), `Timeline::at` (the poses shown at a time), `active`,
+  `lines` (the harness's format), `differences`. `scene::battle_at` draws a `Moment` (poses and
+  the active stack). The bin: `sequences` (each sequence's scenario played in-process with its
+  engine commands, `scenario::played`), `render --at <ms> --speed`, `motion` (a creature's
+  numbers from the tables and its DEF). The asset tables' `groups` name every battle group.
+- **Read:** the shot's target and start points (0x43F2C0 to 0x43F409, design §7.8).
+- **Checked:** `h3-view sequences`: walk, shot and melee as recorded, every line; the unit tests
+  replay them from their numbers (CI without original files). Speeds 1 and 2 give §7.3's walk
+  frames.
+- **Decided (*provisional*, the review list):** design §7.8's list.
+- **Left for T4b:** design §7.8's "Not yet", and a full battle's record frame by frame.
+- Gates: see the pull request.
+
+### M2 T6 — Experiments on the adventure map (2026-10-13)
+
+On `client/e17-m2-t6-adventure-harness`, the user present. The session's choice, confirmed by the
+user over T4b and T2: the queue inbox's high-priority request (2026-10-13, written by the
+adventure lane, E08 T16c): agents play the domain lanes' experiment batches on the harness; until
+then the user played them. Not in the queue's tasks before (the inbox only).
+
+- **Built:** `capture/h3adv.py`: `to_hot_seat` (every name a human), `dismiss` and `end_turn`
+  (each dialog's OK found by relative probes, `learn-button`), `select` (the hero list),
+  `centre` (the minimap), `hover` (waits for the game's tile under the mouse), `walk` (two
+  clicks, the path's marks read between them, the rest detected), `batch` (a recipe's steps into
+  the results template, the spec's stamp checked), `compare`. `h3mem.py`: the adventure map's
+  players, heroes, view, mouse tile and path; `h3mem.py adventure`. The recipe
+  `capture/batches/E08-batch-2.toml`. Probes `multiplayer`, `hotseat_names`, `turn_dialog`,
+  `adventure` (both colours), `[button.ok]`. `setup.sh` sets `Show Route`.
+- **Observed** (design §6.3; `structs.toml`, `map.toml`, `inferred`): the hero, player and
+  adventure manager fields; the path's frames (1–25 green, 26–50 red); the view's geometry and
+  the minimap's.
+- **Checked:** E08 batch 2 on the harness: D3a–D3d as the user's results, all 13 fields, in three
+  runs; D5's 32 piles within 5–10 and 3–6 (each run with a wood pile of 5 and a mercury pile of 6, as the user's); the
+  starting amounts differ by difficulty (the user: Easy).
+- **Decided (*provisional*, the review list):** the recipe format, `Show Route`, memory over the
+  screen, the rest after 1.5 s.
+- **Cross-lane** (the user's consent): `docs/experiments/README.md` names the command; the
+  adventure lane's inbox holds the note for its increment 3.
+- **Left:** the hero list's scrolling, the underground, Yes/No dialogs, a battle from the map, a
+  second day (design §6.3's "Not built yet"); a battle batch's cross-check (E04a batch 1a).
+- Gates: see the pull request.

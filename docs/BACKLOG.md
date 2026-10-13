@@ -31,6 +31,8 @@ Status: `todo` · `next` · `in-progress` · `partial` · `done`
 | E18 | Extension API spike (WoG/HotA-shaped requirements), modding tooling | — | todo | sketch |
 | E19 | Original save-file import (low priority) | adventure | todo | future |
 | E20 | Campaigns | adventure | todo | future |
+| E21 | **Web portal** (the user, 2026-10-13): a sleek, modern web surface for a server, apart from the client's original look: the server browser, leaderboards, replays to fetch, queueing for and accepting a ladder match, then the native client started straight into the game (a link naming the server, its key and the game: the client logs in with its own key and joins by account, a seat being its account's). Operators manage the server through the same surface. Static files speaking the existing WebSocket protocol (ADR-0018: no HTTP in the server). The user's concern: a login surface open to anyone; the server lane's proposal for the operator role is in `lanes/server/QUEUE.md` (inbox) | client or a web lane (decided at its refinement); server (the operator role) | todo | sketch |
+| E22 | **Packaging and hosting** (the user, 2026-10-13): release builds of the server (Linux x86_64 and aarch64, Windows), later of the clients; a service unit and a container image; backup and restore of a server's data directory (its key above all); an upgrade path (a drain first: another journal format voids running games) | server, later client | todo | sketch |
 
 ## Ordering rationale
 

@@ -31,11 +31,12 @@ use futures_util::{SinkExt, StreamExt};
 use h3_protocol::account;
 use h3_protocol::card::PAGE;
 use h3_protocol::connection::{Connection, Host, Received, Signer};
-use h3_protocol::wire::{CardPeer, RelayedCard, ServerCard, SignedCard, WireU64};
+use h3_protocol::wire::{CardPeer, ListedServer, RelayedCard, ServerCard, SignedCard, WireU64};
 use rustls::RootCertStore;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
 use tokio::net::{TcpListener, TcpStream};
 
+use super::lists::{DAY, list_of, place, signed_by};
 use super::*;
 use crate::card::{self, wall_ms};
 use crate::config::Peer;
@@ -236,7 +237,7 @@ async fn a_peer_whose_key_is_another_or_that_names_another_address_is_not_relaye
 
 /// A peer that answers each hello with a welcome by the key of `seed`, each `Describe` with
 /// `card` as it is, each `ListPeers` with a page of `relays` and `Lists` with none: its address.
-async fn fake(seed: [u8; 32], card: SignedCard, relays: Vec<RelayedCard>) -> SocketAddr {
+pub(super) async fn fake(seed: [u8; 32], card: SignedCard, relays: Vec<RelayedCard>) -> SocketAddr {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
     tokio::spawn(async move {
@@ -289,7 +290,7 @@ async fn fake(seed: [u8; 32], card: SignedCard, relays: Vec<RelayedCard>) -> Soc
 }
 
 /// A card of the key of `seed`, issued at `issued` and expiring at `expires`.
-fn card_of(seed: [u8; 32], (issued, expires): (u64, u64)) -> ServerCard {
+pub(super) fn card_of(seed: [u8; 32], (issued, expires): (u64, u64)) -> ServerCard {
     let mut card = card::tests::template(&ServerKey::from_seed(seed));
     card.issued = WireU64(issued);
     card.expires = WireU64(expires);
@@ -298,7 +299,6 @@ fn card_of(seed: [u8; 32], (issued, expires): (u64, u64)) -> ServerCard {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_forged_expired_or_foreign_card_is_not_relayed() {
-    const DAY: u64 = 86_400_000;
     let (seed, other) = ([7; 32], [8; 32]);
     let key = ServerKey::from_seed(seed);
     let now = wall_ms();
@@ -551,10 +551,26 @@ async fn a_peer_behind_a_tls_proxy_is_fetched_at_wss() {
         .await
         .unwrap();
     rounds(&a, 1).await;
-    let relayed = relayed(&a).await;
-    assert_eq!(relayed.len(), 1);
-    assert_eq!(relayed[0].0.addresses[0], pb.address);
+    let peered = relayed(&a).await;
+    assert_eq!(peered.len(), 1);
+    assert_eq!(peered[0].0.addresses[0], pb.address);
     a.shutdown().await;
+    // A server without peers whose list names B at `wss://` reads the roots for it alike (E16 M6's
+    // review: they were read only for a peer at `wss://`).
+    let listing = fetching(vec![]);
+    let now = wall_ms();
+    let lb = ListedServer {
+        key: pb.key.clone(),
+        address: pb.address.clone(),
+    };
+    let list = signed_by(&list_of(1, "Community", (now, now + DAY), &[&lb]), 1);
+    place(&listing.server.data, "a.json", &codec::encode_text(&list));
+    let c = crate::launch(&listing, test_roots).await.unwrap();
+    rounds(&c, 1).await;
+    let listed = relayed(&c).await;
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].0.addresses[0], pb.address);
+    c.shutdown().await;
     // The operating system's roots do not know the test root: the certificate is refused.
     let error = fetch_now(&pb, peers::tls(peers::os_roots()).unwrap())
         .await

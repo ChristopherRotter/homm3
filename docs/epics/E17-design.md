@@ -453,6 +453,51 @@ The runbook: `clients/capture/README.md`. What it rests on:
   opening, identically on every run; its other three stacks stand still for 800 ms. Why: §7.2.
 - **The panel** shows its buttons lit on the human's turn and dimmed on the computer's.
 
+### 6.3 The adventure map: experiments by agents (M2 T6)
+
+The user's request (2026-10-13, high priority): agents play the domain lanes' experiment batches
+(`docs/experiments/README.md`) in the original themselves. `h3adv.py` (runbook, "An experiment
+batch") does it on the harness; everything a record holds is read from the game's memory.
+
+- **Hot seat.** New Game → Multiplayer → Hot Seat → one name per human → the scenario list
+  (its defaults: difficulty Normal, starting bonus random) → Begin. Each human's turn opens with
+  "<colour>'s turn."; a player without towns gets "you have lost your last town" at the end of
+  its turn and the start of its next. Every dialog's OK is found anywhere on the screen by 12
+  probes relative to the button (`[button.ok]`), so a dialog's size and place do not matter.
+- **What the memory gives** (`docs/exe/structs.toml`, observed in the running game, not read,
+  so `inferred`): the heroes at game +0x21620 (156 by type, 0x492 apart, H3API's layout): the
+  tile (i16 +0x0, +0x2, +0x4), the owner (+0x22, -1 for heroes not on the map), the name (+0x23:
+  an experiment map's custom names), the day's points and the points left (+0x49, +0x4D); the
+  player record's head: colour, hero count, the selected hero, the hero list (+0x0, +0x1, +0x4,
+  +0x8); the resources (+0x9C, read before). On the batch's map every hero stood where the spec
+  put it with 2000 points (one Angel; the Pikeman scouts 1560).
+- **The view** (the adventure manager, pointer 0x699268): its top-left tile (+0xE4) and the tile
+  under the mouse (+0xE8), packed x in bits 0–9 and y in bits 16–25, signed: the view starts at
+  (−3, −2) beside the map's corner. Tile (x, y) is drawn at (8 + 32 (x − vx), 8 + 32 (y − vy)), 18
+  tiles across; a click on the minimap (144 pixels, 2 a tile on a 72 map) puts the clicked tile at
+  (9, 8) in the view. The harness hovers a tile and waits until the game reports it under the
+  mouse before it clicks, so a wrong coordinate stops the batch instead of clicking elsewhere.
+- **The path.** With `Show Route` on (`setup.sh`; a new prefix holds 0, and then the first click
+  walks), the first click on a tile shows the selected hero's path and the second walks. The
+  path's arrows are a u16 per tile of the surface at adventure manager +0x48: 0 none, 1–25 a move
+  today (green; the cross is 1, east 12, south-east 13, south 14, north-west 17), 26–50 the same
+  arrows for a later day (red: the cross 26, east 37). The marks and their colours are read from
+  there, not from the screen (a path shown before hides unchanged marks from a screen diff).
+- **Selecting a hero.** A click on another of the player's heroes routes the selected one to it
+  (a meeting): the harness clicks the hero list (rows 32 pixels apart) and checks the selected
+  hero in memory. Ending a turn: key `e` (the move reminder is off).
+- **Batch 2 against the user's results** (2026-10-13; the same `Heroes3.exe` under Wine, without
+  the HD mod the user plays with): D3a–D3d as the user recorded them, all 13 fields (50 then a
+  green step to 0; 0 and a red mark, no step; 100; 0), the paths 13 green marks each; in three
+  runs, the last from a fresh prefix (`setup.sh` anew). D5's 32 piles: in each run wood 5–10 and
+  mercury 3–6, with a wood pile of 5 and a mercury pile of 6, as the user's; the amounts differ
+  from run to run (the piles are drawn at the game's start, which runs in real time). The starting
+  amounts differ by difficulty: the user played Easy (30 wood, 15 mercury, plus the random bonus),
+  the harness Normal (20, 10).
+- **Not built yet:** scrolling the hero list (more than five heroes), the underground, a visit
+  that asks a question (a Yes/No dialog), a battle started from the map (the adventure lane's
+  increment 3: monsters and battles), a second day.
+
 
 ## 7. Animation timing (M2 T3)
 
@@ -617,3 +662,38 @@ the viewer's own generator cannot reproduce.
   sounds' timing.
 - Not in a sequence yet: a turn, a death, Haste and Slow, a defending stack's reaction, a shot
   up or down, a ray.
+
+### 7.8 The viewer's timeline (M2 T4a)
+
+`h3_view::anim` plays a record's commands on the original's clock: each `Events` message is one
+command; its moves, strikes and shots become frames, each drawn at the clock's time and shown at
+the deadline (§7.1), the deadline then moving on by max(the frame's time, the lateness). Its
+`Timeline::lines` is the harness's format; `h3-view sequences` plays each recorded sequence's
+scenario in-process with its engine commands (`[[sequence.command]]` in `sequences.toml`) and
+compares: **all three as recorded, every line** (walk 43, shot 31, melee 82 changes; the melee's
+lines up to its recording's 6 000 ms); speeds 1 and 2 give the walk's 62/35 and 40/22 ms. The
+unit tests replay the three from their events and the creatures' numbers, so CI checks them
+without the original files. `h3-view render <record> --at <ms>` draws the poses then.
+
+- **Read for it** (`shot_animation` 0x43F2C0 from its start to 0x43F409): the shot aims at the
+  target's anchor, x ± 22 for a two-hex target by its facing (0x43F323), y minus (267 − the top
+  edge of frame 0 of its standing group) / 2, truncated (0x43F338: the stack's +0x16C, Q43); the
+  start is the shooter's anchor plus its missile offset (x subtracted facing left), first the
+  straight one for the angle, then the chosen group's (0x469880); the projectile's steps
+  trunc((d + 20) / 40) over the distance d between them. The Marksmen at hex 35 and the Goblins
+  (top 200) at 49 give 14 steps, as recorded.
+- ***Provisional*** (the M2 review list): the shooter plays its group in the strike loop from
+  its climax frame (c − 1) to the end, so L = (n − c + 1) + R − 1 (what the shot sequence fits:
+  the reaction then starts at iteration 0); the loop runs at least A + 1 iterations (no reaction
+  to wait for: the striker still stands at the end); a later command without a time starts one
+  tick after the previous one's last frame shows, or at once after one that drew nothing (the
+  melee's computer acts at 1 918 = 1 818 + 100; Defend and Wait, §7.4); the strike's group by
+  the rows of the striker and its first target (up, straight, down); a walk's frame f drawn
+  f × Δx / n and f × Δy / n along the step (Δ between the hexes' anchors), a flight's frame j of
+  its k × n at j / (k × n) of the line; the flight's cycles with D / 2 truncated; kills counted
+  from `Struck` only (death: the count reaches 0), a dying stack drawn among the corpses (pass 1).
+- **Not yet (T4b):** fidgets, the idle step and the outline's pulse; turns (§7.3) and the battle
+  lane's note that stacks turn to face their target for a strike or a shot; the draw layers of
+  walks (3, 7) and strikes (6); the projectile's and the spells' sprites; Haste and Slow (the
+  walk time), rays, teleports, magic animations, deaths by spells, created stacks; the frame
+  check against the original's poses (§7.6).

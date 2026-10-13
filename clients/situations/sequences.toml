@@ -7,7 +7,10 @@
 # (ADR-0009). Inside an animation a change at t is the frame the game drew at t, shown from the
 # next frame deadline; a change by the idle step (a fidget) shows at t (design §7.1).
 # `h3drive.py sequences` fails when a timeline changes. The timings these confirm:
-# docs/epics/E17-design.md §7.
+# docs/epics/E17-design.md §7. `[[sequence.command]]` (E17 M2 T4a): the engine's commands for what
+# the actions did in the original, each a seat and a wire command (stack ids: the attacker's
+# stacks by slot, then the defender's; a two-hex stack's position is its rear hex);
+# `h3-view sequences` plays them and checks the viewer's timeline against the recorded one.
 
 [[sequence]]
 id = "walk"
@@ -15,6 +18,7 @@ scenario = "seq-walk.toml"
 actions = ["hex:40"]
 ms = 2700
 timeline = "timelines/walk.txt"
+command = [{ seat = "Attacker", command = { Move = { to = 39 } } }]
 
 [[sequence]]
 id = "shot"
@@ -22,6 +26,7 @@ scenario = "seq-shot.toml"
 actions = ["hex:49"]
 ms = 3100
 timeline = "timelines/shot.txt"
+command = [{ seat = "Attacker", command = { Shoot = { target = 2, at = 49 } } }]
 
 [[sequence]]
 id = "melee"
@@ -29,3 +34,7 @@ scenario = "seq-melee.toml"
 actions = ["hex:43"]
 ms = 6000
 timeline = "timelines/melee.txt"
+command = [
+    { seat = "Attacker", command = { Move = { to = 43 } } },
+    { seat = "Defender", command = { Attack = { target = 0, from = 45 } } },
+]

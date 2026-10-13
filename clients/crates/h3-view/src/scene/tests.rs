@@ -13,7 +13,7 @@ id = "base"
 depends = []
 
 [battle]
-groups = { moving = 0, mouse_over = 1, standing = 2 }
+groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], move_start = 20, move_end = 21 }
 
 [[creature]]
 key = "pikeman"
@@ -234,6 +234,71 @@ fn the_battle_is_drawn_in_the_executables_order() {
             },
         ]
     );
+}
+
+#[test]
+fn a_moment_draws_each_stack_in_its_pose() {
+    // E17 M2 T4a: the poses of a timeline. In row 4 the Pikemen walk (frame 3 of group 0, moved
+    // by their offset) and lose the outline to the active defender; the dragon on 4/9 dies: its
+    // death's group puts it among the corpses (pass 1), before the layer-0 obstacle of pass 2;
+    // the dead defender, with a pose, is drawn as well (its corpse).
+    let layout = layout();
+    let pose = |group, frame, hex, offset| Pose {
+        group,
+        frame,
+        hex,
+        offset,
+    };
+    let moment = Moment {
+        poses: [
+            (0, pose(0, 3, hex(4, 0), [16, 0])),
+            (1, pose(5, 7, hex(4, 9), [0, 0])),
+            (3, pose(5, 8, hex(5, 16), [0, 0])),
+        ]
+        .into_iter()
+        .collect(),
+        active: Some(2),
+    };
+    let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
+    let creatures: Vec<(String, u32, u32, [i32; 2], bool)> = list
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Creature {
+                def,
+                group,
+                frame,
+                anchor,
+                outline,
+                ..
+            } => Some((def.clone(), *group, *frame, *anchor, outline.is_some())),
+            _ => None,
+        })
+        .collect();
+    let [x, y] = layout.anchor(4, 0);
+    assert_eq!(
+        creatures,
+        [
+            ("CPKMAN.DEF".to_string(), 2, 0, layout.anchor(1, 2), false),
+            ("CBDRGN.DEF".to_string(), 2, 0, layout.anchor(3, 16), true),
+            ("CBDRGN.DEF".to_string(), 5, 7, layout.anchor(4, 9), false),
+            ("CPKMAN.DEF".to_string(), 0, 3, [x + 16, y], false),
+            ("CPKMAN.DEF".to_string(), 5, 8, layout.anchor(5, 16), false),
+        ]
+    );
+    let corpse = list.iter().position(|d| {
+        matches!(
+            d,
+            Draw::Creature {
+                group: 5,
+                frame: 7,
+                ..
+            }
+        )
+    });
+    let front = list
+        .iter()
+        .position(|d| matches!(d, Draw::Obstacle { def, .. } if def == "Front.def"));
+    assert!(corpse < front);
 }
 
 #[test]

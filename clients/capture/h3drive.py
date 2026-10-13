@@ -316,10 +316,18 @@ def write_screens(screens):
     lines = [
         "# The screens the capture driver recognises (E17 M2 T1, *provisional*; h3drive.py learn):",
         "# a screen shows when every probe [x, y, 5-6-5 value] matches. Numbers only (ADR-0009).",
+        "# [button.<name>] (M2 T6, h3adv.py learn-button): a button found anywhere on the screen,",
+        "# its probes relative to its top-left corner, `size` its width and height.",
     ]
     for name in sorted(screens):
+        if name == "button":
+            continue
         lines.append(f"\n[{name}]\nprobes = [")
         lines += [f"    [{x}, {y}, {v}]," for x, y, v in screens[name]["probes"]]
+        lines.append("]")
+    for name, button in sorted(screens.get("button", {}).items()):
+        lines.append(f"\n[button.{name}]\nsize = {list(button['size'])}\nprobes = [")
+        lines += [f"    [{x}, {y}, {v}]," for x, y, v in button["probes"]]
         lines.append("]")
     SCREENS.write_text("\n".join(lines) + "\n")
 

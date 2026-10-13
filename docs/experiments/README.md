@@ -37,19 +37,37 @@ Complete 4.0**; a rule settled here is `observation`-sourced with that version.
 without the user. It runs the original game unattended under Wine in the cloud sandbox (a copy in
 `original-data/wine/`, never the installation), steers its menus by fixed coordinates and
 recognises screens by probe pixels (`h3drive.py`), runs it on a virtual clock (`xdd.dll`) and
-reads its state from memory (`h3mem.py`: today the battle's stacks; the address map in
-`docs/exe/`). Before a batch relies on it: plan it with the batch (recipes for the batch's own
-clicks, such as the adventure map's moves and hot seat, and memory reads for what the template asks,
-such as a hero's movement points or a player's resources), cross-check the first run against a
-batch the user already played (the adventure's E08 batch 2, the battle's E04a batch 1a), and record the run's
-setup in the source (the same Complete 4.0 `Heroes3.exe`, but under Wine and without the HD mod the
-user plays with). The staging it needs (the executable, its DLLs, the LODs and sound archives)
-is listed in the runbook; the user's computer must be online for it. **Trap (E04c T3): the
-starting bonus.** The harness begins a single scenario with its default, a random starting bonus,
-which a third of the time gives the hero an artifact (seen: Necklace of Swiftness, Clover of
-Fortune, Cape of Conjuring, and a +1 morale): read the hero's worn artifacts (hero +0x12D) and
-play a battle again when one appears (`opening.py --allow`). The first battle batch run so: E04c
-3a and 3b, after batch 1a's R1 matched the user's log.
+reads its state from memory (`h3mem.py`: the battle's stacks; the adventure map's heroes,
+players and paths; the address map in `docs/exe/`). Before a batch relies on it: plan it with the
+batch (recipes for the batch's own clicks and memory reads for what the template asks),
+cross-check the first run against a batch the user already played (the battle's E04a batch 1a:
+its R1 matched the user's log, E04c T3), and record the run's setup in the source (the same Complete 4.0 `Heroes3.exe`,
+but under Wine and without the HD mod the user plays with). The staging it needs (the
+executable, its DLLs, the LODs and sound archives) is listed in the runbook; the user's computer
+must be online for it.
+
+**On the adventure map it is built** (E17 M2 T6, 2026-10-13; `clients/capture/README.md`, "An
+experiment batch"): a recipe in `clients/capture/batches/<batch>.toml` (the spec's procedure as
+steps: a hero, a tile clicked twice, the template's fields each step fills, turns ended) and
+
+```
+python3 capture/h3adv.py batch capture/batches/<batch>.toml   # from clients/
+```
+
+compile the spec, check the stamp, play the map in hot seat and write the results template filled
+in (`clients/out/batches/<batch>/<batch>.md`, a note at its top on how it was played), which an
+agent evaluates like a filled one from the user. E08 batch 2 cross-checked: D3a–D3d as the user's
+results, every field; D5's piles within their ranges (`docs/epics/E17-design.md` §6.3). Not built
+yet: the hero list's scrolling (more than five heroes per player), the underground, Yes/No
+dialogs, battles started from the map, more than one day: the client lane builds them when a
+batch needs them (its queue's inbox).
+
+**The battle's openings** (E04c T3): `experiments/agent/opening.py` (below, "One encounter's
+map"). **Trap: the starting bonus.** The harness begins a single scenario with its default, a
+random starting bonus, which a third of the time gives the hero an artifact (seen: Necklace of
+Swiftness, Clover of Fortune, Cape of Conjuring, and a +1 morale): read the hero's worn artifacts
+(hero +0x12D) and play a battle again when one appears (`opening.py --allow`). The first battle
+batches run so: E04c 3a and 3b.
 
 ## Spec format (`h3-experiment`, `crates/h3-experiment/src/lib.rs`)
 

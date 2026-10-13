@@ -11,7 +11,7 @@ use h3_content_battle::BattleRuleset;
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::codec;
 use h3_protocol::session::{ConnId, GameConfig, SeatKind, Session};
-use h3_protocol::wire::{ClientMessage, Seat, ServerMessage};
+use h3_protocol::wire::{ClientMessage, Command, Seat, ServerMessage};
 
 /// The game's id in the in-process session.
 const GAME: u32 = 1;
@@ -103,6 +103,17 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
 /// The record of a spectator of the battle `scenario` sets up with `seed`, its packs read from
 /// `packs`.
 pub fn record(scenario: &Path, packs: &Path, seed: u64) -> Result<String, String> {
+    played(scenario, packs, seed, &[])
+}
+
+/// The record of a spectator of the battle `scenario` sets up with `seed` when each seat sends
+/// its `commands` in order (E17 M2 T4a: the recorded sequences); a rejected command is an error.
+pub fn played(
+    scenario: &Path,
+    packs: &Path,
+    seed: u64,
+    commands: &[(Seat, Command)],
+) -> Result<String, String> {
     let (ruleset, setup) = battle(scenario, packs, seed)?;
     let config = GameConfig {
         game: GAME,
@@ -127,6 +138,32 @@ pub fn record(scenario: &Path, packs: &Path, seed: u64) -> Result<String, String
         token: None,
     };
     session.handle(viewer, join, &mut out);
+    if !commands.is_empty() {
+        for (conn, seat, token) in [
+            (2, Seat::Attacker, "attacker"),
+            (3, Seat::Defender, "defender"),
+        ] {
+            let join = ClientMessage::Join {
+                game: GAME,
+                seat,
+                token: Some(token.to_owned()),
+            };
+            session.handle(ConnId(conn), join, &mut out);
+        }
+    }
+    for (seq, &(seat, command)) in (1..).zip(commands) {
+        let conn = ConnId(if seat == Seat::Attacker { 2 } else { 3 });
+        let mut replies = Vec::new();
+        session.handle(conn, ClientMessage::Command { seq, command }, &mut replies);
+        for frame in &replies {
+            if let Ok(ServerMessage::Rejected { code, .. }) =
+                codec::decode_server(frame.frame.as_bytes(), usize::MAX)
+            {
+                return Err(format!("command {seq} ({command:?}): rejected, {code:?}"));
+            }
+        }
+    }
+    let mut out = Vec::new();
     session.handle(viewer, ClientMessage::FetchRecord { seq: 1 }, &mut out);
     for frame in out {
         if let Ok(ServerMessage::Record { record, .. }) =

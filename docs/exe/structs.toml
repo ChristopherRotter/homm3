@@ -163,6 +163,7 @@ fields = [
   { offset = 0x132D0, name = "mouse_hex", type = "i32", summary = "the hex under the mouse", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x132F4, name = "fort_level", type = "i32", summary = "above 0 in a siege (the town's picture, the siege obstacles); its values not read here", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x13464, name = "background_name", type = "char*", summary = "the battlefield picture's name (H3API)", confidence = "inferred", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x13D48, name = "winner", type = "i32", summary = "the winning side after the battle (0 the attacker, 1 the defender), read by the adventure map's battle", confidence = "inferred", refs = ["rules/surveys/E08-battles.md §4.2"] },
   { offset = 0x13D54, name = "count_box", type = "pcx*", summary = "CmNumWin.pcx", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x13D58, name = "objects", type = "vector<battle_object>", summary = "battlefield objects (begin +0x13D5C, end +0x13D60)", confidence = "read", refs = ["installation.md §7.15"] },
   { offset = 0x13D68, name = "tactics_phase", type = "i32", summary = "in the tactics phase", confidence = "read", refs = ["installation.md §7.21"] },
@@ -239,6 +240,12 @@ fields = [
   { offset = 0x8, name = "sound_prefix", type = "char*", summary = "sound name prefix", confidence = "read" },
   { offset = 0xC, name = "def_name", type = "char*", summary = "DEF name", confidence = "read" },
   { offset = 0x10, name = "flags", type = "u32", summary = "ability flags (installation.md §5)", confidence = "read" },
+  { offset = 0x14, name = "name_singular", type = "char*", summary = "singular name", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.2"] },
+  { offset = 0x18, name = "name_plural", type = "char*", summary = "plural name", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.2"] },
+  { offset = 0x38, name = "cost_gold", type = "i32", summary = "gold cost (the last of the seven costs from +0x20)", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.2"] },
+  { offset = 0x40, name = "ai_value", type = "i32", summary = "AI value: an army's value and a monster's strength", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.1"] },
+  { offset = 0x6C, name = "adv_map_low", type = "i32", summary = "the smallest random count of a wandering monster (CRTRAITS AdvMap Low)", confidence = "read", refs = ["rules/surveys/E08-battles.md §1.5"] },
+  { offset = 0x70, name = "adv_map_high", type = "i32", summary = "the largest random count of a wandering monster (CRTRAITS AdvMap High)", confidence = "read", refs = ["rules/surveys/E08-battles.md §1.5"] },
 ]
 
 [[struct]]
@@ -294,10 +301,22 @@ summary = "A hero in the game (H3API's H3Hero, whose size is used here); only wh
 refs = ["installation.md §7.4"]
 h3api = "H3Hero"
 fields = [
+  { offset = 0x0, name = "x", type = "i16", summary = "the hero's tile, x; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x2, name = "y", type = "i16", summary = "the hero's tile, y; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x4, name = "level", type = "i16", summary = "the hero's level of the map, 0 the surface; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x18, name = "spell_points", type = "i16", summary = "spell points (mana); a Familiars' channel may raise it above the maximum", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x22, name = "owner", type = "i8", summary = "the owner's colour, -1 none (heroes not on the map); observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x23, name = "name", type = "char[13]", summary = "the hero's name (an experiment map's custom name: D3a, Wood 1); observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x49, name = "day_points", type = "i32", summary = "the movement points the day began with; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x4D, name = "points", type = "i32", summary = "the movement points left (rules/surveys/E08-adventure-core.md §1.1); the harness reads them for an experiment's record", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x51, name = "experience", type = "u32", summary = "experience; random 40-90 at a new game", confidence = "read", refs = ["rules/surveys/E08-battles.md §6.2"] },
+  { offset = 0x55, name = "hero_level", type = "u16", summary = "the hero's level; copied with a custom experience from the map", confidence = "read", refs = ["rules/surveys/E08-battles.md §6.3"] },
+  { offset = 0x8F, name = "level_seed", type = "u8", summary = "random 1-255 at a new game; the level-up offers' seed (not read)", confidence = "read", refs = ["rules/surveys/E08-battles.md §6.2"] },
   { offset = 0x91, name = "army", type = "army", summary = "the hero's army (seven creature types, then seven counts)", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0xC9, name = "secondary_skill_levels", type = "u8[28]", summary = "level per secondary skill id", confidence = "read", refs = ["installation.md §7.4"] },
+  { offset = 0x112, name = "fly_power", type = "i32", summary = "-1 unless flying by a spell; with Angel Wings a guard attacks only at the move's destination (H3API flyPower)", confidence = "inferred", refs = ["rules/surveys/E08-battles.md §2.2"] },
   { offset = 0x12D, name = "worn_artifacts", type = "artifact[19]", summary = "the worn artifacts by slot, 8 bytes each (id, -1 for none; then a subtype, a scroll's spell); 0x4D91F0 walks them", confidence = "read", refs = ["installation.md §7.26"] },
+  { offset = 0x476, name = "primary_skills", type = "i8[4]", summary = "Attack, Defense, Spell Power, Knowledge with the worn artifacts' bonuses", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.1"] },
 ]
 
 [[struct]]
@@ -314,6 +333,7 @@ fields = [
   { offset = 0x1FC44, name = "side", type = "i32", summary = "the map's side in tiles", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0x1FC48, name = "two_levels", type = "u8", summary = "1 with an underground level", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0x20AD0, name = "players", type = "player_record[8]", summary = "the players by colour", confidence = "read", refs = ["rules/surveys/E08-objects.md §7"] },
+  { offset = 0x21620, name = "heroes", type = "hero[156]", summary = "every hero by type, 0x492 apart (the index is the hero's type and the player's hero list's entries); observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x4E364, name = "keys", type = "u8[8]", summary = "per Keymaster colour the bits of the players holding its key (H3API's keymasterVisited)", confidence = "read", refs = ["rules/surveys/E08-objects.md §6"] },
   { offset = 0x4E36C, name = "cartographer_masks", type = "u16[3]", summary = "terrain bits each Cartographer kind reveals: water 0x100, land 0xBF, subterranean 0x40", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0x4E372, name = "cartographer_bought", type = "u8[3]", summary = "per Cartographer kind the bits of the players who paid", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
@@ -326,9 +346,25 @@ summary = "A player (game +0x20AD0 + 0x168 x colour; H3API's H3Player); only wha
 refs = ["rules/surveys/E08-objects.md §7"]
 h3api = "H3Player"
 fields = [
+  { offset = 0x0, name = "colour", type = "i8", summary = "the player's colour; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x1, name = "hero_count", type = "i8", summary = "the heroes on the map; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x4, name = "selected_hero", type = "i32", summary = "the selected hero's index, -1 none; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x8, name = "heroes", type = "i32[8]", summary = "the heroes' indices in the hero list's order; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x34, name = "ai_type", type = "i32", summary = "3 for a human; a computer's drawn at a new game, random_between(0, 2)", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
   { offset = 0x9C, name = "resources", type = "i32[7]", summary = "wood, mercury, ore, sulfur, crystal, gems, gold (+0xB4)", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.1"] },
   { offset = 0xE2, name = "human", type = "u8", summary = "a human player", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
+]
+
+[[struct]]
+name = "adventure_manager"
+size = 0x3B8
+summary = "The adventure map's screen (pointer at 0x699268; H3API's H3AdventureManager, whose size is used here); only what the capture harness reads."
+refs = ["epics/E17-design.md §6.3"]
+h3api = "H3AdventureManager"
+fields = [
+  { offset = 0x48, name = "path_arrows", type = "u16*", summary = "per tile of the surface (row by row, the map's side across) the selected hero's path arrow: 0 none, 1-25 a move today (green), 26-50 the same arrows for later days (red); observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0xE4, name = "view", type = "u32", summary = "the view's top-left tile, packed: x in bits 0-9, y in bits 16-25, signed (the view may start left of or above the map); the map area starts at screen (8, 8), 32 pixels a tile; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0xE8, name = "mouse_tile", type = "u32", summary = "the tile under the mouse, packed as view; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
 ]
 
 [[struct]]
@@ -338,7 +374,7 @@ summary = "A tile of the adventure map (game +0x1FC40; H3API's H3MapItem); only 
 refs = ["rules/surveys/E08-objects.md"]
 h3api = "H3MapItem"
 fields = [
-  { offset = 0x0, name = "word", type = "u32", summary = "the class's data on the object's entrance tile: a pile's amount (low 19 bits) and guards flag (bit 31), a campfire's resource (low 4 bits) and amount (bits 4 up)", confidence = "read", refs = ["rules/surveys/E08-objects.md §3"] },
+  { offset = 0x0, name = "word", type = "u32", summary = "the class's data on the object's entrance tile: a pile's amount (low 19 bits) and guards flag (bit 31), a campfire's resource (low 4 bits) and amount (bits 4 up), a monster's count (bits 0-11), aggression (12-16), never flees (17), does not grow (18), message index (19-26) and message flag (31)", confidence = "read", refs = ["rules/surveys/E08-objects.md §3", "rules/surveys/E08-battles.md §1.2"] },
   { offset = 0x4, name = "terrain", type = "u8", summary = "terrain code 0-9", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0xD, name = "access", type = "u8", summary = "0x01 cannot be entered, 0x10 an object's entrance (visitable) tile (H3API's names)", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
   { offset = 0xE, name = "draw_list", type = "vector", summary = "the objects drawn on the tile, bottom to top (4-byte entries: object index u16, footprint cell, layer); 0x505610 takes the tile's object from it", confidence = "read", refs = ["rules/surveys/E08-objects.md §2.5"] },
