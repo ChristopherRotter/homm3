@@ -55,7 +55,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 41;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 42;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -863,6 +863,7 @@ impl BattleState {
         let params = ruleset.battle();
         let field = Field::new(params.field);
         let natural = NaturalObstacles::new(
+            ruleset,
             field,
             &setup.obstacles,
             ruleset.quirks().is_enabled(OBSTACLE_ANCHORS),
@@ -1289,7 +1290,8 @@ impl BattleState {
     /// status bits. v26 (E04b T5a): the spell obstacles after the effect list. v28 (E04b T5b):
     /// the obstacles as the blocked hexes, the removable obstacles (count; each anchor, count,
     /// hexes) and whether anchors belong to them. v36 (E04b T6c): per stack the creatures it
-    /// vanished with, after the clones' rounds.
+    /// vanished with, after the clones' rounds. v42 (E17 M1, CLT-Q3): each removable obstacle's
+    /// type after its hexes, the absolute obstacle's type after whether anchors belong.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }

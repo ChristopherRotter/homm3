@@ -844,8 +844,9 @@ fn school_key(ruleset: &Ruleset, id: SchoolId) -> Result<String, BattlePackError
 }
 
 /// One natural obstacle in a scenario or replay file (E04b T5b, OPEN-QUESTIONS Q55):
-/// `{ hexes = [58, 75], anchor = 58 }`, the hexes it blocks and, for a removable (usual) one, its
-/// anchor hex ([`Obstacle`]).
+/// `{ hexes = [58, 75], anchor = 58, kind = "base:obstacle_3" }`, the hexes it blocks, for a
+/// removable (usual) one its anchor hex, and its obstacle type's key if known (replay format 23,
+/// E17 M1, CLT-Q3) ([`Obstacle`]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ObstacleEntry {
@@ -854,6 +855,9 @@ pub struct ObstacleEntry {
     /// Its anchor hex, if it is removable.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub anchor: Option<u8>,
+    /// Its obstacle type's key, if known (the battle checks it against the ruleset).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
 }
 
 impl ObstacleEntry {
@@ -862,15 +866,25 @@ impl ObstacleEntry {
         Self {
             hexes: o.hexes.clone(),
             anchor: o.anchor,
+            kind: o.kind.as_ref().map(|k| k.as_str().to_owned()),
         }
     }
 
-    /// The obstacle of the entry.
-    pub fn to_obstacle(&self) -> Obstacle {
-        Obstacle {
+    /// The obstacle of the entry, or an error if its type is not a `pack:name` key.
+    pub fn to_obstacle(&self) -> Result<Obstacle, BattlePackError> {
+        let kind = self
+            .kind
+            .as_deref()
+            .map(|k| {
+                ContentKey::parse(k)
+                    .map_err(|_| BattlePackError::Syntax(format!("bad obstacle type `{k}`")))
+            })
+            .transpose()?;
+        Ok(Obstacle {
             hexes: self.hexes.clone(),
             anchor: self.anchor,
-        }
+            kind,
+        })
     }
 }
 
@@ -1043,7 +1057,7 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, BattlePackError> {
             .obstacles
             .iter()
             .map(ObstacleEntry::to_obstacle)
-            .collect(),
+            .collect::<Result<_, _>>()?,
         heroes: [file.scenario.attacker_hero, file.scenario.defender_hero],
         terrain: file.scenario.terrain,
         war_machines: [

@@ -56,6 +56,9 @@ pub struct CreatureType {
     pub flags: CreatureFlags,
 }
 
+/// An obstacle type's handle: an index into [`BattleRuleset::obstacles`].
+pub type ObstacleTypeId = Handle<ObstacleType>;
+
 /// A compiled obstacle type (BAT-GEO-004).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObstacleType {
@@ -405,9 +408,22 @@ impl BattleRuleset {
         self.spells.get(id.index())
     }
 
-    /// Obstacle types, in load order.
+    /// Obstacle types, in load order (an [`ObstacleTypeId`] indexes this slice).
     pub fn obstacles(&self) -> &[ObstacleType] {
         &self.obstacles
+    }
+
+    /// An obstacle type.
+    pub fn obstacle(&self, id: ObstacleTypeId) -> Option<&ObstacleType> {
+        self.obstacles.get(id.index())
+    }
+
+    /// The obstacle type with key `key` (`pack:name`).
+    pub fn obstacle_by_key(&self, key: &str) -> Option<ObstacleTypeId> {
+        self.obstacles
+            .iter()
+            .position(|o| o.key.as_str() == key)
+            .and_then(ObstacleTypeId::from_index)
     }
 
     /// Battle parameters.

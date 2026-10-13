@@ -909,10 +909,12 @@ mod tests {
             h3_contracts::Obstacle {
                 hexes: std::vec![40, 41],
                 anchor: Some(57),
+                kind: None,
             },
             h3_contracts::Obstacle {
                 hexes: std::vec![60],
                 anchor: None,
+                kind: None,
             },
         ];
         let s = BattleState::new(&r, &setup, 1).unwrap();

@@ -2844,6 +2844,7 @@ pub fn blocked(hexes: Vec<u8>) -> Vec<h3_contracts::Obstacle> {
     vec![h3_contracts::Obstacle {
         hexes,
         anchor: None,
+        kind: None,
     }]
 }
 

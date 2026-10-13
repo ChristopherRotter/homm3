@@ -1,6 +1,7 @@
 //! The battlefield's natural obstacles as pieces (E04b T5b; OPEN-QUESTIONS Q55): the hexes they
 //! block (BAT-GEO-003) and the removable ones with their anchor hexes, which Remove Obstacle
-//! takes away whole (BAT-MAG-034).
+//! takes away whole (BAT-MAG-034). Each keeps the obstacle type the setup named, if any, for
+//! viewers (BAT-GEO-003); no rule reads it.
 //!
 //! The original keeps a usual obstacle as an object whose anchor hex carries the object's index
 //! even where the obstacle does not block it (`docs/formats/installation.md` §7.15): with quirk
@@ -11,6 +12,7 @@
 //! hexes each, at most sixteen; the blocked hexes and the anchors are kept as sets beside them,
 //! so movement and the target tests read a set.
 
+use h3_content_battle::{BattleRuleset, ObstacleTypeId};
 use h3_contracts::Obstacle;
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
@@ -25,12 +27,14 @@ pub const MAX_REMOVABLE_OBSTACLES: usize = 16;
 /// generated battlefield (BAT-GEO-004).
 pub const MAX_REMOVABLE_HEXES: usize = h3_content_battle::MAX_USUAL_OBSTACLE_HEXES;
 
-/// A removable natural obstacle: its anchor hex and the hexes it blocks (Q55).
+/// A removable natural obstacle: its anchor hex, the hexes it blocks (Q55) and its type, if the
+/// setup named one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct RemovableObstacle {
     anchor: Hex,
     len: u8,
     hexes: [Hex; MAX_REMOVABLE_HEXES],
+    kind: Option<ObstacleTypeId>,
 }
 
 impl RemovableObstacle {
@@ -44,6 +48,11 @@ impl RemovableObstacle {
         self.hexes.get(..usize::from(self.len)).unwrap_or_default()
     }
 
+    /// Its obstacle type, if the setup named one (for viewers; no rule reads it).
+    pub const fn kind(&self) -> Option<ObstacleTypeId> {
+        self.kind
+    }
+
     /// The hexes it blocks, as a set.
     pub fn hex_set(&self) -> HexSet {
         self.hexes().iter().fold(HexSet::new(), |mut set, &h| {
@@ -54,13 +63,14 @@ impl RemovableObstacle {
 }
 
 impl CanonicalHash for RemovableObstacle {
-    /// Anchor, then the blocked hexes (count, hexes).
+    /// Anchor, then the blocked hexes (count, hexes), then the type if any (state hash v42).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.anchor.0);
         h.write_len(self.hexes().len());
         for hex in self.hexes() {
             h.write_u8(hex.0);
         }
+        self.kind.hash_into(h);
     }
 }
 
@@ -82,22 +92,27 @@ pub(crate) struct NaturalObstacles {
     anchors: HexSet,
     /// Quirk BAT-QUIRK-3: an anchor hex belongs to its obstacle.
     anchored: bool,
+    /// The absolute obstacle's type, if the setup named one (it stays for the whole battle).
+    absolute: Option<ObstacleTypeId>,
 }
 
 impl NaturalObstacles {
     /// Validates the setup's obstacles (BAT-GEO-003): every blocked hex standable and listed
     /// once across all of them; an anchor standable; at most [`MAX_REMOVABLE_OBSTACLES`]
-    /// removable obstacles of at most [`MAX_REMOVABLE_HEXES`] hexes each. `anchored`: quirk
-    /// BAT-QUIRK-3.
+    /// removable obstacles of at most [`MAX_REMOVABLE_HEXES`] hexes each; a named type one of
+    /// `ruleset`'s, absolute without an anchor and usual with one, and at most one absolute
+    /// obstacle with a type. `anchored`: quirk BAT-QUIRK-3.
     // rule: BAT-GEO-003
     pub(crate) fn new(
+        ruleset: &BattleRuleset,
         field: Field,
         obstacles: &[Obstacle],
         anchored: bool,
     ) -> Result<Self, SetupError> {
         let mut blocked = HexSet::new();
         let mut removable = FixedVec::new();
-        for o in obstacles {
+        let mut absolute = None;
+        for (i, o) in obstacles.iter().enumerate() {
             for &raw in &o.hexes {
                 let hex = Hex(raw);
                 if !field.is_standable(hex) || blocked.contains(hex) {
@@ -105,7 +120,28 @@ impl NaturalObstacles {
                 }
                 blocked.insert(hex);
             }
+            let kind = o
+                .kind
+                .as_ref()
+                .map(|key| {
+                    ruleset
+                        .obstacle_by_key(key.as_str())
+                        .filter(|&id| {
+                            ruleset
+                                .obstacle(id)
+                                .is_some_and(|t| t.absolute == o.anchor.is_none())
+                        })
+                        .ok_or(SetupError::InvalidObstacleType(
+                            u8::try_from(i).unwrap_or(u8::MAX),
+                        ))
+                })
+                .transpose()?;
             let Some(anchor) = o.anchor else {
+                if let Some(k) = kind
+                    && absolute.replace(k).is_some()
+                {
+                    return Err(SetupError::TooManyObstacles);
+                }
                 continue;
             };
             if !field.is_standable(Hex(anchor)) {
@@ -115,6 +151,7 @@ impl NaturalObstacles {
                 anchor: Hex(anchor),
                 len: 0,
                 hexes: [Hex(0); MAX_REMOVABLE_HEXES],
+                kind,
             };
             for (slot, &raw) in piece.hexes.iter_mut().zip(&o.hexes) {
                 *slot = Hex(raw);
@@ -130,6 +167,7 @@ impl NaturalObstacles {
             cleared: HexSet::new(),
             anchors: HexSet::new(),
             anchored,
+            absolute,
         };
         natural.refresh();
         Ok(natural)
@@ -143,6 +181,11 @@ impl NaturalObstacles {
     /// The hexes a removal cleared (observations, BAT-MAG-034).
     pub(crate) const fn cleared(&self) -> HexSet {
         self.cleared
+    }
+
+    /// The absolute obstacle's type, if the setup named one (observations).
+    pub(crate) const fn absolute(&self) -> Option<ObstacleTypeId> {
+        self.absolute
     }
 
     /// The anchor hexes that belong to their obstacles (quirk BAT-QUIRK-3; none without it).
@@ -228,11 +271,13 @@ impl NaturalObstacles {
 
 impl CanonicalHash for NaturalObstacles {
     /// The blocked hexes, the removable obstacles (count, each), the cleared hexes, whether
-    /// anchors belong to their obstacles (state hash v28).
+    /// anchors belong to their obstacles (state hash v28), the absolute obstacle's type if any
+    /// (v42).
     fn hash_into(&self, h: &mut StateHasher) {
         self.blocked.hash_into(h);
         self.removable.hash_into(h);
         self.cleared.hash_into(h);
         h.write_bool(self.anchored);
+        self.absolute.hash_into(h);
     }
 }

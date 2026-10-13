@@ -372,6 +372,7 @@ fn pieces(hexes: &[u8]) -> Vec<h3_contracts::Obstacle> {
         .map(|&h| h3_contracts::Obstacle {
             hexes: std::vec![h],
             anchor: [None, Some(h), Some(h - 1)][usize::from(h % 3)],
+            kind: None,
         })
         .collect()
 }

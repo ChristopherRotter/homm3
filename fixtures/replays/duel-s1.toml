@@ -372,24 +372,24 @@ commands = [
     "A attack 1 24",
 ]
 checkpoints = [
-    "0x55a879db06524847",
-    "0x6e8aa766a1d0b4a7",
-    "0x1e55f4c48c724454",
-    "0x968bf7311dca965f",
-    "0xf086b31950189acd",
-    "0x07fb52f6def3af09",
-    "0xc965d98b5d7ca9d4",
-    "0x23ede60312671a39",
-    "0xb22246b4330edb83",
-    "0xf0901884241a253e",
-    "0x6525753c6d111fd0",
-    "0x0c54822a3f57b664",
-    "0x1e195d3f7e216da1",
-    "0x3648397017a85d00",
+    "0x90eda79270f09403",
+    "0xa7f3d0376017fa9f",
+    "0xde57d7f9d68de084",
+    "0xf3863419b2498dcf",
+    "0xe63325375afb8b4d",
+    "0x08a7c47fcb796161",
+    "0x1951dbfcc9deda70",
+    "0x1351450abd92f08d",
+    "0x9d42cf1a6b10ac8f",
+    "0x4b04330d9bc0b246",
+    "0xa4672b240c0cfe58",
+    "0x2985d3968466dfbc",
+    "0x503c3fff31778a59",
+    "0xc60af7548be33f9c",
 ]
 
 [replay]
-format = 22
+format = 23
 engine = "0.1.0"
 scenario = "duel"
 seed = "1"
@@ -404,7 +404,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 41
+battle_state_hash_version = 42
 checkpoint_every = 25
 
 [setup]
@@ -416,6 +416,7 @@ hexes = [
     148,
 ]
 anchor = 147
+kind = "synthetic:boulder"
 
 [[setup.obstacles]]
 hexes = [
@@ -424,6 +425,7 @@ hexes = [
     98,
 ]
 anchor = 97
+kind = "synthetic:crag"
 
 [[setup.obstacles]]
 hexes = [
@@ -432,6 +434,7 @@ hexes = [
     159,
 ]
 anchor = 158
+kind = "synthetic:crag"
 
 [[attacker]]
 slot = 0
@@ -445,4 +448,4 @@ count = 20
 
 [result]
 winner = "attacker"
-final_hash = "0xab144f84a7999124"
+final_hash = "0x208e682c9bf3331c"

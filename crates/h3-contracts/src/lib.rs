@@ -31,7 +31,7 @@ pub use hero::{
 };
 pub use ids::{HeroId, PlayerId};
 
-use h3_content::{CreatureTypeId, Formation, SpellId, TerrainId};
+use h3_content::{ContentKey, CreatureTypeId, Formation, SpellId, TerrainId};
 
 /// The two sides of a battle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -85,13 +85,19 @@ pub struct Army {
 /// the hexes it blocks and, for a usual obstacle, its anchor hex, which makes it removable
 /// (Remove Obstacle, BAT-MAG-034). An absolute obstacle has no anchor and cannot be removed. The
 /// anchor (the obstacle's bottom-left hex, BAT-GEO-004) belongs to the obstacle even where the
-/// obstacle does not block it, under quirk BAT-QUIRK-3 (BAT-GEO-003).
+/// obstacle does not block it, under quirk BAT-QUIRK-3 (BAT-GEO-003). Its type, when known,
+/// names the obstacle type of the battle's ruleset that was placed (BAT-GEO-004): the battle keeps
+/// it for viewers (which picture to draw), no rule reads it.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Obstacle {
     /// The hexes it blocks (row-major hex indices of the battlefield).
     pub hexes: Vec<u8>,
     /// Its anchor hex, if it is a usual (removable) obstacle.
     pub anchor: Option<u8>,
+    /// Its obstacle type's key (`base:obstacle_12`), if known: an absolute type without an
+    /// anchor, a usual one with. By key, not by handle, because obstacle types belong to the
+    /// battle's ruleset part (ADR-0015 point 3), which this crate does not depend on.
+    pub kind: Option<ContentKey>,
 }
 
 /// Everything the battle context needs to start a battle (docs/03-domain.md, "Seams"). All
@@ -308,6 +314,7 @@ mod tests {
             obstacles: vec![Obstacle {
                 hexes: vec![40, 41],
                 anchor: Some(40),
+                kind: ContentKey::parse("base:obstacle_0").ok(),
             }],
             heroes: [
                 Some(BattleHero::new(h3_content::HeroTypeId::from_raw(0))),
