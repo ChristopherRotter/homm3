@@ -30,12 +30,15 @@ and class's defaults (a default experience is a setup placeholder, drawn from th
 spell points full, validated by `h3-heroes`; a setup the increment cannot represent fails the
 import (`Unsupported`: an experience of level 2 or more, decision 22). A hero that leaves the map
 keeps its details (the pool and the tavern are E09's). The adventure sees a hero's details only
-through the **adventure profile** (E08 decision 5), a contract type derived by `h3-heroes`; in
-increment 3 it holds what the monster's answer reads (Attack, Defense, the Diplomacy level), kept
-on the hero on the map and refreshed by the game whenever the details change. `GameRuleset`
-bundles the battle part (ADR-0015 point 2) beside the core and the adventure part.
+through the **adventure profile** (E08 decision 5), a contract type derived by `h3-heroes`; the
+type arrives in increment 3 with what the monster's answer reads (Attack, Defense, the Diplomacy
+join bonus, a hero effect as data), its movement and scouting parts with increment 4 (decision
+19); it is kept on the hero on the map and refreshed by the game whenever the details change.
+`GameRuleset` bundles the battle part (ADR-0015 point 2) beside the core and the adventure part.
 
-**Point 2, extended (the unowned side).** A battle side without a player (wandering monsters,
+**Point 2, amended (the unowned side).** "`Actor::System` for the server's trusted session layer
+only" becomes: `Actor::System` for the trusted layer that hosts the game only (the server's
+session layer, the env), never for a player. A battle side without a player (wandering monsters,
 an object's guards) is played by `Actor::System`, which gains battle commands for an unowned
 side only; no player can command it, and the system actor commands no owned side. Its policy
 stays outside the state, as an agent's choices (point 4): the server's or the env's bot. The
@@ -43,31 +46,34 @@ system actor arrives with increment 3 for this; its other commands stay the serv
 which also picks its default for a battle whose player is gone.
 
 **Point 4, extended (a battle's randomness).** A battle's **obstacles** are a function of its tile
-(the defender's: the monster's, the guarded object's or the defending hero's): the original's seed `110 291 x + 167 801 y + 81 569` (32-bit, the level not included), drawn by
-the battle lane's generator (`h3_battle::generate_setup_obstacles` from a kernel `Rng` seeded with
-it, until the original's generator is ported, CLT-Q4). The tile is public, so a tile's obstacles
-are predictable, as in the original; no stream seed enters them. The battle's **own seed**
-(damage, luck, morale and every later draw) is drawn from the attacking player's stream when the
-battle starts and lives in the battle's state, server-only as every stream (point 5). A monster's
+(the defender's: the monster's, the guarded object's or the defending hero's): the original's seed
+`110 291 x + 167 801 y + 81 569` (32-bit, the level not included), drawn by the battle lane's
+generator (`h3_battle::generate_setup_obstacles` from a kernel `Rng` seeded with it, until the
+battle lane ports the original's generator: CLT-Q4's note, the adventure queue's inbox). The tile
+is public, so a tile's obstacles are predictable, as in the original; no stream seed enters them.
+The battle's **own seed** (damage, luck, morale and every later draw) is drawn from the attacking
+player's stream when the battle starts and lives in the battle's state, server-only as every
+stream (point 5). A monster's
 **split** into stacks is a rule of the tile and the armies (ADR-0016 point 4) and draws from no
 stream. Setup placeholders of increment 3 (the setup stream): a random monster's creature and
 count, every monster's aggression, a hero's default experience.
 
 **Point 6, extended (battles and chained decisions).** Increment 3's offers: **join for free**,
-**join for gold**, **pursue a fleeing monster**, **fight an object's guards** (each yes or no;
-decision 22). Answering an offer may open the next decision of the same visit in the same
-command (a declined join goes on to the flee offer or a battle; an accepted pursuit or fight opens
-the battle): a player still has at most one open decision. A **battle** is a pending decision
-owned by the players of its sides: the visitor's, and against another player's hero the
-defender's too, who plays outside its turn. While a battle is open its owners' only legal
-commands are `GameCommand::Battle(h3_battle::Command)` by the owner of the side to act (the
-system actor for an unowned side); neither owner can end its turn; it blocks no one else. The
-command that ends the battle applies its outcome (point 11) and closes the decision.
+**join for gold**, **pursue a fleeing monster** (decision 22; survey §3.2), **fight an object's
+guards** (decision 19; survey §5.1), each yes or no. Answering an offer may open the next decision
+of the same visit in the same command (a declined join goes on to the flee offer or a battle; an
+accepted pursuit or fight opens the battle): a player still has at most one open decision. A
+**battle** is a pending decision owned by the players of its sides: the visitor's, and against
+another player's hero the defender's too, who plays outside its turn. While a battle is open its
+owners' only legal commands are `GameCommand::Battle(h3_battle::Command)` by the owner of the side
+to act (the system actor for an unowned side); neither owner can end its turn; it blocks no one
+else. The command that ends the battle applies its outcome (point 11) and closes the decision.
 
 **Point 8, extended (the env with battles).** Action encoding v3 has two phases: while the
 player to move is in a battle its action is the battle lane's encoding (`h3_sim::action`, entry
 and heads) and every adventure entry is masked; otherwise v2's entries and offers. `to_move`
-names the owner of the battle's side to act, or the **neutral seat** for an unowned side, which
+yields seats: an acting player without a battle, and for a battle the owner of its side to act
+or the **neutral seat** for an unowned side, which
 the caller plays with a policy of its choice (`random_rollout` plays it at random). The
 observation (`h3_game`'s view) adds the open battle as its owner's side sees it
 (`h3_battle::observe_as`). The adventure replay format v3 records each command with its actor
@@ -81,8 +87,9 @@ format to v3 (`E08-design.md` §9).
 **Point 10, extended (outcomes with armies and battles).** A context's outcome may also name a
 hero's army change (a group joining) and a battle to start (the visitor, the defender: a monster,
 an object's guards or another player's hero, the tile). A join for gold whose price the payer
-cannot pay is not opened and counts as declined, so the visit's chain goes on (the original asks
-only when the player can pay, survey §3.2).
+cannot pay is not opened and counts as declined, so the visit's chain goes on, without the refusal
+event this point gives other offers (the original asks only when the player can pay and goes on
+as after a no, survey §3.2).
 
 **Point 11, new: battles through the game** (ADR-0013 point 5). The game builds the
 `BattleSetup`: the armies from the adventure (a monster's stacks by its split), each hero's
@@ -96,14 +103,17 @@ survivors stay with the object), experience as a number for the winner's hero (n
 increment 4), Necromancy, Eagle Eye's spells, spell points, destroyed war machines' artifacts,
 the loser's artifacts to the winner (the first fitting slot, else the backpack: decision 22), a
 surrender's gold from the loser's owner to the winner's (D-13), a hero that lost, retreated or
-surrendered leaves the map, a beaten monster leaves it, a won guarded pile is picked up.
+surrendered leaves the map, a beaten monster leaves it and its treasure's resources go to the
+winner's owner, a won guarded pile is picked up; a monster that survives keeps every stack's
+survivors (A-6 fixed, decision 23).
 
 ## Consequences
 
 - `arch.toml` (shared): `h3-game` gains `h3-heroes`, `h3-battle` and `h3-content-battle`;
   `h3-contracts` (shared) gains the adventure profile. ADR-0013 stays as it is.
 - Conservation becomes: an army changes only by a battle's outcome or a joining group; a treasury
-  only by a visit's gain, an accepted offer's price or a surrender. Legality consistency, atomicity,
+  only by a visit's gain (a won battle's treasure or pile included), an accepted offer's price
+  or a surrender. Legality consistency, atomicity,
   ownership isolation (a battle's seed from its attacker's stream only), observation hygiene (a
   battle's private side, ADR-0013 point 9) and clone equivalence are property-tested with battles
   open (the increment's exit criteria).
@@ -127,8 +137,8 @@ surrendered leaves the map, a beaten monster leaves it, a won guarded pile is pi
 
 ## Revision history line (for ADR-0017)
 
-- 2026-10-1x: points 1, 2, 4, 6 and 8–10 extended and point 11 added for increment 3: the store
-  of heroes and the adventure profile, the system actor for an unowned battle side, a battle's
-  obstacles from its tile and its seed from the attacker's stream, chained offers and battles as
-  pending decisions, the env's battle phase, battles through the game (E08 T17b, the user at
-  ADV-Q13; survey `E08-battles.md`).
+- 2026-10-1x: points 1, 4, 6 and 8–10 extended, point 2 amended and point 11 added for increment
+  3: the store of heroes and the adventure profile, the system actor for an unowned battle side, a
+  battle's obstacles from its tile and its seed from the attacker's stream, chained offers and
+  battles as pending decisions, the env's battle phase, battles through the game (E08 T17b, the
+  user at ADV-Q13; survey `E08-battles.md`).

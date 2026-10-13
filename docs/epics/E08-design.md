@@ -25,20 +25,25 @@ unless they name this note). Increment 2's note went with T15b; its versions are
   over the map-wide `custom_heroes` entry; `ADV-STUB-1` closed): experience, primary and secondary
   skills, spells, artifacts (worn by slot, the backpack), formation; name, portrait, biography,
   sex and patrol are presentation or computer-player data and stay ignored. `Unsupported`: an
-  experience of 1 000 or more (decision 22: 42 placed heroes, and the 15 map-wide entries), which
-  needs increment 4's levels.
-- The formation: the map's flag goes to `BattleSetup.formations` (one shipped hero is tight; VCMI
-  resets every hero to loose, the original was not read: E3-9 settles it; until then the map's).
+  experience of 1 000 or more, the body's or else the map-wide entry's (decision 22: 42 placed
+  heroes; the 15 map-wide entries with a gameplay field all have one, survey §6.1), which needs
+  increment 4's levels.
+- The formation: kept with the army, `HeroOnMap.formation` (`HeroDetails` holds no army,
+  ADR-0013 point 1); the map's flag goes to `BattleSetup.formations` (one shipped hero is tight;
+  VCMI resets every hero to loose, the original was not read: E3-9 settles it; until then the
+  map's).
 - Observation: the owner sees its heroes' details (experience, primary and secondary skills,
   artifacts, spells, spell points); other players see identity, owner and class (§9).
 
 ## 2. The adventure profile (decision 5, now; T18a, T18b)
 
-- `h3_contracts::AdventureProfile { attack: u8, defense: u8, diplomacy: u8 }` (shared), derived
+- `h3_contracts::AdventureProfile { attack: u8, defense: u8, join_bonus: u8 }` (shared), derived
   by `h3_heroes::adventure_profile(&details, &ruleset)` (cross-lane: the effective Attack and
-  Defense with artifacts, as the original's hero record +0x476/+0x477 holds them, clamped 0–99 —
-  the building task reads whether +0x476 includes the artifacts; Diplomacy's level 0–3).
-  Increment 4 adds the movement and scouting parts.
+  Defense, as the original's hero record +0x476/+0x477 holds them, clamped 0–99 — the building
+  task reads whether +0x476 includes the artifacts; the join bonus 0–3 from a new hero-effect
+  kind, VCMI's `WANDERING_CREATURES_JOIN_BONUS`: Diplomacy 1, 2, 3 by level, so no code reads the
+  skill by name, ADR-0016 point 4). Decision 5's type, early: increment 4 adds the movement and
+  scouting parts (decision 19).
 - Kept in `HeroOnMap.profile` (adventure state hash v7), set when the game is built and after
   every outcome that changes the details (a captured artifact can raise Attack).
 - The game's difficulty reaches the adventure as a static input (`AdventureSetup.difficulty`),
@@ -46,14 +51,15 @@ unless they name this note). Increment 2's note went with T15b; its versions are
 
 ## 3. Monsters on the map (ADV-MON-001 to -006; T20a)
 
-- Ruleset part v6: kind `Monster { creature: MonsterCreature::{Fixed(CreatureTypeId),
-  Level(lo, hi)} }` for the nine classes (`adventure.toml`, one type per class: `monster`,
-  `random_monster`, `random_monster_1` … `_7`); instance data from the map validated at setup:
-  count (0 = drawn; at most 4 095, the import's bound), disposition (compliant, friendly,
+- Ruleset part v6: kind `Monster { levels: Option<(u8, u8)> }` for the nine classes
+  (`adventure.toml`, one type per class: `monster` without levels, `random_monster` 1–7,
+  `random_monster_1` … `_7`); instance data from the map validated at setup: the creature (class
+  54's subclass mapped by the import; none for a random monster), count (0 = drawn; at most 4 095, the import's bound), disposition (compliant, friendly,
   aggressive, hostile, savage), never flees, does not grow (kept, unused until increment 5),
   treasure resources. The creature's AI value, cost, upgrades and adventure-map range are core
   content already (`CreatureInfo::ai_value`, `cost`, `upgrades`, `adventure_count`).
-- Setup draws (setup stream, object order, after increment 2's): a random monster's creature
+- Setup draws (setup stream, object order; after the starting armies, the heroes' experience and
+  increment 2's contents): a random monster's creature
   (uniform over the allowed ids of its levels: AB and SoD without 132–137, RoE 0–117; levels as
   the executable's under `BAT-QUIRK-19`, §1.4), then the count from `adventure_count` when 0
   (§1.5), then the aggression by disposition (−4, 1–7, 1–10, 4–10, 10; §1.3). All three into the
@@ -79,9 +85,10 @@ unless they name this note). Increment 2's note went with T15b; its versions are
   operations, ADR-0003); strength = AI value × count; r = power / strength in single precision;
   St by the thresholds with D-8 (r > 0.5 for −1); Sy with D-9 (the own type counts; the related
   type by faction and level, so `BAT-QUIRK-19` breaks the elementals' pairs in `faithful`); L
-  from the profile, +1 (at most 3) on Easy (D-10); M the aggression; never flees.
-- The decision (§3.2) as a function returning `Answer::{Fight, OfferJoin, OfferJoinForGold(price),
-  OfferPursue, Leave}`; the chain continues in `AdventureState::decline_offer` (new, infallible):
+  the profile's join bonus, +1 (at most 3) on Easy (D-10); M the aggression; never flees.
+- The decision (§3.2) as a function returning `MonsterAnswer::{Fight, OfferJoin,
+  OfferJoinForGold(price), OfferPursue}` (the monster leaves only after a declined pursuit or by
+  joining); the chain continues in `AdventureState::decline_offer` (new, infallible):
   a declined join goes to step 4 (fight at M = C or when it never flees, else the pursue offer).
 - Offer kinds (adventure `OfferKind`): `Join` (no price), `JoinForGold { price }` (the creature's
   gold cost × count; not opened when the treasury cannot pay: the game calls `decline_offer`, no
@@ -112,7 +119,7 @@ unless they name this note). Increment 2's note went with T15b; its versions are
   the field (sieges, boats and mines do not occur in increment 3); `obstacles` from
   `generate_setup_obstacles` with `Rng::from_seed(u64::from(110_291 x + 167_801 y + 81_569))`
   (wrapping u32 arithmetic, the defender's tile, the level not included); `funds` the owners'
-  gold; formations from the details. The seed: `next_u64` of the attacker's stream.
+  gold; formations from the heroes on the map. The seed: `next_u64` of the attacker's stream.
 - Events: `GameEvent::Battle { event, seen_by: Viewers }` (a side's event to its owner, a public
   one to both owners); the start and the end as game events (`BattleStarted`, `BattleEnded` with
   the result) seen by the owners; other players see the removals afterwards.
@@ -126,7 +133,10 @@ unless they name this note). Increment 2's note went with T15b; its versions are
   spells; `HeroOutcome::mana`; a destroyed war machine's artifact removed (the catapult stays);
   the loser's artifacts (worn and backpack, not war machines nor the spell book) to the winner,
   each into its first free fitting slot, else the backpack (VCMI's placement, decision 22);
-  a hero that lost, retreated or surrendered leaves the map, a draw both; the profile refreshed.
+  a hero that lost, retreated or surrendered leaves the map, a draw both; a beaten monster's
+  treasure (resources) to the winner's owner and the monster off the map (ADV-MON-010); a monster
+  that survives keeps every stack's survivors, an upgraded stack's as its own creature (A-6 fixed,
+  decision 23); the profile refreshed.
   One infallible function per context, called in a fixed order (adventure, heroes, treasuries).
 - Not in increment 3: CLT-Q4's background variant (trees, mountains and dead vegetation within 3
   tiles) needs those decorations typed (E12's long tail); viewers keep the third picture.
@@ -152,7 +162,9 @@ unless they name this note). Increment 2's note went with T15b; its versions are
 
 - Action encoding v3 (`h3-sim/src/adventure/action.rs`): `Action::{Adventure(adventure::Action),
   Battle(h3_sim::action::Action)}`, a phase per state; the masks of the other phase are empty.
-- `to_move() -> Seat::{Player(PlayerId), Neutral}`; `step` for the neutral seat takes a battle
+- `to_move()` yields seats (`Seat::{Player(PlayerId), Neutral}`): the acting players without a
+  battle and, for each open battle, its side to act's owner or the neutral seat; `step` for the
+  neutral seat takes a battle
   action and issues it as `Actor::System`. `random_rollout` plays every seat at random.
 - Replay format v3: each command with its actor; golden replays with hero battles (T19b) and
   monsters (T20b); the property plans (`crates/h3-map/src/tests/play.rs`) play battles to the end.
@@ -169,7 +181,8 @@ adventure replay format v3. Each bumps once in the task that first changes it.
 
 - `shared/` (T18a): `arch.toml` (`h3-game` → `h3-heroes`, `h3-battle`, `h3-content-battle`);
   `h3_contracts::AdventureProfile`; `h3_content` hero-effect kinds for Necromancy (raise share by
-  level), Learning (experience share) and Intelligence (spell points share).
+  level), Learning (experience share), Intelligence (spell points share) and Diplomacy's join
+  bonus (§2).
 - `cross-lane` (battle-owned): the effects' values in the packs (the harvester's gap-fill; the
   skills' levels, Isra's and Vidomina's specialties, the necromancy artifacts' parts for increment
   4), `h3-heroes`' new derivations (`adventure_profile`, the maximum spell points, the Necromancy

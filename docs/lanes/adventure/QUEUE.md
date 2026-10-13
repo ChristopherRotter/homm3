@@ -10,13 +10,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 Proposed by T17b (`docs/epics/E08-design.md` §10, §11), for the user at ADV-Q13.
 
-- **Scope:** one `shared/` pull request, merged before T18b: `arch.toml` (`h3-game` gains `h3-heroes`, `h3-battle`, `h3-content-battle`); `h3_contracts::AdventureProfile` (Attack, Defense, the Diplomacy level; design §2); `h3_content` hero-effect kinds for Necromancy, Learning and Intelligence (design §10), each with its pack syntax and validation.
+- **Scope:** one `shared/` pull request, merged before T18b: `arch.toml` (`h3-game` gains `h3-heroes`, `h3-battle`, `h3-content-battle`); `h3_contracts::AdventureProfile` (Attack, Defense, the join bonus; design §2); `h3_content` hero-effect kinds for Necromancy, Learning, Intelligence and Diplomacy's join bonus (design §10), each with its pack syntax and validation.
 - **Acceptance:** the full verify green on the branch (a `shared/` branch runs it whole); the kinds documented in `packs/README.md`'s effect list; no pack uses them yet. Definition of Done (`docs/05-testing.md`).
 - **Depends on:** ADV-Q13 (the drafts accepted, the cut confirmed). **Status:** waiting (ADV-Q13).
 
 ### E08 T18b — The store of heroes, their defaults and profiles, the import of their customisations
 
-- **Scope:** design §1 and §2: `GameState`'s heroes' details (GAM-HER-001), the setup's customisations and defaults (experience 40–90 from the setup stream, D-12; spell points full), validation by `h3-heroes`, the adventure profile on the hero on the map, the game's difficulty in `AdventureSetup`, the import of the hero bodies (`ADV-STUB-1` closed; `Unsupported` for an experience of 1 000 or more), the owner's observation of its heroes' details; `cross-lane`: the values of T18a's kinds in the packs (Intelligence's levels) and `h3-heroes`' `adventure_profile` and maximum spell points. Versions: game state hash v5, adventure state hash v7, import v4 (first bumps of the increment).
+- **Scope:** design §1 and §2: `GameState`'s heroes' details (GAM-HER-001), the setup's customisations and defaults (experience 40–90 from the setup stream, D-12; spell points full), validation by `h3-heroes`, the adventure profile on the hero on the map, the game's difficulty in `AdventureSetup`, the import of the hero bodies (`ADV-STUB-1` closed; `Unsupported` for an experience of 1 000 or more), the owner's observation of its heroes' details; `cross-lane`: the values of T18a's kinds in the packs (Intelligence's and Diplomacy's levels) and `h3-heroes`' `adventure_profile` and maximum spell points. Versions: game state hash v5, adventure state hash v7, import v4 (first bumps of the increment).
 - **Acceptance:** every shipped map's static layer still imports and validates; the maps with placed heroes import their customisations or fail with the typed error; GAM-HER-001 `implemented` with sources; the env, replays (re-recorded if the hash moved) and benchmarks (`fork-xl-144` with the heroes' store measured) green. Definition of Done.
 - **Depends on:** T18a merged. **Status:** waiting (ADV-Q13).
 
