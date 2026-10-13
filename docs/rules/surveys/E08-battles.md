@@ -128,8 +128,10 @@ Elemental.
 `original-data` (`setup_map_objects`, case 54 at 0x4C1923): a count of 0 becomes
 `random_between(low, high)` from the creature's adventure-map range (the creature record's +0x6C
 and +0x70, `CRTRAITS.TXT`'s "AdvMap Low/High"). `vcmi` `initObj`: the same (`advMapAmountMin/Max`).
-`wiki`: random "between 1–99, depending on the creature type". Consensus. The packs do not hold
-the two values yet: a harvest of two `CRTRAITS.TXT` columns (battle-owned harvester, `cross-lane`).
+`wiki`: random "between 1–99, depending on the creature type". Consensus. The packs hold the two
+values already: `adventure_count` in each creature of `core.toml` (`h3-harvest` reads `CRTRAITS.TXT`'s
+columns 21 and 22; `h3_content::CreatureInfo::adventure_count`). *Corrected in T17b:* the survey first
+said a harvest was needed.
 
 ### 1.6 When the draws happen (decision 17)
 
@@ -513,13 +515,18 @@ in the engine (as increment 2's offers).
 
 ## 12. Sizing the user's calls at the checkpoint
 
+*Decided at the checkpoint (ADV-Q12, 2026-10-13; the epic's decisions 22–24):* joining and fleeing
+yes, hero against hero yes, custom experience and treasures with an artifact `Unsupported`, D-8 to
+D-13 as the reading, A-6 always fixed; at ADV-Q13 the tile's obstacles and split fix-optional
+(`ADV-QUIRK-5`, `ADV-QUIRK-6`). The drafts: T17b (`docs/lanes/adventure/adr-drafts/`).
+
 - **Monsters joining and fleeing** (decision 19's open part): three more offer kinds of
   increment 2's shape (§11), the decision's inputs (§3.1: power in single precision, sympathy by
   faction and level, Diplomacy, the game's difficulty), the army's room when a group joins (the
   original's army dialog was not read: the engine needs a rule, for example refusing the offer
   when no slot fits, or letting the player merge first), and gold paid through the treasury.
   Without them every monster fights (the original's step 1 alone), which changes the game for the
-  138 compliant and friendly monsters of the shipped maps most.
+  174 compliant and friendly monsters of the shipped maps most (136 + 38, §1.1; corrected in T17b).
 - **Battles between two players' heroes** (decision 19's open part): a battle owned by two players
   (ADR-0017 point 6), the defender acting outside its turn, the artifacts captured by the winner
   (the slot rules of increment 4, or the backpack only), +500 experience, the surrender's gold
@@ -569,7 +576,7 @@ implementing task writes the entries.
 | ADV-MON-001 | Monsters in the import: classes 54, 71–75, 162–164; the body's count, disposition, never flees, does not grow, treasure (§1.1, §1.2) | the count bound |
 | ADV-MON-002 | Aggression by disposition, drawn at setup (§1.3) | — |
 | ADV-MON-003 | Random monsters' creature by level, drawn at setup (§1.4) | — |
-| ADV-MON-004 | Random counts from the creature's adventure-map range, drawn at setup (§1.5) | the harvest |
+| ADV-MON-004 | Random counts from the creature's adventure-map range, drawn at setup (§1.5) | — |
 | ADV-MON-005 | Guarded tiles: the 3 × 3 scan, its order, water, not from above (§2.1) | — |
 | ADV-MON-006 | A step onto a guarded tile ends the move and starts the guard's visit; a path does not go on from a guarded tile but the start (§2.2) | — |
 | ADV-MON-007 | The monster's answer: power, sympathy, Diplomacy and Easy, the four outcomes (§3) | D-8, D-9, D-10; joining and fleeing (user) |

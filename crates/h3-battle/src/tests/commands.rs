@@ -314,6 +314,7 @@ fn state_hash_is_pinned() {
         obstacles: vec![stone],
         battlefield: h3_content::ContentKey::parse("t:holy").ok(),
         anti_magic: true,
+        siege: None,
         ..setup(&r, &[(0, "fixed", 3), (2, "wisp", 7)], &[(0, "slow", 4)])
     };
     let s = BattleState::new(&r, &setup, 7).unwrap();

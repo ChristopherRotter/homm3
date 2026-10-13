@@ -2890,6 +2890,7 @@ pub fn setup(rules: &BattleRuleset, attacker: &[Spec], defender: &[Spec]) -> Bat
         terrain: None,
         battlefield: None,
         anti_magic: false,
+        siege: None,
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],

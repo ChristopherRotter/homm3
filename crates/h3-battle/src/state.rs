@@ -987,6 +987,7 @@ impl BattleState {
             terrain: setup.terrain,
             battlefield,
             anti_magic: setup.anti_magic,
+            // stub: BAT-STUB-2 — `setup.siege` is not read yet (E04c T5).
             effects: Effects::new(),
             spell_obstacles: SpellObstacles::new(),
             raised: Raised::default(),

@@ -97,3 +97,6 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   mastery of a spell) is derived once in `h3-heroes` for every context, as the original keeps it
   in the hero record (`installation.md` §7.22); the battle's own best-school code went, and the
   seam carries a mastery per spell (ADR-0014 point 2).
+- 2026-10-13 (E04c T5a; the user, BAT-Q40): point 5's reserved `siege` fields are decided by
+  ADR-0023: the setup's is `BattleSetup.siege`, the outcome's is dropped (the original writes
+  nothing about the walls back to the town). The battlefield kind is ADR-0022's.
