@@ -135,6 +135,44 @@ fn the_last_steps_of_a_day() {
     assert_eq!(hero(&state, 1), (p(9, 0), 0));
 }
 
+// covers: ADV-MOV-006
+#[test]
+fn the_points_left_after_a_step_reproduce_batch_2() {
+    // E08 batch 2 (experiments/results/E08-batch-2.md, D3a-D3d): after a step the points left
+    // drop to 0 only when fewer than the cheapest straight step from the new tile remain (its
+    // road's cost, else 100): the reading, observed in SoD; VCMI drops them below the step's own
+    // cost, the wiki never. A Peasant has 1300 points; a step costs what the tile left costs.
+    let rules = movement_rules(false);
+    let walk = |row: &str, steps: u16| {
+        let mut state = world_state(&rules, &[row], vec![hero_at(1, 0, p(0, 0), &[PEASANT])]);
+        state.explore_all();
+        let path: Vec<Pos> = (1..=steps).map(|x| p(x, 0)).collect();
+        (
+            move_hero(&mut state, &rules, RED, 1, &path),
+            hero(&state, 1),
+        )
+    };
+    // D3a: 200 left on sand, onto a cobblestone road: 50 left (not below the road's 50), and a
+    // further road step (VCMI: 0 and no step).
+    assert_eq!(walk("ggsssssssSSs", 9).1, (p(9, 0), 50));
+    assert_eq!(walk("ggsssssssSSs", 10).1, (p(10, 0), 0));
+    // D3b: the same onto a dirt road: 50 is below its 75, so none are left and no step follows
+    // (the wiki: 50 left).
+    assert_eq!(walk("ggsssssssddd", 9).1, (p(9, 0), 0));
+    assert_eq!(
+        walk("ggsssssssddd", 10).0,
+        Err(AdventureCommandError::TooFewPoints {
+            step: 9,
+            cost: 75,
+            points: 0
+        })
+    );
+    // D3c: 100 left on a tile without a road stay (VCMI: 0).
+    assert_eq!(walk("sssssssss", 8).1, (p(8, 0), 100));
+    // D3d: 50 left there drop to 0 (the wiki: 50).
+    assert_eq!(walk("ggssssssss", 9).1, (p(9, 0), 0));
+}
+
 // covers: ADV-MOV-004, ADV-MOV-006
 #[test]
 fn a_native_army_moves_at_the_native_cost() {

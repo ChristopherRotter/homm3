@@ -171,7 +171,7 @@ numeric  = "integer"
 id       = "ADV-MOV-006"
 title    = "A step needs its price; the diagonal exception; the points left"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "A step is made only with at least its price in points left; MoveHero takes only paths payable today and rejects one with a step it cannot pay (the original stops there and loses the rest). The diagonal exception: with points from a check cost C up to ⌊C × √2⌋ (inclusive) a diagonal costs only its straight cost; C is the step's own straight cost, or under ADV-QUIRK-2 without the road and under ADV-QUIRK-3 without the native cost (the original compares with the source terrain's plain cost). After each step the points left drop to 0 when fewer remain than the cheapest straight step from the new tile: its road's cost, else the native cost (D-3: the code reading; VCMI's rule, below the step's own straight cost, not taken: the user, ADV-Q3, 2026-10-11). E08 T7b: `Pricing::step`, `Pricing::left_after`, `MoveHero`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-2", "ADV-QUIRK-3"]
@@ -196,6 +196,13 @@ quirks   = ["ADV-QUIRK-2", "ADV-QUIRK-3"]
   retrieved  = "2026-10-09"
   confidence = "high"
   note       = "Agrees on the clean exception's check, not on its charge or its last-step rule (D-3)."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-2.md D3a-D3d (SoD 4.0 Complete, plain HD, 2026-10-13; stamp 59a4b43d): one-Angel heroes (2000 points) walk 13 tiles east; 200 points on sand, onto a cobblestone road: 50 left, the next road tile green and stepped onto, 0 left; the same onto a dirt road: 0 left, the next tile red, no step; 100 left on a snow tile reached from sand: 100; 50 left there: 0"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+  note       = "Confirms the reading's points left after a step (D-3, ADV-Q3): VCMI's drop below the step's own cost refuted by D3a and D3c, the wiki's no drop by D3b and D3d. The diagonal exception rests on the reading. Regression test: the_points_left_after_a_step_reproduce_batch_2."
 
 [[rule]]
 id       = "ADV-MOV-007"
@@ -504,7 +511,7 @@ numeric  = "integer"
 id       = "ADV-PIK-001"
 title    = "Resource piles"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "A resource pile holds one resource: the map's fixed amount or, when it gives none, one drawn at setup between 5 and 10 (wood, ore, gold) or 3 and 6 (mercury, sulfur, crystal, gems), times the type's multiplier (gold 100). A visit gives the visitor's owner the amount and removes the pile (E08 T13b: from the neighbouring tile, ADV-OBJ-003; the gain to the treasury, GAM-RES-001). Data: packs/base/adventure.toml (pile_*). E08 T12b: the draw when the game is built (`AdventureState::new`, in the second walk, in object order, from the setup stream after the starting armies), the contents in the static map, hidden from every viewer. D-5: the user took the reading with the wiki over VCMI's 6-10 and 3-5 (ADV-Q10)."
 numeric  = "integer"
 
@@ -527,6 +534,13 @@ numeric  = "integer"
   retrieved  = "2026-10-12"
   confidence = "medium"
   note       = "Disagrees on the ranges (D-5); not taken (ADV-Q10)."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-2.md D5w, D5m (SoD 4.0 Complete, plain HD, 2026-10-13; stamp 59a4b43d): 16 random wood piles gave 5, 6, 6, 5, 7, 5, 7, 8, 9, 9, 7, 9, 9, 7, 8, 6; 16 random mercury piles 3, 5, 3, 5, 4, 6, 6, 4, 5, 5, 4, 3, 3, 3, 6, 6"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+  note       = "Confirms the reading's and the wiki's ranges (D-5, ADV-Q10): wood piles of 5 and mercury piles of 6 refute VCMI's 6-10 and 3-5."
 
 [[rule]]
 id       = "ADV-PIK-002"
