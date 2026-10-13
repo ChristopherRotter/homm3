@@ -177,6 +177,8 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
         ClientMessage::Describe { seq: 33 },
         // E16 M6 T3.
         ClientMessage::ListPeers { seq: 34, from: 50 },
+        // E16 M6 T5.
+        ClientMessage::Lists { seq: 35 },
     ];
     out.extend(
         commands()
@@ -471,6 +473,15 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             from: 50,
             total: 2,
             entries: vec![],
+        },
+        // E16 M6 T5: one list, and none.
+        ServerMessage::ListsAre {
+            seq: 35,
+            lists: vec![crate::list::sign(&super::list::list(), &super::Fold)],
+        },
+        ServerMessage::ListsAre {
+            seq: 36,
+            lists: vec![],
         },
     ]);
     out.extend(

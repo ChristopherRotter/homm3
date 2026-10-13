@@ -14,7 +14,8 @@
 //! - [`account`]: login and display names, keys as hex, the bytes a login signs (M3 T1);
 //! - [`ladder`]: the ladders' queues, the matcher and a match's answers (M4 T2);
 //! - [`card`]: the server's signed card, its bounds and its reading (M6 T2), the chain of vouching
-//!   of the cards it relays (M6 T3).
+//!   of the cards it relays (M6 T3);
+//! - [`list`]: lists of servers signed by a list's key, their bounds and their reading (M6 T5).
 //!
 //! Logic crate in the adapter layer (ADR-0018 point 1): pure, deterministic, `no_std` + `alloc`
 //! (ADR-0003, ADR-0005). The lint header below is required and checked by `cargo xtask check-arch`.
@@ -43,6 +44,7 @@ pub mod card;
 pub mod codec;
 pub mod connection;
 pub mod ladder;
+pub mod list;
 pub mod lobby;
 pub mod map;
 pub mod session;
@@ -57,9 +59,10 @@ pub mod wire;
 /// 1): the hello names a nonce and the address the client dialed; the welcome carries the server's
 /// key and its signature. v25 (E16 M6 T2, ADR-0021 point 2): `Describe` and `Described`, the
 /// server's signed card. v26 (E16 M6 T3, ADR-0021 point 3): `ListPeers` and `Peers`, the cards a
-/// server relays. v27 (E17 CLT-Q1): a walker's `Moved` comes hex by hex, one per position of its
-/// path (BAT-MOV-003); the message is unchanged, its meaning is new.
-pub const PROTOCOL_VERSION: u32 = 27;
+/// server relays. v27 (E16 M6 T5, ADR-0021 point 5): `Lists` and `ListsAre`, the signed lists of
+/// servers a server serves. v28 (E17 CLT-Q1): a walker's `Moved` comes hex by hex, one per
+/// position of its path (BAT-MOV-003); the message is unchanged, its meaning is new.
+pub const PROTOCOL_VERSION: u32 = 28;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

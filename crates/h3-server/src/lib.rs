@@ -48,6 +48,7 @@ mod ids;
 mod journal;
 mod key;
 mod ladders;
+mod lists;
 mod net;
 mod peers;
 mod players;
@@ -59,6 +60,7 @@ mod tests;
 
 pub use config::{BotSeat, Config, Limits};
 pub use journal::JOURNAL_FORMAT_VERSION;
+pub use lists::{list_key, sign_list};
 use registry::Registry;
 
 /// Why the server does not start.
@@ -274,6 +276,7 @@ pub(crate) async fn launch(
         tls,
         config.discovery,
         server.id.clone(),
+        config.server.data.join(lists::LISTS_DIR),
     ));
     let (stop, stopping) = watch::channel(false);
     let grace = (config.ladders.iter())

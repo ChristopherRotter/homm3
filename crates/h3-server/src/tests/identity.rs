@@ -39,7 +39,7 @@ async fn the_server_key_signs_every_welcome_and_survives_a_restart() {
     // A key file that does not parse stops the start, and stays as it was.
     std::fs::write(other.server.data.join(KEY_FILE), "not a key\n").unwrap();
     let error = start(&other).await.unwrap_err();
-    assert!(error.0.contains("not a server key"), "{error}");
+    assert!(error.0.contains("not a key"), "{error}");
     let kept = std::fs::read_to_string(other.server.data.join(KEY_FILE)).unwrap();
     assert_eq!(kept, "not a key\n");
 }

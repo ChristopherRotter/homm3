@@ -77,7 +77,7 @@ game, seat }`, `Unqueued { reason }`, `GameInfo::ladder`, the refusals `NoSuchLa
 `LeaderboardPage`, `Rating`,
 `PauseProposed`, a forfeit's result. M6 (§12): `Describe { seq }` → `Described { seq, card }`
 (code since M6 T2); `ListPeers { seq, from }` → `Peers { seq, from, total, entries }` (code since
-M6 T3).
+M6 T3); `Lists { seq }` → `ListsAre { seq, lists }` (code since M6 T5).
 
 ## 3. The client's content check (for the client lane, M2)
 
@@ -402,10 +402,11 @@ as `login_message` does; `h3-protocol` builds the bytes, `h3-server` and clients
   hops first, peers in configured order. As built: the fetch reads at most `cards` of P's cards
   and checks each within `depth` against P's card and P's other cards (`vouched`; a card that does
   not hold or whose chain does not is dropped and logged; a card P relays for a list, `list`
-  set, is not relayed on: T5's to decide); what `ListPeers` serves is rebuilt after each fetch and
-  each round (`relay`), each chain checked again against the cards relayed before it (a link's
-  card may come from a shorter chain than the peer's, and the client checks with the one served),
-  the server's own card never; a card is served until the first card of its chain expires.
+  set, is not relayed on: P's list is not this server's); what `ListPeers` serves is rebuilt after
+  each fetch and each round (`relay`), each chain checked again against the cards relayed before
+  it (a link's card may come from a shorter chain than the peer's, and the client checks with the
+  one served), the server's own card never; a card is served until the first card of its chain
+  expires.
   *Provisional*: `depth` 1 to 4, `cards` 1 to 1000; the log lines.
 - **`ListPeers`** (T3, built: wire 26, `h3_protocol::wire::RelayedCard`, `card::PAGE`,
   `card::chain`). `ListPeers { seq, from }` → `Peers { seq, from, total, entries: [{ card,
@@ -413,14 +414,25 @@ as `login_message` does; `h3-protocol` builds the bytes, `h3-server` and clients
   the hello, without a login, answered on the connection's task. A client verifies each card and
   each link as the server does: `card::chain(&[relaying server's card, via's cards…, the card])`,
   the cards `via` names among those relayed (the test client's `relayed` does so).
-- **Lists** (T5). `ServerList { key, name, issued, expires, servers: [{ key, address }] }`, on
-  disk and on the wire as `SignedList { list, signature }` (the text as signed, `h3-list-v1`);
-  files in `<data>/lists/`, read at start and at each refresh; a list that does not verify or has
-  expired is skipped and logged. A list's servers are fetched as configured peers are (depth 1,
-  within `cards`, after the peers), their cards marked with the list's key; `Lists { seq }` →
-  `ListsAre { seq, lists }` gives the signed lists, so a client checks a listed card's membership.
-  Tools: `h3-server list-key <file>` (a list key) and `h3-server sign-list --key <file> <list.toml>`
-  (a signed list from a TOML list of servers and an expiry).
+- **Lists** (T5, built: wire 27; `h3_protocol::list`, the wire's `ServerList`, `ListedServer`,
+  `SignedList`; `h3-server`'s `lists.rs`, `peers.rs`). `ServerList { key, name, issued, expires,
+  servers: [{ key, address }] }`, on disk and on the wire as `SignedList { list, signature }` (the
+  text as signed, `h3-list-v1`); `list::read` checks it as `card::read` checks a card (one
+  `card::read_signed` behind both; the error is `CardError`); bounds: 32 KiB of text, 128
+  servers, no key twice, a name of 64 bytes; at most 16 lists served. Files `<data>/lists/*.json`,
+  read at start and at each round in their names' order; a file that does not read, a list that
+  does not hold, a second list of one key and any beyond 16 are skipped and logged. A list's
+  servers are fetched as configured peers are, at depth 1 (their own cards only), after the
+  peers: each key once (the first list's), neither the server's own nor a peer's, at most `cards`
+  less the peers; a server named again at the same address keeps its last good card. What
+  `ListPeers` serves puts them after the peers' own cards and before the peers' relays, marked
+  with the list's key, each until it or its list expires. `Lists { seq }` → `ListsAre { seq, lists
+  }` gives the signed lists that hold, so a client checks a listed card's membership
+  (`list::names`: the list names the card's key at one of the card's addresses; the test client's
+  `relayed` does so). Tools: `h3-server list-key <file>` (a list's key, written if there is none;
+  its public key printed) and `h3-server sign-list --key <file> <list.toml>` (`name`,
+  `valid_days` 1 to 366, `[[server]] key address`; the signed list printed). *Provisional*: the
+  bounds, the files' form, the listed servers' place, the TOML's form.
 - **Client side** (the client lane): bookmarks with pinned keys; a browser view that merges
   the cards from every known server and list, groups them by content the client has, shows the
   vouching chain and the age of each card, and connects only on the player's choice.

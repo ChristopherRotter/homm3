@@ -1704,3 +1704,52 @@ were written in; the archive's older replays are the battle lane's replay format
   named `cards`, now a key: it names `hops`.
 - **Docs**: the operator's notes (beyond the peers, the memory bound), `server.example.toml`,
   `config.rs`'s format, the design note's §12, the M6 review list.
+
+### M6 T5 — Lists (2026-10-13)
+
+- **The start.** #165 (T4) merged; `master`'s code was the code CI's full verify (run 529) and the
+  session's scoped verify had passed on, so the baseline stood. The branch restarted from it.
+- **The protocol** (wire 27): `ServerList { key, name, issued, expires, servers: [ListedServer {
+  key, address }] }`, travelling and stored as `SignedList { list, signature }` (the text as
+  signed after `h3-list-v1`, `account::list_message`); `Lists { seq }` → `ListsAre { seq, lists
+  }`, after the hello without a login (the gate passes it to the host). `h3_protocol::list`:
+  `fits` (the key, a name of 64 bytes, issued before it expires, at most `MAX_SERVERS` 128 servers
+  with keys and WebSocket addresses, no key twice), `sign`, `read`, `names` (the list names the
+  card's key at one of the card's addresses: a client's check of a listed card), `MAX_LIST_BYTES`
+  (32 KiB), `MAX_LISTS` (16). `card::read` and `list::read` share `card::read_signed` behind a
+  crate-private `Signed` trait (the bounds, the parse, the key's signature, the times); the error
+  stays `CardError`.
+- **The server** (`h3-server`'s `lists.rs`): `<data>/lists/*.json`, each a `SignedList` as JSON,
+  read at the start of each round (so at start) in their names' order; a file that does not read
+  or is larger than a list's escaped text, a list that does not hold (`lists::verify`, Ed25519),
+  a second list of one key and any beyond 16 are skipped, one log line each (`h3-server: list
+  <file>: <why>; skipped`; never the file's text). `peers.rs`: `Peers::list` takes the lists and
+  picks the servers the round fetches: each key once (the first list's), neither the server's own
+  nor a peer's, at most `cards` less the peers; one named again at the same address keeps its last
+  good card. After the peers, each is fetched as a peer is (`fetch_logged`, the fetch's task and
+  log shared with the peers'), at depth 1. `relay` puts their cards after the peers' own and
+  before the peers' relays, marked with the list's key (`RelayedCard::list`), each until it or its
+  list expires (a chain through a listed server's card works as through any served card). `Lists`
+  answers the lists that hold, as signed. *Provisional*: the files' form and order, the place
+  after the peers' own cards, the bounds.
+- **The tools**: `h3-server list-key <file>` (`ServerKey::at`, the server key's file code for any
+  path: written if there is none, mode 0600, never replaced; its public key printed) and
+  `h3-server sign-list --key <file> <list.toml>` (`name`, `valid_days` 1 to 366, `[[server]] key
+  address`; issued now; the signed list printed as JSON, refused out of its bounds).
+- **The test client**: `lists(seq)` (each list checked), and `relayed` checks a card marked with a
+  list against that list among the server's (`list::names`) instead of a chain.
+- **Tests** (`h3-protocol` 107 → 114, `h3-server` 140 → 146): the bytes a list signs, its text,
+  tampered, foreign and too large lists, its times, its bounds, `names`; `Lists` needs the hello,
+  not a login; the messages round-trip. In `h3-server`: the listed servers' place, marking and
+  expiry in `relay`; which servers a round fetches (not the server, not a peer, once, within
+  `cards`; a card kept at the same address); `Lists` gives the lists that hold; over loopback, a
+  server with six files in `<data>/lists/` (a good list naming B; an expired, a forged, a
+  malformed one and a second of the good one's key naming D; a `.txt` file) serves the good list
+  and relays B marked with its key, D never, the test client checking each; the files removed,
+  the next rounds serve neither; the tools make a key and a list that verifies and refuses lists
+  out of bounds; 17 files read as 16, a file too large or a directory skipped; the test client
+  refuses a card marked with a list its server does not give.
+- **The client workspace** builds against wire 27 (`clients/scripts/check.sh`, standing in for its
+  CI job, which runs because `h3-protocol` changed).
+- **Docs**: the operator's notes (lists, the tools), the design note's §2 and §12, the M6 review
+  list.

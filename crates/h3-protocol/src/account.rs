@@ -35,6 +35,9 @@ const WELCOME: &[u8] = b"h3-welcome-v1";
 /// What a server's card signs first (E16 M6 T2).
 const CARD: &[u8] = b"h3-card-v1";
 
+/// What a list of servers signs first (E16 M6 T5).
+const LIST: &[u8] = b"h3-list-v1";
+
 /// Whether `login` is a login name: 3 to 20 of `a`–`z`, `0`–`9`, `_` and `-`. A client lowercases
 /// what its player typed: the key's derivation is salted with exactly this text, so the server
 /// takes no other case.
@@ -151,6 +154,14 @@ pub fn welcome_message(
 /// card's text (`crate::wire::SignedCard::card`), exactly as it travels.
 pub fn card_message(text: &str) -> Vec<u8> {
     let mut out = Vec::from(CARD);
+    push_text(&mut out, text);
+    out
+}
+
+/// The bytes a list's key signs (E16 M6 T5, ADR-0021 point 5): its purpose and the list's text
+/// (`crate::wire::SignedList::list`), exactly as it travels.
+pub fn list_message(text: &str) -> Vec<u8> {
+    let mut out = Vec::from(LIST);
     push_text(&mut out, text);
     out
 }

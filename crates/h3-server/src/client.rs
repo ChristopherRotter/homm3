@@ -5,9 +5,9 @@
 //! as gone (SRV-Q20). Its hello names a fresh nonce and the address it dialed, and it checks the
 //! welcome's signature by the server's key, and the key against one it pinned (E16 M6 T1,
 //! ADR-0021 point 1), and the server's card by the welcome's key (E16 M6 T2), and each card the
-//! server relays with the chain that vouches for it (E16 M6 T3, T4). A server fetching its peers'
-//! cards dials them through it (`Client::dial`, `wss://` through the TLS client, its reading
-//! bounded). Provisional.
+//! server relays with the chain that vouches for it (E16 M6 T3, T4), or against the signed list it
+//! was fetched for (T5). A server fetching its peers' cards dials them through it (`Client::dial`,
+//! `wss://` through the TLS client, its reading bounded). Provisional.
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -18,7 +18,9 @@ use futures_util::{SinkExt, StreamExt};
 use h3_protocol::PROTOCOL_VERSION;
 use h3_protocol::account::{self, CHALLENGE_BYTES, KEY_BYTES, NONCE_BYTES, SIGNATURE_BYTES};
 use h3_protocol::codec;
-use h3_protocol::wire::{ClientMessage, RelayedCard, Seat, ServerCard, ServerMessage, SignedCard};
+use h3_protocol::wire::{
+    ClientMessage, RelayedCard, Seat, ServerCard, ServerList, ServerMessage, SignedCard, SignedList,
+};
 use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
@@ -28,7 +30,7 @@ use tokio_tungstenite::{Connector, MaybeTlsStream, WebSocketStream};
 
 use crate::Error;
 use crate::accounts::{Authenticator, Ed25519};
-use crate::card;
+use crate::{card, lists};
 
 /// An account's signing key (E16 M3 T2a; ADR-0019 point 1; `E16-design.md` §10).
 #[derive(Debug, Clone)]
@@ -286,14 +288,39 @@ impl Client {
         }
     }
 
-    /// Every card the server relays (E16 M6 T3, T4), page by page, each checked as a client checks
-    /// it: the card holds ([`card::verify`]), and the chain vouches for it from the server's own
-    /// card `own` (its `Describe`) through the cards its `via` names, which the server relays too
+    /// The lists of servers the server serves (E16 M6 T5), each as signed and as it reads now
+    /// ([`lists::verify`]); one that does not hold fails.
+    pub async fn lists(&mut self, seq: u32) -> Result<Vec<(ServerList, SignedList)>, Error> {
+        self.send(&ClientMessage::Lists { seq }).await?;
+        let Some(ServerMessage::ListsAre {
+            seq: answered,
+            lists,
+        }) = self.recv().await
+        else {
+            return Err(Error(String::from("no lists")));
+        };
+        if answered != seq {
+            return Err(Error(String::from("another answer's lists")));
+        }
+        (lists.into_iter())
+            .map(|signed| match lists::verify(&signed, card::wall_ms()) {
+                Ok(list) => Ok((list, signed)),
+                Err(e) => Err(Error(format!("a list does not hold: {e:?}"))),
+            })
+            .collect()
+    }
+
+    /// Every card the server relays (E16 M6 T3–T5), page by page, each checked as a client checks
+    /// it: the card holds ([`card::verify`]); a card relayed for a list (`list`) is named by that
+    /// list among the server's lists that hold ([`Client::lists`], [`h3_protocol::list::names`]);
+    /// any other, the chain vouches for it from the server's own card `own` (its `Describe`)
+    /// through the cards its `via` names, which the server relays too
     /// ([`h3_protocol::card::chain`]).
     pub async fn relayed(
         &mut self,
         own: &ServerCard,
     ) -> Result<Vec<(ServerCard, RelayedCard)>, Error> {
+        let lists = self.lists(u32::MAX).await?;
         let mut all = Vec::new();
         loop {
             let from = u32::try_from(all.len()).unwrap_or(u32::MAX);
@@ -310,6 +337,16 @@ impl Client {
         }
         let relayed = |key: &String| all.iter().map(|(card, _)| card).find(|c| c.key == *key);
         for (read, entry) in &all {
+            if let Some(key) = &entry.list {
+                let list = lists.iter().find(|(list, _)| list.key == *key);
+                if !list.is_some_and(|(list, _)| h3_protocol::list::names(list, read)) {
+                    return Err(Error(format!(
+                        "a relayed card its list does not name: {}",
+                        read.key
+                    )));
+                }
+                continue;
+            }
             let links: Option<Vec<&ServerCard>> = entry.via.iter().map(relayed).collect();
             let chain = links.map(|links| {
                 let chain = std::iter::once(own).chain(links).chain([read]);
