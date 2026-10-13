@@ -322,6 +322,23 @@ fn scenario_errors() {
     assert!(duel.random_obstacles);
     let (ruleset, setup) = synthetic(SYNTHETIC_DUEL).unwrap();
     assert_eq!(setup.terrain, ruleset.terrain_by_key("synthetic:meadow"));
+    assert_eq!(
+        (setup.battlefield.as_ref(), setup.anti_magic),
+        (None, false)
+    );
+    // A special battlefield and an anti-magic garrison (E04c T2b): the key is checked by the
+    // battle, only its syntax here.
+    let field = SYNTHETIC_DUEL.replace(
+        "random_obstacles = true",
+        "random_obstacles = true\nbattlefield = \"synthetic:hallow\"\nanti_magic = true",
+    );
+    let (_, setup) = synthetic(&field).unwrap();
+    assert_eq!(
+        setup.battlefield.map(|k| k.as_str().to_owned()),
+        Some("synthetic:hallow".to_owned())
+    );
+    assert!(setup.anti_magic);
+    assert!(parse_scenario(&format!("{header}battlefield = \"no key\"\n")).is_err());
     let elsewhere = SYNTHETIC_DUEL.replace("synthetic:meadow", "synthetic:moon");
     assert_eq!(
         synthetic(&elsewhere),
@@ -925,9 +942,22 @@ fn format_v2_fields_and_expansion_packs() {
         [
             ("synthetic:boulder", false, 2),
             ("synthetic:crag", false, 3),
+            ("synthetic:cairn", false, 2),
             ("synthetic:ridge", true, 4)
         ]
     );
+    // Special battlefields (pack format v36, E04c T2b): the hallow's own obstacle, its rules.
+    let hallow = base.battlefield_by_key("synthetic:hallow").unwrap();
+    assert_eq!(base.obstacles()[2].battlefields, [hallow]);
+    assert!(base.obstacles()[2].terrains.is_empty());
+    let h = base.battlefield(hallow).unwrap();
+    assert!(h.own_obstacles && h.morale[0].amount == 1 && h.expert_schools.len() == 1);
+    let barrens = base
+        .battlefield(base.battlefield_by_key("synthetic:barrens").unwrap())
+        .unwrap();
+    assert!(barrens.no_morale && barrens.no_luck && barrens.no_native);
+    assert!(barrens.no_creature_casts && barrens.max_spell_level == 1);
+    assert!(barrens.luck.is_empty() && barrens.blocked.is_empty() && !barrens.expert_other_casts);
     assert_eq!(base.obstacles()[1].blocked[2], (1, -1));
     let bad_ref =
         SYNTHETIC_PACK.replace("native_terrain = \"meadow\"", "native_terrain = \"Meadow\"");
@@ -1846,6 +1876,8 @@ fn harvested_hero_effects_reproduce_the_experiments() {
             obstacles: vec![],
             heroes: [Some(derive_battle_hero(&details, &sod).unwrap()), None],
             terrain: None,
+            battlefield: None,
+            anti_magic: false,
             war_machines: [war_machines(&details, &sod), vec![]],
             formations: [Formation::Loose; 2],
             funds: [0; 2],

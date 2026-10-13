@@ -41,6 +41,11 @@ struct ScenarioHeader {
     defender_hero: Option<HeroEntry>,
     /// Terrain key of the battlefield (BAT-TER-001).
     terrain: Option<String>,
+    /// The special battlefield's key (E04c, BAT-TER-002), resolved by the battle.
+    battlefield: Option<String>,
+    /// The battle is at an anti-magic garrison (E04c, BAT-MAG-061).
+    #[serde(default)]
+    anti_magic: bool,
     /// Generate obstacles for the terrain when the battle starts (BAT-GEO-004).
     #[serde(default)]
     random_obstacles: bool,
@@ -902,11 +907,13 @@ pub struct ScenarioDef {
     pub(crate) obstacles: Vec<Obstacle>,
     pub(crate) heroes: [Option<HeroEntry>; 2],
     pub(crate) terrain: Option<String>,
+    pub(crate) battlefield: Option<ContentKey>,
+    pub(crate) anti_magic: bool,
     pub(crate) war_machines: [Vec<String>; 2],
     pub(crate) formations: [Formation; 2],
     pub(crate) funds: [u32; 2],
-    /// Whether obstacles are generated for the terrain when the battle starts (the caller does
-    /// it, with its seed; BAT-GEO-004). Excludes explicit obstacles.
+    /// Whether obstacles are generated for the terrain and the battlefield when the battle starts
+    /// (the caller does it, with its seed; BAT-GEO-004). Excludes explicit obstacles.
     pub random_obstacles: bool,
 }
 
@@ -1016,6 +1023,8 @@ impl ScenarioDef {
                     .transpose()?,
             ],
             terrain,
+            battlefield: self.battlefield.clone(),
+            anti_magic: self.anti_magic,
             war_machines: [
                 machines(&self.war_machines[0])?,
                 machines(&self.war_machines[1])?,
@@ -1060,6 +1069,13 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, BattlePackError> {
             .collect::<Result<_, _>>()?,
         heroes: [file.scenario.attacker_hero, file.scenario.defender_hero],
         terrain: file.scenario.terrain,
+        battlefield: file
+            .scenario
+            .battlefield
+            .as_deref()
+            .map(ContentKey::parse)
+            .transpose()?,
+        anti_magic: file.scenario.anti_magic,
         war_machines: [
             file.scenario.attacker_war_machines,
             file.scenario.defender_war_machines,

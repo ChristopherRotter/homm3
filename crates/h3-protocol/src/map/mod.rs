@@ -209,6 +209,7 @@ pub fn key_tables(ruleset: &BattleRuleset) -> KeyTables {
         factions: texts(&mut ruleset.factions().iter().map(|f| &f.key)),
         terrains: texts(&mut ruleset.terrains().iter().map(|t| &t.key)),
         obstacles: texts(&mut ruleset.obstacles().iter().map(|o| &o.key)),
+        battlefields: texts(&mut ruleset.battlefields().iter().map(|b| &b.key)),
     }
 }
 
@@ -312,6 +313,8 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
         cost_change,
         own_hero: own,
         terrain,
+        battlefield,
+        anti_magic,
         effects,
         spell_obstacles,
     } = o;
@@ -354,6 +357,8 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
         result: result.map(outcome),
         drawn: drawn.map(SpellId::raw),
         terrain: terrain.map(h3_content::TerrainId::raw),
+        battlefield: battlefield.map(h3_content_battle::BattlefieldId::raw),
+        anti_magic: *anti_magic,
         sides: [
             side_view(BattleSide::Attacker),
             side_view(BattleSide::Defender),

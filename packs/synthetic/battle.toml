@@ -49,6 +49,20 @@ surrender = { resource = "coin", cost_percent = 50 }  # BAT-FLE-002: half the co
 hero_casts_per_round = 1                    # BAT-MAG-001 (pack format v4)
 side_stack_limit = 20                       # BAT-MAG-037 (pack format v18)
 
+[[battlefield]]                      # pack format v36 (E04c): a special battlefield (BAT-TER-002)
+id = "hallow"
+own_obstacles = true                 # BAT-GEO-004: its own obstacle types (the cairn), not the terrain's
+morale = [{ factions = ["vale"], amount = 1 }]  # BAT-TER-003: Holy Ground's kind, by faction
+expert_schools = ["storm"]           # BAT-TER-005: a hero's Storm spells at Expert
+
+[[battlefield]]                      # Cursed Ground's kind
+id = "barrens"
+no_morale = true                     # BAT-TER-003: every stack's morale and luck 0
+no_luck = true
+no_native = true                     # BAT-TER-006: no native bonus
+max_spell_level = 1                  # BAT-TER-004: no spell above level 1 cast or taking effect
+no_creature_casts = true             # BAT-TER-004: no creature cast, raise or periodic cast
+
 [[obstacle]]
 id = "boulder"
 terrains = ["meadow", "ash"]
@@ -62,6 +76,13 @@ terrains = ["meadow"]
 width = 3
 height = 2
 blocked = [[0, 0], [1, 0], [1, -1]]
+
+[[obstacle]]
+id = "cairn"
+battlefields = ["hallow"]           # pack format v36: only on that battlefield
+width = 2
+height = 2
+blocked = [[0, 0], [1, -1]]
 
 [[obstacle]]
 id = "ridge"

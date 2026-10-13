@@ -48,11 +48,32 @@ url = "https://github.com/vcmi/vcmi/tree/1.7.5/config/factions"
 retrieved = "2026-10-01"
 
 [[source]]
-id = "vcmi-obstacles"
+id = "exe-battlefield"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.26): the battle's setup 0x4643B0 sets the special field (0 the shore, 1 Magic Plains, 2 Cursed Ground, 3 Holy Ground, 4 Evil Fog, 5 Clover Field, 6 Lucid Pools, 7 Fiery Fields, 8 Rocklands, 9 Magic Clouds), a ship and an anti-magic garrison; morale 0 and luck 0 on Cursed Ground, Holy Ground and Evil Fog +-1 by town 0-2 and 3-5, Clover Field luck +2 for towns 6-8 (0x43E000, 0x43DF20); no native stack on Cursed Ground (0x43D7C1); a hero's spells at Expert on Magic Plains in every school and on fields 6-9 in water, fire, earth, air (0x4E5100), other casts on Magic Plains only (0x59FEBC); no creature cast and no spell above level 1 on Cursed Ground (0x41F890, 0x59EB11, 0x5A80D1); the obstacle types (0x63C7C8, 0x63BEC0) by the field's bit or the terrain's, the two boats' 32 hexes (0x63D368) instead of random obstacles (0x466290)"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-13"
+
+[[source]]
+id = "game-texts-battlefield"
+kind = "original-data"
+ref = "ARRAYTXT.TXT and GENRLTXT.TXT (H3bitmap.lod): No morale effects on cursed ground; No luck effects on cursed ground; Creature of neutral town alignment on Clover Field +2; Creature of good town alignment on Holy Ground +1 (and the three others); you cannot cast spells over level one here (Cursed Ground)"
+url = "docs/rules/surveys/E04c-battlefields.md"
+retrieved = "2026-10-13"
+
+[[source]]
+id = "vcmi-battlefields"
 kind = "vcmi"
-ref = "config/obstacles.json (1.7.5): obstacle shapes (width, height, blocked tiles), terrains, absolute obstacles"
-url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/obstacles.json"
-retrieved = "2026-10-01"
+ref = "config/battlefields.json (1.7.5): the special battlefields' bonuses (MAGIC_SCHOOL_SKILL, MORALE and LUCK by alignment, BLOCK_MAGIC_ABOVE), ship_to_ship's impassable hexes; config/obstacles.json: the obstacle types, equal to the executable's"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/battlefields.json"
+retrieved = "2026-10-13"
+
+[[source]]
+id = "wiki-terrain"
+kind = "wiki"
+ref = "Terrain, the magical terrains (fetched 2026-10-13, summarised): Cursed Ground blocks spells above level 1 and creature casts and disables native bonuses; Magic Plains all spells at expert, creature spellcasting too; the elemental fields their school's spells at expert, creatures not affected; Holy Ground and Evil Fog +-1 morale by alignment; sand for tiles next to water"
+url = "https://heroes.thelazy.net/index.php/Terrain"
+retrieved = "2026-10-13"
 
 [[source]]
 id = "wiki-ab"
@@ -817,93 +838,101 @@ faction = "Conflux"
 terrain = "Grass"
 sources = ["wiki-native-terrain", "vcmi-factions"]
 
-# Obstacle types (BAT-GEO-004), from VCMI's table (`id` = VCMI index). Terrains by TERRNAME.txt
-# name. `blocked`: for usual obstacles [dx, dy] from the anchor (its bottom-left hex, dy < 0 is
-# upwards; VCMI's row-major offsets o are dy = floor((o + 8) / 17), dx = o - 17 dy), for absolute
-# obstacles [x, y] on the 17 x 11 field. Obstacles that only appear on special battlefields
-# (magic terrains, shore, ship) are left out with those battlefields (E04).
-[obstacles]
-sources = ["vcmi-obstacles"]
-list = [
-    { id = 0, terrains = ["Dirt"], width = 2, height = 1, blocked = [[0, 0], [1, 0]] },
-    { id = 1, terrains = ["Dirt", "Desert", "Rough", "Subterranean"], width = 3, height = 2, blocked = [[0, 0], [1, 0], [2, 0]] },
-    { id = 2, terrains = ["Dirt"], width = 4, height = 2, blocked = [[0, 0], [1, 0], [3, -1], [2, -1], [1, -1]] },
-    { id = 3, terrains = ["Dirt", "Rough"], width = 2, height = 1, blocked = [[0, 0], [1, 0]] },
-    { id = 4, terrains = ["Dirt", "Rough", "Subterranean"], width = 2, height = 1, blocked = [[0, 0], [1, 0]] },
-    { id = 5, terrains = ["Dirt"], width = 4, height = 2, blocked = [[1, 0], [2, 0], [3, 0]] },
-    { id = 6, terrains = ["Dirt"], width = 3, height = 2, blocked = [[2, -1], [1, -1]] },
-    { id = 7, terrains = ["Dirt"], width = 2, height = 2, blocked = [[0, 0], [1, 0]] },
-    { id = 8, terrains = ["Dirt"], width = 2, height = 2, blocked = [[1, -1]] },
-    { id = 9, terrains = ["Dirt"], width = 2, height = 2, blocked = [[0, 0], [1, 0]] },
-    { id = 10, terrains = ["Dirt"], width = 2, height = 2, blocked = [[0, 0], [1, 0]] },
-    { id = 11, terrains = ["Dirt"], width = 2, height = 1, blocked = [[0, 0], [1, 0]] },
-    { id = 12, terrains = ["Dirt", "Rough"], width = 3, height = 3, blocked = [[0, 0], [1, 0], [2, 0], [3, 0]] },
-    { id = 13, terrains = ["Dirt", "Rough"], width = 3, height = 2, blocked = [[1, 0], [2, 0], [2, -1]] },
-    { id = 14, terrains = ["Dirt", "Rough"], width = 3, height = 2, blocked = [[2, 0], [2, -1], [1, -1]] },
-    { id = 15, terrains = ["Dirt", "Rough"], width = 3, height = 3, blocked = [[1, 0], [1, -1], [1, -2]] },
-    { id = 16, terrains = ["Desert"], width = 4, height = 4, blocked = [[2, -1], [1, -1], [2, -2], [1, -2], [3, -3], [2, -3]] },
-    { id = 17, terrains = ["Desert"], width = 3, height = 2, blocked = [[1, 0], [2, -1], [1, -1]] },
-    { id = 18, terrains = ["Desert"], width = 4, height = 2, blocked = [[1, 0], [2, 0], [3, 0], [2, -1], [1, -1]] },
-    { id = 19, terrains = ["Grass", "Swamp"], width = 2, height = 1, blocked = [[0, 0], [1, 0]] },
-    { id = 20, terrains = ["Grass", "Swamp"], width = 2, height = 2, blocked = [[0, 0], [1, 0]] },
-    { id = 21, terrains = ["Grass", "Swamp"], width = 1, height = 1, blocked = [[0, 0]] },
-    { id = 22, terrains = ["Grass"], width = 6, height = 2, blocked = [[1, 0], [2, 0], [3, 0], [4, 0], [4, -1], [3, -1], [2, -1], [1, -1]] },
-    { id = 23, terrains = ["Grass"], width = 7, height = 1, blocked = [[1, 0], [2, 0]] },
-    { id = 24, terrains = ["Snow"], width = 3, height = 1, blocked = [[0, 0], [1, 0], [2, 0]] },
-    { id = 25, terrains = ["Snow"], width = 5, height = 1, blocked = [[1, 0], [2, 0], [3, 0], [4, 0]] },
-    { id = 26, terrains = ["Snow"], width = 3, height = 3, blocked = [[0, 0], [1, -1], [1, -2]] },
-    { id = 27, terrains = ["Snow"], width = 3, height = 1, blocked = [[0, 0], [1, 0], [2, 0]] },
-    { id = 28, terrains = ["Snow"], width = 3, height = 1, blocked = [[1, 0]] },
-    { id = 29, terrains = ["Snow"], width = 3, height = 2, blocked = [[1, 0], [2, 0]] },
-    { id = 30, terrains = ["Snow"], width = 2, height = 1, blocked = [[0, 0], [1, 0]] },
-    { id = 31, terrains = ["Snow"], width = 3, height = 2, blocked = [[0, 0], [1, 0], [2, 0]] },
-    { id = 32, terrains = ["Snow"], width = 7, height = 2, blocked = [[2, 0], [3, 0], [4, 0], [5, 0], [4, -1], [3, -1], [2, -1], [1, -1]] },
-    { id = 33, terrains = ["Snow"], width = 5, height = 5, blocked = [[3, 0], [4, -1], [3, -1], [2, -1], [1, -2], [2, -3], [2, -4]] },
-    { id = 34, terrains = ["Swamp"], width = 2, height = 2, blocked = [[0, 0]] },
-    { id = 35, terrains = ["Swamp"], width = 8, height = 3, blocked = [[7, -1], [6, -1], [5, -1], [4, -1], [3, -1], [2, -1], [1, -1]] },
-    { id = 36, terrains = ["Swamp"], width = 2, height = 1, blocked = [[0, 0], [1, 0]] },
-    { id = 37, terrains = ["Swamp"], width = 3, height = 1, blocked = [[0, 0], [1, 0], [2, 0]] },
-    { id = 38, terrains = ["Swamp"], width = 5, height = 4, blocked = [[4, -1], [3, -1], [2, -1], [1, -1], [4, -2], [3, -2], [2, -2], [1, -2]] },
-    { id = 39, terrains = ["Swamp"], width = 4, height = 3, blocked = [[1, -1], [0, -1], [3, -2], [2, -2], [1, -2], [0, -2]] },
-    { id = 40, terrains = ["Rough"], width = 2, height = 2, blocked = [[0, 0], [1, 0], [1, -1]] },
-    { id = 41, terrains = ["Rough"], width = 4, height = 3, blocked = [[3, -1], [2, -1], [1, -1], [2, -2], [1, -2]] },
-    { id = 42, terrains = ["Rough"], width = 3, height = 2, blocked = [[1, 0], [2, 0], [2, -1], [1, -1]] },
-    { id = 43, terrains = ["Rough"], width = 3, height = 3, blocked = [[1, -1], [2, -2], [1, -2]] },
-    { id = 44, terrains = ["Rough"], width = 3, height = 3, blocked = [[2, -1], [1, -1], [2, -2]] },
-    { id = 45, terrains = ["Subterranean"], width = 3, height = 3, blocked = [[0, 0], [1, 0], [2, 0], [2, -1], [1, -1]] },
-    { id = 46, terrains = ["Subterranean"], width = 3, height = 2, blocked = [[0, 0], [1, 0], [2, 0]] },
-    { id = 47, terrains = ["Subterranean"], width = 4, height = 3, blocked = [[0, 0], [1, 0], [2, 0], [3, 0], [3, -1], [2, -1], [1, -1]] },
-    { id = 48, terrains = ["Lava"], width = 4, height = 3, blocked = [[3, -1], [2, -2], [1, -2]] },
-    { id = 49, terrains = ["Lava"], width = 4, height = 2, blocked = [[0, 0], [1, 0], [2, 0], [3, -1], [2, -1], [1, -1]] },
-    { id = 50, terrains = ["Lava"], width = 5, height = 3, blocked = [[4, -1], [3, -1], [2, -1], [4, -2], [3, -2], [2, -2], [1, -2]] },
-    { id = 51, terrains = ["Lava"], width = 3, height = 2, blocked = [[0, 0], [1, 0], [2, 0]] },
-    { id = 52, terrains = ["Lava"], width = 4, height = 4, blocked = [[3, -1], [2, -1], [2, -2], [1, -2], [2, -3], [1, -3]] },
-    { id = 53, terrains = ["Lava"], width = 5, height = 3, blocked = [[4, -1], [3, -1], [2, -1], [1, -1], [4, -2], [3, -2]] },
-    { id = 54, terrains = ["Lava"], width = 5, height = 3, blocked = [[4, -1], [3, -1], [2, -1], [1, -1], [3, -2], [2, -2], [1, -2]] },
-    { id = 100, terrains = ["Dirt"], absolute = true, blocked = [[12, 4], [9, 5], [10, 5], [11, 5], [12, 5], [3, 6], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6]] },
-    { id = 101, terrains = ["Dirt"], absolute = true, blocked = [[5, 4], [6, 5], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6], [11, 6]] },
-    { id = 102, terrains = ["Dirt"], absolute = true, blocked = [[9, 3], [10, 3], [11, 3], [12, 3], [13, 3], [4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [4, 8], [5, 8], [6, 8], [7, 8], [8, 8], [9, 8], [10, 8], [11, 8], [12, 8], [13, 8]] },
-    { id = 103, terrains = ["Dirt"], absolute = true, blocked = [[3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [13, 5]] },
-    { id = 104, terrains = ["Dirt"], absolute = true, blocked = [[8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5]] },
-    { id = 105, terrains = ["Grass"], absolute = true, blocked = [[4, 3], [5, 3], [6, 3], [7, 3], [7, 4], [8, 4], [9, 4], [10, 5], [10, 6], [11, 6], [12, 7]] },
-    { id = 106, terrains = ["Grass"], absolute = true, blocked = [[13, 4], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [4, 6], [5, 6], [4, 7]] },
-    { id = 107, terrains = ["Snow"], absolute = true, blocked = [[8, 4], [9, 4], [10, 4], [11, 4], [6, 5], [7, 5], [8, 5], [12, 5], [13, 5], [4, 6], [5, 6], [6, 6]] },
-    { id = 108, terrains = ["Snow"], absolute = true, blocked = [[7, 2], [8, 2], [9, 2], [7, 3], [7, 4], [7, 5], [6, 6], [7, 7], [7, 8]] },
-    { id = 109, terrains = ["Swamp"], absolute = true, blocked = [[6, 2], [7, 2], [7, 3], [8, 3], [6, 4], [7, 4], [7, 5], [8, 5], [7, 6], [8, 6], [9, 6], [8, 7], [9, 7], [10, 7], [11, 7]] },
-    { id = 110, terrains = ["Swamp"], absolute = true, blocked = [[9, 2], [9, 3], [10, 3], [9, 4], [8, 5], [9, 5], [10, 5], [7, 6], [8, 6], [7, 7], [8, 7]] },
-    { id = 111, terrains = ["Swamp"], absolute = true, blocked = [[6, 4], [7, 4], [8, 4], [9, 4], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [7, 6], [8, 6], [9, 6], [10, 6]] },
-    { id = 112, terrains = ["Lava"], absolute = true, blocked = [[9, 4], [10, 4], [11, 4], [12, 4], [13, 4], [6, 5], [7, 5], [8, 5], [9, 5], [3, 6], [4, 6], [5, 6]] },
-    { id = 113, terrains = ["Lava"], absolute = true, blocked = [[9, 2], [9, 3], [10, 3], [8, 4], [9, 4], [8, 5], [7, 6], [7, 7], [8, 7], [6, 8], [7, 8]] },
-    { id = 114, terrains = ["Rough"], absolute = true, blocked = [[4, 3], [4, 4], [5, 5], [5, 6], [6, 7], [7, 7], [8, 7], [9, 7], [10, 7], [11, 7], [12, 7], [13, 7]] },
-    { id = 115, terrains = ["Rough"], absolute = true, blocked = [[7, 2], [8, 3], [8, 4], [9, 5], [9, 6], [10, 7], [7, 8], [8, 8], [9, 8]] },
-    { id = 116, terrains = ["Rough"], absolute = true, blocked = [[6, 2], [7, 2], [8, 2], [9, 2], [7, 3], [7, 4], [8, 5], [8, 6], [9, 7], [9, 8]] },
-    { id = 117, terrains = ["Rough"], absolute = true, blocked = [[4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [13, 4], [4, 5], [3, 6]] },
-    { id = 118, terrains = ["Rough"], absolute = true, blocked = [[4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5]] },
-    { id = 119, terrains = ["Rough"], absolute = true, blocked = [[5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [6, 5], [7, 5], [8, 5], [9, 5]] },
-    { id = 120, terrains = ["Rough"], absolute = true, blocked = [[6, 1], [6, 2], [7, 3], [7, 4], [8, 5], [8, 6], [9, 7], [9, 8], [10, 9]] },
-    { id = 121, terrains = ["Rough"], absolute = true, blocked = [[4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5]] },
-    { id = 122, terrains = ["Rough"], absolute = true, blocked = [[5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6]] },
+# Special battlefields (E04c T2b; docs/formats/installation.md 7.26, the survey
+# docs/rules/surveys/E04c-battlefields.md). `field` is the original's special field number, whose
+# bit marks the battlefield's own obstacle types in the executable's tables (which give every
+# obstacle type, BAT-GEO-004); without it the battlefield takes the terrain's. Towns by
+# TownType.txt name, schools by key.
+[[battlefield]]
+id = "shore"
+pack = "base"
+field = 0
+sources = ["exe-battlefield", "vcmi-battlefields", "wiki-terrain"]
+
+[[battlefield]]
+id = "magic_plains"
+pack = "base"
+field = 1
+expert_schools = ["air", "earth", "fire", "water"]
+expert_other_casts = true
+sources = ["exe-battlefield", "wiki-terrain", "game-texts-battlefield"]
+
+[[battlefield]]
+id = "cursed_ground"
+pack = "base"
+field = 2
+no_morale = true
+no_luck = true
+no_native = true
+max_spell_level = 1
+no_creature_casts = true
+sources = ["exe-battlefield", "game-texts-battlefield", "wiki-terrain"]
+
+[[battlefield]]
+id = "deck"
+pack = "base"
+sources = ["exe-battlefield", "vcmi-battlefields"]
+
+[[battlefield]]
+id = "boats"
+pack = "base"
+boats = true
+sources = ["exe-battlefield", "vcmi-battlefields"]
+
+[[battlefield]]
+id = "holy_ground"
+pack = "sod"
+field = 3
+morale = [
+    { towns = ["Castle", "Rampart", "Tower"], amount = 1 },
+    { towns = ["Inferno", "Necropolis", "Dungeon"], amount = -1 },
 ]
+sources = ["exe-battlefield", "game-texts-battlefield", "vcmi-battlefields", "wiki-terrain"]
+
+[[battlefield]]
+id = "evil_fog"
+pack = "sod"
+field = 4
+morale = [
+    { towns = ["Castle", "Rampart", "Tower"], amount = -1 },
+    { towns = ["Inferno", "Necropolis", "Dungeon"], amount = 1 },
+]
+sources = ["exe-battlefield", "game-texts-battlefield", "vcmi-battlefields", "wiki-terrain"]
+
+[[battlefield]]
+id = "clover_field"
+pack = "sod"
+field = 5
+luck = [{ towns = ["Stronghold", "Fortress", "Conflux"], amount = 2 }]
+sources = ["exe-battlefield", "game-texts-battlefield"]
+
+[[battlefield]]
+id = "lucid_pools"
+pack = "sod"
+field = 6
+expert_schools = ["water"]
+sources = ["exe-battlefield", "vcmi-battlefields", "wiki-terrain"]
+
+[[battlefield]]
+id = "fiery_fields"
+pack = "sod"
+field = 7
+expert_schools = ["fire"]
+sources = ["exe-battlefield", "vcmi-battlefields", "wiki-terrain"]
+
+[[battlefield]]
+id = "rocklands"
+pack = "sod"
+field = 8
+expert_schools = ["earth"]
+sources = ["exe-battlefield", "vcmi-battlefields", "wiki-terrain"]
+
+[[battlefield]]
+id = "magic_clouds"
+pack = "sod"
+field = 9
+expert_schools = ["air"]
+sources = ["exe-battlefield", "vcmi-battlefields", "wiki-terrain"]
 
 # ---------------------------------------------------------------------------------------------
 # War machines (E03 T8): harvested from the tables like creatures (flag war_machine); the siege

@@ -21,11 +21,11 @@ use h3_content::{
     MASS_CURE_SKIPS_HYPNOTIZED, MAX_SPELL_SCHOOLS, MAX_SPELLS, SINGLE_PRECISION_RATES,
     SpellCategory, SpellId, SpellScope,
 };
-use h3_content_battle::BattleSpell;
 use h3_content_battle::{
     Ability, BattleRuleset, MAX_FIELD_HEXES, SpecialistBonus, SpellEffect, SpellPolarity,
     SpellTarget, TargetSide, TimedChange,
 };
+use h3_content_battle::{BattleSpell, Battlefield, MAX_MASTERY};
 use h3_contracts::{BattleEffect, BattleHero, BattleSide, Rate};
 use h3_kernel::arith::{
     SINGLE_BITS, SINGLE_FRAC_BITS, X87, mul_div_floor, round_single, single_precision,
@@ -351,27 +351,44 @@ impl CanonicalHash for Opening {
     }
 }
 
-/// What the heroes of a battle do to all of its magic (E04b T8b), derived from them at its
-/// start for the hot paths (not hashed: the heroes are).
+/// What the heroes and the battlefield of a battle do to all of its magic (E04b T8b, E04c T2b),
+/// derived from them at its start for the hot paths (not hashed: the heroes, the battlefield and
+/// the anti-magic flag are).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct MagicLimits {
-    /// A hero forbids every cast (BAT-MAG-061).
+    /// A hero or an anti-magic garrison forbids every cast (BAT-MAG-061).
     pub(crate) no_casting: bool,
-    /// The highest spell level allowed: the heroes' smallest limit, `u8::MAX` without one
-    /// (BAT-MAG-062).
+    /// The battlefield forbids creature casts, raises and periodic casts (BAT-TER-004).
+    pub(crate) no_creature_casts: bool,
+    /// The highest spell level allowed: the smallest limit of the heroes and the battlefield,
+    /// `u8::MAX` without one (BAT-MAG-062, BAT-TER-004).
     pub(crate) max_level: u8,
+    /// The battlefield raises the casts that are not a hero's to Expert (BAT-TER-005).
+    pub(crate) others_expert: bool,
     /// A hero has spell defences or negates immunities (BAT-MAG-063 to BAT-MAG-066): without one
     /// no stack's [`Guard`] is looked at.
     pub(crate) guards: bool,
 }
 
 impl MagicLimits {
-    /// The limits of a battle with `heroes`.
-    pub(crate) fn of(heroes: &[Option<HeroRecord>; 2]) -> Self {
+    /// The limits of a battle with `heroes` on `battlefield`, at an anti-magic garrison if
+    /// `anti_magic`.
+    pub(crate) fn of(
+        heroes: &[Option<HeroRecord>; 2],
+        battlefield: Option<&Battlefield>,
+        anti_magic: bool,
+    ) -> Self {
         let magic = || heroes.iter().flatten().map(|h| &h.magic);
+        let field_level = battlefield.map_or(u8::MAX, |b| b.max_spell_level);
         Self {
-            no_casting: magic().any(|m| m.no_casting),
-            max_level: magic().map(|m| m.level_limit).min().unwrap_or(u8::MAX),
+            no_casting: anti_magic || magic().any(|m| m.no_casting),
+            no_creature_casts: battlefield.is_some_and(|b| b.no_creature_casts),
+            max_level: magic()
+                .map(|m| m.level_limit)
+                .min()
+                .unwrap_or(u8::MAX)
+                .min(field_level),
+            others_expert: battlefield.is_some_and(|b| b.expert_other_casts),
             guards: magic().any(|m| m.negates || m.defences != Defences::default()),
         }
     }
@@ -591,10 +608,37 @@ fn implemented(spell: &BattleSpell) -> bool {
 }
 
 /// The mastery at which `hero` casts `spell`: the one the seam gives it (derived in the Heroes
-/// context, HER-SPL-003; BAT-MAG-002). Battlefields that raise it come with E04c.
-// rule: BAT-MAG-002
-pub(crate) fn mastery(hero: &HeroRecord, spell: SpellId) -> u8 {
-    hero.magic.masteries.get(spell)
+/// context, HER-SPL-003; BAT-MAG-002), Expert when the battlefield raises one of the spell's
+/// schools (BAT-TER-005; the original's 0x4E5080 with the field, `installation.md` §7.26).
+// rule: BAT-MAG-002, BAT-TER-005
+pub(crate) fn mastery(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    hero: &HeroRecord,
+    spell: SpellId,
+) -> u8 {
+    let raised = state
+        .battlefield
+        .and_then(|b| ruleset.battlefield(b))
+        .zip(ruleset.spell(spell))
+        .is_some_and(|(b, s)| b.raises(&s.schools));
+    if raised {
+        MAX_MASTERY
+    } else {
+        hero.magic.masteries.get(spell)
+    }
+}
+
+/// The mastery of a cast that is not a hero's (a creature's, a periodic caster's, a strike's
+/// spell) at `mastery`: Expert where the battlefield raises those (BAT-TER-005; the original's
+/// 0x59FEBC: Magic Plains).
+// rule: BAT-TER-005
+pub(crate) fn other_mastery(state: &BattleState, mastery: u8) -> u8 {
+    if state.limits.others_expert {
+        MAX_MASTERY
+    } else {
+        mastery
+    }
 }
 
 /// Checks that `side`'s hero may cast `id` now apart from its target (BAT-MAG-001, BAT-MAG-002)
@@ -630,7 +674,7 @@ fn check_spell<'s, 'r>(
     if !implemented(spell) {
         return Err(CommandError::NotCastable);
     }
-    let mastery = mastery(hero, id);
+    let mastery = mastery(state, ruleset, hero, id);
     // rule: BAT-MAG-054
     let cost = crate::mana::cost(spell, mastery, hero.magic.cost_change);
     if hero.view.mana < cost {
@@ -649,6 +693,14 @@ pub(crate) type SpellRef<'r> = (SpellId, &'r BattleSpell);
 // rule: BAT-MAG-061
 pub(crate) fn casting_forbidden(state: &BattleState) -> bool {
     state.limits.no_casting
+}
+
+/// Whether the creatures may not cast, raise or cast periodically (BAT-MAG-061 and BAT-TER-004:
+/// the original's 0x41F890 with its flag 0 answers 0 also on Cursed Ground, `installation.md`
+/// §7.26). The strike's creature magic is no cast and stays (its spells' levels are barred).
+// rule: BAT-TER-004
+pub(crate) fn creature_casting_forbidden(state: &BattleState) -> bool {
+    state.limits.no_casting || state.limits.no_creature_casts
 }
 
 /// Whether the battle's spell level limit bars `spell` (BAT-MAG-062; the original's book button
@@ -1094,7 +1146,7 @@ fn raise_test<'r>(
     spell.1.magic.effects.iter().any(|e| e.is_raise()).then(|| {
         state.heroes[side.index()]
             .as_ref()
-            .map(|hero| raise::test_for(hero, ruleset, (spell, mastery)))
+            .map(|hero| raise::test_for(state, hero, ruleset, (spell, mastery)))
     })
 }
 

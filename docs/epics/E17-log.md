@@ -396,7 +396,7 @@ path public (a detour around a pit only the walker's side sees shows it, as in t
 `h3-battle`: `obstacles::go` and `travel_through` report every position of a walker's path,
 `Sink::RECORDS` skips the path for `NoopSink` (the simulation unchanged; `bench-check` passed
 without a re-baseline); a placement stays one move. The property `walks_are_reported_hex_by_hex`.
-The wire is v28 (the server's lists took 27 meanwhile: merged). Docs: BAT-MOV-003, BAT-MAG-031,
+The wire is v29 (the server's lists took 27 and E04c T2b 28 meanwhile: merged). Docs: BAT-MOV-003, BAT-MAG-031,
 the battle lane's inbox, the server lane's version notes.
 
 ### M2 T4a — The scene over time: the timeline (2026-10-13)

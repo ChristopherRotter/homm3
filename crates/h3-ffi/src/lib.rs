@@ -52,8 +52,10 @@ use h3_sim::{
 /// (complete: the battlefield planes, the hero's private part once with its hidden magic, the
 /// new globals and per-stack features; `h3_observation_len` grows); no function changes. v18:
 /// action encoding v12 and observation encoding v13 → v14 (a two-hex stack's position is its rear
-/// hex, BAT-GEO-002); no function changes.
-pub const H3_ABI_VERSION: u32 = 18;
+/// hex, BAT-GEO-002); no function changes. v19 (E04c T2b): observation encoding v15 (two
+/// globals: the special battlefield, the anti-magic garrison; `h3_observation_len` grows); no
+/// function changes.
+pub const H3_ABI_VERSION: u32 = 19;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -550,7 +552,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 18);
+        assert_eq!(h3_abi_version(), 19);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);

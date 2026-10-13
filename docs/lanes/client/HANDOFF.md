@@ -46,6 +46,6 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-13, CLT-Q1 and M2 T4a (the user present).** #166 merged. CLT-Q1 built cross-lane (#169): a walk's `Moved` hex by hex, wire v28, the path public (the user's calls). T4a: `h3_view::anim`; `h3-view sequences` gives all three recorded timelines exactly; `render --at`.
+- **2026-10-13, CLT-Q1 and M2 T4a (the user present).** #166 merged. CLT-Q1 built cross-lane (#169): a walk's `Moved` hex by hex, wire v29, the path public (the user's calls). T4a: `h3_view::anim`; `h3-view sequences` gives all three recorded timelines exactly; `render --at`.
 - **2026-10-13, E17 M2 T3 (the user present).** The animation timing read (design §7) and confirmed to the millisecond through the game's memory (`h3mem.py`); three recorded timelines; CLT-Q1 (a).
 - **2026-10-13, E17 M2 T1 (the user present).** Shared #161. The virtual clock (`xdd.dll`), `h3drive.py`, `h3-view situation`, the set (nine situations). 0x41ADB0: the third background; CLT-Q4.

@@ -79,6 +79,8 @@ fn battle(
         obstacles: vec![],
         heroes: heroes.map(|d| Some(derive_battle_hero(d, r).unwrap())),
         terrain: None,
+        battlefield: None,
+        anti_magic: false,
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],

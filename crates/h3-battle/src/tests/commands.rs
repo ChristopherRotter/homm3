@@ -307,17 +307,20 @@ fn state_hash_is_pinned() {
         anchor: Some(at(&r, 6, 4).0),
         kind: h3_content::ContentKey::parse("t:stone").ok(),
     };
+    // A special battlefield and an anti-magic garrison (v45).
     let setup = BattleSetup {
         heroes: [Some(led), None],
         funds: [1234, 99],
         obstacles: vec![stone],
+        battlefield: h3_content::ContentKey::parse("t:holy").ok(),
+        anti_magic: true,
         ..setup(&r, &[(0, "fixed", 3), (2, "wisp", 7)], &[(0, "slow", 4)])
     };
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    // v44: the obstacles' sight lost its live-natives flag (BAT-QUIRK-1 retired, BAT-Q34).
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 44);
+    // v45: the special battlefield and the anti-magic flag (E04c T2b).
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 45);
 }
 
-const GOLDEN: u64 = 0x8d2b_796b_e38a_9bff;
+const GOLDEN: u64 = 0x4a06_9259_757a_2cc9;

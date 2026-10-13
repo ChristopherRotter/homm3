@@ -533,7 +533,7 @@ A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F
   (§4.2); after the last hex group 21 (move end), then standing. A walk stopped early (Quicksand,
   a mine) ends the same way where it stops. Haste makes W trunc(W0 x 0.65), Slow trunc(W0 x 1.5)
   (W0 the stack's own, +0x68; 0x444CE5, 0x444D3A); their end restores it. A record reports a
-  walk hex by hex (CLT-Q1, wire v28): one `Moved` per position, so a stack's consecutive `Moved`
+  walk hex by hex (CLT-Q1, wire v29): one `Moved` per position, so a stack's consecutive `Moved`
   in one command are one walk; the engine's path may differ from the original's on ties (Q53).
   Confirmed (sequence `walk`): the Champions (W 450, n 8) show group 20's three frames at 100,
   200 and 300 ms, group 0 every 56 ms from 400 over four hexes, group 21 at 2192 to 2492, standing

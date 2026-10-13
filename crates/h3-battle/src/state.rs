@@ -7,7 +7,8 @@ use h3_content::{
     UNLIMITED_BALLISTA_SHOTS,
 };
 use h3_content_battle::{
-    Ability, AreaShot, BattleRuleset, CreatureType, MAX_SIDE_STACKS, WAR_MACHINE_KINDS,
+    Ability, AreaShot, BattleRuleset, BattlefieldId, CreatureType, MAX_SIDE_STACKS,
+    WAR_MACHINE_KINDS,
 };
 
 use h3_contracts::{
@@ -55,7 +56,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 44;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 45;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -548,7 +549,11 @@ impl Stack {
     ) -> Self {
         let abilities = ruleset.abilities(id);
         // rule: BAT-TER-001
-        let native = u8::from(terrain::is_native(ruleset, id, setup.terrain));
+        let native = u8::from(terrain::is_native(
+            ruleset,
+            id,
+            terrain::native_terrain(ruleset, setup),
+        ));
         // rule: BAT-HER-002
         let (hero_attack, hero_defense) = setup.heroes[side.index()]
             .as_ref()
@@ -816,6 +821,10 @@ pub struct BattleState {
     pub(crate) modifiers: Modifiers,
     pub(crate) heroes: [Option<HeroRecord>; 2],
     pub(crate) terrain: Option<TerrainId>,
+    /// The special battlefield, if any (BAT-TER-002; public).
+    pub(crate) battlefield: Option<BattlefieldId>,
+    /// The battle is at an anti-magic garrison (BAT-MAG-061; public).
+    pub(crate) anti_magic: bool,
     /// The timed effects on stacks (ADR-0014 point 5).
     pub(crate) effects: Effects,
     /// The spell obstacles (ADR-0014 points 5 and 7).
@@ -875,6 +884,16 @@ impl BattleState {
         {
             return Err(SetupError::UnknownTerrain);
         }
+        // rule: BAT-TER-002
+        let battlefield = setup
+            .battlefield
+            .as_ref()
+            .map(|k| {
+                ruleset
+                    .battlefield_by_key(k.as_str())
+                    .ok_or(SetupError::UnknownBattlefield)
+            })
+            .transpose()?;
         let mut heroes = [None; 2];
         for (side, hero) in BattleSide::BOTH.into_iter().zip(&setup.heroes) {
             if let Some(hero) = hero {
@@ -966,6 +985,8 @@ impl BattleState {
             modifiers: Modifiers::new(),
             heroes,
             terrain: setup.terrain,
+            battlefield,
+            anti_magic: setup.anti_magic,
             effects: Effects::new(),
             spell_obstacles: SpellObstacles::new(),
             raised: Raised::default(),
@@ -976,7 +997,11 @@ impl BattleState {
             vitality: Vitality::default(),
             binds: Binds::default(),
             casts: Casts::at_start(ruleset, &placed[..len]),
-            limits: MagicLimits::of(&heroes),
+            limits: MagicLimits::of(
+                &heroes,
+                battlefield.and_then(|b| ruleset.battlefield(b)),
+                setup.anti_magic,
+            ),
             rng: Rng::for_stream(seed, StreamId::BATTLE),
         };
         morale::setup(&mut state, ruleset, &setup.heroes);
@@ -1292,7 +1317,8 @@ impl BattleState {
     /// vanished with, after the clones' rounds. v42 (E17 M1, CLT-Q3): each removable obstacle's
     /// type after its hexes, the absolute obstacle's type after whether anchors belong. v43: a
     /// two-hex stack's position is its rear hex (BAT-GEO-002), so the same field hashes
-    /// differently.
+    /// differently. v45 (E04c T2b): the special battlefield (presence flag + handle) and the
+    /// anti-magic flag after the terrain.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }
@@ -1350,6 +1376,8 @@ impl CanonicalHash for BattleState {
         self.modifiers.hash_into(h);
         self.heroes.hash_into(h);
         self.terrain.hash_into(h);
+        self.battlefield.hash_into(h);
+        h.write_bool(self.anti_magic);
         self.effects.hash_into(h);
         self.spell_obstacles.hash_into(h);
         self.raised.hash_into(h);

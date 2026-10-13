@@ -128,6 +128,8 @@ fn random_legal_sod_heroes_derive_and_play() {
             attacker: army(&mut rng, &pool),
             defender: army(&mut rng, &pool),
             obstacles: vec![],
+            battlefield: None,
+            anti_magic: false,
             war_machines: [
                 war_machines(&details[0], &sod),
                 if led {
@@ -234,6 +236,8 @@ fn remove_obstacle_keeps_a_target_while_it_is_castable() {
         obstacles,
         heroes: [Some(hero), None],
         terrain: Some(grass),
+        battlefield: None,
+        anti_magic: false,
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],
@@ -345,6 +349,8 @@ fn random_legal_sod_heroes_cast_and_play() {
                 attacker,
                 defender,
                 obstacles,
+                battlefield: None,
+                anti_magic: false,
                 war_machines: [
                     war_machines(&details[0], &sod),
                     war_machines(&details[1], &sod),

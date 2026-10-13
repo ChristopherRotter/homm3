@@ -36,16 +36,29 @@ pub(super) fn arena(
     defender: &[(&'static str, u32, i32, i32)],
     seed: u64,
 ) -> BattleState {
+    arena_on(r, heroes, attacker, defender, seed, |_| {})
+}
+
+/// [`arena`] with the setup changed by `edit` before the battle starts (E04c: a battlefield).
+pub(super) fn arena_on(
+    r: &BattleRuleset,
+    heroes: [Option<BattleHero>; 2],
+    attacker: &[(&'static str, u32, i32, i32)],
+    defender: &[(&'static str, u32, i32, i32)],
+    seed: u64,
+    edit: impl FnOnce(&mut BattleSetup),
+) -> BattleState {
     let specs = |list: &[(&'static str, u32, i32, i32)]| -> Vec<Spec> {
         list.iter()
             .enumerate()
             .map(|(i, &(name, count, ..))| (u8::try_from(i).unwrap(), name, count))
             .collect()
     };
-    let setup = BattleSetup {
+    let mut setup = BattleSetup {
         heroes,
         ..setup(r, &specs(attacker), &specs(defender))
     };
+    edit(&mut setup);
     let mut s = BattleState::new(r, &setup, seed).unwrap();
     for (i, &(_, _, x, y)) in attacker.iter().chain(defender).enumerate() {
         place(&mut s, r, u8::try_from(i).unwrap(), x, y);
