@@ -597,6 +597,10 @@ different creatures or statistics.
 | `negate_immunities` | — | since v31: the side's spells, and spells at the stacks the hero controls, ignore the creatures' immunities and all magic resistance (the Orb of Vulnerability; BAT-MAG-066) |
 | `opening_spell` | `spell`, `mastery` (0..=3), `power` (≥ 1) | since v33: the side casts the spell for free at its first stack activation outside the tactics phase, at the mastery, its power the effects' duration, if it affects some stack; in the order of the artifact types (Angelic Alliance: Expert Prayer, 10; Armor of the Damned: Expert Slow, Curse, Weakness, Misfortune, 50; HER-BAT-017, BAT-MAG-068) |
 | `eagle_eye` | `bp` (1..=10 000), `max_level` (0..=5, default 0) | since v33: Eagle Eye's chance to pick a spell at each enemy hero cast grows by `bp` (a specialty grows the skill's), spells up to the largest `max_level` may be picked (the skill: 40/50/60 %, levels 2/3/4; the Bird of Perception, the Stoic Watchman, the Emblem of Cognizance: +5/+10/+15 % with the skill; HER-SPL-004, BAT-MAG-069) |
+| `necromancy` | `bp` (1..=10 000) | since v37 (E08 T18a; read from E08 T19a): after a won battle the hero raises this share of the killed enemy creatures as undead; sources add, a specialty grows the skill's (Necromancy: 10/20/30 %, the executable's table 0x63E9B8; the necromancy artifacts, pending) |
+| `experience_gain` | `bp` (≥ 1) | since v37 (read from E08 T19a): the experience the hero gains grows by `bp` (Learning: 5/10/15 %, table 0x63EA58) |
+| `max_mana` | `bp` (≥ 1) | since v37 (read from E08 T18b): the hero's maximum spell points (10 × Knowledge) grow by `bp` (Intelligence: 25/50/100 %, table 0x63EA88; an Intelligence specialist's grow) |
+| `join_bonus` | `level` (1..=3) | since v37 (read from E08 T20a): wandering creatures are readier to join the hero; the levels add, at most 3 (Diplomacy: 1/2/3) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 
