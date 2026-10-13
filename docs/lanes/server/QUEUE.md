@@ -4,15 +4,50 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, SRV-Q16; M3 done 2026-10-12, its checkpoint passed, SRV-Q18). M4 refined 2026-10-12 (SRV-Q19): ADR-0019 points 4–9 decided; the working detail in `E16-design.md` §11; cut below, each task about half a context, the inbox's M4 items folded in; T1 done 2026-10-12 (`[[ladder]]`, `rating`, the results log); T2 done 2026-10-12 (the queues, the match's game, wire 14; `E16-log.md`); T3a done 2026-10-12 (no host, the grace, forfeits and no-shows, journal format 5, wire 15); T3b done 2026-10-12 (verified before the end, rated and logged, `Rating`, `<data>/next-game`, wire 16). SRV-Q20 done 2026-10-12 (server-side pings; the user); T4 done 2026-10-12 (leaderboards, wire 17); T5 done 2026-10-12 (bots on ladders, wire 18); T6 done 2026-10-12 (the pause by agreement, wire 19, journal format 6); T5b added 2026-10-12 (SRV-Q21) and done the same day (a player's bot opt-out, wire 20); T7 done 2026-10-12 (M4's closure: the reviewer agent, the bar after a match given up; M4 done, its checkpoint passed, SRV-Q22); T8 added by the checkpoint and done 2026-10-12 (the hold of a pause resumed early across a restart, journal format 7). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`, each journal change `JOURNAL_FORMAT_VERSION`.
+Epic: `docs/epics/E16-server.md` (in progress; M0–M4 done 2026-10-10 to 2026-10-12, each checkpoint passed: SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22; the done tasks in full in `E16-log.md`). Work under the autonomy contract (`HANDOFF.md`).
 
-M4's checkpoint passed 2026-10-12 (SRV-Q22): the review list as built; T8 first (done), then M6's refinement. The two review items left for later (the rating order of re-run journals, a stopped match's ranked entry) and two older inbox items (a drain or stop a full inbox missed, a rename racing a re-key) done 2026-10-12 at the user's request (`E16-log.md`, "M4's review items"). The Windows failures the battle lane handed over (the logs' append mode) fixed 2026-10-12 (`E16-log.md`).
+M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the same day (`E16-log.md`). **M6 refined 2026-10-13 (SRV-Q23):** ADR-0021 accepted (in the refinement's pull request, a `shared:` commit, `cross-lane`); the working detail in `E16-design.md` §12; cut below, each task about half a context. Wire changes bump `PROTOCOL_VERSION` (21 now), journal changes `JOURNAL_FORMAT_VERSION` (7; M6 changes no journal).
 
-### E16 M6 — Refinement (discovery)
+### E16 M6 T1 — The server key and the signed welcome
 
-- **Scope:** refine M6 (`docs/epics/E16-server.md`, "Milestones"): the server keypair and the signed welcome, the server card and `Describe`, peers in the configuration, the peer crawl and its bounds, `ListPeers`, signed lists from files, mDNS on the LAN; decide the discovery ADR draft (`docs/lanes/server/adr-drafts/`) with the user; cut the tasks into this queue; fold in the inbox's items that fit.
-- **Acceptance:** the user's refinement checkpoint (an `SRV-Q`), the ADR accepted or amended, the tasks queued.
-- **Depends on:** T8 (done).
+- **Scope:** `<data>/server.key` (written at first start from OS randomness, read at every start; a file that does not parse stops the start, never replaced); `h3_protocol` builds `welcome_message(id, nonce, challenge)` (`h3-welcome-v1`); `Hello { …, nonce, address }`; `[server] addresses` (`public_url` read as its first entry when alone); the welcome's `id` is the dialed address when it is the server's, otherwise the first; `Welcome { …, key, signature }`; the test client verifies and pins (a changed key at a pinned address refused); wire 22. `E16-design.md` §12, "Server key", "The signed welcome".
+- **Acceptance:** tests: the signed bytes and the hello's bounds (`h3-protocol`, 100 %); end to end, the welcome verifies at each configured address and a login works at a second address, the key survives a restart, a malformed key file stops the start, a changed key refused by the pinning client. Scoped verify without a failing step.
+- **Depends on:** the refinement (done).
+- **Status:** ready.
+
+### E16 M6 T2 — The card and `Describe`
+
+- **Scope:** `ServerCard`, `SignedCard` (the card's text as signed, `h3-card-v1`) and their bounds in `h3-protocol`; `Describe`/`Described` after the hello, without a login; `[server] name`, `description`, `operator`, `[discovery] card_ms`, `counts`; the card signed when asked and older than a minute; the wall clock behind one local `allow`; card verification in `h3-server` (signature, expiry, skew) for T3 and the test client; `h3-server card`; wire 23. §12, "Card".
+- **Acceptance:** tests: a card verifies; a tampered, expired, future-dated or foreign-keyed card fails; the counts follow the configuration; `Describe` before the hello refused. Scoped verify.
+- **Depends on:** T1.
+- **Status:** ready.
+
+### E16 M6 T3 — Peers, the fetch and `ListPeers`
+
+- **Scope:** a `shared:` commit first (label `cross-lane`): the workspace's entries for `rustls` 0.23 (no default features; `std`, `tls12`), `rustls-graviola` 0.4, `rustls-native-certs` 0.8 and `tokio-tungstenite`'s `rustls-tls-native-roots`, `arch.toml`'s externals for `h3-server` (`cargo deny` must pass unchanged). Then `[[peer]]`, `[discovery] refresh_ms`, `timeout_ms`; one fetch task (at start, each refresh): dial (`wss://` with the server's `ClientConfig` over `rustls-graviola` and the OS roots; `ws://`), `Hello`, the welcome checked against the configured key, `Describe`, the card verified; frames bounded per fetch; a failing peer logged, its last good card kept until expiry; the cache with `via`; `ListPeers`/`Peers` (pages of 50); wire 24. §12, "Peers and the fetch", "`ListPeers`".
+- **Acceptance:** tests over loopback: A peers B, A's `ListPeers` serves B's card; a wrong key, a forged or expired card dropped and logged; B down keeps its last good card; a `wss://` fetch against a local TLS endpoint with a test certificate and a test root (no further crate; if one is needed, ask first). Scoped verify; `cargo deny check` passes.
+- **Depends on:** T2.
+- **Status:** ready.
+
+### E16 M6 T4 — Beyond the peers: the chain
+
+- **Scope:** below `depth`, the peers' `ListPeers` taken into the cache with `via: [P, …]`, each link checked against the cards, duplicates by the shortest chain, at most `cards` (nearer hops first, peers in configured order); never a dial to an address from a card. §12, "The chain".
+- **Acceptance:** tests: A → B → C, A serves C via B and never dials C; a card B relays outside its vouching dropped; the depth and count bounds; a client's check of the links (the test client). Scoped verify.
+- **Depends on:** T3.
+- **Status:** ready.
+
+### E16 M6 T5 — Lists
+
+- **Scope:** `ServerList`, `SignedList` (`h3-list-v1`) and bounds in `h3-protocol`; `<data>/lists/` read at start and each refresh, a list that does not verify or has expired skipped and logged; the listed servers fetched as peers (depth 1, within `cards`, after the peers), their entries marked with the list's key; `Lists`/`ListsAre`; `h3-server list-key` and `sign-list`; wire 25. §12, "Lists".
+- **Acceptance:** tests: a signed list's servers appear marked with its key; an expired, forged or malformed list skipped; the tools make a list that verifies. Scoped verify.
+- **Depends on:** T3 (T4 for the order of the bound).
+- **Status:** ready.
+
+### E16 M6 T6 — Closure
+
+- **Scope:** `docs/06-security.md`'s discovery (the server key as the data directory's secret, cards, peers, the TLS client, lists) and the client lane's inbox (what a server browser needs: the welcome's check and pinning, `Describe`, `ListPeers` and the chain, `Lists`), both `cross-lane` commits; the operator's notes (`crates/h3-server/README.md`: the key, peers, lists, the TLS client's platforms); M6's exit criteria shown (`E16-server.md`); the reviewer agent; the user's checkpoint.
+- **Acceptance:** the exit criteria; the reviewer's major findings fixed; the checkpoint (an `SRV-Q`).
+- **Depends on:** T1–T5.
 - **Status:** ready.
 
 ## Inbox

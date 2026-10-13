@@ -1,7 +1,7 @@
 # E16 — Design note (working detail; not binding; pruned by the tasks that implement it)
 
 Companion to `docs/epics/E16-server.md`, ADR-0018 (protocol and hosting; this note holds the
-detail its trim left out) and the ADR drafts in `docs/lanes/server/adr-drafts/`. A sketch: each
+detail its trim left out), ADR-0019 (identity and ladders) and ADR-0021 (discovery). A sketch: each
 M1–M6 task turns its section into code and docs and deletes it here.
 
 ## 1. A hosted battle, step by step
@@ -350,36 +350,76 @@ below are the tasks' starting point, *provisional* until M4's review.
 
 ## 12. Server identity and discovery (M6)
 
-- **Server key.** Generated at first start into `server-data/server.key`; the public key is
-  the server's identity. `Hello` carries a client nonce; `Welcome` carries the server's key and
-  `sign(server_key, nonce || key || address)`. The client pins the key per address on first
-  contact and refuses a changed key until the player confirms.
-- **Card.** `ServerCard { key, name, description, addresses, protocol, engine, content:
-  [(packs, profile, ruleset_hash, battle_ruleset_hash)], ladders: [(id, name, season, players)],
-  players_online,
-  games_open, anonymous, operator, issued, expires, peers: [(key, address)] }` with a
-  signature over the canonical JSON; expiry a day by default; `Describe` returns it.
-- **Peers.** `[[peer]] key = "…" address = "…"` in the configuration. Every hour (and at
-  start) the server connects to each peer as a client (`tokio-tungstenite`'s client side), sends
-  `Hello` and `Describe`, checks that the signature verifies and that the key is the configured
-  one, caches the card until it expires, and also takes the peer's own cached cards up to a
-  configured depth (default 2 hops) and count (default 200). `ListPeers` returns the cache,
-  each card with the chain of keys it came through. A card that fails verification is dropped
-  and logged; a peer that keeps serving bad cards is reported to the operator.
-- **Lists.** `ServerList { key, name, issued, expires, cards }` signed by the list key; files
-  the operator places in `server-data/lists/`, served in `ListPeers` marked with the list's
-  key. How a list reaches the server (download, cron, a git checkout) is the operator's. A
-  client may fetch lists itself where it has HTTPS (web clients do).
+ADR-0021 (accepted at the M6 refinement, SRV-Q23). Everything here is *provisional* until the
+task that builds it; times on the wire are Unix milliseconds as strings (64-bit), keys and
+signatures lowercase hex, as for accounts (`h3_protocol::account`). Each signed message starts
+with its purpose and version (`h3-welcome-v1`, `h3-card-v1`, `h3-list-v1`), texts length-prefixed
+as `login_message` does; `h3-protocol` builds the bytes, `h3-server` and clients sign and verify.
+
+- **Server key** (T1). `<data>/server.key`: the Ed25519 seed as hex, one line, written at first
+  start from OS randomness (a temporary file, then a rename; mode 0600 on Unix). A start refuses a
+  key file it cannot read or parse: it never writes a new one over it (a new key is a new
+  identity). The key is the data directory's one secret (`crates/h3-server/README.md`, the
+  operator's notes; `06-security.md` at M6's closure).
+- **The signed welcome** (T1). `Hello { protocol, client, name, nonce, address }`: `nonce` 32
+  bytes from the client, `address` the URL it dialed. `[server] addresses` (the URLs clients dial;
+  `public_url` becomes its first entry, read as before when alone) names the server's own. The
+  welcome's `id` is `address` when it is one of them, otherwise the first; `Welcome { …, key,
+  signature }` with `signature = sign(welcome_message(id, nonce, challenge))`. The client checks
+  `id` against what it dialed (as for a login today), verifies the signature with `key`, and pins
+  `key` per address (the client lane's; the test client verifies and pins). A login still signs
+  `id`, so one server answers logins at each of its addresses.
+- **Card** (T2). `ServerCard { key, name, description, addresses, protocol, engine, content:
+  [{ packs, profile, ruleset_hash, battle_ruleset_hash }], ladders: [{ id, name, season, players
+  }], players_online, games_open, anonymous, operator, issued, expires, peers: [{ key, address
+  }] }`. On the wire `SignedCard { card, signature }`: `card` is the card's JSON text as signed
+  (`h3-card-v1` before it), passed on verbatim, parsed only to read it; bounded (8 KiB of text,
+  8 addresses, 64 peers, the protocol's string bounds). `Describe { seq }` → `Described { seq,
+  card }`, after the hello, without a login or a game. The server signs its card when asked and
+  its last one is older than a minute (counts move), `expires` a day after `issued` (`[discovery]
+  card_ms`). Configuration: `[server] name`, `description`, `operator`; `[discovery] counts`
+  (default true: players online and ladder counts on the card). `h3-server card` prints the signed
+  card for a web page. Wall-clock time: the card's times need `SystemTime` (banned by the
+  workspace's clippy): one function in `h3-server` behind a local `allow` with its reason, as
+  `rating.rs` does for `exp`. Verifying a card (`h3-server`, and the test client): the signature
+  with the card's own key, `expires` after now, `issued` at most 10 minutes ahead (clock skew).
+- **Peers and the fetch** (T3, T4). `[[peer]] key = "…" address = "wss://…"` (or `ws://` on a LAN).
+  `[discovery] refresh_ms` (an hour), `depth` (2), `cards` (200), `timeout_ms` (10 s per peer).
+  One task fetches at start and every `refresh_ms`: for each configured peer in order, it dials
+  the address (`wss://` through `rustls` with `rustls-graviola` and the OS roots from
+  `rustls-native-certs`, `tokio-tungstenite`'s `Connector::Rustls` with the server's own
+  `ClientConfig`; `ws://` plain), sends `Hello` (its own nonce, the peer's address), checks the
+  welcome (the configured key, the signature, the id), then `Describe` (the card verifies, its key
+  is the configured one) and, below `depth`, `ListPeers` (pages). The frames it reads are bounded
+  as a client's are (`max_frame`, a total per fetch); a peer that fails is logged and keeps its
+  last good card until that card expires. The server never dials an address it read in a card.
+- **The chain.** The cache holds verified cards, each with `via`: the keys from this server's
+  peer down to the server that vouches for it (empty for a configured peer, which this server
+  vouches for itself). A card from peer P's `ListPeers` with `via: [v…]` is kept with `via: [P,
+  v…]` while that is shorter than `depth`, and only if each link holds: P's card lists the first
+  key of `v…` (or the card's own key), each card on the way lists the next. Duplicates keep the
+  shortest chain; the cache keeps at most `cards`, nearer hops first, peers in configured order.
+- **`ListPeers`** (T3). `ListPeers { seq, from }` → `Peers { seq, from, total, entries: [{ card,
+  via, list }] }`, pages of 50, `list` the list's key for a card fetched for a list (T5). After
+  the hello, without a login. A client verifies each card and each link as the server does.
+- **Lists** (T5). `ServerList { key, name, issued, expires, servers: [{ key, address }] }`, on
+  disk and on the wire as `SignedList { list, signature }` (the text as signed, `h3-list-v1`);
+  files in `<data>/lists/`, read at start and at each refresh; a list that does not verify or has
+  expired is skipped and logged. A list's servers are fetched as configured peers are (depth 1,
+  within `cards`, after the peers), their cards marked with the list's key; `Lists { seq }` →
+  `ListsAre { seq, lists }` gives the signed lists, so a client checks a listed card's membership.
+  Tools: `h3-server list-key <file>` (a list key) and `h3-server sign-list --key <file> <list.toml>`
+  (a signed list from a TOML list of servers and an expiry).
 - **Client side** (the client lane): bookmarks with pinned keys; a browser view that merges
   the cards from every known server and list, groups them by content the client has, shows the
   vouching chain and the age of each card, and connects only on the player's choice.
-- **LAN.** With the feature enabled, the server announces `_h3._tcp.local` with TXT records
-  `key=<fingerprint> name=<name> protocol=<n>`; a client browses the same (the `mdns-sd`
-  crate, MIT/Apache-2.0; a UDP multicast socket).
-- **Deferred: resolution by key.** If addresses change often or vouching does not scale,
-  publish `(key → addresses)` as a signed mutable record in the BitTorrent mainline DHT
-  (BEP 44, keyed by the server's Ed25519 key, as Pkarr does); clients resolve a pinned key
-  without DNS. Needs a DHT crate, a UDP socket reachable through NAT, and bootstrap nodes.
+- **Later: mDNS** (SRV-Q23 (2)): with the client lane's browser, the server announces
+  `_h3._tcp.local` with TXT records `key=<fingerprint> name=<name> protocol=<n>` (the `mdns-sd`
+  crate, `Apache-2.0 OR MIT`; its own thread and a multicast socket).
+- **Later: resolution by key.** If addresses change often or vouching does not scale, publish
+  `(key → addresses)` as a signed mutable record in the BitTorrent mainline DHT (BEP 44, keyed by
+  the server's Ed25519 key, as Pkarr does); clients resolve a pinned key without DNS. Needs a DHT
+  crate, a UDP socket reachable through NAT, and bootstrap nodes.
 
 ## 13. Threats the server answers, and how
 
@@ -395,7 +435,7 @@ below are the tasks' starting point, *provisional* until M4's review.
 | Forged ladder results | results come from the server's own games, after the journal verified |
 | A corrupted game (memory fault, a bug) | checkpoint hashes in the journal, verification before any result counts, the shadow-instance option |
 | A crash or a pause | the write-ahead journal and a deterministic re-run restore the exact state |
-| A leaked data directory | holds public keys, names, ratings, records and finished replays; no password, no secret |
+| A leaked data directory | holds public keys, names, ratings, records and finished replays; no password; one secret from M6, the server key (its holder can speak as the server, not as a player) |
 | A stolen password | the same as anywhere: the operator can rebind the name by hand; no server-side reset exists |
 | A forged or replayed server card | signed by the server's key, with issue and expiry times; relayers cannot alter it |
 | Connecting to an impostor | the key pinned on first contact and the signed welcome; TLS for the channel on the internet |
