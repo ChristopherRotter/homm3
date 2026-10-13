@@ -13,6 +13,7 @@ use h3_content::{ContentKey, PackManifest};
 
 use crate::ability::AbilityDef;
 use crate::battlefield::BattlefieldDef;
+use crate::siege::{SiegeDef, SiegeFieldDef};
 use crate::spell::{SpellMagic, SpellPolarity};
 
 /// A battlefield obstacle type (E03, BAT-GEO-004).
@@ -97,6 +98,8 @@ pub struct BattleParamsDef {
     /// A side may create a stack (Clone, Summon Elemental) only while it has fewer stacks, dead
     /// ones included (BAT-MAG-037; 20 in the original).
     pub side_stack_limit: u8,
+    /// The siege's field (E04c T5, pack format v37), if the ruleset has sieges.
+    pub siege: Option<SiegeFieldDef>,
 }
 
 /// The price of a surrender (BAT-FLE-002): `cost_percent` of the summed cost in `resource` of
@@ -199,6 +202,8 @@ pub struct BattlePack {
     pub manifest: PackManifest,
     /// Special battlefields (E04c).
     pub battlefields: Vec<BattlefieldDef>,
+    /// Siege records by town faction (E04c T5).
+    pub sieges: Vec<SiegeDef>,
     /// Obstacle types.
     pub obstacles: Vec<ObstacleDef>,
     /// The battle rows of the core pack's creatures.
@@ -217,6 +222,7 @@ impl BattlePack {
         Self {
             manifest,
             battlefields: Vec::new(),
+            sieges: Vec::new(),
             obstacles: Vec::new(),
             creatures: Vec::new(),
             creature_overrides: Vec::new(),

@@ -465,6 +465,22 @@ pub enum EventKind {
         /// Its position now.
         to: Hex,
     },
+    /// A town's gate opened: a stack of the defender's came onto it (BAT-SIE-003).
+    GateOpened,
+    /// A town's gate closed: nothing lies on it any more (BAT-SIE-003).
+    GateClosed,
+    /// A stack entered a town's damaging moat, or acted in it (BAT-SIE-005): damage straight to
+    /// its hit points.
+    MoatDamage {
+        /// The stack.
+        stack: StackId,
+        /// The moat's hex.
+        hex: Hex,
+        /// Damage dealt.
+        damage: u64,
+        /// Creatures killed.
+        kills: u32,
+    },
     /// The battle ended (BAT-END-001/002).
     BattleEnded {
         /// A victory of one side, or a draw.

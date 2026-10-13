@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 
 use h3_content::{CreatureTypeId, TerrainId};
 use h3_content_battle::{BattleRuleset, BattlefieldId, ObstacleType};
-use h3_contracts::{BattleSetup, Obstacle};
+use h3_contracts::{BattleSetup, FortLevel, Obstacle};
 use h3_kernel::Rng;
 
 use crate::geometry::{Field, Hex, HexSet};
@@ -103,8 +103,10 @@ pub fn generate_obstacles(
 }
 
 /// Generates the obstacles of a battle of `setup` on its terrain and its special battlefield
-/// (BAT-GEO-004), or none without a terrain. An unknown battlefield key counts as none (the setup
-/// refuses it when the battle starts).
+/// (BAT-GEO-004), or none without a terrain or at a town with a fort (BAT-SIE-001: none in a
+/// siege under SoD rules; the usual ones a Stronghold with a Citadel gets under older rules,
+/// survey S-29, are for whoever derives the siege). An unknown battlefield key counts as none
+/// (the setup refuses it when the battle starts).
 pub fn generate_setup_obstacles(
     ruleset: &BattleRuleset,
     setup: &BattleSetup,
@@ -114,9 +116,13 @@ pub fn generate_setup_obstacles(
         .battlefield
         .as_ref()
         .and_then(|k| ruleset.battlefield_by_key(k.as_str()));
-    setup.terrain.map_or_else(Vec::new, |t| {
-        generate_battlefield_obstacles(ruleset, t, battlefield, rng)
-    })
+    let walled = setup.siege.is_some_and(|s| s.fort >= FortLevel::Fort);
+    setup
+        .terrain
+        .filter(|_| !walled)
+        .map_or_else(Vec::new, |t| {
+            generate_battlefield_obstacles(ruleset, t, battlefield, rng)
+        })
 }
 
 /// Generates the obstacles of a battle on `terrain` and `battlefield` (BAT-GEO-004), in the order

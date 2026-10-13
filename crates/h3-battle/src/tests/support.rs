@@ -14,7 +14,7 @@ use h3_content::{
 };
 use h3_content_battle::{
     AbilityDef, AuraTarget, BattleCompileError, BattleCreatureDef, BattlePack, BattleParamsDef,
-    BattleRuleset, BattleSpellDef, BattlefieldDef, EffectDuration, EffectEnd, FactionChangeDef,
+    BattleRuleset, BattleSpellDef, BattlefieldDef, SiegeDef, SiegeFieldDef, EffectDuration, EffectEnd, FactionChangeDef,
     HexStep, ObstacleDef, ObstacleKind, ObstacleShape, SpecialistBonus, SpellArea, SpellChain,
     SpellEffect, SpellMagic, SpellPolarity, SpellTarget, SurrenderDef, TargetConditions,
     TargetSide, TimedChange, Usefulness,
@@ -1406,7 +1406,47 @@ pub fn battle_params() -> BattleParamsDef {
         }),
         hero_casts_per_round: 1,
         side_stack_limit: 20,
+        siege: Some(siege_field()),
     }
+}
+
+/// The siege's field of the test rulesets (E04c T5): the original's (`installation.md` §7.27,
+/// §7.28).
+pub fn siege_field() -> SiegeFieldDef {
+    SiegeFieldDef {
+        walls: vec![12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182],
+        gate: 96,
+        moat: vec![11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181],
+        second_moat: vec![10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180],
+        moat_defense_penalty: 3,
+        mine_power: 3,
+    }
+}
+
+/// The test sieges (BAT-SIE-001): `t:castle`'s moat does 70, `t:inferno`'s 90 with a second row
+/// (the Fortress's shape), `t:necropolis` lays `t:landmine`'s mines instead, at least 150.
+pub fn siege_defs() -> Vec<SiegeDef> {
+    let key = |k: &str| ContentKey::new("t", k).unwrap();
+    vec![
+        SiegeDef {
+            faction: key("castle"),
+            moat_damage: 70,
+            second_moat: false,
+            mines: None,
+        },
+        SiegeDef {
+            faction: key("inferno"),
+            moat_damage: 90,
+            second_moat: true,
+            mines: None,
+        },
+        SiegeDef {
+            faction: key("necropolis"),
+            moat_damage: 150,
+            second_moat: false,
+            mines: Some(key("landmine")),
+        },
+    ]
 }
 
 /// Gold costs of some test creatures (BAT-FLE-002): those of the original's Pikemen, Pixies and
@@ -1621,6 +1661,7 @@ pub fn try_ruleset_from(
             },
         ],
         battlefields: battlefield_defs(),
+        sieges: siege_defs(),
         creatures: battle_creatures,
         spells: battle_spells,
         battle: Some(battle),

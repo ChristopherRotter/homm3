@@ -10,7 +10,8 @@ use h3_content::{
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    DamageBonuses, EagleEye, FactionGroup, Obstacle, Rate, StatOp, TentControl,
+    DamageBonuses, EagleEye, FactionGroup, FortLevel, Moat, Obstacle, Rate, Siege, StatOp,
+    TentControl,
 };
 use h3_pack::{AffectsEntry, StatEntry};
 use serde::{Deserialize, Serialize};
@@ -46,6 +47,8 @@ struct ScenarioHeader {
     /// The battle is at an anti-magic garrison (E04c, BAT-MAG-061).
     #[serde(default)]
     anti_magic: bool,
+    /// The town the battle is fought at (E04c T5, BAT-SIE-001).
+    siege: Option<SiegeEntry>,
     /// Generate obstacles for the terrain when the battle starts (BAT-GEO-004).
     #[serde(default)]
     random_obstacles: bool,
@@ -893,6 +896,93 @@ impl ObstacleEntry {
     }
 }
 
+/// The town a battle is fought at (`[scenario.siege]`, a replay's `[setup.siege]`; E04c T5,
+/// ADR-0023): `h3_contracts::Siege` with its faction by key and its levels by name.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SiegeEntry {
+    /// The town's faction key.
+    pub faction: String,
+    /// `none`, `fort`, `citadel` or `castle`.
+    pub fort: String,
+    /// `absent`, `harmless` or `damaging`.
+    pub moat: String,
+    /// The buildings the turrets count (the original's count).
+    #[serde(default)]
+    pub structures: u8,
+    /// The town has an Escape Tunnel.
+    #[serde(default)]
+    pub escape_tunnel: bool,
+    /// The town's morale bonus to the defender's stacks.
+    #[serde(default)]
+    pub morale: i8,
+    /// The town's luck bonus to the defender's stacks.
+    #[serde(default)]
+    pub luck: i8,
+}
+
+/// The names of the fort levels and the moats, in their order.
+const FORT_LEVELS: [(&str, FortLevel); 4] = [
+    ("none", FortLevel::None),
+    ("fort", FortLevel::Fort),
+    ("citadel", FortLevel::Citadel),
+    ("castle", FortLevel::Castle),
+];
+const MOATS: [(&str, Moat); 3] = [
+    ("absent", Moat::Absent),
+    ("harmless", Moat::Harmless),
+    ("damaging", Moat::Damaging),
+];
+
+impl SiegeEntry {
+    /// The entry of `siege`.
+    ///
+    /// # Errors
+    /// A faction that is not one of `ruleset`'s.
+    pub fn of(siege: &Siege, ruleset: &Ruleset) -> Result<Self, BattlePackError> {
+        let faction = ruleset
+            .factions()
+            .get(siege.faction.index())
+            .ok_or_else(|| BattlePackError::Syntax("unknown siege faction".to_owned()))?;
+        let name = |table: &[(&'static str, _)], i: usize| table[i].0.to_owned();
+        Ok(Self {
+            faction: faction.key.as_str().to_owned(),
+            fort: name(&FORT_LEVELS, siege.fort as usize),
+            moat: name(&MOATS, siege.moat as usize),
+            structures: siege.structures,
+            escape_tunnel: siege.escape_tunnel,
+            morale: siege.morale,
+            luck: siege.luck,
+        })
+    }
+
+    /// The siege of the entry, its faction resolved against `ruleset`.
+    ///
+    /// # Errors
+    /// An unknown faction, fort level or moat.
+    pub fn to_siege(&self, ruleset: &Ruleset) -> Result<Siege, BattlePackError> {
+        let faction = ruleset
+            .faction_by_key(&self.faction)
+            .ok_or_else(|| BattlePackError::Syntax(format!("unknown faction `{}`", self.faction)))?;
+        let pick = |table: &[(&'static str, _)], name: &str, what: &str| {
+            table
+                .iter()
+                .find(|(n, _)| *n == name)
+                .map(|&(_, v)| v)
+                .ok_or_else(|| BattlePackError::Syntax(format!("unknown {what} `{name}`")))
+        };
+        Ok(Siege {
+            faction,
+            fort: pick(&FORT_LEVELS, &self.fort, "fort level")?,
+            moat: pick(&MOATS, &self.moat, "moat")?,
+            structures: self.structures,
+            escape_tunnel: self.escape_tunnel,
+            morale: self.morale,
+            luck: self.luck,
+        })
+    }
+}
+
 /// A parsed scenario whose creature references are not yet resolved against a ruleset.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScenarioDef {
@@ -909,6 +999,7 @@ pub struct ScenarioDef {
     pub(crate) terrain: Option<String>,
     pub(crate) battlefield: Option<ContentKey>,
     pub(crate) anti_magic: bool,
+    pub(crate) siege: Option<SiegeEntry>,
     pub(crate) war_machines: [Vec<String>; 2],
     pub(crate) formations: [Formation; 2],
     pub(crate) funds: [u32; 2],
@@ -1025,7 +1116,11 @@ impl ScenarioDef {
             terrain,
             battlefield: self.battlefield.clone(),
             anti_magic: self.anti_magic,
-            siege: None,
+            siege: self
+                .siege
+                .as_ref()
+                .map(|s| s.to_siege(ruleset))
+                .transpose()?,
             war_machines: [
                 machines(&self.war_machines[0])?,
                 machines(&self.war_machines[1])?,
@@ -1077,6 +1172,7 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, BattlePackError> {
             .map(ContentKey::parse)
             .transpose()?,
         anti_magic: file.scenario.anti_magic,
+        siege: file.scenario.siege,
         war_machines: [
             file.scenario.attacker_war_machines,
             file.scenario.defender_war_machines,

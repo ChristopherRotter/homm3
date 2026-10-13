@@ -45,6 +45,7 @@ mod natural;
 mod observe;
 mod obstacles;
 mod raise;
+mod siege;
 mod state;
 mod tactics;
 mod terrain;
@@ -70,6 +71,7 @@ pub use morale::{Bearer, Expiry, MODIFIER_CAPACITY, Modifiers, Stat};
 pub use natural::{MAX_REMOVABLE_HEXES, MAX_REMOVABLE_OBSTACLES, RemovableObstacle};
 pub use observe::{Observation, Viewer, observe, observe_as, project, project_as};
 pub use obstacles::{OBSTACLE_CAPACITY, SpellObstacle};
+pub use siege::SiegeState;
 pub use state::{
     BATTLE_STATE_HASH_VERSION, BattleState, CREATED_SLOT, NO_CORPSE, SIDE_STACK_SLOTS,
     STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,

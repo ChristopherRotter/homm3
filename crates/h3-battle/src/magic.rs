@@ -617,8 +617,18 @@ pub(crate) fn mastery(
     hero: &HeroRecord,
     spell: SpellId,
 ) -> u8 {
-    let raised = state
-        .battlefield
+    mastery_at(ruleset, state.battlefield, hero, spell)
+}
+
+/// [`mastery`] on `battlefield` (also before the battle's state exists: a town's land mines,
+/// BAT-SIE-007).
+pub(crate) fn mastery_at(
+    ruleset: &BattleRuleset,
+    battlefield: Option<BattlefieldId>,
+    hero: &HeroRecord,
+    spell: SpellId,
+) -> u8 {
+    let raised = battlefield
         .and_then(|b| ruleset.battlefield(b))
         .zip(ruleset.spell(spell))
         .is_some_and(|(b, s)| b.raises(&s.schools));

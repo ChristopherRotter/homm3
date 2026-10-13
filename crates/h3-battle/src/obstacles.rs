@@ -25,6 +25,7 @@ use crate::event::{Event, EventKind, Sink, Visibility};
 use crate::geometry::{Direction, Field, Hex, HexSet};
 use crate::magic;
 use crate::movement;
+use crate::siege::{self, TownMines};
 use crate::state::{BattleState, NO_CORPSE, StackId, StackTraits, side_code};
 
 /// Obstacles reserved with the first one and on every fork that has any (ADR-0014 point 5).
@@ -457,6 +458,41 @@ pub(crate) fn place<S: Sink>(
     state.spell_obstacles.refresh();
 }
 
+/// Lays a town's land mines at the battle's start (BAT-SIE-007): one obstacle per hex, the
+/// defender's, hidden from the attacker whatever its natives (the original's 0x4663BE sets them
+/// unseen), each reported to the defender.
+// rule: BAT-SIE-007
+pub(crate) fn lay_unseen<S: Sink>(state: &mut BattleState, mines: TownMines, sink: &mut S) {
+    let side = BattleSide::Defender;
+    for hex in mines.hexes.iter() {
+        let mut hexes = HexSet::new();
+        hexes.insert(hex);
+        let o = SpellObstacle {
+            spell: mines.spell,
+            kind: ObstacleKind::Mine,
+            side,
+            hexes,
+            rounds: mines.rounds,
+            value: mines.value,
+            revealed: false,
+        };
+        let list = &mut state.spell_obstacles.list;
+        if list.capacity() == 0 {
+            list.reserve_exact(OBSTACLE_CAPACITY);
+        }
+        list.push(o);
+        sink.emit(Event {
+            visibility: visibility(&o),
+            kind: EventKind::ObstaclePlaced {
+                side,
+                spell: mines.spell,
+                hexes,
+            },
+        });
+    }
+    state.spell_obstacles.refresh();
+}
+
 /// Removes the obstacles `gone` picks, each reported to the sides that saw it (BAT-MAG-031).
 fn remove<S: Sink>(
     state: &mut BattleState,
@@ -593,19 +629,22 @@ fn mine_under(state: &BattleState, ruleset: &BattleRuleset, s: StackId, hex: Hex
     })
 }
 
-/// Whether entering `hex` acts on stack `s`: a Fire Wall burns there (BAT-MAG-028) or a mine
-/// goes off under it (BAT-MAG-033). A mine that does not go off changes nothing, not even how the
-/// move is reported.
+/// Whether entering `hex` acts on stack `s`: a Fire Wall burns there (BAT-MAG-028), a mine
+/// goes off under it (BAT-MAG-033) or a damaging moat lies there (BAT-SIE-005). A mine that does
+/// not go off changes nothing, not even how the move is reported.
 fn acts_on(state: &BattleState, ruleset: &BattleRuleset, s: StackId, hex: Hex) -> bool {
     let o = &state.spell_obstacles;
-    o.fire.contains(hex) || (o.mines.contains(hex) && mine_under(state, ruleset, s, hex).is_some())
+    o.fire.contains(hex)
+        || (o.mines.contains(hex) && mine_under(state, ruleset, s, hex).is_some())
+        || siege::damages_on(state, hex)
 }
 
 /// Stack `s` enters each of `hexes` in turn, while it lives: on each a Fire Wall burns it
-/// (BAT-MAG-028), then a mine may go off under it (BAT-MAG-033), as the original's 0x46A570
-/// (`installation.md` §7.15, §7.17); a stack either kills may be reborn (BAT-MAG-059), and the
-/// battle may end: checked here if `ends`, else left to the action this is a part of
-/// ([`travel_back`]). Returns whether it still lives.
+/// (BAT-MAG-028), then a mine may go off under it (BAT-MAG-033), then a damaging moat hurts it,
+/// once for both hexes (BAT-SIE-005), as the original's 0x46A570 (`installation.md` §7.15,
+/// §7.17, §7.28); a stack any of them kills may be reborn (BAT-MAG-059), and the battle may end:
+/// checked here if `ends`, else left to the action this is a part of ([`travel_back`]). Returns
+/// whether it still lives.
 fn enter<S: Sink>(
     state: &mut BattleState,
     ruleset: &BattleRuleset,
@@ -614,6 +653,7 @@ fn enter<S: Sink>(
     ends: bool,
     sink: &mut S,
 ) -> bool {
+    let mut soaked = false;
     for hex in hexes.into_iter().flatten() {
         if !state.at(s).is_alive() {
             break;
@@ -636,6 +676,16 @@ fn enter<S: Sink>(
             && let Some(i) = mine_under(state, ruleset, s, hex)
         {
             explode(state, ruleset, (s, hex), i, ends, sink);
+        }
+        // rule: BAT-SIE-005
+        if state.at(s).is_alive() && !soaked && siege::damages_on(state, hex) {
+            soaked = true;
+            siege::moat_damage(state, ruleset, (s, hex), sink);
+            // rule: BAT-MAG-059
+            crate::raise::rebirths(state, ruleset, sink);
+            if ends {
+                check_end(state, sink);
+            }
         }
     }
     state.at(s).is_alive()
@@ -699,11 +749,15 @@ pub(crate) fn travel<S: Sink>(
     // rule: BAT-MAG-045
     crate::binds::release(state, ruleset, mover, sink);
     let o = &state.spell_obstacles;
-    if o.fire().is_empty() && !o.has_hidden() {
+    let arrived = if o.fire().is_empty() && !o.has_hidden() && !siege::damaging(state) {
         go(state, ruleset, mover, (from, to), sink);
-        return true;
-    }
-    travel_through(state, ruleset, mover, (from, to), true, sink)
+        true
+    } else {
+        travel_through(state, ruleset, mover, (from, to), true, sink)
+    };
+    // rule: BAT-SIE-003
+    siege::close_gate(state, sink);
+    arrived
 }
 
 /// The return of stack `mover` from `from` to the position `to` it started its turn on, after
@@ -724,11 +778,13 @@ pub(crate) fn travel_back<S: Sink>(
     // rule: BAT-MAG-045
     crate::binds::release(state, ruleset, mover, sink);
     let o = &state.spell_obstacles;
-    if o.fire().is_empty() && !o.has_hidden() {
+    if o.fire().is_empty() && !o.has_hidden() && !siege::damaging(state) {
         go(state, ruleset, mover, (from, to), sink);
     } else {
         travel_through(state, ruleset, mover, (from, to), false, sink);
     }
+    // rule: BAT-SIE-003
+    siege::close_gate(state, sink);
 }
 
 /// Moves stack `mover` from `from` to `to` where nothing on the way acts on it: a walker
@@ -757,7 +813,8 @@ fn go<S: Sink>(
 }
 
 /// Moves stack `mover` from `a` to `b`, reported (a placement in the tactics phase, BAT-TAC-002,
-/// is one such move).
+/// is one such move); a stack of the defender's that comes onto a town's gate opens it
+/// (BAT-SIE-003).
 pub(crate) fn moved<S: Sink>(
     state: &mut BattleState,
     mover: StackId,
@@ -770,6 +827,8 @@ pub(crate) fn moved<S: Sink>(
         from: a,
         to: b,
     }));
+    // rule: BAT-SIE-003
+    siege::entered(state, mover, sink);
 }
 
 /// [`travel`] while a Fire Wall, a pit or a mine lies on the battlefield; the battle's end is
@@ -878,9 +937,10 @@ fn stuck<S: Sink>(state: &mut BattleState, mover: StackId, hex: Hex, sink: &mut 
 
 /// After stack `s` acted without moving (it defended, waited, shot, or attacked from where it
 /// stands), it enters the hexes it stands on again (the original's 0x46A570): a Fire Wall there
-/// burns it (BAT-MAG-028) and a mine there that it did not set off yet goes off (it was placed
-/// there by Teleport, or it was immune when it came; BAT-MAG-033), unless the battle is over.
-// rule: BAT-MAG-028, BAT-MAG-033
+/// burns it (BAT-MAG-028), a mine there that it did not set off yet goes off (it was placed
+/// there by Teleport, or it was immune when it came; BAT-MAG-033) and a damaging moat hurts it
+/// again (BAT-SIE-005), unless the battle is over.
+// rule: BAT-MAG-028, BAT-MAG-033, BAT-SIE-005
 #[inline]
 pub(crate) fn stand<S: Sink>(
     state: &mut BattleState,
@@ -889,12 +949,12 @@ pub(crate) fn stand<S: Sink>(
     sink: &mut S,
 ) {
     let o = &state.spell_obstacles;
-    if !o.fire().is_empty() || !o.mines().is_empty() {
+    if !o.fire().is_empty() || !o.mines().is_empty() || siege::damaging(state) {
         stand_on(state, ruleset, s, sink);
     }
 }
 
-/// [`stand`] while a Fire Wall or a mine lies on the battlefield.
+/// [`stand`] while a Fire Wall, a mine or a damaging moat lies on the battlefield.
 #[inline(never)]
 fn stand_on<S: Sink>(state: &mut BattleState, ruleset: &BattleRuleset, s: StackId, sink: &mut S) {
     if state.result.is_some() || !state.at(s).is_alive() {

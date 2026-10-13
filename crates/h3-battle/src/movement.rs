@@ -4,15 +4,17 @@
 //! A position is a one-hex stack's hex or a two-hex stack's rear hex, whose other hex comes along
 //! in front of it (BAT-GEO-002). A position is free for a stack when every hex of its footprint
 //! there is standable and not blocked by an obstacle (a Force Field among them, BAT-MAG-027) or
-//! another living stack (its own current hexes do not block it). A walker's move ends at a position
-//! where it enters a pit its controller sees (Quicksand, BAT-MAG-032): it may stop there but not go
-//! on.
+//! another living stack (its own current hexes do not block it), and in a battle at a town by the
+//! walls or the closed gate (BAT-SIE-002, BAT-SIE-003). A walker's move ends at a position where
+//! it enters a pit its controller sees (Quicksand, BAT-MAG-032) or a town's moat (BAT-SIE-004): it
+//! may stop there but not go on.
 
 use h3_content_battle::MAX_FIELD_HEXES;
 
 use crate::binds;
 use crate::geometry::{Field, Hex, HexSet};
 use crate::obstacles;
+use crate::siege;
 use crate::state::{BattleState, Stack, StackId, StackTraits};
 
 const UNREACHABLE: u8 = u8::MAX;
@@ -77,9 +79,10 @@ pub(crate) fn range(state: &BattleState, id: StackId, mover: &Stack) -> u8 {
 
 /// Computes where `mover` (stack `id`) can move within `range`. Walkers take up to `range` steps
 /// between neighbouring free positions (BAT-MOV-001) and go on from none where they enter a pit
-/// their controller sees, other than those they start on (BAT-MAG-032; the original's stops,
-/// `installation.md` §7.16); flyers and teleporters reach every free position whose hex distance
-/// is at most `range`, whatever lies in between (BAT-MOV-002). Dead stacks do not block.
+/// their controller sees or a town's moat, other than those they start on (BAT-MAG-032,
+/// BAT-SIE-004; the original's stops, `installation.md` §7.16, §7.28); flyers and teleporters
+/// reach every free position whose hex distance is at most `range`, whatever lies in between
+/// (BAT-MOV-002). Dead stacks do not block.
 // rule: BAT-MOV-001, BAT-MOV-002
 pub(crate) fn reachable_within(
     state: &BattleState,
@@ -88,9 +91,10 @@ pub(crate) fn reachable_within(
     mover: &Stack,
     range: u8,
 ) -> Reach {
-    // rule: BAT-MAG-032
+    // rule: BAT-MAG-032, BAT-SIE-004
     reach(state, field, id, mover, range, || {
-        obstacles::seen_pits(state, mover.controller())
+        let side = mover.controller();
+        obstacles::seen_pits(state, side).union(siege::stops(state, side))
     })
 }
 
@@ -106,7 +110,8 @@ pub(crate) fn reachable_in_public(
     mover: &Stack,
 ) -> Reach {
     reach(state, field, id, mover, range(state, id, mover), || {
-        obstacles::public_pits(state)
+        // rule: BAT-SIE-004
+        obstacles::public_pits(state).union(siege::stops(state, mover.controller()))
     })
 }
 
