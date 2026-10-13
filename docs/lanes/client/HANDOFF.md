@@ -5,7 +5,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **E17 M0, M1 done; M2 T1, T3, T4a, T6, T4b-1 done 2026-10-13, T4b-2a 2026-10-14 (M2's headless exit); next: M2 T4b-2b** (first the turn sequence, prepared in `situations/seq-turn.toml`; `QUEUE.md`) or **T2** (the window/audio evaluation: ends at the user's choice). Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020. Built: decoders, the real-asset gate, code readings (design §3–§5, §7), compositor, asset tables, `h3-view render`/`sequences`/`situation`/`play`, `h3_view::anim` (§7.8–§7.10: timing, turns, layers, fidgets), the capture harness (runbook `clients/capture/README.md`, design §6). Records: `docs/epics/E17-log.md`.
-- **Pull request (2026-10-14):** T4b-2a, `client/e17-m2-t4b2a-full-battle`.
+- **Pull request (2026-10-14):** #186, T4b-2a, `client/e17-m2-t4b2a-full-battle`.
 - **The user's requirements (2026-10-13)**, epic "Decisions": a string catalogue, language packs; graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
 - The lane owns `clients/` (its own Cargo workspace, `clients/README.md`), `docs/epics/E17*` and this folder. Branches `client/<task>`. Ids: questions `CLT-Q<n>`, quirks (asset fixes) `CLT-QUIRK-<n>`, stubs `CLT-STUB-<n>`. ADR drafts go to `adr-drafts/` and get a number when the user accepts them (ADR-0021 is the server's: the next free number).
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
