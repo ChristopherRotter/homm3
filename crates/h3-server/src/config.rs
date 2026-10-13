@@ -183,7 +183,7 @@ pub struct Server {
     /// counts as the client its handshake's `X-Forwarded-For` names. None by default.
     pub trusted_proxies: Vec<IpAddr>,
     /// The server's name on its card (E16 M6 T2): one line of at most 64 bytes; the server's id
-    /// by default.
+    /// by default, its first 64 bytes.
     pub name: Option<String>,
     /// What the server is about, on its card (E16 M6 T2): at most 1024 bytes, lines ending in
     /// `\n`. None by default.

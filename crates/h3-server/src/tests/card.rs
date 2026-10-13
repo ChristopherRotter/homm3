@@ -223,3 +223,16 @@ fn the_cards_configuration_is_bounded() {
         assert!(parsed.0.contains(error), "{server} {discovery}: {parsed}");
     }
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_server_without_a_name_is_named_by_its_ids_first_64_bytes() {
+    // An id longer than a name may be (E16 M6's review): the start once refused it.
+    let mut long = config(fast());
+    let id = format!("wss://{}.example.org", "h".repeat(100));
+    long.server.public_url = Some(id.clone());
+    let running = start(&long).await.unwrap();
+    let (card, _) = greeted(&running).await.describe(1).await.unwrap();
+    assert_eq!(card.name, id[..64]);
+    assert_eq!(card.addresses[0], id);
+    running.shutdown().await;
+}

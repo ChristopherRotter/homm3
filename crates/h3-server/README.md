@@ -27,7 +27,7 @@ parse, and never writes a new one over it.
 
 **The server's card** (ADR-0021 point 2) describes it to players who browse: its name, description
 and operator contact (`[server] name`, `description`, `operator`; the name is the server's id
-by default), its addresses (`public_url` or `ws://` and the bound address, then `addresses`), the
+by default, its first 64 bytes), its addresses (`public_url` or `ws://` and the bound address, then `addresses`), the
 protocol and engine versions, each ruleset its offers and ladders are made of, its ladders and
 whether anonymous play is allowed, signed by the server's key with its issue time and an expiry a
 day later (`[discovery] card_ms`). It counts the open connections, the games waiting or running and
