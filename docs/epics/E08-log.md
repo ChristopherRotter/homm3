@@ -1546,7 +1546,7 @@ round.
   | Criterion | State |
   |---|---|
   | ADR amendments accepted | ADR-0016 and ADR-0017 amendments (2026-10-12, #115) |
-  | Full verify green in CI, logic crates at 100 % | CI cannot start (GitHub billing): the runner's full local verify stands in; this task's scoped verify passes every step but `check-lane` (T16b's battle paths, by design), with `h3-adventure` and `h3-game` at 100 % |
+  | Full verify green in CI, logic crates at 100 % | CI cannot start (GitHub billing): the runner's full local verify with `--with-original-data` stands in, **green on `0c87d63`** (2026-10-13; every step, the 164 shipped maps read, the benchmarks at +0.00 %); `h3-adventure` and `h3-game` at 100 % |
   | Atomicity | `h3-map` `play.rs` `every_step_keeps_the_commands_invariants` (48 cases × up to 40 steps, both profiles) on plans with piles, campfires, a Redwood Observatory, a Cartographer, red tents, guards and gates; `h3-sim` `a_refused_command_changes_nothing` on the duel with objects |
   | Legality consistency, pending decisions included | `check_legal`/`check_unlisted` (answers alone while a decision is open, `Decline` alone when it no longer stands); `h3-sim` `steps_agree_with_the_masks_and_the_game` with a Cartographer beside each hero; `h3-game` `tests/decisions.rs` (a stale offer, `OfferGone`: only `set_schedule` builds two players in one group, the inbox) |
   | Ownership isolation: treasuries; streams if a command draws | `check_isolation`: the other players' treasuries, purchases, decisions, keys, explored tiles, heroes; no command draws (every draw is at setup, ADV-PIK-001 to -003 from the setup stream; a player's stream is only hashed in `h3-game`), so the streams' part is void; the hygiene property varies the seed |
