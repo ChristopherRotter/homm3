@@ -1404,3 +1404,55 @@ payments or the spending limit), so the full local verify stands in again.
     `Decline`, and `Accept` while the offer stands.
 - **The full local verify** (CI cannot start: billing) with `--with-original-data` on the branch's
   head before the pull request (its result there).
+
+### Checkpoint after T15a + T15b and T16b + T16a: batch 2, maps with objects (2026-10-13, `adventure/e08-t16`)
+
+The user accepted every T15 call. The round, the user's cut of T16: **T16b** (the spec stamp and
+batch 2: D-3 and D-5's piles) first, so the user can play batch 2 while **T16a** (the maps with
+objects, replays, benchmarks, the audit) is built; both on one pull request labelled
+`cross-lane` (battle-owned `h3-experiment`, consented). T16c (scoring batch 2, the closure) next
+round.
+
+**T16b — batch 2 with the spec stamp** (a worker; draft).
+- **The stamp** (decision 18): `h3_experiment::stamp`, 8 hex digits of the CRC-32 of the spec's
+  text with CRLF made LF (`h3_map::crc32`, no new dependency), so the user's Windows checkout and
+  Linux agree; `parse` sets `Spec::stamp` (a `stamp` key in the file is refused), `build` starts
+  the map's description with `Stamp <hex>.` (the scenario list shows it) and puts the stamp and
+  the line to compare it at the template's top. Tests: the value (`stamp("123456789")` is the
+  CRC's check value `cbf43926`), CRLF, the description, the template, a Windows copy of a spec
+  building the same map and template.
+- **Resource piles**: `h3_map::writer::Pile` (class 79, the resource as subclass, the template
+  from `Objects.txt` as the monsters'; the body as the editor writes one without a message: flag,
+  u32 amount, 4 unused; validated: class, resource below 7, tile); `[[map.pile]]` in the spec
+  (`resource`, `row`, `from`, `to`, `amount`, 0 drawn at the game's start; one pile per tile,
+  `Tables::piles`); `h3-map`'s read-back test reads a random mercury pile back and imports it as
+  `base:pile_mercury` without an amount. Docs: `docs/experiments/README.md` (the stamp, the
+  shape, the batch's row), `docs/formats/h3m.md` (what the writer writes).
+- **Batch 2** (`experiments/specs/E08-batch-2.toml`, 72 × 72, sand with a grass band; hot seat,
+  one day, no battle; stamp `59a4b43d`):
+
+  | Encounter | Set-up | Reading (engine) | VCMI | Wiki |
+  |---|---|---|---|---|
+  | D3a | 12 sand steps (200 left), onto a cobblestone road | 50 left, a further road step, 0 | 0, no step | 50, a step |
+  | D3b (control) | the same onto a dirt road (75) | 0, no step | 0, no step | 50, no step |
+  | D3c | 1 grass and 12 sand steps onto a snow marker | 100 | 0 | 100 |
+  | D3d | 13 sand steps onto a snow marker | 0 | 0 | 50 |
+  | D5w, D5m | 16 random wood, 16 random mercury piles | 5–10, 3–6 | 6–10, 3–5 | 5–10, 3–6 |
+
+  Red's four walkers (one Angel: 2000 points; not native to sand or snow; no skills or
+  artifacts) walk 13 steps straight east, no diagonal; two scouts explore their rows beyond the
+  destinations so each can be clicked from the start; the observation is the walk (where the
+  hero stops, the points it shows, whether a further step follows), not the preview, which does
+  not apply the drop (0x56B440). Each source has its own signature over the four. Blue's four
+  collectors stand between two rows of four piles each and pick them up column by column; the
+  template asks for the resource bar after each pickup (the amounts are the rises). A wood pile
+  of 5 or a mercury pile of 6 refutes VCMI's ranges; neither in 16 + 16 happens under the reading
+  with (5/6)^16 · (3/4)^16 = 0.054 %. About 70 clicks for D-5, 16 for D-3.
+- **Checked** (a throwaway program, not committed): the compiled map read back through `h3-map`
+  and imported, then played by the engine with seeds 1 to 3: the description carries the stamp;
+  the reachable-tiles query's path to each D-3 destination is straight east; D3a 50 then 0 on the
+  road's second tile, D3b 0 and the further step refused, D3c 100, D3d 0; 32 typed piles
+  (16 `pile_wood`, 16 `pile_mercury`) without amounts, each collector spending 1246 of 2000 points
+  in the procedure's order, every amount within 5–10 and 3–6. Compiled again after the last
+  change to the spec: the map in `experiments/out/` and the template carry the same stamp.
+- Not shown in the template, as before: the predictions (in the spec, for the evaluating agent).
