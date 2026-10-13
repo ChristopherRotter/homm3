@@ -4,8 +4,9 @@
 use std::vec;
 use std::vec::Vec;
 
+use h3_content::SpellScope;
 use h3_content_battle::BattleRuleset;
-use h3_contracts::BattleSide;
+use h3_contracts::{BattleEffect, BattleHero, BattleSide, Rate};
 
 use super::spells::{arena, mage, spell, stack};
 use super::support::*;
@@ -655,6 +656,47 @@ fn a_random_casters_power_is_its_creatures_times_its_power_per_creature() {
     }
 }
 
+// covers: BAT-MAG-048, BAT-MAG-049, BAT-MAG-004
+#[test]
+fn a_creatures_area_spell_and_chain_take_its_controllers_hero_bonuses_and_its_bolt_none() {
+    // The original's area and chain handlers fetch the acting side's hero (0x5A4970, 0x5A6360;
+    // `installation.md` §7.21; the wiki: "Sorcery also boosts damage spells cast by creatures",
+    // not the Faerie Dragons' bolts; BAT-Q28 row 2). The attacker's hero adds 50 % to every
+    // spell, the defender's 100 %: one caster at Advanced, value 5 × 10 + 20 = 70.
+    let r = ruleset();
+    let bonus = |bp: u32| {
+        let mut h = hero(&r);
+        h.effects = vec![BattleEffect::SpellDamage {
+            scope: SpellScope::All,
+            rate: Rate::bp(bp),
+        }];
+        h
+    };
+    let cast = |caster: &'static str, heroes: [Option<BattleHero>; 2]| {
+        let mut s = arena(&r, heroes, &[(caster, 1, 3, 5)], &[("fixed", 30, 13, 5)], 1);
+        drawing(&mut s, &r, 0);
+        let target = if caster == "novaling" {
+            CastTarget::Hex(at(&r, 13, 5))
+        } else {
+            stack(1)
+        };
+        damage(&act(&mut s, &r, Command::CreatureCast { target }).unwrap())
+    };
+    let heroes = || [Some(bonus(5000)), Some(bonus(10_000))];
+    // The area spell and the chain: 70 × 1.5 = 105, the attacker's bonus; the chain's jump to
+    // the caster itself, 35 × 1.5 = 52.
+    assert_eq!(cast("novaling", heroes()), vec![(1, 70, 105)]);
+    assert_eq!(cast("chainling", heroes()), vec![(1, 70, 105), (0, 35, 52)]);
+    // Without a hero on its side, none.
+    assert_eq!(
+        cast("novaling", [None, Some(bonus(10_000))]),
+        vec![(1, 70, 70)]
+    );
+    // The bolt at one stack: none, whatever the heroes.
+    let bolt = cast("boltling", [None, None]);
+    assert_eq!(cast("boltling", heroes()), bolt);
+}
+
 // covers: BAT-MAG-049
 #[test]
 fn a_hypnotized_random_caster_draws_for_its_controller() {
@@ -981,7 +1023,7 @@ fn anti_magic_is_never_useful_on_a_clone() {
 #[test]
 fn the_enemy_decides_the_shields_protections_and_slayer() {
     let r = ruleset();
-    let enemy = |name: &'static str, heroes: [Option<h3_contracts::BattleHero>; 2]| {
+    let enemy = |name: &'static str, heroes: [Option<BattleHero>; 2]| {
         arena(
             &r,
             heroes,

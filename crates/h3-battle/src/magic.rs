@@ -2101,6 +2101,14 @@ pub(crate) fn resists(
     }
 }
 
+/// Whether `cast` is an area spell aimed at a hex or a chain: the spells whose damage the
+/// original computes in handlers of their own, which take the acting side's hero's bonuses also
+/// for a stack's cast (BAT-MAG-048; `installation.md` §7.21: 0x5A4970, 0x5A6360; Armageddon's
+/// handler too, which no creature casts).
+fn spreads(cast: &Cast<'_>) -> bool {
+    matches!(cast.target, CastTarget::Hex(_)) || cast.spell.magic.chain.is_some()
+}
+
 /// Applies `cast`'s effects to stack `s` at the value `value`: its damage, reported, then, if the
 /// stack still lives, Cure's restoring of what Poison took (BAT-MAG-044), its dispel
 /// (BAT-MAG-016), its heal (BAT-MAG-017) and its timed changes (BAT-MAG-009), in this order (Cure
@@ -2115,8 +2123,20 @@ fn affect<S: Sink>(
     if cast.spell.magic.effects.contains(&SpellEffect::Damage) {
         let target = state.at(s);
         let protection = target.spells.school_protection;
-        // A stack casts without a hero (BAT-MAG-048).
-        let hero = cast.by.is_none().then_some(&cast.bonuses);
+        // rule: BAT-MAG-048
+        // A hero's cast takes its hero's bonuses. A stack's area, chain or battle-wide spell
+        // takes those of its controller's hero: the original's handlers of their own fetch the
+        // acting side's hero (0x5A4970, 0x5A6360, `installation.md` §7.21). A stack's spell at
+        // one stack takes none (0x5A78E0 without a hero).
+        let hero = if cast.by.is_none() {
+            Some(&cast.bonuses)
+        } else if spreads(cast) {
+            state.heroes[cast.side.index()]
+                .as_ref()
+                .map(|h| &h.magic.bonuses)
+        } else {
+            None
+        };
         let caster_ref = ((cast.id, cast.spell), hero);
         let (caster, damage) =
             spell_damage(ruleset, caster_ref, value, (target.creature, &protection));

@@ -1463,9 +1463,20 @@ creature = "Faerie Dragon"
 abilities = [{ kind = "innate_spell", spell = "base:magic_mirror", value = 20 }]
 sources = ["exe-creature-defences"]
 
-# The Faerie Dragon's casts do not ignore the Orb of Inhibition: batch 2e (OI) observed the code
-# reading (0x4476C0, 0x421280) against the wiki and VCMI, so no creature has `ignores_magic_block`
-# (BAT-Q21, BAT-MAG-061).
+# The Faerie Dragon casts under the Orb of Inhibition by the F key (BAT-Q32 (2), the user,
+# 2026-10-13): the key path passes no "magic allowed" test, as the wiki says; batch 2e's row OI
+# tried only the cursor, which the Orb stops (BAT-MAG-061).
+[[source]]
+id = "exe-faerie-dragon-key"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.21, the review's re-read of the key path): the F key's case (0x475C17) for an active stack of creature 134 with casts left calls the targeting routine 0x59EC50 with the drawn spell and makes the answer action 10 (0x448260, the cast routine as caster kind 1); none of the six call sites of the magic-allowed test 0x41F890 lies on that path; the wiki's Faerie Dragon page: 'Faerie Dragons are unaffected by the Orb of Inhibition and Anti-Magic Garrisons', 'the player must press F or G to cast spells when these are present'"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-13"
+
+[[creature_abilities]]
+creature = "Faerie Dragon"
+abilities = [{ kind = "ignores_magic_block" }]
+sources = ["exe-faerie-dragon-key"]
 
 [[creature_abilities]]
 creature = "Efreet Sultan"
