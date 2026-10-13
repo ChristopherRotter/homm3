@@ -1753,3 +1753,96 @@ were written in; the archive's older replays are the battle lane's replay format
   CI job, which runs because `h3-protocol` changed).
 - **Docs**: the operator's notes (lists, the tools), the design note's §2 and §12, the M6 review
   list.
+
+### M6's reviewer agent (2026-10-13, in T6)
+
+- **The review**: a fresh, read-only agent over everything M6 changed in the two crates
+  (`dfaeeee^..4319b74`, about 3 000 lines of code and 2 400 of tests); two major findings, five
+  minor. Found sound: the signed texts' purposes (`h3-login-v1`, `h3-rekey-v1`, `h3-welcome-v1`,
+  `h3-card-v1`, `h3-list-v1`) distinct and none a prefix of another, texts length-prefixed;
+  `verify_strict` with weak keys refused; lowercase hex only, duplicate JSON fields refused; the
+  times, the skew and the size checked before the parse; the fetch's checks (the configured key,
+  the id the address dialed, the card the welcome's key, the answers' `seq` and `from`), no
+  redirect followed, no address read from a card dialed; `vouched`, `relay` and the chains (the
+  first link the peer's own card, every link relayed, no chain through the server's own key, a
+  chain served until its first card expires, the shortest kept); `depth`, `cards`, the lists' cap
+  and a second list of one key; every fetch bounded by its frames, its total and its time,
+  `listing` always ending; no `unwrap`, slicing or overflow on external data; no lock across an
+  await; the key file (0600, through `.part` and a rename under the data directory's lock, never
+  replaced, the seed in no log or `Debug`).
+- **Fixed** (*provisional* in their shape; `h3-server` 146 → 149 tests, each new one checked to
+  fail with its fix taken out):
+  - **Major: a `wss://` server named by a list only was never fetched.** The OS roots were read
+    at start only when a `[[peer]]` was at `wss://`, so a server whose lists alone named `wss://`
+    servers (the operator notes' own example) had none: every such fetch failed `UnknownIssuer`.
+    `peers::Tls` now reads them at the first fetch at `wss://`, a peer's or a listed server's (a
+    list may name one at any round); a server that fetches none still never reads them. The
+    `wss://` test also lists the proxied server on a server without peers.
+  - **Major: a listed server's card that did not name the listed address was relayed.** A server
+    on a list answering there with its key but signing a card whose addresses leave that address
+    out passed the fetch, and a client's `list::names` check then failed: the test client's
+    `relayed` refused the whole listing. A listed server's card is now taken only if it names the
+    address its list names (`Kept::addresses`); a peer's card stays checked by its chain alone (a
+    client checks no address there). The test: a fake server, fetched fine as a peer, listed and
+    not relayed.
+  - **The card's default name**: the id, which a `public_url` of up to 206 bytes makes longer than
+    a name's 64, stopped such a start; now the id's first 64 bytes (the test: a server with a
+    100-byte host name starts, so named).
+  - **The start's bound check** counted each ladder's players as they stood (0 at a first start):
+    a card within 144 bytes of 8 KiB started and later outgrew it. The largest card now counts
+    them at their most (the test: the largest card that starts, signed with every count at its
+    most, fits).
+  - **A peer's unexpected answer to `ListPeers` was logged whole** (up to a frame of 851 KiB a
+    round): now its kind only.
+  - **A list's file**: `metadata` then an unbounded `read_to_string`, so a pipe or a link to a
+    device named `*.json` in `<data>/lists/` blocked the round or read without end. Now only a
+    regular file is opened, read within its bound (the test: a link to `/dev/zero`, on Unix).
+- **Left**, with the reason: the test client (`client.rs`) pages `relayed` without a cap and
+  accepts a welcome naming another id than the address dialed; it is a test tool (its `login`
+  says so), the client lane's note says what a client must check, and the server's own fetch
+  checks both. A list's files are read on the fetch task, not through `spawn_blocking`: at most 16
+  small files a round, an hour apart by default.
+
+### M6 T6 — M6's closure (2026-10-13)
+
+- **The start.** #167 (T5) had merged; the branch was `master`. CI's runs on `master` fail within
+  seconds without starting (billing); the full local verify on `master`'s code passed every step
+  (`check-docs` failed only on this task's first HANDOFF note, then trimmed).
+- **The shared change** (`cross-lane`, as at M3's and M4's closures, the cut the user accepted at
+  M6's refinement): `docs/06-security.md`'s hosted games carry server identity and discovery (the
+  key and the welcome, purposes and strict checks, the card's bounds and times, the dials only to
+  configured addresses, the chain checked at the fetch and again as served, lists and `Lists`, a
+  peer's list its own), the data directory's one secret beyond the games, the outbound TLS client
+  under "Exposure"; "Not covered yet": no revocation of a server key or a list, a card's claims
+  its server's word, no version negotiation, discovery's answers to any client after its hello,
+  graviola's platforms.
+- **The client lane's inbox** (`cross-lane`): what a server browser needs: the hello's nonce and
+  address, the welcome's check and pinning, `Describe` and `card::read`, `ListPeers` with
+  `card::chain` and `Lists` with `list::names`, trust as the player's (chains, lists, contact on
+  the player's choice), versions.
+- **The design note's threat table**: a hostile peer, a forged or stale list.
+- **The operator's notes** already carried the key, peers, lists and the TLS client's platforms
+  (T1–T5); the default name's cut added.
+- **M6's exit criteria**, each shown: the full verify (the full local verify, the pull request; CI
+  does not start), `h3-protocol` at 100 %; a client verifies the welcome at each of the server's
+  addresses and refuses a changed key at a pinned address, the key survives a restart, a key file
+  that does not parse stops the start (`tests/identity.rs`, `key.rs`'s
+  `a_key_file_that_does_not_parse_is_never_replaced`); a card verifies, a tampered, expired or
+  foreign card fails (`card.rs`'s `a_card_verifies_by_its_key_within_its_times`, `h3-protocol`'s
+  `tests/card.rs`, `tests/peers.rs`'s `a_forged_expired_or_foreign_card_is_not_relayed`); A → B →
+  C, each link checkable, A never dialing C
+  (`a_server_relays_what_its_peers_relay_to_depth_each_card_with_its_chain`,
+  `a_client_checks_each_chain_a_server_relays`); a card a peer serves outside its vouching, or
+  forged, dropped and logged (`a_card_a_peer_relays_outside_its_vouching_or_forged_is_dropped`);
+  the depth and count bounds (`peers.rs`'s `the_cards_relayed_reach_depth_hops_the_nearer_first`,
+  the depth test above); a peer at `wss://` with a test certificate and root
+  (`a_peer_behind_a_tls_proxy_is_fetched_at_wss`); a list's servers marked with its key, an
+  expired or forged list skipped (`tests/lists.rs`'s
+  `a_lists_servers_are_relayed_marked_with_its_key_and_bad_lists_skipped`). And: `06-security.md`
+  carries discovery; the client lane's inbox has what a server browser needs; the operator's notes
+  carry the key, peers, lists and the TLS client's platforms; the reviewer agent's major findings
+  fixed (above); the lane HANDOFF, this log and `QUEUE.md` are current.
+- **The checkpoint**: the user's, SRV-Q24: passed 2026-10-13 ("The choices are sound, all
+  accepted"): the review list as built, the reviewer's two left findings as left. Next, the user's
+  wish: what the ecosystem around the server needs, talked through with the user (M5 waits for
+  E08's increment 3). #169 (CLT-Q1, wire 29) merged meanwhile; `master` merged into #173.

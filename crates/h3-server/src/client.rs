@@ -284,7 +284,11 @@ impl Client {
                 total,
                 entries,
             }) if answered == seq && page == from => Ok((total, entries)),
-            other => Err(Error(format!("no page of peers: {other:?}"))),
+            // Never the message itself: a peer's could fill a log line (E16 M6's review).
+            Some(_) => Err(Error(String::from("no page of peers: another answer"))),
+            None => Err(Error(String::from(
+                "no page of peers: the connection closed",
+            ))),
         }
     }
 

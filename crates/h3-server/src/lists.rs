@@ -15,7 +15,7 @@
 //! `valid_days` (1 to 366), the log lines.
 
 use std::fs;
-use std::io;
+use std::io::{self, Read as _};
 use std::path::{Path, PathBuf};
 
 use h3_protocol::account;
@@ -97,13 +97,20 @@ pub(crate) fn read(dir: &Path, now: u64) -> Vec<Held> {
 }
 
 /// The list in the file `path` if it holds at `now`, or why not (never the file's text: an error
-/// that quotes it could carry anything).
+/// that quotes it could carry anything). Only a regular file is opened (a pipe would block the
+/// round), and never read beyond a list's bound (E16 M6's review).
 fn one(path: &Path, now: u64) -> Result<Held, String> {
-    let size = fs::metadata(path).map_err(|e| e.to_string())?.len();
-    if size > u64::try_from(MAX_FILE_BYTES).unwrap_or(u64::MAX) {
+    if !fs::metadata(path).map_err(|e| e.to_string())?.is_file() {
+        return Err(String::from("not a file"));
+    }
+    let bound = u64::try_from(MAX_FILE_BYTES).unwrap_or(u64::MAX);
+    let mut text = String::new();
+    (fs::File::open(path)
+        .and_then(|file| file.take(bound.saturating_add(1)).read_to_string(&mut text)))
+    .map_err(|e| e.to_string())?;
+    if text.len() > MAX_FILE_BYTES {
         return Err(format!("larger than {MAX_FILE_BYTES} bytes"));
     }
-    let text = fs::read_to_string(path).map_err(|e| e.to_string())?;
     let signed: SignedList =
         serde_json::from_str(&text).map_err(|_| String::from("not a signed list"))?;
     let list = verify(&signed, now).map_err(|why| format!("it does not hold ({why:?})"))?;

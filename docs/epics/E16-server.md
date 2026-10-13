@@ -5,7 +5,8 @@ crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12);
 2026-10-11 (T1 to T5e), its checkpoint passed the same day (SRV-Q16); M3 done 2026-10-12 (T1 to
 T5), its checkpoint passed the same day (SRV-Q18); M4 refined 2026-10-12 (SRV-Q19), done
 2026-10-12 (T1 to T7 with T5b and SRV-Q20), its checkpoint passed the same day (SRV-Q22), T8 after
-it; M6 refined 2026-10-13 (SRV-Q23)). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+it; M6 refined 2026-10-13 (SRV-Q23), done the same day (T1 to T6), its checkpoint passed the
+same day (SRV-Q24)). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); [ADR-0019](../adr/0019-identity-and-ladders.md) (identity and ladders, accepted at the M3
 refinement, its ladder points decided at M4's); [ADR-0021](../adr/0021-server-discovery.md)
 (discovery, accepted at the M6 refinement). Working detail (messages, flows, journals, the ladder sketch):
@@ -245,7 +246,8 @@ M0 starts now, while E04b finishes (SRV-Q7).
   system commands for disconnects and turn timers, sequence numbers against duplicates,
   concurrent battles); `h3-game`'s surface as the adventure lane's game-orchestration draft gives it (points 1, 2, 6; SRV-Q6); long journals and the case for
   state saves measured.
-- **M6 Discovery** (refined 2026-10-13, SRV-Q23, ADR-0021): the server keypair and the signed
+- **M6 Discovery** (refined 2026-10-13, SRV-Q23, ADR-0021; done 2026-10-13, its checkpoint passed
+  the same day, SRV-Q24; `E16-log.md`): the server keypair and the signed
   welcome, the server card and `Describe`, peers in the configuration, the peer fetch with its TLS
   client and bounds, `ListPeers` with the vouching chain, signed lists of servers from files; a
   client-side server browser is the client lane's (the record of what it needs goes to CLT);
@@ -433,8 +435,10 @@ list's key; mDNS later.
 - **T5 Lists** (done 2026-10-13; `E16-log.md`): `ServerList`, `SignedList` and their bounds,
   `<data>/lists/` read each round, the listed servers fetched and relayed marked with the list's
   key, `Lists`/`ListsAre`, `h3-server list-key` and `sign-list`; wire 27.
-- **T6 Closure:** `06-security.md`'s discovery and the client lane's inbox (`cross-lane`), the
-  operator's notes, the exit criteria shown, the reviewer agent, the user's checkpoint.
+- **T6 Closure** (done 2026-10-13; `E16-log.md`): `06-security.md`'s discovery
+  and the client lane's inbox (`cross-lane`), the threat table's rows, the exit criteria shown, the
+  reviewer agent (two major findings and four minor fixed: the roots for a listed `wss://` server,
+  a listed card naming its address); the user's checkpoint (passed, SRV-Q24).
 
 ## Exit criteria (M6)
 
@@ -451,7 +455,7 @@ discovery; the client lane's inbox has what a server browser needs; the operator
 key, peers, lists and the TLS client's platforms; a fresh reviewer agent's major findings are
 fixed; the lane HANDOFF, the epic log and `QUEUE.md` are current.
 
-## Review list for the M6 checkpoint
+## Review list for the M6 checkpoint (passed 2026-10-13, SRV-Q24)
 
 Choices queued under the autonomy contract (details in `E16-log.md`):
 
@@ -492,6 +496,10 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   peers' relays, each once, never a peer, within `cards` less the peers, at depth 1; a card a peer
   relays for its list not relayed on; the TOML list (`name`, `valid_days` 1 to 366, `[[server]]`);
   `list-key` reading an existing key file; the key file's error text now "not a key" for both.
+- T6 (the reviewer's fixes): the OS roots read at the first fetch at `wss://`, a peer's or a listed
+  server's (no longer at start, for peers only); a listed server's card taken only if it names the
+  address its list names (a peer's card is checked by its chain alone); the card's default name the
+  id's first 64 bytes; a list's file opened only if it is a regular file, read within its bound.
 
 ## Exit criteria (M4)
 

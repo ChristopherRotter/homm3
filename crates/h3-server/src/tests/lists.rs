@@ -18,7 +18,7 @@ use crate::key::ServerKey;
 use crate::lists::{self, LISTS_DIR};
 
 /// A day in milliseconds.
-const DAY: u64 = 86_400_000;
+pub(super) const DAY: u64 = 86_400_000;
 
 /// A fetch's round trips well within this.
 const WAIT: Duration = Duration::from_secs(20);
@@ -33,7 +33,7 @@ async fn listed(running: &Running) -> ListedServer {
 }
 
 /// The list `name` of the key of the seed `seed`, naming `servers`, from `issued` to `expires`.
-fn list_of(
+pub(super) fn list_of(
     seed: u8,
     name: &str,
     (issued, expires): (u64, u64),
@@ -49,12 +49,12 @@ fn list_of(
 }
 
 /// `list` signed by the key of the seed `seed`.
-fn signed_by(list: &ServerList, seed: u8) -> SignedList {
+pub(super) fn signed_by(list: &ServerList, seed: u8) -> SignedList {
     list::sign(list, &ServerKey::from_seed([seed; 32]))
 }
 
 /// Writes `text` as the file `name` in `data`'s lists.
-fn place(data: &Path, name: &str, text: &str) {
+pub(super) fn place(data: &Path, name: &str, text: &str) {
     let dir = data.join(LISTS_DIR);
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join(name), text).unwrap();
@@ -137,6 +137,38 @@ async fn a_lists_servers_are_relayed_marked_with_its_key_and_bad_lists_skipped()
     for server in [a, b, d] {
         server.shutdown().await;
     }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_listed_servers_card_must_name_the_address_its_list_names() {
+    // A server whose card holds and whose welcome names the address dialed, but whose card names
+    // other addresses: a client would find that the list does not name it (`list::names`), so it
+    // is not relayed (E16 M6's review).
+    let seed = [7; 32];
+    let now = wall_ms();
+    let card = peers::card_of(seed, (now, now + DAY));
+    let signed = h3_protocol::card::sign(&card, &ServerKey::from_seed(seed));
+    let address = peers::fake(seed, signed, vec![]).await;
+    let elsewhere = ListedServer {
+        key: account::to_hex(&ServerKey::from_seed(seed).key()),
+        address: format!("ws://{address}"),
+    };
+    assert!(!card.addresses.contains(&elsewhere.address));
+    // As a peer, its card is taken: a peer's card is checked by its chain, its key alone.
+    let peer = crate::config::Peer {
+        key: elsewhere.key.clone(),
+        address: elsewhere.address.clone(),
+    };
+    let tls = crate::peers::tls(rustls::RootCertStore::empty()).unwrap();
+    assert!(crate::peers::fetch_now(&peer, tls).await.is_ok());
+    let a = fetching();
+    let named = signed_by(&list_of(1, "Community", (now, now + DAY), &[&elsewhere]), 1);
+    place(&a.server.data, "a.json", &codec::encode_text(&named));
+    let a = start(&a).await.unwrap();
+    rounds(&a, 2).await;
+    assert_eq!(greeted(&a).await.lists(2).await.unwrap().len(), 1);
+    assert!(marked(&a).await.is_empty());
+    a.shutdown().await;
 }
 
 /// A fresh directory for the tools' files.
@@ -241,5 +273,12 @@ fn the_lists_files_are_bounded_and_read_in_order() {
     fs::remove_file(data.join(LISTS_DIR).join("00.json")).unwrap();
     fs::create_dir(data.join(LISTS_DIR).join("00.json")).unwrap();
     assert_eq!(lists::read(&data.join(LISTS_DIR), now)[0].list.name, "L1");
+    // A file that is no regular file is not opened, nor read without end (E16 M6's review).
+    #[cfg(unix)]
+    {
+        fs::remove_dir(data.join(LISTS_DIR).join("00.json")).unwrap();
+        std::os::unix::fs::symlink("/dev/zero", data.join(LISTS_DIR).join("00.json")).unwrap();
+        assert_eq!(lists::read(&data.join(LISTS_DIR), now)[0].list.name, "L1");
+    }
     fs::remove_dir_all(&dir).unwrap();
 }
