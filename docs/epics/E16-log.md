@@ -1594,3 +1594,67 @@ where a server runs without checkpoints. `JOURNAL_FORMAT_VERSION` 8 (no line cha
 journal void at start. Records need no bump: their manifest names the protocol (22 or lower) they
 were written in; the archive's older replays are the battle lane's replay format's concern.
 
+### M6 T3 — Peers, the fetch and `ListPeers` (2026-10-13)
+
+- **The start.** #155 (T2) merged; `master` equalled the session's branch. The baseline
+  `verify --scope server` passed every step (exit 2 by design; `bench-check` too: no drift). The
+  scoped verify's `check-lane` runs without `--cross-lane`, so on this branch (a `shared:` commit)
+  it fails by design: `cargo xtask check-lane --lane server --cross-lane` and the full verify,
+  which skips `check-lane`, stand in (a trap of every lane, for the global HANDOFF's next
+  `shared:` change).
+- **The `shared:` commit** (label `cross-lane`, the refinement's consent, SRV-Q23): the workspace's
+  `rustls` 0.23 (no default features; `std`, `tls12`), `rustls-graviola` 0.4, `rustls-native-certs`
+  0.8, `tokio-tungstenite`'s `rustls-tls-native-roots`, and `tokio-rustls` 0.26 without default
+  features for the tests' TLS endpoint (a dev-dependency; already in the tree through
+  `tokio-tungstenite`, so no further crate); `arch.toml`'s externals. No `ring`, no `aws-lc` in the
+  graph (`Cargo.lock` lists `ring` as an optional dependency no enabled feature turns on: `cargo
+  tree -i ring` prints nothing); `cargo deny check` passes with `deny.toml` unchanged. Against T2's
+  `master` the TLS client adds 16 crates to `h3-server` on all targets (rustls, its pki types and
+  webpki, untrusted, once_cell, tokio-rustls, graviola and its rustls glue, rustls-native-certs
+  with openssl-probe, schannel, security-framework and its sys crate, core-foundation and its sys
+  crate, bitflags); 10 on Linux.
+- **The protocol** (wire 26): `ListPeers { seq, from }` → `Peers { seq, from, total, entries }`,
+  `RelayedCard { card, via, list }` (`via` empty and `list` `None` until T4 and T5), pages of
+  `card::PAGE` (50), after the hello without a login (the gate passes it to the host, as
+  `Describe`). `card::chain(cards)`: each card names the next one's key among its peers, the check
+  a client runs from the relaying server's card through the cards `via` names to the card itself.
+- **The configuration**: `[[peer]] key address` (at most 64, as a card names; an Ed25519 key that
+  `accepts` takes in lowercase hex; a WebSocket address; no key or address twice), `[discovery]
+  refresh_ms` (an hour; a minute to a day) and `timeout_ms` (10 s; a second to two minutes). The
+  server's own key as a peer stops the start (`Peers::new`). The card's `peers` are the
+  configured ones, in order (`Cards::new` bounds the card with them, as T2 planned).
+- **The fetch** (`h3-server`'s `peers.rs`): one task (`fetch_every`, aborted at shutdown) runs a
+  round at start and every `refresh_ms` from the round's start, one peer at a time in the
+  configuration's order, each fetch a task of its own in a `JoinSet` within `timeout_ms`. A fetch
+  dials through the test client (`Client::dial`: `connect_async_tls_with_config` with
+  `Connector::Rustls` for both schemes, so tokio-tungstenite never builds a default config, which
+  would panic without a process-wide crypto provider; the WebSocket's message and frame bounded by
+  `FRAME`, the client's reading by a byte budget, `FETCH`), says hello as the server's id, checks the
+  welcome's key against the configured one and its id against the address dialed (ADR-0021 point
+  1), then `describe` (the card holds and is the welcome's key's). A failure is logged (`h3-server:
+  peer <address>: <why>; …`) and the peer's last good card stays; each round prunes the expired
+  ones; `ListPeers` serves the cards that hold at the wall clock. The TLS client (`peers::tls`) is
+  graviola's provider over the OS roots (`peers::os_roots`, read only when a peer is at `wss://`,
+  its errors logged); `launch(config, roots)` takes the roots from the tests. Graviola asserts its
+  CPU features at its first use (x86_64: AES, PCLMULQDQ, BMI1, ADX, AVX, AVX2; aarch64: NEON, AES,
+  PMULL, SHA-2) and does not build elsewhere: the fetch's own task turns such a panic into a
+  logged failure (`panic = "unwind"` in every profile). *Provisional*: the frame bounds, the
+  hello's name, the log lines, one fetch at a time, that a peer of another protocol version is
+  skipped (its `Goodbye { Protocol }`).
+- **The test client**: `list_peers(seq, from)`, and `relayed(own)` pages through every card, checks
+  each (`card::verify`) and its chain from the server's own card, and refuses a `via` until T4.
+- **Tests** (`h3-protocol` 106 → 107, `h3-server` 121 → 132): the messages round-trip; `ListPeers`
+  needs the hello, not a login; chains hold card by card and fail backwards or with a link left
+  out. In `h3-server`: the cache's pages (60 cards: 50, then 10, none past the end) and expiry
+  (served and pruned), `Peers::new`'s refusals; over loopback: A relays B's and C's cards, as
+  signed and in the configured order, its card names both, pages from 1 and past the end; B down
+  keeps its card through two rounds; a wrong key, a server whose id is another address (also when
+  dialed by another name) are not relayed and the fetch says why; fake peers (a gate of
+  `h3-protocol` behind a test socket) whose card is forged, tampered, expired, issued a day ahead or
+  another server's are not relayed; B behind a TLS proxy (tokio-rustls with a test certificate
+  for localhost and 127.0.0.1, signed by a test root; P-256, valid until 2126, made with openssl,
+  in hex in the test with the commands) is fetched at `wss://` with the test root, refused with
+  the OS roots (`UnknownIssuer`) and unreachable at `ws://`; the configuration's bounds; the
+  server's own key stops the start; the OS roots read.
+- **Docs**: the operator's notes (peers, the TLS client and its processors), `server.example.toml`,
+  `config.rs`'s format, the design note's §2 catalogue and §12 bullets, the M6 review list.

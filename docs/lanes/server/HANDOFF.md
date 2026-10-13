@@ -4,11 +4,11 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22). **M6** (SRV-Q23, ADR-0021, `E16-design.md` §12): T1 (the key, the welcome) and T2 (the card, `Describe`) done. **Next: M6 T3** (peers, the fetch, `ListPeers`). M5 waits for E08's increment 3.
-- **The TLS client** (ADR-0021 point 4, T3): `rustls`, `rustls-graviola`, `rustls-native-certs`; `ring` and `aws-lc` are not GPLv2-compatible (`cargo deny check` after a dependency change).
+- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22). **M6** (SRV-Q23, ADR-0021, `E16-design.md` §12): T1 (the key, the welcome), T2 (the card, `Describe`) and T3 (peers, the fetch, `ListPeers`) done. **Next: M6 T4** (the chain beyond the peers). M5 waits for E08's increment 3.
+- **The TLS client** (ADR-0021 point 4, `peers.rs`): rustls over graviola and the OS roots, no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 25 since M6 T2; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 8 since BAT-GEO-002's rear hex; another format's journal is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 26 since M6 T3; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 8 since BAT-GEO-002's rear hex; another format's journal is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -32,16 +32,16 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A socket closed over unread data is reset, and the peer drops what it has not read (a `Goodbye`): the transport's close reads on for the peer's close (`net.rs`, `LINGER`).
 - A journal's line holds tokens: errors from reading one name the line and column, never its text (serde_json's messages quote values); a log line never carries a hash either (`journal.rs`).
 - No file I/O under the registry's lock (T5e): a game creates or reads its journal on its own thread (`game::launch`), and a new or resumed game's own opening is queued under the lock (`registry::Opening::first`) before anything else reaches it.
-- `game::finish` writes a finished game's replay into its archive directory (`archive::dir`), then `Registry::archived` lists it: a replay written elsewhere is neither listed nor trimmed.
+- `game::finish` writes a replay into `archive::dir`, then `Registry::archived` lists it: one written elsewhere is neither listed nor trimmed.
 - `PROPTEST_CASES` applies to every proptest of a crate: name the test for a longer mutation run (`cargo test -p h3-protocol mutat`).
-- A game's frames go through `game::Outbox` (`offer`, or `last` for a goodbye), never a bare channel: the connection's task subtracts every frame's bytes as it takes it out, so a frame queued around the count wraps it, and the queue then refuses every frame.
+- A game's frames go through `game::Outbox` (`offer`, or `last` for a goodbye), never a bare channel: the task subtracts each frame's bytes as it takes it, so a frame queued around the count wraps it and the queue refuses every frame.
 - Write-ahead order in a game's thread: drain the session's entries and sync them before `deliver`; anything new that changes what a restart must redo needs an `Entry`, or the restore diverges from what clients were told (T3's resume is one: `Entry::Resumed`).
-- The observation's mapping (`map/mod.rs`) names every field of the engine's types in patterns, without `..`: a field left out gets `name: _` under a comment with its reason. A field read through a method (`s.attack_now`) still needs its pattern entry.
+- The observation's mapping (`map/mod.rs`) names every field of the engine's types in patterns, without `..`: a field left out gets `name: _` under a comment with its reason. A field read through a method still needs its entry.
 - The workspace's clippy bans `std::time::Instant` and `SystemTime` in every crate: the server uses `tokio::time::Instant`, and a file's age is `fs::metadata(p)?.modified()?.elapsed()` (a `Duration`, no type named).
 - A `watch::Receiver` whose sender is gone fails `wait_for` at once, repeatedly: a select arm on it must then never resolve (`net::stopped`).
-- A paused game has no thread: the registry's `Hosted::Paused` holds its tokens, and `registry::bind` restores it for a join. A game's thread ignores `ToGame::Open` (nothing changed until the join), or a resuming game, still paused, would pause again before its join.
+- A paused game has no thread: the registry's `Hosted::Paused` holds its tokens, and `registry::bind` restores it for a join. A game's thread ignores `ToGame::Open`, or a resuming game would pause again before its join.
 - An account's request goes through `spawn_blocking`, the player log under its own lock (`accounts.rs`), the signature checked before it; never the registry's lock there. The lock waits on the log's syncs: `Accounts::get` from a game's thread outside the registry's lock (`game::seated`), never a connection's task.
-- A running server holds `<data>/lock` (`Running`, until `shutdown` returns): a test that starts a second server on the same data directory must shut the first down; the crash tests start on a copy (`crashed()`).
+- A running server holds `<data>/lock` until `shutdown` returns: a test's second server on its data directory shuts the first down; crash tests start on a copy (`crashed()`).
 - `Key::derive` costs 64 MiB and ~1 s in a debug build: tests use `Key::from_seed`.
 - `f64::exp` and `ln` are banned workspace-wide (ADR-0003 §3): Glicko-2 calls them behind a local `allow` (`rating.rs`); a rating is written to the ladder's log and read back, never recomputed.
 - A queued connection hears its queue only through its own channel (`registry::ToConn`, `(text, still queued)`), sent under the registry's lock with `try_send`; a message answered by nothing (`AcceptMatch` before the other's) is `Routed::Passed`.
@@ -50,17 +50,14 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A paused journal's last write starts its deadline and an agreed pause's due time: never append to one. A pause's hold returns at a restore from `agreed_pause()` or `held_pause()` (`Held`); `game::resume` re-applies either.
 - A game whose thread ends with its journal kept leaves by `Registry::stopped`, not `leave` (a match keeps its players). A start re-runs journals one by one by id (rating order).
 - A ranked game's end is told only by the host's verdict (`publish_replay`/`withhold_replay`): a new way to end must reach `finish`. A ladder's log names a game once (`<data>/next-game`): never hand out ids below `GameIds::last`.
-- **The workload is lane-only and follows `master`** (55 % battle engine; the full verify does not measure it): `verify --scope server` measures it at each session's start; a drift from `master` is re-baselined (`cargo xtask bench-check --update --workload session-random-play-full`), the range named in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
+- **The workload is lane-only and follows `master`** (55 % battle engine; not in the full verify): `verify --scope server` measures it at each session's start; re-baseline a drift from `master` (`cargo xtask bench-check --update --workload session-random-play-full`), the range in the commit; measure only with the file's arguments.
 - A connection's server id is `Connection::id`, set by its hello: logins sign it, not `Host::id` (M6 T1).
 - A card travels as the text its key signed (`SignedCard::card`): relay it verbatim. The server re-signs its own once a minute old (`card::RESIGN`).
 - Windows refuses `set_len` through an `append(true)` handle: logs open `write(true)` and write at their end (`journal::open_log`). Check with clippy `--target x86_64-pc-windows-gnu`; Wine is no test.
+- A `wss://` dial passes `Connector::Rustls` (`Client::dial`), or tokio-tungstenite builds a default `ClientConfig` and panics (no process-wide provider). Graviola panics on a processor without its extensions: its calls run in a task of their own (`peers::fetch_every`).
 
 ## Recent sessions
 
-### 2026-10-13 — M6 T2, the card and `Describe`
+### 2026-10-13 — M6 T3, peers, the fetch and `ListPeers`
 
-**#155 open** (T2, `E16-log.md`): the card, `Describe`, wire 25; journal 8 (the rear hex). Check its mergeability first.
-
-### 2026-10-13 — M6 T1, the server key and the signed welcome
-
-#149 merged (`E16-log.md`).
+**PR open** (`E16-log.md`; `cross-lane`: a `shared:` first commit): peers, the fetch, `ListPeers`, wire 26. Check its mergeability.

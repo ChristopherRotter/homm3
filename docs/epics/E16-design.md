@@ -76,7 +76,8 @@ game, seat }`, `Unqueued { reason }`, `GameInfo::ladder`, the refusals `NoSuchLa
 `AlreadyQueued`, `InRankedGame`, `NotQueued`, `NoMatch` (code since M4 T2; `bot` since T5b);
 `LeaderboardPage`, `Rating`,
 `PauseProposed`, a forfeit's result. M6 (§12): `Describe { seq }` → `Described { seq, card }`
-(code since M6 T2).
+(code since M6 T2); `ListPeers { seq, from }` → `Peers { seq, from, total, entries }` (code since
+M6 T3).
 
 ## 3. The client's content check (for the client lane, M2)
 
@@ -372,7 +373,16 @@ as `login_message` does; `h3-protocol` builds the bytes, `h3-server` and clients
   *Provisional*: `players_online` counts the open connections (the asker's too), `games_open` the
   games waiting or running, a ladder's `players` its current season's leaderboard; `h3-server card`
   asks the running server on loopback (pinning the data directory's key) rather than signing offline.
-- **Peers and the fetch** (T3, T4). `[[peer]] key = "…" address = "wss://…"` (or `ws://` on a LAN).
+- **Peers and the fetch** (T3 built: `h3-server`'s `peers.rs`, `Client::dial`; T4 adds the
+  chain). For later tasks: `Peers` holds each configured peer's last good card (pruned at expiry
+  after each round) and pages them; `fetch_every` runs the rounds (one fetch at a time, each a
+  task of its own in a `JoinSet`, so graviola's panic on a processor without its extensions fails
+  the fetch alone); `fetch` rejects a welcome by another key or naming another id than the address
+  dialed; a fetch reads frames of at most `peers::FRAME` (2 × 8 KiB + 1 KiB: a card's text escaped
+  in a frame takes at most twice its bytes) and `peers::FETCH` (two frames) in all, which T4 widens
+  for `Peers` pages; `launch(config, roots)` lets tests pass their own roots. *Provisional*: the
+  hello's name is the server's id; a peer of another protocol version answers `Goodbye {
+  Protocol }` and is skipped. `[[peer]] key = "…" address = "wss://…"` (or `ws://` on a LAN).
   `[discovery] refresh_ms` (an hour), `depth` (2), `cards` (200), `timeout_ms` (10 s per peer).
   One task fetches at start and every `refresh_ms`: for each configured peer in order, it dials
   the address (`wss://` through `rustls` with `rustls-graviola` and the OS roots from
@@ -388,9 +398,12 @@ as `login_message` does; `h3-protocol` builds the bytes, `h3-server` and clients
   v…]` while that is shorter than `depth`, and only if each link holds: P's card lists the first
   key of `v…` (or the card's own key), each card on the way lists the next. Duplicates keep the
   shortest chain; the cache keeps at most `cards`, nearer hops first, peers in configured order.
-- **`ListPeers`** (T3). `ListPeers { seq, from }` → `Peers { seq, from, total, entries: [{ card,
+- **`ListPeers`** (T3, built: wire 26, `h3_protocol::wire::RelayedCard`, `card::PAGE`,
+  `card::chain`). `ListPeers { seq, from }` → `Peers { seq, from, total, entries: [{ card,
   via, list }] }`, pages of 50, `list` the list's key for a card fetched for a list (T5). After
-  the hello, without a login. A client verifies each card and each link as the server does.
+  the hello, without a login, answered on the connection's task. A client verifies each card and
+  each link as the server does: `card::chain(&[relaying server's card, via's cards…, the card])`
+  (the test client's `relayed` checks the peers' cards so, and refuses a `via` until T4).
 - **Lists** (T5). `ServerList { key, name, issued, expires, servers: [{ key, address }] }`, on
   disk and on the wire as `SignedList { list, signature }` (the text as signed, `h3-list-v1`);
   files in `<data>/lists/`, read at start and at each refresh; a list that does not verify or has
