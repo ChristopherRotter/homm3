@@ -1,0 +1,50 @@
+# E17 M1 T7's first still: one-hex stacks on both sides, the grass battlefield, obstacles
+# generated from the seed (BAT-GEO-004). `cargo run --release -p h3-view -- render
+# scenarios/one-hex.toml` from clients/.
+
+[scenario]
+id = "still-one-hex"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+random_obstacles = true
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 20
+
+[[attacker]]
+slot = 1
+creature = "base:archer"
+count = 12
+
+[[attacker]]
+slot = 2
+creature = "base:swordsman"
+count = 8
+
+[[attacker]]
+slot = 3
+creature = "base:monk"
+count = 5
+
+[[defender]]
+slot = 0
+creature = "base:skeleton"
+count = 30
+
+[[defender]]
+slot = 1
+creature = "base:walking_dead"
+count = 16
+
+[[defender]]
+slot = 2
+creature = "base:vampire"
+count = 6
+
+[[defender]]
+slot = 3
+creature = "base:lich"
+count = 4

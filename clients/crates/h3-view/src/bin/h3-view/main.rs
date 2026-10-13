@@ -4,6 +4,8 @@
 mod assets;
 mod gate;
 mod harvest;
+mod render;
+mod scenario;
 mod sprite;
 
 use std::process::ExitCode;
@@ -26,6 +28,15 @@ commands:
           its canvas, over a PCX or grey, as the battle draws a stack (shadows over what is
           below), and writes a PNG (default clients/out/sprite/<name>-<group>.png). The base
           archives are searched before the AB ones, as the game does.
+  render <scenario.toml | record.jsonl> [--seed <n>] [--packs <dir>] [--install <dir>]
+         [--out <file.png>] [--list]
+          draws a battle still: the battle at its start as the record's first snapshot shows it
+          (the background, the obstacles, every living stack standing on its hex; no heroes,
+          count boxes or corpses yet), with its assets loaded as one checkpoint batch, and writes
+          a PNG (default clients/out/render/<stem>.png). A scenario file (as `h3 run` reads it,
+          its packs from <dir>, default the repository's packs/; obstacles from the seed, default
+          1, when it asks) is run in-process as a spectator of h3-protocol's session first; that
+          record is written beside the PNG (<stem>-s<seed>.jsonl). --list prints the draw list.
   harvest [--install <dir>] [--packs <dir>] [--out <dir>]
           generates the asset tables (<out>/{base,ab,sod}.toml, default clients/assets) from the
           installation copy's Heroes3.exe and H3bitmap.lod, keyed by the packs (default the
@@ -45,6 +56,10 @@ fn main() -> ExitCode {
             },
             "harvest" => match harvest::Options::parse(rest) {
                 Ok(options) => harvest::run(&options),
+                Err(message) => usage_error(&message),
+            },
+            "render" => match render::Options::parse(rest) {
+                Ok(options) => render::run(&options),
                 Err(message) => usage_error(&message),
             },
             "sprite" => match sprite::Options::parse(rest) {
