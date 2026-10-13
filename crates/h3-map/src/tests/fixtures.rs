@@ -9,7 +9,7 @@
 use std::path::PathBuf;
 
 use super::gzip_with;
-use super::play::{FAITHFUL, Plan, Spot, lay_out};
+use super::play::{BLOCKERS, FAITHFUL, KINDS, Plan, Spot, lay_out};
 use crate::model::Version;
 use crate::{Limits, import, read};
 
@@ -83,11 +83,280 @@ fn patchwork(side: u8, mix: &mut Mix, count: usize) -> (Vec<Codes>, Vec<(Spot, u
     (tiles, blockers)
 }
 
+/// The kind of [`KINDS`] with this class, subclass and resource body.
+fn kind(class: u32, subclass: u32, amount: Option<u32>) -> usize {
+    KINDS
+        .iter()
+        .position(|&k| k == (class, subclass, amount))
+        .unwrap()
+}
+
+/// A pile of `resource` (0 wood, 1 mercury, 2 ore, 3 sulfur, 4 crystal, 5 gems, 6 gold) of a
+/// drawn amount.
+fn pile(resource: u32) -> usize {
+    kind(79, resource, Some(0))
+}
+
+/// Where [`Placer::place`] draws an object's anchor.
+#[derive(Clone, Copy)]
+enum Area {
+    /// Its visitable tile two to four tiles from this hero's, inside the hero's first reveal.
+    Near(Spot),
+    /// Its visitable tile on the level's road (shape 1: on the surface's row, both tiles on the
+    /// road; underground the anchor east of the road's column).
+    Road(u8),
+    /// Anywhere on the level.
+    Level(u8),
+    /// Anywhere on the map.
+    Anywhere,
+}
+
+/// Increment 2's objects laid out on a map's terrain around its blockers and heroes (E08 T16a),
+/// each drawn from the plan's generator after the terrain and the blockers, so that both stay as
+/// they were: an anchor drawn until every tile of the object is a free land tile off the roads
+/// (but a guard's or a gate's on the road), and its visitable tile keeps two free land neighbours
+/// it is entered or visited from not from above (ADV-OBJ-004); those neighbours stay free of later
+/// objects. So no object covers a hero, another object, or shares an anchor (setup's refusals).
+struct Placer<'a> {
+    side: u8,
+    tiles: &'a [Codes],
+    /// Tiles covered by a blocker, a hero or a placed object.
+    taken: Vec<bool>,
+    /// Tiles kept free beside a placed object's visitable tile.
+    kept: Vec<bool>,
+    placed: Vec<(Spot, usize)>,
+}
+
+impl<'a> Placer<'a> {
+    fn new(side: u8, tiles: &'a [Codes], blockers: &[(Spot, usize)], heroes: &[Spot]) -> Self {
+        let count = 2 * usize::from(side) * usize::from(side);
+        let mut placer = Placer {
+            side,
+            tiles,
+            taken: vec![false; count],
+            kept: vec![false; count],
+            placed: Vec::new(),
+        };
+        for &((x, y, z), object) in blockers {
+            let anchor = (x % side, y % side, z % 2);
+            for spot in placer.covered(anchor, object).into_iter().flatten() {
+                let i = placer.index(spot);
+                placer.taken[i] = true;
+            }
+        }
+        for &(x, y, z) in heroes {
+            let i = placer.index((x % side, y % side, z % 2));
+            placer.taken[i] = true;
+        }
+        placer
+    }
+
+    fn index(&self, (x, y, z): Spot) -> usize {
+        (usize::from(z) * usize::from(self.side) + usize::from(y)) * usize::from(self.side)
+            + usize::from(x)
+    }
+
+    /// The tile `(column, row)` left of and above `anchor`, if it is on the map.
+    fn at(&self, (x, y, z): Spot, (column, row): (u8, u8)) -> Option<Spot> {
+        Some((x.checked_sub(column)?, y.checked_sub(row)?, z))
+    }
+
+    /// Every tile of `object` at `anchor` (`None` for one off the map).
+    fn covered(&self, anchor: Spot, object: usize) -> Vec<Option<Spot>> {
+        let (blocked, visitable) = BLOCKERS[object % BLOCKERS.len()];
+        blocked
+            .iter()
+            .chain(visitable)
+            .map(|&tile| self.at(anchor, tile))
+            .collect()
+    }
+
+    fn road(&self, (x, y, z): Spot) -> bool {
+        let middle = self.side / 2 - 1;
+        (z == 0 && y == middle) || (z == 1 && x == middle)
+    }
+
+    fn free(&self, spot: Spot) -> bool {
+        let i = self.index(spot);
+        self.tiles[i].0 < 8 && !self.taken[i] && !self.kept[i]
+    }
+
+    /// The free land neighbours of `visit` a hero steps from onto it not from above.
+    fn entries(&self, visit: Spot, own: &[Spot]) -> Vec<Spot> {
+        let (vx, vy, vz) = visit;
+        let mut entries = Vec::new();
+        for (dx, dy) in [(-1i16, 0i16), (1, 0), (-1, 1), (0, 1), (1, 1)] {
+            let (x, y) = (i16::from(vx) + dx, i16::from(vy) + dy);
+            let on = |v: i16| u8::try_from(v).ok().filter(|&v| v < self.side);
+            if let (Some(x), Some(y)) = (on(x), on(y)) {
+                let spot = (x, y, vz);
+                if self.free(spot) && !own.contains(&spot) {
+                    entries.push(spot);
+                }
+            }
+        }
+        entries
+    }
+
+    /// Places an object of `kind` in `area`: the anchor drawn from `mix` until it fits.
+    fn place(&mut self, mix: &mut Mix, kind: usize, area: Area) {
+        let side = self.side;
+        let middle = side / 2 - 1;
+        for _ in 0..100_000 {
+            let shape = match area {
+                Area::Road(_) => 1,
+                _ => 1 + usize::from(mix.below(2)),
+            };
+            let anchor = match area {
+                Area::Near((hx, hy, hz)) => {
+                    let near = |h: u8, d: u8| u16::from(h) + u16::from(side) + u16::from(d) - 4;
+                    let x = near(hx, mix.below(9)) % u16::from(side);
+                    let y = near(hy, mix.below(9)) % u16::from(side);
+                    (u8::try_from(x).unwrap(), u8::try_from(y).unwrap(), hz)
+                }
+                Area::Road(0) => (1 + mix.below(side - 1), middle, 0),
+                Area::Road(_) => (middle + 1, mix.below(side), 1),
+                Area::Level(z) => (mix.below(side), mix.below(side), z),
+                Area::Anywhere => (mix.below(side), mix.below(side), mix.below(2)),
+            };
+            let object = kind * BLOCKERS.len() + shape;
+            let covered = self.covered(anchor, object);
+            let Some(own) = covered.iter().copied().collect::<Option<Vec<Spot>>>() else {
+                continue;
+            };
+            let (_, visitable) = BLOCKERS[shape];
+            let visit = self.at(anchor, visitable[0]).unwrap();
+            let roads = own.iter().filter(|&&spot| self.road(spot)).count();
+            let fits = match area {
+                Area::Near((hx, hy, _)) => {
+                    let (dx, dy) = (visit.0.abs_diff(hx), visit.1.abs_diff(hy));
+                    let near = u16::from(dx).pow(2) + u16::from(dy).pow(2) <= 20;
+                    roads == 0 && dx.max(dy) >= 2 && near
+                }
+                Area::Road(_) => self.road(visit),
+                Area::Level(_) | Area::Anywhere => roads == 0,
+            };
+            if !fits {
+                continue;
+            }
+            let entries = self.entries(visit, &own);
+            if own.iter().all(|&spot| self.free(spot)) && entries.len() >= 2 {
+                for spot in own {
+                    let i = self.index(spot);
+                    self.taken[i] = true;
+                }
+                for spot in entries {
+                    let i = self.index(spot);
+                    self.kept[i] = true;
+                }
+                self.placed.push((anchor, object));
+                return;
+            }
+        }
+        panic!("no tile for an object of kind {kind}");
+    }
+}
+
+/// Increment 2's objects on a map with these heroes (E08 T16a): `scale` times the duel's,
+/// [`Placer`] laying them out. Beside each hero (its first reveal, so random play visits them
+/// early) a pile, a random resource, a Keymaster's tent (green on the surface, red underground)
+/// and a land Cartographer (surface) or a campfire (underground); `roads` border guards and as
+/// many gates of the level's colour on each level's road; the rest anywhere on its level or the
+/// map. The duel's counts: 26 piles of the seven resources (drawn amounts, some gold piles of a
+/// fixed 300), 24 random resources, 4 campfires, 4 tents, 2 guards, 2 gates, 2 Cartographers, a
+/// Redwood Observatory and a Pillar of Fire: 66 objects, about 3 % of its land tiles, as the
+/// shipped maps (2.5 to 3.7 % by size; the T16a log).
+fn objects(
+    side: u8,
+    tiles: &[Codes],
+    blockers: &[(Spot, usize)],
+    heroes: &[Spot],
+    mix: &mut Mix,
+    scale: usize,
+    roads: usize,
+) -> Vec<(Spot, usize)> {
+    let mut placer = Placer::new(side, tiles, blockers, heroes);
+    // A tent's, a guard's or a gate's kind on a level: green on the surface, red underground.
+    let keyed = |class: u32, z: u8| kind(class, 2 - u32::from(z == 0), None);
+    let (chart, campfire, random) = (kind(13, 1, None), kind(12, 0, None), kind(76, 0, Some(0)));
+    let mut piles = (0u32..).map(|i| match (i % 7, i / 7 % 2) {
+        (6, 1) => kind(79, 6, Some(3)),
+        (resource, _) => pile(resource),
+    });
+    let mut counts = [26, 24, 4, 4, 2, 2, 2, 1, 1].map(|n| n * scale);
+    let [
+        piles_left,
+        randoms,
+        campfires,
+        tents,
+        guards,
+        gates,
+        charts,
+        redwoods,
+        pillars,
+    ] = &mut counts;
+    for &hero in heroes {
+        let near = Area::Near(hero);
+        placer.place(mix, piles.next().unwrap(), near);
+        placer.place(mix, random, near);
+        placer.place(mix, keyed(10, hero.2), near);
+        if hero.2 == 0 {
+            placer.place(mix, chart, near);
+            *charts -= 1;
+        } else {
+            placer.place(mix, campfire, near);
+            *campfires -= 1;
+        }
+        *piles_left -= 1;
+        *randoms -= 1;
+        *tents -= 1;
+    }
+    for z in 0..2 {
+        for _ in 0..roads {
+            placer.place(mix, keyed(9, z), Area::Road(z));
+            placer.place(mix, keyed(212, z), Area::Road(z));
+        }
+    }
+    *guards -= 2 * roads;
+    *gates -= 2 * roads;
+    for _ in 0..*piles_left {
+        placer.place(mix, piles.next().unwrap(), Area::Anywhere);
+    }
+    for _ in 0..*randoms {
+        placer.place(mix, random, Area::Anywhere);
+    }
+    for _ in 0..*campfires {
+        placer.place(mix, campfire, Area::Anywhere);
+    }
+    for z in 0..2 {
+        for (class, count) in [(10, *tents), (9, *guards), (212, *gates)] {
+            for _ in 0..count / 2 {
+                placer.place(mix, keyed(class, z), Area::Level(z));
+            }
+        }
+    }
+    for _ in 0..*charts {
+        placer.place(mix, chart, Area::Level(0));
+    }
+    for _ in 0..*redwoods {
+        placer.place(mix, kind(58, 0, None), Area::Level(0));
+    }
+    for _ in 0..*pillars {
+        placer.place(mix, kind(60, 0, None), Area::Level(1));
+    }
+    placer.placed
+}
+
 /// `e08-duel-36.h3m`: decision 11's random-play map. SoD, 36 × 36 with an underground, red and
 /// blue with two heroes each (one on each level, red's in the west, blue's in the east; their
-/// types' starting armies), [`patchwork`] terrain, 72 blockers.
+/// types' starting armies), [`patchwork`] terrain, 72 blockers, then (E08 T16a) increment 2's 66
+/// typed objects ([`objects`], a guard and a gate on each road).
 fn duel() -> Plan {
-    let (tiles, blockers) = patchwork(36, &mut Mix(36), 72);
+    let mut mix = Mix(36);
+    let (tiles, mut blockers) = patchwork(36, &mut mix, 72);
+    let heroes = [(4, 5, 0), (31, 30, 0), (5, 30, 1), (30, 5, 1)];
+    let typed = objects(36, &tiles, &blockers, &heroes, &mut mix, 1, 1);
+    blockers.extend(typed);
     Plan {
         version: Version::Sod,
         side: 36,
@@ -95,12 +364,7 @@ fn duel() -> Plan {
         tiles,
         players: vec![(0, true), (1, true)],
         // Owners go round the players: red, blue, red, blue.
-        heroes: vec![
-            ((4, 5, 0), None),
-            ((31, 30, 0), None),
-            ((5, 30, 1), None),
-            ((30, 5, 1), None),
-        ],
+        heroes: heroes.iter().map(|&spot| (spot, None)).collect(),
         hero_types: 3,
         blockers,
         difficulty: 1,
@@ -110,26 +374,31 @@ fn duel() -> Plan {
 /// `e08-xl-144.h3m`: decision 11's pathfinding and fork map (E08 T9b). SoD, 144 × 144 with an
 /// underground (the largest map, 41 472 tiles), red and blue with four heroes each (two on each
 /// level, red's in the west, blue's in the east), [`patchwork`] terrain, 1 152 blockers (the
-/// duel's density).
+/// duel's density), then (E08 T16a) 1 056 typed objects (the duel's density: [`objects`] 16 times
+/// the duel's, four guards and four gates on each road).
 fn xl() -> Plan {
-    let (tiles, blockers) = patchwork(144, &mut Mix(144), 72 * 16);
+    let mut mix = Mix(144);
+    let (tiles, mut blockers) = patchwork(144, &mut mix, 72 * 16);
+    // Owners go round the players: red, blue, red, blue, …
+    let heroes = [
+        (10, 10, 0),
+        (133, 133, 0),
+        (10, 130, 0),
+        (133, 13, 0),
+        (12, 72, 1),
+        (131, 72, 1),
+        (70, 20, 1),
+        (73, 123, 1),
+    ];
+    let typed = objects(144, &tiles, &blockers, &heroes, &mut mix, 16, 4);
+    blockers.extend(typed);
     Plan {
         version: Version::Sod,
         side: 144,
         two_levels: true,
         tiles,
         players: vec![(0, true), (1, true)],
-        // Owners go round the players: red, blue, red, blue, …
-        heroes: vec![
-            ((10, 10, 0), None),
-            ((133, 133, 0), None),
-            ((10, 130, 0), None),
-            ((133, 13, 0), None),
-            ((12, 72, 1), None),
-            ((131, 72, 1), None),
-            ((70, 20, 1), None),
-            ((73, 123, 1), None),
-        ],
+        heroes: heroes.iter().map(|&spot| (spot, None)).collect(),
         hero_types: 5,
         blockers,
         difficulty: 1,

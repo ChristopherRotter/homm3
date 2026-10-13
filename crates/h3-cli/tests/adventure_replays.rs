@@ -8,7 +8,11 @@
 //! `--seed 1 --agent-seed 1 --days 28`; `duel-s2-d7` `--seed 2 --agent-seed 3 --days 7`;
 //! `duel-s5-strict-d7` `--seed 5 --agent-seed 8 --days 7 --profile base:strict-fixed`;
 //! `duel-s3-easy-d7` `--seed 3 --agent-seed 4 --days 7 --difficulty 0` (E08 T14b: the replay's
-//! difficulty, which `verify` plays at; the duel has no objects, so it shows in the treasuries).
+//! difficulty, which `verify` plays at, shows in the treasuries). All four were re-recorded with
+//! the same options in E08 T16a, when the duel got increment 2's typed objects: the 28-day replay
+//! picks up a crystal pile and takes the green key, `duel-s2-d7` a campfire and a sulfur pile,
+//! the strict one a gold pile and the green key; no replay meets an offer (random play's moves
+//! seldom end on an object: the T16a log).
 
 use std::path::PathBuf;
 
