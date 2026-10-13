@@ -1,6 +1,6 @@
 # E04c — Sieges and special battlefields
 
-Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2 closed: T3 (#179), T4 (#180), BAT-Q39 and BAT-Q40 answered; the siege seam accepted; next T5) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
+Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2 closed: T3 (#179), T4 (#180), BAT-Q39 and BAT-Q40 answered; increment 3, T5: the seam ADR-0023 (#183), towns on the experiment maps, the reading (BAT-Q41, BAT-Q42); next the battle's walls, gate and moat) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
 
@@ -66,35 +66,45 @@ banks' fixed layouts; HotA's fields (Cracked Ice, Dunes, Fields of Glory). AI (E
   `installation.md` §7.27 (the town and fort level, the moat, the turrets, the war machines, the
   defending hero's and the stacks' town bonuses, the controls, the experience, the siege's
   obstacles), the survey `docs/rules/surveys/E04c-sieges.md` (D-5 to D-7, S-29), the ADR draft
-  `docs/lanes/battle/adr-drafts/sieges.md`, accepted at BAT-Q40 (numbered with the seam's pull request).
+  `docs/lanes/battle/adr-drafts/sieges.md`, accepted at BAT-Q40 as ADR-0023.
+**Increment 3** (the user at BAT-Q40, 2026-10-13: T5, starting with the seam's `shared/` pull
+request and towns on the experiment maps; siege batches run by an agent).
+
 - [ ] T5 Walls, gate and moat (the layout, movement and stops, shooting at and through walls, the
-  moat's damage, the Tower's mines).
+  moat's damage, the Tower's mines). T5a (#183), T5b and T5c done; T5d and T5e next (below).
 - [ ] T6 The Catapult, Ballistics and Earthquake (S-08).
 - [ ] T7 Arrow towers (S-06, S-07; Artillery's control).
 - [ ] T8 The siege's other rules (no retreat or surrender for the besieged, the spell cost's town
   armies, Teleport's and the summon's siege limits, the outcome: walls, capture).
 - [ ] T9 Workload and measurements; T10 closure (the independent review, as E04b's T11).
 
-### T2 — The battlefields (refined 2026-10-13; after the review of the ADR draft)
+### T5 — Walls, gate and moat (refined 2026-10-14, increment 3)
 
-- **T2a, the seam** (`shared/battlefield-seam`, merged first): `BattleSetup.battlefield`
-  (`Option<ContentKey>`) and `.anti_magic` in `h3-contracts`, documented and defaulted (every
-  constructor outside the battle lane uses the default); BACKLOG's E04c row `in-progress`.
-- **T2b, the battle** (`battle/e04c-t2`, `cross-lane` for `h3-protocol`): the battle part's
-  `[[battlefield]]` (pack format v36) and the obstacle types' battlefields; the harvester reads the executable's two
-  obstacle tables (types and fields) and gap-fills the battlefields' effects; packs regenerated
-  (`base` shore, Magic Plains, Cursed Ground, deck, boats; `sod` the seven); the rules: morale and
-  luck, the native bonus, the magic limits and the anti-magic garrison, the mastery raise, the
-  generator's type choice and the boats' hexes; setup errors; the observation, its encoding and
-  the wire; scenarios and the CLI take a battlefield; catalog rules BAT-TER-002 onwards with tests;
-  golden replays and the bench re-recorded with the reason.
-- Acceptance: every effect of the survey's §1 has a rule with its sources and a test; D-1 and D-2
-  follow the user's answer to BAT-Q38; battles without a battlefield replay unchanged apart from
-  the hashes; `verify --with-original-data` green.
+- **T5a, the seam** (`shared/siege-seam`, #183, merged first): `BattleSetup.siege` (`Siege`,
+  `FortLevel`, `Moat`), ADR-0023 (BAT-Q40, BAT-Q41: the faction by handle, the turrets' count by
+  the code, the moat by the game's version), BAT-STUB-2 until the battle reads it.
+- **T5b, towns on the experiment maps** (`battle/e04c-t5b`, `cross-lane` for `h3-map`): the
+  writer's town (class 98, buildings, garrison, owner), `[encounter.opponent.town]` with a visiting
+  hero.
+- **T5c, the reading** (`installation.md` §7.28; the survey's D-8 to D-10; BAT-Q42: the code).
+- **T5d, the battle** (`battle/e04c-t5`, stacked on T5a; `cross-lane` for `h3-protocol`): the
+  battle part's siege records per faction (the moat's damage and rows, the Tower's mines) and the
+  siege's geometry (wall, gate and moat hexes, harvested from the executable); setup errors; the
+  state (the gate) and its observation, encodings and wire; the walls' hexes, the gate's passage,
+  opening and closing; the moat's stop, damage on entering and on acting in place, and −3
+  defense; the Tower's hidden mines; the shot's wall test; scenarios, replays and the CLI; catalog
+  rules BAT-SIE-001 onwards; golden replays and the bench with the reason. The walls' hit points
+  join with T6, which damages them (ADR-0023 point 5).
+- **T5e, a siege batch run by an agent** on the capture harness: the walk into the moat (stop,
+  damage, defense), the gate, the Tower's mines; D-8's and D-10's confirmation rows.
+- Acceptance: every rule of §7.28 has a catalog rule with its sources and a test; battles without
+  a siege replay unchanged apart from the hashes; the Tower's mines never reach the attacker's
+  observation; `verify --with-original-data` green.
 
 ## Design
 
-[ADR-0022](../adr/0022-battlefields.md) (accepted at BAT-Q38). ADR-0012 (modifiers), ADR-0013 (the
+[ADR-0022](../adr/0022-battlefields.md) (accepted at BAT-Q38), [ADR-0023](../adr/0023-sieges.md)
+(accepted at BAT-Q40, BAT-Q41). ADR-0012 (modifiers), ADR-0013 (the
 hero seam, point 5) and ADR-0014 (magic) still apply.
 
 ## Exit criteria

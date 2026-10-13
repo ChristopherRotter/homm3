@@ -4,9 +4,10 @@ The survey behind the siege seam (E04c T4, 2026-10-13): what the original's batt
 town and gives back, the rule areas of the siege with their sources compared, the disputes, and
 the cut of the siege increments. The detail readings of each area come with its task (T5–T8).
 
-Sources: `code` (the executable, `docs/formats/installation.md` §7.27, earlier §7.15 to §7.26);
-`original-data` (`CRTRAITS.TXT`, `BALLIST.TXT`); `vcmi` (VCMI 1.7.5: `lib/battle/BattleInfo.cpp`,
-`CBattleInfoEssentials.cpp`, `DamageCalculator.cpp`, `lib/mapObjects/CGTownInstance.cpp`,
+Sources: `code` (the executable, `docs/formats/installation.md` §7.27, T5's §7.28, earlier §7.15
+to §7.26); `original-data` (`CRTRAITS.TXT`, `BALLIST.TXT`, `WALLS.TXT`); `vcmi` (VCMI 1.7.5:
+`lib/battle/BattleInfo.cpp`, `CBattleInfoEssentials.cpp`, `CBattleInfoCallback.cpp`,
+`server/battles/BattleProcessor.cpp`, `config/spells/moats.json`, `DamageCalculator.cpp`, `lib/mapObjects/CGTownInstance.cpp`,
 `config/buildingsLibrary.json`, `config/factions/*.json`); `wiki` (heroes.thelazy.net, read
 2026-10-13 with the user's approval: `Combat` (its Siege section), `Moat`, `Arrow tower`,
 `Ballistics`).
@@ -34,11 +35,12 @@ Brotherhood of the Sword) are tested in a second building set of the town (`code
 Tavern, the fort and the Grail in its built set: which buildings the second set holds is the town
 context's to read (E09).
 
-**Moat.** Not in a Tower (land mines instead), not in a Stronghold on a map made before SoD
-(`code`: the map's format; `wiki`: "Stronghold does not have a moat in RoE"). The Fortress's is two
+**Moat.** Not in a Tower (land mines instead), not in a Stronghold in a game under RoE or AB
+rules (`code`: the game's version, H3API's `mapKind`, BAT-Q41; `wiki`: "Stronghold does not have a
+moat in RoE"). The Fortress's is two
 hexes wide. Damage on entering: 70 (Castle, Rampart, Necropolis, Stronghold, Conflux) or 90
-(Inferno, Dungeon, Fortress), straight to the hit points, and **only on SoD maps** (`code`: the map
-kind; `wiki`: "That effect was introduced in SoD"); the Tower's mines 150. The moat is a stop
+(Inferno, Dungeon, Fortress), straight to the hit points, and **only under SoD rules** (`code`: the
+game's version; `wiki`: "That effect was introduced in SoD"); the Tower's mines 150 (D-9). The moat is a stop
 (`code` 0x4B3290); the `wiki` adds −3 defense and damage for each round a stack stays (T5).
 
 **Turrets.** The keep's count is 4 + the town's built buildings among a mask (`code`), each
@@ -59,10 +61,10 @@ Brotherhood of the Sword +2 more (`code`); luck from the town (Rampart's Fountai
 | Area | `code` | `original-data` | `vcmi` | `wiki` | Increment |
 |---|---|---|---|---|---|
 | Fort levels, parts | as §1 | — | as §1 (`fortifications` per building) | Fort needed; Citadel, Castle improve | T5 |
-| Walls, gate, who passes | wall hexes; gate not read | — | wall parts, gate states | "flying creatures can fly over walls" | T5 |
-| Moat | as §1 | — | `moats.json`, `moatAbility` | as §1; stop, −3 defense, per-round damage | T5 |
-| Tower's land mines | 150 (table), Land Mine's machinery (0x4663BE) | — | `towerMoat` | "minimum 150 points of damage" | T5 |
-| Shooting through walls | 0x467510 not read; stage 2 halves | — | half damage over walls | towers bypass the penalties | T5 |
+| Walls, gate, who passes | 18 parts, hit points (`WALLS.TXT`), 11 wall hexes; the gate closed or open, the defender's passage, opening and closing (§7.28) | `WALLS.TXT` | wall parts, gate states; the same passage ("bridge" hex 94) | "flying creatures can fly over walls" | T5 |
+| Moat | as §1; a stop, damage on entering and on acting in place, −3 defense not floored (§7.28) | — | `moats.json`, `moatAbility`; defense floored at 0 (D-10) | as §1; stop, −3 defense, per-round damage | T5 |
+| Tower's land mines | ten hidden mines, at least 150 or the hero's Land Mine (§7.28, D-9) | — | `towerMoat`: 150 | "minimum 150 points of damage" | T5 |
+| Shooting through walls | halved, a grid line test, the open gate free (§7.28, D-8) | — | halved, the shortest hex path | towers bypass the penalties | T5 |
 | Catapult and Ballistics | the Catapult on hex 119; its shot not read | `BALLIST.TXT`: hit chances keep/tower/gate/wall none 5/10/25/50 %, Basic and Advanced 7/15/30/60 %, Expert 10/20/40/75 %; shots 1, 1, 2, 2; damage 0/1/2 by 10/60/30 % (none), 0/50/50 % (Basic, Advanced), always 2 (Expert) | from the same table | Basic: control; Advanced: two shots; Expert: "always hits the intended target" | T6 |
 | Earthquake | not read | `SPTRAITS.TXT` | spell config | damages walls | T6 |
 | Arrow towers | as §1 | stats in `CRTRAITS.TXT` | as §1 | as §1; no luck, defense ignored, no modifiers; Artillery controls | T7 (S-06, S-07) |
@@ -98,13 +100,41 @@ follows the result (the adventure lane).
   retreat without the tunnel, +500 experience, the hero's and the stacks' town bonuses, the town's
   terrain); `vcmi`: also "defended town" for surrender and retreat; the `wiki`: "a usual
   battlefield". Recommendation: the code; the seam keeps the town without a fort.
-- **S-29 The map format's branch** (candidate). A map made for RoE or AB, played in SoD: the moat
-  does no damage, the Stronghold has none and its siege with a Citadel or Castle gets the usual
-  natural obstacles instead (`code`; the `wiki` on the versions). On a SoD map no siege has
-  natural obstacles (`code`, `vcmi`). Not a bug: the original keeps the old rules for old maps.
+- **S-29 The game version's branch** (candidate). A game under RoE or AB rules: the moat does no
+  damage, the Stronghold has none and its siege with a Citadel or Castle gets the usual natural
+  obstacles instead (`code`; the `wiki` on the versions). Under SoD rules no siege has natural
+  obstacles (`code`, `vcmi`). Not a bug: the original keeps the old rules for its old versions.
   Recommendation: the derivation honours it (the seam's moat says "absent", "harmless" or
   "damaging"; the obstacles are drawn before the seam as always); no flag. **The user (BAT-Q40):
-  honoured; not a quirk.**
+  honoured; not a quirk. (BAT-Q41)** The deciding value is the game's version (the original's
+  `mapKind`), which the original probably takes from the map's format (its new-game setter is not
+  read): how a game gets its version is the adventure lane's; an experiment candidate, a Stronghold
+  with a Citadel on an AB-format map in the Complete game.
+- **D-8 The shot through walls: the line** (T5; `code` 0x467510, 0x467840; `vcmi`
+  `battleHasWallPenalty`, `battleHasPenaltyOnLine`). Both halve a shot from outside the walls on
+  the shooter's row at a target inside on its row, except the Mage, Arch Mage, Enchanter,
+  Sharpshooter and Arrow Tower and a hero's Golden Bow or Bow of the Sharpshooter, and both multiply
+  the halving with the distance's (a quarter). The `code` asks a straight line on the column and row
+  grid (1/17 steps, truncated) for an intact wall hex or the closed gate's hex 96; `vcmi` the hexes
+  of the shortest hex path ("to avoid various OH3 bugs"), where the gate's hex blocks while the gate
+  stands, open or closed. With intact walls they differ only through the **open gate**: the `code`
+  does not halve a shot whose line passes it, `vcmi` does; with destroyed parts (T6) the two
+  geometries differ more. Recommendation: the code; a confirmation row. **The user (BAT-Q42): the code.**
+- **D-9 The Tower's mines** (T5; `code` 0x4663BE): under SoD rules at least 150, the defending hero's
+  Land Mine damage when larger (its power and mastery, no damage bonuses); under older rules the
+  hero's, or without a hero the spell's at power 3 and no mastery. `wiki` ("minimum 150 points of
+  damage") agrees, `vcmi` always 150. The code (two sources agree).
+- **D-10 The moat's defense below 0** (T5; `code` 0x442590: −3 after the other reductions, not
+  floored; `vcmi`: −3 as a bonus, a stack's defense floored at 0). They differ for a stack with
+  defense below 3 in the moat (the Peasants have 1): the code gives its attacker the larger
+  difference. Recommendation: the code; a confirmation row. **The user (BAT-Q42): the code.**
+- **Agreements** (T5): the closed gate's passage for the defender needs hexes 95 and 94 free of
+  living stacks and corpses in every town (`code` 0x469A10; `vcmi`'s "bridge" hex 94); a defender
+  entering 94 to 96 opens it, and it closes when 95 and 96 (94 in the Fortress) are free; the moat's
+  hexes (95 only while the gate is closed), its stop, its damage by town and its −3 defense; the
+  Tower's ten hidden mines instead of a moat. Small differences, the code followed without a
+  question: `vcmi` lets a Force Field on 94 keep the gate from opening and only living stacks keep
+  it open (the `code` tests stacks and corpses, no Force Field).
 - **S-06, S-07, S-08** (`E04-quirks.md`: the towers, Earthquake) are classified with T6 and T7.
 
 ## 5. Experiments

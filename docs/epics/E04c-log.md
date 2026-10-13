@@ -93,3 +93,29 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
 - **The review** (BAT-Q40, the user): the draft accepted; old maps honoured (S-29 not a quirk);
   D-5 and D-6 as the code and `BALLIST.TXT`; the next cut T5 (the seam's `shared/` pull request
   with the ADR, towns on the experiment maps, walls, gate and moat).
+
+## T5 — walls, gate and moat (2026-10-14, increment 3)
+
+- **T5a, the seam** (`shared/siege-seam`, #183): `BattleSetup.siege: Option<Siege>`, `FortLevel`,
+  `Moat`; ADR-0023 numbered from the draft. Asked while writing it (BAT-Q41): the faction by handle
+  (`FactionId`, as `FactionGroup`); `structures` as the original counts them (0x5BF4F0: built
+  buildings 0–43 among the town's buildable mask, the keep 4 + it); and, after the Tower's mines
+  were read, the moat by **the game's version** (H3API's `mapKind`), not the map's format: only the
+  saved-game loader's setter was found (0x4BCDA0), so how a game gets its version is the adventure
+  lane's (an experiment candidate); a Tower's moat follows it like every town's. The battle lane's
+  full constructors name `siege: None`; BAT-STUB-2. Full verify `--with-original-data` green.
+- **T5b, towns on the experiment maps** (`battle/e04c-t5b`, `cross-lane` for `h3-map`): the
+  writer's `Town` (class 98, its entrance two columns west of its position; owner or neutral,
+  garrison, formation, standard or custom buildings; no name, events or spells, the owner's
+  alignment); `[encounter.opponent.town]` (faction, owner, buildings by name, garrison, tight; the
+  entrance north of the hero, an optional visiting hero on it); the building bits as VCMI 1.7.5's
+  `gameConfig.json`. Read back by `h3-map`'s reader; the import reports the visitor in the town.
+- **T5c, the reading** (`installation.md` §7.28): `WALLS.TXT` gives the 18 parts' hit points (2 for
+  the towers, the four walls, the gate and the keep; a Castle's walls 3); the gate's states (3
+  closed, 1 open) and its passage for the defender (95 and 94 free of stacks and corpses, 94 in
+  every town), opening on a defender's entering 94–96 and closing after every move and action when
+  96 and 95 (94 in a Fortress) are free; the moat's hexes, stop, damage on entering and on acting in
+  place, −3 defense not floored; the Tower's ten hidden mines (at least 150 or the hero's Land
+  Mine under SoD rules); the shot's wall test on a column/row grid line. VCMI agrees but for D-8
+  (the open gate) and D-10 (the floor at 0); the wiki sides with the code on D-9. **BAT-Q42 (the
+  user): the code on D-8 and D-10.**
