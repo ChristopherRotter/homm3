@@ -224,3 +224,51 @@ fn sequences(options: &Options) -> Result<usize, String> {
     }
     Ok(differing)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    #[test]
+    fn options_are_parsed() {
+        let o = Options::parse(&args(&[
+            "melee", "--speed", "1", "--out", "/o", "--packs", "/p",
+        ]))
+        .unwrap();
+        assert_eq!(o.only.as_deref(), Some("melee"));
+        assert_eq!(o.speed, Speed::new(1));
+        assert_eq!((o.out, o.packs), (PathBuf::from("/o"), PathBuf::from("/p")));
+        let o = Options::parse(&args(&["--install", "/i"])).unwrap();
+        assert_eq!((o.only, o.install), (None, PathBuf::from("/i")));
+        assert!(o.out.ends_with("out/sequences"));
+        for bad in [
+            &["--speed"][..],
+            &["--speed", "4"],
+            &["--what"],
+            &["a", "b"],
+        ] {
+            assert!(Options::parse(&args(bad)).is_err(), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn the_sequences_file_names_engine_commands() {
+        let path = assets::default_dir().join("../situations/sequences.toml");
+        let file: File = toml::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+        let melee = file.sequence.iter().find(|s| s.id == "melee").unwrap();
+        assert_eq!(melee.command.len(), 2);
+        assert_eq!(melee.command[1].seat, Seat::Defender);
+        assert_eq!(
+            melee.command[1].command,
+            Command::Attack {
+                target: 0,
+                from: 45
+            }
+        );
+        assert_eq!((melee.pre, melee.ms), (0, 6000));
+    }
+}

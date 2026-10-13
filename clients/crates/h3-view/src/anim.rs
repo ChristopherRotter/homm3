@@ -545,11 +545,8 @@ impl Player<'_> {
             let (dx, dy) = (bx - ax, by - ay);
             let d = isqrt(i64::from(dx).pow(2) + i64::from(dy).pow(2));
             let distance = u64::from(live.look.times[3]);
-            let cycles = if distance == 0 {
-                1
-            } else {
-                (d + distance / 2) / distance
-            };
+            // k = (d + D / 2) / D; one without a flight distance.
+            let cycles = (d + distance / 2).checked_div(distance).unwrap_or(1);
             let total = u32::try_from(cycles).unwrap_or(0) * n;
             for j in 0..total {
                 let mut p = pose(g.moving, j % n, start);
@@ -693,8 +690,11 @@ impl Player<'_> {
         (group, from, frames): (u8, u32, u32),
         reactions: &[Reaction],
     ) {
+        // L = A + R − 1 (with a magic animation, at least its frames: not yet); at least A + 1,
+        // so a striker without a reaction to wait for still stands at the end (the original
+        // always has one: a target's reaction has six frames or more).
         let longest = reactions.iter().map(|r| r.frames).max().unwrap_or(0);
-        let loops = (frames + longest).saturating_sub(1).max(1);
+        let loops = (frames + longest).saturating_sub(1).max(frames + 1);
         let tick = self.speed.scale(TICK);
         for i in 0..loops {
             let mut poses = Vec::with_capacity(reactions.len() + 1);
