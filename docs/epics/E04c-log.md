@@ -39,3 +39,9 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   replays play the same commands; a ninth, `field-s5`, plays the synthetic `hallow`.
 - **Other lanes:** the client's asset tables moved the SoD obstacle types to `sod`; inbox lines
   in the adventure, client and server queues.
+- **The review** (BAT-Q38, the user, after T2 was built): the draft accepted as ADR-0022 (through
+  the seam's pull request); the battlefield stays optional, `None` the terrain's ordinary one;
+  D-1 as the code with quirk candidate S-28 (the intent may have been only non-positive morale,
+  `fix-optional`, to be investigated with T3's row); D-2 as the code with the alignment
+  distinction noted (BAT-TER-003); the cut as proposed, both pull requests `cross-lane`. T1
+  merged as #164 meanwhile. No code changed after the answers but the doc comments.

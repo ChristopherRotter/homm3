@@ -1,4 +1,4 @@
-//! Special battlefields (E04c; the battlefield ADR draft, `docs/lanes/battle/adr-drafts/battlefields.md`):
+//! Special battlefields (E04c, ADR-0022):
 //! the shore, the magic fields, a ship's deck, two boats. A battle names one through
 //! `BattleSetup::battlefield` by key; each field below is read by one battle rule
 //! (BAT-TER-002 to BAT-TER-006, BAT-GEO-004). The original keeps the battlefield as a number
