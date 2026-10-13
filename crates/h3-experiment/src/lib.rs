@@ -7,7 +7,8 @@
 //! SoD map (written with [`h3_map::writer`]) and a results template the user fills in. Names
 //! resolve against the original tables of the user's installation ([`Tables`]), so a spec reads
 //! like the game ("Archangel", "Basic Armorer") and a typo fails at build time instead of in the
-//! game.
+//! game. From E08 T16b the map's description and the template's top carry the spec's [`stamp`],
+//! so a map left from an earlier build of the spec shows itself before it is played.
 
 pub mod tables;
 
@@ -16,11 +17,11 @@ use std::fmt::Write as _;
 
 use h3_map::writer::{
     ARMY_SLOTS, ARTIFACT_SLOTS, Hero, HeroArtifacts, Map, MapObject, Monster, ObjectTemplate,
-    PLAYERS, Patch, Player, Road, RoadKind, Terrain,
+    PLAYERS, Patch, Pile, Player, Road, RoadKind, Terrain,
 };
 use serde::Deserialize;
 
-pub use tables::Tables;
+pub use tables::{RESOURCES, Tables};
 
 /// Heroes a player may have on the map.
 pub const MAX_HEROES_PER_PLAYER: usize = 8;
@@ -69,6 +70,9 @@ pub struct Spec {
     /// The encounters, in the order they are laid out and listed.
     #[serde(default)]
     pub encounter: Vec<Encounter>,
+    /// The spec text's [`stamp`], set by [`parse`] (never read from the file).
+    #[serde(skip)]
+    pub stamp: String,
 }
 
 /// Map-wide settings.
@@ -94,6 +98,26 @@ pub struct MapSpec {
     /// Straight roads from west to east (`[[map.road]]`, E08 T10a).
     #[serde(default)]
     pub road: Vec<RoadSpec>,
+    /// Rows of resource piles (`[[map.pile]]`, E08 T16b).
+    #[serde(default)]
+    pub pile: Vec<PileSpec>,
+}
+
+/// Resource piles of one resource on one row, one per tile from `from` to `to`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PileSpec {
+    /// The resource ([`RESOURCES`]: wood, mercury, ore, sulfur, crystal, gems, gold).
+    pub resource: String,
+    /// Row.
+    pub row: u8,
+    /// West end's column.
+    pub from: u8,
+    /// East end's column (inclusive; `from` for a single pile).
+    pub to: u8,
+    /// The amount as the map stores it; 0 (the default) is drawn when the game starts.
+    #[serde(default)]
+    pub amount: u32,
 }
 
 /// A road on one row.
@@ -260,12 +284,25 @@ pub struct Record {
     pub labels: Vec<String>,
 }
 
-/// Parses a spec.
+/// Parses a spec and sets its [`stamp`].
 ///
 /// # Errors
 /// TOML syntax or unknown fields.
 pub fn parse(text: &str) -> Result<Spec, String> {
-    toml::from_str(text).map_err(|e| e.to_string())
+    let mut spec: Spec = toml::from_str(text).map_err(|e| e.to_string())?;
+    spec.stamp = stamp(text);
+    Ok(spec)
+}
+
+/// The spec's stamp (E08 decision 18): 8 hex digits of the CRC-32 of its text with Windows line
+/// endings made Unix ones, so a checkout with either gives the same stamp. [`build`] puts it at
+/// the start of the map's description (shown in the game's scenario list) and at the top of the
+/// results template: a map from another build of the spec shows a different stamp.
+pub fn stamp(text: &str) -> String {
+    format!(
+        "{:08x}",
+        h3_map::crc32(text.replace("\r\n", "\n").as_bytes())
+    )
 }
 
 /// Compiles a spec into a map and its results template. `map_file` is the map's file name as the
@@ -341,6 +378,13 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
         text,
         "Map file: `{map_file}`. Fill in the blanks below and keep this file; an agent records the \
          results (`docs/experiments/README.md`).\n"
+    );
+    let _ = writeln!(
+        text,
+        "**Stamp `{}`.** The map's description in the scenario list starts with \"Stamp {}.\": \
+         compare the two before you play. If they differ, the map is not this template's build: \
+         do not play it, ask for the map again.\n",
+        spec.stamp, spec.stamp
     );
     for (i, step) in spec.map.instructions.iter().enumerate() {
         let _ = writeln!(text, "{}. {step}", i + 1);
@@ -422,11 +466,15 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
         };
         encounter_text(&mut text, enc, &own, against.as_deref(), &more);
     }
+    for p in &spec.map.pile {
+        objects.extend(piles(p, tables, size)?);
+    }
     let mut tiles: Vec<(u8, u8)> = objects
         .iter()
         .map(|o| match o {
             MapObject::Hero(h) => h.tile,
             MapObject::Monster(m) => m.tile,
+            MapObject::Pile(p) => p.tile,
         })
         .collect();
     tiles.sort_unstable();
@@ -453,7 +501,7 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
     }
     let map = Map {
         name: spec.map.name.clone(),
-        description: spec.map.description.clone(),
+        description: format!("Stamp {}. {}", spec.stamp, spec.map.description),
         size,
         terrain: base,
         patches,
@@ -462,6 +510,35 @@ pub fn build(spec: &Spec, tables: &Tables, map_file: &str) -> Result<(Map, Strin
         objects,
     };
     Ok((map, text))
+}
+
+/// A row of piles, west to east.
+fn piles(p: &PileSpec, tables: &Tables, size: u8) -> Result<Vec<MapObject>, String> {
+    let resource = RESOURCES
+        .iter()
+        .position(|r| *r == p.resource)
+        .ok_or_else(|| format!("unknown resource `{}`", p.resource))?;
+    let template = tables
+        .piles
+        .iter()
+        .find(|(r, _)| *r == resource as u32)
+        .map(|(_, t)| t.clone())
+        .ok_or_else(|| format!("no resource-pile template for {}", p.resource))?;
+    if p.from > p.to || p.to >= size || p.row >= size {
+        return Err(format!(
+            "piles on row {} from {} to {}: out of order or off the map",
+            p.row, p.from, p.to
+        ));
+    }
+    Ok((p.from..=p.to)
+        .map(|x| {
+            MapObject::Pile(Pile {
+                tile: (x, p.row),
+                template: template.clone(),
+                amount: p.amount,
+            })
+        })
+        .collect())
 }
 
 fn terrain(name: &str) -> Result<Terrain, String> {
@@ -797,6 +874,20 @@ mod tests {
                 )
                 .expect("template"),
             )],
+            // Wood and gold piles (E08 T16b); no gems template, to see the error.
+            piles: [(0, "AVTwood0.def"), (6, "AVTgold0.def")]
+                .map(|(id, def)| {
+                    let line = format!(
+                        "{def} 011111111111111111111111111111111111111111111111 \
+                         100000000000000000000000000000000000000000000000 111111111 000000001 \
+                         79 {id} 5 0"
+                    );
+                    (
+                        id,
+                        ObjectTemplate::from_objects_txt(&line).expect("template"),
+                    )
+                })
+                .to_vec(),
         }
     }
 
@@ -906,6 +997,37 @@ mod tests {
         h3_map::writer::write(&map).expect("writable");
     }
 
+    /// The stamp (E08 T16b, decision 18): CRC-32 of the text with CRLF made LF, in the map's
+    /// description and at the template's top.
+    #[test]
+    fn the_stamp_marks_the_map_and_the_template() {
+        assert_eq!(stamp("123456789"), "cbf43926");
+        assert_eq!(stamp("a\r\nb\r\n"), stamp("a\nb\n"));
+        assert_ne!(stamp("a\nb\n"), stamp("a\nc\n"));
+        let spec = parse(SPEC).expect("spec");
+        assert_eq!(spec.stamp, stamp(SPEC));
+        let (map, text) = build(&spec, &tables(), "t.h3m").expect("build");
+        assert_eq!(map.description, format!("Stamp {}. d", spec.stamp));
+        assert!(text.contains(&format!(
+            "**Stamp `{0}`.** The map's description in the scenario list starts with \"Stamp {0}.\"",
+            spec.stamp
+        )));
+        // A Windows checkout of the same spec: the same stamp, map and template.
+        let windows = parse(&SPEC.replace('\n', "\r\n")).expect("spec");
+        assert_eq!(windows.stamp, spec.stamp);
+        let (map2, text2) = build(&windows, &tables(), "t.h3m").expect("build");
+        assert_eq!((map2, text2), (map, text));
+        // Any other change of the text changes it; the file cannot set it.
+        assert_ne!(
+            parse(&SPEC.replace("Attack.", "Attack!"))
+                .expect("spec")
+                .stamp,
+            spec.stamp
+        );
+        let set = SPEC.replacen("[map]", "stamp = \"0\"\n[map]", 1);
+        assert!(parse(&set).expect_err("stamp key").contains("stamp"));
+    }
+
     #[test]
     fn rejects_mistakes() {
         let t = tables();
@@ -948,6 +1070,17 @@ mod tests {
         row = 30
         from = 17
         to = 19
+        [[map.pile]]
+        resource = "wood"
+        row = 50
+        from = 10
+        to = 12
+        [[map.pile]]
+        resource = "gold"
+        row = 52
+        from = 20
+        to = 20
+        amount = 7
 
         [[encounter]]
         id = "W1"
@@ -1009,12 +1142,32 @@ mod tests {
                 to: 19
             }]
         );
+        // The piles come last, row by row from west to east.
+        let piles: Vec<(u8, u8, u32, u32)> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Pile(p) => Some((p.tile.0, p.tile.1, p.template.subclass, p.amount)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            piles,
+            [
+                (10, 50, 0, 0),
+                (11, 50, 0, 0),
+                (12, 50, 0, 0),
+                (20, 52, 6, 7)
+            ]
+        );
+        assert!(matches!(map.objects[4], MapObject::Pile(_)));
         let heroes: Vec<&Hero> = map
             .objects
             .iter()
-            .map(|o| match o {
-                MapObject::Hero(h) => h,
+            .filter_map(|o| match o {
+                MapObject::Hero(h) => Some(h),
                 MapObject::Monster(_) => panic!("no monsters"),
+                MapObject::Pile(_) => None,
             })
             .collect();
         // The encounter's hero, its `also` heroes, then the opponent beside the hero.
@@ -1080,5 +1233,18 @@ mod tests {
         let no_primary = fails("primary = [0, 0, 1, 1]\n", "");
         assert!(no_primary.contains("`primary` is required"));
         assert!(fails("army = [[\"Pikeman\", 1]]", "").contains("0 army stacks"));
+        assert!(fails("\"wood\"", "\"timber\"").contains("unknown resource `timber`"));
+        assert!(fails("\"gold\"", "\"gems\"").contains("no resource-pile template for gems"));
+        for (from, to) in [
+            ("from = 10\n        to = 12", "from = 13\n        to = 12"),
+            ("to = 12", "to = 72"),
+            ("row = 50", "row = 72"),
+        ] {
+            assert!(
+                fails(from, to).contains("out of order or off the map"),
+                "{to}"
+            );
+        }
+        assert!(fails("row = 52", "row = 30").contains("two objects"));
     }
 }

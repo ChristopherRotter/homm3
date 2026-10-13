@@ -17,6 +17,13 @@ Complete 4.0**; a rule settled here is `observation`-sourced with that version.
    The map goes into the gitignored `experiments/out/`; the **results template** is committed.
    `--list heroes|creatures|skills|artifacts|spells` prints the names a spec may use (heroes with
    class and specialty).
+   **The stamp** (E08 decision 18, from batch 2): 8 hex digits of the CRC-32 of the spec's text,
+   Windows line endings made Unix ones (a Windows and a Linux checkout agree). The map's
+   description starts with `Stamp <hex>.` (the scenario list shows it) and the template's top
+   says `**Stamp `<hex>`.**`; the user compares them before playing. A mismatch means the map
+   is not from the template's build (batch 1a's stale map, T10c): compile again and copy the map
+   in the same step. An agent checks a map in hand by reading its description back (`h3-map`) or
+   by the stamp of the committed spec (`h3_experiment::stamp`).
 2. The user copies the map into the game's `Maps` folder, plays it as the template says and fills
    in the template in the repo.
 3. The agent evaluates the filled template against the spec's predictions and records the result
@@ -34,6 +41,12 @@ Complete 4.0**; a rule settled here is `observation`-sourced with that version.
   `[[map.road]]` (E08 T10a): `kind` (dirt, gravel, cobblestone), `row`, `from` and `to` (the
   west and east end's columns): a straight road of at least two tiles with the pictures the
   game's own maps give such a road.
+  `[[map.pile]]` (E08 T16b): `resource` (wood, mercury, ore, sulfur, crystal, gems, gold),
+  `row`, `from` and `to` (columns, inclusive; equal for one pile) and `amount` (as the map stores
+  it; 0, the default, is drawn when the game starts): a resource pile on every tile of the row
+  from `from` to `to`, the template from `Objects.txt` (class 79). A pile is visited from a
+  neighbouring tile and the visit ends the move; the template does not list piles, the
+  encounters' procedures say where they are.
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `procedure`
   (steps), `record` (`field = "…"` for a value, `table = [columns]` + `rows`, or `labels` for rows whose
   first column is filled in), `predictions`

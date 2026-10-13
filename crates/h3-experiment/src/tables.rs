@@ -10,10 +10,12 @@ use h3_map::writer::{ARTIFACT_SLOTS, ObjectTemplate};
 
 /// Object class of a fixed wandering monster (subclass = creature id).
 const MONSTER_CLASS: u32 = 54;
+/// Object class of a resource pile (subclass = resource id, [`RESOURCES`] order).
+const PILE_CLASS: u32 = 79;
 /// The group rows of `SPTRAITS.TXT`, which are not spells.
 const SPELL_GROUPS: [&str; 3] = ["Adventure Spells", "Combat Spells", "Creature Abilities"];
-/// Resource names in `RESTYPES.TXT` order (for specialty descriptions).
-const RESOURCES: [&str; 7] = [
+/// Resource names in `RESTYPES.TXT` order (specialty descriptions, resource piles).
+pub const RESOURCES: [&str; 7] = [
     "wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold",
 ];
 
@@ -71,6 +73,8 @@ pub struct Tables {
     pub spells: Vec<String>,
     /// Wandering-monster templates (`Objects.txt`, class 54) as (creature id, template).
     pub monsters: Vec<(u32, ObjectTemplate)>,
+    /// Resource-pile templates (`Objects.txt`, class 79) as (resource id, template; E08 T16b).
+    pub piles: Vec<(u32, ObjectTemplate)>,
 }
 
 impl Tables {
@@ -172,12 +176,18 @@ impl Tables {
                 })
             })
             .collect::<Result<Vec<_>, String>>()?;
-        let monsters = objects_txt
+        let templates: Vec<ObjectTemplate> = objects_txt
             .lines()
             .filter_map(|line| ObjectTemplate::from_objects_txt(line).ok())
-            .filter(|t| t.class == MONSTER_CLASS)
-            .map(|t| (t.subclass, t))
             .collect();
+        let of_class = |class: u32| {
+            templates
+                .iter()
+                .filter(|t| t.class == class)
+                .map(|t| (t.subclass, t.clone()))
+                .collect::<Vec<_>>()
+        };
+        let (monsters, piles) = (of_class(MONSTER_CLASS), of_class(PILE_CLASS));
         Ok(Self {
             creatures: names(creatures),
             heroes,
@@ -190,6 +200,7 @@ impl Tables {
                 .filter(|n| !SPELL_GROUPS.contains(&n.as_str()))
                 .collect(),
             monsters,
+            piles,
         })
     }
 
@@ -237,4 +248,61 @@ fn rows(table: &TextTable) -> impl Iterator<Item = &Vec<String>> {
 /// First column of the data rows.
 fn names(table: &TextTable) -> Vec<String> {
     rows(table).map(|r| r[0].trim().to_owned()).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A table of two header rows and these one-column names.
+    fn table(names: &[&str]) -> TextTable {
+        let mut records = vec![vec!["header".to_owned()], vec!["header".to_owned()]];
+        records.extend(names.iter().map(|n| vec![(*n).to_owned()]));
+        TextTable { records }
+    }
+
+    #[test]
+    fn objects_txt_gives_the_monster_and_pile_templates() {
+        let mut artifact = vec!["Ballista".to_owned(), "x".to_owned()];
+        artifact.extend((0..ARTIFACT_SLOTS).map(|i| if i == 4 { "x" } else { "" }.to_owned()));
+        let artifacts = TextTable {
+            records: vec![vec!["h".into()], vec!["h".into()], artifact],
+        };
+        let mask = "011111111111111111111111111111111111111111111111 \
+                    100000000000000000000000000000000000000000000000 111111111 000000001";
+        let objects = format!(
+            "header\nAvWPike.def {mask} 54 0 2 0\nAVTwood0.def {mask} 79 0 5 0\n\
+             AVTmerc0.def {mask} 79 1 5 0\nAVA0079.def {mask} 5 79 4 0\nbroken line\n"
+        );
+        let (heroes, creatures) = (table(&["Orrin"]), table(&["Pikeman"]));
+        let (skills, spells) = (table(&["Archery"]), table(&["Combat Spells", "Bless"]));
+        let texts = TextTables {
+            creatures: &creatures,
+            heroes: &heroes,
+            skills: &skills,
+            artifacts: &artifacts,
+            spells: &spells,
+        };
+        let specialty = Specialty { kind: 2, id: 1 };
+        let t = Tables::from_tables(&texts, &objects, vec![0], vec![specialty]).unwrap();
+        let ids = |list: &[(u32, ObjectTemplate)]| {
+            list.iter()
+                .map(|(id, t)| (*id, t.def.clone()))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(ids(&t.monsters), [(0, "AvWPike.def".to_owned())]);
+        assert_eq!(
+            ids(&t.piles),
+            [
+                (0, "AVTwood0.def".to_owned()),
+                (1, "AVTmerc0.def".to_owned())
+            ]
+        );
+        assert_eq!(t.spells, ["Bless"]);
+        assert_eq!(t.specialty_text(0), "resource mercury");
+        // Slot column 4 (right ring, read in reverse order from field 2) holds the "x".
+        assert!(t.artifacts[0].slots.iter().filter(|s| **s).count() == 1);
+        let mismatch = Tables::from_tables(&texts, &objects, vec![], vec![specialty]);
+        assert!(mismatch.unwrap_err().contains("1 heroes, 0 classes"));
+    }
 }
