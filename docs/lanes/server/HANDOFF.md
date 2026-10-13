@@ -4,7 +4,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22). **M6** (discovery; SRV-Q23, ADR-0021, `E16-design.md` §12): T1–T6 done; **waiting: its checkpoint, SRV-Q24** (the user's). No task is ready after it: M5 waits for E08's increment 3, CLT-Q1's wire part (`Moved`'s path) for the battle lane's event.
+- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22). **M6** (discovery; SRV-Q23, ADR-0021, `E16-design.md` §12): T1–T6 done; **waiting: its checkpoint, SRV-Q24** (the user's). No task is ready after it: M5 waits for E08's increment 3, CLT-Q1 (`Moved` hex by hex, wire v29) is the battle lane's #169.
 - **The TLS client** (ADR-0021 point 4, `peers::Tls`): rustls over graviola, the OS roots read at the first `wss://` fetch; no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
