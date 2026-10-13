@@ -4,21 +4,16 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint. T11a, T11b (ADV-Q10 answered, the ADRs amended), T12, T13 and T14 (each in two parts) are done; T15 is split in two (the user, 2026-10-13), one pull request; T15a is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-### E08 T15b — Border gates
-
-- **Scope:** border gates (ADV-VIS-005): a key holder's heroes enter and cross the gate like a free tile (it does not end a move), others visit it from the neighbouring tile; the visit mode becomes per player in `visit_at`, `check_step` and the reachable-tiles query together (inbox, T14 review), the setup's refusal for a hero on a gate's tile, the benchmarks measured against the baselines.
-- **Depends on:** T15a (the keys, done). **Status:** in progress (`adventure/e08-t15`, 2026-10-13T08:15Z).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1 (T1a–T10c, decisions 1–12) closed on 2026-10-12. **Increment 2** refined with the user the same day (T10c, ADV-Q9; decisions 13–18 in the epic): object types, the treasury, pickups, the Cartographer as the first pending decision, a few visitable objects. The user takes one or two tasks per round, the cut confirmed at each round's checkpoint. T11a, T11b (ADV-Q10 answered, the ADRs amended), T12, T13 and T14 (each in two parts) are done; T15 (two parts, the user's cut of 2026-10-13) is done and waits for its checkpoint. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ### E08 T16 — Closure of increment 2
 
 - **Scope:** the duel and XL maps regenerated with objects, golden replays and the three benchmarks re-baselined (`02-architecture.md` §8); batch 2: the increment's disputes and D-3 (sand onto a cobblestone road with 200 points left, the survey's example; the writer lays east–west roads only and interior terrain pictures at edges, north–south roads when a batch needs them), with the spec stamp (decision 18: a short hash of the spec in the map's description and the template; `cross-lane` in `h3-experiment`); the exit criteria audited; scoring and the checkpoint with the user.
-- **Depends on:** T14, T15. **Status:** waiting.
+- **Depends on:** T14, T15. **Status:** waiting (T15's checkpoint).
 
 ## Inbox
 
-- 2026-10-13 (T14 review): T15's border gate (entered by a key holder, otherwise visited from a neighbour) breaks "the visit mode follows the type": give the mode a per-player test in `visit_at`, `check_step` and the query together. Also a future entered pickup or removable entered object could leave a hero on a tile whose next live object is neighbour-visited, a state setup refuses: decide with T15.
+- 2026-10-13 (T14 review; the gate's half closed by T15b): a future entered pickup or removable entered object could leave a hero on a tile whose next live object is neighbour-visited, a state setup refuses; T15 cannot reach it (pickups and guards are visited from a neighbour, entered objects and gates never leave). A key holder stopped on a gate is a legal play state that setup would refuse (no keys at setup).
 - 2026-10-13 (T14 review, T15a): `AdventureState::accept_offer` is `pub` and trusts its `Offer` (another type would be marked bought without a reveal; a `Pass` offer removes whatever object it names); only `h3-game` calls it. Narrow it if a second caller appears.
 - 2026-10-13 (T14b, T15a): the original's messages have no event: a Cartographer kind already bought, a guard visited without the key, a tent whose key is held (a visit tells nothing).
 - 2026-10-13 (T15a): a stale offer (`OfferGone`: the guard left before the answer) needs two players in one turn group, which only `h3-game`'s test `set_schedule` builds (a fixed test covers it): a property with group schedules when simultaneous play is built. The shipped maps have no two typed objects of one type on one anchor (0 of 164; the T14 verify's line closed).
