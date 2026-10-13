@@ -6,6 +6,8 @@
 use std::fs;
 use std::path::Path;
 
+use h3_battle::BattleSetup;
+use h3_content_battle::BattleRuleset;
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::codec;
 use h3_protocol::session::{ConnId, GameConfig, SeatKind, Session};
@@ -38,9 +40,13 @@ fn pack_texts(packs: &Path, ids: &[String]) -> Result<Vec<(String, String)>, Str
     Ok(texts)
 }
 
-/// The record of a spectator of the battle `scenario` sets up with `seed`, its packs read from
-/// `packs`.
-pub fn record(scenario: &Path, packs: &Path, seed: u64) -> Result<String, String> {
+/// The battle `scenario` sets up with `seed`, its packs read from `packs`: the ruleset its packs
+/// compile to with its profile, and the setup (obstacles generated from the seed when it asks).
+pub fn battle(
+    scenario: &Path,
+    packs: &Path,
+    seed: u64,
+) -> Result<(BattleRuleset, BattleSetup), String> {
     let def = h3_pack_battle::parse_scenario(&read(scenario)?)
         .map_err(|e| format!("{}: {e}", scenario.display()))?;
     let texts = pack_texts(packs, &def.packs)?;
@@ -57,6 +63,47 @@ pub fn record(scenario: &Path, packs: &Path, seed: u64) -> Result<String, String
         let mut rng = Rng::for_stream(seed, StreamId::OBSTACLES);
         setup.obstacles = h3_battle::generate_obstacles(&ruleset, terrain, &mut rng);
     }
+    Ok((ruleset, setup))
+}
+
+/// What the original's map needs of a scenario's battle (E17 M2 T1, `situation`): its terrain's
+/// key, and each side's stacks (slot, the creature's singular name, count) and formation.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Sides {
+    pub terrain: Option<String>,
+    pub stacks: [Vec<(u8, String, u32)>; 2],
+    pub tight: [bool; 2],
+}
+
+/// The [`Sides`] of the battle `scenario` sets up, its packs read from `packs`.
+pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
+    let (ruleset, setup) = battle(scenario, packs, 1)?;
+    let terrain = setup
+        .terrain
+        .and_then(|t| ruleset.terrains().get(t.index()))
+        .map(|t| t.key.as_str().to_owned());
+    let stacks = [&setup.attacker, &setup.defender].map(|army| {
+        army.stacks
+            .iter()
+            .map(|s| {
+                // The core ruleset's creature (its name), not the battle's (its numbers).
+                let name = (*ruleset).creature(s.creature).map(|c| c.name.clone());
+                (s.slot, name.unwrap_or_default(), s.count)
+            })
+            .collect()
+    });
+    let tight = h3_pack_battle::tight_sides(setup.formations);
+    Ok(Sides {
+        terrain,
+        stacks,
+        tight: ["attacker", "defender"].map(|side| tight.iter().any(|t| t == side)),
+    })
+}
+
+/// The record of a spectator of the battle `scenario` sets up with `seed`, its packs read from
+/// `packs`.
+pub fn record(scenario: &Path, packs: &Path, seed: u64) -> Result<String, String> {
+    let (ruleset, setup) = battle(scenario, packs, seed)?;
     let config = GameConfig {
         game: GAME,
         setup,

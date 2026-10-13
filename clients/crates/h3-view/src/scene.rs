@@ -105,6 +105,10 @@ struct Placed {
     y: i32,
 }
 
+/// The background variant 0x41ADB0 returns when no tree, mountain or dead vegetation stands
+/// around the battle (§4.4).
+const EMPTY_SURROUNDINGS: usize = 2;
+
 /// The draw list of the battle `observation` shows, at time 0: the background with the absolute
 /// obstacle, the layer-1 obstacles, then each row's passes with its layer-0 obstacles and its
 /// living stacks (§4.6). A natural obstacle without a type is not drawn; a removed one is no
@@ -125,16 +129,19 @@ pub fn battle(
     let (width, height) = (manifest.field.width, manifest.field.height);
     let at = |hex: u8| (hex / width.max(1), hex % width.max(1));
     let mut list = Vec::new();
-    // The background buffer (§4.4): the battlefield's picture, variant 0 (which variant a battle
-    // gets, 0x41ADB0, is not read), then the absolute obstacle.
+    // The background buffer (§4.4): the battlefield's picture, then the absolute obstacle. Which
+    // of a terrain's three pictures a battle gets depends on the adventure map around it (0x41ADB0,
+    // §4.4), which a battle's record does not carry: an empty surrounding gives the third, which
+    // the reference captures confirm (*provisional*, E17 M2 T1); a field with one picture has it.
     if let Some(handle) = observation.terrain {
         let key = key(&keys.terrains, "terrains", handle)?;
         let field = tables
             .battlefields
             .get(key)
             .ok_or_else(|| SceneError::Key(key.to_string()))?;
+        let variant = EMPTY_SURROUNDINGS.min(field.backgrounds.len().saturating_sub(1));
         list.push(Draw::Background {
-            picture: field.backgrounds[0].clone(),
+            picture: field.backgrounds[variant].clone(),
             x: 0,
             y: 0,
         });

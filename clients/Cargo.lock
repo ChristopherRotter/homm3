@@ -45,6 +45,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-adventure"
+version = "0.1.0"
+dependencies = [
+ "h3-content",
+ "h3-contracts",
+ "h3-kernel",
+]
+
+[[package]]
 name = "h3-assets"
 version = "0.1.0"
 dependencies = [
@@ -93,8 +102,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-game"
+version = "0.1.0"
+dependencies = [
+ "h3-adventure",
+ "h3-content",
+ "h3-contracts",
+ "h3-kernel",
+]
+
+[[package]]
 name = "h3-kernel"
 version = "0.1.0"
+
+[[package]]
+name = "h3-map"
+version = "0.1.0"
+dependencies = [
+ "h3-adventure",
+ "h3-content",
+ "h3-contracts",
+ "h3-game",
+ "miniz_oxide",
+]
 
 [[package]]
 name = "h3-pack"
@@ -146,8 +176,10 @@ version = "0.1.0"
 dependencies = [
  "h3-assets",
  "h3-battle",
+ "h3-content-battle",
  "h3-formats",
  "h3-kernel",
+ "h3-map",
  "h3-pack-battle",
  "h3-protocol",
  "h3-render",

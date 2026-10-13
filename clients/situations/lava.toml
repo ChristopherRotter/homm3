@@ -1,0 +1,33 @@
+# E17 M2 T1: a situation of the capture set (set.toml) on lava: the human's Royal Griffins
+# (speed 9) open; the defender's stacks face left. The obstacles are the original's, found in its
+# capture (`h3cap.py find`).
+
+[scenario]
+id = "situation-lava"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:lava"
+obstacles = [
+    { hexes = [78, 61, 60], anchor = 93, kind = "base:obstacle_48" },
+    { hexes = [108, 107, 106, 92, 91, 90, 89], anchor = 122, kind = "base:obstacle_50" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 4
+creature = "base:crusader"
+count = 6
+
+[[defender]]
+slot = 1
+creature = "base:hell_hound"
+count = 5
+
+[[defender]]
+slot = 5
+creature = "base:imp"
+count = 25

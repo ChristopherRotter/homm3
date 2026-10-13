@@ -1,0 +1,33 @@
+# E17 M2 T1: a situation of the capture set (set.toml) on desert: the human's Royal Griffins
+# (speed 9) open; the defender's stacks face left. The obstacles are the original's, found in its
+# capture (`h3cap.py find`).
+
+[scenario]
+id = "situation-sand"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:desert"
+obstacles = [
+    { hexes = [127, 126, 110, 109, 94, 93], anchor = 142, kind = "base:obstacle_16" },
+    { hexes = [42, 43, 44, 26, 25], anchor = 41, kind = "base:obstacle_18" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 4
+creature = "base:archer"
+count = 15
+
+[[defender]]
+slot = 1
+creature = "base:unicorn"
+count = 3
+
+[[defender]]
+slot = 5
+creature = "base:dwarf"
+count = 12

@@ -378,7 +378,7 @@ fn cranim_rows(table: &TextTable) -> Result<Vec<Cranim>, String> {
 
 /// `crtraits.txt`'s singular names by creature id (from record 2, blank records skipped, as
 /// `h3-harvest` reads it for the packs).
-fn creature_names(table: &TextTable) -> Result<BTreeMap<String, usize>, String> {
+pub fn creature_names(table: &TextTable) -> Result<BTreeMap<String, usize>, String> {
     let mut names = BTreeMap::new();
     let rows = table
         .records
