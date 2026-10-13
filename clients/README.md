@@ -12,7 +12,9 @@ the executable's drawing (design §3) and the compositor (`h3-render`) that foll
 sprite` draws a DEF's group over an image into a PNG. M1 T5 + T4 (2026-10-13): the battle
 screen's reading (design §4) and the asset tables (`clients/assets/`, below). M1 T7 (2026-10-13):
 `h3-view render`, a battle still from a record or a scenario file. M1 T8 (2026-10-13): reference
-captures of the original, run under Wine in a sandbox, and the first exact diff (below).
+captures of the original, run under Wine in a sandbox, and the first exact diff (below). M2 T1,
+T3 (2026-10-13): the capture harness and the animation timing. M2 T4a (2026-10-13): the scene
+over time (`anim`), checked against the recorded sequences, and `render --at`.
 Decisions: ADR-0020
 and the epic file `docs/epics/E17-clients.md`; tasks in `docs/lanes/client/QUEUE.md`.
 
@@ -48,7 +50,15 @@ search the parent directories).
   list (`--list` prints it); the assets load as one checkpoint batch; the PNG goes to
   `clients/out/render/`. Drawn so far: the background (the picture of an empty surrounding,
   CLT-Q4), the obstacles, every living stack standing on its hex, the active stack's outline; not
-  yet the heroes, count boxes, corpses, spell obstacles or the grid.
+  yet the heroes, count boxes, corpses, spell obstacles or the grid. With `--at <ms>` (and
+  `--speed <0-2>`) the record's commands are played at the original's timing first and each
+  stack is drawn in its pose then (`h3_view::anim`, E17 M2 T4a).
+- **The timing check:** `cargo run --release -p h3-view -- sequences [<id>]` (from `clients/`)
+  plays each recorded sequence of `situations/sequences.toml` with its engine commands, times it
+  with `h3_view::anim` and compares the timeline with the one the harness recorded in the
+  original (`docs/epics/E17-design.md` §7.8); it exits 1 on a difference and writes the records
+  and timelines to `clients/out/sequences/`. The unit tests replay the same three sequences from
+  their numbers, without the original files.
 
 | Path | What |
 |---|---|
@@ -56,12 +66,12 @@ search the parent directories).
 | `clients/scripts/check.sh` | the client's gates (local and CI) |
 | `clients/crates/h3-assets` | decoders: palettes, PCX, DEF, MSK (done), fonts, later sound and video; encoders for synthetic test assets (`build`); the gate's checks (`check`, `survey`); reads LOD archives through `crates/h3-formats` (a path dependency into the engine workspace) |
 | `clients/crates/h3-render` | the software compositor: the screen in a 16-bit pixel format, palettes truncated into it, the executable's frame drawers (shadows, outline and flag colours, mirroring, clipping), opaque images, PNG bytes |
-| `clients/crates/h3-view` | the scene model (the library: `record` reads a record, `scene` makes a snapshot's draw list, `batch` holds a checkpoint's decoded assets, `compose` draws the list into a frame; `tables` and `layout` load the asset tables and the layouts); its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the tables' harvester, `sprite`, the headless renderer `render` with its scenario adapter, `situation` (a scenario's battle as a map for the original), later the window. Its package depends on `h3-protocol` (the library) and, for the adapters only, on `h3-pack-battle`, `h3-battle`, `h3-content-battle`, `h3-kernel` and `h3-map`, which `tests/purity.rs` keeps out of the library |
+| `clients/crates/h3-view` | the scene model (the library: `record` reads a record, `anim` plays its commands at the original's timing, `scene` makes the draw list of a snapshot at a moment, `batch` holds a checkpoint's decoded assets, `compose` draws the list into a frame; `tables` and `layout` load the asset tables and the layouts); its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the tables' harvester, `sprite`, the headless renderer `render` with its scenario adapter, the timing check `sequences`, `situation` (a scenario's battle as a map for the original), later the window. Its package depends on `h3-protocol` (the library) and, for the adapters only, on `h3-pack-battle`, `h3-battle`, `h3-content-battle`, `h3-kernel` and `h3-map`, which `tests/purity.rs` keeps out of the library |
 | `clients/assets/{base,ab,sod}.toml` | the asset tables per expansion (below): content keys to archive entry names and the drawing's numbers, asset fixes; identifiers and numbers only |
 | `clients/layouts/battle.toml` | the battle screen's layout at the native resolution (ADR-0020 point 3: layouts are data): the frame, the hex boxes, where sprites stand, the stack canvas, the layer-1 pass's columns, the outline's palette entry (`docs/epics/E17-design.md` §4); an HD layout is another file of the same format (*provisional*) |
 | `clients/scenarios/*.toml` | the client's battle scenarios (the scenario format of `packs/README.md`) for `h3-view render`: the stills T7 renders, `smoke.toml` the captured smoke battle (T8) |
 | `clients/capture/` | the reference captures (below; the runbook `capture/README.md`): `setup.sh`, the driver `h3drive.py` and its screens' probes, `h3cap.py` (diffs, obstacles), the `xdd.dll` source (forwarder and virtual clock) |
-| `clients/situations/` | the capture set (`set.toml`) and its situations' scenario files: what the harness shows the original, with each frame's recorded differences |
+| `clients/situations/` | the capture set (`set.toml`) and its situations' scenario files: what the harness shows the original, with each frame's recorded differences; the recorded sequences (`sequences.toml`, `timelines/`) with their engine commands |
 | `clients/out/` | local output (renders, reports); gitignored |
 
 The decoders, the compositor and the scene model are pure (no I/O, clock or threads; time is an

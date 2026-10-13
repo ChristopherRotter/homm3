@@ -617,3 +617,38 @@ the viewer's own generator cannot reproduce.
   sounds' timing.
 - Not in a sequence yet: a turn, a death, Haste and Slow, a defending stack's reaction, a shot
   up or down, a ray.
+
+### 7.8 The viewer's timeline (M2 T4a)
+
+`h3_view::anim` plays a record's commands on the original's clock: each `Events` message is one
+command; its moves, strikes and shots become frames, each drawn at the clock's time and shown at
+the deadline (§7.1), the deadline then moving on by max(the frame's time, the lateness). Its
+`Timeline::lines` is the harness's format; `h3-view sequences` plays each recorded sequence's
+scenario in-process with its engine commands (`[[sequence.command]]` in `sequences.toml`) and
+compares: **all three as recorded, every line** (walk 43, shot 31, melee 82 changes; the melee's
+lines up to its recording's 6 000 ms); speeds 1 and 2 give the walk's 62/35 and 40/22 ms. The
+unit tests replay the three from their events and the creatures' numbers, so CI checks them
+without the original files. `h3-view render <record> --at <ms>` draws the poses then.
+
+- **Read for it** (`shot_animation` 0x43F2C0 from its start to 0x43F409): the shot aims at the
+  target's anchor, x ± 22 for a two-hex target by its facing (0x43F323), y minus (267 − the top
+  edge of frame 0 of its standing group) / 2, truncated (0x43F338: the stack's +0x16C, Q43); the
+  start is the shooter's anchor plus its missile offset (x subtracted facing left), first the
+  straight one for the angle, then the chosen group's (0x469880); the projectile's steps
+  trunc((d + 20) / 40) over the distance d between them. The Marksmen at hex 35 and the Goblins
+  (top 200) at 49 give 14 steps, as recorded.
+- ***Provisional*** (the M2 review list): the shooter plays its group in the strike loop from
+  its climax frame (c − 1) to the end, so L = (n − c + 1) + R − 1 (what the shot sequence fits:
+  the reaction then starts at iteration 0); the loop runs at least A + 1 iterations (no reaction
+  to wait for: the striker still stands at the end); a later command without a time starts one
+  tick after the previous one's last frame shows, or at once after one that drew nothing (the
+  melee's computer acts at 1 918 = 1 818 + 100; Defend and Wait, §7.4); the strike's group by
+  the rows of the striker and its first target (up, straight, down); a walk's frame f drawn
+  f × Δx / n and f × Δy / n along the step (Δ between the hexes' anchors), a flight's frame j of
+  its k × n at j / (k × n) of the line; the flight's cycles with D / 2 truncated; kills counted
+  from `Struck` only (death: the count reaches 0), a dying stack drawn among the corpses (pass 1).
+- **Not yet (T4b):** fidgets, the idle step and the outline's pulse; turns (§7.3) and the battle
+  lane's note that stacks turn to face their target for a strike or a shot; the draw layers of
+  walks (3, 7) and strikes (6); the projectile's and the spells' sprites; Haste and Slow (the
+  walk time), rays, teleports, magic animations, deaths by spells, created stacks; the frame
+  check against the original's poses (§7.6).

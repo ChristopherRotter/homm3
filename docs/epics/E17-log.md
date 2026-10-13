@@ -387,3 +387,35 @@ and server lanes; `OPEN-QUESTIONS.md`).
   sequences' format (numbers only); the timeline as the T4 check of timing, the original's poses
   read from memory as the T4 check of frames (§7.6).
 - Gates: see the pull request.
+
+### CLT-Q1 — The walk's path, built (2026-10-13)
+
+On `battle/clt-q1-walk-path` (#169, `cross-lane`), the user present: the user chose CLT-Q1 over
+T4 for the session's start, then the shape (one `Moved` per hex, `EventKind` unchanged) and the
+path public (a detour around a pit only the walker's side sees shows it, as in the original).
+`h3-battle`: `obstacles::go` and `travel_through` report every position of a walker's path,
+`Sink::RECORDS` skips the path for `NoopSink` (the simulation unchanged; `bench-check` passed
+without a re-baseline); a placement stays one move. The property `walks_are_reported_hex_by_hex`.
+The wire is v28 (the server's lists took 27 meanwhile: merged). Docs: BAT-MOV-003, BAT-MAG-031,
+the battle lane's inbox, the server lane's version notes.
+
+### M2 T4a — The scene over time: the timeline (2026-10-13)
+
+On `client/e17-m2-t4a-timeline` (from CLT-Q1's branch), the user present.
+
+- **Built:** `h3_view::anim` (pure): `Speed` (the factors exact in integers: the f32 mantissas
+  over powers of two), the clock (the deadline on its grid, waits outside it), walks hex by hex,
+  flights in k cycles, melee strikes with their reactions (hit, defend, death) and the pause
+  before a retaliation or a second strike, shots (the group by the angle, frames to the climax,
+  the projectile's steps, the loop), `Timeline::at` (the poses shown at a time), `active`,
+  `lines` (the harness's format), `differences`. `scene::battle_at` draws a `Moment` (poses and
+  the active stack). The bin: `sequences` (each sequence's scenario played in-process with its
+  engine commands, `scenario::played`), `render --at <ms> --speed`, `motion` (a creature's
+  numbers from the tables and its DEF). The asset tables' `groups` name every battle group.
+- **Read:** the shot's target and start points (0x43F2C0 to 0x43F409, design §7.8).
+- **Checked:** `h3-view sequences`: walk, shot and melee as recorded, every line; the unit tests
+  replay them from their numbers (CI without original files). Speeds 1 and 2 give §7.3's walk
+  frames.
+- **Decided (*provisional*, the review list):** design §7.8's list.
+- **Left for T4b:** design §7.8's "Not yet", and a full battle's record frame by frame.
+- Gates: see the pull request.
