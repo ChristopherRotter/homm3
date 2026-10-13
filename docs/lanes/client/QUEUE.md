@@ -4,7 +4,7 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context; T1 (the capture harness) and T3 (the animation timing) done 2026-10-13. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context; T1 (the capture harness), T3 (the animation timing) and T4a (the timeline) done 2026-10-13. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
 
 ### E17 M2 T2 — The window, input and audio evaluation
 
@@ -13,18 +13,18 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 - **Depends on:** nothing; can run beside T1.
 - **Status:** ready.
 
-### E17 M2 T4 — The scene over time
+### E17 M2 T4b — The scene over time, completed and checked frame by frame
 
-- **Scope:** a record's messages become animations at the original's timing (design §7: the frame deadline and its grid, the idle step, each group's frame time, the strike's iterations, the shot's frames and projectile, the fidgets from the viewer's own generator); a frame at any time, headless (`h3-view render --at <ms>`); strikes, shots and projectiles, deaths, turns; moves: a walker's `Moved` comes hex by hex, one per position of its path, a flyer's in one (CLT-Q1, built 2026-10-13, wire v29; consecutive `Moved` of one stack in one command are one walk: group 20 before the first, group 21 after the last). Two checks against the harness (design §7.6): the viewer's timeline of a sequence against the recorded one (`clients/situations/sequences.toml`), and the captured frames against our render of the original's poses read from its memory (`capture/h3mem.py`).
-- **Acceptance:** a record of a full battle renders frame by frame headless; the recorded sequences' timelines match, or list their differences; frames at the sequences' times match outside the masks.
-- **Depends on:** T3 (done); CLT-Q1 (built 2026-10-13, `battle/clt-q1-walk-path`).
+- **Scope:** T4a (done 2026-10-13, design §7.8) built the timeline and its timing check (the three recorded sequences as recorded). Left: fidgets from the viewer's own generator, the idle step and the outline's pulse; turns (§7.3; the battle lane's note: a stack turns to face its target for a strike or a shot, the struck stack its attacker, and turns back); the draw layers of walks (3, 7) and strikes (6); the projectile's sprite (its frame by angle, `missile_angles`) and position; deaths by anything but a strike, created stacks; Haste and Slow (the walk time). The frame check against the harness (design §7.6): captured frames of each sequence against our render of the original's poses read from memory (`capture/h3mem.py`, its offsets +0x104/+0x100), which also confirms T4a's *provisional* offsets and corpses. New sequences for what §7.7 lists (a turn, a death, a defending stack, a shot up and down) where the frame check needs them. A full battle's record (a scenario played to its end in-process) rendered frame by frame headless.
+- **Acceptance:** M2's headless exit: a record of a full battle renders frame by frame; the sequences' frames match the original's poses outside the masks, or their differences are listed.
+- **Depends on:** T4a (done).
 - **Status:** ready.
 
 ### E17 M2 T5 — The window adapter and M2's closure
 
 - **Scope:** T2's library in an adapter crate, playing a record at the original's frame rate, with the game's cursor; M2's review list, a fresh reviewer, the M3 refinement prepared.
 - **Acceptance:** M2's exit (epic file).
-- **Depends on:** T2, T4.
+- **Depends on:** T2, T4b.
 - **Status:** waits.
 
 ## Inbox

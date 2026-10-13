@@ -59,16 +59,30 @@ pub struct Battle {
     pub groups: Groups,
 }
 
-/// The creature DEF groups the battle uses (`docs/epics/E17-design.md` §4.2, §4.3).
+/// The creature DEF groups the battle uses (`docs/epics/E17-design.md` §4.2, §4.3, §7).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Groups {
-    /// Walking.
+    /// Walking (and a flight's cycles).
     pub moving: u8,
-    /// The mouse over the stack.
+    /// The mouse over the stack (and the fidgets).
     pub mouse_over: u8,
     /// Standing.
     pub standing: u8,
+    /// A struck stack's reaction.
+    pub hit: u8,
+    /// A defending struck stack's reaction.
+    pub defend: u8,
+    /// Dying (its last frame stays: the corpse).
+    pub death: u8,
+    /// A melee strike up, straight and down.
+    pub strike: [u8; 3],
+    /// A shot up, straight and down.
+    pub shoot: [u8; 3],
+    /// Before a move.
+    pub move_start: u8,
+    /// After a move.
+    pub move_end: u8,
 }
 
 /// A creature's battle graphics.
@@ -410,7 +424,7 @@ id = "base"
 depends = []
 
 [battle]
-groups = { moving = 0, mouse_over = 1, standing = 2 }
+groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], move_start = 20, move_end = 21 }
 
 [[creature]]
 key = "pikeman"
