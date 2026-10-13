@@ -107,15 +107,18 @@ Which table an entry belongs to is the pack that defines its key; the graphics n
 
 ## Reference captures
 
-*Provisional* (E17 M1 T8, M2 T1; ADR-0020 point 9; `docs/epics/E17-design.md` §6). The original
+*Provisional* (E17 M1 T8, M2 T1, T3; ADR-0020 point 9; `docs/epics/E17-design.md` §6, §7). The original
 runs unattended in a Linux sandbox under Wine, on a virtual X display at 16 bits, from a copy under
 `original-data/` (never the installation); our `xdd.dll` takes over its clock, so every frame is
 taken at an exact game time, and a driver steers it by fixed coordinates, recognising screens by
 probe pixels. The capture set (`situations/set.toml`: every land terrain, human-first openings,
 two-hex stacks facing either way, usual and absolute obstacles) runs with one command and compares
-each frame with our render, outside masks over what we do not draw yet. The runbook, its common
-uses and its traps: [`capture/README.md`](capture/README.md). Captures stay in the sandbox or
-`clients/out/` and are never committed (ADR-0009).
+each frame with our render, outside masks over what we do not draw yet. The game's own battle state
+is read from its memory (M2 T3, `capture/h3mem.py`), so the recorded sequences
+(`situations/sequences.toml`: a walk, shots, a flight and a strike with its retaliation) check the
+animations' timing millisecond by millisecond against timelines of numbers. The runbook, its
+common uses and its traps: [`capture/README.md`](capture/README.md). Captures stay in the sandbox
+or `clients/out/` and are never committed (ADR-0009).
 
 ## Asset policy
 

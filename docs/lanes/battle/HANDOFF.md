@@ -4,12 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **#156 merged** (2026-10-13, squashed as `784f911`): the review's 49 wiki checks (`docs/experiments/README.md`, "The wiki checks"); a shot's distance between the nearest hexes (BAT-Q36, `installation.md` §7.25).
-- **#162 `battle/faerie-dragon-and-natives` (`cross-lane`) waits for the user's checkpoint:** the user's answers built: a stack's area spell or chain takes its controller's hero's bonuses (BAT-Q28 row 2, BAT-MAG-048); the Faerie Dragon casts under the Orb of Inhibition (BAT-Q32 (2), `ignores_magic_block`); BAT-QUIRK-1 retired (BAT-Q34). Later: S-23, S-24; the knights' Curse stays as the code until batch 2g.
-- **Merged:** #150 (the rear hex, BAT-GEO-002); R01 (#137, #141: the lane owns `h3-content-battle`, `h3-pack-battle`). **E04b is closed** (2026-10-12).
-- **Next:** E04c's refinement (sieges, special battlefields); batch 2g when the user plays it.
-- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox by destination, Q43.
-- **Versions:** battle owns state hash v44, battle part hash v1, replay format v24, action encoding v12, C ABI v18, observation encoding v14; shared: core ruleset hash v43, pack format v35. Next ids: BAT-Q37, BAT-QUIRK-22, BAT-STUB-2.
+- **E04c increment 1** (BAT-Q37, 2026-10-13): **T1 done** on `battle/e04c-t1`: the code reading (`installation.md` §7.26), the survey `E04c-battlefields.md`, the ADR draft `adr-drafts/battlefields.md`, the epic file. **Waiting for the user's review (BAT-Q38)**; then T2 (the epic's T2: the seam in a `shared/` pull request first).
+- **Merged:** #162 (the Faerie Dragon's two readings, BAT-QUIRK-1 retired), #156, #150, R01. **E04b is closed** (2026-10-12).
+- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
+- **Versions:** battle owns state hash v44, battle part hash v1, replay format v24, action encoding v12, C ABI v18, observation encoding v14; shared: core ruleset hash v43, pack format v35. Next ids: BAT-Q39, BAT-QUIRK-22, BAT-STUB-2, BAT-TER-002.
 - **Ownership:** `lanes.toml`; a seam change is its own `shared/` pull request, merged first.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; the user plays experiment maps in SoD with plain HD and commits the results.
 
@@ -59,6 +57,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-13 (fifty-sixth) — E04c refined; T1, the battlefields read and surveyed
+
+The user's answers (BAT-Q37); the setup, morale, luck, mastery and obstacle readings (the executable's obstacle tables equal VCMI's); the ADR draft; stopped for BAT-Q38. Detail: the pull request.
+
 ### 2026-10-13 (fifty-fifth) — the wiki checks; the shot's distance; the user's answers
 
 The wiki checks and BAT-Q36 (#156); at its checkpoint the user's answers, built on a stacked branch: the Faerie Dragon's two readings, BAT-QUIRK-1 retired. Detail: the pull requests.
@@ -66,7 +68,3 @@ The wiki checks and BAT-Q36 (#156); at its checkpoint the user's answers, built 
 ### 2026-10-13 (fifty-fourth) — the rear hex as a two-hex stack's position
 
 The queued rear-hex change: encodings, replays, protocol and the battle baseline (−2.8 % Ir) renewed; master's games replayed. Detail: #150.
-
-### 2026-10-12 to 13 (fifty-third) — R01, the content split
-
-The writer moved (#137); the content, the pack adapter and the pack files split (#141); behaviour unchanged. Detail: the design note.

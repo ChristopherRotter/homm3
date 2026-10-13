@@ -23,6 +23,8 @@ card_ms = 86400000              # a card holds this long after it is signed (10 
 counts = true                   # false: no connection, game or player counts on the card
 refresh_ms = 3600000            # the peers' cards are fetched at start and this often (1 min to 1 day)
 timeout_ms = 10000              # one peer's fetch may take this long (1 s to 2 min)
+depth = 2                       # cards relayed: 1 the peers', 2 also those they relay… (1 to 4)
+cards = 200                     # the most cards relayed, the nearer first (1 to 1000)
 
 # [[peer]]                      # a server this one vouches for: its card names it, relays its card
 # key = "…"                     # its public key, 64 hex digits (the `key` of its `h3-server card`)

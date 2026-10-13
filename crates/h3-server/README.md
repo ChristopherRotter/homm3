@@ -50,6 +50,19 @@ the card; a peer that fails is logged and its last good card is relayed until it
 server dials only the addresses in its configuration, never one it read in a card. A peer runs
 the same protocol version (before 1.0 a server greets only its own).
 
+**Beyond the peers** (ADR-0021 point 3): a fetch also reads the cards a peer relays, and the
+server relays them on with the chain of keys that vouches for each (`via`: the peer, then the
+servers down to the card's voucher), which a client checks against the cards themselves.
+`[discovery] depth` (2) says how far: 1 relays the peers' own cards only, 2 also the cards of
+their peers, and so on up to 4; `cards` (200, at most 1000) bounds what the server relays, the
+nearer first and the peers in the configuration's order, and how many of a peer's cards a fetch
+reads. A card a peer relays that is forged or expired, or whose chain does not hold from the
+peer's card (the peer relays what it does not vouch for), is dropped and logged; each server
+appears once, by its shortest chain, and the server's own card never. A card is relayed until
+the first card of its chain expires. The server still dials only its configured peers: it learns
+of the servers beyond them from their cards alone. It holds up to `cards` relayed cards of each
+peer (each at most 8 KiB), so up to the number of peers times `cards` in memory.
+
 **The TLS client** (ADR-0021 point 4) fetches a `wss://` peer through `rustls` with the
 pure-Rust graviola cryptography, checking the peer's certificate against the operating system's
 root certificates (or those `SSL_CERT_FILE` or `SSL_CERT_DIR` name); `ws://` is plain, for a

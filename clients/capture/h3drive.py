@@ -28,8 +28,24 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             opening and dump a frame at each time (milliseconds
                                             after the opening, default 0)
 
+  h3drive.py sequence <map.h3m> <out-dir> [--pre <ms>] [--action <a>]... [--ms <n>] [--screen]
+                                            a sequence frame by frame (M2 T3): the opening, the
+                                            clock stepped <pre> ms, the actions at the frozen
+                                            clock (hex:<n> clicks a hex, click:x,y, move:x,y,
+                                            key:<name>, step:<ms>), then <n> steps of 1 ms; after
+                                            each, the stacks' animation state read from the
+                                            game's memory (h3mem.py) and with --screen a digest
+                                            of the screen; writes <out>/states.jsonl and the
+                                            changes, <out>/timeline.txt
+  h3drive.py sequences [<sequences.toml>] [--out <dir>] [--only <id>]
+                                            the recorded sequences (default
+                                            clients/situations/sequences.toml) unattended: each
+                                            one's timeline against its recorded one; exits 1 on
+                                            any change (default <dir>: clients/out/sequences)
+
 Library use: `Game` (start, wait, click, key, clock, settled, step_until, dump, stop), the
-recipes (`to_scenario`, `into_battle`) and `capture`. Needs numpy, xdotool, xwd, Xvfb and Wine.
+recipes (`to_scenario`, `into_battle`, `hex_point`), `capture` and `sequence`. Needs numpy,
+xdotool, xwd, Xvfb and Wine.
 """
 
 import os
@@ -223,6 +239,13 @@ def to_scenario(game):
     game.wait("adventure_map", 60)
 
 
+def hex_point(hex_id):
+    """A battle hex's point to click: its box (layouts/battle.toml: left 14 + 44 c, 22 more on
+    even rows, top 86 + 42 r), 22 right and 26 down."""
+    row, col = divmod(hex_id, 17)
+    return 14 + 44 * col + (22 if row % 2 == 0 else 0) + 22, 86 + 42 * row + 26
+
+
 def into_battle(game, key="Right"):
     """From the adventure map: freezes the clock, moves the selected hero with `key` into the
     enemy, and steps the clock to the battle screen. Returns the clock's time at the opening."""
@@ -250,6 +273,10 @@ def main(args):
         battle(args[1], args[2], args[3:])
     elif args[0] == "set":
         sys.exit(run_set(args[1:]))
+    elif args[0] == "sequence" and len(args) >= 3:
+        sequence_command(args[1], args[2], args[3:])
+    elif args[0] == "sequences":
+        sys.exit(run_sequences(args[1:]))
     else:
         sys.exit(__doc__)
 
@@ -383,6 +410,138 @@ def battle(map_path, out, rest):
     finally:
         if not keep:
             game.stop()
+
+
+def act(game, action):
+    """One action at the frozen clock: hex:<n>, click:x,y, move:x,y, key:<name>, step:<ms>."""
+    kind, _, arg = action.partition(":")
+    if kind == "hex":
+        game.move(*hex_point(int(arg)))
+        time.sleep(0.3)
+        game.click(*hex_point(int(arg)))
+        game.move(420, 580)
+        time.sleep(0.3)
+    elif kind in ("click", "move"):
+        x, y = map(int, arg.split(","))
+        (game.click if kind == "click" else game.move)(x, y)
+        time.sleep(0.3)
+    elif kind == "key":
+        game.key(arg, 0.3)
+    elif kind == "step":
+        game.clock(f"step {int(arg)}")
+    else:
+        raise ValueError(f"unknown action `{action}`")
+
+
+def timeline(states):
+    """The changes of the stacks' group, frame and hex: lines `<ms> <side>.<record> g<group>
+    f<frame> h<hex>`, the first state of each stack at the sequence's start."""
+    lines, last = [], {}
+    for state in states:
+        for st in state["stacks"]:
+            key = (st["side"], st["record"])
+            now = (st["group"], st["frame"], st["hex"])
+            if last.get(key) != now:
+                lines.append(f"{state['t']} {key[0]}.{key[1]} g{now[0]} f{now[1]} h{now[2]}")
+                last[key] = now
+    return lines
+
+
+def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False):
+    """The battle of the map: its opening, `pre` ms on, the actions, then `ms` steps of 1 ms,
+    each followed by the game's state (h3mem); returns the states (times in ms after the
+    opening, the clocks relative to it)."""
+    import hashlib
+    import json
+
+    import h3mem
+
+    game.start(map_path)
+    to_scenario(game)
+    t0 = into_battle(game)
+    mem = h3mem.Mem()
+    now = game.clock(f"step {pre}") if pre else t0
+
+    def state(t):
+        clocks = mem.globals()
+        for k in ("frame_deadline", "idle_step_time"):
+            clocks[k] -= t0
+        s = {"t": t - t0, "clocks": clocks, "stacks": mem.stacks()}
+        if screen:
+            s["screen"] = hashlib.sha1(game.settled()[:556].tobytes()).hexdigest()[:12]
+        return s
+
+    states = [state(now)]
+    for a in actions:
+        act(game, a)
+    states.append(state(now))
+    for _ in range(ms):
+        now = game.clock("step 1")
+        states.append(state(now))
+    out = Path(out)
+    with open(out / "states.jsonl", "w") as f:
+        for s in states:
+            f.write(json.dumps(s) + "\n")
+    (out / "timeline.txt").write_text("\n".join(timeline(states[1:])) + "\n")
+    return states
+
+
+def sequence_command(map_path, out, rest):
+    opts = {"--pre": "0", "--ms": "1000"}
+    actions, screen, i = [], False, 0
+    while i < len(rest):
+        if rest[i] == "--action":
+            actions.append(rest[i + 1])
+            i += 2
+        elif rest[i] == "--screen":
+            screen, i = True, i + 1
+        elif rest[i] in opts:
+            opts[rest[i]] = rest[i + 1]
+            i += 2
+        else:
+            sys.exit(__doc__)
+    Path(out).mkdir(parents=True, exist_ok=True)
+    game = Game(out)
+    try:
+        sequence(game, map_path, out, int(opts["--pre"]), actions, int(opts["--ms"]), screen)
+    finally:
+        game.stop()
+    print(f"sequence: {out}/timeline.txt")
+
+
+def run_sequences(rest):
+    opts = {"set": str(ROOT / "clients" / "situations" / "sequences.toml")}
+    if rest and not rest[0].startswith("--"):
+        opts["set"], rest = rest[0], rest[1:]
+    opts.update(zip(rest[::2], rest[1::2]))
+    set_path = Path(opts["set"])
+    out = Path(opts.get("--out", ROOT / "clients" / "out" / "sequences"))
+    entries = tomllib.loads(set_path.read_text())["sequence"]
+    if "--only" in opts:
+        entries = [e for e in entries if e["id"] == opts["--only"]]
+    h3view = str(ROOT / "clients" / "target" / "release" / "h3-view")
+    failed = 0
+    for e in entries:
+        here = out / e["id"]
+        here.mkdir(parents=True, exist_ok=True)
+        map_path = here / f"{e['id']}.h3m"
+        subprocess.run([h3view, "situation", str(set_path.parent / e["scenario"]), "--out",
+                        str(map_path)], check=True, capture_output=True)
+        game = Game(here)
+        try:
+            sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"])
+        finally:
+            game.stop()
+        recorded = set_path.parent / e["timeline"]
+        got = (here / "timeline.txt").read_text()
+        if not recorded.exists():
+            verdict = "new"
+        else:
+            verdict = "ok" if got == recorded.read_text() else "CHANGED"
+        failed += verdict != "ok"
+        print(f"{e['id']}: {len(got.splitlines())} changes in {e['ms']} ms {verdict}", flush=True)
+    print(f"sequences: {len(entries)}, {failed} not as recorded; timelines under {out}")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
