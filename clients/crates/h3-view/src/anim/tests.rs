@@ -44,6 +44,10 @@ fn looks() -> BTreeMap<u16, Look> {
             (0, 8),
             (2, 8),
             (3, 6),
+            (7, 2),
+            (8, 2),
+            (9, 2),
+            (10, 2),
             (14, 8),
             (15, 8),
             (16, 8),
@@ -65,7 +69,18 @@ fn looks() -> BTreeMap<u16, Look> {
             CHAMPION,
             look(
                 [9000, 450, 500, 115],
-                &[(0, 8), (2, 4), (3, 8), (12, 10), (20, 3), (21, 4)],
+                &[
+                    (0, 8),
+                    (2, 4),
+                    (3, 8),
+                    (7, 3),
+                    (8, 3),
+                    (9, 3),
+                    (10, 3),
+                    (12, 10),
+                    (20, 3),
+                    (21, 4),
+                ],
                 165,
             ),
         ),
@@ -80,6 +95,10 @@ fn looks() -> BTreeMap<u16, Look> {
                     (3, 7),
                     (4, 8),
                     (5, 7),
+                    (7, 3),
+                    (8, 3),
+                    (9, 3),
+                    (10, 3),
                     (11, 7),
                     (12, 7),
                     (13, 7),
@@ -107,6 +126,10 @@ fn looks() -> BTreeMap<u16, Look> {
                     (3, 6),
                     (4, 10),
                     (5, 8),
+                    (7, 2),
+                    (8, 2),
+                    (9, 2),
+                    (10, 2),
                     (11, 6),
                     (12, 6),
                     (13, 6),
@@ -175,6 +198,19 @@ fn play(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timel
         .map(|(at, events)| Command { at: *at, events })
         .collect();
     timeline(snapshot, &commands, &looks(), stage, Speed::default()).unwrap()
+}
+
+/// `pose` facing left (a defender's, or a turned attacker's).
+fn left(pose: Pose) -> Pose {
+    Pose {
+        mirrored: true,
+        ..pose
+    }
+}
+
+/// `pose` in draw layer `layer`.
+fn layered(pose: Pose, layer: u8) -> Pose {
+    Pose { layer, ..pose }
 }
 
 /// The lines up to `ms` (the harness's recording ends there).
@@ -269,7 +305,7 @@ fn the_shot_sequence_plays_as_recorded() {
     );
     assert_eq!(t.lines(), SHOT);
     // The hit's first frame never shows: at 988 the second does, the shooter standing.
-    assert_eq!(t.at(988)[&2], pose(3, 1, 49));
+    assert_eq!(t.at(988)[&2], left(pose(3, 1, 49)));
     assert_eq!(t.at(988)[&0], still(2, 35));
     // T4b-1 (§7.9, the reference frames): the arrow's 14 steps every 33 ms from the climax
     // frame, frame 4 (straight), its canvas centred on the start and moved by 40, 2 per step.
@@ -452,10 +488,25 @@ fn strikes_react_by_direction_defence_and_death() {
     };
     assert_eq!(groups(0), [11, 2, 11, 2, 13, 2, 11, 2]);
     assert_eq!(groups(1), [2, 4, 2, 3, 2, 3, 2]);
-    // The Goblins below: dead, their death's last frame stays; the Angels too.
+    let layers = |stack: u8| -> Vec<u8> {
+        let mut l: Vec<u8> = t
+            .keys
+            .iter()
+            .filter(|k| k.stack == stack)
+            .map(|k| k.pose.layer)
+            .collect();
+        l.dedup();
+        l
+    };
+    // T4b-2a (§7.9): the striker 6, then 5 for a later strike of the command; the struck 5;
+    // each back in 4 with the next frame that does not draw it otherwise (the striker's own next
+    // strike draws it at once, the last one's end restores it).
+    assert_eq!(layers(0), [6, 5, 4]);
+    assert_eq!(layers(1), [5, 4, 5, 4]);
+    // The Goblins below: dead, their death's last frame stays among the corpses; the Angels too.
     let last = t.at(t.end);
-    assert_eq!(last[&2], pose(5, 8, 70));
-    assert_eq!(last[&3], pose(5, 7, 54));
+    assert_eq!(last[&2], layered(left(pose(5, 8, 70)), 1));
+    assert_eq!(last[&3], layered(left(pose(5, 7, 54)), 1));
     // A dead stack takes no part later: strikes at or by it are skipped.
     let more = [
         struck(2, 0, 1, melee),
@@ -465,7 +516,7 @@ fn strikes_react_by_direction_defence_and_death() {
     let mut commands = commands.to_vec();
     commands.push((None, more.to_vec()));
     let after = play(&o, &commands);
-    assert_eq!(after.at(after.end)[&2], pose(5, 8, 70));
+    assert_eq!(after.at(after.end)[&2], layered(left(pose(5, 8, 70)), 1));
 }
 
 #[test]
@@ -491,8 +542,8 @@ fn a_reaction_without_frames_and_a_strike_at_nothing() {
         events: &events,
     }];
     let t = timeline(&o, &commands, &numbers, stage, Speed::default()).unwrap();
-    // Dead without a death group: it stands.
-    assert_eq!(t.at(t.end)[&1], still(2, 54));
+    // Dead without a death group: it stands, among the corpses.
+    assert_eq!(t.at(t.end)[&1], layered(left(still(2, 54)), 1));
     // The second strike, at no known stack, is straight (12).
     assert_eq!(t.keys.last().unwrap().pose, still(2, 52));
     assert!(t.keys.iter().any(|k| k.pose.group == 12));
@@ -508,7 +559,8 @@ fn shots_aim_up_straight_and_down() {
             &o,
             &[(None, vec![struck(0, 1, 1, flags(true, false, false))])],
         );
-        t.keys[0].pose.group
+        let shot = t.keys.iter().find(|k| (14..=16).contains(&k.pose.group));
+        shot.map_or(0, |k| k.pose.group)
     };
     let marksmen = |side, hex| at(0, side, MARKSMAN, hex, false);
     let goblins = |side, hex, two| at(1, side, GOBLIN, hex, two);
@@ -760,5 +812,238 @@ fn a_shooter_without_a_projectile_waits_as_one_flies() {
     assert!(t.flights.is_empty());
     assert_eq!(t.projectile(600), None);
     // The hit still starts after the 14 steps.
-    assert_eq!(t.at(988)[&2], pose(3, 1, 49));
+    assert_eq!(t.at(988)[&2], left(pose(3, 1, 49)));
+}
+
+/// Each key of `stack` as (group, frame, hex, mirrored, layer).
+fn keys_of(t: &Timeline, stack: u8) -> Vec<(u32, u32, u8, bool, u8)> {
+    t.keys
+        .iter()
+        .filter(|k| k.stack == stack)
+        .map(|k| {
+            let p = k.pose;
+            (p.group, p.frame, p.hex, p.mirrored, p.layer)
+        })
+        .collect()
+}
+
+/// The groups `stack` shows in turn, each run once.
+fn runs(t: &Timeline, stack: u8) -> Vec<u32> {
+    let mut g: Vec<u32> = keys_of(t, stack).iter().map(|k| k.0).collect();
+    g.dedup();
+    g
+}
+
+#[test]
+fn a_walk_faces_each_step_and_a_plain_move_turns_back() {
+    // T4b-2a (§7.3; `walk_step` 0x43F0B0, `stack_walk` 0x4423A2, `stack_turn_around` 0x446720):
+    // the defending Wolf Riders on 39 and 40 (position 40, facing left) walk one hex right. The
+    // first step's turn is animated: group 9 at 40, the flip onto 39 (the position moves onto
+    // the other hex), group 8, standing; the step sideways in layer 4; group 21 and standing on
+    // 40 (the engine's 41, turned); a plain move then turns back: group 7, the flip onto 41,
+    // group 10, standing.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 137, false),
+        at(1, Side::Defender, WOLF_RIDER, 40, true),
+    ]);
+    let t = play(&o, &[(None, vec![moved(1, 40, 41)])]);
+    let mut want = Vec::new();
+    want.extend((0..3).map(|f| (9, f, 40, true, 4)));
+    want.extend((0..3).map(|f| (8, f, 39, false, 4)));
+    want.push((2, 0, 39, false, 4));
+    want.push((20, 0, 39, false, 4));
+    want.extend((0..6).map(|f| (0, f, 39, false, 4)));
+    want.push((21, 0, 40, false, 4));
+    want.push((2, 0, 40, false, 4));
+    want.extend((0..3).map(|f| (7, f, 40, false, 4)));
+    want.extend((0..3).map(|f| (10, f, 41, true, 4)));
+    want.push((2, 0, 41, true, 4));
+    assert_eq!(keys_of(&t, 1), want);
+    // A later step the other way flips at once (0x43F0E5 without its flag): down and left from
+    // 41 in layer 7, from the position facing left again; then left in layer 4, and no turn at
+    // the end (it faces as it started). Up and left: layer 3.
+    let t = play(
+        &o,
+        &[(
+            None,
+            vec![moved(1, 40, 41), moved(1, 41, 58), moved(1, 58, 57)],
+        )],
+    );
+    let steps: Vec<(u32, u32, u8, bool, u8)> = keys_of(&t, 1)
+        .into_iter()
+        .filter(|k| k.0 == 0 && k.1 == 0)
+        .collect();
+    assert_eq!(
+        steps,
+        [
+            (0, 0, 39, false, 4),
+            (0, 0, 41, true, 7),
+            (0, 0, 58, true, 4)
+        ]
+    );
+    assert_eq!(runs(&t, 1), [9, 8, 2, 20, 0, 21, 2]);
+    let t = play(&o, &[(None, vec![moved(1, 40, 23)])]);
+    assert_eq!(runs(&t, 1), [20, 0, 21, 2]);
+    assert!(keys_of(&t, 1).iter().any(|k| k.0 == 0 && k.4 == 3));
+    // An attacker turned away stands one hex on (+ 1): the Champions on 40 and 41 walk left.
+    let o = snapshot(vec![at(0, Side::Attacker, CHAMPION, 40, true)]);
+    let t = play(&o, &[(None, vec![moved(0, 40, 39)])]);
+    let k = keys_of(&t, 0);
+    assert_eq!(k[0], (7, 0, 40, false, 4));
+    assert_eq!(k[3], (10, 0, 41, true, 4));
+    assert!(k.contains(&(21, 0, 40, true, 4)));
+    assert_eq!(k.last(), Some(&(2, 0, 39, false, 4)));
+}
+
+#[test]
+fn a_flight_turns_by_columns() {
+    // A flight the other way by columns turns first (0x4B4A40), then flies; a plain move turns
+    // back before it stands (`stack_fly` 0x4B49F5), and stands once more.
+    let mut angels = at(0, Side::Attacker, ANGEL, 83, false);
+    angels.flies = true;
+    let o = snapshot(vec![angels]);
+    let t = play(&o, &[(None, vec![moved(0, 83, 69)])]);
+    assert_eq!(runs(&t, 0), [7, 10, 2, 20, 0, 21, 9, 8, 2]);
+    let k = keys_of(&t, 0);
+    assert!(k.contains(&(21, 0, 69, true, 4)));
+    let standing = k.iter().filter(|k| k.0 == 2).count();
+    assert_eq!(standing, 3);
+}
+
+#[test]
+fn a_melee_turns_both_stacks_and_back() {
+    // The Angels fly to hex 83 (their columns grow: no turn) and strike the Wolf Riders below on
+    // 99 and 100 (position 100). Neither has the other on its front side (0x445BCE, 0x4458B0):
+    // the Angels turn (7, 10), the Wolf Riders turn (9, 8; onto 99); the strike down (13) in
+    // the striker's layer 6, the retaliation up (11) with both in 5; the Wolf Riders turn back
+    // (7, 10; onto 100), then the Angels (9, 8).
+    let mut angels = at(0, Side::Attacker, ANGEL, 69, false);
+    angels.flies = true;
+    let o = snapshot(vec![angels, at(1, Side::Defender, WOLF_RIDER, 100, true)]);
+    let attack = vec![
+        moved(0, 69, 83),
+        struck(0, 1, 1, flags(false, false, false)),
+        struck(1, 0, 1, flags(false, true, false)),
+        Event::TurnStarted { stack: 1 },
+    ];
+    let t = play(&o, &[(None, attack)]);
+    assert_eq!(runs(&t, 0), [20, 0, 21, 2, 7, 10, 2, 13, 2, 3, 2, 9, 8, 2]);
+    assert_eq!(runs(&t, 1), [9, 8, 2, 3, 2, 11, 2, 7, 10, 2]);
+    let wolves = keys_of(&t, 1);
+    assert_eq!(wolves[0], (9, 0, 100, true, 4));
+    assert_eq!(wolves[3], (8, 0, 99, false, 4));
+    assert!(wolves.contains(&(3, 0, 99, false, 5)));
+    assert!(wolves.contains(&(11, 0, 99, false, 5)));
+    assert!(wolves.contains(&(10, 0, 100, true, 4)));
+    let angels = keys_of(&t, 0);
+    assert!(angels.contains(&(13, 0, 83, true, 6)));
+    assert!(angels.contains(&(3, 0, 83, true, 5)));
+    assert_eq!(angels.last(), Some(&(2, 0, 83, false, 4)));
+    // A strike from the front side turns no one: the same attack from hex 81 (up and left of
+    // the Wolf Riders' front hex 99, where both face each other).
+    let mut angels = at(0, Side::Attacker, ANGEL, 81, false);
+    angels.flies = true;
+    let o = snapshot(vec![angels, at(1, Side::Defender, WOLF_RIDER, 100, true)]);
+    let t = play(
+        &o,
+        &[(None, vec![struck(0, 1, 1, flags(false, false, false))])],
+    );
+    assert_eq!(runs(&t, 0), [13, 2]);
+    assert_eq!(runs(&t, 1), [2, 3, 2]);
+    // A melee by or at a stack the timeline does not know turns no one: the first draws
+    // nothing, the second a strike at nothing.
+    let t = play(
+        &o,
+        &[
+            (None, vec![struck(9, 1, 0, flags(false, false, false))]),
+            (None, vec![struck(0, 9, 0, flags(false, false, false))]),
+        ],
+    );
+    assert!(runs(&t, 1).is_empty());
+    assert_eq!(runs(&t, 0), [12, 2]);
+}
+
+#[test]
+fn a_shot_behind_turns_the_shooter_and_back() {
+    // `shot_action` 0x440160: the Marksmen on hex 2 shoot the Goblins on 154, left of them:
+    // they turn (7, 10), shoot down facing left, the arrow mirrored, and turn back (9, 8).
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 2, false),
+        at(1, Side::Defender, GOBLIN, 154, false),
+    ]);
+    let shot = struck(0, 1, 1, flags(true, false, false));
+    let t = play(&o, &[(None, vec![shot.clone(), shot])]);
+    assert_eq!(runs(&t, 0), [7, 10, 2, 16, 2, 16, 2, 9, 8, 2]);
+    assert!(keys_of(&t, 0).contains(&(16, 0, 2, true, 4)));
+    assert!(t.flights.iter().all(|f| f.mirrored));
+    // A shooter the timeline does not know shoots nothing.
+    let t = play(
+        &o,
+        &[(None, vec![struck(9, 1, 1, flags(true, false, false))])],
+    );
+    assert!(t.flights.is_empty());
+}
+
+#[test]
+fn neighbours_follow_the_layout() {
+    let layout = layout();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+    };
+    // Hex 83 (row 4, even, shifted right): up-right 67, right 84, down-right 101, down-left 100,
+    // left 82, up-left 66; row 5 (odd): up-right of 100 is 83.
+    let around: Vec<Option<u8>> = (0..6).map(|d| stage.neighbor(83, d)).collect();
+    assert_eq!(
+        around,
+        [Some(67), Some(84), Some(101), Some(100), Some(82), Some(66)]
+    );
+    assert_eq!(stage.neighbor(100, 0), Some(83));
+    // Off the field: right of column 16, above row 0, past the hexes a byte holds.
+    assert_eq!(stage.neighbor(16, 1), None);
+    assert_eq!(stage.neighbor(3, 5), None);
+    assert_eq!(stage.neighbor(254, 2), None);
+}
+
+#[test]
+fn a_timeline_lists_its_changes() {
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 35, false),
+        at(2, Side::Defender, GOBLIN, 49, false),
+    ]);
+    let t = play(
+        &o,
+        &[(None, vec![struck(0, 2, 3, flags(true, false, false))])],
+    );
+    let changes = t.changes(t.end + 250);
+    // The opening, each frame shown, each arrow step (526 on, every 33 ms) and its erasure, the
+    // end, the idle steps after it.
+    assert_eq!(changes.first(), Some(&0));
+    assert!(changes.contains(&526) && changes.contains(&559) && changes.contains(&988));
+    assert!(changes.contains(&t.end) && changes.contains(&(t.end + 200)));
+    assert!(changes.windows(2).all(|w| w[0] < w[1]));
+    assert!(t.changes(10).iter().all(|c| *c <= 10));
+    // What shows at a time, for the scene.
+    let moment = crate::scene::Moment::at(&t, 600);
+    assert_eq!(moment.poses, t.at(600));
+    assert_eq!(
+        (moment.active, moment.pulse, moment.projectile),
+        (t.outlined(600), t.pulse(600), t.projectile(600))
+    );
+    // A record's commands: its `Events` messages.
+    let events = vec![Event::Waited { stack: 0 }];
+    let messages = [
+        ServerMessage::Events {
+            n: 2,
+            events: events.clone(),
+        },
+        ServerMessage::GameEnded {
+            n: 3,
+            result: h3_protocol::wire::Outcome::Draw {},
+        },
+    ];
+    let commands = commands(&messages);
+    assert_eq!(commands.len(), 1);
+    assert_eq!((commands[0].at, commands[0].events), (None, &events[..]));
 }

@@ -1,0 +1,51 @@
+# E17 M2 T4b-2a: a whole battle for `h3-view play` (M2's headless exit): walkers, two-hex stacks,
+# fliers and shooters on both sides, the obstacles generated from the seed, fought to its end by
+# the play command's bot in both seats.
+# `cargo run --release -p h3-view -- play scenarios/battle.toml [--png]` from clients/.
+
+[scenario]
+id = "client-battle"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+random_obstacles = true
+
+[[attacker]]
+slot = 0
+creature = "base:angel"
+count = 1
+
+[[attacker]]
+slot = 1
+creature = "base:marksman"
+count = 10
+
+[[attacker]]
+slot = 2
+creature = "base:champion"
+count = 3
+
+[[attacker]]
+slot = 3
+creature = "base:pikeman"
+count = 25
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 20
+
+[[defender]]
+slot = 1
+creature = "base:orc"
+count = 15
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 40
+
+[[defender]]
+slot = 3
+creature = "base:cyclops"
+count = 4

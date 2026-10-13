@@ -13,7 +13,7 @@ id = "base"
 depends = []
 
 [battle]
-groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], move_start = 20, move_end = 21 }
+groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], move_start = 20, move_end = 21, turn_left = [7, 10], turn_right = [9, 8] }
 
 [[creature]]
 key = "pikeman"
@@ -239,21 +239,23 @@ fn the_battle_is_drawn_in_the_executables_order() {
 #[test]
 fn a_moment_draws_each_stack_in_its_pose() {
     // E17 M2 T4a: the poses of a timeline. In row 4 the Pikemen walk (frame 3 of group 0, moved
-    // by their offset) and lose the outline to the active defender; the dragon on 4/9 dies: its
-    // death's group puts it among the corpses (pass 1), before the layer-0 obstacle of pass 2;
-    // the dead defender, with a pose, is drawn as well (its corpse).
+    // by their offset) and lose the outline to the active defender; the dragon on 4/9 died: its
+    // corpse's layer (T4b-2a) puts it in pass 1, before the layer-0 obstacle of pass 2; the dead
+    // defender, with a pose, is drawn as well (its corpse, turned to face right).
     let layout = layout();
-    let pose = |group, frame, hex, offset| Pose {
+    let pose = |group, frame, hex, offset, layer| Pose {
         group,
         frame,
         hex,
         offset,
+        mirrored: false,
+        layer,
     };
     let moment = Moment {
         poses: [
-            (0, pose(0, 3, hex(4, 0), [16, 0])),
-            (1, pose(5, 7, hex(4, 9), [0, 0])),
-            (3, pose(5, 8, hex(5, 16), [0, 0])),
+            (0, pose(0, 3, hex(4, 0), [16, 0], 4)),
+            (1, pose(5, 7, hex(4, 9), [0, 0], 1)),
+            (3, pose(5, 8, hex(5, 16), [0, 0], 1)),
         ]
         .into_iter()
         .collect(),
