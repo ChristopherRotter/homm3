@@ -180,7 +180,15 @@ step, the lane docs updated; user, 2026-10-08): pushing a branch runs no CI, whi
 open pull request does, and Actions minutes are scarce (`05-testing.md`, "CI"). An open pull
 request takes only review fixes and the user's changes. A merge of `master` into an open pull
 request (a conflict) waits until `master`'s latest run has finished: until then no run has
-verified that code, and the pull request's run cannot skip it (user, 2026-10-11). The user's local clone catches up with a
+verified that code, and the pull request's run cannot skip it (user, 2026-10-11). **An open pull
+request stays its author's to keep mergeable** (user, 2026-10-13): after opening it, the session
+watches it until it merges or closes. A cloud session subscribes to the pull request's activity
+(conflict notices, reviews, CI); every session checks its mergeability against `master`
+(`git fetch origin master`, a trial merge) at each later step and before it ends. A conflict is
+merged away (merge `master`, resolve, verify, push; the wait for `master`'s run above still holds)
+without waiting to be told; a version both sides bumped (`PROTOCOL_VERSION`, a format version)
+takes the next free number. A session that ends with its pull request open names it in the newest
+entry of the lane HANDOFF, and the lane's next session checks it first. The user's local clone catches up with a
 fetch; if the user pushed to the branch in between, their commits win: rebase onto them first.
 
 ## Cloud sandbox
