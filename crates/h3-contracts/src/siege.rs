@@ -18,17 +18,17 @@ pub enum FortLevel {
     Castle,
 }
 
-/// The town's moat as the battle meets it. The map's format decides it (survey S-29, not a
-/// quirk: the original keeps the old rules for old maps): a moat on a map made before SoD does
-/// no damage, and a Stronghold there has none.
+/// The town's moat as the battle meets it. The game's version decides it (the original's
+/// `mapKind`: a game under RoE or AB rules keeps their moat, survey S-29, not a quirk; BAT-Q41):
+/// before SoD a moat does no damage and a Stronghold has none. A Tower's land mines take its
+/// moat's place, and the same value decides their damage (E04c T5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Moat {
-    /// No moat: below a Citadel, in a Tower (its land mines take the moat's place), or in a
-    /// Stronghold on a map made before SoD.
+    /// No moat: below a Citadel, or a Stronghold in a game under RoE or AB rules.
     Absent,
-    /// A moat that does no damage (a map made before SoD).
+    /// A moat that does no damage (a game under RoE or AB rules).
     Harmless,
-    /// A moat that damages a stack entering it (a SoD map).
+    /// A moat that damages a stack entering it (a game under SoD rules).
     Damaging,
 }
 

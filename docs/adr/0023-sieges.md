@@ -12,8 +12,9 @@ E04c's sieges need the town a battle is fought at. ADR-0013 point 5 reserved opt
 fields on the setup and the outcome; ADR-0022 left the siege's field to its increment. In the
 original (0x462A20 onwards) every battle at a town is "at a town", with or without a fort: the
 town decides the controls, the experience, the defenders' morale and luck and the defending
-hero's bonuses; the fort level adds the walls, the gate, the moat and the turrets; the map's
-format decides whether the moat exists and does damage (survey S-29). The town's buildings
+hero's bonuses; the fort level adds the walls, the gate, the moat and the turrets; the game's
+version (RoE, AB or SoD rules: the original's `mapKind`) decides whether the moat exists and does
+damage (survey S-29). The town's buildings
 belong to the town context (E09, not refined), which will derive the facts the battle needs, as
 the adventure lane derives the battlefield (ADR-0022).
 
@@ -30,8 +31,9 @@ the adventure lane derives the battlefield (ADR-0022).
      the Fortress's second moat row, the Tower's mines instead of a moat, the turrets);
    - `fort: FortLevel` (`None`, `Fort`, `Citadel`, `Castle`): the walls and the gate from a Fort,
      the keep and the moat from a Citadel, the towers from a Castle;
-   - `moat: Moat` (`Absent`, `Harmless`, `Damaging`): the map's format decides (a map before SoD
-     has a harmless moat and no Stronghold moat), so the battle needs no map version;
+   - `moat: Moat` (`Absent`, `Harmless`, `Damaging`): the game's version decides (under RoE or
+     AB rules a moat is harmless and a Stronghold has none; BAT-Q41), so the battle needs no
+     version; a Tower's land mines take its moat's place and the value decides their damage;
    - `structures: u8`: the town's buildings as the original counts them for its turrets
      (0x5BF4F0, BAT-Q41); the turrets' counts from it are a battle rule (T7);
    - `escape_tunnel: bool`: the town's defender may retreat;
@@ -47,23 +49,25 @@ the adventure lane derives the battlefield (ADR-0022).
 5. **Walls, gate, turrets and moat are battle state**, public and in the observation (their hit
    points, the gate's state), added with E04c T5–T7 with their encodings, the wire and the
    replays; the walls' hexes and parts come from the battle part's siege record. Natural
-   obstacles stay before the seam (BAT-GEO-003): none in a siege on a SoD map, the usual ones for
-   the Stronghold of a map before SoD (survey S-29), drawn by whoever derives the siege.
+   obstacles stay before the seam (BAT-GEO-003): none in a siege under SoD rules, the usual ones
+   for a Stronghold under RoE or AB rules (survey S-29), drawn by whoever derives the siege.
 
 ## Consequences
 
 - One `shared/` pull request adds `Siege` and its enums, `cross-lane` for the struct literals (as
   ADR-0022's); the battle reads the field from T5 on (BAT-STUB-2 until then) and rejects a `Siege`
   whose faction has no siege record (`SetupError`).
-- The town context's derivation (E09) gets a rule list from the survey's §1.
+- The town context's derivation (E09) gets a rule list from the survey's §1; how a game gets its
+  version is the adventure lane's (the original probably takes it from the map's format: an
+  experiment candidate).
 - Versions with T5: pack format (the siege records), state hash, replay format, observation
   encoding, C ABI and the wire; golden replays with a siege. Battles without a town play as before.
 - Experiments need towns on the experiment maps (`h3-map`'s writer, `cross-lane`).
 
 ## Alternatives considered
 
-- The town's buildings and the map's format on the setup: the battle would need the town
-  context's building ids and the map versions, and would derive what the town context knows.
+- The town's buildings and the game's version on the setup: the battle would need the town
+  context's building ids and the versions, and would derive what the town context knows.
 - The faction by key (`ContentKey`, as ADR-0022's battlefield): factions are core content, and the
   seam already names them by handle (`FactionGroup`; BAT-Q41).
 - The defending hero's town bonuses as siege fields the battle applies: ADR-0013 point 6 derives
