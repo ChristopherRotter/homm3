@@ -4,7 +4,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M4 and M6 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22, SRV-Q24; M6 is discovery: ADR-0021, `E16-design.md` §12). **Next:** the ecosystem around the server, talked through with the user (a refinement). M5 waits for E08's increment 3.
+- **M1–M4 and M6 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22, SRV-Q24; M6 is discovery: ADR-0021, `E16-design.md` §12). **Next:** nothing ready; the ecosystem talk of 2026-10-13 is recorded (E16 "Later", BACKLOG E21 and E22, QUEUE inbox). M5 waits for E08's increment 3.
 - **The TLS client** (ADR-0021 point 4, `peers::Tls`): rustls over graviola, the OS roots read at the first `wss://` fetch; no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
@@ -61,4 +61,4 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-13 — M6 T6, M6's closure
 
-**#173 open** (`E16-log.md`): `06-security.md`'s discovery and the client lane's inbox (`cross-lane` commits); the reviewer's two major findings (a list's `wss://` servers never fetched; a listed card not naming its address relayed) and four minor fixed; SRV-Q24 passed. The full local verify stands in for CI (billing).
+#173 merged (`E16-log.md`): `06-security.md`'s discovery and the client lane's inbox (`cross-lane` commits); the reviewer's two major findings (a list's `wss://` servers never fetched; a listed card not naming its address relayed) and four minor fixed; SRV-Q24 passed. The full local verify stands in for CI (billing).

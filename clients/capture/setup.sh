@@ -59,6 +59,9 @@ key="HKEY_LOCAL_MACHINE\\SOFTWARE\\New World Computing\\Heroes of Might and Magi
         "Last Music Volume" "Last Sound Volume" "Video Subtitles"; do
         printf '"%s"=dword:00000000\r\n' "$v"
     done
+    # The adventure map shows a hero's path on the first click and walks on the second, as the
+    # experiments' procedures say (left at 0, the first click walks at once).
+    printf '"Show Route"=dword:00000001\r\n'
     printf '"Main Game Full Screen"=dword:00000001\r\n\r\n'
     printf '[HKEY_CURRENT_USER\\Software\\Wine\\Drivers]\r\n"Audio"=""\r\n'
 } > "$run/h3.reg"

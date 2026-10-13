@@ -537,9 +537,11 @@ in the engine (as increment 2's offers).
 
 ## 13. Disputes and their confirmations
 
-Planned for an agent-run batch on the client lane's harness (decision 21; `docs/experiments/README.md`:
-scripted clicks, memory reads, a first run checked against batch 2); the user plays them until the
-harness is ready. The spec shape needs monsters (creature, count, disposition, never flees),
+Planned for an agent-run batch on the client lane's harness (decision 21; `docs/experiments/README.md`).
+Its adventure part plays batches since E17 M2 T6 (batch 2 reproduced) but not yet what these need:
+Yes/No dialogs (the offers), battles started from the map, the underground (E3-4), and memory reads
+of a monster's tile word (E3-3) and of the heroes' experience (E3-7); the user plays what it
+cannot. The spec shape needs monsters (creature, count, disposition, never flees),
 heroes with custom primary and secondary skills and armies, and the game's difficulty at the start
 (`h3-experiment`, battle-owned: `cross-lane`).
 
