@@ -230,3 +230,51 @@ Same session as T5, on `client/e17-m1-t4-asset-tables` (stacked on T5's branch).
 - *Provisional* (review list): the format, the dependencies, the keying by names.
 - Gates: `clients/scripts/check.sh` passes; the real-asset gate passes on the user's files; CI
   could not run (billing).
+
+### M1 T7 — A battle still (2026-10-13)
+
+On `client/e17-m1-t7-battle-still`, after #147 (the obstacles' types on the wire, protocol v22)
+and with `shared/clients-ci-paths` (#152: the client job watches the engine crates the workspace
+now builds), the user present. The geometry is design §4's; nothing new was read in the
+executable.
+
+- **The record** (`h3_view::record`, pure): the header and the numbered messages through
+  `h3-protocol`'s codec (a line at most 16 MiB, *provisional*); the record format and the
+  protocol must be the client's own; `first_snapshot`. `h3-protocol` joins the library's
+  allowlist (ADR-0020 points 1 and 8).
+- **The layout as data** (`h3_view::layout`, `clients/layouts/battle.toml`; ADR-0020 point 3):
+  the frame, the hex boxes (origin, step, the even rows' shift), the anchor, the stack canvas,
+  the columns of the layer-1 pass, the outline's palette and entry. A file per screen and
+  resolution, apart from the per-expansion asset tables, so an HD layout is another file.
+- **The scene** (`h3_view::scene`, pure): snapshot + manifest + tables + layout → the draw list
+  at time 0 in the executable's order (§4.6): the background (variant 0; 0x41ADB0 not read),
+  the absolute obstacle (index 0 transparent), the layer-1 obstacles by anchor in the layout's
+  columns, then per row passes 0–7 over the columns: the layer-0 obstacles in pass 2, the living
+  stacks in pass 4 (their standing draw layer). A stack: the tables' standing group, frame 0,
+  at its position hex's anchor, mirrored for the defender, the active stack outlined with
+  `game.pal`'s entry 0x60. A two-hex stack is drawn from its rear hex: `scene::position`, the one
+  conversion from the engine's head until PR #150. A natural obstacle without a type is not
+  drawn, nor one whose every hex a removal cleared (*provisional*, M2). Handles the manifest
+  lacks, keys the tables lack and an obstacle type of the wrong kind are errors.
+- **The batch and the compositor** (`h3_view::batch`, `h3_view::compose`, pure): a checkpoint's
+  assets decoded once (a DEF with every frame, PCX, PAL) and the names a list needs; each draw
+  with the executable's drawer into the 16-bit 5-6-5 frame: the background opaque, the absolute
+  obstacle keyed (`h3_render::blit::draw_image_keyed`, 0x44FC70), an obstacle with the plain
+  drawer and runs skipped, a creature with the shadowed drawer, its canvas at the anchor minus
+  (196, 267), mirrored at the anchor's x minus the DEF's width plus 196.
+- **`h3-view render`** (the adapter): a scenario file runs in-process in `h3-protocol`'s session
+  (its packs compiled as `h3 run` compiles them, obstacles generated from the seed when it asks);
+  a spectator joins and fetches its record, written beside the PNG; or a record file is read.
+  The four archives are read whole (CLT-Q2), the batch decoded, the frame composed, the PNG
+  written; `--list` prints the draw list. Its scenario adapter uses `h3-pack-battle`,
+  `h3-battle` and `h3-kernel`; Cargo has no binary-only dependencies, so `tests/purity.rs` now
+  checks that the library never names them.
+- **The stills** (`clients/scenarios/`, seed 1, the user's files): `one-hex.toml` (grass, four
+  one-hex stacks a side, generated obstacles), `two-hex.toml` (rough, three two-hex stacks a
+  side), `obstacles.toml` (dirt, the absolute obstacle 100, obstacle 2 of layer 1 and obstacle 12
+  of layer 0 placed by hand where the generator could place them, mixed stacks). 9 to 13 draws,
+  batches of 10 to 13 assets; the archives read in about 0.2 s, a batch decoded in 18–32 ms.
+  Sent to the user for the comparison with the original (T8).
+- *Provisional* (review list): the layout's format and file; `h3-pack-battle`, `h3-battle` and
+  `h3-kernel` as the binary's dependencies; the record's line bound; the removal rule.
+- Gates: `clients/scripts/check.sh` passes (coverage 100 %); CI could not run (billing).

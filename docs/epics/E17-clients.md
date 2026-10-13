@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 under way (T1, T2, T3 and T6 done 2026-10-12, T5 and T4 2026-10-13). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 under way (T1, T2, T3 and T6 done 2026-10-12, T5, T4 and T7 2026-10-13). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M1 T7 (a battle still, after the obstacles' types: CLT-Q3), then T8.
+are there). Next: M1 T8 (M1's closure: the review, the user's comparison of the stills).
 
 ## Goal
 
@@ -111,6 +111,12 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   battlefields, 125 obstacle types), `h3-view harvest`, the pure loader `h3_view::tables`; every
   pack key has an entry but water's and rock's backgrounds (none in the original); the gate finds
   and decodes all 307 names.
+- **T7 done 2026-10-13** ([log](E17-log.md#m1-t7--a-battle-still-2026-10-13)): `h3-view render`
+  draws a battle still from a record's first snapshot, or from a scenario file run in-process
+  as a spectator of `h3-protocol`'s session: the background, the obstacles of both layers and the
+  absolute one, every living stack standing on its hex (two-hex stacks from their rear hex), the
+  active stack's outline; the layout is data (`clients/layouts/battle.toml`); three stills from
+  the user's files (`clients/scenarios/`).
 
 ### M2 — the battle replay viewer
 
@@ -157,7 +163,8 @@ viewer, video.
 - **Graphics per expansion.** The Complete edition holds only SoD-era graphics: a RoE ruleset
   still shows SoD art.
 - **Engine churn.** `h3-protocol` depends on `h3-battle`; the engine's frequent changes rebuild the
-  client and may break it. The client CI job runs when those crates change.
+  client and may break it. The client CI job runs when those crates change (since T7 the client
+  builds `h3-protocol`, `h3-pack-battle` and their engine dependencies).
 - **The sandbox needs the user's computer online** for the original files (staged one LOD per
   call).
 - **Checkpoint loading needs an engine change (CLT-Q2).** Until the battle lane's table-only
@@ -183,3 +190,13 @@ viewer, video.
 - `toml` 1.1 (without std; the engine's 0.8 needs std) and `serde` (the engine's, without std) as
   dependencies of `h3-view` for the pure loader (T4).
 - The harvester keys creatures by their `crtraits.txt` singular name, as `h3-harvest` does (T4).
+- `h3-protocol` as a dependency of `h3-view`'s library (ADR-0020 point 1), and `h3-pack-battle`,
+  `h3-battle`, `h3-kernel` as dependencies of its binary only (the scenario adapter; checked by
+  `tests/purity.rs`), rather than `h3-cli`'s library, which builds the adventure crates too; the
+  client job now watches those crates (#152) (T7).
+- The layouts' format and place: `clients/layouts/<screen>.toml`, one file per screen and
+  resolution, apart from the asset tables (T7).
+- A record's line bounded at 16 MiB; the record format and protocol version must be the
+  client's own (T7).
+- A natural obstacle is drawn until a removal clears every hex it blocks (T7; M2 reads the
+  removal's events).

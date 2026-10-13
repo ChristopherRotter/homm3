@@ -10,7 +10,8 @@ for palettes, PCX, DEF and MSK (`h3-assets`); the gate decodes every one of them
 archives (findings: `docs/epics/E17-design.md`). M1 T1 + T6 (2026-10-12): the code reading of
 the executable's drawing (design §3) and the compositor (`h3-render`) that follows it; `h3-view
 sprite` draws a DEF's group over an image into a PNG. M1 T5 + T4 (2026-10-13): the battle
-screen's reading (design §4) and the asset tables (`clients/assets/`, below). Decisions: ADR-0020
+screen's reading (design §4) and the asset tables (`clients/assets/`, below). M1 T7 (2026-10-13):
+`h3-view render`, a battle still from a record or a scenario file. Decisions: ADR-0020
 and the epic file `docs/epics/E17-clients.md`; tasks in `docs/lanes/client/QUEUE.md`.
 
 ## Layout
@@ -37,6 +38,15 @@ search the parent directories).
   --background CmBkGrMt.pcx [--mirror]` draws every frame of one group of a DEF side by side over
   a PCX, as the battle draws a stack, into `clients/out/sprite/` (the base archives searched
   first, as the game does).
+- **A battle still:** `cargo run --release -p h3-view -- render scenarios/one-hex.toml [--seed
+  <n>] [--list]` (from `clients/`) runs the scenario file (as `h3 run` reads it, packs from the
+  repository's `packs/`) in-process in `h3-protocol`'s session, joins it as a spectator and writes
+  that record (`clients/out/render/<stem>-s<seed>.jsonl`); a record file (`.jsonl`) is read
+  directly. Its first snapshot, the asset tables and `clients/layouts/battle.toml` give the draw
+  list (`--list` prints it); the assets load as one checkpoint batch; the PNG goes to
+  `clients/out/render/`. Drawn so far: the background (variant 0), the obstacles, every living
+  stack standing on its hex, the active stack's outline; not yet the heroes, count boxes, corpses,
+  spell obstacles or the grid.
 
 | Path | What |
 |---|---|
@@ -44,8 +54,10 @@ search the parent directories).
 | `clients/scripts/check.sh` | the client's gates (local and CI) |
 | `clients/crates/h3-assets` | decoders: palettes, PCX, DEF, MSK (done), fonts, later sound and video; encoders for synthetic test assets (`build`); the gate's checks (`check`, `survey`); reads LOD archives through `crates/h3-formats` (a path dependency into the engine workspace) |
 | `clients/crates/h3-render` | the software compositor: the screen in a 16-bit pixel format, palettes truncated into it, the executable's frame drawers (shadows, outline and flag colours, mirroring, clipping), opaque images, PNG bytes |
-| `clients/crates/h3-view` | the scene model (messages to what is on screen at a time; the library) and the asset tables' loader (`tables`); its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the tables' harvester, the headless renderer, later the window |
+| `clients/crates/h3-view` | the scene model (the library: `record` reads a record, `scene` makes a snapshot's draw list, `batch` holds a checkpoint's decoded assets, `compose` draws the list into a frame; `tables` and `layout` load the asset tables and the layouts); its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the tables' harvester, `sprite`, the headless renderer `render` with its scenario adapter, later the window. Its package depends on `h3-protocol` (the library) and, for the scenario adapter only, on `h3-pack-battle`, `h3-battle` and `h3-kernel`, which `tests/purity.rs` keeps out of the library |
 | `clients/assets/{base,ab,sod}.toml` | the asset tables per expansion (below): content keys to archive entry names and the drawing's numbers, asset fixes; identifiers and numbers only |
+| `clients/layouts/battle.toml` | the battle screen's layout at the native resolution (ADR-0020 point 3: layouts are data): the frame, the hex boxes, where sprites stand, the stack canvas, the layer-1 pass's columns, the outline's palette entry (`docs/epics/E17-design.md` §4); an HD layout is another file of the same format (*provisional*) |
+| `clients/scenarios/*.toml` | the client's battle scenarios (the scenario format of `packs/README.md`) for `h3-view render`: the stills T7 renders |
 | `clients/out/` | local output (renders, reports); gitignored |
 
 The decoders, the compositor and the scene model are pure (no I/O, clock or threads; time is an
