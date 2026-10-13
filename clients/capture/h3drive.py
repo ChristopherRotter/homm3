@@ -19,8 +19,8 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             and the masked diff of each frame against the
                                             recorded count; prints one line per frame, writes
                                             <dir>/frames.sha1 (the pixels' digests: two runs
-                                            agree when these do) and
-                                            exits 1 on any change (default <dir>: clients/out/set)
+                                            agree when these do), exits 1 on any change
+                                            (default <dir>: clients/out/set)
   h3drive.py battle <map.h3m> <out-dir> [--frames <ms,...>] [--key <key>] [--keep]
                                             the common use: start a single scenario on the map,
                                             step the selected hero into the enemy with <key>
@@ -28,8 +28,8 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             opening and dump a frame at each time (milliseconds
                                             after the opening, default 0)
 
-Library use: `Game` (start, wait, click, key, clock, step_until, dump, stop) and the recipes
-(`to_scenario`, `into_battle`). Needs numpy, xdotool, xwd, Xvfb and Wine.
+Library use: `Game` (start, wait, click, key, clock, settled, step_until, dump, stop), the
+recipes (`to_scenario`, `into_battle`) and `capture`. Needs numpy, xdotool, xwd, Xvfb and Wine.
 """
 
 import os
