@@ -72,3 +72,22 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
 - **Docs:** BAT-TER-003 and BAT-TER-006 `verified`, BAT-TER-002 an observation; the survey's D-1,
   D-2, D-4 settled and §4's tile; `installation.md` §7.26 (where morale and luck are stored);
   `structs.toml` (the stack's luck, the hero's worn artifacts); `h3m.md` (the coast flag).
+
+## T4 — the siege survey and seam (2026-10-13, increment 2)
+
+- **Read** (`docs/formats/installation.md` §7.27; the wiki with the user's approval): the town is
+  stored for every battle at a town, the fort level beside it (1 Fort, 2 Citadel, 3 Castle); the
+  moat flags (a Citadel or Castle, no Tower, a Stronghold only on SoD maps) and the moat's hexes
+  and damage (only on SoD maps); the attacker's Catapult and no defender's Ballista at a fort; the
+  turrets as Arrow Tower stacks whose count is 4 + the town's counted buildings (a tower half of it);
+  the defending hero's town bonuses for the battle, restored at its end with the mana capped; the
+  defenders' morale from the Tavern and the Brotherhood of the Sword; surrender never and retreat
+  only with the Escape Tunnel for the besieged; +500 experience for the attacker; no natural
+  obstacles in a siege but on an older map's Stronghold.
+- **Survey** (`docs/rules/surveys/E04c-sieges.md`): the parts by fort level, the rule areas against
+  `BALLIST.TXT`, `CRTRAITS.TXT`, VCMI and the wiki; D-5 (a tower's count for an odd N: the code
+  and the wiki against VCMI), D-6 (Expert Ballistics: the table against the wiki's "always hits"),
+  D-7 (a town without a fort is still a town battle), S-29 (the map format's branch, not a bug).
+- **Draft:** `docs/lanes/battle/adr-drafts/sieges.md`: `BattleSetup.siege: Option<Siege>` with
+  derived facts, the hero's bonuses before the seam, no outcome field. The review is BAT-Q40.
+

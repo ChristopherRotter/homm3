@@ -2389,3 +2389,74 @@ native when its town's native terrain is +0x5394 (+1 speed, attack and defense, 
   `config/obstacles.json` in every type's terrains, fields, size and blocked hexes (checked
   2026-10-13, 91 + 34 records); VCMI calls the water bit of type 55 the battlefield `ship`.
 - Not read: how 0x466010 and 0x4668A0 choose positions (the engine keeps VCMI's, BAT-GEO-004).
+
+### 7.27 Code reading: the siege's setup (E04c T4, 2026-10-13)
+
+Read for E04c T4 (the siege survey and seam; `docs/rules/surveys/E04c-sieges.md`): what the battle
+takes from the town at its start, and what it gives back at its end. Insight only, nothing copied
+(Q29). Caller path: the battle's start (0x462A20 → the side setup 0x4639F0, 0x463C60, the war
+machines 0x463600, the turret records 0x466C50) and the controls 0x4782D0. Not read here: the
+walls' sections and hit points, the gate, the Catapult's shot, the turrets' shot and target choice,
+the shot penalty through walls (0x467510), the Tower's land mines (0x4663BE), Earthquake: each
+with its increment (T5–T8).
+
+**The town and the fort level.** The side setup stores the town (+0x53C8) for every battle at a
+town, with or without a fort (0x463C1A), and the fort level +0x132F4 from the highest of the town's
+built buildings 7, 8 and 9 (`+0x150`, the per-building masks 0x66CD98): **1** Fort, **2** Citadel,
+**3** Castle, 0 without one. Every reader of the town then tests the pointer, some the level too.
+The town alone (any level): the battlefield's terrain is its faction's native one (§7.26 case 1),
+the defending hero's bonuses below, the morale and luck below, the controls and the experience
+below. A fort level above 0: the siege picture (0x4646D0), the attacker's Catapult, no defender's
+Ballista, the siege obstacles (0x466290's own path).
+
+**The moat** (two flags). With a Citadel or a Castle, +0x53A8 (a moat) is set unless the town is
+a Tower (type 2) or a Stronghold (6) on a map of a format before SoD (the game's +0x1F698, the map
+kind: 0 RoE, 1 AB, 2 SoD); +0x53A9 marks a Fortress (7). The moat's hexes (0x469DC0): the 11 of
+0x63BCE8 (11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181) and for the Fortress also the 11 of
+0x63BCF4 (10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180); hex 95 (94 for the Fortress's second
+row) only while +0x53A4 is 3, which the setup sets (its other values not read: the gate?). The
+damage on entering a moat hex (0x469E50) is applied only on SoD maps (map kind 2), straight to the
+stack's hit points (0x444090, no defense, no resistance), by the town type (0x63BD18): Castle 70,
+Rampart 70, Tower 150, Inferno 90, Necropolis 70, Dungeon 90, Stronghold 70, Fortress 90, Conflux
+70; Tower's 150 is never used here (no moat flag: its land mines take the moat's place).
+
+**The siege's obstacles** (0x466290 with a fort level above 0, from 0x4662E3). The walls' 18
+part values +0x13F60 come from a per-town table (0x66D868, records of 36 bytes; not read which
+part is which), four of them raised by 1 with a Castle, and are copied to +0x13FA8; the 11 wall
+hexes (0x63BD00: 12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182) get the blocked bit 0x2. With a
+Citadel or Castle in a Tower, the land mines go onto moat hexes with the Tower's 150 (0x63BD20)
+and the defending hero's mastery of Land Mine (0x4663BE; read with T5). Then no natural obstacle
+on a SoD map; on an older map only a Stronghold with a Citadel or Castle (no moat there) goes on
+to the usual obstacles.
+
+**The war machines and the turrets** (0x463600, per side). In a battle with a fort level above 0:
+the attacker's Catapult (creature 145) on hex 119 (every hero has one); the defender gets no
+Ballista; the First Aid Tent and the Ammo Cart as elsewhere. With a Citadel or Castle the defender
+gets the **keep**: an Arrow Tower stack (creature 149) at the off-field position 254, whose count
+is 0x5BF4F0's result: 4 + the number of building ids 0–43 the town has built among its mask +0x160
+(which buildings that mask holds is not read); with a Castle also the **upper and lower towers** at
+255 and 251, each with half the keep's count rounded up. The turret records +0x13D78 (three of
+0x24 bytes; 0x466C50) hold each turret's picture and position from the town type's record
+(0x63CF88, 32 bytes). `CRTRAITS.TXT`: the Arrow Tower 100 hit points, attack 10, defense 5, damage
+2–4, 24 shots; the Catapult 1 000 hit points, attack 10, defense 10, no damage.
+
+**The defending hero** (0x463C60, a battle at a town with a defending hero; the fort level is not
+tested). The hero's attack, defense, power and mana are kept (+0x13DE8 to +0x13DF4), then raised by
+the town's buildings, by the town type: Tower with its Grail (building 26) +150 mana; Inferno with
+building 21 (Brimstone Stormclouds) +2 power; Dungeon with its Grail +12 power; Stronghold with its
+Grail +20 attack; Fortress with building 21 (Blood Obelisk) +2 attack, building 22 (Glyphs of Fear)
++2 defense and its Grail +10 attack and +10 defense. The battle's end (0x4776E1 to 0x477719)
+restores the attack, defense and power, and sets the mana to the smaller of the mana left and the
+mana before the battle.
+
+**Morale and luck.** 0x469750 passes the town to the defender's stacks only. The base morale
+(0x44B065 to 0x44B0AD): +1 with a Tavern (building 5), +2 more in a Castle with building 22 (the
+Brotherhood of the Sword). The base luck 0x44B2D0 takes the town too (not read; Rampart's Fountain
+of Fortune by VCMI and the wiki).
+
+**The controls** (0x478573 to 0x478635). Surrender needs a hero on both sides and is refused to
+the defender of a battle at a town. Retreat needs the side's hero and is refused to the defender at
+a town unless the town is a Stronghold with building 17 (the Escape Tunnel).
+
+**Experience** (0x46A405): the attacker's side gets +500 in a battle at a town (any fort level;
+the −500 of 0x46A3FC, with two globals, not read).

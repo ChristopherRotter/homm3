@@ -1,6 +1,6 @@
 # E04c — Sieges and special battlefields
 
-Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2: T3 done, BAT-Q39 answered (S-28 not a quirk), then T4) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
+Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2: T3 done (#179), BAT-Q39 answered (S-28 not a quirk); T4 done, its review BAT-Q40 open) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
 
@@ -62,8 +62,11 @@ banks' fixed layouts; HotA's fields (Cracked Ice, Dunes, Fields of Glory). AI (E
   special grounds and coast flag (`h3-map`, `cross-lane`), `[[map.ground]]` and `--only`; batches 3a and
   3b run by an agent: D-1, D-2 and D-4 as the code, the defender's tile decides; S-28 not a
   quirk (BAT-Q39).
-- [ ] T4 Siege survey and seam (the siege input on the setup and outcome: fort level, walls, gate,
-  towers, moat, the town's faction; an ADR amendment or its own ADR).
+- [x] **T4 Siege survey and seam** — done 2026-10-13 (record: [`E04c-log.md`](E04c-log.md)): the code reading
+  `installation.md` §7.27 (the town and fort level, the moat, the turrets, the war machines, the
+  defending hero's and the stacks' town bonuses, the controls, the experience, the siege's
+  obstacles), the survey `docs/rules/surveys/E04c-sieges.md` (D-5 to D-7, S-29), the ADR draft
+  `docs/lanes/battle/adr-drafts/sieges.md`; the review is BAT-Q40.
 - [ ] T5 Walls, gate and moat (the layout, movement and stops, shooting at and through walls, the
   moat's damage, the Tower's mines).
 - [ ] T6 The Catapult, Ballistics and Earthquake (S-08).

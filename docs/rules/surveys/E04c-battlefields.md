@@ -131,7 +131,7 @@ Plains battles (batch 3a CS, MS: D-4). The coast is the map file's tile flag `0x
   "considered, not a quirk" and the engine follows the game in every profile (BAT-TER-003). Nothing else in §1 looks like a bug; the fields' texts describe what the code
   does.
 
-## 6. Sieges (outline for a later increment)
+## 6. Sieges (outline for a later increment; surveyed in `E04c-sieges.md`, T4)
 
 Known so far (`E04-battle.md` §7 "Siege inputs", the battle queue's inbox, `code` §7.15 to §7.24):
 the fort level (walls, keep, moat, towers), the moat by faction (damage 0x469E50, its hexes as
