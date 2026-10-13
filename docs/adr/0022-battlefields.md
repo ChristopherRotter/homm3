@@ -1,9 +1,9 @@
-# ADR draft: Battlefields — special battlefields as content, the battlefield on the setup
+# ADR-0022: Battlefields — special battlefields as content, the battlefield on the setup
 
-- Status: Proposed (E04c T1, 2026-10-13; for the user's review, BAT-Q38)
+- Status: Accepted (user, 2026-10-13, BAT-Q38; drafted at E04c T1)
 - Date: 2026-10-13
 - Deciders: user; battle lane session (E04c T1)
-- Working detail: the survey [`docs/rules/surveys/E04c-battlefields.md`](../../../rules/surveys/E04c-battlefields.md),
+- Working detail: the survey [`docs/rules/surveys/E04c-battlefields.md`](../rules/surveys/E04c-battlefields.md),
   the code reading `docs/formats/installation.md` §7.26; the epic `docs/epics/E04c-sieges-and-battlefields.md`
 
 ## Context
@@ -27,7 +27,9 @@ soon (E08 increment 3), so the seam and its data must suit the adventure lane's 
    of random obstacles. An obstacle type lists its battlefields beside its terrains.
 2. **The seam.** `BattleSetup` gains `battlefield: Option<ContentKey>` (the battlefield's key, as
    an obstacle's type is named: `h3-contracts` does not depend on the battle part, ADR-0015) and
-   `anti_magic: bool` (the battle is at an anti-magic garrison). `terrain` keeps its meaning (the
+   `anti_magic: bool` (the battle is at an anti-magic garrison). Every battle has a battlefield;
+   the key names the special ones, and `None` is the terrain's ordinary battlefield (the
+   original's −1, the user at BAT-Q38: a mandatory key would only name "ordinary" twelve times). `terrain` keeps its meaning (the
    native bonus, and the obstacles when the battlefield has none of its own). The battle resolves
    the key against its ruleset at setup (an unknown key is a setup error) and never derives the
    battlefield. Whoever starts a battle derives it (the adventure lane's orchestrator, which can

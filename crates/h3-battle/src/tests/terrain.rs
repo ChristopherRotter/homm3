@@ -173,6 +173,7 @@ fn the_battle_accepts_every_generated_battlefield() {
                 battle.obstacles.push(ObstacleDef {
                     key: ContentKey::new("t", "ridge").unwrap(),
                     terrains: std::vec![ContentKey::new("t", "void").unwrap()],
+                    battlefields: Vec::new(),
                     width: hexes,
                     height: 1,
                     blocked: (0..hexes.cast_signed()).map(|dx| (dx, 0)).collect(),
@@ -216,6 +217,7 @@ fn obstacle_offsets_follow_the_hex_rows() {
     let o = h3_content_battle::ObstacleType {
         key: h3_content::ContentKey::new("t", "o").unwrap(),
         terrains: Vec::new(),
+        battlefields: Vec::new(),
         width: 2,
         height: 1,
         blocked: std::vec![(1, -1)],

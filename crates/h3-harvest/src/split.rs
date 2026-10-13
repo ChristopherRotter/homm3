@@ -1,8 +1,9 @@
 //! Splits a pack text into its two files (pack format v35, R01 decision 5): `core.toml` (the
-//! `[pack]` manifest and every core table) and `battle.toml` (`[battle]`, the obstacles and the
-//! battle fields of the creatures, the creature overrides and the spells). The harvester writes
-//! one text per pack and routes it through [`split`]; the tables both files share keep their
-//! identity fields (`id`, `target`, `fixes`) in both.
+//! `[pack]` manifest and every core table) and `battle.toml` (`[battle]`, the special
+//! battlefields (v36), the obstacles and the battle fields of the creatures, the creature
+//! overrides and the spells). The harvester writes one text per pack and routes it through
+//! [`split`]; the tables both files share keep their identity fields (`id`, `target`, `fixes`)
+//! in both.
 //!
 //! Comment lines go with the field or table they precede (a table's leading comments go to every
 //! file the table goes to), the text before the first table goes to both files, and a field's
@@ -32,7 +33,7 @@ enum Part {
 }
 
 /// The tables only `battle.toml` holds.
-const BATTLE_TABLES: [&str; 2] = ["battle", "obstacle"];
+const BATTLE_TABLES: [&str; 3] = ["battle", "battlefield", "obstacle"];
 
 /// The tables whose fields split between the two files.
 const SHARED_TABLES: [&str; 3] = ["creature", "creature_override", "spell"];

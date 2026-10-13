@@ -473,28 +473,28 @@ commands = [
     "D attack 0 79",
 ]
 checkpoints = [
-    "0x7e21bc66c097b1eb",
-    "0xb8ca479fca1a3cc6",
-    "0xe56ff99c1ccd03cf",
-    "0x64b49286b5f871db",
-    "0x0ce6c02da9e25475",
-    "0x858348abd1226a9d",
-    "0xbefcf9f67647cbd4",
-    "0x0d2bc05db9b8fc59",
-    "0x2cb846d9cb26fe65",
-    "0x5e41de775b5bc75d",
-    "0x57cdf9105bdf4dd4",
-    "0xd333968d5bdc4990",
-    "0x79cb1bfa894acae9",
-    "0x4b2d95ee6b151866",
-    "0xc2a42ef8fa2a6f58",
-    "0xfa76b8075f14b198",
-    "0x8183f6923d69c52b",
-    "0x34abc9cc66a49386",
+    "0xef6a602e5e139dbc",
+    "0x5ff7e7798a3665a1",
+    "0x049a07ba0dc90d10",
+    "0x0c6ec5a1dc8a780c",
+    "0x75c63ffca8d9963a",
+    "0x211d8fe0290d7a3a",
+    "0xef7826bd4bd56a0d",
+    "0xb3480dea366ded64",
+    "0xf4ebd72d1df9123c",
+    "0xeecd7868beeb8780",
+    "0x17736c014ec2d6f1",
+    "0xc07dd66d0ecc6ecd",
+    "0x57cbdca2f2b7ee88",
+    "0x128659e18f36da2f",
+    "0xaa1186e3899ef789",
+    "0xa34a4a077c05f5d9",
+    "0x74e91129620eedea",
+    "0x83a6b52a02c0756f",
 ]
 
 [replay]
-format = 24
+format = 25
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -504,12 +504,12 @@ packs = [[
 ]]
 profile = "synthetic:faithful"
 ruleset_hash = "0x31cd339df305f77e"
-battle_ruleset_hash = "0xc8476c6ef824c251"
+battle_ruleset_hash = "0x10c00d186e269186"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 44
+battle_state_hash_version = 45
 checkpoint_every = 25
 
 [setup]
@@ -878,4 +878,4 @@ count = 4
 
 [result]
 winner = "defender"
-final_hash = "0xbe7862042888b56a"
+final_hash = "0xa599114168116a57"

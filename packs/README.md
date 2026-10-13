@@ -6,7 +6,7 @@ Human-editable content packs (ADR-0006). Keys are namespaced `pack:name`. Since 
 | File | Holds | Parsed by, compiled by |
 |---|---|---|
 | `core.toml` | the `[pack]` manifest; resources, factions, terrains, creatures (identity and non-battle data: name, faction, level, speed, cost, growth, values, flags, upgrades), creature overrides' core halves, spell schools, spells (name, category, level, schools, cost, power, effect, `granted_by_name_only`), secondary skills, hero classes, heroes, hero overrides, artifact slots and their overrides, artifacts, `[hero_params]`, profiles | `h3-pack` into a `ContentPack`; `h3-content` into the core `Ruleset` |
-| `battle.toml` | no manifest (it belongs to its folder's `core.toml`): `[battle]`, obstacles, each creature's battle data (`[[creature]]` with its `id`: attack, defense, damage, hit points, shots, casts, abilities), creature overrides' battle halves (`target`, `fixes` and those fields), each spell's battle magic (`[[spell]]` with its `id`: polarity and every targeting and effect field) | `h3-pack-battle` into a `BattlePack`; `h3-content-battle` into the `BattleRuleset` on the core |
+| `battle.toml` | no manifest (it belongs to its folder's `core.toml`): `[battle]`, special battlefields (v36), obstacles, each creature's battle data (`[[creature]]` with its `id`: attack, defense, damage, hit points, shots, casts, abilities), creature overrides' battle halves (`target`, `fixes` and those fields), each spell's battle magic (`[[spell]]` with its `id`: polarity and every targeting and effect field) | `h3-pack-battle` into a `BattlePack`; `h3-content-battle` into the `BattleRuleset` on the core |
 | `adventure.toml` | the adventure map's data (owned by the adventure lane; format: `crates/h3-pack-adventure/src/lib.rs`) | `h3-pack-adventure` |
 
 The TOML keys are the same in either file; the sections below show each table with all its
@@ -19,9 +19,9 @@ A pack folder without `battle.toml` (or `adventure.toml`) reads as an empty one.
 |---|---|
 | `synthetic/` | Invented creatures with neutral names for tests, benchmarks, replays and the walking skeleton. **Not** original game data (docs/05-testing.md "Test data policy"). |
 | `synthetic-ext/` | Invented expansion of `synthetic`: exercises dependencies and overrides the way `ab`/`sod` do. |
-| `base/` | **Harvested**: The Restoration of Erathia, latest patch (Q15): resources, 10 terrains, 8 factions with native terrains, 78 obstacle types, 121 creatures (118 plus the war machines Ballista, First Aid Tent and Ammo Cart, E03 T8) with their upgrades, battle parameters, profiles; since E04a T3 also 4 spell schools, 80 spells, 28 secondary skills, 16 hero classes and 128 heroes, and (T3b) 14 artifact slots (four misc positions) and 127 artifacts. |
+| `base/` | **Harvested**: The Restoration of Erathia, latest patch (Q15): resources, 10 terrains, 8 factions with native terrains, 90 obstacle types and 5 special battlefields (E04c T2b: the shore, Magic Plains, Cursed Ground, a ship's deck, two boats), 121 creatures (118 plus the war machines Ballista, First Aid Tent and Ammo Cart, E03 T8) with their upgrades, battle parameters, profiles; since E04a T3 also 4 spell schools, 80 spells, 28 secondary skills, 16 hero classes and 128 heroes, and (T3b) 14 artifact slots (four misc positions) and 127 artifacts. |
 | `ab/` | **Harvested**: Armageddon's Blade (depends on `base`): Conflux, 23 creatures, elementals moved to Conflux and given their upgrades; the 2 Conflux hero classes and 28 heroes (Conflux, Sir Mullich, the campaign heroes); Vial of Dragon Blood and Armageddon's Blade. |
-| `sod/` | **Harvested**: The Shadow of Death (depends on `ab`): SoD-only changes as overrides; Titan's Lightning Bolt; the fifth misc position and the 12 combination artifacts. |
+| `sod/` | **Harvested**: The Shadow of Death (depends on `ab`): SoD-only changes as overrides; Titan's Lightning Bolt; the fifth misc position and the 12 combination artifacts; the 7 SoD battlefields (Holy Ground, Evil Fog, Clover Field, Lucid Pools, Fiery Fields, Rocklands, Magic Clouds) and their 35 obstacle types (E04c T2b). |
 
 The harvested packs `base` (RoE), `ab` and `sod` are generated from the user's installation by
 `crates/h3-harvest` and committed (E02 T4; OPEN-QUESTIONS Q13: gameplay data and names only, no
@@ -72,9 +72,27 @@ id = "vale"
 name = "Vale"
 native_terrain = "meadow"        # optional: +1 attack/defense/speed there (BAT-TER-001)
 
+[[battlefield]]                  # a special battlefield (pack format v36, E04c T2b; BAT-TER-002):
+id = "hallow"                    # a battle names it by key (`BattleSetup.battlefield`); every
+                                 # field is optional and read by one rule
+own_obstacles = true             # random obstacles of the types listing it, not the terrain's
+                                 # (BAT-GEO-004)
+# blocked = [6, 7, 8]            # instead: these hexes and no random obstacle (two boats);
+                                 # distinct standable hexes, not with own_obstacles
+morale = [{ factions = ["vale"], amount = 1 }]  # per list of factions, -3..=3 and not 0; a
+# luck = [...]                   # faction once per list; creatures without one never (BAT-TER-003)
+# no_morale = true               # every stack's morale 0 (BAT-TER-003); `no_luck` its luck
+# no_native = true               # no native bonus (BAT-TER-006)
+# max_spell_level = 1            # 1..=5: none above cast or taking effect (BAT-TER-004)
+# no_creature_casts = true       # no creature cast, raise or periodic cast (BAT-TER-004)
+expert_schools = ["storm"]       # a hero's spells of these schools at Expert (BAT-TER-005)
+# expert_other_casts = true      # creature, periodic and strike spells at Expert (BAT-TER-005)
+
 [[obstacle]]                     # obstacle types (E03, BAT-GEO-004)
 id = "crag"
-terrains = ["meadow"]            # at least one
+terrains = ["meadow"]            # terrains it appears on
+# battlefields = ["hallow"]      # v36: battlefields with own obstacles it appears on (at least
+                                 # one terrain or battlefield)
 width = 3                        # usual obstacles: free hexes to the right of the anchor
 height = 2                       # usual obstacles: rows needed above the anchor
 blocked = [[0, 0], [1, 0], [1, -1]]  # [dx, dy] from the anchor (bottom-left hex, dy <= 0); a
@@ -726,9 +744,12 @@ packs = ["synthetic"]            # enabled packs (any order)
 profile = "synthetic:faithful"
 obstacles = [58, 75]             # optional: blocked hexes, row-major (BAT-GEO-003)
 terrain = "synthetic:meadow"     # optional: the battlefield's terrain (BAT-TER-001)
-random_obstacles = true          # optional: generate obstacles for the terrain (BAT-GEO-004;
-                                 # the tools use stream OBSTACLES of the battle seed); not
-                                 # together with `obstacles`
+battlefield = "synthetic:hallow" # optional: the special battlefield's key (E04c, BAT-TER-002),
+                                 # resolved by the battle
+anti_magic = true                # optional: at an anti-magic garrison (BAT-MAG-061)
+random_obstacles = true          # optional: generate obstacles for the terrain and battlefield
+                                 # (BAT-GEO-004; the tools use stream OBSTACLES of the battle
+                                 # seed); not together with `obstacles`
 attacker_war_machines = ["synthetic:bolt_thrower", "synthetic:aid_tent"]  # optional, per side:
 defender_war_machines = ["synthetic:supply_wagon"]  # war machines by key, one per kind (BAT-WAR-001)
 tight_formation = ["defender"]   # optional: sides in tight formation, the others loose (BAT-SET-001)

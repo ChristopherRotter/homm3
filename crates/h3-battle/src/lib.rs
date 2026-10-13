@@ -75,7 +75,7 @@ pub use state::{
     STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,
 };
 pub use tactics::TacticsPhase;
-pub use terrain::generate_obstacles;
+pub use terrain::{generate_battlefield_obstacles, generate_obstacles, generate_setup_obstacles};
 
 #[cfg(test)]
 mod tests;

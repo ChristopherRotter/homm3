@@ -30,8 +30,9 @@ pub struct GapFill {
     /// Native terrains of the factions (E03 T7, BAT-TER-001).
     #[serde(default)]
     pub native_terrain: Vec<NativeTerrain>,
-    /// Obstacle types (E03 T7, BAT-GEO-004).
-    pub obstacles: Obstacles,
+    /// Special battlefields (E04c T2b): their rules and their field numbers in the executable's
+    /// obstacle tables, which give the obstacle types (BAT-GEO-004).
+    pub battlefield: Vec<BattlefieldSpec>,
     /// War machines harvested like creatures (E03 T8).
     pub war_machines: WarMachines,
     /// Hero content (E04a T3).
@@ -464,33 +465,53 @@ pub struct NativeTerrain {
     pub sources: Vec<String>,
 }
 
-/// The obstacle types, with their sources.
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Obstacles {
-    /// Source ids.
-    pub sources: Vec<String>,
-    /// The obstacle types.
-    pub list: Vec<ObstacleSpec>,
-}
-
-/// One obstacle type (pack syntax, `packs/README.md`), terrains by name.
+/// A special battlefield (E04c T2b; pack syntax `[[battlefield]]`, `packs/README.md`): its pack,
+/// the original's field number, its rules; factions by `TownType.txt` name, schools by key.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[allow(
     missing_docs,
     reason = "field names mirror the pack format (packs/README.md)"
 )]
-pub struct ObstacleSpec {
-    pub id: u32,
-    pub terrains: Vec<String>,
+pub struct BattlefieldSpec {
+    pub id: String,
+    /// `base` or `sod`.
+    pub pack: String,
+    /// The original's special field (0 the shore, 1–9 the magic fields; the obstacle types'
+    /// field bit): the battlefield has its own obstacles. None: the terrain's.
+    pub field: Option<u8>,
+    /// Its blocked hexes are the executable's table for two boats (no random obstacles).
     #[serde(default)]
-    pub width: u8,
+    pub boats: bool,
     #[serde(default)]
-    pub height: u8,
-    pub blocked: Vec<[i8; 2]>,
+    pub morale: Vec<FactionChangeSpec>,
     #[serde(default)]
-    pub absolute: bool,
+    pub luck: Vec<FactionChangeSpec>,
+    #[serde(default)]
+    pub no_morale: bool,
+    #[serde(default)]
+    pub no_luck: bool,
+    #[serde(default)]
+    pub no_native: bool,
+    pub max_spell_level: Option<u8>,
+    #[serde(default)]
+    pub no_creature_casts: bool,
+    #[serde(default)]
+    pub expert_schools: Vec<String>,
+    #[serde(default)]
+    pub expert_other_casts: bool,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// A morale or luck change for the creatures of some towns.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FactionChangeSpec {
+    /// Town names (as in `TownType.txt`).
+    pub towns: Vec<String>,
+    /// The change.
+    pub amount: i8,
 }
 
 /// The abilities of one creature (`packs/README.md`, "Abilities").
@@ -755,7 +776,7 @@ impl GapFill {
                 .chain(&g.battle.stack_limit_sources)
                 .chain(g.creature_abilities.iter().flat_map(|a| &a.sources))
                 .chain(g.native_terrain.iter().flat_map(|n| &n.sources))
-                .chain(&g.obstacles.sources)
+                .chain(g.battlefield.iter().flat_map(|b| &b.sources))
                 .chain(&g.war_machines.sources)
                 .chain(&g.heroes.upgrade_sources)
                 .chain(&g.heroes.creature_specialty.sources)

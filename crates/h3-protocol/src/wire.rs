@@ -864,6 +864,10 @@ pub struct Observation {
     pub drawn: Option<u16>,
     /// The battlefield's terrain handle.
     pub terrain: Option<u16>,
+    /// The special battlefield's handle ([`KeyTables::battlefields`]), if any (v28).
+    pub battlefield: Option<u16>,
+    /// The battle is at an anti-magic garrison: neither side casts (v28).
+    pub anti_magic: bool,
     /// The attacker's and the defender's public state.
     pub sides: [SideView; 2],
     /// The private part of the viewer's own hero.
@@ -936,6 +940,8 @@ pub struct KeyTables {
     pub terrains: Vec<String>,
     /// Obstacle types (v22; the battle's ruleset part).
     pub obstacles: Vec<String>,
+    /// Special battlefields (v28; the battle's ruleset part).
+    pub battlefields: Vec<String>,
 }
 
 /// What a game is made of, sent at join (ADR-0018 point 10): the replay header's fields, the
