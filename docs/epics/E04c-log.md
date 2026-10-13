@@ -35,7 +35,7 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   BAT-GEO-004 (`generate_battlefield_obstacles`, `generate_setup_obstacles`; the old
   `generate_obstacles` stays for the server's caller).
 - **Versions:** battle state hash v45, replay format v25, observation encoding v15 (two globals),
-  C ABI v19, protocol v27 (the wire's observation and key tables; `cross-lane`). The golden
+  C ABI v19, protocol v28 (the wire's observation and key tables; `cross-lane`). The golden
   replays play the same commands; a ninth, `field-s5`, plays the synthetic `hallow`.
 - **Other lanes:** the client's asset tables moved the SoD obstacle types to `sod`; inbox lines
   in the adventure, client and server queues.

@@ -8,6 +8,11 @@
 //! a web page (E16 M6 T2, `h3_server::card`): the card it gives a client's `Describe`, which holds
 //! for `[discovery] card_ms`. Provisional: the command.
 //!
+//! `h3-server list-key <file>`: prints the public key of the list key in `<file>`, writing a new
+//! one there first if there is none (E16 M6 T5, `h3_server::list_key`). `h3-server sign-list --key
+//! <file> <list.toml>`: prints the signed list of the TOML list of servers, for a server's
+//! `<data>/lists/` (`h3_server::sign_list`). Provisional: the commands.
+//!
 //! Stopping (E16 M2 T5a): the first SIGINT (Ctrl-C) or SIGTERM drains the server: no new game,
 //! the waiting ones end, the running ones play on; once none runs, it stops. A second signal
 //! stops it at once. Stopped, every connection hears `Goodbye { Shutdown }` and the journals
@@ -25,9 +30,16 @@ fn main() -> ExitCode {
         [path] => serve(path),
         [command, path, login, key] if command == "rebind" => rebind(path, login, key),
         [command, path] if command == "card" => card(path),
+        [command, path] if command == "list-key" => {
+            print_or_fail("list-key", h3_server::list_key(&PathBuf::from(path)))
+        }
+        [command, flag, key, list] if command == "sign-list" && flag == "--key" => print_or_fail(
+            "sign-list",
+            h3_server::sign_list(&PathBuf::from(key), &PathBuf::from(list)),
+        ),
         _ => {
             eprintln!(
-                "usage: h3-server <config.toml>\n       h3-server rebind <config.toml> <login> <public-key>\n       h3-server card <config.toml>\n{} (protocol {})",
+                "usage: h3-server <config.toml>\n       h3-server rebind <config.toml> <login> <public-key>\n       h3-server card <config.toml>\n       h3-server list-key <file>\n       h3-server sign-list --key <file> <list.toml>\n{} (protocol {})",
                 h3_server::server_name(),
                 h3_protocol::PROTOCOL_VERSION
             );
@@ -58,6 +70,20 @@ fn rebind(path: &OsString, login: &OsString, key: &OsString) -> ExitCode {
         }
         Err(e) => {
             eprintln!("h3-server: rebind: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// `text` on standard output, or why the command `command` failed on standard error.
+fn print_or_fail(command: &str, text: Result<String, h3_server::Error>) -> ExitCode {
+    match text {
+        Ok(text) => {
+            println!("{text}");
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("h3-server: {command}: {e}");
             ExitCode::FAILURE
         }
     }

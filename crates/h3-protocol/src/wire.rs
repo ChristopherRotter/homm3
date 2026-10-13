@@ -864,9 +864,9 @@ pub struct Observation {
     pub drawn: Option<u16>,
     /// The battlefield's terrain handle.
     pub terrain: Option<u16>,
-    /// The special battlefield's handle ([`KeyTables::battlefields`]), if any (v27).
+    /// The special battlefield's handle ([`KeyTables::battlefields`]), if any (v28).
     pub battlefield: Option<u16>,
-    /// The battle is at an anti-magic garrison: neither side casts (v27).
+    /// The battle is at an anti-magic garrison: neither side casts (v28).
     pub anti_magic: bool,
     /// The attacker's and the defender's public state.
     pub sides: [SideView; 2],
@@ -940,7 +940,7 @@ pub struct KeyTables {
     pub terrains: Vec<String>,
     /// Obstacle types (v22; the battle's ruleset part).
     pub obstacles: Vec<String>,
-    /// Special battlefields (v27; the battle's ruleset part).
+    /// Special battlefields (v28; the battle's ruleset part).
     pub battlefields: Vec<String>,
 }
 
@@ -1342,6 +1342,13 @@ pub enum ClientMessage {
         /// The page's first entry, the first 0.
         from: u32,
     },
+    /// The lists of servers the server serves (E16 M6 T5; ADR-0021 point 5), each as its key
+    /// signed it, so that a client checks a card relayed for a list against the list: answered
+    /// `ListsAre`. Needs no game, nor a login.
+    Lists {
+        /// The client's sequence number.
+        seq: u32,
+    },
 }
 
 /// Why a join, a game's creation or an account's request was refused; the connection stays open.
@@ -1732,6 +1739,14 @@ pub enum ServerMessage {
         /// the last page.
         entries: Vec<RelayedCard>,
     },
+    /// The lists of servers the server serves, as their keys signed them (E16 M6 T5): `Lists`'
+    /// answer, at most [`crate::list::MAX_LISTS`].
+    ListsAre {
+        /// The client's sequence number.
+        seq: u32,
+        /// The lists that hold, in the server's order.
+        lists: Vec<SignedList>,
+    },
 }
 
 /// A card a server relays (E16 M6 T3; `E16-design.md` §12): as its key signed it, with the keys
@@ -1745,7 +1760,8 @@ pub struct RelayedCard {
     /// bytes as lowercase hex each; none for a card of the relaying server's own peers, which its
     /// own card names.
     pub via: Vec<String>,
-    /// The key of the list the card was fetched for (E16 M6 T5); `None` for a peer's card.
+    /// The key of the list the card was fetched for (E16 M6 T5), whose signed list `ListsAre`
+    /// gives ([`crate::list::names`]); `None` for a peer's card.
     pub list: Option<String>,
 }
 
@@ -1835,6 +1851,47 @@ pub struct CardPeer {
 pub struct SignedCard {
     /// The card's text.
     pub card: String,
+    /// The key's signature over it, 64 bytes as lowercase hex.
+    pub signature: String,
+}
+
+/// A list of servers (E16 M6 T5; ADR-0021 point 5, `E16-design.md` §12), signed by the list's
+/// key: whoever holds the key names each server by its key and the address it answers at. Anyone
+/// may make one (a community's, a tournament's); a client chooses which list keys to trust. It
+/// travels as [`SignedList`], whose text a server passes on verbatim; [`crate::list`] bounds and
+/// reads it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ServerList {
+    /// The list's public key, 32 bytes as lowercase hex, which signs it.
+    pub key: String,
+    /// The list's name.
+    pub name: String,
+    /// When it was signed, in milliseconds since the Unix epoch.
+    pub issued: WireU64,
+    /// When it stops holding, in milliseconds since the Unix epoch.
+    pub expires: WireU64,
+    /// The servers it names, each at most once.
+    pub servers: Vec<ListedServer>,
+}
+
+/// A server a list names (E16 M6 T5): its key and an address it answers at.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ListedServer {
+    /// Its public key, 32 bytes as lowercase hex.
+    pub key: String,
+    /// A WebSocket address it answers at ([`crate::card::is_address`]), as its own id.
+    pub address: String,
+}
+
+/// A list of servers as it travels (E16 M6 T5): `list` is the list's JSON text exactly as its key
+/// signed it ([`crate::account::list_message`]), parsed only to read it; on disk, the same.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SignedList {
+    /// The list's text.
+    pub list: String,
     /// The key's signature over it, 64 bytes as lowercase hex.
     pub signature: String,
 }

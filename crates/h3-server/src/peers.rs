@@ -16,13 +16,20 @@
 //! last good card and relays until they expire. The server dials only the addresses its operator
 //! configured, never one it read in a card.
 //!
+//! Lists of servers (E16 M6 T5, [`crate::lists`]): each round first reads the lists in
+//! `<data>/lists/`; after the peers it fetches the servers they name as it fetches a peer, without
+//! what they relay (depth 1): each server once (the first list's), neither the server itself nor
+//! a peer, at most `[discovery] cards` less the peers. Their cards are relayed marked with their
+//! list's key, which a client checks against the list (`Lists`, `h3_protocol::list::names`).
+//!
 //! What `ListPeers` pages ([`Peers::page`]) is rebuilt after each fetch and each round
-//! ([`relay`]): the peers' cards in the configuration's order, then the cards they relay, the
-//! nearer hops first, the peers in the configuration's order and each peer's cards in its own;
-//! each key once, by its shortest chain; each chain checked again against the cards relayed
-//! before it, so that a client finds every card of a chain among them and checks it as the server
-//! did (`h3_protocol::card::chain`); at most `[discovery] cards`, never the server's own card. A
-//! card is relayed until the first card of its chain expires.
+//! ([`relay`]): the peers' cards in the configuration's order, then the listed servers' in the
+//! lists' order, then the cards the peers relay, the nearer hops first, the peers in the
+//! configuration's order and each peer's cards in its own; each key once, by its shortest chain;
+//! each chain checked again against the cards relayed before it, so that a client finds every card
+//! of a chain among them and checks it as the server did (`h3_protocol::card::chain`); at most
+//! `[discovery] cards`, never the server's own card. A card is relayed until the first card of its
+//! chain (a listed server's: or its list) expires.
 //!
 //! The TLS client (ADR-0021 point 4): `rustls` with the pure-Rust graviola backend, certificates
 //! checked against the operating system's roots, read once at start when a peer is at `wss://`.
@@ -30,11 +37,13 @@
 //! its first use: each fetch runs as a task of its own, so such a panic fails the fetch, logged,
 //! not the server.
 //!
-//! Provisional (E16 M6 T3, T4): the frame bounds, the hello's name (the server's id), the log
-//! lines, one fetch at a time, a card a peer relays for a list (E16 M6 T5) not relayed on.
+//! Provisional (E16 M6 T3–T5): the frame bounds, the hello's name (the server's id), the log
+//! lines, one fetch at a time, a card a peer relays for its list not relayed on, the listed
+//! servers' place after the peers' cards and before what the peers relay.
 
 use std::collections::BTreeMap;
 use std::iter;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
@@ -50,6 +59,7 @@ use crate::Error;
 use crate::card::{self, wall_ms};
 use crate::client::Client;
 use crate::config::{Discovery, Peer};
+use crate::lists::{self, Held};
 
 /// The largest frame of one card a fetch reads (a `Described`, or a card on a page of `Peers`):
 /// its text, escaped in the frame, takes at most twice its bytes; with room for its signature, a
@@ -113,23 +123,42 @@ struct Fetched {
     relays: Vec<Relay>,
 }
 
+/// A server a list names that the server fetches (E16 M6 T5).
+#[derive(Debug)]
+struct Listed {
+    /// The list's key, which marks the server's card.
+    list: String,
+    /// When the list expires.
+    until: u64,
+    /// The server, as the list names it.
+    server: Configured,
+    /// Its last good card.
+    card: Option<Arc<Kept>>,
+}
+
 /// A card the server relays.
 #[derive(Debug, Clone)]
 struct Relayed {
     /// The card.
     kept: Arc<Kept>,
     /// The keys from the server's peer down to the card's voucher (`RelayedCard::via`): none for a
-    /// peer's own card.
+    /// peer's own card and a listed server's.
     via: Vec<String>,
-    /// When the first card of its chain expires: it is relayed until then.
+    /// The key of the list that names it, for a listed server's card (`RelayedCard::list`).
+    list: Option<String>,
+    /// When the first card of its chain (or its list) expires: it is relayed until then.
     until: u64,
 }
 
-/// The peers' last good fetches, and the cards relayed of them.
+/// The peers' last good fetches, the lists and their servers', and the cards relayed of them.
 #[derive(Debug)]
 struct State {
     /// Each peer's last good fetch, in the configuration's order.
     fetched: Vec<Option<Fetched>>,
+    /// The lists that held when last read (E16 M6 T5).
+    lists: Vec<Held>,
+    /// The servers they name that the server fetches, in the lists' order.
+    listed: Vec<Listed>,
     /// The cards relayed, in their order ([`relay`]).
     relayed: Vec<Relayed>,
 }
@@ -172,6 +201,8 @@ impl Peers {
             .collect::<Result<Vec<_>, _>>()?;
         let state = State {
             fetched: iter::repeat_with(|| None).take(configured.len()).collect(),
+            lists: Vec::new(),
+            listed: Vec::new(),
             relayed: Vec::new(),
         };
         Ok(Self {
@@ -202,7 +233,7 @@ impl Peers {
             .map(|relayed| RelayedCard {
                 card: relayed.kept.signed.clone(),
                 via: relayed.via.clone(),
-                list: None,
+                list: relayed.list.clone(),
             })
             .collect();
         ServerMessage::Peers {
@@ -213,13 +244,83 @@ impl Peers {
         }
     }
 
+    /// The answer to `Lists { seq }` at `now` (E16 M6 T5): the lists that hold then, as signed.
+    pub(crate) fn lists(&self, seq: u32, now: u64) -> ServerMessage {
+        let state = self.state();
+        let lists = (state.lists.iter())
+            .filter(|held| held.list.expires.0 > now)
+            .map(|held| held.signed.clone())
+            .collect();
+        ServerMessage::ListsAre { seq, lists }
+    }
+
+    /// The cards relayed rebuilt at `now`.
+    fn rebuild(&self, state: &mut State, now: u64) {
+        let reach = (self.depth, self.cards);
+        state.relayed = relay(&state.fetched, &state.listed, &self.own, reach, now);
+    }
+
     /// The `i`th peer's new fetch, at `now`.
     fn keep(&self, i: usize, fetched: Fetched, now: u64) {
         let mut state = self.state();
         if let Some(slot) = state.fetched.get_mut(i) {
             *slot = Some(fetched);
         }
-        state.relayed = relay(&state.fetched, &self.own, (self.depth, self.cards), now);
+        self.rebuild(&mut state, now);
+    }
+
+    /// The lists `lists`, read at `now` (E16 M6 T5), and the servers the next fetches reach of
+    /// them: each server once (the first list's), neither the server itself nor a peer, at most
+    /// `cards` less the peers, in the lists' order. A server named again at the same address keeps
+    /// its last good card.
+    fn list(&self, lists: Vec<Held>, now: u64) {
+        let mut state = self.state();
+        let mut before = std::mem::take(&mut state.listed);
+        let room = self.cards.saturating_sub(self.configured.len());
+        let mut listed: Vec<Listed> = Vec::new();
+        for held in &lists {
+            let servers = (held.list.servers.iter())
+                .filter_map(|server| Some((account::from_hex(&server.key)?, &server.address)));
+            for (key, address) in servers {
+                let peer = (self.configured.iter()).any(|peer| peer.key == key);
+                let taken = listed.iter().any(|l| l.server.key == key);
+                if peer || taken || account::to_hex(&key) == self.own || listed.len() >= room {
+                    continue;
+                }
+                let card = (before.iter_mut())
+                    .find(|l| l.server.key == key && l.server.address == *address)
+                    .and_then(|l| l.card.take());
+                listed.push(Listed {
+                    list: held.list.key.clone(),
+                    until: held.list.expires.0,
+                    server: Configured {
+                        key,
+                        address: address.clone(),
+                    },
+                    card,
+                });
+            }
+        }
+        state.listed = listed;
+        state.lists = lists;
+        self.rebuild(&mut state, now);
+    }
+
+    /// The servers the lists name that the next fetches reach, in order.
+    fn listed(&self) -> Vec<Configured> {
+        (self.state().listed.iter())
+            .map(|listed| listed.server.clone())
+            .collect()
+    }
+
+    /// The new card of `server`, the `j`th listed server, at `now`.
+    fn keep_listed(&self, j: usize, server: &Configured, card: Arc<Kept>, now: u64) {
+        let mut state = self.state();
+        let slot = state.listed.get_mut(j);
+        if let Some(listed) = slot.filter(|l| l.server.key == server.key) {
+            listed.card = Some(card);
+        }
+        self.rebuild(&mut state, now);
     }
 
     /// Drops the cards expired at `now`.
@@ -236,7 +337,12 @@ impl Peers {
                 fetched.relays.retain(|(kept, _)| kept.expires > now);
             }
         }
-        state.relayed = relay(&state.fetched, &self.own, (self.depth, self.cards), now);
+        for listed in state.listed.iter_mut() {
+            if listed.card.as_ref().is_some_and(|card| card.expires <= now) {
+                listed.card = None;
+            }
+        }
+        self.rebuild(&mut state, now);
     }
 
     /// Resolves once `rounds` rounds of fetches are done.
@@ -253,37 +359,49 @@ impl Peers {
     }
 }
 
+/// A card offered to [`relay`]: the card, the keys of its chain's links, and its list's key and
+/// expiry for a listed server's.
+type Offered<'a> = (&'a Arc<Kept>, Vec<&'a String>, Option<(&'a String, u64)>);
+
 /// The cards the server of key `own` relays at `now` of its peers' fetches `fetched` (in the
-/// configuration's order): the peers' own cards, then the cards they relay, those with a `via` of
-/// no key first, then of one, and so on below `depth` hops, the peers in order and each peer's
-/// cards in its own; each key once (by its shortest chain), `own` never; at most `cards`. A card
-/// the peer `P` relays with `via: [v…]` is relayed with `via: [P, v…]` if the chain holds through
-/// the cards relayed before it: `P`'s card (which the server vouches for), each card of `v…`
-/// vouching for the next and the last (or `P`'s, without `v…`) for the card. It is relayed until
-/// the first card of that chain expires.
+/// configuration's order) and of the servers its lists name, `listed`: the peers' own cards, the
+/// listed servers' (marked with their list's key), then the cards the peers relay, those with a
+/// `via` of no key first, then of one, and so on below `depth` hops, the peers in order and each
+/// peer's cards in its own; each key once (by its shortest chain), `own` never; at most `cards`. A
+/// card the peer `P` relays with `via: [v…]` is relayed with `via: [P, v…]` if the chain holds
+/// through the cards relayed before it: `P`'s card (which the server vouches for), each card of
+/// `v…` vouching for the next and the last (or `P`'s, without `v…`) for the card. It is relayed
+/// until the first card of that chain expires; a listed server's, until it or its list does.
 fn relay(
     fetched: &[Option<Fetched>],
+    listed: &[Listed],
     own: &str,
     (depth, cards): (usize, usize),
     now: u64,
 ) -> Vec<Relayed> {
     let peers: Vec<&Fetched> = fetched.iter().flatten().collect();
-    // Each card offered, with the keys of its chain's links: the peers' own cards first.
-    let mut offered: Vec<(&Arc<Kept>, Vec<&String>)> = (peers.iter())
-        .map(|peer| (&peer.card, Vec::new()))
+    // Each card offered: the peers' own cards first, then the listed servers'.
+    let mut offered: Vec<Offered<'_>> = (peers.iter())
+        .map(|peer| (&peer.card, Vec::new(), None))
         .collect();
+    for listed in listed {
+        if let Some(card) = &listed.card {
+            offered.push((card, Vec::new(), Some((&listed.list, listed.until))));
+        }
+    }
     for links in 0..depth.saturating_sub(1) {
         for peer in &peers {
             let relays = (peer.relays.iter()).filter(|(_, via)| via.len() == links);
             for (kept, via) in relays {
-                offered.push((kept, iter::once(&peer.card.key).chain(via).collect()));
+                let links = iter::once(&peer.card.key).chain(via).collect();
+                offered.push((kept, links, None));
             }
         }
     }
     let mut relayed = Vec::new();
     // Each key relayed: its card, and until when it is relayed.
     let mut at: BTreeMap<&str, (&Kept, u64)> = BTreeMap::new();
-    for (kept, links) in offered {
+    for (kept, links, list) in offered {
         if relayed.len() >= cards {
             break;
         }
@@ -293,10 +411,15 @@ fn relay(
         let Some(until) = through(&at, &links, kept) else {
             continue;
         };
+        let until = list.map_or(until, |(_, expires)| until.min(expires));
+        if until <= now {
+            continue;
+        }
         at.insert(&kept.key, (kept, until));
         relayed.push(Relayed {
             kept: Arc::clone(kept),
             via: links.into_iter().cloned().collect(),
+            list: list.map(|(key, _)| key.clone()),
             until,
         });
     }
@@ -381,42 +504,33 @@ fn vouched(
 
 /// Fetches the peers' cards at start and every `discovery.refresh_ms` (from one round's start to
 /// the next's), each within `discovery.timeout_ms`, until the task is aborted; `own` is the
-/// server's id, its hello's name. A fetch in flight ends with the task.
+/// server's id, its hello's name. Each round first reads the lists in the directory `dir`
+/// (`<data>/lists/`, E16 M6 T5) and fetches the servers they name after the peers. A fetch in
+/// flight ends with the task.
 pub(crate) async fn fetch_every(
     peers: Arc<Peers>,
     tls: Arc<ClientConfig>,
     discovery: Discovery,
     own: String,
+    dir: PathBuf,
 ) {
     let every = Duration::from_millis(discovery.refresh_ms);
     let limit = Duration::from_millis(discovery.timeout_ms);
     let reach = (peers.depth, peers.cards);
     loop {
         let started = Instant::now();
+        peers.list(lists::read(&dir, wall_ms()), wall_ms());
         for (i, peer) in peers.configured.iter().enumerate() {
-            // A task of its own, which the set aborts when this one is.
-            let mut fetching = JoinSet::new();
-            let (to, tls, own) = (peer.clone(), Arc::clone(&tls), own.clone());
-            fetching.spawn(async move { timeout(limit, fetch(&to, tls, &own, reach)).await });
-            match fetching.join_next().await {
-                Some(Ok(Ok(Ok((fetched, dropped))))) => {
-                    for why in &dropped {
-                        eprintln!("h3-server: peer {}: {why}", peer.address);
-                    }
-                    peers.keep(i, fetched, wall_ms());
-                }
-                Some(Ok(Ok(Err(why)))) => failed(peer, &why.0),
-                Some(Ok(Err(_))) => failed(peer, &format!("no card within {limit:?}")),
-                // A panic: graviola's on a processor without the extensions it needs, likely.
-                Some(Err(e)) => failed(
-                    peer,
-                    &format!(
-                        "the fetch failed: {e} (the TLS client needs x86_64 or aarch64 with their \
-                         crypto extensions)"
-                    ),
-                ),
-                // The set held the fetch.
-                None => {}
+            let what = format!("peer {}", peer.address);
+            if let Some(fetched) = fetch_logged(peer, &what, (&tls, &own), reach, limit).await {
+                peers.keep(i, fetched, wall_ms());
+            }
+        }
+        // The listed servers' own cards only (depth 1).
+        for (j, server) in peers.listed().iter().enumerate() {
+            let what = format!("listed server {}", server.address);
+            if let Some(fetched) = fetch_logged(server, &what, (&tls, &own), (1, 0), limit).await {
+                peers.keep_listed(j, server, fetched.card, wall_ms());
             }
         }
         peers.prune(wall_ms());
@@ -425,13 +539,36 @@ pub(crate) async fn fetch_every(
     }
 }
 
-/// Logs a fetch of `peer`'s card that failed, and why.
-fn failed(peer: &Configured, why: &str) {
-    eprintln!(
-        "h3-server: peer {}: {why}; its last good card and the cards it relays are relayed until \
-         they expire",
-        peer.address
-    );
+/// A fetch of `to` (named `what` in the log) through the TLS client and as the server's id, `(tls,
+/// own)`, reaching `reach` within `limit`, as a task of its own, which the set aborts when the
+/// caller's is: what it got, each card dropped logged; `None` once its failure is logged.
+async fn fetch_logged(
+    to: &Configured,
+    what: &str,
+    (tls, own): (&Arc<ClientConfig>, &str),
+    reach: (usize, usize),
+    limit: Duration,
+) -> Option<Fetched> {
+    let mut fetching = JoinSet::new();
+    let (target, tls, own) = (to.clone(), Arc::clone(tls), own.to_owned());
+    fetching.spawn(async move { timeout(limit, fetch(&target, tls, &own, reach)).await });
+    let why = match fetching.join_next().await? {
+        Ok(Ok(Ok((fetched, dropped)))) => {
+            for why in &dropped {
+                eprintln!("h3-server: {what}: {why}");
+            }
+            return Some(fetched);
+        }
+        Ok(Ok(Err(why))) => why.0,
+        Ok(Err(_)) => format!("no card within {limit:?}"),
+        // A panic: graviola's on a processor without the extensions it needs, likely.
+        Err(e) => format!(
+            "the fetch failed: {e} (the TLS client needs x86_64 or aarch64 with their crypto \
+             extensions)"
+        ),
+    };
+    eprintln!("h3-server: {what}: {why}; what it last gave is relayed until it expires");
+    None
 }
 
 /// What a fetch of `peer` gets, and why each card it relays and the server does not relay on was
@@ -588,7 +725,7 @@ mod tests {
 
     /// What `relay` relays at `now` of `fetched` for the server of key 00…00, as `(card, via)`.
     fn relayed(fetched: &[Option<Fetched>], reach: (usize, usize), now: u64) -> Vec<String> {
-        (relay(fetched, &key(0), reach, now).iter())
+        (relay(fetched, &[], &key(0), reach, now).iter())
             .map(|relayed| {
                 let via: Vec<String> = (relayed.via.iter()).map(|v| v[..2].to_owned()).collect();
                 format!("{} [{}]", relayed.kept.signed.card, via.join(" "))
@@ -755,7 +892,7 @@ mod tests {
     fn a_card_is_relayed_until_the_first_card_of_its_chain_expires() {
         let (c3, c5) = (kept(3, &[5], 3000), kept(5, &[], 5000));
         let web = vec![fetched(kept(1, &[3], 2000), &[(c3, &[]), (c5, &[3])])];
-        let until: Vec<u64> = (relay(&web, &key(0), (3, 200), 0).iter())
+        let until: Vec<u64> = (relay(&web, &[], &key(0), (3, 200), 0).iter())
             .map(|relayed| relayed.until)
             .collect();
         assert_eq!(until, [2000, 2000, 2000]);
@@ -783,6 +920,144 @@ mod tests {
         let fetched = state.fetched[0].as_ref().unwrap();
         assert_eq!(fetched.relays.len(), 1);
         assert_eq!(state.relayed.len(), 1);
+    }
+
+    /// A list of the key `list`…`list` naming the servers of the keys `servers`, expiring at
+    /// `expires`, as read (its signature is not checked here).
+    fn held(list: u8, servers: &[u8], expires: u64) -> Held {
+        let list = h3_protocol::wire::ServerList {
+            key: key(list),
+            name: format!("list {list}"),
+            issued: WireU64(0),
+            expires: WireU64(expires),
+            servers: (servers.iter())
+                .map(|&n| h3_protocol::wire::ListedServer {
+                    key: key(n),
+                    address: format!("ws://s{n}"),
+                })
+                .collect(),
+        };
+        let signed = h3_protocol::wire::SignedList {
+            list: format!("list {}", list.name),
+            signature: String::new(),
+        };
+        Held { signed, list }
+    }
+
+    /// The server `n` named by the list `list`…`list`, expiring at `until`, with the card `card`.
+    fn listed(list: u8, n: u8, until: u64, card: Option<Arc<Kept>>) -> Listed {
+        let server = Configured {
+            key: [n; KEY_BYTES],
+            address: format!("ws://s{n}"),
+        };
+        Listed {
+            list: key(list),
+            until,
+            server,
+            card,
+        }
+    }
+
+    #[test]
+    fn a_listed_servers_card_comes_after_the_peers_marked_with_its_list() {
+        // The peer 1 vouches for 3 and relays it; the list 9 names 2 and 3.
+        let web = vec![fetched(kept(1, &[3], 9000), &[(kept(3, &[], 9000), &[])])];
+        let named = [
+            listed(9, 2, 5000, Some(kept(2, &[], 9000))),
+            listed(9, 3, 5000, Some(kept(3, &[], 9000))),
+            listed(9, 4, 5000, None),
+        ];
+        let shown = |now: u64| -> Vec<(String, usize, Option<String>, u64)> {
+            (relay(&web, &named, &key(0), (2, 200), now).iter())
+                .map(|r| {
+                    let list = r.list.as_ref().map(|l| l[..2].to_owned());
+                    (r.kept.signed.card.clone(), r.via.len(), list, r.until)
+                })
+                .collect()
+        };
+        let nine = Some(String::from("09"));
+        assert_eq!(
+            shown(0),
+            [
+                (String::from("card 1"), 0, None, 9000),
+                (String::from("card 2"), 0, nine.clone(), 5000),
+                (String::from("card 3"), 0, nine, 5000),
+            ]
+        );
+        // The list expired: its servers' cards go, and 3 is relayed through its peer again.
+        let after: Vec<(String, usize)> = (shown(5000).into_iter())
+            .map(|(card, via, list, _)| {
+                assert!(list.is_none());
+                (card, via)
+            })
+            .collect();
+        assert_eq!(
+            after,
+            [(String::from("card 1"), 0), (String::from("card 3"), 1)]
+        );
+    }
+
+    #[test]
+    fn the_lists_servers_are_each_fetched_once_neither_the_server_nor_a_peer() {
+        // The peer 1; at most 4 cards, so 3 listed servers.
+        let discovery = Discovery {
+            cards: 4,
+            ..Discovery::default()
+        };
+        let peer = Peer {
+            key: key(1),
+            address: String::from("ws://p1"),
+        };
+        let peers = Peers::new(&[peer], &discovery, [0; KEY_BYTES]).unwrap();
+        // The server itself (0), the peer (1), 2 and 3; then 2 again, 4 and 5.
+        let lists = vec![held(8, &[0, 1, 2, 3], 9000), held(9, &[2, 4, 5], 9000)];
+        peers.list(lists.clone(), 0);
+        let fetched: Vec<String> = (peers.listed().iter())
+            .map(|server| server.address.clone())
+            .collect();
+        assert_eq!(fetched, ["ws://s2", "ws://s3", "ws://s4"]);
+        assert_eq!(peers.state().listed[2].list, key(9));
+        // A card fetched; the next round's lists keep it for the server at the same address.
+        let s2 = peers.listed().remove(0);
+        peers.keep_listed(0, &s2, kept(2, &[], 9000), 0);
+        let ServerMessage::Peers { entries, .. } = peers.page(1, 0, 0) else {
+            panic!("not a page")
+        };
+        let entries: Vec<(String, Option<String>)> = (entries.into_iter())
+            .map(|e| (e.card.card, e.list))
+            .collect();
+        assert_eq!(entries, [(String::from("card 2"), Some(key(8)))]);
+        peers.list(lists, 0);
+        assert!(peers.state().listed[0].card.is_some());
+        // Another address for it: a new server to fetch, no card yet.
+        let mut moved = held(8, &[2], 9000);
+        moved.list.servers[0].address = String::from("ws://elsewhere");
+        peers.list(vec![moved], 0);
+        assert!(peers.state().listed[0].card.is_none());
+        // A card kept for a server no longer there in that place is not kept.
+        peers.keep_listed(1, &s2, kept(2, &[], 9000), 0);
+        assert!(peers.state().listed.iter().all(|l| l.card.is_none()));
+    }
+
+    #[test]
+    fn lists_gives_the_lists_that_hold() {
+        let peers = Peers::new(&[], &Discovery::default(), [0; KEY_BYTES]).unwrap();
+        peers.list(vec![held(8, &[], 1000), held(9, &[], 3000)], 0);
+        let given = |now: u64| {
+            let ServerMessage::ListsAre { seq: 4, lists } = peers.lists(4, now) else {
+                panic!("not lists")
+            };
+            lists.into_iter().map(|l| l.list).collect::<Vec<_>>()
+        };
+        assert_eq!(given(0), ["list list 8", "list list 9"]);
+        assert_eq!(given(1000), ["list list 9"]);
+        assert!(given(3000).is_empty());
+        // Pruned: a listed server's card expired is dropped.
+        peers.list(vec![held(9, &[2], 9000)], 0);
+        let s2 = peers.listed().remove(0);
+        peers.keep_listed(0, &s2, kept(2, &[], 2000), 0);
+        peers.prune(2000);
+        assert!(peers.state().listed[0].card.is_none());
     }
 
     /// A card of the key of seed `n`…`n` vouching for those of `vouches`, as signed by that key.

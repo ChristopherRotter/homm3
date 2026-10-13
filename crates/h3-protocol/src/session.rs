@@ -638,7 +638,8 @@ impl<'r> Session<'r> {
             | ClientMessage::Leaderboard { .. }
             | ClientMessage::Standing { .. }
             | ClientMessage::Describe { .. }
-            | ClientMessage::ListPeers { .. } => {}
+            | ClientMessage::ListPeers { .. }
+            | ClientMessage::Lists { .. } => {}
         }
     }
 
