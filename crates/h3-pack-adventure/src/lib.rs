@@ -44,7 +44,7 @@
 //! # pickup_paired = { amount = [4, 6], resources = ["wood"], paired = "gold", multiplier = 100 }
 //! # reveal_terrain = { terrains = ["water"], price = { gold = 1000 } }
 //! # reveal_area = { radius = 20 }
-//! # key_tent = { key = 0 }         # also key_guard, key_gate; keys 0-7
+//! # key_tent = { key = 0 }         # also key_guard, key_gate (from_above = true); keys 0-7
 //!
 //! [[difficulty]]                   # E08 T13a, GAM-RES-002: the starting resources by the game's
 //!                                  # difficulty, from 0 (easy); exactly one enabled pack gives

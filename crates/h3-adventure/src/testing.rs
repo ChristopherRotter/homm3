@@ -77,11 +77,14 @@ pub(crate) const TOWER: ObjectTypeId = ObjectTypeId::from_raw(4);
 pub(crate) const GUARD: ObjectTypeId = ObjectTypeId::from_raw(5);
 pub(crate) const CHART: ObjectTypeId = ObjectTypeId::from_raw(6);
 pub(crate) const OPEN_CHART: ObjectTypeId = ObjectTypeId::from_raw(7);
+pub(crate) const TENT: ObjectTypeId = ObjectTypeId::from_raw(8);
+pub(crate) const GATE: ObjectTypeId = ObjectTypeId::from_raw(9);
 
 /// [`rules`]' object types: a wood pile (3–6), a gold pile (5–10 × 100), a random pile of the two,
-/// a fire (2–3 wood and 100 gold per wood), a tower revealing radius 3, a guard of key 0, and two
+/// a fire (2–3 wood and 100 gold per wood), a tower revealing radius 8, a guard of key 0, two
 /// Cartographers of grass for 1 000 gold (E08 T14a): a chart not visited from above, as the
-/// original's, and an open chart that is.
+/// original's, and an open chart that is; a tent of key 0, entered and not from above, and a gate
+/// of key 0 (E08 T15a).
 fn object_types() -> Vec<ObjectTypeDef> {
     let n = |v| NonZeroU32::new(v).unwrap();
     let ty = |k: &str, visit, kind| ObjectTypeDef {
@@ -126,7 +129,7 @@ fn object_types() -> Vec<ObjectTypeDef> {
         ty(
             "t:tower",
             Visit::Enter,
-            ObjectKindDef::RevealArea { radius: 3 },
+            ObjectKindDef::RevealArea { radius: 8 },
         ),
         ty(
             "t:guard",
@@ -138,6 +141,12 @@ fn object_types() -> Vec<ObjectTypeDef> {
             from_above: true,
             ..ty("t:open_chart", Visit::Enter, chart())
         },
+        ty("t:tent", Visit::Enter, ObjectKindDef::KeyTent { key: 0 }),
+        ty(
+            "t:gate",
+            Visit::Neighbour,
+            ObjectKindDef::KeyGate { key: 0 },
+        ),
     ]
 }
 
@@ -390,6 +399,8 @@ fn tile_of(
         'K' => (GRASS, None, Some((1, 1, Some(GUARD)))),
         'C' => (GRASS, None, Some((1, 1, Some(CHART)))),
         'c' => (GRASS, None, Some((1, 1, Some(OPEN_CHART)))),
+        'Y' => (GRASS, None, Some((1, 1, Some(TENT)))),
+        'X' => (GRASS, None, Some((1, 1, Some(GATE)))),
         _ => (GRASS, None, None),
     }
 }
@@ -400,7 +411,7 @@ fn tile_of(
 /// blocked tile, `V` its visitable tile, `T` both (a town's gate), `P` a wood pile blocking and
 /// visited on its tile, `F` a fire likewise, `O` a tower's visitable tile (entered), `K` a guard
 /// blocking and visited on its tile, `C` a chart (a Cartographer not visited from above) likewise,
-/// `c` an open chart (one that is) likewise.
+/// `c` an open chart (one that is) likewise, `Y` a tent and `X` a gate likewise.
 pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> AdventureSetup {
     let height = rows.len() / usize::from(levels);
     let width = rows[0].chars().count();

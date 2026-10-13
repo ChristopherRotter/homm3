@@ -149,7 +149,8 @@ fn core(extra: bool) -> Ruleset {
 
 /// The adventure part for `core`: maps up to 4 × 4 on one level, three players, armies of two
 /// slots, a land table of 1300, 1360, 1430, 1500 for speeds 0 to 3, the original's starting
-/// stack chances, and a gold pile `t:pile` (5 to 10 hundreds).
+/// stack chances, a gold pile `t:pile` (5 to 10 hundreds), a Cartographer `t:chart`, a tent
+/// `t:tent` and a guard `t:guard` of key 0.
 fn part(core: &Ruleset) -> AdventureRuleset {
     part_with(core, vec![88, 25], 2)
 }
@@ -190,6 +191,21 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                     terrains: vec![key("t:grass")],
                     price: vec![(key("t:gold"), 2500)],
                 },
+            },
+            // A Keymaster's tent and a border guard of key 0 (E08 T15a).
+            ObjectTypeDef {
+                key: key("t:tent"),
+                name: "Tent".into(),
+                visit: Visit::Enter,
+                from_above: false,
+                kind: ObjectKindDef::KeyTent { key: 0 },
+            },
+            ObjectTypeDef {
+                key: key("t:guard"),
+                name: "Guard".into(),
+                visit: Visit::Neighbour,
+                from_above: true,
+                kind: ObjectKindDef::KeyGuard { key: 0 },
             },
         ],
         params: Some(AdventureParamsDef {

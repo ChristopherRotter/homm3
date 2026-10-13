@@ -1245,3 +1245,162 @@ end to end with the env's action encoding v2 and the replay format v2.
   lay out one typed object per kind and anchor (the shrunk case kept as a regression).
 - **The full local verify** (CI out of minutes) with `--with-original-data` passed before the
   review's fixes; again on the branch's head before the pull request (its result there).
+
+### Checkpoint after T14a + T14b and T15a + T15b: observatories, keys, guards and gates (2026-10-13, `adventure/e08-t15`)
+
+The user merged #142, #143 and #145 (the easy golden replay's ruleset hash after R01b) and
+accepted all of T14's calls: one object per tile, the last live one in map order, for both modes,
+and setup's refusal of a hero on a neighbour-visited object's tile; tile 0 for the entries without
+a tile; v1 replays refused, v2 needing the difficulty; no `CannotPay` at the answer; no event for a
+kind already bought; one typed object per type and anchor in the play maps. The round: T15 in two
+parts on one pull request, **T15a** the observatories, Keymaster's tents and border guards with the
+second offer, **T15b** the border gates alone (the only change to movement and the query, so its
+benchmark check is its own). The merged branches `adventure/e08-t14` and
+`adventure/e08-easy-replay-hash` stay on GitHub (the user). CI still cannot start (GitHub: failed
+payments or the spending limit), so the full local verify stands in again.
+
+**T15a — observatories, Keymaster's tents, border guards with the second offer** (a worker).
+- **Built kinds** (ADR-0016 point 4): `ObjectKind::visit_built` became `ObjectKind::effect`, an
+  `Effect` per kind whose visit is built (pickup, Cartographer, observatory, tent, guard; the gate
+  `None`, T15b's), carried by the step's visit, so `visit` dispatches on it with no dead arm (agent's
+  call). The data and the import were already T12a's (`reveal_area = { radius = 20 }`, the tents
+  and guards by colour): no ruleset-part or import change.
+- **Observatories** (ADV-VIS-002): entered, not from above; after the step's own reveal, the disk of
+  the type's radius around the visited tile on its level (`fog::reveal`) for the owner and
+  `TilesRevealed { object_type, count }` to it alone, at every visit, also with 0 new tiles (agent's
+  call: every visit tells).
+- **Keys** (ADV-VIS-003): entered, not from above; the colour's key for the owner, `KeyGained { key }`
+  to it alone; a held key gives and tells nothing (as T14's call 5). State as the original's, a byte
+  of player bits per colour (+0x4E364), in one block with the purchases (`state/flags.rs`: `Flags`
+  behind one `Option<Arc>`, none until the first purchase or key; agent's call: one field instead of
+  a second, the fork pays nothing more). `AdventureState::{has_key, keys}`,
+  `AdventureObservation::keys` (the viewer's own, a bit per colour). Adventure state hash v6 (the
+  keys after the purchases, eight bytes; equal content hashes equal before the first write).
+- **Border guards** (ADV-VIS-004): visited from a neighbour; without the key nothing and no event
+  (flagged: the original's message is not modelled); with it an offer, `Offer { hero, object_type,
+  anchor, kind }` with `OfferKind::Reveal { price }` (the Cartographer's) or `OfferKind::Pass` (no
+  price), `Offer::price()` (agent's call: the price moved into the kind). `h3_game` opens it as the
+  owner's decision (no price, never refused). Accepted: `accept_offer` (now with the core, for the
+  viewers) takes the guard off the map, `ObjectRemoved` to the players that see it, its tiles freed.
+- **The offer still stands** (ADR-0017 point 10): `AdventureState::offer_stands`, its object still on
+  the map, the last in map order with the offer's type and anchor (agent's call: one test for both
+  kinds; a Cartographer never leaves; the 164 shipped maps have no two typed objects of one type on
+  one anchor, below). The game checks it at an acceptance: otherwise `GameCommandError::OfferGone`,
+  nothing changes, and `legal_commands` lists `Decline` alone (agent's call: the new variant). The
+  stale case needs two players of one turn group, so only `h3-game`'s tests reach it (the
+  test-only `set_schedule`): both take the key and visit the guard, the first passes, the second's
+  acceptance is refused and its decline closes the decision. Game state hash v4 (a decision's offer
+  kind, 0 a reveal with its price, 1 a passage).
+- **Inventory** (ADR-0017 point 7) in the epic file: the objects two players' commands can remove (a
+  pickup, a border guard); purchases and keys only by their owner's.
+- **Shipped maps** (`original_data`, the inbox's count): typed objects of one type on one anchor,
+  each after the first: **0** in the 164 maps (and 0 of 101 246 stacked visitable tiles, as before).
+- **Properties** (`h3-map`): the red border guard is the plans' eighth kind; plans draw observatories,
+  red tents and red guards of a visitable shape more often and, in three cases of four, put a red
+  tent within three tiles of the first hero with a red guard visited from two columns east of it.
+  `landing` reads a neighbour visit from the steps told (a step fewer, the last tile visitable, at
+  most one visit event); `check_decisions` checks both kinds (a guard's offer only to a key holder,
+  an accepted one removes the guard, an accepted Cartographer's buys) and the keys (only by
+  `KeyGained`, each new); isolation over keys; the views against the events with keys and the kinds
+  of accepted offers. Hygiene: the comparison goes on after the viewer's own observatory visit
+  (agent's call, against the brief's stop: the disk is the same tiles in both games, and the
+  property compared 3 to 5 such visits per run of 48 cases, none differing). Counted over 48 cases
+  (temporary counters, three runs of the final plans): 17 to 28 keys taken, 8 to 15 observatory
+  visits, 3 to 7 guard offers, 2 to 4 accepted, 0 to 4 declined; stale answers 0 (sequential play
+  cannot make one). The
+  query's property (`h3-adventure`) has towers, tents, guards and gates. Fixed tests: the disk and
+  its count (both levels, a revisit with 0), the key once per player (its event, the observation,
+  equal keys hashing equal in either order), the guard without and with the key, the acceptance and
+  a stale acceptance's no-op, a gate still `Visit`; through the game: the guard's offer without a
+  price, its decline and acceptance, the stale case.
+- **Versions**: adventure state hash v6, game state hash v4; the ruleset-part hash (v5), the import
+  (v3), the action encoding (v2) and the replay format (v2) unchanged. Golden replays re-recorded
+  (hashes and versions only; their commands unchanged).
+- **Measured** (`bench-check`): `fork-xl-144` 349 000 056 Ir (+1.57 % on the baseline, −0.03 % on
+  T14b's: the flags' thin pointer), `random-play-duel-36` 437 705 073 (−0.43 %), `reach-xl-144`
+  565 723 829 (−0.16 %). No re-baseline.
+
+**T15b — border gates and the per-player visit mode** (a worker).
+- **The gate** (ADV-VIS-005; `ObjectKind::effect` gives `Effect::Gate(key)`, so every typed kind's
+  visit is built and `Visit` is a blocker's alone): a player holding the gate's key passes it, its
+  tile crossed like a free tile (the step does not visit, the move goes on, a path may end there;
+  the original's 0x480EE2, 0x48160A and the pathfinder's 0x56AB40, VCMI's
+  `MovementAfterDestinationRule`); any other player visits it from the neighbouring tile as a
+  pile (the step paid, D-3's drop to 0 included, the hero stays, the move ends) and nothing else
+  happens, no event (flagged as T15a's guard without the key: the original's message is not
+  modelled). Never removed; visited from above (no ADV-OBJ-004).
+- **One per-player mode** (the T14 review's inbox line; agent's call on the shape): `visit_at`
+  takes the acting player and sets `StepVisit::pass` for a gate whose key it holds (one test,
+  read only on a typed object's tile); `check_step` turns a pass into no visit, and the query's
+  object branch, which already asked `visit_at`, asks it with the hero's owner and pushes a passed
+  tile as any other. So `MoveHero` and `Reach` read one rule for a key holder and not.
+- **A key gate's type is visited from above** (agent's call): the query tests ADV-OBJ-004 on a
+  path's first tile only (T14a's peeled start), and a path never went on from any other tile an
+  object is visited from; a gate is the first such tile a path crosses, so the ruleset part now
+  refuses a `key_gate` with `from_above = false` (`InvalidObjectType`, "a key gate is not visited
+  from above"; the original's class 212 is on the "visitable from above" list, survey §2.3; the
+  packs' gates are). No hash changes: valid packs compile as before.
+- **Setup** (unchanged code, checked): `check_stand` refuses a hero on a gate's tile
+  (`StandError::Visited`), as the gate type's mode is `neighbour`, the mode of a player without
+  the key, and no player holds a key at setup. A key holder's hero that a move stopped on a gate
+  stands on a live gate, a state setup refuses but play reaches by the rules: it leaves the gate
+  as any tile (upward too), and another hero's step onto it is `Occupied` in `MoveHero` and the
+  query alike (meeting heroes is increment 3's).
+- **The inbox's second item** (an entered removable object leaving a hero on a tile whose next
+  live object is neighbour-visited): T15 cannot reach it. The removable objects (pickups, guards)
+  are visited from a neighbour, so no hero stands on their tiles when they leave; the entered
+  ones (Cartographers, observatories, tents) and the gates never leave. The line stays in the
+  inbox for the first entered removable object; `check_stand`'s refusal is a setup check only, and
+  the gate shows such a state is legal in play.
+- **Properties**: the h3-adventure query property gives the owner the gates' key from the start
+  in half its cases (`give_key`, test only; tents give it in others) and reads the visit through
+  the same per-player `visit_at`. Fixed tests: the gate without the key (stays, pays, drop to 0,
+  `PastVisit`, no event), with it (crossed with one step event per tile, a stop on it, leaving it
+  upward), another player blocked by a hero on it then visiting it, never removed; the query with
+  and without the key (and with another colour's); setup's refusal; the compile refusal. In
+  `h3-map` the red border gate is the plans' ninth kind (drawn more often with a visitable
+  shape); in three plans of four its visitable tile is the one below the red tent's (the tent is
+  not entered from above, so a hero leaving it downward meets the gate with the key, one coming
+  from below meets it without), and random play's visit pick also takes moves across a visitable
+  tile (agent's call: crossings were 1 to 4 per run before). Atomicity, legality consistency,
+  conservation, isolation, hygiene, the views against the events, clone equivalence and
+  determinism hold (also once at 600 cases in a release build). Counted over 48 cases (temporary
+  counters, seven runs of the final plans): 2 to 12 crossings by key holders, 0 to 3 stops on a
+  gate, 16 to 29 visits without the key.
+- **Versions**: none bumped (no state, import, ruleset-part hash, encoding or replay change: the
+  keys are T15a's); golden replays verify unchanged.
+- **Measured** (`bench-check`, the only T15 change to movement and the query): `reach-xl-144`
+  565 267 757 Ir (−0.24 % on the baseline, −0.08 % on T15a's), `random-play-duel-36` 437 273 411
+  (−0.52 %, −0.10 %), `fork-xl-144` 349 000 056 (+1.57 %, unchanged). The first build cost
+  +0.23 % and +0.28 % over T15a: the new parameter made the compiler call `visit_at` out of line
+  from the search (786 660 Ir of its own over 58 248 calls, from the XL map's blockers, and
+  +0.5 M in the search); `#[inline]` on it restores T15a's code. An out-of-line helper for the whole
+  object branch cost more (+0.68 %, +0.89 %). No re-baseline.
+
+**Review and closure of the round** (runner).
+- **Independent review** (an agent that had not seen the work; read the diff, traced the cases,
+  ran throwaway tests in a worktree; the query against `MoveHero` at 100 000 cases in release):
+  no defect a shipped pack or map reaches. Checked and passed: atomicity of every rejection
+  (moves onto and through gates and guards, the answers with `OfferGone`), `MoveHero` against the
+  query for gates with and without the key (crossing, stopping, leaving upward, starting on a gate,
+  a gate under another hero, two gates of other keys), the masks and `legal_*` against `apply` in
+  the stale case, the viewers of `KeyGained`, `TilesRevealed`, the offers and a guard's
+  `ObjectRemoved`, T15a's call to let the hygiene comparison go on after the viewer's own
+  observatory (sound: every disk tile is explored in the property's reference run, so `vary`
+  leaves it alone), the flags' copy-on-write and both hash bumps. Three findings, all fixed:
+  - Two guards of one type on one anchor: accepting one's passage removed the other (`offer_stands`
+    and `accept_offer` take the last object with the offer's type and anchor). Setup now refuses
+    two typed objects of one type on one anchor, `SetupError::SharedAnchor` (runner's call, for the
+    checkpoint: a player names a typed object by both, ADR-0016 point 6, so this also settles the
+    T14 verify's naming case; none of the 164 shipped maps has one, T15a's count; the play plans
+    already lay out one per kind and anchor). Random resources are checked by their own type,
+    before the draw: two different random piles on one anchor could still draw one type (a name
+    shared by pickups only, which no offer names).
+  - The ruleset accepted an entered guard or gate, which a player without the key would stand on
+    and walk past: a key guard or gate type must now be visited from a neighbour ("a key guard or
+    gate is not visited from a neighbour"; every pack's are).
+  - Wording: the env's mask and agent docs said "its two answers"; `check_masks` asserted both
+    answers with any decision open, which a turn group with a stale offer would break: now
+    `Decline`, and `Accept` while the offer stands.
+- **The full local verify** (CI cannot start: billing) with `--with-original-data` on the branch's
+  head before the pull request (its result there).

@@ -116,7 +116,7 @@ fn an_open_offer_is_answered_through_the_env() {
         "{events:?}"
     );
     let offer = env.observation(RED).decision.unwrap();
-    assert_eq!(offer.price.len(), 1);
+    assert_eq!(offer.price().len(), 1);
     assert_eq!(env.observation(BLUE).decision, None);
     assert_eq!(legal_entries(&env, RED), [ACCEPT, DECLINE]);
     for (entry, tiles) in legal_tiles(&env, RED).into_iter().enumerate() {
@@ -156,7 +156,7 @@ fn an_open_offer_is_answered_through_the_env() {
     )));
     assert_eq!(env.state_hash(), hash);
     assert_eq!(env.observation(RED).decision, Some(offer.clone()));
-    let gold = offer.price[0].0.index();
+    let gold = offer.price()[0].0.index();
     let before = env.observation(RED).treasury[gold];
     let mut accepted = Vec::new();
     let off = Action {

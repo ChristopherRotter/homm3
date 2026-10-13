@@ -13,7 +13,8 @@
 //! object types in the ruleset part and the setup ([`ObjectType`], T12a), the objects' contents
 //! drawn at the build, the objects that left the map and the tiles they freed, and the typed
 //! objects a viewer sees ([`ObjectView`], T12b), visits from a neighbour and entered (T13b, T14a),
-//! the Cartographer's offer ([`Offer`]) and its acceptance (T14b).
+//! the Cartographer's offer ([`Offer`]) and its acceptance (T14b), the observatories, the
+//! Keymaster's tents with the keys and the border guards with their offer (T15a).
 //! Pointer identity (`ptr_eq`, `as_ptr`) is allowed only in the persistent module
 //! `src/persistent.rs` (`arch.toml`, ADR-0016 point 2).
 //!
@@ -52,7 +53,7 @@ mod testing;
 
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    Offer, Sink, Viewers,
+    Offer, OfferKind, Sink, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, native_terrain};
 pub use observe::{AdventureObservation, HeroView, ObjectView, OwnHeroView, TileView};
@@ -75,8 +76,9 @@ pub use state::{AdventureState, HeroOnMap, MapObject, StaticMap, StaticTile};
 /// "Versions"; owned by the adventure lane). Bump it with any change to what the hash covers.
 /// v1 (E08 T5a): the first encoding ([`AdventureState`]'s `CanonicalHash`). v2 (E08 T6b): a
 /// hero's movement points. v3 (E08 T8a): each player's explored tiles. v4 (E08 T12): each
-/// object's type and contents. v5 (E08 T14b): the Cartographer types each player bought.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 5;
+/// object's type and contents. v5 (E08 T14b): the Cartographer types each player bought. v6 (E08
+/// T15a): the keys each player holds.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 6;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting
