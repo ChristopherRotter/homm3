@@ -4,6 +4,10 @@
 //! `h3-server rebind <config.toml> <login> <public-key>`: the operator binds an account to a new
 //! key while the server is stopped (E16 M3 T2b, `h3_server::rebind`). Provisional: the command.
 //!
+//! `h3-server card <config.toml>`: prints the running server's signed card on standard output, for
+//! a web page (E16 M6 T2, `h3_server::card`): the card it gives a client's `Describe`, which holds
+//! for `[discovery] card_ms`. Provisional: the command.
+//!
 //! Stopping (E16 M2 T5a): the first SIGINT (Ctrl-C) or SIGTERM drains the server: no new game,
 //! the waiting ones end, the running ones play on; once none runs, it stops. A second signal
 //! stops it at once. Stopped, every connection hears `Goodbye { Shutdown }` and the journals
@@ -20,9 +24,10 @@ fn main() -> ExitCode {
     match &args[..] {
         [path] => serve(path),
         [command, path, login, key] if command == "rebind" => rebind(path, login, key),
+        [command, path] if command == "card" => card(path),
         _ => {
             eprintln!(
-                "usage: h3-server <config.toml>\n       h3-server rebind <config.toml> <login> <public-key>\n{} (protocol {})",
+                "usage: h3-server <config.toml>\n       h3-server rebind <config.toml> <login> <public-key>\n       h3-server card <config.toml>\n{} (protocol {})",
                 h3_server::server_name(),
                 h3_protocol::PROTOCOL_VERSION
             );
@@ -53,6 +58,30 @@ fn rebind(path: &OsString, login: &OsString, key: &OsString) -> ExitCode {
         }
         Err(e) => {
             eprintln!("h3-server: rebind: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// The operator's card (E16 M6 T2): the running server's, on standard output.
+fn card(path: &OsString) -> ExitCode {
+    let Some(config) = load(path) else {
+        return ExitCode::FAILURE;
+    };
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build();
+    let card = match runtime {
+        Ok(runtime) => runtime.block_on(h3_server::card(&config)),
+        Err(e) => Err(h3_server::Error(format!("runtime: {e}"))),
+    };
+    match card {
+        Ok(card) => {
+            println!("{card}");
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("h3-server: card: {e}");
             ExitCode::FAILURE
         }
     }

@@ -4,7 +4,7 @@
 //! ([`Client::recv`]): a client that reads nothing for the server's `ping_timeout_ms` is dropped
 //! as gone (SRV-Q20). Its hello names a fresh nonce and the address it dialed, and it checks the
 //! welcome's signature by the server's key, and the key against one it pinned (E16 M6 T1,
-//! ADR-0021 point 1). Provisional.
+//! ADR-0021 point 1), and the server's card by the welcome's key (E16 M6 T2). Provisional.
 
 use std::net::SocketAddr;
 
@@ -14,7 +14,7 @@ use futures_util::{SinkExt, StreamExt};
 use h3_protocol::PROTOCOL_VERSION;
 use h3_protocol::account::{self, CHALLENGE_BYTES, KEY_BYTES, NONCE_BYTES, SIGNATURE_BYTES};
 use h3_protocol::codec;
-use h3_protocol::wire::{ClientMessage, Seat, ServerMessage};
+use h3_protocol::wire::{ClientMessage, Seat, ServerCard, ServerMessage, SignedCard};
 use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
@@ -23,6 +23,7 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use crate::Error;
 use crate::accounts::{Authenticator, Ed25519};
+use crate::card;
 
 /// An account's signing key (E16 M3 T2a; ADR-0019 point 1; `E16-design.md` §10).
 #[derive(Debug, Clone)]
@@ -201,6 +202,31 @@ impl Client {
     /// The welcome's server id and challenge (E16 M3 T2a).
     pub fn welcome(&self) -> Option<(&str, &[u8; CHALLENGE_BYTES])> {
         self.welcome.as_ref().map(|(id, c, _)| (id.as_str(), c))
+    }
+
+    /// The server's card (E16 M6 T2): asks with `Describe` after the hello, and checks the answer
+    /// as a client checks a card ([`card::verify`]: its own key's signature, its times, its bounds)
+    /// and that its key is the welcome's. The card, and as it was signed.
+    pub async fn describe(&mut self, seq: u32) -> Result<(ServerCard, SignedCard), Error> {
+        let key = self
+            .server_key()
+            .ok_or_else(|| Error(String::from("a card before the welcome")))?;
+        self.send(&ClientMessage::Describe { seq }).await?;
+        let Some(ServerMessage::Described {
+            seq: answered,
+            card,
+        }) = self.recv().await
+        else {
+            return Err(Error(String::from("no card")));
+        };
+        let read = card::verify(&card, card::wall_ms())
+            .map_err(|e| Error(format!("the card does not hold: {e:?}")))?;
+        if answered != seq || read.key != account::to_hex(&key) {
+            return Err(Error(String::from(
+                "another card than the welcome's server's",
+            )));
+        }
+        Ok((read, card))
     }
 
     /// Logs in as `login` by `key`, or registers the account as `display` (E16 M3 T2a): signs the

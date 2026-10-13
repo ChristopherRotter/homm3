@@ -1532,3 +1532,65 @@ rename (both "if it shows"), a separate rate for automated clients (a configurat
   `x86_64-pc-windows-gnu`.
 - **Docs**: the operator's notes (the key, `addresses`), `server.example.toml`; the design note's
   T1 bullets pruned.
+
+### M6 T2 — The card and `Describe` (2026-10-13)
+
+- **The start.** #149 (T1) merged; the branch restarted from `master`. The session's baseline verify
+  ran while the first edits were in the clone: its clippy, test and coverage steps failed on
+  them alone (the new `Describe` arms), every other step passed; the closing verify is the record.
+- **The card** (`h3-protocol`'s `card.rs`, the wire's `ServerCard`, `CardContent`, `CardLadder`,
+  `CardPeer`, `SignedCard`): `account::card_message(text)` starts with `h3-card-v1`; `card::sign`
+  signs the card's JSON text through the host's `Signer`; `card::read` takes the cryptography as a
+  function and checks the text's length (8 KiB), the card's form and bounds (`card::fits`), the
+  signature by the card's own key, `expires` after the reader's clock and `issued` at most
+  `SKEW_MS` (10 minutes) ahead; `card::is_address` is the configuration's address rule, now shared.
+  The counts are `Option`s: `null` on a card that keeps them off. *Provisional*: the bounds (16
+  rulesets of 16 packs, 16 ladders, short texts 64 bytes, description 1024, operator 256, no
+  control characters but the description's `\n`) and `CardError`'s grain.
+- **`Describe { seq }` → `Described { seq, card }`**, after the hello and without a login on any
+  server (the gate passes it to the host; before the hello it closes with `Protocol`). The
+  connection's task answers it off the task (`spawn_blocking`: the counts take the registry's and
+  the ladders' locks). Wire 25.
+- **The server** (`h3-server`'s `card.rs`): `Cards` holds the card without its times, counts and
+  ladders, built at start from the configuration (`[server] name`, the server's id by default;
+  `description`; `operator`; the addresses as the welcome knows them) and each ruleset of the offers
+  and the ladders' pools once; a card that would break the bounds with the largest counts stops the
+  start. It re-signs when asked and the last card is a minute old (`RESIGN`), issued at the wall
+  clock (`wall_ms`, the one `SystemTime` behind a local `allow`) and expiring `[discovery] card_ms`
+  later (a day; 10 minutes to 30 days); `[discovery] counts` (on) names the open connections (the
+  listener's counts, now the `Service`'s), the games waiting or running and each ladder's
+  current-season leaderboard size (`Ladders::cards`). `card::verify` is `card::read` with strict
+  Ed25519, for the test client and T3. The configuration checks `name` (1 to 64 bytes, one line),
+  `description` (1024, lines), `operator` (256, one line), at most 7 `addresses` (8 on the card).
+- **`h3-server card <config.toml>`** asks the running server at its `bind` (loopback for an
+  unspecified address) with the test client, pinning the data directory's key
+  (`ServerKey::existing`, which never writes one), and prints the signed card's JSON. *Provisional*:
+  a card of the running server (its counts live) rather than one signed offline, which would need
+  the data directory's lock and the ladders' logs.
+- **The test client**: `describe(seq)` checks the card (`card::verify`) and that its key is the
+  welcome's.
+- **Tests** (`h3-protocol` 96 → 106, `h3-server` 111 → 121): the card's bytes, its text and its
+  reading back, with and without counts; a tampered text (another name, another spacing), a forged
+  or malformed signature, a card naming another key, expired, issued beyond the skew (and at the
+  epoch's end), too large, not a card, each bound broken and all at their limits; addresses; a
+  proptest that reading never panics; `Describe` before and after the hello. In `h3-server`: a card
+  verifies by its key within its times, tampered, expired, early and forged cards fail, no counts
+  when off, the re-signing after a minute, a card beyond its bounds stops the start; end to end, a
+  client's card (the configuration's texts and addresses, the offers' rulesets once, the ladder,
+  the counts, a day's expiry, the same card within the minute though a game opened), a server
+  without counts or a name, `Describe` before the hello, `h3-server card` on `0.0.0.0` and against
+  another data directory's key or a stopped server, and the configuration's bounds.
+- **Docs**: the operator's notes (the card, `h3-server card`), `server.example.toml`, `config.rs`'s
+  format, the design note's T2 bullet pruned to what later tasks need, §2's catalogue, the M6
+  review list.
+
+### The rear hex's journals (2026-10-13, the inbox; with T2)
+
+The battle lane's #150 made a two-hex stack's position its rear hex (BAT-GEO-002, wire 23) and
+re-recorded its golden replays, with no format of its own bumped. A journal holds its game's
+commands in the replay's text form, so one written before would re-run its moves and attacks at
+other hexes: caught at its next checkpoint hash, or restored into a game its clients never saw
+where a server runs without checkpoints. `JOURNAL_FORMAT_VERSION` 8 (no line changed) makes such a
+journal void at start. Records need no bump: their manifest names the protocol (22 or lower) they
+were written in; the archive's older replays are the battle lane's replay format's concern.
+

@@ -75,7 +75,8 @@ the welcome's challenge, `Account` (code since M3 T1). M4 (§11): `Ladders`, `Qu
 game, seat }`, `Unqueued { reason }`, `GameInfo::ladder`, the refusals `NoSuchLadder`,
 `AlreadyQueued`, `InRankedGame`, `NotQueued`, `NoMatch` (code since M4 T2; `bot` since T5b);
 `LeaderboardPage`, `Rating`,
-`PauseProposed`, a forfeit's result.
+`PauseProposed`, a forfeit's result. M6 (§12): `Describe { seq }` → `Described { seq, card }`
+(code since M6 T2).
 
 ## 3. The client's content check (for the client lane, M2)
 
@@ -361,20 +362,16 @@ as `login_message` does; `h3-protocol` builds the bytes, `h3-server` and clients
   welcome and `Signer`, `account::welcome_message`; `[server] addresses` are the server's addresses
   beside `public_url`). For later tasks: the card's `addresses` are `public_url` (or `ws://` and the
   bound address) and `addresses`; the test client verifies every welcome and pins with `pin`.
-- **Card** (T2). `ServerCard { key, name, description, addresses, protocol, engine, content:
-  [{ packs, profile, ruleset_hash, battle_ruleset_hash }], ladders: [{ id, name, season, players
-  }], players_online, games_open, anonymous, operator, issued, expires, peers: [{ key, address
-  }] }`. On the wire `SignedCard { card, signature }`: `card` is the card's JSON text as signed
-  (`h3-card-v1` before it), passed on verbatim, parsed only to read it; bounded (8 KiB of text,
-  8 addresses, 64 peers, the protocol's string bounds). `Describe { seq }` → `Described { seq,
-  card }`, after the hello, without a login or a game. The server signs its card when asked and
-  its last one is older than a minute (counts move), `expires` a day after `issued` (`[discovery]
-  card_ms`). Configuration: `[server] name`, `description`, `operator`; `[discovery] counts`
-  (default true: players online and ladder counts on the card). `h3-server card` prints the signed
-  card for a web page. Wall-clock time: the card's times need `SystemTime` (banned by the
-  workspace's clippy): one function in `h3-server` behind a local `allow` with its reason, as
-  `rating.rs` does for `exp`. Verifying a card (`h3-server`, and the test client): the signature
-  with the card's own key, `expires` after now, `issued` at most 10 minutes ahead (clock skew).
+- **Card** (T2, built: `h3_protocol::card` and the wire's `ServerCard`, `SignedCard`; `h3-server`'s
+  `card.rs`). For later tasks: `card::read` checks a signed card (the text within 8 KiB, the bounds
+  of `card::fits`, the signature by the card's own key, `expires` after the reader's clock, `issued`
+  at most `SKEW_MS`, 10 minutes, ahead); whose key it is (the welcome's, a configured peer's) is the
+  reader's check; `h3-server`'s `card::verify` is it with Ed25519, `card::wall_ms` the server's one
+  wall clock. The server's `Cards` re-signs when asked and the last card is a minute old; `peers` is
+  empty until T3 fills it from `[[peer]]` (the start's bound check, `Cards::new`, then covers them).
+  *Provisional*: `players_online` counts the open connections (the asker's too), `games_open` the
+  games waiting or running, a ladder's `players` its current season's leaderboard; `h3-server card`
+  asks the running server on loopback (pinning the data directory's key) rather than signing offline.
 - **Peers and the fetch** (T3, T4). `[[peer]] key = "…" address = "wss://…"` (or `ws://` on a LAN).
   `[discovery] refresh_ms` (an hour), `depth` (2), `cards` (200), `timeout_ms` (10 s per peer).
   One task fetches at start and every `refresh_ms`: for each configured peer in order, it dials

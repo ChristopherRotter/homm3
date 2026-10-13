@@ -363,6 +363,19 @@ fn ones_own_standing_needs_a_login_a_leaderboard_does_not() {
     }
 }
 
+/// E16 M6 T2: the server's card is the host's to answer after the hello, without a login on any
+/// server; before the hello, `Describe` closes the connection as any message does.
+#[test]
+fn the_card_needs_the_hello_not_a_login() {
+    let describe = ClientMessage::Describe { seq: 1 };
+    let mut c = Connection::new(DEFAULT_MAX_CLIENT_FRAME, CHALLENGE, false);
+    assert_eq!(receive(&mut c, &describe), goodbye(GoodbyeReason::Protocol));
+    for anonymous in [true, false] {
+        let mut c = greeted(anonymous);
+        assert_eq!(receive(&mut c, &describe), Received::Game(describe.clone()));
+    }
+}
+
 proptest! {
     /// E16 M3 T1: whatever a client sends, the gate logs it in only on the host's yes, and hands
     /// the host no request for an account it is not logged in to.

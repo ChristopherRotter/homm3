@@ -14,6 +14,13 @@ shadow_instance = false         # true: a second battle checks every command (E1
 anonymous = true                # false: a game is joined or created only after a login
 # trusted_proxies = ["127.0.0.1"]       # reverse proxies whose X-Forwarded-For (its last entry)
                                         # names the client the limits count (README.md)
+name = "An example server"      # its card's name (the server's id by default)
+description = "Synthetic battles against players and the bot."   # lines end in \n
+# operator = "ops@example.org"  # how players reach the operator, on the card
+
+[discovery]                     # the server's signed card (README.md, ADR-0021 point 2)
+card_ms = 86400000              # a card holds this long after it is signed (10 min to 30 days)
+counts = true                   # false: no connection, game or player counts on the card
 
 [content]
 packs = "../../packs"

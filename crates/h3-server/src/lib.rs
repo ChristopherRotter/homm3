@@ -13,7 +13,8 @@
 //! - `accounts`: the logins, re-keys, renames and listing preferences, checked by the
 //!   `Authenticator` (Ed25519), and `players`, the player log they are kept in (M3 T2a, T2b);
 //!   [`rebind`], the operator's;
-//! - `key`: the server's key, its identity, which signs its welcomes (E16 M6 T1);
+//! - `key`: the server's key, its identity, which signs its welcomes (E16 M6 T1), and `card`, the
+//!   server's signed card (E16 M6 T2);
 //! - `ladders`: the ranked game configurations, their scenario pools and results logs, and
 //!   [`rating`], Glicko-2 (E16 M4 T1); `ids`, the game ids unique for the server's life (E16 M4
 //!   T3b);
@@ -30,6 +31,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use h3_protocol::wire::{CardContent, ServerCard, WireU64};
 use tokio::net::TcpListener;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
@@ -37,6 +39,7 @@ use tokio::task::JoinHandle;
 mod accounts;
 mod archive;
 pub mod bench;
+mod card;
 pub mod client;
 pub mod config;
 pub mod game;
@@ -185,6 +188,8 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
             config.server.data.join("next-game").display()
         ))
     })?;
+    // The rulesets the server's card names (E16 M6 T2).
+    let content = card_content(&offers, &ladders);
     let stores = game::Stores {
         accounts: Arc::clone(&accounts),
         ladders: Arc::clone(&ladders),
@@ -213,13 +218,13 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
              dial another address refuse to sign (E16 M3's review)"
         );
     }
+    let id = (config.server.public_url.clone()).unwrap_or_else(|| format!("ws://{address}"));
+    let template = card_template(config, &id, &key, content);
+    let discovery = (config.discovery.card_ms, config.discovery.counts);
+    let card = card::Cards::new(template, discovery, ladders.cards())?;
     let server = Arc::new(net::Service {
         program: server_name(),
-        id: config
-            .server
-            .public_url
-            .clone()
-            .unwrap_or_else(|| format!("ws://{address}")),
+        id,
         addresses: config.server.addresses.clone(),
         key,
         anonymous: config.server.anonymous,
@@ -229,6 +234,8 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
             .map(|proxy| proxy.to_canonical())
             .collect(),
         ladders: Arc::clone(&ladders),
+        card,
+        counts: Arc::default(),
     });
     let (stop, stopping) = watch::channel(false);
     let grace = (config.ladders.iter())
@@ -263,6 +270,51 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
     })
 }
 
+/// Each ruleset of the offers `offers` and of the ladders' pools once, as the server's card names
+/// them (E16 M6 T2).
+fn card_content(offers: &[Arc<game::Offer>], ladders: &ladders::Ladders) -> Vec<CardContent> {
+    let pools = ladders.pools().into_values().flat_map(|pool| pool.offers);
+    let content = (offers.iter().cloned().chain(pools)).map(|offer| CardContent {
+        packs: offer.info.packs.clone(),
+        profile: offer.info.profile.clone(),
+        ruleset_hash: offer.info.ruleset_hash,
+        battle_ruleset_hash: offer.info.battle_ruleset_hash,
+    });
+    card::distinct(content)
+}
+
+/// The server's card as its configuration makes it (E16 M6 T2), its times, counts and ladders left
+/// to each signing: named by the configuration (its id by default), at the server's id `id` and its
+/// other addresses, with the rulesets `content`.
+fn card_template(
+    config: &Config,
+    id: &str,
+    key: &key::ServerKey,
+    content: Vec<CardContent>,
+) -> ServerCard {
+    use h3_protocol::connection::Signer as _;
+    let server = &config.server;
+    ServerCard {
+        key: h3_protocol::account::to_hex(&key.key()),
+        name: server.name.clone().unwrap_or_else(|| id.to_owned()),
+        description: server.description.clone(),
+        addresses: std::iter::once(id.to_owned())
+            .chain(server.addresses.iter().filter(|a| *a != id).cloned())
+            .collect(),
+        protocol: h3_protocol::PROTOCOL_VERSION,
+        engine: String::from(env!("CARGO_PKG_VERSION")),
+        content,
+        ladders: Vec::new(),
+        players_online: None,
+        games_open: None,
+        anonymous: server.anonymous,
+        operator: server.operator.clone(),
+        issued: WireU64(0),
+        expires: WireU64(0),
+        peers: Vec::new(),
+    }
+}
+
 /// Takes the data directory's lock (E16 M3 T2b): one server, or one operator's command, at a time
 /// on a data directory. Released when the file closes, also when the process dies.
 fn lock(data: &Path) -> Result<File, Error> {
@@ -281,6 +333,46 @@ fn lock(data: &Path) -> Result<File, Error> {
         }
         Err(TryLockError::Error(e)) => Err(shown(&e)),
     }
+}
+
+/// The running server's signed card (E16 M6 T2), as the operator's `h3-server card` prints it for a
+/// web page: the card the server on the configuration's data directory gives a client's `Describe`
+/// at its `bind` address (the loopback address for an unspecified one), checked as a client checks
+/// it, its key the data directory's. The signed card's JSON text (`h3_protocol::wire::SignedCard`).
+pub async fn card(config: &Config) -> Result<String, Error> {
+    use h3_protocol::connection::Signer as _;
+    let key = key::ServerKey::existing(&config.server.data)?.key();
+    let bind = &config.server.bind;
+    let failed = |e: &dyn fmt::Display| Error(format!("the server at {bind}: {e}"));
+    let mut address = (tokio::net::lookup_host(bind)
+        .await
+        .map_err(|e| failed(&e))?)
+    .next()
+    .ok_or_else(|| failed(&"no address"))?;
+    if address.ip().is_unspecified() {
+        let loopback = match address {
+            SocketAddr::V4(_) => std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+            SocketAddr::V6(_) => std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST),
+        };
+        address.set_ip(loopback);
+    }
+    let mut client = client::Client::connect(address)
+        .await
+        .map_err(|e| failed(&e))?;
+    client.pin(key);
+    let welcome = client
+        .hello("h3-server card")
+        .await
+        .map_err(|e| failed(&e))?;
+    if !matches!(
+        welcome,
+        Some(h3_protocol::wire::ServerMessage::Welcome { .. })
+    ) {
+        return Err(failed(&format!("no welcome: {welcome:?}")));
+    }
+    let (_, signed) = client.describe(1).await.map_err(|e| failed(&e))?;
+    client.close().await;
+    Ok(h3_protocol::codec::encode_text(&signed))
 }
 
 /// The operator binds the account `login` to the public key `key` (64 hex digits) while no server
