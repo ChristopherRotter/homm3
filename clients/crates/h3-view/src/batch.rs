@@ -111,7 +111,9 @@ impl Batch {
 pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
     let named = list.iter().map(|d| match d {
         Draw::Background { picture, .. } | Draw::AbsoluteObstacle { picture, .. } => picture,
-        Draw::Obstacle { def, .. } | Draw::Creature { def, .. } => def,
+        Draw::Obstacle { def, .. } | Draw::Projectile { def, .. } | Draw::Creature { def, .. } => {
+            def
+        }
     });
     named
         .chain(core::iter::once(&layout.outline_palette))

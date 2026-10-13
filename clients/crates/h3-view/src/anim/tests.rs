@@ -32,6 +32,7 @@ fn look(times: [u32; 4], frames: &[(u32, u32)], top: i32) -> Look {
         climax: 0,
         missile_offsets: [[0, 0]; 3],
         top,
+        missile: None,
     }
 }
 
@@ -546,14 +547,14 @@ fn shots_without_a_climax_or_a_target() {
         timeline(&o, &commands, numbers, stage, Speed::default()).unwrap()
     };
     let shot = struck(0, 1, 1, flags(true, false, false));
-    // No climax: every frame before the projectile.
+    // No climax: every frame before the projectile, none left for the strike's loop.
     let t = run(&numbers, core::slice::from_ref(&shot));
     assert_eq!(
         t.keys
             .iter()
             .filter(|k| k.stack == 0 && k.pose.group == 15)
             .count(),
-        8 + 1
+        8
     );
     // A climax beyond the group: the same.
     numbers.get_mut(&MARKSMAN).unwrap().climax = 30;

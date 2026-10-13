@@ -1,11 +1,11 @@
 //! A record's animation numbers (E17 M2 T4a): each creature's [`Look`] from the asset tables and
-//! its DEF (the frames of each group, the standing frame's top edge), and the [`Stage`]. An
-//! adapter: it reads the archives.
+//! its DEF (the frames of each group, the standing frame's top edge; a shooter's projectile, T4b-1),
+//! and the [`Stage`]. An adapter: it reads the archives.
 
 use std::collections::BTreeMap;
 
 use h3_formats::lod::LodArchive;
-use h3_view::anim::{Look, Stage};
+use h3_view::anim::{Look, Missile, Stage};
 use h3_view::batch::Batch;
 use h3_view::layout::BattleLayout;
 use h3_view::record::Record;
@@ -51,6 +51,10 @@ pub fn looks(
             .map(|g| (g.id, u32::try_from(g.frames.len()).unwrap_or(0)))
             .collect();
         let top = sprite.frame(standing, 0).map_or(0, |f| f.top);
+        let missile = match &entry.missile {
+            Some(def) => Some(missile(def, &entry.missile_angles, archives)?),
+            None => None,
+        };
         looks.insert(
             stack.creature,
             Look {
@@ -59,10 +63,34 @@ pub fn looks(
                 climax: entry.attack_climax,
                 missile_offsets: entry.missile_offsets,
                 top,
+                missile,
             },
         );
     }
     Ok(looks)
+}
+
+/// A projectile: its DEF's canvas and the creature's angle for each frame of its group 0 (the
+/// table holds 12; a DEF with fewer frames uses the first ones, 0x469957).
+fn missile(
+    def: &str,
+    angles: &[i16; 12],
+    archives: &[(&str, LodArchive<'_>)],
+) -> Result<Missile, String> {
+    let mut batch = Batch::default();
+    batch
+        .add(def, &lookup(archives, def)?)
+        .map_err(|e| e.to_string())?;
+    let sprite = batch
+        .sprite(def)
+        .ok_or_else(|| format!("{def}: not a DEF"))?;
+    let frames = sprite.def.groups.first().map_or(0, |g| g.frames.len());
+    let size = |v: u32| i32::try_from(v).unwrap_or(i32::MAX);
+    Ok(Missile {
+        def: def.to_owned(),
+        size: [size(sprite.def.width), size(sprite.def.height)],
+        angles: angles[..frames.min(angles.len())].to_vec(),
+    })
 }
 
 /// The stage of the record's battle.

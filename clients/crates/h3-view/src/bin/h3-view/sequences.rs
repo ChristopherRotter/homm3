@@ -2,20 +2,27 @@
 //! played by the engine in-process and timed by the viewer (`h3_view::anim`), each timeline
 //! compared with the one the capture harness recorded in the original (`docs/epics/E17-design.md`
 //! §7.6). A sequence's `[[sequence.command]]` entries are the engine's commands for what the
-//! harness's actions did there (a seat and a wire command); one without them is skipped. An
-//! adapter: it reads files and the archives.
+//! harness's actions did there (a seat and a wire command); one without them is skipped. With
+//! `--frames` (E17 M2 T4b-1, design §7.9) it also draws the viewer's frame at each time the
+//! harness kept a frame of the original (`<dir>/<id>/frames.toml`, `h3drive.py frames`), for the
+//! harness's diff. An adapter: it reads files and the archives.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_formats::lod::LodArchive;
-use h3_protocol::wire::{Command, Seat, ServerMessage};
-use h3_view::anim::{self, Speed};
-use h3_view::{layout, record};
+use h3_protocol::wire::{Command, Seat, ServerMessage, Side};
+use h3_view::anim::{self, Pose, Speed, Timeline};
+use h3_view::batch::{self, Batch};
+use h3_view::compose::compose;
+use h3_view::layout::BattleLayout;
+use h3_view::record::Record;
+use h3_view::tables::Tables;
+use h3_view::{layout, record, scene};
 use serde::Deserialize;
 
-use crate::render::{read_archives, write};
+use crate::render::{lookup, read_archives, write};
 use crate::{assets, motion, scenario};
 
 /// The sequences file.
@@ -45,6 +52,22 @@ struct Step {
     command: Command,
 }
 
+/// The frames the harness kept of a sequence in the original (`h3drive.py frames`).
+#[derive(Debug, Deserialize)]
+struct Frames {
+    frame: Vec<Kept>,
+}
+
+/// One kept frame: its time, and the stacks the original shows fidgeting then (the viewer has
+/// no fidgets of its own yet: T4b-2), each `[side, record, group, frame]`.
+#[derive(Debug, Deserialize)]
+struct Kept {
+    t: u32,
+    file: String,
+    #[serde(default)]
+    fidgets: Vec<[u32; 4]>,
+}
+
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Options {
@@ -53,14 +76,17 @@ pub struct Options {
     packs: PathBuf,
     install: PathBuf,
     out: PathBuf,
+    frames: Option<PathBuf>,
 }
 
 impl Options {
-    /// Parses `[<id>] [--speed <0-2>] [--packs <dir>] [--install <dir>] [--out <dir>]`.
+    /// Parses `[<id>] [--speed <0-2>] [--packs <dir>] [--install <dir>] [--out <dir>]
+    /// [--frames <dir>]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         let (mut only, mut speed, mut packs, mut install, mut out) = (None, 0, None, None, None);
+        let mut frames = None;
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -80,6 +106,7 @@ impl Options {
                 "--packs" => packs = Some(PathBuf::from(value()?)),
                 "--install" => install = Some(PathBuf::from(value()?)),
                 "--out" => out = Some(PathBuf::from(value()?)),
+                "--frames" => frames = Some(PathBuf::from(value()?)),
                 flag if flag.starts_with("--") => {
                     return Err(format!("sequences: unknown option `{flag}`"));
                 }
@@ -95,6 +122,7 @@ impl Options {
                 .or(env)
                 .unwrap_or_else(|| manifest.join("../../../original-data/install")),
             out: out.unwrap_or_else(|| manifest.join("../../out/sequences")),
+            frames,
         })
     }
 }
@@ -190,6 +218,15 @@ fn sequences(options: &Options) -> Result<usize, String> {
             .collect();
         let ours_path = options.out.join(format!("{}.txt", sequence.id));
         write(&ours_path, ours.as_bytes())?;
+        if let Some(dir) = &options.frames {
+            let here = dir.join(&sequence.id);
+            let drawn = draw_frames(&here, &record, &timeline, &tables, &layout, &archives)?;
+            println!(
+                "{}: {drawn} frames drawn in {}",
+                sequence.id,
+                here.display()
+            );
+        }
         if options.speed.setting() != 0 {
             println!(
                 "{}: {} changes at speed {} (recorded at 0 only)",
@@ -225,6 +262,106 @@ fn sequences(options: &Options) -> Result<usize, String> {
     Ok(differing)
 }
 
+/// Draws the viewer's frame at each time in `<here>/frames.toml` (the stacks the original shows
+/// fidgeting then in its poses) into `<here>/ours/<file>.png`, and what it drew into
+/// `<here>/ours.txt`; returns how many.
+fn draw_frames(
+    here: &Path,
+    record: &Record,
+    timeline: &Timeline,
+    tables: &Tables,
+    layout: &BattleLayout,
+    archives: &[(&str, LodArchive<'_>)],
+) -> Result<usize, String> {
+    let path = here.join("frames.toml");
+    let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let kept: Frames = toml::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+    let snapshot = record
+        .first_snapshot()
+        .ok_or("the record holds no snapshot")?;
+    let manifest = &record.header.manifest;
+    let mut lists = Vec::new();
+    let mut log = String::new();
+    for frame in &kept.frame {
+        let mut moment = scene::Moment {
+            poses: timeline.at(frame.t),
+            active: timeline.outlined(frame.t),
+            pulse: timeline.pulse(frame.t),
+            projectile: timeline.projectile(frame.t),
+        };
+        for &[side, index, group, f] in &frame.fidgets {
+            let side = if side == 0 {
+                Side::Attacker
+            } else {
+                Side::Defender
+            };
+            let member = timeline
+                .members
+                .iter()
+                .find(|m| m.side == side && u32::from(m.record) == index);
+            if let Some(m) = member {
+                let hex = moment.poses.get(&m.stack).map_or(m.start.hex, |p| p.hex);
+                let pose = Pose {
+                    group,
+                    frame: f,
+                    hex,
+                    offset: [0, 0],
+                };
+                moment.poses.insert(m.stack, pose);
+            }
+        }
+        log.push_str(&describe(frame.t, &moment));
+        let list = scene::battle_at(snapshot, &moment, manifest, tables, layout)
+            .map_err(|e| e.to_string())?;
+        lists.push((frame, list));
+    }
+    let mut names = std::collections::BTreeSet::new();
+    for (_, list) in &lists {
+        names.extend(batch::names(list, layout));
+    }
+    let mut batch = Batch::default();
+    for name in &names {
+        batch
+            .add(name, &lookup(archives, name)?)
+            .map_err(|e| e.to_string())?;
+    }
+    for (frame, list) in &lists {
+        let screen = compose(list, &batch, layout).map_err(|e| e.to_string())?;
+        let png = here
+            .join("ours")
+            .join(Path::new(&frame.file).with_extension("png"));
+        write(&png, &h3_render::png::encode(&screen))?;
+    }
+    write(&here.join("ours.txt"), log.as_bytes())?;
+    Ok(lists.len())
+}
+
+/// A moment as one line: `<t> pulse <n> outline <id|-> [projectile <def> f<frame> <x>,<y>]`, then
+/// each stack's `<id>:g<group>f<frame>h<hex>[+<x>,<y>]`.
+fn describe(t: u32, moment: &scene::Moment) -> String {
+    use std::fmt::Write as _;
+    let mut line = format!("{t} pulse {} outline ", moment.pulse);
+    match moment.active {
+        Some(id) => line.push_str(&id.to_string()),
+        None => line.push('-'),
+    }
+    if let Some(p) = &moment.projectile {
+        let _ = write!(
+            line,
+            " projectile {} f{} {},{}",
+            p.def, p.frame, p.at[0], p.at[1]
+        );
+    }
+    for (id, p) in &moment.poses {
+        let _ = write!(line, " {id}:g{}f{}h{}", p.group, p.frame, p.hex);
+        if p.offset != [0, 0] {
+            let _ = write!(line, "+{},{}", p.offset[0], p.offset[1]);
+        }
+    }
+    line.push('\n');
+    line
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -242,8 +379,9 @@ mod tests {
         assert_eq!(o.only.as_deref(), Some("melee"));
         assert_eq!(o.speed, Speed::new(1));
         assert_eq!((o.out, o.packs), (PathBuf::from("/o"), PathBuf::from("/p")));
-        let o = Options::parse(&args(&["--install", "/i"])).unwrap();
+        let o = Options::parse(&args(&["--install", "/i", "--frames", "/f"])).unwrap();
         assert_eq!((o.only, o.install), (None, PathBuf::from("/i")));
+        assert_eq!(o.frames, Some(PathBuf::from("/f")));
         assert!(o.out.ends_with("out/sequences"));
         for bad in [
             &["--speed"][..],

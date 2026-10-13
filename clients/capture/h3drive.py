@@ -49,6 +49,7 @@ xdotool, xwd, Xvfb and Wine.
 """
 
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -277,6 +278,8 @@ def main(args):
         sequence_command(args[1], args[2], args[3:])
     elif args[0] == "sequences":
         sys.exit(run_sequences(args[1:]))
+    elif args[0] == "frames":
+        sys.exit(run_frames(args[1:]))
     else:
         sys.exit(__doc__)
 
@@ -455,10 +458,12 @@ def timeline(states):
     return lines
 
 
-def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False):
+def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, frames=False):
     """The battle of the map: its opening, `pre` ms on, the actions, then `ms` steps of 1 ms,
     each followed by the game's state (h3mem); returns the states (times in ms after the
-    opening, the clocks relative to it)."""
+    opening, the clocks relative to it). With `frames` (M2 T4b-1) every distinct battlefield
+    the steps show is kept: `<out>/frames/t<ms>.npz` (the whole screen, 5-6-5), its first time
+    and its state in `<out>/frames.jsonl`."""
     import hashlib
     import json
 
@@ -469,14 +474,27 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False):
     t0 = into_battle(game)
     mem = h3mem.Mem()
     now = game.clock(f"step {pre}") if pre else t0
+    kept = Path(out) / "frames"
+    if frames:
+        shutil.rmtree(kept, ignore_errors=True)
+        kept.mkdir(parents=True)
+    last = [None]
 
     def state(t):
         clocks = mem.globals()
         for k in ("frame_deadline", "idle_step_time"):
             clocks[k] -= t0
         s = {"t": t - t0, "clocks": clocks, "stacks": mem.stacks()}
-        if screen:
-            s["screen"] = hashlib.sha1(game.settled()[:556].tobytes()).hexdigest()[:12]
+        if screen or frames:
+            pix = game.settled()
+            s["screen"] = hashlib.sha1(pix[:556].tobytes()).hexdigest()[:12]
+            if frames and s["screen"] != last[0]:
+                name = f"t{t - t0:05d}.npz"
+                if (kept / name).exists():  # the actions changed it at the same time
+                    name = f"t{t - t0:05d}b.npz"
+                np.savez_compressed(kept / name, screen=pix)
+                s["kept"] = name
+            last[0] = s["screen"]
         return s
 
     states = [state(now)]
@@ -486,6 +504,11 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False):
     for _ in range(ms):
         now = game.clock("step 1")
         states.append(state(now))
+    if frames:
+        with open(Path(out) / "frames.jsonl", "w") as f:
+            for s in states:
+                if "kept" in s:
+                    f.write(json.dumps({"frame": s.pop("kept"), **s}) + "\n")
     out = Path(out)
     with open(out / "states.jsonl", "w") as f:
         for s in states:
@@ -496,13 +519,15 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False):
 
 def sequence_command(map_path, out, rest):
     opts = {"--pre": "0", "--ms": "1000"}
-    actions, screen, i = [], False, 0
+    actions, screen, frames, i = [], False, False, 0
     while i < len(rest):
         if rest[i] == "--action":
             actions.append(rest[i + 1])
             i += 2
         elif rest[i] == "--screen":
             screen, i = True, i + 1
+        elif rest[i] == "--frames":
+            frames, i = True, i + 1
         elif rest[i] in opts:
             opts[rest[i]] = rest[i + 1]
             i += 2
@@ -511,7 +536,8 @@ def sequence_command(map_path, out, rest):
     Path(out).mkdir(parents=True, exist_ok=True)
     game = Game(out)
     try:
-        sequence(game, map_path, out, int(opts["--pre"]), actions, int(opts["--ms"]), screen)
+        sequence(game, map_path, out, int(opts["--pre"]), actions, int(opts["--ms"]), screen,
+                 frames)
     finally:
         game.stop()
     print(f"sequence: {out}/timeline.txt")
@@ -549,6 +575,91 @@ def run_sequences(rest):
         failed += verdict != "ok"
         print(f"{e['id']}: {len(got.splitlines())} changes in {e['ms']} ms {verdict}", flush=True)
     print(f"sequences: {len(entries)}, {failed} not as recorded; timelines under {out}")
+    return 1 if failed else 0
+
+
+def frames_toml(kept):
+    """The kept frames for `h3-view sequences --frames`: each one's time, file and the stacks the
+    original shows fidgeting (group 1: the viewer draws no fidgets of its own yet, T4b-2)."""
+    out = ["# The original's kept frames (h3drive.py frames): numbers only.", ""]
+    for k in kept:
+        fidgets = ", ".join(f"[{st['side']}, {st['record']}, {st['group']}, {st['frame']}]"
+                            for st in k["stacks"] if st["group"] == 1 and st["count"] > 0)
+        out += ["[[frame]]", f"t = {k['t']}", f'file = "{k["frame"]}"', f"fidgets = [{fidgets}]", ""]
+    return "\n".join(out)
+
+
+def run_frames(rest):
+    """The frame check (M2 T4b-1, design §7.9): for each recorded sequence, every distinct
+    battlefield the original shows (its frames kept by `sequence`), the viewer's frame at the
+    same time (`h3-view sequences --frames`) and the masked diff of each pair against the counts
+    recorded in the sequence's `frames` file; exits 1 when one changed."""
+    import json
+
+    import h3cap
+
+    opts = {"set": str(ROOT / "clients" / "situations" / "sequences.toml")}
+    if rest and not rest[0].startswith("--"):
+        opts["set"], rest = rest[0], rest[1:]
+    reuse = "--reuse" in rest
+    rest = [r for r in rest if r != "--reuse"]
+    opts.update(zip(rest[::2], rest[1::2]))
+    set_path = Path(opts["set"])
+    out = Path(opts.get("--out", ROOT / "clients" / "out" / "frames"))
+    entries = tomllib.loads(set_path.read_text())["sequence"]
+    if "--only" in opts:
+        entries = [e for e in entries if e["id"] == opts["--only"]]
+    h3view = str(ROOT / "clients" / "target" / "release" / "h3-view")
+    failed = 0
+    for e in entries:
+        here = out / e["id"]
+        here.mkdir(parents=True, exist_ok=True)
+        if not (reuse and (here / "frames.jsonl").exists()):
+            map_path = here / f"{e['id']}.h3m"
+            subprocess.run([h3view, "situation", str(set_path.parent / e["scenario"]), "--out",
+                            str(map_path)], check=True, capture_output=True)
+            game = Game(here)
+            try:
+                sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
+                         frames=True)
+            finally:
+                game.stop()
+        kept = [json.loads(line) for line in (here / "frames.jsonl").read_text().splitlines()]
+        (here / "frames.toml").write_text(frames_toml(kept))
+        subprocess.run([h3view, "sequences", e["id"], "--frames", str(out), "--out", str(here)],
+                       check=True, capture_output=True)
+        observation = h3cap.snapshot(here / f"{e['id']}.jsonl")
+        # The poses the viewer drew (its `ours.txt`): the count boxes are masked where they show.
+        drawn = {}
+        for line in (here / "ours.txt").read_text().splitlines():
+            poses = re.findall(r"(\d+):g(\d+)f\d+h(\d+)", line)
+            drawn[int(line.split()[0])] = {int(i): (int(g), int(h)) for i, g, h in poses}
+        shutil.rmtree(here / "diff", ignore_errors=True)
+        (here / "diff").mkdir()
+        lines, differing = [], 0
+        for k in kept:
+            stem = Path(k["frame"]).stem
+            cap = np.load(here / "frames" / k["frame"])["screen"]
+            ours = h3cap.png565(here / "ours" / f"{stem}.png")
+            masked = h3cap.mask(["panel", "heroes"], shape=cap.shape)
+            for x0, y0, x1, y1 in h3cap.boxes_at(observation, drawn[k["t"]]):
+                masked[max(y0, 0):max(y1, 0), max(x0, 0):max(x1, 0)] = True
+            n, _ = h3cap.compare(cap, ours, masked)
+            if n:
+                h3cap.compare(cap, ours, masked, here / "diff" / f"{stem}.png")
+                differing += 1
+            lines.append(f"{k['t']} {n}")
+        got = "\n".join(lines) + "\n"
+        (here / "frames.txt").write_text(got)
+        recorded = set_path.parent / e.get("frames", f"timelines/{e['id']}-frames.txt")
+        if not recorded.exists():
+            verdict = "new"
+        else:
+            verdict = "ok" if got == recorded.read_text() else "CHANGED"
+        failed += verdict != "ok"
+        print(f"{e['id']}: {len(kept)} frames, {differing} differ outside the masks {verdict}",
+              flush=True)
+    print(f"frames: {len(entries)} sequences, {failed} not as recorded; under {out}")
     return 1 if failed else 0
 
 

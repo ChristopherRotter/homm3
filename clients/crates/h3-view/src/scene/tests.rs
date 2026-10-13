@@ -258,8 +258,33 @@ fn a_moment_draws_each_stack_in_its_pose() {
         .into_iter()
         .collect(),
         active: Some(2),
+        pulse: 3,
+        projectile: Some(Projectile {
+            def: "PLCBOWX.DEF".to_string(),
+            frame: 4,
+            at: [100, 50],
+            mirrored: true,
+        }),
     };
     let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
+    // T4b-1: the projectile last, over everything; the outline three idle steps on (§4.2).
+    assert_eq!(
+        list.last(),
+        Some(&Draw::Projectile {
+            def: "PLCBOWX.DEF".to_string(),
+            frame: 4,
+            x: 100,
+            y: 50,
+            mirrored: true,
+        })
+    );
+    assert!(list.iter().any(|d| matches!(
+        d,
+        Draw::Creature {
+            outline: Some(0x65),
+            ..
+        }
+    )));
     let creatures: Vec<(String, u32, u32, [i32; 2], bool)> = list
         .iter()
         .filter_map(|d| match d {

@@ -30,13 +30,15 @@ const TICK: u32 = 100;
 const PAUSE: u32 = 150;
 /// A projectile's step, outside the deadline (§7.4).
 const STEP: u32 = 33;
+/// The idle step's period, whatever the combat speed (0x4960D0, §7.1).
+const IDLE_STEP: u32 = 100;
 /// A projectile's step length in pixels: trunc((d + 20) / 40) steps (§7.4).
 const STEP_PIXELS: u64 = 40;
 /// Half a hex: a two-hex target is aimed at from its middle (0x43F323).
 const HALF_HEX: i32 = 22;
 /// tan(25°) × 10^15: a shot is up above 25°, down below −25° (0x469880).
 const TAN_25: i64 = 466_307_658_154_999;
-/// The scale of [`TAN_25`].
+/// The scale of [`TAN_25`] and of [`tangent`].
 const TAN_SCALE: i64 = 1_000_000_000_000_000;
 
 /// The combat speed (the setting `Combat Speed`, 0 to 2; 0x6987EC) and its factor F (§7.1).
@@ -94,6 +96,58 @@ pub struct Look {
     /// anchor y minus (267 − it) / 2 (0x43F338; the 267 is the canvas's anchor,
     /// [`BattleLayout::stack_canvas`]).
     pub top: i32,
+    /// A shooter's projectile (none: no projectile is drawn).
+    pub missile: Option<Missile>,
+}
+
+/// A shooter's projectile DEF and how its frame follows the shot's angle (`shot_angle_group`
+/// 0x469880, `shot_animation` 0x43F5D6; design §7.9).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Missile {
+    /// The DEF.
+    pub def: String,
+    /// Its canvas's width and height (the DEF's): each step's canvas is centred on its point.
+    pub size: [i32; 2],
+    /// The creature's angle in degrees for each frame of group 0, from high to low: frame f is
+    /// drawn when the first f midpoints between consecutive angles are at least the shot's angle
+    /// and the next is not (0x469957).
+    pub angles: Vec<i16>,
+}
+
+/// A projectile in flight (`shot_animation` 0x43F5D6 to 0x43F826, design §7.9): `steps` steps
+/// of one frame, the first shown with the shooter's last frame before it, one every `step` ms,
+/// each over the screen as it stands (nothing else is drawn meanwhile); erased after the last.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Flight {
+    /// The DEF.
+    pub def: String,
+    /// Its frame in group 0.
+    pub frame: u32,
+    /// Drawn mirrored: the target lies left of the start.
+    pub mirrored: bool,
+    /// When the first step shows.
+    pub from: u32,
+    /// Each step's time, trunc(33 F).
+    pub step: u32,
+    /// The steps, trunc((d + 20) / 40).
+    pub steps: u32,
+    /// The first step's canvas: the start point less half the DEF's size.
+    pub start: [i32; 2],
+    /// The move per step: the distance to the target over the steps, truncated.
+    pub delta: [i32; 2],
+}
+
+/// A projectile as it shows at a time.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Projectile {
+    /// The DEF.
+    pub def: String,
+    /// Its frame in group 0.
+    pub frame: u32,
+    /// Its canvas's top-left.
+    pub at: [i32; 2],
+    /// Drawn mirrored.
+    pub mirrored: bool,
 }
 
 impl Look {
@@ -187,8 +241,53 @@ pub struct Timeline {
     pub keys: Vec<Key>,
     /// The active stack from a time on (its turn started then).
     pub turns: Vec<(u32, u8)>,
+    /// The projectiles' flights, in order.
+    pub flights: Vec<Flight>,
+    /// The stack outlined as active from a time on (none: no outline), in order (§7.9).
+    pub outlines: Vec<(u32, Option<u8>)>,
+    /// When each idle step ran, up to the last command's end; [`Timeline::idle`] goes on.
+    pub steps: Vec<u32>,
+    /// The idle steps after the last command.
+    pub idle: Idle,
     /// When the last frame shows.
     pub end: u32,
+}
+
+/// The battle loop's idle steps (0x4960D0, §7.1, §7.9): while the loop ticks (from `from`), a
+/// step runs whenever the time reached `next`, which then moves on to the old one plus
+/// max(the time since it, 100 ms): on the grid while idle, twice at once after an animation
+/// held them up by 100 ms or more.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Idle {
+    /// The loop ticks from then.
+    pub from: u32,
+    /// The next step's time (0x6989B8).
+    pub next: u32,
+}
+
+impl Idle {
+    /// Runs the steps up to `until` (included), each time given to `step`.
+    fn run(&mut self, until: u32, mut step: impl FnMut(u32)) {
+        loop {
+            let now = self.next.max(self.from);
+            if now > until {
+                return;
+            }
+            step(now);
+            self.next += (now - self.next).max(IDLE_STEP);
+        }
+    }
+
+    /// One step at `now` if it is due (the computer acts on its turn's first tick); whether
+    /// one ran.
+    fn once(&mut self, now: u32, steps: &mut Vec<u32>) -> bool {
+        let due = self.next <= now;
+        if due {
+            steps.push(now);
+            self.next += (now - self.next).max(IDLE_STEP);
+        }
+        due
+    }
 }
 
 impl Timeline {
@@ -200,6 +299,42 @@ impl Timeline {
             poses.insert(key.stack, key.pose);
         }
         poses
+    }
+
+    /// The projectile showing at `t`, if one flies then.
+    pub fn projectile(&self, t: u32) -> Option<Projectile> {
+        self.flights.iter().find_map(|f| {
+            let k = t.checked_sub(f.from)? / f.step.max(1);
+            (k < f.steps).then(|| {
+                let k = i32::try_from(k).unwrap_or(0);
+                Projectile {
+                    def: f.def.clone(),
+                    frame: f.frame,
+                    at: [f.start[0] + k * f.delta[0], f.start[1] + k * f.delta[1]],
+                    mirrored: f.mirrored,
+                }
+            })
+        })
+    }
+
+    /// The stack outlined as active at `t` (§7.9): the snapshot's active stack until the first
+    /// command's first frame shows; none while a command plays; a turn's stack from its start
+    /// when a player acts next, none when the computer does (*provisional*).
+    pub fn outlined(&self, t: u32) -> Option<u8> {
+        self.outlines
+            .iter()
+            .rev()
+            .find(|(at, _)| *at <= t)
+            .and_then(|(_, stack)| *stack)
+    }
+
+    /// The idle steps taken by `t` (the outline's pulse, §4.2): the opening's at 0, then as
+    /// [`Idle`] says.
+    pub fn pulse(&self, t: u32) -> u32 {
+        let mut count = self.steps.iter().filter(|s| **s <= t).count();
+        let mut idle = self.idle;
+        idle.run(t, |_| count += 1);
+        u32::try_from(count).unwrap_or(u32::MAX)
     }
 
     /// The active stack at `t` (its turn's start), if a turn started by then.
@@ -361,8 +496,12 @@ pub fn timeline(
         stacks,
         keys: Vec::new(),
         turns: Vec::new(),
+        flights: Vec::new(),
     };
     let mut drew = false;
+    let mut outlines = vec![(0, snapshot.active)];
+    let mut waiting = snapshot.active;
+    let (mut idle, mut steps) = (Idle::default(), Vec::new());
     for (i, command) in commands.iter().enumerate() {
         let default = match (i, drew) {
             (0, _) => 0,
@@ -370,14 +509,39 @@ pub fn timeline(
             (_, false) => player.clock.now,
         };
         player.clock.start(command.at.unwrap_or(default));
-        let before = player.keys.len();
+        // A command without a time after the first is the computer's: the loop did not tick
+        // since the last one ended, but once when it acts, which outlines its stack until its
+        // first frame shows (*provisional*, §7.9).
+        if i > 0 && command.at.is_none() {
+            if idle.once(player.clock.now, &mut steps) {
+                outlines.push((player.clock.now, waiting));
+            }
+        } else {
+            idle.run(player.clock.now, |t| steps.push(t));
+        }
+        let (before, turns) = (player.keys.len(), player.turns.len());
         player.command(command.events);
         drew = player.keys.len() > before;
+        // The outline goes with the command's first frame shown; a turn started brings its
+        // stack's, unless the computer acts next.
+        if let Some(first) = player.keys.get(before) {
+            outlines.push((first.shown, None));
+        }
+        if let Some(&(at, stack)) = player.turns.get(turns..).and_then(<[_]>::last) {
+            let computer = commands.get(i + 1).is_some_and(|c| c.at.is_none());
+            outlines.push((at, (!computer).then_some(stack)));
+            waiting = Some(stack);
+        }
+        idle.from = player.clock.now;
     }
     Ok(Timeline {
         members,
         keys: player.keys,
         turns: player.turns,
+        flights: player.flights,
+        outlines,
+        steps,
+        idle,
         end: player.clock.now,
     })
 }
@@ -418,6 +582,61 @@ struct Reaction {
     hex: u8,
 }
 
+/// A shot's aim (0x469880): its group, its projectile's steps, start and target, and the slope
+/// its angle comes from.
+#[derive(Debug, Clone, Copy)]
+struct Aim {
+    /// 0 up, 1 straight, 2 down.
+    direction: usize,
+    steps: u32,
+    /// The start point (the chosen group's missile offset) and the target point.
+    from: [i32; 2],
+    to: [i32; 2],
+    /// |dx| and dy from the straight group's start point to the target: the angle is
+    /// atan(−dy / |dx|), and ±90° the other way round for dx = 0.
+    slope: [i64; 2],
+}
+
+impl Default for Aim {
+    /// No target: the straight group, no projectile.
+    fn default() -> Self {
+        Self {
+            direction: 1,
+            steps: 0,
+            from: [0, 0],
+            to: [0, 0],
+            slope: [0, 0],
+        }
+    }
+}
+
+impl Aim {
+    /// The projectile's frame (0x469957): the count of leading midpoints between consecutive
+    /// angles that are at least the shot's angle. The original compares the angle as an f32
+    /// with the midpoint; comparing tangents is the same but within an f32's rounding of a
+    /// midpoint (*provisional*).
+    fn frame(&self, missile: &Missile) -> u32 {
+        let [dx, dy] = self.slope;
+        let at_least = |pair: &[i16]| {
+            let midpoint = tangent(i32::from(pair[0]) + i32::from(pair[1]));
+            match (midpoint, dx) {
+                (i64::MAX, _) => true,
+                // Straight below the angle is +90°, above −90° (the sign inverted, 0x4698EA).
+                (_, 0) => dy <= 0,
+                _ => {
+                    i128::from(midpoint) * i128::from(dx) >= -i128::from(dy) * i128::from(TAN_SCALE)
+                }
+            }
+        };
+        let leading = missile
+            .angles
+            .windows(2)
+            .take_while(|p| at_least(p))
+            .count();
+        u32::try_from(leading).unwrap_or(0)
+    }
+}
+
 /// Plays the commands.
 #[derive(Debug)]
 struct Player<'a> {
@@ -427,6 +646,7 @@ struct Player<'a> {
     stacks: BTreeMap<u8, Live>,
     keys: Vec<Key>,
     turns: Vec<(u32, u8)>,
+    flights: Vec<Flight>,
 }
 
 impl Player<'_> {
@@ -539,7 +759,9 @@ impl Player<'_> {
             self.frame(&[(stack, pose(g.move_start, f, start))], tick);
         }
         if live.flies {
-            // A flight (0x4B4A40): k cycles of the moving group along the straight line.
+            // A flight (0x4B4A40): k cycles of the moving group along the straight line, the
+            // point moved on before each frame by (Δ / k) / n, every value an f32 (0x4B4C7B to
+            // 0x4B4CEC), drawn at its truncation (§7.9).
             let [ax, ay] = self.stage.anchor(start);
             let [bx, by] = self.stage.anchor(end);
             let (dx, dy) = (bx - ax, by - ay);
@@ -547,10 +769,20 @@ impl Player<'_> {
             let distance = u64::from(live.look.times[3]);
             // k = (d + D / 2) / D; one without a flight distance.
             let cycles = (d + distance / 2).checked_div(distance).unwrap_or(1);
+            let k = i128::from(cycles).max(1);
             let total = u32::try_from(cycles).unwrap_or(0) * n;
+            let per_frame = |delta: i32| {
+                let per_cycle = f32_round(i128::from(delta), k);
+                f32_round(i128::from(per_cycle), i128::from(n.max(1)) << F32_FRAC)
+            };
+            let step_by = [per_frame(dx), per_frame(dy)];
+            let mut at = [i64::from(ax) << F32_FRAC, i64::from(ay) << F32_FRAC];
             for j in 0..total {
+                for (a, s) in at.iter_mut().zip(step_by) {
+                    *a = f32_round(i128::from(*a) + i128::from(s), 1 << F32_FRAC);
+                }
                 let mut p = pose(g.moving, j % n, start);
-                p.offset = [share(dx, j, total), share(dy, j, total)];
+                p.offset = [f32_trunc(at[0]) - ax, f32_trunc(at[1]) - ay];
                 self.frame(&[(stack, p)], step);
             }
         } else {
@@ -617,7 +849,7 @@ impl Player<'_> {
         };
         let group = self.stage.groups.strike[direction];
         let frames = live.look.count(group);
-        self.iterate(attacker, live.hex, (group, 0, frames), &reactions);
+        self.iterate(attacker, live.hex, (group, 0, frames, frames), &reactions);
     }
 
     /// A shot of `shooter` at the stacks `hit` (`shot_animation` 0x43F2C0, §7.4).
@@ -626,8 +858,8 @@ impl Player<'_> {
             return;
         };
         let target = hit.first().and_then(|(t, _)| self.stacks.get(t)).cloned();
-        let (direction, steps) = target.map_or((1, 0), |t| self.aim(&live, &t));
-        let group = self.stage.groups.shoot[direction];
+        let aim = target.map_or_else(Aim::default, |t| self.aim(&live, &t));
+        let group = self.stage.groups.shoot[aim.direction];
         let n = live.look.count(group);
         let climax = if live.look.climax == 0 || live.look.climax > n {
             n
@@ -638,16 +870,41 @@ impl Player<'_> {
         for f in 0..climax {
             self.frame(&[(shooter, pose(group, f, live.hex))], time);
         }
-        self.clock.wait(steps * self.speed.scale(STEP));
+        let step = self.speed.scale(STEP);
+        if let Some(missile) = live.look.missile.as_ref().filter(|_| aim.steps > 0) {
+            // 0x43F5D6: the canvas centred on the start, moved by the distance over the steps
+            // (each truncated toward zero), mirrored when the target lies left of the start.
+            let [w, h] = missile.size;
+            let steps = i32::try_from(aim.steps).unwrap_or(i32::MAX);
+            let [dx, dy] = [aim.to[0] - aim.from[0], aim.to[1] - aim.from[1]];
+            self.flights.push(Flight {
+                def: missile.def.clone(),
+                frame: aim.frame(missile),
+                mirrored: aim.to[0] < aim.from[0],
+                from: self.clock.now,
+                step,
+                steps: aim.steps,
+                start: [aim.from[0] - w / 2, aim.from[1] - h / 2],
+                delta: [dx / steps, dy / steps],
+            });
+        }
+        self.clock.wait(aim.steps * step);
         let reactions = self.reactions(hit);
-        // The shooter plays its group out from the climax frame (*provisional*: what the shot
-        // sequence fits; the loop's first iterations show at once, the deadline being behind).
-        let from = climax.saturating_sub(1);
-        self.iterate(shooter, live.hex, (group, from, n - from), &reactions);
+        // The shooter plays its group out after the climax frame (0x468A3D: a shooter still in
+        // its group counts one frame less, its frame advancing before each draw), its standing
+        // pose from the second iteration on (the reference frames, §7.9); the loop's first
+        // iterations show at once, the deadline being behind.
+        self.iterate(
+            shooter,
+            live.hex,
+            (group, climax, n - climax, n - climax + 1),
+            &reactions,
+        );
     }
 
-    /// The shot's group (0 up, 1 straight, 2 down) and its projectile's steps (0x469880).
-    fn aim(&self, shooter: &Live, target: &Live) -> (usize, u32) {
+    /// The shot's group (0 up, 1 straight, 2 down), its start and target points and its
+    /// projectile's steps (0x469880, 0x43F4A7).
+    fn aim(&self, shooter: &Live, target: &Live) -> Aim {
         let [sx, sy] = self.stage.anchor(shooter.hex);
         let right = shooter.side == Side::Attacker;
         let start = |i: usize| {
@@ -677,24 +934,30 @@ impl Player<'_> {
         let [x, y] = start(direction);
         let d = isqrt(i64::from(tx - x).pow(2) + i64::from(ty - y).pow(2));
         let steps = (d + STEP_PIXELS / 2) / STEP_PIXELS;
-        (direction, u32::try_from(steps).unwrap_or(0))
+        Aim {
+            direction,
+            steps: u32::try_from(steps).unwrap_or(0),
+            from: [x, y],
+            to: [tx, ty],
+            slope: [dx, dy],
+        }
     }
 
     /// The strike's iterations (`strike_animation` 0x468990): the striker plays `frames` of
-    /// `group` from frame `from`, each reaction ends with the loop; then everyone stands, a dead
-    /// stack on its death's last frame.
+    /// `group` from frame `from` and counts `counted` for the loop's length, each reaction ends
+    /// with the loop; then everyone stands, a dead stack on its death's last frame.
     fn iterate(
         &mut self,
         striker: u8,
         hex: u8,
-        (group, from, frames): (u8, u32, u32),
+        (group, from, frames, counted): (u8, u32, u32, u32),
         reactions: &[Reaction],
     ) {
         // L = A + R − 1 (with a magic animation, at least its frames: not yet); at least A + 1,
         // so a striker without a reaction to wait for still stands at the end (the original
         // always has one: a target's reaction has six frames or more).
         let longest = reactions.iter().map(|r| r.frames).max().unwrap_or(0);
-        let loops = (frames + longest).saturating_sub(1).max(frames + 1);
+        let loops = (counted + longest).saturating_sub(1).max(counted + 1);
         let tick = self.speed.scale(TICK);
         for i in 0..loops {
             let mut poses = Vec::with_capacity(reactions.len() + 1);
@@ -721,6 +984,63 @@ impl Player<'_> {
         }
         for r in reactions.iter().filter(|r| r.died) {
             self.stacks.remove(&r.stack);
+        }
+    }
+}
+
+/// The fractional bits of the fixed-point integers that hold f32 values exactly here: every f32
+/// the flights compute (|x| < 2^23, at least 2^-16 unless 0) is a multiple of 2^-40.
+const F32_FRAC: u32 = 40;
+
+/// `num` / `den` (`den` > 0) rounded to the nearest f32, ties to even, as a fixed-point integer
+/// (the value × 2^[`F32_FRAC`]): what the x87 stores with `fstp dword` after an operation on
+/// f32 operands (the 53-bit intermediate rounds the same, §7.9). A value too small for the
+/// fixed point is cut to its grid.
+fn f32_round(num: i128, den: i128) -> i64 {
+    /// Guard bits below the fixed point's grid.
+    const GUARD: u32 = 8;
+    let negative = (num < 0) != (den < 0);
+    let (num, den) = (num.unsigned_abs(), den.unsigned_abs().max(1));
+    let scaled = num << (F32_FRAC + GUARD);
+    let (q, sticky) = (scaled / den, !scaled.is_multiple_of(den));
+    let bits = 128 - q.leading_zeros();
+    let shift = bits.saturating_sub(24).max(GUARD);
+    let (kept, rest) = (q >> shift, q & ((1 << shift) - 1));
+    let half = 1 << (shift - 1);
+    let up = rest > half || (rest == half && (sticky || kept & 1 == 1));
+    let magnitude = (kept + u128::from(up)) << (shift - GUARD);
+    let magnitude = i64::try_from(magnitude).unwrap_or(i64::MAX);
+    if negative { -magnitude } else { magnitude }
+}
+
+/// A fixed-point f32's truncation toward zero (`crt_ftol`).
+fn f32_trunc(value: i64) -> i32 {
+    i32::try_from(value / (1 << F32_FRAC)).unwrap_or(0)
+}
+
+/// tan(`half_degrees` / 2 degrees) × [`TAN_SCALE`], truncated: `i64::MAX` from 90° on,
+/// `i64::MIN` from −90° down. Sine and cosine by their series in fixed point (no platform
+/// transcendental, ADR-0003 §3), exact to about 10^-14.
+fn tangent(half_degrees: i32) -> i64 {
+    /// 1 and π, times 10^18.
+    const ONE: i128 = 1_000_000_000_000_000_000;
+    const PI: i128 = 3_141_592_653_589_793_238;
+    match half_degrees {
+        180.. => i64::MAX,
+        ..=-180 => i64::MIN,
+        h => {
+            let x = i128::from(h) * PI / 360;
+            let (mut sin, mut cos, mut term) = (0, 0, ONE);
+            for n in 0..40 {
+                match n % 4 {
+                    0 => cos += term,
+                    1 => sin += term,
+                    2 => cos -= term,
+                    _ => sin -= term,
+                }
+                term = term * x / ONE / (n + 1);
+            }
+            i64::try_from(sin * i128::from(TAN_SCALE) / cos).unwrap_or(0)
         }
     }
 }

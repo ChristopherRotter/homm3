@@ -44,8 +44,12 @@ COMBAT_SPEED = 0x6987EC  # the setting, 0 to 2 (factors 0x63CF7C)
 # Battle manager: records per side +0x54BC, the stacks from +0x54CC (21 per side, 0x6EE8 apart,
 # 0x548 each), the idle step's counter +0x13FFC.
 SIDE_COUNTS, STACKS, SIDE_STRIDE, STACK_SIZE, STEP_COUNTER = 0x54BC, 0x54CC, 0x6EE8, 0x548, 0x13FFC
+# The active stack (a pointer: outline 0x60) and the mouse's highlight (+0x132CC set: the stack on
+# the hex +0x132D0 gets outline 0x70) (M2 T4b-1; structs.toml, design §4.2).
+ACTIVE_STACK, MOUSE_HIGHLIGHT, MOUSE_HEX = 0x132C8, 0x132CC, 0x132D0
 # Stack fields (structs.toml, battle_stack): name -> offset (all i32).
 FIELDS = {
+    "draw_layer": 0x8,
     "creature": 0x34,
     "hex": 0x38,
     "group": 0x3C,
@@ -92,14 +96,33 @@ class Mem:
         return self.u32(BATTLE_MANAGER_POINTER)
 
     def globals(self):
-        """The battle's clocks (absolute game times, ms) and the combat speed."""
+        """The battle's clocks (absolute game times, ms), the combat speed, the idle steps
+        taken, the active stack (`[side, record]` or None) and the hex the mouse highlights
+        (None: none)."""
         manager = self.manager()
-        return {
+        found = {
             "frame_deadline": self.u32(FRAME_DEADLINE),
             "idle_step_time": self.u32(IDLE_STEP_TIME),
-            "idle_steps": self.i32(manager + STEP_COUNTER) if manager else None,
+            "idle_steps": None,
             "combat_speed": self.i32(COMBAT_SPEED),
+            "active": None,
+            "mouse_hex": None,
         }
+        if manager:
+            found["idle_steps"] = self.i32(manager + STEP_COUNTER)
+            found["active"] = self.stack_at(manager, self.u32(manager + ACTIVE_STACK))
+            if self.read(manager + MOUSE_HIGHLIGHT, 1) != b"\0":
+                found["mouse_hex"] = self.i32(manager + MOUSE_HEX)
+        return found
+
+    @staticmethod
+    def stack_at(manager, pointer):
+        """The `[side, record]` of a stack record's address, None for none."""
+        offset = pointer - manager - STACKS
+        if pointer == 0 or not 0 <= offset < 2 * SIDE_STRIDE:
+            return None
+        side, rest = divmod(offset, SIDE_STRIDE)
+        return [side, rest // STACK_SIZE]
 
     def stacks(self):
         """Every stack record in use: side, record and FIELDS; [] outside a battle."""
