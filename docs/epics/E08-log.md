@@ -1239,5 +1239,9 @@ end to end with the env's action encoding v2 and the replay format v2.
   tile mask was empty after `EndTurn` and the answers, a NaN for a masked softmax (tile 0 again,
   runner's call); a v2 replay without its difficulty read as normal (now a format error).
   Residual risks to the inbox (`accept_offer` trusts its offer; T15's gate and the mode).
+- **The full verify's coverage run** drew a case T13b's view property models wrongly (not the
+  engine): two campfires of other shapes on one anchor share the name a viewer sees (type and
+  anchor), so after the visited one left, told by that name, the other still showed it; plans now
+  lay out one typed object per kind and anchor (the shrunk case kept as a regression).
 - **The full local verify** (CI out of minutes) with `--with-original-data` passed before the
   review's fixes; again on the branch's head before the pull request (its result there).

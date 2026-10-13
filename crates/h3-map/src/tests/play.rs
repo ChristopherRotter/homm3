@@ -183,7 +183,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
 }
 
 /// The plan as a raw map of its version: the heroes on distinct land tiles, owners round the
-/// players, the blockers that would cover a hero's tile left out.
+/// players, the blockers that would cover a hero's tile left out, and a typed object whose kind
+/// is already on its anchor.
 pub(super) fn lay_out(plan: &Plan) -> RawMap {
     let v = plan.version;
     let side = plan.side;
@@ -240,6 +241,8 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             tile.terrain = 2;
         }
     }
+    // The typed objects laid out, by kind and anchor.
+    let mut typed: Vec<(usize, Spot)> = Vec::new();
     for &((x, y, z), shape) in &plan.blockers {
         let (ax, ay, az) = (x % side, y % side, z % levels);
         let (blocked, visitable) = BLOCKERS[shape % BLOCKERS.len()];
@@ -249,7 +252,17 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
                     ax.checked_sub(column) == Some(hx) && ay.checked_sub(row) == Some(hy)
                 })
         };
-        if !heroes.iter().any(covers) {
+        // At most one typed object of a kind on an anchor (E08 T14's review): what a viewer sees
+        // and is told names a typed object by type and anchor, never by index (ADR-0016 point 6),
+        // so a second object of the type on the anchor would share the name, and a removal could
+        // not say which of the two left the view (the T13b view property failed on two campfires
+        // of other shapes on one anchor). The engine removes the visited one either way.
+        let kind = shape / BLOCKERS.len();
+        let twin = kind > 0 && typed.contains(&(kind, (ax, ay, az)));
+        if !twin && !heroes.iter().any(covers) {
+            if kind > 0 {
+                typed.push((kind, (ax, ay, az)));
+            }
             let template = 1 + u32::try_from(shape).unwrap();
             let body = KINDS[shape / BLOCKERS.len()]
                 .2
