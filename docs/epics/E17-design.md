@@ -493,7 +493,7 @@ game's one clock (0x4F82E0, WINMM's `timeGetTime`). VCMI 1.7.5's choices: §7.5.
 
 ### 7.2 Standing, fidgets and the outline
 
-- **Standing** is group 2's frame 0; group 2's other frames never show.
+- **Standing** is group 2's frame 0: nothing read advances group 2 (the memory shows frame 0 throughout).
 - **The outline's pulse**: each idle step rotates `game.pal` 0x60-0x67 (the active stack's
   outline) and 0x70-0x77 (the mouse's stack) by one entry, eight entries in 800 ms (§6.2).
 - **Fidgets** (group 1), per stack with fidget interval t (+0x154, `cranim.txt` x 9000, i.e.
@@ -501,7 +501,7 @@ game's one clock (0x4F82E0, WINMM's `timeGetTime`). VCMI 1.7.5's choices: §7.5.
   arrow tower:
   - at the battle's start (0x479F30), and again after every action (seven copies in the action
     dispatcher 0x478D80, one in `move_and_attack` 0x478900, one in a routine of the battle loop,
-    0x474573), every stack's fidget clock +0xFC = now + 2r - t, r = random(50, t): its next
+    0x474573), every stack's (t above 51) fidget clock +0xFC = now + 2r - t, r = random(50, t): its next
     fidget starts at the first idle step after now + 2r, 100 ms to 2t later;
   - then one frame per idle step, each advance skipped when a draw of 0..100 gives less than 8
     (a stall, 8 in 101);
