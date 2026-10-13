@@ -70,7 +70,10 @@ impl Cards {
             games_open: u32::MAX,
             ladders,
         });
-        largest.ladders.iter_mut().for_each(|l| l.season = u32::MAX);
+        for ladder in &mut largest.ladders {
+            ladder.season = u32::MAX;
+            ladder.players = ladder.players.map(|_| u32::MAX);
+        }
         let text = codec::encode_text(&largest).len();
         if text > MAX_CARD_BYTES || !card::fits(&largest) {
             return Err(Error(format!(
@@ -288,6 +291,56 @@ pub(crate) mod tests {
         assert!(Cards::new(unnamed, (DAY, true), Vec::new()).is_err());
         let ladders = vec![arena(0); card::MAX_LISTED + 1];
         assert!(Cards::new(template(&key), (DAY, true), ladders).is_err());
+    }
+
+    #[test]
+    fn a_card_that_starts_keeps_its_bounds_whatever_it_counts() {
+        // The largest card that starts with sixteen ladders, none of them played yet: as many
+        // peers of long addresses, then as long a description, as the start accepts.
+        let key = ServerKey::from_seed([4; 32]);
+        let ladders = vec![arena(0); card::MAX_LISTED];
+        let card = |peers: usize, description: usize| {
+            let mut card = template(&key);
+            let address = format!("wss://{}", "p".repeat(200));
+            card.peers = vec![
+                CardPeer {
+                    key: "11".repeat(32),
+                    address
+                };
+                peers
+            ];
+            card.description = "d".repeat(description);
+            card
+        };
+        let starts = |c: ServerCard| Cards::new(c, (DAY, true), ladders.clone()).is_ok();
+        let peers = (0..=card::MAX_PEERS)
+            .take_while(|&n| starts(card(n, 0)))
+            .last()
+            .unwrap();
+        let (mut fits, mut over) = (0, card::MAX_DESCRIPTION + 1);
+        while over - fits > 1 {
+            let mid = usize::midpoint(fits, over);
+            if starts(card(peers, mid)) {
+                fits = mid;
+            } else {
+                over = mid;
+            }
+        }
+        assert!(fits < card::MAX_DESCRIPTION, "not at the bytes' bound");
+        // Signed at the latest time with every count at its most, it still fits (E16 M6's
+        // review: the start's check counted each ladder's players as they stood).
+        let cards = Cards::new(card(peers, fits), (DAY, true), ladders.clone()).unwrap();
+        let most = CardLadder {
+            season: u32::MAX,
+            players: Some(u32::MAX),
+            ..arena(0)
+        };
+        let largest = cards.card(u64::MAX - DAY, || Live {
+            players_online: u32::MAX,
+            games_open: u32::MAX,
+            ladders: vec![most; card::MAX_LISTED],
+        });
+        assert!(codec::encode_text(&largest).len() <= MAX_CARD_BYTES);
     }
 
     #[test]

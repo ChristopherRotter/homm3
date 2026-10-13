@@ -20,7 +20,8 @@
 //! `<data>/lists/`; after the peers it fetches the servers they name as it fetches a peer, without
 //! what they relay (depth 1): each server once (the first list's), neither the server itself nor
 //! a peer, at most `[discovery] cards` less the peers. Their cards are relayed marked with their
-//! list's key, which a client checks against the list (`Lists`, `h3_protocol::list::names`).
+//! list's key, which a client checks against the list (`Lists`, `h3_protocol::list::names`): a card
+//! that does not name the address its list names is not taken (E16 M6's review).
 //!
 //! What `ListPeers` pages ([`Peers::page`]) is rebuilt after each fetch and each round
 //! ([`relay`]): the peers' cards in the configuration's order, then the listed servers' in the
@@ -31,8 +32,9 @@
 //! `[discovery] cards`, never the server's own card. A card is relayed until the first card of its
 //! chain (a listed server's: or its list) expires.
 //!
-//! The TLS client (ADR-0021 point 4): `rustls` with the pure-Rust graviola backend, certificates
-//! checked against the operating system's roots, read once at start when a peer is at `wss://`.
+//! The TLS client (ADR-0021 point 4, [`Tls`]): `rustls` with the pure-Rust graviola backend,
+//! certificates checked against the operating system's roots, read once at the first fetch at
+//! `wss://`, a peer's or a listed server's.
 //! Graviola runs on x86_64 and aarch64 with their crypto extensions only, and panics elsewhere at
 //! its first use: each fetch runs as a task of its own, so such a panic fails the fetch, logged,
 //! not the server.
@@ -50,7 +52,7 @@ use std::time::Duration;
 use h3_protocol::account::{self, KEY_BYTES};
 use h3_protocol::card::{MAX_CARD_BYTES, PAGE};
 use h3_protocol::wire::{RelayedCard, ServerCard, ServerMessage, SignedCard};
-use rustls::{ClientConfig, RootCertStore};
+use rustls::{ClientConfig, ConfigBuilder, RootCertStore, WantsVerifier};
 use tokio::sync::watch;
 use tokio::task::JoinSet;
 use tokio::time::{Instant, sleep_until, timeout};
@@ -94,6 +96,8 @@ struct Kept {
     key: String,
     /// The keys of the servers it vouches for: its card's peers.
     vouches: Vec<String>,
+    /// Its addresses, as the card names them: a list names a server at one of them.
+    addresses: Vec<String>,
     /// When it expires, in milliseconds since the Unix epoch.
     expires: u64,
 }
@@ -105,6 +109,7 @@ impl Kept {
             signed,
             key: card.key,
             vouches: card.peers.into_iter().map(|peer| peer.key).collect(),
+            addresses: card.addresses,
             expires: card.expires.0,
         })
     }
@@ -503,13 +508,14 @@ fn vouched(
 }
 
 /// Fetches the peers' cards at start and every `discovery.refresh_ms` (from one round's start to
-/// the next's), each within `discovery.timeout_ms`, until the task is aborted; `own` is the
-/// server's id, its hello's name. Each round first reads the lists in the directory `dir`
-/// (`<data>/lists/`, E16 M6 T5) and fetches the servers they name after the peers. A fetch in
-/// flight ends with the task.
+/// the next's), each within `discovery.timeout_ms`, through the TLS client `tls`, until the task is
+/// aborted; `own` is the server's id, its hello's name. Each round first reads the lists in the
+/// directory `dir` (`<data>/lists/`, E16 M6 T5) and fetches the servers they name after the peers;
+/// a listed server's card must name the address its list names (a client's check,
+/// `h3_protocol::list::names`). A fetch in flight ends with the task.
 pub(crate) async fn fetch_every(
     peers: Arc<Peers>,
-    tls: Arc<ClientConfig>,
+    mut tls: Tls,
     discovery: Discovery,
     own: String,
     dir: PathBuf,
@@ -522,15 +528,25 @@ pub(crate) async fn fetch_every(
         peers.list(lists::read(&dir, wall_ms()), wall_ms());
         for (i, peer) in peers.configured.iter().enumerate() {
             let what = format!("peer {}", peer.address);
-            if let Some(fetched) = fetch_logged(peer, &what, (&tls, &own), reach, limit).await {
+            let dial = (tls.to(&peer.address), own.as_str());
+            if let Some(fetched) = fetch_logged(peer, &what, dial, reach, limit).await {
                 peers.keep(i, fetched, wall_ms());
             }
         }
         // The listed servers' own cards only (depth 1).
         for (j, server) in peers.listed().iter().enumerate() {
             let what = format!("listed server {}", server.address);
-            if let Some(fetched) = fetch_logged(server, &what, (&tls, &own), (1, 0), limit).await {
+            let dial = (tls.to(&server.address), own.as_str());
+            let Some(fetched) = fetch_logged(server, &what, dial, (1, 0), limit).await else {
+                continue;
+            };
+            if fetched.card.addresses.contains(&server.address) {
                 peers.keep_listed(j, server, fetched.card, wall_ms());
+            } else {
+                eprintln!(
+                    "h3-server: {what}: its card does not name the address its list names; what it \
+                     last gave is relayed until it expires"
+                );
             }
         }
         peers.prune(wall_ms());
@@ -539,18 +555,19 @@ pub(crate) async fn fetch_every(
     }
 }
 
-/// A fetch of `to` (named `what` in the log) through the TLS client and as the server's id, `(tls,
-/// own)`, reaching `reach` within `limit`, as a task of its own, which the set aborts when the
-/// caller's is: what it got, each card dropped logged; `None` once its failure is logged.
+/// A fetch of `to` (named `what` in the log) through the TLS client's configuration and as the
+/// server's id, `(tls, own)`, reaching `reach` within `limit`, as a task of its own, which the set
+/// aborts when the caller's is: what it got, each card dropped logged; `None` once its failure is
+/// logged.
 async fn fetch_logged(
     to: &Configured,
     what: &str,
-    (tls, own): (&Arc<ClientConfig>, &str),
+    (tls, own): (Arc<ClientConfig>, &str),
     reach: (usize, usize),
     limit: Duration,
 ) -> Option<Fetched> {
     let mut fetching = JoinSet::new();
-    let (target, tls, own) = (to.clone(), Arc::clone(tls), own.to_owned());
+    let (target, own) = (to.clone(), own.to_owned());
     fetching.spawn(async move { timeout(limit, fetch(&target, tls, &own, reach)).await });
     let why = match fetching.join_next().await? {
         Ok(Ok(Ok((fetched, dropped)))) => {
@@ -655,16 +672,71 @@ pub(crate) async fn fetch_now(
     Ok((fetched.card.signed.clone(), dropped))
 }
 
+/// The TLS client of the rounds (ADR-0021 point 4): graviola's cryptography, the certificates
+/// checked against the roots `roots` gives, read at the first fetch at `wss://`, a peer's or a
+/// listed server's (a list may name one at any round), so a server that fetches none never reads
+/// them.
+pub(crate) struct Tls {
+    /// The configuration before its roots.
+    builder: ConfigBuilder<ClientConfig, WantsVerifier>,
+    /// Where the roots come from.
+    roots: fn() -> RootCertStore,
+    /// The configuration without roots, for `ws://`, which does not use it.
+    plain: Arc<ClientConfig>,
+    /// The configuration with the roots, once read.
+    secure: Option<Arc<ClientConfig>>,
+}
+
+impl Tls {
+    /// The TLS client, its roots from `roots` when first needed; why not, if graviola's provider
+    /// cannot make one.
+    pub(crate) fn new(roots: fn() -> RootCertStore) -> Result<Self, Error> {
+        let builder = builder()?;
+        let plain = rooted(&builder, RootCertStore::empty());
+        Ok(Self {
+            builder,
+            roots,
+            plain,
+            secure: None,
+        })
+    }
+
+    /// The configuration that dials `address`: with the roots at `wss://`.
+    fn to(&mut self, address: &str) -> Arc<ClientConfig> {
+        if !address.starts_with("wss://") {
+            return Arc::clone(&self.plain);
+        }
+        let (builder, roots) = (&self.builder, self.roots);
+        Arc::clone(self.secure.get_or_insert_with(|| rooted(builder, roots())))
+    }
+}
+
+/// The TLS client's configuration before its roots: graviola's cryptography.
+fn builder() -> Result<ConfigBuilder<ClientConfig, WantsVerifier>, Error> {
+    let provider = Arc::new(rustls_graviola::default_provider());
+    ClientConfig::builder_with_provider(provider)
+        .with_safe_default_protocol_versions()
+        .map_err(|e| Error(format!("the TLS client: {e}")))
+}
+
+/// The configuration `builder` makes, the certificates checked against `roots`.
+fn rooted(
+    builder: &ConfigBuilder<ClientConfig, WantsVerifier>,
+    roots: RootCertStore,
+) -> Arc<ClientConfig> {
+    Arc::new(
+        builder
+            .clone()
+            .with_root_certificates(roots)
+            .with_no_client_auth(),
+    )
+}
+
 /// The TLS client's configuration (ADR-0021 point 4): graviola's cryptography, the certificates
 /// checked against `roots`.
+#[cfg(test)]
 pub(crate) fn tls(roots: RootCertStore) -> Result<Arc<ClientConfig>, Error> {
-    let provider = Arc::new(rustls_graviola::default_provider());
-    let config = ClientConfig::builder_with_provider(provider)
-        .with_safe_default_protocol_versions()
-        .map_err(|e| Error(format!("the TLS client: {e}")))?
-        .with_root_certificates(roots)
-        .with_no_client_auth();
-    Ok(Arc::new(config))
+    Ok(rooted(&builder()?, roots))
 }
 
 /// The operating system's root certificates (`rustls-native-certs`; those the environment's
@@ -711,6 +783,7 @@ mod tests {
             },
             key: key(n),
             vouches: vouches.iter().map(|&v| key(v)).collect(),
+            addresses: Vec::new(),
             expires,
         })
     }
