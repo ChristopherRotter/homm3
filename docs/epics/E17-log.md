@@ -419,3 +419,32 @@ On `client/e17-m2-t4a-timeline` (from CLT-Q1's branch), the user present.
 - **Decided (*provisional*, the review list):** design §7.8's list.
 - **Left for T4b:** design §7.8's "Not yet", and a full battle's record frame by frame.
 - Gates: see the pull request.
+
+### M2 T6 — Experiments on the adventure map (2026-10-13)
+
+On `client/e17-m2-t6-adventure-harness`, the user present. The session's choice, confirmed by the
+user over T4b and T2: the queue inbox's high-priority request (2026-10-13, written by the
+adventure lane, E08 T16c): agents play the domain lanes' experiment batches on the harness; until
+then the user played them. Not in the queue's tasks before (the inbox only).
+
+- **Built:** `capture/h3adv.py`: `to_hot_seat` (every name a human), `dismiss` and `end_turn`
+  (each dialog's OK found by relative probes, `learn-button`), `select` (the hero list),
+  `centre` (the minimap), `hover` (waits for the game's tile under the mouse), `walk` (two
+  clicks, the path's marks read between them, the rest detected), `batch` (a recipe's steps into
+  the results template, the spec's stamp checked), `compare`. `h3mem.py`: the adventure map's
+  players, heroes, view, mouse tile and path; `h3mem.py adventure`. The recipe
+  `capture/batches/E08-batch-2.toml`. Probes `multiplayer`, `hotseat_names`, `turn_dialog`,
+  `adventure` (both colours), `[button.ok]`. `setup.sh` sets `Show Route`.
+- **Observed** (design §6.3; `structs.toml`, `map.toml`, `inferred`): the hero, player and
+  adventure manager fields; the path's frames (1–25 green, 26–50 red); the view's geometry and
+  the minimap's.
+- **Checked:** E08 batch 2 on the harness: D3a–D3d as the user's results, all 13 fields, in two
+  runs; D5's 32 piles within 5–10 and 3–6 (one wood pile of 5, five mercury piles of 6); the
+  starting amounts differ by difficulty (the user: Easy).
+- **Decided (*provisional*, the review list):** the recipe format, `Show Route`, memory over the
+  screen, the rest after 1.5 s.
+- **Cross-lane** (the user's consent): `docs/experiments/README.md` names the command; the
+  adventure lane's inbox holds the note for its increment 3.
+- **Left:** the hero list's scrolling, the underground, Yes/No dialogs, a battle from the map, a
+  second day (design §6.3's "Not built yet"); a battle batch's cross-check (E04a batch 1a).
+- Gates: see the pull request.

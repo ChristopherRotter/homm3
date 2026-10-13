@@ -453,6 +453,50 @@ The runbook: `clients/capture/README.md`. What it rests on:
   opening, identically on every run; its other three stacks stand still for 800 ms. Why: §7.2.
 - **The panel** shows its buttons lit on the human's turn and dimmed on the computer's.
 
+### 6.3 The adventure map: experiments by agents (M2 T6)
+
+The user's request (2026-10-13, high priority): agents play the domain lanes' experiment batches
+(`docs/experiments/README.md`) in the original themselves. `h3adv.py` (runbook, "An experiment
+batch") does it on the harness; everything a record holds is read from the game's memory.
+
+- **Hot seat.** New Game → Multiplayer → Hot Seat → one name per human → the scenario list
+  (its defaults: difficulty Normal, starting bonus random) → Begin. Each human's turn opens with
+  "<colour>'s turn."; a player without towns gets "you have lost your last town" at the end of
+  its turn and the start of its next. Every dialog's OK is found anywhere on the screen by 12
+  probes relative to the button (`[button.ok]`), so a dialog's size and place do not matter.
+- **What the memory gives** (`docs/exe/structs.toml`, observed in the running game, not read,
+  so `inferred`): the heroes at game +0x21620 (156 by type, 0x492 apart, H3API's layout): the
+  tile (i16 +0x0, +0x2, +0x4), the owner (+0x22, -1 for heroes not on the map), the name (+0x23:
+  an experiment map's custom names), the day's points and the points left (+0x49, +0x4D); the
+  player record's head: colour, hero count, the selected hero, the hero list (+0x0, +0x1, +0x4,
+  +0x8); the resources (+0x9C, read before). On the batch's map every hero stood where the spec
+  put it with 2000 points (one Angel; the Pikeman scouts 1560).
+- **The view** (the adventure manager, pointer 0x699268): its top-left tile (+0xE4) and the tile
+  under the mouse (+0xE8), packed x in bits 0–9 and y in bits 16–25, signed: the view starts at
+  (−3, −2) beside the map's corner. Tile (x, y) is drawn at (8 + 32 (x − vx), 8 + 32 (y − vy)), 18
+  tiles across; a click on the minimap (144 pixels, 2 a tile on a 72 map) puts the clicked tile at
+  (9, 8) in the view. The harness hovers a tile and waits until the game reports it under the
+  mouse before it clicks, so a wrong coordinate stops the batch instead of clicking elsewhere.
+- **The path.** With `Show Route` on (`setup.sh`; a new prefix holds 0, and then the first click
+  walks), the first click on a tile shows the selected hero's path and the second walks. The
+  path's arrows are a u16 per tile of the surface at adventure manager +0x48: 0 none, 1–25 a move
+  today (green; the cross is 1, east 12, south-east 13, south 14, north-west 17), 26–50 the same
+  arrows for a later day (red: the cross 26, east 37). The marks and their colours are read from
+  there, not from the screen (a path shown before hides unchanged marks from a screen diff).
+- **Selecting a hero.** A click on another of the player's heroes routes the selected one to it
+  (a meeting): the harness clicks the hero list (rows 32 pixels apart) and checks the selected
+  hero in memory. Ending a turn: key `e` (the move reminder is off).
+- **Batch 2 against the user's results** (2026-10-13; the same `Heroes3.exe` under Wine,
+  without the HD mod the user plays with): D3a–D3d as the user recorded them, all 13 fields (50
+  then a green step to 0; 0 and a red mark, no step; 100; 0), the paths 13 green marks each;
+  twice, the same. D5's 32 piles: wood 5–10 (a 5 and two 10s), mercury 3–6 (five 6s), as the
+  user's; the amounts differ from run to run (the piles are drawn at the game's start, which runs
+  in real time). The starting amounts differ by difficulty: the user played Easy (30 wood, 15
+  mercury, plus the random bonus), the harness Normal (20, 10).
+- **Not built yet:** scrolling the hero list (more than five heroes), the underground, a visit
+  that asks a question (a Yes/No dialog), a battle started from the map (the adventure lane's
+  increment 3: monsters and battles), a second day.
+
 
 ## 7. Animation timing (M2 T3)
 
