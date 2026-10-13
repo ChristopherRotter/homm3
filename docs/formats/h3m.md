@@ -55,6 +55,10 @@ bytes).
 
 **Tile:** terrain (0 dirt … 9 rock), picture, river (0 none … 4 lava), river picture, road (0 none
 … 3 cobblestone), road picture, flags. The reader keeps every code raw; the import maps them.
+Flag `0x40` marks the coast: in the game's own maps (the 164 of the installation, E04c T3) every
+land tile with water among its eight neighbours has it and no other tile; the game takes the coast
+from it (a map without it has no shore battlefield, E04c batch 3b). VCMI 1.7.5 ignores the bit and
+looks at the same eight neighbours (`CMap::isCoastalTile`).
 
 **Template:** name (string), passability and visitability (6 bytes each, bit set = passable or
 visitable; bit `j` of byte `i` is the tile `7 − j` columns left of and `5 − i` rows above the
@@ -238,8 +242,10 @@ tile's flags, `0x10`); a north–south road uses 14 at its ends and 10 and 11 be
 experiment writer lays east–west roads only.
 
 **What the experiment writer writes** (`h3_map::writer`): one level, a base terrain with
-rectangles of other terrains, east–west roads, players without towns (Red and, with heroes of its
-own, Blue), heroes (their own fields or their hero type's), wandering monsters (class 54) and,
-since E08 T16b, resource piles (class 79 by resource, the template from `Objects.txt`, the body
-without a message: amount 0 is drawn when the game starts). `h3-map`'s read-back test reads each
+rectangles of other terrains (water among them, its land neighbours with the coast flag `0x40`,
+E04c T3), east–west roads, players without towns (Red and, with heroes of its
+own, Blue), heroes (their own fields or their hero type's), wandering monsters (class 54),
+since E08 T16b resource piles (class 79 by resource, the template from `Objects.txt`, the body
+without a message: amount 0 is drawn when the game starts) and, since E04c T3, the special
+grounds (classes 21, 46, 222–231, no body), written before the other objects. `h3-map`'s read-back test reads each
 kind back and imports a random pile as its typed pile without an amount.

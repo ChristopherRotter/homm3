@@ -96,6 +96,10 @@ fn sample(v: Version) -> RawMap {
     }
 }
 
+/// The game's first Clover Field template (`Objects.txt`): passable everywhere, class 222.
+const CLOVER_FIELD: &str = "AVXcf0.def 111111111111111111111111111111111111111111111111 \
+     000000000000000000000000000000000000000000000000 111111111 011111111 222 0 0 1";
+
 fn limits() -> Limits {
     Limits::default()
 }
@@ -633,6 +637,52 @@ fn read_bounds_the_file_and_inflates_it() {
 
 // --- the experiment writer's maps (h3-formats, until the writer moves here) ---
 
+/// E04c T3: land next to water (any of the eight neighbours) carries the coastal flag 0x40, as in
+/// every one of the game's own maps; water and other land do not. The map's edge has no water.
+#[test]
+fn the_experiment_writer_marks_the_coast() {
+    use crate::writer as w;
+    let mut players: [Option<w::Player>; w::PLAYERS] = Default::default();
+    players[0] = Some(w::Player {
+        human: true,
+        computer: true,
+        towns: 1,
+    });
+    let map = w::Map {
+        name: "Coast".to_owned(),
+        description: String::new(),
+        size: 36,
+        terrain: w::Terrain::Grass,
+        patches: vec![
+            w::Patch {
+                terrain: w::Terrain::Water,
+                from: (0, 0),
+                to: (1, 0),
+            },
+            w::Patch {
+                terrain: w::Terrain::Water,
+                from: (20, 20),
+                to: (20, 21),
+            },
+        ],
+        roads: vec![],
+        players,
+        objects: vec![],
+    };
+    let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
+    for (index, t) in m.terrain.tiles.iter().enumerate() {
+        let (x, y) = (index % 36, index / 36);
+        let water = matches!((x, y), (0..=1, 0) | (20, 20..=21));
+        let near = (x <= 2 && y <= 1) || ((19..=21).contains(&x) && (19..=22).contains(&y));
+        let coastal = if near && !water { 0x40 } else { 0 };
+        assert_eq!(
+            (t.terrain == 8, t.flags),
+            (water, coastal),
+            "tile ({x}, {y})"
+        );
+    }
+}
+
 #[test]
 fn maps_from_the_experiment_writer_read_back() {
     use crate::writer as w;
@@ -734,6 +784,11 @@ fn maps_from_the_experiment_writer_read_back() {
                 .unwrap(),
                 amount: 0,
             }),
+            // A Clover Field (E04c T3: the special grounds of batch 3), without a body.
+            w::MapObject::Ground(w::Ground {
+                tile: (30, 30),
+                template: w::ObjectTemplate::from_objects_txt(CLOVER_FIELD).unwrap(),
+            }),
         ],
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
@@ -780,9 +835,9 @@ fn maps_from_the_experiment_writer_read_back() {
         assert_eq!((t.road, t.road_dir, t.flags), road, "road of ({x}, {y})");
         assert_eq!((t.river, t.river_dir), (0, 0));
     }
-    // The heroes (written one column right of their tiles, docs/formats/h3m.md), the monster and
-    // the pile.
-    assert_eq!(m.objects.len(), 4);
+    // The heroes (written one column right of their tiles, docs/formats/h3m.md), the monster, the
+    // pile and the ground.
+    assert_eq!(m.objects.len(), 5);
     let hero_template = &m.templates[m.objects[0].template as usize];
     assert_eq!((hero_template.class, hero_template.subclass), (34, 0));
     assert_eq!(m.objects[0].pos, Pos { x: 4, y: 4, z: 0 });
@@ -828,11 +883,15 @@ fn maps_from_the_experiment_writer_read_back() {
             amount: 0
         }
     );
+    let ground_template = &m.templates[m.objects[4].template as usize];
+    assert_eq!((ground_template.class, ground_template.subclass), (222, 0));
+    assert_eq!(m.objects[4].pos, Pos { x: 30, y: 30, z: 0 });
+    assert_eq!(m.objects[4].body, Body::None);
     assert!(m.events.is_empty());
     // The import types the pile as random mercury: no fixed amount, drawn when the game starts.
-    // Heroes leave the objects for the setup's heroes: the monster, then the pile.
+    // Heroes leave the objects for the setup's heroes: the monster, the pile, then the ground.
     let setup = crate::import(&m, &import::SOD).unwrap();
-    assert_eq!(setup.map.objects.len(), 2);
+    assert_eq!(setup.map.objects.len(), 3);
     let pile = &setup.map.objects[1];
     assert_eq!(
         pile.object_type,

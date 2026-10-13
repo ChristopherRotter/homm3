@@ -1,0 +1,320 @@
+# Experiment batch 3a (E04c T3): the special battlefields' morale, luck and native terrain, and
+# whether the SoD pictures of Cursed Ground and Magic Plains make a special battlefield. Checks the
+# code reading of installation.md §7.26 where the wiki and VCMI disagree: D-1 with quirk candidate
+# S-28 (Cursed Ground sets every stack's morale to 0, negative morale included, so nobody freezes;
+# the wiki and VCMI negate only positive morale), D-2 (Clover Field's +2 luck for Stronghold,
+# Fortress and Conflux creatures only; VCMI also for creatures without a town), D-4 (the SoD
+# objects 223 and 230, which 0x4FCE20 does not list) and one control per field family (Holy
+# Ground's morale by town, Magic Plains and Lucid Pools as fields).
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them. They are the engine's at 3a4d9ff (faithful profile; computed in a
+# scratch test against the harvested SoD packs, attacker Red's hero with primary skills 1 each and
+# no skills, against one Peasant, terrain grass), which follows the code reading everywhere here;
+# the alternatives name their source.
+#
+# Each Red hero stands with its Peasant on one special ground (the picture covers both tiles; G
+# stands on plain grass): stepping east attacks it, and the battle is fought on that ground. The
+# values are read at the battle's start, before anything moves. In the game, a stack's window
+# (right-click) shows its morale and luck; an agent's run reads them from memory instead (the stack
+# record's +0x4E8 morale and +0x4EC luck, as 0x469750 stores them at the start; the battle
+# manager's +0x53C0 special field, +0x5394 terrain; docs/exe/structs.toml) and, for the native
+# bonus, the stack's speed (+0x4D8 native).
+# Creatures: Pikeman (Castle, native on grass, speed 4), Centaur (Rampart, native on grass, speed
+# 6), Gremlin (Tower, speed 4), Skeleton (Necropolis, undead: no morale, speed 4), Imp (Inferno,
+# speed 5), Goblin (Stronghold, speed 5), Gnoll (Fortress, speed 4), Pixie (Conflux, native on
+# grass, speed 7), Peasant (no town, speed 3). A native stack has +1 speed. Army alignment (BAT-MOR-002):
+# one alignment +1, three -1, four -2, five -3; an undead stack in the army another -1.
+# Not staged: an elemental field's Expert mastery of the hero's spells (BAT-TER-005; the code and
+# the wiki agree for heroes) and a creature's Expert cast on Magic Plains (D-3: the code and the
+# wiki agree); the fields' obstacles (BAT-GEO-004).
+
+[map]
+name = "E04c batch 3a"
+description = "Engine-generated experiment map (E04c, batch 3a): morale, luck and native terrain on the special battlefields. Follow the results template."
+size = 72
+terrain = "grass"
+instructions = [
+    "Copy `E04c-batch-3a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps` and start it as a single scenario (Red human). Save right away.",
+    "Each Red hero stands next to a Peasant on its encounter's ground. Play the encounters in any order: select the hero and step east into the Peasant.",
+    "At the battle's start, before anything moves, right-click each stack (Red's and the Peasant) and note its morale and luck (the numbers beside the two icons of its window) and its speed. Then end the battle as you like (win or retreat) and load the save for the next encounter.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# The grounds: a 6 x 4 picture with its bottom-right tile at (hero column + 3, row 4) covers columns
+# hero - 2 to hero + 3 and rows 1 to 4; the 3 x 3 SoD pictures at (hero + 1, 4) columns hero - 1 to
+# hero + 1 and rows 2 to 4. Heroes stand at (3 + 6 i, 3), their Peasants one column east.
+[[map.ground]]
+picture = "AVXcrsd0"  # Cursed Ground (21) under CG
+at = [12, 4]
+[[map.ground]]
+picture = "AVXcg5"  # the SoD Cursed Ground (223) under CS
+at = [16, 4]
+[[map.ground]]
+picture = "AVXplns0"  # Magic Plains (46) under PL
+at = [24, 4]
+[[map.ground]]
+picture = "AVXmp5"  # the SoD Magic Plains (230) under MS
+at = [28, 4]
+[[map.ground]]
+picture = "AVXcf0"  # Clover Field (222) under CF
+at = [36, 4]
+[[map.ground]]
+picture = "AVXhg0"  # Holy Ground (227) under HG
+at = [42, 4]
+[[map.ground]]
+picture = "AVXlp0"  # Lucid Pools (228) under LP
+at = [48, 4]
+
+# --- Cursed Ground (D-1, S-28, D-4) ----------------------------------------------------------------
+
+[[encounter]]
+id = "G"
+title = "Control: CG's army and hero on plain grass"
+questions = ["BAT-MOR-002", "BAT-LCK-001", "BAT-TER-001", "D-1"]
+procedure = [
+    "Attack the Peasant. At the battle's start, note each stack's morale, luck and speed (right-click).",
+    "End the battle as you like.",
+]
+predictions = """
+No special battlefield (field -1), terrain grass (2). Four alignments (-2) and an undead stack (-1):
+- Pikemen morale **-3**, luck **+1** (Clover of Fortune), speed **5** (native).
+- Centaurs **-3**, **+1**, speed **7** (native).
+- Gremlins **-3**, **+1**, speed 4.
+- Skeletons morale **0** (undead have none), luck **+1**, speed 4.
+- The Peasant (one alignment): morale **+1**, luck 0, speed 3.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10], ["Centaur", 10], ["Gremlin", 10], ["Skeleton", 10]]
+artifacts = { "misc 1" = "Clover of Fortune" }
+[encounter.opponent]
+monster = "Peasant"
+count = 1
+[[encounter.record]]
+table = ["stack", "morale", "luck", "speed"]
+labels = ["Pikemen", "Centaurs", "Gremlins", "Skeletons", "Peasant"]
+[[encounter.record]]
+field = "the battlefield (its picture: grass, a magic field, …)"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "CG"
+title = "Cursed Ground: morale and luck 0 for every stack, negative morale included; no native stack"
+questions = ["D-1", "S-28", "BAT-TER-003", "BAT-TER-006"]
+procedure = [
+    "Attack the Peasant. At the battle's start, note each stack's morale, luck and speed (right-click).",
+    "End the battle as you like.",
+]
+predictions = """
+Field **2** (Cursed Ground), terrain grass (2).
+- The code (0x43E00F, 0x43DF2B, 0x43D7C1) and the engine (BAT-TER-003, BAT-TER-006): every stack
+  morale **0** and luck **0**; no native stack: Pikemen speed **4**, Centaurs **6**, Gremlins 4,
+  Skeletons 4; the Peasant morale **0**, luck 0. So no stack can freeze from bad morale (S-28).
+- The wiki and VCMI 1.7.5 (D-1): only positive morale negated: the living stacks keep **-3**, the
+  Peasant **0**; luck 0 (VCMI `NO_LUCK`). The native bonus: none (the wiki); VCMI does not model
+  its loss (Pikemen speed 5, Centaurs 7).
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10], ["Centaur", 10], ["Gremlin", 10], ["Skeleton", 10]]
+artifacts = { "misc 1" = "Clover of Fortune" }
+[encounter.opponent]
+monster = "Peasant"
+count = 1
+[[encounter.record]]
+table = ["stack", "morale", "luck", "speed"]
+labels = ["Pikemen", "Centaurs", "Gremlins", "Skeletons", "Peasant"]
+[[encounter.record]]
+field = "the battlefield (its picture)"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "CS"
+title = "The SoD picture of Cursed Ground (object 223): a Cursed Ground battle or none"
+questions = ["D-4", "D-1"]
+procedure = [
+    "Attack the Peasant. At the battle's start, note each stack's morale, luck and speed (right-click).",
+    "End the battle as you like.",
+]
+predictions = """
+D-4: 0x4FCE20 lists 21, not 223; the map loader is not read.
+- If the loader turns 223 into 21 (the survey's guess): as **CG** (field 2; morale and luck 0;
+  Pikemen speed 4, Centaurs 6).
+- If not: as **G** (field -1; morale -3, -3, -3, 0; luck +1; Pikemen speed 5, Centaurs 7; the
+  Peasant +1).
+"""
+[encounter.hero]
+type = "Rissa"
+specialty = "resource mercury"
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10], ["Centaur", 10], ["Gremlin", 10], ["Skeleton", 10]]
+artifacts = { "misc 1" = "Clover of Fortune" }
+[encounter.opponent]
+monster = "Peasant"
+count = 1
+[[encounter.record]]
+table = ["stack", "morale", "luck", "speed"]
+labels = ["Pikemen", "Centaurs", "Gremlins", "Skeletons", "Peasant"]
+[[encounter.record]]
+field = "the battlefield (its picture)"
+[[encounter.record]]
+field = "anything odd"
+
+# --- Magic Plains (D-4) ----------------------------------------------------------------------------
+
+[[encounter]]
+id = "PL"
+title = "Control: Magic Plains (object 46)"
+questions = ["D-4", "BAT-TER-002"]
+procedure = [
+    "Attack the Peasant. At the battle's start, note the battlefield's picture and the Pikemen's morale, luck and speed.",
+    "End the battle as you like.",
+]
+predictions = """
+Field **1** (Magic Plains; the Magic Plains background), terrain grass. Pikemen morale +1, luck 0,
+speed 5 (native); the Peasant +1, 0.
+"""
+[encounter.hero]
+type = "Aine"
+specialty = "resource gold"
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+[encounter.opponent]
+monster = "Peasant"
+count = 1
+[[encounter.record]]
+table = ["stack", "morale", "luck", "speed"]
+labels = ["Pikemen", "Peasant"]
+[[encounter.record]]
+field = "the battlefield (its picture)"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "MS"
+title = "The SoD picture of Magic Plains (object 230): a Magic Plains battle or none"
+questions = ["D-4"]
+procedure = [
+    "Attack the Peasant. At the battle's start, note the battlefield's picture and the Pikemen's morale, luck and speed.",
+    "End the battle as you like.",
+]
+predictions = """
+D-4: 0x4FCE20 lists 46, not 230.
+- If the loader turns 230 into 46: as **PL** (field 1, the Magic Plains background).
+- If not: field **-1**, the ordinary grass background. Morale, luck and speed as PL either way.
+"""
+[encounter.hero]
+type = "Octavia"
+specialty = "resource gold"
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+[encounter.opponent]
+monster = "Peasant"
+count = 1
+[[encounter.record]]
+table = ["stack", "morale", "luck", "speed"]
+labels = ["Pikemen", "Peasant"]
+[[encounter.record]]
+field = "the battlefield (its picture)"
+[[encounter.record]]
+field = "anything odd"
+
+# --- Clover Field (D-2) ----------------------------------------------------------------------------
+
+[[encounter]]
+id = "CF"
+title = "Clover Field: +2 luck for Stronghold, Fortress and Conflux creatures; creatures without a town"
+questions = ["D-2", "BAT-TER-003"]
+procedure = [
+    "Attack the Peasant. At the battle's start, note each stack's morale, luck and speed (right-click).",
+    "End the battle as you like.",
+]
+predictions = """
+Field **5** (Clover Field), terrain grass. Five alignments: morale -3 for every Red stack.
+- The code (0x43DFF4: towns 6-8) and the engine (BAT-TER-003): luck Goblins **+2**, Gnolls **+2**,
+  Pixies **+2**, Red's Peasants **0**, Pikemen **0**; the Blue Peasant **0**.
+- VCMI 1.7.5 (alignment neutral, D-2): the Peasants (Red's and Blue's) **+2** too.
+Speeds: Goblins 5, Gnolls 4, Pixies 8 (native), Peasants 3, Pikemen 5 (native).
+"""
+[encounter.hero]
+type = "Calid"
+specialty = "resource sulfur"
+primary = [1, 1, 1, 1]
+army = [["Goblin", 10], ["Gnoll", 10], ["Pixie", 10], ["Peasant", 10], ["Pikeman", 10]]
+[encounter.opponent]
+monster = "Peasant"
+count = 1
+[[encounter.record]]
+table = ["stack", "morale", "luck", "speed"]
+labels = ["Goblins", "Gnolls", "Pixies", "Peasants (Red's)", "Pikemen", "Peasant (the monster)"]
+[[encounter.record]]
+field = "the battlefield (its picture)"
+[[encounter.record]]
+field = "anything odd"
+
+# --- Holy Ground and Lucid Pools (controls) --------------------------------------------------------
+
+[[encounter]]
+id = "HG"
+title = "Control: Holy Ground's morale by the creature's town"
+questions = ["BAT-TER-003"]
+procedure = [
+    "Attack the Peasant. At the battle's start, note each stack's morale, luck and speed (right-click).",
+    "End the battle as you like.",
+]
+predictions = """
+Field **3** (Holy Ground), terrain grass. Four alignments (-2); +1 for Castle, Rampart and Tower
+creatures, -1 for Inferno, Necropolis and Dungeon ones, nothing for the others (0x43E118):
+- Pikemen morale **-1**, Imps **-3**, Goblins **-2**, Red's Peasants **-2**; luck 0 everywhere.
+- The Blue Peasant **+1** (no town: nothing from the field).
+Speeds: Pikemen 5 (native), Imps 5, Goblins 5, Peasants 3.
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10], ["Imp", 10], ["Goblin", 10], ["Peasant", 10]]
+[encounter.opponent]
+monster = "Peasant"
+count = 1
+[[encounter.record]]
+table = ["stack", "morale", "luck", "speed"]
+labels = ["Pikemen", "Imps", "Goblins", "Peasants (Red's)", "Peasant (the monster)"]
+[[encounter.record]]
+field = "the battlefield (its picture)"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "LP"
+title = "Control: Lucid Pools (an elemental field) as the battlefield"
+questions = ["BAT-TER-002"]
+procedure = [
+    "Attack the Peasant. At the battle's start, note the battlefield's picture and the Pikemen's morale, luck and speed.",
+    "End the battle as you like.",
+]
+predictions = """
+Field **6** (Lucid Pools), terrain grass. Pikemen morale +1, luck 0, speed 5 (native); the Peasant
++1, 0.
+"""
+[encounter.hero]
+type = "Damacon"
+specialty = "resource gold"
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+[encounter.opponent]
+monster = "Peasant"
+count = 1
+[[encounter.record]]
+table = ["stack", "morale", "luck", "speed"]
+labels = ["Pikemen", "Peasant"]
+[[encounter.record]]
+field = "the battlefield (its picture)"
+[[encounter.record]]
+field = "anything odd"

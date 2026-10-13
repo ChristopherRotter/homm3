@@ -83,8 +83,9 @@ unless they name this note). Increment 2's note went with T15b; its versions are
   count's word (0x44ADE0: 1–4 few … 1 000+ legion); never the count, aggression, flags or treasure.
 - Ground kinds: `Ground { battlefield: ContentKey }` for classes 21 (Cursed Ground), 46 (Magic
   Plains) and SoD's 222–224 and 226–231 (the battlefield keys of `E04c-battlefields.md` §1; 225,
-  Favorable Winds, has none); D-4 (223 and 230 not in 0x4FCE20's list) as a reading of the loader
-  settles before T20a builds them (or a batch-E3 row).
+  Favorable Winds, has none); D-4 settled by the battle lane's batch 3a (E04c T3): 223 and 230
+  fight on Cursed Ground and Magic Plains. The import keeps grounds as untyped objects with no
+  blocked tiles today (`h3-map`'s writer places them since E04c T3).
 
 ## 4. The monster's answer and the offers (ADV-MON-007, -008; T20b)
 
@@ -123,7 +124,9 @@ unless they name this note). Increment 2's note went with T15b; its versions are
   stacks), defender = the other hero's army, the monster's split (ADV-MON-009) or the guards as
   given; `heroes` from `h3_heroes::derive_battle_hero`; `war_machines` from `h3_heroes::war_machines`;
   `terrain` the defender's tile's; `battlefield` in the original's order (E04c §4): underground →
-  subterranean; a tile next to water → sand and the shore; a `Ground` object on the tile replaces
+  subterranean; a tile with the coast flag (`0x40`, `h3m.md`: the game
+  takes the coast from it, E04c batch 3b; the import keeps it in the static map) → sand and the
+  shore; a `Ground` object on the tile replaces
   the field (sieges, boats and mines do not occur in increment 3); `obstacles` from
   `generate_setup_obstacles` with `Rng::from_seed(s)`: under `ADV-QUIRK-5` (`faithful`)
   s = `u64::from(110_291 x + 167_801 y + 81_569)` (wrapping u32 arithmetic, the defender's tile,
