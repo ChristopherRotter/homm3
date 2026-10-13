@@ -23,7 +23,9 @@ Complete 4.0**; a rule settled here is `observation`-sourced with that version.
    says `**Stamp `<hex>`.**`; the user compares them before playing. A mismatch means the map
    is not from the template's build (batch 1a's stale map, T10c): compile again and copy the map
    in the same step. An agent checks a map in hand by reading its description back (`h3-map`) or
-   by the stamp of the committed spec (`h3_experiment::stamp`).
+   by the stamp of the committed spec (`h3_experiment::stamp`). The stamp covers the spec's text
+   only, not the compiler or the installation's tables: after a compiler change, compile every
+   staged batch again before the user plays it.
 2. The user copies the map into the game's `Maps` folder, plays it as the template says and fills
    in the template in the repo.
 3. The agent evaluates the filled template against the spec's predictions and records the result
@@ -43,7 +45,8 @@ Complete 4.0**; a rule settled here is `observation`-sourced with that version.
   game's own maps give such a road.
   `[[map.pile]]` (E08 T16b): `resource` (wood, mercury, ore, sulfur, crystal, gems, gold),
   `row`, `from` and `to` (columns, inclusive; equal for one pile) and `amount` (as the map stores
-  it; 0, the default, is drawn when the game starts): a resource pile on every tile of the row
+  it: gold in hundreds, at most 524 287 (`0x7FFFF`, refused above); 0, the default, is drawn when
+  the game starts): a resource pile on every tile of the row
   from `from` to `to`, the template from `Objects.txt` (class 79). A pile is visited from a
   neighbouring tile and the visit ends the move; the template does not list piles, the
   encounters' procedures say where they are.

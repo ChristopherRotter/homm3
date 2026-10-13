@@ -1413,7 +1413,7 @@ objects, replays, benchmarks, the audit) is built; both on one pull request labe
 `cross-lane` (battle-owned `h3-experiment`, consented). T16c (scoring batch 2, the closure) next
 round.
 
-**T16b — batch 2 with the spec stamp** (a worker; draft).
+**T16b — batch 2 with the spec stamp** (a worker).
 - **The stamp** (decision 18): `h3_experiment::stamp`, 8 hex digits of the CRC-32 of the spec's
   text with CRLF made LF (`h3_map::crc32`, no new dependency), so the user's Windows checkout and
   Linux agree; `parse` sets `Spec::stamp` (a `stamp` key in the file is refused), `build` starts
@@ -1456,6 +1456,20 @@ round.
   in the procedure's order, every amount within 5–10 and 3–6. Compiled again after the last
   change to the spec: the map in `experiments/out/` and the template carry the same stamp.
 - Not shown in the template, as before: the predictions (in the spec, for the evaluating agent).
+- **Delivered** (runner) to the user's `experiments/out/` (the map, and a copy of the template to
+  read while playing); the runner checked the VCMI column against VCMI 1.7.5's
+  `CPathfinderHelper::getMovementCost` (`pointsLeft < getTileMovementCost(dst, src)`, the cost of
+  the step just taken, then all points are taken), as the survey states it.
+- **Review** (an agent that had not written it): D-3's and D-5's arithmetic, the pile body, the
+  templates and the stamp confirmed. Fixed: the writer refuses a pile's fixed amount above
+  `0x7FFFF` (setup refuses more; batch 2's piles are random, its map unchanged by the fix);
+  `docs/experiments/README.md` says gold counts in hundreds and that the stamp covers the spec's
+  text only (recompile staged batches after a compiler change). Left, for the scoring: the
+  template says the collector takes "the first two piles without moving", but four are (the
+  next column's two are diagonal neighbours; the engine's 1 246 points count them so); the
+  original's pathfinder may spend up to 1 446 points on a collector's eight piles (both within
+  2 000; the amounts are unaffected). Not changed in the spec, so the stamp of the map already
+  delivered stays valid.
 
 **T16a — the maps with objects, the replays, the benchmarks, the exit criteria** (a worker).
 - **The maps** (`h3-map`'s `tests/fixtures.rs`): increment 2's typed objects drawn from each

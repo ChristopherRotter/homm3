@@ -70,6 +70,10 @@ const MONSTER_OBJECTS: [u32; 5] = [54, 71, 162, 163, 164];
 const PILE_OBJECT: u32 = 79;
 /// Resources a pile may hold.
 const RESOURCE_COUNT: u32 = 7;
+/// The largest fixed amount a pile may hold: the original keeps it in 19 bits, and setup refuses
+/// more (`h3_adventure::MAX_PICKUP_AMOUNT`, mirrored here: the writer does not depend on the
+/// adventure crate). Gold counts in hundreds.
+const MAX_PILE_AMOUNT: u32 = 0x7_FFFF;
 /// Longest string we write (the game reads a `u32` length; this keeps files sane).
 const MAX_STRING: usize = 30_000;
 /// Hero types banned from the random pool by default in SoD maps (the RoE Lord Haart, 4, and the
@@ -611,6 +615,9 @@ fn validate_pile(pile: &Pile) -> Result<(), WriteError> {
     if pile.template.subclass >= RESOURCE_COUNT {
         return Err(out_of_range("pile resource", pile.template.subclass));
     }
+    if pile.amount > MAX_PILE_AMOUNT {
+        return Err(out_of_range("pile amount", pile.amount));
+    }
     Ok(())
 }
 
@@ -1099,7 +1106,7 @@ mod tests {
         map.objects.push(MapObject::Pile(Pile {
             tile: (7, 9),
             template: template.clone(),
-            amount: 0x0102_0304,
+            amount: 0x0006_0304,
         }));
         let bytes = write(&map).unwrap();
         assert_eq!(templates(&map).len(), 3);
@@ -1110,7 +1117,7 @@ mod tests {
         let tail = &bytes[bytes.len() - 25..];
         assert_eq!(&tail[..7], &[7, 9, 0, 2, 0, 0, 0]);
         assert_eq!(&tail[7..12], &[0; 5]);
-        assert_eq!(&tail[12..21], &[0, 4, 3, 2, 1, 0, 0, 0, 0]);
+        assert_eq!(&tail[12..21], &[0, 4, 3, 6, 0, 0, 0, 0, 0]);
         assert_eq!(&tail[21..], &[0; 4]);
         let with_pile = |f: &dyn Fn(&mut Pile)| {
             let mut map = map.clone();
@@ -1123,6 +1130,8 @@ mod tests {
         assert!(with_pile(&|p| p.template.subclass = 7).is_err());
         assert!(with_pile(&|p| p.template.class = 76).is_err());
         assert!(with_pile(&|p| p.tile = (36, 0)).is_err());
+        assert!(with_pile(&|p| p.amount = MAX_PILE_AMOUNT).is_ok());
+        assert!(with_pile(&|p| p.amount = MAX_PILE_AMOUNT + 1).is_err());
     }
 
     #[test]
