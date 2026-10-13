@@ -1,0 +1,257 @@
+# E08 batch 2 played by the capture harness (E17 M2 T6, *provisional*; h3adv.py batch): the
+# procedure of experiments/specs/E08-batch-2.toml as steps. Hot seat, Red and Blue human; the
+# scouts never move. A step selects its hero, clicks `walk`'s tile twice (the first click shows
+# the path, read from the game's memory) and records what the template asks.
+
+spec = "experiments/specs/E08-batch-2.toml"
+players = ["Red", "Blue"]
+
+# --- Day 1, Red: D-3 ------------------------------------------------------------------------------
+
+[[step]]
+encounter = "D3a"
+hero = "D3a"
+walk = [19, 6]
+expect = { marks = 13, path = "green" }
+record = { "did D3a stop on the road's first tile (yes/no)" = "arrived", "movement points left there" = "points" }
+
+[[step]]
+encounter = "D3a"
+hero = "D3a"
+walk = [20, 6]
+record = { "the next road tile's mark (green/red)" = "mark", "did the hero step onto it (yes/no)" = "moved", "movement points left after that step (if it stepped)" = "points_if_moved" }
+
+[[step]]
+encounter = "D3b"
+hero = "D3b"
+walk = [19, 10]
+expect = { marks = 13, path = "green" }
+record = { "did D3b stop on the road's first tile (yes/no)" = "arrived", "movement points left there" = "points" }
+
+[[step]]
+encounter = "D3b"
+hero = "D3b"
+walk = [20, 10]
+record = { "the next road tile's mark (green/red)" = "mark", "did the hero step onto it (yes/no)" = "moved" }
+
+[[step]]
+encounter = "D3c"
+hero = "D3c"
+walk = [19, 14]
+expect = { marks = 13, path = "green" }
+record = { "did D3c stop on the snow tile (yes/no)" = "arrived", "movement points left there" = "points" }
+
+[[step]]
+encounter = "D3d"
+hero = "D3d"
+walk = [19, 18]
+expect = { marks = 13, path = "green" }
+record = { "did D3d stop on the snow tile (yes/no)" = "arrived", "movement points left there" = "points" }
+
+[[step]]
+end_turn = true
+
+# --- Day 1, Blue: D-5. Each collector's piles column by column from west to east, the north one
+# first; the resource after each pickup is the next table row. ---------------------------------
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 1"
+record = { "start" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 1"
+walk = [6, 41]
+record = { "1" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 1"
+walk = [6, 43]
+record = { "2" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 1"
+walk = [7, 41]
+record = { "3" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 1"
+walk = [7, 43]
+record = { "4" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 1"
+walk = [8, 41]
+record = { "5" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 1"
+walk = [8, 43]
+record = { "6" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 1"
+walk = [9, 41]
+record = { "7" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 1"
+walk = [9, 43]
+record = { "8" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 2"
+walk = [6, 47]
+record = { "9" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 2"
+walk = [6, 49]
+record = { "10" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 2"
+walk = [7, 47]
+record = { "11" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 2"
+walk = [7, 49]
+record = { "12" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 2"
+walk = [8, 47]
+record = { "13" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 2"
+walk = [8, 49]
+record = { "14" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 2"
+walk = [9, 47]
+record = { "15" = "resource:wood" }
+
+[[step]]
+encounter = "D5w"
+hero = "Wood 2"
+walk = [9, 49]
+record = { "16" = "resource:wood" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 1"
+record = { "start" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 1"
+walk = [6, 53]
+record = { "1" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 1"
+walk = [6, 55]
+record = { "2" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 1"
+walk = [7, 53]
+record = { "3" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 1"
+walk = [7, 55]
+record = { "4" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 1"
+walk = [8, 53]
+record = { "5" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 1"
+walk = [8, 55]
+record = { "6" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 1"
+walk = [9, 53]
+record = { "7" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 1"
+walk = [9, 55]
+record = { "8" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 2"
+walk = [6, 59]
+record = { "9" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 2"
+walk = [6, 61]
+record = { "10" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 2"
+walk = [7, 59]
+record = { "11" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 2"
+walk = [7, 61]
+record = { "12" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 2"
+walk = [8, 59]
+record = { "13" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 2"
+walk = [8, 61]
+record = { "14" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 2"
+walk = [9, 59]
+record = { "15" = "resource:mercury" }
+
+[[step]]
+encounter = "D5m"
+hero = "Mercury 2"
+walk = [9, 61]
+record = { "16" = "resource:mercury" }
