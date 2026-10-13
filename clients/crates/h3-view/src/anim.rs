@@ -305,8 +305,103 @@ pub struct Timeline {
     pub steps: Vec<u32>,
     /// The idle steps after the last command.
     pub idle: Idle,
+    /// The viewer's own fidgets as they stand after the last command (none: no fidgets, as the
+    /// reference checks take the original's).
+    pub fidgets: Option<Fidgets>,
     /// When the last frame shows.
     pub end: u32,
+}
+
+/// The viewer's own fidgets (§7.2, E17 M2 T4b-2a). The executable draws them from its rules'
+/// generator, which the engine does not share (ADR-0003): the viewer draws them from a generator
+/// of its own (the C library's `rand()` sequence, *provisional*), so they cannot match the
+/// original's frame for frame. At the battle's start and after every action each stack's fidget
+/// clock is drawn again: its fidget starts at the first idle step after now + 2r, r =
+/// random(50, t), t its fidget interval; then one frame of group 1 per idle step, each advance
+/// stalled when a draw of 0 to 100 gives less than 8; after its last frame it stands, the next
+/// fidget 0.75 t to 1.25 t later (0x4960D0). A stack the action drew stops fidgeting; not read:
+/// the blind, petrified and paralysed stacks the executable skips.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Fidgets {
+    rng: u32,
+    group: u8,
+    stacks: Vec<Fidget>,
+}
+
+/// One stack's fidget: its interval and frames, its clock (+0xFC), the frame it shows (none:
+/// standing) and its standing pose.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Fidget {
+    stack: u8,
+    interval: u32,
+    frames: u32,
+    clock: i64,
+    frame: Option<u32>,
+    base: Pose,
+}
+
+impl Fidgets {
+    /// The C library's `rand()`: 15 bits of a linear congruential sequence.
+    fn rand(&mut self) -> u32 {
+        self.rng = self.rng.wrapping_mul(214_013).wrapping_add(2_531_011);
+        (self.rng >> 16) & 0x7FFF
+    }
+
+    /// A draw from `low` to `high` (`low` ≤ `high`).
+    fn between(&mut self, low: u32, high: u32) -> u32 {
+        low + self.rand() % (high - low + 1)
+    }
+
+    /// After an action at `now` (and at the start): the stacks still living (`base`: their
+    /// standing poses, by id) keep their fidgets, those `drawn` stop; each clock drawn again.
+    fn reset(&mut self, now: u32, base: &BTreeMap<u8, Pose>, drawn: &[u8]) {
+        self.stacks.retain(|f| base.contains_key(&f.stack));
+        for i in 0..self.stacks.len() {
+            let f = self.stacks[i];
+            let mut next = Fidget {
+                base: base.get(&f.stack).copied().unwrap_or(f.base),
+                frame: f.frame.filter(|_| !drawn.contains(&f.stack)),
+                ..f
+            };
+            if f.interval > 51 {
+                let r = self.between(50, f.interval);
+                next.clock = i64::from(now) + 2 * i64::from(r) - i64::from(f.interval);
+            }
+            self.stacks[i] = next;
+        }
+    }
+
+    /// The idle step at `now`: the poses that change.
+    fn step(&mut self, now: u32) -> Vec<(u8, Pose)> {
+        let mut out = Vec::new();
+        for i in 0..self.stacks.len() {
+            let mut f = self.stacks[i];
+            match f.frame {
+                Some(k) => {
+                    if self.between(0, 100) < 8 {
+                        continue;
+                    }
+                    if k + 1 < f.frames {
+                        f.frame = Some(k + 1);
+                    } else {
+                        f.frame = None;
+                        let r = i64::from(self.between(0, f.interval));
+                        f.clock = (4 * i64::from(now) + 2 * r - i64::from(f.interval)) / 4;
+                    }
+                }
+                None if i64::from(now) - f.clock > i64::from(f.interval) => f.frame = Some(0),
+                None => continue,
+            }
+            let pose = f.frame.map_or(f.base, |frame| Pose {
+                group: u32::from(self.group),
+                frame,
+                ..f.base
+            });
+            out.push((f.stack, pose));
+            self.stacks[i] = f;
+        }
+        out
+    }
 }
 
 /// The battle loop's idle steps (0x4960D0, §7.1, §7.9): while the loop ticks (from `from`), a
@@ -353,6 +448,11 @@ impl Timeline {
             self.members.iter().map(|m| (m.stack, m.start)).collect();
         for key in self.keys.iter().filter(|k| k.shown <= t) {
             poses.insert(key.stack, key.pose);
+        }
+        // After the last command the idle steps go on, and the fidgets with them.
+        if let Some(fidgets) = &self.fidgets {
+            let (mut idle, mut fidgets) = (self.idle, fidgets.clone());
+            idle.run(t, |now| poses.extend(fidgets.step(now)));
         }
         poses
     }
@@ -564,23 +664,65 @@ pub fn timeline(
     stage: Stage<'_>,
     speed: Speed,
 ) -> Result<Timeline, AnimError> {
+    played(snapshot, commands, looks, stage, speed, None)
+}
+
+/// As [`timeline`], the stacks fidgeting while the battle idles, from the viewer's own generator
+/// seeded with `seed` ([`Fidgets`]; E17 M2 T4b-2a).
+///
+/// # Errors
+/// As [`timeline`].
+pub fn fidgeting(
+    snapshot: &Observation,
+    commands: &[Command<'_>],
+    looks: &BTreeMap<u16, Look>,
+    stage: Stage<'_>,
+    speed: Speed,
+    seed: u32,
+) -> Result<Timeline, AnimError> {
+    played(snapshot, commands, looks, stage, speed, Some(seed))
+}
+
+/// [`timeline`] or [`fidgeting`].
+fn played(
+    snapshot: &Observation,
+    commands: &[Command<'_>],
+    looks: &BTreeMap<u16, Look>,
+    stage: Stage<'_>,
+    speed: Speed,
+    seed: Option<u32>,
+) -> Result<Timeline, AnimError> {
     let standing = u32::from(stage.groups.standing);
     let mut members = Vec::new();
+    // The stacks whose DEF has a fidget (group 1).
+    let mut fidgeters = Vec::new();
     let mut stacks = BTreeMap::new();
     let mut records = [0u8; 2];
     for s in snapshot.stacks.iter().filter(|s| s.alive) {
         let look = looks.get(&s.creature).ok_or(AnimError::Look(s.creature))?;
         let side = usize::from(s.side == Side::Defender);
+        let start = Pose {
+            mirrored: s.side == Side::Defender,
+            ..still(standing, s.hex)
+        };
         members.push(Member {
             stack: s.id,
             side: s.side,
             record: records[side],
-            start: Pose {
-                mirrored: s.side == Side::Defender,
-                ..still(standing, s.hex)
-            },
+            start,
         });
         records[side] += 1;
+        let frames = look.count(stage.groups.mouse_over);
+        if frames > 0 {
+            fidgeters.push(Fidget {
+                stack: s.id,
+                interval: look.times[0],
+                frames,
+                clock: 0,
+                frame: None,
+                base: start,
+            });
+        }
         stacks.insert(
             s.id,
             Live {
@@ -610,6 +752,14 @@ pub fn timeline(
         turns: Vec::new(),
         flights: Vec::new(),
     };
+    let mut fidgets = seed.map(|rng| Fidgets {
+        rng,
+        group: stage.groups.mouse_over,
+        stacks: fidgeters,
+    });
+    if let Some(f) = fidgets.as_mut() {
+        f.reset(0, &player.bases(), &[]);
+    }
     let mut drew = false;
     let mut outlines = vec![(0, snapshot.active)];
     let mut waiting = snapshot.active;
@@ -624,12 +774,25 @@ pub fn timeline(
         // A command without a time after the first is the computer's: the loop did not tick
         // since the last one ended, but once when it acts, which outlines its stack until its
         // first frame shows (*provisional*, §7.9).
+        let ran = steps.len();
         if i > 0 && command.at.is_none() {
             if idle.once(player.clock.now, &mut steps) {
                 outlines.push((player.clock.now, waiting));
             }
         } else {
             idle.run(player.clock.now, |t| steps.push(t));
+        }
+        if let Some(f) = fidgets.as_mut() {
+            for &now in &steps[ran..] {
+                player
+                    .keys
+                    .extend(f.step(now).into_iter().map(|(stack, pose)| Key {
+                        stack,
+                        drawn: now,
+                        shown: now,
+                        pose,
+                    }));
+            }
         }
         let (before, turns) = (player.keys.len(), player.turns.len());
         player.command(command.events);
@@ -645,6 +808,10 @@ pub fn timeline(
             waiting = Some(stack);
         }
         idle.from = player.clock.now;
+        if let Some(f) = fidgets.as_mut() {
+            let drawn: Vec<u8> = player.keys[before..].iter().map(|k| k.stack).collect();
+            f.reset(player.clock.now, &player.bases(), &drawn);
+        }
     }
     // The last layer changes show with the battle's next redraw (*provisional*).
     let now = player.clock.now;
@@ -657,6 +824,7 @@ pub fn timeline(
         outlines,
         steps,
         idle,
+        fidgets,
         end: player.clock.now,
     })
 }
@@ -826,6 +994,14 @@ impl Player<'_> {
     /// `live` standing on the engine's `hex`.
     fn standing(&self, live: &Live, hex: u8) -> Pose {
         Self::posed(live, self.stage.groups.standing, 0, hex)
+    }
+
+    /// Every living stack's standing pose, by id.
+    fn bases(&self) -> BTreeMap<u8, Pose> {
+        self.stacks
+            .iter()
+            .map(|(&id, live)| (id, self.standing(live, live.hex)))
+            .collect()
     }
 
     /// A living stack as the timeline follows it now.

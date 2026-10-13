@@ -225,12 +225,14 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             let looks = motion::looks(&record, &tables, &archives)?;
             let stage = motion::stage(&record, &tables, &layout);
             let commands = anim::commands(&record.messages);
-            let timeline = anim::timeline(
+            // With the viewer's own fidgets, from the seed (T4b-2a).
+            let timeline = anim::fidgeting(
                 observation,
                 &commands,
                 &looks,
                 stage,
                 Speed::new(options.speed),
+                u32::try_from(options.seed & u64::from(u32::MAX)).unwrap_or(1),
             )
             .map_err(|e| e.to_string())?;
             lines.push(format!("the timeline ends at {} ms", timeline.end));

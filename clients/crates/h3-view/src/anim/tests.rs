@@ -1047,3 +1047,130 @@ fn a_timeline_lists_its_changes() {
     assert_eq!(commands.len(), 1);
     assert_eq!((commands[0].at, commands[0].events), (None, &events[..]));
 }
+
+/// The timeline of `snapshot` and `commands` at speed 0 with the viewer's fidgets from `seed`.
+fn fidgeting_play(
+    snapshot: &Observation,
+    commands: &[(Option<u32>, Vec<Event>)],
+    numbers: &BTreeMap<u16, Look>,
+    seed: u32,
+) -> Timeline {
+    let layout = layout();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+    };
+    let commands: Vec<Command<'_>> = commands
+        .iter()
+        .map(|(at, events)| Command { at: *at, events })
+        .collect();
+    fidgeting(snapshot, &commands, numbers, stage, Speed::default(), seed).unwrap()
+}
+
+/// What `stack` shows every 100 ms up to `until`: (time, group, frame).
+fn shown(t: &Timeline, stack: u8, until: u32) -> Vec<(u32, u32, u32)> {
+    (0..=until / 100)
+        .map(|i| {
+            let p = t.at(i * 100)[&stack];
+            (i * 100, p.group, p.frame)
+        })
+        .collect()
+}
+
+#[test]
+fn stacks_fidget_from_the_viewers_own_generator() {
+    // §7.2: the C library's `rand()` (srand(1): 41, 18467, 6334).
+    let mut f = Fidgets {
+        rng: 1,
+        group: 1,
+        stacks: Vec::new(),
+    };
+    assert_eq!([f.rand(), f.rand(), f.rand()], [41, 18467, 6334]);
+    // The Pikemen (four frames of group 1, interval 9000): a fidget starts at an idle step after
+    // the drawn 2r, its frames in order one step apart or stalled, then standing, the next one
+    // 0.75 t to 1.25 t after.
+    let mut numbers = looks();
+    numbers.get_mut(&PIKEMAN).unwrap().frames.insert(1, 4);
+    let o = snapshot(vec![at(0, Side::Attacker, PIKEMAN, 35, false)]);
+    let t = fidgeting_play(&o, &[], &numbers, 1);
+    let seen = shown(&t, 0, 60_000);
+    let starts: Vec<u32> = seen
+        .windows(2)
+        .filter(|w| w[0].1 == 2 && w[1].1 == 1)
+        .map(|w| w[1].0)
+        .collect();
+    assert!(starts.len() >= 3, "{starts:?}");
+    assert!(starts[0] >= 100 && starts[0] <= 18_000);
+    for pair in starts.windows(2) {
+        assert!(
+            (6_750..=11_500).contains(&(pair[1] - pair[0])),
+            "{starts:?}"
+        );
+    }
+    let mut frames: Vec<u32> = seen.iter().filter(|s| s.1 == 1).map(|s| s.2).collect();
+    frames.dedup();
+    assert!(frames.starts_with(&[0, 1, 2, 3, 0, 1, 2, 3]), "{frames:?}");
+    // A stall: a draw below 8 holds the frame for a step.
+    let stalled = (0u32..)
+        .find(|&rng| {
+            let mut f = Fidgets {
+                rng,
+                group: 1,
+                stacks: Vec::new(),
+            };
+            f.between(0, 100) < 8
+        })
+        .unwrap();
+    let mut f = Fidgets {
+        rng: stalled,
+        group: 1,
+        stacks: vec![Fidget {
+            stack: 0,
+            interval: 9000,
+            frames: 4,
+            clock: 0,
+            frame: Some(1),
+            base: still(2, 35),
+        }],
+    };
+    assert!(f.step(500).is_empty());
+    assert_eq!(f.stacks[0].frame, Some(1));
+    // Without fidgets (the reference checks), it stands.
+    assert!(shown(&play(&o, &[]), 0, 60_000).iter().all(|s| s.1 == 2));
+    // A fidget during the battle: the Pikemen fidget while the Goblins wait to act; a command
+    // that draws them stops it, one that draws others leaves it running.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 35, false),
+        at(1, Side::Defender, GOBLIN, 49, false),
+    ]);
+    let mid = seen
+        .iter()
+        .find(|s| s.1 == 1 && s.2 == 1)
+        .map(|s| s.0)
+        .unwrap();
+    let them = vec![moved(1, 49, 48)];
+    let t = fidgeting_play(&o, &[(Some(mid), them)], &numbers, 1);
+    let during = t.at(mid + 500)[&0];
+    assert_eq!((during.group, during.frame), (1, 1));
+    let after = t.at(t.end)[&0];
+    assert_eq!((after.group, after.frame > 1), (1, true));
+    let own = vec![moved(0, 35, 36)];
+    let t = fidgeting_play(&o, &[(Some(mid), own)], &numbers, 1);
+    let after = t.at(t.end + 100)[&0];
+    assert_eq!(after.group, 2);
+    // A stack the battle killed fidgets no more; one with an interval of 51 or less keeps its
+    // clock and starts at the first idle step after it.
+    numbers.get_mut(&GOBLIN).unwrap().frames.insert(1, 2);
+    numbers.get_mut(&GOBLIN).unwrap().times[0] = 0;
+    let kill = vec![struck(0, 1, 40, flags(false, false, false))];
+    let t = fidgeting_play(&o, &[(Some(mid), kill)], &numbers, 1);
+    assert!(
+        shown(&t, 1, 60_000)
+            .iter()
+            .filter(|s| s.0 > t.end)
+            .all(|s| s.1 == 5)
+    );
+    let t = fidgeting_play(&o, &[], &numbers, 1);
+    assert_eq!(t.at(100)[&1].group, 1);
+}

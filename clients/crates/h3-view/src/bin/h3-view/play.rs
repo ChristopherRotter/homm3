@@ -170,9 +170,12 @@ fn play(options: &Options) -> Result<Vec<String>, String> {
     let looks = motion::looks(&record, &tables, &archives)?;
     let stage = motion::stage(&record, &tables, &layout);
     let commands = anim::commands(&record.messages);
-    let timeline = anim::timeline(snapshot, &commands, &looks, stage, options.speed)
+    // The viewer's own fidgets, from the battle's seed (`h3_view::anim::Fidgets`).
+    let seed = u32::try_from(options.seed & u64::from(u32::MAX)).unwrap_or(1);
+    let timeline = anim::fidgeting(snapshot, &commands, &looks, stage, options.speed, seed)
         .map_err(|e| e.to_string())?;
-    let until = options.to.unwrap_or(timeline.end).min(timeline.end);
+    // Past the last command the battle idles: the outline pulses and the stacks fidget.
+    let until = options.to.unwrap_or(timeline.end);
     // Every moment the battle may change, drawn; a moment that draws what the one before drew is
     // not a new frame.
     let mut frames: Vec<(u32, Vec<scene::Draw>)> = Vec::new();
