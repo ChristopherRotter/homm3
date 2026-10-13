@@ -22,6 +22,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12; ADR-0020). M1 below (T1, 
 
 ## Inbox
 
+- 2026-10-13 (battle lane; **T7**): the engine's position of a two-hex stack is now its rear hex (BAT-GEO-002; observation encoding v14, protocol v22), as the user decided at T5, so T7 anchors a two-hex stack's sprite at the engine's position with no conversion. `E17-design.md` §4.2 ("the client anchors a two-hex stack at the engine's tail hex") and T7's scope line above describe the state before; the hexes a stack covers did not change.
 - 2026-10-13 (E17 M1 T4): `cargo xtask check-exe-map` scans only `docs/` and `crates/` (`xtask/src/exemap.rs`, `CITING_DIRS`), so the addresses in `clients/` code are checked only through their citations in the design notes. Adding `clients` there is a small `shared/` pull request.
 - 2026-10-12 (the user, at E17 M0): the adventure map's object draw order is surprisingly complicated; the user's own engine and VCMI (at the time) did not get it exactly right. Research item 9 (HANDOFF): a code reading of the executable's map drawing (the order of objects, their shadows, heroes and overlapping tiles) when the adventure map viewer is refined, with reference frames from the original to confirm.
 - 2026-10-12 (E17 M0 checkpoint, the user): **CLT-Q2**, a table-only LOD reader in `h3-formats` for the battle lane (`docs/OPEN-QUESTIONS.md`). When it lands, the client's archive set switches from whole reads to the directories at start and a batch's entries by offset; `h3-view gate` then measures that.

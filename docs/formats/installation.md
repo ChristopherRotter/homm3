@@ -1047,8 +1047,8 @@ battle marks the hexes where it must stop: in a siege the moat, and every Quicks
 object belongs to the stack's side (+0xF4, the real side even when hypnotized) or is revealed; the
 stack's own hexes are left out. Flyers (stack flag `0x2`) and Devils and Arch Devils (creatures 54,
 55) get no stops. The pathfinder lets a path end on a stop but not go on from it (a stop costs the
-rest of the move). The walker (0x441FA0), at each step of its path, before it moves: if the new
-hex of its head or, for a two-hex stack, of its tail is a stop, this step is the last; else if it
+rest of the move). The walker (0x441FA0), at each step of its path, before it moves: if its new
+front hex or, for a two-hex stack, its new rear hex (its position) is a stop, this step is the last; else if it
 has Quicksand, the walker reveals that pit (+0xA = 1) and this step is the last; then it moves and
 enters the hexes (§7.15: Fire Wall, Land Mine, the moat). Either way the walk returns false, and a move and attack (0x478971) then skips the attack; a walk that ends in a seen pit is only ever a plain move, as no attack is offered from there (the review re-read below). A flyer (0x4B49C0) and a teleporting creature (0x4B4E90) never test the pits;
 Teleport places the stack without entering. Standing on a pit has no further effect: the stack
