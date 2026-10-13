@@ -682,18 +682,77 @@ without the original files. `h3-view render <record> --at <ms>` draws the poses 
   straight one for the angle, then the chosen group's (0x469880); the projectile's steps
   trunc((d + 20) / 40) over the distance d between them. The Marksmen at hex 35 and the Goblins
   (top 200) at 49 give 14 steps, as recorded.
-- ***Provisional*** (the M2 review list): the shooter plays its group in the strike loop from
-  its climax frame (c − 1) to the end, so L = (n − c + 1) + R − 1 (what the shot sequence fits:
-  the reaction then starts at iteration 0); the loop runs at least A + 1 iterations (no reaction
+- ***Provisional*** (the M2 review list): the loop runs at least A + 1 iterations (no reaction
   to wait for: the striker still stands at the end); a later command without a time starts one
   tick after the previous one's last frame shows, or at once after one that drew nothing (the
   melee's computer acts at 1 918 = 1 818 + 100; Defend and Wait, §7.4); the strike's group by
-  the rows of the striker and its first target (up, straight, down); a walk's frame f drawn
-  f × Δx / n and f × Δy / n along the step (Δ between the hexes' anchors), a flight's frame j of
-  its k × n at j / (k × n) of the line; the flight's cycles with D / 2 truncated; kills counted
-  from `Struck` only (death: the count reaches 0), a dying stack drawn among the corpses (pass 1).
-- **Not yet (T4b):** fidgets, the idle step and the outline's pulse; turns (§7.3) and the battle
+  the rows of the striker and its first target (up, straight, down); the flight's cycles with
+  D / 2 truncated; kills counted from `Struck` only (death: the count reaches 0), a dying stack
+  drawn among the corpses (pass 1). **Confirmed by the frame check (T4b-1, §7.9):** a walk's
+  frame f drawn f × Δx / n and f × Δy / n along the step. **Corrected there:** the shooter's
+  strike loop and the flight's points (§7.9).
+- **Not yet (T4b-2):** fidgets from the viewer's own generator; turns (§7.3) and the battle
   lane's note that stacks turn to face their target for a strike or a shot; the draw layers of
-  walks (3, 7) and strikes (6); the projectile's and the spells' sprites; Haste and Slow (the
-  walk time), rays, teleports, magic animations, deaths by spells, created stacks; the frame
-  check against the original's poses (§7.6).
+  walks (3, 7) and strikes (6, the struck stack 5: §7.9); the spells' sprites; Haste and Slow
+  (the walk time), rays, teleports, magic animations, deaths by spells, created stacks; the
+  difference §7.9 lists.
+
+### 7.9 The frame check (M2 T4b-1)
+
+Every distinct battlefield the original shows in a recorded sequence against the viewer's own
+frame at the same time: `h3drive.py frames` (runbook `clients/capture/README.md`). The harness
+steps the clock 1 ms at a time and keeps each screen whose battlefield (rows 0–555) changed, with
+its time and the game's state (`frames.jsonl`, the screens as `frames/t<ms>.npz`, local only);
+`h3-view sequences <id> --frames <dir>` plays the sequence's record through `h3_view::anim` and
+draws the moment shown at each kept time (`ours/`, and what it drew in `ours.txt`); the diff masks
+the panel, the heroes' corners and the count boxes where the drawn poses show them (a stack in
+group 1 or 2, §4.3; every living stack takes its hexes for the box's place). The only thing taken
+from the original is a fidget (a stack the game's memory shows in group 1): the viewer has none of
+its own yet (§7.2). Each sequence's counts per frame are recorded
+(`situations/timelines/<id>-frames.txt`); the command fails when one changes.
+
+**Result** (2026-10-13): walk 42 frames and shot 50 all exact; melee 68 of 75 exact, the 7 others
+listed below. What the check settled:
+
+- **The projectile** (`shot_animation` 0x43F5D6 to 0x43F826, read): its DEF's group 0, the frame
+  `shot_angle_group` picks (0x469957: the count of leading midpoints between consecutive angles of
+  the creature's table that are at least the shot's angle, the angle from the straight start
+  point), drawn with the plain drawer, runs skipped (`def_draw_plain` 0x47BCF0, as the
+  obstacles), mirrored when the target lies left of the start, over the screen as it stands (a
+  save-under buffer restores it after each step; nothing else is redrawn meanwhile). Step k's
+  canvas: the start point less half the DEF's size, plus k × trunc(Δ / steps) (`idiv`), shown from
+  the climax frame's time plus k × trunc(33 F); erased after the last. The Marksmen's arrow
+  (`PLCBOWX.DEF`, 30 × 30, nine frames) at all 14 steps of both shots: exact.
+- **The shooter after its climax:** `strike_animation` (0x468A3D) counts a striker still in its
+  shot group with one frame less and advances each stack's frame before drawing it, so the
+  shooter shows frames c to n − 1 in the loop and stands from the second iteration on, while the
+  loop's length still counts n − c + 1 (T4a had frames c − 1 and c: the second iteration showed
+  frame 7 where the original stands; the lines were the same).
+- **The flight's points** (0x4B4BA3 to 0x4B4D5D, read): from the start hex's anchor (the hex
+  record's +0x1C4, +0x1C6) the point moves on **before** each frame by f32((f32 Δ / f32 k) / f32 n)
+  and is kept as an f32, the stack drawn at its truncation (`crt_ftol`): the x87's single
+  operations on f32 operands, stored with `fstp dword`, round as one f32 operation, so the viewer
+  emulates them exactly in fixed point (no float in the pure crates, ADR-0003: `f32_round` in
+  `h3_view::anim`). The Angels' 21 frames over 352 pixels end 351 pixels on, not 352 (T4a: j / kn
+  of the line, one frame behind).
+- **The outline and the idle steps** (§7.1, §4.2): the outline shows the opening's active stack
+  until the command's first frame shows, none while a command plays; when a player's turn starts
+  after an animation, its stack's outline at once, and the idle steps held up by the animation run
+  twice at that moment (the walk: three steps at 2 592, the outline in entry 0x65's colour, the
+  fourth at 2 692); on the computer's turn the loop does not tick until it acts one tick later,
+  when one idle step runs and outlines its stack until its first frame shows (the melee's Wolf
+  Riders at 1 918, entry 0x66). The viewer cannot tell a player's command from the computer's in a
+  record: a command without a time after the first counts as the computer's (*provisional*).
+- **The draw layers** read from memory (+0x8, `h3mem.py`): 4 throughout a straight walk or flight;
+  the melee's striker 6 and the struck stack 5 during the strike, both 5 during the retaliation,
+  4 again after each (not drawn differently yet: T4b-2).
+- **Memory against the screen:** after an animation the game processes a turn's start in the same
+  millisecond after the harness's 20 clock reads, so a state read then can lag the screen by one
+  step (the walk's idle counter read 1 at 2 592 while the screen shows the third step's colour).
+  The check therefore draws the viewer's timeline, not the poses read from memory.
+
+**Listed differences** (T4b-2): the melee at 3 504 to 3 966 ms (9 to 327 pixels), while the Wolf
+Riders walk past the Angels: dark pixels at the Angels' outline edges (sword tip, robe), and at
+3 966 the Angels' count box at its usual place under the Wolf Riders' legs where the viewer's
+poses (the walk's end on hex 45) put it beside them. Not read yet: the redraw of a walk's frames
+near another stack.

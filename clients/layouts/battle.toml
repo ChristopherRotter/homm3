@@ -17,3 +17,5 @@ before_stacks_columns = [1, 15]
 # The outlines' palette and the active stack's entry (§4.2: 0x6AACB0, entry 0x60).
 outline_palette = "game.pal"
 outline_active = 96
+# Its range's entries (96-103): each idle step rotates them by one (0x4960D0 via 0x522950, §4.2).
+outline_ramp = 8

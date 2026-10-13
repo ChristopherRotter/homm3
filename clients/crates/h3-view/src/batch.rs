@@ -111,7 +111,9 @@ impl Batch {
 pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
     let named = list.iter().map(|d| match d {
         Draw::Background { picture, .. } | Draw::AbsoluteObstacle { picture, .. } => picture,
-        Draw::Obstacle { def, .. } | Draw::Creature { def, .. } => def,
+        Draw::Obstacle { def, .. } | Draw::Projectile { def, .. } | Draw::Creature { def, .. } => {
+            def
+        }
     });
     named
         .chain(core::iter::once(&layout.outline_palette))
@@ -175,10 +177,27 @@ mod tests {
                 outline: None,
             },
             picture("BG.pcx"),
+            Draw::Projectile {
+                def: "PlcBowX.def".to_string(),
+                frame: 0,
+                x: 0,
+                y: 0,
+                mirrored: false,
+            },
         ];
         let layout = crate::scene::tests::layout();
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
-        assert_eq!(names, ["ABS.PCX", "BG.PCX", "CR.DEF", "GAME.PAL", "OB.DEF"]);
+        assert_eq!(
+            names,
+            [
+                "ABS.PCX",
+                "BG.PCX",
+                "CR.DEF",
+                "GAME.PAL",
+                "OB.DEF",
+                "PLCBOWX.DEF"
+            ]
+        );
     }
 
     #[test]

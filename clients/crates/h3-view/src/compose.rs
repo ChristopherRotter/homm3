@@ -64,18 +64,17 @@ pub fn compose(
                 y,
             } => {
                 // 0x495500: the plain drawer with runs skipped, never mirrored (§4.4).
-                let (sprite, frame) = frame_of(batch, def, *group, *frame)?;
-                let at = Placement {
-                    x: *x,
-                    y: *y,
-                    mirrored: false,
-                };
-                let drawer = Drawer::Plain {
-                    skip_runs: true,
-                    colour: None,
-                };
-                let palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
-                draw_frame(&mut screen, frame, &palette, at, drawer);
+                plain(&mut screen, batch, def, (*group, *frame), *x, *y, false)?;
+            }
+            Draw::Projectile {
+                def,
+                frame,
+                x,
+                y,
+                mirrored,
+            } => {
+                // 0x43F78A: the same drawer, group 0, mirrored toward a target on the left.
+                plain(&mut screen, batch, def, (0, *frame), *x, *y, *mirrored)?;
             }
             Draw::Creature {
                 def,
@@ -122,6 +121,33 @@ pub fn compose(
         }
     }
     Ok(screen)
+}
+
+/// A frame drawn plain with runs skipped (`def_draw_plain` 0x47BCF0 → 0x47C570), its canvas's
+/// top-left at (`x`, `y`).
+fn plain(
+    screen: &mut Screen,
+    batch: &Batch,
+    def: &str,
+    (group, index): (u32, u32),
+    x: i32,
+    y: i32,
+    mirrored: bool,
+) -> Result<(), ComposeError> {
+    let (sprite, frame) = frame_of(batch, def, group, index)?;
+    let drawer = Drawer::Plain {
+        skip_runs: true,
+        colour: None,
+    };
+    let palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
+    draw_frame(
+        screen,
+        frame,
+        &palette,
+        Placement { x, y, mirrored },
+        drawer,
+    );
+    Ok(())
 }
 
 fn picture_of<'b>(batch: &'b Batch, name: &str) -> Result<&'b h3_assets::pcx::Pcx, ComposeError> {

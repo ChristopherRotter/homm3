@@ -448,3 +448,36 @@ then the user played them. Not in the queue's tasks before (the inbox only).
 - **Left:** the hero list's scrolling, the underground, Yes/No dialogs, a battle from the map, a
   second day (design §6.3's "Not built yet"); a battle batch's cross-check (E04a batch 1a).
 - Gates: see the pull request.
+
+### M2 T4b-1 — The frame check (2026-10-13)
+
+On `client/e17-m2-t4b1-frame-check`, the user present. T4b split in two (the session's
+proposal, the user's choice over T4b's scene-first half and T2): T4b-1 the frame check, T4b-2 the
+rest of the scene (`QUEUE.md`).
+
+- **Built:** `h3drive.py frames` (every distinct battlefield of a recorded sequence kept with its
+  state, the viewer's frame at the same times, the masked diff, the counts recorded in
+  `situations/timelines/<id>-frames.txt`); `h3-view sequences --frames`; `h3mem.py` reads the
+  active stack, the mouse's highlight and the draw layer. In `h3_view`: the projectile's flight
+  (`anim::Flight`, `Timeline::projectile`, `Draw::Projectile`, the plain drawer mirrored), the
+  idle steps (`anim::Idle`, `Timeline::pulse`) and the outlined stack (`Timeline::outlined`),
+  the outline's colour by the idle steps (`BattleLayout::outline_after`, the layout's
+  `outline_ramp`), the flight's points in f32 emulated in fixed point (`f32_round`), the
+  projectile's frame by angle (tangents by series, no platform transcendental).
+- **Read:** `shot_animation` from 0x43F5D6 (the projectile's steps, canvas, drawer, mirroring),
+  `shot_angle_group`'s frame (0x469957), `stack_flight_animation`'s points (0x4B4BA3 to
+  0x4B4D5D), `strike_animation`'s set-up for a shooter (0x468A3D).
+- **Checked** (design §7.9): walk 42 frames and shot 50 exact; melee 68 of 75; the 7 others (the
+  Wolf Riders walking past the Angels) listed for T4b-2; three full runs (two from scratch, one
+  after merging master with the battle lane's map writer change) gave the same counts. Under a
+  build's load `sequences` once read the melee's computer frame a millisecond late: its steps now
+  wait for 500 clock reads (runbook "Traps"). T4a's walk offsets confirmed; its
+  shooter frames and flight points corrected; the outline and idle steps modelled from the
+  frames.
+- **Decided (*provisional*, the review list):** a command without a time after the first counts
+  as the computer's (its idle step and outline); the check draws the viewer's timeline, the
+  original's memory only for fidgets; the counts per frame as the recorded format.
+- **Left (T4b-2):** fidgets from the viewer's own generator, turns, the draw layers (walk 3/7,
+  striker 6, struck 5), deaths by spells, created stacks, Haste and Slow, a full battle frame by
+  frame headless; the walk-by difference.
+- Gates: see the pull request.
