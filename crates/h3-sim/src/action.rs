@@ -745,6 +745,8 @@ mod tests {
             obstacles: vec![],
             heroes: [None, None],
             terrain: None,
+            battlefield: None,
+            anti_magic: false,
             war_machines: [vec![], vec![]],
             formations: Default::default(),
             funds: [0; 2],

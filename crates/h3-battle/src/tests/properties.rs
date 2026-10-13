@@ -540,6 +540,8 @@ fn make_setup(
             2 => r.terrain_by_key("t:lava"),
             _ => None,
         },
+        battlefield: None,
+        anti_magic: false,
         war_machines,
         funds: [48, 56].map(|bit| u32::try_from((machines >> bit) & 0xff).unwrap() * 100),
         formations: [6, 7].map(|bit| {

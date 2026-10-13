@@ -601,6 +601,9 @@ impl ReplayDoc {
                             .ok_or_else(|| CliError::Format(format!("unknown terrain `{t}`")))
                     })
                     .transpose()?,
+                // E04c T2b records the battlefield in replays; until then none.
+                battlefield: None,
+                anti_magic: false,
                 war_machines: [
                     machines(&f.setup.attacker_war_machines)?,
                     machines(&f.setup.defender_war_machines)?,

@@ -119,6 +119,14 @@ pub struct BattleSetup {
     /// The battlefield's terrain, if any: creatures of factions native to it get the native
     /// terrain bonus (BAT-TER-001). Obstacles for it are generated before the seam (BAT-GEO-004).
     pub terrain: Option<TerrainId>,
+    /// The special battlefield, if any (E04c; the shore, a magic field, a ship's deck, two boats):
+    /// the key of a battlefield of the battle's ruleset part (`base:cursed_ground`), by key as an
+    /// obstacle's type, because battlefields belong to the battle part (ADR-0015 point 3). Its
+    /// rules are battle content (BAT-TER-002); the caller derives which one applies and draws the
+    /// obstacles for it before the seam (BAT-GEO-004). Public.
+    pub battlefield: Option<ContentKey>,
+    /// The battle is at an anti-magic garrison (E04c): neither side casts (BAT-MAG-061). Public.
+    pub anti_magic: bool,
     /// War machines per side (indexed by [`BattleSide::index`]): creature types with flag
     /// `war_machine`, at most one of each kind (E03, BAT-WAR-001); a hero's come from its
     /// artifacts (`h3_heroes::war_machines`).
@@ -321,6 +329,8 @@ mod tests {
                 None,
             ],
             terrain: None,
+            battlefield: ContentKey::parse("base:cursed_ground").ok(),
+            anti_magic: true,
             war_machines: [vec![], vec![]],
             formations: [Formation::Tight, Formation::Loose],
             funds: [1000, 0],
@@ -330,5 +340,8 @@ mod tests {
         assert!(setup.heroes[0].is_some() && setup.heroes[1].is_none());
         assert_eq!(setup.obstacles[0].anchor, Some(40));
         assert_eq!(Obstacle::default().anchor, None);
+        assert!(setup.anti_magic && setup.battlefield.is_some());
+        let plain = BattleSetup::default();
+        assert!(!plain.anti_magic && plain.battlefield.is_none());
     }
 }
