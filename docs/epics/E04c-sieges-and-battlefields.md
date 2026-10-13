@@ -1,6 +1,6 @@
 # E04c — Sieges and special battlefields
 
-Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2: T3 done, BAT-Q39 open, then T4) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
+Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2: T3 done, BAT-Q39 answered (S-28 not a quirk), then T4) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
 
@@ -60,8 +60,8 @@ banks' fixed layouts; HotA's fields (Cracked Ice, Dunes, Fields of Glory). AI (E
 
 - [x] **T3 Experiments for the battlefields** — done 2026-10-13 (record: [`E04c-log.md`](E04c-log.md)): the writer's
   special grounds and coast flag (`h3-map`, `cross-lane`), `[[map.ground]]` and `--only`; batches 3a and
-  3b run by an agent: D-1, D-2 and D-4 as the code, the defender's tile decides; S-28's
-  classification is BAT-Q39.
+  3b run by an agent: D-1, D-2 and D-4 as the code, the defender's tile decides; S-28 not a
+  quirk (BAT-Q39).
 - [ ] T4 Siege survey and seam (the siege input on the setup and outcome: fort level, walls, gate,
   towers, moat, the town's faction; an ADR amendment or its own ADR).
 - [ ] T5 Walls, gate and moat (the layout, movement and stops, shooting at and through walls, the

@@ -64,7 +64,7 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   time (the first TM run read morale +2); such a battle is played again.
 - **3a** (predictions: the engine at 3a4d9ff, as the code): all as predicted. Cursed Ground:
   morale and luck 0 for every stack, the army's −3 included, no native bonus (D-1; S-28 observed,
-  its classification BAT-Q39); the SoD pictures 223 and 230 fight on Cursed Ground and Magic
+  not a quirk: the user at BAT-Q39); the SoD pictures 223 and 230 fight on Cursed Ground and Magic
   Plains (D-4); Clover Field +2 luck for Goblins, Gnolls, Pixies and none for Peasants (D-2, VCMI
   refuted); Holy Ground +1 Castle, −1 Inferno; Magic Plains and Lucid Pools as fields 1 and 6.
 - **3b:** the defender's tile decides: a monster on Clover Field (TM) or next to water (SHM) gives

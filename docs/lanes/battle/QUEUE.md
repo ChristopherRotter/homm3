@@ -8,7 +8,7 @@ E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epic
 
 **E04c increment 1** (the user, 2026-10-13, BAT-Q37; `docs/epics/E04c-sieges-and-battlefields.md`): T1 and T2 done (#164, #170, #171). The inbox's E04c bullets on Cursed Ground, Magic Plains, the elemental fields' mastery and special battlefield 2's native bonus are done by T2; their siege bullets wait for T4 onwards.
 
-**E04c increment 2** (the user, 2026-10-13): T3 done (`battle/e04c-t3`, `cross-lane` for `h3-map`'s writer; batches 3a and 3b run by an agent); BAT-Q39 (S-28) open for the user. Next: **T4, the siege survey and seam** (the code reading, VCMI and the wiki; the survey `docs/rules/surveys/E04c-sieges.md`; an ADR draft for the siege input on the setup and outcome), stopping for the user's review as T1 did.
+**E04c increment 2** (the user, 2026-10-13): T3 done (`battle/e04c-t3`, `cross-lane` for `h3-map`'s writer; batches 3a and 3b run by an agent); BAT-Q39 answered (S-28 not a quirk). Next: **T4, the siege survey and seam** (the code reading, VCMI and the wiki; the survey `docs/rules/surveys/E04c-sieges.md`; an ADR draft for the siege input on the setup and outcome), stopping for the user's review as T1 did.
 
 ## Inbox
 

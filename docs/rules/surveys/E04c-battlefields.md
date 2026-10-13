@@ -127,9 +127,8 @@ Plains battles (batch 3a CS, MS: D-4). The coast is the map file's tile flag `0x
   field's intent may have been "no positive morale" (the wiki and VCMI), which would make the lost
   negative morale a bug, `fix-optional` (a flag keeping negative morale, off in `faithful`).
   **Observed** (batch 3a CG): the game gives an army of morale −3 morale 0 there (luck 0, no native
-  bonus): the behaviour is the code's. Whether it is a bug and gets a flag (Q30) is the user's
-  call: OPEN-QUESTIONS BAT-Q39 (recommendation: not a quirk). The engine follows the game
-  (BAT-TER-003). Nothing else in §1 looks like a bug; the fields' texts describe what the code
+  bonus): the behaviour is the code's. **The user (BAT-Q39): not a quirk**; S-28 is retired as
+  "considered, not a quirk" and the engine follows the game in every profile (BAT-TER-003). Nothing else in §1 looks like a bug; the fields' texts describe what the code
   does.
 
 ## 6. Sieges (outline for a later increment)
