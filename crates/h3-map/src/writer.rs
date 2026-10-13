@@ -1,7 +1,8 @@
 //! Writer for the subset of the SoD map format (`.h3m`, version `0x1C`) that staged experiments
 //! need (E04a T2, OPEN-QUESTIONS Q28): one level of a base terrain with rectangles of other
 //! terrains and straight east-west roads (E08 T10a), players without towns, heroes with custom armies, skills, artifacts, spells
-//! and primary skills (or their hero type's own), and wandering monsters.
+//! and primary skills (or their hero type's own), wandering monsters and resource piles (E08
+//! T16b).
 //!
 //! Layout notes are in `docs/formats/h3m.md`. The field order follows VCMI 1.7.5's map reader
 //! (`lib/mapping/MapFormatH3M.cpp`, `MapReaderH3M.cpp`, `ObjectTemplate::readMap`; GPL-2.0-or-later,
@@ -64,6 +65,11 @@ pub const PLAYERS: usize = 8;
 const OBJECT_HERO: u32 = 34;
 /// Object classes whose body is a wandering monster (monster, random monsters).
 const MONSTER_OBJECTS: [u32; 5] = [54, 71, 162, 163, 164];
+/// Object class of a resource pile (subclass = resource, `RESTYPES.TXT` order: wood, mercury,
+/// ore, sulfur, crystal, gems, gold).
+const PILE_OBJECT: u32 = 79;
+/// Resources a pile may hold.
+const RESOURCE_COUNT: u32 = 7;
 /// Longest string we write (the game reads a `u32` length; this keeps files sane).
 const MAX_STRING: usize = 30_000;
 /// Hero types banned from the random pool by default in SoD maps (the RoE Lord Haart, 4, and the
@@ -312,6 +318,17 @@ pub struct Monster {
     pub fixed_count: bool,
 }
 
+/// A resource pile placed on the map (E08 T16b), without a message or guards.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Pile {
+    /// Tile the pile stands on.
+    pub tile: (u8, u8),
+    /// Template (class 79 and the resource as subclass, from `Objects.txt`).
+    pub template: ObjectTemplate,
+    /// Amount as the map stores it (0 = drawn when the game starts; `docs/formats/h3m.md`).
+    pub amount: u32,
+}
+
 /// An object placed on the map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MapObject {
@@ -319,6 +336,8 @@ pub enum MapObject {
     Hero(Hero),
     /// A wandering monster.
     Monster(Monster),
+    /// A resource pile.
+    Pile(Pile),
 }
 
 /// A rectangle of tiles with a terrain of its own (E08 T10a: movement experiments).
@@ -449,6 +468,7 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
         match object {
             MapObject::Hero(hero) => write_hero(&mut out, hero, identifier)?,
             MapObject::Monster(monster) => write_monster(&mut out, monster, identifier),
+            MapObject::Pile(pile) => write_pile(&mut out, pile),
         }
     }
     out.u32(0); // no timed events
@@ -501,6 +521,7 @@ fn validate(map: &Map) -> Result<(), WriteError> {
         let (x, y) = match object {
             MapObject::Hero(hero) => hero.tile,
             MapObject::Monster(monster) => monster.tile,
+            MapObject::Pile(pile) => pile.tile,
         };
         if x >= map.size || y >= map.size {
             return Err(out_of_range(
@@ -511,6 +532,7 @@ fn validate(map: &Map) -> Result<(), WriteError> {
         match object {
             MapObject::Hero(hero) => validate_hero(map, hero)?,
             MapObject::Monster(monster) => validate_monster(monster)?,
+            MapObject::Pile(pile) => validate_pile(pile)?,
         }
     }
     Ok(())
@@ -578,6 +600,16 @@ fn validate_monster(monster: &Monster) -> Result<(), WriteError> {
     }
     if monster.disposition > 4 {
         return Err(out_of_range("monster disposition", monster.disposition));
+    }
+    Ok(())
+}
+
+fn validate_pile(pile: &Pile) -> Result<(), WriteError> {
+    if pile.template.class != PILE_OBJECT {
+        return Err(out_of_range("pile object class", pile.template.class));
+    }
+    if pile.template.subclass >= RESOURCE_COUNT {
+        return Err(out_of_range("pile resource", pile.template.subclass));
     }
     Ok(())
 }
@@ -663,6 +695,7 @@ fn object_template(object: &MapObject) -> ObjectTemplate {
     match object {
         MapObject::Hero(hero) => ObjectTemplate::hero(hero.class),
         MapObject::Monster(monster) => monster.template.clone(),
+        MapObject::Pile(pile) => pile.template.clone(),
     }
 }
 
@@ -684,6 +717,7 @@ fn position(object: &MapObject) -> (u8, u8) {
     match object {
         MapObject::Hero(hero) => (hero.tile.0.saturating_add(1), hero.tile.1),
         MapObject::Monster(monster) => monster.tile,
+        MapObject::Pile(pile) => pile.tile,
     }
 }
 
@@ -749,6 +783,14 @@ fn write_monster(out: &mut Out, monster: &Monster, identifier: u32) {
     out.bool(monster.never_flees);
     out.bool(monster.fixed_count);
     out.bytes(&[0, 0]);
+}
+
+/// A pile's body as the editor writes one without a message: the message flag, the amount and 4
+/// unused bytes (`docs/formats/h3m.md`, classes 76 and 79).
+fn write_pile(out: &mut Out, pile: &Pile) {
+    out.bool(false); // no message (and so no guards)
+    out.u32(pile.amount);
+    out.bytes(&[0; 4]);
 }
 
 fn len32(len: usize) -> u32 {
@@ -1044,6 +1086,43 @@ mod tests {
             monster.tile = (36, 0);
         }
         assert!(write(&map).is_err());
+    }
+
+    const WOOD: &str = "AVTwood0.def 011111111111111111111111111111111111111111111111 \
+                        100000000000000000000000000000000000000000000000 111111111 000000001 \
+                        79 0 5 0";
+
+    #[test]
+    fn piles_are_written_with_the_original_s_body() {
+        let mut map = smoke_like_map();
+        let template = ObjectTemplate::from_objects_txt(WOOD).unwrap();
+        map.objects.push(MapObject::Pile(Pile {
+            tile: (7, 9),
+            template: template.clone(),
+            amount: 0x0102_0304,
+        }));
+        let bytes = write(&map).unwrap();
+        assert_eq!(templates(&map).len(), 3);
+        assert_eq!(templates(&map)[2], template);
+        assert_eq!(position(&map.objects[2]), (7, 9));
+        // The last object: its position, template index, 5 zero bytes, then the body (no message,
+        // the amount, 4 unused bytes), and the event count.
+        let tail = &bytes[bytes.len() - 25..];
+        assert_eq!(&tail[..7], &[7, 9, 0, 2, 0, 0, 0]);
+        assert_eq!(&tail[7..12], &[0; 5]);
+        assert_eq!(&tail[12..21], &[0, 4, 3, 2, 1, 0, 0, 0, 0]);
+        assert_eq!(&tail[21..], &[0; 4]);
+        let with_pile = |f: &dyn Fn(&mut Pile)| {
+            let mut map = map.clone();
+            if let MapObject::Pile(pile) = &mut map.objects[2] {
+                f(pile);
+            }
+            write(&map)
+        };
+        assert!(with_pile(&|p| p.template.subclass = 6).is_ok());
+        assert!(with_pile(&|p| p.template.subclass = 7).is_err());
+        assert!(with_pile(&|p| p.template.class = 76).is_err());
+        assert!(with_pile(&|p| p.tile = (36, 0)).is_err());
     }
 
     #[test]
