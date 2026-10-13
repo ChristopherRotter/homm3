@@ -415,7 +415,7 @@ fn penalty(
     if flags.contains(StrikeFlags::RANGED) {
         // rule: BAT-RNG-002
         // Measured from the striker's front hex (its position as VCMI names it).
-        let from = striker.footprint(field).front();
+        let from = striker.footprint(field).front;
         let near = victim
             .footprint(field)
             .hexes()
@@ -659,20 +659,20 @@ fn pattern_hexes(field: Field, me: &Stack, fp: Footprint, victim: Footprint) -> 
     let mut enemy = HexSet::new();
     let mut any = HexSet::new();
     let front = Footprint {
-        position: fp.front(),
-        other: None,
+        front: fp.front,
+        rear: None,
     };
     // A footprint that touches the target with its rear hex only is two-hex.
     let origin = if field.touches(front, victim) {
-        fp.front()
+        fp.front
     } else {
-        fp.position
+        fp.position()
     };
     // The origin touches the target, so one of the directions exists.
     let dir = victim
-        .rear()
+        .rear
         .and_then(|t| field.direction(origin, t))
-        .or_else(|| field.direction(origin, victim.front()))
+        .or_else(|| field.direction(origin, victim.front))
         .unwrap_or(Direction::Right);
     let walk = |first: u8, more: &[u8]| {
         let start = if field

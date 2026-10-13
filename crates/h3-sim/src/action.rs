@@ -185,9 +185,9 @@ fn encode_entry(state: &BattleState, ruleset: &BattleRuleset, command: Command) 
         Command::Shoot { target, at } => {
             let field = Field::new(ruleset.battle().field);
             let fp = state.stack(target)?.footprint(field);
-            let aim = if at == fp.front() {
+            let aim = if at == fp.front {
                 0
-            } else if fp.rear() == Some(at) {
+            } else if fp.rear == Some(at) {
                 1
             } else {
                 return None;
@@ -268,9 +268,9 @@ fn decode_entry(state: &BattleState, ruleset: &BattleRuleset, entry: usize) -> O
             let field = Field::new(ruleset.battle().field);
             let fp = state.stack(target)?.footprint(field);
             let at = if (a - SHOOT_BASE).is_multiple_of(2) {
-                fp.front()
+                fp.front
             } else {
-                fp.rear()?
+                fp.rear?
             };
             Some(Command::Shoot { target, at })
         }

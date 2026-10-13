@@ -368,7 +368,7 @@ fn war_machines(
             .filter(|fp| !fp.hexes().any(|h| taken.contains(h)))
             .ok_or(SetupError::NoRoom { side, slot })?;
         fp.hexes().for_each(|h| taken.insert(h));
-        let mut stack = Stack::new(ruleset, setup, (id, creature), side, slot, fp.position, 1);
+        let mut stack = Stack::new(ruleset, setup, (id, creature), side, slot, fp.position(), 1);
         // rule: BAT-WAR-002
         stack.traits = stack.traits.with(
             StackTraits::UNLIMITED_SHOTS,
@@ -708,8 +708,8 @@ impl Stack {
         field
             .footprint(self.hex, self.is_two_hex(), self.side)
             .unwrap_or(Footprint {
-                position: self.hex,
-                other: None,
+                front: self.hex,
+                rear: None,
             })
     }
 
@@ -1317,7 +1317,7 @@ pub(crate) fn closest_free(
                 .all(|h| field.is_standable(h) && !taken.contains(h))
         })
         .min_by_key(|fp| {
-            let front = fp.front();
+            let front = fp.front;
             let (x, y) = field.coords(front);
             let toward_centre = match side {
                 BattleSide::Attacker => -x,
@@ -1330,7 +1330,7 @@ pub(crate) fn closest_free(
                 front,
             )
         })
-        .map(|fp| fp.position)
+        .map(|fp| fp.position())
 }
 
 impl CanonicalHash for BattleState {

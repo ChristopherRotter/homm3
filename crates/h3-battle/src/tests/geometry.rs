@@ -35,21 +35,21 @@ fn two_hex_footprints_extend_in_front_of_the_position() {
     let f = field(&r);
     let position = at(&r, 5, 5);
     let one = |position| Footprint {
-        position,
-        other: None,
+        front: position,
+        rear: None,
     };
     assert_eq!(
         f.footprint(position, true, BattleSide::Attacker),
         Some(Footprint {
-            position,
-            other: Some(at(&r, 6, 5))
+            front: at(&r, 6, 5),
+            rear: Some(position)
         })
     );
     assert_eq!(
         f.footprint(position, true, BattleSide::Defender),
         Some(Footprint {
-            position,
-            other: Some(at(&r, 4, 5))
+            front: at(&r, 4, 5),
+            rear: Some(position)
         })
     );
     assert_eq!(
@@ -63,21 +63,23 @@ fn two_hex_footprints_extend_in_front_of_the_position() {
     let fp = f.footprint(position, true, BattleSide::Attacker).unwrap();
     assert!(fp.covers(at(&r, 6, 5)) && fp.covers(position) && !fp.covers(at(&r, 4, 5)));
     // The front hex first, then the rear hex (the position).
-    assert_eq!(fp.front(), at(&r, 6, 5));
-    assert_eq!(fp.rear(), Some(position));
+    assert_eq!(fp.position(), position);
     assert_eq!(fp.hexes().collect::<Vec<_>>(), [at(&r, 6, 5), position]);
-    assert_eq!(one(position).front(), position);
-    assert_eq!(one(position).rear(), None);
+    assert_eq!(one(position).position(), position);
     assert_eq!(one(position).hexes().collect::<Vec<_>>(), [position]);
     // A footprint from its front hex.
     for side in BattleSide::BOTH {
         for two_hex in [false, true] {
             let fp = f.footprint(position, two_hex, side).unwrap();
-            assert_eq!(f.footprint_at_front(fp.front(), two_hex, side), Some(fp));
+            assert_eq!(f.footprint_at_front(fp.front, two_hex, side), Some(fp));
         }
     }
     assert_eq!(
         f.footprint_at_front(at(&r, 0, 3), true, BattleSide::Attacker),
+        None
+    );
+    assert_eq!(
+        f.footprint_at_front(Hex(200), false, BattleSide::Attacker),
         None
     );
     // Distance between footprints is the smallest hex distance.
@@ -201,12 +203,12 @@ fn two_hex_stacks_and_obstacles_shift_the_starting_position() {
     );
     let st = s.stacks();
     assert_eq!(st[0].hex, at(&r, 1, 2));
-    assert_eq!(st[0].footprint(field(&r)).front(), at(&r, 2, 2));
+    assert_eq!(st[0].footprint(field(&r)).front, at(&r, 2, 2));
     assert_eq!(st[1].hex, at(&r, 2, 5));
     assert_eq!(st[2].hex, at(&r, 1, 8));
     // Defender: formation [3, 7] in column 15, a two-hex stack's front hex one column further in.
     assert_eq!(st[3].hex, at(&r, 15, 3));
-    assert_eq!(st[3].footprint(field(&r)).front(), at(&r, 14, 3));
+    assert_eq!(st[3].footprint(field(&r)).front, at(&r, 14, 3));
     assert_eq!(st[4].hex, at(&r, 15, 7));
 }
 
@@ -290,7 +292,7 @@ fn two_hex_walkers_need_room_for_both_hexes() {
     // Moving one hex on is fine: its own hexes do not block it.
     let mut on = s.clone();
     act(&mut on, &r, Command::Move { to: at(&r, 2, 5) }).unwrap();
-    assert_eq!(on.stacks()[0].footprint(field(&r)).front(), at(&r, 3, 5));
+    assert_eq!(on.stacks()[0].footprint(field(&r)).front, at(&r, 3, 5));
 }
 
 // ---------------------------------------------------------------- BAT-MOV-002 flying

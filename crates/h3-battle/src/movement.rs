@@ -55,7 +55,7 @@ pub(crate) fn fits(field: Field, mover: &Stack, hex: Hex, blocked: HexSet) -> bo
     let free = |h: Hex| field.is_standable(h) && !blocked.contains(h);
     field
         .footprint(hex, mover.is_two_hex(), mover.side)
-        .is_some_and(|fp| free(fp.position) && fp.other.is_none_or(free))
+        .is_some_and(|fp| free(fp.front) && fp.rear.is_none_or(free))
 }
 
 /// Computes where `mover` (stack `id`) can move this turn: within its speed now (BAT-MAG-011),

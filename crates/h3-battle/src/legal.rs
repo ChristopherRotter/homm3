@@ -53,7 +53,7 @@ pub fn legal_commands(
         let reach = tactics::reach(state, field, id, &mover);
         for i in 0..field.hex_count() {
             let hex = Hex(u8::try_from(i).unwrap_or(u8::MAX));
-            if phase.holds(field, &mover, hex) && reach.can_move_to(hex) {
+            if reach.can_move_to(hex) && phase.holds(field, &mover, hex) {
                 let _ = out.push(Command::Move { to: hex });
             }
         }
@@ -101,8 +101,8 @@ fn turn_commands(
         let fp = target.footprint(field);
         if shooting {
             let aims = [
-                Some(fp.front()),
-                fp.rear().filter(|_| mover.has(StackTraits::AREA_SHOT)),
+                Some(fp.front),
+                fp.rear.filter(|_| mover.has(StackTraits::AREA_SHOT)),
             ];
             for at in aims.into_iter().flatten() {
                 let _ = out.push(Command::Shoot {

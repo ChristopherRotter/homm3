@@ -37,7 +37,7 @@ fn shoot(target: u8, s: &BattleState) -> Command {
     let field = crate::Field::new(ruleset().battle().field);
     Command::Shoot {
         target: StackId(target),
-        at: s.stacks()[usize::from(target)].footprint(field).front(),
+        at: s.stacks()[usize::from(target)].footprint(field).front,
     }
 }
 
@@ -321,7 +321,7 @@ fn death_clouds_spare_the_non_living_and_area_shots_may_aim_at_a_rear_hex() {
     let st = strikes(&fire(&mut s.clone(), &r, 1).unwrap());
     assert_eq!(st.iter().map(|x| x.0).collect::<Vec<_>>(), [1]);
     // Aim at the two-hex target's rear hex: the area moves with it.
-    let rear = s.stacks()[3].footprint(field(&r)).rear().unwrap();
+    let rear = s.stacks()[3].footprint(field(&r)).rear.unwrap();
     let aim = Command::Shoot {
         target: StackId(3),
         at: rear,
@@ -331,7 +331,7 @@ fn death_clouds_spare_the_non_living_and_area_shots_may_aim_at_a_rear_hex() {
     // Other shooters must aim at the front hex; nobody may aim off the target.
     let mut a = battle(&r, &[(0, "archer", 10)], &[(0, "wide", 5)], 1);
     activate(&mut a, 0);
-    let rear = a.stacks()[1].footprint(field(&r)).rear().unwrap();
+    let rear = a.stacks()[1].footprint(field(&r)).rear.unwrap();
     assert_eq!(
         act(
             &mut a.clone(),

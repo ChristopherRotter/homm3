@@ -292,7 +292,7 @@ fn clone_place(
     let stack = state.at(s);
     let two_hex = stack.has(StackTraits::TWO_HEX);
     let fp = stack.footprint(field);
-    let starts = [fp.position, fp.front()];
+    let starts = [fp.position(), fp.front];
     let taken = state.blocked_for(field, if on_original { s } else { StackId(u8::MAX) });
     let own = |h: Hex| fp.hexes().any(|o| o == h);
     let (order, backwards) = match stack.side {
@@ -325,7 +325,7 @@ fn clone_place(
                     match fits(field, taken, (hex, two_hex), stack.side) {
                         // rule: BAT-MAG-038
                         Some(_) if own(hex) => return Some(ClonePlace::Original),
-                        Some(fp) if !own(fp.front()) => return Some(ClonePlace::At(hex)),
+                        Some(fp) if !own(fp.front) => return Some(ClonePlace::At(hex)),
                         _ => {}
                     }
                 }

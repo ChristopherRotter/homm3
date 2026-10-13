@@ -306,7 +306,7 @@ fn a_corpse_is_raised_only_from_a_free_hex_and_from_the_top() {
     kill(&mut s, &r, 4);
     let ogre = s.stacks()[4];
     assert_eq!(targets(&s, &r, "rise"), vec![2, 4]);
-    let other = ogre.footprint(field(&r)).front();
+    let other = ogre.footprint(field(&r)).front;
     assert_ne!(other, ogre.hex);
     s.stacks.as_mut_slice()[0].hex = other;
     assert_eq!(targets(&s, &r, "rise"), vec![2]);
@@ -577,7 +577,7 @@ fn a_corpse_under_a_wall_or_below_corpses_that_do_not_count() {
     place(&mut s, &r, 2, 4, 5);
     kill(&mut s, &r, 2);
     let ogre = s.stacks()[2];
-    assert_eq!(ogre.footprint(field(&r)).front(), at(&r, 5, 5));
+    assert_eq!(ogre.footprint(field(&r)).front, at(&r, 5, 5));
     assert_eq!(targets(&s, &r, "rise"), vec![2]);
     s.stacks.as_mut_slice()[4].hex = ogre.hex;
     assert_eq!(targets(&s, &r, "rise"), vec![1]);

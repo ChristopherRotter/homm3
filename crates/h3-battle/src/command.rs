@@ -288,7 +288,7 @@ fn plan<'r>(
             }
             let fp = state.at(target).footprint(field);
             // rule: BAT-RNG-004
-            let aimable = at == fp.front() || (mover.has(StackTraits::AREA_SHOT) && fp.covers(at));
+            let aimable = at == fp.front || (mover.has(StackTraits::AREA_SHOT) && fp.covers(at));
             if !aimable {
                 return Err(CommandError::NotOnTarget);
             }

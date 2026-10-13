@@ -42,7 +42,7 @@ pub(crate) fn berserk<S: Sink>(
 ) -> bool {
     let field = Field::new(ruleset.battle().field);
     let me = *state.at(id);
-    let front = me.footprint(field).front();
+    let front = me.footprint(field).front;
     let shooting = can_shoot(state, field, id);
     // rule: BAT-MAG-045
     let range = if binds::is_bound(state, id) {
@@ -57,7 +57,7 @@ pub(crate) fn berserk<S: Sink>(
         .filter(|&(i, t)| i != id.0 && t.is_alive())
         .filter_map(|(i, t)| {
             let choice = if shooting {
-                let at = t.footprint(field).front();
+                let at = t.footprint(field).front;
                 Some((at, field.distance(front, at)))
             } else {
                 attack_position(field, &me, t, &reach)

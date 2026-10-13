@@ -105,39 +105,31 @@ impl CanonicalHash for HexSet {
 /// two-hex stack's position is its rear hex, as in the original (stack +0x38, BAT-GEO-002).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Footprint {
-    /// The position: a one-hex stack's hex, a two-hex stack's rear hex.
-    pub position: Hex,
-    /// A two-hex stack's other hex, in front of its position.
-    pub other: Option<Hex>,
+    /// The front hex, the one the stack faces the enemy with: a one-hex stack's position, a
+    /// two-hex stack's other hex.
+    pub front: Hex,
+    /// A two-hex stack's rear hex, its position.
+    pub rear: Option<Hex>,
 }
 
 impl Footprint {
-    /// The front hex, the one the stack faces the enemy with: a two-hex stack's other hex, a
-    /// one-hex stack's position.
-    pub const fn front(self) -> Hex {
-        match self.other {
+    /// The position: a one-hex stack's hex, a two-hex stack's rear hex.
+    pub const fn position(self) -> Hex {
+        match self.rear {
             Some(h) => h,
-            None => self.position,
-        }
-    }
-
-    /// A two-hex stack's rear hex (its position); `None` for a one-hex stack.
-    pub const fn rear(self) -> Option<Hex> {
-        match self.other {
-            Some(_) => Some(self.position),
-            None => None,
+            None => self.front,
         }
     }
 
     /// The covered hexes, the front hex first (the order walks over them keep: a fire obstacle
     /// or a mine under the front hex comes first, BAT-MAG-028, BAT-MAG-033).
     pub fn hexes(self) -> impl Iterator<Item = Hex> {
-        core::iter::once(self.front()).chain(self.rear())
+        core::iter::once(self.front).chain(self.rear)
     }
 
     /// Whether the footprint covers `hex`.
     pub fn covers(self, hex: Hex) -> bool {
-        self.position == hex || self.other == Some(hex)
+        self.front == hex || self.rear == Some(hex)
     }
 }
 
@@ -332,38 +324,45 @@ impl Field {
     /// The footprint of a stack of `side` whose position is `position` (a two-hex stack's rear
     /// hex), or `None` if the position or a two-hex stack's other hex is off the field.
     // rule: BAT-GEO-002
+    #[inline]
     pub fn footprint(self, position: Hex, two_hex: bool, side: BattleSide) -> Option<Footprint> {
         if !self.contains(position) {
             return None;
         }
         if !two_hex {
             return Some(Footprint {
-                position,
-                other: None,
+                front: position,
+                rear: None,
             });
         }
         self.neighbor(position, Self::front_direction(side))
-            .map(|other| Footprint {
-                position,
-                other: Some(other),
+            .map(|front| Footprint {
+                front,
+                rear: Some(position),
             })
     }
 
     /// The footprint of a stack of `side` whose front hex ([`Footprint::front`]) is `front`, or
     /// `None` if a hex of it is off the field.
+    #[inline]
     pub fn footprint_at_front(
         self,
         front: Hex,
         two_hex: bool,
         side: BattleSide,
     ) -> Option<Footprint> {
+        if !self.contains(front) {
+            return None;
+        }
+        if !two_hex {
+            return Some(Footprint { front, rear: None });
+        }
         // The position lies behind the front hex: the opposite direction, half a turn.
-        let position = if two_hex {
-            self.neighbor(front, Self::front_direction(side).turned(3))?
-        } else {
-            front
-        };
-        self.footprint(position, two_hex, side)
+        self.neighbor(front, Self::front_direction(side).turned(3))
+            .map(|rear| Footprint {
+                front,
+                rear: Some(rear),
+            })
     }
 
     /// Smallest distance between a hex of `a` and a hex of `b`.
@@ -395,7 +394,7 @@ impl Field {
         target: Footprint,
     ) -> [Option<Hex>; ATTACK_SLOTS] {
         let mut out = [None; ATTACK_SLOTS];
-        let target_hexes = [Some(target.front()), target.rear()];
+        let target_hexes = [Some(target.front), target.rear];
         // Positions found so far (every position is kept in its first slot only).
         let mut seen = [Hex(0); ATTACK_SLOTS];
         let mut seen_len = 0;
@@ -417,7 +416,7 @@ impl Field {
             };
             let position = footprint
                 .filter(|fp| !fp.hexes().any(|h| target.covers(h)))
-                .map(|fp| fp.position);
+                .map(Footprint::position);
             if let Some(p) = position.filter(|p| !seen[..seen_len].contains(p)) {
                 seen[seen_len] = p;
                 seen_len += 1;

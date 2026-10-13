@@ -33,7 +33,11 @@ impl TacticsPhase {
     /// as raw columns of every row, so the zone's inner edge zig-zags (BAT-TAC-001).
     // rule: BAT-TAC-001
     pub fn contains(self, field: Field, hex: Hex) -> bool {
-        let (x, _) = field.coords(hex);
+        self.contains_column(field, field.coords(hex).0)
+    }
+
+    /// Whether the raw column `x` lies in the zone.
+    fn contains_column(self, field: Field, x: i32) -> bool {
         let columns = i32::from(self.columns);
         match self.side {
             BattleSide::Attacker => {
@@ -50,9 +54,14 @@ impl TacticsPhase {
     /// Whether a stack shaped like `stack` lies in the zone at `position` with its whole
     /// footprint (BAT-GEO-002, BAT-TAC-002).
     pub(crate) fn holds(self, field: Field, stack: &Stack, position: Hex) -> bool {
-        field
-            .footprint(position, stack.is_two_hex(), stack.side)
-            .is_some_and(|fp| fp.hexes().all(|h| self.contains(field, h)))
+        // A two-hex stack's other hex is its row's next column towards the enemy.
+        let (x, _) = field.coords(position);
+        let front = match (stack.is_two_hex(), stack.side) {
+            (false, _) => x,
+            (true, BattleSide::Attacker) => x + 1,
+            (true, BattleSide::Defender) => x - 1,
+        };
+        self.contains_column(field, x) && self.contains_column(field, front)
     }
 }
 
