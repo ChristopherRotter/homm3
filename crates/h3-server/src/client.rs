@@ -2,7 +2,9 @@
 //! and for tools; a viewer is the client lane's. It derives an account's key as every client does
 //! (E16 M3 T2a, [`Key::derive`]). It answers the server's pings only while it reads
 //! ([`Client::recv`]): a client that reads nothing for the server's `ping_timeout_ms` is dropped
-//! as gone (SRV-Q20). Provisional.
+//! as gone (SRV-Q20). Its hello names a fresh nonce and the address it dialed, and it checks the
+//! welcome's signature by the server's key, and the key against one it pinned (E16 M6 T1,
+//! ADR-0021 point 1). Provisional.
 
 use std::net::SocketAddr;
 
@@ -10,7 +12,7 @@ use argon2::{Algorithm, Argon2, Params, Version};
 use ed25519_dalek::{Signer, SigningKey};
 use futures_util::{SinkExt, StreamExt};
 use h3_protocol::PROTOCOL_VERSION;
-use h3_protocol::account::{self, CHALLENGE_BYTES, KEY_BYTES, SIGNATURE_BYTES};
+use h3_protocol::account::{self, CHALLENGE_BYTES, KEY_BYTES, NONCE_BYTES, SIGNATURE_BYTES};
 use h3_protocol::codec;
 use h3_protocol::wire::{ClientMessage, Seat, ServerMessage};
 use tokio::net::TcpStream;
@@ -20,6 +22,7 @@ use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use crate::Error;
+use crate::accounts::{Authenticator, Ed25519};
 
 /// An account's signing key (E16 M3 T2a; ADR-0019 point 1; `E16-design.md` §10).
 #[derive(Debug, Clone)]
@@ -64,8 +67,13 @@ impl Key {
 #[derive(Debug)]
 pub struct Client {
     socket: WebSocketStream<MaybeTlsStream<TcpStream>>,
-    /// The welcome's server id and challenge (E16 M3 T2a), once the hello was answered.
-    welcome: Option<(String, [u8; CHALLENGE_BYTES])>,
+    /// The address its hello names as the one it dialed (E16 M6 T1).
+    address: String,
+    /// The server key it expects, if it pinned one (E16 M6 T1).
+    pinned: Option<[u8; KEY_BYTES]>,
+    /// The welcome's server id and challenge (E16 M3 T2a) and the server's key (E16 M6 T1), once
+    /// the hello was answered.
+    welcome: Option<(String, [u8; CHALLENGE_BYTES], [u8; KEY_BYTES])>,
 }
 
 impl Client {
@@ -93,8 +101,26 @@ impl Client {
             .map_err(|e| failed(&e))?;
         Ok(Self {
             socket,
+            address: format!("ws://{address}"),
+            pinned: None,
             welcome: None,
         })
+    }
+
+    /// Names `url` in the hello as the address it dialed (E16 M6 T1), as a client that reached the
+    /// server through a proxy or by another of its addresses does.
+    pub fn dialed(&mut self, url: &str) {
+        url.clone_into(&mut self.address);
+    }
+
+    /// Expects the server's key to be `key` (E16 M6 T1): a welcome with another key fails.
+    pub fn pin(&mut self, key: [u8; KEY_BYTES]) {
+        self.pinned = Some(key);
+    }
+
+    /// The server's key the welcome carried (E16 M6 T1).
+    pub fn server_key(&self) -> Option<[u8; KEY_BYTES]> {
+        self.welcome.as_ref().map(|&(_, _, key)| key)
     }
 
     /// Sends one message.
@@ -124,24 +150,57 @@ impl Client {
         }
     }
 
-    /// Says hello in this protocol version; the server's answer.
+    /// Says hello in this protocol version, with a fresh nonce; the server's answer. A welcome
+    /// whose signature does not verify by its key, or whose key is not the one pinned, fails
+    /// (E16 M6 T1).
     pub async fn hello(&mut self, name: &str) -> Result<Option<ServerMessage>, Error> {
+        let mut nonce = [0u8; NONCE_BYTES];
+        getrandom::fill(&mut nonce).map_err(|e| Error(format!("OS randomness: {e}")))?;
         self.send(&ClientMessage::Hello {
             protocol: PROTOCOL_VERSION,
             client: crate::server_name().replace("server", "client"),
             name: name.to_owned(),
+            nonce: account::to_hex(&nonce),
+            address: self.address.clone(),
         })
         .await?;
         let answer = self.recv().await;
-        if let Some(ServerMessage::Welcome { id, challenge, .. }) = &answer {
-            self.welcome = account::from_hex(challenge).map(|c| (id.clone(), c));
+        if let Some(ServerMessage::Welcome {
+            id,
+            challenge,
+            key,
+            signature,
+            ..
+        }) = &answer
+        {
+            let parsed = (
+                account::from_hex(challenge),
+                account::from_hex(key),
+                account::from_hex(signature),
+            );
+            let (Some(challenge), Some(key), Some(signature)) = parsed else {
+                return Err(Error(String::from("a welcome that does not parse")));
+            };
+            let signed = account::welcome_message(id, &nonce, &challenge);
+            if !Ed25519.verify(&key, &signed, &signature) {
+                return Err(Error(String::from(
+                    "the welcome's signature does not verify",
+                )));
+            }
+            if self.pinned.is_some_and(|pinned| pinned != key) {
+                return Err(Error(format!(
+                    "the server's key changed: {}",
+                    account::to_hex(&key)
+                )));
+            }
+            self.welcome = Some((id.clone(), challenge, key));
         }
         Ok(answer)
     }
 
     /// The welcome's server id and challenge (E16 M3 T2a).
     pub fn welcome(&self) -> Option<(&str, &[u8; CHALLENGE_BYTES])> {
-        self.welcome.as_ref().map(|(id, c)| (id.as_str(), c))
+        self.welcome.as_ref().map(|(id, c, _)| (id.as_str(), c))
     }
 
     /// Logs in as `login` by `key`, or registers the account as `display` (E16 M3 T2a): signs the

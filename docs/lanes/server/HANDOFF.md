@@ -4,11 +4,11 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22). **M6 refined** (SRV-Q23): ADR-0021, the detail in `E16-design.md` §12, T1–T6 in `QUEUE.md`. **Next: M6 T1** (the server key and the signed welcome). M5 waits for E08's increment 3.
+- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22). **M6 refined** (SRV-Q23): ADR-0021, the detail in `E16-design.md` §12, T1 done (the key, the signed welcome). **Next: M6 T2** (the card and `Describe`). M5 waits for E08's increment 3.
 - **The TLS client** (ADR-0021 point 4, T3): `rustls`, `rustls-graviola`, `rustls-native-certs`; `ring` and `aws-lc` are not GPLv2-compatible (`cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 22 since the obstacle types, CLT-Q3; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 7 since M4 T8's `Held`; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 24 since M6 T1's signed welcome, after the obstacle types' 22 and the rear hex's 23; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 7 since M4 T8's `Held`; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -51,18 +51,15 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A game whose thread ends with its journal kept leaves by `Registry::stopped`, not `leave` (a match keeps its players). A start re-runs journals one by one by id (rating order).
 - A ranked game's end is told only by the host's verdict (`publish_replay`/`withhold_replay`): a new way to end must reach `finish`. A ladder's log names a game once (`<data>/next-game`): never hand out ids below `GameIds::last`.
 - **The workload is lane-only and follows `master`** (55 % battle engine; the full verify does not measure it): `verify --scope server` measures it at each session's start; a drift from `master` is re-baselined (`cargo xtask bench-check --update --workload session-random-play-full`), the range named in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
+- A connection's server id is `Connection::id`, set by its hello: logins sign it, not `Host::id` (M6 T1).
 - Windows refuses `set_len` through an `append(true)` handle: logs open `write(true)` and write at their end (`journal::open_log`). Check with clippy `--target x86_64-pc-windows-gnu`; Wine is no test.
 
 ## Recent sessions
 
+### 2026-10-13 — M6 T1, the server key and the signed welcome
+
+**#149 open** (T1, `E16-log.md`): the key, the signed welcome; wire 24. Check its mergeability first.
+
 ### 2026-10-13 — M6's refinement
 
-SRV-Q23 (`E16-log.md`): a TLS client (`rustls`, `graviola`), mDNS later, lists of servers; ADR-0021 (`shared:` commit, `cross-lane`); T1–T6 cut.
-
-### 2026-10-12 — M4 T8, the pause's hold across a restart
-
-#140 merged (`cross-lane`): T8, `Held`, journal 7; four review items.
-
-### 2026-10-12 — M4 T7, M4's closure
-
-#124 merged: M4's closure; the logs on Windows.
+#146: SRV-Q23 answered, ADR-0021, T1–T6 cut (`E16-log.md`).

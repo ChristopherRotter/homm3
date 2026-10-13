@@ -352,6 +352,8 @@ fn a_connection_without_a_seat_is_no_actor() {
             protocol: 2,
             client: String::new(),
             name: String::new(),
+            nonce: String::new(),
+            address: String::new(),
         },
         ClientMessage::Ping { nonce: 1 },
     ] {

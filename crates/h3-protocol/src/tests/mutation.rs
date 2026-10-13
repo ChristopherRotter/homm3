@@ -244,10 +244,14 @@ fn check(frame: &[u8]) -> Result<(), TestCaseError> {
         protocol: PROTOCOL_VERSION,
         client: String::new(),
         name: String::new(),
+        nonce: "09".repeat(32),
+        address: String::from("ws://s"),
     };
     let host = Host {
         program: "s",
         id: "ws://s",
+        addresses: &[],
+        signer: &super::Fold,
     };
     gate.receive(&encode(&hello), &host);
     // A third of the frames reach a logged-in gate (E16 M3 T1), the account's requests too.

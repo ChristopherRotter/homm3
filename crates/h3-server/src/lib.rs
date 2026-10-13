@@ -13,6 +13,7 @@
 //! - `accounts`: the logins, re-keys, renames and listing preferences, checked by the
 //!   `Authenticator` (Ed25519), and `players`, the player log they are kept in (M3 T2a, T2b);
 //!   [`rebind`], the operator's;
+//! - `key`: the server's key, its identity, which signs its welcomes (E16 M6 T1);
 //! - `ladders`: the ranked game configurations, their scenario pools and results logs, and
 //!   [`rating`], Glicko-2 (E16 M4 T1); `ids`, the game ids unique for the server's life (E16 M4
 //!   T3b);
@@ -41,6 +42,7 @@ pub mod config;
 pub mod game;
 mod ids;
 mod journal;
+mod key;
 mod ladders;
 mod net;
 mod players;
@@ -153,6 +155,8 @@ pub fn server_name() -> String {
 /// each on its own thread.
 pub async fn start(config: &Config) -> Result<Running, Error> {
     let lock = lock(&config.server.data)?;
+    // The server's identity (E16 M6 T1): its key, written at the first start.
+    let key = key::ServerKey::open(&config.server.data)?;
     let accounts = Arc::new(accounts::Accounts::open(
         &config.server.data,
         Box::new(accounts::Ed25519),
@@ -216,6 +220,8 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
             .public_url
             .clone()
             .unwrap_or_else(|| format!("ws://{address}")),
+        addresses: config.server.addresses.clone(),
+        key,
         anonymous: config.server.anonymous,
         accounts,
         sessions: Mutex::default(),

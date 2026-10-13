@@ -50,8 +50,10 @@ pub mod wire;
 /// v21 (R01, the content split): the manifest and the offers carry the battle part's hash beside
 /// the core's. v22 (E17 M1, CLT-Q3): the observation names the natural obstacles' types, the key
 /// tables list the obstacle types. v23: a two-hex stack's position (its hex, the hexes of moves
-/// and attacks) is its rear hex, as in the original (BAT-GEO-002).
-pub const PROTOCOL_VERSION: u32 = 23;
+/// and attacks) is its rear hex, as in the original (BAT-GEO-002). v24 (E16 M6 T1, ADR-0021 point
+/// 1): the hello names a nonce and the address the client dialed; the welcome carries the server's
+/// key and its signature.
+pub const PROTOCOL_VERSION: u32 = 24;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

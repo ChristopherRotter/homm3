@@ -20,6 +20,7 @@ use crate::{Running, bench, game, registry, start};
 
 mod accounts;
 mod bounds;
+mod identity;
 mod ladders;
 mod proxy;
 mod seats;
@@ -53,6 +54,7 @@ fn config(limits: Limits) -> Config {
             checkpoint_every: 10,
             shadow_instance: false,
             public_url: None,
+            addresses: vec![],
             anonymous: true,
             trusted_proxies: vec![],
         },
@@ -647,8 +649,8 @@ async fn retaken(
     (client, sent)
 }
 
-/// A crash at this moment: a new data directory with a copy of the journals and of the player log
-/// `data` holds now (the server syncs every line before it sends what depends on it).
+/// A crash at this moment: a new data directory with a copy of the journals, the player log and the
+/// server's key `data` holds now (the server syncs every line before it sends what depends on it).
 fn crashed(data: &Path) -> PathBuf {
     let copy = data.with_extension("restarted");
     std::fs::create_dir_all(copy.join("games")).unwrap();
@@ -656,9 +658,10 @@ fn crashed(data: &Path) -> PathBuf {
         let path = entry.unwrap().path();
         std::fs::copy(&path, copy.join("games").join(path.file_name().unwrap())).unwrap();
     }
-    let players = data.join("players.log");
-    if players.exists() {
-        std::fs::copy(&players, copy.join("players.log")).unwrap();
+    for file in ["players.log", crate::key::KEY_FILE] {
+        if data.join(file).exists() {
+            std::fs::copy(data.join(file), copy.join(file)).unwrap();
+        }
     }
     copy
 }
@@ -1202,6 +1205,8 @@ async fn malformed_oversized_and_out_of_place_frames_close_the_connection() {
         protocol: h3_protocol::PROTOCOL_VERSION + 1,
         client: String::new(),
         name: String::new(),
+        nonce: "00".repeat(32),
+        address: String::new(),
     })
     .await
     .unwrap();
@@ -1671,6 +1676,10 @@ fn configurations_are_checked() {
     ] {
         let error = refused(&format!("{offer}[server]\npublic_url = \"{url}\"")).unwrap_err();
         assert!(error.0.contains("public_url"), "{url}: {error}");
+        // And so is each of its other addresses (E16 M6 T1).
+        let other = format!("{offer}[server]\naddresses = [\"ws://192.168.1.5:7878\", \"{url}\"]");
+        let error = refused(&other).unwrap_err();
+        assert!(error.0.contains("server.addresses"), "{url}: {error}");
     }
     let public = refused(&format!(
         "{offer}[server]\npublic_url = \"wss://h3.example:443/x\"\nanonymous = false"
@@ -1684,6 +1693,7 @@ fn configurations_are_checked() {
         (minimal.server.public_url, minimal.server.anonymous),
         (None, true)
     );
+    assert!(minimal.server.addresses.is_empty());
     let watched = refused(&format!("{offer}[limits]\nspectators_per_game = 0")).unwrap();
     assert_eq!(watched.limits.spectators_per_game, 0, "no spectators");
     assert!(Config::load(&base.join("no-such-file.toml")).is_err());

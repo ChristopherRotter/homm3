@@ -1,9 +1,11 @@
-//! Accounts on the wire (E16 M3 T1; ADR-0019 point 1, `docs/epics/E16-design.md` §10): the rules
-//! of a login name and of a display name, keys and signatures as hex, and the bytes a login and a
-//! re-key sign. A client derives its Ed25519 key from its login name and password; the host
-//! checks the signatures (`h3-server`'s `Authenticator`): this crate holds no cryptography.
+//! Accounts and the server's key on the wire (E16 M3 T1, M6 T1; ADR-0019 point 1, ADR-0021 point
+//! 1, `docs/epics/E16-design.md` §10, §12): the rules of a login name and of a display name, keys
+//! and signatures as hex, and the bytes a login, a re-key and a welcome sign. A client derives its
+//! Ed25519 key from its login name and password; the host checks the signatures (`h3-server`'s
+//! `Authenticator`) and signs its welcomes with its own key: this crate holds no cryptography.
+//! Each signed message starts with its purpose and version, so no signature serves another.
 //!
-//! Provisional (E16 M3 T1): a display name's rules (ASCII keeps lookalike letters off the
+//! Provisional (E16 M3 T1, M6 T1): a display name's rules (ASCII keeps lookalike letters off the
 //! leaderboards), the signed bytes' layout.
 
 use alloc::string::String;
@@ -18,11 +20,17 @@ pub const SIGNATURE_BYTES: usize = 64;
 /// The bytes of a connection's challenge, which the host draws from the OS.
 pub const CHALLENGE_BYTES: usize = 32;
 
+/// The bytes of the nonce a client's hello names, which the welcome signs (E16 M6 T1).
+pub const NONCE_BYTES: usize = 32;
+
 /// What a login signs first: the purpose and its version.
 const LOGIN: &[u8] = b"h3-login-v1";
 
 /// What a re-key signs first.
 const REKEY: &[u8] = b"h3-rekey-v1";
+
+/// What a welcome signs first (E16 M6 T1).
+const WELCOME: &[u8] = b"h3-welcome-v1";
 
 /// Whether `login` is a login name: 3 to 20 of `a`–`z`, `0`–`9`, `_` and `-`. A client lowercases
 /// what its player typed: the key's derivation is salted with exactly this text, so the server
@@ -117,5 +125,21 @@ pub fn rekey_message(
     out.extend_from_slice(challenge);
     push_text(&mut out, login);
     out.extend_from_slice(key);
+    out
+}
+
+/// The bytes the server's key signs in a welcome (E16 M6 T1, ADR-0021 point 1): its purpose, the
+/// server's id on this connection (the address the client dialed, when it is one of the server's),
+/// the client's nonce and the connection's challenge. A client that checks the signature knows the
+/// key's holder answered its hello, at the address the id names.
+pub fn welcome_message(
+    id: &str,
+    nonce: &[u8; NONCE_BYTES],
+    challenge: &[u8; CHALLENGE_BYTES],
+) -> Vec<u8> {
+    let mut out = Vec::from(WELCOME);
+    push_text(&mut out, id);
+    out.extend_from_slice(nonce);
+    out.extend_from_slice(challenge);
     out
 }

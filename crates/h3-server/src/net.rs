@@ -63,6 +63,7 @@ use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use crate::accounts::Accounts;
 use crate::config::Limits;
 use crate::game::{self, Frame, FromGame, ToGame};
+use crate::key::ServerKey;
 use crate::ladders::{self, Ladders};
 use crate::registry::{self, Opening, Shared, ToConn, lock};
 
@@ -256,6 +257,10 @@ pub(crate) struct Service {
     pub program: String,
     /// The server's id: the address its clients dial, which a login signs.
     pub id: String,
+    /// The server's other addresses (E16 M6 T1): one a client dialed is its id on that connection.
+    pub addresses: Vec<String>,
+    /// The server's key, which signs its welcomes (E16 M6 T1).
+    pub key: ServerKey,
     /// Whether a connection may join or create a game without logging in (E16 M3 T2a).
     pub anonymous: bool,
     /// The accounts (E16 M3 T2a).
@@ -325,6 +330,8 @@ pub(crate) async fn serve<T: Transport>(
     let host = Host {
         program: &server.program,
         id: &server.id,
+        addresses: &server.addresses,
+        signer: &server.key,
     };
     let idle = Duration::from_millis(limits.idle_timeout_ms);
     let lobby = Duration::from_millis(limits.lobby_timeout_ms);
@@ -1274,6 +1281,8 @@ mod tests {
                 Arc::new(Service {
                     program: String::from("s"),
                     id: String::from("ws://s"),
+                    addresses: Vec::new(),
+                    key: ServerKey::from_seed([5; 32]),
                     anonymous: true,
                     accounts,
                     sessions: Mutex::default(),
@@ -1317,6 +1326,8 @@ mod tests {
                 protocol: h3_protocol::PROTOCOL_VERSION,
                 client: String::new(),
                 name: String::new(),
+                nonce: "00".repeat(32),
+                address: String::from("ws://s"),
             });
             self.says(&join(seat));
             assert!(self.next().await.unwrap().contains("Welcome"));

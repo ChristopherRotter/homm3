@@ -10,6 +10,7 @@ checkpoint_every = 25
 shadow_instance = false         # true: a second battle checks every command (E16-design.md §8)
 # public_url = "wss://h3.example.org"   # the server's id, which logins sign: the address clients
                                         # dial (behind a TLS proxy); else ws:// and `bind`'s address
+# addresses = ["ws://192.168.1.5:7878"]  # the server's other addresses: one a client dialed is its id
 anonymous = true                # false: a game is joined or created only after a login
 # trusted_proxies = ["127.0.0.1"]       # reverse proxies whose X-Forwarded-For (its last entry)
                                         # names the client the limits count (README.md)
