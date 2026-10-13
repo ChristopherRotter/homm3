@@ -24,12 +24,12 @@ Map file: `E08-batch-2.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- did D3a stop on the road's first tile (yes/no): 
-- movement points left there: 
-- the next road tile's mark (green/red): 
-- did the hero step onto it (yes/no): 
-- movement points left after that step (if it stepped): 
-- anything odd: 
+- did D3a stop on the road's first tile (yes/no): yes
+- movement points left there: 50
+- the next road tile's mark (green/red): green
+- did the hero step onto it (yes/no): yes
+- movement points left after that step (if it stepped): 0
+- anything odd:
 
 ## D3b — Control: the same onto a dirt road (ADV-Q3, D-3, ADV-MOV-006)
 
@@ -42,11 +42,11 @@ Map file: `E08-batch-2.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- did D3b stop on the road's first tile (yes/no): 
-- movement points left there: 
-- the next road tile's mark (green/red): 
-- did the hero step onto it (yes/no): 
-- anything odd: 
+- did D3b stop on the road's first tile (yes/no): yes
+- movement points left there: 0
+- the next road tile's mark (green/red): red
+- did the hero step onto it (yes/no): no
+- anything odd:
 
 ## D3c — 100 points left on a tile without a road (ADV-Q3, D-3, ADV-MOV-006)
 
@@ -59,9 +59,9 @@ Map file: `E08-batch-2.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- did D3c stop on the snow tile (yes/no): 
-- movement points left there: 
-- anything odd: 
+- did D3c stop on the snow tile (yes/no): yes
+- movement points left there: 100
+- anything odd:
 
 ## D3d — 50 points left on a tile without a road (ADV-Q3, D-3, ADV-MOV-006)
 
@@ -73,9 +73,9 @@ Map file: `E08-batch-2.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- did D3d stop on the snow tile (yes/no): 
-- movement points left there: 
-- anything odd: 
+- did D3d stop on the snow tile (yes/no): yes
+- movement points left there: 0
+- anything odd:
 
 ## D5w — Sixteen random wood piles (ADV-Q10, D-5, ADV-PIK-001)
 
@@ -90,25 +90,25 @@ Map file: `E08-batch-2.h3m`. Fill in the blanks below and keep this file; an age
 
 | pile | wood in the resource bar after it |
 |---|---|
-| start |   |
-| 1 |   |
-| 2 |   |
-| 3 |   |
-| 4 |   |
-| 5 |   |
-| 6 |   |
-| 7 |   |
-| 8 |   |
-| 9 |   |
-| 10 |   |
-| 11 |   |
-| 12 |   |
-| 13 |   |
-| 14 |   |
-| 15 |   |
-| 16 |   |
+| start |39|
+| 1 |44|
+| 2 |50|
+| 3 |56|
+| 4 |61|
+| 5 |68|
+| 6 |73|
+| 7 |80|
+| 8 |88|
+| 9 |97|
+| 10 |106|
+| 11 |113|
+| 12 |122|
+| 13 |131|
+| 14 |138|
+| 15 |146|
+| 16 |152|
 
-- anything odd: 
+- anything odd:
 
 ## D5m — Sixteen random mercury piles (ADV-Q10, D-5, ADV-PIK-001)
 
@@ -123,22 +123,22 @@ Map file: `E08-batch-2.h3m`. Fill in the blanks below and keep this file; an age
 
 | pile | mercury in the resource bar after it |
 |---|---|
-| start |   |
-| 1 |   |
-| 2 |   |
-| 3 |   |
-| 4 |   |
-| 5 |   |
-| 6 |   |
-| 7 |   |
-| 8 |   |
-| 9 |   |
-| 10 |   |
-| 11 |   |
-| 12 |   |
-| 13 |   |
-| 14 |   |
-| 15 |   |
-| 16 |   |
+| start |15|
+| 1 |18|
+| 2 |23|
+| 3 |26|
+| 4 |31|
+| 5 |35|
+| 6 |41|
+| 7 |47|
+| 8 |51|
+| 9 |56|
+| 10 |61|
+| 11 |65|
+| 12 |68|
+| 13 |71|
+| 14 |74|
+| 15 |80|
+| 16 |86|
 
-- anything odd: 
+- anything odd:

@@ -15,6 +15,8 @@
 //!
 //! Provisional (E16 M6 T2, T3): the bounds below and the error's grain.
 
+use alloc::vec::Vec;
+
 use crate::account::{self, KEY_BYTES, SIGNATURE_BYTES};
 use crate::codec;
 use crate::connection::Signer;
@@ -50,12 +52,13 @@ pub const SKEW_MS: u64 = 600_000;
 /// The most cards a page of `Peers` holds (E16 M6 T3).
 pub const PAGE: usize = 50;
 
-/// Why a signed card does not hold.
+/// Why a signed card, or a signed list of servers ([`crate::list`]), does not hold.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CardError {
-    /// Its text is longer than [`MAX_CARD_BYTES`].
+    /// Its text is longer than [`MAX_CARD_BYTES`] (a list's than [`crate::list::MAX_LIST_BYTES`]).
     TooLarge,
-    /// Its text is not a card, or breaks a bound ([`fits`]), or its signature is not 64 bytes of hex.
+    /// Its text is not a card (a list), or breaks a bound ([`fits`], [`crate::list::fits`]), or its
+    /// signature is not 64 bytes of hex.
     Malformed,
     /// Its signature does not verify by its key over its text.
     Signature,
@@ -83,12 +86,12 @@ fn plain(text: &str, max: usize, lines: bool) -> bool {
 }
 
 /// A name, an id or a version: 1 to [`MAX_TEXT`] bytes, one line.
-fn short(text: &str) -> bool {
+pub(crate) fn short(text: &str) -> bool {
     !text.is_empty() && plain(text, MAX_TEXT, false)
 }
 
 /// Whether `key` is a public key: 32 bytes as lowercase hex.
-fn is_key(key: &str) -> bool {
+pub(crate) fn is_key(key: &str) -> bool {
     account::from_hex::<KEY_BYTES>(key).is_some()
 }
 
@@ -139,24 +142,64 @@ pub fn read(
     now: u64,
     verify: impl Fn(&[u8; KEY_BYTES], &[u8], &[u8; SIGNATURE_BYTES]) -> bool,
 ) -> Result<ServerCard, CardError> {
-    if signed.card.len() > MAX_CARD_BYTES {
+    read_signed((&signed.card, &signed.signature), now, verify)
+}
+
+/// A text its own key signs (E16 M6 T2, T5): a server's card, a list of servers.
+pub(crate) trait Signed: serde::de::DeserializeOwned {
+    /// Its longest text, in bytes.
+    const MAX_BYTES: usize;
+    /// The bytes its key signs of `text`.
+    fn message(text: &str) -> Vec<u8>;
+    /// Its key, if it keeps its bounds.
+    fn key_if_fits(&self) -> Option<&str>;
+    /// When it was issued and when it expires.
+    fn times(&self) -> (u64, u64);
+}
+
+impl Signed for ServerCard {
+    const MAX_BYTES: usize = MAX_CARD_BYTES;
+
+    fn message(text: &str) -> Vec<u8> {
+        account::card_message(text)
+    }
+
+    fn key_if_fits(&self) -> Option<&str> {
+        fits(self).then_some(self.key.as_str())
+    }
+
+    fn times(&self) -> (u64, u64) {
+        (self.issued.0, self.expires.0)
+    }
+}
+
+/// What `text` signed by `signature` holds at `now` (the reader's clock): the text within its
+/// bounds, signed by its own key as `verify` checks, not expired and issued at most [`SKEW_MS`]
+/// ahead of `now`; or why not.
+pub(crate) fn read_signed<T: Signed>(
+    (text, signature): (&str, &str),
+    now: u64,
+    verify: impl Fn(&[u8; KEY_BYTES], &[u8], &[u8; SIGNATURE_BYTES]) -> bool,
+) -> Result<T, CardError> {
+    if text.len() > T::MAX_BYTES {
         return Err(CardError::TooLarge);
     }
-    let card: ServerCard = serde_json::from_str(&signed.card).map_err(|_| CardError::Malformed)?;
-    let key = account::from_hex(&card.key).filter(|_| fits(&card));
-    let (Some(key), Some(signature)) = (key, account::from_hex(&signed.signature)) else {
+    let read: T = serde_json::from_str(text).map_err(|_| CardError::Malformed)?;
+    let key = read.key_if_fits().and_then(account::from_hex);
+    let (Some(key), Some(signature)) = (key, account::from_hex(signature)) else {
         return Err(CardError::Malformed);
     };
-    if !verify(&key, &account::card_message(&signed.card), &signature) {
+    if !verify(&key, &T::message(text), &signature) {
         return Err(CardError::Signature);
     }
-    if card.expires.0 <= now {
+    let (issued, expires) = read.times();
+    if expires <= now {
         return Err(CardError::Expired);
     }
-    if card.issued.0 > now.saturating_add(SKEW_MS) {
+    if issued > now.saturating_add(SKEW_MS) {
         return Err(CardError::Ahead);
     }
-    Ok(card)
+    Ok(read)
 }
 
 /// Whether `cards` is a chain of vouching (E16 M6 T3; ADR-0021 point 3): each card names the next

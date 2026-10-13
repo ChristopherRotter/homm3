@@ -5,6 +5,9 @@
 //! server never writes one over it. The file is the data directory's one secret (mode 0600 on
 //! Unix); a client's pin of the key, not the file, is what an operator who loses it loses.
 //!
+//! A list's key (E16 M6 T5, `h3-server list-key`) is the same kind of key in a file of the
+//! operator's choosing, which signs lists of servers (`crate::lists`).
+//!
 //! Provisional (E16 M6 T1): the file's name and form (the 32-byte seed as lowercase hex and a
 //! newline, written whole: a `.part` file renamed).
 
@@ -39,23 +42,28 @@ impl ServerKey {
 
     /// The key in `data`'s key file, written there first if there is none and `create`.
     fn read(data: &Path, create: bool) -> Result<Self, Error> {
-        let path = data.join(KEY_FILE);
+        Self::at(&data.join(KEY_FILE), create)
+    }
+
+    /// The key in the file `path`, written there first if there is none and `create` (E16 M6 T5:
+    /// a list's key too). A file that does not parse is never replaced.
+    pub(crate) fn at(path: &Path, create: bool) -> Result<Self, Error> {
         let failed = |e: &dyn fmt::Display| Error(format!("{}: {e}", path.display()));
-        match fs::read_to_string(&path) {
+        match fs::read_to_string(path) {
             Ok(text) => account::from_hex(text.trim())
                 .map(Self::from_seed)
                 .ok_or_else(|| {
                     failed(
-                        &"not a server key (64 hex digits); a new key would be a new identity, \
-                          so the server does not replace it",
+                        &"not a key (64 hex digits); a new key would be a new identity, so it is \
+                          not replaced",
                     )
                 }),
             Err(e) if e.kind() == io::ErrorKind::NotFound && create => {
                 let mut seed = [0u8; 32];
                 getrandom::fill(&mut seed).map_err(|e| failed(&format!("OS randomness: {e}")))?;
-                write_private(&path, &format!("{}\n", account::to_hex(&seed)))
+                write_private(path, &format!("{}\n", account::to_hex(&seed)))
                     .map_err(|e| failed(&e))?;
-                eprintln!("h3-server: a new server key in {}", path.display());
+                eprintln!("h3-server: a new key in {}", path.display());
                 Ok(Self::from_seed(seed))
             }
             Err(e) => Err(failed(&e)),
@@ -151,7 +159,7 @@ mod tests {
         for bad in ["", "not a key\n", &"0".repeat(63), &"0".repeat(66)] {
             fs::write(dir.join(KEY_FILE), bad).unwrap();
             let error = ServerKey::open(&dir).unwrap_err();
-            assert!(error.0.contains("not a server key"), "{bad:?}: {error}");
+            assert!(error.0.contains("not a key"), "{bad:?}: {error}");
             assert_eq!(fs::read_to_string(dir.join(KEY_FILE)).unwrap(), bad);
         }
         // A directory where the file should be: it does not read.
