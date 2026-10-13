@@ -45,8 +45,9 @@ Single crate with modules (boundaries erode, no compile-time enforcement); fine-
 - **Crates created (E08 T2):** `h3-adventure` (domain, logic), `h3-game` (application, logic:
   `no_std`, the purity scan and the 100 % coverage gate like a domain crate), `h3-map` and
   `h3-pack-adventure` (adapters). `h3-game` is the first application crate: it depends on the
-  domain contexts it wires (`h3-adventure` now; `h3-heroes` and `h3-battle` from E08 increment
-  3); no domain crate depends on it. ADR-0015 holds the crate shape, ADR-0016 and ADR-0017 what
+  domain contexts it wires (`h3-adventure` now; `h3-battle` from E08 increment 3) and on the
+  hero model `h3-heroes`, in the shared layer since E08 T18a (ADR-0013 point 2); no domain crate
+  depends on it. ADR-0015 holds the crate shape, ADR-0016 and ADR-0017 what
   the two logic crates decide.
 - **Cross-context ids** `PlayerId` and `HeroId` are contract types (`h3-contracts`).
 - **Pointer identity** (`ptr_eq`, `as_ptr`) is a forbidden token in logic crates outside the
@@ -58,3 +59,7 @@ Single crate with modules (boundaries erode, no compile-time enforcement); fine-
 - 2026-09-30: Amended by E01 (crates created, `no_std` logic crates, what `check-arch` enforces).
 - 2026-10-01: Amended by E02 (`h3-formats` adapter, `h3-harvest` tool).
 - 2026-10-10: Amended by E08 (adventure and game crates, the first application crate, ids in the contracts; ADR-0015).
+- 2026-10-14: Amended by E08 T18a (ADR-0013 point 2): `h3-heroes` moves to the shared layer;
+  `check-arch` gains **forbidden edges** (`[[policy.forbidden_edge]]` in `arch.toml`): an edge the
+  layers would allow but a decision rules out, rejected whether declared or not (`h3-battle` →
+  `h3-heroes`).

@@ -80,3 +80,36 @@ fn references_and_errors() {
         CompileError::UnknownProfile("a:b".into()).to_string()
     );
 }
+
+#[test]
+fn the_adventure_and_outcome_effects_parse() {
+    // E08 T18a: the kinds the battle never reads; no harvested pack uses them yet.
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let pack = parse_pack(&format!(
+        "{manifest}[[secondary_skill]]\nid = \"s\"\n\
+         basic = [{{ kind = \"necromancy\", bp = 1000 }}, {{ kind = \"join_bonus\", level = 1 }}]\n\
+         advanced = [{{ kind = \"experience_gain\", bp = 1000 }}]\n\
+         expert = [{{ kind = \"max_mana\", bp = 10000 }}]\n"
+    ))
+    .unwrap();
+    let levels = &pack.skills[0].levels;
+    assert_eq!(
+        levels[0],
+        [
+            HeroEffect::Necromancy { bp: 1000 },
+            HeroEffect::JoinBonus { level: 1 }
+        ]
+    );
+    assert_eq!(levels[1], [HeroEffect::ExperienceGain { bp: 1000 }]);
+    assert_eq!(levels[2], [HeroEffect::MaxMana { bp: 10_000 }]);
+    // The parameters are checked when the pack compiles.
+    let bad = format!(
+        "{manifest}[[secondary_skill]]\nid = \"s\"\n\
+         basic = [{{ kind = \"join_bonus\", level = 4 }}]\n"
+    );
+    let error = compile(&[bad.as_str(), SYNTHETIC_CORE], "synthetic:faithful").unwrap_err();
+    assert!(
+        error.to_string().contains("join_bonus level must be 1..=3"),
+        "{error}"
+    );
+}

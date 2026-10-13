@@ -6,7 +6,7 @@
 
 <!-- Decisions only. The reasoning is in docs/epics/E08-adventure-map.md. Point 2 answers the
      server lane's SRV-Q6 (what h3-game exposes for the whole game, E16 M5). Longer than 80 lines
-     because it covers decisions 4, 8 and 9 and the env at once. -->
+     because it covers decisions 4, 8 and 9 and the env at once, and increments 2 and 3. -->
 
 ## Context
 
@@ -22,8 +22,8 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
 1. **One entry point for the whole game** (ADR-0004): `apply(&mut GameState, &GameRuleset,
    Actor, GameCommand, &mut impl Sink)`, `legal_commands`, `observe(.., Viewer)` and
    `project(&GameEvent, Viewer)`. `GameState` holds the players, the schedule and calendar, the
-   RNG streams, the pending decisions and the contexts' states (adventure now; the hero store,
-   battles in progress and towns later). A game command wraps a context command (`Adventure(
+   RNG streams, the pending decisions and the contexts' states (adventure now; the store of
+   heroes and battles in progress from increment 3; towns later). A game command wraps a context command (`Adventure(
    MoveHero { .. })`) or is the game's own (`EndTurn`). The game checks turn, phase and pending
    decisions; the context then validates its rules with the player as actor. A command touching
    several contexts validates in all of them before mutating any. Steps only the game triggers
@@ -32,11 +32,31 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    (dense by `ResourceId`; kinds stay data, ADR-0006), never negative; a gain saturates at
    2³¹ − 1 (the original wraps to 0, `A-5`, a state-corrupting bug fixed without a flag). The
    starting treasury is the row of the setup's difficulty (`GameSetup`), every player the human
-   row (E08 decision 16); the rows are data compiled into `GameRuleset`.
+   row (E08 decision 16); the rows are data compiled into `GameRuleset`, which from increment 3
+   also bundles the battle part (ADR-0015 point 2).
+   **The store of heroes** (increment 3): `GameState` holds every hero's details
+   (`h3_heroes::HeroDetails`) by `HeroId`, each shared between forks and copied on its first
+   write, built with the state from the setup's customisations or the hero type's and class's
+   defaults (a default experience is a setup placeholder from the setup stream), spell points
+   full, validated by `h3-heroes`; a setup the increment cannot represent fails the import
+   (`Unsupported`: an experience of level 2 or more, E08 decision 22). A hero that leaves the map
+   keeps its details (the pool and the tavern are E09's). The contexts **read a hero's details
+   by reference**: the game passes its store to the adventure's commands and queries (later the
+   towns'), which read through `h3-heroes`' derivations (ADR-0013 point 2); what a command
+   changes in a hero comes back as typed **hero changes** in its outcome (point 10), which the
+   game applies through `h3-heroes`. No adventure profile seam (E08 decision 25).
 2. **Actors and viewers.** `Actor::Player(PlayerId)` for every player command, also a bot's;
-   `Actor::System` for the server's trusted session layer only, with its own closed set of
-   commands (end a player's turn, answer a pending decision with its default, remove a player)
-   that no player can issue. `Viewer::Player(PlayerId)` and `Viewer::Spectator`, which sees
+   `Actor::System` for the trusted layer that hosts the game only (the server's session layer,
+   the env), never for a player, with its own closed set of commands (end a player's turn,
+   answer a pending decision with its default, remove a player) that no player can issue. A
+   battle side without a player (wandering monsters, an object's guards; increment 3) is played
+   by `Actor::System`, which gains battle commands for an **unowned side** only: no player can
+   command it, and the system actor commands no owned side. Its policy stays outside the state,
+   as an agent's choices (point 4): the server's or the env's bot. The faithful policy is the
+   original's battle AI, which the battle lane ports (E08 decision 27); it may read the whole
+   battle state, as the original's does, since it runs in the trusted host; until then the env
+   plays the side at random. Its other commands stay the server lane's (M5), which also picks
+   its default for a battle whose player is gone. `Viewer::Player(PlayerId)` and `Viewer::Spectator`, which sees
    public facts only. Increment 1 builds the player variants; the system actor and the spectator
    come with the server's M5 as additive variants. Contexts never see these types: a context's
    `apply` takes the `PlayerId`, its `observe` and `project` a viewer of its own (a player, or
@@ -59,9 +79,17 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    point 4; no command of increment 2 draws, so the streams' ownership isolation is not yet
    exercised by commands). Agents' and bots' own choices stay outside the game
    state (the kernel's `AGENT` stream, in the env). The kernel's stream ids gain the per-player
-   form (a shared change in T2). Where a battle's seed and obstacles come from is decided with
-   the battle seam (increment 3), with the server lane, whose draft draws a hosted battle's
-   obstacles from a throwaway seed.
+   form (a shared change in T2). **A battle's randomness** (increment 3): its obstacles come
+   from the battle lane's generator (`h3_battle::generate_setup_obstacles`, until it ports the
+   original's) with a kernel `Rng` seeded by the profile (`ADV-QUIRK-5`, fix-optional, E08
+   decision 26): in `faithful` the original's tile seed `110 291 x + 167 801 y + 81 569` (32-bit;
+   the defender's tile, the level not included), so a tile's obstacles are predictable as in
+   the original; in `strict-fixed` a second draw from the attacking player's stream. The battle's
+   **own seed** (every later draw) is drawn from the attacking player's stream when it starts
+   and lives in the battle's state, server-only as every stream (point 5). A monster's split
+   (ADR-0016 point 4) takes its two draws from the tile in `faithful` (`ADV-QUIRK-6`) and from
+   the attacking player's stream in `strict-fixed`. Increment 3's setup placeholders: a random
+   monster's creature and count, every monster's aggression, a hero's default experience.
 5. **Seeds are server-only** (E08 decision 9). The master seed and the stream positions are
    authoritative state: in the state hash (which never reaches a client either), never in an
    observation or event, never seeded from client data; the observation-hygiene and
@@ -78,7 +106,16 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    in increment 2); `GameCommand::Answer` answers the first (`Accept` or `Decline`, additive
    variants for later kinds), and a decline only closes it. While one is open, its owner's legal
    commands are its answers only: no move, no `EndTurn`. The system actor's default answer is
-   `Decline`. Treasure chests wait for increment 3.
+   `Decline`. Increment 3's offers (yes or no): **join for free**, **join for gold**, **pursue
+   a fleeing monster**, **fight an object's guards**. Answering an offer may open the next
+   decision of the same visit in the same command (a declined join goes on to the pursue offer
+   or a battle; an accepted pursuit or fight opens the battle): a player still has at most one
+   open decision. A **battle** is a pending decision owned by the players of its sides (the
+   visitor's; against another player's hero the defender's too, who plays outside its turn).
+   While it is open its owners' only legal commands are `GameCommand::Battle(h3_battle::Command)`
+   by the owner of the side to act (the system actor for an unowned side); neither owner can
+   end its turn; it blocks no one else. The command that ends the battle applies its outcome
+   (point 11) and closes the decision.
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -100,12 +137,20 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    with the batch API). Action encoding v2: the entry head gains the answers after `EndTurn` and
    the eight hero slots (`Accept`, `Decline`; the tile head is ignored for them); while a
    decision is open the mask allows its answers only. The observation (`h3_game`'s view) shows
-   its owner the treasury and the open decision (kind, price).
+   its owner the treasury and the open decision (kind, price). Increment 3's action encoding v3
+   has two phases: while the player to move is in a battle its action is the battle lane's
+   encoding (`h3_sim::action`) and every adventure entry is masked; otherwise v2's entries.
+   `to_move` yields seats: an acting player without a battle and, for a battle, the owner of its
+   side to act or the **neutral seat** for an unowned side, which the caller plays with a policy
+   of its choice. The observation adds the open battle as its owner's side sees it
+   (`h3_battle::observe_as`); the adventure replay format v3 records each command's actor.
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format and encodings (`h3-sim`'s sub-path, to the AI lane at E05).
    Increment 2 bumps the game state hash to v2 (treasuries, decisions), the action encoding to
-   v2 and, if the answer command needs it, the adventure replay format (E08 T14).
+   v2 and, if the answer command needs it, the adventure replay format (E08 T14). Increment 3:
+   the game state hash v5, the adventure state hash v7, the adventure ruleset part v6, the map
+   import v4, the action encoding v3, the adventure replay format v3.
 10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
     its command gains for the actor and the offers it opens, each with its price. The context
     never sees a treasury. The game adds the gains after the context applied (gains cannot fail,
@@ -113,7 +158,27 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     so to the payer); otherwise it becomes a pending decision. Accepting an offer: the context
     checks it still stands, the game checks the price against the treasury, then pays and calls
     the context's infallible acceptance; a rejected answer changes nothing. Towns (E09) use the
-    same outcome and the same check.
+    same outcome and the same check. Increment 3: an outcome may also name hero changes
+    (`h3_heroes::HeroChange`, checked by the context against the details it read), a hero's
+    army change (a group joining) and a battle to start (the visitor, the defender: a monster,
+    an object's guards or another player's hero, the tile). A join for gold the payer cannot
+    pay is not opened and counts as declined, so the visit's chain goes on, without the refusal
+    event (the original asks only when the player can pay).
+11. **Battles through the game** (increment 3; ADR-0013 point 5). The game builds the
+    `BattleSetup`: the armies from the adventure (a monster's stacks by its split), each hero's
+    `BattleHero` and war machines from `h3-heroes`, the battlefield from the tile in the
+    original's order (ADR-0022), the obstacles (point 4), the formations, the funds. It starts
+    the battle with the seed of point 4, keeps it in the decision (shared between forks, copied
+    on the first write), routes its commands and maps its events to the owners of the sides
+    they are visible to (an unowned side's to no player). When it ends the game applies the
+    outcome at once and infallibly, in every context (the heroes' part as hero changes):
+    casualties (a monster's or guards' survivors stay with the object), experience as a number
+    for the winner's hero (no levels until increment 4), Necromancy, Eagle Eye's spells, spell
+    points, destroyed war machines' artifacts, the loser's artifacts to the winner (the first
+    fitting slot, else the backpack), a surrender's gold from the loser's owner to the
+    winner's, a hero that lost, retreated or surrendered leaves the map, a beaten monster leaves
+    it and its treasure's resources go to the winner's owner, a won guarded pile is picked up; a
+    monster that survives keeps every stack's survivors (A-6 fixed).
 
 ## Consequences
 
@@ -124,6 +189,15 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   `apply` share them (property-tested). The env and the CLI go through the game like a server.
 - Conservation (increment 2): an army changes by no accepted command; a treasury only by a
   visit's gain or an accepted offer's price. Observation hygiene covers treasuries and decisions.
+  From increment 3 an army changes only by a battle's outcome or a joining group, a treasury
+  also by a won battle's treasure or pile and a surrender; legality, atomicity, ownership
+  isolation (a battle's draws from its attacker's stream only), observation hygiene (a battle's
+  private side) and clone equivalence are property-tested with battles open.
+- Battles against monsters played at random by the env are easier than the original's: training
+  results against them are provisional until the original's battle AI is ported.
+- The simultaneous-play inventory (point 7) gains a monster two players can fight and a battle
+  writing two players' heroes, armies and treasuries. Battles reach the wire through `h3-game`
+  only when the server hosts whole games (ADR-0018).
 
 ## Alternatives considered
 
@@ -137,6 +211,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
 - Opening every offer and refusing an unpayable acceptance: the original refuses at the visit
   (survey `E08-objects.md` §4); a decision that can only be declined is noise for an agent.
 - An env on `h3-adventure` directly: no turns, no day, and a second path beside the game's.
+- Obstacles and the split from the tile in every profile: exploitable, if mildly (a defender
+  picks its tile, an attacker tunes its army before it commits; the user, ADV-Q13); the battle's
+  own seed from the tile too: every roll predictable, against decision 9.
+- The unowned side played inside the engine (a bot in the core; E05 and E06 own bots), or by
+  the attacking player (it would throw the monsters' side); a dedicated `Actor::Neutral`: a
+  second trusted actor for one job.
+- One flat action space with the battle's entries appended: couples two encodings and their
+  versions; the phase keeps the battle lane's encoding as it is.
 - A separate adventure sim crate: a second env stack (batching, replay header) for the AI lane
   to merge at E05.
 
@@ -151,3 +233,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
 - 2026-10-12: points 1, 4 and 6–9 extended and point 10 added for increment 2: the treasury,
   gains and costs by outcome, the first pending decisions (the Cartographer, the border guard),
   the env's answers (E08 T11b, the user at ADV-Q10; survey `E08-objects.md`).
+- 2026-10-14 (E08 T18a; the user at ADV-Q12 and ADV-Q13): points 1, 4, 6 and 8–10 extended, point
+  2 amended and point 11 added for increment 3: the store of heroes read by reference and changed
+  through hero changes, the system actor for an unowned battle side (the original's battle AI its
+  faithful policy), a battle's obstacles and a monster's split by the profile (`ADV-QUIRK-5`,
+  `-6`) and its seed from the attacker's stream, chained offers and battles as pending
+  decisions, the env's battle phase and neutral seat, battles through the game (drafted in E08
+  T17b, #181; survey `E08-battles.md`).

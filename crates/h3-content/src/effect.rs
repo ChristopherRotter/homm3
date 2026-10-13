@@ -511,6 +511,31 @@ pub enum HeroEffect<C, K, S, F, L> {
         /// The highest spell level it lets the hero learn (0 adds none, at most 5).
         max_level: u8,
     },
+    /// Necromancy (E08 increment 3): after a won battle the hero raises `bp` of the killed enemy
+    /// creatures as undead (the skill: 10 %, 20 %, 30 %; a specialty grows it, the necromancy
+    /// artifacts add to it). Applied by the game with the battle's outcome (ADR-0017 point 11).
+    Necromancy {
+        /// Share in basis points (1..=10 000).
+        bp: u16,
+    },
+    /// The experience the hero gains grows by `bp` (Learning, E08 increment 3: 5 %, 10 %, 15 %).
+    ExperienceGain {
+        /// Bonus in basis points (≥ 1).
+        bp: u16,
+    },
+    /// The hero's maximum mana (spell points, Knowledge × 10) grows by `bp` of itself
+    /// (Intelligence, E08 increment 3: 25 %, 50 %, 100 %).
+    MaxMana {
+        /// Bonus in basis points (≥ 1).
+        bp: u16,
+    },
+    /// Wandering creatures are readier to join the hero: `level` counts toward the monster's
+    /// answer (Diplomacy, E08 increment 3: 1, 2, 3 by the skill's level; the adventure's
+    /// ADV-MON-007 reads the sum through `h3-heroes`).
+    JoinBonus {
+        /// Bonus (1..=3).
+        level: u8,
+    },
 }
 
 /// An effect as written in a pack (references are keys).
@@ -520,7 +545,7 @@ pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, Facti
 
 impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 38] = [
+    pub const NAMES: [&'static str; 42] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -559,6 +584,10 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "negate_immunities",
         "opening_spell",
         "eagle_eye",
+        "necromancy",
+        "experience_gain",
+        "max_mana",
+        "join_bonus",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -602,6 +631,10 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::NegateImmunities => 35,
             Self::OpeningSpell { .. } => 36,
             Self::EagleEye { .. } => 37,
+            Self::Necromancy { .. } => 38,
+            Self::ExperienceGain { .. } => 39,
+            Self::MaxMana { .. } => 40,
+            Self::JoinBonus { .. } => 41,
         }
     }
 
@@ -770,6 +803,10 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
                 bp: *bp,
                 max_level: *max_level,
             },
+            Self::Necromancy { bp } => HeroEffect::Necromancy { bp: *bp },
+            Self::ExperienceGain { bp } => HeroEffect::ExperienceGain { bp: *bp },
+            Self::MaxMana { bp } => HeroEffect::MaxMana { bp: *bp },
+            Self::JoinBonus { level } => HeroEffect::JoinBonus { level: *level },
         })
     }
 
@@ -854,6 +891,15 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             }
             Self::EagleEye { max_level, .. } if *max_level > MAX_SPELL_LEVEL => {
                 Some("eagle_eye max_level must be 0..=5")
+            }
+            Self::Necromancy { bp } if !(1..=FULL_BP).contains(bp) => {
+                Some("necromancy bp must be 1..=10000")
+            }
+            Self::ExperienceGain { bp: 0 } | Self::MaxMana { bp: 0 } => {
+                Some("experience_gain and max_mana need at least 1 bp")
+            }
+            Self::JoinBonus { level } if !(1..=MAX_SKILL_LEVEL).contains(level) => {
+                Some("join_bonus level must be 1..=3")
             }
             _ => None,
         }
@@ -1096,6 +1142,10 @@ impl CanonicalHash for CompiledHeroEffect {
                 h.write_u16(*bp);
                 h.write_u8(*max_level);
             }
+            Self::Necromancy { bp } | Self::ExperienceGain { bp } | Self::MaxMana { bp } => {
+                h.write_u16(*bp);
+            }
+            Self::JoinBonus { level } => h.write_u8(*level),
         }
     }
 }
@@ -1212,6 +1262,10 @@ mod tests {
                 bp: 4000,
                 max_level: 2,
             },
+            E::Necromancy { bp: 1000 },
+            E::ExperienceGain { bp: 500 },
+            E::MaxMana { bp: 2500 },
+            E::JoinBonus { level: 1 },
         ]
     }
 
@@ -1499,6 +1553,12 @@ mod tests {
                 bp: 500,
                 max_level: 6,
             },
+            E::Necromancy { bp: 0 },
+            E::Necromancy { bp: 10_001 },
+            E::ExperienceGain { bp: 0 },
+            E::MaxMana { bp: 0 },
+            E::JoinBonus { level: 0 },
+            E::JoinBonus { level: 4 },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");

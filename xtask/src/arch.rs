@@ -27,6 +27,18 @@ pub struct Policy {
     #[serde(default)]
     pub lint_allow: Vec<LintAllow>,
     pub forbidden: Vec<Forbidden>,
+    /// Edges the layers would allow but a decision rules out (ADR-0005, 2026-10-14).
+    #[serde(default)]
+    pub forbidden_edge: Vec<ForbiddenEdge>,
+}
+
+/// A dependency edge no declaration may list and no crate may have, of any kind.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ForbiddenEdge {
+    pub from: String,
+    pub to: String,
+    pub reason: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -216,6 +228,21 @@ pub fn check_graph(config: &ArchConfig, packages: &[Package]) -> Vec<String> {
                     package.name, dep.name
                 ));
             }
+        }
+    }
+    for edge in &config.policy.forbidden_edge {
+        let declared = config
+            .crates
+            .get(&edge.from)
+            .is_some_and(|d| d.deps.contains(&edge.to) || d.dev_deps.contains(&edge.to));
+        let used = packages
+            .iter()
+            .any(|p| p.name == edge.from && p.deps.iter().any(|d| d.name == edge.to));
+        if declared || used {
+            violations.push(format!(
+                "`{}` -> `{}` is a forbidden edge: {}",
+                edge.from, edge.to, edge.reason
+            ));
         }
     }
     violations
@@ -491,6 +518,26 @@ mod tests {
                 .any(|m| m.contains("nothing may depend on tool crates")),
             "{v:?}"
         );
+    }
+
+    /// ADR-0013 point 2: the battle never depends on the hero model, which the layers allow.
+    #[test]
+    fn rejects_forbidden_edges_declared_or_used() {
+        let (mut config, mut packages) = real();
+        add_dep(&mut packages, "h3-battle", "h3-heroes", DepKind::Dev);
+        let v = check_graph(&config, &packages);
+        let forbidden = "`h3-battle` -> `h3-heroes` is a forbidden edge";
+        assert_eq!(
+            v.iter().filter(|m| m.contains(forbidden)).count(),
+            1,
+            "{v:?}"
+        );
+        let (_, packages) = real();
+        let battle = config.crates.get_mut("h3-battle").unwrap();
+        battle.deps.push("h3-heroes".to_owned());
+        let v = check_graph(&config, &packages);
+        assert!(v.iter().any(|m| m.contains(forbidden)), "{v:?}");
+        assert!(!v.iter().any(|m| m.contains("lower layer")), "{v:?}");
     }
 
     #[test]

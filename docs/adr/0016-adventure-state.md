@@ -28,11 +28,15 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      through an `Option` or a sentinel held by the grid, never a static. Per-object state is a
      chunked table of the same shape in one dimension. A write copies at most the table and one
      leaf (`Arc::make_mut`, `alloc::sync::Arc`; `Arc`, not `Rc`, so a game stays `Send`).
-     Per-object state of increment 2 is whether the object is still on the map; per-player
+     Per-object state of increment 2 is whether the object is still on the map; increment 3
+     adds a guarding object's **army left** (a monster's count, an object's guards), written when
+     a battle it survives ends (its static part keeps what setup drew; a monster keeps the
+     survivors of all its stacks, an upgraded stack's as its own creature: A-6 fixed). Per-player
      state of object types (a Cartographer kind bought, the keys held) is a plain array per
      player. A removal clears the object's tiles in a persistent occupancy layer (a grid as the
      fog's) that the movement rules read; the static map keeps every footprint.
-   - **Plain arrays** for the small, hot parts: heroes on the map, their armies, movement points.
+   - **Plain arrays** for the small, hot parts: heroes on the map, their armies with the army's
+     formation, movement points.
 
    A fork is `Clone`: a few reference increments plus the plain arrays. The structures are
    hand-rolled in `h3-adventure` (no persistent-collections dependency) and move to the kernel
@@ -47,9 +51,13 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    fork never reaches its parent or a sibling; equal content compares and hashes equal whatever
    the sharing.
 3. **Heroes on the map** are an adventure type (ADR-0013 point 1): `HeroId`, owner `PlayerId`,
-   tile and level, army, movement points. The hero details stay in `h3-heroes`, kept by
-   `h3-game`; what movement needs from them arrives through the adventure-profile seam (E08
-   decision 5, increment 3).
+   tile and level, army and its formation, movement points. A hero's details are `h3-heroes`'
+   model (ADR-0013 point 2), kept in the game's store: the adventure reads them by reference (the
+   game passes the store to its commands and queries) through `h3-heroes`' derivations, and
+   returns what a visit changes in a hero as typed hero changes in its outcome, which the game
+   applies (ADR-0017 points 1 and 10; no adventure profile, E08 decision 25). The adventure owns
+   the hero on the map and its army; a battle's outcome reaches them through the game's
+   infallible application (ADR-0017 point 11).
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
@@ -72,14 +80,40 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      order (ADR-0017 point 4), into the static map: a type gives the draw (a random
      resource's resource, a pile's amount, a campfire's content). A rule that draws at a visit
      draws from the visitor's stream (ADR-0017 point 4); increment 2 has none.
-   - A tile holding a hero still blocks other heroes (meetings and battles come later), and a
-     hero's own tile is always leavable.
+   - A tile holding another player's hero is visited from a neighbouring tile, and the visit is
+     a battle at once; an own hero's tile still blocks (meetings and the army exchange come with
+     increment 4's army management); a hero's own tile is always leavable.
    - **Increment 2's kinds** (E08 decision 13): `Blocker`; `Pickup` (resources gained, then the
      object leaves: piles, random resources, campfires); `RevealTerrain` (a price, a set of
      terrains on every level, once per player and type: the Cartographers); `RevealArea` (a
      radius around the visited tile, every visit: the Redwood Observatory, the Pillar of
      Fire); `KeyTent`, `KeyGuard`, `KeyGate` (a key colour: the tent gives the key, the guard
      leaves the map for everyone when a key holder accepts, the gate lets key holders pass).
+   - **Increment 3's kinds** (E08 decisions 19, 22, 23, 26): **`Monster`** (classes 54, 71–75,
+     162–164): a level range for a random monster (the type's), else the creature as instance
+     data; a count (drawn at setup from the creature's adventure-map range when the map gives
+     none); a disposition, whose aggression is drawn at setup; never flees; no growth
+     (increment 5); a treasure of resources. Visited from a neighbouring tile, also from above.
+     It **guards** the eight tiles around its visitable tile on its level, of its own water
+     status (the original's 3 × 3 scan and its order): a step onto a guarded tile ends the move
+     and visits the guard; a path continues past no guarded tile but its start. **The
+     monster's answer** (ADV-MON-007) is the adventure's rule, from the visiting hero's army and
+     details (Attack, Defense, Diplomacy's join bonus, through `h3-heroes`), the monster and
+     the game's difficulty (a static input of the adventure's setup): a battle or an offer
+     (join, join for gold, pursue); the monster leaves after a declined pursuit or when it
+     joins. A joining group becomes one stack of the hero's army (with a stack of its
+     creature, else in a free slot) and its treasure's resources go to the owner; with
+     neither, the join offer is skipped as declined (a feature to-do, decision 22). **The
+     split** (ADV-MON-009): a monster's stacks in its battle follow from its count and the
+     visitor's army by the original's table and two draws, in `faithful` the original's
+     generator seeded from the tile, written as the rule (`ADV-QUIRK-6`, fix-optional), in
+     `strict-fixed` from the attacking player's stream. **Guarded objects** (ADV-PIK-004): a
+     pile's guards from the map (up to seven stacks, an optional question); a question is an
+     offer, none a battle at once; the guards fight unsplit; a won battle picks the pile up.
+     **`Ground`** (Cursed Ground, Magic Plains, SoD's special grounds): no visit; a battle on
+     one of its tiles is fought on its battlefield (ADR-0017 point 11). Random contents of
+     increment 3 are drawn at setup, in object order, from the setup stream; the import refuses
+     what increment 3 cannot represent (a treasure with an artifact, a count above 4 095).
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -97,7 +131,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    once the viewer has explored any tile it covers (VCMI's `isVisibleFor`), or on the fringe
    under `ADV-QUIRK-1`; tiles show live occupancy. Contents (amounts, a campfire's resource) and
    other players' purchases and keys are never shown; an object's removal is seen by the players
-   that have explored a tile it covered. The observation is materialised per viewer as flat planes; the env's encoding (T9)
+   that have explored a tile it covered. Of a monster a viewer sees its creature and its count
+   as the original's word (few … legion), never the count, aggression, flags or treasure; of
+   another player's hero its identity, owner, class and its army's creatures with their words;
+   of a battle nothing but its owners' (each its side's observation, ADR-0013 point 9), whose
+   effects reach other viewers as removals where they see the tiles. The observation is materialised per viewer as flat planes; the env's encoding (T9)
    reads those, never the grids. T8 writes the viewer knowledge list into `docs/06-security.md`
    (the adventure epic owns it), including the fringe case of a public appearance with hidden
    contents.
@@ -111,7 +149,9 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   `crates/h3-adventure/src/persistent.rs` (E08 T2). On acceptance `docs/03` gains the terms static map, explored, fringe, object kind,
   blocked and visitable tile.
 - Object behaviour grows by variants with rule ids; the import's class mapping is the only place
-  that knows the original's class numbers.
+  that knows the original's class numbers; a monster's split generator lives in its rule, not
+  the kernel. In `faithful` a split needs no player's dice (the same tile and armies split the
+  same way, as the original's); in `strict-fixed` it costs the attacker two draws.
 
 ## Alternatives considered
 
@@ -124,6 +164,9 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   control anyway.
 - Objects as data-driven predicates: Tier 4 by the back door (ADR-0012). Code per original
   class: 200 match arms keyed by numbers.
+- The split from the tile in every profile: predictable, so an attacker tunes its army to it
+  (the user, ADV-Q13); monsters as their own context: they are map objects with a visit, the
+  battle is the game's; a monster's exact count shown: the original shows the word only.
 
 ## Revision history
 
@@ -135,3 +178,9 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   random contents at setup, increment 2's kinds), points 1 and 6 extended (per-object and
   per-player object state, the occupancy layer; what a viewer sees of objects) (E08 T11b, the
   user at ADV-Q10; survey `E08-objects.md`).
+- 2026-10-14 (E08 T18a; the user at ADV-Q12 and ADV-Q13): points 1, 4 and 6 extended and point 3
+  amended for increment 3: a guarding object's army left, the heroes' formation, a hero's
+  details read by reference and changed through hero changes, enemy heroes visited from a
+  neighbour as a battle, the monster and ground kinds, guarded tiles, the monster's answer, the
+  split by the profile (`ADV-QUIRK-6`), guarded piles, what a viewer sees of monsters, heroes and
+  battles (drafted in E08 T17b, #181; survey `E08-battles.md`).
