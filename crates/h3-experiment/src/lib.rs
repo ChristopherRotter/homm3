@@ -364,7 +364,7 @@ pub fn build_only(
                 ));
             }
             Ok(Patch {
-                terrain: terrain(&p.terrain)?,
+                terrain: patch_terrain(&p.terrain)?,
                 from: (fx, fy),
                 to: (tx, ty),
             })
@@ -619,6 +619,15 @@ fn terrain(name: &str) -> Result<Terrain, String> {
         "lava" => Terrain::Lava,
         other => return Err(format!("unknown terrain `{other}`")),
     })
+}
+
+/// A patch's terrain: a land terrain or water (E04c T3: the coast; the map's own terrain is land).
+fn patch_terrain(name: &str) -> Result<Terrain, String> {
+    if name == "water" {
+        Ok(Terrain::Water)
+    } else {
+        terrain(name)
+    }
 }
 
 /// Index of a unique name in a list (ASCII case ignored).
@@ -1187,6 +1196,10 @@ mod tests {
         terrain = "sand"
         from = [20, 0]
         to = [20, 0]
+        [[map.patch]]
+        terrain = "water"
+        from = [60, 60]
+        to = [61, 60]
         [[map.road]]
         kind = "gravel"
         row = 30
@@ -1252,6 +1265,11 @@ mod tests {
                     terrain: Terrain::Sand,
                     from: (20, 0),
                     to: (20, 0)
+                },
+                Patch {
+                    terrain: Terrain::Water,
+                    from: (60, 60),
+                    to: (61, 60)
                 }
             ]
         );
@@ -1328,7 +1346,9 @@ mod tests {
         assert!(fails("to = [32, 71]", "to = [72, 71]").contains("off the map"));
         assert!(fails("to = [32, 71]", "to = [19, 71]").contains("out of order"));
         assert!(fails("from = [20, 0]", "from = [20, 72]").contains("out of order"));
-        assert!(fails("\"swamp\"", "\"water\"").contains("unknown terrain"));
+        // Water may be a patch (the coast), not the map's own terrain.
+        assert!(fails("\"swamp\"", "\"ice\"").contains("unknown terrain"));
+        assert!(fails("\"grass\"", "\"water\"").contains("unknown terrain"));
         assert!(fails("\"gravel\"", "\"paved\"").contains("unknown road"));
         for (from, to) in [
             ("from = 17", "from = 19"),

@@ -1,0 +1,186 @@
+# Experiment batch 3b (E04c T3): which map tile decides the battlefield, the attacking hero's or
+# its opponent's: for a special ground (0x4FCE20 on the battle's map tile, +0x53BC) and for the
+# shore (a tile next to water: sand and the shore field, 0x4643B0's case 5). For the adventure
+# lane's derivation of `BattleSetup.battlefield` (docs/rules/surveys/E04c-battlefields.md §4; its
+# queue's inbox line of E04c T2b): installation.md §7.26 names the battle's map tile but not whose
+# it is. Also shows whether the game finds the coast of a map our writer made (the writer sets no
+# tile flags beyond the roads' mirror bit).
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them. The engine has no prediction (the derivation is the adventure
+# lane's, not built); the hypotheses: (a) the attacker's tile, (b) the defender's tile.
+#
+# The values are read at the battle's start, before anything moves (right-click a stack: luck,
+# speed); an agent's run reads the battle manager's +0x53C0 special field and +0x5394 terrain and
+# the stacks' +0x4EC luck and +0x4D8 native from memory (docs/exe/structs.toml).
+# Goblin: Stronghold, speed 5, luck +2 on Clover Field (BAT-TER-003); Pikeman: Castle, native on
+# grass (speed 5), not on sand (speed 4). The Clover Field picture (6 x 4, bottom-right tile
+# (9, 4)) covers columns 4 to 9 and rows 1 to 4: TM's Peasant (4, 3) and TH's hero (9, 3) stand on
+# it, TM's hero (3, 3) and TH's Peasant (10, 3) do not.
+
+[map]
+name = "E04c batch 3b"
+description = "Engine-generated experiment map (E04c, batch 3b): whose tile decides the battlefield. Follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Copy `E04c-batch-3b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps` and start it as a single scenario (Red human). Save right away.",
+    "Each Red hero stands next to a Peasant. Play the encounters in any order: select the hero and step east into the Peasant.",
+    "At the battle's start, before anything moves, note the battlefield's picture and right-click Red's stack: its luck and speed. Then end the battle as you like (win or retreat) and load the save for the next encounter.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+[[map.ground]]
+picture = "AVXcf0"  # Clover Field (222): columns 4-9, rows 1-4
+at = [9, 4]
+
+# Water beside the shore encounters: SH's hero and Peasant both next to it, SHH's hero only,
+# SHM's Peasant only.
+[[map.patch]]
+terrain = "water"
+from = [14, 2]
+to = [17, 2]
+[[map.patch]]
+terrain = "water"
+from = [20, 2]
+to = [20, 4]
+[[map.patch]]
+terrain = "water"
+from = [29, 2]
+to = [29, 4]
+
+[[encounter]]
+id = "TM"
+title = "Clover Field under the Peasant only"
+questions = ["BAT-TER-002", "E04c-battlefields §4"]
+procedure = [
+    "Attack the Peasant (it stands on the Clover Field, the hero beside it does not). At the battle's start, note the battlefield's picture and the Goblins' luck.",
+    "End the battle as you like.",
+]
+predictions = """
+(a) the attacker's tile: field **-1** (grass), Goblins luck **0**. (b) the defender's tile: field
+**5** (Clover Field), Goblins luck **+2**.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+primary = [1, 1, 1, 1]
+army = [["Goblin", 10]]
+[encounter.opponent]
+monster = "Peasant"
+count = 1
+[[encounter.record]]
+field = "the battlefield (its picture)"
+[[encounter.record]]
+field = "Goblins' luck"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "TH"
+title = "Clover Field under the hero only"
+questions = ["BAT-TER-002", "E04c-battlefields §4"]
+procedure = [
+    "Attack the Peasant (the hero stands on the Clover Field, the Peasant does not). At the battle's start, note the battlefield's picture and the Goblins' luck.",
+    "End the battle as you like.",
+]
+predictions = """
+(a) the attacker's tile: field **5**, Goblins luck **+2**. (b) the defender's tile: field **-1**,
+luck **0**.
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+primary = [1, 1, 1, 1]
+army = [["Goblin", 10]]
+[encounter.opponent]
+monster = "Peasant"
+count = 1
+[[encounter.record]]
+field = "the battlefield (its picture)"
+[[encounter.record]]
+field = "Goblins' luck"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "SH"
+title = "Both next to water: the shore"
+questions = ["BAT-TER-002", "E04c-battlefields §4"]
+procedure = [
+    "Attack the Peasant (both stand next to the water above them). At the battle's start, note the battlefield's picture and the Pikemen's speed.",
+    "End the battle as you like.",
+]
+predictions = """
+The code (0x4643B0 case 5, the tile's bit 0x2 of +0xD): field **0** (the shore, `CmBkBch.pcx`),
+terrain **sand** (1): the Pikemen are not native, speed **4**. If the game does not see the coast
+of our map (the bit not set from the terrain at load): field -1, grass, speed 5; then TH's and TM's
+answer stands alone and SHH and SHM say nothing.
+"""
+[encounter.hero]
+type = "Rissa"
+specialty = "resource mercury"
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+[encounter.opponent]
+monster = "Peasant"
+count = 1
+[[encounter.record]]
+field = "the battlefield (its picture)"
+[[encounter.record]]
+field = "Pikemen's speed"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "SHH"
+title = "Only the hero next to water"
+questions = ["BAT-TER-002", "E04c-battlefields §4"]
+procedure = [
+    "Attack the Peasant (the water is west of the hero; the Peasant is two tiles from it). At the battle's start, note the battlefield's picture and the Pikemen's speed.",
+    "End the battle as you like.",
+]
+predictions = """
+(a) the attacker's tile: the shore (field 0, sand, speed **4**). (b) the defender's tile: grass
+(field -1, speed **5**).
+"""
+[encounter.hero]
+type = "Aine"
+specialty = "resource gold"
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+[encounter.opponent]
+monster = "Peasant"
+count = 1
+[[encounter.record]]
+field = "the battlefield (its picture)"
+[[encounter.record]]
+field = "Pikemen's speed"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "SHM"
+title = "Only the Peasant next to water"
+questions = ["BAT-TER-002", "E04c-battlefields §4"]
+procedure = [
+    "Attack the Peasant (the water is east of it; the hero is two tiles from it). At the battle's start, note the battlefield's picture and the Pikemen's speed.",
+    "End the battle as you like.",
+]
+predictions = """
+(a) the attacker's tile: grass (field -1, speed **5**). (b) the defender's tile: the shore (field
+0, sand, speed **4**).
+"""
+[encounter.hero]
+type = "Octavia"
+specialty = "resource gold"
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+[encounter.opponent]
+monster = "Peasant"
+count = 1
+[[encounter.record]]
+field = "the battlefield (its picture)"
+[[encounter.record]]
+field = "Pikemen's speed"
+[[encounter.record]]
+field = "anything odd"
