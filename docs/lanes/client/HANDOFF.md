@@ -4,19 +4,19 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0, M1 done; M2 T1 (the capture harness) and T3 (the animation timing) done 2026-10-13; next: M2 T2** (the window/audio evaluation: ends at the user's choice) or **T4** (the scene over time; walks wait for CLT-Q1's change; `QUEUE.md`). The workspace `clients/` (`clients/README.md`), its gates `clients/scripts/check.sh` (CI's `clients.yml` runs the same); ADR-0020. Built: decoders, the real-asset gate, code readings (design §3–§5, §7), compositor, asset tables, `h3-view render` and `situation`, the capture harness (runbook `clients/capture/README.md`, design §6, §7.6: the original under Wine on a virtual clock, its battle state read from its memory; the still set `situations/set.toml`, the recorded sequences `sequences.toml`). Records: `docs/epics/E17-log.md`.
-- **Pull request (2026-10-13):** #166, `client/e17-m2-t3-animation-timing` (T3).
+- **E17 M0, M1 done; M2 T1 (the capture harness) and T3 (the animation timing) done 2026-10-13; next: M2 T2** (the window/audio evaluation: ends at the user's choice) or **T4** (the scene over time; a walk now comes hex by hex: CLT-Q1, built 2026-10-13, wire v29; `QUEUE.md`). The workspace `clients/` (`clients/README.md`), its gates `clients/scripts/check.sh` (CI's `clients.yml` runs the same); ADR-0020. Built: decoders, the real-asset gate, code readings (design §3–§5, §7), compositor, asset tables, `h3-view render` and `situation`, the capture harness (runbook `clients/capture/README.md`, design §6, §7.6: the original under Wine on a virtual clock, its battle state read from its memory; the still set `situations/set.toml`, the recorded sequences `sequences.toml`). Records: `docs/epics/E17-log.md`.
+- **Pull request (2026-10-13):** CLT-Q1's, `battle/clt-q1-walk-path` (`cross-lane`).
 - **The user's requirements (2026-10-13)**, epic "Decisions": a string catalogue, language packs; graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
 - The lane owns `clients/` (its own Cargo workspace, `clients/README.md`), `docs/epics/E17*` and this folder. Branches `client/<task>`. Ids: questions `CLT-Q<n>`, quirks (asset fixes) `CLT-QUIRK-<n>`, stubs `CLT-STUB-<n>`. ADR drafts go to `adr-drafts/` and get a number when the user accepts them (ADR-0021 is the server's: the next free number).
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
 - The lane needs the user's computer online: stage the original files from `original-data/install/` into the clone's `original-data/install/` (`scripts/sandbox-setup.sh` does not copy them all). The gate and `render` need the four LODs (one per staging call; the gate also `h3maped.exe`), `h3-view situation` `H3bitmap.lod`; the captures also `Heroes3.exe`, the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid`.
-- **Open:** CLT-Q1 (the walk's path: decided (a), 2026-10-13; the battle and server lanes implement it; T4's walks wait); CLT-Q2 (the table-only LOD reader in `h3-formats`, for the battle lane; until it lands the client reads whole archives); CLT-Q4 (how a record carries the background variant; the scene takes an empty surrounding's).
+- **Open:** CLT-Q2 (the table-only LOD reader in `h3-formats`, for the battle lane; until it lands the client reads whole archives); CLT-Q4 (how a record carries the background variant; the scene takes an empty surrounding's).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
 - **Agent decides, marked provisional:** the inner structure of the client crates, names, test layout, CLI flags, caching, debug output; asset fixes whose source is a code reading or a reference frame (each an entry with its id). Mark it `provisional` (code comment or epic log).
 - **Queue for the milestone review:** choices with a lasting cost that stay inside the lane: a light dependency (`png`, an MP3 decoder), the asset tables' and layouts' formats, a visual deviation from the original without a reference. List them in the epic's review list and go on.
-- **Stop the line:** a change to an engine crate or another lane's paths (CLT-Q1 is one), shared paths (CI, `lanes.toml`: a `shared/` PR), heavy dependencies (the window/audio library, a GPU stack, a UI framework, a video codec), licence questions (reading MMArchive's, homm3-unpacker's or DDrawCompat's code included), committing anything taken from the original beyond identifiers and numbers (ADR-0009), anything that would write into the installation. Write the question (`CLT-Q<n>`), stop that task and take the next independent one.
+- **Stop the line:** a change to an engine crate or another lane's paths (CLT-Q1 was one), shared paths (CI, `lanes.toml`: a `shared/` PR), heavy dependencies (the window/audio library, a GPU stack, a UI framework, a video codec), licence questions (reading MMArchive's, homm3-unpacker's or DDrawCompat's code included), committing anything taken from the original beyond identifiers and numbers (ADR-0009), anything that would write into the installation. Write the question (`CLT-Q<n>`), stop that task and take the next independent one.
 
 ## Asset notes
 
@@ -46,6 +46,6 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+- **2026-10-13, CLT-Q1 built, cross-lane (the user present).** #166 merged. A walker's `Moved` hex by hex, wire v29, the path public (the user's calls). Next: T4a, the scene's timeline.
 - **2026-10-13, E17 M2 T3 (the user present).** #161, #163 found merged. The user chose T3 and decided CLT-Q1 (a). The animation timing read (design §7, 21 map entries) and confirmed to the millisecond: the harness reads the game's memory (`h3mem.py`); three recorded timelines (walk, shot, melee) replay identically; speeds 1 and 2 checked.
 - **2026-10-13, E17 M2 T1 (the user present).** Shared #161. The virtual clock (`xdd.dll`), the driver `h3drive.py`, `h3-view situation`, the set (nine situations, reproducible). 0x41ADB0 read: the third background; CLT-Q4.
-- **2026-10-13, E17 M1 T8 (the user present).** Shared #154. The reviewer's findings fixed, the review list accepted, captures under Wine; M1 closed, M2 refined.

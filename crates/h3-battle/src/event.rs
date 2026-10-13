@@ -81,13 +81,15 @@ pub enum EventKind {
         /// The active stack.
         stack: StackId,
     },
-    /// A stack moved (BAT-MOV-001).
+    /// A stack moved (BAT-MOV-001, BAT-MOV-002): a walker one position of its path at a time, in
+    /// order, so a walk is a run of these, each `from` the previous `to` (BAT-MOV-003); a flyer,
+    /// a teleporting creature and a placement (BAT-TAC-002) in one.
     Moved {
         /// The stack.
         stack: StackId,
-        /// Where it started.
+        /// Its position before.
         from: Hex,
-        /// Where it ended.
+        /// Its position after.
         to: Hex,
     },
     /// A stack waited (BAT-TRN-002).
@@ -491,6 +493,11 @@ impl Event {
 
 /// Receiver of events. Simulation uses [`NoopSink`], which compiles to nothing.
 pub trait Sink {
+    /// Whether the sink keeps what it receives. Work done only to report something (a walker's
+    /// path, hex by hex: BAT-MOV-003) is skipped for a sink that does not; the state is the same
+    /// either way.
+    const RECORDS: bool = true;
+
     /// Receives one event.
     fn emit(&mut self, event: Event);
 }
@@ -500,6 +507,8 @@ pub trait Sink {
 pub struct NoopSink;
 
 impl Sink for NoopSink {
+    const RECORDS: bool = false;
+
     #[inline]
     fn emit(&mut self, _event: Event) {}
 }

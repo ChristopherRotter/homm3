@@ -679,7 +679,8 @@ fn explode<S: Sink>(
 }
 
 /// Moves stack `mover` from `from` to another free position `to` (BAT-MOV-001 to 003), reported
-/// by `Moved` events. Every hex of its footprint it enters on the way, each once (not those it
+/// by `Moved` events: a walker's one per position of its path (BAT-MOV-003), a flyer's one.
+/// Every hex of its footprint it enters on the way, each once (not those it
 /// starts on), may burn it (BAT-MAG-028), stop it (a pit, BAT-MAG-032) or blow up under it (a
 /// mine, BAT-MAG-033): a walker enters the hexes of each position of its path in turn, stops at
 /// the first position where it enters a pit (revealing a pit its controller did not see) and
@@ -699,7 +700,7 @@ pub(crate) fn travel<S: Sink>(
     crate::binds::release(state, ruleset, mover, sink);
     let o = &state.spell_obstacles;
     if o.fire().is_empty() && !o.has_hidden() {
-        moved(state, mover, (from, to), sink);
+        go(state, ruleset, mover, (from, to), sink);
         return true;
     }
     travel_through(state, ruleset, mover, (from, to), true, sink)
@@ -724,14 +725,45 @@ pub(crate) fn travel_back<S: Sink>(
     crate::binds::release(state, ruleset, mover, sink);
     let o = &state.spell_obstacles;
     if o.fire().is_empty() && !o.has_hidden() {
-        moved(state, mover, (from, to), sink);
+        go(state, ruleset, mover, (from, to), sink);
     } else {
         travel_through(state, ruleset, mover, (from, to), false, sink);
     }
 }
 
-/// Moves stack `mover` from `a` to `b`, reported.
-fn moved<S: Sink>(state: &mut BattleState, mover: StackId, (a, b): (Hex, Hex), sink: &mut S) {
+/// Moves stack `mover` from `from` to `to` where nothing on the way acts on it: a walker
+/// position by position along its path (BAT-MOV-003) when the sink records, else, and a flyer,
+/// in one `Moved` (a walker whose path is not found, out of its reach, too).
+// rule: BAT-MOV-003
+fn go<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    mover: StackId,
+    (from, to): (Hex, Hex),
+    sink: &mut S,
+) {
+    let mut start = from;
+    let stack = *state.at(mover);
+    if S::RECORDS && !stack.has(StackTraits::FLIES) {
+        let field = Field::new(ruleset.battle().field);
+        let (path, len) = movement::path(state, field, mover, &stack, to);
+        // The path ends at `to`: its last step is the move below.
+        for &at in &path[..len.saturating_sub(1)] {
+            moved(state, mover, (start, at), sink);
+            start = at;
+        }
+    }
+    moved(state, mover, (start, to), sink);
+}
+
+/// Moves stack `mover` from `a` to `b`, reported (a placement in the tactics phase, BAT-TAC-002,
+/// is one such move).
+pub(crate) fn moved<S: Sink>(
+    state: &mut BattleState,
+    mover: StackId,
+    (a, b): (Hex, Hex),
+    sink: &mut S,
+) {
     state.at_mut(mover).hex = b;
     sink.emit(Event::public(EventKind::Moved {
         stack: mover,
@@ -791,7 +823,8 @@ fn travel_through<S: Sink>(
             }
         }
         let stops = in_pit.iter().any(Option::is_some);
-        if stops || new.iter().any(Option::is_some) {
+        // A recording sink gets every position (BAT-MOV-003); else only where something acts.
+        if S::RECORDS || stops || new.iter().any(Option::is_some) {
             moved(state, mover, (start, at), sink);
             start = at;
             if stops {

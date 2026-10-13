@@ -136,8 +136,8 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   not drawn yet, a situation set with recorded differences, unattended in the sandbox.
 - The window, input and audio evaluation and the user's choice (and licence step, if any).
 - The scene model: messages to animations at the original's timing (`CRANIM.TXT`, the
-  executable), moves (CLT-Q1, the walk's path), strikes, shots and projectiles, deaths, waits and
-  defends; a frame at any time, headless.
+  executable), moves (a walk hex by hex: CLT-Q1, built 2026-10-13, wire v29), strikes, shots
+  and projectiles, deaths, waits and defends; a frame at any time, headless.
 - The window adapter playing a record at the original's frame rate.
 - **Exit:** a record of a full battle plays in the window and renders headless frame by frame.
 - **T1 done 2026-10-13** ([log](E17-log.md#m2-t1--the-capture-harness-2026-10-13),
@@ -186,9 +186,6 @@ viewer, video.
 
 ## Risks and known gaps
 
-- **The walk's path (CLT-Q1).** `Moved` carries only the start and end hex; the walking animation
-  needs every hex. Decided (the user, 2026-10-13): the engine's event carries it (battle lane,
-  then the wire); needed by M2 T4's walks.
 - **Graphics per expansion.** The Complete edition holds only SoD-era graphics: a RoE ruleset
   still shows SoD art.
 - **Engine churn.** `h3-protocol` depends on `h3-battle`; the engine's frequent changes rebuild the

@@ -299,14 +299,13 @@ fn fire_burns_a_walker_on_each_hex_it_enters() {
     let mut s = burning(&r, &[("fixed", 10, 4, 5)], &[("fixed", 5, 14, 9)]);
     let events = act(&mut s, &r, walk(&r, (8, 5))).unwrap();
     assert_eq!(burns(&events), [(0, at(&r, 6, 5), 40, 4)]);
-    // Reported in two moves, split where it burned.
-    assert_eq!(
-        moves(&events),
-        [
-            (0, at(&r, 4, 5), at(&r, 6, 5)),
-            (0, at(&r, 6, 5), at(&r, 8, 5))
-        ]
-    );
+    // Reported hex by hex, the burn after entering (6, 5).
+    assert_eq!(moves(&events), row_walk(&r, 0, 5, 4, 8));
+    let burn = events
+        .iter()
+        .position(|e| !matches!(e.kind, EventKind::Moved { .. }))
+        .unwrap();
+    assert_eq!(moves(&events[..burn]), row_walk(&r, 0, 5, 4, 6));
     assert_eq!(s.stacks()[0].count, 6);
     // A two-hex stack enters each hex once: its rear hex follows its front hex through (6, 5).
     let mut s = burning(&r, &[("wide", 10, 3, 5)], &[("fixed", 5, 14, 9)]);
