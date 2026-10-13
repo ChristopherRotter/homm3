@@ -8,6 +8,7 @@ working detail is in `docs/epics/E16-design.md`; this page is for the operator.
 ```sh
 h3-server server.toml                       # serves until SIGINT/SIGTERM
 h3-server rebind server.toml <login> <key>  # while stopped: an account's new key (a forgotten password)
+h3-server card server.toml                  # while it runs: its signed card, for a web page
 ```
 
 The configuration's format, every field with its default, is in `src/config.rs`; an example is
@@ -22,7 +23,23 @@ server's identity: every welcome carries the public key and a signature by it, a
 the key on first contact, as SSH does. It is the data directory's one secret: whoever holds it can
 speak as the server (not as a player). Back it up; a lost key is a new identity, whose welcome
 every client that pinned the old one refuses. A start stops at a key file it cannot read or
-parse, and never writes a new one over it. A ladder's scenarios are
+parse, and never writes a new one over it.
+
+**The server's card** (ADR-0021 point 2) describes it to players who browse: its name, description
+and operator contact (`[server] name`, `description`, `operator`; the name is the server's id
+by default), its addresses (`public_url` or `ws://` and the bound address, then `addresses`), the
+protocol and engine versions, each ruleset its offers and ladders are made of, its ladders and
+whether anonymous play is allowed, signed by the server's key with its issue time and an expiry a
+day later (`[discovery] card_ms`). It counts the open connections, the games waiting or running and
+each ladder's players (the accounts on its current season's leaderboard); `[discovery] counts =
+false` keeps the counts off it, which are otherwise public to anyone who asks. Any client gets it
+with `Describe` after its hello, without a login; the server signs a new one when asked and its
+last one is a minute old. `h3-server card server.toml` asks the running server for it (at `bind`,
+on loopback for `0.0.0.0`) and prints it, for a web page: refresh the page's copy before it
+expires. A card that would break its bounds (`h3_protocol::card`: 8 KiB, 16 rulesets and 16
+ladders, names of 64 bytes) stops the start.
+
+A ladder's scenarios are
 offers of their own, `<ladder>.<n>` in the pool's order: its matches' journals and replays name
 them, and an `[[offer]]` may not be named so. A ladder's bots (`[[ladder.bot]]`) are accounts in
 the player log without a key: no one logs in as them, `rebind` refuses them, and a start renames
