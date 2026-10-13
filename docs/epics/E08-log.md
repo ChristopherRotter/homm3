@@ -1319,3 +1319,60 @@ payments or the spending limit), so the full local verify stands in again.
 - **Measured** (`bench-check`): `fork-xl-144` 349 000 056 Ir (+1.57 % on the baseline, −0.03 % on
   T14b's: the flags' thin pointer), `random-play-duel-36` 437 705 073 (−0.43 %), `reach-xl-144`
   565 723 829 (−0.16 %). No re-baseline.
+
+**T15b — border gates and the per-player visit mode** (a worker).
+- **The gate** (ADV-VIS-005; `ObjectKind::effect` gives `Effect::Gate(key)`, so every typed kind's
+  visit is built and `Visit` is a blocker's alone): a player holding the gate's key passes it, its
+  tile crossed like a free tile (the step does not visit, the move goes on, a path may end there;
+  the original's 0x480EE2, 0x48160A and the pathfinder's 0x56AB40, VCMI's
+  `MovementAfterDestinationRule`); any other player visits it from the neighbouring tile as a
+  pile (the step paid, D-3's drop to 0 included, the hero stays, the move ends) and nothing else
+  happens, no event (flagged as T15a's guard without the key: the original's message is not
+  modelled). Never removed; visited from above (no ADV-OBJ-004).
+- **One per-player mode** (the T14 review's inbox line; agent's call on the shape): `visit_at`
+  takes the acting player and sets `StepVisit::pass` for a gate whose key it holds (one test,
+  read only on a typed object's tile); `check_step` turns a pass into no visit, and the query's
+  object branch, which already asked `visit_at`, asks it with the hero's owner and pushes a passed
+  tile as any other. So `MoveHero` and `Reach` read one rule for a key holder and not.
+- **A key gate's type is visited from above** (agent's call): the query tests ADV-OBJ-004 on a
+  path's first tile only (T14a's peeled start), and a path never went on from any other tile an
+  object is visited from; a gate is the first such tile a path crosses, so the ruleset part now
+  refuses a `key_gate` with `from_above = false` (`InvalidObjectType`, "a key gate is not visited
+  from above"; the original's class 212 is on the "visitable from above" list, survey §2.3; the
+  packs' gates are). No hash changes: valid packs compile as before.
+- **Setup** (unchanged code, checked): `check_stand` refuses a hero on a gate's tile
+  (`StandError::Visited`), as the gate type's mode is `neighbour`, the mode of a player without
+  the key, and no player holds a key at setup. A key holder's hero that a move stopped on a gate
+  stands on a live gate, a state setup refuses but play reaches by the rules: it leaves the gate
+  as any tile (upward too), and another hero's step onto it is `Occupied` in `MoveHero` and the
+  query alike (meeting heroes is increment 3's).
+- **The inbox's second item** (an entered removable object leaving a hero on a tile whose next
+  live object is neighbour-visited): T15 cannot reach it. The removable objects (pickups, guards)
+  are visited from a neighbour, so no hero stands on their tiles when they leave; the entered
+  ones (Cartographers, observatories, tents) and the gates never leave. The line stays in the
+  inbox for the first entered removable object; `check_stand`'s refusal is a setup check only, and
+  the gate shows such a state is legal in play.
+- **Properties**: the h3-adventure query property gives the owner the gates' key from the start
+  in half its cases (`give_key`, test only; tents give it in others) and reads the visit through
+  the same per-player `visit_at`. Fixed tests: the gate without the key (stays, pays, drop to 0,
+  `PastVisit`, no event), with it (crossed with one step event per tile, a stop on it, leaving it
+  upward), another player blocked by a hero on it then visiting it, never removed; the query with
+  and without the key (and with another colour's); setup's refusal; the compile refusal. In
+  `h3-map` the red border gate is the plans' ninth kind (drawn more often with a visitable
+  shape); in three plans of four its visitable tile is the one below the red tent's (the tent is
+  not entered from above, so a hero leaving it downward meets the gate with the key, one coming
+  from below meets it without), and random play's visit pick also takes moves across a visitable
+  tile (agent's call: crossings were 1 to 4 per run before). Atomicity, legality consistency,
+  conservation, isolation, hygiene, the views against the events, clone equivalence and
+  determinism hold (also once at 600 cases in a release build). Counted over 48 cases (temporary
+  counters, seven runs of the final plans): 2 to 12 crossings by key holders, 0 to 3 stops on a
+  gate, 16 to 29 visits without the key.
+- **Versions**: none bumped (no state, import, ruleset-part hash, encoding or replay change: the
+  keys are T15a's); golden replays verify unchanged.
+- **Measured** (`bench-check`, the only T15 change to movement and the query): `reach-xl-144`
+  565 267 757 Ir (−0.24 % on the baseline, −0.08 % on T15a's), `random-play-duel-36` 437 273 411
+  (−0.52 %, −0.10 %), `fork-xl-144` 349 000 056 (+1.57 %, unchanged). The first build cost
+  +0.23 % and +0.28 % over T15a: the new parameter made the compiler call `visit_at` out of line
+  from the search (786 660 Ir of its own over 58 248 calls, from the XL map's blockers, and
+  +0.5 M in the search); `#[inline]` on it restores T15a's code. An out-of-line helper for the whole
+  object branch cost more (+0.68 %, +0.89 %). No re-baseline.

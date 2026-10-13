@@ -202,7 +202,7 @@ id       = "ADV-MOV-007"
 title    = "Where a hero may step"
 context  = "adventure"
 status   = "implemented"
-summary  = "A hero steps to one of the eight neighbouring tiles on the same level inside the map, onto a tile it may stand on (ADV-MAP-001): land terrain (water only by boat, not before boats exist; rock never), no object's blocked tile, no other hero. In increment 1 an object's visitable tile is not entered either (a visit ends a move and comes with increment 2, ADR-0016 point 4). A hero's own tile is always left, a town's gate too. E08 T4: the passages; T7b: `MoveHero` and the reachable-tiles query. Increment 2: a step onto a visitable tile visits its object (ADV-OBJ-003; E08 T13b, T14a), and an object not visited from above closes the steps across its tile's top (ADV-OBJ-004, T14a)."
+summary  = "A hero steps to one of the eight neighbouring tiles on the same level inside the map, onto a tile it may stand on (ADV-MAP-001): land terrain (water only by boat, not before boats exist; rock never), no object's blocked tile, no other hero. In increment 1 an object's visitable tile is not entered either (a visit ends a move and comes with increment 2, ADR-0016 point 4). A hero's own tile is always left, a town's gate too. E08 T4: the passages; T7b: `MoveHero` and the reachable-tiles query. Increment 2: a step onto a visitable tile visits its object (ADV-OBJ-003; E08 T13b, T14a), and an object not visited from above closes the steps across its tile's top (ADV-OBJ-004, T14a); a border gate is crossed by its key's holders as any tile (ADV-VIS-005, T15b)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -385,7 +385,7 @@ id       = "ADV-MAP-001"
 title    = "Where a hero may stand"
 context  = "adventure"
 status   = "implemented"
-summary  = "A hero stands on a tile of the map whose terrain is walked on land (not water without a boat, never rock), which no object blocks unless an object is visited from it, and no other hero stands on. A visitable tile is allowed even where a mask also blocks it (a hero may start on a town's gate, which the town's masks mark both ways; VCMI asks for visitable first). One check for the setup and for movement (ADR-0015 point 4): a setup that breaks it is rejected; T7's steps add the visitable tiles of increment 1 and the step rules (ADV-MOV-007). E08 T5a. E08 T14a: the setup also refuses a tile whose object (the one a visit there concerns, ADV-OBJ-003) is visited from a neighbouring tile (`StandError::Visited`): no move enters such a tile, and the editor places no hero on one (no shipped map does; the 9 that import whole stay valid); a hero placed on an entered object's tile stays allowed, and ADV-OBJ-004 applies when it leaves."
+summary  = "A hero stands on a tile of the map whose terrain is walked on land (not water without a boat, never rock), which no object blocks unless an object is visited from it, and no other hero stands on. A visitable tile is allowed even where a mask also blocks it (a hero may start on a town's gate, which the town's masks mark both ways; VCMI asks for visitable first). One check for the setup and for movement (ADR-0015 point 4): a setup that breaks it is rejected; T7's steps add the visitable tiles of increment 1 and the step rules (ADV-MOV-007). E08 T5a. E08 T14a: the setup also refuses a tile whose object (the one a visit there concerns, ADV-OBJ-003) is visited from a neighbouring tile (`StandError::Visited`): no move enters such a tile, and the editor places no hero on one (no shipped map does; the 9 that import whole stay valid); a hero placed on an entered object's tile stays allowed, and ADV-OBJ-004 applies when it leaves. E08 T15b: a border gate's tile is refused too (no player holds a key at a setup, ADV-VIS-005); a key holder's hero that a move stopped on a gate leaves it as any tile."
 numeric  = "integer"
 
   [[rule.source]]
@@ -438,7 +438,7 @@ id       = "ADV-OBJ-003"
 title    = "Visit modes: an object's visitable tile is entered, or visited from the tile before"
 context  = "adventure"
 status   = "implemented"
-summary  = "A tile an object is visited from ends a path: a step onto it visits the object, and no step follows (`PastVisit`). An object of a type visited from a neighbouring tile (piles, random resources, campfires, border guards; a border gate for a holder without its key) is not entered: the step toward its visitable tile is paid as if taken (ADV-MOV-003's price, and ADV-MOV-006's drop to 0 below the cheapest next step from that tile), the hero stays on its tile, and the visit runs. Any other type is entered: the step onto the tile is priced as a step (ADV-MOV-003 to ADV-MOV-006), the hero stands there, and the visit runs. Which object a tile visits: the last in map order still on the map that is visited from it, for both modes (one object per tile, as the original's map tile records; VCMI takes the last for an entered tile, the first for a neighbour visit); its type decides the mode. No shipped map has a tile visited from two objects (E08 T14a: 0 of 101 246 visitable tiles over the 164 maps). A visit runs only once its kind's is built (`ObjectKind::visit_built`; ADR-0016 point 4); any other visitable tile is refused (`Visit`): a blocker's, the observatories', tents', guards' and gates' (E08 T15). E08 T13b: the neighbour mode for pickups; T14a: the entered mode, built for the Cartographer (no effect until T14b's offer), the order, and the reachable-tiles query's destinations in both modes (never a tile on the way)."
+summary  = "A tile an object is visited from ends a path: a step onto it visits the object, and no step follows (`PastVisit`); a border gate whose key the player holds is no visit (ADV-VIS-005, E08 T15b: the mode is per player, its tile crossed as any). An object of a type visited from a neighbouring tile (piles, random resources, campfires, border guards; a border gate for a holder without its key) is not entered: the step toward its visitable tile is paid as if taken (ADV-MOV-003's price, and ADV-MOV-006's drop to 0 below the cheapest next step from that tile), the hero stays on its tile, and the visit runs. Any other type is entered: the step onto the tile is priced as a step (ADV-MOV-003 to ADV-MOV-006), the hero stands there, and the visit runs. Which object a tile visits: the last in map order still on the map that is visited from it, for both modes (one object per tile, as the original's map tile records; VCMI takes the last for an entered tile, the first for a neighbour visit); its type decides the mode. No shipped map has a tile visited from two objects (E08 T14a: 0 of 101 246 visitable tiles over the 164 maps). A visit runs only once its kind's is built (`ObjectKind::effect`; ADR-0016 point 4); any other visitable tile is refused (`Visit`): a blocker's (every typed kind's is built since E08 T15b). E08 T13b: the neighbour mode for pickups; T14a: the entered mode, built for the Cartographer (no effect until T14b's offer), the order, and the reachable-tiles query's destinations in both modes (never a tile on the way)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -464,7 +464,7 @@ id       = "ADV-OBJ-004"
 title    = "Not from above: no step onto or off an object's visitable tile across its top"
 context  = "adventure"
 status   = "implemented"
-summary  = "An object whose type is not visited from above (`from_above` false; in the packs the entered Cartographers, observatories and Keymaster's tents, the original's classes 10, 13, 58 and 60) is not entered from the three tiles above its visitable tile (a step down, down-left or down-right onto it), and a walking hero standing on that tile does not step up, up-left or up-right off it. The object is the one a visit of the tile concerns (ADV-OBJ-003: the last in map order still on the map); an untyped blocker has no setting and closes nothing. `MoveHero` rejects such a step (`FromAbove`), the reachable-tiles query neither reaches the tile from above nor leaves it upward. Flying (which may leave upward) comes with increment 3. E08 T14a."
+summary  = "An object whose type is not visited from above (`from_above` false; in the packs the entered Cartographers, observatories and Keymaster's tents, the original's classes 10, 13, 58 and 60) is not entered from the three tiles above its visitable tile (a step down, down-left or down-right onto it), and a walking hero standing on that tile does not step up, up-left or up-right off it. The object is the one a visit of the tile concerns (ADV-OBJ-003: the last in map order still on the map); an untyped blocker has no setting and closes nothing. `MoveHero` rejects such a step (`FromAbove`), the reachable-tiles query neither reaches the tile from above nor leaves it upward. Flying (which may leave upward) comes with increment 3. E08 T14a. E08 T15b: the ruleset part requires a key gate's type to be visited from above (its key's holders cross it; the original's class 212 is on the list), so a path never goes on from a tile that closes upward but the hero's own."
 numeric  = "integer"
 
   [[rule.source]]
@@ -687,19 +687,26 @@ numeric  = "integer"
 id       = "ADV-VIS-005"
 title    = "Border gates"
 context  = "adventure"
-status   = "specified"
-summary  = "A border gate (AB and SoD) is never removed: the heroes of a player holding its key enter and cross it like a free tile, the others visit it from a neighbouring tile (T15). Data: packs/ab/adventure.toml (border_gate_*)."
+status   = "implemented"
+summary  = "A border gate (AB and SoD) is never removed. The heroes of a player holding its key enter and cross it like a free tile: the step does not visit, the move goes on, and a path may end on it. Every other player's hero visits it from the neighbouring tile, as a pile: the step is paid (ADV-MOV-006's drop to 0 included), the hero stays, the move ends, and nothing else happens (no event: the original's message is not modelled). The visit mode is per player (ADV-OBJ-003): `MoveHero` and the reachable-tiles query ask one test with the acting player's keys. Setup refuses a hero on a gate's tile (ADV-MAP-001: no player holds a key at the start); a key holder's hero stopped on one leaves it as any tile. A key gate's type must be visited from above (ADV-OBJ-004; the original's class 212 is on the list). Data: packs/ab/adventure.toml (border_gate_*). E08 T15b."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe: visit 0x4A8DD0, the step's case 212 (0x480EE2), the pathfinder's pass-through test 0x56ABB1; survey E08-objects.md §2.2, §6"
+  ref        = "Heroes3.exe: visit 0x4A8DD0 (a message without the key), the step's case 212 (0x480EE2: entered with the key), the pass-through of a step that is not the move's last (0x48160A: garrisons and, for a key holder, the gate), the pathfinder's pass-through test (0x56AB40, the key bit at 0x56ABB1); survey E08-objects.md §2.1-§2.3, §6"
   confidence = "high"
 
   [[rule.source]]
   kind       = "vcmi"
   ref        = "CGBorderGate::passableFor (the key), onHeroVisit (a message without it)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "MovementAfterDestinationRule: a visit ends a path except at teleporters, garrisons and border gates (DESTINATION_VISIT)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/PathfindingRules.cpp"
   retrieved  = "2026-10-12"
   confidence = "high"
 
