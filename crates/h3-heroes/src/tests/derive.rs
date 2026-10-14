@@ -1468,3 +1468,67 @@ fn learning_grows_the_experience_gained() {
     d.skills.push((offense, 3));
     assert_eq!(gained_experience(&d, &r, u32::MAX), u32::MAX);
 }
+
+// covers: HER-ADV-001
+#[test]
+fn the_map_reads_attack_and_defense_as_the_battle_hero_has_them() {
+    let r = compile(effect_pack()).unwrap();
+    // The base, the worn artifacts' per copy (the combination `t:circle` with its parts but
+    // `t:loop`, which needs a skill) and the specialty's, within the bounds: Defense
+    // 0 + 1 - 5 + 2 + 3 + 3 + 1 is 5, Attack 99 and more is 99.
+    let d = details(&r);
+    let hero = derive_battle_hero(&d, &r).unwrap();
+    assert_eq!(attack_defense(&d, &r), (hero.attack, hero.defense));
+    assert_eq!(attack_defense(&d, &r), (99, 5));
+    let mut d = details(&r);
+    d.worn = vec![art(&r, "t:band")];
+    d.primary = [3, 4, 1, 1];
+    assert_eq!(attack_defense(&d, &r), (0, 0), "-5 each, at least 0");
+    d.worn.clear();
+    assert_eq!(attack_defense(&d, &r), (3, 5));
+    // Without hero parameters (validation refuses them) the base values.
+    let mut p = effect_pack();
+    p.hero_params = None;
+    let r = compile(p).unwrap();
+    d.worn = vec![art(&r, "t:eye")];
+    assert_eq!(attack_defense(&d, &r), (3, 4));
+}
+
+/// The effect pack with Offense standing for Diplomacy (a join bonus of 1/2/3) and `t:helm`
+/// adding 2 (E08 T20a1).
+fn join_pack() -> ContentPack {
+    let mut p = effect_pack();
+    for s in &mut p.skills {
+        if s.key.to_string() == "t:offense" {
+            s.levels = [1, 2, 3].map(|level| vec![HeroEffectDef::JoinBonus { level }]);
+        }
+    }
+    for a in &mut p.artifacts {
+        if a.key.to_string() == "t:helm" {
+            a.effects = vec![HeroEffectDef::JoinBonus { level: 2 }];
+        }
+    }
+    p
+}
+
+// covers: HER-ADV-002
+#[test]
+fn the_join_bonus_adds_the_levels_up_to_three() {
+    let r = compile(join_pack()).unwrap();
+    let mut d = details(&r);
+    // The combination `t:circle` brings its part `t:helm`'s 2.
+    assert_eq!(join_bonus(&d, &r), 2);
+    d.worn.clear();
+    assert_eq!(join_bonus(&d, &r), 0);
+    let offense = skill(&r, "t:offense");
+    for level in 1..=3 {
+        d.skills = vec![(offense, level)];
+        assert_eq!(join_bonus(&d, &r), level);
+    }
+    // An artifact type counts once, however many copies are worn; the sum at most 3.
+    d.skills.clear();
+    d.worn = vec![art(&r, "t:helm"), art(&r, "t:helm")];
+    assert_eq!(join_bonus(&d, &r), 2);
+    d.skills = vec![(offense, 2)];
+    assert_eq!(join_bonus(&d, &r), MAX_JOIN_BONUS);
+}

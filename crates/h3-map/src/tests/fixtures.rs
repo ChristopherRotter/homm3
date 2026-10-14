@@ -367,6 +367,7 @@ fn duel() -> Plan {
         heroes: heroes.iter().map(|&spot| (spot, None)).collect(),
         hero_types: 3,
         backpacks: vec![],
+        skills: vec![],
         blockers,
         difficulty: 1,
     }
@@ -402,6 +403,7 @@ fn xl() -> Plan {
         heroes: heroes.iter().map(|&spot| (spot, None)).collect(),
         hero_types: 5,
         backpacks: vec![],
+        skills: vec![],
         blockers,
         difficulty: 1,
     }
