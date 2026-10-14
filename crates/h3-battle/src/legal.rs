@@ -1,7 +1,7 @@
 //! Legal commands (ADR-0004 §7): the exact set of commands `apply` accepts for an actor, built
 //! from the same reachability and adjacency rules. Consistency with `apply` is property-tested.
 
-use h3_content_battle::{BattleRuleset, MAX_FIELD_HEXES};
+use h3_content_battle::{BattleRuleset, MAX_FIELD_HEXES, MAX_WALL_TARGETS};
 use h3_contracts::BattleSide;
 use h3_kernel::FixedVec;
 
@@ -15,8 +15,10 @@ use crate::{tactics, war};
 /// Upper bound on the number of legal commands: Wait, Defend, one move per hex, and per enemy
 /// stack either its canonical attack positions or two aimed shots (a commanded First Aid Tent:
 /// Wait, Defend and at most one heal per stack; the tactics phase: Wait, `EndTactics` and one
-/// placement per hex), plus the two commands that leave the battle.
-pub const MAX_LEGAL_COMMANDS: usize = 4 + MAX_FIELD_HEXES + ATTACK_SLOTS * STACK_CAPACITY;
+/// placement per hex), one wall shot per wall-shot target, plus the two commands that leave the
+/// battle.
+pub const MAX_LEGAL_COMMANDS: usize =
+    4 + MAX_FIELD_HEXES + ATTACK_SLOTS * STACK_CAPACITY + MAX_WALL_TARGETS;
 
 /// Fixed-capacity buffer for [`legal_commands`] (no allocation in the hot path).
 pub type LegalCommands = FixedVec<Command, MAX_LEGAL_COMMANDS>;
@@ -27,7 +29,8 @@ pub type LegalCommands = FixedVec<Command, MAX_LEGAL_COMMANDS>;
 /// enemy stack its shots (a stack that can shoot, BAT-RNG-001: its front hex, then for area shots a
 /// two-hex target's rear hex) or its melee attacks by canonical position slot
 /// (`Field::attack_positions`; never for war machines, BAT-WAR-001), then for a commanded First Aid
-/// Tent its heals by stack id (BAT-WAR-007). Last in both cases, Retreat if the side may retreat
+/// Tent its heals by stack id (BAT-WAR-007), then the wall shots by target of a stack that may
+/// shoot the walls (BAT-SIE-011, BAT-SIE-013). Last in both cases, Retreat if the side may retreat
 /// (BAT-FLE-001) and Surrender if it may surrender and can pay (BAT-FLE-002). Casts are not listed:
 /// a hero's are [`crate::cast_targets`] × [`crate::second_targets`] (BAT-MAG-001), a stack's
 /// [`crate::creature_cast_targets`] (BAT-MAG-048).
@@ -59,6 +62,15 @@ pub fn legal_commands(
         }
     } else {
         turn_commands(state, field, (id, &mover), out);
+        // rule: BAT-SIE-010, BAT-SIE-011, BAT-SIE-013
+        if crate::siege::commanded_wall_shots(state, ruleset, id).is_some() {
+            let siege = state
+                .siege
+                .unwrap_or_else(|| unreachable!("a wall shooter's siege"));
+            for part in (0..siege.targets).filter(|&t| siege.stands(t)) {
+                let _ = out.push(Command::ShootWall { part });
+            }
+        }
     }
     // rule: BAT-FLE-001
     if state.may_retreat(actor) {

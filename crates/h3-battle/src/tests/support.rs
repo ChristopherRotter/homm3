@@ -13,11 +13,11 @@ use h3_content::{
     SpellCategory, SpellSchoolDef, StartingStackDef, TerrainDef,
 };
 use h3_content_battle::{
-    AbilityDef, AuraTarget, BattleCompileError, BattleCreatureDef, BattlePack, BattleParamsDef,
-    BattleRuleset, BattleSpellDef, BattlefieldDef, EffectDuration, EffectEnd, FactionChangeDef,
-    HexStep, ObstacleDef, ObstacleKind, ObstacleShape, SiegeDef, SiegeFieldDef, SpecialistBonus,
-    SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, SurrenderDef,
-    TargetConditions, TargetSide, TimedChange, Usefulness,
+    AbilityDef, AuraTarget, BallisticsRecord, BattleCompileError, BattleCreatureDef, BattlePack,
+    BattleParamsDef, BattleRuleset, BattleSpellDef, BattlefieldDef, EffectDuration, EffectEnd,
+    FactionChangeDef, HexStep, ObstacleDef, ObstacleKind, ObstacleShape, SiegeDef, SiegeFieldDef,
+    SpecialistBonus, SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity, SpellTarget,
+    SurrenderDef, TargetConditions, TargetSide, TimedChange, Usefulness, WallKind, WallTarget,
 };
 pub use h3_contracts::Rate;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
@@ -1085,6 +1085,45 @@ pub const CREATURES: &[Creature] = &[
         4,
         &["shooter", "shots=12", "no_wall_penalty"],
     ),
+    // The siege's Catapult (BAT-SIE-009): the original's (`CRTRAITS.TXT`).
+    (
+        "catapult",
+        10,
+        10,
+        0,
+        0,
+        1000,
+        0,
+        &[
+            "two_hex",
+            "shooter",
+            "catapult",
+            "war_machine",
+            "no_morale",
+            "shots=24",
+        ],
+    ),
+    // Wall shooters (BAT-SIE-013): the Cyclops and the Cyclops King.
+    (
+        "cyclops",
+        15,
+        12,
+        16,
+        20,
+        70,
+        6,
+        &["alive", "shooter", "catapult", "shots=16", "wall_shots=1"],
+    ),
+    (
+        "cyclops_king",
+        17,
+        13,
+        16,
+        20,
+        70,
+        8,
+        &["alive", "shooter", "catapult", "shots=24", "wall_shots=2"],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -1148,6 +1187,9 @@ fn parse_traits(traits: &[&str]) -> Traits {
             "teleports" => AbilityDef::Teleports,
             "no_distance_penalty" => AbilityDef::NoDistancePenalty,
             "no_wall_penalty" => AbilityDef::NoWallPenalty,
+            "wall_shots" => AbilityDef::WallShots {
+                level: u8::try_from(n()).unwrap(),
+            },
             "fireball" => AbilityDef::AreaShot {
                 effect: h3_content_battle::AreaShot::Fireball,
             },
@@ -1432,6 +1474,31 @@ pub fn siege_field() -> SiegeFieldDef {
         second_moat: vec![10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180],
         moat_defense_penalty: 3,
         mine_power: 3,
+        catapult: 119,
+        targets: [
+            (WallKind::Tower, None),
+            (WallKind::Wall, Some(29)),
+            (WallKind::Wall, Some(78)),
+            (WallKind::Gate, Some(96)),
+            (WallKind::Wall, Some(130)),
+            (WallKind::Wall, Some(182)),
+            (WallKind::Tower, None),
+            (WallKind::Keep, None),
+        ]
+        .map(|(kind, wall)| WallTarget { kind, wall })
+        .to_vec(),
+        missed: vec![1, 2, 5, 4],
+        automatic: vec![1, 2, 4, 5],
+        fallback: vec![3, 7, 0, 6],
+        castle_bonus: 1,
+        ballistics: [
+            ([5, 10, 25, 50], 1, [10, 60, 30]),
+            ([7, 15, 30, 60], 1, [0, 50, 50]),
+            ([7, 15, 30, 60], 2, [0, 50, 50]),
+            ([10, 20, 40, 75], 2, [0, 0, 100]),
+        ]
+        .map(|(hit, shots, damage)| BallisticsRecord { hit, shots, damage })
+        .to_vec(),
     }
 }
 
@@ -1445,18 +1512,21 @@ pub fn siege_defs() -> Vec<SiegeDef> {
             moat_damage: 70,
             second_moat: false,
             mines: None,
+            hit_points: vec![2; 8],
         },
         SiegeDef {
             faction: key("inferno"),
             moat_damage: 90,
             second_moat: true,
             mines: None,
+            hit_points: vec![2; 8],
         },
         SiegeDef {
             faction: key("necropolis"),
             moat_damage: 150,
             second_moat: false,
             mines: Some(key("landmine")),
+            hit_points: vec![2; 8],
         },
     ]
 }

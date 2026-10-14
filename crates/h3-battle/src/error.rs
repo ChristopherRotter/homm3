@@ -98,6 +98,8 @@ pub enum HeroError {
     DamageReduction,
     /// A commanded Ballista has no shots or a double-damage chance above 10 000 basis points.
     BallistaControl,
+    /// A commanded Catapult's Ballistics level is not 1 to 3 (BAT-SIE-011).
+    CatapultControl,
     /// The surrender discount exceeds 10 000 basis points.
     SurrenderDiscount,
     /// More effects than `MAX_BATTLE_EFFECTS`.
@@ -136,6 +138,7 @@ impl fmt::Display for HeroError {
             Self::BallistaControl => {
                 "commanded Ballista without shots or with a chance above 10000 basis points"
             }
+            Self::CatapultControl => "commanded Catapult with a Ballistics level outside 1..=3",
             Self::SurrenderDiscount => "surrender discount above 10000 basis points",
             Self::TooManyEffects => "too many effects",
             Self::UnknownCreature => "an effect names an unknown creature type",
@@ -267,6 +270,13 @@ pub enum CommandError {
     /// The spell's level is above the battle's spell level limit (BAT-MAG-062: Recanter's
     /// Cloak).
     SpellLevelBarred,
+    /// The active stack may not shoot the walls: no siege with a standing target, no wall
+    /// shooter, a Catapult its side does not command, or a stack not commanded for the attacker
+    /// (BAT-SIE-011, BAT-SIE-013).
+    CannotShootWalls,
+    /// The wall-shot target is not one, is not set up by the fort level or is destroyed
+    /// (BAT-SIE-010).
+    NoSuchPart,
 }
 
 impl fmt::Display for CommandError {
@@ -301,6 +311,8 @@ impl fmt::Display for CommandError {
             Self::CannotCast => "the stack cannot cast",
             Self::CastingForbidden => "no one may cast in this battle",
             Self::SpellLevelBarred => "the spell's level is above the battle's limit",
+            Self::CannotShootWalls => "the stack cannot shoot the walls",
+            Self::NoSuchPart => "no such standing wall part",
         })
     }
 }
@@ -426,6 +438,10 @@ mod tests {
                 "commanded Ballista without shots or with a chance above 10000 basis points",
             ),
             (
+                HeroError::CatapultControl,
+                "commanded Catapult with a Ballistics level outside 1..=3",
+            ),
+            (
                 HeroError::SurrenderDiscount,
                 "surrender discount above 10000 basis points",
             ),
@@ -500,6 +516,11 @@ mod tests {
             ),
             (CommandError::NoMelee, "war machines do not attack in melee"),
             (CommandError::CannotHeal, "the stack cannot heal"),
+            (
+                CommandError::CannotShootWalls,
+                "the stack cannot shoot the walls",
+            ),
+            (CommandError::NoSuchPart, "no such standing wall part"),
             (
                 CommandError::NotAPatient,
                 "the target is not a hurt allied stack",

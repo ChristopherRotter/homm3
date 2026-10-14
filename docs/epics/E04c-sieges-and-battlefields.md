@@ -114,7 +114,8 @@ checkpoint; BAT-Q43 at its start).
   hero's Ballistics level; `HeroEffect::Ballistics`; ADR-0023 point 6 (BAT-Q43).
 - **T6b, the reading** (`installation.md` §7.29; the survey's D-11 to D-15, S-08 confirmed): the
   Catapult's stack and turn (0x473C00), the wall shot (0x445D30, 0x445EC0), the parts' damage
-  (0x465990), Earthquake (0x5A7C80). **BAT-Q43 (the user): the code on D-11 to D-15; S-08's fix
+  (0x465990), Earthquake (0x5A7C80). **BAT-Q43 (the user): the code on D-11 to D-15 (D-11 then
+  found to be no dispute: the code opens hex 78 as VCMI); S-08's fix
   keeps the absent parts in Earthquake's draw and harms no stack; the Cyclops' wall shot in T6.**
 - **T6c, the battle** (`battle/e04c-t6`, stacked on T6a; `cross-lane` for `h3-protocol`): the
   battle part's data (the targets, their kinds and wall hexes, the miss and automatic lists, the
@@ -129,8 +130,9 @@ checkpoint; BAT-Q43 at its start).
   wire, replays; catalog rules from BAT-SIE-009; golden replay and the bench with the reason. The
   turrets' part (a destroyed tower's stack) joins T7.
 - **T6d, a Catapult batch run by an agent** on the capture harness: the automatic aim (D-13),
-  a destroyed Mid-Upper Wall's hex (D-11), the gate hit and destroyed (passage, the drawbridge's
-  hex no longer moat), Earthquake's hits, a miss (D-12) as far as one shows.
+  the gate hit and destroyed (passage, the drawbridge's hex no longer moat), a destroyed wall's
+  hex (78 for the Mid-Upper Wall, D-11 corrected: no dispute), Earthquake's hits, a miss (D-12) as
+  far as one shows.
 - Acceptance: every rule of §7.29 has a catalog rule with its sources and a test; battles without
   a siege replay unchanged apart from the hashes; walls and the gate agree with movement, the
   legal moves and the shot's line; `verify --with-original-data` green.

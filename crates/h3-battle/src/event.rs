@@ -481,6 +481,30 @@ pub enum EventKind {
         /// Creatures killed.
         kills: u32,
     },
+    /// A wall shot (BAT-SIE-014): the shooter aimed at one wall-shot target and hit another or
+    /// the same, dealing 0 to 2 damage.
+    WallShot {
+        /// The Catapult or the Cyclops.
+        stack: StackId,
+        /// The target aimed at.
+        aimed: u8,
+        /// The target hit.
+        part: u8,
+        /// Damage to its hit points.
+        damage: u8,
+    },
+    /// Earthquake's hits on a wall-shot target (BAT-SIE-016).
+    WallQuaked {
+        /// The target.
+        part: u8,
+        /// Hits, 1 damage each.
+        damage: u8,
+    },
+    /// A wall-shot target was destroyed (BAT-SIE-012).
+    WallDestroyed {
+        /// The target.
+        part: u8,
+    },
     /// The battle ended (BAT-END-001/002).
     BattleEnded {
         /// A victory of one side, or a draw.

@@ -57,4 +57,6 @@ effects = [
     { kind = "experience_gain", bp = 500 },
     { kind = "max_mana", bp = 2500 },
     { kind = "join_bonus", level = 1 },
+    # Format v38 (E04c T6): the Ballistics level (the Catapult's control, BAT-SIE-011).
+    { kind = "ballistics", level = 2 },
 ]

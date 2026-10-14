@@ -2570,10 +2570,12 @@ test (T8), the computer player's choices beyond the Catapult's aim.
 
 **The targets** (0x63BE60, eight records of 12 bytes: the aim hex, an index into the wall hexes
 0x63BD00 or −1, a screen position, the wall part): **0** the Upper Tower (aim 255, part 5), **1**
-the Upper Wall (29, part 6, wall hex 29), **2** the Mid-Upper Wall (62, part 8, wall hex 62),
-**3** the Gate (96, part 9), **4** the Mid-Lower Wall (130, part 10, wall hex 130), **5** the Lower
-Wall (182, part 12, wall hex 182), **6** the Lower Tower (183, part 13), **7** the Keep (254, part
-14). The other wall hexes (12, 45, 78, 112, 147, 165) belong to no target and stay blocked. A
+the Upper Wall (aim 29, part 6, wall hex 29), **2** the Mid-Upper Wall (aim 62, part 8, wall hex
+**78**: index 4), **3** the Gate (96, part 9), **4** the Mid-Lower Wall (130, part 10, wall hex
+130), **5** the Lower Wall (182, part 12, wall hex 182), **6** the Lower Tower (183, part 13), **7**
+the Keep (254, part 14). The aim hex is only where the cursor takes the target; the destruction
+opens the wall hex. The other wall hexes (12, 45, 62, 112, 147, 165) belong to no target and stay
+blocked. A
 target is **standing** (0x476440) while its part's hit points (+0x13F60) are above 0; the towers
 (0 and 6) only with a Castle, the keep (7) only with a Citadel or Castle. The hit points come from
 `WALLS.TXT` (2 for each of the eight parts in every town) at the siege's start, a Castle's four

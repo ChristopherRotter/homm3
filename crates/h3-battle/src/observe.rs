@@ -250,6 +250,7 @@ fn own_hero(
         damage: h.damage,
         ballista: h.ballista,
         tent: h.tent,
+        catapult: h.catapult,
         surrender_discount_bp: h.surrender_discount_bp,
         funds: h.funds,
         surrender_price: state.surrender_price(ruleset, side),

@@ -38,6 +38,7 @@ pub fn command(command: h3_battle::Command) -> Command {
             second: target(second),
         },
         C::CreatureCast { target: t } => Command::CreatureCast { target: target(t) },
+        C::ShootWall { part } => Command::ShootWall { part },
     }
 }
 
@@ -83,6 +84,8 @@ pub fn reject(error: CommandError) -> RejectCode {
         E::CannotCast => RejectCode::CannotCast,
         E::CastingForbidden => RejectCode::CastingForbidden,
         E::SpellLevelBarred => RejectCode::SpellLevelBarred,
+        E::CannotShootWalls => RejectCode::CannotShootWalls,
+        E::NoSuchPart => RejectCode::NoSuchPart,
     }
 }
 
@@ -390,6 +393,19 @@ pub fn event(kind: &EventKind) -> Event {
             damage: wide(damage),
             kills,
         },
+        K::WallShot {
+            stack,
+            aimed,
+            part,
+            damage,
+        } => Event::WallShot {
+            stack: stack.0,
+            aimed,
+            part,
+            damage,
+        },
+        K::WallQuaked { part, damage } => Event::WallQuaked { part, damage },
+        K::WallDestroyed { part } => Event::WallDestroyed { part },
         K::BattleEnded { result } => Event::BattleEnded {
             result: outcome(result),
         },

@@ -15,12 +15,13 @@ use h3_content::{
     CompileError, ContentKey, CreatureFlag, CreatureFlags, KeyError, PackManifest, Ruleset,
 };
 use h3_content_battle::{
-    AbilityDef, AreaShot, AuraTarget, BattleCompileError, BattleCreatureDef,
+    AbilityDef, AreaShot, AuraTarget, BallisticsRecord, BattleCompileError, BattleCreatureDef,
     BattleCreatureOverride, BattleCreaturePatch, BattlePack, BattleParamsDef, BattleRuleset,
     BattleSpellDef, BattlefieldDef, EffectDuration, EffectEnd, FactionChangeDef, HexStep,
     MASTERY_NAMES, ObstacleDef, ObstacleKind, ObstacleShape, SPECIALIST_LEVELS, SiegeDef,
     SiegeFieldDef, SpecialistBonus, SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity,
-    SpellTarget, SurrenderDef, TargetConditions, TargetSide, TimedChange, Usefulness,
+    SpellTarget, SurrenderDef, TargetConditions, TargetSide, TimedChange, Usefulness, WallKind,
+    WallTarget,
 };
 use h3_contracts::BattleSetup;
 use h3_pack::{PackError, reference, references};
@@ -213,6 +214,8 @@ struct SiegeDto {
     #[serde(default)]
     second_moat: bool,
     mines: Option<String>,
+    /// Pack format v38 (E04c T6).
+    hit_points: Vec<u8>,
 }
 
 /// `siege` in `[battle]` (pack format v37, E04c T5): the siege's field
@@ -226,6 +229,32 @@ struct SiegeFieldDto {
     second_moat: Vec<u8>,
     moat_defense_penalty: u8,
     mine_power: u8,
+    /// Pack format v38 (E04c T6): the wall shots.
+    catapult: u8,
+    targets: Vec<WallTargetDto>,
+    missed: Vec<u8>,
+    automatic: Vec<u8>,
+    fallback: Vec<u8>,
+    castle_bonus: u8,
+    ballistics: Vec<BallisticsDto>,
+}
+
+/// A wall-shot target of `siege` (pack format v38): `{ kind = "wall", wall = 29 }`.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WallTargetDto {
+    kind: String,
+    wall: Option<u8>,
+}
+
+/// A Ballistics record of `siege` (pack format v38): `{ hit = [5, 10, 25, 50], shots = 1,
+/// damage = [10, 60, 30] }`.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BallisticsDto {
+    hit: [u8; 4],
+    shots: u8,
+    damage: [u8; 3],
 }
 
 /// `{ factions = ["castle", "rampart"], amount = 1 }`.
@@ -460,6 +489,10 @@ enum AbilityDto {
     IgnoresMagicBlock {},
     /// Pack format v37 (E04c T5, BAT-SIE-008).
     NoWallPenalty {},
+    /// Pack format v38 (E04c T6, BAT-SIE-010).
+    WallShots {
+        level: u8,
+    },
 }
 
 #[derive(Deserialize)]
@@ -635,6 +668,7 @@ impl AbilityDto {
             Self::Fear { percent } => AbilityDef::Fear { percent },
             Self::IgnoresMagicBlock {} => AbilityDef::IgnoresMagicBlock,
             Self::NoWallPenalty {} => AbilityDef::NoWallPenalty,
+            Self::WallShots { level } => AbilityDef::WallShots { level },
         })
     }
 }
@@ -870,6 +904,7 @@ enum SpellEffectDto {
     Sacrifice {},
     Clone {},
     Summon {},
+    Earthquake {},
 }
 
 impl SpellDto {
@@ -921,6 +956,7 @@ impl SpellDto {
                     SpellEffectDto::Sacrifice {} => Ok(SpellEffect::Sacrifice),
                     SpellEffectDto::Clone {} => Ok(SpellEffect::Clone),
                     SpellEffectDto::Summon {} => Ok(SpellEffect::Summon),
+                    SpellEffectDto::Earthquake {} => Ok(SpellEffect::Earthquake),
                     SpellEffectDto::Obstacle { obstacle } => ObstacleKind::from_name(obstacle)
                         .map(SpellEffect::Obstacle)
                         .ok_or_else(|| {
@@ -1021,6 +1057,42 @@ enum SpellPolarityDto {
     Positive,
     Neutral,
     Negative,
+}
+
+/// The siege's field of `[battle]` (pack format v37; the wall shots since v38).
+fn siege_field(s: SiegeFieldDto) -> Result<SiegeFieldDef, BattlePackError> {
+    let targets = s
+        .targets
+        .into_iter()
+        .map(|t| {
+            WallKind::from_name(&t.kind)
+                .map(|kind| WallTarget { kind, wall: t.wall })
+                .ok_or_else(|| BattlePackError::Syntax(format!("unknown wall kind `{}`", t.kind)))
+        })
+        .collect::<Result<_, _>>()?;
+    Ok(SiegeFieldDef {
+        walls: s.walls,
+        gate: s.gate,
+        moat: s.moat,
+        second_moat: s.second_moat,
+        moat_defense_penalty: s.moat_defense_penalty,
+        mine_power: s.mine_power,
+        catapult: s.catapult,
+        targets,
+        missed: s.missed,
+        automatic: s.automatic,
+        fallback: s.fallback,
+        castle_bonus: s.castle_bonus,
+        ballistics: s
+            .ballistics
+            .into_iter()
+            .map(|b| BallisticsRecord {
+                hit: b.hit,
+                shots: b.shots,
+                damage: b.damage,
+            })
+            .collect(),
+    })
 }
 
 /// Parses the `battle.toml` of the core pack with this manifest (its references resolve in that
@@ -1134,7 +1206,7 @@ pub fn parse_battle(manifest: &PackManifest, text: &str) -> Result<BattlePack, B
         .collect::<Result<Vec<_>, BattlePackError>>()?;
     let battle = file
         .battle
-        .map(|b| -> Result<BattleParamsDef, KeyError> {
+        .map(|b| -> Result<BattleParamsDef, BattlePackError> {
             Ok(BattleParamsDef {
                 field_width: b.field_width,
                 field_height: b.field_height,
@@ -1170,14 +1242,7 @@ pub fn parse_battle(manifest: &PackManifest, text: &str) -> Result<BattlePack, B
                     .transpose()?,
                 hero_casts_per_round: b.hero_casts_per_round,
                 side_stack_limit: b.side_stack_limit,
-                siege: b.siege.map(|s| SiegeFieldDef {
-                    walls: s.walls,
-                    gate: s.gate,
-                    moat: s.moat,
-                    second_moat: s.second_moat,
-                    moat_defense_penalty: s.moat_defense_penalty,
-                    mine_power: s.mine_power,
-                }),
+                siege: b.siege.map(siege_field).transpose()?,
             })
         })
         .transpose()?;
@@ -1190,6 +1255,7 @@ pub fn parse_battle(manifest: &PackManifest, text: &str) -> Result<BattlePack, B
                 moat_damage: s.moat_damage,
                 second_moat: s.second_moat,
                 mines: s.mines.map(|m| reference(pack_id, &m)).transpose()?,
+                hit_points: s.hit_points,
             })
         })
         .collect::<Result<Vec<_>, KeyError>>()?;

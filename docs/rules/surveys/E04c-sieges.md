@@ -141,10 +141,11 @@ follows the result (the adventure lane).
   Tower's ten hidden mines instead of a moat. Small differences, the code followed without a
   question: `vcmi` lets a Force Field on 94 keep the gate from opening and only living stacks keep
   it open (the `code` tests stacks and corpses, no Force Field).
-- **D-11 The Mid-Upper Wall's hex** (T6; `code` 0x63BE60: target 2, the Mid-Upper Wall, opens wall
-  hex 62 when destroyed; `vcmi`: `OVER_GATE` at 78, 62 indestructible). The code's 62 lies two rows
-  above the gate as the Mid-Lower Wall's 130 two below, and at the picture's height (screen y 212,
-  row 3). Recommendation: the code; a confirmation row. **The user (BAT-Q43): the code.**
+- **D-11 The Mid-Upper Wall's hex** (T6; `code` 0x63BE60: target 2, the Mid-Upper Wall, is aimed
+  at hex 62 and its destruction opens wall hex 78, its record's index 4; `vcmi`: `OVER_GATE` at 78,
+  62 indestructible). **No dispute:** the session's question (BAT-Q43) read the index as the hex
+  and asked about 62 against 78; corrected the same day, the code and VCMI agree on 78. The user's
+  answer, the code, stands.
 - **D-12 A missed shot** (T6; `code` 0x445EC0: the nearest other standing wall of 1, 2, 5, 4 by the
   difference of the target indices, a tie by `random(1, 100)` ≤ 50, the aimed target if no other
   wall stands; `vcmi`: a random standing wall, the gate only without walls, the towers and keep

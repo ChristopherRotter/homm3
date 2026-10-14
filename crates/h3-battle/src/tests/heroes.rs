@@ -117,6 +117,7 @@ fn heroes_are_kept_and_shown_to_both_sides() {
         casts: 0,
         commands_ballista: false,
         commands_tent: false,
+        commands_catapult: false,
         spell_book: false,
     };
     let s = BattleState::new(&r, &with_heroes(&r, [Some(hero(&r)), None]), 1).unwrap();
@@ -187,6 +188,7 @@ fn the_private_part_of_a_hero_shows_only_to_its_side() {
             damage,
             ballista: Some(ballista),
             tent: Some(tent),
+            catapult: None,
             surrender_discount_bp: 2000,
             funds: 5000,
             surrender_price: Some(240),

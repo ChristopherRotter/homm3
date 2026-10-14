@@ -536,7 +536,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0xcd73_382f_aeb1_bf3f;
+const GOLDEN_BASE_HASH: u64 = 0x4e28_811c_3fc6_44ae;
 
 #[test]
 fn battle_params_are_unique_and_required() {

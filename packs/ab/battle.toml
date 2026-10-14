@@ -247,3 +247,4 @@ abilities = [{ kind = "hate", creature = "base:fire_elemental", percent = 100 },
 [[siege]]
 faction = "conflux"
 moat_damage = 70
+hit_points = [2, 2, 2, 2, 2, 2, 2, 2]

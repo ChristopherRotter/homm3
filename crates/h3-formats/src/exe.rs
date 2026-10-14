@@ -24,6 +24,8 @@ pub struct KnownBuild {
     pub obstacles: ObstacleTables,
     /// The siege's tables and constants (E04c T5).
     pub siege: SiegeTables,
+    /// The wall shots' tables and constants (E04c T6).
+    pub wall_shots: WallShotTables,
 }
 
 /// A one-byte immediate operand of an instruction: the instruction's address and its bytes before
@@ -64,6 +66,30 @@ pub struct SiegeTables {
     pub mines_town: Immediate,
     /// The mines' spell (`push 11`, 0x466290).
     pub mines_spell: Immediate,
+}
+
+/// Where a build keeps the wall shots' tables (`docs/formats/installation.md` §7.29).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WallShotTables {
+    /// Virtual address of the targets: records of [`WALL_TARGET_SIZE`] bytes (aim hex `i16`, index
+    /// into the wall hexes or −1 `i16`, screen x and y `i16`, wall part `i32`).
+    pub targets_va: u32,
+    /// Number of targets.
+    pub targets: usize,
+    /// Virtual address of the shot's jump table by target (`u32` each, one per target): each case
+    /// reads the hit chance of the target's kind from the Ballistics record (`movsx ebx, byte
+    /// [ecx + k]`, 0x445EFF).
+    pub kind_cases_va: u32,
+    /// Virtual address of the walls a missed shot may land on (`i32` each).
+    pub missed_va: u32,
+    /// Virtual address of the walls the automatic Catapult aims at (`i32` each).
+    pub auto_walls_va: u32,
+    /// Virtual address of the automatic Catapult's other targets, in order (`i32` each).
+    pub auto_others_va: u32,
+    /// Entries of each of the three lists.
+    pub list: usize,
+    /// The Catapult's position (`push 119`, 0x463600).
+    pub catapult: Immediate,
 }
 
 /// Where a build keeps its battlefield obstacle tables (`docs/formats/installation.md` §7.26).
@@ -257,6 +283,19 @@ pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
         },
         mines_spell: Immediate {
             va: 0x0046_6462,
+            opcode: &[0x6A],
+        },
+    },
+    wall_shots: WallShotTables {
+        targets_va: 0x0063_BE60,
+        targets: 8,
+        kind_cases_va: 0x0044_5FAC,
+        missed_va: 0x0063_B840,
+        auto_walls_va: 0x0063_D54C,
+        auto_others_va: 0x0067_0198,
+        list: 4,
+        catapult: Immediate {
+            va: 0x0046_377C,
             opcode: &[0x6A],
         },
     },
@@ -481,6 +520,125 @@ pub fn siege_data_at(image: &PeImage<'_>, t: &SiegeTables) -> Result<SiegeData, 
         second_moat_town: imm(t.second_moat_town, "the second moat's town instruction")?,
         mines_town: imm(t.mines_town, "the mines' town instruction")?,
         mines_spell: imm(t.mines_spell, "the mines' spell instruction")?,
+    })
+}
+
+/// Size of one wall-shot target record (§7.29).
+pub const WALL_TARGET_SIZE: usize = 12;
+
+/// One wall-shot target of a build (§7.29).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WallTarget {
+    /// The hex a player aims at (off the field for the towers and the keep).
+    pub aim: u8,
+    /// The index of the wall hex its destruction opens, if any.
+    pub wall: Option<u8>,
+    /// Its wall part (`WALLS.TXT`'s row).
+    pub part: u8,
+    /// The column of its hit chance in a Ballistics record: 0 keep, 1 tower, 2 gate, 3 wall.
+    pub kind: u8,
+}
+
+/// The wall shots' tables and constants of a build (§7.29).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WallShotData {
+    /// The targets, by index.
+    pub targets: Vec<WallTarget>,
+    /// The walls a missed shot may land on, in order (target indices).
+    pub missed: Vec<u8>,
+    /// The walls the automatic Catapult aims at (target indices).
+    pub auto_walls: Vec<u8>,
+    /// The automatic Catapult's other targets, in order (target indices).
+    pub auto_others: Vec<u8>,
+    /// The Catapult's position.
+    pub catapult: u8,
+}
+
+/// Reads the wall shots' tables and constants of a known build.
+///
+/// # Errors
+/// Unknown build, unmapped tables, an instruction or a jump case that is not the expected one, a
+/// target index or wall part out of range.
+pub fn wall_shot_data(data: &[u8]) -> Result<WallShotData, FormatError> {
+    let (build, image) = identify(data)?;
+    wall_shot_data_at(&image, &build.wall_shots)
+}
+
+/// Reads the tables described by `t` (exposed for tests with synthetic images).
+///
+/// # Errors
+/// As [`wall_shot_data`], without the build check.
+pub fn wall_shot_data_at(
+    image: &PeImage<'_>,
+    t: &WallShotTables,
+) -> Result<WallShotData, FormatError> {
+    let at = |va: u32, what: &'static str| {
+        image.file_offset(va).ok_or(FormatError::OutOfRange {
+            what,
+            value: u64::from(va),
+        })
+    };
+    let byte = |value: i64, limit: i64, what: &'static str| {
+        u8::try_from(value)
+            .ok()
+            .filter(|&v| i64::from(v) < limit)
+            .ok_or(FormatError::OutOfRange {
+                what,
+                value: value.unsigned_abs(),
+            })
+    };
+    let count = i64::try_from(t.targets).unwrap_or(i64::MAX);
+    let list = |va: u32, what: &'static str| -> Result<Vec<u8>, FormatError> {
+        let base = at(va, what)?;
+        (0..t.list)
+            .map(|i| {
+                byte(
+                    i64::from(le::i32_at(image.data, base + 4 * i, what)?),
+                    count,
+                    what,
+                )
+            })
+            .collect()
+    };
+    let base = at(t.targets_va, "wall-shot targets")?;
+    let cases = at(t.kind_cases_va, "wall-shot jump table")?;
+    let targets = (0..t.targets)
+        .map(|i| {
+            let r = base + WALL_TARGET_SIZE * i;
+            let what = "wall-shot targets";
+            let aim = le::u16_at(image.data, r, what)?;
+            let wall = i16::from_le_bytes(le::u16_at(image.data, r + 2, what)?.to_le_bytes());
+            let part = le::i32_at(image.data, r + 8, what)?;
+            // The case reads `movsx ebx, byte [ecx]` (0F BE 19) or `[ecx + k]` (0F BE 59 k).
+            let case = le::u32_at(image.data, cases + 4 * i, "wall-shot jump table")?;
+            let code = at(case, "wall-shot case")?;
+            let kind = match image.data.get(code..code + 4) {
+                Some([0x0F, 0xBE, 0x19, _]) => 0,
+                Some([0x0F, 0xBE, 0x59, k]) if *k < 4 => *k,
+                _ => return Err(FormatError::BadMagic("the wall shot's hit chance case")),
+            };
+            Ok(WallTarget {
+                aim: byte(i64::from(aim), 256, "wall-shot aim hex")?,
+                wall: (wall >= 0)
+                    .then(|| byte(i64::from(wall), 256, "wall-shot wall index"))
+                    .transpose()?,
+                part: byte(i64::from(part), 18, "wall-shot part")?,
+                kind,
+            })
+        })
+        .collect::<Result<_, _>>()?;
+    let imm = image
+        .data
+        .get(at(t.catapult.va, "the Catapult's hex instruction")?..)
+        .and_then(|code| code.get(..=t.catapult.opcode.len()))
+        .filter(|code| code[..t.catapult.opcode.len()] == *t.catapult.opcode)
+        .ok_or(FormatError::BadMagic("the Catapult's hex instruction"))?;
+    Ok(WallShotData {
+        targets,
+        missed: list(t.missed_va, "wall-shot miss list")?,
+        auto_walls: list(t.auto_walls_va, "automatic Catapult's walls")?,
+        auto_others: list(t.auto_others_va, "automatic Catapult's other targets")?,
+        catapult: imm[t.catapult.opcode.len()],
     })
 }
 
@@ -1180,6 +1338,99 @@ mod tests {
         }
         // The known build's addresses: an image of another build is refused before them.
         assert!(siege_data(&img).is_err());
+    }
+
+    #[test]
+    fn reads_the_wall_shot_tables_from_a_synthetic_image() {
+        // Two targets (12 bytes each, 0..24), two jump cases (24..32), three lists of two
+        // (32..56), the cases' code (56..64), the Catapult's instruction (64..66).
+        let va = |off: u32| 0x0040_1000 + off;
+        let mut p = Vec::new();
+        for (aim, wall, part) in [(255u16, -1i16, 5i32), (29, 1, 6)] {
+            p.extend_from_slice(&aim.to_le_bytes());
+            p.extend_from_slice(&wall.to_le_bytes());
+            p.extend_from_slice(&[0; 4]);
+            p.extend_from_slice(&part.to_le_bytes());
+        }
+        for case in [va(56), va(60)] {
+            p.extend_from_slice(&case.to_le_bytes());
+        }
+        for v in [1i32, 0, 1, 1, 0, 1] {
+            p.extend_from_slice(&v.to_le_bytes());
+        }
+        p.extend_from_slice(&[0x0F, 0xBE, 0x59, 1, 0x0F, 0xBE, 0x19, 0x90, 0x6A, 119]);
+        let t = WallShotTables {
+            targets_va: va(0),
+            targets: 2,
+            kind_cases_va: va(24),
+            missed_va: va(32),
+            auto_walls_va: va(40),
+            auto_others_va: va(48),
+            list: 2,
+            catapult: Immediate {
+                va: va(64),
+                opcode: &[0x6A],
+            },
+        };
+        let img = build_test_image(1, &p);
+        let pe = PeImage::parse(&img).unwrap();
+        assert_eq!(
+            wall_shot_data_at(&pe, &t).unwrap(),
+            WallShotData {
+                targets: vec![
+                    WallTarget {
+                        aim: 255,
+                        wall: None,
+                        part: 5,
+                        kind: 1
+                    },
+                    WallTarget {
+                        aim: 29,
+                        wall: Some(1),
+                        part: 6,
+                        kind: 0
+                    },
+                ],
+                missed: vec![1, 0],
+                auto_walls: vec![1, 1],
+                auto_others: vec![0, 1],
+                catapult: 119,
+            }
+        );
+        // Another case's code, another instruction, an index or a part out of range.
+        let refused = |bad: &[u8]| {
+            let img = build_test_image(1, bad);
+            wall_shot_data_at(&PeImage::parse(&img).unwrap(), &t).unwrap_err()
+        };
+        let mut bad = p.clone();
+        bad[58] = 0x5A;
+        assert_eq!(
+            refused(&bad),
+            FormatError::BadMagic("the wall shot's hit chance case")
+        );
+        let mut bad = p.clone();
+        bad[64] = 0x68;
+        assert_eq!(
+            refused(&bad),
+            FormatError::BadMagic("the Catapult's hex instruction")
+        );
+        let mut bad = p.clone();
+        bad[32..36].copy_from_slice(&2i32.to_le_bytes());
+        assert!(matches!(refused(&bad), FormatError::OutOfRange { .. }));
+        let mut bad = p.clone();
+        bad[8..12].copy_from_slice(&18i32.to_le_bytes());
+        assert!(matches!(refused(&bad), FormatError::OutOfRange { .. }));
+        assert!(
+            wall_shot_data_at(
+                &pe,
+                &WallShotTables {
+                    targets_va: 0x10,
+                    ..t
+                }
+            )
+            .is_err()
+        );
+        assert!(wall_shot_data(&img).is_err());
     }
 
     /// A payload with one hero record, one specialty record, two spell records, two skill

@@ -935,14 +935,15 @@ expert_schools = ["air"]
 sources = ["exe-battlefield", "vcmi-battlefields", "wiki-terrain"]
 
 # ---------------------------------------------------------------------------------------------
-# War machines (E03 T8): harvested from the tables like creatures (flag war_machine); the siege
-# machines (Catapult, Arrow Tower) wait for sieges. Their behaviour is the war-machine rules
-# (BAT-WAR-001..004) plus the abilities below.
+# War machines (E03 T8): harvested from the tables like creatures (flag war_machine); the Catapult
+# since E04c T6 (its flags: a siege machine the battle sets up itself, BAT-SIE-009); the Arrow
+# Tower waits for T7. Their behaviour is the war-machine rules (BAT-WAR-001..004) plus the
+# abilities below.
 # ---------------------------------------------------------------------------------------------
 
 [war_machines]
-harvest = ["Ballista", "First Aid Tent", "Ammo Cart"]
-sources = ["wiki-ballista", "wiki-first-aid-tent", "wiki-ammo-cart"]
+harvest = ["Ballista", "First Aid Tent", "Ammo Cart", "Catapult"]
+sources = ["wiki-ballista", "wiki-first-aid-tent", "wiki-ammo-cart", "exe-wall-shots"]
 
 [[creature_abilities]]
 creature = "First Aid Tent"
@@ -1435,6 +1436,52 @@ abilities = [
 ]
 sources = ["exe-enchanter", "exe-siege-walls"]
 
+# The wall shots (E04c T6, pack format v38; installation.md 7.29): the Cyclops shoot the walls as
+# with Basic Ballistics, the Cyclops King with Advanced (two shots); the Catapult with its hero's
+# level; Earthquake's hits.
+[[source]]
+id = "exe-wall-shots"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.29): the wall shot 0x445D30 takes the Ballistics record of level 1 for creature 94 (Cyclops), 2 for 95 (Cyclops King) and the controlling hero's Ballistics (+0xD3) for 145 (the Catapult, set up at hex 119 for an attacker with a hero at a fort by 0x463600); the cursor offers it to a stack with the catapult flag on the attacker's side; Earthquake (0x5A7C80) hits effect[mastery] wall-shot targets, 1 damage each"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-14"
+
+[[source]]
+id = "wiki-ballistics"
+kind = "wiki"
+ref = "Ballistics - Heroes 3 wiki: Basic gives control of the Catapult, Advanced two shots, Expert 'always hits the intended target' (likely HotA; BALLIST.TXT and the code give Expert 75 % on a wall, BAT-Q40 D-6)"
+url = "https://heroes.thelazy.net/index.php/Ballistics"
+retrieved = "2026-10-13"
+
+[[source]]
+id = "vcmi-ballistics"
+kind = "vcmi"
+ref = "config/skills.json (1.7.5) ballistics: MANUAL_CONTROL of the Catapult and CATAPULT_EXTRA_SHOTS 0/1/1 by level; config/spells/vcmiAbility.json catapultShot and cyclopsShot (the Cyclops King one extra shot); config/creatures/stronghold.json: the Cyclops' CATAPULT bonus"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json"
+retrieved = "2026-10-14"
+
+[[creature_abilities]]
+creature = "Cyclops"
+abilities = [{ kind = "wall_shots", level = 1 }]
+sources = ["exe-wall-shots", "vcmi-ballistics"]
+
+[[creature_abilities]]
+creature = "Cyclops King"
+abilities = [{ kind = "wall_shots", level = 2 }]
+sources = ["exe-wall-shots", "vcmi-ballistics"]
+
+[[spells.other]]
+spell = "Earthquake"
+effects = ["earthquake"]
+sources = ["exe-wall-shots", "wiki-earthquake"]
+
+[[source]]
+id = "wiki-earthquake"
+kind = "wiki"
+ref = "Earthquake - Heroes 3 wiki: one point of damage to two (Basic), three (Advanced), four (Expert) random walls or arrow towers; cannot be cast in non-siege combat or a town without at least a Fort; the bug that disables the first defending stack (fixed in HotA)"
+url = "https://heroes.thelazy.net/index.php/Earthquake"
+retrieved = "2026-10-14"
+
 # The shot through the walls (E04c T5, pack format v37; installation.md 7.28): the Mage, Arch Mage,
 # Enchanter and Sharpshooter shoot without the walls' halving (BAT-SIE-008).
 [[source]]
@@ -1701,6 +1748,15 @@ basic = [{ kind = "artillery", shots = 1, double_damage_chance_bp = 5000 }]
 advanced = [{ kind = "artillery", shots = 2, double_damage_chance_bp = 7500 }]
 expert = [{ kind = "artillery", shots = 2, double_damage_chance_bp = 10000 }]
 sources = ["wiki-artillery", "vcmi-skills"]
+
+# Ballistics (E04c T6, BAT-Q43): the level picks the Catapult's record of the battle's Ballistics
+# table (BALLIST.TXT); a player's hero with the skill aims its Catapult (installation.md 7.29).
+[[heroes.skill_effects]]
+skill = "Ballistics"
+basic = [{ kind = "ballistics", level = 1 }]
+advanced = [{ kind = "ballistics", level = 2 }]
+expert = [{ kind = "ballistics", level = 3 }]
+sources = ["exe-wall-shots", "wiki-ballistics", "vcmi-ballistics"]
 
 # Specialty parts the executable's fixed-stat record has no field for (dispute H-2: speed).
 [[heroes.specialty_extra]]

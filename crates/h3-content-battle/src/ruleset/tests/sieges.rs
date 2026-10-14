@@ -6,7 +6,7 @@ use alloc::vec;
 use h3_content::{CompileError, FactionDef, SpellCategory, SpellDef, SpellSchoolDef};
 
 use super::{Pack, Spell, base, compile, content, expect, key};
-use crate::siege::{SiegeDef, SiegeFieldDef};
+use crate::siege::{BallisticsRecord, SiegeDef, SiegeFieldDef, WallKind, WallTarget};
 use crate::spell::{ObstacleKind, ObstacleShape, SpellEffect, SpellMagic, SpellPolarity};
 use crate::{BattleCompileError, BattleSpellDef};
 
@@ -19,7 +19,35 @@ fn field() -> SiegeFieldDef {
         second_moat: vec![10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180],
         moat_defense_penalty: 3,
         mine_power: 3,
+        catapult: 119,
+        targets: [
+            (WallKind::Tower, None),
+            (WallKind::Wall, Some(29)),
+            (WallKind::Wall, Some(78)),
+            (WallKind::Gate, Some(96)),
+            (WallKind::Wall, Some(130)),
+            (WallKind::Wall, Some(182)),
+            (WallKind::Tower, None),
+            (WallKind::Keep, None),
+        ]
+        .map(|(kind, wall)| WallTarget { kind, wall })
+        .to_vec(),
+        missed: vec![1, 2, 5, 4],
+        automatic: vec![1, 2, 4, 5],
+        fallback: vec![3, 7, 0, 6],
+        castle_bonus: 1,
+        ballistics: vec![
+            record_of([5, 10, 25, 50], 1, [10, 60, 30]),
+            record_of([7, 15, 30, 60], 1, [0, 50, 50]),
+            record_of([7, 15, 30, 60], 2, [0, 50, 50]),
+            record_of([10, 20, 40, 75], 2, [0, 0, 100]),
+        ],
     }
+}
+
+/// A Ballistics record.
+const fn record_of(hit: [u8; 4], shots: u8, damage: [u8; 3]) -> BallisticsRecord {
+    BallisticsRecord { hit, shots, damage }
 }
 
 fn record(faction: &str, damage: u32, second_moat: bool, mines: Option<&str>) -> SiegeDef {
@@ -28,6 +56,7 @@ fn record(faction: &str, damage: u32, second_moat: bool, mines: Option<&str>) ->
         moat_damage: damage,
         second_moat,
         mines: mines.map(key),
+        hit_points: vec![2; 8],
     }
 }
 
@@ -118,6 +147,17 @@ fn the_field_and_the_records_compile() {
     assert_eq!((c.moat_damage, c.second_moat, c.mines), (70, true, None));
     let mine = r.spell_by_key("base:mine");
     assert_eq!(r.siege(dungeon).unwrap().mines, mine);
+    // The wall shots (E04c T6).
+    assert_eq!((f.catapult, f.targets.len(), f.castle_bonus), (119, 8, 1));
+    assert_eq!(
+        f.targets[2],
+        WallTarget {
+            kind: WallKind::Wall,
+            wall: Some(78)
+        }
+    );
+    assert_eq!(f.ballistics[3], record_of([10, 20, 40, 75], 2, [0, 0, 100]));
+    assert_eq!(c.hit_points, [2; 8]);
     // No siege field, no records: a ruleset without sieges.
     let r = compile(&[base()], "base:faithful").unwrap();
     assert!(r.siege_field().is_none() && r.sieges().is_empty());
@@ -128,10 +168,10 @@ fn the_field_and_the_records_compile() {
 fn the_hash_covers_the_sieges() {
     let hash = |p: Pack| compile(&[p], "base:faithful").unwrap().content_hash();
     let with = hash(sieges());
-    // Golden value: pins the sieges' encoding (battle part v3; bump BATTLE_RULESET_HASH_VERSION
+    // Golden value: pins the sieges' encoding (battle part v4; bump BATTLE_RULESET_HASH_VERSION
     // when it changes).
     assert_eq!(with, GOLDEN, "got {with:#018x}");
-    assert_eq!(crate::BATTLE_RULESET_HASH_VERSION, 3);
+    assert_eq!(crate::BATTLE_RULESET_HASH_VERSION, 4);
     assert_ne!(with, hash(base()));
     let mut p = sieges();
     p.battle.sieges[0].moat_damage = 71;
@@ -139,9 +179,29 @@ fn the_hash_covers_the_sieges() {
     let mut p = sieges();
     p.battle.sieges.clear();
     assert_ne!(hash(p), with);
+    // The wall shots' data (battle part v4).
+    let mut p = sieges();
+    p.battle.sieges[0].hit_points[0] = 3;
+    assert_ne!(hash(p), with);
+    let edits: [&dyn Fn(&mut SiegeFieldDef); 7] = [
+        &|f| f.catapult = 102,
+        &|f| f.targets[0].kind = WallKind::Keep,
+        &|f| f.targets[7].kind = WallKind::Tower,
+        &|f| f.missed.swap(0, 1),
+        &|f| f.fallback.pop().map_or((), drop),
+        &|f| f.castle_bonus = 2,
+        &|f| f.ballistics[0].shots = 2,
+    ];
+    for edit in edits {
+        let mut p = sieges();
+        if let Some(f) = p.battle.battle.as_mut().and_then(|b| b.siege.as_mut()) {
+            edit(f);
+        }
+        assert_ne!(hash(p), with);
+    }
 }
 
-const GOLDEN: u64 = 0x53af_102e_7d31_b170;
+const GOLDEN: u64 = 0xcee2_e6b9_d19c_9cc6;
 
 #[test]
 fn field_errors() {
@@ -188,6 +248,46 @@ fn field_errors() {
         param_error(p),
         "a siege's mines must be a spell that places mines"
     );
+    // The wall shots (E04c T6).
+    let targets = "the siege field needs 1 to 8 wall-shot targets";
+    assert_eq!(with(&|f| f.targets.clear()), targets);
+    assert_eq!(with(&|f| f.targets.push(f.targets[0])), targets);
+    let gate = "one wall-shot target must be the gate, on the gate's hex";
+    assert_eq!(with(&|f| f.targets[3].kind = WallKind::Wall), gate);
+    assert_eq!(with(&|f| f.targets[1].kind = WallKind::Gate), gate);
+    assert_eq!(with(&|f| f.targets[3].wall = Some(78)), gate);
+    let placed = "a wall target needs a wall hex other than the gate's, a turret none";
+    assert_eq!(with(&|f| f.targets[1].wall = None), placed);
+    assert_eq!(with(&|f| f.targets[1].wall = Some(96)), placed);
+    assert_eq!(with(&|f| f.targets[1].wall = Some(30)), placed);
+    assert_eq!(with(&|f| f.targets[0].wall = Some(12)), placed);
+    let lists = "the wall-shot lists name targets, each once";
+    assert_eq!(with(&|f| f.missed.push(8)), lists);
+    assert_eq!(with(&|f| f.automatic.push(1)), lists);
+    assert_eq!(with(&|f| f.fallback[0] = 9), lists);
+    let place = "the Catapult stands in the side column, its front hex standable";
+    assert_eq!(with(&|f| f.catapult = 120), place);
+    assert_eq!(with(&|f| f.catapult = 16), place);
+    assert_eq!(with(&|f| f.catapult = 187), place);
+    assert_eq!(
+        with(&|f| {
+            f.ballistics.pop();
+        }),
+        "the Ballistics table needs one record per level, none to Expert"
+    );
+    let record = "a Ballistics record needs chances of at most 100, damage chances summing to 100 \
+                  and 1 to 8 shots";
+    assert_eq!(with(&|f| f.ballistics[0].hit[3] = 101), record);
+    assert_eq!(with(&|f| f.ballistics[1].damage = [0, 50, 49]), record);
+    assert_eq!(with(&|f| f.ballistics[2].shots = 0), record);
+    assert_eq!(with(&|f| f.ballistics[3].shots = 9), record);
+    // A record's hit points for another number of targets.
+    let mut p = sieges();
+    p.battle.sieges[0].hit_points.pop();
+    assert_eq!(
+        param_error(p),
+        "a siege record needs hit points for each of the field's wall targets"
+    );
 }
 
 #[test]
@@ -213,6 +313,17 @@ fn record_errors() {
             "land mines take the moat's place: no second moat row"
         )
     );
+    for points in [vec![2, 0], vec![11], vec![2; 9]] {
+        let mut p = sieges();
+        p.battle.sieges[0].hit_points = points;
+        assert_eq!(
+            refused(p),
+            invalid(
+                "base:castle",
+                "the wall targets' hit points are 1 to 10, at most eight of them"
+            )
+        );
+    }
     let mut p = sieges();
     p.battle.sieges.push(record("base:castle", 90, false, None));
     assert_eq!(refused(p), CompileError::DuplicateKey("base:castle".into()));

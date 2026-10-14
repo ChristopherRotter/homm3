@@ -55,8 +55,11 @@ use h3_sim::{
 /// hex, BAT-GEO-002); no function changes. v19 (E04c T2b): observation encoding v15 (two
 /// globals: the special battlefield, the anti-magic garrison; `h3_observation_len` grows); no
 /// function changes. v20 (E04c T5): observation encoding v16 (the town's four globals and two
-/// battlefield planes; `h3_observation_len` grows); no function changes.
-pub const H3_ABI_VERSION: u32 = 20;
+/// battlefield planes; `h3_observation_len` grows); no function changes. v21 (E04c T6): action
+/// encoding v13 (eight wall-shot entries appended; `h3_action_count` grows) and observation
+/// encoding v17 (the wall-shot targets' globals, the heroes' Catapult features;
+/// `h3_observation_len` grows); no function changes.
+pub const H3_ABI_VERSION: u32 = 21;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;

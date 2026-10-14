@@ -1074,11 +1074,11 @@ fn harvested_packs_compile_in_every_allowed_combination() {
     let roe = compile(&[&BASE_PACK], profile).unwrap();
     let ab = compile(&[&BASE_PACK, &AB_PACK], profile).unwrap();
     let sod = compile(&[&SOD_PACK, &AB_PACK, &BASE_PACK], profile).unwrap();
-    // RoE: 8 towns x 14 + 6 neutrals + 3 war machines; AB adds Conflux (10 new) and 13
-    // neutrals.
-    assert_eq!(roe.creature_count(), 121);
-    assert_eq!(ab.creature_count(), 144);
-    assert_eq!(sod.creature_count(), 144);
+    // RoE: 8 towns x 14 + 6 neutrals + 4 war machines (the Catapult since E04c T6); AB adds
+    // Conflux (10 new) and 13 neutrals.
+    assert_eq!(roe.creature_count(), 122);
+    assert_eq!(ab.creature_count(), 145);
+    assert_eq!(sod.creature_count(), 145);
     assert_eq!((roe.factions().len(), ab.factions().len()), (8, 9));
     // SoD requires AB; AB requires base.
     assert!(matches!(
