@@ -29,8 +29,8 @@ epic   = "E04c"
 
 [[stub]]
 id     = "ADV-STUB-3"
-where  = "crates/h3-game/src/state/battle.rs::GameState::end_battle"
-reason = "A battle's outcome applies its armies, the heroes leaving the map and a surrender's gold (GAM-BAT-002, -003, -005); its heroes' part (experience with Learning, +500 for a defeated hero, Necromancy, Eagle Eye's spells, spell points, destroyed war machines' artifacts, the loser's artifacts captured) comes with E08 T19a2 (HeroChange, h3-heroes)"
+where  = "crates/h3-game/src/state/battle.rs::GameState::heroes_after_battle"
+reason = "A battle's outcome applies its armies, the heroes leaving the map, a surrender's gold (GAM-BAT-002 to -005) and since E08 T19a2a the heroes' spell points, destroyed war machines' artifacts, the winner's experience and the captured artifacts; Necromancy (the raised creatures) and Eagle Eye's spells learned come with E08 T19a2b (the raises and Wisdom kinds, HeroChange::LearnSpell)"
 epic   = "E08"
 
 [[stub]]

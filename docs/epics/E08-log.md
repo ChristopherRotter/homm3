@@ -1829,3 +1829,54 @@ and other players learn of it.
   the upgrade's elemental exception holds only while `[game]+0x1F698` is 0), and the four new
   `GameCommandError` messages were never formatted (`the_battle_errors_read_well`). Decision 30's
   two points settled; `shared/e08-t19a2` built.
+
+### Round 2 of increment 3: T19a2a (2026-10-14, `adventure/e08-t19a2a`)
+
+#192 to #194 merged first. The baseline full verify of `master` (0919729, `--with-original-data`)
+passed every step but `deny`: four RustSec advisories against rustls 0.23.45 (RUSTSEC-2026-0346 to
+-0349, through `h3-server`); #197 (`shared/rustls-advisories`) moves the lock file to 0.23.46.
+Asked for a seam, the user split T19a2 (decision 32): T19a2a here, T19a2b (Necromancy, the
+`raises` entries, Eagle Eye's learning) next, so the packs and the replays change once; Eagle
+Eye moved to T19a2b because its Wisdom limit needs a new effect kind. The user confirmed #194's
+tie rule as built.
+
+**T19a2a — the heroes' part of a battle's outcome** (`cross-lane`: `h3-heroes`, `heroes.toml`):
+- **The code reading** (address map entries, `battle_end` 0x477470 on): a winner with a hero gets
+  `battle_experience` 0x46A350 (the loser's records without the summoned and war machine flags at
+  the types' hit points; +500 for the loser's hero, taken off again when a side retreated or
+  surrendered, 0x6985A3 and 0x697744 from `battle_winner`; times the Learning getter 0x4E4840 on
+  f32 points, truncated), given by `hero_gain_experience` 0x4E33B0 (the scenario's level limit
+  caps it; the levels it gives, increment 4); then the raised creatures, Eagle Eye, and
+  `battle_capture_artifacts` 0x46A070: nothing after a retreat or a surrender; the loser's body
+  positions in order skipping the spell book, the Grail and the war machines, then its backpack
+  from the end, each through `hero_give_artifact` 0x4E3070 (equipped at the first body position
+  that takes it, else appended to the backpack, at most 64, no war machine) and removed from the
+  loser; it stops at the first artifact the winner cannot take. In SoD an equipped part of a
+  combination may complete it (a question for the local human, built at once for the computer),
+  and equipping Titan's Thunder adds a spell book (0x4E2A64): neither is built (inbox).
+- **`h3-heroes`** (`change.rs`): `HeroChange` (`GainExperience`, `SetSpellPoints`,
+  `AddArtifact`, `RemoveArtifact(ArtifactPlace)`), `check_change`/`apply_change` (HER-CHG-001:
+  the details stay valid; applying a refused change does nothing), where a received artifact
+  goes (HER-CHG-002: worn if it and its locks fit, else the backpack's end), `next_capture`
+  (HER-ART-004), `lost_war_machine` (HER-WAR-002: not the catapult flag's); `gained_experience`
+  (HER-EXP-001, under Q-0005 the getter's single-precision rate times f32 points: a level-2
+  specialist with Basic Learning gains 210 of 200, not 211), sharing `max_mana`'s arithmetic.
+- **`h3-game`**: `GameState::heroes_after_battle` after the adventure's part: each side's spell
+  points (`HeroOutcome::mana`, when changed) and destroyed war machines' artifacts, whatever the
+  result; the winner that stays on the map gains the experience (`battle_experience`: army and
+  raised records, `DEFEATED_HERO_EXPERIENCE` 500 after a victory over a hero; Learning) and, after
+  a victory over a hero, the loser's artifacts until one finds no room. Each change applies to the
+  store (copied on its first write) and is told to the hero's owner (`GameEvent::HeroChanged`,
+  projected to the owner; `HeroChange`, `ArtifactPlace` re-exported). `ADV-STUB-3` narrowed to
+  Necromancy and Eagle Eye. No version moves: the store is hashed since v5, no replay ends a
+  battle.
+- **Properties** (`h3-map`): conservation keeps every hero's details outside a battle's end; at
+  one (`check_heroes_after_battle`) changes go to the battle's heroes by their owners, a hero's
+  experience, spell points and number of artifacts follow its changes, nothing else of it moves,
+  only a staying winner gains, artifacts move between the two or leave with a war machine; the
+  views see their heroes' details change only as told. Plans give heroes backpacks (codes 7 to
+  40); the random plays end few battles and none by a victory, so captures wait for T19b's plans
+  (unit-tested in `h3-game`'s `aftermath.rs`).
+- Rules: HER-CHG-001, -002, HER-ART-004, HER-WAR-002, HER-EXP-001 (Q-0005) new; GAM-BAT-002 (the
+  heroes' part) and -004 (+500, the capture) completed but for T19a2b, with the reading, batch 1b
+  R5, the wiki and VCMI.

@@ -17,11 +17,11 @@ formation into `BattleSetup.formations` since T19a1.
 
 `h3-heroes` is in the `shared` layer since T18a. Moved at the round-1 checkpoint (decision 28)
 to the tasks that first use them:
-- **T19a2** (the battle's outcome, the first writer; decision 29): `h3_heroes::HeroChange` (increment 3:
-  `GainExperience(u32)`, `SetSpellPoints(u16)`, `LearnSpell(SpellId)`, `AddArtifact(ArtifactTypeId)`
-  placed by the capture rule, `RemoveArtifact(slot or backpack index)`), each checked by
-  `h3_heroes::check_change` (the caller checks first, so the game's `apply_change` is infallible);
-  the Necromancy share and the Learning factor (their pack values are harvested since T18b).
+- **T19a2a** built (2026-10-14; decision 32): `h3_heroes::HeroChange` (`GainExperience`,
+  `SetSpellPoints`, `AddArtifact` placed by HER-CHG-002, `RemoveArtifact(ArtifactPlace)`),
+  `check_change` and `apply_change` (HER-CHG-001; the game applies only checked changes),
+  `gained_experience` (HER-EXP-001), `next_capture` (HER-ART-004), `lost_war_machine`
+  (HER-WAR-002). **T19a2b**: `LearnSpell(SpellId)`, the Necromancy share, the raised creature.
 - **T20a** (before T20b's monster answer, the first reader): the game passes its store
   (`&[Arc<HeroDetails>]` by `HeroId`) to `AdventureState::apply` and the queries (`reach`); the
   adventure reads the visiting hero's details only through `h3-heroes`' derivations: in increment
@@ -99,25 +99,30 @@ tile, `AdventureState::battle_ground`: the part's `BattleTerrains`, underground 
 whose flag the static map keeps since import v5), the battle heroes with their maximum spell
 points, the war machines, the funds, the seeds (`ADV-QUIRK-5`, flag 23); the outcome's armies,
 the heroes leaving the map (`HeroRemoved`) and a surrender's gold (GAM-BAT-005). Left:
-- **T19a2**: the heroes' part of the outcome as `HeroChange`s (§2), each into the store after
-  the adventure's part (`ADV-STUB-3` at `GameState::end_battle`): experience to the winner's hero
-  only: killed creatures' hit points (no war machines) + 500 for a defeated hero (not after a
-  retreat or surrender), × (1 + Learning), rounded down; Necromancy per killed stack, rounded
-  down (`E04-battle.md` §4.5); the raised creature by the `raises` effect kind (decision 30).
-  D-9 read in the code (2026-10-14): experience (0x46A350) leaves out summoned stacks, clones and
-  war machines; Necromancy (0x4775E1) counts every killed record, those too (E04c batch 2d NE:7):
-  per record `min(killed, trunc(f32(min(hp, raised_hp) × killed) × rate / f32(raised_hp)))`, at
-  least 1 in all if anything was killed, the winner only, the rate at most 1.0; the power
-  (0x4E3CD0): the skill's share × (1 + 0.05 × level) for the specialist, +0.05/0.10/0.15 for
-  artifacts 54–56 only with the skill, +0.10/0.20 by town buildings, +0.30 for the Cloak (130)
-  only without it; the creature (0x4E3C60): Skeleton, with the Cloak by the Necromancy level
-  (0 Skeleton, 1 Walking Dead, 2 Wight, 3 Lich); a full army (0x469F20): the upgrade at
-  ⌈2c/3⌉ ((2c + 2) / 3) if it has a free slot, the elementals 112–115 excepted, else nothing;
-  `HeroOutcome::learned` (Eagle Eye) into the spells; `HeroOutcome::mana`; a destroyed war
-  machine's artifact removed (the catapult stays); the loser's artifacts (worn and backpack, not
-  war machines nor the spell book) to the winner, each into its first free fitting slot, else
-  the backpack (VCMI's placement, decision 22). One infallible function per context, in a fixed
-  order (adventure, heroes, treasuries).
+- **T19a2a** built (2026-10-14): after the adventure's part, `GameState::heroes_after_battle`:
+  each side's spell points and destroyed war machines' artifacts, the staying winner's
+  experience (the loser's army and raised records, +500 after a victory over a hero, Learning)
+  and the capture, each change told to the hero's owner (`GameEvent::HeroChanged`). The reading
+  (2026-10-14): `battle_end` 0x477470 gives a winner with a hero the experience (0x46A350:
+  −500 again after a retreat or surrender, × the Learning getter 0x4E4840 on f32 points), the
+  raised creatures, Eagle Eye, then the capture 0x46A070 (nothing after a retreat or surrender;
+  worn by position skipping the book, the Grail and the war machines, then the backpack from
+  its end, each through `hero_give_artifact` 0x4E3070: equip, else the backpack's end, at most
+  64; it stops at the first the winner cannot take). Not built: a captured part completing a
+  combination (SoD asks a human, builds at once for the computer), Titan's Thunder's spell book
+  (0x4E2A64), the Grail's exclusion (the packs do not mark it).
+- **T19a2b** (decision 32): Necromancy per killed stack, rounded down (`E04-battle.md` §4.5),
+  the raised creature by the `raises` kind (decision 30). D-9 read in the code (2026-10-14):
+  Necromancy (0x4775E1) counts every killed record, summoned stacks, clones and war machines too
+  (E04c batch 2d NE:7): per record `min(killed, trunc(f32(min(hp, raised_hp) × killed) × rate /
+  f32(raised_hp)))`, at least 1 in all if anything was killed, the winner only, the rate at
+  most 1.0; the power (0x4E3CD0): the skill's share × (1 + 0.05 × level) for the specialist,
+  +0.05/0.10/0.15 for artifacts 54–56 only with the skill, +0.10/0.20 by town buildings, +0.30
+  for the Cloak (130) only without it; the creature (0x4E3C60): Skeleton, with the Cloak by the
+  Necromancy level (0 Skeleton, 1 Walking Dead, 2 Wight, 3 Lich); a full army (0x469F20): the
+  upgrade at ⌈2c/3⌉ ((2c + 2) / 3) if it has a free slot, the elementals 112–115 excepted, else
+  nothing. Eagle Eye: `HeroOutcome::learned` into the winner's spells, with a worn spell book,
+  of a level its Wisdom allows (BAT-Q24: Wisdom + 2), a `shared/` Wisdom kind first.
 - **T20a**: a `Ground` object on the tile replaces the field (the ground kinds); **T20b**: the
   unowned side (`Actor::System`, the neutral seat; decision 29), the monster's split and its
   survivors (ADV-MON-009, -010, A-6), a beaten monster's treasure.
@@ -129,7 +134,7 @@ the heroes leaving the map (`HeroRemoved`) and a surrender's gold (GAM-BAT-005).
 Built by T19a1: the visit from the neighbouring tile at the step's price, the battle at once, both
 players own it; the visit concerns the hero whatever object lies under it (only leaving the
 visitor's tile across its top is refused); a surrender's price from the loser's owner to the
-winner's (D-13). Only the attacker's stream moves. Left for T19a2: the captured artifacts, +500.
+winner's (D-13). Only the attacker's stream moves. T19a2a added the captured artifacts and the +500 (§5).
 
 ## 7. Guarded piles (ADV-PIK-004; T21)
 
@@ -173,8 +178,8 @@ in the increment, in the task that first changes it.
   the flag on in `base:faithful`, the harvester's profile).
 - `cross-lane` (battle-owned), still to come: Diplomacy's `join_bonus` values (T20a; no table:
   the skill's level), the necromancy artifacts' parts (increment 4), `h3-heroes`' additions
-  (`attack_defense`, `join_bonus` in T20a; the Necromancy share, the Learning factor, the capture's
-  placement, `HeroChange` and its check in T19a2); `h3-experiment`'s spec for batch E3 (monsters,
+  (`attack_defense`, `join_bonus` in T20a; the Necromancy share and the raised creature in
+  T19a2b; `HeroChange`, its check, the Learning factor and the capture built in T19a2a); `h3-experiment`'s spec for batch E3 (monsters,
   custom heroes, the difficulty); the client lane's recipes (its inbox, 2026-10-13).
   **The handover of `h3-heroes`**: as soon as the battle lane is done with it (the user,
   ADV-Q13; the battle lane's inbox asks it to say when), a `shared/` change of `lanes.toml`; the
@@ -187,7 +192,7 @@ in the increment, in the task that first changes it.
 | Round | Tasks | Content |
 |---|---|---|
 | 1 | T18a + T18b | done (2026-10-14): the shared groundwork with the ADR amendments (§10); the store of heroes, its defaults, the import of hero customisations (§1), trimmed at the checkpoint (decision 28) |
-| 2 | T19a1 + T19a2 | split at the checkpoint (decision 29): T19a1 done (2026-10-14): battles through the game, hero against hero, the armies' and the map's outcome (§5, §6); T19a2 the heroes' outcome, `HeroChange` (§2, §5) |
+| 2 | T19a1 + T19a2 | split at the checkpoint (decision 29): T19a1 done (2026-10-14): battles through the game, hero against hero, the armies' and the map's outcome (§5, §6); T19a2 split again (decision 32): T19a2a done (2026-10-14), the heroes' outcome without pack changes; T19a2b Necromancy and Eagle Eye (§2, §5) |
 | 3 | T19b (+ T20a?) | the env, replays, properties and benchmarks with battles (§8); the cut at the round-2 checkpoint |
 | 4 | T20a + T20b | monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
 | 5 | T21 + T22a | guarded piles and the maps with monsters, replays, benchmarks, the audit (§7); batch E3's spec and run (cross-lane, the client lane's recipes) |

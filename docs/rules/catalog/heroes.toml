@@ -616,3 +616,111 @@ numeric  = "float"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L1167-L1170"
   retrieved  = "2026-10-14"
   confidence = "high"
+
+[[rule]]
+id       = "HER-EXP-001"
+title    = "The experience a hero gains, grown by Learning"
+context  = "heroes"
+status   = "implemented"
+summary  = "Experience a hero gains (increment 3: a battle's, GAM-BAT-002) is grown by the sum of its experience_gain effects (Learning 5/10/15 %, a Learning specialist's grown by 5 % of itself per level, as HER-BAT-004's growth), rounded down, at most 2^32 - 1. Under quirk Q-0005 the original's getter and product: trunc((1 + f32(r x (1 + 0.05 x level))) x f32(points)) in its x87 arithmetic, so a specialist can gain one point less (level 2, Basic, 200 points: 210, not 211) and points above 2^24 are rounded to single precision even without Learning. E08 T19a2a: `h3_heroes::gained_experience`."
+numeric  = "float"
+quirks   = ["Q-0005"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T19a2a): battle_experience 0x46A350 ends with crt_ftol(0x4E4840() x f32(points)) for the winner's hero (0x46A42D to 0x46A43B); the Learning getter 0x4E4840 is the twin of Intelligence's (0x4E48B0): 1 + f32(table[level] x (1 + 0.05f x hero level)) for a skill specialist of skill 21, else 1 + table[level], the table 0x63EA58 holding 0, 0.05, 0.10, 0.15 (installation.md §7.4)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGHeroInstance.cpp calculateXp: the experience times HERO_EXPERIENCE_GAIN_PERCENT / 100, truncated; config/skills.json Learning +5/10/15 % (survey E04-battle.md R4.2a)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L782-L785"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "E04a batch 1b R5 (E04a-log.md; survey E08-battles.md §8): 550 experience with Expert Learning gave floor(550 x 1.15) = 632"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-CHG-001"
+title    = "A change to a hero's details is checked before it applies"
+context  = "heroes"
+status   = "implemented"
+summary  = "A context changes a hero only through typed changes the game applies to its store (ADR-0013 point 2, E08 decision 25): gain experience (the sum saturates), set the spell points, receive an artifact (HER-CHG-002), lose the artifact at a worn or backpack position (the later ones move up). Each is checked against the hero's details first, so that they stay valid (HER-DET-001 to HER-SPL-001): a received artifact must be of the ruleset, holding a spell exactly when it is a scroll (HER-ART-003), and find room; a lost one must be there. Applying a change the check refuses changes nothing. E08 T19a2a: `h3_heroes::{HeroChange, check_change, apply_change}`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0013 point 2 (the hero model: contexts return typed hero changes the game applies), ADR-0017 point 11 (an outcome applies at once and infallibly); E08 decision 25, E08-design.md §2"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-CHG-002"
+title    = "Where a received artifact goes"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero that receives an artifact wears it if its slot and each slot it locks have a free position (HER-ART-001 holds with it); else it goes to the end of the backpack if its slot's artifacts may be carried (HER-ART-002: not the war machines, the Catapult or the spell book) and the backpack holds fewer than the ruleset's backpack size (64); else there is no room. Positions of one slot are interchangeable (the original tries its body positions in order). A combination's assembly when a received part completes it (SoD) and the spell book that equipping Titan's Thunder adds are not built (increment 4). E08 T19a2a: `h3_heroes::check_change`, `apply_change`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T19a2a): hero_give_artifact 0x4E3070 equips through hero_equip_artifact 0x4E2A00 with position -1 (the first of the 19 body positions whose test 0x4E2550 passes), else gives it to the backpack through 0x4E2F90 (refused at 64 artifacts and for the war machines 3 to 6; position -1: the first empty entry, the end); in SoD an equipped part of a combination may then complete it (0x4E30A6 to 0x4E323C: a question for the local human player, built at once for others)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleResultProcessor.cpp and lib/entities/artifact/ArtifactUtils.cpp: a transferred artifact goes to the first fitting slot, else the backpack, unlimited by default (survey E04-battle.md R4.3a)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/entities/artifact/ArtifactUtils.cpp#L91-L112"
+  retrieved  = "2026-10-03"
+  confidence = "medium"
+
+[[rule]]
+id       = "HER-ART-004"
+title    = "What a defeated hero yields, in which order"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero defeated by another hero yields its artifacts one at a time (GAM-BAT-004): first each worn one whose slot's artifacts may be carried (so neither a war machine, nor the Catapult, nor the spell book), in the order worn (the map's position order on import), then the backpack's from its last to its first. The original also keeps the Grail, which the packs do not mark yet. E08 T19a2a: `h3_heroes::next_capture`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T19a2a): battle_capture_artifacts 0x46A070, called by battle_end at 0x477782, walks the loser's 19 body positions (+0x12D) skipping empty ones, the spell book (0), the Grail (2) and the war machines (3 to 6), then its 64 backpack entries (+0x1D4) from the last, each through hero_give_artifact 0x4E3070 into the winner, then removed from the loser"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleResultProcessor.cpp: the loser's worn artifacts of the 14 common slots unless locked, then its backpack but the Grail; not the war machine slots nor the spell book (survey E04-battle.md R4.3a)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleResultProcessor.cpp#L523-L586"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Spell Book: a spell book cannot be traded nor lost after a defeat; Combat: retreating preserves the artifacts that would otherwise fall into the enemy hero's hands (survey E04-battle.md R4.3a)"
+  url        = "https://heroes.thelazy.net/index.php/Spell_Book"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-WAR-002"
+title    = "A destroyed war machine takes its artifact"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero whose war machine was destroyed in battle loses the first worn artifact that places that machine (HER-WAR-001), whatever the battle's result; a machine with the catapult flag stays. The original's handling was not read (VCMI's rule; with batch E3 or a code reading). E08 T19a2a: `h3_heroes::lost_war_machine` (GAM-BAT-002)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleResultProcessor.cpp CasualtiesAfterBattle: for both sides and every result a war machine stack with count 0 removes its artifact from the hero, except the Catapult (survey E04-battle.md R4.4)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleResultProcessor.cpp#L72-L90"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "War Machine: 'War Machines (except Catapults) can be traded between heroes, but cannot be dismissed or placed in the hero's backpack' (survey E04-battle.md R4.4); silent on a destroyed one"
+  url        = "https://heroes.thelazy.net/index.php/War_Machine"
+  retrieved  = "2026-10-03"
+  confidence = "medium"

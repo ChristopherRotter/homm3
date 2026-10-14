@@ -216,10 +216,10 @@ quirks   = ["ADV-QUIRK-5"]
 
 [[rule]]
 id       = "GAM-BAT-002"
-title    = "Applying a battle's outcome: the armies"
+title    = "Applying a battle's outcome: the armies and the heroes"
 context  = "game"
 status   = "implemented"
-summary  = "When a battle on the map ends, its outcome applies at once and infallibly, told first as its end (`BattleEnded`, the heroes and the result) to its owners: a hero that stays on the map (GAM-BAT-003) keeps its army survivors (BattleOutcome::survivors: each stack's count its survivors, a damaged top creature forgotten, a raised stack in its dead stack's slot) as its army. The heroes' part (experience as a number, Necromancy, Eagle Eye's spells, spell points, destroyed war machines' artifacts) comes with E08 T19a2 (ADV-STUB-3). E08 T19a: `GameState::end_battle`, `AdventureState::end_battle`."
+summary  = "When a battle on the map ends, its outcome applies at once and infallibly, told first as its end (`BattleEnded`, the heroes and the result) to its owners, one context after the other: in the adventure a hero that stays on the map (GAM-BAT-003) keeps its army survivors (BattleOutcome::survivors: each stack's count its survivors, a damaged top creature forgotten, a raised stack in its dead stack's slot) as its army; then the heroes' part, each a change of `h3_heroes` (HER-CHG-001) told to the hero's owner (`HeroChanged`): each side's hero keeps the spell points it has left (HeroOutcome::mana) and loses the artifact of each war machine destroyed (HER-WAR-002), whatever the result; the hero of the side that won and stays on the map gains the battle's experience: the hit points the loser's army and raised stacks lost (start - end of each record, at its type's hit points without artifacts; not the loser's war machines nor the stacks the battle created), plus 500 after a victory over a hero (GAM-BAT-004), grown by its Learning (HER-EXP-001); nothing after a draw. Necromancy and Eagle Eye's spells come with E08 T19a2b (ADV-STUB-3). E08 T19a, T19a2a: `GameState::end_battle`, `AdventureState::end_battle`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -230,6 +230,30 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "E04-battle.md §4 with batch 1b's answers (E04a-log.md), survey E08-battles.md §8: each army stack's count becomes its survivors, a damaged top creature is forgotten"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T19a2a): battle_end 0x477470 gives the winner's hero, if any (0x477737), battle_experience 0x46A350 through hero_gain_experience 0x4E33B0 (0x477766 or 0x477948), then Necromancy (0x47776E), Eagle Eye (0x477776) and the capture (0x477782); battle_experience sums the loser's 20 records without the summoned and war machine flags, (start - count) x the type's hit points (creature table +0x4C), adds 500 for the loser's hero and takes them off again when a side retreated or surrendered (0x6985A3, 0x697744, set by battle_winner 0x4763A4 from +0x132B0 and +0x132B2), then multiplies by Learning (HER-EXP-001)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "E04a batch 1b R5 (E04a-log.md): killed war machines give no experience; Learning multiplies the whole sum, the 500 included"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Experience: 'one experience point for each HP of the enemy creatures he managed to vanquish in the battle (clones, war machines and bonus health from artifacts do not count)'; 500 for a defeated hero (survey E04-battle.md R4.2b)"
+  url        = "https://heroes.thelazy.net/index.php/Experience"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleResultProcessor.cpp: the loser's casualties at the types' base hit points (war machines included, dispute D-3), +500 after a normal result against a hero, nothing in a draw, the winner's hero only (survey E04-battle.md R4.2a)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleResultProcessor.cpp#L212-L247"
+  retrieved  = "2026-10-03"
   confidence = "high"
 
 [[rule]]
@@ -255,7 +279,7 @@ id       = "GAM-BAT-004"
 title    = "Hero against hero: the visit is a battle both players own"
 context  = "game"
 status   = "implemented"
-summary  = "A step toward another player's hero visits it from the neighbouring tile at the step's price (as a neighbour-visited object, ADV-OBJ-003: the move ends, the hero stays on the tile before) and starts a battle at once, without a question, the visitor attacking at the defender's tile (GAM-BAT-001); the visit concerns the hero, whatever object lies under it (only leaving the visitor's tile across its top is refused, ADV-OBJ-004). An own hero's tile still blocks (meetings come with increment 4). The reachable-tiles query lists such a tile as a destination with the points the visit leaves. The captured artifacts and the +500 experience for a defeated hero come with E08 T19a2 (ADV-STUB-3). E08 T19a: `AdventureOutcome::battle`, `BattleStart`."
+summary  = "A step toward another player's hero visits it from the neighbouring tile at the step's price (as a neighbour-visited object, ADV-OBJ-003: the move ends, the hero stays on the tile before) and starts a battle at once, without a question, the visitor attacking at the defender's tile (GAM-BAT-001); the visit concerns the hero, whatever object lies under it (only leaving the visitor's tile across its top is refused, ADV-OBJ-004). An own hero's tile still blocks (meetings come with increment 4). The reachable-tiles query lists such a tile as a destination with the points the visit leaves. After a victory (not a retreat or a surrender) the winner's hero, if it stays on the map, gains 500 experience more for the defeated hero (GAM-BAT-002) and takes its artifacts, as HER-ART-004 yields them, each received (HER-CHG-002) and removed from the loser, until one finds no room: the rest stay with the loser (the original stops there). E08 T19a, T19a2a: `AdventureOutcome::battle`, `BattleStart`, `GameState::end_battle`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -273,6 +297,16 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "ADR-0016 point 4 (a tile holding another player's hero is visited from a neighbouring tile, a battle at once; an own hero's tile still blocks); E08 decision 22"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T19a2a): battle_capture_artifacts 0x46A070 returns at once when a side retreated or surrendered (0x6985A3, 0x697744) or the loser has no hero; it gives the loser's artifacts one by one to the winner (hero_give_artifact 0x4E3070, HER-CHG-002, HER-ART-004) and returns at the first one the winner cannot take (0x46A0FF, 0x46A197), the rest staying with the loser; battle_experience adds 500 for the loser's hero (0x46A3DF)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "E04a batch 1b R5 (E04a-log.md): the loser's war machines are not captured"
   confidence = "high"
 
 [[rule]]
