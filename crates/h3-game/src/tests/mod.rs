@@ -245,6 +245,7 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
             primary_min: [0, 0, 1, 1],
             primary_max: 99,
             backpack: 64,
+            learn_level: 2,
         }),
         ..ContentPack::new(manifest())
     };

@@ -99,7 +99,10 @@ fn the_adventure_and_outcome_effects_parse() {
     assert_eq!(
         levels[0],
         [
-            HeroEffect::Necromancy { bp: 1000 },
+            HeroEffect::Necromancy {
+                bp: 1000,
+                unless_skill: None
+            },
             HeroEffect::JoinBonus { level: 1 }
         ]
     );
@@ -207,6 +210,54 @@ fn the_ballistics_effect_parses() {
     let error = compile(&[bad.as_str(), SYNTHETIC_CORE], "synthetic:faithful").unwrap_err();
     assert!(
         error.to_string().contains("ballistics level must be 1..=3"),
+        "{error}"
+    );
+}
+
+#[test]
+fn wisdom_and_the_skill_condition_of_a_share_parse() {
+    // E08 T19a2b (pack format v40): `learn_level`, the hero parameter it adds to, and the
+    // `necromancy` share that counts only without a skill (the Cloak of the Undead King).
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let pack = parse_pack(&format!(
+        "{manifest}[[secondary_skill]]\nid = \"s\"\n\
+         basic = [{{ kind = \"learn_level\", levels = 1 }}]\n\
+         [[artifact]]\nid = \"a\"\nname = \"A\"\nclass = \"relic\"\n\
+         effects = [{{ kind = \"necromancy\", bp = 3000, unless_skill = \"s\" }}]\n\
+         [hero_params]\nprimary_min = [0, 0, 1, 1]\nprimary_max = 99\nbackpack = 64\n\
+         learn_level = 2\n"
+    ))
+    .unwrap();
+    assert_eq!(
+        pack.skills[0].levels[0],
+        [HeroEffect::LearnLevel { levels: 1 }]
+    );
+    assert_eq!(
+        pack.artifacts[0].effects,
+        [HeroEffect::Necromancy {
+            bp: 3000,
+            unless_skill: Some(ContentKey::parse("x:s").unwrap())
+        }]
+    );
+    assert_eq!(pack.hero_params.as_ref().map(|p| p.learn_level), Some(2));
+    // The hero parameters need the learnable level; a bad skill key is a key error.
+    let without = format!(
+        "{manifest}[hero_params]\nprimary_min = [0, 0, 1, 1]\nprimary_max = 99\nbackpack = 64\n"
+    );
+    assert!(matches!(parse_pack(&without), Err(PackError::Syntax(_))));
+    let bad_key = format!(
+        "{manifest}[[artifact]]\nid = \"a\"\nname = \"A\"\nclass = \"relic\"\n\
+         effects = [{{ kind = \"necromancy\", bp = 3000, unless_skill = \"S\" }}]\n"
+    );
+    assert!(matches!(parse_pack(&bad_key), Err(PackError::Key(_))));
+    // The parameters are checked when the pack compiles.
+    let bad = format!(
+        "{manifest}[[secondary_skill]]\nid = \"s\"\n\
+         basic = [{{ kind = \"learn_level\", levels = 0 }}]\n"
+    );
+    let error = compile(&[bad.as_str(), SYNTHETIC_CORE], "synthetic:faithful").unwrap_err();
+    assert!(
+        error.to_string().contains("learn_level levels must be 1..=5"),
         "{error}"
     );
 }

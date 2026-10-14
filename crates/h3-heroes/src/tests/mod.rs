@@ -217,6 +217,7 @@ fn pack() -> ContentPack {
             primary_min: [0, 0, 1, 1],
             primary_max: 99,
             backpack: 3,
+            learn_level: 2,
         }),
         ..ContentPack::new(PackManifest {
             id: "t".into(),

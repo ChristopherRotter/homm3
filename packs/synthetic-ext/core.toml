@@ -53,7 +53,8 @@ effects = [
     { kind = "alignment_group", factions = ["synthetic:vale", "marsh"] },
     # Format v37 (E08 T18a): kinds no battle reads (the outcome's and the adventure's). Here, not
     # in `synthetic`, so the battle replays' ruleset hash stays.
-    { kind = "necromancy", bp = 500 },
+    # Format v40 (E08 T19a2b): a share only without the skill.
+    { kind = "necromancy", bp = 500, unless_skill = "synthetic:keen_eye" },
     { kind = "experience_gain", bp = 500 },
     { kind = "max_mana", bp = 2500 },
     { kind = "join_bonus", level = 1 },
@@ -61,4 +62,6 @@ effects = [
     { kind = "raises", priority = 1, skill = "synthetic:keen_eye", by_level = ["synthetic:shade", "synthetic:wisp", "lurker", "synthetic:chanter"] },
     # Format v39 (E04c T6): the Ballistics level (the Catapult's control, BAT-SIE-011).
     { kind = "ballistics", level = 2 },
+    # Format v40 (E08 T19a2b): the highest spell level learnable grows (Wisdom).
+    { kind = "learn_level", levels = 1 },
 ]

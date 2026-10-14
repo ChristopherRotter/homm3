@@ -1168,8 +1168,8 @@ fn write_hero_params(out: &mut String, gap: &GapFill) {
         out,
         "\n# Hero parameters (Tier 2): rule ids in docs/rules/catalog/heroes.toml (sources in the\n\
          # gap-fill file).\n[hero_params]\nprimary_min = [{a}, {d}, {s}, {k}]\nprimary_max = {}\n\
-         backpack = {}\n",
-        p.primary_max, p.backpack
+         backpack = {}\nlearn_level = {}\n",
+        p.primary_max, p.backpack, p.learn_level
     );
 }
 
