@@ -4,50 +4,150 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context; T1 (the capture harness), T3 (the animation timing), T4a (the timeline), T6 (the adventure map's experiments, from the inbox) and T4b-1 (the frame check) done 2026-10-13, T4b-2a (a full battle headless), T2 (the window and audio evaluation: SDL 3), T5a (the battle in a window, T5 split in three) and T5b (the sound) 2026-10-14. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M2 T4b-2b — The scene over time, completed
+### E17 M3 T1a — Turns and the walk-by
 
-- **Scope:** what T4b-2a (2026-10-14, design §7.10) left. **First a strike's and a shot's turns** in the original (the walk's turn is recorded, sequence `turn`; no opening sets up the others, design §7.10: a battle in progress must put a stack behind another, e.g. a computer stack that walked past the human's, with its engine command observed), with the melee's layers and the flight's two standing frames. Then: the melee's listed difference (3 504–3 966 ms: the Wolf Riders walking past the Angels; lead: `stack_play_group` redraws only the walker's dirty rectangle, 0x446A06–0x446BB3); a walk's turn (a two-hex walker turning on its first step and flipping later); deaths by anything but a strike, created stacks; Haste and Slow (the walk time); new sequences for the rest of §7.7 (a death, a defending stack, a shot up and down, a flight across rows over other stacks: T5a's flier drawn over everything, design §7.10, a Cyclops' shot: a shooter with frames left after its climax, the loop's end, T5b's design §7.4), each with its frames recorded; the inbox's capture set by time.
-- **Acceptance:** every recorded sequence's frames match the original outside the masks, or their differences are listed.
-- **Depends on:** T4b-2a (done).
-- **Status:** ready.
+- **Scope:** the first half of M2's T4b-2b (the user moved it to M3 at T5c; design §7.10). A
+  battle in progress that puts a stack behind another (e.g. a computer stack that walked past the
+  human's, its engine command observed), so that a strike's and a shot's turns happen in the
+  original: recorded as sequences with the melee's layers and the flight's two standing frames.
+  The melee's listed difference (3 504–3 966 ms: the Wolf Riders walking past the Angels; lead:
+  `stack_play_group` redraws only the walker's dirty rectangle, 0x446A06–0x446BB3); a walk's turn
+  (a two-hex walker turning on its first step and flipping later).
+- **Acceptance:** the new sequences' timelines as recorded and their frames match the original
+  outside the masks, or their differences are listed.
+- **Depends on:** nothing. **Status:** ready.
 
-### E17 M2 T5c — M2's closure
+### E17 M3 T1b — The remaining sequences, rays included
 
-- **Scope:** M2's review list (epic file) with the user, a fresh reviewer agent over M2 (as M1's
-  T8), the M3 refinement prepared (the inbox's capture set, the string catalogue and fonts, the
-  battle interface, the asset fixes; ADR-0020 amendments it needs), M2 marked done.
-- **Acceptance:** M2's exit holds (a record of a full battle plays in the window and renders
-  headless frame by frame: T4b-2a, T5a); the review list answered or carried into M3.
-- **Depends on:** T5a, T5b (done); T4b-2b may come before or after it (the user's choice).
-- **Status:** ready.
+- **Scope:** sequences for the rest of design §7.7, each with its frames recorded: a death by a
+  shot, a defending stack's reaction, shots up and down, Haste and Slow (the walk time); a
+  **ray** (the user, at T5c: Magi and Beholders draw their shot as an energy ray, not a
+  projectile: `shot_animation`'s ray branch waits trunc(115 F) and draws it, H3API's DrawRay, not
+  read): read, built, recorded; and the provisional rules' checks: a flight across rows over
+  other stacks (T5a's layer 8), a Cyclops' shot (T5b's loop), a breath on two stacks (T5c's groups
+  17–19 and its detection by place); whether hovering starts group 1. Then the capture set by
+  time: `h3drive.py set` compares every frame of a situation with one still (`render`, the
+  outline's colour at no idle step: 412 pixels per frame); with the idle steps modelled
+  (`Timeline::pulse`) each frame can be drawn with `render --at <ms>`.
+- **Acceptance:** as T1a; the provisional marks of the checked rules lifted or the rules fixed.
+- **Depends on:** T1a (its battle in progress). **Status:** ready.
+
+### E17 M3 T2 — Every battlefield
+
+- **Scope:** the special battlefields from the battle's own facts: the observation's
+  `battlefield` (protocol v28, the packs' keys `base:shore`, `base:magic_plains`,
+  `base:cursed_ground`, `base:deck`, `base:boats`, `sod:holy_ground` … `sod:magic_clouds`) picks
+  the picture of 0x4646D0; the asset tables' special battlefields keyed by the packs' keys (now
+  VCMI's names under `base`); water and rock battles render (the decks and boats); design §5's
+  stale sentence on the 47 obstacle types no pack defines. The capture set gains each field the
+  harness can set up; where `h3-map`'s writer lacks the object, a question to the adventure lane
+  (`CLT-Q<n>`). The background variants 0 and 1 stay with CLT-Q4.
+- **Acceptance:** every special field renders; those captured match outside the masks.
+- **Depends on:** nothing. **Status:** ready.
+
+### E17 M3 T3 — Heroes and war machines on the battlefield
+
+- **Scope:** the heroes (design §4.5: their battle DEFs by class and sex, the flags; their idle
+  groups and their sounds, not read), the war machines (the Ballista of the smoke capture, the
+  First Aid Tent, the Ammo Cart: places, DEFs, the tent's and the Ballista's actions), each
+  capture mask removed as it is drawn. The Catapult, walls and towers come with sieges (later).
+- **Acceptance:** the smoke battle and a hero battle of the capture set match outside the
+  remaining masks.
+- **Depends on:** nothing. **Status:** ready.
+
+### E17 M3 T4 — Fonts and the string catalogue
+
+- **Scope:** which font draws what in the battle (the executable), a decoder of the original's
+  bitmap fonts (`.FNT`) in `h3-assets` (the gate decodes every one), text drawn by `h3-render` as
+  the executable does; the string catalogue and the language packs (the user's decision of
+  2026-10-13 and the agent's notes in the inbox below): its format (JSON, TOML or Fluent, chosen
+  with the placeholders and plurals the battle's texts need), the original's text read at run
+  time from the user's `.TXT` entries through committed keys; an ADR-0020 amendment drafted in
+  `adr-drafts/` for the user's checkpoint; the licence question on committing translations of
+  the original's text filed as `CLT-Q<n>` (stop the line).
+- **Acceptance:** the gate decodes every font; a text drawn by the viewer matches the original's
+  pixel for pixel.
+- **Depends on:** nothing. **Status:** ready.
+
+### E17 M3 T5 — The count boxes
+
+- **Scope:** each stack's count box (design §4.3: its place, `cranim.txt`'s offset, the colours
+  by the stack's effects, the digits in the battle's font), drawn when the original draws it
+  (not during a stack's own animation: to read); their masks removed from the capture set.
+- **Acceptance:** the capture set matches with the count boxes drawn.
+- **Depends on:** T4. **Status:** ready.
+
+### E17 M3 T6 — The battle interface
+
+- **Scope:** the panel below the battlefield (its picture, buttons and their states), the log's
+  lines from the string catalogue as the engine's events produce them, the heroes' portraits if
+  the panel shows them, the cursor rules of the executable (which cursor over which hex; T5a's
+  `CRDEFLT.DEF` frame 0 is provisional); its masks removed. May split when refined.
+- **Acceptance:** a frame with the panel matches the original's outside the listed differences.
+- **Depends on:** T4. **Status:** ready.
+
+### E17 M3 T7a — Code reading: the magic animations
+
+- **Scope:** the user (T5c): the plethora of spell animations. How the executable draws a spell
+  or a magic animation (H3API's PlayMagicAnimation and its table: each animation's DEF, where it
+  is drawn: over a stack, a hex, the field, from caster to target; its timing and its place in
+  `strike_animation`'s L = max(the magic animation's frames, A + R − 1), §7.4; the spells'
+  sounds by the spell table's names); the hero's and a creature caster's cast animation; morale
+  and luck through the same table. Recorded sequences of a few spells of each kind in the
+  original (the harness casts from a hero's spell book: to build).
+- **Acceptance:** design §7 gains the reading with every address in the map; each kind has at
+  least one recorded sequence.
+- **Depends on:** T1b (the battle in progress). **Status:** ready.
+
+### E17 M3 T7b — Spells on stacks, morale and luck
+
+- **Scope:** built from T7a: the spells cast on stacks (blessings, curses, damage on one stack,
+  `SpellCast`, `StackCast`, `EffectApplied`, `SpellResisted`), good and bad morale (`GoodMorale`,
+  `BadMorale`: the user at T5b, the Marksmen's second shot showed nothing) and luck (the strike's
+  `lucky`), their sounds, a magic animation lengthening a strike's loop.
+- **Acceptance:** their recorded sequences as recorded and their frames match.
+- **Depends on:** T7a. **Status:** ready.
+
+### E17 M3 T7c — Area spells, rays and spell obstacles
+
+- **Scope:** built from T7a: the area spells (Fireball, Inferno, Meteor Shower, Frost Ring,
+  Armageddon, Death Ripple and the like), the lightning spells' rays, the spell obstacles in the
+  scene (fire walls, force fields, quicksand, land mines: `ObstaclePlaced`, `ObstacleRevealed`,
+  `ObstacleTriggered`; `scene::battle` leaves them out so far), Teleport, created and raised
+  stacks (`StackCreated`, `SpellRaised`, `Reborn`: drawn once the snapshot lacks them), their
+  sounds. May split when refined.
+- **Acceptance:** as T7b.
+- **Depends on:** T7a. **Status:** ready.
+
+### E17 M3 T8 — The sound's remainder
+
+- **Scope:** the battle's end (`battle_end` 0x477470 calls `play_music` twice: the victory and
+  defeat tunes, with the results), the start sound's volume (its loader's default, not read);
+  the volume settings (0x5996C0) and a track resuming where it last stopped (0x59AA82) wait for
+  the client's options and a second battle (later).
+- **Acceptance:** the end's tunes play at the times the executable plays them.
+- **Depends on:** nothing. **Status:** ready.
+
+### E17 M3 T9 — M3's closure
+
+- **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
+  refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
+- **Acceptance:** M3's exit holds; the review list answered or carried on.
+- **Depends on:** T1a–T8. **Status:** waiting.
 
 ## Inbox
 
-- 2026-10-14 (E17 M2 T5b, the user): **good morale shows nothing.** The engine's `GoodMorale`
-  event gives a stack a second action (the Marksmen in `scenarios/battle.toml`: two double shots
-  in a row); the viewer ignores it, where the original plays its morale animation and sound
-  before the action (not read). With the magic animations (M3).
-- 2026-10-14 (E17 M2 T5b): **the sound's remainder** (design §8.2, "Not read"), each when M3 or
-  the feature that needs it comes: the battle's end (`battle_end` 0x477470 calls `play_music`
-  twice: the victory and defeat tunes, with the results); the spells' sounds (the spell table's
-  names) with their animations; the heroes', walls', towers' and Catapult's; the start sound's
-  volume (its loader's default); the volume settings (0x5996C0) with the client's options; a
-  track resuming where it last stopped (0x59AA82) once more than one battle plays.
 - 2026-10-14 (the battle lane, E04c T6, `cross-lane`; for your information): the base pack gained the Catapult creature (145, `base:catapult`), so `clients/assets/base.toml` gained its entry as `h3-view harvest` writes it (`smcata.def`, missile `SMCatx.def`, the harvested times and offsets) for `every_pack_key_has_an_entry`; the battle sets the Catapult up in a siege for an attacker with a hero (BAT-SIE-009), and the protocol (v31) has `ShootWall`, `WallShot`, `WallQuaked`, `WallDestroyed` and `Siege.parts`.
-- 2026-10-13 (E17 M2 T4b-1): **the capture set by time.** `h3drive.py set` compares every frame of a situation with one still (`render`, the outline's colour at no idle step: the 412 recorded pixels per frame). With the idle steps modelled (`Timeline::pulse`), the set could draw each frame with `render --at <ms>` and record 0 for every frame but the grass Pikemen's fidget. Small; with T4b-2 or before M3's set grows.
 - 2026-10-13 (the adventure lane, E08 T17b; its `cross-lane` pull request, the user at ADV-Q12): **what increment 3's batch E3 needs from the harness** (`docs/rules/surveys/E08-battles.md` §13; the spec and its recipes come with E08 T22a, after four building rounds, so not before the lane's next milestones): a visit that asks Yes/No (a monster's offer to join, to join for gold, to pursue; a guarded pile's question), a battle started from the map (by stepping next to a monster, by visiting an enemy hero in hot seat) with its stacks' counts read at the start and the end, a surrender and both players' gold before and after (E3-8), the underground (a monster on level 1, E3-4), memory reads of a monster's tile word (count and aggression, E3-3, optional) and of the 156 heroes' experience after a new game (E3-7), a hero's level, primary and secondary skills at the start (E3-6), the formation in a battle (E3-9). The game's difficulty at the start (Easy and Normal, E3-1, E3-2).
-- 2026-10-13 (the battle lane, E04c T2b; its `cross-lane` pull request): **the battle names its special battlefield.** The observation carries `battlefield` (a handle into the key tables' new `battlefields`, protocol v28) and `anti_magic`, replays `battlefield`: the scene can take the special pictures of 0x4646D0 from the battle's facts (a field 1–9 its own, the shore, two boats, the deck). The packs' keys are `base:shore`, `base:magic_plains`, `base:cursed_ground`, `base:deck`, `base:boats` and `sod:holy_ground` … `sod:magic_clouds`; the asset tables' special battlefields still carry VCMI's names under `base`. The pull request moved the 35 SoD obstacle types to `assets/sod.toml` with the packs' keys (every type is in a pack now; the tables test) and added the two new observation fields to `record.rs`'s test observation; `E17-design.md` §5's sentence on the 47 types no pack defines is stale.
 - 2026-10-13 (E17 M2 T6, done the same day: the harness plays the adventure's batches, `capture/h3adv.py batch`, design §6.3): **what it does not do yet**, each built when a batch needs it: the hero list's scrolling (more than five heroes per player), the underground (the path's arrows of level 1, the minimap's level), a visit that asks Yes/No, a battle started from the map (the adventure lane's increment 3: monsters and battles; a battle's recipe steps, quick combat or the battle's own clicks), a second day. (The battle lane's cross-check of its E04a batch 1a is done there: #179, merged 2026-10-13, replays R1 with its own `experiments/agent/crosscheck_r1.py`.) A new batch needs its recipe (`capture/batches/`): the domain lanes ask here with the spec.
-- 2026-10-13 (E17 M2 T3): **the timing's remainder** (design §7.7). Not read: the teleporting move, a ray's drawing, the spells' and magic animations' frames (H3API's PlayMagicAnimation), whether hovering starts group 1, the heroes' idle groups, the arrow towers', catapult's and first aid tent's actions, the sounds' timing. Not in a sequence yet: a turn, a death, Haste and Slow, a defending stack's reaction, shots up and down, a ray. Each a sequence (`h3drive.py sequence`) when T4 or M3 needs it.
-
-- 2026-10-13 (E17 M2 T1): **the capture set grows** (M3's reference set): background variants 0 and 1 need trees, mountains or dead vegetation around the battle (design §5: `h3-map`'s writer has no decorative objects yet: an adventure-lane change); special fields (magic plains and the like) and the shore; heroes and their flags, then the count boxes and the panel, each mask removed as it is drawn; the AI-first openings (the smoke battle) once the scene runs over time. CLT-Q4: how a record carries the background variant.
+- 2026-10-13 (E17 M2 T1): **the background variants** 0 and 1 need trees, mountains or dead vegetation around the battle (design §5: `h3-map`'s writer has no decorative objects yet: an adventure-lane change); CLT-Q4: how a record carries the variant. (The rest of the capture set's growth went into M3 T1b, T2, T3, T5 and T6 at T5c.)
 
 - 2026-10-13 (the user, at E17 M1): **text through a string catalogue.** Every string the client shows comes from a key → string catalogue (nested JSON or similar), easy to translate, language packs swappable; not the original's bare text files. The agent's notes for the refinement (M3, with the fonts and the battle interface, where the first text appears): the original's text cannot be committed (ADR-0009), so the original's language is read at the checkpoint from the user's own `.TXT` entries through a committed catalogue of keys (key → archive entry, row, column), and a localized installation is a language pack of its own; the client's own strings (lobby, accounts, ladders: no original text) are committed in any language; a translation of the original's text is likely a derivative work (a licence question for the user before any is committed); the catalogue's format (flat or nested JSON, TOML, Fluent for plurals and cases) and how placeholders and plurals work; fonts: the original's are 8-bit bitmap fonts in a code page, so a language with other letters needs fonts of its own (or a modern renderer as a graphics option). An ADR-0020 amendment at that refinement.
 - 2026-10-13 (the user, at E17 M1): **graphics options.** Eventually the user chooses per effect whether it is drawn the original's dated but familiar way or a modern one (shadows first). The agent's notes: `faithful` stays the default and the only setting the reference frames check (ADR-0020 point 9); an option is a field of a settings value the compositor takes, never a fork of the scene model, so the draw list keeps naming what is drawn and only `h3-render` decides how; a modern shadow may want more than the 16-bit screen (alpha over a 24-bit frame), which ADR-0020 point 3 has to allow; independent of the asset fixes' `faithful`/`fixed` profile (point 6). An ADR-0020 amendment when the first option is built.
 
-- 2026-10-13 (E17 M1 T8, the reviewer): what the battle still does not draw yet, besides the count boxes (M3, fonts): the heroes (design §4.5) and the war machines (the smoke capture's Ballista); a battle on water or rock has no background in the tables (the ship decks, not mapped) and fails to render; an HD layout needs the battlefield's origin and viewport in the layout format.
+- 2026-10-13 (E17 M1 T8, the reviewer): an HD layout needs the battlefield's origin and viewport in the layout format (the heroes, war machines and the water and rock battles went into M3 T2 and T3 at T5c).
 - 2026-10-12 (the user, at E17 M0): the adventure map's object draw order is surprisingly complicated; the user's own engine and VCMI (at the time) did not get it exactly right. Research item 9 (HANDOFF): a code reading of the executable's map drawing (the order of objects, their shadows, heroes and overlapping tiles) when the adventure map viewer is refined, with reference frames from the original to confirm.
 - 2026-10-12 (E17 M0 checkpoint, the user): **CLT-Q2**, a table-only LOD reader in `h3-formats` for the battle lane (`docs/OPEN-QUESTIONS.md`). When it lands, the client's archive set switches from whole reads to the directories at start and a batch's entries by offset; `h3-view gate` then measures that.
 - 2026-10-09 (server lane, SRV-Q3, the user): the server's first client is its own headless test client (M1); the client lane's viewer comes next. Proposal for the client refinement: the viewer reads `h3-protocol` messages live over the WebSocket or from a *record* file (one viewer's message log, JSON lines) with the same code, so the record format is the viewer's file format and one code path plays a live game and a recorded one. Open for the client ADR: whether the client workspace depends on `crates/h3-protocol` by path. Context: `docs/epics/E16-server.md`, `docs/epics/E16-design.md`.

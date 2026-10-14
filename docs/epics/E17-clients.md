@@ -1,12 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 in progress (T1, T3, T4a, T6 and T4b-1 done 2026-10-13, T4b-2a, T2 and T5a 2026-10-14: M2's exit reached). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 refined (T5c), next. Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M2 T5b (the sound), T5c (M2's closure) or T4b-2b (a strike's and a shot's
-turns recorded, the walk-by difference, the remaining animations).
+are there). Next: M3 T1a (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -203,22 +202,37 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   battle's clock waits, the music looping and fading in, each stack's eight sounds with their
   groups); the timeline's cues and the asset tables' `sounds`; `h3-view window` plays the opening,
   the music and the creatures' sounds (`nanomp3`; keys M and E, `--mute`).
+- **T5c done 2026-10-14** ([log](E17-log.md#m2-t5c--m2s-closure-2026-10-14)): M2's exit checked
+  on master; a fresh reviewer's 12 findings, each checked (10 fixed: the next turn after the
+  turn-backs, layer changes at the next idle step, a created stack's strike, a breath's groups
+  17–19, the window's step, redraw and cursor, the fade-in, an undecodable sound; one is the
+  original's behaviour, pinned by a test); the review list accepted by the user (all 31 items);
+  M3 refined with the user (QUEUE: T1a–T9; T4b-2b became M3 T1a and T1b; the rays and the spell
+  animations added at the user's word). **M2 done.**
 
 ### M3 — fidelity
 
-- A representative situation set over the harness (M1 T8 built the capture, M2 the harness):
-  every battlefield, the absolute obstacles, sieges later, animation sequences.
-- Fonts, the string catalogue and the language packs, and the battle interface (panel, log, stack
-  counts, cursors).
-- The sound's remainder (M2 T5b built the battle's music and creature sounds): the battle's end,
-  spells, heroes, walls and towers (design §8.2).
+Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUEUE.md`.
+
+- The scene over time completed (T1a, T1b; M2's T4b-2b): turns, the walk-by, deaths, defending,
+  shots up and down, Haste and Slow, the **rays** (the user: Magi and Beholders draw an energy
+  ray, not a projectile), and recordings that check the provisional rules (the flier's layer, the
+  shot's loop, the breath's groups).
+- A representative situation set over the harness: every battlefield (T2), the heroes and war
+  machines (T3), the count boxes (T5) and the panel (T6), each mask removed as it is drawn;
+  sieges later.
+- Fonts, the string catalogue and the language packs (T4, an ADR-0020 amendment), and the battle
+  interface (T5, T6: the panel, the log, the cursors).
+- The **spell animations** (the user, at T5c: their plethora; T7a the code reading, T7b on
+  stacks with morale and luck, T7c area spells, rays and spell obstacles) and their sounds.
+- The sound's remainder (T8: the battle's end; the volume settings later).
 - **Exit:** the reference set passes, or each difference is a listed fix or a classified quirk.
 
 ### Later (refined when they come up)
 
-Spell effects, live play against a server (the content check, accounts; the server lane's inbox
-notes), HD layouts, graphics options beyond `faithful`, the adventure map and the full game
-viewer, video.
+Sieges (walls, towers, the Catapult, the moat), live play against a server (the content check,
+accounts; the server lane's inbox notes), HD layouts, graphics options beyond `faithful`, the
+client's options (volumes), the adventure map and the full game viewer, video.
 
 ## Research items from the asset notes
 
@@ -293,7 +307,9 @@ choices are lifted.
 
 ## M2 review list
 
-(Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+**Accepted by the user, 2026-10-14 (T5c), every item as listed.** The *provisional* marks stay
+where a recording is to check the rule (the flier's layer 8, the shot's loop: M3 T1b) or where the
+original cannot be matched (the fidgets' generator); the others are lifted.
 
 - The capture tooling (T8): Wine, Xvfb, xdotool, ImageMagick and mingw-w64 as sandbox tools;
   Python with numpy for `h3cap.py` (as `scripts/exe.py` uses Python); our own `xdd.dll` forwarder.
@@ -385,3 +401,13 @@ choices are lifted.
 - A shot's loop (T5b, the user's find, design §7.4): the reactions start as the projectile lands;
   the shooter's frames left beyond the loop are cut, the loop one iteration longer than the
   reactions' frames (*provisional* until a recorded Cyclops shot, T4b-2b).
+
+## M3 review list
+
+(Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- The reviewer's fixes (M2 T5c): a command's last layer changes show at the first idle step after
+  it (*provisional*, as after the last command); a breath told by its second stack standing beyond
+  the striker's neighbours (*provisional*: the record does not name the ability), the asset
+  tables' `breath = [17, 18, 19]`; a strike or shot by a stack the timeline does not know plays
+  its targets' reactions alone; `Timeline::still`, which ends the window's look-ahead.

@@ -4,8 +4,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0, M1 done; M2 T1–T4b-2a, T2 (SDL 3), T5a (M2's exit), T5b (the sound) done; next: M2 T5c** (M2's closure) or **T4b-2b** (`QUEUE.md`). Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020, ADR-0024. Built: decoders (images, sounds), the real-asset gate, compositor, asset tables, `h3-view render`/`sequences`/`situation`/`play`/`window`, `h3_view::anim`, the platform adapter `h3-sdl`, the capture harness (`clients/capture/README.md`); readings and evaluations in design §3–§8. Records: `docs/epics/E17-log.md`.
-- **Pull requests (2026-10-14):** #202 (`clients-lock`) and #203 (T5b) merged; T5b's shot fix (`client/e17-m2-t5b-shot`) open.
+- **E17 M0, M1, M2 done (M2 closed 2026-10-14, T5c); next: M3 T1a** (`QUEUE.md`: T1a–T9, refined with the user). Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020, ADR-0024. Built: decoders (images, sounds), the real-asset gate, compositor, asset tables, `h3-view render`/`sequences`/`situation`/`play`/`window`, `h3_view::anim`, the platform adapter `h3-sdl`, the capture harness (`clients/capture/README.md`); readings and evaluations in design §3–§8. Records: `docs/epics/E17-log.md`.
+- **Pull requests (2026-10-14):** T5c (`client/e17-m2-t5c-closure`) open; #202–#204 merged.
 - **The user's requirements (2026-10-13)**, epic "Decisions": a string catalogue, language packs; graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
@@ -49,6 +49,6 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+- **2026-10-14, E17 M2 T5c (the user present).** M2 closed: a fresh reviewer's 12 findings checked (10 fixed; design §7.3–§8.2), the review list accepted, M3 refined (rays, spell animations: the user). The user heard T5b's sound clean, in sync, balanced.
 - **2026-10-14, E17 M2 T5b (the user present).** The decoder (1 232 entries equal SDL's), the battle's sounds read, cues, the tables' `sounds`, the window's audio; shared #202 (`clients-lock`). Design §8.2.
 - **2026-10-14, E17 M2 T5a (the user present).** T5 split; `h3-sdl`, `h3-view window`: frames read back exact under Xvfb; a Windows build for the user (`clients/out/win/`). Design §8.1.
-- **2026-10-14, E17 M2 T2 (the user present).** Three spikes measured in the sandbox and on the user's Windows machine; SDL 3 alone with clean sound: the user chose it (ADR-0024, design §8).
