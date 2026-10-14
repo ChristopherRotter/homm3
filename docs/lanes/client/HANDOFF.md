@@ -5,7 +5,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **E17 M0, M1 done; M2 T1, T3, T4a, T6, T4b-1 done 2026-10-13, T4b-2a, T2 (SDL 3) and T5a (a battle in a window: M2's exit) 2026-10-14; next: M2 T5b** (the sound), **T5c** (M2's closure) or **T4b-2b** (`QUEUE.md`). Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020, ADR-0024. Built: decoders, the real-asset gate, compositor, asset tables, `h3-view render`/`sequences`/`situation`/`play`/`window`, `h3_view::anim`, the platform adapter `h3-sdl`, the capture harness (`clients/capture/README.md`); readings and evaluations in design §3–§8. Records: `docs/epics/E17-log.md`.
-- **Pull requests (2026-10-14):** PRS_LINE
+- **Pull requests (2026-10-14):** #200 (shared: CI's SDL headers), then #201 (T5a, `client/e17-m2-t5a-window`).
 - **The user's requirements (2026-10-13)**, epic "Decisions": a string catalogue, language packs; graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.

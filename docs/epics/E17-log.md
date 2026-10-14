@@ -559,8 +559,8 @@ text accepted by the user the same day, #196).
 
 ### M2 T5a — A battle in a window (2026-10-14)
 
-On `client/e17-m2-t5a-window`, the user present; [design §8.1](E17-design.md),
-[ADR-0024](../adr/0024-client-window-audio.md); with `shared/clients-ci-sdl` (the CI job's SDL
+On `client/e17-m2-t5a-window` (#201), the user present; [design §8.1](E17-design.md),
+[ADR-0024](../adr/0024-client-window-audio.md); with `shared/clients-ci-sdl` (#200: the CI job's SDL
 headers, the user's consent).
 
 - **Split:** T5 (the adapter, the sound, M2's closure) was more than a session; the user chose the
