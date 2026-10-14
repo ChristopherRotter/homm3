@@ -22,15 +22,18 @@ to the tasks that first use them:
   `check_change` and `apply_change` (HER-CHG-001; the game applies only checked changes),
   `gained_experience` (HER-EXP-001), `next_capture` (HER-ART-004), `lost_war_machine`
   (HER-WAR-002). **T19a2b**: `LearnSpell(SpellId)`, the Necromancy share, the raised creature.
-- **T20a** (before T20b's monster answer, the first reader): the game passes its store
+- **T20a1** built (2026-10-14; decision 35): `h3_heroes::attack_defense` (HER-ADV-001: the
+  battle hero's effective Attack and Defense, HER-BAT-001, clamped 0–99; read: the original's
+  hero record +0x476 to +0x479 holds the worn artifacts' bonuses, `hero_equip_artifact` adds them
+  and `hero_remove_artifact` subtracts them) and `join_bonus` (HER-ADV-002: 0–3 from the
+  `join_bonus` kind, Diplomacy's 1, 2, 3 in the packs, so no code reads the skill by name,
+  ADR-0016 point 4).
+- **T20a2** (before T20b's monster answer, the first reader): the game passes its store
   (`&[Arc<HeroDetails>]` by `HeroId`) to `AdventureState::apply` and the queries (`reach`); the
-  adventure reads the visiting hero's details only through `h3-heroes`' derivations: in increment
-  3 `attack_defense` (the effective Attack and Defense, as the original's hero record
-  +0x476/+0x477 holds them, clamped 0–99 — read whether +0x476 includes the artifacts) and
-  `join_bonus` (0–3 from the `join_bonus` kind: Diplomacy's 1, 2, 3 into the packs then, so no
-  code reads the skill by name, ADR-0016 point 4); the game's difficulty as a static input
-  (`AdventureSetup.difficulty`), read only by ADV-MON-007's Easy rule (D-10). Increment 4 adds
-  movement and scouting.
+  adventure reads the visiting hero's details only through `h3-heroes`' derivations (in increment
+  3 the two above); the game's difficulty as a static input (`AdventureSetup.difficulty`, in the
+  adventure state hash's one bump with §3), read only by ADV-MON-007's Easy rule (D-10).
+  Increment 4 adds movement and scouting.
 - Increment 3's adventure visits change no hero (a joining group changes the army only); the
   battle's outcome does (§5).
 
@@ -160,10 +163,10 @@ empty in the other; `ADV-STUB-4` closed: another player's hero's tile is a legal
 agent plays a battle with the battle's own agent (`h3_sim::rollout::choose`: it never retreats or
 surrenders); replay format v3 (`Actor` per command, `<player> battle <command>` in the file); the
 golden replays re-recorded, two with hero battles; the game's battle sink passes `RECORDS`; the
-fork workload with a battle open (the heroes seek each other: random play seldom fights). Left:
-- **T19b2**: the property plans play battles to a victory (the driver acts as the owner of the
-  side to act; today the battles end mostly by a retreat or a surrender), so captures, Necromancy
-  and Eagle Eye's learning happen in them.
+fork workload with a battle open (the heroes seek each other: random play seldom fights). Built
+by T19b2 (decision 35): the property plans play battles to a victory (the driver's runs of
+fighting steps, its hero casts; captures, Necromancy and Eagle Eye's learning happen in them).
+Left:
 - **T20b**: the neutral seat (`Seat::Neutral`, a battle action issued as `Actor::System`;
   decision 29), `to_move` yielding seats; `random_rollout` plays it at random until the battle
   lane has ported the original's battle AI (decision 27); golden replays with monsters.
@@ -186,11 +189,11 @@ Each bumps once in the increment, in the task that first changes it.
   the flag on in `base:faithful`, the harvester's profile); `shared/e08-t19a2` (#194: `raises`);
   `shared/e08-t19a2b` (`cross-lane`, decision 33: `learn_level`, `unless_skill`, `X87::over`,
   the harvested Wisdom, `raises` and Necromancy artifacts, the replays, the heroes' changes in
-  `06-security.md`).
-- `cross-lane` (battle-owned), still to come: Diplomacy's `join_bonus` values (T20a; no table:
-  the skill's level), `h3-heroes`' additions (`attack_defense`, `join_bonus` in T20a; built:
+  `06-security.md`); `shared/e08-t19b2` (`h3-battle` as `h3-map`'s dev-dependency); T20a1
+  (`cross-lane`: `attack_defense`, `join_bonus`, Diplomacy's values in the gap-fill and the packs).
+- `cross-lane` (battle-owned), still to come: `h3-heroes`' additions of later increments (built:
   `HeroChange`, its check, the Learning factor and the capture in T19a2a, Necromancy and the
-  learning in T19a2b); `h3-experiment`'s spec for batch E3 (monsters,
+  learning in T19a2b, the adventure's reads in T20a1); `h3-experiment`'s spec for batch E3 (monsters,
   custom heroes, the difficulty); the client lane's recipes (its inbox, 2026-10-13).
   **The handover of `h3-heroes`**: as soon as the battle lane is done with it (the user,
   ADV-Q13; the battle lane's inbox asks it to say when), a `shared/` change of `lanes.toml`; the
@@ -204,7 +207,7 @@ Each bumps once in the increment, in the task that first changes it.
 |---|---|---|
 | 1 | T18a + T18b | done (2026-10-14): the shared groundwork with the ADR amendments (§10); the store of heroes, its defaults, the import of hero customisations (§1), trimmed at the checkpoint (decision 28) |
 | 2 | T19a1 + T19a2 | split at the checkpoint (decision 29): T19a1 done (2026-10-14): battles through the game, hero against hero, the armies' and the map's outcome (§5, §6); T19a2 split again (decision 32): T19a2a done (2026-10-14), the heroes' outcome without pack changes; T19a2b done (2026-10-14, decision 33), Necromancy and Eagle Eye (§2, §5); round 2 closed |
-| 3 | T19b1 + T19b2 | split at the checkpoint (decision 34): T19b1 the env, replays and benchmarks with battles, the versions (§8); T19b2 the property plans to a victory |
-| 4 | T20a + T20b | monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
+| 3 | T19b1 + T19b2 | split at the checkpoint (decision 34): T19b1 done (2026-10-14), the env, replays and benchmarks with battles, the versions (§8); T19b2 done (2026-10-14, decision 35), the property plans to a victory; round 3 closed |
+| 4 | T20a + T20b | T20a split (decision 35): T20a1 done (2026-10-14), the heroes' groundwork (`attack_defense`, `join_bonus`, Diplomacy's values; with T19b2), T20a2 monsters on the map, the difficulty and the store passed through (one hash bump); then T20b. Monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
 | 5 | T21 + T22a | guarded piles and the maps with monsters, replays, benchmarks, the audit (§7); batch E3's spec and run (cross-lane, the client lane's recipes) |
 | 6 | T22b | batch E3 scored, increment 3 closed, increment 4 refined |

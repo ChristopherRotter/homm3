@@ -362,6 +362,45 @@ pub fn max_mana(details: &HeroDetails, ruleset: &Ruleset) -> u16 {
     u16::try_from(points).unwrap_or(u16::MAX)
 }
 
+/// The hero's Attack and Defense as the adventure map reads them (HER-ADV-001, E08 T20a1): its
+/// effective values (HER-BAT-001: the base values plus the `primary_skills` effects, the worn
+/// artifacts' per copy, between the ruleset's bounds, 0 to 99), as the original's hero record
+/// holds them: equipping an artifact adds its primary skills and its parts' to +0x476 to +0x479,
+/// taking it off subtracts them (`hero_equip_artifact` 0x4E2A00, `hero_remove_artifact`
+/// 0x4E2BD0), and the reader clamps them to 0–99 (`hero_attack_defense_factor` 0x4E5400, the
+/// power in the wandering monsters' answer, ADV-MON-007). A ruleset without hero parameters
+/// (which validation refuses) takes the base values: validate first.
+pub fn attack_defense(details: &HeroDetails, ruleset: &Ruleset) -> (u8, u8) {
+    // rule: HER-ADV-001
+    let value = |skill: PrimarySkill| {
+        ruleset
+            .hero_params()
+            .map_or(details.primary[skill.index()], |params| {
+                effective_primary(details, ruleset, params, skill)
+            })
+    };
+    (value(PrimarySkill::Attack), value(PrimarySkill::Defense))
+}
+
+/// The most a hero's join bonus counts ([`join_bonus`]): Expert Diplomacy's.
+pub const MAX_JOIN_BONUS: u8 = 3;
+
+/// How much readier wandering creatures are to join the hero (HER-ADV-002, E08 T20a1): the sum of
+/// the levels of its `join_bonus` effects (Diplomacy: 1, 2, 3 by its level; each artifact type
+/// once), at most [`MAX_JOIN_BONUS`]. The original's Diplomacy level (+0xCD) in the wandering
+/// monsters' answer (`monster_visit_decision` 0x4A7740; its Easy rule is the adventure's,
+/// ADV-MON-007); no skill is read by name (ADR-0016 point 4).
+pub fn join_bonus(details: &HeroDetails, ruleset: &Ruleset) -> u8 {
+    // rule: HER-ADV-002
+    effects(details, ruleset, Count::OncePerType)
+        .filter_map(|effect| match *effect {
+            HeroEffect::JoinBonus { level } => Some(level),
+            _ => None,
+        })
+        .fold(0, u8::saturating_add)
+        .min(MAX_JOIN_BONUS)
+}
+
 /// The experience a hero gains from `base` points (HER-EXP-001, E08 T19a2a): `base` grown by the
 /// sum of the `experience_gain` values of [`grown_effects`] (Learning, grown by a Learning
 /// specialty: 5 % of itself per level), rounded down, at most `u32::MAX`; with quirk Q-0005 the

@@ -1999,3 +1999,90 @@ The user put the two shared docs that go stale (`02-architecture.md` §8's table
   player's commands with its actor and refuses them under the other owner. `h3-cli`: battle
   commands round-trip through their text; the fork workload with `battle`.
 - Versions: action encoding v3, adventure replay format v3; no hash moved.
+
+### Round 3 of increment 3: T19b2 (2026-10-14, `shared/e08-t19b2` #213, `adventure/e08-t19b2` #214)
+
+#211 had merged; the baseline full verify of `master` (f67aac8, `--with-original-data`) passed
+every step. The user confirmed the seam T19b2 + T20a1, two pull requests (decision 35). Asked
+whether Eagle Eye could hook the battle's events: Eagle Eye is the battle's (BAT-MAG-069 picks at
+the enemy hero's casts, `HeroOutcome.learned`; GAM-BAT-007 and HER-SPL-006 learn), but the game's
+legal commands list no casts (a separate action head, ADR-0014 point 9) and `h3-map`'s tests
+could not name a cast, so nothing in the plans cast and nothing could be picked: `h3-battle`
+became `h3-map`'s dev-dependency (`shared/e08-t19b2`, `arch.toml` alone).
+
+- **The driver** (`crates/h3-map/src/tests/play.rs`): `Step::Fight(n)`, in runs of 16 to 95
+  steps among the single steps (`steps()`, one run per 13 entries, at most 40 entries; every
+  property of `play.rs` and `view.rs` draws it). On the map `seek`: an open offer declined, else
+  the `n`-th of the acting player's moves that end nearest to another player's hero on its level,
+  nearer than the hero stands (an attack is nearest of all), `EndTurn` when none gets nearer (the
+  fork benchmark's seeking, T19b1). In a battle `fight`: in three steps of four its hero's cast
+  while it may (`castable_spells`, `cast_targets`, `second_targets`, picked by `n`), else a strike
+  (an attack or a shot) of the active stack, else a command that stays; in one step of 128 a
+  retreat or a surrender if its side may.
+- **The plans**: one hero in two has skills of its own, Eagle Eye and up to two of Wisdom and
+  Necromancy at levels 1 to 3, and wears a Spell Book (in any slot: the import keeps no position);
+  without the book a winner learns nothing (HER-SPL-006), and only 8 of the 128 hero types have
+  Eagle Eye. Measured on 96 fixed cases: without skills of their own 0 spells learned (3 Eagle
+  Eye winners of 109 victories, 71 hero casts); with them but no book 0, and 1 with casts in three
+  steps of four instead of one; with the book 2 to 4; on the final 192 cases 11.
+- **Legality consistency of a cast**: a cast `apply` accepted is not an option (the game lists
+  none); `check_unlisted` checks that its spell was among the battle's castable spells for the
+  actor's side and its target among the spell's targets.
+- **`the_plans_play_battles_to_a_victory`** (proptest's deterministic runner, 192 cases of
+  `(plan, strict, seed, steps)`): 321 battles started, 226 victories, 0 draws, 43 retreats, 15
+  surrenders; 5 299 battle commands accepted; 206 hero casts; 235 artifacts captured, 51 raises,
+  11 spells learned. It asserts each is above 0 and victories above the rest.
+- **What it found**: nothing to fix. 600 cases of each of the three play properties and of the
+  four view properties passed. The three play properties take 12.6 s in a debug build (about 6 s
+  before), the whole `h3-map` suite 22 s.
+- **T19's part of the exit criteria** (audited): the ADR amendments accepted (ADV-Q13, applied by
+  T18a #185); the full verify green (f67aac8's baseline; this branch's below); the logic crates at
+  100 % (the coverage step); the property tests hold with battles, now played to a victory:
+  atomicity and legality consistency with a battle open (`check_legal`'s battle branch, every
+  listed battle command applies; casts by `check_unlisted`), ownership isolation
+  (`check_isolation`: the battle's partner, a surrender's treasury), conservation (`check_battle_end`:
+  only the battle's heroes' armies change, by the outcome and Necromancy's raised stack; treasuries
+  by a surrender's gold; `check_heroes_after_battle`: experience, spell points, captures, lost war
+  machines, learned spells, each told to its owner), observation hygiene (`view.rs`: the
+  comparison ends at the viewer's battle, the events and the views agree through battles),
+  clone equivalence and determinism (`forks_evolve_as_their_parent`,
+  `replays_are_deterministic`); golden replays with battles in the determinism matrix (T19b1:
+  `duel-s792-d28`, `duel-s120-strict-d28`); the benchmarks re-baselined with a battle open (T19b1);
+  GAM-HER-001 and GAM-BAT-001 to -007 and the HER rules they rest on `implemented` with sources;
+  no adventure stub open. Left to the increment: monsters (T20, T21) and batch E3 (T22).
+- No version moved. Round 3 closed.
+
+### Round 4 of increment 3: T20a1 (2026-10-14, `adventure/e08-t20a1` #215, `cross-lane`)
+
+Decision 35's second part, built on `adventure/e08-t19b2` (#214; #213 the shared change). T20a's
+`h3-heroes` part, ahead of T20b's monster answer, its first reader; `cross-lane` (`h3-heroes`,
+the harvester's gap-fill and `packs/` are the battle lane's).
+
+- **The reading** (survey `E08-battles.md` §3.1 had asked whether +0x476 includes the artifacts):
+  `hero_equip_artifact` (0x4E2A00) adds the equipped artifact's four bytes of
+  `artifact_primary_skills` (0x63E758) to the hero record's +0x476 to +0x479 (0x4E2B7E to
+  0x4E2B99) and, for a combination, each part's first (0x4E2AF7 to 0x4E2B0D);
+  `hero_remove_artifact` (0x4E2BD0, new in the address map) subtracts them (0x4E2C72, 0x4E2D14).
+  The bytes are signed and unclamped; their readers clamp (`hero_attack_defense_factor` 0x4E5400:
+  0–99). `map_hero_setup` equips the map's artifacts (0x4866D5, 0x48675C) before it sets the
+  spell points from +0x479, so HER-MAN-001's effective Knowledge is the original's (its open
+  question closed). VCMI's `getValueForDiplomacy` reads the bonus system's totals, artifacts
+  included. A base of 99 with 29 or more from artifacts would wrap in the original (the wiki:
+  "At 129 the skill value is reset to 0"); HER-BAT-001 clamps. Asked, the user kept the clamp at
+  99, without the wrap and without a flag (2026-10-15: the engine keeps the base and the
+  artifacts apart and stores no sum, and the readers cap at 99 (0x4E5400; HER-BAT-001 by the
+  wiki's "The upper limit is 99"), so a cap at 127 would change nothing a rule reads).
+- **`h3_heroes::attack_defense`** (HER-ADV-001): `derive_battle_hero`'s effective Attack and
+  Defense (HER-BAT-001's `effective_primary`, 0–99), the base values without hero parameters.
+- **`h3_heroes::join_bonus`** (HER-ADV-002) and `MAX_JOIN_BONUS` (3): the sum of the `join_bonus`
+  levels (skills at their level, each artifact type once, the specialty), at most 3; no skill read
+  by name.
+- **Diplomacy's values**: the gap-fill's `[[heroes.skill_extra]]` gives Diplomacy `join_bonus` 1,
+  2, 3 beside the table's surrender discount (sources: the code reading, the wiki, VCMI 1.7.5's
+  `WANDERING_CREATURES_JOIN_BONUS` 1/2/3); the harvester's run changes only those three lines of
+  `packs/base/core.toml`; `h3-map`'s `diplomacy_gives_a_join_bonus_of_its_level` checks them.
+- **Golden replays**: the eight re-recorded with their options; only the core ruleset hash in
+  their headers moved (the battle replays use `synthetic`).
+- Tests: `h3-heroes` (the battle hero's values, the bounds, the combination's parts, without hero
+  parameters; the levels, an artifact type once, the cap). Versions: none (the core ruleset
+  hash's value only).

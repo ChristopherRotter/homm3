@@ -2029,9 +2029,9 @@ name = "Scouting"
 [[secondary_skill]]
 id = "diplomacy"
 name = "Diplomacy"
-basic = [{ kind = "surrender_discount", bp = 2000 }]
-advanced = [{ kind = "surrender_discount", bp = 4000 }]
-expert = [{ kind = "surrender_discount", bp = 6000 }]
+basic = [{ kind = "surrender_discount", bp = 2000 }, { kind = "join_bonus", level = 1 }]
+advanced = [{ kind = "surrender_discount", bp = 4000 }, { kind = "join_bonus", level = 2 }]
+expert = [{ kind = "surrender_discount", bp = 6000 }, { kind = "join_bonus", level = 3 }]
 
 [[secondary_skill]]
 id = "navigation"

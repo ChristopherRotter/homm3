@@ -8,14 +8,20 @@
 //! Keymaster's tents and their keys, and border guards with the second offer; since T15b with
 //! border gates, crossed by their key's holders and visited from a neighbour by the others; since
 //! T19a with battles between two players' heroes, which the driver plays as the owner of the side
-//! to act (a battle's outcome changes armies, removes heroes and moves a surrender's gold). What
-//! a viewer may learn is T8b2b's ([`super::view`]), on the same maps and driver.
+//! to act (a battle's outcome changes armies, removes heroes and moves a surrender's gold); since
+//! T19b2 with runs of fighting steps that bring heroes together and play their battles mostly to
+//! a victory, with hero casts, and heroes with Eagle Eye, Necromancy and Wisdom of their own, so
+//! that winners capture, raise and learn (`the_plans_play_battles_to_a_victory`). What a viewer
+//! may learn is T8b2b's ([`super::view`]), on the same maps and driver.
 
 use std::sync::{Arc, LazyLock};
 
 use h3_adventure::{
     AdventureCommand, AdventureEvent, AdventureEventKind, ObjectKind, Offer, OfferKind,
     Pos as TilePos, Reach, Viewers,
+};
+use h3_battle::{
+    CastTargets, Command, Event, EventKind, cast_targets, castable_spells, second_targets,
 };
 use h3_content::{ArtifactTypeId, ResourceId};
 use h3_contracts::{BattleResult, HeroId, PlayerId};
@@ -148,8 +154,13 @@ pub(super) struct Plan {
     /// Added to each hero's index times 7 (coprime to 128), so the heroes' types differ.
     pub(super) hero_types: u8,
     /// Artifact codes for each hero's backpack, by the hero's index (none or empty: the type's
-    /// defaults); a hero with a backpack wears nothing (E08 T19a2a: a battle's capture).
+    /// defaults); a hero with a backpack wears nothing (E08 T19a2a: a battle's capture) but the
+    /// Spell Book that skills of its own come with.
     pub(super) backpacks: Vec<Vec<u16>>,
+    /// Secondary skills of its own (skill code and level) for each hero, by the hero's index
+    /// (none: its type's; E08 T19b2: Necromancy, Eagle Eye and Wisdom more often than the types
+    /// have them, so that battles' winners raise creatures and learn spells).
+    pub(super) skills: Vec<Option<Vec<(u8, u8)>>>,
     /// Each object's anchor (modulo the map) and object (shape and kind, [`OBJECTS`]).
     pub(super) blockers: Vec<(Spot, usize)>,
     /// The game's difficulty (E08 T14b), written as the map's (the import's own default is
@@ -183,6 +194,16 @@ pub(super) fn army() -> impl Strategy<Value = Slots> {
     proptest::option::of(slots())
 }
 
+/// A hero's secondary skills of its own, in one case of two (E08 T19b2): Eagle Eye (code 11) and
+/// up to two of Wisdom (7) and Necromancy (12), each at a level 1 to 3.
+fn skills() -> impl Strategy<Value = Option<Vec<(u8, u8)>>> {
+    proptest::option::weighted(
+        0.5,
+        (subsequence(vec![7u8, 12], 0..=2), vec(1u8..=3, 3))
+            .prop_map(|(skills, levels)| [11].into_iter().chain(skills).zip(levels).collect()),
+    )
+}
+
 pub(super) fn plan() -> impl Strategy<Value = Plan> {
     let tiles = 2 * usize::from(MAX_SIDE) * usize::from(MAX_SIDE);
     (
@@ -207,7 +228,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
         ),
         prop_oneof![Just(4), 0u8..4],
         proptest::option::weighted(0.75, ((0u8..7, 0u8..7), 0u8..3)),
-        vec(vec(7u16..=40, 0..=3), 0..=6),
+        (vec(vec(7u16..=40, 0..=3), 0..=6), vec(skills(), 0..=6)),
     )
         .prop_map(
             |(
@@ -222,7 +243,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 mut blockers,
                 difficulty,
                 keyring,
-                backpacks,
+                (backpacks, skills),
             )| {
                 // In three plans of four a red tent within three tiles of the first hero, a red
                 // guard whose visitable tile is two columns east of the tent, a row up, level or
@@ -248,6 +269,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     heroes,
                     hero_types,
                     backpacks,
+                    skills,
                     blockers,
                     difficulty,
                 }
@@ -363,9 +385,19 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             .backpacks
             .get(usize::from(index))
             .filter(|b| !b.is_empty());
-        let artifacts = backpack.map(|codes| Artifacts {
-            worn: vec![None; v.artifact_slots()],
-            backpack: codes.iter().copied().map(Some).collect(),
+        // A hero with skills of its own wears a Spell Book (artifact 0, in any slot: the import
+        // keeps no position, ADR-0013; E08 T19b2): Eagle Eye's picks are learned only with it
+        // (HER-SPL-006), and its type may have none.
+        let skills = plan.skills.get(usize::from(index)).cloned().flatten();
+        let artifacts = (backpack.is_some() || skills.is_some()).then(|| {
+            let mut worn = vec![None; v.artifact_slots()];
+            if skills.is_some() {
+                worn[0] = Some(0);
+            }
+            Artifacts {
+                worn,
+                backpack: backpack.into_iter().flatten().copied().map(Some).collect(),
+            }
         });
         let body = HeroBody {
             identifier: (v != Version::RoE).then_some(u32::from(index)),
@@ -377,6 +409,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             sex: u8::MAX,
             spell: (v == Version::Ab).then_some(u8::MAX),
             artifacts,
+            secondary_skills: skills,
             ..HeroBody::default()
         };
         let mut o = object(x + 1, y, HERO_TEMPLATE, Body::Hero(Box::new(body)));
@@ -442,6 +475,9 @@ pub(super) enum Step {
     /// The acting player (`None`), or a player of the game or the one after the last, issues an
     /// arbitrary command.
     Free { player: Option<u8>, command: Free },
+    /// (E08 T19b2) The acting player fights: on the map it seeks another player's hero
+    /// ([`seek`]), in a battle it plays the `n`-th of its fighting commands ([`fight`]).
+    Fight(u16),
 }
 
 #[derive(Debug, Clone)]
@@ -550,6 +586,111 @@ pub(super) fn step() -> impl Strategy<Value = Step> {
         2 => (proptest::option::weighted(0.33, any::<u8>()), free)
             .prop_map(|(player, command)| Step::Free { player, command }),
     ]
+}
+
+/// Steps of random play (E08 T19b2): single steps and runs of [`Step::Fight`], long enough to
+/// bring two players' heroes together and play their battle to its end.
+pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
+    let run = vec(any::<u16>(), 16..96).prop_map(|ns| ns.into_iter().map(Step::Fight).collect());
+    vec(
+        prop_oneof![12 => step().prop_map(|step| vec![step]), 1 => run],
+        0..40,
+    )
+    .prop_map(|runs: Vec<Vec<Step>>| runs.into_iter().flatten().collect())
+}
+
+/// On the map (E08 T19b2): the acting player's open offer declined; else the `n`-th of its
+/// options that end nearest to another player's hero on the hero's level, nearer than the hero
+/// stands (an attack, on the other hero's tile, is nearest of all; the heroes seek each other as
+/// the fork benchmark's do: random play seldom meets); `EndTurn` when none gets nearer.
+fn seek(state: &GameState, legal: &[GameCommand], n: u16) -> GameCommand {
+    let actor = acting(state);
+    if state.decision(actor).is_some() {
+        return GameCommand::Answer(Answer::Decline);
+    }
+    let heroes = state.adventure().heroes();
+    let distance = |pos: TilePos| {
+        heroes
+            .iter()
+            .filter(|h| h.owner != actor && h.pos.level == pos.level)
+            .map(|h| h.pos.x.abs_diff(pos.x).max(h.pos.y.abs_diff(pos.y)))
+            .min()
+    };
+    let mut best: Vec<&GameCommand> = Vec::new();
+    let mut nearest = u16::MAX;
+    for command in legal {
+        let Some((hero, path)) = as_move(command) else {
+            continue;
+        };
+        let here = state.adventure().hero(hero).and_then(|h| distance(h.pos));
+        let there = path.last().and_then(|&to| distance(to));
+        if let (Some(here), Some(there)) = (here, there)
+            && there < here
+            && there <= nearest
+        {
+            if there < nearest {
+                best.clear();
+                nearest = there;
+            }
+            best.push(command);
+        }
+    }
+    best.get(usize::from(n) % best.len().max(1))
+        .map_or(GameCommand::EndTurn, |&command| command.clone())
+}
+
+/// In a battle (E08 T19b2): the acting player's `n`-th fighting command: in three steps of four
+/// its hero's cast while it may cast (the spell, its target and a second target by `n`: the game's
+/// legal commands list no casts, a separate action head, ADR-0014 point 9; Eagle Eye picks only
+/// what the other side's hero casts, BAT-MAG-069), else a strike (an attack or a shot) if its
+/// active stack has one, else a command that stays in the battle; in one step of 128 it leaves
+/// the battle (a retreat or a surrender, if its side may), so most battles end by a victory.
+fn fight(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -> GameCommand {
+    let actor = acting(state);
+    let battle = state.battle(actor).unwrap();
+    let side = battle.side_of(actor).unwrap();
+    let (field, ruleset) = (battle.state(), rules.battle());
+    let n = usize::from(n);
+    let spells = castable_spells(field, ruleset, side);
+    let count = spells.iter().count();
+    if n % 4 != 3 && count > 0 {
+        let spell = spells.iter().nth((n / 4) % count).unwrap();
+        let mut targets = CastTargets::new();
+        cast_targets(field, ruleset, side, spell, &mut targets);
+        let target = targets
+            .get((n / 16) % targets.len().max(1))
+            .copied()
+            .unwrap_or_default();
+        second_targets(field, ruleset, side, (spell, target), &mut targets);
+        let second = targets
+            .get((n / 256) % targets.len().max(1))
+            .copied()
+            .unwrap_or_default();
+        return GameCommand::Battle(Command::Cast {
+            spell,
+            target,
+            second,
+        });
+    }
+    let (staying, leaving): (Vec<&GameCommand>, Vec<&GameCommand>) = legal
+        .iter()
+        .partition(|c| matches!(c, GameCommand::Battle(c) if !c.leaves_battle()));
+    if n % 128 == 127 && !leaving.is_empty() {
+        return leaving[(n / 128) % leaving.len()].clone();
+    }
+    let strikes: Vec<&GameCommand> = staying
+        .iter()
+        .copied()
+        .filter(|c| {
+            matches!(
+                c,
+                GameCommand::Battle(Command::Attack { .. } | Command::Shoot { .. })
+            )
+        })
+        .collect();
+    let pick = if strikes.is_empty() { staying } else { strikes };
+    pick.get(n % pick.len().max(1))
+        .map_or_else(|| legal[n % legal.len()].clone(), |&c| c.clone())
 }
 
 fn move_hero(hero: HeroId, path: Vec<TilePos>) -> GameCommand {
@@ -661,6 +802,7 @@ pub(super) fn options(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand
 /// A step's actor and command, given the acting player's [`options`].
 pub(super) fn resolve(
     state: &GameState,
+    rules: &GameRuleset,
     legal: &[GameCommand],
     step: &Step,
 ) -> (PlayerId, GameCommand) {
@@ -690,6 +832,8 @@ pub(super) fn resolve(
             (actor, command.clone())
         }
         Step::EndTurn => (actor, GameCommand::EndTurn),
+        Step::Fight(n) if state.battle(actor).is_some() => (actor, fight(state, rules, legal, *n)),
+        Step::Fight(n) => (actor, seek(state, legal, *n)),
         Step::Edited(n, edit) => {
             let moves: Vec<(HeroId, &[TilePos])> = legal.iter().filter_map(as_move).collect();
             let Some(&(mut hero, path)) = moves.get(usize::from(*n) % moves.len().max(1)) else {
@@ -780,7 +924,7 @@ pub(super) fn advance<S: Sink>(
     sink: &mut S,
 ) -> Result<(), GameCommandError> {
     let options = options(state, rules);
-    let (actor, command) = resolve(state, &options, step);
+    let (actor, command) = resolve(state, rules, &options, step);
     apply(state, rules, Actor::Player(actor), command, sink)
 }
 
@@ -945,13 +1089,26 @@ fn check_legal(
 
 /// Legality consistency for a command `apply` accepted although it is not an option: a move of
 /// the actor's own hero along another path the hero can pay. A one-step move's tile is among its
-/// legal moves, with at least the points the move left (every tile one step away is).
+/// legal moves, with at least the points the move left (every tile one step away is). Or (E08
+/// T19b2) a cast of the actor's hero in its battle (the game lists no casts, a separate action
+/// head): of a spell the battle's castable spells held, at one of its targets.
 fn check_unlisted(
+    rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
     actor: PlayerId,
     command: &GameCommand,
     reaches: &[(HeroId, Reach)],
 ) -> Result<(), TestCaseError> {
+    if let GameCommand::Battle(Command::Cast { spell, target, .. }) = *command {
+        let battle = before.battle(actor).unwrap();
+        let side = battle.side_of(actor).unwrap();
+        let (field, ruleset) = (battle.state(), rules.battle());
+        prop_assert!(castable_spells(field, ruleset, side).contains(spell));
+        let mut targets = CastTargets::new();
+        cast_targets(field, ruleset, side, spell, &mut targets);
+        prop_assert!(targets.iter().any(|&t| t == target), "{:?}", command);
+        return Ok(());
+    }
     let (hero, path) =
         as_move(command).ok_or_else(|| fail(format!("unlisted {command:?} accepted")))?;
     prop_assert_eq!(before.adventure().hero(hero).map(|h| h.owner), Some(actor));
@@ -1477,7 +1634,7 @@ proptest! {
         plan in plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
-        steps in vec(step(), 0..40),
+        steps in steps(),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start(&plan, rules, seed);
@@ -1485,7 +1642,7 @@ proptest! {
             let legal = options(&state, rules);
             let reaches = reaches(&state, rules);
             check_legal(&state, rules, &legal, &reaches)?;
-            let (actor, command) = resolve(&state, &legal, step);
+            let (actor, command) = resolve(&state, rules, &legal, step);
             let listed = actor == acting(&state) && legal.contains(&command);
             let before = state.clone();
             let hash = state.state_hash();
@@ -1501,7 +1658,7 @@ proptest! {
             }
             prop_assert_eq!(actor, acting(&before));
             if !listed {
-                check_unlisted((&before, &state), actor, &command, &reaches)?;
+                check_unlisted(rules, (&before, &state), actor, &command, &reaches)?;
             }
             if let Some((hero, path)) = as_move(&command) {
                 let start = before.adventure().hero(hero).unwrap().pos;
@@ -1520,7 +1677,7 @@ proptest! {
     fn forks_evolve_as_their_parent(
         plan in plan(),
         seed in any::<u64>(),
-        steps in vec(step(), 1..40),
+        steps in steps().prop_filter("a step", |steps| !steps.is_empty()),
         split in any::<proptest::sample::Index>(),
     ) {
         let rules = &*FAITHFUL;
@@ -1551,11 +1708,88 @@ proptest! {
     fn replays_are_deterministic(
         plan in plan(),
         seed in any::<u64>(),
-        steps in vec(step(), 0..40),
+        steps in steps(),
     ) {
         let m = lay_out(&plan);
         prop_assert_eq!(parse(&encode(&m), &Limits::default()), Ok(m));
         let again = play(&plan, &FAITHFUL_AGAIN, seed, &steps);
         prop_assert_eq!(play(&plan, &FAITHFUL, seed, &steps), again);
     }
+}
+
+/// What a set of games played: the battles started and how they ended, and the heroes' part of
+/// their outcomes (E08 T19b2).
+#[derive(Debug, Default)]
+struct Fought {
+    started: usize,
+    victories: usize,
+    draws: usize,
+    retreats: usize,
+    surrenders: usize,
+    commands: usize,
+    captured: usize,
+    raised: usize,
+    learned: usize,
+    casts: usize,
+}
+
+impl Fought {
+    fn count(&mut self, events: &[GameEvent]) {
+        for event in events {
+            match *event {
+                GameEvent::BattleStarted { .. } => self.started += 1,
+                GameEvent::BattleEnded { result, .. } => match result {
+                    BattleResult::Victory(_) => self.victories += 1,
+                    BattleResult::Draw => self.draws += 1,
+                    BattleResult::Retreat(_) => self.retreats += 1,
+                    BattleResult::Surrender(_) => self.surrenders += 1,
+                },
+                GameEvent::HeroChanged { change, .. } => match change {
+                    HeroChange::AddArtifact(_) => self.captured += 1,
+                    HeroChange::LearnSpell(_) => self.learned += 1,
+                    _ => {}
+                },
+                GameEvent::CreaturesRaised { .. } => self.raised += 1,
+                GameEvent::Battle {
+                    event:
+                        Event {
+                            kind: EventKind::SpellCast { .. },
+                            ..
+                        },
+                    ..
+                } => self.casts += 1,
+                _ => {}
+            }
+        }
+    }
+}
+
+/// The plans play battles to a victory (E08 T19b2): over a fixed set of cases (proptest's
+/// deterministic runner), random play with the fighting runs ([`steps`]) starts battles that end
+/// by victories as well as by retreats and surrenders, and their winners capture artifacts, raise
+/// creatures and learn Eagle Eye's picks, so the properties above see each.
+#[test]
+fn the_plans_play_battles_to_a_victory() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let strategy = (plan(), any::<bool>(), any::<u64>(), steps());
+    let mut fought = Fought::default();
+    for _ in 0..192 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let mut state = start(&plan, rules, seed);
+        for step in &steps {
+            let mut events = Vec::new();
+            let fighting = state.battle(acting(&state)).is_some();
+            if advance(&mut state, rules, step, &mut events).is_ok() && fighting {
+                fought.commands += 1;
+            }
+            fought.count(&events);
+        }
+    }
+    let f = &fought;
+    assert!(f.started > 0 && f.commands > 0 && f.casts > 0, "{f:?}");
+    assert!(f.victories > f.retreats + f.surrenders + f.draws, "{f:?}");
+    assert!(f.retreats > 0 && f.surrenders > 0, "{f:?}");
+    assert!(f.captured > 0 && f.raised > 0 && f.learned > 0, "{f:?}");
 }

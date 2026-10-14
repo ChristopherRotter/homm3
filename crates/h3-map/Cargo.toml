@@ -15,6 +15,7 @@ h3-game.workspace = true
 miniz_oxide.workspace = true
 
 [dev-dependencies]
+h3-battle.workspace = true
 h3-pack.workspace = true
 h3-pack-adventure.workspace = true
 h3-pack-battle.workspace = true
