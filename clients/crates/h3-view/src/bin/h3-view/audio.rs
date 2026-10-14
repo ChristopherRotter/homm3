@@ -45,6 +45,8 @@ pub struct Library {
     music: Option<(u32, u16, Vec<i16>)>,
     /// The start sound's name.
     start: String,
+    /// How long the decoding took, in ms.
+    took: u128,
     /// Each stack's sounds.
     stacks: BTreeMap<u8, Sounds>,
 }
@@ -53,6 +55,19 @@ impl Library {
     /// Decodes the start sound and every sound of `stacks` from the sound archives of `install`,
     /// and the music from its `MP3` folder. A missing file costs that sound, noted in `lines`.
     pub fn load(
+        install: &Path,
+        opening: Opening,
+        stacks: BTreeMap<u8, Sounds>,
+        lines: &mut Vec<String>,
+    ) -> Result<Self, String> {
+        let (result, took) = crate::gate::timed(|| Self::decode(install, opening, stacks, lines));
+        let mut library = result?;
+        library.took = took.as_millis();
+        Ok(library)
+    }
+
+    /// [`Library::load`] without its timing.
+    fn decode(
         install: &Path,
         opening: Opening,
         stacks: BTreeMap<u8, Sounds>,
@@ -116,6 +131,7 @@ impl Library {
             clips,
             music,
             start: start.to_ascii_uppercase(),
+            took: 0,
             stacks,
         })
     }
@@ -135,7 +151,11 @@ impl Library {
                 format!("music {rate} Hz × {channels}, {seconds} s")
             },
         );
-        format!("sound: {} clips, {music}", self.clips.len())
+        format!(
+            "sound: {} clips, {music}, decoded in {} ms",
+            self.clips.len(),
+            self.took
+        )
     }
 }
 

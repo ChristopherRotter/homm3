@@ -58,7 +58,7 @@ impl Opening {
         format!("BATTLE{:02}", self.start)
     }
 
-    /// The music's file stem in the installation's `MP3` folder (`mp3\%s.mp3`, 0x684B34).
+    /// The music's file stem in the installation's `MP3` folder (`mp3\%s.mp3`).
     #[must_use]
     pub fn music_file(&self) -> String {
         format!("COMBAT{:02}", self.music)
