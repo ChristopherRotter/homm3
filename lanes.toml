@@ -78,6 +78,10 @@ paths = [
     "docs/OPEN-QUESTIONS.md",
     "docs/stubs.toml",
     "Cargo.lock",
+    # The client workspace's lockfile (the client lane's otherwise): an engine crate the client
+    # builds that changes its dependencies changes it too, in the same pull request; the verify's
+    # `clients-lock` gate checks it (user, 2026-10-14).
+    "clients/Cargo.lock",
     # The survey index: each lane adds its epics' sections (E08 T2).
     "docs/rules/surveys/README.md",
     "docs/exe/map.toml",
