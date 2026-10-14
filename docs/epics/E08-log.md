@@ -2068,8 +2068,10 @@ the harvester's gap-fill and `packs/` are the battle lane's).
   spell points from +0x479, so HER-MAN-001's effective Knowledge is the original's (its open
   question closed). VCMI's `getValueForDiplomacy` reads the bonus system's totals, artifacts
   included. A base of 99 with 29 or more from artifacts would wrap in the original (the wiki:
-  "At 129 the skill value is reset to 0"); HER-BAT-001 clamps: a quirk candidate in both lanes'
-  inboxes, for the user.
+  "At 129 the skill value is reset to 0"); HER-BAT-001 clamps. Asked, the user kept the clamp at
+  99, without the wrap and without a flag (2026-10-15: the engine keeps the base and the
+  artifacts apart and stores no sum, and the readers cap at 99 (0x4E5400; HER-BAT-001 by the
+  wiki's "The upper limit is 99"), so a cap at 127 would change nothing a rule reads).
 - **`h3_heroes::attack_defense`** (HER-ADV-001): `derive_battle_hero`'s effective Attack and
   Defense (HER-BAT-001's `effective_primary`, 0–99), the base values without hero parameters.
 - **`h3_heroes::join_bonus`** (HER-ADV-002) and `MAX_JOIN_BONUS` (3): the sum of the `join_bonus`

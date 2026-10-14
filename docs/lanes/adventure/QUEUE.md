@@ -18,7 +18,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
-- 2026-10-14 (T20a1, the reading): **a quirk candidate for the user** (both lanes): the original keeps a hero's primary skills with the worn artifacts' bonuses as signed bytes, unclamped (`hero_equip_artifact` 0x4E2A00 adds, `hero_remove_artifact` 0x4E2BD0 subtracts; readers clamp, 0x4E5400: 0–99), so a base of 99 with 29 or more from artifacts wraps (the wiki, Primary skill: "At 129 the skill value is reset to 0"; HER-DET-001 cites it). HER-BAT-001 and HER-ADV-001 clamp at 99. Reachable in increment 3 only by a map's custom primary skills (6 of the 116 placed heroes in the shipped maps have some, survey `E08-battles.md` §6) and worn artifacts; classify it (harmless-and-accepted, or a flag) with the user before a rule rests on it. In the inbox of the battle lane too.
 - 2026-10-14 (T20a1): HER-MAN-001's open question is closed: `map_hero_setup` equips the map's artifacts before it sets the spell points (0x4866D5, 0x48675C), so +0x479 includes them, as the rule has it.
 - 2026-10-14 (T19b2): the plans fight with `Step::Fight` runs and a hero cast in three fighting steps of four; the game's legal commands list no casts (a separate action head), so a client or agent on `h3-game` alone cannot list them: E05/E13's batch API or the server lane's protocol decide whether the game should (the env and the server use `h3-battle` directly). A future monster battle (T20b) is played by the same driver once the neutral seat exists.
 

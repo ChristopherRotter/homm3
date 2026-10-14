@@ -873,7 +873,7 @@ id       = "HER-ADV-001"
 title    = "A hero's Attack and Defense on the adventure map"
 context  = "heroes"
 status   = "implemented"
-summary  = "The adventure map reads a hero's Attack and Defense as the battle hero has them (HER-BAT-001): the base values plus the primary_skills effects (the worn artifacts' once per worn copy, a combination's with its parts'), each between the ruleset's bounds (0 to 99). The wandering monsters' answer weighs the hero's army with them (ADV-MON-007, E08 T20b). A ruleset without hero parameters (which validation refuses) gives the base values. E08 T20a1: `h3_heroes::attack_defense`."
+summary  = "The adventure map reads a hero's Attack and Defense as the battle hero has them (HER-BAT-001): the base values plus the primary_skills effects (the worn artifacts' once per worn copy, a combination's with its parts'), each between the ruleset's bounds (0 to 99). The wandering monsters' answer weighs the hero's army with them (ADV-MON-007, E08 T20b). A ruleset without hero parameters (which validation refuses) gives the base values. The original keeps the sum in a signed byte that wraps above 127 (the wiki: 'At 129 the skill value is reset to 0'), and its readers clamp to 0-99; the engine keeps the base and the artifacts apart and clamps the sum at 99, as HER-BAT-001 does, without the wrap (the user, 2026-10-15: the clamp is fine). E08 T20a1: `h3_heroes::attack_defense`."
 numeric  = "integer"
 
   [[rule.source]]

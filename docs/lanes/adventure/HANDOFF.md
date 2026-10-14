@@ -18,7 +18,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Experiments**: `h3-experiment` (battle-owned) has the adventure shape (`docs/experiments/README.md`); batches 1 and 2 scored. **From increment 3 agents run batches** on the client lane's harness (decision 21; needs in its inbox: `E08-battles.md` §13).
 - **Adventure ruleset part** (v6 since T19a1): terrains, roads, rivers, native cost, land table, base scouting radius, the setup bounds (`max_players` ≤ `MAX_PLAYERS` = 8), the starting stack chances, the object types, the starting resources by difficulty, the battle terrains.
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`; T8b2); since T19b2 `Step::Fight` runs (seek, fight with hero casts through `h3-battle`, a dev-dependency), heroes with Eagle Eye of their own; `the_plans_play_battles_to_a_victory` counts 192 fixed cases.
-- **Next:** #213 and #214 merged (2026-10-15); **#215** (T20a1, `cross-lane`) open; T20a2 at the next checkpoint; a quirk candidate for the user (the inbox).
+- **Next:** #213 and #214 merged (2026-10-15); **#215** (T20a1, `cross-lane`) open; T20a2 at the next checkpoint. The primary skills' signed byte: the user keeps the clamp at 99 (2026-10-15).
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), their increment-2 amendments (#115), increment 3's (ADR-0013 too) applied by T18a (#185).
 - **Fuzzing is stable-only** (user, 2026-10-10): property tests on arbitrary bytes.
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
