@@ -4,8 +4,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a (2026-10-14) and T1c (2026-10-15) done; next: M3 T1b** (`QUEUE.md`; T2–T8 also ready). Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ the amendment draft in `adr-drafts/`), ADR-0024. Built: decoders, the real-asset gate, compositor, asset tables, `h3-view` (`render`, `sequences`, `situation`, `play`, `window`), `h3_view::anim`, `h3-sdl`, the capture harness (`clients/capture/README.md`); design §3–§8; records in `E17-log.md`.
-- **Pull requests (2026-10-15):** T1c #216 open; #212 merged;
+- **E17 M0–M2 done; M3 T1a (2026-10-14) and T1c (2026-10-15) done; in progress: M3 T1b-1, shots and rays** (2026-10-15, branch `client/e17-m3-t1b1-shots`; T1b re-cut into T1b-1 and T1b-2 with the user; `QUEUE.md`; T2–T8 also ready). Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ the amendment draft in `adr-drafts/`), ADR-0024. Built: decoders, the real-asset gate, compositor, asset tables, `h3-view` (`render`, `sequences`, `situation`, `play`, `window`), `h3_view::anim`, `h3-sdl`, the capture harness (`clients/capture/README.md`); design §3–§8; records in `E17-log.md`.
+- **Pull requests (2026-10-15):** none open (T1c #216 and the shared #219 merged).
 - **The user's requirements (2026-10-13)**, epic "Decisions": a string catalogue, language packs; graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.

@@ -6,23 +6,29 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T1b — The remaining sequences, rays included
+### E17 M3 T1b-1 — Shots and rays
 
-- **Scope:** sequences for the rest of design §7.7, each with its frames recorded: a death by a
-  shot, a defending stack's reaction, shots up and down, Haste and Slow (the walk time); a
-  **ray** (the user, at T5c: Magi and Beholders draw their shot as an energy ray, not a
-  projectile: `shot_animation`'s ray branch waits trunc(115 F) and draws it, H3API's DrawRay, not
-  read): read, built, recorded; and the provisional rules' checks: a flight across rows over
-  other stacks (T5a's layer 8), a Cyclops' shot (T5b's loop), a breath on two stacks (T5c's groups
-  17–19 and its detection by place); whether hovering starts group 1. Then the capture set by
-  time: `h3drive.py set` compares every frame of a situation with one still (`render`, the
-  outline's colour at no idle step: 412 pixels per frame); with the idle steps modelled
-  (`Timeline::pulse`) each frame can be drawn with `render --at <ms>`.
+- **Scope** (T1b re-cut with the user, 2026-10-15): the **ray** (the user, at T5c: Arch Magi and
+  Beholders draw their shot as an energy ray, not a projectile: `shot_animation`'s ray branch
+  waits trunc(115 F) and draws it, H3API's DrawRay): read, built, recorded; and the sequences of
+  design §7.7 that need no spell: a death by a shot, a defending stack's reaction to a shot, shots
+  up and down, a Cyclops' shot (T5b's loop: its *provisional* L = R + 1 checked).
 - **Acceptance:** the new sequences' timelines as recorded and their frames match the original
-  outside the masks, or their differences are listed; the provisional marks of the checked rules
-  lifted or the rules fixed.
-- **Depends on:** nothing (T1a built the battle in progress: hot seat, `turn:`). **Status:**
-  ready.
+  outside the masks, or their differences are listed; the ray's reading in design §7 with every
+  address in the map.
+- **Depends on:** nothing. **Status:** in progress (2026-10-15).
+
+### E17 M3 T1b-2 — The provisional rules' checks and the capture set by time
+
+- **Scope:** recordings that check the provisional rules: a flight across rows over other stacks
+  (T5a's layer 8), a breath on two stacks (T5c's groups 17–19 and its detection by place);
+  whether hovering starts group 1. Then the capture set by time: `h3drive.py set` compares every
+  frame of a situation with one still (`render`, the outline's colour at no idle step: 412 pixels
+  per frame); with the idle steps modelled (`Timeline::pulse`) each frame can be drawn with
+  `render --at <ms>`.
+- **Acceptance:** the provisional marks of the checked rules lifted or the rules fixed; the
+  capture set compares by time.
+- **Depends on:** nothing. **Status:** ready.
 
 ### E17 M3 T2 — Every battlefield
 
@@ -97,7 +103,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 ### E17 M3 T7b — Spells on stacks, morale and luck
 
 - **Scope:** built from T7a: the spells cast on stacks (blessings, curses, damage on one stack,
-  `SpellCast`, `StackCast`, `EffectApplied`, `SpellResisted`), good and bad morale (`GoodMorale`,
+  `SpellCast`, `StackCast`, `EffectApplied`, `SpellResisted`), Haste and Slow's walk time (from T1b
+  at its re-cut: the harness casts from T7a's spell book), good and bad morale (`GoodMorale`,
   `BadMorale`: the user at T5b, the Marksmen's second shot showed nothing) and luck (the strike's
   `lucky`), their sounds, a magic animation lengthening a strike's loop.
 - **Acceptance:** their recorded sequences as recorded and their frames match.
@@ -128,7 +135,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T1b, T1c, T2–T8. **Status:** waiting.
+- **Depends on:** T1b-1, T1b-2, T2–T8. **Status:** waiting.
 
 ## Inbox
 
