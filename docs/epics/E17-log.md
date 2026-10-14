@@ -721,9 +721,15 @@ On `client/e17-m3-t1a-turns`, the user present.
   earlier image was not restored, and the saved screen's count boxes come back under a walker.
   Checked: every pixel of the melee's 7 listed frames lies on the Angels' edge and, at 3 504 and
   3 966, is the viewer's with one more shadow; the rest at 3 966 is the saved screen's count box;
-  `behind`'s 30 frames: 97 % of their pixels are the viewer's with one to four more shadows. The
-  model is a new task, **M3 T1c** (QUEUE), before T1b's frame checks lean on it. The address map:
+  `behind`'s 30 frames: 97 % of their pixels are the viewer's with one to four more shadows.
+  **The user's decision** (asked mid-task, the agent recommending it): the artifacts are not
+  copied; the viewer keeps drawing each frame whole (it gains nothing from partial redraws, and a
+  stateful renderer replaying the original's redraw order would only reproduce artifacts); the
+  frame check is to classify them instead, any other difference still failing: **M3 T1c**, next
+  session; an ADR-0020 point 9 amendment drafted in `docs/lanes/client/adr-drafts/`. The address
+  map:
   `stack_play_group`, `battle_redraw`, `battle_draw_sprite` corrected and extended;
   `battle_item_rect` 0x495F50, `battle_refresh_creatures` 0x495BF0, `screen_show_rect` 0x602BD0,
   `battlefield_rect` 0x694F18, `empty_rect` 0x6AACE8 added.
-- **The queue:** T1a done; T1c added; T1b and T7a no longer wait (the battle in progress exists).
+- **The queue:** T1a done; T1c added (the classifier); T1b and T7a no longer wait (the battle in
+  progress exists); T5 classifies the stale count boxes once it draws the boxes.

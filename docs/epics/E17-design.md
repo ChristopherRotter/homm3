@@ -769,7 +769,8 @@ listed below. What the check settled:
 Riders walk past the Angels: dark pixels at the Angels' outline edges (sword tip, robe), and at
 3 966 the Angels' count box at its usual place under the Wolf Riders' legs where the viewer's
 poses (the walk's end on hex 45) put it beside them. Read in M3 T1a: the original's redraws by
-dirty rectangles, §7.11 (shadows drawn again, the saved screen's count box); the model is M3 T1c.
+dirty rectangles, §7.11 (shadows drawn again, the saved screen's count box); not copied, the
+user's decision; M3 T1c classifies them.
 
 ### 7.10 A whole battle: turns, layers, fidgets (M2 T4b-2a)
 
@@ -859,7 +860,7 @@ lets it idle. Read in `Heroes3.exe` for it:
   194, the 30 others listed (6 844 to 12 444 ms, 46 to 225 pixels, each where the Centaurs and the
   Pegasi stand side by side while one turns or strikes): the redraws of §7.11, 97 % of their
   pixels the viewer's with one to four more shadows, the rest (at most 15 a frame) an older
-  frame's pixels under a shadow; the model is M3 T1c.
+  frame's pixels under a shadow; not copied (§7.11), classified by M3 T1c.
 - **Not drawn yet** (in a bots' battle on `battle.toml` nothing of it occurs): spells and their
   animations, morale's and luck's animations, created stacks (summoned, cloned, risen), war
   machines, heroes and count boxes (M3); a stack the record names that its first snapshot lacks
@@ -908,9 +909,11 @@ rectangle and shows only that. Read for the walk-by difference (§7.9); every ad
   rectangle sweeps over the Angels; at 3 966 the rest (211) is the Angels' count box as the
   saved screen holds it (the hex ahead free). `behind` (M3 T1a) shows both effects wherever the
   Centaurs and the Pegasi turn and strike side by side: listed in §7.10.
-- **Not modelled:** the viewer draws each moment whole on its background (`h3_render`), so it
-  matches the original wherever no redraw meets another stack. The model (the saved screen, each
-  redraw's rectangle, items drawn whole, the screen updated by rectangles) is M3 T1c.
+- **Not copied** (the user, 2026-10-14; epic "Decisions", the ADR-0020 amendment draft): the
+  viewer draws each moment whole on its background (`h3_render`) in every profile, so it matches
+  the original wherever no redraw meets another stack; the artifacts are not reproduced. The
+  frame check is to tell them apart (M3 T1c): a differing pixel that is the viewer's with one to
+  four more shadows is a redraw artifact, any other difference fails.
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

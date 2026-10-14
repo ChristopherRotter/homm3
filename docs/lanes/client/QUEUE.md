@@ -6,21 +6,23 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T1c — The redraws by dirty rectangles
+### E17 M3 T1c — The frame check classifies redraw artifacts
 
-- **Scope:** found in T1a (design §7.11): the original redraws a rectangle per frame and shows
-  only that, drawing each item that meets it whole over what the back buffer holds; under a
-  moving stack it restores the saved screen of the animation's start. The viewer composes each
-  moment whole, so it misses the shadows drawn again and the saved screen's count boxes wherever a
-  redraw meets another stack (`melee` 3 504–3 966, most of `behind`'s listed frames). Model it:
-  the saved screen at each backdrop (0x446830), each redraw's rectangle (`stack_play_group`'s
-  union widened 17 pixels left and right; `strike_animation`'s and the idle step's from
-  `RefreshCreatures` 0x495BF0: to read), items drawn whole when they meet it (`battle_item_rect`
-  0x495F50: the frames' content boxes), the screen updated by rectangles; the flight's own
-  save-under (0x4B4D0B) and the shot's (§7.9) where they meet it. A stateful layer over
-  `h3_render` (the frame check, `play`, the window), pure.
-- **Acceptance:** `melee` and `behind` exact outside the masks, or each remaining difference
-  listed with its cause; the other sequences stay exact.
+- **Scope:** found in T1a (design §7.11): the original redraws by dirty rectangles, drawing items
+  whole over pixels it did not restore, so shadows darken again and a stale count box comes back
+  under a walker. **The user's decision (2026-10-14):** not copied; the viewer keeps drawing
+  each frame whole in every profile (epic "Decisions"; the ADR-0020 amendment draft in
+  `adr-drafts/`, for the next checkpoint's `shared/` PR). Instead the frame check
+  (`h3drive.py frames`, `h3cap.compare`) counts a differing pixel as a redraw artifact only when
+  the original's pixel is the viewer's with one to four more applications of the shadow (body
+  `(d >> 1) & 0x7BEF`, border `((d >> 2) & 0x39E7) + ((d >> 1) & 0x7BEF)`, §3.3), and records
+  `<ms> <differing> <artifacts>`; any other difference fails as before. T1a's numbers: `melee`
+  3 504 and 3 966 all one more shadow; `behind` 97 % of 30 frames' pixels; the rest (at most 15
+  a frame, during turns) is an older frame's pixel under a shadow: decide whether those count
+  (the rectangle the original left unrestored: §7.11) or stay listed. Re-record the six
+  sequences' frame files (`--reuse`); the diff PNGs mark artifacts in their own colour.
+- **Acceptance:** every sequence's frames: 0 differing outside the masks except listed ones, the
+  redraw artifacts counted apart; `melee`'s walk-by and `behind`'s 30 frames classified.
 - **Depends on:** nothing. **Status:** ready.
 
 ### E17 M3 T1b — The remaining sequences, rays included
@@ -82,7 +84,9 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 
 - **Scope:** each stack's count box (design §4.3: its place, `cranim.txt`'s offset, the colours
   by the stack's effects, the digits in the battle's font), drawn when the original draws it
-  (not during a stack's own animation: to read); their masks removed from the capture set.
+  (not during a stack's own animation: to read); their masks removed from the capture set; a stale box the
+  original's partial redraw leaves under a walker (design §7.11) is a redraw artifact, not
+  copied (T1c's decision): classified or masked.
 - **Acceptance:** the capture set matches with the count boxes drawn.
 - **Depends on:** T4. **Status:** ready.
 

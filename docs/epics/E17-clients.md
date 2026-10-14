@@ -47,6 +47,12 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
 - **Graphics options** (2026-10-13), eventually: per effect the original's way or a modern one
   (shadows first); `faithful` is the default and the reference. The draw list names what is
   drawn, the compositor decides how (QUEUE inbox).
+- **The original's redraw artifacts are not copied** (2026-10-14, M3 T1a): the original redraws
+  by dirty rectangles (design §7.11), which darkens shadows again and leaves stale count boxes;
+  the viewer keeps drawing each frame whole in every profile, and the frame check classifies
+  those pixels apart (a pixel that is ours with one to four more shadows) while any other
+  difference still fails (M3 T1c). An ADR-0020 point 9 amendment is drafted in
+  `docs/lanes/client/adr-drafts/` for the next checkpoint.
 - **The natural obstacles' types first** (2026-10-13, CLT-Q3): the engine dropped them at
   generation; a `cross-lane` change carries them to the wire before T7 draws obstacles.
 
@@ -233,7 +239,8 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   later flip, a melee whose striker and target both turn, a shot whose shooter turns; both
   timelines as recorded on the first try, frames 43 of 43 and 164 of 194 exact. The walk-by
   difference read: the original redraws by dirty rectangles (shadows drawn again, the saved
-  screen's count boxes); the model queued as **T1c**.
+  screen's count boxes); the user's decision: not copied, the frame check classifies them
+  (**T1c**; Decisions).
 
 ### Later (refined when they come up)
 
