@@ -877,8 +877,8 @@ impl AdventureState {
         }
         let upgrade = core.upgrades(creature).first().copied()?;
         let stack = army.iter_mut().find(|s| s.creature == upgrade)?;
-        // (2c + 2) / 3, exact in 64 bits and below 2^32 again.
-        let fewer = u32::try_from((u64::from(count) * 2 + 2) / 3).unwrap_or(u32::MAX);
+        // ⌈2c / 3⌉ = (2c + 2) / 3, exact in 64 bits and below 2^32 again.
+        let fewer = u32::try_from((u64::from(count) * 2).div_ceil(3)).unwrap_or(u32::MAX);
         stack.count = stack.count.saturating_add(fewer);
         Some((upgrade, fewer))
     }

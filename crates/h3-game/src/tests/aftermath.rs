@@ -561,7 +561,7 @@ fn the_count_takes_the_shares_own_single_precision_value() {
         share: h3_contracts::Rate { bp: 7000, single },
         creature: IMP,
     };
-    let bits = core::num::NonZeroU32::new(0x3f33_3333);
+    let bits = NonZeroU32::new(0x3f33_3333);
     let count = crate::state::raised_count;
     assert_eq!(count(&single_rules(), &killed, share(bits)), 6);
     assert_eq!(count(&single_rules(), &killed, share(None)), 6);
