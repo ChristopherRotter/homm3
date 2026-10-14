@@ -263,3 +263,9 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   user's version (not quirks), D-16 to D-18 as the code; BAT-SIE-016 to 018 `verified`.
   **AI (D-19)**: the automatic keep shot the single Marksman before the ten, the wiki's computer
   rule and not the engine's (the automatic Ballista's, VCMI's): BAT-Q45 for the user.
+- **Master merged twice; the pull request; the checkpoint.** #205 took pack format v40 and core
+  ruleset hash v44, so T7's pack format is v41; the replays re-recorded (only the core ruleset
+  hash moved). The full verify with the original data green on b164922 after two coverage
+  fixes (a keep or tower without a turret; stale profiles of the previous build); `cross-lane`
+  PR #209. The user confirmed T7 and answered BAT-Q45 with (b): the computer's target choice for
+  shooting war machines is read next (T7d).

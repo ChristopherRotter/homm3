@@ -89,7 +89,10 @@ checkpoint; BAT-Q43 at its start).
   [`E04c-log.md`](E04c-log.md)): T7a the reading (§7.30, BAT-Q44), T7b the battle, T7c the batch 3e
   by an agent: every value as the code, S-06 and S-07 refuted in the user's version; the
   automatic keep's target as the wiki's rule (BAT-Q45); BAT-SIE-016 to 018 `verified`, 019
-  `implemented`; awaiting the user's confirmation and the `cross-lane` pull request.
+  `implemented`; the `cross-lane` pull request #209; confirmed by the user 2026-10-14.
+- [ ] T7d The automatic shooter's target (BAT-Q45: the user chose (b)): the computer's target
+  choice for shooting war machines read (from 0x4740D0), built for the turrets and the Ballista,
+  confirmed by a batch.
 - [ ] T8 The siege's other rules (no retreat or surrender for the besieged, the spell cost's town
   armies, Teleport's and the summon's siege limits, the outcome: walls, capture).
 - [ ] T9 Workload and measurements; T10 closure (the independent review, as E04b's T11).
