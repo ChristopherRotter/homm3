@@ -73,6 +73,7 @@ fn battle(r: &BattleRuleset, hero: BattleHero, defender: &[&str]) -> BattleState
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],
+        ..BattleSetup::default()
     };
     let mut s = BattleState::new(r, &setup, 1).unwrap();
     while s.side_to_act() != Some(BattleSide::Attacker) {
@@ -178,6 +179,7 @@ fn a_faerie_dragons_spell_is_never_sent_away_by_the_other_dragons_mirror() {
                 war_machines: [vec![], vec![]],
                 formations: [Formation::Loose; 2],
                 funds: [0; 2],
+                ..BattleSetup::default()
             };
             // The attacker's dragon acts first and has drawn its spell.
             let mut s = BattleState::new(&r, &setup, seed).unwrap();

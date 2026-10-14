@@ -413,6 +413,20 @@ fn scenario_errors() {
         formations(&["x".to_owned()]),
         Err(BattlePackError::Syntax("unknown side `x`".to_owned()))
     );
+    // The game's difficulty and the human players (E04c T7d, ADR-0023 point 7), defaulting to a
+    // game of two computer players on Easy.
+    let plain = parse_scenario(header).unwrap();
+    assert_eq!((plain.difficulty, plain.human), (0, [false; 2]));
+    let game =
+        parse_scenario(&format!("{header}difficulty = 3\nhuman = [\"defender\"]\n")).unwrap();
+    assert_eq!((game.difficulty, game.human), (3, [false, true]));
+    let (_, setup) =
+        synthetic(&SYNTHETIC_DUEL.replace("[scenario]\n", "[scenario]\ndifficulty = 2\n")).unwrap();
+    assert_eq!((setup.difficulty, setup.human), (2, [false; 2]));
+    assert_eq!(
+        parse_scenario(&format!("{header}human = [\"nobody\"]\n")),
+        Err(BattlePackError::Syntax("unknown side `nobody`".to_owned()))
+    );
 }
 
 // covers: BAT-HER-001
@@ -1918,6 +1932,7 @@ fn harvested_hero_effects_reproduce_the_experiments() {
             war_machines: [war_machines(&details, &sod), vec![]],
             formations: [Formation::Loose; 2],
             funds: [0; 2],
+            ..BattleSetup::default()
         };
         let state = BattleState::new(&sod, &setup, 1).unwrap();
         let stacks: Vec<Stack> = state.stacks().to_vec();

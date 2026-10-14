@@ -2,23 +2,36 @@
 # One-time setup of an agent's cloud sandbox (docs/08-work-process.md, "Cloud sandbox").
 #
 # Run from a clone of the user's repo, after the user's original-data files were staged:
-#   scripts/sandbox-setup.sh [STAGED_REPO_DIR]
+#   scripts/sandbox-setup.sh [--lane <lane>] [STAGED_REPO_DIR]
 # STAGED_REPO_DIR is where the staging tool put the user's repo files
-# (default /mnt/user-data/uploads/homm3).
+# (default /mnt/user-data/uploads/homm3). --lane names the session's lane: its baseline is the
+# gates it builds on (below).
 #
 # 0. Makes the clone track every branch name: a single-branch clone (`--depth 1`) stores no
 #    `origin/<branch>` for a pushed lane branch, and the session's stop hook then reports pushed
 #    commits as unpushed (docs/08-work-process.md, "Cloud sandbox"). Fetches stay explicit.
 # 1. Links the image's `stable` toolchain as the pinned one (static.rust-lang.org is blocked).
 # 2. Copies the staged original-data files into this clone's gitignored original-data/.
-# 3. In the background: installs llvm-20 (coverage), cargo-deny and cargo-llvm-cov, capstone and
-#    pefile (scripts/exe.py, docs/exe/README.md), then runs
-#    scripts/sandbox-verify.sh --with-original-data. Logs in target/sandbox/.
+# 3. In the background: installs llvm-20 (coverage), cargo-deny and cargo-llvm-cov (their release
+#    binaries from GitHub, pinned below; `cargo install` if the download fails), capstone and
+#    pefile (scripts/exe.py, docs/exe/README.md), then the baseline through
+#    scripts/verify-once.sh, which runs the full gates only for code no run has verified yet
+#    (docs/05-testing.md, "Each code state once"): `engine -- --with-original-data`, or for the
+#    client lane `clients` (with SDL's build dependencies, clients.yml's list). Logs in
+#    target/sandbox/.
 # Prints one line per step; the full output stays in the logs.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
-staged="${1:-/mnt/user-data/uploads/homm3}"
+lane=
+staged=/mnt/user-data/uploads/homm3
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --lane) lane="${2:?--lane needs a lane}"; shift ;;
+        *) staged="$1" ;;
+    esac
+    shift
+done
 logs="$root/target/sandbox"
 mkdir -p "$logs"
 
@@ -66,17 +79,40 @@ else
     echo "original-data: not staged: ${missing[*]} (verify will run without --with-original-data)"
 fi
 
-# 3. Tools, then the baseline verify, in the background.
-verify_args=()
-[ ${#missing[@]} -eq 0 ] && verify_args=(--with-original-data)
+# 3. Tools, then the baseline, in the background. The tools' release binaries (x86_64 Linux,
+#    static): seconds, where `cargo install` compiles for about five minutes.
+deny_url=https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz
+llvm_cov_url=https://github.com/taiki-e/cargo-llvm-cov/releases/download/v0.9.1/cargo-llvm-cov-x86_64-unknown-linux-musl.tar.gz
+packages=(llvm-20)
+if [ "$lane" = client ]; then
+    baseline=(clients)
+    log=target/sandbox/clients-check.log
+    packages+=(cmake libx11-dev libxext-dev libxcursor-dev libxfixes-dev libxi-dev libxrandr-dev
+        libxss-dev libxtst-dev libasound2-dev libpulse-dev)
+else
+    baseline=(engine)
+    [ ${#missing[@]} -eq 0 ] && baseline+=(-- --with-original-data)
+    log=target/sandbox/verify.log
+fi
 nohup bash -c "
-    (apt-get update -qq && apt-get install -y -qq llvm-20) > '$logs/apt.log' 2>&1 &
+    (apt-get update -qq && apt-get install -y -qq ${packages[*]}) > '$logs/apt.log' 2>&1 &
     apt=\$!
-    for tool in cargo-deny cargo-llvm-cov; do
-        command -v \$tool > /dev/null || cargo install --locked \$tool
+    bin=\$HOME/.cargo/bin
+    for tool in 'cargo-deny $deny_url' 'cargo-llvm-cov $llvm_cov_url'; do
+        set -- \$tool
+        command -v \$1 > /dev/null && continue
+        tmp=\$(mktemp -d)
+        if curl -sSfL \"\$2\" | tar -xz -C \"\$tmp\" \
+            && install -m 755 \"\$(find \"\$tmp\" -type f -name \$1 | head -n 1)\" \"\$bin/\$1\"; then
+            echo \"\$1: release binary\"
+        else
+            cargo install --locked \$1
+        fi
+        rm -rf \"\$tmp\"
     done > '$logs/cargo-install.log' 2>&1
     pip install --break-system-packages -q capstone pefile > '$logs/pip.log' 2>&1
     wait \$apt
-    '$root/scripts/sandbox-verify.sh' ${verify_args[*]}
+    '$root/scripts/verify-once.sh' ${baseline[*]}
 " > "$logs/setup.log" 2>&1 &
-echo "tools and verify: running in the background; the baseline verify writes target/sandbox/verify.log"
+echo "tools and baseline: running in the background (scripts/verify-once.sh ${baseline[*]}; the" \
+    "run's line in target/sandbox/setup.log, its log $log)"

@@ -19,9 +19,11 @@ melee's walk-by, 30 of `behind`'s 194 frames).
 1. The client draws each frame whole, in every profile. It does not emulate the original's
    partial redraws or reproduce their artifacts: they are not part of `faithful`.
 2. The reference check stays exact for everything else: a differing pixel counts as a redraw
-   artifact only when it is the viewer's pixel with one to four more applications of the
-   original's shadow (design §3.3); any other difference fails as before. Stale count boxes stay
-   masked until the count boxes are drawn (M3 T5), which classifies them the same way.
+   artifact only when it is the viewer's pixel at the same moment with one to four more
+   applications of the original's shadow (design §3.3), or one the viewer drew there at an
+   earlier moment of the sequence with at least one more (M3 T1c); any other difference fails as
+   before. Stale count boxes stay listed differences until the count boxes are drawn (M3 T5),
+   which classifies them.
 
 ## Consequences
 

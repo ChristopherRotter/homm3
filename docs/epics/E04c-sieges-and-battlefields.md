@@ -90,9 +90,17 @@ checkpoint; BAT-Q43 at its start).
   by an agent: every value as the code, S-06 and S-07 refuted in the user's version; the
   automatic keep's target as the wiki's rule (BAT-Q45); BAT-SIE-016 to 018 `verified`, 019
   `implemented`; the `cross-lane` pull request #209; confirmed by the user 2026-10-14.
-- [ ] T7d The automatic shooter's target (BAT-Q45: the user chose (b)): the computer's target
-  choice for shooting war machines read (from 0x4740D0), built for the turrets and the Ballista,
-  confirmed by a batch.
+**Increment 6** (the user, 2026-10-14: the next sensible increment; BAT-Q45 (b), BAT-Q46 at its
+reading).
+
+- [x] **T7d The automatic turret's target** — built 2026-10-14 (record: [`E04c-log.md`](E04c-log.md)):
+  the reading (§7.31: the turret's own routine 0x41E190, not the computer's shooter), BAT-Q46 (the
+  user: the turrets fully, the setup's difficulty and human sides, ADR-0023 point 7), the seam
+  (`shared/e04c-t7d-seam`, `X87::sqrt`), the battle (`aim.rs`), batch 3f by an agent: every
+  target as the code; BAT-SIE-020 to 023 `verified`; BAT-STUB-3.
+- [ ] T7e The automatic Ballista's target: the computer's general shooter (0x41F060, 0x41EB80,
+  0x435CB0, 0x435B90) for the Ballista without Artillery (BAT-WAR-002, VCMI's rule until then), and
+  BAT-STUB-3 (the hero's Artillery level on the seam); a batch.
 - [ ] T8 The siege's other rules (no retreat or surrender for the besieged, the spell cost's town
   armies, Teleport's and the summon's siege limits, the outcome: walls, capture).
 - [ ] T9 Workload and measurements; T10 closure (the independent review, as E04b's T11).

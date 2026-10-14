@@ -26,10 +26,11 @@
 //! battlefield's handle + 1 (0 none), the battle is at an anti-magic garrison, the town the
 //! battle is fought at as its faction's handle + 1 (0: not at a town), its fort level (0 none, 1
 //! Fort, 2 Citadel, 3 Castle), its moat (0 absent, 1 harmless, 2 damaging), the gate is open
-//! (or destroyed), the gate is destroyed, then the hit points of each of the
+//! (or destroyed), the gate is destroyed, the game's difficulty (0 Easy to 4 Impossible), the
+//! viewer's player is human, the opponent's, then the hit points of each of the
 //! [`MAX_WALL_TARGETS`] wall-shot targets (0: destroyed, not one; −1: not set up by the fort
 //! level)]` (BAT-TAC-001, BAT-FLE-001, BAT-FLE-002, BAT-MAG-049, BAT-MAG-053, BAT-MAG-039,
-//! BAT-TER-002, BAT-MAG-061, BAT-SIE-001, BAT-SIE-003, BAT-SIE-010, BAT-SIE-012).
+//! BAT-TER-002, BAT-MAG-061, BAT-SIE-001, BAT-SIE-003, BAT-SIE-010, BAT-SIE-012, BAT-SIE-023).
 //! Public hero part, zeros for a side without a hero (which gets no lucky strikes in profiles
 //! with quirk Q-0003): `[led by a hero, hero type handle, attack, defense, power, knowledge,
 //! mana, max mana, commands its Ballista, commands its First Aid Tent, casts this round,
@@ -108,7 +109,8 @@
 //! two planes. v17 (E04c T6): the gate's destruction and the wall-shot targets' hit points as
 //! globals, the heroes' command of their Catapults, the own hero's Ballistics level; the wall
 //! plane shows the standing walls. v18 (E04c T7): the turret flag as the last per-stack value
-//! (BAT-SIE-016).
+//! (BAT-SIE-016). v19 (E04c T7d): the game's difficulty and the sides' human players as globals
+//! before the wall-shot targets (ADR-0023 point 7).
 
 use h3_battle::{
     DamageRoll, HeroView, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Observation, OwnHeroView,
@@ -120,10 +122,10 @@ use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 18;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 19;
 
 /// Global features.
-pub const GLOBALS: usize = 27 + MAX_WALL_TARGETS;
+pub const GLOBALS: usize = 30 + MAX_WALL_TARGETS;
 /// The public features of a hero.
 pub const HERO_PUBLIC_FEATURES: usize = 14;
 /// The values of the viewer's hero's private part before its spell bonuses.
@@ -378,6 +380,10 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
         obs.siege.map_or(0.0, |s| f32::from(s.moat_kind as u8)),
         flag(obs.siege.is_some_and(|s| s.gate_open)),
         flag(obs.siege.is_some_and(|s| s.gate_destroyed())),
+        // rule: BAT-SIE-023
+        f32::from(obs.difficulty),
+        flag(obs.human[own]),
+        flag(obs.human[other]),
     ]);
     // rule: BAT-SIE-010
     for (t, v) in (0u8..).zip(walls.iter_mut()) {
@@ -544,7 +550,7 @@ mod tests {
             [
                 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 255.0, 255.0, 0.0, 0.0,
                 meadow, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                0.0, 0.0, 0.0
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0
             ]
         );
         assert!(out[HEROES..FIELD].iter().all(|v| *v == 0.0));
@@ -604,7 +610,7 @@ mod tests {
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
         assert_eq!(
             OBSERVATION_LEN,
-            35 + 2 * 14 + (65 + 4 * 128) + 16 * 255 + (48 + 27 + 3 * 8) * 42
+            38 + 2 * 14 + (65 + 4 * 128) + 16 * 255 + (48 + 27 + 3 * 8) * 42
         );
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).
@@ -771,7 +777,7 @@ mod tests {
                 [
                     0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0, 0.0,
                     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                    0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ],
                 brea,
                 corwin,
@@ -785,7 +791,7 @@ mod tests {
                 [
                     0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0, 0.0,
                     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                    0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 ],
                 corwin,
                 brea,
@@ -889,8 +895,17 @@ mod tests {
         let mut out = vec![0.0; OBSERVATION_LEN];
         encode(&obs, 17, &mut out).unwrap();
         let vale = f32::from(r.faction_by_key("synthetic:vale").unwrap().raw()) + 1.0;
-        let globals = GLOBALS - MAX_WALL_TARGETS - 5;
+        let globals = GLOBALS - MAX_WALL_TARGETS - 8;
         assert_eq!(out[globals..globals + 5], [vale, 2.0, 2.0, 0.0, 0.0]);
+        // The game's difficulty and the human players (E04c T7d): the defaults, then the
+        // viewer's side human on Hard.
+        assert_eq!(out[globals + 5..globals + 8], [0.0, 0.0, 0.0]);
+        let mut hard = obs.clone();
+        hard.difficulty = 2;
+        hard.human = [true, false];
+        encode(&hard, 17, &mut out).unwrap();
+        assert_eq!(out[globals + 5..globals + 8], [2.0, 1.0, 0.0]);
+        encode(&obs, 17, &mut out).unwrap();
         // The wall-shot targets' hit points: a Citadel sets up the keep, not the towers
         // (BAT-SIE-010).
         assert_eq!(

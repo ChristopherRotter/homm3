@@ -133,6 +133,7 @@ pub(crate) mod tests {
             periodic_rounds: 0,
             summoned: None,
             cost_change: 0,
+            human: false,
             hero: None,
         };
         Observation {
@@ -148,6 +149,7 @@ pub(crate) mod tests {
             terrain: None,
             battlefield: None,
             anti_magic: false,
+            difficulty: 0,
             siege: None,
             sides: [side, side],
             own_hero: None,

@@ -738,3 +738,33 @@ On `client/e17-m3-t1a-turns`, the user present.
   `clients/scripts/check.sh` all gates (100 %), `check-lane`, `check-docs`, `check-exe-map`;
   `h3-view sequences` and the harness's `sequences` (an idle machine): the six as recorded;
   `play scenarios/battle.toml` 1 051 frames as before.
+
+### M3 T1c — The frame check classifies redraw artifacts (2026-10-15)
+
+On `client/e17-m3-t1c-artifacts`, the user present.
+
+- **Starting point:** master at #212 (T1a, merged 2026-10-14). T1a's captured frames had lived
+  only in its sandbox, reclaimed since: the six sequences were captured again (`h3drive.py
+  frames`, about 30 minutes on an idle sandbox); every differing count came back as recorded.
+  The runbook now says so.
+- **The classifier** (`h3cap.redraws`, design §7.11; *provisional*): a differing pixel is a
+  redraw artifact when the original's is the viewer's at the same moment with one to four more
+  shadows (body `(d >> 1) & 0x7BEF` or border `((d >> 2) & 0x39E7) + ((d >> 1) & 0x7BEF)`, in
+  any order), or one the viewer drew there at an earlier moment of the sequence with at least one
+  more. The frame files record `<ms> <differing> <artifacts>` (`sequences.toml`'s header); a change
+  in either fails; the diff PNGs mark artifacts yellow.
+- **The older moment** (the task's open point; the agent's default, put to the user at the start
+  without objection): counted, with at least one more shadow; a pixel equal to an earlier frame's
+  with no more shadow, which a timing slip of the viewer's would give, is no artifact. In `behind`
+  73 of 3 951 pixels need it (mostly the frame before; 9 at 7 844 from 9 to 91 frames back, the
+  saved screen), none is an older frame's unshadowed.
+- **Results:** `melee` 6 of 7 frames artifacts only (up to four shadows); at 3 966 ms 96
+  artifacts and the stale count box, 231 pixels in its 30 × 11 rectangle at (476, 197), listed
+  until T5 draws the boxes (the task's text had all of 3 966 as shadows; T1a's log had it right).
+  `behind` all 30 frames artifacts only. Strictness: the viewer's frames shifted one pixel differ
+  in millions of pixels, of which 0.2 % fit the rule, so a misplacement still fails.
+- **The ADR-0020 amendment draft** says the earlier-moment case and that stale count boxes stay
+  listed until T5.
+- **Checks:** `frames --reuse` all six as recorded; `clients/scripts/check.sh` (below, PR);
+  the session's baseline full verify at the start was green but for this HANDOFF's budget (an
+  in-progress line), trimmed.

@@ -4,6 +4,8 @@ README.md, "Agents running a batch themselves"). *Provisional.* Builds on `catap
 3d) and `siege.py` (3c): the same harness, hot seat (Red and Blue human, so the agent commands
 both armies), the clock stepped 10 ms at a time and the game's memory read after each step.
 
+Batch 3f (E04c T7d, the automatic keep's target) runs on the same plans: every stack defends.
+
 For each map (one encounter each, `h3-experiment E04c-batch-3e.toml --only <id>`): the agent
 steps the only Red hero north into Blue's town and plays the encounter's plan: at each turn of a
 stack it commands, the plan's next step for that stack in that round, else Defend. Rounds are
@@ -66,6 +68,12 @@ PLANS = {
         {"side": 1, "record": "keep", "round": 4, "action": "shoot", "argument": "titans"},
     ]},
     "AI": {"rounds": 3, "steps": []},
+    # Batch 3f (E04c T7d): the automatic keep's target; every stack defends.
+    "FV": {"rounds": 2, "steps": []},
+    "TU": {"rounds": 2, "steps": []},
+    "DE": {"rounds": 2, "steps": []},
+    "DN": {"rounds": 2, "steps": []},
+    "BA": {"rounds": 2, "steps": []},
 }
 
 

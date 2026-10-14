@@ -67,8 +67,10 @@ pub mod wire;
 /// town the battle is fought at (`wire::Siege`); the events `GateOpened`, `GateClosed`,
 /// `MoatDamage`. v31 (E04c T6, ADR-0023 point 6): the wall shots: the command `ShootWall`, the
 /// events `WallShot`, `WallQuaked`, `WallDestroyed`, the rejections `CannotShootWalls` and
-/// `NoSuchPart`, the town's wall parts, a hero's command of its Catapult.
-pub const PROTOCOL_VERSION: u32 = 31;
+/// `NoSuchPart`, the town's wall parts, a hero's command of its Catapult. v32 (E04c T7d, ADR-0023
+/// point 7): the observation names the game's difficulty and, per side, whether its player is
+/// human.
+pub const PROTOCOL_VERSION: u32 = 32;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

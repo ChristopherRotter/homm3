@@ -1731,6 +1731,25 @@ pub fn turret_ruleset(profile: &str) -> BattleRuleset {
     )
 }
 
+/// [`turret_ruleset`] with Fight Values `(name, value)`, the computer's worth of a creature
+/// (E04c T7d, BAT-SIE-021; the other test creatures have none).
+pub fn fighting_turret_ruleset(profile: &str, fights: &[(&str, u32)]) -> BattleRuleset {
+    ruleset_from(
+        profile,
+        |_| {},
+        |core, battle| {
+            let (mut c, mut b) = creature_defs(&[TURRET]);
+            core.creatures.append(&mut c);
+            battle.creatures.append(&mut b);
+            for def in &mut core.creatures {
+                if let Some(&(_, value)) = fights.iter().find(|(n, _)| def.key.name() == *n) {
+                    def.info.fight_value = value;
+                }
+            }
+        },
+    )
+}
+
 /// [`ruleset_with`], with the pack's core and battle parts patched before they are compiled
 /// (review repros only).
 pub fn ruleset_from(
@@ -3086,6 +3105,7 @@ pub fn setup(rules: &BattleRuleset, attacker: &[Spec], defender: &[Spec]) -> Bat
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],
+        ..BattleSetup::default()
     }
 }
 

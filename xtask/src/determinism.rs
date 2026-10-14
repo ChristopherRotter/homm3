@@ -33,6 +33,13 @@ pub fn run(_args: &[String]) -> Result<(), String> {
     debug.arg("test").args(&fixture_test).arg("--quiet");
     run_cmd(debug)?;
 
+    run_optimized()
+}
+
+/// The release and `target-cpu=native` legs alone: what `verify` runs when its `test` or
+/// `coverage` gate has run the golden replays in a debug build already.
+pub fn run_optimized() -> Result<(), String> {
+    let fixture_test = fixture_tests(&workspace_root());
     println!("determinism: release");
     let mut release = cargo();
     release

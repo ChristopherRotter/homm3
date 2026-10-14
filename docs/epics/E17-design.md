@@ -723,7 +723,8 @@ since M3 T1a, `m` in `ours.txt`). A screen the harness's actions replace within 
 (a wait or a defend passes the turn at once, `t<ms>b`) is compared, not the one before it. The only thing taken
 from the original is a fidget (a stack the game's memory shows in group 1): the viewer has none of
 its own yet (§7.2). Each sequence's counts per frame are recorded
-(`situations/timelines/<id>-frames.txt`); the command fails when one changes.
+(`situations/timelines/<id>-frames.txt`: `<ms> <differing> <redraw artifacts among them>`, the
+artifacts since M3 T1c, §7.11); the command fails when one changes.
 
 **Result** (2026-10-13): walk 42 frames and shot 50 all exact; melee 68 of 75 exact, the 7 others
 listed below. What the check settled:
@@ -770,7 +771,8 @@ Riders walk past the Angels: dark pixels at the Angels' outline edges (sword tip
 3 966 the Angels' count box at its usual place under the Wolf Riders' legs where the viewer's
 poses (the walk's end on hex 45) put it beside them. Read in M3 T1a: the original's redraws by
 dirty rectangles, §7.11 (shadows drawn again, the saved screen's count box); not copied, the
-user's decision; M3 T1c classifies them.
+user's decision; classified since M3 T1c (§7.11): 6 of the 7 frames are artifacts only, and at
+3 966 the 231 other pixels are the stale count box (listed until M3 T5 draws the boxes).
 
 ### 7.10 A whole battle: turns, layers, fidgets (M2 T4b-2a)
 
@@ -858,9 +860,8 @@ lets it idle. Read in `Heroes3.exe` for it:
   shoot twice, turn back (9, 8). Every rule as T4b-2a read it: both timelines as recorded (34 and
   203 changes, the six sequences as recorded). Frames: `climb` 43 of 43 exact; `behind` 164 of
   194, the 30 others listed (6 844 to 12 444 ms, 46 to 225 pixels, each where the Centaurs and the
-  Pegasi stand side by side while one turns or strikes): the redraws of §7.11, 97 % of their
-  pixels the viewer's with one to four more shadows, the rest (at most 15 a frame) an older
-  frame's pixels under a shadow; not copied (§7.11), classified by M3 T1c.
+  Pegasi stand side by side while one turns or strikes): the redraws of §7.11, not copied,
+  every pixel classified as a redraw artifact since M3 T1c (§7.11).
 - **Not drawn yet** (in a bots' battle on `battle.toml` nothing of it occurs): spells and their
   animations, morale's and luck's animations, created stacks (summoned, cloned, risen), war
   machines, heroes and count boxes (M3); a stack the record names that its first snapshot lacks
@@ -911,9 +912,21 @@ rectangle and shows only that. Read for the walk-by difference (§7.9); every ad
   Centaurs and the Pegasi turn and strike side by side: listed in §7.10.
 - **Not copied** (the user, 2026-10-14; epic "Decisions", the ADR-0020 amendment draft): the
   viewer draws each moment whole on its background (`h3_render`) in every profile, so it matches
-  the original wherever no redraw meets another stack; the artifacts are not reproduced. The
-  frame check is to tell them apart (M3 T1c): a differing pixel that is the viewer's with one to
-  four more shadows is a redraw artifact, any other difference fails.
+  the original wherever no redraw meets another stack; the artifacts are not reproduced.
+- **Classified** (M3 T1c, *provisional*; `h3cap.redraws`): a differing pixel is a redraw
+  artifact when the original's is the viewer's at the same moment with one to four more shadows
+  (body or border in any order, §3.3), or one the viewer drew there at an earlier moment of the
+  sequence with at least one more (a rectangle restored from the saved screen or left as it was).
+  Any other difference is no artifact; the frame check records both counts and fails when
+  either changes, and the diff PNG marks artifacts yellow, other differences red. On the six
+  sequences captured again (T1a's frames were lost with its sandbox; every count as recorded):
+  `melee` 6 of its 7 frames artifacts only (9 to 198 pixels, up to four shadows); at 3 966, 96
+  artifacts and the stale count box, 231 pixels in its 30 × 11 rectangle at (476, 197), listed
+  until M3 T5 draws the boxes; `behind` all 30 frames artifacts only, 3 951 pixels: 3 878 at the
+  same moment (up to four shadows), 73 an earlier moment's (mostly the frame before; none with no
+  more shadow, which a timing slip of the viewer's would give). The rule's strictness: the
+  viewer's frames shifted one pixel differ in 2.4 to 11 million pixels over `walk`, `shot` and
+  `behind`, of which 0.2 % fit it; a misplacement still fails.
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

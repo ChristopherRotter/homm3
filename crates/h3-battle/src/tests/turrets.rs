@@ -384,31 +384,6 @@ fn the_turret_s_shot_sums_a_draw_per_creature_and_takes_only_the_protections() {
     assert_eq!(damage, sum / 2);
 }
 
-// covers: BAT-SIE-018
-#[test]
-fn the_automatic_turret_shoots_the_ballista_s_target() {
-    let r = turret_ruleset("t:faithful");
-    // The automatic choice prefers a stack that is no war machine: the attacker's Ballista and
-    // a creature; the keep shoots the creature (BAT-WAR-002's rule).
-    let mut setup = at(
-        &r,
-        town(&r, FortLevel::Citadel, 0),
-        [None, None],
-        &[(0, "fixed", 5)],
-        &[(0, "fast", 20)],
-    );
-    setup.war_machines[0] = vec![r.creature_by_key("t:ballista").unwrap()];
-    let (s, events) = start(&r, &setup, 3);
-    let keep = turrets(&s)[0].0;
-    assert_eq!(
-        strikes(&events)
-            .iter()
-            .map(|&(a, t, _)| (a, t))
-            .collect::<Vec<_>>(),
-        [(keep, 0)]
-    );
-}
-
 // ---------------------------------------------------------------- BAT-SIE-019
 
 // covers: BAT-SIE-019

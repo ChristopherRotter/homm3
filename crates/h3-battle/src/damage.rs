@@ -231,11 +231,17 @@ impl Strike {
         }
         let d2 = stored(d1, DOUBLE_BITS).times(f).trunc();
         // 3. Times the protection factor.
+        stored(d2, DOUBLE_BITS).times(self.protection()).trunc()
+    }
+
+    /// The executable's stage-3 factor (0x443D90): the share Shield or Air Shield lets through as
+    /// its stored `f32`, the half while petrified (`installation.md` §7.10) and the target's
+    /// hero's Armorer, in x87 arithmetic. The computer's estimates read it too (BAT-SIE-020).
+    pub(crate) fn protection(&self) -> X87 {
         let mut g = X87::ONE;
         if self.protection_percent < 100 {
             g = single(self.protection_percent, 100);
         }
-        // Stone Gaze's half (`installation.md` §7.10).
         if self.petrified {
             g = g.times(double(1, 2));
         }
@@ -244,7 +250,7 @@ impl Strike {
             let kept = X87::ONE.minus(X87::fixed(reduction).min(X87::ONE));
             g = kept.times(g);
         }
-        stored(d2, DOUBLE_BITS).times(g).trunc()
+        g
     }
 
     /// The executable's stage 1: the bonuses as an integer, each fractional one truncated as it

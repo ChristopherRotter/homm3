@@ -1,7 +1,7 @@
 # ADR-0023: Sieges — the town on the setup as derived facts
 
 - Status: Accepted (user, 2026-10-13, BAT-Q40 and BAT-Q41; drafted at E04c T4); point 6 amended
-  2026-10-14 (user, BAT-Q43; E04c T6)
+  2026-10-14 (user, BAT-Q43; E04c T6); point 7 added 2026-10-14 (user, BAT-Q46; E04c T7d)
 - Date: 2026-10-13
 - Deciders: user; battle lane session (E04c T4, T5)
 - Working detail: the survey [`docs/rules/surveys/E04c-sieges.md`](../rules/surveys/E04c-sieges.md),
@@ -61,6 +61,16 @@ the adventure lane derives the battlefield (ADR-0022).
    (`WALLS.TXT`) are battle part data, since the uncontrolled Catapult (level 0) and the Cyclops
    read the same table. Unlike the Ballista's control (ADR-0013 point 4: derived numbers) the
    seam carries the level.
+7. **The game's difficulty and the human sides** (amendment, E04c T7d, BAT-Q46): the battle makes
+   some choices for a side as the original's computer player does (an automatic turret's target,
+   whose desperate mode needs the difficulty above Easy or a human defender, `installation.md`
+   §7.31; later the automatic Ballista, T7e). The setup carries the two facts
+   those choices read, as the game has them: `BattleSetup.difficulty: u8` (0 Easy to 4
+   Impossible) and `BattleSetup.human: [bool; 2]` (whether each side's player is human; false for
+   a side without a player). Both are public and battle state. They do not decide who commands a
+   side: every side's player commands its stacks as before. The defaults (0, no human) are a
+   battle between two computer players on Easy; the game orchestrator sets them from the game
+   (the adventure lane), scenarios and replays name them.
 
 ## Consequences
 
@@ -73,6 +83,9 @@ the adventure lane derives the battlefield (ADR-0022).
 - Versions with T5: pack format (the siege records), state hash, replay format, observation
   encoding, C ABI and the wire; golden replays with a siege. Battles without a town play as before.
 - Experiments need towns on the experiment maps (`h3-map`'s writer, `cross-lane`).
+- Point 7: one `shared/` pull request adds the two fields (`cross-lane` for the struct literals);
+  the battle keeps them from E04c T7d on, with the observation, its encoding, the wire, the
+  scenario and replay formats.
 
 ## Alternatives considered
 
@@ -83,3 +96,7 @@ the adventure lane derives the battlefield (ADR-0022).
 - The defending hero's town bonuses as siege fields the battle applies: ADR-0013 point 6 derives
   hero bonuses before the seam, and the battle would have to undo them.
 - A siege outcome (the walls' state): the original keeps nothing of it.
+- Point 7: a derived flag per side ("the computer's full tactics": difficulty above Easy or a
+  human player) instead of the two facts. Both routines read in T7d test exactly that, but the
+  computer's other choices (spells, retreats) read the difficulty in other ways, and the two
+  facts are what the game knows.
