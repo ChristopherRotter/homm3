@@ -20,7 +20,7 @@ E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epic
 
 ### E04c T7e — The automatic Ballista's target (the computer's shooter)
 
-- **Scope:** port the computer's general shooter for the Ballista without Artillery (`installation.md` §7.31, "The general shooter": 0x41F060, 0x41EB80, 0x435CB0, 0x435B90 and 0x4359B0, not read yet), replacing VCMI's rule (BAT-WAR-002); the worth, context, threat records and turns of T7d's `aim.rs` serve it; on Easy for a computer side no turns weighting (0x435CF5). BAT-STUB-3: the hero's Artillery level on the seam (`BallistaControl.level`, `HeroEffect::Artillery.level`, the gap-fill, a `shared/` pull request) for the Ballista's worth. A batch run by an agent (an automatic Ballista's targets where VCMI's rule and the code's differ).
+- **Scope:** port the computer's general shooter for the Ballista without Artillery (`installation.md` §7.31, "The general shooter": 0x41F060, 0x41EB80, 0x435CB0 and 0x435B90 with its damage estimate, not read yet), replacing VCMI's rule (BAT-WAR-002); the worth, context, threat records and turns of T7d's `aim.rs` serve it; on Easy for a computer side no turns weighting (0x435CF5). BAT-STUB-3: the hero's Artillery level on the seam (`BallistaControl.level`, `HeroEffect::Artillery.level`, the gap-fill, a `shared/` pull request) for the Ballista's worth. A batch run by an agent (an automatic Ballista's targets where VCMI's rule and the code's differ).
 - **Acceptance:** the automatic Ballista picks as the code; BAT-STUB-3 closed; the batch agrees.
 - **Depends on:** T7d merged. **Status:** proposed (the user picks the next increment: T7e or T8).
 
