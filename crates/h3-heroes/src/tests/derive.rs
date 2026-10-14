@@ -1376,3 +1376,58 @@ fn the_maximum_spell_points_come_from_knowledge_and_intelligence() {
     d.primary[3] = 0;
     assert_eq!(max_mana(&d, &r), 0);
 }
+
+/// The effect pack with Offense standing for Learning (5/10/15 % more experience); with
+/// `specialist` the hero's specialty grows it by 5 % of itself per level (E08 T19a2a).
+fn learning_pack(specialist: bool) -> ContentPack {
+    let mut p = effect_pack();
+    for s in &mut p.skills {
+        if s.key.to_string() == "t:offense" {
+            s.levels = [500, 1000, 1500].map(|bp| vec![HeroEffectDef::ExperienceGain { bp }]);
+        }
+    }
+    if specialist {
+        p.heroes[0].specialty = vec![HeroEffectDef::SkillSpecialty {
+            skill: key("t:offense"),
+            bp_per_level: 500,
+        }];
+    }
+    p
+}
+
+// covers: HER-EXP-001
+#[test]
+fn learning_grows_the_experience_gained() {
+    let r = compile(learning_pack(false)).unwrap();
+    let mut d = details(&r);
+    d.skills.clear();
+    assert_eq!(gained_experience(&d, &r, 550), 550);
+    // Batch 1b R5: 550 with Expert Learning, ⌊550 × 1.15⌋ = 632; Basic and Advanced.
+    let offense = skill(&r, "t:offense");
+    for (level, points) in [(1, 577), (2, 605), (3, 632)] {
+        d.skills.push((offense, level));
+        assert_eq!(gained_experience(&d, &r, 550), points);
+        assert_eq!(
+            gained_experience(&d, &original(learning_pack(false)), 550),
+            points
+        );
+        d.skills.pop();
+    }
+    // A specialist at level 2 with Basic: 5 % grown by 10 % is 5.5 %, 211 of 200 × 1.055; with
+    // quirk Q-0005 the original's f32(0.055) is below it: 210.
+    d.skills.push((offense, 1));
+    d.level = 2;
+    let r = compile(learning_pack(true)).unwrap();
+    assert_eq!(gained_experience(&d, &r, 200), 211);
+    let r = original(learning_pack(true));
+    assert_eq!(gained_experience(&d, &r, 200), 210);
+    // With Q-0005 the base is a single-precision number even without Learning: 2^24 + 1 is 2^24.
+    d.skills.clear();
+    let big = (1 << 24) + 1;
+    assert_eq!(gained_experience(&d, &r, big), big - 1);
+    let r = compile(learning_pack(false)).unwrap();
+    assert_eq!(gained_experience(&d, &r, big), big);
+    // The gain saturates.
+    d.skills.push((offense, 3));
+    assert_eq!(gained_experience(&d, &r, u32::MAX), u32::MAX);
+}
