@@ -16,8 +16,8 @@ use h3_content::{
     ContentKey, ContentPack, CreatureDef, CreatureFlag, CreatureInfoDef, CreatureOverride,
     CreaturePatch, CreatureSelector, CreatureStat, FactionDef, HeroClassDef, HeroEffect,
     HeroEffectDef, HeroOverride, HeroParamsDef, HeroPatch, HeroTypeDef, KeyError, PackManifest,
-    ProfileDef, ResourceDef, Ruleset, SecondarySkillDef, SpellCategory, SpellDef, SpellGrant,
-    SpellSchoolDef, SpellScope, StartingStackDef, TerrainDef,
+    ProfileDef, RAISED_LEVELS, RaisedCreature, ResourceDef, Ruleset, SecondarySkillDef,
+    SpellCategory, SpellDef, SpellGrant, SpellSchoolDef, SpellScope, StartingStackDef, TerrainDef,
 };
 use serde::{Deserialize, Serialize};
 
@@ -534,6 +534,14 @@ enum EffectDto {
     JoinBonus {
         level: u8,
     },
+    /// Pack format v38 (E08 T19a2, decision 30): `creature`, or `skill` with `by_level`.
+    Raises {
+        #[serde(default)]
+        priority: u8,
+        creature: Option<String>,
+        skill: Option<String>,
+        by_level: Option<Vec<String>>,
+    },
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -762,6 +770,15 @@ impl EffectDto {
             Self::ExperienceGain { bp } => HeroEffect::ExperienceGain { bp },
             Self::MaxMana { bp } => HeroEffect::MaxMana { bp },
             Self::JoinBonus { level } => HeroEffect::JoinBonus { level },
+            Self::Raises {
+                priority,
+                creature,
+                skill,
+                by_level,
+            } => HeroEffect::Raises {
+                priority,
+                creature: raised(pack, creature, skill, by_level)?,
+            },
         })
     }
 }
@@ -790,6 +807,32 @@ impl From<CreatureStat> for StatEntry {
             CreatureStat::MaxDamage => Self::MaxDamage,
         }
     }
+}
+
+/// The creature of a `raises` effect: `creature`, or `skill` with a creature per level in
+/// `by_level` (none, Basic, Advanced, Expert).
+fn raised(
+    pack: &str,
+    creature: Option<String>,
+    skill: Option<String>,
+    by_level: Option<Vec<String>>,
+) -> Result<RaisedCreature<ContentKey, ContentKey>, PackError> {
+    let syntax = || {
+        PackError::Syntax(
+            "raises takes `creature`, or `skill` with `by_level` (4 creatures: none, Basic, \
+             Advanced, Expert)"
+                .into(),
+        )
+    };
+    Ok(match (creature, skill, by_level) {
+        (Some(c), None, None) => RaisedCreature::Creature(reference(pack, &c)?),
+        (None, Some(k), Some(list)) => RaisedCreature::ByLevel {
+            skill: reference(pack, &k)?,
+            by_level: <[ContentKey; RAISED_LEVELS]>::try_from(references(pack, &list)?)
+                .map_err(|_| syntax())?,
+        },
+        _ => return Err(syntax()),
+    })
 }
 
 /// A creature selector; omitted: every creature.
