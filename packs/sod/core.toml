@@ -41,10 +41,11 @@ effects = [{ kind = "alignment_group", factions = ["base:castle", "base:rampart"
 parts = ["base:armor_of_wonder", "base:sandals_of_the_saint", "base:celestial_necklace_of_bliss", "base:lions_shield_of_courage", "base:sword_of_judgement", "base:helm_of_heavenly_enlightenment"]
 
 [[artifact]]
-id = "cloak_of_the_undead_king"  # original id 130; pending: E08-E10
+id = "cloak_of_the_undead_king"  # original id 130
 name = "Cloak of the Undead King"
 class = "relic"
 slot = "base:shoulders"
+effects = [{ kind = "necromancy", bp = 3000, unless_skill = "base:necromancy" }, { kind = "raises", by_level = ["base:skeleton", "base:walking_dead", "base:wight", "base:lich"], priority = 1, skill = "base:necromancy" }]
 parts = ["base:amulet_of_the_undertaker", "base:vampires_cowl", "base:dead_mans_boots"]
 
 [[artifact]]
