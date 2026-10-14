@@ -1920,7 +1920,9 @@ work without skill": a rule (HER-NEC-001), not a quirk.
   `KnownSpell`); the worn types' filter shared as `worn_types`.
 - **`h3-adventure`**: `AdventureState::raise` (GAM-BAT-006): the hero's stack of the creature,
   else its first free slot, else (2c + 2) / 3 of the first upgrade into the upgrade's stack.
-- **`h3-game`**: in `heroes_after_battle`, after the experience: `raised_count` over the loser's
+- **`h3-game`**: in `heroes_after_battle` (the share, the creature and the count taken before the
+  experience is given, as the original's 0x4775A1 before 0x477747: an independent reviewer's
+  note, for when experience gives levels), after the experience: `raised_count` over the loser's
   records (every record that lost creatures, the war machines and created stacks too; under Q-0005
   the original's x87 arithmetic per record: 10 imps at 70 % raise 6, not 7) into `raise`, told as
   `GameEvent::CreaturesRaised` to the owner; then each Eagle Eye pick the winner may learn as a

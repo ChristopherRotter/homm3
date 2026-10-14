@@ -420,6 +420,13 @@ impl GameState {
         };
         let (l, owner) = (w.opponent().index(), owners[w.index()]);
         let defeated = matches!(outcome.result, BattleResult::Victory(_)) && heroes[l].is_some();
+        // rule: GAM-BAT-006
+        // The share, the creature and the count before the experience, as the original's
+        // (0x4775A1 before 0x477747): a level the experience gives must not grow a specialist's.
+        let raised = self
+            .hero(hero)
+            .and_then(|d| necromancy(d, core))
+            .map(|n| (n.creature, raised_count(rules, &outcome.stacks[l], n)));
         let base = battle_experience(rules, &outcome.stacks[l], defeated);
         let gained = self
             .hero(hero)
@@ -427,11 +434,6 @@ impl GameState {
         if gained > 0 {
             self.change_hero(core, hero, owner, HeroChange::GainExperience(gained), sink);
         }
-        // rule: GAM-BAT-006
-        let raised = self
-            .hero(hero)
-            .and_then(|d| necromancy(d, core))
-            .map(|n| (n.creature, raised_count(rules, &outcome.stacks[l], n)));
         let joined = raised.and_then(|r| self.adventure.raise(core, rules.adventure(), hero, r));
         if let (Some((creature, count)), Some(player)) = (joined, owner) {
             sink.emit(GameEvent::CreaturesRaised {
