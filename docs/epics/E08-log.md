@@ -1937,3 +1937,65 @@ work without skill": a rule (HER-NEC-001), not a quirk.
   exception for the four elementals' upgrade (a game flag, no hero raises them); its 32-bit
   product, which wraps above 2^31; VCMI's different full-army rule (any upgrade in the army, its
   hit points) as a batch E3 row.
+
+### Round 3 of increment 3: T19b1 (2026-10-14, `adventure/e08-t19b1` #211)
+
+#205 and #206 had merged; the baseline full verify of `master` (837cef2, `--with-original-data`)
+passed every step. Asked for a seam, the user split T19b (decision 34): T19b1, everything that
+changes behaviour or a version, in one pull request; T19b2, the property plans to a victory, next.
+The user put the two shared docs that go stale (`02-architecture.md` §8's table,
+`07-simulation-and-ai.md`'s env line) into this pull request (`cross-lane`).
+
+- **Action encoding v3** (`h3-sim/src/adventure/action.rs`; ADR-0017 point 8): `Action` is
+  `Adventure(MapAction)` (v2's entry and tile) or `Battle(h3_sim::action::Action)` (the battle
+  lane's encoding, version 13, for the side the player owns); `Phase` by `state.battle(player)`;
+  `battle_mask`, `spell_mask`, `target_mask`, `second_mask` delegate to the battle encoding for
+  the player's side (empty outside a battle and while the other side is to act); in the battle
+  phase the map masks are empty (`legal_commands` lists the battle's commands, `legal_moves`
+  nothing); `encode` takes the rules (a battle command needs the battle's state). `ADV-STUB-4`
+  closed: the filter of other players' heroes' tiles is gone, such a move is a legal destination
+  (GAM-BAT-004's visit).
+- **The env**: `to_move` yields, in id order, the players whose turn runs and who are in no
+  battle, and each battle's owner of the side to act (the attacked player acts outside its turn);
+  `phase`, the four battle masks (empty once the episode is over). The neutral seat stays
+  T20b's (decision 29).
+- **The random agent** plays a battle with the battle's own agent (`h3_sim::rollout::choose`:
+  uniform among the commands that stay in the battle and the casts; it never retreats or
+  surrenders, so a battle ends by a victory or a draw).
+- **Replay format v3** (`adventure::replay`, `h3-cli`'s file format): each command with its
+  `Actor`; a battle command written `<player> battle <command>`, the battle replays' text without
+  the side letter (the side is the actor's in its battle). A v2 file parses and is refused by its
+  version.
+- **`h3-game`**: `Sink::RECORDS` (true by default, false for `NoopSink`), passed to the battle's
+  sink: a quiet sink no longer has the walkers' paths built hex by hex (a test plays a battle with
+  both kinds of sink: the same states, the same events but the moves).
+- **Golden replays**: the six re-recorded with their options (five changed only their format
+  line; `duel-s892-d28`'s moves changed from its 75th command, where the agent's tile choice counts
+  another player's hero, and it still accepts the Cartographer and the border guard's pass). Random
+  play seldom fights: of `--seed N --agent-seed N --days 28` for N up to 1 500 on the duel, 9
+  games have a battle (seeds 120, 521, 770, 792, 987, 1056, 1120, 1294, 1314; the same in
+  `base:strict-fixed`). Two joined the matrix: `duel-s792-d28` (blue's hero attacks red's, wins
+  after 242 battle commands and captures the backpack's artifact 7) and `duel-s120-strict-d28`
+  (strict: the obstacles from the attacker's stream; red's underground hero attacks blue's and
+  loses after 148).
+- **Benchmarks** (`h3 adventure bench`, `--battle 1` for `fork`): the XL map's heroes never met
+  in 200 days of random play (30 seeds), so with `--battle` the heroes seek each other (each step
+  the acting player's move that ends nearest to another player's hero on its level, an attack
+  nearest of all; `EndTurn` when none gets nearer; `Decline` an offer) until a battle opens: on
+  the XL map after 76 steps, on day 4; on the duel after 22. Baselines updated once: `fork-xl-144`
+  354 800 024 Ir for 100 000 forks with a battle open (3 548 Ir a fork; master's 7-day state
+  counted 354 000 055: a battle open costs 0.2 %, it is shared until its first write);
+  `random-play-duel-36` 396 362 609 (master 395 025 919, +0.34 %: the battle-phase checks; the
+  same 667 steps), `reach-xl-144` 557 265 701 (master 557 262 308; the same 1 904 queries). The
+  master counts carried T19a1's unbaselined +0.87 to +1.32 %. Wall time: a fork with a battle open
+  ≈ 0.40 µs on the XL map, ≈ 0.33 µs on the duel.
+- **Tests** (`h3-sim`): the property test of steps against masks and `apply` runs on the duel with
+  Cartographers or with blue's hero two steps from red's (`battle_setup`), with picks that attack
+  and arbitrary battle actions: in each state every player's map and battle masks agree with the
+  game and the battle encoding (a sample of legal battle entries decodes, encodes and decodes
+  again), a player to move has a legal action in its phase and no other player has one; a battle
+  opens by the move, only the side to act's owner steps it (`NotYourSide`), the random agent plays
+  it to its end, a fork with a battle open evolves as its parent, a replay records the attacked
+  player's commands with its actor and refuses them under the other owner. `h3-cli`: battle
+  commands round-trip through their text; the fork workload with `battle`.
+- Versions: action encoding v3, adventure replay format v3; no hash moved.

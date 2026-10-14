@@ -27,12 +27,6 @@ epic   = "E04c"
 
 # --- adventure (ADV-STUB-<n>) ---
 
-[[stub]]
-id     = "ADV-STUB-4"
-where  = "crates/h3-sim/src/adventure/action.rs::battle_tiles"
-reason = "The action encoding v2 and the replay format v2 have no battle actions: since E08 T19a a move onto another player's hero starts a battle, which the env's masks, decoder and random agent do not offer and a v2 replay cannot read back; encoding v3 with the battle phase and the replay format v3 come with E08 T19b"
-epic   = "E08"
-
 # --- server (SRV-STUB-<n>) ---
 
 # --- client (CLT-STUB-<n>) ---

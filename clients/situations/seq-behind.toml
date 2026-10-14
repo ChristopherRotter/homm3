@@ -1,0 +1,37 @@
+# E17 M3 T1a: a battle in progress in hot seat (`hot_seat` in sequences.toml: the harness plays
+# both sides). The Centaur Captains walk right to hex 41 and the Marksmen to 143; the Silver Pegasi,
+# who waited, land behind the Centaurs (39, 40). In the second round the Centaurs strike the
+# Pegasi standing (both turn: neither stands on the other's front side) and the Marksmen shoot
+# them (the target lies left of the shooter: it turns). Two factions a side, so morale is 0 and
+# nothing moves on its own. On grass at the capture set's tile (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-behind"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:centaur_captain"
+count = 20
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:silver_pegasus"
+count = 10
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 20

@@ -47,6 +47,12 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
 - **Graphics options** (2026-10-13), eventually: per effect the original's way or a modern one
   (shadows first); `faithful` is the default and the reference. The draw list names what is
   drawn, the compositor decides how (QUEUE inbox).
+- **The original's redraw artifacts are not copied** (2026-10-14, M3 T1a): the original redraws
+  by dirty rectangles (design §7.11), which darkens shadows again and leaves stale count boxes;
+  the viewer keeps drawing each frame whole in every profile, and the frame check classifies
+  those pixels apart (a pixel that is ours with one to four more shadows) while any other
+  difference still fails (M3 T1c). An ADR-0020 point 9 amendment is drafted in
+  `docs/lanes/client/adr-drafts/` for the next checkpoint.
 - **The natural obstacles' types first** (2026-10-13, CLT-Q3): the engine dropped them at
   generation; a `cross-lane` change carries them to the wire before T7 draws obstacles.
 
@@ -227,6 +233,14 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   stacks with morale and luck, T7c area spells, rays and spell obstacles) and their sounds.
 - The sound's remainder (T8: the battle's end; the volume settings later).
 - **Exit:** the reference set passes, or each difference is a listed fix or a classified quirk.
+- **T1a done 2026-10-14** ([log](E17-log.md#m3-t1a--turns-and-the-walk-by-2026-10-14),
+  [design §7.10, §7.11](E17-design.md)): a battle in progress in the original (hot seat, the
+  harness plays both sides and acts as each turn starts); `climb` and `behind` recorded: a walk's
+  later flip, a melee whose striker and target both turn, a shot whose shooter turns; both
+  timelines as recorded on the first try, frames 43 of 43 and 164 of 194 exact. The walk-by
+  difference read: the original redraws by dirty rectangles (shadows drawn again, the saved
+  screen's count boxes); the user's decision: not copied, the frame check classifies them
+  (**T1c**; Decisions).
 
 ### Later (refined when they come up)
 
@@ -405,6 +419,12 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T1a: a battle in progress is played by the harness in hot seat (`h3-view situation
+  --hot-seat`), both sides human, rather than against the original's AI: every command chosen,
+  no computer's turn (*provisional*); the frame check compares the last screen of a millisecond
+  (a hot-seat wait passes the turn at once: the outline on the stack that waited is not checked)
+  and places the count boxes' masks by the drawn pose's facing.
 
 - The reviewer's fixes (M2 T5c): a command's last layer changes show at the first idle step after
   it (*provisional*, as after the last command); a breath told by its second stack standing beyond

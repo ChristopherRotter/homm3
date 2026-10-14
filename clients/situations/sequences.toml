@@ -52,3 +52,41 @@ ms = 3500
 timeline = "timelines/turn.txt"
 frames = "timelines/turn-frames.txt"
 command = [{ seat = "Attacker", command = { Move = { to = 18 } } }]
+
+# E17 M3 T1a: a two-hex walker climbs two rows (35 to 1, clicking its front hex 2): a turn on the
+# path's first step and a flip later (§7.10).
+[[sequence]]
+id = "climb"
+scenario = "seq-turn.toml"
+actions = ["hex:2"]
+ms = 3500
+timeline = "timelines/climb.txt"
+frames = "timelines/climb-frames.txt"
+command = [{ seat = "Attacker", command = { Move = { to = 1 } } }]
+
+# E17 M3 T1a: a battle in progress in hot seat (the harness's actions play both sides, each as its
+# stack's turn starts, `turn:<side>.<record>`; the times in the commands' `at`): the Pegasi wait,
+# the Centaurs walk to 41, the Marksmen to 143, the Goblins defend, the Pegasi land behind the
+# Centaurs (39, 40); in the second round the Pegasi wait, the Centaurs strike them standing (both
+# turn) and the Marksmen shoot them (it turns).
+[[sequence]]
+id = "behind"
+scenario = "seq-behind.toml"
+hot_seat = true
+actions = [
+    "key:w", "turn:0.0", "hex:42", "turn:0.1", "hex:143", "turn:1.1", "key:d", "turn:1.0",
+    "hex:39", "turn:1.0", "key:w", "turn:0.0", "click:340,196", "turn:0.1", "hex:39",
+]
+ms = 1000
+timeline = "timelines/behind.txt"
+frames = "timelines/behind-frames.txt"
+command = [
+    { seat = "Defender", command = { Wait = {} } },
+    { seat = "Attacker", at = 0, command = { Move = { to = 41 } } },
+    { seat = "Attacker", at = 1988, command = { Move = { to = 143 } } },
+    { seat = "Defender", at = 5464, command = { Defend = {} } },
+    { seat = "Defender", at = 5464, command = { Move = { to = 40 } } },
+    { seat = "Defender", at = 7144, command = { Wait = {} } },
+    { seat = "Attacker", at = 7144, command = { Attack = { target = 2, from = 41 } } },
+    { seat = "Attacker", at = 12544, command = { Shoot = { target = 2, at = 39 } } },
+]
