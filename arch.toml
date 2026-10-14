@@ -191,7 +191,9 @@ layer = "adapter"
 logic = false
 deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-adventure", "h3-game"]
 external = ["miniz_oxide"]
-dev_deps = ["h3-pack", "h3-pack-adventure"]  # rulesets from the synthetic packs for import tests
+# Dev: the rulesets of the packs for the import and play tests; the battle part (E08 T19a) for the
+# game's rules bundle, which battles need.
+dev_deps = ["h3-pack", "h3-pack-adventure", "h3-content-battle", "h3-pack-battle"]
 dev_external = ["proptest"]
 
 # packs/*/adventure.toml -> the adventure's definitions (ADR-0015 point 2; E08 T4).
