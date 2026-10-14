@@ -700,6 +700,14 @@ def = "cdgole.def"
 times = [9000, 635, 500, 115]
 
 [[creature]]
+key = "catapult"  # original id 145
+def = "smcata.def"
+times = [9000, 500, 500, 115]
+attack_climax = 4
+missile = "SMCatx.def"
+missile_offsets = [[69, -119], [69, -119], [69, -119]]
+
+[[creature]]
 key = "ballista"  # original id 146
 def = "smbal.def"
 times = [9000, 500, 500, 115]

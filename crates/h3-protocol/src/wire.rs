@@ -136,6 +136,11 @@ pub enum Command {
         /// What it is aimed at.
         target: Target,
     },
+    /// The active stack shoots the town's walls at a wall-shot target (v31).
+    ShootWall {
+        /// The target's index (0 upper tower to 7 keep in the original's field).
+        part: u8,
+    },
 }
 
 /// How a battle ended.
@@ -207,6 +212,10 @@ pub enum RejectCode {
     CannotCast,
     CastingForbidden,
     SpellLevelBarred,
+    /// The stack cannot shoot the walls (v31).
+    CannotShootWalls,
+    /// No such standing wall part (v31).
+    NoSuchPart,
     /// The connection holds no seat that may act (a spectator, or not joined).
     NotSeated,
     /// The game has not started (a seat is still empty).
@@ -486,6 +495,22 @@ pub enum Event {
         damage: WireU64,
         kills: u32,
     },
+    /// A wall shot (v31): aimed at one wall part, it hit `part` for `damage` (0 to 2).
+    WallShot {
+        stack: u8,
+        aimed: u8,
+        part: u8,
+        damage: u8,
+    },
+    /// Earthquake's hits on a wall part (v31).
+    WallQuaked {
+        part: u8,
+        damage: u8,
+    },
+    /// A wall part was destroyed (v31).
+    WallDestroyed {
+        part: u8,
+    },
     BattleEnded {
         result: Outcome,
     },
@@ -668,6 +693,8 @@ pub struct Hero {
     pub commands_ballista: bool,
     /// It commands its First Aid Tent.
     pub commands_tent: bool,
+    /// It commands its Catapult in a siege (v31).
+    pub commands_catapult: bool,
     /// It carries a spell book.
     pub spell_book: bool,
 }
@@ -747,6 +774,8 @@ pub struct OwnHero {
     pub ballista: Option<Ballista>,
     /// The commanded tent's heal bonus in basis points, if it commands one.
     pub tent_heal_bonus_bp: Option<u32>,
+    /// The commanded Catapult's Ballistics level, if it commands one (v31).
+    pub catapult_level: Option<u8>,
     /// The surrender discount in basis points.
     pub surrender_discount_bp: u16,
     /// The gold it can pay.
@@ -899,7 +928,8 @@ pub struct Observation {
     pub spell_obstacles: Vec<SpellObstacle>,
 }
 
-/// The town a battle is fought at as the battle shows it (`h3_battle::SiegeState`, v30).
+/// The town a battle is fought at as the battle shows it (`h3_battle::SiegeState`, v30; the
+/// wall parts since v31).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Siege {
@@ -911,10 +941,12 @@ pub struct Siege {
     pub moat: u8,
     /// The gate is open.
     pub gate_open: bool,
-    /// The wall hexes, the gate's included.
+    /// The standing wall hexes, the gate's included until it is destroyed.
     pub walls: Vec<u8>,
     /// The moat's hexes now (the bridges only while the gate is closed).
     pub moat_hexes: Vec<u8>,
+    /// Each wall part's hit points by index (v31; 0 destroyed or not set up).
+    pub parts: Vec<u8>,
 }
 
 /// A content pack the game is made of.

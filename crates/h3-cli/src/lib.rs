@@ -290,7 +290,7 @@ fn side_letter(side: BattleSide) -> &'static str {
 /// <stack>"` and `"<A|D> cast <spell> hex <hex>"` with the spell's handle (format 14), and a
 /// second target after the first, `"<A|D> cast <spell> stack <stack> hex <hex>"` (Teleport,
 /// format 17), and a stack's cast, `"<A|D> creature-cast stack <stack>"` (or `none`, `hex <hex>`;
-/// format 19).
+/// format 19), and a wall shot, `"<A|D> shoot-wall <part>"` (format 27).
 pub fn format_command(side: BattleSide, command: Command) -> String {
     let s = side_letter(side);
     let text = |t| match t {
@@ -320,6 +320,7 @@ pub fn format_command(side: BattleSide, command: Command) -> String {
             format!("{s} cast {} {}{second}", spell.raw(), text(target))
         }
         Command::CreatureCast { target } => format!("{s} creature-cast {}", text(target)),
+        Command::ShootWall { part } => format!("{s} shoot-wall {part}"),
     }
 }
 
@@ -382,6 +383,7 @@ pub fn parse_command(text: &str) -> Result<(BattleSide, Command), CliError> {
             target: CastTarget::None,
         },
         (Some("creature-cast"), 4) => Command::CreatureCast { target: target(2)? },
+        (Some("shoot-wall"), 3) => Command::ShootWall { part: num(2)? },
         _ => return Err(bad()),
     };
     Ok((side, command))

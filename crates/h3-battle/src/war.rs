@@ -52,9 +52,17 @@ pub(crate) fn commanded_tent(state: &BattleState, id: StackId) -> Option<TentCon
 /// patient (BAT-WAR-007). Otherwise its turn is automatic (BAT-WAR-002/003; a commanded machine
 /// that has nothing to do does nothing).
 // rule: BAT-WAR-006, BAT-WAR-007
-pub(crate) fn is_commanded(state: &BattleState, field: Field, id: StackId) -> bool {
+pub(crate) fn is_commanded(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    field: Field,
+    id: StackId,
+) -> bool {
     (commanded_ballista(state, id).is_some() && can_shoot(state, field, id))
         || (commanded_tent(state, id).is_some() && !patients(state, id).is_empty())
+        // rule: BAT-SIE-011
+        || (state.at(id).slot == crate::siege::CATAPULT_SLOT
+            && crate::siege::commanded_wall_shots(state, ruleset, id).is_some())
 }
 
 /// Whether the first-aid war machine `healer` may heal stack `target`: a stack of its own side,
@@ -81,7 +89,8 @@ pub(crate) fn patients(state: &BattleState, healer: StackId) -> FixedVec<StackId
     out
 }
 
-/// The automatic turn of war machine `id` (BAT-WAR-002/003): heal, shoot, or nothing.
+/// The automatic turn of war machine `id` (BAT-WAR-002/003, BAT-SIE-011): heal, shoot, shoot
+/// the walls, or nothing.
 pub(crate) fn act<S: Sink>(
     state: &mut BattleState,
     ruleset: &BattleRuleset,
@@ -89,7 +98,16 @@ pub(crate) fn act<S: Sink>(
     sink: &mut S,
 ) {
     let field = Field::new(ruleset.battle().field);
-    if state.at(id).has(StackTraits::FIRST_AID) {
+    if state.at(id).slot == crate::siege::CATAPULT_SLOT {
+        // rule: BAT-SIE-011
+        let level = crate::siege::shooter_level(state, ruleset, id).unwrap_or(0);
+        // The Catapult stands only in a siege, whose field the ruleset has (BAT-SIE-001).
+        if let Some((siege, field)) = state.siege.zip(ruleset.siege_field())
+            && let Some(aim) = crate::siege::automatic_aim(state, (siege, field))
+        {
+            crate::siege::shoot_walls(state, field, (id, aim, level), sink);
+        }
+    } else if state.at(id).has(StackTraits::FIRST_AID) {
         first_aid(state, ruleset, id, sink);
     } else if can_shoot(state, field, id) {
         // While the battle goes on there is a living enemy to shoot at.

@@ -11,8 +11,8 @@ use h3_content::{
     SpellId, SpellScope,
 };
 use h3_contracts::{
-    BallistaControl, BattleEffect, BattleHero, BattleMagic, DamageBonuses, EagleEye, FactionGroup,
-    MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
+    BallistaControl, BattleEffect, BattleHero, BattleMagic, CatapultControl, DamageBonuses,
+    EagleEye, FactionGroup, MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
 };
 use h3_kernel::arith::{SINGLE_BITS, X87, mul_div_floor};
 
@@ -734,7 +734,8 @@ fn damage_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> DamageBonuses {
 /// specialties do not grow them: the original has no Artillery specialist and keeps no
 /// Artillery value its specialty getter could scale, `docs/formats/installation.md` §7.4); the
 /// First Aid Tent if an effect gives First Aid, its heal bonus the sum of the grown `heal_bp`
-/// values of [`grown_effects`] (a First Aid specialist's grows by 5 % per level), saturated.
+/// values of [`grown_effects`] (a First Aid specialist's grows by 5 % per level), saturated; the
+/// Catapult if an effect gives Ballistics, at the highest such level (HER-BAT-018, BAT-Q43).
 fn machine_control(details: &HeroDetails, ruleset: &Ruleset) -> MachineControl {
     let single = single_precision(ruleset);
     let mut control = MachineControl::default();
@@ -759,6 +760,11 @@ fn machine_control(details: &HeroDetails, ruleset: &Ruleset) -> MachineControl {
                 control.tent = Some(TentControl {
                     heal_bonus: heal.rate(u32::MAX),
                 });
+            }
+            // rule: HER-BAT-018
+            HeroEffect::Ballistics { level } => {
+                let catapult = control.catapult.get_or_insert(CatapultControl { level });
+                catapult.level = catapult.level.max(level);
             }
             _ => {}
         }

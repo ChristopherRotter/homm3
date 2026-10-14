@@ -1751,6 +1751,10 @@ fn no_target(
         // rule: BAT-MAG-039
         return created::may_summon(state, ruleset, side, spell.1);
     }
+    if spell.1.magic.quakes() {
+        // rule: BAT-SIE-015
+        return crate::siege::may_quake(state);
+    }
     // rule: BAT-MAG-032
     spell.1.magic.obstacle_kind().map_or_else(
         || {
@@ -2433,6 +2437,16 @@ fn take_effect<S: Sink>(
     sink: &mut S,
 ) {
     let magic = &cast.spell.magic;
+    if magic.quakes() {
+        // rule: BAT-SIE-015
+        // The hits are the spell's value for the mastery, no power (the original's 0x5A7C80).
+        let hits = cast.spell.effect[usize::from(cast.mastery)];
+        // Validated: a siege (`may_quake`).
+        state.siege.into_iter().for_each(|siege| {
+            crate::siege::earthquake(state, siege, u32::from(hits), sink);
+        });
+        return;
+    }
     if magic.removes_obstacles() {
         // rule: BAT-MAG-034
         // Validated: the target is a hex with something to remove.

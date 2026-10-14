@@ -616,6 +616,43 @@ fn artillery_and_first_aid_make_the_hero_command_its_war_machines() {
     );
 }
 
+// covers: HER-BAT-018
+#[test]
+fn ballistics_makes_the_hero_command_its_catapult() {
+    // E04c T6 (BAT-Q43): the skill's level, the highest of all sources; `t:logistics` stands in
+    // for Ballistics, `t:kit` brings Advanced as an artifact could.
+    let mut p = effect_pack();
+    for s in &mut p.skills {
+        if s.key.to_string() == "t:logistics" {
+            s.levels = [1, 2, 3].map(|level| vec![HeroEffectDef::Ballistics { level }]);
+        }
+    }
+    let plain = compile(p.clone()).unwrap();
+    for a in &mut p.artifacts {
+        if a.key.to_string() == "t:kit" {
+            a.effects = vec![HeroEffectDef::Ballistics { level: 2 }];
+        }
+    }
+    let with_kit = compile(p).unwrap();
+    let level = |r: &Ruleset, skill_level: Option<u8>| {
+        let mut d = details(r);
+        d.skills
+            .extend(skill_level.map(|l| (skill(r, "t:logistics"), l)));
+        derive_battle_hero(&d, r)
+            .unwrap()
+            .war_machines
+            .catapult
+            .map(|c| c.level)
+    };
+    assert_eq!(level(&plain, None), None);
+    for l in 1..=3 {
+        assert_eq!(level(&plain, Some(l)), Some(l));
+    }
+    assert_eq!(level(&with_kit, None), Some(2));
+    assert_eq!(level(&with_kit, Some(1)), Some(2));
+    assert_eq!(level(&with_kit, Some(3)), Some(3));
+}
+
 /// The test pack plus stack statistics: `t:squire` (level 2, alive) upgrades into `t:knight`;
 /// the combination `t:circle` +25 % hit points of living creatures, its parts `t:band` +1 hit
 /// point and +1 speed for all and `t:helm` +5 attack for squires; `t:eye` +1 hit point for all;

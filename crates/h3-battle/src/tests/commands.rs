@@ -308,7 +308,7 @@ fn state_hash_is_pinned() {
         kind: h3_content::ContentKey::parse("t:stone").ok(),
     };
     // A special battlefield and an anti-magic garrison (v45); a town with a Citadel and a
-    // damaging moat (v46).
+    // damaging moat (v46), its wall-shot targets and the led attacker's Catapult (v47).
     let setup = BattleSetup {
         heroes: [Some(led), None],
         funds: [1234, 99],
@@ -330,8 +330,9 @@ fn state_hash_is_pinned() {
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
     // v45: the special battlefield and the anti-magic flag (E04c T2b). v46: the town's walls,
-    // gate and moat (E04c T5).
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 46);
+    // gate and moat (E04c T5). v47: the wall shots' state and the hero's Catapult control (E04c
+    // T6).
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 47);
 }
 
-const GOLDEN: u64 = 0x9db8_eb59_387d_cec3;
+const GOLDEN: u64 = 0xdec2_a351_00b0_8816;

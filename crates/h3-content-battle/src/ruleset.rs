@@ -30,7 +30,7 @@ use crate::spell::{
 };
 
 /// Version of the battle part's hash encoding. Bump when the encoding below changes.
-pub const BATTLE_RULESET_HASH_VERSION: u32 = 3;
+pub const BATTLE_RULESET_HASH_VERSION: u32 = 4;
 
 /// Most spells with a summon effect in a ruleset (the battle keeps a side's stack of each
 /// creature its hero can summon from the battle's start, E04b T6b; four in the original).
@@ -507,7 +507,8 @@ impl Deref for BattleRuleset {
 }
 
 impl CanonicalHash for BattleRuleset {
-    /// Encoding v3 (E04c T5; v2: E04c T2b, without sieges; v1: R01, without battlefields): version; the
+    /// Encoding v4 (E04c T6: the wall shots' data in the siege field and records; v3: E04c T5;
+    /// v2: E04c T2b, without sieges; v1: R01, without battlefields): version; the
     /// special battlefields (`Battlefield`'s encoding); obstacles (key, terrains as length +
     /// handles, battlefields as length + handles, width, height, blocked pairs, absolute flag); creatures in handle order (attack, defense, damage min and max, hit points, shots,
     /// casts, the abilities as length + each ability's encoding); the battle parameters in field
@@ -601,6 +602,17 @@ fn validate_sieges(
         if s.mines.is_some_and(|m| !places_mines(m)) {
             return Err(BattleCompileError::InvalidBattleParams(
                 "a siege's mines must be a spell that places mines",
+            ));
+        }
+        // The record's hit points are nonzero exactly for the field's targets (E04c T6).
+        let targets = field.map_or(0, |f| f.targets.len());
+        if s.hit_points
+            .iter()
+            .enumerate()
+            .any(|(i, &p)| (p > 0) != (i < targets))
+        {
+            return Err(BattleCompileError::InvalidBattleParams(
+                "a siege record needs hit points for each of the field's wall targets",
             ));
         }
     }
@@ -899,6 +911,13 @@ fn validate_creature(
         .any(|a| matches!(a, Ability::AmmoSupply | Ability::FirstAid { .. }));
     if automatic && !machine {
         return invalid("ammo_supply and first_aid require flag war_machine");
+    }
+    // A wall shooter's level comes from the ability, the Catapult's from its hero (E04c T6).
+    let wall_shots = abils.iter().any(|a| matches!(a, Ability::WallShots { .. }));
+    if def.flags.contains(CreatureFlag::Catapult) && !machine && !wall_shots
+        || wall_shots && (machine || !def.flags.contains(CreatureFlag::Catapult))
+    {
+        return invalid("flag catapult requires wall_shots (and vice versa), war machines neither");
     }
     Ok(())
 }

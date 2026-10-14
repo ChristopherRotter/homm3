@@ -65,6 +65,7 @@ fn engine_commands() -> Vec<h3_battle::Command> {
         C::CreatureCast {
             target: CastTarget::None,
         },
+        C::ShootWall { part: 3 },
     ]
 }
 
@@ -257,13 +258,21 @@ fn engine_events() -> Vec<K> {
             damage: 70,
             kills: 1,
         },
+        K::WallShot {
+            stack: s,
+            aimed: 3,
+            part: 2,
+            damage: 2,
+        },
+        K::WallQuaked { part: 0, damage: 1 },
+        K::WallDestroyed { part: 2 },
         K::BattleEnded {
             result: BattleResult::Retreat(BattleSide::Attacker),
         },
     ]
 }
 
-const ENGINE_ERRORS: [CommandError; 29] = {
+const ENGINE_ERRORS: [CommandError; 31] = {
     use CommandError as E;
     [
         E::BattleOver,
@@ -295,13 +304,15 @@ const ENGINE_ERRORS: [CommandError; 29] = {
         E::CannotCast,
         E::CastingForbidden,
         E::SpellLevelBarred,
+        E::CannotShootWalls,
+        E::NoSuchPart,
     ]
 };
 
 #[test]
 fn every_engine_kind_has_its_wire_kind_of_the_same_name() {
     let events = engine_events();
-    assert_eq!(events.len(), 51, "the mapped event kinds");
+    assert_eq!(events.len(), 54, "the mapped event kinds");
     for kind in &events {
         let wire = map::events(&[EngineEvent::public(*kind)], BattleSide::Attacker);
         assert_eq!(kind_name(&wire[0]), kind_name(kind));

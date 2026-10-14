@@ -100,6 +100,8 @@ fn inputs() -> Inputs {
         hero_data: hero_data(),
         obstacles: obstacles(),
         siege: siege(),
+        wall_shots: wall_shots(),
+        wall_tables: wall_tables(),
         hero_tables: hero_tables(),
         artifact_tables: artifact_tables(),
     }
@@ -125,6 +127,48 @@ fn siege() -> SiegeData {
         mines_town: 1,
         mines_spell: 3,
     }
+}
+
+/// The executable's wall-shot tables (E04c T6): a tower, a wall on row 1's wall hex and the gate.
+fn wall_shots() -> h3_formats::exe::WallShotData {
+    use h3_formats::exe::WallTarget;
+    let target = |wall, part, kind| WallTarget {
+        aim: 0,
+        wall,
+        part,
+        kind,
+    };
+    h3_formats::exe::WallShotData {
+        targets: vec![
+            target(None, 5, 1),
+            target(Some(1), 6, 3),
+            target(Some(5), 9, 2),
+        ],
+        missed: vec![1],
+        auto_walls: vec![1],
+        auto_others: vec![2, 0],
+        catapult: 119,
+    }
+}
+
+/// `WALLS.TXT` with 2 hit points for every part of the three towns, and `BALLIST.TXT`.
+fn wall_tables() -> (TextTable, TextTable) {
+    let mut walls = String::from("\t\nWall Section\tHit Points\n");
+    for town in ["Alpha", "Beta", "Gamma"] {
+        walls.push_str(&format!("{town}\t\t\n"));
+        for p in 0..18 {
+            walls.push_str(&format!("Part {p}\t2\n"));
+        }
+    }
+    let ballistics = "Ballistics\nx\n\
+        Skill Level\tNone\t5%\t10%\t25%\t50%\t1\t10%\t60%\t30%\t100%\n\
+        \tBasic\t7%\t15%\t30%\t60%\t1\t0%\t50%\t50%\t100%\n\
+        \tAdvanced\t7%\t15%\t30%\t60%\t2\t0%\t50%\t50%\t100%\n\
+        \tExpert\t10%\t20%\t40%\t75%\t2\t0%\t0%\t100%\t100%\n";
+    (
+        TextTable::parse(walls.as_bytes()).unwrap(),
+        TextTable::parse(ballistics.as_bytes()).unwrap(),
+    )
 }
 
 /// The executable's obstacle tables: a usual type on Mud and the field 0 battlefield (the

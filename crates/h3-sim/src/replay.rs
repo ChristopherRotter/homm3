@@ -21,8 +21,9 @@ use h3_kernel::{Rng, StreamId};
 /// content split, R01). 23: a natural obstacle records its obstacle type (E17 M1, CLT-Q3). 24: a
 /// two-hex stack's moves and attack positions name its rear hex, its position as in the original
 /// (BAT-GEO-002). 25: the setup names the special battlefield and the anti-magic garrison (E04c
-/// T2b). 26: the setup names the town the battle is fought at (E04c T5, ADR-0023).
-pub const REPLAY_FORMAT_VERSION: u32 = 26;
+/// T2b). 26: the setup names the town the battle is fought at (E04c T5, ADR-0023). 27: a hero's
+/// Catapult control in the setup, the wall shot among the commands (E04c T6, ADR-0023 point 6).
+pub const REPLAY_FORMAT_VERSION: u32 = 27;
 
 /// Identity of everything a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]
