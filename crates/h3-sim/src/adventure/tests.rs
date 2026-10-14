@@ -200,7 +200,8 @@ fn is_move(entry: usize) -> bool {
 /// tile; the entries without a tile are the commands [`legal_commands`] lists (with an open
 /// decision its answers alone: `Decline`, and `Accept` while the offer stands), tile 0 alone their
 /// tile mask and the only tile they decode with;
-/// a move's tiles are the hero's legal moves but its own tile, each decoding to the query's path.
+/// a move's tiles are the hero's legal moves but its own tile and (E08 T19a: encoding v2 has no
+/// battle) other players' heroes' tiles, each decoding to the query's path.
 fn check_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCaseError> {
     let (state, rules) = (env.state(), env.rules());
     let mut entries = [false; ENTRY_COUNT];
@@ -236,9 +237,12 @@ fn check_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCaseError
             continue;
         };
         let reach = legal_moves(state, rules, Actor::Player(player), hero);
+        // Encoding v2 offers no battle: other players' heroes' tiles are left out (E08 T19a).
+        let battles = action::battle_tiles(state, player);
         let listed: Vec<u32> = reach
             .iter()
             .flat_map(|r| r.tiles())
+            .filter(|(pos, _)| !battles.contains(pos))
             .map(|(pos, _)| tile_index(state, pos).unwrap())
             .collect();
         let masked: Vec<u32> = (0u32..)
@@ -347,7 +351,15 @@ proptest! {
                     prop_assert_eq!(applied, Some(Ok(())));
                     prop_assert_eq!(env.state(), &expected);
                     prop_assert_eq!(env.steps(), steps + 1);
-                    prop_assert!(!events.is_empty());
+                    // A command tells something, but a one-step visit that does nothing (a
+                    // border guard's or gate's without the key, E08 T15a, T15b).
+                    let silent = matches!(
+                        &command,
+                        Some(GameCommand::Adventure(AdventureCommand::MoveHero { path, .. }))
+                            if path.len() == 1
+                                && expected.adventure().map().tile(path[0]).is_some_and(|t| t.visitable)
+                    );
+                    prop_assert!(!events.is_empty() || silent);
                 }
                 Err(error) => {
                     prop_assert!(!legal);
