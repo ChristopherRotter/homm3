@@ -866,6 +866,7 @@ fn params() -> HeroParamsDef {
         primary_min: [0, 0, 1, 1],
         primary_max: 99,
         backpack: 64,
+        learn_level: 2,
     }
 }
 
@@ -882,13 +883,15 @@ fn hero_params_are_optional_unique_and_checked() {
             primary_min: [0, 0, 1, 1],
             primary_max: 99,
             backpack: 64,
+            learn_level: 2,
         })
     );
     // The hash sees presence and every field.
-    let changes: [fn(&mut HeroParamsDef); 3] = [
+    let changes: [fn(&mut HeroParamsDef); 4] = [
         |d| d.primary_min[3] = 2,
         |d| d.primary_max = 98,
         |d| d.backpack = 0,
+        |d| d.learn_level = 3,
     ];
     let hash = with.content_hash();
     assert_ne!(without.content_hash(), hash);
@@ -909,6 +912,22 @@ fn hero_params_are_optional_unique_and_checked() {
         fails(q),
         CompileError::InvalidHeroParams("primary_min must not exceed primary_max")
     );
+    // A learnable level above the highest spell level; 5 is the highest allowed.
+    let mut q = pack();
+    q.hero_params = Some(HeroParamsDef {
+        learn_level: 6,
+        ..params()
+    });
+    assert_eq!(
+        fails(q),
+        CompileError::InvalidHeroParams("learn_level must be at most 5")
+    );
+    let mut q = pack();
+    q.hero_params = Some(HeroParamsDef {
+        learn_level: 5,
+        ..params()
+    });
+    assert!(compile(&[q]).is_ok());
     // Provided twice in the closure.
     let mut ext = ContentPack::new(manifest("x", &["t"]));
     ext.hero_params = Some(params());

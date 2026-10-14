@@ -390,7 +390,7 @@ pub enum Ability<C, S, L> {
     /// with a Citadel or Castle the battle sets it up for the defender off the field; its shot
     /// draws its damage once per creature and takes only the target's protections; it is
     /// immune to every spell and never a target (the original's creature 149, `installation.md`
-    /// §7.30; needs flags `war_machine` and `shooter`; pack format v40).
+    /// §7.30; needs flags `war_machine` and `shooter`; pack format v41).
     Turret,
 }
 

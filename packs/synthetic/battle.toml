@@ -306,7 +306,7 @@ hit_points = 40
 shots = 12
 abilities = [{ kind = "wall_shots", level = 1 }]
 
-# The town's turret (E04c T7, pack format v40): the first war machine with the ability `turret`,
+# The town's turret (E04c T7, pack format v41): the first war machine with the ability `turret`,
 # set up by the battle for a town's defender; its shot draws 2 to 4 per creature (BAT-SIE-018).
 [[creature]]
 id = "spire"

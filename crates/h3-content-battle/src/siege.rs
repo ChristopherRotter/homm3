@@ -69,7 +69,7 @@ pub struct WallTarget {
     /// towers and the keep.
     pub wall: Option<u8>,
     /// The off-field position of the turret it holds (the towers and the keep, E04c T7, pack
-    /// format v40: the original's 254, 255, 251), whose stack its destruction kills.
+    /// format v41: the original's 254, 255, 251), whose stack its destruction kills.
     pub turret: Option<u8>,
 }
 

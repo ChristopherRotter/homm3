@@ -207,7 +207,7 @@ errors:
 | `no_distance_penalty` | — | its shots have no distance penalty (BAT-RNG-002) |
 | `no_wall_penalty` | — | since v37: its shots are not halved by a town's walls (BAT-SIE-008) |
 | `wall_shots` | `level` (0..=3) | since v39: commanded for the attacker in a siege it may shoot the walls with this Ballistics level's record, whatever its shots and neighbours (requires flag `catapult`, which requires it, war machines excepted; the Cyclops 1, the Cyclops King 2; BAT-SIE-013) |
-| `turret` | — | since v40 (E04c T7): a town's turret (the Arrow Tower): the battle sets the first war machine with it up for a town's defender, the keep with a Citadel, the towers too with a Castle; it shoots first every round, a draw of its damage per creature times the target's protections; immune to every spell, never a target (requires flags `war_machine` and `shooter`, not `catapult`; never listed in a setup; BAT-SIE-016 to BAT-SIE-019) |
+| `turret` | — | since v41 (E04c T7): a town's turret (the Arrow Tower): the battle sets the first war machine with it up for a town's defender, the keep with a Citadel, the towers too with a Castle; it shoots first every round, a draw of its damage per creature times the target's protections; immune to every spell, never a target (requires flags `war_machine` and `shooter`, not `catapult`; never listed in a setup; BAT-SIE-016 to BAT-SIE-019) |
 | `area_shot` | `effect` (`fireball`/`death_cloud`) | its shots also hit the stacks around the target (requires flag `area_attack`; BAT-RNG-004) |
 | `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine only (requires flag `war_machine`; First Aid Tent): on its turn heals the top creature of a random hurt stack of its own side (also one the other side controls, BAT-MAG-026) by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
 | `ammo_supply` | — | war machine only (requires flag `war_machine`; Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
@@ -615,12 +615,13 @@ different creatures or statistics.
 | `negate_immunities` | — | since v31: the side's spells, and spells at the stacks the hero controls, ignore the creatures' immunities and all magic resistance (the Orb of Vulnerability; BAT-MAG-066) |
 | `opening_spell` | `spell`, `mastery` (0..=3), `power` (≥ 1) | since v33: the side casts the spell for free at its first stack activation outside the tactics phase, at the mastery, its power the effects' duration, if it affects some stack; in the order of the artifact types (Angelic Alliance: Expert Prayer, 10; Armor of the Damned: Expert Slow, Curse, Weakness, Misfortune, 50; HER-BAT-017, BAT-MAG-068) |
 | `eagle_eye` | `bp` (1..=10 000), `max_level` (0..=5, default 0) | since v33: Eagle Eye's chance to pick a spell at each enemy hero cast grows by `bp` (a specialty grows the skill's), spells up to the largest `max_level` may be picked (the skill: 40/50/60 %, levels 2/3/4; the Bird of Perception, the Stoic Watchman, the Emblem of Cognizance: +5/+10/+15 % with the skill; HER-SPL-004, BAT-MAG-069) |
-| `necromancy` | `bp` (1..=10 000) | since v37 (E08 T18a; read from E08 T19a): after a won battle the hero raises this share of the killed enemy creatures as undead; sources add, a specialty grows the skill's (Necromancy: 10/20/30 %, the executable's table 0x63E9B8; the necromancy artifacts, pending) |
+| `necromancy` | `bp` (1..=10 000), `unless_skill` (optional, since v40) | since v37 (E08 T18a; read from E08 T19a2b): after a won battle the hero raises this share of the killed enemy creatures as undead; sources add, a specialty grows the skill's; with `unless_skill` the share counts only while the hero lacks that skill (Necromancy: 10/20/30 %, the executable's table 0x63E9B8; the Amulet of the Undertaker, the Vampire's Cowl, Dead Man's Boots +5/+10/+15 % with the skill, so the Cloak of the Undead King through its parts +30 %; the Cloak's own +30 % without the skill, 0x4E3CD0) |
 | `experience_gain` | `bp` (≥ 1) | since v37 (read from E08 T19a): the experience the hero gains grows by `bp` (Learning: 5/10/15 %, table 0x63EA58) |
 | `max_mana` | `bp` (≥ 1) | since v37 (read from E08 T18b): the hero's maximum spell points (10 × Knowledge) grow by `bp` (Intelligence: 25/50/100 %, table 0x63EA88; an Intelligence specialist's grow) |
 | `join_bonus` | `level` (1..=3) | since v37 (read from E08 T20a): wandering creatures are readier to join the hero; the levels add, at most 3 (Diplomacy: 1/2/3) |
 | `raises` | `priority` (default 0), and `creature`, or `skill` with `by_level` (4 creatures: without the skill, Basic, Advanced, Expert) | since v38 (E08 T19a2, decision 30): the creature the hero's Necromancy raises, by the hero's level in `skill` for `by_level`; of all the hero's `raises` the highest `priority` wins (Necromancy: Skeletons at 0; the Cloak of the Undead King: by the Necromancy level Skeletons, Walking Dead, Wights, Liches at 1, 0x4E3C60; mods may go higher); among equal priorities, if all come from artifacts the lowest artifact id (then creature id), otherwise the lowest creature id |
 | `ballistics` | `level` (1..=3) | since v39 (E04c T6): the hero commands its Catapult with this Ballistics level, the highest of its sources (the skill: 1/2/3; HER-BAT-018, BAT-SIE-011) |
+| `learn_level` | `levels` (1..=5) | since v40 (E08 T19a2b): the highest spell level the hero may learn grows by `levels` over `[hero_params]`'s `learn_level`; sources add, at most 5 (Wisdom: 1/2/3, so levels 3/4/5; the code's Wisdom + 2, 0x469FE0) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 
@@ -662,12 +663,15 @@ theirs (the derivation, HER-BAT-001). Identical artifacts count once, except `pr
 **What the harvested hero content leaves out** (the harvester's report lists it; sources and
 layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfill.toml`):
 
-- Skills without effects yet: Mysticism, Wisdom, Ballistics (E04c), Diplomacy's join bonus
-  (E08 T20a) and the adventure skills. Their `[[secondary_skill]]` entries exist without levels.
+- Skills without effects yet: Mysticism, Diplomacy's join bonus (E08 T20a) and the adventure
+  skills. Their `[[secondary_skill]]` entries exist without levels.
   The magic school skills give `school_mastery` (gap-fill), Sorcery `spell_damage`, Resistance
   `magic_resistance` and Eagle Eye `eagle_eye` with the level limit the skill's level + 1 (the
   executable's value tables, E04b T2a, T2d and T8d); since v37 (E08 T18b) Necromancy
-  `necromancy`, Learning `experience_gain` and Intelligence `max_mana` (their tables, §7.4).
+  `necromancy`, Learning `experience_gain` and Intelligence `max_mana` (their tables, §7.4);
+  Ballistics `ballistics` (gap-fill, E04c T6); since v40 (E08 T19a2b) Wisdom `learn_level` and
+  Necromancy's `raises` Skeletons (gap-fill `[[heroes.skill_effects]]` and
+  `[[heroes.skill_extra]]`, the latter added to a table skill's levels).
 - Specialties not modelled: 13 resource and 2 creature-upgrade specialties (adventure), Adrienne
   (none). Spell specialties are `spell_specialty` with the SoD growth of 3 % per level (gap-fill
   `[heroes.spell_specialty]`), Ciele's and Luna's a fixed `spell_damage` (+50 % Magic Arrow,
@@ -694,9 +698,9 @@ research notes and disputes in `docs/rules/surveys/E04-artifacts.md`):
   such entries `# pending: <epic>`): none for E04b since T8d (the opening spells of Angelic
   Alliance and Armor of the Damned and Eagle Eye's three artifacts were its last; the mana
   artifacts and the spell book that equipping Titan's Thunder adds went to E08–E10), the Catapult
-  and the siege obstacle penalty (E04c), Necromancy (the three Necromancy artifacts and the Cloak of the Undead King;
-  outcome application, E08–E10, together with the Necromancy skill) and the adventure effects
-  (movement, vision, resources, growth, the Grail; E08–E10).
+  and the siege obstacle penalty (E04c) and the adventure effects (movement, vision, resources,
+  growth, the Grail; E08–E10). Since v40 (E08 T19a2b) the three Necromancy artifacts and the Cloak
+  of the Undead King have their shares and the Cloak its `raises`.
 - Not harvested: the descriptions, the three unused SoD rows (Diplomat's Suit, Mired in Neutrality,
   Ironfist of the Ogre), the combinations' costs (blank in the original table; VCMI's values are
   its own).
@@ -744,7 +748,7 @@ a wall's hex one of `walls`, the gate's `gate`; at most 8), `missed` (where a mi
 by index), `automatic` (the automatic Catapult's walls) and `fallback` (its next targets),
 `castle_bonus` (hit points a Castle adds to each wall) and `ballistics` (four records, none to
 Expert: `{ hit = [keep, tower, gate, wall] percent, shots, damage = [the chances of 0, 1, 2] }`,
-each summing to 100). Since E04c T7 (pack format v40, battle part hash v5) the towers' and the
+each summing to 100). Since E04c T7 (pack format v41, battle part hash v5) the towers' and the
 keep's targets hold their turrets, `{ kind = "keep", turret = 254 }` (an off-field position, each
 its own, at most three; BAT-SIE-016, `installation.md` §7.30), and `turret_count` is the keep's
 least creature count (4; `Siege.structures` adds to it).
@@ -752,9 +756,10 @@ least creature count (4; `Siege.structures` adds to it).
 **Hero parameters** (`[hero_params]`, Tier 2, E04a T4a; at most one enabled pack provides them,
 a ruleset without them cannot validate hero details): `primary_min` (four values, attack,
 defense, power, knowledge: lower totals count as these), `primary_max` (the highest primary
-skill, base and effective; every minimum at most this) and `backpack` (the most artifacts in a
-hero's backpack). Rules HER-DET-001 and HER-ART-002; the base pack's values come from the
-gap-fill file (`[heroes.params]`: 0/0/1/1, 99, 64).
+skill, base and effective; every minimum at most this), `backpack` (the most artifacts in a
+hero's backpack) and since v40 `learn_level` (0..=5: the highest spell level a hero may learn
+without a `learn_level` effect). Rules HER-DET-001 and HER-ART-002; the base pack's values come
+from the gap-fill file (`[heroes.params]`: 0/0/1/1, 99, 64, 2).
 
 **Profiles** (`[[profile]]` with `quirks = { "quirk.<context>.<name>" = true | false }`; unlisted
 flags are off): the registered flags are in `h3_content::REGISTRY` and the quirks ledger

@@ -334,6 +334,8 @@ struct HeroParamsDto {
     primary_min: [u8; 4],
     primary_max: u8,
     backpack: u16,
+    /// Pack format v40 (E08 T19a2b).
+    learn_level: u8,
 }
 
 /// `[[artifact_slot_override]]`: changes to a slot of the closure.
@@ -524,6 +526,8 @@ enum EffectDto {
     /// E08 increment 3 (T18a): Necromancy, Learning, Intelligence, Diplomacy's join bonus.
     Necromancy {
         bp: u16,
+        /// Pack format v40 (E08 T19a2b): the share counts only while the hero lacks the skill.
+        unless_skill: Option<String>,
     },
     ExperienceGain {
         bp: u16,
@@ -544,6 +548,10 @@ enum EffectDto {
     },
     Ballistics {
         level: u8,
+    },
+    /// Pack format v40 (E08 T19a2b): Wisdom.
+    LearnLevel {
+        levels: u8,
     },
 }
 
@@ -769,7 +777,10 @@ impl EffectDto {
                 power,
             },
             Self::EagleEye { bp, max_level } => HeroEffect::EagleEye { bp, max_level },
-            Self::Necromancy { bp } => HeroEffect::Necromancy { bp },
+            Self::Necromancy { bp, unless_skill } => HeroEffect::Necromancy {
+                bp,
+                unless_skill: unless_skill.map(|k| reference(pack, &k)).transpose()?,
+            },
             Self::ExperienceGain { bp } => HeroEffect::ExperienceGain { bp },
             Self::MaxMana { bp } => HeroEffect::MaxMana { bp },
             Self::JoinBonus { level } => HeroEffect::JoinBonus { level },
@@ -783,6 +794,7 @@ impl EffectDto {
                 creature: raised(pack, creature, skill, by_level)?,
             },
             Self::Ballistics { level } => HeroEffect::Ballistics { level },
+            Self::LearnLevel { levels } => HeroEffect::LearnLevel { levels },
         })
     }
 }
@@ -1155,6 +1167,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
             primary_min: p.primary_min,
             primary_max: p.primary_max,
             backpack: p.backpack,
+            learn_level: p.learn_level,
         }),
         ..ContentPack::new(manifest)
     })

@@ -231,7 +231,7 @@ struct SiegeFieldDto {
     mine_power: u8,
     /// Pack format v39 (E04c T6): the wall shots.
     catapult: u8,
-    /// Pack format v40 (E04c T7): the keep's least count.
+    /// Pack format v41 (E04c T7): the keep's least count.
     turret_count: u8,
     targets: Vec<WallTargetDto>,
     missed: Vec<u8>,
@@ -242,7 +242,7 @@ struct SiegeFieldDto {
 }
 
 /// A wall-shot target of `siege` (pack format v39): `{ kind = "wall", wall = 29 }`; a tower's
-/// or the keep's turret since v40 (E04c T7): `{ kind = "keep", turret = 254 }`.
+/// or the keep's turret since v41 (E04c T7): `{ kind = "keep", turret = 254 }`.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct WallTargetDto {
@@ -497,7 +497,7 @@ enum AbilityDto {
     WallShots {
         level: u8,
     },
-    /// Pack format v40 (E04c T7, BAT-SIE-016).
+    /// Pack format v41 (E04c T7, BAT-SIE-016).
     Turret {},
 }
 

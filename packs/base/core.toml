@@ -2047,6 +2047,9 @@ expert = [{ kind = "morale", amount = 3 }]
 [[secondary_skill]]
 id = "wisdom"
 name = "Wisdom"
+basic = [{ kind = "learn_level", levels = 1 }]
+advanced = [{ kind = "learn_level", levels = 2 }]
+expert = [{ kind = "learn_level", levels = 3 }]
 
 [[secondary_skill]]
 id = "mysticism"
@@ -2076,9 +2079,9 @@ expert = [{ kind = "eagle_eye", bp = 6000, max_level = 4 }]
 [[secondary_skill]]
 id = "necromancy"
 name = "Necromancy"
-basic = [{ kind = "necromancy", bp = 1000 }]
-advanced = [{ kind = "necromancy", bp = 2000 }]
-expert = [{ kind = "necromancy", bp = 3000 }]
+basic = [{ kind = "necromancy", bp = 1000 }, { kind = "raises", creature = "skeleton" }]
+advanced = [{ kind = "necromancy", bp = 2000 }, { kind = "raises", creature = "skeleton" }]
+expert = [{ kind = "necromancy", bp = 3000 }, { kind = "raises", creature = "skeleton" }]
 
 [[secondary_skill]]
 id = "estates"
@@ -4799,25 +4802,31 @@ cost = { "gold" = 1000 }
 slot = "misc"
 
 [[artifact]]
-id = "amulet_of_the_undertaker"  # original id 54; pending: E08-E10
+id = "amulet_of_the_undertaker"  # original id 54
 name = "Amulet of the Undertaker"
 class = "treasure"
 cost = { "gold" = 2000 }
 slot = "neck"
+needs_skill = "necromancy"
+effects = [{ kind = "necromancy", bp = 500 }]
 
 [[artifact]]
-id = "vampires_cowl"  # original id 55; pending: E08-E10
+id = "vampires_cowl"  # original id 55
 name = "Vampire's Cowl"
 class = "minor"
 cost = { "gold" = 4000 }
 slot = "shoulders"
+needs_skill = "necromancy"
+effects = [{ kind = "necromancy", bp = 1000 }]
 
 [[artifact]]
-id = "dead_mans_boots"  # original id 56; pending: E08-E10
+id = "dead_mans_boots"  # original id 56
 name = "Dead Man's Boots"
 class = "major"
 cost = { "gold" = 6000 }
 slot = "feet"
+needs_skill = "necromancy"
+effects = [{ kind = "necromancy", bp = 1500 }]
 
 [[artifact]]
 id = "garniture_of_interference"  # original id 57
@@ -5369,6 +5378,7 @@ effects = [{ kind = "no_casting" }]
 primary_min = [0, 0, 1, 1]
 primary_max = 99
 backpack = 64
+learn_level = 2
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on

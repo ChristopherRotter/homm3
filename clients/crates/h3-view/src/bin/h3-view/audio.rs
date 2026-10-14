@@ -53,7 +53,8 @@ pub struct Library {
 
 impl Library {
     /// Decodes the start sound and every sound of `stacks` from the sound archives of `install`,
-    /// and the music from its `MP3` folder. A missing file costs that sound, noted in `lines`.
+    /// and the music from its `MP3` folder. A missing or undecodable sound costs that sound,
+    /// noted in `lines`.
     pub fn load(
         install: &Path,
         opening: Opening,
@@ -94,9 +95,13 @@ impl Library {
                     if clips.contains_key(name) {
                         continue;
                     }
-                    if let Some(wav) = snd.find(name) {
-                        let pcm = decode_wav(wav).map_err(|e| format!("{name}: {e:?}"))?;
-                        clips.insert(name.clone(), pcm);
+                    // A sound that does not decode costs that sound, as a missing one does.
+                    match snd.find(name).map(decode_wav) {
+                        Some(Ok(pcm)) => {
+                            clips.insert(name.clone(), pcm);
+                        }
+                        Some(Err(e)) => lines.push(format!("sound: {name}: {e:?}")),
+                        None => {}
                     }
                 }
             }
@@ -179,8 +184,11 @@ pub struct Player {
     channels: Vec<Channel>,
     /// The next channel taken when none is free.
     turn: usize,
-    /// When the music started (SDL's nanoseconds) and the next sample to queue.
+    /// When the music started (SDL's nanoseconds; moved on by each pause) and the next sample to
+    /// queue.
     music: Option<(u64, usize)>,
+    /// Since when the sound is held.
+    paused: Option<u64>,
     /// Whether the music and the effects are heard (the keys M and E).
     pub music_on: bool,
     pub effects_on: bool,
@@ -213,6 +221,7 @@ impl Player {
             channels: list,
             turn: 0,
             music: None,
+            paused: None,
             music_on: true,
             effects_on: true,
         })
@@ -300,9 +309,17 @@ impl Player {
         }
     }
 
-    /// Holds or resumes every sound (the battle paused or running).
-    pub fn pause(&mut self, on: bool) {
+    /// Holds or resumes every sound (the battle paused or running) at `now`; the music's fade-in
+    /// holds with it.
+    pub fn pause(&mut self, on: bool, now: u64) {
         self.out.pause(on);
+        if on {
+            self.paused = Some(now);
+        } else if let Some(at) = self.paused.take()
+            && let Some((started, _)) = self.music.as_mut()
+        {
+            *started += now.saturating_sub(at);
+        }
     }
 
     /// Keeps the loops and the music queued ahead and the music's fade-in going, at `now`.

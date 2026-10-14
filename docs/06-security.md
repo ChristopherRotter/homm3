@@ -51,6 +51,7 @@ Increment 3 (battles on the map; ADR-0013 point 9, ADR-0016 point 6, ADR-0017 po
 
 - **A battle** (E08 T19a): each of its owners sees its side's observation of it (`h3_battle::observe`: never the other side's private part) and its events by their visibility (a public one to both owners, a side's to that side's owner); its start (the heroes, the tile) and its end (the result) are told to its owners only. Other players learn nothing of it but its effects where they see the tiles (a hero leaving the map). Its seed and stream are server-only as every stream (drawn from the attacking player's stream); under `ADV-QUIRK-5` (`faithful`) its obstacles follow from its tile, as the original's, so they are public in effect.
 - **A surrender's gold** leaves the surrendering side's owner's treasury and enters the other's: each change is told to its owner only.
+- **The heroes after a battle** (E08 T19a2a, T19a2b): each change to a hero's details (spell points, experience, an artifact lost with a destroyed war machine, an artifact received or taken in the capture, a spell learned by Eagle Eye) and the creatures its Necromancy raises into its army are told to the hero's owner only (`HeroChanged`): the winner's owner learns the artifacts it captured, as the original's message shows them, and the loser's owner what it lost. Other players see neither, as they never see another player's hero's details (ADV-FOG-006).
 
 ## Denial of service and resource limits
 

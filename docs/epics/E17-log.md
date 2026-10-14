@@ -638,3 +638,47 @@ failing check).
 - **Checked in the sandbox** (Xvfb, SDL's `disk` audio driver): `--check 25` with sound, 293 of
   293 frames exact; the mix: the start sound (`BATTLE01`, 5.8 s), then the music fading in; with
   the music off, the effects' onsets within 10–100 ms of their cues.
+
+### M2 T5c — M2's closure (2026-10-14)
+
+On `client/e17-m2-t5c-closure`, the user present.
+
+- **Starting point:** master at #204; the full local verify green with the original data (CI
+  still unstarted: billing). The user's answer to T5b's listening questions: no crackling, the
+  sounds in sync with the animations, the balance right.
+- **The fresh reviewer** (a sub-agent, read-only) over M2's code (the timeline, `h3-sdl`, the
+  window, the sound, the sound decoder): 12 findings, each checked against the code, and where
+  it named the original against the executable (`scripts/exe.py`). Fixed:
+  1. a `TurnStarted` was timed before the melee's and the shot's turn-backs, so the next turn's
+     outline showed while both stacks still turned back: the attack now ends first;
+  2. → while paused kept the creature sounds playing (a move's loop never stopped) and skipped
+     the next frame's cues: it silences them and keeps those cues;
+  3. a command's last layer changes waited for the next command's first frame: a corpse lay in
+     the struck stacks' pass through a player's wait, a survivor's standing pose came back over
+     its fidget with another stack's walk (and stopped it): they show at the first idle step;
+  4. a strike or shot by a stack the timeline does not know dropped its targets' kills (the dead
+     stood on): the targets react alone;
+  5. a breath on two stacks took groups 11–13: read, `melee_strike` takes 17–19 where the DEF has
+     them, for a breath only (creature flag 0x8; 0x441ACA to 0x441B66); the viewer tells a breath
+     by its second stack's place (*provisional*), the tables' `breath` groups;
+  7. the music's fade-in ran on during a pause; 8. a hardware cursor SDL could not remake left
+  the window without one; 9. a redraw was dropped when a skipped frame drew what showed;
+  10. a sound that did not decode closed the window; 11. comments that contradicted the code;
+  12. the window scanned 10 minutes of idle steps quadratically past a still battle's end
+  (`Timeline::still`).
+  Not a bug: 6. a one-hex flight (k = 0) has no cycles, as in the executable (0x4B4C5B jumps to
+  the landing); pinned by a test. Design §7.3, §7.4, §7.10, §8.1, §8.2; the address map's
+  `melee_strike` and `stack_flight_animation`.
+- **The review list** (31 items) accepted by the user; the provisional marks stay where a
+  recording is to check the rule (M3 T1b) or the original cannot be matched (the fidgets).
+- **M3 refined with the user** (QUEUE: T1a–T9): M2's T4b-2b became T1a and T1b; the user added
+  the rays (Magi and Beholders draw an energy ray, not a projectile: T1b) and the spell animations
+  (T7a the reading, T7b on stacks with morale and luck, T7c area spells, rays and spell
+  obstacles); sieges, live play, HD and the client's options later. The text's ADR-0020
+  amendment comes with T4, where the catalogue's format is chosen.
+- **M2's exit checked on the branch** (the user's files in the sandbox): `clients/scripts/check.sh`
+  all gates (100 % coverage); the gate decodes all 11 981 entries, finds the tables' 309 names and
+  743 sounds, all 1 232 sounds equal SDL's samples; `sequences`: the four as recorded; `play
+  scenarios/battle.toml`: 24 commands, 79 064 ms, 1 051 frames (81 764 ms and 1 078 before #204
+  shortened the shots' loops; T5c adds or removes no frame in this battle: no breath, no unknown
+  stack); `window --check 25` under Xvfb with SDL's `disk` audio: 293 of 293 frames exact.

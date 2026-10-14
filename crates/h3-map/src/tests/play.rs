@@ -1202,6 +1202,7 @@ fn check_heroes_after_battle(
             .map(|&(_, c)| c);
         let (mut experience, mut mana, mut items) =
             (b.experience, b.mana, b.worn.len() + b.backpack.len());
+        let mut spells = b.spells.clone();
         for change in told {
             match change {
                 HeroChange::GainExperience(points) => {
@@ -1211,14 +1212,45 @@ fn check_heroes_after_battle(
                 HeroChange::SetSpellPoints(points) => mana = points,
                 HeroChange::AddArtifact(_) => items += 1,
                 HeroChange::RemoveArtifact(_) => items -= 1,
+                // E08 T19a2b: only the winner that stays learns (Eagle Eye's picks).
+                HeroChange::LearnSpell(spell) => {
+                    prop_assert!(after.adventure().hero(id).is_some(), "{:?} learned", id);
+                    spells.push(spell);
+                }
             }
         }
         prop_assert_eq!((a.experience, a.mana), (experience, mana));
         prop_assert_eq!(a.worn.len() + a.backpack.len(), items);
+        prop_assert_eq!(&a.spells, &spells);
         prop_assert_eq!(
-            (a.hero_type, a.level, a.primary, &a.skills, &a.spells),
-            (b.hero_type, b.level, b.primary, &b.skills, &b.spells)
+            (a.hero_type, a.level, a.primary, &a.skills),
+            (b.hero_type, b.level, b.primary, &b.skills)
         );
+    }
+    // E08 T19a2b: creatures are raised into the army of a battle hero that stays, told to its
+    // owner, as a stack of the creature told with at least that many.
+    for event in events {
+        if let GameEvent::CreaturesRaised {
+            player,
+            hero,
+            creature,
+            count,
+        } = *event
+        {
+            prop_assert!(fought.contains(&hero), "{:?} raised", hero);
+            prop_assert_eq!(player, before.adventure().hero(hero).unwrap().owner);
+            let stays = after.adventure().hero(hero);
+            prop_assert!(
+                stays.is_some_and(|h| h
+                    .army
+                    .iter()
+                    .any(|s| s.creature == creature && s.count >= count)),
+                "{:?} raised {} of {:?}",
+                hero,
+                count,
+                creature
+            );
+        }
     }
     let items = |state: &GameState| {
         let mut all: Vec<_> = fought

@@ -167,8 +167,20 @@ fn slot_of(row: &Row, all: &[String]) -> Result<Option<&'static str>, String> {
     }
 }
 
-/// Renders a gap-fill effect: creature and faction names become keys, the rest is copied.
-fn render(spec: &AbilitySpec, pack: &str, ctx: Context<'_>, what: &str) -> Result<String, String> {
+/// Renders a gap-fill effect: creature, faction and skill names become keys, the rest is copied.
+fn render(
+    spec: &AbilitySpec,
+    pack: &str,
+    (ctx, skills): (Context<'_>, &[String]),
+    what: &str,
+) -> Result<String, String> {
+    let creature = |name: &str| {
+        ctx.creatures
+            .values()
+            .find(|c| c.name == name)
+            .ok_or_else(|| format!("gapfill: {what}: unknown creature `{name}`"))
+            .and_then(|c| reference(&c.key, c.pack, pack, what))
+    };
     if spec.creature.is_some() {
         return Err(format!(
             "gapfill: {what}: artifact effects take no `creature`"
@@ -187,15 +199,7 @@ fn render(spec: &AbilitySpec, pack: &str, ctx: Context<'_>, what: &str) -> Resul
         let value = match (k.as_str(), v) {
             ("creatures", toml::Value::Table(t)) => match (t.get("creature"), t.get("flag")) {
                 (Some(toml::Value::String(name)), None) if t.len() == 1 => {
-                    let c = ctx
-                        .creatures
-                        .values()
-                        .find(|c| c.name == *name)
-                        .ok_or_else(|| format!("gapfill: {what}: unknown creature `{name}`"))?;
-                    format!(
-                        "{{ creature = {} }}",
-                        quote(&reference(&c.key, c.pack, pack, what)?)
-                    )
+                    format!("{{ creature = {} }}", quote(&creature(name)?))
                 }
                 (None, Some(toml::Value::String(flag))) if t.len() == 1 => {
                     format!("{{ flag = {} }}", quote(flag))
@@ -215,6 +219,21 @@ fn render(spec: &AbilitySpec, pack: &str, ctx: Context<'_>, what: &str) -> Resul
                             Ok(quote(&reference(&key, owner, pack, what)?))
                         })
                         .collect::<Result<Vec<_>, String>>()?;
+                format!("[{}]", keys.join(", "))
+            }
+            // E08 T19a2b: a `raises`' skill and creatures by level, a share's skill condition.
+            ("skill" | "unless_skill", toml::Value::String(name)) => {
+                let skill = skills
+                    .iter()
+                    .find(|n| *n == name)
+                    .ok_or_else(|| format!("gapfill: {what}: unknown skill `{name}`"))?;
+                quote(&reference(&key_of(skill), "base", pack, what)?)
+            }
+            ("by_level", toml::Value::Array(list)) => {
+                let keys = list
+                    .iter()
+                    .map(|n| creature(n.as_str().unwrap_or_default()).map(|k| quote(&k)))
+                    .collect::<Result<Vec<_>, String>>()?;
                 format!("[{}]", keys.join(", "))
             }
             (_, v) => v.to_string(),
@@ -427,7 +446,7 @@ pub fn harvest_artifacts(
             let list = e
                 .effects
                 .iter()
-                .map(|s| render(s, pack, ctx, name))
+                .map(|s| render(s, pack, (ctx, skills), name))
                 .collect::<Result<Vec<_>, String>>()?;
             let skill = e
                 .needs_skill

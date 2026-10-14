@@ -236,7 +236,7 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   (VCMI) with observation rows (D-19); turrets as off-field stacks; no seam change.**
 - **T7b, the battle** (`battle/e04c-t7`, `cross-lane` for `h3-map`, the adventure replays'
   headers, `h3-view`'s table test and the lanes' queues): the Arrow Tower harvested (the gap
-  fill's war machines, ability `turret`, pack format v40); the siege field's targets hold their
+  fill's war machines, ability `turret`, pack format v41); the siege field's targets hold their
   turrets' positions and the keep's least count, read from the executable (0x465990's cases,
   0x463600's operands, 0x5BF4F0; `h3_formats::exe::wall_shot_data`; battle part hash v5). The
   battle: the defender's turrets after its war machines (slots 20 to 22; `Stack::is_turret`), the

@@ -575,6 +575,10 @@ pub enum HeroEffect<C, K, S, F, L> {
     Necromancy {
         /// Share in basis points (1..=10 000).
         bp: u16,
+        /// The share counts only while the hero lacks this skill (pack format v40, E08 T19a2b:
+        /// the Cloak of the Undead King's 30 % for a hero without Necromancy, whose parts give
+        /// theirs with the skill).
+        unless_skill: Option<K>,
     },
     /// The experience the hero gains grows by `bp` (Learning, E08 increment 3: 5 %, 10 %, 15 %).
     ExperienceGain {
@@ -613,6 +617,13 @@ pub enum HeroEffect<C, K, S, F, L> {
         /// Ballistics level (1..=3).
         level: u8,
     },
+    /// The highest spell level the hero may learn grows by `levels` over the hero parameters'
+    /// `learn_level` (pack format v40, E08 T19a2b; Wisdom: 1, 2, 3, so levels 3 to 5; sources
+    /// add, at most level 5).
+    LearnLevel {
+        /// Levels added (1..=5).
+        levels: u8,
+    },
 }
 
 /// An effect as written in a pack (references are keys).
@@ -622,7 +633,7 @@ pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, Facti
 
 impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 44] = [
+    pub const NAMES: [&'static str; 45] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -667,6 +678,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "join_bonus",
         "raises",
         "ballistics",
+        "learn_level",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -716,6 +728,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::JoinBonus { .. } => 41,
             Self::Raises { .. } => 42,
             Self::Ballistics { .. } => 43,
+            Self::LearnLevel { .. } => 44,
         }
     }
 
@@ -884,7 +897,10 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
                 bp: *bp,
                 max_level: *max_level,
             },
-            Self::Necromancy { bp } => HeroEffect::Necromancy { bp: *bp },
+            Self::Necromancy { bp, unless_skill } => HeroEffect::Necromancy {
+                bp: *bp,
+                unless_skill: unless_skill.as_ref().map(skill).transpose()?,
+            },
             Self::ExperienceGain { bp } => HeroEffect::ExperienceGain { bp: *bp },
             Self::MaxMana { bp } => HeroEffect::MaxMana { bp: *bp },
             Self::JoinBonus { level } => HeroEffect::JoinBonus { level: *level },
@@ -896,6 +912,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
                 creature: raised.try_map(&mut creature, skill)?,
             },
             Self::Ballistics { level } => HeroEffect::Ballistics { level: *level },
+            Self::LearnLevel { levels } => HeroEffect::LearnLevel { levels: *levels },
         })
     }
 
@@ -981,7 +998,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::EagleEye { max_level, .. } if *max_level > MAX_SPELL_LEVEL => {
                 Some("eagle_eye max_level must be 0..=5")
             }
-            Self::Necromancy { bp } if !(1..=FULL_BP).contains(bp) => {
+            Self::Necromancy { bp, .. } if !(1..=FULL_BP).contains(bp) => {
                 Some("necromancy bp must be 1..=10000")
             }
             Self::ExperienceGain { bp: 0 } | Self::MaxMana { bp: 0 } => {
@@ -992,6 +1009,9 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             }
             Self::Ballistics { level } if !(1..=MAX_SKILL_LEVEL).contains(level) => {
                 Some("ballistics level must be 1..=3")
+            }
+            Self::LearnLevel { levels } if !(1..=MAX_SPELL_LEVEL).contains(levels) => {
+                Some("learn_level levels must be 1..=5")
             }
             _ => None,
         }
@@ -1234,10 +1254,13 @@ impl CanonicalHash for CompiledHeroEffect {
                 h.write_u16(*bp);
                 h.write_u8(*max_level);
             }
-            Self::Necromancy { bp } | Self::ExperienceGain { bp } | Self::MaxMana { bp } => {
+            Self::Necromancy { bp, unless_skill } => {
                 h.write_u16(*bp);
+                unless_skill.hash_into(h);
             }
+            Self::ExperienceGain { bp } | Self::MaxMana { bp } => h.write_u16(*bp),
             Self::JoinBonus { level } | Self::Ballistics { level } => h.write_u8(*level),
+            Self::LearnLevel { levels } => h.write_u8(*levels),
             Self::Raises { priority, creature } => {
                 h.write_u8(*priority);
                 creature.hash_into(h);
@@ -1358,7 +1381,10 @@ mod tests {
                 bp: 4000,
                 max_level: 2,
             },
-            E::Necromancy { bp: 1000 },
+            E::Necromancy {
+                bp: 1000,
+                unless_skill: Some(3),
+            },
             E::ExperienceGain { bp: 500 },
             E::MaxMana { bp: 2500 },
             E::JoinBonus { level: 1 },
@@ -1370,6 +1396,7 @@ mod tests {
                 },
             },
             E::Ballistics { level: 2 },
+            E::LearnLevel { levels: 2 },
         ]
     }
 
@@ -1657,14 +1684,22 @@ mod tests {
                 bp: 500,
                 max_level: 6,
             },
-            E::Necromancy { bp: 0 },
-            E::Necromancy { bp: 10_001 },
+            E::Necromancy {
+                bp: 0,
+                unless_skill: None,
+            },
+            E::Necromancy {
+                bp: 10_001,
+                unless_skill: Some(1),
+            },
             E::ExperienceGain { bp: 0 },
             E::MaxMana { bp: 0 },
             E::JoinBonus { level: 0 },
             E::JoinBonus { level: 4 },
             E::Ballistics { level: 0 },
             E::Ballistics { level: 4 },
+            E::LearnLevel { levels: 0 },
+            E::LearnLevel { levels: 6 },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");
@@ -1714,6 +1749,12 @@ mod tests {
         ] {
             assert!(seen.insert(h3_kernel::hash::hash_of(&e)), "{e:?}");
         }
+        // A share with and without its skill condition hashes apart.
+        let share = CompiledHeroEffect::Necromancy {
+            bp: 1000,
+            unless_skill: None,
+        };
+        assert!(seen.insert(h3_kernel::hash::hash_of(&share)), "{share:?}");
     }
 
     #[test]
@@ -1762,6 +1803,23 @@ mod tests {
             .try_map(plus, plus, fail, plus, plus),
             Err(())
         );
+        // A share's skill condition is a skill reference.
+        let share = |unless_skill| E::Necromancy {
+            bp: 3000,
+            unless_skill,
+        };
+        assert_eq!(
+            share(Some(2)).try_map(plus, fail, plus, plus, plus),
+            Err(())
+        );
+        assert_eq!(
+            share(Some(2)).try_map(plus, plus, plus, plus, plus),
+            Ok(HeroEffect::Necromancy {
+                bp: 3000,
+                unless_skill: Some(102)
+            })
+        );
+        assert!(share(None).try_map(plus, fail, plus, plus, plus).is_ok());
         for scope in [SpellScope::School(1), SpellScope::Spell(1)] {
             let e = E::SpellDamage { scope, bp: 1 };
             assert_eq!(e.try_map(plus, plus, fail, plus, fail), Err(()), "{e:?}");

@@ -19,8 +19,8 @@ use crate::ruleset::ObjectTypeId;
 use crate::setup::SetupError;
 use crate::state::AdventureState;
 use crate::testing::{
-    CHART, FIRE, GNOLL, GUARD, OPEN_CHART, PEASANT, TOWER, WOLF, WOOD_PILE, draws, hero_at,
-    movement_rules, world, world_state,
+    CHART, FIRE, GNOLL, GUARD, OPEN_CHART, PEASANT, PIKEMAN, TOWER, WOLF, WOOD_PILE, draws,
+    hero_at, movement_rules, world, world_state,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -1515,6 +1515,78 @@ fn a_battle_is_fought_on_the_ground_its_tile_gives() {
         state.battle_ground(&plain.1, p(1, 0)),
         (crate::testing::GRASS, None)
     );
+}
+
+// covers: GAM-BAT-006
+#[test]
+fn raised_creatures_join_their_stack_a_free_slot_or_the_upgrades_stack() {
+    // The peasant upgrades to the pikeman; armies have seven slots.
+    let rules = crate::testing::movement_rules_edited(true, 16, |p| {
+        p.creatures[2].info.upgrades = vec![ContentKey::parse("t:pikeman").unwrap()];
+    });
+    let mut state = heroes_world(&rules);
+    let red = HeroId::new(1);
+    let army = |state: &AdventureState| state.hero(red).unwrap().army.clone();
+    let raise = |state: &mut AdventureState, creature, count| {
+        state.raise(&rules.0, &rules.1, red, (creature, count))
+    };
+    // Its stack of the creature (slot 0: one peasant) grows.
+    assert_eq!(raise(&mut state, PEASANT, 5), Some((PEASANT, 5)));
+    assert_eq!(army(&state)[0].count, 6);
+    // A new creature takes the first free slot, in slot order.
+    let mut gap = state.clone();
+    gap.end_battle(
+        &rules.0,
+        &[(
+            red,
+            Some(
+                &[
+                    ArmyStack {
+                        slot: 0,
+                        creature: GNOLL,
+                        count: 2,
+                    },
+                    ArmyStack {
+                        slot: 3,
+                        creature: GNOLL,
+                        count: 1,
+                    },
+                ][..],
+            ),
+        )],
+        &mut Vec::new(),
+    );
+    assert_eq!(raise(&mut gap, WOLF, 4), Some((WOLF, 4)));
+    let slots: Vec<(u8, h3_content::CreatureTypeId)> =
+        army(&gap).iter().map(|s| (s.slot, s.creature)).collect();
+    assert_eq!(slots, [(0, GNOLL), (1, WOLF), (3, GNOLL)]);
+    // A full army without the creature: two thirds of it, rounded up, as its upgrade, joining
+    // the upgrade's stack; without an upgrade's stack or an upgrade, none.
+    let full = |first: h3_content::CreatureTypeId| {
+        let mut state = state.clone();
+        let mut stacks = crate::testing::army(&[first; 7]);
+        stacks.iter_mut().skip(1).for_each(|s| s.creature = GNOLL);
+        state.end_battle(&rules.0, &[(red, Some(&stacks[..]))], &mut Vec::new());
+        state
+    };
+    let mut state = full(PIKEMAN);
+    for (count, joined) in [(1, 1), (2, 2), (3, 2), (4, 3), (u32::MAX, 2_863_311_530)] {
+        let before = army(&state)[0].count;
+        assert_eq!(raise(&mut state, PEASANT, count), Some((PIKEMAN, joined)));
+        assert_eq!(army(&state)[0].count, before.saturating_add(joined));
+    }
+    let mut state = full(GNOLL);
+    let before = state.clone();
+    assert_eq!(raise(&mut state, PEASANT, 3), None);
+    assert_eq!(raise(&mut state, WOLF, 3), None);
+    assert_eq!(state, before);
+    // Nothing for 0 creatures or a hero not on the map.
+    assert_eq!(raise(&mut state, GNOLL, 0), None);
+    assert_eq!(
+        state.raise(&rules.0, &rules.1, HeroId::new(9), (GNOLL, 1)),
+        None
+    );
+    assert_eq!(state, before);
 }
 
 // covers: GAM-BAT-002, GAM-BAT-003

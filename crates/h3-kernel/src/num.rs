@@ -194,6 +194,11 @@ mod tests {
             let kf = k as f64;
             proptest::prop_assert_eq!(X87::int(k).times(a).raw(), grid(kf * x));
             proptest::prop_assert_eq!(X87::int(k).times(a).trunc(), (kf * x) as u64);
+            // Quotients too (E08 T19a2b: Necromancy's count).
+            proptest::prop_assert_eq!(a.over(b).unwrap().raw(), grid(x / y));
+            let q = X87::int(k).times(a).over(b).unwrap();
+            proptest::prop_assert_eq!(q.raw(), grid(kf * x / y));
+            proptest::prop_assert_eq!(q.trunc(), (kf * x / y) as u64);
         }
     }
 
