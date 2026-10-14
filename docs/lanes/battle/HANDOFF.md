@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 4 confirmed and merged** (2026-10-14: #191, #199). Next: T7 on `battle/e04c-t7`: reading started (`QUEUE.md` inbox), then BAT-Q44.
+- **E04c increment 5, T7 (arrow towers), in progress** on `battle/e04c-t7` (2026-10-14, sixty-third session): the reading `installation.md` §7.30, the survey's D-16 to D-19, BAT-Q44 asked (the code against the wiki's S-06/S-07, the automatic target, turrets as off-field stacks). Next: the user's answer, then the build and batch 3e.
 - **Merged:** up to #199.
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-2 (T7, T8), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
 - **Versions** (T6): battle state hash v47, battle part hash v4, replay format v27, action encoding v13, C ABI v21, observation encoding v17; shared: core ruleset hash v43, pack format v39, protocol v31. Next ids: BAT-Q44, BAT-QUIRK-23, BAT-STUB-3, BAT-TER-007, BAT-SIE-016; survey D-16, S-30.

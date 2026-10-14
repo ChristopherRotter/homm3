@@ -2653,3 +2653,67 @@ the nearest standing target (D-12); a destroyed mid-upper wall opened 78, not 62
 destroyed gate stayed 0 and let a walker pass 95 without a stop or damage; Earthquake cast by both
 sides (D-15) drew the absent towers, wasted a hit on a doomed part (D-14), and the absent towers'
 destruction marked the defender's first stack dead (S-08).
+
+### 7.30 Code reading: the arrow towers (E04c T7, 2026-10-14)
+
+Read for E04c T7 (the survey `docs/rules/surveys/E04c-sieges.md`, D-16 to D-19; quirk candidates
+S-06 and S-07; BAT-Q44): the turrets' stacks, turn and control, their shot, and what reaches
+them. Insight only, nothing copied (Q29). Not read here: the automatic turret's target (the
+computer player's battle AI, reached from the battle loop 0x4740D0 after 0x474BF0 says "on its
+own"; as the automatic Ballista's), the battle buttons a commanded turret offers (Wait, Defend).
+
+**The stacks** (§7.27: 0x463600). With a Citadel or Castle the defender's records after its war
+machines hold the **keep** (position 254, count `4 + structures` from 0x5BF4F0), then with a
+Castle the **upper tower** (255) and the **lower tower** (251), each with half the keep's count
+rounded up; with or without a defending hero. The turret records +0x13D78 (0x24 bytes each: the
+keep, the lower tower, the upper tower) name each turret's stack by its index at +0x20 (+0x13D98,
++0x13DBC, +0x13DE0). The positions are off the field (0–186). Creature 149's flags `0x20444`:
+shooter, war machine, mind-immune, no morale.
+
+**The turn** (0x464F50, the pick's comparison). After a pending good-morale turn, an arrow tower
+goes before every other stack, then the Catapult, then by speed; two turrets (one side, one speed)
+by the lower record: the keep, the upper tower, the lower tower. The same holds in the wait phase.
+After a turret's action the dispatcher rolls no good morale (0x4792A3 skips 0x464920 for creature
+149), and its flags give it no bad morale either.
+
+**Control** (0x474BF0): creature 149 takes the Ballista's case (the switch's table at 0x474D64):
+a side whose stack's controlling hero (0x442690) has Artillery (+0xDD) and whose player is human
+commands it; without a hero or Artillery, for a computer player and in a hidden battle the turret
+acts on its own.
+
+**Can it shoot** (0x4428F0): the Ballista and an arrow tower always (no shots, no blocking
+neighbour, no Forgetfulness test).
+
+**The shot** (the strike action 0x445A60 → 0x440160, which sends creature 149 to **0x465AD0**;
+then the strike action's Phoenix check as after any shot, §7.21). The turret index comes from the
+active stack's position (251 → 1, 254 → 0, 255 → 2); after the arrow's animation (0x469880) the
+damage (0x465D23 to 0x465D7F): for each creature of the turret's stack (+0x4C) one
+`random(2, 4)` (constants of the code, not the creature's damage), summed; the sum as a double
+times the target's **protection factor** 0x443D90 with its shot flag 1, the same factor as
+physical damage's stage 3 (§7.10, 0x443FF5 to 0x44406D): Air Shield's stored factor (+0x4BC,
+`v / 100` as `f32`) while it lasts, × 0.5 while petrified (spell 70), × `(1 − Armorer)` of the
+target's controller's hero (0x4E4310); truncated (`_ftol`), at least 1; then 0x444090 takes it
+off the target. Nothing else: no attack or defense, luck, Bless or Curse, no hero's Archery or
+Artillery, no wall or range penalty, no shot used, no retaliation or Fire Shield, one shot per
+activation (0x440160 returns at once, before the Ballista's second shot). So Armorer, Air Shield
+and petrification **lower** a turret's damage as any shot's, and Archery does not touch it: the
+code contradicts the wiki's S-06 (they raise it) and agrees with its Arrow tower page on S-07
+(the Archery page: Archery lowers it).
+
+**What reaches a turret.** Creature 149 is immune to every spell (0x44A4D0 at 0x44A577, before
+the per-spell cases; only Dispel's own branch comes earlier), so the mass handler 0x5A66D0 and
+Armageddon's 0x5A4BC0, which walk every record, pass over it; its position is off the field, so
+no strike, shot, area or breath reaches it; a berserk stack never picks it (0x4455D1); a Magic
+Mirror never redirects to it (§7.8). It counts among its side's records (the stack limit, §7.7).
+**A destroyed turret** (§7.29, 0x465990): its part at 0 hit points sets the dead bit 0x200000 on
+its stack, which then no longer acts.
+
+**VCMI** (1.7.5): the turrets are units at the special hexes of the keep and the towers, never a
+valid target (`CUnitState::isValidTarget`); first in the round's siege phase, then the Catapult
+(`CMP_stack`, phase 0, by creature index); the keep's damage range `(10 + 2n)..(20 + 4n)`, a
+tower's `(6 + n)..(12 + 2n)` with `n` the town level, **one uniform draw** for the range,
+through the full damage formula with attack 0, the defense ignored, no luck, no wall or range
+penalty (`config/creatures/special.json`, `DamageCalculator::getBaseDamageSingle`); so the
+target's Air Shield, Armorer and petrification lower it. Artillery gives control of the towers
+(`config/skills.json`: `MANUAL_CONTROL` for `creature.arrowTower`); without it the automatic
+shot as the Ballista's (`tryMakeAutomaticActionOfRangedUnit`).
