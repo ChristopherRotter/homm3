@@ -1808,7 +1808,10 @@ mod tests {
             bp: 3000,
             unless_skill,
         };
-        assert_eq!(share(Some(2)).try_map(plus, fail, plus, plus, plus), Err(()));
+        assert_eq!(
+            share(Some(2)).try_map(plus, fail, plus, plus, plus),
+            Err(())
+        );
         assert_eq!(
             share(Some(2)).try_map(plus, plus, plus, plus, plus),
             Ok(HeroEffect::Necromancy {

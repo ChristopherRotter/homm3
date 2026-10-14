@@ -597,11 +597,19 @@ mod tests {
         assert_eq!(X87::ONE.over(X87::ZERO), None);
         // A quotient just below an integer that rounds up to it at 53 bits truncates to it: 3
         // over (1 + 2^-60) is 3 − 3 · 2^-60 + …, within half a unit of 3 at 53 bits.
-        assert_eq!(X87::int(3).over(X87((1 << 64) + (1 << 4))).unwrap().trunc(), 3);
+        assert_eq!(
+            X87::int(3).over(X87((1 << 64) + (1 << 4))).unwrap().trunc(),
+            3
+        );
         // Saturation at 2^64 − 1, and quotients below 2^-64.
         assert_eq!(X87::MAX.over(X87(1)), Some(X87::MAX));
         assert_eq!(X87::int(1 << 40).over(X87(1 << 20)), Some(X87::MAX));
         assert_eq!(X87(1).over(X87::MAX), Some(X87::ZERO));
+        // A quotient halfway between two 53-bit values goes to the even one: (2^53 + 1) / 2 down
+        // to 2^52, (2^53 + 3) / 2 up to 2^52 + 2.
+        let half = |n: u64| X87::int(n).over(X87::int(2));
+        assert_eq!(half((1 << 53) + 1), Some(X87::int(1 << 52)));
+        assert_eq!(half((1 << 53) + 3), Some(X87::int((1 << 52) + 2)));
     }
 
     #[test]
