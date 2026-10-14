@@ -238,7 +238,10 @@ fn bench(args: &Args) -> Result<(), String> {
         options.games, r.steps, r.seconds
     );
     if workload == Workload::Fork {
-        println!("forks with a battle open: {} of {} games", r.battles, options.games);
+        println!(
+            "forks with a battle open: {} of {} games",
+            r.battles, options.games
+        );
     }
     println!(
         "size of GameState: {} bytes, AdventureEnv: {} bytes",

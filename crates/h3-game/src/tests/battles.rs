@@ -6,7 +6,7 @@
 use h3_adventure::{
     AdventureCommand, AdventureEvent, AdventureEventKind, ObjectTypeId, Offer, Viewers,
 };
-use h3_battle::{BattleState, Command, Event, LegalCommands, Observation};
+use h3_battle::{BattleState, Command, Event, EventKind, LegalCommands, Observation};
 use h3_content::ResourceId;
 use h3_contracts::{Army, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroOutcome};
 use h3_heroes::HeroChange;
@@ -404,12 +404,29 @@ fn a_battle_reports_a_walkers_path_to_a_recording_sink_only() {
         let listed = legal_commands(&loud, &rules, Actor::Player(owner));
         let fights = |c: &&GameCommand| !matches!(c, GameCommand::Battle(c) if c.leaves_battle());
         let command = listed.iter().rfind(fights).unwrap().clone();
-        apply(&mut loud, &rules, Actor::Player(owner), command.clone(), &mut heard).unwrap();
+        apply(
+            &mut loud,
+            &rules,
+            Actor::Player(owner),
+            command.clone(),
+            &mut heard,
+        )
+        .unwrap();
         apply(&mut quiet, &rules, Actor::Player(owner), command, &mut said).unwrap();
         assert_eq!(loud, quiet);
     }
+    // Only the moves differ: a quiet sink gets a walk as one move.
     assert!(said.0.len() < heard.len());
-    assert!(said.0.iter().all(|event| heard.contains(event)));
+    let not_a_move = |e: &&GameEvent| match e {
+        GameEvent::Battle { event, .. } => !matches!(event.kind, EventKind::Moved { .. }),
+        _ => true,
+    };
+    assert!(
+        said.0
+            .iter()
+            .filter(not_a_move)
+            .eq(heard.iter().filter(not_a_move))
+    );
 }
 
 // covers: GAM-BAT-003, GAM-BAT-005

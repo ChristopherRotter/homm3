@@ -73,7 +73,11 @@ fn commands_round_trip_through_their_text() {
             }),
             "0 battle cast 15 stack 2 hex 30",
         ),
-        (PlayerId::new(0), GameCommand::Battle(Command::Wait), "0 battle wait"),
+        (
+            PlayerId::new(0),
+            GameCommand::Battle(Command::Wait),
+            "0 battle wait",
+        ),
     ];
     for (player, command, text) in cases {
         let actor = Actor::Player(player);
@@ -244,12 +248,14 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     std::fs::remove_dir_all(&tmp).unwrap();
     // Answers round-trip through the file.
     let mut answered = replay.clone();
-    answered
-        .commands
-        .push((Actor::Player(PlayerId::new(1)), GameCommand::Answer(Answer::Accept)));
-    answered
-        .commands
-        .push((Actor::Player(PlayerId::new(0)), GameCommand::Answer(Answer::Decline)));
+    answered.commands.push((
+        Actor::Player(PlayerId::new(1)),
+        GameCommand::Answer(Answer::Accept),
+    ));
+    answered.commands.push((
+        Actor::Player(PlayerId::new(0)),
+        GameCommand::Answer(Answer::Decline),
+    ));
     let text = replay_to_toml(&answered).unwrap();
     assert!(text.contains("\"1 accept\""), "{text}");
     assert_eq!(parse_replay(&text).unwrap(), answered);
@@ -428,6 +434,28 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
     assert_eq!(reach.operations, 2 * reach.steps);
     let fork = bench(bench::Workload::Fork, false, false);
     assert_eq!((fork.operations, fork.steps), (14, play.steps));
+    assert_eq!(fork.battles, 0);
+    // E08 T19b1: with `battle` the heroes seek each other and the forks carry the open battle.
+    let fight = bench::run(
+        &root().join("packs"),
+        &root(),
+        &bench::BenchOptions {
+            map: DUEL.to_owned(),
+            profile: DEFAULT_PROFILE.to_owned(),
+            difficulty: h3_game::DEFAULT_DIFFICULTY,
+            workload: bench::Workload::Fork,
+            games: 2,
+            days: 7,
+            seed: 1,
+            forks: 3,
+            observe: false,
+            masks: false,
+            battle: true,
+        },
+    )
+    .unwrap();
+    assert_eq!((fight.operations, fight.battles), (6, 2));
+    assert!(fight.steps > 2, "{fight:?}");
     let dir = root().display().to_string();
     let packs = format!("{dir}/packs");
     let args = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
@@ -451,6 +479,8 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             "--observe",
             agent,
             "--masks",
+            agent,
+            "--battle",
             agent,
             "--difficulty",
             "4",

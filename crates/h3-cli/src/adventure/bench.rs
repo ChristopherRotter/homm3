@@ -7,8 +7,8 @@
 //! * `reach`: the reachable-tiles query of every hero of the acting player at each step of
 //!   random play, inside [`reach_queries`] (the play around it is not counted).
 //! * `fork`: forks of the env after `days` days of random play, inside [`fork_workload`]; with
-//!   `--battle 1` (E08 T19b1) the play stops at the first step that opens a battle, so the forks
-//!   carry an open battle.
+//!   `--battle 1` (E08 T19b1) the heroes seek each other instead and the play stops at the step
+//!   that opens a battle, so the forks carry an open battle.
 //!
 //! Two variants measure what an agent adds (wall time only, for the docs): `--observe 1`, the
 //! acting player's observation before each step; `--masks 1`, the entry mask and the chosen
@@ -19,13 +19,15 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
+use h3_adventure::Pos;
 use h3_battle::LegalCommands;
 use h3_contracts::PlayerId;
 use h3_game::{Actor, legal_moves};
 use h3_kernel::{Rng, StreamId};
 use h3_sim::action::{ACTION_COUNT, SPELL_COUNT, TARGET_COUNT};
-use h3_sim::adventure::{Action, ENTRY_COUNT, Phase};
+use h3_sim::adventure::action::{self, hero_in_slot, tile_index};
 use h3_sim::adventure::rollout::choose;
+use h3_sim::adventure::{Action, ENTRY_COUNT, HERO_SLOTS, Phase};
 use h3_sim::adventure::{AdventureEnv, random_rollout};
 
 use super::{DEFAULT_PACKS, Result, load_map, load_rules};
@@ -116,7 +118,7 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
             Workload::Reach => reach_rollout(&mut env, g),
             Workload::Fork => {
                 let steps = if options.battle {
-                    until_battle(&mut env, g)
+                    until_battle(&mut env)
                 } else {
                     u64::from(random_rollout(&mut env, g, 0).steps)
                 };
@@ -138,20 +140,71 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
     Ok(result)
 }
 
-/// Random play until a battle opens or the episode ends: the steps played.
-fn until_battle(env: &mut AdventureEnv, agent_seed: u64) -> u64 {
-    let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
+/// Play until a battle opens or the episode ends (`fork` with `battle`): the steps played. Random
+/// play seldom brings two players' heroes together on a large map, so here the heroes seek each
+/// other ([`seek`]).
+fn until_battle(env: &mut AdventureEnv) -> u64 {
     let mut steps = 0;
-    while let Some(player) = env.to_move().next() {
+    loop {
+        let Some(player) = env.to_move().next() else {
+            break;
+        };
         if env.phase(player) == Phase::Battle {
             break;
         }
-        let action = choose(env, player, &mut rng);
-        // A legal action is always accepted (h3-sim's tests).
-        let _ = env.step(player, action);
+        // A legal action is always accepted (h3-sim's tests); a refusal would repeat.
+        if env.step(player, seek(env, player)).is_err() {
+            break;
+        }
         steps += 1;
     }
     steps
+}
+
+/// The acting player's step toward another player's hero: of its heroes' legal moves the one that
+/// ends nearest (in steps, on the same level) to another player's hero, the first slot's and
+/// tile's on a tie, the hero's tile itself (a battle) nearest of all; `EndTurn` when no move gets
+/// nearer than its hero stands, `Decline` with an open decision.
+fn seek(env: &AdventureEnv, player: PlayerId) -> Action {
+    let state = env.state();
+    if state.decision(player).is_some() {
+        return Action::decline();
+    }
+    let others: Vec<Pos> = state
+        .adventure()
+        .heroes()
+        .iter()
+        .filter(|hero| hero.owner != player)
+        .map(|hero| hero.pos)
+        .collect();
+    let distance = |pos: Pos| {
+        others
+            .iter()
+            .filter(|other| other.level == pos.level)
+            .map(|other| other.x.abs_diff(pos.x).max(other.y.abs_diff(pos.y)))
+            .min()
+    };
+    let mut best: Option<(u16, Action)> = None;
+    for slot in 0..HERO_SLOTS {
+        let (Some(hero), Some(reach)) = (
+            hero_in_slot(state, player, slot).and_then(|id| state.adventure().hero(id)),
+            action::moves(state, env.rules(), player, slot),
+        ) else {
+            continue;
+        };
+        let Some(here) = distance(hero.pos) else {
+            continue;
+        };
+        for (pos, _) in reach.tiles() {
+            let (Some(d), Some(tile)) = (distance(pos), tile_index(state, pos)) else {
+                continue;
+            };
+            if d < here && best.is_none_or(|(b, _)| d < b) {
+                best = Some((d, Action::move_to(slot, tile)));
+            }
+        }
+    }
+    best.map_or_else(Action::end_turn, |(_, action)| action)
 }
 
 /// Random play with every hero's reachable-tiles query at each step ([`reach_queries`], the

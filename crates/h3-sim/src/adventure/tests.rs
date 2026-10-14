@@ -332,7 +332,10 @@ fn check_battle_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCa
     // Every ninth legal entry and the casts: each head's mask builds the battle's legal commands.
     let listed: Vec<usize> = (0..battle::ACTION_COUNT).filter(|&e| entries[e]).collect();
     let casts = [battle::HERO_CAST, battle::CREATURE_CAST];
-    let some = listed.iter().step_by(9).chain(listed.iter().filter(|e| casts.contains(e)));
+    let some = listed
+        .iter()
+        .step_by(9)
+        .chain(listed.iter().filter(|e| casts.contains(e)));
     for &entry in some {
         env.spell_mask(player, entry, &mut legal, &mut spells);
         let spell = u16::try_from(first(&spells).unwrap()).unwrap();
@@ -394,7 +397,11 @@ fn legal_by_masks(env: &AdventureEnv, player: PlayerId, action: Action) -> bool 
 fn attack(env: &AdventureEnv, player: PlayerId) -> Option<Action> {
     let heroes = env.state().adventure().heroes();
     let others: Vec<_> = heroes.iter().filter(|h| h.owner != player).collect();
-    enter_chart(env, player, &others.iter().map(|h| h.pos).collect::<Vec<_>>())
+    enter_chart(
+        env,
+        player,
+        &others.iter().map(|h| h.pos).collect::<Vec<_>>(),
+    )
 }
 
 /// The acting player's move onto one of `charts`, if one of its heroes can make it.

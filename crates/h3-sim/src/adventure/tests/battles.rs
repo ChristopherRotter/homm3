@@ -82,7 +82,10 @@ fn a_move_onto_another_players_hero_opens_a_battle_in_the_battle_phase() {
     let path = reach.path(near).unwrap();
     assert_eq!(
         action::decode(state, rules, RED, Action::move_to(0, tile)),
-        Some(GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }))
+        Some(GameCommand::Adventure(AdventureCommand::MoveHero {
+            hero,
+            path
+        }))
     );
     let attacks = (0..400)
         .map(|seed| choose(&env, RED, &mut Rng::for_stream(seed, StreamId::AGENT)))
@@ -184,7 +187,10 @@ proptest! {
     #[test]
     fn a_fork_with_a_battle_open_evolves_as_its_parent(agent in any::<u64>(), prefix in 0u32..30) {
         let (mut parent, _) = attacked();
-        random_rollout(&mut parent, agent, prefix);
+        // A rollout without a step limit would not end: the env has no day limit.
+        if prefix > 0 {
+            random_rollout(&mut parent, agent, prefix);
+        }
         let hash = parent.state_hash();
         let mut wild = parent.fork();
         random_rollout(&mut wild, agent ^ 1, 40);
@@ -220,9 +226,9 @@ fn a_replay_records_a_battle_with_its_actors() {
         play(&mut env, player, action);
     }
     play(&mut env, RED, Action::end_turn());
-    let blue_moved = commands
-        .iter()
-        .position(|(actor, c)| *actor == Actor::Player(BLUE) && matches!(c, GameCommand::Battle(_)));
+    let blue_moved = commands.iter().position(|(actor, c)| {
+        *actor == Actor::Player(BLUE) && matches!(c, GameCommand::Battle(_))
+    });
     assert!(blue_moved.is_some(), "blue's side never acted");
     let replay = replay::Replay {
         header: replay::ReplayHeader::current(&FAITHFUL),
@@ -238,7 +244,14 @@ fn a_replay_records_a_battle_with_its_actors() {
     let mut state = GameState::new(&FAITHFUL, &setup, 1).unwrap();
     let mut checkpoints = Vec::new();
     for (i, (actor, command)) in replay.commands.iter().enumerate() {
-        apply(&mut state, &FAITHFUL, *actor, command.clone(), &mut h3_game::NoopSink).unwrap();
+        apply(
+            &mut state,
+            &FAITHFUL,
+            *actor,
+            command.clone(),
+            &mut h3_game::NoopSink,
+        )
+        .unwrap();
         if (i + 1) % 7 == 0 {
             checkpoints.push(state.state_hash());
         }

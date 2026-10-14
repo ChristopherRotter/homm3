@@ -16,7 +16,14 @@
 //! seeds (`--seed N --agent-seed N --days 28` for N up to 1 200, E08 T16a): `duel-s892-d28`
 //! accepts a Cartographer's offer (paid, a level revealed), takes a key and accepts a border
 //! guard's pass (the guard removed), and `duel-s988-d28` declines an offer, accepts one and
-//! visits an observatory, so the matrix replays both answers and both offer kinds.
+//! visits an observatory, so the matrix replays both answers and both offer kinds. In E08 T19b1
+//! (format v3, the random agent's moves onto other players' heroes) all six were re-recorded with
+//! their options (`duel-s892-d28`'s later moves changed, its answers stayed), and two with hero
+//! battles came from a search over seeds (`--seed N --agent-seed N --days 28` for N up to 1 500;
+//! 9 of them fight a battle, in either profile): `duel-s792-d28`, blue's hero attacks red's, wins
+//! and captures its backpack's artifact, and `duel-s120-strict-d28` (`--profile
+//! base:strict-fixed`: the obstacles from the attacker's stream, `ADV-QUIRK-5` off), red's
+//! underground hero attacks blue's and loses to it after 148 battle commands.
 
 use std::path::PathBuf;
 
@@ -31,7 +38,7 @@ fn golden_adventure_replays_reproduce_their_hashes() {
         .collect();
     files.sort();
     assert!(
-        files.len() >= 6,
+        files.len() >= 8,
         "expected the E08 replay fixtures in {}",
         dir.display()
     );
