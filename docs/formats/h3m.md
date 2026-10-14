@@ -125,7 +125,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a; `MAP_IMPORT_VERSION` 3)
+## Import (E08 T5a, T6a, T12a, T13a, T18b; `MAP_IMPORT_VERSION` 4)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -167,8 +167,19 @@ content and draws nothing; it rejects what the current increment cannot represen
   town's entrance, an "H3M format quirk", `CGameState::placeHeroesInTowns`; towns are E09).
   A hero on the visitable tile of an object visited from a neighbouring tile (a pile, a campfire,
   a border guard) imports but fails validation (ADV-MAP-001, E08 T14a); no shipped map has one.
-  Ignored until hero details exist (increment 3, `ADV-STUB-1`): name, portrait, experience,
-  skills, artifacts, spells, primary skills, formation, patrol, biography, sex.
+- **A placed hero's details** (v4, E08 T18b, GAM-HER-001): the formation (0 loose, 1 tight) and
+  `h3_game::HeroDetailsSetup`, each field the body's, else its hero type's map-wide entry's
+  (SoD's customised hero types), else none (the game's default): experience (before SoD 0 is
+  the default; SoD's flag makes 0 an experience), primary skills (clamped to the hero
+  parameters' bounds, 0–99 with Spell Power and Knowledge at least 1, as the original's load),
+  secondary skills (skill code by `SSTRAITS.TXT` order, the level as stored, 1–3), artifacts (each
+  worn slot's code, the position not kept, ADR-0013; the backpack in order; codes by the packs'
+  `# original id`, 141–143 unused), spells (SoD's 9-byte set, spell `i` at bit `i mod 8` of byte
+  `i / 8`; AB's one byte: `0xFF` none, `0xFE` the type's own, else that spell beside the type's).
+  The validation (`h3_heroes::validate`) checks the rest, so a war machine in the backpack or a
+  scroll without its spell fails it (no shipped map that imports has one). Unsupported: an
+  experience of 1 000 or more, the body's or the map-wide entry's (level 2: increment 4's levels,
+  E08 decision 22). Ignored: name, portrait, patrol (a computer player's), biography, sex.
 
 The 164 maps of the user's installation (2026-10-12, import v2,
 `crates/h3-map/examples/original_data.rs`): every static layer imports and validates; 9 import and
@@ -178,7 +189,11 @@ validate whole (`Adventures of Jared Haret`, `Faeries`, `Knee Deep in the Dead`,
 a guarded resource pile (`Myth and Legend` among them, whole in v1), 3 for a hero standing in a town
 (the first reason found counts: players, the static layer, then the heroes). E08 T14a's run (import v3,
 the same outcomes): no tile of a static layer is the visitable tile of two or more objects (0 of
-101 246 visitable tiles, heroes left out; which object such a tile visits: ADV-OBJ-003).
+101 246 visitable tiles, heroes left out; which object such a tile visits: ADV-OBJ-003). E08
+T18b's run (import v4): 5 import and validate whole (`Pandora's Box ` with 27 customised heroes,
+`Race for Ardintinny`, `Tutorial.tut`, `Untitled`, `experiment`); `Adventures of Jared Haret`,
+`Faeries`, `Knee Deep in the Dead` and `Unholy Quest` are unsupported for a hero with an
+experience of 1 000 or more (4); the other outcomes as before.
 
 ## The subset we write (E04a T2)
 

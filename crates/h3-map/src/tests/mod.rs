@@ -77,7 +77,7 @@ fn sample(v: Version) -> RawMap {
                 secondary_skills: Some(vec![(1, 2)]),
                 artifacts: Some(Artifacts {
                     worn: vec![None; v.artifact_slots()],
-                    backpack: vec![Some(5)],
+                    backpack: vec![Some(7)],
                 }),
                 sex: 0xFF,
                 ..CustomHero::default()
@@ -780,7 +780,7 @@ fn maps_from_the_experiment_writer_read_back() {
         hero_type: 0,
         class: 0,
         name: None,
-        experience: Some(1000),
+        experience: Some(999),
         skills: Some(vec![(6, 2)]),
         army: Some([Some((1, 25)), None, None, None, None, None, None]),
         tight_formation: false,
@@ -932,7 +932,7 @@ fn maps_from_the_experiment_writer_read_back() {
     let Body::Hero(h) = &m.objects[0].body else {
         panic!("not a hero: {:?}", m.objects[0].body)
     };
-    assert_eq!((h.owner, h.hero_type, h.experience), (0, 0, Some(1000)));
+    assert_eq!((h.owner, h.hero_type, h.experience), (0, 0, Some(999)));
     assert_eq!(h.secondary_skills, Some(vec![(6, 2)]));
     assert_eq!(h.primary_skills, Some([3, 2, 1, 1]));
     let army = h.army.as_ref().unwrap();

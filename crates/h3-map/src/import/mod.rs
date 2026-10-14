@@ -11,11 +11,16 @@ pub(crate) mod codes;
 use std::fmt;
 
 use h3_adventure::{MapSetup, ObjectSetup, Pos, TileMask, TileSetup};
-use h3_content::CreatureTypeId;
+use h3_content::{CreatureTypeId, Formation, SkillId, SpellId};
 use h3_contracts::{ArmyStack, PlayerId};
-use h3_game::{DEFAULT_DIFFICULTY, GameHeroSetup, GameRuleset, GameSetup, HeroArmy, PlayerSetup};
+use h3_game::{
+    DEFAULT_DIFFICULTY, GameHeroSetup, GameRuleset, GameSetup, HeroArmy, HeroArtifactsSetup,
+    HeroDetailsSetup, PlayerSetup,
+};
 
-use crate::model::{Army, Body, HeroBody, Object, RawMap, Template, Version};
+use crate::model::{
+    Army, Artifacts, Bits, Body, CustomHero, HeroBody, Object, RawMap, Template, Version,
+};
 
 /// Object classes the import tells apart beside the typed ones (`codes::object_type`); every other
 /// object is a blocker.
@@ -47,6 +52,10 @@ pub enum Unsupported {
     /// The object at this index is a guarded resource pile, which fights before the pickup
     /// (battles: increment 3; ADV-Q10, D-6). Its static layer keeps it as a blocker.
     GuardedPile(usize),
+    /// The hero object at this index has an experience of at least 1 000, its own or its hero
+    /// type's map-wide entry's: level 2 or more, which needs increment 4's levels (E08 decision
+    /// 22).
+    HeroExperience(usize),
 }
 
 impl Unsupported {
@@ -59,6 +68,7 @@ impl Unsupported {
             Self::RandomStack(_) => "a random stack in a hero's army",
             Self::HeroInTown(_) => "a hero standing in a town",
             Self::GuardedPile(_) => "a guarded resource pile",
+            Self::HeroExperience(_) => "a hero with an experience of 1 000 or more",
         }
     }
 }
@@ -148,13 +158,17 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
     for (index, object, template) in objects {
         match (template.class, &object.body) {
             (HERO, Body::Hero(body)) => {
+                let custom = map
+                    .custom_heroes
+                    .iter()
+                    .find(|c| c.hero_type == body.hero_type);
                 let hero = hero(
                     map.header.version,
                     rules,
                     &colours,
                     index,
                     &footprint(object, template),
-                    body,
+                    (body, custom),
                 )?;
                 if towns.iter().any(|town| blocks(town, hero.pos)) {
                     return Err(Unsupported::HeroInTown(index).into());
@@ -359,15 +373,16 @@ fn footprint(object: &Object, template: &Template) -> ObjectSetup {
     }
 }
 
-/// A placed hero: its owner, type, tile and army.
-// stub: ADV-STUB-1
+/// A placed hero: its owner, type, tile, army, formation and the customisations of its details
+/// (E08 T18b), the body's over its hero type's map-wide entry's, field by field (VCMI 1.7.5
+/// `CMapLoaderH3M::readHero`: "using the latter set").
 fn hero(
     version: Version,
     rules: &GameRuleset,
     colours: &[Option<PlayerId>; 8],
     index: usize,
     footprint: &ObjectSetup,
-    body: &HeroBody,
+    (body, custom): (&HeroBody, Option<&CustomHero>),
 ) -> Result<GameHeroSetup, ImportError> {
     let owner = colours
         .get(usize::from(body.owner))
@@ -385,11 +400,166 @@ fn hero(
         .core()
         .hero_type_by_key(key)
         .ok_or(ImportError::MissingContent(key))?;
+    let details = details(version, rules, index, hero_type, (body, custom))?;
     Ok(GameHeroSetup {
         hero_type,
         owner,
         pos: stands_on(footprint).ok_or(ImportError::HeroTile(index))?,
         army: army(version, rules, index, body.army.as_ref())?,
+        formation: if body.formation == 0 {
+            Formation::Loose
+        } else {
+            Formation::Tight
+        },
+        details,
+    })
+}
+
+/// The least experience of level 2: the import refuses a hero with it (increment 4's levels).
+const LEVEL_2_EXPERIENCE: u32 = 1000;
+
+/// AB's one spell byte: no spell (the spell book empty), or the hero type's own.
+const NO_SPELL: u8 = 0xFF;
+const TYPE_SPELL: u8 = 0xFE;
+
+/// The customisations of a placed hero's details (E08 T18b; `docs/formats/h3m.md`, "Import"):
+/// experience (before SoD 0 is the default), primary skills (clamped to the hero parameters'
+/// bounds, as the original's load does, survey `E08-battles.md` §6.3), secondary skills,
+/// artifacts worn and in the backpack, spells (SoD's set; AB's one spell beside the type's,
+/// `0xFF` none, `0xFE` the type's); the body's field over the map-wide entry's.
+fn details(
+    version: Version,
+    rules: &GameRuleset,
+    index: usize,
+    hero_type: h3_content::HeroTypeId,
+    (body, custom): (&HeroBody, Option<&CustomHero>),
+) -> Result<HeroDetailsSetup, ImportError> {
+    let experience = body
+        .experience
+        .filter(|&e| version == Version::Sod || e != 0)
+        .or_else(|| custom.and_then(|c| c.experience));
+    if experience.is_some_and(|e| e >= LEVEL_2_EXPERIENCE) {
+        return Err(Unsupported::HeroExperience(index).into());
+    }
+    let params = rules.core().hero_params();
+    let primary = body
+        .primary_skills
+        .or_else(|| custom.and_then(|c| c.primary_skills))
+        .map(|skills| {
+            let mut out = skills;
+            for (i, value) in out.iter_mut().enumerate() {
+                let (low, high) =
+                    params.map_or((0, u8::MAX), |p| (p.primary_min[i], p.primary_max));
+                *value = (*value).clamp(low, high);
+            }
+            out
+        });
+    let skills = body
+        .secondary_skills
+        .as_ref()
+        .or_else(|| custom.and_then(|c| c.secondary_skills.as_ref()))
+        .map(|list| {
+            list.iter()
+                .map(|&(code, level)| Ok((skill(rules, code)?, level)))
+                .collect::<Result<Vec<_>, ImportError>>()
+        })
+        .transpose()?;
+    let artifacts = body
+        .artifacts
+        .as_ref()
+        .or_else(|| custom.and_then(|c| c.artifacts.as_ref()))
+        .map(|a| hero_artifacts(rules, a))
+        .transpose()?;
+    let spells = match (body.spells.as_ref(), body.spell) {
+        (Some(bits), _) => Some(spell_set(rules, bits)?),
+        (None, Some(NO_SPELL)) => Some(Vec::new()),
+        (None, Some(TYPE_SPELL)) | (None, None) => custom
+            .and_then(|c| c.spells.as_ref())
+            .map(|bits| spell_set(rules, bits))
+            .transpose()?,
+        (None, Some(code)) => {
+            let mut own = rules
+                .core()
+                .hero_type(hero_type)
+                .map(|t| t.spells.clone())
+                .unwrap_or_default();
+            let spell = spell(rules, code)?;
+            if !own.contains(&spell) {
+                own.push(spell);
+            }
+            Some(own)
+        }
+    };
+    Ok(HeroDetailsSetup {
+        experience,
+        primary,
+        skills,
+        artifacts,
+        spells,
+    })
+}
+
+/// A hero's stored artifacts: every worn slot's artifact (its position is not kept: positions of
+/// one slot are interchangeable, ADR-0013) and the backpack in order.
+fn hero_artifacts(
+    rules: &GameRuleset,
+    stored: &Artifacts,
+) -> Result<HeroArtifactsSetup, ImportError> {
+    let list = |codes: &[Option<u16>]| {
+        codes
+            .iter()
+            .flatten()
+            .map(|&code| artifact(rules, code).map(Into::into))
+            .collect::<Result<Vec<_>, ImportError>>()
+    };
+    Ok(HeroArtifactsSetup {
+        worn: list(&stored.worn)?,
+        backpack: list(&stored.backpack)?,
+    })
+}
+
+/// The spells of a stored set: bit `i` of byte `i / 8` is spell `i`.
+fn spell_set(rules: &GameRuleset, bits: &Bits) -> Result<Vec<SpellId>, ImportError> {
+    (0u16..)
+        .zip(
+            bits.0
+                .iter()
+                .flat_map(|&byte| (0..8).map(move |bit| byte & (1 << bit) != 0)),
+        )
+        .filter(|&(_, set)| set)
+        .map(|(code, _)| spell(rules, code))
+        .collect()
+}
+
+/// A content handle by original id through a code table.
+fn coded<T>(
+    table: &[&'static str],
+    what: &'static str,
+    code: u16,
+    by_key: impl FnOnce(&'static str) -> Option<T>,
+) -> Result<T, ImportError> {
+    let key = table
+        .get(usize::from(code))
+        .copied()
+        .ok_or(ImportError::UnknownCode { what, code })?;
+    by_key(key).ok_or(ImportError::MissingContent(key))
+}
+
+fn skill(rules: &GameRuleset, code: u8) -> Result<SkillId, ImportError> {
+    coded(&codes::SKILLS, "secondary skill", code.into(), |k| {
+        rules.core().skill_by_key(k)
+    })
+}
+
+fn spell(rules: &GameRuleset, code: impl Into<u16>) -> Result<SpellId, ImportError> {
+    coded(&codes::SPELLS, "spell", code.into(), |k| {
+        rules.core().spell_by_key(k)
+    })
+}
+
+fn artifact(rules: &GameRuleset, code: u16) -> Result<h3_content::ArtifactTypeId, ImportError> {
+    coded(&codes::ARTIFACTS, "artifact", code, |k| {
+        rules.core().artifact_by_key(k)
     })
 }
 

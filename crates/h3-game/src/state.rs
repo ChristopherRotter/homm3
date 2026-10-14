@@ -9,7 +9,8 @@ use alloc::vec::Vec;
 
 use h3_adventure::{AdventureState, Offer, OfferKind};
 use h3_content::ResourceId;
-use h3_contracts::PlayerId;
+use h3_contracts::{HeroId, PlayerId};
+use h3_heroes::{ArtifactInstance, HeroDetails};
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher, StreamId};
 
@@ -62,6 +63,11 @@ pub struct GameState {
     day: u32,
     /// The game's own stream (the day advance; ADR-0017 point 4).
     rng: Rng,
+    /// The store of heroes (GAM-HER-001, E08 T18b): every hero's details by id, each shared
+    /// between forks and copied on its first write (ADR-0017 point 1). The list too is shared, so
+    /// a fork costs one reference count (`bench-check`: a list per fork cost the XL fork
+    /// benchmark about 10 %); a write copies the list of references and the one hero.
+    heroes: Arc<Vec<Arc<HeroDetails>>>,
     adventure: AdventureState,
 }
 
@@ -85,7 +91,7 @@ impl GameState {
             .get(usize::from(setup.difficulty))
             .ok_or(GameSetupError::Difficulty(setup.difficulty))?;
         let mut draws = Rng::for_stream(seed, StreamId::SETUP);
-        let part = setup.adventure_setup(rules, &mut draws)?;
+        let (part, heroes) = setup.adventure_setup(rules, &mut draws)?;
         let adventure = AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws)
             .map_err(GameSetupError::Adventure)?;
         let players: Vec<PlayerState> = setup
@@ -112,6 +118,7 @@ impl GameState {
             group: 0,
             day: 1,
             rng: Rng::for_stream(seed, StreamId::GAME),
+            heroes: Arc::new(heroes.into_iter().map(Arc::new).collect()),
             adventure,
         };
         state.start_group(rules, &mut NoopSink);
@@ -353,6 +360,19 @@ impl GameState {
         self.treasuries.of(player)
     }
 
+    /// A hero's details (GAM-HER-001), if the game has the hero.
+    pub fn hero(&self, hero: HeroId) -> Option<&HeroDetails> {
+        self.heroes
+            .get(usize::from(hero.raw()))
+            .map(|details| &**details)
+    }
+
+    /// The store of heroes (GAM-HER-001): every hero's details, by id. A context reads them by
+    /// reference through the hero model (ADR-0017 point 1).
+    pub fn heroes(&self) -> &[Arc<HeroDetails>] {
+        &self.heroes
+    }
+
     /// The adventure context's state.
     pub const fn adventure(&self) -> &AdventureState {
         &self.adventure
@@ -371,13 +391,14 @@ impl GameState {
 }
 
 impl CanonicalHash for GameState {
-    /// Encoding v4 (E08 T15a; v1 was T6b's, v2 T13's, v3 T14b's): version; the master seed; the
+    /// Encoding v5 (E08 T18b; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's): version; the master seed; the
     /// day; the running group's index; the schedule (groups as length + player ids); the players
     /// (colour, acting, stream state); since v2 the treasuries (the resource kinds, then every
     /// player's amounts as length and entries); since v3 the open decisions in opening order, as
     /// length and entries (owner, hero, object type, anchor, since v4 the offer's kind, 0 a
     /// reveal, 1 a passage, then a reveal's price as length and resource–amount pairs); the
-    /// game's stream; the adventure state's hash.
+    /// game's stream; since v5 the store of heroes (length, then each hero's details by id,
+    /// [`hash_details`]); the adventure state's hash.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(GAME_STATE_HASH_VERSION);
         h.write_u64(self.seed);
@@ -417,8 +438,46 @@ impl CanonicalHash for GameState {
             }
         }
         self.rng.hash_into(h);
+        h.write_len(self.heroes.len());
+        for details in self.heroes.iter() {
+            hash_details(details, h);
+        }
         h.write_u64(self.adventure.state_hash());
     }
+}
+
+/// A hero's details in the game state's hash (v5): hero type, level, experience, the primary
+/// skills, the secondary skills (length, then skill and level), the worn artifacts and the
+/// backpack (each length, then artifact and spell, 0 for none, else 1 and the spell), the
+/// learned spells (length, then spell), the spell points.
+fn hash_details(details: &HeroDetails, h: &mut StateHasher) {
+    details.hero_type.hash_into(h);
+    h.write_u8(details.level);
+    h.write_u32(details.experience);
+    h.write_bytes(&details.primary);
+    h.write_len(details.skills.len());
+    for (skill, level) in &details.skills {
+        skill.hash_into(h);
+        h.write_u8(*level);
+    }
+    for artifacts in [&details.worn, &details.backpack] {
+        h.write_len(artifacts.len());
+        for ArtifactInstance { artifact, spell } in artifacts {
+            artifact.hash_into(h);
+            match spell {
+                None => h.write_u8(0),
+                Some(spell) => {
+                    h.write_u8(1);
+                    spell.hash_into(h);
+                }
+            }
+        }
+    }
+    h.write_len(details.spells.len());
+    for spell in &details.spells {
+        spell.hash_into(h);
+    }
+    h.write_u16(details.mana);
 }
 
 #[cfg(test)]

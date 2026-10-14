@@ -368,6 +368,7 @@ pub(crate) fn hero_at(id: u16, owner: u8, pos: Pos, creatures: &[CreatureTypeId]
         owner: PlayerId::new(owner),
         pos,
         army: army(creatures),
+        formation: h3_content::Formation::Loose,
     }
 }
 

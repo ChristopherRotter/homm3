@@ -47,6 +47,7 @@ fn hero(id: u16, owner: u8, pos: Pos) -> HeroSetup {
         owner: PlayerId::new(owner),
         pos,
         army: vec![stack(0, IMP, 10)],
+        formation: Formation::Loose,
     }
 }
 
@@ -430,6 +431,14 @@ fn keeps_the_heroes_by_id_and_their_stacks_by_slot() {
     assert_eq!(five.owner, PlayerId::new(1));
     assert_eq!(five.pos, Pos::new(2, 2, 0));
     assert_eq!(five.army, [stack(0, IMP, 12), stack(2, GOG, 3)]);
+    assert_eq!(five.formation, Formation::Loose);
+    let mut tight = setup();
+    tight.heroes[0].formation = Formation::Tight;
+    let tight = build(&tight).unwrap();
+    assert_eq!(
+        tight.hero(HeroId::new(5)).unwrap().formation,
+        Formation::Tight
+    );
     assert_eq!(state.hero(HeroId::new(1)).unwrap().pos, Pos::new(0, 0, 0));
     assert_eq!(state.hero(HeroId::new(2)), None);
 }
@@ -732,6 +741,7 @@ fn the_hash_sees_content_not_sharing() {
         |s| s.heroes[0].army[0].slot = 1,
         |s| s.heroes[0].army[0].creature = IMP,
         |s| s.heroes[0].army[0].count = 4,
+        |s| s.heroes[0].formation = Formation::Tight,
         |s| s.heroes.truncate(1),
     ];
     for (i, change) in changes.iter().enumerate() {

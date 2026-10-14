@@ -303,6 +303,9 @@ fn hero_data() -> HeroData {
             (25, float([0.0, 0.05, 0.1, 0.15])),
             (26, float([0.0, 0.05, 0.1, 0.2])),
             (11, float([0.0, 0.4, 0.5, 0.6])),
+            (12, float([0.0, 0.1, 0.2, 0.3])),
+            (21, float([0.0, 0.05, 0.1, 0.15])),
+            (24, float([0.0, 0.25, 0.5, 1.0])),
             (27, float([0.0, 1.0, 2.0, 3.0])),
         ],
         specialty_growth: 0.05,
@@ -1013,6 +1016,10 @@ fn harvests_hero_content() {
     // Eagle Eye: the table's chance and the skill's level + 1 (installation.md §7.24).
     assert!(base.contains("basic = [{ kind = \"eagle_eye\", bp = 4000, max_level = 2 }]"));
     assert!(base.contains("expert = [{ kind = \"eagle_eye\", bp = 6000, max_level = 4 }]"));
+    // E08 T18b: Necromancy, Learning and Intelligence from their tables (pack format v37).
+    assert!(base.contains("expert = [{ kind = \"necromancy\", bp = 3000 }]"));
+    assert!(base.contains("basic = [{ kind = \"experience_gain\", bp = 500 }]"));
+    assert!(base.contains("expert = [{ kind = \"max_mana\", bp = 10000 }]"));
     assert!(
         h.report
             .iter()

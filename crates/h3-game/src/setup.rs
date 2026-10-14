@@ -8,8 +8,12 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use h3_adventure::{AdventureSetup, HeroSetup, MapSetup, Pos, SetupError};
-use h3_content::{HeroType, HeroTypeId, StartingStack};
+use h3_content::{
+    CreatureTypeId, Formation, HeroEffect, HeroType, HeroTypeId, Ruleset, SkillId, SpellId,
+    StartingStack,
+};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_heroes::{ArtifactInstance, DetailsError, HeroDetails};
 use h3_kernel::Rng;
 
 use crate::{GameRuleset, GameState};
@@ -43,6 +47,35 @@ pub struct GameHeroSetup {
     pub pos: Pos,
     /// Its army.
     pub army: HeroArmy,
+    /// Its army's formation in battle (BAT-SET-001; the map's flag).
+    pub formation: Formation,
+    /// What the setup customises of its details (GAM-HER-001).
+    pub details: HeroDetailsSetup,
+}
+
+/// What a setup customises of a hero's details (GAM-HER-001, E08 T18b): each field the map's, or
+/// `None` for the default the game builds when the game is built.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HeroDetailsSetup {
+    /// Experience; `None`: 40 to 90, drawn from the setup stream (a placeholder).
+    pub experience: Option<u32>,
+    /// Base primary skills (attack, defense, power, knowledge); `None`: the class's.
+    pub primary: Option<[u8; 4]>,
+    /// Secondary skills with their levels; `None`: the hero type's.
+    pub skills: Option<Vec<(SkillId, u8)>>,
+    /// Worn artifacts and the backpack; `None`: the spell book if the hero type starts with one.
+    pub artifacts: Option<HeroArtifactsSetup>,
+    /// Learned spells; `None`: the hero type's.
+    pub spells: Option<Vec<SpellId>>,
+}
+
+/// A hero's artifacts as a setup gives them.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HeroArtifactsSetup {
+    /// Worn artifacts, in any order.
+    pub worn: Vec<ArtifactInstance>,
+    /// The backpack, in order.
+    pub backpack: Vec<ArtifactInstance>,
 }
 
 /// The difficulty a map's import sets: 1, normal in the original packs. The game's difficulty is
@@ -81,6 +114,8 @@ pub enum GameSetupError {
     /// The hero takes its type's starting army, which has no stacks or more stacks than the
     /// army's slots (the core checks each stack's counts).
     StartingArmy(HeroId),
+    /// The hero's details break a rule of the hero model (`h3_heroes::validate`).
+    Hero(HeroId, DetailsError),
     /// The adventure context rejects its part.
     Adventure(SetupError),
 }
@@ -102,6 +137,7 @@ impl fmt::Display for GameSetupError {
                     hero.raw()
                 )
             }
+            Self::Hero(hero, error) => write!(f, "hero {}: {error}", hero.raw()),
             Self::Adventure(error) => write!(f, "adventure: {error}"),
         }
     }
@@ -111,12 +147,13 @@ impl core::error::Error for GameSetupError {}
 
 impl GameSetup {
     /// Checks the setup: the game's part (a difficulty the ruleset has, players in colour order
-    /// within the ruleset's players, known hero types, starting armies that can be drawn), then
-    /// the adventure context's part
-    /// with its own checks. It builds the game as [`GameState::new`] does: whether a setup is
-    /// valid does not depend on the seed, since every starting army it can draw is valid when its
-    /// hero type's army has a first stack and no more stacks than the army's slots (the core
-    /// checks each stack's counts).
+    /// within the ruleset's players, known hero types, starting armies that can be drawn, the
+    /// heroes' details by the hero model, E08 T18b), then the adventure context's part with its
+    /// own checks. It builds the game as [`GameState::new`] does: whether a setup is valid does
+    /// not depend on the seed, since every starting army it can draw is valid when its hero
+    /// type's army has a first stack and no more stacks than the army's slots (the core checks
+    /// each stack's counts), and neither a drawn experience nor a war machine's artifact (worn
+    /// only where its slot is free) makes the details invalid.
     ///
     /// # Errors
     ///
@@ -125,12 +162,13 @@ impl GameSetup {
         GameState::new(rules, self, 0).map(drop)
     }
 
-    /// The adventure context's setup, with each starting army drawn from `draws` in hero order.
+    /// The adventure context's setup and the heroes' details: each starting army drawn from
+    /// `draws` in hero order, then each default experience in hero order (GAM-HER-001).
     pub(crate) fn adventure_setup(
         &self,
         rules: &GameRuleset,
         draws: &mut Rng,
-    ) -> Result<AdventureSetup, GameSetupError> {
+    ) -> Result<(AdventureSetup, Vec<HeroDetails>), GameSetupError> {
         let count = self.players.len();
         let players = u8::try_from(count).map_err(|_| GameSetupError::Players(count))?;
         let params = rules.adventure().params();
@@ -145,41 +183,129 @@ impl GameSetup {
         if self.heroes.len() > usize::from(u16::MAX) + 1 {
             return Err(GameSetupError::Heroes(self.heroes.len()));
         }
-        let heroes = self
-            .heroes
-            .iter()
-            .zip(0..=u16::MAX)
-            .map(|(hero, index)| {
-                let id = HeroId::new(index);
-                let hero_type = rules
-                    .core()
-                    .hero_type(hero.hero_type)
-                    .ok_or(GameSetupError::UnknownHeroType(id))?;
-                let army = match &hero.army {
-                    HeroArmy::Custom(stacks) => stacks.clone(),
-                    HeroArmy::Starting => {
-                        let first = hero_type
-                            .army
-                            .split_first()
-                            .filter(|_| hero_type.army.len() <= usize::from(params.army_slots()))
-                            .ok_or(GameSetupError::StartingArmy(id))?;
-                        draw_starting_army(first, hero_type, params.starting_stack_chances(), draws)
-                    }
-                };
-                Ok(HeroSetup {
-                    id,
-                    owner: hero.owner,
-                    pos: hero.pos,
-                    army,
-                })
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(AdventureSetup {
+        let mut heroes = Vec::with_capacity(self.heroes.len());
+        let mut machines = Vec::with_capacity(self.heroes.len());
+        for (hero, index) in self.heroes.iter().zip(0..=u16::MAX) {
+            let id = HeroId::new(index);
+            let hero_type = rules
+                .core()
+                .hero_type(hero.hero_type)
+                .ok_or(GameSetupError::UnknownHeroType(id))?;
+            let (army, given) = match &hero.army {
+                HeroArmy::Custom(stacks) => (stacks.clone(), Vec::new()),
+                HeroArmy::Starting => {
+                    let first = hero_type
+                        .army
+                        .split_first()
+                        .filter(|_| hero_type.army.len() <= usize::from(params.army_slots()))
+                        .ok_or(GameSetupError::StartingArmy(id))?;
+                    draw_starting_army(first, hero_type, params.starting_stack_chances(), draws)
+                }
+            };
+            heroes.push(HeroSetup {
+                id,
+                owner: hero.owner,
+                pos: hero.pos,
+                army,
+                formation: hero.formation,
+            });
+            machines.push((hero_type, given));
+        }
+        let mut details = Vec::with_capacity(self.heroes.len());
+        for ((hero, (hero_type, given)), index) in
+            self.heroes.iter().zip(machines).zip(0..=u16::MAX)
+        {
+            let built = hero_details(rules.core(), hero, hero_type, &given, draws);
+            h3_heroes::validate(&built, rules.core())
+                .map_err(|error| GameSetupError::Hero(HeroId::new(index), error))?;
+            details.push(built);
+        }
+        let setup = AdventureSetup {
             players,
             map: self.map.clone(),
             heroes,
-        })
+        };
+        Ok((setup, details))
     }
+}
+
+/// The lowest default experience, and the width of its draw (GAM-HER-001: 40 to 90).
+const DEFAULT_EXPERIENCE: (u32, u32) = (40, 50);
+
+/// A hero's details when the game is built (GAM-HER-001): the setup's customisations, else the
+/// defaults (survey `E08-battles.md` §6.2): level 1; an experience of 40 + a draw of 0 to 50
+/// from the setup stream; the class's primary skills; the hero type's secondary skills and
+/// spells; worn, the spell book when the type starts with one (the first artifact type with the
+/// `spell_book` effect); then the artifact of each war machine its starting army gave
+/// (GAM-SET-001), where no worn artifact takes that slot; the maximum spell points
+/// (HER-MAN-001).
+// rule: GAM-HER-001
+fn hero_details(
+    core: &Ruleset,
+    hero: &GameHeroSetup,
+    hero_type: &HeroType,
+    machines: &[CreatureTypeId],
+    draws: &mut Rng,
+) -> HeroDetails {
+    let custom = &hero.details;
+    let (worn, backpack) = custom.artifacts.as_ref().map_or_else(
+        || {
+            let book = core
+                .artifacts()
+                .iter()
+                .position(|a| a.effects.contains(&HeroEffect::SpellBook))
+                .and_then(h3_content::ArtifactTypeId::from_index)
+                .filter(|_| hero_type.spell_book);
+            (
+                book.into_iter().map(ArtifactInstance::from).collect(),
+                Vec::new(),
+            )
+        },
+        |a| (a.worn.clone(), a.backpack.clone()),
+    );
+    let mut details = HeroDetails {
+        hero_type: hero.hero_type,
+        level: 1,
+        experience: custom.experience.unwrap_or_else(|| {
+            let (low, width) = DEFAULT_EXPERIENCE;
+            low + draws.range_inclusive(0, width)
+        }),
+        primary: custom.primary.unwrap_or_else(|| {
+            core.hero_class(hero_type.class)
+                .map_or([0; 4], |class| class.primary)
+        }),
+        skills: custom
+            .skills
+            .clone()
+            .unwrap_or_else(|| hero_type.skills.clone()),
+        worn,
+        backpack,
+        spells: custom
+            .spells
+            .clone()
+            .unwrap_or_else(|| hero_type.spells.clone()),
+        mana: 0,
+    };
+    for &machine in machines {
+        let artifact = core
+            .artifacts()
+            .iter()
+            .position(|a| a.war_machine == Some(machine))
+            .and_then(h3_content::ArtifactTypeId::from_index);
+        let slot = artifact
+            .and_then(|id| core.artifact(id))
+            .and_then(|a| a.slot);
+        let taken = details
+            .worn
+            .iter()
+            .filter_map(|item| core.artifact(item.artifact))
+            .any(|a| a.slot == slot);
+        if let Some(id) = artifact.filter(|_| !taken) {
+            details.worn.push(id.into());
+        }
+    }
+    details.mana = h3_heroes::max_mana(&details, core);
+    details
 }
 
 /// Draws a hero's starting army from its type's starting slots (GAM-SET-001): the first slot's
@@ -188,30 +314,36 @@ impl GameSetup {
 /// count drawn between its bounds. The original's starting slots are the first stack, the war
 /// machines, then the other stacks (its hero table has every war machine in the second of three
 /// slots; the packs keep the war machines apart, `HeroType::war_machines`). A war machine's slot
-/// is rolled like the others but gives no stack; the war machine itself is not modelled on the
-/// map yet (ADV-Q6). Draws in the original's order (0x4C9730): the first count, then per later
-/// slot its roll and, when given, its count.
+/// is rolled like the others but gives no stack: the given war machines are returned, and the
+/// hero wears their artifacts (GAM-HER-001, E08 T18b). Draws in the original's order
+/// (0x4C9730): the first count, then per later slot its roll and, when given, its count.
 // rule: GAM-SET-001
 fn draw_starting_army(
     (first, rest): (&StartingStack, &[StartingStack]),
     hero_type: &HeroType,
     chances: &[u8],
     rng: &mut Rng,
-) -> Vec<ArmyStack> {
+) -> (Vec<ArmyStack>, Vec<CreatureTypeId>) {
     let mut army = vec![draw_stack(0, first, rng)];
+    let mut machines = Vec::new();
     let later = hero_type
         .war_machines
         .iter()
-        .map(|_| None)
-        .chain(rest.iter().map(Some));
+        .map(|&machine| Err(machine))
+        .chain(rest.iter().map(Ok));
     for (slot, &chance) in later.zip(chances) {
-        let given = rng.range_inclusive(1, 100) <= u32::from(chance);
-        if let Some(stack) = slot.filter(|_| given) {
-            let next = u8::try_from(army.len()).unwrap_or(u8::MAX);
-            army.push(draw_stack(next, stack, rng));
+        if rng.range_inclusive(1, 100) > u32::from(chance) {
+            continue;
+        }
+        match slot {
+            Ok(stack) => {
+                let next = u8::try_from(army.len()).unwrap_or(u8::MAX);
+                army.push(draw_stack(next, stack, rng));
+            }
+            Err(machine) => machines.push(machine),
         }
     }
-    army
+    (army, machines)
 }
 
 /// One stack of a starting army in army slot `slot`, its count drawn between its bounds.

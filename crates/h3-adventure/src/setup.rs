@@ -8,7 +8,7 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_content::TerrainId;
+use h3_content::{Formation, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
 use crate::ruleset::{ObjectTypeId, RiverId, RoadId};
@@ -129,6 +129,8 @@ pub struct HeroSetup {
     pub pos: Pos,
     /// Its army: one or more stacks in distinct slots.
     pub army: Vec<ArmyStack>,
+    /// Its army's formation in battle (ADR-0016 point 1, E08 T18b).
+    pub formation: Formation,
 }
 
 /// Everything the adventure context is built from (ADR-0015 point 4).

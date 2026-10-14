@@ -77,8 +77,8 @@ pub use state::{AdventureState, HeroOnMap, MapObject, StaticMap, StaticTile};
 /// v1 (E08 T5a): the first encoding ([`AdventureState`]'s `CanonicalHash`). v2 (E08 T6b): a
 /// hero's movement points. v3 (E08 T8a): each player's explored tiles. v4 (E08 T12): each
 /// object's type and contents. v5 (E08 T14b): the Cartographer types each player bought. v6 (E08
-/// T15a): the keys each player holds.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 6;
+/// T15a): the keys each player holds. v7 (E08 T18b): a hero's formation.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 7;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

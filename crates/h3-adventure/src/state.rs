@@ -11,7 +11,7 @@ use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_content::{FRINGE_SHOWS_OBJECTS, ResourceId, Ruleset, TerrainId};
+use h3_content::{FRINGE_SHOWS_OBJECTS, Formation, ResourceId, Ruleset, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
@@ -440,6 +440,8 @@ pub struct HeroOnMap {
     pub pos: Pos,
     /// Its army, by slot.
     pub army: Vec<ArmyStack>,
+    /// Its army's formation in battle (ADR-0016 point 1, E08 T18b).
+    pub formation: Formation,
     /// The movement points it has left today.
     pub movement: u32,
 }
@@ -548,6 +550,7 @@ impl AdventureState {
                 owner: hero.owner,
                 pos: hero.pos,
                 army,
+                formation: hero.formation,
                 movement,
             },
         );
@@ -1130,10 +1133,11 @@ impl AdventureState {
 }
 
 impl CanonicalHash for AdventureState {
-    /// Encoding v6 (E08 T15a; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's): version; the static
-    /// map's content hash (since v4 with the objects' types and contents); the number of players;
-    /// the heroes by id (id, owner, tile, the army's stacks by slot: slot, creature, count; since
-    /// v2 the movement points left); since v3 each player's explored tiles, by player id
+    /// Encoding v7 (E08 T18b; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6 T15a's):
+    /// version; the static map's content hash (since v4 with the objects' types and contents); the
+    /// number of players; the heroes by id (id, owner, tile, the army's stacks by slot: slot,
+    /// creature, count; since v7 the formation, 0 loose, 1 tight; since v2 the movement points
+    /// left); since v3 each player's explored tiles, by player id
     /// ([`BitGrid`]'s encoding); since v4 the objects that left the map (0 for none, else 1 and
     /// [`Occupancy`]'s encoding; there is an occupancy only once an object has left); since v5 the
     /// Cartographer types bought, as length and entries in type order (the type, then its byte of
@@ -1154,6 +1158,7 @@ impl CanonicalHash for AdventureState {
                 stack.creature.hash_into(h);
                 h.write_u32(stack.count);
             }
+            h.write_bool(hero.formation == Formation::Tight);
             h.write_u32(hero.movement);
         }
         h.write_len(self.explored.len());

@@ -47,15 +47,17 @@ mod tests;
 
 pub use command::{Actor, Answer, GameCommand, GameCommandError, GameEvent, NoopSink, Sink, apply};
 pub use legal::{legal_commands, legal_moves};
-pub use observe::{GameObservation, PlayerView, Viewer, observe, project};
+pub use observe::{GameObservation, HeroInfo, PlayerView, Viewer, observe, project};
 pub use ruleset::{GameRuleset, RulesetMismatch};
 pub use setup::{
-    DEFAULT_DIFFICULTY, GameHeroSetup, GameSetup, GameSetupError, HeroArmy, PlayerSetup,
+    DEFAULT_DIFFICULTY, GameHeroSetup, GameSetup, GameSetupError, HeroArmy, HeroArtifactsSetup,
+    HeroDetailsSetup, PlayerSetup,
 };
 pub use state::GameState;
 
 /// Version of the game state's canonical hash encoding (`docs/08-work-process.md`, "Versions";
 /// owned by the adventure lane). Bump it with any change to what the hash covers. v1 (E08 T6b):
 /// the first encoding ([`GameState`]'s `CanonicalHash`). v2 (E08 T13a): each player's treasury.
-/// v3 (E08 T14b): the pending decisions. v4 (E08 T15a): an offer's kind.
-pub const GAME_STATE_HASH_VERSION: u32 = 4;
+/// v3 (E08 T14b): the pending decisions. v4 (E08 T15a): an offer's kind. v5 (E08 T18b): the
+/// store of heroes.
+pub const GAME_STATE_HASH_VERSION: u32 = 5;

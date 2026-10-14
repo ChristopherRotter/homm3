@@ -1,14 +1,18 @@
 //! What a viewer may know of the whole game (ADR-0017 points 1 and 2, E08 T8b1;
 //! `docs/06-security.md`, "Information hiding"): the game's public facts (the day, the players'
 //! colours, whose turn is running), the viewer's own treasury (E08 T13a; other players' never
-//! show) and open decision (T14b), each context's observation for the viewer, and the
+//! show) and open decision (T14b), the heroes it sees with their types and its own heroes'
+//! details (T18b, GAM-HER-001), each context's observation for the viewer, and the
 //! projection of the game's events. The seed, the streams and the state hash never show
 //! (ADR-0017 point 5).
 
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_adventure::{AdventureObservation, Offer};
-use h3_contracts::PlayerId;
+use h3_content::HeroTypeId;
+use h3_contracts::{HeroId, PlayerId};
+use h3_heroes::HeroDetails;
 
 use crate::command::GameEvent;
 use crate::{GameRuleset, GameState};
@@ -39,8 +43,24 @@ pub struct GameObservation {
     /// type and anchor, with its price; other players' never show. While it is open the
     /// viewer's only legal commands are its answers.
     pub decision: Option<Offer>,
+    /// The heroes the viewer sees on the adventure map (its own and the others its explored tiles
+    /// show), by id: each hero's type (and so its class), and the details of its own only
+    /// (GAM-HER-001, E08 T18b; survey `E08-battles.md` §9).
+    pub heroes: Vec<HeroInfo>,
     /// The adventure map as the viewer sees it.
     pub adventure: AdventureObservation,
+}
+
+/// What a viewer knows of a hero beyond the adventure map's view of it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeroInfo {
+    /// The hero.
+    pub id: HeroId,
+    /// Its hero type: identity and class, public as the original's portrait.
+    pub hero_type: HeroTypeId,
+    /// Its details (experience, primary and secondary skills, artifacts, spells, spell points),
+    /// for its owner only.
+    pub details: Option<Arc<HeroDetails>>,
 }
 
 /// A player as every viewer sees it.
@@ -57,6 +77,7 @@ pub struct PlayerView {
 /// and no tile.
 pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameObservation {
     let Viewer::Player(player) = viewer;
+    let adventure = state.adventure().observe(rules.core(), player);
     GameObservation {
         viewer: player,
         day: state.day(),
@@ -73,7 +94,20 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
             .treasury(player)
             .map_or_else(Vec::new, <[u32]>::to_vec),
         decision: state.decision(player).cloned(),
-        adventure: state.adventure().observe(rules.core(), player),
+        heroes: adventure
+            .heroes
+            .iter()
+            .flat_map(|view| {
+                // Every hero on the map has its details in the store, at its id.
+                let details = state.heroes().get(usize::from(view.id.raw()));
+                details.map(|details| HeroInfo {
+                    id: view.id,
+                    hero_type: details.hero_type,
+                    details: view.own.as_ref().map(|_| Arc::clone(details)),
+                })
+            })
+            .collect(),
+        adventure,
     }
 }
 

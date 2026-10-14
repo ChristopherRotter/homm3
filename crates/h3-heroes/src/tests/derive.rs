@@ -1322,3 +1322,57 @@ fn opening_spells_and_eagle_eye_are_derived() {
         );
     }
 }
+
+/// The effect pack with Offense standing for Intelligence (25/50/100 % more spell points); with
+/// `specialist` the hero's specialty grows it by 5 % of itself per level (E08 T18b).
+fn mana_pack(specialist: bool) -> ContentPack {
+    let mut p = effect_pack();
+    for s in &mut p.skills {
+        if s.key.to_string() == "t:offense" {
+            s.levels = [2500, 5000, 10_000].map(|bp| vec![HeroEffectDef::MaxMana { bp }]);
+        }
+    }
+    if specialist {
+        p.heroes[0].specialty = vec![HeroEffectDef::SkillSpecialty {
+            skill: key("t:offense"),
+            bp_per_level: 500,
+        }];
+    }
+    p
+}
+
+// covers: HER-MAN-001
+#[test]
+fn the_maximum_spell_points_come_from_knowledge_and_intelligence() {
+    let r = compile(mana_pack(false)).unwrap();
+    // Knowledge as the battle hero's: the base and the worn artifacts', within the bounds.
+    let d = details(&r);
+    let knowledge = derive_battle_hero(&d, &r).unwrap().knowledge;
+    assert_eq!(max_mana(&d, &r), 10 * u16::from(knowledge));
+    let mut d = details(&r);
+    d.worn.clear();
+    d.primary[3] = 0;
+    assert_eq!(max_mana(&d, &r), 10, "Knowledge counts at least 1");
+    d.primary[3] = 8;
+    assert_eq!(max_mana(&d, &r), 80);
+    let offense = skill(&r, "t:offense");
+    for (level, points) in [(1, 100), (2, 120), (3, 160)] {
+        d.skills.push((offense, level));
+        assert_eq!(max_mana(&d, &r), points);
+        d.skills.pop();
+    }
+    // A specialist at level 1 with Basic: 25 % grown by 5 % is 26.25 %, 101 of 80 × 1.2625;
+    // with quirk Q-0005 the original's f32(0.2625) is below it: 100.
+    d.skills.push((offense, 1));
+    let r = compile(mana_pack(true)).unwrap();
+    assert_eq!(max_mana(&d, &r), 101);
+    let r = original(mana_pack(true));
+    assert_eq!(max_mana(&d, &r), 100);
+    // Without hero parameters (validation refuses them) Knowledge counts as given.
+    let mut p = mana_pack(false);
+    p.hero_params = None;
+    let r = compile(p).unwrap();
+    d.skills.clear();
+    d.primary[3] = 0;
+    assert_eq!(max_mana(&d, &r), 0);
+}
