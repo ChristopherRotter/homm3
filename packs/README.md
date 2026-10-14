@@ -618,7 +618,8 @@ different creatures or statistics.
 | `experience_gain` | `bp` (≥ 1) | since v37 (read from E08 T19a): the experience the hero gains grows by `bp` (Learning: 5/10/15 %, table 0x63EA58) |
 | `max_mana` | `bp` (≥ 1) | since v37 (read from E08 T18b): the hero's maximum spell points (10 × Knowledge) grow by `bp` (Intelligence: 25/50/100 %, table 0x63EA88; an Intelligence specialist's grow) |
 | `join_bonus` | `level` (1..=3) | since v37 (read from E08 T20a): wandering creatures are readier to join the hero; the levels add, at most 3 (Diplomacy: 1/2/3) |
-| `ballistics` | `level` (1..=3) | since v38 (E04c T6): the hero commands its Catapult with this Ballistics level, the highest of its sources (the skill: 1/2/3; HER-BAT-018, BAT-SIE-011) |
+| `raises` | `priority` (default 0), and `creature`, or `skill` with `by_level` (4 creatures: without the skill, Basic, Advanced, Expert) | since v38 (E08 T19a2, decision 30): the creature the hero's Necromancy raises, by the hero's level in `skill` for `by_level`; of all the hero's `raises` the highest `priority` wins (Necromancy: Skeletons at 0; the Cloak of the Undead King: by the Necromancy level Skeletons, Walking Dead, Wights, Liches at 1, 0x4E3C60; mods may go higher); among equal priorities, if all come from artifacts the lowest artifact id (then creature id), otherwise the lowest creature id |
+| `ballistics` | `level` (1..=3) | since v39 (E04c T6): the hero commands its Catapult with this Ballistics level, the highest of its sources (the skill: 1/2/3; HER-BAT-018, BAT-SIE-011) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 

@@ -1766,3 +1766,66 @@ map, 06-security):
 - Full local verify (`--with-original-data`): every step passes but `check-exe-map` and its
   test, red on `master` too (above).
 - Inbox: the four maps, +0x479 and artifacts, VCMI's catapult and skipped artifacts.
+
+### Round 2 of increment 3: T19a1 (2026-10-14, `shared/e08-t19a`, `adventure/e08-t19a1`)
+
+#185, #187 and #188 merged first: `master` (ac19351) green in the full local verify
+(`--with-original-data`; CI could not start). Asked for a seam before building, the user split the
+round (decision 29): T19a1 (battles through the game) and T19a2 (the heroes' outcome) this round,
+T19b next; `Actor::System` with T20b's monsters.
+
+**`shared/e08-t19a`** (shared paths only): `h3_content::OBSTACLES_FROM_TILE` (flag 23,
+`quirk.adventure.obstacles_from_tile`; no profile set it there, so no ruleset hash moved);
+`arch.toml` lets `h3-map`'s tests compile the battle part; `06-security.md`: what a battle's owners
+and other players learn of it.
+
+**T19a1 — battles through the game** (`cross-lane`: the flag on in `packs/base/core.toml`'s
+`faithful` and in the harvester's profile lines):
+- **The visit** (GAM-BAT-004, ADR-0016 point 4): `check_step` meets another player's hero
+  (`Meets::Hero`) before the tile checks: visited from the tile before at the step's price, the
+  move ends; only leaving the visitor's tile across its top is refused (ADV-OBJ-004); an own hero
+  blocks (`Occupied`). `Reach` marks other heroes' tiles own (blocks) or enemy (a destination, not
+  expanded). `AdventureOutcome.battle: Option<BattleStart>` (both sides as `Combatant`s: hero,
+  owner, army, formation; the defender's tile; terrain and battlefield).
+- **The ground** (GAM-BAT-001): the adventure part's `[params.battle]` (`BattleTerrainsDef`:
+  `base` underground on subterranean, the coast on desert, the original's sand, with `base:shore`;
+  part v6), `AdventureState::battle_ground` in the original's order; the coast flag `0x40` imported
+  (`TileSetup.coast`, import v5) and kept as a bit per tile of the static map (`is_coast`, hashed:
+  adventure state hash v8). `GameRuleset` bundles the battle part (`RulesetMismatch` also for a
+  coast battlefield the battle part lacks).
+- **The battle** (GAM-BAT-001): `Decision::{Offer, Battle(Arc<OpenBattle>)}` (game state hash v6),
+  `GameState::start_battle`: `BattleSetup` from the `BattleStart`, the store (battle heroes with
+  `max_mana`, war machines) and the treasuries (funds in the surrender's resource); the battle's
+  seed the attacker's stream's next draw, the obstacles' the tile's (110 291 x + 167 801 y +
+  81 569, 32-bit) under `ADV-QUIRK-5`, else the stream's next. `GameCommand::Battle` from the owner
+  of the side to act (`NotYourSide`, `NoBattle`, `BattleOpen`, `Battle(CommandError)`): the list
+  is copied on its first write, the battle once the command validates. Events `BattleStarted`,
+  `Battle { event, seen_by }`, `BattleEnded` to the owners; `GameObservation.battle` (the viewer's
+  side); `legal_commands` the battle's for the side to act's owner. A setup the battle refuses
+  opens nothing (a test with a cart of no kind).
+- **The outcome** (GAM-BAT-002, -003, -005): a hero stays only if its side won with army
+  survivors (also the BAT-Q7 case), keeping them; the others leave the map (`HeroRemoved`, seen
+  where the tile is); a surrender's price leaves the surrendering side's owner (saturating) and
+  enters the other's (D-13). The heroes' part is `ADV-STUB-3` (T19a2).
+- **The env** (encoding v2 has no battle): the masks, the decoder and the random agent leave out
+  other players' heroes' tiles, a battle command encodes to nothing, replay format v2 writes it
+  unreadable (`ADV-STUB-4`, T19b). The six golden replays re-recorded with their options: the
+  commands unchanged (the agent's draw over the filtered tiles), the hashes new.
+- **Properties** (`h3-map`): the driver acts as the owner of the side to act; legality with a
+  battle open (every listed command applies; nobody moves), conservation and isolation by a
+  battle's end (`check_battle_end`); the views told the battle's events and removals; hygiene stops
+  at the viewer's battle. In 48 cases about 37 battles start and 9 end, all by a retreat or a
+  surrender (T19b: more victories); victories are unit-tested (`h3-game`'s `battles.rs`).
+- **Measured** (`bench-check`): a `coast` field in `StaticTile` cost `reach-xl-144` +2.03 %
+  (over the 2 % gate): the bit set instead, and the reach tests other heroes off the hot path:
+  reach +1.14 %, fork +1.32 %, random play +0.83 %.
+- Rules: GAM-BAT-001 to -005 `implemented` (the code reading, VCMI 1.7.5 re-read for
+  `onHeroVisit` and `doSurrenderAction`, E04c batch 3b); `ADV-QUIRK-5`'s ledger entry has its flag
+  and tests.
+- **The full verify** (round 2's second session, decision 31): the first complete run found
+  three gaps, fixed on the branch: the design note cited 0x469F20, 0x4E3C60 and 0x4E3CD0 without
+  map entries (now `necromancy_add_raised`, `hero_necromancy_creature`, `hero_necromancy_power`,
+  re-read: the power's town bonus counts each of the owner's Necropolis towns with the buildings;
+  the upgrade's elemental exception holds only while `[game]+0x1F698` is 0), and the four new
+  `GameCommandError` messages were never formatted (`the_battle_errors_read_well`). Decision 30's
+  two points settled; `shared/e08-t19a2` built.

@@ -106,6 +106,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.adventure.diagonal_check_ignores_native",
     "quirk.adventure.native_skips_leading_neutrals",
     "quirk.adventure.fringe_shows_objects",
+    "quirk.adventure.obstacles_from_tile",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -205,6 +206,11 @@ pub const NATIVE_SKIPS_LEADING_NEUTRALS: QuirkFlag = QuirkFlag(21);
 /// the user's look in SoD, 2026-10-11). Off: the fringe shows terrain, roads and rivers only.
 pub const FRINGE_SHOWS_OBJECTS: QuirkFlag = QuirkFlag(22);
 
+/// ADV-QUIRK-5: a battle on the adventure map draws its obstacles from a generator seeded by its
+/// tile, the original's 110 291 x + 167 801 y + 81 569 (GAM-BAT-001; code 0x463A08), so every
+/// battle on a tile gets the same obstacles. Off: from the attacking player's stream.
+pub const OBSTACLES_FROM_TILE: QuirkFlag = QuirkFlag(23);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -247,7 +253,11 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 23);
+        assert_eq!(REGISTRY.len(), 24);
+        assert_eq!(
+            REGISTRY.lookup("quirk.adventure.obstacles_from_tile"),
+            Some(OBSTACLES_FROM_TILE)
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.adventure.fringe_shows_objects"),
             Some(FRINGE_SHOWS_OBJECTS)
@@ -362,7 +372,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 23);
+        assert_eq!(REGISTRY.len(), 24);
         assert_eq!(
             [REGISTRY.names[9], REGISTRY.names[10], REGISTRY.names[14]],
             [RETIRED; 3]
@@ -371,7 +381,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..23).filter(|i| ![9, 10, 14].contains(i)))
+                .eq((0..24).filter(|i| ![9, 10, 14].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

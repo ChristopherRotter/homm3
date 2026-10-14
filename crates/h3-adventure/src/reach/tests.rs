@@ -242,7 +242,8 @@ proptest! {
     /// along reported paths: every reported path is accepted and ends with the reported points,
     /// on its last tile (a chart's, a tower's or a tent's entered, E08 T14a, T15a; a gate's
     /// crossed or stopped on by a holder of its key, T15b) or, for a pile's, a guard's or (without
-    /// the key) a gate's visit, on the tile before, one event per step and at most one for the
+    /// the key) a gate's visit or another player's hero's (E08 T19a), on the tile before, one
+    /// event per step and at most one for the
     /// visit; the tile of an accepted one-step move is reported with at least the points it
     /// leaves; a rejected move changes nothing; the query is deterministic. The hero's owner
     /// holds the gates' key from the start in half the cases, and takes it at a tent in others.
@@ -298,9 +299,11 @@ proptest! {
                     .count();
                 // A visit from the tile before steps one tile less; a gate the owner holds the
                 // key of is no visit.
-                let visit = state
-                    .visit_at(&rules.1, RED, pos)
-                    .is_some_and(|v| !v.pass && v.mode == crate::ruleset::Visit::Neighbour);
+                let enemy = state.heroes().iter().any(|h| h.pos == pos && h.owner != RED);
+                let visit = enemy
+                    || state
+                        .visit_at(&rules.1, RED, pos)
+                        .is_some_and(|v| !v.pass && v.mode == crate::ruleset::Visit::Neighbour);
                 prop_assert_eq!(steps + usize::from(visit), path.len());
                 prop_assert!(events.len() <= steps + 1);
                 let at = match path.len().checked_sub(2) {

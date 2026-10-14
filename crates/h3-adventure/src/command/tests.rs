@@ -19,7 +19,7 @@ use crate::ruleset::ObjectTypeId;
 use crate::setup::SetupError;
 use crate::state::AdventureState;
 use crate::testing::{
-    CHART, FIRE, GNOLL, GUARD, OPEN_CHART, PEASANT, TOWER, WOOD_PILE, draws, hero_at,
+    CHART, FIRE, GNOLL, GUARD, OPEN_CHART, PEASANT, TOWER, WOLF, WOOD_PILE, draws, hero_at,
     movement_rules, world, world_state,
 };
 
@@ -207,7 +207,7 @@ fn a_move_is_rejected_whole_and_changes_nothing() {
         &["gg#~gg", "gBVTgg", "gggggg"],
         vec![
             hero_at(1, 0, p(0, 0), &[PEASANT]),
-            hero_at(2, 1, p(5, 2), &[PEASANT]),
+            hero_at(2, 0, p(5, 2), &[PEASANT]),
             hero_at(3, 0, p(5, 0), &[PEASANT]),
         ],
     );
@@ -1335,29 +1335,225 @@ fn a_border_gate_lets_its_key_s_holders_cross_it() {
     let mut up = state.clone();
     move_hero(&mut up, &rules, RED, 1, &[p(4, 0)]).unwrap();
     assert_eq!(hero(&up, 1).0, p(4, 0));
-    // Blue holds no key: its step onto the gate is the hero's tile while red's hero stands there,
-    // then a visit from (4, 2) that does nothing.
+    // Blue holds no key: its step onto the gate is a visit of red's hero while it stands there,
+    // a battle (E08 T19a), then a visit from (4, 2) that does nothing.
     state.explore_all();
     let walk: Vec<Pos> = (4..12).rev().map(|x| p(x, 2)).collect();
     visit_by(&mut state, &rules, (BLUE, 2), &walk);
-    let mut events = Vec::new();
-    let onto = AdventureCommand::MoveHero {
-        hero: HeroId::new(2),
-        path: vec![p(3, 1)],
-    };
     let before = state.clone();
+    let (events, outcome) = visit_by(&mut state, &rules, (BLUE, 2), &[p(3, 1)]);
+    assert!(events.is_empty());
+    let battle = outcome.battle.unwrap();
     assert_eq!(
-        state.apply(&rules.0, &rules.1, BLUE, &onto, &mut events),
-        Err(AdventureCommandError::Blocked {
-            step: 0,
-            error: StandError::Occupied,
-        })
+        (battle.attacker.hero, battle.defender.hero, battle.tile),
+        (HeroId::new(2), HeroId::new(1), p(3, 1))
     );
-    assert_eq!(state, before);
+    assert_eq!(hero(&state, 2).0, p(4, 2));
+    state = before;
     move_hero(&mut state, &rules, RED, 1, &[p(3, 0)]).unwrap();
     let (events, outcome) = visit_by(&mut state, &rules, (BLUE, 2), &[p(3, 1)]);
     assert_eq!((events, outcome), (vec![], AdventureOutcome::default()));
     assert_eq!(hero(&state, 2), (p(4, 2), 1000 - 141));
     // The gate never leaves the map.
     assert!(!state.is_removed(0));
+}
+
+/// The world of the hero visits (E08 T19a): red's hero 1 at (0, 0) and hero 3 at (1, 2); blue's
+/// hero 2 at (3, 0), a sand tile on the coast, and hero 4 at (1, 1), on a Cartographer's tile (not
+/// visited from above).
+fn heroes_world(rules: &(Ruleset, AdventureRuleset)) -> AdventureState {
+    let mut setup = world(
+        &["gggs", "gCgg", "gggg"],
+        1,
+        vec![
+            hero_at(1, 0, p(0, 0), &[PEASANT, GNOLL]),
+            hero_at(2, 1, p(3, 0), &[WOLF]),
+            hero_at(3, 0, p(1, 2), &[PEASANT]),
+            hero_at(4, 1, p(1, 1), &[PEASANT]),
+        ],
+    );
+    setup.map.tiles[3].coast = true;
+    setup.heroes[1].formation = Formation::Tight;
+    AdventureState::new(&rules.0, &rules.1, &setup, &mut draws()).unwrap()
+}
+
+// covers: GAM-BAT-004, GAM-BAT-001
+#[test]
+fn a_step_toward_another_players_hero_visits_it_and_starts_a_battle() {
+    let rules = movement_rules(false);
+    let mut state = heroes_world(&rules);
+    let mut events = Vec::new();
+    let command = AdventureCommand::MoveHero {
+        hero: HeroId::new(1),
+        path: vec![p(1, 0), p(2, 0), p(3, 0)],
+    };
+    let outcome = state
+        .apply(&rules.0, &rules.1, RED, &command, &mut events)
+        .unwrap();
+    // Two steps, then the visit from (2, 0) at the step's price: 1300 - 3 × 100.
+    assert_eq!(events.len(), 2);
+    assert_eq!(hero(&state, 1), (p(2, 0), 1000));
+    let side = |id: u16, owner, formation| {
+        let hero = state.hero(HeroId::new(id)).unwrap();
+        Combatant {
+            hero: hero.id,
+            owner,
+            army: hero.army.clone(),
+            formation,
+        }
+    };
+    assert_eq!(
+        outcome,
+        AdventureOutcome {
+            battle: Some(BattleStart {
+                attacker: side(1, RED, Formation::Loose),
+                defender: side(2, BLUE, Formation::Tight),
+                tile: p(3, 0),
+                terrain: crate::testing::SAND,
+                battlefield: Some(ContentKey::parse("t:shore").unwrap()),
+            }),
+            ..AdventureOutcome::default()
+        }
+    );
+    // The query lists the hero's tile with the points the visit leaves, its own hero's not.
+    let reach = state.reach(&rules.0, &rules.1, HeroId::new(3)).unwrap();
+    assert_eq!(reach.points_left(p(1, 1)), Some(1200));
+    assert_eq!(reach.path(p(1, 1)), Some(vec![p(1, 1)]));
+    let reach = state.reach(&rules.0, &rules.1, HeroId::new(1)).unwrap();
+    assert_eq!(reach.points_left(p(3, 0)), Some(900));
+    assert_eq!(reach.points_left(p(1, 2)), None);
+}
+
+// covers: GAM-BAT-004, ADV-OBJ-003, ADV-OBJ-004
+#[test]
+fn a_hero_visit_ends_the_move_and_an_own_hero_blocks() {
+    let rules = movement_rules(false);
+    let mut state = heroes_world(&rules);
+    use AdventureCommandError as E;
+    assert_eq!(
+        rejected(
+            &mut state,
+            &rules,
+            RED,
+            1,
+            &[p(1, 0), p(2, 0), p(3, 0), p(3, 1)]
+        ),
+        E::PastVisit { step: 3 }
+    );
+    assert_eq!(
+        rejected(&mut state, &rules, RED, 1, &[p(0, 1), p(1, 2)]),
+        E::Blocked {
+            step: 1,
+            error: StandError::Occupied
+        }
+    );
+    // Down onto a hero on a tile not visited from above: the visit is the hero's.
+    let mut events = Vec::new();
+    let down = AdventureCommand::MoveHero {
+        hero: HeroId::new(1),
+        path: vec![p(1, 0), p(1, 1)],
+    };
+    let outcome = state
+        .apply(&rules.0, &rules.1, RED, &down, &mut events)
+        .unwrap();
+    let battle = outcome.battle.unwrap();
+    assert_eq!(
+        (
+            battle.defender.hero,
+            battle.tile,
+            battle.terrain,
+            battle.battlefield
+        ),
+        (HeroId::new(4), p(1, 1), crate::testing::GRASS, None)
+    );
+    // Blue's hero 4 stands on the Cartographer's tile: it leaves it toward none of the three
+    // tiles above, a hero's visit included (ADV-OBJ-004).
+    assert_eq!(hero(&state, 1).0, p(1, 0));
+    assert_eq!(
+        rejected(&mut state, &rules, BLUE, 4, &[p(1, 0)]),
+        E::FromAbove { step: 0 }
+    );
+    // The query's path to red's hero goes round: from (0, 1), 1300 - 100 - 141.
+    let reach = state.reach(&rules.0, &rules.1, HeroId::new(4)).unwrap();
+    assert_eq!(reach.points_left(p(1, 0)), Some(1059));
+    assert_eq!(reach.path(p(1, 0)), Some(vec![p(0, 1), p(1, 0)]));
+}
+
+// covers: GAM-BAT-001
+#[test]
+fn a_battle_is_fought_on_the_ground_its_tile_gives() {
+    let rules = movement_rules(false);
+    let mut setup = world(
+        &["gs", "gg", "gg", "gg"],
+        2,
+        vec![hero_at(1, 0, p(0, 0), &[PEASANT])],
+    );
+    setup.map.tiles[1].coast = true;
+    setup.map.tiles[5].coast = true;
+    let state = AdventureState::new(&rules.0, &rules.1, &setup, &mut draws()).unwrap();
+    let shore = Some(ContentKey::parse("t:shore").unwrap());
+    use crate::testing::{SAND, SWAMP};
+    // The tile's terrain, the coast's on the coast, the underground's below (coast or not).
+    assert_eq!(
+        state.battle_ground(&rules.1, p(0, 0)),
+        (crate::testing::GRASS, None)
+    );
+    assert_eq!(state.battle_ground(&rules.1, p(1, 0)), (SAND, shore));
+    for x in 0..2 {
+        assert_eq!(
+            state.battle_ground(&rules.1, Pos::new(x, 0, 1)),
+            (SWAMP, None)
+        );
+    }
+    // Without the part's battle terrains, always the tile's.
+    let plain = crate::testing::rules();
+    let imp = h3_content::CreatureTypeId::from_raw(0);
+    let mut setup = world(&["gg"], 1, vec![hero_at(1, 0, p(0, 0), &[imp])]);
+    setup.map.tiles[1].coast = true;
+    let state = AdventureState::new(&plain.0, &plain.1, &setup, &mut draws()).unwrap();
+    assert_eq!(
+        state.battle_ground(&plain.1, p(1, 0)),
+        (crate::testing::GRASS, None)
+    );
+}
+
+// covers: GAM-BAT-002, GAM-BAT-003
+#[test]
+fn a_battles_end_sets_the_armies_and_takes_heroes_off_the_map() {
+    let rules = movement_rules(false);
+    let mut state = heroes_world(&rules);
+    let before = state.clone();
+    let survivors = crate::testing::army(&[GNOLL]);
+    let mut events = Vec::new();
+    state.end_battle(
+        &rules.0,
+        &[
+            (HeroId::new(9), None),
+            (HeroId::new(1), Some(&survivors[..])),
+            (HeroId::new(2), None),
+        ],
+        &mut events,
+    );
+    assert_eq!(state.hero(HeroId::new(1)).unwrap().army, survivors);
+    assert_eq!(state.hero(HeroId::new(2)), None);
+    assert_eq!(state.heroes().len(), 3);
+    // Both players see blue's hero's tile.
+    assert_eq!(
+        events,
+        vec![AdventureEvent {
+            kind: AdventureEventKind::HeroRemoved {
+                hero: HeroId::new(2),
+                pos: p(3, 0),
+            },
+            seen_by: Viewers::NONE.with(RED).with(BLUE),
+        }]
+    );
+    assert_eq!(
+        events[0].project(RED).unwrap().seen_by,
+        Viewers::NONE.with(RED)
+    );
+    // A hero not on the map is skipped.
+    let mut again = before.clone();
+    again.end_battle(&rules.0, &[(HeroId::new(9), None)], &mut events);
+    assert_eq!(again, before);
 }

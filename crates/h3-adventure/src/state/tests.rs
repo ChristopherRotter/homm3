@@ -30,6 +30,7 @@ fn grass() -> TileSetup {
         terrain: GRASS,
         road: None,
         river: None,
+        coast: false,
     }
 }
 

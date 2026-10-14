@@ -27,6 +27,18 @@ epic   = "E04c"
 
 # --- adventure (ADV-STUB-<n>) ---
 
+[[stub]]
+id     = "ADV-STUB-3"
+where  = "crates/h3-game/src/state/battle.rs::GameState::end_battle"
+reason = "A battle's outcome applies its armies, the heroes leaving the map and a surrender's gold (GAM-BAT-002, -003, -005); its heroes' part (experience with Learning, +500 for a defeated hero, Necromancy, Eagle Eye's spells, spell points, destroyed war machines' artifacts, the loser's artifacts captured) comes with E08 T19a2 (HeroChange, h3-heroes)"
+epic   = "E08"
+
+[[stub]]
+id     = "ADV-STUB-4"
+where  = "crates/h3-sim/src/adventure/action.rs::battle_tiles"
+reason = "The action encoding v2 and the replay format v2 have no battle actions: since E08 T19a a move onto another player's hero starts a battle, which the env's masks, decoder and random agent do not offer and a v2 replay cannot read back; encoding v3 with the battle phase and the replay format v3 come with E08 T19b"
+epic   = "E08"
+
 # --- server (SRV-STUB-<n>) ---
 
 # --- client (CLT-STUB-<n>) ---

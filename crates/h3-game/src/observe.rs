@@ -2,14 +2,14 @@
 //! `docs/06-security.md`, "Information hiding"): the game's public facts (the day, the players'
 //! colours, whose turn is running), the viewer's own treasury (E08 T13a; other players' never
 //! show) and open decision (T14b), the heroes it sees with their types and its own heroes'
-//! details (T18b, GAM-HER-001), each context's observation for the viewer, and the
-//! projection of the game's events. The seed, the streams and the state hash never show
+//! details (T18b, GAM-HER-001), each context's observation for the viewer (since T19a its
+//! battle's, as its side sees it), and the projection of the game's events. The seed, the streams and the state hash never show
 //! (ADR-0017 point 5).
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use h3_adventure::{AdventureObservation, Offer};
+use h3_adventure::{AdventureObservation, Offer, Viewers};
 use h3_content::HeroTypeId;
 use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::HeroDetails;
@@ -49,6 +49,10 @@ pub struct GameObservation {
     pub heroes: Vec<HeroInfo>,
     /// The adventure map as the viewer sees it.
     pub adventure: AdventureObservation,
+    /// The battle of the viewer's first open decision, as the viewer's side sees it
+    /// (`h3_battle::observe`, ADR-0013 point 9; GAM-BAT-001, E08 T19a); other players' battles
+    /// never show.
+    pub battle: Option<h3_battle::Observation>,
 }
 
 /// What a viewer knows of a hero beyond the adventure map's view of it.
@@ -108,22 +112,54 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
             })
             .collect(),
         adventure,
+        battle: state.battle(player).and_then(|open| {
+            open.side_of(player)
+                .map(|side| h3_battle::observe(open.state(), rules.battle(), side))
+        }),
     }
 }
 
 /// The event as `viewer` may see it, or `None` if it is hidden from it: the game's own events are
 /// public but a treasury's change and an offer's, which show to their owner only (E08 T13b,
-/// T14b); an adventure event shows to the players who see it, naming the viewer alone among them
+/// T14b), and a battle's, which show to the owners that see them (E08 T19a); an adventure or a
+/// battle event shows to the players who see it, naming the viewer alone among them
 /// ([`h3_adventure::AdventureEvent::project`]).
 pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
     let Viewer::Player(player) = viewer;
-    match event {
+    let alone = Viewers::NONE.with(player);
+    match *event {
         GameEvent::Adventure(event) => event.project(player).map(GameEvent::Adventure),
+        GameEvent::BattleStarted {
+            heroes,
+            tile,
+            seen_by,
+        } => seen_by
+            .contains(player)
+            .then_some(GameEvent::BattleStarted {
+                heroes,
+                tile,
+                seen_by: alone,
+            }),
+        GameEvent::Battle { event, seen_by } => {
+            seen_by.contains(player).then_some(GameEvent::Battle {
+                event,
+                seen_by: alone,
+            })
+        }
+        GameEvent::BattleEnded {
+            heroes,
+            result,
+            seen_by,
+        } => seen_by.contains(player).then_some(GameEvent::BattleEnded {
+            heroes,
+            result,
+            seen_by: alone,
+        }),
         GameEvent::ResourceGained { player: owner, .. }
         | GameEvent::ResourcePaid { player: owner, .. }
         | GameEvent::OfferOpened { player: owner, .. }
         | GameEvent::OfferRefused { player: owner, .. }
-        | GameEvent::OfferAnswered { player: owner, .. } => (*owner == player).then_some(*event),
+        | GameEvent::OfferAnswered { player: owner, .. } => (owner == player).then_some(*event),
         GameEvent::TurnEnded { .. }
         | GameEvent::DayStarted { .. }
         | GameEvent::TurnStarted { .. } => Some(*event),

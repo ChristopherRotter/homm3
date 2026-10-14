@@ -17,6 +17,9 @@ pub(crate) const TERRAINS: [&str; 10] = [
     "base:rock",
 ];
 
+/// The tile flag of land on the coast (`docs/formats/h3m.md`, "Tile"; E08 T19a).
+pub(crate) const COAST: u8 = 0x40;
+
 /// Roads by `.h3m` code 1 to 3 (0 is none).
 pub(crate) const ROADS: [&str; 3] = [
     "base:dirt_road",

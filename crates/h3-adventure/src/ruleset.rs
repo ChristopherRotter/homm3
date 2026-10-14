@@ -124,6 +124,22 @@ pub struct AdventureParamsDef {
     /// starting slot; the first slot's stack always comes, slots past the list never
     /// (GAM-SET-001). Each at most 100.
     pub starting_stack_chances: Vec<u8>,
+    /// Where a battle on the map is fought when its tile says so (GAM-BAT-001, E08 T19a); none:
+    /// on the tile's terrain, without a special battlefield.
+    pub battle: Option<BattleTerrainsDef>,
+}
+
+/// The terrain and battlefield of a battle whose tile is underground or on the coast, in the
+/// original's order (survey `E04c-battlefields.md` §4: the underground first, then the coast).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BattleTerrainsDef {
+    /// The core terrain of a battle on the underground (the original's subterranean).
+    pub underground: ContentKey,
+    /// The core terrain of a battle on a coast tile (the original's sand).
+    pub coast: ContentKey,
+    /// The battle part's special battlefield of a battle on a coast tile (the shore); checked
+    /// against the battle part when the game bundles the parts.
+    pub coast_battlefield: ContentKey,
 }
 
 /// One pack's adventure definitions (its `adventure.toml`), with the manifest of its core pack.
@@ -207,6 +223,18 @@ pub struct AdventureParams {
     max_players: NonZeroU8,
     army_slots: NonZeroU8,
     starting_stack_chances: Vec<u8>,
+    battle: Option<BattleTerrains>,
+}
+
+/// The compiled [`BattleTerrainsDef`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BattleTerrains {
+    /// The terrain of a battle on the underground.
+    pub underground: TerrainId,
+    /// The terrain of a battle on a coast tile.
+    pub coast: TerrainId,
+    /// The special battlefield of a battle on a coast tile (a battle part's key).
+    pub coast_battlefield: ContentKey,
 }
 
 impl AdventureParams {
@@ -256,6 +284,12 @@ impl AdventureParams {
     /// The chance in percent of each starting slot after the first (GAM-SET-001).
     pub fn starting_stack_chances(&self) -> &[u8] {
         &self.starting_stack_chances
+    }
+
+    /// Where a battle on the map is fought when its tile is underground or on the coast
+    /// (GAM-BAT-001), if the packs say.
+    pub const fn battle_terrains(&self) -> Option<&BattleTerrains> {
+        self.battle.as_ref()
     }
 }
 
@@ -406,7 +440,7 @@ struct Tables {
     rivers: Vec<RiverKind>,
     river_index: BTreeMap<String, RiverId>,
     objects: ObjectTables,
-    params: Option<AdventureParamsDef>,
+    params: Option<(AdventureParamsDef, Option<BattleTerrains>)>,
     starting_resources: Option<Vec<StartingResources>>,
 }
 
@@ -436,8 +470,8 @@ impl AdventureRuleset {
             })
             .collect::<Result<Vec<_>, _>>()?;
         check_object_types(&tables.objects.types)?;
-        let params = tables.params.ok_or(AdventureCompileError::MissingParams)?;
-        let params = validate_params(params)?;
+        let (params, battle) = tables.params.ok_or(AdventureCompileError::MissingParams)?;
+        let params = validate_params(params, battle)?;
         let starting_resources = tables
             .starting_resources
             .ok_or(AdventureCompileError::MissingDifficulties)?;
@@ -546,7 +580,9 @@ impl CanonicalHash for AdventureRuleset {
     /// players and the army slots; since v3 the starting stack chances as their length and
     /// entries); since v4 the object types in handle order ([`ObjectType`]'s encoding); since v5
     /// the starting resources by difficulty (their number, then each row's human and computer
-    /// amounts as length and entries). The core's hash is not part of it: replays record both.
+    /// amounts as length and entries); since v6 the battle terrains (0 for none, else 1, the
+    /// underground's and the coast's terrain, the coast's battlefield key). The core's hash is not
+    /// part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
         h.write_len(self.terrains.len());
@@ -580,6 +616,15 @@ impl CanonicalHash for AdventureRuleset {
         h.write_len(self.starting_resources.len());
         for row in &self.starting_resources {
             row.hash_into(h);
+        }
+        match &self.params.battle {
+            None => h.write_u8(0),
+            Some(battle) => {
+                h.write_u8(1);
+                h.write_u16(battle.underground.raw());
+                h.write_u16(battle.coast.raw());
+                battle.coast_battlefield.as_str().hash_into(h);
+            }
         }
     }
 }
@@ -660,15 +705,7 @@ fn compile_pack(
     }
     for def in &pack.terrains {
         let key = def.terrain.as_str();
-        if !closure.contains(def.terrain.pack()) {
-            return Err(AdventureCompileError::ReferenceOutsideDependencies {
-                key: String::from(key),
-                pack: String::from(id),
-            });
-        }
-        let terrain = core
-            .terrain_by_key(key)
-            .ok_or_else(|| AdventureCompileError::UnknownTerrain(String::from(key)))?;
+        let terrain = core_terrain(core, id, closure, &def.terrain)?;
         if tables
             .terrains
             .insert(usize::from(terrain.raw()), def.passage)
@@ -695,12 +732,49 @@ fn compile_pack(
         if tables.params.is_some() {
             return Err(AdventureCompileError::DuplicateParams(String::from(id)));
         }
-        tables.params = Some(params.clone());
+        let battle = params
+            .battle
+            .as_ref()
+            .map(|def| {
+                if !closure.contains(def.coast_battlefield.pack()) {
+                    return Err(AdventureCompileError::ReferenceOutsideDependencies {
+                        key: String::from(def.coast_battlefield.as_str()),
+                        pack: String::from(id),
+                    });
+                }
+                Ok(BattleTerrains {
+                    underground: core_terrain(core, id, closure, &def.underground)?,
+                    coast: core_terrain(core, id, closure, &def.coast)?,
+                    coast_battlefield: def.coast_battlefield.clone(),
+                })
+            })
+            .transpose()?;
+        tables.params = Some((params.clone(), battle));
     }
     Ok(())
 }
 
-fn validate_params(def: AdventureParamsDef) -> Result<AdventureParams, AdventureCompileError> {
+/// The core terrain `key` names, which `pack` (with dependency closure `closure`) may reference.
+fn core_terrain(
+    core: &Ruleset,
+    pack: &str,
+    closure: &BTreeSet<String>,
+    key: &ContentKey,
+) -> Result<TerrainId, AdventureCompileError> {
+    if !closure.contains(key.pack()) {
+        return Err(AdventureCompileError::ReferenceOutsideDependencies {
+            key: String::from(key.as_str()),
+            pack: String::from(pack),
+        });
+    }
+    core.terrain_by_key(key.as_str())
+        .ok_or_else(|| AdventureCompileError::UnknownTerrain(String::from(key.as_str())))
+}
+
+fn validate_params(
+    def: AdventureParamsDef,
+    battle: Option<BattleTerrains>,
+) -> Result<AdventureParams, AdventureCompileError> {
     let reason = if def.land_points.is_empty() {
         Some("land_points is empty")
     } else if def.land_points.len() > MAX_LAND_POINTS {
@@ -725,6 +799,7 @@ fn validate_params(def: AdventureParamsDef) -> Result<AdventureParams, Adventure
             max_players: def.max_players,
             army_slots: def.army_slots,
             starting_stack_chances: def.starting_stack_chances,
+            battle,
         }),
     }
 }
