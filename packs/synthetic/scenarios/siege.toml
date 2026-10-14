@@ -4,7 +4,8 @@
 # (a Sling, BAT-SIE-009): Brea at level 1, given directly, commands it with Advanced Ballistics
 # (two shots a turn at the targets she picks, BAT-SIE-011), her Hurlers shoot the walls too
 # (BAT-SIE-013), and she shakes them with Quake at Advanced (an Earthquake: three hits,
-# BAT-SIE-015).
+# BAT-SIE-015). Since E04c T7 the town's Citadel sets up its keep: seven Spires (4 + the town's
+# three structures) shoot first every round on their own (BAT-SIE-016, BAT-SIE-018).
 
 [scenario]
 id = "siege"
@@ -16,6 +17,7 @@ terrain = "synthetic:meadow"
 faction = "synthetic:vale"
 fort = "citadel"
 moat = "damaging"
+structures = 3                   # E04c T7: the keep, 4 + 3 Spires (BAT-SIE-016)
 
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"

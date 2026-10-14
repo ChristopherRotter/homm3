@@ -536,7 +536,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0x4e28_811c_3fc6_44ae;
+const GOLDEN_BASE_HASH: u64 = 0xa0cc_d0e9_0c22_7655;
 
 #[test]
 fn battle_params_are_unique_and_required() {
@@ -1101,6 +1101,22 @@ fn ability_errors() {
     let mut flagged = base();
     flagged.core.creatures[0].info.flags = vec!["catapult".into()];
     assert_eq!(fails(flagged), invalid(walls));
+    // E04c T7: a turret is a shooting war machine and no catapult.
+    let turret = "turret requires flags war_machine and shooter, not catapult";
+    let towered = |flags: &[&str]| {
+        let mut pack = with_abilities(vec![AbilityDef::Turret]);
+        pack.core.creatures[0].info.flags = flags.iter().map(|&f| f.into()).collect();
+        if flags.contains(&"war_machine") {
+            pack.core.creatures[0].speed = 0;
+        }
+        pack
+    };
+    assert_eq!(fails(towered(&["shooter"])), invalid(turret));
+    assert_eq!(fails(towered(&["war_machine"])), invalid(turret));
+    assert_eq!(
+        fails(towered(&["war_machine", "shooter", "catapult"])),
+        invalid(turret)
+    );
 }
 
 #[test]

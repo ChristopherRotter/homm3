@@ -482,7 +482,7 @@ mod tests {
         let side = a.to_move().unwrap();
         a.step(side, Action::entry(0)).unwrap();
         assert_ne!(a.state_hash(), b.state_hash());
-        assert_eq!(a.ruleset().creature_count(), 14);
+        assert_eq!(a.ruleset().creature_count(), 15);
         assert_eq!(a.state().round(), b.state().round());
     }
 

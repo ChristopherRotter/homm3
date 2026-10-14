@@ -22,7 +22,7 @@ epic   = "E05"
 [[stub]]
 id     = "BAT-STUB-2"
 where  = "crates/h3-battle/src/state.rs::BattleState::new"
-reason = "The battle reads BattleSetup.siege's faction, fort and moat since E04c T5 (the walls, the gate, the moat and the Tower's mines, BAT-SIE-001 to BAT-SIE-008) and sets up the wall-shot targets, the Catapult and Earthquake since T6 (BAT-SIE-009 to BAT-SIE-015); the turrets (T7), the structures, the Escape Tunnel, the town's morale and luck, Teleport's and the summons' limits, the controls and the experience (T8) are not read yet"
+reason = "The battle reads BattleSetup.siege's faction, fort and moat since E04c T5 (the walls, the gate, the moat and the Tower's mines, BAT-SIE-001 to BAT-SIE-008) and sets up the wall-shot targets, the Catapult and Earthquake since T6 (BAT-SIE-009 to BAT-SIE-015) and the turrets with the structures since T7 (BAT-SIE-016 to BAT-SIE-019); the Escape Tunnel, the town's morale and luck, Teleport's and the summons' limits, the controls and the experience (T8) are not read yet"
 epic   = "E04c"
 
 # --- adventure (ADV-STUB-<n>) ---

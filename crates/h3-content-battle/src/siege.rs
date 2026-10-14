@@ -21,6 +21,9 @@ use crate::params::FieldParams;
 /// Most wall-shot targets a siege field may have (the original's eight).
 pub const MAX_WALL_TARGETS: usize = 8;
 
+/// Most turrets a siege field may hold: the keep and two towers (E04c T7).
+pub const MAX_TURRETS: usize = 3;
+
 /// Ballistics levels: none, Basic, Advanced, Expert (the records of the Ballistics table).
 pub const BALLISTICS_LEVELS: usize = 4;
 
@@ -65,6 +68,9 @@ pub struct WallTarget {
     /// The wall hex its destruction opens (a wall's), or the gate's hex (the gate's); none for the
     /// towers and the keep.
     pub wall: Option<u8>,
+    /// The off-field position of the turret it holds (the towers and the keep, E04c T7, pack
+    /// format v41: the original's 254, 255, 251), whose stack its destruction kills.
+    pub turret: Option<u8>,
 }
 
 /// One level's record of the Ballistics table (`BALLIST.TXT`, §7.29).
@@ -99,7 +105,10 @@ pub struct SiegeFieldDef {
     pub mine_power: u8,
     /// The attacker's Catapult's position (its rear hex, 0x46377C).
     pub catapult: u8,
-    /// The wall-shot targets by index (0x63BE60, its kinds from 0x445EFF).
+    /// The keep's least creature count (0x5BF4F0; the town's structures add to it, E04c T7).
+    pub turret_count: u8,
+    /// The wall-shot targets by index (0x63BE60, its kinds from 0x445EFF; the turrets' positions
+    /// from 0x465990 and 0x463600).
     pub targets: Vec<WallTarget>,
     /// The walls a missed shot may land on, in order (0x63B840).
     pub missed: Vec<u8>,
@@ -131,6 +140,8 @@ pub struct SiegeField {
     pub mine_power: u8,
     /// The Catapult's position.
     pub catapult: u8,
+    /// The keep's least creature count.
+    pub turret_count: u8,
     /// The wall-shot targets.
     pub targets: Vec<WallTarget>,
     /// The walls a missed shot may land on.
@@ -211,6 +222,7 @@ pub(crate) fn compile_field(
         moat_defense_penalty: def.moat_defense_penalty,
         mine_power: def.mine_power,
         catapult: def.catapult,
+        turret_count: def.turret_count,
         targets: def.targets.clone(),
         missed: def.missed.clone(),
         automatic: def.automatic.clone(),
@@ -239,14 +251,33 @@ fn compile_wall_shots(
         return invalid("one wall-shot target must be the gate, on the gate's hex");
     }
     let placed = def.targets.iter().all(|t| match t.kind {
-        WallKind::Gate => true,
-        WallKind::Wall => t
-            .wall
-            .is_some_and(|w| w != def.gate && def.walls.contains(&w)),
+        WallKind::Gate => t.turret.is_none(),
+        WallKind::Wall => {
+            t.turret.is_none()
+                && t.wall
+                    .is_some_and(|w| w != def.gate && def.walls.contains(&w))
+        }
         WallKind::Keep | WallKind::Tower => t.wall.is_none(),
     });
     if !placed {
         return invalid("a wall target needs a wall hex other than the gate's, a turret none");
+    }
+    // E04c T7: each tower and the keep hold a turret, off the field, each its own position.
+    let hexes = u16::from(field.width) * u16::from(field.height);
+    let turrets = def.targets.iter().filter_map(|t| t.turret);
+    let held = def.targets.iter().all(|t| match t.kind {
+        WallKind::Keep | WallKind::Tower => t.turret.is_some_and(|at| u16::from(at) >= hexes),
+        WallKind::Gate | WallKind::Wall => true,
+    });
+    let distinct = turrets
+        .clone()
+        .enumerate()
+        .all(|(i, at)| !turrets.clone().take(i).any(|b| b == at));
+    if !held || !distinct || turrets.count() > MAX_TURRETS || def.turret_count == 0 {
+        return invalid(
+            "the towers and the keep need turrets at distinct off-field positions, at most three, \
+             the keep at least one creature",
+        );
     }
     let indices = |list: &[u8]| {
         list.iter()
@@ -288,7 +319,8 @@ impl CanonicalHash for SiegeField {
     /// Walls, moat and second moat as length + bytes, the gate, the defense penalty, the mines'
     /// power (battle part v3); the Catapult's hex, the targets as length + each's kind and wall
     /// hex (0xFF none), the three lists as length + bytes, the Castle's bonus, the Ballistics
-    /// records' bytes (battle part v4).
+    /// records' bytes (battle part v4); each target's turret (0xFF none) and the keep's least
+    /// count (battle part v5).
     fn hash_into(&self, h: &mut StateHasher) {
         for list in [&self.walls, &self.moat, &self.second_moat] {
             h.write_len(list.len());
@@ -302,7 +334,10 @@ impl CanonicalHash for SiegeField {
         for t in &self.targets {
             h.write_u8(t.kind as u8);
             h.write_u8(t.wall.unwrap_or(u8::MAX));
+            // Battle part v5 (E04c T7): the turrets.
+            h.write_u8(t.turret.unwrap_or(u8::MAX));
         }
+        h.write_u8(self.turret_count);
         for list in [&self.missed, &self.automatic, &self.fallback] {
             h.write_len(list.len());
             h.write_bytes(list);

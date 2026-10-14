@@ -56,13 +56,15 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
             } else {
                 s.speed_now()
             };
-            // rule: BAT-SIE-011
-            // The Catapult before every other stack of its phase (the original's 0x464F50; the
-            // arrow towers before it join with T7).
+            // rule: BAT-SIE-011, BAT-SIE-016
+            // The turrets, then the Catapult before every other stack of their phase (the
+            // original's 0x464F50); the turrets by slot: the keep, the upper, the lower tower.
+            let turret = !s.is_turret();
             let catapult = s.slot != crate::siege::CATAPULT_SLOT;
             // The trailing id makes the key unique, so the order is total (ADR-0003 §9).
             (
                 phase,
+                turret,
                 catapult,
                 speed,
                 s.side != preferred,

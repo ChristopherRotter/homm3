@@ -31,7 +31,7 @@ static uint32_t pick_index(const uint8_t *mask, uint32_t n, uint64_t *lcg) {
 #define WALL_SHOTS 8
 
 int main(void) {
-    CHECK(h3_abi_version() == 21);
+    CHECK(h3_abi_version() == 22);
     uint32_t n_actions = h3_action_count();
     uint32_t n_spells = h3_spell_count();
     uint32_t n_targets = h3_target_count();
