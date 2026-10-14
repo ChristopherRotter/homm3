@@ -39,7 +39,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-14 — round 1: T18a and T18b
 
-The user trimmed the round (decision 28). T18a #185: `cross-lane` for the battle lane's syntax test (the kinds in `synthetic-ext`). T18b: the store, HER-MAN-001 (code reading), the import of customisations. `master` was red before (BAT-Q41 cites 0x4BCDA0 unmapped; `battle/e04c-t5` maps it).
+The user trimmed the round (decision 28). T18a #185: `cross-lane` for the battle lane's syntax test (the kinds in `synthetic-ext`). T18b: the store, HER-MAN-001 (code reading), the import of customisations. `master` was red before (BAT-Q41 cites an unmapped address; `battle/e04c-t5` maps it).
 
 ### 2026-10-13 — T17a checkpoint and T17b: the ADR amendment drafts
 

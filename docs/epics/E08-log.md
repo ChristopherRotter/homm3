@@ -1705,7 +1705,7 @@ The user merged #181 and, asked for a seam before building, trimmed the round (d
 keeps the store of heroes, its defaults, validation, the import of the customisations and what a
 player sees; `HeroChange` goes to T19a, the store passed to the adventure, `attack_defense`,
 `join_bonus` and the difficulty to T20a. CI could not start (billing): the full local verify stood
-in. `master` (7b20fad, after #183) was red before either branch: BAT-Q41 cites 0x4BCDA0 without an
+in. `master` (7b20fad, after #183) was red before either branch: BAT-Q41 cites an address without an
 address-map entry (`check-exe-map` and its test); the battle lane's `battle/e04c-t5` adds it.
 
 **T18a — the shared groundwork** (#185, `shared/` and `cross-lane`):
@@ -1760,4 +1760,9 @@ map, 06-security):
   views (`h3-game`); the customisations, map-wide entries, the version differences, the refusals
   and the code tables (`h3-map`); the hygiene properties give the viewer's heroes an experience
   of their own (the viewer now sees its drawn experience).
+- **Measured** (`bench-check`): `fork-xl-144` +0.52 % with the store (the list of heroes behind
+  one `Arc`, an `Arc` per hero inside); a list per fork had cost +9.76 %. The other workloads
+  within ±0.5 %.
+- Full local verify (`--with-original-data`): every step passes but `check-exe-map` and its
+  test, red on `master` too (above).
 - Inbox: the four maps, +0x479 and artifacts, VCMI's catapult and skipped artifacts.
