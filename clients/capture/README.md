@@ -99,6 +99,15 @@ change of a stack's group, frame or hex). `sequences` replays the recorded ones 
 timeline changes; add one like a situation (its entry, `new`, then copy its timeline into
 `timelines/`).
 
+**A battle in progress** (M3 T1a): `--hot-seat` (an entry's `hot_seat = true`) starts the map in
+hot seat with Blue a human too (`h3-view situation --hot-seat`), so the actions play both sides and
+nothing acts on its own. Among the actions, `turn:<side>.<record>` steps 1 ms at a time, each step
+read, until that stack's turn starts (the game names it the active stack), and the actions after
+it act then; its time goes to `<out>/turns.txt` (`at:<ms>` steps so up to a time). Act as the turn
+starts: a player who waits lets fidgets start, which the viewer's timeline does not have. In the
+entry's `[[sequence.command]]`s, `at` gives each player's command its time from `turns.txt` (`ms`
+counts from the last one). `behind` (`seq-behind.toml`): two rounds, 8 commands, about 13 s.
+
 **The frame check** (M2 T4b-1, design §7.9): from `clients/`,
 
 ```
@@ -112,9 +121,9 @@ drew in `ours.txt`); the masked diff of each pair (panel, heroes, the count boxe
 poses show them), written to `frames.txt` and, for a frame that differs, `diff/t<ms>.png`; each
 line compared with the sequence's recorded `timelines/<id>-frames.txt` (`ok`, `new`, `CHANGED`;
 exit 1 on a change). `--reuse` keeps the original's frames from an earlier run and only redraws
-and compares (after a change to the viewer). About 14 minutes for the four sequences (default
-`<dir>`: `clients/out/frames`). Only a fidget comes from the original's memory; everything else is
-the viewer's own timeline.
+and compares (after a change to the viewer). About 14 minutes for the first four sequences and 15
+more for `behind` (default `<dir>`: `clients/out/frames`). Only a fidget comes from the
+original's memory; everything else is the viewer's own timeline.
 
 **An experiment batch on the adventure map** (M2 T6; `docs/experiments/README.md`): from
 `clients/`,
@@ -157,6 +166,9 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 | Adventure map | park the cursor (an edge scrolls the map) | (700, 300) |
 | Adventure map | step the selected hero east into the enemy | key `Right` |
 | Battle | park the cursor over the panel | (420, 580) |
+| Battle | a hex *h* (row r, column c): move, shoot, attack from the side the cursor points | (36 + 44c + 22 if r is even, 112 + 42r): `hex:<h>` |
+| Battle | attack hex *h* from its right neighbour (M3 T1a) | its point + (18, 0): `click:x,y` |
+| Battle | wait, defend | keys `w`, `d` |
 | New game menu | Multiplayer | (640, 185) |
 | Multiplayer dialog | Hot Seat | (580, 152) |
 | Hot-seat names | name *i* (0 to 7; the first has the focus) | (400, 186 + 30 *i*) |
@@ -224,6 +236,10 @@ design §7.1.
   then is one step behind; the frame check draws the viewer's own timeline for that reason.
 - Inside an animation the memory holds the frame drawn, the screen the one shown (design §7.1):
   never render the memory's poses as the screen at that time.
+- In a battle in progress (M3 T1a) the game names a striker the active stack again while it
+  turns back after its attack, so `turn:` waits for the stack named, not for any active one; a
+  click before the turn starts is lost, and `click:` parks the game's cursor afterwards (the game
+  draws it into the frames).
 - Under load (a build beside it) a sequence once read the computer's first frame a millisecond
   late (`melee`: 1919 for 1918, `CHANGED`): the turn's start ran after the 20 clock reads the
   driver then waited for. A sequence's steps now wait for 500 reads; still, run `sequences` and

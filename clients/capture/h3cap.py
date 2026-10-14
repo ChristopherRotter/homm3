@@ -89,11 +89,14 @@ def snapshot(record):
 
 def count_boxes(observation, showing=None):
     """Each living stack's count box (design §4.3, 0x43E140 part 1): (x0, y0, x1, y1); with
-    `showing`, only the boxes of those stack ids (every living stack still takes its hexes)."""
+    `showing`, only the boxes of those stack ids (every living stack still takes its hexes). A
+    stack faces as its side does unless it carries `right` (a turned stack, M3 T1a)."""
     lay = layout()
     ax, ay = lay["anchor"]
     stacks = [s for s in observation["stacks"] if s["alive"] and not s["war_machine"]]
-    taken = {h for s in stacks for h in (s["hex"], s["hex"] + (1 if s["side"] == "Attacker" else -1) * s["two_hex"])}
+    facing = {s["id"]: s.get("right", s["side"] == "Attacker") for s in stacks}
+    taken = {h for s in stacks
+             for h in (s["hex"], s["hex"] + (1 if facing[s["id"]] else -1) * s["two_hex"])}
     taken |= set(observation.get("obstacles", []))
     boxes = []
     for s in stacks:
@@ -103,7 +106,7 @@ def count_boxes(observation, showing=None):
         x, y = hex_box(row, column, lay)
         x, y = x + ax, y + ay
         w = 1 if s["two_hex"] else 0
-        right = s["side"] == "Attacker"
+        right = facing[s["id"]]
         ahead = s["hex"] + (1 + w if right else -1 - w)
         if ahead in taken:
             dx, dy = (-15 + 44 * w, -15) if right else (-15 - 44 * w, -15)
@@ -114,13 +117,13 @@ def count_boxes(observation, showing=None):
 
 
 def boxes_at(observation, poses):
-    """The count boxes shown with the stacks' poses `poses` ({id: (group, hex)}): a living stack
-    standing or fidgeting (group 2 or 1) shows its box at its hex (design §4.3: 0x43E140 skips
-    the others); every one takes its hexes; `observation` gives each one's side and size and the
-    obstacles."""
-    moved = [dict(s, hex=poses[s["id"]][1]) for s in observation["stacks"]
-             if s["alive"] and s["id"] in poses]
-    showing = {i for i, (group, _) in poses.items() if group in (1, 2)}
+    """The count boxes shown with the stacks' poses `poses` ({id: (group, hex, faces left)}): a
+    living stack standing or fidgeting (group 2 or 1) shows its box at its hex by its facing
+    (design §4.3: 0x43E140 skips the others); every one takes its hexes; `observation` gives each
+    one's side and size and the obstacles."""
+    moved = [dict(s, hex=poses[s["id"]][1], right=not poses[s["id"]][2])
+             for s in observation["stacks"] if s["alive"] and s["id"] in poses]
+    showing = {i for i, (group, _, _) in poses.items() if group in (1, 2)}
     return count_boxes({**observation, "stacks": moved}, showing)
 
 

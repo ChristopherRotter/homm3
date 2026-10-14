@@ -45,11 +45,28 @@ struct Sequence {
     command: Vec<Step>,
 }
 
-/// A command of a seat.
+impl Sequence {
+    /// When the harness's recording ends: `ms` after its last actions (`pre`, or the last
+    /// command's `at` in a battle in progress, M3 T1a).
+    fn until(&self) -> u32 {
+        let last = self
+            .command
+            .iter()
+            .filter_map(|c| c.at)
+            .fold(self.pre, u32::max);
+        last + self.ms
+    }
+}
+
+/// A command of a seat; `at`, when a player gave it (M3 T1a): its time after the opening (the
+/// first command's defaults to the sequence's `pre`); a command without one is the computer's,
+/// which acts as soon as its turn comes.
 #[derive(Debug, Deserialize)]
 struct Step {
     seat: Seat,
     command: Command,
+    #[serde(default)]
+    at: Option<u32>,
 }
 
 /// The frames the harness kept of a sequence in the original (`h3drive.py frames`).
@@ -189,7 +206,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let tables = assets::load(&assets::default_dir(), top)?;
         let looks = motion::looks(&record, &tables, &archives)?;
         let stage = motion::stage(&record, &tables, &layout);
-        // The harness acts `pre` ms after the opening.
+        // The harness acts `pre` ms after the opening, and then at each command's `at`.
         let commands: Vec<anim::Command<'_>> = record
             .messages
             .iter()
@@ -199,7 +216,11 @@ fn sequences(options: &Options) -> Result<usize, String> {
             })
             .enumerate()
             .map(|(i, events)| anim::Command {
-                at: (i == 0).then_some(sequence.pre),
+                at: sequence
+                    .command
+                    .get(i)
+                    .and_then(|s| s.at)
+                    .or((i == 0).then_some(sequence.pre)),
                 events,
             })
             .collect();
@@ -209,7 +230,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let timeline = anim::timeline(snapshot, &commands, &looks, stage, options.speed)
             .map_err(|e| format!("{}: {e}", sequence.id))?;
         // What the harness saw: its recording ends `ms` after the actions.
-        let until = sequence.pre + sequence.ms;
+        let until = sequence.until();
         let ours: String = timeline
             .lines()
             .lines()
@@ -332,7 +353,8 @@ fn draw_frames(
 }
 
 /// A moment as one line: `<t> pulse <n> outline <id|-> [projectile <def> f<frame> <x>,<y>]`, then
-/// each stack's `<id>:g<group>f<frame>h<hex>[+<x>,<y>]`.
+/// each stack's `<id>:g<group>f<frame>h<hex>[m][+<x>,<y>]`, `m` when it faces left (the harness
+/// places a count box by the facing, M3 T1a).
 pub(crate) fn describe(t: u32, moment: &scene::Moment) -> String {
     use std::fmt::Write as _;
     let mut line = format!("{t} pulse {} outline ", moment.pulse);
@@ -349,6 +371,9 @@ pub(crate) fn describe(t: u32, moment: &scene::Moment) -> String {
     }
     for (id, p) in &moment.poses {
         let _ = write!(line, " {id}:g{}f{}h{}", p.group, p.frame, p.hex);
+        if p.mirrored {
+            line.push('m');
+        }
         if p.offset != [0, 0] {
             let _ = write!(line, "+{},{}", p.offset[0], p.offset[1]);
         }
@@ -403,5 +428,28 @@ mod tests {
             }
         );
         assert_eq!((melee.pre, melee.ms), (0, 6000));
+        assert_eq!((melee.until(), melee.command[0].at), (6000, None));
+    }
+
+    #[test]
+    fn a_battle_in_progress_counts_from_its_last_actions() {
+        let s: Sequence = toml::from_str(
+            r#"
+            id = "x"
+            scenario = "x.toml"
+            timeline = "x.txt"
+            pre = 100
+            ms = 500
+            actions = ["hex:3", "turn", "key:w"]
+            command = [
+                { seat = "Attacker", command = { Wait = {} } },
+                { seat = "Defender", at = 4500, command = { Defend = {} } },
+                { seat = "Defender", at = 2000, command = { Defend = {} } },
+            ]
+            "#,
+        )
+        .unwrap();
+        assert_eq!(s.until(), 5000);
+        assert_eq!((s.command[0].at, s.command[2].at), (None, Some(2000)));
     }
 }

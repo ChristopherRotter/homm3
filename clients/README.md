@@ -66,8 +66,9 @@ search the parent directories).
   plays each recorded sequence of `situations/sequences.toml` with its engine commands, times it
   with `h3_view::anim` and compares the timeline with the one the harness recorded in the
   original (`docs/epics/E17-design.md` §7.8); it exits 1 on a difference and writes the records
-  and timelines to `clients/out/sequences/`. The unit tests replay the same four sequences from
-  their numbers, without the original files.
+  and timelines to `clients/out/sequences/`. The unit tests replay the same sequences from their
+  numbers, without the original files. A sequence may be a battle in progress, both sides played
+  in hot seat (`situation --hot-seat`; E17 M3 T1a, the runbook's "A battle in progress").
 - **A whole battle, frame by frame** (E17 M2 T4b-2a, design §7.10): `cargo run --release -p h3-view
   -- play scenarios/battle.toml [--seed <n>] [--png] [--from <ms>] [--to <ms>]` (from `clients/`)
   has a simple bot fight the scenario to its end in-process (or reads a record file), plays its
