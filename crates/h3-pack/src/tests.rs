@@ -6,7 +6,10 @@ use super::*;
 #[test]
 fn the_core_files_parse_and_compile() {
     let r = compile(&[SYNTHETIC_CORE], "synthetic:faithful").unwrap();
-    assert_eq!(r.creature_count(), 12);
+    // Every creature of the file (the battle lane's synthetic pack grows with its epics).
+    let creatures = SYNTHETIC_CORE.matches("\n[[creature]]").count();
+    assert!(creatures >= 12);
+    assert_eq!(r.creature_count(), creatures);
     let spearman = r.creature_by_key("synthetic:spearman").unwrap();
     assert_eq!(r.creature_info(spearman).unwrap().growth, 12);
     let both = compile(
