@@ -1748,6 +1748,27 @@ url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json"
 retrieved = "2026-10-14"
 
 [[source]]
+id = "exe-diplomacy"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T17a, T20a1; docs/exe/map.toml 0x4A7740): the wandering monster's answer adds the hero's Diplomacy level (+0xCD, 0 to 3) once to the joining tests and twice to the paid one (C = St + Sy + L; M <= Sy + L + 1 joins free, M <= Sy + 2L + 1 for gold); on Easy a human player's level counts one higher, at most 3 (0x4A787E)"
+url = "docs/rules/surveys/E08-battles.md"
+retrieved = "2026-10-14"
+
+[[source]]
+id = "wiki-diplomacy"
+kind = "wiki"
+ref = "Diplomacy - Heroes 3 wiki: the skill makes wandering creatures readier to join, by level; 'When playing at easy difficulty, heroes receive a diplomacy bonus even when they have not learned the skill' (survey E08-battles.md §3.1, retrieved 2026-10-13)"
+url = "https://heroes.thelazy.net/index.php/Diplomacy"
+retrieved = "2026-10-13"
+
+[[source]]
+id = "vcmi-diplomacy"
+kind = "vcmi"
+ref = "config/skills.json (1.7.5) diplomacy: WANDERING_CREATURES_JOIN_BONUS 1, 2, 3 at Basic, Advanced, Expert, beside SURRENDER_DISCOUNT 20, 40, 60"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json"
+retrieved = "2026-10-14"
+
+[[source]]
 id = "exe-necromancy"
 kind = "original-data"
 ref = "Heroes3.exe code reading (E08 T19a2b; docs/exe/map.toml 0x4E3CD0, 0x4E3C60): with the skill the share is the skill's table value (a specialist's times 1 + 0.05 x its level) +0.05, +0.10, +0.15 for the Amulet of the Undertaker (54), the Vampire's Cowl (55), Dead Man's Boots (56), each worn or through the combination it is part of; without the skill only +0.30 with the Cloak of the Undead King (130); the creature is the Skeleton, with the Cloak by the Necromancy level Skeleton, Walking Dead, Wight, Lich"
@@ -1792,6 +1813,15 @@ basic = [{ kind = "raises", creature = "Skeleton" }]
 advanced = [{ kind = "raises", creature = "Skeleton" }]
 expert = [{ kind = "raises", creature = "Skeleton" }]
 sources = ["exe-necromancy", "vcmi-necromancy", "wiki-necromancy"]
+
+# Diplomacy's join bonus (E08 T20a1): its level, 1 to 3, in the wandering monsters' answer
+# (h3-heroes' join_bonus, read by ADV-MON-007), beside the table's surrender discount.
+[[heroes.skill_extra]]
+skill = "Diplomacy"
+basic = [{ kind = "join_bonus", level = 1 }]
+advanced = [{ kind = "join_bonus", level = 2 }]
+expert = [{ kind = "join_bonus", level = 3 }]
+sources = ["exe-diplomacy", "wiki-diplomacy", "vcmi-diplomacy"]
 
 [[heroes.skill_effects]]
 skill = "Tactics"
