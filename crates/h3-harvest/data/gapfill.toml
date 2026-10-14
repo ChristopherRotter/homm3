@@ -2651,10 +2651,14 @@ sources = ["exe-eagle-eye", "wiki-eagle-eye", "vcmi-artifacts"]
 
 # Effects no epic has modelled yet; the pack marks these artifacts, and every artifact without a
 # modelled effect must be listed here.
+# The Catapult has no effect of its own: every hero carries one, and the battle sets one up for
+# any attacking hero at a fort without testing the artifact (BAT-SIE-009, installation.md 7.29).
+# The Golden Bow's and the Bow of the Sharpshooter's siege effect is their `no_range_penalty`
+# (the walls' halving, BAT-SIE-008, E04c T5).
 [[artifacts.pending]]
-epic = "E04c"
-what = "the Catapult, no obstacle penalty in sieges"
-artifacts = ["Catapult", "Golden Bow", "Bow of the Sharpshooter"]
+epic = "E08-E10"
+what = "the Catapult every hero carries (the battle's own since E04c T6, BAT-SIE-009)"
+artifacts = ["Catapult"]
 
 [[artifacts.pending]]
 epic = "E08-E10"

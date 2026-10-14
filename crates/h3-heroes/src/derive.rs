@@ -761,6 +761,7 @@ fn machine_control(details: &HeroDetails, ruleset: &Ruleset) -> MachineControl {
                     heal_bonus: heal.rate(u32::MAX),
                 });
             }
+            // rule: HER-BAT-018
             HeroEffect::Ballistics { level } => {
                 let catapult = control.catapult.get_or_insert(CatapultControl { level });
                 catapult.level = catapult.level.max(level);

@@ -450,3 +450,16 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: n/a
 - Regression test: `crates/h3-battle/src/tests/strike.rs`, `shots_cast_nothing_and_a_killed_target_takes_no_spell` (a killed target takes no strike spell, so no binder joins it, and a dead stack is left without binders); no test yet raises a stack that a binder's strike killed and binds it again
 - Decided by / date: user, 2026-10-08 (E04b T7a checkpoint, BAT-Q8: not reproduced, the engine binds only a living stack); entered here at the E04b T11b review, 2026-10-12
+
+### BAT-QUIRK-22 — Earthquake disables the first defending stack (survey S-08; E04c T6)
+- Class: exploit-fix (no flag: the user, 2026-10-14, BAT-Q43)
+- Context / rules affected: battle, BAT-SIE-015 (with BAT-SIE-010)
+- Original behavior: Earthquake's draw (0x5A7C80) has no fort test, so at a Fort or Citadel the towers and the keep the fort level does not set up (2 hit points each from `WALLS.TXT`) are drawn too; destroying such an absent turret (0x465990) marks dead the stack its turret record names, an index among the defender's stacks that no turret set up, so the defender's first stack disappears and stops acting (`docs/formats/installation.md` §7.29; the wiki's Earthquake bug, fixed in HotA).
+- Intended/expected behavior: the absent parts stay in the draw and soak hits (so the real walls keep the original's odds), and their destruction harms no stack.
+- Impact: gameplay-altering (a defending stack lost to a spell that hits walls); an exploit for the attacker
+- Community status: known bug (the wiki's Earthquake page), fixed in HotA
+- Sources: original-data (`installation.md` §7.29), wiki (Earthquake)
+- Flag: none
+- Defaults: n/a
+- Regression test: `crates/h3-battle/src/tests/walls.rs`, `an_absent_turret_quaked_down_harms_no_stack`
+- Decided by / date: user, 2026-10-14 (BAT-Q43: the absent parts soak hits, no stack is harmed)

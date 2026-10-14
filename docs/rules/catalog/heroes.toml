@@ -598,6 +598,26 @@ numeric  = "integer"
   confidence = "medium"
 
 [[rule]]
+id       = "HER-BAT-018"
+title    = "The battle hero's Ballistics"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero commands its Catapult (BattleHero.war_machines.catapult = CatapultControl { level }) if one of its effect sources (HER-BAT-001) has a ballistics effect (pack format v38, the Ballistics skill: Basic 1, Advanced 2, Expert 3): the level is the highest among them, not grown by a specialty. The battle sets the Catapult up itself (BAT-SIE-009) and applies the control (BAT-SIE-011)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.29): the Catapult's turn 0x473C00 and the wall shot 0x445D30 read the controlling hero's Ballistics level (+0xD3), 0 to 3, as the row of BALLIST.TXT"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/skills.json (1.7.5) ballistics: MANUAL_CONTROL of the Catapult and CATAPULT_EXTRA_SHOTS by level"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+[[rule]]
 id       = "HER-MAN-001"
 title    = "A hero's maximum spell points"
 context  = "heroes"

@@ -755,6 +755,7 @@ pub(crate) fn damage_part<S: Sink>(state: &mut BattleState, t: u8, damage: u8, s
     let i = usize::from(t);
     let before = s.parts[i];
     s.parts[i] = before.saturating_sub(damage);
+    // rule: BAT-SIE-012, BAT-SIE-015
     if before > 0 && s.parts[i] == 0 && s.present(t) {
         match s.kinds[i] {
             WallKind::Wall => s.opens[i].into_iter().for_each(|h| s.broken.insert(h)),

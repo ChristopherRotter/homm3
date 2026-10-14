@@ -4380,7 +4380,7 @@ name = "The Grail"
 class = "special"
 
 [[artifact]]
-id = "catapult"  # original id 3; pending: E04c
+id = "catapult"  # original id 3; pending: E08-E10
 name = "Catapult"
 class = "special"
 cost = { "gold" = 1000 }
@@ -5077,7 +5077,7 @@ cost = { "gold" = 10000 }
 slot = "feet"
 
 [[artifact]]
-id = "golden_bow"  # original id 91; pending: E04c
+id = "golden_bow"  # original id 91
 name = "Golden Bow"
 class = "major"
 cost = { "gold" = 8000 }
