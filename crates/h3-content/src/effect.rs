@@ -159,7 +159,7 @@ pub enum RaisedCreature<C, K> {
     Creature(C),
     /// The creature by the hero's level in `skill`: `by_level[0]` without the skill, then Basic
     /// to Expert (the Cloak of the Undead King by the Necromancy level: Skeletons, Walking Dead,
-    /// Wights, Liches; 0x4E3C60).
+    /// Wights, Liches).
     ByLevel {
         /// The secondary skill whose level picks the creature.
         skill: K,
