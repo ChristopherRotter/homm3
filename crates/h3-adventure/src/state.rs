@@ -12,7 +12,8 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{
-    ContentKey, CreatureTypeId, FRINGE_SHOWS_OBJECTS, Formation, ResourceId, Ruleset, TerrainId,
+    ContentKey, CreatureFlag, CreatureTypeId, FRINGE_SHOWS_OBJECTS, Formation, ResourceId, Ruleset,
+    TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_kernel::hash::hash_of;
@@ -27,12 +28,12 @@ use crate::fog::{on_fringe, reveal};
 use crate::movement::{DIRECTIONS, Pricing, day_points, direction};
 use crate::persistent::BitGrid;
 use crate::ruleset::{
-    AdventureRuleset, Effect, MAX_PICKUP_AMOUNT, ObjectKind, ObjectType, ObjectTypeId, Passage,
-    Pickup, RiverId, RoadId, Visit,
+    AdventureRuleset, Effect, MAX_GAIN, MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, ObjectKind,
+    ObjectType, ObjectTypeId, Passage, Pickup, RiverId, RoadId, Visit,
 };
 use crate::setup::{
-    AdventureSetup, ArmyError, HeroSetup, MapSetup, ObjectSetup, Pos, SetupError, StandError,
-    TileMask,
+    AdventureSetup, ArmyError, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos, SetupError,
+    StandError, TileMask,
 };
 
 /// A tile of the static map.
@@ -82,27 +83,68 @@ pub struct MapObject {
     /// What a pickup gives, drawn when the game was built (ADV-PIK-001, ADV-PIK-003): each
     /// resource with its amount, the type's multiplier applied; empty for every other kind.
     pub contents: Vec<(ResourceId, u32)>,
+    /// The tiles its picture is drawn on beyond its blocked and visitable ones: a special
+    /// ground's (ADV-GRD-001, E08 T20a2a); empty for every other object.
+    pub drawn: TileMask,
+    /// A wandering monster's data with what the build drew (ADV-MON-001 to ADV-MON-004, E08
+    /// T20a2a); none for every other object.
+    pub monster: Option<Monster>,
+}
+
+/// A wandering monster of the static map (ADV-MON-001, E08 T20a2a): the map's data with what the
+/// build drew. A battle it survives leaves its count in the state, not here (E08 T20b).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Monster {
+    /// The creature: the map's, or a random monster's drawn one (ADV-MON-003).
+    pub creature: CreatureTypeId,
+    /// The count: the map's, or drawn from the creature's adventure-map range (ADV-MON-004).
+    pub count: u32,
+    /// The aggression, drawn by the disposition (ADV-MON-002).
+    pub aggression: i8,
+    /// It never flees.
+    pub never_flees: bool,
+    /// It does not grow.
+    pub no_growth: bool,
+    /// What the player that beats it or that it joins gains.
+    pub treasure: Vec<(ResourceId, u32)>,
 }
 
 impl MapObject {
-    /// Whether the object blocks `pos`, and whether it is visited from `pos`.
-    pub fn covers(&self, pos: Pos) -> (bool, bool) {
+    /// `pos` as `(column, row)` left of and above the anchor, if it is on the anchor's level and
+    /// in the block of its masks.
+    fn offset_of(&self, pos: Pos) -> Option<(u8, u8)> {
         let column = self.anchor.x.checked_sub(pos.x).map(u8::try_from);
         let row = self.anchor.y.checked_sub(pos.y).map(u8::try_from);
         match (column, row) {
-            (Some(Ok(column)), Some(Ok(row))) if self.anchor.level == pos.level => (
-                self.blocked.contains(column, row),
-                self.visitable.contains(column, row),
-            ),
-            _ => (false, false),
+            (Some(Ok(column)), Some(Ok(row))) if self.anchor.level == pos.level => {
+                Some((column, row))
+            }
+            _ => None,
         }
     }
 
-    /// The tiles of `map` it covers: its blocked and its visitable tiles, row by row (a tile both
-    /// ways once).
+    /// Whether the object blocks `pos`, and whether it is visited from `pos`.
+    pub fn covers(&self, pos: Pos) -> (bool, bool) {
+        self.offset_of(pos).map_or((false, false), |(column, row)| {
+            (
+                self.blocked.contains(column, row),
+                self.visitable.contains(column, row),
+            )
+        })
+    }
+
+    /// Whether its picture is drawn on `pos` beyond its blocked and visitable tiles: a special
+    /// ground lies on `pos` (ADV-GRD-001, E08 T20a2a).
+    pub fn lies_on(&self, pos: Pos) -> bool {
+        self.offset_of(pos)
+            .is_some_and(|(column, row)| self.drawn.contains(column, row))
+    }
+
+    /// The tiles of `map` it covers: its blocked, visitable and drawn tiles, row by row (a tile
+    /// in several masks once).
     pub fn tiles<'a>(&self, map: &'a StaticMap) -> impl Iterator<Item = Pos> + use<'a> {
         let anchor = self.anchor;
-        TileMask::from_bits(self.blocked.bits() | self.visitable.bits())
+        TileMask::from_bits(self.blocked.bits() | self.visitable.bits() | self.drawn.bits())
             .offsets()
             .filter_map(move |(column, row)| map.offset_pos(anchor, column, row))
     }
@@ -224,9 +266,17 @@ impl StaticMap {
             {
                 return Err(SetupError::SharedAnchor(index));
             }
+            // rule: ADV-MON-001
+            let levels = ty.and_then(|ty| match ty.kind {
+                ObjectKind::Monster { levels } => Some(levels),
+                _ => None,
+            });
+            if !check_monster(core, part, levels, object.monster.as_ref()) {
+                return Err(SetupError::Monster(index));
+            }
             map.place(object);
         }
-        map.resolve(part, &setup.objects, draws);
+        map.resolve(core, part, &setup.objects, draws);
         map.hash = hash_of(&map);
         Ok(map)
     }
@@ -235,9 +285,16 @@ impl StaticMap {
     /// two walks, each in object order: first each random resource's pile type (ADV-PIK-002: one
     /// of its types with equal chances), then each pile's amount where the map fixes none and each
     /// paired pickup's amount and resource (ADV-PIK-001, ADV-PIK-003: the amount first). Piles
-    /// take the map's amount, or the drawn one, times the multiplier.
+    /// take the map's amount, or the drawn one, times the multiplier. Then the monsters
+    /// ([`Self::resolve_monsters`]).
     // rule: ADV-PIK-001, ADV-PIK-002, ADV-PIK-003
-    fn resolve(&mut self, part: &AdventureRuleset, setup: &[ObjectSetup], draws: &mut Rng) {
+    fn resolve(
+        &mut self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        setup: &[ObjectSetup],
+        draws: &mut Rng,
+    ) {
         let kind = |object: &MapObject| {
             object
                 .object_type
@@ -278,6 +335,90 @@ impl StaticMap {
                 _ => Vec::new(),
             };
         }
+        self.resolve_monsters(core, part, setup, draws);
+    }
+
+    /// Draws the monsters' random parts (E08 T20a2a) in three walks, each in object order, after
+    /// the pickups' (E08 design §3; the original draws the aggression when it loads the map, the
+    /// random creatures and then the counts when a game starts, survey `E08-battles.md` §1.6):
+    /// each random monster's creature, with equal chances among its levels' creatures
+    /// (ADV-MON-003, [`AdventureRuleset::random_monsters`]); each count of 0 from the creature's
+    /// adventure-map range, at least 1 (ADV-MON-004); each aggression between its disposition's
+    /// bounds, without a draw when they are equal (ADV-MON-002: the original's compliant and
+    /// savage monsters).
+    // rule: ADV-MON-002, ADV-MON-003, ADV-MON-004
+    fn resolve_monsters(
+        &mut self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        setup: &[ObjectSetup],
+        draws: &mut Rng,
+    ) {
+        let levels = |object: &MapObject| match object
+            .object_type
+            .and_then(|id| part.object_type(id))
+            .map(|ty| &ty.kind)
+        {
+            Some(ObjectKind::Monster { levels }) => *levels,
+            _ => None,
+        };
+        let creatures: Vec<Option<CreatureTypeId>> = self
+            .objects
+            .iter()
+            .zip(setup)
+            .map(|(object, placed)| {
+                let monster = placed.monster.as_ref()?;
+                levels(object).map_or(monster.creature, |levels| {
+                    let pool: Vec<_> = part.random_monsters(core, levels).collect();
+                    pick(&pool, draws).copied()
+                })
+            })
+            .collect();
+        let counts: Vec<u32> = creatures
+            .iter()
+            .zip(setup)
+            .map(|(creature, placed)| match (creature, &placed.monster) {
+                (Some(creature), Some(monster)) if monster.count == 0 => {
+                    let [low, high] = core
+                        .creature(*creature)
+                        .map_or([1, 1], |info| info.adventure_count);
+                    draws
+                        .range_inclusive(u32::from(low), u32::from(high))
+                        .max(1)
+                }
+                (_, monster) => monster.as_ref().map_or(0, |m| m.count),
+            })
+            .collect();
+        let bounds = part.params().monsters();
+        for (((object, placed), creature), count) in self
+            .objects
+            .iter_mut()
+            .zip(setup)
+            .zip(creatures)
+            .zip(counts)
+        {
+            let (Some(monster), Some(creature)) = (&placed.monster, creature) else {
+                continue;
+            };
+            let [low, high] = bounds
+                .and_then(|b| b.aggression(monster.disposition))
+                .unwrap_or_default();
+            let aggression = if low == high {
+                low
+            } else {
+                let span = u32::from(high.abs_diff(low));
+                let offset = u8::try_from(draws.range_inclusive(0, span)).unwrap_or(u8::MAX);
+                low.saturating_add_unsigned(offset)
+            };
+            object.monster = Some(Monster {
+                creature,
+                count,
+                aggression,
+                never_flees: monster.never_flees,
+                no_growth: monster.no_growth,
+                treasure: monster.treasure.clone(),
+            });
+        }
     }
 
     /// Marks the tiles an object covers; tiles of its footprint off the map are ignored
@@ -307,6 +448,8 @@ impl StaticMap {
             visitable: object.visitable,
             object_type: object.object_type,
             contents: Vec::new(),
+            drawn: object.drawn,
+            monster: None,
         });
     }
 
@@ -396,7 +539,9 @@ impl StaticMap {
 impl CanonicalHash for StaticMap {
     /// Width, height, levels; every tile (terrain, road, river; since v8 whether it is on the
     /// coast); every object (anchor, blocked and visitable masks; since v4 its object type and
-    /// contents). The per-tile object flags follow from the objects.
+    /// contents; since v9 its drawn mask and, as 0 for none or 1 and its fields in order, its
+    /// monster: creature, count, aggression, never flees, does not grow, the treasure as length
+    /// and entries). The per-tile object flags follow from the objects.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u16(self.width);
         h.write_u16(self.height);
@@ -418,6 +563,23 @@ impl CanonicalHash for StaticMap {
             for (resource, amount) in &object.contents {
                 resource.hash_into(h);
                 h.write_u32(*amount);
+            }
+            h.write_u64(object.drawn.bits());
+            match &object.monster {
+                None => h.write_u8(0),
+                Some(monster) => {
+                    h.write_u8(1);
+                    monster.creature.hash_into(h);
+                    h.write_u32(monster.count);
+                    h.write_i32(i32::from(monster.aggression));
+                    h.write_bool(monster.never_flees);
+                    h.write_bool(monster.no_growth);
+                    h.write_len(monster.treasure.len());
+                    for (resource, amount) in &monster.treasure {
+                        resource.hash_into(h);
+                        h.write_u32(*amount);
+                    }
+                }
             }
         }
     }
@@ -498,6 +660,13 @@ pub struct AdventureState {
     /// None until a first purchase or key, then one block the forks share (a write copies it), so
     /// a fork costs nothing more before and a reference count after (`bench-check`).
     flags: Option<Arc<Flags>>,
+    /// The game's difficulty, from 0 (easy; E08 T20a2a): a static input the monsters' answer
+    /// reads (ADV-MON-007, E08 T20b).
+    difficulty: u8,
+    /// The armies battles left on objects, by object index (E08 T20a2a): a monster's survivors
+    /// (ADV-MON-010, E08 T20b), later a guarded object's. None until a battle leaves one, then
+    /// one block the forks share, as [`Self::flags`].
+    army_left: Option<Arc<BTreeMap<usize, Vec<ArmyStack>>>>,
 }
 
 impl AdventureState {
@@ -529,6 +698,8 @@ impl AdventureState {
             explored: vec![unexplored; usize::from(setup.players)],
             occupancy: None,
             flags: None,
+            difficulty: setup.difficulty,
+            army_left: None,
         };
         for hero in &setup.heroes {
             state.place(core, part, hero)?;
@@ -785,20 +956,32 @@ impl AdventureState {
     /// `E04c-battlefields.md` §4; the ruleset part's [`crate::BattleTerrains`]): underground on its
     /// terrain, else on a coast tile (the map's flag) on the coast's terrain and battlefield, else
     /// on the tile's terrain without a special battlefield. Without the part's battle terrains,
-    /// always the last.
-    // rule: GAM-BAT-001
+    /// always the last. Then a special ground on the tile replaces the battlefield, the coast's
+    /// too, and keeps the terrain (ADV-GRD-001, E08 T20a2a): the last ground in map order whose
+    /// picture lies on the tile (the original walks the tile's draw list from the top, 0x4FCE20).
+    // rule: GAM-BAT-001, ADV-GRD-001
     pub fn battle_ground(
         &self,
         part: &AdventureRuleset,
         pos: Pos,
     ) -> (TerrainId, Option<ContentKey>) {
-        match part.params().battle_terrains() {
+        let (terrain, field) = match part.params().battle_terrains() {
             Some(battle) if pos.level > 0 => (battle.underground, None),
             Some(battle) if self.map.is_coast(pos) => {
                 (battle.coast, Some(battle.coast_battlefield.clone()))
             }
             _ => (self.map.at(pos).terrain, None),
-        }
+        };
+        let ground = self.map.objects().iter().rev().find_map(|object| {
+            match object.object_type.and_then(|id| part.object_type(id)) {
+                Some(ObjectType {
+                    kind: ObjectKind::Ground { battlefield },
+                    ..
+                }) if object.lies_on(pos) => Some(battlefield.clone()),
+                _ => None,
+            }
+        });
+        (terrain, ground.or(field))
     }
 
     /// Applies a battle's outcome to its heroes on the map (ADR-0017 point 11; GAM-BAT-002,
@@ -1300,6 +1483,29 @@ impl AdventureState {
         self.explored(player).is_some_and(|grid| grid.get(pos))
     }
 
+    /// The game's difficulty, from 0 (easy; E08 T20a2a).
+    pub const fn difficulty(&self) -> u8 {
+        self.difficulty
+    }
+
+    /// The army a battle left on the object at `index`, if one did (E08 T20a2a; written from
+    /// E08 T20b).
+    pub fn army_left(&self, index: usize) -> Option<&[ArmyStack]> {
+        self.army_left
+            .as_deref()
+            .and_then(|left| left.get(&index))
+            .map(Vec::as_slice)
+    }
+
+    /// The count of the monster at object index `index` as it stands (E08 T20a2a): the creatures
+    /// a battle left on it, else the static map's count; none for an object that is no monster.
+    pub fn monster_count(&self, index: usize) -> Option<u32> {
+        let monster = self.map.objects().get(index)?.monster.as_ref()?;
+        Some(self.army_left(index).map_or(monster.count, |army| {
+            army.iter().fold(0, |sum, s| sum.saturating_add(s.count))
+        }))
+    }
+
     /// The hero with this id, if it is on the map.
     pub fn hero(&self, id: HeroId) -> Option<&HeroOnMap> {
         self.heroes
@@ -1316,7 +1522,8 @@ impl AdventureState {
 }
 
 impl CanonicalHash for AdventureState {
-    /// Encoding v7 (E08 T18b; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6 T15a's):
+    /// Encoding v9 (E08 T20a2a; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6 T15a's,
+    /// v7 T18b's, v8 T19a's):
     /// version; the static map's content hash (since v4 with the objects' types and contents); the
     /// number of players; the heroes by id (id, owner, tile, the army's stacks by slot: slot,
     /// creature, count; since v7 the formation, 0 loose, 1 tight; since v2 the movement points
@@ -1325,7 +1532,9 @@ impl CanonicalHash for AdventureState {
     /// [`Occupancy`]'s encoding; there is an occupancy only once an object has left); since v5 the
     /// Cartographer types bought, as length and entries in type order (the type, then its byte of
     /// player bits); since v6 then the keys, a byte of player bits per colour (none bought and no
-    /// key before the first purchase or key).
+    /// key before the first purchase or key); since v9 the difficulty, then the armies battles
+    /// left on objects as their number and, by object index, the index and the army's stacks as
+    /// length and entries (slot, creature, count).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
         h.write_u64(self.map.content_hash());
@@ -1356,6 +1565,18 @@ impl CanonicalHash for AdventureState {
             }
         }
         self.flags.as_deref().unwrap_or(&Flags::NONE).hash_into(h);
+        h.write_u8(self.difficulty);
+        let left = self.army_left.as_deref();
+        h.write_len(left.map_or(0, BTreeMap::len));
+        for (index, army) in left.into_iter().flatten() {
+            h.write_len(*index);
+            h.write_len(army.len());
+            for stack in army {
+                h.write_u8(stack.slot);
+                stack.creature.hash_into(h);
+                h.write_u32(stack.count);
+            }
+        }
     }
 }
 
@@ -1425,6 +1646,48 @@ pub(crate) fn enterable_terrain(part: &AdventureRuleset, tile: &StaticTile) -> b
 
 #[cfg(test)]
 mod tests;
+
+/// Whether an object's monster data fits its type (ADV-MON-001): `levels` is the type's monster
+/// levels (`Some(None)` a fixed monster, `Some(Some(_))` a random one), none for an object that
+/// is no monster, which has no data. A fixed monster names a creature of the core that is no war
+/// machine, a random one none; the count is at most [`MAX_MONSTER_COUNT`]; the monsters'
+/// parameters know the disposition; the treasure names known resources once each, each amount
+/// from 1 to [`MAX_GAIN`].
+fn check_monster(
+    core: &Ruleset,
+    part: &AdventureRuleset,
+    levels: Option<Option<[u8; 2]>>,
+    monster: Option<&MonsterSetup>,
+) -> bool {
+    let (levels, monster) = match (levels, monster) {
+        (None, None) => return true,
+        (Some(levels), Some(monster)) => (levels, monster),
+        _ => return false,
+    };
+    let creature = match (levels, monster.creature) {
+        (None, Some(creature)) => core
+            .creature(creature)
+            .is_some_and(|c| !c.flags.contains(CreatureFlag::WarMachine)),
+        (Some(_), None) => true,
+        _ => false,
+    };
+    let resources = monster
+        .treasure
+        .iter()
+        .map(|(resource, _)| resource)
+        .collect::<BTreeSet<_>>();
+    creature
+        && monster.count <= MAX_MONSTER_COUNT
+        && part
+            .params()
+            .monsters()
+            .and_then(|m| m.aggression(monster.disposition))
+            .is_some()
+        && resources.len() == monster.treasure.len()
+        && monster.treasure.iter().all(|&(resource, amount)| {
+            usize::from(resource.raw()) < core.resources().len() && (1..=MAX_GAIN).contains(&amount)
+        })
+}
 
 /// One of `choices` with equal chances (`random_between(0, n − 1)` in the original); none for no
 /// choices, which the compiler rules out.

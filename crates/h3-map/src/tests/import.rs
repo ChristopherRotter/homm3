@@ -16,8 +16,8 @@ use super::sample;
 use super::strategy::{raw_map, version};
 use crate::import::codes;
 use crate::model::{
-    Artifacts, Bits, Body, CustomHero, HeroBody, MainTown, Message, Object, Pos, RawMap, Stack,
-    Template, Text, Tile, Version,
+    Artifacts, Bits, Body, CustomHero, HeroBody, MainTown, Message, MonsterBody, MonsterTreasure,
+    Object, Pos, RawMap, Stack, Template, Text, Tile, Version,
 };
 use crate::{ImportError, Limits, Unsupported, import, import_map, parse};
 
@@ -142,7 +142,7 @@ fn imports_the_static_layer_players_and_a_placed_hero() {
     assert_eq!(s.tiles[1].river, part.river_by_key("base:lava_river"));
     // The hero is not a static object.
     assert_eq!(s.objects.len(), 1);
-    let blocker = s.objects[0];
+    let blocker = s.objects[0].clone();
     assert_eq!(blocker.anchor, TilePos::new(2, 2, 0));
     assert_eq!(blocker.blocked, TileMask::from_bits(0b11));
     assert_eq!(blocker.visitable, TileMask::from_bits(1 << 8));
@@ -310,15 +310,36 @@ fn the_typed_classes_import_as_their_object_types() {
         cases.push((9, subclass, format!("base:border_guard_{colour}")));
         cases.push((212, subclass, format!("ab:border_gate_{colour}")));
     }
+    // E08 T20a2a: the monsters (class 54's subclass is the creature) and the special grounds.
+    cases.push((54, 0, "base:monster".into()));
+    cases.push((71, 0, "base:random_monster".into()));
+    for (class, level) in [72, 73, 74, 75, 162, 163, 164].into_iter().zip(1..) {
+        cases.push((class, 0, format!("base:random_monster_{level}")));
+    }
+    for (class, key) in [
+        (21, "base:cursed_ground"),
+        (46, "base:magic_plains"),
+        (222, "sod:clover_field"),
+        (223, "sod:cursed_ground"),
+        (224, "sod:evil_fog"),
+        (226, "sod:fiery_fields"),
+        (227, "sod:holy_ground"),
+        (228, "sod:lucid_pools"),
+        (229, "sod:magic_clouds"),
+        (230, "sod:magic_plains"),
+        (231, "sod:rocklands"),
+    ] {
+        cases.push((class, 0, key.into()));
+    }
     let part = SOD.adventure();
     for (class, subclass, key) in &cases {
-        let body = if matches!(class, 76 | 79) {
-            pile_body(0, None)
-        } else {
-            Body::None
+        let body = match class {
+            76 | 79 => pile_body(0, None),
+            54 | 71..=75 | 162..=164 => Body::Monster(MonsterBody::default()),
+            _ => Body::None,
         };
         let setup = import(&typed_map(*class, *subclass, body), &SOD).unwrap();
-        let object = setup.map.objects[0];
+        let object = setup.map.objects[0].clone();
         assert_eq!(object.object_type, part.object_type_by_key(key), "{key}");
         assert!(object.object_type.is_some(), "{key}");
         assert_eq!(object.amount, None);

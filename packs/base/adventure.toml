@@ -49,6 +49,20 @@ underground = "subterranean"
 coast = "desert"
 coast_battlefield = "shore"
 
+# E08 T20a2a: the wandering monsters' parameters.
+# ADV-MON-002: the aggression by disposition code (0 compliant, 1 friendly, 2 aggressive, 3 hostile,
+# 4 savage), drawn when the game is built. Code reading (survey E08-battles.md section 1.3): the
+# map loader 0x5013B0's switch gives compliant -4, friendly random_between(1, 7), aggressive (1,
+# 10), hostile (4, 10), savage 10. VCMI 1.7.5 CGCreature::initObj and the wiki (Wandering
+# creature: "-4 Compliant; 1-7 Friendly; 1-10 Aggressive; 4-10 Hostile; 10 Savage") agree.
+# ADV-FOG-006: what a player sees of a monster's count, one word each from these counts on: the
+# original's 0x44ADE0 (survey E08-battles.md section 0) and the wiki (Wandering creature: Few 1-4,
+# Several 5-9, Pack 10-19, Lots 20-49, Horde 50-99, Throng 100-249, Swarm 250-499, Zounds
+# 500-999, Legion 1000 and more).
+[params.monsters]
+aggression = [[-4, -4], [1, 7], [1, 10], [4, 10], [10, 10]]
+count_words = [5, 10, 20, 50, 100, 250, 500, 1000]
+
 # GAM-RES-002 (E08 T13a): the starting resources by the game's difficulty, from 0 (easy) to 4
 # (impossible), a human player's and a computer player's; the engine gives every player the human
 # row (E08 decision 16: no human/computer distinction yet). Code reading (survey
@@ -400,3 +414,93 @@ name = "Border guard (black)"
 visit = "neighbour"
 from_above = true
 key_guard = { key = 7 }
+
+# ADV-MON-001 (E08 T20a2a): wandering monsters. Class 54 is a monster of the creature its subclass
+# names; classes 71 (any level), 72 to 75 (levels 1 to 4) and 162 to 164 (levels 5 to 7) are random
+# monsters (survey E08-battles.md section 1.1; the map file's body is the same for all nine). Each
+# is attacked from the tile beside it and may be from above (survey section 2.3: class 54 is on
+# both of the original's lists). ADV-MON-003: a random monster's creature is drawn when the game
+# is built among the creatures of its levels (code reading 0x4C92C0; VCMI
+# GameRandomizer::rollCreature); the war machines never, nor the creatures the packs list in
+# not_random_monsters. Their visit comes with E08 T20b.
+[[object_type]]
+id = "monster"
+name = "Monster"
+visit = "neighbour"
+from_above = true
+monster = {}
+
+[[object_type]]
+id = "random_monster"
+name = "Random monster"
+visit = "neighbour"
+from_above = true
+monster = { levels = [1, 7] }
+
+[[object_type]]
+id = "random_monster_1"
+name = "Random monster (level 1)"
+visit = "neighbour"
+from_above = true
+monster = { levels = [1, 1] }
+
+[[object_type]]
+id = "random_monster_2"
+name = "Random monster (level 2)"
+visit = "neighbour"
+from_above = true
+monster = { levels = [2, 2] }
+
+[[object_type]]
+id = "random_monster_3"
+name = "Random monster (level 3)"
+visit = "neighbour"
+from_above = true
+monster = { levels = [3, 3] }
+
+[[object_type]]
+id = "random_monster_4"
+name = "Random monster (level 4)"
+visit = "neighbour"
+from_above = true
+monster = { levels = [4, 4] }
+
+[[object_type]]
+id = "random_monster_5"
+name = "Random monster (level 5)"
+visit = "neighbour"
+from_above = true
+monster = { levels = [5, 5] }
+
+[[object_type]]
+id = "random_monster_6"
+name = "Random monster (level 6)"
+visit = "neighbour"
+from_above = true
+monster = { levels = [6, 6] }
+
+[[object_type]]
+id = "random_monster_7"
+name = "Random monster (level 7)"
+visit = "neighbour"
+from_above = true
+monster = { levels = [7, 7] }
+
+# ADV-GRD-001 (E08 T20a2a): the special grounds of the Restoration of Erathia, Cursed Ground (class
+# 21) and Magic Plains (46). A ground lies on its picture's tiles and is never visited (its map
+# templates have no blocked and no visitable tile); a battle on a tile it lies on is fought on its
+# battlefield, the battle part's (code reading 0x4643B0 and 0x4FCE20, installation.md section
+# 7.26: field 2 for class 21, field 1 for class 46; E04c batch 3a).
+[[object_type]]
+id = "cursed_ground"
+name = "Cursed Ground"
+visit = "enter"
+from_above = true
+ground = { battlefield = "cursed_ground" }
+
+[[object_type]]
+id = "magic_plains"
+name = "Magic Plains"
+visit = "enter"
+from_above = true
+ground = { battlefield = "magic_plains" }

@@ -245,8 +245,113 @@ fn the_base_pack_types_the_objects_of_increment_2() {
         assert_eq!(guard.kind, ObjectKind::KeyGuard { key });
         assert_eq!((guard.visit, guard.from_above), (Visit::Neighbour, true));
     }
-    assert_eq!(part.object_types().len(), 7 + 1 + 1 + 3 + 2 + 8 + 8);
+    assert_eq!(part.object_types().len(), 7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2);
     assert!(part.object_type_by_key("base:border_gate_red").is_none());
+}
+
+// covers: ADV-MON-001, ADV-MON-002, ADV-MON-003, ADV-GRD-001
+#[test]
+fn the_packs_type_the_monsters_and_the_grounds() {
+    let (core, part) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
+    let ty = |key: &str| {
+        part.object_type(part.object_type_by_key(key).unwrap())
+            .unwrap()
+    };
+    let monster = ty("base:monster");
+    assert_eq!(monster.kind, ObjectKind::Monster { levels: None });
+    assert_eq!(
+        (monster.visit, monster.from_above),
+        (Visit::Neighbour, true)
+    );
+    assert_eq!(
+        ty("base:random_monster").kind,
+        ObjectKind::Monster {
+            levels: Some([1, 7])
+        }
+    );
+    for level in 1..=7 {
+        let random = ty(&format!("base:random_monster_{level}"));
+        assert_eq!(
+            random.kind,
+            ObjectKind::Monster {
+                levels: Some([level, level])
+            }
+        );
+        assert_eq!((random.visit, random.from_above), (Visit::Neighbour, true));
+    }
+    let monsters = part.params().monsters().unwrap();
+    let aggression: Vec<_> = (0..6).map(|d| monsters.aggression(d)).collect();
+    assert_eq!(
+        aggression,
+        [
+            Some([-4, -4]),
+            Some([1, 7]),
+            Some([1, 10]),
+            Some([4, 10]),
+            Some([10, 10]),
+            None
+        ]
+    );
+    // The wiki's words: few 1-4, several 5-9 ... zounds 500-999, legion from 1 000.
+    let words: Vec<u8> = [1, 4, 5, 9, 10, 49, 50, 99, 100, 999, 1000, 4095]
+        .map(|count| monsters.count_word(count))
+        .to_vec();
+    assert_eq!(words, [0, 0, 1, 1, 2, 3, 4, 4, 5, 7, 8, 8]);
+    let grounds = [
+        ("base:cursed_ground", "base:cursed_ground"),
+        ("base:magic_plains", "base:magic_plains"),
+        ("sod:clover_field", "sod:clover_field"),
+        ("sod:cursed_ground", "base:cursed_ground"),
+        ("sod:evil_fog", "sod:evil_fog"),
+        ("sod:fiery_fields", "sod:fiery_fields"),
+        ("sod:holy_ground", "sod:holy_ground"),
+        ("sod:lucid_pools", "sod:lucid_pools"),
+        ("sod:magic_clouds", "sod:magic_clouds"),
+        ("sod:magic_plains", "base:magic_plains"),
+        ("sod:rocklands", "sod:rocklands"),
+    ];
+    for (key, battlefield) in grounds {
+        assert_eq!(
+            ty(key).kind,
+            ObjectKind::Ground {
+                battlefield: ContentKey::parse(battlefield).unwrap()
+            }
+        );
+    }
+    // The random monsters' creatures: every creature of the levels but the war machines and
+    // the expansions' six (ids 132 to 137); the elementals by the executable's levels in
+    // faithful (BAT-QUIRK-19), by their base creatures' otherwise.
+    let keys = |core: &h3_content::Ruleset, part: &AdventureRuleset, levels| {
+        part.random_monsters(core, levels)
+            .map(|id| core.creature_key(id).unwrap().as_str().to_owned())
+            .collect::<Vec<_>>()
+    };
+    let all = keys(&core, &part, [1, 7]);
+    assert_eq!(all.len(), 118 + 23 - 6);
+    for key in [
+        "ab:azure_dragon",
+        "ab:enchanter",
+        "ab:sharpshooter",
+        "base:ballista",
+    ] {
+        assert!(!all.iter().any(|k| k == key), "{key}");
+    }
+    assert!(all.iter().any(|k| k == "ab:pixie"));
+    assert!(
+        keys(&core, &part, [4, 4])
+            .iter()
+            .any(|k| k == "ab:ice_elemental")
+    );
+    let (fixed_core, fixed) = compile(&ORIGINAL_PACKS, "base:strict-fixed").unwrap();
+    assert!(
+        keys(&fixed_core, &fixed, [3, 3])
+            .iter()
+            .any(|k| k == "ab:ice_elemental")
+    );
+    // RoE alone draws among its own 118.
+    let (roe_core, roe) = compile(&ORIGINAL_PACKS[..1], PROFILE).unwrap();
+    assert_eq!(keys(&roe_core, &roe, [1, 7]).len(), 118);
+    assert_eq!(keys(&roe_core, &roe, [7, 7]).len(), 16);
 }
 
 // covers: ADV-VIS-005
@@ -256,12 +361,14 @@ fn the_expansions_add_the_border_gates() {
     let (ab_core, ab) = compile(&ORIGINAL_PACKS[..2], PROFILE).unwrap();
     let (sod_core, sod) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
     assert_ne!(ab.content_hash(), base.content_hash());
-    assert_eq!(sod.content_hash(), ab.content_hash());
+    assert_ne!(sod.content_hash(), ab.content_hash());
     assert_eq!(ab.object_types().len(), base.object_types().len() + 8);
     assert_eq!(
         ab.object_types()[..base.object_types().len()],
         *base.object_types()
     );
+    // SoD adds its nine special grounds (E08 T20a2a).
+    assert_eq!(sod.object_types().len(), ab.object_types().len() + 9);
     let gate = ab
         .object_type(ab.object_type_by_key("ab:border_gate_black").unwrap())
         .unwrap();
@@ -331,6 +438,8 @@ fn the_synthetic_packs_compile() {
 fn parses_every_field() {
     let pack = parse(
         r#"
+        not_random_monsters = ["imp", "other:gog"]
+
         [params]
         native_cost = 90
         land_points = [1000, 1100]
@@ -340,6 +449,10 @@ fn parses_every_field() {
         max_players = 4
         army_slots = 5
         starting_stack_chances = [80, 20]
+
+        [params.monsters]
+        aggression = [[-4, -4], [1, 7]]
+        count_words = [5, 10]
 
         [[terrain]]
         terrain = "plain"
@@ -436,6 +549,27 @@ fn parses_every_field() {
         visit = "neighbour"
         from_above = true
         key_gate = { key = 3 }
+
+        [[object_type]]
+        id = "monster"
+        name = "Monster"
+        visit = "neighbour"
+        from_above = true
+        monster = {}
+
+        [[object_type]]
+        id = "random_monster"
+        name = "Random monster"
+        visit = "neighbour"
+        from_above = true
+        monster = { levels = [1, 7] }
+
+        [[object_type]]
+        id = "cursed_ground"
+        name = "Cursed ground"
+        visit = "enter"
+        from_above = true
+        ground = { battlefield = "other:cursed" }
         "#,
     )
     .unwrap();
@@ -567,8 +701,34 @@ fn parses_every_field() {
                 true,
                 &ObjectKindDef::KeyGate { key: 3 }
             ),
+            (
+                "p:monster",
+                "Monster",
+                Visit::Neighbour,
+                true,
+                &ObjectKindDef::Monster { levels: None }
+            ),
+            (
+                "p:random_monster",
+                "Random monster",
+                Visit::Neighbour,
+                true,
+                &ObjectKindDef::Monster {
+                    levels: Some([1, 7])
+                }
+            ),
+            (
+                "p:cursed_ground",
+                "Cursed ground",
+                Visit::Enter,
+                true,
+                &ObjectKindDef::Ground {
+                    battlefield: k("other:cursed")
+                }
+            ),
         ]
     );
+    assert_eq!(pack.not_random_monsters, [k("p:imp"), k("other:gog")]);
     assert_eq!(
         pack.params,
         Some(AdventureParamsDef {
@@ -581,6 +741,10 @@ fn parses_every_field() {
             army_slots: NonZeroU8::new(5).unwrap(),
             starting_stack_chances: vec![80, 20],
             battle: None,
+            monsters: Some(MonsterParamsDef {
+                aggression: vec![[-4, -4], [1, 7]],
+                count_words: vec![5, 10],
+            }),
         })
     );
     assert_eq!(

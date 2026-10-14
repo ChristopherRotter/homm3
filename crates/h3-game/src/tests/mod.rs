@@ -367,6 +367,16 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                 from_above: true,
                 kind: ObjectKindDef::KeyGuard { key: 0 },
             },
+            // A special ground fought on the battlefield `t:holy` (E08 T20a2a).
+            ObjectTypeDef {
+                key: key("t:holy_ground"),
+                name: "Holy ground".into(),
+                visit: Visit::Enter,
+                from_above: true,
+                kind: ObjectKindDef::Ground {
+                    battlefield: key("t:holy"),
+                },
+            },
         ],
         params: Some(AdventureParamsDef {
             native_cost: cost,
@@ -383,6 +393,7 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                 coast: key("t:rock"),
                 coast_battlefield: key("t:shore"),
             }),
+            monsters: None,
         }),
         // Difficulty 0 starts with 3 000 gold for a human, 1 with 2 000 (E08 T13a).
         starting_resources: [3000, 2000]
@@ -434,20 +445,23 @@ fn battle_part_with(
         creatures.push(row("t:elf", 9, 5, [3, 5], 15));
     }
     let pack = BattlePack {
-        battlefields: vec![BattlefieldDef {
-            key: key("t:shore"),
-            own_obstacles: false,
-            blocked: vec![],
-            morale: vec![],
-            luck: vec![],
-            no_morale: false,
-            no_luck: false,
-            no_native: false,
-            max_spell_level: None,
-            no_creature_casts: false,
-            expert_schools: vec![],
-            expert_other_casts: false,
-        }],
+        // The coast's and, since E08 T20a2a, the holy ground's.
+        battlefields: ["t:shore", "t:holy"]
+            .map(|k| BattlefieldDef {
+                key: key(k),
+                own_obstacles: false,
+                blocked: vec![],
+                morale: vec![],
+                luck: vec![],
+                no_morale: false,
+                no_luck: false,
+                no_native: false,
+                max_spell_level: None,
+                no_creature_casts: false,
+                expert_schools: vec![],
+                expert_other_casts: false,
+            })
+            .to_vec(),
         obstacles: vec![ObstacleDef {
             key: key("t:boulder"),
             terrains: vec![key("t:grass"), key("t:rock")],
@@ -706,10 +720,16 @@ fn the_parts_must_belong_to_the_core() {
         ),
         Err(RulesetMismatch)
     );
-    // The coast's battlefield must be the battle part's.
+    // The coast's battlefield must be the battle part's, and every special ground's (E08
+    // T20a2a).
     let fieldless = battle_part_with(&other, 7, |pack| pack.battlefields.clear());
     assert_eq!(
         GameRuleset::new(Arc::clone(&other), Arc::clone(&part), Arc::new(fieldless)),
+        Err(RulesetMismatch)
+    );
+    let unholy = battle_part_with(&other, 7, |pack| pack.battlefields.truncate(1));
+    assert_eq!(
+        GameRuleset::new(Arc::clone(&other), Arc::clone(&part), Arc::new(unholy)),
         Err(RulesetMismatch)
     );
     let rules = GameRuleset::new(other, part, battle).unwrap();

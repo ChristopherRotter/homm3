@@ -87,6 +87,8 @@ fn setup() -> AdventureSetup {
                     visitable: mask(&[(1, 1)]),
                     object_type: None,
                     amount: None,
+                    drawn: TileMask::default(),
+                    monster: None,
                 },
                 ObjectSetup {
                     anchor: Pos::new(2, 2, 1),
@@ -94,6 +96,8 @@ fn setup() -> AdventureSetup {
                     visitable: mask(&[(0, 0)]),
                     object_type: None,
                     amount: None,
+                    drawn: TileMask::default(),
+                    monster: None,
                 },
             ],
         },
@@ -105,6 +109,7 @@ fn setup() -> AdventureSetup {
             // On the first object's visitable tile, which a hero may stand on.
             hero(1, 0, Pos::new(0, 0, 0)),
         ],
+        difficulty: 0,
     }
 }
 
@@ -176,6 +181,8 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
             visitable: mask(&[(2, 1)]),
             object_type: None,
             amount: None,
+            drawn: TileMask::default(),
+            monster: None,
         },
         // Covering no tile of the map at all.
         ObjectSetup {
@@ -184,6 +191,8 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
             visitable: mask(&[(0, 0)]),
             object_type: None,
             amount: None,
+            drawn: TileMask::default(),
+            monster: None,
         },
     ];
     let state = build(&setup).unwrap();
@@ -255,6 +264,8 @@ fn with_objects(objects: &[(ObjectTypeId, Option<u32>)]) -> AdventureSetup {
             visitable: mask(&[(0, 0)]),
             object_type: Some(object_type),
             amount,
+            drawn: TileMask::default(),
+            monster: None,
         });
     }
     setup
@@ -366,6 +377,8 @@ fn a_removed_object_frees_the_tiles_no_other_object_covers() {
         visitable: mask(&[(1, 0)]),
         object_type: Some(TOWER),
         amount: None,
+        drawn: TileMask::default(),
+        monster: None,
     });
     let base = build(&setup).unwrap();
     let map = base.map();
@@ -416,7 +429,7 @@ fn a_removed_object_frees_the_tiles_no_other_object_covers() {
 #[test]
 fn objects_beyond_what_the_state_tracks_are_rejected() {
     let mut setup = setup();
-    let object = setup.map.objects[0];
+    let object = setup.map.objects[0].clone();
     let many = Occupancy::ROW * usize::from(u16::MAX) + 1;
     setup.map.objects = vec![object; many];
     assert_eq!(build(&setup), Err(SetupError::Objects(many)));
@@ -522,7 +535,7 @@ fn each_broken_invariant_is_its_own_error() {
         SetupError::ObjectLevel(1)
     );
     assert_eq!(
-        error(|s| s.map.objects[1].object_type = Some(ObjectTypeId::from_raw(10))),
+        error(|s| s.map.objects[1].object_type = Some(ObjectTypeId::from_raw(14))),
         SetupError::UnknownObjectType(1)
     );
     assert_eq!(
@@ -533,7 +546,7 @@ fn each_broken_invariant_is_its_own_error() {
     // E08 T15), whatever their shapes; untyped twins and other types on the anchor are fine.
     let twins = |s: &mut AdventureSetup, second| {
         s.map.objects[1].object_type = Some(TOWER);
-        let mut twin = s.map.objects[1];
+        let mut twin = s.map.objects[1].clone();
         twin.blocked = mask(&[(1, 0)]);
         twin.visitable = mask(&[(1, 0)]);
         twin.object_type = second;
@@ -550,7 +563,7 @@ fn each_broken_invariant_is_its_own_error() {
     twins(&mut setup, Some(FIRE));
     build(&setup).unwrap();
     let mut setup = self::setup();
-    let untyped = setup.map.objects[1];
+    let untyped = setup.map.objects[1].clone();
     setup.map.objects.push(untyped);
     build(&setup).unwrap();
     assert_eq!(
@@ -782,3 +795,5 @@ fn the_hash_sees_content_not_sharing() {
     seen_by_blue.explored[1].set(underground, true);
     assert_ne!(seen_by_blue.state_hash(), seen.state_hash());
 }
+
+mod monsters;
