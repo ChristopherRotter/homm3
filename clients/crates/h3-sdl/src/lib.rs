@@ -533,7 +533,8 @@ impl Window {
         self.hardware.is_some()
     }
 
-    /// The hardware cursor again when the frame's scale changed.
+    /// The hardware cursor again when the frame's scale changed; if SDL cannot make it, the
+    /// system's cursor stays hidden and [`Window::hardware_cursor`] says so.
     fn refresh_cursor(&mut self) {
         if self.cursor.is_some()
             && self

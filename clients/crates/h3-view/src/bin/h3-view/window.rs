@@ -222,6 +222,10 @@ fn next_frame(
 ) -> Result<Option<Frame>, String> {
     let mut t = shown.t;
     while let Some(next) = changes.after(battle, t) {
+        // Past the end of a still battle only the idle steps come, each drawing the same.
+        if next > battle.timeline.end && battle.timeline.still() {
+            return Ok(None);
+        }
         let list = battle.list_at(next)?;
         if list != shown.list {
             let screen = battle.compose(next, &list)?;
@@ -372,13 +376,18 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 Event::Key(Key::Space) => {
                     clock.toggle(now);
                     if let Some(p) = player.as_mut() {
-                        p.pause(clock.paused());
+                        p.pause(clock.paused(), now);
                     }
                 }
                 Event::Key(Key::Right) if clock.paused() => {
                     if let Some(f) = &next {
+                        // The sounds of the frames stepped over are dropped; the next frame's,
+                        // cued as this one shows, play when the battle runs again.
                         clock.seek(now, f.t);
-                        cue = battle.timeline.cue_from(f.t.saturating_add(1));
+                        cue = battle.timeline.cue_from(f.t);
+                        if let Some(p) = player.as_mut() {
+                            p.silence();
+                        }
                     }
                 }
                 Event::Key(Key::Right) => {}
@@ -427,6 +436,13 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 Event::Redraw => redraw = true,
             }
         }
+        // A hardware cursor SDL could not remake (a new scale) is drawn instead.
+        if !drawn_cursor && !win.hardware_cursor() {
+            lines.push("hardware cursor lost; drawn instead".to_owned());
+            win.set_cursor(None)?;
+            drawn_cursor = true;
+            redraw = true;
+        }
         let now = win.ticks_ns();
         if opening_until.is_some_and(|end| now >= end) {
             opening_until = None;
@@ -445,22 +461,29 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             }
             p.service(lib, now);
         }
-        if let Some(due) = next.take_if(|f| f.t <= battle_ms) {
-            // A later change may be due already: show the latest instead.
-            let latest = changes.latest(&battle, battle_ms);
-            let due = if latest > due.t {
-                report.skipped += 1;
-                let late = frame_at(&battle, latest)?;
-                if let Some(s) = shown.as_mut().filter(|s| s.list == late.list) {
-                    // What is due draws what shows: nothing to present.
-                    s.t = latest;
-                    next = next_frame(&battle, &mut changes, s)?;
-                    continue;
+        // A later change may be due already: show the latest instead; if it draws what shows,
+        // nothing new is presented (a redraw still is).
+        let due = match next.take_if(|f| f.t <= battle_ms) {
+            None => None,
+            Some(d) => {
+                let latest = changes.latest(&battle, battle_ms);
+                if latest <= d.t {
+                    Some(d)
+                } else {
+                    report.skipped += 1;
+                    let late = frame_at(&battle, latest)?;
+                    match shown.as_mut().filter(|s| s.list == late.list) {
+                        Some(s) => {
+                            s.t = latest;
+                            next = next_frame(&battle, &mut changes, s)?;
+                            None
+                        }
+                        None => Some(late),
+                    }
                 }
-                late
-            } else {
-                due
-            };
+            }
+        };
+        if let Some(due) = due {
             let back = show(
                 &mut win,
                 &due,

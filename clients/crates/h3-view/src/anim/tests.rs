@@ -532,10 +532,10 @@ fn strikes_react_by_direction_defence_and_death() {
         l
     };
     // T4b-2a (§7.9): the striker 6, then 5 for a later strike of the command; the struck 5;
-    // each back in 4 with the next frame that does not draw it otherwise (the striker's own next
-    // strike draws it at once, the last one's end restores it).
-    assert_eq!(layers(0), [6, 5, 4]);
-    assert_eq!(layers(1), [5, 4, 5, 4]);
+    // each back in 4 with the next frame that does not draw it otherwise, or the first idle step
+    // after its command (T5c: here before each later command; the last one's end restores it).
+    assert_eq!(layers(0), [6, 4, 6, 4, 6, 5, 4]);
+    assert_eq!(layers(1), [5, 4, 5, 4, 5, 4]);
     // The Goblins below: dead, their death's last frame stays among the corpses; the Angels too.
     let last = t.at(t.end);
     assert_eq!(last[&2], layered(left(pose(5, 8, 70)), 1));
@@ -688,14 +688,12 @@ fn shots_without_a_climax_or_a_target() {
     // A climax beyond the group: the same.
     numbers.get_mut(&MARKSMAN).unwrap().climax = 30;
     assert_eq!(run(&numbers, &[shot]).keys, t.keys);
-    // At no known stack: straight, no projectile; by no known stack: nothing.
+    // At no known stack: straight, no projectile; by no known stack: its target reacts alone
+    // (T5c).
     let t = run(&numbers, &[struck(0, 9, 1, flags(true, false, false))]);
     assert!(t.keys.iter().all(|k| k.stack == 0));
-    assert!(
-        run(&numbers, &[struck(9, 1, 1, flags(true, false, false))])
-            .keys
-            .is_empty()
-    );
+    let t = run(&numbers, &[struck(9, 1, 1, flags(true, false, false))]);
+    assert!(!t.keys.is_empty() && t.keys.iter().all(|k| k.stack == 1));
 }
 
 #[test]
@@ -973,6 +971,11 @@ fn a_melee_turns_both_stacks_and_back() {
     assert!(angels.contains(&(13, 0, 83, true, 6)));
     assert!(angels.contains(&(3, 0, 83, true, 5)));
     assert_eq!(angels.last(), Some(&(2, 0, 83, false, 4)));
+    // The Wolf Riders' turn starts after both turned back, and their outline with it (E17 M2
+    // T5c, the reviewer: §7.9, none while a command plays).
+    assert_eq!(t.turns, [(t.end, 1)]);
+    assert_eq!(t.outlined(t.end - 1), None);
+    assert_eq!(t.outlined(t.end), Some(1));
     // A strike from the front side turns no one: the same attack from hex 81 (up and left of
     // the Wolf Riders' front hex 99, where both face each other).
     let mut angels = at(0, Side::Attacker, ANGEL, 81, false);
@@ -984,8 +987,8 @@ fn a_melee_turns_both_stacks_and_back() {
     );
     assert_eq!(runs(&t, 0), [13, 2]);
     assert_eq!(runs(&t, 1), [2, 3, 2]);
-    // A melee by or at a stack the timeline does not know turns no one: the first draws
-    // nothing, the second a strike at nothing.
+    // A melee by or at a stack the timeline does not know turns no one: the first's target
+    // reacts alone (T5c: a created stack's strike), the second is a strike at nothing.
     let t = play(
         &o,
         &[
@@ -993,8 +996,107 @@ fn a_melee_turns_both_stacks_and_back() {
             (None, vec![struck(0, 9, 0, flags(false, false, false))]),
         ],
     );
-    assert!(runs(&t, 1).is_empty());
+    assert_eq!(runs(&t, 1), [3, 2]);
+    assert!(t.cues.iter().all(|c| c.stack != 9));
     assert_eq!(runs(&t, 0), [12, 2]);
+    // Killed by it, the target dies and lies among the corpses (the reviewer: it stood on).
+    let t = play(
+        &o,
+        &[(None, vec![struck(9, 1, 40, flags(false, false, false))])],
+    );
+    assert_eq!(runs(&t, 1), [5]);
+    assert_eq!(t.at(t.end)[&1].layer, CORPSE);
+}
+
+#[test]
+fn a_breath_on_two_stacks_takes_its_own_groups() {
+    // `melee_strike` 0x441ACA to 0x441B66: a breath that strikes a second stack, behind its
+    // target, takes groups 17 to 19 where the DEF has them. The Angels (given a breath group 18)
+    // on 52 strike the Goblins on 53 and breathe on the Pikemen behind them on 54.
+    let mut numbers = looks();
+    numbers.get_mut(&ANGEL).unwrap().frames.insert(18, 9);
+    let layout = layout();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+    };
+    let o = snapshot(vec![
+        at(0, Side::Attacker, ANGEL, 52, false),
+        at(1, Side::Defender, GOBLIN, 53, false),
+        at(2, Side::Defender, PIKEMAN, 54, false),
+        at(3, Side::Defender, GOBLIN, 51, false),
+    ]);
+    let groups = |events: &[Event], numbers: &BTreeMap<u16, Look>| {
+        let commands = [Command { at: None, events }];
+        let t = timeline(&o, &commands, numbers, stage, Speed::default()).unwrap();
+        runs(&t, 0)
+    };
+    let main = struck(0, 1, 1, flags(false, false, false));
+    let beside = flags(false, false, true);
+    let breath = [main.clone(), struck(0, 2, 1, beside)];
+    assert_eq!(groups(&breath, &numbers), [18, 2]);
+    // A second stack beside the striker (a multi-headed strike, here on 51) keeps the strike's
+    // group, as does one strike alone, and a breath where the DEF has no group 18.
+    let heads = [main.clone(), struck(0, 3, 1, beside)];
+    assert_eq!(groups(&heads, &numbers), [12, 2]);
+    assert_eq!(groups(&[main], &numbers), [12, 2]);
+    assert_eq!(groups(&breath, &looks()), [12, 2]);
+}
+
+#[test]
+fn layer_changes_show_at_the_next_idle_step() {
+    // The reviewer (E17 M2 T5c): a command's last layer changes waited for the next command's
+    // first frame, so a corpse lay in the struck stacks' pass through a player's wait, and a
+    // survivor's standing pose came back with another stack's walk. Both show with the first
+    // idle step after the strike now, as after the last command.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, WOLF_RIDER, 52, true),
+        at(1, Side::Defender, GOBLIN, 54, false),
+        at(2, Side::Defender, GOBLIN, 70, false),
+        at(3, Side::Attacker, PIKEMAN, 35, false),
+    ]);
+    let strike = vec![
+        struck(0, 1, 1, flags(false, false, false)),
+        struck(0, 2, 40, flags(false, false, true)),
+    ];
+    let walk = vec![moved(3, 35, 36)];
+    let t = play(&o, &[(Some(0), strike), (Some(9000), walk)]);
+    assert!(
+        t.keys
+            .iter()
+            .filter(|k| k.stack == 1)
+            .all(|k| k.drawn < 9000)
+    );
+    let corpse = t.keys.iter().rfind(|k| k.stack == 2).unwrap();
+    assert_eq!(corpse.pose.layer, CORPSE);
+    assert!(corpse.shown < 9000);
+    assert!(t.steps.contains(&corpse.shown));
+}
+
+#[test]
+fn a_flight_of_one_hex_has_no_cycles() {
+    // k = (d + D / 2) / D is 0 for one hex (d 44, D 115); the executable then skips the cycles
+    // (0x4B4C5B) and lands at once (0x4B4E1C): group 20, then 21 on the landing hex.
+    let mut angels = at(0, Side::Attacker, ANGEL, 35, false);
+    angels.flies = true;
+    let t = play(&snapshot(vec![angels]), &[(None, vec![moved(0, 35, 36)])]);
+    assert_eq!(runs(&t, 0), [20, 21, 2]);
+}
+
+#[test]
+fn a_battle_is_still_after_its_end_without_outline_or_fidgets() {
+    let o = snapshot(vec![at(0, Side::Attacker, PIKEMAN, 35, false)]);
+    // The snapshot's active stack outlined, no command: not still.
+    assert!(!play(&o, &[]).still());
+    // A command's first frame clears the outline; without fidgets nothing changes after it.
+    let t = play(&o, &[(None, vec![moved(0, 35, 36)])]);
+    assert!(t.still());
+    // A stack that fidgets keeps it moving.
+    let mut numbers = looks();
+    numbers.get_mut(&PIKEMAN).unwrap().frames.insert(1, 4);
+    let t = fidgeting_play(&o, &[(None, vec![moved(0, 35, 36)])], &numbers, 1);
+    assert!(!t.still());
 }
 
 #[test]
@@ -1010,12 +1112,13 @@ fn a_shot_behind_turns_the_shooter_and_back() {
     assert_eq!(runs(&t, 0), [7, 10, 2, 16, 2, 16, 2, 9, 8, 2]);
     assert!(keys_of(&t, 0).contains(&(16, 0, 2, true, 4)));
     assert!(t.flights.iter().all(|f| f.mirrored));
-    // A shooter the timeline does not know shoots nothing.
+    // A shooter the timeline does not know shoots nothing; its target reacts alone (T5c).
     let t = play(
         &o,
         &[(None, vec![struck(9, 1, 1, flags(true, false, false))])],
     );
     assert!(t.flights.is_empty());
+    assert_eq!(runs(&t, 1), [3, 2]);
 }
 
 #[test]
