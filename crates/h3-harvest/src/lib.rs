@@ -59,6 +59,10 @@ pub struct Inputs {
     pub obstacles: ObstacleData,
     /// The executable's siege tables and constants (E04c T5).
     pub siege: SiegeData,
+    /// The executable's wall-shot tables (E04c T6).
+    pub wall_shots: h3_formats::exe::WallShotData,
+    /// `WALLS.TXT` and `BALLIST.TXT` (E04c T6).
+    pub wall_tables: (TextTable, TextTable),
     /// Hero content text tables (E04a T3).
     pub hero_tables: heroes::Tables,
     /// Artifact text tables (E04a T3b).
@@ -85,6 +89,8 @@ impl Inputs {
             h3_formats::exe::obstacle_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
         let siege =
             h3_formats::exe::siege_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
+        let wall_shots =
+            h3_formats::exe::wall_shot_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
         let sod = read("Data/H3bitmap.lod")?;
         let ab = read("Data/H3ab_bmp.lod")?;
         let table = |data: &[u8], archive: &str, name: &str| -> Result<TextTable, String> {
@@ -105,6 +111,11 @@ impl Inputs {
             hero_data,
             obstacles,
             siege,
+            wall_shots,
+            wall_tables: (
+                table(&sod, "H3bitmap.lod", "WALLS.TXT")?,
+                table(&sod, "H3bitmap.lod", "BALLIST.TXT")?,
+            ),
             hero_tables: heroes::Tables {
                 classes: table(&sod, "H3bitmap.lod", "HCTRAITS.TXT")?,
                 heroes: table(&sod, "H3bitmap.lod", "HOTRAITS.TXT")?,
@@ -876,7 +887,13 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     base.push_str(&artifact_packs.base);
     base.push_str(&fields.base);
     // Sieges (E04c T5): the records, the field in `[battle]`.
-    let sieges = sieges::write(&inputs.siege, &town_refs, &hero_packs.spell_keys)?;
+    let shots = sieges::wall_shots(
+        &inputs.wall_shots,
+        &inputs.siege.walls,
+        (&inputs.wall_tables.0, &inputs.wall_tables.1),
+        town_refs.len(),
+    )?;
+    let sieges = sieges::write((&inputs.siege, &shots), &town_refs, &hero_packs.spell_keys)?;
     base.push_str(&sieges.base);
     write_battle(&mut base, gap);
     base.push_str(&sieges.field);

@@ -83,6 +83,12 @@ pub enum Command {
         /// What it is aimed at.
         target: CastTarget,
     },
+    /// The active stack shoots the town's walls at wall-shot target `part` (BAT-SIE-011,
+    /// BAT-SIE-013, BAT-SIE-014): the commanded Catapult or an attacker's Cyclops.
+    ShootWall {
+        /// The wall-shot target aimed at (the siege field's index).
+        part: u8,
+    },
 }
 
 impl Command {
@@ -150,6 +156,12 @@ enum Plan<'r> {
     CreatureRaise {
         mover: StackId,
         target: StackId,
+    },
+    /// A wall shot at `part` with the Ballistics record of `level` (BAT-SIE-014).
+    ShootWall {
+        mover: StackId,
+        part: u8,
+        level: u8,
     },
 }
 
@@ -298,6 +310,21 @@ fn plan<'r>(
                 at,
             })
         }
+        Command::ShootWall { part } => {
+            // rule: BAT-SIE-011, BAT-SIE-013
+            let Some(level) = crate::siege::commanded_wall_shots(state, ruleset, id) else {
+                return Err(CommandError::CannotShootWalls);
+            };
+            // rule: BAT-SIE-010
+            if !state.siege.is_some_and(|s| s.stands(part)) {
+                return Err(CommandError::NoSuchPart);
+            }
+            Ok(Plan::ShootWall {
+                mover: id,
+                part,
+                level,
+            })
+        }
         Command::Heal { target } => {
             // rule: BAT-WAR-007
             if war::commanded_tent(state, id).is_none() {
@@ -380,7 +407,8 @@ fn plan_tactics(
         | Command::Defend
         | Command::Heal { .. }
         | Command::Cast { .. }
-        | Command::CreatureCast { .. } => Err(CommandError::InTacticsPhase),
+        | Command::CreatureCast { .. }
+        | Command::ShootWall { .. } => Err(CommandError::InTacticsPhase),
     }
 }
 
@@ -475,6 +503,16 @@ pub fn apply<S: Sink>(
         Plan::CreatureRaise { mover, target } => {
             // rule: BAT-MAG-051, BAT-MAG-052
             casters::raise(state, ruleset, (mover, target), sink);
+            end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
+        }
+        Plan::ShootWall { mover, part, level } => {
+            // rule: BAT-SIE-014
+            // The turn ends as after a shot, good morale included (the original's 0x479AE9 rolls
+            // it), without entering its hexes again (no 0x441F70).
+            // Validated: a siege, whose field the ruleset has (BAT-SIE-001).
+            ruleset.siege_field().into_iter().for_each(|field| {
+                crate::siege::shoot_walls(state, field, (mover, part, level), sink);
+            });
             end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
     }

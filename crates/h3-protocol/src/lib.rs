@@ -65,8 +65,10 @@ pub mod wire;
 /// CLT-Q1): a walker's `Moved` comes hex by hex, one per position of its path (BAT-MOV-003); the
 /// message is unchanged, its meaning is new. v30 (E04c T5, ADR-0023): the observation names the
 /// town the battle is fought at (`wire::Siege`); the events `GateOpened`, `GateClosed`,
-/// `MoatDamage`.
-pub const PROTOCOL_VERSION: u32 = 30;
+/// `MoatDamage`. v31 (E04c T6, ADR-0023 point 6): the wall shots: the command `ShootWall`, the
+/// events `WallShot`, `WallQuaked`, `WallDestroyed`, the rejections `CannotShootWalls` and
+/// `NoSuchPart`, the town's wall parts, a hero's command of its Catapult.
+pub const PROTOCOL_VERSION: u32 = 31;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

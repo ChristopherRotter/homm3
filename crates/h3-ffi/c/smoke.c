@@ -27,8 +27,11 @@ static uint32_t pick_index(const uint8_t *mask, uint32_t n, uint64_t *lcg) {
     return n;
 }
 
+/* The wall-shot entries at the end of the action space (action encoding v13, E04c T6). */
+#define WALL_SHOTS 8
+
 int main(void) {
-    CHECK(h3_abi_version() == 20);
+    CHECK(h3_abi_version() == 21);
     uint32_t n_actions = h3_action_count();
     uint32_t n_spells = h3_spell_count();
     uint32_t n_targets = h3_target_count();
@@ -51,9 +54,10 @@ int main(void) {
         int32_t side = h3_env_to_move(env);
         CHECK(h3_env_legal_mask(env, side, mask, n_actions) == H3_OK);
         CHECK(h3_env_observe(env, side, obs, n_obs) == H3_OK);
-        /* Fight the battle out: never retreat or surrender (the entries before the two casts). */
-        mask[n_actions - 4] = 0;
-        mask[n_actions - 3] = 0;
+        /* Fight the battle out: never retreat or surrender (the entries before the two casts,
+           which come before the eight wall shots since action encoding v13). */
+        mask[n_actions - WALL_SHOTS - 4] = 0;
+        mask[n_actions - WALL_SHOTS - 3] = 0;
         H3Action action = {0};
         action.entry = pick_index(mask, n_actions, &lcg);
         CHECK(action.entry < n_actions);
@@ -69,9 +73,9 @@ int main(void) {
         /* None (index 0) but for Teleport's destination (E04b T5a). */
         action.second = (uint16_t)pick_index(targets, n_targets, &lcg);
         CHECK(action.second < n_targets);
-        casts += action.entry == n_actions - 2;
+        casts += action.entry == n_actions - WALL_SHOTS - 2;
         /* The active stack's cast (E04b T7b1): the Wisps' Hasten. */
-        stack_casts += action.entry == n_actions - 1;
+        stack_casts += action.entry == n_actions - WALL_SHOTS - 1;
         CHECK(h3_env_step(env, side, action, &result) == H3_OK);
         steps++;
     }

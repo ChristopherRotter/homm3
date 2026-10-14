@@ -42,7 +42,7 @@ import h3mem  # noqa: E402
 GATE, MOAT, HEROES, HUMAN = 0x53A4, 0x53A8, 0x53CC, 0x54A4
 HEXES, HEX_SIZE, HEX_FLAGS, LAND_MINE = 0x1C4, 0x70, 0x10, 0x08
 OBJECTS, OBJECT_SIZE = 0x13D58, 0x18  # vector<battle_object>: begin +0x4, end +0x8
-WALLS = 0x13FA8  # the 18 parts' hit points now (+0x13F60 at the start)
+WALLS = 0x13FA8  # the 18 parts' picture state (their hit points: +0x13F60; installation.md §7.29)
 ACTIVE = 0x132C8
 WORN, WORN_SLOTS, CATAPULT_ARTIFACT = 0x12D, 19, 3
 # Stack record (structs.toml, battle_stack): name -> offset (i32).

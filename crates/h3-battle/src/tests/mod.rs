@@ -44,4 +44,5 @@ mod support;
 mod tactics;
 mod terrain;
 mod timed;
+mod walls;
 mod war;

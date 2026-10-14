@@ -2473,7 +2473,7 @@ Read for E04c T5 (walls, gate and moat; the survey `docs/rules/surveys/E04c-sieg
 parts and their hexes, the gate's states and who passes it, the moat's hexes, stops, damage and
 defense, the Tower's land mines, and the shot's wall test. Insight only, nothing copied (Q29).
 Not read here: which part a destroyed hex belongs to and what destroys it (0x465990, the Catapult
-and Earthquake: T6), the turrets (T7).
+and Earthquake: T6, §7.29), the turrets (T7).
 
 **The walls' parts** come from `WALLS.TXT` (`H3bitmap.lod`, loaded at start by 0x462990 into
 0x66D868: per town type 18 records of 36 bytes, each its hit points, its screen position, the hex
@@ -2559,3 +2559,97 @@ one (D-8), the Tower's ten hidden mines of 150. Two timings seen in memory: the 
 at a round's start the stacks' turn flags (+0x4F0) are cleared, then the keep shoots, then the
 Catapult (the keep's flag stayed set throughout, and so did the Catapult's in G's town with a Fort only,
 though it shot every round: not read).
+
+### 7.29 Code reading: the Catapult, Ballistics and Earthquake (E04c T6, 2026-10-14)
+
+Read for E04c T6 (the survey `docs/rules/surveys/E04c-sieges.md`, D-11 to D-15; BAT-Q43): the
+Catapult's stack and turn, its automatic aim, a wall shot (the Catapult's and the Cyclops'), the
+parts' destruction, and Earthquake. Insight only, nothing copied (Q29). Not read here: the
+turrets' shots and what a destroyed turret's stack does beyond its dead bit (T7), Teleport's wall
+test (T8), the computer player's choices beyond the Catapult's aim.
+
+**The targets** (0x63BE60, eight records of 12 bytes: the aim hex, an index into the wall hexes
+0x63BD00 or −1, a screen position, the wall part): **0** the Upper Tower (aim 255, part 5), **1**
+the Upper Wall (aim 29, part 6, wall hex 29), **2** the Mid-Upper Wall (aim 62, part 8, wall hex
+**78**: index 4), **3** the Gate (96, part 9), **4** the Mid-Lower Wall (130, part 10, wall hex
+130), **5** the Lower Wall (182, part 12, wall hex 182), **6** the Lower Tower (183, part 13), **7**
+the Keep (254, part 14). The aim hex is only where the cursor takes the target; the destruction
+opens the wall hex. The other wall hexes (12, 45, 62, 112, 147, 165) belong to no target and stay
+blocked. A
+target is **standing** (0x476440) while its part's hit points (+0x13F60) are above 0; the towers
+(0 and 6) only with a Castle, the keep (7) only with a Citadel or Castle. The hit points come from
+`WALLS.TXT` (2 for each of the eight parts in every town) at the siege's start, a Castle's four
+walls +1 (0x466348; §7.28), whatever the fort level: at a Fort the keep's and towers' parts hold
+2 as well. +0x13FA8 is the parts' picture state (copied before the Castle's +1, then 1 after a hit
+and 0 once destroyed), not their hit points.
+
+**The Catapult's stack** (0x463600): creature 145 (`CRTRAITS.TXT`: two hexes, shooter, catapult,
+war machine; 1 000 hit points, attack 10, defense 10, damage 0, speed 0, 24 shots) at position 119
+(its other hex 120) for an attacker with a hero in a battle with a fort level above 0; the hero's
+Catapult artifact is not tested (every hero has one). It never shoots at stacks (the cursor sends
+it to the wall test, 0x4766B2). In the pick (0x464F50) it comes after the arrow towers and before
+every other stack.
+
+**Its turn** (0x473C00, from the battle loop 0x4740D0): with no standing target (or no fort) the
+action is 12 (the turn passes, 0x479BC2). Otherwise the hero's Ballistics (+0xD3) decides: a
+player's hero with Ballistics aims the Catapult itself (0x474BF0 false: the cursor 0x476490 takes
+the aim hexes of the standing targets, the towers' and keep's off-field ones included); without
+Ballistics, or for the computer player or a hidden battle, the aim is automatic:
+- with Ballistics (the computer's or a hidden battle only) the gate while it stands;
+- the weakest standing wall of 0x63D54C (targets 1, 2, 4, 5: the fewest hit points, ties drawn
+  with `random(1, n)` in that order), without Ballistics whenever one stands, with it only while
+  all four stand;
+- else the first standing of 0x670198 (3 the gate, 7 the keep, 0 and 6 the towers);
+- else the first standing target in index order.
+The action is 9 with the target's aim hex.
+
+**A wall shot** (action 9, 0x479AE9 → 0x445D30, then the acted bit and the good-morale roll
+0x464920). The shooter's level: the Cyclops (94) 1, the Cyclops King (95) 2, the Catapult (145) its
+controlling hero's Ballistics level. The record of `BALLIST.TXT` (loaded at [0x679C84], 8 bytes:
+the hit chances on keep, tower, gate and wall, the shots, the chances of 0, 1 and 2 damage; none
+5/10/25/50 %, 1 shot, 10/60/30 %; Basic 7/15/30/60 %, 1, 0/50/50 %; Advanced as Basic with 2
+shots; Expert 10/20/40/75 %, 2, 0/0/100 %). Per shot (0x445EC0, at the aimed target):
+1. the damage: `random(1, 100)` less the 0-chance ≤ 0 gives 0, less the 1-chance ≤ 0 gives 1,
+   else 2;
+2. the hit: `random(1, 100)` above the aimed target's chance by kind (the switch 0x445EFF: 0 and 6
+   tower, 3 gate, 7 keep, the walls wall) misses: the shot lands on the **nearest other standing
+   wall** of 0x63B840 (1, 2, 5, 4) by the difference of the target indices, a tie replaced with
+   `random(1, 100)` ≤ 50; with no other wall standing it lands on the aimed target;
+3. 0x445FD0 animates (WallMiss for 0 damage, else WallHit) and calls 0x465990 with the target
+   landed on and the damage.
+After a shot, while shots are left: if the aimed target no longer stands, the aim moves to the
+nearest standing target of all eight (0x63B820 in index order, ties as above); with none the
+action ends. The shot uses no ammunition, and the Cyclops' cursor offers it on an empty aim hex
+of a standing target (0x47684B) whenever the creature has the catapult flag, the battle a fort
+and the acting side is the attacker (+0x132C0 0), whether the stack could shoot or not.
+
+**A part's damage** (0x465990, target and damage; nothing for damage 0): the part's hit points
+less the damage, at least 0. When they reach 0: a wall (1, 2, 4, 5) clears the blocked bit of its
+wall hex; the gate sets +0x53A4 to **0** (destroyed: not 3, so 95 and 96 never block, 95 is no
+moat hex, the line test passes 96, and neither 0x467130 opens nor 0x4672E0 closes it again); a
+tower or the keep sets the dead bit 0x200000 on the stack its turret record names (+0x13D98,
++0x13DBC, +0x13DE0) and zeroes its cover's part. The picture state +0x13FA8 becomes 1 or 0.
+
+**Earthquake** (0x5A7C80, from `cast_spell` 0x5A0980 with the mastery). The book allows it only in
+a battle with a fort level above 0 (0x59ED29: else a message), for either side, cast at once
+without a target and whatever stands. Its hits are the spell's value for the mastery
+(`SPTRAITS.TXT`: 2, 2, 3, 4). For each hit: `n` = the targets whose hit points exceed the hits
+already drawn on them; none ends the draw; `random(1, n)` picks the n-th target, in index order,
+whose hit points are above 0 (**not** less the hits drawn: a target already doomed can be drawn
+again, and the last ones in the order can be spared). No fort test: at a Fort or Citadel the
+absent towers and keep (2 hit points from `WALLS.TXT`) are drawn too. Then each drawn target takes
+its hits as damage through 0x465990 (1 per hit, no roll). **S-08:** an absent turret destroyed so
+marks dead the stack its record names, an index among the defender's stacks: without a turret set
+up there (the record's index not read, presumably 0) the defender's first stack, which disappears
+and stops acting (the wiki's bug, fixed in HotA). The engine keeps the draw and the soaked hits
+and harms no stack (exploit-fix, BAT-Q43).
+
+**Observed** (batch 3d, `experiments/results/E04c-batch-3d.md`, run by an agent under Wine,
+2026-10-14): the Catapult at 119; every part at 2 hit points, the absent turrets' too; without
+Ballistics every landing was the weakest standing wall or its miss list's nearest, the gate only
+after the four walls, the keep after the gate (D-13); under Advanced Ballistics the game waited
+for the aim, misses landed on the nearest other wall and a second shot whose aim had fallen went to
+the nearest standing target (D-12); a destroyed mid-upper wall opened 78, not 62 (D-11); a
+destroyed gate stayed 0 and let a walker pass 95 without a stop or damage; Earthquake cast by both
+sides (D-15) drew the absent towers, wasted a hit on a doomed part (D-14), and the absent towers'
+destruction marked the defender's first stack dead (S-08).

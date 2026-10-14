@@ -162,3 +162,60 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   too, `BALLIST.TXT`; the user expects hits on it: T6 investigates); the original's walks pick other
   shortest paths than ours on ties (M2 along row 5, G4 via 94; no rule depends on it here); the
   gate opens before the step onto 96 where our engine reports it after the step (same state).
+
+## T6 — the Catapult, Ballistics and Earthquake (2026-10-14, increment 4)
+
+- **T6a, the seam** (#191, `shared/catapult-seam`): `CatapultControl { level }` (the hero's
+  Ballistics level, 1..=3) in `h3-contracts`; `HeroEffect::Ballistics { level }` (code 42, pack
+  kind `ballistics`) in `h3-content`, parsed by `h3-pack`, no ruleset hash bump (as #185's kinds);
+  ADR-0023 point 6 amended (the battle sets the attacker's Catapult up itself, 0x463600), ADR-0013
+  point 4's history; h3-pack's core test counts the synthetic file's creatures. BAT-Q43 (the
+  user): the level in the seam, the code on D-11 to D-15, S-08's fix keeps the absent parts in
+  Earthquake's draw and harms no stack, the Cyclops in T6. D-11 was then found to be no dispute
+  (the record's index 4 is hex 78, as VCMI; 62 is the aim hex), corrected the same day.
+- **T6b, the reading** (`installation.md` §7.29; map entries 0x445D30, 0x445EC0, 0x445FD0,
+  0x473C00, 0x474BF0, 0x476440, 0x5A7C80, the tables 0x63B820, 0x63B840, 0x63BE60, 0x63D54C,
+  0x670198, [0x679C84]; +0x13F60 the parts' hit points, +0x13FA8 their picture state, +0x53A4 0 a
+  destroyed gate): the eight targets, the Catapult's stack and turn, its automatic aim, a wall
+  shot (damage roll, then hit roll; a miss on the nearest other wall; re-aim), the parts' damage,
+  Earthquake's draw; S-08 confirmed by the code.
+- **T6c, the battle** (`battle/e04c-t6`, `cross-lane` for `h3-protocol`, `h3-map` and the
+  adventure replays' headers): the siege field's wall shots harvested (`h3_formats::exe::
+  wall_shot_data`: the targets, the miss, automatic and fallback lists, the Catapult's hex from an
+  operand; `BALLIST.TXT`; each town's hit points from `WALLS.TXT`), the Catapult creature
+  harvested, the Cyclops' `wall_shots` (gap-fill), Ballistics' effect, Earthquake's effect (pack
+  format v39, battle part hash v4). The battle (`h3_battle::siege`): the Catapult set up for an
+  attacker with a hero at a fort (slot 19, hex 119; never listed), first in its phase; automatic
+  without Ballistics, commanded with it (`Command::ShootWall`, the Cyclops' too); the shot, the
+  parts' hit points, a destroyed wall's hex, a destroyed gate (open for good: passage, no moat on
+  the bridges, the line free); Earthquake (a siege with a fort, either side; the code's draw; the
+  absent turrets soak hits, BAT-QUIRK-22). Versions: battle state hash v47, replay format v27,
+  action encoding v13 (eight wall-shot entries), observation encoding v17 (the gate's destruction
+  and the targets' hit points as globals, the Catapult's command), C ABI v21, protocol v31. The
+  synthetic pack: a Catapult (sling), a wall shooter (hurler), Quake; the `siege` scenario's
+  attacker led by Brea with Advanced Ballistics and Quake; `siege-s7` re-recorded (two walls and
+  the keep by the Catapult, the gate by the Hurlers, two Quakes), the other replays changed only
+  their hashes and versions; the adventure replays only the core ruleset hash (the base pack's
+  Catapult creature); `h3-map`'s creature codes gain 145. Rules BAT-SIE-009 to 015, HER-BAT-018,
+  17 tests in `tests/walls.rs`. The Catapult artifact's pending row moved to E08-E10.
+- **T6d, batch 3d run by an agent** (`experiments/specs/E04c-batch-3d.toml`,
+  `experiments/agent/catapult.py`, built on `siege.py`: plans by round or by state, the Catapult
+  aimed under Ballistics, a hero's cast, the parts' hit points +0x13F60; rounds by the acted bits).
+  **A** (Castle, Citadel, no Ballistics): nine automatic shots, every landing the weakest standing
+  wall or its miss list's nearest, the gate only after the four walls fell, the keep after the gate
+  (D-13); a walk onto 62 refused, onto 78 done (D-11); the destroyed gate stayed 0 and a walker
+  passed 95 without a stop or damage. **B** (Castle, Fort, Advanced Ballistics): the game waited
+  for the aim; misses on the nearest other wall, a second shot after its aim fell on the nearest
+  standing target (D-12). **E** (Castle, Citadel, Expert Earthquake by both heroes): four hits a
+  cast, the absent towers drawn, a doomed part drawn again (D-14), the defender's cast allowed
+  (D-15), and the absent towers' destruction marked the defender's first stack dead (S-08). The
+  game's draws repeat exactly from run to run. BAT-SIE-009 to 012, 014 and 015 `verified`.
+- **Master merged, the full verify, the pull request** (2026-10-14, sixty-second session). #191
+  merged `master` (#192, #194): #194's `raises` took hero-effect code 42 and pack format v38, so
+  `ballistics` is code 43 and T6's pack format v39 (labels only). The six adventure replays were
+  re-recorded with their options on master's games: only the core ruleset hash changed. The full
+  verify `--with-original-data` (Linux sandbox; 164 of 164 maps read) failed on two steps, both
+  fixed: coverage (the wall shot's and Earthquake's validated `if let`, whose implicit `else` LLVM
+  counted, now `into_iter().for_each`) and deny (rustls 0.23.45's advisories RUSTSEC-2026-0346 to
+  0349, new and on `master` too: Cargo.lock takes 0.23.46). The user consented to the `cross-lane`
+  pull request as one (2026-10-14).

@@ -177,6 +177,30 @@ ai_value = 1400
 adventure_count = [2, 4]
 flags = ["alive", "shooter"]
 
+# The siege's machines (E04c T6): the attacker's Catapult (BAT-SIE-009) and a wall shooter
+# (BAT-SIE-013); their battle data: battle.toml.
+[[creature]]
+id = "sling"
+name = "Sling"
+plural = "Slings"
+level = 1
+speed = 0
+ai_value = 500
+flags = ["two_hex", "shooter", "catapult", "war_machine", "mind_immune", "no_morale"]
+
+[[creature]]
+id = "hurler"               # neutral (no faction)
+name = "Hurler"
+plural = "Hurlers"
+level = 4
+speed = 6
+cost = { coin = 400 }
+growth = 4
+fight_value = 500
+ai_value = 600
+adventure_count = [4, 8]
+flags = ["alive", "shooter", "catapult"]    # catapult: it shoots the walls (with wall_shots)
+
 # ---- Hero content (pack format v3, E04a T3): invented schools, spells, skills, classes and heroes.
 # Every hero-effect kind appears at least once. Spells carry their battle magic since format v4
 # (E04b T2a): every target kind, an area, a chain and target conditions appear at least once.
@@ -613,6 +637,16 @@ category = "ability"
 level = 0
 cost = [0, 0, 0, 0]
 effect = [1, 1, 1, 1]
+
+[[spell]]
+id = "quake"                        # an Earthquake (E04c T6): hits by mastery (BAT-SIE-015)
+name = "Quake"
+category = "combat"
+level = 3
+schools = ["stone"]
+cost = [20, 17, 17, 17]
+power = 1
+effect = [2, 2, 3, 4]
 
 [[secondary_skill]]
 id = "marksmanship"

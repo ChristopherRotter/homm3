@@ -34,8 +34,20 @@ use crate::tactics::{self, TacticsPhase};
 use crate::vitality::Vitality;
 use crate::{flee, terrain, turn};
 
-/// Most war machines per side, one of each kind (BAT-WAR-001).
-pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
+/// Most war machines per side, one of each kind (BAT-WAR-001), the attacker's Catapult in a
+/// siege included (BAT-SIE-009).
+pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS + 1;
+
+/// The Catapult's war-machine kind: after the kinds the ruleset places (BAT-SIE-009).
+pub(crate) const CATAPULT_KIND: usize = WAR_MACHINE_KINDS;
+
+/// The Catapult's army slot ([`Stack::slot`]): after the army slots and the other war machines.
+// `MAX_ARMY_SLOTS + MAX_WAR_MACHINES <= SIDE_STACK_SLOTS` (asserted below).
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "below SIDE_STACK_SLOTS = 21"
+)]
+pub(crate) const CATAPULT_SLOT: u8 = (MAX_ARMY_SLOTS + CATAPULT_KIND) as u8;
 
 /// Stack slots per side, as the original keeps 21 stack records per side (ADR-0014 point 6,
 /// `docs/formats/installation.md` §7.7): the army slots and war machines, and room for stacks
@@ -57,7 +69,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 46;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 47;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -241,7 +253,12 @@ impl StackTraits {
                 Self::FLIES,
                 has(CreatureFlag::Flying) || ability(|a| matches!(a, Ability::Teleports)),
             )
-            .with(Self::SHOOTER, has(CreatureFlag::Shooter))
+            // The Catapult shoots the walls only (BAT-SIE-009; the original's cursor 0x4766B2).
+            .with(
+                Self::SHOOTER,
+                has(CreatureFlag::Shooter)
+                    && !(has(CreatureFlag::WarMachine) && has(CreatureFlag::Catapult)),
+            )
             .with(Self::NO_MELEE_PENALTY, has(CreatureFlag::NoMeleePenalty))
             .with(
                 Self::NO_DISTANCE_PENALTY,
@@ -324,7 +341,8 @@ impl StackTraits {
 }
 
 /// The kind of a war machine, which decides its place (BAT-WAR-001): a shooting machine
-/// (Ballista), an ammunition supply (Ammo Cart) or first aid (First Aid Tent).
+/// (Ballista), an ammunition supply (Ammo Cart), first aid (First Aid Tent) or the siege's
+/// Catapult (flag `catapult`, BAT-SIE-009).
 fn war_machine_kind(
     creature: &CreatureType,
     abilities: &[h3_content_battle::CompiledAbility],
@@ -332,6 +350,8 @@ fn war_machine_kind(
     let has = |f: fn(&h3_content_battle::CompiledAbility) -> bool| abilities.iter().any(f);
     if !creature.flags.contains(CreatureFlag::WarMachine) {
         None
+    } else if creature.flags.contains(CreatureFlag::Catapult) {
+        Some(CATAPULT_KIND)
     } else if creature.flags.contains(CreatureFlag::Shooter) {
         Some(0)
     } else if has(|a| matches!(a, Ability::AmmoSupply)) {
@@ -344,12 +364,13 @@ fn war_machine_kind(
 }
 
 /// The war machine stacks of `side`, by kind, placed with their front hexes on the ruleset's
-/// hexes (mirrored for the defender) and reserved in `taken` (BAT-WAR-001).
+/// hexes (mirrored for the defender) and reserved in `taken` (BAT-WAR-001); in a siege with a
+/// fort the attacker's Catapult, which the setup never lists (BAT-SIE-009).
 // rule: BAT-WAR-001
 fn war_machines(
     ruleset: &BattleRuleset,
     field: Field,
-    setup: &BattleSetup,
+    (setup, siege): (&BattleSetup, Option<&SiegeState>),
     side: BattleSide,
     taken: &mut HexSet,
 ) -> Result<[Option<Stack>; MAX_WAR_MACHINES], SetupError> {
@@ -359,7 +380,7 @@ fn war_machines(
         let invalid = SetupError::InvalidWarMachine { side };
         let creature = ruleset.creature(id).ok_or(invalid)?;
         let kind = war_machine_kind(creature, ruleset.abilities(id)).ok_or(invalid)?;
-        if out[kind].is_some() {
+        if out[kind].is_some() || kind == CATAPULT_KIND {
             return Err(invalid);
         }
         // `kind < MAX_WAR_MACHINES <= MAX_ARMY_SLOTS`.
@@ -385,7 +406,56 @@ fn war_machines(
         );
         out[kind] = Some(stack);
     }
+    // rule: BAT-SIE-009
+    let walled = siege.is_some_and(|s| s.fort >= h3_contracts::FortLevel::Fort);
+    if walled && side == BattleSide::Attacker && setup.heroes[side.index()].is_some() {
+        out[CATAPULT_KIND] = catapult(ruleset, field, setup, taken)?;
+    }
     Ok(out)
+}
+
+/// The attacker's Catapult at the siege field's hex (BAT-SIE-009; the original's 0x463600 sets
+/// it up for a hero without testing its Catapult artifact), the ruleset's first creature with
+/// the flags `war_machine` and `catapult`; none if the ruleset has no such creature.
+fn catapult(
+    ruleset: &BattleRuleset,
+    field: Field,
+    setup: &BattleSetup,
+    taken: &mut HexSet,
+) -> Result<Option<Stack>, SetupError> {
+    let side = BattleSide::Attacker;
+    let Some((id, creature)) = (0..ruleset.creature_count())
+        .filter_map(CreatureTypeId::from_index)
+        .filter_map(|id| ruleset.creature(id).map(|c| (id, *c)))
+        .find(|(_, c)| {
+            c.flags.contains(CreatureFlag::WarMachine) && c.flags.contains(CreatureFlag::Catapult)
+        })
+    else {
+        return Ok(None);
+    };
+    // The siege field exists: a siege's set-up needs it (BAT-SIE-001).
+    let position = Hex(ruleset.siege_field().map_or(0, |f| f.catapult));
+    let fp = field
+        .footprint(
+            position,
+            creature.flags.contains(CreatureFlag::TwoHex),
+            side,
+        )
+        .filter(|fp| !fp.hexes().any(|h| taken.contains(h)))
+        .ok_or(SetupError::NoRoom {
+            side,
+            slot: CATAPULT_SLOT,
+        })?;
+    fp.hexes().for_each(|h| taken.insert(h));
+    Ok(Some(Stack::new(
+        ruleset,
+        setup,
+        (id, &creature),
+        side,
+        CATAPULT_SLOT,
+        fp.position(),
+        1,
+    )))
 }
 
 /// The stacks `side` would have of each creature the battle may create for it, as at the
@@ -921,8 +991,8 @@ impl BattleState {
             natural.blocked(),
         )?
         .map_or((None, None), |(s, m)| (Some(s), m));
-        // stub: BAT-STUB-2 — the town's other rules (the turrets, the Catapult, the controls, the
-        // experience, the defenders' morale and luck) are not read yet (E04c T6 to T8).
+        // stub: BAT-STUB-2 — the town's other rules (the turrets, the controls, the experience,
+        // the defenders' morale and luck) are not read yet (E04c T7 and T8).
         let mut taken = natural
             .blocked()
             .union(siege::placement_blocked(siege.as_ref()));
@@ -958,7 +1028,7 @@ impl BattleState {
                 *entry = Some((*s, *creature));
             }
             // War machines take their fixed places first (BAT-WAR-001).
-            let machines = war_machines(ruleset, field, setup, side, &mut taken)?;
+            let machines = war_machines(ruleset, field, (setup, siege.as_ref()), side, &mut taken)?;
             let n = army.stacks.len();
             let column = match side {
                 BattleSide::Attacker => field.first_standable_column(),

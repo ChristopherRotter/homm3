@@ -1,0 +1,172 @@
+# Experiment batch 3d (E04c T6d): the Catapult, Ballistics and Earthquake. Checks the code reading
+# of installation.md §7.29 that the battle follows since T6c (BAT-SIE-009 to BAT-SIE-015), with
+# the confirmation rows of the survey's D-12 (a miss lands on the nearest other standing wall;
+# VCMI: a random one), D-13 (the automatic Catapult aims at the weakest wall, then the gate, then
+# the keep), D-11 (a destroyed Mid-Upper Wall opens hex 78, not 62), D-14 and D-15 (Earthquake's
+# draw; the defender may cast it) and S-08 (an absent tower that Earthquake destroys takes the
+# defender's first stack with it), all decided for the code at BAT-Q43.
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them. They are the code's (installation.md §7.29) and the engine's
+# (faithful profile; the engine fixes S-08, BAT-QUIRK-22); the alternatives name their source.
+#
+# Each Red hero stands south of a Blue town's entrance: stepping north attacks it. Play in hot
+# seat (Red and Blue human), so one player commands both armies. Hexes are numbered row by row
+# from the top left, 17 per row. The wall-shot targets, by index (the code's 0x63BE60): 0 the
+# upper tower, 1 the upper wall (aim and wall hex 29), 2 the mid-upper wall (aim hex 62, wall hex
+# 78), 3 the gate (96), 4 the mid-lower wall (130), 5 the lower wall (182), 6 the lower tower, 7
+# the keep. An agent's run reads everything from memory (experiments/agent/siege.py): the battle
+# manager's +0x13F60 (the 18 wall parts' hit points; target t is part 5, 6, 8, 9, 10, 12, 13, 14),
+# +0x53A4 the gate (3 closed, 1 open, 0 destroyed), each stack's hex, count, lost hit points and
+# flags (+0x84, 0x200000 dead). Every part holds 2 hit points (WALLS.TXT), the towers and the keep
+# too where the fort level does not set them up.
+
+[map]
+name = "E04c batch 3d"
+description = "Engine-generated experiment map (E04c, batch 3d): the Catapult, Ballistics and Earthquake. Follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Copy `E04c-batch-3d.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps` and start it in hot seat (Red and Blue human). Save right away.",
+    "Each Red hero stands south of a Blue town's entrance. Play the encounters in any order: select the hero and step north into the town; command both armies as the encounter says (every stack without a step defends).",
+    "Note the walls' state after every shot of the Catapult and every Earthquake (which part lost how much). Then end the battle as you like and load the save for the next encounter.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- The automatic Catapult (BAT-SIE-010 to BAT-SIE-012, BAT-SIE-014; D-11, D-12, D-13) ----------
+
+[[encounter]]
+id = "A"
+title = "The automatic Catapult at a Castle with a Citadel; a destroyed wall and a destroyed gate"
+questions = ["BAT-SIE-010", "BAT-SIE-011", "BAT-SIE-012", "BAT-SIE-014", "D-11", "D-12", "D-13"]
+procedure = [
+    "Every stack defends unless a step below says otherwise; the Catapult shoots on its own (the hero has no Ballistics), one shot each round. Note each shot: the part it damaged and by how much.",
+    "Round 1: the Centaur Captains in slot 2 walk to hex 97 (row 5, column 12, inside right of the gate).",
+    "Once the mid-upper wall (the wall over the gate) is destroyed: the Centaur Captains in slot 1 try to walk onto hex 62 (row 3, column 11), then onto hex 78 (row 4, column 10).",
+    "Once the gate is destroyed: the Centaur Captains on 97 walk out to hex 94 (row 5, column 9) over the gate's hex 96 and the drawbridge's 95.",
+    "Play on to round 16, then end the battle as you like.",
+]
+predictions = """
+The Catapult without Ballistics: one shot a round (BALLIST.TXT, none), the damage 0, 1 or 2 by
+10/60/30 %, a hit on a wall 50 %, on the gate 25 %, on the keep 5 %.
+- Its aim (D-13, the code 0x473C00): the weakest standing wall of 1, 2, 4, 5 (ties drawn among
+  them) while one stands, then the gate, then the keep (the towers are absent at a Citadel). So
+  no shot damages the gate while a wall stands, none the keep while the gate stands.
+- A miss (D-12, the code 0x445EC0) lands on the nearest other standing wall of 1, 2, 5, 4 by the
+  difference of the target indices (a tie at random), or on the aimed target if no other wall
+  stands: aimed at 1 it lands on 2 while 2 stands; aimed at 2, on 1 (diff 1) or 4 (diff 2)… so
+  every shot lands on the aim or the miss list's nearest wall to it. `vcmi`: a random standing
+  wall, the gate only without walls.
+- No damage beyond 2 per shot, a part never below 0.
+- The mid-upper wall destroyed (D-11): hex 62 stays a wall (the walk onto it is refused), hex 78
+  opens (the walk onto it succeeds).
+- The gate destroyed: +0x53A4 becomes **0**; the walk 97 -> 96 -> 95 -> 94 passes the drawbridge's
+  hex without stopping and without the moat's 70 damage (95 is no moat hex any more), and the gate
+  never closes again (stays 0).
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [8, 12]
+primary = [0, 0, 1, 1]
+army = [["Titan", 5]]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Peasant", 10], ["Centaur Captain", 5], ["Centaur Captain", 5]]
+[[encounter.record]]
+field = "A1: each shot of the Catapult: the round, the part it damaged (target index) and the damage"
+[[encounter.record]]
+field = "A2: could the Centaur Captains walk onto 62, onto 78, once the mid-upper wall was destroyed?"
+[[encounter.record]]
+field = "A3: the gate's state once destroyed; where the walk out from 97 ended and its lost hit points"
+[[encounter.record]]
+field = "anything odd"
+
+# --- The Catapult under Ballistics (BAT-SIE-011, BAT-SIE-014; D-12) --------------------------------
+
+[[encounter]]
+id = "B"
+title = "The Catapult aimed under Advanced Ballistics at a Castle with a Fort: where the misses land"
+questions = ["BAT-SIE-011", "BAT-SIE-014", "HER-BAT-018", "D-12"]
+procedure = [
+    "Every stack defends. At each of its turns the Catapult (Advanced Ballistics: the player aims; two shots) aims at the upper wall (hex 29) while it stands, then at the lower wall (hex 182), the gate (96), the mid-upper wall (its aim hex 62) and the mid-lower wall (130). Note each shot: the target aimed at, the part it damaged and by how much.",
+    "Play on to round 10, then end the battle as you like.",
+]
+predictions = """
+Advanced Ballistics: two shots a turn, the damage 1 or 2 (50/50 %), a hit on the gate 30 %, on a
+wall 60 % (BALLIST.TXT).
+- A miss lands on the nearest other standing wall of 1, 2, 5, 4 by the difference of the indices
+  (the code, D-12): aimed at the upper wall (1) on 2 while it stands, else 4 (diff 3), else 5;
+  aimed at the lower wall (5) on 4 while it stands, else 2, else 1; aimed at the gate (3) on 2 or 4
+  (a tie: drawn) while either stands, then 1 or 5; with no other wall standing on the aim itself.
+  `vcmi`: a random standing wall.
+- The second shot keeps the aim while it stands; once the first destroys it, the second goes to
+  the nearest standing target of all eight by index (a tie: drawn): from 1 to 2 (the upper tower
+  is absent at a Fort), from 5 to 4.
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+at = [18, 12]
+primary = [0, 0, 1, 1]
+skills = [["Ballistics", 2]]
+army = [["Titan", 2]]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort"]
+garrison = [["Peasant", 10]]
+[[encounter.record]]
+field = "B1: each shot of the Catapult: the round, the target aimed at, the part it damaged and the damage"
+[[encounter.record]]
+field = "anything odd"
+
+# --- Earthquake (BAT-SIE-015; D-14, D-15, S-08) -----------------------------------------------------
+
+[[encounter]]
+id = "E"
+title = "Earthquake by both sides at a Castle with a Citadel"
+questions = ["BAT-SIE-015", "D-14", "D-15", "S-08"]
+procedure = [
+    "Every stack defends unless a step below says otherwise.",
+    "Round 1: at the attacker's first stack's turn, the Red hero casts Earthquake (Expert Earth Magic: four hits). At the defender's first stack's turn, the Blue hero casts Earthquake too.",
+    "Round 2: the Red hero casts Earthquake again; so does the Blue hero. Note after each cast which parts lost hit points, and whether a defending stack vanished.",
+    "Round 3: end the battle as you like.",
+]
+predictions = """
+Expert Earth Magic: Earthquake hits 4 times, 1 each, no roll (SPTRAITS.TXT: 2, 2, 3, 4).
+- The defender may cast it (D-15, the code 0x59ED29; `vcmi` refuses it to the defender).
+- Each cast: at most 4 hit points lost in all, at most 2 per part (each part holds 2); a hit on a
+  part already doomed by this cast is lost (D-14, the code's draw: per hit the n-th part with hit
+  points above 0, n the number of parts with hit points above the hits drawn on them). The absent
+  towers (targets 0 and 6, parts 5 and 13) are drawn too and lose hit points (the code; `vcmi`
+  draws only the standing parts).
+- S-08 (the code, the wiki's bug): an absent tower brought to 0 marks the defender's first stack
+  dead (flag 0x200000; the Peasants vanish). The engine harms no stack (BAT-QUIRK-22).
+"""
+[encounter.hero]
+type = "Rissa"
+specialty = "resource mercury"
+at = [28, 12]
+primary = [0, 0, 1, 5]
+skills = [["Earth Magic", 3]]
+army = [["Titan", 2]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Earthquake"]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Peasant", 10], ["Pikeman", 10]]
+[encounter.opponent.hero]
+type = "Octavia"
+specialty = "resource gold"
+primary = [0, 0, 1, 5]
+skills = [["Earth Magic", 3]]
+army = [["Peasant", 10], ["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Earthquake"]
+[[encounter.record]]
+field = "E1: after each cast (side, round): which parts lost how many hit points"
+[[encounter.record]]
+field = "E2: did a defending stack vanish (which, after which cast)?"
+[[encounter.record]]
+field = "anything odd"

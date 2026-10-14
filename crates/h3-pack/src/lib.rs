@@ -542,6 +542,9 @@ enum EffectDto {
         skill: Option<String>,
         by_level: Option<Vec<String>>,
     },
+    Ballistics {
+        level: u8,
+    },
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -779,6 +782,7 @@ impl EffectDto {
                 priority,
                 creature: raised(pack, creature, skill, by_level)?,
             },
+            Self::Ballistics { level } => HeroEffect::Ballistics { level },
         })
     }
 }

@@ -1,8 +1,8 @@
 //! Batch 2a's direct-damage spells on the harvested SoD packs (E04b T11a, the fold-in; BAT-MAG-003
 //! to BAT-MAG-006): R1 to R5 of `experiments/results/E04b-batch-2a.md` (SoD 4.0 Complete, plain
 //! HD, 2026-10-06) replayed with the heroes the batch used, derived in the Heroes context. Also
-//! E04b exit criterion 2's guard: every combat spell of the packs but Earthquake (E04c) and every
-//! ability spell has effects the battle implements.
+//! E04b exit criterion 2's guard: every combat spell of the packs (Earthquake since E04c T6) and
+//! every ability spell has effects the battle implements.
 
 use h3_battle::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, Field, StackId, apply,
@@ -464,12 +464,12 @@ fn batch_2a_r3_where_fireball_and_implosion_may_be_aimed() {
 
 // covers: BAT-MAG-001
 /// E04b exit criterion 2: every battle spell in scope can be cast. Every combat spell of the
-/// harvested packs but Earthquake (sieges, E04c) has effects the battle implements
+/// harvested packs (Earthquake, the sieges' last one, since E04c T6) has effects the battle implements
 /// (`CommandError::NotCastable` otherwise); so has every ability spell but the three the
 /// creatures' own abilities carry out: the Liches' Death Cloud (an area shot, BAT-RNG-004), the
 /// Thunderbirds' bolt (BAT-MAG-041) and the Mighty Gorgons' Death Stare (BAT-DMG-009).
 #[test]
-fn every_battle_spell_but_earthquake_is_implemented() {
+fn every_battle_spell_is_implemented() {
     let r = sod();
     let missing = |category| {
         r.spells()
@@ -478,7 +478,7 @@ fn every_battle_spell_but_earthquake_is_implemented() {
             .map(|s| s.key.as_str())
             .collect::<Vec<_>>()
     };
-    assert_eq!(missing(SpellCategory::Combat), ["base:earthquake"]);
+    assert!(missing(SpellCategory::Combat).is_empty());
     assert_eq!(
         missing(SpellCategory::Ability),
         ["base:death_cloud", "base:thunderbolt", "base:death_stare"]

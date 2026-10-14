@@ -536,7 +536,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0xcd73_382f_aeb1_bf3f;
+const GOLDEN_BASE_HASH: u64 = 0x4e28_811c_3fc6_44ae;
 
 #[test]
 fn battle_params_are_unique_and_required() {
@@ -1091,6 +1091,16 @@ fn ability_errors() {
         fails(flagged),
         invalid("flag area_attack requires an area_shot ability (and vice versa)")
     );
+    // E04c T6 (BAT-SIE-013): a wall shooter carries the flag catapult, and the flag needs the
+    // ability unless the creature is a war machine (the siege's Catapult).
+    let walls = "flag catapult requires wall_shots (and vice versa), war machines neither";
+    assert_eq!(
+        fails(with_abilities(vec![AbilityDef::WallShots { level: 1 }])),
+        invalid(walls)
+    );
+    let mut flagged = base();
+    flagged.core.creatures[0].info.flags = vec!["catapult".into()];
+    assert_eq!(fails(flagged), invalid(walls));
 }
 
 #[test]

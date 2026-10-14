@@ -94,7 +94,7 @@ slot = "base:head"
 parts = ["base:necklace_of_ocean_guidance", "base:sea_captains_hat"]
 
 [[artifact]]
-id = "bow_of_the_sharpshooter"  # original id 137; pending: E04c
+id = "bow_of_the_sharpshooter"  # original id 137
 name = "Bow of the Sharpshooter"
 class = "relic"
 slot = "base:misc"

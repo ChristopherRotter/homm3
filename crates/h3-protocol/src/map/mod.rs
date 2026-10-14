@@ -19,7 +19,7 @@ use h3_battle::{
 };
 use h3_content::{CreatureTypeId, SpellId};
 use h3_content_battle::{BattleRuleset, ObstacleTypeId};
-use h3_contracts::{BallistaControl, DamageBonuses, Rate, TentControl};
+use h3_contracts::{BallistaControl, CatapultControl, DamageBonuses, Rate, TentControl};
 use h3_kernel::hash::{HASH_ALGORITHM, HASH_VERSION};
 use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
 
@@ -124,6 +124,7 @@ pub fn command_to_engine(command: Command) -> h3_battle::Command {
         Command::CreatureCast { target } => C::CreatureCast {
             target: target_to_engine(target),
         },
+        Command::ShootWall { part } => C::ShootWall { part },
     }
 }
 
@@ -367,6 +368,7 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
             gate_open: s.gate_open,
             walls: hexes(s.walls()),
             moat_hexes: hexes(s.moat()),
+            parts: s.parts[..usize::from(s.targets)].to_vec(),
         }),
         sides: [
             side_view(BattleSide::Attacker),
@@ -407,6 +409,7 @@ fn hero(h: HeroView) -> Hero {
         casts,
         commands_ballista,
         commands_tent,
+        commands_catapult,
         spell_book,
     } = h;
     Hero {
@@ -420,6 +423,7 @@ fn hero(h: HeroView) -> Hero {
         casts,
         commands_ballista,
         commands_tent,
+        commands_catapult,
         spell_book,
     }
 }
@@ -443,6 +447,7 @@ fn own_hero(h: &OwnHeroView) -> OwnHero {
         damage,
         ballista,
         tent,
+        catapult,
         surrender_discount_bp,
         funds,
         surrender_price,
@@ -494,6 +499,10 @@ fn own_hero(h: &OwnHeroView) -> OwnHero {
         tent_heal_bonus_bp: tent.map(|t| {
             let TentControl { heal_bonus } = t;
             bp(heal_bonus)
+        }),
+        catapult_level: catapult.map(|c| {
+            let CatapultControl { level } = c;
+            level
         }),
         surrender_discount_bp: *surrender_discount_bp,
         funds: *funds,

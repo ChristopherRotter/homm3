@@ -11,8 +11,8 @@ use h3_content::{
     SpellId, SpellScope,
 };
 use h3_contracts::{
-    BallistaControl, BattleEffect, BattleHero, DamageBonuses, MAX_BATTLE_EFFECTS, StatOp,
-    TentControl,
+    BallistaControl, BattleEffect, BattleHero, CatapultControl, DamageBonuses, MAX_BATTLE_EFFECTS,
+    StatOp, TentControl,
 };
 
 use super::support::*;
@@ -117,6 +117,7 @@ fn heroes_are_kept_and_shown_to_both_sides() {
         casts: 0,
         commands_ballista: false,
         commands_tent: false,
+        commands_catapult: false,
         spell_book: false,
     };
     let s = BattleState::new(&r, &with_heroes(&r, [Some(hero(&r)), None]), 1).unwrap();
@@ -187,6 +188,7 @@ fn the_private_part_of_a_hero_shows_only_to_its_side() {
             damage,
             ballista: Some(ballista),
             tent: Some(tent),
+            catapult: None,
             surrender_discount_bp: 2000,
             funds: 5000,
             surrender_price: Some(240),
@@ -289,6 +291,14 @@ fn unsound_heroes_are_rejected() {
                 });
             },
             HeroError::BallistaControl,
+        ),
+        (
+            |_, h| h.war_machines.catapult = Some(CatapultControl { level: 0 }),
+            HeroError::CatapultControl,
+        ),
+        (
+            |_, h| h.war_machines.catapult = Some(CatapultControl { level: 4 }),
+            HeroError::CatapultControl,
         ),
         (
             |_, h| {

@@ -379,6 +379,13 @@ pub enum Ability<C, S, L> {
     /// original's 0x467510 names the Mage, Arch Mage, Enchanter, Sharpshooter and Arrow Tower;
     /// pack format v37).
     NoWallPenalty,
+    /// In a siege its side's attacker may shoot the walls with it as with the Ballistics record
+    /// of `level` (the Cyclops 1, the Cyclops King 2: the original's 0x445D30; needs flag
+    /// `catapult`; the Catapult itself takes its hero's level; BAT-SIE-010, pack format v39).
+    WallShots {
+        /// The Ballistics level (0..=3).
+        level: u8,
+    },
 }
 
 /// Most creatures `corpse_raiser` abilities raise in a ruleset (the battle keeps a stack of each
@@ -393,7 +400,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 49] = [
+    pub const NAMES: [&'static str; 50] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -443,6 +450,7 @@ impl<C, S, L> Ability<C, S, L> {
         "fear",
         "ignores_magic_block",
         "no_wall_penalty",
+        "wall_shots",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -497,6 +505,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::Fear { .. } => 46,
             Self::IgnoresMagicBlock => 47,
             Self::NoWallPenalty => 48,
+            Self::WallShots { .. } => 49,
         }
     }
 
@@ -691,6 +700,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::Fear { percent } => Ability::Fear { percent: *percent },
             Self::IgnoresMagicBlock => Ability::IgnoresMagicBlock,
             Self::NoWallPenalty => Ability::NoWallPenalty,
+            Self::WallShots { level } => Ability::WallShots { level: *level },
         })
     }
 
@@ -744,6 +754,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::FirstAid { min_hp, max_hp } if *min_hp == 0 || max_hp < min_hp => {
                 Some("first_aid needs 1 <= min_hp <= max_hp")
             }
+            Self::WallShots { level } if *level > 3 => Some("wall_shots level must be 0..=3"),
             Self::SpellAfterStrike { mastery, .. } if *mastery > 3 => {
                 Some("spell_after_strike mastery must be 0..=3")
             }
@@ -865,7 +876,9 @@ impl CanonicalHash for CompiledAbility {
             | Self::MagicResistanceAura { percent }
             | Self::ManaChannel { percent }
             | Self::Fear { percent } => h.write_u8(percent),
-            Self::ManaDrain { amount } | Self::Rebirth { divisor: amount } => h.write_u8(amount),
+            Self::ManaDrain { amount }
+            | Self::Rebirth { divisor: amount }
+            | Self::WallShots { level: amount } => h.write_u8(amount),
             Self::SpellAfterStrike {
                 spell,
                 chance_percent,
@@ -1032,7 +1045,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 49] {
+    fn all() -> [A; 50] {
         [
             A::Hate {
                 target: 3,
@@ -1153,6 +1166,7 @@ mod tests {
             A::Fear { percent: 10 },
             A::IgnoresMagicBlock,
             A::NoWallPenalty,
+            A::WallShots { level: 2 },
         ]
     }
 
@@ -1272,6 +1286,7 @@ mod tests {
             A::LifeDrain { percent: 0 },
             A::LifeDrain { percent: 1001 },
             A::ExtraRetaliations { count: 0 },
+            A::WallShots { level: 4 },
             A::MoraleAura {
                 amount: 0,
                 affects: AuraTarget::Allies,

@@ -36,8 +36,9 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    content (Tier 3, like `Ability`, ADR-0012); the translation resolves them into a closed
    `BattleEffect` enum in contracts. Percentages are **basis points** in content and seam.
 4. **`BattleHero` is a hybrid:** typed fields for what the battle reads by name (primary skills,
-   Tactics level, damage bonuses, war-machine control as derived numbers, surrender discount), a
-   bounded list of resolved `BattleEffect`s for everything else, and E04b's magic fields reserved
+   Tactics level, damage bonuses, war-machine control as derived numbers (the Catapult's: the
+   Ballistics level, ADR-0023 point 6), surrender discount), a bounded list of resolved
+   `BattleEffect`s for everything else, and E04b's magic fields reserved
    and validated from E04a on. The battle checks only what its rules need to run soundly
    (references, bounds); keeping a hero within the game's limits is the derivation's job (Q31).
 5. **Seam changes.** `BattleSetup.heroes: [Option<BattleHero>; 2]` replaces `led_by_hero` (Q-0003
@@ -123,3 +124,6 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   model in the shared layer beneath the contexts, read by them by reference and changed through
   typed hero changes; the store of heroes is the game's (ADR-0017 point 1); E08 decision 5's
   adventure profile withdrawn (drafted in E08 T17b, #181).
+- 2026-10-14 (E04c T6; the user, BAT-Q43): point 4 — the Catapult's control carries the hero's
+  Ballistics level, not derived numbers (ADR-0023 point 6): the battle's own Ballistics table also
+  serves the uncontrolled Catapult and the Cyclops.

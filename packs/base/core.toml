@@ -1938,6 +1938,20 @@ adventure_count = [8, 12]
 flags = ["mind_immune", "no_morale"]
 
 [[creature]]
+id = "catapult"  # original id 145
+name = "Catapult"
+plural = "Catapults"
+level = 1
+speed = 0
+cost = { gold = 1 }
+growth = 0
+horde_growth = 0
+fight_value = 10
+ai_value = 500
+adventure_count = [0, 0]
+flags = ["two_hex", "shooter", "catapult", "war_machine", "mind_immune", "no_morale"]
+
+[[creature]]
 id = "ballista"  # original id 146
 name = "Ballista"
 plural = "Ballistas"
@@ -2034,6 +2048,9 @@ expert = [{ kind = "luck", amount = 3 }]
 [[secondary_skill]]
 id = "ballistics"
 name = "Ballistics"
+basic = [{ kind = "ballistics", level = 1 }]
+advanced = [{ kind = "ballistics", level = 2 }]
+expert = [{ kind = "ballistics", level = 3 }]
 
 [[secondary_skill]]
 id = "eagle_eye"
@@ -4363,7 +4380,7 @@ name = "The Grail"
 class = "special"
 
 [[artifact]]
-id = "catapult"  # original id 3; pending: E04c
+id = "catapult"  # original id 3; pending: E08-E10
 name = "Catapult"
 class = "special"
 cost = { "gold" = 1000 }
@@ -5060,7 +5077,7 @@ cost = { "gold" = 10000 }
 slot = "feet"
 
 [[artifact]]
-id = "golden_bow"  # original id 91; pending: E04c
+id = "golden_bow"  # original id 91
 name = "Golden Bow"
 class = "major"
 cost = { "gold" = 8000 }

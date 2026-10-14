@@ -1467,7 +1467,7 @@ id       = "BAT-WAR-001"
 title    = "War machines on the battlefield"
 context  = "battle"
 status   = "implemented"
-summary  = "Each side may bring war machines (BattleSetup.war_machines; creatures with flag war_machine, at most one per kind; they may not stand in army slots): the Ballista (shooting kind), the Ammo Cart (ammo-supply kind) and the First Aid Tent (first-aid kind). They stand at fixed places (battle param war_machine_positions, each a machine's front hex, BAT-GEO-002: Ballista (1, 3), Ammo Cart (1, 1), First Aid Tent (1, 9) for the attacker, mirrored for the defender; a two-hex machine's position is the hex behind, in the side column), get stack ids after their side's army and slots 16 + kind. War machines never move (the compiler requires speed 0 for them, E04a T7a; also when their side commands them, BAT-WAR-006/007) and never attack in melee (CommandError::NoMelee), are not affected by morale (BAT-MOR-001) and do not count for the army's alignment (BAT-MOR-002), never retaliate (BAT-RET-001), and do not count as living stacks for the end of the battle (BAT-END-001). The compiler checks that the positions leave room for two-hex machines: every one has the hex behind it on the field, and no two footprints of either side (the defender's mirrored) share a hex (E04a T4a); an obstacle of the setup on a machine's place is a NoRoom setup error. Siege machines (Catapult, towers) are out of scope (E04)."
+summary  = "Each side may bring war machines (BattleSetup.war_machines; creatures with flag war_machine, at most one per kind; they may not stand in army slots): the Ballista (shooting kind), the Ammo Cart (ammo-supply kind) and the First Aid Tent (first-aid kind). They stand at fixed places (battle param war_machine_positions, each a machine's front hex, BAT-GEO-002: Ballista (1, 3), Ammo Cart (1, 1), First Aid Tent (1, 9) for the attacker, mirrored for the defender; a two-hex machine's position is the hex behind, in the side column), get stack ids after their side's army and slots 16 + kind. War machines never move (the compiler requires speed 0 for them, E04a T7a; also when their side commands them, BAT-WAR-006/007) and never attack in melee (CommandError::NoMelee), are not affected by morale (BAT-MOR-001) and do not count for the army's alignment (BAT-MOR-002), never retaliate (BAT-RET-001), and do not count as living stacks for the end of the battle (BAT-END-001). The compiler checks that the positions leave room for two-hex machines: every one has the hex behind it on the field, and no two footprints of either side (the defender's mirrored) share a hex (E04a T4a); an obstacle of the setup on a machine's place is a NoRoom setup error. In a siege the battle sets up the attacker's Catapult itself (BAT-SIE-009: slot 16 + 3, never listed in the setup); the towers come with E04c T7."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2280,7 +2280,6 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Resistance"
   retrieved  = "2026-10-03"
   confidence = "medium"
-
 
 [[rule]]
 id       = "BAT-MAG-009"
@@ -4012,7 +4011,7 @@ id       = "BAT-SIE-001"
 title    = "A battle at a town: its siege record and field"
 context  = "battle"
 status   = "implemented"
-summary  = "A battle may be fought at a town (BattleSetup.siege, ADR-0023): the town's faction, its fort level (none, Fort, Citadel, Castle), its moat (absent, harmless, damaging: decided by the game's version, the caller's), the structures, the Escape Tunnel, the town's morale and luck. The battle reads its faction's siege record of the ruleset's battle part (moat damage, the second moat row, land mines instead of a moat) and the siege's field of the battle parameters (each row's wall, moat and second moat hex, the gate's hex, the moat's defense penalty, the mines' power); a faction without a record, or a ruleset without the field, is a setup error (SetupError::UnknownSiege), as is a moat below a Citadel or a natural obstacle on the walls, the moat or the mines (SetupError::InvalidSiege). A siege with a Fort has no random obstacles (BAT-GEO-004). The town's facts and the walls, the gate and the moat are public: they join the observation. Scope (BAT-STUB-2): the walls' hit points, the Catapult and Earthquake (T6), the turrets (T7), the town's morale, luck, Escape Tunnel and spell limits (T8)."
+summary  = "A battle may be fought at a town (BattleSetup.siege, ADR-0023): the town's faction, its fort level (none, Fort, Citadel, Castle), its moat (absent, harmless, damaging: decided by the game's version, the caller's), the structures, the Escape Tunnel, the town's morale and luck. The battle reads its faction's siege record of the ruleset's battle part (moat damage, the second moat row, land mines instead of a moat) and the siege's field of the battle parameters (each row's wall, moat and second moat hex, the gate's hex, the moat's defense penalty, the mines' power); a faction without a record, or a ruleset without the field, is a setup error (SetupError::UnknownSiege), as is a moat below a Citadel or a natural obstacle on the walls, the moat or the mines (SetupError::InvalidSiege). A siege with a Fort has no random obstacles (BAT-GEO-004). The town's facts and the walls, the gate and the moat are public: they join the observation. The wall-shot targets, their hit points, the Catapult and Earthquake: BAT-SIE-009 to BAT-SIE-015 (E04c T6). Scope (BAT-STUB-2): the turrets (T7), the town's morale, luck, Escape Tunnel and spell limits (T8)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4032,7 +4031,7 @@ id       = "BAT-SIE-002"
 title    = "The walls block"
 context  = "battle"
 status   = "implemented"
-summary  = "A town with a Fort has walls: one wall hex per row (the original's 12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182), the gate's among them (BAT-SIE-003). No stack stands on, walks through or lands on a wall hex other than the gate's; the setup places no stack there. A hex left of its row's wall hex is outside the walls, the wall hex and the hexes right of it inside (BAT-SIE-008). Every wall stands for the whole battle until the Catapult and Earthquake can destroy parts (T6, BAT-STUB-2)."
+summary  = "A town with a Fort has walls: one wall hex per row (the original's 12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182), the gate's among them (BAT-SIE-003). No stack stands on, walks through or lands on a wall hex other than the gate's; the setup places no stack there. A hex left of its row's wall hex is outside the walls, the wall hex and the hexes right of it inside (BAT-SIE-008). A destroyed wall-shot target opens its wall hex (BAT-SIE-012: 29, 78, 130, 182, the gate's 96); the other wall hexes (12, 45, 62, 112, 147, 165) stand for the whole battle."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4052,7 +4051,7 @@ id       = "BAT-SIE-003"
 title    = "The gate"
 context  = "battle"
 status   = "verified"
-summary  = "A town with a Fort has a gate on the gate's hex (96), closed at the start; its drawbridge's hex is the moat hex before it (95), the outer bridge's the second moat row's hex on that row (94). While the gate is closed the gate's and the drawbridge's hexes block every stack (BAT-SIE-002), except a stack its controller commands for the defender when no living stack and no corpse lies on the drawbridge's or the outer bridge's hex (the outer bridge's tested in every town, as in the original). Such a stack that stands on the gate's, the drawbridge's or the outer bridge's hex (either hex of a two-hex stack; a walk's step, a flight's landing) while the gate is closed opens it (event GateOpened). After every walk, flight or teleporting move, at the end of every action and at every turn's end an open gate closes (event GateClosed) unless a living stack or a corpse lies on the gate's or the drawbridge's hex, or with a second moat row on the outer bridge's. While open neither hex blocks. Scope: a summoned elemental opening it, the Catapult and Earthquake destroying it (T6, T8)."
+summary  = "A town with a Fort has a gate on the gate's hex (96), closed at the start; its drawbridge's hex is the moat hex before it (95), the outer bridge's the second moat row's hex on that row (94). While the gate is closed the gate's and the drawbridge's hexes block every stack (BAT-SIE-002), except a stack its controller commands for the defender when no living stack and no corpse lies on the drawbridge's or the outer bridge's hex (the outer bridge's tested in every town, as in the original). Such a stack that stands on the gate's, the drawbridge's or the outer bridge's hex (either hex of a two-hex stack; a walk's step, a flight's landing) while the gate is closed opens it (event GateOpened). After every walk, flight or teleporting move, at the end of every action and at every turn's end an open gate closes (event GateClosed) unless a living stack or a corpse lies on the gate's or the drawbridge's hex, or with a second moat row on the outer bridge's. While open neither hex blocks. A destroyed gate stands open for both sides for the rest of the battle (BAT-SIE-012). Scope: a summoned elemental opening it (T8)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4228,5 +4227,232 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "observation"
   ref        = "experiments/results/E04c-batch-3c.md (SoD 4.0 Complete under Wine without HD, run by an agent on the capture harness in hot seat, both armies commanded, values read from memory, 2026-10-14): G (Castle, Fort): a Titan (40-60, attack 24) on 86 shooting Minotaur Kings (defense 15) on 100 behind the closed gate does 17 (a quarter: 14 to 21; half would be 29 to 43); shooting Trolls (defense 7) on 97 through the gate held open by a stack on 96 it does 46 (half, the distance only: 37 to 55; VCMI's quarter 18 to 27): D-8 as the code"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-SIE-009"
+title    = "The attacker's Catapult"
+context  = "battle"
+status   = "verified"
+summary  = "In a battle at a town with a Fort, Citadel or Castle the attacker led by a hero gets a Catapult, set up by the battle (the setup never lists one: SetupError::InvalidWarMachine): the ruleset's first creature with the flags war_machine and catapult (the original's creature 145: two hexes, a shooter, 1 000 hit points, speed 0), one creature in slot 16 + 3, on the siege field's catapult hex (119, its other hex 120). No hero test of a Catapult artifact (every hero carries one). It is a war machine (BAT-WAR-001): it never moves, attacks or shoots at stacks; it acts only by shooting the walls (BAT-SIE-011). Without a hero, without a fort, or with no such creature in the ruleset there is none."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.29): 0x463600 sets up creature 145 at position 119 for an attacker with a hero in a battle with a fort level above 0, without testing the hero's artifact; the cursor sends it to the wall test only (0x4766B2); CRTRAITS.TXT row 145"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Catapult - Heroes 3 wiki: every hero has a Catapult, which cannot be sold; it appears only when attacking a town with a fort"
+  url        = "https://heroes.thelazy.net/index.php/Catapult"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleProcessor.cpp (1.7.5): the attacker's catapult stack in a siege with a fort (CGTownInstance fortLevel > NONE), placed on hex 120 (its head; 119 behind)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleProcessor.cpp"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3d.md (SoD 4.0 Complete under Wine without HD, run by an agent on the capture harness in hot seat, values read from memory, 2026-10-14): in A, B and E the attacker's hero got the Catapult (creature 145) at position 119, after its army"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-SIE-010"
+title    = "The wall-shot targets and their hit points"
+context  = "battle"
+status   = "verified"
+summary  = "A town with a fort has the siege field's wall-shot targets (the original's eight, in index order: 0 the upper tower, 1 the upper wall (wall hex 29), 2 the mid-upper wall (78), 3 the gate (96), 4 the mid-lower wall (130), 5 the lower wall (182), 6 the lower tower, 7 the keep), each of a kind (keep, tower, gate, wall) that picks its column of the Ballistics record (BAT-SIE-014). The fort level sets them up: the walls and the gate from a Fort, the keep from a Citadel, the towers with a Castle. Each starts with its town record's hit points (every town of the original: 2 each, WALLS.TXT), a Castle's walls (the four of kind wall) the siege field's castle bonus more (+1); the targets the fort level does not set up keep their hit points too (Earthquake draws them, BAT-SIE-015, BAT-QUIRK-22). A target stands while it is set up and has hit points left; a hit takes its damage from them, at least 0, and at 0 it is destroyed (BAT-SIE-012). The targets' hit points and the gate's destruction are public (the observation)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.28, §7.29): the targets' records 0x63BE60 (aim hex, wall-hex index, part); the hit points +0x13F60 from WALLS.TXT at the siege's start, +1 to the four walls with a Castle (0x466348); 0x476440 tests a target standing: the towers only with a Castle, the keep from a Citadel, hit points above 0; 0x465990 subtracts a hit's damage, at least 0"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "WALLS.TXT (SoD 4.0 Complete, harvested into the battle packs' siege records): 2 hit points for each of the eight parts in every town"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/BattleInfo.cpp (1.7.5): the wall parts' states and hit points from walls.json by fort level (towers with a Castle, keep from a Citadel); EWallPart KEEP, BOTTOM_TOWER, BOTTOM_WALL, BELOW_GATE, OVER_GATE, UPPER_WALL, UPPER_TOWER, GATE"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3d.md (as BAT-SIE-009's): at the start every one of the eight targets' parts held 2 hit points (a Citadel in A and E, a Fort in B), the absent towers' too; a part never went below 0"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-SIE-011"
+title    = "The Catapult's turn"
+context  = "battle"
+status   = "verified"
+summary  = "The Catapult acts in the round's order before every other stack of its phase (the turrets join in T7). With no standing target its turn passes (it defends). Its side's hero commands it with a Ballistics level (BattleHero.war_machines.catapult, HER-BAT-018): the side then shoots the walls with Command::ShootWall at any standing target (the only legal command besides the side's hero's), with that level's Ballistics record (BAT-SIE-014). Without the command the battle aims for it, with no Ballistics (the record of level 0): at the weakest standing wall of the siege field's automatic list (1, 2, 4, 5: the fewest hit points; a tie drawn with random(1, n) among the tied in that order), else at the first standing target of the fallback list (3 the gate, 7 the keep, 0 and 6 the towers), else at the first standing target by index; then it shoots as BAT-SIE-014 (D-13, the code: BAT-Q43). Its shots use no ammunition. The automatic aim with Ballistics that the original's computer player and hidden battles use (the gate first) is the agent's choice here."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.29): the Catapult's turn 0x473C00 (action 12 with no standing target; 0x474BF0 decides whether the player aims; the automatic aim: the weakest standing wall of 0x63D54C, ties with random(1, n), else the first standing of 0x670198, else the first standing target); the pick 0x464F50 takes it after the arrow towers and before every other stack"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Ballistics - Heroes 3 wiki: with Basic Ballistics the hero controls the Catapult; Advanced gives two shots"
+  url        = "https://heroes.thelazy.net/index.php/Ballistics"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3c.md (SoD 4.0 Complete, run by an agent on the capture harness, 2026-10-14): at every round's start the keep shot first, then the Catapult without Ballistics on its own, one shot each round; its six shots hit walls only (the weakest-wall aim allows it)"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3d.md (as BAT-SIE-009's): A, without Ballistics: one shot a round, every landing the weakest standing wall or its miss list's nearest, the gate only after the four walls fell (round 7), the keep after the gate (rounds 8, 9), then the turns passed (D-13 as the code); B, Advanced Ballistics: the game waited for the agent's aim, two shots a turn"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-SIE-012"
+title    = "A destroyed wall and a destroyed gate"
+context  = "battle"
+status   = "verified"
+summary  = "A wall-shot target at 0 hit points is destroyed (event WallDestroyed). A destroyed wall opens its wall hex (29, 78, 130 or 182; D-11: the mid-upper wall's is 78, its aim hex 62 stays a wall, as in the code and VCMI): stacks stand on, walk through and land on it, and the shot's line passes it (BAT-SIE-008). A destroyed gate stands open for both sides for the rest of the battle: its and the drawbridge's hexes block no stack, the bridges are no moat hexes (BAT-SIE-004), the line passes the gate's hex, and it never closes or opens again (no GateOpened, GateClosed). A destroyed tower or keep has no further effect until the turrets come (T7)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.29): 0x465990 at 0 hit points clears a wall's blocked bit on its wall hex (the target record's index into 0x63BD00: 78 for target 2) and sets the gate's state +0x53A4 to 0 (not 3: 95 and 96 never block, 95 is no moat hex, the line test passes 96, 0x467130 and 0x4672E0 neither open nor close it)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp (1.7.5): wall hexes by part (29 UPPER_WALL, 78 OVER_GATE, 130 BELOW_GATE, 182 BOTTOM_WALL, 96 GATE); a destroyed part's hex is passable; EGateState DESTROYED lets both sides pass"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Siege - Heroes 3 wiki: the Catapult destroys walls and the gate, opening a way into the town"
+  url        = "https://heroes.thelazy.net/index.php/Siege"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3d.md (as BAT-SIE-009's): A, the mid-upper wall destroyed: a walk onto 62 refused, onto 78 done (D-11); the gate destroyed: its state 0 to the end, a defender's walk over 96 and 95 to 94 without a stop or the moat's damage"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-SIE-013"
+title    = "A creature's wall shots (the Cyclops)"
+context  = "battle"
+status   = "implemented"
+summary  = "A creature with the wall_shots ability (pack format v39: the Cyclops level 1, the Cyclops King level 2; the compiler requires the flag catapult with it) that its controller commands for the attacker in a siege with a standing target may shoot the walls as its action (Command::ShootWall at a standing target), with that Ballistics level's record (BAT-SIE-014), whether it has shots left or stands next to an enemy or not, and without using a shot. The turn ends as after a shot, good morale included."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.29): 0x445D30 takes the Ballistics record of level 1 for creature 94, 2 for 95; the cursor offers the wall shot (0x47684B) on a standing target's empty aim hex to a creature with the catapult flag when the battle has a fort and the acting side is the attacker (+0x132C0 0), whether it could shoot or not; the action 9 then sets the acted bit and rolls good morale (0x479AE9, 0x464920)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/creatures/stronghold.json (1.7.5): the Cyclops' and Cyclops King's CATAPULT bonus; config/spells/vcmiAbility.json cyclopsShot (the King one extra shot)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/vcmiAbility.json"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Cyclops - Heroes 3 wiki: can attack siege walls (as Basic Ballistics; the Cyclops King as Advanced)"
+  url        = "https://heroes.thelazy.net/index.php/Cyclops"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-SIE-014"
+title    = "A wall shot"
+context  = "battle"
+status   = "verified"
+summary  = "A wall shot at an aimed target fires the Ballistics record's shots (the siege field's table by level: none 1 shot, Basic 1, Advanced 2, Expert 2). Each shot: first the damage, random(1, 100) less the record's chance of 0 at most 0 gives 0, less the chance of 1 at most 0 gives 1, else 2 (none 10/60/30 %, Basic and Advanced 0/50/50 %, Expert 0/0/100 %); then the hit, random(1, 100) above the record's chance for the aimed target's kind (keep, tower, gate, wall: none 5/10/25/50 %, Basic and Advanced 7/15/30/60 %, Expert 10/20/40/75 %, D-6) misses, and the shot lands on the nearest other standing wall of the siege field's miss list (1, 2, 5, 4) by the difference of the target indices, a tie decided by random(1, 100) at most 50 for the first (D-12, the code: BAT-Q43), or on the aimed target if no other wall stands. The target landed on takes the damage (BAT-SIE-010; event WallShot with the aimed and the hit target and the damage). After a shot with shots left, a fallen aim moves to the nearest standing target of all eight (ties as above); with none the action ends."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.29): 0x445D30 and 0x445EC0 (the damage roll before the hit roll, the switch 0x445EFF on the target's kind, the miss list 0x63B840, the re-aim list 0x63B820); BALLIST.TXT loaded at [0x679C84]"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "BALLIST.TXT (SoD 4.0 Complete, harvested into the battle packs' siege field): hit chances keep/tower/gate/wall none 5/10/25/50, Basic and Advanced 7/15/30/60, Expert 10/20/40/75; shots 1, 1, 2, 2; damage chances 0/1/2: 10/60/30, 0/50/50, 0/50/50, 0/0/100"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/spells/effects/Catapult.cpp (1.7.5): the hit chance by part kind from ballistics.json and the damage roll; a miss lands on a random standing wall, the gate only without walls (D-12: the engine follows the code)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/effects/Catapult.cpp"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Ballistics - Heroes 3 wiki: Expert 'always hits the intended target' (likely HotA's; the table and the code give 75 % on a wall: D-6, BAT-Q40)"
+  url        = "https://heroes.thelazy.net/index.php/Ballistics"
+  retrieved  = "2026-10-13"
+  confidence = "low"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3d.md (as BAT-SIE-009's): B, Advanced Ballistics: misses landed on the nearest other standing wall (aimed at 5, on 4; at 4, on 2), a second shot after its aim fell went to the nearest standing target (1 to 2, 5 to 4, 3 to 4); A's landings all among the code's (D-12 as the code)"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-SIE-015"
+title    = "Earthquake"
+context  = "battle"
+status   = "verified"
+summary  = "A spell with the earthquake effect (pack format v39) may be cast by either side's hero in a battle at a town with a fort (D-15, the code: BAT-Q43; elsewhere CastError), without a target, whatever stands. Its hits are the spell's effect value for the caster's mastery (Earthquake 2, 2, 3, 4), no power. For each hit: n = the targets whose hit points exceed the hits already drawn on them (none ends the draw); random(1, n) picks the n-th target, in index order, whose hit points are above 0, so a target already doomed can be drawn again and the last in the order can be spared (D-14, the code). The targets the fort level did not set up are drawn too (they soak hits; BAT-QUIRK-22). Then each drawn target takes its hits as damage, 1 each (BAT-SIE-010; event WallQuaked); a destroyed absent turret harms no stack (BAT-QUIRK-22)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.29): Earthquake 0x5A7C80 (the draw, then 0x465990 for each drawn target with its hits), cast from 0x5A0980 with the mastery; the book allows it only with a fort level above 0 (0x59ED29), for either side; SPTRAITS.TXT row 14 effect 2, 2, 3, 4"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Earthquake - Heroes 3 wiki: one point of damage to two (Basic), three (Advanced), four (Expert) random walls or arrow towers; only in a siege of a town with at least a Fort; the bug that disables the first defending stack (fixed in HotA)"
+  url        = "https://heroes.thelazy.net/index.php/Earthquake"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/other.json (1.7.5) earthquake: core:catapult with targetsToAttack 2, 2, 3, 4; lib/spells/effects/Catapult.cpp applyMassive: uniform among the parts standing at the cast, 1 damage each; the defender cannot target it (D-14, D-15: the engine follows the code)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/other.json"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3d.md (as BAT-SIE-009's): E, Expert Earthquake by the attacker and the defender (D-15): four hits each, the absent towers drawn too, a part already doomed drawn again (three hit points for four hits, D-14), and the absent towers' destruction marked the defender's first stack dead (S-08, the original's bug; the engine harms no stack, BAT-QUIRK-22)"
   retrieved  = "2026-10-14"
   confidence = "high"

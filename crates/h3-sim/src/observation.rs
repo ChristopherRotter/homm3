@@ -1,4 +1,4 @@
-//! Flat observation encoding (version 16) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 17) of a per-viewer [`Observation`].
 //!
 //! Layout, in this order: [`GLOBALS`] global features; the public part of the two heroes,
 //! [`HERO_PUBLIC_FEATURES`] each (the viewer's, then the opponent's); the private part of the
@@ -25,13 +25,16 @@
 //! as handle + 1 (0 none yet), the opponent's, a spectator's observation, the special
 //! battlefield's handle + 1 (0 none), the battle is at an anti-magic garrison, the town the
 //! battle is fought at as its faction's handle + 1 (0: not at a town), its fort level (0 none, 1
-//! Fort, 2 Citadel, 3 Castle), its moat (0 absent, 1 harmless, 2 damaging), the gate is open]`
-//! (BAT-TAC-001, BAT-FLE-001, BAT-FLE-002, BAT-MAG-049, BAT-MAG-053, BAT-MAG-039, BAT-TER-002,
-//! BAT-MAG-061, BAT-SIE-001, BAT-SIE-003).
+//! Fort, 2 Citadel, 3 Castle), its moat (0 absent, 1 harmless, 2 damaging), the gate is open
+//! (or destroyed), the gate is destroyed, then the hit points of each of the
+//! [`MAX_WALL_TARGETS`] wall-shot targets (0: destroyed, not one; −1: not set up by the fort
+//! level)]` (BAT-TAC-001, BAT-FLE-001, BAT-FLE-002, BAT-MAG-049, BAT-MAG-053, BAT-MAG-039,
+//! BAT-TER-002, BAT-MAG-061, BAT-SIE-001, BAT-SIE-003, BAT-SIE-010, BAT-SIE-012).
 //! Public hero part, zeros for a side without a hero (which gets no lucky strikes in profiles
 //! with quirk Q-0003): `[led by a hero, hero type handle, attack, defense, power, knowledge,
 //! mana, max mana, commands its Ballista, commands its First Aid Tent, casts this round,
-//! carries a spell book, the change of its spell costs from the armies]` (BAT-MAG-054).
+//! carries a spell book, the change of its spell costs from the armies, commands its Catapult]`
+//! (BAT-MAG-054, BAT-SIE-011).
 //! Private part of the viewer's hero (ADR-0013 point 9, ADR-0014 point 8, BAT-Q26), zeros
 //! without one: [`OWN_HERO_VALUES`] values `[Tactics level, ranged bonus bp, melee bonus bp,
 //! damage reduction bp, the commanded Ballista's shots per turn, its double-damage chance bp,
@@ -40,8 +43,9 @@
 //! school bp (by school handle), its stacks' magic resistance bp, rounds added to its timed
 //! spells, it forbids every cast, the highest spell level it allows + 1 (0: no limit), the
 //! highest spell level its stacks are immune to (0: none), its stacks are immune to mind spells,
-//! it negates immunities, its opening spells are still due, its Eagle Eye's chance in percent]`
-//! (BAT-MAG-004, BAT-MAG-008, HER-BAT-014, BAT-MAG-061 to BAT-MAG-066, BAT-MAG-068, BAT-MAG-069),
+//! it negates immunities, its opening spells are still due, its Eagle Eye's chance in percent,
+//! the commanded Catapult's Ballistics level (0: none)]` (BAT-MAG-004, BAT-MAG-008, HER-BAT-014,
+//! BAT-MAG-061 to BAT-MAG-066, BAT-MAG-068, BAT-MAG-069, BAT-SIE-011),
 //! [`MAX_SPELL_BONUSES`] spell bonuses `[spell handle + 1, damage bp, growth per level bp, the
 //! level]`, [`MAX_OPENING_SPELLS`] opening spells `[spell handle + 1, mastery, power]`; then
 //! four vectors of one feature per spell handle below [`MAX_SPELLS`]: in its spell book, its
@@ -53,9 +57,9 @@
 //! (BAT-MAG-031; a side has at most one on a hex) `[Force Field, Fire Wall, Quicksand, Land
 //! Mine]` as the rounds left (−1: for the rest of the battle; 0: none) and their value (Fire
 //! Wall's or a mine's damage value, BAT-MAG-028, BAT-MAG-033), then the viewer's spell obstacle
-//! here is seen by the opponent; then the town's `[wall hex (the gate's included), moat hex now
-//! (the bridges only while the gate is closed)]` (BAT-SIE-002, BAT-SIE-004; the town's mines are
-//! the defender's Land Mines above, BAT-SIE-007).
+//! here is seen by the opponent; then the town's `[standing wall hex (the gate's included until
+//! it is destroyed), moat hex now (the bridges only while the gate is closed)]` (BAT-SIE-002,
+//! BAT-SIE-004, BAT-SIE-012; the town's mines are the defender's Land Mines above, BAT-SIE-007).
 //! Per stack: `[present, alive, own, creature handle, count, top_hp, max_hp, attack, defense,
 //! damage_min, damage_max, speed, x, y (its position: a two-hex stack's rear hex), acted,
 //! waited, retaliated, defending, active, morale, luck, shots, retaliations left (255 =
@@ -100,26 +104,28 @@
 //! mastery. v14: a two-hex stack's `x`, `y` are its rear hex, its position as in the original
 //! (BAT-GEO-002), no longer its front hex. v15 (E04c T2b): the special battlefield and the
 //! anti-magic garrison as the last two globals. v16 (E04c T5): the town's four globals and its
-//! two planes.
+//! two planes. v17 (E04c T6): the gate's destruction and the wall-shot targets' hit points as
+//! globals, the heroes' command of their Catapults, the own hero's Ballistics level; the wall
+//! plane shows the standing walls.
 
 use h3_battle::{
     DamageRoll, HeroView, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Observation, OwnHeroView,
     STACK_CAPACITY, SpellObstacle, StackFlags, StackTraits, Status,
 };
 use h3_content::{MAX_SPELL_SCHOOLS, MAX_SPELLS};
-use h3_content_battle::{MAX_FIELD_HEXES, ObstacleKind};
+use h3_content_battle::{MAX_FIELD_HEXES, MAX_WALL_TARGETS, ObstacleKind};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 16;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 17;
 
 /// Global features.
-pub const GLOBALS: usize = 26;
+pub const GLOBALS: usize = 27 + MAX_WALL_TARGETS;
 /// The public features of a hero.
-pub const HERO_PUBLIC_FEATURES: usize = 13;
+pub const HERO_PUBLIC_FEATURES: usize = 14;
 /// The values of the viewer's hero's private part before its spell bonuses.
-const OWN_HERO_SCALARS: usize = 11 + MAX_SPELL_SCHOOLS + 9;
+const OWN_HERO_SCALARS: usize = 11 + MAX_SPELL_SCHOOLS + 10;
 /// The values of the viewer's hero's private part before its per-spell vectors.
 pub const OWN_HERO_VALUES: usize =
     OWN_HERO_SCALARS + 4 * MAX_SPELL_BONUSES + 3 * MAX_OPENING_SPELLS;
@@ -203,6 +209,7 @@ fn encode_hero(view: Option<HeroView>, cost_change: i8, out: &mut [f32]) {
             f32::from(h.casts),
             flag(h.spell_book),
             f32::from(cost_change),
+            flag(h.commands_catapult),
         ]);
     }
 }
@@ -238,6 +245,7 @@ fn encode_own_hero(h: &OwnHeroView, out: &mut [f32]) {
         flag(h.negates),
         flag(h.opening_due),
         f32::from(h.eagle_chance),
+        h.catapult.map_or(0.0, |c| f32::from(c.level)),
     ]);
     scalars.fill_with(|| values.next().unwrap_or_default());
     let (bonuses, rest) = rest.split_at_mut(4 * MAX_SPELL_BONUSES);
@@ -339,7 +347,8 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
     let last = obs
         .last_side_acted
         .map_or(0.0, |s| if s == obs.viewer { 1.0 } else { 2.0 });
-    out[..GLOBALS].copy_from_slice(&[
+    let (globals, walls) = out[..GLOBALS].split_at_mut(GLOBALS - MAX_WALL_TARGETS);
+    globals.copy_from_slice(&[
         f32::from(obs.round),
         flag(obs.viewer == BattleSide::Attacker),
         flag(to_act == Some(obs.viewer)),
@@ -366,7 +375,16 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
         obs.siege.map_or(0.0, |s| f32::from(s.fort as u8)),
         obs.siege.map_or(0.0, |s| f32::from(s.moat_kind as u8)),
         flag(obs.siege.is_some_and(|s| s.gate_open)),
+        flag(obs.siege.is_some_and(|s| s.gate_destroyed())),
     ]);
+    // rule: BAT-SIE-010
+    for (t, v) in (0u8..).zip(walls.iter_mut()) {
+        *v = obs.siege.map_or(0.0, |s| match (s.present(t), s.kind(t)) {
+            (true, _) => f32::from(s.parts[usize::from(t)]),
+            (false, Some(_)) => -1.0,
+            (false, None) => 0.0,
+        });
+    }
     let (viewer, opponent) = out[HEROES..OWN_HERO].split_at_mut(HERO_PUBLIC_FEATURES);
     encode_hero(obs.heroes[own], obs.cost_change[own], viewer);
     encode_hero(obs.heroes[other], obs.cost_change[other], opponent);
@@ -521,7 +539,8 @@ mod tests {
             out[..GLOBALS],
             [
                 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 255.0, 255.0, 0.0, 0.0,
-                meadow, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+                meadow, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0
             ]
         );
         assert!(out[HEROES..FIELD].iter().all(|v| *v == 0.0));
@@ -581,7 +600,7 @@ mod tests {
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
         assert_eq!(
             OBSERVATION_LEN,
-            26 + 2 * 13 + (64 + 4 * 128) + 16 * 255 + (47 + 27 + 3 * 8) * 42
+            35 + 2 * 14 + (65 + 4 * 128) + 16 * 255 + (47 + 27 + 3 * 8) * 42
         );
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).
@@ -627,6 +646,7 @@ mod tests {
             0.0,
             1.0,
             -2.0,
+            0.0,
         ];
         let corwin = [
             1.0,
@@ -641,6 +661,7 @@ mod tests {
             0.0,
             0.0,
             1.0,
+            0.0,
             0.0,
         ];
         // The books by spell handle (spark, cinders, arc, blight, ward, farsight, glare, hasten,
@@ -745,7 +766,8 @@ mod tests {
                 Attacker,
                 [
                     0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0, 0.0,
-                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0,
                 ],
                 brea,
                 corwin,
@@ -758,7 +780,8 @@ mod tests {
                 Defender,
                 [
                     0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0, 0.0,
-                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0,
                 ],
                 corwin,
                 brea,
@@ -862,7 +885,14 @@ mod tests {
         let mut out = vec![0.0; OBSERVATION_LEN];
         encode(&obs, 17, &mut out).unwrap();
         let vale = f32::from(r.faction_by_key("synthetic:vale").unwrap().raw()) + 1.0;
-        assert_eq!(out[GLOBALS - 4..GLOBALS], [vale, 2.0, 2.0, 0.0]);
+        let globals = GLOBALS - MAX_WALL_TARGETS - 5;
+        assert_eq!(out[globals..globals + 5], [vale, 2.0, 2.0, 0.0, 0.0]);
+        // The wall-shot targets' hit points: a Citadel sets up the keep, not the towers
+        // (BAT-SIE-010).
+        assert_eq!(
+            out[GLOBALS - MAX_WALL_TARGETS..GLOBALS],
+            [-1.0, 2.0, 2.0, 2.0, 2.0, 2.0, -1.0, 2.0]
+        );
         let on = |out: &[f32], p: usize| -> Vec<usize> {
             let plane = &out[FIELD + p * MAX_FIELD_HEXES..FIELD + (p + 1) * MAX_FIELD_HEXES];
             (0..MAX_FIELD_HEXES).filter(|&h| plane[h] == 1.0).collect()
@@ -879,7 +909,7 @@ mod tests {
         town.gate_open = true;
         obs.siege = Some(town);
         encode(&obs, 17, &mut out).unwrap();
-        assert_eq!(out[GLOBALS - 1], 1.0);
+        assert_eq!(out[globals + 3..globals + 5], [1.0, 0.0]);
         let moat = on(&out, SIEGE_PLANES + 1);
         assert_eq!(moat.len(), 20);
         assert!(!moat.contains(&94) && !moat.contains(&95));
@@ -1107,7 +1137,7 @@ mod tests {
         assert_eq!(own(&out)[10..15], [500.0, 0.0, 0.0, 0.0, 700.0]);
         assert_eq!(
             own(&out)[15..OWN_HERO_SCALARS],
-            [2000.0, 0.0, 1.0, 3.0, 3.0, 1.0, 1.0, 1.0, 40.0]
+            [2000.0, 0.0, 1.0, 3.0, 3.0, 1.0, 1.0, 1.0, 40.0, 0.0]
         );
         let bonus = OWN_HERO_SCALARS;
         assert_eq!(

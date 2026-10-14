@@ -444,6 +444,16 @@ fn other_spell(
     t: &crate::gapfill::SpellOther,
     spells: &BTreeMap<String, (String, &'static str)>,
 ) -> Result<(), String> {
+    // Earthquake (E04c T6, pack format v39): cast at once, no target, its only effect.
+    if t.effects.iter().any(|e| e == "earthquake") {
+        if flags & (SPELL_SINGLE | SPELL_AREA | SPELL_OBSTACLE) != 0 || t.effects.len() != 1 {
+            return Err(format!(
+                "{what}: an earthquake has no target (flag word {flags:#x}) and no other effect"
+            ));
+        }
+        let _ = writeln!(text, "effects = [{{ kind = \"earthquake\" }}]");
+        return Ok(());
+    }
     stack_spell(text, what, (flags, polarity), t.side.as_deref())?;
     if !t.requires.is_empty() {
         let names: Vec<String> = t.requires.iter().map(|f| quote(f)).collect();
