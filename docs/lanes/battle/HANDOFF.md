@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 4 built** (T6, BAT-Q43): seam **#191** and the battle PR (`battle/e04c-t6`, stacked, `cross-lane`) open, both with `master` merged; full verify green (2026-10-14). Next: the user's checkpoint, then T7.
+- **E04c increment 4 confirmed** by the user (2026-10-14): **#191**, then **#199** (`cross-lane`) to merge; full verify green. Next: T7 on `battle/e04c-t7` (on #199): reading started (`QUEUE.md` inbox), then BAT-Q44.
 - **Merged:** up to #190.
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-2 (T7, T8), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
 - **Versions** (T6): battle state hash v47, battle part hash v4, replay format v27, action encoding v13, C ABI v21, observation encoding v17; shared: core ruleset hash v43, pack format v39, protocol v31. Next ids: BAT-Q44, BAT-QUIRK-23, BAT-STUB-3, BAT-TER-007, BAT-SIE-016; survey D-16, S-30.

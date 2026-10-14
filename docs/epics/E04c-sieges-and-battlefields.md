@@ -1,7 +1,7 @@
 # E04c — Sieges and special battlefields
 
 Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2 closed: T3 (#179), T4 (#180), BAT-Q39 and BAT-Q40 answered; increment 3, T5: the seam ADR-0023 (#183), towns on the experiment maps (#184), the reading (BAT-Q41, BAT-Q42), the battle's walls, gate and moat (#187), the siege batch 3c run by
-an agent (T5e): increment 3 done (#190); increment 4, T6, refined 2026-10-14 (BAT-Q43), built: the seam #191, the battle and the batch 3d on `battle/e04c-t6`, at its checkpoint) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
+an agent (T5e): increment 3 done (#190); increment 4, T6, refined 2026-10-14 (BAT-Q43), built and confirmed 2026-10-14: the seam #191, the battle and the batch 3d, #199) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
 
@@ -81,7 +81,8 @@ checkpoint; BAT-Q43 at its start).
   [`E04c-log.md`](E04c-log.md)): T6a the seam (#191), T6b the reading (§7.29), T6c the battle,
   T6d the batch 3d by an agent: every rule as the code, D-11 to D-15 and S-08 observed;
   BAT-SIE-009 to 015 (013 `implemented`, the rest `verified`), HER-BAT-018, BAT-QUIRK-22;
-  master merged (T6's pack format v39), the full verify green, the `cross-lane` pull request.
+  master merged (T6's pack format v39), the full verify green, the `cross-lane` pull request
+  (#199); confirmed by the user 2026-10-14.
 - [ ] T7 Arrow towers (S-06, S-07; Artillery's control).
 - [ ] T8 The siege's other rules (no retreat or surrender for the besieged, the spell cost's town
   armies, Teleport's and the summon's siege limits, the outcome: walls, capture).
