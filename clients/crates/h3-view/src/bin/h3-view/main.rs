@@ -1,7 +1,8 @@
-//! `h3-view`: the client's command line (E17). An adapter: it reads files, measures time and
-//! prints; what it computes comes from the pure crates.
+//! `h3-view`: the client's command line (E17). An adapter: it reads files, measures time, prints
+//! and opens the window (through `h3-sdl`); what it computes comes from the pure crates.
 
 mod assets;
+mod battle;
 mod bot;
 mod gate;
 mod harvest;
@@ -12,6 +13,7 @@ mod scenario;
 mod sequences;
 mod situation;
 mod sprite;
+mod window;
 
 use std::process::ExitCode;
 
@@ -55,6 +57,17 @@ commands:
           (h3_view::anim) and every distinct frame is drawn (from --from to --to ms). Writes the
           record and each frame's moment (frames.txt) to <out> (default
           clients/out/play/<stem>[-s<seed>]); --png also writes each frame as f<ms>.png there.
+  window <scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
+         [--install <dir>] [--scale <n>] [--vsync] [--drawn-cursor] [--fullscreen] [--from <ms>]
+         [--check <s> | --measure <s>]
+          a battle in a window (SDL 3, h3-sdl), as `play` loads it, at the original's frame
+          times from --from ms: each frame is shown when it falls due, at the largest integer
+          scale that fits the display (--scale), vsync off unless --vsync, the game's cursor as
+          the hardware cursor (--drawn-cursor: drawn into the frame); past the end the battle
+          idles. Keys: Space pause, Right a frame while paused, R restart, F fullscreen, V
+          vsync, C the cursor's kind, Esc quit. --measure runs <s> seconds unattended and prints
+          how late each frame showed; --check also reads every frame back and compares it with
+          the frame drawn headless (exit 1 on a difference).
   situation <scenario.toml> [--packs <dir>] [--install <dir>] [--out <file.h3m>]
           writes the original's map for a scenario's battle, for the capture harness
           (clients/capture/README.md): Red's hero (human) just west of Blue's (computer) on the
@@ -111,6 +124,10 @@ fn main() -> ExitCode {
             },
             "sprite" => match sprite::Options::parse(rest) {
                 Ok(options) => sprite::run(&options),
+                Err(message) => usage_error(&message),
+            },
+            "window" => match window::Options::parse(rest) {
+                Ok(options) => window::run(&options),
                 Err(message) => usage_error(&message),
             },
             other => usage_error(&format!("unknown command `{other}`")),
