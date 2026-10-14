@@ -690,7 +690,8 @@ def run_frames(rest):
                                            for i, g, h, m in poses}
         shutil.rmtree(here / "diff", ignore_errors=True)
         (here / "diff").mkdir()
-        lines, differing = [], 0
+        # Each line `<ms> <differing> <redraw artifacts among them>` (M3 T1c, h3cap.redraws).
+        lines, differing, only_redraws, earlier = [], 0, 0, []
         for k in kept:
             stem = Path(k["frame"]).stem
             cap = np.load(here / "frames" / k["frame"])["screen"]
@@ -698,11 +699,15 @@ def run_frames(rest):
             masked = h3cap.mask(["panel", "heroes"], shape=cap.shape)
             for x0, y0, x1, y1 in h3cap.boxes_at(observation, drawn[k["t"]]):
                 masked[max(y0, 0):max(y1, 0), max(x0, 0):max(x1, 0)] = True
-            n, _ = h3cap.compare(cap, ours, masked)
+            differ = (cap != ours) & ~masked
+            redrawn = h3cap.redraws(cap, ours, differ, earlier)
+            n, a = int(differ.sum()), int(redrawn.sum())
             if n:
-                h3cap.compare(cap, ours, masked, here / "diff" / f"{stem}.png")
+                h3cap.compare(cap, ours, masked, here / "diff" / f"{stem}.png", redrawn)
                 differing += 1
-            lines.append(f"{k['t']} {n}")
+                only_redraws += a == n
+            lines.append(f"{k['t']} {n} {a}")
+            earlier.append(ours)
         got = "\n".join(lines) + "\n"
         (here / "frames.txt").write_text(got)
         recorded = set_path.parent / e.get("frames", f"timelines/{e['id']}-frames.txt")
@@ -711,8 +716,8 @@ def run_frames(rest):
         else:
             verdict = "ok" if got == recorded.read_text() else "CHANGED"
         failed += verdict != "ok"
-        print(f"{e['id']}: {len(kept)} frames, {differing} differ outside the masks {verdict}",
-              flush=True)
+        print(f"{e['id']}: {len(kept)} frames, {differing} differ outside the masks, "
+              f"{only_redraws} of them by redraw artifacts only {verdict}", flush=True)
     print(f"frames: {len(entries)} sequences, {failed} not as recorded; under {out}")
     return 1 if failed else 0
 

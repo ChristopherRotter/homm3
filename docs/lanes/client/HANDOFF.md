@@ -5,7 +5,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **E17 M0–M2 done; M3 T1a done (2026-10-14); next: M3 T1c, the frame check classifies redraw artifacts** (`QUEUE.md`; design §7.11). Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020, ADR-0024. Built: decoders (images, sounds), the real-asset gate, compositor, asset tables, `h3-view render`/`sequences`/`situation`/`play`/`window`, `h3_view::anim`, the platform adapter `h3-sdl`, the capture harness (`clients/capture/README.md`); readings and evaluations in design §3–§8. Records: `docs/epics/E17-log.md`.
-- **Pull requests (2026-10-14):** M3 T1a #212 open.
+- **Pull requests (2026-10-14):** #212 (M3 T1a) merged.
 - **The user's requirements (2026-10-13)**, epic "Decisions": a string catalogue, language packs; graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
@@ -50,6 +50,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+- **2026-10-14, E17 M3 T1c (the user present; in progress).** Branch `client/e17-m3-t1c-artifacts`. T1a's saved frames were lost with its sandbox: the six sequences are captured again (`frames`). Done: `h3cap.redraws` and the frame check's `<ms> <differing> <artifacts>`. Next: the capture, the older-frame rule checked against it, the six frame files re-recorded, docs, the PR.
 - **2026-10-14, E17 M3 T1a (the user present).** A battle in progress in hot seat; `climb`, `behind` recorded (timelines as recorded, frames 43/43, 164/194); the walk-by read: dirty rectangles, not copied (the user), T1c classifies.
 - **2026-10-14, E17 M2 T5c (the user present).** M2 closed: the reviewer's findings (10 fixed), the review list accepted, M3 refined.
 - **2026-10-14, E17 M2 T5b (the user present).** The sound: decoder, the reading, cues, the window's audio; shared #202. Design §8.2.
