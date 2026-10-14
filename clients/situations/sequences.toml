@@ -12,7 +12,8 @@
 # stacks by slot, then the defender's; a two-hex stack's position is its rear hex);
 # `h3-view sequences` plays them and checks the viewer's timeline against the recorded one.
 # `frames` (E17 M2 T4b-1, design §7.9): the frame check's recorded counts, `<ms> <differing
-# pixels>` for every distinct battlefield the original showed (`h3drive.py frames`).
+# pixels> <redraw artifacts among them>` for every distinct battlefield the original showed
+# (`h3drive.py frames`; the artifacts since M3 T1c, design §7.11).
 
 [[sequence]]
 id = "walk"
