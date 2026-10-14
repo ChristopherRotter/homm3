@@ -3,7 +3,8 @@
 //! hero has from them in every context (its available spells and their masteries, E04b T8a), and
 //! the pure translations to what a battle needs, and the typed changes the game applies to its
 //! store of heroes (E08 T19a2a: a battle's outcome; T19a2b: a hero's Necromancy, the spell level
-//! it may learn and the Eagle Eye picks it learns). No commands and no map or battle state:
+//! it may learn and the Eagle Eye picks it learns), and what the adventure map reads of a hero
+//! (E08 T20a1: its Attack and Defense, its join bonus). No commands and no map or battle state:
 //! equipping, learning and levelling up arrive with the adventure and game epics (E08–E10); the
 //! battle never depends on this crate and reads only the battle hero of the seam
 //! (`h3_contracts::BattleHero`).
@@ -38,7 +39,8 @@ pub use change::{
     ArtifactPlace, HeroChange, apply_change, check_change, lost_war_machine, next_capture,
 };
 pub use derive::{
-    MANA_PER_KNOWLEDGE, Necromancy, derive_battle_hero, gained_experience, max_mana, necromancy,
+    MANA_PER_KNOWLEDGE, MAX_JOIN_BONUS, Necromancy, attack_defense, derive_battle_hero,
+    gained_experience, join_bonus, max_mana, necromancy,
 };
 pub use details::{ArtifactInstance, HeroDetails, PrimarySkill, validate, war_machines};
 pub use error::{ChangeError, DetailsError};

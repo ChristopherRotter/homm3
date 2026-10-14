@@ -5,7 +5,7 @@
 use std::sync::{Arc, LazyLock};
 
 use h3_adventure::{Pos as TilePos, TileMask};
-use h3_content::Formation;
+use h3_content::{Formation, HeroEffect};
 use h3_contracts::{ArmyStack, PlayerId};
 use h3_game::{GameRuleset, HeroArmy, HeroDetailsSetup, PlayerSetup};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
@@ -916,4 +916,29 @@ fn a_hero_of_level_2_and_unknown_codes_are_refused() {
         import(&m, &rules(1)),
         Err(ImportError::MissingContent("ab:armageddons_blade"))
     );
+}
+
+// covers: HER-ADV-002
+/// The original packs' Diplomacy gives a join bonus of its level (E08 T20a1, the harvester's
+/// gap-fill) beside its surrender discount: what the wandering monsters' answer will read.
+#[test]
+fn diplomacy_gives_a_join_bonus_of_its_level() {
+    let core = SOD.core();
+    let diplomacy = core
+        .skill(core.skill_by_key("base:diplomacy").unwrap())
+        .unwrap();
+    for level in 1..=3u8 {
+        let effects = diplomacy.effects(level);
+        assert!(
+            effects
+                .iter()
+                .any(|e| matches!(*e, HeroEffect::JoinBonus { level: l } if l == level)),
+            "{effects:?}"
+        );
+        assert!(
+            effects
+                .iter()
+                .any(|e| matches!(e, HeroEffect::SurrenderDiscount { .. }))
+        );
+    }
 }
