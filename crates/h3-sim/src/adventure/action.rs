@@ -1,7 +1,10 @@
 //! The adventure's action encoding (ADR-0017 point 8, E08 T9a), factorized as the battle's casts
-//! are (ADR-0014 point 9): an *entry*, and for a move a destination tile in the *tile head*.
+//! are (ADR-0014 point 9), in two phases (encoding v3, E08 T19b1): a player in a battle acts in
+//! the **battle phase**, everyone else in the **map phase** ([`Phase`], [`phase`]).
 //!
-//! Entries, version 2 (independent of the map and the ruleset, so agents see a fixed number):
+//! In the map phase an action is an *entry*, and for a move a destination tile in the *tile
+//! head* ([`MapAction`]). Entries (independent of the map and the ruleset, so agents see a fixed
+//! number):
 //!
 //! | entry | action |
 //! |---|---|
@@ -12,13 +15,14 @@
 //!
 //! A player's hero slots are its heroes on the map in the order of their ids, the first
 //! [`HERO_SLOTS`] (the original allows a player eight heroes on the map); a hero's slot changes
-//! when a hero of a lower id joins or leaves the player (later increments). The tile head is a
-//! tile of the map, `(level × height + row) × width + column`, the observation's order; its size
-//! is the map's tile count ([`crate::adventure::AdventureEnv::tile_count`]). After an entry that
-//! takes no tile (`EndTurn`, the answers) the tile head allows exactly 0, as the battle's heads
-//! after a non-cast entry (a policy that always samples the head never meets an empty mask on a
-//! legal entry). A move's destination is a tile the hero's reachable-tiles query lists, not its
-//! own; the action carries no path: the command takes the path the query chose
+//! when a hero of a lower id joins or leaves the player (a battle's loser leaves the map). The
+//! tile head is a tile of the map, `(level × height + row) × width + column`, the observation's
+//! order; its size is the map's tile count ([`crate::adventure::AdventureEnv::tile_count`]). After
+//! an entry that takes no tile (`EndTurn`, the answers) the tile head allows exactly 0, as the
+//! battle's heads after a non-cast entry (a policy that always samples the head never meets an
+//! empty mask on a legal entry). A move's destination is a tile the hero's reachable-tiles query
+//! lists, not its own; a tile another player's hero stands on is one (the visit is a battle,
+//! GAM-BAT-004). The action carries no path: the command takes the path the query chose
 //! (`h3_game::legal_moves`). A client may send any other path the hero can pay (`apply` checks
 //! each step); an agent of this encoding moves along the query's paths only. The heads' masks are
 //! conditioned on the entry ([`legal_mask`], [`tile_mask`]); an illegal entry's tile mask is
@@ -26,17 +30,25 @@
 //! (GAM-DEC-001: `h3_game::legal_commands` lists them alone and `h3_game::legal_moves` gives
 //! nothing), each with tile 0 alone.
 //!
-//! Version 2 (E08 T14b) appended the answers. It has no battle actions: since E08 T19a a move onto
-//! another player's hero starts a battle, which this encoding cannot play, so such a tile is no
-//! legal destination here (`ADV-STUB-4`, until encoding v3, E08 T19b); a battle command encodes to
-//! no action.
+//! In the battle phase an action is one of the battle lane's encoding (`crate::action`, its own
+//! version: entries and the spell and target heads), for the side the player owns; its masks
+//! ([`battle_mask`], [`spell_mask`], [`target_mask`], [`second_mask`]) are that encoding's for
+//! the player's side, empty while the other side is to act, and every map entry is masked (ADR-0017
+//! point 8). Each phase's masks are empty in the other phase.
+//!
+//! Version 2 (E08 T14b) appended the answers. Version 3 (E08 T19b1) added the battle phase: since
+//! E08 T19a a move onto another player's hero starts a battle, which version 2 could not play, so
+//! it left such tiles out of the masks and the decoder (`ADV-STUB-4`, closed).
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
-use h3_contracts::{HeroId, PlayerId};
+use h3_battle::{BattleState, LegalCommands};
+use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{Actor, Answer, GameCommand, GameRuleset, GameState, legal_commands, legal_moves};
 
+use crate::action as battle;
+
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 2;
+pub const ACTION_ENCODING_VERSION: u32 = 3;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -59,46 +71,57 @@ pub const ENTRY_COUNT: usize = DECLINE + 1;
 /// Which entries are legal.
 pub type EntryMask = [bool; ENTRY_COUNT];
 
-/// An action: an entry and its tile head (0 for an entry that takes no tile).
+/// The phase a player acts in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Phase {
+    /// On the map: [`MapAction`]s.
+    Adventure,
+    /// In its battle: the battle's actions for the side it owns.
+    Battle,
+}
+
+/// An action of the map phase: an entry and its tile head (0 for an entry that takes no tile).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct Action {
+pub struct MapAction {
     /// The entry.
     pub entry: usize,
     /// The destination tile of a move, `(level × height + row) × width + column`; 0 otherwise.
     pub tile: u32,
 }
 
+/// An action of either phase.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Action {
+    /// An action of the map phase.
+    Adventure(MapAction),
+    /// An action of the battle phase: the battle lane's encoding (`crate::action`).
+    Battle(battle::Action),
+}
+
 impl Action {
     /// Ends the turn.
     pub const fn end_turn() -> Self {
-        Self {
-            entry: END_TURN,
-            tile: 0,
-        }
+        Self::map(END_TURN, 0)
     }
 
     /// Moves the hero in `slot` to `tile`.
     pub const fn move_to(slot: usize, tile: u32) -> Self {
-        Self {
-            entry: MOVE_BASE + slot,
-            tile,
-        }
+        Self::map(MOVE_BASE + slot, tile)
     }
 
     /// Accepts the open decision.
     pub const fn accept() -> Self {
-        Self {
-            entry: ACCEPT,
-            tile: 0,
-        }
+        Self::map(ACCEPT, 0)
     }
 
     /// Declines the open decision.
     pub const fn decline() -> Self {
-        Self {
-            entry: DECLINE,
-            tile: 0,
-        }
+        Self::map(DECLINE, 0)
+    }
+
+    /// The map phase's action of `entry` with `tile`.
+    pub const fn map(entry: usize, tile: u32) -> Self {
+        Self::Adventure(MapAction { entry, tile })
     }
 }
 
@@ -142,19 +165,24 @@ pub fn hero_in_slot(state: &GameState, player: PlayerId, slot: usize) -> Option<
         .flatten()
 }
 
-/// The tiles other players' heroes stand on: their visits are battles, which encoding v2 does not
-/// offer (E08 T19a).
-// stub: ADV-STUB-4
-pub(crate) fn battle_tiles(state: &GameState, player: PlayerId) -> Vec<Pos> {
-    let heroes = state.adventure().heroes().iter();
-    heroes
-        .filter(|h| h.owner != player)
-        .map(|h| h.pos)
-        .collect()
+/// The phase `player` acts in: the battle phase while it is in an open battle (GAM-BAT-001; its
+/// first open decision is the battle), else the map phase.
+pub fn phase(state: &GameState, player: PlayerId) -> Phase {
+    if state.battle(player).is_some() {
+        Phase::Battle
+    } else {
+        Phase::Adventure
+    }
+}
+
+/// The open battle of `player` and the side it owns there, if it is in one.
+pub fn battle_of(state: &GameState, player: PlayerId) -> Option<(&BattleState, BattleSide)> {
+    let battle = state.battle(player)?;
+    Some((battle.state(), battle.side_of(player)?))
 }
 
 /// The legal moves of the hero in `slot` of `player` ([`legal_moves`]), if any tile is reachable
-/// but its own and those of other players' heroes.
+/// but its own.
 pub fn moves(
     state: &GameState,
     rules: &GameRuleset,
@@ -162,20 +190,20 @@ pub fn moves(
     slot: usize,
 ) -> Option<Reach> {
     let hero = hero_in_slot(state, player, slot)?;
-    let battles = battle_tiles(state, player);
-    legal_moves(state, rules, Actor::Player(player), hero)
-        .filter(|r| r.tiles().any(|(pos, _)| !battles.contains(&pos)))
+    legal_moves(state, rules, Actor::Player(player), hero).filter(|r| r.tiles().next().is_some())
 }
 
-/// Fills `mask` with the legal entries of `player`: the commands [`legal_commands`] lists
+/// Fills `mask` with the legal map entries of `player`: the commands [`legal_commands`] lists
 /// (`EndTurn` while its turn runs, or with an open decision its answers alone: `Decline`, and
-/// `Accept` while the offer stands, E08 T15a), and each hero
-/// slot with a tile to move to ([`legal_moves`]: none with a decision open).
+/// `Accept` while the offer stands, E08 T15a), and each hero slot with a tile to move to
+/// ([`legal_moves`]: none with a decision open); none in the battle phase, where the listed
+/// commands are the battle's and no hero moves.
 pub fn legal_mask(state: &GameState, rules: &GameRuleset, player: PlayerId, mask: &mut EntryMask) {
     mask.fill(false);
-    let commands = legal_commands(state, rules, Actor::Player(player));
-    for action in commands.iter().filter_map(|c| encode(state, player, c)) {
-        mask[action.entry] = true;
+    for command in legal_commands(state, rules, Actor::Player(player)) {
+        if let Some(entry) = tileless_entry(&command) {
+            mask[entry] = true;
+        }
     }
     for slot in 0..HERO_SLOTS {
         mask[MOVE_BASE + slot] = moves(state, rules, player, slot).is_some();
@@ -184,8 +212,7 @@ pub fn legal_mask(state: &GameState, rules: &GameRuleset, player: PlayerId, mask
 
 /// Fills `mask` (resized to the tile count) with the legal tiles of `player` after choosing
 /// `entry`: 0 alone after a legal entry that takes no tile (`EndTurn`, an answer), the reachable
-/// tiles of a hero's legal move but its own and other players' heroes'; none after an illegal
-/// entry.
+/// tiles of a hero's legal move but its own; none after an illegal entry or in the battle phase.
 pub fn tile_mask(
     state: &GameState,
     rules: &GameRuleset,
@@ -201,12 +228,75 @@ pub fn tile_mask(
         .checked_sub(MOVE_BASE)
         .and_then(|slot| moves(state, rules, player, slot))
     {
-        let battles = battle_tiles(state, player);
-        for (pos, _) in reach.tiles().filter(|(pos, _)| !battles.contains(pos)) {
+        for (pos, _) in reach.tiles() {
             if let Some(index) = tile_index(state, pos) {
                 mask[index as usize] = true;
             }
         }
+    }
+}
+
+/// Fills `mask` with the legal entries of the battle phase for `player`: its battle's
+/// ([`battle::legal_mask`]) for the side it owns while that side is to act; none otherwise.
+/// `legal` is scratch space.
+pub fn battle_mask(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    legal: &mut LegalCommands,
+    mask: &mut battle::ActionMask,
+) {
+    mask.fill(false);
+    if let Some((battle, side)) = battle_of(state, player) {
+        battle::legal_mask(battle, rules.battle(), side, legal, mask);
+    }
+}
+
+/// Fills `mask` with the legal spells of the battle phase for `player` after `entry`
+/// ([`battle::spell_mask`]); none outside a battle.
+pub fn spell_mask(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    entry: usize,
+    legal: &mut LegalCommands,
+    mask: &mut battle::SpellMask,
+) {
+    mask.fill(false);
+    if let Some((battle, side)) = battle_of(state, player) {
+        battle::spell_mask(battle, rules.battle(), side, entry, legal, mask);
+    }
+}
+
+/// Fills `mask` with the legal targets of the battle phase for `player` after `entry` and
+/// `spell` ([`battle::target_mask`]); none outside a battle.
+pub fn target_mask(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    prefix: (usize, u16),
+    legal: &mut LegalCommands,
+    mask: &mut battle::TargetMask,
+) {
+    mask.fill(false);
+    if let Some((battle, side)) = battle_of(state, player) {
+        battle::target_mask(battle, rules.battle(), side, prefix, legal, mask);
+    }
+}
+
+/// Fills `mask` with the legal second targets of the battle phase for `player` after `entry`,
+/// `spell` and `target` ([`battle::second_mask`]); none outside a battle.
+pub fn second_mask(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    prefix: (usize, u16, u16),
+    legal: &mut LegalCommands,
+    mask: &mut battle::TargetMask,
+) {
+    mask.fill(false);
+    if let Some((battle, side)) = battle_of(state, player) {
+        battle::second_mask(battle, rules.battle(), side, prefix, legal, mask);
     }
 }
 
@@ -220,21 +310,40 @@ const fn tileless(entry: usize) -> Option<GameCommand> {
     }
 }
 
-/// The command `player` issues with `action`, if the action names one: `EndTurn` or an answer
-/// with tile 0, or a move of one of its heroes to a tile its reachable-tiles query lists (not its
-/// own, nor another player's hero's) along the query's path. Whether the command may be issued
-/// now (whose turn it is, an open decision) is `apply`'s.
+/// The entry of a command that takes no tile: `EndTurn` or an answer.
+const fn tileless_entry(command: &GameCommand) -> Option<usize> {
+    match command {
+        GameCommand::EndTurn => Some(END_TURN),
+        GameCommand::Answer(Answer::Accept) => Some(ACCEPT),
+        GameCommand::Answer(Answer::Decline) => Some(DECLINE),
+        GameCommand::Adventure(_) | GameCommand::Battle(_) => None,
+    }
+}
+
+/// The command `player` issues with `action`, if the action names one. In the map phase:
+/// `EndTurn` or an answer with tile 0, or a move of one of its heroes to a tile its
+/// reachable-tiles query lists (not its own) along the query's path. In the battle phase: the
+/// battle command the battle's encoding decodes the action to ([`battle::decode`]), for the
+/// player's battle. Whether the command may be issued now (whose turn it is, an open decision,
+/// the side to act) is `apply`'s.
 pub fn decode(
     state: &GameState,
     rules: &GameRuleset,
     player: PlayerId,
     action: Action,
 ) -> Option<GameCommand> {
+    let action = match action {
+        Action::Adventure(action) => action,
+        Action::Battle(action) => {
+            let (battle, _) = battle_of(state, player)?;
+            return battle::decode(battle, rules.battle(), action).map(GameCommand::Battle);
+        }
+    };
     if let Some(command) = tileless(action.entry) {
         return (action.tile == 0).then_some(command);
     }
     let hero = hero_in_slot(state, player, action.entry.checked_sub(MOVE_BASE)?)?;
-    let to = tile_pos(state, action.tile).filter(|to| !battle_tiles(state, player).contains(to))?;
+    let to = tile_pos(state, action.tile)?;
     let reach = state
         .adventure()
         .reach(rules.core(), rules.adventure(), hero)?;
@@ -246,16 +355,23 @@ pub fn decode(
 }
 
 /// The action that names `command` of `player`, if one does: `EndTurn` and the answers by their
-/// entries (tile 0), a move of one of its heroes by the hero's slot and the path's last tile.
+/// entries (tile 0), a move of one of its heroes by the hero's slot and the path's last tile, a
+/// battle command by the battle's encoding for the player's battle ([`battle::encode`]).
 /// [`decode`] gives the command back when a move's path is the one the hero's query chose; a
 /// move along another path decodes to the query's path to the same tile.
-pub fn encode(state: &GameState, player: PlayerId, command: &GameCommand) -> Option<Action> {
+pub fn encode(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    command: &GameCommand,
+) -> Option<Action> {
     let (hero, path) = match command {
-        GameCommand::EndTurn => return Some(Action::end_turn()),
-        GameCommand::Answer(Answer::Accept) => return Some(Action::accept()),
-        GameCommand::Answer(Answer::Decline) => return Some(Action::decline()),
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => (*hero, path),
-        GameCommand::Battle(_) => return None,
+        GameCommand::Battle(command) => {
+            let (battle, _) = battle_of(state, player)?;
+            return battle::encode(battle, rules.battle(), *command).map(Action::Battle);
+        }
+        other => return tileless_entry(other).map(|entry| Action::map(entry, 0)),
     };
     let slot = (0..HERO_SLOTS).find(|&slot| hero_in_slot(state, player, slot) == Some(hero))?;
     let tile = tile_index(state, *path.last()?)?;

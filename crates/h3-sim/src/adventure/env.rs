@@ -1,15 +1,17 @@
-//! The adventure environment: one game on an adventure map (ADR-0017 point 8, E08 T9a).
+//! The adventure environment: one game on an adventure map (ADR-0017 point 8, E08 T9a), its
+//! battles included (E08 T19b1: a player in a battle acts in the battle phase).
 
 use std::fmt;
 use std::sync::Arc;
 
+use h3_battle::LegalCommands;
 use h3_contracts::PlayerId;
 use h3_game::{
     Actor, GameCommand, GameCommandError, GameObservation, GameRuleset, GameSetup, GameSetupError,
     GameState, Sink, Viewer, apply, observe,
 };
 
-use super::action::{self, Action, EntryMask};
+use super::action::{self, Action, EntryMask, Phase};
 
 /// Result of one environment step.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -124,14 +126,29 @@ impl AdventureEnv {
     }
 
     /// The players that may act now, in id order: those of the turn group whose turn is running
-    /// (one in sequential play); none once the episode is over.
+    /// (one in sequential play) and who are in no battle, and for each open battle the owner of
+    /// its side to act (ADR-0017 point 8, E08 T19b1: an attacked player acts in its battle
+    /// outside its turn); none once the episode is over.
     pub fn to_move(&self) -> impl Iterator<Item = PlayerId> + '_ {
         let done = self.is_done();
-        self.state
-            .turn_group()
-            .iter()
-            .copied()
-            .filter(move |&player| !done && self.state.is_acting(player))
+        (0..=u8::MAX)
+            .take(self.state.players())
+            .map(PlayerId::new)
+            .filter(move |&player| !done && self.may_act(player))
+    }
+
+    /// Whether `player` may act now: the owner of its battle's side to act, or with no battle a
+    /// player whose turn is running.
+    fn may_act(&self, player: PlayerId) -> bool {
+        self.state.battle(player).map_or_else(
+            || self.state.is_acting(player),
+            |battle| battle.owner_to_act() == Some(player),
+        )
+    }
+
+    /// The phase `player` acts in ([`action::phase`]): the battle phase while it is in a battle.
+    pub fn phase(&self, player: PlayerId) -> Phase {
+        action::phase(&self.state, player)
     }
 
     /// The size of an action's tile head: the map's tiles.
@@ -139,8 +156,8 @@ impl AdventureEnv {
         action::tile_count(&self.state)
     }
 
-    /// Fills `mask` with the legal entries of `player` ([`action::legal_mask`]); none once the
-    /// episode is over.
+    /// Fills `mask` with the legal map entries of `player` ([`action::legal_mask`]); none in the
+    /// battle phase or once the episode is over.
     pub fn legal_mask(&self, player: PlayerId, mask: &mut EntryMask) {
         action::legal_mask(&self.state, &self.rules, player, mask);
         if self.is_done() {
@@ -149,7 +166,7 @@ impl AdventureEnv {
     }
 
     /// Fills `mask` with the legal tiles of `player` after choosing `entry`
-    /// ([`action::tile_mask`]); none once the episode is over.
+    /// ([`action::tile_mask`]); none in the battle phase or once the episode is over.
     pub fn tile_mask(&self, player: PlayerId, entry: usize, mask: &mut Vec<bool>) {
         action::tile_mask(&self.state, &self.rules, player, entry, mask);
         if self.is_done() {
@@ -157,7 +174,68 @@ impl AdventureEnv {
         }
     }
 
-    /// Plays `action` for `player` (the trusted identity of the agent issuing it).
+    /// Fills `mask` with the legal battle entries of `player` ([`action::battle_mask`]); none in
+    /// the map phase, while the other side is to act, or once the episode is over. `legal` is
+    /// scratch space.
+    pub fn battle_mask(
+        &self,
+        player: PlayerId,
+        legal: &mut LegalCommands,
+        mask: &mut crate::action::ActionMask,
+    ) {
+        action::battle_mask(&self.state, &self.rules, player, legal, mask);
+        if self.is_done() {
+            mask.fill(false);
+        }
+    }
+
+    /// Fills `mask` with the legal spells of `player` after the battle entry `entry`
+    /// ([`action::spell_mask`]); none outside a battle or once the episode is over.
+    pub fn spell_mask(
+        &self,
+        player: PlayerId,
+        entry: usize,
+        legal: &mut LegalCommands,
+        mask: &mut crate::action::SpellMask,
+    ) {
+        action::spell_mask(&self.state, &self.rules, player, entry, legal, mask);
+        if self.is_done() {
+            mask.fill(false);
+        }
+    }
+
+    /// Fills `mask` with the legal targets of `player` after the battle entry and spell
+    /// ([`action::target_mask`]); none outside a battle or once the episode is over.
+    pub fn target_mask(
+        &self,
+        player: PlayerId,
+        prefix: (usize, u16),
+        legal: &mut LegalCommands,
+        mask: &mut crate::action::TargetMask,
+    ) {
+        action::target_mask(&self.state, &self.rules, player, prefix, legal, mask);
+        if self.is_done() {
+            mask.fill(false);
+        }
+    }
+
+    /// Fills `mask` with the legal second targets of `player` after the battle entry, spell and
+    /// target ([`action::second_mask`]); none outside a battle or once the episode is over.
+    pub fn second_mask(
+        &self,
+        player: PlayerId,
+        prefix: (usize, u16, u16),
+        legal: &mut LegalCommands,
+        mask: &mut crate::action::TargetMask,
+    ) {
+        action::second_mask(&self.state, &self.rules, player, prefix, legal, mask);
+        if self.is_done() {
+            mask.fill(false);
+        }
+    }
+
+    /// Plays `action` for `player` (the trusted identity of the agent issuing it): a map action
+    /// or, in its battle, a battle action ([`action::decode`]).
     ///
     /// # Errors
     ///

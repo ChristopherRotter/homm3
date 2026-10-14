@@ -33,7 +33,7 @@ pub const USAGE: &str = "usage:
   h3 adventure verify [--packs-dir packs] [--root .] <replay.toml>...
   h3 adventure bench --map <file.h3m> [--workload play|reach|fork] [--packs-dir packs] [--root .]
                      [--profile base:faithful] [--difficulty 1] [--games N] [--days N]
-                     [--seed N] [--forks N] [--observe 0|1] [--masks 0|1]";
+                     [--seed N] [--forks N] [--observe 0|1] [--masks 0|1] [--battle 0|1]";
 
 /// Parsed arguments: `--name value` options and positional words.
 struct Args {
@@ -193,6 +193,7 @@ fn bench(args: &Args) -> Result<(), String> {
         "forks",
         "observe",
         "masks",
+        "battle",
     ])?;
     let workload = match args.get("workload").unwrap_or("play") {
         "play" => Workload::Play,
@@ -211,6 +212,7 @@ fn bench(args: &Args) -> Result<(), String> {
         forks: args.num("forks", 10_000)?,
         observe: args.num("observe", 0u8)? != 0,
         masks: args.num("masks", 0u8)? != 0,
+        battle: args.num("battle", 0u8)? != 0,
     };
     if options.days == 0 {
         return Err("a game ends only by its day limit: --days must be above 0".to_owned());
@@ -235,6 +237,12 @@ fn bench(args: &Args) -> Result<(), String> {
         "games: {}, steps: {}{counted}, time: {:.3}s",
         options.games, r.steps, r.seconds
     );
+    if workload == Workload::Fork {
+        println!(
+            "forks with a battle open: {} of {} games",
+            r.battles, options.games
+        );
+    }
     println!(
         "size of GameState: {} bytes, AdventureEnv: {} bytes",
         size_of::<h3_game::GameState>(),

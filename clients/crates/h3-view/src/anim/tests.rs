@@ -15,6 +15,8 @@ const WALK: &str = include_str!("../../../../situations/timelines/walk.txt");
 const SHOT: &str = include_str!("../../../../situations/timelines/shot.txt");
 const MELEE: &str = include_str!("../../../../situations/timelines/melee.txt");
 const TURN: &str = include_str!("../../../../situations/timelines/turn.txt");
+const CLIMB: &str = include_str!("../../../../situations/timelines/climb.txt");
+const BEHIND: &str = include_str!("../../../../situations/timelines/behind.txt");
 
 /// Creature handles of the tests.
 const CHAMPION: u16 = 0;
@@ -24,6 +26,8 @@ const GOBLIN: u16 = 3;
 const ANGEL: u16 = 4;
 const PIKEMAN: u16 = 5;
 const GNOLL: u16 = 6;
+const CENTAUR_CAPTAIN: u16 = 7;
+const SILVER_PEGASUS: u16 = 8;
 
 /// A look: `times` and the frames of each group.
 fn look(times: [u32; 4], frames: &[(u32, u32)], top: i32) -> Look {
@@ -142,6 +146,52 @@ fn looks() -> BTreeMap<u16, Look> {
         ),
         (PIKEMAN, look([9000, 575, 500, 115], &[(0, 6), (2, 7)], 171)),
         (GNOLL, look([9000, 500, 500, 115], &[(2, 8)], 192)),
+        (
+            CENTAUR_CAPTAIN,
+            look(
+                [9000, 250, 500, 115],
+                &[
+                    (0, 8),
+                    (2, 9),
+                    (3, 6),
+                    (4, 11),
+                    (5, 8),
+                    (7, 3),
+                    (8, 3),
+                    (9, 3),
+                    (10, 3),
+                    (11, 8),
+                    (12, 8),
+                    (13, 8),
+                    (20, 2),
+                    (21, 2),
+                ],
+                153,
+            ),
+        ),
+        (
+            SILVER_PEGASUS,
+            look(
+                [9000, 360, 500, 115],
+                &[
+                    (0, 6),
+                    (2, 8),
+                    (3, 6),
+                    (4, 11),
+                    (5, 8),
+                    (7, 3),
+                    (8, 3),
+                    (9, 3),
+                    (10, 3),
+                    (11, 8),
+                    (12, 8),
+                    (13, 8),
+                    (20, 2),
+                    (21, 2),
+                ],
+                179,
+            ),
+        ),
     ];
     base.into_iter().collect()
 }
@@ -381,6 +431,94 @@ fn the_turn_sequence_plays_as_recorded() {
     let step = keys_of(&t, 0).into_iter().find(|k| k.0 == 0);
     assert_eq!(step, Some((0, 0, 36, true, 3)));
     assert_eq!(t.end, 2648);
+}
+
+#[test]
+fn the_climb_sequence_plays_as_recorded() {
+    // `climb` (M3 T1a, design §7.10): the turn sequence's armies; the Champions walk two rows up,
+    // from 35 to 1 by 19: the first step up and right (no turn), the second up and left with a
+    // flip only (onto 20), group 21 on 2, and the plain move's turn back (9, the flip onto 1, 8).
+    let o = snapshot(vec![
+        at(0, Side::Attacker, CHAMPION, 35, true),
+        at(1, Side::Attacker, MARKSMAN, 137, false),
+        at(2, Side::Defender, WOLF_RIDER, 49, true),
+        at(3, Side::Defender, GOBLIN, 151, false),
+    ]);
+    let walk = vec![
+        moved(0, 35, 19),
+        moved(0, 19, 1),
+        Event::TurnStarted { stack: 1 },
+    ];
+    let t = play(&o, &[(None, walk)]);
+    assert_eq!(until(&t.lines(), 3500), CLIMB);
+}
+
+#[test]
+fn the_behind_sequence_plays_as_recorded() {
+    // `behind` (M3 T1a, design §7.10): a battle in progress in hot seat, every command at the
+    // time its stack's turn started. The Pegasi wait, the Centaurs walk to 41 and the Marksmen to
+    // 143, the Goblins defend, the Pegasi land behind the Centaurs; in round 2 the Pegasi wait,
+    // the Centaurs strike them standing (both turn, then turn back) and the Marksmen shoot them
+    // (they lie left of the Marksmen: a turn, two shots, the turn back).
+    let mut pegasi = at(2, Side::Defender, SILVER_PEGASUS, 49, true);
+    pegasi.flies = true;
+    let o = snapshot(vec![
+        at(0, Side::Attacker, CENTAUR_CAPTAIN, 35, true),
+        at(1, Side::Attacker, MARKSMAN, 137, false),
+        pegasi,
+        at(3, Side::Defender, GOBLIN, 151, false),
+    ]);
+    let walk = |stack: u8, from: u8, next: u8| {
+        let mut events: Vec<Event> = (from..from + 6).map(|h| moved(stack, h, h + 1)).collect();
+        events.push(Event::TurnStarted { stack: next });
+        events
+    };
+    let shot = flags(true, false, false);
+    let commands = [
+        (
+            Some(0),
+            vec![Event::Waited { stack: 2 }, Event::TurnStarted { stack: 0 }],
+        ),
+        (Some(0), walk(0, 35, 1)),
+        (Some(1988), walk(1, 137, 3)),
+        (
+            Some(5464),
+            vec![
+                Event::Defended { stack: 3 },
+                Event::TurnStarted { stack: 2 },
+            ],
+        ),
+        (
+            Some(5464),
+            vec![
+                moved(2, 49, 40),
+                Event::RoundStarted { round: 2 },
+                Event::TurnStarted { stack: 2 },
+            ],
+        ),
+        (
+            Some(7144),
+            vec![Event::Waited { stack: 2 }, Event::TurnStarted { stack: 0 }],
+        ),
+        (
+            Some(7144),
+            vec![
+                struck(0, 2, 1, flags(false, false, false)),
+                struck(2, 0, 8, flags(false, true, false)),
+                Event::TurnStarted { stack: 1 },
+            ],
+        ),
+        (
+            Some(12544),
+            vec![
+                struck(1, 2, 1, shot),
+                struck(1, 2, 1, shot),
+                Event::TurnStarted { stack: 3 },
+            ],
+        ),
+    ];
+    let t = play(&o, &commands);
+    assert_eq!(until(&t.lines(), 13544), BEHIND);
 }
 
 #[test]

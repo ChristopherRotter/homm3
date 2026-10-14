@@ -2,20 +2,22 @@
 //! with their adventure files and `.h3m` maps from disk, recording random games and the adventure
 //! replay file format (TOML). The commands themselves are in [`cli`].
 //!
-//! Replay file format v2 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! Replay file format v3 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
 //! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
-//! refused by its format version; a v2 file without one is malformed):
+//! refused by its format version; a later file without one is malformed; v3 added the battle
+//! commands, E08 T19b1, and names each command's actor: a player by its number):
 //!
 //! ```toml
-//! commands = [                        # the game commands in order, with the acting player:
+//! commands = [                        # the game commands in order, each after its actor:
 //!     "0 move 1 5,7,0 6,8,0",         #   `<player> move <hero> <x>,<y>,<level> …` (the path
 //!     "0 end-turn",                   #   without the hero's own tile), `<player> end-turn`
 //!     "1 accept",                     #   `<player> accept` or `decline`: an answer
-//! ]
+//!     "1 battle attack 3 41",         #   `<player> battle <command>`: a command in its battle,
+//! ]                                   #   the battle replays' text without the side letter
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 2
+//! format = 3
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -51,8 +53,8 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use h3_adventure::{AdventureCommand, Pos};
-use h3_contracts::{HeroId, PlayerId};
-use h3_game::{Answer, GameCommand, GameRuleset, GameSetup};
+use h3_contracts::{BattleSide, HeroId, PlayerId};
+use h3_game::{Actor, Answer, GameCommand, GameRuleset, GameSetup};
 use h3_sim::adventure::replay::{
     MapRef, RecordError, RecordOptions, Replay, ReplayError, ReplayHeader, map_content_hash,
 };
@@ -239,19 +241,24 @@ fn parse_hex64(s: &str) -> Result<u64> {
         .ok_or_else(|| AdventureCliError::Format(format!("bad hash `{s}`")))
 }
 
-/// A command as a replay file writes it (format v2, the module's docs). A battle command (E08
-/// T19a) is written as its debug text, which format v2 cannot read back: replays with battles come
-/// with format v3 (E08 T19b); the env's encoding v2 starts none.
-pub fn format_command(player: PlayerId, command: &GameCommand) -> String {
+/// A command as a replay file writes it (format v3, the module's docs): its actor, then the
+/// command; a battle command (E08 T19b1) as the battle replays write it ([`crate::format_command`])
+/// without the side, which is the actor's in its battle.
+pub fn format_command(actor: Actor, command: &GameCommand) -> String {
+    let Actor::Player(player) = actor;
+    let player = player.raw();
     match command {
-        // stub: ADV-STUB-4
-        GameCommand::Battle(command) => format!("{} battle {command:?}", player.raw()),
-        GameCommand::EndTurn => format!("{} end-turn", player.raw()),
+        GameCommand::Battle(command) => {
+            let text = crate::format_command(BattleSide::Attacker, *command);
+            let (_, text) = text.split_once(' ').unwrap_or_default();
+            format!("{player} battle {text}")
+        }
+        GameCommand::EndTurn => format!("{player} end-turn"),
         // E08 T14b: an answer to the player's open decision (format v2).
-        GameCommand::Answer(Answer::Accept) => format!("{} accept", player.raw()),
-        GameCommand::Answer(Answer::Decline) => format!("{} decline", player.raw()),
+        GameCommand::Answer(Answer::Accept) => format!("{player} accept"),
+        GameCommand::Answer(Answer::Decline) => format!("{player} decline"),
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => {
-            let mut text = format!("{} move {}", player.raw(), hero.raw());
+            let mut text = format!("{player} move {}", hero.raw());
             for pos in path {
                 text.push_str(&format!(" {},{},{}", pos.x, pos.y, pos.level));
             }
@@ -265,7 +272,7 @@ pub fn format_command(player: PlayerId, command: &GameCommand) -> String {
 /// # Errors
 ///
 /// [`AdventureCliError::Format`] naming the text.
-pub fn parse_command(text: &str) -> Result<(PlayerId, GameCommand)> {
+pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
     let bad = || AdventureCliError::Format(format!("bad command `{text}`"));
     let mut words = text.split_whitespace();
     let player = words
@@ -277,6 +284,12 @@ pub fn parse_command(text: &str) -> Result<(PlayerId, GameCommand)> {
         Some("end-turn") => GameCommand::EndTurn,
         Some("accept") => GameCommand::Answer(Answer::Accept),
         Some("decline") => GameCommand::Answer(Answer::Decline),
+        Some("battle") => {
+            let rest: Vec<&str> = words.by_ref().collect();
+            let (_, command) =
+                crate::parse_command(&format!("A {}", rest.join(" "))).map_err(|_| bad())?;
+            GameCommand::Battle(command)
+        }
         Some("move") => {
             let hero = words
                 .next()
@@ -306,7 +319,7 @@ pub fn parse_command(text: &str) -> Result<(PlayerId, GameCommand)> {
     if words.next().is_some() {
         return Err(bad());
     }
-    Ok((player, command))
+    Ok((Actor::Player(player), command))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -360,7 +373,7 @@ struct ResultEntry {
 /// reads as the import's (it is refused by its version), a later one without it is malformed.
 const DIFFICULTY_SINCE: u32 = 2;
 
-/// The replay as TOML (format v2).
+/// The replay as TOML (format v3).
 ///
 /// # Errors
 ///
@@ -408,7 +421,8 @@ pub fn replay_to_toml(replay: &Replay) -> Result<String> {
     toml::to_string_pretty(&file).map_err(|e| AdventureCliError::Format(e.to_string()))
 }
 
-/// Parses a replay file (format v2; a v1 file parses, and [`ReplayHeader::check`] refuses it).
+/// Parses a replay file (format v3; an earlier file without battle commands parses, and
+/// [`ReplayHeader::check`] refuses it).
 /// Its rules and map are loaded by [`verify_file`].
 ///
 /// # Errors

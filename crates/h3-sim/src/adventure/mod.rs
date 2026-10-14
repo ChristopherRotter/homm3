@@ -6,12 +6,14 @@
 //! * [`AdventureEnv`]: built from a game setup and a seed with a day limit; reset (a seed), step,
 //!   masks, fork, state hash, a player's observation (`h3_game`'s view as it is: a flat encoding
 //!   waits for E13's macro-actions).
-//! * [`action`]: the factorized action (an entry and a destination tile) and its masks, built from
-//!   the reachable-tiles query and the open decision's answers (provisional until E13's
-//!   macro-actions).
-//! * [`rollout`]: the uniformly random legal agent.
+//! * [`action`]: the factorized action in two phases (encoding v3, E08 T19b1): on the map an
+//!   entry and a destination tile, with masks built from the reachable-tiles query and the open
+//!   decision's answers (provisional until E13's macro-actions); in a battle the battle lane's
+//!   encoding for the side the player owns.
+//! * [`rollout`]: the uniformly random legal agent, the battle's random agent in its battles.
 //! * [`replay`]: the adventure replay model (T9b): the rules' identity, the map by content hash,
-//!   the seed, the game commands and state hashes.
+//!   the seed, the game commands with their actors (battle commands since format v3) and state
+//!   hashes.
 
 pub mod action;
 pub mod env;
@@ -20,7 +22,7 @@ pub mod rollout;
 
 pub use action::{
     ACCEPT, ACTION_ENCODING_VERSION, Action, DECLINE, END_TURN, ENTRY_COUNT, EntryMask, HERO_SLOTS,
-    MOVE_BASE,
+    MOVE_BASE, MapAction, Phase,
 };
 pub use env::{AdventureEnv, StepError, StepResult};
 pub use rollout::{RolloutResult, random_rollout};

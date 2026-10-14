@@ -65,14 +65,14 @@ fn actions_and_commands_round_trip() {
             action::decode(state, rules, RED, action),
             Some(command.clone())
         );
-        let off = Action { tile: 77, ..action };
+        let Action::Adventure(map) = action else {
+            panic!("{action:?} is no map action")
+        };
+        let off = Action::map(map.entry, 77);
         assert_eq!(action::decode(state, rules, RED, off), None);
-        assert_eq!(action::encode(state, RED, &command), Some(action));
+        assert_eq!(action::encode(state, rules, RED, &command), Some(action));
     }
-    let past = Action {
-        entry: ENTRY_COUNT,
-        tile: 0,
-    };
+    let past = Action::map(ENTRY_COUNT, 0);
     assert_eq!(action::decode(state, rules, RED, past), None);
     let mut tiles = Vec::new();
     let mut moves = 0;
@@ -81,7 +81,7 @@ fn actions_and_commands_round_trip() {
         for tile in (0u32..).zip(&tiles).filter(|&(_, &t)| t).map(|(i, _)| i) {
             let action = Action::move_to(slot, tile);
             let command = action::decode(state, rules, RED, action).unwrap();
-            assert_eq!(action::encode(state, RED, &command), Some(action));
+            assert_eq!(action::encode(state, rules, RED, &command), Some(action));
             moves += 1;
         }
     }
@@ -92,7 +92,7 @@ fn actions_and_commands_round_trip() {
     let off = h3_adventure::Pos::new(36, at.y, at.level);
     for (hero, path) in [(blue, vec![at]), (red, Vec::new()), (red, vec![off])] {
         let command = GameCommand::Adventure(AdventureCommand::MoveHero { hero, path });
-        assert_eq!(action::encode(state, RED, &command), None);
+        assert_eq!(action::encode(state, rules, RED, &command), None);
     }
 }
 
@@ -159,10 +159,7 @@ fn an_open_offer_is_answered_through_the_env() {
     let gold = offer.price()[0].0.index();
     let before = env.observation(RED).treasury[gold];
     let mut accepted = Vec::new();
-    let off = Action {
-        tile: 5,
-        ..Action::accept()
-    };
+    let off = Action::map(ACCEPT, 5);
     assert_eq!(env.step(RED, off), Err(StepError::InvalidAction));
     env.step_with(RED, Action::accept(), &mut accepted).unwrap();
     assert!(
@@ -217,7 +214,7 @@ fn the_random_agent_answers_an_open_decision() {
     assert!(
         answers
             .iter()
-            .all(|a| a.entry == ACCEPT || a.entry == DECLINE)
+            .all(|&a| a == Action::accept() || a == Action::decline())
     );
     let played = random_rollout(&mut env, 3, 20);
     assert_eq!(played.steps, 20);
@@ -270,7 +267,7 @@ fn a_replay_records_the_answers_and_the_difficulty() {
         let (_, command) = env
             .step_decoded(player, action, &mut h3_game::NoopSink)
             .unwrap();
-        commands.push((player, command));
+        commands.push((Actor::Player(player), command));
     };
     let red_chart = tile_index(env.state(), charts[0]).unwrap();
     play(&mut env, RED, Action::move_to(0, red_chart));
@@ -300,11 +297,11 @@ fn a_replay_records_the_answers_and_the_difficulty() {
         ..GameSetup::clone(&setup)
     };
     let mut state = GameState::new(&FAITHFUL, &setup, 1).unwrap();
-    for (i, (player, command)) in replay.commands.iter().enumerate() {
+    for (i, (actor, command)) in replay.commands.iter().enumerate() {
         apply(
             &mut state,
             &FAITHFUL,
-            Actor::Player(*player),
+            *actor,
             command.clone(),
             &mut h3_game::NoopSink,
         )
