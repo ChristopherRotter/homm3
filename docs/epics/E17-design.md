@@ -1040,9 +1040,10 @@ start or stop) at the frames the readings name; `play` writes them to `cues.txt`
 own C-library sequence seeded with the battle's seed (*provisional*, as the fidgets; the
 executable draws from its rules' generator), the fade-in's volumes, the volumes 127 and 64. The
 window (`bin/h3-view/audio.rs`): every sound the battle's stacks name and the start sound are
-decoded when the battle loads, the music by `nanomp3` (i16, 0.2 s for a 3-minute track); `h3-sdl`
-opens one device and 10 streams: the music's, the start sound's and 8 creature channels, each a
-free one or the next in turn, as `play_sample` takes them. A one-shot is flushed; the move sound
+decoded when the battle loads, the music by `nanomp3` (i16; the battle's 44 clips and a
+3-minute track in 0.4 s in the sandbox); `h3-sdl` opens one device and 10 streams: the music's,
+the start sound's and 8 creature channels, each a free one or the next in turn, as
+`play_sample` takes them. A one-shot is flushed; the move sound
 and the music are queued a second ahead and topped up (no flush, so no seam). Volumes as SDL
 gains: the music's fade-in by its steps, the effects at 64/127 (*provisional*: both settings
 equal; no settings yet). From the battle's start the window plays the start sound over the first
