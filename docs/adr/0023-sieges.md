@@ -62,9 +62,9 @@ the adventure lane derives the battlefield (ADR-0022).
    read the same table. Unlike the Ballista's control (ADR-0013 point 4: derived numbers) the
    seam carries the level.
 7. **The game's difficulty and the human sides** (amendment, E04c T7d, BAT-Q46): the battle makes
-   some choices for a side as the original's computer player does (an automatic turret's target:
-   0x41E190, whose desperate mode needs the difficulty above Easy or a human defender,
-   `installation.md` §7.31; later the automatic Ballista, T7e). The setup carries the two facts
+   some choices for a side as the original's computer player does (an automatic turret's target,
+   whose desperate mode needs the difficulty above Easy or a human defender, `installation.md`
+   §7.31; later the automatic Ballista, T7e). The setup carries the two facts
    those choices read, as the game has them: `BattleSetup.difficulty: u8` (0 Easy to 4
    Impossible) and `BattleSetup.human: [bool; 2]` (whether each side's player is human; false for
    a side without a player). Both are public and battle state. They do not decide who commands a
