@@ -17,7 +17,7 @@
 
 use alloc::vec::Vec;
 
-use h3_content::{FRINGE_SHOWS_OBJECTS, Ruleset, TerrainId};
+use h3_content::{FRINGE_SHOWS_OBJECTS, Formation, Ruleset, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
 use crate::command::{AdventureEvent, AdventureEventKind, Viewers};
@@ -158,6 +158,8 @@ pub struct OwnHeroView {
     pub army: Vec<ArmyStack>,
     /// The movement points it has left today.
     pub movement: u32,
+    /// Its army's formation in battle (E08 T18b).
+    pub formation: Formation,
 }
 
 impl AdventureState {
@@ -235,6 +237,7 @@ impl AdventureState {
                 own: (hero.owner == viewer).then(|| OwnHeroView {
                     army: hero.army.clone(),
                     movement: hero.movement,
+                    formation: hero.formation,
                 }),
             })
             .collect();

@@ -39,6 +39,27 @@ numeric  = "integer"
   note       = "Answers ADV-Q6: Crag Hack refutes VCMI's single roll, Torosar the wiki's guaranteed war machine; both fit the code reading (expected per 16 armies: 3.5, 10.6, 0.5, 1.4)."
 
 [[rule]]
+id       = "GAM-HER-001"
+title    = "The store of heroes: a hero's details when the game is built"
+context  = "game"
+status   = "implemented"
+summary  = "The game keeps every hero's details by id, built when the game is built (ADR-0017 point 1): each field the setup customises (the map's hero body over its hero type's map-wide entry: experience, primary and secondary skills, artifacts worn and in the backpack, learned spells), else the default: level 1; an experience of 40 + a draw of 0-50 from the setup stream (a placeholder, drawn in hero order after every starting army; D-12, the original's rand() bias not kept); the class's primary skills; the hero type's secondary skills and spells; worn, the spell book when the type starts with one (only without custom artifacts) and the artifact of each war machine its starting army's roll gave (GAM-SET-001), where no worn artifact takes its slot. Then the spell points full (HER-MAN-001). The hero model validates them (h3_heroes::validate); a hero above level 1's experience (1 000 or more) is refused by the import until increment 4's levels. The owner sees its heroes' details, every viewer the type of the heroes it sees. E08 T18b: `h3_game::GameState::new`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T17a, survey E08-battles.md §6.2, §6.3): new_game_heroes 0x4BFE94 gives each of the 156 hero records random_between(0, 50) + 40 experience (0x50B230: a + rand() mod (b - a + 1)); map_hero_setup 0x486590 copies a custom experience with its level and custom primary skills clamped to 0-99 (Power and Knowledge at least 1), then sets the spell points (HER-MAN-001); 0x4C9730 gives a rolled war machine as its artifact (GAM-SET-001's source)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGHeroInstance.cpp initHero (L379-L455): the type's spells unless preset, the spell book when the type has one and the map did not customise the artifacts (MapFormatH3M.cpp loadArtifactsOfHero: SPELLBOOK_PRESET), the class's primary skills, the type's secondary skills, the starting army with the war machine's artifact (initArmy), initExp 40-89; the body's fields over the map-wide hero's ('using the latter set')"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L379-L455"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+  note       = "Disagrees on the experience's upper bound (89 against the code's 90; D-12 as the code reading). VCMI also gives every hero a catapult (siege only, E04c/E09) and resets the formation to loose (the map's kept here; E3-9 checks the original)."
+
+[[rule]]
 id       = "GAM-TRN-001"
 title    = "Players act one at a time in colour order"
 context  = "game"

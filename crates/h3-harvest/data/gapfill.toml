@@ -775,8 +775,8 @@ sources = ["wiki-fire-elemental", "vcmi-creatures"]
 
 [[creature_abilities]]
 creature = "Sharpshooter"
-abilities = [{ kind = "no_distance_penalty" }]
-sources = ["wiki-sharpshooter", "vcmi-creatures"]
+abilities = [{ kind = "no_distance_penalty" }, { kind = "no_wall_penalty" }]
+sources = ["wiki-sharpshooter", "vcmi-creatures", "exe-siege-walls"]
 
 [[creature_abilities]]
 creature = "Halfling"
@@ -1431,8 +1431,18 @@ abilities = [
     { kind = "drawn_spell", spell = "base:bless", weight = 15 },
     { kind = "drawn_spell", spell = "base:cure", weight = 10 },
     { kind = "drawn_spell", spell = "base:weakness", weight = 4 },
+    { kind = "no_wall_penalty" },
 ]
-sources = ["exe-enchanter"]
+sources = ["exe-enchanter", "exe-siege-walls"]
+
+# The shot through the walls (E04c T5, pack format v37; installation.md 7.28): the Mage, Arch Mage,
+# Enchanter and Sharpshooter shoot without the walls' halving (BAT-SIE-008).
+[[source]]
+id = "exe-siege-walls"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.28): the shot's wall test 0x467510 exempts creatures 34, 35, 136 and 137 (Mage, Arch Mage, Enchanter, Sharpshooter) and 149 (the Arrow Tower), and a shooter whose controller's hero carries artifact 91 or 137 (the Golden Bow, the Bow of the Sharpshooter)"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-14"
 
 # The mana creatures (E04b T7c1, pack format v27; installation.md 7.21, "The mana creatures, re-read
 # for T7c1"): the hero's spell cost reads the armies (Pegasi +2 for the enemy hero, Mages -2 for
@@ -1457,13 +1467,13 @@ sources = ["exe-mana-creatures"]
 
 [[creature_abilities]]
 creature = "Mage"
-abilities = [{ kind = "spell_cost", amount = -2, affects = "allies" }]
-sources = ["exe-mana-creatures"]
+abilities = [{ kind = "spell_cost", amount = -2, affects = "allies" }, { kind = "no_wall_penalty" }]
+sources = ["exe-mana-creatures", "exe-siege-walls"]
 
 [[creature_abilities]]
 creature = "Arch Mage"
-abilities = [{ kind = "spell_cost", amount = -2, affects = "allies" }]
-sources = ["exe-mana-creatures"]
+abilities = [{ kind = "spell_cost", amount = -2, affects = "allies" }, { kind = "no_wall_penalty" }]
+sources = ["exe-mana-creatures", "exe-siege-walls"]
 
 [[creature_abilities]]
 creature = "Familiar"

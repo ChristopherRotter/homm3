@@ -69,6 +69,9 @@ pub(crate) struct Strike {
     pub death_blow: bool,
     /// The Ballista's double damage: +100 % (BAT-WAR-006).
     pub double_damage: bool,
+    /// A shot halved by a town's walls (BAT-SIE-008; the original's stage 2, before the range
+    /// penalty).
+    pub walls: bool,
     /// The range or melee penalty, percent (BAT-RNG-002/003); 0 = none.
     pub penalty_percent: u16,
     /// The striker's penalty against the target's creature, percent (BAT-DMG-010: the Psychic
@@ -99,6 +102,7 @@ impl Strike {
             blessing: None,
             death_blow: false,
             double_damage: false,
+            walls: false,
             penalty_percent: 0,
             creature_penalty_percent: 0,
             retaliation_percent: 100,
@@ -164,7 +168,7 @@ impl Strike {
     fn exact(&self, base: u64, p: &BattleParams) -> u64 {
         let diff = u64::from(self.attack.abs_diff(self.defense));
         let bonus = self.exact_bonus(p);
-        let mut reductions = [0u64; 7];
+        let mut reductions = [0u64; 8];
         if self.attack <= self.defense {
             let per_point = u64::from(p.defense_reduction_per_point_permille) * 10;
             reductions[0] =
@@ -176,8 +180,9 @@ impl Strike {
         reductions[4] = u64::from(100u16.saturating_sub(self.retaliation_percent)) * 100;
         reductions[5] = u64::from(self.petrified) * BP / 2;
         reductions[6] = u64::from(self.creature_penalty_percent) * 100;
-        // One rounding: the eight factors' product (at most 2^78 · (2^14)^7, so the wide
-        // product never saturates) divided by BP^8 at the end. The specialist's bonus is a
+        reductions[7] = u64::from(self.walls) * BP / 2;
+        // One rounding: the nine factors' product (at most 2^78 · (2^14)^8, so the wide
+        // product never saturates) divided by BP^9 at the end. The specialist's bonus is a
         // whole amount (at least −base), so the first stage is `(base + extra) · BP + base ·
         // bonus` over BP.
         let extra = self.blessed(base);
@@ -212,6 +217,10 @@ impl Strike {
         if self.creature_penalty_percent > 0 {
             let kept = 100u16.saturating_sub(self.creature_penalty_percent.into());
             f = f.times(double(kept, 100));
+        }
+        // The walls' half before the range penalty (0x443C79).
+        if self.walls {
+            f = f.times(double(1, 2));
         }
         if self.penalty_percent > 0 {
             f = f.times(double(100u16.saturating_sub(self.penalty_percent), 100));

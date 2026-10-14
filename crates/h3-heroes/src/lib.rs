@@ -30,7 +30,7 @@ mod details;
 mod error;
 mod spells;
 
-pub use derive::derive_battle_hero;
+pub use derive::{MANA_PER_KNOWLEDGE, derive_battle_hero, max_mana};
 pub use details::{ArtifactInstance, HeroDetails, PrimarySkill, validate, war_machines};
 pub use error::DetailsError;
 pub use spells::{available_spells, spell_masteries};

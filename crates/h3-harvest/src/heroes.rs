@@ -26,11 +26,12 @@ const SPTRAITS_FIELDS: usize = 34;
 /// Columns of the four school flags in `SPTRAITS.TXT` (header names in row 1).
 const SCHOOL_COLUMNS: std::ops::Range<usize> = 3..7;
 
-/// Skills whose battle effect the executable's value table gives (installation.md §7.4): skill
+/// Skills whose effect the executable's value table gives (installation.md §7.4; the battle's,
+/// and since E08 T18b the outcome's and the adventure's): skill
 /// id, effect kind and parameter name, whether the values are fractions (to basis points), and a
 /// parameter the skill's level plus 1 gives, if any (Eagle Eye's highest spell level, the cast
 /// routine's test at 0x59FF7A, installation.md §7.24).
-const TABLE_SKILLS: [(u8, &str, &str, bool, Option<&str>); 10] = [
+const TABLE_SKILLS: [(u8, &str, &str, bool, Option<&str>); 13] = [
     (9, "luck", "amount", false, None),
     (6, "morale", "amount", false, None),
     (1, "ranged_damage", "bp", true, None),
@@ -41,6 +42,10 @@ const TABLE_SKILLS: [(u8, &str, &str, bool, Option<&str>); 10] = [
     (25, "spell_damage", "bp", true, None),
     (26, "magic_resistance", "bp", true, None),
     (11, "eagle_eye", "bp", true, Some("max_level")),
+    // E08 T18b: the outcome's and the adventure's (pack format v37).
+    (12, "necromancy", "bp", true, None),
+    (21, "experience_gain", "bp", true, None),
+    (24, "max_mana", "bp", true, None),
 ];
 
 /// Bits of the executable's spell flag word the harvester reads (installation.md §7.6).
@@ -108,6 +113,8 @@ pub struct HeroPacks {
     pub ab: String,
     /// Text appended to `sod`.
     pub sod: String,
+    /// Each spell's key and pack, by spell id (the sieges' mines, E04c T5).
+    pub spell_keys: Vec<(String, &'static str)>,
 }
 
 impl HeroPacks {
@@ -1366,6 +1373,7 @@ pub fn harvest_heroes(
         "heroes: availability (campaign heroes, RoE-only Lord Haart the Knight) not harvested (E08-E10)"
             .into(),
     );
+    out.spell_keys = spell_keys;
     Ok(out)
 }
 

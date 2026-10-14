@@ -28,8 +28,10 @@ input that must not build a state no sequence of commands could build (`docs/06-
 
    `h3-game` is the first application crate and a logic crate (`no_std`, `check-arch` purity,
    the 100 % coverage gate). It depends on shared and domain crates, adding a domain edge when
-   an increment needs it (`h3-adventure` now, `h3-heroes` and `h3-battle` at increment 3). No
-   domain crate depends on another or on `h3-game`; adapters may depend on `h3-game`.
+   an increment needs it (`h3-adventure` now, `h3-battle` at increment 3), and on the hero model
+   `h3-heroes`. No domain crate depends on another or on `h3-game`; `h3-heroes` is no longer a
+   domain crate but the hero model in the `shared` layer, as `h3-content-battle` (ADR-0013 point
+   2), so `h3-adventure` depends on it too; adapters may depend on `h3-game`.
 2. **Ruleset parts.** A game's rules are the core ruleset (`h3_content::Ruleset`) plus one
    compiled part per context, each immutable, `Arc`-shared, with its own canonical hash and
    version. A part references core entities by handle, and its source references them by key
@@ -124,3 +126,6 @@ Point 3 carried out (BACKLOG R01; detail in `docs/epics/R01-content-split.md`):
 - 2026-10-10: Accepted (E08 T1a draft; ADV-Q1 and ADV-Q2 answered as recommended; parsers
   property-tested on stable until `cargo-fuzz` is set up).
 - 2026-10-13: Amendment R01 (the content split), proposed.
+- 2026-10-14 (E08 T18a; the user, ADV-Q13): point 1 amended: `h3-heroes` is the hero model in the
+  `shared` layer (ADR-0013 point 2); `h3-game` depends on `h3-adventure`, `h3-battle` and it,
+  `h3-adventure` on it.

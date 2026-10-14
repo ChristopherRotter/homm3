@@ -307,21 +307,31 @@ fn state_hash_is_pinned() {
         anchor: Some(at(&r, 6, 4).0),
         kind: h3_content::ContentKey::parse("t:stone").ok(),
     };
-    // A special battlefield and an anti-magic garrison (v45).
+    // A special battlefield and an anti-magic garrison (v45); a town with a Citadel and a
+    // damaging moat (v46).
     let setup = BattleSetup {
         heroes: [Some(led), None],
         funds: [1234, 99],
         obstacles: vec![stone],
         battlefield: h3_content::ContentKey::parse("t:holy").ok(),
         anti_magic: true,
-        siege: None,
+        siege: Some(h3_contracts::Siege {
+            faction: r.faction_by_key("t:castle").unwrap(),
+            fort: h3_contracts::FortLevel::Citadel,
+            moat: h3_contracts::Moat::Damaging,
+            structures: 2,
+            escape_tunnel: true,
+            morale: 1,
+            luck: 0,
+        }),
         ..setup(&r, &[(0, "fixed", 3), (2, "wisp", 7)], &[(0, "slow", 4)])
     };
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    // v45: the special battlefield and the anti-magic flag (E04c T2b).
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 45);
+    // v45: the special battlefield and the anti-magic flag (E04c T2b). v46: the town's walls,
+    // gate and moat (E04c T5).
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 46);
 }
 
-const GOLDEN: u64 = 0x4a06_9259_757a_2cc9;
+const GOLDEN: u64 = 0x9db8_eb59_387d_cec3;

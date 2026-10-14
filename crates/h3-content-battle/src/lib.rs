@@ -29,6 +29,7 @@ mod error;
 mod pack;
 mod params;
 mod ruleset;
+mod siege;
 mod spell;
 
 pub use ability::{
@@ -51,6 +52,7 @@ pub use ruleset::{
     BATTLE_RULESET_HASH_VERSION, BattleRuleset, BattleSpell, CreatureType, MAX_SUMMON_SPELLS,
     MAX_USUAL_OBSTACLE_HEXES, ObstacleType, ObstacleTypeId,
 };
+pub use siege::{MAX_MOAT_DAMAGE, Siege, SiegeDef, SiegeField, SiegeFieldDef};
 pub use spell::{
     EffectDuration, EffectEnd, HexStep, MASTERY_NAMES, MAX_AREA_RADIUS, MAX_CHAIN_TARGETS,
     MAX_MASTERY, MAX_OBSTACLE_HEXES, MAX_SPELL_EFFECTS, ObstacleKind, ObstacleShape,

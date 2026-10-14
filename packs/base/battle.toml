@@ -340,7 +340,7 @@ damage = [7, 9]
 hit_points = 25
 shots = 24
 casts = 0
-abilities = [{ kind = "spell_cost", affects = "allies", amount = -2 }]
+abilities = [{ kind = "spell_cost", affects = "allies", amount = -2 }, { kind = "no_wall_penalty" }]
 
 [[creature]]
 id = "arch_mage"  # original id 35
@@ -350,7 +350,7 @@ damage = [7, 9]
 hit_points = 30
 shots = 24
 casts = 0
-abilities = [{ kind = "spell_cost", affects = "allies", amount = -2 }]
+abilities = [{ kind = "spell_cost", affects = "allies", amount = -2 }, { kind = "no_wall_penalty" }]
 
 [[creature]]
 id = "genie"  # original id 36
@@ -2451,6 +2451,40 @@ battlefields = ["shore"]
 absolute = true
 blocked = [[5, 1], [4, 2], [5, 2], [6, 2], [10, 2], [11, 2], [12, 2], [4, 3], [5, 3], [6, 3], [11, 3], [12, 3], [4, 7], [5, 7], [6, 7], [11, 7], [12, 7], [4, 8], [5, 8], [10, 8], [11, 8], [12, 8]]
 
+[[siege]]
+faction = "castle"
+moat_damage = 70
+
+[[siege]]
+faction = "rampart"
+moat_damage = 70
+
+[[siege]]
+faction = "tower"
+moat_damage = 150
+mines = "land_mine"
+
+[[siege]]
+faction = "inferno"
+moat_damage = 90
+
+[[siege]]
+faction = "necropolis"
+moat_damage = 70
+
+[[siege]]
+faction = "dungeon"
+moat_damage = 90
+
+[[siege]]
+faction = "stronghold"
+moat_damage = 70
+
+[[siege]]
+faction = "fortress"
+moat_damage = 90
+second_moat = true
+
 # Battle parameters (Tier 2): rule ids in docs/rules/catalog/battle.toml; the formations
 # are the original's loose and tight formations (sources in the gap-fill file).
 [battle]
@@ -2480,3 +2514,4 @@ tactics_zone_columns = [3, 5, 7]
 surrender = { resource = "gold", cost_percent = 50 }
 hero_casts_per_round = 1
 side_stack_limit = 20
+siege = { walls = [12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182], gate = 96, moat = [11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181], second_moat = [10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180], moat_defense_penalty = 3, mine_power = 3 }

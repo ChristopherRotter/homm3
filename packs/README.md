@@ -6,7 +6,7 @@ Human-editable content packs (ADR-0006). Keys are namespaced `pack:name`. Since 
 | File | Holds | Parsed by, compiled by |
 |---|---|---|
 | `core.toml` | the `[pack]` manifest; resources, factions, terrains, creatures (identity and non-battle data: name, faction, level, speed, cost, growth, values, flags, upgrades), creature overrides' core halves, spell schools, spells (name, category, level, schools, cost, power, effect, `granted_by_name_only`), secondary skills, hero classes, heroes, hero overrides, artifact slots and their overrides, artifacts, `[hero_params]`, profiles | `h3-pack` into a `ContentPack`; `h3-content` into the core `Ruleset` |
-| `battle.toml` | no manifest (it belongs to its folder's `core.toml`): `[battle]`, special battlefields (v36), obstacles, each creature's battle data (`[[creature]]` with its `id`: attack, defense, damage, hit points, shots, casts, abilities), creature overrides' battle halves (`target`, `fixes` and those fields), each spell's battle magic (`[[spell]]` with its `id`: polarity and every targeting and effect field) | `h3-pack-battle` into a `BattlePack`; `h3-content-battle` into the `BattleRuleset` on the core |
+| `battle.toml` | no manifest (it belongs to its folder's `core.toml`): `[battle]`, special battlefields (v36), sieges (v37), obstacles, each creature's battle data (`[[creature]]` with its `id`: attack, defense, damage, hit points, shots, casts, abilities), creature overrides' battle halves (`target`, `fixes` and those fields), each spell's battle magic (`[[spell]]` with its `id`: polarity and every targeting and effect field) | `h3-pack-battle` into a `BattlePack`; `h3-content-battle` into the `BattleRuleset` on the core |
 | `adventure.toml` | the adventure map's data (owned by the adventure lane; format: `crates/h3-pack-adventure/src/lib.rs`) | `h3-pack-adventure` |
 
 The TOML keys are the same in either file; the sections below show each table with all its
@@ -19,8 +19,8 @@ A pack folder without `battle.toml` (or `adventure.toml`) reads as an empty one.
 |---|---|
 | `synthetic/` | Invented creatures with neutral names for tests, benchmarks, replays and the walking skeleton. **Not** original game data (docs/05-testing.md "Test data policy"). |
 | `synthetic-ext/` | Invented expansion of `synthetic`: exercises dependencies and overrides the way `ab`/`sod` do. |
-| `base/` | **Harvested**: The Restoration of Erathia, latest patch (Q15): resources, 10 terrains, 8 factions with native terrains, 90 obstacle types and 5 special battlefields (E04c T2b: the shore, Magic Plains, Cursed Ground, a ship's deck, two boats), 121 creatures (118 plus the war machines Ballista, First Aid Tent and Ammo Cart, E03 T8) with their upgrades, battle parameters, profiles; since E04a T3 also 4 spell schools, 80 spells, 28 secondary skills, 16 hero classes and 128 heroes, and (T3b) 14 artifact slots (four misc positions) and 127 artifacts. |
-| `ab/` | **Harvested**: Armageddon's Blade (depends on `base`): Conflux, 23 creatures, elementals moved to Conflux and given their upgrades; the 2 Conflux hero classes and 28 heroes (Conflux, Sir Mullich, the campaign heroes); Vial of Dragon Blood and Armageddon's Blade. |
+| `base/` | **Harvested**: The Restoration of Erathia, latest patch (Q15): resources, 10 terrains, 8 factions with native terrains, 90 obstacle types and 5 special battlefields (E04c T2b: the shore, Magic Plains, Cursed Ground, a ship's deck, two boats), 121 creatures (118 plus the war machines Ballista, First Aid Tent and Ammo Cart, E03 T8) with their upgrades, battle parameters (since E04c T5 with the siege's field), the 8 towns' sieges (E04c T5), profiles; since E04a T3 also 4 spell schools, 80 spells, 28 secondary skills, 16 hero classes and 128 heroes, and (T3b) 14 artifact slots (four misc positions) and 127 artifacts. |
+| `ab/` | **Harvested**: Armageddon's Blade (depends on `base`): Conflux and its siege, 23 creatures, elementals moved to Conflux and given their upgrades; the 2 Conflux hero classes and 28 heroes (Conflux, Sir Mullich, the campaign heroes); Vial of Dragon Blood and Armageddon's Blade. |
 | `sod/` | **Harvested**: The Shadow of Death (depends on `ab`): SoD-only changes as overrides; Titan's Lightning Bolt; the fifth misc position and the 12 combination artifacts; the 7 SoD battlefields (Holy Ground, Evil Fog, Clover Field, Lucid Pools, Fiery Fields, Rocklands, Magic Clouds) and their 35 obstacle types (E04c T2b). |
 
 The harvested packs `base` (RoE), `ab` and `sod` are generated from the user's installation by
@@ -87,6 +87,15 @@ morale = [{ factions = ["vale"], amount = 1 }]  # per list of factions, -3..=3 a
 # no_creature_casts = true       # no creature cast, raise or periodic cast (BAT-TER-004)
 expert_schools = ["storm"]       # a hero's spells of these schools at Expert (BAT-TER-005)
 # expert_other_casts = true      # creature, periodic and strike spells at Expert (BAT-TER-005)
+
+[[siege]]                        # a town faction's siege (pack format v37, E04c T5; BAT-SIE-001):
+faction = "vale"                 # a battle at its town reads this record (`BattleSetup.siege`);
+                                 # one per faction, the field `siege` of `[battle]` required
+moat_damage = 70                 # the damaging moat's damage on entering (BAT-SIE-005), at most
+                                 # 10 000; with `mines` their least value
+# second_moat = true             # the moat's second row (the Fortress, BAT-SIE-004)
+# mines = "fire:land_mine"       # instead of a moat: land mines of this spell (one that places
+                                 # mines; not with `second_moat`; the Tower, BAT-SIE-007)
 
 [[obstacle]]                     # obstacle types (E03, BAT-GEO-004)
 id = "crag"
@@ -192,6 +201,7 @@ errors:
 | `morale_aura`, `luck_aura` | `amount`, `affects` (`allies`/`enemies`) | battle-wide morale/luck change; equal auras do not stack (BAT-MOR-001, BAT-LCK-001) |
 | `minimum_morale`, `minimum_luck` | `value` | lower bound of its morale/luck (BAT-MOR-001, BAT-LCK-001) |
 | `no_distance_penalty` | — | its shots have no distance penalty (BAT-RNG-002) |
+| `no_wall_penalty` | — | since v37: its shots are not halved by a town's walls (BAT-SIE-008) |
 | `area_shot` | `effect` (`fireball`/`death_cloud`) | its shots also hit the stacks around the target (requires flag `area_attack`; BAT-RNG-004) |
 | `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine only (requires flag `war_machine`; First Aid Tent): on its turn heals the top creature of a random hurt stack of its own side (also one the other side controls, BAT-MAG-026) by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
 | `ammo_supply` | — | war machine only (requires flag `war_machine`; Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
@@ -597,6 +607,10 @@ different creatures or statistics.
 | `negate_immunities` | — | since v31: the side's spells, and spells at the stacks the hero controls, ignore the creatures' immunities and all magic resistance (the Orb of Vulnerability; BAT-MAG-066) |
 | `opening_spell` | `spell`, `mastery` (0..=3), `power` (≥ 1) | since v33: the side casts the spell for free at its first stack activation outside the tactics phase, at the mastery, its power the effects' duration, if it affects some stack; in the order of the artifact types (Angelic Alliance: Expert Prayer, 10; Armor of the Damned: Expert Slow, Curse, Weakness, Misfortune, 50; HER-BAT-017, BAT-MAG-068) |
 | `eagle_eye` | `bp` (1..=10 000), `max_level` (0..=5, default 0) | since v33: Eagle Eye's chance to pick a spell at each enemy hero cast grows by `bp` (a specialty grows the skill's), spells up to the largest `max_level` may be picked (the skill: 40/50/60 %, levels 2/3/4; the Bird of Perception, the Stoic Watchman, the Emblem of Cognizance: +5/+10/+15 % with the skill; HER-SPL-004, BAT-MAG-069) |
+| `necromancy` | `bp` (1..=10 000) | since v37 (E08 T18a; read from E08 T19a): after a won battle the hero raises this share of the killed enemy creatures as undead; sources add, a specialty grows the skill's (Necromancy: 10/20/30 %, the executable's table 0x63E9B8; the necromancy artifacts, pending) |
+| `experience_gain` | `bp` (≥ 1) | since v37 (read from E08 T19a): the experience the hero gains grows by `bp` (Learning: 5/10/15 %, table 0x63EA58) |
+| `max_mana` | `bp` (≥ 1) | since v37 (read from E08 T18b): the hero's maximum spell points (10 × Knowledge) grow by `bp` (Intelligence: 25/50/100 %, table 0x63EA88; an Intelligence specialist's grow) |
+| `join_bonus` | `level` (1..=3) | since v37 (read from E08 T20a): wandering creatures are readier to join the hero; the levels add, at most 3 (Diplomacy: 1/2/3) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 
@@ -638,12 +652,12 @@ theirs (the derivation, HER-BAT-001). Identical artifacts count once, except `pr
 **What the harvested hero content leaves out** (the harvester's report lists it; sources and
 layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfill.toml`):
 
-- Skills without effects yet: Intelligence, Mysticism, Wisdom, Ballistics (E04c), Necromancy
-  and Learning (outcome application, E08–E10), and the adventure skills. Their
-  `[[secondary_skill]]` entries exist without levels. The magic school skills give
-  `school_mastery` (gap-fill), Sorcery `spell_damage`, Resistance `magic_resistance` and Eagle Eye
-  `eagle_eye` with the level limit the skill's level + 1 (the executable's value tables, E04b T2a,
-  T2d and T8d).
+- Skills without effects yet: Mysticism, Wisdom, Ballistics (E04c), Diplomacy's join bonus
+  (E08 T20a) and the adventure skills. Their `[[secondary_skill]]` entries exist without levels.
+  The magic school skills give `school_mastery` (gap-fill), Sorcery `spell_damage`, Resistance
+  `magic_resistance` and Eagle Eye `eagle_eye` with the level limit the skill's level + 1 (the
+  executable's value tables, E04b T2a, T2d and T8d); since v37 (E08 T18b) Necromancy
+  `necromancy`, Learning `experience_gain` and Intelligence `max_mana` (their tables, §7.4).
 - Specialties not modelled: 13 resource and 2 creature-upgrade specialties (adventure), Adrienne
   (none). Spell specialties are `spell_specialty` with the SoD growth of 3 % per level (gap-fill
   `[heroes.spell_specialty]`), Ciele's and Luna's a fixed `spell_damage` (+50 % Magic Arrow,
@@ -706,7 +720,13 @@ the side's living stacks; `{ resource = "gold", cost_percent = 50 }` in `base`; 
 side can surrender; BAT-FLE-002, ruleset hash v13). Since E04b T2b `hero_casts_per_round` (how
 many spells a hero may cast per round, 1 in `base`; BAT-MAG-001, ruleset hash v15). Since E04b
 T6b `side_stack_limit` (a side creates stacks, Clone and Summon Elemental, only while it has fewer
-stacks, dead ones included; 20 in `base`, at most 21; BAT-MAG-037, ruleset hash v27).
+stacks, dead ones included; 20 in `base`, at most 21; BAT-MAG-037, ruleset hash v27). Since E04c
+T5 (pack format v37, battle part hash v3) the optional `siege = { walls, gate, moat, second_moat,
+moat_defense_penalty, mine_power }`: the siege's field, each list one standable hex per row, left
+to right the second moat row's, the moat's, the wall's, the gate one of the walls; the defense a
+stack loses in the moat and the town's mines' power without a hero before SoD (BAT-SIE-002 to
+BAT-SIE-007; `base` harvests the executable's tables, `installation.md` §7.27, §7.28). Records of
+`[[siege]]` need it.
 
 **Hero parameters** (`[hero_params]`, Tier 2, E04a T4a; at most one enabled pack provides them,
 a ruleset without them cannot validate hero details): `primary_min` (four values, attack,

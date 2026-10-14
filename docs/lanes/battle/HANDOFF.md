@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 2** (the user, 2026-10-13): T3 in **#179** (`cross-lane`: `h3-map`'s writer): batches 3a and 3b run by an agent; D-1, D-2, D-4 as the code, the defender's tile decides; BAT-Q39: S-28 not a quirk. T4 in **#180** (stacked on #179): the siege survey, §7.27, the ADR draft, accepted at BAT-Q40. Next: T5 (`QUEUE.md`).
-- **Merged:** #164, #169 (CLT-Q1, wire 29), #170, #171. E04b closed 2026-10-12.
-- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
-- **Versions** (unchanged by T3): battle state hash v45, battle part hash v2, replay format v25, action encoding v12, C ABI v19, observation encoding v15; shared: core ruleset hash v43, pack format v36, protocol v29. Next ids: BAT-Q41, BAT-QUIRK-22, BAT-STUB-2, BAT-TER-007; survey D-8, S-30.
+- **E04c T5** (the epic's "T5"): T5a (#183), T5b towns on the maps (**#184**, `cross-lane`), T5c the reading (§7.28), T5d walls, gate and moat (`battle/e04c-t5`, `cross-lane`: `h3-protocol`, `h3-view`). **Next: T5e**, a siege batch by an agent; then T6.
+- **Merged:** #164, #169, #170, #171, #179, #180, #183. E04b closed 2026-10-12.
+- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-2 (T6–T8), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
+- **Versions** (T5d): battle state hash v46, battle part hash v3, replay format v26, action encoding v12, C ABI v20, observation encoding v16; shared: core ruleset hash v43, pack format v37, protocol v30. Next ids: BAT-Q43, BAT-QUIRK-22, BAT-STUB-3, BAT-TER-007, BAT-SIE-009; survey D-11, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches are played by the user or an agent.
 
 ## Standing traps
@@ -25,14 +25,15 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 **Battle code and tests**
 - Stack ids: war machines follow the army in kind order (Ballista, Ammo Cart, Tent), not in the order of `BattleSetup.war_machines`.
-- Defend raises defense and spoils exact damage expectations: skip turns with `activate`. `BattleState::new` drops the first activation's events (use `start` where events matter). A test ruleset may not make bad morale certain (254/255).
+- Defend spoils exact damage expectations: skip turns with `activate`. `BattleState::new` drops the first activation's events (use `start`). A test ruleset may not make bad morale certain (254/255).
 - Hidden obstacles leak through public events too: a hidden obstacle that does nothing must not change them (a mine that does not go off must not split a `Moved`). `hidden_obstacles_do_not_show` checks the acting side's commands and casts (its profiles leave BAT-QUIRK-4 off; no Berserk in its books, BAT-Q31); the automatic Ballista reads `movement::reachable_in_public`. `legal_commands` lists no casts: a property over legal commands must add `cast_targets` × `second_targets` itself.
 - Natural obstacles follow the original's hex records (`h3_battle::natural`): the piece listed last wins a shared hex, and a removal clears its hexes and anchor for every piece (0x466B30).
 - A dead stack's timed effects stay until the command's end (`effects::remove_dead`), its permanent ones for good: code that brings a stack back within a command removes the timed ones first (the rebirth), and a reused record is cleared with `effects::forget`. The battle's first activation runs without the freezing checks (`turn::activate_first`); good morale goes through `turn::morale_turn`.
 - Hero spells and masteries come from `h3-heroes` (ADR-0013 point 2); the battle reads `BattleMagic` only. Tests: `support::masteries(r, [schools])`. A stack's spell test needs the casting side (`affects_stack`, `share`, `resists`: the heroes' `Guard`, BAT-MAG-066); battle-wide hero magic is `BattleState.limits`, derived at the start.
 - Rule code reads abilities via `ruleset.abilities(creature)`; per-attack booleans are `StackTraits` bits set at setup. `Stack.spells` holds the spells' values only: a creature's `innate_spell` is read where the original reads the creature (`magic::mirror_chance`, `magic::reflection`), not by Hypnotize, Dispel or usefulness tests. Two `skill_specialty` effects in one specialty are rejected.
 - A two-hex stack's position is its rear hex (BAT-GEO-002): where VCMI measures at its head, use `Footprint::front` (placement, a shot's aim, the berserk shooter); a shot's distance is `footprint_distance` (the original turns its shooter, BAT-Q36); `hexes()` keeps the front hex first. Tests place two-hex stacks by the rear hex.
-- Relations go by the acting stack's controller and the other stack's own side (`Stack::may_attack`; `is_hostile_to` only for blocking and multi-headed strikes). A created stack that ran out of rounds keeps its record (`created::reusable`).
+- Relations go by the acting stack's controller and the other stack's own side (`Stack::may_attack`; `is_hostile_to` only for blocking and multi-headed strikes).
+- A town's gate opens in `obstacles::moved`: a quiet sink moves a walker in one step, so only a recording sink sees it open mid-walk; a rule reading the gate mid-walk belongs in `travel_through`.
 - A retired quirk flag keeps its `REGISTRY` position without a name (`flags()` lists the live ones). A flag that comes or goes changes the faithful ruleset hashes: the golden replays, and the adventure lane's faithful replays (a `cross-lane` header line).
 
 - The observation is complete since T9a: a new state field a rule reads goes into `observe_as` (public, own part or neither: ADR-0014 point 8), the flat encoding (version and ABI bump) and the hygiene property.
@@ -52,19 +53,19 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 **Experiments in the original game**
 - The installation is read-only: maps go to the gitignored `experiments/out/`, the user copies them. Results hold for SoD; observation sources name the setup.
-- Agent runs (`experiments/agent/`): one map per encounter (`--only`); the random starting bonus may arm the hero: `opening.py` replays such a battle (for the global HANDOFF at the next shared change). A worktree runs the harness through a symlinked `original-data`.
-- The `.h3m` writer: land terrains, water patches (with the coast flag), roads, piles, special grounds (`[[map.ground]]`). A hero type once per map, at most eight heroes per player. Wandering monsters act on their own: use a Blue hero when the opponent must hold still. Check every move against the stack's speed (14 columns apart at the start). A single-alignment army has +1 morale: mix two where an extra turn would spoil a count. Every hero has a Catapult; the hero screen shows no army-alignment morale.
+- Agent runs (`experiments/agent/`): one map per encounter (`--only`); the random starting bonus may arm the hero: `opening.py` replays such a battle. A worktree runs the harness through a symlinked `original-data`.
+- The `.h3m` writer: terrains, water (coast flag), roads, piles, grounds, towns (`docs/experiments/README.md`). A hero type once per map, eight heroes per player. Wandering monsters act on their own: use a Blue hero to hold still. Check moves against speed (14 columns apart). A single-alignment army has +1 morale: mix two where an extra turn spoils a count. Every hero has a Catapult.
 
 ## Recent sessions
+
+### 2026-10-14 (fifty-ninth) — E04c T5b, T5d: towns on the maps (#184), walls, gate and moat
+
+T5b's pull request; T5d rebased on #183's squash: the harvested siege data, the walls, gate, moat, the Tower's mines, the shot's wall test (BAT-SIE-001 to 008). Detail: `docs/epics/E04c-log.md`.
+
+### 2026-10-14 (fifty-eighth) — E04c T5a to T5c: the siege seam, towns, the reading
+
+The seam's pull request #183 (ADR-0023; BAT-Q41: the faction by handle, `structures` by the code, the moat by the game's version); towns in the map writer (T5b); the walls', gate's and moat's reading (§7.28, D-8 to D-10, BAT-Q42). Detail: `docs/epics/E04c-log.md`.
 
 ### 2026-10-13 (fifty-seventh) — E04c T3: the battlefield experiments run by an agent
 
 The user's cut (T3, then T4). T3: the writer's grounds and coast flag, `--only`; batches 3a and 3b run on the harness after batch 1a's R1 matched (#179). T4: the siege reading, survey and ADR draft; BAT-Q40 asked. Detail: `docs/epics/E04c-log.md`.
-
-### 2026-10-13 (fifty-sixth) — E04c refined; T1 and T2, the battlefields
-
-The user's answers (BAT-Q37); T1 (the readings, the survey, the ADR draft; #164); T2 built on the draft while the user was away, then adjusted to BAT-Q38 (ADR-0022, S-28); protocol v28 after master's v27. Detail: `docs/epics/E04c-log.md`.
-
-### 2026-10-13 (fifty-fifth) — the wiki checks; the shot's distance; the user's answers
-
-The wiki checks, BAT-Q36 (#156); the Faerie Dragon's readings, BAT-QUIRK-1 retired (#162).

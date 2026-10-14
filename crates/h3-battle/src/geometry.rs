@@ -85,6 +85,15 @@ impl HexSet {
         ])
     }
 
+    /// Whether the sets share a hex.
+    pub const fn intersects(self, other: Self) -> bool {
+        (self.0[0] & other.0[0])
+            | (self.0[1] & other.0[1])
+            | (self.0[2] & other.0[2])
+            | (self.0[3] & other.0[3])
+            != 0
+    }
+
     /// The hexes in ascending order.
     pub fn iter(self) -> impl Iterator<Item = Hex> {
         (0..=u8::MAX).map(Hex).filter(move |h| self.contains(*h))

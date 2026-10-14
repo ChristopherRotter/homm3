@@ -16,15 +16,22 @@ are computed before the seam (03-domain). The seam must change once for E04a and
 1. **Entities.** Hero type (content, `h3_content::HeroType`), hero details (`h3_heroes::HeroDetails`:
    level, experience, primary and secondary skills, artifacts, spell book, mana), hero on the map
    (E08, own type), battle hero (`h3_contracts::BattleHero`, all derived). No type is named `Hero`;
-   contexts meet through ids and explicit pure translations. A cross-context `HeroId` arrives with a
-   store of heroes (E08/E10). The army is not part of `HeroDetails`.
-2. **Crates.** `h3-heroes` is a domain logic crate (kernel, content, contracts only) with
-   `HeroDetails`, its validation, `derive_battle_hero` and `war_machines`; no commands, no map or
-   battle state. `h3-battle` never depends on it. **What a hero has from its details in every
-   context is derived here once** (BAT-Q19): its available spells (learned, worn scrolls, the
-   spell-giving artifacts) and its mastery of a spell are `h3_heroes::available_spells` and
-   `spell_masteries`, used by the battle's derivation now and by the adventure map later; no
-   context keeps its own copy.
+   contexts meet through ids and explicit pure translations. A cross-context `HeroId` names a
+   record of the game's **store of heroes** (ADR-0017 point 1): the contexts read a hero's details
+   there by reference and change them by returning **hero changes** that the game applies through
+   `h3-heroes`. The army is not part of `HeroDetails`.
+2. **Crates.** `h3-heroes` is the **hero model**: a logic crate in the shared layer beneath the
+   contexts (kernel, content, contracts only) with `HeroDetails`, its validation, the translations
+   (`derive_battle_hero`, `war_machines`) and the typed hero changes (`HeroChange`: experience,
+   spell points, a spell, an artifact; increment 4 adds skills, primary skills and levels) with
+   their checks; no commands, no map, game or battle state. The adventure, the game and later the
+   towns depend on it; `h3-battle` never does and sees only `BattleHero` (points 4 and 5). **What
+   a hero has from its details in every context is derived here once** (BAT-Q19): its available
+   spells (learned, worn scrolls, the spell-giving artifacts) and its mastery of a spell
+   (`h3_heroes::available_spells`, `spell_masteries`), from E08 increment 3 the adventure's Attack
+   and Defense, Diplomacy's join bonus, the maximum spell points, Necromancy and Learning, from
+   increment 4 movement and scouting; no context keeps its own copy, and no adventure profile
+   seam copies them (E08 decision 5 withdrawn).
 3. **Effects are data.** Artifacts, skill levels and specialties carry a closed `HeroEffect` enum in
    content (Tier 3, like `Ability`, ADR-0012); the translation resolves them into a closed
    `BattleEffect` enum in contracts. Percentages are **basis points** in content and seam.
@@ -63,14 +70,26 @@ are computed before the seam (03-domain). The seam must change once for E04a and
 - The battle stays ignorant of hero management; a skill's numbers are a data change, a new effect
   kind is one variant in content, one in contracts and one rule.
 - Every caller of the seam changes in E04a (T4, T9, T11); state hash v9, ruleset hash v9.
-- Enforced by `check-arch` (no `h3-battle` → `h3-heroes` edge), property tests (hero isolation,
-  observation hygiene, conservation of creatures) and `SetupError` tests for every validation.
+- Enforced by `check-arch` (no `h3-battle` → `h3-heroes` edge: a forbidden edge in `arch.toml`,
+  since the layers alone allow it from E08 T18a), property tests (hero isolation, observation
+  hygiene, conservation of creatures) and `SetupError` tests for every validation.
+- One store of heroes, as the original keeps one record per hero: heroes off the map (the tavern
+  pool, prisons; E09) need no second home. Rejections stay atomic: a context checks a hero's
+  details before it returns changes, and the game applies them infallibly (point 2).
+- `h3-heroes` moves to the adventure lane once the battle lane is done with it (the user,
+  ADV-Q13; a `shared/` change of `lanes.toml`); until then the adventure's additions to it are
+  `cross-lane`.
 - This revises the epic's non-goal "the orchestrator computes the surrender cost" (point 8).
 
 ## Alternatives considered
 
 - One hero type for all contexts, or `HeroDetails` across the seam: couples battle to hero
   management (rejected by the user, Q27).
+- `h3-heroes` as a peer domain crate the adventure sees through a profile seam (E08 decision 5):
+  every read a copied field, every write an outcome variant and code in `h3-game`; the details
+  with the hero on the map in the adventure: heroes off the map need a second home; the hero rules
+  in `h3-adventure`: the battle's pack tests and the towns would depend on the adventure (E08
+  T17b, ADV-Q13).
 - Typed fields only (seam grows per artifact kind) or an effects list only (list searches on the hot
   path, legality depends on list contents).
 - Hero attack and defense as pool modifiers: recomputation for values fixed for the whole battle.
@@ -100,3 +119,7 @@ are computed before the seam (03-domain). The seam must change once for E04a and
 - 2026-10-13 (E04c T5a; the user, BAT-Q40): point 5's reserved `siege` fields are decided by
   ADR-0023: the setup's is `BattleSetup.siege`, the outcome's is dropped (the original writes
   nothing about the walls back to the town). The battlefield kind is ADR-0022's.
+- 2026-10-14 (E08 T18a; the user, ADV-Q13): points 1 and 2 amended: `h3-heroes` is the hero
+  model in the shared layer beneath the contexts, read by them by reference and changed through
+  typed hero changes; the store of heroes is the game's (ADR-0017 point 1); E08 decision 5's
+  adventure profile withdrawn (drafted in E08 T17b, #181).

@@ -77,7 +77,7 @@ fn sample(v: Version) -> RawMap {
                 secondary_skills: Some(vec![(1, 2)]),
                 artifacts: Some(Artifacts {
                     worn: vec![None; v.artifact_slots()],
-                    backpack: vec![Some(5)],
+                    backpack: vec![Some(7)],
                 }),
                 sex: 0xFF,
                 ..CustomHero::default()
@@ -683,6 +683,94 @@ fn the_experiment_writer_marks_the_coast() {
     }
 }
 
+/// E04c T5b: a town reads back with its body, and a hero on its entrance, two columns west of
+/// the town's position, stands in it (the import's own test of a town's blocked tiles).
+#[test]
+fn towns_from_the_experiment_writer_read_back() {
+    use crate::writer as w;
+    let mut players: [Option<w::Player>; w::PLAYERS] = Default::default();
+    for (colour, player) in players.iter_mut().take(2).enumerate() {
+        *player = Some(w::Player {
+            human: true,
+            computer: true,
+            towns: 1 << (6 * colour),
+        });
+    }
+    let town = w::Town {
+        tile: (12, 9),
+        template: w::ObjectTemplate::from_objects_txt(
+            "AVCstrx0.def 000001110000011110001111111111111111111111111111 \
+             001000000000000000000000000000000000000000000000 011111111 011111111 98 6 1 0",
+        )
+        .unwrap(),
+        owner: Some(1),
+        garrison: Some([Some((86, 30)), None, None, None, None, None, Some((87, 4))]),
+        tight_formation: false,
+        buildings: w::TownBuildings::Custom {
+            built: [0x58, 0, 0x04, 0, 0, 0],
+            forbidden: [0, 0, 0, 0, 0, 0x01],
+        },
+    };
+    let hero = |tile, owner, hero_type| {
+        w::MapObject::Hero(w::Hero {
+            tile,
+            owner,
+            hero_type,
+            class: 0,
+            name: None,
+            experience: None,
+            skills: None,
+            army: None,
+            tight_formation: false,
+            artifacts: None,
+            spells: None,
+            primary: None,
+        })
+    };
+    let map = w::Map {
+        name: "Siege".to_owned(),
+        description: String::new(),
+        size: 36,
+        terrain: w::Terrain::Rough,
+        patches: vec![],
+        roads: vec![],
+        players,
+        objects: vec![
+            hero((10, 10), 0, 0),
+            w::MapObject::Town(town),
+            hero((10, 9), 1, 1),
+        ],
+    };
+    let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
+    let template = &m.templates[m.objects[1].template as usize];
+    assert_eq!((template.class, template.subclass), (98, 6));
+    assert_eq!(m.objects[1].pos, Pos { x: 12, y: 9, z: 0 });
+    let Body::Town(t) = &m.objects[1].body else {
+        panic!("not a town: {:?}", m.objects[1].body)
+    };
+    assert_eq!((t.identifier, t.owner, t.name.as_ref()), (Some(2), 1, None));
+    let garrison = t.garrison.as_ref().unwrap();
+    let stack = |creature, count| Some(crate::model::Stack { creature, count });
+    assert_eq!((garrison[0], garrison[6]), (stack(86, 30), stack(87, 4)));
+    assert!(garrison[1..6].iter().all(Option::is_none));
+    assert_eq!(
+        t.buildings,
+        crate::model::Buildings::Custom {
+            built: [0x58, 0, 0x04, 0, 0, 0],
+            forbidden: [0, 0, 0, 0, 0, 0x01],
+        }
+    );
+    assert_eq!((t.formation, t.alignment, t.events.len()), (0, 0xff, 0));
+    // The visiting hero on the entrance stands in the town, which the import cannot represent
+    // yet (towns: E09).
+    assert!(matches!(
+        crate::import(&m, &import::SOD),
+        Err(crate::ImportError::Unsupported(
+            crate::Unsupported::HeroInTown(2)
+        ))
+    ));
+}
+
 #[test]
 fn maps_from_the_experiment_writer_read_back() {
     use crate::writer as w;
@@ -692,7 +780,7 @@ fn maps_from_the_experiment_writer_read_back() {
         hero_type: 0,
         class: 0,
         name: None,
-        experience: Some(1000),
+        experience: Some(999),
         skills: Some(vec![(6, 2)]),
         army: Some([Some((1, 25)), None, None, None, None, None, None]),
         tight_formation: false,
@@ -844,7 +932,7 @@ fn maps_from_the_experiment_writer_read_back() {
     let Body::Hero(h) = &m.objects[0].body else {
         panic!("not a hero: {:?}", m.objects[0].body)
     };
-    assert_eq!((h.owner, h.hero_type, h.experience), (0, 0, Some(1000)));
+    assert_eq!((h.owner, h.hero_type, h.experience), (0, 0, Some(999)));
     assert_eq!(h.secondary_skills, Some(vec![(6, 2)]));
     assert_eq!(h.primary_skills, Some([3, 2, 1, 1]));
     let army = h.army.as_ref().unwrap();

@@ -22,6 +22,48 @@ pub struct KnownBuild {
     pub heroes: HeroTables,
     /// The battlefield's obstacle tables (E04c T2b).
     pub obstacles: ObstacleTables,
+    /// The siege's tables and constants (E04c T5).
+    pub siege: SiegeTables,
+}
+
+/// A one-byte immediate operand of an instruction: the instruction's address and its bytes before
+/// the operand, which the reader checks (a moved or different instruction is rejected).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Immediate {
+    /// Virtual address of the instruction.
+    pub va: u32,
+    /// Its bytes before the operand (opcode and operand bytes).
+    pub opcode: &'static [u8],
+}
+
+/// Where a build keeps the siege's tables and constants (`docs/formats/installation.md` §7.27,
+/// §7.28).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SiegeTables {
+    /// Virtual address of the wall hexes, one byte per row.
+    pub walls_va: u32,
+    /// Virtual address of the moat hexes, one byte per row.
+    pub moat_va: u32,
+    /// Virtual address of the Fortress's second moat row, one byte per row.
+    pub second_moat_va: u32,
+    /// Rows of the battlefield (entries of the three tables).
+    pub rows: usize,
+    /// Virtual address of the moat's damage by town type (`i32` each).
+    pub moat_damage_va: u32,
+    /// Number of town types.
+    pub towns: usize,
+    /// The gate's hex (`cmp eax, 96` in the passage test, 0x469A10).
+    pub gate: Immediate,
+    /// The moat's defense penalty (`sub ebx, 3` in the defense, 0x442590).
+    pub moat_defense_penalty: Immediate,
+    /// The mines' power without a hero before SoD (`push 3`, 0x466290).
+    pub mine_power: Immediate,
+    /// The town type with the second moat row (`cmp al, 7`, 0x4639F0).
+    pub second_moat_town: Immediate,
+    /// The town type whose land mines take the moat's place (`cmp byte [eax + 4], 2`, 0x466290).
+    pub mines_town: Immediate,
+    /// The mines' spell (`push 11`, 0x466290).
+    pub mines_spell: Immediate,
 }
 
 /// Where a build keeps its battlefield obstacle tables (`docs/formats/installation.md` §7.26).
@@ -186,6 +228,38 @@ pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
         boats_va: 0x0063_D368,
         boats_count: 32,
     },
+    siege: SiegeTables {
+        walls_va: 0x0063_BD00,
+        moat_va: 0x0063_BCE8,
+        second_moat_va: 0x0063_BCF4,
+        rows: 11,
+        moat_damage_va: 0x0063_BD18,
+        towns: 9,
+        gate: Immediate {
+            va: 0x0046_9A20,
+            opcode: &[0x83, 0xF8],
+        },
+        moat_defense_penalty: Immediate {
+            va: 0x0044_2646,
+            opcode: &[0x83, 0xEB],
+        },
+        mine_power: Immediate {
+            va: 0x0046_6460,
+            opcode: &[0x6A],
+        },
+        second_moat_town: Immediate {
+            va: 0x0046_3BAE,
+            opcode: &[0x3C],
+        },
+        mines_town: Immediate {
+            va: 0x0046_63C4,
+            opcode: &[0x80, 0x78, 0x04],
+        },
+        mines_spell: Immediate {
+            va: 0x0046_6462,
+            opcode: &[0x6A],
+        },
+    },
 }];
 
 /// Size of one usual obstacle type record (§7.26).
@@ -320,6 +394,93 @@ pub fn obstacle_data_at(
         types,
         absolute,
         boats,
+    })
+}
+
+/// The siege's tables and constants of a build (§7.27, §7.28).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SiegeData {
+    /// The wall hexes, row by row.
+    pub walls: Vec<u8>,
+    /// The moat hexes, row by row.
+    pub moat: Vec<u8>,
+    /// The second moat row's hexes, row by row.
+    pub second_moat: Vec<u8>,
+    /// The moat's damage by town type.
+    pub moat_damage: Vec<u32>,
+    /// The gate's hex.
+    pub gate: u8,
+    /// The moat's defense penalty.
+    pub moat_defense_penalty: u8,
+    /// The mines' power without a hero before SoD.
+    pub mine_power: u8,
+    /// The town type with the second moat row.
+    pub second_moat_town: u8,
+    /// The town type whose land mines take the moat's place.
+    pub mines_town: u8,
+    /// The mines' spell id.
+    pub mines_spell: u8,
+}
+
+/// Reads the siege's tables and constants of a known build.
+///
+/// # Errors
+/// Unknown build, unmapped tables, an instruction that is not the expected one, a negative or
+/// too large damage.
+pub fn siege_data(data: &[u8]) -> Result<SiegeData, FormatError> {
+    let (build, image) = identify(data)?;
+    siege_data_at(&image, &build.siege)
+}
+
+/// Reads the tables described by `t` (exposed for tests with synthetic images).
+///
+/// # Errors
+/// As [`siege_data`], without the build check.
+pub fn siege_data_at(image: &PeImage<'_>, t: &SiegeTables) -> Result<SiegeData, FormatError> {
+    let at = |va: u32, what: &'static str| {
+        image.file_offset(va).ok_or(FormatError::OutOfRange {
+            what,
+            value: u64::from(va),
+        })
+    };
+    let bytes = |va: u32, len: usize, what: &'static str| {
+        let off = at(va, what)?;
+        image
+            .data
+            .get(off..off + len)
+            .ok_or(FormatError::Truncated { what, offset: off })
+    };
+    let imm = |i: Immediate, what: &'static str| {
+        let code = bytes(i.va, i.opcode.len() + 1, what)?;
+        if code[..i.opcode.len()] != *i.opcode {
+            return Err(FormatError::BadMagic(what));
+        }
+        Ok(code[i.opcode.len()])
+    };
+    let base = at(t.moat_damage_va, "moat damage table")?;
+    let moat_damage = (0..t.towns)
+        .map(|i| {
+            let d = le::i32_at(image.data, base + 4 * i, "moat damage table")?;
+            u32::try_from(d)
+                .ok()
+                .filter(|&d| d <= 10_000)
+                .ok_or(FormatError::OutOfRange {
+                    what: "moat damage",
+                    value: u64::from(d.unsigned_abs()),
+                })
+        })
+        .collect::<Result<_, _>>()?;
+    Ok(SiegeData {
+        walls: bytes(t.walls_va, t.rows, "siege wall hexes")?.to_vec(),
+        moat: bytes(t.moat_va, t.rows, "moat hexes")?.to_vec(),
+        second_moat: bytes(t.second_moat_va, t.rows, "second moat hexes")?.to_vec(),
+        moat_damage,
+        gate: imm(t.gate, "the gate's hex instruction")?,
+        moat_defense_penalty: imm(t.moat_defense_penalty, "the moat's defense instruction")?,
+        mine_power: imm(t.mine_power, "the mines' power instruction")?,
+        second_moat_town: imm(t.second_moat_town, "the second moat's town instruction")?,
+        mines_town: imm(t.mines_town, "the mines' town instruction")?,
+        mines_spell: imm(t.mines_spell, "the mines' spell instruction")?,
     })
 }
 
@@ -934,6 +1095,91 @@ mod tests {
         ] {
             assert!(obstacle_data_at(&pe, &t).is_err());
         }
+    }
+
+    #[test]
+    fn reads_the_siege_tables_from_a_synthetic_image() {
+        // Three rows of hexes, two towns' damages, then the five instructions.
+        let mut p = vec![12u8, 29, 45, 11, 28, 44, 10, 27, 43];
+        for d in [70i32, 150] {
+            p.extend_from_slice(&d.to_le_bytes());
+        }
+        p.extend_from_slice(&[
+            0x83, 0xF8, 29, 0x83, 0xEB, 3, 0x6A, 3, 0x3C, 7, 0x80, 0x78, 4, 2, 0x6A, 11,
+        ]);
+        let va = |off: u32| 0x0040_1000 + off;
+        let imm = |off: u32, opcode: &'static [u8]| Immediate {
+            va: va(off),
+            opcode,
+        };
+        let t = SiegeTables {
+            walls_va: va(0),
+            moat_va: va(3),
+            second_moat_va: va(6),
+            rows: 3,
+            moat_damage_va: va(9),
+            towns: 2,
+            gate: imm(17, &[0x83, 0xF8]),
+            moat_defense_penalty: imm(20, &[0x83, 0xEB]),
+            mine_power: imm(23, &[0x6A]),
+            second_moat_town: imm(25, &[0x3C]),
+            mines_town: imm(27, &[0x80, 0x78, 0x04]),
+            mines_spell: imm(31, &[0x6A]),
+        };
+        let img = build_test_image(1, &p);
+        let pe = PeImage::parse(&img).unwrap();
+        assert_eq!(
+            siege_data_at(&pe, &t).unwrap(),
+            SiegeData {
+                walls: vec![12, 29, 45],
+                moat: vec![11, 28, 44],
+                second_moat: vec![10, 27, 43],
+                moat_damage: vec![70, 150],
+                gate: 29,
+                moat_defense_penalty: 3,
+                mine_power: 3,
+                second_moat_town: 7,
+                mines_town: 2,
+                mines_spell: 11,
+            }
+        );
+        // Another instruction, a negative or too large damage, an unmapped or truncated table.
+        let refused = |bad: &[u8], t: &SiegeTables| {
+            let img = build_test_image(1, bad);
+            siege_data_at(&PeImage::parse(&img).unwrap(), t).unwrap_err()
+        };
+        let mut bad = p.clone();
+        bad[17] = 0x3D;
+        assert_eq!(
+            refused(&bad, &t),
+            FormatError::BadMagic("the gate's hex instruction")
+        );
+        for d in [-1i32, 10_001] {
+            let mut bad = p.clone();
+            bad[13..17].copy_from_slice(&d.to_le_bytes());
+            assert!(matches!(
+                refused(&bad, &t),
+                FormatError::OutOfRange {
+                    what: "moat damage",
+                    ..
+                }
+            ));
+        }
+        for t in [
+            SiegeTables {
+                walls_va: 0x10,
+                ..t
+            },
+            SiegeTables { rows: 99, ..t },
+            SiegeTables {
+                moat_damage_va: 0x10,
+                ..t
+            },
+        ] {
+            assert!(siege_data_at(&pe, &t).is_err());
+        }
+        // The known build's addresses: an image of another build is refused before them.
+        assert!(siege_data(&img).is_err());
     }
 
     /// A payload with one hero record, one specialty record, two spell records, two skill

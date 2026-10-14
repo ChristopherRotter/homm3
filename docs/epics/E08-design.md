@@ -1,61 +1,39 @@
 # E08 design note: increment 3
 
-A handover, not binding (`docs/adr/README.md`): the working detail behind the ADR-0016 and
-ADR-0017 amendment drafts for increment 3 and the ADR-0013 one (E08 T17b;
-`docs/lanes/adventure/adr-drafts/`; accepted by the user at ADV-Q13 with its changes). The task
-that builds a section deletes it; the file goes when the epic closes.
+A handover, not binding (`docs/adr/README.md`): the working detail behind increment 3's
+amendments of ADR-0013, -0016 and -0017 (drafted in E08 T17b, accepted by the user at ADV-Q13
+with its changes, applied by T18a, #185). The task that builds a section deletes it; the file goes
+when the epic closes.
 Facts and sources: survey `docs/rules/surveys/E08-battles.md` (§ numbers below are the survey's
 unless they name this note). Increment 2's note went with T15b; its versions are in `E08-log.md`.
 
-## 1. The store of heroes (GAM-HER-001; T18b)
+## 1. The store of heroes (GAM-HER-001)
 
-- `GameState.heroes: Vec<Arc<HeroDetails>>` by `HeroId` (a fork costs a reference count per hero;
-  `Arc::make_mut` copies one hero on a write; T14b measured the heroes' clone at 15 % of
-  `fork-xl-144` with an allocation per army: measure again). Validated with `h3_heroes::validate`
-  when the state is built; a `GameSetupError::Hero(index, DetailsError)`.
-- `GameHeroSetup` gains `details: HeroDetailsSetup`: each field `Option` (the map's customisation)
-  or the default. Defaults (§6.2): primary skills from the class (`HeroClass::primary`), secondary
-  skills, spell book and spell from the type, level 1, **experience a setup placeholder**: 40 +
-  a draw of 0–50 from the setup stream (D-12; the original's `rand() mod 51` bias is not
-  reproduced), drawn in hero order after the starting armies; spell points full (the maximum
-  from `h3-heroes`, Knowledge × 10 with Intelligence: new content, §10), worn artifacts and the
-  backpack from the map (validated: slots, backpack size), the starting army's war machine as its
-  artifact (GAM-SET-001, already drawn). A custom primary skill is copied without the worn
-  artifacts' bonuses and clamped (§6.3).
-- The import (`h3-map`, `MAP_IMPORT_VERSION` 4) reads the body's customisations (the body wins
-  over the map-wide `custom_heroes` entry; `ADV-STUB-1` closed): experience, primary and secondary
-  skills, spells, artifacts (worn by slot, the backpack), formation; name, portrait, biography,
-  sex and patrol are presentation or computer-player data and stay ignored. `Unsupported`: an
-  experience of 1 000 or more, the body's or else the map-wide entry's (decision 22: 42 placed
-  heroes; the 15 map-wide entries with a gameplay field all have one, survey §6.1), which needs
-  increment 4's levels.
-- The formation: kept with the army, `HeroOnMap.formation` (`HeroDetails` holds no army,
-  ADR-0013 point 1); the map's flag goes to `BattleSetup.formations` (one shipped hero is tight;
-  VCMI resets every hero to loose, the original was not read: E3-9 settles it; until then the
-  map's).
-- Observation: the owner sees its heroes' details (experience, primary and secondary skills,
-  artifacts, spells, spell points); other players see identity, owner and class (§9).
+Built by T18b (2026-10-14): `h3_game::GameState`'s store, `HeroDetailsSetup`, the import of the
+customisations (`docs/formats/h3m.md`, "Import"), the formation on `HeroOnMap`, HER-MAN-001. Left
+for later tasks: the formation into `BattleSetup.formations` (T19a, §5); `fork-xl-144` measured
+with the store (T18b's log).
 
-## 2. Reading and changing a hero's details (the hero model, decision 25; T18a, T18b)
+## 2. Reading and changing a hero's details (the hero model, decision 25)
 
-- `h3-heroes` in the `shared` layer (`arch.toml`, T18a; the ADR-0013 amendment draft):
-  `h3-adventure` and `h3-game` depend on it, `h3-battle` never. No adventure profile (decision 5
-  withdrawn).
-- Reads: the game passes its store (`&HeroStore`, the heroes' `Arc<HeroDetails>` by `HeroId`) to
-  `AdventureState::apply` and the queries (`reach`; the observation for the owner's heroes). The
+`h3-heroes` is in the `shared` layer since T18a. Moved at the round-1 checkpoint (decision 28)
+to the tasks that first use them:
+- **T19a** (the battle's outcome, the first writer): `h3_heroes::HeroChange` (increment 3:
+  `GainExperience(u32)`, `SetSpellPoints(u16)`, `LearnSpell(SpellId)`, `AddArtifact(ArtifactTypeId)`
+  placed by the capture rule, `RemoveArtifact(slot or backpack index)`), each checked by
+  `h3_heroes::check_change` (the caller checks first, so the game's `apply_change` is infallible);
+  the Necromancy share and the Learning factor (their pack values are harvested since T18b).
+- **T20a** (before T20b's monster answer, the first reader): the game passes its store
+  (`&[Arc<HeroDetails>]` by `HeroId`) to `AdventureState::apply` and the queries (`reach`); the
   adventure reads the visiting hero's details only through `h3-heroes`' derivations: in increment
   3 `attack_defense` (the effective Attack and Defense, as the original's hero record
-  +0x476/+0x477 holds them, clamped 0–99 — the building task reads whether +0x476 includes the
-  artifacts) and `join_bonus` (0–3, from a new hero-effect kind, VCMI's
-  `WANDERING_CREATURES_JOIN_BONUS`: Diplomacy 1, 2, 3 by level, so no code reads the skill by name,
-  ADR-0016 point 4); increment 4 adds movement and scouting.
-- Writes: `h3_heroes::HeroChange` (increment 3: `GainExperience(u32)`, `SetSpellPoints(u16)`,
-  `LearnSpell(SpellId)`, `AddArtifact(ArtifactTypeId)` placed by the capture rule,
-  `RemoveArtifact(slot or backpack index)`), each checked by `h3_heroes::check_change` (the caller
-  checks first, so the game's `apply_change` is infallible). Increment 3's adventure visits change
-  no hero (a joining group changes the army only); the battle's outcome does (§5).
-- The game's difficulty reaches the adventure as a static input (`AdventureSetup.difficulty`),
-  read only by ADV-MON-007's Easy rule (D-10: every player on Easy).
+  +0x476/+0x477 holds them, clamped 0–99 — read whether +0x476 includes the artifacts) and
+  `join_bonus` (0–3 from the `join_bonus` kind: Diplomacy's 1, 2, 3 into the packs then, so no
+  code reads the skill by name, ADR-0016 point 4); the game's difficulty as a static input
+  (`AdventureSetup.difficulty`), read only by ADV-MON-007's Easy rule (D-10). Increment 4 adds
+  movement and scouting.
+- Increment 3's adventure visits change no hero (a joining group changes the army only); the
+  battle's outcome does (§5).
 
 ## 3. Monsters on the map (ADV-MON-001 to -006; T20a)
 
@@ -191,23 +169,22 @@ unless they name this note). Increment 2's note went with T15b; its versions are
 
 ## 9. Versions
 
-Game state hash v5 (heroes' details, battles, offer kinds); adventure state hash v7 (the
-formation, monsters' static data and army left, the difficulty); adventure ruleset part v6 (monster and
-ground kinds); map import v4 (monsters, guarded piles, hero customisations); action encoding v3;
-adventure replay format v3. Each bumps once in the task that first changes it.
+Game state hash v5 (heroes' details since T18b; battles, offer kinds later); adventure state hash
+v7 (the formation since T18b; monsters' static data and army left, the difficulty later);
+adventure ruleset part v6 (monster and ground kinds, T20a); map import v4 (hero customisations
+since T18b; monsters, guarded piles later); action encoding v3; adventure replay format v3. Each
+bumps once in the task that first changes it: T18b bumped the first three it touched.
 
 ## 10. Shared and cross-lane work
 
-- `shared/` (T18a): the accepted ADR amendments applied (ADR-0013, -0015, -0016, -0017 and the
-  glossary); `arch.toml` (`h3-heroes` in the `shared` layer; `h3-adventure` → `h3-heroes`;
-  `h3-game` → `h3-heroes`, `h3-battle`, `h3-content-battle`); `h3_content` hero-effect kinds for Necromancy (raise share by
-  level), Learning (experience share), Intelligence (spell points share) and Diplomacy's join
-  bonus (§2).
-- `cross-lane` (battle-owned): the effects' values in the packs (the harvester's gap-fill; the
-  skills' levels, Isra's and Vidomina's specialties, the necromancy artifacts' parts for increment
-  4), `h3-heroes`' additions (`attack_defense`, `join_bonus`, the maximum spell points, the Necromancy
-  share, the Learning factor, the capture's placement, `HeroChange` and its check); `h3-experiment`'s spec for batch E3
-  (monsters, custom heroes, the difficulty); the client lane's recipes (its inbox, 2026-10-13).
+- Done: T18a (#185: the ADR amendments, `arch.toml`, the kinds `necromancy`, `experience_gain`,
+  `max_mana`, `join_bonus`, pack format v37); T18b (the harvester reads Necromancy's, Learning's
+  and Intelligence's tables; `h3_heroes::max_mana`).
+- `cross-lane` (battle-owned), still to come: Diplomacy's `join_bonus` values (T20a; no table:
+  the skill's level), the necromancy artifacts' parts (increment 4), `h3-heroes`' additions
+  (`attack_defense`, `join_bonus` in T20a; the Necromancy share, the Learning factor, the capture's
+  placement, `HeroChange` and its check in T19a); `h3-experiment`'s spec for batch E3 (monsters,
+  custom heroes, the difficulty); the client lane's recipes (its inbox, 2026-10-13).
   **The handover of `h3-heroes`**: as soon as the battle lane is done with it (the user,
   ADV-Q13; the battle lane's inbox asks it to say when), a `shared/` change of `lanes.toml`; the
   additions above are `cross-lane` until then.
@@ -218,8 +195,8 @@ adventure replay format v3. Each bumps once in the task that first changes it.
 
 | Round | Tasks | Content |
 |---|---|---|
-| 1 | T18a + T18b | the shared groundwork with the ADR amendments (§10); the store of heroes, defaults, reads and changes, the import of hero customisations (§1, §2) |
-| 2 | T19a + T19b | battles through the game, hero against hero, the unowned side (§5, §6); the env, replays and properties with battles (§8) |
-| 3 | T20a + T20b | monsters on the map, guarded tiles, grounds (§3); the monster's answer, offers, joining, the split, its battle (§4) |
+| 1 | T18a + T18b | done (2026-10-14): the shared groundwork with the ADR amendments (§10); the store of heroes, its defaults, the import of hero customisations (§1), trimmed at the checkpoint (decision 28) |
+| 2 | T19a + T19b | battles through the game, hero against hero, the unowned side, hero changes (§2, §5, §6); the env, replays and properties with battles (§8) |
+| 3 | T20a + T20b | monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle (§4) |
 | 4 | T21 + T22a | guarded piles and the maps with monsters, replays, benchmarks, the audit (§7); batch E3's spec and run (cross-lane, the client lane's recipes) |
 | 5 | T22b | batch E3 scored, increment 3 closed, increment 4 refined |

@@ -20,7 +20,7 @@ use crate::damage::{
 use crate::effects::{self, DamageRoll, Status};
 use crate::event::{Event, EventKind, Sink, StrikeFlags};
 use crate::geometry::{Direction, Field, Footprint, Hex, HexSet};
-use crate::hero::{self, HeroRecord};
+use crate::hero;
 use crate::magic::Specialist;
 use crate::state::{
     BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,
@@ -141,13 +141,7 @@ fn strike<S: Sink>(
         ),
     };
     let terms = specialist_terms(state, ruleset, attacker);
-    let (inputs, flags) = strike_inputs(
-        ruleset,
-        &state.heroes,
-        (&striker, &victim),
-        (flags, terms),
-        blow,
-    );
+    let (inputs, flags) = strike_inputs(ruleset, state, (&striker, &victim), (flags, terms), blow);
     let staged = staged(ruleset);
     let damage = inputs.damage(base, params, staged);
     let lost = damage.min(victim.total_hp());
@@ -187,11 +181,11 @@ fn staged(ruleset: &BattleRuleset) -> bool {
 }
 
 /// The damage inputs of a strike of `striker` on `victim` (BAT-DMG-002, the abilities that
-/// change them and the heroes' damage bonuses), and its flags with the luck and death-blow flags
-/// added.
+/// change them, the heroes' damage bonuses and a town's moat and walls), and its flags with the
+/// luck and death-blow flags added.
 fn strike_inputs(
     ruleset: &BattleRuleset,
-    heroes: &[Option<HeroRecord>; 2],
+    state: &BattleState,
     (striker, victim): (&Stack, &Stack),
     (flags, (slayer_bonus, blessing)): (StrikeFlags, SpecialistTerms),
     blow: Blow,
@@ -240,6 +234,9 @@ fn strike_inputs(
             _ => {}
         }
     }
+    // rule: BAT-SIE-006
+    // The moat's penalty after the other reductions, not for a frenzied stack (0x442590).
+    defense -= crate::siege::defense_penalty(state, victim) * i32::from(victim.spells.frenzy == 0);
     // rule: BAT-MAG-011
     let mut attack = striker.attack_now(ranged);
     // rule: BAT-MAG-014
@@ -280,6 +277,14 @@ fn strike_inputs(
         flags = flags.with(StrikeFlags::DOUBLE_DAMAGE);
     }
     inputs.penalty_percent = penalty(params, field, striker, victim, flags).unwrap_or(0);
+    // rule: BAT-SIE-008
+    inputs.walls = ranged
+        && crate::siege::wall_penalty(
+            state,
+            striker,
+            victim,
+            striker.has(StackTraits::NO_WALL_PENALTY),
+        );
     // rule: BAT-MAG-024
     inputs.retaliation_percent = blow.retaliation_percent;
     // rule: BAT-MAG-012
@@ -291,6 +296,7 @@ fn strike_inputs(
     // rule: BAT-MAG-043
     inputs.petrified = victim.spells.status.contains(Status::PETRIFIED);
     // rule: BAT-HER-004, BAT-MAG-026
+    let heroes = &state.heroes;
     let own = hero::damage(heroes, striker.controller());
     inputs.hero_bonus = if ranged { own.ranged } else { own.melee };
     inputs.hero_reduction = hero::damage(heroes, victim.controller()).reduction;
@@ -384,7 +390,7 @@ pub(crate) fn shot_damage_range(
     let terms = specialist_terms(state, ruleset, attacker);
     let (inputs, _) = strike_inputs(
         ruleset,
-        &state.heroes,
+        state,
         (striker, state.at(target)),
         (StrikeFlags::RANGED, terms),
         blow,

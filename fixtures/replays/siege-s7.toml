@@ -1,0 +1,156 @@
+commands = [
+    "A move 109",
+    "D move 133",
+    "A move 121",
+    "D move 80",
+    "A move 56",
+    "D move 151",
+    "A move 3",
+    "D move 32",
+    "A move 88",
+    "D move 111",
+    "A attack 3 93",
+    "D move 81",
+    "A move 22",
+    "D move 31",
+    "A move 173",
+    "D attack 0 75",
+    "A move 76",
+    "D move 150",
+    "A move 110",
+    "D move 95",
+    "A move 106",
+    "D move 90",
+    "A move 38",
+    "D move 98",
+    "A move 160",
+    "D move 149",
+    "A move 70",
+    "D attack 0 56",
+    "A wait",
+    "D move 64",
+    "A attack 3 54",
+    "D move 111",
+    "A move 19",
+    "D move 7",
+    "A move 86",
+    "D move 31",
+    "A move 141",
+    "A move 174",
+    "D move 38",
+    "A move 137",
+    "D move 80",
+    "A move 72",
+    "A move 178",
+    "D move 24",
+    "A move 174",
+    "D move 132",
+    "A move 71",
+    "A move 125",
+    "D defend",
+    "A move 91",
+    "D move 150",
+    "A move 19",
+    "A move 158",
+    "D attack 0 2",
+    "A move 137",
+    "D move 132",
+    "A attack 3 19",
+    "A move 60",
+    "D attack 0 3",
+    "A move 142",
+    "D move 49",
+    "A move 69",
+    "D move 104",
+    "A move 93",
+    "D move 80",
+    "A attack 3 121",
+    "D move 138",
+    "A move 127",
+    "D move 94",
+    "A attack 3 121",
+    "D move 143",
+    "A move 109",
+    "D move 148",
+    "A move 171",
+    "D move 38",
+    "A move 40",
+    "D move 94",
+    "A move 89",
+    "D move 106",
+    "A move 26",
+    "D move 90",
+    "A move 3",
+    "D move 175",
+    "A attack 4 72",
+]
+checkpoints = [
+    "0x20a95e2871bdbb68",
+    "0x9e60787c07210dbc",
+    "0xe8da33c6fa991672",
+]
+
+[replay]
+format = 26
+engine = "0.1.0"
+scenario = "siege"
+seed = "7"
+packs = [[
+    "synthetic",
+    "0.1.0",
+]]
+profile = "synthetic:faithful"
+ruleset_hash = "0x31cd339df305f77e"
+battle_ruleset_hash = "0x3ac769f8e9a50e50"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+battle_state_hash_version = 46
+checkpoint_every = 25
+
+[setup]
+terrain = "synthetic:meadow"
+
+[setup.siege]
+faction = "synthetic:vale"
+fort = "citadel"
+moat = "damaging"
+structures = 0
+escape_tunnel = false
+morale = 0
+luck = 0
+
+[[attacker]]
+slot = 0
+creature = "synthetic:spearman"
+count = 30
+
+[[attacker]]
+slot = 1
+creature = "synthetic:brute"
+count = 10
+
+[[attacker]]
+slot = 2
+creature = "synthetic:wisp"
+count = 20
+
+[[defender]]
+slot = 0
+creature = "synthetic:brute"
+count = 12
+
+[[defender]]
+slot = 2
+creature = "synthetic:spearman"
+count = 25
+
+[[defender]]
+slot = 4
+creature = "synthetic:wisp"
+count = 15
+
+[result]
+winner = "defender"
+final_hash = "0xd751fba4bc94dfc8"

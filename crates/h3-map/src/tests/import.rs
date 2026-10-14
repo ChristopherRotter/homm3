@@ -5,8 +5,9 @@
 use std::sync::{Arc, LazyLock};
 
 use h3_adventure::{Pos as TilePos, TileMask};
+use h3_content::Formation;
 use h3_contracts::{ArmyStack, PlayerId};
-use h3_game::{GameRuleset, HeroArmy, PlayerSetup};
+use h3_game::{GameRuleset, HeroArmy, HeroDetailsSetup, PlayerSetup};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::prelude::*;
 
@@ -15,7 +16,8 @@ use super::sample;
 use super::strategy::{raw_map, version};
 use crate::import::codes;
 use crate::model::{
-    Body, HeroBody, MainTown, Message, Object, Pos, RawMap, Stack, Template, Text, Tile, Version,
+    Artifacts, Bits, Body, CustomHero, HeroBody, MainTown, Message, Object, Pos, RawMap, Stack,
+    Template, Text, Tile, Version,
 };
 use crate::{ImportError, Limits, Unsupported, import, import_map, parse};
 
@@ -620,6 +622,18 @@ fn the_code_tables_follow_the_packs() {
         .map(|(id, key)| (id, key.to_owned()))
         .collect();
     assert_eq!(heroes, pack_ids("hero"));
+    for (table, kind) in [
+        (&codes::ARTIFACTS[..], "artifact"),
+        (&codes::SPELLS[..], "spell"),
+    ] {
+        let ids: Vec<(u16, String)> = (0..)
+            .zip(table)
+            .map(|(id, k)| (id, (*k).to_owned()))
+            .collect();
+        assert_eq!(ids, pack_ids(kind), "{kind}");
+    }
+    let skills: Vec<&str> = SOD.core().skills().iter().map(|s| s.key.as_str()).collect();
+    assert_eq!(skills, codes::SKILLS);
     let core = SOD.core();
     let part = SOD.adventure();
     assert!(
@@ -669,4 +683,228 @@ proptest! {
             }
         }
     }
+}
+
+/// The test map's hero body.
+fn body(m: &mut RawMap) -> &mut HeroBody {
+    match &mut m.objects[1].body {
+        Body::Hero(h) => h,
+        _ => unreachable!("the test map's second object is its hero"),
+    }
+}
+
+/// The imported customisations of the test map's hero after `edit`.
+fn customised(edit: impl FnOnce(&mut RawMap)) -> HeroDetailsSetup {
+    let mut m = map();
+    edit(&mut m);
+    import(&m, &SOD).unwrap().heroes[0].details.clone()
+}
+
+#[test]
+fn a_placed_heros_customisations_and_formation_carry_over() {
+    let core = SOD.core();
+    let artifact = |key: &str| core.artifact_by_key(key).unwrap();
+    let none = customised(|_| {});
+    assert_eq!(none, HeroDetailsSetup::default());
+    let mut m = map();
+    {
+        let h = body(&mut m);
+        h.experience = Some(999);
+        h.primary_skills = Some([120, 0, 0, 3]);
+        h.secondary_skills = Some(vec![(1, 2), (12, 3)]);
+        let mut worn = vec![None; 19];
+        worn[0] = Some(7); // a slot's position is not kept
+        worn[17] = Some(0);
+        h.artifacts = Some(Artifacts {
+            worn,
+            backpack: vec![Some(8), None],
+        });
+        // SoD's spells: bits 0 and 9.
+        let mut spells = vec![0u8; 9];
+        spells[0] = 1;
+        spells[1] = 2;
+        h.spells = Some(Bits(spells));
+        h.formation = 1;
+    }
+    let setup = import(&m, &SOD).unwrap();
+    let hero = &setup.heroes[0];
+    assert_eq!(hero.formation, Formation::Tight);
+    let d = &hero.details;
+    assert_eq!(d.experience, Some(999));
+    // Clamped as the original's load (0–99; Spell Power and Knowledge at least 1).
+    assert_eq!(d.primary, Some([99, 0, 1, 3]));
+    assert_eq!(
+        d.skills,
+        Some(vec![
+            (core.skill_by_key("base:archery").unwrap(), 2),
+            (core.skill_by_key("base:necromancy").unwrap(), 3),
+        ])
+    );
+    let artifacts = d.artifacts.as_ref().unwrap();
+    let worn: Vec<_> = artifacts
+        .worn
+        .iter()
+        .map(|a| (a.artifact, a.spell))
+        .collect();
+    assert_eq!(
+        worn,
+        [
+            (artifact("base:centaurs_axe"), None),
+            (artifact("base:spell_book"), None)
+        ]
+    );
+    let backpack: Vec<_> = artifacts.backpack.iter().map(|a| a.artifact).collect();
+    assert_eq!(backpack, [artifact("base:blackshard_of_the_dead_knight")]);
+    assert_eq!(
+        d.spells,
+        Some(vec![
+            core.spell_by_key("base:summon_boat").unwrap(),
+            core.spell_by_key("base:town_portal").unwrap(),
+        ])
+    );
+    assert_eq!(setup.validate(&SOD), Ok(()));
+}
+
+#[test]
+fn the_body_wins_over_the_hero_types_map_wide_entry() {
+    let core = SOD.core();
+    let entry = CustomHero {
+        hero_type: 0,
+        experience: Some(500),
+        secondary_skills: Some(vec![(0, 1)]),
+        spells: Some(Bits(vec![1, 0, 0, 0, 0, 0, 0, 0, 0])),
+        primary_skills: Some([1, 2, 3, 4]),
+        sex: 0xFF,
+        ..CustomHero::default()
+    };
+    let d = customised(|m| m.custom_heroes = vec![entry.clone()]);
+    assert_eq!(d.experience, Some(500));
+    assert_eq!(d.primary, Some([1, 2, 3, 4]));
+    assert_eq!(
+        d.skills,
+        Some(vec![(core.skill_by_key("base:pathfinding").unwrap(), 1)])
+    );
+    assert_eq!(d.spells.map(|s| s.len()), Some(1));
+    let d = customised(|m| {
+        m.custom_heroes = vec![entry.clone()];
+        let h = body(m);
+        h.experience = Some(0);
+        h.primary_skills = Some([5, 5, 5, 5]);
+        h.spells = Some(Bits(vec![0; 9]));
+    });
+    assert_eq!(d.experience, Some(0), "SoD's flag makes 0 an experience");
+    assert_eq!(d.primary, Some([5, 5, 5, 5]));
+    assert_eq!(d.spells, Some(vec![]));
+}
+
+#[test]
+fn before_sod_experience_0_and_the_spell_byte_mean_the_types() {
+    let roe = |experience| {
+        customised(|m| {
+            m.header.version = Version::Ab;
+            body(m).experience = Some(experience);
+        })
+    };
+    assert_eq!(roe(0).experience, None);
+    assert_eq!(roe(40).experience, Some(40));
+    let ab = |spell| {
+        customised(|m| {
+            m.header.version = Version::Ab;
+            body(m).spell = Some(spell);
+        })
+        .spells
+    };
+    assert_eq!(ab(0xFE), None);
+    assert_eq!(ab(0xFF), Some(vec![]));
+    // Another spell beside the type's own (Orrin has none); a hero type with a spell keeps it.
+    let core = SOD.core();
+    assert_eq!(
+        ab(9),
+        Some(vec![core.spell_by_key("base:town_portal").unwrap()])
+    );
+    let (caster, own) = (0u8..)
+        .zip(codes::HERO_TYPES)
+        .find_map(|(code, key)| {
+            let spells = &core.hero_type(core.hero_type_by_key(key)?)?.spells;
+            (!spells.is_empty()).then(|| (code, spells.clone()))
+        })
+        .unwrap();
+    let with = |spell| {
+        customised(|m| {
+            m.header.version = Version::Ab;
+            let h = body(m);
+            h.hero_type = caster;
+            h.spell = Some(spell);
+        })
+        .spells
+    };
+    let mut expected = own.clone();
+    expected.push(core.spell_by_key("base:town_portal").unwrap());
+    assert_eq!(with(9), Some(expected));
+    let code = codes::SPELLS
+        .iter()
+        .position(|k| core.spell_by_key(k) == Some(own[0]))
+        .unwrap();
+    assert_eq!(
+        with(u8::try_from(code).unwrap()),
+        Some(own),
+        "the type's own spell once"
+    );
+}
+
+#[test]
+fn a_hero_of_level_2_and_unknown_codes_are_refused() {
+    let unsupported = Unsupported::HeroExperience(1);
+    assert_eq!(
+        import_err(|m| body(m).experience = Some(1000)),
+        ImportError::Unsupported(unsupported)
+    );
+    assert_eq!(
+        unsupported.reason(),
+        "a hero with an experience of 1 000 or more"
+    );
+    assert_eq!(
+        import_err(|m| m.custom_heroes = vec![CustomHero {
+            hero_type: 0,
+            experience: Some(5000),
+            ..CustomHero::default()
+        }]),
+        ImportError::Unsupported(unsupported)
+    );
+    assert_eq!(
+        import_err(|m| body(m).secondary_skills = Some(vec![(28, 1)])),
+        ImportError::UnknownCode {
+            what: "secondary skill",
+            code: 28
+        }
+    );
+    assert_eq!(
+        import_err(|m| body(m).spells = Some(Bits(vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x08]))),
+        ImportError::UnknownCode {
+            what: "spell",
+            code: 83
+        }
+    );
+    assert_eq!(
+        import_err(|m| {
+            body(m).artifacts = Some(Artifacts {
+                worn: vec![Some(141)],
+                backpack: vec![],
+            });
+        }),
+        ImportError::UnknownCode {
+            what: "artifact",
+            code: 141
+        }
+    );
+    // An AB artifact with RoE's rules.
+    let mut m = map();
+    body(&mut m).artifacts = Some(Artifacts {
+        worn: vec![],
+        backpack: vec![Some(128)],
+    });
+    assert_eq!(
+        import(&m, &rules(1)),
+        Err(ImportError::MissingContent("ab:armageddons_blade"))
+    );
 }

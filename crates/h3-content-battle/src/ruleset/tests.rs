@@ -18,6 +18,7 @@ use crate::pack::{
 use crate::params::{MAX_ROLL_LEVELS, RollTable};
 
 mod battlefields;
+mod sieges;
 mod spells;
 
 // ---- Test support: a core pack with its battle part (R01) ----
@@ -147,6 +148,7 @@ pub(crate) fn battle_def() -> BattleParamsDef {
         surrender: None,
         hero_casts_per_round: 1,
         side_stack_limit: 20,
+        siege: None,
     }
 }
 
@@ -534,7 +536,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0x8195_f0b1_6764_3bc8;
+const GOLDEN_BASE_HASH: u64 = 0xcd73_382f_aeb1_bf3f;
 
 #[test]
 fn battle_params_are_unique_and_required() {

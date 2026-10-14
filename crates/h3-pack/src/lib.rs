@@ -521,6 +521,19 @@ enum EffectDto {
         #[serde(default)]
         max_level: u8,
     },
+    /// E08 increment 3 (T18a): Necromancy, Learning, Intelligence, Diplomacy's join bonus.
+    Necromancy {
+        bp: u16,
+    },
+    ExperienceGain {
+        bp: u16,
+    },
+    MaxMana {
+        bp: u16,
+    },
+    JoinBonus {
+        level: u8,
+    },
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -745,6 +758,10 @@ impl EffectDto {
                 power,
             },
             Self::EagleEye { bp, max_level } => HeroEffect::EagleEye { bp, max_level },
+            Self::Necromancy { bp } => HeroEffect::Necromancy { bp },
+            Self::ExperienceGain { bp } => HeroEffect::ExperienceGain { bp },
+            Self::MaxMana { bp } => HeroEffect::MaxMana { bp },
+            Self::JoinBonus { level } => HeroEffect::JoinBonus { level },
         })
     }
 }

@@ -283,21 +283,21 @@ commands = [
     "D attack 1 73",
 ]
 checkpoints = [
-    "0x460e621ad610c3c5",
-    "0xf17ec9f8f6c457d3",
-    "0x30521d7a646d6a07",
-    "0xd49312024320c855",
-    "0x7458a6a65c85a947",
-    "0x887f3974a5bb3104",
-    "0x5023e6c3f84cda75",
-    "0x9641ab1e6f564fc8",
-    "0xa3d7fce595990fe8",
-    "0xaee7fb1b27a44da0",
-    "0xb5b6c05afc1a6de4",
+    "0xb03d965c25b8e874",
+    "0x495d69edcdc186da",
+    "0x77e395d507ccdc70",
+    "0xa7b145d167ff821e",
+    "0x6851e748aaf25eb6",
+    "0xb70599a745eac079",
+    "0xc665b85e05c8a588",
+    "0x0139c596edcc6271",
+    "0x7c5f203ab17746a1",
+    "0x205aad613a6a9643",
+    "0xa17614978388eb49",
 ]
 
 [replay]
-format = 25
+format = 26
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -307,12 +307,12 @@ packs = [[
 ]]
 profile = "synthetic:faithful"
 ruleset_hash = "0x31cd339df305f77e"
-battle_ruleset_hash = "0x10c00d186e269186"
+battle_ruleset_hash = "0x3ac769f8e9a50e50"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 45
+battle_state_hash_version = 46
 checkpoint_every = 25
 
 [setup]
@@ -681,4 +681,4 @@ count = 4
 
 [result]
 winner = "defender"
-final_hash = "0x743f78f8ab123930"
+final_hash = "0x57e74dbf5f4e03b3"

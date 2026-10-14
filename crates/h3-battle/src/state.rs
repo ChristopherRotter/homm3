@@ -28,7 +28,8 @@ use crate::hero::{self, HeroRecord, HeroView};
 use crate::magic::MagicLimits;
 use crate::morale::{self, Modifiers};
 use crate::natural::{NaturalObstacles, RemovableObstacle};
-use crate::obstacles::{SpellObstacle, SpellObstacles};
+use crate::obstacles::{self, SpellObstacle, SpellObstacles};
+use crate::siege::{self, SiegeState};
 use crate::tactics::{self, TacticsPhase};
 use crate::vitality::Vitality;
 use crate::{flee, terrain, turn};
@@ -56,7 +57,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 45;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 46;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -200,6 +201,9 @@ impl StackTraits {
     /// Frightens the other side's stacks (ability `fear`, the Azure Dragon; BAT-MAG-060): the
     /// pick's cheap test, and its own immunity.
     pub const FEAR: Self = Self(1 << 30);
+    /// Its shots are not halved by a town's walls (ability `no_wall_penalty`, or its hero's
+    /// `NoRangePenalty`: the original's Golden Bow and Bow of the Sharpshooter; BAT-SIE-008).
+    pub const NO_WALL_PENALTY: Self = Self(1 << 31);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -242,6 +246,10 @@ impl StackTraits {
             .with(
                 Self::NO_DISTANCE_PENALTY,
                 ability(|a| matches!(a, Ability::NoDistancePenalty)),
+            )
+            .with(
+                Self::NO_WALL_PENALTY,
+                ability(|a| matches!(a, Ability::NoWallPenalty)),
             )
             .with(Self::STRIKES_TWICE, has(CreatureFlag::StrikesTwice))
             .with(
@@ -825,6 +833,8 @@ pub struct BattleState {
     pub(crate) battlefield: Option<BattlefieldId>,
     /// The battle is at an anti-magic garrison (BAT-MAG-061; public).
     pub(crate) anti_magic: bool,
+    /// The town the battle is fought at, if any (BAT-SIE-001; public).
+    pub(crate) siege: Option<SiegeState>,
     /// The timed effects on stacks (ADR-0014 point 5).
     pub(crate) effects: Effects,
     /// The spell obstacles (ADR-0014 points 5 and 7).
@@ -903,7 +913,19 @@ impl BattleState {
                 heroes[side.index()] = Some(record);
             }
         }
-        let mut taken = natural.blocked();
+        // rule: BAT-SIE-001
+        let (siege, mines) = siege::setup(
+            ruleset,
+            field,
+            (setup, &heroes, battlefield),
+            natural.blocked(),
+        )?
+        .map_or((None, None), |(s, m)| (Some(s), m));
+        // stub: BAT-STUB-2 — the town's other rules (the turrets, the Catapult, the controls, the
+        // experience, the defenders' morale and luck) are not read yet (E04c T6 to T8).
+        let mut taken = natural
+            .blocked()
+            .union(siege::placement_blocked(siege.as_ref()));
         let mut placed = [Stack::default(); STACK_CAPACITY];
         let mut len = 0;
         for side in BattleSide::BOTH {
@@ -987,7 +1009,7 @@ impl BattleState {
             terrain: setup.terrain,
             battlefield,
             anti_magic: setup.anti_magic,
-            // stub: BAT-STUB-2 — `setup.siege` is not read yet (E04c T5).
+            siege,
             effects: Effects::new(),
             spell_obstacles: SpellObstacles::new(),
             raised: Raised::default(),
@@ -1014,6 +1036,10 @@ impl BattleState {
                 .any(|s| s.side == side && s.has(StackTraits::NATIVE))
         });
         state.spell_obstacles.set_sight(natives);
+        // rule: BAT-SIE-007
+        if let Some(mines) = mines {
+            obstacles::lay_unseen(&mut state, mines, sink);
+        }
         // rule: BAT-TAC-001
         if let Some(phase) = tactics::phase(ruleset, &state.heroes) {
             // Round 0: the tactics phase; `EndTactics` starts round 1 (BAT-TAC-002).
@@ -1085,9 +1111,15 @@ impl BattleState {
     }
 
     /// The hexes that block `except`'s movement: obstacles, the hexes Force Fields block
-    /// (BAT-MAG-027) and the footprints of every other living stack (BAT-MOV-001).
+    /// (BAT-MAG-027), a town's walls and closed gate (BAT-SIE-002, BAT-SIE-003) and the
+    /// footprints of every other living stack (BAT-MOV-001).
     pub(crate) fn blocked_for(&self, field: Field, except: StackId) -> HexSet {
-        let mut blocked = self.natural.blocked().union(self.spell_obstacles.walls());
+        // rule: BAT-SIE-002, BAT-SIE-003
+        let mut blocked = self
+            .natural
+            .blocked()
+            .union(self.spell_obstacles.walls())
+            .union(siege::blocked_for(self, self.stack(except)));
         for (id, s) in (0u8..).zip(self.stacks.iter()) {
             if s.is_alive() && StackId(id) != except {
                 s.footprint(field).hexes().for_each(|h| blocked.insert(h));
@@ -1379,6 +1411,7 @@ impl CanonicalHash for BattleState {
         self.terrain.hash_into(h);
         self.battlefield.hash_into(h);
         h.write_bool(self.anti_magic);
+        self.siege.hash_into(h);
         self.effects.hash_into(h);
         self.spell_obstacles.hash_into(h);
         self.raised.hash_into(h);

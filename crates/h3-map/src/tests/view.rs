@@ -604,11 +604,16 @@ proptest! {
         let game = start_on(&m, rules, seed);
         let viewer = PlayerId::new(viewer % u8::try_from(game.players()).unwrap());
         let colour = game.colour(viewer).unwrap();
-        // The viewer's heroes get armies of their own: a starting army is drawn from the seed (also
-        // for a hero whose slots are all empty).
-        for (owner, army) in heroes(&mut m) {
-            if owner == colour && army.iter().flatten().all(Option::is_none) {
-                *army = Some(stacks(&own));
+        // The viewer's heroes get armies and experience of their own: a starting army (also for a
+        // hero whose slots are all empty) and a default experience are drawn from the seed (E08
+        // T18b), and the viewer sees its heroes' details.
+        for o in &mut m.objects {
+            let Body::Hero(hero) = &mut o.body else { continue };
+            if hero.owner == colour {
+                if hero.army.iter().flatten().all(Option::is_none) {
+                    hero.army = Some(stacks(&own));
+                }
+                hero.experience = Some(500);
             }
         }
         // What the viewer never sees, from the tiles it has explored at the end of the game (no

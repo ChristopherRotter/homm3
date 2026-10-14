@@ -15,13 +15,14 @@ pub mod artifacts;
 pub mod battlefields;
 pub mod gapfill;
 pub mod heroes;
+pub mod sieges;
 pub mod split;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::Path;
 
-use h3_formats::exe::{CreatureRecord, HeroData, ObstacleData};
+use h3_formats::exe::{CreatureRecord, HeroData, ObstacleData, SiegeData};
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 
@@ -56,6 +57,8 @@ pub struct Inputs {
     pub hero_data: HeroData,
     /// The executable's obstacle tables (E04c T2b).
     pub obstacles: ObstacleData,
+    /// The executable's siege tables and constants (E04c T5).
+    pub siege: SiegeData,
     /// Hero content text tables (E04a T3).
     pub hero_tables: heroes::Tables,
     /// Artifact text tables (E04a T3b).
@@ -80,6 +83,8 @@ impl Inputs {
             h3_formats::exe::hero_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
         let obstacles =
             h3_formats::exe::obstacle_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
+        let siege =
+            h3_formats::exe::siege_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
         let sod = read("Data/H3bitmap.lod")?;
         let ab = read("Data/H3ab_bmp.lod")?;
         let table = |data: &[u8], archive: &str, name: &str| -> Result<TextTable, String> {
@@ -99,6 +104,7 @@ impl Inputs {
             terrains: table(&sod, "H3bitmap.lod", "TERRNAME.txt")?,
             hero_data,
             obstacles,
+            siege,
             hero_tables: heroes::Tables {
                 classes: table(&sod, "H3bitmap.lod", "HCTRAITS.TXT")?,
                 heroes: table(&sod, "H3bitmap.lod", "HOTRAITS.TXT")?,
@@ -869,7 +875,11 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     base.push_str(&hero_packs.base);
     base.push_str(&artifact_packs.base);
     base.push_str(&fields.base);
+    // Sieges (E04c T5): the records, the field in `[battle]`.
+    let sieges = sieges::write(&inputs.siege, &town_refs, &hero_packs.spell_keys)?;
+    base.push_str(&sieges.base);
     write_battle(&mut base, gap);
+    base.push_str(&sieges.field);
     write_hero_params(&mut base, gap);
     base.push_str(
         "\n[[profile]]\nid = \"faithful\"        # default: preserve/fix-optional quirks on\n\
@@ -960,6 +970,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     ab.push_str(level_fixes.get("ab").map_or("", String::as_str));
     ab.push_str(&hero_packs.ab);
     ab.push_str(&artifact_packs.ab);
+    ab.push_str(&sieges.ab);
 
     // sod
     let mut sod = header("sod", &["ab"], "The Shadow of Death: changes on top of AB.");

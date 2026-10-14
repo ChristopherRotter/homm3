@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 use core::ops::Deref;
 
 use h3_content::{
-    CompileError, ContentKey, CreatureFlag, CreatureFlags, CreatureInfo, CreatureTypeId,
+    CompileError, ContentKey, CreatureFlag, CreatureFlags, CreatureInfo, CreatureTypeId, FactionId,
     QuirkRegistry, REGISTRY, Ruleset, SchoolId, SpellCategory, SpellId, TerrainId,
     override_applies,
 };
@@ -24,10 +24,13 @@ use crate::battlefield::{self, Battlefield, BattlefieldId};
 use crate::error::BattleCompileError;
 use crate::pack::{BattleCreaturePatch, BattlePack, BattleParamsDef, BattleSpellDef};
 use crate::params::{self, BattleParams, MAX_AURA_VALUES, SurrenderParams};
-use crate::spell::{SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange};
+use crate::siege::{self, Siege, SiegeField};
+use crate::spell::{
+    ObstacleKind, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange,
+};
 
 /// Version of the battle part's hash encoding. Bump when the encoding below changes.
-pub const BATTLE_RULESET_HASH_VERSION: u32 = 2;
+pub const BATTLE_RULESET_HASH_VERSION: u32 = 3;
 
 /// Most spells with a summon effect in a ruleset (the battle keeps a side's stack of each
 /// creature its hero can summon from the battle's start, E04b T6b; four in the original).
@@ -163,6 +166,8 @@ pub struct BattleRuleset {
     abilities: Vec<Vec<CompiledAbility>>,
     spells: Vec<BattleSpell>,
     battle: BattleParams,
+    siege_field: Option<SiegeField>,
+    sieges: Vec<Siege>,
     hash: u64,
 }
 
@@ -178,6 +183,7 @@ struct Tables<'a> {
     creatures: Vec<Option<Row>>,
     spells: Vec<Option<SpellRow>>,
     battle: Option<(&'a BattleParamsDef, Option<SurrenderParams>)>,
+    sieges: Vec<Siege>,
 }
 
 /// What the pack being compiled may refer to: the core's content of its dependency closure.
@@ -288,6 +294,7 @@ impl BattleRuleset {
             creatures: (0..core.creature_count()).map(|_| None).collect(),
             spells: (0..core.spells().len()).map(|_| None).collect(),
             battle: None,
+            sieges: Vec::new(),
         };
         for (pack, closure) in &order {
             let scope = Scope {
@@ -346,7 +353,13 @@ impl BattleRuleset {
             .battle
             .ok_or(BattleCompileError::MissingBattleParams)?;
         let battle = params::compile_battle(def, surrender)?;
+        let siege_field = def
+            .siege
+            .as_ref()
+            .map(|s| siege::compile_field(s, battle.field))
+            .transpose()?;
         validate_spells(&spells)?;
+        validate_sieges(&tables.sieges, siege_field.as_ref(), &spells)?;
         for h in core.hero_types() {
             if h.army.len() > usize::from(battle.army_slots) {
                 return Err(CompileError::InvalidContent {
@@ -384,6 +397,8 @@ impl BattleRuleset {
             abilities,
             spells,
             battle,
+            siege_field,
+            sieges: tables.sieges,
             hash: 0,
         };
         part.hash = h3_kernel::hash::hash_of(&part);
@@ -466,6 +481,21 @@ impl BattleRuleset {
     pub const fn battle(&self) -> &BattleParams {
         &self.battle
     }
+
+    /// The siege's field (E04c T5), if the ruleset has sieges.
+    pub const fn siege_field(&self) -> Option<&SiegeField> {
+        self.siege_field.as_ref()
+    }
+
+    /// The siege records, in load order.
+    pub fn sieges(&self) -> &[Siege] {
+        &self.sieges
+    }
+
+    /// The siege record of a town faction (BAT-SIE-001).
+    pub fn siege(&self, faction: FactionId) -> Option<&Siege> {
+        self.sieges.iter().find(|s| s.faction == faction)
+    }
 }
 
 impl Deref for BattleRuleset {
@@ -477,14 +507,15 @@ impl Deref for BattleRuleset {
 }
 
 impl CanonicalHash for BattleRuleset {
-    /// Encoding v2 (E04c T2b; v1: R01, the content split, without battlefields): version; the
+    /// Encoding v3 (E04c T5; v2: E04c T2b, without sieges; v1: R01, without battlefields): version; the
     /// special battlefields (`Battlefield`'s encoding); obstacles (key, terrains as length +
     /// handles, battlefields as length + handles, width, height, blocked pairs, absolute flag); creatures in handle order (attack, defense, damage min and max, hit points, shots,
     /// casts, the abilities as length + each ability's encoding); the battle parameters in field
     /// order (each roll table as length + all 8 entries, the war machine positions, the full
     /// formation tables loose then tight, the tactics zone widths, the surrender as presence
     /// flag + resource handle + percent, casts per round, side stack limit); spells in handle
-    /// order (polarity, battle magic, counters, dispels, spares, `tests_as`, `summons`). Neither
+    /// order (polarity, battle magic, counters, dispels, spares, `tests_as`, `summons`); the
+    /// siege field as presence flag + its encoding; the siege records as length + each's. Neither
     /// the core's hash nor the copies of core fields (speed, flags, the spells' data rows) are
     /// part of it: replays record both hashes.
     fn hash_into(&self, h: &mut StateHasher) {
@@ -538,7 +569,42 @@ impl CanonicalHash for BattleRuleset {
             s.tests_as.hash_into(h);
             s.summons.hash_into(h);
         }
+        h.write_bool(self.siege_field.is_some());
+        if let Some(f) = &self.siege_field {
+            f.hash_into(h);
+        }
+        h.write_len(self.sieges.len());
+        for s in &self.sieges {
+            s.hash_into(h);
+        }
     }
+}
+
+/// Checks the siege records against the field and the spells (BAT-SIE-001): records need the
+/// siege field, and a record's mines a spell that places mines.
+fn validate_sieges(
+    sieges: &[Siege],
+    field: Option<&SiegeField>,
+    spells: &[BattleSpell],
+) -> Result<(), BattleCompileError> {
+    if !sieges.is_empty() && field.is_none() {
+        return Err(BattleCompileError::InvalidBattleParams(
+            "siege records need the battle parameters' siege field",
+        ));
+    }
+    for s in sieges {
+        let places_mines = |m: SpellId| {
+            spells
+                .get(m.index())
+                .is_some_and(|sp| sp.magic.obstacle_kind() == Some(ObstacleKind::Mine))
+        };
+        if s.mines.is_some_and(|m| !places_mines(m)) {
+            return Err(BattleCompileError::InvalidBattleParams(
+                "a siege's mines must be a spell that places mines",
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// The core's creature keys and rows, in handle order.
@@ -643,6 +709,14 @@ fn compile_pack<'a>(
             |k| scope.school(k),
         )?;
         tables.battlefields.push(b);
+    }
+    for def in &pack.sieges {
+        let faction = scope.resolve(&def.faction, "faction", |k| scope.core.faction_by_key(k))?;
+        if tables.sieges.iter().any(|s| s.faction == faction) {
+            return Err(CompileError::DuplicateKey(String::from(def.faction.as_str())).into());
+        }
+        let mines = def.mines.as_ref().map(|k| scope.spell(k)).transpose()?;
+        tables.sieges.push(siege::compile(def, faction, mines)?);
     }
     for def in &pack.obstacles {
         check_namespace(&def.key, id)?;

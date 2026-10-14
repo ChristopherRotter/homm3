@@ -25,7 +25,7 @@ use h3_content_battle::{
     Ability, BattleRuleset, MAX_FIELD_HEXES, SpecialistBonus, SpellEffect, SpellPolarity,
     SpellTarget, TargetSide, TimedChange,
 };
-use h3_content_battle::{BattleSpell, Battlefield, MAX_MASTERY};
+use h3_content_battle::{BattleSpell, Battlefield, BattlefieldId, MAX_MASTERY};
 use h3_contracts::{BattleEffect, BattleHero, BattleSide, Rate};
 use h3_kernel::arith::{
     SINGLE_BITS, SINGLE_FRAC_BITS, X87, mul_div_floor, round_single, single_precision,
@@ -617,8 +617,18 @@ pub(crate) fn mastery(
     hero: &HeroRecord,
     spell: SpellId,
 ) -> u8 {
-    let raised = state
-        .battlefield
+    mastery_at(ruleset, state.battlefield, hero, spell)
+}
+
+/// [`mastery`] on `battlefield` (also before the battle's state exists: a town's land mines,
+/// BAT-SIE-007).
+pub(crate) fn mastery_at(
+    ruleset: &BattleRuleset,
+    battlefield: Option<BattlefieldId>,
+    hero: &HeroRecord,
+    spell: SpellId,
+) -> u8 {
+    let raised = battlefield
         .and_then(|b| ruleset.battlefield(b))
         .zip(ruleset.spell(spell))
         .is_some_and(|(b, s)| b.raises(&s.schools));

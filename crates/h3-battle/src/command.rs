@@ -478,6 +478,8 @@ pub fn apply<S: Sink>(
             end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
     }
+    // rule: BAT-SIE-003
+    crate::siege::close_gate(state, sink);
     // rule: BAT-MAG-010
     effects::remove_dead(state, ruleset);
     // rule: BAT-MAG-035

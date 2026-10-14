@@ -249,7 +249,9 @@ These are original data and rank above VCMI and the wiki; all agree with the ski
 with VCMI except where noted in the skills survey. The harvester (E04a T3) turns the tables of
 Luck, Leadership, Archery, Offense, Armorer, Diplomacy and First Aid into the skills' hero effects
 (fractions as basis points, each checked to be a whole number of them) and the growth constant
-0.05 into the skill specialties' 500 bp per level; Logistics is not read.
+0.05 into the skill specialties' 500 bp per level; Logistics is not read. E04b adds Sorcery,
+Resistance and Eagle Eye, E08 T18b Necromancy (`necromancy`), Learning (`experience_gain`) and
+Intelligence (`max_mana`).
 
 ### 7.5 Code reading: First Aid Tent heal
 
@@ -2413,23 +2415,24 @@ below. A fort level above 0: the siege picture (0x4646D0), the attacker's Catapu
 Ballista, the siege obstacles (0x466290's own path).
 
 **The moat** (two flags). With a Citadel or a Castle, +0x53A8 (a moat) is set unless the town is
-a Tower (type 2) or a Stronghold (6) on a map of a format before SoD (the game's +0x1F698, the map
-kind: 0 RoE, 1 AB, 2 SoD); +0x53A9 marks a Fortress (7). The moat's hexes (0x469DC0): the 11 of
+a Tower (type 2) or a Stronghold (6) in a game under RoE or AB rules (the game's +0x1F698, H3API's
+`mapKind`: 0 RoE, 1 AB, 2 SoD; **the game's version**, BAT-Q41: the saved-game loader 0x4BCDA0
+restores it, the new game's setter is not read, probably from the map's format); +0x53A9 marks a Fortress (7). The moat's hexes (0x469DC0): the 11 of
 0x63BCE8 (11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181) and for the Fortress also the 11 of
 0x63BCF4 (10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180); hex 95 (94 for the Fortress's second
-row) only while +0x53A4 is 3, which the setup sets (its other values not read: the gate?). The
-damage on entering a moat hex (0x469E50) is applied only on SoD maps (map kind 2), straight to the
+row) only while +0x53A4 is 3, the closed gate (§7.28). The
+damage on entering a moat hex (0x469E50) is applied only under SoD rules (`mapKind` 2), straight to the
 stack's hit points (0x444090, no defense, no resistance), by the town type (0x63BD18): Castle 70,
 Rampart 70, Tower 150, Inferno 90, Necropolis 70, Dungeon 90, Stronghold 70, Fortress 90, Conflux
 70; Tower's 150 is never used here (no moat flag: its land mines take the moat's place).
 
 **The siege's obstacles** (0x466290 with a fort level above 0, from 0x4662E3). The walls' 18
-part values +0x13F60 come from a per-town table (0x66D868, records of 36 bytes; not read which
-part is which), four of them raised by 1 with a Castle, and are copied to +0x13FA8; the 11 wall
+part values +0x13F60 come from a per-town table (0x66D868, records of 36 bytes: `WALLS.TXT`,
+§7.28), four of them raised by 1 with a Castle, and are copied to +0x13FA8; the 11 wall
 hexes (0x63BD00: 12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182) get the blocked bit 0x2. With a
 Citadel or Castle in a Tower, the land mines go onto moat hexes with the Tower's 150 (0x63BD20)
-and the defending hero's mastery of Land Mine (0x4663BE; read with T5). Then no natural obstacle
-on a SoD map; on an older map only a Stronghold with a Citadel or Castle (no moat there) goes on
+and the defending hero's mastery of Land Mine (0x4663BE; §7.28). Then no natural obstacle
+under SoD rules; under older rules only a Stronghold with a Citadel or Castle (no moat there) goes on
 to the usual obstacles.
 
 **The war machines and the turrets** (0x463600, per side). In a battle with a fort level above 0:
@@ -2463,3 +2466,86 @@ a town unless the town is a Stronghold with building 17 (the Escape Tunnel).
 
 **Experience** (0x46A405): the attacker's side gets +500 in a battle at a town (any fort level),
 beside the +500 for a defeated hero (0x46A3DF; the −500 of 0x46A3FC, with two globals, not read).
+
+### 7.28 Code reading: the walls, the gate and the moat (E04c T5, 2026-10-13)
+
+Read for E04c T5 (walls, gate and moat; the survey `docs/rules/surveys/E04c-sieges.md`): the walls'
+parts and their hexes, the gate's states and who passes it, the moat's hexes, stops, damage and
+defense, the Tower's land mines, and the shot's wall test. Insight only, nothing copied (Q29).
+Not read here: which part a destroyed hex belongs to and what destroys it (0x465990, the Catapult
+and Earthquake: T6), the turrets (T7).
+
+**The walls' parts** come from `WALLS.TXT` (`H3bitmap.lod`, loaded at start by 0x462990 into
+0x66D868: per town type 18 records of 36 bytes, each its hit points, its screen position, the hex
+after which it is drawn and six pictures). The 18 parts, the same in every town (Rampart's keep is
+its "Main Building"): Drawbridge, Drawbridge Rope, Moat, Moat Lip, Back Wall, Upper Tower, Upper
+Wall, Upper Buttress, Mid-Upper Wall, Gate, Mid-Lower Wall, Lower Buttress, Lower Wall, Lower Tower,
+Keep, and the covers of the keep and the two towers. The file gives 2 hit points to the two towers,
+the four walls (Upper, Mid-Upper, Mid-Lower, Lower), the gate and the keep, 0 to the others (its
+header: "max is 3, only walls, towers, the gate, and the main building are used"). At a siege's
+start (0x4662E3) the 18 values go to +0x13F60, the three covers are set to 1, a Castle adds 1 to
+the four walls (3 hit points), and the whole is copied to +0x13FA8. The 11 wall hexes 0x63BD00, one
+per row (12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182), get the blocked bit `0x2`; a destroyed
+part clears it on its hex (0x465990, T6). **The wall line** of a row is its wall hex: a hex left of
+it is outside the walls, the wall hex and the hexes right of it inside.
+
+**The gate** (+0x53A4): **3 closed** (the setup's value, 0x463C10), **1 open**, 2 between them (the
+drawbridge's animation, 0x4671C0 and 0x4672E0 step through it). The gate's hexes are 96 (the gate,
+a wall hex) and 95 (the moat before it, the drawbridge's hex); the Fortress's second moat row adds
+94. `hex_blocked` (0x469A10) treats 95 and 96 apart from the blocked bit, in every siege: while the
+gate is not closed neither blocks; while it is closed both block, except for the side acting as
+the defender (+0x132C0 = 1) when no living stack and no corpse lies on 95 nor on 94, **94 tested in
+every town** (it is outside the moat but for the Fortress). A stack its controller commands for the
+defender that enters 94, 95 or 96 (either hex of a two-hex stack) while the gate is closed opens it
+(0x467130 → 0x4671C0: the walk at 0x442186, the flight at 0x4B4A8C, an elemental summoned there at
+0x5A71D7). After a walk, a flight, a teleporting move and every action (0x4423F2, 0x4B4A29,
+0x4B4EF9, 0x479C65) an open gate closes (0x4672E0) unless a living stack or a corpse lies on 96 or
+95, or for the Fortress on 94.
+
+**The moat** (with the moat flag +0x53A8: a Citadel or Castle, not a Tower, not a Stronghold under
+RoE or AB rules; §7.27). `is_moat_hex` (0x469DC0): the 11 hexes 0x63BCE8 (11, 28, 44, 61, 77, 95,
+111, 129, 146, 164, 181) and for the Fortress (+0x53A9) also the 11 of 0x63BCF4 (10, 27, 43, 60,
+76, 94, 110, 128, 145, 163, 180); 95 (94) only while the gate is closed (the lowered drawbridge
+covers it). Three effects:
+- *A stop* (0x4B3290): every moat hex stops a walker (not a flyer, not the teleporting Devils and
+  Arch Devils, 0x4B32BC), except 95 (94) while the gate is not closed or for a stack its controller
+  commands for the defender; the stack's own hexes are no stop.
+- *Damage on entering* (0x469E50 from `enter_hex` 0x46A570, at most once per move for a two-hex
+  stack): only under SoD rules (`mapKind` 2, §7.27), by town type (0x63BD18: 70 Castle,
+  Rampart, Necropolis, Stronghold, Conflux; 90 Inferno, Dungeon, Fortress), straight to the hit
+  points (0x444090), to either side's stacks, then the Phoenix's rebirth check. A stack re-enters
+  its own hexes after Wait, Defend, a shot or an attack from where it stands (0x441F70) and after a
+  flight or teleporting move (0x4B4A1E, 0x4B4EEE), so it takes the damage again each time.
+- *Defense −3* (0x442590): a struck stack with either hex on a moat hex has 3 defense less, after
+  the Behemoths' reduction, not floored at 0; with the moat flag only (a harmless moat too).
+
+**The Tower's land mines** (0x4663BE, a Tower with a Citadel or Castle; the Tower has no moat
+flag): a Land Mine (spell 11) object on each moat hex but 95 (ten), owned by the defender, hidden
+(+0xA 0), lasting the battle, its damage: under SoD rules 150 (0x63BD20), or the defending hero's
+Land Mine damage if that is larger; under older rules the defending hero's, or without a hero the
+spell's at power 3 and no mastery. The hero's damage is the spell's base for the hero's mastery
+(0x4E5080 with the battlefield, so Magic Plains raise it) plus its power times the spell's factor
+(0x5A7890, with the hero's power at +0x53D4 per side, 1 to 99), without the hero's damage
+bonuses (0x5A78E0 gets no hero). The mines are the Land Mine
+spell's objects from then on (§7.15: they go off for the other side's stacks and are removed).
+
+**The shot's wall test** (0x467510, from the damage's stage 2 at 0x443C79 with the turned shooter's
+hex, and the cursor): a shot is halved when the shooter's hex is outside the walls on its row
+(left of its wall hex) and the target's hex is inside on its row, unless the shooter is a Mage,
+Arch Mage, Enchanter, Sharpshooter or Arrow Tower (creatures 34, 35, 136, 137, 149) or its
+controller's hero wears the Golden Bow (91) or the Bow of the Sharpshooter (137), and the line
+test 0x467840 finds a wall in the way. **The line test** walks a straight line on the column and
+row grid (not the hexes' geometry) from the shooter's (column, row) to the target's in 17 × the
+larger of the two differences steps of 1/17 of a cell along the longer axis (single-precision
+steps, the position truncated to a hex each step); the line is blocked by the gate's hex 96 while
+the gate is closed, and by any wall hex that still has its blocked bit. The halving multiplies
+with the distance's (§7.10 stage 2): a shot from beyond the full-damage distance through a wall
+does a quarter. 0x467840 also decides Teleport below Expert in sieges (0x5A3764, T8).
+
+**Harvested** (E04c T5d, `h3_formats::exe::siege_data`): the tables 0x63BD00, 0x63BCE8, 0x63BCF4
+and 0x63BD18, and six one-byte operands, each read after its instruction's opcode bytes are
+checked: the gate's hex (`cmp eax, 0x60` at 0x469A20), the moat's defense penalty (`sub ebx, 3`
+at 0x442646), the mines' power (`push 3` at 0x466460), the second row's town type (`cmp al, 7`
+at 0x463BAE), the mines' town type (`cmp byte [eax+4], 2` at 0x4663C4) and spell (`push 0xB` at
+0x466462). The harvester writes the siege's field into `[battle]` and a `[[siege]]` record per
+town type.

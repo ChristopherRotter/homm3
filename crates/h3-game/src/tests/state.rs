@@ -74,9 +74,9 @@ fn building_draws_the_starting_armies_and_keeps_custom_ones() {
     assert!(armies.iter().any(|a| a[0].count == 2) && armies.iter().any(|a| a[0].count == 5));
 }
 
-// covers: GAM-SET-001, ADV-PIK-001
+// covers: GAM-SET-001, GAM-HER-001, ADV-PIK-001
 #[test]
-fn the_setup_stream_draws_the_objects_contents_after_the_armies() {
+fn the_setup_stream_draws_the_objects_contents_after_the_armies_and_experience() {
     let rules = rules();
     let mut setup = setup();
     setup.map.objects.push(ObjectSetup {
@@ -90,7 +90,7 @@ fn the_setup_stream_draws_the_objects_contents_after_the_armies() {
     for seed in 0..40 {
         let state = build(&rules, &setup, seed);
         let mut draws = Rng::for_stream(seed, StreamId::SETUP);
-        let part = setup.adventure_setup(&rules, &mut draws).unwrap();
+        let (part, _) = setup.adventure_setup(&rules, &mut draws).unwrap();
         let alone =
             AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws).unwrap();
         assert_eq!(state.adventure(), &alone);
