@@ -2,13 +2,14 @@
 //! a context returns and the game applies to its store of heroes, each checked first
 //! ([`check_change`], HER-CHG-001) so that applying it ([`apply_change`]) cannot fail; where a
 //! received artifact goes (HER-CHG-002); what a defeated hero yields, in which order
-//! (HER-ART-004); the artifact a destroyed war machine takes with it (HER-WAR-002).
+//! (HER-ART-004); the artifact a destroyed war machine takes with it (HER-WAR-002); since E08
+//! T19a2b a learned spell.
 
 use alloc::vec;
 
-use h3_content::{ArtifactType, CreatureFlag, CreatureTypeId, Ruleset};
+use h3_content::{ArtifactType, CreatureFlag, CreatureTypeId, Ruleset, SpellId};
 
-use crate::details::{ArtifactInstance, HeroDetails, check_artifact};
+use crate::details::{ArtifactInstance, HeroDetails, check_artifact, hero_spell};
 use crate::error::ChangeError;
 
 /// Where an artifact is in a hero's details.
@@ -32,17 +33,22 @@ pub enum HeroChange {
     AddArtifact(ArtifactInstance),
     /// It loses the artifact at this place; the later ones of that list move up.
     RemoveArtifact(ArtifactPlace),
+    /// It learns a spell, added at the end of its learned spells (E08 T19a2b: an Eagle Eye pick,
+    /// HER-SPL-006).
+    LearnSpell(SpellId),
 }
 
 /// Checks a change against valid hero details (HER-CHG-001): the details stay valid with it
 /// ([`crate::validate`]). Experience and spell points always pass; a received artifact must be
 /// one of the ruleset holding a spell exactly when it is a scroll (HER-ART-003) and find room
-/// (HER-CHG-002); a removed one must be there.
+/// (HER-CHG-002); a removed one must be there; a learned spell must be a hero spell of the
+/// ruleset (HER-SPL-001) the hero has not learned.
 ///
 /// # Errors
 /// [`ChangeError::Artifact`] for an artifact the ruleset refuses, [`ChangeError::NoRoom`] when it
 /// fits no free position and the backpack cannot take it, [`ChangeError::NoArtifact`] when there
-/// is none at the place.
+/// is none at the place, [`ChangeError::Spell`] for a spell the ruleset refuses,
+/// [`ChangeError::KnownSpell`] for one the hero has learned.
 pub fn check_change(
     details: &HeroDetails,
     ruleset: &Ruleset,
@@ -60,6 +66,12 @@ pub fn check_change(
         HeroChange::RemoveArtifact(place) => artifact_at(details, place)
             .map(|_| ())
             .ok_or(ChangeError::NoArtifact(place)),
+        HeroChange::LearnSpell(spell) => {
+            hero_spell(spell, ruleset).map_err(ChangeError::Spell)?;
+            (!details.spells.contains(&spell))
+                .then_some(())
+                .ok_or(ChangeError::KnownSpell(spell))
+        }
     }
 }
 
@@ -94,6 +106,7 @@ pub fn apply_change(details: &mut HeroDetails, ruleset: &Ruleset, change: HeroCh
             let rest = list.split_off(index.min(list.len()));
             list.extend(rest.into_iter().skip(1));
         }
+        HeroChange::LearnSpell(spell) => details.spells.push(spell),
     }
 }
 

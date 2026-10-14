@@ -190,3 +190,27 @@ fn change_errors_read_well() {
         assert_eq!(error.to_string(), text);
     }
 }
+
+// covers: HER-CHG-001
+#[test]
+fn a_learned_spell_must_be_a_new_hero_spell() {
+    // E08 T19a2b: Eagle Eye's picks (HER-SPL-006).
+    let r = ruleset();
+    let d = details(&r);
+    let titan = spell_id(&r, "t:titan");
+    let learned = applied(&r, d.clone(), HeroChange::LearnSpell(titan));
+    assert_eq!(learned.spells, [&d.spells[..], &[titan]].concat());
+    let bolt = spell_id(&r, "t:bolt");
+    refused(&r, &d, HeroChange::LearnSpell(bolt), ChangeError::KnownSpell(bolt));
+    let gaze = spell_id(&r, "t:gaze");
+    let error = ChangeError::Spell(DetailsError::NotAHeroSpell(gaze));
+    refused(&r, &d, HeroChange::LearnSpell(gaze), error);
+    let unknown = SpellId::from_raw(99);
+    let error = ChangeError::Spell(DetailsError::UnknownSpell(unknown));
+    refused(&r, &d, HeroChange::LearnSpell(unknown), error);
+    assert_eq!(
+        ChangeError::KnownSpell(bolt).to_string(),
+        "spell 0 is learned already"
+    );
+    assert!(error.to_string().starts_with("the spell does not fit the ruleset: "));
+}

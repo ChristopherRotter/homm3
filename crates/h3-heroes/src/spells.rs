@@ -7,11 +7,47 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use h3_content::{HeroEffect, MAX_SKILL_LEVEL, MAX_SPELL_SCHOOLS, Ruleset, SpellId};
+use h3_content::{
+    HeroEffect, MAX_SKILL_LEVEL, MAX_SPELL_LEVEL, MAX_SPELL_SCHOOLS, Ruleset, SpellId,
+};
 
+use crate::change::{HeroChange, check_change};
 use crate::derive::{Count, effects};
 use crate::details::{HeroDetails, check};
 use crate::error::DetailsError;
+
+/// The highest spell level the hero may learn (HER-SPL-005, E08 T19a2b): the hero parameters'
+/// `learn_level` (0 without them, which validation refuses) plus the `levels` of its
+/// `learn_level` effects (Wisdom: 1, 2, 3; each artifact type once), at most
+/// [`MAX_SPELL_LEVEL`]. The original's Wisdom level + 2 (`eagle_eye_learn` 0x469FE0; the mage
+/// guilds, E09, ask the same).
+pub fn learn_level(details: &HeroDetails, ruleset: &Ruleset) -> u8 {
+    // rule: HER-SPL-005
+    let base = ruleset.hero_params().map_or(0, |params| params.learn_level);
+    let added: u32 = effects(details, ruleset, Count::OncePerType)
+        .filter_map(|effect| match *effect {
+            HeroEffect::LearnLevel { levels } => Some(u32::from(levels)),
+            _ => None,
+        })
+        .sum();
+    let level = u32::from(base).saturating_add(added).min(MAX_SPELL_LEVEL.into());
+    u8::try_from(level).unwrap_or(MAX_SPELL_LEVEL)
+}
+
+/// Whether the hero learns `spell`, an Eagle Eye pick, after a battle its side won (HER-SPL-006,
+/// BAT-Q24; E08 T19a2b): while it wears a spell book (an effect gives one), a hero spell of the
+/// ruleset it has not learned ([`HeroChange::LearnSpell`]'s check), of a level at most its
+/// [`learn_level`]. The original's `eagle_eye_learn` (0x469FE0): the Spell Book worn and the level
+/// at most Wisdom + 2, which batch 2f observed (a winner with its book in the backpack learned
+/// nothing; one without Wisdom learned a level 1 spell, not a level 3 one).
+pub fn learns_spell(details: &HeroDetails, ruleset: &Ruleset, spell: SpellId) -> bool {
+    // rule: HER-SPL-006
+    let book = effects(details, ruleset, Count::OncePerType)
+        .any(|effect| matches!(effect, HeroEffect::SpellBook));
+    let level = ruleset.spell(spell).map(|s| s.level);
+    book && level.is_some_and(|level| level <= learn_level(details, ruleset))
+        && check_change(details, ruleset, HeroChange::LearnSpell(spell)).is_ok()
+}
 
 /// The hero's available spells, in spell order (HER-SPL-002): the learned spells, the spell of
 /// every worn scroll and the spells its `spells` effects give (in the original only artifacts

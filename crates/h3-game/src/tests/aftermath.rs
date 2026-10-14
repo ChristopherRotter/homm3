@@ -342,3 +342,207 @@ fn the_heroes_removal_comes_before_their_changes() {
         .position(|e| matches!(e, GameEvent::HeroChanged { .. }));
     assert!(removed.unwrap() < changed.unwrap());
 }
+
+/// [`equipped`] with red's hero (the winner) also at `dark` Dark (Necromancy: 10/20/70 %) and
+/// `sense` Sense (Wisdom), wearing the spell book when `book`.
+fn necromancer(rules: &GameRuleset, dark: u8, sense: u8, book: bool) -> GameSetup {
+    let core = rules.core();
+    let mut setup = equipped(rules);
+    let red = &mut setup.heroes[0].details;
+    let skills = red.skills.as_mut().unwrap();
+    for (k, level) in [("t:dark", dark), ("t:sense", sense)] {
+        if level > 0 {
+            skills.push((core.skill_by_key(k).unwrap(), level));
+        }
+    }
+    if book {
+        red.artifacts.as_mut().unwrap().worn.push(art(rules, "t:book"));
+    }
+    setup
+}
+
+/// The `CreaturesRaised` events among `events`, as (player, hero, creature, count).
+fn raised(events: &[GameEvent]) -> Vec<(PlayerId, HeroId, CreatureTypeId, u32)> {
+    events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::CreaturesRaised {
+                player,
+                hero,
+                creature,
+                count,
+            } => Some((player, hero, creature, count)),
+            _ => None,
+        })
+        .collect()
+}
+
+/// [`rules`] under the profile `t:single` (quirk Q-0005).
+fn single_rules() -> GameRuleset {
+    let core = Arc::new(core_with(false, "t:single"));
+    let part = part_with(&core, vec![88, 25], 2);
+    let battle = battle_part(&core, 7);
+    GameRuleset::new(core, Arc::new(part), Arc::new(battle)).unwrap()
+}
+
+// covers: GAM-BAT-006, HER-NEC-001, HER-NEC-002
+#[test]
+fn the_winners_necromancy_raises_from_every_killed_record_into_its_army() {
+    let rules = rules();
+    let game = GameState::new(&rules, &necromancer(&rules, 3, 0, false), 5).unwrap();
+    let outcome = outcome(BattleResult::Victory(BattleSide::Attacker));
+    let mut ended = game.clone();
+    let mut events = Vec::new();
+    ended.end_battle(&rules, SIDES, &outcome, &mut events);
+    // 70 % of each killed record's hit points at most the imp's 4, in imps (4 hit points), at
+    // most the record's killed: 4 imps 2 (2.8), 2 gogs 1 (1.4), the cart 0 (0.7), 3 summoned imps
+    // 2 (2.1), 2 raised imps 1 (1.4).
+    assert_eq!(raised(&events), [(RED, RED_HERO, IMP, 6)]);
+    // They join red's surviving imps (slot 1: 5).
+    let army = &ended.adventure().hero(RED_HERO).unwrap().army;
+    assert_eq!(
+        army[..],
+        [ArmyStack {
+            slot: 1,
+            creature: IMP,
+            count: 11,
+        }]
+    );
+    // After the experience, before the capture; told to red only.
+    let at = |f: fn(&GameEvent) -> bool| events.iter().position(f).unwrap();
+    let experience = at(|e| {
+        matches!(
+            e,
+            GameEvent::HeroChanged {
+                change: HeroChange::GainExperience(_),
+                ..
+            }
+        )
+    });
+    let raise = at(|e| matches!(e, GameEvent::CreaturesRaised { .. }));
+    let capture = at(|e| {
+        matches!(
+            e,
+            GameEvent::HeroChanged {
+                change: HeroChange::AddArtifact(_),
+                ..
+            }
+        )
+    });
+    assert!(experience < raise && raise < capture);
+    let event = events[raise];
+    assert_eq!(project(&event, Viewer::Player(RED)), Some(event));
+    assert_eq!(project(&event, Viewer::Player(BLUE)), None);
+    // A retreat or a surrender of the loser raises too; the loser's Necromancy never does.
+    for result in [
+        BattleResult::Retreat(BattleSide::Defender),
+        BattleResult::Surrender(BattleSide::Defender),
+    ] {
+        let (mut again, mut events) = (game.clone(), Vec::new());
+        again.end_battle(&rules, SIDES, &outcome_of(result), &mut events);
+        assert_eq!(raised(&events), [(RED, RED_HERO, IMP, 6)], "{result:?}");
+    }
+}
+
+/// [`outcome`] with `result`.
+fn outcome_of(result: BattleResult) -> BattleOutcome {
+    outcome(result)
+}
+
+// covers: GAM-BAT-006
+#[test]
+fn necromancy_raises_at_least_one_and_nothing_from_nothing() {
+    let rules = rules();
+    // Basic Dark: 10 %. Only the cart was killed: 0.1 of 4 hit points, rounded down 0, but one.
+    let game = GameState::new(&rules, &necromancer(&rules, 1, 0, false), 5).unwrap();
+    let mut outcome = outcome(BattleResult::Victory(BattleSide::Attacker));
+    outcome.stacks[1] = vec![record(StackOrigin::WarMachine, CART, 1, 0)];
+    let (mut ended, mut events) = (game.clone(), Vec::new());
+    ended.end_battle(&rules, SIDES, &outcome, &mut events);
+    assert_eq!(raised(&events), [(RED, RED_HERO, IMP, 1)]);
+    // Nothing killed: nothing raised, no event.
+    outcome.stacks[1] = vec![record(StackOrigin::Army(0), IMP, 4, 4)];
+    let (mut ended, mut events) = (game.clone(), Vec::new());
+    ended.end_battle(&rules, SIDES, &outcome, &mut events);
+    assert!(raised(&events).is_empty());
+    assert_eq!(
+        ended.adventure().hero(RED_HERO).unwrap().army,
+        outcome.survivors[0].stacks
+    );
+    // A hero without Necromancy raises nothing.
+    let game = GameState::new(&rules, &equipped(&rules), 5).unwrap();
+    let outcome = outcome_of(BattleResult::Victory(BattleSide::Attacker));
+    let (mut ended, mut events) = (game, Vec::new());
+    ended.end_battle(&rules, SIDES, &outcome, &mut events);
+    assert!(raised(&events).is_empty());
+}
+
+// covers: GAM-BAT-006
+#[test]
+fn with_quirk_q0005_the_count_is_the_originals_single_precision_arithmetic() {
+    // 10 imps killed at 70 %: exactly 7; the original's f32(0.7) is below 0.7, so 40 × it / 4
+    // truncates to 6.
+    for (rules, count) in [(rules(), 7), (single_rules(), 6)] {
+        let game = GameState::new(&rules, &necromancer(&rules, 3, 0, false), 5).unwrap();
+        let mut outcome = outcome(BattleResult::Victory(BattleSide::Attacker));
+        outcome.stacks[1] = vec![record(StackOrigin::Army(0), IMP, 10, 0)];
+        let (mut ended, mut events) = (game, Vec::new());
+        ended.end_battle(&rules, SIDES, &outcome, &mut events);
+        assert_eq!(raised(&events), [(RED, RED_HERO, IMP, count)]);
+    }
+}
+
+// covers: GAM-BAT-007, HER-SPL-005, HER-SPL-006
+#[test]
+fn the_winner_learns_its_eagle_eye_picks_with_its_book_up_to_its_level() {
+    let rules = rules();
+    let core = rules.core();
+    let (gust, gate) = (
+        core.spell_by_key("t:gust").unwrap(),
+        core.spell_by_key("t:gate").unwrap(),
+    );
+    let mut outcome = outcome(BattleResult::Victory(BattleSide::Attacker));
+    for hero in outcome.heroes.iter_mut().flatten() {
+        hero.learned = vec![gust, gate];
+    }
+    let learned = |setup: &GameSetup| {
+        let game = GameState::new(&rules, setup, 5).unwrap();
+        let (_, changes) = end(&game, &rules, SIDES, &outcome);
+        changes
+            .into_iter()
+            .filter(|(_, _, c)| matches!(c, HeroChange::LearnSpell(_)))
+            .collect::<Vec<_>>()
+    };
+    let learn = |spell| (RED, RED_HERO, HeroChange::LearnSpell(spell));
+    // Without Sense up to level 2: Gust, not Gate; with Basic Sense both; without its book none.
+    // Blue's picks (it lost) are never learned.
+    assert_eq!(learned(&necromancer(&rules, 0, 0, true)), [learn(gust)]);
+    assert_eq!(
+        learned(&necromancer(&rules, 0, 1, true)),
+        [learn(gust), learn(gate)]
+    );
+    assert!(learned(&necromancer(&rules, 0, 3, false)).is_empty());
+    // After the raised creatures, before the capture; the store learned them.
+    let game = GameState::new(&rules, &necromancer(&rules, 3, 1, true), 5).unwrap();
+    let (mut ended, mut events) = (game, Vec::new());
+    ended.end_battle(&rules, SIDES, &outcome, &mut events);
+    let raise = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::CreaturesRaised { .. }))
+        .unwrap();
+    let first_learned = events
+        .iter()
+        .position(|e| {
+            matches!(
+                e,
+                GameEvent::HeroChanged {
+                    change: HeroChange::LearnSpell(_),
+                    ..
+                }
+            )
+        })
+        .unwrap();
+    assert!(raise < first_learned);
+    let spells = &ended.hero(RED_HERO).unwrap().spells;
+    assert!(spells.contains(&gust) && spells.contains(&gate));
+}

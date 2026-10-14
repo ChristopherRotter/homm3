@@ -10,15 +10,16 @@ use alloc::vec::Vec;
 
 use h3_adventure::{BattleStart, Combatant, Pos, Viewers};
 use h3_battle::{BattleState, Command, Event, Visibility, generate_setup_obstacles};
-use h3_content::{OBSTACLES_FROM_TILE, Ruleset};
+use h3_content::{FULL_BP, OBSTACLES_FROM_TILE, Ruleset, SINGLE_PRECISION_RATES};
 use h3_contracts::{
     Army, ArmyStack, BattleHero, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroId,
     PlayerId, StackOrigin, StackRecord,
 };
 use h3_heroes::{
-    HeroChange, apply_change, check_change, derive_battle_hero, gained_experience,
-    lost_war_machine, max_mana, next_capture, war_machines,
+    HeroChange, Necromancy, apply_change, check_change, derive_battle_hero, gained_experience,
+    learns_spell, lost_war_machine, max_mana, necromancy, next_capture, war_machines,
 };
+use h3_kernel::arith::{SINGLE_BITS, X87, mul_div_floor};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
 use super::{Decision, GameState};
@@ -311,7 +312,7 @@ impl GameState {
     /// whose side won and has army survivors keeps them as its army (a damaged top creature
     /// forgotten), every other hero — lost, retreated, surrendered, in a draw, or left with stacks
     /// created in the battle only (BAT-END-001) — leaves the map; then the heroes' part
-    /// ([`Self::heroes_after_battle`], E08 T19a2a); then a surrender's price leaves the
+    /// ([`Self::heroes_after_battle`], E08 T19a2a, T19a2b); then a surrender's price leaves the
     /// surrendering side's owner's treasury and enters the other side's owner's (GAM-BAT-005,
     /// D-13), each told to its owner.
     // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005
@@ -373,7 +374,11 @@ impl GameState {
     /// that won and keeps its army, so it stays on the map — gains the battle's experience
     /// (GAM-BAT-002: [`battle_experience`], grown by Learning, HER-EXP-001) and, after a victory
     /// over a hero, its artifacts (GAM-BAT-004, HER-ART-004): one by one while the winner has room
-    /// (HER-CHG-002), each moved from the loser's details to the winner's. The original's order
+    /// (HER-CHG-002), each moved from the loser's details to the winner's. Between the two (E08
+    /// T19a2b) the creatures its Necromancy raises join its army (GAM-BAT-006: HER-NEC-001,
+    /// HER-NEC-002, [`raised_count`], `AdventureState::raise`), told to its owner as
+    /// `CreaturesRaised`, and it learns each Eagle Eye pick of its side's `HeroOutcome::learned`
+    /// it may learn (GAM-BAT-007, HER-SPL-006), each a `LearnSpell` change. The original's order
     /// where read (`battle_end` 0x477470: the experience 0x477747, Necromancy 0x47776E, Eagle
     /// Eye 0x477776, the capture 0x477782); the spell points are spent during the original's battle,
     /// and the war machines' artifacts go first, as in VCMI.
@@ -422,7 +427,27 @@ impl GameState {
         if gained > 0 {
             self.change_hero(core, hero, owner, HeroChange::GainExperience(gained), sink);
         }
-        // stub: ADV-STUB-3
+        // rule: GAM-BAT-006
+        let raised = self
+            .hero(hero)
+            .and_then(|d| necromancy(d, core))
+            .map(|n| (n.creature, raised_count(rules, &outcome.stacks[l], n)));
+        let joined = raised.and_then(|r| self.adventure.raise(core, rules.adventure(), hero, r));
+        if let (Some((creature, count)), Some(player)) = (joined, owner) {
+            sink.emit(GameEvent::CreaturesRaised {
+                player,
+                hero,
+                creature,
+                count,
+            });
+        }
+        // rule: GAM-BAT-007
+        let picks = outcome.heroes[w.index()].as_ref().map(|h| h.learned.clone());
+        for spell in picks.unwrap_or_default() {
+            if self.hero(hero).is_some_and(|d| learns_spell(d, core, spell)) {
+                self.change_hero(core, hero, owner, HeroChange::LearnSpell(spell), sink);
+            }
+        }
         // rule: GAM-BAT-004
         if let Some(lost) = heroes[l].filter(|_| defeated) {
             while let Some((place, item)) = self.hero(lost).and_then(|d| next_capture(d, core)) {
@@ -494,6 +519,47 @@ fn battle_experience(rules: &GameRuleset, stacks: &[StackRecord], defeated: bool
         0
     };
     killed.saturating_add(bonus)
+}
+
+/// How many creatures a hero's Necromancy raises from the loser's records (GAM-BAT-006, E08
+/// T19a2b): for each record that lost creatures (`start − end`, every record: army stacks,
+/// raised and summoned stacks, clones and war machines), `killed × min(hp, raised hp) × share /
+/// raised hp` rounded down, at most `killed` (the hit points the types', without artifacts; the
+/// raised creature's those of `necromancy.creature`); the sum, at least 1 if any record lost
+/// creatures. Under quirk Q-0005 the original's arithmetic (`battle_end` 0x4775E1): per record
+/// `trunc(f32(min(hp, raised hp) × killed) × share / f32(raised hp))` in its x87 arithmetic, the
+/// share single precision (HER-NEC-001); its 32-bit product, which wraps above 2^31, is not
+/// modelled (no army reaches it). 0 for a raised creature without hit points. Sums saturate.
+fn raised_count(rules: &GameRuleset, stacks: &[StackRecord], necromancy: Necromancy) -> u32 {
+    let hit_points = |c| rules.battle().creature(c).map_or(0, |c| c.hit_points);
+    let raised_hp = hit_points(necromancy.creature);
+    let single = rules.core().quirks().is_enabled(SINGLE_PRECISION_RATES);
+    let share = necromancy.share;
+    let share_single = share.single.map_or_else(
+        || X87::ratio(share.bp, FULL_BP.into(), SINGLE_BITS).unwrap_or(X87::ZERO),
+        |bits| X87::from_f32_bits(bits.get()),
+    );
+    let divisor = X87::int(raised_hp.into()).round(SINGLE_BITS);
+    let mut any = false;
+    let mut total = 0_u32;
+    for record in stacks {
+        let killed = record.start.saturating_sub(record.end);
+        if killed == 0 || raised_hp == 0 {
+            continue;
+        }
+        any = true;
+        let points = u64::from(hit_points(record.creature).min(raised_hp)) * u64::from(killed);
+        let raised = if single {
+            let product = X87::int(points).round(SINGLE_BITS).times(share_single);
+            product.over(divisor).map_or(0, X87::trunc)
+        } else {
+            let whole = u64::from(raised_hp) * u64::from(FULL_BP);
+            mul_div_floor(points, share.bp.into(), whole).unwrap_or(u64::MAX)
+        };
+        let raised = u32::try_from(raised.min(killed.into())).unwrap_or(killed);
+        total = total.saturating_add(raised);
+    }
+    if any { total.max(1) } else { 0 }
 }
 
 /// The experience for defeating a hero in battle (GAM-BAT-004; the original's 500 at 0x46A3DF,

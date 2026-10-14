@@ -36,10 +36,12 @@ mod spells;
 pub use change::{
     ArtifactPlace, HeroChange, apply_change, check_change, lost_war_machine, next_capture,
 };
-pub use derive::{MANA_PER_KNOWLEDGE, derive_battle_hero, gained_experience, max_mana};
+pub use derive::{
+    MANA_PER_KNOWLEDGE, Necromancy, derive_battle_hero, gained_experience, max_mana, necromancy,
+};
 pub use details::{ArtifactInstance, HeroDetails, PrimarySkill, validate, war_machines};
 pub use error::{ChangeError, DetailsError};
-pub use spells::{available_spells, spell_masteries};
+pub use spells::{available_spells, learn_level, learns_spell, spell_masteries};
 
 #[cfg(test)]
 mod tests;

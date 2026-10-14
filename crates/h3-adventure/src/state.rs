@@ -11,7 +11,9 @@ use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_content::{ContentKey, FRINGE_SHOWS_OBJECTS, Formation, ResourceId, Ruleset, TerrainId};
+use h3_content::{
+    ContentKey, CreatureTypeId, FRINGE_SHOWS_OBJECTS, Formation, ResourceId, Ruleset, TerrainId,
+};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
@@ -829,6 +831,53 @@ impl AdventureState {
                 }
             }
         }
+    }
+
+    /// Adds creatures a battle raised to a hero's army (GAM-BAT-006, E08 T19a2b; a hero's
+    /// Necromancy after its side won): `count` of `creature` join its stack of that creature,
+    /// else a new stack in its first free slot; if neither is possible (a full army without the
+    /// creature), ⌈2 · `count` / 3⌉ of the creature's first upgrade join its stack of the
+    /// upgrade, if it has one; else none join. Returns the creature and the count that joined,
+    /// `None` when none did, `count` was 0 or the hero is not on the map. Counts saturate. The
+    /// original's `necromancy_add_raised` (0x469F20): `army_add_stack` (0x44ACE0), then once the
+    /// upgrade (0x47B1A0) at (2c + 2) / 3; its exception for the four elementals (112 to 115, no
+    /// upgrade while a game flag is off) is not modelled, as no hero raises them.
+    // rule: GAM-BAT-006
+    pub fn raise(
+        &mut self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        hero: HeroId,
+        (creature, count): (CreatureTypeId, u32),
+    ) -> Option<(CreatureTypeId, u32)> {
+        let slots = part.params().army_slots();
+        let army = &mut self.heroes.iter_mut().find(|h| h.id == hero)?.army;
+        if count == 0 {
+            return None;
+        }
+        if let Some(stack) = army.iter_mut().find(|s| s.creature == creature) {
+            stack.count = stack.count.saturating_add(count);
+            return Some((creature, count));
+        }
+        let free = (0..slots.get()).find(|&slot| army.iter().all(|s| s.slot != slot));
+        if let Some(slot) = free {
+            let at = army.iter().position(|s| s.slot > slot).unwrap_or(army.len());
+            army.insert(
+                at,
+                ArmyStack {
+                    slot,
+                    creature,
+                    count,
+                },
+            );
+            return Some((creature, count));
+        }
+        let upgrade = core.upgrades(creature).first().copied()?;
+        let stack = army.iter_mut().find(|s| s.creature == upgrade)?;
+        // (2c + 2) / 3, exact in 64 bits and below 2^32 again.
+        let fewer = u32::try_from((u64::from(count) * 2 + 2) / 3).unwrap_or(u32::MAX);
+        stack.count = stack.count.saturating_add(fewer);
+        Some((upgrade, fewer))
     }
 
     /// An object's visit by `player`'s hero `hero`, by what its kind does ([`Effect`]). A pickup
