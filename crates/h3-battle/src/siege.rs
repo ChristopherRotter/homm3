@@ -6,8 +6,10 @@
 //! The wall shots (E04c T6, `installation.md` §7.29; BAT-SIE-009 to BAT-SIE-015): the wall-shot
 //! targets' hit points, the attacker's Catapult (set up by the battle, BAT-SIE-009) and the
 //! Cyclops shooting them, a destroyed wall's hex and a destroyed gate, Earthquake. The turrets
-//! and the town's other rules (the controls, the experience, the defenders' morale and luck,
-//! Teleport's and the summon's limits) come with E04c T7 and T8 (BAT-STUB-2).
+//! (E04c T7, `installation.md` §7.30; BAT-SIE-016 to BAT-SIE-019): the keep and the towers hold
+//! their turrets' stacks, set up in `state.rs`, which die with them. The town's other rules (the
+//! controls, the experience, the defenders' morale and luck, Teleport's and the summon's limits)
+//! come with E04c T8 (BAT-STUB-2).
 
 use h3_content::SpellId;
 use h3_content_battle::{

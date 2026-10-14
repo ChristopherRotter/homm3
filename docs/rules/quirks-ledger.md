@@ -461,5 +461,5 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Sources: original-data (`installation.md` §7.29), wiki (Earthquake), observation (`experiments/results/E04c-batch-3d.md` E: the defender's Earthquake destroyed both absent towers of a Citadel and its first stack was marked dead)
 - Flag: none
 - Defaults: n/a
-- Regression test: `crates/h3-battle/src/tests/walls.rs`, `an_absent_turret_quaked_down_harms_no_stack`
+- Regression test: `crates/h3-battle/src/tests/walls.rs`, `an_absent_turret_quaked_down_harms_no_stack`; with the turrets set up (E04c T7: an absent target holds none, BAT-SIE-017), `crates/h3-battle/src/tests/turrets.rs`, `a_destroyed_tower_or_keep_takes_its_turret_down`
 - Decided by / date: user, 2026-10-14 (BAT-Q43: the absent parts soak hits, no stack is harmed)

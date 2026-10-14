@@ -1062,8 +1062,8 @@ impl BattleState {
             natural.blocked(),
         )?
         .map_or((None, None), |(s, m)| (Some(s), m));
-        // stub: BAT-STUB-2 — the town's other rules (the turrets, the controls, the experience,
-        // the defenders' morale and luck) are not read yet (E04c T7 and T8).
+        // stub: BAT-STUB-2 — the town's other rules (the controls, the experience, the
+        // defenders' morale and luck) are not read yet (E04c T8).
         let mut taken = natural
             .blocked()
             .union(siege::placement_blocked(siege.as_ref()));

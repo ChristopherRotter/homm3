@@ -11,9 +11,11 @@ use h3_view::tables::{self, Tables};
 use serde::Deserialize;
 
 const PACKS: [&str; 3] = ["base", "ab", "sod"];
-/// Pack keys without graphics: the original has no battlefield picture for these terrains
-/// (0x4646D0; battles on water use the ship pictures).
-const GAPS: [&str; 2] = ["base:water", "base:rock"];
+/// Pack keys without graphics: the Arrow Tower has no creature picture (its def name in the
+/// creature table is empty: the original draws a town's turrets from the town's records,
+/// 0x63CF88; E04c T7), and the original has no battlefield picture for these terrains (0x4646D0;
+/// battles on water use the ship pictures).
+const GAPS: [&str; 3] = ["base:arrow_tower", "base:water", "base:rock"];
 /// The special battlefields' keys (VCMI's names) until the packs define them.
 const SPECIAL: [&str; 12] = [
     "sand_shore",
