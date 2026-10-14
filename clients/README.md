@@ -17,7 +17,7 @@ T3 (2026-10-13): the capture harness and the animation timing. M2 T4a (2026-10-1
 over time (`anim`), checked against the recorded sequences, and `render --at`. M2 T4b-1
 (2026-10-13): the frame check, every frame of the recorded sequences against the original's. M2
 T2 (2026-10-14): the window, input and audio library chosen by measurement and the user: SDL 3
-(the ADR draft `docs/lanes/client/adr-drafts/window-audio.md`, `docs/epics/E17-design.md` §8).
+(ADR-0024, `docs/epics/E17-design.md` §8).
 Decisions: ADR-0020
 and the epic file `docs/epics/E17-clients.md`; tasks in `docs/lanes/client/QUEUE.md`.
 

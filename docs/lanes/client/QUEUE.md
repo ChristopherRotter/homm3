@@ -15,8 +15,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 
 ### E17 M2 T5 — The window adapter and M2's closure
 
-- **Scope:** the SDL 3 adapter (T2, the user's choice; the ADR draft
-  `docs/lanes/client/adr-drafts/window-audio.md`, design §8): an adapter crate in `clients/` with
+- **Scope:** the SDL 3 adapter (T2, the user's choice; ADR-0024, design §8): an adapter crate in `clients/` with
   `sdl3-sys` (`build-from-source-static`, the unused subsystems off) holding every SDL call;
   `h3-view` plays a record (or `play`'s scenario) in the window at the original's frame times,
   integer scale, vsync off and the game's hardware cursor by default; sound: the IMA ADPCM decoder
@@ -27,7 +26,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
   reviewer, the M3 refinement prepared.
 - **Acceptance:** M2's exit (epic file): a record of a full battle plays in the window.
 - **Depends on:** T2 (done 2026-10-14); T4b-2a (done 2026-10-14: M2's headless exit); T4b-2b may
-  follow it. The ADR draft numbered (a `shared/` change) when the user accepts its text.
+  follow it.
 - **Status:** ready.
 
 ## Inbox

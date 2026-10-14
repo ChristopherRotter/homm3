@@ -532,8 +532,8 @@ headless with what it needs, T4b-2b the rest (`QUEUE.md`).
 
 ### M2 T2 — The window, input and audio evaluation (2026-10-14)
 
-The user present; [design §8](E17-design.md), the ADR draft
-`docs/lanes/client/adr-drafts/window-audio.md`.
+The user present; [design §8](E17-design.md), [ADR-0024](../adr/0024-client-window-audio.md) (its
+text accepted by the user the same day, #196).
 
 - **Chosen by the user:** SDL 3 through `sdl3-sys`, SDL built from source and linked statically;
   defaults (*provisional*, the review list) vsync off and the hardware cursor. No licence step:

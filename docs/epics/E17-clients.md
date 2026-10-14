@@ -24,7 +24,7 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
   grounds only. `winit` and `cpal` are Apache-2.0-only, which ADR-0009 excludes; if they win the
   evaluation, the client may move to GPLv3 (its own `deny.toml`), the user deciding at M2.
   **Chosen 2026-10-14 (T2): SDL 3** through `sdl3-sys`, built from source and linked statically;
-  no licence step (ADR draft `docs/lanes/client/adr-drafts/window-audio.md`, design §8).
+  no licence step ([ADR-0024](../adr/0024-client-window-audio.md), design §8).
 - **Asset tables per expansion, committed** (`clients/assets/{base,ab,sod}.toml`); no reading of
   the executable at run time.
 - **Reference captures:** automatic (2026-10-13: the user cannot take screenshots for exhaustive
@@ -329,7 +329,7 @@ choices are lifted.
   how it was played; every record read from the game's memory, not the screen; the adventure
   map's reads from H3API's layouts confirmed by observation only (`inferred`); a dialog's OK
   found by relative probes (`[button.ok]`); a walk over after 1.5 s at rest, in real time.
-- The window adapter's library (T2, the user's choice; ADR draft `window-audio.md`): SDL 3
+- The window adapter's library (T2, the user's choice; ADR-0024, accepted): SDL 3
   through `sdl3-sys` (not the `sdl3` wrapper), built from source and linked statically, the unused
   subsystems left out; its defaults vsync off and the hardware cursor (the user, *provisional*);
   `nanomp3` for MP3; the IMA ADPCM decoder in `h3-assets`.

@@ -828,7 +828,7 @@ lets it idle. Read in `Heroes3.exe` for it:
 ## 8. The window, input and audio evaluation (M2 T2)
 
 ADR-0020 point 4 left the library to a measured evaluation at M2; the choice, the user's
-(2026-10-14), is the ADR draft `docs/lanes/client/adr-drafts/window-audio.md`. Three spike adapters
+(2026-10-14), is [ADR-0024](../adr/0024-client-window-audio.md). Three spike adapters
 on the throwaway branch `client/e17-m2-t2-spikes` (`clients/spikes/`, never merged) each play the
 same *reel*: 302 distinct battlefield frames of `h3-view play scenarios/battle.toml` (its first 20
 s, `--png`) at their times, looping, with the game's cursor (`CRDEFLT.DEF`'s first frame), an
