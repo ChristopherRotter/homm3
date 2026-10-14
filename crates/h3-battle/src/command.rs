@@ -510,9 +510,9 @@ pub fn apply<S: Sink>(
             // The turn ends as after a shot, good morale included (the original's 0x479AE9 rolls
             // it), without entering its hexes again (no 0x441F70).
             // Validated: a siege, whose field the ruleset has (BAT-SIE-001).
-            if let Some(field) = ruleset.siege_field() {
+            ruleset.siege_field().into_iter().for_each(|field| {
                 crate::siege::shoot_walls(state, field, (mover, part, level), sink);
-            }
+            });
             end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
     }

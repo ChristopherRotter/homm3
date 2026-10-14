@@ -2442,9 +2442,9 @@ fn take_effect<S: Sink>(
         // The hits are the spell's value for the mastery, no power (the original's 0x5A7C80).
         let hits = cast.spell.effect[usize::from(cast.mastery)];
         // Validated: a siege (`may_quake`).
-        if let Some(siege) = state.siege {
+        state.siege.into_iter().for_each(|siege| {
             crate::siege::earthquake(state, siege, u32::from(hits), sink);
-        }
+        });
         return;
     }
     if magic.removes_obstacles() {
