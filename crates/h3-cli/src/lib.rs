@@ -659,6 +659,9 @@ impl ReplayDoc {
                 formations: h3_pack_battle::formations(&f.setup.tight_formation)
                     .map_err(|e| CliError::Format(e.to_string()))?,
                 funds: [f.setup.attacker_funds, f.setup.defender_funds],
+                // Replays name no difficulty or human players yet (E04c T7d adds the keys).
+                difficulty: 0,
+                human: [false; 2],
             },
             commands: f
                 .commands

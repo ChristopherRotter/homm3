@@ -1135,6 +1135,9 @@ impl ScenarioDef {
             ],
             formations: self.formations,
             funds: self.funds,
+            // Scenarios name no difficulty or human players yet (E04c T7d adds the keys).
+            difficulty: 0,
+            human: [false; 2],
         })
     }
 }

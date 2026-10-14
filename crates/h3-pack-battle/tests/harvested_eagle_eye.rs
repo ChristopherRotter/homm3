@@ -58,6 +58,7 @@ fn chance(r: &BattleRuleset, (hero, level): (&str, u8), skill: u8, worn: &[&str]
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],
+        ..BattleSetup::default()
     };
     let s = BattleState::new(r, &setup, 1).unwrap();
     observe(&s, r, BattleSide::Attacker)

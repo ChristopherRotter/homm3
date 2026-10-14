@@ -240,6 +240,30 @@ impl X87 {
         })
     }
 
+    /// The square root as the FPU's `fsqrt` gives it (the runtime's `sqrt`, E04c T7d: the
+    /// computer's worth of a creature): the exact root rounded to [`X87_PRECISION`] bits, to
+    /// nearest (an inexact root is never halfway, so ties need no rule).
+    pub fn sqrt(self) -> Self {
+        // `sqrt(N / 2^64) = sqrt(N · 4^s) / 2^(32 + s)`: the scaled integer root gets 55 to 64
+        // bits, at least two below the 53 kept (`len + 2s` is 110, 111 or `len` itself).
+        let len = 128 - self.0.leading_zeros();
+        let s = (2 * (X87_PRECISION + 2)).saturating_sub(len).div_ceil(2);
+        let n = self.0 << (2 * s);
+        let r = n.isqrt();
+        let k = (128 - r.leading_zeros()).saturating_sub(X87_PRECISION);
+        let (q, rest) = (r >> k, r & ((1 << k) - 1));
+        let half = 1 << k >> 1;
+        // An inexact root lies strictly between `r` and `r + 1`: above half when `rest` is.
+        let up = rest > half || (rest == half && (r * r != n || q & 1 == 1));
+        let m = (q + u128::from(up)) << k;
+        // The value is `m / 2^(32 + s)`, `s` at most 55; below `2^32`, so no saturation.
+        if s <= 32 {
+            Self(m << (32 - s))
+        } else {
+            Self(m >> (s - 32))
+        }
+    }
+
     /// `self − rhs` as the FPU computes it, rounded to [`X87_PRECISION`] bits; 0 if `rhs` is
     /// larger (no rule subtracts more than it has).
     pub fn minus(self, rhs: Self) -> Self {
@@ -613,6 +637,23 @@ mod tests {
     }
 
     #[test]
+    fn x87_square_roots() {
+        // Exact roots stay exact; √2 is the double 0x3FF6_A09E_667F_3BCD; 0 stays 0.
+        assert_eq!(X87::int(4).sqrt(), X87::int(2));
+        assert_eq!(X87::int(1 << 62).sqrt(), X87::int(1 << 31));
+        assert_eq!(X87::int(2).sqrt().0, 0x16_A09E_667F_3BCD << 12);
+        assert_eq!(X87::ZERO.sqrt(), X87::ZERO);
+        // Small values: 2^-60 has the root 2^-30; the double 0.05's root rounds to 53 bits.
+        assert_eq!(X87(16).sqrt(), X87(1 << 34));
+        let root = X87::ratio(5, 100, DOUBLE_BITS).unwrap().sqrt();
+        assert_eq!(root.round(DOUBLE_BITS), root);
+        // 0.2236067977499789… = 0x3FCC_9F25_C5BF_EDD9 as a double.
+        assert_eq!(root.0, 0x1C_9F25_C5BF_EDD9 << 9);
+        // The largest value: √(2^64 − 1) rounds to 2^32 at 53 bits.
+        assert_eq!(X87::MAX.sqrt(), X87::int(1 << 32));
+    }
+
+    #[test]
     fn x87_rounding_ties_go_to_even() {
         let one = X87::ONE.0;
         // 1 + 2^-24 is halfway between 1 and 1 + 2^-23 at 24 bits: even, so 1; 1 + 3 · 2^-24 is
@@ -649,6 +690,21 @@ mod tests {
             let exact_scaled = u128::from(num) << SINGLE_FRAC_BITS; // / den
             let diff = (u128::from(v) * u128::from(den)).abs_diff(exact_scaled);
             prop_assert!(2 * diff <= ulp * u128::from(den));
+        }
+
+        // The root has at most 53 significant bits and is within half a unit of the last place
+        // of the exact one: (r ∓ ulp / 2)² brackets the value, compared exactly in 256 bits.
+        #[test]
+        fn x87_sqrt_is_nearest(n in 1u128 << 53..u128::from(u64::MAX) << 64) {
+            let r = X87(n).sqrt().0;
+            let lead = 127 - r.leading_zeros();
+            prop_assert!(r.trailing_zeros() + 52 >= lead);
+            // In units of 2^-65: the root r · 2 ± ulp, squared, against n · 2^66.
+            let ulp = 1u128 << (lead - 52);
+            let (lo, hi) = (2 * r - ulp, 2 * r + ulp);
+            let target = (n >> 62, n << 66);
+            prop_assert!(mul_wide(lo, lo) <= target);
+            prop_assert!(target <= mul_wide(hi, hi));
         }
 
         #[test]
