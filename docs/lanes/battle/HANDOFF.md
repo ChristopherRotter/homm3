@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 5, T7 (arrow towers):** built on `battle/e04c-t7` (2026-10-14; BAT-Q44; BAT-SIE-016 to 019; batch 3e: as the code, S-06/S-07 refuted); BAT-Q45 open (the automatic turret's target); `cross-lane` PR #209 awaits the user's checkpoint (green full verify on b164922).
+- **E04c increment 5, T7 (arrow towers):** built on `battle/e04c-t7` (2026-10-14; BAT-Q44; BAT-SIE-016 to 019; batch 3e: as the code, S-06/S-07 refuted); BAT-Q45 open (the automatic turret's target); `cross-lane` PR #209 (full verify green) awaits the user's checkpoint.
 - **Merged:** up to #199.
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q45 (none blocks), BAT-STUB-1, BAT-STUB-2 (T8), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
 - **Versions** (T7): battle state hash v48, battle part hash v5, replay format v27, action encoding v13, C ABI v22, observation encoding v18; shared: core ruleset hash v44, pack format v41, protocol v31. Next ids: BAT-Q46, BAT-QUIRK-23, BAT-STUB-3, BAT-TER-007, BAT-SIE-020; survey D-20, S-30.
