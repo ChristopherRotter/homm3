@@ -6,12 +6,15 @@
 use std::fs;
 use std::path::Path;
 
-use h3_battle::BattleSetup;
+use h3_battle::{BattleSetup, BattleSide, BattleState, LegalCommands, NoopSink};
 use h3_content_battle::BattleRuleset;
 use h3_kernel::{Rng, StreamId};
-use h3_protocol::codec;
+use h3_protocol::session::Bot as _;
 use h3_protocol::session::{ConnId, GameConfig, SeatKind, Session};
 use h3_protocol::wire::{ClientMessage, Command, Seat, ServerMessage};
+use h3_protocol::{codec, map};
+
+use crate::bot::Greedy;
 
 /// The game's id in the in-process session.
 const GAME: u32 = 1;
@@ -106,16 +109,38 @@ pub fn record(scenario: &Path, packs: &Path, seed: u64) -> Result<String, String
     played(scenario, packs, seed, &[])
 }
 
-/// The record of a spectator of the battle `scenario` sets up with `seed` when each seat sends
-/// its `commands` in order (E17 M2 T4a: the recorded sequences); a rejected command is an error.
-pub fn played(
-    scenario: &Path,
-    packs: &Path,
-    seed: u64,
-    commands: &[(Seat, Command)],
-) -> Result<String, String> {
+/// The most commands a fought battle may take.
+const FOUGHT_LIMIT: usize = 5_000;
+
+/// The record of a spectator of the battle `scenario` sets up with `seed`, fought to its end by
+/// [`Greedy`] for both sides (E17 M2 T4b-2a, `h3-view play`): the engine plays the battle, then
+/// the session replays its commands from the seats, as [`played`] does.
+pub fn fought(scenario: &Path, packs: &Path, seed: u64) -> Result<String, String> {
     let (ruleset, setup) = battle(scenario, packs, seed)?;
-    let config = GameConfig {
+    let mut state =
+        BattleState::new(&ruleset, &setup, seed).map_err(|e| format!("the setup: {e:?}"))?;
+    let (mut bot, mut legal, mut commands) = (Greedy, LegalCommands::new(), Vec::new());
+    while let Some(side) = state.side_to_act() {
+        if commands.len() >= FOUGHT_LIMIT {
+            return Err(format!("no end after {FOUGHT_LIMIT} commands"));
+        }
+        h3_battle::legal_commands(&state, &ruleset, side, &mut legal);
+        let choice = bot.command(&state, &ruleset, side, &legal);
+        h3_battle::apply(&mut state, &ruleset, side, choice, &mut NoopSink)
+            .map_err(|e| format!("command {} ({choice:?}): {e:?}", commands.len() + 1))?;
+        let seat = match side {
+            BattleSide::Attacker => Seat::Attacker,
+            BattleSide::Defender => Seat::Defender,
+        };
+        commands.push((seat, map::command(choice)));
+    }
+    played(scenario, packs, seed, &commands)
+}
+
+/// The host's configuration of a game of `setup` with `seed`: one spectator, every message
+/// recorded.
+fn config(setup: BattleSetup, seed: u64) -> GameConfig {
+    GameConfig {
         game: GAME,
         setup,
         seed,
@@ -125,7 +150,33 @@ pub fn played(
         watchable: true,
         record_bytes: usize::MAX,
         ranked: None,
-    };
+    }
+}
+
+/// The record of the spectator on `viewer`.
+fn fetch_record(session: &mut Session<'_>, viewer: ConnId) -> Result<String, String> {
+    let mut out = Vec::new();
+    session.handle(viewer, ClientMessage::FetchRecord { seq: 1 }, &mut out);
+    for frame in out {
+        if let Ok(ServerMessage::Record { record, .. }) =
+            codec::decode_server(frame.frame.as_bytes(), usize::MAX)
+        {
+            return Ok(record);
+        }
+    }
+    Err("the session sent no record".to_owned())
+}
+
+/// The record of a spectator of the battle `scenario` sets up with `seed` when each seat sends
+/// its `commands` in order (E17 M2 T4a: the recorded sequences); a rejected command is an error.
+pub fn played(
+    scenario: &Path,
+    packs: &Path,
+    seed: u64,
+    commands: &[(Seat, Command)],
+) -> Result<String, String> {
+    let (ruleset, setup) = battle(scenario, packs, seed)?;
+    let config = config(setup, seed);
     let seats = ["attacker", "defender"].map(|token| SeatKind::Player {
         token: token.to_owned(),
     });
@@ -163,16 +214,7 @@ pub fn played(
             }
         }
     }
-    let mut out = Vec::new();
-    session.handle(viewer, ClientMessage::FetchRecord { seq: 1 }, &mut out);
-    for frame in out {
-        if let Ok(ServerMessage::Record { record, .. }) =
-            codec::decode_server(frame.frame.as_bytes(), usize::MAX)
-        {
-            return Ok(record);
-        }
-    }
-    Err("the session sent no record".to_owned())
+    fetch_record(&mut session, viewer)
 }
 
 #[cfg(test)]

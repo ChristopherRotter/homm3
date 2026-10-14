@@ -43,3 +43,12 @@ command = [
     { seat = "Attacker", command = { Move = { to = 43 } } },
     { seat = "Defender", command = { Attack = { target = 0, from = 45 } } },
 ]
+
+[[sequence]]
+id = "turn"
+scenario = "seq-turn.toml"
+actions = ["hex:19"]
+ms = 3500
+timeline = "timelines/turn.txt"
+frames = "timelines/turn-frames.txt"
+command = [{ seat = "Attacker", command = { Move = { to = 18 } } }]
