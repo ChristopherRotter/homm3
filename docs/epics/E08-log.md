@@ -1881,7 +1881,7 @@ tie rule as built.
   heroes' part) and -004 (+500, the capture) completed but for T19a2b, with the reading, batch 1b
   R5, the wiki and VCMI.
 
-### Round 2 of increment 3: T19a2b (2026-10-14, `shared/e08-t19a2b`, `adventure/e08-t19a2b`)
+### Round 2 of increment 3: T19a2b (2026-10-14, `shared/e08-t19a2b` #205, `adventure/e08-t19a2b`)
 
 #197 and #198 merged first; the baseline full verify of `master` (5550866,
 `--with-original-data`) passed every step. Asked for a seam, the user took both pull requests in
@@ -1894,7 +1894,7 @@ King raises killed enemy troops" as Skeletons at a fixed 30 % that "cannot be in
 VCMI's `calculateNecromancy` says "need skill or cloak of undead king - lesser artifacts don't
 work without skill": a rule (HER-NEC-001), not a quirk.
 
-**`shared/e08-t19a2b`** (`cross-lane`: packs, the harvester, the replays):
+**`shared/e08-t19a2b`** (#205, `cross-lane`: packs, the harvester, the replays):
 - `h3-content`: the kind `learn_level { levels }` (code 44; the highest spell level learnable grows
   over `[hero_params]`'s new required `learn_level`; sources add, at most 5), the `necromancy`
   kind's optional `unless_skill` (the share counts only while the hero lacks that skill),
