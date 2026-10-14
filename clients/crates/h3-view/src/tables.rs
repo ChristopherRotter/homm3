@@ -83,6 +83,11 @@ pub struct Groups {
     pub move_start: u8,
     /// After a move.
     pub move_end: u8,
+    /// Turning to face left (from facing right): the group before the flip and the one after
+    /// (7, 10; `stack_turn_around` 0x446720, design §7.3).
+    pub turn_left: [u8; 2],
+    /// Turning to face right: before the flip and after (9, 8).
+    pub turn_right: [u8; 2],
 }
 
 /// A creature's battle graphics.
@@ -424,7 +429,7 @@ id = "base"
 depends = []
 
 [battle]
-groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], move_start = 20, move_end = 21 }
+groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], move_start = 20, move_end = 21, turn_left = [7, 10], turn_right = [9, 8] }
 
 [[creature]]
 key = "pikeman"

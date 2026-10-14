@@ -112,7 +112,7 @@ drew in `ours.txt`); the masked diff of each pair (panel, heroes, the count boxe
 poses show them), written to `frames.txt` and, for a frame that differs, `diff/t<ms>.png`; each
 line compared with the sequence's recorded `timelines/<id>-frames.txt` (`ok`, `new`, `CHANGED`;
 exit 1 on a change). `--reuse` keeps the original's frames from an earlier run and only redraws
-and compares (after a change to the viewer). About 11 minutes for the three sequences (default
+and compares (after a change to the viewer). About 14 minutes for the four sequences (default
 `<dir>`: `clients/out/frames`). Only a fidget comes from the original's memory; everything else is
 the viewer's own timeline.
 

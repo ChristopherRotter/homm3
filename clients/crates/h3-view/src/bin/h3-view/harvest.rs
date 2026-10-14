@@ -63,7 +63,7 @@ const SHOOTER: u32 = 0x4;
 const CRANIM_GROUPS: [usize; 12] = [14, 14, 14, 14, 14, 14, 14, 14, 6, 14, 13, 4];
 const CRANIM_CELLS: usize = 24;
 /// The DEF groups the battle uses (design §4.2, §4.3).
-const GROUPS: &str = "groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], move_start = 20, move_end = 21 }";
+const GROUPS: &str = "groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], move_start = 20, move_end = 21, turn_left = [7, 10], turn_right = [9, 8] }";
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]

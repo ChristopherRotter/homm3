@@ -13,7 +13,7 @@ use core::fmt;
 
 use h3_protocol::wire::{Manifest, Observation, Side, Stack};
 
-use crate::anim::{Pose, Projectile};
+use crate::anim::{Pose, Projectile, Timeline};
 use crate::layout::BattleLayout;
 use crate::tables::{ObstacleArt, Tables};
 
@@ -22,10 +22,9 @@ use crate::tables::{ObstacleArt, Tables};
 const PASSES: u8 = 8;
 /// The pass that draws the layer-0 obstacle anchored on a hex.
 const OBSTACLE_PASS: u8 = 2;
-/// A standing stack's draw layer, the pass it is drawn in (+0x8 = 4 from the setup, 0x43D750).
+/// A standing stack's draw layer, the pass it is drawn in (+0x8 = 4 from the setup, 0x43D750);
+/// a pose names its own (`crate::anim`: walks, strikes, the corpses' pass 1).
 const STANDING: u8 = 4;
-/// The pass that draws the corpses (§4.6).
-const CORPSES: u8 = 1;
 
 /// The battle at a moment of its timeline (`crate::anim`): each stack's pose, the active stack,
 /// the idle steps taken and the projectile in flight.
@@ -39,6 +38,18 @@ pub struct Moment {
     pub pulse: u32,
     /// The projectile in flight, drawn over everything (§7.9).
     pub projectile: Option<Projectile>,
+}
+
+impl Moment {
+    /// The battle at `t` of `timeline` (E17 M2 T4b-2a).
+    pub fn at(timeline: &Timeline, t: u32) -> Self {
+        Self {
+            poses: timeline.at(t),
+            active: timeline.outlined(t),
+            pulse: timeline.pulse(t),
+            projectile: timeline.projectile(t),
+        }
+    }
 }
 
 /// One thing drawn, in the order of the list.
@@ -164,10 +175,9 @@ pub fn battle(
 }
 
 /// The draw list of the battle `observation` shows at `moment` (E17 M2 T4a): as [`battle`],
-/// each stack in its pose, a stack the moment has dying or dead (its death's group) among the
-/// corpses (*provisional*: the original moves it to the corpses' list when its death ends);
-/// the outline on the moment's active stack in the colour its idle steps rotated to; the
-/// projectile last.
+/// each stack in its pose, facing its way, in its layer's pass of its position's row (T4b-2a:
+/// a walk's, a strike's; a dead stack's is the corpses' pass); the outline on the moment's
+/// active stack in the colour its idle steps rotated to; the projectile last.
 ///
 /// # Errors
 /// As [`battle`].
@@ -308,6 +318,8 @@ fn creature(
         frame: 0,
         hex: stack.hex,
         offset: [0, 0],
+        mirrored: stack.side == Side::Defender,
+        layer: STANDING,
     });
     let (row, column) = at(pose.hex);
     let [x, y] = layout.anchor(row, column);
@@ -316,15 +328,10 @@ fn creature(
         group: pose.group,
         frame: pose.frame,
         anchor: [x + pose.offset[0], y + pose.offset[1]],
-        mirrored: stack.side == Side::Defender,
+        mirrored: pose.mirrored,
         outline: (moment.active == Some(stack.id)).then(|| layout.outline_after(moment.pulse)),
     };
-    let layer = if pose.group == u32::from(groups.death) {
-        CORPSES
-    } else {
-        STANDING
-    };
-    Ok(((row, column), layer, draw))
+    Ok(((row, column), pose.layer, draw))
 }
 
 /// The key of `handle` in a manifest's key table.
