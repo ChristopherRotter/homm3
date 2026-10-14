@@ -413,8 +413,9 @@ fn a_viewer_sees_a_monsters_creature_and_the_word_of_its_count() {
             None,
         ]
     );
-    // The ground shows where it lies.
+    // The ground shows where it lies; it has no count.
     assert_eq!(seen.objects[4].drawn, setup.map.objects[4].drawn);
+    assert_eq!(state.monster_count(4), None);
     // An army left changes the word.
     let mut left = state.clone();
     left.army_left = Some(Arc::new(BTreeMap::from([(

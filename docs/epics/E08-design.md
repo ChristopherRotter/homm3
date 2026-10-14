@@ -28,44 +28,30 @@ to the tasks that first use them:
   and `hero_remove_artifact` subtracts them) and `join_bonus` (HER-ADV-002: 0–3 from the
   `join_bonus` kind, Diplomacy's 1, 2, 3 in the packs, so no code reads the skill by name,
   ADR-0016 point 4).
-- **T20a2** (before T20b's monster answer, the first reader): the game passes its store
+- **T20a2a** built (2026-10-15; decision 36): the game's difficulty as a static input
+  (`AdventureSetup.difficulty`, `AdventureState::difficulty`, in the state hash's bump to v9), read
+  only by ADV-MON-007's Easy rule (D-10, T20b).
+- **T20a2b** (before T20b's monster answer, the first reader): the game passes its store
   (`&[Arc<HeroDetails>]` by `HeroId`) to `AdventureState::apply` and the queries (`reach`); the
   adventure reads the visiting hero's details only through `h3-heroes`' derivations (in increment
-  3 the two above); the game's difficulty as a static input (`AdventureSetup.difficulty`, in the
-  adventure state hash's one bump with §3), read only by ADV-MON-007's Easy rule (D-10).
-  Increment 4 adds movement and scouting.
+  3 the two above). Increment 4 adds movement and scouting.
 - Increment 3's adventure visits change no hero (a joining group changes the army only); the
   battle's outcome does (§5).
 
 ## 3. Monsters on the map (ADV-MON-001 to -006; T20a)
 
-- Ruleset part v6: kind `Monster { levels: Option<(u8, u8)> }` for the nine classes
-  (`adventure.toml`, one type per class: `monster` without levels, `random_monster` 1–7,
-  `random_monster_1` … `_7`); instance data from the map validated at setup: the creature (class
-  54's subclass mapped by the import; none for a random monster), count (0 = drawn; at most 4 095, the import's bound), disposition (compliant, friendly,
-  aggressive, hostile, savage), never flees, does not grow (kept, unused until increment 5),
-  treasure resources. The creature's AI value, cost, upgrades and adventure-map range are core
-  content already (`CreatureInfo::ai_value`, `cost`, `upgrades`, `adventure_count`).
-- Setup draws (setup stream, object order; after the starting armies, the heroes' experience and
-  increment 2's contents): a random monster's creature
-  (uniform over the allowed ids of its levels: AB and SoD without 132–137, RoE 0–117; levels as
-  the executable's under `BAT-QUIRK-19`, §1.4), then the count from `adventure_count` when 0
-  (§1.5), then the aggression by disposition (−4, 1–7, 1–10, 4–10, 10; §1.3). All three into the
-  static map.
-- Per-object state: `army_left` (none until a battle the monster survives writes its count).
+Built by T20a2a (2026-10-15; decision 36; `E08-log.md`): the monster and ground kinds with the
+monsters' parameters and `not_random_monsters` (part v7), the import of monsters and grounds
+(`docs/formats/h3m.md`, v6), the setup's checks, the draws (ADV-MON-002 to -004), the static map's
+monsters and drawn tiles, `army_left` (written from T20b), what a viewer sees (ADV-FOG-006), a
+ground's battlefield (ADV-GRD-001; the topmost, the last in map order); adventure state hash v9.
+Left for **T20a2b**:
 - Guarded tiles (ADV-MON-005): the guard of a tile is the first monster in the 3 × 3 scan
   (columns from the left, each from the top; the row above left out where the scanned tile's
   object cannot be entered from above; same water status), recomputed lazily from the static map
   and the occupancy layer (no per-tile flags: a removal frees the tiles). ADV-MON-006: a step onto
-  a guarded tile ends the move and visits the guard; `Reach` does not continue from a guarded tile
-  but the start (the pathfinder's rule, §2.2).
-- Observation (ADV-FOG-006 extended): an `ObjectView` of a monster shows its creature and the
-  count's word (0x44ADE0: 1–4 few … 1 000+ legion); never the count, aggression, flags or treasure.
-- Ground kinds: `Ground { battlefield: ContentKey }` for classes 21 (Cursed Ground), 46 (Magic
-  Plains) and SoD's 222–224 and 226–231 (the battlefield keys of `E04c-battlefields.md` §1; 225,
-  Favorable Winds, has none); D-4 settled by the battle lane's batch 3a (E04c T3): 223 and 230
-  fight on Cursed Ground and Magic Plains. The import keeps grounds as untyped objects with no
-  blocked tiles today (`h3-map`'s writer places them since E04c T3).
+  a guarded tile ends the move and visits the guard (a stub until T20b's answer); `Reach` does not
+  continue from a guarded tile but the start (the pathfinder's rule, survey §2.2).
 
 ## 4. The monster's answer and the offers (ADV-MON-007, -008; T20b)
 
@@ -133,8 +119,8 @@ the heroes leaving the map (`HeroRemoved`) and a surrender's gold (GAM-BAT-005).
   at the build: the count's x87 arithmetic per record (0x477643: fild, fstp f32, fmul the share,
   fdiv f32(raised hp), ftol; `X87::over`), the Cloak's 30 % without the skill a rule (decision 33).
   Not built: the Necropolis buildings' +10/+20 % (E09), the elementals' exception to the upgrade.
-- **T20a**: a `Ground` object on the tile replaces the field (the ground kinds); **T20b**: the
-  unowned side (`Actor::System`, the neutral seat; decision 29), the monster's split and its
+- **T20a2a** built (2026-10-15): a ground on the tile replaces the field (ADV-GRD-001); **T20b**:
+  the unowned side (`Actor::System`, the neutral seat; decision 29), the monster's split and its
   survivors (ADV-MON-009, -010, A-6), a beaten monster's treasure.
 - Not in increment 3: CLT-Q4's background variant (trees, mountains and dead vegetation within 3
   tiles) needs those decorations typed (E12's long tail); viewers keep the third picture.
@@ -174,10 +160,11 @@ Left:
 ## 9. Versions
 
 Shared (T19a2b): core ruleset hash v44, pack format v40. Game state hash v6 (heroes' details since T18b, battles since T19a1; offer kinds later); adventure
-state hash v8 (the formation since T18b, the coast since T19a1; monsters' static data and army
-left, the difficulty later); adventure ruleset part v6 (the battle terrains since T19a1; monster
-and ground kinds, T20a); map import v5 (hero customisations since T18b, the coast since T19a1;
-monsters, guarded piles later); action encoding v3 and adventure replay format v3 (since T19b1).
+state hash v9 (the formation since T18b, the coast since T19a1; the monsters, drawn tiles, armies
+left and the difficulty since T20a2a); adventure ruleset part v7 (the battle terrains since
+T19a1; the monster and ground kinds and the monsters' parameters since T20a2a); map import v6
+(hero customisations since T18b, the coast since T19a1, monsters and grounds since T20a2a;
+guarded piles later); action encoding v3 and adventure replay format v3 (since T19b1).
 Each bumps once in the increment, in the task that first changes it.
 
 ## 10. Shared and cross-lane work
@@ -208,6 +195,6 @@ Each bumps once in the increment, in the task that first changes it.
 | 1 | T18a + T18b | done (2026-10-14): the shared groundwork with the ADR amendments (§10); the store of heroes, its defaults, the import of hero customisations (§1), trimmed at the checkpoint (decision 28) |
 | 2 | T19a1 + T19a2 | split at the checkpoint (decision 29): T19a1 done (2026-10-14): battles through the game, hero against hero, the armies' and the map's outcome (§5, §6); T19a2 split again (decision 32): T19a2a done (2026-10-14), the heroes' outcome without pack changes; T19a2b done (2026-10-14, decision 33), Necromancy and Eagle Eye (§2, §5); round 2 closed |
 | 3 | T19b1 + T19b2 | split at the checkpoint (decision 34): T19b1 done (2026-10-14), the env, replays and benchmarks with battles, the versions (§8); T19b2 done (2026-10-14, decision 35), the property plans to a victory; round 3 closed |
-| 4 | T20a + T20b | T20a split (decision 35): T20a1 done (2026-10-14), the heroes' groundwork (`attack_defense`, `join_bonus`, Diplomacy's values; with T19b2), T20a2 monsters on the map, the difficulty and the store passed through (one hash bump); then T20b. Monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
+| 4 | T20a + T20b | T20a split (decision 35): T20a1 done (2026-10-14), the heroes' groundwork (`attack_defense`, `join_bonus`, Diplomacy's values; with T19b2), T20a2 split again (decision 36): T20a2a done (2026-10-15), monsters and grounds as data with every bump; T20a2b guarded tiles and the store passed through; then T20b. Monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
 | 5 | T21 + T22a | guarded piles and the maps with monsters, replays, benchmarks, the audit (§7); batch E3's spec and run (cross-lane, the client lane's recipes) |
 | 6 | T22b | batch E3 scored, increment 3 closed, increment 4 refined |

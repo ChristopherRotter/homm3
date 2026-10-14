@@ -358,24 +358,25 @@ impl StaticMap {
         setup: &[ObjectSetup],
         draws: &mut Rng,
     ) {
-        let levels = |object: &MapObject| match object
-            .object_type
-            .and_then(|id| part.object_type(id))
-            .map(|ty| &ty.kind)
-        {
-            Some(ObjectKind::Monster { levels }) => *levels,
-            _ => None,
-        };
         let creatures: Vec<Option<CreatureTypeId>> = self
             .objects
             .iter()
             .zip(setup)
             .map(|(object, placed)| {
                 let monster = placed.monster.as_ref()?;
-                levels(object).map_or(monster.creature, |levels| {
-                    let pool: Vec<_> = part.random_monsters(core, levels).collect();
-                    pick(&pool, draws).copied()
-                })
+                match object
+                    .object_type
+                    .and_then(|id| part.object_type(id))
+                    .map(|ty| &ty.kind)
+                {
+                    Some(ObjectKind::Monster {
+                        levels: Some(levels),
+                    }) => {
+                        let pool: Vec<_> = part.random_monsters(core, *levels).collect();
+                        pick(&pool, draws).copied()
+                    }
+                    _ => monster.creature,
+                }
             })
             .collect();
         let counts: Vec<u32> = creatures

@@ -321,7 +321,7 @@ fn the_packs_type_the_monsters_and_the_grounds() {
     // The random monsters' creatures: every creature of the levels but the war machines and
     // the expansions' six (ids 132 to 137); the elementals by the executable's levels in
     // faithful (BAT-QUIRK-19), by their base creatures' otherwise.
-    let keys = |core: &h3_content::Ruleset, part: &AdventureRuleset, levels| {
+    let keys = |core: &Ruleset, part: &AdventureRuleset, levels| {
         part.random_monsters(core, levels)
             .map(|id| core.creature_key(id).unwrap().as_str().to_owned())
             .collect::<Vec<_>>()
