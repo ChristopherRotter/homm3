@@ -443,6 +443,9 @@ def act(game, action):
         x, y = map(int, arg.split(","))
         (game.click if kind == "click" else game.move)(x, y)
         time.sleep(0.3)
+        if kind == "click":
+            game.move(420, 580)  # the game draws its own cursor: off the battlefield (M3 T1a)
+            time.sleep(0.3)
     elif kind == "key":
         game.key(arg, 0.3)
     elif kind == "step":
@@ -671,6 +674,10 @@ def run_frames(rest):
             finally:
                 game.stop()
         kept = [json.loads(line) for line in (here / "frames.jsonl").read_text().splitlines()]
+        # A screen the actions replaced within its millisecond (a wait or a defend passes the
+        # turn at once: `t<ms>b`) is compared, not the one before it: the viewer draws one
+        # moment per millisecond (M3 T1a).
+        kept = [k for i, k in enumerate(kept) if i + 1 == len(kept) or kept[i + 1]["t"] != k["t"]]
         (here / "frames.toml").write_text(frames_toml(kept))
         subprocess.run([h3view, "sequences", e["id"], "--frames", str(out), "--out", str(here)],
                        check=True, capture_output=True)
@@ -678,8 +685,9 @@ def run_frames(rest):
         # The poses the viewer drew (its `ours.txt`): the count boxes are masked where they show.
         drawn = {}
         for line in (here / "ours.txt").read_text().splitlines():
-            poses = re.findall(r"(\d+):g(\d+)f\d+h(\d+)", line)
-            drawn[int(line.split()[0])] = {int(i): (int(g), int(h)) for i, g, h in poses}
+            poses = re.findall(r"(\d+):g(\d+)f\d+h(\d+)(m?)", line)
+            drawn[int(line.split()[0])] = {int(i): (int(g), int(h), m == "m")
+                                           for i, g, h, m in poses}
         shutil.rmtree(here / "diff", ignore_errors=True)
         (here / "diff").mkdir()
         lines, differing = [], 0

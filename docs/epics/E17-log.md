@@ -682,3 +682,48 @@ On `client/e17-m2-t5c-closure`, the user present.
   scenarios/battle.toml`: 24 commands, 79 064 ms, 1 051 frames (81 764 ms and 1 078 before #204
   shortened the shots' loops; T5c adds or removes no frame in this battle: no breath, no unknown
   stack); `window --check 25` under Xvfb with SDL's `disk` audio: 293 of 293 frames exact.
+
+### M3 T1a — Turns and the walk-by (2026-10-14)
+
+On `client/e17-m3-t1a-turns`, the user present.
+
+- **Starting point:** master at #207 (M2 closed); the full local verify green with the original
+  data (CI still unstarted: billing); the four sequences and their frames as recorded.
+- **A battle in progress in the original.** The original's AI acts at once and as it likes, so
+  the harness plays both sides instead: `h3-view situation --hot-seat` makes Blue a human too,
+  `h3drive.py` starts the map in hot seat (`h3adv.to_hot_seat`) and, among a sequence's actions,
+  `turn:<side>.<record>` steps 1 ms at a time, every step read, until that stack's turn starts
+  (`at:<ms>` up to a time); the times go to `turns.txt` and into the commands' `at` in
+  `sequences.toml`, which `h3-view sequences` gives the timeline (a command without one stays the
+  computer's). Found on the way: the game names the striker active again while it turns back
+  after its attack, so a turn is the named stack's, not any active one; an action before the turn
+  starts is lost; a stack whose player waits fidgets (the viewer's timeline has none), so each
+  action comes as its turn starts. Two more harness fixes: a click parks the game's cursor off the
+  battlefield (the game draws it: 88 pixels in every frame after the attack's click), and the
+  frame check compares the last screen of a millisecond (a wait passes the turn at once, `t<ms>b`)
+  and masks a count box by the drawn pose's facing (`m` in `ours.txt`; a turned stack's box sits
+  on its other side: 330 pixels at 13 044).
+- **The sequences** (design §7.10): `climb` (`seq-turn.toml`, the Champions from 35 to 1: up and
+  right, then up and left with a flip only, the turn back animated; the original's path is the
+  engine's) and `behind` (`seq-behind.toml`: Centaur Captains and Marksmen against Silver Pegasi
+  and Goblins, two factions a side so morale stays 0; eight commands over two rounds: a wait,
+  two walks, a defend, the Pegasi's flight behind the Centaurs, a wait, the Centaurs' strike on
+  the Pegasi standing, both turning and turning back, the Marksmen's two shots with their turn).
+  The viewer's timelines as recorded on the first try (34 and 203 changes; T4b-2a's rules,
+  unchanged); the unit tests replay both from their numbers (the two new creatures' frames and
+  times from the user's archives). Frames: `climb` 43 of 43 exact, `behind` 164 of 194.
+- **The walk-by difference read** (design §7.11): the original redraws by dirty rectangles. A
+  stack's frame restores the last frame's rectangle from the saved screen (the battle without the
+  animating stack, saved by the backdrop 0x446830), measures the new frame with its count box,
+  widens it 17 pixels left and right (the map had said up and down), redraws every item that meets
+  the union whole, over what the back buffer holds, and shows only the union; strikes and the idle
+  step restore the background inside their rectangle. So shadows are drawn again where an item's
+  earlier image was not restored, and the saved screen's count boxes come back under a walker.
+  Checked: every pixel of the melee's 7 listed frames lies on the Angels' edge and, at 3 504 and
+  3 966, is the viewer's with one more shadow; the rest at 3 966 is the saved screen's count box;
+  `behind`'s 30 frames: 97 % of their pixels are the viewer's with one to four more shadows. The
+  model is a new task, **M3 T1c** (QUEUE), before T1b's frame checks lean on it. The address map:
+  `stack_play_group`, `battle_redraw`, `battle_draw_sprite` corrected and extended;
+  `battle_item_rect` 0x495F50, `battle_refresh_creatures` 0x495BF0, `screen_show_rect` 0x602BD0,
+  `battlefield_rect` 0x694F18, `empty_rect` 0x6AACE8 added.
+- **The queue:** T1a done; T1c added; T1b and T7a no longer wait (the battle in progress exists).

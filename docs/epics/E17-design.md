@@ -718,7 +718,9 @@ its time and the game's state (`frames.jsonl`, the screens as `frames/t<ms>.npz`
 `h3-view sequences <id> --frames <dir>` plays the sequence's record through `h3_view::anim` and
 draws the moment shown at each kept time (`ours/`, and what it drew in `ours.txt`); the diff masks
 the panel, the heroes' corners and the count boxes where the drawn poses show them (a stack in
-group 1 or 2, §4.3; every living stack takes its hexes for the box's place). The only thing taken
+group 1 or 2, §4.3; every living stack takes its hexes for the box's place; by the pose's facing
+since M3 T1a, `m` in `ours.txt`). A screen the harness's actions replace within its millisecond
+(a wait or a defend passes the turn at once, `t<ms>b`) is compared, not the one before it. The only thing taken
 from the original is a fidget (a stack the game's memory shows in group 1): the viewer has none of
 its own yet (§7.2). Each sequence's counts per frame are recorded
 (`situations/timelines/<id>-frames.txt`); the command fails when one changes.
@@ -766,8 +768,8 @@ listed below. What the check settled:
 **Listed differences** (T4b-2): the melee at 3 504 to 3 966 ms (9 to 327 pixels), while the Wolf
 Riders walk past the Angels: dark pixels at the Angels' outline edges (sword tip, robe), and at
 3 966 the Angels' count box at its usual place under the Wolf Riders' legs where the viewer's
-poses (the walk's end on hex 45) put it beside them. Not read yet: the redraw of a walk's frames
-near another stack.
+poses (the walk's end on hex 45) put it beside them. Read in M3 T1a: the original's redraws by
+dirty rectangles, §7.11 (shadows drawn again, the saved screen's count box); the model is M3 T1c.
 
 ### 7.10 A whole battle: turns, layers, fidgets (M2 T4b-2a)
 
@@ -842,13 +844,73 @@ lets it idle. Read in `Heroes3.exe` for it:
   distinct frames exact. A strike's or a shot's turn cannot be set up from an opening (every
   target stands on the attacker's front side; on column 15 a target turns only for a one-hex
   attacker landing up and to its right, and no one-hex flier of the base game is fast enough;
-  Archangels are two hexes wide): read and unit-tested only, a sequence once a battle in progress
-  puts a stack behind another (T4b-2b).
+  Archangels are two hexes wide): M3 T1a set them up in a battle in progress (below).
+- **Confirmed in a battle in progress** (M3 T1a; the harness plays both sides in hot seat,
+  runbook "A battle in progress"). `climb` (`seq-turn.toml`): the Champions walk from 35 to 1, up
+  and right (35 to 19, no turn), then up and left with a flip only (onto 20), group 21 on 2, and
+  turn back animated (group 9, the flip onto 1, group 8); the original's path is the engine's.
+  `behind` (`seq-behind.toml`, two rounds, eight commands): a wait, walks, a defend, the Pegasi's
+  flight behind the Centaurs (its standing frame after landing), then the Centaurs strike the
+  Pegasi standing: the striker turns (group 7, the flip onto 42, group 10, standing), the target
+  turns (9, the flip onto 39, 8, standing), strike, reactions, retaliation, the target turns
+  back, then the striker; the Marksmen shoot the Pegasi, who lie left of them: they turn (7, 10),
+  shoot twice, turn back (9, 8). Every rule as T4b-2a read it: both timelines as recorded (34 and
+  203 changes, the six sequences as recorded). Frames: `climb` 43 of 43 exact; `behind` 164 of
+  194, the 30 others listed (6 844 to 12 444 ms, 46 to 225 pixels, each where the Centaurs and the
+  Pegasi stand side by side while one turns or strikes): the redraws of §7.11, 97 % of their
+  pixels the viewer's with one to four more shadows, the rest (at most 15 a frame) an older
+  frame's pixels under a shadow; the model is M3 T1c.
 - **Not drawn yet** (in a bots' battle on `battle.toml` nothing of it occurs): spells and their
   animations, morale's and luck's animations, created stacks (summoned, cloned, risen), war
   machines, heroes and count boxes (M3); a stack the record names that its first snapshot lacks
   is not drawn; its strike or shot plays its targets' reactions alone, their kills taken (T5c).
 
+
+### 7.11 The redraws: dirty rectangles (M3 T1a)
+
+The original never composes a whole battlefield per frame, as the viewer does: it redraws a
+rectangle and shows only that. Read for the walk-by difference (§7.9); every address in the map.
+
+- **Three pictures.** The back buffer (the window manager's +0x40 picture), where everything is
+  drawn; the screen, to which `H3Redraw` (0x602BD0) copies a rectangle; and the battle's own
+  buffer +0x53B0: the composed background (terrain, the absolute obstacle, siege parts;
+  `compose_battle_background` 0x493CF0, which sets +0x53B8) or, during a stack's animation, the
+  saved screen.
+- **The backdrop** (`stack_animation_backdrop` 0x446830, before a turn and a walk's first step):
+  measures the stack into the dirty rectangle +0x13D38 (x0, y0, x1, y1; started from the empty
+  rectangle 0x6AACE8, (799, 599, 0, 0)), redraws the whole battle without it (+0x31 set) into the
+  back buffer, unseen, copies that into +0x53B0 and clears +0x53B8: the saved screen holds every
+  other stack as it stands then, count boxes included.
+- **A stack's frame** (`stack_play_group` 0x446940): restores the previous frame's rectangle from
+  +0x53B0 into the back buffer; measures the stack's new frame with its count box (the flags
+  +0x13D2C and +0x13D34: measured, not drawn; `battle_item_rect` 0x495F50 gives a DEF frame's
+  content box, its margins and size in the DEF, mirrored by the facing, clipped to the
+  battlefield 0x694F18, (0, 0, 799, 555)); widens it 17 pixels left and right; takes its union
+  with the previous rectangle as the dirty rectangle; redraws the battle with the clip flag
+  +0x13D30 and no background (`battle_redraw` 0x494440 with its fifth argument clear): each item
+  whose rectangle meets the dirty rectangle is drawn **whole**, over whatever the back buffer
+  holds (`battle_draw_sprite` 0x4951B0 tests, never clips); then shows the dirty rectangle. The
+  next frame restores this frame's widened rectangle.
+- **A strike's iterations and the idle step** (`strike_animation` 0x46906E, `battle_idle_step`
+  0x49680B): `battle_redraw` with its second argument (`RefreshCreatures` 0x495BF0 marks the
+  dirty rectangle, not read) and its fifth: the composed background restored inside the dirty
+  rectangle (recomposed whole first when +0x53B8 is clear, as after a backdrop), each item meeting
+  it drawn whole, the rectangle shown.
+- **What it leaves on the screen:** (1) an item drawn whole where its earlier image was not
+  restored is drawn over itself, and its shadow pixels darken again (§3.3: shadows compound);
+  (2) under a moving stack's rectangle the saved screen comes back as it was at the backdrop, so
+  a count box that has moved since shows at its old place; (3) the screen changes only inside
+  each redraw's rectangle.
+- **Checked against the frames.** The melee's walk-by (§7.9: 3 504 to 3 966 ms, 9 to 327
+  pixels): every differing pixel lies on the Angels' edge (x 437–505, y 180–208), every one but
+  the last frame's is darker in the original, and at 3 504 and 3 966 each is the viewer's pixel
+  with one more shadow (border or body, §3.3); they grow frame by frame as the Wolf Riders'
+  rectangle sweeps over the Angels; at 3 966 the rest (211) is the Angels' count box as the
+  saved screen holds it (the hex ahead free). `behind` (M3 T1a) shows both effects wherever the
+  Centaurs and the Pegasi turn and strike side by side: listed in §7.10.
+- **Not modelled:** the viewer draws each moment whole on its background (`h3_render`), so it
+  matches the original wherever no redraw meets another stack. The model (the saved screen, each
+  redraw's rectangle, items drawn whole, the screen updated by rectangles) is M3 T1c.
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

@@ -353,7 +353,8 @@ fn draw_frames(
 }
 
 /// A moment as one line: `<t> pulse <n> outline <id|-> [projectile <def> f<frame> <x>,<y>]`, then
-/// each stack's `<id>:g<group>f<frame>h<hex>[+<x>,<y>]`.
+/// each stack's `<id>:g<group>f<frame>h<hex>[m][+<x>,<y>]`, `m` when it faces left (the harness
+/// places a count box by the facing, M3 T1a).
 pub(crate) fn describe(t: u32, moment: &scene::Moment) -> String {
     use std::fmt::Write as _;
     let mut line = format!("{t} pulse {} outline ", moment.pulse);
@@ -370,6 +371,9 @@ pub(crate) fn describe(t: u32, moment: &scene::Moment) -> String {
     }
     for (id, p) in &moment.poses {
         let _ = write!(line, " {id}:g{}f{}h{}", p.group, p.frame, p.hex);
+        if p.mirrored {
+            line.push('m');
+        }
         if p.offset != [0, 0] {
             let _ = write!(line, "+{},{}", p.offset[0], p.offset[1]);
         }
