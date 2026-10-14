@@ -346,7 +346,7 @@ pub fn decode(
     let to = tile_pos(state, action.tile)?;
     let reach = state
         .adventure()
-        .reach(rules.core(), rules.adventure(), hero)?;
+        .reach(rules.core(), rules.adventure(), state.heroes(), hero)?;
     let path = reach.path(to).filter(|path| !path.is_empty())?;
     Some(GameCommand::Adventure(AdventureCommand::MoveHero {
         hero,

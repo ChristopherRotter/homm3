@@ -11,6 +11,7 @@ publish.workspace = true
 h3-kernel.workspace = true
 h3-content.workspace = true
 h3-contracts.workspace = true
+h3-heroes.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true

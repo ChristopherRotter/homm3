@@ -16,6 +16,7 @@ use h3_content::{
     TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_heroes::HeroDetails;
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
@@ -170,6 +171,11 @@ pub struct StaticMap {
     /// T19a), which only a battle's ground reads, so the tiles the hot paths copy stay small
     /// (`bench-check`).
     coast: Vec<u64>,
+    /// A bit per tile index: a monster's visitable tile lies within one step on its level, so a
+    /// monster may guard the tile (ADV-MON-005, E08 T20a2b); a tile without the bit is guarded by
+    /// none, which a move's step and the reachable-tiles query test first (`bench-check`).
+    /// Follows from the objects too.
+    near_monsters: Vec<u64>,
     hash: u64,
 }
 
@@ -232,6 +238,7 @@ impl StaticMap {
             visits: BTreeMap::new(),
             typed_visits: vec![0; setup.tiles.len().div_ceil(64)],
             coast,
+            near_monsters: vec![0; setup.tiles.len().div_ceil(64)],
             hash: 0,
         };
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
@@ -281,8 +288,39 @@ impl StaticMap {
             map.place(object);
         }
         map.resolve(core, part, &setup.objects, draws);
+        map.mark_near_monsters();
         map.hash = hash_of(&map);
         Ok(map)
+    }
+
+    /// Marks the tiles within one step of a monster's visitable tile, on its level
+    /// ([`Self::near_monsters`]).
+    fn mark_near_monsters(&mut self) {
+        let mut near = core::mem::take(&mut self.near_monsters);
+        for object in self.objects.iter().filter(|o| o.monster.is_some()) {
+            for (column, row) in object.visitable.offsets() {
+                let Some(at) = self.offset_pos(object.anchor, column, row) else {
+                    continue;
+                };
+                for (dx, dy) in DIRECTIONS.iter().copied().chain([(0, 0)]) {
+                    let x = at.x.checked_add_signed(i16::from(dx));
+                    let y = at.y.checked_add_signed(i16::from(dy));
+                    if let (Some(x), Some(y)) = (x, y)
+                        && let Some(index) = self.index(Pos::new(x, y, at.level))
+                    {
+                        near[index / 64] |= 1 << (index % 64);
+                    }
+                }
+            }
+        }
+        self.near_monsters = near;
+    }
+
+    /// Whether a monster's visitable tile lies within one step of `pos` on its level (a tile off
+    /// the map: no).
+    pub(crate) fn near_monster(&self, pos: Pos) -> bool {
+        self.index(pos)
+            .is_some_and(|index| self.near_monsters[index / 64] >> (index % 64) & 1 == 1)
     }
 
     /// Draws the objects' random contents (ADR-0016 point 4, ADR-0017 point 4) in the original's
@@ -825,7 +863,10 @@ impl AdventureState {
 
     /// Applies a command of `player` (ADR-0017 point 1: the game has checked that the player's
     /// turn is running): validated against the state, then applied; the events go to `sink`, and
-    /// what the player gains beyond the map is the outcome (ADR-0017 point 10).
+    /// what the player gains beyond the map is the outcome (ADR-0017 point 10). `heroes` is the
+    /// game's store of heroes' details by [`HeroId`] (ADR-0016's E08 amendment, decision 25; E08
+    /// T20a2b), which the adventure reads only through `h3-heroes`' derivations: the monsters'
+    /// answer reads the visitor's (E08 T20b).
     ///
     /// # Errors
     ///
@@ -834,13 +875,14 @@ impl AdventureState {
         &mut self,
         core: &Ruleset,
         part: &AdventureRuleset,
+        heroes: &[Arc<HeroDetails>],
         player: PlayerId,
         command: &AdventureCommand,
         sink: &mut S,
     ) -> Result<AdventureOutcome, AdventureCommandError> {
         match command {
             AdventureCommand::MoveHero { hero, path } => {
-                self.move_hero(core, part, player, *hero, path, sink)
+                self.move_hero(core, part, heroes, (player, *hero), path, sink)
             }
         }
     }
@@ -854,14 +896,17 @@ impl AdventureState {
     /// Cartographer's, E08 T14a) the hero steps onto; toward a neighbour-visited object's (a
     /// pickup's, T13b) the step is paid as if taken (ADV-MOV-006's rule included) and the hero
     /// stays on the tile before. A border gate whose key the player holds is not visited: the step
-    /// crosses it as any tile, and the path may go on or end there (ADV-VIS-005, T15b).
-    // rule: ADV-MOV-006, ADV-MOV-007, ADV-FOG-003, ADV-OBJ-003
+    /// crosses it as any tile, and the path may go on or end there (ADV-VIS-005, T15b). A step
+    /// onto a tile a monster guards (ADV-MON-005) is the path's last too and visits the guard
+    /// after any visit of the tile's own object ([`Self::visit_guard`], ADV-MON-006, E08 T20a2b);
+    /// the hero's own tile may be guarded: it leaves it.
+    // rule: ADV-MOV-006, ADV-MOV-007, ADV-FOG-003, ADV-OBJ-003, ADV-MON-006
     fn move_hero<S: Sink>(
         &mut self,
         core: &Ruleset,
         part: &AdventureRuleset,
-        player: PlayerId,
-        id: HeroId,
+        heroes: &[Arc<HeroDetails>],
+        (player, id): (PlayerId, HeroId),
         path: &[Pos],
         sink: &mut S,
     ) -> Result<AdventureOutcome, AdventureCommandError> {
@@ -878,9 +923,9 @@ impl AdventureState {
         let pricing = Pricing::new(core, part, &hero.army);
         let start = hero.pos;
         let (mut at, mut from, mut points) = (start, self.map.at(start), hero.movement);
-        let mut visit = None;
+        let (mut visit, mut guard) = (None, None);
         for (step, &next) in path.iter().enumerate() {
-            if visit.is_some() {
+            if visit.is_some() || guard.is_some() {
                 return Err(AdventureCommandError::PastVisit { step });
             }
             let direction =
@@ -893,6 +938,7 @@ impl AdventureState {
             points = pricing.left_after(&to, left);
             if met.is_none_or(Meets::enters) {
                 (at, from) = (next, to);
+                guard = self.guard_of(part, next);
             }
             visit = met;
         }
@@ -921,14 +967,77 @@ impl AdventureState {
             });
             from = to;
         }
-        Ok(match visit {
+        let outcome = match visit {
             None => AdventureOutcome::default(),
             Some(Meets::Object(visit)) => self.visit(core, (player, id), visit, sink),
             Some(Meets::Hero(defender)) => AdventureOutcome {
                 battle: Some(self.battle_start(part, index, defender)),
                 ..AdventureOutcome::default()
             },
+        };
+        Ok(match guard {
+            None => outcome,
+            Some(guard) => self.visit_guard(heroes, (player, id), guard, outcome),
         })
+    }
+
+    /// The guard's visit after a step onto a tile it guards (ADV-MON-006): the monster's answer
+    /// to the visiting hero, with the store's details of it (E08 T20b); for now nothing happens
+    /// and `outcome`, the visit of the tile's own object, stands.
+    // stub: ADV-STUB-5
+    #[allow(clippy::unused_self)]
+    fn visit_guard(
+        &mut self,
+        _heroes: &[Arc<HeroDetails>],
+        _visitor: (PlayerId, HeroId),
+        _guard: usize,
+        outcome: AdventureOutcome,
+    ) -> AdventureOutcome {
+        outcome
+    }
+
+    /// The monster that guards `pos`, by index in the static map, if one does (ADV-MON-005, E08
+    /// T20a2b; survey `E08-battles.md` §2.1, the original's 0x41A460): the 3 × 3 block around
+    /// `pos` on its level, clipped to the map, column by column from the left and each column
+    /// from the top, leaving out the row above when `pos`'s object is not visited from above
+    /// (ADV-OBJ-004); the first tile whose object (the last still on the map visited from it,
+    /// ADV-OBJ-003) is a monster, on water if and only if `pos` is. Computed from the static map
+    /// and the objects that left it, so a removed monster guards nothing.
+    // rule: ADV-MON-005
+    pub fn guard_of(&self, part: &AdventureRuleset, pos: Pos) -> Option<usize> {
+        if !self.map.near_monster(pos) {
+            return None;
+        }
+        let water = |at: Pos| {
+            matches!(
+                part.passage(self.map.at(at).terrain),
+                Some(Passage::Water(_))
+            )
+        };
+        let skip_above = self.closed_above(part, pos);
+        let at_water = water(pos);
+        for dx in -1i16..=1 {
+            for dy in -1i16..=1 {
+                if skip_above && dy == -1 {
+                    continue;
+                }
+                let (Some(x), Some(y)) =
+                    (pos.x.checked_add_signed(dx), pos.y.checked_add_signed(dy))
+                else {
+                    continue;
+                };
+                let tile = Pos::new(x, y, pos.level);
+                if self.map.tile(tile).is_none() || water(tile) != at_water {
+                    continue;
+                }
+                if let Some((index, _, ty)) = self.tile_object(part, tile)
+                    && matches!(ty.kind, ObjectKind::Monster { .. })
+                {
+                    return Some(index);
+                }
+            }
+        }
+        None
     }
 
     /// The battle the hero at `attacker` starts by visiting the hero at `defender` (indices among

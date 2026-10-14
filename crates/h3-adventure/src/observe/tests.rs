@@ -317,7 +317,7 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
             path,
         };
         state
-            .apply(&rules.0, &rules.1, RED, &command, &mut events)
+            .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
             .unwrap();
         // Then back from (5, 0) to (3, 0): out of blue's explored tiles onto its fringe, then off
         // the fringe onto a hidden tile.
@@ -326,7 +326,7 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
             path: vec![p(4, 0), p(3, 0)],
         };
         state
-            .apply(&rules.0, &rules.1, RED, &back, &mut events)
+            .apply(&rules.0, &rules.1, &[], RED, &back, &mut events)
             .unwrap();
         // The step onto (4, 0) enters blue's fringe, the one onto (5, 0) its explored tiles; back,
         // the step onto (4, 0) leaves them, the one onto (3, 0) leaves the fringe.

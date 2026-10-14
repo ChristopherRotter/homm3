@@ -67,7 +67,7 @@ fn chart_setup(rules: &GameRuleset, difficulty: u8) -> Arc<GameSetup> {
     for hero in state.adventure().heroes() {
         let reach = state
             .adventure()
-            .reach(rules.core(), rules.adventure(), hero.id)
+            .reach(rules.core(), rules.adventure(), state.heroes(), hero.id)
             .unwrap();
         let (_, anchor) = reach
             .tiles()

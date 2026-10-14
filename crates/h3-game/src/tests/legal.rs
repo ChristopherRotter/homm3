@@ -32,7 +32,7 @@ fn the_acting_player_may_end_its_turn_or_move_its_hero_to_each_reachable_tile() 
     let moves = legal_moves(&state, &rules, actor, hero).unwrap();
     let query = state
         .adventure()
-        .reach(rules.core(), rules.adventure(), hero);
+        .reach(rules.core(), rules.adventure(), state.heroes(), hero);
     assert_eq!(Some(&moves), query.as_ref());
     let to: Vec<Pos> = moves.tiles().map(|(pos, _)| pos).collect();
     let skip = [Pos::new(0, 0, 0), Pos::new(3, 3, 0)];

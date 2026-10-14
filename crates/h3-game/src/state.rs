@@ -442,9 +442,9 @@ impl GameState {
         &self.adventure
     }
 
-    /// The adventure context's state, for the commands routed to it.
-    pub(crate) const fn adventure_mut(&mut self) -> &mut AdventureState {
-        &mut self.adventure
+    /// The adventure state to change, with the store of heroes it reads (E08 T20a2b).
+    pub(crate) fn adventure_with_heroes(&mut self) -> (&mut AdventureState, &[Arc<HeroDetails>]) {
+        (&mut self.adventure, &self.heroes)
     }
 
     /// The canonical state hash (ADR-0003 point 12): content only. It covers the seed and the

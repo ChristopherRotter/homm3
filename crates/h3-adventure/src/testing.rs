@@ -21,7 +21,9 @@ use crate::ruleset::{
     ObjectKindDef, ObjectTypeDef, ObjectTypeId, Passage, PickupDef, RiverDef, RoadDef, RoadId,
     StartingResourcesDef, TerrainMovementDef, Visit,
 };
-use crate::setup::{AdventureSetup, HeroSetup, MapSetup, ObjectSetup, Pos, TileMask, TileSetup};
+use crate::setup::{
+    AdventureSetup, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos, TileMask, TileSetup,
+};
 use crate::state::AdventureState;
 
 /// The setup stream of seed 0, which the tests build states with.
@@ -463,6 +465,7 @@ fn tile_of(
         'c' => (GRASS, None, Some((1, 1, Some(OPEN_CHART)))),
         'Y' => (GRASS, None, Some((1, 1, Some(TENT)))),
         'X' => (GRASS, None, Some((1, 1, Some(GATE)))),
+        'M' => (GRASS, None, Some((1, 1, Some(MONSTER)))),
         _ => (GRASS, None, None),
     }
 }
@@ -473,7 +476,8 @@ fn tile_of(
 /// blocked tile, `V` its visitable tile, `T` both (a town's gate), `P` a wood pile blocking and
 /// visited on its tile, `F` a fire likewise, `O` a tower's visitable tile (entered), `K` a guard
 /// blocking and visited on its tile, `C` a chart (a Cartographer not visited from above) likewise,
-/// `c` an open chart (one that is) likewise, `Y` a tent and `X` a gate likewise.
+/// `c` an open chart (one that is) likewise, `Y` a tent and `X` a gate likewise, `M` five of the
+/// first creature as a monster likewise (aggressive; E08 T20a2b).
 pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> AdventureSetup {
     let height = rows.len() / usize::from(levels);
     let width = rows[0].chars().count();
@@ -500,7 +504,14 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
                     object_type,
                     amount: None,
                     drawn: TileMask::default(),
-                    monster: None,
+                    monster: (object_type == Some(MONSTER)).then(|| MonsterSetup {
+                        creature: Some(CreatureTypeId::from_raw(0)),
+                        count: 5,
+                        disposition: 2,
+                        never_flees: false,
+                        no_growth: false,
+                        treasure: vec![],
+                    }),
                 });
             }
         }
