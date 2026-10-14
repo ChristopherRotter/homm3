@@ -733,3 +733,8 @@ On `client/e17-m3-t1a-turns`, the user present.
   `battlefield_rect` 0x694F18, `empty_rect` 0x6AACE8 added.
 - **The queue:** T1a done; T1c added (the classifier); T1b and T7a no longer wait (the battle in
   progress exists); T5 classifies the stale count boxes once it draws the boxes.
+- **Checks:** the full local verify green with the original data on the branch's code at
+  `7f1dc64` (later commits change docs and the harness only); after merging master `34cb7cd0`:
+  `clients/scripts/check.sh` all gates (100 %), `check-lane`, `check-docs`, `check-exe-map`;
+  `h3-view sequences` and the harness's `sequences` (an idle machine): the six as recorded;
+  `play scenarios/battle.toml` 1 051 frames as before.
