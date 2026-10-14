@@ -4,14 +4,7 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context; T1 (the capture harness), T3 (the animation timing), T4a (the timeline), T6 (the adventure map's experiments, from the inbox) and T4b-1 (the frame check) done 2026-10-13, T4b-2a (a full battle headless) 2026-10-14. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
-
-### E17 M2 T2 — The window, input and audio evaluation
-
-- **Scope:** ADR-0020's choice "at M2 after an evaluation, on technical grounds". Candidates (`cargo info`, 2026-10-13): window, input and audio `sdl2` 0.38 and `sdl3` 0.20 (MIT; SDL itself zlib; a C library, bundled build or DLL); window and input `minifb` 0.29, `miniquad` 0.4 with `quad-snd` 0.2 (MIT or Apache-2.0); audio `tinyaudio` 2.0 (MIT), mixing `oddio` 0.7; MP3 `minimp3` 0.6 (MIT, C), `puremp3` 0.1 (MIT or CC0), `nanomp3` 0.2 (MIT or Apache-2.0). Outside the licence policy unless the user moves the client to GPLv3: `winit` 0.31 and `cpal` 0.18 (Apache-2.0 only; `cpal` also under `rodio` and `kira`), `symphonia` 0.6 (MPL-2.0, not in the allowlist). Criteria: licence; Windows and Linux; an 800 × 600 5-6-5 frame shown exactly (nearest, integer scaling); frame pacing at the original's frame times; mouse, keyboard, the game's own cursor; mixing 22 kHz effects with streamed MP3, latency; CI stays headless (an adapter crate); build weight; maintenance. Method: a spike adapter per finalist (two or three) on a throwaway branch (a still in a window, an effect, a music track), measured; an ADR draft in `adr-drafts/`.
-- **Acceptance:** the user's choice (and licence step, if any) recorded; stop the line until then (a heavy dependency).
-- **Depends on:** nothing; can run beside T1.
-- **Status:** ready.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context; T1 (the capture harness), T3 (the animation timing), T4a (the timeline), T6 (the adventure map's experiments, from the inbox) and T4b-1 (the frame check) done 2026-10-13, T4b-2a (a full battle headless) and T2 (the window and audio evaluation: SDL 3) 2026-10-14. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
 
 ### E17 M2 T4b-2b — The scene over time, completed
 
@@ -22,10 +15,20 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 
 ### E17 M2 T5 — The window adapter and M2's closure
 
-- **Scope:** T2's library in an adapter crate, playing a record at the original's frame rate, with the game's cursor; M2's review list, a fresh reviewer, the M3 refinement prepared.
-- **Acceptance:** M2's exit (epic file).
-- **Depends on:** T2; T4b-2a (done 2026-10-14: M2's headless exit); T4b-2b may follow it.
-- **Status:** waits.
+- **Scope:** the SDL 3 adapter (T2, the user's choice; the ADR draft
+  `docs/lanes/client/adr-drafts/window-audio.md`, design §8): an adapter crate in `clients/` with
+  `sdl3-sys` (`build-from-source-static`, the unused subsystems off) holding every SDL call;
+  `h3-view` plays a record (or `play`'s scenario) in the window at the original's frame times,
+  integer scale, vsync off and the game's hardware cursor by default; sound: the IMA ADPCM decoder
+  in `h3-assets` (pure, 100 % coverage; the samples the blocks declare), `nanomp3` for the music, one
+  SDL stream per source (a one-shot clip flushed). The spikes on `client/e17-m2-t2-spikes` show
+  each call. CI: the client job builds the adapter (CMake and a C compiler on the runner; no
+  window), `check.sh`'s deny and coverage rules unchanged. Then M2's review list, a fresh
+  reviewer, the M3 refinement prepared.
+- **Acceptance:** M2's exit (epic file): a record of a full battle plays in the window.
+- **Depends on:** T2 (done 2026-10-14); T4b-2a (done 2026-10-14: M2's headless exit); T4b-2b may
+  follow it. The ADR draft numbered (a `shared/` change) when the user accepts its text.
+- **Status:** ready.
 
 ## Inbox
 

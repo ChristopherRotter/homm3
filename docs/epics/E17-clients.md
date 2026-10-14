@@ -1,12 +1,12 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 in progress (T1, T3, T4a, T6 and T4b-1 done 2026-10-13, T4b-2a 2026-10-14). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 in progress (T1, T3, T4a, T6 and T4b-1 done 2026-10-13, T4b-2a and T2 2026-10-14). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M2 T4b-2b (the turn sequence recorded, the walk-by difference, the remaining
-animations) or T2 (the window and audio evaluation).
+are there). Next: M2 T5 (the SDL 3 window adapter and M2's closure) or T4b-2b (a strike's and a
+shot's turns recorded, the walk-by difference, the remaining animations).
 
 ## Goal
 
@@ -23,6 +23,8 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
 - **The window, input and audio library is chosen at M2 after an evaluation**, on technical
   grounds only. `winit` and `cpal` are Apache-2.0-only, which ADR-0009 excludes; if they win the
   evaluation, the client may move to GPLv3 (its own `deny.toml`), the user deciding at M2.
+  **Chosen 2026-10-14 (T2): SDL 3** through `sdl3-sys`, built from source and linked statically;
+  no licence step (ADR draft `docs/lanes/client/adr-drafts/window-audio.md`, design §8).
 - **Asset tables per expansion, committed** (`clients/assets/{base,ab,sod}.toml`); no reading of
   the executable at run time.
 - **Reference captures:** automatic (2026-10-13: the user cannot take screenshots for exhaustive
@@ -182,6 +184,13 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   turn and turn back), recorded in the original: its timeline as recorded and all 39 frames
   exact. A strike's and a shot's turns are read and unit-tested only (no opening sets them up).
 
+- **T2 done 2026-10-14** ([log](E17-log.md#m2-t2--the-window-input-and-audio-evaluation-2026-10-14),
+  [design §8](E17-design.md)): three spikes (SDL 3, `minifb` and `miniquad` with `tinyaudio`) on
+  the throwaway branch `client/e17-m2-t2-spikes`, measured in the sandbox and on the user's
+  Windows machine: all exact at integer scales; SDL 3 alone with clean sound (the others
+  crackled), a hardware cursor, fullscreen and DPI awareness. The user chose SDL 3 (`sdl3-sys`,
+  static); MP3 by `nanomp3`; the game's IMA ADPCM sounds decoded in `h3-assets`.
+
 ### M3 — fidelity
 
 - A representative situation set over the harness (M1 T8 built the capture, M2 the harness):
@@ -320,3 +329,9 @@ choices are lifted.
   how it was played; every record read from the game's memory, not the screen; the adventure
   map's reads from H3API's layouts confirmed by observation only (`inferred`); a dialog's OK
   found by relative probes (`[button.ok]`); a walk over after 1.5 s at rest, in real time.
+- The window adapter's library (T2, the user's choice; ADR draft `window-audio.md`): SDL 3
+  through `sdl3-sys` (not the `sdl3` wrapper), built from source and linked statically, the unused
+  subsystems left out; its defaults vsync off and the hardware cursor (the user, *provisional*);
+  `nanomp3` for MP3; the IMA ADPCM decoder in `h3-assets`.
+- The spikes stay on the branch `client/e17-m2-t2-spikes`, never merged (T2); their reel, cursor and
+  sound files are made from the user's files into `original-data/spikes/` (gitignored).
