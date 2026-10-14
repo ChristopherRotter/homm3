@@ -242,7 +242,10 @@ fn gate(options: &Options) -> Result<(), String> {
     }
     println!("gate: the asset tables' {names} names are found and decode");
     // The sound archives (E17 M2 T5b): every WAV decodes to SDL's samples.
-    print!("{}", sounds::check(&data, &options.out)?);
+    print!(
+        "{}",
+        sounds::check(&data, &options.out, &tables.sound_names())?
+    );
     Ok(())
 }
 

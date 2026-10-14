@@ -18,6 +18,8 @@ use core::fmt;
 
 use serde::Deserialize;
 
+use crate::anim::Sound;
+
 /// One table file as written.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -116,6 +118,73 @@ pub struct Creature {
     /// The projectile frames' angles in degrees, from high to low.
     #[serde(default)]
     pub missile_angles: [i16; 12],
+    /// Its sounds' entries in the sound archives (E17 M2 T5b).
+    #[serde(default)]
+    pub sounds: Sounds,
+}
+
+/// A creature's sounds: each an entry of the sound archives, none where the creature has no such
+/// sound (`stack_load_graphics` 0x43D9F0 decides, `h3-view harvest` writes them; design §8.2).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Sounds {
+    /// Moving (looping while it moves).
+    #[serde(default, rename = "move")]
+    pub moving: Option<String>,
+    /// A melee strike.
+    #[serde(default)]
+    pub attack: Option<String>,
+    /// Struck.
+    #[serde(default)]
+    pub wince: Option<String>,
+    /// A shot (and a spellcaster's cast).
+    #[serde(default)]
+    pub shot: Option<String>,
+    /// Dying.
+    #[serde(default)]
+    pub death: Option<String>,
+    /// Struck while defending.
+    #[serde(default)]
+    pub defend: Option<String>,
+    /// Before a move.
+    #[serde(default)]
+    pub start: Option<String>,
+    /// After a move.
+    #[serde(default)]
+    pub end: Option<String>,
+}
+
+impl Sounds {
+    /// The entry of `sound`, if the creature has it.
+    #[must_use]
+    pub fn name(&self, sound: Sound) -> Option<&str> {
+        match sound {
+            Sound::Move => self.moving.as_deref(),
+            Sound::Attack => self.attack.as_deref(),
+            Sound::Wince => self.wince.as_deref(),
+            Sound::Shot => self.shot.as_deref(),
+            Sound::Death => self.death.as_deref(),
+            Sound::Defend => self.defend.as_deref(),
+            Sound::Start => self.start.as_deref(),
+            Sound::End => self.end.as_deref(),
+        }
+    }
+
+    /// Every entry it names.
+    pub fn names(&self) -> impl Iterator<Item = &String> {
+        [
+            &self.moving,
+            &self.attack,
+            &self.wince,
+            &self.shot,
+            &self.death,
+            &self.defend,
+            &self.start,
+            &self.end,
+        ]
+        .into_iter()
+        .flatten()
+    }
 }
 
 /// A battlefield's background pictures.
@@ -206,6 +275,15 @@ pub struct Tables {
 }
 
 impl Tables {
+    /// Every sound archive entry the creatures name, upper-cased, each once.
+    pub fn sound_names(&self) -> BTreeSet<String> {
+        self.creatures
+            .values()
+            .flat_map(|c| c.sounds.names())
+            .map(|n| n.to_ascii_uppercase())
+            .collect()
+    }
+
     /// Every archive entry name the tables mention, upper-cased, each once.
     pub fn names(&self) -> BTreeSet<String> {
         let creatures = self
@@ -303,6 +381,12 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
             names(&key, &[(&c.def, ".DEF")])?;
             if let Some(m) = &c.missile {
                 names(&key, &[(m, ".DEF")])?;
+            }
+            if c.sounds.names().any(|n| n.is_empty() || n.contains('.')) {
+                return Err(entry(
+                    &key,
+                    "a sound is an entry's name, without an extension",
+                ));
             }
             insert(&mut tables.creatures, key, c.clone())?;
         }
@@ -435,6 +519,7 @@ groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death 
 key = "pikeman"
 def = "CPKMAN.DEF"
 times = [9000, 575, 500, 115]
+sounds = { move = "pikemove", attack = "pikeattk", wince = "pikewnce", death = "pikekill", defend = "pikedfnd" }
 
 [[creature]]
 key = "archer"
@@ -669,7 +754,18 @@ at = [124, 254]
     fn names_and_shapes_are_checked() {
         type Change = fn(&mut TableFile);
         let shape = "an obstacle has def, rows and layer, or pcx and at";
-        let broken: [(Change, &str, &str); 10] = [
+        let sound = "a sound is an entry's name, without an extension";
+        let broken: [(Change, &str, &str); 12] = [
+            (
+                |b| b.creature[0].sounds.wince = Some("pikewnce.wav".to_string()),
+                "pikeman",
+                sound,
+            ),
+            (
+                |b| b.creature[1].sounds.end = Some(String::new()),
+                "archer",
+                sound,
+            ),
             (
                 |b| b.creature[0].def = "CPKMAN.PCX".to_string(),
                 "pikeman",
@@ -725,6 +821,35 @@ at = [124, 254]
                 TableError::Entry(format!("base:{key}"), message.to_string())
             );
         }
+    }
+
+    #[test]
+    fn a_creature_names_its_sounds() {
+        let tables = load(&[base()], "base").unwrap();
+        let pikeman = &tables.creatures["base:pikeman"].sounds;
+        assert_eq!(pikeman.name(Sound::Move), Some("pikemove"));
+        assert_eq!(pikeman.name(Sound::Attack), Some("pikeattk"));
+        assert_eq!(pikeman.name(Sound::Wince), Some("pikewnce"));
+        assert_eq!(pikeman.name(Sound::Death), Some("pikekill"));
+        assert_eq!(pikeman.name(Sound::Defend), Some("pikedfnd"));
+        for none in [Sound::Shot, Sound::Start, Sound::End] {
+            assert_eq!(pikeman.name(none), None);
+        }
+        let all = Sounds {
+            shot: Some("s".to_string()),
+            start: Some("a".to_string()),
+            end: Some("e".to_string()),
+            ..Sounds::default()
+        };
+        assert_eq!(all.name(Sound::Shot), Some("s"));
+        assert_eq!(all.name(Sound::Start), Some("a"));
+        assert_eq!(all.name(Sound::End), Some("e"));
+        // The archer has none.
+        let names: Vec<String> = tables.sound_names().into_iter().collect();
+        assert_eq!(
+            names,
+            ["PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE", "PIKEWNCE"]
+        );
     }
 
     #[test]

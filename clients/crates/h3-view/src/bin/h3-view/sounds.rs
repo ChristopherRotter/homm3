@@ -4,6 +4,7 @@
 //! sound (`h3_sdl::load_wav`, `dropframe` and `truncate`); SDL's defaults, which drop a cut last
 //! block, are listed beside them. Every entry with its verdict goes to `<out>/gate/sounds.tsv`.
 
+use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
@@ -45,9 +46,10 @@ fn frames(sdl: &Result<(u32, u16, Vec<i16>), String>) -> String {
     )
 }
 
-/// Checks every entry of the sound archives under `data`; the summary's lines, or what failed.
+/// Checks every entry of the sound archives under `data`, and that every name of `names` (the
+/// asset tables' sounds, upper-cased) is one of them; the summary's lines, or what failed.
 /// Archives that are missing are named in the summary and skipped.
-pub fn check(data: &Path, out: &Path) -> Result<String, String> {
+pub fn check(data: &Path, out: &Path, names: &BTreeSet<String>) -> Result<String, String> {
     let mut summary = String::new();
     let mut verdicts = Vec::new();
     for archive in SOUND_ARCHIVES {
@@ -106,6 +108,22 @@ pub fn check(data: &Path, out: &Path) -> Result<String, String> {
     }
     fs::write(&path, listing).map_err(|e| format!("{}: {e}", path.display()))?;
     let path = fs::canonicalize(&path).unwrap_or(path);
+    let present: BTreeSet<String> = verdicts
+        .iter()
+        .map(|v| v.name.to_ascii_uppercase())
+        .collect();
+    let missing: Vec<&str> = names.difference(&present).map(String::as_str).collect();
+    if !missing.is_empty() {
+        return Err(format!(
+            "{summary}sounds: the asset tables name sounds in no archive: {}",
+            missing.join(", ")
+        ));
+    }
+    let _ = writeln!(
+        summary,
+        "sounds: the asset tables' {} sounds are found",
+        names.len()
+    );
     let different: Vec<&str> = verdicts
         .iter()
         .filter(|v| !v.equal())
