@@ -208,7 +208,12 @@ follows the result (the adventure lane).
   pick different stacks; the original's AI is read with the battle AI's task (the battle queue's
   inbox). **The user (BAT-Q44): the Ballista's rule**, with observation rows. **Batch 3e (AI): the
   original shot the single Marksman first, as the wiki's rule and not the engine's** (one sample;
-  BAT-Q45 asks the user).
+  BAT-Q45 asks the user). **T7d's reading (§7.31, BAT-Q46):** the turret has its own routine
+  (0x41E190), not the Ballista's: the mean damage `3n` through the target's protection as kills
+  times the computer's worth of a creature (a Fight Value estimate), divided by the turns until the
+  stack can attack (1 to 5), ties to the later record, and a desperate mode; batch 3e's choice
+  follows (a tie, the later record). The wiki's classes and tie agree, its "damage 1" and AI value
+  do not; VCMI has no turret routine.
 - **S-06, S-07** (`E04-quirks.md`: the towers) are D-16 and D-17: the code reading finds neither
   bug in the user's executable (T7, §7.30), and batch 3e confirms it (Air Shield and Armorer lower
   the damage, Archery does not touch it): **not quirks** of the user's version.

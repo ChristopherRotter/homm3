@@ -2731,3 +2731,104 @@ Catapult destroyed shot no more; the counts and the 99 shots never changed. **Th
 keep's target** (D-19): of ten Marksmen and one, the keep shot the single Marksman first (the
 wiki's computer rule; the engine's, VCMI's, picks the ten), then the ten.
 
+
+### 7.31 Code reading: the automatic turret's target (E04c T7d, 2026-10-14)
+
+Read for E04c T7d (BAT-Q45 (b), BAT-Q46; the survey `docs/rules/surveys/E04c-sieges.md`, D-19):
+the target an arrow tower picks on its own. Insight only, nothing copied (Q29). Not read here:
+the computer's general shooter (0x41F060 → 0x41EB80 → 0x435CB0 → 0x435B90), which the automatic
+Ballista and every computer-controlled shooter use (below, for T7e).
+
+**The turret's own routine.** When an arrow tower's turn comes and it acts on its own (0x474381:
+0x474BF0 says so, or the battle is hidden), the battle loop calls 0x465F20, not the computer's
+shooter. 0x465F20 takes the keep's count from the town (0x5BF4F0: 4 + structures), halves it
+rounded up for a tower (any position but 254), and calls **0x41E190** with the side 0 (the
+attacker's records) and the damage `3 × count`, the mean of the turret's per-creature
+`random(2, 4)` (§7.30; not the wiki's "tower damage counted as 1"). A record index ≥ 0 becomes a
+shot at that stack's position (action 7); −1 an action 0xC (nothing to shoot).
+
+**0x41E190, the score.** It first builds the computer's battle context (0x435EC0, below) for the
+turret's side and the attacker's threat records (0x422B20, below). Then, for every attacker record
+whose dead bit `0x200000` is clear (any controller, war machines included):
+
+- `D = trunc(3n × p)` with `p` the target's protection factor for a shot (0x443D90: Air Shield's
+  stored `f32`, × 0.5 while petrified, × (1 − Armorer) of its controller's hero), each product
+  rounded to the double; no "at least 1".
+- the worth `v` of one of its creatures (0x442A50 with the context's two minima and the shot flag
+  1; below); then 0x442FD0: for a clone (`0x800000`) `W = trunc(count × v / 5.0)`; else
+  `E = D + l` if `D mod h + l ≥ h`, else `E = D` (`h` its hit points per creature +0xC0, `l` its
+  top creature's lost hit points +0x58), and `W = trunc(E × v' / h)`, where `v' = 1000.0` in the
+  context's desperate mode and `v` otherwise.
+- the divisor: 5 if the stack is blind (+0x290), petrified (+0x2B0) or paralysed (+0x2C0), a
+  First Aid Tent or an Ammo Cart (147, 148), or has no threat record (+0x538 = 0); else its turns
+  `t` (0x448BD0: 1 for the Ballista, an arrow tower and a stack that can shoot now; else
+  `ceil(+0x540 / s)` with `s` its speed now (0x448CD0, slowed included), 1 for speed 0), and 5 if
+  `t > 5`. The score is `W / divisor` (integer division).
+- the best score wins, starting from 0 with no stack; a score equal to the best replaces it
+  (`>=`), so **a tie goes to the later record**. In desperate mode, if no stack scored above 0,
+  the loop runs again with `v' = v`, keeping the best so far.
+
+Batch 3e's AI encounter follows: the keep (5 creatures, `D = 15`) scores the ten Marksmen and the
+single one alike (the same `E`, worth and hit points, both shooters: divisor 1), and the single
+one is the later record.
+
+**The worth of a creature** (0x442A50, the computer's estimate; called with the stack, the
+context's minima `a₀`, `d₀`, a shot flag and 0): `o = A − a − a₀` with `A` the stack's attack
+against no target with the shot flag (0x442410: +0xC8, Precision for a shot or Bloodlust for a
+strike, no Slayer, Frenzy's share of its own defense) and `a` its creature's base attack
+(table +0x54); `δ = Δ − b − d₀` with `Δ` its defense against no striker for a shot (0x442590 with
+flag 1: +0xCC, 0 while frenzied, the moat's −3) and `b` its base defense (+0x58). The defense
+factor `f_d = (1 + 0.05 δ) × p` (`p` as above for a shot). The shot flag stays only for the
+Ballista and an arrow tower, or a shooter with shots that is not blocked (or whose controller's
+hero wears the Bow of the Sharpshooter, artifact 137) and not forgetful at mastery 2 or more; the
+offense factor `f_o = 1 + 0.05 o`, halved for a shooter whose shot flag fell; for the Ballista
+with a hero, doubled when the hero's Artillery is above Basic and then times 1.0, 1.5, 1.5 or 2.0
+by its level (0x63B7F0); while blessed times `(max + bonus) / ((min + max) / 2)`, while cursed
+times `max(1, min − penalty) / ((min + max) / 2)` (the stack's damage +0xD0, +0xD4 and the
+spells' values +0x458, +0x45C); doubled for a creature that shoots twice (flag `0x8000`) with the
+shot flag. Then `v = sqrt(f_o × f_d) × F` with `F` the creature's Fight Value (table +0x3C), each
+step rounded to the double. For a war machine (`0x40`) or a summoned stack (`0x400000`, clones
+included) `v = v × O / (S + O)`, with `S` its own total hit points (1 for a clone) and `O` the
+total hit points of its side's other records that are neither war machines, dead nor summoned;
+0.1 if `S = 0`.
+
+**The context** (0x435EC0, side = the turret's): `a₀` and `d₀` are the least attack and defense
+bonus (0x442550: attack against no target, with the shot flag if the stack can shoot now, minus
+the base attack; 0x442660: defense against no striker with flag 1 minus the base defense) over the
+records of both sides with creatures, arrow towers left out. The four strengths (0x41EAC0) sum,
+over a side's living records but arrow towers, `trunc(T × v / h)` (a clone: `trunc(count × v /
+5.0)`; 0x442E60, `T` its total hit points, `v` its worth with its own shot flag); flag 1 counts
+every such record, flag 0 leaves out the blind, petrified and paralysed ones and the tent and the
+cart. **Desperate mode** (+8): the side's strength (flag 1) doubled is below the other side's, and
+the game's difficulty (`[game]+0x1F6D8`) is above Easy or the side's player is human (+0x54A4).
+The context's other fields (+9, +0x14, +0x18, +0x1C) are not used here.
+
+**The threat records** (0x422B20 with the attacker's side, no stack left out, flag 0): each
+attacker record is cleared (+0x538, +0x53C, +0x540, +0x544), then skipped if dead, a war machine
+other than the Ballista, petrified or blind for more than one round, hypnotized or berserk. A stack
+that can shoot now records every defender record but the arrow towers at distance 1. Any other
+runs the computer's pathfinder (0x4B2DA0 → 0x4B3400) with range 127 and its speed: a walker steps
+between free positions, entering a stop (the moat, a pit its side knows, §7.16) costs the rest of
+the turn's move (`s − c mod s`) and it may go on from there; a flyer or a Devil (0x4B39C4) may
+cross occupied hexes. An enemy next to a reached position gets its cost (one more turn, `+ s`, from
+a stop): the pathfinder marks it (+0x4A of its hexes, cleared at the start) and stores the cost
+in its cell (+0x18). Every defender record but the arrow towers whose position hex is so marked,
+or (a dead one's) is a free position within the stack's speed, is recorded (0x448840): the one
+with the fewest turns `ceil(cost / s)` (then the higher value, 0x435C70) gives +0x538 (the enemy)
+and +0x540 (its cost). A stack of speed 0 records no enemy at a distance above 0.
+
+**VCMI** (1.7.5) has no turret routine: the towers shoot as the automatic Ballista
+(`tryMakeAutomaticActionOfRangedUnit`: no war machine first, then a stack that can attack next
+turn, then the highest expected damage value; BAT-WAR-002). **The wiki** (Arrow tower) describes
+the computer's choice by classes A to C (attack this turn, next turn, later) weighted 100 %, 50 %,
+33 %, each stack's priority from its AI value and health, ties to the rightmost slot: the code's
+turns divisor (1 to 5) and tie agree; its worth is the Fight Value estimate above, not the AI
+value; and in this executable the damage is `3n`, not 1.
+
+**The general shooter, for T7e** (not built): 0x41F060 builds the same context and threat records
+for the other side, then 0x41EB80 takes, over the enemy's living records but arrow towers, the
+highest 0x435CB0 value (an area shooter's own estimate for Magogs, Liches and Power Liches),
+preferring a stack that is not blind, petrified or paralysed, ties to the later record.
+0x435CB0 is the expected damage value of 0x435B90 (the shooter's own damage estimate, then
+0x442FD0's kills times worth) divided as above, but by 10 for a blind, petrified or paralysed
+target, and not at all on Easy for a computer side.
