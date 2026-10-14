@@ -140,7 +140,7 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   `siege` and the golden replay `siege-s7` (the defender out on both bridges and into the moat,
   the attacker in both rows); the other replays changed only their hashes and versions. Rules
   BAT-SIE-001 to BAT-SIE-008, 13 tests.
-- **T5e, batch 3c run by an agent** (`battle/e04c-t5e`, 2026-10-14): the spec
+- **T5e, batch 3c run by an agent** (#190, `battle/e04c-t5e`, 2026-10-14): the spec
   `experiments/specs/E04c-batch-3c.toml` (predictions: the engine at b63cdb1 in a scratch test with
   the same armies and commands; the engine has no keep and no Catapult yet) and
   `experiments/agent/siege.py`, which plays a map in hot seat with both armies commanded (the town's

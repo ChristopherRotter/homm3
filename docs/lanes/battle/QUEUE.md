@@ -10,7 +10,7 @@ E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epic
 
 **E04c increment 2** (the user, 2026-10-13): T3 (#179) and T4 (#180) done; BAT-Q39 and BAT-Q40 answered.
 
-**E04c increment 3** (the user at BAT-Q40, 2026-10-13; refined 2026-10-14 in `docs/epics/E04c-sieges-and-battlefields.md`, "T5"): T5a the seam (#183, ADR-0023, BAT-Q41), T5b towns on the experiment maps (#184), T5c the reading (`installation.md` §7.28, BAT-Q42), T5d the battle's walls, gate and moat (#187) and T5e the siege batch 3c run by an agent (`battle/e04c-t5e`: every value as the code, D-8 and D-10 confirmed) done. **Next: the increment's checkpoint**, then T6 (the Catapult, Ballistics, Earthquake), refined at the next increment's start.
+**E04c increment 3** (the user at BAT-Q40, 2026-10-13; refined 2026-10-14 in `docs/epics/E04c-sieges-and-battlefields.md`, "T5"): T5a the seam (#183, ADR-0023, BAT-Q41), T5b towns on the experiment maps (#184), T5c the reading (`installation.md` §7.28, BAT-Q42), T5d the battle's walls, gate and moat (#187) and T5e the siege batch 3c run by an agent (#190, `battle/e04c-t5e`: every value as the code, D-8 and D-10 confirmed) done. **Next: the increment's checkpoint**, then T6 (the Catapult, Ballistics, Earthquake), refined at the next increment's start.
 
 ## Inbox
 
