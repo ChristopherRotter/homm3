@@ -824,3 +824,82 @@ lets it idle. Read in `Heroes3.exe` for it:
   machines, heroes and count boxes (M3); a stack the record names that its first snapshot lacks
   is not drawn.
 
+
+## 8. The window, input and audio evaluation (M2 T2)
+
+ADR-0020 point 4 left the library to a measured evaluation at M2; the choice, the user's
+(2026-10-14), is [ADR-0024](../adr/0024-client-window-audio.md). Three spike adapters
+on the throwaway branch `client/e17-m2-t2-spikes` (`clients/spikes/`, never merged) each play the
+same *reel*: 302 distinct battlefield frames of `h3-view play scenarios/battle.toml` (its first 20
+s, `--png`) at their times, looping, with the game's cursor (`CRDEFLT.DEF`'s first frame), an
+effect on a key (`PIKEATTK.wav` from `Heroes3.snd`) and `COMBAT01.MP3` streamed. Each writes a
+report: when every frame showed against its time, the gaps between presents, the audio device and
+its callbacks, the time from a key press to the first mixed buffer that holds the effect, and a
+read-back of the drawn frame compared with the frame widened (the PNG's bit repetition, §3.2). A
+`--selftest` drives the cursor and an effect every 3 s. Measured in the sandbox (Linux under Xvfb
+with Mesa's software GL, and the Windows builds under Wine), then on the user's Windows machine
+(2560 × 1440, 74.93 Hz, 100 % scaling; the `measure.cmd` runs and the user's own look and listen).
+
+**Candidates** (`cargo info` and crates.io, 2026-10-14): `sdl3-sys` 0.7.2 (Zlib; SDL 3.4.18, the
+`sdl3-src` crate builds it with CMake and a C compiler; the `sdl3` 0.20 wrapper is MIT, 0.x and
+young), `minifb` 0.29 (MIT or Apache-2.0), `miniquad` 0.4.11 (MIT or Apache-2.0, OpenGL), audio
+through `tinyaudio` 2.0 (MIT; DirectSound on Windows, ALSA or Pulse on Linux) with a mixer of the
+spike's own for the last two. Left out: `sdl2` (SDL 2 is in maintenance; SDL 3 is its successor),
+`quad-snd` (no streaming, no MP3), `oddio` (a mixer only, last release 2023), `winit`, `cpal` and
+`symphonia` (outside the licence policy, ADR-0009).
+
+**Results on Windows** (20 s each; times in ms):
+
+| | SDL 3 | minifb + tinyaudio | miniquad + tinyaudio |
+|---|---|---|---|
+| backend | Direct3D 11, WASAPI | GDI `StretchDIBits`, DirectSound | OpenGL (WGL), DirectSound |
+| read-back at 2× | exact, the XRGB8888 and the RGB565 texture | (none: GDI) | exact (at 1×; the window opened at 1×) |
+| frame after its time, vsync off | median 1.4, p95 3.4, max 6 | median 1.0, p95 1.5 (no vsync at all) | median 0.7, but 4 400 presents a second |
+| the same, vsync on | median 8, p95 15 (within one refresh) | — | median 20 (it draws every refresh) |
+| audio | 48 kHz, 480 frames (10 ms), requests every 10.0; clean | 1 024 frames (23.2 ms), callbacks at 20 and 30: underruns, **heavy crackling** | the same backend, the same crackling |
+| key to the effect's first mix | mean 4, max 8 | mean 12, max 24 | mean 11–13, max 17 |
+| cursor | the game's as a colour cursor (scaled 2×) or drawn | drawn only | drawn only |
+| the user | "no problems", no visible difference with or without vsync; the hardware cursor "a touch smoother, snappier" | heavy sound artifacts | similar to minifb |
+
+**Other findings:**
+
+- **Pixels.** Every library showed the frame exactly at integer scales (the sandbox's read-backs
+  and screen captures at 1× and 2×, the user's GPU at 2×). Direct3D 11's sampling of an RGB565
+  texture gives the same 8-bit values as the bit repetition, so the window may upload the screen
+  as it is.
+- **DPI.** SDL's window takes `SDL_WINDOW_HIGH_PIXEL_DENSITY` (per-monitor aware: exact pixels at
+  any Windows scaling); `miniquad` declares DPI awareness with `high_dpi`; `minifb`'s window is not
+  DPI-aware, so Windows would stretch it on a scaled display (not seen at the user's 100 %).
+- **minifb:** integer scales 1, 2, 4 and 8 only (no 3×, the fit for 2560 × 1600 and 4K at 2400
+  × 1800); no fullscreen; no vsync; `ScaleMode::UpperLeft` shows the buffer unscaled in a scaled
+  window (`Stretch` scales it).
+- **miniquad:** draws every refresh (or in a busy loop without vsync); no timers in its blocking
+  event loop, so a frame due between refreshes waits; no custom cursor image.
+- **tinyaudio:** the DirectSound backend's notifications arrive late on the user's machine (a
+  larger buffer would trade the crackles for latency); its macOS backend builds `coreaudio-sys`
+  with `bindgen`, whose `clang-sys` is Apache-2.0-only (the deny policy over all targets rejects
+  it; Windows and Linux pass).
+- **SDL 3's audio:** one logical device (`SDL_OpenAudioDevice`) with a stream per source, each
+  converting and resampling to the device's format (SDL mixes them); a device opened with
+  `SDL_OpenAudioDeviceStream` takes no further streams. A one-shot clip needs
+  `SDL_FlushAudioStream` after it is put, or the resampler keeps its last frames back and the
+  stream never empties. `SDL_SetAudioPostmixCallback` sees each mixed buffer (the spikes' latency
+  measure). `SDL_WaitEventTimeout` wakes on time on Windows, X11 and Wine; it wakes the loop for
+  the next frame's time and for input, so nothing polls.
+- **The game's sounds are IMA ADPCM** (WAV format 17, 4 bits, 22 050 Hz, mono; 9 of the 1 115
+  entries of `Heroes3.snd` stereo): `SDL_LoadWAV` decodes them, and the spikes' own decoder (the
+  standard IMA step and index tables, blocks of a 4-byte header per channel) gives the same samples
+  (difference 0); SDL stops at the samples the blocks declare (22 374 for `PIKEATTK`, the spike's
+  decoder ran on through the last block's padding: 22 975). `h3-assets` gets the decoder (pure,
+  ADR-0020 point 2), the window adapter plays PCM.
+- **MP3:** `nanomp3` 0.2 (MIT or Apache-2.0, pure Rust, a port of minimp3) decodes `COMBAT01` and
+  `GRASS` to minimp3's samples (largest difference 1) as fast (0.1 % of real time on Windows);
+  `puremp3` 0.1 is 4–8 times slower and wrong on `COMBAT01` (differences up to 20 657); `minimp3`
+  itself is C.
+- **Weight.** SDL built from source: about 3 minutes once on the sandbox's two cores (CMake, the C
+  compiler; on Linux the X11, Wayland, ALSA and Pulse headers decide which backends it builds),
+  cached afterwards; the statically linked exe is 6.7 MB against 1.5–1.8 MB, and it imports only
+  system DLLs. Normal and build dependencies: 16 crates against 18–21 and 13–14.
+- **Windows builds from the sandbox:** `rustup target add x86_64-pc-windows-gnu` (it needs
+  `static.rust-lang.org`, which the user's egress setting now allows) and `mingw-w64`; SDL
+  cross-compiles with them. The exes ran under Wine (SDL took Direct3D 9 and WASAPI there).
