@@ -969,3 +969,92 @@ ADR-0024 built: `clients/crates/h3-sdl` and `h3-view window` (log: M2 T5a).
   Pulse's for the audio backends); Wayland is left out when its headers are missing. SDL takes
   2.5 min on two cores, once per profile. The Windows build (`--target x86_64-pc-windows-gnu`)
   takes 6.7 min from scratch; `h3-view.exe` is 16.8 MB and imports system DLLs only.
+
+### 8.2 The sound (M2 T5b)
+
+ADR-0024 point 5 built (log: M2 T5b): the sound archives' decoder, a code reading of when the
+battle's sounds play, and the window playing them.
+
+**The archives.** `Heroes3.snd` (1 115 entries) and `H3ab_ahd.snd` (117) are a `u32` count, then
+48 bytes per entry: a 40-byte name field (the stem, a NUL, `WAV` and the packer's leftovers,
+`WAVVVWAV`, no NUL after them), the offset and the size. Every entry is a RIFF WAV of IMA ADPCM
+(format 17, 4 bits, 22 050 Hz; 9 stereo, the `BATTLE` sounds among them; blocks of 512 bytes, 1 024
+stereo, of 1 017 frames; a `fact` chunk before the data). The AB archive's 117 entries are all in
+`Heroes3.snd` with the same bytes, so the viewer searches `Heroes3.snd` first (the game's own
+order is not read). `h3_assets::snd` reads the directory (entries by stem, ignoring case),
+`h3_assets::wav` decodes.
+
+**The decoder** (pure, 100 % covered): 1 212 of the 1 232 entries end inside a block. SDL's loader
+with its defaults drops such a cut last block (up to 1 016 frames, 46 ms each) and ignores the
+`fact` chunk, whose count is the sound's own length (it plays up to 7 frames of padding after the
+18 entries whose count ends inside their whole blocks). The decoder gives every complete frame up
+to the `fact` chunk's count, as SDL does with the hints `SDL_WAVE_TRUNCATION=dropframe` and
+`SDL_WAVE_FACT_CHUNK=truncate`; in a cut sub-block each channel's nibbles come from its own word.
+The real-asset gate decodes every entry both ways and with SDL's defaults: all 1 232 equal SDL's
+samples for the whole sound and SDL's defaults' as far as both go (88 507 083 frames against SDL's
+defaults' 87 878 970); `<out>/gate/sounds.tsv` lists each. It also finds the asset tables' 743
+sound names in the archives.
+
+**When they play** (code reading; Miles Sound System through `MSS32.DLL`; nothing while the battle
+is hidden, 0x46A4A0):
+
+- *A sample* (`play_sample` 0x59A210, H3API's ClickSound): a WAV object carries a category
+  (+0x28), a volume (+0x2C, 0 to 127) and a loop count (+0x30, 0 forever). The category picks a
+  range of the sound manager's 14 sample handles (0x684AB8: 0, 1, 2–5, 6–13): the first whose
+  sample is done, else the range's next in turn, whose sample is cut. The volume is scaled by the
+  effects' setting, the music's by its own alike (0x5996C0: v × (s + 1) / 10 for a setting of 1 to
+  10, 0 at 0).
+- *A stack's eight sounds* (+0x170 to +0x18C: move, attack, wince, shot, death, defend, start,
+  end), loaded by `stack_load_graphics` 0x43D9F0 from the creature table's prefix and `move`,
+  `attk`, `wnce`, `shot`, `kill`, `dfnd`, `ext1`, `ext2`: a war machine (flag 0x40) has no move
+  sound and its wince for attack and defend (the Ballista, 146, its shot for attack); only
+  shooters, the Master Genies (37) and the Ogre Magi (91) have a shot; only the Devils, Arch
+  Devils (54, 55), Vampires and Vampire Lords (62, 63) a start and an end. Each in category 3 (the
+  eight creature channels), volume 64; the move sound loops, the others play once. `h3-view
+  harvest` applies these rules: each creature of the asset tables names its `sounds`.
+- *Moves*: `walk_step` 0x43F0B0 plays the start sound with group 20 and the move sound with the
+  first cycle (0x43F19B, 0x43F1CF; the first step only); the last step plays the end sound and
+  stops the move sound before group 21 (0x43F267; `stack_walk`'s early stop alike, 0x4421BC). A
+  flight (0x4B4A40) the same around its cycles (0x4B4BD4, 0x4B4E3B).
+- *Strikes and shots*: `shot_animation` plays the shot sound with the shot's first frame
+  (0x43F424). `strike_animation` starts each stack's sound as its group starts (0x468F00 to
+  0x468F8D, through `stack_play_sound` 0x43D540): the striker's attack, a struck stack's wince,
+  defend or death by its reaction; a shooter going on with its shot group starts none.
+- *The opening* (`battle_start` 0x462A20): `battle%02d.wav`, random(1, 8) − 1 (0x462AEF,
+  category 2), plays while the screen is set up; after the first redraw the battle waits while it
+  plays, at most 10 s of the game clock (0x46304B, `wait_for_sample`); then `combat%02d`,
+  random(1, 4) (0x46305A), starts through `play_music` 0x59ACB0 (loop count 0, the effects
+  ended first), and only then the battle's clocks (0x463093).
+- *The music* (`music_thread` 0x59A840): `mp3\<name>.mp3` streamed. A looping track starts silent
+  where that name last stopped in this session (a table of names and positions, 0x59AA82) and its
+  volume rises by a tenth of the music volume every 100 ms (0x59AB5D, an f32 sum truncated: 12,
+  25, 38, 50, 63, 76, 88, 101, 114, then 127 after 900 ms); a track played once starts at its
+  volume, from its start. The tracks' names: 0x66C090.
+- *Not read*: the start sound's volume (its loader's default), the battle's end (`battle_end`
+  0x477470 calls `play_music` twice: the victory and defeat tunes and the results), spells', heroes',
+  walls' and towers' sounds, the turn's, the adventure map's.
+
+**The viewer.** `h3_view::anim`'s timeline carries the cues (`Cue`: a time, a stack, a `Sound`,
+start or stop) at the frames the readings name; `play` writes them to `cues.txt`.
+`h3_view::sound` holds the opening: the start sound and the music are drawn from the viewer's
+own C-library sequence seeded with the battle's seed (*provisional*, as the fidgets; the
+executable draws from its rules' generator), the fade-in's volumes, the volumes 127 and 64. The
+window (`bin/h3-view/audio.rs`): every sound the battle's stacks name and the start sound are
+decoded when the battle loads, the music by `nanomp3` (i16; the battle's 44 clips and a
+3-minute track in 0.4 s in the sandbox); `h3-sdl` opens one device and 10 streams: the music's,
+the start sound's and 8 creature channels, each a free one or the next in turn, as
+`play_sample` takes them. A one-shot is flushed; the move sound
+and the music are queued a second ahead and topped up (no flush, so no seam). Volumes as SDL
+gains: the music's fade-in by its steps, the effects at 64/127 (*provisional*: both settings
+equal; no settings yet). From the battle's start the window plays the start sound over the first
+frame with the clock held, then starts the music and the clock (a key that moves the battle ends
+the wait); Space pauses the device with the battle, R and → stop the creature sounds and go on
+from the cues at the new time, M and E switch the music and the creature sounds, `--mute` plays
+nothing.
+
+**Checks.** The gate (above); the cues' unit tests (each with its group's first frame); in the
+sandbox under Xvfb with SDL's `disk` audio driver (it writes the mix to `sdlaudio.raw` in the
+current directory): `--check 25` with sound, all 293 frames read back exact; the start sound
+5.8 s (`BATTLE01`, seed 1), then the music fading in; with the music switched off (M), the
+effects' onsets in the mix within 10–100 ms of their cues' times (onset detection on 10 ms
+windows; overlapping sounds hide some).

@@ -22,6 +22,8 @@ h3-content-battle.workspace = true
 h3-map.workspace = true
 # The window (E17 M2 T5a): the platform adapter, the binary's only.
 h3-sdl.workspace = true
+# The music (E17 M2 T5b): MP3, the binary's only.
+nanomp3.workspace = true
 
 [lints]
 workspace = true

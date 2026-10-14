@@ -15,11 +15,13 @@ groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death 
 key = "pikeman"  # original id 0
 def = "cpkman.def"
 times = [9000, 575, 500, 115]
+sounds = { move = "pikemove", attack = "pikeattk", wince = "pikewnce", death = "pikekill", defend = "pikedfnd" }
 
 [[creature]]
 key = "halberdier"  # original id 1
 def = "chalbd.def"
 times = [9000, 450, 500, 115]
+sounds = { move = "halbmove", attack = "halbattk", wince = "halbwnce", death = "halbkill", defend = "halbdfnd" }
 
 [[creature]]
 key = "archer"  # original id 2
@@ -29,6 +31,7 @@ attack_climax = 7
 missile = "plcbowx.def"
 missile_offsets = [[38, -65], [36, -59], [21, -50]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "lcrsmove", attack = "lcrsattk", wince = "lcrswnce", shot = "lcrsshot", death = "lcrskill", defend = "lcrsdfnd" }
 
 [[creature]]
 key = "marksman"  # original id 3
@@ -38,26 +41,31 @@ attack_climax = 7
 missile = "plcbowx.def"
 missile_offsets = [[34, -71], [38, -61], [17, -53]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "hcrsmove", attack = "hcrsattk", wince = "hcrswnce", shot = "hcrsshot", death = "hcrskill", defend = "hcrsdfnd" }
 
 [[creature]]
 key = "griffin"  # original id 4
 def = "cgriff.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "grifmove", attack = "grifattk", wince = "grifwnce", death = "grifkill", defend = "grifdfnd" }
 
 [[creature]]
 key = "royal_griffin"  # original id 5
 def = "crgrif.def"
 times = [9000, 525, 500, 115]
+sounds = { move = "rgrfmove", attack = "rgrfattk", wince = "rgrfwnce", death = "rgrfkill", defend = "rgrfdfnd" }
 
 [[creature]]
 key = "swordsman"  # original id 6
 def = "csword.def"
 times = [9000, 435, 500, 115]
+sounds = { move = "swrdmove", attack = "swrdattk", wince = "swrdwnce", death = "swrdkill", defend = "swrddfnd" }
 
 [[creature]]
 key = "crusader"  # original id 7
 def = "ccrusd.def"
 times = [9000, 475, 500, 115]
+sounds = { move = "crusmove", attack = "crusattk", wince = "cruswnce", death = "cruskill", defend = "crusdfnd" }
 
 [[creature]]
 key = "monk"  # original id 8
@@ -67,6 +75,7 @@ attack_climax = 8
 missile = "cprzeax.def"
 missile_offsets = [[38, -95], [61, -49], [31, 11]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "monkmove", attack = "monkattk", wince = "monkwnce", shot = "monkshot", death = "monkkill", defend = "monkdfnd" }
 
 [[creature]]
 key = "zealot"  # original id 9
@@ -76,26 +85,31 @@ attack_climax = 6
 missile = "cprzeax.def"
 missile_offsets = [[37, -98], [62, -53], [28, 3]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "zeltmove", attack = "zeltattk", wince = "zeltwnce", shot = "zeltshot", death = "zeltkill", defend = "zeltdfnd" }
 
 [[creature]]
 key = "cavalier"  # original id 10
 def = "ccavlr.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "cavamove", attack = "cavaattk", wince = "cavawnce", death = "cavakill", defend = "cavadfnd" }
 
 [[creature]]
 key = "champion"  # original id 11
 def = "cchamp.def"
 times = [9000, 450, 500, 115]
+sounds = { move = "chmpmove", attack = "chmpattk", wince = "chmpwnce", death = "chmpkill", defend = "chmpdfnd" }
 
 [[creature]]
 key = "angel"  # original id 12
 def = "cangel.def"
 times = [9000, 410, 500, 115]
+sounds = { move = "anglmove", attack = "anglattk", wince = "anglwnce", death = "anglkill", defend = "angldfnd" }
 
 [[creature]]
 key = "archangel"  # original id 13
 def = "crangl.def"
 times = [9000, 410, 500, 115]
+sounds = { move = "aaglmove", attack = "aaglattk", wince = "aaglwnce", death = "aaglkill", defend = "aagldfnd" }
 
 [[creature]]
 key = "centaur"  # original id 14
@@ -103,6 +117,7 @@ def = "ccentr.def"
 times = [9000, 250, 500, 115]
 missile_offsets = [[10, -70], [10, -70], [10, -70]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "cntrmove", attack = "cntrattk", wince = "cntrwnce", death = "cntrkill", defend = "cntrdfnd" }
 
 [[creature]]
 key = "centaur_captain"  # original id 15
@@ -110,16 +125,19 @@ def = "cecent.def"
 times = [9000, 250, 500, 115]
 missile_offsets = [[10, -70], [10, -70], [10, -70]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "ecntmove", attack = "ecntattk", wince = "ecntwnce", death = "ecntkill", defend = "ecntdfnd" }
 
 [[creature]]
 key = "dwarf"  # original id 16
 def = "cdwarf.def"
 times = [9000, 490, 500, 115]
+sounds = { move = "dwrfmove", attack = "dwrfattk", wince = "dwrfwnce", death = "dwrfkill", defend = "dwrfdfnd" }
 
 [[creature]]
 key = "battle_dwarf"  # original id 17
 def = "cbdwar.def"
 times = [9000, 485, 500, 115]
+sounds = { move = "bdrfmove", attack = "bdrfattk", wince = "bdrfwnce", death = "bdrfkill", defend = "bdrfdfnd" }
 
 [[creature]]
 key = "wood_elf"  # original id 18
@@ -129,6 +147,7 @@ attack_climax = 11
 missile = "pelfx.def"
 missile_offsets = [[38, -65], [36, -59], [21, -50]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "welfmove", attack = "welfattk", wince = "welfwnce", shot = "welfshot", death = "welfkill", defend = "welfdfnd" }
 
 [[creature]]
 key = "grand_elf"  # original id 19
@@ -138,51 +157,61 @@ attack_climax = 11
 missile = "pelfx.def"
 missile_offsets = [[32, -77], [40, -61], [18, -55]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "gelfmove", attack = "gelfattk", wince = "gelfwnce", shot = "gelfshot", death = "gelfkill", defend = "gelfdfnd" }
 
 [[creature]]
 key = "pegasus"  # original id 20
 def = "cpegas.def"
 times = [9000, 360, 500, 115]
+sounds = { move = "pegamove", attack = "pegaattk", wince = "pegawnce", death = "pegakill", defend = "pegadfnd" }
 
 [[creature]]
 key = "silver_pegasus"  # original id 21
 def = "capegs.def"
 times = [9000, 360, 500, 115]
+sounds = { move = "apegmove", attack = "apegattk", wince = "apegwnce", death = "apegkill", defend = "apegdfnd" }
 
 [[creature]]
 key = "dendroid_guard"  # original id 22
 def = "ctree.def"
 times = [9000, 775, 500, 115]
+sounds = { move = "treemove", attack = "treeattk", wince = "treewnce", death = "treekill", defend = "treedfnd" }
 
 [[creature]]
 key = "dendroid_soldier"  # original id 23
 def = "cbtree.def"
 times = [9000, 775, 500, 115]
+sounds = { move = "btremove", attack = "btreattk", wince = "btrewnce", death = "btrekill", defend = "btredfnd" }
 
 [[creature]]
 key = "unicorn"  # original id 24
 def = "cunico.def"
 times = [9000, 600, 500, 115]
+sounds = { move = "unicmove", attack = "unicattk", wince = "unicwnce", death = "unickill", defend = "unicdfnd" }
 
 [[creature]]
 key = "war_unicorn"  # original id 25
 def = "cwunic.def"
 times = [9000, 600, 500, 115]
+sounds = { move = "wuncmove", attack = "wuncattk", wince = "wuncwnce", death = "wunckill", defend = "wuncdfnd" }
 
 [[creature]]
 key = "green_dragon"  # original id 26
 def = "cgdrag.def"
 times = [9000, 300, 500, 115]
+sounds = { move = "grdrmove", attack = "grdrattk", wince = "grdrwnce", death = "grdrkill", defend = "grdrdfnd" }
 
 [[creature]]
 key = "gold_dragon"  # original id 27
 def = "cddrag.def"
 times = [9000, 300, 500, 115]
+sounds = { move = "godrmove", attack = "godrattk", wince = "godrwnce", death = "godrkill", defend = "godrdfnd" }
 
 [[creature]]
 key = "gremlin"  # original id 28
 def = "cgrema.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "agrmmove", attack = "agrmattk", wince = "agrmwnce", death = "agrmkill", defend = "agrmdfnd" }
 
 [[creature]]
 key = "master_gremlin"  # original id 29
@@ -192,26 +221,31 @@ attack_climax = 11
 missile = "cprgre.def"
 missile_offsets = [[55, -52], [46, -17], [9, 9]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "mgrmmove", attack = "mgrmattk", wince = "mgrmwnce", shot = "mgrmshot", death = "mgrmkill", defend = "mgrmdfnd" }
 
 [[creature]]
 key = "stone_gargoyle"  # original id 30
 def = "cgargo.def"
 times = [9000, 350, 500, 115]
+sounds = { move = "sgrgmove", attack = "sgrgattk", wince = "sgrgwnce", death = "sgrgkill", defend = "sgrgdfnd" }
 
 [[creature]]
 key = "obsidian_gargoyle"  # original id 31
 def = "cogarg.def"
 times = [9000, 350, 500, 115]
+sounds = { move = "ogrgmove", attack = "ogrgattk", wince = "ogrgwnce", death = "ogrgkill", defend = "ogrgdfnd" }
 
 [[creature]]
 key = "stone_golem"  # original id 32
 def = "csgole.def"
 times = [9000, 600, 500, 115]
+sounds = { move = "sglmmove", attack = "sglmattk", wince = "sglmwnce", death = "sglmkill", defend = "sglmdfnd" }
 
 [[creature]]
 key = "iron_golem"  # original id 33
 def = "cigole.def"
 times = [9000, 725, 500, 115]
+sounds = { move = "iglmmove", attack = "iglmattk", wince = "iglmwnce", death = "iglmkill", defend = "iglmdfnd" }
 
 [[creature]]
 key = "mage"  # original id 34
@@ -221,6 +255,7 @@ attack_climax = 9
 missile = "pmagex.def"
 missile_offsets = [[25, -105], [38, -98], [16, -92]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "magemove", attack = "mageattk", wince = "magewnce", shot = "mageshot", death = "magekill", defend = "magedfnd" }
 
 [[creature]]
 key = "arch_mage"  # original id 35
@@ -230,31 +265,37 @@ attack_climax = 9
 missile = "pmagex.def"
 missile_offsets = [[28, -107], [43, -99], [18, -92]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "amagmove", attack = "amagattk", wince = "amagwnce", shot = "amagshot", death = "amagkill", defend = "amagdfnd" }
 
 [[creature]]
 key = "genie"  # original id 36
 def = "cgenie.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "genimove", attack = "geniattk", wince = "geniwnce", death = "genikill", defend = "genidfnd" }
 
 [[creature]]
 key = "master_genie"  # original id 37
 def = "csulta.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "calfmove", attack = "calfattk", wince = "calfwnce", shot = "calfshot", death = "calfkill", defend = "calfdfnd" }
 
 [[creature]]
 key = "naga"  # original id 38
 def = "cnaga.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "nsenmove", attack = "nsenattk", wince = "nsenwnce", death = "nsenkill", defend = "nsendfnd" }
 
 [[creature]]
 key = "naga_queen"  # original id 39
 def = "cnagag.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "ngrdmove", attack = "ngrdattk", wince = "ngrdwnce", death = "ngrdkill", defend = "ngrddfnd" }
 
 [[creature]]
 key = "giant"  # original id 40
 def = "cltita.def"
 times = [9000, 690, 500, 115]
+sounds = { move = "ltitmove", attack = "ltitattk", wince = "ltitwnce", death = "ltitkill", defend = "ltitdfnd" }
 
 [[creature]]
 key = "titan"  # original id 41
@@ -264,16 +305,19 @@ attack_climax = 6
 missile = "cprgtix.def"
 missile_offsets = [[11, -131], [76, -87], [19, -1]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "gtitmove", attack = "gtitattk", wince = "gtitwnce", shot = "gtitshot", death = "gtitkill", defend = "gtitdfnd" }
 
 [[creature]]
 key = "imp"  # original id 42
 def = "cimp.def"
 times = [9000, 625, 500, 115]
+sounds = { move = "imppmove", attack = "imppattk", wince = "imppwnce", death = "imppkill", defend = "imppdfnd" }
 
 [[creature]]
 key = "familiar"  # original id 43
 def = "cfamil.def"
 times = [9000, 650, 500, 115]
+sounds = { move = "fmlrmove", attack = "fmlrattk", wince = "fmlrwnce", death = "fmlrkill", defend = "fmlrdfnd" }
 
 [[creature]]
 key = "gog"  # original id 44
@@ -283,6 +327,7 @@ attack_climax = 6
 missile = "cprgogx.def"
 missile_offsets = [[37, -88], [69, -50], [14, -6]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "goggmove", attack = "goggattk", wince = "goggwnce", shot = "goggshot", death = "goggkill", defend = "goggdfnd" }
 
 [[creature]]
 key = "magog"  # original id 45
@@ -292,51 +337,61 @@ attack_climax = 6
 missile = "cprgogx.def"
 missile_offsets = [[38, -89], [69, -51], [15, -9]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "mgogmove", attack = "mgogattk", wince = "mgogwnce", shot = "mgogshot", death = "mgogkill", defend = "mgogdfnd" }
 
 [[creature]]
 key = "hell_hound"  # original id 46
 def = "chhoun.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "hhndmove", attack = "hhndattk", wince = "hhndwnce", death = "hhndkill", defend = "hhnddfnd" }
 
 [[creature]]
 key = "cerberus"  # original id 47
 def = "ccerbu.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "cerbmove", attack = "cerbattk", wince = "cerbwnce", death = "cerbkill", defend = "cerbdfnd" }
 
 [[creature]]
 key = "demon"  # original id 48
 def = "cohdem.def"
 times = [9000, 465, 500, 115]
+sounds = { move = "shdmmove", attack = "shdmattk", wince = "shdmwnce", death = "shdmkill", defend = "shdmdfnd" }
 
 [[creature]]
 key = "horned_demon"  # original id 49
 def = "cthdem.def"
 times = [9000, 465, 500, 115]
+sounds = { move = "dhdmmove", attack = "dhdmattk", wince = "dhdmwnce", death = "dhdmkill", defend = "dhdmdfnd" }
 
 [[creature]]
 key = "pit_fiend"  # original id 50
 def = "cpfien.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "pfndmove", attack = "pfndattk", wince = "pfndwnce", death = "pfndkill", defend = "pfnddfnd" }
 
 [[creature]]
 key = "pit_lord"  # original id 51
 def = "cpfoe.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "pfoemove", attack = "pfoeattk", wince = "pfoewnce", death = "pfoekill", defend = "pfoedfnd" }
 
 [[creature]]
 key = "efreeti"  # original id 52
 def = "cefree.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "efrtmove", attack = "efrtattk", wince = "efrtwnce", death = "efrtkill", defend = "efrtdfnd" }
 
 [[creature]]
 key = "efreet_sultan"  # original id 53
 def = "cefres.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "esulmove", attack = "esulattk", wince = "esulwnce", death = "esulkill", defend = "esuldfnd" }
 
 [[creature]]
 key = "devil"  # original id 54
 def = "cdevil.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "devlmove", attack = "devlattk", wince = "devlwnce", death = "devlkill", defend = "devldfnd", start = "devlext1", end = "devlext2" }
 
 [[creature]]
 key = "arch_devil"  # original id 55
@@ -344,46 +399,55 @@ def = "cadevl.def"
 times = [9000, 500, 500, 115]
 missile_offsets = [[10, -70], [10, -70], [10, -70]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "advlmove", attack = "advlattk", wince = "advlwnce", death = "advlkill", defend = "advldfnd", start = "advlext1", end = "advlext2" }
 
 [[creature]]
 key = "skeleton"  # original id 56
 def = "cskele.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "skelmove", attack = "skelattk", wince = "skelwnce", death = "skelkill", defend = "skeldfnd" }
 
 [[creature]]
 key = "skeleton_warrior"  # original id 57
 def = "cwskel.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "sklwmove", attack = "sklwattk", wince = "sklwwnce", death = "sklwkill", defend = "sklwdfnd" }
 
 [[creature]]
 key = "walking_dead"  # original id 58
 def = "czombi.def"
 times = [9000, 650, 500, 115]
+sounds = { move = "zombmove", attack = "zombattk", wince = "zombwnce", death = "zombkill", defend = "zombdfnd" }
 
 [[creature]]
 key = "zombie"  # original id 59
 def = "czomlo.def"
 times = [9000, 650, 500, 115]
+sounds = { move = "zmblmove", attack = "zmblattk", wince = "zmblwnce", death = "zmblkill", defend = "zmbldfnd" }
 
 [[creature]]
 key = "wight"  # original id 60
 def = "cwight.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "wghtmove", attack = "wghtattk", wince = "wghtwnce", death = "wghtkill", defend = "wghtdfnd" }
 
 [[creature]]
 key = "wraith"  # original id 61
 def = "cwrait.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "wrthmove", attack = "wrthattk", wince = "wrthwnce", death = "wrthkill", defend = "wrthdfnd" }
 
 [[creature]]
 key = "vampire"  # original id 62
 def = "cvamp.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "vampmove", attack = "vampattk", wince = "vampwnce", death = "vampkill", defend = "vampdfnd", start = "vampext1", end = "vampext2" }
 
 [[creature]]
 key = "vampire_lord"  # original id 63
 def = "cnosfe.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "nosfmove", attack = "nosfattk", wince = "nosfwnce", death = "nosfkill", defend = "nosfdfnd", start = "nosfext1", end = "nosfext2" }
 
 [[creature]]
 key = "lich"  # original id 64
@@ -393,6 +457,7 @@ attack_climax = 8
 missile = "PLICH.def"
 missile_offsets = [[49, -97], [65, -82], [33, -12]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "lichmove", attack = "lichattk", wince = "lichwnce", shot = "lichshot", death = "lichkill", defend = "lichdfnd" }
 
 [[creature]]
 key = "power_lich"  # original id 65
@@ -402,46 +467,55 @@ attack_climax = 8
 missile = "PLICH.def"
 missile_offsets = [[41, -92], [58, -79], [29, -14]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "plchmove", attack = "plchattk", wince = "plchwnce", shot = "plchshot", death = "plchkill", defend = "plchdfnd" }
 
 [[creature]]
 key = "black_knight"  # original id 66
 def = "cbknig.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "bkntmove", attack = "bkntattk", wince = "bkntwnce", death = "bkntkill", defend = "bkntdfnd" }
 
 [[creature]]
 key = "dread_knight"  # original id 67
 def = "cblord.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "blrdmove", attack = "blrdattk", wince = "blrdwnce", death = "blrdkill", defend = "blrddfnd" }
 
 [[creature]]
 key = "bone_dragon"  # original id 68
 def = "cndrgn.def"
 times = [9000, 375, 500, 115]
+sounds = { move = "bodrmove", attack = "bodrattk", wince = "bodrwnce", death = "bodrkill", defend = "bodrdfnd" }
 
 [[creature]]
 key = "ghost_dragon"  # original id 69
 def = "chdrgn.def"
 times = [9000, 375, 500, 115]
+sounds = { move = "ghdrmove", attack = "ghdrattk", wince = "ghdrwnce", death = "ghdrkill", defend = "ghdrdfnd" }
 
 [[creature]]
 key = "troglodyte"  # original id 70
 def = "ctrogl.def"
 times = [9000, 400, 500, 115]
+sounds = { move = "trogmove", attack = "trogattk", wince = "trogwnce", death = "trogkill", defend = "trogdfnd" }
 
 [[creature]]
 key = "infernal_troglodyte"  # original id 71
 def = "citrog.def"
 times = [9000, 400, 500, 115]
+sounds = { move = "itrgmove", attack = "itrgattk", wince = "itrgwnce", death = "itrgkill", defend = "itrgdfnd" }
 
 [[creature]]
 key = "harpy"  # original id 72
 def = "charpy.def"
 times = [9000, 425, 500, 115]
+sounds = { move = "harpmove", attack = "harpattk", wince = "harpwnce", death = "harpkill", defend = "harpdfnd" }
 
 [[creature]]
 key = "harpy_hag"  # original id 73
 def = "charph.def"
 times = [9000, 425, 500, 115]
+sounds = { move = "hhagmove", attack = "hhagattk", wince = "hhagwnce", death = "hhagkill", defend = "hhagdfnd" }
 
 [[creature]]
 key = "beholder"  # original id 74
@@ -450,6 +524,7 @@ times = [9000, 500, 500, 115]
 attack_climax = 5
 missile = "pmagex.def"
 missile_offsets = [[14, -73], [14, -70], [9, -60]]
+sounds = { move = "bhdrmove", attack = "bhdrattk", wince = "bhdrwnce", shot = "bhdrshot", death = "bhdrkill", defend = "bhdrdfnd" }
 
 [[creature]]
 key = "evil_eye"  # original id 75
@@ -458,6 +533,7 @@ times = [9000, 500, 500, 115]
 attack_climax = 5
 missile = "pmagex.def"
 missile_offsets = [[13, -72], [13, -69], [7, -60]]
+sounds = { move = "evlimove", attack = "evliattk", wince = "evliwnce", shot = "evlishot", death = "evlikill", defend = "evlidfnd" }
 
 [[creature]]
 key = "medusa"  # original id 76
@@ -467,6 +543,7 @@ attack_climax = 9
 missile = "pmedusx.def"
 missile_offsets = [[76, -79], [72, -63], [53, -53]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "medumove", attack = "meduattk", wince = "meduwnce", shot = "medushot", death = "medukill", defend = "medudfnd" }
 
 [[creature]]
 key = "medusa_queen"  # original id 77
@@ -476,56 +553,67 @@ attack_climax = 9
 missile = "pmedusx.def"
 missile_offsets = [[75, -65], [75, -50], [70, -45]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "medqmove", attack = "medqattk", wince = "medqwnce", shot = "medqshot", death = "medqkill", defend = "medqdfnd" }
 
 [[creature]]
 key = "minotaur"  # original id 78
 def = "cminot.def"
 times = [9000, 525, 500, 115]
+sounds = { move = "minomove", attack = "minoattk", wince = "minownce", death = "minokill", defend = "minodfnd" }
 
 [[creature]]
 key = "minotaur_king"  # original id 79
 def = "cminok.def"
 times = [9000, 525, 500, 115]
+sounds = { move = "minkmove", attack = "minkattk", wince = "minkwnce", death = "minkkill", defend = "minkdfnd" }
 
 [[creature]]
 key = "manticore"  # original id 80
 def = "cmcore.def"
 times = [9000, 400, 500, 115]
+sounds = { move = "mantmove", attack = "mantattk", wince = "mantwnce", death = "mantkill", defend = "mantdfnd" }
 
 [[creature]]
 key = "scorpicore"  # original id 81
 def = "ccmcor.def"
 times = [9000, 400, 500, 115]
+sounds = { move = "scrpmove", attack = "scrpattk", wince = "scrpwnce", death = "scrpkill", defend = "scrpdfnd" }
 
 [[creature]]
 key = "red_dragon"  # original id 82
 def = "crdrgn.def"
 times = [9000, 300, 500, 115]
+sounds = { move = "rddrmove", attack = "rddrattk", wince = "rddrwnce", death = "rddrkill", defend = "rddrdfnd" }
 
 [[creature]]
 key = "black_dragon"  # original id 83
 def = "cbdrgn.def"
 times = [9000, 300, 500, 115]
+sounds = { move = "bkdrmove", attack = "bkdrattk", wince = "bkdrwnce", death = "bkdrkill", defend = "bkdrdfnd" }
 
 [[creature]]
 key = "goblin"  # original id 84
 def = "cgobli.def"
 times = [9000, 605, 500, 115]
+sounds = { move = "gblnmove", attack = "gblnattk", wince = "gblnwnce", death = "gblnkill", defend = "gblndfnd" }
 
 [[creature]]
 key = "hobgoblin"  # original id 85
 def = "chgobl.def"
 times = [9000, 620, 500, 115]
+sounds = { move = "hgobmove", attack = "hgobattk", wince = "hgobwnce", death = "hgobkill", defend = "hgobdfnd" }
 
 [[creature]]
 key = "wolf_rider"  # original id 86
 def = "cbwlfr.def"
 times = [9000, 465, 500, 115]
+sounds = { move = "gwrdmove", attack = "gwrdattk", wince = "gwrdwnce", death = "gwrdkill", defend = "gwrddfnd" }
 
 [[creature]]
 key = "wolf_raider"  # original id 87
 def = "cuwlfr.def"
 times = [9000, 465, 500, 115]
+sounds = { move = "hgwrmove", attack = "hgwrattk", wince = "hgwrwnce", death = "hgwrkill", defend = "hgwrdfnd" }
 
 [[creature]]
 key = "orc"  # original id 88
@@ -535,6 +623,7 @@ attack_climax = 4
 missile = "porchx.def"
 missile_offsets = [[42, -83], [43, -66], [33, -26]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "oorcmove", attack = "oorcattk", wince = "oorcwnce", shot = "oorcshot", death = "oorckill", defend = "oorcdfnd" }
 
 [[creature]]
 key = "orc_chieftain"  # original id 89
@@ -544,26 +633,31 @@ attack_climax = 4
 missile = "porchx.def"
 missile_offsets = [[34, -88], [37, -66], [32, -28]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "orccmove", attack = "orccattk", wince = "orccwnce", shot = "orccshot", death = "orcckill", defend = "orccdfnd" }
 
 [[creature]]
 key = "ogre"  # original id 90
 def = "cogre.def"
 times = [9000, 640, 500, 115]
+sounds = { move = "ogremove", attack = "ogreattk", wince = "ogrewnce", death = "ogrekill", defend = "ogredfnd" }
 
 [[creature]]
 key = "ogre_mage"  # original id 91
 def = "cogmag.def"
 times = [9000, 640, 500, 115]
+sounds = { move = "ogrmmove", attack = "ogrmattk", wince = "ogrmwnce", shot = "ogrmshot", death = "ogrmkill", defend = "ogrmdfnd" }
 
 [[creature]]
 key = "roc"  # original id 92
 def = "croc.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "roccmove", attack = "roccattk", wince = "roccwnce", death = "rocckill", defend = "roccdfnd" }
 
 [[creature]]
 key = "thunderbird"  # original id 93
 def = "ctbird.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "tbrdmove", attack = "tbrdattk", wince = "tbrdwnce", death = "tbrdkill", defend = "tbrddfnd" }
 
 [[creature]]
 key = "cyclops"  # original id 94
@@ -572,6 +666,7 @@ times = [9000, 500, 500, 115]
 attack_climax = 7
 missile = "PCYCLBX.def"
 missile_offsets = [[55, -115], [53, -84], [40, -59]]
+sounds = { move = "ccycmove", attack = "ccycattk", wince = "ccycwnce", shot = "ccycshot", death = "ccyckill", defend = "ccycdfnd" }
 
 [[creature]]
 key = "cyclops_king"  # original id 95
@@ -580,26 +675,31 @@ times = [9000, 500, 500, 115]
 attack_climax = 7
 missile = "PCYCLBX.def"
 missile_offsets = [[55, -115], [53, -84], [38, -54]]
+sounds = { move = "cyclmove", attack = "cyclattk", wince = "cyclwnce", shot = "cyclshot", death = "cyclkill", defend = "cycldfnd" }
 
 [[creature]]
 key = "behemoth"  # original id 96
 def = "cybehe.def"
 times = [9000, 585, 500, 115]
+sounds = { move = "ybmhmove", attack = "ybmhattk", wince = "ybmhwnce", death = "ybmhkill", defend = "ybmhdfnd" }
 
 [[creature]]
 key = "ancient_behemoth"  # original id 97
 def = "cabehe.def"
 times = [9000, 585, 500, 115]
+sounds = { move = "bmthmove", attack = "bmthattk", wince = "bmthwnce", death = "bmthkill", defend = "bmthdfnd" }
 
 [[creature]]
 key = "gnoll"  # original id 98
 def = "cgnoll.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "gnolmove", attack = "gnolattk", wince = "gnolwnce", death = "gnolkill", defend = "gnoldfnd" }
 
 [[creature]]
 key = "gnoll_marauder"  # original id 99
 def = "cgnolm.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "gnlmmove", attack = "gnlmattk", wince = "gnlmwnce", death = "gnlmkill", defend = "gnlmdfnd" }
 
 [[creature]]
 key = "lizardman"  # original id 100
@@ -609,6 +709,7 @@ attack_climax = 9
 missile = "pplizax.def"
 missile_offsets = [[34, -76], [47, -65], [26, -55]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "plizmove", attack = "plizattk", wince = "plizwnce", shot = "plizshot", death = "plizkill", defend = "plizdfnd" }
 
 [[creature]]
 key = "lizard_warrior"  # original id 101
@@ -618,86 +719,103 @@ attack_climax = 9
 missile = "pplizax.def"
 missile_offsets = [[39, -76], [49, -66], [25, -56]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "alizmove", attack = "alizattk", wince = "alizwnce", shot = "alizshot", death = "alizkill", defend = "alizdfnd" }
 
 [[creature]]
 key = "gorgon"  # original id 102
 def = "ccgorg.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "cgormove", attack = "cgorattk", wince = "cgorwnce", death = "cgorkill", defend = "cgordfnd" }
 
 [[creature]]
 key = "mighty_gorgon"  # original id 103
 def = "cbgog.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "bgormove", attack = "bgorattk", wince = "bgorwnce", death = "bgorkill", defend = "bgordfnd" }
 
 [[creature]]
 key = "serpent_fly"  # original id 104
 def = "cdrfly.def"
 times = [9000, 385, 500, 115]
+sounds = { move = "dflymove", attack = "dflyattk", wince = "dflywnce", death = "dflykill", defend = "dflydfnd" }
 
 [[creature]]
 key = "dragon_fly"  # original id 105
 def = "cdrfir.def"
 times = [9000, 385, 500, 115]
+sounds = { move = "fdflmove", attack = "fdflattk", wince = "fdflwnce", death = "fdflkill", defend = "fdfldfnd" }
 
 [[creature]]
 key = "basilisk"  # original id 106
 def = "cbasil.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "baslmove", attack = "baslattk", wince = "baslwnce", death = "baslkill", defend = "basldfnd" }
 
 [[creature]]
 key = "greater_basilisk"  # original id 107
 def = "cgbasi.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "gbasmove", attack = "gbasattk", wince = "gbaswnce", death = "gbaskill", defend = "gbasdfnd" }
 
 [[creature]]
 key = "wyvern"  # original id 108
 def = "cwyver.def"
 times = [9000, 335, 500, 115]
+sounds = { move = "wyvnmove", attack = "wyvnattk", wince = "wyvnwnce", death = "wyvnkill", defend = "wyvndfnd" }
 
 [[creature]]
 key = "wyvern_monarch"  # original id 109
 def = "cwyvmn.def"
 times = [9000, 335, 500, 115]
+sounds = { move = "wyvmmove", attack = "wyvmattk", wince = "wyvmwnce", death = "wyvmkill", defend = "wyvmdfnd" }
 
 [[creature]]
 key = "hydra"  # original id 110
 def = "chydra.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "hydrmove", attack = "hydrattk", wince = "hydrwnce", death = "hydrkill", defend = "hydrdfnd" }
 
 [[creature]]
 key = "chaos_hydra"  # original id 111
 def = "cchydr.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "chydmove", attack = "chydattk", wince = "chydwnce", death = "chydkill", defend = "chyddfnd" }
 
 [[creature]]
 key = "air_elemental"  # original id 112
 def = "caelem.def"
 times = [9000, 250, 500, 115]
+sounds = { move = "aelmmove", attack = "aelmattk", wince = "aelmwnce", death = "aelmkill", defend = "aelmdfnd" }
 
 [[creature]]
 key = "earth_elemental"  # original id 113
 def = "ceelem.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "eelmmove", attack = "eelmattk", wince = "eelmwnce", death = "eelmkill", defend = "eelmdfnd" }
 
 [[creature]]
 key = "fire_elemental"  # original id 114
 def = "cfelem.def"
 times = [9000, 250, 500, 115]
+sounds = { move = "felmmove", attack = "felmattk", wince = "felmwnce", death = "felmkill", defend = "felmdfnd" }
 
 [[creature]]
 key = "water_elemental"  # original id 115
 def = "cwelem.def"
 times = [9000, 435, 500, 115]
+sounds = { move = "welmmove", attack = "welmattk", wince = "welmwnce", death = "welmkill", defend = "welmdfnd" }
 
 [[creature]]
 key = "gold_golem"  # original id 116
 def = "cggole.def"
 times = [9000, 600, 500, 115]
+sounds = { move = "gglmmove", attack = "gglmattk", wince = "gglmwnce", death = "gglmkill", defend = "gglmdfnd" }
 
 [[creature]]
 key = "diamond_golem"  # original id 117
 def = "cdgole.def"
 times = [9000, 635, 500, 115]
+sounds = { move = "dglmmove", attack = "dglmattk", wince = "dglmwnce", death = "dglmkill", defend = "dglmdfnd" }
 
 [[creature]]
 key = "catapult"  # original id 145
@@ -706,6 +824,7 @@ times = [9000, 500, 500, 115]
 attack_climax = 4
 missile = "SMCatx.def"
 missile_offsets = [[69, -119], [69, -119], [69, -119]]
+sounds = { attack = "catawnce", wince = "catawnce", shot = "catashot", death = "catakill", defend = "catawnce" }
 
 [[creature]]
 key = "ballista"  # original id 146
@@ -715,16 +834,19 @@ attack_climax = 5
 missile = "SMBalx.def"
 missile_offsets = [[57, -104], [101, -75], [53, -36]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { attack = "ballshot", wince = "ballwnce", shot = "ballshot", death = "ballkill", defend = "ballwnce" }
 
 [[creature]]
 key = "first_aid_tent"  # original id 147
 def = "smtent.def"
 times = [9000, 500, 500, 115]
+sounds = { attack = "faidwnce", wince = "faidwnce", death = "faidkill", defend = "faidwnce" }
 
 [[creature]]
 key = "ammo_cart"  # original id 148
 def = "smcart.def"
 times = [9000, 500, 500, 115]
+sounds = { attack = "cartwnce", wince = "cartwnce", death = "cartkill", defend = "cartwnce" }
 
 [[battlefield]]
 key = "dirt"

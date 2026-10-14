@@ -294,6 +294,43 @@ pub fn commands(messages: &[ServerMessage]) -> Vec<Command<'_>> {
         .collect()
 }
 
+/// A creature's sounds, in the order of a stack's eight (+0x170 to +0x18C, loaded by
+/// `stack_load_graphics` 0x43D9F0; E17 M2 T5b, design §8.2). Which file each is, and whether a
+/// creature has it, the asset tables say.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Sound {
+    /// Moving: started with a move's first cycle, looping until the move ends.
+    Move,
+    /// A melee strike.
+    Attack,
+    /// Struck.
+    Wince,
+    /// A shot.
+    Shot,
+    /// Dying.
+    Death,
+    /// Struck while defending.
+    Defend,
+    /// Before a move (group 20).
+    Start,
+    /// After a move (group 21).
+    End,
+}
+
+/// A sound a stack starts at a time, or (`stop`) the move sound it ends then (E17 M2 T5b; the
+/// sites: design §8.2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Cue {
+    /// When: the time of the frame it goes with.
+    pub at: u32,
+    /// The stack.
+    pub stack: u8,
+    /// Its sound.
+    pub sound: Sound,
+    /// Stops the sound instead of starting it.
+    pub stop: bool,
+}
+
 /// The poses of a record's stacks over time.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Timeline {
@@ -314,6 +351,8 @@ pub struct Timeline {
     /// The viewer's own fidgets as they stand after the last command (none: no fidgets, as the
     /// reference checks take the original's).
     pub fidgets: Option<Fidgets>,
+    /// The creatures' sounds, in time order.
+    pub cues: Vec<Cue>,
     /// When the last frame shows.
     pub end: u32,
 }
@@ -448,6 +487,12 @@ impl Idle {
 }
 
 impl Timeline {
+    /// The index of the first cue at or after `t`: a player that seeks to `t` goes on from there.
+    #[must_use]
+    pub fn cue_from(&self, t: u32) -> usize {
+        self.cues.partition_point(|c| c.at < t)
+    }
+
     /// Each stack's pose shown at `t`.
     pub fn at(&self, t: u32) -> BTreeMap<u8, Pose> {
         let mut poses: BTreeMap<u8, Pose> =
@@ -757,6 +802,7 @@ fn played(
         pending: Vec::new(),
         turns: Vec::new(),
         flights: Vec::new(),
+        cues: Vec::new(),
     };
     let mut fidgets = seed.map(|rng| Fidgets {
         rng,
@@ -825,6 +871,7 @@ fn played(
         steps,
         idle,
         fidgets,
+        cues: player.cues,
         end: player.clock.now,
     })
 }
@@ -864,6 +911,7 @@ struct Reaction {
     group: u8,
     frames: u32,
     died: bool,
+    sound: Sound,
     base: Pose,
 }
 
@@ -935,6 +983,7 @@ struct Player<'a> {
     pending: Vec<(u8, Pose)>,
     turns: Vec<(u32, u8)>,
     flights: Vec<Flight>,
+    cues: Vec<Cue>,
 }
 
 /// A command's melee (`move_and_attack` 0x478900, `melee_attack` 0x441CB0): its striker, its
@@ -964,6 +1013,16 @@ impl Player<'_> {
             shown,
             pose,
         }));
+    }
+
+    /// `stack`'s `sound` starts (or, `stop`, ends) with the next frame drawn.
+    fn cue(&mut self, stack: u8, sound: Sound, stop: bool) {
+        self.cues.push(Cue {
+            at: self.clock.now,
+            stack,
+            sound,
+            stop,
+        });
     }
 
     /// The pending poses, drawn at `drawn` and shown at `shown`.
@@ -1237,9 +1296,13 @@ impl Player<'_> {
             if (to < from && live.right) || (to > from && !live.right) {
                 live = self.turn(stack, live);
             }
+            // Its sounds (0x4B4BD4): the start's with group 20, the move's (looping) after it, the
+            // end's with group 21, when the move's stops (0x4B4E3B).
+            self.cue(stack, Sound::Start, false);
             for f in 0..live.look.count(g.move_start) {
                 self.frame(&[(stack, Self::posed(&live, g.move_start, f, start))], tick);
             }
+            self.cue(stack, Sound::Move, false);
             // k cycles of the moving group along the straight line, the point moved on before
             // each frame by (Δ / k) / n, every value an f32 (0x4B4C7B to 0x4B4CEC), drawn at its
             // truncation (§7.9).
@@ -1270,6 +1333,8 @@ impl Player<'_> {
             // The flight ends with group 21 and a frame standing (0x4B4E59, 0x4B4E66); then
             // `stack_fly` turns a plain move back (0x4B49F5) and draws one more frame standing
             // (0x4B4A15).
+            self.cue(stack, Sound::End, false);
+            self.cue(stack, Sound::Move, true);
             for f in 0..live.look.count(g.move_end) {
                 self.frame(&[(stack, Self::posed(&live, g.move_end, f, end))], tick);
             }
@@ -1302,6 +1367,9 @@ impl Player<'_> {
                 Ordering::Equal => STANDING,
             };
             if i == 0 {
+                // The first step's sounds (0x43F19B): the start's with group 20, the move's
+                // (looping) with the first cycle.
+                self.cue(stack, Sound::Start, false);
                 for f in 0..live.look.count(g.move_start) {
                     let p = Pose {
                         layer,
@@ -1309,6 +1377,7 @@ impl Player<'_> {
                     };
                     self.frame(&[(stack, p)], tick);
                 }
+                self.cue(stack, Sound::Move, false);
             }
             for f in 0..n {
                 let mut p = Self::posed(&live, g.moving, f, pair[0]);
@@ -1317,6 +1386,9 @@ impl Player<'_> {
                 self.frame(&[(stack, p)], step);
             }
         }
+        // The last step (0x43F267): the end's sound with group 21, the move's stopped.
+        self.cue(stack, Sound::End, false);
+        self.cue(stack, Sound::Move, true);
         for f in 0..live.look.count(g.move_end) {
             self.frame(&[(stack, Self::posed(&live, g.move_end, f, end))], tick);
         }
@@ -1340,12 +1412,12 @@ impl Player<'_> {
             };
             live.count = live.count.saturating_sub(kills);
             let died = live.count == 0;
-            let group = if died {
-                g.death
+            let (group, sound) = if died {
+                (g.death, Sound::Death)
             } else if live.defending {
-                g.defend
+                (g.defend, Sound::Defend)
             } else {
-                g.hit
+                (g.hit, Sound::Wince)
             };
             let frames = live.look.count(group);
             let live = live.clone();
@@ -1354,6 +1426,7 @@ impl Player<'_> {
                 group,
                 frames,
                 died,
+                sound,
                 base: self.standing(&live, live.hex),
             });
         }
@@ -1401,6 +1474,8 @@ impl Player<'_> {
             live.look.climax
         };
         let time = self.speed.scale(live.look.times[2] / climax.max(1));
+        // The shot's sound with its first frame (0x43F424).
+        self.cue(shooter, Sound::Shot, false);
         for f in 0..climax {
             self.frame(&[(shooter, Self::posed(&live, group, f, live.hex))], time);
         }
@@ -1503,6 +1578,16 @@ impl Player<'_> {
         let tick = self.speed.scale(TICK);
         let standing = self.standing(live, live.hex);
         for i in 0..loops {
+            // Each stack's sound as its group starts (0x468F00 to 0x468F8D): the striker's attack
+            // (a shooter goes on with its group: none), each reaction's by its group.
+            if i == 0 && from == 0 {
+                self.cue(striker, Sound::Attack, false);
+            }
+            for r in reactions {
+                if i == (loops - 1).saturating_sub(r.frames) {
+                    self.cue(r.stack, r.sound, false);
+                }
+            }
             let mut poses = Vec::with_capacity(reactions.len() + 1);
             let pose = if i < frames {
                 Self::posed(live, group, from + i, live.hex)

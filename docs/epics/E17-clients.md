@@ -196,6 +196,13 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   at an integer scale, with the game's cursor (hardware or drawn), pause, steps and restart;
   `--check` reads every frame back: under Xvfb all exact. T5 split in three: T5b the sound, T5c
   M2's closure.
+- **T5b done 2026-10-14** ([log](E17-log.md#m2-t5b--the-sound-2026-10-14),
+  [design §8.2](E17-design.md)): the sound archives decoded (`h3_assets::snd`, `wav`: every
+  complete frame up to the `fact` chunk's count; all 1 232 entries equal SDL's samples, a gate
+  check); when the battle's sounds play, read in the executable (the start sound while the
+  battle's clock waits, the music looping and fading in, each stack's eight sounds with their
+  groups); the timeline's cues and the asset tables' `sounds`; `h3-view window` plays the opening,
+  the music and the creatures' sounds (`nanomp3`; keys M and E, `--mute`).
 
 ### M3 — fidelity
 
@@ -203,7 +210,8 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   every battlefield, the absolute obstacles, sieges later, animation sequences.
 - Fonts, the string catalogue and the language packs, and the battle interface (panel, log, stack
   counts, cursors).
-- Sound effects and music.
+- The sound's remainder (M2 T5b built the battle's music and creature sounds): the battle's end,
+  spells, heroes, walls and towers (design §8.2).
 - **Exit:** the reference set passes, or each difference is a listed fix or a classified quirk.
 
 ### Later (refined when they come up)
@@ -357,3 +365,20 @@ choices are lifted.
 - `h3_view::clock` and `Screen::xrgb` in the pure crates (T5a); `play` and `window` share
   `bin/h3-view/battle.rs`; an executable copied into a checkout's `clients/` finds the tables,
   layouts and packs from its own place (`assets::clients_dir`).
+- The decoder's length (T5b, design §8.2): every complete frame up to the `fact` chunk's count, as
+  SDL with `dropframe` and `truncate` (SDL's defaults drop a cut last block); the viewer searches
+  `Heroes3.snd` before `H3ab_ahd.snd` (their common entries are equal; the game's order not read).
+- The asset tables' `sounds` (T5b): each creature's sound entries by name, written by `h3-view
+  harvest` with `stack_load_graphics`' rules; the gate finds every one.
+- The cues (T5b): `anim::Sound` and `anim::Cue` in the timeline, at the frame each reading names;
+  `play` writes them to `cues.txt`.
+- The opening (T5b): the start sound and the track drawn from the viewer's own sequence seeded
+  with the battle's seed (as the fidgets); the start sound's volume 64 (not read); no volume
+  settings yet (the music 127, the effects 64, as at equal settings); a track always from its
+  start (the original resumes a track where it last stopped in the session).
+- The window's sound (T5b): ten SDL streams (the music, the start sound, eight creature channels
+  taken as `play_sample` takes them); loops and the music queued a second ahead without a flush;
+  Space pauses the audio device with the battle, R and → stop the creatures' sounds; the keys M
+  and E, `--mute`; the clock waits for the start sound only from the battle's start, and a key
+  that moves the battle ends the wait; volumes as SDL gains (the adapter's only float).
+- `nanomp3` with its default features off (`std` only: no SIMD `wide`, no MP1/MP2; T5b).
