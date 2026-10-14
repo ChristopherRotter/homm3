@@ -222,12 +222,27 @@ Agents usually work in a cloud sandbox cloned from GitHub.
    verify in the background (about 15 minutes; read the docs meanwhile, then check
    `tail -n 3 target/sandbox/verify.log`). Later runs: `cargo xtask verify --scope <lane>
    --summary` for the lane's loop, or the full
-   `nohup scripts/sandbox-verify.sh --with-original-data > /dev/null 2>&1 &`. After switching
-   the clone to another branch, run `cargo llvm-cov clean --workspace` before the next full
-   verify: test binaries of the other branch's build stay in `target/llvm-cov-target` and enter
-   the coverage report as hundreds of misses at lines that do not match (E08, 2026-10-14).
+   `CARGO_INCREMENTAL=0 nohup scripts/sandbox-verify.sh --with-original-data > /dev/null 2>&1 &`
+   (step 5). After switching the clone to another branch, and before a scoped verify that follows
+   a full one with sources changed in between, run `cargo llvm-cov clean --workspace`: test
+   binaries of the earlier build stay in `target/llvm-cov-target` and enter the coverage report
+   as hundreds of misses at lines that do not match (E08, 2026-10-14; E04c T7: 224 in one file).
 4. Packs written by hand in a session without the original data are confirmed with
    `cargo xtask verify --with-original-data` before the merge (Q48).
+5. **Disk.** The sandbox's writable disk is a fixed allowance per session (about 44 GB in
+   E04c T7's): `df -h .` shows what is left as "Avail"; its size column misleads. A full verify
+   built from nothing needs about 20 GB: `target/debug` about 6.5 GB, `target/llvm-cov-target`
+   5 to 8 GB, `clients/target` 1 GB, the release and native builds 0.3 GB. Both large
+   directories grow with every rebuild (stale artifacts: 11 and 14 GB late in a session), and
+   incremental builds add about 8 GB more (`target/debug/incremental`); a `git worktree` with a
+   target directory of its own costs another full build. When the allowance runs out, the
+   linker dies with `signal 7 [Bus error]` or rustc reports `No space left on device` or `IO
+   failure on output stream`; the steps fail wherever the build was (often coverage, then
+   determinism and bench-check), and the agent's own tool output can be lost. So build with
+   `CARGO_INCREMENTAL=0`, and before a full verify with less than about 20 GB left, delete
+   `target/debug` and `target/llvm-cov-target` (rebuilt in about 15 minutes; deleting works
+   even when writing fails). Stop a running verify by its processes' ids (`ps`), never
+   `pkill -f`, whose pattern also matches the agent's own shell.
 
 ## Stub registry
 
