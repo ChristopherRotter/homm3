@@ -279,6 +279,24 @@ fn a_destroyed_tower_or_keep_takes_its_turret_down() {
     damage_part(&mut s, 6, 2, &mut events);
     let after: Vec<u32> = s.stacks().iter().map(|st| st.count).collect();
     assert_eq!(before, after);
+    // A ruleset without the Arrow Tower sets no turret up: a Castle's keep and towers fall
+    // without harming a stack.
+    let plain = ruleset();
+    let setup = at(
+        &plain,
+        town(&plain, FortLevel::Castle, 0),
+        [None, None],
+        &[(0, "fixed", 50)],
+        &[(0, "fast", 20)],
+    );
+    let (mut s, _) = start(&plain, &setup, 3);
+    let before: Vec<u32> = s.stacks().iter().map(|st| st.count).collect();
+    for t in [0, 6, 7] {
+        damage_part(&mut s, t, u8::MAX, &mut events);
+        assert!(!s.siege.as_ref().unwrap().stands(t));
+    }
+    let after: Vec<u32> = s.stacks().iter().map(|st| st.count).collect();
+    assert_eq!(before, after);
 }
 
 // ---------------------------------------------------------------- BAT-SIE-018

@@ -131,10 +131,9 @@ impl SiegeState {
     }
 
     /// Target `t` holds the turret `id` (the battle's setup, BAT-SIE-016).
+    /// `t` is a keep's or a tower's target, below `MAX_WALL_TARGETS` (the ruleset's compiler).
     pub(crate) fn hold(&mut self, t: u8, id: StackId) {
-        if let Some(slot) = self.turrets.get_mut(usize::from(t)) {
-            *slot = Some(id);
-        }
+        self.turrets[usize::from(t)] = Some(id);
     }
 
     /// Whether the gate is destroyed (BAT-SIE-012).
