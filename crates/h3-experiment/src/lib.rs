@@ -17,7 +17,7 @@ use std::fmt::Write as _;
 
 use h3_map::writer::{
     ARMY_SLOTS, ARTIFACT_SLOTS, Ground, Hero, HeroArtifacts, Map, MapObject, Monster,
-    ObjectTemplate, PLAYERS, Patch, Pile, Player, Road, RoadKind, Terrain,
+    ObjectTemplate, PLAYERS, Patch, Pile, Player, Road, RoadKind, Terrain, Town, TownBuildings,
 };
 use serde::Deserialize;
 
@@ -52,6 +52,91 @@ pub const SLOT_NAMES: [&str; ARTIFACT_SLOTS] = [
     "war machine 4",
     "spell book",
     "misc 5",
+];
+/// Faction names of towns (`TOWNTYPE.TXT` order: the town object's subclass).
+pub const FACTIONS: [&str; 9] = [
+    "castle",
+    "rampart",
+    "tower",
+    "inferno",
+    "necropolis",
+    "dungeon",
+    "stronghold",
+    "fortress",
+    "conflux",
+];
+/// A town's buildings by name and their bit in the map (`docs/formats/h3m.md`, "Town
+/// buildings"): every faction's. The bit order is VCMI 1.7.5's (`config/gameConfig.json`,
+/// `mapFormat.restorationOfErathia.buildingsCommon`; GPL-2.0-or-later, the table ported); the map
+/// has no bit for the Village Hall, which every town has.
+const BUILDINGS: [(&str, u8); 36] = [
+    ("town hall", 0),
+    ("city hall", 1),
+    ("capitol", 2),
+    ("fort", 3),
+    ("citadel", 4),
+    ("castle", 5),
+    ("tavern", 6),
+    ("blacksmith", 7),
+    ("marketplace", 8),
+    ("resource silo", 9),
+    ("mage guild 1", 11),
+    ("mage guild 2", 12),
+    ("mage guild 3", 13),
+    ("mage guild 4", 14),
+    ("mage guild 5", 15),
+    ("shipyard", 16),
+    ("grail", 17),
+    ("dwelling 1", 22),
+    ("upgraded dwelling 1", 23),
+    ("horde 1", 24),
+    ("dwelling 2", 25),
+    ("upgraded dwelling 2", 26),
+    ("horde 2", 27),
+    ("dwelling 3", 28),
+    ("upgraded dwelling 3", 29),
+    ("horde 3", 30),
+    ("dwelling 4", 31),
+    ("upgraded dwelling 4", 32),
+    ("horde 4", 33),
+    ("dwelling 5", 34),
+    ("upgraded dwelling 5", 35),
+    ("horde 5", 36),
+    ("dwelling 6", 37),
+    ("upgraded dwelling 6", 38),
+    ("dwelling 7", 39),
+    ("upgraded dwelling 7", 40),
+];
+/// The special buildings by faction and their bits (VCMI 1.7.5, the same file's
+/// `mapFormat.restorationOfErathia.buildings`; Conflux's are not listed there).
+const SPECIAL_BUILDINGS: [(&str, &str, u8); 27] = [
+    ("castle", "lighthouse", 18),
+    ("castle", "brotherhood of the sword", 19),
+    ("castle", "stables", 20),
+    ("rampart", "mystic pond", 18),
+    ("rampart", "fountain of fortune", 19),
+    ("rampart", "treasury", 20),
+    ("tower", "artifact merchants", 10),
+    ("tower", "library", 18),
+    ("tower", "wall of knowledge", 19),
+    ("tower", "lookout tower", 20),
+    ("inferno", "brimstone stormclouds", 18),
+    ("inferno", "castle gate", 19),
+    ("inferno", "order of fire", 20),
+    ("necropolis", "cover of darkness", 18),
+    ("necropolis", "necromancy amplifier", 19),
+    ("necropolis", "skeleton transformer", 20),
+    ("dungeon", "artifact merchants", 10),
+    ("dungeon", "mana vortex", 18),
+    ("dungeon", "portal of summoning", 19),
+    ("dungeon", "battle scholar academy", 20),
+    ("stronghold", "escape tunnel", 18),
+    ("stronghold", "freelancers guild", 19),
+    ("stronghold", "ballista yard", 20),
+    ("stronghold", "hall of valhalla", 21),
+    ("fortress", "glyphs of fear", 18),
+    ("fortress", "blood obelisk", 19),
+    ("fortress", "cage of warlords", 20),
 ];
 /// Skill level names, 1-based.
 const LEVELS: [&str; 3] = ["Basic", "Advanced", "Expert"];
@@ -266,7 +351,8 @@ pub enum NameOrId {
     Id(u8),
 }
 
-/// The opponent: a wandering monster or a hero of the second player.
+/// The opponent: a wandering monster, a hero of the second player, or a town (E04c T5b) with or
+/// without a visiting hero.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Opponent {
@@ -276,9 +362,40 @@ pub struct Opponent {
     /// Number of creatures of the monster.
     #[serde(default)]
     pub count: Option<u16>,
-    /// A hero (owner "blue" by default for opponents).
+    /// A hero (owner "blue" by default for opponents); with a town, its visiting hero, on the
+    /// town's entrance.
     #[serde(default)]
     pub hero: Option<HeroSpec>,
+    /// A town whose entrance is the tile north of the encounter's hero (E04c T5b: sieges).
+    #[serde(default)]
+    pub town: Option<TownSpec>,
+}
+
+/// A town of the opponent's (E04c T5b). Its picture covers 8 columns and 6 rows up to two columns
+/// east of its entrance and the entrance's row; its blocked tiles are the 5 columns around the
+/// entrance on the entrance's row and the row above, and 3 on the row above those.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownSpec {
+    /// Faction ([`FACTIONS`]: castle, rampart, …, conflux).
+    pub faction: String,
+    /// "blue" (the default) or "neutral" (no visiting hero then).
+    #[serde(default = "blue")]
+    pub owner: String,
+    /// Built buildings by name ([`BUILDINGS`], the faction's special buildings); the Village Hall
+    /// is always built. Absent: the editor's standard set without a fort.
+    #[serde(default)]
+    pub buildings: Option<Vec<String>>,
+    /// Garrison as (creature, count), at most seven stacks; empty: the editor's default.
+    #[serde(default)]
+    pub garrison: Vec<(String, u16)>,
+    /// The garrison's tight formation.
+    #[serde(default)]
+    pub tight: bool,
+}
+
+fn blue() -> String {
+    "blue".into()
 }
 
 /// Something to write down: a single value or a table.
@@ -412,6 +529,7 @@ pub fn build_only(
         .collect::<Result<Vec<_>, String>>()?;
     let mut used_types = Vec::new();
     let mut heroes_per_player = [0usize; PLAYERS];
+    let mut blue_towns = 0usize;
     let mut text = String::new();
     let _ = writeln!(text, "# {} — results\n", spec.map.name);
     let _ = writeln!(
@@ -432,6 +550,7 @@ pub fn build_only(
     for (index, enc) in spec.encounter.iter().enumerate() {
         let index = u8::try_from(index).map_err(|_| "too many encounters".to_owned())?;
         let first_object = objects.len();
+        let mut placed_town = None;
         let x = ORIGIN + (index % columns) * COLUMN_STEP;
         let y = ORIGIN + (index / columns) * ROW_STEP;
         let ctx = |e: String| format!("encounter {}: {e}", enc.id);
@@ -473,6 +592,7 @@ pub fn build_only(
                 monster: Some(creature),
                 count: Some(count),
                 hero: None,
+                town: None,
             }) => {
                 let id = lookup(&tables.creatures, creature, "creature").map_err(ctx)?;
                 let template = tables
@@ -493,18 +613,50 @@ pub fn build_only(
                 monster: None,
                 count: None,
                 hero: Some(h),
+                town: None,
             }) => Some(add_hero(
                 h,
                 (x.saturating_add(1), y),
                 Some(&enc.id),
                 "blue",
             )?),
+            Some(Opponent {
+                monster: None,
+                count: None,
+                hero,
+                town: Some(t),
+            }) => {
+                let entrance = (x, y.saturating_sub(1));
+                let (town, mut summary) = town_object(t, tables, entrance, size).map_err(ctx)?;
+                if town.owner == Some(1) {
+                    blue_towns += 1;
+                }
+                let neutral = town.owner.is_none();
+                placed_town = Some(town);
+                if let Some(h) = hero {
+                    if neutral {
+                        return Err(ctx("a neutral town has no visiting hero".into()));
+                    }
+                    if h.at.is_some() {
+                        return Err(ctx("a town's hero stands on its entrance: no `at`".into()));
+                    }
+                    let visiting = add_hero(h, entrance, Some(&enc.id), "blue")?;
+                    summary = format!("{summary}; visiting hero: {visiting}");
+                }
+                Some(summary)
+            }
             Some(_) => {
                 return Err(ctx(
-                    "an opponent is either `monster` + `count` or `hero`".into()
+                    "an opponent is `monster` + `count`, `hero`, or `town` with or without `hero`"
+                        .into(),
                 ));
             }
         };
+        // The town before its visiting hero, the encounter's last object.
+        if let Some(town) = placed_town {
+            let visiting = enc.opponent.as_ref().is_some_and(|o| o.hero.is_some());
+            objects.insert(objects.len() - usize::from(visiting), MapObject::Town(town));
+        }
         encounter_text(&mut text, enc, &own, against.as_deref(), &more);
         if only.is_some_and(|id| id != enc.id) {
             objects.truncate(first_object);
@@ -520,6 +672,7 @@ pub fn build_only(
             MapObject::Hero(h) => Some(h.tile),
             MapObject::Monster(m) => Some(m.tile),
             MapObject::Pile(p) => Some(p.tile),
+            MapObject::Town(t) => Some(t.tile),
             MapObject::Ground(_) => None,
         })
         .collect();
@@ -535,7 +688,7 @@ pub fn build_only(
         computer: true,
         towns: 1,
     });
-    if heroes_per_player[1] > 0 {
+    if heroes_per_player[1] > 0 || blue_towns > 0 {
         players[1] = Some(Player {
             human: true,
             computer: true,
@@ -605,6 +758,102 @@ fn ground(g: &GroundSpec, tables: &Tables, size: u8) -> Result<MapObject, String
         tile: (x, y),
         template,
     }))
+}
+
+/// A town with its entrance on `entrance`, and the line that describes it in the template.
+fn town_object(
+    t: &TownSpec,
+    tables: &Tables,
+    entrance: (u8, u8),
+    size: u8,
+) -> Result<(Town, String), String> {
+    let faction = FACTIONS
+        .iter()
+        .position(|f| f.eq_ignore_ascii_case(t.faction.trim()))
+        .ok_or_else(|| format!("unknown faction `{}`", t.faction))?;
+    let template = tables
+        .towns
+        .iter()
+        .find(|(f, _)| *f == faction as u32)
+        .map(|(_, template)| template.clone())
+        .ok_or_else(|| format!("no town template for {}", t.faction))?;
+    let owner = match t.owner.as_str() {
+        "blue" => Some(1),
+        "neutral" => None,
+        other => return Err(format!("a town's owner is blue or neutral, not `{other}`")),
+    };
+    // The picture (8 columns, 6 rows) ends two columns east of the entrance, on its row.
+    let tile = (entrance.0.saturating_add(2), entrance.1);
+    if entrance.0 < 5 || entrance.1 < 5 || tile.0 >= size {
+        return Err(format!(
+            "a town with its entrance on {entrance:?} does not fit the map (its picture needs 5 \
+             columns west of the entrance, 2 east and 5 rows north): give the hero `at`"
+        ));
+    }
+    let buildings = match &t.buildings {
+        None => TownBuildings::Standard { fort: false },
+        Some(names) => {
+            let mut built = [0u8; 6];
+            for name in names {
+                let bit = building_bit(FACTIONS[faction], name)?;
+                built[usize::from(bit / 8)] |= 1 << (bit % 8);
+            }
+            TownBuildings::Custom {
+                built,
+                forbidden: [0; 6],
+            }
+        }
+    };
+    if t.garrison.len() > ARMY_SLOTS {
+        return Err(format!("a garrison of {} stacks", t.garrison.len()));
+    }
+    let mut garrison = [None; ARMY_SLOTS];
+    for (slot, (name, count)) in t.garrison.iter().enumerate() {
+        let creature = lookup(&tables.creatures, name, "creature")?;
+        if *count == 0 {
+            return Err(format!("an empty garrison stack of {name}"));
+        }
+        garrison[slot] = Some((creature as u16, *count));
+    }
+    let owner_name = if owner.is_some() { "Blue" } else { "Neutral" };
+    let mut faction_name = FACTIONS[faction].to_owned();
+    faction_name[..1].make_ascii_uppercase();
+    let built = t.buildings.as_ref().map_or_else(
+        || "the standard buildings without a fort".to_owned(),
+        |names| format!("Village Hall, {}", names.join(", ")),
+    );
+    let defenders = if t.garrison.is_empty() {
+        "the default garrison".to_owned()
+    } else {
+        let stacks: Vec<String> = t.garrison.iter().map(|(c, n)| format!("{n} {c}")).collect();
+        format!("garrison {}", stacks.join(", "))
+    };
+    let summary = format!("{owner_name} {faction_name} town ({built}); {defenders}");
+    let town = Town {
+        tile,
+        template,
+        owner,
+        garrison: (!t.garrison.is_empty()).then_some(garrison),
+        tight_formation: t.tight,
+        buildings,
+    };
+    Ok((town, summary))
+}
+
+/// A building's bit in the map, by its name or the faction's special building.
+fn building_bit(faction: &str, name: &str) -> Result<u8, String> {
+    let name = name.trim().to_ascii_lowercase();
+    BUILDINGS
+        .iter()
+        .find(|(n, _)| *n == name)
+        .map(|&(_, bit)| bit)
+        .or_else(|| {
+            SPECIAL_BUILDINGS
+                .iter()
+                .find(|(f, n, _)| *f == faction && *n == name)
+                .map(|&(_, _, bit)| bit)
+        })
+        .ok_or_else(|| format!("unknown building `{name}` for a {faction} town"))
 }
 
 fn terrain(name: &str) -> Result<Terrain, String> {
@@ -970,7 +1219,172 @@ mod tests {
                 )
                 .expect("template"),
             ],
+            // A Stronghold (E04c T5b), the game's line; no Castle template, to see the error.
+            towns: vec![(
+                6,
+                ObjectTemplate::from_objects_txt(
+                    "AVCstrx0.def 000001110000011110001111111111111111111111111111 \
+                     001000000000000000000000000000000000000000000000 011111111 011111111 98 6 1 0",
+                )
+                .expect("template"),
+            )],
         }
+    }
+
+    const SIEGE: &str = r#"
+        [map]
+        name = "Siege"
+        description = "d"
+        terrain = "rough"
+
+        [[encounter]]
+        id = "S1"
+        title = "A siege"
+        [encounter.hero]
+        type = "Sylvia"
+        specialty = "resource gold"
+        at = [10, 10]
+        primary = [1, 1, 1, 1]
+        army = [["Archangel", 2]]
+        [encounter.opponent.town]
+        faction = "Stronghold"
+        buildings = ["fort", "citadel", "tavern", "Escape Tunnel"]
+        garrison = [["Pikeman", 10], ["Archangel", 1]]
+        tight = true
+        [encounter.opponent.hero]
+        type = "Orrin"
+        specialty = "skill Archery"
+        primary = [0, 0, 0, 0]
+        army = [["Pikeman", 1]]
+    "#;
+
+    #[test]
+    fn a_town_stands_north_of_the_hero_with_its_visitor_on_the_entrance() {
+        let spec = parse(SIEGE).expect("spec");
+        let (map, text) = build(&spec, &tables(), "t.h3m").expect("build");
+        let [
+            MapObject::Hero(attacker),
+            MapObject::Town(town),
+            MapObject::Hero(visitor),
+        ] = &map.objects[..]
+        else {
+            panic!("not a hero, a town and its visitor: {:?}", map.objects);
+        };
+        assert_eq!((attacker.tile, attacker.owner), ((10, 10), 0));
+        // The entrance two columns west of the town's position, north of the attacker.
+        assert_eq!(
+            (town.tile, town.owner, town.template.subclass),
+            ((12, 9), Some(1), 6)
+        );
+        assert_eq!((visitor.tile, visitor.owner), ((10, 9), 1));
+        // Fort 3, Citadel 4, Tavern 6, the Escape Tunnel 18 (the Stronghold's).
+        assert_eq!(
+            town.buildings,
+            TownBuildings::Custom {
+                built: [0b0101_1000, 0, 0b0000_0100, 0, 0, 0],
+                forbidden: [0; 6]
+            }
+        );
+        assert_eq!(
+            town.garrison.map(|g| g[..2].to_vec()),
+            Some(vec![Some((0, 10)), Some((1, 1))])
+        );
+        assert!(town.tight_formation && map.players[1].is_some());
+        assert!(text.contains(
+            "- Opponent: Blue Stronghold town (Village Hall, fort, citadel, tavern, Escape Tunnel); \
+             garrison 10 Pikeman, 1 Archangel; visiting hero: Blue hero **S1**"
+        ));
+        // A neutral town with the standard buildings and the default garrison, and no Blue player.
+        let neutral = SIEGE
+            .replace(
+                "faction = \"Stronghold\"",
+                "faction = \"stronghold\"\nowner = \"neutral\"",
+            )
+            .replace(
+                "buildings = [\"fort\", \"citadel\", \"tavern\", \"Escape Tunnel\"]\n",
+                "",
+            )
+            .replace("garrison = [[\"Pikeman\", 10], [\"Archangel\", 1]]\n", "");
+        let neutral = &neutral[..neutral.find("[encounter.opponent.hero]").expect("hero")];
+        let (map, text) = build(&parse(neutral).expect("spec"), &tables(), "t.h3m").expect("build");
+        let MapObject::Town(town) = &map.objects[1] else {
+            panic!("not a town: {:?}", map.objects[1]);
+        };
+        assert_eq!(
+            (town.owner, town.garrison, town.buildings),
+            (None, None, TownBuildings::Standard { fort: false })
+        );
+        assert!(map.players[1].is_none());
+        assert!(text.contains(
+            "Neutral Stronghold town (the standard buildings without a fort); the default garrison"
+        ));
+    }
+
+    #[test]
+    fn rejects_mistakes_in_a_town() {
+        let hero_part = SIEGE.find("[encounter.opponent.hero]").expect("hero");
+        for (from, to, error) in [
+            (
+                "faction = \"Stronghold\"",
+                "faction = \"Castle\"",
+                "no town template for Castle",
+            ),
+            (
+                "faction = \"Stronghold\"",
+                "faction = \"Elves\"",
+                "unknown faction `Elves`",
+            ),
+            (
+                "tight = true",
+                "tight = true\nowner = \"red\"",
+                "a town's owner is blue or neutral, not `red`",
+            ),
+            (
+                "\"Escape Tunnel\"",
+                "\"Blood Obelisk\"",
+                "unknown building `blood obelisk` for a stronghold town",
+            ),
+            (
+                "[\"Pikeman\", 10]",
+                "[\"Pikeman\", 0]",
+                "an empty garrison stack of Pikeman",
+            ),
+            (
+                "[\"Pikeman\", 10]",
+                "[\"Imp\", 1]",
+                "unknown creature `Imp`",
+            ),
+            ("at = [10, 10]", "at = [4, 10]", "does not fit the map"),
+            ("at = [10, 10]", "at = [10, 5]", "does not fit the map"),
+            ("at = [10, 10]", "at = [34, 10]", "does not fit the map"),
+            (
+                "tight = true",
+                "tight = true\nowner = \"neutral\"",
+                "a neutral town has no visiting hero",
+            ),
+            (
+                "type = \"Orrin\"",
+                "type = \"Orrin\"\nat = [1, 1]",
+                "a town's hero stands on its entrance: no `at`",
+            ),
+            (
+                "[encounter.opponent.town]",
+                "[encounter.opponent]\nmonster = \"Pikeman\"\ncount = 1\n[encounter.opponent.town]",
+                "an opponent is `monster` + `count`, `hero`, or `town`",
+            ),
+        ] {
+            let text = SIEGE.replace(from, to);
+            let err = build(&parse(&text).expect("spec"), &tables(), "t.h3m").unwrap_err();
+            assert!(err.contains(error), "{from} -> {to}: {err}");
+        }
+        let eight = format!(
+            "{}garrison = [{}]\n{}",
+            &SIEGE[..SIEGE.find("garrison").expect("garrison")],
+            ["[\"Pikeman\", 1]"; 8].join(", "),
+            &SIEGE[SIEGE.find("tight").expect("tight")..hero_part],
+        );
+        let err = build(&parse(&eight).expect("spec"), &tables(), "t.h3m").unwrap_err();
+        assert!(err.contains("a garrison of 8 stacks"), "{err}");
     }
 
     const SPEC: &str = r#"
@@ -1307,7 +1721,7 @@ mod tests {
             .filter_map(|o| match o {
                 MapObject::Hero(h) => Some(h),
                 MapObject::Monster(_) => panic!("no monsters"),
-                MapObject::Pile(_) | MapObject::Ground(_) => None,
+                MapObject::Pile(_) | MapObject::Ground(_) | MapObject::Town(_) => None,
             })
             .collect();
         // The encounter's hero, its `also` heroes, then the opponent beside the hero.

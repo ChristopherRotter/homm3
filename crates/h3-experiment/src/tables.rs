@@ -6,7 +6,7 @@ use std::path::Path;
 use h3_formats::exe;
 use h3_formats::lod::LodArchive;
 use h3_formats::text::{TextTable, decode_windows_1252};
-use h3_map::writer::{ARTIFACT_SLOTS, GROUND_OBJECTS, ObjectTemplate};
+use h3_map::writer::{ARTIFACT_SLOTS, GROUND_OBJECTS, ObjectTemplate, TOWN_OBJECT};
 
 /// Object class of a fixed wandering monster (subclass = creature id).
 const MONSTER_CLASS: u32 = 54;
@@ -78,6 +78,8 @@ pub struct Tables {
     /// Special-ground templates (`Objects.txt`, the classes of [`GROUND_OBJECTS`]; E04c T3), in
     /// the file's order.
     pub grounds: Vec<ObjectTemplate>,
+    /// Town templates (`Objects.txt`, class [`TOWN_OBJECT`]) as (faction, template; E04c T5b).
+    pub towns: Vec<(u32, ObjectTemplate)>,
 }
 
 impl Tables {
@@ -191,6 +193,7 @@ impl Tables {
                 .collect::<Vec<_>>()
         };
         let (monsters, piles) = (of_class(MONSTER_CLASS), of_class(PILE_CLASS));
+        let towns = of_class(TOWN_OBJECT);
         let grounds = templates
             .iter()
             .filter(|t| GROUND_OBJECTS.contains(&t.class))
@@ -210,6 +213,7 @@ impl Tables {
             monsters,
             piles,
             grounds,
+            towns,
         })
     }
 
@@ -271,7 +275,7 @@ mod tests {
     }
 
     #[test]
-    fn objects_txt_gives_the_monster_pile_and_ground_templates() {
+    fn objects_txt_gives_the_monster_pile_ground_and_town_templates() {
         let mut artifact = vec!["Ballista".to_owned(), "x".to_owned()];
         artifact.extend((0..ARTIFACT_SLOTS).map(|i| if i == 4 { "x" } else { "" }.to_owned()));
         let artifacts = TextTable {
@@ -282,7 +286,8 @@ mod tests {
         let objects = format!(
             "header\nAvWPike.def {mask} 54 0 2 0\nAVTwood0.def {mask} 79 0 5 0\n\
              AVTmerc0.def {mask} 79 1 5 0\nAVA0079.def {mask} 5 79 4 0\nbroken line\n\
-             AVXcf0.def {mask} 222 0 0 1\nAVXcg5.def {mask} 223 0 0 1\n"
+             AVXcf0.def {mask} 222 0 0 1\nAVXcg5.def {mask} 223 0 0 1\n\
+             AVCstrx0.def {mask} 98 6 1 0\nAVCranx0.def {mask} 77 0 1 0\n"
         );
         let (heroes, creatures) = (table(&["Orrin"]), table(&["Pikeman"]));
         let (skills, spells) = (table(&["Archery"]), table(&["Combat Spells", "Bless"]));
@@ -314,6 +319,8 @@ mod tests {
             .map(|g| (g.def.as_str(), g.class))
             .collect();
         assert_eq!(grounds, [("AVXcf0.def", 222), ("AVXcg5.def", 223)]);
+        // Towns of a fixed faction only (E04c T5b), not the random town (77).
+        assert_eq!(ids(&t.towns), [(6, "AVCstrx0.def".to_owned())]);
         assert_eq!(t.spells, ["Bless"]);
         assert_eq!(t.specialty_text(0), "resource mercury");
         // Slot column 4 (right ring, read in reverse order from field 2) holds the "x".

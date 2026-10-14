@@ -243,9 +243,20 @@ experiment writer lays east–west roads only.
 
 **What the experiment writer writes** (`h3_map::writer`): one level, a base terrain with
 rectangles of other terrains (water among them, its land neighbours with the coast flag `0x40`,
-E04c T3), east–west roads, players without towns (Red and, with heroes of its
-own, Blue), heroes (their own fields or their hero type's), wandering monsters (class 54),
+E04c T3), east–west roads, players without a main town (Red and, with heroes or a town of
+its own, Blue), heroes (their own fields or their hero type's), wandering monsters (class 54),
 since E08 T16b resource piles (class 79 by resource, the template from `Objects.txt`, the body
 without a message: amount 0 is drawn when the game starts) and, since E04c T3, the special
-grounds (classes 21, 46, 222–231, no body), written before the other objects. `h3-map`'s read-back test reads each
+grounds (classes 21, 46, 222–231, no body), written before the other objects, and since E04c T5b
+towns of a fixed faction (class 98, the template from `Objects.txt`: its entrance two columns west
+of its position; no name, no events, no required or banned spells, the owner's alignment).
+
+**Town buildings** (a town's custom `built` and `forbidden` bits; VCMI 1.7.5's
+`config/gameConfig.json`, `mapFormat.restorationOfErathia`): 0 Town Hall, 1 City Hall, 2 Capitol,
+3 Fort, 4 Citadel, 5 Castle, 6 Tavern, 7 Blacksmith, 8 Marketplace, 9 Resource Silo, 10 the Tower's
+and the Dungeon's Artifact Merchants, 11–15 Mage Guild 1–5, 16 Shipyard, 17 Grail, 18–21 the
+faction's special buildings (Castle: 18 Lighthouse, 19 Brotherhood of the Sword, 20 Stables;
+Stronghold: 18 Escape Tunnel, …; `h3-experiment`'s table), 22, 25, 28, 31, 34 the dwellings of
+levels 1–5 with their upgrades after each and a horde slot after that (24, 27, 30, 33, 36), 37 and
+38 level 6, 39 and 40 level 7. The Village Hall has no bit: every town has it. `h3-map`'s read-back test reads each
 kind back and imports a random pile as its typed pile without an amount.
