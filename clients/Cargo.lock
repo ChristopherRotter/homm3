@@ -228,6 +228,7 @@ dependencies = [
  "h3-protocol",
  "h3-render",
  "h3-sdl",
+ "nanomp3",
  "serde",
  "toml 1.1.8+spec-1.1.0",
 ]
@@ -274,6 +275,21 @@ checksum = "1fa76a2c86f704bdb222d66965fb3d63269ce38518b83cb0575fca855ebb6316"
 dependencies = [
  "adler2",
 ]
+
+[[package]]
+name = "nanomp3"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acd9a8d0592a17ee5211aae2f976e6dc2f6846135d1f49665b3f19a7afd23435"
+dependencies = [
+ "nanomp3-core",
+]
+
+[[package]]
+name = "nanomp3-core"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63fa2238e662d3d3c1a71168b3278f23422cf9bf76f6943ee6b1c2581d74eb5c"
 
 [[package]]
 name = "num-traits"

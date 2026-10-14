@@ -12,21 +12,25 @@ depends = ["base"]
 key = "pixie"  # original id 118
 def = "cpixie.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "piximove", attack = "pixiattk", wince = "pixiwnce", death = "pixikill", defend = "pixidfnd" }
 
 [[creature]]
 key = "sprite"  # original id 119
 def = "csprite.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "sprtmove", attack = "sprtattk", wince = "sprtwnce", death = "sprtkill", defend = "sprtdfnd" }
 
 [[creature]]
 key = "psychic_elemental"  # original id 120
 def = "CpsyEl.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "psycmove", attack = "psycattk", wince = "psycwnce", death = "psyckill", defend = "psycdfnd" }
 
 [[creature]]
 key = "magic_elemental"  # original id 121
 def = "CmagEl.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "mgelmove", attack = "mgelattk", wince = "mgelwnce", death = "mgelkill", defend = "mgeldfnd" }
 
 [[creature]]
 key = "ice_elemental"  # original id 123
@@ -36,11 +40,13 @@ attack_climax = 4
 missile = "PiceE.def"
 missile_offsets = [[28, -107], [43, -99], [18, -92]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "icelmove", attack = "icelattk", wince = "icelwnce", shot = "icelshot", death = "icelkill", defend = "iceldfnd" }
 
 [[creature]]
 key = "magma_elemental"  # original id 125
 def = "cstone.def"
 times = [9000, 385, 500, 115]
+sounds = { move = "magmmove", attack = "magmattk", wince = "magmwnce", death = "magmkill", defend = "magmdfnd" }
 
 [[creature]]
 key = "storm_elemental"  # original id 127
@@ -50,41 +56,49 @@ attack_climax = 4
 missile = "cprgtix.def"
 missile_offsets = [[50, -100], [80, -80], [45, -40]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "stormove", attack = "storattk", wince = "storwnce", shot = "storshot", death = "storkill", defend = "stordfnd" }
 
 [[creature]]
 key = "energy_elemental"  # original id 129
 def = "cnrg.def"
 times = [9000, 335, 500, 115]
+sounds = { move = "enermove", attack = "enerattk", wince = "enerwnce", death = "enerkill", defend = "enerdfnd" }
 
 [[creature]]
 key = "firebird"  # original id 130
 def = "cfbird.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "firbmove", attack = "firbattk", wince = "firbwnce", death = "firbkill", defend = "firbdfnd" }
 
 [[creature]]
 key = "phoenix"  # original id 131
 def = "cphx.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "phoemove", attack = "phoeattk", wince = "phoewnce", death = "phoekill", defend = "phoedfnd" }
 
 [[creature]]
 key = "azure_dragon"  # original id 132
 def = "CADRGN.def"
 times = [9000, 300, 500, 115]
+sounds = { move = "azurmove", attack = "azurattk", wince = "azurwnce", death = "azurkill", defend = "azurdfnd" }
 
 [[creature]]
 key = "crystal_dragon"  # original id 133
 def = "Ccdrgn.def"
 times = [9000, 300, 500, 115]
+sounds = { move = "crysmove", attack = "crysattk", wince = "cryswnce", death = "cryskill", defend = "crysdfnd" }
 
 [[creature]]
 key = "faerie_dragon"  # original id 134
 def = "CFDRGN.def"
 times = [9000, 300, 500, 115]
+sounds = { move = "faermove", attack = "faerattk", wince = "faerwnce", death = "faerkill", defend = "faerdfnd" }
 
 [[creature]]
 key = "rust_dragon"  # original id 135
 def = "CRsDgn.def"
 times = [9000, 300, 500, 115]
+sounds = { move = "rustmove", attack = "rustattk", wince = "rustwnce", death = "rustkill", defend = "rustdfnd" }
 
 [[creature]]
 key = "enchanter"  # original id 136
@@ -94,6 +108,7 @@ attack_climax = 6
 missile = "pmagex.def"
 missile_offsets = [[37, -98], [62, -53], [28, 3]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "enchmove", attack = "enchattk", wince = "enchwnce", shot = "enchshot", death = "enchkill", defend = "enchdfnd" }
 
 [[creature]]
 key = "sharpshooter"  # original id 137
@@ -103,6 +118,7 @@ attack_climax = 11
 missile = "pelfx.def"
 missile_offsets = [[32, -77], [40, -61], [18, -55]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "hcrsmove", attack = "hcrsattk", wince = "hcrswnce", shot = "hcrsshot", death = "hcrskill", defend = "hcrsdfnd" }
 
 [[creature]]
 key = "halfling"  # original id 138
@@ -112,33 +128,40 @@ attack_climax = 10
 missile = "Phalf.def"
 missile_offsets = [[32, -77], [40, -61], [18, -55]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+sounds = { move = "halfmove", attack = "halfattk", wince = "halfwnce", shot = "halfshot", death = "halfkill", defend = "halfdfnd" }
 
 [[creature]]
 key = "peasant"  # original id 139
 def = "cpeas.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "psntmove", attack = "psntattk", wince = "psntwnce", death = "psntkill", defend = "psntdfnd" }
 
 [[creature]]
 key = "boar"  # original id 140
 def = "cboar.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "boarmove", attack = "boarattk", wince = "boarwnce", death = "boarkill", defend = "boardfnd" }
 
 [[creature]]
 key = "mummy"  # original id 141
 def = "cmummy.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "mumymove", attack = "mumyattk", wince = "mumywnce", death = "mumykill", defend = "mumydfnd" }
 
 [[creature]]
 key = "nomad"  # original id 142
 def = "cnomad.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "nmadmove", attack = "nmadattk", wince = "nmadwnce", death = "nmadkill", defend = "nmaddfnd" }
 
 [[creature]]
 key = "rogue"  # original id 143
 def = "crogue.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "agrmmove", attack = "agrmattk", wince = "agrmwnce", death = "agrmkill", defend = "agrmdfnd" }
 
 [[creature]]
 key = "troll"  # original id 144
 def = "ctroll.def"
 times = [9000, 500, 500, 115]
+sounds = { move = "trllmove", attack = "trllattk", wince = "trllwnce", death = "trllkill", defend = "trlldfnd" }

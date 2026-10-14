@@ -124,6 +124,18 @@ fn play(options: &Options) -> Result<Vec<String>, String> {
         let _ = writeln!(log, "{}", describe(*t, moment));
     }
     write(&dir.join("frames.txt"), log.as_bytes())?;
+    // The creatures' sounds as the timeline starts and stops them (T5b), with their entries.
+    let sounds = battle.stack_sounds();
+    let mut cues = String::new();
+    for c in &battle.timeline.cues {
+        let name = sounds
+            .get(&c.stack)
+            .and_then(|s| s.name(c.sound))
+            .unwrap_or("-");
+        let what = if c.stop { "stop" } else { "start" };
+        let _ = writeln!(cues, "{} {} {:?} {what} {name}", c.at, c.stack, c.sound);
+    }
+    write(&dir.join("cues.txt"), cues.as_bytes())?;
     battle.load_batch(frames.iter().map(|(_, _, list)| list.as_slice()), &[])?;
     let (drawn, took) = timed(|| {
         let mut drawn = 0;
@@ -142,7 +154,7 @@ fn play(options: &Options) -> Result<Vec<String>, String> {
     let drawn = drawn?;
     lines.push(format!(
         "{} commands, {} ms at speed {}; {} frames ({drawn} drawn{} in {} ms), \
-         their moments in {}",
+         their moments in {}, the sounds' cues in cues.txt",
         battle.commands,
         battle.timeline.end,
         options.source.speed.setting(),

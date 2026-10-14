@@ -59,6 +59,16 @@ const MISSILE_FIRST: usize = 2;
 const MISSILE_COUNT: usize = 145;
 /// The shooter's creature flag (the switch runs only for it).
 const SHOOTER: u32 = 0x4;
+/// A war machine's flag (`installation.md` §5).
+const WAR_MACHINE: u32 = 0x40;
+/// The Ballista, whose strike sounds its shot (0x43DA9D).
+const BALLISTA: usize = 146;
+/// The Master Genies and the Ogre Magi: no shooters, but a shot's sound for their casts
+/// (0x43DBCF).
+const CASTERS: [usize; 2] = [37, 91];
+/// The Devils, Arch Devils, Vampires and Vampire Lords: sounds before and after a move
+/// (0x43DC27).
+const MOVE_SOUNDS: [usize; 4] = [54, 55, 62, 63];
 /// `cranim.txt` as 0x50C810 reads it: from record 2, groups of rows with three records between.
 const CRANIM_GROUPS: [usize; 12] = [14, 14, 14, 14, 14, 14, 14, 14, 6, 14, 13, 4];
 const CRANIM_CELLS: usize = 24;
@@ -150,6 +160,7 @@ struct Cranim {
 /// What the executable and the text tables give, by original id or index.
 struct Harvest {
     defs: Vec<String>,
+    sounds: Vec<String>,
     missiles: BTreeMap<usize, String>,
     cranim: Vec<Cranim>,
     names: BTreeMap<String, usize>,
@@ -270,6 +281,10 @@ fn read_harvest(exe: &[u8], cranim: &TextTable, crtraits: &TextTable) -> Result<
     }
     Ok(Harvest {
         defs: creatures.iter().map(|c| c.def_name.clone()).collect(),
+        sounds: creatures
+            .iter()
+            .map(|c| sounds(usize::from(c.id), &c.sound, c.flags))
+            .collect(),
         missiles,
         cranim: cranim_rows(cranim)?,
         names: creature_names(crtraits)?,
@@ -280,6 +295,40 @@ fn read_harvest(exe: &[u8], cranim: &TextTable, crtraits: &TextTable) -> Result<
         ship_to_ship: string(SHIP_TO_SHIP)?,
         ship: string(SHIP)?,
     })
+}
+
+/// A creature's sounds as `stack_load_graphics` loads them (0x43D9F0, design §8.2): its prefix
+/// and a suffix each, lower-cased. A war machine has no move sound and sounds its wince when it
+/// strikes or defends (the Ballista its shot when it strikes); only shooters and [`CASTERS`] have
+/// a shot's; only [`MOVE_SOUNDS`] a move's start and end. The fields of an inline TOML table.
+fn sounds(id: usize, prefix: &str, flags: u32) -> String {
+    let machine = flags & WAR_MACHINE != 0;
+    let attack = if id == BALLISTA {
+        "shot"
+    } else if machine {
+        "wnce"
+    } else {
+        "attk"
+    };
+    let shot = flags & SHOOTER != 0 || CASTERS.contains(&id);
+    let moves = MOVE_SOUNDS.contains(&id);
+    let fields = [
+        ("move", (!machine).then_some("move")),
+        ("attack", Some(attack)),
+        ("wince", Some("wnce")),
+        ("shot", shot.then_some("shot")),
+        ("death", Some("kill")),
+        ("defend", Some(if machine { "wnce" } else { "dfnd" })),
+        ("start", moves.then_some("ext1")),
+        ("end", moves.then_some("ext2")),
+    ];
+    fields
+        .iter()
+        .filter_map(|(field, suffix)| {
+            suffix.map(|s| format!("{field} = \"{}{s}\"", prefix.to_ascii_lowercase()))
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// The projectile a shooter's case loads, none for the default case.
@@ -448,6 +497,9 @@ fn write_table(pack: &Pack, h: &Harvest, gaps: &mut Vec<String>) -> Result<Strin
         }
         if anim.angles != [0; 12] {
             let _ = writeln!(t, "missile_angles = [{}]", numbers(&anim.angles));
+        }
+        if let Some(sounds) = h.sounds.get(original) {
+            let _ = writeln!(t, "sounds = {{ {sounds} }}");
         }
     }
     for (index, terrain) in pack.terrain.iter().enumerate() {

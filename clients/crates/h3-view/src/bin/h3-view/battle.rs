@@ -3,7 +3,7 @@
 //! the layout, the timeline at the original's timing with the viewer's own fidgets, and, once
 //! loaded, the checkpoint batch. An adapter: it reads files and the archives.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -15,7 +15,7 @@ use h3_view::compose::compose;
 use h3_view::layout::{self, BattleLayout};
 use h3_view::record::{self, Record};
 use h3_view::scene::{self, Draw, Moment};
-use h3_view::tables::Tables;
+use h3_view::tables::{Sounds, Tables};
 
 use crate::gate::timed;
 use crate::render::{lookup, read_archives, write};
@@ -194,6 +194,22 @@ impl Battle {
     /// A DEF of the batch.
     pub fn sprite(&self, name: &str) -> Option<&Sprite> {
         self.batch.sprite(name)
+    }
+
+    /// The sounds of each stack living at the start, by its id (E17 M2 T5b).
+    pub fn stack_sounds(&self) -> BTreeMap<u8, Sounds> {
+        let keys = &self.record.header.manifest.keys.creatures;
+        self.record
+            .first_snapshot()
+            .map(|s| s.stacks.as_slice())
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|s| {
+                let key = keys.get(usize::from(s.creature))?;
+                let creature = self.tables.creatures.get(key)?;
+                Some((s.id, creature.sounds.clone()))
+            })
+            .collect()
     }
 
     /// The frame's size, as the layout gives it.

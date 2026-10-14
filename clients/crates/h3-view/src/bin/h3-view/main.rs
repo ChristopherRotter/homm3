@@ -2,6 +2,7 @@
 //! and opens the window (through `h3-sdl`); what it computes comes from the pure crates.
 
 mod assets;
+mod audio;
 mod battle;
 mod bot;
 mod gate;
@@ -12,6 +13,7 @@ mod render;
 mod scenario;
 mod sequences;
 mod situation;
+mod sounds;
 mod sprite;
 mod window;
 
@@ -55,19 +57,23 @@ commands:
           with a simple bot in both seats (its obstacles from the seed, default 1), or a record
           is read; its commands are played at the original's timing at combat speed --speed
           (h3_view::anim) and every distinct frame is drawn (from --from to --to ms). Writes the
-          record and each frame's moment (frames.txt) to <out> (default
-          clients/out/play/<stem>[-s<seed>]); --png also writes each frame as f<ms>.png there.
+          record, each frame's moment (frames.txt) and the creatures' sound cues (cues.txt) to
+          <out> (default clients/out/play/<stem>[-s<seed>]); --png also writes each frame as
+          f<ms>.png there.
   window <scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
          [--install <dir>] [--scale <n>] [--vsync] [--drawn-cursor] [--fullscreen] [--from <ms>]
-         [--check <s> | --measure <s>]
+         [--mute] [--check <s> | --measure <s>]
           a battle in a window (SDL 3, h3-sdl), as `play` loads it, at the original's frame
           times from --from ms: each frame is shown when it falls due, at the largest integer
           scale that fits the display (--scale), vsync off unless --vsync, the game's cursor as
           the hardware cursor (--drawn-cursor: drawn into the frame); past the end the battle
-          idles. Keys: Space pause, Right a frame while paused, R restart, F fullscreen, V
-          vsync, C the cursor's kind, Esc quit. --measure runs <s> seconds unattended and prints
-          how late each frame showed; --check also reads every frame back and compares it with
-          the frame drawn headless (exit 1 on a difference).
+          idles. With sound (the installation's sound archives and MP3 folder; none with
+          --mute): from the battle's start its start sound plays while the clock waits, then
+          the battle music loops and the creatures' sounds follow their animations. Keys: Space
+          pause, Right a frame while paused, R restart, F fullscreen, V vsync, C the cursor's
+          kind, M the music, E the creatures' sounds, Esc quit. --measure runs <s> seconds
+          unattended and prints how late each frame showed; --check also reads every frame back
+          and compares it with the frame drawn headless (exit 1 on a difference).
   situation <scenario.toml> [--packs <dir>] [--install <dir>] [--out <file.h3m>]
           writes the original's map for a scenario's battle, for the capture harness
           (clients/capture/README.md): Red's hero (human) just west of Blue's (computer) on the
