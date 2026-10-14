@@ -65,8 +65,8 @@ Brotherhood of the Sword +2 more (`code`); luck from the town (Rampart's Fountai
 | Moat | as §1; a stop, damage on entering and on acting in place, −3 defense not floored (§7.28) | — | `moats.json`, `moatAbility`; defense floored at 0 (D-10) | as §1; stop, −3 defense, per-round damage | T5 |
 | Tower's land mines | ten hidden mines, at least 150 or the hero's Land Mine (§7.28, D-9) | — | `towerMoat`: 150 | "minimum 150 points of damage" | T5 |
 | Shooting through walls | halved, a grid line test, the open gate free (§7.28, D-8) | — | halved, the shortest hex path | towers bypass the penalties | T5 |
-| Catapult and Ballistics | the Catapult on hex 119; its shot not read | `BALLIST.TXT`: hit chances keep/tower/gate/wall none 5/10/25/50 %, Basic and Advanced 7/15/30/60 %, Expert 10/20/40/75 %; shots 1, 1, 2, 2; damage 0/1/2 by 10/60/30 % (none), 0/50/50 % (Basic, Advanced), always 2 (Expert) | from the same table | Basic: control; Advanced: two shots; Expert: "always hits the intended target" | T6 |
-| Earthquake | not read | `SPTRAITS.TXT` | spell config | damages walls | T6 |
+| Catapult and Ballistics | the Catapult on hex 119; its turn, automatic aim, shot and the parts' damage (§7.29, D-11 to D-13) | `BALLIST.TXT`: hit chances keep/tower/gate/wall none 5/10/25/50 %, Basic and Advanced 7/15/30/60 %, Expert 10/20/40/75 %; shots 1, 1, 2, 2; damage 0/1/2 by 10/60/30 % (none), 0/50/50 % (Basic, Advanced), always 2 (Expert) | from the same table | Basic: control; Advanced: two shots; Expert: "always hits the intended target" | T6 |
+| Earthquake | 2, 2, 3, 4 hits of 1 by mastery; the draw (§7.29, D-14, D-15; S-08) | `SPTRAITS.TXT` | `other.json`: uniform among the standing parts, the attacker only | "one point of damage to two (three, four) random walls/arrow towers"; S-08 | T6 |
 | Arrow towers | as §1 | stats in `CRTRAITS.TXT` | as §1 | as §1; no luck, defense ignored, no modifiers; Artillery controls | T7 (S-06, S-07) |
 | Defender's bonuses | as §1 | — | town buildings' bonuses | town pages | T8 |
 | Surrender, retreat | surrender never for the besieged; retreat only with the Escape Tunnel | — | the same | — | T8 |
@@ -141,7 +141,35 @@ follows the result (the adventure lane).
   Tower's ten hidden mines instead of a moat. Small differences, the code followed without a
   question: `vcmi` lets a Force Field on 94 keep the gate from opening and only living stacks keep
   it open (the `code` tests stacks and corpses, no Force Field).
-- **S-06, S-07, S-08** (`E04-quirks.md`: the towers, Earthquake) are classified with T6 and T7.
+- **D-11 The Mid-Upper Wall's hex** (T6; `code` 0x63BE60: target 2, the Mid-Upper Wall, opens wall
+  hex 62 when destroyed; `vcmi`: `OVER_GATE` at 78, 62 indestructible). The code's 62 lies two rows
+  above the gate as the Mid-Lower Wall's 130 two below, and at the picture's height (screen y 212,
+  row 3). Recommendation: the code; a confirmation row. **The user (BAT-Q43): the code.**
+- **D-12 A missed shot** (T6; `code` 0x445EC0: the nearest other standing wall of 1, 2, 5, 4 by the
+  difference of the target indices, a tie by `random(1, 100)` ≤ 50, the aimed target if no other
+  wall stands; `vcmi`: a random standing wall, the gate only without walls, the towers and keep
+  only without either). Both roll the damage (0, 1, 2) apart from the hit. Recommendation: the
+  code. **The user (BAT-Q43): the code.**
+- **D-13 The automatic Catapult's aim** (T6; `code` 0x473C00: the weakest standing wall, ties at
+  random, then the gate, the keep, the upper and the lower tower; `vcmi`: not read, its automatic
+  shot names no target and lands like a miss; the `wiki`: only that Ballistics gives control).
+  Batch 3c's six automatic shots hit walls only (both readings allow it). Recommendation: the code;
+  a confirmation row. **The user (BAT-Q43): the code.**
+- **D-14 Earthquake's draw** (T6; `code` 0x5A7C80: per hit `n` = the targets with hit points above
+  their hits drawn, then the n-th target with hit points above 0, so a doomed target can be drawn
+  again and the last ones spared; `vcmi`: uniform among the parts standing at the cast, each hit
+  1; the `wiki`: "random walls/arrow towers"). Recommendation: the code (not a quirk: the odds
+  only). **The user (BAT-Q43): the code.**
+- **D-15 The defender's Earthquake** (T6; `code` 0x59ED29: any side in a battle with a fort; `vcmi`:
+  refused to the defender (its smart target); the `wiki`: silent). Recommendation: the code. **The
+  user (BAT-Q43): the code.**
+- **S-08 Earthquake disables the first defending stack** (exploit-fix, `E04-quirks.md`).
+  **Confirmed by the code** (T6, §7.29): Earthquake's draw has no fort test, so at a Fort or
+  Citadel the absent towers and keep (2 hit points from `WALLS.TXT`) are drawn too, and an absent
+  turret's destruction marks dead the stack its turret record names, the defender's first. **The
+  user (BAT-Q43):** the fix keeps the absent parts in the draw (they soak hits, so the real walls
+  keep the original's odds) and harms no stack (ledger BAT-QUIRK-22).
+- **S-06, S-07** (`E04-quirks.md`: the towers) are classified with T7.
 
 ## 5. Experiments
 
@@ -159,4 +187,9 @@ through the closed and the open gate (D-8) and the Tower's mines (D-9), every va
 Seen on the way, for T6 and T7: at every round's start the keep shoots first, then the Catapult
 (without Ballistics on its own, one shot); it destroyed wall parts but did not hit the gate in
 these six shots. The gate is one of its targets (`BALLIST.TXT`'s gate column; the user expects
-hits on it): T6 investigates its choice of target and what a destroyed gate does.
+hits on it): T6 investigates its choice of target and what a destroyed gate does. **Read in T6
+(§7.29):** without Ballistics the Catapult (one shot) aims at the weakest standing wall while one
+stands and a miss lands on a wall, so it hits the gate only once every wall is down; with
+Ballistics the side aims, the gate too, and a second shot (Advanced, Expert, the Cyclops King)
+moves on to a neighbour of a fallen target, the gate among them. A destroyed gate lets both sides
+pass, and its drawbridge's hex is no longer moat.

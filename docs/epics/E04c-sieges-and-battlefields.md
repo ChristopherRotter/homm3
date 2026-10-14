@@ -1,7 +1,7 @@
 # E04c — Sieges and special battlefields
 
 Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2 closed: T3 (#179), T4 (#180), BAT-Q39 and BAT-Q40 answered; increment 3, T5: the seam ADR-0023 (#183), towns on the experiment maps (#184), the reading (BAT-Q41, BAT-Q42), the battle's walls, gate and moat (#187), the siege batch 3c run by
-an agent (T5e): increment 3 done, the checkpoint next) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
+an agent (T5e): increment 3 done (#190); increment 4, T6, refined 2026-10-14 (BAT-Q43)) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
 
@@ -74,8 +74,10 @@ request and towns on the experiment maps; siege batches run by an agent).
 - [x] **T5 Walls, gate and moat** — done 2026-10-14 (record: [`E04c-log.md`](E04c-log.md)): T5a (#183),
   T5b (#184), T5c and T5d (#187); T5e the batch 3c by an agent: every rule as the code, D-8 and D-10
   confirmed; BAT-SIE-003 to 008 `verified`.
-- [ ] T6 The Catapult, Ballistics and Earthquake (S-08). To investigate: the gate as the Catapult's
-  target (the user, 2026-10-14; batch 3c's six shots hit walls only) and a destroyed gate's effects.
+**Increment 4** (the user, 2026-10-14: the next sensible increment, built and confirmed at its
+checkpoint; BAT-Q43 at its start).
+
+- [ ] T6 The Catapult, Ballistics and Earthquake (S-08): refined below.
 - [ ] T7 Arrow towers (S-06, S-07; Artillery's control).
 - [ ] T8 The siege's other rules (no retreat or surrender for the besieged, the spell cost's town
   armies, Teleport's and the summon's siege limits, the outcome: walls, capture).
@@ -105,6 +107,33 @@ request and towns on the experiment maps; siege batches run by an agent).
 - Acceptance: every rule of §7.28 has a catalog rule with its sources and a test; battles without
   a siege replay unchanged apart from the hashes; the Tower's mines never reach the attacker's
   observation; `verify --with-original-data` green.
+
+### T6 — The Catapult, Ballistics and Earthquake (refined 2026-10-14, increment 4)
+
+- **T6a, the seam** (`shared/catapult-seam`, #191, merged first): `CatapultControl { level }`, the
+  hero's Ballistics level; `HeroEffect::Ballistics`; ADR-0023 point 6 (BAT-Q43).
+- **T6b, the reading** (`installation.md` §7.29; the survey's D-11 to D-15, S-08 confirmed): the
+  Catapult's stack and turn (0x473C00), the wall shot (0x445D30, 0x445EC0), the parts' damage
+  (0x465990), Earthquake (0x5A7C80). **BAT-Q43 (the user): the code on D-11 to D-15; S-08's fix
+  keeps the absent parts in Earthquake's draw and harms no stack; the Cyclops' wall shot in T6.**
+- **T6c, the battle** (`battle/e04c-t6`, stacked on T6a; `cross-lane` for `h3-protocol`): the
+  battle part's data (the targets, their kinds and wall hexes, the miss and automatic lists, the
+  Catapult's hex, the Ballistics table, the parts' hit points per town, harvested from the
+  executable, `BALLIST.TXT` and `WALLS.TXT`); the Catapult creature harvested (a siege machine) and
+  the Cyclops' wall shots (gap-fill); the Ballistics skill's effect; Earthquake's effect; the
+  battle: the Catapult set up for an attacker with a hero at a fort, first in the round's order,
+  automatic without Ballistics, commanded with it; the wall-shot command (the Catapult, an
+  attacker's Cyclops); the shot (damage, hit, miss, re-aim), the parts' hit points, a destroyed
+  wall's hex, a destroyed gate (passage, moat, the shot's line); Earthquake (a siege with a fort,
+  either side; the code's draw, absent parts soak hits: BAT-QUIRK-22); observation, encodings, the
+  wire, replays; catalog rules from BAT-SIE-009; golden replay and the bench with the reason. The
+  turrets' part (a destroyed tower's stack) joins T7.
+- **T6d, a Catapult batch run by an agent** on the capture harness: the automatic aim (D-13),
+  a destroyed Mid-Upper Wall's hex (D-11), the gate hit and destroyed (passage, the drawbridge's
+  hex no longer moat), Earthquake's hits, a miss (D-12) as far as one shows.
+- Acceptance: every rule of §7.29 has a catalog rule with its sources and a test; battles without
+  a siege replay unchanged apart from the hashes; walls and the gate agree with movement, the
+  legal moves and the shot's line; `verify --with-original-data` green.
 
 ## Design
 
