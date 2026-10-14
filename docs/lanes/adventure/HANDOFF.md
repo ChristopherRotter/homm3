@@ -23,7 +23,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
 - **Ownership:** the four crates, `src/adventure/` in `h3-sim` and `h3-cli` (their `Cargo.toml`, `lib.rs` and `h3-cli`'s `main.rs` are battle's: `cross-lane`), `crates/h3-cli/tests/adventure_replays.rs`, `fixtures/replays/adventure/`, `fixtures/maps/`, `benches/adventure/`, each pack's `adventure.toml`, `docs/formats/h3m.md`, `docs/rules/catalog/{adventure,game,town}.toml`. `h3-heroes` moves to this lane as soon as the battle lane is done with it (decision 25; its inbox).
 - **Ids:** questions `ADV-Q<n>`, quirks `ADV-QUIRK-<n>` (1 the fog fringe; 2, 3 the diagonal exception; 4 leading neutral stacks; 5, 6 the tile's obstacles and split; flags 19–22 in `h3_content`'s registry, 22 the fringe's), stubs `ADV-STUB-<n>`, rules `ADV-*` and `GAM-*`. Versions owned: game state hash, adventure state and ruleset-part hashes, map import, adventure replay format.
-- **Working agreement:** a couple of tasks per checkpoint; the user confirms seams and ADRs; token efficiency first.
+- **Working agreement:** a couple of tasks per checkpoint; the user confirms seams and ADRs; tokens first.
 
 ## Standing traps
 
@@ -39,7 +39,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-14 — round 2, third session: T19a2a
 
-#192–#194 merged; the baseline's `deny` failed on rustls (#197). Decision 32 (Eagle Eye to T19a2b). T19a2a (#198): the capture's and experience's reading, `HeroChange`, the game's part.
+#192–#194 merged; the baseline's `deny` failed on rustls (#197). Decision 32 (Eagle Eye: T19a2b). T19a2a (#198): the capture's and experience's reading, `HeroChange`, the game's part.
 
 ### 2026-10-14 — round 2, second session: T19a1's verify and PRs, `shared/e08-t19a2`
 
