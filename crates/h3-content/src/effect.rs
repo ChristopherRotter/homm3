@@ -536,6 +536,12 @@ pub enum HeroEffect<C, K, S, F, L> {
         /// Bonus (1..=3).
         level: u8,
     },
+    /// Gives the hero this level of the Ballistics skill: in a siege the side commands its
+    /// Catapult, whose shots the level's record of the battle's table decides (E04c T6, BAT-Q43).
+    Ballistics {
+        /// Ballistics level (1..=3).
+        level: u8,
+    },
 }
 
 /// An effect as written in a pack (references are keys).
@@ -545,7 +551,7 @@ pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, Facti
 
 impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 42] = [
+    pub const NAMES: [&'static str; 43] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -588,6 +594,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "experience_gain",
         "max_mana",
         "join_bonus",
+        "ballistics",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -635,6 +642,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::ExperienceGain { .. } => 39,
             Self::MaxMana { .. } => 40,
             Self::JoinBonus { .. } => 41,
+            Self::Ballistics { .. } => 42,
         }
     }
 
@@ -807,6 +815,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::ExperienceGain { bp } => HeroEffect::ExperienceGain { bp: *bp },
             Self::MaxMana { bp } => HeroEffect::MaxMana { bp: *bp },
             Self::JoinBonus { level } => HeroEffect::JoinBonus { level: *level },
+            Self::Ballistics { level } => HeroEffect::Ballistics { level: *level },
         })
     }
 
@@ -900,6 +909,9 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             }
             Self::JoinBonus { level } if !(1..=MAX_SKILL_LEVEL).contains(level) => {
                 Some("join_bonus level must be 1..=3")
+            }
+            Self::Ballistics { level } if !(1..=MAX_SKILL_LEVEL).contains(level) => {
+                Some("ballistics level must be 1..=3")
             }
             _ => None,
         }
@@ -1145,7 +1157,7 @@ impl CanonicalHash for CompiledHeroEffect {
             Self::Necromancy { bp } | Self::ExperienceGain { bp } | Self::MaxMana { bp } => {
                 h.write_u16(*bp);
             }
-            Self::JoinBonus { level } => h.write_u8(*level),
+            Self::JoinBonus { level } | Self::Ballistics { level } => h.write_u8(*level),
         }
     }
 }
@@ -1266,6 +1278,7 @@ mod tests {
             E::ExperienceGain { bp: 500 },
             E::MaxMana { bp: 2500 },
             E::JoinBonus { level: 1 },
+            E::Ballistics { level: 2 },
         ]
     }
 
@@ -1559,6 +1572,8 @@ mod tests {
             E::MaxMana { bp: 0 },
             E::JoinBonus { level: 0 },
             E::JoinBonus { level: 4 },
+            E::Ballistics { level: 0 },
+            E::Ballistics { level: 4 },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");

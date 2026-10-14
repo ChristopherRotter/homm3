@@ -534,6 +534,9 @@ enum EffectDto {
     JoinBonus {
         level: u8,
     },
+    Ballistics {
+        level: u8,
+    },
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -762,6 +765,7 @@ impl EffectDto {
             Self::ExperienceGain { bp } => HeroEffect::ExperienceGain { bp },
             Self::MaxMana { bp } => HeroEffect::MaxMana { bp },
             Self::JoinBonus { level } => HeroEffect::JoinBonus { level },
+            Self::Ballistics { level } => HeroEffect::Ballistics { level },
         })
     }
 }

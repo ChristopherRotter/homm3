@@ -113,3 +113,27 @@ fn the_adventure_and_outcome_effects_parse() {
         "{error}"
     );
 }
+
+#[test]
+fn the_ballistics_effect_parses() {
+    // E04c T6 (BAT-Q43): the hero's Ballistics level, the battle's Catapult control.
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let pack = parse_pack(&format!(
+        "{manifest}[[secondary_skill]]\nid = \"s\"\n\
+         expert = [{{ kind = \"ballistics\", level = 3 }}]\n"
+    ))
+    .unwrap();
+    assert_eq!(
+        pack.skills[0].levels[2],
+        [HeroEffect::Ballistics { level: 3 }]
+    );
+    let bad = format!(
+        "{manifest}[[secondary_skill]]\nid = \"s\"\n\
+         basic = [{{ kind = \"ballistics\", level = 0 }}]\n"
+    );
+    let error = compile(&[bad.as_str(), SYNTHETIC_CORE], "synthetic:faithful").unwrap_err();
+    assert!(
+        error.to_string().contains("ballistics level must be 1..=3"),
+        "{error}"
+    );
+}

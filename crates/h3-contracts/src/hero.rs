@@ -122,8 +122,9 @@ pub struct MachineControl {
     pub ballista: Option<BallistaControl>,
     /// The side commands its First Aid Tent (First Aid).
     pub tent: Option<TentControl>,
-    /// The side commands its Catapult (Ballistics). Reserved for sieges (E04c): the value cannot
-    /// be built before then, so it is always `None`.
+    /// The side commands its Catapult (Ballistics; E04c T6, ADR-0023 point 6): in a siege the
+    /// battle's own Catapult then waits for the side's command; without control it shoots on its
+    /// own.
     pub catapult: Option<CatapultControl>,
 }
 
@@ -144,10 +145,14 @@ pub struct TentControl {
     pub heal_bonus: Rate,
 }
 
-/// How a commanded Catapult shoots: reserved for sieges (E04c), which define its contents.
+/// How a commanded Catapult shoots (ADR-0023 point 6, BAT-Q43): the hero's Ballistics level picks
+/// the record of the battle's Ballistics table (the original's `BALLIST.TXT`: hit chances, shots,
+/// damage), which also serves the Catapult without control (level 0) and the Cyclops.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub struct CatapultControl {}
+pub struct CatapultControl {
+    /// The hero's Ballistics level, 1 (Basic) to 3 (Expert).
+    pub level: u8,
+}
 
 /// A hero's magic in battle (E04b): present and checked from E04a on, used from E04b on.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
