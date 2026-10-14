@@ -47,6 +47,11 @@ Increment 2 (objects, the treasury, offers; ADR-0016 points 4–6, ADR-0017 poin
 - **Its own:** its treasury (E08 T13; other players' treasuries are hidden: the Thieves' Guild comes with towns); its per-object state, the Cartographer kinds bought and the keys held (T14, T15); its open decision, kind and price (T14).
 - **Events:** a pickup tells its owner the gain (the treasury's change); an object leaving the map is told to every player who sees it there, as the observation shows it (T13). A reveal tells the visitor its new explored tiles only (T14, T15). A border guard's removal and a hero on a border gate are public where the tiles are seen (T15). An offer's opening or refusal (the price not payable), its answer and the price paid are told to its owner only, and a Cartographer's reveal tells it how many tiles it explored; a visit to a kind already bought tells nothing (T14).
 
+Increment 3 (battles on the map; ADR-0013 point 9, ADR-0016 point 6, ADR-0017 points 5, 6 and 11; survey `rules/surveys/E08-battles.md` §9) adds:
+
+- **A battle** (E08 T19a): each of its owners sees its side's observation of it (`h3_battle::observe`: never the other side's private part) and its events by their visibility (a public one to both owners, a side's to that side's owner); its start (the heroes, the tile) and its end (the result) are told to its owners only. Other players learn nothing of it but its effects where they see the tiles (a hero leaving the map). Its seed and stream are server-only as every stream (drawn from the attacking player's stream); under `ADV-QUIRK-5` (`faithful`) its obstacles follow from its tile, as the original's, so they are public in effect.
+- **A surrender's gold** leaves the surrendering side's owner's treasury and enters the other's: each change is told to its owner only.
+
 ## Denial of service and resource limits
 
 - Bounded command size and count per turn; bounded work per command (path search limits, list lengths).
