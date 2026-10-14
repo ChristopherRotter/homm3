@@ -1881,7 +1881,7 @@ tie rule as built.
   heroes' part) and -004 (+500, the capture) completed but for T19a2b, with the reading, batch 1b
   R5, the wiki and VCMI.
 
-### Round 2 of increment 3: T19a2b (2026-10-14, `shared/e08-t19a2b` #205, `adventure/e08-t19a2b`)
+### Round 2 of increment 3: T19a2b (2026-10-14, `shared/e08-t19a2b` #205, `adventure/e08-t19a2b` #206)
 
 #197 and #198 merged first; the baseline full verify of `master` (5550866,
 `--with-original-data`) passed every step. Asked for a seam, the user took both pull requests in

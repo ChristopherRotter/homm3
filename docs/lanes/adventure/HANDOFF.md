@@ -17,7 +17,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Replays and benchmarks** (T9b): `adventure::replay` (format v2), `h3 adventure run/verify/bench` (`crates/h3-cli/src/adventure/`), six golden replays in `fixtures/replays/adventure/` (determinism matrix; re-record with the options in `crates/h3-cli/tests/adventure_replays.rs`), the maps `fixtures/maps/e08-duel-36.h3m` and `e08-xl-144.h3m` (`h3-map`'s `tests/fixtures.rs`), three gated workloads in `benches/adventure/` (play, reach, fork; `02-architecture.md` §8).
 - **Experiments**: `h3-experiment` (battle-owned) has the adventure shape (`docs/experiments/README.md`); batches 1 and 2 scored. **From increment 3 agents run batches** on the client lane's harness (decision 21; needs in its inbox: `E08-battles.md` §13).
 - **Adventure ruleset part** (v6 since T19a1): terrains, roads, rivers, native cost, land table, base scouting radius, the setup bounds (`max_players` ≤ `MAX_PLAYERS` = 8), the starting stack chances, the object types, the starting resources by difficulty, the battle terrains.
-- **Next:** #205 (`shared/e08-t19a2b`) merges first, then T19a2b's PR; then T19b at round 3's checkpoint.
+- **Next:** #205 (`shared/e08-t19a2b`) merges first, then #206 (`adventure/e08-t19a2b`); then T19b at round 3's checkpoint.
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), their increment-2 amendments (#115), increment 3's (ADR-0013 too) applied by T18a (#185).
 - **Fuzzing is stable-only** (user, 2026-10-10): property tests on arbitrary bytes.
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
