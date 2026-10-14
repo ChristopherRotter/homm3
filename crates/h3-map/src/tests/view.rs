@@ -19,7 +19,7 @@ use proptest::test_runner::TestCaseError;
 use super::import::object;
 use super::play::{
     BLOCKERS, FAITHFUL, HERO_TEMPLATE, STRICT, Slots, Spot, army, lay_out, options, plan, resolve,
-    slots, start_on, step, tile,
+    slots, start_on, steps, tile,
 };
 use crate::model::{Body, Object, Pos, RawMap, Stack};
 
@@ -670,7 +670,7 @@ proptest! {
         plan in plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
-        steps in vec(step(), 0..40),
+        steps in steps(),
         viewer in any::<u8>(),
         own in own_army(),
         unseen in unseen(),
@@ -699,7 +699,7 @@ proptest! {
         let mut end = start_on(&m, rules, seed);
         for step in &steps {
             let legal = options(&end, rules);
-            let (actor, command) = resolve(&end, &legal, step);
+            let (actor, command) = resolve(&end, rules, &legal, step);
             let _ = apply(&mut end, rules, Actor::Player(actor), command, &mut Vec::new());
         }
         let explored = |x: i16, y: i16, z: u8| {
@@ -724,7 +724,7 @@ proptest! {
         check_same(&a, &b, rules, viewer)?;
         for step in &steps {
             let legal = options(&a, rules);
-            let (actor, command) = resolve(&a, &legal, step);
+            let (actor, command) = resolve(&a, rules, &legal, step);
             let (mut ea, mut eb) = (Vec::new(), Vec::new());
             let (from_a, from_b) = (tiles(&a, actor), tiles(&b, actor));
             let ra = apply(&mut a, rules, Actor::Player(actor), command.clone(), &mut ea);
@@ -785,7 +785,7 @@ proptest! {
         plan in plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
-        steps in vec(step(), 0..40),
+        steps in steps(),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start_on(&lay_out(&plan), rules, seed);
@@ -797,7 +797,7 @@ proptest! {
             .collect();
         for step in &steps {
             let legal = options(&state, rules);
-            let (actor, command) = resolve(&state, &legal, step);
+            let (actor, command) = resolve(&state, rules, &legal, step);
             let mut events = Vec::new();
             let result = apply(&mut state, rules, Actor::Player(actor), command, &mut events);
             for (&player, view) in players.iter().zip(&mut views) {
@@ -823,6 +823,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         heroes: vec![((1, 1, 0), None), ((6, 6, 0), None)],
         hero_types: 0,
         backpacks: vec![],
+        skills: vec![],
         blockers: vec![((4, 1, 0), 0), ((1, 5, 0), 1)],
         difficulty: 1,
     };
@@ -895,6 +896,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         ],
         hero_types: 0,
         backpacks: vec![],
+        skills: vec![],
         blockers: vec![((3, 1, 0), 3), ((1, 3, 0), 9)],
         difficulty: 1,
     };
