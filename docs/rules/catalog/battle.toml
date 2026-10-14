@@ -2945,6 +2945,12 @@ numeric  = "integer"
   retrieved  = "2026-10-07"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3c.md (SoD 4.0 Complete under Wine without HD, run by an agent on the capture harness in hot seat, both armies commanded, values read from memory, 2026-10-14): T: the Tower's mines (BAT-SIE-007) go off for a walker entering their hexes, on its path too: 77 -> 61 -> 44 -> 28 costs 150 on each of 61, 44 and 28 and the walk goes on to 28; each mine is gone after"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-034"
 title    = "Remove Obstacle"
@@ -4045,7 +4051,7 @@ numeric  = "integer"
 id       = "BAT-SIE-003"
 title    = "The gate"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A town with a Fort has a gate on the gate's hex (96), closed at the start; its drawbridge's hex is the moat hex before it (95), the outer bridge's the second moat row's hex on that row (94). While the gate is closed the gate's and the drawbridge's hexes block every stack (BAT-SIE-002), except a stack its controller commands for the defender when no living stack and no corpse lies on the drawbridge's or the outer bridge's hex (the outer bridge's tested in every town, as in the original). Such a stack that stands on the gate's, the drawbridge's or the outer bridge's hex (either hex of a two-hex stack; a walk's step, a flight's landing) while the gate is closed opens it (event GateOpened). After every walk, flight or teleporting move, at the end of every action and at every turn's end an open gate closes (event GateClosed) unless a living stack or a corpse lies on the gate's or the drawbridge's hex, or with a second moat row on the outer bridge's. While open neither hex blocks. Scope: a summoned elemental opening it, the Catapult and Earthquake destroying it (T6, T8)."
 numeric  = "integer"
 
@@ -4061,11 +4067,17 @@ numeric  = "integer"
   retrieved  = "2026-10-13"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3c.md (SoD 4.0 Complete under Wine without HD, run by an agent on the capture harness in hot seat, both armies commanded, values read from memory, 2026-10-14): G: a defender walking from 100 onto the gate's hex 96 with 94 and 95 free opens the closed gate (+0x53A4 3 -> 2 -> 1, as it begins the step onto 96) and it stays open while the stack stands there; walking out (96 -> 95 -> 94 -> 76) the gate closes after the walk (1 -> 2 -> 3); with an attacker's stack on the outer bridge 94 a defender on 97 cannot step onto 96 (the click starts nothing)"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-004"
 title    = "The moat stops walkers"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A town with a Citadel or Castle and a moat (BattleSetup.siege.moat not absent; not a town whose record has mines instead, BAT-SIE-007) has the moat's hexes: one per row left of the wall (the original's 11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181) and with the record's second row also those left of it (the Fortress's 10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180); the drawbridge's and the outer bridge's hexes are moat hexes only while the gate is closed. A walker's walk stops on the first moat hex it enters (not one of its own hexes; flyers and teleporters do not stop); the drawbridge's and the outer bridge's hexes are no stop for a stack its controller commands for the defender. The moat's hexes are public."
 numeric  = "integer"
 
@@ -4088,11 +4100,17 @@ numeric  = "integer"
   retrieved  = "2026-10-13"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3c.md (SoD 4.0 Complete under Wine without HD, run by an agent on the capture harness in hot seat, both armies commanded, values read from memory, 2026-10-14): M (Inferno, Citadel): a walker in the moat at 111 sent to 146 walks around 129 (111 -> 128 -> 145 -> 146) and stops nowhere before 146; walkers and a flyer end their moves on the moat hexes 111, 44 and 146"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-005"
 title    = "The damaging moat"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "In a damaging moat (BattleSetup.siege.moat damaging: under SoD rules, the caller's) a stack of either side that enters a moat hex takes the record's moat damage (70 Castle, Rampart, Necropolis, Stronghold, Conflux; 90 Inferno, Dungeon, Fortress) straight to its hit points (no defense, no resistance), at most once per move for a two-hex stack; it takes it again when it waits, defends, shoots or attacks from where it stands in the moat and when a flight or teleporting move lands it there (the original's re-entry). The damage's ends follow as after a Fire Wall's burn: the Phoenix's rebirth, the battle's end (event MoatDamage). A harmless moat deals none."
 numeric  = "integer"
 
@@ -4115,11 +4133,17 @@ numeric  = "integer"
   retrieved  = "2026-10-13"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3c.md (SoD 4.0 Complete under Wine without HD, run by an agent on the capture harness in hot seat, both armies commanded, values read from memory, 2026-10-14): M (Inferno, 90): Sprites landing on 44 lose 90, Magic Elementals walking into 111 lose 90, both again when they defend there (90, 90), and a walk along the moat ending on 146 costs 90 once"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-006"
 title    = "The moat lowers the defense"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A struck stack with either hex on a moat hex (BAT-SIE-004; a harmless moat too, not the Tower's mines) has the field's moat defense penalty (3) less defense against the strike, after its other reductions and not floored at 0 (D-10, the code: a stack with defense below 3 gives its attacker the larger difference); not for a frenzied stack, whose defense is 0 (BAT-MAG-019)."
 numeric  = "integer"
 
@@ -4135,11 +4159,17 @@ numeric  = "integer"
   retrieved  = "2026-10-13"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3c.md (SoD 4.0 Complete under Wine without HD, run by an agent on the capture harness in hot seat, both armies commanded, values read from memory, 2026-10-14): M: an Archangel (attack 30, damage 50) striking Sprites (defense 2) in the moat does 127, 50 x (1 + 0.05 x 31): the defense -1, not floored at 0 (D-10; VCMI's floor would give 125)"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-007"
 title    = "The Tower's land mines"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A town whose record names mines (the Tower) has no moat: with a Citadel or Castle and a moat in the setup (BAT-SIE-001) the defender gets a hidden mine of the record's spell (Land Mine) on each moat hex but the drawbridge's, lasting the spell's rounds (the battle), placed after the sides' sight is set. Each mine's value: with a damaging moat (SoD rules) the record's moat damage (150), or the defending hero's damage of the spell if larger; else the defending hero's, or without a hero the spell's at the field's mine power (3) and no mastery. The hero's damage is the spell's base value for its mastery on the battlefield (BAT-TER-005) and power, without its damage bonuses. The mines are the defender's Land Mines from then on (BAT-MAG-033)."
 numeric  = "integer"
 
@@ -4162,11 +4192,17 @@ numeric  = "integer"
   retrieved  = "2026-10-13"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3c.md (SoD 4.0 Complete under Wine without HD, run by an agent on the capture harness in hot seat, both armies commanded, values read from memory, 2026-10-14): T (Tower, Citadel, no defending hero): ten Land Mine objects of the defender's on 11, 28, 44, 61, 77, 111, 129, 146, 164, 181, hidden (+0xA 0), worth 150, lasting the battle, the hexes' Land Mine bit set; no moat flag; a walker onto 77 loses 150 and the mine is gone"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-008"
 title    = "The walls halve shots"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "In a battle with walls a shot is halved (a reduction of 50 % multiplied with the distance's, BAT-RNG-002: a quarter beyond the full-damage distance) when the shooter's hex, turned to face the target as the original turns it (its front or rear hex, BAT-Q36), is outside the walls on its row, the target's position is inside on its row, and the straight line between them on the column/row grid meets a wall: from the shooter's column and row in 17 × the larger difference steps of 1/17 of a cell along the longer axis and the matching fraction along the other (single-precision values, the original's x87 arithmetic, ADR-0003), each position truncated to a hex, a step on the gate's hex blocks while the gate is closed and any other wall hex blocks (D-8, the code: a line through the open gate is free). Not for a shooter with no_wall_penalty (Mage, Arch Mage, Enchanter, Sharpshooter) or whose hero has the NoRangePenalty effect (the Golden Bow, the Bow of the Sharpshooter; BAT-HER-006)."
 numeric  = "integer"
 
@@ -4188,3 +4224,9 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
   retrieved  = "2026-10-13"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3c.md (SoD 4.0 Complete under Wine without HD, run by an agent on the capture harness in hot seat, both armies commanded, values read from memory, 2026-10-14): G (Castle, Fort): a Titan (40-60, attack 24) on 86 shooting Minotaur Kings (defense 15) on 100 behind the closed gate does 17 (a quarter: 14 to 21; half would be 29 to 43); shooting Trolls (defense 7) on 97 through the gate held open by a stack on 96 it does 46 (half, the distance only: 37 to 55; VCMI's quarter 18 to 27): D-8 as the code"
+  retrieved  = "2026-10-14"
+  confidence = "high"

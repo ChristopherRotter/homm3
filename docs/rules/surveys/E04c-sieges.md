@@ -120,14 +120,20 @@ follows the result (the adventure lane).
   stands, open or closed. With intact walls they differ only through the **open gate**: the `code`
   does not halve a shot whose line passes it, `vcmi` does; with destroyed parts (T6) the two
   geometries differ more. Recommendation: the code; a confirmation row. **The user (BAT-Q42): the code.**
+  **Confirmed** (batch 3c G, 2026-10-14): a Titan's shot through the gate held open by a stack on 96
+  at Trolls on 97 did 46, half (the distance only; VCMI's quarter would be 18 to 27); through the
+  closed gate 17, a quarter.
 - **D-9 The Tower's mines** (T5; `code` 0x4663BE): under SoD rules at least 150, the defending hero's
   Land Mine damage when larger (its power and mastery, no damage bonuses); under older rules the
   hero's, or without a hero the spell's at power 3 and no mastery. `wiki` ("minimum 150 points of
-  damage") agrees, `vcmi` always 150. The code (two sources agree).
+  damage") agrees, `vcmi` always 150. The code (two sources agree). **Observed** (batch 3c T): ten
+  hidden mines of the defender's worth 150 on the moat hexes but 95, no defending hero.
 - **D-10 The moat's defense below 0** (T5; `code` 0x442590: −3 after the other reductions, not
   floored; `vcmi`: −3 as a bonus, a stack's defense floored at 0). They differ for a stack with
   defense below 3 in the moat (the Peasants have 1): the code gives its attacker the larger
   difference. Recommendation: the code; a confirmation row. **The user (BAT-Q42): the code.**
+  **Confirmed** (batch 3c M): an Archangel striking Sprites (defense 2) in the moat did 127, the
+  defense -1 (VCMI's floor: 125).
 - **Agreements** (T5): the closed gate's passage for the defender needs hexes 95 and 94 free of
   living stacks and corpses in every town (`code` 0x469A10; `vcmi`'s "bridge" hex 94); a defender
   entering 94 to 96 opens it, and it closes when 95 and 96 (94 in the Fortress) are free; the moat's
@@ -145,3 +151,11 @@ grounds today, `docs/formats/h3m.md`): a town object with its buildings is the n
 3 did: the turrets' counts (D-5, the count of buildings), the fort level, the moat flags, the
 defending hero's raised skills and the stacks' morale; the Catapult's hit table needs many shots
 and the shots' outcomes (T6).
+
+**Batch 3c** (T5e, 2026-10-14; `experiments/results/E04c-batch-3c.md`): the walls, the gate and the
+moat, played by an agent in hot seat with both armies commanded (`experiments/agent/siege.py`):
+the moat's stop, damage and defense (D-10), the gate's opening, closing and passage, the shots
+through the closed and the open gate (D-8) and the Tower's mines (D-9), every value as the code.
+Seen on the way, for T6 and T7: at every round's start the keep shoots first, then the Catapult
+(without Ballistics on its own, one shot); the Catapult destroyed wall parts but never the gate in
+these runs.

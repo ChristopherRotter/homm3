@@ -6,11 +6,12 @@ For each map (one encounter each, `h3-experiment E04c-batch-3c.toml --only <id>`
 harness (clients/capture) starts the game under Wine in hot seat (Red and Blue human, so the
 agent commands both armies), steps the only Red hero north into Blue's town and plays the
 encounter's plan below, the spec's procedure as commands: at each turn of a stack the agent
-commands, the plan's next step for that stack in that round (a round begins when the Catapult
-shoots; the keep's arrow tower shoots before it), else Defend. The clock is stepped 10 ms at a
-time and after each step the game's memory is read (docs/exe/structs.toml): each stack's hex,
-count, the top creature's lost hit points and its turn flag; the gate (+0x53A4), the walls'
-hit points (+0x13FA8), the hexes' Land Mine bits and the battlefield's objects. Writes
+commands, the plan's next step for that stack in that round (a round begins when the stacks'
+turn flags +0x4F0 are cleared; the keep's arrow tower and the Catapult then act on their own),
+else Defend. The clock is stepped 10 ms at a time and after each step the game's memory is read
+(docs/exe/structs.toml): each stack's hex, count, the top creature's lost hit points and its turn
+flag; the gate (+0x53A4), the walls' hit points (+0x13FA8), the hexes' Land Mine bits and the
+battlefield's objects. Writes
 <out>/<map>/timeline.jsonl (every change), steps.jsonl (each step: what was done, the state
 before it and at its end) and prints one JSON line per step. Only reads the game; never the
 installation.
@@ -139,8 +140,8 @@ def human(mem, state):
 
 
 def key(state):
-    """What a change means: everything but the turn flags' noise."""
-    return json.dumps({k: v for k, v in state.items()}, sort_keys=True)
+    """The state as a comparable text (a change of anything read is a change)."""
+    return json.dumps(state, sort_keys=True)
 
 
 class Run:
@@ -234,7 +235,7 @@ def play(game, out, plan):
         if not started:
             run.act("defend", None)
         # The step's end: a turn the agent commands after the stack's own (a good morale's
-        # too), or a new round (its turn flags cleared before the keep shoots, or its Catapult).
+        # too), or a new round (its turn flags cleared, before the keep and the Catapult act).
         end, gap = now, False
         for _ in range(6000):
             gap = gap or end["active"] != [side, record]

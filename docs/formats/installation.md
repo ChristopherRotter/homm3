@@ -2547,3 +2547,13 @@ at 0x442646), the mines' power (`push 3` at 0x466460), the second row's town typ
 at 0x463BAE), the mines' town type (`cmp byte [eax+4], 2` at 0x4663C4) and spell (`push 0xB` at
 0x466462). The harvester writes the siege's field into `[battle]` and a `[[siege]]` record per
 town type.
+
+**Observed** (E04c T5e, batch 3c, 2026-10-14; `experiments/results/E04c-batch-3c.md`): every point
+above that the batch staged behaves as read: the moat's stop (a walk routes around a moat hex),
+its damage on entering, landing and defending in place, its −3 defense below 0 (D-10), the gate's
+passage, opening and closing, the shot's halving through the closed gate and not through the open
+one (D-8), the Tower's ten hidden mines of 150. Two timings seen in memory: the gate opens (+0x53A4
+3 → 2 → 1) while the walker still stands before the gate's hex, as it begins the step onto it; and
+at a round's start the stacks' turn flags (+0x4F0) are cleared, then the keep shoots, then the
+Catapult (the keep's flag stayed set throughout, and so did the Catapult's in G's town with a Fort only,
+though it shot every round: not read).
