@@ -382,3 +382,6 @@ choices are lifted.
   and E, `--mute`; the clock waits for the start sound only from the battle's start, and a key
   that moves the battle ends the wait; volumes as SDL gains (the adapter's only float).
 - `nanomp3` with its default features off (`std` only: no SIMD `wide`, no MP1/MP2; T5b).
+- A shot's loop (T5b, the user's find, design §7.4): the reactions start as the projectile lands;
+  the shooter's frames left beyond the loop are cut, the loop one iteration longer than the
+  reactions' frames (*provisional* until a recorded Cyclops shot, T4b-2b).
