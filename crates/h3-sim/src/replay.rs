@@ -22,8 +22,9 @@ use h3_kernel::{Rng, StreamId};
 /// two-hex stack's moves and attack positions name its rear hex, its position as in the original
 /// (BAT-GEO-002). 25: the setup names the special battlefield and the anti-magic garrison (E04c
 /// T2b). 26: the setup names the town the battle is fought at (E04c T5, ADR-0023). 27: a hero's
-/// Catapult control in the setup, the wall shot among the commands (E04c T6, ADR-0023 point 6).
-pub const REPLAY_FORMAT_VERSION: u32 = 27;
+/// Catapult control in the setup, the wall shot among the commands (E04c T6, ADR-0023 point 6). 28:
+/// the setup names the game's difficulty and the human players (E04c T7d, ADR-0023 point 7).
+pub const REPLAY_FORMAT_VERSION: u32 = 28;
 
 /// Identity of everything a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

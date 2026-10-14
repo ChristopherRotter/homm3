@@ -211,6 +211,22 @@ pub fn run(_args: &[String]) -> Result<(), String> {
     gate(None)
 }
 
+/// Whether [`gate`] runs the tests of `packages` (the whole workspace but `xtask` when `None`):
+/// it does unless a lane scope has no logic crate to measure.
+pub fn runs_tests(packages: Option<&[String]>) -> Result<bool, String> {
+    Ok(packages.is_none() || !logic_packages(packages)?.is_empty())
+}
+
+/// The logic crates the gate measures: all of them, or those among `packages`.
+fn logic_packages(packages: Option<&[String]>) -> Result<Vec<arch::Package>, String> {
+    let config = arch::load_config(&workspace_root())?;
+    let in_scope = |name: &str| packages.is_none_or(|p| p.iter().any(|q| q == name));
+    Ok(arch::load_packages()?
+        .into_iter()
+        .filter(|p| config.crates.get(&p.name).is_some_and(|c| c.logic) && in_scope(&p.name))
+        .collect())
+}
+
 /// The gate. With `packages` (a lane scope, `verify --scope`), only those packages' tests run and
 /// only their logic crates are gated; coverage of other crates is left to the full verify.
 pub fn gate(packages: Option<&[String]>) -> Result<(), String> {
@@ -231,12 +247,7 @@ pub fn gate(packages: Option<&[String]>) -> Result<(), String> {
     let target = crate::util::target_dir()?;
     let json_path = target.join("coverage.json");
     let lcov_path = target.join("coverage.lcov");
-    let config = arch::load_config(&root)?;
-    let in_scope = |name: &str| packages.is_none_or(|p| p.iter().any(|q| q == name));
-    let logic: Vec<arch::Package> = arch::load_packages()?
-        .into_iter()
-        .filter(|p| config.crates.get(&p.name).is_some_and(|c| c.logic) && in_scope(&p.name))
-        .collect();
+    let logic = logic_packages(packages)?;
     if packages.is_some() && logic.is_empty() {
         println!("coverage: no logic crate in scope");
         return Ok(());

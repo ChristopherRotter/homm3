@@ -25,6 +25,12 @@ where  = "crates/h3-battle/src/state.rs::BattleState::new"
 reason = "The battle reads BattleSetup.siege's faction, fort and moat since E04c T5 (the walls, the gate, the moat and the Tower's mines, BAT-SIE-001 to BAT-SIE-008) and sets up the wall-shot targets, the Catapult and Earthquake since T6 (BAT-SIE-009 to BAT-SIE-015) and the turrets with the structures since T7 (BAT-SIE-016 to BAT-SIE-019); the Escape Tunnel, the town's morale and luck, Teleport's and the summons' limits, the controls and the experience (T8) are not read yet"
 epic   = "E04c"
 
+[[stub]]
+id     = "BAT-STUB-3"
+where  = "crates/h3-battle/src/aim.rs::worth"
+reason = "The computer's worth of a Ballista whose hero has Artillery (BAT-SIE-021) leaves out the original's Artillery factors (x2 above Basic, then x1.0, 1.5, 1.5, 2.0 by level; 0x63B7F0): the seam's BallistaControl carries no level (BAT-Q46). With the Ballista's own computer routine, E04c T7e"
+epic   = "E04c"
+
 # --- adventure (ADV-STUB-<n>) ---
 
 # --- server (SRV-STUB-<n>) ---

@@ -65,6 +65,12 @@ struct ScenarioHeader {
     attacker_funds: u32,
     #[serde(default)]
     defender_funds: u32,
+    /// The game's difficulty, 0 (Easy) to 4 (Impossible) (ADR-0023 point 7; default 0).
+    #[serde(default)]
+    difficulty: u8,
+    /// The sides whose player is human (`"attacker"`, `"defender"`; ADR-0023 point 7).
+    #[serde(default)]
+    human: Vec<String>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -1011,6 +1017,8 @@ pub struct ScenarioDef {
     pub(crate) war_machines: [Vec<String>; 2],
     pub(crate) formations: [Formation; 2],
     pub(crate) funds: [u32; 2],
+    pub(crate) difficulty: u8,
+    pub(crate) human: [bool; 2],
     /// Whether obstacles are generated for the terrain and the battlefield when the battle starts
     /// (the caller does it, with its seed; BAT-GEO-004). Excludes explicit obstacles.
     pub random_obstacles: bool,
@@ -1135,6 +1143,8 @@ impl ScenarioDef {
             ],
             formations: self.formations,
             funds: self.funds,
+            difficulty: self.difficulty,
+            human: self.human,
         })
     }
 }
@@ -1187,6 +1197,8 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, BattlePackError> {
         ],
         formations: formations(&file.scenario.tight_formation)?,
         funds: [file.scenario.attacker_funds, file.scenario.defender_funds],
+        difficulty: file.scenario.difficulty,
+        human: parse_sides(&file.scenario.human)?,
         random_obstacles: file.scenario.random_obstacles,
     })
 }

@@ -146,6 +146,7 @@ fn random_legal_sod_heroes_derive_and_play() {
             terrain: None,
             formations: [Formation::Loose; 2],
             funds: [rng.next_u32(), rng.next_u32()],
+            ..BattleSetup::default()
         };
         let mut state = BattleState::new(&sod, &setup, game).unwrap();
         for _ in 0..2_000 {
@@ -243,6 +244,7 @@ fn remove_obstacle_keeps_a_target_while_it_is_castable() {
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],
+        ..BattleSetup::default()
     };
     let mut state = BattleState::new(&r, &setup, 1).unwrap();
     let side = BattleSide::Attacker;
@@ -362,6 +364,7 @@ fn random_legal_sod_heroes_cast_and_play() {
                 terrain,
                 formations: [Formation::Loose; 2],
                 funds: [rng.next_u32(), rng.next_u32()],
+                ..BattleSetup::default()
             };
             let mut state = BattleState::new(&sod, &setup, game).unwrap();
             for _ in 0..300 {

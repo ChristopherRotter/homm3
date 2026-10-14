@@ -77,6 +77,7 @@ fn battle(r: &BattleRuleset, effects: Vec<BattleEffect>) -> BattleState {
         war_machines: [machines(), machines()],
         formations: [Formation::Loose; 2],
         funds: [0; 2],
+        ..BattleSetup::default()
     };
     let mut s = BattleState::new(r, &setup, 1).unwrap();
     while s.side_to_act() != Some(BattleSide::Attacker) {

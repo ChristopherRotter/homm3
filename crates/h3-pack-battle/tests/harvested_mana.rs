@@ -82,6 +82,7 @@ fn batch_2a_r6_spell_costs_and_the_familiars_channel() {
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],
+        ..BattleSetup::default()
     };
     let mut s = BattleState::new(&r, &setup, 1).unwrap();
     // Stacks: 0 Familiars (speed 7), 1 Mages (5), 2 Pegasus (8), 3 Gnolls (4).
@@ -173,6 +174,7 @@ fn batch_2a_r6_the_hero_casts_in_his_ballistas_turn() {
         war_machines: [war_machines(&calid, &r), vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],
+        ..BattleSetup::default()
     };
     let mut s = BattleState::new(&r, &setup, 1).unwrap();
     // Stacks: 0 Familiars (speed 7), 1 Mages (5), 2 the Ballista (last); 3 Pegasus (8), 4 Gnolls

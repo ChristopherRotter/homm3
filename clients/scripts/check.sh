@@ -39,8 +39,16 @@ step fmt
 run 0 cargo fmt --check
 step clippy
 run 0 cargo clippy --locked --all-targets -- -D warnings
-step test
-run 1 cargo test --locked --quiet
+# The coverage gate below runs every test of the workspace (`--all-targets`; a failing test fails
+# it), so with coverage this step runs only what it leaves out, the doc tests: each test runs once
+# (user, 2026-10-14; docs/05-testing.md, "Each code state once").
+if [ "$coverage" = true ]; then
+    step "test (doc tests; coverage runs the rest)"
+    run 1 cargo test --locked --quiet --doc
+else
+    step test
+    run 1 cargo test --locked --quiet
+fi
 step deny
 run 1 cargo deny --locked --all-features check
 

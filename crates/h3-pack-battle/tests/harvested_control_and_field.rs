@@ -85,6 +85,7 @@ fn battle(
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],
+        ..BattleSetup::default()
     };
     BattleState::new(r, &setup, 1).unwrap()
 }
