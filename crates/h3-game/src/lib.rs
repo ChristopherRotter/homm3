@@ -46,6 +46,9 @@ mod treasury;
 mod tests;
 
 pub use command::{Actor, Answer, GameCommand, GameCommandError, GameEvent, NoopSink, Sink, apply};
+/// The hero changes a battle's outcome applies, which [`GameEvent::HeroChanged`] carries (E08
+/// T19a2a; `h3_heroes`' types).
+pub use h3_heroes::{ArtifactPlace, HeroChange};
 pub use legal::{legal_commands, legal_moves};
 pub use observe::{GameObservation, HeroInfo, PlayerView, Viewer, observe, project};
 pub use ruleset::{GameRuleset, RulesetMismatch};

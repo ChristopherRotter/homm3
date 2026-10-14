@@ -12,6 +12,7 @@ use h3_adventure::{
 };
 use h3_content::ResourceId;
 use h3_contracts::{BattleResult, HeroId, PlayerId};
+use h3_heroes::HeroChange;
 
 use crate::{GameRuleset, GameState};
 
@@ -192,6 +193,16 @@ pub enum GameEvent {
         result: BattleResult,
         /// Its owners (the viewer alone in a projection).
         seen_by: Viewers,
+    },
+    /// A hero's details changed (E08 T19a2a): a battle's outcome, one event per change in the
+    /// order applied (GAM-BAT-002, GAM-BAT-004). Seen by the hero's owner.
+    HeroChanged {
+        /// The hero's owner.
+        player: PlayerId,
+        /// The hero.
+        hero: HeroId,
+        /// The change, as `h3_heroes` applied it.
+        change: HeroChange,
     },
     /// A player's treasury paid a resource of an accepted offer's price (GAM-RES-001): one event
     /// per resource of the price, in its order; or a surrender's price (GAM-BAT-005, E08 T19a).

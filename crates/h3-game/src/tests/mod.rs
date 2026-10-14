@@ -4,6 +4,7 @@
 //! (T14b); battles in `battles.rs` (T19a). The rulesets are built in code (an application crate
 //! takes no pack adapter as a dev-dependency).
 
+mod aftermath;
 mod battles;
 mod decisions;
 mod heroes;
@@ -176,16 +177,21 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
             },
         ],
         // The hero model's content (E08 T18b): a book and a machine slot, the spell book, the
-        // cart's artifact, a charm and a scroll without slot, a spell, Wits (+25/50/100 % spell points) and the hero parameters.
-        artifact_slots: [("t:book_slot", 1), ("t:machine", 1)]
-            .iter()
-            .map(|&(k, count)| ArtifactSlotDef {
-                key: key(k),
-                name: "Slot".into(),
-                count,
-                backpack: false,
-            })
-            .collect(),
+        // cart's artifact, a charm and a scroll without slot, a spell, Wits (+25/50/100 % spell points) and the hero parameters;
+        // since T19a2a two ring positions with a ring, and Lore (+5/10/15 % experience).
+        artifact_slots: [
+            ("t:book_slot", 1, false),
+            ("t:machine", 1, false),
+            ("t:ring_slot", 2, true),
+        ]
+        .iter()
+        .map(|&(k, count, backpack)| ArtifactSlotDef {
+            key: key(k),
+            name: "Slot".into(),
+            count,
+            backpack,
+        })
+        .collect(),
         artifacts: vec![
             ArtifactDef {
                 effects: vec![HeroEffect::SpellBook],
@@ -205,6 +211,7 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
                 effects: vec![HeroEffect::Scroll],
                 ..artifact("t:scroll", "t:machine")
             },
+            artifact("t:ring", "t:ring_slot"),
         ],
         spell_schools: vec![SpellSchoolDef {
             key: key("t:air"),
@@ -222,11 +229,18 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
             effect: [10, 10, 20, 30],
             granted_by_name_only: false,
         }],
-        skills: vec![SecondarySkillDef {
-            key: key("t:wits"),
-            name: "Wits".into(),
-            levels: [2500, 5000, 10_000].map(|bp| vec![HeroEffect::MaxMana { bp }]),
-        }],
+        skills: vec![
+            SecondarySkillDef {
+                key: key("t:wits"),
+                name: "Wits".into(),
+                levels: [2500, 5000, 10_000].map(|bp| vec![HeroEffect::MaxMana { bp }]),
+            },
+            SecondarySkillDef {
+                key: key("t:lore"),
+                name: "Lore".into(),
+                levels: [500, 1000, 1500].map(|bp| vec![HeroEffect::ExperienceGain { bp }]),
+            },
+        ],
         hero_params: Some(HeroParamsDef {
             primary_min: [0, 0, 1, 1],
             primary_max: 99,

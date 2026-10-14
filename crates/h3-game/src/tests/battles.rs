@@ -9,6 +9,7 @@ use h3_adventure::{
 use h3_battle::{BattleState, Command, Event, LegalCommands, Observation};
 use h3_content::ResourceId;
 use h3_contracts::{Army, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroOutcome};
+use h3_heroes::HeroChange;
 use h3_kernel::Rng;
 
 use super::*;
@@ -338,6 +339,13 @@ fn a_battle_played_to_its_end_applies_its_outcome() {
             .iter()
             .position(|e| matches!(e, GameEvent::BattleEnded { .. }))
             .unwrap();
+        // The winner gains the hit points the loser's army lost and 500 for its hero (E08
+        // T19a2a); neither hero has artifacts or spells to change.
+        let killed: u32 = outcome.stacks[winner.opponent().index()]
+            .iter()
+            .map(|s| (s.start - s.end) * rules.battle().creature(s.creature).unwrap().hit_points)
+            .sum();
+        assert!(killed > 0);
         assert_eq!(
             events[ended..],
             [
@@ -353,8 +361,19 @@ fn a_battle_played_to_its_end_applies_its_outcome() {
                     },
                     seen_by: both,
                 }),
+                GameEvent::HeroChanged {
+                    player: [RED, BLUE][winner.index()],
+                    hero: won,
+                    change: HeroChange::GainExperience(killed + 500),
+                },
             ]
         );
+        let experience = |game: &GameState, id| game.hero(id).unwrap().experience;
+        assert_eq!(
+            experience(&game, won),
+            experience(&before, won) + killed + 500
+        );
+        assert_eq!(experience(&game, lost), experience(&before, lost));
         // The treasuries did not change; the store keeps both heroes' details.
         assert_eq!(game.treasury(RED), before.treasury(RED));
         assert_eq!(game.heroes().len(), 2);
