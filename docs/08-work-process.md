@@ -220,7 +220,10 @@ Agents usually work in a cloud sandbox cloned from GitHub.
    verify in the background (about 15 minutes; read the docs meanwhile, then check
    `tail -n 3 target/sandbox/verify.log`). Later runs: `cargo xtask verify --scope <lane>
    --summary` for the lane's loop, or the full
-   `nohup scripts/sandbox-verify.sh --with-original-data > /dev/null 2>&1 &`.
+   `nohup scripts/sandbox-verify.sh --with-original-data > /dev/null 2>&1 &`. After switching
+   the clone to another branch, run `cargo llvm-cov clean --workspace` before the next full
+   verify: test binaries of the other branch's build stay in `target/llvm-cov-target` and enter
+   the coverage report as hundreds of misses at lines that do not match (E08, 2026-10-14).
 4. Packs written by hand in a session without the original data are confirmed with
    `cargo xtask verify --with-original-data` before the merge (Q48).
 
