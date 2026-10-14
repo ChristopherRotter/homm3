@@ -1,6 +1,10 @@
 # The skirmish's armies at a town (E04c T5): the defender holds a Citadel of the vale with a
 # damaging moat of two rows; the walls, the gate and the moat stand between the armies. Used by a
-# replay fixture.
+# replay fixture. Since E04c T6 the attacker is led by a hero, so the battle sets up her Catapult
+# (a Sling, BAT-SIE-009): Brea at level 1, given directly, commands it with Advanced Ballistics
+# (two shots a turn at the targets she picks, BAT-SIE-011), her Hurlers shoot the walls too
+# (BAT-SIE-013), and she shakes them with Quake at Advanced (an Earthquake: three hits,
+# BAT-SIE-015).
 
 [scenario]
 id = "siege"
@@ -12,6 +16,19 @@ terrain = "synthetic:meadow"
 faction = "synthetic:vale"
 fort = "citadel"
 moat = "damaging"
+
+[scenario.attacker_hero]
+hero_type = "synthetic:brea"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+mana = 40
+max_mana = 40
+spell_book = ["synthetic:quake"]
+catapult = 2
+[scenario.attacker_hero.masteries]
+"synthetic:quake" = 2
 
 [[attacker]]
 slot = 0
@@ -27,6 +44,11 @@ count = 10
 slot = 2
 creature = "synthetic:wisp"
 count = 20
+
+[[attacker]]
+slot = 3
+creature = "synthetic:hurler"
+count = 6
 
 [[defender]]
 slot = 0

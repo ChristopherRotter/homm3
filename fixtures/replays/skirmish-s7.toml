@@ -400,25 +400,25 @@ commands = [
     "D attack 0 127",
 ]
 checkpoints = [
-    "0xcfa844fa2f988cb4",
-    "0xbcffaa2af7ad96ae",
-    "0x3a92d6184cc88015",
-    "0x0edfb595613a8dfc",
-    "0xca6838ad3dc1eda8",
-    "0x7134e673afe0d6b8",
-    "0x7499d8a1883ba8b0",
-    "0xe0b1bc37cf660ce7",
-    "0xe609b209fa9e3ee2",
-    "0x95c7524a75067b48",
-    "0x6373f25c28f6372a",
-    "0x842f78e764111821",
-    "0x0b59917ecf31ae38",
-    "0x4d34308166036b80",
-    "0x2b7182a1ceac4745",
+    "0x2d87d48c5a02faed",
+    "0x3ea15f3b8ca3c1a7",
+    "0x9dd1806ab09b4098",
+    "0xc82952580efa7ac5",
+    "0x3da35bf50bcdafa1",
+    "0xc9584a6d22ee291d",
+    "0xd43e709235b211e5",
+    "0xcc61f7babeb4f8aa",
+    "0x9a4234adc3ffa267",
+    "0xf2db6f64406e6125",
+    "0xa4af03dbe1d169af",
+    "0x3ee1233f3ec74648",
+    "0xc024a1305db5d509",
+    "0x1e371fdde04eddcd",
+    "0x9d6244ff609a5afc",
 ]
 
 [replay]
-format = 26
+format = 27
 engine = "0.1.0"
 scenario = "skirmish"
 seed = "7"
@@ -427,13 +427,13 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0x31cd339df305f77e"
-battle_ruleset_hash = "0x3ac769f8e9a50e50"
+ruleset_hash = "0xfe9d91b26b5c5e61"
+battle_ruleset_hash = "0x736d6b1f10035aed"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 46
+battle_state_hash_version = 47
 checkpoint_every = 25
 
 [setup]
@@ -480,4 +480,4 @@ count = 15
 
 [result]
 winner = "defender"
-final_hash = "0x4f85b3a5cfce8a2d"
+final_hash = "0x3c1934c5ffb0e188"

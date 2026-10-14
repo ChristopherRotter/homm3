@@ -539,7 +539,8 @@ mod tests {
             out[..GLOBALS],
             [
                 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 255.0, 255.0, 0.0, 0.0,
-                meadow, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+                meadow, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0
             ]
         );
         assert!(out[HEROES..FIELD].iter().all(|v| *v == 0.0));
@@ -599,7 +600,7 @@ mod tests {
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
         assert_eq!(
             OBSERVATION_LEN,
-            26 + 2 * 13 + (64 + 4 * 128) + 16 * 255 + (47 + 27 + 3 * 8) * 42
+            35 + 2 * 14 + (65 + 4 * 128) + 16 * 255 + (47 + 27 + 3 * 8) * 42
         );
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).
@@ -645,6 +646,7 @@ mod tests {
             0.0,
             1.0,
             -2.0,
+            0.0,
         ];
         let corwin = [
             1.0,
@@ -659,6 +661,7 @@ mod tests {
             0.0,
             0.0,
             1.0,
+            0.0,
             0.0,
         ];
         // The books by spell handle (spark, cinders, arc, blight, ward, farsight, glare, hasten,
@@ -763,7 +766,8 @@ mod tests {
                 Attacker,
                 [
                     0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0, 0.0,
-                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0,
                 ],
                 brea,
                 corwin,
@@ -776,7 +780,8 @@ mod tests {
                 Defender,
                 [
                     0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0, 0.0,
-                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0,
                 ],
                 corwin,
                 brea,
@@ -880,7 +885,14 @@ mod tests {
         let mut out = vec![0.0; OBSERVATION_LEN];
         encode(&obs, 17, &mut out).unwrap();
         let vale = f32::from(r.faction_by_key("synthetic:vale").unwrap().raw()) + 1.0;
-        assert_eq!(out[GLOBALS - 4..GLOBALS], [vale, 2.0, 2.0, 0.0]);
+        let globals = GLOBALS - MAX_WALL_TARGETS - 5;
+        assert_eq!(out[globals..globals + 5], [vale, 2.0, 2.0, 0.0, 0.0]);
+        // The wall-shot targets' hit points: a Citadel sets up the keep, not the towers
+        // (BAT-SIE-010).
+        assert_eq!(
+            out[GLOBALS - MAX_WALL_TARGETS..GLOBALS],
+            [-1.0, 2.0, 2.0, 2.0, 2.0, 2.0, -1.0, 2.0]
+        );
         let on = |out: &[f32], p: usize| -> Vec<usize> {
             let plane = &out[FIELD + p * MAX_FIELD_HEXES..FIELD + (p + 1) * MAX_FIELD_HEXES];
             (0..MAX_FIELD_HEXES).filter(|&h| plane[h] == 1.0).collect()
@@ -897,7 +909,7 @@ mod tests {
         town.gate_open = true;
         obs.siege = Some(town);
         encode(&obs, 17, &mut out).unwrap();
-        assert_eq!(out[GLOBALS - 1], 1.0);
+        assert_eq!(out[globals + 3..globals + 5], [1.0, 0.0]);
         let moat = on(&out, SIEGE_PLANES + 1);
         assert_eq!(moat.len(), 20);
         assert!(!moat.contains(&94) && !moat.contains(&95));
@@ -1125,7 +1137,7 @@ mod tests {
         assert_eq!(own(&out)[10..15], [500.0, 0.0, 0.0, 0.0, 700.0]);
         assert_eq!(
             own(&out)[15..OWN_HERO_SCALARS],
-            [2000.0, 0.0, 1.0, 3.0, 3.0, 1.0, 1.0, 1.0, 40.0]
+            [2000.0, 0.0, 1.0, 3.0, 3.0, 1.0, 1.0, 1.0, 40.0, 0.0]
         );
         let bonus = OWN_HERO_SCALARS;
         assert_eq!(

@@ -526,13 +526,20 @@ mod tests {
 
     #[test]
     fn layout() {
-        assert_eq!(ACTION_COUNT, 2 + 255 + 24 * 42 + 2 * 42 + 42 + 3 + 2);
+        assert_eq!(ACTION_COUNT, 2 + 255 + 24 * 42 + 2 * 42 + 42 + 3 + 2 + 8);
         assert_eq!((END_TACTICS, RETREAT, SURRENDER), (1391, 1392, 1393));
-        assert_eq!((HERO_CAST, CREATURE_CAST), (1394, 1395));
+        assert_eq!((HERO_CAST, CREATURE_CAST, WALL_SHOT_BASE), (1394, 1395, 1396));
         assert_eq!((SPELL_COUNT, TARGET_COUNT), (128, 298));
-        assert_eq!(ACTION_ENCODING_VERSION, 12);
+        assert_eq!(ACTION_ENCODING_VERSION, 13);
         assert_eq!(decode_index(SURRENDER), Some(Command::Surrender));
         assert_eq!(decode_index(CREATURE_CAST), None);
+        // The wall shots (BAT-SIE-011): one entry per wall-shot target, none beyond them.
+        assert_eq!(
+            decode_index(WALL_SHOT_BASE + 7),
+            Some(Command::ShootWall { part: 7 })
+        );
+        let (r, s) = env();
+        assert_eq!(encode(&s, &r, Command::ShootWall { part: 8 }), None);
         assert_eq!(Action::entry(usize::MAX).entry, u32::MAX);
     }
 

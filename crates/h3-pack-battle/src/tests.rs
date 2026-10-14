@@ -154,7 +154,7 @@ fn synthetic_pack_and_scenarios_load() {
         SYNTHETIC_SIEGE,
     ] {
         let (ruleset, setup) = synthetic(text).unwrap();
-        assert_eq!(ruleset.creature_count(), 12);
+        assert_eq!(ruleset.creature_count(), 14);
         assert!(!setup.attacker.stacks.is_empty());
         assert!(!setup.defender.stacks.is_empty());
     }
@@ -1044,7 +1044,7 @@ fn format_v2_fields_and_expansion_packs() {
     .unwrap();
     let ids: Vec<&str> = both.packs().iter().map(|(id, _)| id.as_str()).collect();
     assert_eq!(ids, ["synthetic", "synthetic-ext"]);
-    assert_eq!(both.creature_count(), 13);
+    assert_eq!(both.creature_count(), 15);
     let wisp_info = both.creature_info(wisp).unwrap();
     let marsh = wisp_info.faction.unwrap();
     assert_eq!(
@@ -2249,7 +2249,7 @@ fn hero_content_syntax() {
     )
     .unwrap();
     assert_eq!(r.spell_schools().len(), 2);
-    assert_eq!(r.spells().len(), 46);
+    assert_eq!(r.spells().len(), 47);
     // Pack format v6: the storm school's protection rank; stone's defaults to 0.
     let ranks: Vec<u8> = r
         .spell_schools()

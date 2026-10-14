@@ -71,7 +71,8 @@ no_creature_casts = true             # BAT-TER-004: no creature cast, raise or p
 faction = "vale"
 moat_damage = 70                     # BAT-SIE-005: a damaging moat's damage
 second_moat = true                   # BAT-SIE-004: the Fortress's shape
-hit_points = [2, 2, 2, 2, 2, 2, 2, 2]    # BAT-SIE-009 (pack format v38): each wall target's
+# BAT-SIE-010 (pack format v38): each wall-shot target's hit points, the original's two.
+hit_points = [2, 2, 2, 2, 2, 2, 2, 2]
 
 [[obstacle]]
 id = "boulder"
@@ -284,6 +285,26 @@ abilities = [
     { kind = "drawn_spell", spell = "mend", weight = 10 },
     { kind = "drawn_spell", spell = "gloom", weight = 4 },
 ]
+
+# The siege's machines (E04c T6, pack format v38): the attacker's Catapult (BAT-SIE-009: the first
+# war machine with the flag `catapult`, set up by the battle, never listed) and a creature that
+# shoots the walls as a Cyclops does, once per shot at Basic Ballistics (BAT-SIE-013).
+[[creature]]
+id = "sling"
+attack = 10
+defense = 10
+damage = [0, 0]
+hit_points = 1000
+shots = 24
+
+[[creature]]
+id = "hurler"               # neutral (no faction)
+attack = 12
+defense = 9
+damage = [8, 12]
+hit_points = 40
+shots = 12
+abilities = [{ kind = "wall_shots", level = 1 }]
 
 [[spell]]
 id = "spark"
@@ -708,3 +729,8 @@ duration = "permanent"
 cumulative = true
 ignores_immunity = true
 effects = [{ kind = "timed", change = "defense_loss" }]
+
+[[spell]]
+id = "quake"                        # an Earthquake: hits the town's walls (BAT-SIE-015, v38)
+polarity = "neutral"
+effects = [{ kind = "earthquake" }]
