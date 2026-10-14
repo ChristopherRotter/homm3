@@ -22,7 +22,9 @@
 //! those tiles reached from it when the hero stands there (ADV-OBJ-004, T14a). A border gate whose
 //! key the hero's owner holds is not visited: its tile is one like any other, on the way or at
 //! the end (ADV-VIS-005, T15b); a gate is visited from above (the ruleset part requires it), so
-//! the search goes on from it in every direction.
+//! the search goes on from it in every direction. Another player's hero's tile is a destination
+//! too, its visit a battle (GAM-BAT-004, E08 T19a), from any direction, whatever object lies under
+//! it; an own hero's tile blocks.
 
 use alloc::collections::BinaryHeap;
 use alloc::vec;
@@ -38,15 +40,22 @@ use crate::setup::Pos;
 use crate::state::{AdventureState, HeroOnMap, StaticMap, enterable_terrain};
 
 /// What a search reads besides its window: the state, the rules, the hero's pricing and owner,
-/// and the window's tiles other heroes stand on.
+/// and the window's tiles other heroes stand on ([`FREE`], [`OWN`] or [`ENEMY`]).
 struct Search<'s> {
     state: &'s AdventureState,
     part: &'s AdventureRuleset,
     map: &'s StaticMap,
     pricing: Pricing<'s>,
     owner: PlayerId,
-    occupied: Vec<bool>,
+    occupied: Vec<u8>,
 }
+
+/// No other hero stands on the tile.
+const FREE: u8 = 0;
+/// Another hero of the same owner stands there: the tile blocks.
+const OWN: u8 = 1;
+/// Another player's hero stands there: a visit, which ends the path (GAM-BAT-004).
+const ENEMY: u8 = 2;
 
 /// The tiles a hero can reach today ([`AdventureState::reach`]): a window of the map around the
 /// hero, as far as its points can take it, with the points left on each tile reached and the
@@ -92,10 +101,14 @@ impl Reach {
             points: vec![None; size],
             via: vec![0; size],
         };
-        let mut occupied = vec![false; size];
+        let mut occupied = vec![FREE; size];
         for other in state.heroes().iter().filter(|h| h.id != hero.id) {
             if let Some(slot) = reach.slot(other.pos) {
-                occupied[slot] = true;
+                occupied[slot] = if other.owner == hero.owner {
+                    OWN
+                } else {
+                    ENEMY
+                };
             }
         }
         let search = Search {
@@ -125,7 +138,7 @@ impl Reach {
     /// Relaxes the steps from `slot`, reached with `points` left, in the eight directions; a
     /// tile reached with more points than before goes on the queue unless a visit ends the path
     /// there. `START` is the hero's own tile, whose steps up are skipped when `closed`.
-    // rule: ADV-OBJ-003, ADV-OBJ-004, ADV-VIS-005
+    // rule: ADV-OBJ-003, ADV-OBJ-004, ADV-VIS-005, GAM-BAT-004
     #[inline(always)]
     fn expand<const START: bool>(
         &mut self,
@@ -148,18 +161,20 @@ impl Reach {
             let pos = self.pos(next);
             let to = search.map.at(pos);
             // The same tile checks as MoveHero's (ADV-MOV-007, ADV-MOV-008, ADR-0016 point 4).
+            let occupied = search.occupied[next];
             if !state.is_explored(search.owner, pos)
-                || search.occupied[next]
+                || occupied == OWN
                 || !enterable_terrain(part, &to)
             {
                 continue;
             }
-            // What objects still on the map cover there (the occupancy layer): a visit ends
-            // the path (ADV-OBJ-003), a blocked tile, a visit not built yet or one entered from
-            // above against ADV-OBJ-004 stops it, and a gate the owner holds the key of is
-            // crossed (ADV-VIS-005): `visit_at` with the owner, as `MoveHero`'s step.
-            let mut visit = false;
-            if to.blocked || to.visitable {
+            // Another player's hero is a visit whatever lies under it (GAM-BAT-004). Else what
+            // objects still on the map cover there (the occupancy layer): a visit ends the path
+            // (ADV-OBJ-003), a blocked tile, a visit not built yet or one entered from above
+            // against ADV-OBJ-004 stops it, and a gate the owner holds the key of is crossed
+            // (ADV-VIS-005): `visit_at` with the owner, as `MoveHero`'s step.
+            let mut visit = occupied == ENEMY;
+            if !visit && (to.blocked || to.visitable) {
                 let live = state.live(pos, to);
                 if live.visitable {
                     match state.visit_at(part, search.owner, pos) {

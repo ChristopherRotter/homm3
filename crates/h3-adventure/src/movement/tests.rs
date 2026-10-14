@@ -47,6 +47,7 @@ fn tile(terrain: TerrainId, road: Option<RoadId>) -> StaticTile {
         river: None,
         blocked: false,
         visitable: false,
+        coast: false,
     }
 }
 

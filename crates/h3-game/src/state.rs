@@ -1,6 +1,7 @@
 //! The whole game's state (ADR-0017, E08 T6b): the players with their RNG streams, the day's
 //! schedule of turn groups, the calendar, the game's own stream, the treasuries (T13), the pending
-//! decisions (T14b) and the contexts' states (the adventure now). Built from a validated
+//! decisions (T14b; battles since T19a, `state/battle.rs`) and the contexts' states (the
+//! adventure; a battle lives in its decision). Built from a validated
 //! [`GameSetup`]; the steps only the game triggers (the start of a day, the start of a turn) are
 //! infallible, and commands go through [`crate::apply`].
 
@@ -18,6 +19,10 @@ use crate::command::{AdventureSink, Answer, GameCommandError, GameEvent, NoopSin
 use crate::treasury::Treasuries;
 use crate::{GAME_STATE_HASH_VERSION, GameRuleset, GameSetup, GameSetupError};
 
+mod battle;
+
+pub use battle::OpenBattle;
+
 /// A player of a running game.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PlayerState {
@@ -29,14 +34,46 @@ struct PlayerState {
     acting: bool,
 }
 
-/// A pending decision (ADR-0017 point 6, GAM-DEC-001; E08 T14b): what its owner must answer
-/// before anything else. Increment 2's are offers (ADV-VIS-001, ADV-VIS-004).
+/// A pending decision (ADR-0017 point 6, GAM-DEC-001; E08 T14b): what its owners must answer
+/// before anything else. Increment 2's are offers (ADV-VIS-001, ADV-VIS-004); since E08 T19a a
+/// battle, owned by the players of its sides, who play it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Decision {
-    /// The player who answers it.
-    owner: PlayerId,
-    /// The offer.
-    offer: Offer,
+enum Decision {
+    /// An offer, answered by its owner.
+    Offer {
+        /// The player who answers it.
+        owner: PlayerId,
+        /// The offer.
+        offer: Offer,
+    },
+    /// A battle (GAM-BAT-001), shared between forks and copied on its first write.
+    Battle(Arc<OpenBattle>),
+}
+
+impl Decision {
+    /// Whether `player` owns the decision.
+    fn owned_by(&self, player: PlayerId) -> bool {
+        match self {
+            Self::Offer { owner, .. } => *owner == player,
+            Self::Battle(battle) => battle.owners().contains(&Some(player)),
+        }
+    }
+
+    /// The battle, if the decision is one.
+    fn battle(&self) -> Option<&Arc<OpenBattle>> {
+        match self {
+            Self::Battle(battle) => Some(battle),
+            Self::Offer { .. } => None,
+        }
+    }
+
+    /// The battle, if the decision is one, to write.
+    fn battle_mut(&mut self) -> Option<&mut Arc<OpenBattle>> {
+        match self {
+            Self::Battle(battle) => Some(battle),
+            Self::Offer { .. } => None,
+        }
+    }
 }
 
 /// The state of a whole game.
@@ -48,7 +85,8 @@ pub struct GameState {
     /// The players' resources (GAM-RES-001, E08 T13), by player id.
     treasuries: Treasuries,
     /// The open decisions in opening order (GAM-DEC-001, E08 T14b); a player has at most one in
-    /// increment 2 (no command but its answer runs while it is open). None while no decision is
+    /// sequential play (no command but its answer runs while it is open; a battle's owners both
+    /// have it). None while no decision is
     /// open, never an empty list (equal content compares equal), and shared by forks: a fork
     /// costs nothing more without a decision and a reference count with one (`bench-check`; a
     /// list per fork, or one per player, cost the XL fork benchmark 3 to 4 %).
@@ -168,7 +206,7 @@ impl GameState {
     // rule: GAM-DEC-001
     pub(crate) fn check_ready(&self, player: PlayerId) -> Result<(), GameCommandError> {
         self.check_acting(player)?;
-        if self.decision(player).is_some() {
+        if self.has_decision(player) {
             return Err(GameCommandError::DecisionOpen);
         }
         Ok(())
@@ -182,17 +220,10 @@ impl GameState {
     pub(crate) fn open<S: Sink>(&mut self, player: PlayerId, offer: Offer, sink: &mut S) {
         let (hero, object_type, anchor) = (offer.hero, offer.object_type, offer.anchor);
         if self.treasuries.can_pay(player, offer.price()) {
-            let decision = Decision {
+            self.push_decision(Decision::Offer {
                 owner: player,
                 offer,
-            };
-            let open = self
-                .decisions
-                .as_deref()
-                .unwrap_or_default()
-                .iter()
-                .cloned();
-            self.decisions = Some(open.chain([decision]).collect());
+            });
             sink.emit(GameEvent::OfferOpened {
                 player,
                 hero,
@@ -222,8 +253,8 @@ impl GameState {
     ///
     /// # Errors
     ///
-    /// `UnknownPlayer`, then `NoDecision`, then `OfferGone` for an acceptance; the state is then
-    /// unchanged.
+    /// `UnknownPlayer`, then `NoDecision`, then `BattleOpen` when the first is a battle (E08
+    /// T19a), then `OfferGone` for an acceptance; the state is then unchanged.
     // rule: GAM-DEC-001, ADV-VIS-004
     pub(crate) fn answer<S: Sink>(
         &mut self,
@@ -235,23 +266,17 @@ impl GameState {
         self.players
             .get(player.index())
             .ok_or(GameCommandError::UnknownPlayer(player))?;
-        let open = self.decisions.as_deref().unwrap_or_default();
-        let at = open
-            .iter()
-            .position(|d| d.owner == player)
-            .ok_or(GameCommandError::NoDecision)?;
-        let offer = open[at].offer.clone();
+        let at = self.first(player).ok_or(GameCommandError::NoDecision)?;
+        let Decision::Offer { offer, .. } = &self.decisions.as_deref().unwrap_or_default()[at]
+        else {
+            return Err(GameCommandError::BattleOpen);
+        };
+        let offer = offer.clone();
         let accepted = answer == Answer::Accept;
         if accepted && !self.adventure.offer_stands(&offer) {
             return Err(GameCommandError::OfferGone);
         }
-        let rest: Vec<Decision> = open
-            .iter()
-            .enumerate()
-            .filter(|&(i, _)| i != at)
-            .map(|(_, d)| d.clone())
-            .collect();
-        self.decisions = (!rest.is_empty()).then(|| rest.into());
+        self.close(at);
         sink.emit(GameEvent::OfferAnswered {
             player,
             object_type: offer.object_type,
@@ -278,17 +303,54 @@ impl GameState {
         Ok(())
     }
 
-    /// The offer of `player`'s first open decision, if it has one (GAM-DEC-001; increment 2's
-    /// decisions are offers): what its owner sees of it ([`crate::GameObservation::decision`]).
-    /// It may no longer stand ([`AdventureState::offer_stands`]): then only declining it is
-    /// legal.
+    /// The offer of `player`'s first open decision, if it has one and it is an offer
+    /// (GAM-DEC-001): what its owner sees of it ([`crate::GameObservation::decision`]). It may no
+    /// longer stand ([`AdventureState::offer_stands`]): then only declining it is legal. A battle
+    /// is [`Self::battle`].
     pub fn decision(&self, player: PlayerId) -> Option<&Offer> {
+        match &self.decisions.as_deref().unwrap_or_default()[self.first(player)?] {
+            Decision::Offer { offer, .. } => Some(offer),
+            Decision::Battle(_) => None,
+        }
+    }
+
+    /// Whether `player` has an open decision, an offer or a battle (GAM-DEC-001).
+    pub fn has_decision(&self, player: PlayerId) -> bool {
+        self.first(player).is_some()
+    }
+
+    /// The index of `player`'s first open decision, if it has one.
+    fn first(&self, player: PlayerId) -> Option<usize> {
         self.decisions
             .as_deref()
             .unwrap_or_default()
             .iter()
-            .find(|d| d.owner == player)
-            .map(|d| &d.offer)
+            .position(|d| d.owned_by(player))
+    }
+
+    /// Opens a decision after the open ones.
+    fn push_decision(&mut self, decision: Decision) {
+        let open = self
+            .decisions
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .cloned();
+        self.decisions = Some(open.chain([decision]).collect());
+    }
+
+    /// Closes the decision at `at` (none open: no list).
+    fn close(&mut self, at: usize) {
+        let rest: Vec<Decision> = self
+            .decisions
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .enumerate()
+            .filter(|&(i, _)| i != at)
+            .map(|(_, d)| d.clone())
+            .collect();
+        self.decisions = (!rest.is_empty()).then(|| rest.into());
     }
 
     /// The day advance (ADR-0017 point 3): the calendar, then each context's start-of-day step
@@ -391,14 +453,16 @@ impl GameState {
 }
 
 impl CanonicalHash for GameState {
-    /// Encoding v5 (E08 T18b; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's): version; the master seed; the
-    /// day; the running group's index; the schedule (groups as length + player ids); the players
-    /// (colour, acting, stream state); since v2 the treasuries (the resource kinds, then every
-    /// player's amounts as length and entries); since v3 the open decisions in opening order, as
-    /// length and entries (owner, hero, object type, anchor, since v4 the offer's kind, 0 a
-    /// reveal, 1 a passage, then a reveal's price as length and resource–amount pairs); the
-    /// game's stream; since v5 the store of heroes (length, then each hero's details by id,
-    /// [`hash_details`]); the adventure state's hash.
+    /// Encoding v6 (E08 T19a; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's): version;
+    /// the master seed; the day; the running group's index; the schedule (groups as length +
+    /// player ids); the players (colour, acting, stream state); since v2 the treasuries (the
+    /// resource kinds, then every player's amounts as length and entries); since v3 the open
+    /// decisions in opening order, as length and entries: since v6 first the decision's kind, 0
+    /// an offer, 1 a battle; an offer's owner, hero, object type, anchor, since v4 the offer's
+    /// kind, 0 a reveal, 1 a passage, then a reveal's price as length and resource–amount pairs;
+    /// a battle's owners and heroes by side (each 0 for none, else 1 and the id), tile and battle
+    /// state hash; the game's stream; since v5 the store of heroes (length, then each hero's
+    /// details by id, [`hash_details`]); the adventure state's hash.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(GAME_STATE_HASH_VERSION);
         h.write_u64(self.seed);
@@ -420,21 +484,30 @@ impl CanonicalHash for GameState {
         self.treasuries.hash_into(h);
         let decisions = self.decisions.as_deref().unwrap_or_default();
         h.write_len(decisions.len());
-        for Decision { owner, offer } in decisions {
-            h.write_u8(owner.raw());
-            h.write_u16(offer.hero.raw());
-            offer.object_type.hash_into(h);
-            offer.anchor.hash_into(h);
-            match &offer.kind {
-                OfferKind::Reveal { price } => {
+        for decision in decisions {
+            match decision {
+                Decision::Offer { owner, offer } => {
                     h.write_u8(0);
-                    h.write_len(price.len());
-                    for (resource, amount) in price {
-                        resource.hash_into(h);
-                        h.write_u32(*amount);
+                    h.write_u8(owner.raw());
+                    h.write_u16(offer.hero.raw());
+                    offer.object_type.hash_into(h);
+                    offer.anchor.hash_into(h);
+                    match &offer.kind {
+                        OfferKind::Reveal { price } => {
+                            h.write_u8(0);
+                            h.write_len(price.len());
+                            for (resource, amount) in price {
+                                resource.hash_into(h);
+                                h.write_u32(*amount);
+                            }
+                        }
+                        OfferKind::Pass => h.write_u8(1),
                     }
                 }
-                OfferKind::Pass => h.write_u8(1),
+                Decision::Battle(battle) => {
+                    h.write_u8(1);
+                    battle.hash_into(h);
+                }
             }
         }
         self.rng.hash_into(h);
