@@ -1,0 +1,14 @@
+[package]
+name = "h3-sdl"
+description = "The client's platform adapter (ADR-0024): every SDL 3 call (the window, input and the cursor; later the audio) and all of its unsafe code. Not pure: the pure crates never see it; the viewer's binary drives it."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sdl3-sys.workspace = true
+
+[lints]
+workspace = true

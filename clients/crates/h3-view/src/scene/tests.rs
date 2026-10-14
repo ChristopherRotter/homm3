@@ -329,6 +329,43 @@ fn a_moment_draws_each_stack_in_its_pose() {
 }
 
 #[test]
+fn a_flier_between_its_hexes_is_drawn_over_every_row() {
+    // E17 M2 T5a: off its hexes (0x468730) the flier is drawn by itself after the redraw
+    // (0x4B4D60): over the lower rows' stacks and obstacles, though its position is row 0.
+    let layout = layout();
+    let flying = Pose {
+        group: 0,
+        frame: 2,
+        hex: hex(0, 3),
+        offset: [5, 90],
+        mirrored: false,
+        layer: crate::anim::FLYING,
+    };
+    let moment = Moment {
+        poses: [(0, flying)].into_iter().collect(),
+        ..Moment::default()
+    };
+    let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
+    let [x, y] = layout.anchor(0, 3);
+    assert_eq!(
+        list.last(),
+        Some(&Draw::Creature {
+            def: "CPKMAN.DEF".to_string(),
+            group: 0,
+            frame: 2,
+            anchor: [x + 5, y + 90],
+            mirrored: false,
+            outline: None,
+        })
+    );
+    let creatures = list
+        .iter()
+        .filter(|d| matches!(d, Draw::Creature { .. }))
+        .count();
+    assert_eq!(creatures, 4);
+}
+
+#[test]
 fn an_empty_battle_draws_nothing() {
     let list = battle(&observation(), &keys(), &tables(), &layout()).unwrap();
     assert_eq!(list, []);

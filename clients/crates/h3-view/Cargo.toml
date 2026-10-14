@@ -1,6 +1,6 @@
 [package]
 name = "h3-view"
-description = "The viewer: the scene model (messages to what is on screen at a time; pure, the library) and its adapters (the binary: the real-asset gate, the headless renderer, later the window)."
+description = "The viewer: the scene model (messages to what is on screen at a time; pure, the library) and its adapters (the binary: the real-asset gate, the headless renderer, the window through h3-sdl)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -20,6 +20,8 @@ h3-kernel.workspace = true
 h3-pack-battle.workspace = true
 h3-content-battle.workspace = true
 h3-map.workspace = true
+# The window (E17 M2 T5a): the platform adapter, the binary's only.
+h3-sdl.workspace = true
 
 [lints]
 workspace = true

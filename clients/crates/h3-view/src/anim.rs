@@ -45,6 +45,11 @@ const WALK_DOWN: u8 = 7;
 const STRIKER: u8 = 6;
 const STRUCK: u8 = 5;
 const CORPSE: u8 = 1;
+/// Not a pass: a flier between its hexes (E17 M2 T5a, design §7.10). The flight takes it off its
+/// hexes (0x468730, from 0x4B4BFE), so no row pass draws it, and draws it by itself at each
+/// point over the whole battlefield (0x4B4D60); it stands on the landing hex again before group
+/// 21 (0x4B4E24). The scene draws this layer after every row.
+pub const FLYING: u8 = 8;
 /// A projectile's step length in pixels: trunc((d + 20) / 40) steps (§7.4).
 const STEP_PIXELS: u64 = 40;
 /// Half a hex: a two-hex target is aimed at from its middle (0x43F323).
@@ -235,7 +240,8 @@ pub struct Pose {
     /// Drawn mirrored: it faces left (+0x44 = 0; E17 M2 T4b-2a, turns).
     pub mirrored: bool,
     /// Its draw layer (+0x8), the redraw's pass that draws it in its row (§4.6): 4 standing, 3 or
-    /// 7 walking up or down, 6 a melee's striker, 5 a struck stack, 1 among the corpses.
+    /// 7 walking up or down, 6 a melee's striker, 5 a struck stack, 1 among the corpses; or
+    /// [`FLYING`], over every row.
     pub layer: u8,
 }
 
@@ -1258,6 +1264,7 @@ impl Player<'_> {
                 }
                 let mut p = Self::posed(&live, g.moving, j % n, start);
                 p.offset = [f32_trunc(at[0]) - ax, f32_trunc(at[1]) - ay];
+                p.layer = FLYING;
                 self.frame(&[(stack, p)], step);
             }
             // The flight ends with group 21 and a frame standing (0x4B4E59, 0x4B4E66); then

@@ -556,3 +556,46 @@ text accepted by the user the same day, #196).
   `minifb`'s `ScaleMode::UpperLeft` does not scale; `tinyaudio`'s macOS backend brings an
   Apache-2.0-only build dependency.
 - Gates: the docs only (`check.sh` unchanged, green on `master` at the start); see the pull request.
+
+### M2 T5a — A battle in a window (2026-10-14)
+
+On `client/e17-m2-t5a-window` (#201), the user present; [design §8.1](E17-design.md),
+[ADR-0024](../adr/0024-client-window-audio.md); with `shared/clients-ci-sdl` (#200: the CI job's SDL
+headers, the user's consent).
+
+- **Split:** T5 (the adapter, the sound, M2's closure) was more than a session; the user chose the
+  window first (T5a). T5b (the sound) and T5c (M2's closure) are in the queue.
+- **Built:** `clients/crates/h3-sdl`, the platform adapter: every SDL call (`sdl3-sys` 0.7.2, SDL
+  3.4.18 from source, static; camera, dialog, GPU, haptic, HIDAPI, joystick, power, sensor and
+  tray left out): the window at the largest integer scale that fits, nearest sampling, centred,
+  high pixel density; its events; vsync and fullscreen; the hardware colour cursor at the
+  frame's scale; a read-back of the whole output. `h3-view window <scenario | record>`: the
+  battle loaded as `play` loads it (`bin/h3-view/battle.rs`, now shared), each frame composed
+  ahead and shown when it falls due, past the end idling; Space, →, R, F, V, C, Esc;
+  `--check <s>` (every frame read back and compared, the black around included) and
+  `--measure <s>`. Pure: `h3_view::clock` (the battle's clock: pause, seek, a frame's delay),
+  `h3_view::cursor` (`CRDEFLT.DEF`'s first frame drawn or as an RGBA image) and
+  `Screen::xrgb` (the screen widened as the PNG is). `assets::clients_dir`: an executable copied
+  into a checkout finds its tables, layouts and packs.
+- **Checked in the sandbox** (Xvfb, Mesa's software OpenGL ES 2): `--check 20`: 301 frames, every
+  one exact at scale 1; `--measure 10`: median 7.0 ms after the frame's time, p95 13.0 (the
+  software renderer); driven by `xdotool`: pause, step, restart, fullscreen, the drawn cursor and
+  Esc as meant. `play scenarios/battle.toml` after the refactor: 24 commands, 81 764 ms, 1 078
+  frames, as before.
+- **On the user's machine** (the cross-built exe, `measure.cmd`): Direct3D 11 at scale 2, 302 of
+  302 frames read back exact; a frame shows a median 0.4 ms after its time (p95 1.0 without
+  vsync, 1.3 with it), one 27 ms outlier per run. The user, after watching it: "looks good",
+  but for the flight below.
+- **Found by the user:** in the window the Angels, flying down four rows, passed under the Wolf
+  Riders' corpse and the Orcs. The viewer drew a flier in its start row's pass; the executable
+  takes it off its hexes for the flight (0x468730) and draws it by itself over everything
+  (0x4B4D60). Fixed: the cycles' poses take layer 8 (`anim::FLYING`), drawn after every row
+  (design §7.10); the four recorded sequences unchanged.
+- **Found on the way:** `clients/Cargo.lock` was stale on `master` again (`h3-game` gained
+  `h3-battle` and `h3-content-battle` through the adventure lane's E08 T19a1/T19a2), so
+  `check.sh` failed at `--locked` before any change; fixed here, the lasting fix in the inbox for
+  the user. SDL's Linux build stops without Xcursor's headers (the sandbox and the CI runner
+  lacked the X11 extension headers). The battle's frame is 800 × 600: at 1080 pixels of height
+  the window's scale is 1.
+- Gates: `clients/scripts/check.sh` all passed (coverage 100 % with `h3-sdl` excluded as an
+  adapter); the scoped verify with no failing step; see the pull request.

@@ -17,7 +17,8 @@ T3 (2026-10-13): the capture harness and the animation timing. M2 T4a (2026-10-1
 over time (`anim`), checked against the recorded sequences, and `render --at`. M2 T4b-1
 (2026-10-13): the frame check, every frame of the recorded sequences against the original's. M2
 T2 (2026-10-14): the window, input and audio library chosen by measurement and the user: SDL 3
-(ADR-0024, `docs/epics/E17-design.md` §8).
+(ADR-0024, `docs/epics/E17-design.md` §8). M2 T5a (2026-10-14): the SDL 3 adapter `h3-sdl` and
+`h3-view window`, a battle in a window at the original's frame times (M2's exit).
 Decisions: ADR-0020
 and the epic file `docs/epics/E17-clients.md`; tasks in `docs/lanes/client/QUEUE.md`.
 
@@ -68,6 +69,18 @@ search the parent directories).
   commands at the original's timing with the viewer's own fidgets and draws every distinct frame:
   `clients/out/play/<stem>-s<seed>/` holds the record, `frames.txt` (each frame's moment) and,
   with `--png`, `f<ms>.png`; `--to` past the end lets the battle idle.
+- **A battle in a window** (E17 M2 T5a, ADR-0024, design §8.1): `cargo run --release -p h3-view
+  -- window scenarios/battle.toml [--seed <n>] [--scale <n>] [--vsync] [--drawn-cursor]
+  [--fullscreen]` (from `clients/`) loads the battle as `play` does and shows each frame when it
+  falls due, at the largest integer scale that fits the display; Space pauses, → steps a frame
+  while paused, R restarts, F, V and C switch fullscreen, vsync and the cursor's kind, Esc quits.
+  `--measure <s>` runs unattended and prints how late the frames showed; `--check <s>` also reads
+  every frame back and compares it with the frame drawn headless (exit 1 on a difference; in a
+  sandbox under Xvfb). Building it builds SDL 3 from its sources: CMake, a C compiler and, on
+  Linux, the X11 headers (`.github/workflows/clients.yml` lists them; ALSA's and Pulse's for the
+  sound). A Windows build cross-compiles (`rustup target add x86_64-pc-windows-gnu`, `mingw-w64`,
+  `cargo build --release -p h3-view --target x86_64-pc-windows-gnu`); copied anywhere inside a
+  checkout's `clients/`, it finds the tables, layouts and packs from its own place.
 - **The frame check** (E17 M2 T4b-1, design §7.9): `python3 capture/h3drive.py frames` (from
   `clients/`, in a sandbox with the harness) keeps every distinct battlefield the original shows
   in each recorded sequence, draws the viewer's frame at the same times (`h3-view sequences
@@ -79,7 +92,8 @@ search the parent directories).
 | `clients/scripts/check.sh` | the client's gates (local and CI) |
 | `clients/crates/h3-assets` | decoders: palettes, PCX, DEF, MSK (done), fonts, later sound and video; encoders for synthetic test assets (`build`); the gate's checks (`check`, `survey`); reads LOD archives through `crates/h3-formats` (a path dependency into the engine workspace) |
 | `clients/crates/h3-render` | the software compositor: the screen in a 16-bit pixel format, palettes truncated into it, the executable's frame drawers (shadows, outline and flag colours, mirroring, clipping), opaque images, PNG bytes |
-| `clients/crates/h3-view` | the scene model (the library: `record` reads a record, `anim` plays its commands at the original's timing, `scene` makes the draw list of a snapshot at a moment, `batch` holds a checkpoint's decoded assets, `compose` draws the list into a frame; `tables` and `layout` load the asset tables and the layouts); its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the tables' harvester, `sprite`, the headless renderer `render` with its scenario adapter, the timing check `sequences`, `play` (a battle fought by its bot and drawn frame by frame), `situation` (a scenario's battle as a map for the original), later the window. Its package depends on `h3-protocol` (the library) and, for the adapters only, on `h3-pack-battle`, `h3-battle`, `h3-content-battle`, `h3-kernel` and `h3-map`, which `tests/purity.rs` keeps out of the library |
+| `clients/crates/h3-view` | the scene model (the library: `record` reads a record, `anim` plays its commands at the original's timing, `scene` makes the draw list of a snapshot at a moment, `batch` holds a checkpoint's decoded assets, `compose` draws the list into a frame; `tables` and `layout` load the asset tables and the layouts); its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the tables' harvester, `sprite`, the headless renderer `render` with its scenario adapter, the timing check `sequences`, `play` (a battle fought by its bot and drawn frame by frame), `situation` (a scenario's battle as a map for the original), `window` (the battle in a window, through `h3-sdl`; with `play` it loads the battle through `battle.rs`). The library also has `cursor` (the game's mouse cursor) and `clock` (the battle's clock in the window). Its package depends on `h3-protocol` (the library) and, for the adapters only, on `h3-pack-battle`, `h3-battle`, `h3-content-battle`, `h3-kernel`, `h3-map` and `h3-sdl`, which `tests/purity.rs` keeps out of the library |
+| `clients/crates/h3-sdl` | the platform adapter (ADR-0024): every SDL 3 call and all of the client's `unsafe` code; `sdl3-sys` with SDL built from its sources and linked statically; the window (integer scale, nearest sampling, centred), its events, the hardware cursor, the read-back; later the audio. Left out of the coverage gate as an adapter |
 | `clients/assets/{base,ab,sod}.toml` | the asset tables per expansion (below): content keys to archive entry names and the drawing's numbers, asset fixes; identifiers and numbers only |
 | `clients/layouts/battle.toml` | the battle screen's layout at the native resolution (ADR-0020 point 3: layouts are data): the frame, the hex boxes, where sprites stand, the stack canvas, the layer-1 pass's columns, the outline's palette entry (`docs/epics/E17-design.md` §4); an HD layout is another file of the same format (*provisional*) |
 | `clients/scenarios/*.toml` | the client's battle scenarios (the scenario format of `packs/README.md`) for `h3-view render` and `play`: the stills T7 renders, `smoke.toml` the captured smoke battle (T8), `battle.toml` the whole battle `play` fights (M2 T4b-2a) |

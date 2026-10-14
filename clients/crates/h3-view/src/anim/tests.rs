@@ -456,6 +456,18 @@ fn a_flight_without_a_distance_is_one_cycle() {
     let t = timeline(&o, &commands, &numbers, stage, Speed::default()).unwrap();
     let cycle = t.keys.iter().filter(|k| k.pose.group == 0).count();
     assert_eq!(cycle, 7);
+    // T5a: between its hexes the flier is drawn over every row; on them in standing's pass.
+    let layers: Vec<(u32, u8)> = t
+        .keys
+        .iter()
+        .map(|k| (k.pose.group, k.pose.layer))
+        .collect();
+    assert!(
+        layers
+            .iter()
+            .all(|&(group, layer)| (group == 0) == (layer == FLYING))
+    );
+    assert_eq!(layers.last(), Some(&(2, 4)));
 }
 
 #[test]

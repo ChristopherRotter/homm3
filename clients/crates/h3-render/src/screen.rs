@@ -166,6 +166,19 @@ impl Screen {
         self.at(x, y).and_then(|i| self.pixels.get(i).copied())
     }
 
+    /// Every pixel widened to `0x00RRGGBB` by [`PixelFormat::unpack`], as the PNG shows it: what
+    /// the window's texture takes (E17 M2 T5a, ADR-0024 point 3).
+    #[must_use]
+    pub fn xrgb(&self) -> Vec<u32> {
+        self.pixels
+            .iter()
+            .map(|&p| {
+                let c = self.format.unpack(p);
+                u32::from(c.r) << 16 | u32::from(c.g) << 8 | u32::from(c.b)
+            })
+            .collect()
+    }
+
     /// Sets every pixel.
     pub fn fill(&mut self, pixel: u16) {
         self.pixels.fill(pixel);
@@ -279,5 +292,15 @@ mod tests {
             assert_eq!(s.pixel(x, y), None);
             assert!(s.pixel_mut(x, y).is_none());
         }
+    }
+
+    #[test]
+    fn a_screen_widens_for_the_window() {
+        let mut s = Screen::new(3, 1, PixelFormat::RGB565).unwrap();
+        *s.pixel_mut(0, 0).unwrap() = 0xFFFF;
+        *s.pixel_mut(1, 0).unwrap() = 0xF800;
+        *s.pixel_mut(2, 0).unwrap() = 0x0841;
+        // As the PNG widens: each channel's bits repeated downwards.
+        assert_eq!(s.xrgb(), [0x00FF_FFFF, 0x00FF_0000, 0x0008_0808]);
     }
 }

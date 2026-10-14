@@ -4,32 +4,22 @@
 //! (`h3_view::anim`) and every distinct frame is drawn. An adapter: it reads files and the
 //! archives, and writes the frames.
 
-use std::collections::BTreeSet;
 use std::fmt::Write as _;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::ExitCode;
 
-use h3_formats::lod::LodArchive;
-use h3_view::anim::{self, Speed};
-use h3_view::batch::{self, Batch};
-use h3_view::compose::compose;
-use h3_view::record;
-use h3_view::scene::{self, Moment};
-use h3_view::{layout, tables::Tables};
+use h3_view::anim::Speed;
+use h3_view::scene::Moment;
 
+use crate::assets;
+use crate::battle::{Battle, Source};
 use crate::gate::timed;
-use crate::render::{lookup, read_archives, write};
-use crate::{assets, motion};
+use crate::render::write;
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Options {
-    input: PathBuf,
-    seed: u64,
-    speed: Speed,
-    packs: PathBuf,
-    install: PathBuf,
+    source: Source,
     out: Option<PathBuf>,
     png: bool,
     from: u32,
@@ -40,7 +30,7 @@ impl Options {
     /// Parses `<scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
     /// [--install <dir>] [--out <dir>] [--png] [--from <ms>] [--to <ms>]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
-        let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let clients = assets::clients_dir();
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         let (mut input, mut seed, mut speed, mut packs, mut install) = (None, 1, 0, None, None);
         let (mut out, mut png, mut from, mut to) = (None, false, 0, None);
@@ -74,13 +64,15 @@ impl Options {
             }
         }
         Ok(Self {
-            input: input.ok_or("play: needs a scenario or a record file")?,
-            seed,
-            speed: Speed::new(speed),
-            packs: packs.unwrap_or_else(|| manifest.join("../../../packs")),
-            install: install
-                .or(env)
-                .unwrap_or_else(|| manifest.join("../../../original-data/install")),
+            source: Source {
+                input: input.ok_or("play: needs a scenario or a record file")?,
+                seed,
+                speed: Speed::new(speed),
+                packs: packs.unwrap_or_else(|| clients.join("../packs")),
+                install: install
+                    .or(env)
+                    .unwrap_or_else(|| clients.join("../original-data/install")),
+            },
             out,
             png,
             from,
@@ -88,20 +80,12 @@ impl Options {
         })
     }
 
-    /// Whether the input is a scenario (anything but a `.jsonl` record).
-    fn scenario(&self) -> bool {
-        self.input.extension().is_none_or(|e| e != "jsonl")
-    }
-
     /// The output directory: `clients/out/play/<stem>[-s<seed>]` by default.
     fn dir(&self) -> PathBuf {
         self.out.clone().unwrap_or_else(|| {
-            let stem = self
-                .input
-                .file_stem()
-                .map_or_else(|| "battle".into(), |s| s.to_string_lossy().into_owned());
-            let name = if self.scenario() {
-                format!("{stem}-s{}", self.seed)
+            let stem = self.source.stem();
+            let name = if self.source.scenario() {
+                format!("{stem}-s{}", self.source.seed)
             } else {
                 stem
             };
@@ -130,81 +114,21 @@ pub fn run(options: &Options) -> ExitCode {
 fn play(options: &Options) -> Result<Vec<String>, String> {
     let dir = options.dir();
     let mut lines = Vec::new();
-    let text = if options.scenario() {
-        let (text, took) =
-            timed(|| crate::scenario::fought(&options.input, &options.packs, options.seed));
-        let text = text?;
-        let path = dir.join("record.jsonl");
-        write(&path, text.as_bytes())?;
-        lines.push(format!(
-            "record: {} (fought in {} ms)",
-            path.display(),
-            took.as_millis()
-        ));
-        text
-    } else {
-        fs::read_to_string(&options.input)
-            .map_err(|e| format!("{}: {e}", options.input.display()))?
-    };
-    let record = record::parse(&text).map_err(|e| e.to_string())?;
-    let snapshot = record
-        .first_snapshot()
-        .ok_or("the record holds no snapshot")?;
-    let manifest = &record.header.manifest;
-    let top = manifest.packs.last().map_or("", |p| p.id.as_str());
-    let tables: Tables = assets::load(&assets::default_dir(), top)?;
-    let layout_path = assets::default_dir().join("../layouts/battle.toml");
-    let layout = layout::parse_battle(
-        &fs::read_to_string(&layout_path).map_err(|e| format!("{}: {e}", layout_path.display()))?,
-    )
-    .map_err(|e| format!("{}: {e}", layout_path.display()))?;
-    let bytes = read_archives(&options.install)?;
-    let archives = bytes
-        .iter()
-        .map(|(name, b)| {
-            LodArchive::parse(b)
-                .map(|a| (*name, a))
-                .map_err(|e| format!("{name}: {e:?}"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let looks = motion::looks(&record, &tables, &archives)?;
-    let stage = motion::stage(&record, &tables, &layout);
-    let commands = anim::commands(&record.messages);
-    // The viewer's own fidgets, from the battle's seed (`h3_view::anim::Fidgets`).
-    let seed = u32::try_from(options.seed & u64::from(u32::MAX)).unwrap_or(1);
-    let timeline = anim::fidgeting(snapshot, &commands, &looks, stage, options.speed, seed)
-        .map_err(|e| e.to_string())?;
+    let record_to = options.source.scenario().then(|| dir.join("record.jsonl"));
+    let mut battle = Battle::load(&options.source, record_to.as_deref(), &mut lines)?;
     // Past the last command the battle idles: the outline pulses and the stacks fidget.
-    let until = options.to.unwrap_or(timeline.end);
-    // Every moment the battle may change, drawn; a moment that draws what the one before drew is
-    // not a new frame.
-    let mut frames: Vec<(u32, Vec<scene::Draw>)> = Vec::new();
+    let until = options.to.unwrap_or(battle.timeline.end);
+    let frames = battle.frames(until)?;
     let mut log = String::new();
-    for t in timeline.changes(until) {
-        let moment = Moment::at(&timeline, t);
-        let list = scene::battle_at(snapshot, &moment, manifest, &tables, &layout)
-            .map_err(|e| format!("{t} ms: {e}"))?;
-        if frames.last().is_some_and(|(_, last)| *last == list) {
-            continue;
-        }
-        let _ = writeln!(log, "{}", describe(t, &moment));
-        frames.push((t, list));
+    for (t, moment, _) in &frames {
+        let _ = writeln!(log, "{}", describe(*t, moment));
     }
     write(&dir.join("frames.txt"), log.as_bytes())?;
-    let mut names = BTreeSet::new();
-    for (_, list) in &frames {
-        names.extend(batch::names(list, &layout));
-    }
-    let mut batch = Batch::default();
-    for name in &names {
-        batch
-            .add(name, &lookup(&archives, name)?)
-            .map_err(|e| e.to_string())?;
-    }
+    battle.load_batch(frames.iter().map(|(_, _, list)| list.as_slice()), &[])?;
     let (drawn, took) = timed(|| {
         let mut drawn = 0;
-        for (t, list) in frames.iter().filter(|(t, _)| *t >= options.from) {
-            let screen = compose(list, &batch, &layout).map_err(|e| format!("{t} ms: {e}"))?;
+        for (t, _, list) in frames.iter().filter(|(t, ..)| *t >= options.from) {
+            let screen = battle.compose(*t, list)?;
             if options.png {
                 write(
                     &dir.join(format!("f{t:06}.png")),
@@ -216,12 +140,12 @@ fn play(options: &Options) -> Result<Vec<String>, String> {
         Ok::<_, String>(drawn)
     });
     let drawn = drawn?;
-    let commands_played = commands.len();
     lines.push(format!(
-        "{commands_played} commands, {} ms at speed {}; {} frames ({drawn} drawn{} in {} ms), \
+        "{} commands, {} ms at speed {}; {} frames ({drawn} drawn{} in {} ms), \
          their moments in {}",
-        timeline.end,
-        options.speed.setting(),
+        battle.commands,
+        battle.timeline.end,
+        options.source.speed.setting(),
         frames.len(),
         if options.png { " as PNGs" } else { "" },
         took.as_millis(),
@@ -260,13 +184,13 @@ mod tests {
             "x",
         ]))
         .unwrap();
-        assert_eq!(o.seed, 7);
-        assert_eq!(o.speed, Speed::new(2));
-        assert!(o.png && o.scenario());
+        assert_eq!(o.source.seed, 7);
+        assert_eq!(o.source.speed, Speed::new(2));
+        assert!(o.png && o.source.scenario());
         assert_eq!((o.from, o.to), (100, Some(900)));
         assert_eq!(o.dir(), PathBuf::from("x"));
         let r = Options::parse(&args(&["a/b.jsonl"])).unwrap();
-        assert!(!r.scenario());
+        assert!(!r.source.scenario());
         assert!(r.dir().ends_with("out/play/b"));
         assert!(Options::parse(&args(&[])).is_err());
         assert!(Options::parse(&args(&["a", "--seed", "x"])).is_err());
