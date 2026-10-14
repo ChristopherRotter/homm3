@@ -46,8 +46,6 @@ pub struct StaticTile {
     pub blocked: bool,
     /// An object's visitable tile (ADV-OBJ-001).
     pub visitable: bool,
-    /// Land on the coast (the map's flag, [`crate::TileSetup::coast`]; E08 T19a).
-    pub coast: bool,
 }
 
 impl StaticTile {
@@ -58,7 +56,6 @@ impl StaticTile {
         river: None,
         blocked: true,
         visitable: false,
-        coast: false,
     };
 }
 
@@ -125,6 +122,10 @@ pub struct StaticMap {
     /// visitable tile, the common case, is turned down without a lookup in [`Self::visits`]
     /// (`bench-check`, E08 T13b). Follows from the objects too.
     typed_visits: Vec<u64>,
+    /// A bit per tile index: land on the coast (the map's flag, [`crate::TileSetup::coast`]; E08
+    /// T19a), which only a battle's ground reads, so the tiles the hot paths copy stay small
+    /// (`bench-check`).
+    coast: Vec<u64>,
     hash: u64,
 }
 
@@ -156,6 +157,7 @@ impl StaticMap {
             return Err(SetupError::TileCount(setup.tiles.len()));
         }
         let mut tiles = Vec::with_capacity(setup.tiles.len());
+        let mut coast = vec![0; setup.tiles.len().div_ceil(64)];
         for (index, tile) in setup.tiles.iter().enumerate() {
             if usize::from(tile.terrain.raw()) >= core.terrains().len() {
                 return Err(SetupError::UnknownTerrain(index));
@@ -172,8 +174,10 @@ impl StaticMap {
                 river: tile.river,
                 blocked: false,
                 visitable: false,
-                coast: tile.coast,
             });
+            if tile.coast {
+                coast[index / 64] |= 1 << (index % 64);
+            }
         }
         let mut map = Self {
             width: setup.width,
@@ -183,6 +187,7 @@ impl StaticMap {
             objects: Vec::with_capacity(setup.objects.len()),
             visits: BTreeMap::new(),
             typed_visits: vec![0; setup.tiles.len().div_ceil(64)],
+            coast,
             hash: 0,
         };
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
@@ -347,6 +352,13 @@ impl StaticMap {
         &self.tiles
     }
 
+    /// Whether the tile at `pos` is land on the coast (the map's flag; E08 T19a); a tile off the
+    /// map is not.
+    pub fn is_coast(&self, pos: Pos) -> bool {
+        self.index(pos)
+            .is_some_and(|index| self.coast[index / 64] >> (index % 64) & 1 == 1)
+    }
+
     /// The tile at `pos`, if it is on the map.
     pub fn tile(&self, pos: Pos) -> Option<&StaticTile> {
         self.index(pos).map(|index| &self.tiles[index])
@@ -388,11 +400,11 @@ impl CanonicalHash for StaticMap {
         h.write_u16(self.height);
         h.write_u8(self.levels);
         h.write_len(self.tiles.len());
-        for tile in &self.tiles {
+        for (index, tile) in self.tiles.iter().enumerate() {
             tile.terrain.hash_into(h);
             tile.road.hash_into(h);
             tile.river.hash_into(h);
-            h.write_bool(tile.coast);
+            h.write_bool(self.coast[index / 64] >> (index % 64) & 1 == 1);
         }
         h.write_len(self.objects.len());
         for object in &self.objects {
@@ -778,11 +790,12 @@ impl AdventureState {
         part: &AdventureRuleset,
         pos: Pos,
     ) -> (TerrainId, Option<ContentKey>) {
-        let tile = self.map.at(pos);
         match part.params().battle_terrains() {
             Some(battle) if pos.level > 0 => (battle.underground, None),
-            Some(battle) if tile.coast => (battle.coast, Some(battle.coast_battlefield.clone())),
-            _ => (tile.terrain, None),
+            Some(battle) if self.map.is_coast(pos) => {
+                (battle.coast, Some(battle.coast_battlefield.clone()))
+            }
+            _ => (self.map.at(pos).terrain, None),
         }
     }
 

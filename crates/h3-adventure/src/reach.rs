@@ -161,20 +161,22 @@ impl Reach {
             let pos = self.pos(next);
             let to = search.map.at(pos);
             // The same tile checks as MoveHero's (ADV-MOV-007, ADV-MOV-008, ADR-0016 point 4).
-            let occupied = search.occupied[next];
-            if !state.is_explored(search.owner, pos)
-                || occupied == OWN
-                || !enterable_terrain(part, &to)
-            {
+            if !state.is_explored(search.owner, pos) || !enterable_terrain(part, &to) {
                 continue;
             }
-            // Another player's hero is a visit whatever lies under it (GAM-BAT-004). Else what
-            // objects still on the map cover there (the occupancy layer): a visit ends the path
-            // (ADV-OBJ-003), a blocked tile, a visit not built yet or one entered from above
-            // against ADV-OBJ-004 stops it, and a gate the owner holds the key of is crossed
-            // (ADV-VIS-005): `visit_at` with the owner, as `MoveHero`'s step.
-            let mut visit = occupied == ENEMY;
-            if !visit && (to.blocked || to.visitable) {
+            // Another player's hero is a visit whatever lies under it (GAM-BAT-004), an own hero
+            // blocks. Else what objects still on the map cover there (the occupancy layer): a
+            // visit ends the path (ADV-OBJ-003), a blocked tile, a visit not built yet or one
+            // entered from above against ADV-OBJ-004 stops it, and a gate the owner holds the key
+            // of is crossed (ADV-VIS-005): `visit_at` with the owner, as `MoveHero`'s step.
+            let mut visit = false;
+            let occupied = search.occupied[next];
+            if occupied != FREE {
+                if occupied == OWN {
+                    continue;
+                }
+                visit = true;
+            } else if to.blocked || to.visitable {
                 let live = state.live(pos, to);
                 if live.visitable {
                     match state.visit_at(part, search.owner, pos) {
