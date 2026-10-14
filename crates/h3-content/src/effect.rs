@@ -148,6 +148,64 @@ impl CreatureSelector<CreatureTypeId> {
     }
 }
 
+/// Levels a [`RaisedCreature::ByLevel`] names a creature for: without the skill, then Basic to
+/// Expert.
+pub const RAISED_LEVELS: usize = MAX_SKILL_LEVEL as usize + 1;
+
+/// The creature a `raises` effect names (E08 T19a2, decision 30).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RaisedCreature<C, K> {
+    /// Always this creature (the Necromancy skill: Skeletons).
+    Creature(C),
+    /// The creature by the hero's level in `skill`: `by_level[0]` without the skill, then Basic
+    /// to Expert (the Cloak of the Undead King by the Necromancy level: Skeletons, Walking Dead,
+    /// Wights, Liches; 0x4E3C60).
+    ByLevel {
+        /// The secondary skill whose level picks the creature.
+        skill: K,
+        /// The creature at each level, none to Expert.
+        by_level: [C; RAISED_LEVELS],
+    },
+}
+
+impl<C, K> RaisedCreature<C, K> {
+    /// Maps the references.
+    pub fn try_map<D, M, E>(
+        &self,
+        mut creature: impl FnMut(&C) -> Result<D, E>,
+        skill: impl FnOnce(&K) -> Result<M, E>,
+    ) -> Result<RaisedCreature<D, M>, E> {
+        Ok(match self {
+            Self::Creature(c) => RaisedCreature::Creature(creature(c)?),
+            Self::ByLevel { skill: k, by_level } => {
+                let [a, b, c, d] = by_level;
+                RaisedCreature::ByLevel {
+                    skill: skill(k)?,
+                    by_level: [creature(a)?, creature(b)?, creature(c)?, creature(d)?],
+                }
+            }
+        })
+    }
+}
+
+impl<C: CanonicalHash, K: CanonicalHash> CanonicalHash for RaisedCreature<C, K> {
+    fn hash_into(&self, h: &mut StateHasher) {
+        match self {
+            Self::Creature(c) => {
+                h.write_u8(0);
+                c.hash_into(h);
+            }
+            Self::ByLevel { skill, by_level } => {
+                h.write_u8(1);
+                skill.hash_into(h);
+                for c in by_level {
+                    c.hash_into(h);
+                }
+            }
+        }
+    }
+}
+
 /// Which of the hero's spells a spell-damage bonus applies to (E04b T2a).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpellScope<L, S> {
@@ -536,6 +594,19 @@ pub enum HeroEffect<C, K, S, F, L> {
         /// Bonus (1..=3).
         level: u8,
     },
+    /// The creature the hero's Necromancy raises (E08 T19a2, decision 30): of all the hero's
+    /// `raises` effects the highest `priority` decides (the Necromancy skill Skeletons at 0, the
+    /// Cloak of the Undead King its creature by the Necromancy level at 1; a mod may go higher).
+    /// Among equal priorities, if every one comes from an artifact, the lowest artifact id
+    /// (that of the artifact or combination part whose list holds the effect), then the lowest
+    /// creature id; otherwise the lowest creature id. The share raised is the `necromancy`
+    /// kind's; applied by the game with the battle's outcome (ADR-0017 point 11).
+    Raises {
+        /// Priority: the highest wins.
+        priority: u8,
+        /// The creature raised.
+        creature: RaisedCreature<C, K>,
+    },
 }
 
 /// An effect as written in a pack (references are keys).
@@ -545,7 +616,7 @@ pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, Facti
 
 impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 42] = [
+    pub const NAMES: [&'static str; 43] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -588,6 +659,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "experience_gain",
         "max_mana",
         "join_bonus",
+        "raises",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -635,6 +707,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::ExperienceGain { .. } => 39,
             Self::MaxMana { .. } => 40,
             Self::JoinBonus { .. } => 41,
+            Self::Raises { .. } => 42,
         }
     }
 
@@ -660,7 +733,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Maps the references.
     pub fn try_map<C2, K2, S2, F2, L2, E>(
         &self,
-        creature: impl FnOnce(&C) -> Result<C2, E>,
+        mut creature: impl FnMut(&C) -> Result<C2, E>,
         skill: impl FnOnce(&K) -> Result<K2, E>,
         spell: impl FnOnce(&S) -> Result<S2, E>,
         faction: impl FnMut(&F) -> Result<F2, E>,
@@ -807,6 +880,13 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::ExperienceGain { bp } => HeroEffect::ExperienceGain { bp: *bp },
             Self::MaxMana { bp } => HeroEffect::MaxMana { bp: *bp },
             Self::JoinBonus { level } => HeroEffect::JoinBonus { level: *level },
+            Self::Raises {
+                priority,
+                creature: raised,
+            } => HeroEffect::Raises {
+                priority: *priority,
+                creature: raised.try_map(&mut creature, skill)?,
+            },
         })
     }
 
@@ -1146,6 +1226,10 @@ impl CanonicalHash for CompiledHeroEffect {
                 h.write_u16(*bp);
             }
             Self::JoinBonus { level } => h.write_u8(*level),
+            Self::Raises { priority, creature } => {
+                h.write_u8(*priority);
+                creature.hash_into(h);
+            }
         }
     }
 }
@@ -1266,6 +1350,13 @@ mod tests {
             E::ExperienceGain { bp: 500 },
             E::MaxMana { bp: 2500 },
             E::JoinBonus { level: 1 },
+            E::Raises {
+                priority: 1,
+                creature: RaisedCreature::ByLevel {
+                    skill: 2,
+                    by_level: [1, 2, 3, 4],
+                },
+            },
         ]
     }
 
@@ -1593,6 +1684,21 @@ mod tests {
                 .unwrap();
             assert!(seen.insert(h3_kernel::hash::hash_of(&compiled)), "{e:?}");
         }
+        // The two forms of `raises`, and its priority, hash apart too.
+        let raises = |priority, creature| CompiledHeroEffect::Raises { priority, creature };
+        for e in [
+            raises(1, RaisedCreature::Creature(Handle::from_raw(2))),
+            raises(0, RaisedCreature::Creature(Handle::from_raw(2))),
+            raises(
+                1,
+                RaisedCreature::ByLevel {
+                    skill: Handle::from_raw(2),
+                    by_level: [1, 2, 3, 5].map(Handle::from_raw),
+                },
+            ),
+        ] {
+            assert!(seen.insert(h3_kernel::hash::hash_of(&e)), "{e:?}");
+        }
     }
 
     #[test]
@@ -1736,5 +1842,46 @@ mod tests {
             E::SpellImmunity { spell: 1 }.try_map(plus, plus, fail, plus, plus),
             Err(())
         );
+        // `raises` maps its creature, or its skill and every level's creature.
+        let single = E::Raises {
+            priority: 2,
+            creature: RaisedCreature::Creature(1),
+        };
+        assert_eq!(
+            single.try_map(plus, fail, plus, plus, plus),
+            Ok(HeroEffect::Raises {
+                priority: 2,
+                creature: RaisedCreature::Creature(101),
+            })
+        );
+        assert_eq!(single.try_map(fail, plus, plus, plus, plus), Err(()));
+        let by_level = E::Raises {
+            priority: 1,
+            creature: RaisedCreature::ByLevel {
+                skill: 5,
+                by_level: [1, 2, 3, 4],
+            },
+        };
+        assert_eq!(
+            by_level.try_map(plus, plus, plus, plus, plus),
+            Ok(HeroEffect::Raises {
+                priority: 1,
+                creature: RaisedCreature::ByLevel {
+                    skill: 105,
+                    by_level: [101, 102, 103, 104],
+                },
+            })
+        );
+        assert_eq!(by_level.try_map(fail, plus, plus, plus, plus), Err(()));
+        assert_eq!(by_level.try_map(plus, fail, plus, plus, plus), Err(()));
+        // A failure at any level stops the mapping.
+        for bad in 1..=4 {
+            let picky = |v: &u8| if *v == bad { Err(()) } else { plus(v) };
+            assert_eq!(
+                by_level.try_map(picky, plus, plus, plus, plus),
+                Err(()),
+                "{bad}"
+            );
+        }
     }
 }

@@ -37,7 +37,8 @@ pub use artifacts::{
 };
 pub use effect::{
     Affects, CompiledHeroEffect, CreatureSelector, CreatureStat, FULL_BP, HeroEffect,
-    HeroEffectDef, MAX_ALIGNMENT_FACTIONS, MAX_EFFECTS, MAX_SKILL_LEVEL, SpellGrant, SpellScope,
+    HeroEffectDef, MAX_ALIGNMENT_FACTIONS, MAX_EFFECTS, MAX_SKILL_LEVEL, RAISED_LEVELS,
+    RaisedCreature, SpellGrant, SpellScope,
 };
 pub use error::CompileError;
 pub use flags::{CreatureFlag, CreatureFlags};
