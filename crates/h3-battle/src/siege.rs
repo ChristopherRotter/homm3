@@ -69,6 +69,9 @@ pub struct SiegeState {
     /// The hexes destroyed targets opened: walls' hexes, the gate's once it is destroyed
     /// (BAT-SIE-012).
     broken: HexSet,
+    /// The turret each target holds (the towers and the keep; E04c T7, BAT-SIE-016): the stack
+    /// its destruction kills (BAT-SIE-017).
+    turrets: [Option<StackId>; MAX_WALL_TARGETS],
 }
 
 /// The land mines a town lays at the battle's start (BAT-SIE-007).
@@ -118,6 +121,18 @@ impl SiegeState {
     /// Target `t`'s kind.
     pub fn kind(&self, t: u8) -> Option<WallKind> {
         (t < self.targets).then(|| self.kinds[usize::from(t)])
+    }
+
+    /// The turret target `t` holds, if any (BAT-SIE-016).
+    pub fn turret(&self, t: u8) -> Option<StackId> {
+        self.turrets.get(usize::from(t)).copied().flatten()
+    }
+
+    /// Target `t` holds the turret `id` (the battle's setup, BAT-SIE-016).
+    pub(crate) fn hold(&mut self, t: u8, id: StackId) {
+        if let Some(slot) = self.turrets.get_mut(usize::from(t)) {
+            *slot = Some(id);
+        }
     }
 
     /// Whether the gate is destroyed (BAT-SIE-012).
@@ -183,6 +198,10 @@ impl CanonicalHash for SiegeState {
         }
         h.write_u8(self.present);
         self.broken.hash_into(h);
+        // State hash v48 (E04c T7): the turrets the targets hold.
+        for t in &self.turrets {
+            h.write_u8(t.map_or(u8::MAX, |id| id.0));
+        }
     }
 }
 
@@ -322,6 +341,7 @@ pub(crate) fn setup(
         opens,
         present,
         broken: HexSet::new(),
+        turrets: [None; MAX_WALL_TARGETS],
     };
     Ok(Some((siege, mines)))
 }
@@ -764,7 +784,17 @@ pub(crate) fn damage_part<S: Sink>(state: &mut BattleState, t: u8, damage: u8, s
                 s.gate_open = true;
                 s.broken.insert(s.gate);
             }
-            WallKind::Keep | WallKind::Tower => {}
+            // rule: BAT-SIE-017
+            // A tower's or the keep's turret dies with it (0x465990's dead bit): its creatures
+            // are gone, no corpse is left, no event but the part's.
+            WallKind::Keep | WallKind::Tower => {
+                if let Some(id) = s.turret(t) {
+                    let turret = state.at_mut(id);
+                    turret.count = 0;
+                    turret.top_hp = 0;
+                    state.raised.corpse[id.index()] = NO_CORPSE;
+                }
+            }
         }
         state.siege = Some(s);
         sink.emit(Event::public(EventKind::WallDestroyed { part: t }));

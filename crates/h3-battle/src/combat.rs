@@ -380,6 +380,16 @@ pub(crate) fn shot_damage_range(
     target: StackId,
 ) -> (u64, u64) {
     let striker = state.at(attacker);
+    // rule: BAT-SIE-018
+    if striker.is_turret() {
+        let (min, max) = turret_roll(ruleset, striker);
+        let inputs = turret_inputs(state, state.at(target));
+        let (params, staged) = (ruleset.battle(), staged(ruleset));
+        return (
+            inputs.damage(min, params, staged),
+            inputs.damage(max, params, staged),
+        );
+    }
     let blow = Blow {
         charge: 0,
         death_blow: false,
@@ -407,6 +417,69 @@ pub(crate) fn shot_damage_range(
         inputs.damage(n.saturating_mul(low), params, staged),
         inputs.damage(n.saturating_mul(high), params, staged),
     )
+}
+
+/// The least and greatest sum of a turret's roll (BAT-SIE-018): its creature's damage range,
+/// once per creature (the original's `random(2, 4)` per creature, 0x465D34).
+fn turret_roll(ruleset: &BattleRuleset, turret: &Stack) -> (u64, u64) {
+    let (min, max) = ruleset
+        .creature(turret.creature)
+        .map_or((0, 0), |c| (c.damage_min, c.damage_max));
+    let n = u64::from(turret.count);
+    (
+        n.saturating_mul(u64::from(min)),
+        n.saturating_mul(u64::from(max)),
+    )
+}
+
+/// A turret's shot at `victim` takes only the target's protections, the original's stage 3
+/// (BAT-SIE-018; 0x443D90): Air Shield's share, the half while petrified and the Armorer of the
+/// hero of its controller. No attack or defense, luck, Bless or Curse, hero's bonus, wall or
+/// range penalty (`installation.md` §7.30).
+fn turret_inputs(state: &BattleState, victim: &Stack) -> Strike {
+    let mut inputs = Strike::new(0, 0);
+    // rule: BAT-MAG-012
+    inputs.protection_percent = u16::from(victim.spells.ranged_protection);
+    // rule: BAT-MAG-043
+    inputs.petrified = victim.spells.status.contains(Status::PETRIFIED);
+    // rule: BAT-HER-004
+    inputs.hero_reduction = hero::damage(&state.heroes, victim.controller()).reduction;
+    inputs
+}
+
+/// A turret's shot at `target` (BAT-SIE-018; the original's 0x465AD0): the sum of its creature's
+/// damage drawn once per creature, times the target's protections ([`turret_inputs`]), at least
+/// 1; one shot, none used, not retaliated; then the rebirths and the end-of-battle check.
+// rule: BAT-SIE-018
+fn turret_shot<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    turret: StackId,
+    target: StackId,
+    sink: &mut S,
+) {
+    let me = *state.at(turret);
+    let (min, max) = ruleset.creature(me.creature).map_or((0, 0), |c| {
+        (u32::from(c.damage_min), u32::from(c.damage_max))
+    });
+    let mut sum = 0u64;
+    for _ in 0..me.count {
+        sum = sum.saturating_add(u64::from(state.rng.range_inclusive(min, max)));
+    }
+    let inputs = turret_inputs(state, state.at(target));
+    let damage = inputs.damage(sum, ruleset.battle(), staged(ruleset));
+    let kills = apply_damage(state.at_mut(target), damage);
+    sink.emit(Event::public(EventKind::Struck {
+        attacker: turret,
+        target,
+        damage,
+        kills,
+        flags: StrikeFlags::RANGED,
+    }));
+    effects::damaged(state, ruleset, target, sink);
+    // rule: BAT-MAG-059
+    crate::raise::rebirths(state, ruleset, sink);
+    check_end(state, sink);
 }
 
 /// The ranged or melee penalty of a strike, in percent, if any: shots at a target farther than
@@ -847,6 +920,11 @@ pub(crate) fn shoot<S: Sink>(
     at: Hex,
     sink: &mut S,
 ) {
+    // rule: BAT-SIE-018
+    if state.at(shooter).is_turret() {
+        turret_shot(state, ruleset, shooter, target, sink);
+        return;
+    }
     let field = Field::new(ruleset.battle().field);
     let times = match war::commanded_ballista(state, shooter) {
         Some(control) => control.shots,

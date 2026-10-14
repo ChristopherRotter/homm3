@@ -2444,7 +2444,7 @@ is 0x5BF4F0's result: 4 + the number of building ids 0–43 the town has built a
 255 and 251, each with half the keep's count rounded up. The turret records +0x13D78 (three of
 0x24 bytes; 0x466C50) hold each turret's picture and position from the town type's record
 (0x63CF88, 32 bytes). `CRTRAITS.TXT`: the Arrow Tower 100 hit points, attack 10, defense 5, damage
-2–4, 24 shots; the Catapult 1 000 hit points, attack 10, defense 10, no damage.
+2–4, 99 shots (the harvest, E04c T7); the Catapult 1 000 hit points, attack 10, defense 10, no damage.
 
 **The defending hero** (0x463C60, a battle at a town with a defending hero; the fort level is not
 tested). The hero's attack, defense, power and mana are kept (+0x13DE8 to +0x13DF4), then raised by

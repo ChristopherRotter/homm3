@@ -231,6 +231,8 @@ struct SiegeFieldDto {
     mine_power: u8,
     /// Pack format v39 (E04c T6): the wall shots.
     catapult: u8,
+    /// Pack format v40 (E04c T7): the keep's least count.
+    turret_count: u8,
     targets: Vec<WallTargetDto>,
     missed: Vec<u8>,
     automatic: Vec<u8>,
@@ -239,12 +241,14 @@ struct SiegeFieldDto {
     ballistics: Vec<BallisticsDto>,
 }
 
-/// A wall-shot target of `siege` (pack format v39): `{ kind = "wall", wall = 29 }`.
+/// A wall-shot target of `siege` (pack format v39): `{ kind = "wall", wall = 29 }`; a tower's
+/// or the keep's turret since v40 (E04c T7): `{ kind = "keep", turret = 254 }`.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct WallTargetDto {
     kind: String,
     wall: Option<u8>,
+    turret: Option<u8>,
 }
 
 /// A Ballistics record of `siege` (pack format v39): `{ hit = [5, 10, 25, 50], shots = 1,
@@ -493,6 +497,8 @@ enum AbilityDto {
     WallShots {
         level: u8,
     },
+    /// Pack format v40 (E04c T7, BAT-SIE-016).
+    Turret {},
 }
 
 #[derive(Deserialize)]
@@ -669,6 +675,7 @@ impl AbilityDto {
             Self::IgnoresMagicBlock {} => AbilityDef::IgnoresMagicBlock,
             Self::NoWallPenalty {} => AbilityDef::NoWallPenalty,
             Self::WallShots { level } => AbilityDef::WallShots { level },
+            Self::Turret {} => AbilityDef::Turret,
         })
     }
 }
@@ -1066,7 +1073,11 @@ fn siege_field(s: SiegeFieldDto) -> Result<SiegeFieldDef, BattlePackError> {
         .into_iter()
         .map(|t| {
             WallKind::from_name(&t.kind)
-                .map(|kind| WallTarget { kind, wall: t.wall })
+                .map(|kind| WallTarget {
+                    kind,
+                    wall: t.wall,
+                    turret: t.turret,
+                })
                 .ok_or_else(|| BattlePackError::Syntax(format!("unknown wall kind `{}`", t.kind)))
         })
         .collect::<Result<_, _>>()?;
@@ -1078,6 +1089,7 @@ fn siege_field(s: SiegeFieldDto) -> Result<SiegeFieldDef, BattlePackError> {
         moat_defense_penalty: s.moat_defense_penalty,
         mine_power: s.mine_power,
         catapult: s.catapult,
+        turret_count: s.turret_count,
         targets,
         missed: s.missed,
         automatic: s.automatic,

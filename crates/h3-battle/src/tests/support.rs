@@ -1126,6 +1126,26 @@ pub const CREATURES: &[Creature] = &[
     ),
 ];
 
+/// A town's turret (BAT-SIE-016): the original's Arrow Tower (`CRTRAITS.TXT`). Only
+/// [`turret_ruleset`] has it, so the other sieges of the tests have no turrets.
+const TURRET: Creature = (
+    "arrow_tower",
+    10,
+    5,
+    2,
+    4,
+    100,
+    0,
+    &[
+        "shooter",
+        "war_machine",
+        "mind_immune",
+        "no_morale",
+        "shots=99",
+        "turret",
+    ],
+);
+
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
 fn parse_traits(traits: &[&str]) -> Traits {
     let mut flags = Vec::new();
@@ -1161,6 +1181,7 @@ fn parse_traits(traits: &[&str]) -> Traits {
                 }
             }
             "ammo_supply" => AbilityDef::AmmoSupply,
+            "turret" => AbilityDef::Turret,
             "ignores_magic_block" => AbilityDef::IgnoresMagicBlock,
             "faction" => {
                 faction = Some(ContentKey::new("t", value).unwrap());
@@ -1475,17 +1496,18 @@ pub fn siege_field() -> SiegeFieldDef {
         moat_defense_penalty: 3,
         mine_power: 3,
         catapult: 119,
+        turret_count: 4,
         targets: [
-            (WallKind::Tower, None),
-            (WallKind::Wall, Some(29)),
-            (WallKind::Wall, Some(78)),
-            (WallKind::Gate, Some(96)),
-            (WallKind::Wall, Some(130)),
-            (WallKind::Wall, Some(182)),
-            (WallKind::Tower, None),
-            (WallKind::Keep, None),
+            (WallKind::Tower, None, Some(255)),
+            (WallKind::Wall, Some(29), None),
+            (WallKind::Wall, Some(78), None),
+            (WallKind::Gate, Some(96), None),
+            (WallKind::Wall, Some(130), None),
+            (WallKind::Wall, Some(182), None),
+            (WallKind::Tower, None, Some(251)),
+            (WallKind::Keep, None, Some(254)),
         ]
-        .map(|(kind, wall)| WallTarget { kind, wall })
+        .map(|(kind, wall, turret)| WallTarget { kind, wall, turret })
         .to_vec(),
         missed: vec![1, 2, 5, 4],
         automatic: vec![1, 2, 4, 5],
@@ -1661,25 +1683,11 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> B
     ruleset_from(profile, edit, |_, _| {})
 }
 
-/// [`ruleset_with`], with the pack's core and battle parts patched before they are compiled
-/// (review repros only).
-pub fn ruleset_from(
-    profile: &str,
-    edit: impl FnOnce(&mut BattleParamsDef),
-    patch: impl FnOnce(&mut ContentPack, &mut BattlePack),
-) -> BattleRuleset {
-    try_ruleset_from(profile, edit, patch).unwrap()
-}
-
-/// [`ruleset_from`], or the compiler's refusal.
-pub fn try_ruleset_from(
-    profile: &str,
-    edit: impl FnOnce(&mut BattleParamsDef),
-    patch: impl FnOnce(&mut ContentPack, &mut BattlePack),
-) -> Result<BattleRuleset, BattleCompileError> {
+/// The core and battle definitions of test creatures `table`.
+fn creature_defs(table: &[Creature]) -> (Vec<CreatureDef>, Vec<BattleCreatureDef>) {
     let mut creatures = Vec::new();
     let mut battle_creatures = Vec::new();
-    for &(name, attack, defense, damage_min, damage_max, hit_points, speed, traits) in CREATURES {
+    for &(name, attack, defense, damage_min, damage_max, hit_points, speed, traits) in table {
         let key = ContentKey::new("t", name).unwrap();
         let traits = parse_traits(traits);
         battle_creatures.push(BattleCreatureDef {
@@ -1706,6 +1714,40 @@ pub fn try_ruleset_from(
             },
         });
     }
+    (creatures, battle_creatures)
+}
+
+/// The test ruleset (profile `profile`) with the town's turret (BAT-SIE-016, E04c T7): the
+/// sieges with a Citadel or Castle set the keep and the towers up.
+pub fn turret_ruleset(profile: &str) -> BattleRuleset {
+    ruleset_from(
+        profile,
+        |_| {},
+        |core, battle| {
+            let (mut c, mut b) = creature_defs(&[TURRET]);
+            core.creatures.append(&mut c);
+            battle.creatures.append(&mut b);
+        },
+    )
+}
+
+/// [`ruleset_with`], with the pack's core and battle parts patched before they are compiled
+/// (review repros only).
+pub fn ruleset_from(
+    profile: &str,
+    edit: impl FnOnce(&mut BattleParamsDef),
+    patch: impl FnOnce(&mut ContentPack, &mut BattlePack),
+) -> BattleRuleset {
+    try_ruleset_from(profile, edit, patch).unwrap()
+}
+
+/// [`ruleset_from`], or the compiler's refusal.
+pub fn try_ruleset_from(
+    profile: &str,
+    edit: impl FnOnce(&mut BattleParamsDef),
+    patch: impl FnOnce(&mut ContentPack, &mut BattlePack),
+) -> Result<BattleRuleset, BattleCompileError> {
+    let (creatures, battle_creatures) = creature_defs(CREATURES);
     let mut battle = battle_params();
     edit(&mut battle);
     let (spells, battle_spells): (Vec<_>, Vec<_>) = SPELLS

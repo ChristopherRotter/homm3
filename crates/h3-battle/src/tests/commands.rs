@@ -241,8 +241,9 @@ fn the_state_hash_tells_luck_modifiers_from_morale_ones() {
 #[test]
 fn state_hash_is_pinned() {
     // Golden value: pins the canonical encoding of the initial state (bump
-    // BATTLE_STATE_HASH_VERSION when the encoding changes).
-    let r = ruleset();
+    // BATTLE_STATE_HASH_VERSION when the encoding changes). The ruleset has the town's turret
+    // (v48).
+    let r = turret_ruleset("t:faithful");
     let mut led = hero(&r);
     // Advanced Tactics against no hero: the state is in a tactics phase (BAT-TAC-001).
     led.tactics = 2;
@@ -331,8 +332,12 @@ fn state_hash_is_pinned() {
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
     // v45: the special battlefield and the anti-magic flag (E04c T2b). v46: the town's walls,
     // gate and moat (E04c T5). v47: the wall shots' state and the hero's Catapult control (E04c
-    // T6).
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 47);
+    // T6). v48: the turrets the targets hold, the Citadel's keep among the stacks (E04c T7).
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 48);
+    assert_eq!(
+        s.siege.unwrap().turret(7),
+        Some(crate::StackId(u8::try_from(s.stacks().len() - 1).unwrap()))
+    );
 }
 
-const GOLDEN: u64 = 0xdec2_a351_00b0_8816;
+const GOLDEN: u64 = 0xbbb5_a76c_36d2_0d7d;

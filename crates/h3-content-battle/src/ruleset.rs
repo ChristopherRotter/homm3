@@ -30,7 +30,7 @@ use crate::spell::{
 };
 
 /// Version of the battle part's hash encoding. Bump when the encoding below changes.
-pub const BATTLE_RULESET_HASH_VERSION: u32 = 4;
+pub const BATTLE_RULESET_HASH_VERSION: u32 = 5;
 
 /// Most spells with a summon effect in a ruleset (the battle keeps a side's stack of each
 /// creature its hero can summon from the battle's start, E04b T6b; four in the original).
@@ -507,7 +507,8 @@ impl Deref for BattleRuleset {
 }
 
 impl CanonicalHash for BattleRuleset {
-    /// Encoding v4 (E04c T6: the wall shots' data in the siege field and records; v3: E04c T5;
+    /// Encoding v5 (E04c T7: the turrets in the siege field; v4: E04c T6, the wall shots' data in
+    /// the siege field and records; v3: E04c T5;
     /// v2: E04c T2b, without sieges; v1: R01, without battlefields): version; the
     /// special battlefields (`Battlefield`'s encoding); obstacles (key, terrains as length +
     /// handles, battlefields as length + handles, width, height, blocked pairs, absolute flag); creatures in handle order (attack, defense, damage min and max, hit points, shots,
@@ -918,6 +919,14 @@ fn validate_creature(
         || wall_shots && (machine || !def.flags.contains(CreatureFlag::Catapult))
     {
         return invalid("flag catapult requires wall_shots (and vice versa), war machines neither");
+    }
+    // A turret shoots and is a war machine, never a catapult (E04c T7).
+    if abils.iter().any(|a| matches!(a, Ability::Turret))
+        && !(machine
+            && def.flags.contains(CreatureFlag::Shooter)
+            && !def.flags.contains(CreatureFlag::Catapult))
+    {
+        return invalid("turret requires flags war_machine and shooter, not catapult");
     }
     Ok(())
 }

@@ -154,7 +154,7 @@ fn synthetic_pack_and_scenarios_load() {
         SYNTHETIC_SIEGE,
     ] {
         let (ruleset, setup) = synthetic(text).unwrap();
-        assert_eq!(ruleset.creature_count(), 14);
+        assert_eq!(ruleset.creature_count(), 15);
         assert!(!setup.attacker.stacks.is_empty());
         assert!(!setup.defender.stacks.is_empty());
     }
@@ -1044,7 +1044,7 @@ fn format_v2_fields_and_expansion_packs() {
     .unwrap();
     let ids: Vec<&str> = both.packs().iter().map(|(id, _)| id.as_str()).collect();
     assert_eq!(ids, ["synthetic", "synthetic-ext"]);
-    assert_eq!(both.creature_count(), 15);
+    assert_eq!(both.creature_count(), 16);
     let wisp_info = both.creature_info(wisp).unwrap();
     let marsh = wisp_info.faction.unwrap();
     assert_eq!(
@@ -1074,11 +1074,11 @@ fn harvested_packs_compile_in_every_allowed_combination() {
     let roe = compile(&[&BASE_PACK], profile).unwrap();
     let ab = compile(&[&BASE_PACK, &AB_PACK], profile).unwrap();
     let sod = compile(&[&SOD_PACK, &AB_PACK, &BASE_PACK], profile).unwrap();
-    // RoE: 8 towns x 14 + 6 neutrals + 4 war machines (the Catapult since E04c T6); AB adds
-    // Conflux (10 new) and 13 neutrals.
-    assert_eq!(roe.creature_count(), 122);
-    assert_eq!(ab.creature_count(), 145);
-    assert_eq!(sod.creature_count(), 145);
+    // RoE: 8 towns x 14 + 6 neutrals + 5 war machines (the Catapult since E04c T6, the Arrow
+    // Tower since T7); AB adds Conflux (10 new) and 13 neutrals.
+    assert_eq!(roe.creature_count(), 123);
+    assert_eq!(ab.creature_count(), 146);
+    assert_eq!(sod.creature_count(), 146);
     assert_eq!((roe.factions().len(), ab.factions().len()), (8, 9));
     // SoD requires AB; AB requires base.
     assert!(matches!(

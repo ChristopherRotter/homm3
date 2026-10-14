@@ -386,6 +386,12 @@ pub enum Ability<C, S, L> {
         /// The Ballistics level (0..=3).
         level: u8,
     },
+    /// War machine: a town's turret (the Arrow Tower; BAT-SIE-016 to BAT-SIE-019): in a siege
+    /// with a Citadel or Castle the battle sets it up for the defender off the field; its shot
+    /// draws its damage once per creature and takes only the target's protections; it is
+    /// immune to every spell and never a target (the original's creature 149, `installation.md`
+    /// §7.30; needs flags `war_machine` and `shooter`; pack format v40).
+    Turret,
 }
 
 /// Most creatures `corpse_raiser` abilities raise in a ruleset (the battle keeps a stack of each
@@ -400,7 +406,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 50] = [
+    pub const NAMES: [&'static str; 51] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -451,6 +457,7 @@ impl<C, S, L> Ability<C, S, L> {
         "ignores_magic_block",
         "no_wall_penalty",
         "wall_shots",
+        "turret",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -506,6 +513,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::IgnoresMagicBlock => 47,
             Self::NoWallPenalty => 48,
             Self::WallShots { .. } => 49,
+            Self::Turret => 50,
         }
     }
 
@@ -701,6 +709,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::IgnoresMagicBlock => Ability::IgnoresMagicBlock,
             Self::NoWallPenalty => Ability::NoWallPenalty,
             Self::WallShots { level } => Ability::WallShots { level: *level },
+            Self::Turret => Ability::Turret,
         })
     }
 
@@ -965,7 +974,8 @@ impl CanonicalHash for CompiledAbility {
             | Self::NoDistancePenalty
             | Self::AmmoSupply
             | Self::IgnoresMagicBlock
-            | Self::NoWallPenalty => {}
+            | Self::NoWallPenalty
+            | Self::Turret => {}
         }
     }
 }
@@ -1045,7 +1055,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 50] {
+    fn all() -> [A; 51] {
         [
             A::Hate {
                 target: 3,
@@ -1167,6 +1177,7 @@ mod tests {
             A::IgnoresMagicBlock,
             A::NoWallPenalty,
             A::WallShots { level: 2 },
+            A::Turret,
         ]
     }
 

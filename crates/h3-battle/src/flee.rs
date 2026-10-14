@@ -26,7 +26,7 @@ pub(crate) fn surrender_terms(
 /// is the ruleset's
 /// `cost_percent` of the summed cost, in its resource, of the side's living stacks with their
 /// current counts, war machines included (batch 1b R4) but not the stacks created in the battle
-/// (clones, summoned stacks: batch 2d CL1, SU), times one minus the hero's discount,
+/// (clones, summoned stacks: batch 2d CL1, SU) or a town's turrets (BAT-SIE-016), times one minus the hero's discount,
 /// rounded down once; with quirk Q-0005 the discount enters as its single-precision value
 /// (batch 1b R4: 179 for 300 at 40 %, not 180). Computed exactly; saturated at `u32::MAX`.
 // rule: BAT-FLE-002
@@ -49,7 +49,7 @@ pub(crate) fn surrender_price(
     let cost: u128 = state
         .stacks
         .iter()
-        .filter(|s| s.side == side && s.is_alive() && !s.is_created())
+        .filter(|s| s.side == side && s.is_alive() && !s.is_created() && !s.is_turret())
         .map(|s| u128::from(s.count) * unit_cost(s.creature))
         .sum();
     let discount = state.heroes[side.index()].map_or(0, |h| h.surrender_discount_bp);

@@ -7,8 +7,8 @@ use h3_content::{
     UNLIMITED_BALLISTA_SHOTS,
 };
 use h3_content_battle::{
-    Ability, AreaShot, BattleRuleset, BattlefieldId, CreatureType, MAX_SIDE_STACKS,
-    WAR_MACHINE_KINDS,
+    Ability, AreaShot, BattleRuleset, BattlefieldId, CreatureType, MAX_SIDE_STACKS, MAX_TURRETS,
+    WAR_MACHINE_KINDS, WallKind,
 };
 
 use h3_contracts::{
@@ -49,6 +49,11 @@ pub(crate) const CATAPULT_KIND: usize = WAR_MACHINE_KINDS;
 )]
 pub(crate) const CATAPULT_SLOT: u8 = (MAX_ARMY_SLOTS + CATAPULT_KIND) as u8;
 
+/// The keep's army slot ([`Stack::slot`], E04c T7, BAT-SIE-016): after the Catapult's; then the
+/// upper tower's and the lower tower's (the original's records after the war machines: the keep,
+/// the upper, the lower tower, 0x463600).
+pub(crate) const TURRET_SLOT: u8 = CATAPULT_SLOT + 1;
+
 /// Stack slots per side, as the original keeps 21 stack records per side (ADR-0014 point 6,
 /// `docs/formats/installation.md` §7.7): the army slots and war machines, and room for stacks
 /// created in battle (E04b T6).
@@ -69,7 +74,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 47;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 48;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -348,7 +353,8 @@ fn war_machine_kind(
     abilities: &[h3_content_battle::CompiledAbility],
 ) -> Option<usize> {
     let has = |f: fn(&h3_content_battle::CompiledAbility) -> bool| abilities.iter().any(f);
-    if !creature.flags.contains(CreatureFlag::WarMachine) {
+    if !creature.flags.contains(CreatureFlag::WarMachine) || has(|a| matches!(a, Ability::Turret)) {
+        // A town's turret is set up by the battle, never listed (BAT-SIE-016).
         None
     } else if creature.flags.contains(CreatureFlag::Catapult) {
         Some(CATAPULT_KIND)
@@ -456,6 +462,62 @@ fn catapult(
         fp.position(),
         1,
     )))
+}
+
+/// The turrets a town sets up for its defender (BAT-SIE-016; the original's 0x463600): with a
+/// Citadel or Castle the keep, with a Castle also the two towers, each a stack of the ruleset's
+/// first war machine with the ability `turret` at its target's off-field position, by wall-shot
+/// target: the keep's first, then the towers' in target order (the original's records: the keep,
+/// the upper, the lower tower). The keep has the siege field's `turret_count` plus the town's
+/// structures creatures (0x5BF4F0), a tower half the keep's count, rounded up. None without such
+/// a creature or a Citadel.
+// rule: BAT-SIE-016
+fn turrets(
+    ruleset: &BattleRuleset,
+    setup: &BattleSetup,
+    siege: &SiegeState,
+) -> FixedVec<(u8, Stack), MAX_TURRETS> {
+    let mut out = FixedVec::new();
+    let creature = (0..ruleset.creature_count())
+        .filter_map(CreatureTypeId::from_index)
+        .filter_map(|id| ruleset.creature(id).map(|c| (id, *c)))
+        .find(|&(id, c)| {
+            c.flags.contains(CreatureFlag::WarMachine)
+                && ruleset
+                    .abilities(id)
+                    .iter()
+                    .any(|a| matches!(a, Ability::Turret))
+        });
+    let (Some((id, creature)), Some(field), Some(town)) =
+        (creature, ruleset.siege_field(), setup.siege)
+    else {
+        return out;
+    };
+    let keep = u32::from(field.turret_count) + u32::from(town.structures);
+    let held = |kind: WallKind| {
+        (0u8..)
+            .zip(&field.targets)
+            .filter(move |(t, target)| target.kind == kind && siege.present(*t))
+            .filter_map(|(t, target)| target.turret.map(|at| (t, at)))
+    };
+    let towers = held(WallKind::Tower).map(|(t, at)| (t, at, keep.div_ceil(2)));
+    for (slot, (t, at, count)) in (TURRET_SLOT..).zip(
+        held(WallKind::Keep)
+            .map(|(t, at)| (t, at, keep))
+            .chain(towers),
+    ) {
+        let stack = Stack::new(
+            ruleset,
+            setup,
+            (id, &creature),
+            BattleSide::Defender,
+            slot,
+            Hex(at),
+            count,
+        );
+        let _ = out.push((t, stack));
+    }
+    out
 }
 
 /// The stacks `side` would have of each creature the battle may create for it, as at the
@@ -759,6 +821,13 @@ impl Stack {
         self.count > 0
     }
 
+    /// Whether the stack is a town's turret (E04c T7, BAT-SIE-016): the keep or a tower, off the
+    /// field; immune to every spell and never a target (BAT-SIE-019).
+    #[allow(clippy::cast_possible_truncation, reason = "MAX_TURRETS = 3 fits a u8")]
+    pub const fn is_turret(&self) -> bool {
+        self.slot >= TURRET_SLOT && self.slot < TURRET_SLOT + MAX_TURRETS as u8
+    }
+
     /// Whether the battle created the stack (a clone or a summoned stack, BAT-MAG-037).
     pub const fn is_created(&self) -> bool {
         self.traits.contains(StackTraits::SUMMONED)
@@ -813,7 +882,9 @@ impl Stack {
     /// side that hypnotized a stack may attack it and its own side may not, and no side attacks
     /// its own berserk stack. (A hypnotized stack passes this test for itself.)
     pub const fn may_attack(&self, other: &Self) -> bool {
-        self.controller().index() != other.side.index()
+        // rule: BAT-SIE-019
+        // A turret stands off the field: no strike or shot reaches it.
+        self.controller().index() != other.side.index() && !other.is_turret()
     }
 
     /// Whether `other`, a stack next to this one, counts as its enemy: either of them is
@@ -984,7 +1055,7 @@ impl BattleState {
             }
         }
         // rule: BAT-SIE-001
-        let (siege, mines) = siege::setup(
+        let (mut siege, mines) = siege::setup(
             ruleset,
             field,
             (setup, &heroes, battlefield),
@@ -999,6 +1070,7 @@ impl BattleState {
         let mut placed = [Stack::default(); STACK_CAPACITY];
         let mut len = 0;
         for side in BattleSide::BOTH {
+            let side_start = len;
             let army = setup.army(side);
             if army.stacks.is_empty() {
                 return Err(SetupError::EmptyArmy(side));
@@ -1062,6 +1134,18 @@ impl BattleState {
             for stack in machines.into_iter().flatten() {
                 placed[len] = stack;
                 len += 1;
+            }
+            // rule: BAT-SIE-016
+            // The turrets take the defender's records after its war machines, as many as it has
+            // left of its 21 (never short with the original's 7 army slots).
+            if let Some(town) = siege.as_mut().filter(|_| side == BattleSide::Defender) {
+                let room = SIDE_STACK_SLOTS.saturating_sub(len - side_start);
+                for &(t, stack) in turrets(ruleset, setup, town).iter().take(room) {
+                    // `len < STACK_CAPACITY <= u8::MAX`.
+                    town.hold(t, StackId(u8::try_from(len).unwrap_or(u8::MAX)));
+                    placed[len] = stack;
+                    len += 1;
+                }
             }
         }
         let mut state = Self {
@@ -1317,7 +1401,9 @@ impl BattleState {
             let mut last_alive = None;
             let others = self.stacks.iter().zip(self.raised.temporary);
             for ((s, temporary), vanished) in others.zip(self.created.vanished) {
-                if s.side != side {
+                // rule: BAT-SIE-016
+                // A town's turrets are no side's army or war machines.
+                if s.side != side || s.is_turret() {
                     continue;
                 }
                 let origin = if s.is_created() {

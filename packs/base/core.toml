@@ -1993,6 +1993,20 @@ ai_value = 400
 adventure_count = [0, 0]
 flags = ["war_machine", "mind_immune", "no_morale"]
 
+[[creature]]
+id = "arrow_tower"  # original id 149
+name = "Arrow Tower"
+plural = "Arrow Towers"
+level = 1
+speed = 0
+cost = { gold = 1000 }
+growth = 0
+horde_growth = 0
+fight_value = 5
+ai_value = 400
+adventure_count = [0, 0]
+flags = ["shooter", "war_machine", "mind_immune", "no_morale"]
+
 [[secondary_skill]]
 id = "pathfinding"
 name = "Pathfinding"

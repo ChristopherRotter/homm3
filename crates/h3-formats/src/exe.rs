@@ -90,6 +90,19 @@ pub struct WallShotTables {
     pub list: usize,
     /// The Catapult's position (`push 119`, 0x463600).
     pub catapult: Immediate,
+    /// Virtual address of the part damage's jump table by target (`u32` each, one per target,
+    /// 0x465990, E04c T7): a turret's case reads the stack index of its turret record (`mov edx,
+    /// [ecx + o]`, `8B 91` and the 32-bit offset `o`).
+    pub part_cases_va: u32,
+    /// The offset of the first turret record's stack index in the battle (+0x13D98) and the
+    /// records' size (0x24).
+    pub turret_records: (u32, u32),
+    /// Each turret record's position (`push 254`, `push 251`, `push 255` with 32-bit operands,
+    /// 0x463600), by record.
+    pub turret_positions: [Immediate; 3],
+    /// The keep's least creature count (`mov dword [ebp + 0xC], 4` with a 32-bit operand,
+    /// 0x5BF4F0).
+    pub turret_count: Immediate,
 }
 
 /// Where a build keeps its battlefield obstacle tables (`docs/formats/installation.md` §7.26).
@@ -297,6 +310,26 @@ pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
         catapult: Immediate {
             va: 0x0046_377C,
             opcode: &[0x6A],
+        },
+        part_cases_va: 0x0046_5AB0,
+        turret_records: (0x0001_3D98, 0x24),
+        turret_positions: [
+            Immediate {
+                va: 0x0046_3905,
+                opcode: &[0x68],
+            },
+            Immediate {
+                va: 0x0046_398E,
+                opcode: &[0x68],
+            },
+            Immediate {
+                va: 0x0046_3948,
+                opcode: &[0x68],
+            },
+        ],
+        turret_count: Immediate {
+            va: 0x005B_F511,
+            opcode: &[0xC7, 0x45, 0x0C],
         },
     },
 }];
@@ -537,6 +570,8 @@ pub struct WallTarget {
     pub part: u8,
     /// The column of its hit chance in a Ballistics record: 0 keep, 1 tower, 2 gate, 3 wall.
     pub kind: u8,
+    /// The position of the turret whose stack its destruction kills (E04c T7), if any.
+    pub turret: Option<u8>,
 }
 
 /// The wall shots' tables and constants of a build (§7.29).
@@ -552,6 +587,8 @@ pub struct WallShotData {
     pub auto_others: Vec<u8>,
     /// The Catapult's position.
     pub catapult: u8,
+    /// The keep's least creature count (E04c T7).
+    pub turret_count: u8,
 }
 
 /// Reads the wall shots' tables and constants of a known build.
@@ -600,6 +637,25 @@ pub fn wall_shot_data_at(
             })
             .collect()
     };
+    // A 32-bit operand that fits a byte, after the instruction's opcode bytes.
+    let wide = |i: &Immediate, what: &'static str| -> Result<u8, FormatError> {
+        image
+            .data
+            .get(at(i.va, what)?..)
+            .and_then(|code| code.get(..i.opcode.len() + 4))
+            .filter(|code| code[..i.opcode.len()] == *i.opcode)
+            .ok_or(FormatError::BadMagic(what))
+            .and_then(|code| {
+                let v = le::u32_at(code, i.opcode.len(), what)?;
+                byte(i64::from(v), 256, what)
+            })
+    };
+    let positions = t
+        .turret_positions
+        .iter()
+        .map(|i| wide(i, "a turret's position instruction"))
+        .collect::<Result<Vec<_>, _>>()?;
+    let parts = at(t.part_cases_va, "part damage jump table")?;
     let base = at(t.targets_va, "wall-shot targets")?;
     let cases = at(t.kind_cases_va, "wall-shot jump table")?;
     let targets = (0..t.targets)
@@ -617,6 +673,23 @@ pub fn wall_shot_data_at(
                 Some([0x0F, 0xBE, 0x59, k]) if *k < 4 => *k,
                 _ => return Err(FormatError::BadMagic("the wall shot's hit chance case")),
             };
+            // A turret's case names its record's stack index (`mov edx, [ecx + o]`).
+            let case = le::u32_at(image.data, parts + 4 * i, "part damage jump table")?;
+            let code = at(case, "part damage case")?;
+            let turret = match image.data.get(code..code + 6) {
+                Some([0x8B, 0x91, o @ ..]) => {
+                    let o = u32::from_le_bytes([o[0], o[1], o[2], o[3]]);
+                    let (first, size) = t.turret_records;
+                    let record = o
+                        .checked_sub(first)
+                        .filter(|d| size > 0 && d % size == 0)
+                        .and_then(|d| usize::try_from(d / size).ok())
+                        .and_then(|r| positions.get(r))
+                        .ok_or(FormatError::BadMagic("a turret's record"))?;
+                    Some(*record)
+                }
+                _ => None,
+            };
             Ok(WallTarget {
                 aim: byte(i64::from(aim), 256, "wall-shot aim hex")?,
                 wall: (wall >= 0)
@@ -624,6 +697,7 @@ pub fn wall_shot_data_at(
                     .transpose()?,
                 part: byte(i64::from(part), 18, "wall-shot part")?,
                 kind,
+                turret,
             })
         })
         .collect::<Result<_, _>>()?;
@@ -639,6 +713,7 @@ pub fn wall_shot_data_at(
         auto_walls: list(t.auto_walls_va, "automatic Catapult's walls")?,
         auto_others: list(t.auto_others_va, "automatic Catapult's other targets")?,
         catapult: imm[t.catapult.opcode.len()],
+        turret_count: wide(&t.turret_count, "the keep's count instruction")?,
     })
 }
 
@@ -1343,7 +1418,9 @@ mod tests {
     #[test]
     fn reads_the_wall_shot_tables_from_a_synthetic_image() {
         // Two targets (12 bytes each, 0..24), two jump cases (24..32), three lists of two
-        // (32..56), the cases' code (56..64), the Catapult's instruction (64..66).
+        // (32..56), the cases' code (56..64), the Catapult's instruction (64..66), the part
+        // damage's two cases (66..74) and their code (74..86: a turret record's, another), the
+        // three turret positions (86..101), the keep's count (101..108).
         let va = |off: u32| 0x0040_1000 + off;
         let mut p = Vec::new();
         for (aim, wall, part) in [(255u16, -1i16, 5i32), (29, 1, 6)] {
@@ -1359,6 +1436,17 @@ mod tests {
             p.extend_from_slice(&v.to_le_bytes());
         }
         p.extend_from_slice(&[0x0F, 0xBE, 0x59, 1, 0x0F, 0xBE, 0x19, 0x90, 0x6A, 119]);
+        for case in [va(74), va(80)] {
+            p.extend_from_slice(&case.to_le_bytes());
+        }
+        p.extend_from_slice(&[0x8B, 0x91]);
+        p.extend_from_slice(&0x0001_3DE0u32.to_le_bytes());
+        p.extend_from_slice(&[0x90; 6]);
+        for at in [254u32, 251, 255] {
+            p.push(0x68);
+            p.extend_from_slice(&at.to_le_bytes());
+        }
+        p.extend_from_slice(&[0xC7, 0x45, 0x0C, 4, 0, 0, 0]);
         let t = WallShotTables {
             targets_va: va(0),
             targets: 2,
@@ -1371,6 +1459,16 @@ mod tests {
                 va: va(64),
                 opcode: &[0x6A],
             },
+            part_cases_va: va(66),
+            turret_records: (0x0001_3D98, 0x24),
+            turret_positions: [86, 91, 96].map(|o| Immediate {
+                va: va(o),
+                opcode: &[0x68],
+            }),
+            turret_count: Immediate {
+                va: va(101),
+                opcode: &[0xC7, 0x45, 0x0C],
+            },
         };
         let img = build_test_image(1, &p);
         let pe = PeImage::parse(&img).unwrap();
@@ -1382,19 +1480,22 @@ mod tests {
                         aim: 255,
                         wall: None,
                         part: 5,
-                        kind: 1
+                        kind: 1,
+                        turret: Some(255),
                     },
                     WallTarget {
                         aim: 29,
                         wall: Some(1),
                         part: 6,
-                        kind: 0
+                        kind: 0,
+                        turret: None,
                     },
                 ],
                 missed: vec![1, 0],
                 auto_walls: vec![1, 1],
                 auto_others: vec![0, 1],
                 catapult: 119,
+                turret_count: 4,
             }
         );
         // Another case's code, another instruction, an index or a part out of range.
@@ -1420,6 +1521,28 @@ mod tests {
         let mut bad = p.clone();
         bad[8..12].copy_from_slice(&18i32.to_le_bytes());
         assert!(matches!(refused(&bad), FormatError::OutOfRange { .. }));
+        // A turret record between two records or past the third, a position's instruction or
+        // operand, the keep's count's instruction.
+        for o in [0x0001_3DA0u32, 0x0001_3E04, 0x0001_3D00] {
+            let mut bad = p.clone();
+            bad[76..80].copy_from_slice(&o.to_le_bytes());
+            assert_eq!(refused(&bad), FormatError::BadMagic("a turret's record"));
+        }
+        let mut bad = p.clone();
+        bad[91] = 0x6A;
+        assert_eq!(
+            refused(&bad),
+            FormatError::BadMagic("a turret's position instruction")
+        );
+        let mut bad = p.clone();
+        bad[93] = 1;
+        assert!(matches!(refused(&bad), FormatError::OutOfRange { .. }));
+        let mut bad = p.clone();
+        bad[102] = 0x4D;
+        assert_eq!(
+            refused(&bad),
+            FormatError::BadMagic("the keep's count instruction")
+        );
         assert!(
             wall_shot_data_at(
                 &pe,
