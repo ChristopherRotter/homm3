@@ -1,4 +1,4 @@
-//! Flat observation encoding (version 17) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 18) of a per-viewer [`Observation`].
 //!
 //! Layout, in this order: [`GLOBALS`] global features; the public part of the two heroes,
 //! [`HERO_PUBLIC_FEATURES`] each (the viewer's, then the opponent's); the private part of the
@@ -72,7 +72,8 @@
 //! stack linked to it as id + 1 (a clone's original, its living clone, itself for an original
 //! that became its own clone under BAT-QUIRK-7; 0 none), its binders as
 //! bits of stack ids 0–20 and 21–41, the tenths Poison took, its hit points per creature at the
-//! start if Poison or Age changed them (0 otherwise)]` (no distance penalty, shoots when
+//! start if Poison or Age changed them (0 otherwise), a town's turret (off the field: its `x`,
+//! `y` are the original's position 251, 254 or 255 as a hex index)]` (no distance penalty, shoots when
 //! adjacent and regeneration can come from the side's hero, BAT-HER-006; created stacks and
 //! clones: BAT-MAG-037, BAT-MAG-038; casts: BAT-MAG-048; the draw: BAT-MAG-050, for the viewer
 //! that commands a helpful caster, else 0; BAT-DMG-008, BAT-TRN-001, BAT-MAG-052, BAT-TER-001,
@@ -106,7 +107,8 @@
 //! anti-magic garrison as the last two globals. v16 (E04c T5): the town's four globals and its
 //! two planes. v17 (E04c T6): the gate's destruction and the wall-shot targets' hit points as
 //! globals, the heroes' command of their Catapults, the own hero's Ballistics level; the wall
-//! plane shows the standing walls.
+//! plane shows the standing walls. v18 (E04c T7): the turret flag as the last per-stack value
+//! (BAT-SIE-016).
 
 use h3_battle::{
     DamageRoll, HeroView, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Observation, OwnHeroView,
@@ -118,7 +120,7 @@ use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 17;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 18;
 
 /// Global features.
 pub const GLOBALS: usize = 27 + MAX_WALL_TARGETS;
@@ -142,7 +144,7 @@ const OWNER_PLANES: usize = ObstacleKind::COUNT + 1;
 /// Effects per stack the encoding shows.
 pub const EFFECT_SLOTS: usize = 8;
 /// The per-stack features before the effect features.
-const STACK_VALUES: usize = 47;
+const STACK_VALUES: usize = 48;
 /// The effect values before the effect slots.
 const EFFECT_VALUES: usize = 9 + MAX_SPELL_SCHOOLS + 6 + STATUSES.len();
 /// Features per effect slot.
@@ -448,6 +450,8 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
             (binders >> 21) as f32,
             f32::from(obs.poison[i]),
             obs.start_hp[i] as f32,
+            // rule: BAT-SIE-016
+            flag(s.is_turret()),
         ];
         f[..STACK_VALUES].copy_from_slice(&values);
         let sp = s.spells;
@@ -576,10 +580,10 @@ mod tests {
         // (BAT-MAG-048, BAT-MAG-059).
         assert_eq!(s0[31..36], [0.0, 0.0, 0.0, 1.0, 0.0]);
         // 8 at the start, its turn started (the active stack), not raised, native to the
-        // meadow (BAT-TER-001); no raise, corpse, link, binder or poison.
+        // meadow (BAT-TER-001); no raise, corpse, link, binder or poison; no turret.
         assert_eq!(
             s0[36..STACK_VALUES],
-            [8.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            [8.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         );
         // No timed effects: no bonuses, not slowed, no entries, all damage let through.
         assert_eq!(
@@ -600,7 +604,7 @@ mod tests {
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
         assert_eq!(
             OBSERVATION_LEN,
-            35 + 2 * 14 + (65 + 4 * 128) + 16 * 255 + (47 + 27 + 3 * 8) * 42
+            35 + 2 * 14 + (65 + 4 * 128) + 16 * 255 + (48 + 27 + 3 * 8) * 42
         );
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).
@@ -893,6 +897,13 @@ mod tests {
             out[GLOBALS - MAX_WALL_TARGETS..GLOBALS],
             [-1.0, 2.0, 2.0, 2.0, 2.0, 2.0, -1.0, 2.0]
         );
+        // The keep, the last stack, is a turret off the field (BAT-SIE-016): 254 is (16, 14).
+        let keep = stack(&out, s.stacks().len() - 1);
+        assert_eq!(
+            (keep[12], keep[13], keep[STACK_VALUES - 1]),
+            (16.0, 14.0, 1.0)
+        );
+        assert_eq!(stack(&out, 0)[STACK_VALUES - 1], 0.0);
         let on = |out: &[f32], p: usize| -> Vec<usize> {
             let plane = &out[FIELD + p * MAX_FIELD_HEXES..FIELD + (p + 1) * MAX_FIELD_HEXES];
             (0..MAX_FIELD_HEXES).filter(|&h| plane[h] == 1.0).collect()
@@ -1205,7 +1216,7 @@ mod tests {
         let f = stack(&out, 0);
         assert_eq!(
             f[40..STACK_VALUES],
-            [4.0, 3.0, 6.0, 1_048_577.0, 1_048_576.0, 2.0, 30.0]
+            [4.0, 3.0, 6.0, 1_048_577.0, 1_048_576.0, 2.0, 30.0, 0.0]
         );
         assert_eq!(stack(&out, 1)[41], -1.0);
         let e = STACK_VALUES + 7;

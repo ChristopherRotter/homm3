@@ -22,11 +22,11 @@ Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `
 
 **Sandbox and sync**
 - Original files: stage the user's `original-data/` through the device link (`08-work-process.md` "Cloud sandbox"; one LOD per call), then `scripts/sandbox-setup.sh`; without the link a session only prepares (Q48). Fetch `master` before a push (a thin pack).
-- **Stop hook "… no remote branch"** after a push: the clone lacks `origin/<branch>`; nothing is lost. Don't report it; fix: `git config --replace-all remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'; git fetch origin <branch>`.
+- **Stop hook "… no remote branch"** after a push: the clone lacks `origin/<branch>`; nothing is lost. Don't report it; fix: `08-work-process.md` "Cloud sandbox" 1.
 - Git on the user's machine: delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock`), `-c user.name -c user.email`; no GitHub credentials there. Cloud sessions open pull requests by the REST API (GraphQL is blocked).
-- The VM can restart (files stay, background jobs die): check `ps` before waiting.
+- The VM can restart (files stay, background jobs die): check `ps` first. A build's `Bus error` or `No space`: the disk allowance is spent (`08-work-process.md` "Cloud sandbox" 5).
 - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background and poll its log, or `verify --summary` (full log `target/verify/verify.log`); the inner loop is `verify --scope <lane> --quick`.
-- The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with a `CARGO_TARGET_DIR` of its own (never shared: `xtask` takes its root from its build; ~14 GB each: remove a finished one). `pkill -f <pattern>` also kills the tool's own shell: kill by pid.
+- The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with a `CARGO_TARGET_DIR` of its own (never shared: `xtask` takes its root from its build; remove a finished one). Kill by pid: `pkill -f` matches the tool's own shell.
 - bench-check at 0 Ir: valgrind 3.22 found no symbols in the lld-linked `h3` (the gate links with `-z norelro`).
 
 **Sources**
@@ -37,7 +37,7 @@ Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `
 
 **Coverage, lints, formatting**
 - LLVM counts the implicit `else` of `if let`, the error arm of `?` and rarely reached closures: no defensive dead branches; use infallible accessors and combinators, saturate instead of returning `Option`. Lines only proptests reach make the gate flaky: give each a fixed test (`cargo llvm-cov -p <crate> -- --skip <proptest>`).
-- Coverage misses on non-code lines mean stale binaries: `cargo llvm-cov clean --workspace`.
+- Coverage misses on non-code lines: stale binaries (`cargo llvm-cov clean --workspace`).
 - clippy: `should_implement_trait` rejects methods named `div`/`shr`/`mul`/`add`/`sub`; `type_complexity` fires on arrays of fn pointers in tests (use a type alias). `cargo fmt` reflows code: match scripted patches against the formatted text.
 - Dev-dependencies obey the layers too (`check-arch`): domain crates build test rulesets in code.
 - serde ignores unknown keys of a unit variant in an internally tagged enum (use struct variants); TOML serialization needs table fields after plain values.

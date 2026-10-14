@@ -53,8 +53,9 @@ pub use ruleset::{
     MAX_USUAL_OBSTACLE_HEXES, ObstacleType, ObstacleTypeId,
 };
 pub use siege::{
-    BALLISTICS_LEVELS, BallisticsRecord, MAX_MOAT_DAMAGE, MAX_WALL_HIT_POINTS, MAX_WALL_SHOTS,
-    MAX_WALL_TARGETS, Siege, SiegeDef, SiegeField, SiegeFieldDef, WallKind, WallTarget,
+    BALLISTICS_LEVELS, BallisticsRecord, MAX_MOAT_DAMAGE, MAX_TURRETS, MAX_WALL_HIT_POINTS,
+    MAX_WALL_SHOTS, MAX_WALL_TARGETS, Siege, SiegeDef, SiegeField, SiegeFieldDef, WallKind,
+    WallTarget,
 };
 pub use spell::{
     EffectDuration, EffectEnd, HexStep, MASTERY_NAMES, MAX_AREA_RADIUS, MAX_CHAIN_TARGETS,

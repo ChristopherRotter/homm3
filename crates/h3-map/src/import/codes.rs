@@ -114,7 +114,7 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
 }
 
 /// Creatures by original id, ascending (ids without a creature are left out).
-pub(crate) const CREATURES: [(u16, &str); 145] = [
+pub(crate) const CREATURES: [(u16, &str); 146] = [
     (0, "base:pikeman"),
     (1, "base:halberdier"),
     (2, "base:archer"),
@@ -260,6 +260,7 @@ pub(crate) const CREATURES: [(u16, &str); 145] = [
     (146, "base:ballista"),
     (147, "base:first_aid_tent"),
     (148, "base:ammo_cart"),
+    (149, "base:arrow_tower"),
 ];
 
 /// Hero types by original id (the index).

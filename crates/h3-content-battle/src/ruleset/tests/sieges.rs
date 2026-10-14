@@ -20,17 +20,18 @@ fn field() -> SiegeFieldDef {
         moat_defense_penalty: 3,
         mine_power: 3,
         catapult: 119,
+        turret_count: 4,
         targets: [
-            (WallKind::Tower, None),
-            (WallKind::Wall, Some(29)),
-            (WallKind::Wall, Some(78)),
-            (WallKind::Gate, Some(96)),
-            (WallKind::Wall, Some(130)),
-            (WallKind::Wall, Some(182)),
-            (WallKind::Tower, None),
-            (WallKind::Keep, None),
+            (WallKind::Tower, None, Some(255)),
+            (WallKind::Wall, Some(29), None),
+            (WallKind::Wall, Some(78), None),
+            (WallKind::Gate, Some(96), None),
+            (WallKind::Wall, Some(130), None),
+            (WallKind::Wall, Some(182), None),
+            (WallKind::Tower, None, Some(251)),
+            (WallKind::Keep, None, Some(254)),
         ]
-        .map(|(kind, wall)| WallTarget { kind, wall })
+        .map(|(kind, wall, turret)| WallTarget { kind, wall, turret })
         .to_vec(),
         missed: vec![1, 2, 5, 4],
         automatic: vec![1, 2, 4, 5],
@@ -153,8 +154,14 @@ fn the_field_and_the_records_compile() {
         f.targets[2],
         WallTarget {
             kind: WallKind::Wall,
-            wall: Some(78)
+            wall: Some(78),
+            turret: None,
         }
+    );
+    // The turrets (E04c T7).
+    assert_eq!(
+        (f.turret_count, f.targets[7].turret, f.targets[6].turret),
+        (4, Some(254), Some(251))
     );
     assert_eq!(f.ballistics[3], record_of([10, 20, 40, 75], 2, [0, 0, 100]));
     assert_eq!(c.hit_points, [2; 8]);
@@ -168,10 +175,10 @@ fn the_field_and_the_records_compile() {
 fn the_hash_covers_the_sieges() {
     let hash = |p: Pack| compile(&[p], "base:faithful").unwrap().content_hash();
     let with = hash(sieges());
-    // Golden value: pins the sieges' encoding (battle part v4; bump BATTLE_RULESET_HASH_VERSION
+    // Golden value: pins the sieges' encoding (battle part v5; bump BATTLE_RULESET_HASH_VERSION
     // when it changes).
     assert_eq!(with, GOLDEN, "got {with:#018x}");
-    assert_eq!(crate::BATTLE_RULESET_HASH_VERSION, 4);
+    assert_eq!(crate::BATTLE_RULESET_HASH_VERSION, 5);
     assert_ne!(with, hash(base()));
     let mut p = sieges();
     p.battle.sieges[0].moat_damage = 71;
@@ -183,8 +190,11 @@ fn the_hash_covers_the_sieges() {
     let mut p = sieges();
     p.battle.sieges[0].hit_points[0] = 3;
     assert_ne!(hash(p), with);
-    let edits: [&dyn Fn(&mut SiegeFieldDef); 7] = [
+    let edits: [&dyn Fn(&mut SiegeFieldDef); 9] = [
         &|f| f.catapult = 102,
+        // The turrets (battle part v5).
+        &|f| f.turret_count = 5,
+        &|f| f.targets[0].turret = Some(250),
         &|f| f.targets[0].kind = WallKind::Keep,
         &|f| f.targets[7].kind = WallKind::Tower,
         &|f| f.missed.swap(0, 1),
@@ -201,7 +211,7 @@ fn the_hash_covers_the_sieges() {
     }
 }
 
-const GOLDEN: u64 = 0xcee2_e6b9_d19c_9cc6;
+const GOLDEN: u64 = 0x5dd3_f4b1_3ebb_111a;
 
 #[test]
 fn field_errors() {
@@ -261,6 +271,25 @@ fn field_errors() {
     assert_eq!(with(&|f| f.targets[1].wall = Some(96)), placed);
     assert_eq!(with(&|f| f.targets[1].wall = Some(30)), placed);
     assert_eq!(with(&|f| f.targets[0].wall = Some(12)), placed);
+    assert_eq!(with(&|f| f.targets[1].turret = Some(250)), placed);
+    assert_eq!(with(&|f| f.targets[3].turret = Some(250)), placed);
+    // The turrets (E04c T7): one per tower and the keep, off the field, distinct; a keep.
+    let turrets = "the towers and the keep need turrets at distinct off-field positions, at most \
+                   three, the keep at least one creature";
+    assert_eq!(with(&|f| f.targets[7].turret = None), turrets);
+    assert_eq!(with(&|f| f.targets[7].turret = Some(186)), turrets);
+    assert_eq!(with(&|f| f.targets[6].turret = Some(255)), turrets);
+    assert_eq!(with(&|f| f.turret_count = 0), turrets);
+    assert_eq!(
+        with(&|f| {
+            f.targets[1] = WallTarget {
+                kind: WallKind::Tower,
+                wall: None,
+                turret: Some(250),
+            };
+        }),
+        turrets
+    );
     let lists = "the wall-shot lists name targets, each once";
     assert_eq!(with(&|f| f.missed.push(8)), lists);
     assert_eq!(with(&|f| f.automatic.push(1)), lists);

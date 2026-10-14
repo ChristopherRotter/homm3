@@ -160,6 +160,53 @@ fn llvm_tools_available() -> bool {
         .is_ok_and(|o| String::from_utf8_lossy(&o.stdout).contains("llvm-tools"))
 }
 
+/// `cargo llvm-cov clean --workspace`: the workspace members' instrumented artifacts, their
+/// profiles (`*.profraw`, `*.profdata`) and old reports; third-party dependencies stay.
+fn clean_instrumented() -> Result<(), String> {
+    let mut cmd = cargo();
+    cmd.args(["llvm-cov", "clean", "--workspace"]);
+    run_cmd(cmd)
+}
+
+/// Runs the instrumented tests of `packages` (all but `xtask` without a scope), writes the JSON and
+/// lcov reports and reads them back.
+fn measure(
+    root: &Path,
+    packages: Option<&[String]>,
+    json_path: &Path,
+    lcov_path: &Path,
+) -> Result<Vec<FileCoverage>, String> {
+    let mut test = cargo();
+    test.arg("llvm-cov");
+    match packages {
+        None => {
+            test.args(["--workspace", "--exclude", "xtask"]);
+        }
+        Some(list) => {
+            for p in list {
+                test.args(["-p", p]);
+            }
+        }
+    }
+    test.args(["--all-targets", "--no-report"]);
+    run_cmd(test)?;
+    let mut json_report = cargo();
+    json_report
+        .args(["llvm-cov", "report", "--json", "--output-path"])
+        .arg(json_path);
+    run_cmd(json_report)?;
+    let mut lcov_report = cargo();
+    lcov_report
+        .args(["llvm-cov", "report", "--lcov", "--output-path"])
+        .arg(lcov_path);
+    run_cmd(lcov_report)?;
+    let read = |p: &Path| fs::read_to_string(p).map_err(|e| format!("{}: {e}", p.display()));
+    Ok(combine(
+        parse_regions(&read(json_path)?, root)?,
+        &parse_lcov(&read(lcov_path)?, root),
+    ))
+}
+
 pub fn run(_args: &[String]) -> Result<(), String> {
     gate(None)
 }
@@ -194,35 +241,18 @@ pub fn gate(packages: Option<&[String]>) -> Result<(), String> {
         println!("coverage: no logic crate in scope");
         return Ok(());
     }
-    let mut test = cargo();
-    test.arg("llvm-cov");
-    match packages {
-        None => {
-            test.args(["--workspace", "--exclude", "xtask"]);
-        }
-        Some(list) => {
-            for p in list {
-                test.args(["-p", p]);
-            }
-        }
-    }
-    test.args(["--all-targets", "--no-report"]);
-    run_cmd(test)?;
-    let mut json_report = cargo();
-    json_report
-        .args(["llvm-cov", "report", "--json", "--output-path"])
-        .arg(&json_path);
-    run_cmd(json_report)?;
-    let mut lcov_report = cargo();
-    lcov_report
-        .args(["llvm-cov", "report", "--lcov", "--output-path"])
-        .arg(&lcov_path);
-    run_cmd(lcov_report)?;
-    let read = |p: &Path| fs::read_to_string(p).map_err(|e| format!("{}: {e}", p.display()));
-    let files = combine(
-        parse_regions(&read(&json_path)?, &root)?,
-        &parse_lcov(&read(&lcov_path)?, &root),
-    );
+    // The instrumented build of the workspace's own crates is removed before the run and again
+    // after it (docs/08-work-process.md, "Cloud sandbox" 5). Before: `cargo llvm-cov` cleans only
+    // the packages it builds, while `report` reads every test binary under
+    // `target/llvm-cov-target`, so a scoped run after a full one, or a run after a branch switch,
+    // took stale binaries' counts as misses at lines that no longer match. After: those artifacts
+    // and the profiles take several GB and are rebuilt by the next run anyway; the third-party
+    // dependencies stay cached, and the reports (`coverage.json`, `coverage.lcov`) stay.
+    clean_instrumented()?;
+    let measured = measure(&root, packages, &json_path, &lcov_path);
+    let cleaned = clean_instrumented();
+    let files = measured?;
+    cleaned?;
 
     let gated: Vec<String> = logic
         .iter()

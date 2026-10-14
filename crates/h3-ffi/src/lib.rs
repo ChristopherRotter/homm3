@@ -58,8 +58,9 @@ use h3_sim::{
 /// battlefield planes; `h3_observation_len` grows); no function changes. v21 (E04c T6): action
 /// encoding v13 (eight wall-shot entries appended; `h3_action_count` grows) and observation
 /// encoding v17 (the wall-shot targets' globals, the heroes' Catapult features;
-/// `h3_observation_len` grows); no function changes.
-pub const H3_ABI_VERSION: u32 = 21;
+/// `h3_observation_len` grows); no function changes. v22 (E04c T7): observation encoding v18 (the
+/// turret flag per stack; `h3_observation_len` grows); no function changes.
+pub const H3_ABI_VERSION: u32 = 22;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -556,7 +557,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 21);
+        assert_eq!(h3_abi_version(), 22);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);

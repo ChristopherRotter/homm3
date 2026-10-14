@@ -201,6 +201,18 @@ ai_value = 600
 adventure_count = [4, 8]
 flags = ["alive", "shooter", "catapult"]    # catapult: it shoots the walls (with wall_shots)
 
+# The town's turret (E04c T7, pack format v41): the battle sets it up for the defender of a town
+# with a Citadel (the keep) or a Castle (the towers too), never listed (BAT-SIE-016); its battle
+# data: battle.toml.
+[[creature]]
+id = "spire"
+name = "Spire"
+plural = "Spires"
+level = 1
+speed = 0
+ai_value = 400
+flags = ["shooter", "war_machine", "mind_immune", "no_morale"]
+
 # ---- Hero content (pack format v3, E04a T3): invented schools, spells, skills, classes and heroes.
 # Every hero-effect kind appears at least once. Spells carry their battle magic since format v4
 # (E04b T2a): every target kind, an area, a chain and target conditions appear at least once.
