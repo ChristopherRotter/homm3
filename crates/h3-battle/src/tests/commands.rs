@@ -336,7 +336,7 @@ fn state_hash_is_pinned() {
     assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 48);
     assert_eq!(
         s.siege.unwrap().turret(7),
-        Some(crate::StackId(u8::try_from(s.stacks().len() - 1).unwrap()))
+        Some(StackId(u8::try_from(s.stacks().len() - 1).unwrap()))
     );
 }
 

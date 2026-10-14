@@ -1,0 +1,250 @@
+# Experiment batch 3e (E04c T7c): the arrow towers. Checks the code reading of installation.md
+# §7.30 that the battle follows since T7b (BAT-SIE-016 to BAT-SIE-019), with the confirmation rows
+# the user asked for at BAT-Q44: S-06 (the wiki: Armorer, Air Shield and petrification *raise* a
+# turret's damage; the code: they lower it as any shot's), S-07 (the wiki's Archery page: the
+# defending hero's Archery lowers it; the code: it is never read) and D-19 (the automatic turret's
+# target: the engine takes the Ballista's rule, VCMI's; the wiki describes the computer's classes A
+# to C with the tower's damage taken as 1, so the smaller of two like stacks).
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them. They are the code's (installation.md §7.30) and the engine's
+# (faithful profile); the alternatives name their source.
+#
+# Each Red hero stands south of a Blue town's entrance: stepping north attacks it. Play in hot
+# seat (Red and Blue human), so one player commands both armies. An agent's run reads everything
+# from memory (experiments/agent/siege.py, catapult.py): each stack's creature (+0x34), position
+# (+0x38: the keep 254, the upper tower 255, the lower tower 251), count (+0x4C), lost hit points
+# and flags (+0x84). N below is the keep's count as read (4 + the town's structures, 0x5BF4F0); a
+# tower holds M = N/2 rounded up. A turret's shot is a drop of its target's hit points between
+# two reads while the turret is the acting stack (the battle manager's +0x132B8/+0x132BC).
+# The turrets shoot at every round's start, before the Catapult and every other stack.
+
+[map]
+name = "E04c batch 3e"
+description = "Engine-generated experiment map (E04c, batch 3e): the arrow towers. Follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Copy `E04c-batch-3e.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps` and start it in hot seat (Red and Blue human). Save right away.",
+    "Each Red hero stands south of a Blue town's entrance. Play the encounters in any order: select the hero and step north into the town; command both armies as the encounter says (every stack without a step defends).",
+    "Note every shot of the keep and the towers: the round, which turret, the stack it hit and the hit points that stack lost. Then end the battle as you like and load the save for the next encounter.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- The turrets' stacks, order and damage: the control (BAT-SIE-016, BAT-SIE-018) ---------------
+
+[[encounter]]
+id = "K"
+title = "A Castle's keep and two towers against an army without protections: order and damage"
+questions = ["BAT-SIE-016", "BAT-SIE-018", "D-18"]
+procedure = [
+    "Every stack defends; the turrets and the Catapult act on their own.",
+    "Play to round 8, noting every turret's shot, then end the battle as you like.",
+]
+predictions = """
+- The defender's records after its army: the keep (creature 149, position 254, N = 4 + the town's
+  structures), the upper tower (255) and the lower tower (251), each M = N/2 rounded up.
+- Every round, before any other stack and before the Catapult: the keep, then the upper tower,
+  then the lower tower shoot, one shot each, at the Titans (the only creature stack).
+- Each shot: the keep's damage in 2N..4N, a tower's in 2M..4M (one draw of 2..4 per creature,
+  summed; no attack, defense or luck: the Titans' defense does not lower it). Over the eight
+  rounds the keep's mean near 3N. `vcmi`: the same ranges, one uniform draw.
+- No turret's count changes; no shot is used (the creature's 99 shots stay).
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [8, 12]
+primary = [0, 0, 1, 1]
+army = [["Titan", 6]]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel", "castle"]
+garrison = [["Peasant", 10]]
+[[encounter.record]]
+field = "K1: the turrets' stacks: each one's position and count"
+[[encounter.record]]
+field = "K2: every turret's shot: the round, the turret, the order within the round, the target and the hit points it lost"
+[[encounter.record]]
+field = "anything odd"
+
+# --- S-06: Air Shield and Armorer on the target (BAT-SIE-018; D-16) ------------------------------
+
+[[encounter]]
+id = "AS"
+title = "Air Shield on the target: the keep's shots against shielded Titans"
+questions = ["BAT-SIE-018", "D-16", "S-06"]
+procedure = [
+    "Every stack defends unless a step below says otherwise.",
+    "Round 1: at the Titans' turn the Red hero casts Air Shield on them (Expert Air Magic: on every stack of the side), then the Titans defend.",
+    "Play to round 6, noting the keep's shots, then end the battle as you like.",
+]
+predictions = """
+Air Shield at Expert lets 50 % of a shot through (SPTRAITS.TXT: 75, 75, 50, 50), its duration the
+hero's power (10 rounds).
+- Round 1's shot (before the cast): 2N..4N.
+- The shots of rounds 2 to 6 (shielded), the code (D-16: the same factor as any shot's stage 3):
+  the sum times 0.5, truncated: **N..2N**. The wiki's bug (S-06: Air Shield "significantly
+  increases their damage"; dividing by the factor): **4N..8N**. `vcmi`: N..2N.
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+at = [18, 12]
+primary = [0, 0, 10, 5]
+skills = [["Air Magic", 3]]
+army = [["Titan", 6]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Air Shield"]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Peasant", 10]]
+[[encounter.record]]
+field = "AS1: the keep's count; every keep's shot: the round, whether Air Shield was on the Titans, the hit points they lost"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "AR"
+title = "Expert Armorer on the attacking hero: the keep's shots"
+questions = ["BAT-SIE-018", "D-16", "S-06"]
+procedure = [
+    "Every stack defends.",
+    "Play to round 10, noting the keep's shots, then end the battle as you like.",
+]
+predictions = """
+Expert Armorer: 15 % (SSTRAITS.TXT).
+- The code (D-16): each shot the sum times 0.85, truncated: **1.7N..3.4N** (N = 6: 10..20,
+  mean near 15.3).
+- The wiki's bug (S-06: "not reduced by armorer … but actually increased the corresponding
+  amount"; the sum divided by 0.85): **2.35N..4.7N** (N = 6: 14..28, mean near 21.2). Shots above
+  3.4N refute the code; shots below 2.35N refute the wiki. `vcmi`: as the code.
+"""
+[encounter.hero]
+type = "Rissa"
+specialty = "resource mercury"
+at = [28, 12]
+primary = [0, 0, 1, 1]
+skills = [["Armorer", 3]]
+army = [["Titan", 6]]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Peasant", 10]]
+[[encounter.record]]
+field = "AR1: the keep's count; every keep's shot: the round and the hit points the Titans lost"
+[[encounter.record]]
+field = "anything odd"
+
+# --- S-07: the defending hero's Archery (BAT-SIE-018; D-17) ---------------------------------------
+
+[[encounter]]
+id = "AC"
+title = "Expert Archery on the defending hero (no Artillery): the keep's shots"
+questions = ["BAT-SIE-018", "D-17", "S-07"]
+procedure = [
+    "Every stack defends; the keep shoots on its own (its hero has no Artillery).",
+    "Play to round 10, noting the keep's shots, then end the battle as you like.",
+]
+predictions = """
+- The keep shoots on its own (no Artillery: 0x474BF0).
+- The code (D-17: Archery is never read by the turret's shot): **2N..4N**, as K. The wiki's
+  Archery page (S-07: "reduces damage done by arrow towers"): below that by an unknown share;
+  HotA: above it. A shot outside 2N..4N refutes the code.
+"""
+[encounter.hero]
+type = "Octavia"
+specialty = "resource gold"
+at = [8, 28]
+primary = [0, 0, 1, 1]
+army = [["Titan", 6]]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Peasant", 10]]
+[encounter.opponent.hero]
+type = "Sylvia"
+specialty = "skill Navigation"
+primary = [0, 0, 1, 1]
+skills = [["Archery", 3]]
+army = [["Peasant", 10]]
+[[encounter.record]]
+field = "AC1: the keep's count; did the game wait for a command at the keep's turn; every keep's shot: the round and the hit points the Titans lost"
+[[encounter.record]]
+field = "anything odd"
+
+# --- Artillery commands the turrets (BAT-SIE-016, BAT-SIE-018) ------------------------------------
+
+[[encounter]]
+id = "AT"
+title = "Expert Artillery on the defending hero: the keep commanded"
+questions = ["BAT-SIE-016", "BAT-SIE-018"]
+procedure = [
+    "Every stack defends unless a step below says otherwise.",
+    "Round 1: at the keep's turn, Blue shoots the Titans with it (a click on the Titans).",
+    "Round 2: at the keep's turn, Blue makes it wait; when it gets its turn again, it shoots the Titans.",
+    "Rounds 3 and 4: the keep shoots the Titans at its turn. Then end the battle as you like.",
+]
+predictions = """
+- The keep's turn waits for Blue's command (Artillery: 0x474BF0, the Ballista's case; a human
+  player), first in every round.
+- One shot per turn although Expert Artillery gives the Ballista two (0x440160 returns after the
+  turret's shot): the Titans lose hit points once per keep's turn, 2N..4N each.
+- A Wait is accepted (as the Ballista's, BAT-WAR-006): the keep acts again at the wait phase's
+  start, before the waiting stacks.
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+at = [18, 28]
+primary = [0, 0, 1, 1]
+army = [["Titan", 6]]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Peasant", 10]]
+[encounter.opponent.hero]
+type = "Edric"
+specialty = "creature Griffin"
+primary = [0, 0, 1, 1]
+skills = [["Artillery", 3]]
+army = [["Peasant", 10]]
+[[encounter.record]]
+field = "AT1: did the game wait for Blue's command at the keep's turn; how many shots per turn; the Wait accepted, and when the keep acted after it"
+[[encounter.record]]
+field = "AT2: every keep's shot: the round and the hit points the Titans lost"
+[[encounter.record]]
+field = "anything odd"
+
+# --- D-19: the automatic turret's target (BAT-SIE-016) --------------------------------------------
+
+[[encounter]]
+id = "AI"
+title = "The automatic keep's target: ten Marksmen or one"
+questions = ["BAT-SIE-016", "D-19"]
+procedure = [
+    "Every stack defends; the keep shoots on its own.",
+    "Play to round 3, noting the keep's targets, then end the battle as you like.",
+]
+predictions = """
+Both Marksmen stacks can shoot (both class A by the wiki; both can attack next turn by VCMI).
+- The engine (the Ballista's rule, VCMI's `tryMakeAutomaticActionOfRangedUnit`): the higher value
+  of the expected damage: the ten Marksmen (slot 0) in round 1.
+- The wiki (the computer's classes; "The AI considers the Arrow tower damage equal to 1 (bug)",
+  so the smaller of two like stacks; ties to the rightmost slot): the single Marksman (slot 1).
+- The Catapult (a war machine) is shot by neither.
+"""
+[encounter.hero]
+type = "Tyris"
+specialty = "creature Cavalier"
+at = [28, 28]
+primary = [0, 0, 1, 1]
+army = [["Marksman", 10], ["Marksman", 1]]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Peasant", 10]]
+[[encounter.record]]
+field = "AI1: the keep's count; every keep's shot: the round, the stack it hit (slot) and the hit points it lost"
+[[encounter.record]]
+field = "anything odd"
