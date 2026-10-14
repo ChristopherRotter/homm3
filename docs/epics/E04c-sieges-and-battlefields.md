@@ -82,7 +82,7 @@ checkpoint; BAT-Q43 at its start).
   T6d the batch 3d by an agent: every rule as the code, D-11 to D-15 and S-08 observed;
   BAT-SIE-009 to 015 (013 `implemented`, the rest `verified`), HER-BAT-018, BAT-QUIRK-22;
   master merged (T6's pack format v39), the full verify green, the `cross-lane` pull request
-  (#199); confirmed by the user 2026-10-14.
+  (#199); confirmed by the user and merged 2026-10-14.
 - [ ] T7 Arrow towers (S-06, S-07; Artillery's control).
 - [ ] T8 The siege's other rules (no retreat or surrender for the besieged, the spell cost's town
   armies, Teleport's and the summon's siege limits, the outcome: walls, capture).

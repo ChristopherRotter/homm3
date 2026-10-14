@@ -12,7 +12,7 @@ E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epic
 
 **E04c increment 3** (the user at BAT-Q40, 2026-10-13; refined 2026-10-14 in `docs/epics/E04c-sieges-and-battlefields.md`, "T5"): T5a the seam (#183, ADR-0023, BAT-Q41), T5b towns on the experiment maps (#184), T5c the reading (`installation.md` §7.28, BAT-Q42), T5d the battle's walls, gate and moat (#187) and T5e the siege batch 3c run by an agent (#190, `battle/e04c-t5e`: every value as the code, D-8 and D-10 confirmed) done; merged 2026-10-14.
 
-**E04c increment 4** (the user, 2026-10-14; refined in `docs/epics/E04c-sieges-and-battlefields.md`, "T6"; BAT-Q43): T6a the seam (#191), T6b the reading (`installation.md` §7.29), T6c the battle and T6d the batch 3d run by an agent (`battle/e04c-t6`: every value as the code, D-11 to D-15 and S-08 observed); confirmed by the user 2026-10-14 (#191, #199).
+**E04c increment 4** (the user, 2026-10-14; refined in `docs/epics/E04c-sieges-and-battlefields.md`, "T6"; BAT-Q43): T6a the seam (#191), T6b the reading (`installation.md` §7.29), T6c the battle and T6d the batch 3d run by an agent (`battle/e04c-t6`: every value as the code, D-11 to D-15 and S-08 observed); confirmed by the user and merged 2026-10-14 (#191, #199).
 
 ## Inbox
 
