@@ -10,10 +10,13 @@
 //! checked every frame of the recorded sequences against the original's screen (the walk's
 //! offsets confirmed; the shooter's strike loop and the flight's points corrected).
 //!
+//! T4b-2a added the turns, the draw layers and the viewer's own fidgets, T5b the sounds' cues.
+//!
 //! *Provisional* (the M2 review list): the next command's default start, a command without a
-//! time counting as the computer's (the idle step and the outline), the flight's cycles rounding.
-//! Not yet (T4b-2): fidgets, turns, the draw layers of walks and strikes, the spells' sprites,
-//! deaths other than by a strike, created stacks.
+//! time counting as the computer's (the idle step and the outline), the flight's cycles rounding;
+//! a breath told by its second stack's place (E17 M2 T5c). Not yet (E17 M3 T1): the spells'
+//! sprites, deaths other than by a strike, created stacks (a strike by a stack the timeline does
+//! not know plays its reactions alone).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -344,7 +347,8 @@ pub struct Timeline {
     pub flights: Vec<Flight>,
     /// The stack outlined as active from a time on (none: no outline), in order (§7.9).
     pub outlines: Vec<(u32, Option<u8>)>,
-    /// When each idle step ran, up to the last command's end; [`Timeline::idle`] goes on.
+    /// When each idle step ran, up to the last command's start (none runs while a command
+    /// plays); [`Timeline::idle`] goes on from its end.
     pub steps: Vec<u32>,
     /// The idle steps after the last command.
     pub idle: Idle,
@@ -533,6 +537,13 @@ impl Timeline {
             .rev()
             .find(|(at, _)| *at <= t)
             .and_then(|(_, stack)| *stack)
+    }
+
+    /// Whether nothing shown changes after the last frame: no stack outlined then, none left
+    /// that fidgets (a window need not look further; E17 M2 T5c, the reviewer).
+    pub fn still(&self) -> bool {
+        self.outlined(self.end).is_none()
+            && self.fidgets.as_ref().is_none_or(|f| f.stacks.is_empty())
     }
 
     /// The idle steps taken by `t` (the outline's pulse, §4.2): the opening's at 0, then as
@@ -828,6 +839,11 @@ fn played(
             }
         } else {
             idle.run(player.clock.now, |t| steps.push(t));
+        }
+        // The last command's layer changes show with the battle's next redraw: the first idle
+        // step since, if one ran, before any fidget (*provisional*, as at the end; E17 M2 T5c).
+        if let Some(&first) = steps.get(ran) {
+            player.flush(first, first);
         }
         if let Some(f) = fidgets.as_mut() {
             for &now in &steps[ran..] {
@@ -1155,16 +1171,25 @@ impl Player<'_> {
                 }
                 Event::Defended { stack } => self.defends(stack, true),
                 Event::TurnStarted { stack } => {
+                    // The attack ends before the next turn starts (E17 M2 T5c, the reviewer).
+                    self.attack_over(&mut melee, &mut shooter);
                     self.defends(stack, false);
                     self.turns.push((self.clock.now, stack));
                 }
                 _ => {}
             }
         }
-        // The striker turns back at the attack's end (0x478A57), the shooter after its shots
-        // (0x4402F2), each only alive and turned.
+        self.attack_over(&mut melee, &mut shooter);
+    }
+
+    /// An attack is over: a melee's target turns back, then its striker at the attack's end
+    /// (0x478A57), a shooter after its shots (0x4402F2), each only alive and turned.
+    fn attack_over(&mut self, melee: &mut Option<Melee>, shooter: &mut Option<(u8, bool)>) {
         self.melee_over(melee.as_mut());
-        let back = [melee.map(|m| (m.attacker, m.attacker_right)), shooter];
+        let back = [
+            melee.take().map(|m| (m.attacker, m.attacker_right)),
+            shooter.take(),
+        ];
         for (stack, right) in back.into_iter().flatten() {
             if let Some(live) = self.live(stack).filter(|l| l.right != right) {
                 self.turn(stack, live);
@@ -1435,10 +1460,12 @@ impl Player<'_> {
 
     /// A melee strike of `attacker` on the stacks `hit` (§7.4), the striker in `layer`.
     fn strike(&mut self, attacker: u8, hit: &[(u8, u32)], layer: u8) {
-        let reactions = self.reactions(hit);
         let Some(live) = self.live(attacker) else {
+            self.react_alone(hit, [layer, STRUCK]);
             return;
         };
+        let breath = self.breath(&live, hit);
+        let reactions = self.reactions(hit);
         let own = self.stage.row(live.position(live.hex));
         let target_row = reactions
             .first()
@@ -1448,20 +1475,49 @@ impl Player<'_> {
             Ordering::Equal => 1,
             Ordering::Greater => 2,
         };
-        let group = self.stage.groups.strike[direction];
+        // A breath on two stacks takes groups 17 to 19 if the DEF has them, else the strike's
+        // (`melee_strike` 0x441ACA to 0x441B66).
+        let g = self.stage.groups;
+        let group = Some(g.breath[direction])
+            .filter(|&b| breath && live.look.count(b) > 0)
+            .unwrap_or(g.strike[direction]);
         let frames = live.look.count(group);
         self.iterate(
-            &live,
-            attacker,
+            Some((attacker, &live)),
             (group, 0, frames, frames),
             &reactions,
             [layer, STRUCK],
         );
     }
 
+    /// Whether `live`'s strike on `hit` is a breath: a second stack struck stands beyond its
+    /// neighbours. `melee_strike` strikes the stack behind its target only for a creature with
+    /// flag 0x8 (0x44171B; its second stack [ebp − 8], 0x441A35); a multi-headed striker's
+    /// stacks all stand beside it (*provisional*: the record does not name the ability).
+    fn breath(&self, live: &Live, hit: &[(u8, u32)]) -> bool {
+        let near: Vec<u8> = live
+            .covers(live.hex)
+            .iter()
+            .flat_map(|&h| (0..6).filter_map(move |d| self.stage.neighbor(h, d)))
+            .collect();
+        hit.iter()
+            .skip(1)
+            .filter_map(|(t, _)| self.stacks.get(t))
+            .any(|t| t.covers(t.hex).iter().all(|h| !near.contains(h)))
+    }
+
+    /// The stacks `hit` by a striker or shooter the timeline does not know (a stack created in
+    /// the battle, E17 M3 T1): their reactions alone, as after a projectile lands, their kills
+    /// taken (E17 M2 T5c, the reviewer).
+    fn react_alone(&mut self, hit: &[(u8, u32)], layers: [u8; 2]) {
+        let reactions = self.reactions(hit);
+        self.iterate(None, (0, 0, 0, 2), &reactions, layers);
+    }
+
     /// A shot of `shooter` at the stacks `hit` (`shot_animation` 0x43F2C0, §7.4).
     fn shot(&mut self, shooter: u8, hit: &[(u8, u32)]) {
         let Some(live) = self.live(shooter) else {
+            self.react_alone(hit, [STANDING, STANDING]);
             return;
         };
         let target = hit.first().and_then(|(t, _)| self.live(*t));
@@ -1504,12 +1560,12 @@ impl Player<'_> {
         // projectile lands, whatever is left of the shot group (E17 M2 T5b, design §7.4). The
         // shooter, still in its shot group (0x468A55), shows its frames from the climax on beside
         // it, one per iteration, its frame advancing before each draw, then stands; frames the
-        // loop leaves are cut (*provisional*: not read). The loop's length counts as one striker
-        // frame (the Marksmen's recorded sequence, §7.9); its first iterations show at once, the
-        // deadline being behind. A shot's layers stay (not read).
+        // loop leaves are cut (*provisional*: not read). The loop counts two striker frames, so it
+        // has one iteration more than the longest reaction's frames (L = R + 1: the Marksmen's
+        // recorded sequence, §7.9; the reading's L = R, *provisional*); its first iterations show
+        // at once, the deadline being behind. A shot's layers stay (not read).
         self.iterate(
-            &live,
-            shooter,
+            Some((shooter, &live)),
             (group, climax, n - climax, 2),
             &reactions,
             [STANDING, STANDING],
@@ -1560,16 +1616,15 @@ impl Player<'_> {
         }
     }
 
-    /// The strike's iterations (`strike_animation` 0x468990): the striker `live` plays `frames`
-    /// of `group` from frame `from` and counts `counted` for the loop's length, each reaction
-    /// ends with the loop; the striker and the struck stacks drawn in `layers`. Then everyone
-    /// stands in standing's layer, a dead stack on its death's last frame among the corpses,
-    /// shown with the next frame (*provisional*: the executable moves it to the corpses' list
-    /// when its death ends).
+    /// The strike's iterations (`strike_animation` 0x468990): the striker (its id and how the
+    /// timeline follows it; none: one it does not know) plays `frames` of `group` from frame
+    /// `from` and counts `counted` for the loop's length, each reaction ends with the loop; the
+    /// striker and the struck stacks drawn in `layers`. Then everyone stands in standing's
+    /// layer, a dead stack on its death's last frame among the corpses, shown with the next
+    /// frame (*provisional*: the executable moves it to the corpses' list when its death ends).
     fn iterate(
         &mut self,
-        live: &Live,
-        striker: u8,
+        striker: Option<(u8, &Live)>,
         (group, from, frames, counted): (u8, u32, u32, u32),
         reactions: &[Reaction],
         [striking, struck]: [u8; 2],
@@ -1580,31 +1635,33 @@ impl Player<'_> {
         let longest = reactions.iter().map(|r| r.frames).max().unwrap_or(0);
         let loops = (counted + longest).saturating_sub(1).max(counted + 1);
         let tick = self.speed.scale(TICK);
-        let standing = self.standing(live, live.hex);
+        let striker = striker.map(|(id, live)| (id, live, self.standing(live, live.hex)));
         for i in 0..loops {
-            // Each stack's sound as its group starts (0x468F00 to 0x468F8D): the striker's attack
-            // (a shooter goes on with its group: none), each reaction's by its group.
-            if i == 0 && from == 0 {
-                self.cue(striker, Sound::Attack, false);
+            let mut poses = Vec::with_capacity(reactions.len() + 1);
+            if let Some((id, live, standing)) = striker {
+                // Each stack's sound as its group starts (0x468F00 to 0x468F8D): the striker's
+                // attack (a shooter goes on with its group: none), each reaction's by its group.
+                if i == 0 && from == 0 {
+                    self.cue(id, Sound::Attack, false);
+                }
+                let pose = if i < frames {
+                    Self::posed(live, group, from + i, live.hex)
+                } else {
+                    standing
+                };
+                poses.push((
+                    id,
+                    Pose {
+                        layer: striking,
+                        ..pose
+                    },
+                ));
             }
             for r in reactions {
                 if i == (loops - 1).saturating_sub(r.frames) {
                     self.cue(r.stack, r.sound, false);
                 }
             }
-            let mut poses = Vec::with_capacity(reactions.len() + 1);
-            let pose = if i < frames {
-                Self::posed(live, group, from + i, live.hex)
-            } else {
-                standing
-            };
-            poses.push((
-                striker,
-                Pose {
-                    layer: striking,
-                    ..pose
-                },
-            ));
             for r in reactions {
                 // It reacts once the iterations left are no more than its frames.
                 let k = i64::from(i) - (i64::from(loops) - 1 - i64::from(r.frames));
@@ -1630,7 +1687,9 @@ impl Player<'_> {
             }
             self.frame(&poses, tick);
         }
-        self.pending.push((striker, standing));
+        if let Some((id, _, standing)) = striker {
+            self.pending.push((id, standing));
+        }
         for r in reactions {
             let pose = match (r.died, r.frames.checked_sub(1)) {
                 (true, Some(last)) => Pose {

@@ -20,7 +20,8 @@ T2 (2026-10-14): the window, input and audio library chosen by measurement and t
 (ADR-0024, `docs/epics/E17-design.md` §8). M2 T5a (2026-10-14): the SDL 3 adapter `h3-sdl` and
 `h3-view window`, a battle in a window at the original's frame times (M2's exit). M2 T5b
 (2026-10-14): the sound archives decoded (`h3-assets`), the battle's music and creature sounds in
-the window at the times the executable plays them (design §8.2).
+the window at the times the executable plays them (design §8.2). M2 T5c (2026-10-14): M2 closed
+after a fresh review; M3 (fidelity) refined.
 Decisions: ADR-0020
 and the epic file `docs/epics/E17-clients.md`; tasks in `docs/lanes/client/QUEUE.md`.
 

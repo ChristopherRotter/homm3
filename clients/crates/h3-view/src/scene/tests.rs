@@ -13,7 +13,7 @@ id = "base"
 depends = []
 
 [battle]
-groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], move_start = 20, move_end = 21, turn_left = [7, 10], turn_right = [9, 8] }
+groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], breath = [17, 18, 19], move_start = 20, move_end = 21, turn_left = [7, 10], turn_right = [9, 8] }
 
 [[creature]]
 key = "pikeman"

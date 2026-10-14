@@ -587,7 +587,9 @@ A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F
   group 0 at the walk's frame time along the straight line between the hexes (d their distance
   in pixels, D the flight distance +0x160, `cranim.txt` x 115), the hex taken at the end; group
   21, standing. Confirmed (sequence `melee`): the Angels (W 410, n 7, D 115) fly 352 pixels from
-  hex 35 to 43 in k = 3 cycles of 58 ms frames from 300 ms; group 21 shows from 1518.
+  hex 35 to 43 in k = 3 cycles of 58 ms frames from 300 ms; group 21 shows from 1518. A flight
+  of one hex (d 44 or 47, under D/2) has k = 0: the executable skips the cycles (0x4B4C5B) and
+  lands at once (0x4B4E1C), group 20 then 21 (E17 M2 T5c, the reviewer's question).
 - **A turn** (`stack_turn_around` 0x446720, animated): facing right, group 7, the flip, group 10;
   facing left, group 9, the flip, group 8; each all its frames; then standing. When a stack turns:
   §7.10. A walk's turn is in the sequence `turn` (§7.10).
@@ -597,10 +599,14 @@ A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F
 - **A strike's animation** (`strike_animation` 0x468990, H3API's ApplyAnimationToLastHitArmy):
   L iterations of trunc(100 F) on the frame deadline, L = max(a magic animation's frames,
   A + R - 1), A the striker's group's frames, R the longest reaction's. The striker plays its
-  group from iteration 0: by the strike's direction 11 (up), 12 (straight), 13 (down), 17-19 for
-  a strike on two stacks (`melee_strike` 0x441AAF). Each struck stack reacts once the iterations
-  left are no more than its reaction's frames, so the reactions end with the loop (with one
-  striker they start at its second-to-last frame, iteration L - 1 - R = A - 2): death 5 (its last
+  group from iteration 0: by the strike's direction 11 (up), 12 (straight), 13 (down); 17-19 for
+  a breath on two stacks where the DEF has the group, else 11-13 (`melee_strike` 0x441ACA to
+  0x441B66; its second stack, [ebp − 8] at 0x441A35, is set only for a creature with flag 0x8,
+  0x44171B; the Ballista takes its shot groups). The viewer tells a breath by its second stack
+  standing beyond the striker's neighbours, where a multi-headed striker's stand beside it
+  (*provisional*: the record does not name the ability; E17 M2 T5c). Each struck stack reacts
+  once the iterations left are no more than its reaction's frames, so the reactions end with the
+  loop (with one striker they start at its second-to-last frame, iteration L - 1 - R = A - 2): death 5 (its last
   frame stays: the corpse), defend 4 (a defending stack), else hit 3; then they stand. The
   pending spells are cast afterwards. Before a retaliation and before a second strike
   `melee_attack` waits trunc(150 F) (0x441E05, 0x441EB6) outside the deadline, so the next
@@ -799,7 +805,8 @@ lets it idle. Read in `Heroes3.exe` for it:
   directions through 0x523DF0, the neighbours from the table at +0x13468); it takes draw layer 6
   (0x441CC1); the target turns likewise to face it (0x4458B0, 0x441D79). Strike, retaliation,
   second strike; the target turns back if it lives and turned (0x441F36), then, after the
-  Harpies' return, the striker (0x478A57).
+  Harpies' return, the striker (0x478A57). The next turn, and its outline, starts after these
+  turn-backs (T5c, the reviewer: the viewer had started it before them).
 - **A shot** (`shot_action` 0x440160): the shooter turns, animated, when the target's position
   lies right of its other hex while it faces left, or left while it faces right (by the hexes'
   x); its shots; it turns back if it turned (0x4402F2). A two-hex target is aimed at by its
@@ -809,9 +816,11 @@ lets it idle. Read in `Heroes3.exe` for it:
   retaliation, a second strike); the struck stacks 5 (the harness's reading, §7.9; their writes
   were not found); a shot's 4 (not observed otherwise). A layer change without a frame of its own
   (the striker's 6 before the target turns, back to 4 after a strike) shows with the next frame
-  that does not draw that stack (*provisional*). A dying stack plays its death in its layer's
-  pass and lies among the corpses (pass 1) from the next frame (*provisional*: the executable
-  moves it to the corpses' list when its death ends).
+  that does not draw that stack, or with the first idle step after its command if one comes
+  first (*provisional*; T5c, the reviewer: a corpse lay in pass 5 through a player's wait, and a
+  survivor's standing pose came back over its fidget with the next command). A dying stack
+  plays its death in its layer's pass and lies among the corpses (pass 1) from the next frame
+  (*provisional*: the executable moves it to the corpses' list when its death ends).
 - **A flier in flight is in no row** (T5a; the user saw the Angels pass under the Wolf Riders'
   corpse and the Orcs flying down four rows). `stack_flight_animation` sets +0x30 (0x4B4BD8)
   and takes the stack off its hex records before the cycles (0x468730, from 0x4B4BFE); each frame
@@ -838,7 +847,7 @@ lets it idle. Read in `Heroes3.exe` for it:
 - **Not drawn yet** (in a bots' battle on `battle.toml` nothing of it occurs): spells and their
   animations, morale's and luck's animations, created stacks (summoned, cloned, risen), war
   machines, heroes and count boxes (M3); a stack the record names that its first snapshot lacks
-  is not drawn.
+  is not drawn; its strike or shot plays its targets' reactions alone, their kills taken (T5c).
 
 
 ## 8. The window, input and audio evaluation (M2 T2)
@@ -935,7 +944,8 @@ ADR-0024 built: `clients/crates/h3-sdl` and `h3-view window` (log: M2 T5a).
   pointer in frame pixels (`SDL_ConvertEventToRenderCoordinates`), and exposure, size and scale
   changes as a redraw. `present_read` reads the whole output back before presenting (the logical
   presentation lifted while it reads, as the spike did). The hardware colour cursor is scaled by
-  the frame's scale and made again when the scale changes; SDL's clock (`ticks_ns`) spares the
+  the frame's scale and made again when the scale changes (if SDL cannot, the window draws it
+  instead; T5c); SDL's clock (`ticks_ns`) spares the
   binary a `std::time::Instant`.
 - **The frame** goes up widened on the CPU (`Screen::xrgb`, the PNG's bit repetition; ADR-0024
   point 3's second form), so every renderer gets the same bytes.
@@ -1055,9 +1065,10 @@ and the music are queued a second ahead and topped up (no flush, so no seam). Vo
 gains: the music's fade-in by its steps, the effects at 64/127 (*provisional*: both settings
 equal; no settings yet). From the battle's start the window plays the start sound over the first
 frame with the clock held, then starts the music and the clock (a key that moves the battle ends
-the wait); Space pauses the device with the battle, R and → stop the creature sounds and go on
-from the cues at the new time, M and E switch the music and the creature sounds, `--mute` plays
-nothing.
+the wait); Space pauses the device with the battle (the fade-in holds with it), R and → stop
+the creature sounds and go on from the cues at the new time (→ keeps the next frame's, cued as
+the frame stepped to shows), M and E switch the music and the creature sounds, `--mute` plays
+nothing; a sound that does not decode costs that sound, as a missing one (T5c, the reviewer).
 
 **Checks.** The gate (above); the cues' unit tests (each with its group's first frame); in the
 sandbox under Xvfb with SDL's `disk` audio driver (it writes the mix to `sdlaudio.raw` in the
