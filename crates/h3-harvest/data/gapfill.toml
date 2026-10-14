@@ -1704,9 +1704,76 @@ sources = ["wiki-spell-specialty", "wiki-ciele", "vcmi-spell-specialties"]
 primary_min = [0, 0, 1, 1]      # attack, defense, power, knowledge: lower totals count as these
 primary_max = 99
 backpack = 64                   # VCMI: unlimited (dispute D7, decided with the outcome, T9)
-sources = ["wiki-primary-skill", "vcmi-game-config", "wiki-artifact"]
+learn_level = 2                 # E08 T19a2b (pack format v40): spells up to level 2 without Wisdom
+sources = ["wiki-primary-skill", "vcmi-game-config", "wiki-artifact", "exe-wisdom", "wiki-wisdom", "vcmi-wisdom"]
+
+[[source]]
+id = "exe-wisdom"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T19a2b; docs/exe/map.toml 0x469FE0, BAT-Q24): at the battle's end the winner's hero learns an Eagle Eye pick only while it wears the Spell Book and the spell's level is at most its Wisdom level (+0xD0) + 2; batch 2f (EL, EW) observed it"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-14"
+
+[[source]]
+id = "wiki-wisdom"
+kind = "wiki"
+ref = "Wisdom - Heroes 3 wiki: Basic, Advanced and Expert 'allows your hero to learn' third, fourth and fifth level spells; 'Wisdom is not required to cast third or higher level spells, only to learn them'"
+url = "https://heroes.thelazy.net/index.php/Wisdom"
+retrieved = "2026-10-14"
+
+[[source]]
+id = "vcmi-wisdom"
+kind = "vcmi"
+ref = "config/skills.json (1.7.5) wisdom: MAX_LEARNABLE_SPELL_LEVEL +1/+2/+3; config/gameConfig.json: every hero's base 2 ('Hero can always learn level 1 and 2 spells'); CGHeroInstance::canLearnSpell tests a spell's level against their sum"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json"
+retrieved = "2026-10-14"
+
+[[source]]
+id = "exe-necromancy"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T19a2b; docs/exe/map.toml 0x4E3CD0, 0x4E3C60): with the skill the share is the skill's table value (a specialist's times 1 + 0.05 x its level) +0.05, +0.10, +0.15 for the Amulet of the Undertaker (54), the Vampire's Cowl (55), Dead Man's Boots (56), each worn or through the combination it is part of; without the skill only +0.30 with the Cloak of the Undead King (130); the creature is the Skeleton, with the Cloak by the Necromancy level Skeleton, Walking Dead, Wight, Lich"
+url = "docs/epics/E08-design.md"
+retrieved = "2026-10-14"
+
+[[source]]
+id = "vcmi-necromancy"
+kind = "vcmi"
+ref = "config/skills.json (1.7.5) necromancy: UNDEAD_RAISE_PERCENTAGE and IMPROVED_NECROMANCY Skeleton; config/artifacts.json: the three parts UNDEAD_RAISE_PERCENTAGE +5/+10/+15, the Cloak IMPROVED_NECROMANCY Skeleton, Walking Dead, Wight, Lich at Necromancy 0 to 3; CGHeroInstance::calculateNecromancy: 'need skill or cloak of undead king - lesser artifacts don't work without skill'"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp"
+retrieved = "2026-10-14"
+
+[[source]]
+id = "wiki-necromancy"
+kind = "wiki"
+ref = "Necromancy - Heroes 3 wiki: the Amulet of the Undertaker '+5% Necromancy', the Vampire's Cowl '+10%', Dead Man's Boots '+15%' (silent on the skill); 'the total health of raised Skeletons can never exceed the total health of killed creatures'"
+url = "https://heroes.thelazy.net/index.php/Necromancy"
+retrieved = "2026-10-14"
+
+[[source]]
+id = "wiki-cloak-of-the-undead-king"
+kind = "wiki"
+ref = "Cloak of the Undead King - Heroes 3 wiki: as a combination '+30% Necromancy'; 'For heroes without Necromancy, the Cloak of the Undead King raises killed enemy troops' as Skeletons at a fixed 30 % that cannot be increased; with Basic, Advanced, Expert Necromancy Walking Dead, Wights, Liches, its power raised by the specialty and the town buildings 'but not the Cloak's components' effects'"
+url = "https://heroes.thelazy.net/index.php/Cloak_of_the_Undead_King"
+retrieved = "2026-10-14"
 
 # Skills whose values are not in the executable's skill tables (installation.md §7.4).
+# Wisdom (E08 T19a2b, pack format v40): the code's Wisdom level + 2 over the base of 2.
+[[heroes.skill_effects]]
+skill = "Wisdom"
+basic = [{ kind = "learn_level", levels = 1 }]
+advanced = [{ kind = "learn_level", levels = 2 }]
+expert = [{ kind = "learn_level", levels = 3 }]
+sources = ["exe-wisdom", "wiki-wisdom", "vcmi-wisdom"]
+
+# Effects added to a skill's own (its value table's): Necromancy raises Skeletons at every level
+# (E08 T19a2b, decision 30: priority 0; the Cloak of the Undead King's priority 1 wins).
+[[heroes.skill_extra]]
+skill = "Necromancy"
+basic = [{ kind = "raises", creature = "Skeleton" }]
+advanced = [{ kind = "raises", creature = "Skeleton" }]
+expert = [{ kind = "raises", creature = "Skeleton" }]
+sources = ["exe-necromancy", "vcmi-necromancy", "wiki-necromancy"]
+
 [[heroes.skill_effects]]
 skill = "Tactics"
 basic = [{ kind = "tactics", level = 1 }]
@@ -2649,6 +2716,35 @@ effects = [{ kind = "eagle_eye", bp = 1500 }]
 needs_skill = "Eagle Eye"
 sources = ["exe-eagle-eye", "wiki-eagle-eye", "vcmi-artifacts"]
 
+# Necromancy's artifacts (E08 T19a2b, pack format v40): the parts add their share with the skill
+# only, so the Cloak of the Undead King through them +30 % with it; without the skill the Cloak's
+# own +30 % (0x4E3CD0's branch), and with or without it the creature by the Necromancy level.
+[[artifacts.effects]]
+artifacts = ["Amulet of the Undertaker"]
+effects = [{ kind = "necromancy", bp = 500 }]
+needs_skill = "Necromancy"
+sources = ["exe-necromancy", "vcmi-necromancy", "wiki-necromancy"]
+
+[[artifacts.effects]]
+artifacts = ["Vampire's Cowl"]
+effects = [{ kind = "necromancy", bp = 1000 }]
+needs_skill = "Necromancy"
+sources = ["exe-necromancy", "vcmi-necromancy", "wiki-necromancy"]
+
+[[artifacts.effects]]
+artifacts = ["Dead Man's Boots"]
+effects = [{ kind = "necromancy", bp = 1500 }]
+needs_skill = "Necromancy"
+sources = ["exe-necromancy", "vcmi-necromancy", "wiki-necromancy"]
+
+[[artifacts.effects]]
+artifacts = ["Cloak of the Undead King"]
+effects = [
+    { kind = "necromancy", bp = 3000, unless_skill = "Necromancy" },
+    { kind = "raises", priority = 1, skill = "Necromancy", by_level = ["Skeleton", "Walking Dead", "Wight", "Lich"] },
+]
+sources = ["exe-necromancy", "vcmi-necromancy", "wiki-cloak-of-the-undead-king"]
+
 # Effects no epic has modelled yet; the pack marks these artifacts, and every artifact without a
 # modelled effect must be listed here.
 # The Catapult has no effect of its own: every hero carries one, and the battle sets one up for
@@ -2660,10 +2756,6 @@ epic = "E08-E10"
 what = "the Catapult every hero carries (the battle's own since E04c T6, BAT-SIE-009)"
 artifacts = ["Catapult"]
 
-[[artifacts.pending]]
-epic = "E08-E10"
-what = "Necromancy (outcome application)"
-artifacts = ["Amulet of the Undertaker", "Vampire's Cowl", "Dead Man's Boots", "Cloak of the Undead King"]
 
 # Mana is derived before the battle (E04b's non-goals): the daily spell points and Titan's
 # Thunder's spell book when equipped (installation.md §7.22) come with the hero's progression and

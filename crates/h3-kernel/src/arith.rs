@@ -198,6 +198,48 @@ impl X87 {
         Self(self.0.saturating_add(rhs.0).min(Self::MAX.0)).round(X87_PRECISION)
     }
 
+    /// `self / rhs` as the FPU computes it (`fdiv`): the exact quotient rounded to
+    /// [`X87_PRECISION`] bits, to nearest, ties to even (E08 T19a2b: Necromancy's count). `None`
+    /// if `rhs` is 0; a quotient of `2^64` or more saturates at [`X87::MAX`], one below `2^-64`
+    /// is 0.
+    pub fn over(self, rhs: Self) -> Option<Self> {
+        if rhs.0 == 0 {
+            return None;
+        }
+        if self.0 == 0 {
+            return Some(Self::ZERO);
+        }
+        // `self / rhs = (a · 2^ta) / (b · 2^tb)` with odd mantissas of at most 64 bits (every
+        // value has at most 64 significant bits).
+        let (ta, tb) = (self.0.trailing_zeros(), rhs.0.trailing_zeros());
+        let (a, b) = (self.0 >> ta, rhs.0 >> tb);
+        // `e = floor(log2(a / b))`, in `-64..=63`.
+        let len = |x: u128| 128 - i64::from(x.leading_zeros());
+        let mut e = len(a) - len(b);
+        let below = if e >= 0 { a < b << e } else { a << -e < b };
+        if below {
+            e -= 1;
+        }
+        // `m = round(a · 2^k / b)` with `k = PRECISION − 1 − e`, so `m` has `PRECISION` bits
+        // (or is `2^PRECISION` after rounding up); `a << k` stays below 2^(PRECISION + 1 +
+        // len(b)) ≤ 2^118, `b << -k` below 2^(64 + 11).
+        let k = i64::from(X87_PRECISION) - 1 - e;
+        let (num, den) = if k >= 0 { (a << k, b) } else { (a, b << -k) };
+        let (mut m, r) = (num / den, num % den);
+        if 2 * r > den || (2 * r == den && m & 1 == 1) {
+            m += 1;
+        }
+        // The value is `m · 2^(ta − tb − k)`; as a numerator over 2^64.
+        let shift = i64::from(ta) - i64::from(tb) - k + i64::from(X87_FRAC);
+        Some(if shift < 0 {
+            Self(m >> shift.unsigned_abs().min(127))
+        } else if shift >= 128 || m.leading_zeros() < shift.unsigned_abs() as u32 {
+            Self::MAX
+        } else {
+            Self((m << shift).min(Self::MAX.0))
+        })
+    }
+
     /// `self − rhs` as the FPU computes it, rounded to [`X87_PRECISION`] bits; 0 if `rhs` is
     /// larger (no rule subtracts more than it has).
     pub fn minus(self, rhs: Self) -> Self {
@@ -546,6 +588,28 @@ mod tests {
         assert_eq!(X87(u128::MAX).round(DOUBLE_BITS), X87::MAX);
         // A product far below 2^-64 vanishes.
         assert_eq!(X87(1).times(X87(1)), X87::ZERO);
+        // Quotients (E08 T19a2b): 1/3 rounds to 53 bits; 2/3 and 1/10 too; 6/3 is exact.
+        assert_eq!(X87::ONE.over(X87::int(3)), Some(d(1, 3)));
+        assert_eq!(X87::int(2).over(X87::int(3)), Some(d(2, 3)));
+        assert_eq!(X87::ONE.over(X87::int(10)), Some(d(1, 10)));
+        assert_eq!(X87::int(6).over(X87::int(3)), Some(X87::int(2)));
+        assert_eq!(X87::ZERO.over(X87::int(3)), Some(X87::ZERO));
+        assert_eq!(X87::ONE.over(X87::ZERO), None);
+        // A quotient just below an integer that rounds up to it at 53 bits truncates to it: 3
+        // over (1 + 2^-60) is 3 − 3 · 2^-60 + …, within half a unit of 3 at 53 bits.
+        assert_eq!(
+            X87::int(3).over(X87((1 << 64) + (1 << 4))).unwrap().trunc(),
+            3
+        );
+        // Saturation at 2^64 − 1, and quotients below 2^-64.
+        assert_eq!(X87::MAX.over(X87(1)), Some(X87::MAX));
+        assert_eq!(X87::int(1 << 40).over(X87(1 << 20)), Some(X87::MAX));
+        assert_eq!(X87(1).over(X87::MAX), Some(X87::ZERO));
+        // A quotient halfway between two 53-bit values goes to the even one: (2^53 + 1) / 2 down
+        // to 2^52, (2^53 + 3) / 2 up to 2^52 + 2.
+        let half = |n: u64| X87::int(n).over(X87::int(2));
+        assert_eq!(half((1 << 53) + 1), Some(X87::int(1 << 52)));
+        assert_eq!(half((1 << 53) + 3), Some(X87::int((1 << 52) + 2)));
     }
 
     #[test]
