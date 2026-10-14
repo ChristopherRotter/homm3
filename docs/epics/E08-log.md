@@ -1938,7 +1938,7 @@ work without skill": a rule (HER-NEC-001), not a quirk.
   product, which wraps above 2^31; VCMI's different full-army rule (any upgrade in the army, its
   hit points) as a batch E3 row.
 
-### Round 3 of increment 3: T19b1 (2026-10-14, `adventure/e08-t19b1`)
+### Round 3 of increment 3: T19b1 (2026-10-14, `adventure/e08-t19b1` #211)
 
 #205 and #206 had merged; the baseline full verify of `master` (837cef2, `--with-original-data`)
 passed every step. Asked for a seam, the user split T19b (decision 34): T19b1, everything that
