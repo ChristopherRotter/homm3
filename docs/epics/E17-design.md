@@ -615,9 +615,16 @@ A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F
   one), each frame trunc(trunc(A / c) x F), A the attack time (+0x15C, x 500; only shots use
   it). Then the projectile in trunc((d + 20) / 40) steps over the d pixels to the target, each
   trunc(33 F) ms from its own start, outside the deadline (about 1 200 pixels a second); a ray
-  shooter waits trunc(115 F) and draws its ray (not read). Then `strike_animation`: the shooter
-  plays its group out while the target reacts; the deadline being behind, the reaction's first
-  frame shows for no time at all.
+  shooter waits trunc(115 F) and draws its ray (not read). Then `strike_animation`: a shot marks
+  no striker (`melee_strike` sets the striker's flag, 0x441A87; `stack_shot` sets none), so A is
+  0 and the loop counts the reactions alone: the longest starts as the projectile lands, however
+  many frames the shooter has left after its climax (the Cyclops 9 of 16, the Marksmen 1); the
+  shooter, still in its shot group (0x468A55), plays them on beside it, a frame per iteration,
+  then stands. The deadline being behind, the reaction's first frame shows for no time at all.
+  (Until E17 M2 T5b the viewer counted the shooter's frames left in the loop, which delayed a
+  Cyclops' target by 0.7 s: the user saw it; the Marksmen's recorded shot cannot tell the two
+  apart. Frames left beyond the loop are cut, and the loop has one iteration more than the
+  reactions' frames, as the Marksmen's sequence shows; the reading's L = R: *provisional*.)
   Confirmed (sequence `shot`): the Marksmen (A 500, c 7) show their 71 ms frames from 100 ms, the
   arrow's 14 steps every 33 ms from 526, the Goblins' hit from 988 (frame 0 never shown, then 100
   ms apart); the second shot (Marksmen shoot twice) starts 100 ms after the first's hit ends.
@@ -722,11 +729,11 @@ listed below. What the check settled:
   canvas: the start point less half the DEF's size, plus k × trunc(Δ / steps) (`idiv`), shown from
   the climax frame's time plus k × trunc(33 F); erased after the last. The Marksmen's arrow
   (`PLCBOWX.DEF`, 30 × 30, nine frames) at all 14 steps of both shots: exact.
-- **The shooter after its climax:** `strike_animation` (0x468A3D) counts a striker still in its
-  shot group with one frame less and advances each stack's frame before drawing it, so the
-  shooter shows frames c to n − 1 in the loop and stands from the second iteration on, while the
-  loop's length still counts n − c + 1 (T4a had frames c − 1 and c: the second iteration showed
-  frame 7 where the original stands; the lines were the same).
+- **The shooter after its climax:** `strike_animation` (0x468A3D) keeps a stack still in its
+  shot group in it and advances each stack's frame before drawing it, so the shooter shows frames
+  c to n − 1 in the loop and stands after (T4a had frames c − 1 and c: the second iteration
+  showed frame 7 where the original stands; the lines were the same). The loop's length: §7.4
+  (corrected in T5b: the shooter is no striker).
 - **The flight's points** (0x4B4BA3 to 0x4B4D5D, read): from the start hex's anchor (the hex
   record's +0x1C4, +0x1C6) the point moves on **before** each frame by f32((f32 Δ / f32 k) / f32 n)
   and is kept as an f32, the stack drawn at its truncation (`crt_ftol`): the x87's single

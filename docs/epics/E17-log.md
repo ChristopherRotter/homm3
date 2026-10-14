@@ -627,6 +627,14 @@ failing check).
   `h3-view window` plays the start sound while the clock waits, then the music (decoded by
   `nanomp3`, looping, fading in) and the creatures' sounds on eight channels (keys M and E,
   `--mute`); `play` writes `cues.txt`.
+- **Found by the user** (listening to the Windows build): a Cyclops' target winced about 0.7 s
+  after the rock landed. The viewer counted the shooter's frames left after its climax in
+  `strike_animation`'s loop; the executable marks no striker for a shot (only `melee_strike`
+  does, 0x441A87), so the loop counts the reactions alone and the target reacts as the
+  projectile lands. Fixed (design §7.4); the Marksmen's recorded shot, one frame after its
+  climax, is the same either way and stays as recorded. Also asked: the Marksmen act twice in a
+  row because the engine rolled good morale (`GoodMorale` in the record), which the viewer does
+  not show yet (inbox).
 - **Checked in the sandbox** (Xvfb, SDL's `disk` audio driver): `--check 25` with sound, 293 of
   293 frames exact; the mix: the start sound (`BATTLE01`, 5.8 s), then the music fading in; with
   the music off, the effects' onsets within 10–100 ms of their cues.
