@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 4 built** (T6, BAT-Q43): seam **#191** open; `battle/e04c-t6` pushed, no PR yet. Next: full verify (last run's clippy, coverage, C-smoke failures fixed, not re-run), the `cross-lane` PR, the user's checkpoint; then T7.
+- **E04c increment 4 built** (T6, BAT-Q43): seam **#191** and the battle PR (`battle/e04c-t6`, stacked, `cross-lane`) open, both with `master` merged; full verify green (2026-10-14). Next: the user's checkpoint, then T7.
 - **Merged:** up to #190.
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-2 (T7, T8), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
 - **Versions** (T6): battle state hash v47, battle part hash v4, replay format v27, action encoding v13, C ABI v21, observation encoding v17; shared: core ruleset hash v43, pack format v39, protocol v31. Next ids: BAT-Q44, BAT-QUIRK-23, BAT-STUB-3, BAT-TER-007, BAT-SIE-016; survey D-16, S-30.
@@ -58,14 +58,14 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-14 (sixty-second) — E04c T6: master merged, the full verify, the pull request
+
+#191 merged `master` (`ballistics` code 43, T6's pack format v39); adventure replays re-recorded; the verify's gaps (coverage, rustls 0.23.46); the `cross-lane` PR. Detail: `docs/epics/E04c-log.md`.
+
 ### 2026-10-14 (sixty-first) — E04c T6: the Catapult, Ballistics and Earthquake (increment 4)
 
-Seam #191 (BAT-Q43); reading §7.29; the battle (BAT-SIE-009 to 015, HER-BAT-018, BAT-QUIRK-22); batch 3d by an agent: all as the code, S-08 seen. Detail: `docs/epics/E04c-log.md`.
+Seam #191 (BAT-Q43); reading §7.29; the battle (BAT-SIE-009 to 015, HER-BAT-018, BAT-QUIRK-22); batch 3d by an agent: as the code, S-08 seen. Detail: `docs/epics/E04c-log.md`.
 
 ### 2026-10-14 (sixtieth) — E04c T5e: the siege batch 3c played by an agent
 
-`experiments/agent/siege.py`; batch 3c: the moat, the gate, the shots through the walls and the Tower's mines as the code (D-8, D-10); BAT-SIE-003 to 008 `verified`. Detail: `docs/epics/E04c-log.md`.
-
-### 2026-10-14 (fifty-ninth) — E04c T5b, T5d: towns on the maps (#184), walls, gate and moat
-
-T5b; T5d: walls, gate, moat, mines, the shot's wall test (BAT-SIE-001 to 008). Detail: `docs/epics/E04c-log.md`.
+Batch 3c by `experiments/agent/siege.py`: moat, gate, shots through walls, the Tower's mines as the code (D-8, D-10). Detail: `docs/epics/E04c-log.md`.

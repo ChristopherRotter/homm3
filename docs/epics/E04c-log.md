@@ -210,3 +210,12 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   cast, the absent towers drawn, a doomed part drawn again (D-14), the defender's cast allowed
   (D-15), and the absent towers' destruction marked the defender's first stack dead (S-08). The
   game's draws repeat exactly from run to run. BAT-SIE-009 to 012, 014 and 015 `verified`.
+- **Master merged, the full verify, the pull request** (2026-10-14, sixty-second session). #191
+  merged `master` (#192, #194): #194's `raises` took hero-effect code 42 and pack format v38, so
+  `ballistics` is code 43 and T6's pack format v39 (labels only). The six adventure replays were
+  re-recorded with their options on master's games: only the core ruleset hash changed. The full
+  verify `--with-original-data` (Linux sandbox; 164 of 164 maps read) failed on two steps, both
+  fixed: coverage (the wall shot's and Earthquake's validated `if let`, whose implicit `else` LLVM
+  counted, now `into_iter().for_each`) and deny (rustls 0.23.45's advisories RUSTSEC-2026-0346 to
+  0349, new and on `master` too: Cargo.lock takes 0.23.46). The user consented to the `cross-lane`
+  pull request as one (2026-10-14).

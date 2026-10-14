@@ -80,7 +80,8 @@ checkpoint; BAT-Q43 at its start).
 - [x] **T6 The Catapult, Ballistics and Earthquake (S-08)** — built 2026-10-14 (record:
   [`E04c-log.md`](E04c-log.md)): T6a the seam (#191), T6b the reading (§7.29), T6c the battle,
   T6d the batch 3d by an agent: every rule as the code, D-11 to D-15 and S-08 observed;
-  BAT-SIE-009 to 015 (013 `implemented`, the rest `verified`), HER-BAT-018, BAT-QUIRK-22.
+  BAT-SIE-009 to 015 (013 `implemented`, the rest `verified`), HER-BAT-018, BAT-QUIRK-22;
+  master merged (T6's pack format v39), the full verify green, the `cross-lane` pull request.
 - [ ] T7 Arrow towers (S-06, S-07; Artillery's control).
 - [ ] T8 The siege's other rules (no retreat or surrender for the besieged, the spell cost's town
   armies, Teleport's and the summon's siege limits, the outcome: walls, capture).
