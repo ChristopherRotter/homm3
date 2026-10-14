@@ -43,7 +43,8 @@ loading as fast as the original's and the content configured per expansion, as t
    candidates (`winit` + `softbuffer` + `cpal`, SDL3, `miniquad`) on technical grounds. If the
    choice needs Apache-2.0-only crates, `clients/` gets its own `deny.toml` that allows them and
    the client binaries are distributed under GPLv3; the engine stays GPL-2.0-or-later. That step
-   is the user's decision at M2.
+   is the user's decision at M2. **Chosen at M2 (2026-10-14): SDL 3, [ADR-0024](0024-client-window-audio.md);
+   no GPLv3 step.**
 5. **Asset tables per expansion, committed:** `clients/assets/{base,ab,sod}.toml`, in the rule
    packs' dependency graph and key namespace (`base:pikeman`). They map content keys to archive
    entry names, animation groups and offsets, and hold the asset fixes. Identifiers and numbers

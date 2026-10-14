@@ -15,7 +15,9 @@ screen's reading (design §4) and the asset tables (`clients/assets/`, below). M
 captures of the original, run under Wine in a sandbox, and the first exact diff (below). M2 T1,
 T3 (2026-10-13): the capture harness and the animation timing. M2 T4a (2026-10-13): the scene
 over time (`anim`), checked against the recorded sequences, and `render --at`. M2 T4b-1
-(2026-10-13): the frame check, every frame of the recorded sequences against the original's.
+(2026-10-13): the frame check, every frame of the recorded sequences against the original's. M2
+T2 (2026-10-14): the window, input and audio library chosen by measurement and the user: SDL 3
+(ADR-0024, `docs/epics/E17-design.md` §8).
 Decisions: ADR-0020
 and the epic file `docs/epics/E17-clients.md`; tasks in `docs/lanes/client/QUEUE.md`.
 
