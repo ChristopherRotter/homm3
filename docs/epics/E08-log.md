@@ -1999,3 +1999,55 @@ The user put the two shared docs that go stale (`02-architecture.md` §8's table
   player's commands with its actor and refuses them under the other owner. `h3-cli`: battle
   commands round-trip through their text; the fork workload with `battle`.
 - Versions: action encoding v3, adventure replay format v3; no hash moved.
+
+### Round 3 of increment 3: T19b2 (2026-10-14, `shared/e08-t19b2`, `adventure/e08-t19b2`)
+
+#211 had merged; the baseline full verify of `master` (f67aac8, `--with-original-data`) passed
+every step. The user confirmed the seam T19b2 + T20a1, two pull requests (decision 35). Asked
+whether Eagle Eye could hook the battle's events: Eagle Eye is the battle's (BAT-MAG-069 picks at
+the enemy hero's casts, `HeroOutcome.learned`; GAM-BAT-007 and HER-SPL-006 learn), but the game's
+legal commands list no casts (a separate action head, ADR-0014 point 9) and `h3-map`'s tests
+could not name a cast, so nothing in the plans cast and nothing could be picked: `h3-battle`
+became `h3-map`'s dev-dependency (`shared/e08-t19b2`, `arch.toml` alone).
+
+- **The driver** (`crates/h3-map/src/tests/play.rs`): `Step::Fight(n)`, in runs of 16 to 95
+  steps among the single steps (`steps()`, one run per 13 entries, at most 40 entries; every
+  property of `play.rs` and `view.rs` draws it). On the map `seek`: an open offer declined, else
+  the `n`-th of the acting player's moves that end nearest to another player's hero on its level,
+  nearer than the hero stands (an attack is nearest of all), `EndTurn` when none gets nearer (the
+  fork benchmark's seeking, T19b1). In a battle `fight`: in three steps of four its hero's cast
+  while it may (`castable_spells`, `cast_targets`, `second_targets`, picked by `n`), else a strike
+  (an attack or a shot) of the active stack, else a command that stays; in one step of 128 a
+  retreat or a surrender if its side may.
+- **The plans**: one hero in two has skills of its own, Eagle Eye and up to two of Wisdom and
+  Necromancy at levels 1 to 3, and wears a Spell Book (in any slot: the import keeps no position);
+  without the book a winner learns nothing (HER-SPL-006), and only 8 of the 128 hero types have
+  Eagle Eye. Measured on 96 fixed cases: without skills of their own 0 spells learned (3 Eagle
+  Eye winners of 109 victories, 71 hero casts); with them but no book 0, and 1 with casts in three
+  steps of four instead of one; with the book 2 to 4; on the final 192 cases 11.
+- **Legality consistency of a cast**: a cast `apply` accepted is not an option (the game lists
+  none); `check_unlisted` checks that its spell was among the battle's castable spells for the
+  actor's side and its target among the spell's targets.
+- **`the_plans_play_battles_to_a_victory`** (proptest's deterministic runner, 192 cases of
+  `(plan, strict, seed, steps)`): 321 battles started, 226 victories, 0 draws, 43 retreats, 15
+  surrenders; 5 299 battle commands accepted; 206 hero casts; 235 artifacts captured, 51 raises,
+  11 spells learned. It asserts each is above 0 and victories above the rest.
+- **What it found**: nothing to fix. 600 cases of each of the three play properties and of the
+  four view properties passed. The three play properties take 12.6 s in a debug build (about 6 s
+  before), the whole `h3-map` suite 22 s.
+- **T19's part of the exit criteria** (audited): the ADR amendments accepted (ADV-Q13, applied by
+  T18a #185); the full verify green (f67aac8's baseline; this branch's below); the logic crates at
+  100 % (the coverage step); the property tests hold with battles, now played to a victory:
+  atomicity and legality consistency with a battle open (`check_legal`'s battle branch, every
+  listed battle command applies; casts by `check_unlisted`), ownership isolation
+  (`check_isolation`: the battle's partner, a surrender's treasury), conservation (`check_battle_end`:
+  only the battle's heroes' armies change, by the outcome and Necromancy's raised stack; treasuries
+  by a surrender's gold; `check_heroes_after_battle`: experience, spell points, captures, lost war
+  machines, learned spells, each told to its owner), observation hygiene (`view.rs`: the
+  comparison ends at the viewer's battle, the events and the views agree through battles),
+  clone equivalence and determinism (`forks_evolve_as_their_parent`,
+  `replays_are_deterministic`); golden replays with battles in the determinism matrix (T19b1:
+  `duel-s792-d28`, `duel-s120-strict-d28`); the benchmarks re-baselined with a battle open (T19b1);
+  GAM-HER-001 and GAM-BAT-001 to -007 and the HER rules they rest on `implemented` with sources;
+  no adventure stub open. Left to the increment: monsters (T20, T21) and batch E3 (T22).
+- No version moved. Round 3 closed.
