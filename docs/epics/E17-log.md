@@ -582,6 +582,10 @@ headers, the user's consent).
   software renderer); driven by `xdotool`: pause, step, restart, fullscreen, the drawn cursor and
   Esc as meant. `play scenarios/battle.toml` after the refactor: 24 commands, 81 764 ms, 1 078
   frames, as before.
+- **On the user's machine** (the cross-built exe, `measure.cmd`): Direct3D 11 at scale 2, 302 of
+  302 frames read back exact; a frame shows a median 0.4 ms after its time (p95 1.0 without
+  vsync, 1.3 with it), one 27 ms outlier per run. The user, after watching it: "looks good",
+  but for the flight below.
 - **Found by the user:** in the window the Angels, flying down four rows, passed under the Wolf
   Riders' corpse and the Orcs. The viewer drew a flier in its start row's pass; the executable
   takes it off its hexes for the flight (0x468730) and draws it by itself over everything

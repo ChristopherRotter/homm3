@@ -956,6 +956,14 @@ ADR-0024 built: `clients/crates/h3-sdl` and `h3-view window` (log: M2 T5a).
   (bare Xvfb ignores it; with `openbox`): output 1920 × 1080, the frame at (560, 240), every frame
   read back exact once the renderer is made after the window is shown and synced
   (`SDL_SyncWindow`); made before, the first frame was drawn at the old size.
+- **On the user's machine** (Windows, 2560 × 1440 at 100 %; `clients/out/win/measure.cmd`, three
+  unattended runs of 20 s, the cross-built exe): SDL took Direct3D 11, the window 1600 × 1200 at
+  scale 2. `--check`: 302 of 302 frames read back exact. `--measure`, vsync off: a frame shows a
+  median 0.4 ms after its time, p95 1.0, one outlier of 27 ms per run (the start); vsync on:
+  median 0.4, p95 1.3. The delay is taken when `SDL_RenderPresent` returns, so with vsync the
+  display may show the frame up to a refresh later (the spike, measuring the same way with
+  another loop, saw 8 ms). The user, watching `play.cmd`: "looks good", but for the Angels
+  flying under a corpse (fixed, §7.10).
 - **Building:** SDL's Linux build stops without Xcursor's headers; the X11 set it uses is x11,
   xext, xcursor, xfixes, xi, xrandr, xss and xtst (the CI job installs them, with ALSA's and
   Pulse's for the audio backends); Wayland is left out when its headers are missing. SDL takes
