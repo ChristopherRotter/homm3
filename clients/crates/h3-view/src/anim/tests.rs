@@ -28,6 +28,9 @@ const PIKEMAN: u16 = 5;
 const GNOLL: u16 = 6;
 const CENTAUR_CAPTAIN: u16 = 7;
 const SILVER_PEGASUS: u16 = 8;
+const CYCLOPS: u16 = 9;
+const ARCH_MAGE: u16 = 10;
+const BEHOLDER: u16 = 11;
 
 /// A look: `times` and the frames of each group.
 fn look(times: [u32; 4], frames: &[(u32, u32)], top: i32) -> Look {
@@ -38,6 +41,7 @@ fn look(times: [u32; 4], frames: &[(u32, u32)], top: i32) -> Look {
         missile_offsets: [[0, 0]; 3],
         top,
         missile: None,
+        ray: None,
     }
 }
 
@@ -145,7 +149,27 @@ fn looks() -> BTreeMap<u16, Look> {
             ),
         ),
         (PIKEMAN, look([9000, 575, 500, 115], &[(0, 6), (2, 7)], 171)),
-        (GNOLL, look([9000, 500, 500, 115], &[(2, 8)], 192)),
+        (
+            GNOLL,
+            look(
+                [9000, 500, 500, 115],
+                &[
+                    (0, 8),
+                    (2, 8),
+                    (3, 6),
+                    (4, 11),
+                    (5, 6),
+                    (7, 2),
+                    (8, 2),
+                    (9, 2),
+                    (10, 2),
+                ],
+                192,
+            ),
+        ),
+        (CYCLOPS, cyclops()),
+        (ARCH_MAGE, arch_mage()),
+        (BEHOLDER, beholder()),
         (
             CENTAUR_CAPTAIN,
             look(
@@ -194,6 +218,110 @@ fn looks() -> BTreeMap<u16, Look> {
         ),
     ];
     base.into_iter().collect()
+}
+
+/// The Cyclops (`CCYCLR.DEF`, its projectile `PCYCLBX.DEF`: 33 x 33, ten frames; numbers only).
+fn cyclops() -> Look {
+    let mut l = look(
+        [9000, 500, 500, 115],
+        &[
+            (0, 8),
+            (2, 6),
+            (3, 3),
+            (4, 4),
+            (5, 5),
+            (7, 3),
+            (8, 3),
+            (9, 3),
+            (10, 3),
+            (14, 16),
+            (15, 17),
+            (16, 17),
+        ],
+        164,
+    );
+    l.climax = 7;
+    l.missile_offsets = [[55, -115], [53, -84], [40, -59]];
+    l.missile = Some(Missile {
+        def: "PCYCLBX.DEF".to_string(),
+        size: [33, 33],
+        angles: vec![0; 10],
+    });
+    l
+}
+
+/// The Arch Magi (`CAMAGE.DEF`): a ray shooter (E17 M3 T1b-1).
+fn arch_mage() -> Look {
+    let mut l = look(
+        [9000, 500, 500, 115],
+        &[
+            (0, 8),
+            (2, 8),
+            (3, 6),
+            (4, 11),
+            (5, 8),
+            (7, 2),
+            (8, 2),
+            (9, 2),
+            (10, 2),
+            (14, 13),
+            (15, 13),
+            (16, 13),
+        ],
+        166,
+    );
+    l.climax = 9;
+    l.missile_offsets = [[28, -107], [43, -99], [18, -92]];
+    l.missile = Some(Missile {
+        def: "PMAGEX.DEF".to_string(),
+        size: [30, 30],
+        angles: vec![90, 72, 45, 27, 0, -27, -45, -72, -90],
+    });
+    l.ray = Some(vec![
+        [152, 188, 24],
+        [124, 216, 124],
+        [36, 180, 36],
+        [12, 132, 12],
+        [0, 96, 0],
+    ]);
+    l
+}
+
+/// The Beholders (`CBEHOL.DEF`): a ray shooter.
+fn beholder() -> Look {
+    let mut l = look(
+        [9000, 500, 500, 115],
+        &[
+            (0, 11),
+            (2, 7),
+            (3, 6),
+            (4, 11),
+            (5, 5),
+            (7, 2),
+            (8, 2),
+            (9, 2),
+            (10, 2),
+            (14, 8),
+            (15, 7),
+            (16, 7),
+        ],
+        180,
+    );
+    l.climax = 5;
+    l.missile_offsets = [[14, -73], [14, -70], [9, -60]];
+    l.missile = Some(Missile {
+        def: "PMAGEX.DEF".to_string(),
+        size: [30, 30],
+        angles: vec![0; 9],
+    });
+    l.ray = Some(vec![
+        [192, 192, 192],
+        [208, 208, 208],
+        [224, 224, 224],
+        [240, 240, 240],
+        [255, 255, 255],
+    ]);
+    l
 }
 
 /// A living stack of creature `creature` on `hex`.

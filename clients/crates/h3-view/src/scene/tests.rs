@@ -4,6 +4,7 @@ use alloc::vec;
 use h3_protocol::wire::{DamageRoll, KeyTables, RemovableObstacle};
 
 use crate::layout::parse_battle;
+use crate::ray::Stroke;
 use crate::record::tests::{manifest, observation};
 use crate::tables::{load, parse};
 
@@ -251,6 +252,16 @@ fn a_moment_draws_each_stack_in_its_pose() {
         mirrored: false,
         layer,
     };
+    let ray = Ray {
+        strokes: vec![Stroke {
+            x: 10,
+            y: 20,
+            lo: -2,
+            hi: 2,
+            column: true,
+        }],
+        colours: vec![[1, 2, 3]],
+    };
     let moment = Moment {
         poses: [
             (0, pose(0, 3, hex(4, 0), [16, 0], 4)),
@@ -267,11 +278,14 @@ fn a_moment_draws_each_stack_in_its_pose() {
             at: [100, 50],
             mirrored: true,
         }),
+        ray: Some(ray.clone()),
     };
     let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
-    // T4b-1: the projectile last, over everything; the outline three idle steps on (§4.2).
+    // T4b-1: the projectile over everything, then the ray (M3 T1b-1); the outline three idle
+    // steps on (§4.2).
+    assert_eq!(list.last(), Some(&Draw::Ray(ray)));
     assert_eq!(
-        list.last(),
+        list.iter().rev().nth(1),
         Some(&Draw::Projectile {
             def: "PLCBOWX.DEF".to_string(),
             frame: 4,

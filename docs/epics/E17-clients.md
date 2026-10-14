@@ -220,10 +220,11 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
 
 Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUEUE.md`.
 
-- The scene over time completed (T1a, T1b; M2's T4b-2b): turns, the walk-by, deaths, defending,
-  shots up and down, Haste and Slow, the **rays** (the user: Magi and Beholders draw an energy
+- The scene over time completed (T1a, T1b-1, T1b-2; M2's T4b-2b): turns, the walk-by, deaths,
+  defending, shots up and down, the **rays** (the user: Arch Magi and Beholders draw an energy
   ray, not a projectile), and recordings that check the provisional rules (the flier's layer, the
-  shot's loop, the breath's groups).
+  shot's loop, the breath's groups); Haste and Slow with the spells (T7b; T1b re-cut with the
+  user, 2026-10-15).
 - A representative situation set over the harness: every battlefield (T2), the heroes and war
   machines (T3), the count boxes (T5) and the panel (T6), each mask removed as it is drawn;
   sieges later.

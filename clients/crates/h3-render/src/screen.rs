@@ -61,6 +61,21 @@ impl PixelFormat {
             | top(colour.b, self.blue)
     }
 
+    /// A colour scaled into the masks: each channel's value × its mask / 255, rounded down, kept
+    /// to the mask (`DrawRay`'s colours, 0x5A55BF; E17 design §7.12). It can differ from
+    /// [`PixelFormat::pack`] in the lowest bit.
+    #[must_use]
+    pub fn scale(self, colour: Rgb) -> u16 {
+        let channel = |value: u8, width: u8, shift: u8| {
+            let mask = ((1u32 << width) - 1) << shift;
+            u32::from(value) * mask / 255 & mask
+        };
+        let pixel = channel(colour.r, self.red, self.green + self.blue)
+            | channel(colour.g, self.green, self.blue)
+            | channel(colour.b, self.blue, 0);
+        u16::try_from(pixel).unwrap_or(u16::MAX)
+    }
+
     /// A pixel's colour with 8-bit channels, each channel's bits repeated downwards (a 5-bit 31
     /// becomes 255, 0 stays 0). For showing a screen (PNG) only: comparisons with the original
     /// stay in this format (design §3.2). *Provisional*.
@@ -184,6 +199,14 @@ impl Screen {
         self.pixels.fill(pixel);
     }
 
+    /// Sets the pixel at `(x, y)`, if on the screen (a ray's pixel, written straight into the
+    /// screen: E17 design §7.12).
+    pub fn set(&mut self, x: i64, y: i64, pixel: u16) {
+        if let Some(p) = self.pixel_mut(x, y) {
+            *p = pixel;
+        }
+    }
+
     /// The pixel at `(x, y)` for writing, if on the screen.
     pub(crate) fn pixel_mut(&mut self, x: i64, y: i64) -> Option<&mut u16> {
         self.at(x, y).and_then(|i| self.pixels.get_mut(i))
@@ -240,6 +263,20 @@ mod tests {
     }
 
     #[test]
+    fn colours_are_scaled_into_the_masks() {
+        let f = PixelFormat::RGB565;
+        // The Arch Magi's ray (E17 design §7.12): as the original's screen shows it.
+        assert_eq!(f.scale(RGB(152, 188, 24)), 0x95C2);
+        assert_eq!(f.scale(RGB(124, 216, 124)), 0x7EAF);
+        assert_eq!(f.scale(RGB(36, 180, 36)), 0x2584);
+        assert_eq!(f.scale(RGB(255, 255, 255)), 0xFFFF);
+        assert_eq!(f.scale(RGB(0, 0, 0)), 0);
+        // Not the top bits: 152 packs to 0x9800 in red.
+        assert_eq!(f.pack(RGB(152, 0, 0)), 0x9800);
+        assert_eq!(f.scale(RGB(152, 0, 0)), 0x9000);
+    }
+
+    #[test]
     fn pixels_widen_by_repeating_their_bits() {
         let f = PixelFormat::RGB565;
         assert_eq!(f.unpack(0xFFFF), RGB(255, 255, 255));
@@ -291,7 +328,11 @@ mod tests {
         for (x, y) in [(-1, 0), (3, 0), (0, -1), (0, 2)] {
             assert_eq!(s.pixel(x, y), None);
             assert!(s.pixel_mut(x, y).is_none());
+            s.set(x, y, 5);
         }
+        s.set(1, 0, 5);
+        assert_eq!(s.pixel(1, 0), Some(5));
+        assert_eq!(s.pixels().iter().filter(|p| **p == 5).count(), 1);
     }
 
     #[test]

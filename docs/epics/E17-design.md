@@ -928,6 +928,53 @@ rectangle and shows only that. Read for the walk-by difference (§7.9); every ad
   viewer's frames shifted one pixel differ in 2.4 to 11 million pixels over `walk`, `shot` and
   `behind`, of which 0.2 % fit it; a misplacement still fails.
 
+### 7.12 The ray (M3 T1b-1)
+
+The Arch Magi (35), the Beholders (74) and the Evil Eyes (75) carry creature flag 0x800 (the ray
+shooters, `installation.md` §5): their shot draws an energy ray instead of their projectile (the
+user, at M2 T5c; the Magi (34) shoot their projectile). Read in `shot_animation` and H3API's
+DrawRay (`draw_ray` 0x5A5C20 with `ray_init`, `ray_step`, `ray_aim`); every address in the map.
+
+- **Its place in the shot.** The shot group's frames up to the climax as for any shot (§7.4);
+  then the ray shooter (0x43F51D) waits trunc(115 F) outside the deadline (0x43F52F) and calls
+  `draw_ray` from the missile point to the target point (those of the projectile, §7.9) with no
+  branches and no randomness, thickness 5 at the start and 4 at the target, colour by creature
+  (the switch 0x43F55B: 302 for the Arch Magi, 304 for 74, 75, 120 and 121, any other 0),
+  trunc(d / 15) + 15 steps per tick (0x43F578; d the shot's distance as for the projectile) and a
+  delay of 10 (0x43F58B); then returns, no projectile.
+- **The ticks.** The ray keeps its own clock, not the frame deadline: the first tick shows at
+  trunc(10 F) after the call, each next one trunc(10 F) later (the clock read once, each wait
+  `wait_until` on a deadline moved on by max(delay, lateness)). Each tick moves the ray's head
+  its steps of one pixel along its aim, the head an f32 pair plus the sine and cosine of the
+  f32 angle at each step (the x87 at 53 bits, then stored as f32; `crt_sin`, `crt_cos`), kept
+  to the battlefield (0–799, 0–555); at every pixel newly entered it draws a cross-section of
+  the ray's thickness straight into the back buffer, down the column when the ray runs mostly
+  sideways (|dx| > |dy| at the start), else along the row; then shows the tick's bounding box,
+  widened by half the thickness. Between ticks it aims again from the pixel reached:
+  atan2(dx, dy) as an f32, and the thickness 5 + trunc(−2 p), p the f32 share of the start's
+  distance gone (5 to halfway, then 4). It ends at the pixel within 2 of the target (city-block
+  distance), or where it moves away after coming within 15. Each tick also draws a random number
+  and drops it (the rules' generator: the viewer has none to keep in step).
+- **The colours** (`ray_colours` 0x68833C): five R, G, B entries from the edge inward, each
+  scaled into the screen's masks (value × mask / 255, kept to the mask; 0x68C860), so not the
+  palette's truncation (§3.2): the Arch Magi (152, 188, 24), (124, 216, 124), (36, 180, 36), …
+  green, darker inward; the Beholders and Evil Eyes greys from 192 at the edge to 224 in the
+  middle. A cross-section of 5 takes entries 0, 1, 2, 1, 0; of 4, 0, 1, 1, 0.
+- **After the ray** (0x5A60CA): the battle redrawn and shown at once without the ray, the frame
+  deadline neither waited for nor moved, so the last tick shows for no time; then, for a
+  creature with a climax frame (+0x150; all three), the rest of its shot group from the frame
+  shown on, each trunc(trunc(A / n) × F) on the deadline (n the group's frames), the last drawn
+  but not shown (0x5A6136 to 0x5A61C9). Then `strike_animation` with the reactions as after a
+  projectile (§7.4), the shooter's group over.
+- **The viewer** (`h3_view::ray`, `anim`'s `Beam`): the same steps in integers (ADR-0003 §3):
+  the f32 and 53-bit roundings exact, the sine, cosine and arc tangent by series to about
+  2^-58 (they could round differently only where an exact value lies that close to a rounding
+  boundary); the strokes drawn over everything with their colours scaled into the masks
+  (`PixelFormat::scale`). `h3-view harvest` writes the colours into the asset tables (`ray`).
+- **Checked against the frames** (sequence `shots`): RESULTS.
+- **Not read:** Chain Lightning's call (0x5A64EF) and the colours 300, 301, 303 and 305 (the
+  spells, M3 T7c); the Enchanters' shot (0x59FDE0).
+
 ## 8. The window, input and audio evaluation (M2 T2)
 
 ADR-0020 point 4 left the library to a measured evaluation at M2; the choice, the user's

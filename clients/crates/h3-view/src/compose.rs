@@ -5,9 +5,11 @@
 
 use alloc::format;
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::fmt;
 
 use h3_assets::def::Frame;
+use h3_assets::palette::Rgb;
 use h3_render::blit::{Drawer, Placement, draw_frame, draw_image, draw_image_keyed};
 use h3_render::palette::ScreenPalette;
 use h3_render::screen::{PixelFormat, Screen};
@@ -75,6 +77,22 @@ pub fn compose(
             } => {
                 // 0x43F78A: the same drawer, group 0, mirrored toward a target on the left.
                 plain(&mut screen, batch, def, (0, *frame), *x, *y, *mirrored)?;
+            }
+            Draw::Ray(ray) => {
+                // 0x5A55BF: each pixel its colour entry scaled into the masks, written straight
+                // into the screen.
+                let colours: Vec<u16> = ray
+                    .colours
+                    .iter()
+                    .map(|&[r, g, b]| FORMAT.scale(Rgb { r, g, b }))
+                    .collect();
+                for stroke in &ray.strokes {
+                    for ([x, y], entry) in stroke.pixels() {
+                        if let Some(&pixel) = colours.get(entry).or(colours.last()) {
+                            screen.set(i64::from(x), i64::from(y), pixel);
+                        }
+                    }
+                }
             }
             Draw::Creature {
                 def,

@@ -121,6 +121,11 @@ pub struct Creature {
     /// The projectile frames' angles in degrees, from high to low.
     #[serde(default)]
     pub missile_angles: [i16; 12],
+    /// A ray shooter's colours (R, G, B) by the distance from the ray's edge, the executable's
+    /// table for the creature (`DrawRay`'s colour 302 or 304; E17 M3 T1b-1, design §7.12): it
+    /// draws its shot as a ray, not its projectile.
+    #[serde(default)]
+    pub ray: Option<Vec<[u8; 3]>>,
     /// Its sounds' entries in the sound archives (E17 M2 T5b).
     #[serde(default)]
     pub sounds: Sounds,
