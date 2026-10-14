@@ -1,3 +1,6 @@
+use h3_battle::{CastTarget, Command, Hex, StackId};
+use h3_content::SpellId;
+
 use super::*;
 
 fn root() -> PathBuf {
@@ -52,10 +55,30 @@ fn commands_round_trip_through_their_text() {
             }),
             "1 move 12",
         ),
+        // Format v3 (E08 T19b1): a battle command, the battle replays' text without the side.
+        (
+            PlayerId::new(1),
+            GameCommand::Battle(Command::Attack {
+                target: StackId(3),
+                from: Hex(41),
+            }),
+            "1 battle attack 3 41",
+        ),
+        (
+            PlayerId::new(0),
+            GameCommand::Battle(Command::Cast {
+                spell: SpellId::from_raw(15),
+                target: CastTarget::Stack(StackId(2)),
+                second: CastTarget::Hex(Hex(30)),
+            }),
+            "0 battle cast 15 stack 2 hex 30",
+        ),
+        (PlayerId::new(0), GameCommand::Battle(Command::Wait), "0 battle wait"),
     ];
     for (player, command, text) in cases {
-        assert_eq!(format_command(player, &command), text);
-        assert_eq!(parse_command(text).unwrap(), (player, command));
+        let actor = Actor::Player(player);
+        assert_eq!(format_command(actor, &command), text);
+        assert_eq!(parse_command(text).unwrap(), (actor, command));
     }
     for bad in [
         "",
@@ -71,6 +94,10 @@ fn commands_round_trip_through_their_text() {
         "0 move 1 3,4,0,1",
         "0 move 1 3,4,x",
         "0 move 1 70000,4,0",
+        "0 battle",
+        "0 battle fly 3",
+        "0 battle A wait",
+        "0 battle wait now",
     ] {
         assert!(
             matches!(parse_command(bad), Err(AdventureCliError::Format(_))),
@@ -155,7 +182,7 @@ fn a_recorded_game_round_trips_through_its_file_and_verifies() {
     std::fs::remove_dir_all(&dir).unwrap();
 }
 
-/// Format v2: the game's difficulty in the header, verified at it; answers round-trip through
+/// Since format v2: the game's difficulty in the header, verified at it; answers round-trip through
 /// the file; a v1 file (no difficulty) reads as normal and is refused by its version; a difficulty
 /// the rules do not have is the setup's error.
 #[test]
@@ -167,7 +194,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     };
     let (replay, text) = run_random(&packs, &dir, &easy).unwrap();
     assert_eq!(replay.difficulty, 0);
-    assert!(text.contains("format = 2\n"), "{text}");
+    assert!(text.contains("format = 3\n"), "{text}");
     assert!(text.contains("difficulty = 0\n"), "{text}");
     let (normal, _) = run_random(&packs, &dir, &options(1)).unwrap();
     assert_eq!(normal.difficulty, h3_game::DEFAULT_DIFFICULTY);
@@ -196,7 +223,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
     // A v1 file: no difficulty, refused by its version before its map is read.
     let v1 = text
-        .replacen("format = 2", "format = 1", 1)
+        .replacen("format = 3", "format = 1", 1)
         .replacen("difficulty = 0\n", "", 1);
     assert_eq!(
         parse_replay(&v1).unwrap().difficulty,
@@ -210,19 +237,19 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
         ),
         "{e}"
     );
-    // A v2 file without its difficulty is malformed, not a game at normal difficulty.
+    // A later file without its difficulty is malformed, not a game at normal difficulty.
     let e = verify(&text.replacen("difficulty = 0\n", "", 1)).unwrap_err();
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
-    assert!(e.to_string().contains("format 2 needs a difficulty"), "{e}");
+    assert!(e.to_string().contains("format 3 needs a difficulty"), "{e}");
     std::fs::remove_dir_all(&tmp).unwrap();
     // Answers round-trip through the file.
     let mut answered = replay.clone();
     answered
         .commands
-        .push((PlayerId::new(1), GameCommand::Answer(Answer::Accept)));
+        .push((Actor::Player(PlayerId::new(1)), GameCommand::Answer(Answer::Accept)));
     answered
         .commands
-        .push((PlayerId::new(0), GameCommand::Answer(Answer::Decline)));
+        .push((Actor::Player(PlayerId::new(0)), GameCommand::Answer(Answer::Decline)));
     let text = replay_to_toml(&answered).unwrap();
     assert!(text.contains("\"1 accept\""), "{text}");
     assert_eq!(parse_replay(&text).unwrap(), answered);
@@ -385,6 +412,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 forks: 7,
                 observe,
                 masks,
+                battle: false,
             },
         )
         .unwrap()

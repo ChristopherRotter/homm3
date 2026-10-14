@@ -203,7 +203,7 @@ in the increment, in the task that first changes it.
 |---|---|---|
 | 1 | T18a + T18b | done (2026-10-14): the shared groundwork with the ADR amendments (§10); the store of heroes, its defaults, the import of hero customisations (§1), trimmed at the checkpoint (decision 28) |
 | 2 | T19a1 + T19a2 | split at the checkpoint (decision 29): T19a1 done (2026-10-14): battles through the game, hero against hero, the armies' and the map's outcome (§5, §6); T19a2 split again (decision 32): T19a2a done (2026-10-14), the heroes' outcome without pack changes; T19a2b done (2026-10-14, decision 33), Necromancy and Eagle Eye (§2, §5); round 2 closed |
-| 3 | T19b (+ T20a?) | the env, replays, properties and benchmarks with battles (§8); the cut at the round-2 checkpoint |
+| 3 | T19b1 + T19b2 | split at the checkpoint (decision 34): T19b1 the env, replays and benchmarks with battles, the versions (§8); T19b2 the property plans to a victory |
 | 4 | T20a + T20b | monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
 | 5 | T21 + T22a | guarded piles and the maps with monsters, replays, benchmarks, the audit (§7); batch E3's spec and run (cross-lane, the client lane's recipes) |
 | 6 | T22b | batch E3 scored, increment 3 closed, increment 4 refined |

@@ -1,7 +1,8 @@
 //! Adventure replays (ADR-0004 point 9, ADR-0015 "a replay names its map", E08 T9b): the rules'
 //! identity, the map by content hash and path plus the import version (ADV-Q2), the seed and the
-//! game's difficulty (format v2, E08 T14b), the game commands in the authoritative order with the
-//! acting player (answers to decisions included), and state hashes.
+//! game's difficulty (format v2, E08 T14b), the game commands in the authoritative order with
+//! their actors (answers to decisions included; battle commands since format v3, E08 T19b1), and
+//! state hashes.
 //!
 //! A replay records **game commands**, not the env's actions (the user, 2026-10-11): what the game
 //! accepts from any source (the env, a server game, a client with a path of its own), so the
@@ -12,7 +13,6 @@
 use std::fmt;
 use std::sync::Arc;
 
-use h3_contracts::PlayerId;
 use h3_game::{
     Actor, GAME_STATE_HASH_VERSION, GameCommand, GameCommandError, GameRuleset, GameSetup,
     GameSetupError, GameState, NoopSink, apply,
@@ -26,9 +26,10 @@ use super::rollout::choose;
 
 /// Version of the adventure replay model (bump when fields change meaning). Owned by the
 /// adventure lane (`docs/08-work-process.md`, the versions table). Version 2 (E08 T14b): the
-/// game's difficulty and the answers to decisions; a replay of another version is refused
+/// game's difficulty and the answers to decisions; version 3 (E08 T19b1): each command's actor
+/// (ADR-0017 point 8) and battle commands. A replay of another version is refused
 /// ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 2;
+pub const REPLAY_FORMAT_VERSION: u32 = 3;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,8 +150,9 @@ pub struct Replay {
     /// The game's difficulty (`GameSetup::difficulty`, E08 T14b): verifying builds the game at
     /// it, whatever the map's import sets.
     pub difficulty: u8,
-    /// Accepted commands in order, with the acting player.
-    pub commands: Vec<(PlayerId, GameCommand)>,
+    /// Accepted commands in order, each with its actor (the trusted identity `apply` checks it
+    /// against).
+    pub commands: Vec<(Actor, GameCommand)>,
     /// A checkpoint hash is recorded after every `checkpoint_every` commands (0 = none).
     pub checkpoint_every: u32,
     /// State hashes after commands `k · checkpoint_every`, k = 1, 2, …
@@ -303,7 +305,7 @@ impl Replay {
                         step: commands.len(),
                         error,
                     })?;
-            commands.push((player, command));
+            commands.push((Actor::Player(player), command));
             let every = options.checkpoint_every as usize;
             if every != 0 && commands.len() % every == 0 {
                 checkpoints.push(env.state_hash());
@@ -353,15 +355,9 @@ impl Replay {
         };
         let mut state = GameState::new(rules, &setup, self.seed).map_err(ReplayError::Setup)?;
         let mut next_checkpoint = self.checkpoints.iter();
-        for (i, (player, command)) in self.commands.iter().enumerate() {
-            apply(
-                &mut state,
-                rules,
-                Actor::Player(*player),
-                command.clone(),
-                &mut NoopSink,
-            )
-            .map_err(|error| ReplayError::Rejected { step: i, error })?;
+        for (i, (actor, command)) in self.commands.iter().enumerate() {
+            apply(&mut state, rules, *actor, command.clone(), &mut NoopSink)
+                .map_err(|error| ReplayError::Rejected { step: i, error })?;
             let step = i + 1;
             if every != 0 && step % every == 0 {
                 let expected = next_checkpoint.next().copied().unwrap_or_default();

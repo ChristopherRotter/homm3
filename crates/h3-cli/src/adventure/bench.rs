@@ -6,7 +6,9 @@
 //!   `h3_sim::adventure::random_rollout` (choosing, the reachable-tiles query, `apply`).
 //! * `reach`: the reachable-tiles query of every hero of the acting player at each step of
 //!   random play, inside [`reach_queries`] (the play around it is not counted).
-//! * `fork`: forks of the env after `days` days of random play, inside [`fork_workload`].
+//! * `fork`: forks of the env after `days` days of random play, inside [`fork_workload`]; with
+//!   `--battle 1` (E08 T19b1) the play stops at the first step that opens a battle, so the forks
+//!   carry an open battle.
 //!
 //! Two variants measure what an agent adds (wall time only, for the docs): `--observe 1`, the
 //! acting player's observation before each step; `--masks 1`, the entry mask and the chosen
@@ -17,10 +19,12 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
+use h3_battle::LegalCommands;
 use h3_contracts::PlayerId;
 use h3_game::{Actor, legal_moves};
 use h3_kernel::{Rng, StreamId};
-use h3_sim::adventure::ENTRY_COUNT;
+use h3_sim::action::{ACTION_COUNT, SPELL_COUNT, TARGET_COUNT};
+use h3_sim::adventure::{Action, ENTRY_COUNT, Phase};
 use h3_sim::adventure::rollout::choose;
 use h3_sim::adventure::{AdventureEnv, random_rollout};
 
@@ -60,6 +64,8 @@ pub struct BenchOptions {
     pub observe: bool,
     /// `play`: the entry and tile masks before each step.
     pub masks: bool,
+    /// `fork`: the play stops when a battle opens (within the day limit).
+    pub battle: bool,
 }
 
 /// What [`run`] measured.
@@ -71,6 +77,8 @@ pub struct BenchResult {
     pub steps: u64,
     /// Seconds spent in the counted part.
     pub seconds: f64,
+    /// `fork`: the games whose forks carried an open battle.
+    pub battles: u64,
 }
 
 /// Runs a workload on a map below `root` with the packs of `packs_dir`.
@@ -89,6 +97,7 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
         operations: 0,
         steps: 0,
         seconds: 0.0,
+        battles: 0,
     };
     for g in 0..options.games {
         // The setup built the first game: a reset cannot fail.
@@ -106,7 +115,13 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
             }
             Workload::Reach => reach_rollout(&mut env, g),
             Workload::Fork => {
-                let steps = u64::from(random_rollout(&mut env, g, 0).steps);
+                let steps = if options.battle {
+                    until_battle(&mut env, g)
+                } else {
+                    u64::from(random_rollout(&mut env, g, 0).steps)
+                };
+                let open = env.to_move().any(|p| env.phase(p) == Phase::Battle);
+                result.battles += u64::from(open);
                 let start = Instant::now();
                 black_box(fork_workload(&env, options.forks));
                 (
@@ -121,6 +136,22 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
         result.seconds += seconds;
     }
     Ok(result)
+}
+
+/// Random play until a battle opens or the episode ends: the steps played.
+fn until_battle(env: &mut AdventureEnv, agent_seed: u64) -> u64 {
+    let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
+    let mut steps = 0;
+    while let Some(player) = env.to_move().next() {
+        if env.phase(player) == Phase::Battle {
+            break;
+        }
+        let action = choose(env, player, &mut rng);
+        // A legal action is always accepted (h3-sim's tests).
+        let _ = env.step(player, action);
+        steps += 1;
+    }
+    steps
 }
 
 /// Random play with every hero's reachable-tiles query at each step ([`reach_queries`], the
@@ -171,11 +202,16 @@ pub fn fork_workload(env: &AdventureEnv, forks: u32) -> u64 {
     last
 }
 
-/// Random play with what an agent reads before each step: the observation and the masks.
+/// Random play with what an agent reads before each step: the observation and the masks (in a
+/// battle the battle's heads, E08 T19b1).
 fn agent_rollout(env: &mut AdventureEnv, agent_seed: u64, observe: bool, masks: bool) -> u64 {
     let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
     let mut entries = [false; ENTRY_COUNT];
     let mut tiles = Vec::new();
+    let mut legal = LegalCommands::new();
+    let mut battle_entries = [false; ACTION_COUNT];
+    let mut spells = [false; SPELL_COUNT];
+    let mut targets = [false; TARGET_COUNT];
     let mut steps = 0;
     loop {
         let Some(player) = env.to_move().next() else {
@@ -185,10 +221,23 @@ fn agent_rollout(env: &mut AdventureEnv, agent_seed: u64, observe: bool, masks: 
             black_box(env.observation(player));
         }
         let action = choose(env, player, &mut rng);
-        if masks {
-            env.legal_mask(player, &mut entries);
-            env.tile_mask(player, action.entry, &mut tiles);
-            black_box((&entries, &tiles));
+        match action {
+            Action::Adventure(action) if masks => {
+                env.legal_mask(player, &mut entries);
+                env.tile_mask(player, action.entry, &mut tiles);
+                black_box((&entries, &tiles));
+            }
+            Action::Battle(action) if masks => {
+                let (entry, spell) = (action.entry as usize, action.spell);
+                env.battle_mask(player, &mut legal, &mut battle_entries);
+                env.spell_mask(player, entry, &mut legal, &mut spells);
+                env.target_mask(player, (entry, spell), &mut legal, &mut targets);
+                black_box((&battle_entries, &spells, &targets));
+                let prefix = (entry, spell, action.target);
+                env.second_mask(player, prefix, &mut legal, &mut targets);
+                black_box(&targets);
+            }
+            _ => {}
         }
         let _ = env.step(player, action);
         steps += 1;

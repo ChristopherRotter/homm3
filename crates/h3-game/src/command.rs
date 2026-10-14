@@ -231,6 +231,11 @@ pub enum GameEvent {
 
 /// Receiver of the game's events.
 pub trait Sink {
+    /// Whether the sink keeps what it receives, passed to a battle's sink (`h3_battle::Sink`'s
+    /// own: work done only to report something, a walker's path hex by hex, is skipped for a sink
+    /// that does not; the state is the same either way; E08 T19b1).
+    const RECORDS: bool = true;
+
     /// Receives one event.
     fn emit(&mut self, event: GameEvent);
 }
@@ -240,6 +245,8 @@ pub trait Sink {
 pub struct NoopSink;
 
 impl Sink for NoopSink {
+    const RECORDS: bool = false;
+
     #[inline]
     fn emit(&mut self, _event: GameEvent) {}
 }

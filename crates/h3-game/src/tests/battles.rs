@@ -380,6 +380,38 @@ fn a_battle_played_to_its_end_applies_its_outcome() {
     }
 }
 
+/// A sink that keeps its events but says it does not record (`Sink::RECORDS`).
+struct Quiet(Vec<GameEvent>);
+
+impl Sink for Quiet {
+    const RECORDS: bool = false;
+
+    fn emit(&mut self, event: GameEvent) {
+        self.0.push(event);
+    }
+}
+
+/// The game's battle sink records what the game's sink records (E08 T19b1): a sink that does not
+/// gets no walker's path hex by hex, the state is the same either way.
+#[test]
+fn a_battle_reports_a_walkers_path_to_a_recording_sink_only() {
+    let rules = rules();
+    let (mut loud, _, _) = attacked(&rules, 5);
+    let mut quiet = loud.clone();
+    let (mut heard, mut said) = (Vec::new(), Quiet(Vec::new()));
+    while loud.battle(RED).is_some() {
+        let (owner, _) = to_act(&loud);
+        let listed = legal_commands(&loud, &rules, Actor::Player(owner));
+        let fights = |c: &&GameCommand| !matches!(c, GameCommand::Battle(c) if c.leaves_battle());
+        let command = listed.iter().rfind(fights).unwrap().clone();
+        apply(&mut loud, &rules, Actor::Player(owner), command.clone(), &mut heard).unwrap();
+        apply(&mut quiet, &rules, Actor::Player(owner), command, &mut said).unwrap();
+        assert_eq!(loud, quiet);
+    }
+    assert!(said.0.len() < heard.len());
+    assert!(said.0.iter().all(|event| heard.contains(event)));
+}
+
 // covers: GAM-BAT-003, GAM-BAT-005
 #[test]
 fn a_surrender_pays_the_winners_owner_and_a_retreat_leaves_the_map() {
