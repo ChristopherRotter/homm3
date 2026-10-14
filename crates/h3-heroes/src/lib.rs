@@ -2,7 +2,8 @@
 //! and secondary skills, artifacts, spells, mana — their validation against a ruleset, what the
 //! hero has from them in every context (its available spells and their masteries, E04b T8a), and
 //! the pure translations to what a battle needs, and the typed changes the game applies to its
-//! store of heroes (E08 T19a2a: a battle's outcome). No commands and no map or battle state:
+//! store of heroes (E08 T19a2a: a battle's outcome; T19a2b: a hero's Necromancy, the spell level
+//! it may learn and the Eagle Eye picks it learns). No commands and no map or battle state:
 //! equipping, learning and levelling up arrive with the adventure and game epics (E08–E10); the
 //! battle never depends on this crate and reads only the battle hero of the seam
 //! (`h3_contracts::BattleHero`).

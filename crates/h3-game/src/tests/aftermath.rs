@@ -546,3 +546,23 @@ fn the_winner_learns_its_eagle_eye_picks_with_its_book_up_to_its_level() {
     let spells = &ended.hero(RED_HERO).unwrap().spells;
     assert!(spells.contains(&gust) && spells.contains(&gate));
 }
+
+// covers: GAM-BAT-006
+#[test]
+fn the_count_takes_the_shares_own_single_precision_value() {
+    // A share with its own single-precision value (a specialist's, HER-NEC-001) is the one the
+    // original computes with: f32(0.7) given as bits counts as the share of 7000 basis points.
+    let killed = [record(StackOrigin::Army(0), IMP, 10, 0)];
+    let share = |single| h3_heroes::Necromancy {
+        share: h3_contracts::Rate {
+            bp: 7000,
+            single,
+        },
+        creature: IMP,
+    };
+    let bits = core::num::NonZeroU32::new(0x3f33_3333);
+    let count = crate::state::raised_count;
+    assert_eq!(count(&single_rules(), &killed, share(bits)), 6);
+    assert_eq!(count(&single_rules(), &killed, share(None)), 6);
+    assert_eq!(count(&rules(), &killed, share(bits)), 7);
+}

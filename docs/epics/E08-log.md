@@ -1880,3 +1880,58 @@ tie rule as built.
 - Rules: HER-CHG-001, -002, HER-ART-004, HER-WAR-002, HER-EXP-001 (Q-0005) new; GAM-BAT-002 (the
   heroes' part) and -004 (+500, the capture) completed but for T19a2b, with the reading, batch 1b
   R5, the wiki and VCMI.
+
+### Round 2 of increment 3: T19a2b (2026-10-14, `shared/e08-t19a2b`, `adventure/e08-t19a2b`)
+
+#197 and #198 merged first; the baseline full verify of `master` (5550866,
+`--with-original-data`) passed every step. Asked for a seam, the user took both pull requests in
+one session and the four Necromancy artifacts now; told that a new field moves the ruleset hash's
+encoding, they put the harvested data and the one re-recording into the shared pull request
+(decision 33), and asked to investigate whether the Cloak's 30 % without the skill is a bug: the
+code has its own branch for it (0x4E3CD0 without the skill: only +0.30 with artifact 130), the
+wiki's Cloak of the Undead King page says "For heroes without Necromancy, the Cloak of the Undead
+King raises killed enemy troops" as Skeletons at a fixed 30 % that "cannot be increased", and
+VCMI's `calculateNecromancy` says "need skill or cloak of undead king - lesser artifacts don't
+work without skill": a rule (HER-NEC-001), not a quirk.
+
+**`shared/e08-t19a2b`** (`cross-lane`: packs, the harvester, the replays):
+- `h3-content`: the kind `learn_level { levels }` (code 44; the highest spell level learnable grows
+  over `[hero_params]`'s new required `learn_level`; sources add, at most 5), the `necromancy`
+  kind's optional `unless_skill` (the share counts only while the hero lacks that skill),
+  ruleset hash v44 (the golden base hash moved); `h3-pack`: their syntax, pack format v40.
+- `h3-kernel`: `X87::over`, the x87's `fdiv` rounded to 53 bits (the proptest compares it with
+  IEEE doubles), for Necromancy's count.
+- The harvester: `[[heroes.skill_extra]]` (effects added to a table skill's levels), a `creature`
+  in skill effects, skill and creature-list references in artifact effects; the gap-fill entries
+  with the code reading, the wiki and VCMI: Wisdom +1/+2/+3, Necromancy's `raises` Skeletons at
+  every level, the three parts +5/+10/+15 % with the skill, the Cloak's own 30 % without it and
+  its `raises` by the Necromancy level at priority 1 (no longer `pending`), `learn_level = 2`.
+  `packs/README.md`, `synthetic-ext`'s Storm Regalia carries both kinds, `06-security.md` the
+  heroes' changes after a battle. The ten battle and six adventure replays re-recorded with their
+  options: only the core ruleset hash in their headers moved.
+
+**`adventure/e08-t19a2b`** (`cross-lane`: `h3-heroes`, `heroes.toml`):
+- **`h3-heroes`**: `necromancy` → `Necromancy { share: Rate, creature }` (HER-NEC-001: the
+  `RateSum` of the `necromancy` values of the grown effects, a share with `unless_skill` only
+  without that skill, at most 100 %, under Q-0005 the single-precision sum; HER-NEC-002: the
+  `raises` of the highest priority, decision 30's tie rule, `by_level` by the hero's level in the
+  skill); `learn_level` (HER-SPL-005) and `learns_spell` (HER-SPL-006: a worn spell book, a new
+  hero spell, a level at most `learn_level`); `HeroChange::LearnSpell` (`ChangeError::Spell`,
+  `KnownSpell`); the worn types' filter shared as `worn_types`.
+- **`h3-adventure`**: `AdventureState::raise` (GAM-BAT-006): the hero's stack of the creature,
+  else its first free slot, else (2c + 2) / 3 of the first upgrade into the upgrade's stack.
+- **`h3-game`**: in `heroes_after_battle`, after the experience: `raised_count` over the loser's
+  records (every record that lost creatures, the war machines and created stacks too; under Q-0005
+  the original's x87 arithmetic per record: 10 imps at 70 % raise 6, not 7) into `raise`, told as
+  `GameEvent::CreaturesRaised` to the owner; then each Eagle Eye pick the winner may learn as a
+  `LearnSpell` change (GAM-BAT-007); then the capture. `ADV-STUB-3` closed, GAM-BAT-002 complete.
+  No version moves: the details are hashed since v5, no golden replay ends a battle.
+- **Properties** (`h3-map`): a battle hero's learned spells follow its `LearnSpell` changes, only
+  a staying winner learns; raised creatures go to a battle hero that stays, told to its owner, and
+  its army holds them; the views see `CreaturesRaised` as their own heroes' changes.
+- Rules: HER-NEC-001 (Q-0005), HER-NEC-002, HER-SPL-005, HER-SPL-006, GAM-BAT-006 (Q-0005),
+  GAM-BAT-007 new; HER-CHG-001 and GAM-BAT-002 completed.
+- Not built (QUEUE inbox): the Necropolis buildings' +10/+20 % (towns, E09); the original's
+  exception for the four elementals' upgrade (a game flag, no hero raises them); its 32-bit
+  product, which wraps above 2^31; VCMI's different full-army rule (any upgrade in the army, its
+  hit points) as a batch E3 row.

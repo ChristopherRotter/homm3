@@ -530,7 +530,11 @@ fn battle_experience(rules: &GameRuleset, stacks: &[StackRecord], defeated: bool
 /// `trunc(f32(min(hp, raised hp) × killed) × share / f32(raised hp))` in its x87 arithmetic, the
 /// share single precision (HER-NEC-001); its 32-bit product, which wraps above 2^31, is not
 /// modelled (no army reaches it). 0 for a raised creature without hit points. Sums saturate.
-fn raised_count(rules: &GameRuleset, stacks: &[StackRecord], necromancy: Necromancy) -> u32 {
+pub(crate) fn raised_count(
+    rules: &GameRuleset,
+    stacks: &[StackRecord],
+    necromancy: Necromancy,
+) -> u32 {
     let hit_points = |c| rules.battle().creature(c).map_or(0, |c| c.hit_points);
     let raised_hp = hit_points(necromancy.creature);
     let single = rules.core().quirks().is_enabled(SINGLE_PRECISION_RATES);
