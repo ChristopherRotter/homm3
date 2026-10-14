@@ -151,21 +151,22 @@ winner's (D-13). Only the attacker's stream moves. T19a2a added the captured art
   at once; guards unsplit; a win picks the pile up, a loss or retreat leaves the guards' survivors
   in `army_left`.
 
-## 8. The env and replays (T19b)
+## 8. The env and replays (T19b1, T19b2)
 
-- Action encoding v3 (`h3-sim/src/adventure/action.rs`): `Action::{Adventure(adventure::Action),
-  Battle(h3_sim::action::Action)}`, a phase per state; the masks of the other phase are empty.
-- `to_move()` yields the acting players without a battle and, for each open battle, its side to
-  act's owner; the neutral seat (`Seat::Neutral`, a battle action issued as `Actor::System`) comes
-  with T20b (decision 29). `random_rollout` plays every seat at random; the original's battle AI
-  replaces the neutral seat's stand-in when the battle lane has ported it (decision 27), and until
-  then results against monsters are provisional. Until v3 the env offers no move onto another
-  player's hero (`ADV-STUB-4`, T19a1).
-- Replay format v3: each command with its actor, battle commands (v2 cannot read them back,
-  `ADV-STUB-4`); golden replays with hero battles (T19b) and monsters (T20b). The property plans
-  play battles since T19a1 (the driver acts as the owner of the side to act; they end mostly by a
-  retreat or a surrender): T19b makes them play more to a victory.
-- Benchmarks: the three workloads re-baselined with battles; `fork-xl-144` with a battle open.
+Built by T19b1 (2026-10-14, decision 34): action encoding v3 (`Action::{Adventure(MapAction),
+Battle(h3_sim::action::Action)}`, `Phase` by whether the player is in a battle, each phase's masks
+empty in the other; `ADV-STUB-4` closed: another player's hero's tile is a legal destination);
+`to_move` with each open battle's owner of the side to act; the env's battle masks; the random
+agent plays a battle with the battle's own agent (`h3_sim::rollout::choose`: it never retreats or
+surrenders); replay format v3 (`Actor` per command, `<player> battle <command>` in the file); the
+golden replays re-recorded, two with hero battles; the game's battle sink passes `RECORDS`; the
+fork workload with a battle open (the heroes seek each other: random play seldom fights). Left:
+- **T19b2**: the property plans play battles to a victory (the driver acts as the owner of the
+  side to act; today the battles end mostly by a retreat or a surrender), so captures, Necromancy
+  and Eagle Eye's learning happen in them.
+- **T20b**: the neutral seat (`Seat::Neutral`, a battle action issued as `Actor::System`;
+  decision 29), `to_move` yielding seats; `random_rollout` plays it at random until the battle
+  lane has ported the original's battle AI (decision 27); golden replays with monsters.
 
 ## 9. Versions
 
@@ -173,8 +174,8 @@ Shared (T19a2b): core ruleset hash v44, pack format v40. Game state hash v6 (her
 state hash v8 (the formation since T18b, the coast since T19a1; monsters' static data and army
 left, the difficulty later); adventure ruleset part v6 (the battle terrains since T19a1; monster
 and ground kinds, T20a); map import v5 (hero customisations since T18b, the coast since T19a1;
-monsters, guarded piles later); action encoding v3; adventure replay format v3. Each bumps once
-in the increment, in the task that first changes it.
+monsters, guarded piles later); action encoding v3 and adventure replay format v3 (since T19b1).
+Each bumps once in the increment, in the task that first changes it.
 
 ## 10. Shared and cross-lane work
 
