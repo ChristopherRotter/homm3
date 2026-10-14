@@ -1918,6 +1918,7 @@ fn harvested_hero_effects_reproduce_the_experiments() {
             war_machines: [war_machines(&details, &sod), vec![]],
             formations: [Formation::Loose; 2],
             funds: [0; 2],
+            ..BattleSetup::default()
         };
         let state = BattleState::new(&sod, &setup, 1).unwrap();
         let stacks: Vec<Stack> = state.stacks().to_vec();

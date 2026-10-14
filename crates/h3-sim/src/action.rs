@@ -771,6 +771,7 @@ mod tests {
             war_machines: [vec![], vec![]],
             formations: Default::default(),
             funds: [0; 2],
+            ..BattleSetup::default()
         };
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let side = s.side_to_act().unwrap();

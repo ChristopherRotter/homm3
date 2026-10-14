@@ -147,6 +147,16 @@ pub struct BattleSetup {
     /// ruleset's surrender resource (BAT-FLE-002; ignored for a side without a hero). Private to
     /// the side.
     pub funds: [u32; 2],
+    /// The game's difficulty, 0 (Easy) to 4 (Impossible), as the game setup has it (the original's
+    /// `[game]+0x1F6D8`). The battle reads it only for the choices it makes for a side as the
+    /// original's computer does (E04c T7d, ADR-0023 point 7: an automatic turret's desperate aim).
+    /// Public.
+    pub difficulty: u8,
+    /// Whether each side's player is human (indexed by [`BattleSide::index`]; the original's
+    /// battle byte +0x54A4, false for a side without a player: monsters, a neutral town). As
+    /// `difficulty`, read only for the computer's choices (ADR-0023 point 7); it does not decide
+    /// who commands a side. Public.
+    pub human: [bool; 2],
 }
 
 impl BattleSetup {
@@ -352,6 +362,7 @@ mod tests {
             war_machines: [vec![], vec![]],
             formations: [Formation::Tight, Formation::Loose],
             funds: [1000, 0],
+            ..BattleSetup::default()
         };
         assert_eq!(setup.army(BattleSide::Attacker).stacks, [stack]);
         assert!(setup.army(BattleSide::Defender).stacks.is_empty());
