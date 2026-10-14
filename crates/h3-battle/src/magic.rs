@@ -820,7 +820,7 @@ pub(crate) fn kept_off(stack: &Stack, spell: &BattleSpell) -> bool {
 /// ([`Guard`]), Anti-Magic does not keep the spell off it, and it is no clone if the spell
 /// makes its stacks immune to spells (Anti-Magic itself: whoever casts, a hero or a stack that
 /// draws its spell; the original's effect test 0x5A8090 has the clone test in the spell's own
-/// case, `installation.md` §7.13).
+/// case, `installation.md` §7.13), and no turret (BAT-SIE-019).
 pub(crate) fn affects_stack(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -830,6 +830,9 @@ pub(crate) fn affects_stack(
 ) -> bool {
     let stack = state.at(s);
     stack.is_alive()
+        // rule: BAT-SIE-019
+        // A turret is immune to every spell (the original's 0x44A577).
+        && !stack.is_turret()
         && !barred(state, spell.1)
         && affects(ruleset, spell, stack.creature, Guard::of(state, caster, s))
         && !kept_off(stack, spell.1)
@@ -1096,11 +1099,12 @@ fn eagle_eye(state: &mut BattleState, caster: BattleSide, spell: SpellId) {
     }
 }
 
-/// The living stacks of `side`, by id.
+/// The living stacks of `side` but its turrets, by id: those a Magic Mirror may send a spell to
+/// (BAT-MAG-022; the original leaves out arrow towers, `installation.md` §7.13; BAT-SIE-019).
 fn living(state: &BattleState, side: BattleSide) -> impl Iterator<Item = StackId> + '_ {
     stack_ids(state).filter(move |&s| {
         let stack = state.at(s);
-        stack.side == side && stack.is_alive()
+        stack.side == side && stack.is_alive() && !stack.is_turret()
     })
 }
 
@@ -2341,8 +2345,8 @@ pub(crate) fn mirror_chance(ruleset: &BattleRuleset, stack: &Stack) -> u8 {
 /// a living stack of the caster's side drawn with equal chances, and a `SpellRedirected` event
 /// reports it; otherwise it stays (`None`). A spell that ignores immunity (Dispel) is never sent
 /// away. Not asked for a creature's cast, which is never sent away ([`reach_stacks`],
-/// BAT-MAG-049). (The original draws its chance for every hero's cast at an enemy stack and
-/// leaves out arrow towers, E04c; `installation.md` §7.13.)
+/// BAT-MAG-049). (The original draws its chance for every hero's cast at an enemy stack.) The
+/// redirect leaves out the caster's side's turrets ([`living`], BAT-SIE-019).
 // rule: BAT-MAG-022
 fn mirror<S: Sink>(
     state: &mut BattleState,

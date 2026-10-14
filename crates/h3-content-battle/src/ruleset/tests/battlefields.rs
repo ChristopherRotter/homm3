@@ -158,7 +158,7 @@ fn battlefields_compile_with_their_rules() {
     );
 }
 
-const GOLDEN: u64 = 0xe36d_f9e7_1d9a_4289;
+const GOLDEN: u64 = 0xc37a_428e_a019_2e34;
 
 #[test]
 fn battlefields_are_checked() {

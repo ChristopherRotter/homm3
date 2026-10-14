@@ -132,22 +132,24 @@ fn siege() -> SiegeData {
 /// The executable's wall-shot tables (E04c T6): a tower, a wall on row 1's wall hex and the gate.
 fn wall_shots() -> h3_formats::exe::WallShotData {
     use h3_formats::exe::WallTarget;
-    let target = |wall, part, kind| WallTarget {
+    let target = |wall, part, kind, turret| WallTarget {
         aim: 0,
         wall,
         part,
         kind,
+        turret,
     };
     h3_formats::exe::WallShotData {
         targets: vec![
-            target(None, 5, 1),
-            target(Some(1), 6, 3),
-            target(Some(5), 9, 2),
+            target(None, 5, 1, Some(255)),
+            target(Some(1), 6, 3, None),
+            target(Some(5), 9, 2, None),
         ],
         missed: vec![1],
         auto_walls: vec![1],
         auto_others: vec![2, 0],
         catapult: 119,
+        turret_count: 4,
     }
 }
 

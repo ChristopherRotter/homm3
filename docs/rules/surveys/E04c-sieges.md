@@ -67,7 +67,7 @@ Brotherhood of the Sword +2 more (`code`); luck from the town (Rampart's Fountai
 | Shooting through walls | halved, a grid line test, the open gate free (§7.28, D-8) | — | halved, the shortest hex path | towers bypass the penalties | T5 |
 | Catapult and Ballistics | the Catapult on hex 119; its turn, automatic aim, shot and the parts' damage (§7.29, D-11 to D-13) | `BALLIST.TXT`: hit chances keep/tower/gate/wall none 5/10/25/50 %, Basic and Advanced 7/15/30/60 %, Expert 10/20/40/75 %; shots 1, 1, 2, 2; damage 0/1/2 by 10/60/30 % (none), 0/50/50 % (Basic, Advanced), always 2 (Expert) | from the same table | Basic: control; Advanced: two shots; Expert: "always hits the intended target" | T6 |
 | Earthquake | 2, 2, 3, 4 hits of 1 by mastery; the draw (§7.29, D-14, D-15; S-08) | `SPTRAITS.TXT` | `other.json`: uniform among the standing parts, the attacker only | "one point of damage to two (three, four) random walls/arrow towers"; S-08 | T6 |
-| Arrow towers | as §1 | stats in `CRTRAITS.TXT` | as §1 | as §1; no luck, defense ignored, no modifiers; Artillery controls | T7 (S-06, S-07) |
+| Arrow towers | as §1; first in the round, the keep before the towers; Artillery controls; the shot: per creature `random(2, 4)`, summed, times the target's protection factor (Air Shield, petrification, Armorer), nothing else; immune to every spell, off the field (§7.30, D-16 to D-19) | stats in `CRTRAITS.TXT` (2–4, 100 hit points) | one uniform draw of the range through the full formula (attack 0, defense ignored); first in the siege phase; Artillery controls | as §1; no luck, defense ignored, no modifiers but the bugs S-06 and S-07; Artillery controls; the computer's target by classes A–C | T7 (S-06, S-07) |
 | Defender's bonuses | as §1 | — | town buildings' bonuses | town pages | T8 |
 | Surrender, retreat | surrender never for the besieged; retreat only with the Escape Tunnel | — | the same | — | T8 |
 | Experience | +500 for the attacker at a town | — | — | +500 for a capture (`E04-battle.md` §4.2) | T8 |
@@ -174,7 +174,44 @@ follows the result (the adventure lane).
   user (BAT-Q43):** the fix keeps the absent parts in the draw (they soak hits, so the real walls
   keep the original's odds) and harms no stack (ledger BAT-QUIRK-22). **Observed in batch 3d:**
   the defender's own Earthquake destroyed both absent towers and its first stack was marked dead.
-- **S-06, S-07** (`E04-quirks.md`: the towers) are classified with T7.
+- **D-16 Armorer, Air Shield and petrification against a turret** (T7, S-06; `code` 0x465AD0 →
+  0x443D90: the shot's sum times the target's protection factor, the same as any shot's stage 3:
+  Air Shield's factor, × 0.5 petrified, × (1 − Armorer), so each **lowers** the damage; `vcmi`:
+  they lower it (the full formula); the `wiki`: Armorer ("the damage from arrow towers during siege
+  combat is not reduced by armorer secondary skill but actually increased the corresponding
+  amount"), Air Shield ("it actually significantly increases their damage"), Arrow tower ("Troops,
+  which are buffed by Air Shield spell or are petrified take additional damage as well"), each
+  "(fixed in HotA)"). The code has no path that raises it (a division would). A confirmation row
+  decides: under Advanced Air Shield the keep's shot is at most `2N` by the code, at least `4N`
+  by the wiki (`N` the keep's count). **The user (BAT-Q44): the code**, with the row in batch 3e.
+  **Batch 3e confirms the code:** N = 5; under Expert Air Shield 9, 7, 7, 7, 8 (N..2N); under
+  Expert Armorer ten shots of 10 to 14, mean 12.3 (× 0.85; none raised).
+- **D-17 Archery and a turret** (T7, S-07; `code`: the defending hero's Archery is not read; `vcmi`:
+  not read for a turret either; the `wiki`: its Arrow tower page "Archery or the Artillery
+  secondary skills do not affect the damage", its Archery page "Bug: The archery skill reduces
+  damage done by arrow towers (fixed in HotA)"). Recommendation: the code; a confirmation row
+  (Expert Archery: every shot within `2N..4N`). **The user (BAT-Q44): the code**, with the row.
+  **Batch 3e confirms it:** ten shots of 10 to 17, mean 15.2, as without Archery.
+- **D-18 The turret's damage roll** (T7; `code`: one `random(2, 4)` per creature, summed: the keep's
+  `N` creatures give `2N..4N`, bell-shaped; `vcmi`: one uniform draw of `(10 + 2n)..(20 + 4n)`; the
+  `wiki`: the same ranges, "Base damage plus d × N"). The ranges agree (`N = 5 + n`); the code's
+  sum is the original. Recommendation: the code. **The user (BAT-Q44): the code.** Batch 3e: every
+  shot within the ranges (eight samples cannot tell the two rolls apart).
+- **D-19 The automatic turret's target** (T7; `code`: the computer player's battle AI, not read, as
+  for the automatic Ballista; `vcmi`: the Ballista's choice (`tryMakeAutomaticActionOfRangedUnit`:
+  not a war machine, then a stack that can attack next turn, then the highest expected damage
+  value), which the engine ported for its Ballista (BAT-WAR-002); the `wiki`: classes A (can attack
+  at its turn), B (next turn), C (later), each stack's priority `(AI value / health) × 100 %, 50 %,
+  33 %` and `1 / health` by the same weights, "The AI considers the Arrow tower damage equal to 1
+  (bug)", ties to "the rightmost slot of the hero's army"). Recommendation: the Ballista's rule now
+  (one automatic choice for both machines), observation rows in the batch where the wiki and VCMI
+  pick different stacks; the original's AI is read with the battle AI's task (the battle queue's
+  inbox). **The user (BAT-Q44): the Ballista's rule**, with observation rows. **Batch 3e (AI): the
+  original shot the single Marksman first, as the wiki's rule and not the engine's** (one sample;
+  BAT-Q45 asks the user).
+- **S-06, S-07** (`E04-quirks.md`: the towers) are D-16 and D-17: the code reading finds neither
+  bug in the user's executable (T7, §7.30), and batch 3e confirms it (Air Shield and Armorer lower
+  the damage, Archery does not touch it): **not quirks** of the user's version.
 
 ## 5. Experiments
 

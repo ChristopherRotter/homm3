@@ -54,7 +54,8 @@ pub(crate) fn berserk<S: Sink>(
     let mut nearest: FixedVec<Choice, STACK_CAPACITY> = FixedVec::new();
     let candidates = (0u8..)
         .zip(state.stacks.iter())
-        .filter(|&(i, t)| i != id.0 && t.is_alive())
+        // rule: BAT-SIE-019
+        .filter(|&(i, t)| i != id.0 && t.is_alive() && !t.is_turret())
         .filter_map(|(i, t)| {
             let choice = if shooting {
                 let at = t.footprint(field).front;

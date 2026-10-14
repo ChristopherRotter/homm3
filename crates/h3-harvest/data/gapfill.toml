@@ -936,14 +936,19 @@ sources = ["exe-battlefield", "vcmi-battlefields", "wiki-terrain"]
 
 # ---------------------------------------------------------------------------------------------
 # War machines (E03 T8): harvested from the tables like creatures (flag war_machine); the Catapult
-# since E04c T6 (its flags: a siege machine the battle sets up itself, BAT-SIE-009); the Arrow
-# Tower waits for T7. Their behaviour is the war-machine rules (BAT-WAR-001..004) plus the
-# abilities below.
+# since E04c T6 (its flags: a siege machine the battle sets up itself, BAT-SIE-009), the Arrow
+# Tower since E04c T7 (ability `turret`: the town's turrets, BAT-SIE-016). Their behaviour is the
+# war-machine rules (BAT-WAR-001..004) plus the abilities below.
 # ---------------------------------------------------------------------------------------------
 
 [war_machines]
-harvest = ["Ballista", "First Aid Tent", "Ammo Cart", "Catapult"]
-sources = ["wiki-ballista", "wiki-first-aid-tent", "wiki-ammo-cart", "exe-wall-shots"]
+harvest = ["Ballista", "First Aid Tent", "Ammo Cart", "Catapult", "Arrow Tower"]
+sources = ["wiki-ballista", "wiki-first-aid-tent", "wiki-ammo-cart", "exe-wall-shots", "exe-turrets"]
+
+[[creature_abilities]]
+creature = "Arrow Tower"
+abilities = [{ kind = "turret" }]
+sources = ["exe-turrets", "wiki-arrow-tower"]
 
 [[creature_abilities]]
 creature = "First Aid Tent"
@@ -1439,6 +1444,20 @@ sources = ["exe-enchanter", "exe-siege-walls"]
 # The wall shots (E04c T6, pack format v39; installation.md 7.29): the Cyclops shoot the walls as
 # with Basic Ballistics, the Cyclops King with Advanced (two shots); the Catapult with its hero's
 # level; Earthquake's hits.
+[[source]]
+id = "exe-turrets"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.30): 0x463600 sets up creature 149 (the Arrow Tower) for the defender at a Citadel (the keep, 254, 4 + the town's structures by 0x5BF4F0) and a Castle (the towers, 255 and 251, half the keep's count rounded up); its shot 0x465AD0 sums random(2, 4) per creature times the target's protection factor 0x443D90; 0x44A4D0 makes it immune to every spell"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-14"
+
+[[source]]
+id = "wiki-arrow-tower"
+kind = "wiki"
+ref = "Arrow tower - Heroes 3 wiki: the keep and the towers' damage by the town's structures; the target's defense ignored; no luck; Artillery lets a defending hero control the towers; the computer's target by classes A to C"
+url = "https://heroes.thelazy.net/index.php/Arrow_tower"
+retrieved = "2026-10-14"
+
 [[source]]
 id = "exe-wall-shots"
 kind = "original-data"

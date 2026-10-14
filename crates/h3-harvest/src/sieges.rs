@@ -44,9 +44,14 @@ pub fn wall_shots(
     let mut targets = Vec::new();
     for t in &exe.targets {
         let kind = KINDS[usize::from(t.kind)];
-        match t.wall {
-            None => targets.push(format!("{{ kind = \"{kind}\" }}")),
-            Some(i) => {
+        match (t.wall, t.turret) {
+            (None, None) => targets.push(format!("{{ kind = \"{kind}\" }}")),
+            // A turret's target (E04c T7): the position of the turret it holds.
+            (None, Some(at)) => targets.push(format!("{{ kind = \"{kind}\", turret = {at} }}")),
+            (Some(_), Some(_)) => {
+                return Err("Heroes3.exe: a wall-shot target with a wall and a turret".to_owned());
+            }
+            (Some(i), None) => {
                 let hex = wall_hexes.get(usize::from(i)).ok_or_else(|| {
                     format!("Heroes3.exe: a wall-shot target's wall index {i} is no wall hex")
                 })?;
@@ -111,9 +116,10 @@ pub fn wall_shots(
         .collect();
     Ok(WallShots {
         field: format!(
-            "catapult = {}, targets = [{}], missed = [{}], automatic = [{}], fallback = [{}], \
-             castle_bonus = {CASTLE_WALL_BONUS}, ballistics = [{}]",
+            "catapult = {}, turret_count = {}, targets = [{}], missed = [{}], automatic = [{}], \
+             fallback = [{}], castle_bonus = {CASTLE_WALL_BONUS}, ballistics = [{}]",
             exe.catapult,
+            exe.turret_count,
             targets.join(", "),
             list(&exe.missed),
             list(&exe.auto_walls),
@@ -361,24 +367,28 @@ mod tests {
                     wall: None,
                     part: 5,
                     kind: 1,
+                    turret: Some(255),
                 },
                 WallTarget {
                     aim: 29,
                     wall: Some(1),
                     part: 6,
                     kind: 3,
+                    turret: None,
                 },
                 WallTarget {
                     aim: 96,
                     wall: Some(0),
                     part: 9,
                     kind: 2,
+                    turret: None,
                 },
             ],
             missed: vec![1],
             auto_walls: vec![1],
             auto_others: vec![2, 0],
             catapult: 119,
+            turret_count: 4,
         }
     }
 
@@ -387,8 +397,8 @@ mod tests {
         let w = wall_shots(&exe(), &[96, 29], (&walls(2), &ballistics(&LEVELS)), 2).unwrap();
         assert_eq!(
             w.field,
-            "catapult = 119, targets = [{ kind = \"tower\" }, { kind = \"wall\", wall = 29 }, \
-             { kind = \"gate\", wall = 96 }], missed = [1], automatic = [1], fallback = [2, 0], \
+            "catapult = 119, turret_count = 4, targets = [{ kind = \"tower\", turret = 255 }, \
+             { kind = \"wall\", wall = 29 }, { kind = \"gate\", wall = 96 }], missed = [1], automatic = [1], fallback = [2, 0], \
              castle_bonus = 1, ballistics = [{ hit = [5, 10, 25, 50], shots = 1, damage = [10, \
              60, 30] }, { hit = [7, 15, 30, 60], shots = 1, damage = [0, 50, 50] }, { hit = [7, \
              15, 30, 60], shots = 2, damage = [0, 50, 50] }, { hit = [10, 20, 40, 75], shots = 2, \
@@ -406,6 +416,9 @@ mod tests {
         let mut far = exe();
         far.targets[1].wall = Some(2);
         assert!(err(&far, &walls(2), &levels).contains("wall index 2"));
+        let mut both = exe();
+        both.targets[1].turret = Some(254);
+        assert!(err(&both, &walls(2), &levels).contains("a wall and a turret"));
         assert!(err(&exe(), &walls(3), &levels).starts_with("WALLS.TXT: 3 towns"));
         assert!(err(&exe(), &walls(2), &ballistics(&LEVELS[..3])).contains("3 levels"));
         let short = ballistics(&[LEVELS[0], LEVELS[1], LEVELS[2], " \tExpert\t10%"]);
