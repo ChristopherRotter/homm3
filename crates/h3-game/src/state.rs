@@ -64,8 +64,10 @@ pub struct GameState {
     /// The game's own stream (the day advance; ADR-0017 point 4).
     rng: Rng,
     /// The store of heroes (GAM-HER-001, E08 T18b): every hero's details by id, each shared
-    /// between forks and copied on its first write (ADR-0017 point 1).
-    heroes: Vec<Arc<HeroDetails>>,
+    /// between forks and copied on its first write (ADR-0017 point 1). The list too is shared, so
+    /// a fork costs one reference count (`bench-check`: a list per fork cost the XL fork
+    /// benchmark about 10 %); a write copies the list of references and the one hero.
+    heroes: Arc<Vec<Arc<HeroDetails>>>,
     adventure: AdventureState,
 }
 
@@ -116,7 +118,7 @@ impl GameState {
             group: 0,
             day: 1,
             rng: Rng::for_stream(seed, StreamId::GAME),
-            heroes: heroes.into_iter().map(Arc::new).collect(),
+            heroes: Arc::new(heroes.into_iter().map(Arc::new).collect()),
             adventure,
         };
         state.start_group(rules, &mut NoopSink);
@@ -437,7 +439,7 @@ impl CanonicalHash for GameState {
         }
         self.rng.hash_into(h);
         h.write_len(self.heroes.len());
-        for details in &self.heroes {
+        for details in self.heroes.iter() {
             hash_details(details, h);
         }
         h.write_u64(self.adventure.state_hash());

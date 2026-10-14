@@ -30,7 +30,8 @@ use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ContentKey, ContentPack, CreatureDef,
     CreatureInfoDef, CreatureTypeId, FactionDef, Formation, HeroClassDef, HeroEffect,
     HeroParamsDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, Ruleset,
-    SecondarySkillDef, StartingStackDef, TerrainDef, TerrainId,
+    SecondarySkillDef, SpellCategory, SpellDef, SpellSchoolDef, StartingStackDef, TerrainDef,
+    TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
@@ -151,7 +152,7 @@ fn core(extra: bool) -> Ruleset {
             quirks: vec![],
         }],
         // The hero model's content (E08 T18b): a book and a machine slot, the spell book, the
-        // cart's artifact, a charm without slot, Wits (+25/50/100 % spell points) and the hero parameters.
+        // cart's artifact, a charm and a scroll without slot, a spell, Wits (+25/50/100 % spell points) and the hero parameters.
         artifact_slots: [("t:book_slot", 1), ("t:machine", 1)]
             .iter()
             .map(|&(k, count)| ArtifactSlotDef {
@@ -170,12 +171,33 @@ fn core(extra: bool) -> Ruleset {
                 war_machine: Some(key("t:cart")),
                 ..artifact("t:cart_art", "t:machine")
             },
-            // Carried in the backpack only.
+            // Carried in the backpack only; a scroll holds a spell of its own.
             ArtifactDef {
                 slot: None,
                 ..artifact("t:charm", "t:machine")
             },
+            ArtifactDef {
+                slot: None,
+                effects: vec![HeroEffect::Scroll],
+                ..artifact("t:scroll", "t:machine")
+            },
         ],
+        spell_schools: vec![SpellSchoolDef {
+            key: key("t:air"),
+            name: "Air".into(),
+            protection_rank: 0,
+        }],
+        spells: vec![SpellDef {
+            key: key("t:gust"),
+            name: "Gust".into(),
+            category: SpellCategory::Combat,
+            level: 1,
+            schools: vec![key("t:air")],
+            cost: [5, 4, 4, 4],
+            power: 10,
+            effect: [10, 10, 20, 30],
+            granted_by_name_only: false,
+        }],
         skills: vec![SecondarySkillDef {
             key: key("t:wits"),
             name: "Wits".into(),

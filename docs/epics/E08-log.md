@@ -1698,3 +1698,66 @@ exploitable: **fix-optional** (`ADV-QUIRK-5`), and the split likewise with its o
 fine; **the original's battle AI must be recreated** (the battle lane's inbox). (4) **`h3-heroes`
 moves as soon as the battle lane is done with it** (the battle lane's inbox asks when). T18a now
 also applies the accepted ADR amendments.
+
+### Round 1 of increment 3: T18a and T18b (2026-10-14, `shared/e08-t18a` #185, `adventure/e08-t18b`)
+
+The user merged #181 and, asked for a seam before building, trimmed the round (decision 28): T18b
+keeps the store of heroes, its defaults, validation, the import of the customisations and what a
+player sees; `HeroChange` goes to T19a, the store passed to the adventure, `attack_defense`,
+`join_bonus` and the difficulty to T20a. CI could not start (billing): the full local verify stood
+in. `master` (7b20fad, after #183) was red before either branch: BAT-Q41 cites 0x4BCDA0 without an
+address-map entry (`check-exe-map` and its test); the battle lane's `battle/e04c-t5` adds it.
+
+**T18a — the shared groundwork** (#185, `shared/` and `cross-lane`):
+- The accepted amendments applied: ADR-0013 points 1 and 2 (the hero model in the shared layer,
+  the store, hero changes; decision 5 withdrawn), ADR-0015 point 1, ADR-0016 points 1, 3, 4, 6,
+  ADR-0017 points 1, 2, 4, 6, 8–10 and the new point 11; ADR-0005's amendment; the index, the
+  glossary, `02-architecture.md`.
+- `arch.toml`: `h3-heroes` in the shared layer, the new edges; `check-arch` gains forbidden edges
+  (`[[policy.forbidden_edge]]`): `h3-battle → h3-heroes` stays rejected, declared or used.
+- `h3_content` kinds `necromancy`, `experience_gain`, `max_mana`, `join_bonus` (codes 38–41,
+  pack format v37). The battle lane's syntax test wants every kind in its synthetic packs: they
+  went into `synthetic-ext`'s Storm Regalia, not `synthetic`, whose ruleset hash the battle
+  replays record (so `cross-lane`, and no battle replay moved). The core ruleset hash version
+  stays 43: no existing ruleset hashes otherwise.
+
+**T18b — the store of heroes** (`cross-lane`: `h3-heroes`, the harvester, the packs, the address
+map, 06-security):
+- **GAM-HER-001** (`h3_game`): `GameState.heroes: Vec<Arc<HeroDetails>>` by `HeroId` (`hero`,
+  `heroes`), built from `GameHeroSetup.details` (`HeroDetailsSetup`: experience, primary,
+  skills, artifacts, spells, each `Option`) or the defaults: level 1; experience 40 + a draw of
+  0–50 from the setup stream, in hero order after every starting army and before the objects'
+  contents; the class's primary skills; the type's skills and spells; the spell book worn when
+  the type starts with one and the artifacts are not customised (VCMI's `SPELLBOOK_PRESET`);
+  `draw_starting_army` now returns the war machines its roll gave, worn as their artifacts where
+  their slot is free. Spell points full; `h3_heroes::validate` (`GameSetupError::Hero`).
+  `GameObservation.heroes` (`HeroInfo`): every hero the viewer sees with its type, the details
+  of its own. Game state hash v5 (the store after the game's stream).
+- **HER-MAN-001** (`h3_heroes::max_mana`, `MANA_PER_KNOWLEDGE`): a code reading
+  (`map_hero_setup` 0x486C5C to 0x486C98, the Intelligence getter 0x4E48B0, entered in the
+  address map): trunc((1 + f32(r × (1 + 0.05 × level))) × f32(10 K)), K the clamped Knowledge;
+  VCMI's `manaLimit` the same but for the specialist's single precision (under Q-0005 an
+  Intelligence specialist at level 1 with Basic and Knowledge 8 has 100, not 101). Effective
+  Knowledge is HER-BAT-001's, now a helper of both.
+- The harvester reads Necromancy's (0x63E9B8), Learning's (0x63EA58) and Intelligence's
+  (0x63EA88) tables into `necromancy` 10/20/30 %, `experience_gain` 5/10/15 %, `max_mana`
+  25/50/100 %: the base pack's three skills gain levels (the core ruleset hash of `base` moved).
+- `h3-adventure`: `HeroSetup.formation`, `HeroOnMap.formation`, `OwnHeroView.formation`;
+  adventure state hash v7.
+- `h3-map`: the import reads a placed hero's customisations, the body's field over its hero
+  type's map-wide entry's (VCMI: "using the latter set"); code tables `ARTIFACTS` (141),
+  `SPELLS` (81), `SKILLS` (28) checked against the packs; before SoD experience 0 and AB's spell
+  byte `0xFE` are the type's, `0xFF` no spell, another spell beside the type's; primary skills
+  clamped to the hero parameters (the original's load); `Unsupported::HeroExperience` from
+  1 000; formation. `ADV-STUB-1` closed; import v4. The shipped maps: 5 import whole (4 fewer:
+  `Adventures of Jared Haret`, `Faeries`, `Knee Deep in the Dead`, `Unholy Quest` have a hero of
+  level 2 or more); no imported map fails validation. The reader's test map had an ammo cart in
+  its map-wide hero's backpack (now invalid): an axe instead; the generated fixture maps
+  rewritten (`H3_WRITE_FIXTURES=1`).
+- Golden adventure replays re-recorded with their options: the commands unchanged, the hashes
+  (core ruleset, game v5, adventure v7, import v4, the maps') new.
+- Tests: the defaults, the war machines, the customisations, validation, hash and forks, the
+  views (`h3-game`); the customisations, map-wide entries, the version differences, the refusals
+  and the code tables (`h3-map`); the hygiene properties give the viewer's heroes an experience
+  of their own (the viewer now sees its drawn experience).
+- Inbox: the four maps, +0x479 and artifacts, VCMI's catapult and skipped artifacts.

@@ -177,6 +177,16 @@ fn the_store_is_in_the_hash_and_shared_by_forks() {
                 )],
             });
         },
+        |h| {
+            h.details.artifacts = Some(HeroArtifactsSetup {
+                worn: vec![],
+                backpack: vec![ArtifactInstance::scroll(
+                    h3_content::ArtifactTypeId::from_raw(3),
+                    h3_content::SpellId::from_raw(0),
+                )],
+            });
+        },
+        |h| h.details.spells = Some(vec![h3_content::SpellId::from_raw(0)]),
         |h| h.hero_type = SAGE,
         |h| h.formation = Formation::Tight,
     ];
