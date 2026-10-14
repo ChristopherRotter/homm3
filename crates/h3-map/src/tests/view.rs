@@ -309,8 +309,34 @@ fn check_told(
     let mut bought = before.adventure.bought.clone();
     let mut keys = before.adventure.keys;
     let mut revealed = 0;
+    // E08 T19a: whether the viewer is in a battle, by its start and end.
+    let mut fighting = before.battle.is_some();
+    let alone = Viewers::NONE.with(viewer);
     for event in told {
         match *event {
+            GameEvent::BattleStarted { seen_by, .. } => {
+                prop_assert_eq!(seen_by, alone);
+                prop_assert!(!fighting);
+                fighting = true;
+            }
+            GameEvent::Battle { seen_by, .. } => {
+                prop_assert_eq!(seen_by, alone);
+                prop_assert!(fighting);
+            }
+            GameEvent::BattleEnded { seen_by, .. } => {
+                prop_assert_eq!(seen_by, alone);
+                prop_assert!(fighting);
+                fighting = false;
+            }
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::HeroRemoved { hero, pos },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                let at = heroes.iter().position(|&(id, _)| id == hero);
+                prop_assert_eq!(at.map(|i| heroes[i].1), Some(pos), "{:?}", event);
+                heroes.remove(at.unwrap());
+            }
             GameEvent::OfferOpened {
                 player,
                 hero,
@@ -426,6 +452,7 @@ fn check_told(
             }
         }
     }
+    prop_assert_eq!(after.battle.is_some(), fighting);
     prop_assert_eq!(after.day, day);
     let now: Vec<bool> = after.players.iter().map(|p| p.acting).collect();
     prop_assert_eq!(now, acting);
@@ -519,9 +546,16 @@ fn tiles(game: &GameState, player: PlayerId) -> Vec<(HeroId, TilePos)> {
         .collect()
 }
 
-/// Whether a command was accepted, each hero's move (id, columns, rows, levels), the steps told
-/// and the decisions opened (0), refused (1), declined (2) or accepted (3).
-type Outcome = (bool, Vec<(HeroId, i32, i32, i32)>, usize, Vec<u8>);
+/// Whether a command was accepted, each hero's move (id, columns, rows, levels), the steps told,
+/// the decisions opened (0), refused (1), declined (2) or accepted (3), and (E08 T19a) every
+/// battle event, start and end, and the heroes removed.
+type Outcome = (
+    bool,
+    Vec<(HeroId, i32, i32, i32)>,
+    usize,
+    Vec<u8>,
+    Vec<GameEvent>,
+);
 
 /// What a command of `player` did in a game, as the hygiene test compares it between two games
 /// (E08 T14b's review): whether it was accepted, how far each of the player's heroes moved from
@@ -568,7 +602,23 @@ fn outcome(
             _ => None,
         })
         .collect();
-    (accepted, moved, steps, decisions)
+    let battles = events
+        .iter()
+        .filter(|e| {
+            matches!(
+                e,
+                GameEvent::BattleStarted { .. }
+                    | GameEvent::Battle { .. }
+                    | GameEvent::BattleEnded { .. }
+                    | GameEvent::Adventure(AdventureEvent {
+                        kind: AdventureEventKind::HeroRemoved { .. },
+                        ..
+                    })
+            )
+        })
+        .copied()
+        .collect();
+    (accepted, moved, steps, decisions, battles)
 }
 
 proptest! {
@@ -588,7 +638,9 @@ proptest! {
     /// until it accepts an offer: a Cartographer reveals tiles by their terrain, hidden ones
     /// included, so the two games may then tell it other counts (E08 T14b). An offer opened,
     /// refused or declined tells it nothing hidden, nor does a key or a guard's passage, and an
-    /// observatory's disk (T15a) is the same tiles in both games: the comparison goes on.
+    /// observatory's disk (T15a) is the same tiles in both games: the comparison goes on. A battle
+    /// of the viewer's shows it the other side's stacks: the comparison ends when one starts (E08
+    /// T19a); another player's battle must go alike in both games ([`outcome`]).
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in plan(),
@@ -662,6 +714,16 @@ proptest! {
                 break;
             }
             let (ta, tb) = (told(&ea, viewer), told(&eb, viewer));
+            // A battle shows its side the other's stacks (survey `E08-battles.md` §9; E08
+            // T19a): the comparison ends when the viewer's starts.
+            let battle = |events: &[GameEvent]| {
+                events
+                    .iter()
+                    .any(|e| matches!(e, GameEvent::BattleStarted { .. }))
+            };
+            if battle(&ta) || battle(&tb) {
+                break;
+            }
             let bought = ta
                 .iter()
                 .any(|e| matches!(e, GameEvent::OfferAnswered { accepted: true, .. }));

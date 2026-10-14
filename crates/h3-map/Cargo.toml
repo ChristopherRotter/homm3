@@ -17,6 +17,7 @@ miniz_oxide.workspace = true
 [dev-dependencies]
 h3-pack.workspace = true
 h3-pack-adventure.workspace = true
+h3-pack-battle.workspace = true
 proptest.workspace = true
 
 [lints]

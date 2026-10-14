@@ -65,6 +65,7 @@ fn params() -> AdventureParamsDef {
         max_players: NonZeroU8::new(8).unwrap(),
         army_slots: NonZeroU8::new(7).unwrap(),
         starting_stack_chances: vec![88, 25],
+        battle: None,
     }
 }
 
@@ -1071,4 +1072,62 @@ fn errors_explain_themselves() {
     for (error, text) in cases {
         assert_eq!(error.to_string(), text);
     }
+}
+
+// covers: GAM-BAT-001
+#[test]
+fn the_battle_terrains_name_terrains_of_the_closure() {
+    let battle = |underground: &str, coast: &str, field: &str| {
+        edit(|p| {
+            pack(p, "t").params.as_mut().unwrap().battle = Some(BattleTerrainsDef {
+                underground: key(underground),
+                coast: key(coast),
+                coast_battlefield: key(field),
+            });
+        })
+    };
+    let part = compile(&battle("t:rock", "t:grass", "t:shore")).unwrap();
+    let core = core();
+    let terrain = |k| core.terrain_by_key(k).unwrap();
+    assert_eq!(
+        part.params().battle_terrains(),
+        Some(&BattleTerrains {
+            underground: terrain("t:rock"),
+            coast: terrain("t:grass"),
+            coast_battlefield: key("t:shore"),
+        })
+    );
+    assert_eq!(compile(&packs()).unwrap().params().battle_terrains(), None);
+    // The battle terrains are part of the part's hash.
+    assert_ne!(
+        part.content_hash(),
+        compile(&packs()).unwrap().content_hash()
+    );
+    assert_ne!(
+        part.content_hash(),
+        compile(&battle("t:rock", "t:grass", "t:boats"))
+            .unwrap()
+            .content_hash()
+    );
+    assert_eq!(
+        compile_err(&battle("t:lava", "t:grass", "t:shore")),
+        AdventureCompileError::UnknownTerrain("t:lava".into())
+    );
+    assert_eq!(
+        compile_err(&battle("t:rock", "t:lava", "t:shore")),
+        AdventureCompileError::UnknownTerrain("t:lava".into())
+    );
+    // `t` does not depend on `u`.
+    let outside = |k: &str| AdventureCompileError::ReferenceOutsideDependencies {
+        key: k.into(),
+        pack: "t".into(),
+    };
+    assert_eq!(
+        compile_err(&battle("u:swamp", "t:grass", "t:shore")),
+        outside("u:swamp")
+    );
+    assert_eq!(
+        compile_err(&battle("t:rock", "t:grass", "u:shore")),
+        outside("u:shore")
+    );
 }

@@ -25,6 +25,10 @@ fn cost(value: u16) -> NonZeroU16 {
     NonZeroU16::new(value).unwrap()
 }
 
+fn key_of(text: &str) -> ContentKey {
+    ContentKey::parse(text).unwrap()
+}
+
 // covers: GAM-SET-001
 #[test]
 fn the_original_starting_armies_fit_the_draw() {
@@ -63,6 +67,21 @@ fn the_base_pack_holds_the_sourced_values() {
     assert_eq!(params.land_points(20), 2000);
     assert_eq!(params.native_cost(), cost(100));
     assert_eq!(params.scouting_radius(), 5);
+    // GAM-BAT-001 (E08 T19a): underground on subterranean, on the coast on sand and the shore.
+    let battle = params.battle_terrains().unwrap();
+    let terrain = |k| core.terrain_by_key(k).unwrap();
+    assert_eq!(
+        (
+            battle.underground,
+            battle.coast,
+            battle.coast_battlefield.as_str()
+        ),
+        (
+            terrain("base:subterranean"),
+            terrain("base:desert"),
+            "base:shore"
+        )
+    );
     let passages: Vec<(&str, Passage)> = part
         .terrains()
         .iter()
@@ -561,6 +580,7 @@ fn parses_every_field() {
             max_players: NonZeroU8::new(4).unwrap(),
             army_slots: NonZeroU8::new(5).unwrap(),
             starting_stack_chances: vec![80, 20],
+            battle: None,
         })
     );
     assert_eq!(
@@ -646,6 +666,25 @@ fn rejects_malformed_files() {
     ));
     assert!(key("[[difficulty]]\nhuman = { Bad = 1 }\ncomputer = {}"));
     assert!(key("[[difficulty]]\nhuman = {}\ncomputer = { Bad = 1 }"));
+    let full = format!("[params]\n{bounds}\n{slots} = 1\nstarting_stack_chances = []");
+    let battle = |fields: &str| format!("{full}\n[params.battle]\n{fields}");
+    let fine = "underground = \"u\"\ncoast = \"c\"\ncoast_battlefield = \"f\"";
+    let parsed = parse(&battle(fine))
+        .unwrap()
+        .params
+        .unwrap()
+        .battle
+        .unwrap();
+    assert_eq!(
+        (parsed.underground, parsed.coast, parsed.coast_battlefield),
+        (key_of("p:u"), key_of("p:c"), key_of("p:f"))
+    );
+    assert!(syntax(&battle("underground = \"u\"\ncoast = \"c\"")));
+    assert!(syntax(&battle(&format!("{fine}\nboats = \"b\""))));
+    for field in ["underground", "coast", "coast_battlefield"] {
+        let bad = fine.replace(&format!("{field} = \""), &format!("{field} = \"Bad"));
+        assert!(key(&battle(&bad)), "{field}");
+    }
     assert!(syntax("[[difficulty]]\nhuman = {}"));
     assert!(syntax("[[difficulty]]\nhuman = { a = -1 }\ncomputer = {}"));
 }

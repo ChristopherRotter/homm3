@@ -6,7 +6,9 @@
 //! since T14b an accepted offer's price), clone equivalence and determinism; since T14b with the
 //! pending decisions (a Cartographer's offer) and their answers; since T15a with observatories,
 //! Keymaster's tents and their keys, and border guards with the second offer; since T15b with
-//! border gates, crossed by their key's holders and visited from a neighbour by the others. What
+//! border gates, crossed by their key's holders and visited from a neighbour by the others; since
+//! T19a with battles between two players' heroes, which the driver plays as the owner of the side
+//! to act (a battle's outcome changes armies, removes heroes and moves a surrender's gold). What
 //! a viewer may learn is T8b2b's ([`super::view`]), on the same maps and driver.
 
 use std::sync::{Arc, LazyLock};
@@ -16,10 +18,10 @@ use h3_adventure::{
     Pos as TilePos, Reach, Viewers,
 };
 use h3_content::ResourceId;
-use h3_contracts::{HeroId, PlayerId};
+use h3_contracts::{BattleResult, HeroId, PlayerId};
 use h3_game::{
-    Actor, Answer, GameCommand, GameCommandError, GameEvent, GameRuleset, GameState, Sink, apply,
-    legal_commands, legal_moves,
+    Actor, Answer, GameCommand, GameCommandError, GameEvent, GameRuleset, GameState, OpenBattle,
+    Sink, apply, legal_commands, legal_moves,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -37,7 +39,16 @@ use crate::{Limits, import, parse};
 
 fn rules(profile: &str) -> GameRuleset {
     let (core, part) = compile(&ORIGINAL_PACKS, profile).unwrap();
-    GameRuleset::new(Arc::new(core), Arc::new(part)).unwrap()
+    let battle = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::BASE_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::SOD_PACK,
+        ],
+        profile,
+    )
+    .unwrap();
+    GameRuleset::new(Arc::new(core), Arc::new(part), Arc::new(battle)).unwrap()
 }
 
 pub(super) static FAITHFUL: LazyLock<GameRuleset> = LazyLock::new(|| rules("base:faithful"));
@@ -404,8 +415,9 @@ pub(super) enum Step {
     /// The acting player's `n`-th option ([`options`]), modulo their number.
     Legal(u16),
     /// The acting player's `n`-th option that moves a hero onto, toward or (E08 T15b: a gate with
-    /// its key, a removed object's tile) across an object's visitable tile (modulo their number;
-    /// T14b), or as `Legal(n)` if none does: visits are rare among the reachable tiles.
+    /// its key, a removed object's tile) across an object's visitable tile, or (T19a) toward
+    /// another player's hero (modulo their number; T14b), or as `Legal(n)` if none does: visits
+    /// are rare among the reachable tiles.
     Visit(u16),
     /// The acting player ends its turn.
     EndTurn,
@@ -533,14 +545,34 @@ fn move_hero(hero: HeroId, path: Vec<TilePos>) -> GameCommand {
 fn as_move(command: &GameCommand) -> Option<(HeroId, &[TilePos])> {
     match command {
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => Some((*hero, path)),
-        GameCommand::EndTurn | GameCommand::Answer(_) => None,
+        GameCommand::EndTurn | GameCommand::Answer(_) | GameCommand::Battle(_) => None,
     }
 }
 
+/// Whether another player's hero than `player`'s stands on `pos` in `state`: a step toward it is
+/// a visit, a battle (E08 T19a).
+fn foe_at(state: &GameState, player: PlayerId, pos: TilePos) -> bool {
+    let heroes = state.adventure().heroes();
+    heroes.iter().any(|h| h.pos == pos && h.owner != player)
+}
+
+/// The heroes of the battles that ended in `events`, with their results.
+fn ended(events: &[GameEvent]) -> Vec<([Option<HeroId>; 2], BattleResult)> {
+    events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::BattleEnded { heroes, result, .. } => Some((heroes, result)),
+            _ => None,
+        })
+        .collect()
+}
+
 /// Where a move that `apply` accepted on `before` left its hero, from `start`, and whether it
-/// visited an object from the tile before its last: the hero steps onto every tile of the path
-/// but a neighbour visit's, the last (ADV-OBJ-003), which is a visitable tile; the move emitted a
-/// step event per tile it stepped onto, then at most one adventure event of the visit.
+/// visited an object or (E08 T19a) another player's hero from the tile before its last: the hero
+/// steps onto every tile of the path but a neighbour visit's, the last (ADV-OBJ-003), which is a
+/// visitable tile or the other hero's; the move emitted a step event per tile it stepped onto,
+/// then at most one adventure event of the visit (and the removals of a battle that ended at its
+/// start).
 fn landing(
     before: &GameState,
     start: TilePos,
@@ -550,7 +582,11 @@ fn landing(
     let kinds: Vec<AdventureEventKind> = events
         .iter()
         .filter_map(|e| match e {
-            GameEvent::Adventure(AdventureEvent { kind, .. }) => Some(*kind),
+            GameEvent::Adventure(AdventureEvent { kind, .. })
+                if !matches!(kind, AdventureEventKind::HeroRemoved { .. }) =>
+            {
+                Some(*kind)
+            }
             _ => None,
         })
         .collect();
@@ -567,18 +603,28 @@ fn landing(
         path
     );
     if stays {
-        let last = path
-            .last()
-            .and_then(|&to| before.adventure().map().tile(to));
-        prop_assert!(last.is_some_and(|tile| tile.visitable));
+        let to = *path.last().unwrap();
+        let visitable = before
+            .adventure()
+            .map()
+            .tile(to)
+            .is_some_and(|tile| tile.visitable);
+        let mover = before.adventure().heroes().iter().find(|h| h.pos == start);
+        let foe = mover.is_some_and(|h| foe_at(before, h.owner, to));
+        prop_assert!(visitable || foe);
     }
     let walked = &path[..steps];
     Ok((walked.last().copied().unwrap_or(start), stays))
 }
 
-/// The player whose turn is running (sequential play: one at a time).
+/// The player who acts: the one whose turn is running (sequential play: one at a time), or, while
+/// its battle's other side is to act, that side's owner (E08 T19a).
 pub(super) fn acting(state: &GameState) -> PlayerId {
-    state.turn_group()[0]
+    let player = state.turn_group()[0];
+    state
+        .battle(player)
+        .and_then(OpenBattle::owner_to_act)
+        .unwrap_or(player)
 }
 
 /// The commands the driver picks from: the acting player's legal commands, then each of its legal
@@ -614,6 +660,7 @@ pub(super) fn resolve(
                     .map()
                     .tile(to)
                     .is_some_and(|tile| tile.visitable)
+                    || foe_at(state, actor, to)
             })
         })
     };
@@ -771,10 +818,12 @@ const ANSWERS: [GameCommand; 2] = [
 /// Legality consistency, before a step: only the acting player has legal commands, `EndTurn`, or
 /// with an open decision (only ever the acting player's in sequential play) its answers and
 /// nothing else (GAM-DEC-001, E08 T14b), `Decline` alone if the offer no longer stands (T15a;
-/// never in sequential play); its legal moves are the query of each of its own heroes while no
+/// never in sequential play), or in a battle (T19a) the battle's commands while its side is to
+/// act, each of which applies; its legal moves are the query of each of its own heroes while no
 /// decision is open, and nobody has any for another player's; every listed answer applies and
-/// closes the decision; every option's move applies and leaves the hero on its last tile with the
-/// points the query reports there, one event per step.
+/// closes the decision; every option's move applies and leaves the hero on its last tile (on the
+/// tile before for a visit from a neighbour) with the points the query reports there, one event
+/// per step.
 fn check_legal(
     state: &GameState,
     rules: &GameRuleset,
@@ -782,6 +831,7 @@ fn check_legal(
     reaches: &[(HeroId, Reach)],
 ) -> Result<(), TestCaseError> {
     let actor = acting(state);
+    let fighting = state.battle(actor).is_some();
     let decided = state.decision(actor).is_some();
     let answers = match state.decision(actor) {
         Some(offer) if !state.adventure().offer_stands(offer) => &ANSWERS[1..],
@@ -790,21 +840,45 @@ fn check_legal(
     for player in (0..=state.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         let listed = legal_commands(state, rules, Actor::Player(player));
         prop_assert!(player == actor || state.decision(player).is_none());
-        let expected = if player != actor {
-            Vec::new()
-        } else if decided {
-            answers.to_vec()
+        if player == actor && fighting {
+            prop_assert!(!listed.is_empty());
+            prop_assert!(listed.iter().all(|c| matches!(c, GameCommand::Battle(_))));
         } else {
-            vec![GameCommand::EndTurn]
-        };
-        prop_assert_eq!(listed, expected);
+            let expected = if player != actor {
+                Vec::new()
+            } else if decided {
+                answers.to_vec()
+            } else {
+                vec![GameCommand::EndTurn]
+            };
+            prop_assert_eq!(listed, expected);
+        }
         for (hero, reach) in reaches {
             let moves = legal_moves(state, rules, Actor::Player(player), *hero);
             let own = player == actor
                 && !decided
+                && !fighting
                 && state.adventure().hero(*hero).map(|h| h.owner) == Some(actor);
             prop_assert_eq!(moves.as_ref(), own.then_some(reach));
         }
+    }
+    if fighting {
+        prop_assert_eq!(
+            legal,
+            &legal_commands(state, rules, Actor::Player(actor))[..]
+        );
+        for command in legal {
+            let mut probe = state.clone();
+            let result = apply(
+                &mut probe,
+                rules,
+                Actor::Player(actor),
+                command.clone(),
+                &mut Vec::new(),
+            );
+            prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
+        }
+        return Ok(());
     }
     if decided {
         prop_assert_eq!(legal, answers);
@@ -880,23 +954,25 @@ fn check_unlisted(
     Ok(())
 }
 
-/// Ownership isolation: a command of `actor` moves no other player's hero, changes no other
-/// player's army, explored tiles, treasury, purchases, open decision (E08 T14b) or keys (T15a),
-/// and changes another player's heroes' points only when that player's turn starts
-/// (ADV-MOV-002).
-/// Conservation (`docs/05-testing.md`): increment 1 has no source or sink of creatures (no
-/// battle, recruitment or pickup; E08 T10b's audit), so an accepted command leaves every hero's
-/// army as it was, the actor's own included. A treasury changes only by a visit's gains (E08
-/// T13b, ADR-0017's consequences): each player's by exactly the gains it was told, which come
-/// with an object leaving the map, and (E08 T16a's audit) are exactly the contents drawn for the
-/// objects that left, in their order (ADV-PIK-001 to -003; a passed guard has none); and since
-/// T14b by an accepted offer's price, which its owner is told it paid, exactly the price of the
-/// decision it answered.
+/// Conservation (`docs/05-testing.md`): increments 1 and 2 have no source or sink of creatures
+/// (no recruitment; E08 T10b's audit), so an accepted command leaves every hero's army as it was,
+/// the actor's own included, but (E08 T19a) by a battle's end: only the battle's heroes change,
+/// each leaving the map or keeping an army of its own stacks. A treasury changes only by a visit's
+/// gains (E08 T13b, ADR-0017's consequences): each player's by exactly the gains it was told,
+/// which come with an object leaving the map, and (E08 T16a's audit) are exactly the contents
+/// drawn for the objects that left, in their order (ADV-PIK-001 to -003; a passed guard has
+/// none); since T14b by an accepted offer's price, which its owner is told it paid, exactly the
+/// price of the decision it answered; and since T19a by a surrender's price, which the
+/// surrendering side's owner pays and the other side's owner gains, as much as was paid.
 fn check_conservation(
     before: &GameState,
     after: &GameState,
     events: &[GameEvent],
 ) -> Result<(), TestCaseError> {
+    let battles = ended(events);
+    if !battles.is_empty() {
+        return check_battle_end(before, after, events, &battles);
+    }
     let (map, adventure) = (before.adventure().map(), after.adventure());
     let mut contents = Vec::new();
     for event in events {
@@ -978,15 +1054,88 @@ fn check_conservation(
             prop_assert_eq!(&paid[..], before.decision(player).unwrap().price());
         }
     }
-    let armies = |state: &GameState| -> Vec<_> {
-        state
-            .adventure()
-            .heroes()
-            .iter()
-            .map(|h| (h.id, h.army.clone()))
-            .collect()
-    };
     prop_assert_eq!(armies(before), armies(after));
+    Ok(())
+}
+
+/// Every hero's army, by id.
+fn armies(state: &GameState) -> Vec<(HeroId, Vec<h3_contracts::ArmyStack>)> {
+    let heroes = state.adventure().heroes().iter();
+    heroes.map(|h| (h.id, h.army.clone())).collect()
+}
+
+/// Conservation for a command that ended a battle (E08 T19a; GAM-BAT-002, -003, -005): only one
+/// ends; heroes other than the battle's keep their armies; a battle hero that did not win leaves
+/// the map, told as its removal, and one that stays keeps a nonempty army whose stacks fit its
+/// slots; a treasury changes only by a surrender's price: the surrendering side's owner pays, the
+/// other side's owner gains what was paid.
+fn check_battle_end(
+    before: &GameState,
+    after: &GameState,
+    events: &[GameEvent],
+    battles: &[([Option<HeroId>; 2], BattleResult)],
+) -> Result<(), TestCaseError> {
+    prop_assert_eq!(battles.len(), 1);
+    let (heroes, result) = battles[0];
+    let fought = |id: HeroId| heroes.contains(&Some(id));
+    let (was, is) = (armies(before), armies(after));
+    for (id, army) in &was {
+        let now = is.iter().find(|(other, _)| other == id).map(|(_, a)| a);
+        if !fought(*id) {
+            prop_assert_eq!(now, Some(army));
+        }
+    }
+    let removed: Vec<HeroId> = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::HeroRemoved { hero, .. },
+                ..
+            }) => Some(hero),
+            _ => None,
+        })
+        .collect();
+    for (side, hero) in heroes.iter().enumerate() {
+        let hero = hero.unwrap();
+        let won = result.winner().map(|w| w.index()) == Some(side);
+        let stays = after.adventure().hero(hero);
+        prop_assert!(won || stays.is_none(), "{:?} did not win but stays", hero);
+        prop_assert_eq!(stays.is_none(), removed.contains(&hero));
+        if let Some(stays) = stays {
+            prop_assert!(!stays.army.is_empty());
+            prop_assert!(stays.army.iter().all(|s| s.count > 0 && s.slot < 7));
+        }
+    }
+    let owner = |id: Option<HeroId>| before.adventure().hero(id.unwrap()).unwrap().owner;
+    let mut paid = None;
+    for event in events {
+        match *event {
+            GameEvent::ResourcePaid { player, amount, .. } => {
+                let BattleResult::Surrender(side) = result else {
+                    return Err(fail(format!("{event:?} without a surrender")));
+                };
+                prop_assert_eq!(player, owner(heroes[side.index()]));
+                paid = Some(amount);
+            }
+            GameEvent::ResourceGained { player, amount, .. } => {
+                let BattleResult::Surrender(side) = result else {
+                    return Err(fail(format!("{event:?} without a surrender")));
+                };
+                prop_assert_eq!(player, owner(heroes[side.opponent().index()]));
+                prop_assert_eq!(Some(amount), paid);
+            }
+            _ => {}
+        }
+    }
+    for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        let (b, a) = (
+            before.treasury(player).unwrap(),
+            after.treasury(player).unwrap(),
+        );
+        if paid.is_none() {
+            prop_assert_eq!(b, a);
+        }
+    }
     Ok(())
 }
 
@@ -1104,16 +1253,29 @@ fn check_decisions(
     Ok(())
 }
 
+/// Ownership isolation: a command of `actor` moves no other player's hero, changes no other
+/// player's army, explored tiles, treasury, purchases, open decision (E08 T14b) or keys (T15a),
+/// and changes another player's heroes' points only when that player's turn starts
+/// (ADV-MOV-002); but a battle (E08 T19a) the actor owns with another player: its commands play
+/// the battle both own, and the one that ends it changes the other's hero (its army, or its
+/// removal) and, by a surrender, its treasury ([`check_battle_end`]).
 fn check_isolation(
     before: &GameState,
     after: &GameState,
     actor: PlayerId,
     events: &[GameEvent],
 ) -> Result<(), TestCaseError> {
+    let fought: Vec<HeroId> = ended(events)
+        .iter()
+        .flat_map(|(heroes, _)| heroes.iter().flatten().copied())
+        .collect();
     let (b, a) = (before.adventure().heroes(), after.adventure().heroes());
-    prop_assert_eq!(b.len(), a.len());
-    let heroes = b.iter().zip(a);
-    for (b, a) in heroes {
+    for b in b {
+        let a = a.iter().find(|a| a.id == b.id);
+        if fought.contains(&b.id) {
+            continue;
+        }
+        let a = a.ok_or_else(|| fail(format!("{:?} left the map", b.id)))?;
         prop_assert_eq!((b.id, b.owner), (a.id, a.owner));
         if b.owner == actor {
             continue;
@@ -1122,10 +1284,28 @@ fn check_isolation(
         let started = events.contains(&GameEvent::TurnStarted { player: b.owner });
         prop_assert!(started || b.movement == a.movement);
     }
+    prop_assert!(a.iter().all(|a| b.iter().any(|b| b.id == a.id)));
+    // The other owner of the actor's battle, before or after the command.
+    let partner = |state: &GameState| {
+        state
+            .battle(actor)
+            .map(|battle| battle.owners().into_iter().flatten().collect::<Vec<_>>())
+            .unwrap_or_default()
+    };
+    let (mut partners, after_partners) = (partner(before), partner(after));
+    partners.extend(after_partners);
+    let surrendered = ended(events)
+        .iter()
+        .any(|(_, result)| matches!(result, BattleResult::Surrender(_)));
     for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         if player != actor {
             prop_assert!(before.adventure().explored(player) == after.adventure().explored(player));
-            prop_assert_eq!(before.treasury(player), after.treasury(player));
+            if !partners.contains(&player) {
+                prop_assert_eq!(before.battle(player), after.battle(player));
+            }
+            if !(surrendered && partners.contains(&player)) {
+                prop_assert_eq!(before.treasury(player), after.treasury(player));
+            }
             prop_assert!(
                 before
                     .adventure()

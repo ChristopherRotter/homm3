@@ -182,3 +182,116 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe: the Cartographer's visit (0x4A8A14) asks a yes/no question (a message box of mode 2) that the player answers before play goes on, and shows a message instead when the gold is short; survey E08-objects.md §4 and §10"
   confidence = "high"
+
+[[rule]]
+id       = "GAM-BAT-001"
+title    = "A battle on the map: its sides, its setup, its seeds, a decision its players own"
+context  = "game"
+status   = "implemented"
+summary  = "A visit that starts a battle (increment 3: another player's hero's, GAM-BAT-004) opens it at once as a pending decision owned by the players of its sides: the attacker the visitor's owner, the defender the visited hero's owner, who plays outside its turn. Its setup: each side's army and formation as on the map, each hero's battle hero (h3_heroes::derive_battle_hero, with its maximum spell points, HER-MAN-001) and war machines (h3_heroes::war_machines); the battle is fought at the defender's tile, on the terrain the tile gives in the original's order (the adventure part's battle terrains: underground the subterranean, else on a coast tile, the map's flag 0x40, sand with the shore's battlefield, else the tile's own; boats, mines, sieges and special grounds come later); each side owner's gold as its funds (a surrender's price, the battle part's resource). The battle's own seed is the attacking player's stream's next draw; its obstacles (h3_battle::generate_setup_obstacles) come from the tile's seed 110 291 x + 167 801 y + 81 569 (32-bit, the level not included) under ADV-QUIRK-5 (faithful), else from that stream's next draw. While it is open its owners' only legal commands are the battle's (`GameCommand::Battle`), for the side to act, by its owner (`NotYourSide` for the other, `NoBattle` without one, `BattleOpen` for an answer); neither owner can end its turn or move. Its start, its events by their visibility (a public one to both owners, a side's to its owner) and its end are told to its owners only; each sees its side's observation (`GameObservation::battle`). The command that ends it applies its outcome (GAM-BAT-002, GAM-BAT-003, GAM-BAT-005) and closes the decision. E08 T19a: `GameState::start_battle`, `battle_command`, `OpenBattle`, `AdventureState::battle_ground`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-5"]
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 points 4 (a battle's randomness: the tile's seed in faithful, else the attacking player's stream; its own seed from that stream), 6 (a battle is a pending decision owned by the players of its sides) and 11 (the game builds the setup); ADR-0016 point 4 (another player's hero is visited from the neighbouring tile, a battle at once); E08 decisions 24, 26"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T17a, survey E08-battles.md §4.2, §7.1, §7.2): the visitor attacks at the defender's tile with both heroes and armies; battle_side_setup seeds the C runtime's generator from the tile, srand(110291 x + 167801 y + 81569) without the level (0x463A08), before the battlefield and its obstacles; both players play their sides (hot seat and network play)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "E04c batch 3b (docs/rules/surveys/E04c-battlefields.md §4): the battle's tile is the defender's; a tile next to water gives sand and the shore, from the map's coast flag; underground battles are subterranean"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/BattleInfo.cpp setupBattle: the obstacles from a RandGen seeded with the same tile expression; every battle starts at the defender's tile (survey E08-battles.md §4.2)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp#L160"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-BAT-002"
+title    = "Applying a battle's outcome: the armies"
+context  = "game"
+status   = "implemented"
+summary  = "When a battle on the map ends, its outcome applies at once and infallibly, told first as its end (`BattleEnded`, the heroes and the result) to its owners: a hero that stays on the map (GAM-BAT-003) keeps its army survivors (BattleOutcome::survivors: each stack's count its survivors, a damaged top creature forgotten, a raised stack in its dead stack's slot) as its army. The heroes' part (experience as a number, Necromancy, Eagle Eye's spells, spell points, destroyed war machines' artifacts) comes with E08 T19a2 (ADV-STUB-3). E08 T19a: `GameState::end_battle`, `AdventureState::end_battle`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 point 11 (the outcome applies at once and infallibly, in every context, one function per context in a fixed order); ADR-0013 point 5"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "E04-battle.md §4 with batch 1b's answers (E04a-log.md), survey E08-battles.md §8: each army stack's count becomes its survivors, a damaged top creature is forgotten"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-BAT-003"
+title    = "A hero that loses, retreats or surrenders leaves the map"
+context  = "game"
+status   = "implemented"
+summary  = "After a battle on the map, a hero stays only if its side won and has army survivors left; every other leaves the map: one that lost, retreated or surrendered, both after a draw, and a winner left with stacks created in the battle only (BAT-END-001: the opponent of a side that retreated or surrendered has then lost too). Its removal is told to its owner and to the players that see its tile (`HeroRemoved`); its details stay in the store of heroes (the heroes' pool and re-hiring are E09's). E08 T19a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T17a, survey E08-battles.md §7.3, §7.4): after the battle (0x4AD470) the losing hero is taken off the map (0x4ACBB0, inferred) and back into the heroes' pool (0x4D9EC0, inferred); a retreating or surrendering hero leaves the map; a draw takes both"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08 decision 19 (a defeated hero leaves the map); BAT-END-001's note (a side left with only created stacks has lost, BAT-Q7)"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-BAT-004"
+title    = "Hero against hero: the visit is a battle both players own"
+context  = "game"
+status   = "implemented"
+summary  = "A step toward another player's hero visits it from the neighbouring tile at the step's price (as a neighbour-visited object, ADV-OBJ-003: the move ends, the hero stays on the tile before) and starts a battle at once, without a question, the visitor attacking at the defender's tile (GAM-BAT-001); the visit concerns the hero, whatever object lies under it (only leaving the visitor's tile across its top is refused, ADV-OBJ-004). An own hero's tile still blocks (meetings come with increment 4). The reachable-tiles query lists such a tile as a destination with the points the visit leaves. The captured artifacts and the +500 experience for a defeated hero come with E08 T19a2 (ADV-STUB-3). E08 T19a: `AdventureOutcome::battle`, `BattleStart`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T17a, survey E08-battles.md §7.1): a hero is visited from the neighbouring tile (class 34); an enemy hero not in a town is attacked at once, without a question"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGHeroInstance.cpp onHeroVisit: a hero of the same team is met, an enemy hero attacked (survey E08-battles.md §7.1)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L551-L568"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0016 point 4 (a tile holding another player's hero is visited from a neighbouring tile, a battle at once; an own hero's tile still blocks); E08 decision 22"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-BAT-005"
+title    = "A surrender's gold goes to the other side's owner"
+context  = "game"
+status   = "implemented"
+summary  = "When a side surrenders, its price (BattleOutcome::surrender_cost, BAT-FLE-002) leaves its owner's treasury, saturating at what it holds, and the amount paid enters the other side's owner's treasury (GAM-RES-001's saturation), also when that side has lost too (BAT-Q7); each change is told to its owner only (`ResourcePaid`, `ResourceGained`). The original takes the price and adds it to the winner's owner; VCMI only takes it (D-13, decided as the code reading). E08 T19a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T17a, survey E08-battles.md §7.3): action_dispatcher takes the price from the surrendering side's owner's gold and adds it to the other side's owner's gold (0x479637 to 0x47966F)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleActionProcessor.cpp doSurrenderAction: giveResource(player, GOLD, -cost), the surrendering player's only (dispute D-13, survey E08-battles.md §7.3)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp#L75-L95"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+  note       = "Disagrees: the winner's owner gets nothing. D-13 decided as the code reading (E08 decision 23)."

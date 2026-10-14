@@ -1,10 +1,10 @@
 //! Tests of the game's rules bundle and setup (E08 T6a); the state, the starting armies' draw
 //! and the turns in `state.rs` (T6b); the observation and the projection in `observe.rs`
 //! (T8b1); the legal commands in `legal.rs` (T8b2a); the pending decisions in `decisions.rs`
-//! (T14b). The rulesets are built in code (an application crate takes no pack adapter as a
-//! dev-dependency); the core still needs battle parameters until the content split (ADR-0015
-//! point 3).
+//! (T14b); battles in `battles.rs` (T19a). The rulesets are built in code (an application crate
+//! takes no pack adapter as a dev-dependency).
 
+mod battles;
 mod decisions;
 mod heroes;
 mod legal;
@@ -22,9 +22,9 @@ use alloc::sync::Arc;
 use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
 use h3_adventure::{
-    AdventurePack, AdventureParamsDef, AdventureRuleset, ArmyError, MapSetup, ObjectKindDef,
-    ObjectTypeDef, Passage, PickupDef, Pos, SetupError, StandError, StartingResourcesDef,
-    TerrainMovementDef, TileSetup, Visit,
+    AdventurePack, AdventureParamsDef, AdventureRuleset, ArmyError, BattleTerrainsDef, MapSetup,
+    ObjectKindDef, ObjectTypeDef, Passage, PickupDef, Pos, SetupError, StandError,
+    StartingResourcesDef, TerrainMovementDef, TileSetup, Visit,
 };
 use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ContentKey, ContentPack, CreatureDef,
@@ -32,6 +32,10 @@ use h3_content::{
     HeroParamsDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, Ruleset,
     SecondarySkillDef, SpellCategory, SpellDef, SpellSchoolDef, StartingStackDef, TerrainDef,
     TerrainId,
+};
+use h3_content_battle::{
+    AbilityDef, BattleCreatureDef, BattlePack, BattleParamsDef, BattleRuleset, BattleSpellDef,
+    BattlefieldDef, ObstacleDef, SpellMagic, SpellPolarity, SurrenderDef,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
@@ -88,14 +92,28 @@ fn hero_type(k: &str, army: &[(&str, [u16; 2])], war_machines: &[&str]) -> HeroT
     }
 }
 
-/// A core ruleset: the terrains `t:grass` and `t:rock`, the creatures `t:imp` (speed 5),
-/// `t:gog` (speed 2) and the war machine `t:cart`, and the hero types `t:orrin` (imp 2-5, gog
+/// A core ruleset: the terrains `t:grass` and `t:rock`, the creatures `t:imp` (speed 5, 50
+/// gold), `t:gog` (speed 2, 100 gold) and the war machine `t:cart`, and the hero types `t:orrin` (imp 2-5, gog
 /// 1-3), `t:loner` (no army), `t:crowd` (three stacks) and `t:gunner` (imp 1-1, the cart, gog
-/// 2-2), in that order; `extra` adds a creature.
+/// 2-2), in that order; `extra` adds a creature. The profile `t:faithful` enables no quirk,
+/// `t:tile` ADV-QUIRK-5's (E08 T19a).
 fn core(extra: bool) -> Ruleset {
+    core_with(extra, "t:faithful")
+}
+
+/// [`core`] with the profile `profile`.
+fn core_with(extra: bool, profile: &str) -> Ruleset {
+    // The imp costs 50 gold and the gog 100: a surrender's price (E08 T19a).
+    let costing = |k: &str, speed, gold| CreatureDef {
+        info: CreatureInfoDef {
+            cost: vec![(key("t:gold"), gold)],
+            ..CreatureInfoDef::default()
+        },
+        ..creature(k, speed)
+    };
     let mut creatures = vec![
-        creature("t:imp", 5),
-        creature("t:gog", 2),
+        costing("t:imp", 5, 50),
+        costing("t:gog", 2, 100),
         war_machine("t:cart"),
     ];
     if extra {
@@ -147,10 +165,16 @@ fn core(extra: bool) -> Ruleset {
             key: key("t:gold"),
             name: "Gold".into(),
         }],
-        profiles: vec![ProfileDef {
-            key: key("t:faithful"),
-            quirks: vec![],
-        }],
+        profiles: vec![
+            ProfileDef {
+                key: key("t:faithful"),
+                quirks: vec![],
+            },
+            ProfileDef {
+                key: key("t:tile"),
+                quirks: vec![("quirk.adventure.obstacles_from_tile".to_string(), true)],
+            },
+        ],
         // The hero model's content (E08 T18b): a book and a machine slot, the spell book, the
         // cart's artifact, a charm and a scroll without slot, a spell, Wits (+25/50/100 % spell points) and the hero parameters.
         artifact_slots: [("t:book_slot", 1), ("t:machine", 1)]
@@ -210,7 +234,7 @@ fn core(extra: bool) -> Ruleset {
         }),
         ..ContentPack::new(manifest())
     };
-    Ruleset::compile(&[pack], "t:faithful").unwrap()
+    Ruleset::compile(&[pack], profile).unwrap()
 }
 
 fn artifact(k: &str, slot: &str) -> ArtifactDef {
@@ -297,6 +321,12 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
             max_players: NonZeroU8::new(3).unwrap(),
             army_slots: NonZeroU8::new(slots).unwrap(),
             starting_stack_chances: chances,
+            // E08 T19a: a battle on a coast tile is fought on rock and the shore.
+            battle: Some(BattleTerrainsDef {
+                underground: key("t:grass"),
+                coast: key("t:rock"),
+                coast_battlefield: key("t:shore"),
+            }),
         }),
         // Difficulty 0 starts with 3 000 gold for a human, 1 with 2 000 (E08 T13a).
         starting_resources: [3000, 2000]
@@ -310,15 +340,131 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
     AdventureRuleset::compile(core, &[pack]).unwrap()
 }
 
+/// The battle part for `core` (E08 T19a): the imp (2/3, 1-2, 4 hit points), the gog (4/4, 2-3,
+/// 13) and the elf, and the cart as an ammunition supply; the gust's battle row (castable by no
+/// one); `slots` army slots, the original's field and war machine places, spread formations, no
+/// morale or luck, surrenders at half the cost in gold; the shore; a boulder of two hexes on grass
+/// and rock.
+fn battle_part(core: &Arc<Ruleset>, slots: u8) -> BattleRuleset {
+    battle_part_with(core, slots, |_| {})
+}
+
+/// [`battle_part`] with its pack edited.
+fn battle_part_with(
+    core: &Arc<Ruleset>,
+    slots: u8,
+    edit: impl FnOnce(&mut BattlePack),
+) -> BattleRuleset {
+    let row = |k: &str, attack, defense, damage: [u16; 2], hit_points| BattleCreatureDef {
+        key: key(k),
+        attack,
+        defense,
+        damage_min: damage[0],
+        damage_max: damage[1],
+        hit_points,
+        shots: 0,
+        casts: 0,
+        abilities: vec![],
+    };
+    let mut creatures = vec![
+        row("t:imp", 2, 3, [1, 2], 4),
+        row("t:gog", 4, 4, [2, 3], 13),
+        BattleCreatureDef {
+            abilities: vec![AbilityDef::AmmoSupply],
+            ..row("t:cart", 0, 5, [0, 0], 100)
+        },
+    ];
+    if core.creature_count() > 3 {
+        creatures.push(row("t:elf", 9, 5, [3, 5], 15));
+    }
+    let pack = BattlePack {
+        battlefields: vec![BattlefieldDef {
+            key: key("t:shore"),
+            own_obstacles: false,
+            blocked: vec![],
+            morale: vec![],
+            luck: vec![],
+            no_morale: false,
+            no_luck: false,
+            no_native: false,
+            max_spell_level: None,
+            no_creature_casts: false,
+            expert_schools: vec![],
+            expert_other_casts: false,
+        }],
+        obstacles: vec![ObstacleDef {
+            key: key("t:boulder"),
+            terrains: vec![key("t:grass"), key("t:rock")],
+            battlefields: vec![],
+            width: 2,
+            height: 1,
+            blocked: vec![(0, 0), (1, 0)],
+            absolute: false,
+        }],
+        creatures,
+        spells: vec![BattleSpellDef {
+            key: key("t:gust"),
+            polarity: SpellPolarity::Neutral,
+            magic: SpellMagic::default(),
+            counters: vec![],
+            dispels: vec![],
+            spares: vec![],
+            tests_as: None,
+            summons: None,
+        }],
+        battle: Some(BattleParamsDef {
+            field_width: 17,
+            field_height: 11,
+            side_columns: 1,
+            army_slots: slots,
+            damage_roll_samples: 10,
+            attack_bonus_per_point_percent: 5,
+            attack_bonus_cap_percent: 300,
+            defense_reduction_per_point_permille: 25,
+            defense_reduction_cap_permille: 700,
+            defend_bonus_percent: 20,
+            defend_bonus_min: 1,
+            ranged_full_damage_distance: 10,
+            ranged_penalty_percent: 50,
+            melee_penalty_percent: 50,
+            morale_dice: 24,
+            good_morale_chances: vec![0, 0, 0],
+            bad_morale_chances: vec![0, 0, 0],
+            luck_dice: 24,
+            good_luck_chances: vec![0, 0, 0],
+            war_machine_positions: vec![[1, 3], [1, 1], [1, 9]],
+            loose_formation: (1..=slots)
+                .map(|n| (0..n).map(|i| i * 11 / n).collect())
+                .collect(),
+            tight_formation: (1..=slots)
+                .map(|n| (0..n).map(|i| i * 11 / n).collect())
+                .collect(),
+            tactics_zone_columns: vec![3, 5, 7],
+            surrender: Some(SurrenderDef {
+                resource: key("t:gold"),
+                cost_percent: 50,
+            }),
+            hero_casts_per_round: 1,
+            side_stack_limit: 20,
+            siege: None,
+        }),
+        ..BattlePack::new(manifest())
+    };
+    let mut pack = pack;
+    edit(&mut pack);
+    BattleRuleset::compile(Arc::clone(core), &[pack]).unwrap()
+}
+
 fn rules() -> GameRuleset {
     rules_with(vec![88, 25], 2)
 }
 
 /// [`rules`] with other starting stack chances and army slots.
 fn rules_with(chances: Vec<u8>, slots: u8) -> GameRuleset {
-    let core = core(false);
+    let core = Arc::new(core(false));
     let part = part_with(&core, chances, slots);
-    GameRuleset::new(Arc::new(core), Arc::new(part)).unwrap()
+    let battle = battle_part(&core, 7);
+    GameRuleset::new(core, Arc::new(part), Arc::new(battle)).unwrap()
 }
 
 const IMP: CreatureTypeId = CreatureTypeId::from_raw(0);
@@ -332,6 +478,7 @@ fn setup() -> GameSetup {
             terrain: TerrainId::from_raw(0),
             road: None,
             river: None,
+            coast: false,
         };
         16
     ];
@@ -486,15 +633,33 @@ fn the_adventure_checks_the_rest() {
 
 #[test]
 fn the_parts_must_belong_to_the_core() {
-    let other = core(true);
-    let part = part(&other);
+    let other = Arc::new(core(true));
+    let part = Arc::new(part(&other));
+    let battle = Arc::new(battle_part(&other, 7));
+    let ours = Arc::new(core(false));
     assert_eq!(
-        GameRuleset::new(Arc::new(core(false)), Arc::new(part.clone())),
+        GameRuleset::new(Arc::clone(&ours), Arc::clone(&part), Arc::clone(&battle)),
         Err(RulesetMismatch)
     );
-    let rules = GameRuleset::new(Arc::new(other), Arc::new(part)).unwrap();
+    // The battle part too (E08 T19a).
+    assert_eq!(
+        GameRuleset::new(
+            Arc::clone(&other),
+            Arc::clone(&part),
+            Arc::new(battle_part(&ours, 7))
+        ),
+        Err(RulesetMismatch)
+    );
+    // The coast's battlefield must be the battle part's.
+    let fieldless = battle_part_with(&other, 7, |pack| pack.battlefields.clear());
+    assert_eq!(
+        GameRuleset::new(Arc::clone(&other), Arc::clone(&part), Arc::new(fieldless)),
+        Err(RulesetMismatch)
+    );
+    let rules = GameRuleset::new(other, part, battle).unwrap();
     assert_eq!(rules.core().creature_count(), 4);
     assert_eq!(rules.adventure().params().max_players(), 3);
+    assert_eq!(rules.battle().battle().army_slots, 7);
 }
 
 #[test]
@@ -533,6 +698,6 @@ fn the_errors_read_well() {
     }
     assert_eq!(
         RulesetMismatch.to_string(),
-        "the adventure part was compiled on another core ruleset"
+        "the ruleset parts do not fit the core ruleset or each other"
     );
 }

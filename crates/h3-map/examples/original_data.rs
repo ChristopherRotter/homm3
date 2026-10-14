@@ -73,8 +73,20 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let Ok(rules) = GameRuleset::new(Arc::new(core), Arc::new(part)) else {
-        eprintln!("h3-map: the adventure part belongs to another core");
+    let packs = [
+        h3_pack_battle::BASE_PACK,
+        h3_pack_battle::AB_PACK,
+        h3_pack_battle::SOD_PACK,
+    ];
+    let battle = match h3_pack_battle::compile(&packs, "base:faithful") {
+        Ok(battle) => battle,
+        Err(e) => {
+            eprintln!("h3-map: the original battle packs do not compile: {e:?}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let Ok(rules) = GameRuleset::new(Arc::new(core), Arc::new(part), Arc::new(battle)) else {
+        eprintln!("h3-map: the parts belong to another core");
         return ExitCode::FAILURE;
     };
     let mut imports = BTreeMap::<String, Vec<String>>::new();

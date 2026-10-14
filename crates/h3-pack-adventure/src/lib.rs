@@ -19,6 +19,11 @@
 //! starting_stack_chances = [88, 25] # percent for the 2nd, 3rd... starting slot of a hero's
 //!                                  # starting army; the 1st always (GAM-SET-001, E08 T6b)
 //!
+//! [params.battle]                  # optional (E08 T19a, GAM-BAT-001): a battle on the map is
+//! underground = "subterranean"     # fought on this terrain underground, else on a coast tile
+//! coast = "desert"                 # on this one with this battlefield (a key of the battle
+//! coast_battlefield = "shore"      # part), else on the tile's terrain
+//!
 //! [[terrain]]                      # every core terrain needs one entry, from any pack of
 //! terrain = "grass"                # its closure; `name` means `<own pack>:name`
 //! cost = 100                       # a straight step (ADV-MOV-003)
@@ -63,9 +68,9 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 
 use h3_adventure::{
-    AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, ObjectKindDef,
-    ObjectTypeDef, Passage, PickupDef, RiverDef, RoadDef, StartingResourcesDef, TerrainMovementDef,
-    Visit,
+    AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef,
+    ObjectKindDef, ObjectTypeDef, Passage, PickupDef, RiverDef, RoadDef, StartingResourcesDef,
+    TerrainMovementDef, Visit,
 };
 use h3_content::{ContentKey, KeyError, PackManifest, Ruleset};
 use h3_pack::PackError;
@@ -173,6 +178,16 @@ struct ParamsDto {
     max_players: NonZeroU8,
     army_slots: NonZeroU8,
     starting_stack_chances: Vec<u8>,
+    #[serde(default)]
+    battle: Option<BattleDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BattleDto {
+    underground: String,
+    coast: String,
+    coast_battlefield: String,
 }
 
 #[derive(Deserialize, Default, Clone, Copy)]
@@ -408,16 +423,32 @@ pub fn parse_adventure(
         rivers,
         object_types,
         starting_resources,
-        params: file.params.map(|p| AdventureParamsDef {
-            native_cost: p.native_cost,
-            land_points: p.land_points,
-            scouting_radius: p.scouting_radius,
-            max_map_size: p.max_map_size,
-            max_levels: p.max_levels,
-            max_players: p.max_players,
-            army_slots: p.army_slots,
-            starting_stack_chances: p.starting_stack_chances,
-        }),
+        params: file
+            .params
+            .map(|p| {
+                let battle = p
+                    .battle
+                    .map(|b| {
+                        Ok::<_, KeyError>(BattleTerrainsDef {
+                            underground: reference(pack, &b.underground)?,
+                            coast: reference(pack, &b.coast)?,
+                            coast_battlefield: reference(pack, &b.coast_battlefield)?,
+                        })
+                    })
+                    .transpose()?;
+                Ok::<_, KeyError>(AdventureParamsDef {
+                    native_cost: p.native_cost,
+                    land_points: p.land_points,
+                    scouting_radius: p.scouting_radius,
+                    max_map_size: p.max_map_size,
+                    max_levels: p.max_levels,
+                    max_players: p.max_players,
+                    army_slots: p.army_slots,
+                    starting_stack_chances: p.starting_stack_chances,
+                    battle,
+                })
+            })
+            .transpose()?,
         ..AdventurePack::new(manifest.clone())
     })
 }
