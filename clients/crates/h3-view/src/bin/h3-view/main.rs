@@ -12,6 +12,7 @@ mod render;
 mod scenario;
 mod sequences;
 mod situation;
+mod sounds;
 mod sprite;
 mod window;
 

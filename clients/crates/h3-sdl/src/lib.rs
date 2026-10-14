@@ -1,6 +1,6 @@
 //! The client's platform adapter (E17 M2 T5a, ADR-0024): the window, its input and the cursor
-//! through SDL 3 (`sdl3-sys`, SDL built from its sources and linked statically); the audio joins
-//! it with T5b. Every SDL call and all of the client's `unsafe` code live here: the pure crates
+//! through SDL 3 (`sdl3-sys`, SDL built from its sources and linked statically), and the audio
+//! output (T5b, [`Audio`]; [`load_wav`], SDL's own WAV loader, for the gate). Every SDL call and all of the client's `unsafe` code live here: the pure crates
 //! (`h3-assets`, `h3-render`, `h3-view`'s library) never see SDL, and headless rendering, the
 //! gates and the reference checks run without it.
 //!
@@ -156,6 +156,21 @@ fn text(p: *const std::ffi::c_char) -> String {
     }
 }
 
+/// Shuts `subsystem` down (SDL counts each subsystem's starts), and SDL itself once no subsystem
+/// is left: the window and the audio start and stop theirs independently.
+///
+/// # Safety
+/// Balances one successful `SDL_InitSubSystem(subsystem)`.
+unsafe fn quit(subsystem: SDL_InitFlags) {
+    // SAFETY: the caller's.
+    unsafe {
+        SDL_QuitSubSystem(subsystem);
+        if SDL_WasInit(SDL_InitFlags(0)) == SDL_InitFlags(0) {
+            SDL_Quit();
+        }
+    }
+}
+
 fn int(v: u32) -> c_int {
     c_int::try_from(v).unwrap_or(c_int::MAX)
 }
@@ -176,8 +191,8 @@ impl Window {
         let (w, h) = (int(config.width), int(config.height));
         // SAFETY: plain SDL calls; every pointer is checked before use and owned by `Window`.
         unsafe {
-            if !SDL_Init(SDL_INIT_VIDEO) {
-                return Err(failed("SDL_Init"));
+            if !SDL_InitSubSystem(SDL_INIT_VIDEO) {
+                return Err(failed("SDL_InitSubSystem"));
             }
             let mut flags =
                 SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE;
@@ -187,7 +202,7 @@ impl Window {
             let window = SDL_CreateWindow(title.as_ptr(), w, h, flags);
             if window.is_null() {
                 let e = failed("SDL_CreateWindow");
-                SDL_Quit();
+                quit(SDL_INIT_VIDEO);
                 return Err(e);
             }
             let mut opened = Self {
@@ -636,7 +651,7 @@ impl Drop for Window {
     fn drop(&mut self) {
         self.drop_hardware();
         // SAFETY: each pointer was made by SDL, is freed once, the texture and the renderer
-        // before the window; SDL_Quit balances SDL_Init.
+        // before the window; `quit` balances SDL_InitSubSystem.
         unsafe {
             if !self.texture.is_null() {
                 SDL_DestroyTexture(self.texture);
@@ -645,8 +660,235 @@ impl Drop for Window {
                 SDL_DestroyRenderer(self.renderer);
             }
             SDL_DestroyWindow(self.window);
-            SDL_Quit();
+            quit(SDL_INIT_VIDEO);
         }
+    }
+}
+
+/// The audio output (E17 M2 T5b, ADR-0024 point 5): one SDL logical device on the system's
+/// default playback device and one SDL audio stream per source, each converting and resampling
+/// its 16-bit samples to the device's format; SDL mixes them. A stream's index is its handle. Not
+/// `Send`, as [`Window`].
+pub struct Audio {
+    device: SDL_AudioDeviceID,
+    streams: Vec<*mut SDL_AudioStream>,
+}
+
+impl std::fmt::Debug for Audio {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Audio")
+            .field("device", &self.device.0)
+            .field("streams", &self.streams.len())
+            .finish()
+    }
+}
+
+/// SDL's description of 16-bit samples, `channels` × `rate`.
+fn spec(rate: u32, channels: u16) -> SDL_AudioSpec {
+    SDL_AudioSpec {
+        format: SDL_AUDIO_S16,
+        channels: c_int::from(channels),
+        freq: int(rate),
+    }
+}
+
+impl Audio {
+    /// Opens the default playback device (SDL's audio too).
+    ///
+    /// # Errors
+    /// SDL's error when the audio or the device cannot be opened (no sound device, say).
+    pub fn open() -> Result<Self, String> {
+        // SAFETY: plain SDL calls; the device is checked and owned by `Audio`.
+        unsafe {
+            if !SDL_InitSubSystem(SDL_INIT_AUDIO) {
+                return Err(failed("SDL_InitSubSystem(audio)"));
+            }
+            let device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, null());
+            if device == SDL_AudioDeviceID(0) {
+                let e = failed("SDL_OpenAudioDevice");
+                quit(SDL_INIT_AUDIO);
+                return Err(e);
+            }
+            Ok(Self {
+                device,
+                streams: Vec::new(),
+            })
+        }
+    }
+
+    /// Adds a stream for 16-bit samples of `channels` × `rate`, bound to the device; its index.
+    ///
+    /// # Errors
+    /// SDL's error when the stream cannot be made or bound.
+    pub fn add_stream(&mut self, rate: u32, channels: u16) -> Result<usize, String> {
+        let spec = spec(rate, channels);
+        // SAFETY: plain SDL calls; the stream is checked and owned by `Audio`.
+        unsafe {
+            let stream = SDL_CreateAudioStream(&raw const spec, null());
+            if stream.is_null() {
+                return Err(failed("SDL_CreateAudioStream"));
+            }
+            if !SDL_BindAudioStream(self.device, stream) {
+                let e = failed("SDL_BindAudioStream");
+                SDL_DestroyAudioStream(stream);
+                return Err(e);
+            }
+            self.streams.push(stream);
+        }
+        Ok(self.streams.len() - 1)
+    }
+
+    /// The stream at `index` (null for an index that is none: SDL then fails the call).
+    fn stream(&self, index: usize) -> *mut SDL_AudioStream {
+        self.streams.get(index).copied().unwrap_or(null_mut())
+    }
+
+    /// Changes the samples a stream takes from now on (`channels` × `rate`).
+    pub fn set_format(&mut self, index: usize, rate: u32, channels: u16) {
+        let spec = spec(rate, channels);
+        // SAFETY: a stream of ours; SDL copies the spec.
+        unsafe { SDL_SetAudioStreamFormat(self.stream(index), &raw const spec, null()) };
+    }
+
+    /// Queues `samples` (interleaved) on a stream; with `flush`, the stream's last samples are
+    /// made playable at once (a one-shot clip: else the resampler holds them back for what
+    /// follows and the stream never empties; design §8).
+    ///
+    /// # Errors
+    /// SDL's error.
+    pub fn put(&mut self, index: usize, samples: &[i16], flush: bool) -> Result<(), String> {
+        let bytes = c_int::try_from(size_of_val(samples)).unwrap_or(c_int::MAX);
+        let stream = self.stream(index);
+        // SAFETY: SDL copies `bytes` bytes of the slice before returning.
+        unsafe {
+            if !SDL_PutAudioStreamData(stream, samples.as_ptr().cast(), bytes) {
+                return Err(failed("SDL_PutAudioStreamData"));
+            }
+            if flush && !SDL_FlushAudioStream(stream) {
+                return Err(failed("SDL_FlushAudioStream"));
+            }
+        }
+        Ok(())
+    }
+
+    /// Drops what a stream has queued: it falls silent.
+    pub fn clear(&mut self, index: usize) {
+        // SAFETY: a stream of ours.
+        unsafe { SDL_ClearAudioStream(self.stream(index)) };
+    }
+
+    /// The samples a stream still has queued (its input's, all channels counted).
+    #[must_use]
+    pub fn queued(&self, index: usize) -> usize {
+        // SAFETY: a stream of ours.
+        let bytes = unsafe { SDL_GetAudioStreamQueued(self.stream(index)) };
+        usize::try_from(bytes).unwrap_or(0) / 2
+    }
+
+    /// A stream's gain, applied as SDL takes its samples (1: as they are).
+    pub fn set_gain(&mut self, index: usize, gain: f32) {
+        // SAFETY: a stream of ours.
+        unsafe { SDL_SetAudioStreamGain(self.stream(index), gain) };
+    }
+
+    /// The driver and the device's format, for the viewer's report.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        let mut device = SDL_AudioSpec {
+            format: SDL_AUDIO_S16,
+            channels: 0,
+            freq: 0,
+        };
+        let mut frames: c_int = 0;
+        // SAFETY: SDL fills the spec and the frame count.
+        let known =
+            unsafe { SDL_GetAudioDeviceFormat(self.device, &raw mut device, &raw mut frames) };
+        // SAFETY: a plain SDL call.
+        let driver = text(unsafe { SDL_GetCurrentAudioDriver() });
+        if known {
+            format!(
+                "audio {driver}: {} Hz, {} channels, {} frames per buffer",
+                device.freq, device.channels, frames
+            )
+        } else {
+            format!("audio {driver}: format unknown")
+        }
+    }
+}
+
+impl Drop for Audio {
+    fn drop(&mut self) {
+        // SAFETY: each stream and the device were made by SDL and are freed once, the streams
+        // first; `quit` balances SDL_InitSubSystem.
+        unsafe {
+            for &stream in &self.streams {
+                SDL_DestroyAudioStream(stream);
+            }
+            SDL_CloseAudioDevice(self.device);
+            quit(SDL_INIT_AUDIO);
+        }
+    }
+}
+
+/// A WAV as SDL's own loader decodes it (`SDL_LoadWAV_IO`; E17 M2 T5b's reference for the
+/// pure decoder, `h3_assets::wav`): the rate, the channels and the samples as 16 bits (SDL's
+/// 8-bit PCM widened as SDL converts it). `whole` sets the hints `SDL_WAVE_TRUNCATION=dropframe`
+/// and `SDL_WAVE_FACT_CHUNK=truncate` (every complete frame, up to the `fact` chunk's count);
+/// else SDL's defaults (the last cut block dropped, the `fact` chunk ignored).
+///
+/// # Errors
+/// SDL's error for a file it rejects.
+pub fn load_wav(bytes: &[u8], whole: bool) -> Result<(u32, u16, Vec<i16>), String> {
+    let hints = [
+        (SDL_HINT_WAVE_TRUNCATION, c"dropframe"),
+        (SDL_HINT_WAVE_FACT_CHUNK, c"truncate"),
+    ];
+    let mut spec = SDL_AudioSpec {
+        format: SDL_AUDIO_UNKNOWN,
+        channels: 0,
+        freq: 0,
+    };
+    let mut buffer: *mut u8 = null_mut();
+    let mut length: u32 = 0;
+    // SAFETY: SDL reads the slice through a constant memory stream it closes itself, and hands
+    // back a buffer of `length` bytes, freed with SDL_free below.
+    unsafe {
+        for (name, value) in hints {
+            if whole {
+                SDL_SetHint(name, value.as_ptr());
+            } else {
+                SDL_ResetHint(name);
+            }
+        }
+        let io = SDL_IOFromConstMem(bytes.as_ptr().cast(), bytes.len());
+        if io.is_null() {
+            return Err(failed("SDL_IOFromConstMem"));
+        }
+        if !SDL_LoadWAV_IO(io, true, &raw mut spec, &raw mut buffer, &raw mut length) {
+            return Err(failed("SDL_LoadWAV_IO"));
+        }
+        let raw: &[u8] = if buffer.is_null() {
+            &[]
+        } else {
+            std::slice::from_raw_parts(buffer, usize::try_from(length).unwrap_or(0))
+        };
+        let samples = if spec.format == SDL_AUDIO_U8 {
+            raw.iter().map(|&b| (i16::from(b) - 128) << 8).collect()
+        } else {
+            raw.as_chunks::<2>()
+                .0
+                .iter()
+                .map(|&pair| i16::from_ne_bytes(pair))
+                .collect()
+        };
+        let format = spec.format;
+        SDL_free(buffer.cast());
+        if format != SDL_AUDIO_S16 && format != SDL_AUDIO_U8 {
+            return Err(format!("SDL_LoadWAV_IO: sample format {:#x}", format.0));
+        }
+        let rate = u32::try_from(spec.freq).unwrap_or(0);
+        let channels = u16::try_from(spec.channels).unwrap_or(0);
+        Ok((rate, channels, samples))
     }
 }
 
