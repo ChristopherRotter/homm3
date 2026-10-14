@@ -66,9 +66,9 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Impact: exploit (mild): a defending hero can pick the tile it stands on for a layout that suits its army; an attacker, or an agent that has learned the tile's layout over many episodes, knows the battlefield before it commits. In the original the same is learnable by reloading, which the tile seed was probably meant to make useless.
 - Community status: not on the wiki's pages read (Wandering creature, Diplomacy); VCMI reproduces it (`BattleInfo::setupBattle` seeds its `RandGen` with the same expression).
 - Sources: code reading 0x463A08 (E08 T17a, survey `E08-battles.md` §4.2), re-read with the call site's arguments 2026-10-13 (E08 T17b); VCMI 1.7.5 `lib/battle/BattleInfo.cpp`.
-- Flag: `quirk.adventure.obstacles_from_tile` (its number with E08 T19a)
+- Flag: `quirk.adventure.obstacles_from_tile` (flag 23 in `h3_content`'s registry, E08 T19a)
 - Defaults: faithful = on (from the tile; the layouts match the original's once the battle lane ports its generator), strict-fixed = off (the attacker's stream)
-- Regression test: with E08 T19a
+- Regression test: `crates/h3-game/src/tests/battles.rs` (`the_obstacles_follow_the_tile_under_adv_quirk_5`; the strict draw in `a_visit_of_another_players_hero_opens_a_battle_both_own`), E08 T19a
 - Decided by / date: classified by the user 2026-10-13 (ADV-Q13; the epic's decision 26)
 
 ### ADV-QUIRK-6 — A monster's split follows from its tile

@@ -24,7 +24,16 @@ use crate::{ImportError, Limits, Unsupported, import, import_map, parse};
 /// The rules of RoE to SoD, or of RoE alone.
 fn rules(packs: usize) -> GameRuleset {
     let (core, part) = compile(&ORIGINAL_PACKS[..packs], "base:faithful").unwrap();
-    GameRuleset::new(Arc::new(core), Arc::new(part)).unwrap()
+    let battle = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::BASE_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::SOD_PACK,
+        ][..packs],
+        "base:faithful",
+    )
+    .unwrap();
+    GameRuleset::new(Arc::new(core), Arc::new(part), Arc::new(battle)).unwrap()
 }
 
 pub(super) static SOD: LazyLock<GameRuleset> = LazyLock::new(|| rules(3));

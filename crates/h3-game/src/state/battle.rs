@@ -189,7 +189,7 @@ impl GameState {
             funds: sides.map(|side| funds(side.owner)),
             ..BattleSetup::default()
         };
-        // rule: ADV-QUIRK-5
+        // ADV-QUIRK-5 (`faithful`): the tile's seed; else the stream's second draw.
         let stream = &mut self.players[player.index()].rng;
         let seed = stream.next_u64();
         let obstacles = if core.quirks().is_enabled(OBSTACLES_FROM_TILE) {
@@ -306,7 +306,7 @@ impl GameState {
     /// owner. The heroes' part (experience, Necromancy, Eagle Eye's spells, spell points, war
     /// machines, captured artifacts) comes with E08 T19a2.
     // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005
-    fn end_battle<S: Sink>(
+    pub(crate) fn end_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
         (owners, heroes): ([Option<PlayerId>; 2], [Option<HeroId>; 2]),

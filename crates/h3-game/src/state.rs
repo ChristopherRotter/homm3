@@ -570,4 +570,9 @@ impl GameState {
     pub(crate) const fn seed(&self) -> u64 {
         self.seed
     }
+
+    /// A player's stream as it stands.
+    pub(crate) fn stream(&self, player: PlayerId) -> Rng {
+        self.players[player.index()].rng.clone()
+    }
 }

@@ -610,6 +610,7 @@ dependencies = [
  "h3-game",
  "h3-pack",
  "h3-pack-adventure",
+ "h3-pack-battle",
  "miniz_oxide",
  "proptest",
 ]

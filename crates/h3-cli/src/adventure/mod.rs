@@ -108,9 +108,10 @@ fn read_text(path: &Path) -> Result<String> {
     std::fs::read_to_string(path).map_err(|e| AdventureCliError::Io(path.to_path_buf(), e))
 }
 
-/// Loads `<packs_dir>/<id>/core.toml` and, where it exists, `<id>/adventure.toml` for each id and
-/// compiles them with `profile` into the game's rules. Ids come from replay files, so they must be
-/// valid pack ids (no paths).
+/// Loads `<packs_dir>/<id>/core.toml` and, where they exist, `<id>/adventure.toml` and
+/// `<id>/battle.toml` for each id and compiles them with `profile` into the game's rules (the
+/// battle part since E08 T19a). Ids come from replay files, so they must be valid pack ids (no
+/// paths).
 ///
 /// # Errors
 ///
@@ -121,22 +122,35 @@ pub fn load_rules(packs_dir: &Path, ids: &[String], profile: &str) -> Result<Gam
         h3_content::ContentKey::new(id, "pack")
             .map_err(|_| AdventureCliError::Format(format!("invalid pack id `{id}`")))?;
         let dir = packs_dir.join(id);
-        let adventure = dir.join("adventure.toml");
-        let adventure = if adventure.is_file() {
-            read_text(&adventure)?
-        } else {
-            String::new()
+        let optional = |name: &str| {
+            let path = dir.join(name);
+            if path.is_file() {
+                read_text(&path)
+            } else {
+                Ok(String::new())
+            }
         };
-        texts.push((read_text(&dir.join("core.toml"))?, adventure));
+        texts.push((
+            read_text(&dir.join("core.toml"))?,
+            optional("adventure.toml")?,
+            optional("battle.toml")?,
+        ));
     }
-    let refs: Vec<(&str, &str)> = texts
+    let adventure: Vec<(&str, &str)> = texts
         .iter()
-        .map(|(p, a)| (p.as_str(), a.as_str()))
+        .map(|(p, a, _)| (p.as_str(), a.as_str()))
+        .collect();
+    let battle: Vec<(&str, &str)> = texts
+        .iter()
+        .map(|(p, _, b)| (p.as_str(), b.as_str()))
         .collect();
     let pack_error = |e: String| AdventureCliError::Pack(packs_dir.to_path_buf(), e);
     let (core, part) =
-        h3_pack_adventure::compile(&refs, profile).map_err(|e| pack_error(e.to_string()))?;
-    GameRuleset::new(Arc::new(core), Arc::new(part)).map_err(|e| pack_error(e.to_string()))
+        h3_pack_adventure::compile(&adventure, profile).map_err(|e| pack_error(e.to_string()))?;
+    let battle =
+        h3_pack_battle::compile(&battle, profile).map_err(|e| pack_error(e.to_string()))?;
+    GameRuleset::new(Arc::new(core), Arc::new(part), Arc::new(battle))
+        .map_err(|e| pack_error(e.to_string()))
 }
 
 /// Checks that a map path from the command line or a replay file is relative and stays below the
@@ -225,9 +239,13 @@ fn parse_hex64(s: &str) -> Result<u64> {
         .ok_or_else(|| AdventureCliError::Format(format!("bad hash `{s}`")))
 }
 
-/// A command as a replay file writes it (format v2, the module's docs).
+/// A command as a replay file writes it (format v2, the module's docs). A battle command (E08
+/// T19a) is written as its debug text, which format v2 cannot read back: replays with battles come
+/// with format v3 (E08 T19b); the env's encoding v2 starts none.
 pub fn format_command(player: PlayerId, command: &GameCommand) -> String {
     match command {
+        // stub: ADV-STUB-4
+        GameCommand::Battle(command) => format!("{} battle {command:?}", player.raw()),
         GameCommand::EndTurn => format!("{} end-turn", player.raw()),
         // E08 T14b: an answer to the player's open decision (format v2).
         GameCommand::Answer(Answer::Accept) => format!("{} accept", player.raw()),

@@ -27,7 +27,16 @@ const DUEL: &[u8] = include_bytes!("../../../../fixtures/maps/e08-duel-36.h3m");
 fn rules(profile: &str) -> GameRuleset {
     let (core, part) =
         h3_pack_adventure::compile(&h3_pack_adventure::ORIGINAL_PACKS, profile).unwrap();
-    GameRuleset::new(Arc::new(core), Arc::new(part)).unwrap()
+    let battle = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::BASE_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::SOD_PACK,
+        ],
+        profile,
+    )
+    .unwrap();
+    GameRuleset::new(Arc::new(core), Arc::new(part), Arc::new(battle)).unwrap()
 }
 
 static FAITHFUL: LazyLock<GameRuleset> = LazyLock::new(|| rules("base:faithful"));
@@ -690,5 +699,48 @@ fn a_record_needs_a_limit() {
         },
     ] {
         assert!(!e.to_string().is_empty());
+    }
+}
+
+/// Encoding v2 has no battle actions (E08 T19a, `ADV-STUB-4`): a tile another player's hero stands
+/// on, a legal move of the game's (a visit, a battle), is no destination of the masks, the decoder
+/// or the random agent; a battle command encodes to no action.
+#[test]
+fn encoding_v2_offers_no_battle() {
+    let rules = &*FAITHFUL;
+    let mut setup = GameSetup::clone(&DUEL_SETUP);
+    let red = PlayerId::new(0);
+    let state = GameState::new(rules, &setup, 1).unwrap();
+    let hero = hero_in_slot(&state, red, 0).unwrap();
+    let reach = legal_moves(&state, rules, Actor::Player(red), hero).unwrap();
+    let (near, _) = reach
+        .tiles()
+        .find(|&(pos, _)| reach.path(pos).unwrap().len() == 2)
+        .unwrap();
+    let blue = setup
+        .heroes
+        .iter()
+        .position(|h| h.owner == PlayerId::new(1))
+        .unwrap();
+    setup.heroes[blue].pos = near;
+    let env = AdventureEnv::new(rules.clone(), Arc::new(setup), 1, 28).unwrap();
+    let state = env.state();
+    let reach = legal_moves(state, rules, Actor::Player(red), hero).unwrap();
+    assert!(reach.points_left(near).is_some());
+    let index = tile_index(state, near).unwrap();
+    let mut tiles = Vec::new();
+    env.tile_mask(red, MOVE_BASE, &mut tiles);
+    assert!(!tiles[index as usize]);
+    assert!(tiles.iter().filter(|&&t| t).count() + 1 == reach.tiles().count());
+    assert_eq!(
+        action::decode(state, rules, red, Action::move_to(0, index)),
+        None
+    );
+    let battle = GameCommand::Battle(h3_battle::Command::Wait);
+    assert_eq!(action::encode(state, red, &battle), None);
+    let mut rng = Rng::for_stream(1, StreamId::AGENT);
+    for _ in 0..200 {
+        let action = choose(&env, red, &mut rng);
+        assert!(action.entry != MOVE_BASE || action.tile != index);
     }
 }

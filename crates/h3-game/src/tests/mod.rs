@@ -92,14 +92,28 @@ fn hero_type(k: &str, army: &[(&str, [u16; 2])], war_machines: &[&str]) -> HeroT
     }
 }
 
-/// A core ruleset: the terrains `t:grass` and `t:rock`, the creatures `t:imp` (speed 5),
-/// `t:gog` (speed 2) and the war machine `t:cart`, and the hero types `t:orrin` (imp 2-5, gog
+/// A core ruleset: the terrains `t:grass` and `t:rock`, the creatures `t:imp` (speed 5, 50
+/// gold), `t:gog` (speed 2, 100 gold) and the war machine `t:cart`, and the hero types `t:orrin` (imp 2-5, gog
 /// 1-3), `t:loner` (no army), `t:crowd` (three stacks) and `t:gunner` (imp 1-1, the cart, gog
-/// 2-2), in that order; `extra` adds a creature.
+/// 2-2), in that order; `extra` adds a creature. The profile `t:faithful` enables no quirk,
+/// `t:tile` ADV-QUIRK-5's (E08 T19a).
 fn core(extra: bool) -> Ruleset {
+    core_with(extra, "t:faithful")
+}
+
+/// [`core`] with the profile `profile`.
+fn core_with(extra: bool, profile: &str) -> Ruleset {
+    // The imp costs 50 gold and the gog 100: a surrender's price (E08 T19a).
+    let costing = |k: &str, speed, gold| CreatureDef {
+        info: CreatureInfoDef {
+            cost: vec![(key("t:gold"), gold)],
+            ..CreatureInfoDef::default()
+        },
+        ..creature(k, speed)
+    };
     let mut creatures = vec![
-        creature("t:imp", 5),
-        creature("t:gog", 2),
+        costing("t:imp", 5, 50),
+        costing("t:gog", 2, 100),
         war_machine("t:cart"),
     ];
     if extra {
@@ -151,10 +165,16 @@ fn core(extra: bool) -> Ruleset {
             key: key("t:gold"),
             name: "Gold".into(),
         }],
-        profiles: vec![ProfileDef {
-            key: key("t:faithful"),
-            quirks: vec![],
-        }],
+        profiles: vec![
+            ProfileDef {
+                key: key("t:faithful"),
+                quirks: vec![],
+            },
+            ProfileDef {
+                key: key("t:tile"),
+                quirks: vec![("quirk.adventure.obstacles_from_tile".to_string(), true)],
+            },
+        ],
         // The hero model's content (E08 T18b): a book and a machine slot, the spell book, the
         // cart's artifact, a charm and a scroll without slot, a spell, Wits (+25/50/100 % spell points) and the hero parameters.
         artifact_slots: [("t:book_slot", 1), ("t:machine", 1)]
@@ -214,7 +234,7 @@ fn core(extra: bool) -> Ruleset {
         }),
         ..ContentPack::new(manifest())
     };
-    Ruleset::compile(&[pack], "t:faithful").unwrap()
+    Ruleset::compile(&[pack], profile).unwrap()
 }
 
 fn artifact(k: &str, slot: &str) -> ArtifactDef {
@@ -322,8 +342,9 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
 
 /// The battle part for `core` (E08 T19a): the imp (2/3, 1-2, 4 hit points), the gog (4/4, 2-3,
 /// 13) and the elf, and the cart as an ammunition supply; the gust's battle row (castable by no
-/// one); `slots` army slots, the original's field, formations and war machine places, no morale
-/// or luck, surrenders at half the cost in gold; the shore; a rock on grass of two hexes.
+/// one); `slots` army slots, the original's field and war machine places, spread formations, no
+/// morale or luck, surrenders at half the cost in gold; the shore; a boulder of two hexes on grass
+/// and rock.
 fn battle_part(core: &Arc<Ruleset>, slots: u8) -> BattleRuleset {
     battle_part_with(core, slots, |_| {})
 }
@@ -373,7 +394,7 @@ fn battle_part_with(
         }],
         obstacles: vec![ObstacleDef {
             key: key("t:boulder"),
-            terrains: vec![key("t:grass")],
+            terrains: vec![key("t:grass"), key("t:rock")],
             battlefields: vec![],
             width: 2,
             height: 1,
@@ -412,11 +433,11 @@ fn battle_part_with(
             luck_dice: 24,
             good_luck_chances: vec![0, 0, 0],
             war_machine_positions: vec![[1, 3], [1, 1], [1, 9]],
-            loose_formation: (1..=7)
-                .map(|n| (0..n).map(|i| (i * 11 / n) as u8).collect())
+            loose_formation: (1..=slots)
+                .map(|n| (0..n).map(|i| i * 11 / n).collect())
                 .collect(),
-            tight_formation: (1..=7)
-                .map(|n| (0..n).map(|i| (i * 11 / n) as u8).collect())
+            tight_formation: (1..=slots)
+                .map(|n| (0..n).map(|i| i * 11 / n).collect())
                 .collect(),
             tactics_zone_columns: vec![3, 5, 7],
             surrender: Some(SurrenderDef {
