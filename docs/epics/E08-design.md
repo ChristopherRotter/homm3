@@ -103,7 +103,16 @@ the heroes leaving the map (`HeroRemoved`) and a surrender's gold (GAM-BAT-005).
   the adventure's part (`ADV-STUB-3` at `GameState::end_battle`): experience to the winner's hero
   only: killed creatures' hit points (no war machines) + 500 for a defeated hero (not after a
   retreat or surrender), × (1 + Learning), rounded down; Necromancy per killed stack, rounded
-  down (`E04-battle.md` §4.5; skeletons by the skill, the Cloak in increment 4);
+  down (`E04-battle.md` §4.5); the raised creature by the `raises` effect kind (decision 30).
+  D-9 read in the code (2026-10-14): experience (0x46A350) leaves out summoned stacks, clones and
+  war machines; Necromancy (0x4775E1) counts every killed record, those too (E04c batch 2d NE:7):
+  per record `min(killed, trunc(f32(min(hp, raised_hp) × killed) × rate / f32(raised_hp)))`, at
+  least 1 in all if anything was killed, the winner only, the rate at most 1.0; the power
+  (0x4E3CD0): the skill's share × (1 + 0.05 × level) for the specialist, +0.05/0.10/0.15 for
+  artifacts 54–56 only with the skill, +0.10/0.20 by town buildings, +0.30 for the Cloak (130)
+  only without it; the creature (0x4E3C60): Skeleton, with the Cloak by the Necromancy level
+  (0 Skeleton, 1 Walking Dead, 2 Wight, 3 Lich); a full army (0x469F20): the upgrade at
+  ⌈2c/3⌉ ((2c + 2) / 3) if it has a free slot, the elementals 112–115 excepted, else nothing;
   `HeroOutcome::learned` (Eagle Eye) into the spells; `HeroOutcome::mana`; a destroyed war
   machine's artifact removed (the catapult stays); the loser's artifacts (worn and backpack, not
   war machines nor the spell book) to the winner, each into its first free fitting slot, else

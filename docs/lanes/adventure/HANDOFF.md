@@ -4,7 +4,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Current state
 
-- **E08**: increments 1 and 2 **closed** (2026-10-12, -13). **Increment 3** (monsters and battles, decisions 19–29): T17a, T17b, round 1 (T18a #185, T18b #188, merged); **round 2** split by the user (decision 29): **T19a1 done** 2026-10-14 (`shared/e08-t19a`, then `adventure/e08-t19a1`, `cross-lane`), T19a2 next. Design and cut: `E08-design.md`. Records: `E08-log.md`.
+- **E08**: increments 1 and 2 **closed** (2026-10-12, -13). **Increment 3** (monsters and battles, decisions 19–30): T17a, T17b, round 1 (T18a #185, T18b #188, merged); **round 2** split by the user (decision 29): **T19a1 done** 2026-10-14 (`shared/e08-t19a`, then `adventure/e08-t19a1`, `cross-lane`), T19a2 next. Design and cut: `E08-design.md`. Records: `E08-log.md`.
 - **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 5, `docs/formats/h3m.md` "Import": object types, a pile's fixed amount, guarded piles `Unsupported`, the default difficulty, the heroes' formation and customised details, an experience of 1 000 or more `Unsupported`, since T19a1 the coast flag). Every shipped map's static layer imports and validates; 5 maps import whole, the rest are typed `Unsupported`. `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on the shipped maps.
 - **The store of heroes** (T18b, GAM-HER-001): `GameState` keeps `Arc<HeroDetails>` by `HeroId` (`hero`, `heroes`), built from `GameHeroSetup.details` (`HeroDetailsSetup`) or the defaults (40–90 experience from the setup stream after the armies, the class's primary skills, the type's skills, spells and spell book, the rolled war machines' artifacts), spell points full (`h3_heroes::max_mana`, HER-MAN-001), validated by `h3-heroes`; `GameObservation.heroes` (`HeroInfo`: the type of each hero seen, the owner's details).
 - **Objects** (T12–T15): types in the ruleset part (`ruleset/objects.rs`, ADV-OBJ-002); contents drawn at the build (ADV-PIK-001 to -003); removed objects (`state/occupancy.rs`); `ObjectView`s (no index). Visits (ADV-OBJ-003, -004; `visit_at(part, player, pos)`, `tile_object`, `PastVisit`, `FromAbove`); gains and the offer in `AdventureOutcome`, `ObjectRemoved` (ADV-OBJ-005). Purchases and keys (`state/flags.rs`; ADV-VIS-001, -003); the observatory (-002); offers `Reveal { price }`, `Pass` (-004), `offer_stands`.
@@ -17,7 +17,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Replays and benchmarks** (T9b): `adventure::replay` (format v2), `h3 adventure run/verify/bench` (`crates/h3-cli/src/adventure/`), six golden replays in `fixtures/replays/adventure/` (determinism matrix; re-record with the options in `crates/h3-cli/tests/adventure_replays.rs`), the maps `fixtures/maps/e08-duel-36.h3m` and `e08-xl-144.h3m` (`h3-map`'s `tests/fixtures.rs`), three gated workloads in `benches/adventure/` (play, reach, fork; `02-architecture.md` §8).
 - **Experiments**: `h3-experiment` (battle-owned) has the adventure shape (`docs/experiments/README.md`); batches 1 and 2 scored. **From increment 3 agents run batches** on the client lane's harness (decision 21; needs in its inbox: `E08-battles.md` §13).
 - **Adventure ruleset part** (v6 since T19a1): terrains, roads, rivers, native cost, land table, base scouting radius, the setup bounds (`max_players` ≤ `MAX_PLAYERS` = 8), the starting stack chances, the object types, the starting resources by difficulty, the battle terrains.
-- **Next:** the user merges `shared/e08-t19a`, then T19a1's pull request; T19a2 (the queue), stacked on T19a1.
+- **Next:** rerun the full verify on `adventure/e08-t19a1`, open both pull requests (none yet); T19a2 (the queue).
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), their increment-2 amendments (#115), increment 3's (ADR-0013 too) applied by T18a (#185).
 - **Fuzzing is stable-only** (user, 2026-10-10): property tests on arbitrary bytes.
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
@@ -39,7 +39,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-14 — round 2 checkpoint and T19a1: battles through the game
 
-The user split round 2 (decision 29). `shared/e08-t19a`, then T19a1 (`cross-lane`: the flag in `base:faithful`, the harvester). Properties play battles. **In progress:** T19a2 on `adventure/e08-t19a2`, stacked on T19a1.
+The user split round 2 (decision 29). `shared/e08-t19a`, then T19a1 (`cross-lane`: the flag in `base:faithful`, the harvester). Properties play battles. Decision 30 (`raises`). **Stopped** before the full verify ended: no PR open.
 
 ### 2026-10-14 — round 1: T18a and T18b
 

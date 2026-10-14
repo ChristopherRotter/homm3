@@ -8,7 +8,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ### E08 T19a2 — The heroes' part of a battle's outcome (`cross-lane`: `h3-heroes`)
 
-Cut at the round-2 checkpoint (decision 29; `docs/epics/E08-design.md` §2, §5, §6).
+Cut at the round-2 checkpoint (decision 29; `docs/epics/E08-design.md` §2, §5, §6). First a `shared/e08-t19a2` pull request with the `raises` effect kind (decision 30; settle its two open points with the user first); Necromancy and experience as read in the code (design §5, D-9).
 
 - **Scope:** `h3_heroes::HeroChange` (`GainExperience`, `SetSpellPoints`, `LearnSpell`, `AddArtifact` placed by the capture rule, `RemoveArtifact`) and `check_change`, the game's infallible `apply_change` into the store; in `GameState::end_battle` after the adventure's part (`ADV-STUB-3` closed): experience to the winner's hero (killed hit points without war machines, +500 for a defeated hero, × (1 + Learning), rounded down), Necromancy per killed stack, Eagle Eye's spells, the spell points, destroyed war machines' artifacts (not the catapult's), the loser's artifacts captured into the first free fitting slot, else the backpack (VCMI's placement; not war machines nor the spell book); `h3-heroes`' Necromancy share, Learning factor and the capture's placement (`cross-lane`, battle-owned until the handover); GAM-BAT-002 and -004 completed. Game state hash unchanged (the store is hashed since v5).
 - **Acceptance:** the rules `implemented` with sources and tests; the play properties check the heroes' changes; Definition of Done. **Depends on:** T19a1 (`adventure/e08-t19a1`). **Status:** next.
