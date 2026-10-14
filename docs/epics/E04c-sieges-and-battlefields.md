@@ -83,7 +83,9 @@ checkpoint; BAT-Q43 at its start).
   BAT-SIE-009 to 015 (013 `implemented`, the rest `verified`), HER-BAT-018, BAT-QUIRK-22;
   master merged (T6's pack format v39), the full verify green, the `cross-lane` pull request
   (#199); confirmed by the user and merged 2026-10-14.
-- [ ] T7 Arrow towers (S-06, S-07; Artillery's control).
+**Increment 5** (the user, 2026-10-14: the next sensible increment; BAT-Q44 at its start).
+
+- [ ] **T7 Arrow towers (S-06, S-07; Artillery's control)** — refined 2026-10-14 (below), in progress.
 - [ ] T8 The siege's other rules (no retreat or surrender for the besieged, the spell cost's town
   armies, Teleport's and the summon's siege limits, the outcome: walls, capture).
 - [ ] T9 Workload and measurements; T10 closure (the independent review, as E04b's T11).
@@ -141,6 +143,30 @@ checkpoint; BAT-Q43 at its start).
 - Acceptance: every rule of §7.29 has a catalog rule with its sources and a test; battles without
   a siege replay unchanged apart from the hashes; walls and the gate agree with movement, the
   legal moves and the shot's line; `verify --with-original-data` green.
+
+### T7 — Arrow towers (refined 2026-10-14, increment 5)
+
+- **T7a, the reading** (`installation.md` §7.30; the survey's D-16 to D-19): the turrets' stacks,
+  turn and control, the shot (0x465AD0, 0x443D90), what reaches a turret. **BAT-Q44 (the user):
+  the code on D-16 to D-18 with confirmation rows (S-06, S-07), the Ballista's automatic target
+  with observation rows (D-19), turrets as off-field stacks, no seam change.**
+- **T7b, the battle** (`battle/e04c-t7`; `cross-lane` for `h3-protocol` if the wire moves): the
+  Arrow Tower creature harvested (a war machine; the gap-fill's list), the turrets in the battle
+  part (the base count 4, the towers' half, the off-field positions); the defender's turrets set
+  up with a Citadel (the keep) or a Castle (the towers) from `Siege.structures`; their turn (first,
+  the keep, the upper, the lower tower); control by the defender's Artillery as the Ballista's
+  (Shoot, Wait, Defend), else the Ballista's automatic shot; the shot (the summed roll times the
+  protection factor, nothing else, no morale); immune to every spell, never a target of a strike,
+  a shot, an area, the automatic Ballista or a berserk stack; a destroyed tower's or keep's stack
+  dies (BAT-QUIRK-22's absent turrets still harm none); observation, encodings, the wire,
+  replays; catalog rules from BAT-SIE-016; golden replay and the bench with the reason.
+- **T7c, batch 3e run by an agent** on the capture harness: the keep's damage under Advanced Air
+  Shield and Expert Armorer (S-06), under the defender's Expert Archery (S-07), a control; the
+  turrets' order; the automatic target where the wiki's rule and the Ballista's differ (D-19); a
+  commanded keep with Artillery.
+- Acceptance: every rule of §7.30 has a catalog rule with its sources and a test; battles without a
+  siege replay unchanged apart from the hashes; no turret ever reaches a hex-based rule;
+  `verify --with-original-data` green.
 
 ## Design
 

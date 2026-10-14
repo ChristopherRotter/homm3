@@ -183,16 +183,16 @@ follows the result (the adventure lane).
   which are buffed by Air Shield spell or are petrified take additional damage as well"), each
   "(fixed in HotA)"). The code has no path that raises it (a division would). A confirmation row
   decides: under Advanced Air Shield the keep's shot is at most `2N` by the code, at least `4N`
-  by the wiki (`N` the keep's count).
+  by the wiki (`N` the keep's count). **The user (BAT-Q44): the code**, with the row in batch 3e.
 - **D-17 Archery and a turret** (T7, S-07; `code`: the defending hero's Archery is not read; `vcmi`:
   not read for a turret either; the `wiki`: its Arrow tower page "Archery or the Artillery
   secondary skills do not affect the damage", its Archery page "Bug: The archery skill reduces
   damage done by arrow towers (fixed in HotA)"). Recommendation: the code; a confirmation row
-  (Expert Archery: every shot within `2N..4N`).
+  (Expert Archery: every shot within `2N..4N`). **The user (BAT-Q44): the code**, with the row.
 - **D-18 The turret's damage roll** (T7; `code`: one `random(2, 4)` per creature, summed: the keep's
   `N` creatures give `2N..4N`, bell-shaped; `vcmi`: one uniform draw of `(10 + 2n)..(20 + 4n)`; the
   `wiki`: the same ranges, "Base damage plus d × N"). The ranges agree (`N = 5 + n`); the code's
-  sum is the original. Recommendation: the code.
+  sum is the original. Recommendation: the code. **The user (BAT-Q44): the code.**
 - **D-19 The automatic turret's target** (T7; `code`: the computer player's battle AI, not read, as
   for the automatic Ballista; `vcmi`: the Ballista's choice (`tryMakeAutomaticActionOfRangedUnit`:
   not a war machine, then a stack that can attack next turn, then the highest expected damage
@@ -202,7 +202,7 @@ follows the result (the adventure lane).
   (bug)", ties to "the rightmost slot of the hero's army"). Recommendation: the Ballista's rule now
   (one automatic choice for both machines), observation rows in the batch where the wiki and VCMI
   pick different stacks; the original's AI is read with the battle AI's task (the battle queue's
-  inbox).
+  inbox). **The user (BAT-Q44): the Ballista's rule**, with observation rows.
 - **S-06, S-07** (`E04-quirks.md`: the towers) are D-16 and D-17: the code reading finds neither
   bug in the user's executable (T7, §7.30); a batch decides whether they are quirks.
 
