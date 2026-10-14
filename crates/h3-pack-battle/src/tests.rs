@@ -121,7 +121,7 @@ fn the_siege_scenario_names_its_town() {
     let vale = ruleset.faction_by_key("synthetic:vale").unwrap();
     assert_eq!(
         (town.faction, town.fort, town.moat, town.structures),
-        (vale, FortLevel::Citadel, Moat::Damaging, 0)
+        (vale, FortLevel::Citadel, Moat::Damaging, 3)
     );
     // The entry and back (a replay's `[setup.siege]`).
     let entry = SiegeEntry::of(&town, &ruleset).unwrap();
