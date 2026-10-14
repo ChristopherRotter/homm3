@@ -111,7 +111,11 @@ the heroes leaving the map (`HeroRemoved`) and a surrender's gold (GAM-BAT-005).
   64; it stops at the first the winner cannot take). Not built: a captured part completing a
   combination (SoD asks a human, builds at once for the computer), Titan's Thunder's spell book
   (0x4E2A64), the Grail's exclusion (the packs do not mark it).
-- **T19a2b** (decision 32): Necromancy per killed stack, rounded down (`E04-battle.md` §4.5),
+- **T19a2b** built (2026-10-14, decision 33): `h3_heroes::necromancy` (HER-NEC-001, -002),
+  `raised_count` and `AdventureState::raise` (GAM-BAT-006, `CreaturesRaised` to the owner),
+  `learn_level` and `learns_spell` with `HeroChange::LearnSpell` (HER-SPL-005, -006, GAM-BAT-007),
+  after the experience and before the capture; the data in `shared/e08-t19a2b`. The plan, as
+  built: Necromancy per killed stack, rounded down (`E04-battle.md` §4.5),
   the raised creature by the `raises` kind (decision 30). D-9 read in the code (2026-10-14):
   Necromancy (0x4775E1) counts every killed record, summoned stacks, clones and war machines too
   (E04c batch 2d NE:7): per record `min(killed, trunc(f32(min(hp, raised_hp) × killed) × rate /
@@ -122,7 +126,10 @@ the heroes leaving the map (`HeroRemoved`) and a surrender's gold (GAM-BAT-005).
   Necromancy level (0 Skeleton, 1 Walking Dead, 2 Wight, 3 Lich); a full army (0x469F20): the
   upgrade at ⌈2c/3⌉ ((2c + 2) / 3) if it has a free slot, the elementals 112–115 excepted, else
   nothing. Eagle Eye: `HeroOutcome::learned` into the winner's spells, with a worn spell book,
-  of a level its Wisdom allows (BAT-Q24: Wisdom + 2), a `shared/` Wisdom kind first.
+  of a level its Wisdom allows (BAT-Q24: Wisdom + 2), a `shared/` Wisdom kind first. Checked again
+  at the build: the count's x87 arithmetic per record (0x477643: fild, fstp f32, fmul the share,
+  fdiv f32(raised hp), ftol; `X87::over`), the Cloak's 30 % without the skill a rule (decision 33).
+  Not built: the Necropolis buildings' +10/+20 % (E09), the elementals' exception to the upgrade.
 - **T20a**: a `Ground` object on the tile replaces the field (the ground kinds); **T20b**: the
   unowned side (`Actor::System`, the neutral seat; decision 29), the monster's split and its
   survivors (ADV-MON-009, -010, A-6), a beaten monster's treasure.
@@ -162,7 +169,7 @@ winner's (D-13). Only the attacker's stream moves. T19a2a added the captured art
 
 ## 9. Versions
 
-Game state hash v6 (heroes' details since T18b, battles since T19a1; offer kinds later); adventure
+Shared (T19a2b): core ruleset hash v44, pack format v40. Game state hash v6 (heroes' details since T18b, battles since T19a1; offer kinds later); adventure
 state hash v8 (the formation since T18b, the coast since T19a1; monsters' static data and army
 left, the difficulty later); adventure ruleset part v6 (the battle terrains since T19a1; monster
 and ground kinds, T20a); map import v5 (hero customisations since T18b, the coast since T19a1;
@@ -175,11 +182,14 @@ in the increment, in the task that first changes it.
   `max_mana`, `join_bonus`, pack format v37); T18b (the harvester reads Necromancy's, Learning's
   and Intelligence's tables; `h3_heroes::max_mana`); T19a (`shared/e08-t19a`: `ADV-QUIRK-5`'s
   flag, `h3-map`'s battle part for its tests, battles in `06-security.md`; T19a1 `cross-lane`:
-  the flag on in `base:faithful`, the harvester's profile).
+  the flag on in `base:faithful`, the harvester's profile); `shared/e08-t19a2` (#194: `raises`);
+  `shared/e08-t19a2b` (`cross-lane`, decision 33: `learn_level`, `unless_skill`, `X87::over`,
+  the harvested Wisdom, `raises` and Necromancy artifacts, the replays, the heroes' changes in
+  `06-security.md`).
 - `cross-lane` (battle-owned), still to come: Diplomacy's `join_bonus` values (T20a; no table:
-  the skill's level), the necromancy artifacts' parts (increment 4), `h3-heroes`' additions
-  (`attack_defense`, `join_bonus` in T20a; the Necromancy share and the raised creature in
-  T19a2b; `HeroChange`, its check, the Learning factor and the capture built in T19a2a); `h3-experiment`'s spec for batch E3 (monsters,
+  the skill's level), `h3-heroes`' additions (`attack_defense`, `join_bonus` in T20a; built:
+  `HeroChange`, its check, the Learning factor and the capture in T19a2a, Necromancy and the
+  learning in T19a2b); `h3-experiment`'s spec for batch E3 (monsters,
   custom heroes, the difficulty); the client lane's recipes (its inbox, 2026-10-13).
   **The handover of `h3-heroes`**: as soon as the battle lane is done with it (the user,
   ADV-Q13; the battle lane's inbox asks it to say when), a `shared/` change of `lanes.toml`; the
@@ -192,7 +202,7 @@ in the increment, in the task that first changes it.
 | Round | Tasks | Content |
 |---|---|---|
 | 1 | T18a + T18b | done (2026-10-14): the shared groundwork with the ADR amendments (§10); the store of heroes, its defaults, the import of hero customisations (§1), trimmed at the checkpoint (decision 28) |
-| 2 | T19a1 + T19a2 | split at the checkpoint (decision 29): T19a1 done (2026-10-14): battles through the game, hero against hero, the armies' and the map's outcome (§5, §6); T19a2 split again (decision 32): T19a2a done (2026-10-14), the heroes' outcome without pack changes; T19a2b Necromancy and Eagle Eye (§2, §5) |
+| 2 | T19a1 + T19a2 | split at the checkpoint (decision 29): T19a1 done (2026-10-14): battles through the game, hero against hero, the armies' and the map's outcome (§5, §6); T19a2 split again (decision 32): T19a2a done (2026-10-14), the heroes' outcome without pack changes; T19a2b done (2026-10-14, decision 33), Necromancy and Eagle Eye (§2, §5); round 2 closed |
 | 3 | T19b (+ T20a?) | the env, replays, properties and benchmarks with battles (§8); the cut at the round-2 checkpoint |
 | 4 | T20a + T20b | monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
 | 5 | T21 + T22a | guarded piles and the maps with monsters, replays, benchmarks, the audit (§7); batch E3's spec and run (cross-lane, the client lane's recipes) |

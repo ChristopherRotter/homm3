@@ -343,6 +343,8 @@ pub struct HeroParamsDef {
     pub primary_max: u8,
     /// Most artifacts in a hero's backpack (HER-ART-002).
     pub backpack: u16,
+    /// The highest spell level a hero may learn without a `learn_level` effect (E08 T19a2b).
+    pub learn_level: u8,
 }
 
 /// A profile: a named selection of quirk flags (ADR-0007).

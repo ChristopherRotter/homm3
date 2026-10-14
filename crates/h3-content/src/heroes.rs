@@ -193,19 +193,29 @@ pub struct HeroParams {
     pub primary_max: u8,
     /// Most artifacts in a hero's backpack (HER-ART-002).
     pub backpack: u16,
+    /// The highest spell level a hero may learn without a `learn_level` effect (pack format
+    /// v40, E08 T19a2b; the original's 2, Wisdom adding its level), 0..=5.
+    pub learn_level: u8,
 }
 
-/// Validates hero parameters: every minimum at most the maximum (HER-DET-001).
+/// Validates hero parameters: every minimum at most the maximum (HER-DET-001), the learnable
+/// level at most the highest spell level.
 fn compile_params(def: &HeroParamsDef) -> Result<HeroParams, CompileError> {
     if def.primary_min.iter().any(|&m| m > def.primary_max) {
         return Err(CompileError::InvalidHeroParams(
             "primary_min must not exceed primary_max",
         ));
     }
+    if def.learn_level > MAX_SPELL_LEVEL {
+        return Err(CompileError::InvalidHeroParams(
+            "learn_level must be at most 5",
+        ));
+    }
     Ok(HeroParams {
         primary_min: def.primary_min,
         primary_max: def.primary_max,
         backpack: def.backpack,
+        learn_level: def.learn_level,
     })
 }
 
@@ -688,6 +698,7 @@ impl CanonicalHash for HeroContent {
             h.write_bytes(&p.primary_min);
             h.write_u8(p.primary_max);
             h.write_u16(p.backpack);
+            h.write_u8(p.learn_level);
         }
     }
 }

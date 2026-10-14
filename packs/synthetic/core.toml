@@ -1037,6 +1037,7 @@ effects = [{ kind = "eagle_eye", bp = 500 }]  # format v33: with the skill only 
 primary_min = [0, 0, 1, 2]          # HER-DET-001: lower totals count as these
 primary_max = 40                    # HER-DET-001
 backpack = 3                        # HER-ART-002
+learn_level = 2                     # format v40 (E08 T19a2b): the highest spell level learnable without Wisdom
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on

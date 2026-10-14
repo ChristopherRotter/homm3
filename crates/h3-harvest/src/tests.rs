@@ -571,6 +571,7 @@ sources = ["s"]
 primary_min = [0, 0, 1, 1]
 primary_max = 99
 backpack = 64
+learn_level = 2
 sources = ["s"]
 
 [[heroes.skill_effects]]
@@ -578,6 +579,20 @@ skill = "Skill 19"
 basic = [{ kind = "tactics", level = 1 }]
 advanced = [{ kind = "tactics", level = 2 }]
 expert = [{ kind = "tactics", level = 3 }]
+sources = ["s"]
+
+[[heroes.skill_extra]]
+skill = "Skill 12"
+basic = [{ kind = "raises", creature = "Unit 26" }]
+advanced = [{ kind = "raises", creature = "Unit 26" }]
+expert = [{ kind = "raises", creature = "Unit 26" }]
+sources = ["s"]
+
+[[heroes.skill_extra]]
+skill = "Skill 7"
+basic = [{ kind = "learn_level", levels = 1 }]
+advanced = []
+expert = [{ kind = "learn_level", levels = 3 }]
 sources = ["s"]
 
 [[heroes.specialty_extra]]
@@ -631,6 +646,8 @@ artifacts = ["Circle"]
 effects = [
     { kind = "alignment_group", factions = ["Alpha", "Gamma"] },
     { kind = "regeneration", creatures = { creature = "Unit 21" }, hit_points = 5 },
+    { kind = "necromancy", bp = 3000, unless_skill = "Skill 12" },
+    { kind = "raises", priority = 1, skill = "Skill 12", by_level = ["Unit 26", "Unit 21", "Unit 30", "Unit 2"] },
 ]
 sources = ["s"]
 
@@ -1061,7 +1078,15 @@ fn harvests_hero_content() {
     assert!(base.contains("basic = [{ kind = \"eagle_eye\", bp = 4000, max_level = 2 }]"));
     assert!(base.contains("expert = [{ kind = \"eagle_eye\", bp = 6000, max_level = 4 }]"));
     // E08 T18b: Necromancy, Learning and Intelligence from their tables (pack format v37).
-    assert!(base.contains("expert = [{ kind = \"necromancy\", bp = 3000 }]"));
+    // Since E08 T19a2b a `[[heroes.skill_extra]]` adds to a table skill's levels (the raised
+    // creature) or gives a skill without one its effects.
+    assert!(base.contains(
+        "expert = [{ kind = \"necromancy\", bp = 3000 }, { kind = \"raises\", creature = \"unit_26\" }]"
+    ));
+    assert!(base.contains(
+        "basic = [{ kind = \"learn_level\", levels = 1 }]\nadvanced = []\nexpert = [{ kind = \"learn_level\", levels = 3 }]"
+    ));
+    assert!(base.contains("backpack = 64\nlearn_level = 2\n"));
     assert!(base.contains("basic = [{ kind = \"experience_gain\", bp = 500 }]"));
     assert!(base.contains("expert = [{ kind = \"max_mana\", bp = 10000 }]"));
     assert!(
@@ -1297,8 +1322,13 @@ fn hero_content_errors() {
         ),
         (
             "{ kind = \"tactics\", level = 1 }",
-            "{ kind = \"tactics\", creature = \"Unit 1\", level = 1 }",
-            "take no creature",
+            "{ kind = \"tactics\", creature = \"Unit 999\", level = 1 }",
+            "skill effects: unknown creature `Unit 999`",
+        ),
+        (
+            "skill = \"Skill 7\"",
+            "skill = \"Skill 98\"",
+            "unknown skill `Skill 98`",
         ),
         (
             "hero = \"Hero 3\"",
@@ -1397,7 +1427,9 @@ fn harvests_artifacts() {
         "[[artifact_slot_override]]\ntarget = \"base:misc\"\ncount = 3",
         "[[artifact_slot]]\nid = \"spell_book\"\nname = \"Spell Book\"\ncount = 1\nbackpack = false\n",
         "effects = [{ kind = \"primary_skills\", power = 6, knowledge = 6 }, { kind = \"alignment_group\", factions = [\"base:alpha\", \"ab:gamma\"] }, \
-         { kind = \"regeneration\", creatures = { creature = \"ab:unit_21\" }, hit_points = 5 }]\nparts = [\"base:band\", \"base:loop\", \"base:helm\"]",
+         { kind = \"regeneration\", creatures = { creature = \"ab:unit_21\" }, hit_points = 5 }, \
+         { kind = \"necromancy\", bp = 3000, unless_skill = \"base:skill_12\" }, \
+         { kind = \"raises\", by_level = [\"base:unit_26\", \"ab:unit_21\", \"ab:unit_30\", \"base:unit_2\"], priority = 1, skill = \"base:skill_12\" }]\nparts = [\"base:band\", \"base:loop\", \"base:helm\"]",
     ] {
         assert!(sod.contains(line), "{line}");
     }

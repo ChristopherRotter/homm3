@@ -14,7 +14,7 @@ use std::fmt::Write as _;
 use h3_formats::exe::{CreatureRecord, HeroData, SkillValue};
 use h3_formats::text::TextTable;
 
-use crate::gapfill::{AbilitySpec, GapFill};
+use crate::gapfill::{AbilitySpec, GapFill, SkillEffects};
 use crate::{key_of, quote};
 
 /// Fields of `HCTRAITS.TXT` before the skill weights (name, aggression, primary skills, gains).
@@ -206,22 +206,23 @@ fn effect_list(effects: &[String]) -> String {
     format!("[{}]", effects.join(", "))
 }
 
-fn spec_list(specs: &[AbilitySpec]) -> Result<String, String> {
-    let items = specs
+/// A skill level's gap-fill effects; a `creature` (a `raises` effect's, E08 T19a2b) becomes the
+/// key `creature` gives for its singular name.
+fn spec_list(
+    specs: &[AbilitySpec],
+    creature: impl Fn(&str) -> Result<String, String>,
+) -> Result<Vec<String>, String> {
+    specs
         .iter()
         .map(|s| {
-            if s.creature.is_some() {
-                return Err("gapfill: skill effects take no creature".to_owned());
+            let mut params: Vec<(&str, String)> = Vec::new();
+            if let Some(name) = &s.creature {
+                params.push(("creature", quote(&creature(name)?)));
             }
-            let params: Vec<(&str, String)> = s
-                .params
-                .iter()
-                .map(|(k, v)| (k.as_str(), v.to_string()))
-                .collect();
+            params.extend(s.params.iter().map(|(k, v)| (k.as_str(), v.to_string())));
             Ok(inline(&s.kind, &params))
         })
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(effect_list(&items))
+        .collect()
 }
 
 /// The upgrade relation: consecutive even/odd ids of one town and level (the town creatures'
@@ -606,7 +607,7 @@ pub fn harvest_heroes(
             .map(|(k, _)| k.clone())
             .ok_or_else(|| format!("{what}: skill id {id} out of range"))
     };
-    let mut skill_levels: BTreeMap<usize, [String; 3]> = BTreeMap::new();
+    let mut skill_levels: BTreeMap<usize, [Vec<String>; 3]> = BTreeMap::new();
     for (skill, kind, param, fraction, by_level) in TABLE_SKILLS {
         let (_, values) = exe
             .skill_values
@@ -617,7 +618,7 @@ pub fn harvest_heroes(
             .get(usize::from(skill))
             .ok_or_else(|| format!("SSTRAITS.TXT: no skill {skill}"))?
             .1;
-        let mut levels: [String; 3] = Default::default();
+        let mut levels: [Vec<String>; 3] = Default::default();
         for (level, v) in values.iter().enumerate() {
             let rendered = match (*v, fraction) {
                 (SkillValue::Float(f), true) => basis_points(f, name)?.to_string(),
@@ -638,22 +639,40 @@ pub fn harvest_heroes(
             }
             let mut params = vec![(param, rendered)];
             params.extend(by_level.map(|p| (p, (level + 1).to_string())));
-            levels[level - 1] = effect_list(&[inline(kind, &params)]);
+            levels[level - 1] = vec![inline(kind, &params)];
         }
         skill_levels.insert(usize::from(skill), levels);
     }
-    for e in &gap.heroes.skill_effects {
-        let id = skills
+    let by_name = |name: &str| -> Result<String, String> {
+        let c = ctx
+            .creatures
+            .values()
+            .find(|c| c.name == name)
+            .ok_or_else(|| format!("gapfill: skill effects: unknown creature `{name}`"))?;
+        reference(&c.key, c.pack, "base", "skill effects")
+    };
+    let skill_id = |e: &SkillEffects| {
+        skills
             .iter()
             .position(|(_, n)| *n == e.skill)
-            .ok_or_else(|| format!("gapfill: unknown skill `{}`", e.skill))?;
-        let levels = [
-            spec_list(&e.basic)?,
-            spec_list(&e.advanced)?,
-            spec_list(&e.expert)?,
-        ];
-        if skill_levels.insert(id, levels).is_some() {
+            .ok_or_else(|| format!("gapfill: unknown skill `{}`", e.skill))
+    };
+    let spec_levels = |e: &SkillEffects| -> Result<[Vec<String>; 3], String> {
+        Ok([
+            spec_list(&e.basic, by_name)?,
+            spec_list(&e.advanced, by_name)?,
+            spec_list(&e.expert, by_name)?,
+        ])
+    };
+    for e in &gap.heroes.skill_effects {
+        if skill_levels.insert(skill_id(e)?, spec_levels(e)?).is_some() {
             return Err(format!("gapfill: skill `{}` has a value table", e.skill));
+        }
+    }
+    for e in &gap.heroes.skill_extra {
+        let levels = skill_levels.entry(skill_id(e)?).or_default();
+        for (list, extra) in levels.iter_mut().zip(spec_levels(e)?) {
+            list.extend(extra);
         }
     }
     let unmodelled: Vec<&str> = skills
@@ -674,7 +693,7 @@ pub fn harvest_heroes(
         );
         if let Some(levels) = skill_levels.get(&i) {
             for (label, list) in ["basic", "advanced", "expert"].iter().zip(levels) {
-                let _ = writeln!(out.base, "{label} = {list}");
+                let _ = writeln!(out.base, "{label} = {}", effect_list(list));
             }
         }
     }

@@ -23,7 +23,7 @@ mod battle;
 
 pub use battle::OpenBattle;
 #[cfg(test)]
-pub(crate) use battle::seen_by;
+pub(crate) use battle::{raised_count, seen_by};
 
 /// A player of a running game.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -240,7 +240,7 @@ fn validate_scroll(item: ArtifactInstance, ruleset: &Ruleset) -> Result<(), Deta
 }
 
 /// `id` is a spell of the ruleset and not a creature ability.
-fn hero_spell(id: SpellId, ruleset: &Ruleset) -> Result<(), DetailsError> {
+pub(crate) fn hero_spell(id: SpellId, ruleset: &Ruleset) -> Result<(), DetailsError> {
     let spell = ruleset.spell(id).ok_or(DetailsError::UnknownSpell(id))?;
     if spell.category == SpellCategory::Ability {
         return Err(DetailsError::NotAHeroSpell(id));

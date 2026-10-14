@@ -6,9 +6,9 @@ use alloc::vec::Vec;
 use core::num::NonZeroU32;
 
 use h3_content::{
-    Affects, ArtifactTypeId, CompiledHeroEffect, CreatureSelector, CreatureStat, CreatureTypeId,
-    FULL_BP, HeroEffect, HeroParams, Ruleset, SINGLE_PRECISION_RATES, SchoolId, SpellCategory,
-    SpellId, SpellScope,
+    Affects, ArtifactType, ArtifactTypeId, CompiledHeroEffect, CreatureSelector, CreatureStat,
+    CreatureTypeId, FULL_BP, HeroEffect, HeroParams, RAISED_LEVELS, RaisedCreature, Ruleset,
+    SINGLE_PRECISION_RATES, SchoolId, SkillId, SpellCategory, SpellId, SpellScope,
 };
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleMagic, CatapultControl, DamageBonuses,
@@ -634,6 +634,18 @@ fn grown_effects<'a>(
             .iter()
             .map(move |effect| (effect, growth))
     });
+    let artifacts = worn_types(details, ruleset).flat_map(|(_, artifact)| artifact.effects.iter());
+    let others = artifacts.chain(specialty);
+    skills.chain(others.map(|effect| (effect, Growth::NONE)))
+}
+
+/// The worn artifact types whose effects count, each once, in type order: every worn artifact
+/// and every part of a worn combination, an artifact that needs a skill only while the hero has
+/// it. Artifacts the ruleset does not know are skipped.
+fn worn_types<'a>(
+    details: &'a HeroDetails,
+    ruleset: &'a Ruleset,
+) -> impl Iterator<Item = (ArtifactTypeId, &'a ArtifactType)> {
     let mut types = BTreeSet::new();
     for item in &details.worn {
         let id = item.artifact;
@@ -641,17 +653,111 @@ fn grown_effects<'a>(
         let parts = ruleset.artifact(id).map(|a| a.parts.as_slice());
         types.extend(parts.unwrap_or_default().iter().copied());
     }
-    let artifacts = types
+    types
         .into_iter()
-        .filter_map(|id: ArtifactTypeId| ruleset.artifact(id))
-        .filter(|artifact| {
+        .filter_map(|id: ArtifactTypeId| ruleset.artifact(id).map(|a| (id, a)))
+        .filter(|(_, artifact)| {
             artifact
                 .needs_skill
-                .is_none_or(|needed| details.skills.iter().any(|&(id, _)| id == needed))
+                .is_none_or(|needed| has_skill(details, needed))
         })
-        .flat_map(|artifact| artifact.effects.iter());
-    let others = artifacts.chain(specialty);
-    skills.chain(others.map(|effect| (effect, Growth::NONE)))
+}
+
+/// Whether the hero has `skill` at any level.
+fn has_skill(details: &HeroDetails, skill: SkillId) -> bool {
+    details.skills.iter().any(|&(id, _)| id == skill)
+}
+
+/// What a hero's Necromancy raises after a won battle (E08 T19a2b; GAM-BAT-006 applies it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Necromancy {
+    /// The share of the killed enemy creatures raised (HER-NEC-001): basis points (1..=10 000)
+    /// and, under quirk Q-0005, the original's single-precision value where it differs.
+    pub share: Rate,
+    /// The creature raised (HER-NEC-002).
+    pub creature: CreatureTypeId,
+}
+
+/// The hero's Necromancy (HER-NEC-001, HER-NEC-002; E08 T19a2b), `None` without a share or a
+/// creature to raise. The share is the [`RateSum`] of the `necromancy` values of
+/// [`grown_effects`] — the skill's grown by a Necromancy specialty (5 % of itself per level),
+/// then each artifact type once, those that need the skill only with it, a share with
+/// `unless_skill` only without that skill — at most 10 000 basis points. The original's
+/// `hero_necromancy_power` (0x4E3CD0): with the skill its table value (times 1 + 0.05 × level
+/// for a specialist), +0.05, +0.10, +0.15 for the Amulet of the Undertaker, the Vampire's Cowl
+/// and Dead Man's Boots (each worn or through the Cloak of the Undead King, its combination), in
+/// single precision (quirk Q-0005), capped at 1.0; without the skill only +0.30 for the Cloak.
+/// Its town buildings' +0.10 and +0.20 come with towns (E09). The creature: [`raised_creature`].
+pub fn necromancy(details: &HeroDetails, ruleset: &Ruleset) -> Option<Necromancy> {
+    // rule: HER-NEC-001
+    let single = single_precision(ruleset);
+    let mut sum = RateSum::default();
+    for (effect, growth) in grown_effects(details, ruleset) {
+        if let HeroEffect::Necromancy { bp, unless_skill } = *effect
+            && unless_skill.is_none_or(|skill| !has_skill(details, skill))
+        {
+            sum.add(bp.into(), growth, single);
+        }
+    }
+    let share = sum.rate(FULL_BP.into());
+    let creature = raised_creature(details, ruleset)?;
+    (share.bp > 0).then_some(Necromancy { share, creature })
+}
+
+/// The creature the hero's Necromancy raises (HER-NEC-002, E08 decision 30): of its `raises`
+/// effects (the secondary skills', the worn artifact types' as [`worn_types`] counts them, the
+/// specialty's) the highest `priority` decides; a `by_level` effect names the creature of the
+/// hero's level in its skill (none to Expert). Among equal priorities, if every one comes from
+/// an artifact, the lowest artifact id (that of the artifact or combination part whose list holds
+/// the effect), then the lowest creature id; otherwise the lowest creature id. `None` without a
+/// `raises` effect. The original's `hero_necromancy_creature` (0x4E3C60): the Skeleton, with the
+/// Cloak of the Undead King by the Necromancy level Skeleton, Walking Dead, Wight, Lich.
+fn raised_creature(details: &HeroDetails, ruleset: &Ruleset) -> Option<CreatureTypeId> {
+    // rule: HER-NEC-002
+    let level_in = |skill: SkillId| {
+        let level = details.skills.iter().find(|&&(id, _)| id == skill);
+        level.map_or(0, |&(_, level)| usize::from(level))
+    };
+    let skills = details.skills.iter().flat_map(|&(id, level)| {
+        let effects = ruleset.skill(id).map(|skill| skill.effects(level));
+        effects
+            .unwrap_or_default()
+            .iter()
+            .map(|effect| (effect, None))
+    });
+    let artifacts = worn_types(details, ruleset).flat_map(|(id, artifact)| {
+        artifact
+            .effects
+            .iter()
+            .map(move |effect| (effect, Some(id)))
+    });
+    let specialty = specialty(details, ruleset)
+        .iter()
+        .map(|effect| (effect, None));
+    let candidates: Vec<(u8, Option<ArtifactTypeId>, CreatureTypeId)> = skills
+        .chain(artifacts)
+        .chain(specialty)
+        .filter_map(|(effect, source)| match *effect {
+            HeroEffect::Raises { priority, creature } => {
+                let creature = match creature {
+                    RaisedCreature::Creature(c) => c,
+                    RaisedCreature::ByLevel { skill, by_level } => {
+                        by_level[level_in(skill).min(RAISED_LEVELS - 1)]
+                    }
+                };
+                Some((priority, source, creature))
+            }
+            _ => None,
+        })
+        .collect();
+    let top = candidates.iter().map(|&(p, _, _)| p).max()?;
+    let tied = candidates.iter().filter(|&&(p, _, _)| p == top);
+    let from_artifacts = tied.clone().all(|&(_, source, _)| source.is_some());
+    tied.min_by_key(|&&(_, source, creature)| {
+        let artifact = source.filter(|_| from_artifacts).map(|a| a.raw());
+        (artifact, creature.raw())
+    })
+    .map(|&(_, _, creature)| creature)
 }
 
 /// Whether the derivation follows the original's single-precision rates (quirk Q-0005,

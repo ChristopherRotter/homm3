@@ -95,6 +95,10 @@ pub enum ChangeError {
     NoRoom(ArtifactTypeId),
     /// There is no artifact at the place.
     NoArtifact(ArtifactPlace),
+    /// The learned spell is not a hero spell of the ruleset (HER-SPL-001).
+    Spell(DetailsError),
+    /// The hero has learned the spell already.
+    KnownSpell(SpellId),
 }
 
 impl fmt::Display for ChangeError {
@@ -106,6 +110,8 @@ impl fmt::Display for ChangeError {
             Self::NoArtifact(ArtifactPlace::Backpack(i)) => {
                 write!(f, "no artifact in the backpack at {i}")
             }
+            Self::Spell(error) => write!(f, "the spell does not fit the ruleset: {error}"),
+            Self::KnownSpell(id) => write!(f, "spell {} is learned already", id.raw()),
         }
     }
 }

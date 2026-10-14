@@ -158,6 +158,7 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         GameEvent::ResourceGained { player: owner, .. }
         | GameEvent::ResourcePaid { player: owner, .. }
         | GameEvent::HeroChanged { player: owner, .. }
+        | GameEvent::CreaturesRaised { player: owner, .. }
         | GameEvent::OfferOpened { player: owner, .. }
         | GameEvent::OfferRefused { player: owner, .. }
         | GameEvent::OfferAnswered { player: owner, .. } => (owner == player).then_some(*event),

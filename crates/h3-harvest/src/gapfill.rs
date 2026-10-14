@@ -352,6 +352,10 @@ pub struct Heroes {
     pub spell_specialty: SpellSpecialty,
     /// Effects of skills without a value table in the executable.
     pub skill_effects: Vec<SkillEffects>,
+    /// Effects added after a skill's own at each level, its value table's or `skill_effects`'
+    /// (E08 T19a2b: Necromancy's `raises`).
+    #[serde(default)]
+    pub skill_extra: Vec<SkillEffects>,
     /// Specialty parts the executable's records cannot hold.
     #[serde(default)]
     pub specialty_extra: Vec<SpecialtyExtra>,
@@ -369,6 +373,8 @@ pub struct HeroParams {
     pub primary_max: u8,
     /// Backpack capacity.
     pub backpack: u16,
+    /// The highest spell level a hero may learn without Wisdom (E08 T19a2b).
+    pub learn_level: u8,
     /// Source ids.
     pub sources: Vec<String>,
 }
@@ -783,6 +789,7 @@ impl GapFill {
                 .chain(&g.heroes.spell_specialty.sources)
                 .chain(&g.heroes.params.sources)
                 .chain(g.heroes.skill_effects.iter().flat_map(|e| &e.sources))
+                .chain(g.heroes.skill_extra.iter().flat_map(|e| &e.sources))
                 .chain(g.heroes.specialty_extra.iter().flat_map(|e| &e.sources))
                 .chain(&g.artifacts.ab_sources)
                 .chain(&g.artifacts.unused_sources)
