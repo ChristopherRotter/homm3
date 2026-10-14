@@ -602,7 +602,7 @@ id       = "HER-BAT-018"
 title    = "The battle hero's Ballistics"
 context  = "heroes"
 status   = "implemented"
-summary  = "The battle hero commands its Catapult (BattleHero.war_machines.catapult = CatapultControl { level }) if one of its effect sources (HER-BAT-001) has a ballistics effect (pack format v38, the Ballistics skill: Basic 1, Advanced 2, Expert 3): the level is the highest among them, not grown by a specialty. The battle sets the Catapult up itself (BAT-SIE-009) and applies the control (BAT-SIE-011)."
+summary  = "The battle hero commands its Catapult (BattleHero.war_machines.catapult = CatapultControl { level }) if one of its effect sources (HER-BAT-001) has a ballistics effect (pack format v39, the Ballistics skill: Basic 1, Advanced 2, Expert 3): the level is the highest among them, not grown by a specialty. The battle sets the Catapult up itself (BAT-SIE-009) and applies the control (BAT-SIE-011)."
 numeric  = "integer"
 
   [[rule.source]]

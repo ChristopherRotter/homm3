@@ -1436,7 +1436,7 @@ abilities = [
 ]
 sources = ["exe-enchanter", "exe-siege-walls"]
 
-# The wall shots (E04c T6, pack format v38; installation.md 7.29): the Cyclops shoot the walls as
+# The wall shots (E04c T6, pack format v39; installation.md 7.29): the Cyclops shoot the walls as
 # with Basic Ballistics, the Cyclops King with Advanced (two shots); the Catapult with its hero's
 # level; Earthquake's hits.
 [[source]]

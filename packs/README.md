@@ -96,7 +96,7 @@ moat_damage = 70                 # the damaging moat's damage on entering (BAT-S
 # second_moat = true             # the moat's second row (the Fortress, BAT-SIE-004)
 # mines = "fire:land_mine"       # instead of a moat: land mines of this spell (one that places
                                  # mines; not with `second_moat`; the Tower, BAT-SIE-007)
-hit_points = [2, 2, 2, 2, 2, 2, 2, 2]  # since v38 (E04c T6): each wall-shot target's hit points,
+hit_points = [2, 2, 2, 2, 2, 2, 2, 2]  # since v39 (E04c T6): each wall-shot target's hit points,
                                  # one per target of the field's `targets`, 1..=255 (BAT-SIE-010)
 
 [[obstacle]]                     # obstacle types (E03, BAT-GEO-004)
@@ -206,7 +206,7 @@ errors:
 | `minimum_morale`, `minimum_luck` | `value` | lower bound of its morale/luck (BAT-MOR-001, BAT-LCK-001) |
 | `no_distance_penalty` | — | its shots have no distance penalty (BAT-RNG-002) |
 | `no_wall_penalty` | — | since v37: its shots are not halved by a town's walls (BAT-SIE-008) |
-| `wall_shots` | `level` (0..=3) | since v38: commanded for the attacker in a siege it may shoot the walls with this Ballistics level's record, whatever its shots and neighbours (requires flag `catapult`, which requires it, war machines excepted; the Cyclops 1, the Cyclops King 2; BAT-SIE-013) |
+| `wall_shots` | `level` (0..=3) | since v39: commanded for the attacker in a siege it may shoot the walls with this Ballistics level's record, whatever its shots and neighbours (requires flag `catapult`, which requires it, war machines excepted; the Cyclops 1, the Cyclops King 2; BAT-SIE-013) |
 | `area_shot` | `effect` (`fireball`/`death_cloud`) | its shots also hit the stacks around the target (requires flag `area_attack`; BAT-RNG-004) |
 | `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine only (requires flag `war_machine`; First Aid Tent): on its turn heals the top creature of a random hurt stack of its own side (also one the other side controls, BAT-MAG-026) by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
 | `ammo_supply` | — | war machine only (requires flag `war_machine`; Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
@@ -553,7 +553,7 @@ clone and without one, is copied for the caster's power + its duration bonus rou
 `summon` (no target: effect[mastery] × the caster's power creatures of `summons` join the caster's
 side; one summoned creature per side and battle; BAT-MAG-039), each the spell's only effect, a ruleset
 having at most four summon spells; both create a stack only while the side has fewer than
-`side_stack_limit` stacks (BAT-MAG-037); since v38, E04c T6: `earthquake` (no target, the spell's only
+`side_stack_limit` stacks (BAT-MAG-037); since v39, E04c T6: `earthquake` (no target, the spell's only
 effect, castable only at a town with a fort: effect[mastery] hits on the wall-shot targets drawn as the
 original draws them, 1 damage each; BAT-SIE-015); since
 v7, E04b T3b1b: `dispel` (ends the stack's
@@ -735,7 +735,7 @@ moat_defense_penalty, mine_power }`: the siege's field, each list one standable 
 to right the second moat row's, the moat's, the wall's, the gate one of the walls; the defense a
 stack loses in the moat and the town's mines' power without a hero before SoD (BAT-SIE-002 to
 BAT-SIE-007; `base` harvests the executable's tables, `installation.md` §7.27, §7.28). Records of
-`[[siege]]` need it. Since E04c T6 (pack format v38, battle part hash v4) it also holds the wall
+`[[siege]]` need it. Since E04c T6 (pack format v39, battle part hash v4) it also holds the wall
 shots (BAT-SIE-009 to BAT-SIE-014; `base` harvests them from the executable and `BALLIST.TXT`,
 `installation.md` §7.29): `catapult` (the Catapult's hex), `targets` (the wall-shot targets in the
 original's order, each `{ kind = "keep" | "tower" | "gate" | "wall", wall = <hex> }`, the gate's and

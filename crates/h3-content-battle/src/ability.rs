@@ -381,7 +381,7 @@ pub enum Ability<C, S, L> {
     NoWallPenalty,
     /// In a siege its side's attacker may shoot the walls with it as with the Ballistics record
     /// of `level` (the Cyclops 1, the Cyclops King 2: the original's 0x445D30; needs flag
-    /// `catapult`; the Catapult itself takes its hero's level; BAT-SIE-010, pack format v38).
+    /// `catapult`; the Catapult itself takes its hero's level; BAT-SIE-010, pack format v39).
     WallShots {
         /// The Ballistics level (0..=3).
         level: u8,

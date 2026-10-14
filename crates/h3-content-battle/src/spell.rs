@@ -349,7 +349,7 @@ pub enum SpellEffect {
     /// (Summon Elemental; BAT-MAG-039, E04b T6b, v18).
     Summon,
     /// Damages the town's walls: the value's number of hits of 1, each on a wall-shot target
-    /// drawn as the original draws them (Earthquake; BAT-SIE-015, E04c T6, v38). Cast without a
+    /// drawn as the original draws them (Earthquake; BAT-SIE-015, E04c T6, v39). Cast without a
     /// target in a siege with a fort.
     Earthquake,
 }
@@ -2334,7 +2334,7 @@ mod tests {
 
     #[test]
     fn the_earthquake_effect_acts_on_the_field_without_a_target() {
-        // E04c T6 (v38): cast at once, its only effect.
+        // E04c T6 (v39): cast at once, its only effect.
         let quake = SpellMagic {
             effects: vec![SpellEffect::Earthquake],
             ..SpellMagic::default()

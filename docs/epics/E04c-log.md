@@ -184,7 +184,7 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   wall_shot_data`: the targets, the miss, automatic and fallback lists, the Catapult's hex from an
   operand; `BALLIST.TXT`; each town's hit points from `WALLS.TXT`), the Catapult creature
   harvested, the Cyclops' `wall_shots` (gap-fill), Ballistics' effect, Earthquake's effect (pack
-  format v38, battle part hash v4). The battle (`h3_battle::siege`): the Catapult set up for an
+  format v39, battle part hash v4). The battle (`h3_battle::siege`): the Catapult set up for an
   attacker with a hero at a fort (slot 19, hex 119; never listed), first in its phase; automatic
   without Ballistics, commanded with it (`Command::ShootWall`, the Cyclops' too); the shot, the
   parts' hit points, a destroyed wall's hex, a destroyed gate (open for good: passage, no moat on

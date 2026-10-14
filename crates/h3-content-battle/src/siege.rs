@@ -4,7 +4,7 @@
 //! moat row, the Tower's land mines instead of a moat). A battle at a town names its faction
 //! through `BattleSetup::siege`; the battle reads the record of that faction (BAT-SIE-001).
 //!
-//! Since E04c T6 (pack format v38) the field also holds the wall shots' data (§7.29): the
+//! Since E04c T6 (pack format v39) the field also holds the wall shots' data (§7.29): the
 //! targets (their kinds and the wall hexes their destruction opens), the lists a missed and an
 //! automatic shot choose from, the Catapult's place, a Castle's extra wall hit points and the
 //! Ballistics table (`BALLIST.TXT`); a record holds each target's hit points (`WALLS.TXT`).
@@ -328,7 +328,7 @@ pub struct SiegeDef {
     pub second_moat: bool,
     /// Land mines of this spell on the moat's hexes instead of a moat (the Tower).
     pub mines: Option<ContentKey>,
-    /// Each wall-shot target's hit points at a siege's start (`WALLS.TXT`, pack format v38).
+    /// Each wall-shot target's hit points at a siege's start (`WALLS.TXT`, pack format v39).
     pub hit_points: Vec<u8>,
 }
 

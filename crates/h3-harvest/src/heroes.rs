@@ -444,7 +444,7 @@ fn other_spell(
     t: &crate::gapfill::SpellOther,
     spells: &BTreeMap<String, (String, &'static str)>,
 ) -> Result<(), String> {
-    // Earthquake (E04c T6, pack format v38): cast at once, no target, its only effect.
+    // Earthquake (E04c T6, pack format v39): cast at once, no target, its only effect.
     if t.effects.iter().any(|e| e == "earthquake") {
         if flags & (SPELL_SINGLE | SPELL_AREA | SPELL_OBSTACLE) != 0 || t.effects.len() != 1 {
             return Err(format!(

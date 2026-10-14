@@ -7,7 +7,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **E04c increment 4 built** (T6, BAT-Q43): seam **#191** open; `battle/e04c-t6` pushed, no PR yet. Next: full verify (last run's clippy, coverage, C-smoke failures fixed, not re-run), the `cross-lane` PR, the user's checkpoint; then T7.
 - **Merged:** up to #190.
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-2 (T7, T8), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
-- **Versions** (T6): battle state hash v47, battle part hash v4, replay format v27, action encoding v13, C ABI v21, observation encoding v17; shared: core ruleset hash v43, pack format v38, protocol v31. Next ids: BAT-Q44, BAT-QUIRK-23, BAT-STUB-3, BAT-TER-007, BAT-SIE-016; survey D-16, S-30.
+- **Versions** (T6): battle state hash v47, battle part hash v4, replay format v27, action encoding v13, C ABI v21, observation encoding v17; shared: core ruleset hash v43, pack format v39, protocol v31. Next ids: BAT-Q44, BAT-QUIRK-23, BAT-STUB-3, BAT-TER-007, BAT-SIE-016; survey D-16, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches are played by the user or an agent.
 
 ## Standing traps

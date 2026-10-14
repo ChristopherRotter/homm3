@@ -214,7 +214,7 @@ struct SiegeDto {
     #[serde(default)]
     second_moat: bool,
     mines: Option<String>,
-    /// Pack format v38 (E04c T6).
+    /// Pack format v39 (E04c T6).
     hit_points: Vec<u8>,
 }
 
@@ -229,7 +229,7 @@ struct SiegeFieldDto {
     second_moat: Vec<u8>,
     moat_defense_penalty: u8,
     mine_power: u8,
-    /// Pack format v38 (E04c T6): the wall shots.
+    /// Pack format v39 (E04c T6): the wall shots.
     catapult: u8,
     targets: Vec<WallTargetDto>,
     missed: Vec<u8>,
@@ -239,7 +239,7 @@ struct SiegeFieldDto {
     ballistics: Vec<BallisticsDto>,
 }
 
-/// A wall-shot target of `siege` (pack format v38): `{ kind = "wall", wall = 29 }`.
+/// A wall-shot target of `siege` (pack format v39): `{ kind = "wall", wall = 29 }`.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct WallTargetDto {
@@ -247,7 +247,7 @@ struct WallTargetDto {
     wall: Option<u8>,
 }
 
-/// A Ballistics record of `siege` (pack format v38): `{ hit = [5, 10, 25, 50], shots = 1,
+/// A Ballistics record of `siege` (pack format v39): `{ hit = [5, 10, 25, 50], shots = 1,
 /// damage = [10, 60, 30] }`.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -489,7 +489,7 @@ enum AbilityDto {
     IgnoresMagicBlock {},
     /// Pack format v37 (E04c T5, BAT-SIE-008).
     NoWallPenalty {},
-    /// Pack format v38 (E04c T6, BAT-SIE-010).
+    /// Pack format v39 (E04c T6, BAT-SIE-010).
     WallShots {
         level: u8,
     },
@@ -1059,7 +1059,7 @@ enum SpellPolarityDto {
     Negative,
 }
 
-/// The siege's field of `[battle]` (pack format v37; the wall shots since v38).
+/// The siege's field of `[battle]` (pack format v37; the wall shots since v39).
 fn siege_field(s: SiegeFieldDto) -> Result<SiegeFieldDef, BattlePackError> {
     let targets = s
         .targets

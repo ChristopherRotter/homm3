@@ -4364,7 +4364,7 @@ id       = "BAT-SIE-013"
 title    = "A creature's wall shots (the Cyclops)"
 context  = "battle"
 status   = "implemented"
-summary  = "A creature with the wall_shots ability (pack format v38: the Cyclops level 1, the Cyclops King level 2; the compiler requires the flag catapult with it) that its controller commands for the attacker in a siege with a standing target may shoot the walls as its action (Command::ShootWall at a standing target), with that Ballistics level's record (BAT-SIE-014), whether it has shots left or stands next to an enemy or not, and without using a shot. The turn ends as after a shot, good morale included."
+summary  = "A creature with the wall_shots ability (pack format v39: the Cyclops level 1, the Cyclops King level 2; the compiler requires the flag catapult with it) that its controller commands for the attacker in a siege with a standing target may shoot the walls as its action (Command::ShootWall at a standing target), with that Ballistics level's record (BAT-SIE-014), whether it has shots left or stands next to an enemy or not, and without using a shot. The turn ends as after a shot, good morale included."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4429,7 +4429,7 @@ id       = "BAT-SIE-015"
 title    = "Earthquake"
 context  = "battle"
 status   = "verified"
-summary  = "A spell with the earthquake effect (pack format v38) may be cast by either side's hero in a battle at a town with a fort (D-15, the code: BAT-Q43; elsewhere CastError), without a target, whatever stands. Its hits are the spell's effect value for the caster's mastery (Earthquake 2, 2, 3, 4), no power. For each hit: n = the targets whose hit points exceed the hits already drawn on them (none ends the draw); random(1, n) picks the n-th target, in index order, whose hit points are above 0, so a target already doomed can be drawn again and the last in the order can be spared (D-14, the code). The targets the fort level did not set up are drawn too (they soak hits; BAT-QUIRK-22). Then each drawn target takes its hits as damage, 1 each (BAT-SIE-010; event WallQuaked); a destroyed absent turret harms no stack (BAT-QUIRK-22)."
+summary  = "A spell with the earthquake effect (pack format v39) may be cast by either side's hero in a battle at a town with a fort (D-15, the code: BAT-Q43; elsewhere CastError), without a target, whatever stands. Its hits are the spell's effect value for the caster's mastery (Earthquake 2, 2, 3, 4), no power. For each hit: n = the targets whose hit points exceed the hits already drawn on them (none ends the draw); random(1, n) picks the n-th target, in index order, whose hit points are above 0, so a target already doomed can be drawn again and the last in the order can be spared (D-14, the code). The targets the fort level did not set up are drawn too (they soak hits; BAT-QUIRK-22). Then each drawn target takes its hits as damage, 1 each (BAT-SIE-010; event WallQuaked); a destroyed absent turret harms no stack (BAT-QUIRK-22)."
 numeric  = "integer"
 
   [[rule.source]]
