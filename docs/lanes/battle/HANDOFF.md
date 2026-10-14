@@ -4,8 +4,8 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 6, T7d (the automatic turret's target):** for the user's checkpoint: PR #217 (seam, ADR-0023 point 7) then #218 (BAT-SIE-020 to 023), both `cross-lane`, open; local verify green on d8771ee. **Next: the user picks T7e or T8.**
-- **Merged:** up to #209 (T7).
+- **E04c increment 6, T7d (the automatic turret's target):** for the user's checkpoint: PR #217 (seam, ADR-0023 point 7) merged; #218 (BAT-SIE-020 to 023, `cross-lane`) for the user to merge. **Next: the user picks T7e or T8.**
+- **Merged:** up to #217 (T7d's seam).
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-2 (T8), BAT-STUB-3 (T7e), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
 - **Versions** (T7d): battle state hash v49, battle part hash v5, replay format v28, action encoding v13, C ABI v23, observation encoding v19; shared: core ruleset hash v44, pack format v41, protocol v32. Next ids: BAT-Q47, BAT-QUIRK-23, BAT-STUB-4, BAT-TER-007, BAT-SIE-024; survey D-20, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
