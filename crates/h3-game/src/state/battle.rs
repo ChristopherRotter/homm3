@@ -94,8 +94,16 @@ fn owners_seeing(owners: [Option<PlayerId>; 2]) -> Viewers {
         .fold(Viewers::NONE, Viewers::with)
 }
 
-/// The game's sink of a battle's events: each event with the owners that see it, a public one
-/// both, a side's that side's (ADR-0017 point 11).
+/// Who of a battle's `owners` sees an event of `visibility` (ADR-0017 point 11): both a public
+/// one, a side's that side's owner.
+pub(crate) fn seen_by(owners: [Option<PlayerId>; 2], visibility: Visibility) -> Viewers {
+    match visibility {
+        Visibility::Public => owners_seeing(owners),
+        Visibility::Side(side) => owners_seeing([owners[side.index()], None]),
+    }
+}
+
+/// The game's sink of a battle's events: each event with the owners that see it ([`seen_by`]).
 struct BattleSink<'a, S> {
     sink: &'a mut S,
     owners: [Option<PlayerId>; 2],
@@ -103,10 +111,7 @@ struct BattleSink<'a, S> {
 
 impl<S: Sink> h3_battle::Sink for BattleSink<'_, S> {
     fn emit(&mut self, event: Event) {
-        let seen_by = match event.visibility {
-            Visibility::Public => owners_seeing(self.owners),
-            Visibility::Side(side) => owners_seeing([self.owners[side.index()], None]),
-        };
+        let seen_by = seen_by(self.owners, event.visibility);
         self.sink.emit(GameEvent::Battle { event, seen_by });
     }
 }

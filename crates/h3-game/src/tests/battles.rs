@@ -604,3 +604,28 @@ fn a_battle_command_with_an_offer_open_is_refused() {
     assert_eq!(game.decision(GREEN), None);
     assert!(game.battle(RED).is_some());
 }
+
+// covers: GAM-BAT-001
+#[test]
+fn a_sides_event_goes_to_its_owner_alone() {
+    use crate::state::seen_by;
+    use h3_battle::Visibility;
+    let owners = [Some(RED), Some(BLUE)];
+    assert_eq!(
+        seen_by(owners, Visibility::Public),
+        Viewers::NONE.with(RED).with(BLUE)
+    );
+    assert_eq!(
+        seen_by(owners, Visibility::Side(BattleSide::Attacker)),
+        Viewers::NONE.with(RED)
+    );
+    assert_eq!(
+        seen_by(owners, Visibility::Side(BattleSide::Defender)),
+        Viewers::NONE.with(BLUE)
+    );
+    // An unowned side's events reach no player (monsters, E08 T20b).
+    assert_eq!(
+        seen_by([Some(RED), None], Visibility::Side(BattleSide::Defender)),
+        Viewers::NONE
+    );
+}
