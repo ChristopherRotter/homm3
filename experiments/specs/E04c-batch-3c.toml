@@ -1,0 +1,179 @@
+# Experiment batch 3c (E04c T5e): the walls, the gate and the moat of a siege. Checks the code
+# reading of installation.md §7.28 that the battle follows since T5d (BAT-SIE-002 to BAT-SIE-008),
+# with the confirmation rows of the survey's D-8 (a shot through the open gate is not halved; VCMI
+# halves it) and D-10 (the moat's -3 defense is not floored at 0; VCMI floors it), both decided
+# for the code at BAT-Q42, and the Tower's ten hidden mines (D-9).
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them. They are the engine's at b63cdb1 (faithful profile; computed in a
+# scratch test against the harvested SoD packs with the same armies, heroes and commands; the
+# engine has no keep and no Catapult yet, T6 and T7, so their shots are no part of them); the
+# alternatives name their source.
+#
+# Each Red hero stands south of a Blue town's entrance: stepping north attacks it. Play in hot
+# seat (Red and Blue human), so one player commands both armies. A round begins with the keep's
+# shot (a Citadel) and the Catapult's; they act on their own and their damage is no part of any
+# record. Stacks without a step defend. Hexes are numbered row by row from the top left, 17 per
+# row (hex = 17 x row + column; columns 0 and 16 are the war machines'); the moat lies left of the
+# wall in every row: 11, 28, 44, 61, 77, 95 (the drawbridge), 111, 129, 146, 164, 181; the gate is
+# hex 96, the outer bridge 94. An agent's run reads everything from memory instead
+# (experiments/agent/siege.py: the stack record's +0x38 hex, +0x4C count and +0x58 lost hit points,
+# the battle manager's +0x53A4 gate (3 closed, 1 open), +0x13FA8 the walls' hit points, the hex
+# records' Land Mine bit 0x8 and the objects at +0x13D58; docs/exe/structs.toml).
+# Armies: no stack's army mixes three towns (no bad morale); the Magic Elementals have no morale.
+# The battlefield's terrain is the town's: lava (Inferno), grass (Castle), snow (Tower).
+
+[map]
+name = "E04c batch 3c"
+description = "Engine-generated experiment map (E04c, batch 3c): the walls, the gate and the moat of a siege. Follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Copy `E04c-batch-3c.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps` and start it in hot seat (Red and Blue human). Save right away.",
+    "Each Red hero stands south of a Blue town's entrance. Play the encounters in any order: select the hero and step north into the town; command both armies as the encounter says (every stack without a step defends).",
+    "Note what the encounter's record asks right after each step: the hit points a stack lost are its count times its hit points before and after (right-click). The keep's and the Catapult's shots at a round's start belong to no step. Then end the battle as you like and load the save for the next encounter.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- The moat (BAT-SIE-004 to BAT-SIE-006, D-10) --------------------------------------------------
+
+[[encounter]]
+id = "M"
+title = "The moat at an Inferno with a Citadel: stop, damage, defense"
+questions = ["BAT-SIE-004", "BAT-SIE-005", "BAT-SIE-006", "D-10"]
+procedure = [
+    "Round 1: the Archangel waits. The Sprites (column 1, row 2) fly into the moat at hex 44 (row 2, column 10). The Magic Elementals (column 1, row 5) walk into the moat at hex 111 (row 6, column 9). When the Archangel's turn comes back, it strikes the Sprites from the left (from hex 43).",
+    "Round 2: the Sprites defend where they stand (in the moat). The Magic Elementals walk to hex 146 (row 8, column 10, the moat), two hexes down the moat past hex 129.",
+    "Round 3: the Magic Elementals defend where they stand. Then end the battle as you like.",
+]
+predictions = """
+Inferno's moat does 90 (`code` 0x63BD18; `vcmi` `moats.json` 90; the wiki too).
+- M1, the Sprites land in the moat: **90** hit points lost (200 Sprites of 3: 30 die), a flight
+  that lands there enters it (BAT-SIE-005).
+- M2, the Magic Elementals walk in: **90** (one dies), they stand on 111.
+- M3, the Archangel (attack 30, damage 50) strikes the Sprites (defense 2) in the moat: the code
+  2 - 3 = -1, 31 more attack: 50 x (1 + 0.05 x 31) = **127** (D-10, BAT-SIE-006); `vcmi` floors the
+  defense at 0: 50 x 2.5 = **125**; outside the moat it would be 50 x 2.4 = 120.
+- M4, the Sprites defend in the moat: **90** again (acting in place, 0x441F70).
+- M5, along the moat: the walk stops on the first moat hex it enters, so the path goes around 129
+  (111 -> 128 -> 145 -> 146, three steps of their 9): they stand on **146** and lose **90** once
+  (BAT-SIE-004). Through the moat (111 -> 129 -> 146) they would stop on 129.
+- M6, the Magic Elementals defend in the moat: **90**.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [8, 12]
+primary = [0, 0, 1, 1]
+army = [["Sprite", 200], ["Magic Elemental", 10], ["Peasant", 10]]
+[encounter.opponent.town]
+faction = "Inferno"
+buildings = ["fort", "citadel"]
+garrison = [["Archangel", 1], ["Peasant", 50], ["Halfling", 10]]
+[[encounter.record]]
+field = "M1: the Sprites' lost hit points as they land on 44"
+[[encounter.record]]
+field = "M2: the Magic Elementals' lost hit points as they walk into 111"
+[[encounter.record]]
+field = "M3: the Sprites' lost hit points from the Archangel's strike"
+[[encounter.record]]
+field = "M4: the Sprites' lost hit points as they defend in the moat"
+[[encounter.record]]
+field = "M5: where the Magic Elementals end (hex) and their lost hit points"
+[[encounter.record]]
+field = "M6: the Magic Elementals' lost hit points as they defend in the moat"
+[[encounter.record]]
+field = "anything odd"
+
+# --- The gate and the shots through the walls (BAT-SIE-003, BAT-SIE-008, D-8) ----------------------
+
+[[encounter]]
+id = "G"
+title = "The gate of a Castle with a Fort; shots through the walls and the open gate"
+questions = ["BAT-SIE-002", "BAT-SIE-003", "BAT-SIE-008", "D-8"]
+procedure = [
+    "Round 1: the Titan (column 1, row 5, hex 86) shoots the Minotaur Kings (hex 100, inside, behind the closed gate). The Sprites wait. The Minotaur Kings walk onto the gate's hex 96. The Trolls (hex 49) walk to hex 97, inside right of the gate.",
+    "Round 2: the Titan shoots the Trolls on 97 through the open gate. The Minotaur Kings walk out to hex 76 (row 4, column 8, outside).",
+    "Round 3: the Sprites fly to the outer bridge, hex 94 (row 5, column 9). The Trolls try to walk onto the gate's hex 96. Then end the battle as you like.",
+]
+predictions = """
+The Titan (attack 24, damage 40-60, one creature: one roll) is 14 hexes from 100 and 11 from 97:
+both beyond the full-damage distance of 10, so halved by the distance (BAT-RNG-002).
+- G1, through the closed gate at the Minotaur Kings (defense 15): the line along row 5 meets the
+  gate's hex 96, closed: halved again, a quarter: roll x 1.45 / 4 = **14 to 21** (the engine drew
+  14); half (no wall) would be 29 to 43.
+- G2, the Minotaur Kings step onto 96: the gate opens (**3 -> 1**) and stays open after their walk,
+  as they stand on it (BAT-SIE-003).
+- G3, through the open gate at the Trolls (defense 7) on 97, inside: the `code` does not halve
+  (D-8; the line's only wall hex is the open gate's): only the distance, roll x 1.85 / 2 = **37 to
+  55** (the engine drew 48); `vcmi` halves it (the gate's hex blocks while the gate stands): a
+  quarter, 18 to 27.
+- G4, the Minotaur Kings walk out (96 -> 95 -> 77 or 94 -> 76): the gate closes after the walk
+  (**1 -> 3**), as 95 and 96 are free.
+- G5, the Sprites land on 94: nothing to note but where they stand.
+- G6, the Trolls try 96: a stack on the outer bridge 94 keeps the closed gate shut for the
+  defender too (`code` 0x469A10: 95 and 94 must be free; `vcmi`: the bridge hex 94): **refused**,
+  they stay on 97 (they defend).
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+at = [18, 12]
+primary = [0, 0, 1, 1]
+army = [["Sprite", 20], ["Titan", 1], ["Pixie", 10]]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort"]
+garrison = [["Troll", 5], ["Minotaur King", 5], ["Peasant", 10]]
+[[encounter.record]]
+field = "G1: the Minotaur Kings' lost hit points from the Titan's shot"
+[[encounter.record]]
+field = "G2: the gate after the Minotaur Kings' walk onto 96 (open or closed)"
+[[encounter.record]]
+field = "G3: the Trolls' lost hit points from the Titan's shot"
+[[encounter.record]]
+field = "G4: the gate after the Minotaur Kings' walk out to 76"
+[[encounter.record]]
+field = "G5: where the Sprites land"
+[[encounter.record]]
+field = "G6: could the Trolls walk onto 96?"
+[[encounter.record]]
+field = "anything odd"
+
+# --- The Tower's mines (BAT-SIE-007, D-9) ---------------------------------------------------------
+
+[[encounter]]
+id = "T"
+title = "The Tower's land mines (a Citadel, no defending hero)"
+questions = ["BAT-SIE-007", "BAT-MAG-033", "D-9"]
+procedure = [
+    "At the battle's start, note whether any mine shows (the attacker's view).",
+    "Round 1: the Titans (column 1, row 5, hex 86) walk to hex 77 (row 4, column 9, where a moat would be).",
+    "Round 2: the Titans walk up to hex 28 (row 1, column 11): the only shortest way passes 61 and 44. Then end the battle as you like.",
+]
+predictions = """
+- T1, at the start: ten Land Mines of the defender's, hidden (+0xA 0), on 11, 28, 44, 61, 77, 111,
+  129, 146, 164, 181 (every moat hex but the drawbridge's), each worth **150** (SoD rules, no
+  defending hero; D-9: the code and the wiki, VCMI always 150). The Tower has no moat flag.
+- T2, onto 77: the mine goes off: **150** hit points lost (the Titans 300 each: none dies), the mine
+  is gone (nine left), they stand on 77; no moat damage.
+- T3, 77 -> 61 -> 44 -> 28: three mines go off, the walk goes on after each (BAT-MAG-033): **450**,
+  they stand on 28, six mines left.
+"""
+[encounter.hero]
+type = "Rissa"
+specialty = "resource mercury"
+at = [28, 12]
+primary = [0, 0, 1, 1]
+army = [["Titan", 3]]
+[encounter.opponent.town]
+faction = "Tower"
+buildings = ["fort", "citadel"]
+garrison = [["Gremlin", 10]]
+[[encounter.record]]
+field = "T1: mines shown at the start (where, if any)"
+[[encounter.record]]
+field = "T2: the Titans' lost hit points as they walk onto 77; where they stand"
+[[encounter.record]]
+field = "T3: the Titans' lost hit points on the walk to 28; where they stand"
+[[encounter.record]]
+field = "anything odd"
