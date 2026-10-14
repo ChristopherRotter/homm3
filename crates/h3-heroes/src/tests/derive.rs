@@ -1473,12 +1473,13 @@ fn learning_grows_the_experience_gained() {
 #[test]
 fn the_map_reads_attack_and_defense_as_the_battle_hero_has_them() {
     let r = compile(effect_pack()).unwrap();
-    // The base, the worn artifacts' per copy and the specialty's, within the bounds: Attack
-    // 99 + 1 + 2 + 2 is 99, Defense 0 + 1 + 3 + 3 + 1 is 8.
+    // The base, the worn artifacts' per copy (the combination `t:circle` with its parts but
+    // `t:loop`, which needs a skill) and the specialty's, within the bounds: Defense
+    // 0 + 1 - 5 + 2 + 3 + 3 + 1 is 5, Attack 99 and more is 99.
     let d = details(&r);
     let hero = derive_battle_hero(&d, &r).unwrap();
     assert_eq!(attack_defense(&d, &r), (hero.attack, hero.defense));
-    assert_eq!(attack_defense(&d, &r), (99, 8));
+    assert_eq!(attack_defense(&d, &r), (99, 5));
     let mut d = details(&r);
     d.worn = vec![art(&r, "t:band")];
     d.primary = [3, 4, 1, 1];
@@ -1515,6 +1516,9 @@ fn join_pack() -> ContentPack {
 fn the_join_bonus_adds_the_levels_up_to_three() {
     let r = compile(join_pack()).unwrap();
     let mut d = details(&r);
+    // The combination `t:circle` brings its part `t:helm`'s 2.
+    assert_eq!(join_bonus(&d, &r), 2);
+    d.worn.clear();
     assert_eq!(join_bonus(&d, &r), 0);
     let offense = skill(&r, "t:offense");
     for level in 1..=3 {

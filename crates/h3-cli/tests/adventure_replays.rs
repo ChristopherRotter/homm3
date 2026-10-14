@@ -23,7 +23,9 @@
 //! 9 of them fight a battle, in either profile): `duel-s792-d28`, blue's hero attacks red's, wins
 //! and captures its backpack's artifact, and `duel-s120-strict-d28` (`--profile
 //! base:strict-fixed`: the obstacles from the attacker's stream, `ADV-QUIRK-5` off), red's
-//! underground hero attacks blue's and loses to it after 148 battle commands.
+//! underground hero attacks blue's and loses to it after 148 battle commands. In E08 T20a1
+//! (Diplomacy's join bonus in the base pack) all eight were re-recorded with their options: only
+//! the core ruleset hash in their headers moved.
 
 use std::path::PathBuf;
 
