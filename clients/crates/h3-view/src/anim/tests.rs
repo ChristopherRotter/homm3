@@ -1305,3 +1305,61 @@ fn sounds_start_with_their_groups() {
         ]
     );
 }
+
+#[test]
+fn a_target_reacts_as_the_projectile_lands() {
+    // A shot marks no striker (0x441A87 only in a melee), so the reactions start with the loop,
+    // however many frames the shooter has left after its climax (the Cyclops: 9 of 16; the
+    // Marksmen's recorded shot has 1): the shooter's frames 3 to 7 go on beside the hit.
+    let mut numbers = looks();
+    numbers.get_mut(&MARKSMAN).unwrap().climax = 3;
+    let layout = layout();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+    };
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 35, false),
+        at(1, Side::Defender, GOBLIN, 49, false),
+    ]);
+    let events = [struck(0, 1, 1, flags(true, false, false))];
+    let commands = [Command {
+        at: None,
+        events: &events,
+    }];
+    let t = timeline(&o, &commands, &numbers, stage, Speed::default()).unwrap();
+    let landed = t.flights[0].from + t.flights[0].steps * t.flights[0].step;
+    let hit = first(&t, 1, 3);
+    assert_eq!(hit, landed);
+    let shooter: Vec<(u32, u32)> = t
+        .keys
+        .iter()
+        .filter(|k| k.stack == 0 && k.drawn >= hit)
+        .map(|k| (k.pose.group, k.pose.frame))
+        .collect();
+    assert_eq!(
+        &shooter[..6],
+        [(15, 3), (15, 4), (15, 5), (15, 6), (15, 7), (2, 0)]
+    );
+    // The hit's seven frames, one per iteration from the landing, then standing.
+    let goblins: Vec<(u32, u32)> = t
+        .keys
+        .iter()
+        .filter(|k| k.stack == 1 && k.drawn >= hit)
+        .map(|k| (k.pose.group, k.pose.frame))
+        .collect();
+    assert_eq!(
+        goblins[..8],
+        [
+            (3, 0),
+            (3, 1),
+            (3, 2),
+            (3, 3),
+            (3, 4),
+            (3, 5),
+            (3, 6),
+            (2, 0)
+        ]
+    );
+}

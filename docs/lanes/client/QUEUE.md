@@ -8,7 +8,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 
 ### E17 M2 T4b-2b — The scene over time, completed
 
-- **Scope:** what T4b-2a (2026-10-14, design §7.10) left. **First a strike's and a shot's turns** in the original (the walk's turn is recorded, sequence `turn`; no opening sets up the others, design §7.10: a battle in progress must put a stack behind another, e.g. a computer stack that walked past the human's, with its engine command observed), with the melee's layers and the flight's two standing frames. Then: the melee's listed difference (3 504–3 966 ms: the Wolf Riders walking past the Angels; lead: `stack_play_group` redraws only the walker's dirty rectangle, 0x446A06–0x446BB3); a walk's turn (a two-hex walker turning on its first step and flipping later); deaths by anything but a strike, created stacks; Haste and Slow (the walk time); new sequences for the rest of §7.7 (a death, a defending stack, a shot up and down, a flight across rows over other stacks: T5a's flier drawn over everything, design §7.10), each with its frames recorded; the inbox's capture set by time.
+- **Scope:** what T4b-2a (2026-10-14, design §7.10) left. **First a strike's and a shot's turns** in the original (the walk's turn is recorded, sequence `turn`; no opening sets up the others, design §7.10: a battle in progress must put a stack behind another, e.g. a computer stack that walked past the human's, with its engine command observed), with the melee's layers and the flight's two standing frames. Then: the melee's listed difference (3 504–3 966 ms: the Wolf Riders walking past the Angels; lead: `stack_play_group` redraws only the walker's dirty rectangle, 0x446A06–0x446BB3); a walk's turn (a two-hex walker turning on its first step and flipping later); deaths by anything but a strike, created stacks; Haste and Slow (the walk time); new sequences for the rest of §7.7 (a death, a defending stack, a shot up and down, a flight across rows over other stacks: T5a's flier drawn over everything, design §7.10, a Cyclops' shot: a shooter with frames left after its climax, the loop's end, T5b's design §7.4), each with its frames recorded; the inbox's capture set by time.
 - **Acceptance:** every recorded sequence's frames match the original outside the masks, or their differences are listed.
 - **Depends on:** T4b-2a (done).
 - **Status:** ready.
@@ -25,6 +25,10 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 
 ## Inbox
 
+- 2026-10-14 (E17 M2 T5b, the user): **good morale shows nothing.** The engine's `GoodMorale`
+  event gives a stack a second action (the Marksmen in `scenarios/battle.toml`: two double shots
+  in a row); the viewer ignores it, where the original plays its morale animation and sound
+  before the action (not read). With the magic animations (M3).
 - 2026-10-14 (E17 M2 T5b): **the sound's remainder** (design §8.2, "Not read"), each when M3 or
   the feature that needs it comes: the battle's end (`battle_end` 0x477470 calls `play_music`
   twice: the victory and defeat tunes, with the results); the spells' sounds (the spell table's
