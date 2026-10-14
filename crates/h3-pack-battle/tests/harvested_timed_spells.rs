@@ -91,6 +91,7 @@ fn batch_2b_r3_the_fire_shield_reflects_a_fifth_of_the_first_stage() {
             war_machines: [vec![], vec![]],
             formations: [Formation::Loose; 2],
             funds: [0; 2],
+            ..BattleSetup::default()
         };
         let mut s = BattleState::new(&r, &setup, 1).unwrap();
         // Stacks: 0 the Naga Queens (speed 7, two hexes), 1 the Peasants (speed 3).

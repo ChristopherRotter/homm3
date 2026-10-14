@@ -93,6 +93,7 @@ fn battle(
         war_machines: heroes.map(|d| war_machines(d, r)),
         formations: [Formation::Loose; 2],
         funds: [30_000; 2],
+        ..BattleSetup::default()
     };
     BattleState::new(r, &setup, 1).unwrap()
 }

@@ -552,6 +552,7 @@ fn make_setup(
                 Formation::Tight
             }
         }),
+        ..BattleSetup::default()
     }
 }
 

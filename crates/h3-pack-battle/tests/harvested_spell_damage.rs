@@ -119,6 +119,7 @@ fn led(
         ],
         formations: [Formation::Loose; 2],
         funds: [0; 2],
+        ..BattleSetup::default()
     };
     let mut s = BattleState::new(r, &setup, 1).unwrap();
     while s.side_to_act() != Some(BattleSide::Attacker) {
@@ -352,6 +353,7 @@ fn batch_2a_r1_r2_chain_lightning_by_the_screen_distance_and_the_army_slot() {
             war_machines: [vec![], vec![]],
             formations: [Formation::Loose; 2],
             funds: [0; 2],
+            ..BattleSetup::default()
         };
         let mut s = BattleState::new(&r, &setup, 1).unwrap();
         // Blue's tactics phase: its stacks come in their army's order (equal speeds).

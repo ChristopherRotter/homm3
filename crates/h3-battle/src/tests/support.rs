@@ -3086,6 +3086,7 @@ pub fn setup(rules: &BattleRuleset, attacker: &[Spec], defender: &[Spec]) -> Bat
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
         funds: [0; 2],
+        ..BattleSetup::default()
     }
 }
 
