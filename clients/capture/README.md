@@ -121,9 +121,9 @@ drew in `ours.txt`); the masked diff of each pair (panel, heroes, the count boxe
 poses show them), written to `frames.txt` and, for a frame that differs, `diff/t<ms>.png`; each
 line compared with the sequence's recorded `timelines/<id>-frames.txt` (`ok`, `new`, `CHANGED`;
 exit 1 on a change). `--reuse` keeps the original's frames from an earlier run and only redraws
-and compares (after a change to the viewer). About 14 minutes for the four sequences (default
-`<dir>`: `clients/out/frames`). Only a fidget comes from the original's memory; everything else is
-the viewer's own timeline.
+and compares (after a change to the viewer). About 14 minutes for the first four sequences and 15
+more for `behind` (default `<dir>`: `clients/out/frames`). Only a fidget comes from the
+original's memory; everything else is the viewer's own timeline.
 
 **An experiment batch on the adventure map** (M2 T6; `docs/experiments/README.md`): from
 `clients/`,
@@ -236,6 +236,10 @@ design §7.1.
   then is one step behind; the frame check draws the viewer's own timeline for that reason.
 - Inside an animation the memory holds the frame drawn, the screen the one shown (design §7.1):
   never render the memory's poses as the screen at that time.
+- In a battle in progress (M3 T1a) the game names a striker the active stack again while it
+  turns back after its attack, so `turn:` waits for the stack named, not for any active one; a
+  click before the turn starts is lost, and `click:` parks the game's cursor afterwards (the game
+  draws it into the frames).
 - Under load (a build beside it) a sequence once read the computer's first frame a millisecond
   late (`melee`: 1919 for 1918, `CHANGED`): the turn's start ran after the 20 clock reads the
   driver then waited for. A sequence's steps now wait for 500 reads; still, run `sequences` and
