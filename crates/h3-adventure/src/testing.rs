@@ -258,6 +258,16 @@ pub(crate) fn movement_rules(faithful: bool) -> (Ruleset, AdventureRuleset) {
 
 /// [`movement_rules`] with maps up to `size` × `size`.
 pub(crate) fn movement_rules_up_to(faithful: bool, size: u16) -> (Ruleset, AdventureRuleset) {
+    movement_rules_edited(faithful, size, |_| {})
+}
+
+/// [`movement_rules_up_to`] with the core pack changed by `edit` before it compiles (E08
+/// T19a2b: upgrades).
+pub(crate) fn movement_rules_edited(
+    faithful: bool,
+    size: u16,
+    edit: impl FnOnce(&mut ContentPack),
+) -> (Ruleset, AdventureRuleset) {
     let adventure_quirks = [
         "quirk.adventure.diagonal_check_ignores_roads",
         "quirk.adventure.diagonal_check_ignores_native",
@@ -306,6 +316,8 @@ pub(crate) fn movement_rules_up_to(faithful: bool, size: u16) -> (Ruleset, Adven
         ],
         ..ContentPack::new(manifest("t", &[]))
     };
+    let mut core = core;
+    edit(&mut core);
     let profile = if faithful { "t:faithful" } else { "t:strict" };
     let core = Ruleset::compile(&[core], profile).unwrap();
     let cost = |c| NonZeroU16::new(c).unwrap();

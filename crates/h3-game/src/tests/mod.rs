@@ -30,9 +30,9 @@ use h3_adventure::{
 use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ContentKey, ContentPack, CreatureDef,
     CreatureInfoDef, CreatureTypeId, FactionDef, Formation, HeroClassDef, HeroEffect,
-    HeroParamsDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, Ruleset,
-    SecondarySkillDef, SpellCategory, SpellDef, SpellSchoolDef, StartingStackDef, TerrainDef,
-    TerrainId,
+    HeroParamsDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, RaisedCreature, ResourceDef,
+    Ruleset, SecondarySkillDef, SpellCategory, SpellDef, SpellSchoolDef, StartingStackDef,
+    TerrainDef, TerrainId,
 };
 use h3_content_battle::{
     AbilityDef, BattleCreatureDef, BattlePack, BattleParamsDef, BattleRuleset, BattleSpellDef,
@@ -175,6 +175,11 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
                 key: key("t:tile"),
                 quirks: vec![("quirk.adventure.obstacles_from_tile".to_string(), true)],
             },
+            // The original's single-precision rates, Q-0005 (E08 T19a2b: Necromancy's count).
+            ProfileDef {
+                key: key("t:single"),
+                quirks: vec![("quirk.battle.single_precision_rates".to_string(), true)],
+            },
         ],
         // The hero model's content (E08 T18b): a book and a machine slot, the spell book, the
         // cart's artifact, a charm and a scroll without slot, a spell, Wits (+25/50/100 % spell points) and the hero parameters;
@@ -218,17 +223,31 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
             name: "Air".into(),
             protection_rank: 0,
         }],
-        spells: vec![SpellDef {
-            key: key("t:gust"),
-            name: "Gust".into(),
-            category: SpellCategory::Combat,
-            level: 1,
-            schools: vec![key("t:air")],
-            cost: [5, 4, 4, 4],
-            power: 10,
-            effect: [10, 10, 20, 30],
-            granted_by_name_only: false,
-        }],
+        spells: vec![
+            SpellDef {
+                key: key("t:gust"),
+                name: "Gust".into(),
+                category: SpellCategory::Combat,
+                level: 1,
+                schools: vec![key("t:air")],
+                cost: [5, 4, 4, 4],
+                power: 10,
+                effect: [10, 10, 20, 30],
+                granted_by_name_only: false,
+            },
+            // A level 3 spell (E08 T19a2b: Eagle Eye's learning needs Basic Sense).
+            SpellDef {
+                key: key("t:gate"),
+                name: "Gate".into(),
+                category: SpellCategory::Adventure,
+                level: 3,
+                schools: vec![key("t:air")],
+                cost: [5, 4, 4, 4],
+                power: 10,
+                effect: [10, 10, 20, 30],
+                granted_by_name_only: false,
+            },
+        ],
         skills: vec![
             SecondarySkillDef {
                 key: key("t:wits"),
@@ -239,6 +258,28 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
                 key: key("t:lore"),
                 name: "Lore".into(),
                 levels: [500, 1000, 1500].map(|bp| vec![HeroEffect::ExperienceGain { bp }]),
+            },
+            // E08 T19a2b: Dark (Necromancy: 10/20/70 %, imps raised) and Sense (Wisdom).
+            SecondarySkillDef {
+                key: key("t:dark"),
+                name: "Dark".into(),
+                levels: [1000, 2000, 7000].map(|bp| {
+                    vec![
+                        HeroEffect::Necromancy {
+                            bp,
+                            unless_skill: None,
+                        },
+                        HeroEffect::Raises {
+                            priority: 0,
+                            creature: RaisedCreature::Creature(key("t:imp")),
+                        },
+                    ]
+                }),
+            },
+            SecondarySkillDef {
+                key: key("t:sense"),
+                name: "Sense".into(),
+                levels: [1, 2, 3].map(|levels| vec![HeroEffect::LearnLevel { levels }]),
             },
         ],
         hero_params: Some(HeroParamsDef {

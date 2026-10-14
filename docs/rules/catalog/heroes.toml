@@ -674,7 +674,7 @@ id       = "HER-CHG-001"
 title    = "A change to a hero's details is checked before it applies"
 context  = "heroes"
 status   = "implemented"
-summary  = "A context changes a hero only through typed changes the game applies to its store (ADR-0013 point 2, E08 decision 25): gain experience (the sum saturates), set the spell points, receive an artifact (HER-CHG-002), lose the artifact at a worn or backpack position (the later ones move up). Each is checked against the hero's details first, so that they stay valid (HER-DET-001 to HER-SPL-001): a received artifact must be of the ruleset, holding a spell exactly when it is a scroll (HER-ART-003), and find room; a lost one must be there. Applying a change the check refuses changes nothing. E08 T19a2a: `h3_heroes::{HeroChange, check_change, apply_change}`."
+summary  = "A context changes a hero only through typed changes the game applies to its store (ADR-0013 point 2, E08 decision 25): gain experience (the sum saturates), set the spell points, receive an artifact (HER-CHG-002), lose the artifact at a worn or backpack position (the later ones move up), learn a spell (E08 T19a2b: added at the end; it must be a hero spell of the ruleset the hero has not learned). Each is checked against the hero's details first, so that they stay valid (HER-DET-001 to HER-SPL-001): a received artifact must be of the ruleset, holding a spell exactly when it is a scroll (HER-ART-003), and find room; a lost one must be there. Applying a change the check refuses changes nothing. E08 T19a2a, T19a2b: `h3_heroes::{HeroChange, check_change, apply_change}`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -750,3 +750,120 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/War_Machine"
   retrieved  = "2026-10-03"
   confidence = "medium"
+
+[[rule]]
+id       = "HER-SPL-005"
+title    = "The highest spell level a hero may learn"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero may learn spells up to a level: the hero parameters' learn_level (the original's 2) plus the levels of its learn_level effects (Wisdom +1/+2/+3 at Basic, Advanced, Expert; each artifact type once), at most 5. It limits the Eagle Eye picks a winner learns (HER-SPL-006); the mage guilds (E09) and the spell-teaching objects ask the same. Casting needs no Wisdom. E08 T19a2b: `h3_heroes::learn_level`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading: eagle_eye_learn 0x469FE0 lets the winner's hero learn a pick only if its level is at most the Wisdom level (+0xD0) + 2 (installation.md §7.24, BAT-Q24)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "E04b batch 2f (BAT-Q24): a winner without Wisdom learned Bless (level 1) but not Air Shield (level 3), which one with Basic Wisdom learned"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Wisdom: Basic, Advanced and Expert 'allows your hero to learn' third, fourth and fifth level spells; 'Wisdom is not required to cast third or higher level spells, only to learn them'"
+  url        = "https://heroes.thelazy.net/index.php/Wisdom"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/gameConfig.json: every hero's MAX_LEARNABLE_SPELL_LEVEL 2 ('Hero can always learn level 1 and 2 spells'); config/skills.json Wisdom +1/+2/+3; CGHeroInstance::maxSpellLevel, at most 5"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L1316-L1319"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-SPL-006"
+title    = "Which Eagle Eye picks a winner learns"
+context  = "heroes"
+status   = "implemented"
+summary  = "After a battle its side won, a hero learns each spell its Eagle Eye picked (HeroOutcome.learned, BAT-MAG-069) while it wears a spell book (an effect gives one: in the original the Spell Book worn, not in the backpack), if the spell is a hero spell of the ruleset it has not learned and of a level at most its learnable level (HER-SPL-005). The loser learns nothing. E08 T19a2b: `h3_heroes::learns_spell`, `HeroChange::LearnSpell` (GAM-BAT-007)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading: battle_end 0x477470 calls eagle_eye_learn 0x469FE0 (0x477776) for the winning side's hero only: each spell of the side's Eagle Eye set (+0x545C) if the hero wears the Spell Book (artifact 0) and the level is at most Wisdom + 2 (installation.md §7.24, BAT-Q24)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "E04b batch 2f (EL, EB, EW; BAT-Q24): a winner with its Spell Book in the backpack learned nothing; the level limit as HER-SPL-005"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Eagle Eye: the winning hero learns the spells (survey E04-skills.md); silent on the spell book (BAT-Q24)"
+  url        = "https://heroes.thelazy.net/index.php/Eagle_Eye"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleResultProcessor.cpp: the winner's hero with units left learns, after the battle, each spell the enemy cast of a level at most its Eagle Eye limit it does not have, rolled then; neither the spell book nor Wisdom is tested (BAT-Q24; the user answered as the code, 2026-10-11)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleResultProcessor.cpp#L466-L483"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+[[rule]]
+id       = "HER-NEC-001"
+title    = "A hero's Necromancy share"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero's Necromancy share is the sum of its necromancy effects: the skill's (10/20/30 %), grown by a Necromancy specialty by 5 % of itself per level, then each worn artifact type once (a combination's parts included; an artifact that needs the skill only with it, a share with unless_skill only without that skill), at most 100 %. With the harvested packs: the Amulet of the Undertaker, the Vampire's Cowl and Dead Man's Boots +5/+10/+15 % with the skill, so the Cloak of the Undead King through its parts +30 % with it, and its own +30 % without it (a hero without the skill raises 30 % with the Cloak, a rule of the original's, not a bug: its own branch in the code, the wiki and VCMI agree). Under quirk Q-0005 the original's single-precision sum, each source added and stored in order (HER-BAT-004's). The Necropolis buildings' +10/+20 % come with towns (E09). E08 T19a2b: `h3_heroes::necromancy`."
+numeric  = "float"
+quirks   = ["Q-0005"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T19a2b): hero_necromancy_power 0x4E3CD0: with the skill (+0xD5 above 0) the table value 0x63E9B8 (0, 0.1, 0.2, 0.3), times (1 + 0.05 x level +0x55) for a specialist (specialty type 0, skill 12), stored f32; +0.05, +0.10, +0.15 (each stored f32) for artifacts 54, 55, 56, each found among the 19 worn slots or through the combination its record names (+0x18, hero_wears_artifact 0x4D91F0); +0.10 and +0.20 for each Necropolis town with the building bits 0x66CE40, 0x66CE68; without the skill only +0.30 with the Cloak (130) worn; capped at 1.0 (battle_end passes the cap)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/skills.json Necromancy UNDEAD_RAISE_PERCENTAGE 10/20/30; config/artifacts.json the parts +5/+10/+15; CGHeroInstance::calculateNecromancy: 'need skill or cloak of undead king - lesser artifacts don't work without skill', the share clamped to 100"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L978-L998"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Necromancy: the Amulet of the Undertaker '+5% Necromancy', the Vampire's Cowl '+10%', Dead Man's Boots '+15%'; Cloak of the Undead King: '+30% Necromancy', 'For heroes without Necromancy, the Cloak of the Undead King raises killed enemy troops' as Skeletons at a fixed 30 %, which cannot be increased"
+  url        = "https://heroes.thelazy.net/index.php/Cloak_of_the_Undead_King"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-NEC-002"
+title    = "The creature a hero's Necromancy raises"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero's Necromancy raises the creature of its raises effect of the highest priority (E08 decision 30): the Necromancy skill's Skeletons at priority 0, the Cloak of the Undead King's at 1 by the hero's Necromancy level (none: Skeletons, Basic: Walking Dead, Advanced: Wights, Expert: Liches). Among equal priorities, if every one comes from an artifact, the lowest artifact id (that of the artifact or combination part whose list holds it), then the lowest creature id; otherwise the lowest creature id. Without a raises effect nothing is raised. E08 T19a2b: `h3_heroes::necromancy`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T19a2b): hero_necromancy_creature 0x4E3C60: Skeleton (56), unless the hero wears the Cloak of the Undead King (130, or the combination its record names); then by the Necromancy level 0 Skeleton, 1 Walking Dead (58), 2 Wight (60), 3 Lich (64)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/artifacts.json: the Cloak's IMPROVED_NECROMANCY Skeleton, Walking Dead, Wight, Lich at Necromancy 0 to 3; CGHeroInstance::calculateNecromancy picks the strongest one the level allows"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L997-L1038"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08 decision 30 (the raises kind and its tie rule, the user, 2026-10-14)"
+  confidence = "high"

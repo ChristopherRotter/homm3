@@ -317,7 +317,8 @@ fn check_told(
     let alone = Viewers::NONE.with(viewer);
     for event in told {
         match *event {
-            GameEvent::HeroChanged { player, hero, .. } => {
+            GameEvent::HeroChanged { player, hero, .. }
+            | GameEvent::CreaturesRaised { player, hero, .. } => {
                 prop_assert_eq!(player, viewer);
                 let own = before
                     .heroes

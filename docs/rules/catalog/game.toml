@@ -219,7 +219,7 @@ id       = "GAM-BAT-002"
 title    = "Applying a battle's outcome: the armies and the heroes"
 context  = "game"
 status   = "implemented"
-summary  = "When a battle on the map ends, its outcome applies at once and infallibly, told first as its end (`BattleEnded`, the heroes and the result) to its owners, one context after the other: in the adventure a hero that stays on the map (GAM-BAT-003) keeps its army survivors (BattleOutcome::survivors: each stack's count its survivors, a damaged top creature forgotten, a raised stack in its dead stack's slot) as its army; then the heroes' part, each a change of `h3_heroes` (HER-CHG-001) told to the hero's owner (`HeroChanged`): each side's hero keeps the spell points it has left (HeroOutcome::mana) and loses the artifact of each war machine destroyed (HER-WAR-002), whatever the result; the hero of the side that won and stays on the map gains the battle's experience: the hit points the loser's army and raised stacks lost (start - end of each record, at its type's hit points without artifacts; not the loser's war machines nor the stacks the battle created), plus 500 after a victory over a hero (GAM-BAT-004), grown by its Learning (HER-EXP-001); nothing after a draw. Necromancy and Eagle Eye's spells come with E08 T19a2b (ADV-STUB-3). E08 T19a, T19a2a: `GameState::end_battle`, `AdventureState::end_battle`."
+summary  = "When a battle on the map ends, its outcome applies at once and infallibly, told first as its end (`BattleEnded`, the heroes and the result) to its owners, one context after the other: in the adventure a hero that stays on the map (GAM-BAT-003) keeps its army survivors (BattleOutcome::survivors: each stack's count its survivors, a damaged top creature forgotten, a raised stack in its dead stack's slot) as its army; then the heroes' part, each a change of `h3_heroes` (HER-CHG-001) told to the hero's owner (`HeroChanged`): each side's hero keeps the spell points it has left (HeroOutcome::mana) and loses the artifact of each war machine destroyed (HER-WAR-002), whatever the result; the hero of the side that won and stays on the map gains the battle's experience: the hit points the loser's army and raised stacks lost (start - end of each record, at its type's hit points without artifacts; not the loser's war machines nor the stacks the battle created), plus 500 after a victory over a hero (GAM-BAT-004), grown by its Learning (HER-EXP-001); nothing after a draw; then its Necromancy's creatures (GAM-BAT-006) and its Eagle Eye's spells (GAM-BAT-007). E08 T19a, T19a2a, T19a2b: `GameState::end_battle`, `AdventureState::end_battle`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -329,3 +329,54 @@ numeric  = "integer"
   retrieved  = "2026-10-14"
   confidence = "high"
   note       = "Disagrees: the winner's owner gets nothing. D-13 decided as the code reading (E08 decision 23)."
+
+[[rule]]
+id       = "GAM-BAT-006"
+title    = "Necromancy after a battle: the creatures raised join the winner's army"
+context  = "game"
+status   = "implemented"
+summary  = "When a battle on the map ends with a winner whose hero stays on the map (GAM-BAT-002; after a victory, a retreat or a surrender of the loser, not a draw), its hero's Necromancy (HER-NEC-001, HER-NEC-002, taken before the experience is given, as the original's) raises, after the experience: for each record of the loser that lost creatures (start - end; every record: army stacks, raised and summoned stacks, clones and war machines), killed x min(its type's hit points, the raised creature's) x the share / the raised creature's hit points, rounded down, at most the record's killed (hit points without artifacts); the sum, at least 1 if anything was killed. Under quirk Q-0005 the original's arithmetic: per record trunc(f32(min(hp, raised hp) x killed) x share / f32(raised hp)) in its x87 arithmetic, with the share in single precision (10 imps at 70 %: 6, not 7); its 32-bit product, which wraps above 2^31, is not modelled. They join the hero's stack of that creature, else a new stack in its first free slot; in a full army without one, (2c + 2) / 3 of the creature's first upgrade join its stack of the upgrade, if it has one, else none join. Told to the hero's owner only (`CreaturesRaised`: the creature and the count that joined). The original's elementals exception (no upgrade for 112 to 115 while a game flag is off) is not modelled: no hero raises them. E08 T19a2b: `GameState::heroes_after_battle`, `AdventureState::raise`."
+numeric  = "float"
+quirks   = ["Q-0005"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T19a2b): battle_end 0x477470 for the winner side's hero (0x47757C): hero_necromancy_power with the cap (0x4775A1), nothing if not above 0; hero_necromancy_creature (0x4775C4) and its hit points (creature table +0x4C); over the loser's 20 records (0x4775E1 to 0x477681) killed = +0x2C - +0x18, min(hp, raised hp) x killed (imul), fild, fstp f32, fmul the share, fdiv f32(raised hp), crt_ftol, at most killed, summed into +0x13D4C, at least 1 if a record lost creatures (0x477683); necromancy_add_raised 0x469F20 (0x47776E) adds them through army_add_stack 0x44ACE0, else once the upgrade 0x47B1A0 at (2c + 2) / 3, else 0"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "E04c batch 2d NE:7 (D-9): killed summoned stacks, clones and war machines count for Necromancy (survey E08-battles.md, E08-design.md §5)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Necromancy: 'the total health of raised Skeletons can never exceed the total health of killed creatures'; 'if a hero only has upgraded versions in the army and no free slots, the \"two thirds rule\" is applied'"
+  url        = "https://heroes.thelazy.net/index.php/Necromancy"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGHeroInstance.cpp calculateNecromancy: the casualties' hit points over the raised creature's; an upgraded creature in the army at 2/3 when there is no slot (it takes any direct or indirect upgrade and computes with its hit points: a difference)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L1040-L1060"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+[[rule]]
+id       = "GAM-BAT-007"
+title    = "Eagle Eye after a battle: the winner learns its picks"
+context  = "game"
+status   = "implemented"
+summary  = "When a battle on the map ends with a winner whose hero stays on the map, its hero learns each spell of its side's Eagle Eye picks (HeroOutcome.learned) it may learn (HER-SPL-006), in the picks' order, after the creatures raised (GAM-BAT-006) and before the capture (GAM-BAT-004), each a `LearnSpell` change told to its owner (`HeroChanged`). The loser's picks are never learned. E08 T19a2b: `GameState::heroes_after_battle`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading: battle_end 0x477470 calls eagle_eye_learn 0x469FE0 at 0x477776 for the winner's hero, after the raised creatures (0x47776E) and before the capture (0x477782)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "E04b batch 2f (BAT-Q24): the winner learned its picks as HER-SPL-006 allows"
+  confidence = "high"

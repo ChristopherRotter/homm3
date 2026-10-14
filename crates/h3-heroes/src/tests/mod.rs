@@ -590,3 +590,4 @@ proptest! {
 
 mod change;
 mod derive;
+mod outcome;

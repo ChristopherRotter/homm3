@@ -10,7 +10,7 @@ use core::fmt;
 use h3_adventure::{
     AdventureCommand, AdventureCommandError, AdventureEvent, ObjectTypeId, Pos, Viewers,
 };
-use h3_content::ResourceId;
+use h3_content::{CreatureTypeId, ResourceId};
 use h3_contracts::{BattleResult, HeroId, PlayerId};
 use h3_heroes::HeroChange;
 
@@ -203,6 +203,19 @@ pub enum GameEvent {
         hero: HeroId,
         /// The change, as `h3_heroes` applied it.
         change: HeroChange,
+    },
+    /// A hero's Necromancy raised creatures into its army after its side won a battle
+    /// (GAM-BAT-006, E08 T19a2b): those that joined, the upgrade at two thirds when the army was
+    /// full. Seen by the hero's owner.
+    CreaturesRaised {
+        /// The hero's owner.
+        player: PlayerId,
+        /// The hero.
+        hero: HeroId,
+        /// The creature that joined.
+        creature: CreatureTypeId,
+        /// How many joined.
+        count: u32,
     },
     /// A player's treasury paid a resource of an accepted offer's price (GAM-RES-001): one event
     /// per resource of the price, in its order; or a surrender's price (GAM-BAT-005, E08 T19a).
