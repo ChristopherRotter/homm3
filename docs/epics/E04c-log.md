@@ -140,3 +140,25 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   `siege` and the golden replay `siege-s7` (the defender out on both bridges and into the moat,
   the attacker in both rows); the other replays changed only their hashes and versions. Rules
   BAT-SIE-001 to BAT-SIE-008, 13 tests.
+- **T5e, batch 3c run by an agent** (#190, `battle/e04c-t5e`, 2026-10-14): the spec
+  `experiments/specs/E04c-batch-3c.toml` (predictions: the engine at b63cdb1 in a scratch test with
+  the same armies and commands; the engine has no keep and no Catapult yet) and
+  `experiments/agent/siege.py`, which plays a map in hot seat with both armies commanded (the town's
+  garrison too): a plan per encounter (round, stack, action), every other turn Defend, the clock
+  stepped 10 ms and the stacks, the gate, the walls and the mines read after each step; rounds by
+  the stacks' turn flags (+0x4F0; counting the Catapult's turns missed some, its active pointer can
+  last one frame). **M** (Inferno, Citadel): 90 for Sprites landing on a moat hex and for Magic
+  Elementals walking in, 90 again on Defend there, a walk from 111 to 146 around 129 with 90 once,
+  the Archangel's strike on the Sprites (defense 2) in the moat **127** (D-10; VCMI 125). **G**
+  (Castle, Fort): the gate opens as a defender begins its step onto 96, stays open while it stands
+  there, closes after its walk out; a stack on 94 stops a defender's step onto 96; the Titan's shot
+  through the closed gate 17 (a quarter), through the open one 46 (half, D-8; VCMI a quarter).
+  **T** (Tower, Citadel): ten hidden mines of the defender's, 150 each, on the moat hexes but 95;
+  150 on 77, then 450 on the walk 77 → 61 → 44 → 28, which goes on. M and G gave the same values in
+  three runs; T was played on its fifth attempt (bonus artifacts). Rules BAT-SIE-003 to 008
+  `verified`, BAT-MAG-033 an observation; the survey's D-8 to D-10 confirmed; `installation.md`
+  §7.28 "Observed". Seen for later tasks: the keep shoots at a round's start before the Catapult;
+  the Catapult (no Ballistics) hit wall parts and not the gate in six shots (the gate is a target
+  too, `BALLIST.TXT`; the user expects hits on it: T6 investigates); the original's walks pick other
+  shortest paths than ours on ties (M2 along row 5, G4 via 94; no rule depends on it here); the
+  gate opens before the step onto 96 where our engine reports it after the step (same state).
