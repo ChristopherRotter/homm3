@@ -6,8 +6,8 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{
-    ArtifactSlotId, ArtifactTypeId, CreatureTypeId, HeroEffect, HeroParams, HeroTypeId,
-    MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId, SpellCategory, SpellId,
+    ArtifactSlotId, ArtifactType, ArtifactTypeId, CreatureTypeId, HeroEffect, HeroParams,
+    HeroTypeId, MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId, SpellCategory, SpellId,
 };
 
 use crate::error::DetailsError;
@@ -209,6 +209,19 @@ fn validate_worn(worn: &[ArtifactInstance], ruleset: &Ruleset) -> Result<(), Det
         Some(full) => Err(DetailsError::SlotFull(full)),
         None => Ok(()),
     }
+}
+
+/// The type of an artifact a hero may hold (HER-ART-003): an artifact of the ruleset, holding a
+/// spell exactly when it is a scroll ([`validate_scroll`]).
+pub(crate) fn check_artifact(
+    item: ArtifactInstance,
+    ruleset: &Ruleset,
+) -> Result<&ArtifactType, DetailsError> {
+    let artifact = ruleset
+        .artifact(item.artifact)
+        .ok_or(DetailsError::UnknownArtifact(item.artifact))?;
+    validate_scroll(item, ruleset)?;
+    Ok(artifact)
 }
 
 /// An artifact holds a spell exactly when its type has the `scroll` effect, and that spell is a

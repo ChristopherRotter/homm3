@@ -4,13 +4,13 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0, M1 done; M2 T1, T3, T4a, T6, T4b-1 done 2026-10-13, T4b-2a and T2 2026-10-14 (SDL 3 chosen); next: M2 T5** (the SDL 3 adapter, M2's closure) or **T4b-2b** (`QUEUE.md`). Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020, ADR-0024 (SDL 3). Built: decoders, the real-asset gate, compositor, asset tables, `h3-view render`/`sequences`/`situation`/`play`, `h3_view::anim`, the capture harness (`clients/capture/README.md`); readings and evaluations in design §3–§8 (T2's spikes: the unmerged branch `client/e17-m2-t2-spikes`). Records: `docs/epics/E17-log.md`.
-- **Pull requests (2026-10-14):** #196 (shared: ADR-0024), then #195 (T2, `client/e17-m2-t2-window-eval`, docs only).
+- **E17 M0, M1 done; M2 T1–T4b-2a, T2 (SDL 3), T5a (M2's exit), T5b (the sound) done; next: M2 T5c** (M2's closure) or **T4b-2b** (`QUEUE.md`). Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020, ADR-0024. Built: decoders (images, sounds), the real-asset gate, compositor, asset tables, `h3-view render`/`sequences`/`situation`/`play`/`window`, `h3_view::anim`, the platform adapter `h3-sdl`, the capture harness (`clients/capture/README.md`); readings and evaluations in design §3–§8. Records: `docs/epics/E17-log.md`.
+- **Pull requests (2026-10-14):** #202 (`clients-lock`) and #203 (T5b) merged; T5b's shot fix (`client/e17-m2-t5b-shot`) open.
 - **The user's requirements (2026-10-13)**, epic "Decisions": a string catalogue, language packs; graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
-- The lane owns `clients/` (its own Cargo workspace, `clients/README.md`), `docs/epics/E17*` and this folder. Branches `client/<task>`. Ids: questions `CLT-Q<n>`, quirks (asset fixes) `CLT-QUIRK-<n>`, stubs `CLT-STUB-<n>`. ADR drafts go to `adr-drafts/` and get the next free number when the user accepts them.
+- The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
-- The lane needs the user's computer online (it may sleep mid-session: stage all a task needs first): stage the original files from `original-data/install/` into the clone's `original-data/install/` (`scripts/sandbox-setup.sh` does not copy them all). The gate and `render` need the four LODs (one per staging call; the gate also `h3maped.exe`), `h3-view situation` `H3bitmap.lod`; the captures also `Heroes3.exe`, the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid`.
-- **Open:** CLT-Q2 (the table-only LOD reader in `h3-formats`, for the battle lane; until it lands the client reads whole archives); CLT-Q4 (how a record carries the background variant; the scene takes an empty surrounding's).
+- The lane needs the user's computer online (it may sleep: stage all a task needs first) for the original files, from `original-data/install/` into the clone's (`sandbox-setup.sh` copies only some): the four LODs (one per staging call) for the gate (also `h3maped.exe`, `Heroes3.snd`, `H3ab_ahd.snd`), `render`, `play` and `window` (its sound: the two `.snd`, `MP3/COMBAT01`–`04`); the captures also `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`.
+- **Open:** CLT-Q2 (a table-only LOD reader in `h3-formats`; until then whole archives); CLT-Q4 (how a record carries the background variant).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -34,19 +34,21 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Standing traps
 
-- **CI may be out** (billing, since 2026-10-12; `docs/05-testing.md` "When CI cannot run"): run `clients/scripts/check.sh` and record its result in the pull request. It needs `cargo-deny`, `cargo-llvm-cov` and the LLVM tools (in a sandbox, `LLVM_COV=/usr/lib/llvm-20/bin/llvm-cov LLVM_PROFDATA=/usr/lib/llvm-20/bin/llvm-profdata`, as `scripts/sandbox-verify.sh` sets them).
+- **CI may be out** (billing, since 2026-10-12; `docs/05-testing.md`): run `clients/scripts/check.sh`, its result in the pull request. It needs `cargo-deny`, `cargo-llvm-cov` and the LLVM tools (a sandbox: `LLVM_COV`, `LLVM_PROFDATA` as `scripts/sandbox-verify.sh` sets them).
 - The coverage gate reads cargo-llvm-cov's summary; generic code can show false region misses there (the engine reads the merged view, `xtask/src/coverage.rs`): port that before blaming the tests.
 - A new dependency of a pure crate goes into `h3-view/tests/purity.rs`'s allowlist deliberately; a window or audio crate belongs in an adapter crate, not in `h3-view`'s pure library.
-- `winit`, `cpal`, `hound` (and through them Bevy, eframe, `rodio`) are Apache-2.0-only, which `deny.toml` rejects (ADR-0009); the window is SDL 3 (T2). Windows exes from the sandbox: `rustup target add x86_64-pc-windows-gnu` (`static.rust-lang.org`, open since 2026-10-14) and `mingw-w64`; the user runs them from `original-data/spikes/` (`device_commit_files`).
+- Sound in a sandbox: `SDL_AUDIO_DRIVER=disk` writes the mix to `./sdlaudio.raw` (S16 stereo 44.1 kHz, real time); else no device, no sound.
+- `winit`, `cpal`, `hound` (and Bevy, eframe, `rodio`) are Apache-2.0-only, which `deny.toml` rejects (ADR-0009); the window is SDL 3 (`h3-sdl`). Building `h3-view` builds SDL from source: CMake, a C compiler, the X11 headers (`clients.yml`'s list; a fresh sandbox lacks Xcursor's). Windows exes: `rustup target add x86_64-pc-windows-gnu`, `mingw-w64`, `--target x86_64-pc-windows-gnu`; put into the user's `clients/out/win/` (`device_commit_files`) they find the checkout from their place.
+- `clients/Cargo.lock` is a common path: the verify's `clients-lock` gate (#202) fails when an engine crate's dependencies change it; fix: `cargo update --workspace --manifest-path clients/Cargo.toml`.
 - `ci.yml` ignores `clients/**`; the client's job `clients.yml` watches `clients/` and the engine crates the client builds, which `check.sh` keeps complete ("ci paths").
-- `h3-protocol` depends on `h3-battle`, `h3-content`, `h3-contracts` and `h3-kernel`: a path dependency on it builds those too, and their changes can break the client.
+- `h3-protocol` builds `h3-battle`, `h3-content`, `h3-contracts`, `h3-kernel`: their changes can break the client.
 - Never run the original game from the installation: it writes saves, settings and DDrawCompat's log into its folder. Captures run the copy under `original-data/wine/` (`clients/capture/README.md`, its "Traps": the game's own cursor, the panel by turn, XWD colour maps); a Wine prefix must sit in a directory the shell's user owns (`/root/...` in a sandbox). Captures never enter git (ADR-0009).
 - Reading the original's state (`capture/h3mem.py`): memory holds the frame drawn, the screen the one shown, and lags it by a step after an animation (design §7.1, §7.9; runbook "Traps"): never render memory's poses as the screen. `Combat Speed` (the prefix's registry, 0): reset it after a run at another.
-- No float arithmetic or platform transcendental in the client, the binary included (`clippy.toml`): f32 behaviour in fixed point (`anim::f32_round`), tangents by series.
+- No float arithmetic or platform transcendental in the client's drawing and timing, the binary included (`clippy.toml`): f32 behaviour in fixed point (`anim::f32_round`), tangents by series; SDL's floats only at the adapter's edge (coordinates, `audio::gain`).
 - The adventure map's harness (`h3adv.py`): `Show Route` on (`setup.sh`), heroes selected from the hero list only, real time (no heavy build beside a batch): the runbook's "Traps".
 
 ## Recent sessions
 
-- **2026-10-14, E17 M2 T2 (the user present).** Spikes of SDL 3, `minifb` and `miniquad` (with `tinyaudio`) measured in the sandbox and on the user's Windows machine: all exact; SDL 3 alone with clean sound. The user chose SDL 3 (vsync off, hardware cursor). ADR-0024 (#196), design §8.
-- **2026-10-14, E17 M2 T4b-2a (the user present at the start).** `h3-view play`, turns and draw layers, our own fidgets; a walk's turn recorded (sequence `turn`, exact); a strike's or shot's turn needs a battle in progress (T4b-2b).
-- **2026-10-13, E17 M2 T4b-1 (the user present).** The frame check (`h3drive.py frames`): walk and shot exact, melee 68 of 75 (design §7.9).
+- **2026-10-14, E17 M2 T5b (the user present).** The decoder (1 232 entries equal SDL's), the battle's sounds read, cues, the tables' `sounds`, the window's audio; shared #202 (`clients-lock`). Design §8.2.
+- **2026-10-14, E17 M2 T5a (the user present).** T5 split; `h3-sdl`, `h3-view window`: frames read back exact under Xvfb; a Windows build for the user (`clients/out/win/`). Design §8.1.
+- **2026-10-14, E17 M2 T2 (the user present).** Three spikes measured in the sandbox and on the user's Windows machine; SDL 3 alone with clean sound: the user chose it (ADR-0024, design §8).

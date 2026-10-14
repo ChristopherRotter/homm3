@@ -4,7 +4,7 @@
 # resolve from the engine's root manifest.
 [workspace]
 resolver = "3"
-members = ["crates/h3-assets", "crates/h3-render", "crates/h3-view"]
+members = ["crates/h3-assets", "crates/h3-render", "crates/h3-sdl", "crates/h3-view"]
 
 [workspace.package]
 version = "0.1.0"
@@ -17,6 +17,7 @@ publish = false
 # Client crates.
 h3-assets = { path = "crates/h3-assets" }
 h3-render = { path = "crates/h3-render" }
+h3-sdl = { path = "crates/h3-sdl" }
 # Engine crates (public crates only, ADR-0020 point 1). A change the client needs in one of them
 # goes through that crate's lane.
 h3-formats = { path = "../crates/h3-formats" }
@@ -38,7 +39,24 @@ miniz_oxide = { version = "0.8", default-features = false, features = ["with-all
 # crate in a newer major version, the first that parses without std (the engine has 0.8, std only).
 serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
 toml = { version = "1.1", default-features = false, features = ["parse", "serde"] }
+# The platform adapter's (E17 M2 T5a, ADR-0024): SDL 3 built from its sources by `sdl3-src` (CMake
+# and a C compiler) and linked statically, one executable; the subsystems the client does not use
+# left out (audio stays: T5b). Only `h3-sdl` names it.
+sdl3-sys = { version = "0.7.2", default-features = false, features = [
+    "build-from-source-static",
+    "no-sdl-camera",
+    "no-sdl-dialog",
+    "no-sdl-gpu",
+    "no-sdl-haptic",
+    "no-sdl-hidapi",
+    "no-sdl-joystick",
+    "no-sdl-power",
+    "no-sdl-sensor",
+    "no-sdl-tray",
+] }
 # Test-only (the engine's version and features).
+# MP3 for the music (E17 M2 T5b; ADR-0024 point 5): pure Rust, minimp3's samples.
+nanomp3 = { version = "0.2", default-features = false, features = ["std"] }
 proptest = { version = "1", default-features = false, features = ["std"] }
 
 # The engine's lints (root Cargo.toml), unchanged. The engine's clippy.toml and rustfmt.toml at the

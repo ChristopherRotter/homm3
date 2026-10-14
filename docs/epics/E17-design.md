@@ -615,9 +615,16 @@ A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F
   one), each frame trunc(trunc(A / c) x F), A the attack time (+0x15C, x 500; only shots use
   it). Then the projectile in trunc((d + 20) / 40) steps over the d pixels to the target, each
   trunc(33 F) ms from its own start, outside the deadline (about 1 200 pixels a second); a ray
-  shooter waits trunc(115 F) and draws its ray (not read). Then `strike_animation`: the shooter
-  plays its group out while the target reacts; the deadline being behind, the reaction's first
-  frame shows for no time at all.
+  shooter waits trunc(115 F) and draws its ray (not read). Then `strike_animation`: a shot marks
+  no striker (`melee_strike` sets the striker's flag, 0x441A87; `stack_shot` sets none), so A is
+  0 and the loop counts the reactions alone: the longest starts as the projectile lands, however
+  many frames the shooter has left after its climax (the Cyclops 9 of 16, the Marksmen 1); the
+  shooter, still in its shot group (0x468A55), plays them on beside it, a frame per iteration,
+  then stands. The deadline being behind, the reaction's first frame shows for no time at all.
+  (Until E17 M2 T5b the viewer counted the shooter's frames left in the loop, which delayed a
+  Cyclops' target by 0.7 s: the user saw it; the Marksmen's recorded shot cannot tell the two
+  apart. Frames left beyond the loop are cut, and the loop has one iteration more than the
+  reactions' frames, as the Marksmen's sequence shows; the reading's L = R: *provisional*.)
   Confirmed (sequence `shot`): the Marksmen (A 500, c 7) show their 71 ms frames from 100 ms, the
   arrow's 14 steps every 33 ms from 526, the Goblins' hit from 988 (frame 0 never shown, then 100
   ms apart); the second shot (Marksmen shoot twice) starts 100 ms after the first's hit ends.
@@ -722,11 +729,11 @@ listed below. What the check settled:
   canvas: the start point less half the DEF's size, plus k × trunc(Δ / steps) (`idiv`), shown from
   the climax frame's time plus k × trunc(33 F); erased after the last. The Marksmen's arrow
   (`PLCBOWX.DEF`, 30 × 30, nine frames) at all 14 steps of both shots: exact.
-- **The shooter after its climax:** `strike_animation` (0x468A3D) counts a striker still in its
-  shot group with one frame less and advances each stack's frame before drawing it, so the
-  shooter shows frames c to n − 1 in the loop and stands from the second iteration on, while the
-  loop's length still counts n − c + 1 (T4a had frames c − 1 and c: the second iteration showed
-  frame 7 where the original stands; the lines were the same).
+- **The shooter after its climax:** `strike_animation` (0x468A3D) keeps a stack still in its
+  shot group in it and advances each stack's frame before drawing it, so the shooter shows frames
+  c to n − 1 in the loop and stands after (T4a had frames c − 1 and c: the second iteration
+  showed frame 7 where the original stands; the lines were the same). The loop's length: §7.4
+  (corrected in T5b: the shooter is no striker).
 - **The flight's points** (0x4B4BA3 to 0x4B4D5D, read): from the start hex's anchor (the hex
   record's +0x1C4, +0x1C6) the point moves on **before** each frame by f32((f32 Δ / f32 k) / f32 n)
   and is kept as an f32, the stack drawn at its truncation (`crt_ftol`): the x87's single
@@ -805,6 +812,15 @@ lets it idle. Read in `Heroes3.exe` for it:
   that does not draw that stack (*provisional*). A dying stack plays its death in its layer's
   pass and lies among the corpses (pass 1) from the next frame (*provisional*: the executable
   moves it to the corpses' list when its death ends).
+- **A flier in flight is in no row** (T5a; the user saw the Angels pass under the Wolf Riders'
+  corpse and the Orcs flying down four rows). `stack_flight_animation` sets +0x30 (0x4B4BD8)
+  and takes the stack off its hex records before the cycles (0x468730, from 0x4B4BFE); each frame
+  restores the last frame's rectangle from a saved buffer (0x44E2B0) and draws the flier by
+  itself (`draw_battle_stack` at 0x4B4D60), over everything; it stands on the landing hex again
+  before group 21 (0x4B4E24). The viewer had kept it in its start row's pass; the cycles' poses
+  now take layer 8 (`anim::FLYING`), which the scene draws after every row. Group 20 (before the
+  removal) and 21 (after landing) stay in the row passes. Not checked against frames of the
+  original: the recorded flight (sequence `melee`) stays in its row, where both draw alike.
 - **Fidgets** (`anim::fidgeting`, §7.2): the executable's clocks and stalls on a generator of the
   viewer's own (the C library's `rand()` sequence, seeded by the battle's seed); the reference
   checks (`sequences`) take none. A stack an action drew stops fidgeting; a bystander's fidget
@@ -903,3 +919,149 @@ spike's own for the last two. Left out: `sdl2` (SDL 2 is in maintenance; SDL 3 i
 - **Windows builds from the sandbox:** `rustup target add x86_64-pc-windows-gnu` (it needs
   `static.rust-lang.org`, which the user's egress setting now allows) and `mingw-w64`; SDL
   cross-compiles with them. The exes ran under Wine (SDL took Direct3D 9 and WASAPI there).
+
+### 8.1 The window adapter (M2 T5a)
+
+ADR-0024 built: `clients/crates/h3-sdl` and `h3-view window` (log: M2 T5a).
+
+- **The crate.** `h3-sdl` (named for what it holds; the audio joins it with T5b) has every SDL
+  call and all of the client's `unsafe` code. `Window::open` creates the window hidden, high
+  pixel density and resizable, sizes it to the largest integer scale that fits the display's
+  usable area less 40 points for the title bar (integers only: the pixels per point come from the
+  window's own sizes), centres it, takes the renderer SDL picks, sets the logical presentation to
+  integer mode and makes a streaming XRGB8888 texture with nearest sampling; the window is
+  shown and synced first, so that a fullscreen start gives the renderer its final size. `wait` blocks in
+  `SDL_WaitEventTimeout`, then takes every pending event: Esc, Space, →, R, F, V and C, the
+  pointer in frame pixels (`SDL_ConvertEventToRenderCoordinates`), and exposure, size and scale
+  changes as a redraw. `present_read` reads the whole output back before presenting (the logical
+  presentation lifted while it reads, as the spike did). The hardware colour cursor is scaled by
+  the frame's scale and made again when the scale changes; SDL's clock (`ticks_ns`) spares the
+  binary a `std::time::Instant`.
+- **The frame** goes up widened on the CPU (`Screen::xrgb`, the PNG's bit repetition; ADR-0024
+  point 3's second form), so every renderer gets the same bytes.
+- **The loop** (`bin/h3-view/window.rs`). The battle loads as `play` loads it (`battle.rs`, shared
+  since T5a); every frame to the end names the checkpoint batch, with `CRDEFLT.DEF`. The pure
+  `h3_view::clock` turns SDL's nanoseconds into the battle's milliseconds, with a pause, a seek
+  (restart, a step) and the delay of a frame. The next frame, the first later change of the
+  timeline whose draw list differs, is composed and widened as soon as the one before is shown;
+  the loop waits for input until it falls due (at most 250 ms at a time) and presents it then. A
+  frame overtaken by a later change is passed over and the later one shown. Past the end the
+  timeline is timed 60 s further at a time (the outline's pulse and the fidgets go on); a battle
+  that does not change for 10 minutes only waits for input.
+- **The cursor** (*provisional*; the executable's cursor code not read, M3): `CRDEFLT.DEF`'s first
+  frame (20 × 24, encoding 1: an arrow, a second arrow, an hourglass), its hot spot at the top-left
+  corner, drawn with the battle's drawer without an outline (`h3_view::cursor`). For the hardware
+  cursor it is drawn over black and over white: a pixel alike over both is opaque, one that kept
+  both backgrounds transparent, a darkened one black with the darkening as its alpha (an
+  approximation; this cursor has no shadow pixels).
+- **In the sandbox** (Xvfb at 1920 × 1080 × 24, Mesa's software OpenGL ES 2, two cores): the frame
+  at scale 1 ((1080 − 40) / 600 rounds down to 1). `--check 20` (every frame read back): 301
+  frames, all exact, the black around included. `--measure 10`: a frame shows a median 7.0 ms
+  after its time, p95 13.0, max 49 (the software renderer's present; at a forced scale 2, 17.7).
+  Driven by `xdotool`: a pause holds the frame (no pixel differs over 1.5 s), → shows the next,
+  R the opening, the drawn cursor at the pointer, Esc exits 0. Fullscreen needs a window manager
+  (bare Xvfb ignores it; with `openbox`): output 1920 × 1080, the frame at (560, 240), every frame
+  read back exact once the renderer is made after the window is shown and synced
+  (`SDL_SyncWindow`); made before, the first frame was drawn at the old size.
+- **On the user's machine** (Windows, 2560 × 1440 at 100 %; `clients/out/win/measure.cmd`, three
+  unattended runs of 20 s, the cross-built exe): SDL took Direct3D 11, the window 1600 × 1200 at
+  scale 2. `--check`: 302 of 302 frames read back exact. `--measure`, vsync off: a frame shows a
+  median 0.4 ms after its time, p95 1.0, one outlier of 27 ms per run (the start); vsync on:
+  median 0.4, p95 1.3. The delay is taken when `SDL_RenderPresent` returns, so with vsync the
+  display may show the frame up to a refresh later (the spike, measuring the same way with
+  another loop, saw 8 ms). The user, watching `play.cmd`: "looks good", but for the Angels
+  flying under a corpse (fixed, §7.10).
+- **Building:** SDL's Linux build stops without Xcursor's headers; the X11 set it uses is x11,
+  xext, xcursor, xfixes, xi, xrandr, xss and xtst (the CI job installs them, with ALSA's and
+  Pulse's for the audio backends); Wayland is left out when its headers are missing. SDL takes
+  2.5 min on two cores, once per profile. The Windows build (`--target x86_64-pc-windows-gnu`)
+  takes 6.7 min from scratch; `h3-view.exe` is 16.8 MB and imports system DLLs only.
+
+### 8.2 The sound (M2 T5b)
+
+ADR-0024 point 5 built (log: M2 T5b): the sound archives' decoder, a code reading of when the
+battle's sounds play, and the window playing them.
+
+**The archives.** `Heroes3.snd` (1 115 entries) and `H3ab_ahd.snd` (117) are a `u32` count, then
+48 bytes per entry: a 40-byte name field (the stem, a NUL, `WAV` and the packer's leftovers,
+`WAVVVWAV`, no NUL after them), the offset and the size. Every entry is a RIFF WAV of IMA ADPCM
+(format 17, 4 bits, 22 050 Hz; 9 stereo, the `BATTLE` sounds among them; blocks of 512 bytes, 1 024
+stereo, of 1 017 frames; a `fact` chunk before the data). The AB archive's 117 entries are all in
+`Heroes3.snd` with the same bytes, so the viewer searches `Heroes3.snd` first (the game's own
+order is not read). `h3_assets::snd` reads the directory (entries by stem, ignoring case),
+`h3_assets::wav` decodes.
+
+**The decoder** (pure, 100 % covered): 1 212 of the 1 232 entries end inside a block. SDL's loader
+with its defaults drops such a cut last block (up to 1 016 frames, 46 ms each) and ignores the
+`fact` chunk, whose count is the sound's own length (it plays up to 7 frames of padding after the
+18 entries whose count ends inside their whole blocks). The decoder gives every complete frame up
+to the `fact` chunk's count, as SDL does with the hints `SDL_WAVE_TRUNCATION=dropframe` and
+`SDL_WAVE_FACT_CHUNK=truncate`; in a cut sub-block each channel's nibbles come from its own word.
+The real-asset gate decodes every entry both ways and with SDL's defaults: all 1 232 equal SDL's
+samples for the whole sound and SDL's defaults' as far as both go (88 507 083 frames against SDL's
+defaults' 87 878 970); `<out>/gate/sounds.tsv` lists each. It also finds the asset tables' 743
+sound names in the archives.
+
+**When they play** (code reading; Miles Sound System through `MSS32.DLL`; nothing while the battle
+is hidden, 0x46A4A0):
+
+- *A sample* (`play_sample` 0x59A210, H3API's ClickSound): a WAV object carries a category
+  (+0x28), a volume (+0x2C, 0 to 127) and a loop count (+0x30, 0 forever). The category picks a
+  range of the sound manager's 14 sample handles (0x684AB8: 0, 1, 2–5, 6–13): the first whose
+  sample is done, else the range's next in turn, whose sample is cut. The volume is scaled by the
+  effects' setting, the music's by its own alike (0x5996C0: v × (s + 1) / 10 for a setting of 1 to
+  10, 0 at 0).
+- *A stack's eight sounds* (+0x170 to +0x18C: move, attack, wince, shot, death, defend, start,
+  end), loaded by `stack_load_graphics` 0x43D9F0 from the creature table's prefix and `move`,
+  `attk`, `wnce`, `shot`, `kill`, `dfnd`, `ext1`, `ext2`: a war machine (flag 0x40) has no move
+  sound and its wince for attack and defend (the Ballista, 146, its shot for attack); only
+  shooters, the Master Genies (37) and the Ogre Magi (91) have a shot; only the Devils, Arch
+  Devils (54, 55), Vampires and Vampire Lords (62, 63) a start and an end. Each in category 3 (the
+  eight creature channels), volume 64; the move sound loops, the others play once. `h3-view
+  harvest` applies these rules: each creature of the asset tables names its `sounds`.
+- *Moves*: `walk_step` 0x43F0B0 plays the start sound with group 20 and the move sound with the
+  first cycle (0x43F19B, 0x43F1CF; the first step only); the last step plays the end sound and
+  stops the move sound before group 21 (0x43F267; `stack_walk`'s early stop alike, 0x4421BC). A
+  flight (0x4B4A40) the same around its cycles (0x4B4BD4, 0x4B4E3B).
+- *Strikes and shots*: `shot_animation` plays the shot sound with the shot's first frame
+  (0x43F424). `strike_animation` starts each stack's sound as its group starts (0x468F00 to
+  0x468F8D, through `stack_play_sound` 0x43D540): the striker's attack, a struck stack's wince,
+  defend or death by its reaction; a shooter going on with its shot group starts none.
+- *The opening* (`battle_start` 0x462A20): `battle%02d.wav`, random(1, 8) − 1 (0x462AEF,
+  category 2), plays while the screen is set up; after the first redraw the battle waits while it
+  plays, at most 10 s of the game clock (0x46304B, `wait_for_sample`); then `combat%02d`,
+  random(1, 4) (0x46305A), starts through `play_music` 0x59ACB0 (loop count 0, the effects
+  ended first), and only then the battle's clocks (0x463093).
+- *The music* (`music_thread` 0x59A840): `mp3\<name>.mp3` streamed. A looping track starts silent
+  where that name last stopped in this session (a table of names and positions, 0x59AA82) and its
+  volume rises by a tenth of the music volume every 100 ms (0x59AB5D, an f32 sum truncated: 12,
+  25, 38, 50, 63, 76, 88, 101, 114, then 127 after 900 ms); a track played once starts at its
+  volume, from its start. The tracks' names: 0x66C090.
+- *Not read*: the start sound's volume (its loader's default), the battle's end (`battle_end`
+  0x477470 calls `play_music` twice: the victory and defeat tunes and the results), spells', heroes',
+  walls' and towers' sounds, the turn's, the adventure map's.
+
+**The viewer.** `h3_view::anim`'s timeline carries the cues (`Cue`: a time, a stack, a `Sound`,
+start or stop) at the frames the readings name; `play` writes them to `cues.txt`.
+`h3_view::sound` holds the opening: the start sound and the music are drawn from the viewer's
+own C-library sequence seeded with the battle's seed (*provisional*, as the fidgets; the
+executable draws from its rules' generator), the fade-in's volumes, the volumes 127 and 64. The
+window (`bin/h3-view/audio.rs`): every sound the battle's stacks name and the start sound are
+decoded when the battle loads, the music by `nanomp3` (i16; the battle's 44 clips and a
+3-minute track in 0.4 s in the sandbox); `h3-sdl` opens one device and 10 streams: the music's,
+the start sound's and 8 creature channels, each a free one or the next in turn, as
+`play_sample` takes them. A one-shot is flushed; the move sound
+and the music are queued a second ahead and topped up (no flush, so no seam). Volumes as SDL
+gains: the music's fade-in by its steps, the effects at 64/127 (*provisional*: both settings
+equal; no settings yet). From the battle's start the window plays the start sound over the first
+frame with the clock held, then starts the music and the clock (a key that moves the battle ends
+the wait); Space pauses the device with the battle, R and → stop the creature sounds and go on
+from the cues at the new time, M and E switch the music and the creature sounds, `--mute` plays
+nothing.
+
+**Checks.** The gate (above); the cues' unit tests (each with its group's first frame); in the
+sandbox under Xvfb with SDL's `disk` audio driver (it writes the mix to `sdlaudio.raw` in the
+current directory): `--check 25` with sound, all 293 frames read back exact; the start sound
+5.8 s (`BATTLE01`, seed 1), then the music fading in; with the music switched off (M), the
+effects' onsets in the mix within 10–100 ms of their cues' times (onset detection on 10 ms
+windows; overlapping sounds hide some).

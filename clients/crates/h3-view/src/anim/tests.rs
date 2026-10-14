@@ -456,6 +456,18 @@ fn a_flight_without_a_distance_is_one_cycle() {
     let t = timeline(&o, &commands, &numbers, stage, Speed::default()).unwrap();
     let cycle = t.keys.iter().filter(|k| k.pose.group == 0).count();
     assert_eq!(cycle, 7);
+    // T5a: between its hexes the flier is drawn over every row; on them in standing's pass.
+    let layers: Vec<(u32, u8)> = t
+        .keys
+        .iter()
+        .map(|k| (k.pose.group, k.pose.layer))
+        .collect();
+    assert!(
+        layers
+            .iter()
+            .all(|&(group, layer)| (group == 0) == (layer == FLYING))
+    );
+    assert_eq!(layers.last(), Some(&(2, 4)));
 }
 
 #[test]
@@ -1195,4 +1207,159 @@ fn stacks_fidget_from_the_viewers_own_generator() {
     );
     let t = fidgeting_play(&o, &[], &numbers, 1);
     assert_eq!(t.at(100)[&1].group, 1);
+}
+
+/// When `stack` first draws frame 0 of `group`.
+fn first(t: &Timeline, stack: u8, group: u32) -> u32 {
+    t.keys
+        .iter()
+        .find(|k| k.stack == stack && k.pose.group == group && k.pose.frame == 0)
+        .map(|k| k.drawn)
+        .unwrap()
+}
+
+/// The cues as (time, stack, sound, stop).
+fn cues(t: &Timeline) -> Vec<(u32, u8, Sound, bool)> {
+    t.cues
+        .iter()
+        .map(|c| (c.at, c.stack, c.sound, c.stop))
+        .collect()
+}
+
+#[test]
+fn sounds_start_with_their_groups() {
+    // E17 M2 T5b (design §8.2): a flight's start with group 20, its move (looping) with the first
+    // cycle, its end with group 21 when the move stops (0x4B4BD4, 0x4B4E3B); the striker's attack
+    // with its strike, each struck stack's sound with its reaction (0x468F00).
+    let mut angels = at(0, Side::Attacker, ANGEL, 69, false);
+    angels.flies = true;
+    let o = snapshot(vec![angels, at(1, Side::Defender, WOLF_RIDER, 100, true)]);
+    let attack = vec![
+        moved(0, 69, 83),
+        struck(0, 1, 1, flags(false, false, false)),
+        struck(1, 0, 1, flags(false, true, false)),
+    ];
+    let t = play(&o, &[(None, attack)]);
+    let end = first(&t, 0, 21);
+    assert_eq!(
+        cues(&t),
+        [
+            (first(&t, 0, 20), 0, Sound::Start, false),
+            (first(&t, 0, 0), 0, Sound::Move, false),
+            (end, 0, Sound::End, false),
+            (end, 0, Sound::Move, true),
+            (first(&t, 0, 13), 0, Sound::Attack, false),
+            (first(&t, 1, 3), 1, Sound::Wince, false),
+            (first(&t, 1, 11), 1, Sound::Attack, false),
+            (first(&t, 0, 3), 0, Sound::Wince, false),
+        ]
+    );
+    assert_eq!(t.cue_from(0), 0);
+    assert_eq!(t.cue_from(end), 2);
+    assert_eq!(t.cue_from(t.end + 1), t.cues.len());
+    // A walk: the start and the move with the first step (0x43F19B), the end at the last
+    // (0x43F267); the Wolf Riders' turn before them makes none.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 137, false),
+        at(1, Side::Defender, WOLF_RIDER, 40, true),
+    ]);
+    let t = play(&o, &[(None, vec![moved(1, 40, 41), moved(1, 41, 58)])]);
+    let end = first(&t, 1, 21);
+    assert_eq!(
+        cues(&t),
+        [
+            (first(&t, 1, 20), 1, Sound::Start, false),
+            (first(&t, 1, 0), 1, Sound::Move, false),
+            (end, 1, Sound::End, false),
+            (end, 1, Sound::Move, true),
+        ]
+    );
+    // A shot (0x43F424) at Goblins that die; then the Wolf Riders strike defending Goblins.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 1, false),
+        at(1, Side::Defender, GOBLIN, 49, false),
+        at(2, Side::Defender, GOBLIN, 37, false),
+        at(3, Side::Attacker, WOLF_RIDER, 36, true),
+    ]);
+    let t = play(
+        &o,
+        &[
+            (None, vec![struck(0, 1, 40, flags(true, false, false))]),
+            (
+                None,
+                vec![
+                    Event::Defended { stack: 2 },
+                    struck(3, 2, 1, flags(false, false, false)),
+                ],
+            ),
+        ],
+    );
+    let shot = t.keys.iter().find(|k| k.stack == 0).unwrap();
+    assert_eq!(
+        cues(&t),
+        [
+            (shot.drawn, 0, Sound::Shot, false),
+            (first(&t, 1, 5), 1, Sound::Death, false),
+            (first(&t, 3, 12), 3, Sound::Attack, false),
+            (first(&t, 2, 4), 2, Sound::Defend, false),
+        ]
+    );
+}
+
+#[test]
+fn a_target_reacts_as_the_projectile_lands() {
+    // A shot marks no striker (0x441A87 only in a melee), so the reactions start with the loop,
+    // however many frames the shooter has left after its climax (the Cyclops: 9 of 16; the
+    // Marksmen's recorded shot has 1): the shooter's frames 3 to 7 go on beside the hit.
+    let mut numbers = looks();
+    numbers.get_mut(&MARKSMAN).unwrap().climax = 3;
+    let layout = layout();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+    };
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 35, false),
+        at(1, Side::Defender, GOBLIN, 49, false),
+    ]);
+    let events = [struck(0, 1, 1, flags(true, false, false))];
+    let commands = [Command {
+        at: None,
+        events: &events,
+    }];
+    let t = timeline(&o, &commands, &numbers, stage, Speed::default()).unwrap();
+    let landed = t.flights[0].from + t.flights[0].steps * t.flights[0].step;
+    let hit = first(&t, 1, 3);
+    assert_eq!(hit, landed);
+    let shooter: Vec<(u32, u32)> = t
+        .keys
+        .iter()
+        .filter(|k| k.stack == 0 && k.drawn >= hit)
+        .map(|k| (k.pose.group, k.pose.frame))
+        .collect();
+    assert_eq!(
+        &shooter[..6],
+        [(15, 3), (15, 4), (15, 5), (15, 6), (15, 7), (2, 0)]
+    );
+    // The hit's seven frames, one per iteration from the landing, then standing.
+    let goblins: Vec<(u32, u32)> = t
+        .keys
+        .iter()
+        .filter(|k| k.stack == 1 && k.drawn >= hit)
+        .map(|k| (k.pose.group, k.pose.frame))
+        .collect();
+    assert_eq!(
+        goblins[..8],
+        [
+            (3, 0),
+            (3, 1),
+            (3, 2),
+            (3, 3),
+            (3, 4),
+            (3, 5),
+            (3, 6),
+            (2, 0)
+        ]
+    );
 }

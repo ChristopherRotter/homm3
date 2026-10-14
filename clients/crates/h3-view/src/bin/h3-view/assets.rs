@@ -13,7 +13,27 @@ pub const ALL: &str = "sod";
 
 /// The committed tables' directory.
 pub fn default_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets")
+    clients_dir().join("assets")
+}
+
+/// The client workspace (`clients/`): where it was built, or else the first directory above the
+/// executable that holds the asset tables (an executable copied into a checkout, such as a
+/// Windows build run on the user's machine; E17 M2 T5a), or else the current directory.
+pub fn clients_dir() -> PathBuf {
+    let built = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let holds = |d: &Path| d.join("assets").join("base.toml").is_file();
+    if holds(&built) {
+        return built;
+    }
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| {
+            exe.ancestors()
+                .skip(1)
+                .find(|d| holds(d))
+                .map(Path::to_path_buf)
+        })
+        .unwrap_or_else(|| PathBuf::from("."))
 }
 
 /// Reads and loads the selection `top` from `dir`.

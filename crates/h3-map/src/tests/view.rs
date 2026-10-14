@@ -282,7 +282,8 @@ fn depth(view: &TileView) -> u8 {
 /// which are its own. Its open decision and its purchases change only as its offers' events say:
 /// an offer it is told opened is its decision, an answer closes it, an accepted Cartographer's
 /// adds the type to its purchases (E08 T14b); a reveal it is told explores at least that many
-/// more tiles; its keys change only by the keys it is told it gained (T15a). Its planes change
+/// more tiles; its keys change only by the keys it is told it gained (T15a); its heroes' details
+/// only by the changes it is told, each of a hero it saw as its own (T19a2a). Its planes change
 /// only by its own command (`own`).
 fn check_told(
     viewer: PlayerId,
@@ -311,9 +312,24 @@ fn check_told(
     let mut revealed = 0;
     // E08 T19a: whether the viewer is in a battle, by its start and end.
     let mut fighting = before.battle.is_some();
+    // E08 T19a2a: the viewer's heroes whose details it is told changed.
+    let mut changed = Vec::new();
     let alone = Viewers::NONE.with(viewer);
     for event in told {
         match *event {
+            GameEvent::HeroChanged { player, hero, .. } => {
+                prop_assert_eq!(player, viewer);
+                let own = before
+                    .heroes
+                    .iter()
+                    .any(|h| h.id == hero && h.details.is_some());
+                prop_assert!(
+                    own,
+                    "{:?} of a hero the viewer did not see as its own",
+                    event
+                );
+                changed.push(hero);
+            }
             GameEvent::BattleStarted { seen_by, .. } => {
                 prop_assert_eq!(seen_by, alone);
                 prop_assert!(!fighting);
@@ -453,6 +469,13 @@ fn check_told(
         }
     }
     prop_assert_eq!(after.battle.is_some(), fighting);
+    // Its heroes' details change only as it is told (E08 T19a2a).
+    for hero in &after.heroes {
+        let was = before.heroes.iter().find(|h| h.id == hero.id);
+        if let Some(was) = was.filter(|was| was.details != hero.details) {
+            prop_assert!(changed.contains(&hero.id), "{:?} changed untold", was);
+        }
+    }
     prop_assert_eq!(after.day, day);
     let now: Vec<bool> = after.players.iter().map(|p| p.acting).collect();
     prop_assert_eq!(now, acting);
@@ -798,6 +821,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         players: vec![(0, true), (1, true)],
         heroes: vec![((1, 1, 0), None), ((6, 6, 0), None)],
         hero_types: 0,
+        backpacks: vec![],
         blockers: vec![((4, 1, 0), 0), ((1, 5, 0), 1)],
         difficulty: 1,
     };
@@ -869,6 +893,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
             ((14, 14, 0), None),
         ],
         hero_types: 0,
+        backpacks: vec![],
         blockers: vec![((3, 1, 0), 3), ((1, 3, 0), 9)],
         difficulty: 1,
     };

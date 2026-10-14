@@ -556,3 +556,85 @@ text accepted by the user the same day, #196).
   `minifb`'s `ScaleMode::UpperLeft` does not scale; `tinyaudio`'s macOS backend brings an
   Apache-2.0-only build dependency.
 - Gates: the docs only (`check.sh` unchanged, green on `master` at the start); see the pull request.
+
+### M2 T5a — A battle in a window (2026-10-14)
+
+On `client/e17-m2-t5a-window` (#201), the user present; [design §8.1](E17-design.md),
+[ADR-0024](../adr/0024-client-window-audio.md); with `shared/clients-ci-sdl` (#200: the CI job's SDL
+headers, the user's consent).
+
+- **Split:** T5 (the adapter, the sound, M2's closure) was more than a session; the user chose the
+  window first (T5a). T5b (the sound) and T5c (M2's closure) are in the queue.
+- **Built:** `clients/crates/h3-sdl`, the platform adapter: every SDL call (`sdl3-sys` 0.7.2, SDL
+  3.4.18 from source, static; camera, dialog, GPU, haptic, HIDAPI, joystick, power, sensor and
+  tray left out): the window at the largest integer scale that fits, nearest sampling, centred,
+  high pixel density; its events; vsync and fullscreen; the hardware colour cursor at the
+  frame's scale; a read-back of the whole output. `h3-view window <scenario | record>`: the
+  battle loaded as `play` loads it (`bin/h3-view/battle.rs`, now shared), each frame composed
+  ahead and shown when it falls due, past the end idling; Space, →, R, F, V, C, Esc;
+  `--check <s>` (every frame read back and compared, the black around included) and
+  `--measure <s>`. Pure: `h3_view::clock` (the battle's clock: pause, seek, a frame's delay),
+  `h3_view::cursor` (`CRDEFLT.DEF`'s first frame drawn or as an RGBA image) and
+  `Screen::xrgb` (the screen widened as the PNG is). `assets::clients_dir`: an executable copied
+  into a checkout finds its tables, layouts and packs.
+- **Checked in the sandbox** (Xvfb, Mesa's software OpenGL ES 2): `--check 20`: 301 frames, every
+  one exact at scale 1; `--measure 10`: median 7.0 ms after the frame's time, p95 13.0 (the
+  software renderer); driven by `xdotool`: pause, step, restart, fullscreen, the drawn cursor and
+  Esc as meant. `play scenarios/battle.toml` after the refactor: 24 commands, 81 764 ms, 1 078
+  frames, as before.
+- **On the user's machine** (the cross-built exe, `measure.cmd`): Direct3D 11 at scale 2, 302 of
+  302 frames read back exact; a frame shows a median 0.4 ms after its time (p95 1.0 without
+  vsync, 1.3 with it), one 27 ms outlier per run. The user, after watching it: "looks good",
+  but for the flight below.
+- **Found by the user:** in the window the Angels, flying down four rows, passed under the Wolf
+  Riders' corpse and the Orcs. The viewer drew a flier in its start row's pass; the executable
+  takes it off its hexes for the flight (0x468730) and draws it by itself over everything
+  (0x4B4D60). Fixed: the cycles' poses take layer 8 (`anim::FLYING`), drawn after every row
+  (design §7.10); the four recorded sequences unchanged.
+- **Found on the way:** `clients/Cargo.lock` was stale on `master` again (`h3-game` gained
+  `h3-battle` and `h3-content-battle` through the adventure lane's E08 T19a1/T19a2), so
+  `check.sh` failed at `--locked` before any change; fixed here, the lasting fix in the inbox for
+  the user. SDL's Linux build stops without Xcursor's headers (the sandbox and the CI runner
+  lacked the X11 extension headers). The battle's frame is 800 × 600: at 1080 pixels of height
+  the window's scale is 1.
+- Gates: `clients/scripts/check.sh` all passed (coverage 100 % with `h3-sdl` excluded as an
+  adapter); the scoped verify with no failing step; see the pull request.
+
+### M2 T5b — The sound (2026-10-14)
+
+On `client/e17-m2-t5b-sound`, the user present; [design §8.2](E17-design.md),
+[ADR-0024](../adr/0024-client-window-audio.md) point 5; with `shared/clients-lock-check` (#202:
+the verify's `clients-lock` gate and `clients/Cargo.lock` a common path, the user's choice of a
+failing check).
+
+- **Decoder:** `h3_assets::snd` (the sound archives' directory, entries by stem) and
+  `h3_assets::wav` (IMA ADPCM WAVs to 16-bit PCM; every complete frame up to the `fact` chunk's
+  count; test encoders in `build`). The real-asset gate decodes all 1 232 entries of
+  `Heroes3.snd` and `H3ab_ahd.snd` and compares them with SDL's own loader (`h3_sdl::load_wav`):
+  all equal with the hints `dropframe` and `truncate`, and SDL's defaults' samples as far as both
+  go. Found: SDL's defaults drop a cut last block, which 1 212 entries have (28 s of sound in all),
+  and ignore the `fact` chunk; the AB archive's entries are all in `Heroes3.snd`, byte for byte.
+- **Code reading** (design §8.2): `play_sample` and its channel table (the creature sounds' eight
+  channels, a free one or the next in turn), the stacks' eight sounds and `stack_load_graphics`'
+  rules for them, their sites in walks, flights, shots and strikes, the opening (the start sound,
+  the clock's wait, the music), the music's thread (looping, the fade-in, the resume position),
+  the volumes. Map entries for each; `battle_start`'s and `stack_load_graphics`' summaries
+  extended.
+- **Built:** the timeline's cues (`anim::Sound`, `anim::Cue`) at the frames the readings name;
+  `h3_view::sound` (the opening's draws, the volumes, the fade-in); the asset tables' `sounds`
+  (written by `h3-view harvest`, 743 names, all found by the gate); `h3-sdl`'s audio (device,
+  streams, gain, pause; the window and the audio each start and stop their own SDL subsystem);
+  `h3-view window` plays the start sound while the clock waits, then the music (decoded by
+  `nanomp3`, looping, fading in) and the creatures' sounds on eight channels (keys M and E,
+  `--mute`); `play` writes `cues.txt`.
+- **Found by the user** (listening to the Windows build): a Cyclops' target winced about 0.7 s
+  after the rock landed. The viewer counted the shooter's frames left after its climax in
+  `strike_animation`'s loop; the executable marks no striker for a shot (only `melee_strike`
+  does, 0x441A87), so the loop counts the reactions alone and the target reacts as the
+  projectile lands. Fixed (design §7.4); the Marksmen's recorded shot, one frame after its
+  climax, is the same either way and stays as recorded. Also asked: the Marksmen act twice in a
+  row because the engine rolled good morale (`GoodMorale` in the record), which the viewer does
+  not show yet (inbox).
+- **Checked in the sandbox** (Xvfb, SDL's `disk` audio driver): `--check 25` with sound, 293 of
+  293 frames exact; the mix: the start sound (`BATTLE01`, 5.8 s), then the music fading in; with
+  the music off, the effects' onsets within 10–100 ms of their cues.

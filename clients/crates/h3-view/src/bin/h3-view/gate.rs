@@ -1,5 +1,6 @@
 //! The real-asset gate (E17 M0 T3; M1 T2 and T3: every PCX, PAL, DEF and MSK decodes, the
-//! inventory report in `<out>/gate/report.md`, every entry with its verdict in `entries.tsv`). It
+//! inventory report in `<out>/gate/report.md`, every entry with its verdict in `entries.tsv`;
+//! M2 T5b: every sound decodes to SDL's samples, `sounds.tsv`). It
 //! runs only where the user's files are (ADR-0009): a copy of the installation, never the
 //! installation itself, which it would only read anyway. It reads whole archives, since
 //! `h3-formats` parses only a whole archive; with the table-only reader (CLT-Q2) it measures the
@@ -19,7 +20,7 @@ use h3_assets::check::{Decoded, EntryCheck, check_entry};
 use h3_assets::survey::{self, Mention, Mentions};
 use h3_formats::lod::LodArchive;
 
-use crate::assets;
+use crate::{assets, sounds};
 
 /// The four LOD archives of the Complete edition, in the order the gate reports them.
 const ARCHIVES: [&str; 4] = [
@@ -240,6 +241,11 @@ fn gate(options: &Options) -> Result<(), String> {
         return Err(format!("asset tables: {}", problems.join("; ")));
     }
     println!("gate: the asset tables' {names} names are found and decode");
+    // The sound archives (E17 M2 T5b): every WAV decodes to SDL's samples.
+    print!(
+        "{}",
+        sounds::check(&data, &options.out, &tables.sound_names())?
+    );
     Ok(())
 }
 

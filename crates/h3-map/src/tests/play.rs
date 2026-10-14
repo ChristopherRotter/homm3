@@ -17,11 +17,11 @@ use h3_adventure::{
     AdventureCommand, AdventureEvent, AdventureEventKind, ObjectKind, Offer, OfferKind,
     Pos as TilePos, Reach, Viewers,
 };
-use h3_content::ResourceId;
+use h3_content::{ArtifactTypeId, ResourceId};
 use h3_contracts::{BattleResult, HeroId, PlayerId};
 use h3_game::{
-    Actor, Answer, GameCommand, GameCommandError, GameEvent, GameRuleset, GameState, OpenBattle,
-    Sink, apply, legal_commands, legal_moves,
+    Actor, Answer, GameCommand, GameCommandError, GameEvent, GameRuleset, GameState, HeroChange,
+    OpenBattle, Sink, apply, legal_commands, legal_moves,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -34,7 +34,7 @@ use super::import::{object, template};
 use super::sample;
 use super::strategy::version;
 use crate::import::codes;
-use crate::model::{Body, HeroBody, RawMap, Stack, Template, Tile, Version};
+use crate::model::{Artifacts, Body, HeroBody, RawMap, Stack, Template, Tile, Version};
 use crate::{Limits, import, parse};
 
 fn rules(profile: &str) -> GameRuleset {
@@ -147,6 +147,9 @@ pub(super) struct Plan {
     pub(super) heroes: Vec<(Spot, Slots)>,
     /// Added to each hero's index times 7 (coprime to 128), so the heroes' types differ.
     pub(super) hero_types: u8,
+    /// Artifact codes for each hero's backpack, by the hero's index (none or empty: the type's
+    /// defaults); a hero with a backpack wears nothing (E08 T19a2a: a battle's capture).
+    pub(super) backpacks: Vec<Vec<u16>>,
     /// Each object's anchor (modulo the map) and object (shape and kind, [`OBJECTS`]).
     pub(super) blockers: Vec<(Spot, usize)>,
     /// The game's difficulty (E08 T14b), written as the map's (the import's own default is
@@ -204,6 +207,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
         ),
         prop_oneof![Just(4), 0u8..4],
         proptest::option::weighted(0.75, ((0u8..7, 0u8..7), 0u8..3)),
+        vec(vec(7u16..=40, 0..=3), 0..=6),
     )
         .prop_map(
             |(
@@ -218,6 +222,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 mut blockers,
                 difficulty,
                 keyring,
+                backpacks,
             )| {
                 // In three plans of four a red tent within three tiles of the first hero, a red
                 // guard whose visitable tile is two columns east of the tent, a row up, level or
@@ -242,6 +247,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     players: colours.into_iter().zip(humans).collect(),
                     heroes,
                     hero_types,
+                    backpacks,
                     blockers,
                     difficulty,
                 }
@@ -353,6 +359,14 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
                 .collect()
         });
         let hero_type = (u16::from(plan.hero_types) + 7 * u16::from(index)) % 128;
+        let backpack = plan
+            .backpacks
+            .get(usize::from(index))
+            .filter(|b| !b.is_empty());
+        let artifacts = backpack.map(|codes| Artifacts {
+            worn: vec![None; v.artifact_slots()],
+            backpack: codes.iter().copied().map(Some).collect(),
+        });
         let body = HeroBody {
             identifier: (v != Version::RoE).then_some(u32::from(index)),
             owner: colours[usize::from(index) % colours.len()],
@@ -362,6 +376,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             patrol: u8::MAX,
             sex: u8::MAX,
             spell: (v == Version::Ab).then_some(u8::MAX),
+            artifacts,
             ..HeroBody::default()
         };
         let mut o = object(x + 1, y, HERO_TEMPLATE, Body::Hero(Box::new(body)));
@@ -963,16 +978,19 @@ fn check_unlisted(
 /// drawn for the objects that left, in their order (ADV-PIK-001 to -003; a passed guard has
 /// none); since T14b by an accepted offer's price, which its owner is told it paid, exactly the
 /// price of the decision it answered; and since T19a by a surrender's price, which the
-/// surrendering side's owner pays and the other side's owner gains, as much as was paid.
+/// surrendering side's owner pays and the other side's owner gains, as much as was paid. The
+/// heroes' details (E08 T19a2a) change only by a battle's end.
 fn check_conservation(
+    rules: &GameRuleset,
     before: &GameState,
     after: &GameState,
     events: &[GameEvent],
 ) -> Result<(), TestCaseError> {
     let battles = ended(events);
     if !battles.is_empty() {
-        return check_battle_end(before, after, events, &battles);
+        return check_battle_end(rules, before, after, events, &battles);
     }
+    prop_assert_eq!(before.heroes(), after.heroes());
     let (map, adventure) = (before.adventure().map(), after.adventure());
     let mut contents = Vec::new();
     for event in events {
@@ -1068,8 +1086,12 @@ fn armies(state: &GameState) -> Vec<(HeroId, Vec<h3_contracts::ArmyStack>)> {
 /// ends; heroes other than the battle's keep their armies; a battle hero that did not win leaves
 /// the map, told as its removal, and one that stays keeps a nonempty army whose stacks fit its
 /// slots; a treasury changes only by a surrender's price: the surrendering side's owner pays, the
-/// other side's owner gains what was paid.
+/// other side's owner gains what was paid. The heroes' details (E08 T19a2a; GAM-BAT-002, -004)
+/// change exactly as the changes told to their owners, only the battle's heroes', only the
+/// winner that stays gains experience, and artifacts only move between the two or leave with a
+/// destroyed war machine.
 fn check_battle_end(
+    rules: &GameRuleset,
     before: &GameState,
     after: &GameState,
     events: &[GameEvent],
@@ -1135,6 +1157,97 @@ fn check_battle_end(
         if paid.is_none() {
             prop_assert_eq!(b, a);
         }
+    }
+    check_heroes_after_battle(rules, (before, after), events, heroes)
+}
+
+/// The heroes' part of [`check_battle_end`] (E08 T19a2a): each change goes to one of the
+/// battle's heroes and is told to its owner; every other hero's details stay; a battle hero's
+/// experience grows by the gains it is told (only one that stays on the map gains), its spell
+/// points become the last it is told, its artifacts change in number by the ones it is told it
+/// received and lost, and nothing else of it changes; the two heroes' artifacts only move between
+/// them or leave with a destroyed war machine.
+fn check_heroes_after_battle(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    events: &[GameEvent],
+    heroes: [Option<HeroId>; 2],
+) -> Result<(), TestCaseError> {
+    let fought: Vec<HeroId> = heroes.iter().flatten().copied().collect();
+    let changes: Vec<(HeroId, HeroChange)> = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::HeroChanged {
+                player,
+                hero,
+                change,
+            } => Some((player, hero, change)),
+            _ => None,
+        })
+        .map(|(player, hero, change)| {
+            prop_assert!(fought.contains(&hero), "{:?} changed", hero);
+            prop_assert_eq!(player, before.adventure().hero(hero).unwrap().owner);
+            Ok((hero, change))
+        })
+        .collect::<Result<_, TestCaseError>>()?;
+    for (i, (b, a)) in before.heroes().iter().zip(after.heroes()).enumerate() {
+        let id = HeroId::new(u16::try_from(i).unwrap());
+        if !fought.contains(&id) {
+            prop_assert_eq!(b, a);
+            continue;
+        }
+        let told = changes
+            .iter()
+            .filter(|(hero, _)| *hero == id)
+            .map(|&(_, c)| c);
+        let (mut experience, mut mana, mut items) =
+            (b.experience, b.mana, b.worn.len() + b.backpack.len());
+        for change in told {
+            match change {
+                HeroChange::GainExperience(points) => {
+                    prop_assert!(after.adventure().hero(id).is_some(), "{:?} gained", id);
+                    experience = experience.saturating_add(points);
+                }
+                HeroChange::SetSpellPoints(points) => mana = points,
+                HeroChange::AddArtifact(_) => items += 1,
+                HeroChange::RemoveArtifact(_) => items -= 1,
+            }
+        }
+        prop_assert_eq!((a.experience, a.mana), (experience, mana));
+        prop_assert_eq!(a.worn.len() + a.backpack.len(), items);
+        prop_assert_eq!(
+            (a.hero_type, a.level, a.primary, &a.skills, &a.spells),
+            (b.hero_type, b.level, b.primary, &b.skills, &b.spells)
+        );
+    }
+    let items = |state: &GameState| {
+        let mut all: Vec<_> = fought
+            .iter()
+            .flat_map(|&id| {
+                let d = state.hero(id).unwrap();
+                d.worn
+                    .iter()
+                    .chain(&d.backpack)
+                    .copied()
+                    .collect::<Vec<_>>()
+            })
+            .map(|item| (item.artifact.raw(), item.spell.map(|s| s.raw())))
+            .collect();
+        all.sort_unstable();
+        all
+    };
+    let mut gone = items(before);
+    for item in items(after) {
+        let at = gone.iter().position(|&i| i == item);
+        prop_assert!(at.is_some(), "{:?} appeared", item);
+        gone.remove(at.unwrap());
+    }
+    for (artifact, _) in gone {
+        let lost = rules
+            .core()
+            .artifact(ArtifactTypeId::from_raw(artifact))
+            .unwrap();
+        prop_assert!(lost.war_machine.is_some(), "{:?} vanished", lost.key);
     }
     Ok(())
 }
@@ -1365,7 +1478,7 @@ proptest! {
             }
             check_decisions(rules, (&before, &state), actor, &events)?;
             check_isolation(&before, &state, actor, &events)?;
-            check_conservation(&before, &state, &events)?;
+            check_conservation(rules, &before, &state, &events)?;
         }
     }
 

@@ -11,7 +11,7 @@ Read first, then the lane's HANDOFF (`AGENTS.md`): the lane index and the traps 
 | server | `h3-protocol`, `h3-server` | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
 | client | `clients/` (own Cargo workspace) | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
 
-Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content` and `h3-pack` (R01), workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md` and `docs/stubs.toml` (one block per lane), `Cargo.lock`, `docs/exe/map.toml` and `structs.toml` (one line per entry).
+Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content` and `h3-pack` (R01), workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md` and `docs/stubs.toml` (a block per lane), both `Cargo.lock`s, `docs/exe/map.toml` and `structs.toml` (a line per entry).
 
 - **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: out of minutes or billing, runs fail unstarted and the full local verify stands in; CI never blocks work, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full verify for pull requests and `master` (once per code, not for docs only) and weekly `cargo deny check advisories`. Changes reach `master` by pull request only, **opened only when its branch is ready for merging**; each push to an open one runs CI: merge `master` into it only after `master`'s latest run finished.
 

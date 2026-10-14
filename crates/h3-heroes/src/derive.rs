@@ -355,20 +355,53 @@ pub fn max_mana(details: &HeroDetails, ruleset: &Ruleset) -> u16 {
             effective_primary(details, ruleset, params, PrimarySkill::Knowledge)
         });
     let base = MANA_PER_KNOWLEDGE * u32::from(knowledge);
+    let points = grown(details, ruleset, base, |effect| match *effect {
+        HeroEffect::MaxMana { bp } => Some(bp),
+        _ => None,
+    });
+    u16::try_from(points).unwrap_or(u16::MAX)
+}
+
+/// The experience a hero gains from `base` points (HER-EXP-001, E08 T19a2a): `base` grown by the
+/// sum of the `experience_gain` values of [`grown_effects`] (Learning, grown by a Learning
+/// specialty: 5 % of itself per level), rounded down, at most `u32::MAX`; with quirk Q-0005 the
+/// original's single-precision rate and product: `trunc((1 + f32(r × (1 + 0.05 × level))) ×
+/// f32(base))` in its x87 arithmetic (`battle_experience` 0x46A42D with the Learning getter
+/// 0x4E4840, a twin of Intelligence's), so a specialist can gain one point less and a `base` above
+/// 2^24 is rounded to single precision even without Learning.
+pub fn gained_experience(details: &HeroDetails, ruleset: &Ruleset, base: u32) -> u32 {
+    // rule: HER-EXP-001
+    let points = grown(details, ruleset, base, |effect| match *effect {
+        HeroEffect::ExperienceGain { bp } => Some(bp),
+        _ => None,
+    });
+    u32::try_from(points).unwrap_or(u32::MAX)
+}
+
+/// `base` grown by the sum of the rates `rate` picks among [`grown_effects`] (each grown by its
+/// skill's specialty), rounded down; with quirk Q-0005 as the original's skill getters and their
+/// callers compute it: `trunc((1 + the single-precision sum) × f32(base))` in x87 arithmetic.
+fn grown(
+    details: &HeroDetails,
+    ruleset: &Ruleset,
+    base: u32,
+    rate: impl Fn(&CompiledHeroEffect) -> Option<u16>,
+) -> u64 {
+    let single = single_precision(ruleset);
     let mut sum = RateSum::default();
     for (effect, growth) in grown_effects(details, ruleset) {
-        if let HeroEffect::MaxMana { bp } = *effect {
-            sum.add(bp.into(), growth, single_precision(ruleset));
+        if let Some(bp) = rate(effect) {
+            sum.add(bp.into(), growth, single);
         }
     }
-    let points = match sum.single {
-        Some(rate) => X87::ONE.plus(rate).times(X87::int(base.into())).trunc(),
-        None => {
-            let gain = mul_div_floor(base.into(), sum.bp, FULL_BP.into()).unwrap_or(u64::MAX);
-            u64::from(base).saturating_add(gain)
-        }
-    };
-    u16::try_from(points).unwrap_or(u16::MAX)
+    if single {
+        let factor = X87::ONE.plus(sum.single.unwrap_or(X87::ZERO));
+        return factor
+            .times(X87::int(base.into()).round(SINGLE_BITS))
+            .trunc();
+    }
+    let gain = mul_div_floor(base.into(), sum.bp, FULL_BP.into()).unwrap_or(u64::MAX);
+    u64::from(base).saturating_add(gain)
 }
 
 /// The surrender discount (HER-BAT-007): the sum of the grown values of the surrender discounts

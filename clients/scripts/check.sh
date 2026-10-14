@@ -58,8 +58,10 @@ print("deny policy: as the engine'"'"'s")
 # binaries under `src/bin/` are adapters (files, clock, printing), left out by design; an engine
 # crate outside this workspace is never in the report. Exclusions (*provisional*, E17 M0 T2; each
 # with its reason, as the engine's coverage-exclusions.toml):
-#   /src/bin/  the adapters
-ignore='/src/bin/'
+#   /src/bin/         the adapters
+#   /crates/h3-sdl/   the platform adapter: every SDL call (E17 M2 T5a, ADR-0024); `h3-view
+#                     window --check` exercises it
+ignore='/src/bin/|/crates/h3-sdl/'
 if [ "$coverage" = true ]; then
     step "coverage (excluded: $ignore)"
     run 1 cargo llvm-cov --locked --quiet --workspace --all-targets \

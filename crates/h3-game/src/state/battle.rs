@@ -2,7 +2,8 @@
 //! pending decision of the players of its sides ([`OpenBattle`]). The game builds its setup from
 //! the visit and the store of heroes (GAM-BAT-001), routes the commands of the owner of the side
 //! to act to the battle, maps its events to the owners of the sides they are visible to, and
-//! applies its outcome when it ends (GAM-BAT-002, GAM-BAT-003, GAM-BAT-005).
+//! applies its outcome when it ends (GAM-BAT-002 to GAM-BAT-005): the armies and the map's part,
+//! the heroes' through `h3_heroes`' changes (E08 T19a2a), a surrender's gold.
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -12,9 +13,12 @@ use h3_battle::{BattleState, Command, Event, Visibility, generate_setup_obstacle
 use h3_content::{OBSTACLES_FROM_TILE, Ruleset};
 use h3_contracts::{
     Army, ArmyStack, BattleHero, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroId,
-    PlayerId,
+    PlayerId, StackOrigin, StackRecord,
 };
-use h3_heroes::{derive_battle_hero, max_mana, war_machines};
+use h3_heroes::{
+    HeroChange, apply_change, check_change, derive_battle_hero, gained_experience,
+    lost_war_machine, max_mana, next_capture, war_machines,
+};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
 use super::{Decision, GameState};
@@ -303,13 +307,13 @@ impl GameState {
     }
 
     /// Applies an ended battle's outcome (ADR-0017 point 11; E08 T19a), told first to its owners
-    /// as its end: in the adventure (GAM-BAT-002, GAM-BAT-003) a hero whose side won and has army
-    /// survivors keeps them as its army (a damaged top creature forgotten), every other hero —
-    /// lost, retreated, surrendered, in a draw, or left with stacks created in the battle only
-    /// (BAT-END-001) — leaves the map; then a surrender's price leaves the surrendering side's
-    /// owner's treasury and enters the other side's owner's (GAM-BAT-005, D-13), each told to its
-    /// owner. The heroes' part (experience, Necromancy, Eagle Eye's spells, spell points, war
-    /// machines, captured artifacts) comes with E08 T19a2.
+    /// as its end, one context after the other: in the adventure (GAM-BAT-002, GAM-BAT-003) a hero
+    /// whose side won and has army survivors keeps them as its army (a damaged top creature
+    /// forgotten), every other hero — lost, retreated, surrendered, in a draw, or left with stacks
+    /// created in the battle only (BAT-END-001) — leaves the map; then the heroes' part
+    /// ([`Self::heroes_after_battle`], E08 T19a2a); then a surrender's price leaves the
+    /// surrendering side's owner's treasury and enters the other side's owner's (GAM-BAT-005,
+    /// D-13), each told to its owner.
     // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005
     pub(crate) fn end_battle<S: Sink>(
         &mut self,
@@ -334,7 +338,8 @@ impl GameState {
             .collect();
         self.adventure
             .end_battle(rules.core(), &changes, &mut AdventureSink(&mut *sink));
-        // stub: ADV-STUB-3
+        let winner = result.winner().filter(|&side| army(side).is_some());
+        self.heroes_after_battle(rules, (owners, heroes), outcome, winner, sink);
         let resource = rules.battle().battle().surrender.map(|s| s.resource);
         let surrendered = match result {
             BattleResult::Surrender(side) => Some(side),
@@ -359,4 +364,138 @@ impl GameState {
             });
         }
     }
+
+    /// The heroes' part of an ended battle's outcome (ADR-0017 point 11; E08 T19a2a), after the
+    /// adventure's, each change checked by `h3_heroes` and told to the hero's owner
+    /// ([`Self::change_hero`]). Each side's hero keeps the spell points it has left
+    /// (`HeroOutcome::mana`) and loses the artifact of each war machine destroyed in the battle
+    /// (HER-WAR-002), whatever the result (GAM-BAT-002). The `winner`'s hero — that of the side
+    /// that won and keeps its army, so it stays on the map — gains the battle's experience
+    /// (GAM-BAT-002: [`battle_experience`], grown by Learning, HER-EXP-001) and, after a victory
+    /// over a hero, its artifacts (GAM-BAT-004, HER-ART-004): one by one while the winner has room
+    /// (HER-CHG-002), each moved from the loser's details to the winner's. The original's order
+    /// where read (`battle_end` 0x477470: the experience 0x477747, Necromancy 0x47776E, Eagle
+    /// Eye 0x477776, the capture 0x477782); the spell points are spent during the original's battle,
+    /// and the war machines' artifacts go first, as in VCMI.
+    fn heroes_after_battle<S: Sink>(
+        &mut self,
+        rules: &GameRuleset,
+        (owners, heroes): ([Option<PlayerId>; 2], [Option<HeroId>; 2]),
+        outcome: &BattleOutcome,
+        winner: Option<BattleSide>,
+        sink: &mut S,
+    ) {
+        let core = rules.core();
+        let sides = BattleSide::BOTH.map(|side| {
+            let i = side.index();
+            heroes[i].map(|hero| (i, hero, owners[i]))
+        });
+        for (i, hero, owner) in sides.into_iter().flatten() {
+            // rule: GAM-BAT-002
+            let mana = outcome.heroes[i].as_ref().map(|h| h.mana);
+            let changed = mana.filter(|&m| self.hero(hero).is_some_and(|d| d.mana != m));
+            if let Some(points) = changed {
+                self.change_hero(core, hero, owner, HeroChange::SetSpellPoints(points), sink);
+            }
+            let destroyed = outcome.stacks[i]
+                .iter()
+                .filter(|s| s.origin == StackOrigin::WarMachine && s.end == 0);
+            for record in destroyed {
+                let lost = self
+                    .hero(hero)
+                    .and_then(|d| lost_war_machine(d, core, record.creature));
+                if let Some(place) = lost {
+                    self.change_hero(core, hero, owner, HeroChange::RemoveArtifact(place), sink);
+                }
+            }
+        }
+        let won = winner.and_then(|w| heroes[w.index()].map(|hero| (w, hero)));
+        let Some((w, hero)) = won else {
+            return;
+        };
+        let (l, owner) = (w.opponent().index(), owners[w.index()]);
+        let defeated = matches!(outcome.result, BattleResult::Victory(_)) && heroes[l].is_some();
+        let base = battle_experience(rules, &outcome.stacks[l], defeated);
+        let gained = self
+            .hero(hero)
+            .map_or(0, |d| gained_experience(d, core, base));
+        if gained > 0 {
+            self.change_hero(core, hero, owner, HeroChange::GainExperience(gained), sink);
+        }
+        // stub: ADV-STUB-3
+        // rule: GAM-BAT-004
+        if let Some(lost) = heroes[l].filter(|_| defeated) {
+            while let Some((place, item)) = self.hero(lost).and_then(|d| next_capture(d, core)) {
+                let add = HeroChange::AddArtifact(item);
+                if self
+                    .hero(hero)
+                    .is_none_or(|d| check_change(d, core, add).is_err())
+                {
+                    break;
+                }
+                self.change_hero(core, hero, owner, add, sink);
+                let remove = HeroChange::RemoveArtifact(place);
+                self.change_hero(core, lost, owners[l], remove, sink);
+            }
+        }
+    }
+
+    /// Applies `change`, checked, to the details of `hero` in the store (copied on its first
+    /// write when a fork shares it) and tells it to the hero's owner (`HeroChanged`; E08 T19a2a).
+    fn change_hero<S: Sink>(
+        &mut self,
+        core: &Ruleset,
+        hero: HeroId,
+        owner: Option<PlayerId>,
+        change: HeroChange,
+        sink: &mut S,
+    ) {
+        let store = Arc::make_mut(&mut self.heroes);
+        // Every hero of a battle is in the store (GAM-HER-001).
+        store
+            .get_mut(usize::from(hero.raw()))
+            .into_iter()
+            .for_each(|details| apply_change(Arc::make_mut(details), core, change));
+        owner.into_iter().for_each(|player| {
+            sink.emit(GameEvent::HeroChanged {
+                player,
+                hero,
+                change,
+            });
+        });
+    }
 }
+
+/// The experience a battle gives the winner's hero before Learning (GAM-BAT-002, GAM-BAT-004;
+/// E08 T19a2a): the hit points of the creatures the loser's army stacks and raised stacks lost
+/// (`StackRecord`: `start − end`, each at its type's hit points, without artifacts), not those of
+/// its war machines or of stacks the battle created (summoned stacks, clones), plus
+/// [`DEFEATED_HERO_EXPERIENCE`] for a `defeated` hero (a victory over a side with a hero; not after
+/// a retreat or a surrender). Sums saturate. The original's `battle_experience` (0x46A350: the
+/// loser's 20 records without the summoned and war machine flags, `start − count` times the
+/// type's hit points; +500 for the loser's hero, −500 again when a side retreated or
+/// surrendered).
+// rule: GAM-BAT-002, GAM-BAT-004
+fn battle_experience(rules: &GameRuleset, stacks: &[StackRecord], defeated: bool) -> u32 {
+    let killed = stacks
+        .iter()
+        .filter(|s| matches!(s.origin, StackOrigin::Army(_) | StackOrigin::Raised(_)))
+        .map(|s| {
+            let hit_points = rules
+                .battle()
+                .creature(s.creature)
+                .map_or(0, |c| c.hit_points);
+            s.start.saturating_sub(s.end).saturating_mul(hit_points)
+        })
+        .fold(0_u32, u32::saturating_add);
+    let bonus = if defeated {
+        DEFEATED_HERO_EXPERIENCE
+    } else {
+        0
+    };
+    killed.saturating_add(bonus)
+}
+
+/// The experience for defeating a hero in battle (GAM-BAT-004; the original's 500 at 0x46A3DF,
+/// the wiki's Experience page).
+pub(crate) const DEFEATED_HERO_EXPERIENCE: u32 = 500;

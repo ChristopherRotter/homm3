@@ -366,6 +366,7 @@ fn duel() -> Plan {
         // Owners go round the players: red, blue, red, blue.
         heroes: heroes.iter().map(|&spot| (spot, None)).collect(),
         hero_types: 3,
+        backpacks: vec![],
         blockers,
         difficulty: 1,
     }
@@ -400,6 +401,7 @@ fn xl() -> Plan {
         players: vec![(0, true), (1, true)],
         heroes: heroes.iter().map(|&spot| (spot, None)).collect(),
         hero_types: 5,
+        backpacks: vec![],
         blockers,
         difficulty: 1,
     }
