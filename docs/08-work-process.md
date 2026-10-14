@@ -215,14 +215,17 @@ Agents usually work in a cloud sandbox cloned from GitHub.
    map reader also `original-data/install/Maps/*` (164 files, at most 50 per staging call; the
    user's copy of the installation's `Maps`, 2026-10-10). Without the link, the user may upload
    them; otherwise the session only prepares (Q48).
-3. **Setup:** `scripts/sandbox-setup.sh` makes the clone track every branch name first, links
-   the image's `stable` toolchain as the pinned one, copies the staged files into `original-data/`
-   and starts the tool installs (with `capstone` and `pefile` for the code-reading tool
-   `scripts/exe.py`, `docs/exe/README.md`) and the baseline
-   verify in the background (about 15 minutes; read the docs meanwhile, then check
-   `tail -n 3 target/sandbox/verify.log`). Later runs: `cargo xtask verify --scope <lane>
-   --summary` for the lane's loop, or the full
-   `CARGO_INCREMENTAL=0 nohup scripts/sandbox-verify.sh --with-original-data > /dev/null 2>&1 &`
+3. **Setup:** `scripts/sandbox-setup.sh --lane <lane>` makes the clone track every branch name
+   first, links the image's `stable` toolchain as the pinned one, copies the staged files into
+   `original-data/` and starts the tool installs (cargo-deny's and cargo-llvm-cov's release
+   binaries; `capstone` and `pefile` for the code-reading tool `scripts/exe.py`,
+   `docs/exe/README.md`) and the baseline in the background through `scripts/verify-once.sh`
+   (`docs/05-testing.md`, "Each code state once"): the engine's gates, or the client lane's
+   `clients/scripts/check.sh`, run in full only when no run has verified that code yet (then
+   about 20 minutes on two CPUs; read the docs meanwhile, then check `target/sandbox/setup.log`
+   and `tail -n 3` of the log it names). Later runs: `cargo xtask verify --scope <lane>
+   --summary` for the lane's loop, or before a pull request
+   `CARGO_INCREMENTAL=0 nohup scripts/verify-once.sh engine --base origin/master -- --with-original-data > target/sandbox/once.log 2>&1 &`
    (step 5). The coverage gate runs `cargo llvm-cov clean --workspace` before and after its
    run: test binaries of an earlier build (another branch, or a full run before a scoped one)
    entered the report as hundreds of misses at lines that do not match (E08, 2026-10-14; E04c
