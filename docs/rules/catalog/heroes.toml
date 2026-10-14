@@ -810,7 +810,9 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "VCMI 1.7.5 tests neither the book nor the level when it teaches the picks (BAT-Q24); the user answered as the code (2026-10-11)"
+  ref        = "server/battles/BattleResultProcessor.cpp: the winner's hero with units left learns, after the battle, each spell the enemy cast of a level at most its Eagle Eye limit it does not have, rolled then; neither the spell book nor Wisdom is tested (BAT-Q24; the user answered as the code, 2026-10-11)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleResultProcessor.cpp#L466-L483"
+  retrieved  = "2026-10-14"
   confidence = "medium"
 
 [[rule]]
