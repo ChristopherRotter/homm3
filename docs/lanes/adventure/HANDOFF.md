@@ -37,6 +37,10 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Recent sessions
 
+### 2026-10-14 — round 2, third session: T19a2a (in progress)
+
+#192–#194 merged. Seam: T19a2 split (decision 32; Eagle Eye's learning to T19a2b, the user). Branch `adventure/e08-t19a2a`: in progress.
+
 ### 2026-10-14 — round 2, second session: T19a1's verify and PRs, `shared/e08-t19a2`
 
 Seam confirmed (decision 31), decision 30 settled. The full verify's three gaps fixed (exe map, error messages); the `raises` kind.
@@ -44,7 +48,3 @@ Seam confirmed (decision 31), decision 30 settled. The full verify's three gaps 
 ### 2026-10-14 — round 2 checkpoint and T19a1: battles through the game
 
 The user split round 2 (decision 29). `shared/e08-t19a`, then T19a1 (`cross-lane`: the flag in `base:faithful`, the harvester). Properties play battles. Decision 30 (`raises`).
-
-### 2026-10-14 — round 1: T18a and T18b
-
-The user trimmed the round (decision 28). T18a #185 (the kinds in `synthetic-ext`, `cross-lane`); T18b: the store, HER-MAN-001, the import of customisations.
