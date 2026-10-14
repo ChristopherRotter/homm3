@@ -229,6 +229,9 @@ struct SiegeFieldDto {
     second_moat: Vec<u8>,
     moat_defense_penalty: u8,
     mine_power: u8,
+    /// Pack format v42 (E04c T8): Teleport's siege masteries.
+    teleport_moat: u8,
+    teleport_walls: u8,
     /// Pack format v39 (E04c T6): the wall shots.
     catapult: u8,
     /// Pack format v41 (E04c T7): the keep's least count.
@@ -1088,6 +1091,8 @@ fn siege_field(s: SiegeFieldDto) -> Result<SiegeFieldDef, BattlePackError> {
         second_moat: s.second_moat,
         moat_defense_penalty: s.moat_defense_penalty,
         mine_power: s.mine_power,
+        teleport_moat: s.teleport_moat,
+        teleport_walls: s.teleport_walls,
         catapult: s.catapult,
         turret_count: s.turret_count,
         targets,

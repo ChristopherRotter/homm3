@@ -1495,6 +1495,8 @@ pub fn siege_field() -> SiegeFieldDef {
         second_moat: vec![10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180],
         moat_defense_penalty: 3,
         mine_power: 3,
+        teleport_moat: 2,
+        teleport_walls: 3,
         catapult: 119,
         turret_count: 4,
         targets: [

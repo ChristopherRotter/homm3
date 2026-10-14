@@ -5,7 +5,8 @@
 # (two shots a turn at the targets she picks, BAT-SIE-011), her Hurlers shoot the walls too
 # (BAT-SIE-013), and she shakes them with Quake at Advanced (an Earthquake: three hits,
 # BAT-SIE-015). Since E04c T7 the town's Citadel sets up its keep: seven Spires (4 + the town's
-# three structures) shoot first every round on their own (BAT-SIE-016, BAT-SIE-018).
+# three structures) shoot first every round on their own (BAT-SIE-016, BAT-SIE-018). Since E04c T8
+# the town's Tavern and a fountain raise its defenders' morale and luck by 1 (BAT-SIE-025).
 
 [scenario]
 id = "siege"
@@ -18,6 +19,8 @@ faction = "synthetic:vale"
 fort = "citadel"
 moat = "damaging"
 structures = 3                   # E04c T7: the keep, 4 + 3 Spires (BAT-SIE-016)
+morale = 1                       # E04c T8: the town's morale and luck (BAT-SIE-025)
+luck = 1
 
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"

@@ -30,7 +30,7 @@ use crate::spell::{
 };
 
 /// Version of the battle part's hash encoding. Bump when the encoding below changes.
-pub const BATTLE_RULESET_HASH_VERSION: u32 = 5;
+pub const BATTLE_RULESET_HASH_VERSION: u32 = 6;
 
 /// Most spells with a summon effect in a ruleset (the battle keeps a side's stack of each
 /// creature its hero can summon from the battle's start, E04b T6b; four in the original).
