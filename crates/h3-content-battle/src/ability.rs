@@ -375,6 +375,10 @@ pub enum Ability<C, S, L> {
     /// by the mouse the Orb stops that cast too, and so does the engine (BAT-MAG-061, BAT-Q21;
     /// the cast by the key was not tried; v31).
     IgnoresMagicBlock,
+    /// Its shots at a target inside a town's walls are not halved by the walls (BAT-SIE-008; the
+    /// original's 0x467510 names the Mage, Arch Mage, Enchanter, Sharpshooter and Arrow Tower;
+    /// pack format v37).
+    NoWallPenalty,
 }
 
 /// Most creatures `corpse_raiser` abilities raise in a ruleset (the battle keeps a stack of each
@@ -389,7 +393,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 48] = [
+    pub const NAMES: [&'static str; 49] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -438,6 +442,7 @@ impl<C, S, L> Ability<C, S, L> {
         "rebirth",
         "fear",
         "ignores_magic_block",
+        "no_wall_penalty",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -491,6 +496,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::Rebirth { .. } => 45,
             Self::Fear { .. } => 46,
             Self::IgnoresMagicBlock => 47,
+            Self::NoWallPenalty => 48,
         }
     }
 
@@ -684,6 +690,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::Rebirth { divisor } => Ability::Rebirth { divisor: *divisor },
             Self::Fear { percent } => Ability::Fear { percent: *percent },
             Self::IgnoresMagicBlock => Ability::IgnoresMagicBlock,
+            Self::NoWallPenalty => Ability::NoWallPenalty,
         })
     }
 
@@ -944,7 +951,8 @@ impl CanonicalHash for CompiledAbility {
             | Self::Teleports
             | Self::NoDistancePenalty
             | Self::AmmoSupply
-            | Self::IgnoresMagicBlock => {}
+            | Self::IgnoresMagicBlock
+            | Self::NoWallPenalty => {}
         }
     }
 }
@@ -1024,7 +1032,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 48] {
+    fn all() -> [A; 49] {
         [
             A::Hate {
                 target: 3,
@@ -1144,6 +1152,7 @@ mod tests {
             A::Rebirth { divisor: 5 },
             A::Fear { percent: 10 },
             A::IgnoresMagicBlock,
+            A::NoWallPenalty,
         ]
     }
 

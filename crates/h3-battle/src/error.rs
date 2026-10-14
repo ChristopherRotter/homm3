@@ -72,6 +72,11 @@ pub enum SetupError {
     UnknownTerrain,
     /// The special battlefield is not a battlefield of the ruleset (BAT-TER-002).
     UnknownBattlefield,
+    /// The town's faction has no siege record in the ruleset (BAT-SIE-001).
+    UnknownSiege,
+    /// The town's siege is not sound: a moat below a Citadel, or a natural obstacle on the walls,
+    /// the moat or the town's mines (BAT-SIE-001).
+    InvalidSiege,
     /// A side's hero cannot be used (BAT-HER-001).
     InvalidHero {
         /// The side.
@@ -184,6 +189,10 @@ impl fmt::Display for SetupError {
             }
             Self::UnknownTerrain => f.write_str("the terrain is not part of the ruleset"),
             Self::UnknownBattlefield => f.write_str("the battlefield is not part of the ruleset"),
+            Self::UnknownSiege => f.write_str("the town's faction has no siege in the ruleset"),
+            Self::InvalidSiege => f.write_str(
+                "the siege has a moat below a Citadel or an obstacle on its walls or moat",
+            ),
             Self::InvalidHero { side, error } => write!(f, "{side:?} hero: {error}"),
         }
     }
@@ -388,6 +397,14 @@ mod tests {
         assert_eq!(
             SetupError::UnknownBattlefield.to_string(),
             "the battlefield is not part of the ruleset"
+        );
+        assert_eq!(
+            SetupError::UnknownSiege.to_string(),
+            "the town's faction has no siege in the ruleset"
+        );
+        assert_eq!(
+            SetupError::InvalidSiege.to_string(),
+            "the siege has a moat below a Citadel or an obstacle on its walls or moat"
         );
         assert_eq!(
             SetupError::InvalidHero {

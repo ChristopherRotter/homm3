@@ -198,7 +198,9 @@ pub(crate) fn stat_changes(
 }
 
 /// A stack's traits and regeneration with its hero's trait effects (BAT-HER-006): for creature
-/// `id`, a matching `NoRangePenalty` adds the trait `NO_DISTANCE_PENALTY`, a matching
+/// `id`, a matching `NoRangePenalty` adds the traits `NO_DISTANCE_PENALTY` and `NO_WALL_PENALTY`
+/// (the original's wall test exempts the side whose hero wears the Golden Bow or the Bow of the
+/// Sharpshooter, the artifacts with this effect, BAT-SIE-008), a matching
 /// `ShootWhenAdjacent` the trait `SHOOTS_WHEN_ADJACENT`, and the regeneration is the most hit
 /// points of the matching `Regeneration` effects (0 without one).
 // rule: BAT-HER-006
@@ -218,6 +220,8 @@ pub(crate) fn trait_effects(
             } if creatures.matches(ruleset, id) => regeneration = regeneration.max(hit_points),
             BattleEffect::NoRangePenalty { creatures } if creatures.matches(ruleset, id) => {
                 traits = traits.with(StackTraits::NO_DISTANCE_PENALTY, true);
+                // rule: BAT-SIE-008
+                traits = traits.with(StackTraits::NO_WALL_PENALTY, true);
             }
             BattleEffect::ShootWhenAdjacent { creatures } if creatures.matches(ruleset, id) => {
                 traits = traits.with(StackTraits::SHOOTS_WHEN_ADJACENT, true);

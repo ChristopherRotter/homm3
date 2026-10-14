@@ -37,6 +37,7 @@ use crate::hero::{HeroRecord, HeroView, OwnHeroView};
 use crate::magic::resistance_bp;
 use crate::natural::{MAX_REMOVABLE_OBSTACLES, RemovableObstacle};
 use crate::obstacles::{self, SpellObstacle};
+use crate::siege::SiegeState;
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
 use crate::tactics::TacticsPhase;
 
@@ -143,6 +144,8 @@ pub struct Observation {
     pub battlefield: Option<BattlefieldId>,
     /// The battle is at an anti-magic garrison (public; BAT-MAG-061).
     pub anti_magic: bool,
+    /// The town the battle is fought at, if any: its walls, gate and moat (public; BAT-SIE-001).
+    pub siege: Option<SiegeState>,
     /// The timed effects on stacks, by stack and spell (public; BAT-MAG-009).
     pub effects: Vec<ActiveEffect>,
     /// The spell obstacles the viewer sees, in the order they were placed (BAT-MAG-027; Force
@@ -227,6 +230,7 @@ pub fn observe_as(state: &BattleState, ruleset: &BattleRuleset, viewer: Viewer) 
         terrain: state.terrain,
         battlefield: state.battlefield,
         anti_magic: state.anti_magic,
+        siege: state.siege,
         effects: state.effects().to_vec(),
         // rule: BAT-MAG-031
         spell_obstacles: obstacles::observed(state, side),

@@ -108,6 +108,8 @@ pub struct HeroPacks {
     pub ab: String,
     /// Text appended to `sod`.
     pub sod: String,
+    /// Each spell's key and pack, by spell id (the sieges' mines, E04c T5).
+    pub spell_keys: Vec<(String, &'static str)>,
 }
 
 impl HeroPacks {
@@ -1366,6 +1368,7 @@ pub fn harvest_heroes(
         "heroes: availability (campaign heroes, RoE-only Lord Haart the Knight) not harvested (E08-E10)"
             .into(),
     );
+    out.spell_keys = spell_keys;
     Ok(out)
 }
 

@@ -121,6 +121,8 @@ pub(crate) fn end_turn<S: Sink>(
     how: TurnEnd,
     sink: &mut S,
 ) {
+    // rule: BAT-SIE-003
+    crate::siege::close_gate(state, sink);
     state.last_side_acted = Some(state.at(mover).side);
     // rule: BAT-MOR-003
     if state.result.is_none() && how == TurnEnd::Acted && morale::good_morale(state, ruleset, mover)

@@ -48,6 +48,8 @@ tactics_zone_columns = [3, 5, 7]            # BAT-TAC-001: zone width by Tactics
 surrender = { resource = "coin", cost_percent = 50 }  # BAT-FLE-002: half the coin cost
 hero_casts_per_round = 1                    # BAT-MAG-001 (pack format v4)
 side_stack_limit = 20                       # BAT-MAG-037 (pack format v18)
+# BAT-SIE-002 to BAT-SIE-007 (pack format v37): the siege's field, the original's hexes.
+siege = { walls = [12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182], gate = 96, moat = [11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181], second_moat = [10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180], moat_defense_penalty = 3, mine_power = 3 }
 
 [[battlefield]]                      # pack format v36 (E04c): a special battlefield (BAT-TER-002)
 id = "hallow"
@@ -62,6 +64,11 @@ no_luck = true
 no_native = true                     # BAT-TER-006: no native bonus
 max_spell_level = 1                  # BAT-TER-004: no spell above level 1 cast or taking effect
 no_creature_casts = true             # BAT-TER-004: no creature cast, raise or periodic cast
+
+[[siege]]                            # pack format v37 (E04c T5): the vale's town (BAT-SIE-001)
+faction = "vale"
+moat_damage = 70                     # BAT-SIE-005: a damaging moat's damage
+second_moat = true                   # BAT-SIE-004: the Fortress's shape
 
 [[obstacle]]
 id = "boulder"

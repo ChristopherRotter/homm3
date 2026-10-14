@@ -18,9 +18,9 @@ use h3_content_battle::{
     AbilityDef, AreaShot, AuraTarget, BattleCompileError, BattleCreatureDef,
     BattleCreatureOverride, BattleCreaturePatch, BattlePack, BattleParamsDef, BattleRuleset,
     BattleSpellDef, BattlefieldDef, EffectDuration, EffectEnd, FactionChangeDef, HexStep,
-    MASTERY_NAMES, ObstacleDef, ObstacleKind, ObstacleShape, SPECIALIST_LEVELS, SpecialistBonus,
-    SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, SurrenderDef,
-    TargetConditions, TargetSide, TimedChange, Usefulness,
+    MASTERY_NAMES, ObstacleDef, ObstacleKind, ObstacleShape, SPECIALIST_LEVELS, SiegeDef,
+    SiegeFieldDef, SpecialistBonus, SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity,
+    SpellTarget, SurrenderDef, TargetConditions, TargetSide, TimedChange, Usefulness,
 };
 use h3_contracts::BattleSetup;
 use h3_pack::{PackError, reference, references};
@@ -57,6 +57,8 @@ pub const SYNTHETIC_SKIRMISH: &str =
 pub const SYNTHETIC_DUEL: &str = include_str!("../../../packs/synthetic/scenarios/duel.toml");
 /// Synthetic scenario: seven stacks per side.
 pub const SYNTHETIC_FULL: &str = include_str!("../../../packs/synthetic/scenarios/full.toml");
+/// Synthetic scenario: the skirmish's armies at a town (E04c T5).
+pub const SYNTHETIC_SIEGE: &str = include_str!("../../../packs/synthetic/scenarios/siege.toml");
 
 /// Errors of this adapter. The core's errors keep their variants (`Syntax`, `Key`, `Compile`),
 /// so a pack error reads the same whichever of its files it is in.
@@ -142,6 +144,9 @@ struct BattleFile {
     battle: Option<BattleDto>,
     #[serde(default)]
     battlefield: Vec<BattlefieldDto>,
+    /// Pack format v37 (E04c T5).
+    #[serde(default)]
+    siege: Vec<SiegeDto>,
     #[serde(default)]
     obstacle: Vec<ObstacleDto>,
     #[serde(default)]
@@ -199,6 +204,30 @@ struct BattlefieldDto {
     expert_other_casts: bool,
 }
 
+/// `[[siege]]` (pack format v37, E04c T5): a town faction's siege (`h3_content_battle::SiegeDef`).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SiegeDto {
+    faction: String,
+    moat_damage: u32,
+    #[serde(default)]
+    second_moat: bool,
+    mines: Option<String>,
+}
+
+/// `siege` in `[battle]` (pack format v37, E04c T5): the siege's field
+/// (`h3_content_battle::SiegeFieldDef`).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SiegeFieldDto {
+    walls: Vec<u8>,
+    gate: u8,
+    moat: Vec<u8>,
+    second_moat: Vec<u8>,
+    moat_defense_penalty: u8,
+    mine_power: u8,
+}
+
 /// `{ factions = ["castle", "rampart"], amount = 1 }`.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -237,6 +266,8 @@ struct BattleDto {
     surrender: Option<SurrenderDto>,
     hero_casts_per_round: u8,
     side_stack_limit: u8,
+    #[serde(default)]
+    siege: Option<SiegeFieldDto>,
 }
 
 #[derive(Deserialize)]
@@ -427,6 +458,8 @@ enum AbilityDto {
     },
     /// Pack format v31 (E04b T8b, BAT-Q21).
     IgnoresMagicBlock {},
+    /// Pack format v37 (E04c T5, BAT-SIE-008).
+    NoWallPenalty {},
 }
 
 #[derive(Deserialize)]
@@ -601,6 +634,7 @@ impl AbilityDto {
             Self::Rebirth { divisor } => AbilityDef::Rebirth { divisor },
             Self::Fear { percent } => AbilityDef::Fear { percent },
             Self::IgnoresMagicBlock {} => AbilityDef::IgnoresMagicBlock,
+            Self::NoWallPenalty {} => AbilityDef::NoWallPenalty,
         })
     }
 }
@@ -1136,11 +1170,32 @@ pub fn parse_battle(manifest: &PackManifest, text: &str) -> Result<BattlePack, B
                     .transpose()?,
                 hero_casts_per_round: b.hero_casts_per_round,
                 side_stack_limit: b.side_stack_limit,
+                siege: b.siege.map(|s| SiegeFieldDef {
+                    walls: s.walls,
+                    gate: s.gate,
+                    moat: s.moat,
+                    second_moat: s.second_moat,
+                    moat_defense_penalty: s.moat_defense_penalty,
+                    mine_power: s.mine_power,
+                }),
             })
         })
         .transpose()?;
+    let sieges = file
+        .siege
+        .into_iter()
+        .map(|s| {
+            Ok(SiegeDef {
+                faction: reference(pack_id, &s.faction)?,
+                moat_damage: s.moat_damage,
+                second_moat: s.second_moat,
+                mines: s.mines.map(|m| reference(pack_id, &m)).transpose()?,
+            })
+        })
+        .collect::<Result<Vec<_>, KeyError>>()?;
     Ok(BattlePack {
         battlefields,
+        sieges,
         obstacles,
         creatures,
         creature_overrides,

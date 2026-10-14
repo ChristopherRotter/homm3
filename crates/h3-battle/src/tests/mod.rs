@@ -36,6 +36,7 @@ mod ranged;
 mod rebirth;
 mod remove;
 mod rules;
+mod sieges;
 mod specialist;
 mod spells;
 mod strike;

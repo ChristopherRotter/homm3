@@ -127,7 +127,7 @@ fields = [
   { offset = 0x1C4, name = "hexes", type = "hex_record[187]", summary = "the hex records, stride 0x70", confidence = "read", refs = ["installation.md §7.15"] },
   { offset = 0x5394, name = "terrain", type = "i32", summary = "the battlefield's terrain (set by 0x4643B0: a siege the town's, a ship water, underground and some mines subterranean, the shore sand)", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.26"] },
   { offset = 0x53A0, name = "absolute_obstacle", type = "i32", summary = "the absolute obstacle (record of 0x63BEC0), -1 none", confidence = "read", refs = ["epics/E17-design.md §4"] },
-  { offset = 0x53A4, name = "siege_gate_state", type = "i32", summary = "3 at a siege's setup; the moat test counts hex 95 (94) only while it is 3 (other values not read)", confidence = "inferred", refs = ["installation.md §7.27"] },
+  { offset = 0x53A4, name = "siege_gate_state", type = "i32", summary = "the gate: 3 closed (the setup's value), 1 open, 2 between them while the drawbridge moves (0x4671C0, 0x4672E0); hex 95 (94) is moat only while closed", confidence = "read", refs = ["installation.md §7.27", "installation.md §7.28"] },
   { offset = 0x53A8, name = "moat", type = "u8", summary = "a moat: a Citadel or Castle, not a Tower, a Stronghold only on a SoD map", confidence = "read", refs = ["installation.md §7.27"] },
   { offset = 0x53A9, name = "moat_fortress", type = "u8", summary = "the Fortress's second moat row", confidence = "read", refs = ["installation.md §7.27"] },
   { offset = 0x53AC, name = "field_copy", type = "pcx16*", summary = "a copy of the background's field area (58, 86, 683 x 472) before the hex overlays (0x493CF0)", confidence = "inferred", refs = ["epics/E17-design.md §4"] },
@@ -140,6 +140,7 @@ fields = [
   { offset = 0x53C6, name = "on_ship", type = "u8", summary = "a battle on a ship (a hero in a boat, a Shipwreck or Derelict Ship): the deck picture, water terrain", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x53C8, name = "siege_town", type = "town*", summary = "the town the battle is at, null elsewhere: its faction's native terrain becomes the battlefield's (0x4643B3); a siege is +0x132F4 > 0 (0x4646D4, 0x4662D5)", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x53CC, name = "heroes", type = "hero*[2]", summary = "each side's hero, null without one", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x53D4, name = "hero_power", type = "i32[2]", summary = "each side's hero's power for the battle (hero +0x478, 1 to 99; 0 without a hero; 0x463EE5): the Tower's mines' Land Mine damage (0x46641E)", confidence = "read", refs = ["installation.md §7.28"] },
   { offset = 0x53E4, name = "hero_groups", type = "i32[2]", summary = "each hero's DEF group", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x53EC, name = "hero_frames", type = "i32[2]", summary = "each hero's frame", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x53FC, name = "hero_idle_clocks", type = "i32[2]", summary = "each hero's idle clock: set at the battle's start (0x479F30); the idle step plays an idle group 4 500 ms after it (0x4965AB)", confidence = "inferred", refs = ["epics/E17-design.md §7"] },
@@ -173,7 +174,7 @@ fields = [
   { offset = 0x13D78, name = "turrets", type = "turret[3]", summary = "the keep and the two towers, 0x24 bytes each: the shooter creature, pictures, positions (0x466C50)", confidence = "read", refs = ["installation.md §7.27"] },
   { offset = 0x13DE4, name = "wait_phase", type = "u8", summary = "the round's wait phase: set when no stack is left to act (0x4652A7), cleared at the round start; no Wraith drain while set", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x13DE8, name = "defender_saved_skills", type = "i32[4]", summary = "the defending hero's attack, defense, power and mana before the town's bonuses; restored at the end, the mana capped", confidence = "read", refs = ["installation.md §7.27"] },
-  { offset = 0x13F60, name = "wall_parts", type = "i32[18]", summary = "the walls' 18 part values at a siege's start (copied to +0x13FA8); four +1 with a Castle", confidence = "inferred", refs = ["installation.md §7.27"] },
+  { offset = 0x13F60, name = "wall_parts", type = "i32[18]", summary = "the walls' 18 parts' hit points at a siege's start (WALLS.TXT: 2 for the towers, the four walls, the gate and the keep; the covers set to 1; a Castle's four walls +1), copied to +0x13FA8", confidence = "read", refs = ["installation.md §7.27", "installation.md §7.28"] },
   { offset = 0x13FF0, name = "map_position", type = "u32", summary = "the battle's adventure map position, packed (x, y, the level in the high bits: underground -> subterranean, 0x464451)", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x13FFC, name = "step_counter", type = "i32", summary = "counted up by each idle step (0x4960D0); obstacle frames run by it", confidence = "read", refs = ["epics/E17-design.md §4"] },
 ]
@@ -332,6 +333,7 @@ summary = "The game (pointer at 0x6994E8; H3API's H3Main, whose size is used her
 refs = ["rules/surveys/E08-objects.md"]
 h3api = "H3Main"
 fields = [
+  { offset = 0x1F698, name = "map_kind", type = "i32", summary = "H3API's mapKind, 0 RoE, 1 AB, 2 SoD: the game's version for the rules that test it (the siege's moat and its damage, the Tower's mines, the elementals' faction); restored by the saved-game loader (0x4BCDA0), the new game's setter not read", confidence = "inferred", refs = ["installation.md §7.27"] },
   { offset = 0x1F69D, name = "flagged_start", type = "u8", summary = "read by the end-turn button and the battle start; set, a human starts with 0x6779C8's resources (probably the tutorial)", confidence = "inferred", refs = ["rules/surveys/E08-objects.md §7.2"] },
   { offset = 0x1F6D8, name = "difficulty", type = "i8", summary = "the game's difficulty, 0 easy to 4 impossible: the starting resources' row", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
   { offset = 0x1F879, name = "teams", type = "i8[8]", summary = "team per colour: a reveal sets the bits of every player of the revealer's team", confidence = "read", refs = ["rules/surveys/E08-adventure-core.md §2"] },

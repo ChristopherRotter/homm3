@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v25 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v26 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 25
+//! format = 26
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -28,6 +28,15 @@
 //! tight_formation = ["defender"]  # sides in tight formation (omitted when none)
 //! attacker_funds = 2000           # what a side can pay for a surrender (format 10; omitted
 //!                                 #   when 0)
+//!
+//! [setup.siege]                   # the town the battle is fought at (format 26; omitted when
+//! faction = "base:castle"         #   none): `h3_pack_battle::SiegeEntry`
+//! fort = "citadel"                #   none | fort | citadel | castle
+//! moat = "damaging"               #   absent | harmless | damaging
+//! structures = 3                  #   each omitted when 0 or false
+//! escape_tunnel = true
+//! morale = 1
+//! luck = 0
 //!
 //! [[setup.obstacles]]             # the natural obstacles (format 18: pieces; omitted when none)
 //! hexes = [40, 41]                #   the hexes it blocks
@@ -83,7 +92,7 @@ use h3_content::{ContentKey, CreatureTypeId, SpellId};
 use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
-use h3_pack_battle::{BattlePackError, HeroEntry, ObstacleEntry, ScenarioDef};
+use h3_pack_battle::{BattlePackError, HeroEntry, ObstacleEntry, ScenarioDef, SiegeEntry};
 use h3_sim::{Replay, ReplayError, ReplayHeader};
 use serde::{Deserialize, Serialize};
 
@@ -224,6 +233,8 @@ struct SetupEntry {
     #[serde(default, skip_serializing_if = "is_zero")]
     defender_funds: u32,
     // Tables last: TOML writes values before tables.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    siege: Option<SiegeEntry>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     obstacles: Vec<ObstacleEntry>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -481,6 +492,13 @@ pub fn replay_to_toml(
                 .as_ref()
                 .map(|k| k.as_str().to_owned()),
             anti_magic: replay.setup.anti_magic,
+            siege: replay
+                .setup
+                .siege
+                .as_ref()
+                .map(|s| SiegeEntry::of(s, ruleset))
+                .transpose()
+                .map_err(|e| CliError::Format(e.to_string()))?,
             attacker_war_machines: keys(&replay.setup.war_machines[0]),
             defender_war_machines: keys(&replay.setup.war_machines[1]),
             tight_formation: h3_pack_battle::tight_sides(replay.setup.formations),
@@ -625,7 +643,13 @@ impl ReplayDoc {
                     .transpose()
                     .map_err(|e| CliError::Format(e.to_string()))?,
                 anti_magic: f.setup.anti_magic,
-                siege: None,
+                siege: f
+                    .setup
+                    .siege
+                    .as_ref()
+                    .map(|s| s.to_siege(ruleset))
+                    .transpose()
+                    .map_err(|e| CliError::Format(e.to_string()))?,
                 war_machines: [
                     machines(&f.setup.attacker_war_machines)?,
                     machines(&f.setup.defender_war_machines)?,

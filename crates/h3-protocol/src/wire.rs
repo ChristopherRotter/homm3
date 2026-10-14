@@ -478,6 +478,14 @@ pub enum Event {
         from: u8,
         to: u8,
     },
+    GateOpened {},
+    GateClosed {},
+    MoatDamage {
+        stack: u8,
+        hex: u8,
+        damage: WireU64,
+        kills: u32,
+    },
     BattleEnded {
         result: Outcome,
     },
@@ -868,6 +876,8 @@ pub struct Observation {
     pub battlefield: Option<u16>,
     /// The battle is at an anti-magic garrison: neither side casts (v28).
     pub anti_magic: bool,
+    /// The town the battle is fought at (v30, ADR-0023): its walls, gate and moat.
+    pub siege: Option<Siege>,
     /// The attacker's and the defender's public state.
     pub sides: [SideView; 2],
     /// The private part of the viewer's own hero.
@@ -887,6 +897,24 @@ pub struct Observation {
     pub obstacles_cleared: Vec<u8>,
     /// The spell obstacles the viewer sees, in the order they were placed.
     pub spell_obstacles: Vec<SpellObstacle>,
+}
+
+/// The town a battle is fought at as the battle shows it (`h3_battle::SiegeState`, v30).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Siege {
+    /// The town's faction handle.
+    pub faction: u16,
+    /// Its fort level: 0 none, 1 Fort, 2 Citadel, 3 Castle.
+    pub fort: u8,
+    /// Its moat: 0 absent, 1 harmless, 2 damaging.
+    pub moat: u8,
+    /// The gate is open.
+    pub gate_open: bool,
+    /// The wall hexes, the gate's included.
+    pub walls: Vec<u8>,
+    /// The moat's hexes now (the bridges only while the gate is closed).
+    pub moat_hexes: Vec<u8>,
 }
 
 /// A content pack the game is made of.

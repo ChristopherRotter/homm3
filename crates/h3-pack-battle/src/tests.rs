@@ -11,7 +11,7 @@ use h3_content::{
 };
 use h3_contracts::{
     ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, EagleEye,
-    FactionGroup, Obstacle, Rate, StatOp, TentControl,
+    FactionGroup, FortLevel, Moat, Obstacle, Rate, StatOp, TentControl,
 };
 
 /// A pack's `core.toml` and `battle.toml`, patched together (R01b3).
@@ -115,8 +115,44 @@ fn parse_pack(texts: &Texts) -> Result<ContentPack, BattlePackError> {
     parse_pack_parts(texts).map(|(core, _)| core)
 }
 #[test]
+fn the_siege_scenario_names_its_town() {
+    let (ruleset, setup) = synthetic(SYNTHETIC_SIEGE).unwrap();
+    let town = setup.siege.unwrap();
+    let vale = ruleset.faction_by_key("synthetic:vale").unwrap();
+    assert_eq!(
+        (town.faction, town.fort, town.moat, town.structures),
+        (vale, FortLevel::Citadel, Moat::Damaging, 0)
+    );
+    // The entry and back (a replay's `[setup.siege]`).
+    let entry = SiegeEntry::of(&town, &ruleset).unwrap();
+    assert_eq!(
+        (entry.fort.as_str(), entry.moat.as_str()),
+        ("citadel", "damaging")
+    );
+    assert_eq!(entry.to_siege(&ruleset).unwrap(), town);
+    let refused = |edit: &dyn Fn(&mut SiegeEntry)| {
+        let mut e = entry.clone();
+        edit(&mut e);
+        e.to_siege(&ruleset).unwrap_err().to_string()
+    };
+    assert!(refused(&|e| e.faction = "synthetic:nowhere".into()).contains("unknown faction"));
+    assert!(refused(&|e| e.fort = "keep".into()).contains("unknown fort level `keep`"));
+    assert!(refused(&|e| e.moat = "lava".into()).contains("unknown moat `lava`"));
+    let stray = h3_contracts::Siege {
+        faction: h3_content::FactionId::from_index(9).unwrap(),
+        ..town
+    };
+    assert!(SiegeEntry::of(&stray, &ruleset).is_err());
+}
+
+#[test]
 fn synthetic_pack_and_scenarios_load() {
-    for text in [SYNTHETIC_SKIRMISH, SYNTHETIC_DUEL, SYNTHETIC_FULL] {
+    for text in [
+        SYNTHETIC_SKIRMISH,
+        SYNTHETIC_DUEL,
+        SYNTHETIC_FULL,
+        SYNTHETIC_SIEGE,
+    ] {
         let (ruleset, setup) = synthetic(text).unwrap();
         assert_eq!(ruleset.creature_count(), 12);
         assert!(!setup.attacker.stacks.is_empty());
