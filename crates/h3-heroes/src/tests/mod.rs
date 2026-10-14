@@ -87,10 +87,13 @@ const SKILLS: [&str; 10] = [
 /// Slots: head, two rings, three misc positions, a war-machine slot, a second machine slot
 /// whose artifact places nothing (like the Catapult) and a book slot; the last three never go
 /// to the backpack. Artifacts: `t:circle` is a combination of band, loop and helm worn as a ring
-/// (it locks the other ring and the head); `t:kit` places the Ballista; the Grail has no slot.
+/// (it locks the other ring and the head); `t:kit` places the Ballista, `t:sling` the Catapult
+/// (E08 T19a2a); the Grail has no slot.
 fn pack() -> ContentPack {
     let mut kit = artifact("t:kit", Some("t:machine"));
     kit.war_machine = Some(key("t:ballista"));
+    let mut sling = artifact("t:sling", Some("t:engine"));
+    sling.war_machine = Some(key("t:catapult"));
     let mut circle = artifact("t:circle", Some("t:ring"));
     circle.parts = vec![key("t:band"), key("t:loop"), key("t:helm")];
     // The spell artifacts (E04b T8a): a scroll, an air tome, a crown of every level-1 spell and a
@@ -128,6 +131,7 @@ fn pack() -> ContentPack {
         creatures: vec![
             creature("t:peasant", &[]),
             creature("t:ballista", &["war_machine", "shooter"]),
+            creature("t:catapult", &["war_machine", "catapult"]),
         ],
         spell_schools: vec![SpellSchoolDef {
             key: key("t:air"),
@@ -196,6 +200,7 @@ fn pack() -> ContentPack {
             tome,
             crown,
             wand,
+            sling,
         ],
         profiles: vec![
             ProfileDef {
@@ -582,4 +587,5 @@ proptest! {
     }
 }
 
+mod change;
 mod derive;

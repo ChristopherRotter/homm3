@@ -1,9 +1,10 @@
-//! Why hero details are invalid.
+//! Why hero details are invalid, and why a change does not fit them.
 
 use core::fmt;
 
 use h3_content::{ArtifactSlotId, ArtifactTypeId, SkillId, SpellId};
 
+use crate::change::ArtifactPlace;
 use crate::details::PrimarySkill;
 
 /// A reason why hero details do not fit a ruleset ([`crate::validate`]).
@@ -84,3 +85,29 @@ impl fmt::Display for DetailsError {
 }
 
 impl core::error::Error for DetailsError {}
+
+/// A reason why a change does not fit hero details ([`crate::check_change`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChangeError {
+    /// The received artifact, or the spell it holds, does not fit the ruleset (HER-ART-003).
+    Artifact(DetailsError),
+    /// The received artifact fits no free position, and the backpack cannot take it.
+    NoRoom(ArtifactTypeId),
+    /// There is no artifact at the place.
+    NoArtifact(ArtifactPlace),
+}
+
+impl fmt::Display for ChangeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Artifact(error) => write!(f, "the artifact does not fit the ruleset: {error}"),
+            Self::NoRoom(id) => write!(f, "no room for artifact {}", id.raw()),
+            Self::NoArtifact(ArtifactPlace::Worn(i)) => write!(f, "no artifact worn at {i}"),
+            Self::NoArtifact(ArtifactPlace::Backpack(i)) => {
+                write!(f, "no artifact in the backpack at {i}")
+            }
+        }
+    }
+}
+
+impl core::error::Error for ChangeError {}
