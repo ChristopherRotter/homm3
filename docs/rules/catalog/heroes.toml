@@ -633,7 +633,7 @@ numeric  = "float"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (E08 T18b; survey E08-battles.md §6.2): map_hero_setup 0x486C5C to 0x486C98 clamps Knowledge (+0x479) to 1-99 and sets the spell points (+0x18) to crt_ftol(0x4E48B0() x f32(10 x K)); the Intelligence getter 0x4E48B0 returns 1 + f32(table[level] x (1 + 0.05f x level)) for a skill specialist of skill 24, else 1 + table[level], the table 0x63EA88 holding 0, 0.25, 0.50, 1.00 (installation.md §7.4)"
+  ref        = "Heroes3.exe code reading (E08 T18b; survey E08-battles.md §6.2): map_hero_setup 0x486C5C to 0x486C98 clamps Knowledge (+0x479, with the worn artifacts' bonuses: the setup equips them first, 0x4866D5 and 0x48675C, and hero_equip_artifact adds their primary skills, 0x4E2B7E; E08 T20a1) to 1-99 and sets the spell points (+0x18) to crt_ftol(0x4E48B0() x f32(10 x K)); the Intelligence getter 0x4E48B0 returns 1 + f32(table[level] x (1 + 0.05f x level)) for a skill specialist of skill 24, else 1 + table[level], the table 0x63EA88 holding 0, 0.25, 0.50, 1.00 (installation.md §7.4)"
   confidence = "high"
 
   [[rule.source]]
@@ -867,3 +867,50 @@ numeric  = "integer"
   kind       = "design"
   ref        = "E08 decision 30 (the raises kind and its tie rule, the user, 2026-10-14)"
   confidence = "high"
+
+[[rule]]
+id       = "HER-ADV-001"
+title    = "A hero's Attack and Defense on the adventure map"
+context  = "heroes"
+status   = "implemented"
+summary  = "The adventure map reads a hero's Attack and Defense as the battle hero has them (HER-BAT-001): the base values plus the primary_skills effects (the worn artifacts' once per worn copy, a combination's with its parts'), each between the ruleset's bounds (0 to 99). The wandering monsters' answer weighs the hero's army with them (ADV-MON-007, E08 T20b). A ruleset without hero parameters (which validation refuses) gives the base values. E08 T20a1: `h3_heroes::attack_defense`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T20a1): the hero record's primary skills (+0x476 to +0x479, signed bytes) hold the worn artifacts' bonuses: hero_equip_artifact 0x4E2A00 adds the artifact's four bytes of artifact_primary_skills 0x63E758 (0x4E2B7E to 0x4E2B99) and, for a combination, each part's (0x4E2AF7 to 0x4E2B0D); hero_remove_artifact 0x4E2BD0 subtracts them (0x4E2C72, 0x4E2D14); hero_attack_defense_factor 0x4E5400 clamps +0x476 and +0x477 to 0-99 when it reads them"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGHeroInstance.cpp L738-L747 getValueForDiplomacy ('H3 formula for hero strength when considering diplomacy skill'): sqrt((1 + 0.05 x getPrimSkillLevel(ATTACK)) x (1 + 0.05 x getPrimSkillLevel(DEFENSE))) times the army strength; the primary skills are the bonus system's totals, the artifacts' PRIMARY_SKILL bonuses included"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L738-L747"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+[[rule]]
+id       = "HER-ADV-002"
+title    = "A hero's join bonus"
+context  = "heroes"
+status   = "implemented"
+summary  = "How much readier wandering creatures are to join a hero: the sum of the levels of its join_bonus effects (Diplomacy 1, 2, 3 at Basic, Advanced, Expert; each artifact type once), at most 3. The wandering monsters' answer adds it to its tests (ADV-MON-007, E08 T20b; the Easy rule, one level more for a human player, is the adventure's). No code reads a skill by name. E08 T20a1: `h3_heroes::join_bonus`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T17a; survey E08-battles.md §3.1): monster_visit_decision 0x4A7740 reads the hero's Diplomacy level (+0xCD, 0 to 3) as L: C = St + Sy + L, a free join at M <= Sy + L + 1, a paid one at M <= Sy + 2L + 1; on Easy a human player's L becomes min(L + 1, 3) (0x4A787E)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/skills.json (1.7.5) diplomacy: WANDERING_CREATURES_JOIN_BONUS 1, 2, 3 at Basic, Advanced, Expert"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Diplomacy - Heroes 3 wiki (survey E08-battles.md §3.1): wandering creatures join more readily by the skill's level; on Easy 'No Diplomacy acts as basic Diplomacy, basic Diplomacy acts as advanced Diplomacy'"
+  url        = "https://heroes.thelazy.net/index.php/Diplomacy"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
