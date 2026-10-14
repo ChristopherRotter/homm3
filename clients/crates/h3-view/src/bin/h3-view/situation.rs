@@ -4,7 +4,8 @@
 //! the scenario's terrain, each with the scenario's stacks in their slots and its formation, no
 //! secondary skills, artifacts or war machines (nothing the still does not draw, nothing that moves
 //! on its own: no morale from Leadership, no Tactics phase); stepping Red's hero east starts the
-//! battle (`h3drive.py`). The creatures' original ids come from `crtraits.txt` (`H3bitmap.lod`) by
+//! battle (`h3drive.py`). With `--hot-seat` (E17 M3 T1a) Blue may be a human too, so that the
+//! harness plays both sides of a hot-seat battle (`hot_seat` in `sequences.toml`). The creatures' original ids come from `crtraits.txt` (`H3bitmap.lod`) by
 //! the packs' names, as `harvest` keys the asset tables. An adapter: it reads files and writes one.
 
 use std::collections::BTreeMap;
@@ -39,11 +40,12 @@ pub struct Options {
     install: PathBuf,
     out: PathBuf,
     tile: (u8, u8),
+    hot_seat: bool,
 }
 
 impl Options {
-    /// Parses `<scenario.toml> [--packs <dir>] [--install <dir>] [--out <file.h3m>] [--tile x,y]`;
-    /// the packs and the installation default as `render`'s, the map to
+    /// Parses `<scenario.toml> [--packs <dir>] [--install <dir>] [--out <file.h3m>] [--tile x,y]
+    /// [--hot-seat]`; the packs and the installation default as `render`'s, the map to
     /// `clients/out/situation/<stem>.h3m`, Blue's tile to (11, 10).
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
@@ -54,6 +56,7 @@ impl Options {
         let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
         let (mut scenario, mut packs, mut install, mut out) = (None, None, None, None);
         let mut tile = BLUE_TILE;
+        let mut hot_seat = false;
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let slot = match arg.as_str() {
@@ -61,6 +64,10 @@ impl Options {
                     let value = rest.next().map_or("", String::as_str);
                     tile = parse_tile(value)
                         .ok_or_else(|| format!("situation: bad tile `{value}` (x,y: 1 to 34)"))?;
+                    continue;
+                }
+                "--hot-seat" => {
+                    hot_seat = true;
                     continue;
                 }
                 "--packs" => &mut packs,
@@ -87,6 +94,7 @@ impl Options {
             .map_or_else(|| "situation".into(), |s| s.to_string_lossy().into_owned());
         Ok(Self {
             tile,
+            hot_seat,
             out: out.unwrap_or_else(|| manifest.join(format!("../../out/situation/{stem}.h3m"))),
             scenario,
             packs: packs.unwrap_or_else(|| manifest.join("../../../packs")),
@@ -118,7 +126,7 @@ fn situation(options: &Options) -> Result<(), String> {
     let battle = sides(&options.scenario, &options.packs)?;
     let ids = original_ids(&options.install)?;
     let id = options.scenario.display().to_string();
-    let map = map(&id, &battle, &ids, options.tile)?;
+    let map = map(&id, &battle, &ids, options.tile, options.hot_seat)?;
     let bytes = write(&map).map_err(|e| format!("the map: {e}"))?;
     if let Some(dir) = options.out.parent() {
         fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -182,12 +190,14 @@ fn army(
     Ok(army)
 }
 
-/// The map of the battle `battle` (`id` names it in the scenario list), Blue on `tile`.
+/// The map of the battle `battle` (`id` names it in the scenario list), Blue on `tile`; Blue may
+/// be a human with `hot_seat`.
 fn map(
     id: &str,
     battle: &Sides,
     ids: &BTreeMap<String, usize>,
     tile: (u8, u8),
+    hot_seat: bool,
 ) -> Result<Map, String> {
     let ground = terrain(
         battle
@@ -221,7 +231,7 @@ fn map(
         towns: 1,
     });
     players[1] = Some(Player {
-        human: false,
+        human: hot_seat,
         computer: true,
         towns: 1 << 6,
     });
@@ -269,7 +279,7 @@ mod tests {
     fn the_options_default_beside_the_scenario() {
         let o = Options::parse_with(&args(&["scenarios/a.toml"]), None).unwrap();
         assert!(o.out.ends_with("out/situation/a.h3m"));
-        assert_eq!(o.tile, (11, 10));
+        assert_eq!((o.tile, o.hot_seat), ((11, 10), false));
         let o = Options::parse_with(
             &args(&[
                 "x.toml",
@@ -281,13 +291,14 @@ mod tests {
                 "p",
                 "--tile",
                 "20,5",
+                "--hot-seat",
             ]),
             Some(PathBuf::from("env")),
         )
         .unwrap();
         assert_eq!(
-            (o.out, o.install, o.packs, o.tile),
-            ("m.h3m".into(), "i".into(), "p".into(), (20, 5))
+            (o.out, o.install, o.packs, o.tile, o.hot_seat),
+            ("m.h3m".into(), "i".into(), "p".into(), (20, 5), true)
         );
         for bad in ["1,5", "35,5", "5,0", "5", "a,b"] {
             assert!(Options::parse_with(&args(&["x", "--tile", bad]), None).is_err());
@@ -304,7 +315,7 @@ mod tests {
             Some("base:desert"),
             &[(0, "Archer", 20), (6, "Pikeman", 10)],
         );
-        let map = map("t", &battle, &ids(), BLUE_TILE).unwrap();
+        let map = map("t", &battle, &ids(), BLUE_TILE, false).unwrap();
         assert_eq!(map.terrain, Terrain::Sand);
         let [MapObject::Hero(red), MapObject::Hero(blue)] = &map.objects[..] else {
             panic!("two heroes");
@@ -329,13 +340,17 @@ mod tests {
                 .iter()
                 .all(Option::is_none)
         );
+        assert!(!map.players[1].as_ref().unwrap().human);
         // The writer accepts it.
         assert!(write(&map).is_ok());
+        // In hot seat Blue may be a human too.
+        let hot = super::map("t", &battle, &ids(), BLUE_TILE, true).unwrap();
+        assert!(hot.players[1].as_ref().unwrap().human);
     }
 
     #[test]
     fn what_the_original_cannot_show_is_an_error() {
-        let ok = |t, a: &[(u8, &str, u32)]| map("t", &sides_of(t, a), &ids(), (20, 20));
+        let ok = |t, a: &[(u8, &str, u32)]| map("t", &sides_of(t, a), &ids(), (20, 20), false);
         assert!(ok(None, &[]).unwrap_err().contains("no terrain"));
         assert!(ok(Some("base:water"), &[]).unwrap_err().contains("water"));
         assert!(

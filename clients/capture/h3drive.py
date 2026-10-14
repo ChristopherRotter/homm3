@@ -29,14 +29,21 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             after the opening, default 0)
 
   h3drive.py sequence <map.h3m> <out-dir> [--pre <ms>] [--action <a>]... [--ms <n>] [--screen]
+                    [--hot-seat]
                                             a sequence frame by frame (M2 T3): the opening, the
                                             clock stepped <pre> ms, the actions at the frozen
                                             clock (hex:<n> clicks a hex, click:x,y, move:x,y,
-                                            key:<name>, step:<ms>), then <n> steps of 1 ms; after
-                                            each, the stacks' animation state read from the
-                                            game's memory (h3mem.py) and with --screen a digest
-                                            of the screen; writes <out>/states.jsonl and the
-                                            changes, <out>/timeline.txt
+                                            key:<name>, step:<ms>; at:<ms> steps 1 ms at a time,
+                                            each step read, up to <ms> after the opening before
+                                            the actions after it: a battle in progress, M3 T1a;
+                                            turn:<side>.<record> steps so until that stack's turn
+                                            starts, its time written to <out>/turns.txt),
+                                            then <n> steps of 1 ms; after each, the stacks'
+                                            animation state read from the game's memory
+                                            (h3mem.py) and with --screen a digest of the screen;
+                                            writes <out>/states.jsonl and the changes,
+                                            <out>/timeline.txt; --hot-seat starts the map in hot
+                                            seat (both sides played by the actions, M3 T1a)
   h3drive.py sequences [<sequences.toml>] [--out <dir>] [--only <id>]
                                             the recorded sequences (default
                                             clients/situations/sequences.toml) unattended: each
@@ -448,7 +455,9 @@ def timeline(states):
     """The changes of the stacks' group, frame and hex: lines `<ms> <side>.<record> g<group>
     f<frame> h<hex>`, the first state of each stack at the sequence's start."""
     lines, last = [], {}
-    for state in states:
+    for i, state in enumerate(states):
+        if i + 1 < len(states) and states[i + 1]["t"] == state["t"]:
+            continue  # a later state at the same time (actions between them) shows instead
         for st in state["stacks"]:
             key = (st["side"], st["record"])
             now = (st["group"], st["frame"], st["hex"])
@@ -458,19 +467,29 @@ def timeline(states):
     return lines
 
 
-def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, frames=False):
+def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, frames=False,
+             hot_seat=False):
     """The battle of the map: its opening, `pre` ms on, the actions, then `ms` steps of 1 ms,
     each followed by the game's state (h3mem); returns the states (times in ms after the
-    opening, the clocks relative to it). With `frames` (M2 T4b-1) every distinct battlefield
-    the steps show is kept: `<out>/frames/t<ms>.npz` (the whole screen, 5-6-5), its first time
-    and its state in `<out>/frames.jsonl`."""
+    opening, the clocks relative to it). An action `at:<ms>` (M3 T1a) steps 1 ms at a time, each
+    step read, until `<ms>` after the opening, and the actions after it act then: a battle in
+    progress; an action `turn:<side>.<record>` steps so until that stack's turn starts (the game
+    names it the active stack), the times written to `<out>/turns.txt`. With `hot_seat` the map starts in hot seat, Red and Blue both humans, so the
+    actions play both sides. With `frames` (M2 T4b-1) every distinct battlefield the steps show
+    is kept: `<out>/frames/t<ms>.npz` (the whole screen, 5-6-5), its first time and its state in
+    `<out>/frames.jsonl`."""
     import hashlib
     import json
 
     import h3mem
 
     game.start(map_path)
-    to_scenario(game)
+    if hot_seat:
+        import h3adv
+
+        h3adv.to_hot_seat(game, ["Red", "Blue"])
+    else:
+        to_scenario(game)
     t0 = into_battle(game)
     mem = h3mem.Mem()
     now = game.clock(f"step {pre}") if pre else t0
@@ -497,14 +516,29 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
             last[0] = s["screen"]
         return s
 
-    states = [state(now)]
-    for a in actions:
-        act(game, a)
-    states.append(state(now))
-    for _ in range(ms):
+    def step():
         # 500 reads, not 20: under load the computer's turn can start after 20 reads at the new
         # time (its draw read a step late, the runbook's "Traps"); 500 cost about 3 ms a step.
-        now = game.clock("step 1", settle_reads=500)
+        return game.clock("step 1", settle_reads=500)
+
+    states, turns = [state(now)], []
+    for a in actions:
+        kind, _, arg = a.partition(":")
+        if kind in ("at", "turn"):
+            states.append(state(now))  # the state after the actions so far, at their time
+            # A turn: the stack named is the active one. (The game names a striker again while
+            # it turns back after its attack, before the next stack's turn: M3 T1a.)
+            whose = [int(n) for n in arg.split(".")] if kind == "turn" else None
+            while (states[-1]["clocks"]["active"] != whose if whose
+                   else now - t0 < int(arg)):
+                now = step()
+                states.append(state(now))
+            turns.append(now - t0)
+        else:
+            act(game, a)
+    states.append(state(now))
+    for _ in range(ms):
+        now = step()
         states.append(state(now))
     if frames:
         with open(Path(out) / "frames.jsonl", "w") as f:
@@ -516,18 +550,21 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         for s in states:
             f.write(json.dumps(s) + "\n")
     (out / "timeline.txt").write_text("\n".join(timeline(states[1:])) + "\n")
+    (out / "turns.txt").write_text("".join(f"{t}\n" for t in turns))
     return states
 
 
 def sequence_command(map_path, out, rest):
     opts = {"--pre": "0", "--ms": "1000"}
-    actions, screen, frames, i = [], False, False, 0
+    actions, screen, frames, hot_seat, i = [], False, False, False, 0
     while i < len(rest):
         if rest[i] == "--action":
             actions.append(rest[i + 1])
             i += 2
         elif rest[i] == "--screen":
             screen, i = True, i + 1
+        elif rest[i] == "--hot-seat":
+            hot_seat, i = True, i + 1
         elif rest[i] == "--frames":
             frames, i = True, i + 1
         elif rest[i] in opts:
@@ -539,10 +576,16 @@ def sequence_command(map_path, out, rest):
     game = Game(out)
     try:
         sequence(game, map_path, out, int(opts["--pre"]), actions, int(opts["--ms"]), screen,
-                 frames)
+                 frames, hot_seat)
     finally:
         game.stop()
     print(f"sequence: {out}/timeline.txt")
+
+
+def situation_args(h3view, set_path, entry, map_path):
+    """`h3-view situation`'s command line for a sequence's map (Blue a human too in hot seat)."""
+    args = [h3view, "situation", str(set_path.parent / entry["scenario"]), "--out", str(map_path)]
+    return args + (["--hot-seat"] if entry.get("hot_seat") else [])
 
 
 def run_sequences(rest):
@@ -561,11 +604,12 @@ def run_sequences(rest):
         here = out / e["id"]
         here.mkdir(parents=True, exist_ok=True)
         map_path = here / f"{e['id']}.h3m"
-        subprocess.run([h3view, "situation", str(set_path.parent / e["scenario"]), "--out",
-                        str(map_path)], check=True, capture_output=True)
+        subprocess.run(situation_args(h3view, set_path, e, map_path), check=True,
+                       capture_output=True)
         game = Game(here)
         try:
-            sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"])
+            sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
+                     hot_seat=e.get("hot_seat", False))
         finally:
             game.stop()
         recorded = set_path.parent / e["timeline"]
@@ -618,12 +662,12 @@ def run_frames(rest):
         here.mkdir(parents=True, exist_ok=True)
         if not (reuse and (here / "frames.jsonl").exists()):
             map_path = here / f"{e['id']}.h3m"
-            subprocess.run([h3view, "situation", str(set_path.parent / e["scenario"]), "--out",
-                            str(map_path)], check=True, capture_output=True)
+            subprocess.run(situation_args(h3view, set_path, e, map_path), check=True,
+                           capture_output=True)
             game = Game(here)
             try:
                 sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
-                         frames=True)
+                         frames=True, hot_seat=e.get("hot_seat", False))
             finally:
                 game.stop()
         kept = [json.loads(line) for line in (here / "frames.jsonl").read_text().splitlines()]

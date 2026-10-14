@@ -99,6 +99,15 @@ change of a stack's group, frame or hex). `sequences` replays the recorded ones 
 timeline changes; add one like a situation (its entry, `new`, then copy its timeline into
 `timelines/`).
 
+**A battle in progress** (M3 T1a): `--hot-seat` (an entry's `hot_seat = true`) starts the map in
+hot seat with Blue a human too (`h3-view situation --hot-seat`), so the actions play both sides and
+nothing acts on its own. Among the actions, `turn:<side>.<record>` steps 1 ms at a time, each step
+read, until that stack's turn starts (the game names it the active stack), and the actions after
+it act then; its time goes to `<out>/turns.txt` (`at:<ms>` steps so up to a time). Act as the turn
+starts: a player who waits lets fidgets start, which the viewer's timeline does not have. In the
+entry's `[[sequence.command]]`s, `at` gives each player's command its time from `turns.txt` (`ms`
+counts from the last one). `behind` (`seq-behind.toml`): two rounds, 8 commands, about 13 s.
+
 **The frame check** (M2 T4b-1, design §7.9): from `clients/`,
 
 ```
@@ -157,6 +166,9 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 | Adventure map | park the cursor (an edge scrolls the map) | (700, 300) |
 | Adventure map | step the selected hero east into the enemy | key `Right` |
 | Battle | park the cursor over the panel | (420, 580) |
+| Battle | a hex *h* (row r, column c): move, shoot, attack from the side the cursor points | (36 + 44c + 22 if r is even, 112 + 42r): `hex:<h>` |
+| Battle | attack hex *h* from its right neighbour (M3 T1a) | its point + (18, 0): `click:x,y` |
+| Battle | wait, defend | keys `w`, `d` |
 | New game menu | Multiplayer | (640, 185) |
 | Multiplayer dialog | Hot Seat | (580, 152) |
 | Hot-seat names | name *i* (0 to 7; the first has the focus) | (400, 186 + 30 *i*) |
