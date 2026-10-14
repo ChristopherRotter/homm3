@@ -1822,3 +1822,10 @@ and other players learn of it.
 - Rules: GAM-BAT-001 to -005 `implemented` (the code reading, VCMI 1.7.5 re-read for
   `onHeroVisit` and `doSurrenderAction`, E04c batch 3b); `ADV-QUIRK-5`'s ledger entry has its flag
   and tests.
+- **The full verify** (round 2's second session, decision 31): the first complete run found
+  three gaps, fixed on the branch: the design note cited 0x469F20, 0x4E3C60 and 0x4E3CD0 without
+  map entries (now `necromancy_add_raised`, `hero_necromancy_creature`, `hero_necromancy_power`,
+  re-read: the power's town bonus counts each of the owner's Necropolis towns with the buildings;
+  the upgrade's elemental exception holds only while `[game]+0x1F698` is 0), and the four new
+  `GameCommandError` messages were never formatted (`the_battle_errors_read_well`). Decision 30's
+  two points settled; `shared/e08-t19a2` built.

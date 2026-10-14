@@ -629,3 +629,24 @@ fn a_sides_event_goes_to_its_owner_alone() {
         Viewers::NONE
     );
 }
+
+#[test]
+fn the_battle_errors_read_well() {
+    for (error, text) in [
+        (
+            GameCommandError::BattleOpen,
+            "an open battle waits for its commands",
+        ),
+        (GameCommandError::NoBattle, "no battle is open"),
+        (
+            GameCommandError::NotYourSide,
+            "the side to act is not the player's",
+        ),
+        (
+            GameCommandError::Battle(h3_battle::CommandError::BattleOver),
+            "the battle is over",
+        ),
+    ] {
+        assert_eq!(error.to_string(), text);
+    }
+}
