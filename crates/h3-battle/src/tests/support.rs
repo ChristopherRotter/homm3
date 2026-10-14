@@ -1718,6 +1718,7 @@ pub fn try_ruleset_from(
         .chain(raise_defs())
         .chain(create_defs())
         .chain(strike_defs())
+        .chain(quake_defs())
         .map(SpellDef::split)
         .unzip();
     let manifest = PackManifest {
@@ -2352,6 +2353,32 @@ fn timed_def(
         summons: None,
         granted_by_name_only: false,
     }
+}
+
+/// The test Earthquake (`t:quake`, E04c T6, BAT-SIE-015): the original's 2, 2, 3, 4 hits by
+/// mastery, of the air school.
+pub fn quake_defs() -> [SpellDef; 1] {
+    [SpellDef {
+        key: ContentKey::new("t", "quake").unwrap(),
+        name: String::from("quake"),
+        category: SpellCategory::Combat,
+        level: 3,
+        schools: vec![ContentKey::new("t", "air").unwrap()],
+        cost: [20, 17, 17, 17],
+        power: 1,
+        effect: [2, 2, 3, 4],
+        polarity: SpellPolarity::Neutral,
+        magic: SpellMagic {
+            effects: vec![SpellEffect::Earthquake],
+            ..SpellMagic::default()
+        },
+        counters: vec![],
+        dispels: vec![],
+        spares: vec![],
+        tests_as: None,
+        summons: None,
+        granted_by_name_only: false,
+    }]
 }
 
 /// The test Dispel (`t:dispel`, like the original's: own stacks below Advanced, a target with an

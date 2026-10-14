@@ -349,7 +349,7 @@ pub enum SpellEffect {
     /// (Summon Elemental; BAT-MAG-039, E04b T6b, v18).
     Summon,
     /// Damages the town's walls: the value's number of hits of 1, each on a wall-shot target
-    /// drawn as the original draws them (Earthquake; BAT-SIE-016, E04c T6, v38). Cast without a
+    /// drawn as the original draws them (Earthquake; BAT-SIE-015, E04c T6, v38). Cast without a
     /// target in a siege with a fort.
     Earthquake,
 }

@@ -493,7 +493,7 @@ pub enum EventKind {
         /// Damage to its hit points.
         damage: u8,
     },
-    /// Earthquake's hits on a wall-shot target (BAT-SIE-016).
+    /// Earthquake's hits on a wall-shot target (BAT-SIE-015).
     WallQuaked {
         /// The target.
         part: u8,

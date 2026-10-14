@@ -3,7 +3,7 @@
 //! and the siege's field come from the ruleset (`h3_content_battle::Siege`, `SiegeField`). The
 //! original's routines: `docs/formats/installation.md` §7.27 and §7.28.
 //!
-//! The wall shots (E04c T6, `installation.md` §7.29; BAT-SIE-009 to BAT-SIE-016): the wall-shot
+//! The wall shots (E04c T6, `installation.md` §7.29; BAT-SIE-009 to BAT-SIE-015): the wall-shot
 //! targets' hit points, the attacker's Catapult (set up by the battle, BAT-SIE-009) and the
 //! Cyclops shooting them, a destroyed wall's hex and a destroyed gate, Earthquake. The turrets
 //! and the town's other rules (the controls, the experience, the defenders' morale and luck,
@@ -637,7 +637,7 @@ pub(crate) fn commanded_wall_shots(
 /// The standing target nearest to `from` among `candidates` (by their difference of indices; a
 /// tie is replaced with one roll of `random(1, 100)` ≤ 50, in the candidates' order), `from`
 /// itself excluded (the original's 0x445EC0, 0x445D30).
-fn nearest(state: &mut BattleState, candidates: &[u8], from: u8) -> Option<u8> {
+pub(crate) fn nearest(state: &mut BattleState, candidates: &[u8], from: u8) -> Option<u8> {
     let siege = state.siege?;
     let mut best: Option<(u8, u8)> = None;
     for &c in candidates {
@@ -771,13 +771,13 @@ pub(crate) fn damage_part<S: Sink>(state: &mut BattleState, t: u8, damage: u8, s
     }
 }
 
-/// Whether Earthquake may be cast (BAT-SIE-016; the original's 0x59ED29): a battle at a town
+/// Whether Earthquake may be cast (BAT-SIE-015; the original's 0x59ED29): a battle at a town
 /// with a fort, by either side, whatever stands.
 pub(crate) fn may_quake(state: &BattleState) -> bool {
     state.siege.is_some_and(|s| s.fort >= FortLevel::Fort)
 }
 
-/// Earthquake's `hits` (BAT-SIE-016; the original's 0x5A7C80): each hit counts the targets whose
+/// Earthquake's `hits` (BAT-SIE-015; the original's 0x5A7C80): each hit counts the targets whose
 /// hit points exceed the hits drawn on them so far and, with `n` of them, falls on the `random(1,
 /// n)`-th target in order whose hit points are above 0, the hits drawn not subtracted (the
 /// code's draw, D-14). Every target is drawn from, the absent turrets too (they soak hits;

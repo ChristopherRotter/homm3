@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 3 done** (T5): T5a (#183), T5b (#184), T5c, T5d (#187), T5e the siege batch 3c by an agent (**#190**, `battle/e04c-t5e`): every value as the code. **Next: the user's checkpoint**, then T6 (refine first).
+- **E04c increment 4 in progress** (T6, BAT-Q43): T6a the seam **#191** (open), T6b the reading (§7.29), T6c the battle on `battle/e04c-t6` (code in, tests, catalog, replays next), then T6d the batch. Increment 3 (T5) merged (#190).
 - **Merged:** #164, #169, #170, #171, #179, #180, #183, #184, #187. E04b closed 2026-10-12.
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-2 (T6–T8), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
 - **Versions** (T5d): battle state hash v46, battle part hash v3, replay format v26, action encoding v12, C ABI v20, observation encoding v16; shared: core ruleset hash v43, pack format v37, protocol v30. Next ids: BAT-Q43, BAT-QUIRK-22, BAT-STUB-3, BAT-TER-007, BAT-SIE-009; survey D-11, S-30.
