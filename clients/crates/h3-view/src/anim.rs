@@ -1499,14 +1499,18 @@ impl Player<'_> {
         }
         self.clock.wait(aim.steps * step);
         let reactions = self.reactions(hit);
-        // The shooter plays its group out after the climax frame (0x468A3D: a shooter still in
-        // its group counts one frame less, its frame advancing before each draw), its standing
-        // pose from the second iteration on (the reference frames, §7.9); the loop's first
-        // iterations show at once, the deadline being behind. A shot's layers stay (not read).
+        // A shot marks no striker (`melee_strike` does, 0x441A87; `stack_shot` does not), so
+        // `strike_animation`'s loop counts the reactions alone: the longest starts as the
+        // projectile lands, whatever is left of the shot group (E17 M2 T5b, design §7.4). The
+        // shooter, still in its shot group (0x468A55), shows its frames from the climax on beside
+        // it, one per iteration, its frame advancing before each draw, then stands; frames the
+        // loop leaves are cut (*provisional*: not read). The loop's length counts as one striker
+        // frame (the Marksmen's recorded sequence, §7.9); its first iterations show at once, the
+        // deadline being behind. A shot's layers stay (not read).
         self.iterate(
             &live,
             shooter,
-            (group, climax, n - climax, n - climax + 1),
+            (group, climax, n - climax, 2),
             &reactions,
             [STANDING, STANDING],
         );
