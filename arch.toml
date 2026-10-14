@@ -192,8 +192,9 @@ logic = false
 deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-adventure", "h3-game"]
 external = ["miniz_oxide"]
 # Dev: the rulesets of the packs for the import and play tests; the battle part (E08 T19a) for the
-# game's rules bundle, which battles need.
-dev_deps = ["h3-pack", "h3-pack-adventure", "h3-content-battle", "h3-pack-battle"]
+# game's rules bundle, which battles need; the battle (E08 T19b2) for the play driver's hero casts,
+# which the game's legal commands do not list (a separate action head, ADR-0014 point 9).
+dev_deps = ["h3-pack", "h3-pack-adventure", "h3-content-battle", "h3-pack-battle", "h3-battle"]
 dev_external = ["proptest"]
 
 # packs/*/adventure.toml -> the adventure's definitions (ADR-0015 point 2; E08 T4).

@@ -160,10 +160,10 @@ empty in the other; `ADV-STUB-4` closed: another player's hero's tile is a legal
 agent plays a battle with the battle's own agent (`h3_sim::rollout::choose`: it never retreats or
 surrenders); replay format v3 (`Actor` per command, `<player> battle <command>` in the file); the
 golden replays re-recorded, two with hero battles; the game's battle sink passes `RECORDS`; the
-fork workload with a battle open (the heroes seek each other: random play seldom fights). Left:
-- **T19b2**: the property plans play battles to a victory (the driver acts as the owner of the
-  side to act; today the battles end mostly by a retreat or a surrender), so captures, Necromancy
-  and Eagle Eye's learning happen in them.
+fork workload with a battle open (the heroes seek each other: random play seldom fights). Built
+by T19b2 (decision 35): the property plans play battles to a victory (the driver's runs of
+fighting steps, its hero casts; captures, Necromancy and Eagle Eye's learning happen in them).
+Left:
 - **T20b**: the neutral seat (`Seat::Neutral`, a battle action issued as `Actor::System`;
   decision 29), `to_move` yielding seats; `random_rollout` plays it at random until the battle
   lane has ported the original's battle AI (decision 27); golden replays with monsters.
@@ -204,7 +204,7 @@ Each bumps once in the increment, in the task that first changes it.
 |---|---|---|
 | 1 | T18a + T18b | done (2026-10-14): the shared groundwork with the ADR amendments (§10); the store of heroes, its defaults, the import of hero customisations (§1), trimmed at the checkpoint (decision 28) |
 | 2 | T19a1 + T19a2 | split at the checkpoint (decision 29): T19a1 done (2026-10-14): battles through the game, hero against hero, the armies' and the map's outcome (§5, §6); T19a2 split again (decision 32): T19a2a done (2026-10-14), the heroes' outcome without pack changes; T19a2b done (2026-10-14, decision 33), Necromancy and Eagle Eye (§2, §5); round 2 closed |
-| 3 | T19b1 + T19b2 | split at the checkpoint (decision 34): T19b1 the env, replays and benchmarks with battles, the versions (§8); T19b2 the property plans to a victory |
-| 4 | T20a + T20b | monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
+| 3 | T19b1 + T19b2 | split at the checkpoint (decision 34): T19b1 done (2026-10-14), the env, replays and benchmarks with battles, the versions (§8); T19b2 done (2026-10-14, decision 35), the property plans to a victory; round 3 closed |
+| 4 | T20a + T20b | T20a split (decision 35): T20a1 the heroes' groundwork (`attack_defense`, `join_bonus`, Diplomacy's values; with T19b2), T20a2 monsters on the map, the difficulty and the store passed through (one hash bump); then T20b. Monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
 | 5 | T21 + T22a | guarded piles and the maps with monsters, replays, benchmarks, the audit (§7); batch E3's spec and run (cross-lane, the client lane's recipes) |
 | 6 | T22b | batch E3 scored, increment 3 closed, increment 4 refined |
