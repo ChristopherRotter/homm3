@@ -903,3 +903,48 @@ spike's own for the last two. Left out: `sdl2` (SDL 2 is in maintenance; SDL 3 i
 - **Windows builds from the sandbox:** `rustup target add x86_64-pc-windows-gnu` (it needs
   `static.rust-lang.org`, which the user's egress setting now allows) and `mingw-w64`; SDL
   cross-compiles with them. The exes ran under Wine (SDL took Direct3D 9 and WASAPI there).
+
+### 8.1 The window adapter (M2 T5a)
+
+ADR-0024 built: `clients/crates/h3-sdl` and `h3-view window` (log: M2 T5a).
+
+- **The crate.** `h3-sdl` (named for what it holds; the audio joins it with T5b) has every SDL
+  call and all of the client's `unsafe` code. `Window::open` creates the window hidden, high
+  pixel density and resizable, sizes it to the largest integer scale that fits the display's
+  usable area less 40 points for the title bar (integers only: the pixels per point come from the
+  window's own sizes), centres it, takes the renderer SDL picks, sets the logical presentation to
+  integer mode and makes a streaming XRGB8888 texture with nearest sampling. `wait` blocks in
+  `SDL_WaitEventTimeout`, then takes every pending event: Esc, Space, →, R, F, V and C, the
+  pointer in frame pixels (`SDL_ConvertEventToRenderCoordinates`), and exposure, size and scale
+  changes as a redraw. `present_read` reads the whole output back before presenting (the logical
+  presentation lifted while it reads, as the spike did). The hardware colour cursor is scaled by
+  the frame's scale and made again when the scale changes; SDL's clock (`ticks_ns`) spares the
+  binary a `std::time::Instant`.
+- **The frame** goes up widened on the CPU (`Screen::xrgb`, the PNG's bit repetition; ADR-0024
+  point 3's second form), so every renderer gets the same bytes.
+- **The loop** (`bin/h3-view/window.rs`). The battle loads as `play` loads it (`battle.rs`, shared
+  since T5a); every frame to the end names the checkpoint batch, with `CRDEFLT.DEF`. The pure
+  `h3_view::clock` turns SDL's nanoseconds into the battle's milliseconds, with a pause, a seek
+  (restart, a step) and the delay of a frame. The next frame, the first later change of the
+  timeline whose draw list differs, is composed and widened as soon as the one before is shown;
+  the loop waits for input until it falls due (at most 250 ms at a time) and presents it then. A
+  frame overtaken by a later change is passed over and the later one shown. Past the end the
+  timeline is timed 60 s further at a time (the outline's pulse and the fidgets go on); a battle
+  that does not change for 10 minutes only waits for input.
+- **The cursor** (*provisional*; the executable's cursor code not read, M3): `CRDEFLT.DEF`'s first
+  frame (20 × 24, encoding 1: an arrow, a second arrow, an hourglass), its hot spot at the top-left
+  corner, drawn with the battle's drawer without an outline (`h3_view::cursor`). For the hardware
+  cursor it is drawn over black and over white: a pixel alike over both is opaque, one that kept
+  both backgrounds transparent, a darkened one black with the darkening as its alpha (an
+  approximation; this cursor has no shadow pixels).
+- **In the sandbox** (Xvfb at 1920 × 1080 × 24, Mesa's software OpenGL ES 2, two cores): the frame
+  at scale 1 ((1080 − 40) / 600 rounds down to 1). `--check 20` (every frame read back): 301
+  frames, all exact, the black around included. `--measure 10`: a frame shows a median 7.0 ms
+  after its time, p95 13.0, max 49 (the software renderer's present; at a forced scale 2, 17.7).
+  Driven by `xdotool`: a pause holds the frame (no pixel differs over 1.5 s), → shows the next,
+  R the opening, F fullscreen centred at scale 1, the drawn cursor at the pointer, Esc exits 0.
+- **Building:** SDL's Linux build stops without Xcursor's headers; the X11 set it uses is x11,
+  xext, xcursor, xfixes, xi, xrandr, xss and xtst (the CI job installs them, with ALSA's and
+  Pulse's for the audio backends); Wayland is left out when its headers are missing. SDL takes
+  2.5 min on two cores, once per profile. The Windows build (`--target x86_64-pc-windows-gnu`)
+  takes 6.7 min from scratch; `h3-view.exe` is 16.8 MB and imports system DLLs only.

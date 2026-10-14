@@ -1,12 +1,12 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 in progress (T1, T3, T4a, T6 and T4b-1 done 2026-10-13, T4b-2a and T2 2026-10-14). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 in progress (T1, T3, T4a, T6 and T4b-1 done 2026-10-13, T4b-2a, T2 and T5a 2026-10-14: M2's exit reached). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M2 T5 (the SDL 3 window adapter and M2's closure) or T4b-2b (a strike's and a
-shot's turns recorded, the walk-by difference, the remaining animations).
+are there). Next: M2 T5b (the sound), T5c (M2's closure) or T4b-2b (a strike's and a shot's
+turns recorded, the walk-by difference, the remaining animations).
 
 ## Goal
 
@@ -190,6 +190,12 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   Windows machine: all exact at integer scales; SDL 3 alone with clean sound (the others
   crackled), a hardware cursor, fullscreen and DPI awareness. The user chose SDL 3 (`sdl3-sys`,
   static); MP3 by `nanomp3`; the game's IMA ADPCM sounds decoded in `h3-assets`.
+- **T5a done 2026-10-14** ([log](E17-log.md#m2-t5a--a-battle-in-a-window-2026-10-14),
+  [design §8.1](E17-design.md)): M2's exit: the platform adapter `h3-sdl` (every SDL call) and
+  `h3-view window`, which shows a scenario's or a record's battle at the original's frame times,
+  at an integer scale, with the game's cursor (hardware or drawn), pause, steps and restart;
+  `--check` reads every frame back: under Xvfb all exact. T5 split in three: T5b the sound, T5c
+  M2's closure.
 
 ### M3 — fidelity
 
@@ -335,3 +341,17 @@ choices are lifted.
   `nanomp3` for MP3; the IMA ADPCM decoder in `h3-assets`.
 - The spikes stay on the branch `client/e17-m2-t2-spikes`, never merged (T2); their reel, cursor and
   sound files are made from the user's files into `original-data/spikes/` (gitignored).
+- The platform adapter (T5a): one crate `h3-sdl` for the window, its input and the cursor and,
+  with T5b, the audio (named for what it holds, not `h3-window`); left out of the coverage gate
+  as an adapter (`check.sh`), exercised by `h3-view window --check`; SDL's joystick and HIDAPI
+  left out of its build too (no input but the keyboard and the mouse).
+- `h3-view window` (T5a, design §8.1): its keys (Space, →, R, F, V, C, Esc) and options; the
+  window sized to the display's usable area less 40 points; the frame widened on the CPU; the
+  next frame composed as soon as the one before shows; a battle timed 60 s at a time past its
+  end, waiting for input only after 10 minutes without a change; `--check` and `--measure`.
+- The cursor (T5a): `CRDEFLT.DEF`'s first frame, its hot spot top-left, drawn with the battle's
+  drawer without an outline; for the hardware cursor drawn over black and white (shadow pixels
+  as black with alpha; this cursor has none). The executable's cursor code is M3's.
+- `h3_view::clock` and `Screen::xrgb` in the pure crates (T5a); `play` and `window` share
+  `bin/h3-view/battle.rs`; an executable copied into a checkout's `clients/` finds the tables,
+  layouts and packs from its own place (`assets::clients_dir`).
