@@ -92,7 +92,9 @@ time per lane**. A lane owns paths; everything else it may not change in its own
   per lane keep concurrent additions apart: add to your lane's block, not at the end), and
   `Cargo.lock` (generated: a lane may add a dependency to its own crate; the full verify's `deny`
   gate checks it on the pull request, and a heavy dependency stops the line under the autonomy
-  contract; user, 2026-10-07), and the survey index `docs/rules/surveys/README.md` (one section
+  contract; user, 2026-10-07), `clients/Cargo.lock` (an engine crate the client builds that
+  changes its dependencies updates it too; the verify's `clients-lock` gate; user, 2026-10-14),
+  and the survey index `docs/rules/surveys/README.md` (one section
   per epic).
 
 **Branches and pull requests.** A lane works on a branch `<lane>/<task>` per task or increment and
