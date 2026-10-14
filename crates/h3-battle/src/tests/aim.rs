@@ -251,6 +251,8 @@ fn a_war_machine_is_worth_its_share_of_its_army() {
         worth(&s, (&r, field(&r)), &ctx, StackId(0), true),
         X87::ZERO
     );
+    // The clone's strength: its creature times its worth over 5, here nothing.
+    assert!(!context(&s, &r, field(&r), h3_contracts::BattleSide::Defender).desperate);
 }
 
 // ---------------------------------------------------------------- BAT-SIE-022 the turns
@@ -326,6 +328,9 @@ fn a_dead_defender_s_place_counts_within_one_turn() {
     dead.count = 0;
     dead.hex = Hex(walker.0 + 3);
     assert_eq!(turns(&s, f, StackId(0)), Some(1));
+    // Bound, it reaches neither (BAT-MAG-045).
+    s.binds.bound |= 1;
+    assert_eq!(turns(&s, f, StackId(0)), None);
 }
 
 // ---------------------------------------------------------------- BAT-SIE-023 desperate mode

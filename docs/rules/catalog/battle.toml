@@ -4572,7 +4572,7 @@ numeric  = "integer"
 id       = "BAT-SIE-020"
 title    = "The automatic turret's target"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A turret that shoots on its own (no Artillery on its side, BAT-SIE-016) picks among the attacker's living stacks, whoever controls them, war machines included, by a score of its own (the original's 0x41E190, not the automatic Ballista's BAT-WAR-002): its mean damage D = trunc(3n x p), n its creatures and p the target's protection for a shot (Air Shield's stored factor, the half while petrified, the Armorer of its controller's hero: the stage-3 factor of BAT-SIE-018), no at least 1; the value of that damage at the computer's worth v of one creature (BAT-SIE-021): trunc(E x v / h) with h the hit points per creature and E = D plus the top creature's lost hit points when D mod h with them reaches h (a clone: trunc(count x v / 5)); divided (integer division) by 5 for a blind, petrified or paralysed stack, a First Aid Tent or an Ammo Cart or one without a target, else by its turns (BAT-SIE-022), at most 5. The best score wins, from 0, and a tie goes to the later stack; in desperate mode (BAT-SIE-023) every creature is first worth 1000 (not a clone's), and if no score is above 0 the real worth counts, keeping the best so far. The numbers are the original's x87 arithmetic in every profile (a choice, not damage)."
 numeric  = "float"
 
@@ -4597,14 +4597,14 @@ numeric  = "float"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E04c-batch-3e.md, AI: the automatic keep (5 creatures) shot the single Marksman before the ten, the later of two like scores (agent run under Wine, 2026-10-14)"
+  ref        = "experiments/results/E04c-batch-3e.md, AI: the automatic keep (5 creatures) shot the single Marksman before the ten, the later of two like scores; E04c-batch-3f.md (agent run under Wine, 2026-10-14): every round the keep shot the stack the code scores best: the Magogs before the Medusas (FV), the Royal Griffins before a Giant (TU), the Master Gremlins before the Magogs against one Pikeman (DE) but the Magogs against fifty (DN), the attacker's Ballista before a hundred Zombies (BA); the engine on the base pack picks the same five"
   confidence = "high"
 
 [[rule]]
 id       = "BAT-SIE-021"
 title    = "The computer's worth of a creature"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "The worth of one creature of a stack for the computer's choices (the original's 0x442A50): v = sqrt(f_o x f_d) x F, each step a double, F its creature's Fight Value (core content). f_d = (1 + 0.05 d) x p, with d its defense against no striker for a shot (0 while frenzied; with the Defend bonus, less the moat's penalty) less its base defense less the least such bonus of the stacks on the field, and p as BAT-SIE-020's (its Shield instead when the flag is off). f_o = 1 + 0.05 a, a its attack against no target (Precision with the shot flag, Bloodlust without; no Slayer; a frenzied stack with its share of its own defense) less its base attack less the least such bonus (each stack's own: with the shot flag while it can shoot), halved for a shooter that cannot shoot now (no shots, blocked without the Bow of the Sharpshooter, forgetful at Advanced); while blessed times (max + bonus) / ((min + max) / 2), while cursed times max(1, min - penalty) / ((min + max) / 2); doubled for a creature that strikes twice while it can shoot. A war machine or a created stack (summoned, a clone) is worth v x O / (S + O), S its own total hit points (1 for a clone), O those of its side's other living stacks that are neither war machines nor created. The least bonuses run over every living stack of both sides but the turrets. A commanded Ballista's factors for its hero's Artillery level (x2 above Basic, then x1.0, 1.5, 1.5, 2.0 by level, 0x63B7F0) are not modelled (BAT-STUB-3: the seam carries no level)."
 numeric  = "float"
 
@@ -4620,11 +4620,16 @@ numeric  = "float"
   retrieved  = "2026-10-14"
   confidence = "low"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3f.md (agent run under Wine, 2026-10-14): FV: the Magogs (Fight Value 210 per 13 hit points) before the Medusas (379 per 25), where the AI value per hit point ranks the Medusas first; BA: the attacker's Ballista (650 x 2000 / 2250 per 250 hit points) before a hundred Zombies behind the walls"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-022"
 title    = "The turns until a stack can attack, for the computer"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "For the computer's choices (BAT-SIE-020) an attacker stack's turns until it can attack the defender (the original's 0x422B20, 0x448840, 0x448BD0): none (a fifth) for a war machine but the Ballista, a hypnotized or a berserk stack; 1 for the Ballista and a stack that can shoot now; else its least cost to a defender over its speed now, rounded up, at least 1, none if it reaches no defender within 127. The cost: a walker steps between free positions (dead stacks do not block), entering a stop (the moat, BAT-SIE-004; a pit both sides see, BAT-MAG-031: a hidden one may not change a choice both sides are told) costs the rest of the turn's move and it goes on from there; a flyer or teleporter reaches a free position at its hex distance; a bound stack stays (BAT-MAG-045). A living defender but the turrets costs the least cost of an attack position against it (BAT-ATK-001), a full move more from a stop; a dead defender's place costs the cost to stand on it when that is within the stack's speed (the original's pathfinder marks, read for every record of the side)."
 numeric  = "integer"
 
@@ -4640,15 +4645,25 @@ numeric  = "integer"
   retrieved  = "2026-10-14"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3f.md (agent run under Wine, 2026-10-14): TU: Royal Griffins two turns away (229 / 2) before a Giant behind the walls (314 / 5), where the score without the turns ranks the Giant first; BA: the Ballista (34 / 1) before the Zombies behind the walls (120 / 5)"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-023"
 title    = "The computer's desperate mode"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A side is desperate for the computer's choices made for it (the original's 0x435EC0; the automatic turrets', BAT-SIE-020) when twice its strength is below the other side's and the game's difficulty is above Easy or its player is human (BattleSetup.difficulty, BattleSetup.human, ADR-0023 point 7: public, in the observation; encoding v19 globals). A side's strength sums, over its living stacks but the turrets, trunc(T x v / h) with T a stack's total hit points, h its hit points per creature and v its worth (BAT-SIE-021, with the shot flag while it can shoot; a clone trunc(count x v / 5)), as 32-bit integers."
 numeric  = "float"
 
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.31): 0x435EC0 sets +8 when 2 x 0x41EAC0(side, flag 1) < 0x41EAC0(other, flag 1) and ([game]+0x1F6D8 > 0 or the battle byte +0x54A4 of the side); 0x41EAC0 sums 0x442E60 over the side's living records but arrow towers"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3f.md (agent run under Wine, 2026-10-14, hot seat: both players human): against one Pikeman the keep shot the Master Gremlins (15000 / 4) before the Magogs (15000 / 13), against fifty the Magogs (242 against 206), the worth deciding again"
   confidence = "high"
