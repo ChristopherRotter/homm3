@@ -352,6 +352,8 @@ choices are lifted.
 - The cursor (T5a): `CRDEFLT.DEF`'s first frame, its hot spot top-left, drawn with the battle's
   drawer without an outline; for the hardware cursor drawn over black and white (shadow pixels
   as black with alpha; this cursor has none). The executable's cursor code is M3's.
+- A flier's cycles in layer 8, drawn after every row (T5a, design §7.10): from the code reading
+  only; a recorded flight across rows (T4b-2b) checks it against the original's frames.
 - `h3_view::clock` and `Screen::xrgb` in the pure crates (T5a); `play` and `window` share
   `bin/h3-view/battle.rs`; an executable copied into a checkout's `clients/` finds the tables,
   layouts and packs from its own place (`assets::clients_dir`).

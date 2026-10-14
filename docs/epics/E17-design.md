@@ -805,6 +805,15 @@ lets it idle. Read in `Heroes3.exe` for it:
   that does not draw that stack (*provisional*). A dying stack plays its death in its layer's
   pass and lies among the corpses (pass 1) from the next frame (*provisional*: the executable
   moves it to the corpses' list when its death ends).
+- **A flier in flight is in no row** (T5a; the user saw the Angels pass under the Wolf Riders'
+  corpse and the Orcs flying down four rows). `stack_flight_animation` sets +0x30 (0x4B4BD8)
+  and takes the stack off its hex records before the cycles (0x468730, from 0x4B4BFE); each frame
+  restores the last frame's rectangle from a saved buffer (0x44E2B0) and draws the flier by
+  itself (`draw_battle_stack` at 0x4B4D60), over everything; it stands on the landing hex again
+  before group 21 (0x4B4E24). The viewer had kept it in its start row's pass; the cycles' poses
+  now take layer 8 (`anim::FLYING`), which the scene draws after every row. Group 20 (before the
+  removal) and 21 (after landing) stay in the row passes. Not checked against frames of the
+  original: the recorded flight (sequence `melee`) stays in its row, where both draw alike.
 - **Fidgets** (`anim::fidgeting`, §7.2): the executable's clocks and stalls on a generator of the
   viewer's own (the C library's `rand()` sequence, seeded by the battle's seed); the reference
   checks (`sequences`) take none. A stack an action drew stops fidgeting; a bystander's fidget
@@ -913,7 +922,8 @@ ADR-0024 built: `clients/crates/h3-sdl` and `h3-view window` (log: M2 T5a).
   pixel density and resizable, sizes it to the largest integer scale that fits the display's
   usable area less 40 points for the title bar (integers only: the pixels per point come from the
   window's own sizes), centres it, takes the renderer SDL picks, sets the logical presentation to
-  integer mode and makes a streaming XRGB8888 texture with nearest sampling. `wait` blocks in
+  integer mode and makes a streaming XRGB8888 texture with nearest sampling; the window is
+  shown and synced first, so that a fullscreen start gives the renderer its final size. `wait` blocks in
   `SDL_WaitEventTimeout`, then takes every pending event: Esc, Space, →, R, F, V and C, the
   pointer in frame pixels (`SDL_ConvertEventToRenderCoordinates`), and exposure, size and scale
   changes as a redraw. `present_read` reads the whole output back before presenting (the logical
@@ -942,7 +952,10 @@ ADR-0024 built: `clients/crates/h3-sdl` and `h3-view window` (log: M2 T5a).
   frames, all exact, the black around included. `--measure 10`: a frame shows a median 7.0 ms
   after its time, p95 13.0, max 49 (the software renderer's present; at a forced scale 2, 17.7).
   Driven by `xdotool`: a pause holds the frame (no pixel differs over 1.5 s), → shows the next,
-  R the opening, F fullscreen centred at scale 1, the drawn cursor at the pointer, Esc exits 0.
+  R the opening, the drawn cursor at the pointer, Esc exits 0. Fullscreen needs a window manager
+  (bare Xvfb ignores it; with `openbox`): output 1920 × 1080, the frame at (560, 240), every frame
+  read back exact once the renderer is made after the window is shown and synced
+  (`SDL_SyncWindow`); made before, the first frame was drawn at the old size.
 - **Building:** SDL's Linux build stops without Xcursor's headers; the X11 set it uses is x11,
   xext, xcursor, xfixes, xi, xrandr, xss and xtst (the CI job installs them, with ALSA's and
   Pulse's for the audio backends); Wayland is left out when its headers are missing. SDL takes

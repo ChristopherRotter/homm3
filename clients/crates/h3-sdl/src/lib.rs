@@ -179,7 +179,11 @@ impl Window {
             if !SDL_Init(SDL_INIT_VIDEO) {
                 return Err(failed("SDL_Init"));
             }
-            let flags = SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE;
+            let mut flags =
+                SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE;
+            if config.fullscreen {
+                flags |= SDL_WINDOW_FULLSCREEN;
+            }
             let window = SDL_CreateWindow(title.as_ptr(), w, h, flags);
             if window.is_null() {
                 let e = failed("SDL_CreateWindow");
@@ -193,7 +197,7 @@ impl Window {
                 width: config.width,
                 height: config.height,
                 vsync: config.vsync,
-                fullscreen: false,
+                fullscreen: config.fullscreen,
                 cursor: None,
                 hardware: None,
             };
@@ -221,6 +225,12 @@ impl Window {
             SDL_SetWindowSize(window, points(w, pw, wi), points(h, ph, hi));
             SDL_SetWindowMinimumSize(window, 1, 1);
             SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+            SDL_HideCursor();
+            SDL_ShowWindow(window);
+            // Window changes apply asynchronously (X11, Wayland: a window manager's fullscreen):
+            // wait for them and take their events, so that the renderer starts at the final size.
+            SDL_SyncWindow(window);
+            SDL_PumpEvents();
 
             opened.renderer = SDL_CreateRenderer(window, null());
             if opened.renderer.is_null() {
@@ -246,11 +256,6 @@ impl Window {
                 return Err(failed("SDL_CreateTexture"));
             }
             SDL_SetTextureScaleMode(opened.texture, SDL_SCALEMODE_NEAREST);
-            SDL_HideCursor();
-            SDL_ShowWindow(window);
-            if config.fullscreen {
-                opened.set_fullscreen(true);
-            }
             Ok(opened)
         }
     }
@@ -482,9 +487,11 @@ impl Window {
 
     /// Fullscreen (the desktop's mode, the frame centred at its integer scale) or windowed.
     pub fn set_fullscreen(&mut self, on: bool) {
-        // SAFETY: a plain SDL call on the window.
+        // SAFETY: plain SDL calls on the window.
         if unsafe { SDL_SetWindowFullscreen(self.window, on) } {
             self.fullscreen = on;
+            // SAFETY: as above.
+            unsafe { SDL_SyncWindow(self.window) };
         }
     }
 

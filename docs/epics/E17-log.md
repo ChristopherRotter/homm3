@@ -582,6 +582,11 @@ headers, the user's consent).
   software renderer); driven by `xdotool`: pause, step, restart, fullscreen, the drawn cursor and
   Esc as meant. `play scenarios/battle.toml` after the refactor: 24 commands, 81 764 ms, 1 078
   frames, as before.
+- **Found by the user:** in the window the Angels, flying down four rows, passed under the Wolf
+  Riders' corpse and the Orcs. The viewer drew a flier in its start row's pass; the executable
+  takes it off its hexes for the flight (0x468730) and draws it by itself over everything
+  (0x4B4D60). Fixed: the cycles' poses take layer 8 (`anim::FLYING`), drawn after every row
+  (design §7.10); the four recorded sequences unchanged.
 - **Found on the way:** `clients/Cargo.lock` was stale on `master` again (`h3-game` gained
   `h3-battle` and `h3-content-battle` through the adventure lane's E08 T19a1/T19a2), so
   `check.sh` failed at `--locked` before any change; fixed here, the lasting fix in the inbox for

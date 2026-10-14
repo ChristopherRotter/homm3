@@ -240,6 +240,8 @@ struct Report {
     exact: usize,
     /// The first difference found.
     difference: Option<String>,
+    /// The last read-back's output, the frame's place in it and its scale.
+    geometry: Option<String>,
 }
 
 /// Opens the window and plays the battle until Esc, a close, or the unattended run's end.
@@ -281,7 +283,6 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         lines.push(format!("hardware cursor: {e}; drawn instead"));
         drawn_cursor = true;
     }
-    lines.push(win.describe());
 
     let mut changes = Changes::new(&battle);
     let mut clock = Clock::new(win.ticks_ns(), options.from);
@@ -392,6 +393,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         }
     }
     let seconds = win.ticks_ns().saturating_sub(started) / 1_000_000;
+    lines.push(win.describe());
     drop(win);
     lines.push(format!(
         "{} commands, {} ms at speed {}; {count} frames to the end; {} shown in {} ms, {} \
@@ -410,9 +412,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let ok = report.difference.is_none();
     if read {
         lines.push(format!(
-            "read back: {} of {} frames exact{}",
+            "read back: {} of {} frames exact ({}){}",
             report.exact,
             report.read,
+            report.geometry.unwrap_or_default(),
             report
                 .difference
                 .map(|d| format!("; the first difference: {d}"))
@@ -450,6 +453,10 @@ fn show(
 /// Compares what the window read back with the frame at its scale, the black around it included.
 fn compare(back: &ReadBack, frame: &Frame, report: &mut Report) {
     report.read += 1;
+    report.geometry = Some(format!(
+        "output {} × {}, the frame at ({}, {}), scale {}",
+        back.width, back.height, back.left, back.top, back.scale
+    ));
     let (fw, fh) = (frame.screen.width(), frame.screen.height());
     let s = back.scale.max(1);
     let inside = |x: u32, y: u32| {
@@ -463,8 +470,9 @@ fn compare(back: &ReadBack, frame: &Frame, report: &mut Report) {
             if got != want {
                 report.difference.get_or_insert_with(|| {
                     format!(
-                        "{} ms, output ({x}, {y}) at scale {s}: {got:06X}, not {want:06X}",
-                        frame.t
+                        "{} ms, output ({x}, {y}) of {} × {}, the frame at ({}, {}) at scale \
+                         {s}: {got:06X}, not {want:06X}",
+                        frame.t, back.width, back.height, back.left, back.top
                     )
                 });
                 return;
