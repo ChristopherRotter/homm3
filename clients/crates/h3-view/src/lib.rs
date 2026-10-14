@@ -3,8 +3,9 @@
 //! [`anim`] plays its commands at the original's timing, [`scene`] makes the draw list of a
 //! snapshot at a time, [`batch`] holds a checkpoint's decoded assets,
 //! [`compose`] draws the list into a frame; [`tables`] and [`layout`] are the asset tables and
-//! the screen layouts. The adapters (the real-asset gate, the headless renderer, later the window)
-//! are the binary's modules, not this library.
+//! the screen layouts; [`cursor`] is the game's mouse cursor and [`clock`] the battle's clock in
+//! the window. The adapters (the real-asset gate, the headless renderer, the window through
+//! `h3-sdl`) are the binary's modules, not this library.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`; time is an input. The header below
 //! is checked by `tests/purity.rs`.
@@ -28,7 +29,9 @@ extern crate alloc;
 
 pub mod anim;
 pub mod batch;
+pub mod clock;
 pub mod compose;
+pub mod cursor;
 pub mod layout;
 pub mod record;
 pub mod scene;

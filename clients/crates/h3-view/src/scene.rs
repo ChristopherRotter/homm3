@@ -176,8 +176,9 @@ pub fn battle(
 
 /// The draw list of the battle `observation` shows at `moment` (E17 M2 T4a): as [`battle`],
 /// each stack in its pose, facing its way, in its layer's pass of its position's row (T4b-2a:
-/// a walk's, a strike's; a dead stack's is the corpses' pass); the outline on the moment's
-/// active stack in the colour its idle steps rotated to; the projectile last.
+/// a walk's, a strike's; a dead stack's is the corpses' pass), a flier between its hexes after
+/// every row (T5a, `anim::FLYING`); the outline on the moment's active stack in the colour its
+/// idle steps rotated to; the projectile last.
 ///
 /// # Errors
 /// As [`battle`].
@@ -284,6 +285,13 @@ pub fn battle_at(
             }
         }
     }
+    // A flier between its hexes: off them, drawn by itself over everything (anim::FLYING).
+    list.extend(
+        stacks
+            .iter()
+            .filter(|(_, layer, _)| *layer >= PASSES)
+            .map(|(_, _, draw)| draw.clone()),
+    );
     if let Some(p) = &moment.projectile {
         list.push(Draw::Projectile {
             def: p.def.clone(),

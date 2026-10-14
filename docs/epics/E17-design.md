@@ -805,6 +805,15 @@ lets it idle. Read in `Heroes3.exe` for it:
   that does not draw that stack (*provisional*). A dying stack plays its death in its layer's
   pass and lies among the corpses (pass 1) from the next frame (*provisional*: the executable
   moves it to the corpses' list when its death ends).
+- **A flier in flight is in no row** (T5a; the user saw the Angels pass under the Wolf Riders'
+  corpse and the Orcs flying down four rows). `stack_flight_animation` sets +0x30 (0x4B4BD8)
+  and takes the stack off its hex records before the cycles (0x468730, from 0x4B4BFE); each frame
+  restores the last frame's rectangle from a saved buffer (0x44E2B0) and draws the flier by
+  itself (`draw_battle_stack` at 0x4B4D60), over everything; it stands on the landing hex again
+  before group 21 (0x4B4E24). The viewer had kept it in its start row's pass; the cycles' poses
+  now take layer 8 (`anim::FLYING`), which the scene draws after every row. Group 20 (before the
+  removal) and 21 (after landing) stay in the row passes. Not checked against frames of the
+  original: the recorded flight (sequence `melee`) stays in its row, where both draw alike.
 - **Fidgets** (`anim::fidgeting`, §7.2): the executable's clocks and stalls on a generator of the
   viewer's own (the C library's `rand()` sequence, seeded by the battle's seed); the reference
   checks (`sequences`) take none. A stack an action drew stops fidgeting; a bystander's fidget
@@ -903,3 +912,60 @@ spike's own for the last two. Left out: `sdl2` (SDL 2 is in maintenance; SDL 3 i
 - **Windows builds from the sandbox:** `rustup target add x86_64-pc-windows-gnu` (it needs
   `static.rust-lang.org`, which the user's egress setting now allows) and `mingw-w64`; SDL
   cross-compiles with them. The exes ran under Wine (SDL took Direct3D 9 and WASAPI there).
+
+### 8.1 The window adapter (M2 T5a)
+
+ADR-0024 built: `clients/crates/h3-sdl` and `h3-view window` (log: M2 T5a).
+
+- **The crate.** `h3-sdl` (named for what it holds; the audio joins it with T5b) has every SDL
+  call and all of the client's `unsafe` code. `Window::open` creates the window hidden, high
+  pixel density and resizable, sizes it to the largest integer scale that fits the display's
+  usable area less 40 points for the title bar (integers only: the pixels per point come from the
+  window's own sizes), centres it, takes the renderer SDL picks, sets the logical presentation to
+  integer mode and makes a streaming XRGB8888 texture with nearest sampling; the window is
+  shown and synced first, so that a fullscreen start gives the renderer its final size. `wait` blocks in
+  `SDL_WaitEventTimeout`, then takes every pending event: Esc, Space, →, R, F, V and C, the
+  pointer in frame pixels (`SDL_ConvertEventToRenderCoordinates`), and exposure, size and scale
+  changes as a redraw. `present_read` reads the whole output back before presenting (the logical
+  presentation lifted while it reads, as the spike did). The hardware colour cursor is scaled by
+  the frame's scale and made again when the scale changes; SDL's clock (`ticks_ns`) spares the
+  binary a `std::time::Instant`.
+- **The frame** goes up widened on the CPU (`Screen::xrgb`, the PNG's bit repetition; ADR-0024
+  point 3's second form), so every renderer gets the same bytes.
+- **The loop** (`bin/h3-view/window.rs`). The battle loads as `play` loads it (`battle.rs`, shared
+  since T5a); every frame to the end names the checkpoint batch, with `CRDEFLT.DEF`. The pure
+  `h3_view::clock` turns SDL's nanoseconds into the battle's milliseconds, with a pause, a seek
+  (restart, a step) and the delay of a frame. The next frame, the first later change of the
+  timeline whose draw list differs, is composed and widened as soon as the one before is shown;
+  the loop waits for input until it falls due (at most 250 ms at a time) and presents it then. A
+  frame overtaken by a later change is passed over and the later one shown. Past the end the
+  timeline is timed 60 s further at a time (the outline's pulse and the fidgets go on); a battle
+  that does not change for 10 minutes only waits for input.
+- **The cursor** (*provisional*; the executable's cursor code not read, M3): `CRDEFLT.DEF`'s first
+  frame (20 × 24, encoding 1: an arrow, a second arrow, an hourglass), its hot spot at the top-left
+  corner, drawn with the battle's drawer without an outline (`h3_view::cursor`). For the hardware
+  cursor it is drawn over black and over white: a pixel alike over both is opaque, one that kept
+  both backgrounds transparent, a darkened one black with the darkening as its alpha (an
+  approximation; this cursor has no shadow pixels).
+- **In the sandbox** (Xvfb at 1920 × 1080 × 24, Mesa's software OpenGL ES 2, two cores): the frame
+  at scale 1 ((1080 − 40) / 600 rounds down to 1). `--check 20` (every frame read back): 301
+  frames, all exact, the black around included. `--measure 10`: a frame shows a median 7.0 ms
+  after its time, p95 13.0, max 49 (the software renderer's present; at a forced scale 2, 17.7).
+  Driven by `xdotool`: a pause holds the frame (no pixel differs over 1.5 s), → shows the next,
+  R the opening, the drawn cursor at the pointer, Esc exits 0. Fullscreen needs a window manager
+  (bare Xvfb ignores it; with `openbox`): output 1920 × 1080, the frame at (560, 240), every frame
+  read back exact once the renderer is made after the window is shown and synced
+  (`SDL_SyncWindow`); made before, the first frame was drawn at the old size.
+- **On the user's machine** (Windows, 2560 × 1440 at 100 %; `clients/out/win/measure.cmd`, three
+  unattended runs of 20 s, the cross-built exe): SDL took Direct3D 11, the window 1600 × 1200 at
+  scale 2. `--check`: 302 of 302 frames read back exact. `--measure`, vsync off: a frame shows a
+  median 0.4 ms after its time, p95 1.0, one outlier of 27 ms per run (the start); vsync on:
+  median 0.4, p95 1.3. The delay is taken when `SDL_RenderPresent` returns, so with vsync the
+  display may show the frame up to a refresh later (the spike, measuring the same way with
+  another loop, saw 8 ms). The user, watching `play.cmd`: "looks good", but for the Angels
+  flying under a corpse (fixed, §7.10).
+- **Building:** SDL's Linux build stops without Xcursor's headers; the X11 set it uses is x11,
+  xext, xcursor, xfixes, xi, xrandr, xss and xtst (the CI job installs them, with ALSA's and
+  Pulse's for the audio backends); Wayland is left out when its headers are missing. SDL takes
+  2.5 min on two cores, once per profile. The Windows build (`--target x86_64-pc-windows-gnu`)
+  takes 6.7 min from scratch; `h3-view.exe` is 16.8 MB and imports system DLLs only.
