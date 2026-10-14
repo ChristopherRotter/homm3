@@ -2000,7 +2000,7 @@ The user put the two shared docs that go stale (`02-architecture.md` §8's table
   commands round-trip through their text; the fork workload with `battle`.
 - Versions: action encoding v3, adventure replay format v3; no hash moved.
 
-### Round 3 of increment 3: T19b2 (2026-10-14, `shared/e08-t19b2`, `adventure/e08-t19b2`)
+### Round 3 of increment 3: T19b2 (2026-10-14, `shared/e08-t19b2` #213, `adventure/e08-t19b2` #214)
 
 #211 had merged; the baseline full verify of `master` (f67aac8, `--with-original-data`) passed
 every step. The user confirmed the seam T19b2 + T20a1, two pull requests (decision 35). Asked
@@ -2052,7 +2052,7 @@ became `h3-map`'s dev-dependency (`shared/e08-t19b2`, `arch.toml` alone).
   no adventure stub open. Left to the increment: monsters (T20, T21) and batch E3 (T22).
 - No version moved. Round 3 closed.
 
-### Round 4 of increment 3: T20a1 (2026-10-14, `adventure/e08-t20a1`, `cross-lane`)
+### Round 4 of increment 3: T20a1 (2026-10-14, `adventure/e08-t20a1` #215, `cross-lane`)
 
 Decision 35's second part, built on `adventure/e08-t19b2` (#214; #213 the shared change). T20a's
 `h3-heroes` part, ahead of T20b's monster answer, its first reader; `cross-lane` (`h3-heroes`,
