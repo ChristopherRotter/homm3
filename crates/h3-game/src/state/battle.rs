@@ -442,9 +442,14 @@ impl GameState {
             });
         }
         // rule: GAM-BAT-007
-        let picks = outcome.heroes[w.index()].as_ref().map(|h| h.learned.clone());
+        let picks = outcome.heroes[w.index()]
+            .as_ref()
+            .map(|h| h.learned.clone());
         for spell in picks.unwrap_or_default() {
-            if self.hero(hero).is_some_and(|d| learns_spell(d, core, spell)) {
+            if self
+                .hero(hero)
+                .is_some_and(|d| learns_spell(d, core, spell))
+            {
                 self.change_hero(core, hero, owner, HeroChange::LearnSpell(spell), sink);
             }
         }

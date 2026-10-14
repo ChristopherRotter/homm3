@@ -356,7 +356,11 @@ fn necromancer(rules: &GameRuleset, dark: u8, sense: u8, book: bool) -> GameSetu
         }
     }
     if book {
-        red.artifacts.as_mut().unwrap().worn.push(art(rules, "t:book"));
+        red.artifacts
+            .as_mut()
+            .unwrap()
+            .worn
+            .push(art(rules, "t:book"));
     }
     setup
 }
@@ -554,10 +558,7 @@ fn the_count_takes_the_shares_own_single_precision_value() {
     // original computes with: f32(0.7) given as bits counts as the share of 7000 basis points.
     let killed = [record(StackOrigin::Army(0), IMP, 10, 0)];
     let share = |single| h3_heroes::Necromancy {
-        share: h3_contracts::Rate {
-            bp: 7000,
-            single,
-        },
+        share: h3_contracts::Rate { bp: 7000, single },
         creature: IMP,
     };
     let bits = core::num::NonZeroU32::new(0x3f33_3333);

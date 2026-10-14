@@ -19,8 +19,8 @@ use crate::ruleset::ObjectTypeId;
 use crate::setup::SetupError;
 use crate::state::AdventureState;
 use crate::testing::{
-    CHART, FIRE, GNOLL, GUARD, OPEN_CHART, PEASANT, PIKEMAN, TOWER, WOLF, WOOD_PILE, draws, hero_at,
-    movement_rules, world, world_state,
+    CHART, FIRE, GNOLL, GUARD, OPEN_CHART, PEASANT, PIKEMAN, TOWER, WOLF, WOOD_PILE, draws,
+    hero_at, movement_rules, world, world_state,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -1539,18 +1539,20 @@ fn raised_creatures_join_their_stack_a_free_slot_or_the_upgrades_stack() {
         &rules.0,
         &[(
             red,
-            Some(&[
-                ArmyStack {
-                    slot: 0,
-                    creature: GNOLL,
-                    count: 2,
-                },
-                ArmyStack {
-                    slot: 3,
-                    creature: GNOLL,
-                    count: 1,
-                },
-            ][..]),
+            Some(
+                &[
+                    ArmyStack {
+                        slot: 0,
+                        creature: GNOLL,
+                        count: 2,
+                    },
+                    ArmyStack {
+                        slot: 3,
+                        creature: GNOLL,
+                        count: 1,
+                    },
+                ][..],
+            ),
         )],
         &mut Vec::new(),
     );
@@ -1580,7 +1582,10 @@ fn raised_creatures_join_their_stack_a_free_slot_or_the_upgrades_stack() {
     assert_eq!(state, before);
     // Nothing for 0 creatures or a hero not on the map.
     assert_eq!(raise(&mut state, GNOLL, 0), None);
-    assert_eq!(state.raise(&rules.0, &rules.1, HeroId::new(9), (GNOLL, 1)), None);
+    assert_eq!(
+        state.raise(&rules.0, &rules.1, HeroId::new(9), (GNOLL, 1)),
+        None
+    );
     assert_eq!(state, before);
 }
 

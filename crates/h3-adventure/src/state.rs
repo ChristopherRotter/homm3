@@ -861,7 +861,10 @@ impl AdventureState {
         }
         let free = (0..slots).find(|&slot| army.iter().all(|s| s.slot != slot));
         if let Some(slot) = free {
-            let at = army.iter().position(|s| s.slot > slot).unwrap_or(army.len());
+            let at = army
+                .iter()
+                .position(|s| s.slot > slot)
+                .unwrap_or(army.len());
             army.insert(
                 at,
                 ArmyStack {

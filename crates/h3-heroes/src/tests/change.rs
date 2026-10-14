@@ -201,7 +201,12 @@ fn a_learned_spell_must_be_a_new_hero_spell() {
     let learned = applied(&r, d.clone(), HeroChange::LearnSpell(titan));
     assert_eq!(learned.spells, [&d.spells[..], &[titan]].concat());
     let bolt = spell_id(&r, "t:bolt");
-    refused(&r, &d, HeroChange::LearnSpell(bolt), ChangeError::KnownSpell(bolt));
+    refused(
+        &r,
+        &d,
+        HeroChange::LearnSpell(bolt),
+        ChangeError::KnownSpell(bolt),
+    );
     let gaze = spell_id(&r, "t:gaze");
     let error = ChangeError::Spell(DetailsError::NotAHeroSpell(gaze));
     refused(&r, &d, HeroChange::LearnSpell(gaze), error);
@@ -212,5 +217,9 @@ fn a_learned_spell_must_be_a_new_hero_spell() {
         ChangeError::KnownSpell(bolt).to_string(),
         "spell 0 is learned already"
     );
-    assert!(error.to_string().starts_with("the spell does not fit the ruleset: "));
+    assert!(
+        error
+            .to_string()
+            .starts_with("the spell does not fit the ruleset: ")
+    );
 }

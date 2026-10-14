@@ -720,11 +720,20 @@ fn raised_creature(details: &HeroDetails, ruleset: &Ruleset) -> Option<CreatureT
     };
     let skills = details.skills.iter().flat_map(|&(id, level)| {
         let effects = ruleset.skill(id).map(|skill| skill.effects(level));
-        effects.unwrap_or_default().iter().map(|effect| (effect, None))
+        effects
+            .unwrap_or_default()
+            .iter()
+            .map(|effect| (effect, None))
     });
-    let artifacts = worn_types(details, ruleset)
-        .flat_map(|(id, artifact)| artifact.effects.iter().map(move |effect| (effect, Some(id))));
-    let specialty = specialty(details, ruleset).iter().map(|effect| (effect, None));
+    let artifacts = worn_types(details, ruleset).flat_map(|(id, artifact)| {
+        artifact
+            .effects
+            .iter()
+            .map(move |effect| (effect, Some(id)))
+    });
+    let specialty = specialty(details, ruleset)
+        .iter()
+        .map(|effect| (effect, None));
     let candidates: Vec<(u8, Option<ArtifactTypeId>, CreatureTypeId)> = skills
         .chain(artifacts)
         .chain(specialty)

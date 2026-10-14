@@ -30,7 +30,9 @@ pub fn learn_level(details: &HeroDetails, ruleset: &Ruleset) -> u8 {
             _ => None,
         })
         .sum();
-    let level = u32::from(base).saturating_add(added).min(MAX_SPELL_LEVEL.into());
+    let level = u32::from(base)
+        .saturating_add(added)
+        .min(MAX_SPELL_LEVEL.into());
     u8::try_from(level).unwrap_or(MAX_SPELL_LEVEL)
 }
 

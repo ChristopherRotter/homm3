@@ -30,9 +30,9 @@ use h3_adventure::{
 use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ContentKey, ContentPack, CreatureDef,
     CreatureInfoDef, CreatureTypeId, FactionDef, Formation, HeroClassDef, HeroEffect,
-    HeroParamsDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, RaisedCreature,
-    ResourceDef, Ruleset, SecondarySkillDef, SpellCategory, SpellDef, SpellSchoolDef,
-    StartingStackDef, TerrainDef, TerrainId,
+    HeroParamsDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, RaisedCreature, ResourceDef,
+    Ruleset, SecondarySkillDef, SpellCategory, SpellDef, SpellSchoolDef, StartingStackDef,
+    TerrainDef, TerrainId,
 };
 use h3_content_battle::{
     AbilityDef, BattleCreatureDef, BattlePack, BattleParamsDef, BattleRuleset, BattleSpellDef,
