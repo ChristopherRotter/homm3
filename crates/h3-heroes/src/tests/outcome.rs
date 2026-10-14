@@ -3,7 +3,7 @@
 
 use std::vec;
 
-use h3_content::{HeroEffectDef, RaisedCreature, SpellCategory, SpellDef};
+use h3_content::{CreatureTypeId, HeroEffectDef, RaisedCreature, SpellCategory, SpellDef};
 use h3_contracts::Rate;
 use h3_kernel::arith::{SINGLE_BITS, X87};
 

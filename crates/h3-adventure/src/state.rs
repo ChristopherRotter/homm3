@@ -859,7 +859,7 @@ impl AdventureState {
             stack.count = stack.count.saturating_add(count);
             return Some((creature, count));
         }
-        let free = (0..slots.get()).find(|&slot| army.iter().all(|s| s.slot != slot));
+        let free = (0..slots).find(|&slot| army.iter().all(|s| s.slot != slot));
         if let Some(slot) = free {
             let at = army.iter().position(|s| s.slot > slot).unwrap_or(army.len());
             army.insert(

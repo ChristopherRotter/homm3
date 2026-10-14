@@ -1522,7 +1522,7 @@ fn a_battle_is_fought_on_the_ground_its_tile_gives() {
 fn raised_creatures_join_their_stack_a_free_slot_or_the_upgrades_stack() {
     // The peasant upgrades to the pikeman; armies have seven slots.
     let rules = crate::testing::movement_rules_edited(true, 16, |p| {
-        p.creatures[2].info.upgrades = vec![h3_content::ContentKey::parse("t:pikeman").unwrap()];
+        p.creatures[2].info.upgrades = vec![ContentKey::parse("t:pikeman").unwrap()];
     });
     let mut state = heroes_world(&rules);
     let red = HeroId::new(1);
@@ -1540,12 +1540,12 @@ fn raised_creatures_join_their_stack_a_free_slot_or_the_upgrades_stack() {
         &[(
             red,
             Some(&[
-                h3_contracts::ArmyStack {
+                ArmyStack {
                     slot: 0,
                     creature: GNOLL,
                     count: 2,
                 },
-                h3_contracts::ArmyStack {
+                ArmyStack {
                     slot: 3,
                     creature: GNOLL,
                     count: 1,
