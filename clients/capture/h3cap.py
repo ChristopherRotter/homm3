@@ -199,7 +199,7 @@ def shadow_border(d):
     return ((d >> 2) & 0x39E7) + ((d >> 1) & 0x7BEF)
 
 
-MAX_SHADOWS = 4  # *provisional* (M3 T1c): the most T1a's frames show
+MAX_SHADOWS = 4  # *provisional* (M3 T1c): `melee` and `behind` need all four, none more
 
 
 def shadowed(cap, base):

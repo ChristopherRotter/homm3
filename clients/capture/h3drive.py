@@ -716,8 +716,8 @@ def run_frames(rest):
         else:
             verdict = "ok" if got == recorded.read_text() else "CHANGED"
         failed += verdict != "ok"
-        print(f"{e['id']}: {len(kept)} frames, {differing} differ outside the masks, "
-              f"{only_redraws} of them by redraw artifacts only {verdict}", flush=True)
+        print(f"{e['id']}: {len(kept)} frames, {differing} differ outside the masks "
+              f"({only_redraws} only by redraw artifacts) {verdict}", flush=True)
     print(f"frames: {len(entries)} sequences, {failed} not as recorded; under {out}")
     return 1 if failed else 0
 

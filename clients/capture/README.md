@@ -124,7 +124,9 @@ exit 1 on a change). Each line is `<ms> <differing> <artifacts>` (M3 T1c): the d
 pixels outside the masks and how many of them are the original's **redraw artifacts**
 (`h3cap.redraws`, design §7.11): its pixel is ours at that moment with one to four more
 shadows, or one we drew there at an earlier moment of the sequence with at least one more. The
-diff PNG marks those yellow, any other difference red; a change in either count fails. `--reuse` keeps the original's frames from an earlier run and only redraws
+diff PNG marks those yellow, any other difference red; a change in either count fails. The
+original's frames live only in the sandbox that captured them (`clients/out/`, never in git):
+a new sandbox captures them again (all six sequences, about 30 minutes) before `--reuse` works. `--reuse` keeps the original's frames from an earlier run and only redraws
 and compares (after a change to the viewer). About 14 minutes for the first four sequences and 15
 more for `behind` (default `<dir>`: `clients/out/frames`). Only a fidget comes from the
 original's memory; everything else is the viewer's own timeline.
