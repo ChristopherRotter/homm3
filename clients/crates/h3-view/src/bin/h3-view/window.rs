@@ -4,7 +4,13 @@
 //! one checkpoint batch. The window shows the frame of the latest change at or before the
 //! battle's clock (`h3_view::clock`), composed and widened ahead of its time, presented when it
 //! falls due; past the end the battle idles. Keys: Space pauses, → steps a frame while paused, R
-//! restarts, F fullscreen, V vsync, C the hardware or the drawn cursor, Esc quits.
+//! restarts, F fullscreen, V vsync, C the hardware or the drawn cursor, M the music, E the
+//! creatures' sounds, Esc quits.
+//!
+//! The sound (T5b, [`crate::audio`]): a battle shown from its start opens as the original's does,
+//! its start sound playing over the first frame while the battle's clock waits (at most 10 s),
+//! then the music starts, looping and fading in, and the clock with it; the stacks' sounds follow
+//! the timeline's cues. `--mute` (or no sound device) plays none and does not wait.
 //!
 //! `--check <s>` and `--measure <s>` run unattended for that many seconds and report when each
 //! frame showed against its time; `--check` also reads every frame back before presenting it and
@@ -23,6 +29,7 @@ use h3_view::cursor::{self, Cursor};
 use h3_view::scene::Draw;
 
 use crate::assets;
+use crate::audio::{Library, Player};
 use crate::battle::{Battle, Source};
 
 /// How far past the last change the window looks for the next one before it waits for input
@@ -44,6 +51,7 @@ pub struct Options {
     drawn_cursor: bool,
     fullscreen: bool,
     from: u32,
+    mute: bool,
     /// Unattended for this many seconds; whether each frame is read back.
     run: Option<(u32, bool)>,
 }
@@ -51,13 +59,13 @@ pub struct Options {
 impl Options {
     /// Parses `<scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
     /// [--install <dir>] [--scale <n>] [--vsync] [--drawn-cursor] [--fullscreen] [--from <ms>]
-    /// [--check <s> | --measure <s>]`.
+    /// [--mute] [--check <s> | --measure <s>]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let clients = assets::clients_dir();
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         let (mut input, mut seed, mut speed, mut packs, mut install) = (None, 1, 0, None, None);
         let (mut scale, mut vsync, mut drawn_cursor, mut fullscreen) = (None, false, false, false);
-        let (mut from, mut run) = (0, None);
+        let (mut from, mut run, mut mute) = (0, None, false);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -84,6 +92,7 @@ impl Options {
                 "--drawn-cursor" => drawn_cursor = true,
                 "--fullscreen" => fullscreen = true,
                 "--from" => from = number(value()?)?,
+                "--mute" => mute = true,
                 "--check" => run = Some((number(value()?)?, true)),
                 "--measure" => run = Some((number(value()?)?, false)),
                 flag if flag.starts_with("--") => {
@@ -108,6 +117,7 @@ impl Options {
             drawn_cursor,
             fullscreen,
             from,
+            mute,
             run,
         })
     }
@@ -284,8 +294,39 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         drawn_cursor = true;
     }
 
+    // The sound: decoded now, the device opened; none with --mute or without a device.
+    let seed = u32::try_from(source.seed & u64::from(u32::MAX)).unwrap_or(1);
+    let opening = h3_view::sound::opening(seed);
+    let library = if options.mute {
+        None
+    } else {
+        let stacks = battle.stack_sounds();
+        Some(Library::load(&source.install, opening, stacks, &mut lines)?)
+    };
+    let mut player = match library.as_ref().map(Player::open) {
+        Some(Ok(p)) => Some(p),
+        Some(Err(e)) => {
+            lines.push(format!("audio: {e}; no sound"));
+            None
+        }
+        None => None,
+    };
+    let mut cue = battle.timeline.cue_from(options.from);
+
     let mut changes = Changes::new(&battle);
     let mut clock = Clock::new(win.ticks_ns(), options.from);
+    // The opening: the clock waits while the start sound plays (from the battle's start only).
+    let mut opening_until = None;
+    if let (Some(p), Some(lib)) = (player.as_mut(), library.as_ref()) {
+        let now = win.ticks_ns();
+        let wait = if options.from == 0 { p.start(lib) } else { 0 };
+        if wait > 0 {
+            clock.toggle(now);
+            opening_until = Some(now + u64::from(wait) * 1_000_000);
+        } else {
+            p.start_music(now);
+        }
+    }
     let mut shown: Option<Frame> = None;
     let mut next = Some(frame_at(&battle, changes.latest(&battle, options.from))?);
     let mut pointer: Option<(i32, i32)> = None;
@@ -303,6 +344,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         let timeout = next
             .as_ref()
             .and_then(|f| clock.until(now, f.t))
+            .or_else(|| opening_until.map(|end| end.saturating_sub(now)))
             .map_or(WAIT_MS, |ns| {
                 u32::try_from(ns / 1_000_000)
                     .unwrap_or(WAIT_MS)
@@ -311,13 +353,32 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         let mut redraw = false;
         for event in win.wait(timeout) {
             let now = win.ticks_ns();
+            // A key that moves the battle ends the opening first: the clock runs, the music starts.
+            if matches!(event, Event::Key(Key::Space | Key::Right | Key::R))
+                && options.run.is_none()
+                && opening_until.take().is_some()
+            {
+                clock.toggle(now);
+                if let Some(p) = player.as_mut() {
+                    p.start_music(now);
+                }
+                if event == Event::Key(Key::Space) {
+                    continue;
+                }
+            }
             match event {
                 Event::Quit | Event::Key(Key::Escape) => break 'run,
                 _ if options.run.is_some() => {}
-                Event::Key(Key::Space) => clock.toggle(now),
+                Event::Key(Key::Space) => {
+                    clock.toggle(now);
+                    if let Some(p) = player.as_mut() {
+                        p.pause(clock.paused());
+                    }
+                }
                 Event::Key(Key::Right) if clock.paused() => {
                     if let Some(f) = &next {
                         clock.seek(now, f.t);
+                        cue = battle.timeline.cue_from(f.t.saturating_add(1));
                     }
                 }
                 Event::Key(Key::Right) => {}
@@ -325,6 +386,23 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     clock.seek(now, options.from);
                     shown = None;
                     next = Some(frame_at(&battle, changes.latest(&battle, options.from))?);
+                    cue = battle.timeline.cue_from(options.from);
+                    if let Some(p) = player.as_mut() {
+                        p.silence();
+                    }
+                }
+                Event::Key(Key::M) => {
+                    if let Some(p) = player.as_mut() {
+                        p.music_on = !p.music_on;
+                    }
+                }
+                Event::Key(Key::E) => {
+                    if let Some(p) = player.as_mut() {
+                        p.effects_on = !p.effects_on;
+                        if !p.effects_on {
+                            p.silence();
+                        }
+                    }
                 }
                 Event::Key(Key::F) => {
                     let on = !win.fullscreen();
@@ -350,7 +428,23 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             }
         }
         let now = win.ticks_ns();
+        if opening_until.is_some_and(|end| now >= end) {
+            opening_until = None;
+            clock.toggle(now);
+            if let Some(p) = player.as_mut() {
+                p.start_music(now);
+            }
+        }
         let battle_ms = clock.ms(now);
+        if let (Some(p), Some(lib)) = (player.as_mut(), library.as_ref()) {
+            if !clock.paused() {
+                while let Some(c) = battle.timeline.cues.get(cue).filter(|c| c.at <= battle_ms) {
+                    p.cue(lib, c);
+                    cue += 1;
+                }
+            }
+            p.service(lib, now);
+        }
         if let Some(due) = next.take_if(|f| f.t <= battle_ms) {
             // A later change may be due already: show the latest instead.
             let latest = changes.latest(&battle, battle_ms);
@@ -394,6 +488,13 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     }
     let seconds = win.ticks_ns().saturating_sub(started) / 1_000_000;
     lines.push(win.describe());
+    if let Some(lib) = &library {
+        lines.push(lib.describe());
+    }
+    if let Some(p) = &player {
+        lines.push(p.describe());
+    }
+    drop(player);
     drop(win);
     lines.push(format!(
         "{} commands, {} ms at speed {}; {count} frames to the end; {} shown in {} ms, {} \
@@ -522,13 +623,14 @@ mod tests {
             "--fullscreen",
             "--from",
             "100",
+            "--mute",
             "--check",
             "20",
         ]))
         .unwrap();
         assert_eq!(o.source.seed, 7);
         assert_eq!(o.source.speed, Speed::new(2));
-        assert!(o.source.scenario() && o.vsync && o.drawn_cursor && o.fullscreen);
+        assert!(o.source.scenario() && o.vsync && o.drawn_cursor && o.fullscreen && o.mute);
         assert_eq!((o.scale, o.from, o.run), (Some(1), 100, Some((20, true))));
         let m = Options::parse(&args(&["a/b.jsonl", "--measure", "5"])).unwrap();
         assert!(!m.source.scenario());

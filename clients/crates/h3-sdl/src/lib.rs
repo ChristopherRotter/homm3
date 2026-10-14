@@ -69,6 +69,10 @@ pub enum Key {
     V,
     /// C.
     C,
+    /// M.
+    M,
+    /// E.
+    E,
 }
 
 /// What happened, as the viewer needs it.
@@ -316,6 +320,8 @@ impl Window {
                         SDLK_F => Key::F,
                         SDLK_V => Key::V,
                         SDLK_C => Key::C,
+                        SDLK_M => Key::M,
+                        SDLK_E => Key::E,
                         _ => return None,
                     };
                     Some(Event::Key(key))
@@ -769,6 +775,18 @@ impl Audio {
             }
         }
         Ok(())
+    }
+
+    /// Pauses the device (every stream holds where it is) or resumes it.
+    pub fn pause(&mut self, on: bool) {
+        // SAFETY: our device.
+        unsafe {
+            if on {
+                SDL_PauseAudioDevice(self.device);
+            } else {
+                SDL_ResumeAudioDevice(self.device);
+            }
+        }
     }
 
     /// Drops what a stream has queued: it falls silent.

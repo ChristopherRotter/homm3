@@ -23,7 +23,8 @@ const PURE: [(&str, &[&str]); 3] = [
 /// binary-only dependencies, so the library's sources must never name them (*provisional*, E17 M1
 /// T7: the headless renderer's scenario adapter; T8: `h3-formats`, whose archive and executable
 /// readers only the adapters use; M2 T1: the capture harness's map writer `h3-map` and the
-/// ruleset's type `h3-content-battle`; M2 T5a: the platform adapter `h3-sdl`, the window).
+/// ruleset's type `h3-content-battle`; M2 T5a: the platform adapter `h3-sdl`, the window; T5b:
+/// `nanomp3`, the music).
 const BINARY_ONLY: [(&str, &[&str]); 1] = [(
     "h3-view",
     &[
@@ -34,6 +35,7 @@ const BINARY_ONLY: [(&str, &[&str]); 1] = [(
         "h3-map",
         "h3-pack-battle",
         "h3-sdl",
+        "nanomp3",
     ],
 )];
 
