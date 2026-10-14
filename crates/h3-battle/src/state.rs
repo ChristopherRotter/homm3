@@ -74,7 +74,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 48;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 49;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -974,6 +974,12 @@ pub struct BattleState {
     pub(crate) battlefield: Option<BattlefieldId>,
     /// The battle is at an anti-magic garrison (BAT-MAG-061; public).
     pub(crate) anti_magic: bool,
+    /// The game's difficulty, 0 (Easy) to 4 (Impossible), and whether each side's player is
+    /// human (ADR-0023 point 7; public): read only by the choices the battle makes for a side as
+    /// the original's computer does (an automatic turret's desperate aim, BAT-SIE-023).
+    pub(crate) difficulty: u8,
+    /// See `difficulty`.
+    pub(crate) human: [bool; 2],
     /// The town the battle is fought at, if any (BAT-SIE-001; public).
     pub(crate) siege: Option<SiegeState>,
     /// The timed effects on stacks (ADR-0014 point 5).
@@ -1163,6 +1169,8 @@ impl BattleState {
             terrain: setup.terrain,
             battlefield,
             anti_magic: setup.anti_magic,
+            difficulty: setup.difficulty,
+            human: setup.human,
             siege,
             effects: Effects::new(),
             spell_obstacles: SpellObstacles::new(),
@@ -1567,6 +1575,8 @@ impl CanonicalHash for BattleState {
         self.terrain.hash_into(h);
         self.battlefield.hash_into(h);
         h.write_bool(self.anti_magic);
+        h.write_u8(self.difficulty);
+        self.human.iter().for_each(|&h_| h.write_bool(h_));
         self.siege.hash_into(h);
         self.effects.hash_into(h);
         self.spell_obstacles.hash_into(h);

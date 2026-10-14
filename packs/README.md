@@ -801,6 +801,10 @@ defender_war_machines = ["synthetic:supply_wagon"]  # war machines by key, one p
 tight_formation = ["defender"]   # optional: sides in tight formation, the others loose (BAT-SET-001)
 attacker_funds = 2000            # optional, per side (`defender_funds`): what the side can pay
                                  # for a surrender (BAT-FLE-002; default 0)
+difficulty = 2                   # optional: the game's difficulty, 0 Easy to 4 Impossible
+human = ["attacker"]             # optional: the sides whose player is human (both default to
+                                 # a game of two computer players on Easy; ADR-0023 point 7:
+                                 # only the computer's choices read them, BAT-SIE-023)
 
 [scenario.attacker_hero]         # optional, per side (`defender_hero`): the battle hero leading
 hero_type = "synthetic:brea"     # the side, given directly (BAT-HER-001, Q31); a side without

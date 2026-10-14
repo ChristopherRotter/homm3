@@ -4462,7 +4462,7 @@ id       = "BAT-SIE-016"
 title    = "The town's turrets: the keep and the towers"
 context  = "battle"
 status   = "verified"
-summary  = "In a battle at a town with a Citadel the battle sets up the keep for the defender, with a Castle also the upper and the lower tower, with or without a defending hero (the setup never lists them; a listed turret creature is SetupError::InvalidWarMachine). Each is a stack of the ruleset's first war machine with the ability turret (the Arrow Tower) at the off-field position its wall-shot target holds (siege field: keep 254 for target 7, upper tower 255 for target 0, lower tower 251 for target 6), in the defender's records after its war machines: the keep, the upper, the lower tower (slots 20, 21, 22; as many as the side's 21 records leave room for). The keep has the siege field's turret_count (4) plus Siege.structures creatures (the original's 0x5BF4F0), a tower half the keep's count rounded up. A turret is a war machine: no morale (BAT-MOR-001), not living for the battle's end (BAT-END-001), not in the outcome's records or war machines (BAT-END-003) nor in the surrender price (BAT-FLE-002). Every round the turrets act before every other stack of their phase, then the Catapult (BAT-SIE-011; the original's 0x464F50 and VCMI's siege phase), the keep first, then the upper and the lower tower. A side whose hero has Artillery (BattleHero.war_machines.ballista, the original's 0x474BF0: the Ballista's case) commands them as its Ballista (BAT-WAR-006: Shoot, Wait, Defend; one shot each, never the Ballista's second); without it they shoot on their own at the automatic Ballista's target (BAT-WAR-002; D-19: the original's computer player's choice is not read, the user at BAT-Q44; batch 3e saw the original shoot the smaller of two like stacks first, BAT-Q45). Observation: per stack a turret flag (encoding v18)."
+summary  = "In a battle at a town with a Citadel the battle sets up the keep for the defender, with a Castle also the upper and the lower tower, with or without a defending hero (the setup never lists them; a listed turret creature is SetupError::InvalidWarMachine). Each is a stack of the ruleset's first war machine with the ability turret (the Arrow Tower) at the off-field position its wall-shot target holds (siege field: keep 254 for target 7, upper tower 255 for target 0, lower tower 251 for target 6), in the defender's records after its war machines: the keep, the upper, the lower tower (slots 20, 21, 22; as many as the side's 21 records leave room for). The keep has the siege field's turret_count (4) plus Siege.structures creatures (the original's 0x5BF4F0), a tower half the keep's count rounded up. A turret is a war machine: no morale (BAT-MOR-001), not living for the battle's end (BAT-END-001), not in the outcome's records or war machines (BAT-END-003) nor in the surrender price (BAT-FLE-002). Every round the turrets act before every other stack of their phase, then the Catapult (BAT-SIE-011; the original's 0x464F50 and VCMI's siege phase), the keep first, then the upper and the lower tower. A side whose hero has Artillery (BattleHero.war_machines.ballista, the original's 0x474BF0: the Ballista's case) commands them as its Ballista (BAT-WAR-006: Shoot, Wait, Defend; one shot each, never the Ballista's second); without it they shoot on their own at the computer's target for a turret (BAT-SIE-020, since E04c T7d; until then the automatic Ballista's, BAT-WAR-002, which batch 3e's AI encounter refuted, BAT-Q45). Observation: per stack a turret flag (encoding v18)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4567,3 +4567,88 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CUnitState.cpp"
   retrieved  = "2026-10-14"
   confidence = "medium"
+
+[[rule]]
+id       = "BAT-SIE-020"
+title    = "The automatic turret's target"
+context  = "battle"
+status   = "implemented"
+summary  = "A turret that shoots on its own (no Artillery on its side, BAT-SIE-016) picks among the attacker's living stacks, whoever controls them, war machines included, by a score of its own (the original's 0x41E190, not the automatic Ballista's BAT-WAR-002): its mean damage D = trunc(3n x p), n its creatures and p the target's protection for a shot (Air Shield's stored factor, the half while petrified, the Armorer of its controller's hero: the stage-3 factor of BAT-SIE-018), no at least 1; the value of that damage at the computer's worth v of one creature (BAT-SIE-021): trunc(E x v / h) with h the hit points per creature and E = D plus the top creature's lost hit points when D mod h with them reaches h (a clone: trunc(count x v / 5)); divided (integer division) by 5 for a blind, petrified or paralysed stack, a First Aid Tent or an Ammo Cart or one without a target, else by its turns (BAT-SIE-022), at most 5. The best score wins, from 0, and a tie goes to the later stack; in desperate mode (BAT-SIE-023) every creature is first worth 1000 (not a clone's), and if no score is above 0 the real worth counts, keeping the best so far. The numbers are the original's x87 arithmetic in every profile (a choice, not damage)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.31): 0x474381 sends an automatic arrow tower to 0x465F20, which takes the keep's count from the town (0x5BF4F0), halves it rounded up for a tower and calls 0x41E190(0, -, 3 x count): over side 0's living records 0x442FD0 with D = trunc(3n x 0x443D90), divided by 5 or by 0x448BD0's turns, best from 0 with >= (ties to the later record), a second loop without the desperate worth if no score is above 0"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Arrow tower - Heroes 3 wiki: the computer's target by classes A (attacks this turn), B (next turn), C (later) weighted 100 %, 50 %, 33 %, each stack's priority from its AI value and health, ties to the rightmost slot; the damage counted as 1 (a bug the code reading does not find in this executable: 3n)"
+  url        = "https://heroes.thelazy.net/index.php/Arrow_tower"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleFlowProcessor.cpp (1.7.5) tryMakeAutomaticActionOfRangedUnit: VCMI's towers shoot as its automatic Ballista (no war machine first, a stack that can attack next turn, then the highest expected damage value); no turret routine of its own"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp"
+  retrieved  = "2026-10-14"
+  confidence = "low"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3e.md, AI: the automatic keep (5 creatures) shot the single Marksman before the ten, the later of two like scores (agent run under Wine, 2026-10-14)"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-SIE-021"
+title    = "The computer's worth of a creature"
+context  = "battle"
+status   = "implemented"
+summary  = "The worth of one creature of a stack for the computer's choices (the original's 0x442A50): v = sqrt(f_o x f_d) x F, each step a double, F its creature's Fight Value (core content). f_d = (1 + 0.05 d) x p, with d its defense against no striker for a shot (0 while frenzied; with the Defend bonus, less the moat's penalty) less its base defense less the least such bonus of the stacks on the field, and p as BAT-SIE-020's (its Shield instead when the flag is off). f_o = 1 + 0.05 a, a its attack against no target (Precision with the shot flag, Bloodlust without; no Slayer; a frenzied stack with its share of its own defense) less its base attack less the least such bonus (each stack's own: with the shot flag while it can shoot), halved for a shooter that cannot shoot now (no shots, blocked without the Bow of the Sharpshooter, forgetful at Advanced); while blessed times (max + bonus) / ((min + max) / 2), while cursed times max(1, min - penalty) / ((min + max) / 2); doubled for a creature that strikes twice while it can shoot. A war machine or a created stack (summoned, a clone) is worth v x O / (S + O), S its own total hit points (1 for a clone), O those of its side's other living stacks that are neither war machines nor created. The least bonuses run over every living stack of both sides but the turrets. A commanded Ballista's factors for its hero's Artillery level (x2 above Basic, then x1.0, 1.5, 1.5, 2.0 by level, 0x63B7F0) are not modelled (BAT-STUB-3: the seam carries no level)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.31): 0x442A50 (0x442410 attack, 0x442590 defense with flag 1, the context's minima from 0x435EC0 over 0x442550 and 0x442660; the protections as 0x443D90; 0.05 and 1.0 doubles; Bless +0x458 and Curse +0x45C over (+0xD0 + +0xD4) / 2.0; the double-attack flag doubles; crt_sqrt; table +0x3C; a war machine or summoned stack scaled by its side's other hit points, war machines, dead and summoned stacks left out)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Arrow tower - Heroes 3 wiki: each stack's priority from the creature's AI value and its health (the code: the Fight Value, scaled by attack and defense bonuses)"
+  url        = "https://heroes.thelazy.net/index.php/Arrow_tower"
+  retrieved  = "2026-10-14"
+  confidence = "low"
+
+[[rule]]
+id       = "BAT-SIE-022"
+title    = "The turns until a stack can attack, for the computer"
+context  = "battle"
+status   = "implemented"
+summary  = "For the computer's choices (BAT-SIE-020) an attacker stack's turns until it can attack the defender (the original's 0x422B20, 0x448840, 0x448BD0): none (a fifth) for a war machine but the Ballista, a hypnotized or a berserk stack; 1 for the Ballista and a stack that can shoot now; else its least cost to a defender over its speed now, rounded up, at least 1, none if it reaches no defender within 127. The cost: a walker steps between free positions (dead stacks do not block), entering a stop (the moat, BAT-SIE-004; a pit both sides see, BAT-MAG-031: a hidden one may not change a choice both sides are told) costs the rest of the turn's move and it goes on from there; a flyer or teleporter reaches a free position at its hex distance; a bound stack stays (BAT-MAG-045). A living defender but the turrets costs the least cost of an attack position against it (BAT-ATK-001), a full move more from a stop; a dead defender's place costs the cost to stand on it when that is within the stack's speed (the original's pathfinder marks, read for every record of the side)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.31): 0x422B20 (skips, the shooter's cost 1, 0x4B2DA0 with range 127), 0x4B3400 (a stop's entry costs s - c mod s, 0x4B373E; an attack target's cost +s from a stop, 0x4B378A; +0x4A marks, cleared at the start), 0x448840 (the fewest turns ceil(cost / speed)), 0x448BD0 (1 for the Ballista, a turret, a stack that can shoot, speed 0)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Arrow tower - Heroes 3 wiki: classes A (can attack at its turn), B (next turn), C (later): the turns, 100 %, 50 %, 33 %"
+  url        = "https://heroes.thelazy.net/index.php/Arrow_tower"
+  retrieved  = "2026-10-14"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-SIE-023"
+title    = "The computer's desperate mode"
+context  = "battle"
+status   = "implemented"
+summary  = "A side is desperate for the computer's choices made for it (the original's 0x435EC0; the automatic turrets', BAT-SIE-020) when twice its strength is below the other side's and the game's difficulty is above Easy or its player is human (BattleSetup.difficulty, BattleSetup.human, ADR-0023 point 7: public, in the observation; encoding v19 globals). A side's strength sums, over its living stacks but the turrets, trunc(T x v / h) with T a stack's total hit points, h its hit points per creature and v its worth (BAT-SIE-021, with the shot flag while it can shoot; a clone trunc(count x v / 5)), as 32-bit integers."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.31): 0x435EC0 sets +8 when 2 x 0x41EAC0(side, flag 1) < 0x41EAC0(other, flag 1) and ([game]+0x1F6D8 > 0 or the battle byte +0x54A4 of the side); 0x41EAC0 sums 0x442E60 over the side's living records but arrow towers"
+  confidence = "high"
