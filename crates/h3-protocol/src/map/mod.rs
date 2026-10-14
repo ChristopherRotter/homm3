@@ -316,6 +316,8 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
         terrain,
         battlefield,
         anti_magic,
+        difficulty,
+        human,
         siege,
         effects,
         spell_obstacles,
@@ -328,6 +330,7 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
             periodic_rounds: periodic_rounds[i],
             summoned: summoned[i].map(CreatureTypeId::raw),
             cost_change: cost_change[i],
+            human: human[i],
             hero: heroes[i].map(hero),
         }
     };
@@ -361,6 +364,7 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
         terrain: terrain.map(h3_content::TerrainId::raw),
         battlefield: battlefield.map(h3_content_battle::BattlefieldId::raw),
         anti_magic: *anti_magic,
+        difficulty: *difficulty,
         siege: siege.map(|s| Siege {
             faction: s.faction.raw(),
             fort: s.fort as u8,

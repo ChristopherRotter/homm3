@@ -1,0 +1,192 @@
+# Experiment batch 3f (E04c T7d): the automatic turret's target. Checks the code reading of
+# installation.md §7.31 that the battle follows since T7d (BAT-SIE-020 to BAT-SIE-023): the keep
+# acting on its own scores every attacker stack by the kills of its mean damage (3N) times the
+# computer's worth of one creature (its Fight Value, scaled by its attack and defense bonuses),
+# divided by the turns the stack needs to attack (1 to 5; a walker behind the walls 5), the best
+# score first, a tie the later stack; a weak defender (twice its strength below the attacker's)
+# that is human or above Easy is desperate: every creature worth 1000.
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them. They are the code's (installation.md §7.31) and the engine's
+# (faithful profile, run on the base pack with each encounter's armies); the alternatives name
+# their source: the wiki's classes by AI value (Arrow tower page), VCMI's automatic Ballista
+# (`tryMakeAutomaticActionOfRangedUnit`, the engine's rule until T7d), the later stack on a tie.
+#
+# Each Red hero stands south of a Blue town's entrance: stepping north attacks it. Play in hot
+# seat (Red and Blue human), so Blue's player is human (desperate mode needs only the strengths).
+# The towns have a Fort and a Citadel: the keep has N = 5 creatures (batch 3e: 4 + one structure
+# of the writer's town), a mean damage of 15, and the walls keep every walker out. No hero has
+# attack or defense, so a stack's bonuses come from its native terrain only (grass: Castle and
+# Rampart creatures +1). An agent's run reads the keep's target from memory as batch 3e's
+# (experiments/agent/turrets.py): a drop of a stack's hit points while the keep is the last
+# activated stack.
+
+[map]
+name = "E04c batch 3f"
+description = "Engine-generated experiment map (E04c, batch 3f): the automatic turret's target. Follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Copy `E04c-batch-3f.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps` and start it in hot seat (Red and Blue human). Save right away.",
+    "Each Red hero stands south of a Blue town's entrance. Play the encounters in any order: select the hero and step north into the town; every stack defends, the keep and the Catapult act on their own.",
+    "Note the keep's shot in rounds 1 and 2: the stack it hit (slot, or the Ballista or Catapult) and the hit points it lost. Then end the battle as you like and load the save for the next encounter.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- BAT-SIE-021: the worth is the Fight Value, not the AI value ---------------------------------
+
+[[encounter]]
+id = "FV"
+title = "Magogs or Medusas: the Fight Value against the AI value"
+questions = ["BAT-SIE-020", "BAT-SIE-021"]
+procedure = [
+    "Every stack defends; the keep shoots on its own.",
+    "Play to round 2, noting the keep's targets, then end the battle as you like.",
+]
+predictions = """
+Both stacks shoot (divisor 1); the defender (50 Pikemen) is strong: no desperate mode.
+- The code: Magogs 15 x 210 / 13 = 242, Medusas 15 x 379 / 25 = 227: **the Magogs (slot 0)**.
+- The AI value per hit point (the wiki's priority; VCMI's value): Magogs 18.5, Medusas 20.7: the
+  Medusas (slot 1); the later stack on a tie: the Medusas.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [8, 12]
+primary = [0, 0, 1, 1]
+army = [["Magog", 5], ["Medusa", 5]]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Pikeman", 50]]
+[[encounter.record]]
+field = "FV1: the keep's count; the keep's shot in rounds 1 and 2: the stack it hit (slot) and the hit points it lost"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-SIE-022: the turns until a stack can attack --------------------------------------------
+
+[[encounter]]
+id = "TU"
+title = "Royal Griffins or Giants: a flyer two turns away against a walker behind the walls"
+questions = ["BAT-SIE-020", "BAT-SIE-022"]
+procedure = [
+    "Every stack defends; the keep shoots on its own.",
+    "Play to round 2, noting the keep's targets, then end the battle as you like.",
+]
+predictions = """
+No desperate mode (50 Pikemen). The Royal Griffins (speed 9, native: worth 364 x 1.05) need two
+turns to reach the Pikemen; the Giants walk and the walls keep them out.
+- The code: Royal Griffins 15 x 382.2 / 25 = 229, over 2 turns: 114; Giants 15 x 3146 / 150 =
+  314, a fifth: 62: **the Royal Griffins (slot 0)**.
+- Without the turns (VCMI: neither can attack on its next turn, so the highest value): the
+  Giants (slot 1).
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+at = [18, 12]
+primary = [0, 0, 1, 1]
+army = [["Royal Griffin", 5], ["Giant", 1]]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Pikeman", 50]]
+[[encounter.record]]
+field = "TU1: the keep's count; the keep's shot in rounds 1 and 2: the stack it hit (slot) and the hit points it lost"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-SIE-023: the desperate mode -------------------------------------------------------------
+
+[[encounter]]
+id = "DE"
+title = "A weak defender: Master Gremlins or Magogs"
+questions = ["BAT-SIE-020", "BAT-SIE-023"]
+procedure = [
+    "Every stack defends; the keep shoots on its own.",
+    "Play to round 2, noting the keep's targets, then end the battle as you like.",
+]
+predictions = """
+Blue holds one Pikeman: twice its strength (2 x 105) is far below Red's (550 + 2100), and Blue is
+human: desperate mode, every creature worth 1000.
+- The code: Master Gremlins 15 x 1000 / 4 = 3750, Magogs 15 x 1000 / 13 = 1153: **the Master
+  Gremlins (slot 0)**.
+- Without desperate mode (the worth): Master Gremlins 15 x 55 / 4 = 206, Magogs 242: the Magogs
+  (slot 1), as in DN.
+"""
+[encounter.hero]
+type = "Aine"
+specialty = "resource gold"
+at = [28, 12]
+primary = [0, 0, 1, 1]
+army = [["Master Gremlin", 10], ["Magog", 10]]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Pikeman", 1]]
+[[encounter.record]]
+field = "DE1: the keep's count; the keep's shot in rounds 1 and 2: the stack it hit (slot) and the hit points it lost"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "DN"
+title = "A strong defender: Master Gremlins or Magogs (DE's control)"
+questions = ["BAT-SIE-020", "BAT-SIE-023"]
+procedure = [
+    "Every stack defends; the keep shoots on its own.",
+    "Play to round 2, noting the keep's targets, then end the battle as you like.",
+]
+predictions = """
+Blue holds 50 Pikemen: no desperate mode.
+- The code: Master Gremlins 206, Magogs 242: **the Magogs (slot 1)**.
+"""
+[encounter.hero]
+type = "Octavia"
+specialty = "resource gold"
+at = [8, 28]
+primary = [0, 0, 1, 1]
+army = [["Master Gremlin", 10], ["Magog", 10]]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Pikeman", 50]]
+[[encounter.record]]
+field = "DN1: the keep's count; the keep's shot in rounds 1 and 2: the stack it hit (slot) and the hit points it lost"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-SIE-021: a war machine's share of its army ----------------------------------------------
+
+[[encounter]]
+id = "BA"
+title = "The attacker's Ballista or a hundred Zombies"
+questions = ["BAT-SIE-020", "BAT-SIE-021", "BAT-SIE-022"]
+procedure = [
+    "Every stack defends; the keep shoots on its own (Red has no Artillery: its Ballista shoots on its own too).",
+    "Play to round 2, noting the keep's targets, then end the battle as you like.",
+]
+predictions = """
+No desperate mode (30 Swordsmen). The Ballista shoots (divisor 1); the Zombies walk, behind the
+walls (a fifth). The Ballista's worth is its Fight Value times the army's other hit points over
+its own and theirs: 650 x 2000 / 2250 = 577.8.
+- The code: the Ballista 15 x 577.8 / 250 = 34, the Zombies 15 x 160 / 20 = 120, a fifth: 24:
+  **the Ballista**.
+- VCMI (a stack that is no war machine first) and the wiki's classes (Zombies C: 33 % of 6.4,
+  the Ballista A: 2.4): the Zombies (slot 0).
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+at = [18, 28]
+primary = [0, 0, 1, 1]
+army = [["Zombie", 100]]
+artifacts = { "war machine 1" = "Ballista" }
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Swordsman", 30]]
+[[encounter.record]]
+field = "BA1: the keep's count; the keep's shot in rounds 1 and 2: the stack it hit (slot, the Ballista or the Catapult) and the hit points it lost"
+[[encounter.record]]
+field = "anything odd"

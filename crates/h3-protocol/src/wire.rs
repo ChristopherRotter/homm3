@@ -828,6 +828,8 @@ pub struct SideView {
     pub summoned: Option<u16>,
     /// The change of its hero's spell costs from the creatures in the armies (0 without a hero).
     pub cost_change: i8,
+    /// Its player is human (v32, ADR-0023 point 7).
+    pub human: bool,
     /// Its hero's public part, if a hero leads it.
     pub hero: Option<Hero>,
 }
@@ -905,6 +907,8 @@ pub struct Observation {
     pub battlefield: Option<u16>,
     /// The battle is at an anti-magic garrison: neither side casts (v28).
     pub anti_magic: bool,
+    /// The game's difficulty, 0 (Easy) to 4 (Impossible) (v32, ADR-0023 point 7).
+    pub difficulty: u8,
     /// The town the battle is fought at (v30, ADR-0023): its walls, gate and moat.
     pub siege: Option<Siege>,
     /// The attacker's and the defender's public state.

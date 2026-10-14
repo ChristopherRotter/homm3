@@ -144,6 +144,11 @@ pub struct Observation {
     pub battlefield: Option<BattlefieldId>,
     /// The battle is at an anti-magic garrison (public; BAT-MAG-061).
     pub anti_magic: bool,
+    /// The game's difficulty, 0 (Easy) to 4 (Impossible) (public; ADR-0023 point 7, BAT-SIE-023).
+    pub difficulty: u8,
+    /// Whether each side's player is human, indexed by [`BattleSide::index`] (public; ADR-0023
+    /// point 7, BAT-SIE-023).
+    pub human: [bool; 2],
     /// The town the battle is fought at, if any: its walls, gate and moat (public; BAT-SIE-001).
     pub siege: Option<SiegeState>,
     /// The timed effects on stacks, by stack and spell (public; BAT-MAG-009).
@@ -230,6 +235,8 @@ pub fn observe_as(state: &BattleState, ruleset: &BattleRuleset, viewer: Viewer) 
         terrain: state.terrain,
         battlefield: state.battlefield,
         anti_magic: state.anti_magic,
+        difficulty: state.difficulty,
+        human: state.human,
         siege: state.siege,
         effects: state.effects().to_vec(),
         // rule: BAT-MAG-031

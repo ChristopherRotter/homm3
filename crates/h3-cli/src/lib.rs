@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v26 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v28 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 26
+//! format = 28
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -28,6 +28,9 @@
 //! tight_formation = ["defender"]  # sides in tight formation (omitted when none)
 //! attacker_funds = 2000           # what a side can pay for a surrender (format 10; omitted
 //!                                 #   when 0)
+//! difficulty = 2                  # the game's difficulty (format 28; omitted when 0)
+//! human = ["attacker"]            # the sides whose player is human (format 28; omitted when
+//!                                 #   none)
 //!
 //! [setup.siege]                   # the town the battle is fought at (format 26; omitted when
 //! faction = "base:castle"         #   none): `h3_pack_battle::SiegeEntry`
@@ -232,6 +235,10 @@ struct SetupEntry {
     attacker_funds: u32,
     #[serde(default, skip_serializing_if = "is_zero")]
     defender_funds: u32,
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    difficulty: u8,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    human: Vec<String>,
     // Tables last: TOML writes values before tables.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     siege: Option<SiegeEntry>,
@@ -269,6 +276,10 @@ fn parse_hex64(s: &str) -> Result<u64, CliError> {
 }
 
 fn is_zero(value: &u32) -> bool {
+    *value == 0
+}
+
+fn is_zero_u8(value: &u8) -> bool {
     *value == 0
 }
 
@@ -506,6 +517,8 @@ pub fn replay_to_toml(
             tight_formation: h3_pack_battle::tight_sides(replay.setup.formations),
             attacker_funds: replay.setup.funds[0],
             defender_funds: replay.setup.funds[1],
+            difficulty: replay.setup.difficulty,
+            human: h3_pack_battle::side_names(replay.setup.human),
             attacker_hero: hero(&replay.setup.heroes[0])?,
             defender_hero: hero(&replay.setup.heroes[1])?,
         },
@@ -659,9 +672,9 @@ impl ReplayDoc {
                 formations: h3_pack_battle::formations(&f.setup.tight_formation)
                     .map_err(|e| CliError::Format(e.to_string()))?,
                 funds: [f.setup.attacker_funds, f.setup.defender_funds],
-                // Replays name no difficulty or human players yet (E04c T7d adds the keys).
-                difficulty: 0,
-                human: [false; 2],
+                difficulty: f.setup.difficulty,
+                human: h3_pack_battle::parse_sides(&f.setup.human)
+                    .map_err(|e| CliError::Format(e.to_string()))?,
             },
             commands: f
                 .commands
@@ -886,6 +899,27 @@ mod tests {
         let back = doc.into_replay(&ruleset).unwrap();
         assert_eq!(back, replay);
         assert_eq!(back.verify(&ruleset), Ok(()));
+        // The game's difficulty and the human players (format 28, E04c T7d) round-trip; a key
+        // left at its default is not written.
+        assert!(!text.contains("difficulty") && !text.contains("human"));
+        let mut game = replay;
+        game.setup.difficulty = 3;
+        game.setup.human = [true, false];
+        let text = replay_to_toml(&game, "skirmish", &ruleset).unwrap();
+        assert!(text.contains("difficulty = 3") && text.contains("human = [\"attacker\"]"));
+        let back = ReplayDoc::parse(&text)
+            .unwrap()
+            .into_replay(&ruleset)
+            .unwrap();
+        assert_eq!(
+            (back.setup.difficulty, back.setup.human),
+            (3, [true, false])
+        );
+        let bad = text.replace("human = [\"attacker\"]", "human = [\"nobody\"]");
+        assert!(matches!(
+            ReplayDoc::parse(&bad).unwrap().into_replay(&ruleset),
+            Err(CliError::Format(_))
+        ));
     }
 
     #[test]

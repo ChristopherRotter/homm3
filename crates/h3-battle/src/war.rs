@@ -109,6 +109,12 @@ pub(crate) fn act<S: Sink>(
         }
     } else if state.at(id).has(StackTraits::FIRST_AID) {
         first_aid(state, ruleset, id, sink);
+    } else if state.at(id).is_turret() {
+        // rule: BAT-SIE-020
+        crate::aim::turret_target(state, ruleset, field, id)
+            .map(|target| (target, state.at(target).hex))
+            .into_iter()
+            .for_each(|(target, at)| shoot(state, ruleset, id, target, at, sink));
     } else if can_shoot(state, field, id) {
         // While the battle goes on there is a living enemy to shoot at.
         shooting_target(state, ruleset, field, id)

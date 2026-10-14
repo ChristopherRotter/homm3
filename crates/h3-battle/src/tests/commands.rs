@@ -332,12 +332,13 @@ fn state_hash_is_pinned() {
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
     // v45: the special battlefield and the anti-magic flag (E04c T2b). v46: the town's walls,
     // gate and moat (E04c T5). v47: the wall shots' state and the hero's Catapult control (E04c
-    // T6). v48: the turrets the targets hold, the Citadel's keep among the stacks (E04c T7).
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 48);
+    // T6). v48: the turrets the targets hold, the Citadel's keep among the stacks (E04c T7). v49:
+    // the game's difficulty and the human players (E04c T7d).
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 49);
     assert_eq!(
         s.siege.unwrap().turret(7),
         Some(StackId(u8::try_from(s.stacks().len() - 1).unwrap()))
     );
 }
 
-const GOLDEN: u64 = 0xbbb5_a76c_36d2_0d7d;
+const GOLDEN: u64 = 0xddd3_e228_b8dd_cf0a;

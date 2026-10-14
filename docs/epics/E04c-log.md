@@ -269,3 +269,41 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   fixes (a keep or tower without a turret; stale profiles of the previous build); `cross-lane`
   PR #209. The user confirmed T7 and answered BAT-Q45 with (b): the computer's target choice for
   shooting war machines is read next (T7d).
+
+## T7d — the automatic turret's target (2026-10-14, increment 6)
+
+- **The reading** (`installation.md` §7.31; map entries for 0x41E190, 0x465F20, 0x435EC0,
+  0x41EAC0, 0x442E60, 0x442FD0, 0x422B20, 0x448840, 0x448BD0, 0x443080 and the general shooter's
+  0x41F060, 0x41EB80, 0x435CB0): an automatic arrow tower does not use the computer's shooter but
+  0x465F20 → 0x41E190 with the damage `3n` (the mean of its draws; not the wiki's "damage 1").
+  Each attacker record scores the kills of that damage (through the target's protection) times
+  the computer's worth of a creature (0x442A50: the Fight Value times the root of an offense and a
+  defense factor from the bonuses over the field's least, for a war machine or created stack its
+  share of the army's hit points), divided by its turns until it can attack (1 to 5, from the
+  computer's pathfinder: the moat's stop costs the rest of the turn); ties to the later record; a
+  desperate mode (every creature worth 1000) when the side's strength doubled is below the other's
+  and the difficulty is above Easy or the side human. The wiki's classes and tie agree; VCMI has
+  no turret routine. The automatic Ballista goes through the general shooter (T7e).
+- **BAT-Q46 (the user): the turrets fully.** The seam `shared/e04c-t7d-seam` (`cross-lane`):
+  `BattleSetup.difficulty`, `BattleSetup.human` (ADR-0023 point 7; the defaults 0 and no human),
+  `X87::sqrt` (the runtime's `sqrt` at 53 bits, tested against IEEE doubles), the literals; FYI
+  notes in the adventure and server inboxes. A commanded Ballista's Artillery factors need the
+  hero's level, which the seam lacks: BAT-STUB-3, with T7e.
+- **The battle** (`battle/e04c-t7d`, `cross-lane`): `aim.rs` (the context, the worth, the
+  strength, the AI's reach by Dial's buckets without allocation, the turns, the score, the
+  target), called by `war::act` for a turret; `Strike::protection` shared with the shot's stage 3;
+  the turret's branch of `shot_damage_range` gone (unused). The setup's facts are state (hash
+  v49), observed (encoding v19: three globals; C ABI v23), on the wire (protocol v32:
+  `Observation.difficulty`, `SideView.human`; `h3-view`'s literal), in scenarios (`difficulty`,
+  `human`) and replays (format 28). Golden replays re-recorded: `siege-s7`'s keep aims anew (the
+  attacker still wins, in 104 commands), the others' hashes only. Rules BAT-SIE-020 to 023; 9
+  tests in `tests/aim.rs` (the test ruleset with Fight Values, `fighting_turret_ruleset`).
+- **Batch 3f run by an agent** (`experiments/specs/E04c-batch-3f.toml`, `turrets.py`'s plans; the
+  engine's predictions from the base pack): **FV** the Magogs before the Medusas (the Fight Value,
+  not the AI value), **TU** Royal Griffins two turns away before a Giant behind the walls (the
+  turns), **DE** the Master Gremlins before the Magogs against one Pikeman (desperate) and **DN**
+  the Magogs against fifty, **BA** the attacker's Ballista before a hundred Zombies (a war
+  machine's share of its army); every round, every encounter as the code. BAT-SIE-020 to 023
+  `verified`. Found on the way: the original's records put the siege's Catapult before the hero's
+  Ballista (BA), the engine the Ballista first (the battle queue's inbox).
+
