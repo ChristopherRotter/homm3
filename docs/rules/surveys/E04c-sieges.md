@@ -157,5 +157,6 @@ moat, played by an agent in hot seat with both armies commanded (`experiments/ag
 the moat's stop, damage and defense (D-10), the gate's opening, closing and passage, the shots
 through the closed and the open gate (D-8) and the Tower's mines (D-9), every value as the code.
 Seen on the way, for T6 and T7: at every round's start the keep shoots first, then the Catapult
-(without Ballistics on its own, one shot); the Catapult destroyed wall parts but never the gate in
-these runs.
+(without Ballistics on its own, one shot); it destroyed wall parts but did not hit the gate in
+these six shots. The gate is one of its targets (`BALLIST.TXT`'s gate column; the user expects
+hits on it): T6 investigates its choice of target and what a destroyed gate does.

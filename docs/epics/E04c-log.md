@@ -158,6 +158,7 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   three runs; T was played on its fifth attempt (bonus artifacts). Rules BAT-SIE-003 to 008
   `verified`, BAT-MAG-033 an observation; the survey's D-8 to D-10 confirmed; `installation.md`
   §7.28 "Observed". Seen for later tasks: the keep shoots at a round's start before the Catapult;
-  the Catapult (no Ballistics) hit wall parts, never the gate; the original's walks pick other
+  the Catapult (no Ballistics) hit wall parts and not the gate in six shots (the gate is a target
+  too, `BALLIST.TXT`; the user expects hits on it: T6 investigates); the original's walks pick other
   shortest paths than ours on ties (M2 along row 5, G4 via 94; no rule depends on it here); the
   gate opens before the step onto 96 where our engine reports it after the step (same state).

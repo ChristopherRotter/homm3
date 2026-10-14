@@ -74,7 +74,8 @@ request and towns on the experiment maps; siege batches run by an agent).
 - [x] **T5 Walls, gate and moat** — done 2026-10-14 (record: [`E04c-log.md`](E04c-log.md)): T5a (#183),
   T5b (#184), T5c and T5d (#187); T5e the batch 3c by an agent: every rule as the code, D-8 and D-10
   confirmed; BAT-SIE-003 to 008 `verified`.
-- [ ] T6 The Catapult, Ballistics and Earthquake (S-08).
+- [ ] T6 The Catapult, Ballistics and Earthquake (S-08). To investigate: the gate as the Catapult's
+  target (the user, 2026-10-14; batch 3c's six shots hit walls only) and a destroyed gate's effects.
 - [ ] T7 Arrow towers (S-06, S-07; Artillery's control).
 - [ ] T8 The siege's other rules (no retreat or surrender for the besieged, the spell cost's town
   armies, Teleport's and the summon's siege limits, the outcome: walls, capture).

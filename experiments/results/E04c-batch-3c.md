@@ -12,7 +12,8 @@ read after each step (each stack's hex +0x38, count +0x4C, the top creature's lo
 +0x58 and turn flag +0x4F0; the gate +0x53A4, the walls +0x13FA8, the hexes' Land Mine bit and the
 battlefield's objects). A step's hit points run from the stack's turn to the next turn the agent
 commands; the keep's and the Catapult's shots at a round's start fall outside every step (the
-Catapult hit walls in M and G, never the gate). A run whose hero wore a bonus artifact (the random
+Catapult hit walls in M and G; it did not hit the gate in these six shots, though the gate is one
+of its targets). A run whose hero wore a bonus artifact (the random
 starting bonus) was played again: T on its fifth attempt; M and G on the first, wearing only the
 Catapult. M and G gave the same values in three runs.
 
