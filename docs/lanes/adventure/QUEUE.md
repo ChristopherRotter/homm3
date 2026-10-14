@@ -9,7 +9,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 ### E08 T19a, T19b — Battles through the game (hero against hero); the env and replays with battles
 
 - **Scope:** T19a design §2 (decision 28: `HeroChange`, `check_change`, the game's `apply_change`) and §5, §6 (GAM-BAT-001 to -005: the battle as a decision, `GameCommand::Battle`, the unowned side by `Actor::System`, the setup from the tile with the heroes' formations, the seeds (`ADV-QUIRK-5`'s flag), events, the observation, applying the outcome; `cross-lane`: `h3-heroes`' Necromancy share, Learning factor and the capture's placement; the values are in the packs since T18b; `BattleSetup.siege` is `None`, ADR-0023); T19b design §8 (encoding v3, the neutral seat, replay format v3, golden replays with hero battles, the properties with a battle open, the benchmarks).
-- **Acceptance:** the increment's exit criteria for what T19 builds; Definition of Done. **Depends on:** T18b merged. **Status:** waiting (#185, then T18b's pull request).
+- **Acceptance:** the increment's exit criteria for what T19 builds; Definition of Done. **Depends on:** T18b merged. **Status:** waiting (#185, then #188).
 
 ### E08 T20a, T20b — Monsters on the map; the monster's answer and its battle
 
