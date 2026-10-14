@@ -104,6 +104,9 @@ const STEPS: &[Step] = &[
     step("check-exe-map", false, InScope::Whole, |_| {
         passed(crate::exemap::run(&[]))
     }),
+    step("clients-lock", false, InScope::Whole, |_| {
+        passed(clients_lock())
+    }),
     step("check-lane", false, InScope::ScopedOnly, |s| {
         passed(crate::lanes::check(s.map(|s| s.lane.as_str()), None, false))
     }),
@@ -167,6 +170,31 @@ fn deny() -> Result<(), String> {
     let mut cmd = cargo();
     cmd.args(["deny", "--all-features", "check"]);
     run_cmd(cmd)
+}
+
+/// The client workspace's own lockfile is current (`clients/README.md`): an engine crate the
+/// client builds (a path dependency, `.github/workflows/clients.yml`) that changes its
+/// dependencies changes `clients/Cargo.lock` too, in the same pull request (a common path,
+/// `lanes.toml`). `cargo update --workspace --locked` resolves the workspace's own packages with
+/// the registry's index only: no download, no build; it fails when the lockfile would change.
+fn clients_lock() -> Result<(), String> {
+    let manifest = workspace_root().join("clients").join("Cargo.toml");
+    let mut cmd = cargo();
+    cmd.args([
+        "update",
+        "--workspace",
+        "--locked",
+        "--quiet",
+        "--manifest-path",
+    ])
+    .arg(&manifest);
+    run_cmd(cmd).map_err(|e| {
+        format!(
+            "{e}\n`clients/Cargo.lock` is stale: an engine crate the client workspace builds \
+             changed its dependencies. Update it in the same pull request (a common path): \
+             `cargo update --workspace --manifest-path clients/Cargo.toml`"
+        )
+    })
 }
 
 fn test(scope: Option<&LaneScope>) -> Result<(), String> {
@@ -753,6 +781,10 @@ mod tests {
             replays,
         };
         assert_eq!(out_of_scope(step("fmt"), Some(&client)), None);
+        assert_eq!(
+            out_of_scope(step("clients-lock"), Some(&adventure(true))),
+            None
+        );
         assert_eq!(out_of_scope(step("test"), None), None);
         assert_eq!(out_of_scope(step("test"), Some(&battle)), None);
         assert!(out_of_scope(step("test"), Some(&client)).is_some());

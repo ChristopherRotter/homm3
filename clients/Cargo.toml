@@ -55,6 +55,8 @@ sdl3-sys = { version = "0.7.2", default-features = false, features = [
     "no-sdl-tray",
 ] }
 # Test-only (the engine's version and features).
+# MP3 for the music (E17 M2 T5b; ADR-0024 point 5): pure Rust, minimp3's samples.
+nanomp3 = { version = "0.2", default-features = false, features = ["std"] }
 proptest = { version = "1", default-features = false, features = ["std"] }
 
 # The engine's lints (root Cargo.toml), unchanged. The engine's clippy.toml and rustfmt.toml at the

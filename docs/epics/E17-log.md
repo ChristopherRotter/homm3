@@ -599,3 +599,34 @@ headers, the user's consent).
   the window's scale is 1.
 - Gates: `clients/scripts/check.sh` all passed (coverage 100 % with `h3-sdl` excluded as an
   adapter); the scoped verify with no failing step; see the pull request.
+
+### M2 T5b — The sound (2026-10-14)
+
+On `client/e17-m2-t5b-sound`, the user present; [design §8.2](E17-design.md),
+[ADR-0024](../adr/0024-client-window-audio.md) point 5; with `shared/clients-lock-check` (#202:
+the verify's `clients-lock` gate and `clients/Cargo.lock` a common path, the user's choice of a
+failing check).
+
+- **Decoder:** `h3_assets::snd` (the sound archives' directory, entries by stem) and
+  `h3_assets::wav` (IMA ADPCM WAVs to 16-bit PCM; every complete frame up to the `fact` chunk's
+  count; test encoders in `build`). The real-asset gate decodes all 1 232 entries of
+  `Heroes3.snd` and `H3ab_ahd.snd` and compares them with SDL's own loader (`h3_sdl::load_wav`):
+  all equal with the hints `dropframe` and `truncate`, and SDL's defaults' samples as far as both
+  go. Found: SDL's defaults drop a cut last block, which 1 212 entries have (28 s of sound in all),
+  and ignore the `fact` chunk; the AB archive's entries are all in `Heroes3.snd`, byte for byte.
+- **Code reading** (design §8.2): `play_sample` and its channel table (the creature sounds' eight
+  channels, a free one or the next in turn), the stacks' eight sounds and `stack_load_graphics`'
+  rules for them, their sites in walks, flights, shots and strikes, the opening (the start sound,
+  the clock's wait, the music), the music's thread (looping, the fade-in, the resume position),
+  the volumes. Map entries for each; `battle_start`'s and `stack_load_graphics`' summaries
+  extended.
+- **Built:** the timeline's cues (`anim::Sound`, `anim::Cue`) at the frames the readings name;
+  `h3_view::sound` (the opening's draws, the volumes, the fade-in); the asset tables' `sounds`
+  (written by `h3-view harvest`, 743 names, all found by the gate); `h3-sdl`'s audio (device,
+  streams, gain, pause; the window and the audio each start and stop their own SDL subsystem);
+  `h3-view window` plays the start sound while the clock waits, then the music (decoded by
+  `nanomp3`, looping, fading in) and the creatures' sounds on eight channels (keys M and E,
+  `--mute`); `play` writes `cues.txt`.
+- **Checked in the sandbox** (Xvfb, SDL's `disk` audio driver): `--check 25` with sound, 293 of
+  293 frames exact; the mix: the start sound (`BATTLE01`, 5.8 s), then the music fading in; with
+  the music off, the effects' onsets within 10–100 ms of their cues.

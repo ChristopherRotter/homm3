@@ -257,7 +257,9 @@ fn wisdom_and_the_skill_condition_of_a_share_parse() {
     );
     let error = compile(&[bad.as_str(), SYNTHETIC_CORE], "synthetic:faithful").unwrap_err();
     assert!(
-        error.to_string().contains("learn_level levels must be 1..=5"),
+        error
+            .to_string()
+            .contains("learn_level levels must be 1..=5"),
         "{error}"
     );
 }

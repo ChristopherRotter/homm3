@@ -10,6 +10,7 @@ use crate::def::{Encoding, Frame};
 use crate::msk::Mask;
 use crate::palette::{Chunk, PAL_VERSION, Palette, Rgb};
 use crate::read::index;
+use crate::wav::{IMA_ADPCM, decode_nibble, step_size};
 
 fn put_u32(out: &mut Vec<u8>, value: u32) {
     out.extend_from_slice(&value.to_le_bytes());
@@ -270,4 +271,124 @@ pub fn runs_by_repetition(encoding: Encoding, width: u32, pixels: &[u8]) -> Vec<
         }
     }
     out
+}
+
+/// A sound archive (`.snd`) of `entries`, each a stem and its bytes: the directory, then the
+/// bytes in the same order. A stem of 40 bytes or more fills the name field without a NUL.
+#[must_use]
+pub fn snd(entries: &[(&str, &[u8])]) -> Vec<u8> {
+    let mut out = Vec::new();
+    put_u32(&mut out, word(entries.len()));
+    let mut offset = 4 + entries.len() * 48;
+    for (name, bytes) in entries {
+        let mut field = [0u8; 40];
+        for (f, b) in field.iter_mut().zip(name.bytes()) {
+            *f = b;
+        }
+        out.extend_from_slice(&field);
+        put_u32(&mut out, word(offset));
+        put_u32(&mut out, word(bytes.len()));
+        offset += bytes.len();
+    }
+    for (_, bytes) in entries {
+        out.extend_from_slice(bytes);
+    }
+    out
+}
+
+/// A RIFF file of form `WAVE` holding `chunks` in order, each padded to an even length.
+#[must_use]
+pub fn riff_wave(chunks: &[(&[u8; 4], &[u8])]) -> Vec<u8> {
+    let mut body = Vec::from(*b"WAVE");
+    for (id, bytes) in chunks {
+        body.extend_from_slice(*id);
+        put_u32(&mut body, word(bytes.len()));
+        body.extend_from_slice(bytes);
+        body.resize(body.len() + (bytes.len() & 1), 0);
+    }
+    let mut out = Vec::from(*b"RIFF");
+    put_u32(&mut out, word(body.len()));
+    out.extend_from_slice(&body);
+    out
+}
+
+/// An IMA ADPCM `fmt ` chunk's data: `rate`, `channels`, `block` bytes per block, 4 bits; with
+/// `frames_per_block`, the extension's two bytes of `wSamplesPerBlock` (20 bytes), else an empty
+/// extension (18 bytes).
+#[must_use]
+pub fn ima_fmt(rate: u32, channels: u16, block: u16, frames_per_block: Option<u16>) -> Vec<u8> {
+    let mut out = Vec::from(IMA_ADPCM.to_le_bytes());
+    out.extend_from_slice(&channels.to_le_bytes());
+    put_u32(&mut out, rate);
+    put_u32(&mut out, rate / 2 * u32::from(channels));
+    out.extend_from_slice(&block.to_le_bytes());
+    out.extend_from_slice(&4u16.to_le_bytes());
+    match frames_per_block {
+        Some(frames) => {
+            out.extend_from_slice(&2u16.to_le_bytes());
+            out.extend_from_slice(&frames.to_le_bytes());
+        }
+        None => out.extend_from_slice(&0u16.to_le_bytes()),
+    }
+    out
+}
+
+/// IMA ADPCM data of `samples` (interleaved frames of `channels`, at least one) in blocks of
+/// `block` bytes (at least 4 per channel), each with as many frames as fit, `1 + (block - 4 x
+/// channels) x 2 / channels`; the last block ends after the words its frames need (a last word's
+/// unused nibbles 0). A block's header takes its first frame and the step index the encoding
+/// reached (0 at the start); each later nibble is the usual choice, the one whose step comes
+/// closest. Returns the bytes and the samples a decoder gives back.
+#[must_use]
+pub fn ima_data(channels: u16, block: u16, samples: &[i16]) -> (Vec<u8>, Vec<i16>) {
+    let channels = usize::from(channels.max(1));
+    let per_block = 1 + usize::from(block).saturating_sub(4 * channels) * 2 / channels;
+    let frames: Vec<&[i16]> = samples.chunks(channels).collect();
+    let mut bytes = Vec::new();
+    let mut decoded = Vec::with_capacity(samples.len());
+    let mut indices = vec![0i8; channels];
+    for (first, rest) in frames.chunks(per_block).filter_map(<[_]>::split_first) {
+        let mut previous = first.to_vec();
+        for (&sample, &step) in previous.iter().zip(&indices) {
+            bytes.extend_from_slice(&sample.to_le_bytes());
+            bytes.extend_from_slice(&[step.to_le_bytes()[0], 0]);
+        }
+        decoded.extend_from_slice(first);
+        for group in rest.chunks(8) {
+            let start = decoded.len();
+            decoded.resize(start + group.len() * channels, 0);
+            for (c, (last, step)) in previous.iter_mut().zip(&mut indices).enumerate() {
+                let mut nibbles = [0u8; 8];
+                let outputs = decoded.iter_mut().skip(start + c).step_by(channels);
+                for ((frame, out), nibble) in group.iter().zip(outputs).zip(&mut nibbles) {
+                    let target = frame.get(c).copied().unwrap_or_default();
+                    *nibble = encode_nibble(*last, *step, target);
+                    *last = decode_nibble(*last, step, *nibble);
+                    *out = *last;
+                }
+                let pairs = nibbles.as_chunks::<2>().0;
+                bytes.extend(pairs.iter().map(|&[low, high]| low | high << 4));
+            }
+        }
+    }
+    (bytes, decoded)
+}
+
+/// The nibble that moves `previous` closest to `target` at `step_index`'s step.
+fn encode_nibble(previous: i16, step_index: i8, target: i16) -> u8 {
+    let mut step = step_size(step_index);
+    let mut difference = i32::from(target) - i32::from(previous);
+    let mut nibble = 0;
+    if difference < 0 {
+        nibble = 8;
+        difference = -difference;
+    }
+    for bit in [4, 2, 1] {
+        if difference >= step {
+            nibble |= bit;
+            difference -= step;
+        }
+        step >>= 1;
+    }
+    nibble
 }
