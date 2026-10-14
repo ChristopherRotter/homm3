@@ -4461,8 +4461,8 @@ numeric  = "integer"
 id       = "BAT-SIE-016"
 title    = "The town's turrets: the keep and the towers"
 context  = "battle"
-status   = "implemented"
-summary  = "In a battle at a town with a Citadel the battle sets up the keep for the defender, with a Castle also the upper and the lower tower, with or without a defending hero (the setup never lists them; a listed turret creature is SetupError::InvalidWarMachine). Each is a stack of the ruleset's first war machine with the ability turret (the Arrow Tower) at the off-field position its wall-shot target holds (siege field: keep 254 for target 7, upper tower 255 for target 0, lower tower 251 for target 6), in the defender's records after its war machines: the keep, the upper, the lower tower (slots 20, 21, 22; as many as the side's 21 records leave room for). The keep has the siege field's turret_count (4) plus Siege.structures creatures (the original's 0x5BF4F0), a tower half the keep's count rounded up. A turret is a war machine: no morale (BAT-MOR-001), not living for the battle's end (BAT-END-001), not in the outcome's records or war machines (BAT-END-003) nor in the surrender price (BAT-FLE-002). Every round the turrets act before every other stack of their phase, then the Catapult (BAT-SIE-011; the original's 0x464F50 and VCMI's siege phase), the keep first, then the upper and the lower tower. A side whose hero has Artillery (BattleHero.war_machines.ballista, the original's 0x474BF0: the Ballista's case) commands them as its Ballista (BAT-WAR-006: Shoot, Wait, Defend; one shot each, never the Ballista's second); without it they shoot on their own at the automatic Ballista's target (BAT-WAR-002; D-19: the original's computer player's choice is not read, the user at BAT-Q44). Observation: per stack a turret flag (encoding v18)."
+status   = "verified"
+summary  = "In a battle at a town with a Citadel the battle sets up the keep for the defender, with a Castle also the upper and the lower tower, with or without a defending hero (the setup never lists them; a listed turret creature is SetupError::InvalidWarMachine). Each is a stack of the ruleset's first war machine with the ability turret (the Arrow Tower) at the off-field position its wall-shot target holds (siege field: keep 254 for target 7, upper tower 255 for target 0, lower tower 251 for target 6), in the defender's records after its war machines: the keep, the upper, the lower tower (slots 20, 21, 22; as many as the side's 21 records leave room for). The keep has the siege field's turret_count (4) plus Siege.structures creatures (the original's 0x5BF4F0), a tower half the keep's count rounded up. A turret is a war machine: no morale (BAT-MOR-001), not living for the battle's end (BAT-END-001), not in the outcome's records or war machines (BAT-END-003) nor in the surrender price (BAT-FLE-002). Every round the turrets act before every other stack of their phase, then the Catapult (BAT-SIE-011; the original's 0x464F50 and VCMI's siege phase), the keep first, then the upper and the lower tower. A side whose hero has Artillery (BattleHero.war_machines.ballista, the original's 0x474BF0: the Ballista's case) commands them as its Ballista (BAT-WAR-006: Shoot, Wait, Defend; one shot each, never the Ballista's second); without it they shoot on their own at the automatic Ballista's target (BAT-WAR-002; D-19: the original's computer player's choice is not read, the user at BAT-Q44; batch 3e saw the original shoot the smaller of two like stacks first, BAT-Q45). Observation: per stack a turret flag (encoding v18)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4484,11 +4484,17 @@ numeric  = "integer"
   retrieved  = "2026-10-14"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3e.md (SoD 4.0 Complete, Heroes3.exe under Wine without the HD mod, run by an agent): K, the keep (5) and two towers (3 each) at a Castle shot first every round, the keep, the upper, the lower tower, then the Catapult; AT, with Expert Artillery the game waited for the keep's command, one shot a turn, a Wait accepted (the keep acted again after every other stack); AC, without Artillery the keep shot on its own; the counts and shots never changed; AI, the automatic keep shot the single Marksman before the ten (D-19: the wiki's computer rule, not the engine's; BAT-Q45)"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-017"
 title    = "A destroyed tower's or keep's turret"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "When a tower or the keep falls (BAT-SIE-010, BAT-SIE-012: its hit points reach 0 by a wall shot or Earthquake), the turret it holds dies: its creatures are gone, it leaves no corpse, it never acts again; no event but the part's WallDestroyed. A target the fort level did not set up holds no turret: its fall harms no stack (BAT-QUIRK-22, S-08's fix)."
 numeric  = "integer"
 
@@ -4503,11 +4509,17 @@ numeric  = "integer"
   retrieved  = "2026-10-14"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3e.md (as BAT-SIE-016's): AC, the keep the Catapult destroyed in round 10 shot no more"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-018"
 title    = "The turret's shot"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A turret's shot draws its creature's damage range (2 to 4) once per creature and sums the draws (D-18: the code; VCMI draws the keep's or the tower's whole range once), then multiplies the sum by the target's protections only, the original's stage 3 of physical damage: Air Shield's share (BAT-MAG-012), the half while petrified (BAT-MAG-043) and 1 minus the Armorer of the hero of the target's controller (BAT-HER-004); truncated once (with quirk Q-0005 in the executable's x87 arithmetic), at least 1. Nothing else applies: no attack or defense, luck, Bless or Curse, no hero's Archery, Offense or Artillery bonus, no wall or range penalty, no double damage (D-16, S-06 and D-17, S-07: the code; the user at BAT-Q44, confirmation rows in batch 3e). One shot per turn, no shot used, not retaliated, no Fire Shield; the shot ends the target's effects that damage ends and its rebirth and the battle's end are checked as after any shot. A turret can always shoot (no shots needed, never blocked; the original's 0x4428F0)."
 numeric  = "integer"
 
@@ -4529,6 +4541,12 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/DamageCalculator.cpp"
   retrieved  = "2026-10-14"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3e.md (as BAT-SIE-016's): N = 5; K, the keep's shots 11 to 17, the towers' 6 to 11; AS, under Expert Air Shield 9, 7, 7, 7, 8; AR, under the attacker's Expert Armorer 10 to 14, mean 12.3; AC, with the defender's Expert Archery 10 to 17, mean 15.2; the Defend bonus no matter (D-16, D-17: the code; S-06 and S-07 refuted in this version)"
+  retrieved  = "2026-10-14"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-SIE-019"

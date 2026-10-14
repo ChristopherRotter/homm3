@@ -1,7 +1,7 @@
 # E04c — Sieges and special battlefields
 
 Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2 closed: T3 (#179), T4 (#180), BAT-Q39 and BAT-Q40 answered; increment 3, T5: the seam ADR-0023 (#183), towns on the experiment maps (#184), the reading (BAT-Q41, BAT-Q42), the battle's walls, gate and moat (#187), the siege batch 3c run by
-an agent (T5e): increment 3 done (#190); increment 4, T6, refined 2026-10-14 (BAT-Q43), built and confirmed 2026-10-14: the seam #191, the battle and the batch 3d, #199) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
+an agent (T5e): increment 3 done (#190); increment 4, T6, refined 2026-10-14 (BAT-Q43), built and confirmed 2026-10-14: the seam #191, the battle and the batch 3d, #199; increment 5, T7, the arrow towers, built 2026-10-14 (BAT-Q44, BAT-Q45)) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
 
@@ -85,7 +85,11 @@ checkpoint; BAT-Q43 at its start).
   (#199); confirmed by the user and merged 2026-10-14.
 **Increment 5** (the user, 2026-10-14: the next sensible increment; BAT-Q44 at its start).
 
-- [ ] **T7 Arrow towers (S-06, S-07; Artillery's control)** — refined 2026-10-14 (below), in progress.
+- [x] **T7 Arrow towers (S-06, S-07; Artillery's control)** — built 2026-10-14 (record:
+  [`E04c-log.md`](E04c-log.md)): T7a the reading (§7.30, BAT-Q44), T7b the battle, T7c the batch 3e
+  by an agent: every value as the code, S-06 and S-07 refuted in the user's version; the
+  automatic keep's target as the wiki's rule (BAT-Q45); BAT-SIE-016 to 018 `verified`, 019
+  `implemented`; awaiting the user's confirmation and the `cross-lane` pull request.
 - [ ] T8 The siege's other rules (no retreat or surrender for the besieged, the spell cost's town
   armies, Teleport's and the summon's siege limits, the outcome: walls, capture).
 - [ ] T9 Workload and measurements; T10 closure (the independent review, as E04b's T11).

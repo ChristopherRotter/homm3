@@ -219,3 +219,47 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   counted, now `into_iter().for_each`) and deny (rustls 0.23.45's advisories RUSTSEC-2026-0346 to
   0349, new and on `master` too: Cargo.lock takes 0.23.46). The user consented to the `cross-lane`
   pull request as one (2026-10-14).
+
+## T7 — the arrow towers (2026-10-14, increment 5)
+
+- **T7a, the reading** (`installation.md` §7.30; the survey's D-16 to D-19; map entries 0x465AD0
+  `turret_shot`, 0x443D90 `stage3_protection_factor`, 0x474BF0): the turrets' stacks (0x463600:
+  the keep at 254 with `4 + structures`, with a Castle the towers at 255 and 251 with half,
+  rounded up; their records name each turret's stack), the turn (0x464F50: the turrets first,
+  then the Catapult), the control (0x474BF0: the Ballista's case, Artillery), the shot (0x465AD0:
+  `random(2, 4)` per creature, summed, times the target's stage-3 protection factor 0x443D90,
+  truncated, at least 1; nothing else; one shot), what reaches a turret (0x44A4D0: immune to
+  every spell; off the field; berserk and Magic Mirror pass it over). The code contradicts the
+  wiki's S-06 (Armorer, Air Shield and petrification raise the damage) and the Archery page's
+  S-07. VCMI: one uniform draw through the full formula. **BAT-Q44 (the user, with the wiki read
+  this session): the code on D-16 to D-18 with confirmation rows; the Ballista's automatic target
+  (VCMI) with observation rows (D-19); turrets as off-field stacks; no seam change.**
+- **T7b, the battle** (`battle/e04c-t7`, `cross-lane` for `h3-map`, the adventure replays'
+  headers, `h3-view`'s table test and the lanes' queues): the Arrow Tower harvested (the gap
+  fill's war machines, ability `turret`, pack format v40); the siege field's targets hold their
+  turrets' positions and the keep's least count, read from the executable (0x465990's cases,
+  0x463600's operands, 0x5BF4F0; `h3_formats::exe::wall_shot_data`; battle part hash v5). The
+  battle: the defender's turrets after its war machines (slots 20 to 22; `Stack::is_turret`), the
+  targets hold them (`SiegeState::turret`); first in their phase; commanded with Artillery as the
+  Ballista (Shoot, Wait, Defend; one shot), else the Ballista's automatic shot; the shot
+  (`combat::turret_shot`, the protections only, `Strike` with attack and defense 0); a fallen
+  tower's or keep's turret dies without a corpse; `may_attack`, `affects_stack`, berserk's
+  candidates and the Magic Mirror's redirect leave turrets out; the outcome and the surrender
+  price too. State hash v48, observation encoding v18 (a turret flag per stack), C ABI v22; no
+  wire change. The synthetic pack: a turret (spire), the siege scenario's town with three
+  structures (a keep of seven): `siege-s7` re-recorded (the attacker still wins), the other
+  replays changed only their hashes; the adventure replays only the core ruleset hash. Rules
+  BAT-SIE-016 to BAT-SIE-019, 8 tests in `tests/turrets.rs`.
+- **T7c, batch 3e run by an agent** (`experiments/specs/E04c-batch-3e.toml`,
+  `experiments/agent/turrets.py`, built on `catapult.py`: a turret's shot read as its target's drop
+  of hit points while the turret is the last activated stack, +0x132B8/+0x132BC). N = 5 (one
+  structure of the writer's towns), towers 3. **K**: the keep, the upper and the lower tower
+  first every round, then the Catapult; shots within 2N..4N and 2M..4M. **AS**: Expert Air
+  Shield, 9, 7, 7, 7, 8 (N..2N). **AR**: Expert Armorer, 10 to 14, mean 12.3 (× 0.85). **AC**: the
+  defender's Expert Archery, 10 to 17, mean 15.2 (unchanged); the keep automatic; destroyed by
+  the Catapult in round 10, it shot no more. **AT**: Expert Artillery, the game waited for the
+  keep's aim, one shot a turn, a Wait accepted (the keep acted again after every other stack);
+  later draws varied between runs with a human command. So S-06 and S-07 are refuted in the
+  user's version (not quirks), D-16 to D-18 as the code; BAT-SIE-016 to 018 `verified`.
+  **AI (D-19)**: the automatic keep shot the single Marksman before the ten, the wiki's computer
+  rule and not the engine's (the automatic Ballista's, VCMI's): BAT-Q45 for the user.

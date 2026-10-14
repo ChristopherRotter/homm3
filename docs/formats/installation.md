@@ -2717,3 +2717,17 @@ penalty (`config/creatures/special.json`, `DamageCalculator::getBaseDamageSingle
 target's Air Shield, Armorer and petrification lower it. Artillery gives control of the towers
 (`config/skills.json`: `MANUAL_CONTROL` for `creature.arrowTower`); without it the automatic
 shot as the Ballista's (`tryMakeAutomaticActionOfRangedUnit`).
+
+**Observed** (batch 3e, `experiments/results/E04c-batch-3e.md`, run by an agent under Wine,
+2026-10-14; Castle towns with a Fort and a Citadel, with a Castle in K: N = 5 in every one, one
+structure of the writer's town counted, and 3 creatures in a tower): every round the keep, the upper and the
+lower tower shot first, then the Catapult; the keep's shots within 2N..4N (10..20), the towers'
+within 6..12; under Expert Air Shield the keep's shots 9, 7, 7, 7, 8 (the code's N..2N; the
+wiki's raised damage would be 20 or more); under the attacker's Expert Armorer ten shots of 10 to
+14, mean 12.3 (the code's 0.85; 10 is below any raised value); with the defender's Expert Archery
+ten shots of 10 to 17, mean 15.2 (unchanged); a defender with Expert Artillery commanded the
+keep, one shot a turn, a Wait accepted (the keep acted again after every other stack); a keep the
+Catapult destroyed shot no more; the counts and the 99 shots never changed. **The automatic
+keep's target** (D-19): of ten Marksmen and one, the keep shot the single Marksman first (the
+wiki's computer rule; the engine's, VCMI's, picks the ten), then the ten.
+

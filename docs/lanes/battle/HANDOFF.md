@@ -4,27 +4,27 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 5, T7 (arrow towers), in progress** on `battle/e04c-t7` (2026-10-14, sixty-third session): the reading `installation.md` §7.30, the survey's D-16 to D-19, BAT-Q44 asked (the code against the wiki's S-06/S-07, the automatic target, turrets as off-field stacks). Next: the user's answer, then the build and batch 3e.
+- **E04c increment 5, T7 (arrow towers):** built on `battle/e04c-t7` (2026-10-14; BAT-Q44; BAT-SIE-016 to 019; batch 3e: as the code, S-06/S-07 refuted); BAT-Q45 open (the automatic turret's target); the `cross-lane` pull request awaits the user's checkpoint.
 - **Merged:** up to #199.
-- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-2 (T7, T8), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
-- **Versions** (T6): battle state hash v47, battle part hash v4, replay format v27, action encoding v13, C ABI v21, observation encoding v17; shared: core ruleset hash v43, pack format v39, protocol v31. Next ids: BAT-Q44, BAT-QUIRK-23, BAT-STUB-3, BAT-TER-007, BAT-SIE-016; survey D-16, S-30.
-- Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches are played by the user or an agent.
+- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q45 (none blocks), BAT-STUB-1, BAT-STUB-2 (T8), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
+- **Versions** (T7): battle state hash v48, battle part hash v5, replay format v27, action encoding v13, C ABI v22, observation encoding v18; shared: core ruleset hash v43, pack format v40, protocol v31. Next ids: BAT-Q45, BAT-QUIRK-23, BAT-STUB-3, BAT-TER-007, BAT-SIE-020; survey D-20, S-30.
+- Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
 
 ## Standing traps
 
 **Content and packs**
 - `packs/base|ab|sod` are generated (`core.toml`, `battle.toml`): change `crates/h3-harvest` or its gap-fill file and re-run the harvester (`cargo run -p h3-harvest -- --install original-data/install --out packs`); never edit them by hand. Harvested keys may coincide across kinds (`base:ballista` is a creature and an artifact).
 
-- A data quirk's value stays in the pack; its fix is an override gated by a `quirk.content` flag, read only by the compiler (ADR-0007).
+- A data quirk's value stays in the pack; its fix is a `quirk.content`-gated override the compiler reads (ADR-0007).
 - Tests patch the synthetic pack by text (`h3-pack-battle`'s `Texts`): each patch asserts it matched; a text in both files names its file. To pick replay seeds, count events per agent seed with a throwaway test in `crates/h3-cli/tests` (`run_random`, then re-apply the commands with an event sink).
 
 **Code reading**
-- Edit docs with targeted replacements, never by rewriting a file from memory (T7a2 lost `QUEUE.md`'s inbox so).
+- Edit docs with targeted replacements, never by rewriting a file from memory.
 - The executable's x87 runs at 53 bits (`installation.md` §7.10): emulate it with `h3_kernel::arith::X87` and test against vectors from exact rational arithmetic; check each float constant's width (`qword` double or `dword` f32).
-- Name an address only after reading its code: §7.15 had called 0x469E50 (the moat's damage) a Quicksand test.
+- Name an address only after reading its code (§7.15 had misnamed 0x469E50).
 
 **Battle code and tests**
-- Stack ids: war machines follow the army in kind order (Ballista, Ammo Cart, Tent, Catapult), not in `BattleSetup.war_machines`' order.
+- Stack ids: war machines follow the army in kind order (Ballista, Ammo Cart, Tent, Catapult), not in `BattleSetup.war_machines`' order; then a town's turrets (keep, upper, lower), off the field (254, 255, 251): a rule that walks stacks for targets or distances leaves them out (`Stack::is_turret`).
 - Defend spoils exact damage expectations: skip turns with `activate`. `BattleState::new` drops the first activation's events (use `start`). A test ruleset may not make bad morale certain (254/255).
 - Hidden obstacles leak through public events too: a hidden obstacle that does nothing must not change them (a mine that does not go off must not split a `Moved`). `hidden_obstacles_do_not_show` checks the acting side's commands and casts (its profiles leave BAT-QUIRK-4 off; no Berserk in its books, BAT-Q31); the automatic Ballista reads `movement::reachable_in_public`. `legal_commands` lists no casts: a property over legal commands must add `cast_targets` × `second_targets` itself.
 - Natural obstacles follow the original's hex records (`h3_battle::natural`): the piece listed last wins a shared hex, and a removal clears its hexes and anchor for every piece (0x466B30).
@@ -43,9 +43,9 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Golden replays and the `benches/battle/` baselines change with behavior, the synthetic pack, an encoding or the toolchain: regenerate deliberately (`fixtures/README.md`, `cargo xtask bench-check --update --workload random-rollouts-full`) and give the reason in the commit.
 - A field added to `Stack` costs Ir wherever stacks are walked (+0.6 % for 8 bytes in T6a): keep per-stack data the hot paths do not read beside the stacks (`BattleState.raised`, `.created`).
 - A stack can now die from another's death (a clone with its original, BAT-MAG-038): loops over targets fixed before damage skip dead stacks, and every path that kills calls `created::died` (`effects::damaged` after damage, the death stare, the sacrifice; it also releases binds).
-- Code added to `movement::reachable_within` can push `fits` out of line (T5c1, T6b): compare per-function profiles (`callgrind_annotate --inclusive=no`) of the old and new binaries on the old workload.
+- Code added to `movement::reachable_within` can push `fits` out of line (T5c1, T6b): compare per-function profiles (`callgrind_annotate --inclusive=no`) on the old workload.
 - The random agent and `legal_mask` ask for the active stack's cast at every step: keep `casters::ready` a cheap early exit (casts left first; the targets' buffer only for a caster cost +2 % Ir in T7b1).
-- Before re-baselining, compare `h3 bench --games 20` step counts (a shorter workload looks like a speed-up; build the old commit in a `git worktree` with its own target dir). The geometry hot path moves with unrelated codegen: compare per-function callgrind profiles (`--toggle-collect='*random_rollout*'`, read the out file's `summary:` line; run `h3 bench` where `packs/` resolves).
+- Before re-baselining, compare `h3 bench --games 20` step counts (a shorter workload looks faster; the old commit in a `git worktree`, own target dir) and per-function callgrind profiles (`--toggle-collect='*random_rollout*'`, the out file's `summary:`; `h3 bench` where `packs/` resolves).
 
 **Process**
 - `xtask` takes the workspace root from its build: never share a target directory between worktrees (two workers' checks read each other's tree, T11b).
@@ -58,14 +58,14 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-14 (sixty-third) — E04c T7: the arrow towers (increment 5)
+
+Reading §7.30 (0x465AD0 against the wiki's S-06/S-07); BAT-Q44; the battle (BAT-SIE-016 to 019); batch 3e by an agent (`turrets.py`): as the code, the keep's automatic target as the wiki's (BAT-Q45). Detail: `docs/epics/E04c-log.md`.
+
 ### 2026-10-14 (sixty-second) — E04c T6: master merged, the full verify, the pull request
 
-#191 merged `master` (`ballistics` code 43, T6's pack format v39); adventure replays re-recorded; the verify's gaps (coverage, rustls 0.23.46); the `cross-lane` PR. Detail: `docs/epics/E04c-log.md`.
+Master merged (`ballistics` code 43, pack format v39); the verify's gaps (coverage, rustls 0.23.46); PR #199. Detail: `docs/epics/E04c-log.md`.
 
 ### 2026-10-14 (sixty-first) — E04c T6: the Catapult, Ballistics and Earthquake (increment 4)
 
-Seam #191 (BAT-Q43); reading §7.29; the battle (BAT-SIE-009 to 015, HER-BAT-018, BAT-QUIRK-22); batch 3d by an agent: as the code, S-08 seen. Detail: `docs/epics/E04c-log.md`.
-
-### 2026-10-14 (sixtieth) — E04c T5e: the siege batch 3c played by an agent
-
-Batch 3c by `experiments/agent/siege.py`: moat, gate, shots through walls, the Tower's mines as the code (D-8, D-10). Detail: `docs/epics/E04c-log.md`.
+Seam #191 (BAT-Q43); reading §7.29; the battle (BAT-SIE-009 to 015, HER-BAT-018, BAT-QUIRK-22); batch 3d: as the code. Detail: `docs/epics/E04c-log.md`.
