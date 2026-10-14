@@ -2051,3 +2051,36 @@ became `h3-map`'s dev-dependency (`shared/e08-t19b2`, `arch.toml` alone).
   GAM-HER-001 and GAM-BAT-001 to -007 and the HER rules they rest on `implemented` with sources;
   no adventure stub open. Left to the increment: monsters (T20, T21) and batch E3 (T22).
 - No version moved. Round 3 closed.
+
+### Round 4 of increment 3: T20a1 (2026-10-14, `adventure/e08-t20a1`, `cross-lane`)
+
+Decision 35's second part, built on `adventure/e08-t19b2` (#214; #213 the shared change). T20a's
+`h3-heroes` part, ahead of T20b's monster answer, its first reader; `cross-lane` (`h3-heroes`,
+the harvester's gap-fill and `packs/` are the battle lane's).
+
+- **The reading** (survey `E08-battles.md` §3.1 had asked whether +0x476 includes the artifacts):
+  `hero_equip_artifact` (0x4E2A00) adds the equipped artifact's four bytes of
+  `artifact_primary_skills` (0x63E758) to the hero record's +0x476 to +0x479 (0x4E2B7E to
+  0x4E2B99) and, for a combination, each part's first (0x4E2AF7 to 0x4E2B0D);
+  `hero_remove_artifact` (0x4E2BD0, new in the address map) subtracts them (0x4E2C72, 0x4E2D14).
+  The bytes are signed and unclamped; their readers clamp (`hero_attack_defense_factor` 0x4E5400:
+  0–99). `map_hero_setup` equips the map's artifacts (0x4866D5, 0x48675C) before it sets the
+  spell points from +0x479, so HER-MAN-001's effective Knowledge is the original's (its open
+  question closed). VCMI's `getValueForDiplomacy` reads the bonus system's totals, artifacts
+  included. A base of 99 with 29 or more from artifacts would wrap in the original (the wiki:
+  "At 129 the skill value is reset to 0"); HER-BAT-001 clamps: a quirk candidate in both lanes'
+  inboxes, for the user.
+- **`h3_heroes::attack_defense`** (HER-ADV-001): `derive_battle_hero`'s effective Attack and
+  Defense (HER-BAT-001's `effective_primary`, 0–99), the base values without hero parameters.
+- **`h3_heroes::join_bonus`** (HER-ADV-002) and `MAX_JOIN_BONUS` (3): the sum of the `join_bonus`
+  levels (skills at their level, each artifact type once, the specialty), at most 3; no skill read
+  by name.
+- **Diplomacy's values**: the gap-fill's `[[heroes.skill_extra]]` gives Diplomacy `join_bonus` 1,
+  2, 3 beside the table's surrender discount (sources: the code reading, the wiki, VCMI 1.7.5's
+  `WANDERING_CREATURES_JOIN_BONUS` 1/2/3); the harvester's run changes only those three lines of
+  `packs/base/core.toml`; `h3-map`'s `diplomacy_gives_a_join_bonus_of_its_level` checks them.
+- **Golden replays**: the eight re-recorded with their options; only the core ruleset hash in
+  their headers moved (the battle replays use `synthetic`).
+- Tests: `h3-heroes` (the battle hero's values, the bounds, the combination's parts, without hero
+  parameters; the levels, an artifact type once, the cap). Versions: none (the core ruleset
+  hash's value only).
