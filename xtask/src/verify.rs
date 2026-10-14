@@ -673,7 +673,9 @@ pub fn run_steps(args: &[String]) -> Result<(), String> {
         skip_reason("test").is_none(),
         skip_reason("coverage").is_none()
             && crate::coverage::runs_tests(scope.as_ref().map(|s| s.packages.as_slice()))?,
-        scope.as_ref().is_none_or(|s| s.packages.iter().any(|p| p == REPLAY_CRATE)),
+        scope
+            .as_ref()
+            .is_none_or(|s| s.packages.iter().any(|p| p == REPLAY_CRATE)),
     );
     let mut results = Vec::new();
     let mut first_failure: Option<(&str, String)> = None;
@@ -687,7 +689,12 @@ pub fn run_steps(args: &[String]) -> Result<(), String> {
             if run_name != name {
                 println!("  ...   {name}: {}", Plan::note(run_name));
             }
-            run_logged(log, run_name, scope.as_ref(), options.original_data.as_deref())?
+            run_logged(
+                log,
+                run_name,
+                scope.as_ref(),
+                options.original_data.as_deref(),
+            )?
         } else {
             println!("\n==> {name}");
             if run_name != name {
