@@ -6,7 +6,8 @@
 //! (`docs/formats/h3m.md`, "Input bounds"), the import's counts ("Import") and the maps with a
 //! tile that is the visitable tile of two or more objects (E08 T14a: which object a step there
 //! visits, ADV-OBJ-003) and the typed objects of one type on one anchor (E08 T15a: what a player
-//! sees names a typed object by its type and anchor, ADR-0016 point 6).
+//! sees names a typed object by its type and anchor, ADR-0016 point 6); since E08 T20a2a the
+//! monsters' and the special grounds' counts (`docs/formats/h3m.md`, "Import").
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -27,7 +28,8 @@ use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 /// The largest value of each bounded quantity over all maps, with the map it came from; how many
 /// objects of each body kind the maps hold; how many tiles objects are visited from; each map
 /// with stacked visitable tiles, with the classes on each such tile in map order; each map with
-/// typed objects that share their type and anchor with an earlier one, with how many.
+/// typed objects that share their type and anchor with an earlier one, with how many; the
+/// monsters' and grounds' counts (E08 T20a2a).
 #[derive(Default)]
 struct Peaks(
     BTreeMap<&'static str, (usize, String)>,
@@ -35,6 +37,7 @@ struct Peaks(
     usize,
     BTreeMap<String, Vec<Vec<u32>>>,
     BTreeMap<String, usize>,
+    BTreeMap<&'static str, usize>,
 );
 
 impl Peaks {
@@ -143,6 +146,9 @@ fn main() -> ExitCode {
     for (map, twins) in &peaks.4 {
         println!("    {map}: {twins}");
     }
+    for (what, n) in &peaks.5 {
+        println!("  {what}: {n}");
+    }
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -206,6 +212,7 @@ fn check(
     if twins > 0 {
         peaks.4.insert(name.to_owned(), twins);
     }
+    census(&map, &setup.map, &mut peaks.5);
     let outcome = match import(&map, rules) {
         Ok(setup) => {
             setup
@@ -217,6 +224,54 @@ fn check(
         Err(e) => return Err(format!("import: {e}")),
     };
     Ok((map.header.version, outcome))
+}
+
+/// Counts the monsters' data the import reads or refuses and the special grounds (E08 T20a2a):
+/// treasures with a resource below 0 (the import leaves such an amount out), dispositions
+/// beyond savage, treasures with an artifact; grounds, those whose picture the import's table
+/// lacks (they lie on one tile), and tiles two or more grounds lie on.
+fn census(map: &RawMap, setup: &MapSetup, counts: &mut BTreeMap<&'static str, usize>) {
+    let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    for object in &map.objects {
+        if let Body::Monster(m) = &object.body {
+            add("monsters", 1);
+            add(
+                "monsters of a disposition beyond savage",
+                usize::from(m.disposition > 4),
+            );
+            if let Some(t) = &m.treasure {
+                add("monsters with a treasure", 1);
+                add(
+                    "monsters with a resource below 0 in their treasure",
+                    usize::from(t.resources.iter().any(|&r| r < 0)),
+                );
+                add(
+                    "monsters with an artifact in their treasure",
+                    usize::from(t.artifact.is_some()),
+                );
+            }
+        }
+    }
+    let mut lying = BTreeMap::<(u16, u16, u8), usize>::new();
+    for object in setup.objects.iter().filter(|o| o.drawn.bits() != 0) {
+        add("special grounds", 1);
+        add(
+            "special grounds of a picture the import lacks",
+            usize::from(object.drawn.bits() == 1),
+        );
+        for (column, row) in object.drawn.offsets() {
+            if let (Some(x), Some(y)) = (
+                object.anchor.x.checked_sub(u16::from(column)),
+                object.anchor.y.checked_sub(u16::from(row)),
+            ) {
+                *lying.entry((x, y, object.anchor.level)).or_default() += 1;
+            }
+        }
+    }
+    add(
+        "tiles two or more special grounds lie on",
+        lying.values().filter(|&&n| n > 1).count(),
+    );
 }
 
 /// The object classes the static layer leaves out (hero, random hero, hero placeholder), as

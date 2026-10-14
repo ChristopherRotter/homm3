@@ -356,15 +356,34 @@ numeric  = "integer"
 
 [[rule]]
 id       = "ADV-FOG-006"
-title    = "What a player sees of the heroes"
+title    = "What a player sees of the heroes and the monsters"
 context  = "adventure"
 status   = "implemented"
-summary  = "A player sees its own heroes in full (tile, army, movement points left) and another player's hero only on a tile where it sees heroes (explored, or the fringe under ADV-QUIRK-1, ADV-FOG-005): its tile, owner and identity, not its army or its movement points. What the original's right-click view shows of another player's hero is surveyed with the battle seam (increment 3). E08 T8b1."
+summary  = "A player sees its own heroes in full (tile, army, movement points left) and another player's hero only on a tile where it sees heroes (explored, or the fringe under ADV-QUIRK-1, ADV-FOG-005): its tile, owner and identity, not its army or its movement points. What the original's right-click view shows of another player's hero is surveyed with the battle seam (increment 3). E08 T8b1. A wandering monster it sees (one of its tiles explored, or the fringe) shows its creature and the word of its count (as it stands: a battle's survivors once one leaves them), never the count, aggression, flags or treasure: the word is the number of the monsters' parameters' thresholds the count reaches, the original's few (1-4), several (5-9), pack (10-19), lots (20-49), horde (50-99), throng (100-249), swarm (250-499), zounds (500-999) and legion (1 000 and more). E08 T20a2a: `MonsterView`, the base pack's count_words."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "design"
   ref        = "the user's choice for E08 T8b1 (2026-10-11): another player's hero shows its tile, owner and identity, its army and points stay private until the original's view is surveyed; ADR-0016 point 6 (other players' private state stays hidden)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-battles.md section 9): creature_quantity_word (0x44ADE0) gives a count's word, below 5, 10, 20, 50, 100, 250, 500, 1 000, else the ninth; the original shows a monster's creature and that word"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Wandering creature: Few 1-4, Several 5-9, Pack 10-19, Lots 20-49, Horde 50-99, Throng 100-249, Swarm 250-499, Zounds 500-999, Legion 1000 and more"
+  url        = "https://heroes.thelazy.net/index.php/Wandering_creature"
+  retrieved  = "2026-10-15"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/CCreatureHandler.cpp CCreature::getQuantityID: the same thresholds"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/CCreatureHandler.cpp"
+  retrieved  = "2026-10-13"
   confidence = "high"
 
 [[rule]]
@@ -729,4 +748,136 @@ numeric  = "integer"
   ref        = "Border Gate - Heroes 3 wiki: 'cannot be entered or crossed unless' the player has the key; does not disappear; from Armageddon's Blade on"
   url        = "https://heroes.thelazy.net/index.php/Border_Gate"
   retrieved  = "2026-10-12"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-MON-001"
+title    = "Wandering monsters on the map"
+context  = "adventure"
+status   = "implemented"
+summary  = "A wandering monster is an object of a monster type (classes 54, 71-75 and 162-164: the map names the creature of class 54, the others are random monsters of their levels, ADV-MON-003), visited from a neighbouring tile and from above. The map gives its count (0: drawn, ADV-MON-004; at most 4 095, the original's 12 bits, an input bound), its disposition (a row of the monsters' aggression, ADV-MON-002), whether it never flees and does not grow (kept for its answer, E08 T20b, and the week's growth), and its treasure's resources (above 0; an artifact is unsupported until increment 4, E08 decision 22). The setup checks it: a fixed monster names a known creature that is no war machine, a random one none; the disposition is the parameters'; the treasure names known resources once each, from 1 to MAX_GAIN. Its visit, the monster's answer, comes with E08 T20b; until then a step onto its tile is refused. E08 T20a2a: `MonsterSetup`, `Monster`, the import (docs/formats/h3m.md, Import)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-battles.md sections 1.1, 1.2): load_monster_body (0x5013B0) keeps the count in bits 0-11 of the monster's tile word, the aggression in bits 12-16, never flees bit 17, does not grow bit 18, the message's index beside; the treasure (text, seven resources, an artifact) in a list of the game"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapping/MapFormatH3M.cpp CMapLoaderH3M::readMonster (count, character, message with resources and artifact, neverFlees, notGrowingTeam); lib/mapObjects/CGCreature.cpp (blocking-visitable)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/MapFormatH3M.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08 decisions 19 and 22 (the content of increment 3; a treasure's artifact unsupported, the count's bound), decision 35 and 36 (T20a2a)"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MON-002"
+title    = "A monster's aggression by its disposition"
+context  = "adventure"
+status   = "implemented"
+summary  = "When the game is built each monster's aggression is drawn between its disposition's bounds, the monsters' parameters' row: compliant -4, friendly 1-7, aggressive 1-10, hostile 4-10, savage 10 (no draw for a single value, as the original's switch). The third walk of the monsters' draws (ADV-MON-003), in object order. Its answer reads it (ADV-MON-007, E08 T20b). E08 T20a2a: the base pack's params.monsters.aggression."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-battles.md section 1.3): load_monster_body (0x5013B0) switches on the disposition: -4, random_between(1, 7), random_between(1, 10), random_between(4, 10), 10"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Wandering creature: Compliant -4, Friendly 1-7, Aggressive 1-10, Hostile 4-10, Savage 10; default Aggressive"
+  url        = "https://heroes.thelazy.net/index.php/Wandering_creature"
+  retrieved  = "2026-10-15"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGCreature.cpp CGCreature::initObj: the same values by character"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGCreature.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MON-003"
+title    = "A random monster's creature"
+context  = "adventure"
+status   = "implemented"
+summary  = "When the game is built each random monster's creature is drawn with equal chances among the core's creatures (in the core's order) whose level lies between its type's levels, inclusive, that are no war machine and that no pack leaves out (not_random_monsters: AB leaves out the expansion's four dragons, the Enchanter and the Sharpshooter, the original's ids 132-137). The levels are the content's, so under BAT-QUIRK-19 (faithful) the Ice, Magma and Energy Elementals come at the executable's levels 4, 3 and 5. A type whose levels hold no such creature does not compile. The monsters' draws come after the pickups' (ADV-PIK-001 to -003) in three walks, each in object order: the creatures, the counts (ADV-MON-004), the aggressions (ADV-MON-002); the original draws the aggression at load and the creatures, then the counts, at a new game. E08 T20a2a: `AdventureRuleset::random_monsters`, the base pack's random_monster types."
+numeric  = "integer"
+quirks   = ["BAT-QUIRK-19"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-battles.md section 1.4): random_creature_by_level (0x4C92C0) turns a random monster into class 54 with random_between(0, n - 1) over the allowed ids 0-144 of its levels (zero-based), AB and SoD without 132-137, RoE 0-117; 122, 124, 126 and 128 have level -1"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/GameRandomizer.cpp GameRandomizer::rollCreature: the same set (excludeFromRandomization on 132-137)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/GameRandomizer.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MON-004"
+title    = "A monster's random count"
+context  = "adventure"
+status   = "implemented"
+summary  = "When the game is built a monster whose count is 0 gets a count drawn between its creature's adventure-map range (CRTRAITS.TXT's AdvMap Low and High, the core's adventure_count), at least 1 (a range from 0, which no pack has, gives 1). The second walk of the monsters' draws (ADV-MON-003). E08 T20a2a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-battles.md section 1.5): monster_count_roll (0x4C1923, setup_map_objects case 54) gives a count of 0 random_between(low, high) from the creature record's +0x6C and +0x70"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Wandering creature: 'If an exact number is not defined when making a map, the amount is randomly generated between 1-99, depending on the type of the creatures'"
+  url        = "https://heroes.thelazy.net/index.php/Wandering_creature"
+  retrieved  = "2026-10-15"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGCreature.cpp CGCreature::initObj: advMapAmountMin to advMapAmountMax"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGCreature.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-GRD-001"
+title    = "Special grounds"
+context  = "adventure"
+status   = "implemented"
+summary  = "A special ground (Cursed Ground, Magic Plains and SoD's Clover Field, Evil Fog, Fiery Fields, Holy Ground, Lucid Pools, Magic Clouds, Rocklands) is an object of a ground type, never visited and never removed, that lies on its picture's width x height tiles to the left of and above its anchor (the picture's .msk; 1 x 1 for a picture without one). A battle on a tile a ground lies on is fought on the ground's battlefield, which replaces the coast's shore and keeps the terrain the tile gives (GAM-BAT-001); where several lie, the last in map order (the topmost drawn). Favorable Winds (225) changes no battle and stays a blocker without tiles. Grounds of one type may share an anchor (nothing names them). Their other effects (Cursed Ground's step cost, Favorable Winds at sea) come with the increments that build them. E08 T20a2a: the ground kind, `MapObject::drawn`, `AdventureState::battle_ground`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T20a2a; installation.md section 7.26): place_object_tiles (0x505B20) puts an object on every tile of its template's width x height, which comes from its picture's .msk (msk_load, 0x514610; default.msk is 1 x 1); a flat template (the grounds) has layer 0 on every tile (0x505060) and tile_draw_insert (0x505230) keeps objects of equal layers in map order; tile_special_ground (0x4FCE20) walks the tile's draw list from the top and answers the first ground class, which battle_setup_battlefield (0x4643B0) turns into the special field, keeping the terrain"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "E04c batch 3a (docs/rules/surveys/E04c-battlefields.md section 4, D-4): the SoD pictures 223 and 230 fight on Cursed Ground and Magic Plains; batch 3b: the battle's tile is the defender's"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Magic Plains, Cursed Ground: 'there is always a basic terrain, which can be covered by a magical one'; 'the topmost terrain effect applies and appears as a battlefield'"
+  url        = "https://heroes.thelazy.net/index.php/Magic_Plains"
+  retrieved  = "2026-10-15"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/ObjectTemplate.cpp readMap and readMsk (the size from the .msk); lib/gameState/CGameState.cpp battleGetBattlefieldType (a terrain patch covering the tile sets the battlefield; VCMI takes the first in object order, the original the topmost); config/objects/generic.json (the battlegrounds by class)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
+  retrieved  = "2026-10-15"
   confidence = "medium"

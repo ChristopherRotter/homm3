@@ -364,6 +364,18 @@ fn a_ground_sets_the_battlefield_of_the_tiles_it_lies_on() {
     // Underground: the underground's terrain, the ground's field; not on another level.
     assert_eq!(field(1, 1, 1), (SWAMP, hallow));
     assert_eq!(field(0, 1, 1), (SWAMP, None));
+    // Grounds of one type may share an anchor (nothing names them); monsters may not.
+    let mut twins = setup.clone();
+    twins.map.objects.push(ground(HALLOW, (3, 1, 0), (1, 1)));
+    AdventureState::new(&core, &part, &twins, &mut draws()).unwrap();
+    let monsters = with(vec![
+        object_at(0, MONSTER, Some(fixed(PIKEMAN, 5, 2))),
+        object_at(0, MONSTER, Some(fixed(GNOLL, 5, 2))),
+    ]);
+    assert_eq!(
+        AdventureState::new(&core, &part, &monsters, &mut draws()),
+        Err(SetupError::SharedAnchor(1))
+    );
     let object = &state.map().objects()[0];
     assert!(object.lies_on(Pos::new(1, 0, 0)));
     assert!(!object.lies_on(Pos::new(1, 0, 1)));
