@@ -37,7 +37,7 @@ Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `
 
 **Coverage, lints, formatting**
 - LLVM counts the implicit `else` of `if let`, the error arm of `?` and rarely reached closures: no defensive dead branches; use infallible accessors and combinators, saturate instead of returning `Option`. Lines only proptests reach make the gate flaky: give each a fixed test (`cargo llvm-cov -p <crate> -- --skip <proptest>`).
-- Coverage misses on non-code lines: stale binaries (`cargo llvm-cov clean --workspace`).
+- Coverage misses on non-code lines: stale binaries (the gate cleans them; a bare `cargo llvm-cov` needs `cargo llvm-cov clean --workspace`).
 - clippy: `should_implement_trait` rejects methods named `div`/`shr`/`mul`/`add`/`sub`; `type_complexity` fires on arrays of fn pointers in tests (use a type alias). `cargo fmt` reflows code: match scripted patches against the formatted text.
 - Dev-dependencies obey the layers too (`check-arch`): domain crates build test rulesets in code.
 - serde ignores unknown keys of a unit variant in an internally tagged enum (use struct variants); TOML serialization needs table fields after plain values.
