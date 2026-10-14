@@ -51,4 +51,10 @@ parts = ["synthetic:lucky_knot", "synthetic:gloom_bell", "synthetic:sight_lens",
 effects = [
     { kind = "shoot_when_adjacent", creatures = { flag = "shooter" } },
     { kind = "alignment_group", factions = ["synthetic:vale", "marsh"] },
+    # Format v37 (E08 T18a): kinds no battle reads (the outcome's and the adventure's). Here, not
+    # in `synthetic`, so the battle replays' ruleset hash stays.
+    { kind = "necromancy", bp = 500 },
+    { kind = "experience_gain", bp = 500 },
+    { kind = "max_mana", bp = 2500 },
+    { kind = "join_bonus", level = 1 },
 ]

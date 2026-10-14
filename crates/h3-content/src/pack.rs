@@ -207,8 +207,9 @@ pub struct SecondarySkillDef {
     pub key: ContentKey,
     /// Display name.
     pub name: String,
-    /// Effects at Basic, Advanced and Expert. Effects that matter only outside battle are not
-    /// modelled yet (`packs/README.md`).
+    /// Effects at Basic, Advanced and Expert. Effects that matter only outside battle are
+    /// modelled as their epics need them (E08 increment 3: Necromancy, Learning, Intelligence,
+    /// Diplomacy's join bonus; the rest `packs/README.md` lists as pending).
     pub levels: [Vec<HeroEffectDef>; 3],
 }
 

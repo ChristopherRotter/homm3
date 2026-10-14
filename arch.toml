@@ -100,6 +100,13 @@ token = "as_ptr"
 reason = "pointer identity never enters logic or the hash; only the persistent structures may use it as a shortcut (ADR-0016 point 2)"
 allowed_in = ["crates/h3-adventure/src/persistent.rs"]
 
+# Edges the layers would allow but a decision rules out: rejected whether `deps` declares them or
+# not (ADR-0005's amendment of 2026-10-14).
+[[policy.forbidden_edge]]
+from = "h3-battle"
+to = "h3-heroes"
+reason = "the battle sees only BattleHero, never the hero model (ADR-0013 point 2)"
+
 [crate.h3-kernel]
 layer = "shared"
 logic = true
@@ -142,10 +149,12 @@ external = []
 dev_deps = []
 dev_external = ["proptest"]
 
-# Hero details: validation and the translations to the battle's types (ADR-0013). A domain context
-# of its own; the battle never depends on it.
+# The hero model (ADR-0013 point 2, amended by E08 T18a): hero details, their validation, what a
+# hero has from them in every context, hero changes and the translations to the battle's types.
+# Shared layer, beneath the contexts that read it (the adventure, the game); the battle never
+# depends on it (a forbidden edge below).
 [crate.h3-heroes]
-layer = "domain"
+layer = "shared"
 logic = true
 deps = ["h3-kernel", "h3-content", "h3-contracts"]
 external = []
@@ -153,21 +162,22 @@ dev_deps = []
 dev_external = ["proptest"]
 
 # The adventure context (ADR-0015, ADR-0016; E08). A domain context: it never depends on another
-# context or on h3-game.
+# context or on h3-game; it reads a hero's details through the hero model (ADR-0016 point 3).
 [crate.h3-adventure]
 layer = "domain"
 logic = true
-deps = ["h3-kernel", "h3-content", "h3-contracts"]
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-heroes"]
 external = []
 dev_deps = []
 dev_external = ["proptest"]
 
 # The whole game (ADR-0015 point 1, ADR-0017; E08): the first application crate, and a logic
-# crate. It gains a domain edge when an increment needs it (h3-heroes, h3-battle at increment 3).
+# crate. It wires the adventure and the battle (increment 3), keeps the store of heroes (the hero
+# model) and bundles the battle's ruleset part (ADR-0017 points 1 and 11).
 [crate.h3-game]
 layer = "application"
 logic = true
-deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-adventure"]
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-heroes", "h3-content-battle", "h3-battle", "h3-adventure"]
 external = []
 dev_deps = []
 dev_external = ["proptest"]
