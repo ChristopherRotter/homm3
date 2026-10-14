@@ -108,13 +108,16 @@ pub(crate) fn seen_by(owners: [Option<PlayerId>; 2], visibility: Visibility) -> 
     }
 }
 
-/// The game's sink of a battle's events: each event with the owners that see it ([`seen_by`]).
+/// The game's sink of a battle's events: each event with the owners that see it ([`seen_by`]);
+/// it records what the game's sink records (E08 T19b1).
 struct BattleSink<'a, S> {
     sink: &'a mut S,
     owners: [Option<PlayerId>; 2],
 }
 
 impl<S: Sink> h3_battle::Sink for BattleSink<'_, S> {
+    const RECORDS: bool = S::RECORDS;
+
     fn emit(&mut self, event: Event) {
         let seen_by = seen_by(self.owners, event.visibility);
         self.sink.emit(GameEvent::Battle { event, seen_by });

@@ -37,7 +37,7 @@ commands = [
 checkpoints = ["0xd43f312a9c527931"]
 
 [replay]
-format = 2
+format = 3
 engine = "0.1.0"
 seed = "3"
 difficulty = 0
