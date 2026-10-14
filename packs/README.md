@@ -96,6 +96,8 @@ moat_damage = 70                 # the damaging moat's damage on entering (BAT-S
 # second_moat = true             # the moat's second row (the Fortress, BAT-SIE-004)
 # mines = "fire:land_mine"       # instead of a moat: land mines of this spell (one that places
                                  # mines; not with `second_moat`; the Tower, BAT-SIE-007)
+hit_points = [2, 2, 2, 2, 2, 2, 2, 2]  # since v39 (E04c T6): each wall-shot target's hit points,
+                                 # one per target of the field's `targets`, 1..=255 (BAT-SIE-010)
 
 [[obstacle]]                     # obstacle types (E03, BAT-GEO-004)
 id = "crag"
@@ -174,7 +176,9 @@ specialty = [{ kind = "creature_specialty", creature = "base:swordsman", bp_per_
 `shooter`, `breath_attack`, `alive`, `no_melee_penalty`, `fire_immune`, `strikes_twice`,
 `no_enemy_retaliation`, `no_morale`, `undead` (E03 T3–T6) and `war_machine` (E03 T8: placed at
 a fixed hex, acts automatically, never retaliates, no morale, not counted for alignment or the
-end of the battle; not allowed in army slots, BAT-WAR-001); `multi_headed` and `area_attack` are
+end of the battle; not allowed in army slots, BAT-WAR-001); `catapult` (E04c T6: with
+`war_machine` the siege's Catapult, which the battle sets up and no setup lists, BAT-SIE-009;
+otherwise it goes with the ability `wall_shots`); `multi_headed` and `area_attack` are
 required by the matching abilities. The others are data only until their rules arrive.
 
 **Abilities** (E03, ADR-0012; `h3_content::Ability`): behaviour beyond the flag bits, with
@@ -202,6 +206,7 @@ errors:
 | `minimum_morale`, `minimum_luck` | `value` | lower bound of its morale/luck (BAT-MOR-001, BAT-LCK-001) |
 | `no_distance_penalty` | — | its shots have no distance penalty (BAT-RNG-002) |
 | `no_wall_penalty` | — | since v37: its shots are not halved by a town's walls (BAT-SIE-008) |
+| `wall_shots` | `level` (0..=3) | since v39: commanded for the attacker in a siege it may shoot the walls with this Ballistics level's record, whatever its shots and neighbours (requires flag `catapult`, which requires it, war machines excepted; the Cyclops 1, the Cyclops King 2; BAT-SIE-013) |
 | `area_shot` | `effect` (`fireball`/`death_cloud`) | its shots also hit the stacks around the target (requires flag `area_attack`; BAT-RNG-004) |
 | `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine only (requires flag `war_machine`; First Aid Tent): on its turn heals the top creature of a random hurt stack of its own side (also one the other side controls, BAT-MAG-026) by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
 | `ammo_supply` | — | war machine only (requires flag `war_machine`; Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
@@ -548,7 +553,9 @@ clone and without one, is copied for the caster's power + its duration bonus rou
 `summon` (no target: effect[mastery] × the caster's power creatures of `summons` join the caster's
 side; one summoned creature per side and battle; BAT-MAG-039), each the spell's only effect, a ruleset
 having at most four summon spells; both create a stack only while the side has fewer than
-`side_stack_limit` stacks (BAT-MAG-037); since
+`side_stack_limit` stacks (BAT-MAG-037); since v39, E04c T6: `earthquake` (no target, the spell's only
+effect, castable only at a town with a fort: effect[mastery] hits on the wall-shot targets drawn as the
+original draws them, 1 damage each; BAT-SIE-015); since
 v7, E04b T3b1b: `dispel` (ends the stack's
 timed effects: those of the spells in `dispels`, or without that list every one but those in
 `spares`; never a permanent one; BAT-MAG-016) and `heal` (heals the top creature by the value,
@@ -612,6 +619,7 @@ different creatures or statistics.
 | `max_mana` | `bp` (≥ 1) | since v37 (read from E08 T18b): the hero's maximum spell points (10 × Knowledge) grow by `bp` (Intelligence: 25/50/100 %, table 0x63EA88; an Intelligence specialist's grow) |
 | `join_bonus` | `level` (1..=3) | since v37 (read from E08 T20a): wandering creatures are readier to join the hero; the levels add, at most 3 (Diplomacy: 1/2/3) |
 | `raises` | `priority` (default 0), and `creature`, or `skill` with `by_level` (4 creatures: without the skill, Basic, Advanced, Expert) | since v38 (E08 T19a2, decision 30): the creature the hero's Necromancy raises, by the hero's level in `skill` for `by_level`; of all the hero's `raises` the highest `priority` wins (Necromancy: Skeletons at 0; the Cloak of the Undead King: by the Necromancy level Skeletons, Walking Dead, Wights, Liches at 1, 0x4E3C60; mods may go higher); among equal priorities, if all come from artifacts the lowest artifact id (then creature id), otherwise the lowest creature id |
+| `ballistics` | `level` (1..=3) | since v39 (E04c T6): the hero commands its Catapult with this Ballistics level, the highest of its sources (the skill: 1/2/3; HER-BAT-018, BAT-SIE-011) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 
@@ -727,7 +735,15 @@ moat_defense_penalty, mine_power }`: the siege's field, each list one standable 
 to right the second moat row's, the moat's, the wall's, the gate one of the walls; the defense a
 stack loses in the moat and the town's mines' power without a hero before SoD (BAT-SIE-002 to
 BAT-SIE-007; `base` harvests the executable's tables, `installation.md` §7.27, §7.28). Records of
-`[[siege]]` need it.
+`[[siege]]` need it. Since E04c T6 (pack format v39, battle part hash v4) it also holds the wall
+shots (BAT-SIE-009 to BAT-SIE-014; `base` harvests them from the executable and `BALLIST.TXT`,
+`installation.md` §7.29): `catapult` (the Catapult's hex), `targets` (the wall-shot targets in the
+original's order, each `{ kind = "keep" | "tower" | "gate" | "wall", wall = <hex> }`, the gate's and
+a wall's hex one of `walls`, the gate's `gate`; at most 8), `missed` (where a miss lands: walls,
+by index), `automatic` (the automatic Catapult's walls) and `fallback` (its next targets),
+`castle_bonus` (hit points a Castle adds to each wall) and `ballistics` (four records, none to
+Expert: `{ hit = [keep, tower, gate, wall] percent, shots, damage = [the chances of 0, 1, 2] }`,
+each summing to 100).
 
 **Hero parameters** (`[hero_params]`, Tier 2, E04a T4a; at most one enabled pack provides them,
 a ruleset without them cannot validate hero details): `primary_min` (four values, attack,
@@ -801,6 +817,8 @@ ballista = { shots = 1, double_damage_chance_bp = 5000 }   # optional: the side 
                                  # Ballista (Artillery, BAT-WAR-006)
 tent = { heal_bonus_bp = 10000 } # optional: the side commands its First Aid Tent (First Aid,
                                  # BAT-WAR-007; the bonus of its largest heal)
+catapult = 2                     # optional: the side commands its Catapult with this Ballistics
+                                 # level, 1..=3 (BAT-SIE-011; replay format v27)
 masteries = { "synthetic:spark" = 2 }  # optional: the mastery per spell by spell key, 1..=3 (none
                                  # for a spell not listed; BAT-MAG-002); replaces `schools` since
                                  # replay format v20 (E04b T8a, the masteries are derived per

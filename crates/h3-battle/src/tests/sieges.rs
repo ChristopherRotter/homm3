@@ -711,7 +711,8 @@ fn the_open_gate_the_walls_absence_and_a_bow_let_shots_through() {
     );
     assert_eq!(shot(&none, &r, 0, 1), 90);
     // The hero's bow (NoRangePenalty): neither the distance's penalty nor the walls' (the hero's
-    // attack 3 raises the archer's to 9: 97).
+    // attack 3 raises the archer's to 9: 97). The hero brings the Catapult (stack 1, BAT-SIE-009):
+    // the defender's stack is 2.
     let mut archer = hero(&r);
     archer.effects.push(BattleEffect::NoRangePenalty {
         creatures: CreatureSelector::All,
@@ -723,7 +724,7 @@ fn the_open_gate_the_walls_absence_and_a_bow_let_shots_through() {
         &[("archer", 10, 2, 5)],
         &[("fixed", 10, 14, 5)],
     );
-    assert_eq!(shot(&bow, &r, 0, 1), 97);
+    assert_eq!(shot(&bow, &r, 0, 2), 97);
     // The defender's shooter inside, turned to its target outside, is not halved.
     let back = at_town(
         &r,

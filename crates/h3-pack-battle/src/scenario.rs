@@ -10,8 +10,8 @@ use h3_content::{
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    DamageBonuses, EagleEye, FactionGroup, FortLevel, Moat, Obstacle, Rate, Siege, StatOp,
-    TentControl,
+    CatapultControl, DamageBonuses, EagleEye, FactionGroup, FortLevel, Moat, Obstacle, Rate, Siege,
+    StatOp, TentControl,
 };
 use h3_pack::{AffectsEntry, StatEntry};
 use serde::{Deserialize, Serialize};
@@ -77,7 +77,7 @@ struct StackDto {
 
 /// A battle hero as scenario and replay files write it (`[scenario.attacker_hero]`,
 /// `[setup.defender_hero]`; OPEN-QUESTIONS Q31): the battle hero itself, no derivation; every
-/// field of [`BattleHero`] (the Catapult's control joins with sieges, E04c).
+/// field of [`BattleHero`] (the Catapult's control since E04c T6, replay format v27).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct HeroEntry {
@@ -142,6 +142,11 @@ pub struct HeroEntry {
     /// when set).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tent: Option<TentEntry>,
+    /// The side commands its Catapult with this Ballistics level, 1 to 3
+    /// ([`MachineControl::catapult`]; default not, written only when set; replay format v27,
+    /// E04c T6).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub catapult: Option<u8>,
     /// The hero's Eagle Eye ([`h3_contracts::BattleMagic::eagle_eye`]; default none, written only
     /// when set; replay format v21, E04b T8d).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -701,6 +706,7 @@ impl HeroEntry {
         hero.war_machines.tent = self.tent.map(|t| TentControl {
             heal_bonus: rate(t.heal_bonus_bp, t.single),
         });
+        hero.war_machines.catapult = self.catapult.map(|level| CatapultControl { level });
         hero.surrender_discount_bp = self.surrender_discount_bp;
         hero.effects = self
             .effects
@@ -810,6 +816,7 @@ impl HeroEntry {
                 heal_bonus_bp: t.heal_bonus.bp,
                 single: t.heal_bonus.single,
             }),
+            catapult: hero.war_machines.catapult.map(|c| c.level),
             spell_book,
             eagle_eye,
             masteries,

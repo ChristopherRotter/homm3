@@ -114,7 +114,7 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
 }
 
 /// Creatures by original id, ascending (ids without a creature are left out).
-pub(crate) const CREATURES: [(u16, &str); 144] = [
+pub(crate) const CREATURES: [(u16, &str); 145] = [
     (0, "base:pikeman"),
     (1, "base:halberdier"),
     (2, "base:archer"),
@@ -256,6 +256,7 @@ pub(crate) const CREATURES: [(u16, &str); 144] = [
     (142, "ab:nomad"),
     (143, "ab:rogue"),
     (144, "ab:troll"),
+    (145, "base:catapult"),
     (146, "base:ballista"),
     (147, "base:first_aid_tent"),
     (148, "base:ammo_cart"),

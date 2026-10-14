@@ -348,6 +348,10 @@ pub enum SpellEffect {
     /// Creates a stack of the spell's [`crate::BattleSpell::summons`] creature on the caster's side
     /// (Summon Elemental; BAT-MAG-039, E04b T6b, v18).
     Summon,
+    /// Damages the town's walls: the value's number of hits of 1, each on a wall-shot target
+    /// drawn as the original draws them (Earthquake; BAT-SIE-015, E04c T6, v39). Cast without a
+    /// target in a siege with a fort.
+    Earthquake,
 }
 
 impl SpellEffect {
@@ -365,6 +369,7 @@ impl SpellEffect {
             Self::Sacrifice => "sacrifice",
             Self::Clone => "clone",
             Self::Summon => "summon",
+            Self::Earthquake => "earthquake",
         }
     }
 
@@ -381,7 +386,8 @@ impl SpellEffect {
             | Self::Raise
             | Self::Sacrifice
             | Self::Clone
-            | Self::Summon => None,
+            | Self::Summon
+            | Self::Earthquake => None,
         }
     }
 
@@ -390,7 +396,7 @@ impl SpellEffect {
     pub const fn is_field(self) -> bool {
         matches!(
             self,
-            Self::Obstacle(_) | Self::Teleport | Self::RemoveObstacle
+            Self::Obstacle(_) | Self::Teleport | Self::RemoveObstacle | Self::Earthquake
         )
     }
 
@@ -419,6 +425,7 @@ impl SpellEffect {
             Self::Sacrifice => [8, 0],
             Self::Clone => [9, 0],
             Self::Summon => [10, 0],
+            Self::Earthquake => [11, 0],
         }
     }
 }
@@ -950,6 +957,11 @@ impl SpellMagic {
         self.effects.contains(&SpellEffect::Summon)
     }
 
+    /// Whether it damages the town's walls (Earthquake).
+    pub fn quakes(&self) -> bool {
+        self.effects.contains(&SpellEffect::Earthquake)
+    }
+
     /// Whether a raise at `mastery` lasts only for the battle (BAT-MAG-035).
     pub fn temporary_at(&self, mastery: u8) -> bool {
         self.temporary_below.is_some_and(|m| mastery < m)
@@ -1060,6 +1072,8 @@ impl SpellMagic {
             Some("a teleport effect needs target stack")
         } else if self.removes_obstacles() && self.target != SpellTarget::Hex {
             Some("a remove_obstacle effect needs target hex")
+        } else if self.quakes() && self.target != SpellTarget::None {
+            Some("an earthquake effect needs target none")
         } else if self
             .removes_from
             .iter()
@@ -2316,6 +2330,37 @@ mod tests {
             let got = m.error(true);
             assert!(got.is_some_and(|e| e.contains(want)), "{m:?}: {got:?}");
         }
+    }
+
+    #[test]
+    fn the_earthquake_effect_acts_on_the_field_without_a_target() {
+        // E04c T6 (v39): cast at once, its only effect.
+        let quake = SpellMagic {
+            effects: vec![SpellEffect::Earthquake],
+            ..SpellMagic::default()
+        };
+        assert_eq!(quake.error(true), None);
+        assert!(quake.quakes() && SpellEffect::Earthquake.is_field());
+        assert_eq!(
+            (
+                SpellEffect::Earthquake.name(),
+                SpellEffect::Earthquake.timed()
+            ),
+            ("earthquake", None)
+        );
+        let aimed = SpellMagic {
+            target: SpellTarget::Hex,
+            ..quake.clone()
+        };
+        assert_eq!(
+            aimed.error(true),
+            Some("an earthquake effect needs target none")
+        );
+        let both = SpellMagic {
+            effects: vec![SpellEffect::Earthquake, SpellEffect::Damage],
+            ..quake
+        };
+        assert!(both.error(true).is_some());
     }
 
     #[test]

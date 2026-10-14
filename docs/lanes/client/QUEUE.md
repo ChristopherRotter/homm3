@@ -4,14 +4,7 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context; T1 (the capture harness), T3 (the animation timing), T4a (the timeline), T6 (the adventure map's experiments, from the inbox) and T4b-1 (the frame check) done 2026-10-13, T4b-2a (a full battle headless) 2026-10-14. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
-
-### E17 M2 T2 — The window, input and audio evaluation
-
-- **Scope:** ADR-0020's choice "at M2 after an evaluation, on technical grounds". Candidates (`cargo info`, 2026-10-13): window, input and audio `sdl2` 0.38 and `sdl3` 0.20 (MIT; SDL itself zlib; a C library, bundled build or DLL); window and input `minifb` 0.29, `miniquad` 0.4 with `quad-snd` 0.2 (MIT or Apache-2.0); audio `tinyaudio` 2.0 (MIT), mixing `oddio` 0.7; MP3 `minimp3` 0.6 (MIT, C), `puremp3` 0.1 (MIT or CC0), `nanomp3` 0.2 (MIT or Apache-2.0). Outside the licence policy unless the user moves the client to GPLv3: `winit` 0.31 and `cpal` 0.18 (Apache-2.0 only; `cpal` also under `rodio` and `kira`), `symphonia` 0.6 (MPL-2.0, not in the allowlist). Criteria: licence; Windows and Linux; an 800 × 600 5-6-5 frame shown exactly (nearest, integer scaling); frame pacing at the original's frame times; mouse, keyboard, the game's own cursor; mixing 22 kHz effects with streamed MP3, latency; CI stays headless (an adapter crate); build weight; maintenance. Method: a spike adapter per finalist (two or three) on a throwaway branch (a still in a window, an effect, a music track), measured; an ADR draft in `adr-drafts/`.
-- **Acceptance:** the user's choice (and licence step, if any) recorded; stop the line until then (a heavy dependency).
-- **Depends on:** nothing; can run beside T1.
-- **Status:** ready.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0020). M2 below, refined at M1's closure (T8), each task about half a context; T1 (the capture harness), T3 (the animation timing), T4a (the timeline), T6 (the adventure map's experiments, from the inbox) and T4b-1 (the frame check) done 2026-10-13, T4b-2a (a full battle headless) and T2 (the window and audio evaluation: SDL 3) 2026-10-14. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
 
 ### E17 M2 T4b-2b — The scene over time, completed
 
@@ -22,13 +15,23 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 done 2026-10-13; ADR-0
 
 ### E17 M2 T5 — The window adapter and M2's closure
 
-- **Scope:** T2's library in an adapter crate, playing a record at the original's frame rate, with the game's cursor; M2's review list, a fresh reviewer, the M3 refinement prepared.
-- **Acceptance:** M2's exit (epic file).
-- **Depends on:** T2; T4b-2a (done 2026-10-14: M2's headless exit); T4b-2b may follow it.
-- **Status:** waits.
+- **Scope:** the SDL 3 adapter (T2, the user's choice; ADR-0024, design §8): an adapter crate in `clients/` with
+  `sdl3-sys` (`build-from-source-static`, the unused subsystems off) holding every SDL call;
+  `h3-view` plays a record (or `play`'s scenario) in the window at the original's frame times,
+  integer scale, vsync off and the game's hardware cursor by default; sound: the IMA ADPCM decoder
+  in `h3-assets` (pure, 100 % coverage; the samples the blocks declare), `nanomp3` for the music, one
+  SDL stream per source (a one-shot clip flushed). The spikes on `client/e17-m2-t2-spikes` show
+  each call. CI: the client job builds the adapter (CMake and a C compiler on the runner; no
+  window), `check.sh`'s deny and coverage rules unchanged. Then M2's review list, a fresh
+  reviewer, the M3 refinement prepared.
+- **Acceptance:** M2's exit (epic file): a record of a full battle plays in the window.
+- **Depends on:** T2 (done 2026-10-14); T4b-2a (done 2026-10-14: M2's headless exit); T4b-2b may
+  follow it.
+- **Status:** ready.
 
 ## Inbox
 
+- 2026-10-14 (the battle lane, E04c T6, `cross-lane`; for your information): the base pack gained the Catapult creature (145, `base:catapult`), so `clients/assets/base.toml` gained its entry as `h3-view harvest` writes it (`smcata.def`, missile `SMCatx.def`, the harvested times and offsets) for `every_pack_key_has_an_entry`; the battle sets the Catapult up in a siege for an attacker with a hero (BAT-SIE-009), and the protocol (v31) has `ShootWall`, `WallShot`, `WallQuaked`, `WallDestroyed` and `Siege.parts`.
 - 2026-10-13 (E17 M2 T4b-1): **the capture set by time.** `h3drive.py set` compares every frame of a situation with one still (`render`, the outline's colour at no idle step: the 412 recorded pixels per frame). With the idle steps modelled (`Timeline::pulse`), the set could draw each frame with `render --at <ms>` and record 0 for every frame but the grass Pikemen's fidget. Small; with T4b-2 or before M3's set grows.
 - 2026-10-13 (the adventure lane, E08 T17b; its `cross-lane` pull request, the user at ADV-Q12): **what increment 3's batch E3 needs from the harness** (`docs/rules/surveys/E08-battles.md` §13; the spec and its recipes come with E08 T22a, after four building rounds, so not before the lane's next milestones): a visit that asks Yes/No (a monster's offer to join, to join for gold, to pursue; a guarded pile's question), a battle started from the map (by stepping next to a monster, by visiting an enemy hero in hot seat) with its stacks' counts read at the start and the end, a surrender and both players' gold before and after (E3-8), the underground (a monster on level 1, E3-4), memory reads of a monster's tile word (count and aggression, E3-3, optional) and of the 156 heroes' experience after a new game (E3-7), a hero's level, primary and secondary skills at the start (E3-6), the formation in a battle (E3-9). The game's difficulty at the start (Easy and Normal, E3-1, E3-2).
 - 2026-10-13 (the battle lane, E04c T2b; its `cross-lane` pull request): **the battle names its special battlefield.** The observation carries `battlefield` (a handle into the key tables' new `battlefields`, protocol v28) and `anti_magic`, replays `battlefield`: the scene can take the special pictures of 0x4646D0 from the battle's facts (a field 1–9 its own, the shore, two boats, the deck). The packs' keys are `base:shore`, `base:magic_plains`, `base:cursed_ground`, `base:deck`, `base:boats` and `sod:holy_ground` … `sod:magic_clouds`; the asset tables' special battlefields still carry VCMI's names under `base`. The pull request moved the 35 SoD obstacle types to `assets/sod.toml` with the packs' keys (every type is in a pack now; the tables test) and added the two new observation fields to `record.rs`'s test observation; `E17-design.md` §5's sentence on the 47 types no pack defines is stale.

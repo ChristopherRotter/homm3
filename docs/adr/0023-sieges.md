@@ -1,6 +1,7 @@
 # ADR-0023: Sieges — the town on the setup as derived facts
 
-- Status: Accepted (user, 2026-10-13, BAT-Q40 and BAT-Q41; drafted at E04c T4)
+- Status: Accepted (user, 2026-10-13, BAT-Q40 and BAT-Q41; drafted at E04c T4); point 6 amended
+  2026-10-14 (user, BAT-Q43; E04c T6)
 - Date: 2026-10-13
 - Deciders: user; battle lane session (E04c T4, T5)
 - Working detail: the survey [`docs/rules/surveys/E04c-sieges.md`](../rules/surveys/E04c-sieges.md),
@@ -51,6 +52,15 @@ the adventure lane derives the battlefield (ADR-0022).
    replays; the walls' hexes and parts come from the battle part's siege record. Natural
    obstacles stay before the seam (BAT-GEO-003): none in a siege under SoD rules, the usual ones
    for a Stronghold under RoE or AB rules (survey S-29), drawn by whoever derives the siege.
+6. **The Catapult** (amendment, E04c T6, BAT-Q43): the battle sets the attacker's Catapult up
+   itself in a siege with a fort when the attacker has a hero (the original gives every hero
+   one); the setup's `war_machines` never list it. A side commands it when its hero's
+   `war_machines.catapult` is `Some(CatapultControl { level })`, the hero's Ballistics level 1–3
+   (`HeroEffect::Ballistics`, derived in `h3-heroes`); without it the Catapult shoots on its own.
+   The Ballistics table (the original's `BALLIST.TXT`, levels 0–3) and the walls' hit points
+   (`WALLS.TXT`) are battle part data, since the uncontrolled Catapult (level 0) and the Cyclops
+   read the same table. Unlike the Ballista's control (ADR-0013 point 4: derived numbers) the
+   seam carries the level.
 
 ## Consequences
 

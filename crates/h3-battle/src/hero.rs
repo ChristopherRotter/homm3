@@ -14,8 +14,8 @@ use h3_content::{
 };
 use h3_content_battle::{BattleRuleset, CreatureType};
 use h3_contracts::{
-    BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS, Rate,
-    StatOp, TentControl,
+    BallistaControl, BattleEffect, BattleHero, BattleSide, CatapultControl, DamageBonuses,
+    MAX_BATTLE_EFFECTS, Rate, StatOp, TentControl,
 };
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
@@ -49,6 +49,9 @@ pub struct HeroView {
     pub commands_ballista: bool,
     /// The hero commands its side's First Aid Tent (BAT-WAR-007); how it heals is private.
     pub commands_tent: bool,
+    /// The hero commands its side's Catapult in a siege (Ballistics, BAT-SIE-011); its level is
+    /// private.
+    pub commands_catapult: bool,
     /// The hero carries a spell book (public, ADR-0014 point 8: the Master Genie's test reads it,
     /// BAT-MAG-050); the spells in it are private.
     pub spell_book: bool,
@@ -71,6 +74,8 @@ pub struct OwnHeroView {
     pub ballista: Option<BallistaControl>,
     /// How the commanded First Aid Tent heals (BAT-WAR-007).
     pub tent: Option<TentControl>,
+    /// How the commanded Catapult shoots: the hero's Ballistics level (BAT-SIE-011).
+    pub catapult: Option<CatapultControl>,
     /// Discount on the price of the side's surrender, basis points (BAT-FLE-002).
     pub surrender_discount_bp: u16,
     /// What the side's owner can pay for a surrender (`BattleSetup.funds`).
@@ -128,6 +133,8 @@ pub(crate) struct HeroRecord {
     pub(crate) ballista: Option<BallistaControl>,
     /// The side commands its First Aid Tent (First Aid, BAT-WAR-007; private to the side).
     pub(crate) tent: Option<TentControl>,
+    /// The side commands its Catapult (Ballistics, BAT-SIE-011; the level private to the side).
+    pub(crate) catapult: Option<CatapultControl>,
     /// The hero has a `NoRetreat` effect (Shackles of War): no side may retreat or surrender
     /// (BAT-FLE-001; public through the sides' options).
     pub(crate) no_retreat: bool,
@@ -250,6 +257,14 @@ pub(crate) fn tent(heroes: &[Option<HeroRecord>; 2], side: BattleSide) -> Option
     heroes[side.index()].and_then(|h| h.tent)
 }
 
+/// How `side`'s hero commands its Catapult, if it does (BAT-SIE-011).
+pub(crate) fn catapult(
+    heroes: &[Option<HeroRecord>; 2],
+    side: BattleSide,
+) -> Option<CatapultControl> {
+    heroes[side.index()].and_then(|h| h.catapult)
+}
+
 impl CanonicalHash for HeroRecord {
     fn hash_into(&self, h: &mut StateHasher) {
         let v = &self.view;
@@ -273,6 +288,8 @@ impl CanonicalHash for HeroRecord {
         if let Some(t) = self.tent {
             hash_rate(h, t.heal_bonus);
         }
+        // State hash v47 (E04c T6): the Catapult's control, 0 without.
+        h.write_u8(self.catapult.map_or(0, |c| c.level));
         h.write_u8(u8::from(self.no_retreat));
         h.write_u16(self.surrender_discount_bp);
         h.write_u32(self.funds);
@@ -315,6 +332,13 @@ pub(crate) fn check(
         .is_some_and(|b| b.shots == 0 || b.double_damage_chance_bp > FULL_BP)
     {
         return Err(invalid(HeroError::BallistaControl));
+    }
+    if hero
+        .war_machines
+        .catapult
+        .is_some_and(|c| !(1..=MAX_SKILL_LEVEL).contains(&c.level))
+    {
+        return Err(invalid(HeroError::CatapultControl));
     }
     if hero.surrender_discount_bp > FULL_BP {
         return Err(invalid(HeroError::SurrenderDiscount));
@@ -442,12 +466,14 @@ pub(crate) fn check(
             casts: 0,
             commands_ballista: hero.war_machines.ballista.is_some(),
             commands_tent: hero.war_machines.tent.is_some(),
+            commands_catapult: hero.war_machines.catapult.is_some(),
             spell_book: hero.magic.spell_book.is_some(),
         },
         tactics: hero.tactics,
         damage: hero.damage,
         ballista: hero.war_machines.ballista,
         tent: hero.war_machines.tent,
+        catapult: hero.war_machines.catapult,
         no_retreat: hero.effects.contains(&BattleEffect::NoRetreat),
         surrender_discount_bp: hero.surrender_discount_bp,
         funds,

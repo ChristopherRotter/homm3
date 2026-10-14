@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 3 done** (T5): T5a (#183), T5b (#184), T5c, T5d (#187), T5e the siege batch 3c by an agent (**#190**, `battle/e04c-t5e`): every value as the code. **Next: the user's checkpoint**, then T6 (refine first).
-- **Merged:** #164, #169, #170, #171, #179, #180, #183, #184, #187. E04b closed 2026-10-12.
-- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-2 (T6–T8), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
-- **Versions** (T5d): battle state hash v46, battle part hash v3, replay format v26, action encoding v12, C ABI v20, observation encoding v16; shared: core ruleset hash v43, pack format v37, protocol v30. Next ids: BAT-Q43, BAT-QUIRK-22, BAT-STUB-3, BAT-TER-007, BAT-SIE-009; survey D-11, S-30.
+- **E04c increment 4 built** (T6, BAT-Q43): seam **#191** and the battle PR (`battle/e04c-t6`, stacked, `cross-lane`) open, both with `master` merged; full verify green (2026-10-14). Next: the user's checkpoint, then T7.
+- **Merged:** up to #190.
+- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-2 (T7, T8), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
+- **Versions** (T6): battle state hash v47, battle part hash v4, replay format v27, action encoding v13, C ABI v21, observation encoding v17; shared: core ruleset hash v43, pack format v39, protocol v31. Next ids: BAT-Q44, BAT-QUIRK-23, BAT-STUB-3, BAT-TER-007, BAT-SIE-016; survey D-16, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches are played by the user or an agent.
 
 ## Standing traps
@@ -24,7 +24,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Name an address only after reading its code: §7.15 had called 0x469E50 (the moat's damage) a Quicksand test.
 
 **Battle code and tests**
-- Stack ids: war machines follow the army in kind order (Ballista, Ammo Cart, Tent), not in the order of `BattleSetup.war_machines`.
+- Stack ids: war machines follow the army in kind order (Ballista, Ammo Cart, Tent, Catapult), not in `BattleSetup.war_machines`' order.
 - Defend spoils exact damage expectations: skip turns with `activate`. `BattleState::new` drops the first activation's events (use `start`). A test ruleset may not make bad morale certain (254/255).
 - Hidden obstacles leak through public events too: a hidden obstacle that does nothing must not change them (a mine that does not go off must not split a `Moved`). `hidden_obstacles_do_not_show` checks the acting side's commands and casts (its profiles leave BAT-QUIRK-4 off; no Berserk in its books, BAT-Q31); the automatic Ballista reads `movement::reachable_in_public`. `legal_commands` lists no casts: a property over legal commands must add `cast_targets` × `second_targets` itself.
 - Natural obstacles follow the original's hex records (`h3_battle::natural`): the piece listed last wins a shared hex, and a removal clears its hexes and anchor for every piece (0x466B30).
@@ -53,19 +53,19 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 **Experiments in the original game**
 - The installation is read-only: maps go to the gitignored `experiments/out/`, the user copies them. Results hold for SoD; observation sources name the setup.
-- Agent runs (`experiments/agent/`): one map per encounter (`--only`); the random starting bonus may arm the hero: `opening.py` replays such a battle. Sieges: `siege.py` (hot seat, both armies) counts rounds by the turn flags +0x4F0, not the Catapult's turn (one frame). A worktree runs the harness through a symlinked `original-data`.
+- Agent runs (`experiments/agent/`): one map per encounter (`--only`); the random starting bonus may arm the hero: `opening.py` replays such a battle. Sieges: `siege.py` (hot seat, both armies) counts rounds by the turn flags +0x4F0, `catapult.py` by the acted bits (the turn flags' clear moment can be shorter than a step). A map's draws repeat exactly: a rerun is no new sample. A hero's spell book fails the battle screen's probes. A worktree runs the harness through a symlinked `original-data`.
 - The `.h3m` writer: terrains, water (coast flag), roads, piles, grounds, towns (`docs/experiments/README.md`). A hero type once per map, eight heroes per player. Wandering monsters act on their own: use a Blue hero to hold still. Check moves against speed (14 columns apart). A single-alignment army has +1 morale: mix two where an extra turn spoils a count. Every hero has a Catapult.
 
 ## Recent sessions
 
+### 2026-10-14 (sixty-second) — E04c T6: master merged, the full verify, the pull request
+
+#191 merged `master` (`ballistics` code 43, T6's pack format v39); adventure replays re-recorded; the verify's gaps (coverage, rustls 0.23.46); the `cross-lane` PR. Detail: `docs/epics/E04c-log.md`.
+
+### 2026-10-14 (sixty-first) — E04c T6: the Catapult, Ballistics and Earthquake (increment 4)
+
+Seam #191 (BAT-Q43); reading §7.29; the battle (BAT-SIE-009 to 015, HER-BAT-018, BAT-QUIRK-22); batch 3d by an agent: as the code, S-08 seen. Detail: `docs/epics/E04c-log.md`.
+
 ### 2026-10-14 (sixtieth) — E04c T5e: the siege batch 3c played by an agent
 
-`experiments/agent/siege.py` plays a siege in hot seat with both armies commanded; batch 3c (M, G, T): the moat, the gate, the shots through the walls and the Tower's mines as the code (D-8, D-10 confirmed); BAT-SIE-003 to 008 `verified`. Detail: `docs/epics/E04c-log.md`.
-
-### 2026-10-14 (fifty-ninth) — E04c T5b, T5d: towns on the maps (#184), walls, gate and moat
-
-T5b's pull request; T5d rebased on #183's squash: the harvested siege data, walls, gate, moat, mines, the shot's wall test (BAT-SIE-001 to 008). Detail: `docs/epics/E04c-log.md`.
-
-### 2026-10-14 (fifty-eighth) — E04c T5a to T5c: the siege seam, towns, the reading
-
-The seam #183 (ADR-0023, BAT-Q41); towns in the map writer (T5b); the walls', gate's and moat's reading (§7.28, BAT-Q42). Detail: `docs/epics/E04c-log.md`.
+Batch 3c by `experiments/agent/siege.py`: moat, gate, shots through walls, the Tower's mines as the code (D-8, D-10). Detail: `docs/epics/E04c-log.md`.

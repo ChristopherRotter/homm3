@@ -56,8 +56,19 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
             } else {
                 s.speed_now()
             };
+            // rule: BAT-SIE-011
+            // The Catapult before every other stack of its phase (the original's 0x464F50; the
+            // arrow towers before it join with T7).
+            let catapult = s.slot != crate::siege::CATAPULT_SLOT;
             // The trailing id makes the key unique, so the order is total (ADR-0003 §9).
-            (phase, speed, s.side != preferred, s.turn_slot(), *id)
+            (
+                phase,
+                catapult,
+                speed,
+                s.side != preferred,
+                s.turn_slot(),
+                *id,
+            )
         })
         .map(|(id, _)| StackId(id))
 }
@@ -313,7 +324,7 @@ fn begins<S: Sink>(
 ) -> bool {
     activation(state, ruleset, id, sink);
     if state.at(id).has(StackTraits::WAR_MACHINE)
-        && !war::is_commanded(state, Field::new(ruleset.battle().field), id)
+        && !war::is_commanded(state, ruleset, Field::new(ruleset.battle().field), id)
     {
         // rule: BAT-WAR-002, BAT-WAR-003
         war::act(state, ruleset, id, sink);

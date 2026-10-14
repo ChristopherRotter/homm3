@@ -529,3 +529,30 @@ headless with what it needs, T4b-2b the rest (`QUEUE.md`).
 - **Decided (*provisional*, the review list):** the bot and `play`'s formats; the layers' model;
   the fidget generator; the next command's start.
 - Gates: see the pull request.
+
+### M2 T2 — The window, input and audio evaluation (2026-10-14)
+
+The user present; [design §8](E17-design.md), [ADR-0024](../adr/0024-client-window-audio.md) (its
+text accepted by the user the same day, #196).
+
+- **Chosen by the user:** SDL 3 through `sdl3-sys`, SDL built from source and linked statically;
+  defaults (*provisional*, the review list) vsync off and the hardware cursor. No licence step:
+  everything is Zlib, MIT or MIT-or-Apache.
+- **Method:** three spike adapters on the throwaway branch `client/e17-m2-t2-spikes`
+  (`clients/spikes/`: `common`, `prep`, `sdl3`, `minifb`, `miniquad`, `mp3bench`), the same reel
+  of 302 frames (20 s of `play scenarios/battle.toml`), the game's cursor, `PIKEATTK.wav` and
+  `COMBAT01.MP3`, each with a report (pacing, audio, read-back). Built for Linux and, by
+  cross-compiling (`x86_64-pc-windows-gnu`, `mingw-w64`; the user opened `static.rust-lang.org`
+  in the session's egress for the target's standard library), for Windows; checked under Xvfb
+  and Wine in the sandbox, then measured on the user's machine (`measure.cmd`, six runs) and
+  looked at and listened to by the user.
+- **Result:** every spike's frame exact at integer scales (screen captures and read-backs; on the
+  user's GPU through Direct3D 11 and OpenGL); SDL 3 within 1.5 ms of each frame's time without
+  vsync, clean WASAPI audio at 10 ms buffers, a key to the effect in about 4 ms; both `tinyaudio`
+  spikes crackled (DirectSound callbacks late against a 23 ms buffer).
+- **Found on the way:** the game's sounds are IMA ADPCM (SDL and a 60-line decoder agree); SDL's
+  device streams (`SDL_OpenAudioDeviceStream` takes no further bindings; a one-shot clip needs a
+  flush); `nanomp3` gives minimp3's samples in pure Rust, `puremp3` is wrong on `COMBAT01`;
+  `minifb`'s `ScaleMode::UpperLeft` does not scale; `tinyaudio`'s macOS backend brings an
+  Apache-2.0-only build dependency.
+- Gates: the docs only (`check.sh` unchanged, green on `master` at the start); see the pull request.

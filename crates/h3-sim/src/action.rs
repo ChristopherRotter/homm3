@@ -14,7 +14,7 @@
 //! are conditioned on the earlier choices ([`legal_mask`], [`spell_mask`], [`target_mask`],
 //! [`second_mask`]); after a legal non-cast entry each head allows exactly 0.
 //!
-//! Entries, version 12 (independent of the ruleset, so agents see a fixed-size action space):
+//! Entries, version 13 (independent of the ruleset, so agents see a fixed-size action space):
 //!
 //! | entry | action |
 //! |---|---|
@@ -29,6 +29,7 @@
 //! | 1393 | Surrender (BAT-FLE-002) |
 //! | 1394 | The hero casts (heads: spell, target, second target; BAT-MAG-001) |
 //! | 1395 | The active stack casts (heads: its spell or 0, the target, 0; BAT-MAG-048 to BAT-MAG-050) |
+//! | 1396 + p, p < 8 | Shoot the walls at wall-shot target `p` (the Catapult, a Cyclops; BAT-SIE-011, BAT-SIE-013) |
 //!
 //! In the tactics phase `Move` entries place the active stack and Wait (0) passes to the next
 //! stack (BAT-TAC-002).
@@ -43,7 +44,7 @@
 //! Version 11 (E04b T7b1) makes the stack's cast legal. Version 12 (the rear hex as a two-hex
 //! stack's position, as in the original) names a two-hex stack's rear hex in the move entries and
 //! the attack positions (whose slots keep their geometry); the shots keep the front hex at
-//! `a = 0`.
+//! `a = 0`. Version 13 (E04c T6) appends the wall shots.
 
 use h3_battle::{
     ATTACK_SLOTS, BattleState, CastSpell, CastTarget, CastTargets, Command, Field, Hex,
@@ -51,11 +52,11 @@ use h3_battle::{
     creature_cast_targets, second_targets, stack_spell,
 };
 use h3_content::{MAX_SPELLS, SpellId};
-use h3_content_battle::{BattleRuleset, MAX_FIELD_HEXES};
+use h3_content_battle::{BattleRuleset, MAX_FIELD_HEXES, MAX_WALL_TARGETS};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 12;
+pub const ACTION_ENCODING_VERSION: u32 = 13;
 
 const MOVE_BASE: usize = 2;
 const ATTACK_BASE: usize = MOVE_BASE + MAX_FIELD_HEXES;
@@ -79,8 +80,11 @@ pub const HERO_CAST: usize = SURRENDER + 1;
 /// The entry of the active stack's cast (BAT-MAG-048).
 pub const CREATURE_CAST: usize = HERO_CAST + 1;
 
+/// The first wall-shot entry (BAT-SIE-011, BAT-SIE-013).
+pub const WALL_SHOT_BASE: usize = CREATURE_CAST + 1;
+
 /// Number of entries.
-pub const ACTION_COUNT: usize = CREATURE_CAST + 1;
+pub const ACTION_COUNT: usize = WALL_SHOT_BASE + MAX_WALL_TARGETS;
 
 /// [`HERO_CAST`] as an [`Action::entry`] value.
 const HERO_CAST_ENTRY: u32 = HERO_CAST as u32;
@@ -200,6 +204,9 @@ fn encode_entry(state: &BattleState, ruleset: &BattleRuleset, command: Command) 
         Command::EndTactics => Some(END_TACTICS),
         Command::Retreat => Some(RETREAT),
         Command::Surrender => Some(SURRENDER),
+        Command::ShootWall { part } => {
+            (usize::from(part) < MAX_WALL_TARGETS).then_some(WALL_SHOT_BASE + usize::from(part))
+        }
         Command::Cast { .. } | Command::CreatureCast { .. } => None,
     }
 }
@@ -280,6 +287,9 @@ fn decode_entry(state: &BattleState, ruleset: &BattleRuleset, entry: usize) -> O
         END_TACTICS => Some(Command::EndTactics),
         RETREAT => Some(Command::Retreat),
         SURRENDER => Some(Command::Surrender),
+        a if (WALL_SHOT_BASE..ACTION_COUNT).contains(&a) => u8::try_from(a - WALL_SHOT_BASE)
+            .ok()
+            .map(|part| Command::ShootWall { part }),
         _ => None,
     }
 }
@@ -516,13 +526,23 @@ mod tests {
 
     #[test]
     fn layout() {
-        assert_eq!(ACTION_COUNT, 2 + 255 + 24 * 42 + 2 * 42 + 42 + 3 + 2);
+        assert_eq!(ACTION_COUNT, 2 + 255 + 24 * 42 + 2 * 42 + 42 + 3 + 2 + 8);
         assert_eq!((END_TACTICS, RETREAT, SURRENDER), (1391, 1392, 1393));
-        assert_eq!((HERO_CAST, CREATURE_CAST), (1394, 1395));
+        assert_eq!(
+            (HERO_CAST, CREATURE_CAST, WALL_SHOT_BASE),
+            (1394, 1395, 1396)
+        );
         assert_eq!((SPELL_COUNT, TARGET_COUNT), (128, 298));
-        assert_eq!(ACTION_ENCODING_VERSION, 12);
+        assert_eq!(ACTION_ENCODING_VERSION, 13);
         assert_eq!(decode_index(SURRENDER), Some(Command::Surrender));
         assert_eq!(decode_index(CREATURE_CAST), None);
+        // The wall shots (BAT-SIE-011): one entry per wall-shot target, none beyond them.
+        assert_eq!(
+            decode_index(WALL_SHOT_BASE + 7),
+            Some(Command::ShootWall { part: 7 })
+        );
+        let (r, s) = env();
+        assert_eq!(encode(&s, &r, Command::ShootWall { part: 8 }), None);
         assert_eq!(Action::entry(usize::MAX).entry, u32::MAX);
     }
 
