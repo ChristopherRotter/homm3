@@ -10,15 +10,14 @@ unless they name this note). Increment 2's note went with T15b; its versions are
 ## 1. The store of heroes (GAM-HER-001)
 
 Built by T18b (2026-10-14): `h3_game::GameState`'s store, `HeroDetailsSetup`, the import of the
-customisations (`docs/formats/h3m.md`, "Import"), the formation on `HeroOnMap`, HER-MAN-001. Left
-for later tasks: the formation into `BattleSetup.formations` (T19a, §5); `fork-xl-144` measured
-with the store (T18b's log).
+customisations (`docs/formats/h3m.md`, "Import"), the formation on `HeroOnMap`, HER-MAN-001; the
+formation into `BattleSetup.formations` since T19a1.
 
 ## 2. Reading and changing a hero's details (the hero model, decision 25)
 
 `h3-heroes` is in the `shared` layer since T18a. Moved at the round-1 checkpoint (decision 28)
 to the tasks that first use them:
-- **T19a** (the battle's outcome, the first writer): `h3_heroes::HeroChange` (increment 3:
+- **T19a2** (the battle's outcome, the first writer; decision 29): `h3_heroes::HeroChange` (increment 3:
   `GainExperience(u32)`, `SetSpellPoints(u16)`, `LearnSpell(SpellId)`, `AddArtifact(ArtifactTypeId)`
   placed by the capture rule, `RemoveArtifact(slot or backpack index)`), each checked by
   `h3_heroes::check_change` (the caller checks first, so the game's `apply_change` is infallible);
@@ -89,61 +88,48 @@ to the tasks that first use them:
 - Events: the offers as increment 2's (`OfferOpened`, `OfferAnswered`) with the new kinds; a
   monster's flight and joining as removals (`ObjectRemoved`) seen where the tiles are.
 
-## 5. Battles through the game (GAM-BAT-001 to -003; T19a)
+## 5. Battles through the game (GAM-BAT-001 to -003; T19a1, T19a2)
 
-- `Decision::Battle(Arc<OpenBattle>)`: the `BattleState`, the sides' owners `[Option<PlayerId>; 2]`
-  (attacker the visitor's), the heroes `[Option<HeroId>; 2]`, the origin (`Hero(HeroId)`,
-  `Monster(anchor)`, `Guards(anchor)`), the tile. Hashed with the battle's own hash.
-- `GameCommand::Battle(h3_battle::Command)`: accepted from the owner of `side_to_act()` (in its
-  turn or not), or from `Actor::System` for an unowned side; `GameCommandError::{NotYourSide,
-  Battle(CommandError)}`. `legal_commands` maps `h3_battle::legal_commands` for the side to act's
-  owner; the other owner gets none while it waits.
-- The setup (GAM-BAT-001): attacker = the visitor's army (`h3_contracts::Army` from the hero's
-  stacks), defender = the other hero's army, the monster's split (ADV-MON-009) or the guards as
-  given; `heroes` from `h3_heroes::derive_battle_hero`; `war_machines` from `h3_heroes::war_machines`;
-  `terrain` the defender's tile's; `battlefield` in the original's order (E04c §4): underground →
-  subterranean; a tile with the coast flag (`0x40`, `h3m.md`: the game
-  takes the coast from it, E04c batch 3b; the import keeps it in the static map) → sand and the
-  shore; a `Ground` object on the tile replaces
-  the field (sieges, boats and mines do not occur in increment 3); `obstacles` from
-  `generate_setup_obstacles` with `Rng::from_seed(s)`: under `ADV-QUIRK-5` (`faithful`)
-  s = `u64::from(110_291 x + 167_801 y + 81_569)` (wrapping u32 arithmetic, the defender's tile,
-  the level not included), else (`strict-fixed`) the attacker's stream's `next_u64`; `funds` the
-  owners' gold; formations from the heroes on the map. The battle's seed: `next_u64` of the
-  attacker's stream (drawn first, so both profiles draw it alike). The split's two draws
-  (ADV-MON-009): the tile's C-runtime generator under `ADV-QUIRK-6`, else two
-  `range_inclusive(1, 100)` from the attacker's stream.
-- Events: `GameEvent::Battle { event, seen_by: Viewers }` (a side's event to its owner, a public
-  one to both owners); the start and the end as game events (`BattleStarted`, `BattleEnded` with
-  the result) seen by the owners; other players see the removals afterwards.
-- Observation: `GameObservation.battle: Option<h3_battle::Observation>` for its owner's side.
-  The neutral seat's policy runs in the trusted host and may read the whole `BattleState` (the
-  original's battle AI does; the battle lane ports it, decision 27); the env's stand-in plays at
-  random.
-- Applying the outcome (GAM-BAT-002, -003; §8, `E04-battle.md` §4): survivors to the armies (a
-  damaged top creature forgotten); experience to the winner's hero only: killed creatures' hit
-  points (no war machines) + 500 for a defeated hero (not after a retreat or surrender), ×
-  (1 + Learning), rounded down; Necromancy per killed stack, rounded down (`E04-battle.md` §4.5;
-  skeletons by the skill, the Cloak in increment 4); `HeroOutcome::learned` (Eagle Eye) into the
-  spells; `HeroOutcome::mana`; a destroyed war machine's artifact removed (the catapult stays);
-  the loser's artifacts (worn and backpack, not war machines nor the spell book) to the winner,
-  each into its first free fitting slot, else the backpack (VCMI's placement, decision 22);
-  a hero that lost, retreated or surrendered leaves the map, a draw both; a beaten monster's
-  treasure (resources) to the winner's owner and the monster off the map (ADV-MON-010); a monster
-  that survives keeps every stack's survivors, an upgraded stack's as its own creature (A-6 fixed,
-  decision 23). The heroes' part as `HeroChange`s through `h3-heroes` (§2).
-  One infallible function per context, called in a fixed order (adventure, heroes, treasuries).
+Built by T19a1 (2026-10-14; decision 29): `Decision::Battle(Arc<OpenBattle>)` (state, owners,
+heroes, tile; game state hash v6), `GameCommand::Battle` from the owner of the side to act
+(`NotYourSide`, `NoBattle`, `BattleOpen`, `Battle(CommandError)`), `legal_commands` mapped,
+`GameEvent::{BattleStarted, Battle, BattleEnded}` seen by the owners, `GameObservation.battle`;
+the setup from the visit (`h3_adventure::BattleStart`: both sides' armies and formations, the
+tile, `AdventureState::battle_ground`: the part's `BattleTerrains`, underground then the coast,
+whose flag the static map keeps since import v5), the battle heroes with their maximum spell
+points, the war machines, the funds, the seeds (`ADV-QUIRK-5`, flag 23); the outcome's armies,
+the heroes leaving the map (`HeroRemoved`) and a surrender's gold (GAM-BAT-005). Left:
+- **T19a2**: the heroes' part of the outcome as `HeroChange`s (§2), each into the store after
+  the adventure's part (`ADV-STUB-3` at `GameState::end_battle`): experience to the winner's hero
+  only: killed creatures' hit points (no war machines) + 500 for a defeated hero (not after a
+  retreat or surrender), × (1 + Learning), rounded down; Necromancy per killed stack, rounded
+  down (`E04-battle.md` §4.5); the raised creature by the `raises` effect kind (decision 30).
+  D-9 read in the code (2026-10-14): experience (0x46A350) leaves out summoned stacks, clones and
+  war machines; Necromancy (0x4775E1) counts every killed record, those too (E04c batch 2d NE:7):
+  per record `min(killed, trunc(f32(min(hp, raised_hp) × killed) × rate / f32(raised_hp)))`, at
+  least 1 in all if anything was killed, the winner only, the rate at most 1.0; the power
+  (0x4E3CD0): the skill's share × (1 + 0.05 × level) for the specialist, +0.05/0.10/0.15 for
+  artifacts 54–56 only with the skill, +0.10/0.20 by town buildings, +0.30 for the Cloak (130)
+  only without it; the creature (0x4E3C60): Skeleton, with the Cloak by the Necromancy level
+  (0 Skeleton, 1 Walking Dead, 2 Wight, 3 Lich); a full army (0x469F20): the upgrade at
+  ⌈2c/3⌉ ((2c + 2) / 3) if it has a free slot, the elementals 112–115 excepted, else nothing;
+  `HeroOutcome::learned` (Eagle Eye) into the spells; `HeroOutcome::mana`; a destroyed war
+  machine's artifact removed (the catapult stays); the loser's artifacts (worn and backpack, not
+  war machines nor the spell book) to the winner, each into its first free fitting slot, else
+  the backpack (VCMI's placement, decision 22). One infallible function per context, in a fixed
+  order (adventure, heroes, treasuries).
+- **T20a**: a `Ground` object on the tile replaces the field (the ground kinds); **T20b**: the
+  unowned side (`Actor::System`, the neutral seat; decision 29), the monster's split and its
+  survivors (ADV-MON-009, -010, A-6), a beaten monster's treasure.
 - Not in increment 3: CLT-Q4's background variant (trees, mountains and dead vegetation within 3
   tiles) needs those decorations typed (E12's long tail); viewers keep the third picture.
 
-## 6. Hero against hero (GAM-BAT-004, -005; T19a)
+## 6. Hero against hero (GAM-BAT-004, -005; T19a1, T19a2)
 
-- The visit (ADR-0016 point 3 amended): a step toward another player's hero visits it from the
-  neighbouring tile at the step's price (as ADV-OBJ-003) and starts the battle at once; both
-  players own it. A surrender's price (`BattleOutcome::surrender_cost`) leaves the loser's owner's
-  gold and enters the winner's owner's (D-13; GAM-RES-001's saturation).
-- Ownership isolation: only the attacker's stream moves (the seed); the defender's commands draw
-  from the battle's stream, which belongs to the battle.
+Built by T19a1: the visit from the neighbouring tile at the step's price, the battle at once, both
+players own it; the visit concerns the hero whatever object lies under it (only leaving the
+visitor's tile across its top is refused); a surrender's price from the loser's owner to the
+winner's (D-13). Only the attacker's stream moves. Left for T19a2: the captured artifacts, +500.
 
 ## 7. Guarded piles (ADV-PIK-004; T21)
 
@@ -157,33 +143,38 @@ to the tasks that first use them:
 
 - Action encoding v3 (`h3-sim/src/adventure/action.rs`): `Action::{Adventure(adventure::Action),
   Battle(h3_sim::action::Action)}`, a phase per state; the masks of the other phase are empty.
-- `to_move()` yields seats (`Seat::{Player(PlayerId), Neutral}`): the acting players without a
-  battle and, for each open battle, its side to act's owner or the neutral seat; `step` for the
-  neutral seat takes a battle action and issues it as `Actor::System`. `random_rollout` plays
-  every seat at random; the original's battle AI replaces the neutral seat's stand-in when the
-  battle lane has ported it (decision 27), and until then results against monsters are
-  provisional.
-- Replay format v3: each command with its actor; golden replays with hero battles (T19b) and
-  monsters (T20b); the property plans (`crates/h3-map/src/tests/play.rs`) play battles to the end.
+- `to_move()` yields the acting players without a battle and, for each open battle, its side to
+  act's owner; the neutral seat (`Seat::Neutral`, a battle action issued as `Actor::System`) comes
+  with T20b (decision 29). `random_rollout` plays every seat at random; the original's battle AI
+  replaces the neutral seat's stand-in when the battle lane has ported it (decision 27), and until
+  then results against monsters are provisional. Until v3 the env offers no move onto another
+  player's hero (`ADV-STUB-4`, T19a1).
+- Replay format v3: each command with its actor, battle commands (v2 cannot read them back,
+  `ADV-STUB-4`); golden replays with hero battles (T19b) and monsters (T20b). The property plans
+  play battles since T19a1 (the driver acts as the owner of the side to act; they end mostly by a
+  retreat or a surrender): T19b makes them play more to a victory.
 - Benchmarks: the three workloads re-baselined with battles; `fork-xl-144` with a battle open.
 
 ## 9. Versions
 
-Game state hash v5 (heroes' details since T18b; battles, offer kinds later); adventure state hash
-v7 (the formation since T18b; monsters' static data and army left, the difficulty later);
-adventure ruleset part v6 (monster and ground kinds, T20a); map import v4 (hero customisations
-since T18b; monsters, guarded piles later); action encoding v3; adventure replay format v3. Each
-bumps once in the task that first changes it: T18b bumped the first three it touched.
+Game state hash v6 (heroes' details since T18b, battles since T19a1; offer kinds later); adventure
+state hash v8 (the formation since T18b, the coast since T19a1; monsters' static data and army
+left, the difficulty later); adventure ruleset part v6 (the battle terrains since T19a1; monster
+and ground kinds, T20a); map import v5 (hero customisations since T18b, the coast since T19a1;
+monsters, guarded piles later); action encoding v3; adventure replay format v3. Each bumps once
+in the increment, in the task that first changes it.
 
 ## 10. Shared and cross-lane work
 
 - Done: T18a (#185: the ADR amendments, `arch.toml`, the kinds `necromancy`, `experience_gain`,
   `max_mana`, `join_bonus`, pack format v37); T18b (the harvester reads Necromancy's, Learning's
-  and Intelligence's tables; `h3_heroes::max_mana`).
+  and Intelligence's tables; `h3_heroes::max_mana`); T19a (`shared/e08-t19a`: `ADV-QUIRK-5`'s
+  flag, `h3-map`'s battle part for its tests, battles in `06-security.md`; T19a1 `cross-lane`:
+  the flag on in `base:faithful`, the harvester's profile).
 - `cross-lane` (battle-owned), still to come: Diplomacy's `join_bonus` values (T20a; no table:
   the skill's level), the necromancy artifacts' parts (increment 4), `h3-heroes`' additions
   (`attack_defense`, `join_bonus` in T20a; the Necromancy share, the Learning factor, the capture's
-  placement, `HeroChange` and its check in T19a); `h3-experiment`'s spec for batch E3 (monsters,
+  placement, `HeroChange` and its check in T19a2); `h3-experiment`'s spec for batch E3 (monsters,
   custom heroes, the difficulty); the client lane's recipes (its inbox, 2026-10-13).
   **The handover of `h3-heroes`**: as soon as the battle lane is done with it (the user,
   ADV-Q13; the battle lane's inbox asks it to say when), a `shared/` change of `lanes.toml`; the
@@ -196,7 +187,8 @@ bumps once in the task that first changes it: T18b bumped the first three it tou
 | Round | Tasks | Content |
 |---|---|---|
 | 1 | T18a + T18b | done (2026-10-14): the shared groundwork with the ADR amendments (§10); the store of heroes, its defaults, the import of hero customisations (§1), trimmed at the checkpoint (decision 28) |
-| 2 | T19a + T19b | battles through the game, hero against hero, the unowned side, hero changes (§2, §5, §6); the env, replays and properties with battles (§8) |
-| 3 | T20a + T20b | monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle (§4) |
-| 4 | T21 + T22a | guarded piles and the maps with monsters, replays, benchmarks, the audit (§7); batch E3's spec and run (cross-lane, the client lane's recipes) |
-| 5 | T22b | batch E3 scored, increment 3 closed, increment 4 refined |
+| 2 | T19a1 + T19a2 | split at the checkpoint (decision 29): T19a1 done (2026-10-14): battles through the game, hero against hero, the armies' and the map's outcome (§5, §6); T19a2 the heroes' outcome, `HeroChange` (§2, §5) |
+| 3 | T19b (+ T20a?) | the env, replays, properties and benchmarks with battles (§8); the cut at the round-2 checkpoint |
+| 4 | T20a + T20b | monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
+| 5 | T21 + T22a | guarded piles and the maps with monsters, replays, benchmarks, the audit (§7); batch E3's spec and run (cross-lane, the client lane's recipes) |
+| 6 | T22b | batch E3 scored, increment 3 closed, increment 4 refined |

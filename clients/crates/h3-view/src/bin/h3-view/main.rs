@@ -2,9 +2,11 @@
 //! prints; what it computes comes from the pure crates.
 
 mod assets;
+mod bot;
 mod gate;
 mod harvest;
 mod motion;
+mod play;
 mod render;
 mod scenario;
 mod sequences;
@@ -45,6 +47,14 @@ commands:
           after the record's start, its commands played at the original's timing at combat
           speed --speed (default 0; h3_view::anim): each stack in its pose then
           (<stem>[-s<seed>]-<ms>ms.png).
+  play <scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
+       [--install <dir>] [--out <dir>] [--png] [--from <ms>] [--to <ms>]
+          a whole battle frame by frame, headless: a scenario is fought to its end in-process
+          with a simple bot in both seats (its obstacles from the seed, default 1), or a record
+          is read; its commands are played at the original's timing at combat speed --speed
+          (h3_view::anim) and every distinct frame is drawn (from --from to --to ms). Writes the
+          record and each frame's moment (frames.txt) to <out> (default
+          clients/out/play/<stem>[-s<seed>]); --png also writes each frame as f<ms>.png there.
   situation <scenario.toml> [--packs <dir>] [--install <dir>] [--out <file.h3m>]
           writes the original's map for a scenario's battle, for the capture harness
           (clients/capture/README.md): Red's hero (human) just west of Blue's (computer) on the
@@ -81,6 +91,10 @@ fn main() -> ExitCode {
             },
             "harvest" => match harvest::Options::parse(rest) {
                 Ok(options) => harvest::run(&options),
+                Err(message) => usage_error(&message),
+            },
+            "play" => match play::Options::parse(rest) {
+                Ok(options) => play::run(&options),
                 Err(message) => usage_error(&message),
             },
             "render" => match render::Options::parse(rest) {

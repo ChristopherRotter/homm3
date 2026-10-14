@@ -49,7 +49,8 @@ pub fn random_rollout(env: &mut AdventureEnv, agent_seed: u64, max_steps: u32) -
 }
 
 /// The agent's choice for `player`: a uniform legal entry, then for a move a uniform tile of the
-/// hero's tile mask, as an agent samples the factorized action head by head. The entries without a
+/// hero's tile mask (its reachable tiles but other players' heroes', E08 T19a), as an agent
+/// samples the factorized action head by head. The entries without a
 /// tile are the commands [`legal_commands`] lists: `EndTurn`, or with an open decision its answers
 /// alone (`Decline`, and `Accept` while the offer stands), each at even odds (GAM-DEC-001; E08
 /// T14b, T15a). `EndTurn` when the player has no legal entry.
@@ -67,10 +68,11 @@ pub fn choose(env: &AdventureEnv, player: PlayerId, rng: &mut Rng) -> Action {
             .and_then(|command| action::encode(state, player, command))
             .unwrap_or_else(Action::end_turn);
     };
-    let tiles = u32::try_from(reach.tiles().count()).unwrap_or(u32::MAX);
-    let k = rng.below(tiles) as usize;
-    reach
-        .tiles()
+    let battles = action::battle_tiles(state, player);
+    let tiles = || reach.tiles().filter(|(pos, _)| !battles.contains(pos));
+    let count = u32::try_from(tiles().count()).unwrap_or(u32::MAX);
+    let k = rng.below(count) as usize;
+    tiles()
         .nth(k)
         .and_then(|(pos, _)| tile_index(state, pos))
         .map_or_else(Action::end_turn, |tile| Action::move_to(*slot, tile))

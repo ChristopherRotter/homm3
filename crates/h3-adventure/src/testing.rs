@@ -17,9 +17,9 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_kernel::{Rng, StreamId};
 
 use crate::ruleset::{
-    AdventurePack, AdventureParamsDef, AdventureRuleset, ObjectKindDef, ObjectTypeDef,
-    ObjectTypeId, Passage, PickupDef, RiverDef, RoadDef, RoadId, StartingResourcesDef,
-    TerrainMovementDef, Visit,
+    AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef, ObjectKindDef,
+    ObjectTypeDef, ObjectTypeId, Passage, PickupDef, RiverDef, RoadDef, RoadId,
+    StartingResourcesDef, TerrainMovementDef, Visit,
 };
 use crate::setup::{AdventureSetup, HeroSetup, MapSetup, ObjectSetup, Pos, TileMask, TileSetup};
 use crate::state::AdventureState;
@@ -211,6 +211,7 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             max_players: NonZeroU8::new(2).unwrap(),
             army_slots: NonZeroU8::new(3).unwrap(),
             starting_stack_chances: vec![88, 25],
+            battle: None,
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
@@ -340,6 +341,12 @@ pub(crate) fn movement_rules_up_to(faithful: bool, size: u16) -> (Ruleset, Adven
             max_players: NonZeroU8::new(2).unwrap(),
             army_slots: NonZeroU8::new(7).unwrap(),
             starting_stack_chances: vec![88, 25],
+            // E08 T19a: battles underground on swamp, on the coast on sand and the shore.
+            battle: Some(BattleTerrainsDef {
+                underground: key("t:swamp"),
+                coast: key("t:sand"),
+                coast_battlefield: key("t:shore"),
+            }),
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
@@ -425,6 +432,7 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
                 terrain,
                 road,
                 river: None,
+                coast: false,
             });
             if let Some((blocked, visitable, object_type)) = object {
                 objects.push(ObjectSetup {

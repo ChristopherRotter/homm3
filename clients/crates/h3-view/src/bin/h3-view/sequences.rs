@@ -283,12 +283,7 @@ fn draw_frames(
     let mut lists = Vec::new();
     let mut log = String::new();
     for frame in &kept.frame {
-        let mut moment = scene::Moment {
-            poses: timeline.at(frame.t),
-            active: timeline.outlined(frame.t),
-            pulse: timeline.pulse(frame.t),
-            projectile: timeline.projectile(frame.t),
-        };
+        let mut moment = scene::Moment::at(timeline, frame.t);
         for &[side, index, group, f] in &frame.fidgets {
             let side = if side == 0 {
                 Side::Attacker
@@ -300,12 +295,12 @@ fn draw_frames(
                 .iter()
                 .find(|m| m.side == side && u32::from(m.record) == index);
             if let Some(m) = member {
-                let hex = moment.poses.get(&m.stack).map_or(m.start.hex, |p| p.hex);
+                let now = moment.poses.get(&m.stack).copied().unwrap_or(m.start);
                 let pose = Pose {
                     group,
                     frame: f,
-                    hex,
                     offset: [0, 0],
+                    ..now
                 };
                 moment.poses.insert(m.stack, pose);
             }
@@ -338,7 +333,7 @@ fn draw_frames(
 
 /// A moment as one line: `<t> pulse <n> outline <id|-> [projectile <def> f<frame> <x>,<y>]`, then
 /// each stack's `<id>:g<group>f<frame>h<hex>[+<x>,<y>]`.
-fn describe(t: u32, moment: &scene::Moment) -> String {
+pub(crate) fn describe(t: u32, moment: &scene::Moment) -> String {
     use std::fmt::Write as _;
     let mut line = format!("{t} pulse {} outline ", moment.pulse);
     match moment.active {

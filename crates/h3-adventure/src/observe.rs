@@ -286,7 +286,8 @@ impl AdventureEvent {
                 },
                 AdventureEventKind::ObjectRemoved { .. }
                 | AdventureEventKind::TilesRevealed { .. }
-                | AdventureEventKind::KeyGained { .. } => self.kind,
+                | AdventureEventKind::KeyGained { .. }
+                | AdventureEventKind::HeroRemoved { .. } => self.kind,
             },
             seen_by: alone,
         })

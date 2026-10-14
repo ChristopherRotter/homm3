@@ -2,15 +2,15 @@
 //! `h3-game` checks turn and phase, then passes a player's command here with the player as actor;
 //! E08 T7b: `MoveHero`; T13b: its visits and their outcome, ADR-0017 point 10; T14b: the
 //! Cartographer's offer; T15a: the observatories, the keys and the border guard's offer; T15b: the
-//! border gates). A
+//! border gates; T19a: the visit of another player's hero, which starts a battle). A
 //! rejected command changes nothing and emits nothing. An event carries the players who may see
 //! it, resolved when it is emitted (ADR-0016 point 6; E08 T8a).
 
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_content::ResourceId;
-use h3_contracts::{HeroId, PlayerId};
+use h3_content::{ContentKey, Formation, ResourceId, TerrainId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
 use crate::ruleset::ObjectTypeId;
 use crate::setup::{Pos, StandError};
@@ -26,7 +26,9 @@ pub enum AdventureCommand {
     /// guard's or a border gate's visitable tile visits it from the tile before, which the hero
     /// does not leave (E08 T13b, T15a, T15b); a step onto a Cartographer's, an observatory's or a
     /// Keymaster's tent's enters it (T14a, T15a). A border gate whose key the player holds is
-    /// crossed as any tile, anywhere on the path (ADV-VIS-005, T15b).
+    /// crossed as any tile, anywhere on the path (ADV-VIS-005, T15b). A step toward another
+    /// player's hero visits it from the tile before, as a neighbour-visited object, and starts a
+    /// battle (GAM-BAT-004, E08 T19a); an own hero's tile blocks.
     MoveHero {
         /// The hero.
         hero: HeroId,
@@ -133,6 +135,42 @@ pub struct AdventureOutcome {
     /// player has not bought (ADV-VIS-001), a border guard's whose key the player holds
     /// (ADV-VIS-004).
     pub offer: Option<Offer>,
+    /// The battle the command's visit starts, if any: another player's hero's (GAM-BAT-004, E08
+    /// T19a), which the game opens at once (ADR-0017 point 11).
+    pub battle: Option<BattleStart>,
+}
+
+/// A battle a visit starts (ADR-0017 points 10 and 11; GAM-BAT-001, E08 T19a): its two sides as
+/// the adventure map has them and where it is fought, from which the game builds the battle's
+/// setup.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BattleStart {
+    /// The attacking side: the visiting hero's.
+    pub attacker: Combatant,
+    /// The defending side: another player's hero (monsters and guards come with E08 T20, T21).
+    pub defender: Combatant,
+    /// The tile the battle is fought at: the defender's (survey `E04c-battlefields.md` §4,
+    /// batch 3b).
+    pub tile: Pos,
+    /// The battle's terrain by its tile ([`crate::BattleTerrains`]): the underground's, else the
+    /// coast's, else the tile's own.
+    pub terrain: TerrainId,
+    /// The special battlefield the tile gives, if any: the coast's.
+    pub battlefield: Option<ContentKey>,
+}
+
+/// A side of a battle on the map as the adventure has it: a hero on the map, its owner, its army
+/// by slot and the army's formation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Combatant {
+    /// The hero.
+    pub hero: HeroId,
+    /// The player owning it.
+    pub owner: PlayerId,
+    /// Its army, by slot.
+    pub army: Vec<ArmyStack>,
+    /// The army's formation.
+    pub formation: Formation,
 }
 
 /// An offer a visit makes to its visitor's owner, answered yes or no (ADR-0017 points 6 and 10;
@@ -282,6 +320,14 @@ pub enum AdventureEventKind {
     KeyGained {
         /// The key's colour, below [`crate::KEY_COLOURS`].
         key: u8,
+    },
+    /// A hero left the map by a battle's outcome (GAM-BAT-003, E08 T19a). Seen by its owner and the
+    /// players that saw it there (ADV-FOG-004, ADV-FOG-005, as a step's).
+    HeroRemoved {
+        /// The hero.
+        hero: HeroId,
+        /// The tile it stood on.
+        pos: Pos,
     },
 }
 

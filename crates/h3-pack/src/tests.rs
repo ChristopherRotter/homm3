@@ -118,6 +118,76 @@ fn the_adventure_and_outcome_effects_parse() {
 }
 
 #[test]
+fn the_raised_creature_parses() {
+    // E08 T19a2 (decision 30): `raises` names one creature, or one per level of a skill.
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let skill = |basic: &str| {
+        parse_pack(&format!(
+            "{manifest}[[secondary_skill]]\nid = \"s\"\nbasic = [{basic}]\n"
+        ))
+    };
+    let key = |text: &str| ContentKey::parse(text).unwrap();
+    let pack = skill("{ kind = \"raises\", creature = \"bones\" }").unwrap();
+    assert_eq!(
+        pack.skills[0].levels[0],
+        [HeroEffect::Raises {
+            priority: 0,
+            creature: RaisedCreature::Creature(key("x:bones")),
+        }]
+    );
+    let pack = skill(
+        "{ kind = \"raises\", priority = 1, skill = \"s\", \
+         by_level = [\"bones\", \"y:walker\", \"wight\", \"lich\"] }",
+    )
+    .unwrap();
+    assert_eq!(
+        pack.skills[0].levels[0],
+        [HeroEffect::Raises {
+            priority: 1,
+            creature: RaisedCreature::ByLevel {
+                skill: key("x:s"),
+                by_level: [
+                    key("x:bones"),
+                    key("y:walker"),
+                    key("x:wight"),
+                    key("x:lich")
+                ],
+            },
+        }]
+    );
+    let four = "by_level = [\"a\", \"b\", \"c\", \"d\"]";
+    for (bad, syntax) in [
+        ("creature = \"a\", skill = \"s\"".to_owned(), true),
+        ("skill = \"s\"".to_owned(), true),
+        (four.to_owned(), true),
+        (format!("creature = \"a\", skill = \"s\", {four}"), true),
+        (
+            "skill = \"s\", by_level = [\"a\", \"b\", \"c\"]".to_owned(),
+            true,
+        ),
+        ("priority = 1".to_owned(), true),
+        ("creature = \"A\"".to_owned(), false),
+        (format!("skill = \"S\", {four}"), false),
+        (
+            "skill = \"s\", by_level = [\"a\", \"b\", \"C\", \"d\"]".to_owned(),
+            false,
+        ),
+    ] {
+        let error = skill(&format!("{{ kind = \"raises\", {bad} }}")).unwrap_err();
+        assert_eq!(
+            matches!(error, PackError::Syntax(_)),
+            syntax,
+            "{bad}: {error}"
+        );
+        assert_eq!(
+            matches!(error, PackError::Key(_)),
+            !syntax,
+            "{bad}: {error}"
+        );
+    }
+}
+
+#[test]
 fn the_ballistics_effect_parses() {
     // E04c T6 (BAT-Q43): the hero's Ballistics level, the battle's Catapult control.
     let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";

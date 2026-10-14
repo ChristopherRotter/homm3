@@ -1,0 +1,41 @@
+# E17 M2 T4b-2a: a sequence of the recorded timelines (sequences.toml): the human's Champions (two
+# hexes, 35 and 36 on row 2) walk one hex up and to the left, to 18 and 19: the step faces left,
+# so the walk's first step turns them around, animated (group 7, the flip onto their other hex,
+# group 10, standing), they step in layer 3 (up), and the plain move turns them back at its end
+# (group 9, the flip, group 8, standing; design §7.10). The walk sequence's armies, on grass at the
+# capture set's tile, so the original's obstacles are the grass situation's (grass.toml). (A
+# strike or a shot that turns both stacks cannot be set up from the openings: every target stands
+# on the attacker's front side, and on column 15 a one-hex flier fast enough to land behind one
+# does not exist in the base game.)
+
+
+[scenario]
+id = "sequence-turn"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:champion"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15

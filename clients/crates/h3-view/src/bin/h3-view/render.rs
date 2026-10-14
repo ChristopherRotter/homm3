@@ -9,7 +9,6 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_formats::lod::LodArchive;
-use h3_protocol::wire::ServerMessage;
 use h3_view::anim::{self, Speed};
 use h3_view::batch::{self, Batch};
 use h3_view::compose::compose;
@@ -225,31 +224,19 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             // The record's commands at the original's timing (E17 M2 T4a, `h3_view::anim`).
             let looks = motion::looks(&record, &tables, &archives)?;
             let stage = motion::stage(&record, &tables, &layout);
-            let commands: Vec<anim::Command<'_>> = record
-                .messages
-                .iter()
-                .filter_map(|m| match m {
-                    ServerMessage::Events { events, .. } => {
-                        Some(anim::Command { at: None, events })
-                    }
-                    _ => None,
-                })
-                .collect();
-            let timeline = anim::timeline(
+            let commands = anim::commands(&record.messages);
+            // With the viewer's own fidgets, from the seed (T4b-2a).
+            let timeline = anim::fidgeting(
                 observation,
                 &commands,
                 &looks,
                 stage,
                 Speed::new(options.speed),
+                u32::try_from(options.seed & u64::from(u32::MAX)).unwrap_or(1),
             )
             .map_err(|e| e.to_string())?;
             lines.push(format!("the timeline ends at {} ms", timeline.end));
-            let moment = scene::Moment {
-                poses: timeline.at(t),
-                active: timeline.outlined(t),
-                pulse: timeline.pulse(t),
-                projectile: timeline.projectile(t),
-            };
+            let moment = scene::Moment::at(&timeline, t);
             scene::battle_at(observation, &moment, manifest, &tables, &layout)
         }
     }
@@ -339,6 +326,7 @@ mod tests {
     /// A record of an empty battle of the `base` packs: it draws nothing, so its batch is only the
     /// outline palette.
     fn empty_record() -> String {
+        use h3_protocol::wire::ServerMessage;
         let header = RecordHeader {
             format: h3_protocol::RECORD_FORMAT_VERSION,
             game: 1,

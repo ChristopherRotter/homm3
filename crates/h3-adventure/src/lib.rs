@@ -53,7 +53,7 @@ mod testing;
 
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    Offer, OfferKind, Sink, Viewers,
+    BattleStart, Combatant, Offer, OfferKind, Sink, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, native_terrain};
 pub use observe::{AdventureObservation, HeroView, ObjectView, OwnHeroView, TileView};
@@ -61,10 +61,10 @@ pub use persistent::BitGrid;
 pub use reach::Reach;
 pub use ruleset::{
     AdventureCompileError, AdventurePack, AdventureParams, AdventureParamsDef, AdventureRuleset,
-    KEY_COLOURS, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS, MAX_PICKUP_AMOUNT, MAX_PLAYERS,
-    ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, Passage, Pickup, PickupDef,
-    RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind, StartingResources,
-    StartingResourcesDef, TerrainMovement, TerrainMovementDef, Visit,
+    BattleTerrains, BattleTerrainsDef, KEY_COLOURS, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS,
+    MAX_PICKUP_AMOUNT, MAX_PLAYERS, ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef,
+    ObjectTypeId, Passage, Pickup, PickupDef, RiverDef, RiverId, RiverKind, RoadDef, RoadId,
+    RoadKind, StartingResources, StartingResourcesDef, TerrainMovement, TerrainMovementDef, Visit,
 };
 pub use setup::{
     AdventureSetup, ArmyError, HeroSetup, MapSetup, ObjectSetup, Pos, SetupError, StandError,
@@ -77,11 +77,12 @@ pub use state::{AdventureState, HeroOnMap, MapObject, StaticMap, StaticTile};
 /// v1 (E08 T5a): the first encoding ([`AdventureState`]'s `CanonicalHash`). v2 (E08 T6b): a
 /// hero's movement points. v3 (E08 T8a): each player's explored tiles. v4 (E08 T12): each
 /// object's type and contents. v5 (E08 T14b): the Cartographer types each player bought. v6 (E08
-/// T15a): the keys each player holds. v7 (E08 T18b): a hero's formation.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 7;
+/// T15a): the keys each player holds. v7 (E08 T18b): a hero's formation. v8 (E08 T19a): whether a
+/// tile of the static map is on the coast.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 8;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting
 /// stack chances. v4 (E08 T12a): the object types. v5 (E08 T13a): the starting resources by
-/// difficulty.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 5;
+/// difficulty. v6 (E08 T19a): the battle terrains by tile.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 6;

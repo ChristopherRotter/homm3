@@ -41,6 +41,10 @@ pub struct TileSetup {
     pub road: Option<RoadId>,
     /// The river on the tile, if any.
     pub river: Option<RiverId>,
+    /// Whether the tile is land on the coast: the map file's flag (`docs/formats/h3m.md`), which
+    /// the game reads for a battle there (GAM-BAT-001, E08 T19a: the coast's terrain and
+    /// battlefield; survey `E04c-battlefields.md` §4).
+    pub coast: bool,
 }
 
 /// A set of tiles relative to an object's anchor, its bottom right tile (ADV-OBJ-001): the bit

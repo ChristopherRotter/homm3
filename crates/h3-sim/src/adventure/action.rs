@@ -26,7 +26,10 @@
 //! (GAM-DEC-001: `h3_game::legal_commands` lists them alone and `h3_game::legal_moves` gives
 //! nothing), each with tile 0 alone.
 //!
-//! Version 2 (E08 T14b) appended the answers.
+//! Version 2 (E08 T14b) appended the answers. It has no battle actions: since E08 T19a a move onto
+//! another player's hero starts a battle, which this encoding cannot play, so such a tile is no
+//! legal destination here (`ADV-STUB-4`, until encoding v3, E08 T19b); a battle command encodes to
+//! no action.
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
 use h3_contracts::{HeroId, PlayerId};
@@ -139,8 +142,19 @@ pub fn hero_in_slot(state: &GameState, player: PlayerId, slot: usize) -> Option<
         .flatten()
 }
 
-/// The legal moves of the hero in `slot` of `player` ([`legal_moves`]), if any tile but its own
-/// is reachable.
+/// The tiles other players' heroes stand on: their visits are battles, which encoding v2 does not
+/// offer (E08 T19a).
+// stub: ADV-STUB-4
+pub(crate) fn battle_tiles(state: &GameState, player: PlayerId) -> Vec<Pos> {
+    let heroes = state.adventure().heroes().iter();
+    heroes
+        .filter(|h| h.owner != player)
+        .map(|h| h.pos)
+        .collect()
+}
+
+/// The legal moves of the hero in `slot` of `player` ([`legal_moves`]), if any tile is reachable
+/// but its own and those of other players' heroes.
 pub fn moves(
     state: &GameState,
     rules: &GameRuleset,
@@ -148,7 +162,9 @@ pub fn moves(
     slot: usize,
 ) -> Option<Reach> {
     let hero = hero_in_slot(state, player, slot)?;
-    legal_moves(state, rules, Actor::Player(player), hero).filter(|r| r.tiles().next().is_some())
+    let battles = battle_tiles(state, player);
+    legal_moves(state, rules, Actor::Player(player), hero)
+        .filter(|r| r.tiles().any(|(pos, _)| !battles.contains(&pos)))
 }
 
 /// Fills `mask` with the legal entries of `player`: the commands [`legal_commands`] lists
@@ -168,7 +184,8 @@ pub fn legal_mask(state: &GameState, rules: &GameRuleset, player: PlayerId, mask
 
 /// Fills `mask` (resized to the tile count) with the legal tiles of `player` after choosing
 /// `entry`: 0 alone after a legal entry that takes no tile (`EndTurn`, an answer), the reachable
-/// tiles but its own of a hero's legal move; none after an illegal entry.
+/// tiles of a hero's legal move but its own and other players' heroes'; none after an illegal
+/// entry.
 pub fn tile_mask(
     state: &GameState,
     rules: &GameRuleset,
@@ -184,7 +201,8 @@ pub fn tile_mask(
         .checked_sub(MOVE_BASE)
         .and_then(|slot| moves(state, rules, player, slot))
     {
-        for (pos, _) in reach.tiles() {
+        let battles = battle_tiles(state, player);
+        for (pos, _) in reach.tiles().filter(|(pos, _)| !battles.contains(pos)) {
             if let Some(index) = tile_index(state, pos) {
                 mask[index as usize] = true;
             }
@@ -204,8 +222,8 @@ const fn tileless(entry: usize) -> Option<GameCommand> {
 
 /// The command `player` issues with `action`, if the action names one: `EndTurn` or an answer
 /// with tile 0, or a move of one of its heroes to a tile its reachable-tiles query lists (not its
-/// own) along the query's path. Whether the command may be issued now (whose turn it is, an open
-/// decision) is `apply`'s.
+/// own, nor another player's hero's) along the query's path. Whether the command may be issued
+/// now (whose turn it is, an open decision) is `apply`'s.
 pub fn decode(
     state: &GameState,
     rules: &GameRuleset,
@@ -216,7 +234,7 @@ pub fn decode(
         return (action.tile == 0).then_some(command);
     }
     let hero = hero_in_slot(state, player, action.entry.checked_sub(MOVE_BASE)?)?;
-    let to = tile_pos(state, action.tile)?;
+    let to = tile_pos(state, action.tile).filter(|to| !battle_tiles(state, player).contains(to))?;
     let reach = state
         .adventure()
         .reach(rules.core(), rules.adventure(), hero)?;
@@ -237,6 +255,7 @@ pub fn encode(state: &GameState, player: PlayerId, command: &GameCommand) -> Opt
         GameCommand::Answer(Answer::Accept) => return Some(Action::accept()),
         GameCommand::Answer(Answer::Decline) => return Some(Action::decline()),
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => (*hero, path),
+        GameCommand::Battle(_) => return None,
     };
     let slot = (0..HERO_SLOTS).find(|&slot| hero_in_slot(state, player, slot) == Some(hero))?;
     let tile = tile_index(state, *path.last()?)?;

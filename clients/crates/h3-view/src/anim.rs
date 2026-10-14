@@ -23,7 +23,7 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt::Write as _;
 
-use h3_protocol::wire::{Event, Observation, Side};
+use h3_protocol::wire::{Event, Observation, ServerMessage, Side};
 
 use crate::layout::BattleLayout;
 use crate::tables::Groups;
@@ -36,6 +36,15 @@ const PAUSE: u32 = 150;
 const STEP: u32 = 33;
 /// The idle step's period, whatever the combat speed (0x4960D0, §7.1).
 const IDLE_STEP: u32 = 100;
+/// The draw layers (+0x8, §4.6, §7.9): standing (0x43D750), walking up and down (0x43F0B0), a
+/// melee's striker (0x441CC1) and a struck stack (the harness's reading of memory), the corpses'
+/// pass.
+const STANDING: u8 = 4;
+const WALK_UP: u8 = 3;
+const WALK_DOWN: u8 = 7;
+const STRIKER: u8 = 6;
+const STRUCK: u8 = 5;
+const CORPSE: u8 = 1;
 /// A projectile's step length in pixels: trunc((d + 20) / 40) steps (§7.4).
 const STEP_PIXELS: u64 = 40;
 /// Half a hex: a two-hex target is aimed at from its middle (0x43F323).
@@ -183,6 +192,32 @@ impl Stage<'_> {
     fn row(&self, hex: u8) -> u8 {
         hex / self.width.max(1)
     }
+
+    /// The neighbour of `hex` in direction `d` (0 up and right, then clockwise: right, down and
+    /// right, down and left, left, up and left; the executable's table at +0x13468): the hex of
+    /// the rows around whose anchor lies a column's width, or half of it and a row's height,
+    /// that way. None off the field's columns or above it.
+    fn neighbor(&self, hex: u8, d: u8) -> Option<u8> {
+        let width = self.width.max(1);
+        let (row, column) = (hex / width, hex % width);
+        let [x, y] = self.anchor(hex);
+        let [w, h] = self.layout.hex_step;
+        let want = match d {
+            0 => [x + w / 2, y - h],
+            1 => [x + w, y],
+            2 => [x + w / 2, y + h],
+            3 => [x - w / 2, y + h],
+            4 => [x - w, y],
+            _ => [x - w / 2, y - h],
+        };
+        (row.saturating_sub(1)..=row.saturating_add(1))
+            .flat_map(|r| {
+                (column.saturating_sub(1)..=column.saturating_add(1)).map(move |c| (r, c))
+            })
+            .filter(|&(_, c)| c < width)
+            .find(|&(r, c)| self.layout.anchor(r, c) == want)
+            .and_then(|(r, c)| u8::try_from(u16::from(r) * u16::from(width) + u16::from(c)).ok())
+    }
 }
 
 /// What a stack shows: a frame of a DEF group on a hex, moved by an offset in pixels.
@@ -197,6 +232,11 @@ pub struct Pose {
     pub hex: u8,
     /// Where it is drawn from its hex's anchor (+0x104, +0x100).
     pub offset: [i32; 2],
+    /// Drawn mirrored: it faces left (+0x44 = 0; E17 M2 T4b-2a, turns).
+    pub mirrored: bool,
+    /// Its draw layer (+0x8), the redraw's pass that draws it in its row (§4.6): 4 standing, 3 or
+    /// 7 walking up or down, 6 a melee's striker, 5 a struck stack, 1 among the corpses.
+    pub layer: u8,
 }
 
 /// One pose of one stack: drawn at `drawn` (the harness reads it from then, design §7.1), shown
@@ -236,6 +276,18 @@ pub struct Command<'a> {
     pub events: &'a [Event],
 }
 
+/// The commands of a record's messages: each `Events` message one command, without a time (the
+/// first given at the snapshot's moment, each later one when the previous one ended, [`timeline`]).
+pub fn commands(messages: &[ServerMessage]) -> Vec<Command<'_>> {
+    messages
+        .iter()
+        .filter_map(|m| match m {
+            ServerMessage::Events { events, .. } => Some(Command { at: None, events }),
+            _ => None,
+        })
+        .collect()
+}
+
 /// The poses of a record's stacks over time.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Timeline {
@@ -253,8 +305,103 @@ pub struct Timeline {
     pub steps: Vec<u32>,
     /// The idle steps after the last command.
     pub idle: Idle,
+    /// The viewer's own fidgets as they stand after the last command (none: no fidgets, as the
+    /// reference checks take the original's).
+    pub fidgets: Option<Fidgets>,
     /// When the last frame shows.
     pub end: u32,
+}
+
+/// The viewer's own fidgets (§7.2, E17 M2 T4b-2a). The executable draws them from its rules'
+/// generator, which the engine does not share (ADR-0003): the viewer draws them from a generator
+/// of its own (the C library's `rand()` sequence, *provisional*), so they cannot match the
+/// original's frame for frame. At the battle's start and after every action each stack's fidget
+/// clock is drawn again: its fidget starts at the first idle step after now + 2r, r =
+/// random(50, t), t its fidget interval; then one frame of group 1 per idle step, each advance
+/// stalled when a draw of 0 to 100 gives less than 8; after its last frame it stands, the next
+/// fidget 0.75 t to 1.25 t later (0x4960D0). A stack the action drew stops fidgeting; not read:
+/// the blind, petrified and paralysed stacks the executable skips.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Fidgets {
+    rng: u32,
+    group: u8,
+    stacks: Vec<Fidget>,
+}
+
+/// One stack's fidget: its interval and frames, its clock (+0xFC), the frame it shows (none:
+/// standing) and its standing pose.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Fidget {
+    stack: u8,
+    interval: u32,
+    frames: u32,
+    clock: i64,
+    frame: Option<u32>,
+    base: Pose,
+}
+
+impl Fidgets {
+    /// The C library's `rand()`: 15 bits of a linear congruential sequence.
+    fn rand(&mut self) -> u32 {
+        self.rng = self.rng.wrapping_mul(214_013).wrapping_add(2_531_011);
+        (self.rng >> 16) & 0x7FFF
+    }
+
+    /// A draw from `low` to `high` (`low` ≤ `high`).
+    fn between(&mut self, low: u32, high: u32) -> u32 {
+        low + self.rand() % (high - low + 1)
+    }
+
+    /// After an action at `now` (and at the start): the stacks still living (`base`: their
+    /// standing poses, by id) keep their fidgets, those `drawn` stop; each clock drawn again.
+    fn reset(&mut self, now: u32, base: &BTreeMap<u8, Pose>, drawn: &[u8]) {
+        self.stacks.retain(|f| base.contains_key(&f.stack));
+        for i in 0..self.stacks.len() {
+            let f = self.stacks[i];
+            let mut next = Fidget {
+                base: base.get(&f.stack).copied().unwrap_or(f.base),
+                frame: f.frame.filter(|_| !drawn.contains(&f.stack)),
+                ..f
+            };
+            if f.interval > 51 {
+                let r = self.between(50, f.interval);
+                next.clock = i64::from(now) + 2 * i64::from(r) - i64::from(f.interval);
+            }
+            self.stacks[i] = next;
+        }
+    }
+
+    /// The idle step at `now`: the poses that change.
+    fn step(&mut self, now: u32) -> Vec<(u8, Pose)> {
+        let mut out = Vec::new();
+        for i in 0..self.stacks.len() {
+            let mut f = self.stacks[i];
+            match f.frame {
+                Some(k) => {
+                    if self.between(0, 100) < 8 {
+                        continue;
+                    }
+                    if k + 1 < f.frames {
+                        f.frame = Some(k + 1);
+                    } else {
+                        f.frame = None;
+                        let r = i64::from(self.between(0, f.interval));
+                        f.clock = (4 * i64::from(now) + 2 * r - i64::from(f.interval)) / 4;
+                    }
+                }
+                None if i64::from(now) - f.clock > i64::from(f.interval) => f.frame = Some(0),
+                None => continue,
+            }
+            let pose = f.frame.map_or(f.base, |frame| Pose {
+                group: u32::from(self.group),
+                frame,
+                ..f.base
+            });
+            out.push((f.stack, pose));
+            self.stacks[i] = f;
+        }
+        out
+    }
 }
 
 /// The battle loop's idle steps (0x4960D0, §7.1, §7.9): while the loop ticks (from `from`), a
@@ -302,6 +449,11 @@ impl Timeline {
         for key in self.keys.iter().filter(|k| k.shown <= t) {
             poses.insert(key.stack, key.pose);
         }
+        // After the last command the idle steps go on, and the fidgets with them.
+        if let Some(fidgets) = &self.fidgets {
+            let (mut idle, mut fidgets) = (self.idle, fidgets.clone());
+            idle.run(t, |now| poses.extend(fidgets.step(now)));
+        }
         poses
     }
 
@@ -339,6 +491,25 @@ impl Timeline {
         let mut idle = self.idle;
         idle.run(t, |_| count += 1);
         u32::try_from(count).unwrap_or(u32::MAX)
+    }
+
+    /// Every time up to `until` at which what shows may change (E17 M2 T4b-2a, `h3-view
+    /// play`): 0, each pose's, each projectile step's and its erasure's, each outline's and each
+    /// idle step's (the outline's colour), and the last frame's; in order, each once.
+    pub fn changes(&self, until: u32) -> Vec<u32> {
+        let mut times = vec![0, self.end];
+        times.extend(self.keys.iter().map(|k| k.shown));
+        for f in &self.flights {
+            times.extend((0..=f.steps).map(|k| f.from + k * f.step));
+        }
+        times.extend(self.outlines.iter().map(|(t, _)| *t));
+        times.extend(&self.steps);
+        let mut idle = self.idle;
+        idle.run(until, |t| times.push(t));
+        times.retain(|t| *t <= until);
+        times.sort_unstable();
+        times.dedup();
+        times
     }
 
     /// The active stack at `t` (its turn's start), if a turn started by then.
@@ -421,12 +592,44 @@ impl Clock {
 #[derive(Debug, Clone)]
 struct Live {
     side: Side,
+    /// The engine's position (a two-hex stack's rear hex by its side, BAT-GEO-002).
     hex: u8,
     count: u32,
     flies: bool,
     two_hex: bool,
     defending: bool,
+    /// It faces right (+0x44 = 1); the setup faces the attacker right (0x43D846).
+    right: bool,
     look: Look,
+}
+
+impl Live {
+    /// It faces the way its side does at the setup.
+    fn at_home(&self) -> bool {
+        self.right == (self.side == Side::Attacker)
+    }
+
+    /// The executable's position (+0x38) for the engine's `hex`: a two-hex stack turned away
+    /// from its side's facing stands on its other hex, + 1 for the attacker, − 1 for the
+    /// defender (`stack_turn_around` 0x446720).
+    fn position(&self, hex: u8) -> u8 {
+        match (self.two_hex && !self.at_home(), self.side) {
+            (false, _) => hex,
+            (true, Side::Attacker) => hex.saturating_add(1),
+            (true, Side::Defender) => hex.saturating_sub(1),
+        }
+    }
+
+    /// The hexes it covers on the executable's field: its position, and a two-hex stack's other
+    /// hex ahead of it (0x4466A0).
+    fn covers(&self, hex: u8) -> [u8; 2] {
+        let at = self.position(hex);
+        match (self.two_hex, self.right) {
+            (false, _) => [at, at],
+            (true, true) => [at, at.saturating_add(1)],
+            (true, false) => [at, at.saturating_sub(1)],
+        }
+    }
 }
 
 /// Why a record has no timeline.
@@ -448,9 +651,9 @@ impl core::fmt::Display for AnimError {
 /// `looks` holds each creature's numbers by its handle.
 ///
 /// The first command is given at 0, the snapshot's moment (the harness clicks at the frozen
-/// opening); a later one without a time when the previous one's last frame showed, one tick
-/// later if it drew any (*provisional*: in the melee sequence the computer acts 100 ms after the
-/// Angels' last frame shows; after Wait or Defend the next stack acts at once, §7.4).
+/// opening); a later one without a time as soon as the previous one's last frame showed
+/// (*provisional*: in the melee sequence the computer acts as the flight's second standing frame
+/// shows, 0x4B4A15; after Wait or Defend the next stack acts at once, §7.4).
 ///
 /// # Errors
 /// A living stack whose creature has no [`Look`].
@@ -461,20 +664,65 @@ pub fn timeline(
     stage: Stage<'_>,
     speed: Speed,
 ) -> Result<Timeline, AnimError> {
+    played(snapshot, commands, looks, stage, speed, None)
+}
+
+/// As [`timeline`], the stacks fidgeting while the battle idles, from the viewer's own generator
+/// seeded with `seed` ([`Fidgets`]; E17 M2 T4b-2a).
+///
+/// # Errors
+/// As [`timeline`].
+pub fn fidgeting(
+    snapshot: &Observation,
+    commands: &[Command<'_>],
+    looks: &BTreeMap<u16, Look>,
+    stage: Stage<'_>,
+    speed: Speed,
+    seed: u32,
+) -> Result<Timeline, AnimError> {
+    played(snapshot, commands, looks, stage, speed, Some(seed))
+}
+
+/// [`timeline`] or [`fidgeting`].
+fn played(
+    snapshot: &Observation,
+    commands: &[Command<'_>],
+    looks: &BTreeMap<u16, Look>,
+    stage: Stage<'_>,
+    speed: Speed,
+    seed: Option<u32>,
+) -> Result<Timeline, AnimError> {
     let standing = u32::from(stage.groups.standing);
     let mut members = Vec::new();
+    // The stacks whose DEF has a fidget (group 1).
+    let mut fidgeters = Vec::new();
     let mut stacks = BTreeMap::new();
     let mut records = [0u8; 2];
     for s in snapshot.stacks.iter().filter(|s| s.alive) {
         let look = looks.get(&s.creature).ok_or(AnimError::Look(s.creature))?;
         let side = usize::from(s.side == Side::Defender);
+        let start = Pose {
+            mirrored: s.side == Side::Defender,
+            ..still(standing, s.hex)
+        };
         members.push(Member {
             stack: s.id,
             side: s.side,
             record: records[side],
-            start: still(standing, s.hex),
+            start,
         });
         records[side] += 1;
+        let frames = look.count(stage.groups.mouse_over);
+        if frames > 0 {
+            fidgeters.push(Fidget {
+                stack: s.id,
+                interval: look.times[0],
+                frames,
+                clock: 0,
+                frame: None,
+                base: start,
+            });
+        }
         stacks.insert(
             s.id,
             Live {
@@ -484,6 +732,7 @@ pub fn timeline(
                 flies: s.flies,
                 two_hex: s.two_hex,
                 defending: s.defending,
+                right: s.side == Side::Attacker,
                 look: look.clone(),
             },
         );
@@ -499,23 +748,28 @@ pub fn timeline(
         },
         stacks,
         keys: Vec::new(),
+        pending: Vec::new(),
         turns: Vec::new(),
         flights: Vec::new(),
     };
-    let mut drew = false;
+    let mut fidgets = seed.map(|rng| Fidgets {
+        rng,
+        group: stage.groups.mouse_over,
+        stacks: fidgeters,
+    });
+    if let Some(f) = fidgets.as_mut() {
+        f.reset(0, &player.bases(), &[]);
+    }
     let mut outlines = vec![(0, snapshot.active)];
     let mut waiting = snapshot.active;
     let (mut idle, mut steps) = (Idle::default(), Vec::new());
     for (i, command) in commands.iter().enumerate() {
-        let default = match (i, drew) {
-            (0, _) => 0,
-            (_, true) => player.clock.now + grid,
-            (_, false) => player.clock.now,
-        };
+        let default = if i == 0 { 0 } else { player.clock.now };
         player.clock.start(command.at.unwrap_or(default));
         // A command without a time after the first is the computer's: the loop did not tick
         // since the last one ended, but once when it acts, which outlines its stack until its
         // first frame shows (*provisional*, §7.9).
+        let ran = steps.len();
         if i > 0 && command.at.is_none() {
             if idle.once(player.clock.now, &mut steps) {
                 outlines.push((player.clock.now, waiting));
@@ -523,9 +777,20 @@ pub fn timeline(
         } else {
             idle.run(player.clock.now, |t| steps.push(t));
         }
+        if let Some(f) = fidgets.as_mut() {
+            for &now in &steps[ran..] {
+                player
+                    .keys
+                    .extend(f.step(now).into_iter().map(|(stack, pose)| Key {
+                        stack,
+                        drawn: now,
+                        shown: now,
+                        pose,
+                    }));
+            }
+        }
         let (before, turns) = (player.keys.len(), player.turns.len());
         player.command(command.events);
-        drew = player.keys.len() > before;
         // The outline goes with the command's first frame shown; a turn started brings its
         // stack's, unless the computer acts next.
         if let Some(first) = player.keys.get(before) {
@@ -537,7 +802,14 @@ pub fn timeline(
             waiting = Some(stack);
         }
         idle.from = player.clock.now;
+        if let Some(f) = fidgets.as_mut() {
+            let drawn: Vec<u8> = player.keys[before..].iter().map(|k| k.stack).collect();
+            f.reset(player.clock.now, &player.bases(), &drawn);
+        }
     }
+    // The last layer changes show with the battle's next redraw (*provisional*).
+    let now = player.clock.now;
+    player.flush(now, now);
     Ok(Timeline {
         members,
         keys: player.keys,
@@ -546,27 +818,29 @@ pub fn timeline(
         outlines,
         steps,
         idle,
+        fidgets,
         end: player.clock.now,
     })
 }
 
-/// A still pose: frame 0 of `group` on `hex`.
+/// A still pose: frame 0 of `group` on `hex`, facing right, standing's layer.
 const fn still(group: u32, hex: u8) -> Pose {
     Pose {
         group,
         frame: 0,
         hex,
         offset: [0, 0],
+        mirrored: false,
+        layer: STANDING,
     }
 }
 
-/// A frame of `group` on `hex`.
+/// A frame of `group` on `hex`, facing right, standing's layer.
+#[cfg(test)]
 fn pose(group: u8, frame: u32, hex: u8) -> Pose {
     Pose {
-        group: u32::from(group),
         frame,
-        hex,
-        offset: [0, 0],
+        ..still(u32::from(group), hex)
     }
 }
 
@@ -576,14 +850,15 @@ fn share(whole: i32, part: u32, of: u32) -> i32 {
     i32::try_from(v).unwrap_or(0)
 }
 
-/// A struck stack and how it reacts: its reaction's group and frames, and whether it died.
+/// A struck stack and how it reacts: its reaction's group and frames, whether it died, and its
+/// standing pose (its position and facing).
 #[derive(Debug, Clone, Copy)]
 struct Reaction {
     stack: u8,
     group: u8,
     frames: u32,
     died: bool,
-    hex: u8,
+    base: Pose,
 }
 
 /// A shot's aim (0x469880): its group, its projectile's steps, start and target, and the slope
@@ -649,15 +924,34 @@ struct Player<'a> {
     clock: Clock,
     stacks: BTreeMap<u8, Live>,
     keys: Vec<Key>,
+    /// Poses that change without a frame of their own (a layer set or restored): they show with
+    /// the next frame drawn, as the executable draws them at its next redraw.
+    pending: Vec<(u8, Pose)>,
     turns: Vec<(u32, u8)>,
     flights: Vec<Flight>,
 }
 
+/// A command's melee (`move_and_attack` 0x478900, `melee_attack` 0x441CB0): its striker, its
+/// target, how each faced before it (the striker before its move) and whether the target has
+/// turned back, its strikes over.
+#[derive(Debug, Clone, Copy)]
+struct Melee {
+    attacker: u8,
+    target: u8,
+    attacker_right: bool,
+    target_right: bool,
+    over: bool,
+}
+
 impl Player<'_> {
     /// One frame: `poses` drawn now, shown at the deadline; the deadline then moves on by `time`.
+    /// The pending poses of the other stacks show with it.
     fn frame(&mut self, poses: &[(u8, Pose)], time: u32) {
         let drawn = self.clock.now;
         let shown = self.clock.show(time);
+        self.pending
+            .retain(|(s, _)| poses.iter().all(|(p, _)| p != s));
+        self.flush(drawn, shown);
         self.keys.extend(poses.iter().map(|&(stack, pose)| Key {
             stack,
             drawn,
@@ -666,9 +960,47 @@ impl Player<'_> {
         }));
     }
 
-    /// The standing pose of `stack` on `hex`.
-    fn standing(&self, hex: u8) -> Pose {
-        still(u32::from(self.stage.groups.standing), hex)
+    /// The pending poses, drawn at `drawn` and shown at `shown`.
+    fn flush(&mut self, drawn: u32, shown: u32) {
+        let pending = core::mem::take(&mut self.pending);
+        self.keys
+            .extend(pending.into_iter().map(|(stack, pose)| Key {
+                stack,
+                drawn,
+                shown,
+                pose,
+            }));
+    }
+
+    /// Frame `frame` of `group` of `live` on the engine's `hex`: at its position, facing its way,
+    /// in standing's layer.
+    fn posed(live: &Live, group: u8, frame: u32, hex: u8) -> Pose {
+        Pose {
+            group: u32::from(group),
+            frame,
+            hex: live.position(hex),
+            offset: [0, 0],
+            mirrored: !live.right,
+            layer: STANDING,
+        }
+    }
+
+    /// `live` standing on the engine's `hex`.
+    fn standing(&self, live: &Live, hex: u8) -> Pose {
+        Self::posed(live, self.stage.groups.standing, 0, hex)
+    }
+
+    /// Every living stack's standing pose, by id.
+    fn bases(&self) -> BTreeMap<u8, Pose> {
+        self.stacks
+            .iter()
+            .map(|(&id, live)| (id, self.standing(live, live.hex)))
+            .collect()
+    }
+
+    /// A living stack as the timeline follows it now.
+    fn live(&self, stack: u8) -> Option<Live> {
+        self.stacks.get(&stack).cloned()
     }
 
     /// One command's events, in order.
@@ -676,6 +1008,11 @@ impl Player<'_> {
         let mut i = 0;
         // A melee strike of this command played: the next one waits (§7.4).
         let mut struck = false;
+        let mut melee: Option<Melee> = None;
+        // The striker's facing before the move that brought it to its target.
+        let mut before_move: Option<(u8, bool)> = None;
+        // A shooter and its facing before its shots.
+        let mut shooter: Option<(u8, bool)> = None;
         while let Some(event) = events.get(i) {
             i += 1;
             match *event {
@@ -694,7 +1031,19 @@ impl Player<'_> {
                         path.push(t);
                         i += 1;
                     }
-                    self.moved(stack, &path);
+                    // A melee's target turns back before its striker returns (the Harpies,
+                    // 0x4789F8).
+                    self.melee_over(melee.as_mut());
+                    // A move that brings its stack to strike does not turn back (0x478971: the
+                    // attack moves with the flag clear); a plain move does (0x479106).
+                    let strikes = events[i..].iter().any(|e| {
+                        matches!(*e, Event::Struck { attacker, flags, .. }
+                            if attacker == stack && !flags.ranged && !flags.retaliation)
+                    });
+                    if strikes && melee.is_none() {
+                        before_move = self.live(stack).map(|l| (stack, l.right));
+                    }
+                    self.moved(stack, &path, !strikes);
                 }
                 Event::Struck {
                     attacker,
@@ -719,13 +1068,21 @@ impl Player<'_> {
                         i += 1;
                     }
                     if flags.ranged {
+                        if shooter.is_none() {
+                            shooter = self.live(attacker).map(|l| (attacker, l.right));
+                            self.face_shot(attacker, target);
+                        }
                         self.shot(attacker, &hit);
                     } else {
                         if struck {
                             self.clock.wait(self.speed.scale(PAUSE));
                         }
+                        let layer = if struck { STRUCK } else { STRIKER };
                         struck = true;
-                        self.strike(attacker, &hit);
+                        if melee.is_none() && !flags.retaliation {
+                            melee = self.melee(attacker, target, before_move);
+                        }
+                        self.strike(attacker, &hit, layer);
                     }
                 }
                 Event::Struck { target, kills, .. } => {
@@ -739,6 +1096,112 @@ impl Player<'_> {
                 _ => {}
             }
         }
+        // The striker turns back at the attack's end (0x478A57), the shooter after its shots
+        // (0x4402F2), each only alive and turned.
+        self.melee_over(melee.as_mut());
+        let back = [melee.map(|m| (m.attacker, m.attacker_right)), shooter];
+        for (stack, right) in back.into_iter().flatten() {
+            if let Some(live) = self.live(stack).filter(|l| l.right != right) {
+                self.turn(stack, live);
+            }
+        }
+    }
+
+    /// A melee starts (`strike_action` 0x445C6A, `melee_attack` 0x441CC1, 0x441D79): the
+    /// striker turns to face its target if it is not on its front side, takes the striker's
+    /// layer, and the target turns to face it likewise.
+    fn melee(&mut self, attacker: u8, target: u8, before: Option<(u8, bool)>) -> Option<Melee> {
+        let (Some(mut striker), Some(struck)) = (self.live(attacker), self.live(target)) else {
+            return None;
+        };
+        let attacker_right = before
+            .filter(|(s, _)| *s == attacker)
+            .map_or(striker.right, |(_, r)| r);
+        let target_right = struck.right;
+        if !self.faces(&striker, &struck) {
+            striker = self.turn(attacker, striker);
+        }
+        let pose = Pose {
+            layer: STRIKER,
+            ..self.standing(&striker, striker.hex)
+        };
+        self.pending.push((attacker, pose));
+        if !self.faces(&struck, &striker) {
+            self.turn(target, struck);
+        }
+        Some(Melee {
+            attacker,
+            target,
+            attacker_right,
+            target_right,
+            over: false,
+        })
+    }
+
+    /// A melee's strikes are over: its target turns back if it lives and turned (0x441F36).
+    fn melee_over(&mut self, melee: Option<&mut Melee>) {
+        let Some(m) = melee.filter(|m| !m.over) else {
+            return;
+        };
+        m.over = true;
+        if let Some(live) = self.live(m.target).filter(|l| l.right != m.target_right) {
+            self.turn(m.target, live);
+        }
+    }
+
+    /// Whether `stack` has `other` on its front side, so a strike between them needs no turn
+    /// (0x445BCE, 0x4458B0 through 0x523DF0): one of the three hexes ahead of a one-hex stack,
+    /// any neighbour of a two-hex stack's front hex.
+    fn faces(&self, s: &Live, o: &Live) -> bool {
+        let theirs = o.covers(o.hex);
+        let front = s.covers(s.hex)[1];
+        let ahead: &[u8] = match (s.two_hex, s.right) {
+            (true, _) => &[0, 1, 2, 3, 4, 5],
+            (false, true) => &[0, 1, 2],
+            (false, false) => &[3, 4, 5],
+        };
+        ahead
+            .iter()
+            .filter_map(|d| self.stage.neighbor(front, *d))
+            .any(|h| theirs.contains(&h))
+    }
+
+    /// A shooter turns to face its target (`shot_action` 0x440160): the target's position right
+    /// of the shooter's other hex (by their anchors' x) while it faces left, or left of it while
+    /// it faces right.
+    fn face_shot(&mut self, shooter: u8, target: u8) {
+        let (Some(s), Some(t)) = (self.live(shooter), self.live(target)) else {
+            return;
+        };
+        let [own, _] = self.stage.anchor(s.covers(s.hex)[1]);
+        let [theirs, _] = self.stage.anchor(t.position(t.hex));
+        if (theirs > own && !s.right) || (theirs < own && s.right) {
+            self.turn(shooter, s);
+        }
+    }
+
+    /// `stack` turns around, animated (`stack_turn_around` 0x446720 with its flag): facing right
+    /// group 7, the flip, group 10; facing left group 9, the flip, group 8; each all its frames
+    /// at trunc(100 F), then one standing; a two-hex stack's position moves onto its other hex.
+    fn turn(&mut self, stack: u8, mut live: Live) -> Live {
+        let g = self.stage.groups;
+        let [before, after] = if live.right {
+            g.turn_left
+        } else {
+            g.turn_right
+        };
+        let tick = self.speed.scale(TICK);
+        for f in 0..live.look.count(before) {
+            self.frame(&[(stack, Self::posed(&live, before, f, live.hex))], tick);
+        }
+        live.right = !live.right;
+        for f in 0..live.look.count(after) {
+            self.frame(&[(stack, Self::posed(&live, after, f, live.hex))], tick);
+        }
+        let standing = self.standing(&live, live.hex);
+        self.frame(&[(stack, standing)], tick);
+        self.stacks.insert(stack, live.clone());
+        live
     }
 
     /// Sets whether `stack` defends.
@@ -748,24 +1211,32 @@ impl Player<'_> {
             .and_modify(|s| s.defending = defending);
     }
 
-    /// A move along `path` (its start first): a walk hex by hex, or a flight (§7.3).
-    fn moved(&mut self, stack: u8, path: &[u8]) {
-        let Some(live) = self.stacks.get(&stack).cloned() else {
+    /// A move along `path` (its start first): a walk hex by hex, or a flight (§7.3); a plain move
+    /// turns back at its end to the facing it started with (`turn_back`).
+    fn moved(&mut self, stack: u8, path: &[u8], turn_back: bool) {
+        let Some(mut live) = self.live(stack) else {
             return;
         };
+        let home = live.right;
         let g = self.stage.groups;
         let tick = self.speed.scale(TICK);
         let n = live.look.count(g.moving);
         let step = self.speed.ratio(live.look.times[1], n);
         let start = path.first().copied().unwrap_or(live.hex);
         let end = path.last().copied().unwrap_or(live.hex);
-        for f in 0..live.look.count(g.move_start) {
-            self.frame(&[(stack, pose(g.move_start, f, start))], tick);
-        }
         if live.flies {
-            // A flight (0x4B4A40): k cycles of the moving group along the straight line, the
-            // point moved on before each frame by (Δ / k) / n, every value an f32 (0x4B4C7B to
-            // 0x4B4CEC), drawn at its truncation (§7.9).
+            // A flight (0x4B4A40) turns first when it goes the other way by columns.
+            let width = self.stage.width.max(1);
+            let (from, to) = (start % width, end % width);
+            if (to < from && live.right) || (to > from && !live.right) {
+                live = self.turn(stack, live);
+            }
+            for f in 0..live.look.count(g.move_start) {
+                self.frame(&[(stack, Self::posed(&live, g.move_start, f, start))], tick);
+            }
+            // k cycles of the moving group along the straight line, the point moved on before
+            // each frame by (Δ / k) / n, every value an f32 (0x4B4C7B to 0x4B4CEC), drawn at its
+            // truncation (§7.9).
             let [ax, ay] = self.stage.anchor(start);
             let [bx, by] = self.stage.anchor(end);
             let (dx, dy) = (bx - ax, by - ay);
@@ -785,28 +1256,71 @@ impl Player<'_> {
                 for (a, s) in at.iter_mut().zip(step_by) {
                     *a = f32_round(i128::from(*a) + i128::from(s), 1 << F32_FRAC);
                 }
-                let mut p = pose(g.moving, j % n, start);
+                let mut p = Self::posed(&live, g.moving, j % n, start);
                 p.offset = [f32_trunc(at[0]) - ax, f32_trunc(at[1]) - ay];
                 self.frame(&[(stack, p)], step);
             }
-        } else {
-            // A walk (`walk_step` 0x43F0B0): one cycle per hex, the stack drawn along the step.
-            for pair in path.windows(2) {
-                let [ax, ay] = self.stage.anchor(pair[0]);
-                let [bx, by] = self.stage.anchor(pair[1]);
-                for f in 0..n {
-                    let mut p = pose(g.moving, f, pair[0]);
-                    p.offset = [share(bx - ax, f, n), share(by - ay, f, n)];
-                    self.frame(&[(stack, p)], step);
+            // The flight ends with group 21 and a frame standing (0x4B4E59, 0x4B4E66); then
+            // `stack_fly` turns a plain move back (0x4B49F5) and draws one more frame standing
+            // (0x4B4A15).
+            for f in 0..live.look.count(g.move_end) {
+                self.frame(&[(stack, Self::posed(&live, g.move_end, f, end))], tick);
+            }
+            live.hex = end;
+            self.frame(&[(stack, self.standing(&live, end))], tick);
+            self.stacks.insert(stack, live.clone());
+            if turn_back && live.right != home {
+                live = self.turn(stack, live);
+            }
+            let standing = self.standing(&live, end);
+            self.frame(&[(stack, standing)], tick);
+            return;
+        }
+        // A walk (`walk_step` 0x43F0B0): before each step the stack faces it, the first step's
+        // turn animated, a later one at once (0x43F0E5); its layer by the step's direction
+        // (0x43F15E: up 3, down 7); one cycle per hex, the stack drawn along the step.
+        for (i, pair) in path.windows(2).enumerate() {
+            let [ax, ay] = self.stage.anchor(pair[0]);
+            let [bx, by] = self.stage.anchor(pair[1]);
+            if (bx > ax) != live.right {
+                if i == 0 {
+                    live = self.turn(stack, live);
+                } else {
+                    live.right = !live.right;
                 }
+            }
+            let layer = match by.cmp(&ay) {
+                Ordering::Less => WALK_UP,
+                Ordering::Greater => WALK_DOWN,
+                Ordering::Equal => STANDING,
+            };
+            if i == 0 {
+                for f in 0..live.look.count(g.move_start) {
+                    let p = Pose {
+                        layer,
+                        ..Self::posed(&live, g.move_start, f, start)
+                    };
+                    self.frame(&[(stack, p)], tick);
+                }
+            }
+            for f in 0..n {
+                let mut p = Self::posed(&live, g.moving, f, pair[0]);
+                p.offset = [share(bx - ax, f, n), share(by - ay, f, n)];
+                p.layer = layer;
+                self.frame(&[(stack, p)], step);
             }
         }
         for f in 0..live.look.count(g.move_end) {
-            self.frame(&[(stack, pose(g.move_end, f, end))], tick);
+            self.frame(&[(stack, Self::posed(&live, g.move_end, f, end))], tick);
         }
-        let standing = self.standing(end);
+        let standing = self.standing(&live, end);
         self.frame(&[(stack, standing)], tick);
-        self.stacks.entry(stack).and_modify(|s| s.hex = end);
+        live.hex = end;
+        self.stacks.insert(stack, live.clone());
+        // `stack_walk` 0x4423A2: a plain move turns back at its end.
+        if turn_back && live.right != home {
+            self.turn(stack, live);
+        }
     }
 
     /// The struck stacks' reactions; their kills taken.
@@ -826,42 +1340,51 @@ impl Player<'_> {
             } else {
                 g.hit
             };
+            let frames = live.look.count(group);
+            let live = live.clone();
             out.push(Reaction {
                 stack,
                 group,
-                frames: live.look.count(group),
+                frames,
                 died,
-                hex: live.hex,
+                base: self.standing(&live, live.hex),
             });
         }
         out
     }
 
-    /// A melee strike of `attacker` on the stacks `hit` (§7.4).
-    fn strike(&mut self, attacker: u8, hit: &[(u8, u32)]) {
+    /// A melee strike of `attacker` on the stacks `hit` (§7.4), the striker in `layer`.
+    fn strike(&mut self, attacker: u8, hit: &[(u8, u32)], layer: u8) {
         let reactions = self.reactions(hit);
-        let Some(live) = self.stacks.get(&attacker).cloned() else {
+        let Some(live) = self.live(attacker) else {
             return;
         };
+        let own = self.stage.row(live.position(live.hex));
         let target_row = reactions
             .first()
-            .map_or(self.stage.row(live.hex), |r| self.stage.row(r.hex));
-        let direction = match target_row.cmp(&self.stage.row(live.hex)) {
+            .map_or(own, |r| self.stage.row(r.base.hex));
+        let direction = match target_row.cmp(&own) {
             Ordering::Less => 0,
             Ordering::Equal => 1,
             Ordering::Greater => 2,
         };
         let group = self.stage.groups.strike[direction];
         let frames = live.look.count(group);
-        self.iterate(attacker, live.hex, (group, 0, frames, frames), &reactions);
+        self.iterate(
+            &live,
+            attacker,
+            (group, 0, frames, frames),
+            &reactions,
+            [layer, STRUCK],
+        );
     }
 
     /// A shot of `shooter` at the stacks `hit` (`shot_animation` 0x43F2C0, §7.4).
     fn shot(&mut self, shooter: u8, hit: &[(u8, u32)]) {
-        let Some(live) = self.stacks.get(&shooter).cloned() else {
+        let Some(live) = self.live(shooter) else {
             return;
         };
-        let target = hit.first().and_then(|(t, _)| self.stacks.get(t)).cloned();
+        let target = hit.first().and_then(|(t, _)| self.live(*t));
         let aim = target.map_or_else(Aim::default, |t| self.aim(&live, &t));
         let group = self.stage.groups.shoot[aim.direction];
         let n = live.look.count(group);
@@ -872,7 +1395,7 @@ impl Player<'_> {
         };
         let time = self.speed.scale(live.look.times[2] / climax.max(1));
         for f in 0..climax {
-            self.frame(&[(shooter, pose(group, f, live.hex))], time);
+            self.frame(&[(shooter, Self::posed(&live, group, f, live.hex))], time);
         }
         let step = self.speed.scale(STEP);
         if let Some(missile) = live.look.missile.as_ref().filter(|_| aim.steps > 0) {
@@ -897,30 +1420,34 @@ impl Player<'_> {
         // The shooter plays its group out after the climax frame (0x468A3D: a shooter still in
         // its group counts one frame less, its frame advancing before each draw), its standing
         // pose from the second iteration on (the reference frames, §7.9); the loop's first
-        // iterations show at once, the deadline being behind.
+        // iterations show at once, the deadline being behind. A shot's layers stay (not read).
         self.iterate(
+            &live,
             shooter,
-            live.hex,
             (group, climax, n - climax, n - climax + 1),
             &reactions,
+            [STANDING, STANDING],
         );
     }
 
     /// The shot's group (0 up, 1 straight, 2 down), its start and target points and its
     /// projectile's steps (0x469880, 0x43F4A7).
     fn aim(&self, shooter: &Live, target: &Live) -> Aim {
-        let [sx, sy] = self.stage.anchor(shooter.hex);
-        let right = shooter.side == Side::Attacker;
+        let [sx, sy] = self.stage.anchor(shooter.position(shooter.hex));
         let start = |i: usize| {
             let [x, y] = shooter.look.missile_offsets[i];
             let x = i32::from(x);
-            [if right { sx + x } else { sx - x }, sy + i32::from(y)]
+            [
+                if shooter.right { sx + x } else { sx - x },
+                sy + i32::from(y),
+            ]
         };
-        let [tx, ty] = self.stage.anchor(target.hex);
-        let tx = match (target.two_hex, target.side) {
+        // A two-hex target is aimed at between its hexes, by its facing (0x43F323).
+        let [tx, ty] = self.stage.anchor(target.position(target.hex));
+        let tx = match (target.two_hex, target.right) {
             (false, _) => tx,
-            (true, Side::Attacker) => tx + HALF_HEX,
-            (true, Side::Defender) => tx - HALF_HEX,
+            (true, true) => tx + HALF_HEX,
+            (true, false) => tx - HALF_HEX,
         };
         let ty = ty - (self.stage.layout.stack_canvas[1] - target.look.top) / 2;
         let [x, y] = start(1);
@@ -947,15 +1474,19 @@ impl Player<'_> {
         }
     }
 
-    /// The strike's iterations (`strike_animation` 0x468990): the striker plays `frames` of
-    /// `group` from frame `from` and counts `counted` for the loop's length, each reaction ends
-    /// with the loop; then everyone stands, a dead stack on its death's last frame.
+    /// The strike's iterations (`strike_animation` 0x468990): the striker `live` plays `frames`
+    /// of `group` from frame `from` and counts `counted` for the loop's length, each reaction
+    /// ends with the loop; the striker and the struck stacks drawn in `layers`. Then everyone
+    /// stands in standing's layer, a dead stack on its death's last frame among the corpses,
+    /// shown with the next frame (*provisional*: the executable moves it to the corpses' list
+    /// when its death ends).
     fn iterate(
         &mut self,
+        live: &Live,
         striker: u8,
-        hex: u8,
         (group, from, frames, counted): (u8, u32, u32, u32),
         reactions: &[Reaction],
+        [striking, struck]: [u8; 2],
     ) {
         // L = A + R − 1 (with a magic animation, at least its frames: not yet); at least A + 1,
         // so a striker without a reaction to wait for still stands at the end (the original
@@ -963,14 +1494,21 @@ impl Player<'_> {
         let longest = reactions.iter().map(|r| r.frames).max().unwrap_or(0);
         let loops = (counted + longest).saturating_sub(1).max(counted + 1);
         let tick = self.speed.scale(TICK);
+        let standing = self.standing(live, live.hex);
         for i in 0..loops {
             let mut poses = Vec::with_capacity(reactions.len() + 1);
-            let striking = if i < frames {
-                pose(group, from + i, hex)
+            let pose = if i < frames {
+                Self::posed(live, group, from + i, live.hex)
             } else {
-                self.standing(hex)
+                standing
             };
-            poses.push((striker, striking));
+            poses.push((
+                striker,
+                Pose {
+                    layer: striking,
+                    ..pose
+                },
+            ));
             for r in reactions {
                 // It reacts once the iterations left are no more than its frames.
                 let k = i64::from(i) - (i64::from(loops) - 1 - i64::from(r.frames));
@@ -981,13 +1519,40 @@ impl Player<'_> {
                 } else {
                     None
                 };
-                let p = frame.map_or_else(|| self.standing(r.hex), |f| pose(r.group, f, r.hex));
-                poses.push((r.stack, p));
+                let pose = frame.map_or(r.base, |f| Pose {
+                    group: u32::from(r.group),
+                    frame: f,
+                    ..r.base
+                });
+                poses.push((
+                    r.stack,
+                    Pose {
+                        layer: struck,
+                        ..pose
+                    },
+                ));
             }
             self.frame(&poses, tick);
         }
-        for r in reactions.iter().filter(|r| r.died) {
-            self.stacks.remove(&r.stack);
+        self.pending.push((striker, standing));
+        for r in reactions {
+            let pose = match (r.died, r.frames.checked_sub(1)) {
+                (true, Some(last)) => Pose {
+                    group: u32::from(r.group),
+                    frame: last,
+                    layer: CORPSE,
+                    ..r.base
+                },
+                (true, None) => Pose {
+                    layer: CORPSE,
+                    ..r.base
+                },
+                (false, _) => r.base,
+            };
+            self.pending.push((r.stack, pose));
+            if r.died {
+                self.stacks.remove(&r.stack);
+            }
         }
     }
 }

@@ -2,13 +2,16 @@
 //! events and their sink. A game command wraps a context's command or is the game's own; the game
 //! checks turn and phase, the context its rules (E08 T6b: `EndTurn`; T7b: the adventure's
 //! `MoveHero`; `observe` and `project` are in `observe.rs`, T8b1; `legal_commands` in
-//! `legal.rs`, T8b2a; T14b: the pending decisions and their answers, in `state.rs`).
+//! `legal.rs`, T8b2a; T14b: the pending decisions and their answers, in `state.rs`; T19a: battles,
+//! in `state/battle.rs`).
 
 use core::fmt;
 
-use h3_adventure::{AdventureCommand, AdventureCommandError, AdventureEvent, ObjectTypeId, Pos};
+use h3_adventure::{
+    AdventureCommand, AdventureCommandError, AdventureEvent, ObjectTypeId, Pos, Viewers,
+};
 use h3_content::ResourceId;
-use h3_contracts::{HeroId, PlayerId};
+use h3_contracts::{BattleResult, HeroId, PlayerId};
 
 use crate::{GameRuleset, GameState};
 
@@ -31,6 +34,9 @@ pub enum GameCommand {
     /// Answers the actor's first open decision (ADR-0017 point 6, GAM-DEC-001; E08 T14b), in its
     /// turn or not.
     Answer(Answer),
+    /// A command to the battle of the actor's first open decision, for the side it owns while that
+    /// side is to act, in its turn or not (ADR-0017 point 6, GAM-BAT-001; E08 T19a).
+    Battle(h3_battle::Command),
 }
 
 /// An answer to a pending decision (ADR-0017 point 6): increment 2's decisions are offers,
@@ -59,6 +65,15 @@ pub enum GameCommandError {
     OfferGone,
     /// The adventure context rejected the command.
     Adventure(AdventureCommandError),
+    /// An answer, but the actor's first open decision is a battle: its commands are the actor's
+    /// only legal ones (E08 T19a).
+    BattleOpen,
+    /// A battle command, but the actor's first open decision is no battle (E08 T19a).
+    NoBattle,
+    /// A battle command, but the side to act is not the actor's (E08 T19a).
+    NotYourSide,
+    /// The battle rejected the command.
+    Battle(h3_battle::CommandError),
 }
 
 impl fmt::Display for GameCommandError {
@@ -70,6 +85,10 @@ impl fmt::Display for GameCommandError {
             Self::NoDecision => f.write_str("no decision is open"),
             Self::OfferGone => f.write_str("the offer no longer stands"),
             Self::Adventure(error) => write!(f, "{error}"),
+            Self::BattleOpen => f.write_str("an open battle waits for its commands"),
+            Self::NoBattle => f.write_str("no battle is open"),
+            Self::NotYourSide => f.write_str("the side to act is not the player's"),
+            Self::Battle(error) => write!(f, "{error}"),
         }
     }
 }
@@ -100,7 +119,8 @@ pub enum GameEvent {
     /// Something happened on the adventure map.
     Adventure(AdventureEvent),
     /// A player's treasury gained a resource (GAM-RES-001): one event per resource of a gain,
-    /// in the gain's order, after the context's events.
+    /// in the gain's order, after the context's events; or a surrender's price, which the other
+    /// side's owner receives (GAM-BAT-005, E08 T19a).
     ResourceGained {
         /// The player.
         player: PlayerId,
@@ -145,8 +165,36 @@ pub enum GameEvent {
         /// Whether the player accepted.
         accepted: bool,
     },
+    /// A battle on the map started (GAM-BAT-001, E08 T19a): its heroes by side (attacker first)
+    /// and the tile it is fought at. Seen by its owners.
+    BattleStarted {
+        /// The heroes leading the sides, by side index.
+        heroes: [Option<HeroId>; 2],
+        /// The tile the battle is fought at: the defender's.
+        tile: Pos,
+        /// Its owners (the viewer alone in a projection).
+        seen_by: Viewers,
+    },
+    /// Something happened in a battle on the map (E08 T19a): a public event, seen by both owners;
+    /// a side's, by that side's owner.
+    Battle {
+        /// The battle's event.
+        event: h3_battle::Event,
+        /// Who sees it (the viewer alone in a projection).
+        seen_by: Viewers,
+    },
+    /// A battle on the map ended (GAM-BAT-001, E08 T19a): its heroes by side and the result; its
+    /// outcome's effects follow. Seen by its owners.
+    BattleEnded {
+        /// The heroes that led the sides, by side index.
+        heroes: [Option<HeroId>; 2],
+        /// How it ended.
+        result: BattleResult,
+        /// Its owners (the viewer alone in a projection).
+        seen_by: Viewers,
+    },
     /// A player's treasury paid a resource of an accepted offer's price (GAM-RES-001): one event
-    /// per resource of the price, in its order.
+    /// per resource of the price, in its order; or a surrender's price (GAM-BAT-005, E08 T19a).
     ResourcePaid {
         /// The player.
         player: PlayerId,
@@ -204,6 +252,7 @@ pub fn apply<S: Sink>(
     match command {
         GameCommand::EndTurn => state.end_turn(rules, player, sink),
         GameCommand::Answer(answer) => state.answer(rules, player, answer, sink),
+        GameCommand::Battle(command) => state.battle_command(rules, player, command, sink),
         GameCommand::Adventure(command) => {
             state.check_ready(player)?;
             let outcome = state
@@ -219,6 +268,9 @@ pub fn apply<S: Sink>(
             state.gain(player, &outcome.gains, sink);
             if let Some(offer) = outcome.offer {
                 state.open(player, offer, sink);
+            }
+            if let Some(battle) = outcome.battle {
+                state.start_battle(rules, player, battle, sink);
             }
             Ok(())
         }

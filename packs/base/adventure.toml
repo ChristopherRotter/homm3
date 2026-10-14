@@ -37,6 +37,18 @@ army_slots = 7
 # config/gameConfig.json startingStackChances [100, 88, 25] uses one roll for both (ADV-Q6).
 starting_stack_chances = [88, 25]
 
+# GAM-BAT-001 (E08 T19a): where a battle on the map is fought, by the defender's tile, in the
+# original's order (survey E04c-battlefields.md section 4, code 0x4FCE20, installation.md
+# section 7.26): underground on subterranean ground; else on a coast tile (the map's flag 0x40,
+# docs/formats/h3m.md; E04c batch 3b) on sand with the shore's battlefield; else on the tile's
+# terrain. The core's "desert" is the original's sand (terrain code 1). Boats, mines and sieges
+# come with the increments that build them; a special ground on the tile (Cursed Ground and the
+# like) with the ground kinds (E08 T20a).
+[params.battle]
+underground = "subterranean"
+coast = "desert"
+coast_battlefield = "shore"
+
 # GAM-RES-002 (E08 T13a): the starting resources by the game's difficulty, from 0 (easy) to 4
 # (impossible), a human player's and a computer player's; the engine gives every player the human
 # row (E08 decision 16: no human/computer distinction yet). Code reading (survey

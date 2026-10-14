@@ -301,7 +301,8 @@ fn players(map: &RawMap) -> Result<(Vec<PlayerSetup>, [Option<PlayerId>; 8]), Im
     Ok((players, colours))
 }
 
-/// Every tile's terrain, road and river as the ruleset's handles.
+/// Every tile's terrain, road and river as the ruleset's handles, and whether it is on the coast
+/// (since v5).
 fn tiles(map: &RawMap, rules: &GameRuleset) -> Result<Vec<TileSetup>, ImportError> {
     let (core, part) = (rules.core(), rules.adventure());
     let terrains = codes::TERRAINS.map(|key| (key, core.terrain_by_key(key)));
@@ -315,6 +316,7 @@ fn tiles(map: &RawMap, rules: &GameRuleset) -> Result<Vec<TileSetup>, ImportErro
                 terrain: lookup(&terrains, "terrain", tile.terrain, 0)?,
                 road: optional(&roads, "road", tile.road)?,
                 river: optional(&rivers, "river", tile.river)?,
+                coast: tile.flags & codes::COAST != 0,
             })
         })
         .collect()

@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc df5cd5da671f8cd9007eb7a921b6c99d75468e6bb81b0b57cfe7e10f2d5c558d # shrinks to cells = [0, 0, 0, 8, 8, 13, 8, 0, 0, 13, 13, 13, 0, 0, 8, 0, 0, 0, 0, 0, 8, 4, 13, 0, 0, 13, 8, 11, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 13, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], width = 7, height = 6, start = (6, 0), others = [], creatures = [2], faithful = false, picks = [916, 137, 621]
+cc 77e52b2d0d1dfe029c8d02e55c04135591bc17dbe162c132b4922f31a26eca8c # shrinks to cells = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], width = 3, height = 3, start = (0, 0), others = [(0, 0), (0, 1)], creatures = [0], faithful = false, picks = [], key = false

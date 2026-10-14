@@ -11,7 +11,7 @@ use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_content::{FRINGE_SHOWS_OBJECTS, Formation, ResourceId, Ruleset, TerrainId};
+use h3_content::{ContentKey, FRINGE_SHOWS_OBJECTS, Formation, ResourceId, Ruleset, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
@@ -19,7 +19,7 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 use crate::ADVENTURE_STATE_HASH_VERSION;
 use crate::command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    Offer, OfferKind, Sink, Viewers,
+    BattleStart, Combatant, Offer, OfferKind, Sink, Viewers,
 };
 use crate::fog::{on_fringe, reveal};
 use crate::movement::{DIRECTIONS, Pricing, day_points, direction};
@@ -122,6 +122,10 @@ pub struct StaticMap {
     /// visitable tile, the common case, is turned down without a lookup in [`Self::visits`]
     /// (`bench-check`, E08 T13b). Follows from the objects too.
     typed_visits: Vec<u64>,
+    /// A bit per tile index: land on the coast (the map's flag, [`crate::TileSetup::coast`]; E08
+    /// T19a), which only a battle's ground reads, so the tiles the hot paths copy stay small
+    /// (`bench-check`).
+    coast: Vec<u64>,
     hash: u64,
 }
 
@@ -153,6 +157,7 @@ impl StaticMap {
             return Err(SetupError::TileCount(setup.tiles.len()));
         }
         let mut tiles = Vec::with_capacity(setup.tiles.len());
+        let mut coast = vec![0; setup.tiles.len().div_ceil(64)];
         for (index, tile) in setup.tiles.iter().enumerate() {
             if usize::from(tile.terrain.raw()) >= core.terrains().len() {
                 return Err(SetupError::UnknownTerrain(index));
@@ -170,6 +175,9 @@ impl StaticMap {
                 blocked: false,
                 visitable: false,
             });
+            if tile.coast {
+                coast[index / 64] |= 1 << (index % 64);
+            }
         }
         let mut map = Self {
             width: setup.width,
@@ -179,6 +187,7 @@ impl StaticMap {
             objects: Vec::with_capacity(setup.objects.len()),
             visits: BTreeMap::new(),
             typed_visits: vec![0; setup.tiles.len().div_ceil(64)],
+            coast,
             hash: 0,
         };
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
@@ -343,6 +352,13 @@ impl StaticMap {
         &self.tiles
     }
 
+    /// Whether the tile at `pos` is land on the coast (the map's flag; E08 T19a); a tile off the
+    /// map is not.
+    pub fn is_coast(&self, pos: Pos) -> bool {
+        self.index(pos)
+            .is_some_and(|index| self.coast[index / 64] >> (index % 64) & 1 == 1)
+    }
+
     /// The tile at `pos`, if it is on the map.
     pub fn tile(&self, pos: Pos) -> Option<&StaticTile> {
         self.index(pos).map(|index| &self.tiles[index])
@@ -376,18 +392,19 @@ impl StaticMap {
 }
 
 impl CanonicalHash for StaticMap {
-    /// Width, height, levels; every tile (terrain, road, river); every object (anchor, blocked
-    /// and visitable masks; since v4 its object type and contents). The per-tile object flags
-    /// follow from the objects.
+    /// Width, height, levels; every tile (terrain, road, river; since v8 whether it is on the
+    /// coast); every object (anchor, blocked and visitable masks; since v4 its object type and
+    /// contents). The per-tile object flags follow from the objects.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u16(self.width);
         h.write_u16(self.height);
         h.write_u8(self.levels);
         h.write_len(self.tiles.len());
-        for tile in &self.tiles {
+        for (index, tile) in self.tiles.iter().enumerate() {
             tile.terrain.hash_into(h);
             tile.road.hash_into(h);
             tile.river.hash_into(h);
+            h.write_bool(self.coast[index / 64] >> (index % 64) & 1 == 1);
         }
         h.write_len(self.objects.len());
         for object in &self.objects {
@@ -426,6 +443,23 @@ pub(crate) struct StepVisit<'p> {
     pub(crate) pass: bool,
     pub(crate) from_above: bool,
     pub(crate) effect: Effect<'p>,
+}
+
+/// What a step meets that ends the move (ADV-OBJ-003): an object's visit, or another player's
+/// hero, by index among the heroes on the map, visited from the tile before (GAM-BAT-004, E08
+/// T19a).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Meets<'p> {
+    Object(StepVisit<'p>),
+    Hero(usize),
+}
+
+impl Meets<'_> {
+    /// Whether the hero steps onto the tile: an entered object's, not a neighbour-visited
+    /// object's nor another hero's.
+    fn enters(self) -> bool {
+        matches!(self, Self::Object(visit) if visit.mode == Visit::Enter)
+    }
 }
 
 /// A hero on the adventure map (ADR-0016 point 3): its id, owner, tile, army and movement points.
@@ -673,18 +707,18 @@ impl AdventureState {
             }
             let direction =
                 direction(at, next).ok_or(AdventureCommandError::NotNeighbour { step })?;
-            let (to, visited) = self.check_step(part, player, id, (at, next), direction, step)?;
+            let (to, met) = self.check_step(part, player, id, (at, next), direction, step)?;
             let cost = pricing.step(&from, &to, direction % 2 == 1, points);
             let left = points
                 .checked_sub(cost)
                 .ok_or(AdventureCommandError::TooFewPoints { step, cost, points })?;
             points = pricing.left_after(&to, left);
-            if visited.is_none_or(|v| v.mode == Visit::Enter) {
+            if met.is_none_or(Meets::enters) {
                 (at, from) = (next, to);
             }
-            visit = visited;
+            visit = met;
         }
-        let stays = visit.is_some_and(|v| v.mode == Visit::Neighbour);
+        let stays = visit.is_some_and(|met| !met.enters());
         let walked = &path[..path.len() - usize::from(stays)];
         let hero = &mut self.heroes[index];
         hero.pos = at;
@@ -709,9 +743,92 @@ impl AdventureState {
             });
             from = to;
         }
-        Ok(visit.map_or_else(AdventureOutcome::default, |visit| {
-            self.visit(core, (player, id), visit, sink)
-        }))
+        Ok(match visit {
+            None => AdventureOutcome::default(),
+            Some(Meets::Object(visit)) => self.visit(core, (player, id), visit, sink),
+            Some(Meets::Hero(defender)) => AdventureOutcome {
+                battle: Some(self.battle_start(part, index, defender)),
+                ..AdventureOutcome::default()
+            },
+        })
+    }
+
+    /// The battle the hero at `attacker` starts by visiting the hero at `defender` (indices among
+    /// the heroes on the map; GAM-BAT-004, E08 T19a): both sides as they stand, fought at the
+    /// defender's tile ([`Self::battle_ground`]).
+    fn battle_start(
+        &self,
+        part: &AdventureRuleset,
+        attacker: usize,
+        defender: usize,
+    ) -> BattleStart {
+        let side = |hero: &HeroOnMap| Combatant {
+            hero: hero.id,
+            owner: hero.owner,
+            army: hero.army.clone(),
+            formation: hero.formation,
+        };
+        let tile = self.heroes[defender].pos;
+        let (terrain, battlefield) = self.battle_ground(part, tile);
+        BattleStart {
+            attacker: side(&self.heroes[attacker]),
+            defender: side(&self.heroes[defender]),
+            tile,
+            terrain,
+            battlefield,
+        }
+    }
+
+    /// Where a battle at `pos` is fought (GAM-BAT-001, E08 T19a), in the original's order (survey
+    /// `E04c-battlefields.md` §4; the ruleset part's [`crate::BattleTerrains`]): underground on its
+    /// terrain, else on a coast tile (the map's flag) on the coast's terrain and battlefield, else
+    /// on the tile's terrain without a special battlefield. Without the part's battle terrains,
+    /// always the last.
+    // rule: GAM-BAT-001
+    pub fn battle_ground(
+        &self,
+        part: &AdventureRuleset,
+        pos: Pos,
+    ) -> (TerrainId, Option<ContentKey>) {
+        match part.params().battle_terrains() {
+            Some(battle) if pos.level > 0 => (battle.underground, None),
+            Some(battle) if self.map.is_coast(pos) => {
+                (battle.coast, Some(battle.coast_battlefield.clone()))
+            }
+            _ => (self.map.at(pos).terrain, None),
+        }
+    }
+
+    /// Applies a battle's outcome to its heroes on the map (ADR-0017 point 11; GAM-BAT-002,
+    /// GAM-BAT-003, E08 T19a), in the order given: a hero with an army keeps it as its army (its
+    /// survivors by slot: at least one stack, the caller's check), a hero without one leaves the
+    /// map, told to its owner and the players that see its tile (ADV-FOG-004) as
+    /// [`AdventureEventKind::HeroRemoved`]. Infallible: a hero not on the map is skipped.
+    // rule: GAM-BAT-002, GAM-BAT-003
+    pub fn end_battle<S: Sink>(
+        &mut self,
+        core: &Ruleset,
+        heroes: &[(HeroId, Option<&[ArmyStack]>)],
+        sink: &mut S,
+    ) {
+        for &(id, army) in heroes {
+            let Ok(index) = self.heroes.binary_search_by_key(&id, |h| h.id) else {
+                continue;
+            };
+            match army {
+                Some(army) => self.heroes[index].army = army.to_vec(),
+                None => {
+                    let hero = self.heroes.remove(index);
+                    sink.emit(AdventureEvent {
+                        kind: AdventureEventKind::HeroRemoved {
+                            hero: id,
+                            pos: hero.pos,
+                        },
+                        seen_by: self.viewers(core, hero.owner, hero.pos),
+                    });
+                }
+            }
+        }
     }
 
     /// An object's visit by `player`'s hero `hero`, by what its kind does ([`Effect`]). A pickup
@@ -1035,9 +1152,23 @@ impl AdventureState {
         (from, pos): (Pos, Pos),
         direction: usize,
         step: usize,
-    ) -> Result<(StaticTile, Option<StepVisit<'p>>), AdventureCommandError> {
+    ) -> Result<(StaticTile, Option<Meets<'p>>), AdventureCommandError> {
         if self.map.tile(pos).is_some() && !self.is_explored(player, pos) {
             return Err(AdventureCommandError::Unexplored { step });
+        }
+        // ADR-0016 point 4: another player's hero is visited from the neighbouring tile, and the
+        // visit is a battle at once (E08 T19a). The visit concerns the hero, not an object under
+        // it: only leaving `from` across its top is checked (ADV-OBJ-004).
+        // rule: GAM-BAT-004
+        if let Some(other) = self
+            .heroes
+            .iter()
+            .position(|h| h.pos == pos && h.owner != player)
+        {
+            if DIRECTIONS[direction].1 == -1 && self.closed_above(part, from) {
+                return Err(AdventureCommandError::FromAbove { step });
+            }
+            return Ok((self.live(pos, self.map.at(pos)), Some(Meets::Hero(other))));
         }
         let tile = self
             .check_tile(part, pos, Some(mover))
@@ -1055,7 +1186,7 @@ impl AdventureState {
             return Ok((tile, None));
         }
         self.visit_at(part, player, pos)
-            .map(|object| (tile, (!object.pass).then_some(object)))
+            .map(|object| (tile, (!object.pass).then_some(Meets::Object(object))))
             .ok_or(AdventureCommandError::Visit { step })
     }
 
