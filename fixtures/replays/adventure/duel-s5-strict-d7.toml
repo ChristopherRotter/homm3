@@ -65,7 +65,7 @@ packs = [
 ],
 ]
 profile = "base:strict-fixed"
-ruleset_hash = "0x126bba4c6b222281"
+ruleset_hash = "0x42dbef13597941ca"
 adventure_ruleset_hash = "0x748b4cc7f7e90713"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1

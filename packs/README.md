@@ -207,6 +207,7 @@ errors:
 | `no_distance_penalty` | — | its shots have no distance penalty (BAT-RNG-002) |
 | `no_wall_penalty` | — | since v37: its shots are not halved by a town's walls (BAT-SIE-008) |
 | `wall_shots` | `level` (0..=3) | since v39: commanded for the attacker in a siege it may shoot the walls with this Ballistics level's record, whatever its shots and neighbours (requires flag `catapult`, which requires it, war machines excepted; the Cyclops 1, the Cyclops King 2; BAT-SIE-013) |
+| `turret` | — | since v40 (E04c T7): a town's turret (the Arrow Tower): the battle sets the first war machine with it up for a town's defender, the keep with a Citadel, the towers too with a Castle; it shoots first every round, a draw of its damage per creature times the target's protections; immune to every spell, never a target (requires flags `war_machine` and `shooter`, not `catapult`; never listed in a setup; BAT-SIE-016 to BAT-SIE-019) |
 | `area_shot` | `effect` (`fireball`/`death_cloud`) | its shots also hit the stacks around the target (requires flag `area_attack`; BAT-RNG-004) |
 | `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine only (requires flag `war_machine`; First Aid Tent): on its turn heals the top creature of a random hurt stack of its own side (also one the other side controls, BAT-MAG-026) by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
 | `ammo_supply` | — | war machine only (requires flag `war_machine`; Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
@@ -743,7 +744,10 @@ a wall's hex one of `walls`, the gate's `gate`; at most 8), `missed` (where a mi
 by index), `automatic` (the automatic Catapult's walls) and `fallback` (its next targets),
 `castle_bonus` (hit points a Castle adds to each wall) and `ballistics` (four records, none to
 Expert: `{ hit = [keep, tower, gate, wall] percent, shots, damage = [the chances of 0, 1, 2] }`,
-each summing to 100).
+each summing to 100). Since E04c T7 (pack format v40, battle part hash v5) the towers' and the
+keep's targets hold their turrets, `{ kind = "keep", turret = 254 }` (an off-field position, each
+its own, at most three; BAT-SIE-016, `installation.md` §7.30), and `turret_count` is the keep's
+least creature count (4; `Siege.structures` adds to it).
 
 **Hero parameters** (`[hero_params]`, Tier 2, E04a T4a; at most one enabled pack provides them,
 a ruleset without them cannot validate hero details): `primary_min` (four values, attack,
