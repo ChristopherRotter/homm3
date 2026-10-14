@@ -2281,7 +2281,6 @@ numeric  = "integer"
   retrieved  = "2026-10-03"
   confidence = "medium"
 
-
 [[rule]]
 id       = "BAT-MAG-009"
 title    = "A timed spell on a stack"
@@ -4235,7 +4234,7 @@ numeric  = "integer"
 id       = "BAT-SIE-009"
 title    = "The attacker's Catapult"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "In a battle at a town with a Fort, Citadel or Castle the attacker led by a hero gets a Catapult, set up by the battle (the setup never lists one: SetupError::InvalidWarMachine): the ruleset's first creature with the flags war_machine and catapult (the original's creature 145: two hexes, a shooter, 1 000 hit points, speed 0), one creature in slot 16 + 3, on the siege field's catapult hex (119, its other hex 120). No hero test of a Catapult artifact (every hero carries one). It is a war machine (BAT-WAR-001): it never moves, attacks or shoots at stacks; it acts only by shooting the walls (BAT-SIE-011). Without a hero, without a fort, or with no such creature in the ruleset there is none."
 numeric  = "integer"
 
@@ -4258,11 +4257,17 @@ numeric  = "integer"
   retrieved  = "2026-10-14"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3d.md (SoD 4.0 Complete under Wine without HD, run by an agent on the capture harness in hot seat, values read from memory, 2026-10-14): in A, B and E the attacker's hero got the Catapult (creature 145) at position 119, after its army"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-010"
 title    = "The wall-shot targets and their hit points"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A town with a fort has the siege field's wall-shot targets (the original's eight, in index order: 0 the upper tower, 1 the upper wall (wall hex 29), 2 the mid-upper wall (78), 3 the gate (96), 4 the mid-lower wall (130), 5 the lower wall (182), 6 the lower tower, 7 the keep), each of a kind (keep, tower, gate, wall) that picks its column of the Ballistics record (BAT-SIE-014). The fort level sets them up: the walls and the gate from a Fort, the keep from a Citadel, the towers with a Castle. Each starts with its town record's hit points (every town of the original: 2 each, WALLS.TXT), a Castle's walls (the four of kind wall) the siege field's castle bonus more (+1); the targets the fort level does not set up keep their hit points too (Earthquake draws them, BAT-SIE-015, BAT-QUIRK-22). A target stands while it is set up and has hit points left; a hit takes its damage from them, at least 0, and at 0 it is destroyed (BAT-SIE-012). The targets' hit points and the gate's destruction are public (the observation)."
 numeric  = "integer"
 
@@ -4283,11 +4288,17 @@ numeric  = "integer"
   retrieved  = "2026-10-14"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3d.md (as BAT-SIE-009's): at the start every one of the eight targets' parts held 2 hit points (a Citadel in A and E, a Fort in B), the absent towers' too; a part never went below 0"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-011"
 title    = "The Catapult's turn"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "The Catapult acts in the round's order before every other stack of its phase (the turrets join in T7). With no standing target its turn passes (it defends). Its side's hero commands it with a Ballistics level (BattleHero.war_machines.catapult, HER-BAT-018): the side then shoots the walls with Command::ShootWall at any standing target (the only legal command besides the side's hero's), with that level's Ballistics record (BAT-SIE-014). Without the command the battle aims for it, with no Ballistics (the record of level 0): at the weakest standing wall of the siege field's automatic list (1, 2, 4, 5: the fewest hit points; a tie drawn with random(1, n) among the tied in that order), else at the first standing target of the fallback list (3 the gate, 7 the keep, 0 and 6 the towers), else at the first standing target by index; then it shoots as BAT-SIE-014 (D-13, the code: BAT-Q43). Its shots use no ammunition. The automatic aim with Ballistics that the original's computer player and hidden battles use (the gate first) is the agent's choice here."
 numeric  = "integer"
 
@@ -4309,11 +4320,17 @@ numeric  = "integer"
   retrieved  = "2026-10-14"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3d.md (as BAT-SIE-009's): A, without Ballistics: one shot a round, every landing the weakest standing wall or its miss list's nearest, the gate only after the four walls fell (round 7), the keep after the gate (rounds 8, 9), then the turns passed (D-13 as the code); B, Advanced Ballistics: the game waited for the agent's aim, two shots a turn"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-012"
 title    = "A destroyed wall and a destroyed gate"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A wall-shot target at 0 hit points is destroyed (event WallDestroyed). A destroyed wall opens its wall hex (29, 78, 130 or 182; D-11: the mid-upper wall's is 78, its aim hex 62 stays a wall, as in the code and VCMI): stacks stand on, walk through and land on it, and the shot's line passes it (BAT-SIE-008). A destroyed gate stands open for both sides for the rest of the battle: its and the drawbridge's hexes block no stack, the bridges are no moat hexes (BAT-SIE-004), the line passes the gate's hex, and it never closes or opens again (no GateOpened, GateClosed). A destroyed tower or keep has no further effect until the turrets come (T7)."
 numeric  = "integer"
 
@@ -4335,6 +4352,12 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Siege"
   retrieved  = "2026-10-13"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3d.md (as BAT-SIE-009's): A, the mid-upper wall destroyed: a walk onto 62 refused, onto 78 done (D-11); the gate destroyed: its state 0 to the end, a defender's walk over 96 and 95 to 94 without a stop or the moat's damage"
+  retrieved  = "2026-10-14"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-SIE-013"
@@ -4367,7 +4390,7 @@ numeric  = "integer"
 id       = "BAT-SIE-014"
 title    = "A wall shot"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A wall shot at an aimed target fires the Ballistics record's shots (the siege field's table by level: none 1 shot, Basic 1, Advanced 2, Expert 2). Each shot: first the damage, random(1, 100) less the record's chance of 0 at most 0 gives 0, less the chance of 1 at most 0 gives 1, else 2 (none 10/60/30 %, Basic and Advanced 0/50/50 %, Expert 0/0/100 %); then the hit, random(1, 100) above the record's chance for the aimed target's kind (keep, tower, gate, wall: none 5/10/25/50 %, Basic and Advanced 7/15/30/60 %, Expert 10/20/40/75 %, D-6) misses, and the shot lands on the nearest other standing wall of the siege field's miss list (1, 2, 5, 4) by the difference of the target indices, a tie decided by random(1, 100) at most 50 for the first (D-12, the code: BAT-Q43), or on the aimed target if no other wall stands. The target landed on takes the damage (BAT-SIE-010; event WallShot with the aimed and the hit target and the damage). After a shot with shots left, a fallen aim moves to the nearest standing target of all eight (ties as above); with none the action ends."
 numeric  = "integer"
 
@@ -4395,11 +4418,17 @@ numeric  = "integer"
   retrieved  = "2026-10-13"
   confidence = "low"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3d.md (as BAT-SIE-009's): B, Advanced Ballistics: misses landed on the nearest other standing wall (aimed at 5, on 4; at 4, on 2), a second shot after its aim fell went to the nearest standing target (1 to 2, 5 to 4, 3 to 4); A's landings all among the code's (D-12 as the code)"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-015"
 title    = "Earthquake"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A spell with the earthquake effect (pack format v38) may be cast by either side's hero in a battle at a town with a fort (D-15, the code: BAT-Q43; elsewhere CastError), without a target, whatever stands. Its hits are the spell's effect value for the caster's mastery (Earthquake 2, 2, 3, 4), no power. For each hit: n = the targets whose hit points exceed the hits already drawn on them (none ends the draw); random(1, n) picks the n-th target, in index order, whose hit points are above 0, so a target already doomed can be drawn again and the last in the order can be spared (D-14, the code). The targets the fort level did not set up are drawn too (they soak hits; BAT-QUIRK-22). Then each drawn target takes its hits as damage, 1 each (BAT-SIE-010; event WallQuaked); a destroyed absent turret harms no stack (BAT-QUIRK-22)."
 numeric  = "integer"
 
@@ -4421,3 +4450,9 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/other.json"
   retrieved  = "2026-10-14"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3d.md (as BAT-SIE-009's): E, Expert Earthquake by the attacker and the defender (D-15): four hits each, the absent towers drawn too, a part already doomed drawn again (three hit points for four hits, D-14), and the absent towers' destruction marked the defender's first stack dead (S-08, the original's bug; the engine harms no stack, BAT-QUIRK-22)"
+  retrieved  = "2026-10-14"
+  confidence = "high"

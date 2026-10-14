@@ -458,7 +458,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Intended/expected behavior: the absent parts stay in the draw and soak hits (so the real walls keep the original's odds), and their destruction harms no stack.
 - Impact: gameplay-altering (a defending stack lost to a spell that hits walls); an exploit for the attacker
 - Community status: known bug (the wiki's Earthquake page), fixed in HotA
-- Sources: original-data (`installation.md` §7.29), wiki (Earthquake)
+- Sources: original-data (`installation.md` §7.29), wiki (Earthquake), observation (`experiments/results/E04c-batch-3d.md` E: the defender's Earthquake destroyed both absent towers of a Citadel and its first stack was marked dead)
 - Flag: none
 - Defaults: n/a
 - Regression test: `crates/h3-battle/src/tests/walls.rs`, `an_absent_turret_quaked_down_harms_no_stack`

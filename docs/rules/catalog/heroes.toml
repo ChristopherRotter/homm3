@@ -617,6 +617,12 @@ numeric  = "integer"
   retrieved  = "2026-10-14"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3d.md B (SoD 4.0 Complete under Wine, run by an agent, 2026-10-14): a hero with Advanced Ballistics aimed the Catapult itself, two shots a turn; with Basic one (the spec's earlier build); without the skill (A, E) it shot on its own"
+  retrieved  = "2026-10-14"
+  confidence = "high"
+
 [[rule]]
 id       = "HER-MAN-001"
 title    = "A hero's maximum spell points"

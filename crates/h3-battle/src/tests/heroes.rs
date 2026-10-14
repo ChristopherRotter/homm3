@@ -11,8 +11,8 @@ use h3_content::{
     SpellId, SpellScope,
 };
 use h3_contracts::{
-    BallistaControl, BattleEffect, BattleHero, DamageBonuses, MAX_BATTLE_EFFECTS, StatOp,
-    TentControl,
+    BallistaControl, BattleEffect, BattleHero, CatapultControl, DamageBonuses, MAX_BATTLE_EFFECTS,
+    StatOp, TentControl,
 };
 
 use super::support::*;
@@ -291,6 +291,14 @@ fn unsound_heroes_are_rejected() {
                 });
             },
             HeroError::BallistaControl,
+        ),
+        (
+            |_, h| h.war_machines.catapult = Some(CatapultControl { level: 0 }),
+            HeroError::CatapultControl,
+        ),
+        (
+            |_, h| h.war_machines.catapult = Some(CatapultControl { level: 4 }),
+            HeroError::CatapultControl,
         ),
         (
             |_, h| {

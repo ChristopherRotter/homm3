@@ -13,7 +13,7 @@ Sources: `wiki` = https://heroes.thelazy.net (retrieved 2026-10-03; pages named 
 | Status | Entries |
 |---|---|
 | confirmed by original data | S-05 (the exe's creature table holds the bugged levels; ledger BAT-QUIRK-19, fix-optional, a data quirk since E04b T8e) |
-| exploit-fix, no confirmation needed (never implemented) | S-08 (confirmed by code reading, BAT-QUIRK-22), S-14, S-20 |
+| exploit-fix, no confirmation needed (never implemented) | S-08 (confirmed by code reading and batch 3d, BAT-QUIRK-22), S-14, S-20 |
 | batch 1a (E04a), evaluated 2026-10-03 | confirmed: S-01 (ledger Q-0004), S-02 with Q23 (Q-0005, all damage rates), S-03 for Roland only (Q-0006); not reproduced in SoD: S-04 (dropped) |
 | to confirm in an E04b or E04c batch | S-06, S-07, S-11 (code reading incomplete, Q53), S-15, S-17 (Berserk's 255 rounds read, the data in every profile) (confirmed by code reading: S-19 as Q-0007, S-16 as Q-0009, S-10 as Q-0011, S-13 as Q-0012, S-12 as BAT-QUIRK-13; S-09 the rule in every profile, Q53) |
 | not reproducible in SoD by code reading | S-18 (E04b T7b2a, BAT-Q11: no caster's Magic Arrow is low enough) |

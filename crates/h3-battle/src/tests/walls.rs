@@ -200,6 +200,44 @@ fn a_led_attacker_brings_the_catapult_to_a_fort() {
             side: BattleSide::Attacker
         }
     );
+    // Its place taken: no room; a ruleset without a Catapult creature sets none up.
+    let taken = BattleSetup {
+        obstacles: blocked(vec![120]),
+        ..listed.clone()
+    };
+    let taken = BattleSetup {
+        war_machines: [vec![], vec![]],
+        ..taken
+    };
+    assert_eq!(
+        BattleState::new(&r, &taken, 1).unwrap_err(),
+        SetupError::NoRoom {
+            side: BattleSide::Attacker,
+            slot: CATAPULT_SLOT
+        }
+    );
+    let without = ruleset_from(
+        "t:faithful",
+        |_| {},
+        |core, battle| {
+            core.creatures.retain(|c| c.key.name() != "catapult");
+            battle.creatures.retain(|c| c.key.name() != "catapult");
+        },
+    );
+    let s = BattleState::new(
+        &without,
+        &BattleSetup {
+            war_machines: [vec![], vec![]],
+            ..BattleSetup {
+                heroes: [Some(hero(&without)), None],
+                siege: Some(town(&without, FortLevel::Fort)),
+                ..setup(&without, &[(0, "fixed", 5)], &[(0, "fixed", 5)])
+            }
+        },
+        1,
+    )
+    .unwrap();
+    assert_eq!(catapult(&s), None);
 }
 
 // covers: BAT-SIE-009, BAT-SIE-011
@@ -337,7 +375,11 @@ fn without_ballistics_the_catapult_aims_at_the_weakest_wall() {
             let mut t = s.clone();
             set_parts(&mut t, parts);
             t.rng = Rng::for_stream(seed, StreamId::BATTLE);
-            out.push(crate::siege::automatic_aim(&mut t, &r));
+            let town = t.siege.unwrap();
+            out.push(crate::siege::automatic_aim(
+                &mut t,
+                (town, r.siege_field().unwrap()),
+            ));
         }
         out.sort_unstable();
         out.dedup();
@@ -557,7 +599,17 @@ fn an_attacker_s_cyclops_shoots_the_walls_without_shots() {
         shots(&act(&mut k, &r, Command::ShootWall { part: 1 }).unwrap()).len(),
         2
     );
-    // Not for the defender, not outside a town with a fort, not for other stacks.
+    // Not for the defender, not outside a town with a fort, not for other stacks (one with
+    // other abilities either).
+    let (mut o, _) = siege(
+        &r,
+        (FortLevel::Fort, [None, None]),
+        &[("sniper", 5, 3, 5)],
+        &[("fixed", 5, 13, 5)],
+        |_| {},
+    );
+    activate(&mut o, 0);
+    assert!(wall_shots(&legal(&o, &r)).is_empty());
     let (mut d, _) = siege(
         &r,
         (FortLevel::Fort, [None, None]),
@@ -660,7 +712,12 @@ fn shots_roll_their_damage_and_hit_by_the_ballistics_record() {
         let mut t = s.clone();
         t.rng = Rng::for_stream(seed, StreamId::BATTLE);
         let mut events = Vec::new();
-        shoot_walls(&mut t, &r, (StackId(0), 3, 0), &mut events);
+        shoot_walls(
+            &mut t,
+            r.siege_field().unwrap(),
+            (StackId(0), 3, 0),
+            &mut events,
+        );
         let shot = shots(&events);
         assert_eq!(shot.len(), 1);
         let (_, aimed, part, d) = shot[0];
@@ -686,7 +743,12 @@ fn shots_roll_their_damage_and_hit_by_the_ballistics_record() {
         set_parts(&mut t, [2, 2, 2, 2, 2, 2, 2, 2]);
         t.rng = Rng::for_stream(seed, StreamId::BATTLE);
         let mut events = Vec::new();
-        shoot_walls(&mut t, &r, (StackId(0), 2, 3), &mut events);
+        shoot_walls(
+            &mut t,
+            r.siege_field().unwrap(),
+            (StackId(0), 2, 3),
+            &mut events,
+        );
         let shot = shots(&events);
         assert_eq!(shot.len(), 2);
         assert!(shot.iter().all(|&(_, _, _, d)| d == 2));
@@ -701,7 +763,12 @@ fn shots_roll_their_damage_and_hit_by_the_ballistics_record() {
     let mut t = s.clone();
     set_parts(&mut t, [0, 0, 1, 0, 0, 0, 0, 0]);
     let mut events = Vec::new();
-    shoot_walls(&mut t, &r, (StackId(0), 2, 3), &mut events);
+    shoot_walls(
+        &mut t,
+        r.siege_field().unwrap(),
+        (StackId(0), 2, 3),
+        &mut events,
+    );
     assert_eq!(shots(&events).len(), 1);
 }
 
@@ -723,7 +790,8 @@ fn earthquake_draws_as_the_original() {
         set_parts(&mut t, parts);
         t.rng = Rng::for_stream(seed, StreamId::BATTLE);
         let mut events = Vec::new();
-        earthquake(&mut t, hits, &mut events);
+        let town = t.siege.unwrap();
+        earthquake(&mut t, town, hits, &mut events);
         let hit: Vec<(u8, u8)> = events
             .iter()
             .filter_map(|e| match e.kind {
@@ -834,7 +902,8 @@ fn an_absent_turret_quaked_down_harms_no_stack() {
     let mut u = s.clone();
     set_parts(&mut u, [2, 0, 0, 0, 0, 0, 2, 2]);
     let mut events = Vec::new();
-    earthquake(&mut u, 8, &mut events);
+    let town = u.siege.unwrap();
+    earthquake(&mut u, town, 8, &mut events);
     // The code's draw can spare the keep, the last in the order (D-14); the turrets fall or not,
     // no stack is touched.
     assert!(u.siege.unwrap().parts.iter().sum::<u8>() < 6);

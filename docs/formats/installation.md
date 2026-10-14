@@ -2643,3 +2643,13 @@ marks dead the stack its record names, an index among the defender's stacks: wit
 up there (the record's index not read, presumably 0) the defender's first stack, which disappears
 and stops acting (the wiki's bug, fixed in HotA). The engine keeps the draw and the soaked hits
 and harms no stack (exploit-fix, BAT-Q43).
+
+**Observed** (batch 3d, `experiments/results/E04c-batch-3d.md`, run by an agent under Wine,
+2026-10-14): the Catapult at 119; every part at 2 hit points, the absent turrets' too; without
+Ballistics every landing was the weakest standing wall or its miss list's nearest, the gate only
+after the four walls, the keep after the gate (D-13); under Advanced Ballistics the game waited
+for the aim, misses landed on the nearest other wall and a second shot whose aim had fallen went to
+the nearest standing target (D-12); a destroyed mid-upper wall opened 78, not 62 (D-11); a
+destroyed gate stayed 0 and let a walker pass 95 without a stop or damage; Earthquake cast by both
+sides (D-15) drew the absent towers, wasted a hit on a doomed part (D-14), and the absent towers'
+destruction marked the defender's first stack dead (S-08).

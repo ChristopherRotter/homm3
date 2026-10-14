@@ -145,31 +145,35 @@ follows the result (the adventure lane).
   at hex 62 and its destruction opens wall hex 78, its record's index 4; `vcmi`: `OVER_GATE` at 78,
   62 indestructible). **No dispute:** the session's question (BAT-Q43) read the index as the hex
   and asked about 62 against 78; corrected the same day, the code and VCMI agree on 78. The user's
-  answer, the code, stands.
+  answer, the code, stands. **Batch 3d:** 78 opened, 62 stayed a wall.
 - **D-12 A missed shot** (T6; `code` 0x445EC0: the nearest other standing wall of 1, 2, 5, 4 by the
   difference of the target indices, a tie by `random(1, 100)` ≤ 50, the aimed target if no other
   wall stands; `vcmi`: a random standing wall, the gate only without walls, the towers and keep
   only without either). Both roll the damage (0, 1, 2) apart from the hit. Recommendation: the
-  code. **The user (BAT-Q43): the code.**
+  code. **The user (BAT-Q43): the code.** **Batch 3d:** every miss landed on the nearest other
+  standing wall (two of them where VCMI could have picked another).
 - **D-13 The automatic Catapult's aim** (T6; `code` 0x473C00: the weakest standing wall, ties at
   random, then the gate, the keep, the upper and the lower tower; `vcmi`: not read, its automatic
   shot names no target and lands like a miss; the `wiki`: only that Ballistics gives control).
   Batch 3c's six automatic shots hit walls only (both readings allow it). Recommendation: the code;
-  a confirmation row. **The user (BAT-Q43): the code.**
+  a confirmation row. **The user (BAT-Q43): the code.** **Batch 3d confirms it:** nine shots, the
+  gate only after the four walls fell, the keep after the gate.
 - **D-14 Earthquake's draw** (T6; `code` 0x5A7C80: per hit `n` = the targets with hit points above
   their hits drawn, then the n-th target with hit points above 0, so a doomed target can be drawn
   again and the last ones spared; `vcmi`: uniform among the parts standing at the cast, each hit
   1; the `wiki`: "random walls/arrow towers"). Recommendation: the code (not a quirk: the odds
-  only). **The user (BAT-Q43): the code.**
+  only). **The user (BAT-Q43): the code.** **Batch 3d:** the absent towers were drawn and a doomed
+  part drawn again (three hit points for four hits), as the code.
 - **D-15 The defender's Earthquake** (T6; `code` 0x59ED29: any side in a battle with a fort; `vcmi`:
   refused to the defender (its smart target); the `wiki`: silent). Recommendation: the code. **The
-  user (BAT-Q43): the code.**
+  user (BAT-Q43): the code.** **Batch 3d:** the defender's hero cast it.
 - **S-08 Earthquake disables the first defending stack** (exploit-fix, `E04-quirks.md`).
   **Confirmed by the code** (T6, §7.29): Earthquake's draw has no fort test, so at a Fort or
   Citadel the absent towers and keep (2 hit points from `WALLS.TXT`) are drawn too, and an absent
   turret's destruction marks dead the stack its turret record names, the defender's first. **The
   user (BAT-Q43):** the fix keeps the absent parts in the draw (they soak hits, so the real walls
-  keep the original's odds) and harms no stack (ledger BAT-QUIRK-22).
+  keep the original's odds) and harms no stack (ledger BAT-QUIRK-22). **Observed in batch 3d:**
+  the defender's own Earthquake destroyed both absent towers and its first stack was marked dead.
 - **S-06, S-07** (`E04-quirks.md`: the towers) are classified with T7.
 
 ## 5. Experiments

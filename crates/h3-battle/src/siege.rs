@@ -10,7 +10,9 @@
 //! Teleport's and the summon's limits) come with E04c T7 and T8 (BAT-STUB-2).
 
 use h3_content::SpellId;
-use h3_content_battle::{Ability, BattleRuleset, BattlefieldId, MAX_WALL_TARGETS, WallKind};
+use h3_content_battle::{
+    Ability, BattleRuleset, BattlefieldId, MAX_WALL_TARGETS, SiegeField, WallKind,
+};
 use h3_contracts::{BattleSetup, BattleSide, FortLevel, Moat};
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
 use h3_kernel::{CanonicalHash, StateHasher};
@@ -638,10 +640,10 @@ pub(crate) fn commanded_wall_shots(
 /// tie is replaced with one roll of `random(1, 100)` ≤ 50, in the candidates' order), `from`
 /// itself excluded (the original's 0x445EC0, 0x445D30).
 pub(crate) fn nearest(state: &mut BattleState, candidates: &[u8], from: u8) -> Option<u8> {
-    let siege = state.siege?;
+    let siege = state.siege;
     let mut best: Option<(u8, u8)> = None;
     for &c in candidates {
-        if c == from || !siege.stands(c) {
+        if c == from || !siege.is_some_and(|s| s.stands(c)) {
             continue;
         }
         let d = c.abs_diff(from);
@@ -662,8 +664,10 @@ pub(crate) fn nearest(state: &mut BattleState, candidates: &[u8], from: u8) -> O
 /// weakest standing wall of the field's `automatic` list (the fewest hit points, a tie drawn with
 /// `random(1, n)` in the list's order); else the first standing target of `fallback`, else of
 /// all targets in order; none when nothing stands.
-pub(crate) fn automatic_aim(state: &mut BattleState, ruleset: &BattleRuleset) -> Option<u8> {
-    let (siege, field) = state.siege.zip(ruleset.siege_field())?;
+pub(crate) fn automatic_aim(
+    state: &mut BattleState,
+    (siege, field): (SiegeState, &SiegeField),
+) -> Option<u8> {
     let weakest = field
         .automatic
         .iter()
@@ -698,13 +702,10 @@ pub(crate) fn automatic_aim(state: &mut BattleState, ruleset: &BattleRuleset) ->
 /// left the shots end. No shot is used.
 pub(crate) fn shoot_walls<S: Sink>(
     state: &mut BattleState,
-    ruleset: &BattleRuleset,
+    field: &SiegeField,
     (shooter, aimed, level): (StackId, u8, u8),
     sink: &mut S,
 ) {
-    let Some(field) = ruleset.siege_field() else {
-        return;
-    };
     let record = field.ballistics[usize::from(level).min(field.ballistics.len() - 1)];
     let all = &ALL_TARGETS[..usize::from(state.siege.map_or(0, |s| s.targets))];
     let mut aim = aimed;
@@ -784,10 +785,12 @@ pub(crate) fn may_quake(state: &BattleState) -> bool {
 /// code's draw, D-14). Every target is drawn from, the absent turrets too (they soak hits;
 /// BAT-QUIRK-22 harms no stack). Then each target hit takes its hits as damage
 /// ([`damage_part`]).
-pub(crate) fn earthquake<S: Sink>(state: &mut BattleState, hits: u32, sink: &mut S) {
-    let Some(siege) = state.siege else {
-        return;
-    };
+pub(crate) fn earthquake<S: Sink>(
+    state: &mut BattleState,
+    siege: SiegeState,
+    hits: u32,
+    sink: &mut S,
+) {
     let n = usize::from(siege.targets);
     let mut drawn = [0u32; MAX_WALL_TARGETS];
     for _ in 0..hits {

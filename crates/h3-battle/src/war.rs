@@ -101,8 +101,11 @@ pub(crate) fn act<S: Sink>(
     if state.at(id).slot == crate::siege::CATAPULT_SLOT {
         // rule: BAT-SIE-011
         let level = crate::siege::shooter_level(state, ruleset, id).unwrap_or(0);
-        if let Some(aim) = crate::siege::automatic_aim(state, ruleset) {
-            crate::siege::shoot_walls(state, ruleset, (id, aim, level), sink);
+        // The Catapult stands only in a siege, whose field the ruleset has (BAT-SIE-001).
+        if let Some((siege, field)) = state.siege.zip(ruleset.siege_field())
+            && let Some(aim) = crate::siege::automatic_aim(state, (siege, field))
+        {
+            crate::siege::shoot_walls(state, field, (id, aim, level), sink);
         }
     } else if state.at(id).has(StackTraits::FIRST_AID) {
         first_aid(state, ruleset, id, sink);

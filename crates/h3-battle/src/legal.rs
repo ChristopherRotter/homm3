@@ -63,10 +63,10 @@ pub fn legal_commands(
     } else {
         turn_commands(state, field, (id, &mover), out);
         // rule: BAT-SIE-010, BAT-SIE-011, BAT-SIE-013
-        if crate::siege::commanded_wall_shots(state, ruleset, id).is_some() {
-            let siege = state
-                .siege
-                .unwrap_or_else(|| unreachable!("a wall shooter's siege"));
+        if let (Some(_), Some(siege)) = (
+            crate::siege::commanded_wall_shots(state, ruleset, id),
+            state.siege,
+        ) {
             for part in (0..siege.targets).filter(|&t| siege.stands(t)) {
                 let _ = out.push(Command::ShootWall { part });
             }
