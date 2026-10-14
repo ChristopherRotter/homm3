@@ -590,7 +590,7 @@ A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F
   hex 35 to 43 in k = 3 cycles of 58 ms frames from 300 ms; group 21 shows from 1518.
 - **A turn** (`stack_turn_around` 0x446720, animated): facing right, group 7, the flip, group 10;
   facing left, group 9, the flip, group 8; each all its frames; then standing. When a stack turns:
-  §7.10. Not in a sequence yet.
+  §7.10. A walk's turn is in the sequence `turn` (§7.10).
 
 ### 7.4 Strikes and shots
 
@@ -660,7 +660,7 @@ the viewer's own generator cannot reproduce.
   animations' frames (H3API's PlayMagicAnimation), mouse-over (whether hovering starts group 1),
   the heroes' idle groups, the arrow towers' and the catapult's shots, the first aid tent, the
   sounds' timing.
-- Not in a sequence yet: a turn, a death, Haste and Slow, a defending stack's reaction, a shot
+- Not in a sequence yet: a strike's and a shot's turns (§7.10), a death, Haste and Slow, a defending stack's reaction, a shot
   up or down, a ray.
 
 ### 7.8 The viewer's timeline (M2 T4a)
@@ -810,6 +810,15 @@ lets it idle. Read in `Heroes3.exe` for it:
   checks (`sequences`) take none. A stack an action drew stops fidgeting; a bystander's fidget
   resumes after it. A bots' battle idles one tick between commands, so its fidgets show only
   after its end; a record with times (a person thinking) shows them as the original does.
+- **Confirmed in the original** (sequence `turn`, `seq-turn.toml`): the walk sequence's
+  Champions (two hexes, 35 and 36) walk one hex up and to the left: group 7 on 35, the flip onto
+  36, group 10, standing, group 20, the step's cycle in layer 3, group 21 on 19, standing, group
+  9, the flip onto 18, group 8, standing. The viewer's timeline as recorded (33 changes), all 39
+  distinct frames exact. A strike's or a shot's turn cannot be set up from an opening (every
+  target stands on the attacker's front side; on column 15 a target turns only for a one-hex
+  attacker landing up and to its right, and no one-hex flier of the base game is fast enough;
+  Archangels are two hexes wide): read and unit-tested only, a sequence once a battle in progress
+  puts a stack behind another (T4b-2b).
 - **Not drawn yet** (in a bots' battle on `battle.toml` nothing of it occurs): spells and their
   animations, morale's and luck's animations, created stacks (summoned, cloned, risen), war
   machines, heroes and count boxes (M3); a stack the record names that its first snapshot lacks

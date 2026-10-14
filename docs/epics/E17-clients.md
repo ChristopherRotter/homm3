@@ -178,9 +178,9 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   frames in 3 s); turns read in the executable and built (walks, flights, both sides of a melee,
   shooters, turning back; a turned two-hex stack on its other hex), the draw layers (walk 3/7,
   striker 6, struck 5, corpses 1), fidgets from the viewer's own generator, a flight's two
-  standing frames. The three recorded sequences unchanged; the turn sequence is prepared
-  (`situations/seq-turn.toml`), its recording in the original moved to T4b-2b (the user's
-  computer was offline).
+  standing frames. The three recorded sequences unchanged; a fourth, `turn` (a two-hex walk's
+  turn and turn back), recorded in the original: its timeline as recorded and all 39 frames
+  exact. A strike's and a shot's turns are read and unit-tested only (no opening sets them up).
 
 ### M3 — fidelity
 

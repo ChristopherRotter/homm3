@@ -58,7 +58,7 @@ search the parent directories).
   plays each recorded sequence of `situations/sequences.toml` with its engine commands, times it
   with `h3_view::anim` and compares the timeline with the one the harness recorded in the
   original (`docs/epics/E17-design.md` §7.8); it exits 1 on a difference and writes the records
-  and timelines to `clients/out/sequences/`. The unit tests replay the same three sequences from
+  and timelines to `clients/out/sequences/`. The unit tests replay the same four sequences from
   their numbers, without the original files.
 - **A whole battle, frame by frame** (E17 M2 T4b-2a, design §7.10): `cargo run --release -p h3-view
   -- play scenarios/battle.toml [--seed <n>] [--png] [--from <ms>] [--to <ms>]` (from `clients/`)

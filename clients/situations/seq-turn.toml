@@ -1,8 +1,13 @@
-# E17 M2 T4b-2a: a sequence to record (T4b-2b; then its entry in sequences.toml): the human's Angels (speed
-# 12, one hex, fliers) fly to hex 83 and strike the computer's Wolf Riders (two hexes, 99 and 100)
-# from above and to the right, where neither faces the other: both turn before the strike and
-# back after it (design §7.3). On grass at the capture set's tile, so the original's obstacles
-# are the grass situation's (grass.toml).
+# E17 M2 T4b-2a: a sequence of the recorded timelines (sequences.toml): the human's Champions (two
+# hexes, 35 and 36 on row 2) walk one hex up and to the left, to 18 and 19: the step faces left,
+# so the walk's first step turns them around, animated (group 7, the flip onto their other hex,
+# group 10, standing), they step in layer 3 (up), and the plain move turns them back at its end
+# (group 9, the flip, group 8, standing; design §7.10). The walk sequence's armies, on grass at the
+# capture set's tile, so the original's obstacles are the grass situation's (grass.toml). (A
+# strike or a shot that turns both stacks cannot be set up from the openings: every target stands
+# on the attacker's front side, and on column 15 a one-hex flier fast enough to land behind one
+# does not exist in the base game.)
+
 
 [scenario]
 id = "sequence-turn"
@@ -17,10 +22,20 @@ obstacles = [
 
 [[attacker]]
 slot = 0
-creature = "base:angel"
-count = 2
+creature = "base:champion"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
 
 [[defender]]
 slot = 0
 creature = "base:wolf_rider"
-count = 30
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15

@@ -511,14 +511,21 @@ headless with what it needs, T4b-2b the rest (`QUEUE.md`).
 - **Changed:** T4a's provisional "a later command starts one tick after a command that drew": the
   flight's second standing frame explains the melee's timing, so a later command without a time
   starts as the last frame shows; the three sequences still give their recorded timelines.
-- **Checked:** the three recorded timelines (`h3-view sequences`) unchanged; `play
+- **Checked:** the three recorded timelines (`h3-view sequences`) unchanged, the fourth (`turn`)
+  as recorded; `play
   scenarios/battle.toml`: 24 commands, about 82 s of battle, about 1 100 distinct frames drawn in
   about 3 s; the unit tests cover each turn case (walk, flight, melee from either side, shot) and
   the fidgets; the library at 100 % coverage. Turns looked at in the bots' battle (the Wolf
   Riders' turn before their strike).
-- **Not done:** the turn sequence in the original (`situations/seq-turn.toml` prepared: the
-  Angels fly to hex 83 and strike the Wolf Riders on 99 and 100, both turn): the user's computer
-  went offline before the harness's files could be staged; moved to T4b-2b.
+- **The turn sequence** (recorded the next morning, when the user's computer was back): the
+  first plan (Angels flying behind the Wolf Riders on column 15 to strike them, both turning) does
+  not exist in the original: the Angels' speed does not reach hex 83, Archangels are two hexes
+  wide (the harness's clicks landed them one hex left: their position is the rear hex), and a
+  two-hex target on column 15 is struck from above its middle (hex 82), where no one turns; a
+  strike or shot turn cannot be set up from an opening. Recorded instead: the walk sequence's
+  Champions walking one hex up and to the left (sequence `turn`): the viewer's timeline as
+  recorded (33 changes) and all 39 frames exact (`h3drive.py frames --only turn`), a unit test
+  replays it.
 - **Decided (*provisional*, the review list):** the bot and `play`'s formats; the layers' model;
   the fidget generator; the next command's start.
 - Gates: see the pull request.

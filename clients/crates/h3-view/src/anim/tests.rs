@@ -14,6 +14,7 @@ use crate::scene::tests::{layout, stack, tables};
 const WALK: &str = include_str!("../../../../situations/timelines/walk.txt");
 const SHOT: &str = include_str!("../../../../situations/timelines/shot.txt");
 const MELEE: &str = include_str!("../../../../situations/timelines/melee.txt");
+const TURN: &str = include_str!("../../../../situations/timelines/turn.txt");
 
 /// Creature handles of the tests.
 const CHAMPION: u16 = 0;
@@ -360,6 +361,26 @@ fn the_melee_sequence_plays_as_recorded() {
     let outlined: Vec<Option<u8>> = [1818, 1918, 2017, 2018].map(|t2| t.outlined(t2)).into();
     assert_eq!(outlined, [None, Some(2), Some(2), None]);
     assert_eq!((t.pulse(1917), t.pulse(1918), t.pulse(5000)), (1, 2, 2));
+}
+
+#[test]
+fn the_turn_sequence_plays_as_recorded() {
+    // `seq-turn.toml` (T4b-2a, design §7.10): the walk sequence's armies; the Champions walk one
+    // hex up and to the left, from 35 to 18. The step faces left: the first step's turn,
+    // animated (7, the flip onto their other hex 36, 10, standing), the step up in layer 3, group
+    // 21 on 19 (18 turned), and a plain move's turn back (9, the flip onto 18, 8, standing).
+    let o = snapshot(vec![
+        at(0, Side::Attacker, CHAMPION, 35, true),
+        at(1, Side::Attacker, MARKSMAN, 137, false),
+        at(2, Side::Defender, WOLF_RIDER, 49, true),
+        at(3, Side::Defender, GOBLIN, 151, false),
+    ]);
+    let walk = vec![moved(0, 35, 18), Event::TurnStarted { stack: 1 }];
+    let t = play(&o, &[(None, walk)]);
+    assert_eq!(t.lines(), TURN);
+    let step = keys_of(&t, 0).into_iter().find(|k| k.0 == 0);
+    assert_eq!(step, Some((0, 0, 36, true, 3)));
+    assert_eq!(t.end, 2648);
 }
 
 #[test]
