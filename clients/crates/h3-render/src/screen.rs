@@ -68,7 +68,7 @@ impl PixelFormat {
     pub fn scale(self, colour: Rgb) -> u16 {
         let channel = |value: u8, width: u8, shift: u8| {
             let mask = ((1u32 << width) - 1) << shift;
-            u32::from(value) * mask / 255 & mask
+            (u32::from(value) * mask / 255) & mask
         };
         let pixel = channel(colour.r, self.red, self.green + self.blue)
             | channel(colour.g, self.green, self.blue)
