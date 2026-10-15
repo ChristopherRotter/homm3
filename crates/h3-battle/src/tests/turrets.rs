@@ -10,17 +10,19 @@ use std::vec::Vec;
 use h3_content::FULL_BP;
 use h3_content_battle::BattleRuleset;
 use h3_contracts::{
-    BallistaControl, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Rate, Siege,
+    BallistaControl, BattleHero, BattleResult, BattleSetup, BattleSide, FortLevel, Moat, Rate,
+    Siege,
 };
 
+use super::spells::{mage, spell};
 use super::support::*;
 use crate::effects::Status;
 use crate::geometry::Hex;
 use crate::siege::damage_part;
 use crate::state::{NO_CORPSE, TURRET_SLOT};
 use crate::{
-    BattleState, Command, CommandError, Event, EventKind, LegalCommands, SetupError, StackId,
-    StackTraits, legal_commands,
+    BattleState, CastTarget, CastTargets, Command, CommandError, Event, EventKind, LegalCommands,
+    SetupError, StackId, StackTraits, legal_commands, second_targets,
 };
 
 /// The town with `fort` and `structures`, no moat.
@@ -228,9 +230,17 @@ fn a_defender_with_artillery_commands_its_turrets() {
     .unwrap();
     assert_eq!(strikes(&events).len(), 1);
     assert_eq!(s.stacks()[3].shots, 99);
-    // It may wait: it then acts first in the wait phase.
+    // It may wait: it then acts first in the wait phase, before a waited stack that is slower
+    // (the phase goes slowest first; the keep made faster than the defender's stack here).
     let (mut s, _) = start(&r, &setup, 3);
+    s.stacks.as_mut_slice()[3].spells.speed = 10;
     act(&mut s, &r, Command::Wait).unwrap();
+    assert_eq!(s.active(), Some(StackId(2)));
+    act(&mut s, &r, Command::Wait).unwrap();
+    act(&mut s, &r, Command::Defend).unwrap();
+    act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!(s.active(), Some(StackId(3)));
+    act(&mut s, &r, Command::Defend).unwrap();
     assert_eq!(s.active(), Some(StackId(2)));
 }
 
@@ -377,6 +387,18 @@ fn the_turret_s_shot_sums_a_draw_per_creature_and_takes_only_the_protections() {
     plated.damage.reduction = Rate::bp(FULL_BP.into());
     let (damage, _) = keep_shot(&r, [Some(plated), None], |_| {});
     assert_eq!(damage, 1);
+    // The Armorer is that of the target's controller: the defender's hero's for a hypnotized
+    // target, not its own side's.
+    let hypnotized = |s: &mut BattleState| {
+        let st = &mut s.stacks.as_mut_slice()[0].spells.status;
+        *st = st.with(Status::HYPNOTIZED, true);
+    };
+    let mut armorer = hero(&r);
+    armorer.damage.reduction = Rate::bp(1500);
+    let (damage, sum) = keep_shot(&r, [None, Some(armorer.clone())], hypnotized);
+    assert_eq!(damage, sum * 85 / 100);
+    let (damage, sum) = keep_shot(&r, [Some(armorer), None], hypnotized);
+    assert_eq!(damage, sum);
     // With the executable's stages (quirk Q-0005) the same truncation.
     let staged = turret_ruleset("t:single");
     let (damage, sum) = keep_shot(&staged, [None, None], |s| {
@@ -477,4 +499,164 @@ fn the_turrets_are_left_out_of_the_outcome_and_the_surrender_price() {
     let outcome = s.outcome().unwrap();
     assert_eq!(outcome.stacks[1].len(), 1);
     assert!(outcome.war_machines[1].is_empty());
+    // The turrets do not hold the town: its army gone (stack 2, after the attacker's Catapult),
+    // the attacker wins while they stand.
+    let (mut s, _) = start(&r, &setup, 3);
+    s.stacks.as_mut_slice()[2].count = 0;
+    crate::combat::check_end(&mut s, &mut events);
+    assert_eq!(
+        s.result(),
+        Some(BattleResult::Victory(BattleSide::Attacker))
+    );
+    assert_eq!(turrets(&s).iter().filter(|t| t.2 > 0).count(), 3);
+}
+
+// covers: BAT-SIE-018, BAT-MAG-059
+#[test]
+fn a_turret_s_shot_may_end_the_battle_or_bring_a_rebirth() {
+    let r = turret_ruleset("t:faithful");
+    // The keep of 4 (2 to 4 each, at least 8) kills the attacker's only stack at the battle's
+    // start: the defender wins before any other stack acts.
+    let setup = at(
+        &r,
+        town(&r, FortLevel::Citadel, 0),
+        [None, None],
+        &[(0, "slow", 1)],
+        &[(0, "fast", 20)],
+    );
+    let (s, events) = start(&r, &setup, 3);
+    assert_eq!(strikes(&events).len(), 1);
+    assert_eq!(
+        s.result(),
+        Some(BattleResult::Victory(BattleSide::Defender))
+    );
+    // The keep of 30 (at least 60) kills five phoenixes (50 hit points): one comes back.
+    let setup = at(
+        &r,
+        town(&r, FortLevel::Citadel, 26),
+        [None, None],
+        &[(0, "phoenix", 5)],
+        &[(0, "fast", 20)],
+    );
+    let (s, events) = start(&r, &setup, 3);
+    let reborn: Vec<(u8, u32)> = events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::Reborn { stack, creatures } => Some((stack.0, creatures)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(reborn, [(0, 1)]);
+    assert_eq!(s.result(), None);
+    assert_eq!(s.stacks()[0].count, 1);
+}
+
+// covers: BAT-SIE-019, BAT-MAG-022
+#[test]
+fn a_magic_mirror_never_sends_a_spell_to_a_turret() {
+    let r = turret_ruleset("t:faithful");
+    let mut caster = mage(&r, &["bolt"]);
+    caster.magic.masteries = masteries(&r, [3; 4]);
+    caster.magic.mana = 100;
+    // The defender's hero bolts the attacker's stack, whose Expert mirror (100 %) sends it to a
+    // living stack of the defender's: its army's only stack, never one of the three turrets.
+    for seed in 0..16 {
+        let setup = at(
+            &r,
+            town(&r, FortLevel::Castle, 0),
+            [None, Some(caster.clone())],
+            &[(0, "fixed", 200)],
+            &[(0, "fixed", 30)],
+        );
+        let mut s = BattleState::new(&r, &setup, seed).unwrap();
+        let mirror = spell(&r, "mirror");
+        let cast = crate::effects::TimedCast {
+            id: mirror,
+            spell: r.spell(mirror).unwrap(),
+            mastery: 3,
+            rounds: 5,
+            own: crate::magic::SpellBonus::default(),
+        };
+        crate::effects::apply(&mut s, &r, cast, StackId(0), &mut Vec::<Event>::new());
+        activate(&mut s, 1);
+        let events = act(
+            &mut s,
+            &r,
+            Command::Cast {
+                spell: spell(&r, "bolt"),
+                target: CastTarget::Stack(StackId(0)),
+                second: CastTarget::None,
+            },
+        )
+        .unwrap();
+        let sent: Vec<(u8, u8)> = events
+            .iter()
+            .filter_map(|e| match e.kind {
+                EventKind::SpellRedirected { from, to } => Some((from.0, to.0)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(sent, [(0, 1)], "{seed}");
+    }
+}
+
+// covers: BAT-SIE-019, BAT-MAG-036
+#[test]
+fn sacrifice_never_takes_a_turret_whatever_the_spell_s_conditions() {
+    // A pack whose Sacrifice spares no creature (the packs' own exclude war machines): the
+    // turret stays out by the rule itself.
+    let r = ruleset_from(
+        "t:faithful",
+        |_| {},
+        |core, battle| {
+            add_turret(core, battle);
+            for def in &mut battle.spells {
+                if def.key.name() == "offering" {
+                    def.magic.conditions.requires = h3_content::CreatureFlags::default();
+                    def.magic.conditions.excludes = h3_content::CreatureFlags::default();
+                }
+            }
+        },
+    );
+    let mut raiser = mage(&r, &["offering"]);
+    raiser.magic.masteries = masteries(&r, [0, 1, 0, 0]);
+    raiser.magic.mana = 100;
+    let setup = at(
+        &r,
+        town(&r, FortLevel::Citadel, 0),
+        [None, Some(raiser)],
+        &[(0, "fixed", 10)],
+        &[(0, "serf", 3), (1, "serf", 5)],
+    );
+    let mut s = BattleState::new(&r, &setup, 1).unwrap();
+    assert_eq!(turrets(&s)[0].0, 3);
+    // The defender's stack 1 dies: Sacrifice may raise it from stack 2, never from the keep.
+    let dead = &mut s.stacks.as_mut_slice()[1];
+    dead.count = 0;
+    dead.top_hp = 0;
+    crate::effects::remove_dead(&mut s, &r);
+    crate::raise::mark_corpses(&mut s);
+    activate(&mut s, 2);
+    let offering = spell(&r, "offering");
+    let mut out = CastTargets::new();
+    second_targets(
+        &s,
+        &r,
+        BattleSide::Defender,
+        (offering, CastTarget::Stack(StackId(1))),
+        &mut out,
+    );
+    assert_eq!(out.as_slice(), [CastTarget::Stack(StackId(2))]);
+    assert_eq!(
+        act(
+            &mut s,
+            &r,
+            Command::Cast {
+                spell: offering,
+                target: CastTarget::Stack(StackId(1)),
+                second: CastTarget::Stack(StackId(3)),
+            },
+        ),
+        Err(CommandError::InvalidSpellTarget)
+    );
 }

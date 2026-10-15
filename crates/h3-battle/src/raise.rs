@@ -262,8 +262,9 @@ fn covers(field: Field, state: &BattleState, t: StackId, set: HexSet) -> bool {
 
 /// Whether stack `v` may be the victim of `side`'s cast of the sacrifice `spell` (BAT-MAG-036;
 /// the original's 0x5A8090, case 0x5A8523): a living stack of the side that the side controls
-/// (not hypnotized), not created in the battle (BAT-MAG-037), which the spell can affect (the
-/// spell level limit, its conditions, immunities and Anti-Magic).
+/// (not hypnotized), not created in the battle (BAT-MAG-037), no turret (immune to every spell,
+/// BAT-SIE-019, whatever the spell's conditions), which the spell can affect (the spell level
+/// limit, its conditions, immunities and Anti-Magic).
 pub(crate) fn victim(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -276,6 +277,8 @@ pub(crate) fn victim(
             && stack.side == side
             && stack.controller() == side
             && !stack.is_created()
+            // rule: BAT-SIE-019
+            && !stack.is_turret()
             && !barred(state, spell.1)
             && affects(ruleset, spell, stack.creature, Guard::of(state, side, v))
             && !kept_off(stack, spell.1)
