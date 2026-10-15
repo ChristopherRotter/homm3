@@ -108,3 +108,7 @@ Wiki checks wanted: see each report's section (r1: creature abilities above leve
 1. Run r6 and the security review (BRIEF.md, BRIEF-security.md; the r6 prompt: BAT-SIE-024..029, BAT-QUIRK-23, BAT-WAR-001 D-23, HER-WAR-001, §7.32 lines 2843–2936, §7.27's war machine part, batch 3g, `tests/town.rs`, `flee.rs`, `morale.rs`, `state::RECORD_ORDER`).
 2. The user's decisions above; then fix workers (each fix test first), the docs worker (rule texts, sources, "Review re-read" paragraphs in `installation.md`, the queue's inbox for the readings the engine does not follow), re-record the siege replays and bench baselines, the full verify, the PR `battle/e04c-t10b`.
 3. Merge the kept robustness tests (`review/robustness` 6b9f5e9) into the task branch.
+
+# Outcome (2026-10-16)
+
+Folded in on `battle/e04c-t10b`, pull request #242: the decisions BAT-Q50, five fix workers (W1 r3a/r3b, W2 r2a/r2b/r4/robustness, W3 r5, W4 r1, W5 security/r6), an independent read of the fixes (`fixes-check.md`: P1 the berserk walk's moat avoidance and P2 `is_catapult` fixed by W7, P3 a doc), the replays and three baselines re-recorded; the record is `docs/epics/E04c-log.md`, "T10b".

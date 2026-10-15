@@ -53,6 +53,7 @@ your report with the evidence.
   `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` and
   `Claude-Session: https://claude.ai/code/session_01EQhEs1ueH99Kdr8XNw7xCa`.
   Do not push (the coordinator pushes). Do not touch files outside your findings' scope.
+- **Lane paths:** the battle lane's pull request may not change shared paths (`lanes.toml`'s `[shared]`: `docs/0*.md` such as `06-security.md` and `07-simulation-and-ai.md`, `docs/adr/`, `crates/h3-contracts`, `crates/h3-content`, `xtask/`, `scripts/`) nor another lane's (`crates/h3-protocol`, `fixtures/replays/adventure/`). Where a finding needs such a change, write it as one line in `docs/lanes/battle/QUEUE.md`'s Inbox for T10c's `shared/` pull request (or the server lane) instead, and name it in your report. `cargo xtask check-lane` checks the branch.
 - No sub-agents, no web access. Read big files in slices.
 
 ## Your report (final message, at most 15 lines)
