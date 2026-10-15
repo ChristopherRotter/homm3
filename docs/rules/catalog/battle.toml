@@ -4294,9 +4294,9 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "server/battles/BattleProcessor.cpp (1.7.5): the attacker's catapult stack in a siege with a fort (CGTownInstance fortLevel > NONE), placed on hex 120 (its head; 119 behind)"
-  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleProcessor.cpp"
-  retrieved  = "2026-10-14"
+  ref        = "lib/battle/BattleInfo.cpp:311-320 (1.7.5): the attacking hero's war machine of slot MACH4 (the Catapult) only at a town whose walls have hit points (fortificationsLevel().wallsHealth > 0), placed on the fourth hex of config/gameConfig.json's attackerWarMachines (line 630: 120, its head; 119 behind)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp"
+  retrieved  = "2026-10-15"
   confidence = "medium"
 
   [[rule.source]]
@@ -4433,7 +4433,7 @@ id       = "BAT-SIE-014"
 title    = "A wall shot"
 context  = "battle"
 status   = "verified"
-summary  = "A wall shot at an aimed target fires the Ballistics record's shots (the siege field's table by level: none 1 shot, Basic 1, Advanced 2, Expert 2). Each shot: first the damage, random(1, 100) less the record's chance of 0 at most 0 gives 0, less the chance of 1 at most 0 gives 1, else 2 (none 10/60/30 %, Basic and Advanced 0/50/50 %, Expert 0/0/100 %); then the hit, random(1, 100) above the record's chance for the aimed target's kind (keep, tower, gate, wall: none 5/10/25/50 %, Basic and Advanced 7/15/30/60 %, Expert 10/20/40/75 %, D-6) misses, and the shot lands on the nearest other standing wall of the siege field's miss list (1, 2, 5, 4) by the difference of the target indices, a tie decided by random(1, 100) at most 50 for the first (D-12, the code: BAT-Q43), or on the aimed target if no other wall stands. The target landed on takes the damage (BAT-SIE-010; event WallShot with the aimed and the hit target and the damage). After a shot with shots left, a fallen aim moves to the nearest standing target of all eight (ties as above); with none the action ends."
+summary  = "A wall shot at an aimed target fires the Ballistics record's shots (the siege field's table by level: none 1 shot, Basic 1, Advanced 2, Expert 2). Each shot: first the damage, random(1, 100) less the record's chance of 0 at most 0 gives 0, less the chance of 1 at most 0 gives 1, else 2 (none 10/60/30 %, Basic and Advanced 0/50/50 %, Expert 0/0/100 %); then the hit, random(1, 100) above the record's chance for the aimed target's kind (keep, tower, gate, wall: none 5/10/25/50 %, Basic and Advanced 7/15/30/60 %, Expert 10/20/40/75 %, D-6) misses, and the shot lands on the nearest other standing wall of the siege field's miss list (1, 2, 5, 4) by the difference of the target indices, a tie decided by random(1, 100): at most 50 takes the later entry of the list, above 50 keeps the earlier (D-12, the code: BAT-Q43), or on the aimed target if no other wall stands. The target landed on takes the damage (BAT-SIE-010; event WallShot with the aimed and the hit target and the damage). After a shot with shots left, a fallen aim moves to the nearest standing target of all eight (ties as above); with none the action ends."
 numeric  = "integer"
 
   [[rule.source]]

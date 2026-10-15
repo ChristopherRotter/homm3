@@ -823,6 +823,19 @@ fn a_missed_shot_lands_on_the_nearest_other_wall() {
     // Only standing walls; none: the aimed target itself.
     assert_eq!(landed([2, 0, 0, 2, 3, 3, 2, 2], 0), [Some(4)]);
     assert_eq!(landed([2, 3, 0, 0, 0, 0, 2, 2], 1), [None]);
+    // The tie's direction: a roll of at most 50 takes the later entry of the list, above 50 keeps
+    // the earlier (0x445F62 to 0x445F7A); both rolls occur among the seeds.
+    let mut seen = [false; 2];
+    for seed in 0..20 {
+        let mut t = s.clone();
+        t.rng = Rng::for_stream(seed, StreamId::BATTLE);
+        let low = t.rng.clone().range_inclusive(1, 100) <= 50;
+        seen[usize::from(low)] = true;
+        let pick = |list: [u8; 2]| if low { list[1] } else { list[0] };
+        assert_eq!(nearest(&mut t.clone(), &[2, 4], 3), Some(pick([2, 4])));
+        assert_eq!(nearest(&mut t, &[4, 2], 3), Some(pick([4, 2])));
+    }
+    assert_eq!(seen, [true, true]);
 }
 
 // covers: BAT-SIE-014
