@@ -1003,7 +1003,7 @@ impl AdventureState {
                 ..outcome
             },
             Some(guard) => {
-                let mut answer = self.visit_monster(rules, (player, id), guard, sink);
+                let mut answer = self.visit_monster(rules, id, guard);
                 answer.gains.splice(0..0, outcome.gains);
                 answer
             }
@@ -1256,12 +1256,7 @@ impl AdventureState {
             }
             Effect::Gate(_) => {}
             Effect::Monster => {
-                outcome = self.visit_monster(
-                    rules,
-                    (player, hero),
-                    (visit.object, visit.object_type),
-                    sink,
-                );
+                outcome = self.visit_monster(rules, hero, (visit.object, visit.object_type));
             }
         }
         outcome

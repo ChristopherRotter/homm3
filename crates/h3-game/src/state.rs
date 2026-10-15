@@ -278,12 +278,7 @@ impl GameState {
         let (adventure, heroes) = self.adventure_with_heroes();
         let context = (rules.core(), rules.adventure(), heroes);
         if matches!(offer.kind, OfferKind::JoinForGold { .. }) {
-            return Some(adventure.decline_offer(
-                context,
-                player,
-                &offer,
-                &mut AdventureSink(sink),
-            ));
+            return Some(adventure.decline_offer(context, &offer, &mut AdventureSink(sink)));
         }
         sink.emit(GameEvent::OfferRefused {
             player,
@@ -291,7 +286,7 @@ impl GameState {
             object_type,
             anchor,
         });
-        guard_after.then(|| adventure.visit_guard(context, player, hero, &mut AdventureSink(sink)))
+        guard_after.then(|| adventure.visit_guard(context, hero))
     }
 
     /// `Answer`: closes `player`'s first open decision (GAM-DEC-001), in its turn or not. Accepted,
@@ -361,14 +356,14 @@ impl GameState {
         let outcome = if accepted {
             adventure.accept_offer(context.0, context.1, player, &offer, &mut events)
         } else {
-            adventure.decline_offer(context, player, &offer, &mut events)
+            adventure.decline_offer(context, &offer, &mut events)
         };
         self.settle_outcome(rules, player, outcome, sink);
         if guard_after {
             let (adventure, heroes) = self.adventure_with_heroes();
             let context = (rules.core(), rules.adventure(), heroes);
             let guard =
-                adventure.visit_guard(context, player, offer.hero, &mut AdventureSink(&mut *sink));
+                adventure.visit_guard(context, offer.hero);
             self.settle_outcome(rules, player, guard, sink);
         }
         Ok(())

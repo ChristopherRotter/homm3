@@ -308,16 +308,16 @@ fn a_declined_join_goes_on_to_the_flight_or_a_fight() {
     // M = −4, C = 0: declined, the monster offers to flee.
     let mut s = pikemen(&rules, &[(PEASANT, 100)], -4);
     let join = offer(2, 0, OfferKind::Join).unwrap();
-    let next = s.decline_offer(triple(&rules, &[]), RED, &join, &mut events);
+    let next = s.decline_offer(triple(&rules, &[]), &join, &mut events);
     assert_eq!(next.offer, offer(2, 0, OfferKind::Pursue));
     // M = C = 0: insulted, it fights; so does one that never flees.
     let mut s = pikemen(&rules, &[(PEASANT, 100)], 0);
-    let next = s.decline_offer(triple(&rules, &[]), RED, &join, &mut events);
+    let next = s.decline_offer(triple(&rules, &[]), &join, &mut events);
     assert_eq!((next.offer, next.battle.is_some()), (None, true));
     let mut s = pikemen(&rules, &[(PEASANT, 100)], -4);
     set_never_flees(&mut s, 0);
     let gold = offer(2, 0, OfferKind::JoinForGold { price: vec![] }).unwrap();
-    let next = s.decline_offer(triple(&rules, &[]), RED, &gold, &mut events);
+    let next = s.decline_offer(triple(&rules, &[]), &gold, &mut events);
     assert_eq!((next.offer, next.battle.is_some()), (None, true));
     assert!(events.is_empty());
     assert!(!s.is_removed(0));
@@ -330,7 +330,7 @@ fn a_declined_flight_lets_the_monster_go_without_its_treasure() {
     let mut s = pikemen(&rules, &[(PEASANT, 100)], -4);
     let mut events: Vec<AdventureEvent> = Vec::new();
     let pursue = offer(2, 0, OfferKind::Pursue).unwrap();
-    let next = s.decline_offer(triple(&rules, &[]), RED, &pursue, &mut events);
+    let next = s.decline_offer(triple(&rules, &[]), &pursue, &mut events);
     assert_eq!(next, AdventureOutcome::default());
     assert!(s.is_removed(0));
     assert_eq!(s.guard_of(&rules.1, Pos::new(1, 1, 0)), None);
@@ -448,7 +448,7 @@ fn an_offer_whose_monster_or_room_is_gone_does_nothing() {
             AdventureOutcome::default()
         );
         assert_eq!(
-            s.decline_offer(triple(&rules, &[]), RED, &gone, &mut events),
+            s.decline_offer(triple(&rules, &[]), &gone, &mut events),
             AdventureOutcome::default()
         );
     }
@@ -460,7 +460,7 @@ fn an_offer_whose_monster_or_room_is_gone_does_nothing() {
         ..join.clone()
     };
     assert_eq!(
-        s.decline_offer(triple(&rules, &[]), RED, &stranger, &mut events),
+        s.decline_offer(triple(&rules, &[]), &stranger, &mut events),
         AdventureOutcome::default()
     );
     assert_eq!(
@@ -482,7 +482,7 @@ fn an_offer_whose_monster_or_room_is_gone_does_nothing() {
         ..join.clone()
     };
     assert_eq!(
-        s.decline_offer(triple(&rules, &[]), RED, &odd, &mut events),
+        s.decline_offer(triple(&rules, &[]), &odd, &mut events),
         AdventureOutcome::default()
     );
     assert!(events.is_empty());
@@ -493,7 +493,7 @@ fn an_offer_whose_monster_or_room_is_gone_does_nothing() {
         ..join
     };
     assert_eq!(
-        s.decline_offer(triple(&rules, &[]), RED, &chart, &mut events),
+        s.decline_offer(triple(&rules, &[]), &chart, &mut events),
         AdventureOutcome::default()
     );
 }
@@ -522,7 +522,7 @@ fn the_guard_answers_after_the_step_or_after_the_tiles_offer() {
     assert_eq!(outcome.offer.map(|o| o.object_type), Some(CHART));
     assert!(outcome.guard_after);
     let mut events: Vec<AdventureEvent> = Vec::new();
-    let guard = s.visit_guard(triple(&rules, &[]), RED, HERO, &mut events);
+    let guard = s.visit_guard(triple(&rules, &[]), HERO);
     assert_eq!(guard.offer, offer(3, 1, OfferKind::Join));
     // Onto an observatory's tile: its reveal, then the guard's answer in the same outcome.
     let mut s = state(
@@ -539,7 +539,7 @@ fn the_guard_answers_after_the_step_or_after_the_tiles_offer() {
     assert!(!outcome.guard_after);
     // No guard, or no hero: nothing.
     assert_eq!(
-        s.visit_guard(triple(&rules, &[]), RED, HeroId::new(9), &mut events),
+        s.visit_guard(triple(&rules, &[]), HeroId::new(9)),
         AdventureOutcome::default()
     );
     let mut s = state(
@@ -551,7 +551,7 @@ fn the_guard_answers_after_the_step_or_after_the_tiles_offer() {
         1,
     );
     assert_eq!(
-        s.visit_guard(triple(&rules, &[]), RED, HERO, &mut events),
+        s.visit_guard(triple(&rules, &[]), HERO),
         AdventureOutcome::default()
     );
 }

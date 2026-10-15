@@ -84,32 +84,25 @@ fn join_price(
 }
 
 impl AdventureState {
-    /// The visit of the monster at object index `index`, of type `object_type`, by `player`'s
-    /// hero `hero` (ADV-MON-007, E08 T20b1): the monster's answer to the hero as the store has
+    /// The visit of the monster at object index `index`, of type `object_type`, by the hero
+    /// `hero` (ADV-MON-007, E08 T20b1): the monster's answer to the hero as the store has
     /// its details ([`Temper`]: the hero's power, sympathy and Diplomacy against the monster's
     /// strength and aggression, on the game's difficulty). An offer to join is made only while
     /// the hero's army has room for the group (a stack of its creature or a free slot); without
     /// room it counts as declined (E08 decision 22: the original's army dialog is `ADV-STUB-2`).
     /// An offer names the monster by type and anchor; the game opens it as the player's decision
-    /// (a price to join only when the player can pay). A fight comes with E08 T20b2.
+    /// (a price to join only when the player can pay); a fight is a battle it opens at once
+    /// ([`Self::fight`], E08 T20b2).
     // rule: ADV-MON-007
-    pub(super) fn visit_monster<S: Sink>(
-        &mut self,
+    pub(super) fn visit_monster(
+        &self,
         (core, part, heroes): (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
-        (player, hero): (PlayerId, HeroId),
+        hero: HeroId,
         (index, object_type): (usize, ObjectTypeId),
-        sink: &mut S,
     ) -> AdventureOutcome {
         self.answer_to((core, part, heroes), hero, index, Temper::first)
             .map(|(answer, monster)| {
-                self.carry_out(
-                    (core, part),
-                    (player, hero),
-                    (index, object_type),
-                    answer,
-                    monster,
-                    sink,
-                )
+                self.carry_out((core, part), hero, (index, object_type), (answer, monster))
             })
             .unwrap_or_default()
     }
@@ -159,14 +152,12 @@ impl AdventureState {
 
     /// What an answer does (ADV-MON-007, ADV-MON-008): a fight ([`Self::fight`]), or the offer to
     /// join, to join for its price, or to flee, named by the monster's type and anchor.
-    fn carry_out<S: Sink>(
-        &mut self,
+    fn carry_out(
+        &self,
         (core, part): (&Ruleset, &AdventureRuleset),
-        (player, hero): (PlayerId, HeroId),
+        hero: HeroId,
         (index, object_type): (usize, ObjectTypeId),
-        answer: Answer,
-        monster: Wanderer,
-        sink: &mut S,
+        (answer, monster): (Answer, Wanderer),
     ) -> AdventureOutcome {
         let anchor = self.map.objects()[index].anchor;
         let offer = |kind| AdventureOutcome {
@@ -275,7 +266,7 @@ impl AdventureState {
         if won { treasure } else { Vec::new() }
     }
 
-    /// Declines `offer`, made to `player` by a visit (ADR-0017 points 6 and 10; E08 T20b1): a
+    /// Declines `offer`, made by a visit (ADR-0017 points 6 and 10; E08 T20b1): a
     /// wandering monster's answer goes on. A declined offer to join, for free or for its price
     /// (or one the game did not open because the player could not pay), is followed by the
     /// monster's answer after a declined join (ADV-MON-007: a fight when its aggression equals
@@ -287,7 +278,6 @@ impl AdventureState {
     pub fn decline_offer<S: Sink>(
         &mut self,
         (core, part, heroes): (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
-        player: PlayerId,
         offer: &Offer,
         sink: &mut S,
     ) -> AdventureOutcome {
@@ -295,15 +285,9 @@ impl AdventureState {
         match (&offer.kind, object) {
             (OfferKind::Join | OfferKind::JoinForGold { .. }, Some(index)) => self
                 .answer_to((core, part, heroes), offer.hero, index, Temper::after_join)
-                .map(|(answer, monster)| {
-                    self.carry_out(
-                        (core, part),
-                        (player, offer.hero),
-                        (index, offer.object_type),
-                        answer,
-                        monster,
-                        sink,
-                    )
+                .map(|found| {
+                    let monster = (index, offer.object_type);
+                    self.carry_out((core, part), offer.hero, monster, found)
                 })
                 .unwrap_or_default(),
             (OfferKind::Pursue, Some(index)) => {
@@ -374,20 +358,18 @@ impl AdventureState {
     }
 
     /// The guard's visit that waited for an offer's answer (ADV-MON-006, E08 T20b1;
-    /// [`AdventureOutcome::guard_after`]): the monster that guards `player`'s hero `hero`'s tile
-    /// now ([`Self::guard_of`]), if any, visits as after the step ([`Self::visit_monster`]).
+    /// [`AdventureOutcome::guard_after`]): the monster that guards the hero `hero`'s tile now
+    /// ([`Self::guard_of`]), if any, visits as after the step ([`Self::visit_monster`]).
     /// Infallible: nothing for a hero not on the map or a tile no monster guards any more.
     // rule: ADV-MON-006
-    pub fn visit_guard<S: Sink>(
-        &mut self,
+    pub fn visit_guard(
+        &self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
-        player: PlayerId,
         hero: HeroId,
-        sink: &mut S,
     ) -> AdventureOutcome {
         self.hero(hero)
             .and_then(|h| self.guard_at(rules.1, h.pos))
-            .map(|guard| self.visit_monster(rules, (player, hero), guard, sink))
+            .map(|guard| self.visit_monster(rules, hero, guard))
             .unwrap_or_default()
     }
 }
