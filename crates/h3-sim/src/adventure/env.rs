@@ -1,5 +1,6 @@
 //! The adventure environment: one game on an adventure map (ADR-0017 point 8, E08 T9a), its
-//! battles included (E08 T19b1: a player in a battle acts in the battle phase).
+//! battles included (E08 T19b1: a player in a battle acts in the battle phase), a battle's unowned
+//! side played from the neutral seat (E08 T20b3a: [`Seat::Neutral`], as the system actor).
 
 use std::fmt;
 use std::sync::Arc;
@@ -7,11 +8,11 @@ use std::sync::Arc;
 use h3_battle::LegalCommands;
 use h3_contracts::PlayerId;
 use h3_game::{
-    Actor, GameCommand, GameCommandError, GameObservation, GameRuleset, GameSetup, GameSetupError,
+    GameCommand, GameCommandError, GameObservation, GameRuleset, GameSetup, GameSetupError,
     GameState, Sink, Viewer, apply, observe,
 };
 
-use super::action::{self, Action, EntryMask, Phase};
+use super::action::{self, Action, EntryMask, Phase, Seat};
 
 /// Result of one environment step.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,7 +27,7 @@ pub struct StepResult {
 /// Why a step was refused. The environment is unchanged.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StepError {
-    /// The action does not decode to a command of the player ([`action::decode`]).
+    /// The action does not decode to a command of the seat ([`action::decode`]).
     InvalidAction,
     /// The game rejected the command.
     Rejected(GameCommandError),
@@ -47,10 +48,10 @@ impl fmt::Display for StepError {
 impl std::error::Error for StepError {}
 
 /// A game on an adventure map as an RL environment, driven through `h3-game` as a player drives
-/// it: each step is one player's command, validated against the state and the player it is
-/// issued for (the trusted identity of the agent). Cheap to [`fork`](Self::fork): the rules and
-/// the setup are shared, and the game state shares its static map and unchanged grid leaves
-/// (decision 6).
+/// it: each step is one seat's command, validated against the state and the actor it is issued
+/// as (a player, the trusted identity of the agent; the system actor for the neutral seat, which
+/// plays a battle's unowned side). Cheap to [`fork`](Self::fork): the rules and the setup are
+/// shared, and the game state shares its static map and unchanged grid leaves (decision 6).
 #[derive(Debug, Clone)]
 pub struct AdventureEnv {
     rules: GameRuleset,
@@ -125,19 +126,22 @@ impl AdventureEnv {
         self.max_days != 0 && self.state.day() > self.max_days
     }
 
-    /// The players that may act now, in id order: those of the turn group whose turn is running
-    /// (one in sequential play) and who are in no battle, and for each open battle the owner of
-    /// its side to act (ADR-0017 point 8, E08 T19b1: an attacked player acts in its battle
-    /// outside its turn); none once the episode is over. A battle's unowned side to act (a
-    /// wandering monster's, E08 T20b2) is no player's: the system actor plays it through
-    /// `h3_game::apply`, the env's neutral seat comes with E08 T20b3.
-    // stub: ADV-STUB-7
-    pub fn to_move(&self) -> impl Iterator<Item = PlayerId> + '_ {
+    /// The seats that may act now (ADR-0017 point 8): the players in id order, those of the turn
+    /// group whose turn is running (one in sequential play) and who are in no battle, and for each
+    /// open battle the owner of its side to act (E08 T19b1: an attacked player acts in its battle
+    /// outside its turn); then the neutral seat while a battle's side to act is owned by no player
+    /// (a wandering monster's, E08 T20b3a: the caller plays it with a policy of its choice, the
+    /// random agent until the battle lane ports the original's battle AI, decision 27); none once
+    /// the episode is over.
+    pub fn to_move(&self) -> impl Iterator<Item = Seat> + '_ {
         let done = self.is_done();
+        let neutral = !done && self.state.unowned_battle().is_some();
         (0..=u8::MAX)
             .take(self.state.players())
             .map(PlayerId::new)
             .filter(move |&player| !done && self.may_act(player))
+            .map(Seat::Player)
+            .chain(neutral.then_some(Seat::Neutral))
     }
 
     /// Whether `player` may act now: the owner of its battle's side to act, or with no battle a
@@ -149,9 +153,10 @@ impl AdventureEnv {
         )
     }
 
-    /// The phase `player` acts in ([`action::phase`]): the battle phase while it is in a battle.
-    pub fn phase(&self, player: PlayerId) -> Phase {
-        action::phase(&self.state, player)
+    /// The phase `seat` acts in ([`action::phase`]): the battle phase while its player is in a
+    /// battle, and always for the neutral seat.
+    pub fn phase(&self, seat: impl Into<Seat>) -> Phase {
+        action::phase(&self.state, seat)
     }
 
     /// The size of an action's tile head: the map's tiles.
@@ -159,92 +164,94 @@ impl AdventureEnv {
         action::tile_count(&self.state)
     }
 
-    /// Fills `mask` with the legal map entries of `player` ([`action::legal_mask`]); none in the
-    /// battle phase or once the episode is over.
-    pub fn legal_mask(&self, player: PlayerId, mask: &mut EntryMask) {
-        action::legal_mask(&self.state, &self.rules, player, mask);
+    /// Fills `mask` with the legal map entries of `seat` ([`action::legal_mask`]); none in the
+    /// battle phase (none for the neutral seat) or once the episode is over.
+    pub fn legal_mask(&self, seat: impl Into<Seat>, mask: &mut EntryMask) {
+        action::legal_mask(&self.state, &self.rules, seat, mask);
         if self.is_done() {
             mask.fill(false);
         }
     }
 
-    /// Fills `mask` with the legal tiles of `player` after choosing `entry`
+    /// Fills `mask` with the legal tiles of `seat` after choosing `entry`
     /// ([`action::tile_mask`]); none in the battle phase or once the episode is over.
-    pub fn tile_mask(&self, player: PlayerId, entry: usize, mask: &mut Vec<bool>) {
-        action::tile_mask(&self.state, &self.rules, player, entry, mask);
+    pub fn tile_mask(&self, seat: impl Into<Seat>, entry: usize, mask: &mut Vec<bool>) {
+        action::tile_mask(&self.state, &self.rules, seat, entry, mask);
         if self.is_done() {
             mask.fill(false);
         }
     }
 
-    /// Fills `mask` with the legal battle entries of `player` ([`action::battle_mask`]); none in
-    /// the map phase, while the other side is to act, or once the episode is over. `legal` is
-    /// scratch space.
+    /// Fills `mask` with the legal battle entries of `seat` ([`action::battle_mask`]): a player's
+    /// for the side it owns, the neutral seat's for the unowned side to act; none in the map
+    /// phase, while the other side is to act, or once the episode is over. `legal` is scratch
+    /// space.
     pub fn battle_mask(
         &self,
-        player: PlayerId,
+        seat: impl Into<Seat>,
         legal: &mut LegalCommands,
         mask: &mut crate::action::ActionMask,
     ) {
-        action::battle_mask(&self.state, &self.rules, player, legal, mask);
+        action::battle_mask(&self.state, &self.rules, seat, legal, mask);
         if self.is_done() {
             mask.fill(false);
         }
     }
 
-    /// Fills `mask` with the legal spells of `player` after the battle entry `entry`
+    /// Fills `mask` with the legal spells of `seat` after the battle entry `entry`
     /// ([`action::spell_mask`]); none outside a battle or once the episode is over.
     pub fn spell_mask(
         &self,
-        player: PlayerId,
+        seat: impl Into<Seat>,
         entry: usize,
         legal: &mut LegalCommands,
         mask: &mut crate::action::SpellMask,
     ) {
-        action::spell_mask(&self.state, &self.rules, player, entry, legal, mask);
+        action::spell_mask(&self.state, &self.rules, seat, entry, legal, mask);
         if self.is_done() {
             mask.fill(false);
         }
     }
 
-    /// Fills `mask` with the legal targets of `player` after the battle entry and spell
+    /// Fills `mask` with the legal targets of `seat` after the battle entry and spell
     /// ([`action::target_mask`]); none outside a battle or once the episode is over.
     pub fn target_mask(
         &self,
-        player: PlayerId,
+        seat: impl Into<Seat>,
         prefix: (usize, u16),
         legal: &mut LegalCommands,
         mask: &mut crate::action::TargetMask,
     ) {
-        action::target_mask(&self.state, &self.rules, player, prefix, legal, mask);
+        action::target_mask(&self.state, &self.rules, seat, prefix, legal, mask);
         if self.is_done() {
             mask.fill(false);
         }
     }
 
-    /// Fills `mask` with the legal second targets of `player` after the battle entry, spell and
+    /// Fills `mask` with the legal second targets of `seat` after the battle entry, spell and
     /// target ([`action::second_mask`]); none outside a battle or once the episode is over.
     pub fn second_mask(
         &self,
-        player: PlayerId,
+        seat: impl Into<Seat>,
         prefix: (usize, u16, u16),
         legal: &mut LegalCommands,
         mask: &mut crate::action::TargetMask,
     ) {
-        action::second_mask(&self.state, &self.rules, player, prefix, legal, mask);
+        action::second_mask(&self.state, &self.rules, seat, prefix, legal, mask);
         if self.is_done() {
             mask.fill(false);
         }
     }
 
-    /// Plays `action` for `player` (the trusted identity of the agent issuing it): a map action
-    /// or, in its battle, a battle action ([`action::decode`]).
+    /// Plays `action` for `seat` (a player: the trusted identity of the agent issuing it; the
+    /// neutral seat: the system actor): a map action or, in its battle, a battle action
+    /// ([`action::decode`]).
     ///
     /// # Errors
     ///
     /// A [`StepError`]; the environment is then unchanged.
-    pub fn step(&mut self, player: PlayerId, action: Action) -> Result<StepResult, StepError> {
-        self.step_with(player, action, &mut h3_game::NoopSink)
+    pub fn step(&mut self, seat: impl Into<Seat>, action: Action) -> Result<StepResult, StepError> {
+        self.step_with(seat, action, &mut h3_game::NoopSink)
     }
 
     /// Like [`step`](Self::step), with the game's events (unprojected: every player's view of
@@ -255,12 +262,13 @@ impl AdventureEnv {
     /// A [`StepError`]; the environment is then unchanged and no event was emitted.
     pub fn step_with<S: Sink>(
         &mut self,
-        player: PlayerId,
+        seat: impl Into<Seat>,
         action: Action,
         sink: &mut S,
     ) -> Result<StepResult, StepError> {
-        let command = self.decode(player, action)?;
-        self.step_command(player, command, sink)
+        let seat = seat.into();
+        let command = self.decode(seat, action)?;
+        self.step_command(seat, command, sink)
     }
 
     /// Like [`step_with`](Self::step_with), also returning the game command the action decoded to
@@ -272,25 +280,27 @@ impl AdventureEnv {
     /// A [`StepError`]; the environment is then unchanged and no event was emitted.
     pub fn step_decoded<S: Sink>(
         &mut self,
-        player: PlayerId,
+        seat: impl Into<Seat>,
         action: Action,
         sink: &mut S,
     ) -> Result<(StepResult, GameCommand), StepError> {
-        let command = self.decode(player, action)?;
-        let result = self.step_command(player, command.clone(), sink)?;
+        let seat = seat.into();
+        let command = self.decode(seat, action)?;
+        let result = self.step_command(seat, command.clone(), sink)?;
         Ok((result, command))
     }
 
-    /// The command `action` decodes to for `player`, unless the episode is over.
-    fn decode(&self, player: PlayerId, action: Action) -> Result<GameCommand, StepError> {
+    /// The command `action` decodes to for `seat`, unless the episode is over.
+    fn decode(&self, seat: Seat, action: Action) -> Result<GameCommand, StepError> {
         if self.is_done() {
             return Err(StepError::EpisodeOver);
         }
-        action::decode(&self.state, &self.rules, player, action).ok_or(StepError::InvalidAction)
+        action::decode(&self.state, &self.rules, seat, action).ok_or(StepError::InvalidAction)
     }
 
-    /// Plays a game command for `player` as a step: a path of the player's own choice, which an
-    /// action cannot name (a client computes its own paths, T8b2a).
+    /// Plays a game command for `seat` as a step, issued as the seat's actor ([`Seat::actor`]):
+    /// a path of the player's own choice, which an action cannot name (a client computes its own
+    /// paths, T8b2a).
     ///
     /// # Errors
     ///
@@ -298,7 +308,7 @@ impl AdventureEnv {
     /// and no event was emitted.
     pub fn step_command<S: Sink>(
         &mut self,
-        player: PlayerId,
+        seat: impl Into<Seat>,
         command: GameCommand,
         sink: &mut S,
     ) -> Result<StepResult, StepError> {
@@ -308,7 +318,7 @@ impl AdventureEnv {
         apply(
             &mut self.state,
             &self.rules,
-            Actor::Player(player),
+            seat.into().actor(),
             command,
             sink,
         )
@@ -334,6 +344,14 @@ impl AdventureEnv {
     /// What `viewer` may know of the game ([`h3_game::observe`]).
     pub fn observation(&self, viewer: PlayerId) -> GameObservation {
         observe(&self.state, &self.rules, Viewer::Player(viewer))
+    }
+
+    /// What the neutral seat may know while it is to act: the battle it plays as its unowned
+    /// side sees it ([`action::battle_of`], `h3_battle::observe`); none while no battle waits for
+    /// it. The neutral seat sees nothing of the map.
+    pub fn neutral_observation(&self) -> Option<h3_battle::Observation> {
+        action::battle_of(&self.state, Seat::Neutral)
+            .map(|(battle, side)| h3_battle::observe(battle, self.rules.battle(), side))
     }
 
     /// Accepted steps in this episode.

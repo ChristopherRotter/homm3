@@ -2279,3 +2279,52 @@ registered flag, so T20b2 stays in its lane.
   outcome's three cases), `h3-game`'s `tests/monsters.rs` (the split by the tile in the battle,
   the system actor's commands and refusals, a won and a lost battle played out), `h3-cli`'s
   format v4.
+
+### Round 4 of increment 3: T20b3a (2026-10-15, `adventure/e08-t20b3a` #234)
+
+Decision 38: T20b3 in two, this session T20b3a alone. Baseline: master `ae6d517` (#228, #230, #231
+merged), its code already verified (the setup's baseline ran the light gates only).
+
+- **The neutral seat** (ADR-0017 point 8, decision 27; `ADV-STUB-7` closed): `h3_sim::adventure::Seat
+  { Player(PlayerId), Neutral }` with `actor()` (the player, or `Actor::System`), `player()` and
+  `From<PlayerId>`. `AdventureEnv::to_move` yields the players as before, then `Seat::Neutral`
+  while `GameState::unowned_battle` has a battle (none once the episode is over). The env's and
+  `action`'s functions take `impl Into<Seat>`, so a caller with a `PlayerId` is unchanged:
+  `phase` (the battle phase, always for the neutral seat), `battle_of` (for the neutral seat the
+  first battle whose side to act no player owns, and that side), the battle masks, `decode` and
+  `encode` (a battle action for the neutral seat's battle; no map action decodes or encodes for
+  it), `moves` (none), the map masks (empty: `legal_commands(System)` lists only battle commands),
+  `step`, `step_with`, `step_decoded`, `step_command` (issued as the seat's actor).
+  `neutral_observation` is the neutral seat's battle as its side sees it (`h3_battle::observe`);
+  a player's `observation` is unchanged. `rollout::choose` plays the neutral seat with the
+  battle's random agent (`EndTurn`, which the seat cannot issue, when no battle waits for it);
+  `random_rollout` and `Replay::record_random` step every seat and record the neutral seat's
+  commands as the system actor's (replay format v4, T20b2). Action encoding v3 is unchanged (the
+  seat is not part of an action). `h3-cli`'s benchmarks drive seats (the seek walk stops at any
+  battle; the reach workload queries players only; the agent rollout reads the neutral seat's
+  observation).
+- **No guard after a visit from the neighbouring tile** (ADV-MON-006): the inbox's item (from
+  T20a2b) read the address map's summary of 0x480090 ("after a hero's step: hero_move_step,
+  visit_from_neighbour"). The code: 0x480090's arguments are the hero, the step's object, a skip
+  flag, the x and y the hero stood on before the step (hero_move_step saves them at 0x48063F to
+  0x480652), the move's end and a flag; it skips the guard test when the hero's x and y equal
+  them (0x4800B8 to 0x4800C9), and `visit_from_neighbour` (0x480240) passes the hero's own tile
+  (0x48034F to 0x480365), so a visit from the neighbouring tile (a pickup, another monster, a
+  hero) tests no guard, even from a guarded tile. The only other caller of `guard_attack`
+  (0x481900) is the landing from a boat (0x49E670, increment 4). VCMI 1.7.5 agrees
+  (`CGameHandler::moveHero`: a blocking visit moves with `IGNORE_GUARDS`, a landing with
+  `CHECK_FOR_GUARDS`). The engine already tested the guard only after an entering step: a test
+  pins it (`a_visit_from_a_guarded_tile_tests_no_guard`: a pile and a second monster beside a
+  guarded hero); the catalog, the survey §2.2 and the map entries of 0x480090 and 0x480240
+  corrected.
+- Tests: `h3-sim`'s `adventure/tests/monsters.rs` (`monster_setup`: 30 savage pikemen that never
+  flee beside red's hero; the seat's accessors; the neutral seat outside a battle; the battle
+  played to its end with one seat at a time, each seat's masks and the other's refusals; the
+  rollout through the battle to the day limit; a replay with the system actor's commands; a
+  random recording that meets the monster), the property `steps_agree_with_the_masks_and_the_game`
+  over every seat with the monster setup as a third kind (free picks may name the neutral seat).
+  The eight golden replays re-record byte-identical with their options (the duel holds no
+  monster).
+- Not changed (shared): `docs/07-simulation-and-ai.md` still says `to_move` yields the owner of
+  the side to act (T19b1); the neutral seat goes into it with the next `shared/` change (the
+  QUEUE's inbox).

@@ -565,6 +565,49 @@ fn a_step_onto_a_guarded_tile_ends_the_move() {
 
 // covers: ADV-MON-006
 #[test]
+fn a_visit_from_a_guarded_tile_tests_no_guard() {
+    // The original tests the guard only after a step that changed the hero's tile (0x480090 at
+    // 0x4800B8: visit_from_neighbour passes the hero's own tile); VCMI's blocking visit ignores
+    // the guards too (E08 T20b3a).
+    let (core, part) = monster_rules();
+    let p = |x, y| Pos::new(x, y, 0);
+    let state = guarded(
+        &["gggggg", "gPgggg", "gggggg"],
+        vec![monster_at(3, 0, PIKEMAN), monster_at(3, 2, GNOLL)],
+        vec![hero_at(1, 0, p(2, 1), &[PIKEMAN])],
+    );
+    // The hero's tile is the first monster's to guard (the pile is object 0).
+    assert_eq!(state.guard_of(&part, p(2, 1)), Some(1));
+    let visit = |state: &mut AdventureState, to: Pos| {
+        let step = AdventureCommand::MoveHero {
+            hero: HeroId::new(1),
+            path: vec![to],
+        };
+        let mut events: Vec<AdventureEvent> = Vec::new();
+        state
+            .apply(&core, &part, &[], RED, &step, &mut events)
+            .unwrap()
+    };
+    // The pile beside it: picked up, and its guard does not visit.
+    let mut s = state.clone();
+    let outcome = visit(&mut s, p(1, 1));
+    assert_eq!(outcome.gains.len(), 1);
+    assert_eq!(
+        (outcome.offer, outcome.battle, outcome.guard_after),
+        (None, None, false)
+    );
+    assert_eq!(s.hero(HeroId::new(1)).unwrap().pos, p(2, 1));
+    // The other monster beside it: that monster answers, the guard does not visit after.
+    let outcome = visit(&mut s, p(3, 2));
+    let offer = outcome
+        .offer
+        .expect("the gnolls' answer to a stronger hero");
+    assert_eq!((offer.anchor, outcome.guard_after), (p(3, 2), false));
+    assert_eq!(s.hero(HeroId::new(1)).unwrap().pos, p(2, 1));
+}
+
+// covers: ADV-MON-006
+#[test]
 fn the_reachable_tiles_end_at_a_guarded_tile() {
     let (core, part) = monster_rules();
     let p = |x, y| Pos::new(x, y, 0);

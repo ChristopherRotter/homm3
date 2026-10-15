@@ -4,9 +4,9 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Current state
 
-- **E08**: increments 1 and 2 **closed** (2026-10-12, -13). **Increment 3** (monsters and battles, decisions 19–36): rounds 1 to 3 (T17a to T19b2) **done**; round 4: **T20a1 done** (#215, `cross-lane`), **T20a2a** and **T20a2b done** (decision 36), T20b split in three (decision 37): **T20b1** (#228) and **T20b2 done** (the answer and its offers; the monster's battle), T20b3 next (the env, replays and plans with monsters). Design and cut: `E08-design.md`. Records: `E08-log.md`.
+- **E08**: increments 1 and 2 **closed** (2026-10-12, -13). **Increment 3** (monsters and battles, decisions 19–38): rounds 1 to 3 (T17a to T19b2) **done**; round 4: T20a1, T20a2a, T20a2b, T20b1, T20b2 **done** (decisions 35–37), T20b3 split (decision 38): **T20b3a done** (#234: the neutral seat), T20b3b next (the maps, replays, plans and benchmarks with monsters). Design and cut: `E08-design.md`. Records: `E08-log.md`.
 - **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 6, `docs/formats/h3m.md` "Import"). Every shipped map's static layer imports and validates; 4 maps import whole, the rest are typed `Unsupported`. `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on the shipped maps (with the monsters' and grounds' census).
-- **Monsters and grounds** (T20a2a): kinds `Monster`, `Ground`; `[params.monsters]`; `ObjectSetup.monster`/`.drawn`, drawn at the build (ADV-MON-002 to -004); `army_left`; `battle_ground`'s topmost ground (ADV-GRD-001); `ObjectView.monster`. T20a2b: `guard_of` (ADV-MON-005, -006); `apply` and `reach` take the store of heroes. T20b1: the answer (`answer.rs`, ADV-MON-007), offers `Join`, `JoinForGold`, `Pursue` (ADV-MON-008; `decline_offer`), the guard after the tile's offer (`guard_after`, `visit_guard`), `settle_outcome`. T20b2: `split`, `TileRand` (ADV-MON-009, flag 24), `Defender::Monster`, `Actor::System` (`unowned_battle`), `end_monster_battle` (ADV-MON-010); the env's seat `ADV-STUB-7`.
+- **Monsters and grounds** (T20a2a): kinds `Monster`, `Ground`; `[params.monsters]`; `ObjectSetup.monster`/`.drawn` (ADV-MON-002 to -004); `army_left`; `battle_ground` (ADV-GRD-001); `ObjectView.monster`. T20a2b: `guard_of` (ADV-MON-005, -006). T20b1: `answer.rs` (ADV-MON-007), offers `Join`, `JoinForGold`, `Pursue` (ADV-MON-008), `guard_after`, `visit_guard`, `settle_outcome`. T20b2: `split`, `TileRand` (ADV-MON-009, flag 24), `Defender::Monster`, `Actor::System`, `end_monster_battle` (ADV-MON-010). T20b3a: no guard after a neighbour visit (0x4800B8).
 - **The store of heroes** (T18b, GAM-HER-001): `GameState` keeps `Arc<HeroDetails>` by `HeroId`, from `GameHeroSetup.details` or the defaults, validated by `h3-heroes`; `attack_defense`, `join_bonus` (T20a1); `GameObservation.heroes`.
 - **Objects** (T12–T15): types (`ruleset/objects.rs`, ADV-OBJ-002); contents drawn at the build (ADV-PIK-001 to -003); removals (`state/occupancy.rs`); `ObjectView`s (no index). Visits (ADV-OBJ-003, -004; `visit_at`, `tile_object`, `PastVisit`, `FromAbove`); gains and offers in `AdventureOutcome` (ADV-OBJ-005). Purchases and keys (`state/flags.rs`; ADV-VIS-001 to -004); offers `Reveal { price }`, `Pass`, `offer_stands`.
 - **Battles** (T19a1, GAM-BAT-001 to -005; `h3_game::state::battle`): a step toward another player's hero visits it (`BattleStart`, `battle_ground`), `Decision::Battle(Arc<OpenBattle>)` both owners play (`GameCommand::Battle`), seeds under `ADV-QUIRK-5`, events and `GameObservation.battle` to the owners; the outcome's armies, `HeroRemoved`, a surrender's gold; the heroes' part (`heroes_after_battle`: `HeroChange`s, Necromancy, Eagle Eye).
@@ -14,12 +14,12 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Movement** (T7b): `Pricing` in `movement.rs` (ADV-MOV-003 to -006, `ADV-QUIRK-2`/`-3`), `native_terrain` (ADV-MOV-004, `ADV-QUIRK-4`), `MoveHero` (ADV-MOV-007, rejected whole, `HeroStepped` per step), `reach` (`Reach`, one path per tile as the original's).
 - **Fog of war** (T8a, `BitGrid`, 32 × 32 leaves): an explored layer per player, `fog::reveal` (ADV-FOG-002, -003), moves and `Reach` on explored tiles only (ADV-MOV-008), events `{ kind, seen_by: Viewers }` (ADV-FOG-004); the fringe (ADV-FOG-005 under `ADV-QUIRK-1`), `observe` and `project` in both crates (ADV-FOG-006).
 - **Commands** (T8b2): `h3_game::legal_commands` and `legal_moves` (a hero's `Reach`, the user), empty outside the turn.
-- **The env** (T9a, `h3-sim/src/adventure/`): `AdventureEnv` (reset, `to_move`, masks, steps, fork, hash, the view, a day limit), action encoding v3 since T19b1 (`Phase`; `MapAction`: `EndTurn`, eight hero slots, `Accept`, `Decline`, a tile; in a battle the battle's encoding; `to_move` adds each battle's owner of the side to act), `random_rollout`.
-- **Replays and benchmarks** (T9b): `adventure::replay` (format v4 since T20b2), `h3 adventure run/verify/bench` (`crates/h3-cli/src/adventure/`), eight golden replays in `fixtures/replays/adventure/`, two with hero battles (re-record with the options in `crates/h3-cli/tests/adventure_replays.rs`), the maps `fixtures/maps/e08-{duel-36,xl-144}.h3m` (`h3-map`'s `tests/fixtures.rs`), three gated workloads in `benches/adventure/` (play, reach, fork with a battle open; `02-architecture.md` §8).
+- **The env** (T9a, `h3-sim/src/adventure/`): `AdventureEnv` (reset, `to_move`, masks, steps, fork, hash, the view, a day limit), action encoding v3 since T19b1 (`Phase`; `MapAction`: `EndTurn`, eight hero slots, `Accept`, `Decline`, a tile; in a battle the battle's encoding; `to_move` yields `Seat`s: players, each battle's owner of the side to act, and since T20b3a `Seat::Neutral` for a battle's unowned side, played as `Actor::System` with its battle masks and `neutral_observation`), `random_rollout` (every seat).
+- **Replays and benchmarks** (T9b): `adventure::replay` (format v4 since T20b2), `h3 adventure run/verify/bench`, eight golden replays, two with hero battles (re-record with the options in `crates/h3-cli/tests/adventure_replays.rs`), the maps `fixtures/maps/e08-{duel-36,xl-144}.h3m` (`h3-map`'s `tests/fixtures.rs`; no monsters until T20b3b), three gated workloads in `benches/adventure/` (play, reach, fork with a battle open).
 - **Experiments**: `h3-experiment` (battle-owned) has the adventure shape; batches 1 and 2 scored. **From increment 3 agents run batches** on the client lane's harness (decision 21; `E08-battles.md` §13).
 - **Adventure ruleset part** (v8 since T20b1): terrains, roads, rivers, the movement and setup parameters, the object types, the starting resources by difficulty, the battle terrains, the monsters' parameters (with the price resource).
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`; T8b2); since T19b2 `Step::Fight` runs (seek, fight with hero casts through `h3-battle`, a dev-dependency), heroes with Eagle Eye of their own; `the_plans_play_battles_to_a_victory` counts 192 fixed cases.
-- **Next:** #228 (T20b1), #230 (`shared/e08-t20b2`), T20b2's pull request, in that order (merge `master` in after each), then T20b3 (QUEUE).
+- **Next:** #234 (T20b3a) to merge, then T20b3b (QUEUE).
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), their increment-2 amendments (#115), increment 3's (ADR-0013 too) applied by T18a (#185).
 - **Fuzzing is stable-only** (user, 2026-10-10): property tests on arbitrary bytes.
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
@@ -39,6 +39,10 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Recent sessions
 
+### 2026-10-15 — round 4, fourth session: T20b3a
+
+#228, #230, #231 merged; baseline light (ae6d517 verified). Decision 38: T20b3 in two, T20b3a alone. The neutral seat (`Seat`, `ADV-STUB-7` closed); the reading found no guard after a neighbour visit, as built (a test, docs corrected). The eight replays byte-identical.
+
 ### 2026-10-15 — round 4, third session: T20b1 and T20b2
 
 #220, #223 merged; baseline light (615286e verified). Decision 37: T20b in three; grounds' exemption confirmed. T20b1: the answer and its offers, part v8, game state hash v7. T20b2: flag 24 (`shared/`), the split, `Actor::System`, the outcome; replay format v4. Sandbox: the client check needs SDL's packages (`clients.yml`'s apt line).
@@ -46,7 +50,3 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 ### 2026-10-15 — round 4, second session: T20a2a (and T20a2b)
 
 #215 merged; baseline green (0132a15). Decision 36. T20a2a: monsters and grounds as data, part v7, import v6, state hash v9; the grounds' draw order read (0x505230); grounds left out of `SharedAnchor`. T20a2b: guarded tiles, the store passed on.
-
-### 2026-10-14 — round 3, second session: T19b2 (and T20a1)
-
-Decision 35. T19b2: the plans fight to a victory. T20a1: `attack_defense`, `join_bonus`.

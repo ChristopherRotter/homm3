@@ -917,7 +917,9 @@ impl AdventureState {
     /// crosses it as any tile, and the path may go on or end there (ADV-VIS-005, T15b). A step
     /// onto a tile a monster guards (ADV-MON-005) is the path's last too and visits the guard
     /// after any visit of the tile's own object ([`Self::visit_guard`], ADV-MON-006, E08 T20a2b);
-    /// the hero's own tile may be guarded: it leaves it.
+    /// the hero's own tile may be guarded: it leaves it. A step that does not enter (toward a
+    /// neighbour-visited object or a hero) tests no guard, even from a guarded tile: the original
+    /// tests the hero's tile only after a step that changed it (E08 T20b3a).
     // rule: ADV-MOV-006, ADV-MOV-007, ADV-FOG-003, ADV-OBJ-003, ADV-MON-006
     fn move_hero<S: Sink>(
         &mut self,
@@ -995,7 +997,7 @@ impl AdventureState {
             },
         };
         // The guard visits after the tile's own object (ADV-MON-006); after its offer's answer
-        // when it made one (E08 T20b1). A step that meets a hero does not enter: no guard then.
+        // when it made one (E08 T20b1). A step that does not enter tests no guard (T20b3a).
         Ok(match guard {
             None => outcome,
             Some(_) if outcome.offer.is_some() => AdventureOutcome {
