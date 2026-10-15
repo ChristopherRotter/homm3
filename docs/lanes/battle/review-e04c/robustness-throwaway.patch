@@ -1,0 +1,540 @@
+diff --git a/crates/h3-battle/src/tests/properties.rs b/crates/h3-battle/src/tests/properties.rs
+index 0d28c8c..1c9ac0c 100644
+--- a/crates/h3-battle/src/tests/properties.rs
++++ b/crates/h3-battle/src/tests/properties.rs
+@@ -2813,3 +2813,452 @@ fn extreme_casting_heroes_play_without_failures() {
+     // The battles did cast (about a thousand casts of the heroes and four hundred of the stacks).
+     assert!(casts.0 > 500 && casts.1 > 200, "{casts:?}");
+ }
++
++/// Where an extreme siege game is fought (E04c T10b review): a town three times in four, with
++/// any of the test siege records, fort levels, moats, structures, Ballistics and Artillery
++/// levels and any morale and luck of the contract's range, else a special battlefield.
++fn extreme_place(rng: &mut Rng) -> Place {
++    if rng.below(4) == 0 {
++        return Place::Battlefield(one_of(rng, &BATTLEFIELDS));
++    }
++    let mut small = |n: u32| u8::try_from(rng.below(n)).unwrap();
++    let mood = |small: &mut dyn FnMut(u32) -> u8| match small(8) {
++        0 => i8::MIN,
++        1 => i8::MAX,
++        n => i8::try_from(n).unwrap() - 4,
++    };
++    Place::Town(TownSpec {
++        faction: small(3),
++        fort: small(4),
++        moat: small(3),
++        structures: small(256),
++        escape_tunnel: small(2) == 0,
++        morale: mood(&mut small),
++        luck: mood(&mut small),
++        ballistics: small(4),
++        artillery: small(4),
++    })
++}
++
++/// An army of up to seven stacks with counts up to `u32::MAX`, half its stacks of the creatures
++/// a siege is about (`special`: the wall shooters, flyers, a teleporter, two-hex stacks and the
++/// casters), the rest of `pool`.
++fn siege_army(rng: &mut Rng, pool: &[u8], special: &[u8]) -> ArmySpec {
++    let mut slots: Vec<u8> = (0..7).collect();
++    (0..=rng.below(7))
++        .map(|_| {
++            let slot = slots.remove(rng.below(slots.len() as u32) as usize);
++            let count = match rng.below(4) {
++                0 => 1 + rng.below(100),
++                1 => 60_000 + rng.below(140_000),
++                2 => 1 + rng.below(u32::MAX),
++                _ => u32::MAX,
++            };
++            let creature = if rng.below(2) == 0 {
++                one_of(rng, special)
++            } else {
++                one_of(rng, pool)
++            };
++            (slot, creature, count)
++        })
++        .collect()
++}
++
++/// What the extreme siege games reached: wall shots, Earthquakes, Teleports, moat damage,
++/// destroyed parts, destroyed turrets' parts, battles over.
++#[derive(Debug, Default)]
++struct SiegeReach {
++    wall_shots: u32,
++    quakes: u32,
++    teleports: u32,
++    moat: u32,
++    destroyed: u32,
++    turrets_down: u32,
++    over: u32,
++    steps: u64,
++    probes: u64,
++}
++
++/// The siege's standing wall hexes but the gate's and the drawbridge's (a defender stack opens
++/// the gate standing on them).
++fn standing_walls(state: &BattleState, r: &BattleRuleset) -> crate::geometry::HexSet {
++    let Some((s, sf)) = state.siege.zip(r.siege_field()) else {
++        return crate::geometry::HexSet::new();
++    };
++    let mut gate = crate::geometry::HexSet::new();
++    gate.insert(Hex(sf.gate));
++    gate.insert(Hex(sf.bridge()));
++    s.walls().without(gate)
++}
++
++/// The invariants of a siege's state after every command: no living stack but a turret on a
++/// standing wall hex, every turret held by exactly one target and alive exactly while it stands,
++/// every stack's top creature within its hit points.
++fn siege_invariants(state: &BattleState, r: &BattleRuleset, seed: u64) {
++    let field = crate::Field::new(r.battle().field);
++    let walls = standing_walls(state, r);
++    for (i, st) in state.stacks().iter().enumerate() {
++        assert!(st.top_hp <= st.max_hp, "seed {seed}: stack {i} top {} > max {}", st.top_hp, st.max_hp);
++        assert_eq!(st.is_alive(), st.top_hp > 0, "seed {seed}: stack {i} alive without hit points");
++        if st.is_alive() && !st.is_turret() {
++            for h in st.footprint(field).hexes() {
++                assert!(!walls.contains(h), "seed {seed}: stack {i} on the standing wall {h:?}");
++            }
++        }
++        if let Some(siege) = state.siege {
++            let id = StackId(u8::try_from(i).unwrap());
++            let held: Vec<u8> = (0..siege.targets).filter(|&t| siege.turret(t) == Some(id)).collect();
++            assert_eq!(held.len(), usize::from(st.is_turret()), "seed {seed}: turret {id:?}");
++            if let Some(&t) = held.first() {
++                assert_eq!(st.is_alive(), siege.stands(t), "seed {seed}: turret {id:?} of part {t}");
++            }
++        }
++    }
++}
++
++/// Legality consistency and atomicity at a siege: every legal command applies to a copy; every
++/// Earthquake and Teleport cast listed validates (one in eight applies); a wall shot that is not
++/// listed is rejected and leaves the state's hash unchanged.
++fn siege_probe(state: &BattleState, r: &BattleRuleset, side: BattleSide, seed: u64, rng: &mut Rng) {
++    let mut legal = LegalCommands::new();
++    legal_commands(state, r, side, &mut legal);
++    for c in legal.iter() {
++        let mut probe = state.clone();
++        apply(&mut probe, r, side, *c, &mut crate::NoopSink)
++            .unwrap_or_else(|e| panic!("seed {seed}: the listed {c:?} is rejected: {e:?}"));
++    }
++    let hash = state.state_hash();
++    for part in [0u8, 3, 7, 8, 9, 200, u8::MAX, u8::try_from(rng.below(256)).unwrap()] {
++        let c = Command::ShootWall { part };
++        if legal.iter().any(|l| *l == c) {
++            continue;
++        }
++        let mut probe = state.clone();
++        assert!(apply(&mut probe, r, side, c, &mut crate::NoopSink).is_err(), "seed {seed}: {c:?}");
++        assert_eq!(probe.state_hash(), hash, "seed {seed}: a rejected {c:?} changed the state");
++        let other = side.opponent();
++        assert!(apply(&mut probe, r, other, c, &mut crate::NoopSink).is_err(), "seed {seed}: {c:?} by {other:?}");
++        assert_eq!(probe.state_hash(), hash, "seed {seed}: a rejected {c:?} by {other:?} changed the state");
++    }
++    let special = ["t:quake", "t:teleport"].map(|k| r.spell_by_key(k).unwrap());
++    let mut targets = CastTargets::new();
++    let mut seconds = CastTargets::new();
++    for spell in castable_spells(state, r, side).iter() {
++        if !special.contains(&spell) {
++            continue;
++        }
++        cast_targets(state, r, side, spell, &mut targets);
++        assert!(!targets.is_empty(), "seed {seed}: castable {spell:?} without a target");
++        for target in targets.iter() {
++            second_targets(state, r, side, (spell, *target), &mut seconds);
++            assert!(!seconds.is_empty(), "seed {seed}: {spell:?} at {target:?} without a second target");
++            for (k, second) in seconds.iter().enumerate() {
++                let c = Command::Cast { spell, target: *target, second: *second };
++                validate(state, r, side, c)
++                    .unwrap_or_else(|e| panic!("seed {seed}: the listed {c:?} is rejected: {e:?}"));
++                if k % 8 == usize::try_from(rng.below(8)).unwrap() {
++                    let mut probe = state.clone();
++                    apply(&mut probe, r, side, c, &mut crate::NoopSink)
++                        .unwrap_or_else(|e| panic!("seed {seed}: the listed {c:?} is rejected: {e:?}"));
++                }
++            }
++        }
++    }
++}
++
++/// Plays `state` for up to `steps` commands with an agent that shoots the walls when it may,
++/// casts Earthquake and Teleport often, and otherwise strikes or plays any legal command
++/// (leaving the battle only if `leave`); every listed command must be accepted. Every
++/// `probe_every` steps [`siege_probe`] runs; [`siege_invariants`] after every command.
++fn play_siege(
++    state: &mut BattleState,
++    r: &BattleRuleset,
++    seed: u64,
++    (steps, probe_every, leave): (u32, u32, bool),
++    reach: &mut SiegeReach,
++) {
++    let mut agent = Rng::for_stream(seed, h3_kernel::StreamId::AGENT);
++    let mut legal = LegalCommands::new();
++    let mut targets = CastTargets::new();
++    let mut seconds = CastTargets::new();
++    let special = ["t:quake", "t:teleport"].map(|k| r.spell_by_key(k).unwrap());
++    let sf = r.siege_field().unwrap();
++    let kind = |part: u8| sf.targets.get(usize::from(part)).map(|t| t.kind);
++    let mut events = Vec::new();
++    for step in 0..steps {
++        let Some(side) = state.side_to_act() else {
++            reach.over += 1;
++            break;
++        };
++        if step % probe_every == 0 {
++            siege_probe(state, r, side, seed, &mut agent);
++            reach.probes += 1;
++        }
++        let spells: Vec<SpellId> = castable_spells(state, r, side).iter().collect();
++        creature_cast_targets(state, r, side, &mut targets);
++        let roll = agent.below(100);
++        let cmd = if !spells.is_empty() && roll < 40 {
++            let wanted: Vec<SpellId> = spells.iter().copied().filter(|s| special.contains(s)).collect();
++            let spell = if !wanted.is_empty() && agent.below(2) == 0 {
++                one_of(&mut agent, &wanted)
++            } else {
++                one_of(&mut agent, &spells)
++            };
++            cast_targets(state, r, side, spell, &mut targets);
++            assert!(!targets.is_empty(), "seed {seed}: castable {spell:?} without a target");
++            let target = one_of(&mut agent, targets.as_slice());
++            second_targets(state, r, side, (spell, target), &mut seconds);
++            assert!(!seconds.is_empty(), "seed {seed}: {spell:?} at {target:?} without a second target");
++            Command::Cast { spell, target, second: one_of(&mut agent, seconds.as_slice()) }
++        } else if !targets.is_empty() && roll < 55 {
++            Command::CreatureCast { target: one_of(&mut agent, targets.as_slice()) }
++        } else {
++            legal_commands(state, r, side, &mut legal);
++            let allowed = |c: &&Command| leave || !c.leaves_battle();
++            let walls: Vec<Command> = legal
++                .iter()
++                .filter(allowed)
++                .copied()
++                .filter(|c| matches!(c, Command::ShootWall { .. }))
++                .collect();
++            let strikes: Vec<Command> = legal
++                .iter()
++                .filter(allowed)
++                .copied()
++                .filter(|c| matches!(c, Command::Attack { .. } | Command::Shoot { .. }))
++                .collect();
++            let pool: Vec<Command> = if !walls.is_empty() && agent.below(3) != 0 {
++                walls
++            } else if !strikes.is_empty() && agent.below(2) == 0 {
++                strikes
++            } else {
++                legal.iter().filter(allowed).copied().collect()
++            };
++            one_of(&mut agent, &pool)
++        };
++        events.clear();
++        apply(state, r, side, cmd, &mut events)
++            .unwrap_or_else(|e| panic!("seed {seed}: the listed {cmd:?} is rejected: {e:?}"));
++        reach.steps += 1;
++        for e in &events {
++            match e.kind {
++                EventKind::WallShot { .. } => reach.wall_shots += 1,
++                EventKind::WallQuaked { .. } => reach.quakes += 1,
++                EventKind::Teleported { .. } => reach.teleports += 1,
++                EventKind::MoatDamage { .. } => reach.moat += 1,
++                EventKind::WallDestroyed { part } => {
++                    reach.destroyed += 1;
++                    if matches!(kind(part), Some(h3_content_battle::WallKind::Keep | h3_content_battle::WallKind::Tower)) {
++                        reach.turrets_down += 1;
++                    }
++                }
++                _ => {}
++            }
++        }
++        siege_invariants(state, r, seed);
++    }
++    if !state.is_over() && std::env::var("H3_STRESS_SHOW").is_ok() {
++        let alive: Vec<std::string::String> = state
++            .stacks()
++            .iter()
++            .enumerate()
++            .filter(|(_, s)| s.is_alive())
++            .map(|(i, s)| std::format!("{i}:{:?}@{} n{} sp{} sh{} st{:?}", s.side, s.hex.0, s.count, s.speed_now(), s.shots, s.spells.status))
++            .collect();
++        std::eprintln!("seed {seed} unfinished: round {} siege {:?} alive {alive:?}", state.round, state.siege.map(|s| (s.fort, s.gate_open, s.parts, s.targets)));
++    }
++    for side in BattleSide::BOTH {
++        let _ = observe(state, r, side);
++    }
++    assert_eq!(state.outcome().is_some(), state.is_over(), "seed {seed}");
++}
++
++/// The setup of extreme siege game `seed` on ruleset `r`: extreme casting heroes on both sides
++/// (the defender's seven times in eight), armies of up to `u32::MAX` creatures with wall
++/// shooters, flyers, teleporters, two-hex stacks and casters, at [`extreme_place`].
++fn extreme_siege_setup(r: &BattleRuleset, seed: u64) -> BattleSetup {
++    let pool = army_creatures();
++    let special: Vec<u8> = pool
++        .iter()
++        .copied()
++        .filter(|&c| {
++            let (name, traits) = (CREATURES[usize::from(c)].0, CREATURES[usize::from(c)].7);
++            ["cyclops", "cyclops_king", "flyer", "dragon", "porter", "wide"].contains(&name)
++                || traits.iter().any(|t| t.contains("spell_caster") || t.contains("raiser"))
++        })
++        .collect();
++    let mut rng = Rng::from_seed(seed);
++    // A quarter of the games with small counts and mild heroes, so that sieges last: the walls
++    // shot down over many rounds, the gate opened and closed, the turrets shooting round after round.
++    let small = seed % 4 == 0;
++    let mut army = || {
++        let mut a = siege_army(&mut rng, &pool, &special);
++        if small {
++            a.iter_mut().for_each(|s| s.2 = 1 + s.2 % 100);
++        }
++        a
++    };
++    let (att, def) = (army(), army());
++    let mut setup = make_setup(r, &att, &def, &[], rng.next_u64());
++    let caster = |rng: &mut Rng| {
++        let mut h = extreme_caster(r, rng);
++        if small {
++            [h.attack, h.defense, h.power] = [0; 3].map(|_| u8::try_from(rng.below(8)).unwrap());
++            h.damage = DamageBonuses::default();
++            h.effects.clear();
++        }
++        h
++    };
++    setup.heroes = [
++        Some(caster(&mut rng)),
++        (rng.below(8) != 0).then(|| caster(&mut rng)),
++    ];
++    setup.funds = [rng.next_u32(), one_of(&mut rng, &[0, 1000, u32::MAX])];
++    setup.difficulty = u8::try_from(rng.below(5)).unwrap();
++    setup.human = [rng.below(2) == 0, rng.below(2) == 0];
++    situate(r, &mut setup, extreme_place(&mut rng));
++    // A town on a special battlefield one time in eight (the contract allows both), an
++    // anti-magic garrison one time in sixteen.
++    if setup.siege.is_some() && rng.below(8) == 0 {
++        setup.battlefield = Some(ContentKey::new("t", one_of(&mut rng, &BATTLEFIELDS)).unwrap());
++    }
++    setup.anti_magic = rng.below(16) == 0;
++    setup
++}
++
++/// The rulesets the extreme siege games run on: the test quirks, the original's rates, and the
++/// mix with no Ballista for the defender at a fort (BAT-SIE-029).
++fn siege_rulesets() -> [BattleRuleset; 3] {
++    [
++        lively(),
++        lively_with("t:original"),
++        lively_mix(&["no_luck_without_hero", "clone_on_its_original", "no_defender_ballista_at_fort"]),
++    ]
++}
++
++/// Runs extreme siege games `seeds` on every ruleset, `steps` commands each, a probe every
++/// `probe_every`; the reach of all of them.
++fn run_extreme_sieges(seeds: std::ops::Range<u64>, steps: u32, probe_every: u32) -> SiegeReach {
++    let mut reach = SiegeReach::default();
++    for r in siege_rulesets() {
++        for seed in seeds.clone() {
++            let setup = extreme_siege_setup(&r, seed);
++            let mut state = BattleState::new(&r, &setup, seed)
++                .unwrap_or_else(|e| panic!("seed {seed}: the setup is refused: {e:?}"));
++            play_siege(&mut state, &r, seed, (steps, probe_every, seed % 8 == 7), &mut reach);
++        }
++    }
++    reach
++}
++
++// covers: BAT-SIE-005, BAT-SIE-011, BAT-SIE-013, BAT-SIE-015, BAT-SIE-017, BAT-SIE-026
++/// Robustness (E04c T10b review): battles at towns of every test siege record, fort level and
++/// moat, with any structures, morale and luck, Ballistics and Artillery, and on every special
++/// battlefield, led by extreme casting heroes with armies of up to `u32::MAX` creatures, wall
++/// shooters, flyers, teleporters and casters among them, play with every listed command accepted
++/// (the wall shots, Earthquake and Teleport at every target and destination among them), a wall
++/// shot that is not listed rejected without a change, the siege's invariants after every
++/// command, no arithmetic overflow, and an outcome when over. Fixed seeds: a failure reproduces.
++#[test]
++fn extreme_sieges_play_without_failures() {
++    let reach = run_extreme_sieges(0..40, 400, 16);
++    assert!(
++        reach.wall_shots > 50 && reach.quakes > 20 && reach.teleports > 10 && reach.moat > 10
++            && reach.destroyed > 20 && reach.turrets_down > 3 && reach.over > 20,
++        "{reach:?}"
++    );
++}
++
++/// Throwaway volume run (not kept): `H3_STRESS_SEEDS` seeds per ruleset, 1 000 steps each.
++#[test]
++fn stress_extreme_sieges() {
++    let n: u64 = std::env::var("H3_STRESS_SEEDS").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
++    if n == 0 {
++        return;
++    }
++    let from: u64 = std::env::var("H3_STRESS_FROM").ok().and_then(|v| v.parse().ok()).unwrap_or(1_000);
++    let reach = run_extreme_sieges(from..from + n, 1_000, 25);
++    std::eprintln!("stress {from}..{}: {reach:?}", from + n);
++}
++
++/// Throwaway (not kept): plays `H3_GREEDY_SEED`'s extreme siege game with a greedy attacker
++/// (strike if it can, else the move nearest to a living enemy) to see whether an unfinished
++/// random game can end at all.
++#[test]
++fn greedy_extreme_siege() {
++    let Some(seed) = std::env::var("H3_GREEDY_SEED").ok().and_then(|v| v.parse::<u64>().ok()) else {
++        return;
++    };
++    let which: usize = std::env::var("H3_GREEDY_RULESET").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
++    let r = siege_rulesets().into_iter().nth(which).unwrap();
++    let setup = extreme_siege_setup(&r, seed);
++    let mut state = BattleState::new(&r, &setup, seed).unwrap();
++    let field = crate::Field::new(r.battle().field);
++    let mut legal = LegalCommands::new();
++    let mut agent = Rng::for_stream(seed, h3_kernel::StreamId::AGENT);
++    for step in 0..20_000u32 {
++        let Some(side) = state.side_to_act() else {
++            std::eprintln!("seed {seed}: over after {step} steps: {:?}", state.outcome().map(|o| o.result));
++            return;
++        };
++        legal_commands(&state, &r, side, &mut legal);
++        let staying: Vec<Command> = legal.iter().filter(|c| !c.leaves_battle()).copied().collect();
++        let strikes: Vec<Command> = staying.iter().copied().filter(|c| matches!(c, Command::Attack { .. } | Command::Shoot { .. } | Command::ShootWall { .. })).collect();
++        let enemies: Vec<Hex> = state.stacks().iter().filter(|s| s.is_alive() && s.side != side && !s.is_turret()).map(|s| s.hex).collect();
++        let cmd = if !strikes.is_empty() {
++            one_of(&mut agent, &strikes)
++        } else {
++            let moves: Vec<(u32, Command)> = staying
++                .iter()
++                .filter_map(|c| match c {
++                    Command::Move { to } => Some((enemies.iter().map(|e| field.distance(*to, *e)).min().unwrap_or(0), *c)),
++                    _ => None,
++                })
++                .collect();
++            moves.iter().min_by_key(|(d, _)| *d).map_or(Command::Defend, |(_, c)| *c)
++        };
++        apply(&mut state, &r, side, cmd, &mut crate::NoopSink).unwrap();
++    }
++    let alive: Vec<std::string::String> = state.stacks().iter().enumerate().filter(|(_, s)| s.is_alive()).map(|(i, s)| std::format!("{i}:{:?}@{} n{} sp{} tr{:?} st{:?} fl{:?} two{}", s.side, s.hex.0, s.count, s.speed_now(), s.traits, s.spells.status, s.flags, s.is_two_hex())).collect();
++    if let Some(side) = state.side_to_act() {
++        legal_commands(&state, &r, side, &mut legal);
++        std::eprintln!("active {:?} side {side:?} legal {:?}", state.active(), legal.as_slice());
++    }
++    panic!("seed {seed} not over after 20000 greedy steps: round {} {alive:?} siege {:?}", state.round, state.siege.map(|s| (s.gate_open, s.parts)));
++}
++
++/// Throwaway probe (not kept): what a walled town's setup does with natural obstacles on the
++/// Catapult's hexes, on the moat, and with the Catapult's hex taken by the attacker's own army.
++#[test]
++fn probe_siege_setup_errors() {
++    let r = lively();
++    let mut rng = Rng::from_seed(1);
++    let mut setup = |obstacles: &[u8], fort: FortLevel, n: usize, formation: Formation| {
++        let att: ArmySpec = (0..n).map(|i| (u8::try_from(i).unwrap(), 0u8, 5u32)).collect();
++        let mut s = make_setup(&r, &att, &[(0, 1, 5)], obstacles, rng.next_u64());
++        s.siege = Some(Siege {
++            faction: r.faction_by_key("t:castle").unwrap(),
++            fort,
++            moat: if fort >= FortLevel::Citadel { Moat::Damaging } else { Moat::Absent },
++            structures: 0,
++            escape_tunnel: false,
++            morale: 0,
++            luck: 0,
++        });
++        s.formations = [formation; 2];
++        s
++    };
++    let sf = r.siege_field().unwrap();
++    for (name, s) in [
++        ("catapult hex 119", setup(&[sf.catapult], FortLevel::Fort, 1, Formation::Loose)),
++        ("catapult front 120", setup(&[sf.catapult + 1], FortLevel::Fort, 1, Formation::Loose)),
++        ("moat hex", setup(&[sf.moat[3]], FortLevel::Citadel, 1, Formation::Loose)),
++        ("wall hex", setup(&[sf.walls[3]], FortLevel::Fort, 1, Formation::Loose)),
++        ("no fort, catapult hex", setup(&[sf.catapult], FortLevel::None, 1, Formation::Loose)),
++        ("7 stacks tight", setup(&[], FortLevel::Castle, 7, Formation::Tight)),
++        ("7 stacks loose", setup(&[], FortLevel::Castle, 7, Formation::Loose)),
++    ] {
++        let result = BattleState::new(&r, &s, 1).map(|st| st.stacks().len());
++        std::eprintln!("{name}: {result:?}");
++    }
++}
+diff --git a/crates/h3-sim/src/env.rs b/crates/h3-sim/src/env.rs
+index 346d511..937a493 100644
+--- a/crates/h3-sim/src/env.rs
++++ b/crates/h3-sim/src/env.rs
+@@ -296,7 +296,8 @@ impl BattleEnv {
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+-    use crate::action::{ACTION_COUNT, SPELL_COUNT, TARGET_COUNT};
++    use crate::action::{ACTION_COUNT, CREATURE_CAST, HERO_CAST, SPELL_COUNT, TARGET_COUNT};
++    use h3_battle::Command;
+ 
+     fn make(max_steps: u32) -> BattleEnv {
+         let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_DUEL).unwrap();
+@@ -374,6 +375,68 @@ mod tests {
+         );
+     }
+ 
++    // covers: BAT-SIE-011, BAT-SIE-013
++    /// Robustness at a town (E04c T10b review): over random play of the siege scenario (the
++    /// baseline agent's choices, the wall shots among them) the mask agrees with `step` for every
++    /// non-cast entry, the wall shots' included: a masked entry steps a fork, an unmasked one
++    /// is refused and changes nothing; actions with out-of-range entries, spells and targets are
++    /// refused without a change; the episode ends or reaches its bound.
++    #[test]
++    fn the_siege_scenario_s_mask_agrees_with_step_for_every_entry() {
++        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_SIEGE).unwrap();
++        let (r, setup) = (Arc::new(r), Arc::new(setup));
++        let mut wall_shots = 0;
++        for seed in 0..6u64 {
++            let mut env = BattleEnv::new(r.clone(), setup.clone(), seed, 0).unwrap();
++            let mut rng = Rng::for_stream(seed, StreamId::AGENT);
++            let mut legal = LegalCommands::new();
++            let mut mask = [false; ACTION_COUNT];
++            for _ in 0..300 {
++                let Some(side) = env.to_move() else {
++                    break;
++                };
++                env.legal_mask(side, &mut legal, &mut mask);
++                let hash = env.state_hash();
++                for entry in 0..ACTION_COUNT + 8 {
++                    if entry == HERO_CAST || entry == CREATURE_CAST {
++                        continue;
++                    }
++                    let mut fork = env.fork();
++                    let stepped = fork.step(side, Action::entry(entry));
++                    let allowed = mask.get(entry).copied().unwrap_or(false);
++                    assert_eq!(stepped.is_ok(), allowed, "seed {seed}: entry {entry}: {stepped:?}");
++                    if !allowed {
++                        assert_eq!(fork.state_hash(), hash, "seed {seed}: entry {entry}");
++                    }
++                }
++                for _ in 0..4 {
++                    let garbage = Action {
++                        entry: rng.next_u32() >> (rng.below(32)),
++                        spell: u16::try_from(rng.next_u32() & 0xffff).unwrap(),
++                        target: u16::try_from(rng.next_u32() & 0xffff).unwrap(),
++                        second: u16::try_from(rng.next_u32() & 0xffff).unwrap(),
++                    };
++                    let mut fork = env.fork();
++                    if fork.step(side, garbage).is_err() {
++                        assert_eq!(fork.state_hash(), hash, "seed {seed}: {garbage:?}");
++                    }
++                }
++                // The observation encodes for both viewers (the turrets off the field among the
++                // stacks); a buffer one short is refused.
++                let mut out = vec![0.0; crate::observation::OBSERVATION_LEN];
++                for viewer in BattleSide::BOTH {
++                    assert_eq!(env.encode_observation(viewer, &mut out), Ok(()));
++                    assert!(env.encode_observation(viewer, &mut out[1..]).is_err());
++                }
++                let command = crate::rollout::pick(&env, side, &mut rng, &mut legal);
++                wall_shots += u32::from(matches!(command, Command::ShootWall { .. }));
++                crate::rollout::step_command(&mut env, side, command).unwrap();
++            }
++            assert_eq!(env.state().outcome().is_some(), env.is_done());
++        }
++        assert!(wall_shots > 10, "{wall_shots}");
++    }
++
+     /// E04b T11b review (F-sec-2): the side that is not to move is refused before its action
+     /// is decoded. Decoding a stack's cast compares the action's spell with the active stack's
+     /// (a random caster's drawn spell, which only its controller may know, ADR-0014 point 8), so
