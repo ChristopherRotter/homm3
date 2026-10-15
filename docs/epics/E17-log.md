@@ -869,8 +869,8 @@ On `client/e17-m3-t2-battlefields`, the user present at the start ("start with T
   frames exact outside the masks on the first comparison after the obstacles were found. The
   deck and the two boats need boats on the map: CLT-Q5 (the adventure lane).
 - **Also:** the driver tries a failed `xwd` dump again (one set run lost a situation to it).
-- **Checks:** `clients/scripts/check.sh` all gates, 100 % (code `d738878`, the branch merged with
-  master `51cf6fd`: verify-once's line in the pull request); the real-asset gate (309 names);
+- **Checks:** `clients/scripts/check.sh` all gates, 100 % (code `a548271`, the branch merged with
+  master `746ad69`: verify-once's line in the pull request); the real-asset gate (309 names);
   `h3-view harvest` writes the three tables as committed; `h3-view sequences` and `h3drive.py
   frames --reuse` (T1b-2's captures, redrawn on the final code): every timeline and count as
   recorded; `h3drive.py set` on the final code: 20 situations, all 28 frames as recorded (exact);
