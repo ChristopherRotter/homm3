@@ -441,7 +441,10 @@ fn the_computer_s_walker_keeps_out_of_its_stops_by_its_hit_points() {
         };
         fresh(&r, &setup)
     };
-    let avoids = |s: &BattleState, id: u8| avoids_stops(s, &r, s.at(StackId(id)));
+    let avoids = |s: &BattleState, id: u8| {
+        let mover = s.at(StackId(id));
+        avoids_stops(s, &r, mover, Some(mover.side))
+    };
     let citadel = |counts| at(FortLevel::Citadel, Moat::Damaging, [false; 2], counts);
     // The attacker before the closed gate: 4 times; the defender: 40 times.
     let s = citadel((28, 280));

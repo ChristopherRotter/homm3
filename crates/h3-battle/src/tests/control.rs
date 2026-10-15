@@ -6,9 +6,9 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content_battle::BattleRuleset;
-use h3_contracts::{BattleHero, BattleSide, Rate};
+use h3_contracts::{BattleHero, BattleSide, FortLevel, Moat, Rate, Siege};
 
-use super::spells::{arena, cast, mage, spell, stack};
+use super::spells::{arena, arena_on, cast, mage, spell, stack};
 use super::support::*;
 use crate::effects::TimedCast;
 use crate::state::StackFlags;
@@ -433,6 +433,63 @@ fn a_berserk_stack_does_not_attack_from_a_pit_its_side_sees() {
                 .any(|e| matches!(e.kind, EventKind::ObstacleRevealed { .. }))
         );
     }
+}
+
+/// A Castle siege of a Citadel with a damaging moat (70), players `human`: the defender's
+/// `count` fixed (10 hit points each) berserk at speed 3 inside before the gate (11, 5), the
+/// attacker's slow at (4, 1) beyond its reach, the only other stack; the gate `open` or not.
+fn before_the_gate(r: &BattleRuleset, count: u32, human: [bool; 2], open: bool) -> BattleState {
+    let mut s = arena_on(
+        r,
+        [None, None],
+        &[("slow", 1, 4, 1)],
+        &[("fixed", count, 12, 5)],
+        1,
+        |setup| {
+            setup.human = human;
+            setup.siege = Some(Siege {
+                faction: r.faction_by_key("t:castle").unwrap(),
+                fort: FortLevel::Citadel,
+                moat: Moat::Damaging,
+                structures: 0,
+                escape_tunnel: false,
+                morale: 0,
+                luck: 0,
+            });
+        },
+    );
+    let mut town = s.siege.unwrap();
+    town.gate_open = open;
+    s.siege = Some(town);
+    give(&mut s, r, (1, "berserk"), 1);
+    s.stacks.as_mut_slice()[1].spells.speed = 3;
+    activate(&mut s, 1);
+    s
+}
+
+// covers: BAT-MAG-025, BAT-SIE-022
+#[test]
+fn a_computer_s_weak_berserk_walker_keeps_out_of_the_moat() {
+    // Through the gate and over the bridge (10, 5), its third step goes on a shortest path to
+    // the slow (7 more) either to the moat's (9, 4) or to (9, 5); the lowest hex is the moat's
+    // (77), where a human player's stack stops and takes 70. The computer's pathfinder keeps
+    // a weak stack out of its stops in the berserk turn too (0x445582, 0x42232C: 0x4B3400 with
+    // the side argument -1), so only the gate counts for the 40 times: with at most 4 times the
+    // moat's damage (28 fixed), or at most 40 times (29) with the gate open, it goes to (9, 5).
+    let r = ruleset();
+    let walk = |count, human, open| {
+        let mut s = before_the_gate(&r, count, human, open);
+        let events = berserk_now(&mut s, &r);
+        assert!(strikes(&events).is_empty());
+        (s.stacks()[1].hex, s.stacks()[1].count)
+    };
+    let (moat, beside) = (at(&r, 9, 4), at(&r, 9, 5));
+    assert_eq!(walk(28, [false, true], false), (moat, 21));
+    assert_eq!(walk(28, [false, false], false), (beside, 28));
+    // Its own side's records do not count (the aim's 40 times for the defender): with the gate
+    // closed, 29 wade in.
+    assert_eq!(walk(29, [false, false], false), (moat, 22));
+    assert_eq!(walk(29, [false, false], true), (beside, 29));
 }
 
 // covers: BAT-MAG-025

@@ -9,6 +9,7 @@
 use h3_content_battle::BattleRuleset;
 use h3_kernel::FixedVec;
 
+use crate::aim;
 use crate::binds;
 use crate::combat::{can_shoot, melee, shoot};
 use crate::event::{Event, EventKind, Sink};
@@ -31,8 +32,10 @@ type Choice = (StackId, Hex, u32);
 /// canonical order on ties). One of the nearest is drawn with equal chances. A shooter shoots at
 /// it; a stack that reaches the position this turn walks there and attacks; one that does not walks
 /// towards it as far as its speed takes it. A bound stack does not move: its candidates are those
-/// next to it (BAT-MAG-045). Without candidates, or unable to move, its turn passes (`TurnPassed`).
-/// Returns whether it moved, attacked or shot.
+/// next to it (BAT-MAG-045). At a town the computer keeps a weak walker of a player who is no
+/// human out of its stops ([`aim::avoids_stops`], BAT-SIE-022: the original's pathfinder for the
+/// candidates and the walk, 0x445582 and 0x42232C, without a side's records). Without candidates,
+/// or unable to move, its turn passes (`TurnPassed`). Returns whether it moved, attacked or shot.
 // rule: BAT-MAG-025
 pub(crate) fn berserk<S: Sink>(
     state: &mut BattleState,
@@ -51,6 +54,12 @@ pub(crate) fn berserk<S: Sink>(
         ANY_RANGE
     };
     let reach = reachable_within(state, field, id, &me, range);
+    // rule: BAT-SIE-022
+    let reach = if aim::avoids_stops(state, ruleset, &me, None) {
+        reach.without_stops()
+    } else {
+        reach
+    };
     let mut nearest: FixedVec<Choice, STACK_CAPACITY> = FixedVec::new();
     let candidates = (0u8..)
         .zip(state.stacks.iter())

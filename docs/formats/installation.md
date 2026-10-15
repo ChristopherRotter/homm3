@@ -2933,6 +2933,18 @@ paths cross no moat hex and no Quicksand its side sees; flyers have no stops (0x
 engine keys it on `BattleSetup.human` of the stack's controller (the default: two computer
 players; BAT-SIE-022, BAT-Q50 (2)).
 
+**Review re-read (E04c T10b, 2026-10-16): the berserk turn's paths.** Both of a berserk stack's
+pathfinder queries run that prologue: the candidates' map (0x445582 calls 0x4B2DA0 with the
+side -1, which it passes on to 0x4B3400 at 0x4B2DF4–0x4B2E00) and the walk to the chosen one
+(0x42232C calls 0x4B3400 with the side -1). With no side's records the side term never holds, so
+only the gate decides the 40 times: such a walker keeps out of its stops with `h ≤ 4d`, or with
+`h ≤ 40d` while the gate is not 3. 0x474BF0 flips the controlling side for Hypnotize alone
+(+0x288; Berserk's duration is +0x284), so a berserk stack is automatic as its owner's player is.
+The engine's berserk walk takes no position on a stop then, neither as a place to attack from (it
+takes none anyway) nor as the end of a walk towards a farther target, where it could otherwise
+end on a moat hex among equally short paths (BAT-MAG-025). How the original's walk beyond the
+stack's speed continues (0x41F580) stays unread.
+
 ### 7.32 Code reading: the siege's other rules (E04c T8, 2026-10-15)
 
 Read for E04c T8 (the survey `docs/rules/surveys/E04c-sieges.md`, §2's rows "Surrender, retreat",

@@ -363,13 +363,20 @@ fn stops(state: &BattleState, field: Field, mover: &Stack) -> HexSet {
 }
 
 /// Whether the computer's pathfinder keeps `mover` out of its stops (0x4B3400's prologue,
-/// 0x4B3420–0x4B34B2, read at 0x4B375C; BAT-SIE-022): at a town, for a stack whose controller's
-/// player is no human (0x474BF0), with at most 4 times the town's moat damage in hit points (the
-/// computer's, 1 for a clone: 0x443080), or at most 40 times when it is the defender's or the gate
-/// is not closed. The damage is the town's entry in the table (0x63BD18) whatever its moat does;
-/// the original's gate is closed from the setup on (3), at a town without a fort too.
-// rule: BAT-SIE-022
-pub(crate) fn avoids_stops(state: &BattleState, ruleset: &BattleRuleset, mover: &Stack) -> bool {
+/// 0x4B3420–0x4B34B2, read at 0x4B375C; BAT-SIE-022, BAT-MAG-025): at a town, for a stack whose
+/// controller's player is no human (0x474BF0), with at most 4 times the town's moat damage in hit
+/// points (the computer's, 1 for a clone: 0x443080), or at most 40 times when the gate is not
+/// closed or the path fills the defender's `records` (the aim's, its own side; a berserk turn's
+/// paths fill none, side -1: 0x445582, 0x42232C). The damage is the town's entry in the table
+/// (0x63BD18) whatever its moat does; the original's gate is closed from the setup on (3), at a
+/// town without a fort too.
+// rule: BAT-SIE-022, BAT-MAG-025
+pub(crate) fn avoids_stops(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    mover: &Stack,
+    records: Option<BattleSide>,
+) -> bool {
     let Some(town) = state.siege else {
         return false;
     };
@@ -381,7 +388,7 @@ pub(crate) fn avoids_stops(state: &BattleState, ruleset: &BattleRuleset, mover: 
         .map_or(0, |record| u64::from(record.moat_damage));
     let closed = town.fort == FortLevel::None || !town.gate_open;
     let hp = hit_points(mover);
-    hp <= 4 * damage || ((mover.side == BattleSide::Defender || !closed) && hp <= 40 * damage)
+    hp <= 4 * damage || ((records == Some(BattleSide::Defender) || !closed) && hp <= 40 * damage)
 }
 
 /// Whether `mover` stepping from the position `from` to `to` enters a hex of `stops`: one it
@@ -450,7 +457,7 @@ fn costs(
         return (cost, HexSet::new());
     }
     let stops = stops(state, field, mover);
-    let avoids = avoids_stops(state, ruleset, mover);
+    let avoids = avoids_stops(state, ruleset, mover, Some(mover.side));
     let mut queue = Buckets {
         head: [NO_ENTRY; BUCKETS],
         entries: [(Hex(0), NO_ENTRY); ENTRIES],
