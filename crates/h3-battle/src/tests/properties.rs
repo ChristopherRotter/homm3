@@ -1505,9 +1505,10 @@ proptest! {
 
     /// Observation hygiene (ADR-0013 point 9): hidden information does not show. The RNG shows
     /// to neither side nor a spectator; the private part of a side's hero (Tactics level, damage
-    /// bonuses, how its war machines work, surrender discount, funds, its hidden magic: BAT-Q26)
-    /// only to that side, and so does the spell its random caster drew (ADR-0014 point 8,
-    /// BAT-MAG-049); a spectator sees neither side's (SRV-Q4). Of a hero's hidden magic in force
+    /// bonuses, how its war machines work and their Artillery and Ballistics levels, surrender
+    /// discount, funds, its hidden magic: BAT-Q26) only to that side, and so does the spell its
+    /// random caster drew (ADR-0014 point 8, BAT-MAG-049) and a town's Escape Tunnel (to its
+    /// defender, BAT-Q50 (4)); a spectator sees neither side's (SRV-Q4). Of a hero's hidden magic in force
     /// the other side's observation shows nothing but what its own caster may cast (BAT-Q26: it
     /// infers that magic from the casts its commands may not make).
     #[test]
@@ -1550,8 +1551,11 @@ proptest! {
                     melee: Rate::bp(damage[1].into()),
                     reduction: Rate::bp(reduction.into()),
                 };
-                let ballista = BallistaControl { level: 1, shots, double_damage_chance_bp: chance };
+                // The war machines' levels: Artillery's (ADR-0013 point 4) and Ballistics'
+                // (BAT-SIE-011), private to the side.
+                let ballista = BallistaControl { level: 1 + level % 3, shots, double_damage_chance_bp: chance };
                 hero.ballista = hero.ballista.and(Some(ballista));
+                hero.catapult = hero.catapult.and(Some(CatapultControl { level: 3 - level % 3 }));
                 hero.tent = hero.tent.and(Some(TentControl { heal_bonus: Rate::bp(heal )}));
                 hero.surrender_discount_bp = discount;
                 hero.funds = funds;
@@ -1608,6 +1612,25 @@ proptest! {
             other.cast_candidates = seen.cast_candidates;
             prop_assert_eq!(&seen, &other);
             prop_assert_eq!(&spectator, &observe_as(&twin, &r, Viewer::Spectator));
+        }
+        // A town's Escape Tunnel is its defender's (BAT-SIE-024, BAT-Q50 (4)): the same game at
+        // the town with the tunnel flipped looks the same to the attacker and a spectator, and to
+        // the defender but for its own option to retreat and its town. (A retreat through the
+        // tunnel ends only one of the two games; then they differ.)
+        if let Some(town) = setup.siege {
+            let mut flipped = setup.clone();
+            flipped.siege = Some(Siege { escape_tunnel: !town.escape_tunnel, ..town });
+            let (other, _, _) = play(&r, &flipped, seed, &steps);
+            if other.result() == state.result() {
+                for viewer in [Viewer::Side(BattleSide::Attacker), Viewer::Spectator] {
+                    prop_assert_eq!(observe_as(&state, &r, viewer), observe_as(&other, &r, viewer));
+                }
+                let seen = observe(&state, &r, BattleSide::Defender);
+                let mut own = observe(&other, &r, BattleSide::Defender);
+                own.may_retreat = seen.may_retreat;
+                own.siege = seen.siege;
+                prop_assert_eq!(&seen, &own);
+            }
         }
         // What a spectator sees is what both sides see: a side's view without its private part
         // and its own hidden obstacles the other side does not see (SRV-Q4).

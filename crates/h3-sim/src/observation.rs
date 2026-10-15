@@ -1,4 +1,4 @@
-//! Flat observation encoding (version 18) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 21) of a per-viewer [`Observation`].
 //!
 //! Layout, in this order: [`GLOBALS`] global features; the public part of the two heroes,
 //! [`HERO_PUBLIC_FEATURES`] each (the viewer's, then the opponent's); the private part of the
@@ -16,8 +16,10 @@
 //! controls the active stack: a hypnotized stack's controller is the other side, BAT-MAG-026;
 //! its "own" flag below stays its owner's), battle over,
 //! viewer places in a tactics phase, opponent places in a tactics phase, the phase's zone in
-//! columns, viewer may retreat, opponent may retreat, viewer may surrender at all, opponent may
-//! surrender at all, the spell the active stack drew as handle + 1 if the viewer controls it (0:
+//! columns, viewer may retreat, opponent may retreat (at a town the defender's option shows to
+//! the defender only: 0 in the attacker's and a spectator's observation, BAT-SIE-024), viewer may
+//! surrender at all, opponent may surrender at all, the spell the active stack drew as handle + 1
+//! if the viewer controls it (0:
 //! none or hidden), the round starts since the viewer's periodic casters cast, the round starts
 //! since the opponent's (both at most 255, which every battle starts with), the round's wait
 //! phase has begun, the side that took the last turn (1 viewer, 2 opponent, 0 none yet), the
@@ -112,7 +114,9 @@
 //! plane shows the standing walls. v18 (E04c T7): the turret flag as the last per-stack value
 //! (BAT-SIE-016). v19 (E04c T7d): the game's difficulty and the sides' human players as globals
 //! before the wall-shot targets (ADR-0023 point 7). v20 (E04c T7e): the own hero's Artillery
-//! level as its last scalar (ADR-0013 point 4).
+//! level as its last scalar (ADR-0013 point 4). v21 (E04c T10b): the layout unchanged; at a town
+//! the opponent-may-retreat global of the attacker's and a spectator's observation is 0, as the
+//! defender's Escape Tunnel shows to the defender only (BAT-Q50 (4)).
 
 use h3_battle::{
     DamageRoll, HeroView, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Observation, OwnHeroView,
@@ -124,7 +128,7 @@ use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 20;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 21;
 
 /// Global features.
 pub const GLOBALS: usize = 30 + MAX_WALL_TARGETS;

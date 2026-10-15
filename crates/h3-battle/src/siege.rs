@@ -29,7 +29,8 @@ use crate::hero::HeroRecord;
 use crate::state::{BattleState, NO_CORPSE, Stack, StackId};
 
 /// What the battle keeps of the town it is fought at (public: the original shows the walls, the
-/// gate and the moat; ADR-0023 point 5).
+/// gate and the moat; ADR-0023 point 5), but its Escape Tunnel, which only its defender sees
+/// (BAT-SIE-024, BAT-Q50 (4)): an observation carries it for the defender only.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SiegeState {
     /// The town's faction.
@@ -38,7 +39,8 @@ pub struct SiegeState {
     pub fort: FortLevel,
     /// The town's moat as the setup gives it.
     pub moat_kind: Moat,
-    /// The town has an Escape Tunnel: its defender may retreat (BAT-SIE-024).
+    /// The town has an Escape Tunnel: its defender may retreat (BAT-SIE-024; private to the
+    /// defender, [`seen_by`](Self::seen_by)).
     escape_tunnel: bool,
     /// The gate is open (BAT-SIE-003); a town without a fort has no gate.
     pub gate_open: bool,
@@ -95,6 +97,16 @@ pub(crate) struct TownMines {
 }
 
 impl SiegeState {
+    /// The town as `viewer` (a side, or a spectator: `None`) may know it: the Escape Tunnel for
+    /// the defender only, else as if there were none (BAT-SIE-024, BAT-Q50 (4)).
+    // rule: BAT-SIE-024
+    pub(crate) const fn seen_by(self, viewer: Option<BattleSide>) -> Self {
+        Self {
+            escape_tunnel: self.escape_tunnel && matches!(viewer, Some(BattleSide::Defender)),
+            ..self
+        }
+    }
+
     /// The gate's and the drawbridge's hexes.
     fn gate_hexes(&self) -> HexSet {
         let mut set = HexSet::new();
@@ -414,6 +426,20 @@ pub(crate) fn may_retreat(state: &BattleState, side: BattleSide) -> bool {
     state
         .siege
         .is_none_or(|s| side == BattleSide::Attacker || s.escape_tunnel)
+}
+
+/// Whether `viewer` (a side, or a spectator: `None`) sees that `side` may retreat (BAT-SIE-024,
+/// BAT-Q50 (4)): at a town the defender's option rests on the Escape Tunnel, which only the
+/// defender knows, so another viewer sees it as `false` (unknown; the original shows the
+/// controls of the acting side only, 0x478573); every other side's option as it is.
+// rule: BAT-SIE-024
+pub(crate) fn retreat_seen(
+    state: &BattleState,
+    side: BattleSide,
+    viewer: Option<BattleSide>,
+) -> bool {
+    state.may_retreat(side)
+        && (state.siege.is_none() || side == BattleSide::Attacker || viewer == Some(side))
 }
 
 /// Whether `side` may surrender at the battle's town (BAT-SIE-024): never the defender, not even

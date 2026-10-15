@@ -1256,9 +1256,10 @@ impl BattleState {
         self.heroes[side.index()].is_some()
     }
 
-    /// Whether `side` may retreat (BAT-FLE-001; public, ADR-0013 point 9): it has a hero, no
-    /// hero in the battle has a `NoRetreat` effect and, at a town, it is the attacker or the town
-    /// has an Escape Tunnel (BAT-SIE-024). It retreats on its own turn or in its tactics phase.
+    /// Whether `side` may retreat (BAT-FLE-001; public, ADR-0013 point 9, but at a town the
+    /// defender's to the defender only: BAT-Q50 (4)): it has a hero, no hero in the battle has a
+    /// `NoRetreat` effect and, at a town, it is the attacker or the town has an Escape Tunnel
+    /// (BAT-SIE-024). It retreats on its own turn or in its tactics phase.
     pub fn may_retreat(&self, side: BattleSide) -> bool {
         hero::may_retreat(&self.heroes, side) && siege::may_retreat(self, side)
     }
