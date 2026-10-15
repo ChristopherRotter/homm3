@@ -22,7 +22,7 @@ E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epic
 
 **E04c increment 8** (the user, 2026-10-15: the next sensible increment): T7e the automatic Ballista's target (`installation.md` §7.33; `shared/e04c-t7e-seam` #225, `battle/e04c-t7e` #227; batch 3h run by an agent; BAT-WAR-008, BAT-STUB-3 closed; BAT-Q47); merged (#225, #227).
 
-**E04c increment 9** (the user, 2026-10-15: the next sensible increment): T9 the workload and the measurements (#233 `battle/e04c-t9`, #232 `shared/e04c-t9`): T9a the property tests' games at the epic's places (exit criterion 4), T9b the siege workload and the measurements (exit criterion 5). Next: T10 (the closure's independent review).
+**E04c increment 9** (the user, 2026-10-15: the next sensible increment): T9 the workload and the measurements (#233 `battle/e04c-t9`, #232 `shared/e04c-t9`): T9a the property tests' games at the epic's places (exit criterion 4; its check's BAT-SIE-029, the user's fix-optional BAT-QUIRK-23, BAT-Q48), T9b the siege workload and the measurements (exit criterion 5). Next: T10 (the closure's independent review).
 
 
 ## Inbox

@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 9, T9 (the user, 2026-10-15):** #233 (`battle/e04c-t9`), the small #232 (`shared/e04c-t9`, first): T9a the properties at the epic's places, its review's BAT-SIE-029 (BAT-Q48); T9b the siege workload, the measurements. Awaits the user's checkpoint. **Next:** T10 (the closure's review).
+- **E04c increment 9, T9 (the user, 2026-10-15):** #233 (`battle/e04c-t9`), the small #232 (`shared/e04c-t9`, first): T9a the properties at the epic's places, its review's BAT-SIE-029 as BAT-QUIRK-23 (flag 25, BAT-Q48); T9b siege workload, measurements. Awaits the user's checkpoint. **Next:** T10 (the closure's review).
 - **Merged:** up to #227 (T7e).
-- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-Q48 (built), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
-- **Versions** (T7e; T9 moved none): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v24, observation encoding v20; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q49, BAT-QUIRK-23, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-23, S-30.
+- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
+- **Versions** (T7e; T9 moved none): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v24, observation encoding v20; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q49, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-23, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
 
 ## Standing traps

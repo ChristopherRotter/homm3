@@ -127,8 +127,9 @@ measurements, exit criterion 5).
   anti-magic garrison, a town with its fort, moat, mines, turrets, Catapult, Ballistics and
   Artillery), every earlier property there, a new one for the walls, the gate and the moat; the
   properties found no defect (three runs at seven to fifteen times the cases too), their independent
-  check one setup gap: BAT-SIE-029, no Ballista for the defender at a fort (BAT-Q48, built for the
-  user's confirmation); T9b the siege workload
+  check one setup gap: BAT-SIE-029, no Ballista for the defender at a fort, which the user made a
+  fix-optional quirk (BAT-Q48: BAT-QUIRK-23, faithful as the original, fixed the Ballista fights
+  at every town; flag 25, the faithful replays re-recorded, `cross-lane`); T9b the siege workload
   `random-rollouts-siege` (bench-check), the criterion benches' siege variants, the
   measurements: the `full` workload as fast as at E04b's end on the same machine (identical games,
   2.8 % fewer instructions), the siege about 27 % slower per step (the shot's wall test,

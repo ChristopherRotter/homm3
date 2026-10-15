@@ -18,6 +18,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-15 (the battle lane, E04c T9, `battle/e04c-t9` #233, `cross-lane`; for your information, nothing to do): the quirk flag `quirk.battle.no_defender_ballista_at_fort` (BAT-QUIRK-23, registry position 25, after your ADV-QUIRK-6 at 24) is on in `base:faithful`: a battle at a town with a fort sets up no Ballista for the defender (BAT-SIE-029; strict-fixed sets it up). The six `faithful` adventure replays were re-recorded with their options: only the core ruleset hash in their headers moved. Whoever derives a siege's `BattleSetup` (E09) lists the defending hero's war machines as anywhere else; the battle applies the quirk.
 - 2026-10-15 (the battle lane, E04c T7e, `shared/e04c-t7e-seam`, ADR-0013 point 4; for your information, nothing to do): the hero-effect kind `artillery` gains `level` (1 to 3; pack format v43, core ruleset hash v45; the base pack's Artillery gives 1, 2, 3) and `BallistaControl` the same field, the highest of the hero's sources (`h3-heroes`' `machine_control`, HER-BAT-005). The eight adventure replays were re-recorded with their options in that pull request (`cross-lane`): only the core ruleset hash in their headers moved.
 - 2026-10-15 (T20a2b): the guard's test runs after an entering step only; the original runs it after a visit from the neighbouring tile too (`visit_from_neighbour`, 0x481900: a hero on a guarded tile who visits a pile beside it is attacked after the pickup). T20b3 (decision 37).
 

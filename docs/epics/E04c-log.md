@@ -463,8 +463,8 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   lives exactly while it stands and leaves no corpse; (3) **the generated sieges gave the defender
   a Ballista at a fort**, which the original's 0x463600 never sets up (§7.27; VCMI none at any
   town, D-22) and the engine accepted: **BAT-SIE-029**, the battle leaves a listed defender's
-  Ballista out at a town with a fort (BAT-Q48 for the user; no replay or version moved), with a
-  test; (4) desperate mode (BAT-SIE-023) was never generated: the ground now draws the difficulty
+  Ballista out at a town with a fort, with a test; **the user (BAT-Q48): a fix-optional quirk**,
+  BAT-QUIRK-23 (below); (4) desperate mode (BAT-SIE-023) was never generated: the ground now draws the difficulty
   and the human sides; (5) the walls property left out the outer bridge, which opens the gate for
   a stack commanded for the defender and stops an attacker's walk while the gate is closed, and
   the attack's `from`; both added, and an open gate that stands must have a stack or a corpse on
@@ -473,6 +473,15 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   these fixes failed only the coverage gate: `Observation::removable_at`'s cleared-hex line, which
   only the properties reached and the new places reached more rarely (the HANDOFF's flaky-line
   trap); `tests/remove.rs` now asks it after a removal.
+- **BAT-QUIRK-23** (the user at the checkpoint, 2026-10-15, BAT-Q48: fix-optional, "fixed deploys
+  Ballista regardless of town fortification level"): the flag `quirk.battle.no_defender_ballista_at_fort`
+  (`shared/e04c-t9`; position 24 first, 25 after master took 24 for the adventure lane's
+  ADV-QUIRK-6, #230), on in the faithful profiles (the base pack's through the harvester, the
+  synthetic pack's), off in strict-fixed; the test pack's profile `t:fort_ballista`; the unit test
+  plays both settings; `every_step_preserves_the_invariants` mixes it into its half with
+  BAT-QUIRK-7, the other properties play the fix. The faithful ruleset hashes moved: the ten
+  battle replays and the six faithful adventure replays (`cross-lane`) re-recorded with their
+  options, only the core ruleset hash in their headers moved. No version moved.
 - **T9b, the workload**: `benches/battle/random-rollouts-siege.toml`, 60 random battles of the
   synthetic siege (a Citadel with a damaging moat, the keep of seven, Brea's commanded Catapult
   and Earthquake, her automatic Ballista): 698 902 794 Ir for 7 872 steps (88.8 k Ir per step);

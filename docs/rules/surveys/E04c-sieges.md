@@ -232,10 +232,11 @@ follows the result (the adventure lane).
   `Siege.morale` (the town context; the adventure lane's inbox); the battle adds what it is given.
 - **D-22 The defender's Ballista at a town** (T9, BAT-SIE-029; `code` §7.27: 0x463600 sets up no
   Ballista for the defender in a battle with a fort level above 0; `vcmi`: `BattleInfo::setupBattle`
-  gives a defending hero none at any town, "(bug #551)"). They agree with a fort, which the battle
-  now follows (the setup may list the hero's Ballista; the battle leaves it out); without a fort the
-  engine keeps the code's Ballista. Unobserved: a batch row (a defending hero with a Ballista in a
-  town without a fort) would settle it.
+  gives a defending hero none at any town, "(bug #551)"). They agree with a fort, which the faithful
+  profile now follows (the setup may list the hero's Ballista; the battle leaves it out): a
+  fix-optional quirk, BAT-QUIRK-23 (the user, BAT-Q48), fixed the Ballista fights at every town;
+  without a fort the engine keeps the code's Ballista. Unobserved: a batch row (a defending hero
+  with a Ballista in a town without a fort) would settle it.
 - **S-06, S-07** (`E04-quirks.md`: the towers) are D-16 and D-17: the code reading finds neither
   bug in the user's executable (T7, §7.30), and batch 3e confirms it (Air Shield and Armorer lower
   the damage, Archery does not touch it): **not quirks** of the user's version.

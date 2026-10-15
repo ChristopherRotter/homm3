@@ -4827,10 +4827,10 @@ numeric  = "integer"
 
 [[rule]]
 id       = "BAT-SIE-029"
-title    = "No Ballista for the defender at a town with a fort"
+title    = "The defender's Ballista at a town with a fort (BAT-QUIRK-23)"
 context  = "battle"
 status   = "implemented"
-summary  = "In a battle at a town with a Fort, Citadel or Castle the battle sets up no Ballista for the defender: a shooting war machine the setup lists for the defending side is left out (its hero keeps it; no error), while its First Aid Tent and Ammo Cart are set up as elsewhere (BAT-WAR-001) and the attacker's Ballista stays beside its Catapult (BAT-SIE-009). The setup is still checked as before (a kind listed twice is SetupError::InvalidWarMachine). At a town without a fort the defender keeps its Ballista, as the original's code does; VCMI gives a defending hero no Ballista at any town (survey D-22, unobserved). Found by E04c T9a's review of the generated sieges."
+summary  = "With quirk BAT-QUIRK-23 (fix-optional, quirk.battle.no_defender_ballista_at_fort; faithful on, strict-fixed off; the user, BAT-Q48) a battle at a town with a Fort, Citadel or Castle sets up no Ballista for the defender, as the original: a shooting war machine the setup lists for the defending side is left out (its hero keeps it; no error), while its First Aid Tent and Ammo Cart are set up as elsewhere (BAT-WAR-001) and the attacker's Ballista stays beside its Catapult (BAT-SIE-009). Fixed, the defender's Ballista is set up at every town, whatever its fort. The setup is checked as before either way (a kind listed twice is SetupError::InvalidWarMachine). At a town without a fort the defender keeps its Ballista in every profile, as the original's code does; VCMI gives a defending hero no Ballista at any town (survey D-22, unobserved). Found by E04c T9a's review of the generated sieges."
 numeric  = "integer"
 
   [[rule.source]]
