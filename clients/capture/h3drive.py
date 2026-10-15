@@ -101,7 +101,14 @@ def run(*args, **kw):
 
 
 def xwd_bytes():
-    return run("xwd", "-root", "-silent", capture_output=True).stdout
+    # A dump right after the display starts can fail once (seen in M3 T2's set runs): try again.
+    for attempt in range(5):
+        try:
+            return run("xwd", "-root", "-silent", capture_output=True).stdout
+        except subprocess.CalledProcessError:
+            if attempt == 4:
+                raise
+            time.sleep(0.5)
 
 
 def load_screens():

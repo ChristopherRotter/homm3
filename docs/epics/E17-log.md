@@ -841,3 +841,37 @@ full), then away.
   every count and timeline as recorded; `h3drive.py set`: 17 of 17 exact. Master's merge left
   `h3-view situation`'s maps as they were (all 17 compared), so the captures hold for it.
   `check-lane`, `check-docs`, `check-exe-map` ok.
+
+### M3 T2 — Every battlefield (2026-10-15)
+
+On `client/e17-m3-t2-battlefields`, the user present at the start ("start with T2").
+
+- **Starting point:** master at #226 (`e7fd849`, T1b-2 merged); the sandbox of T1b-2 (its
+  captures and builds) kept.
+- **The asset tables:** the twelve special battlefields keyed by the packs' keys (E04c T2b: `base`
+  shore, magic_plains, cursed_ground, deck, boats; `sod` the seven SoD fields, now in `sod.toml`).
+  `harvest` writes them from each pack's `battle.toml`, the exe's field numbers 0–9 by the packs'
+  keys (0x4646D0: field 0 the shore, 1–9 from 0x63D2C8; the deck and the boats their own
+  pictures). The inbox's "35 obstacles more" was the harvester's: it kept in `base.toml` every
+  type `base` does not define, though `sod` defines those 35; it now counts every pack's keys,
+  and no table holds a key no pack defines (`tests/tables.rs`).
+- **The scene:** the observation's `battlefield` (protocol v28) picks the special battlefield's
+  picture over the terrain's. The client's scenario adapter generated random obstacles for the
+  terrain only; it now calls `generate_setup_obstacles` as `h3 run` does (the deck's water
+  obstacles, the boats' fixed hexes and nothing else). The deck and the boats render from
+  scenarios on water.
+- **The capture set:** `h3-view situation` sets a scenario's special battlefield up on the
+  defender's (Blue's) tile, as the original reads it: water east of Blue for the shore (the
+  writer's coast flag; fought on sand), a special ground's first `Objects.txt` picture under both
+  heroes for the nine ground fields (classes 21, 46, 222, 224, 226–229, 231). `h3cap.py find`
+  takes a field's own obstacle types (any pack's that list it). Ten situations, then an eleventh
+  (the shore at (18, 5), found by trying six tiles, with its absolute obstacle 126): all 11
+  frames exact outside the masks on the first comparison after the obstacles were found. The
+  deck and the two boats need boats on the map: CLT-Q5 (the adventure lane).
+- **Also:** the driver tries a failed `xwd` dump again (one set run lost a situation to it).
+- **Checks:** `clients/scripts/check.sh` all gates, 100 % (code `a548271`, the branch merged with
+  master `746ad69`: verify-once's line in the pull request); the real-asset gate (309 names);
+  `h3-view harvest` writes the three tables as committed; `h3-view sequences` and `h3drive.py
+  frames --reuse` (T1b-2's captures, redrawn on the final code): every timeline and count as
+  recorded; `h3drive.py set` on the final code: 20 situations, all 28 frames as recorded (exact);
+  `check-lane`, `check-docs`, `check-exe-map`.

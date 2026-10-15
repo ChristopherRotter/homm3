@@ -264,7 +264,7 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
 ### 4.4 Background and obstacles
 
 - **The background buffer** (manager +0x53B0, 800 × 556), composed once by 0x493CF0: the
-  battlefield picture (`CmBk*.pcx`, 800 × 556; which one: T4), whole (0x55CF00 with manager
+  battlefield picture (`CmBk*.pcx`, 800 × 556; which one: §5), whole (0x55CF00 with manager
   +0x13464, H3API's `backgroundPcxName`; not read inside); the absolute obstacle, if manager
   +0x53A0 ≥ 0: that record of the table 0x63BEC0 (34 records of 0x44 bytes: terrain bits +0x0,
   screen x +0x4 and y +0x8, its blocked hexes as `u16` from +0xC ending in 0xFFFF, the PCX's name
@@ -364,15 +364,23 @@ What `h3-view harvest` reads (2026-10-13; the format: `clients/README.md`, "The 
   Tr), grass and snow (Tr, Mt, Tr). A battle's record does not carry its surrounding (CLT-Q4), so
   the scene takes variant 2; the capture set confirms it on all eight land terrains, dirt's
   `CmBkDrTr.pcx` included. Terrains 0–7 only: water and rock have none (the gaps of
-  `tests/tables.rs`).
+  `tests/tables.rs`). **The special battlefields** (M3 T2) are the packs' (`[[battlefield]]` of
+  `battle.toml`, E04c T2b) and the observation names one (`battlefield`, protocol v28): the
+  shore (field 0) `base:shore`, fields 1–9 `base:magic_plains`, `base:cursed_ground`,
+  `sod:holy_ground`, `sod:evil_fog`, `sod:clover_field`, `sod:lucid_pools`, `sod:fiery_fields`,
+  `sod:rocklands`, `sod:magic_clouds`, a ship's deck `base:deck`, two boats `base:boats`;
+  `harvest` keys their pictures so (the field numbers by the packs' keys), and the scene draws a
+  special battlefield's picture over the terrain's. A battle on water always has the deck or the
+  boats. The capture set checks the shore and the nine grounds (§6.2); the deck and the boats need
+  boats on the map (CLT-Q5).
 - **Obstacles:** the type table 0x63C7C8 (`def`, `rows` = height, `layer`) and the absolute table
   0x63BEC0 (`pcx`, `at`), §4.4; keys `obstacle_<n>`: type n, absolute record n − 100 (VCMI's
   numbering, as the packs).
 - **Expansions** (research item 6): an entry belongs to the table of the pack that defines its key
-  (`base` 121 creatures, the terrains, 78 obstacles; `ab` 23 creatures; `sod` none). The 47
-  obstacle types and 12 special battlefields no pack defines yet sit in `base.toml`, keyed as the
-  packs would key them. Which archive holds a file plays no part: the loader searches as the game
-  does (§3.1), and the gate finds all 307 names there.
+  (since M3 T2: `base` 121 creatures, the terrains, 5 special battlefields and 90 obstacle types;
+  `ab` 23 creatures; `sod` the 7 SoD fields and their 35 obstacle types, E04c T2b). No table holds
+  a key no pack defines (`tests/tables.rs`). Which archive holds a file plays no part: the loader
+  searches as the game does (§3.1), and the gate finds every name there.
 
 ## 6. Reference captures (M1 T8)
 
@@ -424,7 +432,7 @@ The runbook: `clients/capture/README.md`. What it rests on:
   (two heroes side by side, no skills, artifacts or war machines); the original's obstacles come
   back from the capture by `h3cap.py find` (each terrain's types rendered alone and matched at
   every anchor); masks cover the heroes' corners, the count boxes (§4.3, from the record) and the
-  panel. The set runs unattended (nine situations in about 70 s) and fails when a frame's count of
+  panel. The set runs unattended (nine situations in about 70 s; twenty since M3 T2) and fails when a frame's count of
   differing pixels changes. Since M3 T1b-2 each frame is compared with ours at its time, a fidget
   in the original's poses (§7.13): all 17 exact outside the masks.
 - **Reproducible:** after a fresh `setup.sh` (a new prefix and run directory) all 17 frames of the
@@ -454,6 +462,14 @@ The runbook: `clients/capture/README.md`. What it rests on:
 - **Idle animation.** In the grass situation the Pikemen fidget from about 200 to 700 ms after the
   opening, identically on every run; its other three stacks stand still for 800 ms. Why: §7.2.
 - **The panel** shows its buttons lit on the human's turn and dimmed on the computer's.
+- **The special battlefields** (M3 T2; `h3-view situation` sets them up on the defender's tile,
+  as the original reads them: survey `E04c-battlefields.md` §4): the shore with water east of
+  Blue (the writer gives the tile the coast flag; the battle on sand), and each of the nine
+  special grounds with its class's first picture in `Objects.txt` under both heroes (its
+  bottom-right tile one east and one south of Blue's, so that 3 × 3 and 6 × 4 pictures both
+  cover them). Every one shows its picture and its own obstacle types (`h3cap.py find` takes the
+  field's), all exact: the shore twice (at (18, 5) with its absolute obstacle 126), Magic Plains,
+  Cursed Ground and the seven SoD fields. The original's obstacles follow the tile here too.
 
 ### 6.3 The adventure map: experiments by agents (M2 T6)
 

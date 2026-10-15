@@ -1,0 +1,37 @@
+# E17 M3 T2: a situation of the capture set (situations/set.toml) on a special battlefield, the
+# shore (special field 0, `CmBkBch.pcx`): water east of Blue, so the battle's tile (the
+# defender's) is a coast tile, fought on sand (`h3-view situation`; design §5, §6.2). The grass
+# situation's armies: the human's Royal Griffins open. The obstacles are the original's, of the
+# field's own types, found in its capture (`h3cap.py find`).
+
+[scenario]
+id = "situation-shore"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:desert"
+battlefield = "base:shore"
+obstacles = [
+    { hexes = [105, 89, 88], anchor = 104, kind = "base:obstacle_56" },
+    { hexes = [91, 92, 93], anchor = 91, kind = "base:obstacle_57" },
+    { hexes = [75, 76, 77, 60, 59, 58], anchor = 74, kind = "base:obstacle_58" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15

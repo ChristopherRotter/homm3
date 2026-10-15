@@ -713,8 +713,11 @@ fn a_tampered_replay_is_refused_with_its_reason() {
     );
     // A command of the player not acting, then the game's own seed changed.
     let mut r = good.clone();
-    let Actor::Player(player) = r.commands[0].0;
-    r.commands[0].0 = Actor::Player(PlayerId::new(1 - player.raw()));
+    let first = match r.commands[0].0 {
+        Actor::Player(player) => player.raw(),
+        Actor::System => 1,
+    };
+    r.commands[0].0 = Actor::Player(PlayerId::new(1 - first));
     assert!(matches!(
         verify(&r),
         Err(E::Rejected {

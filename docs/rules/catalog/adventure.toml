@@ -755,7 +755,7 @@ id       = "ADV-MON-001"
 title    = "Wandering monsters on the map"
 context  = "adventure"
 status   = "implemented"
-summary  = "A wandering monster is an object of a monster type (classes 54, 71-75 and 162-164: the map names the creature of class 54, the others are random monsters of their levels, ADV-MON-003), visited from a neighbouring tile and from above. The map gives its count (0: drawn, ADV-MON-004; at most 4 095, the original's 12 bits, an input bound), its disposition (a row of the monsters' aggression, ADV-MON-002), whether it never flees and does not grow (kept for its answer, E08 T20b, and the week's growth), and its treasure's resources (above 0; an artifact is unsupported until increment 4, E08 decision 22). The setup checks it: a fixed monster names a known creature that is no war machine, a random one none; the disposition is the parameters'; the treasure names known resources once each, from 1 to MAX_GAIN. Its visit, the monster's answer, comes with E08 T20b; until then a step onto its tile is refused. E08 T20a2a: `MonsterSetup`, `Monster`, the import (docs/formats/h3m.md, Import)."
+summary  = "A wandering monster is an object of a monster type (classes 54, 71-75 and 162-164: the map names the creature of class 54, the others are random monsters of their levels, ADV-MON-003), visited from a neighbouring tile and from above. The map gives its count (0: drawn, ADV-MON-004; at most 4 095, the original's 12 bits, an input bound), its disposition (a row of the monsters' aggression, ADV-MON-002), whether it never flees and does not grow (kept for its answer, E08 T20b, and the week's growth), and its treasure's resources (above 0; an artifact is unsupported until increment 4, E08 decision 22). The setup checks it: a fixed monster names a known creature that is no war machine, a random one none; the disposition is the parameters'; the treasure names known resources once each, from 1 to MAX_GAIN. Its visit is its answer (ADV-MON-007, E08 T20b1). E08 T20a2a: `MonsterSetup`, `Monster`, the import (docs/formats/h3m.md, Import)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -914,7 +914,7 @@ id       = "ADV-MON-006"
 title    = "A step onto a guarded tile"
 context  = "adventure"
 status   = "implemented"
-summary  = "A step that enters a tile a monster guards (ADV-MON-005) is the path's last (a later step is refused, PastVisit) and visits the guard after any visit of the tile's own object; a hero standing on a guarded tile may leave it. The reachable tiles end there: the query reports a guarded tile as a destination and goes on only from the hero's own tile. The guard's visit is the monster's answer (E08 T20b; until then it does nothing, ADV-STUB-5). Flying and a hero at sea come with later increments. E08 T20a2b: `MoveHero`, `Reach`."
+summary  = "A step that enters a tile a monster guards (ADV-MON-005) is the path's last (a later step is refused, PastVisit) and visits the guard after any visit of the tile's own object; a hero standing on a guarded tile may leave it. The reachable tiles end there: the query reports a guarded tile as a destination and goes on only from the hero's own tile. The guard's visit is the monster's answer (ADV-MON-007, E08 T20b1); when the tile's own object made an offer, the guard visits once the offer is answered or did not open (the original asks the object's question first; a player has at most one open decision), else in the same outcome. Not built: the guard's test after a visit from the neighbouring tile (the original's visit_from_neighbour, 0x481900: a hero on a guarded tile that picks up a pile beside it is attacked after; E08 T20b3). Flying and a hero at sea come with later increments. E08 T20a2b: `MoveHero`, `Reach`; T20b1: `AdventureOutcome::guard_after`, `AdventureState::visit_guard`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -928,3 +928,104 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/CPathfinder.cpp"
   retrieved  = "2026-10-13"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-MON-007"
+title    = "A wandering monster's answer"
+context  = "adventure"
+status   = "implemented"
+summary  = "A hero's visit of a monster (from a neighbouring tile, also from above; or the guard's visit, ADV-MON-006) gets the monster's answer. Inputs: the hero's power, its army's value (each stack's creature's AI value times its count, summed) stored as a float, times the float factor sqrt((1 + 0.05 D)(1 + 0.05 A)) of its Attack and Defense (h3_heroes::attack_defense, 0 to 99; each term in double precision, the root stored as a float), truncated; the monster's strength, its creature's AI value times its count as it stands; their ratio r, both stored as floats and divided in single precision. The strength step St: 11 from r >= 7, trunc(2r - 2) from r >= 1, -1 above 0.5, -2 above 0.333, else -3 (D-8: -2 at exactly 0.5; a strength of 0 counts as r >= 7). The sympathy Sy: 0 without a stack of the monster's creature or its related type (its first upgrade, else the creature it is the first upgrade of with its faction and level; none for a neutral creature, so under BAT-QUIRK-19 the Ice, Magma and Energy Elementals have none), 2 when such stacks hold more than half of the army's creatures by count, else 1 (D-9: the monster's own type counts). Diplomacy L: the hero's join bonus (h3_heroes::join_bonus), one higher on Easy, at most 3 (D-10: every player's). The monster's aggression M (ADV-MON-002) and whether it never flees. With C = St + Sy + L: M > C fights; else M <= Sy + L + 1 offers to join for free, M <= Sy + 2L + 1 to join for its price (ADV-MON-008); else, as after a declined offer to join, M = C (insulted) or a monster that never flees fights, any other offers to flee. An offer to join is made only while the hero's army has room for the group (a stack of its creature or a free slot); without room it counts as declined (E08 decision 22; the original's army dialog, 0x5D11D0, is ADV-STUB-2). Every player is asked, as increment 2's offers (the original asks only humans; its computer decides at once). A fight is a battle the game opens at once (ADV-MON-009, -010, E08 T20b2). Not modelled: the original's 32-bit army value, which would wrap above 2^31 (no army reaches it). E08 T20b1: `answer.rs` (Temper, power, sympathy), `AdventureState::decline_offer`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-battles.md section 3; checked again in E08 T20b1): monster_visit_decision 0x4A7740 (the count from the tile word's 12 bits, the aggression from bits 12-16, never flees bit 17; fild/fstp f32 of the power and the strength, fdiv, fstp f32; the double constants 7.0, 1.0, 0.5, 0.333 with fcomp and the C0/C3 tests; Diplomacy +0xCD raised on Easy, game +0x1F6D8 == 0, for a human; the three tests and the fallback at 0x4A797F: insulted when M = C, never flees, else the flight 0x4A6DF0); hero_army_power 0x427650 (army_value 0x44AC80 fild, fstp f32, fmul the factor, _ftol); hero_attack_defense_factor 0x4E5400 (+0x476, +0x477 clamped to 0-99, x 0.05 + 1.0 in doubles, crt_sqrt, fstp f32); monster_sympathy 0x4A75C0 with creature_upgrade 0x47B1A0 and creature_downgrade 0x47B220 (the town creature table by the creature's faction and level; the elementals' exceptions only while the game's map kind +0x1F698 is RoE)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGCreature.cpp takenAction, joinDecision, fleeDecision: the same thresholds and order; VCMI divides in double precision (D-8), counts only the monster's upgrades and downgrades for sympathy, not its own type (D-9), and has no Easy rule (D-10); it offers the price even when the player cannot pay and treats a yes then as a no"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGCreature.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Wandering creature: the hero's power H = sqrt((1 + 0.05A)(1 + 0.05D)) times the army's value, the charisma C, 'If C = M, they fight'; Diplomacy: 'When playing at easy difficulty, heroes receive a diplomacy bonus even when they have not learned the skill'; the elementals of one element count as different types"
+  url        = "https://heroes.thelazy.net/index.php/Wandering_creature"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-MON-008"
+title    = "Joining and fleeing"
+context  = "adventure"
+status   = "implemented"
+summary  = "A monster's offers (ADV-MON-007) are yes or no decisions of the visiting hero's owner (GAM-DEC-001), named by the monster's type and anchor. The offer to join for free: accepted, the whole group joins the hero's army as one stack (into its first stack of the creature, else its first free slot; the original's army_add_stack), told to the owner; the treasure's resources are the owner's gains; the monster leaves the map, told to the players that see it there. The offer to join for its price (the creature's cost in the monsters' price resource, the original's gold, times its count): opened only when the treasury can pay, then as the free offer with the price paid; otherwise it counts as declined, without an event. A declined offer to join goes on in the same command to the monster's answer after a declined join (a fight, or the offer to flee). The offer to flee: accepted, the hero pursues the monster and fights it (ADV-MON-009, E08 T20b2); declined, the monster leaves the map without its treasure. An offer whose monster left the map does nothing. E08 T20b1: `OfferKind::{Join, JoinForGold, Pursue}`, `AdventureState::{accept_offer, decline_offer}`, the base pack's params.monsters.price_resource."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-battles.md sections 3.2, 3.3): monster_join_free 0x4A7000 and monster_join_for_gold 0x4A7250 (the price creature record +0x38 times the count, compared with the owner's gold at 0x4A72A5; yes pays, adds the group through army_add_stack 0x44ACE0, else the army dialog 0x5D11D0, gives the treasure 0x4A6B30 and removes the monster); monster_flee_offer 0x4A6DF0 (yes fights, no removes the monster without its treasure); army_add_stack 0x44ACE0 read in E08 T20b1 (the first slot of the type, else the first empty slot)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGCreature.cpp joinDecision, fleeDecision, giveReward, tryJoiningArmy: the same offers and outcomes (joiningPercentage 100 by default)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGCreature.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MON-009"
+title    = "A wandering monster's battle and its split"
+context  = "adventure"
+status   = "implemented"
+summary  = "A monster's fight (ADV-MON-007; an accepted offer to flee, ADV-MON-008) is a battle the game opens at once at the monster's tile (its terrain and battlefield, GAM-BAT-001; ADV-GRD-001), the visiting hero's side attacking, the monster's side defending without a hero and without an owner (the system actor plays it, ADR-0017 point 2), a decision of the visitor's owner alone. Its stacks: the number from the ratio of the hero's army value (no Attack or Defense factor) to the monster's strength, both exact as doubles and divided in double precision, by the original's table (below 0.5, 0.67, 1, 1.5, 2: 7, 6, 5, 4, 3 stacks, else 2; a strength of 0 gives 2, or 7 for a worthless army: the FPU's infinity and NaN); a first draw of 1 to 100 at most 20 gives one fewer, at least 80 one more below seven; at least 1 and at most the count. The count divides evenly, the first count mod n stacks one more, in slots from 0. A town's unupgraded creature (a faction and an upgrade) in at least two stacks takes a second draw, at most 50 turning the middle stack (n / 2) into its first upgrade, of the same count. The draws under ADV-QUIRK-6 (faithful): the C runtime's rand seeded with 248 071 x + 276 589 y + 310 111 z + 155 303 (32-bit; the monster's tile), so a visit splits the same way every time, as the original's; in strict-fixed: the attacking player's stream, after the battle's seed and before the obstacles' (ADR-0017 point 4). D-11: the second draw as the code reading (VCMI approximates it by a formula that differs on 41 of 41 472 tiles of a 144 x 144 two-level map). Not built: the original's three-type form (its other callers). E08 T20b2: `h3_adventure::{split, TileRand}`, `Defender::Monster`, `GameState::start_battle`, `Actor::System`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-battles.md section 4.1; read again in E08 T20b2): monster_battle 0x4AC580 (srand of the tile's expression 0x4AC598 to 0x4AC5E6; the double ratio against monster_split_table 0x6776E0 = 3.0, 2.0, 1.5, 1.0, 0.67, 0.5 read from its fifth entry down; random_between(1, 100) 0x50B230 with crt_rand 0x617E5C; the clamp; the even stacks; creature_is_unupgraded 0x47B120 and creature_upgrade 0x47B1A0 for stack n / 2 on a second draw at most 50; the battle 0x4AD470); monster_fight 0x4A6C60"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGCreature.cpp getDefaultNumberOfStacks (the same table, 0.67 as a float), fight (hashByPosition: exactly the first rand() after srand of the tile's expression), containsUpgradedStack (a formula that approximates the second draw: D-11)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGCreature.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Wandering creature: the split by relative strength with one more or fewer ('There is some variance, but it is not random'); the upgraded stack 'always appears in the middle of the army'"
+  url        = "https://heroes.thelazy.net/index.php/Wandering_creature"
+  retrieved  = "2026-10-13"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-MON-010"
+title    = "After a wandering monster's battle"
+context  = "adventure"
+status   = "implemented"
+summary  = "When a battle against a monster ends, after the heroes' part (GAM-BAT-002: the visitor's experience from the monster's losses, its Necromancy; no +500, no capture): the monster's survivors, every stack it has left, count as its own creature (A-6 fixed, E08 decision 23: the original counts its own type only, so the survivors of an upgraded stack vanished; the next battle splits the whole count again). None left: the monster leaves the map, told to the players that see it there, and after the visitor's victory its treasure's resources enter the visitor's owner's treasury (a draw gives none). Some left (the hero lost or retreated, and leaves the map, GAM-BAT-003): it stays with that count, which its next answer, its next battle and the word a viewer sees read. E08 T20b2: `AdventureState::end_monster_battle`, `GameState::end_battle`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-battles.md section 4.3): monster_battle 0x4AC580 writes army_count_of_type 0x44ADC0 of the monster's own creature back as its count (0x4AC905); monster_fight 0x4A6C60 gives the treasure (0x4A6B30) after the hero's victory and removes the monster at a count of 0 (0x4AABB0)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGCreature.cpp battleFinished: the same for a win and a draw; after a loss it turns upgraded survivors back into the base creature and keeps them (as the engine with A-6 fixed)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGCreature.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Wandering creature: 'A bug removes troops equal to the upgraded stack's size from the wandering army when a hero is defeated or retreats'"
+  url        = "https://heroes.thelazy.net/index.php/Wandering_creature"
+  retrieved  = "2026-10-13"
+  confidence = "medium"

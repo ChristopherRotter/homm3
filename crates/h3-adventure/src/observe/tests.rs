@@ -346,7 +346,8 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
                     AdventureEventKind::ObjectRemoved { .. }
                     | AdventureEventKind::TilesRevealed { .. }
                     | AdventureEventKind::KeyGained { .. }
-                    | AdventureEventKind::HeroRemoved { .. } => (None, None),
+                    | AdventureEventKind::HeroRemoved { .. }
+                    | AdventureEventKind::CreaturesJoined { .. } => (None, None),
                 })
             })
             .collect();

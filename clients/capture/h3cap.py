@@ -14,7 +14,9 @@ an XWD dump of the 16-bit X display (raw 5-6-5), a render is h3-view's PNG, whos
       finds the original's obstacles in a capture: renders the scenario without obstacles and
       with each obstacle type of its terrain alone (a usual one anchored at row 6, column 8; an
       absolute one where it stands), matches each against the capture at every anchor, and prints
-      the scenario's `obstacles` lines for the matches (the diff then confirms them).
+      the scenario's `obstacles` lines for the matches (the diff then confirms them). On a special
+      battlefield with obstacles of its own (the shore, a special ground's field: E17 M3 T2) the
+      types are the field's, as the original's generator takes them.
 
 Needs numpy, ImageMagick's `convert` and a release build of h3-view (`cargo build --release -p
 h3-view` in clients/). Captures and renders of the original stay local (ADR-0009): never commit
@@ -233,10 +235,38 @@ def redraws(cap, ours, differ, earlier=()):
 
 
 # -- finding the obstacles ----------------------------------------------------------------------
-def pack_obstacles(terrain):
-    """The base pack's obstacle types of `terrain` (`packs/base/battle.toml`)."""
-    battle = tomllib.loads((ROOT / "packs" / "base" / "battle.toml").read_text())
-    return [o for o in battle["obstacle"] if terrain in o["terrains"]]
+PACKS = ("base", "ab", "sod")
+
+
+def pack_obstacles(terrain, battlefield=None):
+    """The obstacle types of `terrain` (the base pack's), or of the special battlefield
+    `battlefield` (`pack:id`, any pack's types listing it; E17 M3 T2), each with its pack's id in
+    `pack`."""
+    found = []
+    for pack in PACKS:
+        path = ROOT / "packs" / pack / "battle.toml"
+        if not path.exists():
+            continue
+        for o in tomllib.loads(path.read_text()).get("obstacle", []):
+            if battlefield:
+                field_pack, field = battlefield.split(":")
+                names = {f if ":" in f else f"{pack}:{f}" for f in o.get("battlefields", [])}
+                hit = f"{field_pack}:{field}" in names
+            else:
+                hit = pack == "base" and terrain in o.get("terrains", [])
+            if hit:
+                found.append({**o, "pack": pack})
+    return found
+
+
+def battlefields(key):
+    """The special battlefield `key` (`pack:id`) as its pack defines it, in a list (none if no
+    pack does)."""
+    pack, field = key.split(":")
+    path = ROOT / "packs" / pack / "battle.toml"
+    if not path.exists():
+        return []
+    return [b for b in tomllib.loads(path.read_text()).get("battlefield", []) if b["id"] == field]
 
 
 def usual_hexes(o, anchor):
@@ -252,10 +282,11 @@ def usual_hexes(o, anchor):
 
 def entry(o, anchor=None):
     """A scenario's obstacle entry."""
+    kind = f'{o.get("pack", "base")}:{o["id"]}'
     if o.get("absolute"):
         hexes = [y * WIDTH + x for x, y in o["blocked"]]
-        return f'{{ hexes = {hexes}, kind = "base:{o["id"]}" }}'
-    return f'{{ hexes = {usual_hexes(o, anchor)}, anchor = {anchor}, kind = "base:{o["id"]}" }}'
+        return f'{{ hexes = {hexes}, kind = "{kind}" }}'
+    return f'{{ hexes = {usual_hexes(o, anchor)}, anchor = {anchor}, kind = "{kind}" }}'
 
 
 def with_obstacles(text, entries):
@@ -277,7 +308,10 @@ def render(text, out):
 
 def find(capture, scenario, out_dir=None):
     text = Path(scenario).read_text()
-    terrain = tomllib.loads(text)["scenario"]["terrain"].split(":")[-1]
+    head = tomllib.loads(text)["scenario"]
+    terrain = head["terrain"].split(":")[-1]
+    field = head.get("battlefield")
+    own = field and any(f.get("own_obstacles") for f in battlefields(field))
     out = Path(out_dir or tempfile.mkdtemp(prefix="h3cap-"))
     out.mkdir(parents=True, exist_ok=True)
     cap = xwd565(capture)
@@ -286,7 +320,7 @@ def find(capture, scenario, out_dir=None):
     centre = 6 * WIDTH + 8
     x0, y0 = hex_box(6, 8, lay)
     found = []
-    for o in pack_obstacles(terrain):
+    for o in pack_obstacles(terrain, field if own else None):
         anchor = None if o.get("absolute") else centre
         img = render(with_obstacles(text, [entry(o, anchor)]), out / f"{o['id']}.png")
         ys, xs = np.nonzero(img != plain)

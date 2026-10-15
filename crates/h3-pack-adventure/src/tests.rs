@@ -453,6 +453,7 @@ fn parses_every_field() {
         [params.monsters]
         aggression = [[-4, -4], [1, 7]]
         count_words = [5, 10]
+        price_resource = "coin"
 
         [[terrain]]
         terrain = "plain"
@@ -744,6 +745,7 @@ fn parses_every_field() {
             monsters: Some(MonsterParamsDef {
                 aggression: vec![[-4, -4], [1, 7]],
                 count_words: vec![5, 10],
+                price_resource: k("p:coin"),
             }),
         })
     );

@@ -11,13 +11,13 @@ use h3_content::ResourceId;
 
 use super::*;
 
-const RED: PlayerId = PlayerId::new(0);
+pub(super) const RED: PlayerId = PlayerId::new(0);
 const BLUE: PlayerId = PlayerId::new(1);
-const GOLD: ResourceId = ResourceId::from_raw(0);
-const ACCEPT: GameCommand = GameCommand::Answer(Answer::Accept);
-const DECLINE: GameCommand = GameCommand::Answer(Answer::Decline);
+pub(super) const GOLD: ResourceId = ResourceId::from_raw(0);
+pub(super) const ACCEPT: GameCommand = GameCommand::Answer(Answer::Accept);
+pub(super) const DECLINE: GameCommand = GameCommand::Answer(Answer::Decline);
 
-fn move_hero(hero: u16, path: &[Pos]) -> GameCommand {
+pub(super) fn move_hero(hero: u16, path: &[Pos]) -> GameCommand {
     GameCommand::Adventure(AdventureCommand::MoveHero {
         hero: HeroId::new(hero),
         path: path.to_vec(),
@@ -44,7 +44,7 @@ fn game(rules: &GameRuleset, difficulty: u8) -> GameState {
 }
 
 /// `command` of `player`, its events; a rejected command must leave the state as it was.
-fn play(
+pub(super) fn play(
     state: &mut GameState,
     rules: &GameRuleset,
     player: PlayerId,
@@ -61,7 +61,7 @@ fn play(
 }
 
 /// The events after a move's steps.
-fn after_steps(events: Vec<GameEvent>) -> Vec<GameEvent> {
+pub(super) fn after_steps(events: Vec<GameEvent>) -> Vec<GameEvent> {
     events
         .into_iter()
         .filter(|e| {

@@ -6,19 +6,6 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T2 — Every battlefield
-
-- **Scope:** the special battlefields from the battle's own facts: the observation's
-  `battlefield` (protocol v28, the packs' keys `base:shore`, `base:magic_plains`,
-  `base:cursed_ground`, `base:deck`, `base:boats`, `sod:holy_ground` … `sod:magic_clouds`) picks
-  the picture of 0x4646D0; the asset tables' special battlefields keyed by the packs' keys (now
-  VCMI's names under `base`); water and rock battles render (the decks and boats); design §5's
-  stale sentence on the 47 obstacle types no pack defines. The capture set gains each field the
-  harness can set up; where `h3-map`'s writer lacks the object, a question to the adventure lane
-  (`CLT-Q<n>`). The background variants 0 and 1 stay with CLT-Q4.
-- **Acceptance:** every special field renders; those captured match outside the masks.
-- **Depends on:** nothing. **Status:** ready.
-
 ### E17 M3 T3 — Heroes and war machines on the battlefield
 
 - **Scope:** the heroes (design §4.5: their battle DEFs by class and sex, the flags; their idle
@@ -114,10 +101,13 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T1b-1, T1b-2, T2–T8. **Status:** waiting.
+- **Depends on:** T3–T8 (T1a–T1c and T2 done). **Status:** waiting.
 
 ## Inbox
 
+- 2026-10-15 (E17 M3 T2): **when CLT-Q5 is answered** (boats in `h3-map`'s writer): the deck and
+  the two boats as capture-set situations (`h3-view situation`'s `special` refuses them now: a
+  hero in a boat against one on land, or both heroes in boats), their pictures already drawn.
 - 2026-10-15 (E17 M3 T1b-2): **for T6, the mouse over a stack** (design §7.13; read,
   `battle_mouse_stack` 0x477C20, and recorded: the sequence `hover`): the stack the mouse enters
   starts group 1 at frame 0 at once (unless it shows it: then it stands), the idle step plays it
@@ -126,10 +116,6 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   has a mouse but no such state yet; with the cursor rules, the hover's timeline (`hover.txt`)
   checks it. Also there: where a two-hex striker stands by the cursor's slot inside the target's
   hex (`cursor_attack_from_hex` 0x474A00, not read further; the harness's offsets in §7.13).
-- 2026-10-15 (E17 M3 T1b-1): **for T2:** a fresh `h3-view harvest` writes 35 obstacles more
-  into `base.toml` than the committed table holds (`obstacle_61` on, "not in a pack yet", and
-  absolute ones), the packs' numbering having grown; T2 reconciles them with the special
-  battlefields.
 - 2026-10-14 (the battle lane, E04c T7, `cross-lane`; for your information): a town's turrets are battle stacks now (BAT-SIE-016): with a Citadel the defender gets the keep, with a Castle also two towers, each a stack of the Arrow Tower (`base:arrow_tower`, 149) at the original's off-field positions 254 (keep), 255 (upper) and 251 (lower tower), so a `StackView`'s hex can be one of those (no field hex); they shoot first every round (`Struck` with the turret as attacker). The creature has no picture in the executable's creature table, so `h3-view`'s `tests/tables.rs` lists it among `GAPS`; the original draws turrets from the town's records (0x63CF88, `installation.md` §7.27). No wire change; observation encoding v18 (a turret flag per stack), C ABI v22.
 - 2026-10-14 (the battle lane, E04c T6, `cross-lane`; for your information): the base pack gained the Catapult creature (145, `base:catapult`), so `clients/assets/base.toml` gained its entry as `h3-view harvest` writes it (`smcata.def`, missile `SMCatx.def`, the harvested times and offsets) for `every_pack_key_has_an_entry`; the battle sets the Catapult up in a siege for an attacker with a hero (BAT-SIE-009), and the protocol (v31) has `ShootWall`, `WallShot`, `WallQuaked`, `WallDestroyed` and `Siege.parts`.
 - 2026-10-13 (the adventure lane, E08 T17b; its `cross-lane` pull request, the user at ADV-Q12): **what increment 3's batch E3 needs from the harness** (`docs/rules/surveys/E08-battles.md` §13; the spec and its recipes come with E08 T22a, after four building rounds, so not before the lane's next milestones): a visit that asks Yes/No (a monster's offer to join, to join for gold, to pursue; a guarded pile's question), a battle started from the map (by stepping next to a monster, by visiting an enemy hero in hot seat) with its stacks' counts read at the start and the end, a surrender and both players' gold before and after (E3-8), the underground (a monster on level 1, E3-4), memory reads of a monster's tile word (count and aggression, E3-3, optional) and of the 156 heroes' experience after a new game (E3-7), a hero's level, primary and secondary skills at the start (E3-6), the formation in a battle (E3-9). The game's difficulty at the start (Easy and Normal, E3-1, E3-2).

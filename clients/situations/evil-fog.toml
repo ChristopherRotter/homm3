@@ -1,0 +1,37 @@
+# E17 M3 T2: a situation of the capture set (situations/set.toml) on a special battlefield, Evil
+# Fog (special field 4, `CmBkEF.pcx`): the SoD ground (class 224) under both heroes (`h3-view
+# situation`; design §5, §6.2). The grass situation's armies: the human's Royal Griffins open.
+# The obstacles are the original's, of the field's own types, found in its capture (`h3cap.py
+# find`).
+
+[scenario]
+id = "situation-evil-fog"
+packs = ["base", "ab", "sod"]
+profile = "base:faithful"
+terrain = "base:grass"
+battlefield = "sod:evil_fog"
+obstacles = [
+    { hexes = [46, 47], anchor = 46, kind = "sod:obstacle_67" },
+    { hexes = [142, 143], anchor = 141, kind = "sod:obstacle_69" },
+    { hexes = [56, 57, 58, 42, 41], anchor = 55, kind = "sod:obstacle_70" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15

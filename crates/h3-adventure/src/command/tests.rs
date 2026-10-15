@@ -1351,7 +1351,7 @@ fn a_border_gate_lets_its_key_s_holders_cross_it() {
     assert!(events.is_empty());
     let battle = outcome.battle.unwrap();
     assert_eq!(
-        (battle.attacker.hero, battle.defender.hero, battle.tile),
+        (battle.attacker.hero, defender_hero(&battle), battle.tile),
         (HeroId::new(2), HeroId::new(1), p(3, 1))
     );
     assert_eq!(hero(&state, 2).0, p(4, 2));
@@ -1413,7 +1413,7 @@ fn a_step_toward_another_players_hero_visits_it_and_starts_a_battle() {
         AdventureOutcome {
             battle: Some(BattleStart {
                 attacker: side(1, RED, Formation::Loose),
-                defender: side(2, BLUE, Formation::Tight),
+                defender: Defender::Hero(side(2, BLUE, Formation::Tight)),
                 tile: p(3, 0),
                 terrain: crate::testing::SAND,
                 battlefield: Some(ContentKey::parse("t:shore").unwrap()),
@@ -1469,7 +1469,7 @@ fn a_hero_visit_ends_the_move_and_an_own_hero_blocks() {
     let battle = outcome.battle.unwrap();
     assert_eq!(
         (
-            battle.defender.hero,
+            defender_hero(&battle),
             battle.tile,
             battle.terrain,
             battle.battlefield
@@ -1519,7 +1519,7 @@ fn a_battle_is_fought_on_the_ground_its_tile_gives() {
     }
     // Without the part's battle terrains, always the tile's.
     let plain = crate::testing::rules();
-    let imp = h3_content::CreatureTypeId::from_raw(0);
+    let imp = CreatureTypeId::from_raw(0);
     let mut setup = world(&["gg"], 1, vec![hero_at(1, 0, p(0, 0), &[imp])]);
     setup.map.tiles[1].coast = true;
     let state = AdventureState::new(&plain.0, &plain.1, &setup, &mut draws()).unwrap();
@@ -1569,12 +1569,12 @@ fn raised_creatures_join_their_stack_a_free_slot_or_the_upgrades_stack() {
         &mut Vec::new(),
     );
     assert_eq!(raise(&mut gap, WOLF, 4), Some((WOLF, 4)));
-    let slots: Vec<(u8, h3_content::CreatureTypeId)> =
+    let slots: Vec<(u8, CreatureTypeId)> =
         army(&gap).iter().map(|s| (s.slot, s.creature)).collect();
     assert_eq!(slots, [(0, GNOLL), (1, WOLF), (3, GNOLL)]);
     // A full army without the creature: two thirds of it, rounded up, as its upgrade, joining
     // the upgrade's stack; without an upgrade's stack or an upgrade, none.
-    let full = |first: h3_content::CreatureTypeId| {
+    let full = |first: CreatureTypeId| {
         let mut state = state.clone();
         let mut stacks = crate::testing::army(&[first; 7]);
         stacks.iter_mut().skip(1).for_each(|s| s.creature = GNOLL);
@@ -1640,4 +1640,12 @@ fn a_battles_end_sets_the_armies_and_takes_heroes_off_the_map() {
     let mut again = before.clone();
     again.end_battle(&rules.0, &[(HeroId::new(9), None)], &mut events);
     assert_eq!(again, before);
+}
+
+/// The hero of a battle's defending side; panics for a monster's.
+fn defender_hero(battle: &BattleStart) -> HeroId {
+    match &battle.defender {
+        Defender::Hero(side) => side.hero,
+        Defender::Monster { .. } => panic!("a monster defends"),
+    }
 }
