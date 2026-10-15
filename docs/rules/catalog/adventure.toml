@@ -341,7 +341,7 @@ id       = "ADV-FOG-005"
 title    = "What a player sees on the fringe"
 context  = "adventure"
 status   = "implemented"
-summary  = "The fringe is the tiles of the map a player has not explored with an explored tile among the eight around them on their level. The player sees their terrain, roads and rivers; under ADV-QUIRK-1 (quirk.adventure.fringe_shows_objects, on in faithful) also what objects cover there and the heroes standing there, and then a hero's step onto or off a fringe tile is seen as one on an explored tile is. Without the flag (strict-fixed) the fringe shows terrain, roads and rivers only. Fringe tiles are unexplored: no path enters them (ADV-MOV-008). The eight neighbours are ADR-0016's 'touching'; how the original draws its half-dark border was not read. E08 T8b1."
+summary  = "The fringe is the tiles of the map a player has not explored with an explored tile among the eight around them on their level. The player sees their terrain, roads and rivers; under ADV-QUIRK-1 (quirk.adventure.fringe_shows_objects, on in faithful) also what objects cover there and the heroes standing there, and then a hero's step onto or off a fringe tile is seen as one on an explored tile is. Without the flag (strict-fixed) the fringe shows terrain, roads and rivers only, and a wandering monster standing there (E08 decision 40: it guards explored tiles, ADV-MON-005, so its guard would show through the player's legal moves). Fringe tiles are unexplored: no path enters them (ADV-MOV-008). The eight neighbours are ADR-0016's 'touching'; how the original draws its half-dark border was not read. E08 T8b1."
 numeric  = "integer"
 
   [[rule.source]]

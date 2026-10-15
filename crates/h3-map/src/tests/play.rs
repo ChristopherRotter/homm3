@@ -269,11 +269,12 @@ pub(super) fn army() -> impl Strategy<Value = Slots> {
 }
 
 /// A hero's secondary skills of its own, in one case of two (E08 T19b2): Eagle Eye (code 11) and
-/// up to two of Wisdom (7) and Necromancy (12), each at a level 1 to 3.
+/// up to three of Diplomacy (4; E08 T20b3b1: a monster's offer to join for gold), Wisdom (7) and
+/// Necromancy (12), each at a level 1 to 3.
 fn skills() -> impl Strategy<Value = Option<Vec<(u8, u8)>>> {
     proptest::option::weighted(
         0.5,
-        (subsequence(vec![7u8, 12], 0..=2), vec(1u8..=3, 3))
+        (subsequence(vec![4u8, 7, 12], 0..=3), vec(1u8..=3, 4))
             .prop_map(|(skills, levels)| [11].into_iter().chain(skills).zip(levels).collect()),
     )
 }
@@ -313,6 +314,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     (0u8..5, 0u8..5),
                     proptest::sample::select(&MONSTER_OBJECTS[..]),
                     proptest::option::of(proptest::sample::select(&GROUND_OBJECTS[..])),
+                    any::<bool>(),
                 ),
             ),
         ),
@@ -330,7 +332,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 mut blockers,
                 difficulty,
                 keyring,
-                (backpacks, skills, beside),
+                (backpacks, mut skills, beside),
             )| {
                 // In three plans of four a red tent within three tiles of the first hero, a red
                 // guard whose visitable tile is two columns east of the tent, a row up, level or
@@ -349,8 +351,24 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 }
                 // In three plans of four (E08 T20b3b1) a monster within two tiles of the first
                 // hero, on a special ground in one of those cases of two, so that random play
-                // meets monsters early and fights some of them on a ground's battlefield.
-                if let Some(((dx, dy), monster, ground)) = beside {
+                // meets monsters early and fights some of them on a ground's battlefield; in one
+                // of those cases of two the hero has expert Diplomacy and the monster is the
+                // friendly centaurs, so that groups offer to join for gold too (ADV-MON-007's
+                // third answer: their aggression of 5 to 7 above a weaker hero's charisma).
+                if let Some(((dx, dy), monster, ground, diplomat)) = beside {
+                    let monster = if diplomat {
+                        MONSTER_OBJECTS[4]
+                    } else {
+                        monster
+                    };
+                    if diplomat {
+                        if skills.is_empty() {
+                            skills.push(None);
+                        }
+                        let own = skills[0].get_or_insert_with(Vec::new);
+                        own.retain(|&(skill, _)| skill != 4);
+                        own.push((4, 3));
+                    }
                     let ((hx, hy, hz), _) = heroes[0];
                     let levels = 1 + u8::from(two_levels);
                     let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
@@ -2236,4 +2254,5 @@ fn the_plans_play_battles_to_a_victory() {
         f.joins_offered > 0 && f.flights_offered > 0 && f.joined > 0,
         "{f:?}"
     );
+    assert!(f.gold_offered > 0, "{f:?}");
 }

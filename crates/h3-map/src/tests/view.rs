@@ -18,8 +18,8 @@ use proptest::test_runner::TestCaseError;
 
 use super::import::object;
 use super::play::{
-    BLOCKERS, FAITHFUL, HERO_TEMPLATE, STRICT, Slots, Spot, army, lay_out, masks, options, plan,
-    player_of, resolve, slots, start_on, steps, tile,
+    BLOCKERS, FAITHFUL, HERO_TEMPLATE, KINDS, STRICT, Slots, Spot, army, lay_out, masks, options,
+    plan, player_of, resolve, slots, start_on, steps, tile,
 };
 use crate::model::{Body, Object, Pos, RawMap, Stack};
 
@@ -125,8 +125,9 @@ fn stacks(slots: &[Option<(u16, u16)>]) -> Vec<Option<Stack>> {
 
 /// `m` with `unseen`'s changes where the viewer (`colour`) never sees them: `ground` says whether
 /// it never sees a tile's terrain, road and river, `objects` whether it never sees what objects
-/// cover there and the heroes standing there. A hero's tile stays land, and no blocker is added
-/// over it.
+/// cover there and the heroes standing there; a monster it never sees where it never sees the
+/// ground (E08 decision 40: a monster shows on the fringe in either profile). A hero's tile stays
+/// land, and no blocker is added over it.
 fn vary(
     m: &RawMap,
     colour: u8,
@@ -156,8 +157,10 @@ fn vary(
             tile.river = river;
         }
     }
-    let unseen_blocker =
-        |anchor: Spot, template: usize| covers(anchor, template, side).all(&objects);
+    let unseen_blocker = |anchor: Spot, template: usize| {
+        let monster = KINDS[template / BLOCKERS.len()].0 == 54;
+        covers(anchor, template, side).all(|spot| objects(spot) && (!monster || ground(spot)))
+    };
     let mut blocker = 0;
     m.objects.retain(|o| {
         if o.template == HERO_TEMPLATE {

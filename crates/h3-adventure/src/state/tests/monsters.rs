@@ -23,7 +23,12 @@ const RED: PlayerId = PlayerId::new(0);
 /// the gnoll 2–4, the peasant 30–40 and of level 2, the wolf none; and a war machine `t:cart` of
 /// level 1. A random monster of level 1 is drawn among the pikeman, the gnoll and the wolf.
 fn monster_rules() -> (Ruleset, AdventureRuleset) {
-    movement_rules_edited(true, 16, |core: &mut ContentPack| {
+    monster_rules_in(true)
+}
+
+/// [`monster_rules`] in the faithful profile or, `faithful` false, the strict one.
+fn monster_rules_in(faithful: bool) -> (Ruleset, AdventureRuleset) {
+    movement_rules_edited(faithful, 16, |core: &mut ContentPack| {
         core.creatures[0].info.adventure_count = [10, 20];
         core.creatures[1].info.adventure_count = [2, 4];
         core.creatures[2].info.adventure_count = [30, 40];
@@ -633,4 +638,54 @@ fn the_reachable_tiles_end_at_a_guarded_tile() {
     assert!(reach.points_left(p(3, 1)).is_some());
     assert!(reach.points_left(p(5, 1)).is_some());
     assert_eq!(reach.points_left(p(2, 1)), None);
+}
+
+// covers: ADV-FOG-005, ADV-FOG-006
+#[test]
+fn a_monster_on_the_fringe_shows_in_either_profile() {
+    // Red's hero at (0, 1) explores up to column 5; column 6 is its fringe. A monster at (6, 1)
+    // guards the explored (5, 0) to (5, 2), so it shows on the fringe without ADV-QUIRK-1 too
+    // (E08 decision 40), and its word's change is told to red; a pile at (6, 0) shows there
+    // only under the quirk (ADV-FOG-005).
+    let p = |x, y| Pos::new(x, y, 0);
+    for faithful in [false, true] {
+        let (core, part) = monster_rules_in(faithful);
+        let mut state = guarded(
+            &["ggggggPggggggggg", "gggggggggggggggg", "gggggggggggggggg"],
+            vec![monster_at(6, 1, PIKEMAN)],
+            vec![hero_at(1, 0, p(0, 1), &[PIKEMAN])],
+        );
+        assert!(!state.is_explored(RED, p(6, 1)) && state.is_explored(RED, p(5, 1)));
+        assert_eq!(state.guard_of(&part, p(5, 1)), Some(1));
+        let seen: Vec<ObjectTypeId> = state
+            .observe(&core, &part, RED)
+            .objects
+            .iter()
+            .map(|o| o.object_type)
+            .collect();
+        let pile = state.map().objects()[0].object_type.unwrap();
+        if faithful {
+            assert_eq!(seen, [pile, MONSTER]);
+        } else {
+            assert_eq!(seen, [MONSTER]);
+        }
+        let mut events: Vec<AdventureEvent> = Vec::new();
+        let left = [ArmyStack {
+            slot: 0,
+            creature: PIKEMAN,
+            count: 1,
+        }];
+        state.end_monster_battle((&core, &part), p(6, 1), (&left, false), &mut events);
+        assert_eq!(
+            events,
+            [AdventureEvent {
+                kind: AdventureEventKind::MonsterChanged {
+                    object_type: MONSTER,
+                    anchor: p(6, 1),
+                    count_word: 0,
+                },
+                seen_by: Viewers::NONE.with(RED),
+            }]
+        );
+    }
 }

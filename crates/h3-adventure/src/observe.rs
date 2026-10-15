@@ -5,7 +5,9 @@
 //! A viewer sees on its explored tiles their terrain, roads and rivers, what objects still on the
 //! map cover there and the heroes standing there (ADV-FOG-004); on the fringe their terrain, roads
 //! and rivers, and under `ADV-QUIRK-1` (the `faithful` profile) also what objects cover there and
-//! the heroes standing there (ADV-FOG-005); nothing of any other tile. A typed object still on the
+//! the heroes standing there (ADV-FOG-005), in either profile the wandering monsters there (E08
+//! decision 40: a monster guards explored tiles, which the viewer's moves would reveal); nothing
+//! of any other tile. A typed object still on the
 //! map shows whole, its type and tiles, once the viewer sees any tile it covers so (ADR-0016 point
 //! 6, E08 T12b); its contents never show, nor another player's purchases or keys (its own
 //! Cartographer types bought show, T14b, and its own keys, T15a). Of a hero it sees its tile,
@@ -264,30 +266,36 @@ impl AdventureState {
                 }),
             })
             .collect();
-        let sees =
-            |pos| observation.is_explored(pos) || (objects_on_fringe && observation.is_fringe(pos));
+        // A monster shows on the fringe in either profile (E08 decision 40): it guards the
+        // explored tiles beside it, which its guard's effect on the viewer's moves would reveal.
+        let sees = |pos, monster: bool| {
+            observation.is_explored(pos)
+                || ((objects_on_fringe || monster) && observation.is_fringe(pos))
+        };
         let words = part.params().monsters();
-        let objects = map
-            .objects()
-            .iter()
-            .enumerate()
-            .filter_map(|(index, object)| {
-                let object_type = object.object_type?;
-                (!self.is_removed(index) && object.tiles(map).any(sees)).then(|| ObjectView {
-                    object_type,
-                    anchor: object.anchor,
-                    blocked: object.blocked,
-                    visitable: object.visitable,
-                    drawn: object.drawn,
-                    monster: object.monster.as_ref().map(|monster| MonsterView {
-                        creature: monster.creature,
-                        count_word: words.map_or(0, |w| {
-                            w.count_word(self.monster_count(index).unwrap_or(monster.count))
-                        }),
-                    }),
+        let objects =
+            map.objects()
+                .iter()
+                .enumerate()
+                .filter_map(|(index, object)| {
+                    let object_type = object.object_type?;
+                    let monster = object.monster.is_some();
+                    (!self.is_removed(index) && object.tiles(map).any(|pos| sees(pos, monster)))
+                        .then(|| ObjectView {
+                            object_type,
+                            anchor: object.anchor,
+                            blocked: object.blocked,
+                            visitable: object.visitable,
+                            drawn: object.drawn,
+                            monster: object.monster.as_ref().map(|monster| MonsterView {
+                                creature: monster.creature,
+                                count_word: words.map_or(0, |w| {
+                                    w.count_word(self.monster_count(index).unwrap_or(monster.count))
+                                }),
+                            }),
+                        })
                 })
-            })
-            .collect();
+                .collect();
         observation.objects = objects;
         observation
     }
