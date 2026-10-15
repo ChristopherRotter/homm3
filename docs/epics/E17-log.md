@@ -797,4 +797,9 @@ with the spells), then away.
   *provisional* L = R + 1 cut; design §7.4). With that fixed, the viewer's timeline as recorded
   on its first run, and all 139 frames equal the original's outside the masks, every ray tick's
   pixels included.
-- **Checks:** RESULTS.
+- **Checks:** `clients/scripts/check.sh` all gates, 100 % (code of `838073f`, master `fa542fc`;
+  verify-once's line in the pull request); `h3-view sequences`: the seven as recorded; `h3drive.py
+  frames` (all seven captured afresh in this sandbox, about 40 minutes, then redrawn on the final
+  code): every count as recorded; `check-lane`, `check-docs`, `check-exe-map`. `h3-view harvest`
+  writes the three `ray` lines as committed; its other difference, 35 obstacles beyond the table,
+  predates the task (the inbox, for T2).
