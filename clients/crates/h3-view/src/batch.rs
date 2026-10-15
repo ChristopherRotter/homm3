@@ -277,7 +277,7 @@ mod tests {
         batch.add("s.def", &def).unwrap();
         batch.add("B.pcx", &pcx).unwrap();
         batch.add("game.pal", &pal).unwrap();
-        let font = h3_assets::fnt::Font {
+        let font = Font {
             height: 1,
             y_offset: 0,
             glyphs: vec![h3_assets::fnt::Glyph::default(); 256],
