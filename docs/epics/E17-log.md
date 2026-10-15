@@ -1002,10 +1002,23 @@ the user chose T4a (the fonts and the count boxes in the stills) over T4 whole, 
   digests), `PixelFormat::channel_masks`; the layout's `[count_box]`, the batch's fonts, the
   scene's `Draw::CountBox` after each stack's sprite and magic animation (the hexes ahead taken
   by every living stack's poses and the blocked hexes), compose's picture, tint and text.
+- **The user's decision** (mid-session): the long word's lost glyph is a bug; fixed in what the
+  client draws, kept only for the comparisons with the captures, neither a player's option nor a
+  quirk profile. Built as `h3_render::Bugs` (`Fixed` the default, `Original` for `--frames`: the
+  set and the frame check), taken by `compose`; fixed, the next line starts at the glyph cut off,
+  the line is aligned by its own width and a first glyph wider than the box takes a line alone;
+  the line count alike. The epic's Decisions and the ADR-0020 point 9 amendment draft record it.
 - **The capture set:** the `count_boxes` mask removed from all 30 situations: 55 frames exact on
-  the first run. The new `counts` (`grass` with 999, 65 535, 4 567 and 123: three to five
-  digits; a map's counts are 16-bit, so six digits and the cut of seven are not set up): RESULT.
-- **The sequences:** the boxes are drawn there too, under the frame check's masks (where the
-  drawn poses show them) until T5: RESULT.
+  the first run. The new `counts` (`grass` with 999, 12 345, 4 567 and 123: three to five digits)
+  exact at 0 and 400 ms (the Pikemen's fidget keeps its box); a first try with 65 535 Pikemen
+  showed the original drops that stack from the map (a signed −1?), so six digits and the cut of
+  seven cannot be set up. 31 situations, 57 frames, all exact, again after the `Bugs` change.
+- **The sequences** (the boxes drawn there too, under the frame check's masks until T5): all ten
+  frame checks as recorded but `melee` at 3 966 ms, where 40 more of the stale count box's 231
+  pixels count as redraw artifacts (136 of 327; the viewer's earlier frames now hold the box,
+  so the original's box under the Wolf Riders' shadow is an earlier moment's pixel shadowed):
+  recorded. `turn` once showed the computer's stack walking from 2 648 ms (thousands of pixels,
+  the original's own timing; nothing of the client changes what the original does); run again,
+  as recorded (the runbook's trap: a run on a busy machine).
 - **For later:** T5 (the boxes over time: +0x30 set by a walk and a flight, the count's +0x50,
   the spells' tint), T4b (the catalogue; which font the panel and the log use).

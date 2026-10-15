@@ -341,7 +341,7 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   layout's `[count_box]` holds the numbers. Not yet: the moments the executable hides it (+0x30,
   set by a walk 0x442145 and a flight 0x4B4BD8; who clears it not read) and the spells' tint
   (M3 T5). Every creature's troop-count offset is 0 in the harvested tables. Checked: the capture
-  set without the count-box mask, all 55 frames exact (§6.2).
+  set without the count-box mask, 31 situations, all 57 frames exact (§6.2).
 - VCMI's `showStackAmountBox` gives the same four positions (its hex centre is the anchor −
   (0, 16)) but leaves out t and counts every stack ahead as taking the hex, war machines included.
 
@@ -578,9 +578,10 @@ The runbook: `clients/capture/README.md`. What it rests on:
   original's obstacles did not change with the heroes.
 - **The count boxes** (M3 T4a; §3.6, §3.7, §4.3): drawn in every situation, the `count_boxes`
   mask gone from the set (the panel's stays): all 30 situations' 55 frames exact on the first
-  run, the tint and the digits included (counts of one to four digits, boxes beside their
-  stacks and over them). The sequences keep the mask where the drawn poses show a box until
-  M3 T5 draws them over time.
+  run, the tint and the digits included (counts of one and two digits, boxes beside their
+  stacks and over them); the new `counts` (999, 12 345, 4 567, 123) exact, a fidgeting stack's
+  box included. A map's stack of 65 535 is dropped by the original (a signed −1?). The sequences
+  keep the mask where the drawn poses show a box until M3 T5 draws them over time.
 
 ### 6.3 The adventure map: experiments by agents (M2 T6)
 
@@ -1063,7 +1064,9 @@ rectangle and shows only that. Read for the walk-by difference (§7.9); every ad
   sequences captured again (T1a's frames were lost with its sandbox; every count as recorded):
   `melee` 6 of its 7 frames artifacts only (9 to 198 pixels, up to four shadows); at 3 966, 96
   artifacts and the stale count box, 231 pixels in its 30 × 11 rectangle at (476, 197), listed
-  until M3 T5 draws the boxes; `behind` all 30 frames artifacts only, 3 951 pixels: 3 878 at the
+  until M3 T5 draws the boxes (since M3 T4a draws them in the viewer's earlier frames, 136
+  artifacts: the box's 40 pixels under the Wolf Riders' shadow are an earlier moment's, shadowed;
+  191 left); `behind` all 30 frames artifacts only, 3 951 pixels: 3 878 at the
   same moment (up to four shadows), 73 an earlier moment's (mostly the frame before; none with no
   more shadow, which a timing slip of the viewer's would give). The rule's strictness: the
   viewer's frames shifted one pixel differ in 2.4 to 11 million pixels over `walk`, `shot` and
