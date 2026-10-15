@@ -439,8 +439,13 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
     assert_eq!(bench(bench::Workload::Play, true, true).steps, play.steps);
     let reach = bench(bench::Workload::Reach, false, false);
     assert_eq!(reach.steps, play.steps);
-    // The duel's players have two heroes each.
-    assert_eq!(reach.operations, 2 * reach.steps);
+    // The duel's players start with two heroes each: two queries a step at most, fewer once a
+    // hero has left the map or while the neutral seat plays a monster's or guards' side (E08
+    // T20b3b2: the duel's monsters and guarded piles).
+    assert!(
+        (reach.steps..=2 * reach.steps).contains(&reach.operations),
+        "{reach:?}"
+    );
     let fork = bench(bench::Workload::Fork, false, false);
     assert_eq!((fork.operations, fork.steps), (14, play.steps));
     assert_eq!(fork.battles, 0);

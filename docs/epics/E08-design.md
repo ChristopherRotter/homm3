@@ -189,8 +189,11 @@ ported the original's battle AI (decision 27). Built by T20b3b1 (decisions 39, 4
 plans with monsters and grounds, the driver playing the system actor, the checks of joins,
 flights, treasures and monster battles; `MonsterChanged`; a monster shows on the fringe in either
 profile. Left:
-- **T20b3b2** (after T21a, decision 41): golden replays with monster and guards' battles, on the
-  fixture maps with monsters, grounds and guarded piles; the benchmarks on a map with them.
+Built by T20b3b2 (decision 41, after T21a): the fixture maps with the plans' monsters, guarded
+piles and grounds (beside each hero a monster and a pile; none within two tiles of a hero), nine
+golden replays (four with their options, five searched: monsters joining, fleeing, pursued,
+beaten and winning, piles asking, fought at once, beaten and winning, hero battles in both
+profiles), the env's and the CLI's tests on the changed duel, the three benchmarks re-baselined.
 
 ## 9. Versions
 
@@ -231,6 +234,6 @@ in the task that first changes it.
 | 1 | T18a + T18b | done (2026-10-14): the shared groundwork with the ADR amendments (§10); the store of heroes, its defaults, the import of hero customisations (§1), trimmed at the checkpoint (decision 28) |
 | 2 | T19a1 + T19a2 | split at the checkpoint (decision 29): T19a1 done (2026-10-14): battles through the game, hero against hero, the armies' and the map's outcome (§5, §6); T19a2 split again (decision 32): T19a2a done (2026-10-14), the heroes' outcome without pack changes; T19a2b done (2026-10-14, decision 33), Necromancy and Eagle Eye (§2, §5); round 2 closed |
 | 3 | T19b1 + T19b2 | split at the checkpoint (decision 34): T19b1 done (2026-10-14), the env, replays and benchmarks with battles, the versions (§8); T19b2 done (2026-10-14, decision 35), the property plans to a victory; round 3 closed |
-| 4 | T20a + T20b | T20a split (decision 35): T20a1 done (2026-10-14), the heroes' groundwork (`attack_defense`, `join_bonus`, Diplomacy's values; with T19b2), T20a2 split again (decision 36): T20a2a done (2026-10-15), monsters and grounds as data with every bump; T20a2b done (2026-10-15), guarded tiles and the store passed through; T20b split in three (decision 37): T20b1 done (2026-10-15), the answer and its offers; T20b2 done (2026-10-15), the monster's battle; T20b3 split (decision 38): T20b3a done (2026-10-15), the neutral seat; T20b3b split (decision 39): T20b3b1 done (2026-10-15), the plans with monsters; T20b3b2 the maps, replays and benchmarks with monsters. Monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
+| 4 | T20a + T20b | T20a split (decision 35): T20a1 done (2026-10-14), the heroes' groundwork (`attack_defense`, `join_bonus`, Diplomacy's values; with T19b2), T20a2 split again (decision 36): T20a2a done (2026-10-15), monsters and grounds as data with every bump; T20a2b done (2026-10-15), guarded tiles and the store passed through; T20b split in three (decision 37): T20b1 done (2026-10-15), the answer and its offers; T20b2 done (2026-10-15), the monster's battle; T20b3 split (decision 38): T20b3a done (2026-10-15), the neutral seat; T20b3b split (decision 39): T20b3b1 done (2026-10-15), the plans with monsters; T20b3b2 done (2026-10-15, after T21a, decision 41), the maps, replays and benchmarks with monsters and guarded piles; round 4 closed. Monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
 | 5 | T21 + T22a | T21 split (decision 41): T21a done (2026-10-15), guarded piles (§7), before T20b3b2 so the maps, replays and benchmarks change once; T21b the audit, with T22a batch E3's spec and run (cross-lane, the client lane's recipes) |
 | 6 | T22b | batch E3 scored, increment 3 closed, increment 4 refined |
