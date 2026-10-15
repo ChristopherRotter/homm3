@@ -71,8 +71,25 @@ fn rows(screen: &Screen) -> Vec<String> {
         .collect()
 }
 
-/// `text` drawn in `font` into a `w` × `h` box at the top-left of a screen of that size.
-fn drawn(font: &Font, text: &str, [w, h]: [i32; 2], colour: u32, alignment: u32) -> Vec<String> {
+/// `text` drawn in `font` into a `w` × `h` box at the top-left of a screen of that size, with the
+/// executable's bugs (the tests below describe the executable, but where they say otherwise).
+fn drawn(font: &Font, text: &str, size: [i32; 2], colour: u32, alignment: u32) -> Vec<String> {
+    drawn_with(Bugs::Original, font, text, size, colour, alignment)
+}
+
+/// As [`drawn`], the long word's bug fixed.
+fn fixed(font: &Font, text: &str, size: [i32; 2], alignment: u32) -> Vec<String> {
+    drawn_with(Bugs::Fixed, font, text, size, 4, alignment)
+}
+
+fn drawn_with(
+    bugs: Bugs,
+    font: &Font,
+    text: &str,
+    [w, h]: [i32; 2],
+    colour: u32,
+    alignment: u32,
+) -> Vec<String> {
     let size = |v: i32| u32::try_from(v).unwrap();
     let mut screen = Screen::new(size(w), size(h), PixelFormat::RGB565).unwrap();
     let area = TextBox {
@@ -81,15 +98,14 @@ fn drawn(font: &Font, text: &str, [w, h]: [i32; 2], colour: u32, alignment: u32)
         width: w,
         height: h,
     };
-    draw_text(
-        &mut screen,
+    let style = TextStyle {
         font,
-        &colours(),
-        text.as_bytes(),
-        area,
+        colours: &colours(),
         colour,
         alignment,
-    );
+        bugs,
+    };
+    draw_text(&mut screen, text.as_bytes(), area, style);
     rows(&screen)
 }
 
@@ -147,6 +163,32 @@ fn lines_break_at_newlines_and_spaces() {
     assert_eq!(drawn(&f, "xx{x}xx", [3, 3], 4, 0), ["AA.", "AA.", "..."]);
     // A text of braces only draws nothing.
     assert_eq!(drawn(&f, "{}", [3, 1], 4, 0), ["..."]);
+}
+
+#[test]
+fn the_long_words_bug_is_fixed_but_for_comparisons() {
+    // The user (2026-10-15): the glyph at a long word's break starts the next line, and the line
+    // is aligned by its own width; the executable's loss only in the comparisons' mode.
+    let f = font();
+    let word = "xxxxxxxx";
+    assert_eq!(
+        drawn(&f, word, [6, 2], 4, align::CENTRE),
+        ["AAAAA.", "..AA.."]
+    );
+    assert_eq!(fixed(&f, word, [6, 2], align::CENTRE), ["AAAAA.", ".AAA.."]);
+    assert_eq!(
+        drawn(&f, word, [6, 2], 4, align::RIGHT),
+        ["AAAA..", "....AA"]
+    );
+    assert_eq!(fixed(&f, word, [6, 2], align::RIGHT), [".AAAAA", "...AAA"]);
+    let ten = "xxxxxxxxxx";
+    assert_eq!(drawn(&f, ten, [5, 3], 4, 0), ["AAAA.", "AAAAA", "....."]);
+    assert_eq!(fixed(&f, ten, [5, 3], 0), ["AAAA.", "AAAA.", "AA..."]);
+    // A first glyph wider than the box takes its line alone (not drawn: it passes the edge).
+    assert_eq!(fixed(&f, "wx", [2, 2], 0), ["..", "A."]);
+    // Spaces break as before.
+    assert_eq!(fixed(&f, "xx xxxx", [5, 3], 0), ["AA...", "AAAA.", "....."]);
+    assert_eq!(Bugs::default(), Bugs::Fixed);
 }
 
 #[test]
@@ -212,7 +254,14 @@ fn a_box_taller_than_the_screen_stops_at_its_bottom() {
         width: 2,
         height: i32::MAX,
     };
-    draw_text(&mut screen, &f, &colours(), b"x\nx\nx\nx", area, 4, 0);
+    let style = TextStyle {
+        font: &f,
+        colours: &colours(),
+        colour: 4,
+        alignment: 0,
+        bugs: Bugs::Fixed,
+    };
+    draw_text(&mut screen, b"x\nx\nx\nx", area, style);
     assert_eq!(rows(&screen), ["A.", "A."]);
 }
 
@@ -245,14 +294,20 @@ fn the_line_drawer_skips_glyphs_left_of_the_box_and_stops_at_its_right() {
 #[test]
 fn lines_are_counted_as_the_executable_counts_them() {
     let f = font();
-    assert_eq!(line_count(&f, b"", 5), 0);
-    assert_eq!(line_count(&f, b"xx xxxx", 5), 2);
-    assert_eq!(line_count(&f, b"xxxxxxxx", 5), 2);
-    assert_eq!(line_count(&f, b"x\n\nx", 5), 3);
-    assert_eq!(line_count(&f, b"x{x}x", 5), 1);
-    assert_eq!(line_count(&f, b"xxx xx", 5), 2);
-    assert_eq!(line_count(&f, b"xxxxx ", 5), 1);
-    assert_eq!(line_count(&f, b"{xxxxxxx", 5), 2);
+    assert_eq!(line_count(&f, b"", 5, Bugs::Original), 0);
+    assert_eq!(line_count(&f, b"xx xxxx", 5, Bugs::Original), 2);
+    assert_eq!(line_count(&f, b"xxxxxxxx", 5, Bugs::Original), 2);
+    assert_eq!(line_count(&f, b"x\n\nx", 5, Bugs::Original), 3);
+    assert_eq!(line_count(&f, b"x{x}x", 5, Bugs::Original), 1);
+    assert_eq!(line_count(&f, b"xxx xx", 5, Bugs::Original), 2);
+    assert_eq!(line_count(&f, b"xxxxx ", 5, Bugs::Original), 1);
+    assert_eq!(line_count(&f, b"{xxxxxxx", 5, Bugs::Original), 2);
+    // The long word fixed: the glyph at the break starts the next line.
+    let ten = b"xxxxxxxxxx";
+    assert_eq!(line_count(&f, ten, 5, Bugs::Original), 2);
+    assert_eq!(line_count(&f, ten, 5, Bugs::Fixed), 3);
+    assert_eq!(line_count(&f, b"wx", 2, Bugs::Fixed), 2);
+    assert_eq!(line_count(&f, b"xx xxxx", 5, Bugs::Fixed), 2);
     assert_eq!(byte(b"ab", -1), 0);
     assert_eq!(byte(b"ab", 2), 0);
 }

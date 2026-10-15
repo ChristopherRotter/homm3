@@ -10,10 +10,11 @@ use core::fmt;
 
 use h3_assets::def::Frame;
 use h3_assets::palette::Rgb;
+use h3_render::Bugs;
 use h3_render::blit::{Drawer, Placement, draw_frame, draw_image, draw_image_keyed};
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::{PixelFormat, Screen};
-use h3_render::text::{TextBox, draw_text};
+use h3_render::text::{TextBox, TextStyle, draw_text};
 use h3_render::tint::{Tint, adjust_hue_saturation};
 
 use crate::batch::{Batch, Sprite};
@@ -41,7 +42,9 @@ impl fmt::Display for ComposeError {
     }
 }
 
-/// Draws `list` in order onto a fresh frame of `layout`'s size (black where nothing is drawn).
+/// Draws `list` in order onto a fresh frame of `layout`'s size (black where nothing is drawn),
+/// with the original's drawing bugs fixed or, for the comparisons with its captures, reproduced
+/// (`bugs`; the user, 2026-10-15).
 ///
 /// # Errors
 /// A frame too large, or anything the list names missing from `batch`.
@@ -49,6 +52,7 @@ pub fn compose(
     list: &[Draw],
     batch: &Batch,
     layout: &BattleLayout,
+    bugs: Bugs,
 ) -> Result<Screen, ComposeError> {
     let [width, height] = layout.frame;
     let mut screen = Screen::new(width, height, FORMAT).ok_or(ComposeError::Frame(layout.frame))?;
@@ -208,15 +212,14 @@ pub fn compose(
                 };
                 let text = format!("{count}");
                 let colours = ScreenPalette::new(palette, FORMAT);
-                draw_text(
-                    &mut screen,
+                let style = TextStyle {
                     font,
-                    &colours,
-                    text.as_bytes(),
-                    area,
-                    b.text_colour,
-                    b.text_align,
-                );
+                    colours: &colours,
+                    colour: b.text_colour,
+                    alignment: b.text_align,
+                    bugs,
+                };
+                draw_text(&mut screen, text.as_bytes(), area, style);
             }
             Draw::Creature {
                 def,

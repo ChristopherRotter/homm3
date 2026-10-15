@@ -26,6 +26,19 @@
 
 extern crate alloc;
 
+/// Whether the original's drawing bugs are reproduced (the user, 2026-10-15): the client draws
+/// them fixed; only the comparisons with the original's captures reproduce them, so that those
+/// stay exact. Neither a player's option nor a quirk profile (`docs/epics/E17-design.md` §3.6;
+/// the first: [`text`]'s long word).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum Bugs {
+    /// Fixed: what the client draws.
+    #[default]
+    Fixed,
+    /// As the original's code has them: for the comparisons with its captures.
+    Original,
+}
+
 pub mod blit;
 pub mod palette;
 pub mod png;

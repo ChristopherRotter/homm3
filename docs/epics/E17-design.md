@@ -218,10 +218,17 @@ Read in the font loader (`font_load` 0x55BB00 → `font_read` 0x55B8D0 → `font
   box are skipped and the line ends before the first glyph that would pass the box's right edge.
   The glyph drawer does not clip (its callers keep texts on the screen; the client's screen
   clips). The caret (`_`, for an input field) is not built.
-- **Quirks kept as read:** the lost glyph of a long word; a line's width taken from a glyph of
-  128 or above with a negative space reads that space at the glyph's value − 256 (a sign-extended
-  index, before the metrics; `tiny.fnt`'s glyphs 236, 238, 239 have negative left spaces): the
-  client takes the glyph's own (no such line is drawn yet).
+- **The long word's bug** (the user, 2026-10-15: fixed, reproduced only for the comparisons;
+  `h3_render::Bugs`, the epic's Decisions): the executable loses the glyph at a long word's
+  break, aligns that line by the whole word's width and leaves a line empty when not even the
+  word's first glyph fits. Fixed, the next line starts at the glyph cut off, the line is aligned
+  by its own width, and a first glyph wider than the box takes a line alone; the line count
+  breaks alike. The comparisons with the captures (`--frames`: the set, the frame check) draw
+  the original's. A count box shows at most five digits from a map, so no capture shows it yet.
+- **Not reproducible:** a line's width taken from a glyph of 128 or above with a negative space
+  reads that space at the glyph's value − 256 (a sign-extended index, before the metrics;
+  `tiny.fnt`'s glyphs 236, 238, 239 have negative left spaces): the client takes the glyph's own
+  in both modes (no such line is drawn yet).
 
 ### 3.7 The tint (M3 T4a)
 
@@ -326,8 +333,8 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   k the spell table's first field (0x43E6AA to 0x43E73E; not built: M3 T5). The count is `%d` of
   +0x4C, or of +0x50 when it is not −1 (not read where it is set), written by `TextDraw` (§3.6)
   in `tiny.fnt` into (x, y, 30, 15) with colour 4 (`game.pal`'s entry 13, white) and alignment 1
-  (centred, from the top). A count of seven digits or more is cut by the long word's rule (its
-  first five shown).
+  (centred, from the top). A count of seven digits or more shows its first five (the box's last
+  line cut at the glyph that fits, §3.6).
 - **Built** (M3 T4a): the scene's `Draw::CountBox` after each stack's sprite (and any magic
   animation over it) for a living stack, not a war machine, in group 1 or 2, by its pose's hex
   and facing; the hexes ahead taken by every living stack's poses and the blocked hexes; the

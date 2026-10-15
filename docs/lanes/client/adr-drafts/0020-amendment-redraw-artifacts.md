@@ -1,7 +1,7 @@
-# ADR-0020 amendment (draft): the original's redraw artifacts are not reproduced
+# ADR-0020 amendment (draft): the original's redraw artifacts are not reproduced; its drawing bugs are fixed
 
-- Status: Draft, decided by the user on 2026-10-14 (E17 M3 T1a); goes into ADR-0020 through a
-  `shared/` pull request at the next checkpoint.
+- Status: Draft, decided by the user on 2026-10-14 (E17 M3 T1a; point 3 on 2026-10-15, M3 T4a);
+  goes into ADR-0020 through a `shared/` pull request at the next checkpoint.
 - Amends: ADR-0020 point 9 (fidelity first: frames compared exactly).
 - Detail: `docs/epics/E17-design.md` §7.11 (the reading), `docs/lanes/client/QUEUE.md` (M3 T1c).
 
@@ -25,8 +25,16 @@ melee's walk-by, 30 of `behind`'s 194 frames).
    before. Stale count boxes stay listed differences until the count boxes are drawn (M3 T5),
    which classifies them.
 
+3. A bug in the original's drawing code (the first: its text drawer loses the glyph at an
+   unbreakable word's break and aligns the line by the whole word, design §3.6) is fixed in what
+   the client draws. The comparisons with the original's captures reproduce it, so that they
+   stay exact: a development switch (`h3_render::Bugs`) the comparing commands set, neither a
+   player's option nor a quirk profile.
+
 ## Consequences
 
 - No stateful renderer and no replay of the original's redraw order per animation kind.
 - A recorded frame lists its artifacts apart from its differences; a change in either fails.
+- A fixed drawing bug keeps the original's behaviour beside it, for the comparisons only; each
+  one is named in the design notes.
 - The rest of ADR-0020 point 9 stands: layout, resolution, timing and frame rate as the original.

@@ -7,9 +7,15 @@
 //! highlight on and off: a highlighted glyph takes the next colour entry; neither is drawn nor
 //! counted in a line's width. A line ends at a newline, at the text's end or where the next glyph
 //! would pass the box's width: then it breaks after the last space that lets it fit, else (one long
-//! word) where the first glyph from its end lets it fit, and that glyph is lost; the box's last
-//! line breaks at that glyph whatever the spaces. A line whose glyphs would pass the box's bottom
-//! is not drawn, and drawing stops at the first line that does not fit below one already drawn.
+//! word) where the first glyph from its end lets it fit; the box's last line breaks at that glyph
+//! whatever the spaces. A line whose glyphs would pass the box's bottom is not drawn, and drawing
+//! stops at the first line that does not fit below one already drawn.
+//!
+//! **The long word's bug** (the user, 2026-10-15: fixed, reproduced only for comparisons,
+//! [`Bugs`]): the executable loses the glyph at a long word's break (the next line starts after
+//! it), aligns the line by the whole word's width, and puts nothing on the line when not even the
+//! word's first glyph fits; [`Bugs::Fixed`] starts the next line at that glyph, aligns the line by
+//! its own width and takes the first glyph whatever its width.
 //!
 //! What the executable does that this does not: a caret (`_`) for an input field (the drawer's
 //! last argument, −1 in the battle); writing past the screen's edge (the glyph drawer does not
@@ -22,6 +28,7 @@
 
 use h3_assets::fnt::{Font, INK};
 
+use crate::Bugs;
 use crate::palette::ScreenPalette;
 use crate::screen::Screen;
 
@@ -72,18 +79,32 @@ pub fn colour_entry(colour: u32) -> u32 {
     }
 }
 
-/// Draws `text` in `font` into `area` of `screen`: `TextDraw` (0x4B5490) with the colour argument
-/// `colour` ([`colour_entry`]) and the alignment `alignment` ([`align`]); `colours` is `game.pal`
-/// in the screen's format (the font's copy, 0x55B817).
-pub fn draw_text(
-    screen: &mut Screen,
-    font: &Font,
-    colours: &ScreenPalette,
-    text: &[u8],
-    area: TextBox,
-    colour: u32,
-    alignment: u32,
-) {
+/// How a text is drawn: its font, `game.pal` in the screen's format (the font's copy, 0x55B817),
+/// `TextDraw`'s colour argument ([`colour_entry`]) and alignment ([`align`]), and whether the
+/// long word's bug is reproduced.
+#[derive(Debug, Clone, Copy)]
+pub struct TextStyle<'a> {
+    /// The font.
+    pub font: &'a Font,
+    /// Its colours.
+    pub colours: &'a ScreenPalette,
+    /// The colour argument.
+    pub colour: u32,
+    /// The alignment.
+    pub alignment: u32,
+    /// The original's bugs or fixed.
+    pub bugs: Bugs,
+}
+
+/// Draws `text` into `area` of `screen` in `style`: `TextDraw` (0x4B5490).
+pub fn draw_text(screen: &mut Screen, text: &[u8], area: TextBox, style: TextStyle<'_>) {
+    let TextStyle {
+        font,
+        colours,
+        colour,
+        alignment,
+        bugs,
+    } = style;
     let text = text.split(|&b| b == 0).next().unwrap_or_default();
     let len = to_i64(text.len());
     let at = |i: i64| byte(text, i);
@@ -94,7 +115,7 @@ pub fn draw_text(
     let mut top = 0;
     if alignment & align::MIDDLE != 0 {
         alignment &= !align::MIDDLE;
-        let total = line_count(font, text, w) * fh;
+        let total = line_count(font, text, w, bugs) * fh;
         if total < h {
             top = (h - total) / 2;
         } else if h < 2 * fh {
@@ -103,7 +124,7 @@ pub fn draw_text(
     }
     if alignment & align::BOTTOM != 0 {
         alignment &= !align::BOTTOM;
-        let total = line_count(font, text, w) * fh;
+        let total = line_count(font, text, w, bugs) * fh;
         if total < h {
             top = h - total;
         }
@@ -116,6 +137,9 @@ pub fn draw_text(
     while fh > 0 && i < len && at(i) != 0 && !(top + fh > h && top != 0) && top < screen_bottom {
         let start = i;
         let mut width = 0;
+        // The next line starts after the glyph this one ends at (a newline, a space; the
+        // executable's long word loses it).
+        let mut skip = true;
         while matches!(at(i), b'{' | b'}') {
             i += 1;
         }
@@ -146,7 +170,8 @@ pub fn draw_text(
         if width > w {
             // Too wide (0x4B5666): back to a space where it fits.
             let whole = width;
-            let mut fits = 0;
+            // The first glyph from the end that lets the line fit, and the line's width before it.
+            let mut fits = None;
             let mut k = last;
             if right < 0 {
                 width += right;
@@ -160,8 +185,8 @@ pub fn draw_text(
                             // The box's last line: cut at this glyph (0x4B56D5).
                             break;
                         }
-                        if fits == 0 && width < w {
-                            fits = k;
+                        if fits.is_none() && width < w {
+                            fits = Some((k, width));
                         }
                     }
                     k -= 1;
@@ -172,8 +197,15 @@ pub fn draw_text(
             }
             if k <= start {
                 // No space: the first glyph from the end that lets it fit (0x4B56F7).
-                k = fits;
-                width = whole;
+                (k, width) = match bugs {
+                    // The executable's: that glyph lost, the whole width (its 0 also means none).
+                    Bugs::Original => (fits.map_or(0, |f| f.0), whole),
+                    // At least the first glyph; the next line starts at the one cut off.
+                    Bugs::Fixed => {
+                        skip = false;
+                        fits.filter(|f| f.0 > start).unwrap_or((start + 1, whole))
+                    }
+                };
             }
             if at(k) == b' ' {
                 width -= advance(b' ');
@@ -193,7 +225,9 @@ pub fn draw_text(
         };
         draw_line(screen, font, colours, text, line, area, colour);
         top += fh;
-        i += 1;
+        if skip {
+            i += 1;
+        }
     }
 }
 
@@ -291,8 +325,8 @@ fn glyph(
 }
 
 /// How many lines `text` takes at `width` (0x4B5820): its own breaking, simpler than the
-/// drawer's (no negative spaces, no last line).
-fn line_count(font: &Font, text: &[u8], width: i64) -> i64 {
+/// drawer's (no negative spaces, no last line), with the long word's bug or fixed as the drawer.
+fn line_count(font: &Font, text: &[u8], width: i64, bugs: Bugs) -> i64 {
     let len = to_i64(text.len());
     let at = |i: i64| byte(text, i);
     let advance = |c: u8| i64::from(font.glyph(c).advance());
@@ -312,15 +346,15 @@ fn line_count(font: &Font, text: &[u8], width: i64) -> i64 {
             }
         }
         if used > width {
-            let mut fits = 0;
+            let mut fits = None;
             i -= 1;
             if at(i) != b' ' {
                 while i >= start {
                     let c = at(i);
                     if !matches!(c, b'{' | b'}') {
                         used -= advance(c);
-                        if fits == 0 && used < width {
-                            fits = i;
+                        if fits.is_none() && used < width {
+                            fits = Some(i);
                         }
                     }
                     i -= 1;
@@ -330,7 +364,11 @@ fn line_count(font: &Font, text: &[u8], width: i64) -> i64 {
                 }
             }
             if i <= start {
-                i = fits;
+                i = match bugs {
+                    Bugs::Original => fits.unwrap_or(0),
+                    // The next line starts at the glyph cut off (the `+ 1` below).
+                    Bugs::Fixed => fits.filter(|&f| f > start).unwrap_or(start + 1) - 1,
+                };
             }
         }
         count += 1;

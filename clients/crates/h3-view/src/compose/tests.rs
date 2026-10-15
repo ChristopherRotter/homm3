@@ -23,6 +23,11 @@ const YELLOW: Rgb = Rgb {
     b: 0,
 };
 
+/// The compositor with the original's bugs fixed, as the client draws (no draw here differs).
+fn compose(list: &[Draw], batch: &Batch, layout: &BattleLayout) -> Result<Screen, ComposeError> {
+    super::compose(list, batch, layout, Bugs::Fixed)
+}
+
 fn palette(entries: &[(usize, Rgb)]) -> Palette {
     let mut p = Palette::default();
     for &(i, c) in entries {

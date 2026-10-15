@@ -67,7 +67,8 @@ search the parent directories).
   yet corpses, spell obstacles or the grid. With `--at <ms>` (and
   `--speed <0-2>`) the record's commands are played at the original's timing first and each
   stack is drawn in its pose then (`h3_view::anim`, E17 M2 T4a); `--frames <dir>` draws so each
-  time a capture's `frames.toml` lists, with the original's fidgets (the capture set, M3 T1b-2).
+  time a capture's `frames.toml` lists, with the original's fidgets (the capture set, M3 T1b-2)
+  and its drawing bugs (M3 T4a: the client draws them fixed, the comparisons as the original).
 - **The timing check:** `cargo run --release -p h3-view -- sequences [<id>]` (from `clients/`)
   plays each recorded sequence of `situations/sequences.toml` with its engine commands, times it
   with `h3_view::anim` and compares the timeline with the one the harness recorded in the

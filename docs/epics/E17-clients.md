@@ -53,6 +53,12 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
   those pixels apart (a pixel that is ours with one to five more shadows) while any other
   difference still fails (M3 T1c, done). An ADR-0020 point 9 amendment is drafted in
   `docs/lanes/client/adr-drafts/` for the next checkpoint.
+- **The original's drawing bugs are fixed, and reproduced only for the comparisons** (2026-10-15,
+  M3 T4a): a bug in the original's drawing code (the first: the text drawer loses the glyph at a
+  long word's break) is fixed in what the client draws; the comparisons with the original's
+  captures (the capture set, the frame check) draw it as the original does, so that they stay
+  exact. A development switch (`h3_render::Bugs`), neither a player's option nor a quirk
+  profile. Goes into the ADR-0020 point 9 amendment draft.
 - **The natural obstacles' types first** (2026-10-13, CLT-Q3): the engine dropped them at
   generation; a `cross-lane` change carries them to the wire before T7 draws obstacles.
 
@@ -475,7 +481,10 @@ original cannot be matched (the fidgets' generator); the others are lifted.
   at a line's ends measured by its own space (the executable reads outside the metrics); the
   tint exact for hues and saturations in [0, 1] (others clamped; the executable passes none);
   the count boxes drawn in the sequences too, under their masks until T5; the T4 split itself
-  (T4b the catalogue, T5 the boxes over time).
+  (T4b the catalogue, T5 the boxes over time); `h3_render::Bugs` (the user's decision of
+  2026-10-15) taken by `compose`, `Original` only for `--frames` (the set and the frame check),
+  and the long word fixed as: the next line starts at the glyph cut off, the line aligned by its
+  own width, a first glyph wider than the box alone on its line.
 
 - T3b: the asset tables' `[battle] magic` (the 83 magic animations by number: DEF, `place`,
   `translucent`, harvested from 0x641E08) and `heal_sound` (the formats); the heal's sound on the
