@@ -916,4 +916,11 @@ machines as T3b), the user agreed.
   210 pixels a frame), some five shadows deep (black), so `h3cap.MAX_SHADOWS` is five (four since
   T1c); every other count as recorded, `melee`'s stale count box at 3 966 included. The new
   counts recorded. No hero reacted to a death in the eight recordings (the reactions stay read,
-  not seen). CHECKS_RESULT
+  not seen).
+- **Checks:** `clients/scripts/check.sh` all gates, 100 % (code `f8b4d84`, the branch merged with
+  master `ae6d517`: verify-once's line in the pull request; a first run missed one region, an
+  `if let`'s implicit else in a test); the real-asset gate (329 names: 18 hero DEFs and 2 flags
+  more); `h3-view harvest` writes the three tables as committed; `h3-view sequences`: every
+  timeline as recorded (the scenarios now name their heroes); `h3drive.py set` on the final
+  code: 28 situations, 44 frames, all exact; `h3drive.py frames --reuse` on the final code: every
+  count as recorded; `check-lane`, `check-docs`, `check-exe-map`.
