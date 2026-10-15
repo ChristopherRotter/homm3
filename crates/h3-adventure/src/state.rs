@@ -1421,10 +1421,11 @@ impl AdventureState {
     }
 
     /// Who sees `object` on the map, as the observation shows it (ADV-FOG-004, ADV-FOG-005):
-    /// every player that has explored a tile it covers and, under `ADV-QUIRK-1`, every player
-    /// with such a tile on its fringe.
+    /// every player that has explored a tile it covers and, under `ADV-QUIRK-1` or for a monster
+    /// (E08 decision 40: it guards the explored tiles beside it), every player with such a tile on
+    /// its fringe.
     fn object_viewers(&self, core: &Ruleset, object: &MapObject) -> Viewers {
-        let fringe = core.quirks().is_enabled(FRINGE_SHOWS_OBJECTS);
+        let fringe = core.quirks().is_enabled(FRINGE_SHOWS_OBJECTS) || object.monster.is_some();
         self.explored
             .iter()
             .zip((0..self.players).map(PlayerId::new))

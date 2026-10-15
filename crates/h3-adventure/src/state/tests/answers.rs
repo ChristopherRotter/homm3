@@ -610,16 +610,34 @@ fn a_monsters_battle_leaves_its_survivors_or_removes_it_with_its_treasure() {
             .count_word
     };
     // It survives: every stack it has left counts as its creature (A-6 fixed: another stack's,
-    // an upgrade's in the game, too); the count and the word a viewer sees follow.
+    // an upgrade's in the game, too); the count and the word a viewer sees follow, the word's
+    // change told to the players that see it (E08 T20b3b1).
     let mut s = pikemen(&rules, &[(PEASANT, 100)], 1);
     assert_eq!(word(&s), 2);
+    let mut same = s.clone();
     let left = [stack(0, PIKEMAN, 3), stack(2, GNOLL, 2)];
     let gains = s.end_monster_battle(core, tile, (&left, false), &mut events);
     assert!(gains.is_empty());
-    assert!(events.is_empty());
     assert_eq!(s.monster_count(0), Some(5));
     assert_eq!(s.army_left(0), Some(&[stack(0, PIKEMAN, 5)][..]));
     assert_eq!(word(&s), 1);
+    assert_eq!(
+        events,
+        [AdventureEvent {
+            kind: AdventureEventKind::MonsterChanged {
+                object_type: MONSTER,
+                anchor: tile,
+                count_word: 1,
+            },
+            seen_by: Viewers::NONE.with(RED),
+        }]
+    );
+    events.clear();
+    // Survivors of the same word: nothing to tell.
+    let had = same.monster_count(0).unwrap();
+    same.end_monster_battle(core, tile, (&[stack(1, PIKEMAN, had)], false), &mut events);
+    assert_eq!((same.monster_count(0), word(&same)), (Some(had), 2));
+    assert!(events.is_empty());
     // Its next battle is against the survivors.
     set_aggression(&mut s, 0, 10);
     let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 0)]);
