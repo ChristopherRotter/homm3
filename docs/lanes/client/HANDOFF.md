@@ -5,7 +5,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **E17 M0–M2 done; M3 T1a–T1c, T2, T3a done (2026-10-15); next: M3 T3b–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ the amendment draft in `adr-drafts/`), ADR-0024; the capture harness `clients/capture/README.md`; design §3–§8; records in `E17-log.md`.
-- **Pull requests (2026-10-15):** T3a on `client/e17-m3-t3a` (T2 #229 merged).
+- **Pull requests (2026-10-15):** T3a #235 open (T2 #229 merged).
 - **The user's requirements (2026-10-13)**, epic "Decisions": a string catalogue, language packs; graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
