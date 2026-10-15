@@ -2328,3 +2328,57 @@ merged), its code already verified (the setup's baseline ran the light gates onl
 - Not changed (shared): `docs/07-simulation-and-ai.md` still says `to_move` yields the owner of
   the side to act (T19b1); the neutral seat goes into it with the next `shared/` change (the
   QUEUE's inbox).
+
+### Round 4 of increment 3: T20b3b1 (2026-10-15, `adventure/e08-t20b3b1` #236)
+
+Decisions 39 and 40. Baseline: master `c76d3c02` (#234 merged after E04c T9), the full verify with
+original data passed (code `cc3daf7d`).
+
+- **The plans' monsters and grounds** (`h3-map`'s `tests/play.rs`): seven kinds appended to
+  `KINDS` (indices 20 to 26, after the committed maps' kinds, so the fixtures keep their
+  templates and bytes): five monsters of class 54 (`MONSTERS`: six compliant goblins, fourteen
+  hostile gogs with 100 gold, five aggressive pikemen, eight savage wolf riders that never flee,
+  four friendly centaurs with 50 gold; fixed creatures and counts, no random monster: a drawn
+  creature or count's word would show, as a random resource's pile type), Cursed Ground and Magic
+  Plains. `masks` gives a monster its one tile, blocked and visited, a ground no tile (it lies on
+  its anchor, an unknown picture's one tile); `body` writes a monster's data (AB and SoD store an
+  identifier). The strategy draws them among the objects, and in three plans of four puts a
+  monster within two tiles of the first hero (on a ground in one case of two; in another one of two
+  the hero has expert Diplomacy and the monster is the centaurs); the plans' skills gain
+  Diplomacy. Every monster has one object type, so `lay_out`'s twin test keys class 54 by its
+  class alone (the setup refused two monsters on an anchor as `SharedAnchor`).
+- **The driver**: `actor` (the system while `unowned_battle` has a battle, else the acting
+  player), `player_of`, `battle_of`; `options`, `resolve` (now `(Actor, GameCommand)`), `fight`
+  and `advance` play the system actor's commands; a free command of a player or the system's
+  refused ones go through as before.
+- **The checks**: legality (the system's commands only while a monster's side is to act, never a
+  move; a declined join goes on to the flight, the answer to a guarded tile's own offer to the
+  guard's visit, which may offer too); unlisted commands (the system has none); decisions (a
+  monster's offer is never refused, an accepted join tells the creatures joining and removes the
+  monster, a declined flight removes it, an accepted pursuit starts its battle); conservation (a
+  join adds the whole group to the visitor's army, into its creature's stack or the first free
+  slot, and gives the treasure; a flight gives nothing); a monster battle's end
+  (`check_monster_battle_end`: beaten, the monster leaves the map with its treasure for the
+  visitor's owner, a draw without; else it keeps between one and the creatures it had; no
+  surrender, nothing paid); the views (a monster's offer ends the hygiene comparison: its answer
+  follows from its hidden aggression).
+- **Findings**: (1) a monster that survives a battle with fewer creatures showed a new count word
+  untold (`views_move_as_the_events_say`): `AdventureEventKind::MonsterChanged { object_type,
+  anchor, count_word }`, seen by the players that see the monster, emitted by
+  `end_monster_battle` only when the word changes (ADV-MON-010, ADV-FOG-006). (2) Under
+  strict-fixed a monster hidden on the fringe guards the explored tiles beside it, so the
+  viewer's legal moves revealed it (`a_viewer_learns_nothing_it_cannot_see`: 139 against 302
+  points left on a tile, a detour around the guarded tiles): the user's decision 40, a monster
+  shows on the fringe in either profile (`observe`, `object_viewers`; ADV-QUIRK-1's ledger entry,
+  ADV-FOG-005). A probe first found the reachable tiles equal with and without such a monster
+  (its guard zone covers frontier tiles, which end every path anyway); the paths' points are
+  where it shows.
+- **The census** (`the_plans_play_battles_to_a_victory`, 192 fixed cases): 309 battles, 26 of
+  them against monsters (13 on a special ground, 194 commands of the system actor, 10 monsters
+  beaten, 6 visitors lost), 17 offers to join, 2 to join for gold, 28 to flee, 6 groups joined;
+  each now asserted. Ten more runs of the four random properties (480 cases each) passed.
+- No version bump: the event is not in a hash, a replay or an encoding; the golden replays
+  verify unchanged (the duel holds no monster).
+- Not changed (shared): `docs/06-security.md`'s monsters (#230) say neither that the new word is
+  told nor that strict shows a fringe monster: the QUEUE's inbox, for the next `shared/` change.
+

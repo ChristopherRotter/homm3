@@ -4,8 +4,8 @@
 //! it cannot see) and the observation's consistency with the events it is told.
 
 use h3_adventure::{
-    AdventureEvent, AdventureEventKind, ObjectView, Offer, OfferKind, Pos as TilePos, TileMask,
-    TileView, Viewers,
+    AdventureEvent, AdventureEventKind, ObjectKind, ObjectView, Offer, OfferKind, Pos as TilePos,
+    TileMask, TileView, Viewers,
 };
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
@@ -18,8 +18,8 @@ use proptest::test_runner::TestCaseError;
 
 use super::import::object;
 use super::play::{
-    BLOCKERS, FAITHFUL, HERO_TEMPLATE, STRICT, Slots, Spot, army, lay_out, options, plan, resolve,
-    slots, start_on, steps, tile,
+    BLOCKERS, FAITHFUL, HERO_TEMPLATE, KINDS, STRICT, Slots, Spot, army, lay_out, masks, options,
+    plan, player_of, resolve, slots, start_on, steps, tile,
 };
 use crate::model::{Body, Object, Pos, RawMap, Stack};
 
@@ -82,13 +82,20 @@ fn own_army() -> impl Strategy<Value = Vec<Option<(u16, u16)>>> {
     })
 }
 
-/// The tiles a template anchored at `anchor` covers on the map (blocked and visitable).
+/// The tiles a template anchored at `anchor` covers on the map (blocked and visitable; a special
+/// ground's, which neither blocks nor is visited, the anchor it lies on: E08 T20b3b1).
 fn covers(anchor: Spot, template: usize, side: u8) -> impl Iterator<Item = Spot> {
     let (ax, ay, az) = anchor;
-    let (blocked, visitable) = BLOCKERS[template % BLOCKERS.len()];
+    let (blocked, visitable) = masks(template);
+    let lies: &[(u8, u8)] = if blocked.is_empty() && visitable.is_empty() {
+        &[(0, 0)]
+    } else {
+        &[]
+    };
     blocked
         .iter()
         .chain(visitable)
+        .chain(lies)
         .filter_map(move |&(column, row)| {
             let x = ax.checked_sub(column).filter(|&x| x < side)?;
             let y = ay.checked_sub(row).filter(|&y| y < side)?;
@@ -118,8 +125,9 @@ fn stacks(slots: &[Option<(u16, u16)>]) -> Vec<Option<Stack>> {
 
 /// `m` with `unseen`'s changes where the viewer (`colour`) never sees them: `ground` says whether
 /// it never sees a tile's terrain, road and river, `objects` whether it never sees what objects
-/// cover there and the heroes standing there. A hero's tile stays land, and no blocker is added
-/// over it.
+/// cover there and the heroes standing there; a monster it never sees where it never sees the
+/// ground (E08 decision 40: a monster shows on the fringe in either profile). A hero's tile stays
+/// land, and no blocker is added over it.
 fn vary(
     m: &RawMap,
     colour: u8,
@@ -149,8 +157,10 @@ fn vary(
             tile.river = river;
         }
     }
-    let unseen_blocker =
-        |anchor: Spot, template: usize| covers(anchor, template, side).all(&objects);
+    let unseen_blocker = |anchor: Spot, template: usize| {
+        let monster = KINDS[template / BLOCKERS.len()].0 == 54;
+        covers(anchor, template, side).all(|spot| objects(spot) && (!monster || ground(spot)))
+    };
     let mut blocker = 0;
     m.objects.retain(|o| {
         if o.template == HERO_TEMPLATE {
@@ -278,7 +288,8 @@ fn depth(view: &TileView) -> u8 {
 /// not told the tile entered takes the hero out of its sight); a hero shows without a step only
 /// on a tile the viewer did not see before. The viewer forgets nothing: a tile's view only
 /// deepens, and keeps what it showed; an object it saw leaves its view only as an object removal
-/// it is told (E08 T13b), and its treasury changes only by the gains and payments it is told,
+/// it is told (E08 T13b), and a monster's word of its count changes only as it is told (E08
+/// T20b3b1); its treasury changes only by the gains and payments it is told,
 /// which are its own. Its open decision and its purchases change only as its offers' events say:
 /// an offer it is told opened is its decision, an answer closes it, an accepted Cartographer's
 /// adds the type to its purchases (E08 T14b); a reveal it is told explores at least that many
@@ -304,6 +315,7 @@ fn check_told(
         .collect();
     let mut stepped = Vec::new();
     let mut removed = Vec::new();
+    let mut words = Vec::new();
     let mut treasury = before.treasury.clone();
     let named = |o: &Offer| (o.hero, o.object_type, o.anchor);
     let mut decision = before.decision.as_ref().map(named);
@@ -349,6 +361,18 @@ fn check_told(
                 kind: AdventureEventKind::CreaturesJoined { .. },
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::MonsterChanged {
+                        object_type,
+                        anchor,
+                        count_word,
+                    },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                words.push(((object_type, anchor), count_word));
+            }
             GameEvent::Adventure(AdventureEvent {
                 kind: AdventureEventKind::HeroRemoved { hero, pos },
                 seen_by,
@@ -509,8 +533,23 @@ fn check_told(
         prop_assert!(!removed.contains(&named(object)), "{:?} removed", object);
     }
     for object in &before.adventure.objects {
+        // A monster it was told changed shows its new word, and nothing else changed.
+        let told = words
+            .iter()
+            .rev()
+            .find(|(name, _)| *name == named(object))
+            .map(|&(_, word)| {
+                let mut now = *object;
+                if let Some(monster) = &mut now.monster {
+                    monster.count_word = word;
+                }
+                now
+            });
         prop_assert!(
-            after.adventure.objects.contains(object) || removed.contains(&named(object)),
+            told.as_ref().map_or_else(
+                || after.adventure.objects.contains(object),
+                |now| after.adventure.objects.contains(now)
+            ) || removed.contains(&named(object)),
             "{:?} left untold",
             object
         );
@@ -704,7 +743,7 @@ proptest! {
         for step in &steps {
             let legal = options(&end, rules);
             let (actor, command) = resolve(&end, rules, &legal, step);
-            let _ = apply(&mut end, rules, Actor::Player(actor), command, &mut Vec::new());
+            let _ = apply(&mut end, rules, actor, command, &mut Vec::new());
         }
         let explored = |x: i16, y: i16, z: u8| {
             u16::try_from(x)
@@ -730,13 +769,16 @@ proptest! {
             let legal = options(&a, rules);
             let (actor, command) = resolve(&a, rules, &legal, step);
             let (mut ea, mut eb) = (Vec::new(), Vec::new());
-            let (from_a, from_b) = (tiles(&a, actor), tiles(&b, actor));
-            let ra = apply(&mut a, rules, Actor::Player(actor), command.clone(), &mut ea);
-            let rb = apply(&mut b, rules, Actor::Player(actor), command, &mut eb);
-            if actor == viewer {
+            // The system's commands play a monster's battle against `player`'s hero (E08
+            // T20b3b1): they count as that player's.
+            let player = player_of(&a, actor);
+            let (from_a, from_b) = (tiles(&a, player), tiles(&b, player));
+            let ra = apply(&mut a, rules, actor, command.clone(), &mut ea);
+            let rb = apply(&mut b, rules, actor, command, &mut eb);
+            if actor == Actor::Player(viewer) {
                 prop_assert_eq!(ra, rb);
-            } else if outcome((actor, ra.is_ok()), &from_a, &a, &ea)
-                != outcome((actor, rb.is_ok()), &from_b, &b, &eb)
+            } else if outcome((player, ra.is_ok()), &from_a, &a, &ea)
+                != outcome((player, rb.is_ok()), &from_b, &b, &eb)
             {
                 // The other player's command did not do the same in both games.
                 break;
@@ -752,10 +794,25 @@ proptest! {
             if battle(&ta) || battle(&tb) {
                 break;
             }
+            // A monster's answer follows from its aggression, drawn from the seed and never
+            // shown (ADV-MON-002, ADV-MON-007; E08 T20b3b1): the comparison ends when the viewer
+            // is told a monster's offer, as at a battle.
+            let answered = |events: &[GameEvent]| {
+                events.iter().any(|e| match *e {
+                    GameEvent::OfferOpened { object_type, .. } => matches!(
+                        rules.adventure().object_type(object_type).map(|t| &t.kind),
+                        Some(ObjectKind::Monster { .. })
+                    ),
+                    _ => false,
+                })
+            };
+            if answered(&ta) || answered(&tb) {
+                break;
+            }
             let bought = ta
                 .iter()
                 .any(|e| matches!(e, GameEvent::OfferAnswered { accepted: true, .. }));
-            if actor == viewer && (ta != tb || bought) {
+            if actor == Actor::Player(viewer) && (ta != tb || bought) {
                 // The viewer learned a pickup's contents or bought a reveal: only what it gained
                 // and how many tiles it explored may differ.
                 let blind = |events: Vec<GameEvent>| -> Vec<Option<GameEvent>> {
@@ -803,10 +860,10 @@ proptest! {
             let legal = options(&state, rules);
             let (actor, command) = resolve(&state, rules, &legal, step);
             let mut events = Vec::new();
-            let result = apply(&mut state, rules, Actor::Player(actor), command, &mut events);
+            let result = apply(&mut state, rules, actor, command, &mut events);
             for (&player, view) in players.iter().zip(&mut views) {
                 let after = observe(&state, rules, Viewer::Player(player));
-                let own = player == actor && result.is_ok();
+                let own = Actor::Player(player) == actor && result.is_ok();
                 check_told(player, (view, &after), &told(&events, player), own)?;
                 *view = after;
             }
