@@ -64,6 +64,7 @@ pub fn looks(
                 missile_offsets: entry.missile_offsets,
                 top,
                 missile,
+                ray: entry.ray.clone(),
             },
         );
     }

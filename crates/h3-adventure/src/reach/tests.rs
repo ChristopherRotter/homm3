@@ -26,7 +26,9 @@ fn p(x: u16, y: u16) -> Pos {
 }
 
 fn reach(state: &AdventureState, rules: &(Ruleset, AdventureRuleset), hero: u16) -> Reach {
-    state.reach(&rules.0, &rules.1, HeroId::new(hero)).unwrap()
+    state
+        .reach(&rules.0, &rules.1, &[], HeroId::new(hero))
+        .unwrap()
 }
 
 /// Moves hero `hero` of red along `path`; the events, or the error.
@@ -41,7 +43,7 @@ fn walk(
         hero: HeroId::new(hero),
         path,
     };
-    let result = state.apply(&rules.0, &rules.1, RED, &command, &mut events);
+    let result = state.apply(&rules.0, &rules.1, &[], RED, &command, &mut events);
     assert!(
         result.is_ok() || events.is_empty(),
         "a rejected move emitted events"
@@ -73,7 +75,7 @@ fn the_query_reports_each_tile_with_its_points_and_path() {
     assert_eq!(tiles.len(), 17);
     assert_eq!(tiles[0], p(1, 0));
     assert_eq!(tiles[16], p(5, 2));
-    assert_eq!(state.reach(&rules.0, &rules.1, HeroId::new(9)), None);
+    assert_eq!(state.reach(&rules.0, &rules.1, &[], HeroId::new(9)), None);
 }
 
 // covers: ADV-MOV-007
@@ -198,7 +200,7 @@ fn the_query_stays_on_the_heros_level() {
 /// The tiles of the property's maps, weighted toward walkable ones.
 const TILES: &[char] = &[
     'g', 'g', 'g', 'g', 's', 's', 'w', 'w', 'G', 'G', 'S', 'W', 'd', '~', '#', 'B', 'V', 'T', 'P',
-    'C', 'c', 'O', 'Y', 'K', 'X',
+    'C', 'c', 'O', 'Y', 'K', 'X', 'M',
 ];
 const CREATURES: [h3_content::CreatureTypeId; 4] = [PIKEMAN, GNOLL, PEASANT, WOLF];
 
@@ -242,8 +244,9 @@ proptest! {
     /// along reported paths: every reported path is accepted and ends with the reported points,
     /// on its last tile (a chart's, a tower's or a tent's entered, E08 T14a, T15a; a gate's
     /// crossed or stopped on by a holder of its key, T15b) or, for a pile's, a guard's or (without
-    /// the key) a gate's visit or another player's hero's (E08 T19a), on the tile before, one
-    /// event per step and at most one for the
+    /// the key) a gate's visit or another player's hero's (E08 T19a), on the tile before; a
+    /// monster's tile never, a tile it guards as the path's last (E08 T20a2b); one event per step
+    /// and at most one for the
     /// visit; the tile of an accepted one-step move is reported with at least the points it
     /// leaves; a rejected move changes nothing; the query is deterministic. The hero's owner
     /// holds the gates' key from the start in half the cases, and takes it at a tent in others.
@@ -266,7 +269,7 @@ proptest! {
             .collect();
         // No hero stands on a pile's, a guard's or a gate's tile (ADV-MAP-001); one may on a
         // chart's, a tower's or a tent's (E08 T14a).
-        let standable = |c: char| !matches!(c, '~' | '#' | 'B' | 'P' | 'K' | 'X');
+        let standable = |c: char| !matches!(c, '~' | '#' | 'B' | 'P' | 'K' | 'X' | 'M');
         if !standable(grid[hy][hx]) {
             grid[hy][hx] = 'g';
         }
@@ -287,7 +290,7 @@ proptest! {
         }
         for round in 0..=picks.len() {
             let reach = reach(&state, &rules, 1);
-            prop_assert_eq!(&reach, &state.reach(&rules.0, &rules.1, HeroId::new(1)).unwrap());
+            prop_assert_eq!(&reach, &state.reach(&rules.0, &rules.1, &[], HeroId::new(1)).unwrap());
             let origin = state.hero(HeroId::new(1)).unwrap().pos;
             for (pos, left) in reach.tiles() {
                 let path = reach.path(pos).unwrap();

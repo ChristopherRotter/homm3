@@ -85,6 +85,8 @@ fn the_setup_stream_draws_the_objects_contents_after_the_armies_and_experience()
         visitable: TileMask::from_bits(1),
         object_type: rules.adventure().object_type_by_key("t:pile"),
         amount: None,
+        drawn: TileMask::default(),
+        monster: None,
     });
     let mut amounts = Vec::new();
     for seed in 0..40 {

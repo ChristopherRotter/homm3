@@ -21,6 +21,12 @@ epic   = "E05"
 
 # --- adventure (ADV-STUB-<n>) ---
 
+[[stub]]
+id     = "ADV-STUB-5"
+where  = "crates/h3-adventure/src/state.rs::AdventureState::visit_guard"
+reason = "A step onto a tile a monster guards ends the move and visits the guard (ADV-MON-006, E08 T20a2b), but the visit does nothing yet: the monster's answer (fight, join, join for gold, flee; ADV-MON-007, -008) and its battle (ADV-MON-009, -010) come with E08 T20b"
+epic   = "E08"
+
 # --- server (SRV-STUB-<n>) ---
 
 # --- client (CLT-STUB-<n>) ---

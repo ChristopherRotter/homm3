@@ -24,15 +24,19 @@
 //! the end (ADV-VIS-005, T15b); a gate is visited from above (the ruleset part requires it), so
 //! the search goes on from it in every direction. Another player's hero's tile is a destination
 //! too, its visit a battle (GAM-BAT-004, E08 T19a), from any direction, whatever object lies under
-//! it; an own hero's tile blocks.
+//! it; an own hero's tile blocks. A tile a monster guards (ADV-MON-005) is a destination as well:
+//! the search does not go on from it, but from the hero's own tile (ADV-MON-006, E08 T20a2b; the
+//! original's pathfinder, 0x56BC05).
 
 use alloc::collections::BinaryHeap;
+use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::cmp::Reverse;
 
 use h3_content::Ruleset;
 use h3_contracts::{HeroId, PlayerId};
+use h3_heroes::HeroDetails;
 
 use crate::movement::{DIRECTIONS, Pricing};
 use crate::ruleset::AdventureRuleset;
@@ -48,6 +52,18 @@ struct Search<'s> {
     pricing: Pricing<'s>,
     owner: PlayerId,
     occupied: Vec<u8>,
+    /// Whether the map holds a monster, so that a tile may be guarded (E08 T20a2b): the search
+    /// asks [`Search::guarded`] only then (`bench-check`).
+    guards: bool,
+}
+
+impl Search<'_> {
+    /// Whether a monster guards `pos` (ADV-MON-005), out of the search's hot loop.
+    #[cold]
+    #[inline(never)]
+    fn guarded(&self, pos: Pos) -> bool {
+        self.map.near_monster(pos) && self.state.guard_of(self.part, pos).is_some()
+    }
 }
 
 /// No other hero stands on the tile.
@@ -118,6 +134,7 @@ impl Reach {
             pricing,
             owner: hero.owner,
             occupied,
+            guards: map.any_monster(),
         };
         reach.points[reach.start] = Some(hero.movement);
         let mut queue = BinaryHeap::new();
@@ -136,9 +153,9 @@ impl Reach {
     }
 
     /// Relaxes the steps from `slot`, reached with `points` left, in the eight directions; a
-    /// tile reached with more points than before goes on the queue unless a visit ends the path
-    /// there. `START` is the hero's own tile, whose steps up are skipped when `closed`.
-    // rule: ADV-OBJ-003, ADV-OBJ-004, ADV-VIS-005, GAM-BAT-004
+    /// tile reached with more points than before goes on the queue unless a visit or a guard ends
+    /// the path there. `START` is the hero's own tile, whose steps up are skipped when `closed`.
+    // rule: ADV-OBJ-003, ADV-OBJ-004, ADV-VIS-005, GAM-BAT-004, ADV-MON-006
     #[inline(always)]
     fn expand<const START: bool>(
         &mut self,
@@ -196,7 +213,9 @@ impl Reach {
             if self.points[next].is_none_or(|best| left > best) {
                 self.points[next] = Some(left);
                 self.via[next] = dir as u8;
-                if !visit {
+                // A step onto a guarded tile ends the path there too (ADV-MON-006), asked only
+                // of a tile the search improves, on a map with monsters (`bench-check`).
+                if !visit && !(search.guards && search.guarded(pos)) {
                     queue.push((left, Reverse(next)));
                 }
             }
@@ -269,9 +288,17 @@ impl Reach {
 
 impl AdventureState {
     /// The tiles `hero` can reach today over the tiles its owner has explored (ADV-MOV-008), if it
-    /// is on the map (see [`Reach`]). The caller decides whose hero it may ask about.
+    /// is on the map (see [`Reach`]). The caller decides whose hero it may ask about. `heroes` is
+    /// the game's store of heroes' details, as for [`Self::apply`] (E08 T20a2b): the hero's
+    /// movement skills and artifacts read it from increment 4 on.
     // rule: ADV-MOV-008
-    pub fn reach(&self, core: &Ruleset, part: &AdventureRuleset, hero: HeroId) -> Option<Reach> {
+    pub fn reach(
+        &self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        _heroes: &[Arc<HeroDetails>],
+        hero: HeroId,
+    ) -> Option<Reach> {
         self.hero(hero)
             .map(|hero| Reach::search(self, core, part, hero))
     }

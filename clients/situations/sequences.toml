@@ -91,3 +91,27 @@ command = [
     { seat = "Attacker", at = 7144, command = { Attack = { target = 2, from = 41 } } },
     { seat = "Attacker", at = 12544, command = { Shoot = { target = 2, at = 39 } } },
 ]
+
+# E17 M3 T1b-1: shots and rays in a battle in progress in hot seat (`seq-shots.toml`). Round 1:
+# the Arch Magi's ray at the Beholders, the Cyclops' throw down at the Gnolls, the Beholders' ray
+# at the Cyclops, the Gnolls defend; round 2: the Arch Magi's ray at the defending Gnolls, the
+# Cyclops' throw kills the Beholders (design §7.12, §7.4).
+[[sequence]]
+id = "shots"
+scenario = "seq-shots.toml"
+hot_seat = true
+actions = [
+    "hex:49", "turn:0.0", "hex:151", "turn:1.0", "hex:35", "turn:1.1", "key:d", "turn:0.1",
+    "hex:151", "turn:0.0", "hex:49",
+]
+ms = 3000
+timeline = "timelines/shots.txt"
+frames = "timelines/shots-frames.txt"
+command = [
+    { seat = "Attacker", command = { Shoot = { target = 2, at = 49 } } },
+    { seat = "Attacker", at = 1517, command = { Shoot = { target = 3, at = 151 } } },
+    { seat = "Defender", at = 3471, command = { Shoot = { target = 0, at = 35 } } },
+    { seat = "Defender", at = 4638, command = { Defend = {} } },
+    { seat = "Attacker", at = 4638, command = { Shoot = { target = 3, at = 151 } } },
+    { seat = "Attacker", at = 6655, command = { Shoot = { target = 2, at = 49 } } },
+]

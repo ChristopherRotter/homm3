@@ -34,7 +34,9 @@ fn a_player_observes_the_public_facts_and_the_map_as_it_sees_it() {
     assert_eq!(seen.treasury, [2000]);
     assert_eq!(
         seen.adventure,
-        state.adventure().observe(rules.core(), BLUE)
+        state
+            .adventure()
+            .observe(rules.core(), rules.adventure(), BLUE)
     );
     // After red's turn: blue acts.
     apply(

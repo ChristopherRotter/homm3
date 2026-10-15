@@ -125,7 +125,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a; `MAP_IMPORT_VERSION` 5)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a; `MAP_IMPORT_VERSION` 6)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -158,6 +158,25 @@ content and draws nothing; it rejects what the current increment cannot represen
   multiplies), which the setup bounds at 0x7FFFF; its message is presentation. Every other class
   is a blocker. Unsupported: a pile or random resource with a guards record, even an empty one
   (battles: increment 3; ADV-Q10, D-6); `import_map` keeps it as a blocker.
+- **Monsters** (v6, E08 T20a2a, ADV-MON-001): class 54 → `base:monster` with the creature its
+  subclass names (by original id, as a hero's stacks; 122, 124, 126 and 128 are unknown codes);
+  71 → `base:random_monster`, 72–75 → `base:random_monster_1` to `_4`, 162–164 →
+  `base:random_monster_5` to `_7`, their creature drawn when the game is built (ADV-MON-003).
+  The body's count (0 drawn, ADV-MON-004; the setup bounds it at 4 095, the original's 12 bits),
+  disposition code (0 compliant to 4 savage, a row of the monsters' aggression, ADV-MON-002),
+  never flees and does not grow; the treasure's resources above 0 in resource order (its text is
+  presentation; no shipped map has one below 0). Unsupported: a treasure with an artifact
+  (increment 4, E08 decision 22); `import_map` keeps the monster without it.
+- **Special grounds** (v6, E08 T20a2a, ADV-GRD-001): 21 → `base:cursed_ground`, 46 →
+  `base:magic_plains`, 222–224 and 226–231 → `sod:clover_field`, `sod:cursed_ground`,
+  `sod:evil_fog`, `sod:fiery_fields`, `sod:holy_ground`, `sod:lucid_pools`, `sod:magic_clouds`,
+  `sod:magic_plains`, `sod:rocklands`; 225 (Favorable Winds) stays a blocker without tiles. A
+  ground lies on its picture's width × height tiles to the left of and above its anchor (its
+  templates block and are visited nowhere): the size of the picture the template names, from
+  `codes::GROUND_PICTURES` (the first two bytes of each picture's `.msk` in `H3sprite.lod` and
+  `H3ab_spr.lod`, read 2026-10-15; the original places every object on its `.msk`'s rectangle,
+  0x514610, 0x505B20; VCMI `ObjectTemplate::readMsk` the same), else 1 × 1 (the original's
+  `default.msk`).
 - **Placed heroes** (class 34): owner colour → player (a colour nobody plays is an error), hero
   type by original id → its key (the packs' `# original id`), the tile its template marks
   visitable (the editor's one column left of the position), the army's stacks by slot (creature by
@@ -194,7 +213,15 @@ the same outcomes): no tile of a static layer is the visitable tile of two or mo
 T18b's run (import v4): 5 import and validate whole (`Pandora's Box ` with 27 customised heroes,
 `Race for Ardintinny`, `Tutorial.tut`, `Untitled`, `experiment`); `Adventures of Jared Haret`,
 `Faeries`, `Knee Deep in the Dead` and `Unholy Quest` are unsupported for a hero with an
-experience of 1 000 or more (4); the other outcomes as before.
+experience of 1 000 or more (4); the other outcomes as before. E08 T20a2a's run (import v6): 4
+import and validate whole (`Race for Ardintinny`, `Tutorial.tut`, `Untitled`, `experiment`); 8
+are unsupported for a monster with an artifact (`Pandora's Box ` among them, whole before), 4 for
+a guarded pile, 129 for a hero at a main town, 15 for a random hero, 3 for a hero's experience, 1
+for a hero in a town. The census: 14 021 monsters, 357 with a treasure (55 with an artifact, none
+with a resource below 0), no disposition beyond savage; 1 887 special grounds, every picture in
+the table; 10 939 tiles under two or more grounds, 142 of them (in 9 maps) under grounds of
+different battlefields, where the last in map order counts (ADV-GRD-001); 5 maps stack two grounds
+of one type on one anchor, which the setup allows for grounds only.
 
 ## The subset we write (E04a T2)
 

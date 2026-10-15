@@ -13,7 +13,7 @@ use core::fmt;
 
 use h3_protocol::wire::{Manifest, Observation, Side, Stack};
 
-use crate::anim::{Pose, Projectile, Timeline};
+use crate::anim::{Pose, Projectile, Ray, Timeline};
 use crate::layout::BattleLayout;
 use crate::tables::{ObstacleArt, Tables};
 
@@ -38,6 +38,8 @@ pub struct Moment {
     pub pulse: u32,
     /// The projectile in flight, drawn over everything (§7.9).
     pub projectile: Option<Projectile>,
+    /// The ray drawn so far, over everything (§7.12).
+    pub ray: Option<Ray>,
 }
 
 impl Moment {
@@ -48,6 +50,7 @@ impl Moment {
             active: timeline.outlined(t),
             pulse: timeline.pulse(t),
             projectile: timeline.projectile(t),
+            ray: timeline.ray(t),
         }
     }
 }
@@ -99,6 +102,8 @@ pub enum Draw {
         /// Reflected across its canvas.
         mirrored: bool,
     },
+    /// A ray's strokes, each pixel in its colour straight into the screen (§7.12).
+    Ray(Ray),
     /// A creature's sprite with the shadow its frame holds, standing on a hex (§4.2).
     Creature {
         /// The DEF.
@@ -300,6 +305,9 @@ pub fn battle_at(
             y: p.at[1],
             mirrored: p.mirrored,
         });
+    }
+    if let Some(ray) = &moment.ray {
+        list.push(Draw::Ray(ray.clone()));
     }
     Ok(list)
 }

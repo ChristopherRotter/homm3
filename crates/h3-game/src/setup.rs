@@ -224,6 +224,7 @@ impl GameSetup {
             players,
             map: self.map.clone(),
             heroes,
+            difficulty: self.difficulty,
         };
         Ok((setup, details))
     }

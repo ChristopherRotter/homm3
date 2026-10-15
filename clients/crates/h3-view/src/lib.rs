@@ -33,6 +33,7 @@ pub mod clock;
 pub mod compose;
 pub mod cursor;
 pub mod layout;
+pub mod ray;
 pub mod record;
 pub mod scene;
 pub mod sound;
