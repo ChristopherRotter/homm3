@@ -34,9 +34,9 @@ reason = "A wandering monster's offer to join is skipped, as declined, when the 
 epic   = "E08"
 
 [[stub]]
-id     = "ADV-STUB-6"
-where  = "crates/h3-adventure/src/state/monsters.rs::AdventureState::fight"
-reason = "A wandering monster's answer of a fight (ADV-MON-007) and an accepted offer to flee (ADV-MON-008) do nothing yet: the monster stays and the hero's move is over. The battle against the monster (the split, ADV-MON-009; its outcome, ADV-MON-010; the unowned side played by the system actor) comes with E08 T20b2"
+id     = "ADV-STUB-7"
+where  = "crates/h3-sim/src/adventure/env.rs::AdventureEnv::to_move"
+reason = "A battle against a wandering monster (E08 T20b2) waits, when the monster's side is to act, for the system actor, which `h3_game::apply` takes (Actor::System); the env yields no seat for it yet, so a random rollout or a recording stops there. The env's neutral seat (to_move yielding seats, the unowned side played at random until the battle lane ports the original's battle AI, decision 27) comes with E08 T20b3"
 epic   = "E08"
 
 # --- server (SRV-STUB-<n>) ---
