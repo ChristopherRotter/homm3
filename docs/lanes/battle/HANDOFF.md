@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 7, T8 (the user, 2026-10-15):** built (`battle/e04c-t8`; batch 3g: as the code, D-21); its `cross-lane` PR awaits the user's checkpoint. **Next:** T7e or T9 (the user picks).
+- **E04c increment 7, T8 (the user, 2026-10-15):** built (`battle/e04c-t8`; batch 3g: as the code, D-21); PR #222 (`cross-lane`, full verify green) awaits the user's checkpoint. **Next:** T7e or T9 (the user picks).
 - **Merged:** up to #218 (T7d).
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-3 (T7e), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
 - **Versions** (T8): battle state hash v50, battle part hash v6, replay format v28, action encoding v13, C ABI v23, observation encoding v19; shared: core ruleset hash v44, pack format v42, protocol v32. Next ids: BAT-Q47, BAT-QUIRK-23, BAT-STUB-4, BAT-TER-007, BAT-SIE-029; survey D-22, S-30.
