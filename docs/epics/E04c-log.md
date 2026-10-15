@@ -549,7 +549,7 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   (`state::RECORD_ORDER`); the slots and places are unchanged. Only the computer's ties (the later
   record) and draws over stacks see it. The `full` scenario (Ballista and Tent; Ballista and Ammo
   Cart) keeps its ids and games; `siege-s7` re-recorded (the same 89 commands, new hashes: the
-  Catapult is stack 4, the Ballista 5). Three tests named the old order. The user was told at the
+  Catapult is stack 4, the Ballista 5). Six tests named the old order: three in `h3-battle`, and in `h3-pack-battle` the harvested games of batch 1b R8 and batch 2d SU, whose stacks now list the Tent before the Ammo Cart as the original's records do. The user was told at the
   start; an experiment row (a Tent and an Ammo Cart tied in the computer's aim) is in
   `docs/experiments/README.md`.
 - **The walls property's reach** (T9's open point): `the_walls_property_s_games_reach_the_gate_the_moat_and_the_breaches`
