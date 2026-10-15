@@ -32,6 +32,9 @@ pub struct TableFile {
     /// Creatures, by key.
     #[serde(default)]
     pub creature: Vec<Creature>,
+    /// The heroes' battle pictures, by hero type key (E17 M3 T3a).
+    #[serde(default)]
+    pub hero: Vec<Hero>,
     /// Battlefield backgrounds, by a terrain's or a special battlefield's key.
     #[serde(default)]
     pub battlefield: Vec<Battlefield>,
@@ -54,11 +57,43 @@ pub struct Header {
 }
 
 /// The battle screen's settings.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Battle {
     /// The creature DEF groups the battle shows.
     pub groups: Groups,
+    /// A battle hero's DEF groups (E17 M3 T3a).
+    pub hero_groups: HeroGroups,
+    /// The flags' DEFs beside the heroes: the left side's, the right side's (0x4634AB; E17 M3
+    /// T3a).
+    pub flags: [String; 2],
+}
+
+/// A battle hero's DEF groups (`docs/epics/E17-design.md` §4.5).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HeroGroups {
+    /// Standing.
+    pub standing: u8,
+    /// The idle motion, from time to time.
+    pub idle: u8,
+    /// After a stack of its side died.
+    pub defeat: u8,
+    /// After a stack of the other side died.
+    pub victory: u8,
+    /// Casting a spell.
+    pub cast: u8,
+}
+
+/// A hero type's battle picture (`battle_load_heroes` 0x463370: by its class's town and its
+/// sex; E17 M3 T3a).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Hero {
+    /// The hero type's key.
+    pub key: String,
+    /// Its battle DEF.
+    pub def: String,
 }
 
 /// The creature DEF groups the battle uses (`docs/epics/E17-design.md` §4.2, §4.3, §7).
@@ -275,6 +310,8 @@ pub struct Tables {
     pub battle: Battle,
     /// Creatures.
     pub creatures: BTreeMap<String, Creature>,
+    /// The heroes' battle DEFs, by hero type.
+    pub heroes: BTreeMap<String, String>,
     /// Battlefields.
     pub battlefields: BTreeMap<String, Battlefield>,
     /// Obstacles.
@@ -298,7 +335,9 @@ impl Tables {
         let creatures = self
             .creatures
             .values()
-            .flat_map(|c| core::iter::once(&c.def).chain(&c.missile));
+            .flat_map(|c| core::iter::once(&c.def).chain(&c.missile))
+            .chain(self.heroes.values())
+            .chain(&self.battle.flags);
         let fields = self.battlefields.values().flat_map(|b| &b.backgrounds);
         let obstacles = self.obstacles.values().map(|o| match o {
             ObstacleArt::Usual { def, .. } => def,
@@ -371,14 +410,19 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         .filter_map(|id| by_id.get(id))
         .copied()
         .collect();
-    let battles: Vec<Battle> = selected.iter().filter_map(|f| f.battle).collect();
+    let battles: Vec<&Battle> = selected.iter().filter_map(|f| f.battle.as_ref()).collect();
     let [battle] = battles[..] else {
         return Err(TableError::Battle(battles.len()));
     };
+    for flag in &battle.flags {
+        names("[battle]", &[(flag, ".DEF")])?;
+    }
+    let battle = battle.clone();
     let mut tables = Tables {
         order: order.iter().map(|id| (*id).to_string()).collect(),
         battle,
         creatures: BTreeMap::new(),
+        heroes: BTreeMap::new(),
         battlefields: BTreeMap::new(),
         obstacles: BTreeMap::new(),
         fixes: BTreeMap::new(),
@@ -398,6 +442,11 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
                 ));
             }
             insert(&mut tables.creatures, key, c.clone())?;
+        }
+        for h in &file.hero {
+            let key = qualify(id, &h.key)?;
+            names(&key, &[(&h.def, ".DEF")])?;
+            insert(&mut tables.heroes, key, h.def.clone())?;
         }
         for b in &file.battlefield {
             let key = qualify(id, &b.key)?;
@@ -523,6 +572,12 @@ depends = []
 
 [battle]
 groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], breath = [17, 18, 19], move_start = 20, move_end = 21, turn_left = [7, 10], turn_right = [9, 8] }
+hero_groups = { standing = 0, idle = 1, defeat = 2, victory = 3, cast = 4 }
+flags = ["CmFlagL.def", "CmFlagR.def"]
+
+[[hero]]
+key = "orrin"
+def = "CH00.DEF"
 
 [[creature]]
 key = "pikeman"
@@ -564,6 +619,7 @@ at = [124, 254]
             },
             battle: None,
             creature: Vec::new(),
+            hero: Vec::new(),
             battlefield: Vec::new(),
             obstacle: Vec::new(),
             fix: Vec::new(),
@@ -614,6 +670,8 @@ at = [124, 254]
         let t = load(&files, "sod").unwrap();
         assert_eq!(t.order, ["base", "ab", "sod"]);
         assert_eq!(t.battle.groups.standing, 2);
+        assert_eq!(t.battle.hero_groups.idle, 1);
+        assert_eq!(t.heroes["base:orrin"], "CH00.DEF");
         assert_eq!(
             t.creatures.keys().collect::<Vec<_>>(),
             ["ab:pikeman", "base:archer", "base:pikeman"]
@@ -658,10 +716,13 @@ at = [124, 254]
         assert_eq!(
             names,
             [
+                "CH00.DEF",
                 "CLCBOW.DEF",
                 "CMBKDRDD.PCX",
                 "CMBKDRMT.PCX",
                 "CMBKDRTR.PCX",
+                "CMFLAGL.DEF",
+                "CMFLAGR.DEF",
                 "CPKMAN.DEF",
                 "OBDINO1.DEF",
                 "OBDINO2.DEF",
@@ -718,8 +779,9 @@ at = [124, 254]
             TableError::DuplicateKey("base:pikeman".to_string())
         );
         type Rekey = fn(&mut TableFile, &str);
-        let lists: [Rekey; 3] = [
+        let lists: [Rekey; 4] = [
             |b, k| b.creature[0].key = k.to_string(),
+            |b, k| b.hero[0].key = k.to_string(),
             |b, k| b.battlefield[0].key = k.to_string(),
             |b, k| b.obstacle[0].key = k.to_string(),
         ];
@@ -733,6 +795,12 @@ at = [124, 254]
                 );
             }
         }
+        let mut b = base();
+        b.hero.push(b.hero[0].clone());
+        assert_eq!(
+            rule(&[b], "base"),
+            TableError::DuplicateKey("base:orrin".to_string())
+        );
         let mut b = base();
         b.battlefield.push(b.battlefield[0].clone());
         assert_eq!(
@@ -764,7 +832,12 @@ at = [124, 254]
         type Change = fn(&mut TableFile);
         let shape = "an obstacle has def, rows and layer, or pcx and at";
         let sound = "a sound is an entry's name, without an extension";
-        let broken: [(Change, &str, &str); 12] = [
+        let broken: [(Change, &str, &str); 13] = [
+            (
+                |b| b.hero[0].def = "CH00.PCX".to_string(),
+                "orrin",
+                "`CH00.PCX` is not a DEF name",
+            ),
             (
                 |b| b.creature[0].sounds.wince = Some("pikewnce.wav".to_string()),
                 "pikeman",
@@ -830,6 +903,14 @@ at = [124, 254]
                 TableError::Entry(format!("base:{key}"), message.to_string())
             );
         }
+        let mut b = base();
+        if let Some(battle) = b.battle.as_mut() {
+            battle.flags[1] = "CmFlagR.pcx".to_string();
+        }
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`[battle]`: `CmFlagR.pcx` is not a DEF name"
+        );
     }
 
     #[test]

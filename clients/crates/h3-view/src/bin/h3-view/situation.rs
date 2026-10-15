@@ -1,7 +1,8 @@
 //! `h3-view situation` (E17 M2 T1, *provisional*; `clients/capture/README.md`): the original's
 //! map for a scenario's battle, so that the capture harness can show the original that battle and
 //! compare its frames with ours. Red's hero (a human) stands just west of Blue's (the computer) on
-//! the scenario's terrain, each with the scenario's stacks in their slots and its formation, no
+//! the scenario's terrain, the scenario's heroes (E17 M3 T3a: each side names one, with its
+//! primary skills), each with the scenario's stacks in their slots and its formation, no
 //! secondary skills, artifacts or war machines (nothing the still does not draw, nothing that moves
 //! on its own: no morale from Leadership, no Tactics phase); stepping Red's hero east starts the
 //! battle (`h3drive.py`). With `--hot-seat` (E17 M3 T1a) Blue may be a human too, so that the
@@ -9,7 +10,8 @@
 //! battlefield (E17 M3 T2) is set up as the original makes it, on the defender's tile: water
 //! beside Blue for the shore, a special ground under both heroes for the others. The creatures'
 //! original ids come from `crtraits.txt` (`H3bitmap.lod`) by the packs' names, as `harvest` keys
-//! the asset tables; the grounds' pictures from its `Objects.txt`. An adapter: it reads files and
+//! the asset tables, the heroes' from the ruleset checked against its `hotraits.txt`; the grounds'
+//! pictures from its `Objects.txt`. An adapter: it reads files and
 //! writes one.
 
 use std::collections::BTreeMap;
@@ -25,13 +27,8 @@ use h3_map::writer::{
 };
 
 use crate::gate::find_ci;
-use crate::harvest::creature_names;
+use crate::harvest::{creature_names, hero_names};
 use crate::scenario::{Sides, sides};
-
-/// Red's hero: Orrin, a Knight (hero type 0, class 0); Blue's: Crag Hack, a Barbarian (102, 12).
-/// Neither starts with a spell book; their pictures are masked until the heroes are drawn.
-const RED: (u8, u8) = (0, 0);
-const BLUE: (u8, u8) = (102, 12);
 /// Where Blue stands on the 36 × 36 map by default; Red stands one tile west. The original's
 /// obstacles depend on the battle's tile (`--tile`: the capture set's other battlefields).
 const BLUE_TILE: (u8, u8) = (11, 10);
@@ -143,8 +140,16 @@ pub fn run(options: &Options) -> ExitCode {
 
 fn situation(options: &Options) -> Result<(), String> {
     let battle = sides(&options.scenario, &options.packs)?;
-    let (ids, objects) = original_tables(&options.install)?;
+    let (ids, heroes, objects) = original_tables(&options.install)?;
     let id = options.scenario.display().to_string();
+    for hero in battle.heroes.iter().flatten() {
+        if heroes.get(hero.hero_type) != Some(&hero.name) {
+            return Err(format!(
+                "{id}: {} is not hero type {} of hotraits.txt (the packs in their order: base, ab, sod)",
+                hero.name, hero.hero_type
+            ));
+        }
+    }
     let mut map = map(&id, &battle, &ids, options.tile, options.hot_seat)?;
     let (patches, ground) = special(battle.battlefield.as_deref(), &objects, options.tile)?;
     map.patches = patches;
@@ -158,9 +163,11 @@ fn situation(options: &Options) -> Result<(), String> {
     Ok(())
 }
 
-/// From the installation's `H3bitmap.lod`: `crtraits.txt`'s creature ids by singular name, and
-/// `Objects.txt` (the map objects' templates).
-fn original_tables(install: &Path) -> Result<(BTreeMap<String, usize>, String), String> {
+/// From the installation's `H3bitmap.lod`: `crtraits.txt`'s creature ids by singular name,
+/// `hotraits.txt`'s hero names by hero type, and `Objects.txt` (the map objects' templates).
+fn original_tables(
+    install: &Path,
+) -> Result<(BTreeMap<String, usize>, Vec<String>, String), String> {
     let data = find_ci(install, "Data").map_err(|e| format!("{}: Data: {e}", install.display()))?;
     let path = find_ci(&data, "H3bitmap.lod").map_err(|e| format!("H3bitmap.lod: {e}"))?;
     let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -173,9 +180,11 @@ fn original_tables(install: &Path) -> Result<(BTreeMap<String, usize>, String), 
     let table = entry("CRTRAITS.TXT")?;
     let ids =
         creature_names(&TextTable::parse(&table).map_err(|e| format!("CRTRAITS.TXT: {e:?}"))?)?;
+    let table = entry("HOTRAITS.TXT")?;
+    let heroes = hero_names(&TextTable::parse(&table).map_err(|e| format!("HOTRAITS.TXT: {e:?}"))?);
     // Latin-1, one byte a character.
     let objects = entry("OBJECTS.TXT")?.into_iter().map(char::from).collect();
-    Ok((ids, objects))
+    Ok((ids, heroes, objects))
 }
 
 /// How the original fights the special battlefield `key` at Blue's `tile` (the battle's tile is
@@ -277,7 +286,13 @@ fn map(
             .as_deref()
             .ok_or("the scenario has no terrain")?,
     )?;
-    let hero = |(hero_type, class): (u8, u8), tile, owner: usize| -> Result<MapObject, String> {
+    let hero = |tile, owner: usize| -> Result<MapObject, String> {
+        let side = ["attacker", "defender"][owner];
+        let h = battle.heroes[owner]
+            .as_ref()
+            .ok_or_else(|| format!("{id}: no {side}_hero (the original's map needs both)"))?;
+        let number = |n: usize| u8::try_from(n).map_err(|_| format!("{}: number {n}", h.name));
+        let (hero_type, class) = (number(h.hero_type)?, number(h.class)?);
         Ok(MapObject::Hero(Hero {
             tile,
             owner: u8::try_from(owner).unwrap_or(u8::MAX),
@@ -293,7 +308,7 @@ fn map(
                 backpack: Vec::new(),
             }),
             spells: None,
-            primary: Some([1, 1, 1, 1]),
+            primary: Some(h.primary),
         }))
     };
     let mut players: [Option<Player>; PLAYERS] = Default::default();
@@ -315,13 +330,14 @@ fn map(
         patches: Vec::new(),
         roads: Vec::new(),
         players,
-        objects: vec![hero(RED, (tile.0 - 1, tile.1), 0)?, hero(BLUE, tile, 1)?],
+        objects: vec![hero((tile.0 - 1, tile.1), 0)?, hero(tile, 1)?],
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::scenario::SideHero;
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| (*s).to_owned()).collect()
@@ -340,11 +356,20 @@ mod tests {
                 .map(|&(s, n, c)| (s, n.to_owned(), c))
                 .collect::<Vec<_>>()
         };
+        let hero = |hero_type, class, name: &str| {
+            Some(SideHero {
+                hero_type,
+                class,
+                name: name.to_owned(),
+                primary: [1, 2, 3, 4],
+            })
+        };
         Sides {
             terrain: terrain.map(str::to_owned),
             battlefield: None,
             stacks: [stacks(attacker), stacks(&[(0, "Goblin", 30)])],
             tight: [false, true],
+            heroes: [hero(0, 0, "Orrin"), hero(102, 12, "Crag Hack")],
         }
     }
 
@@ -405,6 +430,20 @@ mod tests {
         assert_eq!(blue.army.unwrap()[0], Some((84, 30)));
         assert!(!red.tight_formation && blue.tight_formation);
         assert_eq!(red.skills, Some(Vec::new()));
+        assert_eq!(
+            (red.hero_type, red.class, blue.hero_type, blue.class),
+            (0, 0, 102, 12)
+        );
+        assert_eq!(red.primary, Some([1, 2, 3, 4]));
+        // Each side needs a hero, of a number the map holds.
+        let mut alone = sides_of(Some("base:desert"), &[]);
+        alone.heroes[1] = None;
+        assert!(super::map("t", &alone, &ids(), BLUE_TILE, false).is_err());
+        alone.heroes[1] = alone.heroes[0].clone().map(|h| SideHero {
+            hero_type: 300,
+            ..h
+        });
+        assert!(super::map("t", &alone, &ids(), BLUE_TILE, false).is_err());
         assert!(
             red.artifacts
                 .as_ref()

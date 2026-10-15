@@ -6,6 +6,7 @@
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::format;
 use alloc::string::String;
+use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
@@ -107,14 +108,17 @@ impl Batch {
     }
 }
 
-/// The batch a draw list needs: every name in it and the outline palette, upper-cased.
+/// The batch a draw list needs: every name in it (a flag's palette too) and the outline palette,
+/// upper-cased.
 pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
-    let named = list.iter().filter_map(|d| match d {
-        Draw::Background { picture, .. } | Draw::AbsoluteObstacle { picture, .. } => Some(picture),
-        Draw::Obstacle { def, .. } | Draw::Projectile { def, .. } | Draw::Creature { def, .. } => {
-            Some(def)
-        }
-        Draw::Ray(_) => None,
+    let named = list.iter().flat_map(|d| match d {
+        Draw::Background { picture, .. } | Draw::AbsoluteObstacle { picture, .. } => vec![picture],
+        Draw::Obstacle { def, .. }
+        | Draw::Projectile { def, .. }
+        | Draw::Creature { def, .. }
+        | Draw::Hero { def, .. } => vec![def],
+        Draw::Flag { def, palette, .. } => vec![def, palette],
+        Draw::Ray(_) => Vec::new(),
     });
     named
         .chain(core::iter::once(&layout.outline_palette))

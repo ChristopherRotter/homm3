@@ -15,6 +15,16 @@ depends = []
 
 [battle]
 groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], breath = [17, 18, 19], move_start = 20, move_end = 21, turn_left = [7, 10], turn_right = [9, 8] }
+hero_groups = { standing = 0, idle = 1, defeat = 2, victory = 3, cast = 4 }
+flags = ["CmFlagL.def", "CmFlagR.def"]
+
+[[hero]]
+key = "orrin"
+def = "CH00.DEF"
+
+[[hero]]
+key = "crag_hack"
+def = "CH013.DEF"
 
 [[creature]]
 key = "pikeman"
@@ -67,6 +77,7 @@ pub(crate) fn keys() -> Manifest {
         terrains: list(&["base:grass", "base:lava"]),
         battlefields: list(&["base:shore", "base:deck"]),
         creatures: list(&["base:pikeman", "base:dragon", "base:ghost"]),
+        hero_types: list(&["base:orrin", "base:crag_hack", "base:sandro"]),
         obstacles: list(&[
             "base:obstacle_1",
             "base:obstacle_2",
@@ -284,6 +295,7 @@ fn a_moment_draws_each_stack_in_its_pose() {
             mirrored: true,
         }),
         ray: Some(ray.clone()),
+        heroes: [None; 2],
     };
     let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
     // T4b-1: the projectile over everything, then the ray (M3 T1b-1); the outline three idle
@@ -470,4 +482,85 @@ fn what_the_tables_or_the_manifest_lack_is_an_error() {
     ] {
         assert_eq!(e.to_string(), shown);
     }
+}
+
+/// A side's hero of type `hero_type`.
+fn led(hero_type: u16) -> Option<h3_protocol::wire::Hero> {
+    Some(h3_protocol::wire::Hero {
+        hero_type,
+        attack: 1,
+        defense: 1,
+        power: 1,
+        knowledge: 1,
+        mana: 10,
+        max_mana: 10,
+        casts: 0,
+        commands_ballista: false,
+        commands_tent: false,
+        commands_catapult: false,
+        spell_book: false,
+    })
+}
+
+#[test]
+fn each_hero_and_its_flag_are_drawn_after_the_layer_1_obstacles() {
+    // §4.5, 0x494701 (E17 M3 T3a): the left flag and hero, then the right ones, the right hero
+    // mirrored; a flag in its player's colours (red, blue: CLT-Q6).
+    let (tables, layout) = (tables(), layout());
+    let mut o = battle_view();
+    o.sides[0].hero = led(0);
+    o.sides[1].hero = led(1);
+    let flag = |side: usize, frame| Draw::Flag {
+        def: ["CmFlagL.def", "CmFlagR.def"][side].to_string(),
+        frame,
+        x: layout.flag_canvas[side][0],
+        y: layout.flag_canvas[side][1],
+        palette: "PLAYERS.PAL".to_string(),
+        player: u8::try_from(side).unwrap(),
+    };
+    let hero = |side: usize, group, frame| Draw::Hero {
+        def: ["CH00.DEF", "CH013.DEF"][side].to_string(),
+        group,
+        frame,
+        x: layout.hero_canvas[side][0],
+        y: layout.hero_canvas[side][1],
+        mirrored: side == 1,
+    };
+    // Without poses: standing, each flag at its start (0x463F29).
+    let list = battle(&o, &keys(), &tables, &layout).unwrap();
+    let back = list
+        .iter()
+        .position(|d| matches!(d, Draw::Obstacle { def, .. } if def == "Back.def"))
+        .unwrap();
+    assert_eq!(
+        list[back + 1..back + 5],
+        [flag(0, 0), hero(0, 0, 0), flag(1, 3), hero(1, 0, 0)]
+    );
+    assert!(matches!(list[back + 5], Draw::Creature { .. }));
+    // A moment's poses; a side without a hero draws none.
+    o.sides[0].hero = None;
+    let moment = Moment {
+        heroes: [
+            None,
+            Some(HeroPose {
+                group: 1,
+                frame: 2,
+                flag: 5,
+            }),
+        ],
+        ..Moment::default()
+    };
+    let list = battle_at(&o, &moment, &keys(), &tables, &layout).unwrap();
+    assert_eq!(list[back + 1..back + 3], [flag(1, 5), hero(1, 1, 2)]);
+    // A handle the manifest lacks, a key the tables lack.
+    o.sides[1].hero = led(3);
+    assert_eq!(
+        battle(&o, &keys(), &tables, &layout),
+        Err(SceneError::Handle("hero types", 3))
+    );
+    o.sides[1].hero = led(2);
+    assert_eq!(
+        battle(&o, &keys(), &tables, &layout),
+        Err(SceneError::Key("base:sandro".to_string()))
+    );
 }

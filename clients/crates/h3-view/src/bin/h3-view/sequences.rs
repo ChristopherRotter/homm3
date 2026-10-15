@@ -16,6 +16,7 @@ use h3_protocol::wire::{Command, Seat, ServerMessage, Side};
 use h3_view::anim::{self, Pose, Speed, Timeline};
 use h3_view::batch::{self, Batch};
 use h3_view::compose::compose;
+use h3_view::hero::HeroPose;
 use h3_view::layout::BattleLayout;
 use h3_view::record::Record;
 use h3_view::tables::Tables;
@@ -75,14 +76,17 @@ struct Frames {
     frame: Vec<Kept>,
 }
 
-/// One kept frame: its time, and the stacks the original shows fidgeting then (the viewer has
-/// no fidgets of its own yet: T4b-2), each `[side, record, group, frame]`.
+/// One kept frame: its time, the stacks the original shows fidgeting then (the viewer draws
+/// none of its own in a check), each `[side, record, group, frame]`, and its heroes (E17 M3 T3a:
+/// their defeats and victories come from its generator), each `[side, group, frame, flag]`.
 #[derive(Debug, Deserialize)]
 struct Kept {
     t: u32,
     file: String,
     #[serde(default)]
     fidgets: Vec<[u32; 4]>,
+    #[serde(default)]
+    heroes: Vec<[u32; 4]>,
 }
 
 /// The command's options.
@@ -228,7 +232,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
             .first_snapshot()
             .ok_or("the record holds no snapshot")?;
         let timeline = anim::timeline(snapshot, &commands, &looks, stage, options.speed)
-            .map_err(|e| format!("{}: {e}", sequence.id))?;
+            .map_err(|e| format!("{}: {e}", sequence.id))?
+            .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
         // What the harness saw: its recording ends `ms` after the actions.
         let until = sequence.until();
         let ours: String = timeline
@@ -326,6 +331,19 @@ pub(crate) fn draw_frames(
                 moment.poses.insert(m.stack, pose);
             }
         }
+        for &[side, group, f, flag] in &frame.heroes {
+            if let Some(hero) = moment
+                .heroes
+                .get_mut(side as usize)
+                .and_then(Option::as_mut)
+            {
+                *hero = HeroPose {
+                    group,
+                    frame: f,
+                    flag,
+                };
+            }
+        }
         log.push_str(&describe(frame.t, &moment));
         let list = scene::battle_at(snapshot, &moment, manifest, tables, layout)
             .map_err(|e| e.to_string())?;
@@ -368,6 +386,12 @@ pub(crate) fn describe(t: u32, moment: &scene::Moment) -> String {
             " projectile {} f{} {},{}",
             p.def, p.frame, p.at[0], p.at[1]
         );
+    }
+    // The heroes (E17 M3 T3a), in a shape the harness's pose pattern skips.
+    for (side, hero) in moment.heroes.iter().enumerate() {
+        if let Some(h) = hero {
+            let _ = write!(line, " hero{side} g{}f{} flag{}", h.group, h.frame, h.flag);
+        }
     }
     for (id, p) in &moment.poses {
         let _ = write!(line, " {id}:g{}f{}h{}", p.group, p.frame, p.hex);

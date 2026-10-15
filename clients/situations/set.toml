@@ -18,7 +18,7 @@
 [[situation]]
 id = "grass"
 scenario = "grass.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -68,7 +68,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "dirt"
 scenario = "dirt.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -78,7 +78,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "sand"
 scenario = "sand.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -88,7 +88,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "snow"
 scenario = "snow.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -98,7 +98,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "swamp"
 scenario = "swamp.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -108,7 +108,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "rough"
 scenario = "rough.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -118,7 +118,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "subterranean"
 scenario = "subterranean.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -128,7 +128,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "lava"
 scenario = "lava.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -139,7 +139,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 id = "dirt-absolute"
 scenario = "dirt-absolute.toml"
 tile = [20, 20]
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -154,7 +154,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "shore"
 scenario = "shore.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -164,7 +164,7 @@ why = "exact: the shore (water beside the defender's tile, fought on sand), its 
 [[situation]]
 id = "magic-plains"
 scenario = "magic-plains.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -174,7 +174,7 @@ why = "exact: Magic Plains (the ground, class 46), its picture and obstacles (M3
 [[situation]]
 id = "cursed-ground"
 scenario = "cursed-ground.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -184,7 +184,7 @@ why = "exact: Cursed Ground (class 21), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "holy-ground"
 scenario = "holy-ground.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -194,7 +194,7 @@ why = "exact: Holy Ground (SoD, class 227), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "evil-fog"
 scenario = "evil-fog.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -204,7 +204,7 @@ why = "exact: Evil Fog (SoD, class 224), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "clover-field"
 scenario = "clover-field.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -214,7 +214,7 @@ why = "exact: Clover Field (SoD, class 222), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "lucid-pools"
 scenario = "lucid-pools.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -224,7 +224,7 @@ why = "exact: Lucid Pools (SoD, class 228), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "fiery-fields"
 scenario = "fiery-fields.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -234,7 +234,7 @@ why = "exact: Fiery Fields (SoD, class 226), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "rocklands"
 scenario = "rocklands.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -244,7 +244,7 @@ why = "exact: Rocklands (SoD, class 231), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "magic-clouds"
 scenario = "magic-clouds.toml"
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
@@ -255,7 +255,7 @@ why = "exact: Magic Clouds (SoD, class 229), its picture and obstacles (M3 T2)"
 id = "shore-absolute"
 scenario = "shore-absolute.toml"
 tile = [18, 5]
-mask = ["panel", "heroes", "count_boxes"]
+mask = ["panel", "count_boxes"]
 
 [[situation.frame]]
 at = 0
