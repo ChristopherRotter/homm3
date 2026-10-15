@@ -176,6 +176,8 @@ pub struct StaticMap {
     /// none, which a move's step and the reachable-tiles query test first (`bench-check`).
     /// Follows from the objects too.
     near_monsters: Vec<u64>,
+    /// Whether any object is a monster ([`Self::any_monster`]). Follows from the objects too.
+    any_monster: bool,
     hash: u64,
 }
 
@@ -239,6 +241,7 @@ impl StaticMap {
             typed_visits: vec![0; setup.tiles.len().div_ceil(64)],
             coast,
             near_monsters: vec![0; setup.tiles.len().div_ceil(64)],
+            any_monster: false,
             hash: 0,
         };
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
@@ -294,33 +297,47 @@ impl StaticMap {
     }
 
     /// Marks the tiles within one step of a monster's visitable tile, on its level
-    /// ([`Self::near_monsters`]).
+    /// ([`Self::near_monsters`]), and whether the map holds a monster at all.
     fn mark_near_monsters(&mut self) {
         let mut near = core::mem::take(&mut self.near_monsters);
-        for object in self.objects.iter().filter(|o| o.monster.is_some()) {
-            for (column, row) in object.visitable.offsets() {
-                let Some(at) = self.offset_pos(object.anchor, column, row) else {
-                    continue;
-                };
-                for (dx, dy) in DIRECTIONS.iter().copied().chain([(0, 0)]) {
-                    let x = at.x.checked_add_signed(i16::from(dx));
-                    let y = at.y.checked_add_signed(i16::from(dy));
-                    if let (Some(x), Some(y)) = (x, y)
-                        && let Some(index) = self.index(Pos::new(x, y, at.level))
-                    {
-                        near[index / 64] |= 1 << (index % 64);
-                    }
+        let visitable: Vec<Pos> = self
+            .objects
+            .iter()
+            .filter(|o| o.monster.is_some())
+            .flat_map(|o| {
+                o.visitable
+                    .offsets()
+                    .filter_map(|(column, row)| self.offset_pos(o.anchor, column, row))
+            })
+            .collect();
+        for at in &visitable {
+            for (dx, dy) in DIRECTIONS.iter().copied().chain([(0, 0)]) {
+                let x = at.x.checked_add_signed(i16::from(dx));
+                let y = at.y.checked_add_signed(i16::from(dy));
+                if let (Some(x), Some(y)) = (x, y)
+                    && let Some(index) = self.index(Pos::new(x, y, at.level))
+                {
+                    near[index / 64] |= 1 << (index % 64);
                 }
             }
         }
         self.near_monsters = near;
+        self.any_monster = !visitable.is_empty();
     }
 
     /// Whether a monster's visitable tile lies within one step of `pos` on its level (a tile off
     /// the map: no).
     pub(crate) fn near_monster(&self, pos: Pos) -> bool {
-        self.index(pos)
-            .is_some_and(|index| self.near_monsters[index / 64] >> (index % 64) & 1 == 1)
+        self.any_monster
+            && self
+                .index(pos)
+                .is_some_and(|index| self.near_monsters[index / 64] >> (index % 64) & 1 == 1)
+    }
+
+    /// Whether a monster stands on the map (one that left it counts): when none does, no tile is
+    /// guarded, which the reachable-tiles query tests once (`bench-check`).
+    pub(crate) const fn any_monster(&self) -> bool {
+        self.any_monster
     }
 
     /// Draws the objects' random contents (ADR-0016 point 4, ADR-0017 point 4) in the original's

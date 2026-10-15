@@ -52,6 +52,18 @@ struct Search<'s> {
     pricing: Pricing<'s>,
     owner: PlayerId,
     occupied: Vec<u8>,
+    /// Whether the map holds a monster, so that a tile may be guarded (E08 T20a2b): the search
+    /// asks [`Search::guarded`] only then (`bench-check`).
+    guards: bool,
+}
+
+impl Search<'_> {
+    /// Whether a monster guards `pos` (ADV-MON-005), out of the search's hot loop.
+    #[cold]
+    #[inline(never)]
+    fn guarded(&self, pos: Pos) -> bool {
+        self.map.near_monster(pos) && self.state.guard_of(self.part, pos).is_some()
+    }
 }
 
 /// No other hero stands on the tile.
@@ -122,6 +134,7 @@ impl Reach {
             pricing,
             owner: hero.owner,
             occupied,
+            guards: map.any_monster(),
         };
         reach.points[reach.start] = Some(hero.movement);
         let mut queue = BinaryHeap::new();
@@ -192,11 +205,6 @@ impl Reach {
                     continue;
                 }
             }
-            // A step onto a guarded tile ends the path there (ADV-MON-006): the tiles near no
-            // monster, nearly all, pass the static map's bit alone.
-            if !visit && search.map.near_monster(pos) {
-                visit = state.guard_of(part, pos).is_some();
-            }
             let Some(left) = points.checked_sub(pricing.step(&from, &to, dir % 2 == 1, points))
             else {
                 continue;
@@ -205,7 +213,9 @@ impl Reach {
             if self.points[next].is_none_or(|best| left > best) {
                 self.points[next] = Some(left);
                 self.via[next] = dir as u8;
-                if !visit {
+                // A step onto a guarded tile ends the path there too (ADV-MON-006), asked only
+                // of a tile the search improves, on a map with monsters (`bench-check`).
+                if !visit && !(search.guards && search.guarded(pos)) {
                     queue.push((left, Reverse(next)));
                 }
             }

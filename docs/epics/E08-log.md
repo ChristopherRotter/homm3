@@ -2171,7 +2171,11 @@ Decision 36's second part, built on `adventure/e08-t20a2a`; no version bump.
   T20b, with the answer).
 - **The query** (ADV-MON-006): `Reach` makes a guarded tile a destination (as a visit's), its
   own start excepted; the property `the_query_and_move_hero_agree` now places monsters (`M` in
-  `testing::world`: five of the first creature, aggressive).
+  `testing::world`: five of the first creature, aggressive). `bench-check`: the test in the hot
+  loop cost the reach workload 11.6 % (random play 12.3 %) on the fixtures, which hold no
+  monster; asked only of a tile the search improves, on a map with a monster (`StaticMap`'s
+  `any_monster`), out of line (`Search::guarded`, cold), it costs 0.3 %. The fixtures gain
+  monsters in T20b, which measures the cost on a map with them.
 - **The store**: `AdventureState::apply(core, part, heroes, player, command, sink)` and
   `reach(core, part, heroes, hero)` take the game's `&[Arc<HeroDetails>]` (`h3-heroes` a
   dependency of `h3-adventure`, which `arch.toml` allowed since T18a); `move_hero` hands it to
