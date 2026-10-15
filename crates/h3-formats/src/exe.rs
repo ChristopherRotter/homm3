@@ -66,6 +66,12 @@ pub struct SiegeTables {
     pub mines_town: Immediate,
     /// The mines' spell (`push 11`, 0x466290).
     pub mines_spell: Immediate,
+    /// The Teleport mastery from which a move may cross the moat in a siege (`cmp ecx, 2`,
+    /// 0x5A3700; E04c T8).
+    pub teleport_moat: Immediate,
+    /// The Teleport mastery from which a move may pass the walls in a siege (`cmp ecx, 3`,
+    /// 0x5A3700; E04c T8).
+    pub teleport_walls: Immediate,
 }
 
 /// Where a build keeps the wall shots' tables (`docs/formats/installation.md` §7.29).
@@ -298,6 +304,14 @@ pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
             va: 0x0046_6462,
             opcode: &[0x6A],
         },
+        teleport_moat: Immediate {
+            va: 0x005A_3793,
+            opcode: &[0x83, 0xF9],
+        },
+        teleport_walls: Immediate {
+            va: 0x005A_37A5,
+            opcode: &[0x83, 0xF9],
+        },
     },
     wall_shots: WallShotTables {
         targets_va: 0x0063_BE60,
@@ -492,6 +506,10 @@ pub struct SiegeData {
     pub mines_town: u8,
     /// The mines' spell id.
     pub mines_spell: u8,
+    /// The Teleport mastery from which a move may cross the moat in a siege.
+    pub teleport_moat: u8,
+    /// The Teleport mastery from which a move may pass the walls in a siege.
+    pub teleport_walls: u8,
 }
 
 /// Reads the siege's tables and constants of a known build.
@@ -553,6 +571,8 @@ pub fn siege_data_at(image: &PeImage<'_>, t: &SiegeTables) -> Result<SiegeData, 
         second_moat_town: imm(t.second_moat_town, "the second moat's town instruction")?,
         mines_town: imm(t.mines_town, "the mines' town instruction")?,
         mines_spell: imm(t.mines_spell, "the mines' spell instruction")?,
+        teleport_moat: imm(t.teleport_moat, "Teleport's moat instruction")?,
+        teleport_walls: imm(t.teleport_walls, "Teleport's walls instruction")?,
     })
 }
 
@@ -1332,13 +1352,14 @@ mod tests {
 
     #[test]
     fn reads_the_siege_tables_from_a_synthetic_image() {
-        // Three rows of hexes, two towns' damages, then the five instructions.
+        // Three rows of hexes, two towns' damages, then the eight instructions.
         let mut p = vec![12u8, 29, 45, 11, 28, 44, 10, 27, 43];
         for d in [70i32, 150] {
             p.extend_from_slice(&d.to_le_bytes());
         }
         p.extend_from_slice(&[
-            0x83, 0xF8, 29, 0x83, 0xEB, 3, 0x6A, 3, 0x3C, 7, 0x80, 0x78, 4, 2, 0x6A, 11,
+            0x83, 0xF8, 29, 0x83, 0xEB, 3, 0x6A, 3, 0x3C, 7, 0x80, 0x78, 4, 2, 0x6A, 11, 0x83,
+            0xF9, 2, 0x83, 0xF9, 3,
         ]);
         let va = |off: u32| 0x0040_1000 + off;
         let imm = |off: u32, opcode: &'static [u8]| Immediate {
@@ -1358,6 +1379,8 @@ mod tests {
             second_moat_town: imm(25, &[0x3C]),
             mines_town: imm(27, &[0x80, 0x78, 0x04]),
             mines_spell: imm(31, &[0x6A]),
+            teleport_moat: imm(33, &[0x83, 0xF9]),
+            teleport_walls: imm(36, &[0x83, 0xF9]),
         };
         let img = build_test_image(1, &p);
         let pe = PeImage::parse(&img).unwrap();
@@ -1374,6 +1397,8 @@ mod tests {
                 second_moat_town: 7,
                 mines_town: 2,
                 mines_spell: 11,
+                teleport_moat: 2,
+                teleport_walls: 3,
             }
         );
         // Another instruction, a negative or too large damage, an unmapped or truncated table.
@@ -1386,6 +1411,12 @@ mod tests {
         assert_eq!(
             refused(&bad, &t),
             FormatError::BadMagic("the gate's hex instruction")
+        );
+        let mut bad = p.clone();
+        bad[37] = 0xF8;
+        assert_eq!(
+            refused(&bad, &t),
+            FormatError::BadMagic("Teleport's walls instruction")
         );
         for d in [-1i32, 10_001] {
             let mut bad = p.clone();

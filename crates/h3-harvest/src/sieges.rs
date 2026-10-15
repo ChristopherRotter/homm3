@@ -192,13 +192,16 @@ pub fn write(
     let mut out = Texts {
         field: format!(
             "siege = {{ walls = [{}], gate = {}, moat = [{}], second_moat = [{}], \
-             moat_defense_penalty = {}, mine_power = {}, {} }}\n",
+             moat_defense_penalty = {}, mine_power = {}, teleport_moat = {}, teleport_walls = {}, \
+             {} }}\n",
             list(&data.walls),
             data.gate,
             list(&data.moat),
             list(&data.second_moat),
             data.moat_defense_penalty,
             data.mine_power,
+            data.teleport_moat,
+            data.teleport_walls,
             shots.field
         ),
         ..Texts::default()
@@ -242,6 +245,8 @@ mod tests {
             second_moat_town: 2,
             mines_town: 1,
             mines_spell: 1,
+            teleport_moat: 2,
+            teleport_walls: 3,
         }
     }
 
@@ -270,7 +275,8 @@ mod tests {
         assert_eq!(
             t.field,
             "siege = { walls = [12, 29], gate = 29, moat = [11, 28], second_moat = [10, 27], \
-             moat_defense_penalty = 3, mine_power = 3, catapult = 119 }\n"
+             moat_defense_penalty = 3, mine_power = 3, teleport_moat = 2, teleport_walls = 3, \
+             catapult = 119 }\n"
         );
         assert_eq!(
             t.base,

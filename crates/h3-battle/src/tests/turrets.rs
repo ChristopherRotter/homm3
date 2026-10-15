@@ -452,7 +452,7 @@ fn nothing_reaches_a_turret() {
     );
 }
 
-// covers: BAT-SIE-016, BAT-SIE-019
+// covers: BAT-SIE-016, BAT-SIE-019, BAT-SIE-024
 #[test]
 fn the_turrets_are_left_out_of_the_outcome_and_the_surrender_price() {
     let r = turret_ruleset("t:faithful");
@@ -464,20 +464,10 @@ fn the_turrets_are_left_out_of_the_outcome_and_the_surrender_price() {
         &[(0, "fast", 1)],
     );
     let (mut s, _) = start(&r, &setup, 3);
-    let price = crate::flee::surrender_price(&s, &r, BattleSide::Defender);
-    assert!(price.is_some());
-    let alone = BattleState::new(
-        &r,
-        &BattleSetup {
-            siege: Some(town(&r, FortLevel::Fort, 0)),
-            ..setup.clone()
-        },
-        3,
-    )
-    .unwrap();
+    // A town's defender never surrenders (BAT-SIE-024), so its turrets never enter a price.
     assert_eq!(
-        price,
-        crate::flee::surrender_price(&alone, &r, BattleSide::Defender)
+        crate::flee::surrender_price(&s, &r, BattleSide::Defender),
+        None
     );
     // The defender wins; its outcome lists its army stack only, its war machines none.
     s.stacks.as_mut_slice()[0].count = 0;

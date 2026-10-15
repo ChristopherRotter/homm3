@@ -74,7 +74,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 49;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 50;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -1068,8 +1068,6 @@ impl BattleState {
             natural.blocked(),
         )?
         .map_or((None, None), |(s, m)| (Some(s), m));
-        // stub: BAT-STUB-2 — the town's other rules (the controls, the experience, the
-        // defenders' morale and luck) are not read yet (E04c T8).
         let mut taken = natural
             .blocked()
             .union(siege::placement_blocked(siege.as_ref()));
@@ -1189,7 +1187,7 @@ impl BattleState {
             ),
             rng: Rng::for_stream(seed, StreamId::BATTLE),
         };
-        morale::setup(&mut state, ruleset, &setup.heroes);
+        morale::setup(&mut state, ruleset, &setup.heroes, setup.siege.as_ref());
         // rule: BAT-MAG-031
         let natives = BattleSide::BOTH.map(|side| {
             state
@@ -1234,11 +1232,11 @@ impl BattleState {
         self.heroes[side.index()].is_some()
     }
 
-    /// Whether `side` may retreat (BAT-FLE-001; public, ADR-0013 point 9): it has a hero and no
-    /// hero in the battle has a `NoRetreat` effect. It retreats on its own turn or in its
-    /// tactics phase.
+    /// Whether `side` may retreat (BAT-FLE-001; public, ADR-0013 point 9): it has a hero, no
+    /// hero in the battle has a `NoRetreat` effect and, at a town, it is the attacker or the town
+    /// has an Escape Tunnel (BAT-SIE-024). It retreats on its own turn or in its tactics phase.
     pub fn may_retreat(&self, side: BattleSide) -> bool {
-        hero::may_retreat(&self.heroes, side)
+        hero::may_retreat(&self.heroes, side) && siege::may_retreat(self, side)
     }
 
     /// Whether `side` may surrender at all (BAT-FLE-002; public, ADR-0013 point 9): it may
@@ -1273,15 +1271,30 @@ impl BattleState {
     }
 
     /// The hexes that block `except`'s movement: obstacles, the hexes Force Fields block
-    /// (BAT-MAG-027), a town's walls and closed gate (BAT-SIE-002, BAT-SIE-003) and the
-    /// footprints of every other living stack (BAT-MOV-001).
+    /// (BAT-MAG-027), a town's walls and closed gate (BAT-SIE-002, BAT-SIE-003; the gate passes
+    /// a stack its controller commands for the defender) and the footprints of every other
+    /// living stack (BAT-MOV-001).
+    #[inline]
     pub(crate) fn blocked_for(&self, field: Field, except: StackId) -> HexSet {
+        self.blocked_as(field, except, self.stack(except).map(Stack::controller))
+    }
+
+    /// The hexes that block a stack placed or moved for `passer` ([`blocked_for`](Self::blocked_for)
+    /// with the closed gate passing `passer`'s stacks as the defender's; none without one), with
+    /// `except`'s own hexes free: the original's 0x469A10 reads the acting side (BAT-SIE-003,
+    /// BAT-SIE-028).
+    pub(crate) fn blocked_as(
+        &self,
+        field: Field,
+        except: StackId,
+        passer: Option<BattleSide>,
+    ) -> HexSet {
         // rule: BAT-SIE-002, BAT-SIE-003
         let mut blocked = self
             .natural
             .blocked()
             .union(self.spell_obstacles.walls())
-            .union(siege::blocked_for(self, self.stack(except)));
+            .union(siege::blocked_for(self, passer));
         for (id, s) in (0u8..).zip(self.stacks.iter()) {
             if s.is_alive() && StackId(id) != except {
                 s.footprint(field).hexes().for_each(|h| blocked.insert(h));

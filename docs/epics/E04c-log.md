@@ -307,3 +307,51 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   `verified`. Found on the way: the original's records put the siege's Catapult before the hero's
   Ballista (BA), the engine the Ballista first (the battle queue's inbox).
 
+
+## T8 — the siege's other rules (2026-10-15, increment 7)
+
+- **The user's choice** (2026-10-15, before going offline): T8 before T7e (the besieged side's
+  wrong legal commands weigh most for training); the wiki read this session; a dispute decided by
+  the code with a batch; the wire `cross-lane` if needed (it was not).
+- **The reading** (`installation.md` §7.32; map entries 0x467490 new, 0x469750 read whole, 0x5A3700
+  and 0x5A7080 completed): the controls (0x4782D0: no surrender for a town's defender, retreat only
+  through a Stronghold's building 17); the town's morale and luck added last to the base values
+  for the stacks the defender *controls* (0x469750 recomputes every stack from its controller after
+  every action: an inbox item for Hypnotize); the experience (0x46A350: +500 for a town's attacker,
+  −500 after a retreat or a surrender; the orchestrator's); the tactics phase tests only the bank
+  flag (a siege has one); Teleport (0x5A3700: below Advanced not across the moat, the moat hex
+  inside; below Expert the shot's line test); a created stack's place passes the closed gate for
+  the acting side, a summon there opens it (0x5A71D7), a clone does not; the spell obstacles'
+  tests refuse the wall hexes' blocked bit (the engine let them on walls: a fix); the spell cost
+  reads the battle start's armies (nothing siege-specific). D-20: Teleport's tests against VCMI's.
+- **The battle** (`battle/e04c-t8`): BAT-SIE-024 (`siege::may_retreat`, `may_surrender`; the
+  tunnel in `SiegeState`, state hash v50), BAT-SIE-025 (`morale::town_modifiers`, the pool two
+  larger), BAT-SIE-026 (`siege::teleport_allowed`, the second target's test now takes the mastery;
+  the masteries in the siege field: `teleport_moat`, `teleport_walls`, harvested from the
+  executable's two compares, pack format v42, battle part v6), BAT-SIE-027 (`siege::walled` in
+  `obstacles::free` and `random_hexes`), BAT-SIE-028 (`BattleState::blocked_as` with the caster's
+  side; the summon calls `siege::entered`). BAT-FLE-001/002, BAT-MAG-027/029/032/038/039,
+  BAT-TAC-001 (a town keeps its tactics phase: the catalog said otherwise, the engine never did)
+  and BAT-END-003 (the experience at a town) amended; BAT-STUB-2 closed. Tests: `tests/town.rs`
+  (9). The siege scenario's town has morale and luck 1: `siege-s7` re-recorded (224 commands, the
+  attacker wins); the other battle replays and the two adventure replays with battles (`cross-lane`)
+  changed only their hashes. No wire, encoding or observation change: the controls were public
+  already, and the tunnel shows in them.
+- **Batch 3g run by an agent** (`experiments/specs/E04c-batch-3g.toml`, `experiments/agent/town.py`,
+  new: the opening's morale and luck, the battle window's buttons at every commanded turn, a cast
+  with its clicks tried in order): **CM** a Castle's defender: Surrender and Retreat disabled at its
+  turns, enabled at the attacker's; **ET** a Stronghold's with the Escape Tunnel: Retreat enabled,
+  Surrender disabled; **RL** a Rampart's with the Fountain of Fortune: luck +2; **TB** Basic Teleport
+  refused the inside hex 64 and the moat hex 61 (VCMI would accept 61: D-20), **TV** Advanced
+  refused 64 and landed on 61 without the moat's damage (then 70 for each turn there), **TE** Expert
+  reached 64; **FF** Force Field refused 95 (its shape reaches the wall 78) and the gate's 96. Every
+  value as the code. **D-21 found:** CM's defenders had morale +1, not +2: read back from the town
+  record, the set +0x150 the Tavern's test reads holds the Brotherhood of the Sword *instead* of
+  the Tavern (an upgrade replaces its predecessor there, as the Citadel the Fort), so a Castle with
+  the Brotherhood gives +2 in all; VCMI agrees (`upgradeReplacesBonuses`), the wiki's "in addition"
+  is refuted. A fact for the town context's `Siege.morale` (the adventure lane's inbox; the battle
+  adds what it is given). BAT-SIE-024 to 027 `verified`; 028 stays `implemented` (a summon or clone
+  at the gate needs a crowded inner yard).
+- **The independent check** (a fresh agent over the diff against §7.32): no problem; it found that
+  Teleport's fit test let the closed gate pass by the stack's controller, where 0x469A10 reads the
+  acting side (a hypnotized stack teleported by its owner): fixed (the caster's side), with a test.

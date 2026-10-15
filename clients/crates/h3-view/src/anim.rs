@@ -29,6 +29,7 @@ use core::fmt::Write as _;
 use h3_protocol::wire::{Event, Observation, ServerMessage, Side};
 
 use crate::layout::BattleLayout;
+use crate::ray::{self, Stroke};
 use crate::tables::Groups;
 
 /// Every frame outside a walk's group and the shot's: 100 ms times the factor (§7.1).
@@ -37,6 +38,10 @@ const TICK: u32 = 100;
 const PAUSE: u32 = 150;
 /// A projectile's step, outside the deadline (§7.4).
 const STEP: u32 = 33;
+/// The wait before a ray, outside the deadline (0x43F52F), and a ray's tick (`DrawRay`'s
+/// argument, 0x43F58B; its own clock, not the frame deadline: §7.12).
+const RAY_WAIT: u32 = 115;
+const RAY_TICK: u32 = 10;
 /// The idle step's period, whatever the combat speed (0x4960D0, §7.1).
 const IDLE_STEP: u32 = 100;
 /// The draw layers (+0x8, §4.6, §7.9): standing (0x43D750), walking up and down (0x43F0B0), a
@@ -119,6 +124,9 @@ pub struct Look {
     pub top: i32,
     /// A shooter's projectile (none: no projectile is drawn).
     pub missile: Option<Missile>,
+    /// A ray shooter's colours by the distance from the ray's edge (R, G, B; none: it shoots
+    /// a projectile; §7.12).
+    pub ray: Option<Vec<[u8; 3]>>,
 }
 
 /// A shooter's projectile DEF and how its frame follows the shot's angle (`shot_angle_group`
@@ -156,6 +164,30 @@ pub struct Flight {
     pub start: [i32; 2],
     /// The move per step: the distance to the target over the steps, truncated.
     pub delta: [i32; 2],
+}
+
+/// A ray (`DrawRay` 0x5A5C20, [`crate::ray`], design §7.12): the ticks' strokes, tick k shown
+/// k × `step` after `from`; erased as the last shows (`DrawRay` redraws the battle then without
+/// waiting for the frame deadline, so the last tick shows for no time).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Beam {
+    /// When the ray starts (after the wait of trunc(115 F)).
+    pub from: u32,
+    /// Each tick's time, trunc(10 F).
+    pub step: u32,
+    /// Each tick's strokes.
+    pub ticks: Vec<Vec<Stroke>>,
+    /// The colours by the distance from the edge (R, G, B).
+    pub colours: Vec<[u8; 3]>,
+}
+
+/// A ray as it shows at a time: the strokes drawn so far, in order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Ray {
+    /// The strokes.
+    pub strokes: Vec<Stroke>,
+    /// The colours by the distance from the edge (R, G, B).
+    pub colours: Vec<[u8; 3]>,
 }
 
 /// A projectile as it shows at a time.
@@ -345,6 +377,8 @@ pub struct Timeline {
     pub turns: Vec<(u32, u8)>,
     /// The projectiles' flights, in order.
     pub flights: Vec<Flight>,
+    /// The rays, in order.
+    pub beams: Vec<Beam>,
     /// The stack outlined as active from a time on (none: no outline), in order (§7.9).
     pub outlines: Vec<(u32, Option<u8>)>,
     /// When each idle step ran, up to the last command's start (none runs while a command
@@ -528,6 +562,17 @@ impl Timeline {
         })
     }
 
+    /// The ray showing at `t`, if one is drawn then: the strokes of the ticks shown by then.
+    pub fn ray(&self, t: u32) -> Option<Ray> {
+        self.beams.iter().find_map(|b| {
+            let k = usize::try_from(t.checked_sub(b.from)? / b.step.max(1)).unwrap_or(usize::MAX);
+            (k >= 1 && k < b.ticks.len()).then(|| Ray {
+                strokes: b.ticks.iter().take(k).flatten().copied().collect(),
+                colours: b.colours.clone(),
+            })
+        })
+    }
+
     /// The stack outlined as active at `t` (§7.9): the snapshot's active stack until the first
     /// command's first frame shows; none while a command plays; a turn's stack from its start
     /// when a player acts next, none when the computer does (*provisional*).
@@ -556,13 +601,18 @@ impl Timeline {
     }
 
     /// Every time up to `until` at which what shows may change (E17 M2 T4b-2a, `h3-view
-    /// play`): 0, each pose's, each projectile step's and its erasure's, each outline's and each
-    /// idle step's (the outline's colour), and the last frame's; in order, each once.
+    /// play`): 0, each pose's, each projectile step's and its erasure's, each ray tick's and its
+    /// erasure's, each outline's and each idle step's (the outline's colour), and the last
+    /// frame's; in order, each once.
     pub fn changes(&self, until: u32) -> Vec<u32> {
         let mut times = vec![0, self.end];
         times.extend(self.keys.iter().map(|k| k.shown));
         for f in &self.flights {
             times.extend((0..=f.steps).map(|k| f.from + k * f.step));
+        }
+        for b in &self.beams {
+            let ticks = u32::try_from(b.ticks.len()).unwrap_or(0);
+            times.extend((1..=ticks).map(|k| b.from + k * b.step));
         }
         times.extend(self.outlines.iter().map(|(t, _)| *t));
         times.extend(&self.steps);
@@ -813,6 +863,7 @@ fn played(
         pending: Vec::new(),
         turns: Vec::new(),
         flights: Vec::new(),
+        beams: Vec::new(),
         cues: Vec::new(),
     };
     let mut fidgets = seed.map(|rng| Fidgets {
@@ -883,6 +934,7 @@ fn played(
         keys: player.keys,
         turns: player.turns,
         flights: player.flights,
+        beams: player.beams,
         outlines,
         steps,
         idle,
@@ -999,6 +1051,7 @@ struct Player<'a> {
     pending: Vec<(u8, Pose)>,
     turns: Vec<(u32, u8)>,
     flights: Vec<Flight>,
+    beams: Vec<Beam>,
     cues: Vec<Cue>,
 }
 
@@ -1029,6 +1082,13 @@ impl Player<'_> {
             shown,
             pose,
         }));
+    }
+
+    /// A frame drawn and shown now, the frame deadline left as it is (`battle_redraw` without
+    /// its sixth argument): the pending poses show.
+    fn redraw(&mut self) {
+        let now = self.clock.now;
+        self.flush(now, now);
     }
 
     /// `stack`'s `sound` starts (or, `stop`, ends) with the next frame drawn.
@@ -1521,6 +1581,7 @@ impl Player<'_> {
             return;
         };
         let target = hit.first().and_then(|(t, _)| self.live(*t));
+        let aimed = target.is_some();
         let aim = target.map_or_else(Aim::default, |t| self.aim(&live, &t));
         let group = self.stage.groups.shoot[aim.direction];
         let n = live.look.count(group);
@@ -1534,6 +1595,19 @@ impl Player<'_> {
         self.cue(shooter, Sound::Shot, false);
         for f in 0..climax {
             self.frame(&[(shooter, Self::posed(&live, group, f, live.hex))], time);
+        }
+        if let Some(colours) = live.look.ray.clone().filter(|_| aimed) {
+            self.beam((shooter, &live), &aim, colours, (group, climax, n));
+            let reactions = self.reactions(hit);
+            // After the ray the shooter's group is over: it stands as the loop starts
+            // (*provisional*, the recorded `shots`).
+            self.iterate(
+                Some((shooter, &live)),
+                (group, n, 0, 2),
+                &reactions,
+                [STANDING, STANDING],
+            );
+            return;
         }
         let step = self.speed.scale(STEP);
         if let Some(missile) = live.look.missile.as_ref().filter(|_| aim.steps > 0) {
@@ -1559,17 +1633,63 @@ impl Player<'_> {
         // `strike_animation`'s loop counts the reactions alone: the longest starts as the
         // projectile lands, whatever is left of the shot group (E17 M2 T5b, design §7.4). The
         // shooter, still in its shot group (0x468A55), shows its frames from the climax on beside
-        // it, one per iteration, its frame advancing before each draw, then stands; frames the
-        // loop leaves are cut (*provisional*: not read). The loop counts two striker frames, so it
-        // has one iteration more than the longest reaction's frames (L = R + 1: the Marksmen's
-        // recorded sequence, §7.9; the reading's L = R, *provisional*); its first iterations show
-        // at once, the deadline being behind. A shot's layers stay (not read).
+        // it, one per iteration, its frame advancing before each draw, then stands, the loop
+        // going on until it has (the Cyclops, sequence `shots`). The reactions' part counts two
+        // striker frames, so it has one iteration more than the longest reaction's frames
+        // (L = R + 1: the Marksmen's recorded sequence, §7.9; the reading's L = R,
+        // *provisional*); its first iterations show at once, the deadline being behind. A shot's
+        // layers stay (not read).
         self.iterate(
             Some((shooter, &live)),
             (group, climax, n - climax, 2),
             &reactions,
             [STANDING, STANDING],
         );
+    }
+
+    /// A ray shooter's shot after its climax frames (0x43F51D, `DrawRay` 0x5A5C20, design
+    /// §7.12): the wait of trunc(115 F); the ray's ticks on its own clock, each trunc(10 F);
+    /// the battle redrawn without the ray at once, the frame deadline left as it is; then, if the
+    /// creature has a climax frame (+0x150), the rest of its shot group from the frame shown on,
+    /// each trunc(A / n) on the deadline, the last drawn but not shown (0x5A6136 to 0x5A61C9).
+    fn beam(
+        &mut self,
+        (shooter, live): (u8, &Live),
+        aim: &Aim,
+        colours: Vec<[u8; 3]>,
+        (group, climax, n): (u8, u32, u32),
+    ) {
+        self.clock.wait(self.speed.scale(RAY_WAIT));
+        let ticks = ray::trace(aim.from, aim.to);
+        let step = self.speed.scale(RAY_TICK);
+        let count = u32::try_from(ticks.len()).unwrap_or(0);
+        self.beams.push(Beam {
+            from: self.clock.now,
+            step,
+            ticks,
+            colours,
+        });
+        self.clock.wait(count * step);
+        self.redraw();
+        if live.look.climax != 0 {
+            let time = self.speed.scale(live.look.times[2] / n.max(1));
+            for f in climax.saturating_sub(1)..n {
+                let pose = Self::posed(live, group, f, live.hex);
+                if f + 1 < n {
+                    self.frame(&[(shooter, pose)], time);
+                } else {
+                    // Drawn, never shown: the timeline has it as drawn (the original's memory).
+                    let drawn = self.clock.now;
+                    self.clock.show(time);
+                    self.keys.push(Key {
+                        stack: shooter,
+                        drawn,
+                        shown: u32::MAX,
+                        pose,
+                    });
+                }
+            }
+        }
     }
 
     /// The shot's group (0 up, 1 straight, 2 down), its start and target points and its
@@ -1631,9 +1751,13 @@ impl Player<'_> {
     ) {
         // L = A + R − 1 (with a magic animation, at least its frames: not yet); at least A + 1,
         // so a striker without a reaction to wait for still stands at the end (the original
-        // always has one: a target's reaction has six frames or more).
+        // always has one: a target's reaction has six frames or more). The reactions end with
+        // those; a shooter plays the rest of its group out beyond them and stands after its last
+        // frame (the Cyclops' 10 frames after a 6-frame hit, sequence `shots`, E17 M3 T1b-1;
+        // *provisional*: not read).
         let longest = reactions.iter().map(|r| r.frames).max().unwrap_or(0);
-        let loops = (counted + longest).saturating_sub(1).max(counted + 1);
+        let reacting = (counted + longest).saturating_sub(1).max(counted + 1);
+        let loops = reacting.max(frames + 1);
         let tick = self.speed.scale(TICK);
         let striker = striker.map(|(id, live)| (id, live, self.standing(live, live.hex)));
         for i in 0..loops {
@@ -1658,13 +1782,13 @@ impl Player<'_> {
                 ));
             }
             for r in reactions {
-                if i == (loops - 1).saturating_sub(r.frames) {
+                if i == (reacting - 1).saturating_sub(r.frames) {
                     self.cue(r.stack, r.sound, false);
                 }
             }
             for r in reactions {
                 // It reacts once the iterations left are no more than its frames.
-                let k = i64::from(i) - (i64::from(loops) - 1 - i64::from(r.frames));
+                let k = i64::from(i) - (i64::from(reacting) - 1 - i64::from(r.frames));
                 let frame = if (0..i64::from(r.frames)).contains(&k) {
                     u32::try_from(k).ok()
                 } else if r.died && k >= 0 {

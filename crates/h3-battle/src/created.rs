@@ -281,7 +281,9 @@ fn turn<S: Sink>(state: &mut BattleState, (s, rounds): (StackId, u16), sink: &mu
 /// towards the position in rings 1 and 2. With quirk BAT-QUIRK-7 (`on_original`) the stack's own
 /// hexes count as free, as in the original: a place whose position is one of them is
 /// [`ClonePlace::Original`]; without it they are taken. A place whose other hex is one of them,
-/// where the original would put both stacks on one hex, is skipped either way (BAT-QUIRK-8).
+/// where the original would put both stacks on one hex, is skipped either way (BAT-QUIRK-8). At a
+/// town the closed gate lets the clone of a defender's stack through (its caster's side, the
+/// stack's own: BAT-SIE-028); the clone opens nothing.
 fn clone_place(
     state: &BattleState,
     field: Field,
@@ -293,7 +295,9 @@ fn clone_place(
     let two_hex = stack.has(StackTraits::TWO_HEX);
     let fp = stack.footprint(field);
     let starts = [fp.position(), fp.front];
-    let taken = state.blocked_for(field, if on_original { s } else { StackId(u8::MAX) });
+    // rule: BAT-SIE-028
+    let except = if on_original { s } else { StackId(u8::MAX) };
+    let taken = state.blocked_as(field, except, Some(stack.side));
     let own = |h: Hex| fp.hexes().any(|o| o == h);
     let (order, backwards) = match stack.side {
         BattleSide::Attacker => (
@@ -353,8 +357,10 @@ fn fits(
 /// the side's summons are bound to the creature from now on; a stack of it, as the side would have
 /// at the battle's start, goes to a random row where it fits of the first column with one, from
 /// the side's edge inwards (the original's sampler draws rows until one fits); without one (or
-/// without creatures) nothing happens. The side's hero's book has a spell that summons the
-/// creature, so the side has its template.
+/// without creatures) nothing happens. At a town the closed gate lets the defender's summon
+/// through, and a stack it puts on the gate's, the drawbridge's or the outer bridge's hex opens
+/// the gate before it is reported (BAT-SIE-028; the original's 0x5A71D7). The side's hero's book
+/// has a spell that summons the creature, so the side has its template.
 pub(crate) fn summon<S: Sink>(
     state: &mut BattleState,
     ruleset: &BattleRuleset,
@@ -370,7 +376,8 @@ pub(crate) fn summon<S: Sink>(
         .copied()
         .unwrap_or_default();
     let field = Field::new(ruleset.battle().field);
-    let taken = state.blocked_for(field, StackId(u8::MAX));
+    // rule: BAT-SIE-028
+    let taken = state.blocked_as(field, StackId(u8::MAX), Some(side));
     let two_hex = template.has(StackTraits::TWO_HEX);
     let (first, last) = (
         field.first_standable_column(),
@@ -405,6 +412,8 @@ pub(crate) fn summon<S: Sink>(
             ..template
         };
         let id = add(state, ruleset, stack);
+        // rule: BAT-SIE-028
+        crate::siege::entered(state, id, sink);
         created(state, id, None, sink);
         return;
     }

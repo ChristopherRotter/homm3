@@ -751,7 +751,10 @@ Expert: `{ hit = [keep, tower, gate, wall] percent, shots, damage = [the chances
 each summing to 100). Since E04c T7 (pack format v41, battle part hash v5) the towers' and the
 keep's targets hold their turrets, `{ kind = "keep", turret = 254 }` (an off-field position, each
 its own, at most three; BAT-SIE-016, `installation.md` §7.30), and `turret_count` is the keep's
-least creature count (4; `Siege.structures` adds to it).
+least creature count (4; `Siege.structures` adds to it). Since E04c T8 (pack format v42, battle
+part hash v6) `teleport_moat` and `teleport_walls` (0 to 3) are the Teleport masteries from which a
+teleported stack may cross the moat and pass the walls (2 and 3 in `base`, harvested from the
+executable's 0x5A3700; BAT-SIE-026, `installation.md` §7.32).
 
 **Hero parameters** (`[hero_params]`, Tier 2, E04a T4a; at most one enabled pack provides them,
 a ruleset without them cannot validate hero details): `primary_min` (four values, attack,

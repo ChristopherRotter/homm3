@@ -1237,18 +1237,19 @@ fn first_target(
     }
 }
 
-/// Whether `second` is the second target of `side`'s cast of `spell` aimed at `target`
-/// (BAT-MAG-029): for Teleport a hex, other than the stack's position, where the stack fits
-/// (inside the field, outside the side columns, not blocked by an obstacle or another living
-/// stack; the original's 0x5A3700, the same at every mastery outside sieges, `installation.md`
-/// §7.15); for Sacrifice a victim other than the target ([`raise::victim`], BAT-MAG-036); none
-/// for every other spell.
+/// Whether `second` is the second target of `side`'s cast of `spell` at `mastery` aimed at
+/// `target` (BAT-MAG-029): for Teleport a hex, other than the stack's position, where the stack
+/// fits (inside the field, outside the side columns, not blocked by an obstacle or another
+/// living stack; the original's 0x5A3700, `installation.md` §7.15), at a town the closed gate
+/// passing as for the caster's side (0x469A10 reads the acting side) and only across the moat
+/// and the walls as the mastery allows (BAT-SIE-026); for Sacrifice a victim other than
+/// the target ([`raise::victim`], BAT-MAG-036); none for every other spell.
 // rule: BAT-MAG-029
 fn second_target(
     state: &BattleState,
     ruleset: &BattleRuleset,
     side: BattleSide,
-    spell: SpellRef<'_>,
+    (spell, mastery): (SpellRef<'_>, u8),
     (target, second): (CastTarget, CastTarget),
 ) -> bool {
     let magic = &spell.1.magic;
@@ -1256,7 +1257,9 @@ fn second_target(
         (true, _, CastTarget::Stack(s), CastTarget::Hex(h)) => {
             let field = Field::new(ruleset.battle().field);
             let stack = state.at(s);
-            h != stack.hex && movement::fits(field, stack, h, state.blocked_for(field, s))
+            h != stack.hex
+                && movement::fits(field, stack, h, state.blocked_as(field, s, Some(side)))
+                && crate::siege::teleport_allowed(state, ruleset, (stack.hex, h), mastery)
         }
         // rule: BAT-MAG-036
         (_, true, CastTarget::Stack(s), CastTarget::Stack(v)) => {
@@ -1277,7 +1280,7 @@ fn check_target(
     (target, second): (CastTarget, CastTarget),
 ) -> Result<(), CommandError> {
     if first_target(state, ruleset, side, (spell, mastery), target)
-        && second_target(state, ruleset, side, spell, (target, second))
+        && second_target(state, ruleset, side, (spell, mastery), (target, second))
     {
         Ok(())
     } else {
@@ -1285,16 +1288,17 @@ fn check_target(
     }
 }
 
-/// Whether `side`'s cast of `spell` aimed at `target` has a second target ([`second_target`]):
-/// every target of a spell without one does.
+/// Whether `side`'s cast of `spell` at `mastery` aimed at `target` has a second target
+/// ([`second_target`]): every target of a spell without one does.
 fn has_second(
     state: &BattleState,
     ruleset: &BattleRuleset,
     side: BattleSide,
-    spell: SpellRef<'_>,
+    (spell, mastery): (SpellRef<'_>, u8),
     target: CastTarget,
 ) -> bool {
     let magic = &spell.1.magic;
+    let spell = (spell, mastery);
     if magic.teleports() {
         hex_targets(ruleset).any(|h| second_target(state, ruleset, side, spell, (target, h)))
     } else if magic.sacrifices() {
@@ -1658,7 +1662,7 @@ pub fn cast_targets(
         .chain(hex_targets(ruleset))
     {
         if first_target(state, ruleset, actor, ((spell, s), mastery), target)
-            && has_second(state, ruleset, actor, (spell, s), target)
+            && has_second(state, ruleset, actor, ((spell, s), mastery), target)
         {
             // At most `MAX_CAST_TARGETS` targets by construction.
             let _ = out.push(target);
@@ -1696,7 +1700,13 @@ pub fn second_targets(
         .chain(hexes)
         .chain(stacks)
     {
-        if second_target(state, ruleset, actor, (spell, s), (target, second)) {
+        if second_target(
+            state,
+            ruleset,
+            actor,
+            ((spell, s), mastery),
+            (target, second),
+        ) {
             // At most `MAX_CAST_TARGETS` targets by construction.
             let _ = out.push(second);
         }
@@ -1725,7 +1735,13 @@ fn has_target(
             let raise = raise_test(state, ruleset, actor, (spell, mastery));
             stack_ids(state).any(|s| {
                 stack_target(state, ruleset, actor, ((spell, mastery), raise), s)
-                    && has_second(state, ruleset, actor, spell, CastTarget::Stack(s))
+                    && has_second(
+                        state,
+                        ruleset,
+                        actor,
+                        (spell, mastery),
+                        CastTarget::Stack(s),
+                    )
             })
         }
         SpellTarget::None => no_target(state, ruleset, actor, (spell, mastery)),

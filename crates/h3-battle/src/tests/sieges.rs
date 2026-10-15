@@ -283,8 +283,14 @@ fn the_defender_opens_the_gate_and_it_closes_behind_it() {
     assert_eq!(gate(&act(&mut t, &r, walk(&r, 10, 5)).unwrap()), [true]);
     assert!(open(&t));
     let walls = t.siege.unwrap().walls();
-    assert!(!crate::siege::blocked_for(&t, t.stack(StackId(0))).contains(at(&r, 11, 5)));
-    assert!(crate::siege::blocked_for(&t, t.stack(StackId(0))).contains(at(&r, 10, 4)));
+    assert!(
+        !crate::siege::blocked_for(&t, t.stack(StackId(0)).map(crate::Stack::controller))
+            .contains(at(&r, 11, 5))
+    );
+    assert!(
+        crate::siege::blocked_for(&t, t.stack(StackId(0)).map(crate::Stack::controller))
+            .contains(at(&r, 10, 4))
+    );
     assert!(walls.contains(at(&r, 11, 5)));
     // Back inside, the gate closes after the walk.
     activate(&mut t, 1);

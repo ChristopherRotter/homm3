@@ -106,7 +106,8 @@ read, until that stack's turn starts (the game names it the active stack), and t
 it act then; its time goes to `<out>/turns.txt` (`at:<ms>` steps so up to a time). Act as the turn
 starts: a player who waits lets fidgets start, which the viewer's timeline does not have. In the
 entry's `[[sequence.command]]`s, `at` gives each player's command its time from `turns.txt` (`ms`
-counts from the last one). `behind` (`seq-behind.toml`): two rounds, 8 commands, about 13 s.
+counts from the last one). `behind` (`seq-behind.toml`): two rounds, 8 commands, about 13 s;
+`shots` (`seq-shots.toml`, M3 T1b-1): two rounds, 6 commands, three rays, about 10 s.
 
 **The frame check** (M2 T4b-1, design §7.9): from `clients/`,
 
@@ -126,7 +127,7 @@ pixels outside the masks and how many of them are the original's **redraw artifa
 shadows, or one we drew there at an earlier moment of the sequence with at least one more. The
 diff PNG marks those yellow, any other difference red; a change in either count fails. The
 original's frames live only in the sandbox that captured them (`clients/out/`, never in git):
-a new sandbox captures them again (all six sequences, about 30 minutes) before `--reuse` works. `--reuse` keeps the original's frames from an earlier run and only redraws
+a new sandbox captures them again (all seven sequences, about 40 minutes: `shots` alone about 9) before `--reuse` works. `--reuse` keeps the original's frames from an earlier run and only redraws
 and compares (after a change to the viewer). About 14 minutes for the first four sequences and 15
 more for `behind` (default `<dir>`: `clients/out/frames`). Only a fidget comes from the
 original's memory; everything else is the viewer's own timeline.
