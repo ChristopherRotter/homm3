@@ -2579,6 +2579,15 @@ through the killer's good-morale turn; it now counts it nowhere (BAT-SIE-003). N
 the dispatcher reaches 0x479C65 before a good-morale turn (the engine closes the gate at every
 turn's end, before the morale roll).
 
+**Review re-read (E04c T10b, 2026-10-15): a frenzied striker in the moat.** For a frenzied
+striker `stack_attack_against` (0x442410) asks 0x442590 for the striker's own defense (0x442514,
+the other stack as the argument, the struck flag 0), scales it by the frenzy's factor and adds it
+to the attack. With the flag 0 only the "frenzied when struck: 0" branch is skipped: the Behemoths'
+share and the moat's 3 (0x442646, either hex of the striker on a moat hex) apply, without a floor.
+So a frenzied stack in the moat adds 3 × the factor less; with a defense below 3 the sum lowers its
+attack. VCMI agrees on the 3 (its moat's defence bonus feeds the frenzy's share) but floors the
+attack at 0. The engine had added the full defense (BAT-SIE-006, BAT-MAG-019). Not observed.
+
 ### 7.29 Code reading: the Catapult, Ballistics and Earthquake (E04c T6, 2026-10-14)
 
 Read for E04c T6 (the survey `docs/rules/surveys/E04c-sieges.md`, D-11 to D-15; BAT-Q43): the

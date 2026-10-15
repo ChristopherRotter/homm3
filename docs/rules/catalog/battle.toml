@@ -2599,7 +2599,7 @@ id       = "BAT-MAG-019"
 title    = "Frenzy"
 context  = "battle"
 status   = "implemented"
-summary  = "While Frenzy is active on a stack (v = 100, 100, 150, 200 %), its attack in every strike (melee and shots) is its attack (after Bloodlust or Precision and Slayer) plus its defense (with the Defend bonus) × v %, the sum rounded toward 0 (the share single precision under quirk Q-0005); under quirk Q-0009 (S-16, faithful) the defense added is reduced as the struck creature would reduce it (Behemoths, BAT-DMG-006), as the original does. Struck, the frenzied stack has defense 0. It lasts by the stack's own turns (EffectDuration::OwnTurn): 1 if cast on the active stack, else 2, whatever the caster's power; the round start does not count it (BAT-MAG-010), the stack's first turn start of a round (not after waiting) does: above 1 it loses one, else it ends; so it lasts through the stack's next turn. A re-cast keeps the longer count. A timed own-stack mind spell without a mass version."
+summary  = "While Frenzy is active on a stack (v = 100, 100, 150, 200 %), its attack in every strike (melee and shots) is its attack (after Bloodlust or Precision and Slayer) plus its defense (with the Defend bonus) × v %, the sum rounded toward 0 (the share single precision under quirk Q-0005); under quirk Q-0009 (S-16, faithful) the defense added is reduced as the struck creature would reduce it (Behemoths, BAT-DMG-006), as the original does; standing in a town's moat it is less the moat's penalty, not floored (BAT-SIE-006). Struck, the frenzied stack has defense 0. It lasts by the stack's own turns (EffectDuration::OwnTurn): 1 if cast on the active stack, else 2, whatever the caster's power; the round start does not count it (BAT-MAG-010), the stack's first turn start of a round (not after waiting) does: above 1 it loses one, else it ends; so it lasts through the stack's next turn. A re-cast keeps the longer count. A timed own-stack mind spell without a mass version."
 quirks   = ["Q-0009", "Q-0005"]
 numeric  = "integer"
 
@@ -4185,18 +4185,18 @@ id       = "BAT-SIE-006"
 title    = "The moat lowers the defense"
 context  = "battle"
 status   = "verified"
-summary  = "A struck stack with either hex on a moat hex (BAT-SIE-004; a harmless moat too, not the Tower's mines) has the field's moat defense penalty (3) less defense against the strike, after its other reductions and not floored at 0 (D-10, the code: a stack with defense below 3 gives its attacker the larger difference); not for a frenzied stack, whose defense is 0 (BAT-MAG-019)."
+summary  = "A struck stack with either hex on a moat hex (BAT-SIE-004; a harmless moat too, not the Tower's mines) has the field's moat defense penalty (3) less defense against the strike, after its other reductions and not floored at 0 (D-10, the code: a stack with defense below 3 gives its attacker the larger difference); not for a frenzied stack, whose defense is 0 (BAT-MAG-019). A frenzied striker with either hex on a moat hex adds its own defense less the penalty to its attack (BAT-MAG-019), again not floored: a defense below 3 lowers its attack."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.28): stack_defense_against 0x442590 subtracts 3 (0x442646) when is_moat_hex holds for either hex, after the Behemoths' reduction and the frenzy's 0, without a floor"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.28): stack_defense_against 0x442590 subtracts 3 (0x442646) when is_moat_hex holds for either hex, after the Behemoths' reduction and the frenzy's 0, without a floor; stack_attack_against 0x442410 asks it for a frenzied striker's own defense (0x442514, the struck flag 0: the Behemoths' share and the moat's 3 apply, the frenzy's 0 does not)"
   confidence = "high"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "config/factions/*.json moat bonus: PRIMARY_SKILL defense -3 while in the moat; a stack's defense is floored at 0 (differs below 3, survey D-10)"
-  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/factions"
+  ref        = "config/spells/moats.json (castleMoat L69-L76 and the other moats): a PRIMARY_SKILL defence -3 bonus on the moat's hexes (lib/spells/effects/Moat.cpp); a stack's defense is floored at 0 (differs below 3, survey D-10); lib/battle/CUnitState.cpp L743-L751 adds the frenzy's share of that defence, the bonus included, to the attack (the attack floored at 0)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/moats.json"
   retrieved  = "2026-10-13"
   confidence = "medium"
 
@@ -4251,6 +4251,7 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.25, §7.28): shot_wall_test 0x467510 (outside left of 0x63BD00's hex, exempt creatures 34, 35, 136, 137, 149 and artifacts 91, 137), siege_line_clear 0x467840 (17 steps per cell in f32, truncated, hex 96 while the gate is 3), the damage's stage 2 halves at 0x443C79 with the distance's"
   confidence = "high"
+  note       = "the bows are looked for on the hero of the shooter's controller, the other side's while it is hypnotized (+0x288, 0x46751A to 0x46753A); the engine reads its owner's hero, a trait set at the start (hero::trait_effects), as for the distance's penalty (BAT-RNG-002, BAT-HER-006): a hypnotized shooter differs when exactly one hero wears a bow (review E04c T10b, F-r2b-2; queued in docs/lanes/battle/QUEUE.md)"
 
   [[rule.source]]
   kind       = "wiki"

@@ -509,9 +509,9 @@ pub(crate) fn moat_damage<S: Sink>(
     crate::effects::damaged(state, ruleset, s, sink);
 }
 
-/// The defense a stack struck now loses in the moat (BAT-SIE-006; the original's 0x442590): the
-/// penalty while either of its hexes is a moat hex, else 0; never for a frenzied stack, whose
-/// defense is 0 (the caller's).
+/// The defense `victim` loses in the moat now (BAT-SIE-006; the original's 0x442590): the penalty
+/// while either of its hexes is a moat hex, else 0. For a struck stack, never a frenzied one,
+/// whose defense is 0 (the caller's); also for a frenzied striker's own defense (BAT-MAG-019).
 // rule: BAT-SIE-006
 pub(crate) fn defense_penalty(state: &BattleState, victim: &Stack) -> i32 {
     state.siege.map_or(0, |s| {
