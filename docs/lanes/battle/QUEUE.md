@@ -18,15 +18,15 @@ E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epic
 
 **E04c increment 6** (the user, 2026-10-14: the next sensible increment; BAT-Q46 at its reading): T7d the automatic turret's target (`installation.md` §7.31; `shared/e04c-t7d-seam`, `battle/e04c-t7d`; batch 3f run by an agent: every target as the code; BAT-SIE-020 to 023); merged (#217, #218).
 
-**E04c increment 7** (the user, 2026-10-15: T8 rather than T7e; refined in `docs/epics/E04c-sieges-and-battlefields.md`, "T8"): T8 the siege's other rules (`installation.md` §7.32; `battle/e04c-t8`; batch 3g run by an agent; BAT-SIE-024 to 028).
+**E04c increment 7** (the user, 2026-10-15: T8 rather than T7e; refined in `docs/epics/E04c-sieges-and-battlefields.md`, "T8"): T8 the siege's other rules (`installation.md` §7.32; `battle/e04c-t8`; batch 3g run by an agent; BAT-SIE-024 to 028); merged (#222).
 
-### E04c T7e — The automatic Ballista's target (the computer's shooter)
+**E04c increment 8** (the user, 2026-10-15: the next sensible increment): T7e the automatic Ballista's target (`installation.md` §7.33; `shared/e04c-t7e-seam` #225, `battle/e04c-t7e` #227; batch 3h run by an agent; BAT-WAR-008, BAT-STUB-3 closed; BAT-Q47). Next: T9 (workload and measurements), then T10 (the closure's independent review).
 
-- **Scope:** port the computer's general shooter for the Ballista without Artillery (`installation.md` §7.31, "The general shooter": 0x41F060, 0x41EB80, 0x435CB0 and 0x435B90 with its damage estimate, not read yet), replacing VCMI's rule (BAT-WAR-002); the worth, context, threat records and turns of T7d's `aim.rs` serve it; on Easy for a computer side no turns weighting (0x435CF5). BAT-STUB-3: the hero's Artillery level on the seam (`BallistaControl.level`, `HeroEffect::Artillery.level`, the gap-fill, a `shared/` pull request) for the Ballista's worth. A batch run by an agent (an automatic Ballista's targets where VCMI's rule and the code's differ).
-- **Acceptance:** the automatic Ballista picks as the code; BAT-STUB-3 closed; the batch agrees.
-- **Depends on:** T7d merged. **Status:** proposed (the user chose T8 first, 2026-10-15; T7e or T9 next).
 
 ## Inbox
+
+- 2026-10-15 (E04c T7e, `installation.md` §7.33): **the automatic Ballista on Easy for a computer side.** 0x435CB0 divides nothing there (no turns, no / 5 or / 10), and the engine's default setup is that case (difficulty 0, no human side: every env and replay that does not set them). Batch 3h could not show it (hot seat makes both sides human): a batch with a computer player's Ballista on Easy, or accept the reading. Also unobserved: the / 10 of a stack that loses its turns, a hypnotized candidate.
+- 2026-10-15 (E04c T7e): this increment bumped the observation encoding (v20) without BAT-STUB-1's per-stack mark (BAT-Q35 recommends folding it into such a bump; the user has not answered): the next bump, or T9/T10 with the user's answer.
 
 - 2026-10-15 (E04c T8, `installation.md` §7.32): **a hypnotized stack's morale and luck.** 0x469750 recomputes every stack's morale and luck at the battle's start and after every action from the stack's *controller*: the controller's hero, army (alignments) and, for the defender's controller, the town. The engine keeps the owner's (BAT-MAG-026: "Its owner keeps: its statistics set at the battle's start ... morale and luck"; BAT-SIE-025 follows it). Confirm in a batch (a hypnotized stack between armies of different morale, its morale read before and after the next action) and align, or record why not.
 

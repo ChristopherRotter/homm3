@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 23 (see crates/h3-ffi/src/lib.rs and ADR-0011).
+ * h3 engine C ABI, version 24 (see crates/h3-ffi/src/lib.rs and ADR-0011).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
