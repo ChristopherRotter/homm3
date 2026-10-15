@@ -18,6 +18,7 @@ const TURN: &str = include_str!("../../../../situations/timelines/turn.txt");
 const CLIMB: &str = include_str!("../../../../situations/timelines/climb.txt");
 const BEHIND: &str = include_str!("../../../../situations/timelines/behind.txt");
 const SHOTS: &str = include_str!("../../../../situations/timelines/shots.txt");
+const FLY: &str = include_str!("../../../../situations/timelines/fly.txt");
 
 /// Creature handles of the tests.
 const CHAMPION: u16 = 0;
@@ -32,6 +33,7 @@ const SILVER_PEGASUS: u16 = 8;
 const CYCLOPS: u16 = 9;
 const ARCH_MAGE: u16 = 10;
 const BEHOLDER: u16 = 11;
+const BLACK_DRAGON: u16 = 12;
 
 /// A look: `times` and the frames of each group.
 fn look(times: [u32; 4], frames: &[(u32, u32)], top: i32) -> Look {
@@ -149,7 +151,15 @@ fn looks() -> BTreeMap<u16, Look> {
                 170,
             ),
         ),
-        (PIKEMAN, look([9000, 575, 500, 115], &[(0, 6), (2, 7)], 171)),
+        (
+            PIKEMAN,
+            look(
+                [9000, 575, 500, 115],
+                &[(0, 6), (2, 7), (3, 6), (11, 10), (12, 10), (13, 11)],
+                171,
+            ),
+        ),
+        (BLACK_DRAGON, black_dragon()),
         (
             GNOLL,
             look(
@@ -219,6 +229,33 @@ fn looks() -> BTreeMap<u16, Look> {
         ),
     ];
     base.into_iter().collect()
+}
+
+/// The Black Dragons (`CBDRGN.DEF`): a breath on two stacks takes groups 17 to 19 (E17 M3 T1b-2).
+fn black_dragon() -> Look {
+    look(
+        [9000, 300, 500, 115],
+        &[
+            (0, 4),
+            (2, 8),
+            (3, 7),
+            (4, 9),
+            (5, 10),
+            (7, 3),
+            (8, 3),
+            (9, 3),
+            (10, 3),
+            (11, 10),
+            (12, 8),
+            (13, 11),
+            (17, 10),
+            (18, 8),
+            (19, 11),
+            (20, 4),
+            (21, 6),
+        ],
+        120,
+    )
 }
 
 /// The Cyclops (`CCYCLR.DEF`, its projectile `PCYCLBX.DEF`: 33 x 33, ten frames; numbers only).
@@ -718,6 +755,55 @@ fn the_shots_sequence_plays_as_recorded() {
             .iter()
             .any(|k| k.stack == 1 && k.pose.frame == 12 && k.shown == u32::MAX)
     );
+}
+
+#[test]
+fn the_fly_sequence_plays_as_recorded() {
+    // `fly` (M3 T1b-2, design §7.10, §7.4): a battle in progress in hot seat. The Black Dragons
+    // fly from 49 to 54 (row 2 to row 3) and breathe down and to the left through the Pikemen on
+    // 69 into the Gnolls on 86 (groups 19, not 13); the Pikemen strike back. Then the Angels fly
+    // from 1 to 155 (row 0 to row 9) over the Dragons and five stacks. The other stacks stand.
+    let mut angels = at(0, Side::Attacker, ANGEL, 1, true);
+    angels.flies = true;
+    let mut dragons = at(7, Side::Defender, BLACK_DRAGON, 49, true);
+    dragons.flies = true;
+    let mut o = snapshot(vec![
+        angels,
+        at(1, Side::Attacker, PIKEMAN, 35, false),
+        at(2, Side::Attacker, PIKEMAN, 69, false),
+        at(3, Side::Attacker, GNOLL, 86, false),
+        at(4, Side::Attacker, PIKEMAN, 103, false),
+        at(5, Side::Attacker, MARKSMAN, 137, false),
+        at(6, Side::Attacker, PIKEMAN, 171, false),
+        dragons,
+        at(8, Side::Defender, GOBLIN, 151, false),
+    ]);
+    o.active = Some(7);
+    let commands = [
+        (
+            None,
+            vec![
+                moved(7, 49, 54),
+                struck(7, 2, 8, flags(false, false, false)),
+                struck(7, 3, 13, flags(false, false, true)),
+                struck(2, 7, 0, flags(false, true, false)),
+                Event::TurnStarted { stack: 0 },
+            ],
+        ),
+        (
+            Some(5900),
+            vec![moved(0, 1, 155), Event::TurnStarted { stack: 5 }],
+        ),
+    ];
+    let t = play(&o, &commands);
+    assert_eq!(until(&t.lines(), 8900), FLY);
+    // Both flights' cycles are drawn over every row (anim::FLYING): the recorded frames match.
+    for ms in [700, 1700, 6500, 7200] {
+        let flier = if ms < 2000 { 7 } else { 0 };
+        let pose = t.at(ms)[&flier];
+        assert_eq!((pose.group, pose.layer), (0, FLYING), "{ms}");
+    }
+    assert_eq!(t.at(3000)[&7].group, 19);
 }
 
 #[test]

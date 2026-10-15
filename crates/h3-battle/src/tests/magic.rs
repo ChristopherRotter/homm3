@@ -356,6 +356,7 @@ fn no_casting_in_the_tactics_phase_but_during_a_commanded_war_machines_turn() {
     // X-3).
     let mut gunner = mage(&r, &["bolt"]);
     gunner.war_machines.ballista = Some(BallistaControl {
+        level: 1,
         shots: 1,
         double_damage_chance_bp: 0,
     });

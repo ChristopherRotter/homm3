@@ -18,6 +18,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-15 (the battle lane, E04c T7e, `shared/e04c-t7e-seam`, ADR-0013 point 4; for your information, nothing to do): the hero-effect kind `artillery` gains `level` (1 to 3; pack format v43, core ruleset hash v45; the base pack's Artillery gives 1, 2, 3) and `BallistaControl` the same field, the highest of the hero's sources (`h3-heroes`' `machine_control`, HER-BAT-005). The eight adventure replays were re-recorded with their options in that pull request (`cross-lane`): only the core ruleset hash in their headers moved.
 - 2026-10-15 (T20a2b): the guard's test runs after an entering step only; the original runs it after a visit from the neighbouring tile too (`visit_from_neighbour`, 0x481900: a hero on a guarded tile who visits a pile beside it is attacked after the pickup). T20b3 (decision 37).
 
 - 2026-10-15 (T20a2a): **not built, the grounds' other effects:** Cursed Ground (class 21; the SoD picture 223 if the loader gives it class 21, not read) takes away the native terrain's step cost of 100 (0x4B1740, survey `E08-adventure-core.md` §1.2) and Favorable Winds (225) a third of a step's cost at sea; with the hero's movement (increment 4) and boats. The typed grounds give both a reader (`MapObject::lies_on`).

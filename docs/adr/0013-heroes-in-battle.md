@@ -37,7 +37,8 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    `BattleEffect` enum in contracts. Percentages are **basis points** in content and seam.
 4. **`BattleHero` is a hybrid:** typed fields for what the battle reads by name (primary skills,
    Tactics level, damage bonuses, war-machine control as derived numbers (the Catapult's: the
-   Ballistics level, ADR-0023 point 6), surrender discount), a bounded list of resolved
+   Ballistics level, ADR-0023 point 6; the Ballista's also the Artillery level), surrender
+   discount), a bounded list of resolved
    `BattleEffect`s for everything else, and E04b's magic fields reserved
    and validated from E04a on. The battle checks only what its rules need to run soundly
    (references, bounds); keeping a hero within the game's limits is the derivation's job (Q31).
@@ -127,3 +128,7 @@ are computed before the seam (03-domain). The seam must change once for E04a and
 - 2026-10-14 (E04c T6; the user, BAT-Q43): point 4 — the Catapult's control carries the hero's
   Ballistics level, not derived numbers (ADR-0023 point 6): the battle's own Ballistics table also
   serves the uncontrolled Catapult and the Cyclops.
+- 2026-10-15 (E04c T7e, BAT-STUB-3): point 4 — the Ballista's control carries the hero's Artillery
+  level beside its derived shots and chance: the computer's worth of a Ballista grows with it
+  (`installation.md` §7.33), and the turrets and the automatic Ballista read that worth. Private,
+  as the rest of the control (point 9).

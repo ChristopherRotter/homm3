@@ -98,23 +98,6 @@ pub(crate) fn reachable_within(
     })
 }
 
-/// Where `mover` (stack `id`) can move this turn as far as both sides can tell: as
-/// [`reachable`], but a walker stops only at the pits both sides see (BAT-MAG-031). For a choice
-/// the rules make and report to both sides (the automatic Ballista's target, BAT-WAR-002): a
-/// pit hidden from one side must not change it, whichever side's it is.
-// rule: BAT-MAG-031
-pub(crate) fn reachable_in_public(
-    state: &BattleState,
-    field: Field,
-    id: StackId,
-    mover: &Stack,
-) -> Reach {
-    reach(state, field, id, mover, range(state, id, mover), || {
-        // rule: BAT-SIE-004
-        obstacles::public_pits(state).union(siege::stops(state, mover.controller()))
-    })
-}
-
 /// [`reachable_within`] for a walker that stops at the pits `seen` gives (asked only for a
 /// walker). One instance per caller, so the commanded stacks' hot path keeps its code.
 fn reach(

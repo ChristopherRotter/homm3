@@ -279,7 +279,8 @@ pub(crate) fn seen_pits(state: &BattleState, viewer: BattleSide) -> HexSet {
 }
 
 /// The hexes of the pits both sides see (BAT-MAG-031): all that a choice the rules make and
-/// report to both sides may read (the automatic Ballista's target, BAT-WAR-002).
+/// report to both sides may read (the automatic turrets' and Ballista's targets, BAT-SIE-022,
+/// BAT-WAR-008).
 // rule: BAT-MAG-031
 pub(crate) fn public_pits(state: &BattleState) -> HexSet {
     state

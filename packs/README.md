@@ -586,7 +586,7 @@ different creatures or statistics.
 | `damage_reduction` | `bp` (1..=10000) | less physical damage to the hero's stacks (Armorer) |
 | `surrender_discount` | `bp` (1..=10000) | cheaper surrender (Diplomacy) |
 | `tactics` | `level` (1..=3) | the hero's Tactics level |
-| `artillery` | `shots` (≥ 1), `double_damage_chance_bp` (≤ 10000) | the hero commands its Ballista: `shots` per command at one target, each with the chance of +100 % damage (BAT-WAR-006); several such effects: the largest of each value (HER-BAT-005) |
+| `artillery` | `level` (1–3; pack format v43), `shots` (≥ 1), `double_damage_chance_bp` (≤ 10000) | the hero commands its Ballista: `shots` per command at one target, each with the chance of +100 % damage (BAT-WAR-006); `level` sets the computer's worth of the Ballista (BAT-SIE-021); several such effects: the largest of each value (HER-BAT-005) |
 | `first_aid` | `heal_bp` (≥ 1) | the hero commands its First Aid Tent; its largest heal grows by `heal_bp` of the tent's own `first_aid` maximum (BAT-WAR-007); several such effects add up, a skill's grown by its skill specialty (HER-BAT-005) |
 | `creature_stat` | `creatures` (omitted: all; `{ creature = "x" }`: x and its upgrades; `{ flag = "dragon" }`), `stat` (`attack`, `defense`, `speed`, `hit_points`, `min_damage`, `max_damage`), `amount` (≠ 0) | fixed change of a creature statistic |
 | `skill_specialty` | `skill`, `bp_per_level` (≥ 1) | specialty: the skill's scalable values grow by `bp_per_level` of themselves per hero level |

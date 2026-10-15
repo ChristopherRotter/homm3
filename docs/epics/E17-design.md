@@ -425,7 +425,8 @@ The runbook: `clients/capture/README.md`. What it rests on:
   back from the capture by `h3cap.py find` (each terrain's types rendered alone and matched at
   every anchor); masks cover the heroes' corners, the count boxes (§4.3, from the record) and the
   panel. The set runs unattended (nine situations in about 70 s) and fails when a frame's count of
-  differing pixels changes.
+  differing pixels changes. Since M3 T1b-2 each frame is compared with ours at its time, a fidget
+  in the original's poses (§7.13): all 17 exact outside the masks.
 - **Reproducible:** after a fresh `setup.sh` (a new prefix and run directory) all 17 frames of the
   set came back pixel-identical. An XWD file's colour map holds bytes the X server leaves unset, so
   the set digests the pixels.
@@ -449,6 +450,7 @@ The runbook: `clients/capture/README.md`. What it rests on:
   original shows 224, 192, 160, 128, 160, 192, 224, 255, 224 (red = green, blue 0), so the
   opening frame is already one step on and the period is 800 ms; at 700 ms (the ramp's first
   entry) our still matches it exactly. The step falls exactly on the opening's 100 ms grid (§7.1).
+  Drawn by time since M3 T1b-2 (§7.13), every frame's outline matches.
 - **Idle animation.** In the grass situation the Pikemen fidget from about 200 to 700 ms after the
   opening, identically on every run; its other three stacks stand still for 800 ms. Why: §7.2.
 - **The panel** shows its buttons lit on the human's turn and dimmed on the computer's.
@@ -541,6 +543,8 @@ game's one clock (0x4F82E0, WINMM's `timeGetTime`). VCMI 1.7.5's choices: §7.5.
 - **Standing** is group 2's frame 0: nothing read advances group 2 (the memory shows frame 0 throughout).
 - **The outline's pulse**: each idle step rotates `game.pal` 0x60-0x67 (the active stack's
   outline) and 0x70-0x77 (the mouse's stack) by one entry, eight entries in 800 ms (§6.2).
+- **The mouse over a stack** starts its group 1 at once, which the idle step then plays as a
+  fidget, and outlines it in entry 0x70 (§7.13).
 - **Fidgets** (group 1), per stack with fidget interval t (+0x154, `cranim.txt` x 9000, i.e.
   9000 ms for most creatures) whose DEF has a group 1, unless blind, petrified, paralysed or an
   arrow tower:
@@ -604,7 +608,7 @@ A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F
   0x441B66; its second stack, [ebp − 8] at 0x441A35, is set only for a creature with flag 0x8,
   0x44171B; the Ballista takes its shot groups). The viewer tells a breath by its second stack
   standing beyond the striker's neighbours, where a multi-headed striker's stand beside it
-  (*provisional*: the record does not name the ability; E17 M2 T5c). Each struck stack reacts
+  (the record does not name the ability; E17 M2 T5c; confirmed by the sequence `fly`, §7.13). Each struck stack reacts
   once the iterations left are no more than its reaction's frames, so the reactions end with the
   loop (with one striker they start at its second-to-last frame, iteration L - 1 - R = A - 2): death 5 (its last
   frame stays: the corpse), defend 4 (a defending stack), else hit 3; then they stand. The
@@ -676,8 +680,8 @@ the viewer's own generator cannot reproduce.
 ### 7.7 Open
 
 - Not read: the teleporting move, the spells' and the magic animations' frames (H3API's
-  PlayMagicAnimation), mouse-over (whether hovering starts group 1), the heroes' idle groups, the
-  arrow towers' and the catapult's shots, the first aid tent, the sounds' timing.
+  PlayMagicAnimation), the heroes' idle groups, the arrow towers' and the catapult's shots, the
+  first aid tent, the sounds' timing. (Read since: the mouse over a stack, §7.13.)
 - Not in a sequence yet: Haste and Slow (M3 T7b, with the spells), a ray up or down (the rays of
   `shots` are straight; the ray itself does not depend on the group). Recorded since: a strike's
   and a shot's turns (§7.10), a shot up (`behind`) and down, a death by a shot, a defending
@@ -840,8 +844,10 @@ lets it idle. Read in `Heroes3.exe` for it:
   itself (`draw_battle_stack` at 0x4B4D60), over everything; it stands on the landing hex again
   before group 21 (0x4B4E24). The viewer had kept it in its start row's pass; the cycles' poses
   now take layer 8 (`anim::FLYING`), which the scene draws after every row. Group 20 (before the
-  removal) and 21 (after landing) stay in the row passes. Not checked against frames of the
-  original: the recorded flight (sequence `melee`) stays in its row, where both draw alike.
+  removal) and 21 (after landing) stay in the row passes. Confirmed against the original's
+  frames in M3 T1b-2 (sequence `fly`, §7.13: the Dragons' and the Angels' cycles across rows,
+  over the stacks of the rows below, all exact); the earlier recorded flight (sequence `melee`)
+  stayed in its row, where both draw alike.
 - **Fidgets** (`anim::fidgeting`, §7.2): the executable's clocks and stalls on a generator of the
   viewer's own (the C library's `rand()` sequence, seeded by the battle's seed); the reference
   checks (`sequences`) take none. A stack an action drew stops fidgeting; a bystander's fidget
@@ -988,6 +994,50 @@ DrawRay (`draw_ray` 0x5A5C20 with `ray_init`, `ray_step`, `ray_aim`); every addr
   0x95C2, 0x7EAF, 0x2584).
 - **Not read:** Chain Lightning's call (0x5A64EF) and the colours 300, 301, 303 and 305 (the
   spells, M3 T7c); the Enchanters' shot (0x59FDE0).
+
+### 7.13 Flights, the breath and the mouse (M3 T1b-2)
+
+Recordings that check the rules M2 had only from the code reading, in a battle in progress in hot
+seat (`seq-fly.toml`; the runbook's "A battle in progress").
+
+- **Sequence `fly`.** The Black Dragons fly from hex 49 to 54 (row 2 to row 3, five cycles over
+  about 530 pixels) and breathe down and to the left through the Pikemen on 69 into the Gnolls on
+  86; the Pikemen strike back. Then the Angels fly from hex 1 to 155 (row 0 to row 9) over the
+  Dragons and the stacks of rows 2 to 8, whom the rows drawn after theirs would cover if a flier
+  stayed in its row. The viewer's timeline as recorded on the first try (110 changes; the breath
+  in group 19, both stacks' hits at its second-to-last frame). Frames: 102, 91 exact, the other
+  11 redraw artifacts only (§7.11: shadows drawn again where the landing Dragons and Angels meet
+  the stacks beside them, 68 to 119 pixels each, at 2 000 to 2 700 and 7 418 to 7 718 ms).
+  Every frame of both flights' cycles is exact: **a flier in flight is drawn over every row**
+  (§7.10, layer 8), and **the breath's groups and its detection by place** (§7.4) hold. The
+  recording tells the two models apart: a viewer that kept the flier in its start row's pass
+  differs at 23 of these frames, by up to 2 480 pixels (the Angels under the stacks below row 0).
+- **Where a two-hex striker stands** (the harness's clicks, `cursor_attack_from_hex` 0x474A00;
+  not read further): the cursor's slot inside the target's hex picks the hexes. With the cursor
+  up and to the right of the Pikemen's centre (+14, −13) the defending Dragons stand on 53 and 54
+  (their head on 53, the breath's line through 69 into 86); at (+9, −16) on 52 and 53, the
+  strike then down and to the right from 52, which breathes on nothing; at (+19, −9) on 70 and
+  71, beside the target.
+- **The mouse over a stack** (`battle_mouse_stack` 0x477C20, read; `battle_buttons` calls it
+  when the mouse's hex changes, 0x47570E). Nothing happens while the battle is hidden or +0x132F8
+  is set, nor when the hex's stack is the one already marked (+0x132D0, its position: so not
+  between a two-hex stack's hexes). Otherwise the marked stack is unmarked and redrawn, and a
+  stack on the hex is marked: it takes the mouse's outline (entry 0x70, the cyan ramp, §4.2) and,
+  if its DEF has group 1 and it does not show it, **starts group 1 at frame 0** at once (else, not
+  standing, it stands: group 2, frame 0). The idle step then plays the group as a fidget (§7.2:
+  one frame per step, its stalls, the fidget clock drawn again at its end), so a mouse over the
+  stacks changes the original's later rolls, as fidgets do. Sequence `hover` (the `fly` map's
+  opening): the mouse enters the Pikemen at 0 ms (group 1, frame 0; frames 1 at 100 and 2 at 200
+  on the idle steps), leaves at 150 and enters again at 200, while they still show group 1: they
+  stand. Its frames show the cyan outline. The viewer draws no mouse in a record, so the
+  sequence has no engine command: `h3-view sequences` and the frame check skip it; the window's
+  mouse-over waits for the battle interface (M3 T6, `QUEUE.md`'s inbox).
+- **The capture set by time** (§6.1): `h3drive.py set` reads each frame's stacks from the
+  original's memory beside its dump and `h3-view render --frames` draws ours at that time, the
+  outline's pulse on the original's clock (`Timeline::pulse`) and a fidget in the original's
+  poses (as the frame check, §7.9). All 17 frames of the nine situations exact outside the masks
+  (the outline's colour had differed by a step, 412 pixels a frame, and the grass Pikemen's
+  fidget by up to 2 036).
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

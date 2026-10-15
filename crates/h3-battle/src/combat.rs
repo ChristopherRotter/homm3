@@ -369,17 +369,15 @@ fn slays(ruleset: &BattleRuleset, mastery: u8, victim: &Stack) -> bool {
     })
 }
 
-/// The least and greatest damage a shot of `attacker` would deal to `target` now, without luck,
-/// death blows and double damage (the base damage of `count` creatures is between `count · min`
-/// and `count · max` for every sampling, BAT-DMG-001; fixed while blessed or cursed,
-/// BAT-MAG-011).
-pub(crate) fn shot_damage_range(
+/// The damage a shot of `attacker` would deal to `target` now from the base damage `base`: every
+/// stage of a real shot, without luck, death blows and double damage. The computer's damage
+/// estimate (0x442780 → 0x443F40 with its estimate flag, BAT-WAR-008) and [`shot_damage_range`].
+pub(crate) fn shot_damage(
     state: &BattleState,
     ruleset: &BattleRuleset,
-    attacker: StackId,
-    target: StackId,
-) -> (u64, u64) {
-    let striker = state.at(attacker);
+    (attacker, target): (StackId, StackId),
+    base: u64,
+) -> u64 {
     let blow = Blow {
         charge: 0,
         death_blow: false,
@@ -391,11 +389,25 @@ pub(crate) fn shot_damage_range(
     let (inputs, _) = strike_inputs(
         ruleset,
         state,
-        (striker, state.at(target)),
+        (state.at(attacker), state.at(target)),
         (StrikeFlags::RANGED, terms),
         blow,
     );
-    let (params, staged) = (ruleset.battle(), staged(ruleset));
+    inputs.damage(base, ruleset.battle(), staged(ruleset))
+}
+
+/// The least and greatest damage a shot of `attacker` would deal to `target` now, without luck,
+/// death blows and double damage (the base damage of `count` creatures is between `count · min`
+/// and `count · max` for every sampling, BAT-DMG-001; fixed while blessed or cursed,
+/// BAT-MAG-011).
+#[cfg(test)]
+pub(crate) fn shot_damage_range(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    attacker: StackId,
+    target: StackId,
+) -> (u64, u64) {
+    let striker = state.at(attacker);
     let n = u64::from(striking_count(striker));
     let (min, max) = (striker.damage_min, striker.damage_max);
     let (low, high) = striker
@@ -403,9 +415,10 @@ pub(crate) fn shot_damage_range(
         .damage
         .fixed(min, max)
         .map_or((u64::from(min), u64::from(max)), |each| (each, each));
+    let pair = (attacker, target);
     (
-        inputs.damage(n.saturating_mul(low), params, staged),
-        inputs.damage(n.saturating_mul(high), params, staged),
+        shot_damage(state, ruleset, pair, n.saturating_mul(low)),
+        shot_damage(state, ruleset, pair, n.saturating_mul(high)),
     )
 }
 

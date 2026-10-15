@@ -306,12 +306,12 @@ checkpoints = [
     "0x75665f2646135d54",
     "0x1654b5668dc25ac2",
     "0x60286e63c7c30ce8",
-    "0x3401dbb68756a47d",
-    "0xa215349da990edc1",
-    "0x4bb3af1572b3fbdc",
-    "0x46a568e29b5c3e6c",
-    "0xd9900b7abf347350",
-    "0xd5d6884cf6e64c53",
+    "0x7c464d9cbe713378",
+    "0x2ec2904c805bc741",
+    "0xdd69fc3c3e89a706",
+    "0x91b0cb59381ebc4c",
+    "0x8c9f263e129b9660",
+    "0xf2f5b9cac78afae3",
     "0x2e7bf5a5a1487f89",
 ]
 
@@ -335,7 +335,7 @@ packs = [
 ],
 ]
 profile = "base:strict-fixed"
-ruleset_hash = "0x277766ef5748072a"
+ruleset_hash = "0x1943154fb91369d5"
 adventure_ruleset_hash = "0xd8aaed1ab8f1742f"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1

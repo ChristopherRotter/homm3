@@ -115,3 +115,34 @@ command = [
     { seat = "Attacker", at = 4638, command = { Shoot = { target = 3, at = 151 } } },
     { seat = "Attacker", at = 6655, command = { Shoot = { target = 2, at = 49 } } },
 ]
+
+# E17 M3 T1b-2: flights across rows and a breath on two stacks in hot seat (`seq-fly.toml`). The
+# Black Dragons fly from row 2 to row 3 beside the attacker's column and breathe down and to the
+# left through the Pikemen into the Gnolls (the cursor up and to the right of the Pikemen puts
+# the Dragons' head there, on hex 53); the Pikemen strike back; then the Angels fly from row 0
+# down to row 9 over the Dragons and five stacks (design §7.10, §7.4).
+[[sequence]]
+id = "fly"
+scenario = "seq-fly.toml"
+hot_seat = true
+actions = ["click:116,267", "turn:0.0", "hex:155"]
+ms = 3000
+timeline = "timelines/fly.txt"
+frames = "timelines/fly-frames.txt"
+command = [
+    { seat = "Defender", command = { Attack = { target = 2, from = 54 } } },
+    { seat = "Attacker", at = 5900, command = { Move = { to = 155 } } },
+]
+
+# E17 M3 T1b-2: the mouse over a stack (`seq-fly.toml`'s opening, the Black Dragons' turn). The
+# mouse enters the Pikemen at once: they show group 1 from frame 0, one frame per idle step
+# (`battle_mouse_stack` 0x477C20; their outline 0x70); it leaves at 150 ms and enters again at 200,
+# while they still show group 1: they stand (group 2, frame 0). No engine command: the viewer
+# draws no mouse in a record (design §7.2), so `h3-view sequences` and the frame check skip it.
+[[sequence]]
+id = "hover"
+scenario = "seq-fly.toml"
+hot_seat = true
+actions = ["move:102,280", "at:150", "move:300,300", "at:200", "move:102,280"]
+ms = 1300
+timeline = "timelines/hover.txt"

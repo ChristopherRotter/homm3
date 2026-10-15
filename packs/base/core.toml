@@ -2129,9 +2129,9 @@ expert = [{ kind = "tactics", level = 3 }]
 [[secondary_skill]]
 id = "artillery"
 name = "Artillery"
-basic = [{ kind = "artillery", double_damage_chance_bp = 5000, shots = 1 }]
-advanced = [{ kind = "artillery", double_damage_chance_bp = 7500, shots = 2 }]
-expert = [{ kind = "artillery", double_damage_chance_bp = 10000, shots = 2 }]
+basic = [{ kind = "artillery", double_damage_chance_bp = 5000, level = 1, shots = 1 }]
+advanced = [{ kind = "artillery", double_damage_chance_bp = 7500, level = 2, shots = 2 }]
+expert = [{ kind = "artillery", double_damage_chance_bp = 10000, level = 3, shots = 2 }]
 
 [[secondary_skill]]
 id = "learning"

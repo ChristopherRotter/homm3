@@ -156,6 +156,7 @@ fn the_private_part_of_a_hero_shows_only_to_its_side() {
     commander.tactics = 2;
     commander.damage = damage;
     let ballista = BallistaControl {
+        level: 1,
         shots: 2,
         double_damage_chance_bp: 7500,
     };
@@ -241,6 +242,7 @@ fn values_no_real_hero_could_have_are_accepted() {
     odd.damage.reduction = Rate::bp(10_000);
     odd.surrender_discount_bp = 10_000;
     odd.war_machines.ballista = Some(BallistaControl {
+        level: 1,
         shots: 255,
         double_damage_chance_bp: 10_000,
     });
@@ -286,7 +288,28 @@ fn unsound_heroes_are_rejected() {
         (
             |_, h| {
                 h.war_machines.ballista = Some(BallistaControl {
+                    level: 1,
                     shots: 0,
+                    double_damage_chance_bp: 0,
+                });
+            },
+            HeroError::BallistaControl,
+        ),
+        (
+            |_, h| {
+                h.war_machines.ballista = Some(BallistaControl {
+                    level: 0,
+                    shots: 1,
+                    double_damage_chance_bp: 0,
+                });
+            },
+            HeroError::BallistaControl,
+        ),
+        (
+            |_, h| {
+                h.war_machines.ballista = Some(BallistaControl {
+                    level: 4,
+                    shots: 1,
                     double_damage_chance_bp: 0,
                 });
             },
@@ -303,6 +326,7 @@ fn unsound_heroes_are_rejected() {
         (
             |_, h| {
                 h.war_machines.ballista = Some(BallistaControl {
+                    level: 1,
                     shots: 1,
                     double_damage_chance_bp: 10_001,
                 });
