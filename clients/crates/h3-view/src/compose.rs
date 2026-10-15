@@ -86,11 +86,13 @@ pub fn compose(
                     .iter()
                     .map(|&[r, g, b]| FORMAT.scale(Rgb { r, g, b }))
                     .collect();
+                // An entry beyond the colours takes the last; none: black (the executable's
+                // colour 0).
+                let last = colours.last().copied().unwrap_or(0);
                 for stroke in &ray.strokes {
                     for ([x, y], entry) in stroke.pixels() {
-                        if let Some(&pixel) = colours.get(entry).or(colours.last()) {
-                            screen.set(i64::from(x), i64::from(y), pixel);
-                        }
+                        let pixel = colours.get(entry).copied().unwrap_or(last);
+                        screen.set(i64::from(x), i64::from(y), pixel);
                     }
                 }
             }

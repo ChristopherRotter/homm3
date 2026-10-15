@@ -185,6 +185,11 @@ mod tests {
                 y: 0,
                 mirrored: false,
             },
+            // A ray names nothing (M3 T1b-1).
+            Draw::Ray(crate::anim::Ray {
+                strokes: vec![],
+                colours: vec![],
+            }),
         ];
         let layout = crate::scene::tests::layout();
         let names: Vec<String> = names(&list, &layout).into_iter().collect();

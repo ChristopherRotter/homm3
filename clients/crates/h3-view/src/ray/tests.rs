@@ -125,6 +125,15 @@ fn a_head_ends_when_it_moves_away() {
 }
 
 #[test]
+fn a_head_farther_than_the_start_has_gone_nowhere() {
+    let mut head = Head::new([300, 300], [310, 300]);
+    head.width = 1;
+    head.at = [250, 300];
+    head.aim();
+    assert_eq!(head.width, START_WIDTH);
+}
+
+#[test]
 fn the_thickness_follows_the_way_gone() {
     assert_eq!(width(5, 4, 0), 5);
     assert_eq!(width(5, 4, ONE / 2 - 1), 5);
@@ -180,6 +189,9 @@ fn roundings_are_the_x87s() {
     assert_eq!(round((1 << 26) + 3, 24), 1 << 26);
     assert_eq!(round((1 << 26) + 5, 24), (1 << 26) + 8);
     assert_eq!(f32_ratio(0, 7), 0);
+    // Ties at the 24th bit go to even: 1 + 2^-24 down, 1 + 3 × 2^-24 up.
+    assert_eq!(f32_ratio((1 << 24) + 1, 1 << 24), ONE);
+    assert_eq!(f32_ratio((1 << 24) + 3, 1 << 24), ONE + (ONE >> 22));
     assert_eq!(f32_ratio(1, 2), ONE / 2);
     assert_eq!(f32_ratio(7, 7), ONE);
     // 1/3 as an f32: 0xAAAAAB × 2^-25.

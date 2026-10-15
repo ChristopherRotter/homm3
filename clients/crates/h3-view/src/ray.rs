@@ -243,18 +243,14 @@ fn round(v: i128, bits: u32) -> i128 {
 
 /// `num` / `den` (both ≥ 0, `den` > 0) as the nearest f32, ties to even (the 53-bit quotient
 /// rounds the same for these integers: no ratio of them lies within 2^-53 of an f32 midpoint
-/// without being one).
+/// without being one). The quotient carries a sticky bit below its guard bits: an inexact one
+/// lies a little above its grid value, never on a midpoint.
 fn f32_ratio(num: i128, den: i128) -> i128 {
     /// Guard bits below the fixed point's grid.
     const GUARD: u32 = 8;
     let scaled = num << (FRAC + GUARD);
-    let (q, sticky) = (scaled / den, scaled % den != 0);
-    let width = 128 - q.unsigned_abs().leading_zeros();
-    let shift = width.saturating_sub(24).max(GUARD);
-    let (kept, rest) = (q >> shift, q & ((1 << shift) - 1));
-    let half = 1 << (shift - 1);
-    let up = rest > half || (rest == half && (sticky || kept & 1 == 1));
-    (kept + i128::from(up)) << (shift - GUARD)
+    let q = (scaled / den) << 1 | i128::from(scaled % den != 0);
+    round(q, 24) >> (GUARD + 1)
 }
 
 /// sin(`x`) and cos(`x`) (|x| ≤ π + 1) by their series.

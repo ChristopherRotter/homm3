@@ -278,4 +278,17 @@ fn a_ray_is_written_into_the_screen_in_its_colours() {
             bl, 0x7EAF, bl, bl, 0x7EAF, bl, bl, 0x7EAF, bl, bl, 0x95C2, bl
         ]
     );
+    // Without colours: black (the executable's colour 0).
+    let bare = Draw::Ray(Ray {
+        strokes: vec![stroke(0, 0, 0)],
+        colours: vec![],
+    });
+    let background = Draw::Background {
+        picture: "bg.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    let screen = compose(&[background, bare], &batch(), &small()).unwrap();
+    assert_eq!(screen.pixel(0, 0), Some(0));
+    assert_eq!(screen.pixel(1, 0), Some(bl));
 }
