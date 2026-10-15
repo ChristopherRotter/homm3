@@ -215,6 +215,7 @@ fn every_effect_kind_resolves_and_the_hash_sees_all_content() {
             ],
             vec![
                 HeroEffect::Artillery {
+                    level: 2,
                     shots: 2,
                     double_damage_chance_bp: 7500,
                 },

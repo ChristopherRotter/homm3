@@ -406,6 +406,7 @@ enum EffectDto {
         level: u8,
     },
     Artillery {
+        level: u8,
         shots: u8,
         double_damage_chance_bp: u16,
     },
@@ -634,9 +635,11 @@ impl EffectDto {
             Self::SurrenderDiscount { bp } => HeroEffect::SurrenderDiscount { bp },
             Self::Tactics { level } => HeroEffect::Tactics { level },
             Self::Artillery {
+                level,
                 shots,
                 double_damage_chance_bp,
             } => HeroEffect::Artillery {
+                level,
                 shots,
                 double_damage_chance_bp,
             },
