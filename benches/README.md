@@ -19,6 +19,7 @@ file per workload: `benches/<lane>/<workload>.toml`. The directory is the owning
 | Lane | Workload | Measures |
 |---|---|---|
 | battle | `random-rollouts-full` | 20 random-vs-random battles on `packs/synthetic/scenarios/full.toml`, inside `h3_sim::rollout::random_rollout` |
+| battle | `random-rollouts-siege` | 60 random-vs-random battles on `packs/synthetic/scenarios/siege.toml` (a Citadel: walls, gate, damaging moat, keep, the Catapult), inside `h3_sim::rollout::random_rollout` (E04c T9b) |
 | adventure | `random-play-duel-36` | 5 random-vs-random games of 28 days on `fixtures/maps/e08-duel-36.h3m`, inside `h3_sim::adventure::random_rollout` (`h3 adventure bench --workload play`) |
 | adventure | `reach-xl-144` | every hero's reachable-tiles query of the acting player at each step of 2 random games of 28 days on `fixtures/maps/e08-xl-144.h3m`, inside `h3_cli::adventure::bench::reach_queries` |
 | adventure | `fork-xl-144` | 100 000 forks of the env after 7 days of random play on the same map, inside `h3_cli::adventure::bench::fork_workload` |
