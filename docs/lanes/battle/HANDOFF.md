@@ -24,7 +24,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 **Battle code and tests**
 - Stack ids: war machines follow the army in the original's record order (Catapult, Ballista, Tent, Ammo Cart: `state::RECORD_ORDER`, D-23), not in `BattleSetup.war_machines`' order; then a town's turrets (keep, upper, lower), off the field (254, 255, 251): a rule that walks stacks for targets or distances leaves them out (`Stack::is_turret`).
-- The aim's paths read `BattleSetup.human`: a computer-controlled weak walker keeps out of the moat (BAT-SIE-022), so set `human` in a test of turns at a town.
+- The aim's and berserk's paths read `BattleSetup.human`: a computer's weak walker keeps out of the moat (BAT-SIE-022): set `human` in tests at a town.
 - The computer's choices (`aim.rs`) read Fight Values, which test creatures lack (`fighting_turret_ruleset`); `BattleState::new` has run the keep's first shot already (`tests/aim.rs`'s `fresh`). It reads a war machine's damage as the original's record (`aim::damage`); its values are small, so ties (the later stack) decide often.
 - Defend spoils exact damage expectations: skip turns with `activate`. `BattleState::new` drops the first activation's events (use `start`).
 - Hidden obstacles leak through public events too: a hidden obstacle that does nothing must not change them (a mine that does not go off must not split a `Moved`). `hidden_obstacles_do_not_show` checks the acting side's commands and casts (its profiles leave BAT-QUIRK-4 off; no Berserk in its books, BAT-Q31); the computer's aim (the turrets', the automatic Ballista's) reads only `obstacles::public_pits`. `legal_commands` lists no casts: a property over legal commands must add `cast_targets` × `second_targets` itself.
