@@ -273,7 +273,7 @@ fn the_catapult_shoots_first_each_round_and_never_at_stacks() {
     for i in starts {
         assert_eq!(first(&later[i..]), Some(1));
     }
-    // Commanded, it awaits a command with no shot or move at a stack.
+    // Commanded, it awaits a command with no shot or move at a stack, no Wait and no Defend.
     let (s, _) = siege(
         &r,
         (FortLevel::Fort, [Some(ballistician(&r, 1)), None]),
@@ -283,10 +283,11 @@ fn the_catapult_shoots_first_each_round_and_never_at_stacks() {
     );
     assert_eq!(s.active(), Some(StackId(1)));
     let commands = legal(&s, &r);
-    assert!(commands.iter().all(|c| matches!(
-        c,
-        Command::Wait | Command::Defend | Command::ShootWall { .. } | Command::Retreat
-    )));
+    assert!(
+        commands
+            .iter()
+            .all(|c| matches!(c, Command::ShootWall { .. } | Command::Retreat))
+    );
     assert_eq!(wall_shots(&commands), [1, 2, 3, 4, 5]);
 }
 
@@ -499,7 +500,8 @@ fn ballistics_commands_the_catapult() {
         assert_eq!(shots(&fired).len(), if level == 1 { 1 } else { 2 });
         assert_ne!(s.active(), Some(StackId(1)));
     }
-    // Wait and Defend as any commanded war machine; a target not set up, destroyed or no target.
+    // No Wait and no Defend (the original offers neither, BAT-Q50); a target not set up,
+    // destroyed or no target.
     let (s, _) = siege(
         &r,
         (FortLevel::Fort, [Some(ballistician(&r, 2)), None]),
@@ -520,22 +522,37 @@ fn ballistics_commands_the_catapult() {
         act(&mut t, &r, Command::ShootWall { part: 1 }),
         Err(CommandError::NoSuchPart)
     );
-    let mut t = s.clone();
-    act(&mut t, &r, Command::Wait).unwrap();
-    // With nothing standing a commanded Catapult's turn passes.
+    for command in [Command::Wait, Command::Defend] {
+        let mut t = s.clone();
+        assert_eq!(act(&mut t, &r, command), Err(CommandError::MustShoot));
+    }
+    // With nothing standing a commanded Catapult's turn passes: at once when its hero's
+    // Earthquake brings down the last standing target (it may not Wait or Defend), and at its
+    // turn's start.
+    let quake = spell(&r, "quake");
+    let mut caster = ballistician(&r, 2);
+    caster.magic.spell_book = Some(vec![quake]);
+    caster.magic.mana = 40;
+    caster.magic.masteries = vec![(quake, 3)];
     let (mut s, _) = siege(
         &r,
-        (FortLevel::Fort, [Some(ballistician(&r, 2)), None]),
+        (FortLevel::Fort, [Some(caster), None]),
         &[("fixed", 5, 3, 5)],
         &[("fixed", 5, 13, 5)],
         |_| {},
     );
-    set_parts(&mut s, [2, 0, 0, 0, 0, 0, 2, 2]);
-    advance_to(&mut s, &r, 2);
-    let mut events = Vec::new();
+    assert_eq!(s.active(), Some(StackId(1)));
+    set_parts(&mut s, [0, 1, 0, 0, 0, 0, 0, 0]);
+    let quaked = Command::Cast {
+        spell: quake,
+        target: CastTarget::None,
+        second: CastTarget::None,
+    };
+    let mut events = act(&mut s, &r, quaked).unwrap();
+    assert_eq!(destroyed(&events), [1]);
+    assert_eq!(s.active(), Some(StackId(0)));
     while s.round < 2 {
-        let side = s.side_to_act().unwrap();
-        apply(&mut s, &r, side, Command::Defend, &mut events).unwrap();
+        events.extend(act(&mut s, &r, Command::Defend).unwrap());
     }
     assert_ne!(s.active(), Some(StackId(1)));
     assert!(shots(&events).is_empty());

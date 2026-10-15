@@ -367,7 +367,10 @@ between armies of different morale, its morale read before and after the next ac
 original's controller, the engine's owner). From T9 (survey D-22): a defending hero's Ballista at
 a town without a fort (the code sets it up, VCMI does not). From T10a (survey D-23): a tie
 between a First Aid Tent and an Ammo Cart in the computer's aim (the later record: the Ammo Cart
-in the original's order).
+in the original's order). From T10b (the review, BAT-Q50): whether the original offers the
+commanded Catapult a Wait (the engine refuses it, as Defend, which batch 3d B saw do nothing);
+which side's stack acts after the Catapult at equal top speeds in rounds 1 and 2 (the engine, by
+the pick 0x4650BB: the attacker's; `installation.md` §7.29).
 
 **The wiki checks** (the review's 49 wanted checks, done 2026-10-13 with the user's approval:
 raw pages of heroes.thelazy.net through WebFetch, verbatim quotes; SoD arguments of `swh`). Each

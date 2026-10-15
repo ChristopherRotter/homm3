@@ -2668,7 +2668,12 @@ and its creature is 145, the Catapult, it writes the defender's record 0 there (
 stack whose side is not the defender's (0x46502A), so after the Catapult's turn, automatic,
 commanded or passed (action 12 follows an activation too), the attacker's stack wins a tie. The
 engine counts the defender as the side that acted last after the Catapult's turn (BAT-SIE-011,
-BAT-TRN-001). Not observed.
+BAT-TRN-001). Not observed. Action 12 (the dispatcher's case 0x479BC2) only sets the acted bit:
+a passed turn gives no Defend bonus. The engine offers the commanded Catapult no Wait and no
+Defend (BAT-Q50: batch 3d B saw Defend do nothing, Wait was not tried), and a hero's Earthquake
+that brings down the last standing target during the commanded turn passes the turn at once, as
+the Catapult's turn 0x473C00 (called by the battle loop at 0x4743A3) does without a standing
+target; whether the loop calls it again after a cast was not read.
 
 ### 7.30 Code reading: the arrow towers (E04c T7, 2026-10-14)
 

@@ -25,7 +25,8 @@ pub type LegalCommands = FixedVec<Command, MAX_LEGAL_COMMANDS>;
 
 /// Fills `out` with every command `actor` may issue now (empty if the active stack's controller is
 /// not `actor`, BAT-MAG-026, or the battle is over). In the tactics phase: Wait, `EndTactics`, then
-/// the placements in the zone by hex (BAT-TAC-002). Otherwise: Wait, Defend, moves by hex, then per
+/// the placements in the zone by hex (BAT-TAC-002). Otherwise (but for the commanded Catapult,
+/// which only shoots the walls, BAT-SIE-011): Wait, Defend, moves by hex, then per
 /// enemy stack its shots (a stack that can shoot, BAT-RNG-001: its front hex, then for area shots a
 /// two-hex target's rear hex) or its melee attacks by canonical position slot
 /// (`Field::attack_positions`; never for war machines, BAT-WAR-001), then for a commanded First Aid
@@ -61,7 +62,11 @@ pub fn legal_commands(
             }
         }
     } else {
-        turn_commands(state, field, (id, &mover), out);
+        // rule: BAT-SIE-011
+        // The commanded Catapult only shoots the walls: no Wait, no Defend (BAT-Q50).
+        if mover.slot != crate::siege::CATAPULT_SLOT {
+            turn_commands(state, field, (id, &mover), out);
+        }
         // rule: BAT-SIE-010, BAT-SIE-011, BAT-SIE-013
         if let (Some(_), Some(siege)) = (
             crate::siege::commanded_wall_shots(state, ruleset, id),

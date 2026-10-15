@@ -404,6 +404,23 @@ pub(crate) fn berserk_now<S: Sink>(state: &mut BattleState, ruleset: &BattleRule
     }
 }
 
+/// If a cast (its hero's Earthquake, BAT-SIE-015) brought down the last standing target during
+/// the commanded Catapult's turn, its turn passes at once, as the turn of a Catapult with no
+/// standing target does (BAT-SIE-011: the Catapult's turn 0x473C00, which the original's battle
+/// loop calls at 0x4743A3, then sets action 12); it has no command left: no Wait, no Defend.
+// rule: BAT-SIE-011
+pub(crate) fn catapult_passes<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    sink: &mut S,
+) {
+    if let Some(id) = state.active.filter(|&id| {
+        state.at(id).slot == crate::siege::CATAPULT_SLOT && !crate::siege::any_standing(state)
+    }) {
+        end_turn(state, ruleset, id, TurnEnd::Acted, sink);
+    }
+}
+
 /// At the start of its first turn of the round (not after waiting), a regenerating stack's top
 /// creature regains all lost hit points (Q20: at the stack's own turn, as VCMI does); a stack its
 /// hero makes regenerate (BAT-HER-006) regains at most the stack's `regeneration`.

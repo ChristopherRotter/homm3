@@ -176,6 +176,16 @@ pub fn validate(
     plan(state, ruleset, actor, command).map(|_| ())
 }
 
+/// Refuses a command other than a wall shot for the commanded Catapult (BAT-SIE-011): it may not
+/// Wait or Defend, as the original offers neither (BAT-Q50).
+// rule: BAT-SIE-011
+fn not_the_catapult(mover: &Stack) -> Result<(), CommandError> {
+    if mover.slot == crate::siege::CATAPULT_SLOT {
+        return Err(CommandError::MustShoot);
+    }
+    Ok(())
+}
+
 /// The living stack `target`, which the active stack `mover` may attack or shoot: a stack of
 /// the side its controller fights ([`Stack::may_attack`], BAT-MAG-025/026).
 fn enemy(
@@ -231,13 +241,14 @@ fn plan<'r>(
             })
         }
         Command::Wait => {
+            not_the_catapult(&mover)?;
             // rule: BAT-TRN-002
             if mover.flags.contains(StackFlags::WAITED) {
                 return Err(CommandError::AlreadyWaited);
             }
             Ok(Plan::Wait { mover: id })
         }
-        Command::Defend => Ok(Plan::Defend { mover: id }),
+        Command::Defend => not_the_catapult(&mover).map(|()| Plan::Defend { mover: id }),
         Command::Move { to } => {
             if !field.is_standable(to) {
                 return Err(CommandError::InvalidHex);
@@ -492,6 +503,8 @@ pub fn apply<S: Sink>(
             }
             // A stack the cast made berserk on its own turn acts at once (BAT-MAG-025).
             turn::berserk_now(state, ruleset, sink);
+            // rule: BAT-SIE-011
+            turn::catapult_passes(state, ruleset, sink);
         }
         Plan::CreatureCast { mover, cast } => {
             // rule: BAT-MAG-048
