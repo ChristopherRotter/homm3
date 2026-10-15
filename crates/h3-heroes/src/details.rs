@@ -263,8 +263,9 @@ fn validate_spells(spells: &[SpellId], ruleset: &Ruleset) -> Result<(), DetailsE
 }
 
 /// The war machines a hero brings to a battle (`BattleSetup.war_machines`): the war machine of
-/// every worn artifact that places one, in the order worn. The Catapult's artifact places none
-/// until sieges arrive (E04c). Artifacts the ruleset does not know are skipped; validate first.
+/// every worn artifact that places one, in the order worn. The Catapult's artifact places none:
+/// the battle sets the Catapult up itself (BAT-SIE-009). Artifacts the ruleset does not know are
+/// skipped; validate first.
 pub fn war_machines(details: &HeroDetails, ruleset: &Ruleset) -> Vec<CreatureTypeId> {
     // rule: HER-WAR-001
     details

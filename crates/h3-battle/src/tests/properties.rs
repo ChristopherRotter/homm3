@@ -2112,8 +2112,9 @@ proptest! {
     /// criterion 4; BAT-SIE-002 to BAT-SIE-004, BAT-SIE-012, BAT-SIE-028) in random games at a
     /// town with a fort, at every step. No living stack on the field covers a standing wall hex
     /// but the gate's, and none but the defender's own covers the closed gate's or the
-    /// drawbridge's hex (its clone, summoned stack or teleported stack may stand there without
-    /// opening the gate); an open gate that stands has a living stack or a corpse on the gate's,
+    /// drawbridge's hex (its clone or teleported stack may stand there without opening the gate;
+    /// its summoned stack opens it, BAT-SIE-028); an open gate that stands has a living stack or a
+    /// corpse on the gate's,
     /// the drawbridge's or, in a town whose record has the moat's second row, the outer bridge's
     /// hex (moat or not). No legal move or
     /// attack puts the active stack on a standing wall hex, nor on the closed gate's or
