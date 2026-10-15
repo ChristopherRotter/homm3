@@ -10,7 +10,7 @@
 //! the original's x87 arithmetic in every profile: they decide a choice, not an amount.
 
 use h3_content_battle::BattleRuleset;
-use h3_contracts::BattleSide;
+use h3_contracts::{BattleSide, FortLevel};
 use h3_kernel::arith::{DOUBLE_BITS, X87};
 
 use crate::binds;
@@ -360,6 +360,28 @@ fn stops(state: &BattleState, field: Field, mover: &Stack) -> HexSet {
         .without(covered(field, mover, mover.hex))
 }
 
+/// Whether the computer's pathfinder keeps `mover` out of its stops (0x4B3400's prologue,
+/// 0x4B3420–0x4B34B2, read at 0x4B375C; BAT-SIE-022): at a town, for a stack whose controller's
+/// player is no human (0x474BF0), with at most 4 times the town's moat damage in hit points (the
+/// computer's, 1 for a clone: 0x443080), or at most 40 times when it is the defender's or the gate
+/// is not closed. The damage is the town's entry in the table (0x63BD18) whatever its moat does;
+/// the original's gate is closed from the setup on (3), at a town without a fort too.
+// rule: BAT-SIE-022
+pub(crate) fn avoids_stops(state: &BattleState, ruleset: &BattleRuleset, mover: &Stack) -> bool {
+    let Some(town) = state.siege else {
+        return false;
+    };
+    if state.human[mover.controller().index()] {
+        return false;
+    }
+    let damage = ruleset
+        .siege(town.faction)
+        .map_or(0, |record| u64::from(record.moat_damage));
+    let closed = town.fort == FortLevel::None || !town.gate_open;
+    let hp = hit_points(mover);
+    hp <= 4 * damage || ((mover.side == BattleSide::Defender || !closed) && hp <= 40 * damage)
+}
+
 /// Whether `mover` stepping from the position `from` to `to` enters a hex of `stops`: one it
 /// covers at `to` and not at `from` (0x4B3701–0x4B3725: a two-hex walker's rear on the stop its
 /// front leaves is no new stop).
@@ -399,10 +421,14 @@ impl Buckets {
 
 /// Where `mover` (stack `id`) can stand for the computer and at what cost (0x4B3400 with range
 /// 127, BAT-SIE-022), with its walk's stops: walkers step between free positions, entering a
-/// stop costs the rest of the turn's move and they go on from it; flyers (and teleporters)
-/// reach every free position at its hex distance; a bound stack stays. Costs above the range
-/// are not reached.
-fn costs(state: &BattleState, field: Field, id: StackId) -> ([u32; 256], HexSet) {
+/// stop costs the rest of the turn's move and they go on from it, unless the computer keeps them
+/// out of their stops ([`avoids_stops`]); flyers (and teleporters) reach every free position at
+/// its hex distance; a bound stack stays. Costs above the range are not reached.
+fn costs(
+    state: &BattleState,
+    (ruleset, field): (&BattleRuleset, Field),
+    id: StackId,
+) -> ([u32; 256], HexSet) {
     let mover = state.at(id);
     let blocked = state.blocked_for(field, id);
     let speed = u32::from(mover.speed_now());
@@ -422,6 +448,7 @@ fn costs(state: &BattleState, field: Field, id: StackId) -> ([u32; 256], HexSet)
         return (cost, HexSet::new());
     }
     let stops = stops(state, field, mover);
+    let avoids = avoids_stops(state, ruleset, mover);
     let mut queue = Buckets {
         head: [NO_ENTRY; BUCKETS],
         entries: [(Hex(0), NO_ENTRY); ENTRIES],
@@ -437,11 +464,11 @@ fn costs(state: &BattleState, field: Field, id: StackId) -> ([u32; 256], HexSet)
                 if !fits(field, mover, to, blocked) {
                     continue;
                 }
-                let step = if on_stop(field, mover, (hex, to), stops) {
-                    speed - c % speed
-                } else {
-                    1
-                };
+                let stop = on_stop(field, mover, (hex, to), stops);
+                if stop && avoids {
+                    continue;
+                }
+                let step = if stop { speed - c % speed } else { 1 };
                 if c + step <= range && c + step < cost[to.index()] {
                     cost[to.index()] = c + step;
                     queue.push(c + step, to);
@@ -458,7 +485,11 @@ fn costs(state: &BattleState, field: Field, id: StackId) -> ([u32; 256], HexSet)
 /// within its speed: that cost over its speed, rounded up, at least 1. `None` for a stack the
 /// computer gives no target (a war machine but the Ballista, a hypnotized or berserk stack) or
 /// that reaches none within the range.
-pub(crate) fn turns(state: &BattleState, field: Field, id: StackId) -> Option<u32> {
+pub(crate) fn turns(
+    state: &BattleState,
+    (ruleset, field): (&BattleRuleset, Field),
+    id: StackId,
+) -> Option<u32> {
     let me = state.at(id);
     let status = me.spells.status;
     if (me.has(StackTraits::WAR_MACHINE) && !is_ballista(me))
@@ -470,7 +501,7 @@ pub(crate) fn turns(state: &BattleState, field: Field, id: StackId) -> Option<u3
     if shoots(state, field, id) {
         return Some(1);
     }
-    let (cost, stops) = costs(state, field, id);
+    let (cost, stops) = costs(state, (ruleset, field), id);
     let speed = u32::from(me.speed_now());
     let reached = |hex: Hex| cost.get(hex.index()).copied().filter(|&c| c != UNREACHED);
     let mut least: Option<u32> = None;
@@ -531,7 +562,7 @@ fn score(
     let divisor = if disabled {
         MAX_TURNS
     } else {
-        turns(state, field, id).map_or(MAX_TURNS, |t| {
+        turns(state, (ruleset, field), id).map_or(MAX_TURNS, |t| {
             i32::try_from(t).unwrap_or(MAX_TURNS).min(MAX_TURNS)
         })
     };
@@ -634,7 +665,7 @@ pub(crate) fn shot_value(
     } else if t.has(StackTraits::FIRST_AID) || t.has(StackTraits::AMMO_SUPPLY) {
         MAX_TURNS
     } else {
-        turns(state, field, target).map_or(MAX_TURNS, |n| {
+        turns(state, (ruleset, field), target).map_or(MAX_TURNS, |n| {
             i32::try_from(n).unwrap_or(MAX_TURNS).min(MAX_TURNS)
         })
     };

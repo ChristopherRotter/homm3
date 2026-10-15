@@ -2891,6 +2891,26 @@ hex. So a stop is entered only by a hex the stack does not cover before the step
 walker whose front entered the moat and steps on, its rear now on that moat hex, pays nothing
 more (BAT-SIE-022). Its starting hexes are no stop at all (0x4B3290 clears them).
 
+**Review re-read (E04c T10b, 2026-10-15): the computer's walker keeps out of the moat.**
+0x4B3400's prologue (0x4B3420–0x4B34B2) clears a local flag and sets it only at a town (+0x53C8)
+for a stack 0x474BF0 calls automatic: for a creature (its default case) a hidden battle, +0x132C4
+with an options global (not read further), a remote network turn, or else a controlling side (the
+owner, the other side while +0x288, hypnotized) without a player or whose player is not human
+(0x474D15–0x474D60). With `h` = 0x443080(stack, 0), the total hit points (1 for a clone, a signed
+32-bit product), and `d` = 0x63BD18 by the town's type, read whatever the moat (harmless under RoE
+or AB rules, absent below a Citadel, the Tower's 150 of its mines): the flag is set when `h ≤ 4d`;
+otherwise, when the side argument is 1 or the gate +0x53A4 is not 3, when `h ≤ 40d` (0x4B3481
+leaves it clear when neither holds; signed comparisons). The side argument is the one 0x422B20
+passes on through 0x4B2DA0, the side whose records it fills: the stack's own side, not its
+controller. The gate is 3 from the setup at every town, a town without a fort too (0x463C10). No
+caller changes this: the flag 0x422B20 passes (the tactics byte +0x13D68) only widens the range
+and the speed (0x4B34DE). At a neighbour that fits, with the flag set and the step entering a stop
+(0x4B375C–0x4B376C), the walker does not queue it: the step takes the occupied hex's way (the
+attack marks) and, for neither a flyer nor a Devil (0x4B39C4), ends there. So such a walker's
+paths cross no moat hex and no Quicksand its side sees; flyers have no stops (0x4B3290). The
+engine keys it on `BattleSetup.human` of the stack's controller (the default: two computer
+players; BAT-SIE-022, BAT-Q50 (2)).
+
 ### 7.32 Code reading: the siege's other rules (E04c T8, 2026-10-15)
 
 Read for E04c T8 (the survey `docs/rules/surveys/E04c-sieges.md`, §2's rows "Surrender, retreat",

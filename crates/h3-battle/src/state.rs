@@ -998,7 +998,8 @@ pub struct BattleState {
     pub(crate) anti_magic: bool,
     /// The game's difficulty, 0 (Easy) to 4 (Impossible), and whether each side's player is
     /// human (ADR-0023 point 7; public): read only by the choices the battle makes for a side as
-    /// the original's computer does (an automatic turret's desperate aim, BAT-SIE-023).
+    /// the original's computer does (an automatic turret's desperate aim, BAT-SIE-023; the stops
+    /// a computer's walker keeps out of in its turns, BAT-SIE-022).
     pub(crate) difficulty: u8,
     /// See `difficulty`.
     pub(crate) human: [bool; 2],
