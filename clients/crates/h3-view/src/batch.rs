@@ -109,11 +109,12 @@ impl Batch {
 
 /// The batch a draw list needs: every name in it and the outline palette, upper-cased.
 pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
-    let named = list.iter().map(|d| match d {
-        Draw::Background { picture, .. } | Draw::AbsoluteObstacle { picture, .. } => picture,
+    let named = list.iter().filter_map(|d| match d {
+        Draw::Background { picture, .. } | Draw::AbsoluteObstacle { picture, .. } => Some(picture),
         Draw::Obstacle { def, .. } | Draw::Projectile { def, .. } | Draw::Creature { def, .. } => {
-            def
+            Some(def)
         }
+        Draw::Ray(_) => None,
     });
     named
         .chain(core::iter::once(&layout.outline_palette))
@@ -184,6 +185,11 @@ mod tests {
                 y: 0,
                 mirrored: false,
             },
+            // A ray names nothing (M3 T1b-1).
+            Draw::Ray(crate::anim::Ray {
+                strokes: vec![],
+                colours: vec![],
+            }),
         ];
         let layout = crate::scene::tests::layout();
         let names: Vec<String> = names(&list, &layout).into_iter().collect();

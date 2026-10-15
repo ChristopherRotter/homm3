@@ -59,6 +59,13 @@ const MISSILE_FIRST: usize = 2;
 const MISSILE_COUNT: usize = 145;
 /// The shooter's creature flag (the switch runs only for it).
 const SHOOTER: u32 = 0x4;
+/// The ray shooter's creature flag (`shot_animation` 0x43F51D) and `DrawRay`'s colour tables
+/// (R, G, B, from the ray's edge inward) by creature (the switch at 0x43F55B: colour 302 for the
+/// Arch Magi, 304 for 74, 75, 120 and 121; any other draws in colour 0, black; E17 design
+/// §7.12).
+const RAY: u32 = 0x800;
+const RAY_COLOURS: [(u32, &[usize]); 2] = [(0x68_833C, &[35]), (0x68_834C, &[74, 75, 120, 121])];
+const RAY_ENTRIES: usize = 5;
 /// A war machine's flag (`installation.md` §5).
 const WAR_MACHINE: u32 = 0x40;
 /// The Ballista, whose strike sounds its shot (0x43DA9D).
@@ -162,6 +169,7 @@ struct Harvest {
     defs: Vec<String>,
     sounds: Vec<String>,
     missiles: BTreeMap<usize, String>,
+    rays: BTreeMap<usize, Vec<[u8; 3]>>,
     cranim: Vec<Cranim>,
     names: BTreeMap<String, usize>,
     obstacles: Vec<(String, u8, u8)>,
@@ -243,6 +251,18 @@ fn read_harvest(exe: &[u8], cranim: &TextTable, crtraits: &TextTable) -> Result<
             missiles.insert(id, name);
         }
     }
+    let mut rays = BTreeMap::new();
+    for c in creatures.iter().filter(|c| c.flags & RAY != 0) {
+        let id = usize::from(c.id);
+        let colours = match RAY_COLOURS.iter().find(|(_, ids)| ids.contains(&id)) {
+            Some(&(table, _)) => bytes(&image, exe, table, 3 * RAY_ENTRIES)?
+                .chunks_exact(3)
+                .map(|c| [c[0], c[1], c[2]])
+                .collect(),
+            None => vec![[0; 3]],
+        };
+        rays.insert(id, colours);
+    }
     let mut obstacles = Vec::new();
     for i in 0..OBSTACLE_TYPES.1 {
         let at = OBSTACLE_TYPES.0 + to_u32(i * OBSTACLE_TYPES.2);
@@ -286,6 +306,7 @@ fn read_harvest(exe: &[u8], cranim: &TextTable, crtraits: &TextTable) -> Result<
             .map(|c| sounds(usize::from(c.id), &c.sound, c.flags))
             .collect(),
         missiles,
+        rays,
         cranim: cranim_rows(cranim)?,
         names: creature_names(crtraits)?,
         obstacles,
@@ -497,6 +518,13 @@ fn write_table(pack: &Pack, h: &Harvest, gaps: &mut Vec<String>) -> Result<Strin
         }
         if anim.angles != [0; 12] {
             let _ = writeln!(t, "missile_angles = [{}]", numbers(&anim.angles));
+        }
+        if let Some(colours) = h.rays.get(&original) {
+            let colours: Vec<String> = colours
+                .iter()
+                .map(|c| format!("[{}]", numbers(c)))
+                .collect();
+            let _ = writeln!(t, "ray = [{}]", colours.join(", "));
         }
         if let Some(sounds) = h.sounds.get(original) {
             let _ = writeln!(t, "sounds = {{ {sounds} }}");

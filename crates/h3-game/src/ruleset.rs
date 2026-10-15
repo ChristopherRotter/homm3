@@ -4,7 +4,7 @@
 use alloc::sync::Arc;
 use core::fmt;
 
-use h3_adventure::AdventureRuleset;
+use h3_adventure::{AdventureRuleset, ObjectKind};
 use h3_content::Ruleset;
 use h3_content_battle::BattleRuleset;
 
@@ -18,8 +18,8 @@ pub struct GameRuleset {
 }
 
 /// The parts do not fit the core: one was compiled on another core ruleset, or the adventure part
-/// names a battlefield of a battle on the coast ([`h3_adventure::BattleTerrains`]) the battle part
-/// lacks.
+/// names a battlefield the battle part lacks: a battle on the coast's
+/// ([`h3_adventure::BattleTerrains`]) or a special ground's (E08 T20a2a).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RulesetMismatch;
 
@@ -36,19 +36,25 @@ impl GameRuleset {
     ///
     /// # Errors
     ///
-    /// [`RulesetMismatch`] if a part was compiled on another core (by content hash), or the
-    /// adventure part's coast battlefield is not the battle part's.
+    /// [`RulesetMismatch`] if a part was compiled on another core (by content hash), or a
+    /// battlefield of the adventure part, the coast's or a special ground's, is not the battle
+    /// part's.
     pub fn new(
         core: Arc<Ruleset>,
         adventure: Arc<AdventureRuleset>,
         battle: Arc<BattleRuleset>,
     ) -> Result<Self, RulesetMismatch> {
         let hash = core.content_hash();
-        let field = adventure.params().battle_terrains().is_none_or(|t| {
-            battle
-                .battlefield_by_key(t.coast_battlefield.as_str())
-                .is_some()
-        });
+        let known =
+            |key: &h3_content::ContentKey| battle.battlefield_by_key(key.as_str()).is_some();
+        let field = adventure
+            .params()
+            .battle_terrains()
+            .is_none_or(|t| known(&t.coast_battlefield))
+            && adventure.object_types().iter().all(|ty| match &ty.kind {
+                ObjectKind::Ground { battlefield } => known(battlefield),
+                _ => true,
+            });
         if adventure.core_hash() == hash && battle.core_hash() == hash && field {
             Ok(Self {
                 core,

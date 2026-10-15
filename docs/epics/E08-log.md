@@ -2086,3 +2086,102 @@ the harvester's gap-fill and `packs/` are the battle lane's).
 - Tests: `h3-heroes` (the battle hero's values, the bounds, the combination's parts, without hero
   parameters; the levels, an artifact type once, the cap). Versions: none (the core ruleset
   hash's value only).
+
+### Round 4 of increment 3: T20a2a (2026-10-15, `adventure/e08-t20a2a` #220)
+
+Decision 36 (the seam, confirmed before building): T20a2 in two pull requests, T20a2a with every
+version bump, T20a2b (guarded tiles, the store passed through) without one. Baseline: the full
+verify `--with-original-data` of `master` 0132a15 (#215 merged) green. The user, offline after the
+seam, had the session stage the sprite archives (`H3sprite.lod`, `H3ab_spr.lod`) for the grounds'
+`.msk` sizes.
+
+- **The kinds** (part v7): `ObjectKind::Monster { levels }` (none: the map names the creature;
+  else a random monster's levels), visited from a neighbour (the compiler checks it), and
+  `ObjectKind::Ground { battlefield }` (a battle part's key, which `GameRuleset::new` checks as
+  the coast's); neither has a visit yet (`effect` none: a step onto a monster is refused as an
+  unbuilt visit, T20b builds its answer). `[params.monsters]`: the aggression by disposition and
+  the count words' thresholds (data, ADR-0006); per pack `not_random_monsters` (AB's six, ids
+  132–137). `AdventureRuleset::random_monsters(core, levels)`: the core's creatures of the levels,
+  in core order, no war machine (the flag: the original's id range 0–144 leaves out 145–149), none
+  a pack leaves out; a random type whose levels hold none does not compile. The base pack's nine
+  monster types and two grounds, SoD's nine grounds (223 and 230 on Cursed Ground and Magic
+  Plains, D-4; 225 Favorable Winds stays untyped: no battle effect, VCMI's "ship" is a boat
+  battle). RoE alone draws among 118 creatures, the three packs among 135; the elementals by
+  BAT-QUIRK-19's levels in faithful.
+- **The setup and the state** (adventure state hash v9): `ObjectSetup.drawn` (the tiles a
+  picture lies on beyond its masks: grounds only) and `.monster` (`MonsterSetup`: creature, count,
+  disposition, never flees, does not grow, treasure), checked by `SetupError::Monster` (data
+  exactly for a monster type; a fixed monster's creature known and no war machine, a random one's
+  none; the count at most `MAX_MONSTER_COUNT` 4 095; the disposition the parameters'; the treasure's
+  resources known and distinct, 1 to `MAX_GAIN`). `ObjectSetup` lost `Copy`. The static map's
+  `MapObject.drawn`, `.monster` (`Monster`: the draws' result) and `lies_on`; `tiles` includes the
+  drawn tiles (a ground shows where it lies). The draws after the pickups', three walks in object
+  order: the random creatures (equal chances), the counts of 0 (the creature's adventure range, at
+  least 1), the aggressions (no draw for a single value, as the original's compliant and savage).
+  `AdventureSetup.difficulty` (the game's, a static input) and `AdventureState::difficulty`;
+  `army_left` (armies battles leave on objects, none until T20b writes one; `monster_count` reads
+  it) in the state and its hash.
+- **Grounds** (ADV-GRD-001, GAM-BAT-001's last step): `battle_ground` takes the last ground in map
+  order lying on the tile, which replaces the battlefield (the coast's too) and keeps the terrain.
+  The reading (2026-10-15): `place_object_tiles` (0x505B20) puts an object on its template's width
+  × height (H3API: from the picture's `.msk`; `msk_load` 0x514610, `default.msk` 1 × 1), clipped to
+  the map; a flat template (grounds) has layer 0 on every tile (0x505060), and `tile_draw_insert`
+  (0x505230, now read) keeps objects of equal layers in map order, going before an earlier one
+  only where that one's layer is higher on a shared tile; `tile_special_ground` (0x4FCE20) walks
+  the draw list from the top. The wiki agrees ("the topmost terrain effect applies"); VCMI takes
+  the first ground in object order (`battleGetBattlefieldType`), a difference on 142 tiles of 9
+  shipped maps. The sizes: `h3_map`'s `codes::GROUND_PICTURES`, the first two bytes of each
+  ground picture's `.msk` (72 pictures: 6 × 4, 8 × 6, 6 × 6, 8 × 3, 3 × 6, 3 × 3, 5 × 2, 2 × 5).
+  **Agent decision (provisional):** grounds are left out of `SharedAnchor` (5 shipped maps stack
+  two grounds of one type on one anchor; nothing names a ground).
+- **The view** (ADV-FOG-006): `ObjectView.drawn` and `.monster` (`MonsterView`: the creature and
+  `MonsterParams::count_word` of the count as it stands); `observe` takes the part.
+- **The import** (v6, ADV-MON-001): the nine monster classes (class 54's subclass the creature),
+  the body's data, the treasure's resources above 0; a treasure with an artifact is
+  `Unsupported::MonsterArtifact` (decision 22), kept without it in `import_map`; the grounds with
+  their pictures' tiles. The census (`examples/original_data.rs`): 14 021 monsters, 357
+  treasures (55 with an artifact, none below 0), no disposition beyond 4; 1 887 grounds, every
+  picture in the table, 10 939 tiles under two or more. 4 maps import whole (`Pandora's Box `
+  is now unsupported for a monster's artifact, as 7 more).
+- **Replays and versions:** the eight golden replays re-recorded with their options (commands
+  unchanged). Part v7, map import v6, adventure state hash v9; the game state hash v6 unchanged.
+- Tests: the kinds, parameters and their checks and hashes (`ruleset/tests.rs`), the draws by
+  hand over seeds, each setup check, the hashes, a ground's battlefield, the view, a monster not
+  visited (`state/tests/monsters.rs`), the packs (`h3-pack-adventure`), the import, the parts'
+  battlefields (`h3-game`).
+
+### Round 4 of increment 3: T20a2b (2026-10-15, `adventure/e08-t20a2b` #223)
+
+Decision 36's second part, built on `adventure/e08-t20a2a`; no version bump.
+
+- **Guarded tiles** (ADV-MON-005): `AdventureState::guard_of(part, pos)`, the original's scan
+  (0x41A460, survey §2.1): the 3 × 3 block clipped to the map, columns from the left, each from the
+  top, the row above left out when `pos`'s object is not visited from above (`closed_above`); the
+  first tile whose object (`tile_object`: the last still on the map visited from it) is a monster
+  with `pos`'s water status (the part's `Passage::Water`). The tile itself is in the block, as
+  the original's (no hero stands on a monster's tile). A removed monster guards nothing: the
+  guard follows from the static map and the occupancy, no per-tile flag in the state. The static
+  map's `near_monsters` bit per tile (within one step of a monster's visitable tile; derived, not
+  hashed) lets the tiles near no monster skip the scan.
+- **The step** (ADV-MON-006): `MoveHero` checks each entered tile; a guarded one is the path's
+  last (`PastVisit` for a later step), the hero's start may be guarded. After the move and the
+  tile's own visit, `visit_guard` (`ADV-STUB-5`: the monster's answer, T20b) returns the visit's
+  outcome unchanged. A step toward another hero or a neighbour-visited object does not enter, so
+  it is not tested (the original tests the hero's tile after a visit from the neighbour too:
+  T20b, with the answer).
+- **The query** (ADV-MON-006): `Reach` makes a guarded tile a destination (as a visit's), its
+  own start excepted; the property `the_query_and_move_hero_agree` now places monsters (`M` in
+  `testing::world`: five of the first creature, aggressive). `bench-check`: the test in the hot
+  loop cost the reach workload 11.6 % (random play 12.3 %) on the fixtures, which hold no
+  monster; asked only of a tile the search improves, on a map with a monster (`StaticMap`'s
+  `any_monster`), out of line (`Search::guarded`, cold), it costs 0.3 %. The fixtures gain
+  monsters in T20b, which measures the cost on a map with them.
+- **The store**: `AdventureState::apply(core, part, heroes, player, command, sink)` and
+  `reach(core, part, heroes, hero)` take the game's `&[Arc<HeroDetails>]` (`h3-heroes` a
+  dependency of `h3-adventure`, which `arch.toml` allowed since T18a); `move_hero` hands it to
+  `visit_guard`, T20b's first reader; `reach` reads it from increment 4 (movement skills).
+  `h3-game` splits its borrow (`GameState::adventure_with_heroes`, replacing `adventure_mut`);
+  `legal_moves`, the env's decoder and the tests pass `state.heroes()`.
+- Tests: the scan's order, clipping, water, the row above, a removal; the step past and onto a
+  guarded tile, leaving one; the query along a corridor and from a guarded start
+  (`state/tests/monsters.rs`); the reach property with monsters.

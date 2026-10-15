@@ -8,7 +8,7 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_content::{Formation, TerrainId};
+use h3_content::{CreatureTypeId, Formation, ResourceId, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
 use crate::ruleset::{ObjectTypeId, RiverId, RoadId};
@@ -90,7 +90,7 @@ impl TileMask {
 /// An object on the map as the setup places it. Its anchor may lie past the map's right or bottom
 /// edge (the map editor lets objects stick out); the tiles of its footprint off the map are
 /// ignored (ADV-OBJ-001).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObjectSetup {
     /// The object's bottom right tile, which its masks are relative to.
     pub anchor: Pos,
@@ -105,6 +105,34 @@ pub struct ObjectSetup {
     /// ([`crate::ObjectType::takes_amount`]), before the type's multiplier: from 1 to
     /// [`crate::MAX_PICKUP_AMOUNT`]. None draws it when the game is built.
     pub amount: Option<u32>,
+    /// The tiles its picture is drawn on beyond its blocked and visitable ones (E08 T20a2a): a
+    /// special ground's, its picture's width to the left and height upwards, the tiles it lies on
+    /// (ADV-GRD-001); empty for every other object, whose pictures no rule reads.
+    pub drawn: TileMask,
+    /// A wandering monster's data, exactly for an object whose type is a monster (ADV-MON-001,
+    /// E08 T20a2a).
+    pub monster: Option<MonsterSetup>,
+}
+
+/// A wandering monster's data as the map gives it (ADV-MON-001, E08 T20a2a).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MonsterSetup {
+    /// The creature; none for a random monster, whose type's levels draw it when the game is built
+    /// (ADV-MON-003). Never a war machine.
+    pub creature: Option<CreatureTypeId>,
+    /// The count, at most [`crate::MAX_MONSTER_COUNT`]; 0 draws it from the creature's
+    /// adventure-map range when the game is built (ADV-MON-004).
+    pub count: u32,
+    /// The disposition, a row of the monsters' aggression parameters, from which the aggression
+    /// is drawn when the game is built (ADV-MON-002).
+    pub disposition: u8,
+    /// It never flees (read by its answer, E08 T20b).
+    pub never_flees: bool,
+    /// It does not grow (kept for the week's growth, a later increment).
+    pub no_growth: bool,
+    /// What its owner's player gains when the monster is beaten or joins (E08 T20b): distinct
+    /// resources, each amount from 1 to [`crate::MAX_GAIN`].
+    pub treasure: Vec<(ResourceId, u32)>,
 }
 
 /// The static map as the setup gives it: what never changes after setup.
@@ -146,6 +174,9 @@ pub struct AdventureSetup {
     pub map: MapSetup,
     /// The heroes on the map, in any order (ids must be distinct).
     pub heroes: Vec<HeroSetup>,
+    /// The game's difficulty, from 0 (easy; E08 T20a2a): a static input the monsters' answer
+    /// reads (ADV-MON-007, E08 T20b). The game checks it against its starting resources.
+    pub difficulty: u8,
 }
 
 /// Why a hero may not stand on a tile (ADV-MAP-001).
@@ -239,6 +270,12 @@ pub enum SetupError {
     /// The object at this index has the type and anchor of an earlier typed object (a player
     /// names a typed object by both).
     SharedAnchor(usize),
+    /// The object at this index is a monster without valid monster data, or has monster data and
+    /// is no monster (ADV-MON-001): a creature missing for a fixed monster, given for a random
+    /// one, unknown or a war machine; a count above [`crate::MAX_MONSTER_COUNT`]; a disposition
+    /// the monsters' parameters lack (or no such parameters); a treasure naming an unknown
+    /// resource or one twice, or an amount outside 1 to [`crate::MAX_GAIN`].
+    Monster(usize),
     /// More objects than the state tracks (32 × 65 535); the number.
     Objects(usize),
     /// Two heroes share this id.
@@ -292,6 +329,7 @@ impl fmt::Display for SetupError {
                     "object {object} shares its type and anchor with an earlier one"
                 )
             }
+            Self::Monster(object) => write!(f, "object {object} has invalid monster data"),
             Self::Objects(n) => write!(f, "{n} objects are too many"),
             Self::DuplicateHero(hero) => write!(f, "hero {} is placed twice", hero.raw()),
             Self::UnknownOwner(hero) => {

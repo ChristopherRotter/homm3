@@ -67,7 +67,7 @@ fn chart_setup(rules: &GameRuleset, difficulty: u8) -> Arc<GameSetup> {
     for hero in state.adventure().heroes() {
         let reach = state
             .adventure()
-            .reach(rules.core(), rules.adventure(), hero.id)
+            .reach(rules.core(), rules.adventure(), state.heroes(), hero.id)
             .unwrap();
         let (_, anchor) = reach
             .tiles()
@@ -84,6 +84,8 @@ fn chart_setup(rules: &GameRuleset, difficulty: u8) -> Arc<GameSetup> {
             visitable: TileMask::from_bits(1),
             object_type: chart,
             amount: None,
+            drawn: TileMask::default(),
+            monster: None,
         });
     }
     Arc::new(setup)

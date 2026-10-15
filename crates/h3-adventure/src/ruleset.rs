@@ -6,7 +6,8 @@
 //! `specified` until then (`docs/rules/catalog/adventure.toml`).
 //!
 //! Since T12a it holds the object types (`objects.rs`, ADR-0016 point 4), since T13a the starting
-//! resources by difficulty, which the game reads (`starting.rs`, GAM-RES-002).
+//! resources by difficulty, which the game reads (`starting.rs`, GAM-RES-002), since T20a2a the
+//! wandering monsters' parameters and the creatures no random monster becomes.
 //!
 //! A part references core entities by handle (a terrain by its [`TerrainId`]) and its source by
 //! key. Every enabled core pack has exactly one adventure pack (an empty one when the pack has no
@@ -19,7 +20,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::num::{NonZeroU8, NonZeroU16};
 
-use h3_content::{ContentKey, PackManifest, Ruleset, TerrainId};
+use h3_content::{ContentKey, CreatureTypeId, PackManifest, Ruleset, TerrainId};
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
@@ -33,12 +34,17 @@ pub use objects::{
     KEY_COLOURS, MAX_GAIN, MAX_PICKUP_AMOUNT, ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef,
     ObjectTypeId, Pickup, PickupDef, Visit,
 };
-use objects::{ObjectTables, Scope, check_object_types, compile_object_types};
+use objects::{ObjectTables, Scope, check_object_types, compile_object_types, random_monsters};
 use starting::compile_starting;
 pub use starting::{MAX_DIFFICULTIES, StartingResources, StartingResourcesDef};
 
 /// Most entries of the land movement table: one per speed a `u8` can hold.
 pub const MAX_LAND_POINTS: usize = 256;
+
+/// The largest count of a wandering monster a setup may give (ADV-MON-001): the original keeps
+/// the count in the low 12 bits of the monster's tile word, so a larger count would lose its high
+/// bits (survey `E08-battles.md` §1.2; an input bound, no shipped map has a count above 3 000).
+pub const MAX_MONSTER_COUNT: u32 = 0xFFF;
 
 /// The highest bound a part may set on a game's players: the original's eight colours, and the
 /// players an event's [`crate::Viewers`] holds (E08 T8a).
@@ -127,6 +133,41 @@ pub struct AdventureParamsDef {
     /// Where a battle on the map is fought when its tile says so (GAM-BAT-001, E08 T19a); none:
     /// on the tile's terrain, without a special battlefield.
     pub battle: Option<BattleTerrainsDef>,
+    /// The wandering monsters' parameters (E08 T20a2a); none: a map may hold no monster.
+    pub monsters: Option<MonsterParamsDef>,
+}
+
+/// The wandering monsters' parameters in a pack (E08 T20a2a).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MonsterParamsDef {
+    /// A monster's aggression by its disposition (the map's code, from 0): the bounds, inclusive,
+    /// it is drawn between when the game is built (ADV-MON-002). At most 256 rows, each low to
+    /// high.
+    pub aggression: Vec<[i8; 2]>,
+    /// The counts at which each word of a monster's count after the first begins, ascending from
+    /// 2: what a player sees of a count is the number of them it reaches (ADV-FOG-006).
+    pub count_words: Vec<u32>,
+}
+
+/// The compiled [`MonsterParamsDef`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MonsterParams {
+    aggression: Vec<[i8; 2]>,
+    count_words: Vec<u32>,
+}
+
+impl MonsterParams {
+    /// The bounds of the aggression of a monster of this disposition, if the parameters know it
+    /// (ADV-MON-002).
+    pub fn aggression(&self, disposition: u8) -> Option<[i8; 2]> {
+        self.aggression.get(usize::from(disposition)).copied()
+    }
+
+    /// The word of a monster's count that a player sees (ADV-FOG-006): how many of the words'
+    /// thresholds the count reaches, 0 for the first word.
+    pub fn count_word(&self, count: u32) -> u8 {
+        u8::try_from(self.count_words.partition_point(|&t| t <= count)).unwrap_or(u8::MAX)
+    }
 }
 
 /// The terrain and battlefield of a battle whose tile is underground or on the coast, in the
@@ -160,6 +201,9 @@ pub struct AdventurePack {
     /// The starting resources by difficulty, from 0 (easy), if this pack provides them (E08
     /// T13a; empty: it does not).
     pub starting_resources: Vec<StartingResourcesDef>,
+    /// Core creatures of the pack's dependency closure that no random monster becomes (E08
+    /// T20a2a, ADV-MON-003): the expansions' six the original leaves out.
+    pub not_random_monsters: Vec<ContentKey>,
 }
 
 impl AdventurePack {
@@ -173,6 +217,7 @@ impl AdventurePack {
             object_types: Vec::new(),
             params: None,
             starting_resources: Vec::new(),
+            not_random_monsters: Vec::new(),
         }
     }
 }
@@ -224,6 +269,7 @@ pub struct AdventureParams {
     army_slots: NonZeroU8,
     starting_stack_chances: Vec<u8>,
     battle: Option<BattleTerrains>,
+    monsters: Option<MonsterParams>,
 }
 
 /// The compiled [`BattleTerrainsDef`].
@@ -291,6 +337,11 @@ impl AdventureParams {
     pub const fn battle_terrains(&self) -> Option<&BattleTerrains> {
         self.battle.as_ref()
     }
+
+    /// The wandering monsters' parameters, if the packs give them (E08 T20a2a).
+    pub const fn monsters(&self) -> Option<&MonsterParams> {
+        self.monsters.as_ref()
+    }
 }
 
 /// Why the adventure packs could not be compiled into an [`AdventureRuleset`].
@@ -329,6 +380,8 @@ pub enum AdventureCompileError {
     UnknownTerrain(String),
     /// A resource the core ruleset does not define.
     UnknownResource(String),
+    /// A creature the core ruleset does not define.
+    UnknownCreature(String),
     /// An object type no pack defines.
     UnknownObjectType(String),
     /// An object type's parameters are invalid.
@@ -387,6 +440,7 @@ impl fmt::Display for AdventureCompileError {
                 )
             }
             Self::UnknownTerrain(k) => write!(f, "unknown terrain `{k}`"),
+            Self::UnknownCreature(k) => write!(f, "unknown creature `{k}`"),
             Self::UnknownResource(k) => write!(f, "unknown resource `{k}`"),
             Self::UnknownObjectType(k) => write!(f, "unknown object type `{k}`"),
             Self::InvalidObjectType { key, reason } => {
@@ -428,6 +482,7 @@ pub struct AdventureRuleset {
     object_type_index: BTreeMap<String, ObjectTypeId>,
     params: AdventureParams,
     starting_resources: Vec<StartingResources>,
+    not_random_monsters: BTreeSet<CreatureTypeId>,
     hash: u64,
 }
 
@@ -442,6 +497,7 @@ struct Tables {
     objects: ObjectTables,
     params: Option<(AdventureParamsDef, Option<BattleTerrains>)>,
     starting_resources: Option<Vec<StartingResources>>,
+    not_random_monsters: BTreeSet<CreatureTypeId>,
 }
 
 impl AdventureRuleset {
@@ -469,7 +525,7 @@ impl AdventureRuleset {
                     })
             })
             .collect::<Result<Vec<_>, _>>()?;
-        check_object_types(&tables.objects.types)?;
+        check_object_types(core, &tables.objects.types, &tables.not_random_monsters)?;
         let (params, battle) = tables.params.ok_or(AdventureCompileError::MissingParams)?;
         let params = validate_params(params, battle)?;
         let starting_resources = tables
@@ -486,6 +542,7 @@ impl AdventureRuleset {
             object_type_index: tables.objects.index,
             params,
             starting_resources,
+            not_random_monsters: tables.not_random_monsters,
             hash: 0,
         };
         part.hash = hash_of(&part);
@@ -570,6 +627,17 @@ impl AdventureRuleset {
     pub fn starting_resources(&self) -> &[StartingResources] {
         &self.starting_resources
     }
+
+    /// The creatures a random monster of these levels (inclusive) is drawn from (ADV-MON-003,
+    /// E08 T20a2a), in the core's order: those of a level between them that are no war machine
+    /// and that no pack leaves out (`not_random_monsters`).
+    pub fn random_monsters<'a>(
+        &'a self,
+        core: &'a Ruleset,
+        levels: [u8; 2],
+    ) -> impl Iterator<Item = CreatureTypeId> + 'a {
+        random_monsters(core, &self.not_random_monsters, levels)
+    }
 }
 
 impl CanonicalHash for AdventureRuleset {
@@ -581,8 +649,11 @@ impl CanonicalHash for AdventureRuleset {
     /// entries); since v4 the object types in handle order ([`ObjectType`]'s encoding); since v5
     /// the starting resources by difficulty (their number, then each row's human and computer
     /// amounts as length and entries); since v6 the battle terrains (0 for none, else 1, the
-    /// underground's and the coast's terrain, the coast's battlefield key). The core's hash is not
-    /// part of it: replays record both.
+    /// underground's and the coast's terrain, the coast's battlefield key); since v7 (E08 T20a2a)
+    /// the monsters' parameters (0 for none, else 1, the aggression rows as their number and each
+    /// row's bounds, the count words' thresholds as length and entries) and the creatures no
+    /// random monster becomes, as length and handles in order. The core's hash is not part of
+    /// it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
         h.write_len(self.terrains.len());
@@ -625,6 +696,22 @@ impl CanonicalHash for AdventureRuleset {
                 h.write_u16(battle.coast.raw());
                 battle.coast_battlefield.as_str().hash_into(h);
             }
+        }
+        match &self.params.monsters {
+            None => h.write_u8(0),
+            Some(monsters) => {
+                h.write_u8(1);
+                h.write_len(monsters.aggression.len());
+                for [low, high] in &monsters.aggression {
+                    h.write_i32(i32::from(*low));
+                    h.write_i32(i32::from(*high));
+                }
+                monsters.count_words.hash_into(h);
+            }
+        }
+        h.write_len(self.not_random_monsters.len());
+        for id in &self.not_random_monsters {
+            id.hash_into(h);
         }
     }
 }
@@ -715,6 +802,18 @@ fn compile_pack(
         }
     }
     compile_object_types(core, id, closure, &pack.object_types, &mut tables.objects)?;
+    for key in &pack.not_random_monsters {
+        if !closure.contains(key.pack()) {
+            return Err(AdventureCompileError::ReferenceOutsideDependencies {
+                key: String::from(key.as_str()),
+                pack: String::from(id),
+            });
+        }
+        let creature = core
+            .creature_by_key(key.as_str())
+            .ok_or_else(|| AdventureCompileError::UnknownCreature(String::from(key.as_str())))?;
+        tables.not_random_monsters.insert(creature);
+    }
     if !pack.starting_resources.is_empty() {
         if tables.starting_resources.is_some() {
             return Err(AdventureCompileError::DuplicateDifficulties(String::from(
@@ -785,6 +884,8 @@ fn validate_params(
         Some("a starting_stack_chances entry is above 100")
     } else if def.max_players.get() > MAX_PLAYERS {
         Some("max_players is above MAX_PLAYERS")
+    } else if let Some(monsters) = &def.monsters {
+        check_monster_params(monsters)
     } else {
         None
     };
@@ -800,7 +901,31 @@ fn validate_params(
             army_slots: def.army_slots,
             starting_stack_chances: def.starting_stack_chances,
             battle,
+            monsters: def.monsters.map(|m| MonsterParams {
+                aggression: m.aggression,
+                count_words: m.count_words,
+            }),
         }),
+    }
+}
+
+/// Why the monsters' parameters are invalid, if they are: more aggression rows than dispositions
+/// a `u8` names, a row whose low bound is above its high one, count words' thresholds not rising
+/// from 2.
+fn check_monster_params(def: &MonsterParamsDef) -> Option<&'static str> {
+    if def.aggression.len() > 256 {
+        Some("monsters.aggression has more rows than dispositions")
+    } else if def.aggression.iter().any(|[low, high]| low > high) {
+        Some("a monsters.aggression row's low bound is above its high one")
+    } else if def
+        .count_words
+        .iter()
+        .try_fold(1, |last, &t| (t > last).then_some(t))
+        .is_none()
+    {
+        Some("monsters.count_words do not rise from 2")
+    } else {
+        None
     }
 }
 

@@ -10,7 +10,10 @@ use std::vec::Vec;
 
 use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
-use h3_content::{ContentPack, ProfileDef, ResourceDef, ResourceId, Ruleset, TerrainDef};
+use h3_content::{
+    ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId, ProfileDef, ResourceDef, ResourceId,
+    Ruleset, TerrainDef,
+};
 use h3_kernel::hash::hash_of;
 
 use super::*;
@@ -34,12 +37,36 @@ fn resource(k: &str) -> ResourceDef {
     }
 }
 
-/// Core packs: `t` (three terrains, the resources `t:wood` and `t:gold` and the profile), `u` (depends on `t`, one terrain, the resource `u:gem`) and `v` (no
-/// dependencies, no terrains).
+/// A creature of this level, a war machine if `machine` (E08 T20a2a).
+fn creature(k: &str, level: u8, machine: bool) -> CreatureDef {
+    CreatureDef {
+        key: key(k),
+        speed: if machine { 0 } else { 5 },
+        info: CreatureInfoDef {
+            level,
+            flags: if machine {
+                vec!["war_machine".to_string()]
+            } else {
+                vec![]
+            },
+            ..CreatureInfoDef::default()
+        },
+    }
+}
+
+/// Core packs: `t` (three terrains, the resources `t:wood` and `t:gold`, the creatures `t:imp`
+/// of level 1, `t:gog` of level 2 and the war machine `t:cart` of level 1, and the profile), `u`
+/// (depends on `t`, one terrain, the resource `u:gem`, the creature `u:wisp` of level 1) and `v`
+/// (no dependencies, no terrains).
 fn core() -> Ruleset {
     let t = ContentPack {
         terrains: vec![terrain("t:grass"), terrain("t:sea"), terrain("t:rock")],
         resources: vec![resource("t:wood"), resource("t:gold")],
+        creatures: vec![
+            creature("t:imp", 1, false),
+            creature("t:gog", 2, false),
+            creature("t:cart", 1, true),
+        ],
         profiles: vec![ProfileDef {
             key: key("t:faithful"),
             quirks: vec![],
@@ -49,6 +76,7 @@ fn core() -> Ruleset {
     let u = ContentPack {
         terrains: vec![terrain("u:swamp")],
         resources: vec![resource("u:gem")],
+        creatures: vec![creature("u:wisp", 1, false)],
         ..ContentPack::new(manifest("u", &["t"]))
     };
     let v = ContentPack::new(manifest("v", &[]));
@@ -66,6 +94,7 @@ fn params() -> AdventureParamsDef {
         army_slots: NonZeroU8::new(7).unwrap(),
         starting_stack_chances: vec![88, 25],
         battle: None,
+        monsters: None,
     }
 }
 
@@ -1019,6 +1048,10 @@ fn errors_explain_themselves() {
             "unknown resource `t:x`",
         ),
         (
+            AdventureCompileError::UnknownCreature("t:x".into()),
+            "unknown creature `t:x`",
+        ),
+        (
             AdventureCompileError::UnknownObjectType("t:x".into()),
             "unknown object type `t:x`",
         ),
@@ -1130,4 +1163,269 @@ fn the_battle_terrains_name_terrains_of_the_closure() {
         compile_err(&battle("t:rock", "t:grass", "u:shore")),
         outside("u:shore")
     );
+}
+
+/// [`packs`] with a monster, a random monster of levels 1 and 2 and a ground `t:hallow` in `t`,
+/// the monsters' parameters, and `u` leaving `t:gog` out of the random monsters (E08 T20a2a).
+fn monster_packs() -> Vec<AdventurePack> {
+    edit(|p| {
+        let t = pack(p, "t");
+        t.object_types.extend([
+            object(
+                "t:monster",
+                Visit::Neighbour,
+                true,
+                ObjectKindDef::Monster { levels: None },
+            ),
+            object(
+                "t:random",
+                Visit::Neighbour,
+                true,
+                ObjectKindDef::Monster {
+                    levels: Some([1, 2]),
+                },
+            ),
+            object(
+                "t:hallow",
+                Visit::Enter,
+                true,
+                ObjectKindDef::Ground {
+                    battlefield: key("t:hallow"),
+                },
+            ),
+        ]);
+        t.params.as_mut().unwrap().monsters = Some(MonsterParamsDef {
+            aggression: vec![[-4, -4], [1, 7]],
+            count_words: vec![5, 10],
+        });
+        pack(p, "u").not_random_monsters = vec![key("t:gog")];
+    })
+}
+
+/// The handles of `t:monster`, `t:random` and `t:hallow` in [`monster_packs`]' part.
+const MONSTER_TYPES: usize = 9;
+
+// covers: ADV-MON-001, ADV-MON-002, ADV-MON-003, ADV-GRD-001
+#[test]
+fn compiles_monsters_grounds_and_their_parameters() {
+    let core = core();
+    let part = AdventureRuleset::compile(&core, &monster_packs()).unwrap();
+    let kind = |i: usize| &part.object_types()[MONSTER_TYPES + i].kind;
+    assert_eq!(*kind(0), ObjectKind::Monster { levels: None });
+    assert_eq!(
+        *kind(1),
+        ObjectKind::Monster {
+            levels: Some([1, 2])
+        }
+    );
+    assert_eq!(
+        *kind(2),
+        ObjectKind::Ground {
+            battlefield: key("t:hallow")
+        }
+    );
+    // Neither is visited: the monster's answer comes with E08 T20b, a ground never.
+    assert_eq!(kind(0).effect(), None);
+    assert_eq!(kind(2).effect(), None);
+    let monsters = part.params().monsters().unwrap();
+    assert_eq!(monsters.aggression(0), Some([-4, -4]));
+    assert_eq!(monsters.aggression(1), Some([1, 7]));
+    assert_eq!(monsters.aggression(2), None);
+    let words: Vec<u8> = [1, 4, 5, 9, 10, u32::MAX]
+        .iter()
+        .map(|&c| monsters.count_word(c))
+        .collect();
+    assert_eq!(words, [0, 0, 1, 1, 2, 2]);
+    // The war machine never, `t:gog` left out by `u`, the rest in the core's order.
+    let imp = core.creature_by_key("t:imp").unwrap();
+    let wisp = core.creature_by_key("u:wisp").unwrap();
+    let drawn: Vec<CreatureTypeId> = part.random_monsters(&core, [1, 2]).collect();
+    assert_eq!(drawn, [imp, wisp]);
+    assert_eq!(part.random_monsters(&core, [2, 2]).count(), 0);
+    // Without them a part has no monsters' parameters.
+    assert!(compile(&packs()).unwrap().params().monsters().is_none());
+}
+
+#[test]
+fn monsters_and_grounds_are_checked() {
+    let invalid = |reason| AdventureCompileError::InvalidObjectType {
+        key: "t:random".into(),
+        reason,
+    };
+    let random = |levels| {
+        compile_err(&{
+            let mut p = monster_packs();
+            set_kind(&mut p, MONSTER_TYPES + 1, ObjectKindDef::Monster { levels });
+            p
+        })
+    };
+    assert_eq!(
+        random(Some([0, 1])),
+        invalid("levels is not 1 <= low <= high")
+    );
+    assert_eq!(
+        random(Some([2, 1])),
+        invalid("levels is not 1 <= low <= high")
+    );
+    // Level 2's only creature is left out.
+    assert_eq!(
+        random(Some([2, 2])),
+        invalid("no creature of its levels may be drawn")
+    );
+    let mut p = monster_packs();
+    pack(&mut p, "t").object_types[MONSTER_TYPES].visit = Visit::Enter;
+    assert_eq!(
+        compile_err(&p),
+        AdventureCompileError::InvalidObjectType {
+            key: "t:monster".into(),
+            reason: "a monster is not visited from a neighbour",
+        }
+    );
+    let mut p = monster_packs();
+    pack(&mut p, "v").object_types.push(object(
+        "v:fog",
+        Visit::Enter,
+        true,
+        ObjectKindDef::Ground {
+            battlefield: key("t:hallow"),
+        },
+    ));
+    assert_eq!(
+        compile_err(&p),
+        AdventureCompileError::ReferenceOutsideDependencies {
+            key: "t:hallow".into(),
+            pack: "v".into(),
+        }
+    );
+    let mut p = monster_packs();
+    pack(&mut p, "v").not_random_monsters = vec![key("t:imp")];
+    assert_eq!(
+        compile_err(&p),
+        AdventureCompileError::ReferenceOutsideDependencies {
+            key: "t:imp".into(),
+            pack: "v".into(),
+        }
+    );
+    let mut p = monster_packs();
+    pack(&mut p, "u").not_random_monsters = vec![key("u:ghost")];
+    assert_eq!(
+        compile_err(&p),
+        AdventureCompileError::UnknownCreature("u:ghost".into())
+    );
+    let params = |edit: fn(&mut MonsterParamsDef)| {
+        let mut p = monster_packs();
+        edit(
+            pack(&mut p, "t")
+                .params
+                .as_mut()
+                .unwrap()
+                .monsters
+                .as_mut()
+                .unwrap(),
+        );
+        compile_err(&p)
+    };
+    assert_eq!(
+        params(|m| m.aggression = vec![[0, 0]; 257]),
+        AdventureCompileError::InvalidParams("monsters.aggression has more rows than dispositions")
+    );
+    assert_eq!(
+        params(|m| m.aggression[1] = [7, 1]),
+        AdventureCompileError::InvalidParams(
+            "a monsters.aggression row's low bound is above its high one"
+        )
+    );
+    for words in [vec![1], vec![5, 5], vec![10, 5]] {
+        let mut p = monster_packs();
+        pack(&mut p, "t")
+            .params
+            .as_mut()
+            .unwrap()
+            .monsters
+            .as_mut()
+            .unwrap()
+            .count_words = words;
+        assert_eq!(
+            compile_err(&p),
+            AdventureCompileError::InvalidParams("monsters.count_words do not rise from 2")
+        );
+    }
+    // 256 rows (every disposition a byte names) and no words at all are fine.
+    let mut p = monster_packs();
+    let monsters = pack(&mut p, "t")
+        .params
+        .as_mut()
+        .unwrap()
+        .monsters
+        .as_mut()
+        .unwrap();
+    monsters.aggression = vec![[0, 0]; 256];
+    monsters.count_words.clear();
+    let part = compile(&p).unwrap();
+    assert_eq!(part.params().monsters().unwrap().count_word(9999), 0);
+}
+
+#[test]
+fn the_hash_sees_the_monsters_and_the_grounds() {
+    let base = compile(&monster_packs()).unwrap();
+    assert_ne!(
+        base.content_hash(),
+        compile(&packs()).unwrap().content_hash()
+    );
+    fn monsters(p: &mut [AdventurePack]) -> &mut MonsterParamsDef {
+        pack(p, "t")
+            .params
+            .as_mut()
+            .unwrap()
+            .monsters
+            .as_mut()
+            .unwrap()
+    }
+    let mut changes: Vec<Vec<AdventurePack>> = Vec::new();
+    let mut change = |f: &dyn Fn(&mut Vec<AdventurePack>)| {
+        let mut p = monster_packs();
+        f(&mut p);
+        changes.push(p);
+    };
+    change(&|p| monsters(p).aggression[1] = [1, 6]);
+    change(&|p| monsters(p).aggression[0] = [-3, -3]);
+    change(&|p| monsters(p).aggression.push([10, 10]));
+    change(&|p| monsters(p).count_words.push(20));
+    change(&|p| pack(p, "t").params.as_mut().unwrap().monsters = None);
+    change(&|p| pack(p, "u").not_random_monsters.clear());
+    change(&|p| pack(p, "u").not_random_monsters.push(key("t:imp")));
+    change(&|p| {
+        set_kind(
+            p,
+            MONSTER_TYPES,
+            ObjectKindDef::Monster {
+                levels: Some([1, 1]),
+            },
+        )
+    });
+    change(&|p| {
+        set_kind(
+            p,
+            MONSTER_TYPES + 1,
+            ObjectKindDef::Monster {
+                levels: Some([1, 1]),
+            },
+        )
+    });
+    change(&|p| {
+        set_kind(
+            p,
+            MONSTER_TYPES + 2,
+            ObjectKindDef::Ground {
+                battlefield: key("t:barrens"),
+            },
+        )
+    });
+    for (i, packs) in changes.iter().enumerate() {
+        assert_ne!(
+            compile(packs).unwrap().content_hash(),
+            base.content_hash(),
+            "change {i}"
+        );
+    }
 }

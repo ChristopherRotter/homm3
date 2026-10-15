@@ -17,11 +17,13 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_kernel::{Rng, StreamId};
 
 use crate::ruleset::{
-    AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef, ObjectKindDef,
-    ObjectTypeDef, ObjectTypeId, Passage, PickupDef, RiverDef, RoadDef, RoadId,
+    AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef, MonsterParamsDef,
+    ObjectKindDef, ObjectTypeDef, ObjectTypeId, Passage, PickupDef, RiverDef, RoadDef, RoadId,
     StartingResourcesDef, TerrainMovementDef, Visit,
 };
-use crate::setup::{AdventureSetup, HeroSetup, MapSetup, ObjectSetup, Pos, TileMask, TileSetup};
+use crate::setup::{
+    AdventureSetup, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos, TileMask, TileSetup,
+};
 use crate::state::AdventureState;
 
 /// The setup stream of seed 0, which the tests build states with.
@@ -79,12 +81,17 @@ pub(crate) const CHART: ObjectTypeId = ObjectTypeId::from_raw(6);
 pub(crate) const OPEN_CHART: ObjectTypeId = ObjectTypeId::from_raw(7);
 pub(crate) const TENT: ObjectTypeId = ObjectTypeId::from_raw(8);
 pub(crate) const GATE: ObjectTypeId = ObjectTypeId::from_raw(9);
+pub(crate) const MONSTER: ObjectTypeId = ObjectTypeId::from_raw(10);
+pub(crate) const RANDOM_MONSTER: ObjectTypeId = ObjectTypeId::from_raw(11);
+pub(crate) const HALLOW: ObjectTypeId = ObjectTypeId::from_raw(12);
+pub(crate) const BARRENS: ObjectTypeId = ObjectTypeId::from_raw(13);
 
 /// [`rules`]' object types: a wood pile (3–6), a gold pile (5–10 × 100), a random pile of the two,
 /// a fire (2–3 wood and 100 gold per wood), a tower revealing radius 8, a guard of key 0, two
 /// Cartographers of grass for 1 000 gold (E08 T14a): a chart not visited from above, as the
 /// original's, and an open chart that is; a tent of key 0, entered and not from above, and a gate
-/// of key 0 (E08 T15a).
+/// of key 0 (E08 T15a); a monster of the map's creature, a random monster of level 1 and two
+/// grounds fought on the battlefields `t:hallow` and `t:barrens` (E08 T20a2a).
 fn object_types() -> Vec<ObjectTypeDef> {
     let n = |v| NonZeroU32::new(v).unwrap();
     let ty = |k: &str, visit, kind| ObjectTypeDef {
@@ -147,7 +154,42 @@ fn object_types() -> Vec<ObjectTypeDef> {
             Visit::Neighbour,
             ObjectKindDef::KeyGate { key: 0 },
         ),
+        ty(
+            "t:monster",
+            Visit::Neighbour,
+            ObjectKindDef::Monster { levels: None },
+        ),
+        ty(
+            "t:random_monster",
+            Visit::Neighbour,
+            ObjectKindDef::Monster {
+                levels: Some([1, 1]),
+            },
+        ),
+        ty(
+            "t:hallow",
+            Visit::Enter,
+            ObjectKindDef::Ground {
+                battlefield: key("t:hallow"),
+            },
+        ),
+        ty(
+            "t:barrens",
+            Visit::Enter,
+            ObjectKindDef::Ground {
+                battlefield: key("t:barrens"),
+            },
+        ),
     ]
+}
+
+/// The monsters' parameters of [`rules`] and [`movement_rules`] (E08 T20a2a): the original's five
+/// dispositions and nine words of a count.
+pub(crate) fn monster_params() -> MonsterParamsDef {
+    MonsterParamsDef {
+        aggression: vec![[-4, -4], [1, 7], [1, 10], [4, 10], [10, 10]],
+        count_words: vec![5, 10, 20, 50, 100, 250, 500, 1000],
+    }
 }
 
 /// A Cartographer's kind: grass for 1 000 gold.
@@ -212,6 +254,7 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             army_slots: NonZeroU8::new(3).unwrap(),
             starting_stack_chances: vec![88, 25],
             battle: None,
+            monsters: Some(monster_params()),
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
@@ -359,6 +402,7 @@ pub(crate) fn movement_rules_edited(
                 coast: key("t:sand"),
                 coast_battlefield: key("t:shore"),
             }),
+            monsters: Some(monster_params()),
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
@@ -421,6 +465,7 @@ fn tile_of(
         'c' => (GRASS, None, Some((1, 1, Some(OPEN_CHART)))),
         'Y' => (GRASS, None, Some((1, 1, Some(TENT)))),
         'X' => (GRASS, None, Some((1, 1, Some(GATE)))),
+        'M' => (GRASS, None, Some((1, 1, Some(MONSTER)))),
         _ => (GRASS, None, None),
     }
 }
@@ -431,7 +476,8 @@ fn tile_of(
 /// blocked tile, `V` its visitable tile, `T` both (a town's gate), `P` a wood pile blocking and
 /// visited on its tile, `F` a fire likewise, `O` a tower's visitable tile (entered), `K` a guard
 /// blocking and visited on its tile, `C` a chart (a Cartographer not visited from above) likewise,
-/// `c` an open chart (one that is) likewise, `Y` a tent and `X` a gate likewise.
+/// `c` an open chart (one that is) likewise, `Y` a tent and `X` a gate likewise, `M` five of the
+/// first creature as a monster likewise (aggressive; E08 T20a2b).
 pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> AdventureSetup {
     let height = rows.len() / usize::from(levels);
     let width = rows[0].chars().count();
@@ -457,6 +503,15 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
                     visitable: TileMask::from_bits(visitable),
                     object_type,
                     amount: None,
+                    drawn: TileMask::default(),
+                    monster: (object_type == Some(MONSTER)).then(|| MonsterSetup {
+                        creature: Some(CreatureTypeId::from_raw(0)),
+                        count: 5,
+                        disposition: 2,
+                        never_flees: false,
+                        no_growth: false,
+                        treasure: vec![],
+                    }),
                 });
             }
         }
@@ -471,6 +526,7 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
             objects,
         },
         heroes,
+        difficulty: 0,
     }
 }
 

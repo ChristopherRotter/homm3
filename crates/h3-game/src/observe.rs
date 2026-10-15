@@ -81,7 +81,9 @@ pub struct PlayerView {
 /// and no tile.
 pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameObservation {
     let Viewer::Player(player) = viewer;
-    let adventure = state.adventure().observe(rules.core(), player);
+    let adventure = state
+        .adventure()
+        .observe(rules.core(), rules.adventure(), player);
     GameObservation {
         viewer: player,
         day: state.day(),

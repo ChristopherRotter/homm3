@@ -10,8 +10,9 @@ pub(crate) mod codes;
 
 use std::fmt;
 
-use h3_adventure::{MapSetup, ObjectSetup, Pos, TileMask, TileSetup};
-use h3_content::{CreatureTypeId, Formation, SkillId, SpellId};
+use h3_adventure::ObjectKind;
+use h3_adventure::{MapSetup, MonsterSetup, ObjectSetup, Pos, TileMask, TileSetup};
+use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId, SpellId};
 use h3_contracts::{ArmyStack, PlayerId};
 use h3_game::{
     DEFAULT_DIFFICULTY, GameHeroSetup, GameRuleset, GameSetup, HeroArmy, HeroArtifactsSetup,
@@ -19,7 +20,8 @@ use h3_game::{
 };
 
 use crate::model::{
-    Army, Artifacts, Bits, Body, CustomHero, HeroBody, Object, RawMap, Template, Version,
+    Army, Artifacts, Bits, Body, CustomHero, HeroBody, MonsterBody, Object, RawMap, Template,
+    Version,
 };
 
 /// Object classes the import tells apart beside the typed ones (`codes::object_type`); every other
@@ -56,6 +58,9 @@ pub enum Unsupported {
     /// type's map-wide entry's: level 2 or more, which needs increment 4's levels (E08 decision
     /// 22).
     HeroExperience(usize),
+    /// The monster at this index holds an artifact in its treasure (artifacts on the map:
+    /// increment 4, E08 decision 22). Its static layer keeps it without the artifact.
+    MonsterArtifact(usize),
 }
 
 impl Unsupported {
@@ -69,6 +74,7 @@ impl Unsupported {
             Self::HeroInTown(_) => "a hero standing in a town",
             Self::GuardedPile(_) => "a guarded resource pile",
             Self::HeroExperience(_) => "a hero with an experience of 1 000 or more",
+            Self::MonsterArtifact(_) => "a monster with an artifact in its treasure",
         }
     }
 }
@@ -141,12 +147,13 @@ impl From<Unsupported> for ImportError {
 /// # Errors
 ///
 /// The first [`ImportError`] found: the players (a hero generated at a main town), the static
-/// map, its first guarded pile, then the hero objects in the map's order.
+/// map, its first guarded pile or monster with an artifact, then the hero objects in the map's
+/// order.
 pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportError> {
     let (players, colours) = players(map)?;
-    let (static_map, guarded) = static_layer(map, rules)?;
-    if let Some(index) = guarded {
-        return Err(Unsupported::GuardedPile(index).into());
+    let (static_map, unsupported) = static_layer(map, rules)?;
+    if let Some(what) = unsupported {
+        return Err(what.into());
     }
     let objects = objects(map)?;
     let towns: Vec<ObjectSetup> = objects
@@ -190,8 +197,10 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
 
 /// Imports the static map (E08 T5a, T12a): the size, every tile's terrain, road and river, and
 /// every object but the heroes with its footprint (ADV-OBJ-001) and, for the typed classes, its
-/// object type and fixed amount (ADV-OBJ-002); every other object is a blocker, and so is a
-/// guarded pile here (the whole [`import`] refuses it).
+/// object type and fixed amount (ADV-OBJ-002), a monster's data (ADV-MON-001, E08 T20a2a) and a
+/// special ground's tiles (ADV-GRD-001); every other object is a blocker, and so is a guarded
+/// pile here (the whole [`import`] refuses it, and a monster with an artifact, which this keeps
+/// without it).
 ///
 /// # Errors
 ///
@@ -201,27 +210,25 @@ pub fn import_map(map: &RawMap, rules: &GameRuleset) -> Result<MapSetup, ImportE
     static_layer(map, rules).map(|(setup, _)| setup)
 }
 
-/// [`import_map`] with the index of the first guarded pile.
+/// [`import_map`] with what the first guarded pile or monster with an artifact makes unsupported.
 fn static_layer(
     map: &RawMap,
     rules: &GameRuleset,
-) -> Result<(MapSetup, Option<usize>), ImportError> {
+) -> Result<(MapSetup, Option<Unsupported>), ImportError> {
     let side = u16::try_from(map.terrain.size);
     let levels = u8::try_from(map.terrain.levels);
     let (Ok(side), Ok(levels)) = (side, levels) else {
         return Err(ImportError::MapSize(map.terrain.size, map.terrain.levels));
     };
     let tiles = tiles(map, rules)?;
-    let mut guarded = None;
+    let mut unsupported = None;
     let mut placed = Vec::new();
     for (index, object, template) in objects(map)? {
         if matches!(template.class, HERO | RANDOM_HERO | HERO_PLACEHOLDER) {
             continue;
         }
-        let (setup, guards) = typed(rules, index, object, template)?;
-        if guards {
-            guarded = guarded.or(Some(index));
-        }
+        let (setup, what) = typed(rules, index, object, template)?;
+        unsupported = unsupported.or(what);
         placed.push(setup);
     }
     let setup = MapSetup {
@@ -231,37 +238,117 @@ fn static_layer(
         tiles,
         objects: placed,
     };
-    Ok((setup, guarded))
+    Ok((setup, unsupported))
 }
 
 /// An object with its footprint and, for a typed class, its object type and the amount the map
-/// fixes (0 is none: drawn when the game is built); whether it is a guarded pile, which stays a
-/// blocker. A guards record counts even without stacks (the original flags a guarded pile's tile,
-/// 0x4A4BF4; how its loader treats an empty record was not read).
+/// fixes (0 is none: drawn when the game is built), a monster's data and a special ground's
+/// tiles; what it makes unsupported: a guarded pile, which stays a blocker, or a monster with an
+/// artifact, kept without it. A guards record counts even without stacks (the original flags a
+/// guarded pile's tile, 0x4A4BF4; how its loader treats an empty record was not read).
 // rule: ADV-OBJ-002
 fn typed(
     rules: &GameRuleset,
     index: usize,
     object: &Object,
     template: &Template,
-) -> Result<(ObjectSetup, bool), ImportError> {
+) -> Result<(ObjectSetup, Option<Unsupported>), ImportError> {
     let mut setup = footprint(object, template);
     let Some(key) = codes::object_type(template.class, template.subclass) else {
-        return Ok((setup, false));
+        return Ok((setup, None));
     };
     let key = key.ok_or(ImportError::Subclass(index))?;
     let object_type = rules
         .adventure()
         .object_type_by_key(key)
         .ok_or(ImportError::MissingContent(key))?;
-    if let Body::Resource { message, amount } = &object.body {
-        if message.as_ref().is_some_and(|m| m.guards.is_some()) {
-            return Ok((setup, true));
+    let mut unsupported = None;
+    match &object.body {
+        Body::Resource { message, amount } => {
+            if message.as_ref().is_some_and(|m| m.guards.is_some()) {
+                return Ok((setup, Some(Unsupported::GuardedPile(index))));
+            }
+            setup.amount = (*amount != 0).then_some(*amount);
         }
-        setup.amount = (*amount != 0).then_some(*amount);
+        Body::Monster(body) => {
+            let (monster, artifact) = monster(rules, template, body)?;
+            setup.monster = Some(monster);
+            unsupported = artifact.then_some(Unsupported::MonsterArtifact(index));
+        }
+        _ => {}
+    }
+    if matches!(
+        rules
+            .adventure()
+            .object_type(object_type)
+            .map(|ty| &ty.kind),
+        Some(ObjectKind::Ground { .. })
+    ) {
+        setup.drawn = ground_tiles(codes::ground_size(template.def.as_bytes()));
     }
     setup.object_type = Some(object_type);
-    Ok((setup, false))
+    Ok((setup, unsupported))
+}
+
+/// A wandering monster's data (ADV-MON-001, E08 T20a2a; `docs/formats/h3m.md`, "Import"): the
+/// creature of class 54's subclass (a random monster's is drawn when the game is built), the count
+/// (0 drawn), the disposition code, never flees, does not grow, and the treasure's resources that
+/// are above 0 (its message is presentation); whether the treasure holds an artifact.
+// rule: ADV-MON-001
+fn monster(
+    rules: &GameRuleset,
+    template: &Template,
+    body: &MonsterBody,
+) -> Result<(MonsterSetup, bool), ImportError> {
+    let creature = (template.class == codes::MONSTER)
+        .then(|| {
+            let code = u16::try_from(template.subclass).unwrap_or(u16::MAX);
+            creature(rules, code)
+        })
+        .transpose()?;
+    let treasure = body.treasure.as_ref();
+    let resources = treasure.map_or(Ok(Vec::new()), |t| {
+        codes::RESOURCES
+            .iter()
+            .zip(t.resources)
+            .filter_map(|(&key, amount)| {
+                u32::try_from(amount)
+                    .ok()
+                    .filter(|&a| a > 0)
+                    .map(|a| (key, a))
+            })
+            .map(|(key, amount)| {
+                rules
+                    .core()
+                    .resources()
+                    .iter()
+                    .position(|r| r.key.as_str() == key)
+                    .and_then(ResourceId::from_index)
+                    .map(|resource| (resource, amount))
+                    .ok_or(ImportError::MissingContent(key))
+            })
+            .collect()
+    })?;
+    Ok((
+        MonsterSetup {
+            creature,
+            count: u32::from(body.count),
+            disposition: body.disposition,
+            never_flees: body.never_flees,
+            no_growth: body.no_growth,
+            treasure: resources,
+        },
+        treasure.is_some_and(|t| t.artifact.is_some()),
+    ))
+}
+
+/// The tiles of a picture `width` columns wide and `height` rows high, its bottom right tile the
+/// anchor (ADV-GRD-001).
+fn ground_tiles((width, height): (u8, u8)) -> TileMask {
+    let row = (1u64 << width.min(TileMask::COLUMNS)) - 1;
+    TileMask::from_bits((0..height.min(TileMask::ROWS)).fold(0, |bits, r| {
+        bits | row << (u32::from(r) * u32::from(TileMask::COLUMNS))
+    }))
 }
 
 /// The objects with their index and template.
@@ -372,6 +459,8 @@ fn footprint(object: &Object, template: &Template) -> ObjectSetup {
         visitable: TileMask::from_bits(reversed(template.visitable)),
         object_type: None,
         amount: None,
+        drawn: TileMask::default(),
+        monster: None,
     }
 }
 
