@@ -60,8 +60,8 @@ search the parent directories).
   directly. Its first snapshot, the asset tables and `clients/layouts/battle.toml` give the draw
   list (`--list` prints it); the assets load as one checkpoint batch; the PNG goes to
   `clients/out/render/`. Drawn so far: the background (the picture of an empty surrounding,
-  CLT-Q4), the obstacles, every living stack standing on its hex, the active stack's outline; not
-  yet the heroes, count boxes, corpses, spell obstacles or the grid. With `--at <ms>` (and
+  CLT-Q4), the obstacles, every living stack standing on its hex, the active stack's outline, the
+  heroes and their flags (M3 T3a); not yet the count boxes, corpses, spell obstacles or the grid. With `--at <ms>` (and
   `--speed <0-2>`) the record's commands are played at the original's timing first and each
   stack is drawn in its pose then (`h3_view::anim`, E17 M2 T4a); `--frames <dir>` draws so each
   time a capture's `frames.toml` lists, with the original's fidgets (the capture set, M3 T1b-2).
@@ -126,7 +126,8 @@ viewer on the real assets; a full game record/replay viewer follows.
 
 One table per rule pack, `clients/assets/<pack>.toml` (ADR-0020 point 5), generated once by
 `cargo run --release -p h3-view -- harvest [--install <dir>] [--packs <dir>] [--out <dir>]` from
-the installation copy's `Heroes3.exe` and `H3bitmap.lod` (`cranim.txt`, `crtraits.txt`), keyed by
+the installation copy's `Heroes3.exe` and `H3bitmap.lod` (`cranim.txt`, `crtraits.txt`,
+`hotraits.txt`), keyed by
 the committed packs (its default `--out` is `clients/out/harvest`, so a fresh harvest is diffed
 against the committed tables, never written over them); afterwards they are source, edited by hand
 and reviewed as diffs. The client
@@ -140,7 +141,9 @@ on the M1 review list):
   circular dependencies and a key defined twice are errors.
 - `[battle]` (in exactly one table of a selection): `groups`, the creature DEF groups the battle
   shows (`moving`, `mouse_over`, `standing`, the reactions `hit`, `defend`, `death`, `strike` and
-  `shoot` up, straight and down, `move_start`, `move_end`; design §7).
+  `shoot` up, straight and down, `move_start`, `move_end`; design §7), `hero_groups` (a battle
+  hero's: `standing`, `idle`, `defeat`, `victory`, `cast`; M3 T3a) and `flags` (the left and the
+  right side's flag DEFs).
 - `[[creature]]`: `key`, `def` (the battle sprite), `times` (`cranim.txt`'s fidget interval, walk,
   attack and flight distance as the executable keeps them: scaled by 9000, 500, 500, 115 and
   truncated), optional `troop_count_offset`, `attack_climax`, `missile` (a shooter's projectile
@@ -148,6 +151,8 @@ on the M1 review list):
   (a ray shooter's five colours, R, G, B from the ray's edge inward, M3 T1b-1) and `sounds`
   (T5b: the sound archives' entries of `move`, `attack`, `wince`, `shot`, `death`, `defend`,
   `start`, `end`; one the creature lacks is left out; `h3-view harvest` writes them).
+- `[[hero]]`: `key` (a hero type's) and `def`, its battle picture (by its class's town and its
+  sex, design §4.5; M3 T3a).
 - `[[battlefield]]`: `key` (a terrain's, or a special battlefield's: the packs' `[[battlefield]]`
   of `battle.toml`, M3 T2) and `backgrounds` (the pictures by the variant the adventure map
   picks; a special battlefield has one, which wins over the terrain's).
@@ -167,8 +172,9 @@ SoD fields and their obstacles in `sod.toml`); `harvest` would keep graphics no 
 runs unattended in a Linux sandbox under Wine, on a virtual X display at 16 bits, from a copy under
 `original-data/` (never the installation); our `xdd.dll` takes over its clock, so every frame is
 taken at an exact game time, and a driver steers it by fixed coordinates, recognising screens by
-probe pixels. The capture set (`situations/set.toml`: every land terrain, human-first openings,
-two-hex stacks facing either way, usual and absolute obstacles) runs with one command and compares
+probe pixels. The capture set (`situations/set.toml`: every land terrain and special
+battlefield, human-first openings, two-hex stacks facing either way, usual and absolute
+obstacles, every hero's battle picture and the heroes' idle motion) runs with one command and compares
 each frame with our render at its time, outside masks over what we do not draw yet. The game's own battle state
 is read from its memory (M2 T3, `capture/h3mem.py`), so the recorded sequences
 (`situations/sequences.toml`: a walk, shots, a flight and a strike with its retaliation) check the

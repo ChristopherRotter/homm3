@@ -1,7 +1,7 @@
 //! The viewer's scene model (E17, ADR-0020 points 2 and 8): `h3-protocol` messages and a time in,
 //! what is on screen at that time out, as a draw list for `h3-render`. [`record`] reads a record,
 //! [`anim`] plays its commands at the original's timing, [`scene`] makes the draw list of a
-//! snapshot at a time, [`batch`] holds a checkpoint's decoded assets,
+//! snapshot at a time ([`hero`]: the heroes and their flags), [`batch`] holds a checkpoint's decoded assets,
 //! [`compose`] draws the list into a frame; [`tables`] and [`layout`] are the asset tables and
 //! the screen layouts; [`cursor`] is the game's mouse cursor and [`clock`] the battle's clock in
 //! the window; [`sound`] is what a battle's opening plays. The adapters (the real-asset gate, the headless renderer, the window through
@@ -32,6 +32,7 @@ pub mod batch;
 pub mod clock;
 pub mod compose;
 pub mod cursor;
+pub mod hero;
 pub mod layout;
 pub mod ray;
 pub mod record;

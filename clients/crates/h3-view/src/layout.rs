@@ -34,6 +34,14 @@ pub struct BattleLayout {
     /// The entries of the active outline's range, from `outline_active` on (8): each idle step
     /// rotates them by one, each taking its lower neighbour's colour (0x522950, §4.2).
     pub outline_ramp: u8,
+    /// The heroes' canvases' top-left corners, the left side's and the right side's, which is
+    /// mirrored (−43, −19; 693, −19; `battle_redraw` 0x494740, §4.5; E17 M3 T3a).
+    pub hero_canvas: [[i32; 2]; 2],
+    /// The flags' canvases' top-left corners, drawn before their heroes (29, 20; 755, 20).
+    pub flag_canvas: [[i32; 2]; 2],
+    /// The palette of the players' colours (`PLAYERS.PAL`): a player's flag takes its 32 entries
+    /// from 32 × the player's colour over the DEF's entries 224–255 (0x5FFE20, §4.5).
+    pub player_palette: String,
 }
 
 impl BattleLayout {
@@ -100,6 +108,9 @@ mod tests {
             shown,
             [0x60, 0x67, 0x66, 0x65, 0x64, 0x63, 0x62, 0x61, 0x60, 0x67]
         );
+        assert_eq!(layout.hero_canvas, [[-43, -19], [693, -19]]);
+        assert_eq!(layout.flag_canvas, [[29, 20], [755, 20]]);
+        assert_eq!(layout.player_palette, "PLAYERS.PAL");
         let flat = BattleLayout {
             outline_ramp: 0,
             ..layout

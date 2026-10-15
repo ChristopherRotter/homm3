@@ -363,8 +363,11 @@ def capture(game, map_path, out, frames, key="Right", stacks=None):
         mem = h3mem.Mem()
     now, paths = t0, []
     for ms in sorted(frames):
-        if ms > now - t0:
-            now = game.clock(f"step {ms - (now - t0)}")
+        # At most 100 ms a step (M3 T3a): the game runs one idle step for a longer one (its next
+        # time moves to now, 0x496820), so a frame far on would show too few (the outline's
+        # pulse, the flags).
+        while ms > now - t0:
+            now = game.clock(f"step {min(100, ms - (now - t0))}")
         game.settled()
         path = Path(out) / f"t{ms:05d}.xwd"
         game.dump(path)
@@ -526,7 +529,7 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         clocks = mem.globals()
         for k in ("frame_deadline", "idle_step_time"):
             clocks[k] -= t0
-        s = {"t": t - t0, "clocks": clocks, "stacks": mem.stacks()}
+        s = {"t": t - t0, "clocks": clocks, "stacks": mem.stacks(), "heroes": mem.battle_heroes()}
         if screen or frames:
             pix = game.settled()
             s["screen"] = hashlib.sha1(pix[:556].tobytes()).hexdigest()[:12]
@@ -649,12 +652,19 @@ def run_sequences(rest):
 
 def frames_toml(kept):
     """The kept frames for `h3-view sequences --frames`: each one's time, file and the stacks the
-    original shows fidgeting (group 1: the viewer draws no fidgets of its own yet, T4b-2)."""
+    original shows fidgeting (group 1: the viewer draws none of its own in a check), and, where
+    the original's memory was read for them (the frame check, M3 T3a), its heroes' groups and
+    frames (their defeats and victories are drawn from its generator; the flags are the
+    viewer's)."""
     out = ["# The original's kept frames (h3drive.py frames): numbers only.", ""]
     for k in kept:
         fidgets = ", ".join(f"[{st['side']}, {st['record']}, {st['group']}, {st['frame']}]"
                             for st in k["stacks"] if st["group"] == 1 and st["count"] > 0)
-        out += ["[[frame]]", f"t = {k['t']}", f'file = "{k["frame"]}"', f"fidgets = [{fidgets}]", ""]
+        out += ["[[frame]]", f"t = {k['t']}", f'file = "{k["frame"]}"', f"fidgets = [{fidgets}]"]
+        if "heroes" in k:
+            heroes = ", ".join(f"[{h['side']}, {h['group']}, {h['frame']}]" for h in k["heroes"])
+            out.append(f"heroes = [{heroes}]")
+        out.append("")
     return "\n".join(out)
 
 
@@ -720,7 +730,7 @@ def run_frames(rest):
             stem = Path(k["frame"]).stem
             cap = np.load(here / "frames" / k["frame"])["screen"]
             ours = h3cap.png565(here / "ours" / f"{stem}.png")
-            masked = h3cap.mask(["panel", "heroes"], shape=cap.shape)
+            masked = h3cap.mask(["panel"], shape=cap.shape)
             for x0, y0, x1, y1 in h3cap.boxes_at(observation, drawn[k["t"]]):
                 masked[max(y0, 0):max(y1, 0), max(x0, 0):max(x1, 0)] = True
             differ = (cap != ours) & ~masked

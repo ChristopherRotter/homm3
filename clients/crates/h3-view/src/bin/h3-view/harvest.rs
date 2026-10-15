@@ -1,6 +1,6 @@
 //! `h3-view harvest` (E17 M1 T4): generates the asset tables (`{base,ab,sod}.toml`, committed in
 //! `clients/assets/`) from the user's `Heroes3.exe` and `H3bitmap.lod` (`cranim.txt`,
-//! `crtraits.txt`), keyed by the committed packs (`packs/<id>/core.toml` and `battle.toml`); by
+//! `crtraits.txt`, `hotraits.txt`), keyed by the committed packs (`packs/<id>/core.toml` and `battle.toml`); by
 //! default into `clients/out/harvest` (T8). Afterwards the tables are maintained as source
 //! (ADR-0020 point 5); the client never reads the executable. An adapter: it reads files and
 //! writes text. The executable's addresses: `docs/exe/map.toml`; what they hold:
@@ -82,6 +82,20 @@ const CRANIM_GROUPS: [usize; 12] = [14, 14, 14, 14, 14, 14, 14, 14, 6, 14, 13, 4
 const CRANIM_CELLS: usize = 24;
 /// The DEF groups the battle uses (design §4.2, §4.3).
 const GROUPS: &str = "groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], breath = [17, 18, 19], move_start = 20, move_end = 21, turn_left = [7, 10], turn_right = [9, 8] }";
+/// A battle hero's DEF groups (E17 M3 T3a, design §4.5): standing (0, set by `battle_load_heroes`
+/// 0x463370), the idle motion (1), defeat (2) and victory (3, `battle_idle_step` 0x4960D0), the
+/// cast (4, `cast_spell` 0x5A01D5).
+const HERO_GROUPS: &str =
+    "hero_groups = { standing = 0, idle = 1, defeat = 2, victory = 3, cast = 4 }";
+/// The flags' DEFs `battle_load_heroes` loads (0x4634AB): the left side's, the right side's.
+const FLAGS: [u32; 2] = [0x66_FF04, 0x66_FEF8];
+/// The heroes' battle pictures (E17 M3 T3a, design §4.5): `battle_load_heroes` takes the hero's
+/// record of the static hero table (H3HeroInfo 0x679DD0, 156 records of 0x5C bytes: +0 female,
+/// +8 class), its class's town (the class table 0x67D868, records of 0x40 bytes, +0), and loads
+/// the DEF named first in record town × 2 + female of 18 records of 0x10 bytes at 0x63BD40.
+const HERO_INFO: (u32, usize, usize) = (0x67_9DD0, 156, 0x5C);
+const HERO_CLASSES: (u32, usize, usize) = (0x67_D868, 18, 0x40);
+const HERO_DEFS: (u32, usize, usize) = (0x63_BD40, 18, 0x10);
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -123,13 +137,15 @@ impl Options {
     }
 }
 
-/// The parts of a pack the tables are keyed by: from `core.toml` the manifest, creatures and
-/// terrains, from `battle.toml` the special battlefields and the obstacles.
+/// The parts of a pack the tables are keyed by: from `core.toml` the manifest, creatures, heroes
+/// and terrains, from `battle.toml` the special battlefields and the obstacles.
 #[derive(Debug, Deserialize)]
 struct Pack {
     pack: PackHeader,
     #[serde(default)]
     creature: Vec<Keyed>,
+    #[serde(default)]
+    hero: Vec<Keyed>,
     #[serde(default)]
     terrain: Vec<Keyed>,
     #[serde(skip)]
@@ -177,6 +193,10 @@ struct Harvest {
     rays: BTreeMap<usize, Vec<[u8; 3]>>,
     cranim: Vec<Cranim>,
     names: BTreeMap<String, usize>,
+    /// The heroes' battle DEFs and `hotraits.txt`'s names, by hero type.
+    hero_defs: Vec<String>,
+    hero_names: Vec<String>,
+    flags: [String; 2],
     obstacles: Vec<(String, u8, u8)>,
     absolute: Vec<(String, i16, i16)>,
     terrains: Vec<[String; 3]>,
@@ -210,7 +230,12 @@ fn harvest(options: &Options) -> Result<(), String> {
             .ok_or_else(|| format!("H3bitmap.lod has no {name}"))?;
         TextTable::parse(&bytes).map_err(|e| format!("{name}: {e:?}"))
     };
-    let h = read_harvest(&exe_bytes, &text("CRANIM.TXT")?, &text("CRTRAITS.TXT")?)?;
+    let h = read_harvest(
+        &exe_bytes,
+        &text("CRANIM.TXT")?,
+        &text("CRTRAITS.TXT")?,
+        &text("HOTRAITS.TXT")?,
+    )?;
     let mut gaps = Vec::new();
     fs::create_dir_all(&options.out).map_err(|e| format!("{}: {e}", options.out.display()))?;
     let mut packs = Vec::new();
@@ -245,9 +270,12 @@ fn harvest(options: &Options) -> Result<(), String> {
             defined.push(obstacle_number(&pack.pack.id, &o.id)?);
         }
     }
+    // The packs' heroes in order are the hero types (as `h3-harvest` writes them), each checked
+    // against hotraits.txt's name.
+    let mut hero_type = 0;
     for pack in &packs {
         let id = &pack.pack.id;
-        let table = write_table(pack, &h, &defined, &mut gaps)?;
+        let table = write_table(pack, &h, &defined, &mut hero_type, &mut gaps)?;
         let out = options.out.join(format!("{id}.toml"));
         fs::write(&out, table).map_err(|e| format!("{}: {e}", out.display()))?;
         println!("harvest: {}", out.display());
@@ -258,7 +286,12 @@ fn harvest(options: &Options) -> Result<(), String> {
     Ok(())
 }
 
-fn read_harvest(exe: &[u8], cranim: &TextTable, crtraits: &TextTable) -> Result<Harvest, String> {
+fn read_harvest(
+    exe: &[u8],
+    cranim: &TextTable,
+    crtraits: &TextTable,
+    hotraits: &TextTable,
+) -> Result<Harvest, String> {
     let (_, image) = exe::identify(exe).map_err(|e| format!("Heroes3.exe: {e:?}"))?;
     let creatures = exe::creature_table(exe).map_err(|e| format!("creatures: {e:?}"))?;
     let string = |va: u32| image.c_string(va).map_err(|e| format!("0x{va:X}: {e:?}"));
@@ -312,6 +345,32 @@ fn read_harvest(exe: &[u8], cranim: &TextTable, crtraits: &TextTable) -> Result<
             string(u32_at(&row, 8))?,
         ]);
     }
+    let mut battle_defs = Vec::new();
+    for k in 0..HERO_DEFS.1 {
+        let record = bytes(&image, exe, HERO_DEFS.0 + to_u32(k * HERO_DEFS.2), 4)?;
+        battle_defs.push(string(u32_at(&record, 0))?);
+    }
+    let mut hero_defs = Vec::new();
+    for id in 0..HERO_INFO.1 {
+        let info = bytes(&image, exe, HERO_INFO.0 + to_u32(id * HERO_INFO.2), 12)?;
+        let (female, class) = (u32_at(&info, 0), u32_at(&info, 8) as usize);
+        if female > 1 || class >= HERO_CLASSES.1 {
+            return Err(format!("hero {id}: female {female}, class {class}"));
+        }
+        let town = u32_at(
+            &bytes(
+                &image,
+                exe,
+                HERO_CLASSES.0 + to_u32(class * HERO_CLASSES.2),
+                4,
+            )?,
+            0,
+        ) as usize;
+        let def = battle_defs
+            .get(town * 2 + female as usize)
+            .ok_or(format!("hero {id}: class {class}'s town {town}"))?;
+        hero_defs.push(def.clone());
+    }
     let mut specials = vec![string(SHORE)?];
     let row = bytes(&image, exe, SPECIAL_BACKGROUNDS + 4, 4 * 9)?;
     for k in 0..9 {
@@ -327,6 +386,9 @@ fn read_harvest(exe: &[u8], cranim: &TextTable, crtraits: &TextTable) -> Result<
         rays,
         cranim: cranim_rows(cranim)?,
         names: creature_names(crtraits)?,
+        hero_defs,
+        hero_names: hero_names(hotraits),
+        flags: [string(FLAGS[0])?, string(FLAGS[1])?],
         obstacles,
         absolute,
         terrains,
@@ -482,6 +544,18 @@ pub fn creature_names(table: &TextTable) -> Result<BTreeMap<String, usize>, Stri
     Ok(names)
 }
 
+/// `hotraits.txt`'s names by hero type (from record 2, blank records skipped, as `h3-harvest`
+/// reads it for the packs). Not unique: two heroes are called Lord Haart.
+pub fn hero_names(table: &TextTable) -> Vec<String> {
+    table
+        .records
+        .iter()
+        .skip(2)
+        .filter(|r| !TextTable::is_blank(r))
+        .map(|row| row.first().map_or("", |n| n.trim()).to_owned())
+        .collect()
+}
+
 /// The type number of an obstacle key `obstacle_<n>` of pack `id`.
 fn obstacle_number(id: &str, key: &str) -> Result<usize, String> {
     key.strip_prefix("obstacle_")
@@ -493,6 +567,7 @@ fn write_table(
     pack: &Pack,
     h: &Harvest,
     defined: &[usize],
+    hero_type: &mut usize,
     gaps: &mut Vec<String>,
 ) -> Result<String, String> {
     let id = &pack.pack.id;
@@ -501,14 +576,18 @@ fn write_table(
         t,
         "# Asset tables of the pack `{id}` (E17 M1 T4; ADR-0020 points 5 and 6; the format:\n\
          # clients/README.md, \"The asset tables\"). GENERATED by `h3-view harvest` from the user's\n\
-         # Heroes3.exe and H3bitmap.lod (cranim.txt, crtraits.txt), keyed by the pack's core.toml and\n\
-         # battle.toml (packs/{id}/); maintained as source afterwards. Identifiers and numbers only\n\
-         # (ADR-0009).\n\n\
+         # Heroes3.exe and H3bitmap.lod (cranim.txt, crtraits.txt, hotraits.txt), keyed by the pack's\n\
+         # core.toml and battle.toml (packs/{id}/); maintained as source afterwards. Identifiers and\n\
+         # numbers only (ADR-0009).\n\n\
          [table]\nid = \"{id}\"\ndepends = [{}]",
         list(&pack.pack.depends)
     );
     if id == "base" {
-        let _ = writeln!(t, "\n[battle]\n{GROUPS}");
+        let _ = writeln!(
+            t,
+            "\n[battle]\n{GROUPS}\n{HERO_GROUPS}\nflags = [{}]",
+            list(&h.flags)
+        );
     }
     for c in &pack.creature {
         let name = c.name.as_deref().unwrap_or_default();
@@ -559,6 +638,27 @@ fn write_table(
         if let Some(sounds) = h.sounds.get(original) {
             let _ = writeln!(t, "sounds = {{ {sounds} }}");
         }
+    }
+    for hero in &pack.hero {
+        let (n, name) = (*hero_type, hero.name.as_deref().unwrap_or_default());
+        *hero_type += 1;
+        let def = h
+            .hero_defs
+            .get(n)
+            .filter(|_| h.hero_names.get(n).map(String::as_str) == Some(name));
+        let Some(def) = def else {
+            gaps.push(format!(
+                "{id}:{}: `{name}` is not hero type {n} of hotraits.txt",
+                hero.id
+            ));
+            continue;
+        };
+        let _ = write!(
+            t,
+            "\n[[hero]]\nkey = \"{}\"  # original id {n}\ndef = \"{}\"\n",
+            plain(&hero.id)?,
+            plain(def)?
+        );
     }
     for (index, terrain) in pack.terrain.iter().enumerate() {
         match h.terrains.get(index) {

@@ -115,7 +115,8 @@ impl Battle {
         // The viewer's own fidgets, from the battle's seed (`h3_view::anim::Fidgets`).
         let seed = u32::try_from(source.seed & u64::from(u32::MAX)).unwrap_or(1);
         let timeline = anim::fidgeting(snapshot, &commands, &looks, stage, source.speed, seed)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string())?
+            .with_heroes(motion::heroes(&record, &tables, &parsed, Some(seed))?);
         let commands = commands.len();
         Ok(Self {
             record,

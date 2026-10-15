@@ -6,6 +6,7 @@
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::format;
 use alloc::string::String;
+use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
@@ -107,14 +108,17 @@ impl Batch {
     }
 }
 
-/// The batch a draw list needs: every name in it and the outline palette, upper-cased.
+/// The batch a draw list needs: every name in it (a flag's palette too) and the outline palette,
+/// upper-cased.
 pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
-    let named = list.iter().filter_map(|d| match d {
-        Draw::Background { picture, .. } | Draw::AbsoluteObstacle { picture, .. } => Some(picture),
-        Draw::Obstacle { def, .. } | Draw::Projectile { def, .. } | Draw::Creature { def, .. } => {
-            Some(def)
-        }
-        Draw::Ray(_) => None,
+    let named = list.iter().flat_map(|d| match d {
+        Draw::Background { picture, .. } | Draw::AbsoluteObstacle { picture, .. } => vec![picture],
+        Draw::Obstacle { def, .. }
+        | Draw::Projectile { def, .. }
+        | Draw::Creature { def, .. }
+        | Draw::Hero { def, .. } => vec![def],
+        Draw::Flag { def, palette, .. } => vec![def, palette],
+        Draw::Ray(_) => Vec::new(),
     });
     named
         .chain(core::iter::once(&layout.outline_palette))
@@ -190,6 +194,23 @@ mod tests {
                 strokes: vec![],
                 colours: vec![],
             }),
+            // A hero its DEF, a flag its DEF and its players' palette (M3 T3a).
+            Draw::Hero {
+                def: "Ch00.def".to_string(),
+                group: 0,
+                frame: 0,
+                x: 0,
+                y: 0,
+                mirrored: true,
+            },
+            Draw::Flag {
+                def: "CmFlagL.def".to_string(),
+                frame: 0,
+                x: 0,
+                y: 0,
+                palette: "Players.pal".to_string(),
+                player: 0,
+            },
         ];
         let layout = crate::scene::tests::layout();
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
@@ -198,9 +219,12 @@ mod tests {
             [
                 "ABS.PCX",
                 "BG.PCX",
+                "CH00.DEF",
+                "CMFLAGL.DEF",
                 "CR.DEF",
                 "GAME.PAL",
                 "OB.DEF",
+                "PLAYERS.PAL",
                 "PLCBOWX.DEF"
             ]
         );
