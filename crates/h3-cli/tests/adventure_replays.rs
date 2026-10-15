@@ -34,6 +34,10 @@
 //! their options: only the core ruleset hash in their headers moved. In E04c T9 (BAT-QUIRK-23's
 //! flag on in `faithful`) the six `faithful` ones were re-recorded with their options: only the
 //! core ruleset hash in their headers moved.
+//! In E04c T10b (the random obstacles placed and drawn as the original's, BAT-Q50) the two with
+//! hero battles were re-recorded with their options: their battles' obstacles changed and with
+//! them the battles and the later moves (blue's hero still wins `duel-s792-d28`'s, now in 246
+//! battle commands; red's underground hero still loses `duel-s120-strict-d28`'s, now after 186).
 
 use std::path::PathBuf;
 
