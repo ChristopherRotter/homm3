@@ -186,8 +186,7 @@ pub(super) fn masks(object: usize) -> (Mask, Mask) {
 /// The body of an object of kind `kind`: a pile's amount, a monster's data ([`MONSTERS`]; its
 /// identifier, which AB and SoD store, `identifier`), else none.
 fn body(kind: usize, v: Version, identifier: u32) -> Body {
-    if let Some(&(_, count, disposition, never_flees, gold)) =
-        MONSTERS.iter().find(|m| m.0 == kind)
+    if let Some(&(_, count, disposition, never_flees, gold)) = MONSTERS.iter().find(|m| m.0 == kind)
     {
         return Body::Monster(MonsterBody {
             identifier: (v != Version::RoE).then_some(identifier),
@@ -437,7 +436,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         }
     }
     // The typed objects laid out, by class and subclass (a kind's type; two kinds share the gold
-    // pile's, E08 T16a) and anchor.
+    // pile's, E08 T16a; the monsters' kinds the monster's) and anchor.
     let mut typed: Vec<((u32, u32), Spot)> = Vec::new();
     for &((x, y, z), shape) in &plan.blockers {
         let (ax, ay, az) = (x % side, y % side, z % levels);
@@ -455,6 +454,8 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         // of other shapes on one anchor). The engine removes the visited one either way.
         let kind = shape / BLOCKERS.len();
         let (class, subclass, _) = KINDS[kind];
+        // Every monster has one type, whatever its creature (E08 T20b3b1).
+        let subclass = if class == 54 { 0 } else { subclass };
         let twin = kind > 0 && typed.contains(&((class, subclass), (ax, ay, az)));
         if !twin && !heroes.iter().any(covers) {
             if kind > 0 {
@@ -1188,7 +1189,40 @@ fn check_legal(
                 &mut Vec::new(),
             );
             prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", answer, result);
-            prop_assert!(probe.decision(actor).is_none());
+            // E08 T20b3b1: a declined offer to join goes on to the monster's offer to flee
+            // (ADV-MON-007), and the answer to an object's offer on a guarded tile to the
+            // guard's visit, which may offer too (ADV-MON-006); every other answer closes the
+            // decision.
+            let open = state.decision(actor).unwrap();
+            let next = probe.decision(actor);
+            let monster = |kind: &OfferKind| {
+                matches!(
+                    kind,
+                    OfferKind::Join | OfferKind::JoinForGold { .. } | OfferKind::Pursue
+                )
+            };
+            let flees = *answer == GameCommand::Answer(Answer::Decline)
+                && matches!(open.kind, OfferKind::Join | OfferKind::JoinForGold { .. })
+                && next.is_some_and(|n| {
+                    (n.object_type, n.anchor, &n.kind)
+                        == (open.object_type, open.anchor, &OfferKind::Pursue)
+                });
+            let guard = state.adventure().hero(open.hero).and_then(|hero| {
+                let index = state.adventure().guard_of(rules.adventure(), hero.pos)?;
+                let o = &state.adventure().map().objects()[index];
+                Some((o.object_type, o.anchor))
+            });
+            let guarded = !monster(&open.kind)
+                && next.is_some_and(|n| {
+                    monster(&n.kind) && Some((Some(n.object_type), n.anchor)) == guard
+                });
+            prop_assert!(
+                next.is_none() || flees || guarded,
+                "{:?} after {:?}: {:?}",
+                open,
+                answer,
+                next
+            );
         }
         return Ok(());
     }
@@ -1409,7 +1443,10 @@ fn check_conservation(
         } else {
             let slot = (0..7).find(|&slot| army.iter().all(|s| s.slot != slot));
             let slot = slot.ok_or_else(|| fail(format!("{hero:?} joined without room")))?;
-            let at = army.iter().position(|s| s.slot > slot).unwrap_or(army.len());
+            let at = army
+                .iter()
+                .position(|s| s.slot > slot)
+                .unwrap_or(army.len());
             army.insert(
                 at,
                 h3_contracts::ArmyStack {
@@ -1536,7 +1573,11 @@ fn check_monster_battle_end(
         GameEvent::BattleStarted { tile, .. } => Some(tile),
         _ => None,
     });
-    let tile = before.battle(owner).map(OpenBattle::tile).or(started).unwrap();
+    let tile = before
+        .battle(owner)
+        .map(OpenBattle::tile)
+        .or(started)
+        .unwrap();
     let map = before.adventure().map();
     let index = map
         .visited_from(tile)
@@ -1567,7 +1608,11 @@ fn check_monster_battle_end(
         let left = after.adventure().monster_count(index).unwrap();
         prop_assert!((1..=had).contains(&left), "{} of {}", left, had);
     }
-    prop_assert!(!matches!(result, BattleResult::Surrender(_)), "{:?}", result);
+    prop_assert!(
+        !matches!(result, BattleResult::Surrender(_)),
+        "{:?}",
+        result
+    );
     let mut treasury = before.treasury(owner).unwrap().to_vec();
     let mut gains = Vec::new();
     for event in events {
@@ -1587,7 +1632,11 @@ fn check_monster_battle_end(
             _ => {}
         }
     }
-    let treasure = if won { monster.treasure.clone() } else { Vec::new() };
+    let treasure = if won {
+        monster.treasure.clone()
+    } else {
+        Vec::new()
+    };
     prop_assert_eq!(gains, treasure);
     prop_assert_eq!(after.treasury(owner).unwrap(), &treasury[..]);
     for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
@@ -1776,7 +1825,11 @@ fn check_decisions(
                         prop_assert!(
                             matches!(
                                 open,
-                                Some(OfferKind::Join | OfferKind::JoinForGold { .. } | OfferKind::Pursue)
+                                Some(
+                                    OfferKind::Join
+                                        | OfferKind::JoinForGold { .. }
+                                        | OfferKind::Pursue
+                                )
                             ),
                             "{:?}: {:?}",
                             event,
@@ -2075,9 +2128,9 @@ impl Fought {
                     self.monster_battles += 1;
                     let ground = |o: &h3_adventure::MapObject| {
                         o.lies_on(tile)
-                            && o.object_type.and_then(|id| part.object_type(id)).is_some_and(
-                                |ty| matches!(ty.kind, ObjectKind::Ground { .. }),
-                            )
+                            && o.object_type
+                                .and_then(|id| part.object_type(id))
+                                .is_some_and(|ty| matches!(ty.kind, ObjectKind::Ground { .. }))
                     };
                     if after.adventure().map().objects().iter().any(ground) {
                         self.on_ground += 1;
@@ -2174,7 +2227,13 @@ fn the_plans_play_battles_to_a_victory() {
     assert!(f.victories > f.retreats + f.surrenders + f.draws, "{f:?}");
     assert!(f.retreats > 0 && f.surrenders > 0, "{f:?}");
     assert!(f.captured > 0 && f.raised > 0 && f.learned > 0, "{f:?}");
-    assert!(f.monster_battles > 0 && f.system_commands > 0 && f.on_ground > 0, "{f:?}");
+    assert!(
+        f.monster_battles > 0 && f.system_commands > 0 && f.on_ground > 0,
+        "{f:?}"
+    );
     assert!(f.monsters_beaten > 0 && f.visitors_lost > 0, "{f:?}");
-    assert!(f.joins_offered > 0 && f.flights_offered > 0 && f.joined > 0, "{f:?}");
+    assert!(
+        f.joins_offered > 0 && f.flights_offered > 0 && f.joined > 0,
+        "{f:?}"
+    );
 }

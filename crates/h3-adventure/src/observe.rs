@@ -319,7 +319,8 @@ impl AdventureEvent {
                 | AdventureEventKind::TilesRevealed { .. }
                 | AdventureEventKind::KeyGained { .. }
                 | AdventureEventKind::HeroRemoved { .. }
-                | AdventureEventKind::CreaturesJoined { .. } => self.kind,
+                | AdventureEventKind::CreaturesJoined { .. }
+                | AdventureEventKind::MonsterChanged { .. } => self.kind,
             },
             seen_by: alone,
         })

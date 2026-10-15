@@ -380,6 +380,18 @@ pub enum AdventureEventKind {
         /// How many joined.
         count: u32,
     },
+    /// The word of a wandering monster's count that a viewer sees changed (ADV-FOG-006,
+    /// ADV-MON-010; E08 T20b3b1): a battle it survived left it fewer creatures. Seen by the
+    /// players that see the monster, as its removal would be ([`Self::ObjectRemoved`]); not told
+    /// when the word stays.
+    MonsterChanged {
+        /// The monster's type.
+        object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+        /// The word of its count now ([`crate::MonsterParams::count_word`]).
+        count_word: u8,
+    },
 }
 
 /// Receiver of the adventure context's events.

@@ -82,13 +82,20 @@ fn own_army() -> impl Strategy<Value = Vec<Option<(u16, u16)>>> {
     })
 }
 
-/// The tiles a template anchored at `anchor` covers on the map (blocked and visitable).
+/// The tiles a template anchored at `anchor` covers on the map (blocked and visitable; a special
+/// ground's, which neither blocks nor is visited, the anchor it lies on: E08 T20b3b1).
 fn covers(anchor: Spot, template: usize, side: u8) -> impl Iterator<Item = Spot> {
     let (ax, ay, az) = anchor;
     let (blocked, visitable) = masks(template);
+    let lies: &[(u8, u8)] = if blocked.is_empty() && visitable.is_empty() {
+        &[(0, 0)]
+    } else {
+        &[]
+    };
     blocked
         .iter()
         .chain(visitable)
+        .chain(lies)
         .filter_map(move |&(column, row)| {
             let x = ax.checked_sub(column).filter(|&x| x < side)?;
             let y = ay.checked_sub(row).filter(|&y| y < side)?;
@@ -278,7 +285,8 @@ fn depth(view: &TileView) -> u8 {
 /// not told the tile entered takes the hero out of its sight); a hero shows without a step only
 /// on a tile the viewer did not see before. The viewer forgets nothing: a tile's view only
 /// deepens, and keeps what it showed; an object it saw leaves its view only as an object removal
-/// it is told (E08 T13b), and its treasury changes only by the gains and payments it is told,
+/// it is told (E08 T13b), and a monster's word of its count changes only as it is told (E08
+/// T20b3b1); its treasury changes only by the gains and payments it is told,
 /// which are its own. Its open decision and its purchases change only as its offers' events say:
 /// an offer it is told opened is its decision, an answer closes it, an accepted Cartographer's
 /// adds the type to its purchases (E08 T14b); a reveal it is told explores at least that many
@@ -304,6 +312,7 @@ fn check_told(
         .collect();
     let mut stepped = Vec::new();
     let mut removed = Vec::new();
+    let mut words = Vec::new();
     let mut treasury = before.treasury.clone();
     let named = |o: &Offer| (o.hero, o.object_type, o.anchor);
     let mut decision = before.decision.as_ref().map(named);
@@ -349,6 +358,18 @@ fn check_told(
                 kind: AdventureEventKind::CreaturesJoined { .. },
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::MonsterChanged {
+                        object_type,
+                        anchor,
+                        count_word,
+                    },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                words.push(((object_type, anchor), count_word));
+            }
             GameEvent::Adventure(AdventureEvent {
                 kind: AdventureEventKind::HeroRemoved { hero, pos },
                 seen_by,
@@ -509,8 +530,23 @@ fn check_told(
         prop_assert!(!removed.contains(&named(object)), "{:?} removed", object);
     }
     for object in &before.adventure.objects {
+        // A monster it was told changed shows its new word, and nothing else changed.
+        let told = words
+            .iter()
+            .rev()
+            .find(|(name, _)| *name == named(object))
+            .map(|&(_, word)| {
+                let mut now = object.clone();
+                if let Some(monster) = &mut now.monster {
+                    monster.count_word = word;
+                }
+                now
+            });
         prop_assert!(
-            after.adventure.objects.contains(object) || removed.contains(&named(object)),
+            told.as_ref().map_or_else(
+                || after.adventure.objects.contains(object),
+                |now| after.adventure.objects.contains(now)
+            ) || removed.contains(&named(object)),
             "{:?} left untold",
             object
         );
