@@ -19,7 +19,7 @@ use h3_content_battle::{
     Ability, BattleRuleset, BattlefieldId, MAX_WALL_TARGETS, SiegeField, WallKind,
 };
 use h3_contracts::{BattleSetup, BattleSide, FortLevel, Moat};
-use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
+use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, SINGLE_FRAC_BITS, X87, round_single};
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::error::SetupError;
@@ -608,38 +608,20 @@ fn turned_front(field: Field, shooter: &Stack, target: Hex) -> Hex {
 /// Whether the straight line from `from` to `to` meets a wall (BAT-SIE-008; the original's
 /// 0x467840): on the column/row grid, from `from`'s column and row in 17 × the larger difference
 /// steps of 1/17 of a cell along the longer axis and the matching fraction along the other, each
-/// position a single-precision value and truncated to a hex at every step; the gate's hex
-/// blocks while the gate is closed, any other wall hex while it stands (a destroyed wall's hex
-/// no longer, BAT-SIE-012).
+/// position a single-precision value and truncated to a hex at every step ([`LineAxis`]); the
+/// gate's hex blocks while the gate is closed, any other wall hex while it stands (a destroyed
+/// wall's hex no longer, BAT-SIE-012).
 fn line_blocked(s: &SiegeState, from: Hex, to: Hex) -> bool {
     let (fx, fy) = s.field.coords(from);
     let (tx, ty) = s.field.coords(to);
     let (dx, dy) = (tx - fx, ty - fy);
     let long = dx.unsigned_abs().max(dy.unsigned_abs());
-    // Each axis's step: ±1 along the longer one, the other's difference over the longer one's,
-    // stored as an `f32`; then divided by 17 and stored again (0x4678D9 to 0x46795B).
-    let step = |d: i32| -> (bool, X87) {
-        let unit = X87::ratio(d.unsigned_abs(), long, DOUBLE_BITS)
-            .unwrap_or(X87::ZERO)
-            .round(SINGLE_BITS);
-        (d < 0, seventeenth(unit))
-    };
-    let (sx, sy) = (step(dx), step(dy));
-    let mut x = X87::int(u64::from(fx.unsigned_abs()));
-    let mut y = X87::int(u64::from(fy.unsigned_abs()));
-    let advance = |v: X87, (back, by): (bool, X87)| {
-        if back { v.minus(by) } else { v.plus(by) }.round(SINGLE_BITS)
-    };
+    let (mut x, mut y) = (LineAxis::new(fx, dx, long), LineAxis::new(fy, dy, long));
     for _ in 0..17 * long {
-        x = advance(x, sx);
-        y = advance(y, sy);
         // The positions stay between the two hexes' columns and rows.
         let hex = s
             .field
-            .hex(
-                i32::try_from(x.trunc()).unwrap_or(i32::MAX),
-                i32::try_from(y.trunc()).unwrap_or(i32::MAX),
-            )
+            .hex(x.advance(), y.advance())
             .unwrap_or(Hex(u8::MAX));
         if hex == s.gate {
             if !s.gate_open {
@@ -652,9 +634,66 @@ fn line_blocked(s: &SiegeState, from: Hex, to: Hex) -> bool {
     false
 }
 
+/// One axis of the shot's line ([`line_blocked`], 0x467840), computed exactly in integers as
+/// numerators over `2^SINGLE_FRAC_BITS` (E04c T10a: a quarter of a siege's instructions went to
+/// stepping it in [`X87`]). The original stores the axis's step as an `f32`: the axis's difference
+/// over the longer one's, then divided by 17 (0x4678D9 to 0x46795B), at least `1/272` and so a
+/// multiple of `2^-32`; each position is the `f32` sum of the last one and the step. Below 17 such
+/// a sum is exact in 37 bits, so the FPU's rounding to 53 bits never acts and one rounding to
+/// single precision ([`round_single`]) gives the original's position;
+/// `tests::sieges::the_line_s_integer_axis_is_the_x87_s` checks every start, difference and
+/// length of the field against the step-by-step [`X87`] computation. A position below 0 (a
+/// rounding past column or row 0 at the line's end) stays 0, as [`X87::minus`] keeps it; it
+/// truncates to the same hex.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct LineAxis {
+    /// The position, a numerator over `2^SINGLE_FRAC_BITS`.
+    at: u64,
+    /// The step's size, the same way.
+    by: u64,
+    /// Whether the axis's difference is negative.
+    back: bool,
+}
+
+impl LineAxis {
+    /// The axis starting at `from` towards a difference of `d`, the longer axis's difference
+    /// being `long` (0 for a line from a hex to itself: no step).
+    pub(crate) fn new(from: i32, d: i32, long: u32) -> Self {
+        let unit = X87::ratio(d.unsigned_abs(), long, DOUBLE_BITS)
+            .unwrap_or(X87::ZERO)
+            .round(SINGLE_BITS);
+        Self {
+            at: u64::from(from.unsigned_abs()) << SINGLE_FRAC_BITS,
+            by: seventeenth(unit).to_fixed(),
+            back: d < 0,
+        }
+    }
+
+    /// One step: the new position's column or row (truncated, as the original's `_ftol`).
+    pub(crate) fn advance(&mut self) -> i32 {
+        self.at = round_single(if self.back {
+            self.at.saturating_sub(self.by)
+        } else {
+            self.at + self.by
+        });
+        self.column()
+    }
+
+    /// The position's column or row.
+    pub(crate) fn column(self) -> i32 {
+        i32::try_from(self.at >> SINGLE_FRAC_BITS).unwrap_or(i32::MAX)
+    }
+
+    /// The position, a numerator over `2^SINGLE_FRAC_BITS`.
+    #[cfg(test)]
+    pub(crate) const fn position(self) -> u64 {
+        self.at
+    }
+}
+
 /// `v / 17` as the original computes it: an `f32` divided by the `f32` constant 17 in the FPU's
 /// precision, stored as an `f32`.
-fn seventeenth(v: X87) -> X87 {
+pub(crate) fn seventeenth(v: X87) -> X87 {
     // `v` is an `f32`: its bits give its mantissa `m` and the power of two `v / m` (at most 2^0
     // for the steps, at least 2^-27).
     let bits = v.to_f32_bits();

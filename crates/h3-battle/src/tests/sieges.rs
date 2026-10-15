@@ -691,6 +691,42 @@ fn the_walls_halve_shots_from_outside_at_targets_inside() {
 
 // covers: BAT-SIE-008
 #[test]
+fn the_line_s_integer_axis_is_the_x87_s() {
+    use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
+
+    use crate::siege::{LineAxis, seventeenth};
+    // The original's axis step by step in the FPU's arithmetic (as `line_blocked` computed it
+    // until E04c T10a): each position the 53-bit sum stored as an `f32`, kept at 0 below it.
+    // Every start, difference and longer difference of the field (17 columns, 11 rows), ends
+    // outside it included.
+    for long in 1..=16u32 {
+        let reach = i32::try_from(long).unwrap();
+        for d in -reach..=reach {
+            let unit = X87::ratio(d.unsigned_abs(), long, DOUBLE_BITS)
+                .unwrap()
+                .round(SINGLE_BITS);
+            let by = seventeenth(unit);
+            for from in 0..=16i32 {
+                let mut x87 = X87::int(u64::from(from.unsigned_abs()));
+                let mut axis = LineAxis::new(from, d, long);
+                for step in 0..17 * long {
+                    x87 = if d < 0 { x87.minus(by) } else { x87.plus(by) }.round(SINGLE_BITS);
+                    let column = axis.advance();
+                    assert_eq!(
+                        (axis.position(), i64::from(column)),
+                        (x87.to_fixed(), i64::try_from(x87.trunc()).unwrap()),
+                        "from {from}, difference {d} of {long}, step {step}"
+                    );
+                }
+            }
+        }
+    }
+    // A line from a hex to itself takes no step and stays where it starts.
+    assert_eq!(LineAxis::new(7, 0, 0).column(), 7);
+}
+
+// covers: BAT-SIE-008
+#[test]
 fn the_open_gate_the_walls_absence_and_a_bow_let_shots_through() {
     let r = ruleset();
     let s = at_town(

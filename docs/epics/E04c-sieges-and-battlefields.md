@@ -2,7 +2,7 @@
 
 Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2 closed: T3 (#179), T4 (#180), BAT-Q39 and BAT-Q40 answered; increment 3, T5: the seam ADR-0023 (#183), towns on the experiment maps (#184), the reading (BAT-Q41, BAT-Q42), the battle's walls, gate and moat (#187), the siege batch 3c run by
 an agent (T5e): increment 3 done (#190); increment 4, T6, refined 2026-10-14 (BAT-Q43), built and confirmed 2026-10-14: the seam #191, the battle and the batch 3d, #199; increment 5, T7, the arrow towers, built 2026-10-14 (BAT-Q44, BAT-Q45); increment 6, T7d, built and merged 2026-10-14 (BAT-Q46); increment 7, T8, the siege's other rules, built 2026-10-15; increment 8, T7e, the automatic Ballista's target, built and merged 2026-10-15 (#225, #227);
-increment 9, T9, the workload and the measurements, built 2026-10-15) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
+increment 9, T9, the workload and the measurements, built and merged 2026-10-15 (#232, #233); increment 10, T10a, the fold-in and the audit, built 2026-10-15) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
 
@@ -133,8 +133,24 @@ measurements, exit criterion 5).
   `random-rollouts-siege` (bench-check), the criterion benches' siege variants, the
   measurements: the `full` workload as fast as at E04b's end on the same machine (identical games,
   2.8 % fewer instructions), the siege about 27 % slower per step (the shot's wall test,
-  `siege::line_blocked`, a quarter of its instructions); for the user's checkpoint.
-- [ ] T10 Closure: the independent review (as E04b's T11).
+  `siege::line_blocked`, a quarter of its instructions); confirmed by the user and merged
+  2026-10-15 (#232, #233).
+**Increment 10** (the user, 2026-10-15: the next sensible increment; T10 in three parts as
+E04b's T11; the shot's exact line before the review, so that it reads the epic's final code).
+
+- [ ] **T10 Closure**, in three parts:
+  - [ ] **T10a The fold-in and the audit** (increment 10): the shot's wall line in exact integers
+    (the queue's T9b lead: an exhaustive test against the `X87` steps, the siege workload
+    re-baselined); the war machines' stack ids in the original's record order (0x463600: the
+    Catapult, the Ballista, the First Aid Tent, the Ammo Cart; D-23); a test that the walls
+    property's games reach the gate, the moat and the breaches (T9's open point); the catalog's
+    statuses and summaries, the exit criteria, the queue's inbox by destination.
+  - [ ] **T10b The independent review** (the next increment): fresh reviewer agents per slice (the
+    battlefields; walls, gate and moat; the Catapult and Earthquake; the turrets and the computer's
+    aim; the town's other rules), a robustness and a security review; the fold-in.
+  - [ ] **T10c The closure**: status, BACKLOG and the ADRs' lines in a `shared/` pull request,
+    `h3-heroes`' handover to the adventure lane (its inbox), the user's Windows verify and a
+    `full` measurement on the user's machine (exit criteria 5 and 7).
 
 ### T5 — Walls, gate and moat (refined 2026-10-14, increment 3)
 

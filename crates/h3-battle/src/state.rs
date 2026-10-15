@@ -41,6 +41,12 @@ pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS + 1;
 /// The Catapult's war-machine kind: after the kinds the ruleset places (BAT-SIE-009).
 pub(crate) const CATAPULT_KIND: usize = WAR_MACHINE_KINDS;
 
+/// The war machines' kinds in the order the original gives them records after the army (E04c
+/// T10a, `docs/formats/installation.md` §7.27; 0x463600): the siege's Catapult, the Ballista, the
+/// First Aid Tent, the Ammo Cart. Their stack ids follow it, so every tie-break and draw over
+/// stack ids sees the original's order (the later stack wins the computer's ties).
+const RECORD_ORDER: [usize; MAX_WAR_MACHINES] = [CATAPULT_KIND, 0, 2, 1];
+
 /// The Catapult's army slot ([`Stack::slot`]): after the army slots and the other war machines.
 // `MAX_ARMY_SLOTS + MAX_WAR_MACHINES <= SIDE_STACK_SLOTS` (asserted below).
 #[allow(
@@ -1148,7 +1154,8 @@ impl BattleState {
                 placed[len] = stack;
                 len += 1;
             }
-            for stack in machines.into_iter().flatten() {
+            // rule: BAT-WAR-001
+            for stack in RECORD_ORDER.iter().filter_map(|&kind| machines[kind]) {
                 placed[len] = stack;
                 len += 1;
             }

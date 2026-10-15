@@ -357,6 +357,18 @@ Pendant of Negativity: A's Lightning Bolt cursor at B's stack (no target by the 
 wiki, a hit in VCMI), and Slow from the Orb's owner at stacks under Power of the Dragon Father
 (BAT-MAG-063, 064).
 
+**From E04c** (moved there at E04c T10a, the closure's triage; none staged). From T5a (BAT-Q41,
+survey S-29): a Stronghold with a Citadel on an AB-format map in the Complete game (a moat or
+natural obstacles: the game's version; the writer writes SoD maps only). From T7e
+(`installation.md` §7.33): a computer player's automatic Ballista on Easy (0x435CB0 divides
+nothing there: the engine's default setup; hot seat makes both sides human), the / 10 of a
+candidate that loses its turns, a hypnotized candidate. From T8 (§7.32): a hypnotized stack
+between armies of different morale, its morale read before and after the next action (the
+original's controller, the engine's owner). From T9 (survey D-22): a defending hero's Ballista at
+a town without a fort (the code sets it up, VCMI does not). From T10a (survey D-23): a tie
+between a First Aid Tent and an Ammo Cart in the computer's aim (the later record: the Ammo Cart
+in the original's order).
+
 **The wiki checks** (the review's 49 wanted checks, done 2026-10-13 with the user's approval:
 raw pages of heroes.thelazy.net through WebFetch, verbatim quotes; SoD arguments of `swh`). Each
 outcome names the rule or question; pages without a link are `https://heroes.thelazy.net/index.php/<Page>`.

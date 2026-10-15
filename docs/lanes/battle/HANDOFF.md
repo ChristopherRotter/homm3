@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 9, T9 (the user, 2026-10-15):** #233 (`battle/e04c-t9`), the small #232 (`shared/e04c-t9`, first): T9a the properties at the epic's places, its review's BAT-SIE-029 as BAT-QUIRK-23 (flag 25, BAT-Q48); T9b siege workload, measurements. Awaits the user's checkpoint. **Next:** T10 (the closure's review).
-- **Merged:** up to #227 (T7e).
-- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
-- **Versions** (T7e; T9 moved none): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v24, observation encoding v20; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q49, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-23, S-30.
+- **E04c increment 10, T10a (the user, 2026-10-15):** `battle/e04c-t10a`: the wall line in integers, the war machines' record order (D-23), the walls property's reach, the audit. Awaits the user's checkpoint. **Next:** T10b (the review), T10c (the closure; the inbox lists what it passes on).
+- **Merged:** up to #233 (T9).
+- **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, the inbox, Q43; S-23, S-24, batch 2g.
+- **Versions** (T7e; none since): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v24, observation encoding v20; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q49, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
 
 ## Standing traps
@@ -24,7 +24,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Name an address only after reading its code (§7.15 had misnamed 0x469E50).
 
 **Battle code and tests**
-- Stack ids: war machines follow the army in kind order (Ballista, Ammo Cart, Tent, Catapult), not in `BattleSetup.war_machines`' order (the original's siege Catapult comes first: inbox); then a town's turrets (keep, upper, lower), off the field (254, 255, 251): a rule that walks stacks for targets or distances leaves them out (`Stack::is_turret`).
+- Stack ids: war machines follow the army in the original's record order (Catapult, Ballista, Tent, Ammo Cart: `state::RECORD_ORDER`, D-23), not in `BattleSetup.war_machines`' order; then a town's turrets (keep, upper, lower), off the field (254, 255, 251): a rule that walks stacks for targets or distances leaves them out (`Stack::is_turret`).
 - The computer's choices (`aim.rs`) read Fight Values, which test creatures lack (`fighting_turret_ruleset`); `BattleState::new` has run the keep's first shot already (`tests/aim.rs`'s `fresh`). It reads a war machine's damage as the original's record (`aim::damage`: a Ballista's 2..3), not the stack's hero-multiplied range; its values are small, so ties (the later stack) decide often.
 - Defend spoils exact damage expectations: skip turns with `activate`. `BattleState::new` drops the first activation's events (use `start`). A test ruleset may not make bad morale certain (254/255).
 - Hidden obstacles leak through public events too: a hidden obstacle that does nothing must not change them (a mine that does not go off must not split a `Moved`). `hidden_obstacles_do_not_show` checks the acting side's commands and casts (its profiles leave BAT-QUIRK-4 off; no Berserk in its books, BAT-Q31); the computer's aim (the turrets', the automatic Ballista's) reads only `obstacles::public_pits`. `legal_commands` lists no casts: a property over legal commands must add `cast_targets` × `second_targets` itself.
@@ -58,14 +58,14 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-15 (sixty-eighth) — E04c T10a: the fold-in and the audit (increment 10)
+
+T10 cut as E04b's T11. The wall line in integers (siege −X % Ir); war machines in 0x463600's order (D-23); the reach test; summaries; the inbox. Detail: the log.
+
 ### 2026-10-15 (sixty-seventh) — E04c T9: the workload and the measurements (increment 9)
 
 T9a: the properties at the epic's places, the walls property; its review: BAT-SIE-029. T9b: `random-rollouts-siege`; `full` as at E04b's end; the siege's wall line a quarter of its cost (inbox). Detail: the log.
 
 ### 2026-10-15 (sixty-sixth) — E04c T7e: the automatic Ballista's target (increment 8)
 
-Reading §7.33; the seam #225; BAT-WAR-008; batch 3h (`ballista.py`): the first estimate refuted, fixed to the record's 2..3; #225, #227 merged.
-
-### 2026-10-15 (sixty-fifth) — E04c T8: the siege's other rules (increment 7)
-
-Reading §7.32; BAT-SIE-024 to 028; batch 3g (`town.py`): as the code; #222 merged.
+Reading §7.33; the seam #225; BAT-WAR-008; batch 3h (`ballista.py`): the estimate fixed to the record's 2..3; #225, #227 merged.
