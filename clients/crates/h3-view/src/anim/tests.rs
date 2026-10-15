@@ -17,6 +17,7 @@ const MELEE: &str = include_str!("../../../../situations/timelines/melee.txt");
 const TURN: &str = include_str!("../../../../situations/timelines/turn.txt");
 const CLIMB: &str = include_str!("../../../../situations/timelines/climb.txt");
 const BEHIND: &str = include_str!("../../../../situations/timelines/behind.txt");
+const SHOTS: &str = include_str!("../../../../situations/timelines/shots.txt");
 
 /// Creature handles of the tests.
 const CHAMPION: u16 = 0;
@@ -650,6 +651,76 @@ fn the_behind_sequence_plays_as_recorded() {
 }
 
 #[test]
+fn the_shots_sequence_plays_as_recorded() {
+    // `shots` (M3 T1b-1, design §7.12): a battle in progress in hot seat. Round 1: the Arch
+    // Magi's ray at the Beholders, the Cyclops' throw down at the Gnolls (the Cyclops plays its
+    // group out after the Gnolls' hit), the Beholders' ray at the Cyclops, the Gnolls defend;
+    // round 2: the Arch Magi's ray at the defending Gnolls, the Cyclops' throw kills the
+    // Beholders.
+    let mut o = snapshot(vec![
+        at(0, Side::Attacker, CYCLOPS, 35, false),
+        at(1, Side::Attacker, ARCH_MAGE, 137, false),
+        at(2, Side::Defender, BEHOLDER, 49, false),
+        at(3, Side::Defender, GNOLL, 151, false),
+    ]);
+    o.active = Some(1);
+    let shot = flags(true, false, false);
+    let commands = [
+        (
+            None,
+            vec![struck(1, 2, 1, shot), Event::TurnStarted { stack: 0 }],
+        ),
+        (
+            Some(1517),
+            vec![struck(0, 3, 6, shot), Event::TurnStarted { stack: 2 }],
+        ),
+        (
+            Some(3471),
+            vec![struck(2, 0, 0, shot), Event::TurnStarted { stack: 3 }],
+        ),
+        (
+            Some(4638),
+            vec![
+                Event::Defended { stack: 3 },
+                Event::RoundStarted { round: 2 },
+                Event::TurnStarted { stack: 1 },
+            ],
+        ),
+        (
+            Some(4638),
+            vec![struck(1, 3, 4, shot), Event::TurnStarted { stack: 0 }],
+        ),
+        (
+            Some(6655),
+            vec![struck(0, 2, 40, shot), Event::TurnStarted { stack: 3 }],
+        ),
+    ];
+    let t = play(&o, &commands);
+    assert_eq!(until(&t.lines(), 9655), SHOTS);
+    // Three rays of 11 ticks, each from trunc(115 F) after the climax frame shows; the last
+    // tick shows for no time.
+    let rays: Vec<(u32, usize)> = t.beams.iter().map(|b| (b.from, b.ticks.len())).collect();
+    assert_eq!(rays, [(655, 11), (4086, 11), (5293, 11)]);
+    assert!(t.ray(664).is_none());
+    let first = t.ray(665).unwrap();
+    assert_eq!(first.colours.len(), 5);
+    assert!(t.ray(755).unwrap().strokes.len() > first.strokes.len());
+    assert!(t.ray(765).is_none());
+    let changes = t.changes(800);
+    assert!((665..=765).step_by(10).all(|ms| changes.contains(&ms)));
+    // After the ray the shot group's rest: frame 9 at once, 10 and 11 on the deadline; 12 drawn
+    // and never shown.
+    let shown = t.at(841)[&1];
+    assert_eq!((shown.group, shown.frame), (15, 11));
+    assert_eq!(t.at(879)[&1].frame, 11);
+    assert!(
+        t.keys
+            .iter()
+            .any(|k| k.stack == 1 && k.pose.frame == 12 && k.shown == u32::MAX)
+    );
+}
+
+#[test]
 fn a_creature_without_numbers_is_an_error() {
     let mut o = snapshot(vec![at(0, Side::Attacker, 99, 35, false)]);
     let layout = layout();
@@ -846,6 +917,36 @@ fn a_reaction_without_frames_and_a_strike_at_nothing() {
     // The second strike, at no known stack, is straight (12).
     assert_eq!(t.keys.last().unwrap().pose, still(2, 52));
     assert!(t.keys.iter().any(|k| k.pose.group == 12));
+}
+
+#[test]
+fn a_ray_without_a_climax_frame_or_a_target() {
+    // A ray shooter without a climax frame plays its whole group, then the ray, and no rest of
+    // the group (0x5A6130); a shot at no known stack draws no ray.
+    let mut numbers = looks();
+    numbers.get_mut(&ARCH_MAGE).unwrap().climax = 0;
+    let layout = layout();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+    };
+    let o = snapshot(vec![
+        at(0, Side::Attacker, ARCH_MAGE, 137, false),
+        at(1, Side::Defender, GOBLIN, 49, false),
+    ]);
+    let shot = flags(true, false, false);
+    let events = [struck(0, 1, 1, shot), struck(0, 9, 1, shot)];
+    let commands = [Command {
+        at: None,
+        events: &events,
+    }];
+    let t = timeline(&o, &commands, &numbers, stage, Speed::default()).unwrap();
+    assert_eq!(t.beams.len(), 1);
+    // 13 frames of 38 ms, the first shown at 100, the last at 556; the ray 115 ms on; none
+    // hidden.
+    assert_eq!(t.beams[0].from, 556 + 115);
+    assert!(t.keys.iter().all(|k| k.shown != u32::MAX));
 }
 
 #[test]

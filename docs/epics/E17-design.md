@@ -629,8 +629,14 @@ A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F
   then stands. The deadline being behind, the reaction's first frame shows for no time at all.
   (Until E17 M2 T5b the viewer counted the shooter's frames left in the loop, which delayed a
   Cyclops' target by 0.7 s: the user saw it; the Marksmen's recorded shot cannot tell the two
-  apart. Frames left beyond the loop are cut, and the loop has one iteration more than the
-  reactions' frames, as the Marksmen's sequence shows; the reading's L = R: *provisional*.)
+  apart. The reactions' part of the loop has one iteration more than their frames, as the
+  Marksmen's sequence shows; the reading's L = R: *provisional*.) The shooter plays its group
+  out beyond it and stands after its last frame (M3 T1b-1, sequence `shots`: the Cyclops' 10
+  frames after its climax run on 400 ms past the Gnolls' 6-frame hit, and past the Beholders'
+  5-frame death; until then the viewer cut them, T5b's rule): L = max(R + 1, the
+  shooter's frames left + 1), the reactions placed by the first (*provisional*, not read).
+  After a ray the shooter's group is over (§7.12) and it stands from the loop's first
+  iteration.
   Confirmed (sequence `shot`): the Marksmen (A 500, c 7) show their 71 ms frames from 100 ms, the
   arrow's 14 steps every 33 ms from 526, the Goblins' hit from 988 (frame 0 never shown, then 100
   ms apart); the second shot (Marksmen shoot twice) starts 100 ms after the first's hit ends.
@@ -669,12 +675,13 @@ the viewer's own generator cannot reproduce.
 
 ### 7.7 Open
 
-- Not read: the teleporting move, a ray's drawing (H3API's DrawRay), the spells' and the magic
-  animations' frames (H3API's PlayMagicAnimation), mouse-over (whether hovering starts group 1),
-  the heroes' idle groups, the arrow towers' and the catapult's shots, the first aid tent, the
-  sounds' timing.
-- Not in a sequence yet: a strike's and a shot's turns (§7.10), a death, Haste and Slow, a defending stack's reaction, a shot
-  up or down, a ray.
+- Not read: the teleporting move, the spells' and the magic animations' frames (H3API's
+  PlayMagicAnimation), mouse-over (whether hovering starts group 1), the heroes' idle groups, the
+  arrow towers' and the catapult's shots, the first aid tent, the sounds' timing.
+- Not in a sequence yet: Haste and Slow (M3 T7b, with the spells), a ray up or down (the rays of
+  `shots` are straight; the ray itself does not depend on the group). Recorded since: a strike's
+  and a shot's turns (§7.10), a shot up (`behind`) and down, a death by a shot, a defending
+  stack's reaction to a shot and the rays (`shots`, §7.12).
 
 ### 7.8 The viewer's timeline (M2 T4a)
 
@@ -971,7 +978,14 @@ DrawRay (`draw_ray` 0x5A5C20 with `ray_init`, `ray_step`, `ray_aim`); every addr
   2^-58 (they could round differently only where an exact value lies that close to a rounding
   boundary); the strokes drawn over everything with their colours scaled into the masks
   (`PixelFormat::scale`). `h3-view harvest` writes the colours into the asset tables (`ray`).
-- **Checked against the frames** (sequence `shots`): RESULTS.
+- **Checked against the frames** (sequence `shots`, M3 T1b-1): three rays, the Arch Magi's
+  twice (137 to 49, rising 6 rows, and 137 to 151 along the row) and the Beholders' (49 to 35),
+  each 11 ticks from trunc(115 F) after the climax frame shows (655, 4 086, 5 293 ms), the last
+  tick shown for no time; the shot group's rest after them (the Arch Magi's frames 9 to 12, the
+  Beholders' 5 and 6, the last drawn and never shown) and the reactions after that. The viewer's
+  timeline as recorded on the first try, and all 139 frames of the sequence equal the original's
+  outside the masks: every ray pixel of every tick, its colours included (the Arch Magi's
+  0x95C2, 0x7EAF, 0x2584).
 - **Not read:** Chain Lightning's call (0x5A64EF) and the colours 300, 301, 303 and 305 (the
   spells, M3 T7c); the Enchanters' shot (0x59FDE0).
 

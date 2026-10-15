@@ -4,8 +4,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a (2026-10-14) and T1c (2026-10-15) done; in progress: M3 T1b-1, shots and rays** (2026-10-15, branch `client/e17-m3-t1b1-shots`; T1b re-cut into T1b-1 and T1b-2 with the user; `QUEUE.md`; T2–T8 also ready). Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ the amendment draft in `adr-drafts/`), ADR-0024. Built: decoders, the real-asset gate, compositor, asset tables, `h3-view` (`render`, `sequences`, `situation`, `play`, `window`), `h3_view::anim`, `h3-sdl`, the capture harness (`clients/capture/README.md`); design §3–§8; records in `E17-log.md`.
-- **Pull requests (2026-10-15):** none open (T1c #216 and the shared #219 merged).
+- **E17 M0–M2 done; M3 T1a, T1c, T1b-1 (shots and rays, 2026-10-15) done; next: M3 T1b-2** (`QUEUE.md`; T2–T8 also ready). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ the amendment draft in `adr-drafts/`), ADR-0024; the capture harness `clients/capture/README.md`; design §3–§8; records in `E17-log.md`.
+- **Pull requests (2026-10-15):** T1b-1 (PR to come) open (T1c #216, the shared #219 merged).
 - **The user's requirements (2026-10-13)**, epic "Decisions": a string catalogue, language packs; graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
@@ -50,6 +50,6 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-15, E17 M3 T1c (the user present).** T1a's frames were lost with its sandbox: the six sequences captured again (counts as recorded). `h3cap.redraws`: ours with 1–4 more shadows, or an earlier moment's with ≥ 1; frame files `<ms> <differing> <artifacts>`; `behind` all artifacts, `melee` 3 966's stale count box listed for T5. The user asked for a leaner verify: `shared/verify-once`.
+- **2026-10-15, E17 M3 T1b-1 (the user away after the start).** T1b re-cut with the user (T1b-1, T1b-2; Haste and Slow to T7b). `draw_ray` read and built in integers; `shots` (hot seat: three rays, the Cyclops' throws, a defend reaction, a death) as recorded, 139 frames equal; a shooter plays its group out beyond the reactions.
+- **2026-10-15, E17 M3 T1c (the user present).** The six sequences captured again (counts as recorded). `h3cap.redraws`: ours with 1–4 more shadows, or an earlier moment's with ≥ 1; frame files `<ms> <differing> <artifacts>`; `melee` 3 966's stale count box listed for T5. The leaner verify: `shared/verify-once`.
 - **2026-10-14, E17 M3 T1a (the user present).** A battle in progress in hot seat; `climb`, `behind` recorded (timelines as recorded, frames 43/43, 164/194); the walk-by read: dirty rectangles, not copied (the user), T1c classifies.
-- **2026-10-14, E17 M2 T5c (the user present).** M2 closed: the reviewer's findings (10 fixed), the review list accepted, M3 refined.

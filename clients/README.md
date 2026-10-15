@@ -21,7 +21,9 @@ T2 (2026-10-14): the window, input and audio library chosen by measurement and t
 `h3-view window`, a battle in a window at the original's frame times (M2's exit). M2 T5b
 (2026-10-14): the sound archives decoded (`h3-assets`), the battle's music and creature sounds in
 the window at the times the executable plays them (design §8.2). M2 T5c (2026-10-14): M2 closed
-after a fresh review; M3 (fidelity) refined.
+after a fresh review; M3 (fidelity) refined. M3 T1a, T1c (2026-10-14/15): a battle in progress in
+hot seat, the redraw artifacts classified. M3 T1b-1 (2026-10-15): the Arch Magi's and Beholders'
+energy ray (`h3_view::ray`, design §7.12).
 Decisions: ADR-0020
 and the epic file `docs/epics/E17-clients.md`; tasks in `docs/lanes/client/QUEUE.md`.
 
@@ -141,9 +143,10 @@ on the M1 review list):
 - `[[creature]]`: `key`, `def` (the battle sprite), `times` (`cranim.txt`'s fidget interval, walk,
   attack and flight distance as the executable keeps them: scaled by 9000, 500, 500, 115 and
   truncated), optional `troop_count_offset`, `attack_climax`, `missile` (a shooter's projectile
-  DEF), `missile_offsets` (up, straight, down; x, y), `missile_angles` (12, in degrees) and
-  `sounds` (T5b: the sound archives' entries of `move`, `attack`, `wince`, `shot`, `death`,
-  `defend`, `start`, `end`; one the creature lacks is left out; `h3-view harvest` writes them).
+  DEF), `missile_offsets` (up, straight, down; x, y), `missile_angles` (12, in degrees), `ray`
+  (a ray shooter's five colours, R, G, B from the ray's edge inward, M3 T1b-1) and `sounds`
+  (T5b: the sound archives' entries of `move`, `attack`, `wince`, `shot`, `death`, `defend`,
+  `start`, `end`; one the creature lacks is left out; `h3-view harvest` writes them).
 - `[[battlefield]]`: `key` (a terrain's, or a special battlefield's while the packs define none)
   and `backgrounds` (the pictures by the variant the adventure map picks).
 - `[[obstacle]]`: `key` (`obstacle_<n>`, the packs' numbering) and either `def`, `rows` (height in

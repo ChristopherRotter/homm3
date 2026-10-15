@@ -13,7 +13,10 @@ fn a_ray_to_the_right_steps_one_pixel_at_a_time() {
     let ticks = trace([100, 300], [500, 300]);
     assert_eq!(ticks.len(), 10);
     let first = ticks.first().unwrap();
-    assert_eq!(heads(first), (101..=141).map(|x| [x, 300]).collect::<Vec<_>>());
+    assert_eq!(
+        heads(first),
+        (101..=141).map(|x| [x, 300]).collect::<Vec<_>>()
+    );
     assert_eq!(
         first.first(),
         Some(&Stroke {
@@ -25,8 +28,20 @@ fn a_ray_to_the_right_steps_one_pixel_at_a_time() {
         })
     );
     // Thinner once past halfway: aimed after tick 5 at x = 305 (205 of 400 gone).
-    assert!(ticks.iter().take(5).flatten().all(|s| (s.lo, s.hi) == (-2, 2)));
-    assert!(ticks.iter().skip(5).flatten().all(|s| (s.lo, s.hi) == (-2, 1)));
+    assert!(
+        ticks
+            .iter()
+            .take(5)
+            .flatten()
+            .all(|s| (s.lo, s.hi) == (-2, 2))
+    );
+    assert!(
+        ticks
+            .iter()
+            .skip(5)
+            .flatten()
+            .all(|s| (s.lo, s.hi) == (-2, 1))
+    );
     // It ends 2 pixels short of the target.
     let last = ticks.last().unwrap();
     assert_eq!(heads(last).first(), Some(&[470, 300]));
@@ -41,7 +56,10 @@ fn a_ray_to_the_left_and_one_down_the_screen() {
     // Straight down: the aim is 0, sideways cross-sections, 35 steps a tick (d = 300).
     let down = trace([300, 100], [300, 400]);
     let first = down.first().unwrap();
-    assert_eq!(heads(first), (101..=135).map(|y| [300, y]).collect::<Vec<_>>());
+    assert_eq!(
+        heads(first),
+        (101..=135).map(|y| [300, y]).collect::<Vec<_>>()
+    );
     assert!(!first.first().unwrap().column);
     assert_eq!(heads(down.last().unwrap()).last(), Some(&[300, 398]));
 }
@@ -63,7 +81,10 @@ fn a_slanted_ray_ends_by_its_target() {
             assert!((a.x - b.x).abs() <= 1 && (a.y - b.y).abs() <= 1);
         }
         let end = all.last().unwrap();
-        assert!((end.x - to[0]).abs() + (end.y - to[1]).abs() <= 3, "{from:?} {to:?}");
+        assert!(
+            (end.x - to[0]).abs() + (end.y - to[1]).abs() <= 3,
+            "{from:?} {to:?}"
+        );
         assert!(ticks.iter().take(ticks.len() - 1).all(|t| !t.is_empty()));
     }
 }
@@ -138,8 +159,14 @@ fn cross_sections_colour_from_the_edges_inward() {
         column: true,
     };
     assert_eq!(corner.pixels().count(), 3);
-    let side = Stroke { column: false, ..corner };
-    assert_eq!(side.pixels().map(|(p, _)| p).collect::<Vec<_>>(), [[0, BOTTOM], [1, BOTTOM], [2, BOTTOM]]);
+    let side = Stroke {
+        column: false,
+        ..corner
+    };
+    assert_eq!(
+        side.pixels().map(|(p, _)| p).collect::<Vec<_>>(),
+        [[0, BOTTOM], [1, BOTTOM], [2, BOTTOM]]
+    );
 }
 
 #[test]

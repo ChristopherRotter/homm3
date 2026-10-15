@@ -520,7 +520,10 @@ fn write_table(pack: &Pack, h: &Harvest, gaps: &mut Vec<String>) -> Result<Strin
             let _ = writeln!(t, "missile_angles = [{}]", numbers(&anim.angles));
         }
         if let Some(colours) = h.rays.get(&original) {
-            let colours: Vec<String> = colours.iter().map(|c| format!("[{}]", numbers(c))).collect();
+            let colours: Vec<String> = colours
+                .iter()
+                .map(|c| format!("[{}]", numbers(c)))
+                .collect();
             let _ = writeln!(t, "ray = [{}]", colours.join(", "));
         }
         if let Some(sounds) = h.sounds.get(original) {
