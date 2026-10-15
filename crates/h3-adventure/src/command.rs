@@ -154,11 +154,11 @@ pub struct AdventureOutcome {
 pub struct BattleStart {
     /// The attacking side: the visiting hero's.
     pub attacker: Combatant,
-    /// The defending side: another player's hero, or a wandering monster (E08 T20b2; an
-    /// object's guards come with T21).
+    /// The defending side: another player's hero, a wandering monster (E08 T20b2) or a guarded
+    /// pile's guards (E08 T21a).
     pub defender: Defender,
     /// The tile the battle is fought at: the defender's (survey `E04c-battlefields.md` §4,
-    /// batch 3b), a monster's its own.
+    /// batch 3b), a monster's its own, a guarded pile's the pile's (the visited tile, 0x4A4886).
     pub tile: Pos,
     /// The battle's terrain by its tile ([`crate::BattleTerrains`]): the underground's, else the
     /// coast's, else the tile's own.
@@ -180,6 +180,12 @@ pub enum Defender {
         creature: CreatureTypeId,
         /// The count.
         count: u32,
+    },
+    /// A guarded pile's guards (ADV-PIK-004, E08 T21a), unowned: their stacks by slot as they
+    /// stand, which defend unsplit (the original passes the map's army, 0x4A4876).
+    Guards {
+        /// The stacks by slot.
+        army: Vec<ArmyStack>,
     },
 }
 
@@ -219,13 +225,13 @@ impl Offer {
     pub fn price(&self) -> &[(ResourceId, u32)] {
         match &self.kind {
             OfferKind::Reveal { price } | OfferKind::JoinForGold { price } => price,
-            OfferKind::Pass | OfferKind::Join | OfferKind::Pursue => &[],
+            OfferKind::Pass | OfferKind::Join | OfferKind::Pursue | OfferKind::Fight => &[],
         }
     }
 }
 
 /// What an offer offers (ADR-0017 point 6: increment 2's two kinds of decision, increment 3's
-/// wandering monsters' three).
+/// wandering monsters' three and a guarded pile's question).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OfferKind {
     /// A Cartographer's reveal of its type's terrains, for the type's price, each amount at least
@@ -252,6 +258,9 @@ pub enum OfferKind {
     /// A wandering monster's offer to flee (ADV-MON-008, E08 T20b1): accepted, the hero pursues
     /// and fights it; declined, it leaves the map without its treasure.
     Pursue,
+    /// A guarded pile's question (ADV-PIK-004, E08 T21a): accepted, the hero fights its guards;
+    /// declined, nothing happens.
+    Fight,
 }
 
 /// The players who may see an event (ADR-0016 point 6): a set of players, resolved when the event

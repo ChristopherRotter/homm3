@@ -19,7 +19,7 @@
 [[situation]]
 id = "grass"
 scenario = "grass.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -109,7 +109,7 @@ why = "exact: standing (M3 T3a)"
 [[situation]]
 id = "dirt"
 scenario = "dirt.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -119,7 +119,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "sand"
 scenario = "sand.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -129,7 +129,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "snow"
 scenario = "snow.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -139,7 +139,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "swamp"
 scenario = "swamp.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -149,7 +149,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "rough"
 scenario = "rough.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -159,7 +159,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "subterranean"
 scenario = "subterranean.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -169,7 +169,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "lava"
 scenario = "lava.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -180,7 +180,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 id = "dirt-absolute"
 scenario = "dirt-absolute.toml"
 tile = [20, 20]
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -195,7 +195,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "shore"
 scenario = "shore.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -205,7 +205,7 @@ why = "exact: the shore (water beside the defender's tile, fought on sand), its 
 [[situation]]
 id = "magic-plains"
 scenario = "magic-plains.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -215,7 +215,7 @@ why = "exact: Magic Plains (the ground, class 46), its picture and obstacles (M3
 [[situation]]
 id = "cursed-ground"
 scenario = "cursed-ground.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -225,7 +225,7 @@ why = "exact: Cursed Ground (class 21), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "holy-ground"
 scenario = "holy-ground.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -235,7 +235,7 @@ why = "exact: Holy Ground (SoD, class 227), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "evil-fog"
 scenario = "evil-fog.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -245,7 +245,7 @@ why = "exact: Evil Fog (SoD, class 224), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "clover-field"
 scenario = "clover-field.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -255,7 +255,7 @@ why = "exact: Clover Field (SoD, class 222), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "lucid-pools"
 scenario = "lucid-pools.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -265,7 +265,7 @@ why = "exact: Lucid Pools (SoD, class 228), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "fiery-fields"
 scenario = "fiery-fields.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -275,7 +275,7 @@ why = "exact: Fiery Fields (SoD, class 226), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "rocklands"
 scenario = "rocklands.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -285,7 +285,7 @@ why = "exact: Rocklands (SoD, class 231), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "magic-clouds"
 scenario = "magic-clouds.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -296,7 +296,7 @@ why = "exact: Magic Clouds (SoD, class 229), its picture and obstacles (M3 T2)"
 id = "shore-absolute"
 scenario = "shore-absolute.toml"
 tile = [18, 5]
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -309,7 +309,7 @@ why = "exact: the shore with its absolute obstacle 126 (M3 T2)"
 [[situation]]
 id = "heroes-castle-rampart"
 scenario = "heroes-castle-rampart.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -319,7 +319,7 @@ why = "exact: Valeska (CH01, a female Knight), Ufretin (CH02, a male Ranger) (M3
 [[situation]]
 id = "heroes-rampart-tower"
 scenario = "heroes-rampart-tower.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -329,7 +329,7 @@ why = "exact: Mephala (CH03, a female Ranger), Piquedram (CH05: Tower's male pic
 [[situation]]
 id = "heroes-tower-inferno"
 scenario = "heroes-tower-inferno.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -339,7 +339,7 @@ why = "exact: Josephine (CH04: Tower's female picture), Rashka (CH06, a male Dem
 [[situation]]
 id = "heroes-inferno-necropolis"
 scenario = "heroes-inferno-necropolis.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -349,7 +349,7 @@ why = "exact: Fiona (CH07, a female Demoniac), Straker (CH08, a male Death Knigh
 [[situation]]
 id = "heroes-necropolis-dungeon"
 scenario = "heroes-necropolis-dungeon.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -359,7 +359,7 @@ why = "exact: Charna (CH09, a female Death Knight), Arlach (CH010, a male Overlo
 [[situation]]
 id = "heroes-dungeon-stronghold"
 scenario = "heroes-dungeon-stronghold.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -369,7 +369,7 @@ why = "exact: Lorelei (CH11, a female Overlord), Shiva (CH012: Stronghold's fema
 [[situation]]
 id = "heroes-fortress"
 scenario = "heroes-fortress.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -379,7 +379,7 @@ why = "exact: Bron (CH014, a male Beastmaster), Mirlanda (CH015, a female Witch)
 [[situation]]
 id = "heroes-conflux"
 scenario = "heroes-conflux.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -390,7 +390,7 @@ why = "exact: Pasis, a female Planeswalker, CH17, and Inteus, a male Elementalis
 [[situation]]
 id = "war-machines"
 scenario = "war-machines.toml"
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -444,7 +444,7 @@ why = "exact: the war machines stand still (the tent's group 2 has six frames: f
 id = "smoke"
 scenario = "../scenarios/smoke.toml"
 hot_seat = true
-mask = ["panel", "count_boxes"]
+mask = ["panel"]
 
 [[situation.frame]]
 at = 0
@@ -455,3 +455,21 @@ why = "exact: the smoke battle with Orrin's Ballista and both heroes, the Wolf R
 at = 400
 differing = 0
 why = "exact: the Pikemen's fidget in the original's poses, the flags four steps on (M3 T3b)"
+
+# The count boxes' digits (M3 T4a): `grass` with counts of three, four and five digits, centred
+# by the text drawer. A map's army counts are 16-bit and the original drops a stack of 65 535 (a
+# signed -1?): six digits and the cut of seven cannot be set up.
+[[situation]]
+id = "counts"
+scenario = "counts.toml"
+mask = ["panel"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: counts of three to five digits centred in their boxes, each box tinted (M3 T4a)"
+
+[[situation.frame]]
+at = 400
+differing = 0
+why = "exact: the Pikemen fidget (group 1) with their box, the outline four steps on (M3 T4a)"

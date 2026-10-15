@@ -28,6 +28,7 @@ pub mod archive;
 pub mod build;
 pub mod check;
 pub mod def;
+pub mod fnt;
 pub mod msk;
 pub mod palette;
 pub mod pcx;

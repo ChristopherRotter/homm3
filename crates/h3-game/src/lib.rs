@@ -63,5 +63,6 @@ pub use state::{GameState, OpenBattle};
 /// the first encoding ([`GameState`]'s `CanonicalHash`). v2 (E08 T13a): each player's treasury.
 /// v3 (E08 T14b): the pending decisions. v4 (E08 T15a): an offer's kind. v5 (E08 T18b): the
 /// store of heroes. v6 (E08 T19a): the battles among the decisions. v7 (E08 T20b1): the
-/// wandering monsters' offer kinds and whether a guard's visit waits for an offer's answer.
-pub const GAME_STATE_HASH_VERSION: u32 = 7;
+/// wandering monsters' offer kinds and whether a guard's visit waits for an offer's answer. v8
+/// (E08 T21a): a guarded pile's offer to fight.
+pub const GAME_STATE_HASH_VERSION: u32 = 8;

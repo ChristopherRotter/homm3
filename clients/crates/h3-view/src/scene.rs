@@ -6,7 +6,7 @@
 //! how each is drawn, so a later graphics option changes only the compositor (the user,
 //! 2026-10-13).
 
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
@@ -164,6 +164,20 @@ pub enum Draw {
         /// Drawn half and half with what is under it.
         translucent: bool,
     },
+    /// A stack's count box, right after its sprite and any magic animation over it
+    /// (`draw_battle_stack`'s part 1 0x43E568, §4.3; E17 M3 T4a): the layout's picture with index
+    /// 0 transparent, its inside tinted, the count written over it in the layout's font.
+    CountBox {
+        /// The box's left edge.
+        x: i32,
+        /// Its top edge.
+        y: i32,
+        /// The count written (`%d` of the stack's +0x4C).
+        count: u32,
+        /// The tint's hue and saturation, the bits of the f32 values (the layout's without
+        /// spells; by the stack's spells not yet).
+        tint: [u32; 2],
+    },
     /// A creature's sprite with the shadow its frame holds, standing on a hex (§4.2).
     Creature {
         /// The DEF.
@@ -222,10 +236,10 @@ const EMPTY_SURROUNDINGS: usize = 2;
 
 /// The draw list of the battle `observation` shows, at time 0: the background with the absolute
 /// obstacle, the layer-1 obstacles, each side's flag and hero (E17 M3 T3a), then each row's
-/// passes with its layer-0 obstacles and its living stacks (§4.6). A natural obstacle without a type is not drawn; a removed one is no
-/// longer in the observation's list (the engine drops it), so every listed one is drawn, whatever
-/// hexes a removal cleared. Left out until later tasks: the war machines' own rules (M3 T3b), the
-/// count boxes (M3, with `tiny.fnt`), corpses, spell obstacles, the grid.
+/// passes with its layer-0 obstacles and its living stacks, each with its count box (§4.6; M3
+/// T4a). A natural obstacle without a type is not drawn; a removed one is no longer in the
+/// observation's list (the engine drops it), so every listed one is drawn, whatever hexes a
+/// removal cleared. Left out until later tasks: corpses, spell obstacles, the grid.
 ///
 /// # Errors
 /// A handle the manifest does not resolve, a key the tables lack, an obstacle type of the wrong
@@ -374,12 +388,23 @@ pub fn battle_at(
             mirrored: side == 1,
         });
     }
+    // The hexes a count box cannot take (0x43E605): a living stack's (each of its poses' hexes)
+    // and the blocked ones.
+    let mut taken: BTreeSet<u8> = observation.obstacles.iter().copied().collect();
+    for s in observation.stacks.iter().filter(|s| s.alive) {
+        let pose = pose_of(s, moment, tables);
+        taken.insert(pose.hex);
+        if s.two_hex {
+            taken.extend(ahead(pose.hex, !pose.mirrored, 0));
+        }
+    }
     let stacks = observation
         .stacks
         .iter()
         .filter(|s| s.alive || moment.poses.contains_key(&s.id))
         .map(|s| {
-            let (at, layer, draw) = creature(s, moment, manifest, tables, layout, at)?;
+            let pose = pose_of(s, moment, tables);
+            let sprite = creature(s, pose, moment, manifest, tables, layout, at)?;
             // A magic animation over the stack is drawn right after it (E17 M3 T3b).
             let magic = moment.magic.as_ref().and_then(|m| {
                 let &(_, [x, y], mirrored) = m.over.iter().find(|o| o.0 == s.id)?;
@@ -392,7 +417,8 @@ pub fn battle_at(
                     translucent: m.translucent,
                 })
             });
-            Ok((at, layer, [Some(draw), magic]))
+            let count = count_box(s, pose, &sprite, &taken, layout);
+            Ok((sprite.at, pose.layer, [Some(sprite.draw), magic, count]))
         })
         .collect::<Result<Vec<_>, SceneError>>()?;
     for row in 0..height {
@@ -433,15 +459,80 @@ pub fn battle_at(
     Ok(list)
 }
 
-/// A stack's position (row, column), its draw layer and its draw, in its pose at `moment`.
+/// A stack's pose at `moment`: its own, else standing on its hex, facing its side's way.
+fn pose_of(stack: &Stack, moment: &Moment, tables: &Tables) -> Pose {
+    moment.poses.get(&stack.id).copied().unwrap_or(Pose {
+        group: u32::from(tables.battle.groups.standing),
+        frame: 0,
+        hex: stack.hex,
+        offset: [0, 0],
+        mirrored: stack.side == Side::Defender,
+        layer: STANDING,
+    })
+}
+
+/// The hex `1 + extra` ahead of `hex` facing right or left, if there is one.
+fn ahead(hex: u8, right: bool, extra: u8) -> Option<u8> {
+    let step = 1 + extra;
+    if right {
+        hex.checked_add(step)
+    } else {
+        hex.checked_sub(step)
+    }
+}
+
+/// A stack's count box, if it shows one (§4.3, 0x43E568): a living stack, not a war machine,
+/// standing or under the mouse (groups 2 and 1); not yet the moments when the executable hides it
+/// (its +0x30, set by a walk or a flight: M3 T5). Beside its sprite's anchor by its facing, its
+/// width and whether the hex ahead is `taken`.
+fn count_box(
+    stack: &Stack,
+    pose: Pose,
+    sprite: &Sprite,
+    taken: &BTreeSet<u8>,
+    layout: &BattleLayout,
+) -> Option<Draw> {
+    if !stack.alive || stack.war_machine || !sprite.boxed {
+        return None;
+    }
+    let right = !pose.mirrored;
+    let wide = stack.two_hex;
+    let blocked = ahead(pose.hex, right, u8::from(wide)).is_some_and(|h| taken.contains(&h));
+    let [x, y] = layout
+        .count_box
+        .corner(sprite.anchor, right, wide, blocked, sprite.troop_offset);
+    Some(Draw::CountBox {
+        x,
+        y,
+        count: stack.count,
+        tint: layout.count_box.tint,
+    })
+}
+
+/// A stack's sprite as the scene places it.
+struct Sprite {
+    /// Its position (row, column).
+    at: (u8, u8),
+    /// Where it stands: its anchor moved by its pose's offset.
+    anchor: [i32; 2],
+    /// Its creature's troop-count offset (§4.3).
+    troop_offset: i32,
+    /// Its pose's group shows a count box: standing or under the mouse (groups 2 and 1).
+    boxed: bool,
+    /// Its draw.
+    draw: Draw,
+}
+
+/// A stack's sprite in its pose at `moment`.
 fn creature(
     stack: &Stack,
+    pose: Pose,
     moment: &Moment,
     manifest: &Manifest,
     tables: &Tables,
     layout: &BattleLayout,
     at: impl Fn(u8) -> (u8, u8),
-) -> Result<((u8, u8), u8, Draw), SceneError> {
+) -> Result<Sprite, SceneError> {
     let key = key(&manifest.keys.creatures, "creatures", stack.creature)?;
     let entry = tables
         .creatures
@@ -449,26 +540,27 @@ fn creature(
         .ok_or_else(|| SceneError::Key(key.to_string()))?;
     // Drawn once, from its position (§4.2): the engine's position is the executable's, a two-hex
     // stack's rear hex (BAT-GEO-002 since PR #150, protocol v23); moved by its pose's offset.
-    let groups = tables.battle.groups;
-    let pose = moment.poses.get(&stack.id).copied().unwrap_or(Pose {
-        group: u32::from(groups.standing),
-        frame: 0,
-        hex: stack.hex,
-        offset: [0, 0],
-        mirrored: stack.side == Side::Defender,
-        layer: STANDING,
-    });
     let (row, column) = at(pose.hex);
     let [x, y] = layout.anchor(row, column);
+    let anchor = [x + pose.offset[0], y + pose.offset[1]];
     let draw = Draw::Creature {
         def: entry.def.clone(),
         group: pose.group,
         frame: pose.frame,
-        anchor: [x + pose.offset[0], y + pose.offset[1]],
+        anchor,
         mirrored: pose.mirrored,
         outline: (moment.active == Some(stack.id)).then(|| layout.outline_after(moment.pulse)),
     };
-    Ok(((row, column), pose.layer, draw))
+    let groups = tables.battle.groups;
+    Ok(Sprite {
+        at: (row, column),
+        anchor,
+        troop_offset: entry.troop_count_offset,
+        boxed: [groups.standing, groups.mouse_over]
+            .map(u32::from)
+            .contains(&pose.group),
+        draw,
+    })
 }
 
 /// The key of `handle` in a manifest's key table.

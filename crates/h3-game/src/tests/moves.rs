@@ -97,6 +97,7 @@ fn a_visits_gains_go_to_its_owner_s_treasury_and_are_told_to_it_alone() {
         amount: Some(7),
         drawn: TileMask::default(),
         monster: None,
+        guards: None,
     });
     let mut state = GameState::new(&rules, &setup, 7).unwrap();
     let gold = ResourceId::from_raw(0);

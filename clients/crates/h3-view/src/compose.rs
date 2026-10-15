@@ -10,9 +10,12 @@ use core::fmt;
 
 use h3_assets::def::Frame;
 use h3_assets::palette::Rgb;
+use h3_render::Bugs;
 use h3_render::blit::{Drawer, Placement, draw_frame, draw_image, draw_image_keyed};
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::{PixelFormat, Screen};
+use h3_render::text::{TextBox, TextStyle, draw_text};
+use h3_render::tint::{Tint, adjust_hue_saturation};
 
 use crate::batch::{Batch, Sprite};
 use crate::layout::BattleLayout;
@@ -39,7 +42,9 @@ impl fmt::Display for ComposeError {
     }
 }
 
-/// Draws `list` in order onto a fresh frame of `layout`'s size (black where nothing is drawn).
+/// Draws `list` in order onto a fresh frame of `layout`'s size (black where nothing is drawn),
+/// with the original's drawing bugs fixed or, for the comparisons with its captures, reproduced
+/// (`bugs`; the user, 2026-10-15).
 ///
 /// # Errors
 /// A frame too large, or anything the list names missing from `batch`.
@@ -47,6 +52,7 @@ pub fn compose(
     list: &[Draw],
     batch: &Batch,
     layout: &BattleLayout,
+    bugs: Bugs,
 ) -> Result<Screen, ComposeError> {
     let [width, height] = layout.frame;
     let mut screen = Screen::new(width, height, FORMAT).ok_or(ComposeError::Frame(layout.frame))?;
@@ -178,6 +184,42 @@ pub fn compose(
                     at,
                     Drawer::Shadowed { colour: None },
                 );
+            }
+            Draw::CountBox { x, y, count, tint } => {
+                // 0x43E568: the picture, index 0 transparent (0x4958E0 → 0x44FDB0), its inside
+                // tinted (0x44E940), the count's `%d` in the font (0x4B5490), centred.
+                let b = &layout.count_box;
+                draw_image_keyed(&mut screen, picture_of(batch, &b.picture)?, *x, *y);
+                let [[dx, dy], size] = b.tint_rect;
+                let [hue, saturation] = *tint;
+                adjust_hue_saturation(
+                    &mut screen,
+                    [x.saturating_add(dx), y.saturating_add(dy)],
+                    size,
+                    Tint { hue, saturation },
+                );
+                let font = batch
+                    .font(&b.font)
+                    .ok_or_else(|| ComposeError::Missing(b.font.clone()))?;
+                let palette = batch
+                    .palette(&b.font_palette)
+                    .ok_or_else(|| ComposeError::Missing(b.font_palette.clone()))?;
+                let area = TextBox {
+                    x: *x,
+                    y: *y,
+                    width: b.text_size[0],
+                    height: b.text_size[1],
+                };
+                let text = format!("{count}");
+                let colours = ScreenPalette::new(palette, FORMAT);
+                let style = TextStyle {
+                    font,
+                    colours: &colours,
+                    colour: b.text_colour,
+                    alignment: b.text_align,
+                    bugs,
+                };
+                draw_text(&mut screen, text.as_bytes(), area, style);
             }
             Draw::Creature {
                 def,

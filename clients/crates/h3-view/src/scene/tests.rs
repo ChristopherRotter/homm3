@@ -205,6 +205,16 @@ fn the_battle_is_drawn_in_the_executables_order() {
         mirrored,
         outline,
     };
+    // Each stack's count box after it (M3 T4a): beside it, the hexes ahead free.
+    let counted = |row, column, [dx, dy]: [i32; 2]| {
+        let [x, y] = layout.anchor(row, column);
+        Draw::CountBox {
+            x: x + dx,
+            y: y + dy,
+            count: 10,
+            tint: [0x3F40_0000, 0x3F4C_CCCD],
+        }
+    };
     let [bx, by] = layout.hex_box(3, 5);
     let [fx, fy] = layout.hex_box(4, 8);
     let [gx, gy] = layout.hex_box(7, 6);
@@ -230,8 +240,10 @@ fn the_battle_is_drawn_in_the_executables_order() {
             },
             // Row 1: a stack above the layer-1 obstacle's row, drawn after it all the same.
             creature("CPKMAN.DEF", 1, 2, false, None),
+            counted(1, 2, [22, -15]),
             // Row 3: the defender's dragon, from its position (its rear hex).
             creature("CBDRGN.DEF", 3, 16, true, None),
+            counted(3, 16, [-52 - 44, -30]),
             // Row 4: the layer-0 obstacle in pass 2, raised by its second row; then the stacks
             // in pass 4, left to right, the attacker's dragon from its rear hex.
             Draw::Obstacle {
@@ -242,7 +254,9 @@ fn the_battle_is_drawn_in_the_executables_order() {
                 y: fy - 42
             },
             creature("CPKMAN.DEF", 4, 0, false, Some(0x60)),
+            counted(4, 0, [22, -15]),
             creature("CBDRGN.DEF", 4, 9, false, None),
+            counted(4, 9, [22 + 44, -15]),
             // Row 7: the layer-0 obstacle whose hexes are in the cleared set.
             Draw::Obstacle {
                 def: "Front.def".to_string(),
@@ -253,6 +267,72 @@ fn the_battle_is_drawn_in_the_executables_order() {
             },
         ]
     );
+}
+
+#[test]
+fn a_count_box_shows_by_its_stack_and_the_hex_ahead() {
+    // E17 M3 T4a (§4.3): a box for a living stack standing or under the mouse, not a war
+    // machine's; beside the stack when the hex ahead is free, else over it (a stack's hex, a
+    // two-hex stack's other hex or a blocked one).
+    let layout = layout();
+    let mut o = observation();
+    o.terrain = Some(0);
+    let mut machine = stack(5, Side::Attacker, 0, hex(8, 2), false);
+    machine.war_machine = true;
+    let mut shown = stack(6, Side::Attacker, 0, hex(9, 2), false);
+    shown.count = 1234;
+    o.stacks = vec![
+        // Ahead of 0 stands 1's other hex (it faces left: its rear on 4/4, its other on 4/3).
+        stack(0, Side::Attacker, 0, hex(4, 2), false),
+        stack(1, Side::Defender, 1, hex(4, 4), true),
+        // Ahead of 2 a blocked hex; ahead of 3 nothing.
+        stack(2, Side::Attacker, 0, hex(6, 2), false),
+        stack(3, Side::Attacker, 0, hex(7, 2), false),
+        machine,
+        shown,
+    ];
+    o.obstacles = vec![hex(6, 3)];
+    // 3 strikes (group 11): no box; 6 is under the mouse (group 1): its box.
+    let pose = |group, hex| Pose {
+        group,
+        frame: 0,
+        hex,
+        offset: [0, 0],
+        mirrored: false,
+        layer: STANDING,
+    };
+    let moment = Moment {
+        poses: [(3, pose(11, hex(7, 2))), (6, pose(1, hex(9, 2)))]
+            .into_iter()
+            .collect(),
+        ..Moment::default()
+    };
+    let list = battle_at(&o, &moment, &keys(), &tables(), &layout).unwrap();
+    let boxes: Vec<_> = list
+        .iter()
+        .filter_map(|d| match d {
+            Draw::CountBox { x, y, count, .. } => Some(([*x, *y], *count)),
+            _ => None,
+        })
+        .collect();
+    let at = |row, column, [dx, dy]: [i32; 2]| {
+        let [x, y] = layout.anchor(row, column);
+        [x + dx, y + dy]
+    };
+    assert_eq!(
+        boxes,
+        [
+            (at(4, 2, [-15, -15]), 10),
+            // The dragon faces left: the hex ahead of its other hex is 4/2, taken.
+            (at(4, 4, [-(52 + 44 - 37), -15]), 10),
+            (at(6, 2, [-15, -15]), 10),
+            (at(9, 2, [22, -15]), 1234),
+        ]
+    );
+    // A stack on the field's edge: nothing ahead of hex 0 facing left.
+    assert_eq!(ahead(0, false, 0), None);
+    assert_eq!(ahead(255, true, 0), None);
+    assert_eq!(ahead(3, false, 1), Some(1));
 }
 
 #[test]

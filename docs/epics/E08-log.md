@@ -2382,3 +2382,87 @@ original data passed (code `cc3daf7d`).
 - Not changed (shared): `docs/06-security.md`'s monsters (#230) say neither that the new word is
   told nor that strict shows a fringe monster: the QUEUE's inbox, for the next `shared/` change.
 
+
+### Round 4 of increment 3: T21a (2026-10-15, `adventure/e08-t21a`)
+
+Decision 41: T21 in two, its rule part before T20b3b2, so the fixture maps, replays and
+benchmarks change once. Baseline: master `c1309983` (#236 merged), already verified in full
+(code `1be73c61`; the sandbox ran the light gates).
+
+- **The setup and the state** (`h3-adventure`): `Guards { army, question }` in `ObjectSetup` and
+  `MapObject` (the stacks in slot order), checked as a hero's army (`check_army`) with no war
+  machine, on a pile only (a random one included): `SetupError::Guards`. `guards_left`: the
+  stacks a battle left (`army_left`; none after a draw), else the map's. The static map hashes the
+  guards (adventure state hash v10).
+- **The visit** (`state/piles.rs`, ADV-PIK-004): a pickup's visit goes through `visit_pile`:
+  while guards stand, a question (`OfferKind::Fight`, no price; game state hash v8) when the
+  message has a text, else the battle at once (`fight_or_pick`: `Defender::Guards`, unsplit, at the
+  pile's tile, its first visitable tile); none standing, the pickup. Declined, nothing happens;
+  accepted, the fight (or the pickup, if another battle left none). `end_unowned_battle` replaces
+  the game's call of `end_monster_battle`: a monster's ends as before; a pile's after a win is
+  picked up (its contents the gains, its removal told), else its survivors stay (unseen).
+- **The game** (`h3-game`): `start_battle` takes the guards' stacks as the defending army, without
+  a hero or an owner; `end_battle` calls `end_unowned_battle`.
+- **The import** (`h3-map`, map import v7): a guards record's stacks become the pile's guards, the
+  message's text the question's flag; a record without stacks is a plain pile; a random stack
+  among the guards is `Unsupported::RandomStack` (its static layer keeps the pile unguarded);
+  `Unsupported::GuardedPile` removed. The census (`examples/original_data.rs`): 39 piles with a
+  guards record, 3 without a stack, 36 guarded (30 ask, 9 with two stacks), no random stack; the
+  4 maps refused for a guarded pile before now count for a random hero (19); 4 import whole, as
+  before.
+- **The code reading** (Heroes3.exe): `visit_guarded_resource` 0x4A4780 passes the visited tile's
+  packed position (`visit_object`'s, 0x4A84F0) and the record's army to `adventure_battle`
+  0x4AD470 (0x4A4870 to 0x4A4888), so the battle is fought at the pile's tile, as a monster's at
+  its own; a battle result of 0 (the attacker won) gives the pile (0x4A48A6). After a draw the
+  guards' army has no stack (the survey's "updated by the battle", inferred), so the next visit's
+  test (0x4A47E0) is the plain pickup's.
+- **The plans** (`tests/play.rs`): two kinds appended (indices 27, 28: 500 gold whose eight
+  gremlins and two gnolls ask; four crystals whose twenty skeletons fight at once; `GUARDED`,
+  `GUARDED_OBJECTS`), drawn among the objects and, in half the plans, one beside the first hero;
+  `check_unowned_battle_end` (the pile picked up after a win, the survivors by slot at most the
+  stacks they were, none after a draw), a pile's question in `check_decisions`; the census
+  (192 fixed cases): 20 questions, 31 battles against guards (24 won, 6 lost, one open at its
+  case's end), beside 19 monster battles, 341 battles in all.
+- **The replays**: the eight re-recorded with their options for the versions; their commands
+  stayed (the duel holds no guarded pile).
+- Not changed (shared): `docs/06-security.md` does not say what a viewer learns of a guarded pile
+  (the QUEUE's inbox, with T20b3b1's note). The writer (`h3_map::writer::Pile`) writes no guards
+  (T22a's, `cross-lane`: `h3-experiment` builds piles).
+
+### Round 4 of increment 3: T20b3b2 (2026-10-15, `adventure/e08-t20b3b2`, on T21a's branch)
+
+Decisions 39 and 41: the fixture maps, the golden replays and the benchmarks with monsters,
+grounds and guarded piles, changed once, after T21a (#239).
+
+- **The fixture maps** (`h3-map`'s `tests/fixtures.rs`): `Placer` takes an object's masks from
+  `play.rs`'s `masks` (a monster's one tile), `place_object` places a fixed object (a monster),
+  `place_ground` a ground on a land tile, `fits` holds the old checks and keeps a monster three
+  tiles or more from every hero on its level. `encounters`, drawn after increment 2's objects (so
+  those, the terrain and the heroes stay byte for byte): beside each hero a monster (the plans' five
+  kinds in turn, on a ground for every other hero) and a guarded pile (the two kinds in turn), then
+  `2 × scale` of each monster kind, guarded kind and ground anywhere. The duel: 14 monsters, 8
+  guarded piles, 6 grounds; the 144 map: 168, 72, 68. A first layout with two tiles between a
+  monster and a hero boxed the duel's first hero in (its day-1 query reached 3 tiles, every exit
+  guarded by the goblins): the env's battle tests found it, so three.
+- **The env's and the CLI's tests on the changed duel**: all of `h3-sim`'s held once the hero was
+  free; `h3-cli`'s reach workload test now allows fewer than two queries a step (a hero lost, or
+  the neutral seat playing a monster's or guards' side).
+- **The replays** (nine): the four with fixed options re-recorded (`duel-s1-d28`, `duel-s2-d7`,
+  `duel-s5-strict-d7`, `duel-s3-easy-d7`); the four searched ones (`duel-s792-d28`,
+  `duel-s892-d28`, `duel-s988-d28`, `duel-s120-strict-d28`) no longer met what they had been
+  chosen for and were replaced by five from a search (`--seed N --agent-seed N --days 28`, N up
+  to 1 500, `strict-fixed` up to 800; a scratch tool replaying each game's commands and noting its
+  offers, answers, joins, battles and their ends, not committed): `duel-s535-d28` (a Cartographer
+  accepted, a pile fought at once and picked up, a question declined, a hero battle won with a
+  capture), `duel-s1218-d28` (a pursuit won, a key, a question declined, a guard's passage),
+  `duel-s6-d28` (a question accepted and its guards beaten, a group joining, a pile's guards
+  beating the visitor), `duel-s1429-d28` (a declined join and flight, a join, a monster's battle
+  lost, a Cartographer declined), `duel-s100-strict-d28` (a hero battle lost in strict-fixed, the
+  winner capturing). Of the 1 500 faithful games: 10 with a hero battle, 3 with a guard's
+  passage, 106 with a monster's battle lost, 58 with a pile's guards winning, none with an offer
+  to join for gold (no hero of the duel has Diplomacy).
+- **The benchmarks** re-baselined: `random-play-duel-36` 396.4 M → 549.2 M Ir (667 → 2 912
+  steps, most new ones battle commands, cheaper than map steps), `reach-xl-144` 557.3 M → 489.7 M
+  (1 904 → 4 032 queries; guarded tiles end paths), `fork-xl-144` 354.8 M → 355.8 M (the walk to a
+  battle: 76 → 18 steps, a monster or pile on the way).
+- No version bump: the maps are data; the replays name the duel by content hash.

@@ -26,3 +26,24 @@ hero_canvas = [[-43, -19], [693, -19]]
 flag_canvas = [[29, 20], [755, 20]]
 # The players' colours (0x5FFE20): a flag takes its player's 32 entries over 224-255.
 player_palette = "PLAYERS.PAL"
+
+# A stack's count box (§4.3, `draw_battle_stack` 0x43E568; E17 M3 T4a): the picture, index 0
+# transparent, beside the stack; its inside tinted (0x44E940); the count in the font, centred.
+[count_box]
+picture = "CmNumWin.pcx"
+font = "tiny.fnt"
+font_palette = "game.pal"
+# From the anchor, the hex ahead free: facing right, facing left (x negated); a two-hex stack's x
+# +44; the hex ahead taken: x -37 and y -15; free: x + the creature's troop-count offset.
+beside = [[22, -15], [52, -30]]
+two_hex = 44
+taken = [-37, -15]
+# The tint over the inside, from (1, 1), 28 x 9: without spells hue 0.75, saturation 0.8 (the
+# bits of the executable's f32 values).
+tint_rect = [[1, 1], [28, 9]]
+tint = [0x3F400000, 0x3F4CCCCD]
+# The count's text box from the box's corner, the text drawer's colour (game.pal's entry 13) and
+# alignment (centred).
+text_size = [30, 15]
+text_colour = 4
+text_align = 1

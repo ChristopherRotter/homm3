@@ -609,6 +609,26 @@ numeric  = "integer"
   confidence = "medium"
 
 [[rule]]
+id       = "ADV-PIK-004"
+title    = "Guarded piles"
+context  = "adventure"
+status   = "implemented"
+summary  = "A resource pile (or a random one) whose message record holds guards is guarded by those stacks, by slot; a record without stacks is a plain pile, as one without a record (3 shipped). Visited from its neighbouring tile while its guards stand: when the message has a text, the visitor's owner is asked first (an offer to fight, no price): declined, nothing happens and the hero stays; accepted, or at once when the message has no text, the hero attacks the guards as the map gives them (or as a battle left them), unsplit and without a hero, at the pile's tile (its terrain and battlefield; the obstacles from that tile under ADV-QUIRK-5). The visitor's victory picks the pile up (its contents, gold times 100, to its owner; the pile leaves the map, told to the players that see it there); a loss or a retreat leaves the guards' survivors with the pile, unseen (the hero leaves the map, GAM-BAT-003), and a draw leaves the pile without guards, so the next visit picks it up. E08 T21a: `Guards` in the setup (validated as a hero's army, no war machine, piles only), the import (map import v7: the text's presence, the stacks; a random stack among them unsupported), `OfferKind::Fight`, `Defender::Guards`, `AdventureState::end_unowned_battle` (the survivors in the armies battles left), adventure state hash v10, game state hash v8."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-battles.md section 5.1): visit_resource_pile 0x4A4BE0 sends a pile whose tile word has bit 31 to visit_guarded_resource 0x4A4780: no guards flag (+0x10) or no stack (0x4A47E0) is the plain pickup; with a text (+0x8, 0x4A47F7) the yes or no question (0x4A483D; no: nothing), else the battle at once; adventure_battle 0x4AD470 gets the visited tile's packed position and the record's army unsplit (0x4A4870 to 0x4A4888, seed -1); a win (0) gives the pile (0x4A48A6, gold times 100) and removes it"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "CGResource::onHeroVisit: guards and a message ask the question, guards without one start the battle at once, no guards collect; battleFinished collects after a win; MapFormatH3M.cpp readMessageAndGuards"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
+[[rule]]
 id       = "ADV-VIS-001"
 title    = "The Cartographers"
 context  = "adventure"

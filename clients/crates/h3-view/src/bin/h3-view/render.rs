@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_formats::lod::LodArchive;
+use h3_render::Bugs;
 use h3_view::anim::{self, Speed};
 use h3_view::batch::{self, Batch};
 use h3_view::compose::compose;
@@ -284,7 +285,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         Ok::<_, String>(batch)
     });
     let batch = batch?;
-    let screen = compose(&list, &batch, &layout).map_err(|e| e.to_string())?;
+    let screen = compose(&list, &batch, &layout, Bugs::Fixed).map_err(|e| e.to_string())?;
     let png = options.png();
     write(&png, &h3_render::png::encode(&screen))?;
     lines.insert(0, png.display().to_string());

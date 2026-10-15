@@ -11,6 +11,7 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use h3_assets::def::{Def, Frame, decode_frame, parse_def};
+use h3_assets::fnt::{Font, decode_fnt};
 use h3_assets::palette::{Palette, decode_pal};
 use h3_assets::pcx::{Pcx, decode_pcx};
 
@@ -43,12 +44,13 @@ pub struct Batch {
     sprites: BTreeMap<String, Sprite>,
     pictures: BTreeMap<String, Pcx>,
     palettes: BTreeMap<String, Palette>,
+    fonts: BTreeMap<String, Font>,
 }
 
 /// Why an asset is not in the batch.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BatchError {
-    /// The name's extension is not one a batch holds (`.DEF`, `.PCX`, `.PAL`).
+    /// The name's extension is not one a batch holds (`.DEF`, `.PCX`, `.PAL`, `.FNT`).
     Kind(String),
     /// The bytes do not decode: the name and the decoder's error.
     Decode(String, String),
@@ -57,7 +59,7 @@ pub enum BatchError {
 impl fmt::Display for BatchError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Kind(name) => write!(f, "{name}: not a DEF, PCX or PAL"),
+            Self::Kind(name) => write!(f, "{name}: not a DEF, PCX, PAL or FNT"),
             Self::Decode(name, why) => write!(f, "{name}: {why}"),
         }
     }
@@ -86,6 +88,9 @@ impl Batch {
         } else if upper.ends_with(".PAL") {
             let palette = decode_pal(bytes).map_err(failed)?.palette;
             self.palettes.insert(upper, palette);
+        } else if upper.ends_with(".FNT") {
+            let font = decode_fnt(bytes).map_err(failed)?;
+            self.fonts.insert(upper, font);
         } else {
             return Err(BatchError::Kind(upper));
         }
@@ -106,11 +111,17 @@ impl Batch {
     pub fn palette(&self, name: &str) -> Option<&Palette> {
         self.palettes.get(&name.to_ascii_uppercase())
     }
+
+    /// The font `name`, any case (E17 M3 T4a).
+    pub fn font(&self, name: &str) -> Option<&Font> {
+        self.fonts.get(&name.to_ascii_uppercase())
+    }
 }
 
-/// The batch a draw list needs: every name in it (a flag's palette too) and the outline palette,
-/// upper-cased.
+/// The batch a draw list needs: every name in it (a flag's palette too), the layout's count box's
+/// picture, font and font palette when it draws a count box, and the outline palette, upper-cased.
 pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
+    let boxes = &layout.count_box;
     let named = list.iter().flat_map(|d| match d {
         Draw::Background { picture, .. } | Draw::AbsoluteObstacle { picture, .. } => vec![picture],
         Draw::Obstacle { def, .. }
@@ -119,6 +130,7 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         | Draw::Hero { def, .. }
         | Draw::Magic { def, .. } => vec![def],
         Draw::Flag { def, palette, .. } => vec![def, palette],
+        Draw::CountBox { .. } => vec![&boxes.picture, &boxes.font, &boxes.font_palette],
         Draw::Ray(_) => Vec::new(),
     });
     named
@@ -221,6 +233,13 @@ mod tests {
                 mirrored: false,
                 translucent: true,
             },
+            // A count box the layout's picture, font and its palette (M3 T4a).
+            Draw::CountBox {
+                x: 0,
+                y: 0,
+                count: 1,
+                tint: [0, 0],
+            },
         ];
         let layout = crate::scene::tests::layout();
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
@@ -231,12 +250,14 @@ mod tests {
                 "BG.PCX",
                 "CH00.DEF",
                 "CMFLAGL.DEF",
+                "CMNUMWIN.PCX",
                 "CR.DEF",
                 "GAME.PAL",
                 "OB.DEF",
                 "PLAYERS.PAL",
                 "PLCBOWX.DEF",
-                "SP12_.DEF"
+                "SP12_.DEF",
+                "TINY.FNT"
             ]
         );
     }
@@ -256,6 +277,13 @@ mod tests {
         batch.add("s.def", &def).unwrap();
         batch.add("B.pcx", &pcx).unwrap();
         batch.add("game.pal", &pal).unwrap();
+        let font = Font {
+            height: 1,
+            y_offset: 0,
+            glyphs: vec![h3_assets::fnt::Glyph::default(); 256],
+        };
+        batch.add("tiny.fnt", &build::fnt(&font)).unwrap();
+        assert_eq!(batch.font("TINY.fnt"), Some(&font));
         let sprite = batch.sprite("S.DEF").unwrap();
         assert_eq!(sprite.frame(2, 0), Some(&pixel(3)));
         assert_eq!(sprite.frame(2, 1), None);
@@ -267,7 +295,7 @@ mod tests {
             batch.add("x.txt", b""),
             Err(BatchError::Kind("X.TXT".to_string()))
         );
-        for name in ["Y.DEF", "Y.PCX", "Y.PAL"] {
+        for name in ["Y.DEF", "Y.PCX", "Y.PAL", "Y.FNT"] {
             let error = batch.add(name, b"bad").unwrap_err().to_string();
             assert!(error.starts_with(&format!("{name}: ")), "{error}");
         }
@@ -280,7 +308,7 @@ mod tests {
         assert!(error.starts_with("Z.DEF: "), "{error}");
         assert_eq!(
             BatchError::Kind("A".to_string()).to_string(),
-            "A: not a DEF, PCX or PAL"
+            "A: not a DEF, PCX, PAL or FNT"
         );
         assert_eq!(
             BatchError::Decode("A".to_string(), "b".to_string()).to_string(),

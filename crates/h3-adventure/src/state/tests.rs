@@ -89,6 +89,7 @@ fn setup() -> AdventureSetup {
                     amount: None,
                     drawn: TileMask::default(),
                     monster: None,
+                    guards: None,
                 },
                 ObjectSetup {
                     anchor: Pos::new(2, 2, 1),
@@ -98,6 +99,7 @@ fn setup() -> AdventureSetup {
                     amount: None,
                     drawn: TileMask::default(),
                     monster: None,
+                    guards: None,
                 },
             ],
         },
@@ -183,6 +185,7 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
             amount: None,
             drawn: TileMask::default(),
             monster: None,
+            guards: None,
         },
         // Covering no tile of the map at all.
         ObjectSetup {
@@ -193,6 +196,7 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
             amount: None,
             drawn: TileMask::default(),
             monster: None,
+            guards: None,
         },
     ];
     let state = build(&setup).unwrap();
@@ -266,6 +270,7 @@ fn with_objects(objects: &[(ObjectTypeId, Option<u32>)]) -> AdventureSetup {
             amount,
             drawn: TileMask::default(),
             monster: None,
+            guards: None,
         });
     }
     setup
@@ -379,6 +384,7 @@ fn a_removed_object_frees_the_tiles_no_other_object_covers() {
         amount: None,
         drawn: TileMask::default(),
         monster: None,
+        guards: None,
     });
     let base = build(&setup).unwrap();
     let map = base.map();
@@ -798,3 +804,4 @@ fn the_hash_sees_content_not_sharing() {
 
 mod answers;
 mod monsters;
+mod piles;

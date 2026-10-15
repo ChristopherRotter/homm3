@@ -7,7 +7,8 @@
 //! tile that is the visitable tile of two or more objects (E08 T14a: which object a step there
 //! visits, ADV-OBJ-003) and the typed objects of one type on one anchor (E08 T15a: what a player
 //! sees names a typed object by its type and anchor, ADR-0016 point 6); since E08 T20a2a the
-//! monsters' and the special grounds' counts (`docs/formats/h3m.md`, "Import").
+//! monsters' and the special grounds' counts and since E08 T21a the guarded piles'
+//! (`docs/formats/h3m.md`, "Import").
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -229,7 +230,9 @@ fn check(
 /// Counts the monsters' data the import reads or refuses and the special grounds (E08 T20a2a):
 /// treasures with a resource below 0 (the import leaves such an amount out), dispositions
 /// beyond savage, treasures with an artifact; grounds, those whose picture the import's table
-/// lacks (they lie on one tile), and tiles two or more grounds lie on.
+/// lacks (they lie on one tile), and tiles two or more grounds lie on; (E08 T21a) the guarded
+/// piles the import keeps, those whose guards ask first, and the piles with a guards record the
+/// import reads as plain (no stack) or leaves unguarded (a random stack).
 fn census(map: &RawMap, setup: &MapSetup, counts: &mut BTreeMap<&'static str, usize>) {
     let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
     for object in &map.objects {
@@ -251,6 +254,18 @@ fn census(map: &RawMap, setup: &MapSetup, counts: &mut BTreeMap<&'static str, us
                 );
             }
         }
+    }
+    let records = map.objects.iter().filter(
+        |o| matches!(&o.body, Body::Resource { message: Some(m), .. } if m.guards.is_some()),
+    );
+    add("piles with a guards record", records.count());
+    for guards in setup.objects.iter().filter_map(|o| o.guards.as_ref()) {
+        add("guarded piles", 1);
+        add("guarded piles that ask first", usize::from(guards.question));
+        add(
+            "guarded piles with two or more stacks",
+            usize::from(guards.army.len() > 1),
+        );
     }
     let mut lying = BTreeMap::<(u16, u16, u8), usize>::new();
     for object in setup.objects.iter().filter(|o| o.drawn.bits() != 0) {

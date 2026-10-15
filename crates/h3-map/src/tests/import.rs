@@ -4,7 +4,7 @@
 
 use std::sync::{Arc, LazyLock};
 
-use h3_adventure::{Pos as TilePos, TileMask};
+use h3_adventure::{Guards, Pos as TilePos, TileMask};
 use h3_content::{Formation, HeroEffect};
 use h3_contracts::{ArmyStack, PlayerId};
 use h3_game::{GameRuleset, HeroArmy, HeroDetailsSetup, PlayerSetup};
@@ -359,9 +359,9 @@ fn the_typed_classes_import_as_their_object_types() {
     assert_eq!(other.map.objects[0].object_type, None);
 }
 
-// covers: ADV-OBJ-002
+// covers: ADV-OBJ-002, ADV-PIK-004
 #[test]
-fn a_piles_fixed_amount_and_message_carry_over_and_guards_are_unsupported() {
+fn a_piles_fixed_amount_message_and_guards_carry_over() {
     let part = SOD.adventure();
     let amount = |class, amount, message| {
         let setup = import(&typed_map(class, 6, pile_body(amount, message)), &SOD).unwrap();
@@ -382,32 +382,87 @@ fn a_piles_fixed_amount_and_message_carry_over_and_guards_are_unsupported() {
         guards: None,
     };
     assert_eq!(amount(79, 2, Some(note.clone())), (gold, Some(2)));
-    // A guards record, even an empty one, makes the pile unsupported; its static layer keeps it
-    // as a blocker.
-    for guards in [
-        vec![None; 7],
-        vec![Some(Stack {
-            creature: 0,
-            count: 5,
-        })],
-    ] {
-        for class in [76, 79] {
-            let message = Message {
-                guards: Some(guards.clone()),
-                ..note.clone()
-            };
-            let m = typed_map(class, 6, pile_body(4, Some(message)));
-            assert_eq!(
-                import(&m, &SOD),
-                Err(ImportError::Unsupported(Unsupported::GuardedPile(0)))
-            );
-            let layer = import_map(&m, &SOD).unwrap();
-            assert_eq!(
-                (layer.objects[0].object_type, layer.objects[0].amount),
-                (None, None)
-            );
-        }
+    // E08 T21a: a guards record's stacks are the pile's guards, by slot, the message's text a
+    // question; an empty record is a plain pile, as the original's stack count reads it.
+    let pikemen = SOD.core().creature_by_key("base:pikeman").unwrap();
+    let archers = SOD.core().creature_by_key("base:archer").unwrap();
+    let stack = |creature, count| Some(Stack { creature, count });
+    let guarded = |class, text: &[u8], army: Vec<Option<Stack>>| {
+        let message = Message {
+            text: Text(text.to_vec()),
+            guards: Some(army),
+        };
+        let setup = import(&typed_map(class, 6, pile_body(4, Some(message))), &SOD).unwrap();
+        assert!(setup.validate(&SOD).is_ok());
+        let object = setup.map.objects[0].clone();
+        assert_eq!(object.amount, Some(4));
+        object.guards
+    };
+    for class in [76, 79] {
+        assert_eq!(guarded(class, b"", vec![None; 7]), None);
+        assert_eq!(guarded(class, b"Fight?", vec![]), None);
+        let mut army = vec![None; 7];
+        army[2] = stack(0, 5);
+        army[4] = stack(2, 3);
+        let both = vec![
+            ArmyStack {
+                slot: 2,
+                creature: pikemen,
+                count: 5,
+            },
+            ArmyStack {
+                slot: 4,
+                creature: archers,
+                count: 3,
+            },
+        ];
+        assert_eq!(
+            guarded(class, b"Fight?", army.clone()),
+            Some(Guards {
+                army: both.clone(),
+                question: true
+            })
+        );
+        assert_eq!(
+            guarded(class, b"", army),
+            Some(Guards {
+                army: both,
+                question: false
+            })
+        );
     }
+    // A random stack among the guards makes the map unsupported; its static layer keeps the pile
+    // unguarded.
+    let message = Message {
+        guards: Some(vec![stack(0, 5), stack(u16::MAX - 1, 1)]),
+        ..note.clone()
+    };
+    let m = typed_map(79, 6, pile_body(4, Some(message)));
+    assert_eq!(
+        import(&m, &SOD),
+        Err(ImportError::Unsupported(Unsupported::RandomStack(0)))
+    );
+    let layer = import_map(&m, &SOD).unwrap();
+    assert_eq!(
+        (
+            layer.objects[0].object_type,
+            layer.objects[0].amount,
+            &layer.objects[0].guards
+        ),
+        (gold, Some(4), &None)
+    );
+    // An unknown creature among them is the map's error.
+    let message = Message {
+        guards: Some(vec![stack(500, 5)]),
+        ..note
+    };
+    assert!(matches!(
+        import_map(&typed_map(79, 6, pile_body(4, Some(message))), &SOD),
+        Err(ImportError::UnknownCode {
+            what: "creature",
+            code: 500
+        })
+    ));
     // A fixed amount the setup rejects passes the import: validation refuses it.
     let m = typed_map(79, 0, pile_body(u32::MAX, None));
     let setup = import(&m, &SOD).unwrap();
@@ -706,10 +761,9 @@ fn the_errors_and_reasons_read_well() {
         ),
         (
             Unsupported::RandomStack(0),
-            "a random stack in a hero's army",
+            "a random stack in a hero's army or a pile's guards",
         ),
         (Unsupported::HeroInTown(0), "a hero standing in a town"),
-        (Unsupported::GuardedPile(0), "a guarded resource pile"),
         (
             Unsupported::MonsterArtifact(0),
             "a monster with an artifact in its treasure",
