@@ -243,8 +243,9 @@ follows the result (the adventure lane).
   then the Catapult; the `wiki`: silent). Only tie-breaks and draws over records see it: the
   computer's ties go to the later record (the turrets', the automatic Ballista's), a Magic Mirror's
   or a Faerie Dragon's draw among stacks. The engine numbered them in VCMI's order after the army;
-  T10a follows the code (stack ids: the army, then the code's order). Unobserved: a tie between a
-  First Aid Tent and an Ammo Cart in the computer's aim would show it.
+  T10a follows the code (stack ids: the army, then the code's order). **The user (BAT-Q49): the
+  original's order.** Unobserved: a tie between a First Aid Tent and an Ammo Cart in the
+  computer's aim would show it.
 - **S-06, S-07** (`E04-quirks.md`: the towers) are D-16 and D-17: the code reading finds neither
   bug in the user's executable (T7, §7.30), and batch 3e confirms it (Air Shield and Armorer lower
   the damage, Archery does not touch it): **not quirks** of the user's version.

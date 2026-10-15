@@ -144,7 +144,9 @@ E04b's T11; the shot's exact line before the review, so that it reads the epic's
     re-baselined); the war machines' stack ids in the original's record order (0x463600: the
     Catapult, the Ballista, the First Aid Tent, the Ammo Cart; D-23); a test that the walls
     property's games reach the gate, the moat and the breaches (T9's open point); the catalog's
-    statuses and summaries, the exit criteria, the queue's inbox by destination.
+    statuses and summaries, the exit criteria, the queue's inbox by destination. Built 2026-10-15
+    (record: [`E04c-log.md`](E04c-log.md)); at the checkpoint the user kept the original's order
+    and counted the agents' batches for exit criterion 6 (BAT-Q49).
   - [ ] **T10b The independent review** (the next increment): fresh reviewer agents per slice (the
     battlefields; walls, gate and moat; the Catapult and Earthquake; the turrets and the computer's
     aim; the town's other rules), a robustness and a security review; the fold-in.
@@ -269,7 +271,8 @@ hero seam, point 5) and ADR-0014 (magic) still apply.
    reach the other side's observation; walls and the moat agree with movement and the legal moves.
 5. Golden replays with a special battlefield and a siege; at least 100 k steps/s/core on the
    `full` scenario; `bench-check` re-baselined with the reason.
-6. At least one E04c experiment batch played by the user and recorded.
+6. At least one E04c experiment batch played by the user and recorded. (Met: batches 3a to 3h,
+   played by an agent on the capture harness; the user, BAT-Q49: batches played by agents count.)
 7. `cargo xtask verify` green on Linux and Windows, including `--with-original-data`.
 
 ## Risks

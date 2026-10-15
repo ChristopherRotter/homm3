@@ -571,8 +571,8 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   honoured, S-28 not a quirk (BAT-Q39). (4) Met in T9a; the reach test above. (5) `field-s5` and
   `siege-s7`; bench-check re-baselined (below); 100 k steps/s on `full`: 97 k to 104 k here (a
   2.80 GHz Xeon), the user's machine at T10c. (6) The batches 3a to 3h were played by an agent on
-  the capture harness, as the user decided at increment 2 (none by the user): for the user to
-  confirm at T10c. (7) The full verify on Linux with the original data (below); Windows at T10c.
+  the capture harness, as the user decided at increment 2 (none by the user): met by the user's
+  answer at the checkpoint (BAT-Q49). (7) The full verify on Linux with the original data (below); Windows at T10c.
 - **The queue's inbox** (31.5 to 22.8 KB): E04c's per-task notes, the E04c bullets of E04b's
   triage and review (done by T2 to T8), the adventure lane's notes for information and three
   E02/E03 notes E04c did (war machines, special battlefields, the obstacle table) replaced by one
@@ -591,3 +591,6 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   0x463370, both entries kept): every step passed; bench-check `random-rollouts-full` +1.25 %
   against its baseline (as on master), `random-rollouts-siege` +0.00 % against T10a's. The run
   before found the harvested games' order (`h3-pack-battle`) and rustfmt. CI cannot run.
+- **The checkpoint** (the user, 2026-10-15, BAT-Q49): the original's war machine order stays
+  (D-23); the batches played by agents count for exit criterion 6, so it is met. Recorded in the
+  docs only; no new verify (the user: none needed).
