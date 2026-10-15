@@ -409,7 +409,7 @@ fn objects(
 /// guards ask, four crystals whose guards fight at once); then `2 × scale` monsters of each kind,
 /// piles of each guarded kind and grounds of each kind, anywhere. The duel's counts: 14 monsters,
 /// 8 guarded piles, 6 grounds.
-fn encounters(placer: &mut Placer, mix: &mut Mix, heroes: &[Spot], scale: usize) {
+fn encounters(placer: &mut Placer<'_>, mix: &mut Mix, heroes: &[Spot], scale: usize) {
     for (i, &hero) in heroes.iter().enumerate() {
         let monster = MONSTER_OBJECTS[i % MONSTER_OBJECTS.len()];
         placer.place_object(mix, monster, Area::Near(hero));
