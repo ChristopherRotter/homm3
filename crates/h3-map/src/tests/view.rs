@@ -539,7 +539,7 @@ fn check_told(
             .rev()
             .find(|(name, _)| *name == named(object))
             .map(|&(_, word)| {
-                let mut now = object.clone();
+                let mut now = *object;
                 if let Some(monster) = &mut now.monster {
                     monster.count_word = word;
                 }
