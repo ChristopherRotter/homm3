@@ -68,6 +68,28 @@ pub fn compose(
                 // 0x495500: the plain drawer with runs skipped, never mirrored (§4.4).
                 plain(&mut screen, batch, def, (*group, *frame), *x, *y, false)?;
             }
+            Draw::Magic {
+                def,
+                frame,
+                x,
+                y,
+                mirrored,
+                translucent,
+            } => {
+                // 0x4953B0 → 0x47EF60: with its flag the translucent drawer, else the plain one
+                // with runs skipped (E17 M3 T3b, §7.15).
+                let drawer = if *translucent {
+                    Drawer::Translucent
+                } else {
+                    PLAIN
+                };
+                let at = Placement {
+                    x: *x,
+                    y: *y,
+                    mirrored: *mirrored,
+                };
+                drawn(&mut screen, batch, def, (0, *frame), at, drawer)?;
+            }
             Draw::Projectile {
                 def,
                 frame,
@@ -204,30 +226,37 @@ pub fn compose(
     Ok(screen)
 }
 
-/// A frame drawn plain with runs skipped (`def_draw_plain` 0x47BCF0 → 0x47C570), its canvas's
-/// top-left at (`x`, `y`).
+/// The plain drawer with runs skipped (`def_draw_plain` 0x47BCF0 → 0x47C570).
+const PLAIN: Drawer = Drawer::Plain {
+    skip_runs: true,
+    colour: None,
+};
+
+/// A frame drawn plain with runs skipped, its canvas's top-left at (`x`, `y`).
 fn plain(
     screen: &mut Screen,
     batch: &Batch,
     def: &str,
-    (group, index): (u32, u32),
+    at: (u32, u32),
     x: i32,
     y: i32,
     mirrored: bool,
 ) -> Result<(), ComposeError> {
+    drawn(screen, batch, def, at, Placement { x, y, mirrored }, PLAIN)
+}
+
+/// A frame of `def` drawn with its own palette by `drawer`, placed by `at`.
+fn drawn(
+    screen: &mut Screen,
+    batch: &Batch,
+    def: &str,
+    (group, index): (u32, u32),
+    at: Placement,
+    drawer: Drawer,
+) -> Result<(), ComposeError> {
     let (sprite, frame) = frame_of(batch, def, group, index)?;
-    let drawer = Drawer::Plain {
-        skip_runs: true,
-        colour: None,
-    };
     let palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
-    draw_frame(
-        screen,
-        frame,
-        &palette,
-        Placement { x, y, mirrored },
-        drawer,
-    );
+    draw_frame(screen, frame, &palette, at, drawer);
     Ok(())
 }
 

@@ -15,6 +15,9 @@
 //! | 2 | runs skipped (0x47DD40) | the same | as above |
 //! | 3 | runs of 5 take the colour if one is given, others skipped (0x47D0A0) | the same | as above (0x47D930) |
 //!
+//! [`Drawer::Translucent`] (0x47EF60 with its flag, a magic animation's; E17 M3 T3b) blends
+//! encoding 1's literal pixels half and half with the screen and skips its runs.
+//!
 //! The shadow pass is read for encoding 3 only; for the others it is applied the same way
 //! (*provisional*). 0x47C9E0's 50/50 blend of literal pixels is left out: no caller enables it.
 //!
@@ -46,6 +49,12 @@ pub enum Drawer {
     },
     /// 0x47D930 (the shadow pass): only the shadows.
     ShadowPass,
+    /// 0x47EF60 with its flag (`draw_frame_transparent`; a magic animation whose table entry
+    /// asks for it, E17 M3 T3b): encoding 1's literal pixels blended half and half with the
+    /// screen, each channel's halves added (`((c >> 1) & H) + ((d >> 1) & H)`, H the half mask),
+    /// its runs skipped; encodings 0 and 2 as the plain drawer (0x47DD40); encoding 3 goes to a
+    /// blend not read (0x47D4F0), drawn plain here (*provisional*: no magic animation has it).
+    Translucent,
 }
 
 /// Where a frame goes: its canvas's top-left corner on the screen, and whether it is mirrored.
@@ -67,6 +76,7 @@ enum Op {
     Colour(u16),
     Body,
     Border,
+    Blend(u8),
 }
 
 fn op(drawer: Drawer, encoding: Encoding, index: u8, run: bool) -> Op {
@@ -80,6 +90,11 @@ fn op(drawer: Drawer, encoding: Encoding, index: u8, run: bool) -> Op {
             Encoding::Rows if run && skip_runs => Op::Skip,
             Encoding::Rows => Op::Index(index),
             _ => other_encodings(encoding, index, run, colour),
+        },
+        Drawer::Translucent => match (encoding, run) {
+            (Encoding::Rows, false) => Op::Blend(index),
+            (Encoding::Rows, true) => Op::Skip,
+            _ => other_encodings(encoding, index, run, None),
         },
         Drawer::Shadowed { colour } => match (encoding, run, index, colour) {
             (Encoding::Rows, true, 5..=7, Some(c)) => Op::Colour(c),
@@ -107,6 +122,10 @@ fn apply(op: Op, pixel: &mut u16, palette: &ScreenPalette, format: PixelFormat) 
         Op::Colour(c) => c,
         Op::Body => format.shadow_body(*pixel),
         Op::Border => format.shadow_border(*pixel),
+        Op::Blend(i) => {
+            let half = format.half_mask();
+            ((palette.get(i) >> 1) & half) + ((*pixel >> 1) & half)
+        }
     };
 }
 

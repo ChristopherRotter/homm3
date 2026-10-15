@@ -479,8 +479,10 @@ def act(game, action):
 
 def timeline(states):
     """The changes of the stacks' group, frame and hex: lines `<ms> <side>.<record> g<group>
-    f<frame> h<hex>`, the first state of each stack at the sequence's start."""
-    lines, last = [], {}
+    f<frame> h<hex>`, the first state of each stack at the sequence's start; after a time's
+    stacks, a change of the magic animation drawn (M3 T3b, design §7.15): `<ms> magic <number>
+    f<frame> <side>.<record>...` over the stacks that show it, `<ms> magic -` once none does."""
+    lines, last, magic = [], {}, None
     for i, state in enumerate(states):
         if i + 1 < len(states) and states[i + 1]["t"] == state["t"]:
             continue  # a later state at the same time (actions between them) shows instead
@@ -490,6 +492,15 @@ def timeline(states):
             if last.get(key) != now:
                 lines.append(f"{state['t']} {key[0]}.{key[1]} g{now[0]} f{now[1]} h{now[2]}")
                 last[key] = now
+        over = [f"{st['side']}.{st['record']}" for st in state["stacks"] if st.get("magic")]
+        drawn = state["clocks"].get("magic")
+        if over and drawn:
+            line = f"magic {drawn[0]} f{drawn[1]} " + " ".join(over)
+        else:
+            line = "magic -" if magic else None  # erased, or none yet
+        if line != magic:
+            lines.append(f"{state['t']} {line}")
+            magic = line
     return lines
 
 

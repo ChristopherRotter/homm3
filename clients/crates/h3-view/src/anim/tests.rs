@@ -34,6 +34,8 @@ const CYCLOPS: u16 = 9;
 const ARCH_MAGE: u16 = 10;
 const BEHOLDER: u16 = 11;
 const BLACK_DRAGON: u16 = 12;
+/// The First Aid Tent (E17 M3 T3b).
+const TENT: u16 = 13;
 
 /// A look: `times` and the frames of each group.
 fn look(times: [u32; 4], frames: &[(u32, u32)], top: i32) -> Look {
@@ -227,8 +229,34 @@ fn looks() -> BTreeMap<u16, Look> {
                 179,
             ),
         ),
+        // `SMTENT.DEF` (E17 M3 T3b): standing, hit, defend, death only; no fidget, no move.
+        (
+            TENT,
+            look(
+                [9000, 500, 500, 115],
+                &[(2, 6), (3, 9), (4, 9), (5, 6)],
+                144,
+            ),
+        ),
     ];
     base.into_iter().collect()
+}
+
+/// The magic animations of the tests (E17 M3 T3b): the heal's, three frames of a 96 x 94 DEF,
+/// centred on the creature and translucent.
+pub(crate) fn magic() -> BTreeMap<u8, MagicLook> {
+    [(
+        HEAL,
+        MagicLook {
+            def: "Heal.def".to_string(),
+            frames: 3,
+            size: [96, 94],
+            place: 1,
+            translucent: true,
+        },
+    )]
+    .into_iter()
+    .collect()
 }
 
 /// The Black Dragons (`CBDRGN.DEF`): a breath on two stacks takes groups 17 to 19 (E17 M3 T1b-2).
@@ -409,6 +437,7 @@ fn play(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timel
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
+        magic: &magic(),
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -814,6 +843,7 @@ fn a_creature_without_numbers_is_an_error() {
         layout: &layout,
         width: 0,
         groups: tables().battle.groups,
+        magic: &magic(),
     };
     let err = timeline(&o, &[], &looks(), stage, Speed::default()).unwrap_err();
     assert_eq!(err, AnimError::Look(99));
@@ -869,6 +899,7 @@ fn a_flight_without_a_distance_is_one_cycle() {
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
+        magic: &magic(),
     };
     let o = snapshot(vec![angels]);
     let events = [moved(0, 35, 37)];
@@ -984,6 +1015,7 @@ fn a_reaction_without_frames_and_a_strike_at_nothing() {
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
+        magic: &magic(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, WOLF_RIDER, 52, true),
@@ -1016,6 +1048,7 @@ fn a_ray_without_a_climax_frame_or_a_target() {
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
+        magic: &magic(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, ARCH_MAGE, 137, false),
@@ -1087,6 +1120,7 @@ fn shots_aim_up_straight_and_down() {
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
+        magic: &magic(),
     };
     let column = |target: u8| {
         let o = snapshot(vec![
@@ -1119,6 +1153,7 @@ fn shots_without_a_climax_or_a_target() {
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
+        magic: &magic(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -1282,6 +1317,7 @@ fn a_shooter_without_a_projectile_waits_as_one_flies() {
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
+        magic: &magic(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -1473,6 +1509,7 @@ fn a_breath_on_two_stacks_takes_its_own_groups() {
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
+        magic: &magic(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, ANGEL, 52, false),
@@ -1581,6 +1618,7 @@ fn neighbours_follow_the_layout() {
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
+        magic: &magic(),
     };
     // Hex 83 (row 4, even, shifted right): up-right 67, right 84, down-right 101, down-left 100,
     // left 82, up-left 66; row 5 (odd): up-right of 100 is 83.
@@ -1650,6 +1688,7 @@ fn fidgeting_play(
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
+        magic: &magic(),
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -1874,6 +1913,7 @@ fn a_target_reacts_as_the_projectile_lands() {
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
+        magic: &magic(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -1918,4 +1958,243 @@ fn a_target_reacts_as_the_projectile_lands() {
             (2, 0)
         ]
     );
+}
+
+/// A war machine of army slot `slot` (E17 M3 T3b).
+fn machine(id: u8, side: Side, creature: u16, hex: u8, slot: u8) -> Stack {
+    let mut s = at(id, side, creature, hex, true);
+    (s.war_machine, s.slot, s.speed) = (true, slot, 0);
+    s
+}
+
+fn healed(healer: u8, target: u8) -> Event {
+    Event::Healed {
+        healer,
+        target,
+        hit_points: 6,
+    }
+}
+
+#[test]
+fn a_first_aid_tent_heals_under_its_magic_animation() {
+    // E17 M3 T3b (`machines`): the Goblins walk; then the tent's turn plays out in the same
+    // command: the loop ticks once as it acts (outlining it), the heal's sound starts and
+    // magic animation 79 shows over the Pikemen, a frame per 100 ms on the deadline, then a
+    // redraw erases it; the tent stays outlined throughout.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+        machine(1, Side::Attacker, TENT, 153, 18),
+        at(2, Side::Defender, GOBLIN, 100, false),
+    ]);
+    let events = vec![
+        moved(2, 100, 99),
+        Event::TurnStarted { stack: 1 },
+        healed(1, 0),
+        Event::TurnStarted { stack: 0 },
+    ];
+    let t = play(&o, &[(Some(0), events)]);
+    let turn = t.turns[0].0;
+    assert_eq!(t.turns, [(turn, 1), (turn + 400, 0)]);
+    // The tick at the tent's turn, outlining it until the heal's end.
+    assert_eq!(t.steps.last(), Some(&turn));
+    assert_eq!(
+        [turn - 1, turn, turn + 399, turn + 400].map(|ms| t.outlined(ms)),
+        [None, Some(1), Some(1), Some(0)]
+    );
+    // The heal's sound with its first frame, on the patient.
+    assert!(t.cues.contains(&Cue {
+        at: turn,
+        stack: 0,
+        sound: Sound::Heal,
+        stop: false
+    }));
+    // The frames, each drawn 100 ms before it shows, and the erasure.
+    let keys: Vec<(u32, u32, Option<u32>)> = t
+        .magics
+        .iter()
+        .map(|k| (k.drawn, k.shown, k.frame))
+        .collect();
+    assert_eq!(
+        keys,
+        [
+            (turn, turn + 100, Some(0)),
+            (turn + 100, turn + 200, Some(1)),
+            (turn + 200, turn + 300, Some(2)),
+            (turn + 300, turn + 400, None),
+        ]
+    );
+    assert_eq!(t.end, turn + 400);
+    // Centred on the Pikemen at hex 86 (anchor 80, 338): x = 80 - 96 / 2, y = 338 - 94 / 2 -
+    // (267 - 171) / 2.
+    let shown = t.magic(turn + 150).unwrap();
+    assert_eq!(
+        shown,
+        Magic {
+            def: "Heal.def".to_string(),
+            frame: 0,
+            translucent: true,
+            over: vec![(0, [32, 243], false)],
+        }
+    );
+    assert_eq!(t.magic(turn + 299).map(|m| m.frame), Some(1));
+    assert_eq!((t.magic(turn + 99), t.magic(turn + 400)), (None, None));
+    // The scene's moment, the changes and the harness's lines know it.
+    assert_eq!(crate::scene::Moment::at(&t, turn + 150).magic, Some(shown));
+    assert!(t.changes(t.end).contains(&(turn + 300)));
+    let lines = t.lines();
+    for line in [
+        format!("{turn} magic 79 f0 0.0"),
+        format!("{} magic 79 f2 0.0", turn + 200),
+        format!("{} magic -", turn + 300),
+    ] {
+        assert!(lines.contains(&line), "{line}\n{lines}");
+    }
+}
+
+#[test]
+fn a_heal_without_its_animation_plays_its_sound_only() {
+    // A stage without magic animation 79 (a record that never heals has none loaded), and a
+    // tent commanded by its hero (First Aid): its own command, outlined from the heal's first
+    // frame.
+    let o = snapshot(vec![
+        machine(1, Side::Attacker, TENT, 153, 18),
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+        at(2, Side::Defender, GOBLIN, 100, false),
+    ]);
+    let layout = layout();
+    let none = BTreeMap::new();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+        magic: &none,
+    };
+    let events = [healed(1, 0), Event::TurnStarted { stack: 2 }];
+    let commands = [Command {
+        at: Some(0),
+        events: &events,
+    }];
+    let t = timeline(&o, &commands, &looks(), stage, Speed::default()).unwrap();
+    assert!(t.magics.is_empty() && t.cues.len() == 1);
+    // With the animation: outlined from the first frame shown, not from a tick.
+    let t = play(&o, &[(Some(0), events.to_vec())]);
+    assert_eq!(t.magics[0].shown, 100);
+    assert_eq!(
+        [99, 100, 399].map(|ms| t.outlined(ms)),
+        [Some(1), Some(1), Some(1)]
+    );
+    assert_eq!(t.outlined(400), Some(2));
+    // Over a two-hex patient: its middle, toward its front.
+    let o = snapshot(vec![
+        machine(1, Side::Attacker, TENT, 153, 18),
+        at(0, Side::Attacker, PIKEMAN, 86, true),
+        at(2, Side::Defender, GOBLIN, 100, true),
+    ]);
+    let t = play(&o, &[(Some(0), vec![healed(1, 0), healed(1, 2)])]);
+    let over = |k: usize| t.magics[k].over[0];
+    assert_eq!(over(0), (0, [32 + 22, 243], false));
+    // The defender's faces left: mirrored, 22 to the left of its anchor (column 15, row 5: 696).
+    let top = looks()[&GOBLIN].top;
+    assert_eq!(
+        over(4),
+        (2, [696 - 22 - 48, 338 - 47 - (267 - top) / 2], true)
+    );
+}
+
+#[test]
+fn magic_animations_stand_where_their_place_says() {
+    // Place 0 on the anchor, 2 above the creature, 1 centred; 3 is not built: on the anchor.
+    let o = snapshot(vec![
+        machine(1, Side::Attacker, TENT, 153, 18),
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+    ]);
+    let layout = layout();
+    let place = |place: u8| {
+        let mut magic = magic();
+        magic.get_mut(&HEAL).unwrap().place = place;
+        let stage = Stage {
+            layout: &layout,
+            width: 17,
+            groups: tables().battle.groups,
+            magic: &magic,
+        };
+        let events = [healed(1, 0)];
+        let commands = [Command {
+            at: Some(0),
+            events: &events,
+        }];
+        let t = timeline(&o, &commands, &looks(), stage, Speed::default()).unwrap();
+        t.magics[0].over[0].1
+    };
+    assert_eq!(place(0), [32, 338 - 94]);
+    assert_eq!(place(1), [32, 338 - 47 - 48]);
+    assert_eq!(place(2), [32, 338 - 94 - 96]);
+    assert_eq!(place(3), place(0));
+}
+
+#[test]
+fn war_machines_take_the_records_after_their_sides_army() {
+    // The harness's records (E17 M3 T3b): each side's army, then its war machines in the
+    // original's setup order: the Catapult (19), the Ballista (16), the tent (18), the Ammo
+    // Cart (17), then the turrets; a stack of another slot after them.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+        machine(1, Side::Attacker, TENT, 51, 16),
+        machine(2, Side::Attacker, TENT, 18, 17),
+        machine(3, Side::Attacker, TENT, 153, 18),
+        machine(4, Side::Attacker, TENT, 119, 19),
+        machine(5, Side::Attacker, TENT, 120, 20),
+        at(6, Side::Defender, GOBLIN, 100, false),
+        machine(7, Side::Defender, TENT, 67, 16),
+    ]);
+    let t = play(&o, &[]);
+    let records: Vec<(u8, u8)> = t.members.iter().map(|m| (m.stack, m.record)).collect();
+    assert_eq!(
+        records,
+        [
+            (0, 0),
+            (4, 1),
+            (1, 2),
+            (3, 3),
+            (2, 4),
+            (5, 5),
+            (6, 0),
+            (7, 1)
+        ]
+    );
+}
+
+#[test]
+fn a_war_machine_is_outlined_from_its_tick_to_its_first_frame() {
+    // An automatic war machine's turn (the Ballista's shot in `machines`): the loop ticks as it
+    // acts, outlining it until its action's first frame shows; a turn that is the command's
+    // last (the player's) does not tick.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+        machine(1, Side::Attacker, TENT, 153, 18),
+        at(2, Side::Defender, GOBLIN, 100, false),
+    ]);
+    let events = vec![
+        moved(2, 100, 99),
+        Event::TurnStarted { stack: 1 },
+        moved(0, 86, 87),
+        Event::TurnStarted { stack: 2 },
+    ];
+    let t = play(&o, &[(Some(0), events)]);
+    let turn = t.turns[0].0;
+    assert_eq!(t.steps.last(), Some(&turn));
+    let first = t.keys.iter().find(|k| k.stack == 0).unwrap().shown;
+    assert_eq!(
+        [turn, first - 1, first].map(|ms| t.outlined(ms)),
+        [Some(1), Some(1), None]
+    );
+    // Without an animation before it, the tick is not due: no outline.
+    let events = vec![
+        Event::TurnStarted { stack: 1 },
+        moved(0, 86, 87),
+        Event::TurnStarted { stack: 2 },
+    ];
+    let t = play(&o, &[(Some(0), events)]);
+    assert_eq!(t.steps, [0]);
+    assert_eq!(t.outlined(50), Some(0));
 }

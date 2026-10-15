@@ -1,0 +1,47 @@
+# E17 M3 T3b: the war machines in a battle in progress in hot seat (`hot_seat` in sequences.toml:
+# the harness plays both sides; neither hero has Artillery or First Aid, so the machines act on
+# their own, BAT-WAR-002, BAT-WAR-003). Round 1: the Pikemen defend, the Archers shoot them; then
+# the war machines (speed 0, last): the attacker's Ballista shoots right, the defender's Ballista
+# left, the attacker's First Aid Tent heals the Pikemen, the only hurt stack (not a war machine).
+# Round 2 starts with the Pikemen's turn. On grass at the capture set's tile (grass.toml's
+# obstacles).
+
+[scenario]
+id = "sequence-machines"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+attacker_war_machines = ["base:ballista", "base:ammo_cart", "base:first_aid_tent"]
+defender_war_machines = ["base:ballista"]
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 20
+
+[[defender]]
+slot = 0
+creature = "base:archer"
+count = 10
+
+# The heroes (E17 M3 T3a), as the original's map gets them (`h3-view situation`): Orrin, a
+# Knight, and Crag Hack, a Barbarian, each with 1 in every primary skill and the war machines as
+# artifacts (M3 T3b).
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

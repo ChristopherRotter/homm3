@@ -134,6 +134,24 @@ command = [
     { seat = "Attacker", at = 5900, command = { Move = { to = 155 } } },
 ]
 
+# E17 M3 T3b: the war machines in hot seat (`seq-machines.toml`). Round 1: the Pikemen defend, the
+# Archers shoot them; then the machines on their own: the attacker's Ballista shoots right at the
+# Archers, the defender's Ballista left at the Pikemen, the attacker's First Aid Tent heals the
+# Pikemen (the magic animation 79, design §7.15); round 2: the Archers defend.
+[[sequence]]
+id = "machines"
+scenario = "seq-machines.toml"
+hot_seat = true
+actions = ["key:d", "turn:1.0", "hex:86", "turn:1.0", "key:d"]
+ms = 500
+timeline = "timelines/machines.txt"
+frames = "timelines/machines-frames.txt"
+command = [
+    { seat = "Attacker", command = { Defend = {} } },
+    { seat = "Defender", at = 0, command = { Shoot = { target = 0, at = 86 } } },
+    { seat = "Defender", at = 7945, command = { Defend = {} } },
+]
+
 # E17 M3 T1b-2: the mouse over a stack (`seq-fly.toml`'s opening, the Black Dragons' turn). The
 # mouse enters the Pikemen at once: they show group 1 from frame 0, one frame per idle step
 # (`battle_mouse_stack` 0x477C20; their outline 0x70); it leaves at 150 ms and enters again at 200,
