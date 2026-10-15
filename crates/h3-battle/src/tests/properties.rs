@@ -9,7 +9,10 @@
 //! assertions are stated for the trusted actor and the controller (BAT-MAG-025, BAT-MAG-026).
 //! Half the heroes have hidden magic in force: casting limits, spell defences, the negation of
 //! immunities, opening spells, Eagle Eye (BAT-MAG-061 to BAT-MAG-069; private to their side,
-//! BAT-Q26).
+//! BAT-Q26). The games are fought where the original fights them (E04c T9a): on the terrain's
+//! ordinary field, on a special battlefield (BAT-TER-002 to BAT-TER-006) or at a town, with or
+//! without a fort, its moat or the town's mines, its turrets and the attacker's Catapult
+//! (BAT-SIE-001 to BAT-SIE-028): [`Place`].
 
 use std::num::NonZeroU32;
 use std::vec::Vec;
@@ -23,7 +26,8 @@ use h3_content_battle::{
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleResult, BattleSetup,
-    BattleSide, DamageBonuses, EagleEye, StackOrigin, StackRecord, StatOp, TentControl,
+    BattleSide, CatapultControl, DamageBonuses, EagleEye, FortLevel, Moat, Siege, StackOrigin,
+    StackRecord, StatOp, TentControl,
 };
 use h3_kernel::Rng;
 use proptest::collection::{btree_map, vec};
@@ -32,7 +36,7 @@ use proptest::prelude::{
 };
 use proptest::test_runner::Config;
 
-use super::support::{CREATURES, Rate, hero, masteries, ruleset_from, ruleset_with};
+use super::support::{CREATURES, Rate, add_turret, hero, masteries, ruleset_from};
 use crate::event::StrikeFlags;
 use crate::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, Hex, LegalCommands, SpellSet,
@@ -41,7 +45,9 @@ use crate::{
 };
 
 /// The test ruleset with frequent good and bad morale and luck (a 4-sided die) and the quirk
-/// Q-0003 on, so that generated games exercise them.
+/// Q-0003 on, so that generated games exercise them; with the town's turret, so that a town's
+/// keep and towers shoot (BAT-SIE-016), and Fight Values, so that the computer's choices for
+/// the turrets and the automatic Ballista weigh their targets (BAT-SIE-021, BAT-WAR-008).
 fn lively() -> BattleRuleset {
     lively_with("t:quirky")
 }
@@ -57,16 +63,26 @@ fn enliven(b: &mut BattleParamsDef) {
     b.side_stack_limit = 12;
 }
 
+/// The creatures of [`lively`]: the town's turret and Fight Values from 40 to the original's
+/// largest, 78 845 (the Azure Dragon's), so that the computer's values grow large.
+fn enlist(core: &mut h3_content::ContentPack, battle: &mut h3_content_battle::BattlePack) {
+    add_turret(core, battle);
+    for (i, def) in (0u32..).zip(&mut core.creatures) {
+        def.info.fight_value = [40, 900, 3_000, 78_845][usize::try_from(i % 4).unwrap()] + i;
+    }
+}
+
 /// [`lively`] with the profile `profile`.
 fn lively_with(profile: &str) -> BattleRuleset {
-    ruleset_with(profile, enliven)
+    ruleset_from(profile, enliven, enlist)
 }
 
 /// [`lively`] with a profile of its own that has the quirks `quirks` (their keys after
 /// `quirk.battle.`) together: the test pack's profiles have one quirk each, a real pack's
 /// several.
 fn lively_mix(quirks: &[&str]) -> BattleRuleset {
-    ruleset_from("t:mix", enliven, |pack, _| {
+    ruleset_from("t:mix", enliven, |pack, battle| {
+        enlist(pack, battle);
         pack.profiles.push(ProfileDef {
             key: ContentKey::new("t", "mix").unwrap(),
             quirks: quirks
@@ -172,9 +188,159 @@ fn arb_army() -> impl Strategy<Value = ArmySpec> {
 
 /// `(slot, creature index, count)` per stack.
 type ArmySpec = Vec<(u8, u8, u32)>;
-/// Attacker, defender, obstacles, seed, steps, the hidden magic of the attacker's and the
-/// defender's hero.
-type Game = (ArmySpec, ArmySpec, Vec<u8>, u64, Vec<Step>, [Hidden; 2]);
+/// Attacker, defender, the ground (obstacles and place), seed, steps, the hidden magic of the
+/// attacker's and the defender's hero.
+type Game = (ArmySpec, ArmySpec, Ground, u64, Vec<Step>, [Hidden; 2]);
+
+/// Where a generated game is fought and its natural obstacles.
+#[derive(Debug, Clone)]
+struct Ground {
+    /// The natural obstacles' hexes ([`pieces`]); a town with a fort has none (its walls and
+    /// moat take their place, BAT-SIE-001).
+    obstacles: Vec<u8>,
+    /// The place.
+    place: Place,
+}
+
+/// Where a generated game is fought (E04c T9a).
+#[derive(Debug, Clone, Copy)]
+enum Place {
+    /// The terrain's ordinary battlefield.
+    Field,
+    /// The test ruleset's special battlefield of this name (BAT-TER-002 to BAT-TER-006).
+    Battlefield(&'static str),
+    /// An anti-magic garrison: neither side casts (BAT-MAG-061).
+    Garrison,
+    /// A town (BAT-SIE-001).
+    Town(TownSpec),
+}
+
+/// A generated town and the attacking hero's Ballistics.
+#[derive(Debug, Clone, Copy)]
+struct TownSpec {
+    /// The test siege record, by index: `t:castle`, `t:inferno` (the moat's second row) or
+    /// `t:necropolis` (the town's mines, BAT-SIE-007).
+    faction: u8,
+    /// The fort level, by index: none, Fort, Citadel, Castle.
+    fort: u8,
+    /// The moat from a Citadel on, by index: absent, harmless, damaging (BAT-SIE-004).
+    moat: u8,
+    /// The buildings that strengthen the turrets (BAT-SIE-016).
+    structures: u8,
+    /// An Escape Tunnel (BAT-SIE-024).
+    escape_tunnel: bool,
+    /// The town's morale and luck for its defenders (BAT-SIE-025).
+    morale: i8,
+    luck: i8,
+    /// The attacking hero's Ballistics level (0: none, so that its Catapult shoots on its own;
+    /// BAT-SIE-009, BAT-SIE-011).
+    ballistics: u8,
+    /// The defending hero's Artillery level, if it has a hero (0: none, so that the turrets
+    /// shoot on their own; BAT-SIE-016, BAT-SIE-020).
+    artillery: u8,
+}
+
+/// The test ruleset's special battlefields ([`super::support`]).
+const BATTLEFIELDS: [&str; 8] = [
+    "cursed", "plains", "fiery", "holy", "clover", "shore", "boats", "deck",
+];
+
+/// The ground of a generated game: two in seven on the ordinary field, one in seven on a special
+/// battlefield and at an anti-magic garrison each, three in seven at a town (most with a fort, a
+/// third of these with a Castle).
+fn arb_ground() -> impl Strategy<Value = Ground> {
+    let place = prop_oneof![
+        2 => Just(Place::Field),
+        1 => proptest::sample::select(&BATTLEFIELDS[..]).prop_map(Place::Battlefield),
+        3 => arb_town().prop_map(Place::Town),
+        1 => Just(Place::Garrison),
+    ];
+    (arb_obstacles(), place).prop_map(|(obstacles, place)| Ground { obstacles, place })
+}
+
+/// A town: any of the test siege records, most with a fort, a third of these with a Castle.
+fn arb_town() -> impl Strategy<Value = TownSpec> {
+    (
+        0u8..3,
+        prop_oneof![1 => Just(0u8), 2 => Just(1), 3 => Just(2), 3 => Just(3)],
+        0u8..3,
+        0u8..12,
+        any::<bool>(),
+        (0i8..=2, 0i8..=1),
+        (0u8..=3, 0u8..=3),
+    )
+        .prop_map(
+            |(
+                faction,
+                fort,
+                moat,
+                structures,
+                escape_tunnel,
+                (morale, luck),
+                (ballistics, artillery),
+            )| {
+                TownSpec {
+                    faction,
+                    fort,
+                    moat,
+                    structures,
+                    escape_tunnel,
+                    morale,
+                    luck,
+                    ballistics,
+                    artillery,
+                }
+            },
+        )
+}
+
+/// Puts `setup` where `place` says: a special battlefield, or a town with its siege and the
+/// attacking hero's Ballistics; a town with a fort has no natural obstacles.
+fn situate(r: &BattleRuleset, setup: &mut BattleSetup, place: Place) {
+    match place {
+        Place::Field => {}
+        Place::Battlefield(name) => setup.battlefield = Some(ContentKey::new("t", name).unwrap()),
+        Place::Garrison => setup.anti_magic = true,
+        Place::Town(town) => {
+            let faction = ["t:castle", "t:inferno", "t:necropolis"][usize::from(town.faction)];
+            let fort = [
+                FortLevel::None,
+                FortLevel::Fort,
+                FortLevel::Citadel,
+                FortLevel::Castle,
+            ][usize::from(town.fort)];
+            let moat = if fort >= FortLevel::Citadel {
+                [Moat::Absent, Moat::Harmless, Moat::Damaging][usize::from(town.moat)]
+            } else {
+                Moat::Absent
+            };
+            if fort != FortLevel::None {
+                setup.obstacles.clear();
+            }
+            setup.siege = Some(Siege {
+                faction: r.faction_by_key(faction).unwrap(),
+                fort,
+                moat,
+                structures: town.structures,
+                escape_tunnel: town.escape_tunnel,
+                morale: town.morale,
+                luck: town.luck,
+            });
+            if let Some(hero) = setup.heroes[0].as_mut().filter(|_| town.ballistics > 0) {
+                hero.war_machines.catapult = Some(CatapultControl {
+                    level: town.ballistics,
+                });
+            }
+            if let Some(hero) = setup.heroes[1].as_mut().filter(|_| town.artillery > 0) {
+                hero.war_machines.ballista = Some(BallistaControl {
+                    level: town.artillery,
+                    shots: 1,
+                    double_damage_chance_bp: 5_000,
+                });
+            }
+        }
+    }
+}
 
 /// The hidden magic of a generated hero (BAT-MAG-061 to BAT-MAG-069; private to its side,
 /// BAT-Q26), each part as [`conceal`] reads it.
@@ -299,9 +465,11 @@ fn conceal(r: &BattleRuleset, hero: &mut BattleHero, hidden: &Hidden) {
 /// What the heroes of a setup do to all of its battle's magic, by the rules (BAT-MAG-061 to
 /// BAT-MAG-066), read from the setup.
 struct Limits {
-    /// A hero forbids every cast (BAT-MAG-061).
+    /// A hero or the anti-magic garrison forbids every cast (BAT-MAG-061).
     no_casting: bool,
-    /// The highest spell level the heroes allow (BAT-MAG-062).
+    /// The battlefield forbids the creatures' casts, raises and periodic casts (BAT-TER-004).
+    no_creature_casts: bool,
+    /// The highest spell level the heroes and the battlefield allow (BAT-MAG-062, BAT-TER-004).
     max_level: u8,
     /// Per side, what the stacks its hero controls are immune to: the spells, the spell level up
     /// to which, and whether mind spells (BAT-MAG-063 to BAT-MAG-065).
@@ -311,7 +479,11 @@ struct Limits {
 }
 
 impl Limits {
-    fn of(setup: &BattleSetup) -> Self {
+    fn of(setup: &BattleSetup, r: &BattleRuleset) -> Self {
+        let field = setup.battlefield.as_ref().map(|key| {
+            let id = r.battlefield_by_key(key.as_str()).unwrap();
+            r.battlefield(id).unwrap()
+        });
         let effects = |side: usize| setup.heroes[side].iter().flat_map(|h| h.effects.iter());
         let all = || effects(0).chain(effects(1));
         let limit = |e: &BattleEffect| match e {
@@ -327,8 +499,13 @@ impl Limits {
             _ => None,
         };
         Self {
-            no_casting: all().any(|e| matches!(e, BattleEffect::NoCasting)),
-            max_level: all().filter_map(limit).min().unwrap_or(u8::MAX),
+            no_casting: setup.anti_magic || all().any(|e| matches!(e, BattleEffect::NoCasting)),
+            no_creature_casts: field.is_some_and(|f| f.no_creature_casts),
+            max_level: all()
+                .filter_map(limit)
+                .chain(field.map(|f| f.max_spell_level))
+                .min()
+                .unwrap_or(u8::MAX),
             immune: [0, 1].map(|side| {
                 (
                     effects(side).filter_map(spell).collect(),
@@ -343,14 +520,15 @@ impl Limits {
 }
 
 /// The setup of a generated game: [`make_setup`] of its armies and obstacles from the word
-/// `machines` (its seed), each hero with its hidden magic.
+/// `machines` (its seed), each hero with its hidden magic, at its place ([`situate`]).
 fn game_setup(
     r: &BattleRuleset,
-    (attacker, defender, obstacles): (&ArmySpec, &ArmySpec, &[u8]),
+    (attacker, defender, ground): (&ArmySpec, &ArmySpec, &Ground),
     machines: u64,
     hidden: &[Hidden; 2],
 ) -> BattleSetup {
-    let mut setup = make_setup(r, attacker, defender, obstacles, machines);
+    let mut setup = make_setup(r, attacker, defender, &ground.obstacles, machines);
+    situate(r, &mut setup, ground.place);
     for (hero, hidden) in setup.heroes.iter_mut().zip(hidden) {
         hero.iter_mut().for_each(|hero| conceal(r, hero, hidden));
     }
@@ -381,7 +559,7 @@ fn arb_game() -> impl Strategy<Value = Game> {
     (
         arb_army(),
         arb_army(),
-        arb_obstacles(),
+        arb_ground(),
         any::<u64>(),
         vec(arb_step(), 1..160),
         [arb_hidden(), arb_hidden()],
@@ -495,6 +673,7 @@ fn make_setup(
         "berserk",
         "hypnotize",
         "blind",
+        "quake",
     ]
     .iter()
     .map(|k| r.spell_by_key(&std::format!("t:{k}")).unwrap())
@@ -779,7 +958,7 @@ proptest! {
     /// vanish as its side's last stack (BAT-MAG-038).
     #[test]
     fn every_step_preserves_the_invariants(
-        (att, def, obstacles, seed, steps, hidden) in arb_game(),
+        (att, def, ground, seed, steps, hidden) in arb_game(),
         own_clone: bool,
     ) {
         let r = if own_clone {
@@ -787,8 +966,8 @@ proptest! {
         } else {
             lively()
         };
-        let setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
-        let limits = Limits::of(&setup);
+        let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
+        let limits = Limits::of(&setup, &r);
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
         if own_clone {
             crowd(&mut state, &r);
@@ -926,20 +1105,24 @@ proptest! {
                     let cast_now = matches!(cmd, Command::Cast { .. });
                     prop_assert_eq!(&casters, &[actor][..usize::from(cast_now)]);
                     // The casting limits hold whoever casts (BAT-MAG-061, BAT-MAG-062). While a
-                    // hero forbids casting no hero and no stack casts or raises, on command or on
-                    // its own, but a stack whose creature ignores that; the opening spells and
-                    // the strikes' spells are no casts. No spell above the heroes' level limit
-                    // is cast or placed (and none takes effect on a stack: in the walk below).
+                    // hero or the anti-magic garrison forbids casting no hero and no stack casts
+                    // or raises, on command or on its own, but a stack whose creature ignores
+                    // that; on a battlefield that forbids the creatures' casts (Cursed Ground) no
+                    // stack does (BAT-TER-004); the opening spells and the strikes' spells are no
+                    // casts. No spell above the heroes' and the battlefield's level limit is cast
+                    // or placed (and none takes effect on a stack: in the walk below).
                     for e in &events {
                         let ignores = |stack: StackId| r.abilities(state.stacks()[stack.index()].creature).contains(&Ability::IgnoresMagicBlock);
-                        let (cast, spell) = match e.kind {
-                            EventKind::SpellCast { spell, .. } | EventKind::PeriodicCast { spell, .. } => (true, Some(spell)),
-                            EventKind::StackCast { stack, spell, .. } => (!ignores(stack), Some(spell)),
-                            EventKind::CreatureRaise { .. } => (true, None),
-                            EventKind::OpeningSpell { spell, .. } | EventKind::ObstaclePlaced { spell, .. } => (false, Some(spell)),
-                            _ => (false, None),
+                        let (cast, by_creature, spell) = match e.kind {
+                            EventKind::SpellCast { spell, .. } => (true, false, Some(spell)),
+                            EventKind::PeriodicCast { spell, .. } => (true, true, Some(spell)),
+                            EventKind::StackCast { stack, spell, .. } => (!ignores(stack), !ignores(stack), Some(spell)),
+                            EventKind::CreatureRaise { .. } => (true, true, None),
+                            EventKind::OpeningSpell { spell, .. } | EventKind::ObstaclePlaced { spell, .. } => (false, false, Some(spell)),
+                            _ => (false, false, None),
                         };
                         prop_assert!(!(cast && limits.no_casting), "a cast while a hero forbids casting: {:?}", e.kind);
+                        prop_assert!(!(by_creature && limits.no_creature_casts), "a creature's cast on a field that forbids them: {:?}", e.kind);
                         prop_assert!(spell.is_none_or(|s| r.spell(s).unwrap().level <= limits.max_level), "above the level limit: {:?}", e.kind);
                     }
                     let mover = before.active().unwrap();
@@ -1192,7 +1375,13 @@ proptest! {
                                 // the command (BAT-MAG-053).
                                 || mentioned(i, |k, i| matches!(k, EventKind::SpellHealed { target, .. } if target.index() == i))
                                 // Poison and Age change the hit points per creature (BAT-MAG-044).
-                                || mentioned(i, |k, i| matches!(k, EventKind::Poisoned { stack, .. } | EventKind::EffectEnded { target: stack, .. } if stack.index() == i));
+                                || mentioned(i, |k, i| matches!(k, EventKind::Poisoned { stack, .. } | EventKind::EffectEnded { target: stack, .. } if stack.index() == i))
+                                // A town's moat hurts a stack that enters it or acts in it
+                                // (BAT-SIE-005); a turret dies with its tower or keep, which the
+                                // part's destruction tells (BAT-SIE-017).
+                                || mentioned(i, |k, i| matches!(k, EventKind::MoatDamage { stack, .. } if stack.index() == i))
+                                || events.iter().any(|e| matches!(e.kind, EventKind::WallDestroyed { part }
+                                    if state.siege.and_then(|s| s.turret(part)) == Some(id)));
                             if !explained {
                                 prop_assert_eq!((a.count, a.top_hp), (b.count, b.top_hp));
                             }
@@ -1299,7 +1488,7 @@ proptest! {
     /// infers that magic from the casts its commands may not make).
     #[test]
     fn observations_do_not_depend_on_hidden_state(
-        (att, def, obstacles, seed, steps, hidden) in arb_game(),
+        (att, def, ground, seed, steps, hidden) in arb_game(),
         other_seed: u64,
         damage: [u16; 2],
         (reduction, chance, discount) in (0u16..=10_000, 0u16..=10_000, 0u16..=10_000),
@@ -1307,7 +1496,7 @@ proptest! {
         (rounds, level, eagle) in (any::<u16>(), 1u8..=5, any::<u8>()),
     ) {
         let r = lively();
-        let setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
+        let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
         let (state, _, _) = play(&r, &setup, seed, &steps);
         let spectator = observe_as(&state, &r, Viewer::Spectator);
         let mut twin = state.clone();
@@ -1417,13 +1606,13 @@ proptest! {
     /// and so is what the other side and a spectator observe.
     #[test]
     fn a_heros_eagle_eye_and_unopened_spells_do_not_show(
-        (att, def, obstacles, seed, steps, hidden) in arb_game(),
+        (att, def, ground, seed, steps, hidden) in arb_game(),
         side in prop_oneof![Just(BattleSide::Attacker), Just(BattleSide::Defender)],
         opening in vec((any::<u16>(), 1u16..4), 1..3),
     ) {
         let r = lively();
         // Both sides are led (bit 44 of the setup's word).
-        let setup = game_setup(&r, (&att, &def, &obstacles), seed | 1 << 44, &hidden);
+        let setup = game_setup(&r, (&att, &def, &ground), seed | 1 << 44, &hidden);
         let viewer = side.opponent();
         let start = |change: &dyn Fn(&mut BattleHero)| {
             let mut setup = setup.clone();
@@ -1511,7 +1700,7 @@ proptest! {
     /// profile since BAT-QUIRK-1 was retired, BAT-Q34).
     #[test]
     fn hidden_obstacles_do_not_show(
-        (att, def, obstacles, seed, steps, hidden) in arb_game(),
+        (att, def, ground, seed, steps, hidden) in arb_game(),
         profile in 0usize..3,
         extra in proptest::collection::btree_set((1u8..16, 0u8..11), 0..6),
     ) {
@@ -1526,7 +1715,7 @@ proptest! {
         // (the E04b T11b review's F-sec-1 part a and r3 F-11; by the reviewers' reading the
         // original does the same). The user keeps the engine as the original there (BAT-Q31,
         // 2026-10-12; the ledger's note beside BAT-QUIRK-4).
-        let mut setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
+        let mut setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
         let berserk = r.spell_by_key("t:berserk").unwrap();
         for book in setup.heroes.iter_mut().flatten().filter_map(|h| h.magic.spell_book.as_mut()) {
             book.retain(|&spell| spell != berserk);
@@ -1638,9 +1827,9 @@ proptest! {
 
     /// Clone equivalence: a clone taken mid-game evolves identically to the original.
     #[test]
-    fn clones_evolve_identically((att, def, obstacles, seed, steps, hidden) in arb_game(), split in 0usize..160) {
+    fn clones_evolve_identically((att, def, ground, seed, steps, hidden) in arb_game(), split in 0usize..160) {
         let r = lively();
-        let setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
+        let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
         let split = split.min(steps.len());
         let (mut original, _, _) = play(&r, &setup, seed, &steps[..split]);
         let mut clone = original.clone();
@@ -1657,9 +1846,9 @@ proptest! {
 
     /// Determinism: the same inputs give the same events and state hashes.
     #[test]
-    fn replays_are_deterministic((att, def, obstacles, seed, steps, hidden) in arb_game()) {
+    fn replays_are_deterministic((att, def, ground, seed, steps, hidden) in arb_game()) {
         let r = lively();
-        let setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
+        let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
         let first = play(&r, &setup, seed, &steps);
         let second = play(&r, &setup, seed, &steps);
         prop_assert_eq!(first.1, second.1);
@@ -1672,9 +1861,9 @@ proptest! {
     /// position (a placement in the tactics phase is one move, BAT-TAC-002). A sink that keeps nothing leaves the same state and the same answer (the path is
     /// worked out only to be reported).
     #[test]
-    fn walks_are_reported_hex_by_hex((att, def, obstacles, seed, steps, hidden) in arb_game()) {
+    fn walks_are_reported_hex_by_hex((att, def, ground, seed, steps, hidden) in arb_game()) {
         let r = lively();
-        let setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
+        let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
         let field = crate::geometry::Field::new(r.battle().field);
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
         let mut quiet = state.clone();
@@ -1738,9 +1927,9 @@ proptest! {
     /// battle's outcome lists every stack once, in stack order per side, with its start and end
     /// counts; the survivors and war machines are exactly the records with creatures left.
     #[test]
-    fn outcomes_account_for_every_stack((att, def, obstacles, seed, steps, hidden) in arb_game()) {
+    fn outcomes_account_for_every_stack((att, def, ground, seed, steps, hidden) in arb_game()) {
         let r = lively();
-        let setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
+        let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
         let (mut state, _, _) = play(&r, &setup, seed, &steps);
         finish(&mut state, &r, seed, false);
         // A random game may never end (no rule ends a battle in which, say, a petrifying striker
@@ -1751,8 +1940,9 @@ proptest! {
         prop_assert_eq!(Some(o.result), state.result());
         prop_assert_eq!(o.rounds, state.round());
         for side in BattleSide::BOTH {
-            // Every stack is reported in stack order, by origin (BAT-MAG-037, BAT-Q13).
-            let stacks: Vec<_> = (0u8..).zip(state.stacks()).filter(|(_, s)| s.side == side).collect();
+            // Every stack is reported in stack order, by origin (BAT-MAG-037, BAT-Q13), but a
+            // town's turrets (BAT-SIE-016).
+            let stacks: Vec<_> = (0u8..).zip(state.stacks()).filter(|(_, s)| s.side == side && !s.is_turret()).collect();
             let records = &o.stacks[side.index()];
             prop_assert_eq!(records.len(), stacks.len());
             for (record, &(id, s)) in records.iter().zip(&stacks) {
@@ -1819,20 +2009,24 @@ proptest! {
 
     /// The automatic Ballista's target (BAT-WAR-008) in every state of random games with
     /// ballistae on both sides: a living stack of the side its controller fights, never a turret,
-    /// one that keeps its turns while there is one; none only when nothing is left to shoot.
+    /// one that keeps its turns while there is one; none only when nothing but turrets is left
+    /// to shoot.
     #[test]
-    fn the_ballista_shoots_a_stack_of_the_other_side((att, def, obstacles, seed, steps, hidden) in arb_game()) {
+    fn the_ballista_shoots_a_stack_of_the_other_side((att, def, ground, seed, steps, hidden) in arb_game()) {
         let r = lively();
         // Ballistae on both sides (bits 0 and 3), the other machines and formations at random.
-        let setup = game_setup(&r, (&att, &def, &obstacles), seed | 0b1001, &hidden);
+        let setup = game_setup(&r, (&att, &def, &ground), seed | 0b1001, &hidden);
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
         let mut legal = LegalCommands::new();
         let field = crate::Field::new(r.battle().field);
         for step in &steps {
             for (i, s) in (0u8..).zip(state.stacks()) {
                 if s.is_alive() && s.has(crate::StackTraits::WAR_MACHINE) && s.has(crate::StackTraits::SHOOTER) {
-                    let candidates: Vec<&crate::Stack> =
-                        state.stacks().iter().filter(|t| t.is_alive() && s.may_attack(t)).collect();
+                    let candidates: Vec<&crate::Stack> = state
+                        .stacks()
+                        .iter()
+                        .filter(|t| t.is_alive() && s.may_attack(t) && !t.is_turret())
+                        .collect();
                     let keeps = |t: &crate::Stack| !t.spells.status.contains(crate::Status::NO_TURNS);
                     match crate::aim::ballista_target(&state, &r, field, StackId(i)) {
                         Some(t) => {
@@ -1846,6 +2040,122 @@ proptest! {
             }
             let (actor, cmd) = resolve(&state, &r, step, &mut legal);
             let _ = apply(&mut state, &r, actor, cmd, &mut crate::NoopSink);
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(Config { cases: 48, ..Config::default() })]
+
+    // covers: BAT-SIE-002, BAT-SIE-003, BAT-SIE-004
+    /// The walls, the gate and the moat agree with movement and the legal moves (E04c exit
+    /// criterion 4; BAT-SIE-002 to BAT-SIE-004, BAT-SIE-012, BAT-SIE-028) in random games at a
+    /// town with a fort, at every step. No living stack on the field covers a standing wall hex
+    /// but the gate's, and none but the defender's own covers the closed gate's or the
+    /// drawbridge's hex (its clone, summoned stack or teleported stack may stand there without
+    /// opening the gate). No legal move puts the active stack there, but onto the closed gate's
+    /// or drawbridge's hex for a stack commanded for the defender. Within a command no `Moved`
+    /// lands on a standing wall hex; one onto the closed gate's or drawbridge's hex opens the gate
+    /// at once; and a walker's walk that enters the moat outside the hexes it started on ends
+    /// there (the bridges left out: no moat for the defender, closed to the attacker).
+    #[test]
+    fn walls_and_the_moat_agree_with_movement(
+        (att, def, ground, seed, steps, hidden) in arb_game(),
+        town in arb_town(),
+    ) {
+        let r = lively();
+        let town = TownSpec { fort: 1 + town.fort % 3, ..town };
+        let ground = Ground { place: Place::Town(town), ..ground };
+        let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
+        let field = crate::Field::new(r.battle().field);
+        let sf = r.siege_field().unwrap();
+        let gate = Hex(sf.gate);
+        let row = usize::try_from(field.coords(gate).1).unwrap();
+        let (bridge, outer) = (Hex(sf.moat[row]), Hex(sf.second_moat[row]));
+        let mut gates = crate::geometry::HexSet::new();
+        gates.insert(gate);
+        gates.insert(bridge);
+        let mut bridges = crate::geometry::HexSet::new();
+        bridges.insert(bridge);
+        bridges.insert(outer);
+        let gate_part = sf.targets.iter().position(|t| t.kind == h3_content_battle::WallKind::Gate);
+        let mut state = BattleState::new(&r, &setup, seed).unwrap();
+        let mut legal = LegalCommands::new();
+        // The hexes of `stack` at `hex`.
+        let foot = |stack: &crate::Stack, hex: Hex| {
+            let mut at = *stack;
+            at.hex = hex;
+            at.footprint(field).hexes().collect::<Vec<Hex>>()
+        };
+        for step in &steps {
+            let s = state.siege.unwrap();
+            let closed = !s.gate_open && !s.gate_destroyed();
+            let walls = s.walls().without(gates);
+            for (i, st) in state.stacks().iter().enumerate() {
+                if !st.is_alive() || st.is_turret() {
+                    continue;
+                }
+                for h in foot(st, st.hex) {
+                    prop_assert!(!walls.contains(h), "stack {i} on the wall {h:?}");
+                    let on_gate = closed && gates.contains(h);
+                    prop_assert!(!on_gate || st.side == BattleSide::Defender, "stack {i} on the closed gate {h:?}");
+                }
+            }
+            if let (Some(id), Some(side)) = (state.active(), state.side_to_act()) {
+                let mover = state.stacks()[id.index()];
+                legal_commands(&state, &r, side, &mut legal);
+                for c in legal.iter() {
+                    let Command::Move { to } = *c else { continue };
+                    for h in foot(&mover, to) {
+                        prop_assert!(!walls.contains(h), "{c:?} onto the wall {h:?}");
+                        let on_gate = closed && gates.contains(h);
+                        prop_assert!(!on_gate || mover.controller() == BattleSide::Defender, "{c:?} onto the closed gate {h:?}");
+                    }
+                }
+            }
+            let placing = state.tactics.is_some();
+            let (actor, cmd) = resolve(&state, &r, step, &mut legal);
+            let mut events = Vec::new();
+            let _ = apply(&mut state, &r, actor, cmd, &mut events);
+            // Walls only fall: those standing now stood throughout the command.
+            let after = state.siege.unwrap();
+            let walls = after.walls().without(gates);
+            let stops = after.moat().without(bridges);
+            let mut shut = closed;
+            // The stack that walks, the hexes its walk started on, and whether it entered the
+            // moat.
+            let mut walk: Option<(StackId, Vec<Hex>, bool)> = None;
+            for (k, e) in events.iter().enumerate() {
+                match e.kind {
+                    EventKind::GateOpened => shut = false,
+                    EventKind::GateClosed => shut = true,
+                    EventKind::WallDestroyed { part } if Some(usize::from(part)) == gate_part => shut = false,
+                    EventKind::TurnStarted { .. } | EventKind::Struck { .. } => walk = None,
+                    EventKind::Moved { stack, from, to } => {
+                        let st = state.stacks()[stack.index()];
+                        let hexes = foot(&st, to);
+                        for &h in &hexes {
+                            prop_assert!(!walls.contains(h), "{:?} onto the wall {h:?}", e.kind);
+                        }
+                        if shut && hexes.iter().any(|&h| gates.contains(h)) {
+                            prop_assert_eq!(events.get(k + 1).map(|e| e.kind), Some(EventKind::GateOpened), "{:?}", e.kind);
+                        }
+                        if placing || st.has(crate::StackTraits::FLIES) {
+                            continue;
+                        }
+                        let start = match walk.take() {
+                            Some((s, start, entered)) if s == stack => {
+                                prop_assert!(!entered, "{stack:?} walked on through the moat to {to:?}");
+                                start
+                            }
+                            _ => foot(&st, from),
+                        };
+                        let entered = hexes.iter().any(|&h| stops.contains(h) && !start.contains(&h));
+                        walk = Some((stack, start, entered));
+                    }
+                    _ => {}
+                }
+            }
         }
     }
 }
@@ -1994,12 +2304,18 @@ proptest! {
         heroes in (arb_extreme_hero(), arb_extreme_hero()),
         machines in any::<u64>(),
         seed in any::<u64>(),
+        town in proptest::option::of((arb_town(), any::<u8>())),
     ) {
         let r = lively();
         let mut setup = make_setup(&r, &att, &def, &[], machines);
         let [a, d] = [heroes.0, heroes.1];
         setup.funds = [a.as_ref().map_or(0, |h| h.1), d.as_ref().map_or(0, |h| h.1)];
         setup.heroes = [a.map(|h| h.0), d.map(|h| h.0)];
+        // Half the battles at a town (E04c T9a), its structures any byte: the keep's count is
+        // 4 more (BAT-SIE-016).
+        if let Some((town, structures)) = town {
+            situate(&r, &mut setup, Place::Town(TownSpec { structures, ..town }));
+        }
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
         // A quarter of the games may leave the battle (random agents leave early).
         finish(&mut state, &r, seed, seed % 4 == 0);
@@ -2320,6 +2636,22 @@ fn extreme_casting_heroes_play_without_failures() {
                 (rng.below(8) != 0).then(|| extreme_caster(&r, &mut rng)),
             ];
             setup.funds = [rng.next_u32(), one_of(&mut rng, &[0, 1000, u32::MAX])];
+            // Half the battles at a town (E04c T9a), with any structures and Ballistics.
+            if rng.below(2) == 0 {
+                let mut small = |n: u32| u8::try_from(rng.below(n)).unwrap();
+                let town = TownSpec {
+                    faction: small(3),
+                    fort: small(4),
+                    moat: small(3),
+                    structures: small(256),
+                    escape_tunnel: small(2) == 0,
+                    morale: i8::try_from(small(3)).unwrap(),
+                    luck: i8::try_from(small(2)).unwrap(),
+                    ballistics: small(4),
+                    artillery: small(4),
+                };
+                situate(&r, &mut setup, Place::Town(town));
+            }
             let mut state = BattleState::new(&r, &setup, seed).unwrap();
             // One game in eight may leave the battle.
             let (hero, stack) = play_casting(&mut state, &r, seed, seed % 8 == 7);
