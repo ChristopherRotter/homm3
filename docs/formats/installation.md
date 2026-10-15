@@ -2884,6 +2884,13 @@ preferring a stack that is not blind, petrified or paralysed, ties to the later 
 0x442FD0's kills times worth) divided as above, but by 10 for a blind, petrified or paralysed
 target, and not at all on Easy for a computer side.
 
+**Review re-read (E04c T10b, 2026-10-15): the stop a step enters.** 0x4B3400 tests a step's stop
+at 0x4B3701–0x4B3725: for a one-hex stack the new hex; for a two-hex stack the new position's hex
+unless it is the current other hex, and the new other hex unless it is the current position's
+hex. So a stop is entered only by a hex the stack does not cover before the step: a two-hex
+walker whose front entered the moat and steps on, its rear now on that moat hex, pays nothing
+more (BAT-SIE-022). Its starting hexes are no stop at all (0x4B3290 clears them).
+
 ### 7.32 Code reading: the siege's other rules (E04c T8, 2026-10-15)
 
 Read for E04c T8 (the survey `docs/rules/surveys/E04c-sieges.md`, §2's rows "Surrender, retreat",

@@ -22,6 +22,7 @@ use crate::aim::{
 };
 use crate::effects::{DamageRoll, Status};
 use crate::geometry::{Field, Hex};
+use crate::siege::damage_part;
 use crate::{BattleState, Event, EventKind, StackId, StackTraits};
 
 /// The Fight Values of the creatures these tests use.
@@ -342,6 +343,31 @@ fn a_dead_defender_s_place_counts_within_one_turn() {
     // Bound, it reaches neither (BAT-MAG-045).
     s.binds.bound |= 1;
     assert_eq!(turns(&s, f, StackId(0)), None);
+}
+
+/// A Castle siege with a damaging moat, players `human`, the wall of row 4 (target 2, hex 78)
+/// broken, the attacker's stack 0 at `walker` and the defender's at hex 80 (row 4, column 12),
+/// just inside; the moat's hex on row 4 is 77 (column 9).
+fn through_the_wall(r: &BattleRuleset, walker: Spec, human: [bool; 2], at: u8) -> BattleState {
+    let mut setup = town_battle(r, Moat::Damaging, &[walker], &[(0, "slow", 1)]);
+    setup.human = human;
+    let mut s = fresh(r, &setup);
+    damage_part(&mut s, 2, 9, &mut Vec::<Event>::new());
+    s.stacks.as_mut_slice()[0].hex = Hex(at);
+    s.stacks.as_mut_slice()[1].hex = Hex(4 * 17 + 12);
+    s
+}
+
+// covers: BAT-SIE-022
+#[test]
+fn a_two_hex_walker_pays_a_moat_hex_it_covers_once() {
+    // Its front three hexes before the moat (the position, its rear, at 73): the front enters
+    // the moat at 2 + 3 = 5; the next step leaves its rear on that moat hex, which it covers
+    // already, 6 (0x4B3701–0x4B3725); beside the defender at 7: 2 turns at speed 5. Human
+    // players: no moat avoidance.
+    let r = rules();
+    let s = through_the_wall(&r, (0, "wide", 10), [true, true], 4 * 17 + 5);
+    assert_eq!(turns(&s, field(&r), StackId(0)), Some(2));
 }
 
 // ---------------------------------------------------------------- BAT-SIE-023 desperate mode

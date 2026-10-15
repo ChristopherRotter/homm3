@@ -340,26 +340,34 @@ pub(crate) fn context(
     ctx
 }
 
+/// The hexes `mover` covers at the position `hex` (none off the field).
+fn covered(field: Field, mover: &Stack, hex: Hex) -> HexSet {
+    field
+        .footprint(hex, mover.is_two_hex(), mover.side)
+        .map_or(HexSet::new(), |fp| {
+            fp.hexes().fold(HexSet::new(), |mut set, h| {
+                set.insert(h);
+                set
+            })
+        })
+}
+
 /// The hexes where a walk of `mover` stops: the moat and the pits both sides see (BAT-SIE-004,
 /// BAT-MAG-031: a hidden pit must not change a choice both sides are told), not its own hexes.
 fn stops(state: &BattleState, field: Field, mover: &Stack) -> HexSet {
-    let own = mover
-        .footprint(field)
-        .hexes()
-        .fold(HexSet::new(), |mut own, h| {
-            own.insert(h);
-            own
-        });
     obstacles::public_pits(state)
         .union(siege::stops(state, mover.controller()))
-        .without(own)
+        .without(covered(field, mover, mover.hex))
 }
 
-/// Whether `mover` at the position `hex` covers a hex of `stops`.
-fn on_stop(field: Field, mover: &Stack, hex: Hex, stops: HexSet) -> bool {
-    field
-        .footprint(hex, mover.is_two_hex(), mover.side)
-        .is_some_and(|fp| fp.hexes().any(|h| stops.contains(h)))
+/// Whether `mover` stepping from the position `from` to `to` enters a hex of `stops`: one it
+/// covers at `to` and not at `from` (0x4B3701–0x4B3725: a two-hex walker's rear on the stop its
+/// front leaves is no new stop).
+// rule: BAT-SIE-022
+fn on_stop(field: Field, mover: &Stack, (from, to): (Hex, Hex), stops: HexSet) -> bool {
+    covered(field, mover, to)
+        .without(covered(field, mover, from))
+        .intersects(stops)
 }
 
 /// Dial's buckets by cost (Dijkstra for small integer costs, without allocation).
@@ -429,7 +437,7 @@ fn costs(state: &BattleState, field: Field, id: StackId) -> ([u32; 256], HexSet)
                 if !fits(field, mover, to, blocked) {
                     continue;
                 }
-                let step = if on_stop(field, mover, to, stops) {
+                let step = if on_stop(field, mover, (hex, to), stops) {
                     speed - c % speed
                 } else {
                     1

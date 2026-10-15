@@ -4678,7 +4678,7 @@ id       = "BAT-SIE-022"
 title    = "The turns until a stack can attack, for the computer"
 context  = "battle"
 status   = "verified"
-summary  = "For the computer's choices (BAT-SIE-020, BAT-WAR-008) a stack's turns until it can attack the other side (the attacker's stacks for the turrets; either side's for the automatic Ballista; the original's 0x422B20, 0x448840, 0x448BD0): none (a fifth) for a war machine but the Ballista, a hypnotized or a berserk stack; 1 for the Ballista and a stack that can shoot now; else its least cost to a defender over its speed now, rounded up, at least 1, none if it reaches no defender within 127. The cost: a walker steps between free positions (dead stacks do not block), entering a stop (the moat, BAT-SIE-004; a pit both sides see, BAT-MAG-031: a hidden one may not change a choice both sides are told) costs the rest of the turn's move and it goes on from there; a flyer or teleporter reaches a free position at its hex distance; a bound stack stays (BAT-MAG-045). A living defender but the turrets costs the least cost of an attack position against it (BAT-ATK-001), a full move more from a stop; a dead defender's place costs the cost to stand on it when that is within the stack's speed (the original's pathfinder marks, read for every record of the side)."
+summary  = "For the computer's choices (BAT-SIE-020, BAT-WAR-008) a stack's turns until it can attack the other side (the attacker's stacks for the turrets; either side's for the automatic Ballista; the original's 0x422B20, 0x448840, 0x448BD0): none (a fifth) for a war machine but the Ballista, a hypnotized or a berserk stack; 1 for the Ballista and a stack that can shoot now; else its least cost to a defender over its speed now, rounded up, at least 1, none if it reaches no defender within 127. The cost: a walker steps between free positions (dead stacks do not block), entering a stop (the moat, BAT-SIE-004; a pit both sides see, BAT-MAG-031: a hidden one may not change a choice both sides are told; a stop is entered when a hex of the new position is one and the stack does not cover it before the step, so a two-hex walker's rear on the moat hex its front leaves enters none) costs the rest of the turn's move and it goes on from there; a flyer or teleporter reaches a free position at its hex distance; a bound stack stays (BAT-MAG-045). A living defender but the turrets costs the least cost of an attack position against it (BAT-ATK-001), a full move more from a stop; a dead defender's place costs the cost to stand on it when that is within the stack's speed (the original's pathfinder marks, read for every record of the side)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4696,6 +4696,11 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "observation"
   ref        = "experiments/results/E04c-batch-3f.md (agent run under Wine, 2026-10-14): TU: Royal Griffins two turns away (229 / 2) before a Giant behind the walls (314 / 5), where the score without the turns ranks the Giant first; BA: the Ballista (34 / 1) before the Zombies behind the walls (120 / 5)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading, review re-read E04c T10b (docs/formats/installation.md §7.31): 0x4B3400 at 0x4B3701-0x4B3725 (a two-hex walker's new hexes count as stops only where the stack does not stand before the step)"
   confidence = "high"
 
 [[rule]]
