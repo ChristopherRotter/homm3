@@ -27,7 +27,7 @@ use h3_kernel::{Rng, StreamId};
 use h3_sim::action::{ACTION_COUNT, SPELL_COUNT, TARGET_COUNT};
 use h3_sim::adventure::action::{self, hero_in_slot, tile_index};
 use h3_sim::adventure::rollout::choose;
-use h3_sim::adventure::{Action, ENTRY_COUNT, HERO_SLOTS, Phase};
+use h3_sim::adventure::{Action, ENTRY_COUNT, HERO_SLOTS, Phase, Seat};
 use h3_sim::adventure::{AdventureEnv, random_rollout};
 
 use super::{DEFAULT_PACKS, Result, load_map, load_rules};
@@ -146,12 +146,13 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
 fn until_battle(env: &mut AdventureEnv) -> u64 {
     let mut steps = 0;
     loop {
-        let Some(player) = env.to_move().next() else {
+        let Some(seat) = env.to_move().next() else {
             break;
         };
-        if env.phase(player) == Phase::Battle {
+        // A battle (the neutral seat acts in battles only) ends the walk.
+        let (Seat::Player(player), Phase::Adventure) = (seat, env.phase(seat)) else {
             break;
-        }
+        };
         // A legal action is always accepted (h3-sim's tests); a refusal would repeat.
         if env.step(player, seek(env, player)).is_err() {
             break;
@@ -213,15 +214,15 @@ fn reach_rollout(env: &mut AdventureEnv, agent_seed: u64) -> (u64, u64, f64) {
     let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
     let (mut queries, mut steps, mut seconds) = (0, 0, 0.0);
     loop {
-        let Some(player) = env.to_move().next() else {
+        let Some(seat) = env.to_move().next() else {
             break;
         };
         let start = Instant::now();
-        queries += reach_queries(env, player);
+        queries += seat.player().map_or(0, |player| reach_queries(env, player));
         seconds += start.elapsed().as_secs_f64();
-        let action = choose(env, player, &mut rng);
+        let action = choose(env, seat, &mut rng);
         // A legal action is always accepted (h3-sim's tests).
-        let _ = env.step(player, action);
+        let _ = env.step(seat, action);
         steps += 1;
     }
     (queries, steps, seconds)
@@ -267,32 +268,39 @@ fn agent_rollout(env: &mut AdventureEnv, agent_seed: u64, observe: bool, masks: 
     let mut targets = [false; TARGET_COUNT];
     let mut steps = 0;
     loop {
-        let Some(player) = env.to_move().next() else {
+        let Some(seat) = env.to_move().next() else {
             break;
         };
         if observe {
-            black_box(env.observation(player));
+            match seat.player() {
+                Some(player) => {
+                    black_box(env.observation(player));
+                }
+                None => {
+                    black_box(env.neutral_observation());
+                }
+            }
         }
-        let action = choose(env, player, &mut rng);
+        let action = choose(env, seat, &mut rng);
         match action {
             Action::Adventure(action) if masks => {
-                env.legal_mask(player, &mut entries);
-                env.tile_mask(player, action.entry, &mut tiles);
+                env.legal_mask(seat, &mut entries);
+                env.tile_mask(seat, action.entry, &mut tiles);
                 black_box((&entries, &tiles));
             }
             Action::Battle(action) if masks => {
                 let (entry, spell) = (action.entry as usize, action.spell);
-                env.battle_mask(player, &mut legal, &mut battle_entries);
-                env.spell_mask(player, entry, &mut legal, &mut spells);
-                env.target_mask(player, (entry, spell), &mut legal, &mut targets);
+                env.battle_mask(seat, &mut legal, &mut battle_entries);
+                env.spell_mask(seat, entry, &mut legal, &mut spells);
+                env.target_mask(seat, (entry, spell), &mut legal, &mut targets);
                 black_box((&battle_entries, &spells, &targets));
                 let prefix = (entry, spell, action.target);
-                env.second_mask(player, prefix, &mut legal, &mut targets);
+                env.second_mask(seat, prefix, &mut legal, &mut targets);
                 black_box(&targets);
             }
             _ => {}
         }
-        let _ = env.step(player, action);
+        let _ = env.step(seat, action);
         steps += 1;
     }
     steps

@@ -914,17 +914,17 @@ id       = "ADV-MON-006"
 title    = "A step onto a guarded tile"
 context  = "adventure"
 status   = "implemented"
-summary  = "A step that enters a tile a monster guards (ADV-MON-005) is the path's last (a later step is refused, PastVisit) and visits the guard after any visit of the tile's own object; a hero standing on a guarded tile may leave it. The reachable tiles end there: the query reports a guarded tile as a destination and goes on only from the hero's own tile. The guard's visit is the monster's answer (ADV-MON-007, E08 T20b1); when the tile's own object made an offer, the guard visits once the offer is answered or did not open (the original asks the object's question first; a player has at most one open decision), else in the same outcome. Not built: the guard's test after a visit from the neighbouring tile (the original's visit_from_neighbour, 0x481900: a hero on a guarded tile that picks up a pile beside it is attacked after; E08 T20b3). Flying and a hero at sea come with later increments. E08 T20a2b: `MoveHero`, `Reach`; T20b1: `AdventureOutcome::guard_after`, `AdventureState::visit_guard`."
+summary  = "A step that enters a tile a monster guards (ADV-MON-005) is the path's last (a later step is refused, PastVisit) and visits the guard after any visit of the tile's own object; a hero standing on a guarded tile may leave it. The reachable tiles end there: the query reports a guarded tile as a destination and goes on only from the hero's own tile. The guard's visit is the monster's answer (ADV-MON-007, E08 T20b1); when the tile's own object made an offer, the guard visits once the offer is answered or did not open (the original asks the object's question first; a player has at most one open decision), else in the same outcome. A visit from the neighbouring tile (a pickup, another monster, a hero: the hero stays) tests no guard, even from a guarded tile: the original tests the hero's tile only after a step that changed it (E08 T20b3a). Flying and a hero at sea come with later increments. E08 T20a2b: `MoveHero`, `Reach`; T20b1: `AdventureOutcome::guard_after`, `AdventureState::visit_guard`."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (survey E08-battles.md section 2.2): after each step (hero_move_step, 0x480090; also visit_from_neighbour, 0x481900) the game tests the new tile's guard flag and gives the first guard the visit of a click on it (0x4A79C0 to 0x4A7740), ending the move; the pathfinder does not go on from a guarded tile other than the start (pathfinder_run, 0x56BC05; read in part)"
+  ref        = "Heroes3.exe code reading (survey E08-battles.md section 2.2): after each step (hero_move_step calls 0x480090) the game tests the new tile's guard flag and gives the first guard the visit of a click on it (0x481900, 0x4A79C0 to 0x4A7740), ending the move; 0x480090 skips the test when the hero stands on the tile it was on before the step (0x4800B8 to 0x4800C9), which visit_from_neighbour (0x480240) passes, so a visit from the neighbouring tile tests no guard (E08 T20b3a); the pathfinder does not go on from a guarded tile other than the start (pathfinder_run, 0x56BC05; read in part)"
   confidence = "high"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "lib/pathfinder/CPathfinder.cpp and CGPathNode: no path continues from a guarded tile but the start; the server starts the fight after the step"
+  ref        = "lib/pathfinder/CPathfinder.cpp and CGPathNode: no path continues from a guarded tile but the start; the server starts the fight after the step (server/CGameHandler.cpp, moveHero: a blocking visit, from the neighbouring tile, moves with IGNORE_GUARDS)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/CPathfinder.cpp"
   retrieved  = "2026-10-13"
   confidence = "high"

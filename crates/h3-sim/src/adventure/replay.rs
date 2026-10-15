@@ -270,7 +270,8 @@ pub struct RecordOptions {
 
 impl Replay {
     /// Records a game on `map` played by the uniformly random legal agent
-    /// ([`super::rollout::choose`]) for every player, as [`super::random_rollout`] plays it, at
+    /// ([`super::rollout::choose`]) for every seat (the neutral seat's commands recorded as the
+    /// system actor's, E08 T20b3a), as [`super::random_rollout`] plays it, at
     /// the setup's difficulty. Increment 1's games end only by a limit: give `max_days` or
     /// `max_steps`.
     ///
@@ -291,21 +292,21 @@ impl Replay {
         let mut rng = Rng::for_stream(options.agent_seed, StreamId::AGENT);
         let (mut commands, mut checkpoints) = (Vec::new(), Vec::new());
         loop {
-            let Some(player) = env.to_move().next() else {
+            let Some(seat) = env.to_move().next() else {
                 break;
             };
             if options.max_steps != 0 && commands.len() >= options.max_steps as usize {
                 break;
             }
-            let action = choose(&env, player, &mut rng);
+            let action = choose(&env, seat, &mut rng);
             // A legal action is always accepted (`tests.rs`): a refusal is a bug, reported.
-            let (_, command) =
-                env.step_decoded(player, action, &mut NoopSink)
-                    .map_err(|error| RecordError::Refused {
-                        step: commands.len(),
-                        error,
-                    })?;
-            commands.push((Actor::Player(player), command));
+            let (_, command) = env
+                .step_decoded(seat, action, &mut NoopSink)
+                .map_err(|error| RecordError::Refused {
+                    step: commands.len(),
+                    error,
+                })?;
+            commands.push((seat.actor(), command));
             let every = options.checkpoint_every as usize;
             if every != 0 && commands.len() % every == 0 {
                 checkpoints.push(env.state_hash());

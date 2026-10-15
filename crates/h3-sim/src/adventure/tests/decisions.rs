@@ -125,7 +125,7 @@ fn an_open_offer_is_answered_through_the_env() {
     }
     assert_eq!(legal_entries(&env, BLUE), []);
     assert!(legal_tiles(&env, BLUE).iter().all(Vec::is_empty));
-    assert_eq!(env.to_move().collect::<Vec<_>>(), [RED]);
+    assert_eq!(env.to_move().collect::<Vec<_>>(), [Seat::Player(RED)]);
     let (hash, steps) = (env.state_hash(), env.steps());
     let open = Err(StepError::Rejected(GameCommandError::DecisionOpen));
     assert_eq!(env.step(RED, Action::end_turn()), open);

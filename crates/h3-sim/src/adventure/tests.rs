@@ -3,7 +3,8 @@
 //! moves, steps against `apply`, refused actions, forks, determinism, the day limit (since E08
 //! T16a on the duel's typed objects too); with a land Cartographer beside each hero (built here on
 //! the nearest tile, also for the underground heroes: the duel's own two are farther), the open decisions ([`decisions`]);
-//! with blue's hero two steps from red's, the battles (E08 T19b1, [`battles`]).
+//! with blue's hero two steps from red's, the battles (E08 T19b1, [`battles`]); with a monster
+//! beside red's hero, its battle and the neutral seat (E08 T20b3a, [`monsters`]).
 
 use std::sync::{Arc, LazyLock};
 
@@ -25,6 +26,7 @@ use crate::action as battle;
 
 mod battles;
 mod decisions;
+mod monsters;
 
 const DUEL: &[u8] = include_bytes!("../../../../fixtures/maps/e08-duel-36.h3m");
 
@@ -102,14 +104,17 @@ fn env(seed: u64, max_days: u32) -> AdventureEnv {
 }
 
 fn acting(env: &AdventureEnv) -> PlayerId {
-    env.to_move().next().unwrap()
+    env.to_move().next().and_then(Seat::player).unwrap()
 }
 
 #[test]
 fn the_duel_starts_with_red_to_move_and_both_its_heroes_free() {
     let env = env(1, 28);
     assert_eq!(env.tile_count(), 36 * 36 * 2);
-    assert_eq!(env.to_move().collect::<Vec<_>>(), [PlayerId::new(0)]);
+    assert_eq!(
+        env.to_move().collect::<Vec<_>>(),
+        [Seat::Player(PlayerId::new(0))]
+    );
     assert_eq!((env.day(), env.steps(), env.is_done()), (1, 0, false));
     assert_eq!(env.phase(PlayerId::new(0)), Phase::Adventure);
     let mut mask = [true; ENTRY_COUNT];
@@ -176,22 +181,23 @@ fn tiles_and_actions_encode_as_documented() {
 /// One step of the property test's play.
 #[derive(Debug, Clone)]
 enum Pick {
-    /// The acting player's legal action, as the random agent picks it from this stream.
+    /// The acting seat's legal action, as the random agent picks it from this stream.
     Legal(u64),
-    /// The acting player's first hero that can enter a Cartographer of [`chart_setup`] does so;
-    /// else as `Legal(0)`.
+    /// The acting player's first hero that can enter a Cartographer of [`chart_setup`] (or step
+    /// toward the monster of [`monsters::monster_setup`]) does so; else as `Legal(0)`.
     Chart,
     /// The acting player's first hero that can reach another player's hero moves onto it (a
     /// battle, E08 T19b1); else as `Legal(0)`.
     Attack,
-    /// An arbitrary map action of the acting player (`None`) or of a player of the game or the
-    /// one after the last: the entry and tile modulo one more than their counts.
+    /// An arbitrary map action of the acting seat (`None`) or of a player of the game, the one
+    /// after the last or the neutral seat: the entry and tile modulo one more than their counts.
     Free {
         player: Option<u8>,
         entry: u8,
         tile: u32,
     },
-    /// An arbitrary battle action, the entry and heads modulo one more than their counts.
+    /// An arbitrary battle action of a seat as `Free`'s, the entry and heads modulo one more than
+    /// their counts.
     FreeBattle {
         player: Option<u8>,
         entry: u16,
@@ -216,27 +222,29 @@ fn is_move(entry: usize) -> bool {
     (MOVE_BASE..ACCEPT).contains(&entry)
 }
 
-/// The masks of `player` agree with the game. In the map phase: an entry is legal exactly when its
+/// The masks of `seat` agree with the game. In the map phase: an entry is legal exactly when its
 /// tile mask has a tile; the entries without a tile are the commands [`legal_commands`] lists
 /// (with an open decision its answers alone: `Decline`, and `Accept` while the offer stands), tile
 /// 0 alone their tile mask and the only tile they decode with; a move's tiles are the hero's legal
 /// moves but its own tile (since encoding v3 other players' heroes' too, E08 T19b1), each decoding
-/// to the query's path. In the battle phase every map mask is empty. The battle masks:
-/// [`check_battle_masks`].
-fn check_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCaseError> {
+/// to the query's path. In the battle phase (the neutral seat's only phase) every map mask is
+/// empty. The battle masks: [`check_battle_masks`].
+fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCaseError> {
+    let seat = seat.into();
     let (state, rules) = (env.state(), env.rules());
-    check_battle_masks(env, player)?;
+    check_battle_masks(env, seat)?;
     let mut entries = [true; ENTRY_COUNT];
-    env.legal_mask(player, &mut entries);
+    env.legal_mask(seat, &mut entries);
     let mut tiles = Vec::new();
-    if env.phase(player) == Phase::Battle {
+    if env.phase(seat) == Phase::Battle {
         prop_assert_eq!(entries, [false; ENTRY_COUNT]);
         for entry in 0..=ENTRY_COUNT {
-            env.tile_mask(player, entry, &mut tiles);
+            env.tile_mask(seat, entry, &mut tiles);
             prop_assert!(!tiles.contains(&true), "entry {}", entry);
         }
         return Ok(());
     }
+    let player = seat.player().unwrap();
     let commands = legal_commands(state, rules, Actor::Player(player));
     if state.decision(player).is_some() {
         let legal: Vec<usize> = (0..ENTRY_COUNT).filter(|&e| entries[e]).collect();
@@ -297,12 +305,14 @@ fn check_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCaseError
     Ok(())
 }
 
-/// The battle masks of `player` agree with its battle (E08 T19b1): outside a battle they are
+/// The battle masks of `seat` agree with its battle (E08 T19b1): outside a battle they are
 /// empty and a battle action decodes to nothing, a battle command encodes to nothing; in one they
-/// are the battle encoding's for the side it owns (empty while the other side is to act), and each
-/// legal entry with its first legal heads decodes to the battle's command, which encodes back to
-/// an action that decodes to it again.
-fn check_battle_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCaseError> {
+/// are the battle encoding's for the side it owns (empty while the other side is to act; the
+/// neutral seat's battle is one whose unowned side is to act, E08 T20b3a), and each legal entry
+/// with its first legal heads decodes to the battle's command, which encodes back to an action
+/// that decodes to it again.
+fn check_battle_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCaseError> {
+    let seat = seat.into();
     let (state, rules) = (env.state(), env.rules());
     let mut legal = LegalCommands::new();
     let (mut entries, mut spells, mut targets, mut seconds) = (
@@ -311,21 +321,24 @@ fn check_battle_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCa
         [true; battle::TARGET_COUNT],
         [true; battle::TARGET_COUNT],
     );
-    env.battle_mask(player, &mut legal, &mut entries);
-    let Some((fight, side)) = action::battle_of(state, player) else {
-        env.spell_mask(player, battle::HERO_CAST, &mut legal, &mut spells);
-        env.target_mask(player, (battle::HERO_CAST, 0), &mut legal, &mut targets);
+    env.battle_mask(seat, &mut legal, &mut entries);
+    let Some((fight, side)) = action::battle_of(state, seat) else {
+        env.spell_mask(seat, battle::HERO_CAST, &mut legal, &mut spells);
+        env.target_mask(seat, (battle::HERO_CAST, 0), &mut legal, &mut targets);
         let prefix = (battle::HERO_CAST, 0, 0);
-        env.second_mask(player, prefix, &mut legal, &mut seconds);
+        env.second_mask(seat, prefix, &mut legal, &mut seconds);
         prop_assert!(!entries.contains(&true) && !spells.contains(&true));
         prop_assert!(!targets.contains(&true) && !seconds.contains(&true));
         let wait = GameCommand::Battle(h3_battle::Command::Wait);
-        prop_assert_eq!(action::encode(state, rules, player, &wait), None);
+        prop_assert_eq!(action::encode(state, rules, seat, &wait), None);
         let wait = Action::Battle(battle::Action::entry(0));
-        prop_assert_eq!(action::decode(state, rules, player, wait), None);
+        prop_assert_eq!(action::decode(state, rules, seat, wait), None);
         return Ok(());
     };
-    let to_act = state.battle(player).unwrap().owner_to_act() == Some(player);
+    let to_act = match seat {
+        Seat::Player(player) => state.battle(player).unwrap().owner_to_act() == Some(player),
+        Seat::Neutral => true,
+    };
     let mut expected = [false; battle::ACTION_COUNT];
     battle::legal_mask(fight, rules.battle(), side, &mut legal, &mut expected);
     prop_assert_eq!(entries, expected);
@@ -339,11 +352,11 @@ fn check_battle_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCa
         .step_by(9)
         .chain(listed.iter().filter(|e| casts.contains(e)));
     for &entry in some {
-        env.spell_mask(player, entry, &mut legal, &mut spells);
+        env.spell_mask(seat, entry, &mut legal, &mut spells);
         let spell = u16::try_from(first(&spells).unwrap()).unwrap();
-        env.target_mask(player, (entry, spell), &mut legal, &mut targets);
+        env.target_mask(seat, (entry, spell), &mut legal, &mut targets);
         let target = u16::try_from(first(&targets).unwrap()).unwrap();
-        env.second_mask(player, (entry, spell, target), &mut legal, &mut seconds);
+        env.second_mask(seat, (entry, spell, target), &mut legal, &mut seconds);
         let second = u16::try_from(first(&seconds).unwrap()).unwrap();
         let chosen = battle::Action {
             entry: u32::try_from(entry).unwrap(),
@@ -351,26 +364,26 @@ fn check_battle_masks(env: &AdventureEnv, player: PlayerId) -> Result<(), TestCa
             target,
             second,
         };
-        let command = action::decode(state, rules, player, Action::Battle(chosen));
+        let command = action::decode(state, rules, seat, Action::Battle(chosen));
         let own = battle::decode(fight, rules.battle(), chosen).map(GameCommand::Battle);
         prop_assert!(command.is_some(), "entry {}", entry);
         prop_assert_eq!(&command, &own);
-        let back = action::encode(state, rules, player, &command.clone().unwrap());
+        let back = action::encode(state, rules, seat, &command.clone().unwrap());
         prop_assert!(matches!(back, Some(Action::Battle(_))));
-        prop_assert_eq!(action::decode(state, rules, player, back.unwrap()), command);
+        prop_assert_eq!(action::decode(state, rules, seat, back.unwrap()), command);
     }
     Ok(())
 }
 
-/// Whether `action` is legal for `player` by its masks: a map action's entry and tile, a battle
+/// Whether `action` is legal for `seat` by its masks: a map action's entry and tile, a battle
 /// action's entry and three heads.
-fn legal_by_masks(env: &AdventureEnv, player: PlayerId, action: Action) -> bool {
+fn legal_by_masks(env: &AdventureEnv, seat: Seat, action: Action) -> bool {
     match action {
         Action::Adventure(action) => {
             let mut entries = [false; ENTRY_COUNT];
-            env.legal_mask(player, &mut entries);
+            env.legal_mask(seat, &mut entries);
             let mut tiles = Vec::new();
-            env.tile_mask(player, action.entry, &mut tiles);
+            env.tile_mask(seat, action.entry, &mut tiles);
             entries.get(action.entry) == Some(&true)
                 && tiles.get(action.tile as usize) == Some(&true)
         }
@@ -382,39 +395,34 @@ fn legal_by_masks(env: &AdventureEnv, player: PlayerId, action: Action) -> bool 
                 [false; battle::TARGET_COUNT],
             );
             let entry = action.entry as usize;
-            env.battle_mask(player, &mut legal, &mut entries);
-            env.spell_mask(player, entry, &mut legal, &mut spells);
+            env.battle_mask(seat, &mut legal, &mut entries);
+            env.spell_mask(seat, entry, &mut legal, &mut spells);
             let heads = entries.get(entry) == Some(&true)
                 && spells.get(usize::from(action.spell)) == Some(&true);
-            env.target_mask(player, (entry, action.spell), &mut legal, &mut targets);
+            env.target_mask(seat, (entry, action.spell), &mut legal, &mut targets);
             let heads = heads && targets.get(usize::from(action.target)) == Some(&true);
             let prefix = (entry, action.spell, action.target);
-            env.second_mask(player, prefix, &mut legal, &mut targets);
+            env.second_mask(seat, prefix, &mut legal, &mut targets);
             heads && targets.get(usize::from(action.second)) == Some(&true)
         }
     }
 }
 
-/// The acting player's move onto another player's hero, if one of its heroes can make it.
-fn attack(env: &AdventureEnv, player: PlayerId) -> Option<Action> {
+/// The acting seat's move onto another player's hero, if one of its heroes can make it.
+fn attack(env: &AdventureEnv, seat: Seat) -> Option<Action> {
     let heroes = env.state().adventure().heroes();
-    let others: Vec<_> = heroes.iter().filter(|h| h.owner != player).collect();
-    enter_chart(
-        env,
-        player,
-        &others.iter().map(|h| h.pos).collect::<Vec<_>>(),
-    )
+    let others: Vec<_> = heroes
+        .iter()
+        .filter(|h| Some(h.owner) != seat.player())
+        .collect();
+    enter_chart(env, seat, &others.iter().map(|h| h.pos).collect::<Vec<_>>())
 }
 
-/// The acting player's move onto one of `charts`, if one of its heroes can make it.
-fn enter_chart(
-    env: &AdventureEnv,
-    player: PlayerId,
-    charts: &[h3_adventure::Pos],
-) -> Option<Action> {
+/// The acting seat's move onto one of `charts`, if one of its heroes can make it.
+fn enter_chart(env: &AdventureEnv, seat: Seat, charts: &[h3_adventure::Pos]) -> Option<Action> {
     let mut tiles = Vec::new();
     (0..HERO_SLOTS).find_map(|slot| {
-        env.tile_mask(player, MOVE_BASE + slot, &mut tiles);
+        env.tile_mask(seat, MOVE_BASE + slot, &mut tiles);
         charts
             .iter()
             .filter_map(|&pos| tile_index(env.state(), pos))
@@ -427,42 +435,64 @@ proptest! {
     #![proptest_config(ProptestConfig { cases: 16, ..ProptestConfig::default() })]
 
     /// Random play of legal and arbitrary actions on the duel with a Cartographer beside each
-    /// hero, or (E08 T19b1) with blue's hero two steps from red's ([`battles::battle_setup`]), at
-    /// any difficulty (4, impossible, cannot pay an offer): the masks of both phases agree with
-    /// the game for every player; a legal action is accepted and does what `apply` does with its
-    /// command; an action outside the masks is refused and leaves the environment as it was.
+    /// hero, or (E08 T19b1) with blue's hero two steps from red's ([`battles::battle_setup`]), or
+    /// (E08 T20b3a) with a monster beside red's hero ([`monsters::monster_setup`], aimed at by
+    /// `Chart`), at any difficulty (4, impossible, cannot pay an offer): the masks of both phases
+    /// agree with the game for every seat, the neutral one included; a legal action is accepted
+    /// and does what `apply` does with its command under the seat's actor; an action outside the
+    /// masks is refused and leaves the environment as it was.
     #[test]
     fn steps_agree_with_the_masks_and_the_game(
         seed in any::<u64>(),
         strict in any::<bool>(),
-        fight in any::<bool>(),
+        kind in 0u8..3,
         difficulty in 0u8..5,
         picks in proptest::collection::vec(pick(), 1..60),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
-        let setup = if fight {
-            battles::battle_setup(rules, difficulty).0
-        } else {
-            chart_setup(rules, difficulty)
+        let (setup, charts) = match kind {
+            0 => {
+                let setup = chart_setup(rules, difficulty);
+                let charts = charts(&setup);
+                (setup, charts)
+            }
+            1 => (battles::battle_setup(rules, difficulty).0, Vec::new()),
+            _ => {
+                let (setup, monster) = monsters::monster_setup(rules, difficulty);
+                (setup, vec![monster])
+            }
         };
-        let charts = if fight { Vec::new() } else { charts(&setup) };
         let mut env = AdventureEnv::new(rules.clone(), setup, seed, 0).unwrap();
         let players = u8::try_from(env.state().players()).unwrap();
+        let seats: Vec<Seat> = (0..players)
+            .map(|p| Seat::Player(PlayerId::new(p)))
+            .chain([Seat::Neutral])
+            .collect();
+        // The seat of a free pick: a player of the game, the one after the last, or the neutral
+        // seat.
+        let seat_of = |p: u8| match p % (players + 2) {
+            n if n == players + 1 => Seat::Neutral,
+            n => Seat::Player(PlayerId::new(n)),
+        };
         for pick in &picks {
-            let movers: Vec<PlayerId> = env.to_move().collect();
-            for player in (0..players).map(PlayerId::new) {
-                check_masks(&env, player)?;
-                // A player to move has a legal action in its phase, any other none (E08 T19b1:
-                // in a battle the owner of the side to act moves).
+            let movers: Vec<Seat> = env.to_move().collect();
+            for &seat in &seats {
+                check_masks(&env, seat)?;
+                // A seat to move has a legal action in its phase, any other none (E08 T19b1:
+                // in a battle the owner of the side to act moves; T20b3a: the neutral seat for
+                // an unowned side).
                 let mut entries = [false; ENTRY_COUNT];
-                env.legal_mask(player, &mut entries);
+                env.legal_mask(seat, &mut entries);
                 let mut fights = [false; battle::ACTION_COUNT];
-                env.battle_mask(player, &mut LegalCommands::new(), &mut fights);
+                env.battle_mask(seat, &mut LegalCommands::new(), &mut fights);
                 let any = entries.contains(&true) || fights.contains(&true);
-                prop_assert_eq!(any, movers.contains(&player), "{:?}", player);
+                prop_assert_eq!(any, movers.contains(&seat), "{:?}", seat);
+                if seat == Seat::Neutral {
+                    prop_assert_eq!(env.neutral_observation().is_some(), any);
+                }
             }
-            let actor = acting(&env);
-            let (player, action) = match *pick {
+            let actor = env.to_move().next().unwrap();
+            let (seat, action) = match *pick {
                 Pick::Legal(stream) => {
                     let mut rng = Rng::for_stream(stream, StreamId::AGENT);
                     (actor, choose(&env, actor, &mut rng))
@@ -477,15 +507,15 @@ proptest! {
                     (actor, aimed.unwrap_or_else(|| choose(&env, actor, &mut rng)))
                 }
                 Pick::Free { player, entry, tile } => {
-                    let player = player.map_or(actor, |p| PlayerId::new(p % (players + 1)));
+                    let seat = player.map_or(actor, seat_of);
                     let entry = usize::from(entry) % (ENTRY_COUNT + 1);
                     let tile = tile % (u32::try_from(env.tile_count()).unwrap() + 1);
-                    (player, Action::map(entry, tile))
+                    (seat, Action::map(entry, tile))
                 }
                 Pick::FreeBattle { player, entry, heads: (spell, target, second) } => {
-                    let player = player.map_or(actor, |p| PlayerId::new(p % (players + 1)));
+                    let seat = player.map_or(actor, seat_of);
                     let heads = |head: u16, count: usize| head % (u16::try_from(count).unwrap() + 1);
-                    (player, Action::Battle(battle::Action {
+                    (seat, Action::Battle(battle::Action {
                         entry: u32::from(entry) % (u32::try_from(battle::ACTION_COUNT).unwrap() + 1),
                         spell: heads(spell, battle::SPELL_COUNT),
                         target: heads(target, battle::TARGET_COUNT),
@@ -493,21 +523,21 @@ proptest! {
                     }))
                 }
             };
-            let legal = legal_by_masks(&env, player, action);
-            let command = action::decode(env.state(), env.rules(), player, action);
+            let legal = legal_by_masks(&env, seat, action);
+            let command = action::decode(env.state(), env.rules(), seat, action);
             let mut expected = env.state().clone();
             let applied = command.clone().map(|command| {
-                apply(&mut expected, env.rules(), Actor::Player(player), command, &mut Vec::new())
+                apply(&mut expected, env.rules(), seat.actor(), command, &mut Vec::new())
             });
             let (hash, steps) = (env.state_hash(), env.steps());
             let mut events = Vec::new();
-            let result = env.step_with(player, action, &mut events);
+            let result = env.step_with(seat, action, &mut events);
             if legal {
                 prop_assert_eq!(result, Ok(StepResult { done: false, truncated: false }));
             }
             match result {
                 Ok(_) => {
-                    prop_assert!(legal, "{:?} {:?} accepted outside the masks", player, action);
+                    prop_assert!(legal, "{:?} {:?} accepted outside the masks", seat, action);
                     prop_assert_eq!(applied, Some(Ok(())));
                     prop_assert_eq!(env.state(), &expected);
                     prop_assert_eq!(env.steps(), steps + 1);

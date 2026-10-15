@@ -27,12 +27,6 @@ where  = "crates/h3-adventure/src/state/monsters.rs::AdventureState::answer_to"
 reason = "A wandering monster's offer to join is skipped, as declined, when the hero's army has neither a stack of the group's creature nor a free slot (E08 decision 22); the original shows its army dialog (0x5D11D0, not read) so the player can make room (dismiss or merge stacks) and then accept. A feature to-do for increment 4's army management: read 0x5D11D0, build the dialog as a pending decision"
 epic   = "E08"
 
-[[stub]]
-id     = "ADV-STUB-7"
-where  = "crates/h3-sim/src/adventure/env.rs::AdventureEnv::to_move"
-reason = "A battle against a wandering monster (E08 T20b2) waits, when the monster's side is to act, for the system actor, which `h3_game::apply` takes (Actor::System); the env yields no seat for it yet, so a random rollout or a recording stops there. The env's neutral seat (to_move yielding seats, the unowned side played at random until the battle lane ports the original's battle AI, decision 27) comes with E08 T20b3"
-epic   = "E08"
-
 # --- server (SRV-STUB-<n>) ---
 
 # --- client (CLT-STUB-<n>) ---

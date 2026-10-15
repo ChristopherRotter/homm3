@@ -36,6 +36,12 @@
 //! the player's side, empty while the other side is to act, and every map entry is masked (ADR-0017
 //! point 8). Each phase's masks are empty in the other phase.
 //!
+//! Who acts is a [`Seat`]: a player, or the **neutral seat** (E08 T20b3a), which plays a battle's
+//! unowned side (a wandering monster's) as the system actor (`h3_game::Actor::System`). It acts in
+//! the battle phase only, with the same encoding for the side to act of the first battle whose
+//! side to act no player owns (`h3_game::GameState::unowned_battle`); its map masks are empty. The
+//! seat is not part of an action: the layout above is unchanged (still version 3).
+//!
 //! Version 2 (E08 T14b) appended the answers. Version 3 (E08 T19b1) added the battle phase: since
 //! E08 T19a a move onto another player's hero starts a battle, which version 2 could not play, so
 //! it left such tiles out of the masks and the decoder (`ADV-STUB-4`, closed).
@@ -71,7 +77,42 @@ pub const ENTRY_COUNT: usize = DECLINE + 1;
 /// Which entries are legal.
 pub type EntryMask = [bool; ENTRY_COUNT];
 
-/// The phase a player acts in.
+/// Who acts (ADR-0017 point 8): a player, or the neutral seat, which plays a battle's unowned side
+/// (a wandering monster's) as the system actor (E08 T20b3a).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Seat {
+    /// A player: its turn's actions on the map, or its side's in its battle.
+    Player(PlayerId),
+    /// The neutral seat: the unowned side's actions in the first battle whose side to act no
+    /// player owns ([`GameState::unowned_battle`]).
+    Neutral,
+}
+
+impl Seat {
+    /// The actor the seat's commands are issued as: the player, or the system actor.
+    pub const fn actor(self) -> Actor {
+        match self {
+            Self::Player(player) => Actor::Player(player),
+            Self::Neutral => Actor::System,
+        }
+    }
+
+    /// The player of the seat; none for the neutral seat.
+    pub const fn player(self) -> Option<PlayerId> {
+        match self {
+            Self::Player(player) => Some(player),
+            Self::Neutral => None,
+        }
+    }
+}
+
+impl From<PlayerId> for Seat {
+    fn from(player: PlayerId) -> Self {
+        Self::Player(player)
+    }
+}
+
+/// The phase a seat acts in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Phase {
     /// On the map: [`MapAction`]s.
@@ -165,68 +206,86 @@ pub fn hero_in_slot(state: &GameState, player: PlayerId, slot: usize) -> Option<
         .flatten()
 }
 
-/// The phase `player` acts in: the battle phase while it is in an open battle (GAM-BAT-001; its
-/// first open decision is the battle), else the map phase.
-pub fn phase(state: &GameState, player: PlayerId) -> Phase {
-    if state.battle(player).is_some() {
-        Phase::Battle
-    } else {
-        Phase::Adventure
+/// The phase `seat` acts in: for a player the battle phase while it is in an open battle
+/// (GAM-BAT-001; its first open decision is the battle), else the map phase; the battle phase for
+/// the neutral seat, which has no other.
+pub fn phase(state: &GameState, seat: impl Into<Seat>) -> Phase {
+    match seat.into() {
+        Seat::Player(player) if state.battle(player).is_none() => Phase::Adventure,
+        _ => Phase::Battle,
     }
 }
 
-/// The open battle of `player` and the side it owns there, if it is in one.
-pub fn battle_of(state: &GameState, player: PlayerId) -> Option<(&BattleState, BattleSide)> {
-    let battle = state.battle(player)?;
-    Some((battle.state(), battle.side_of(player)?))
+/// The open battle of `seat` and its side there: a player's battle and the side it owns, if it is
+/// in one; for the neutral seat the first battle whose side to act no player owns, and that side.
+pub fn battle_of(state: &GameState, seat: impl Into<Seat>) -> Option<(&BattleState, BattleSide)> {
+    match seat.into() {
+        Seat::Player(player) => {
+            let battle = state.battle(player)?;
+            Some((battle.state(), battle.side_of(player)?))
+        }
+        Seat::Neutral => {
+            let battle = state.unowned_battle()?.state();
+            Some((battle, battle.side_to_act()?))
+        }
+    }
 }
 
-/// The legal moves of the hero in `slot` of `player` ([`legal_moves`]), if any tile is reachable
-/// but its own.
+/// The legal moves of the hero in `slot` of `seat`'s player ([`legal_moves`]), if any tile is
+/// reachable but its own; none for the neutral seat.
 pub fn moves(
     state: &GameState,
     rules: &GameRuleset,
-    player: PlayerId,
+    seat: impl Into<Seat>,
     slot: usize,
 ) -> Option<Reach> {
+    let player = seat.into().player()?;
     let hero = hero_in_slot(state, player, slot)?;
     legal_moves(state, rules, Actor::Player(player), hero).filter(|r| r.tiles().next().is_some())
 }
 
-/// Fills `mask` with the legal map entries of `player`: the commands [`legal_commands`] lists
+/// Fills `mask` with the legal map entries of `seat`: the commands [`legal_commands`] lists
 /// (`EndTurn` while its turn runs, or with an open decision its answers alone: `Decline`, and
 /// `Accept` while the offer stands, E08 T15a), and each hero slot with a tile to move to
 /// ([`legal_moves`]: none with a decision open); none in the battle phase, where the listed
-/// commands are the battle's and no hero moves.
-pub fn legal_mask(state: &GameState, rules: &GameRuleset, player: PlayerId, mask: &mut EntryMask) {
+/// commands are the battle's and no hero moves, so none for the neutral seat.
+pub fn legal_mask(
+    state: &GameState,
+    rules: &GameRuleset,
+    seat: impl Into<Seat>,
+    mask: &mut EntryMask,
+) {
+    let seat = seat.into();
     mask.fill(false);
-    for command in legal_commands(state, rules, Actor::Player(player)) {
+    for command in legal_commands(state, rules, seat.actor()) {
         if let Some(entry) = tileless_entry(&command) {
             mask[entry] = true;
         }
     }
     for slot in 0..HERO_SLOTS {
-        mask[MOVE_BASE + slot] = moves(state, rules, player, slot).is_some();
+        mask[MOVE_BASE + slot] = moves(state, rules, seat, slot).is_some();
     }
 }
 
-/// Fills `mask` (resized to the tile count) with the legal tiles of `player` after choosing
+/// Fills `mask` (resized to the tile count) with the legal tiles of `seat` after choosing
 /// `entry`: 0 alone after a legal entry that takes no tile (`EndTurn`, an answer), the reachable
-/// tiles of a hero's legal move but its own; none after an illegal entry or in the battle phase.
+/// tiles of a hero's legal move but its own; none after an illegal entry or in the battle phase
+/// (none for the neutral seat).
 pub fn tile_mask(
     state: &GameState,
     rules: &GameRuleset,
-    player: PlayerId,
+    seat: impl Into<Seat>,
     entry: usize,
     mask: &mut Vec<bool>,
 ) {
+    let seat = seat.into();
     mask.clear();
     mask.resize(tile_count(state), false);
     if let Some(command) = tileless(entry) {
-        mask[0] = legal_commands(state, rules, Actor::Player(player)).contains(&command);
+        mask[0] = legal_commands(state, rules, seat.actor()).contains(&command);
     } else if let Some(reach) = entry
         .checked_sub(MOVE_BASE)
-        .and_then(|slot| moves(state, rules, player, slot))
+        .and_then(|slot| moves(state, rules, seat, slot))
     {
         for (pos, _) in reach.tiles() {
             if let Some(index) = tile_index(state, pos) {
@@ -236,66 +295,66 @@ pub fn tile_mask(
     }
 }
 
-/// Fills `mask` with the legal entries of the battle phase for `player`: its battle's
-/// ([`battle::legal_mask`]) for the side it owns while that side is to act; none otherwise.
+/// Fills `mask` with the legal entries of the battle phase for `seat` ([`battle_of`]): its
+/// battle's ([`battle::legal_mask`]) for its side while that side is to act; none otherwise.
 /// `legal` is scratch space.
 pub fn battle_mask(
     state: &GameState,
     rules: &GameRuleset,
-    player: PlayerId,
+    seat: impl Into<Seat>,
     legal: &mut LegalCommands,
     mask: &mut battle::ActionMask,
 ) {
     mask.fill(false);
-    if let Some((battle, side)) = battle_of(state, player) {
+    if let Some((battle, side)) = battle_of(state, seat) {
         battle::legal_mask(battle, rules.battle(), side, legal, mask);
     }
 }
 
-/// Fills `mask` with the legal spells of the battle phase for `player` after `entry`
+/// Fills `mask` with the legal spells of the battle phase for `seat` after `entry`
 /// ([`battle::spell_mask`]); none outside a battle.
 pub fn spell_mask(
     state: &GameState,
     rules: &GameRuleset,
-    player: PlayerId,
+    seat: impl Into<Seat>,
     entry: usize,
     legal: &mut LegalCommands,
     mask: &mut battle::SpellMask,
 ) {
     mask.fill(false);
-    if let Some((battle, side)) = battle_of(state, player) {
+    if let Some((battle, side)) = battle_of(state, seat) {
         battle::spell_mask(battle, rules.battle(), side, entry, legal, mask);
     }
 }
 
-/// Fills `mask` with the legal targets of the battle phase for `player` after `entry` and
+/// Fills `mask` with the legal targets of the battle phase for `seat` after `entry` and
 /// `spell` ([`battle::target_mask`]); none outside a battle.
 pub fn target_mask(
     state: &GameState,
     rules: &GameRuleset,
-    player: PlayerId,
+    seat: impl Into<Seat>,
     prefix: (usize, u16),
     legal: &mut LegalCommands,
     mask: &mut battle::TargetMask,
 ) {
     mask.fill(false);
-    if let Some((battle, side)) = battle_of(state, player) {
+    if let Some((battle, side)) = battle_of(state, seat) {
         battle::target_mask(battle, rules.battle(), side, prefix, legal, mask);
     }
 }
 
-/// Fills `mask` with the legal second targets of the battle phase for `player` after `entry`,
+/// Fills `mask` with the legal second targets of the battle phase for `seat` after `entry`,
 /// `spell` and `target` ([`battle::second_mask`]); none outside a battle.
 pub fn second_mask(
     state: &GameState,
     rules: &GameRuleset,
-    player: PlayerId,
+    seat: impl Into<Seat>,
     prefix: (usize, u16, u16),
     legal: &mut LegalCommands,
     mask: &mut battle::TargetMask,
 ) {
     mask.fill(false);
-    if let Some((battle, side)) = battle_of(state, player) {
+    if let Some((battle, side)) = battle_of(state, seat) {
         battle::second_mask(battle, rules.battle(), side, prefix, legal, mask);
     }
 }
@@ -320,25 +379,27 @@ const fn tileless_entry(command: &GameCommand) -> Option<usize> {
     }
 }
 
-/// The command `player` issues with `action`, if the action names one. In the map phase:
-/// `EndTurn` or an answer with tile 0, or a move of one of its heroes to a tile its
-/// reachable-tiles query lists (not its own) along the query's path. In the battle phase: the
-/// battle command the battle's encoding decodes the action to ([`battle::decode`]), for the
-/// player's battle. Whether the command may be issued now (whose turn it is, an open decision,
-/// the side to act) is `apply`'s.
+/// The command `seat` issues with `action`, if the action names one. In the map phase:
+/// `EndTurn` or an answer with tile 0, or a move of one of its player's heroes to a tile its
+/// reachable-tiles query lists (not its own) along the query's path; none for the neutral seat.
+/// In the battle phase: the battle command the battle's encoding decodes the action to
+/// ([`battle::decode`]), for the seat's battle ([`battle_of`]). Whether the command may be issued
+/// now (whose turn it is, an open decision, the side to act) is `apply`'s.
 pub fn decode(
     state: &GameState,
     rules: &GameRuleset,
-    player: PlayerId,
+    seat: impl Into<Seat>,
     action: Action,
 ) -> Option<GameCommand> {
+    let seat = seat.into();
     let action = match action {
         Action::Adventure(action) => action,
         Action::Battle(action) => {
-            let (battle, _) = battle_of(state, player)?;
+            let (battle, _) = battle_of(state, seat)?;
             return battle::decode(battle, rules.battle(), action).map(GameCommand::Battle);
         }
     };
+    let player = seat.player()?;
     if let Some(command) = tileless(action.entry) {
         return (action.tile == 0).then_some(command);
     }
@@ -354,23 +415,26 @@ pub fn decode(
     }))
 }
 
-/// The action that names `command` of `player`, if one does: `EndTurn` and the answers by their
-/// entries (tile 0), a move of one of its heroes by the hero's slot and the path's last tile, a
-/// battle command by the battle's encoding for the player's battle ([`battle::encode`]).
-/// [`decode`] gives the command back when a move's path is the one the hero's query chose; a
-/// move along another path decodes to the query's path to the same tile.
+/// The action that names `command` of `seat`, if one does: `EndTurn` and the answers by their
+/// entries (tile 0), a move of one of its player's heroes by the hero's slot and the path's last
+/// tile (none of these for the neutral seat), a battle command by the battle's encoding for the
+/// seat's battle ([`battle::encode`]). [`decode`] gives the command back when a move's path is
+/// the one the hero's query chose; a move along another path decodes to the query's path to the
+/// same tile.
 pub fn encode(
     state: &GameState,
     rules: &GameRuleset,
-    player: PlayerId,
+    seat: impl Into<Seat>,
     command: &GameCommand,
 ) -> Option<Action> {
+    let seat = seat.into();
+    if let GameCommand::Battle(command) = command {
+        let (battle, _) = battle_of(state, seat)?;
+        return battle::encode(battle, rules.battle(), *command).map(Action::Battle);
+    }
+    let player = seat.player()?;
     let (hero, path) = match command {
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => (*hero, path),
-        GameCommand::Battle(command) => {
-            let (battle, _) = battle_of(state, player)?;
-            return battle::encode(battle, rules.battle(), *command).map(Action::Battle);
-        }
         other => return tileless_entry(other).map(|entry| Action::map(entry, 0)),
     };
     let slot = (0..HERO_SLOTS).find(|&slot| hero_in_slot(state, player, slot) == Some(hero))?;

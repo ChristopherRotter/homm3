@@ -162,8 +162,11 @@ the whole map at a new game and whenever an object is removed (0x4CA410, called 
 
 ### 2.2 The step onto a guarded tile (0x480090, 0x481900)
 
-`original-data`: after each step of a move (`hero_move_step`, also `visit_from_neighbour`) the
-game tests the new tile's guard flag; on a guarded tile the first guard (§2.1) gets the same
+`original-data`: after each step of a move that changed the hero's tile (`hero_move_step`; 0x480090
+skips the test when the hero stands where it stood before the step, 0x4800B8 to 0x4800C9, and
+`visit_from_neighbour` passes the hero's own tile, so a visit from the neighbouring tile tests no
+guard: E08 T20b3a; VCMI's blocking visit ignores the guards too) the game tests the new tile's
+guard flag; on a guarded tile the first guard (§2.1) gets the same
 visit as a click on it (0x4A79C0 → 0x4A7740, §3) and the move ends. A hero at sea is attacked at
 once; a flying hero (Angel Wings, artifact 72, or a fly spell, hero +0x112) only at its move's
 destination *(inc. 4)*. The pathfinder does not go on from a guarded tile other than the start

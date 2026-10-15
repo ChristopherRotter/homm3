@@ -103,7 +103,7 @@ fn a_move_onto_another_players_hero_opens_a_battle_in_the_battle_phase() {
             .any(|e| matches!(e, GameEvent::BattleStarted { .. }))
     );
     let owner = env.state().battle(RED).unwrap().owner_to_act().unwrap();
-    assert_eq!(env.to_move().collect::<Vec<_>>(), [owner]);
+    assert_eq!(env.to_move().collect::<Vec<_>>(), [Seat::Player(owner)]);
     for player in [RED, BLUE] {
         assert_eq!(env.phase(player), Phase::Battle);
         check_masks(&env, player).unwrap();
@@ -173,7 +173,7 @@ fn the_random_agent_plays_a_battle_to_its_end() {
         "{result:?}"
     );
     assert_eq!(env.phase(BLUE), Phase::Adventure);
-    assert_eq!(env.to_move().collect::<Vec<_>>(), [RED]);
+    assert_eq!(env.to_move().collect::<Vec<_>>(), [Seat::Player(RED)]);
     for player in [RED, BLUE] {
         check_masks(&env, player).unwrap();
     }
