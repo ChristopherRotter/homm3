@@ -131,6 +131,9 @@ pub struct MachineControl {
 /// How a commanded Ballista shoots.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BallistaControl {
+    /// The hero's Artillery level, 1 (Basic) to 3 (Expert): the computer's worth of the Ballista
+    /// grows with it (ADR-0013 point 4, E04c T7e).
+    pub level: u8,
     /// Shots per turn.
     pub shots: u8,
     /// Chance of each shot to deal double base damage, basis points (at most 10 000).

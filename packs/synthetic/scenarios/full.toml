@@ -58,7 +58,7 @@ spell_book = [
 ranged_bp = 1000
 melee_bp = 1000
 reduction_bp = 500
-ballista = { shots = 1, double_damage_chance_bp = 5000 }
+ballista = { level = 1, shots = 1, double_damage_chance_bp = 5000 }
 tent = { heal_bonus_bp = 10000 }
 effects = [
     { kind = "morale", amount = 1 },
@@ -140,7 +140,7 @@ spell_book = [
     "synthetic:uproot", "synthetic:revive", "synthetic:conjure",
 ]
 surrender_discount_bp = 1000
-ballista = { shots = 1, double_damage_chance_bp = 5000 }
+ballista = { level = 1, shots = 1, double_damage_chance_bp = 5000 }
 effects = [
     { kind = "stack_stat", creatures = { creature = "synthetic:wisp" }, stat = "attack", op = "add", amount = 2 },
     { kind = "stack_stat", creatures = { creature = "synthetic:wisp" }, stat = "min_damage", op = "add", amount = 1 },

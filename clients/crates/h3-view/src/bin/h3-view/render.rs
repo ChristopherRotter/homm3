@@ -33,12 +33,13 @@ pub struct Options {
     list: bool,
     at: Option<u32>,
     speed: u8,
+    frames: Option<PathBuf>,
 }
 
 impl Options {
     /// Parses `<scenario.toml | record.jsonl> [--seed <n>] [--packs <dir>] [--install <dir>]
-    /// [--out <file.png>] [--list] [--at <ms>] [--speed <0-2>]`; the installation defaults as
-    /// the gate's.
+    /// [--out <file.png>] [--list] [--at <ms> | --frames <dir>] [--speed <0-2>]`; the
+    /// installation defaults as the gate's.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         Self::parse_with(args, env)
@@ -48,7 +49,7 @@ impl Options {
         let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
         let (mut input, mut seed, mut packs, mut install, mut out, mut list) =
             (None, 1, None, None, None, false);
-        let (mut at, mut speed) = (None, 0);
+        let (mut at, mut speed, mut frames) = (None, 0, None);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -69,6 +70,7 @@ impl Options {
                     let v = value()?;
                     at = Some(v.parse().map_err(|_| format!("render: bad time `{v}`"))?);
                 }
+                "--frames" => frames = Some(PathBuf::from(value()?)),
                 "--speed" => {
                     let v = value()?;
                     speed = v
@@ -84,6 +86,9 @@ impl Options {
                 extra => return Err(format!("render: unexpected `{extra}`")),
             }
         }
+        if at.is_some() && frames.is_some() {
+            return Err("render: --at or --frames, not both".into());
+        }
         Ok(Self {
             input: input.ok_or("render: which scenario or record?")?,
             seed,
@@ -95,6 +100,7 @@ impl Options {
             list,
             at,
             speed,
+            frames,
         })
     }
 
@@ -218,6 +224,26 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 .map_err(|e| format!("{name}: {e:?}"))
         })
         .collect::<Result<Vec<_>, _>>()?;
+    if let Some(dir) = &options.frames {
+        // The capture set's frames by time (E17 M3 T1b-2, `h3drive.py set`): the record's
+        // commands at the original's timing without fidgets of the viewer's own, each frame with
+        // the fidgets the original showed then, as the frame check draws a sequence's.
+        let looks = motion::looks(&record, &tables, &archives)?;
+        let stage = motion::stage(&record, &tables, &layout);
+        let commands = anim::commands(&record.messages);
+        let timeline = anim::timeline(
+            observation,
+            &commands,
+            &looks,
+            stage,
+            Speed::new(options.speed),
+        )
+        .map_err(|e| e.to_string())?;
+        let drawn =
+            crate::sequences::draw_frames(dir, &record, &timeline, &tables, &layout, &archives)?;
+        lines.push(format!("{drawn} frames drawn in {}", dir.display()));
+        return Ok(lines);
+    }
     let list = match options.at {
         None => scene::battle(observation, manifest, &tables, &layout),
         Some(t) => {
@@ -310,8 +336,11 @@ mod tests {
             Options::parse_with(&args(&["a.toml", "--at", "250", "--speed", "2"]), None).unwrap();
         assert_eq!((o.at, o.speed), (Some(250), 2));
         assert!(o.png().ends_with("out/render/a-s1-250ms.png"));
+        let o = Options::parse_with(&args(&["a.toml", "--frames", "/f"]), None).unwrap();
+        assert_eq!((o.at, o.frames), (None, Some(PathBuf::from("/f"))));
         for bad in [
-            &["--seed"][..],
+            &["a.toml", "--at", "1", "--frames", "/f"][..],
+            &["--seed"],
             &["--seed", "x", "a.toml"],
             &["--at", "soon", "a.toml"],
             &["--speed", "3", "a.toml"],

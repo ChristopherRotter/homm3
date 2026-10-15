@@ -1,7 +1,7 @@
 # E04c — Sieges and special battlefields
 
 Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2 closed: T3 (#179), T4 (#180), BAT-Q39 and BAT-Q40 answered; increment 3, T5: the seam ADR-0023 (#183), towns on the experiment maps (#184), the reading (BAT-Q41, BAT-Q42), the battle's walls, gate and moat (#187), the siege batch 3c run by
-an agent (T5e): increment 3 done (#190); increment 4, T6, refined 2026-10-14 (BAT-Q43), built and confirmed 2026-10-14: the seam #191, the battle and the batch 3d, #199; increment 5, T7, the arrow towers, built 2026-10-14 (BAT-Q44, BAT-Q45); increment 6, T7d, built and merged 2026-10-14 (BAT-Q46); increment 7, T8, the siege's other rules, built 2026-10-15) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
+an agent (T5e): increment 3 done (#190); increment 4, T6, refined 2026-10-14 (BAT-Q43), built and confirmed 2026-10-14: the seam #191, the battle and the batch 3d, #199; increment 5, T7, the arrow towers, built 2026-10-14 (BAT-Q44, BAT-Q45); increment 6, T7d, built and merged 2026-10-14 (BAT-Q46); increment 7, T8, the siege's other rules, built 2026-10-15; increment 8, T7e, the automatic Ballista's target, built 2026-10-15) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
 
@@ -98,9 +98,7 @@ reading).
   user: the turrets fully, the setup's difficulty and human sides, ADR-0023 point 7), the seam
   (`shared/e04c-t7d-seam`, `X87::sqrt`), the battle (`aim.rs`), batch 3f by an agent: every
   target as the code; BAT-SIE-020 to 023 `verified`; BAT-STUB-3.
-- [ ] T7e The automatic Ballista's target: the computer's general shooter (0x41F060, 0x41EB80,
-  0x435CB0, 0x435B90) for the Ballista without Artillery (BAT-WAR-002, VCMI's rule until then), and
-  BAT-STUB-3 (the hero's Artillery level on the seam); a batch.
+- [x] T7e The automatic Ballista's target — built 2026-10-15 as increment 8 (below).
 **Increment 7** (the user, 2026-10-15: T8 as the next sensible increment; disputes by the code with
 a batch; the wire `cross-lane` if needed).
 
@@ -108,7 +106,17 @@ a batch; the wire `cross-lane` if needed).
   T8a the reading (§7.32, D-20), T8b the battle (BAT-SIE-024 to 028; Teleport's siege masteries
   harvested, pack format v42; BAT-TAC-001 and BAT-END-003 amended; BAT-STUB-2 closed), T8c batch
   3g by an agent: every value as the code, D-21 found (the Brotherhood replaces the Tavern's
-  morale: the town context's); BAT-SIE-024 to 027 `verified`; for the user's checkpoint.
+  morale: the town context's); BAT-SIE-024 to 027 `verified`; confirmed by the user and merged
+  2026-10-15 (#222).
+**Increment 8** (the user, 2026-10-15: the next sensible increment; T7e before T9, so that T9
+measures the epic's final code).
+
+- [x] **T7e The automatic Ballista's target** — built 2026-10-15 (record: [`E04c-log.md`](E04c-log.md)):
+  the reading (§7.33: the computer's shooter 0x41F060 → 0x41EB80 → 0x435CB0 → 0x435B90 → 0x4359B0
+  and 0x442780), the seam (`shared/e04c-t7e-seam`, #225: the hero's Artillery level, BAT-STUB-3),
+  the battle (`aim::ballista_target`, BAT-WAR-008; BAT-SIE-021's Artillery factors), batch 3h by an
+  agent: every shot as the code once the estimate reads the Ballista's record (2..3); VCMI's rule
+  refuted; for the user's checkpoint.
 - [ ] T9 Workload and measurements; T10 closure (the independent review, as E04b's T11).
 
 ### T5 — Walls, gate and moat (refined 2026-10-14, increment 3)

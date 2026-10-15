@@ -3,17 +3,23 @@
 //! stack can attack (BAT-SIE-022) and the desperate mode (BAT-SIE-023), on the test ruleset with
 //! the turret and Fight Values ([`fighting_turret_ruleset`]). Without heroes every attack and
 //! defense bonus is 0, so a creature's worth is its Fight Value; the keep of a town without
-//! structures has 4 creatures, a mean damage of 12.
+//! structures has 4 creatures, a mean damage of 12. The automatic Ballista's target (E04c T7e,
+//! §7.33; BAT-WAR-008) and its hero's Artillery in its worth (BAT-SIE-021) follow.
 
 use std::vec::Vec;
 
 use h3_content::FULL_BP;
 use h3_content_battle::BattleRuleset;
-use h3_contracts::{BattleHero, BattleSetup, FortLevel, Moat, Rate, Siege};
+use h3_contracts::{
+    BallistaControl, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Rate, Siege,
+};
 use h3_kernel::arith::{DOUBLE_BITS, X87};
 
 use super::support::*;
-use crate::aim::{advantage, context, kill_value, turns, turret_target, worth};
+use crate::aim::{
+    advantage, ballista_target, context, estimate, ftol, kill_value, shot_value, turns,
+    turret_target, worth,
+};
 use crate::effects::{DamageRoll, Status};
 use crate::geometry::{Field, Hex};
 use crate::{BattleState, Event, EventKind, StackId, StackTraits};
@@ -27,6 +33,11 @@ const FIGHTS: &[(&str, u32)] = &[
     ("slow", 20),
     ("sniper", 90),
     ("ballista", 650),
+    ("tent", 750),
+    ("seraph", 500_000),
+    ("spear", 300),
+    ("fast", 100),
+    ("serf", 700),
 ];
 
 fn rules() -> BattleRuleset {
@@ -181,7 +192,7 @@ fn a_creature_is_worth_its_fight_value_scaled_by_its_advantage() {
     };
     let mut s = fresh(&r, &setup);
     let (f, field) = (field(&r), field(&r));
-    let ctx = context(&s, &r, f, h3_contracts::BattleSide::Defender);
+    let ctx = context(&s, &r, f, BattleSide::Defender);
     assert_eq!(
         (ctx.min_attack, ctx.min_defense, ctx.desperate),
         (0, 0, false)
@@ -235,7 +246,7 @@ fn a_war_machine_is_worth_its_share_of_its_army() {
     let mut setup = siege(&r, &[(0, "archer", 1)], &[(0, "slow", 10)]);
     setup.war_machines[0] = std::vec![r.creature_by_key("t:ballista").unwrap()];
     let mut s = fresh(&r, &setup);
-    let ctx = context(&s, &r, field(&r), h3_contracts::BattleSide::Defender);
+    let ctx = context(&s, &r, field(&r), BattleSide::Defender);
     assert_eq!(
         worth(&s, (&r, field(&r)), &ctx, StackId(1), true),
         X87::int(25)
@@ -252,7 +263,7 @@ fn a_war_machine_is_worth_its_share_of_its_army() {
         X87::ZERO
     );
     // The clone's strength: its creature times its worth over 5, here nothing.
-    assert!(!context(&s, &r, field(&r), h3_contracts::BattleSide::Defender).desperate);
+    assert!(!context(&s, &r, field(&r), BattleSide::Defender).desperate);
 }
 
 // ---------------------------------------------------------------- BAT-SIE-022 the turns
@@ -369,7 +380,7 @@ fn a_weak_defender_turns_desperate_above_easy_or_when_human() {
         5,
     )
     .unwrap();
-    assert!(context(&s, &r, field(&r), h3_contracts::BattleSide::Defender).desperate);
+    assert!(context(&s, &r, field(&r), BattleSide::Defender).desperate);
     // A strong defender is never desperate.
     let strong = siege(&r, &[(0, "archer", 1)], &[(0, "fixed", 10)]);
     let s = BattleState::new(
@@ -381,7 +392,7 @@ fn a_weak_defender_turns_desperate_above_easy_or_when_human() {
         5,
     )
     .unwrap();
-    assert!(!context(&s, &r, field(&r), h3_contracts::BattleSide::Defender).desperate);
+    assert!(!context(&s, &r, field(&r), BattleSide::Defender).desperate);
 }
 
 // covers: BAT-SIE-020, BAT-SIE-023
@@ -404,7 +415,7 @@ fn without_a_score_above_0_the_last_stack_is_shot() {
     let s = fresh(&r, &setup);
     let last = (0u8..)
         .zip(s.stacks())
-        .filter(|(_, st)| st.side == h3_contracts::BattleSide::Attacker)
+        .filter(|(_, st)| st.side == BattleSide::Attacker)
         .last()
         .unwrap()
         .0;
@@ -413,4 +424,483 @@ fn without_a_score_above_0_the_last_stack_is_shot() {
         turret_target(&s, &r, field(&r), keep(&s)),
         Some(StackId(last))
     );
+}
+
+// ---------------------------------------------------------------- BAT-WAR-008 the Ballista's aim
+
+/// A hero of `attack` (and no defense) whose army brings a Ballista (no Artillery: it shoots on
+/// its own).
+fn gunner(r: &BattleRuleset, attack: u8) -> BattleHero {
+    let mut h = hero(r);
+    [h.attack, h.defense] = [attack, 0];
+    h
+}
+
+/// A battle away from towns: the attacker's army and its Ballista under a hero of `attack`, the
+/// defender's army and war machines; ids: the attacker's stacks, its Ballista, the defender's.
+fn ballista_battle(
+    r: &BattleRuleset,
+    attack: u8,
+    (attacker, defender): (&[Spec], &[Spec]),
+    machines: &[&str],
+) -> BattleSetup {
+    let mut s = setup(r, attacker, defender);
+    s.heroes[0] = Some(gunner(r, attack));
+    s.war_machines = [
+        std::vec![r.creature_by_key("t:ballista").unwrap()],
+        machines
+            .iter()
+            .map(|k| r.creature_by_key(&std::format!("t:{k}")).unwrap())
+            .collect(),
+    ];
+    s
+}
+
+/// The attacker's Ballista's id in [`ballista_battle`].
+fn gun(s: &BattleState) -> StackId {
+    (0u8..)
+        .zip(s.stacks())
+        .find(|(_, st)| st.side == BattleSide::Attacker && st.has(StackTraits::WAR_MACHINE))
+        .map(|(i, _)| StackId(i))
+        .unwrap()
+}
+
+/// The target of the attacker's Ballista.
+fn aimed(r: &BattleRuleset, s: &BattleState) -> Option<u8> {
+    ballista_target(s, r, field(r), gun(s)).map(|id| id.0)
+}
+
+/// The value of a shot of the attacker's Ballista at `target`, out of desperate mode.
+fn value(r: &BattleRuleset, s: &BattleState, target: u8) -> i32 {
+    let ctx = context(s, r, field(r), BattleSide::Attacker);
+    shot_value(s, (r, field(r)), &ctx, (gun(s), StackId(target)), false)
+}
+
+// covers: BAT-WAR-008
+#[test]
+fn the_ballista_estimates_its_shot_without_draws() {
+    let r = rules();
+    let mut s = fresh(
+        &r,
+        &ballista_battle(
+            &r,
+            20,
+            (&[(0, "sniper", 5), (1, "lich", 5)], &[(0, "fixed", 10)]),
+            &[],
+        ),
+    );
+    let (snipers, liches, b, t) = (StackId(0), StackId(1), StackId(2), StackId(3));
+    let shot = |s: &BattleState, from: StackId, base: u64| {
+        crate::combat::shot_damage(s, &r, (from, t), base)
+    };
+    // The Ballista's record holds its creature's 2..3, not the 42..63 its hero's attack makes of
+    // them in a strike (0x4431AC): the mean 2.5, truncated.
+    assert_eq!(estimate(&s, &r, (b, t)), shot(&s, b, 2));
+    // Blessed, the maximum and the bonus (its own 3, not 63).
+    s.stacks.as_mut_slice()[2].spells.damage = DamageRoll::Maximum(3);
+    assert_eq!(estimate(&s, &r, (b, t)), shot(&s, b, 6));
+    s.stacks.as_mut_slice()[2].spells.damage = DamageRoll::Random;
+    // Five liches of damage 11..13: 5 × 12; blessed 5 × (13 + 2); cursed 5 × (11 - 4), at least
+    // 1 each.
+    assert_eq!(estimate(&s, &r, (liches, t)), shot(&s, liches, 60));
+    s.stacks.as_mut_slice()[1].spells.damage = DamageRoll::Maximum(2);
+    assert_eq!(estimate(&s, &r, (liches, t)), shot(&s, liches, 75));
+    s.stacks.as_mut_slice()[1].spells.damage = DamageRoll::Minimum(4);
+    assert_eq!(estimate(&s, &r, (liches, t)), shot(&s, liches, 35));
+    s.stacks.as_mut_slice()[1].spells.damage = DamageRoll::Minimum(50);
+    assert_eq!(estimate(&s, &r, (liches, t)), shot(&s, liches, 5));
+    s.stacks.as_mut_slice()[1].spells.damage = DamageRoll::Random;
+    // Five snipers of damage 2..3 that shoot twice: 5 × 2.5 truncated, doubled.
+    assert_eq!(estimate(&s, &r, (snipers, t)), 2 * shot(&s, snipers, 12));
+    // Their count from their hit points, rounded up: a hurt top creature still counts.
+    s.stacks.as_mut_slice()[0].top_hp = 1;
+    assert_eq!(estimate(&s, &r, (snipers, t)), 2 * shot(&s, snipers, 12));
+    // At most the target's hit points: one fixed creature (10) or a clone (1).
+    s.stacks.as_mut_slice()[3].count = 1;
+    assert!(shot(&s, liches, 60) > 10);
+    assert_eq!(estimate(&s, &r, (liches, t)), 10);
+    let clone = &mut s.stacks.as_mut_slice()[3];
+    clone.traits = clone
+        .traits
+        .with(StackTraits::CLONE, true)
+        .with(StackTraits::SUMMONED, true);
+    assert_eq!(estimate(&s, &r, (liches, t)), 1);
+}
+
+// covers: BAT-WAR-008
+#[test]
+fn the_ballista_scores_kills_over_turns_but_not_on_easy_for_the_computer() {
+    // The Ballista's estimate is 2 hit points for either stack (its 2..3, its attack 30 over
+    // their defense, halved beyond ten hexes). The spearmen (Fight Value 300 per 10 hit points)
+    // score 60 but stand four turns away (15); the archer (140 per 10) shoots now (28). On Easy
+    // a computer side does not divide: the spearmen.
+    let r = rules();
+    let base = ballista_battle(
+        &r,
+        20,
+        (&[(0, "fixed", 1)], &[(0, "spear", 10), (1, "archer", 1)]),
+        &[],
+    );
+    let at = |difficulty: u8, human: [bool; 2]| {
+        let s = fresh(
+            &r,
+            &BattleSetup {
+                difficulty,
+                human,
+                ..base.clone()
+            },
+        );
+        (aimed(&r, &s), value(&r, &s, 2), value(&r, &s, 3))
+    };
+    assert_eq!(at(1, [false, false]), (Some(3), 15, 28));
+    assert_eq!(at(0, [true, false]), (Some(3), 15, 28));
+    assert_eq!(at(0, [false, true]), (Some(2), 60, 28));
+    // The value is the estimate's kills times the worth over the turns.
+    let s = fresh(
+        &r,
+        &BattleSetup {
+            difficulty: 2,
+            ..base
+        },
+    );
+    let dealt = |t: u8| i64::try_from(estimate(&s, &r, (gun(&s), StackId(t)))).unwrap();
+    assert_eq!((dealt(2), dealt(3)), (2, 2));
+    assert_eq!(turns(&s, field(&r), StackId(2)), Some(4));
+    assert_eq!(
+        value(&r, &s, 3),
+        kill_value(s.at(StackId(3)), dealt(3), X87::int(140))
+    );
+    assert_eq!(turns(&s, field(&r), StackId(3)), Some(1));
+}
+
+// covers: BAT-WAR-008
+#[test]
+fn the_ballista_prefers_a_stack_that_keeps_its_turns() {
+    // The fast creatures (100 per 3 hit points: 66, two turns away: 33) are worth more than the
+    // archer (28), also blind (a tenth: 6); the archer keeps its turns and is shot first. Both
+    // blind, the higher value.
+    let r = rules();
+    let mut s = fresh(
+        &r,
+        &BattleSetup {
+            difficulty: 1,
+            ..ballista_battle(
+                &r,
+                20,
+                (&[(0, "fixed", 1)], &[(0, "fast", 10), (1, "archer", 1)]),
+                &[],
+            )
+        },
+    );
+    assert_eq!((value(&r, &s, 2), value(&r, &s, 3)), (33, 28));
+    assert_eq!(aimed(&r, &s), Some(2));
+    let blind = |s: &mut BattleState, id: usize| {
+        let st = &mut s.stacks.as_mut_slice()[id];
+        st.spells.status = st.spells.status.with(Status::NO_TURNS, true);
+    };
+    blind(&mut s, 2);
+    assert_eq!(value(&r, &s, 2), 66 / 10);
+    assert_eq!(aimed(&r, &s), Some(3));
+    blind(&mut s, 3);
+    assert_eq!(value(&r, &s, 3), 28 / 10);
+    assert_eq!(aimed(&r, &s), Some(2));
+    // An earlier stack that keeps its turns before a later blind one of a higher value: the slow
+    // creatures (20 per 5 hit points: 8, more than five turns away: a fifth, 1) before the blind
+    // fast ones (6).
+    let mut s = fresh(
+        &r,
+        &BattleSetup {
+            difficulty: 1,
+            ..ballista_battle(
+                &r,
+                20,
+                (&[(0, "fixed", 1)], &[(0, "slow", 10), (1, "fast", 10)]),
+                &[],
+            )
+        },
+    );
+    blind(&mut s, 3);
+    assert!(turns(&s, field(&r), StackId(2)).is_some_and(|t| t > 5));
+    assert_eq!((value(&r, &s, 2), value(&r, &s, 3)), (8 / 5, 66 / 10));
+    assert_eq!(aimed(&r, &s), Some(2));
+}
+
+// covers: BAT-WAR-008
+#[test]
+fn the_ballista_shoots_the_later_of_two_like_stacks() {
+    // VCMI's rule took the lower id.
+    let r = rules();
+    let s = fresh(
+        &r,
+        &ballista_battle(
+            &r,
+            0,
+            (&[(0, "fixed", 1)], &[(0, "archer", 1), (1, "archer", 1)]),
+            &[],
+        ),
+    );
+    assert_eq!(value(&r, &s, 2), value(&r, &s, 3));
+    assert_eq!(aimed(&r, &s), Some(3));
+}
+
+// covers: BAT-WAR-008
+#[test]
+fn a_war_machine_is_a_target_as_any_stack() {
+    // The defender's tanks have no Fight Value: its Ballista (its share of the army: 650 · 1000 /
+    // 1250, shooting now) is shot before them, where VCMI's rule preferred any creature; its
+    // First Aid Tent counts a fifth.
+    let r = rules();
+    let mut s = fresh(
+        &r,
+        &BattleSetup {
+            difficulty: 1,
+            ..ballista_battle(
+                &r,
+                20,
+                (&[(0, "fixed", 1)], &[(0, "tank", 10)]),
+                &["ballista"],
+            )
+        },
+    );
+    assert_eq!(value(&r, &s, 2), 0);
+    assert!(value(&r, &s, 3) > 0);
+    assert_eq!(aimed(&r, &s), Some(3));
+    let mut with_tent =
+        ballista_battle(&r, 20, (&[(0, "fixed", 1)], &[(0, "tank", 10)]), &["tent"]);
+    with_tent.difficulty = 1;
+    s = fresh(&r, &with_tent);
+    let ctx = context(&s, &r, field(&r), BattleSide::Attacker);
+    let dealt = i64::try_from(estimate(&s, &r, (gun(&s), StackId(3)))).unwrap();
+    let whole = kill_value(
+        s.at(StackId(3)),
+        dealt,
+        worth(&s, (&r, field(&r)), &ctx, StackId(3), true),
+    );
+    assert!(whole > 0);
+    assert_eq!(value(&r, &s, 3), whole / 5);
+}
+
+// covers: BAT-WAR-008, BAT-SIE-023
+#[test]
+fn a_desperate_ballista_counts_every_creature_1000() {
+    // A weak attacker (one slow creature) against ten Magogs (300, 13 hit points) and ten archers
+    // (140, 10), both shooting now: the Magogs by their worth, the archers in desperate mode
+    // (above Easy or human), where each creature killed counts 1000.
+    let r = rules();
+    let base = ballista_battle(
+        &r,
+        20,
+        (&[(0, "slow", 1)], &[(0, "magog", 10), (1, "archer", 10)]),
+        &[],
+    );
+    let at = |difficulty: u8, human: [bool; 2]| {
+        let s = fresh(
+            &r,
+            &BattleSetup {
+                difficulty,
+                human,
+                ..base.clone()
+            },
+        );
+        aimed(&r, &s)
+    };
+    assert_eq!(at(0, [false, false]), Some(2));
+    assert_eq!(at(1, [false, false]), Some(3));
+    assert_eq!(at(0, [true, false]), Some(3));
+    // A clone counts its creatures times its real worth over 5, desperate or not: 140 shared
+    // with the side's other 130 hit points (its own counted 1), 10 · 138.9 / 5.
+    let mut s = fresh(
+        &r,
+        &BattleSetup {
+            difficulty: 1,
+            ..base
+        },
+    );
+    let clone = &mut s.stacks.as_mut_slice()[3];
+    clone.traits = clone
+        .traits
+        .with(StackTraits::CLONE, true)
+        .with(StackTraits::SUMMONED, true);
+    let ctx = context(&s, &r, field(&r), BattleSide::Attacker);
+    assert!(ctx.desperate);
+    let desperate = shot_value(&s, (&r, field(&r)), &ctx, (gun(&s), StackId(3)), true);
+    let real = worth(&s, (&r, field(&r)), &ctx, StackId(3), true);
+    assert_eq!(desperate, kill_value(s.at(StackId(3)), 0, real));
+    assert_eq!(desperate, 277);
+}
+
+// covers: BAT-SIE-020, BAT-WAR-008
+#[test]
+fn the_runtime_s_ftol_keeps_the_low_32_bits() {
+    // 0x6179D4 truncates into 64 bits (`fistp qword`) and its callers keep `eax`.
+    assert_eq!(ftol(X87::int(5)), 5);
+    assert_eq!(ftol(X87::int(5).over(X87::int(2)).unwrap()), 2);
+    assert_eq!(ftol(X87::int(1 << 31)), i32::MIN);
+    assert_eq!(ftol(X87::int((1 << 32) + 7)), 7);
+    // From 2^63 on the integer indefinite, 2^63: its low half is 0.
+    assert_eq!(ftol(X87::int(1 << 63)), 0);
+    assert_eq!(ftol(X87::int(u64::MAX)), 0);
+}
+
+// covers: BAT-WAR-008, BAT-SIE-023
+#[test]
+fn a_desperate_ballista_without_a_value_above_0_chooses_again() {
+    // Two stacks of 100 000 hit points a creature: no estimate kills a thousandth of one, so in
+    // desperate mode every value is 0 (the later stack would be shot); chosen again with the real
+    // worth, the seraphs' (500 000 each) count.
+    let r = rules();
+    let mut s = fresh(
+        &r,
+        &BattleSetup {
+            difficulty: 1,
+            ..ballista_battle(
+                &r,
+                20,
+                (&[(0, "slow", 1)], &[(0, "seraph", 1), (1, "tank", 1)]),
+                &[],
+            )
+        },
+    );
+    for st in &mut s.stacks.as_mut_slice()[2..4] {
+        st.max_hp = 100_000;
+        st.top_hp = 100_000;
+    }
+    assert!(context(&s, &r, field(&r), BattleSide::Attacker).desperate);
+    assert_eq!(aimed(&r, &s), Some(2));
+    // Blind, the seraphs lose to the tanks, which keep their turns, whatever their value.
+    s.stacks.as_mut_slice()[2].spells.status =
+        s.stacks()[2].spells.status.with(Status::NO_TURNS, true);
+    assert_eq!(aimed(&r, &s), Some(3));
+}
+
+// covers: BAT-WAR-008, BAT-MAG-026
+#[test]
+fn the_ballista_shoots_the_other_sides_stacks_whoever_controls_them() {
+    // Its own side's stack hypnotized by the defender is no target; the defender's stack it
+    // hypnotized is one (the original walks the other side's records), but without a threat
+    // record it counts a fifth: its like is shot first.
+    let r = rules();
+    let mut s = fresh(
+        &r,
+        &BattleSetup {
+            difficulty: 1,
+            ..ballista_battle(
+                &r,
+                0,
+                (&[(0, "archer", 1)], &[(0, "archer", 1), (1, "archer", 1)]),
+                &[],
+            )
+        },
+    );
+    let hypnotize = |s: &mut BattleState, id: usize| {
+        let st = &mut s.stacks.as_mut_slice()[id];
+        st.spells.status = st.spells.status.with(Status::HYPNOTIZED, true);
+    };
+    hypnotize(&mut s, 0);
+    assert_eq!(aimed(&r, &s), Some(3));
+    hypnotize(&mut s, 3);
+    assert_eq!(value(&r, &s, 3), value(&r, &s, 2) / 5);
+    assert_eq!(aimed(&r, &s), Some(2));
+    // Only the hypnotized stack left: it is shot.
+    s.stacks.as_mut_slice()[2].count = 0;
+    assert_eq!(aimed(&r, &s), Some(3));
+    // Nothing left to shoot.
+    s.stacks.as_mut_slice()[3].count = 0;
+    assert_eq!(aimed(&r, &s), None);
+}
+
+/// E04b T11b review (F-robust-1, F-sec-1 part b), kept for the computer's aim: the turns a
+/// candidate needs are counted from the pits both sides see. The shot is public, so a Quicksand
+/// pit hidden from one side (BAT-MAG-031) must not change the target.
+// covers: BAT-WAR-008, BAT-MAG-031
+#[test]
+fn the_automatic_ballista_does_not_show_hidden_pits() {
+    use h3_content_battle::ObstacleKind;
+    let r = rules();
+    // Ids: 0 serf, 1 fixed (attacker; both of speed 5); 2 seraph (so strong a defender that it is
+    // not desperate), 3 tank, 4 ballista (defender), whose hero aims it.
+    let mut setup = setup(
+        &r,
+        &[(0, "serf", 10), (1, "fixed", 10)],
+        &[(0, "seraph", 1), (1, "tank", 10)],
+    );
+    setup.heroes[1] = Some(gunner(&r, 20));
+    setup.war_machines[1] = std::vec![r.creature_by_key("t:ballista").unwrap()];
+    setup.difficulty = 1;
+    // A corridor along row 5 from the first attacker stack to the first defender stack.
+    setup.obstacles = blocked(
+        (4..=8)
+            .flat_map(|x| [at(&r, x, 4).0, at(&r, x, 6).0])
+            .collect(),
+    );
+    let mut clear = fresh(&r, &setup);
+    // The attacker's stacks are five steps (their speed) from an attack position on a defender
+    // stack each: the first only through the corridor.
+    place(&mut clear, &r, 0, 3, 5);
+    place(&mut clear, &r, 1, 3, 9);
+    place(&mut clear, &r, 2, 9, 5);
+    place(&mut clear, &r, 3, 9, 9);
+    let quicksand = r.spell_by_key("t:quicksand").unwrap();
+    let shape = r.spell(quicksand).unwrap().magic.obstacle.clone().unwrap();
+    let with_pit = |side: BattleSide| {
+        let mut s = clear.clone();
+        crate::obstacles::place(
+            &mut s,
+            (quicksand, ObstacleKind::Pit, &shape),
+            side,
+            (&[at(&r, 6, 5)], 0),
+            &mut Vec::new(),
+        );
+        assert!(crate::obstacles::seen_by(&s, side.opponent()).is_empty());
+        s
+    };
+    let shot = |s: &BattleState| ballista_target(s, &r, field(&r), StackId(4)).map(|id| id.0);
+    // Both one turn away: the serfs (the estimate's 2 hit points at 700 per 10: 140) before the
+    // fixed (500: 100).
+    assert_eq!(turns(&clear, field(&r), StackId(0)), Some(1));
+    assert_eq!(shot(&clear), Some(0));
+    // A hidden pit changes nothing, whichever side's.
+    assert_eq!(shot(&with_pit(BattleSide::Attacker)), Some(0));
+    assert_eq!(shot(&with_pit(BattleSide::Defender)), Some(0));
+    // A pit both sides see stops the serfs: two turns, half their value (70), the fixed first.
+    for side in [BattleSide::Attacker, BattleSide::Defender] {
+        let mut s = with_pit(side);
+        s.spell_obstacles.reveal_for_tests(at(&r, 6, 5));
+        assert_eq!(turns(&s, field(&r), StackId(0)), Some(2));
+        assert_eq!(shot(&s), Some(1), "{side:?}");
+    }
+}
+
+// ---------------------------------------------------------------- BAT-SIE-021 Artillery
+
+// covers: BAT-SIE-021
+#[test]
+fn the_artillery_level_grows_a_ballistas_worth() {
+    // The attacker's Ballista (650; its share of the army: 10 of 260 hit points) under a hero of
+    // no attack: its offense 1 times 1, 1.5, 3, 4 by the hero's Artillery level (0x63B7F0, doubled
+    // above Basic), before the root.
+    let r = rules();
+    let worth_at = |level: Option<u8>| {
+        let mut setup = ballista_battle(&r, 0, (&[(0, "archer", 1)], &[(0, "slow", 10)]), &[]);
+        let h = setup.heroes[0].as_mut().unwrap();
+        h.war_machines.ballista = level.map(|level| BallistaControl {
+            level,
+            shots: 1,
+            double_damage_chance_bp: 0,
+        });
+        let s = fresh(&r, &setup);
+        let ctx = context(&s, &r, field(&r), BattleSide::Defender);
+        worth(&s, (&r, field(&r)), &ctx, gun(&s), true)
+    };
+    let expected = |factor: X87| {
+        X87::int(10)
+            .times(factor.sqrt().times(X87::int(650)))
+            .over(X87::int(260))
+            .unwrap()
+    };
+    let d = |n, den| X87::ratio(n, den, DOUBLE_BITS).unwrap();
+    assert_eq!(worth_at(None), expected(X87::ONE));
+    assert_eq!(worth_at(Some(1)), expected(d(3, 2)));
+    assert_eq!(worth_at(Some(2)), expected(X87::int(2).times(d(3, 2))));
+    assert_eq!(worth_at(Some(3)), expected(X87::int(2).times(X87::int(2))));
 }

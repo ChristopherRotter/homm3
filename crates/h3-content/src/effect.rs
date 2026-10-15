@@ -359,6 +359,8 @@ pub enum HeroEffect<C, K, S, F, L> {
     },
     /// The hero commands its Ballista (Artillery).
     Artillery {
+        /// The Artillery level (1..=3; the computer's worth of the Ballista grows with it).
+        level: u8,
         /// Shots per turn (≥ 1).
         shots: u8,
         /// Chance of each shot to deal double base damage, basis points (≤ 10 000).
@@ -775,9 +777,11 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::SurrenderDiscount { bp } => HeroEffect::SurrenderDiscount { bp: *bp },
             Self::Tactics { level } => HeroEffect::Tactics { level: *level },
             Self::Artillery {
+                level,
                 shots,
                 double_damage_chance_bp,
             } => HeroEffect::Artillery {
+                level: *level,
                 shots: *shots,
                 double_damage_chance_bp: *double_damage_chance_bp,
             },
@@ -932,6 +936,9 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             }
             Self::Tactics { level } if !(1..=MAX_SKILL_LEVEL).contains(level) => {
                 Some("tactics level must be 1..=3")
+            }
+            Self::Artillery { level, .. } if !(1..=MAX_SKILL_LEVEL).contains(level) => {
+                Some("artillery level must be 1..=3")
             }
             Self::Artillery { shots: 0, .. } => Some("artillery shots must be at least 1"),
             Self::Artillery {
@@ -1143,9 +1150,11 @@ impl CanonicalHash for CompiledHeroEffect {
             | Self::SurrenderDiscount { bp } => h.write_u16(*bp),
             Self::Tactics { level } => h.write_u8(*level),
             Self::Artillery {
+                level,
                 shots,
                 double_damage_chance_bp,
             } => {
+                h.write_u8(*level);
                 h.write_u8(*shots);
                 h.write_u16(*double_damage_chance_bp);
             }
@@ -1295,6 +1304,7 @@ mod tests {
             E::SurrenderDiscount { bp: 2000 },
             E::Tactics { level: 3 },
             E::Artillery {
+                level: 2,
                 shots: 2,
                 double_damage_chance_bp: 5000,
             },
@@ -1588,12 +1598,24 @@ mod tests {
             E::SurrenderDiscount { bp: 10_001 },
             E::Tactics { level: 4 },
             E::Artillery {
+                level: 1,
                 shots: 0,
                 double_damage_chance_bp: 0,
             },
             E::Artillery {
+                level: 1,
                 shots: 1,
                 double_damage_chance_bp: 10_001,
+            },
+            E::Artillery {
+                level: 0,
+                shots: 1,
+                double_damage_chance_bp: 0,
+            },
+            E::Artillery {
+                level: 4,
+                shots: 1,
+                double_damage_chance_bp: 0,
             },
             E::FirstAid { heal_bp: 0 },
             E::CreatureStat {

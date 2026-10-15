@@ -1860,9 +1860,9 @@ sources = ["wiki-air-magic", "vcmi-magic-skills"]
 
 [[heroes.skill_effects]]
 skill = "Artillery"
-basic = [{ kind = "artillery", shots = 1, double_damage_chance_bp = 5000 }]
-advanced = [{ kind = "artillery", shots = 2, double_damage_chance_bp = 7500 }]
-expert = [{ kind = "artillery", shots = 2, double_damage_chance_bp = 10000 }]
+basic = [{ kind = "artillery", level = 1, shots = 1, double_damage_chance_bp = 5000 }]
+advanced = [{ kind = "artillery", level = 2, shots = 2, double_damage_chance_bp = 7500 }]
+expert = [{ kind = "artillery", level = 3, shots = 2, double_damage_chance_bp = 10000 }]
 sources = ["wiki-artillery", "vcmi-skills"]
 
 # Ballistics (E04c T6, BAT-Q43): the level picks the Catapult's record of the battle's Ballistics
