@@ -1519,7 +1519,7 @@ fn a_battle_is_fought_on_the_ground_its_tile_gives() {
     }
     // Without the part's battle terrains, always the tile's.
     let plain = crate::testing::rules();
-    let imp = h3_content::CreatureTypeId::from_raw(0);
+    let imp = CreatureTypeId::from_raw(0);
     let mut setup = world(&["gg"], 1, vec![hero_at(1, 0, p(0, 0), &[imp])]);
     setup.map.tiles[1].coast = true;
     let state = AdventureState::new(&plain.0, &plain.1, &setup, &mut draws()).unwrap();
@@ -1569,12 +1569,12 @@ fn raised_creatures_join_their_stack_a_free_slot_or_the_upgrades_stack() {
         &mut Vec::new(),
     );
     assert_eq!(raise(&mut gap, WOLF, 4), Some((WOLF, 4)));
-    let slots: Vec<(u8, h3_content::CreatureTypeId)> =
+    let slots: Vec<(u8, CreatureTypeId)> =
         army(&gap).iter().map(|s| (s.slot, s.creature)).collect();
     assert_eq!(slots, [(0, GNOLL), (1, WOLF), (3, GNOLL)]);
     // A full army without the creature: two thirds of it, rounded up, as its upgrade, joining
     // the upgrade's stack; without an upgrade's stack or an upgrade, none.
-    let full = |first: h3_content::CreatureTypeId| {
+    let full = |first: CreatureTypeId| {
         let mut state = state.clone();
         let mut stacks = crate::testing::army(&[first; 7]);
         stacks.iter_mut().skip(1).for_each(|s| s.creature = GNOLL);

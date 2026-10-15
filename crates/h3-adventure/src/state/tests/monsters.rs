@@ -437,30 +437,6 @@ fn a_viewer_sees_a_monsters_creature_and_the_word_of_its_count() {
     // hold no monster, so a state of them shows only what other rules built.
 }
 
-// covers: ADV-MON-001
-#[test]
-fn a_monster_is_not_visited_before_its_answer_is_built() {
-    let (core, part) = monster_rules();
-    let mut setup = four();
-    setup.heroes = vec![hero_at(1, 0, Pos::new(1, 1, 0), &[PIKEMAN])];
-    let mut state = AdventureState::new(&core, &part, &setup, &mut draws()).unwrap();
-    let before = state.clone();
-    let step = AdventureCommand::MoveHero {
-        hero: HeroId::new(1),
-        path: vec![Pos::new(1, 0, 0)],
-    };
-    let mut events: Vec<AdventureEvent> = Vec::new();
-    assert_eq!(
-        state.apply(&core, &part, &[], RED, &step, &mut events),
-        Err(AdventureCommandError::Visit { step: 0 })
-    );
-    assert_eq!(state, before);
-    assert!(events.is_empty());
-    let reach = state.reach(&core, &part, &[], HeroId::new(1)).unwrap();
-    assert_eq!(reach.points_left(Pos::new(1, 0, 0)), None);
-    assert!(reach.points_left(Pos::new(0, 1, 0)).is_some());
-}
-
 /// A monster of `creature` whose tile is `(x, y)` on the surface, blocking and visited there.
 fn monster_at(x: u16, y: u16, creature: CreatureTypeId) -> ObjectSetup {
     ObjectSetup {
@@ -570,9 +546,12 @@ fn a_step_onto_a_guarded_tile_ends_the_move() {
         Err(AdventureCommandError::PastVisit { step: 2 })
     );
     assert_eq!(s, state);
-    // Onto it: the move ends there, the guard's visit (E08 T20b) leaves nothing yet.
+    // Onto it: the move ends there and the guard visits: its answer (E08 T20b1), an offer here.
     let (outcome, steps) = walk(&mut s, vec![p(1, 1), p(2, 1)]).unwrap();
-    assert_eq!(outcome, AdventureOutcome::default());
+    assert_eq!(
+        outcome.offer.map(|o| (o.object_type, o.anchor)),
+        Some((MONSTER, p(3, 0)))
+    );
     assert_eq!(steps, 2);
     assert_eq!(s.hero(HeroId::new(1)).unwrap().pos, p(2, 1));
     // A hero on a guarded tile may leave it, onto another guarded tile, where it stops again.

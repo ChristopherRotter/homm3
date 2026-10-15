@@ -346,6 +346,10 @@ fn check_told(
                 fighting = false;
             }
             GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::CreaturesJoined { .. },
+                seen_by,
+            }) => prop_assert_eq!(seen_by, alone),
+            GameEvent::Adventure(AdventureEvent {
                 kind: AdventureEventKind::HeroRemoved { hero, pos },
                 seen_by,
             }) => {

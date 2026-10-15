@@ -59,9 +59,14 @@ coast_battlefield = "shore"
 # original's 0x44ADE0 (survey E08-battles.md section 0) and the wiki (Wandering creature: Few 1-4,
 # Several 5-9, Pack 10-19, Lots 20-49, Horde 50-99, Throng 100-249, Swarm 250-499, Zounds
 # 500-999, Legion 1000 and more).
+# ADV-MON-008 (E08 T20b1): a group's price to join is its creature's gold cost times its count,
+# offered only when the player can pay: monster_join_for_gold 0x4A7250 (creature record +0x38, the
+# gold of the cost; compared with the owner's gold at 0x4A72A5). VCMI 1.7.5 CGCreature::joinDecision
+# (getRecruitCost(GOLD) * getStackCount()) agrees.
 [params.monsters]
 aggression = [[-4, -4], [1, 7], [1, 10], [4, 10], [10, 10]]
 count_words = [5, 10, 20, 50, 100, 250, 500, 1000]
+price_resource = "gold"
 
 # GAM-RES-002 (E08 T13a): the starting resources by the game's difficulty, from 0 (easy) to 4
 # (impossible), a human player's and a computer player's; the engine gives every player the human

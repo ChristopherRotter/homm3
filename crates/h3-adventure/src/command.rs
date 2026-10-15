@@ -9,7 +9,7 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_content::{ContentKey, Formation, ResourceId, TerrainId};
+use h3_content::{ContentKey, CreatureTypeId, Formation, ResourceId, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
 use crate::ruleset::ObjectTypeId;
@@ -138,6 +138,13 @@ pub struct AdventureOutcome {
     /// The battle the command's visit starts, if any: another player's hero's (GAM-BAT-004, E08
     /// T19a), which the game opens at once (ADR-0017 point 11).
     pub battle: Option<BattleStart>,
+    /// Whether the visit of a monster guarding the hero's tile waits for the answer to
+    /// [`Self::offer`] (ADV-MON-006, E08 T20b1): the step entered a guarded tile whose own object
+    /// made the offer. The original asks the object's question first and tests the guard after
+    /// it; a player has at most one open decision (ADR-0017 point 6), so the game asks
+    /// [`crate::AdventureState::visit_guard`] once the offer is answered, or when it does not
+    /// open.
+    pub guard_after: bool,
 }
 
 /// A battle a visit starts (ADR-0017 points 10 and 11; GAM-BAT-001, E08 T19a): its two sides as
@@ -194,13 +201,14 @@ impl Offer {
     /// The price, by resource in the core's order: a Cartographer's, none for a border guard's.
     pub fn price(&self) -> &[(ResourceId, u32)] {
         match &self.kind {
-            OfferKind::Reveal { price } => price,
-            OfferKind::Pass => &[],
+            OfferKind::Reveal { price } | OfferKind::JoinForGold { price } => price,
+            OfferKind::Pass | OfferKind::Join | OfferKind::Pursue => &[],
         }
     }
 }
 
-/// What an offer offers (ADR-0017 point 6: increment 2's two kinds of decision).
+/// What an offer offers (ADR-0017 point 6: increment 2's two kinds of decision, increment 3's
+/// wandering monsters' three).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OfferKind {
     /// A Cartographer's reveal of its type's terrains, for the type's price, each amount at least
@@ -212,6 +220,21 @@ pub enum OfferKind {
     /// A border guard's passage, without a price: accepted, the guard leaves the map for everyone
     /// (ADV-VIS-004, E08 T15a; D-7 in ADV-Q10).
     Pass,
+    /// A wandering monster's offer to join the hero's army for free (ADV-MON-008, E08 T20b1):
+    /// accepted, the group joins as one stack, its treasure's resources go to the player and it
+    /// leaves the map; declined, its answer goes on (ADV-MON-007: a fight, or its offer to flee).
+    Join,
+    /// A wandering monster's offer to join for a price (ADV-MON-008, E08 T20b1): its creature's
+    /// cost in the monsters' price resource times its count (empty for a creature that costs
+    /// none of it); otherwise as [`Self::Join`]. Made only when the player can pay: else its
+    /// answer goes on as after a decline.
+    JoinForGold {
+        /// The price, by resource.
+        price: Vec<(ResourceId, u32)>,
+    },
+    /// A wandering monster's offer to flee (ADV-MON-008, E08 T20b1): accepted, the hero pursues
+    /// and fights it; declined, it leaves the map without its treasure.
+    Pursue,
 }
 
 /// The players who may see an event (ADR-0016 point 6): a set of players, resolved when the event
@@ -328,6 +351,17 @@ pub enum AdventureEventKind {
         hero: HeroId,
         /// The tile it stood on.
         pos: Pos,
+    },
+    /// A wandering monster's group joined a hero's army (ADV-MON-008, E08 T20b1): its stack of
+    /// the creature, else its first free slot. Seen by the hero's owner, as its army is; the
+    /// monster's leaving the map follows ([`Self::ObjectRemoved`]).
+    CreaturesJoined {
+        /// The hero.
+        hero: HeroId,
+        /// The creature.
+        creature: CreatureTypeId,
+        /// How many joined.
+        count: u32,
     },
 }
 
