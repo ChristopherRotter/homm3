@@ -450,10 +450,10 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
 - **Robustness**: `extreme_heroes_and_counts_play_without_failures` plays half its battles at a
   town with any structures byte (the keep's count is computed in `u32`), and
   `extreme_casting_heroes_play_without_failures` half of its hundred seeds.
-- **Stress**: besides the normal runs, two throwaway runs with the case counts raised (every
+- **Stress**: besides the normal runs, three throwaway runs with the case counts raised (every
   earlier property at 1 500 and 600 cases; then, with the garrisons, the Artillery and the new
-  property, at 1 000 and 500): no failure. With the check's additions (below), exit criterion 4
-  is met.
+  property, at 1 000 and 500; then, with the check's additions below, at 700 and 400): no
+  failure. Exit criterion 4 is met.
 - **The independent check** (a fresh agent over the property changes against the rules and the
   engine's code): no relaxation broader than its rule. It found: (1) the Ballista property handed
   the turrets and the Catapult to `ballista_target`, which the game never does (war.rs sends them
@@ -509,3 +509,6 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   sum needs at most about 38 bits, so the 53-bit rounding never acts and an integer fixed-point
   sum rounded once to 24 bits is the same; testable exhaustively per axis) would take most of
   the 24 %: the queue's inbox, for the user.
+- **Verify**: the full local verify with the original data (the 164 maps staged too) on 1f399af
+  (the branch with master merged): every step passed; bench-check `random-rollouts-full` +1.22 %
+  against its baseline (as on master), `random-rollouts-siege` +0.00 %. CI cannot run.

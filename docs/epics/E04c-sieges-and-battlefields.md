@@ -126,7 +126,7 @@ measurements, exit criterion 5).
   T9a the property tests' games at a place (the ordinary field, a special battlefield, an
   anti-magic garrison, a town with its fort, moat, mines, turrets, Catapult, Ballistics and
   Artillery), every earlier property there, a new one for the walls, the gate and the moat; the
-  properties found no defect (two runs at ten to fifteen times the cases too), their independent
+  properties found no defect (three runs at seven to fifteen times the cases too), their independent
   check one setup gap: BAT-SIE-029, no Ballista for the defender at a fort (BAT-Q48, built for the
   user's confirmation); T9b the siege workload
   `random-rollouts-siege` (bench-check), the criterion benches' siege variants, the
