@@ -370,7 +370,10 @@ between a First Aid Tent and an Ammo Cart in the computer's aim (the later recor
 in the original's order). From T10b (the review, BAT-Q50): whether the original offers the
 commanded Catapult a Wait (the engine refuses it, as Defend, which batch 3d B saw do nothing);
 which side's stack acts after the Catapult at equal top speeds in rounds 1 and 2 (the engine, by
-the pick 0x4650BB: the attacker's; `installation.md` §7.29).
+the pick 0x4650BB: the attacker's; `installation.md` §7.29); the defender's Fire Elemental summoned
+with columns 12–15 of the inner yard filled, so that its place is the gate's hex (BAT-SIE-028,
+review F-r6-3): whether the gate opens (+0x53A4 1 after the cast: the code reading, the engine) or
+stays closed (3: VCMI).
 
 **The wiki checks** (the review's 49 wanted checks, done 2026-10-13 with the user's approval:
 raw pages of heroes.thelazy.net through WebFetch, verbatim quotes; SoD arguments of `swh`). Each

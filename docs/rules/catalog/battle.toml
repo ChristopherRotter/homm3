@@ -4846,6 +4846,13 @@ numeric  = "integer"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.28, §7.32): 0x469A10 lets the acting side through the closed gate as the defender; the summon 0x5A7080 tests its place for a stack of the acting side (0x5A7109) and opens the gate through 0x467130 and 0x4671C0 (0x5A71D7); the clone 0x5A6C70 tests its place for the original and calls neither"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp:1640-1645 getAvailableHex places a summon on a hex accessible to the caster's side, and lib/battle/AccessibilityInfo.cpp:31-33 makes the gate's hex accessible to the defender: agrees that the defender's summon may stand on the closed gate; but server/battles/BattleProcessor.cpp:228-262 (updateGateState after each action) keeps a closed gate closed (blocked with a stack on the bridge) and only a move opens it (BattleActionProcessor.cpp): disagrees that the summon opens the gate. The engine keeps the original's reading; an experiment candidate (docs/experiments/README.md, From E04c; review F-r6-3)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleProcessor.cpp"
+  retrieved  = "2026-10-15"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-029"
 title    = "The defender's Ballista at a town with a fort (BAT-QUIRK-23)"
