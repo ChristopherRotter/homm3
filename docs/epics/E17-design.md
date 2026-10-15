@@ -297,6 +297,24 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
 side has a hero (+0x53CC). Hero DEFs (`CH*.def`) are 150 × 175. VCMI centres the hero's frame in a
 64 × 136 box at the field's edge, which gives the same two points; its flags were not compared.
 
+**Which picture, and the flag's colours** (M3 T3a; `battle_load_heroes` 0x463370, read). The
+hero's battle DEF is the first field of record town × 2 + female of 18 at 0x63BD40, the town
+being the hero class's (the class table 0x67D868, +0, two classes per town) and the sex the hero
+type's (the hero table 0x679DD0, +0); the other fields of a record (two numbers, perhaps a cast's
+point, and 5) were not read. So the picture follows the faction and the sex, not the class:
+Knights and Clerics share CH00 (male) and CH01 (female). Two towns name theirs the other way
+round (Tower: CH05 male, CH04 female; Stronghold: CH013 male, CH012 female), and Conflux takes
+CH16 for its men and CH17 for its women of both classes, where VCMI gives every Planeswalker
+CH16 and every Elementalist CH17 (`config/heroClasses.json`, 1.7.5); the capture of Pasis (a
+female Planeswalker) and Inteus (a male Elementalist) shows the executable's. All 18 DEFs have the
+same groups: 0 standing (1 frame), 1 the idle motion (4), 2 defeat (11), 3 victory (11), 4 the
+cast (8). The flags (`CmFlagL.def`, `CmFlagR.def`, 17 × 15, 6 frames in group 0) take their
+player's colours: entries 224–255 of the DEF's palette become the player's 32 of `PLAYERS.PAL`,
+from 32 × its colour (0x4634D5, 0x5FFE20 from its 16-bit conversion 0x6AACA8). A map may change a
+hero's sex (SoD); the viewer knows only the hero type's (the asset tables' `[[hero]]`), and a
+battle's record names no player colours: the viewer draws the attacker's flag red and the
+defender's blue (*provisional*, CLT-Q6). Over time: §7.14.
+
 ### 4.6 The draw order
 
 The redraw 0x494440, after the background:
@@ -470,6 +488,10 @@ The runbook: `clients/capture/README.md`. What it rests on:
   cover them). Every one shows its picture and its own obstacle types (`h3cap.py find` takes the
   field's), all exact: the shore twice (at (18, 5) with its absolute obstacle 126), Magic Plains,
   Cursed Ground and the seven SoD fields. The original's obstacles follow the tile here too.
+- **The heroes** (M3 T3a; §4.5, §7.14): drawn in every situation since, the `heroes` mask gone;
+  each situation names its heroes (Orrin and Crag Hack, as before), and eight grass situations
+  show the other 16 battle pictures (a male and a female hero of every town), all exact. The
+  original's obstacles did not change with the heroes.
 
 ### 6.3 The adventure map: experiments by agents (M2 T6)
 
@@ -1054,6 +1076,38 @@ seat (`seq-fly.toml`; the runbook's "A battle in progress").
   poses (as the frame check, §7.9). All 17 frames of the nine situations exact outside the masks
   (the outline's colour had differed by a step, 412 pixels a frame, and the grass Pikemen's
   fidget by up to 2 036).
+
+### 7.14 The heroes and their flags (M3 T3a)
+
+Read in `battle_idle_step` (0x4960D0), `stack_death`, `round_start` and the battle's setup; the
+viewer's model is `h3_view::hero`.
+
+- **The flags** wave on the idle steps only (none runs while a command plays, §7.9): each step
+  shows group 0's next frame (0x496164), the left flag from frame 0 and the right one from 3
+  (0x463F29), so the opening (one step on, §6.2) shows frames 1 and 4.
+- **A hero** stands in group 0, frame 0. At the first idle step more than 4 500 ms after its idle
+  clock (+0x53FC, 0x4965AB) it starts its idle motion, group 1 at frame 0; each later step shows
+  the next frame; after the last it stands again and its clock starts then (0x4967AE). The clock
+  starts with the battle (`battle_start_idle_clocks` 0x479F43) and after every action, as the
+  stacks' fidget clocks do (§7.2). Unlike the stacks' fidgets nothing random is involved.
+- **Defeat and victory.** When a stack dies (not a clone), a draw of 1 to 100 below 60 (from the
+  rules' generator) asks its own side's hero for defeat (+0x53DC, 0x4441F5), else a draw below 80
+  asks the other hero for victory (+0x53DE, 0x444221). A standing hero takes a request at the
+  next idle step, defeat first: if the side whose turn it is has a human player (0x4CE970: both
+  human flags of its record), the group plays (if the DEF has it) and counts as played this
+  round (+0x53E0, +0x53E2); if not, both requests lapse. `round_start` clears requests and the
+  once (0x4760DF). Berserk's and Chain Lightning's strikes on a stack of their own side also ask
+  for defeat (0x422391, 0x4457FC, 0x5A6545; not read further). VCMI differs: it compares the
+  kills of each attack (`BattleInterface::stacksAreAttacked`) and has no idle motion; both its
+  flags start at frame 0.
+- **The viewer** draws the flags and the idle motion as read; defeat and victory from a generator
+  of its own when it plays a record (the stacks' fidgets' generator, §7.2), none in a reference
+  check, which takes the original's heroes from its memory (`h3mem.battle_heroes`) as it takes
+  its fidgets.
+- **Checked:** the capture set's grass situation from 4 400 to 5 100 ms (both heroes' idle
+  motion from 4 600 ms, a frame a step, standing at 5 000; the flags all along), exact. The
+  set's clock now steps at most 100 ms at a time: a longer step runs one idle step (0x496820), so
+  a frame far on had shown too few steps.
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

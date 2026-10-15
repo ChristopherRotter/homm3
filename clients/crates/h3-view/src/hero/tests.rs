@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 
 use crate::anim::{self, Member, Pose, Stage, Timeline};
 use crate::record::tests::observation;
+use crate::scene::Moment;
 use crate::scene::tests::{layout, tables};
 
 /// The groups of the asset tables.
@@ -168,7 +169,8 @@ fn a_death_asks_one_hero_for_defeat_or_the_other_for_victory() {
 
 #[test]
 fn each_reaction_plays_once_a_round() {
-    let defeat = Some(seed_for(Some(true)));
+    let seed = seed_for(Some(true));
+    let defeat = Some(seed);
     // Two deaths of the defender's stacks, each asking for its defeat: the second waits for the
     // next round, which clears the requests asked before it.
     let death = |end, round| Action {
@@ -180,7 +182,7 @@ fn each_reaction_plays_once_a_round() {
         },
     };
     // The second death's draws come after the first's one (below 60: defeat).
-    let mut after = defeat.unwrap();
+    let mut after = seed;
     between(&mut after, 1, 100);
     let heroes = Heroes::new([Some(look()), Some(look())], [true, true], groups(), defeat);
     let group = |timeline: &Timeline, t| heroes.at(timeline, t)[1].map(|p| p.group);
@@ -225,4 +227,28 @@ fn each_reaction_plays_once_a_round() {
     // The victory plays once; the second death's draw may ask again, but not this round.
     assert_eq!(heroes.at(&timeline, 1_000)[0].map(|p| p.group), Some(3));
     assert_eq!(heroes.at(&timeline, 2_200)[0].map(|p| p.group), Some(0));
+}
+
+#[test]
+fn a_timeline_carries_its_heroes() {
+    // The idle steps before the last command's start count as the ones after it.
+    let mut timeline = idle(&[], Vec::new());
+    timeline.steps = vec![0, 100];
+    timeline.idle = anim::Idle {
+        from: 1_000,
+        next: 1_000,
+    };
+    assert!(timeline.still());
+    let none =
+        timeline
+            .clone()
+            .with_heroes(Heroes::new([None, None], [true, true], groups(), None));
+    assert!(none.still());
+    assert_eq!(Moment::at(&none, 0).heroes, [None, None]);
+    let heroes = Heroes::new([Some(look()), None], [true, true], groups(), None);
+    let timeline = timeline.with_heroes(heroes);
+    // The flags wave: nothing is ever still.
+    assert!(!timeline.still());
+    assert_eq!(Moment::at(&timeline, 900).heroes, [pose(0, 0, 2), None]);
+    assert_eq!(Moment::at(&timeline, 1_000).heroes, [pose(0, 0, 3), None]);
 }

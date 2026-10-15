@@ -292,3 +292,85 @@ fn a_ray_is_written_into_the_screen_in_its_colours() {
     assert_eq!(screen.pixel(0, 0), Some(0));
     assert_eq!(screen.pixel(1, 0), Some(bl));
 }
+
+#[test]
+fn a_hero_and_its_flag_take_the_shadowed_drawer_the_flag_its_players_colours() {
+    // §4.5 (E17 M3 T3a): 0x4952B0 without an outline (a run of 5 skipped), the canvas at its
+    // point, the right hero mirrored in it; a flag's entries 224-255 its player's 32 of the
+    // players' palette, from entry 32 x the player's colour (0x5FFE20).
+    let p = palette(&[(4, WHITE), (224, RED)]);
+    let flag = build::def(
+        0x40,
+        (2, 1),
+        &p,
+        &[(0, &[("f", 0)])],
+        &[row(&[224, 4], &[false, false])],
+    );
+    let hero = build::def(
+        0x49,
+        (2, 1),
+        &p,
+        &[(1, &[("f", 0)])],
+        &[row(&[4, 5], &[false, true])],
+    );
+    let players = build::pal(&palette(&[(0, GREEN), (32, YELLOW)]), &[0; 256], 0, &[]);
+    let mut b = batch();
+    for (name, bytes) in [("Fl.def", flag), ("Ch.def", hero), ("Players.pal", players)] {
+        b.add(name, &bytes).unwrap();
+    }
+    let flag = |player, x, frame| Draw::Flag {
+        def: "FL.DEF".to_string(),
+        frame,
+        x,
+        y: 0,
+        palette: "PLAYERS.PAL".to_string(),
+        player,
+    };
+    let hero = |x, mirrored| Draw::Hero {
+        def: "CH.DEF".to_string(),
+        group: 1,
+        frame: 0,
+        x,
+        y: 1,
+        mirrored,
+    };
+    let background = Draw::Background {
+        picture: "bg.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    let list = [
+        background.clone(),
+        flag(0, 0, 0),
+        flag(1, 2, 0),
+        // A colour beyond the palette's eight players keeps the DEF's own.
+        flag(9, 4, 0),
+        hero(0, false),
+        hero(2, true),
+    ];
+    let screen = compose(&list, &b, &small()).unwrap();
+    let [bl, g, r, w, y] = [BLUE, GREEN, RED, WHITE, YELLOW].map(|c| FORMAT.pack(c));
+    assert_eq!(screen.pixels(), [g, w, y, w, r, w, w, bl, bl, w, bl, bl]);
+    // A players' palette or a frame the batch lacks.
+    let mut no_palette = flag(0, 0, 0);
+    if let Draw::Flag { palette, .. } = &mut no_palette {
+        *palette = "none.pal".to_string();
+    }
+    let missing = |list: &[Draw]| compose(list, &b, &small()).unwrap_err();
+    assert_eq!(
+        missing(&[no_palette]),
+        ComposeError::Missing("none.pal".into())
+    );
+    assert_eq!(
+        missing(&[flag(0, 0, 1)]),
+        ComposeError::Missing("FL.DEF group 0 frame 1".into())
+    );
+    let mut lost = hero(0, false);
+    if let Draw::Hero { frame, .. } = &mut lost {
+        *frame = 3;
+    }
+    assert_eq!(
+        missing(&[lost]),
+        ComposeError::Missing("CH.DEF group 1 frame 3".into())
+    );
+}

@@ -225,8 +225,8 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   ray, not a projectile), and recordings that check the provisional rules (the flier's layer, the
   shot's loop, the breath's groups); Haste and Slow with the spells (T7b; T1b re-cut with the
   user, 2026-10-15).
-- A representative situation set over the harness: every battlefield (T2), the heroes and war
-  machines (T3), the count boxes (T5) and the panel (T6), each mask removed as it is drawn;
+- A representative situation set over the harness: every battlefield (T2), the heroes (T3a) and
+  war machines (T3b), the count boxes (T5) and the panel (T6), each mask removed as it is drawn;
   sieges later.
 - Fonts, the string catalogue and the language packs (T4, an ADR-0020 amendment), and the battle
   interface (T5, T6: the panel, the log, the cursors).
@@ -266,6 +266,13 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   nine special grounds set up in the original and captured, all exact (11 frames, the shore once
   with an absolute obstacle); the deck and the two boats drawn from scenarios, their capture
   waiting for boats in `h3-map`'s writer (CLT-Q5).
+- **T3a done 2026-10-15** ([log](E17-log.md#m3-t3a--the-heroes-2026-10-15),
+  [design §4.5, §7.14](E17-design.md)): T3 split with the user, the war machines left as T3b.
+  The heroes' battle pictures read (by the class's town and the hero's sex, 18 DEFs; Conflux by
+  sex, not by class as VCMI) and harvested, each side's flag in its player's colours and hero
+  drawn, the flags and the heroes' idle motion, defeat and victory over time; the `heroes` mask
+  gone from the capture set (28 situations, 44 frames, all exact: every hero picture, the idle
+  motion) and from the frame check (the heroes from the original's memory).
 
 ### Later (refined when they come up)
 
@@ -445,6 +452,16 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T3a: the asset tables' `[[hero]]` (a hero type's key and battle DEF, harvested by the packs'
+  order, checked against `hotraits.txt`'s names) and `[battle]`'s `hero_groups` and `flags`; the
+  layout's `hero_canvas`, `flag_canvas` and `player_palette` (the formats); the flags red for the
+  attacker, blue for the defender and the hero type's sex (*provisional*: a record names no
+  colours, CLT-Q6); the viewer's defeats and victories drawn from its fidgets' generator, seeded
+  alike but a stream of its own, a death's draws at its action's end (*provisional*: the rules'
+  generator draws them at the death); a scenario of the capture set names both heroes and their
+  primary skills (`situation` refuses one without); the frame check takes the heroes' groups and
+  frames from the original's memory, the flags not; the set's clock steps at most 100 ms.
 
 - T2: the asset tables' special battlefields in `[[battlefield]]` beside the terrains, keyed by
   the packs' keys, one picture each (the format); `h3-view situation`'s special battlefields (the

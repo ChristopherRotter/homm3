@@ -194,6 +194,23 @@ mod tests {
                 strokes: vec![],
                 colours: vec![],
             }),
+            // A hero its DEF, a flag its DEF and its players' palette (M3 T3a).
+            Draw::Hero {
+                def: "Ch00.def".to_string(),
+                group: 0,
+                frame: 0,
+                x: 0,
+                y: 0,
+                mirrored: true,
+            },
+            Draw::Flag {
+                def: "CmFlagL.def".to_string(),
+                frame: 0,
+                x: 0,
+                y: 0,
+                palette: "Players.pal".to_string(),
+                player: 0,
+            },
         ];
         let layout = crate::scene::tests::layout();
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
@@ -202,9 +219,12 @@ mod tests {
             [
                 "ABS.PCX",
                 "BG.PCX",
+                "CH00.DEF",
+                "CMFLAGL.DEF",
                 "CR.DEF",
                 "GAME.PAL",
                 "OB.DEF",
+                "PLAYERS.PAL",
                 "PLCBOWX.DEF"
             ]
         );

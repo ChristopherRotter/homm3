@@ -140,7 +140,11 @@ pub fn run(options: &Options) -> ExitCode {
 
 fn situation(options: &Options) -> Result<(), String> {
     let battle = sides(&options.scenario, &options.packs)?;
-    let (ids, heroes, objects) = original_tables(&options.install)?;
+    let Originals {
+        creatures: ids,
+        heroes,
+        objects,
+    } = original_tables(&options.install)?;
     let id = options.scenario.display().to_string();
     for hero in battle.heroes.iter().flatten() {
         if heroes.get(hero.hero_type) != Some(&hero.name) {
@@ -163,11 +167,17 @@ fn situation(options: &Options) -> Result<(), String> {
     Ok(())
 }
 
-/// From the installation's `H3bitmap.lod`: `crtraits.txt`'s creature ids by singular name,
-/// `hotraits.txt`'s hero names by hero type, and `Objects.txt` (the map objects' templates).
-fn original_tables(
-    install: &Path,
-) -> Result<(BTreeMap<String, usize>, Vec<String>, String), String> {
+/// What the map takes from the installation's `H3bitmap.lod`: `crtraits.txt`'s creature ids by
+/// singular name, `hotraits.txt`'s hero names by hero type, and `Objects.txt` (the map objects'
+/// templates).
+struct Originals {
+    creatures: BTreeMap<String, usize>,
+    heroes: Vec<String>,
+    objects: String,
+}
+
+/// The installation's [`Originals`].
+fn original_tables(install: &Path) -> Result<Originals, String> {
     let data = find_ci(install, "Data").map_err(|e| format!("{}: Data: {e}", install.display()))?;
     let path = find_ci(&data, "H3bitmap.lod").map_err(|e| format!("H3bitmap.lod: {e}"))?;
     let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -184,7 +194,11 @@ fn original_tables(
     let heroes = hero_names(&TextTable::parse(&table).map_err(|e| format!("HOTRAITS.TXT: {e:?}"))?);
     // Latin-1, one byte a character.
     let objects = entry("OBJECTS.TXT")?.into_iter().map(char::from).collect();
-    Ok((ids, heroes, objects))
+    Ok(Originals {
+        creatures: ids,
+        heroes,
+        objects,
+    })
 }
 
 /// How the original fights the special battlefield `key` at Blue's `tile` (the battle's tile is

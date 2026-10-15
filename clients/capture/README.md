@@ -20,7 +20,7 @@ enter git (they stay in the sandbox or `clients/out/`).
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
-| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, and each stack's group, frame, hex, offsets and draw layer; the adventure map's players, heroes, view and path (below). |
+| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a); the adventure map's players, heroes, view and path (below). |
 | `h3adv.py` | The adventure map (M2 T6): hot seat, heroes, tiles clicked twice, turns; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
@@ -55,7 +55,7 @@ when these files do. Each situation's folder keeps the frames (`t00000.xwd`, …
 ./target/release/h3-view situation situations/grass.toml --out out/grass.h3m [--tile 20,20]
 python3 capture/h3drive.py battle out/grass.h3m out/grass --frames 0,100,200 [--keep]
 python3 capture/h3cap.py diff out/grass/t00000.xwd ours.png --record ours.jsonl \
-    --mask panel,heroes,count_boxes --out diff.png
+    --mask panel,count_boxes --out diff.png
 ```
 
 The times are milliseconds after the battle's opening on the game's own clock. `--keep` leaves the
@@ -67,7 +67,9 @@ game running (frozen) for more commands; `wineserver -k` ends it.
 score of 1.0 is an exact match; an obstacle partly covered by another scores above 0.9). Paste
 them, run again, and record each frame's count with why. Situations need the human's stack to
 open (speed above every enemy's; the original's AI acts at once) and armies of one faction or
-without Leadership's morale; the heroes have no skills, artifacts or war machines. A scenario's
+without Leadership's morale. Each side's hero is the scenario's (`attacker_hero`,
+`defender_hero`, with their primary skills; M3 T3a), without skills, artifacts or war machines;
+the packs in their order (base, ab, sod) give the original's hero types. A scenario's
 `battlefield` (M3 T2) is set up on the defender's (Blue's) tile: water east of it for the shore
 (`base:shore`, on sand), a special ground under both heroes for the nine ground fields; `find`
 then tries the field's own obstacle types. The deck and the two boats cannot be set up yet
@@ -130,8 +132,9 @@ python3 capture/h3drive.py frames [--only <id>] [--out <dir>] [--reuse]
 For each recorded sequence: its battle in the original, stepped 1 ms at a time, keeping every
 distinct battlefield (`<dir>/<id>/frames/t<ms>.npz` and their states in `frames.jsonl`); the
 viewer's frame at each of those times (`h3-view sequences <id> --frames <dir>`: `ours/`, and what it
-drew in `ours.txt`); the masked diff of each pair (panel, heroes, the count boxes where the drawn
-poses show them), written to `frames.txt` and, for a frame that differs, `diff/t<ms>.png`; each
+drew in `ours.txt`, with the heroes the original showed: their defeat and victory come from its
+generator; the flags are the viewer's own); the masked diff of each pair (the panel, the count
+boxes where the drawn poses show them; the heroes are compared since M3 T3a), written to `frames.txt` and, for a frame that differs, `diff/t<ms>.png`; each
 line compared with the sequence's recorded `timelines/<id>-frames.txt` (`ok`, `new`, `CHANGED`;
 exit 1 on a change). Each line is `<ms> <differing> <artifacts>` (M3 T1c): the differing
 pixels outside the masks and how many of them are the original's **redraw artifacts**
@@ -255,6 +258,9 @@ design §7.1.
   then is one step behind; the frame check draws the viewer's own timeline for that reason.
 - Inside an animation the memory holds the frame drawn, the screen the one shown (design §7.1):
   never render the memory's poses as the screen at that time.
+- The battle runs one idle step for a clock step of 100 ms or more (its next time moves to now,
+  0x496820), so a jump to a frame far on would show too few steps (the outline's pulse, the
+  flags, a hero's idle motion): `capture` steps at most 100 ms at a time (M3 T3a).
 - In a battle in progress (M3 T1a) the game names a striker the active stack again while it
   turns back after its attack, so `turn:` waits for the stack named, not for any active one; a
   click before the turn starts is lost, and `click:` parks the game's cursor afterwards (the game
