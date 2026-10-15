@@ -296,6 +296,26 @@ fn unsound_heroes_are_rejected() {
             HeroError::BallistaControl,
         ),
         (
+            |_, h| {
+                h.war_machines.ballista = Some(BallistaControl {
+                    level: 0,
+                    shots: 1,
+                    double_damage_chance_bp: 0,
+                });
+            },
+            HeroError::BallistaControl,
+        ),
+        (
+            |_, h| {
+                h.war_machines.ballista = Some(BallistaControl {
+                    level: 4,
+                    shots: 1,
+                    double_damage_chance_bp: 0,
+                });
+            },
+            HeroError::BallistaControl,
+        ),
+        (
             |_, h| h.war_machines.catapult = Some(CatapultControl { level: 0 }),
             HeroError::CatapultControl,
         ),

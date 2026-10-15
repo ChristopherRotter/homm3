@@ -355,3 +355,52 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
 - **The independent check** (a fresh agent over the diff against §7.32): no problem; it found that
   Teleport's fit test let the closed gate pass by the stack's controller, where 0x469A10 reads the
   acting side (a hypnotized stack teleported by its owner): fixed (the caster's side), with a test.
+
+## T7e — the automatic Ballista's target (2026-10-15, increment 8)
+
+- **The choice** (the user, 2026-10-15: "the next sensible increment"): T7e before T9, as T9
+  measures the epic's final code; built and confirmed at the checkpoint.
+- **The reading** (`installation.md` §7.33; map entries 0x4221F0, 0x477EE0, 0x41E570, 0x4359B0,
+  0x442780, 0x41EDA0, 0x41EEA0, 0x63B810 new, 0x41EB80, 0x435B90, 0x443160 completed): a war
+  machine acting on its own goes through the computer's action (0x4744C0 → 0x477EE0 → 0x4221F0),
+  which sends the Ballista to the computer's shooter 0x41F060: the context and threat records as
+  the turret's (§7.31), then 0x41EB80 over the other side's records but the dead and the arrow
+  towers: a stack that keeps its turns before one that loses them, the best 0x435CB0 value, ties
+  to the later record; no preference for creatures, no controller test. The value: the kills of
+  the computer's damage estimate (0x4359B0, 0x442780: n × d from the record's damage, the physical
+  damage without draws, at least 1, x2 for a double shot, capped) times the target's worth (1000
+  in desperate mode), whole on Easy for a computer side, else / 10 (disabled), / 5 (tent, cart, no
+  threat record, more than 5 turns), / turns. The Ballista's worth: doubled above Basic Artillery,
+  then x1.0, 1.5, 1.5, 2.0 by level (0x442C0F, 0x63B7F0).
+- **The seam** (`shared/e04c-t7e-seam`, #225, `cross-lane`; ADR-0013 point 4): `BallistaControl.level`
+  and the `artillery` effect's `level` (core ruleset hash v45, pack format v43, replay format v29,
+  protocol v33); the 18 golden replays re-recorded, only hashes and headers moved.
+- **The battle** (`battle/e04c-t7e`): `aim::ballista_target`, `shot_value`, `estimate`
+  (BAT-WAR-008), called by `war::act` for the automatic Ballista, aimed at the target's position;
+  VCMI's `shooting_target`, `value`, `can_attack_next_turn` and `movement::reachable_in_public`
+  gone; `combat::shot_damage` (a real shot's stages from a given base; `shot_damage_range` is the
+  tests' now); the Ballista's Artillery factors in `aim::worth` (BAT-SIE-021, BAT-STUB-3 closed);
+  `hero::check` refuses a level outside 1..=3. State hash v51 (the level hashed), observation
+  encoding v20 (the own hero's Artillery level, the last scalar), C ABI v24. BAT-WAR-002 (the
+  target moved out), BAT-WAR-005, BAT-SIE-021 to 023, BAT-MAG-031 amended. Tests: 10 in
+  `tests/aim.rs`, the level's bounds in `tests/heroes.rs`, a property (the Ballista shoots a stack
+  of the other side, one that keeps its turns while there is one) replacing the lazy-ranking one.
+  The siege scenario's attacker brings a Ballista she does not command: `siege-s7` re-recorded
+  (the attacker wins in 89 commands); the other battle replays and the two adventure replays with
+  battles moved only their hashes. bench-check green without a new baseline.
+- **Batch 3h run by an agent** (`experiments/specs/E04c-batch-3h.toml`, `experiments/agent/ballista.py`,
+  new: the open-map battle on `turrets.py`'s play): **TI** two stacks of ten Archers: the later
+  both rounds; **TU** one Archer, then three Behemoths; **DE** a weak human side (desperate): five
+  Archers before two Titans; **DN** a strong side: the five Archers too; **AR** Blue's Ballista
+  under Expert Artillery before thirty Zombies; **AN** without Artillery the Zombies. **The port's
+  mistake found:** the first port estimated a Ballista's shot from the range its hero's attack
+  makes of 2..3 (the engine keeps that range on the stack, BAT-WAR-005), and predicted the
+  Behemoths in TU and the Titans in DN. The original's record keeps 2..3; its hero's multiplier
+  applies only in a strike's base damage (0x443160 at 0x4431AC), and 0x442780 reads the record:
+  the estimate of one Ballista starts from 2. Fixed (`aim::damage`, also for the worth's Bless and
+  Curse ratio of a war machine), every shot then as the code; VCMI's rule refuted by TI, DE, DN
+  and AR. BAT-WAR-008 `verified`; BAT-SIE-021's Artillery factor observed from below (AR, AN).
+- **Not tested:** Easy for a computer side (hot seat makes both sides human; the engine's default
+  setup, difficulty 0 and no human, is that case: the Ballista's values are then not divided); a
+  stack that loses its turns (/ 10); a hypnotized candidate.
+

@@ -1,0 +1,255 @@
+# Experiment batch 3h (E04c T7e): the automatic Ballista's target. Checks the code reading of
+# installation.md §7.33 that the battle follows since T7e (BAT-WAR-008, BAT-SIE-021's Artillery
+# factors): the Ballista without Artillery takes the computer's shooter (0x41F060), not VCMI's rule
+# (the engine's until T7e). Each stack scores the kills of the computer's estimate of the shot times
+# the worth of one of its creatures (its Fight Value, scaled by its bonuses; an enemy Ballista's by
+# its hero's Artillery: x1, x1.5, x3, x4 inside the root), divided by its turns until it can attack
+# (1 for a shooter); a stack that keeps its turns first, then the best value, a tie the later
+# stack; no preference for creatures over war machines; a weak human side (twice its strength below
+# the other's) counts every creature 1000.
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them. They are the code's and the engine's (faithful profile, run on the
+# base pack with each encounter's armies, grass, both players human; every stack defends; the same
+# targets with eight random obstacle layouts). The estimate of one Ballista starts from its record's
+# 2..3, not the range its hero's attack makes of them in a strike (the first port's mistake, which
+# predicted the Behemoths in TU and the Titans in DN: the run refuted it, which was played on the
+# build with those predictions, stamp a8deac4e; the map itself is unchanged); "VCMI" names the
+# engine's rule until T7e
+# (`tryMakeAutomaticActionOfRangedUnit`: creatures before war machines, then a stack that can
+# attack next turn, then expected damage times the AI value, the lower id on a tie).
+#
+# Each Red hero stands west of a Blue hero: stepping east attacks it. Play in hot seat (Red and
+# Blue human). Red's heroes have a Ballista, no Artillery: it shoots on its own, last in the round
+# (speed 0). Heroes at level 1 with resource specialties, no secondary skills unless listed; Red's
+# attack sets the Ballista's damage (2..3 x (attack + 1)) and attack (10 + attack). Every stack
+# defends (a commanded Ballista too). An agent's run (experiments/agent/ballista.py) reads the
+# Ballista's target from memory as batch 3f's: a drop of a stack's hit points while Red's Ballista
+# is the last activated stack.
+
+[map]
+name = "E04c batch 3h"
+description = "Engine-generated experiment map (E04c, batch 3h): the automatic Ballista's target. Follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Copy `E04c-batch-3h.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps` and start it in hot seat (Red and Blue human). Save right away.",
+    "Each Red hero stands west of a Blue hero. Play the encounters in any order: select the Red hero and step east into the Blue hero; every stack defends (a Ballista commanded with Artillery too), Red's Ballista shoots on its own at the end of each round.",
+    "Note Red's Ballista's shot in rounds 1 and 2: the stack it hit (Blue's slot, or Blue's Ballista) and the hit points it lost. Then end the battle as you like and load the save for the next encounter.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- BAT-WAR-008: a tie goes to the later stack ---------------------------------------------------
+
+[[encounter]]
+id = "TI"
+title = "Two like stacks of Archers: the later or the lower slot"
+questions = ["BAT-WAR-008"]
+procedure = [
+    "Every stack defends; Red's Ballista shoots on its own.",
+    "Play to round 2, noting the Ballista's targets, then end the battle as you like.",
+]
+predictions = """
+Red's Ballista (attack 10: 22..33 damage, attack 20) against two stacks of ten Archers (both shoot:
+divisor 1). Not desperate (20 Pikemen against 20 Archers).
+- The code: both score 12 (the estimate 1 hit point times 115 with the native bonus per 10):
+  **the later stack, slot 1**, in both rounds.
+- VCMI: both 491: the lower slot, 0, in both rounds.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+primary = [10, 0, 1, 1]
+skills = []
+army = [["Pikeman", 20]]
+artifacts = { "war machine 1" = "Ballista" }
+[encounter.opponent.hero]
+name = "TIb"
+type = "Nagash"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Archer", 10], ["Archer", 10]]
+[[encounter.record]]
+field = "TI: the Ballista's shot in rounds 1 and 2: the stack it hit (Blue's slot) and the hit points it lost"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-WAR-008: the turns until a stack can attack, not "can attack next turn" -------------------
+
+[[encounter]]
+id = "TU"
+title = "One Archer or three Behemoths: the turns divide, a shooter is not first"
+questions = ["BAT-WAR-008", "BAT-SIE-022"]
+procedure = [
+    "Every stack defends; Red's Ballista shoots on its own.",
+    "Play to round 2, noting the Ballista's targets, then end the battle as you like.",
+]
+predictions = """
+Red's Ballista (attack 30: 62..93 damage, attack 40). Not desperate (100 Pikemen).
+- The code: the Archer 24 (the estimate 2 of its 10 hit points; it shoots: 1 turn), the
+  Behemoths 13 (2 of 480 times 3162 per 160, over three turns): **round 1 the Archer (slot 0)**,
+  round 2 the Behemoths (the Archer is dead). With the hero-multiplied range (82): the Behemoths
+  540 against 120.
+- VCMI: the Archer first too (it can attack next turn, the Behemoths cannot).
+"""
+[encounter.hero]
+type = "Damacon"
+specialty = "resource gold"
+primary = [30, 0, 1, 1]
+skills = []
+army = [["Pikeman", 100]]
+artifacts = { "war machine 1" = "Ballista" }
+[encounter.opponent.hero]
+name = "TUb"
+type = "Octavia"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Archer", 1], ["Behemoth", 3]]
+[[encounter.record]]
+field = "TU: the Ballista's shot in rounds 1 and 2: the stack it hit (Blue's slot) and the hit points it lost"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-SIE-023 for the Ballista: desperate mode --------------------------------------------------
+
+[[encounter]]
+id = "DE"
+title = "Desperate: one Pikeman against five Archers and two Titans"
+questions = ["BAT-WAR-008", "BAT-SIE-023"]
+procedure = [
+    "Every stack defends; Red's Ballista shoots on its own.",
+    "Play to round 2, noting the Ballista's targets, then end the battle as you like.",
+]
+predictions = """
+Red's Ballista (attack 30). Red (one Pikeman and the Ballista) is human and twice its strength is
+far below Blue's: desperate, every creature worth 1000. Both Blue stacks shoot (divisor 1).
+- The code: the Archers 200 (the estimate 2 hit points: a fifth of a creature, 1000 each), the
+  Titans 3 (1 of 300): **round 1 the Archers (slot 0)**; round 2 the Titans (the Archers are dead).
+- VCMI: the Titans (1725 against the Archers' 1260).
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+primary = [30, 0, 1, 1]
+skills = []
+army = [["Pikeman", 1]]
+artifacts = { "war machine 1" = "Ballista" }
+[encounter.opponent.hero]
+name = "DEb"
+type = "Aine"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Archer", 5], ["Titan", 2]]
+[[encounter.record]]
+field = "DE: the Ballista's shot in rounds 1 and 2: the stack it hit (Blue's slot) and the hit points it lost"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "DN"
+title = "Not desperate: a hundred Pikemen against five Archers and two Titans"
+questions = ["BAT-WAR-008", "BAT-SIE-023"]
+procedure = [
+    "Every stack defends; Red's Ballista shoots on its own.",
+    "Play to round 2, noting the Ballista's targets, then end the battle as you like.",
+]
+predictions = """
+DE's Blue army against a strong Red army: not desperate.
+- The code: the Archers 24 (2 of 50 hit points times 120 per 10), the Titans 16 (1 of 600 times
+  5000 per 300): **round 1 the Archers (slot 0)**, round 2 the Titans. With the hero-multiplied
+  range (Archers 50, Titans 69): the Titans 1150 against 603.
+- VCMI: the Titans (1725 against 1260).
+"""
+[encounter.hero]
+type = "Gelare"
+specialty = "resource gold"
+primary = [30, 0, 1, 1]
+skills = []
+army = [["Pikeman", 100]]
+artifacts = { "war machine 1" = "Ballista" }
+[encounter.opponent.hero]
+name = "DNb"
+type = "Jenova"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Archer", 5], ["Titan", 2]]
+[[encounter.record]]
+field = "DN: the Ballista's shot in rounds 1 and 2: the stack it hit (Blue's slot) and the hit points it lost"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-WAR-008, BAT-SIE-021: an enemy Ballista and its hero's Artillery -------------------------
+
+[[encounter]]
+id = "AR"
+title = "Blue's Ballista under Expert Artillery or thirty Zombies"
+questions = ["BAT-WAR-008", "BAT-SIE-021"]
+procedure = [
+    "Every stack defends, Blue's commanded Ballista too (Defend at its turn); Red's Ballista shoots on its own.",
+    "Play to round 2, noting Red's Ballista's targets, then end the battle as you like.",
+]
+predictions = """
+Red's Ballista (attack 10) against thirty Zombies and Blue's Ballista, which Blue's hero commands
+with Expert Artillery. Not desperate (50 Pikemen).
+- The code: Blue's Ballista 3 (its worth 650 x sqrt(4) times its share of Blue's army, 600 of 850
+  hit points: 917; the estimate 1 of its 250; it shoots: 1 turn), the Zombies 2 (1 of 600 hit
+  points times 160 per 20, over three turns): **Blue's Ballista**, in both rounds.
+- Without the Artillery factors (the engine before T7e, BAT-STUB-3): Blue's Ballista 1, the
+  Zombies.
+- VCMI: the Zombies (creatures before war machines).
+"""
+[encounter.hero]
+type = "Grindan"
+specialty = "resource gold"
+primary = [10, 0, 1, 1]
+skills = []
+army = [["Pikeman", 50]]
+artifacts = { "war machine 1" = "Ballista" }
+[encounter.opponent.hero]
+name = "ARb"
+type = "Sephinroth"
+specialty = "resource crystal"
+primary = [0, 0, 1, 1]
+skills = [["Artillery", 3]]
+army = [["Zombie", 30]]
+artifacts = { "war machine 1" = "Ballista" }
+[[encounter.record]]
+field = "AR: Red's Ballista's shot in rounds 1 and 2: the stack it hit (Blue's slot, or Blue's Ballista) and the hit points it lost"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "AN"
+title = "Blue's Ballista without Artillery or thirty Zombies"
+questions = ["BAT-WAR-008", "BAT-SIE-021"]
+procedure = [
+    "Every stack defends; both Ballistas shoot on their own.",
+    "Play to round 2, noting Red's Ballista's targets, then end the battle as you like.",
+]
+predictions = """
+AR without Blue's Artillery (the control).
+- The code: the Zombies 2, Blue's Ballista 1: **the Zombies (slot 0)**, in both rounds.
+- VCMI: the Zombies too.
+"""
+[encounter.hero]
+type = "Rissa"
+specialty = "resource mercury"
+primary = [10, 0, 1, 1]
+skills = []
+army = [["Pikeman", 50]]
+artifacts = { "war machine 1" = "Ballista" }
+[encounter.opponent.hero]
+name = "ANb"
+type = "Saurug"
+specialty = "resource gems"
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Zombie", 30]]
+artifacts = { "war machine 1" = "Ballista" }
+[[encounter.record]]
+field = "AN: Red's Ballista's shot in rounds 1 and 2: the stack it hit (Blue's slot, or Blue's Ballista) and the hit points it lost"
+[[encounter.record]]
+field = "anything odd"

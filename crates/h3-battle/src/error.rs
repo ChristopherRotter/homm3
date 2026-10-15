@@ -136,7 +136,7 @@ impl fmt::Display for HeroError {
             Self::TacticsLevel => "Tactics level above 3",
             Self::DamageReduction => "damage reduction above 10000 basis points",
             Self::BallistaControl => {
-                "commanded Ballista without shots or with a chance above 10000 basis points"
+                "commanded Ballista with an Artillery level outside 1..=3, without shots or with a chance above 10000 basis points"
             }
             Self::CatapultControl => "commanded Catapult with a Ballistics level outside 1..=3",
             Self::SurrenderDiscount => "surrender discount above 10000 basis points",
@@ -435,7 +435,7 @@ mod tests {
             ),
             (
                 HeroError::BallistaControl,
-                "commanded Ballista without shots or with a chance above 10000 basis points",
+                "commanded Ballista with an Artillery level outside 1..=3, without shots or with a chance above 10000 basis points",
             ),
             (
                 HeroError::CatapultControl,

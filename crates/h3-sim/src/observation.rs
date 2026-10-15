@@ -45,8 +45,9 @@
 //! spells, it forbids every cast, the highest spell level it allows + 1 (0: no limit), the
 //! highest spell level its stacks are immune to (0: none), its stacks are immune to mind spells,
 //! it negates immunities, its opening spells are still due, its Eagle Eye's chance in percent,
-//! the commanded Catapult's Ballistics level (0: none)]` (BAT-MAG-004, BAT-MAG-008, HER-BAT-014,
-//! BAT-MAG-061 to BAT-MAG-066, BAT-MAG-068, BAT-MAG-069, BAT-SIE-011),
+//! the commanded Catapult's Ballistics level (0: none), the commanded Ballista's Artillery level
+//! (0: none)]` (BAT-MAG-004, BAT-MAG-008, HER-BAT-014, BAT-MAG-061 to BAT-MAG-066, BAT-MAG-068,
+//! BAT-MAG-069, BAT-SIE-011, BAT-SIE-021),
 //! [`MAX_SPELL_BONUSES`] spell bonuses `[spell handle + 1, damage bp, growth per level bp, the
 //! level]`, [`MAX_OPENING_SPELLS`] opening spells `[spell handle + 1, mastery, power]`; then
 //! four vectors of one feature per spell handle below [`MAX_SPELLS`]: in its spell book, its
@@ -110,7 +111,8 @@
 //! globals, the heroes' command of their Catapults, the own hero's Ballistics level; the wall
 //! plane shows the standing walls. v18 (E04c T7): the turret flag as the last per-stack value
 //! (BAT-SIE-016). v19 (E04c T7d): the game's difficulty and the sides' human players as globals
-//! before the wall-shot targets (ADR-0023 point 7).
+//! before the wall-shot targets (ADR-0023 point 7). v20 (E04c T7e): the own hero's Artillery
+//! level as its last scalar (ADR-0013 point 4).
 
 use h3_battle::{
     DamageRoll, HeroView, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Observation, OwnHeroView,
@@ -122,14 +124,14 @@ use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 19;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 20;
 
 /// Global features.
 pub const GLOBALS: usize = 30 + MAX_WALL_TARGETS;
 /// The public features of a hero.
 pub const HERO_PUBLIC_FEATURES: usize = 14;
 /// The values of the viewer's hero's private part before its spell bonuses.
-const OWN_HERO_SCALARS: usize = 11 + MAX_SPELL_SCHOOLS + 10;
+const OWN_HERO_SCALARS: usize = 11 + MAX_SPELL_SCHOOLS + 11;
 /// The values of the viewer's hero's private part before its per-spell vectors.
 pub const OWN_HERO_VALUES: usize =
     OWN_HERO_SCALARS + 4 * MAX_SPELL_BONUSES + 3 * MAX_OPENING_SPELLS;
@@ -250,6 +252,7 @@ fn encode_own_hero(h: &OwnHeroView, out: &mut [f32]) {
         flag(h.opening_due),
         f32::from(h.eagle_chance),
         h.catapult.map_or(0.0, |c| f32::from(c.level)),
+        h.ballista.map_or(0.0, |b| f32::from(b.level)),
     ]);
     scalars.fill_with(|| values.next().unwrap_or_default());
     let (bonuses, rest) = rest.split_at_mut(4 * MAX_SPELL_BONUSES);
@@ -1163,7 +1166,7 @@ mod tests {
         assert_eq!(own(&out)[10..15], [500.0, 0.0, 0.0, 0.0, 700.0]);
         assert_eq!(
             own(&out)[15..OWN_HERO_SCALARS],
-            [2000.0, 0.0, 1.0, 3.0, 3.0, 1.0, 1.0, 1.0, 40.0, 0.0]
+            [2000.0, 0.0, 1.0, 3.0, 3.0, 1.0, 1.0, 1.0, 40.0, 0.0, 0.0]
         );
         let bonus = OWN_HERO_SCALARS;
         assert_eq!(

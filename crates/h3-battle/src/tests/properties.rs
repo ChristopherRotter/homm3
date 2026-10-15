@@ -1814,41 +1814,14 @@ fn random_legal_play_finishes_battles() {
     assert_eq!(decided, 20);
 }
 
-/// The Ballista's target by the full ranking of BAT-WAR-002 (VCMI's order, every key evaluated
-/// eagerly): not a war machine, then could attack next turn, then value, then the lower id.
-fn reference_target(state: &BattleState, r: &BattleRuleset, shooter: StackId) -> Option<StackId> {
-    let field = crate::Field::new(r.battle().field);
-    let side = state.stacks()[shooter.index()].side;
-    (0u8..)
-        .zip(state.stacks())
-        .filter(|(_, s)| s.is_alive() && s.side != side)
-        .map(|(i, s)| {
-            let id = StackId(i);
-            let creature = !s.has(crate::StackTraits::WAR_MACHINE);
-            let dangerous = crate::war::can_attack_next_turn(state, field, id);
-            (
-                id,
-                creature,
-                dangerous,
-                crate::war::value(state, r, shooter, id),
-            )
-        })
-        .max_by(|a, b| {
-            (a.1, a.2)
-                .cmp(&(b.1, b.2))
-                .then_with(|| h3_kernel::arith::cmp_fractions(a.3, b.3))
-                .then_with(|| b.0.cmp(&a.0))
-        })
-        .map(|c| c.0)
-}
-
 proptest! {
     #![proptest_config(Config { cases: 32, ..Config::default() })]
 
-    /// The lazy target choice of the Ballista (BAT-WAR-002) equals the eager reference ranking
-    /// in every state of random games with ballistae on both sides.
+    /// The automatic Ballista's target (BAT-WAR-008) in every state of random games with
+    /// ballistae on both sides: a living stack of the side its controller fights, never a turret,
+    /// one that keeps its turns while there is one; none only when nothing is left to shoot.
     #[test]
-    fn the_lazy_ballista_target_equals_the_reference((att, def, obstacles, seed, steps, hidden) in arb_game()) {
+    fn the_ballista_shoots_a_stack_of_the_other_side((att, def, obstacles, seed, steps, hidden) in arb_game()) {
         let r = lively();
         // Ballistae on both sides (bits 0 and 3), the other machines and formations at random.
         let setup = game_setup(&r, (&att, &def, &obstacles), seed | 0b1001, &hidden);
@@ -1858,11 +1831,17 @@ proptest! {
         for step in &steps {
             for (i, s) in (0u8..).zip(state.stacks()) {
                 if s.is_alive() && s.has(crate::StackTraits::WAR_MACHINE) && s.has(crate::StackTraits::SHOOTER) {
-                    let id = StackId(i);
-                    prop_assert_eq!(
-                        crate::war::shooting_target(&state, &r, field, id),
-                        reference_target(&state, &r, id)
-                    );
+                    let candidates: Vec<&crate::Stack> =
+                        state.stacks().iter().filter(|t| t.is_alive() && s.may_attack(t)).collect();
+                    let keeps = |t: &crate::Stack| !t.spells.status.contains(crate::Status::NO_TURNS);
+                    match crate::aim::ballista_target(&state, &r, field, StackId(i)) {
+                        Some(t) => {
+                            let t = &state.stacks()[t.index()];
+                            prop_assert!(t.is_alive() && s.may_attack(t) && !t.is_turret());
+                            prop_assert!(keeps(t) || !candidates.iter().any(|c| keeps(c)));
+                        }
+                        None => prop_assert!(candidates.is_empty()),
+                    }
                 }
             }
             let (actor, cmd) = resolve(&state, &r, step, &mut legal);

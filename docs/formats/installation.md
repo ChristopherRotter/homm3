@@ -2927,3 +2927,81 @@ bit.
 the battle's start was given (+0x54C4 per side, set at 0x463A7F from its arguments), as every
 battle does: which army defends a town is whoever starts the battle's choice (the town context,
 E09); the battle reads the setup's armies (BAT-MAG-054), nothing siege-specific.
+
+### 7.33 Code reading: the automatic Ballista's target (E04c T7e, 2026-10-15)
+
+Read for E04c T7e (the battle queue; §7.31's "general shooter"; BAT-STUB-3): the target the
+Ballista picks on its own. Insight only, nothing copied (Q29).
+
+**The path.** When no command arrives for the active stack and the battle is hidden or the stack
+is a war machine acting on its own (0x474BF0, §7.29), the battle loop (0x4744C0) calls the
+computer's action 0x477EE0. For a human side it first asks the computer's retreat test 0x41E570
+(the result only matters in auto-combat, +0x1402F); then 0x4221F0 takes the active stack: one that
+can shoot now (0x4428F0, the Ballista always) or the Ballista (creature 146) goes to the shooter
+0x41F060 with the acting side (+0x132C0), outside the tactics phase (+0x13D68). So the automatic
+Ballista and every computer-controlled shooter share it; the arrow towers do not (§7.31).
+
+**0x41F060, the shot.** The context (0x435EC0) for the acting side, the threat records (0x422B20)
+of the other side, both as for the turret (§7.31); then the target (0x41EB80). A shooter that can
+shoot walls (flag `0x20`, the Cyclops) may shoot them instead (0x41EEA0, not read). In the
+context's desperate mode (+8), if the best value is 0, the target is chosen again without it. A
+target hex gives action 7 there (the target record's position +0x38, the rear hex of a two-hex
+stack); none gives action 3 (Defend).
+
+**0x41EB80, the target.** Over the other side's records (+0x24 of the context), skipping the
+dead (`0x200000`) and the arrow towers (149), each scores 0x435CB0 (the Magogs, Liches and Power
+Liches score an area estimate instead, 0x41EDA0, not read). The first such record is taken; a
+later one replaces the best when it is not blind (+0x290), petrified (+0x2B0) or paralysed
+(+0x2C0) and the best is, or when both are alike in that and its value is at least the best's.
+So the target is the best by (not disabled, value, record order): a disabled stack only when
+every candidate is disabled, ties to the later record. No preference for creatures over war
+machines (VCMI's first key, BAT-WAR-002), no controller test: a stack of the other side that the
+shooter's side hypnotized is a candidate, its own side's is not.
+
+**0x435CB0, a shot's value.** `V` = 0x435B90 (below) with the shot flag. On Easy
+(`[game]+0x1F6D8` = 0) for a computer side (+0x54A4 of the context's side 0) the value is `V`.
+Otherwise `V / 10` for a blind, petrified or paralysed target; `V / 5` for a dead one, a First
+Aid Tent or Ammo Cart (147, 148) or one without a threat record (+0x538 = 0: a war machine but
+the Ballista, a hypnotized or berserk stack, one that reaches no enemy within 127); else
+`V / t` with `t` its turns (0x448BD0, §7.31: 1 for the Ballista and a stack that can shoot now),
+and `V / 5` above 5 turns. Integer divisions, truncated.
+
+**0x435B90, the value.** With the attacker `A` and the target `T` and their hit points left
+(0x443080 flag 0: the total hit points, 1 for a clone): the shot flag stays if `A` can shoot now;
+0x4359B0 estimates the damage and takes it from `T`'s hit points (at least 0); the value is
+0x442FD0 for `T` (§7.31: its kills times the worth of one of its creatures with the shot flag,
+1000 per creature in desperate mode, a clone's count × worth / 5) of the damage dealt, less
+0x442FD0 for `A` of the hit points `A` lost (a strike's Fire Shield and retaliation; none for a
+shot).
+
+**0x4359B0 and 0x442780, the damage estimate.** For a shot: `n` = `A`'s hit points left over its
+hit points per creature, rounded up (its count); the damage per creature `d` is
+`max + bonus` while blessed (+0x23C; +0xD4, +0x458), `max(1, min − penalty)` while cursed
+(+0x240; +0xD0, +0x45C), else `(min + max) / 2.0`, a double, from the record's +0xD0 and +0xD4. For
+the Ballista these hold its creature's 2 and 3: the hero's multiplier (its attack + 1, BAT-WAR-005)
+applies only in a strike's base damage (0x443160 from 0x4431AC: creature 146, the controlling
+side's hero's attack +0x476 clamped to 0..99, plus 1, times +0xD0 and +0xD4), so the estimate of
+one Ballista is `b = 2` whatever its hero's attack, which still counts in its attack (10 + it, the
+stage 1 below). Batch 3h confirmed it (TU, DN: a whole small stack before a larger one that the
+multiplied range would have chosen). The base `b = trunc(n × d)`; then
+the physical damage (0x443F40, §7.10) of `b` with the estimate flag: every stage as a real shot
+(attack and defense, the elemental pairs and hate, the hero's Archery, the wall and distance
+halves, the protections), no draw (0x443840 rolls the death blow and the Ballista's double damage
+only without the flag) and no luck (the lucky field +0x70 is 0 outside a strike: the shot and the
+strike clear it at their end); at least 1; doubled for a creature that shoots twice (`0x8000`);
+at most `T`'s hit points left. A melee estimate would also reflect Fire Shield and add the
+retaliation (0x4359B0's second half).
+
+**The Ballista's worth** (0x442A50 from 0x442C0F; BAT-STUB-3). For the Ballista (146) whose
+controlling side has a hero, the offense factor is doubled when the hero's Artillery (+0xDD) is
+above Basic, then multiplied by 0x63B7F0's factor for its level (1.0, 1.5, 1.5, 2.0 for none to
+Expert), each a double: ×1, ×1.5, ×3, ×4. It counts wherever a Ballista's worth does: as a
+target here and of the turrets, and in both sides' strengths (the desperate mode). The
+Artillery's double-damage chances are 0x63B810 (0, 50, 75, 100 by level, the pack's values).
+
+**VCMI** (1.7.5, `tryMakeAutomaticActionOfRangedUnit`, BAT-WAR-002): creatures before war
+machines, then a stack that can attack next turn, then the highest expected damage times the AI
+value; ties to the lower id. **The wiki** (Ballista): the Ballista without Artillery fires at a
+target the computer chooses (not re-read this session). **Batch 3h** (an agent under Wine, six
+encounters, two rounds each): every target as this reading; VCMI's refuted by the tie (TI), the
+desperate mode (DE), the value (DN) and an enemy Ballista before creatures (AR).
