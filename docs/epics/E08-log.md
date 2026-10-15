@@ -2087,7 +2087,7 @@ the harvester's gap-fill and `packs/` are the battle lane's).
   parameters; the levels, an artifact type once, the cap). Versions: none (the core ruleset
   hash's value only).
 
-### Round 4 of increment 3: T20a2a (2026-10-15, `adventure/e08-t20a2a`)
+### Round 4 of increment 3: T20a2a (2026-10-15, `adventure/e08-t20a2a` #220)
 
 Decision 36 (the seam, confirmed before building): T20a2 in two pull requests, T20a2a with every
 version bump, T20a2b (guarded tiles, the store passed through) without one. Baseline: the full
@@ -2149,3 +2149,39 @@ seam, had the session stage the sprite archives (`H3sprite.lod`, `H3ab_spr.lod`)
   hand over seeds, each setup check, the hashes, a ground's battlefield, the view, a monster not
   visited (`state/tests/monsters.rs`), the packs (`h3-pack-adventure`), the import, the parts'
   battlefields (`h3-game`).
+
+### Round 4 of increment 3: T20a2b (2026-10-15, `adventure/e08-t20a2b` #223)
+
+Decision 36's second part, built on `adventure/e08-t20a2a`; no version bump.
+
+- **Guarded tiles** (ADV-MON-005): `AdventureState::guard_of(part, pos)`, the original's scan
+  (0x41A460, survey §2.1): the 3 × 3 block clipped to the map, columns from the left, each from the
+  top, the row above left out when `pos`'s object is not visited from above (`closed_above`); the
+  first tile whose object (`tile_object`: the last still on the map visited from it) is a monster
+  with `pos`'s water status (the part's `Passage::Water`). The tile itself is in the block, as
+  the original's (no hero stands on a monster's tile). A removed monster guards nothing: the
+  guard follows from the static map and the occupancy, no per-tile flag in the state. The static
+  map's `near_monsters` bit per tile (within one step of a monster's visitable tile; derived, not
+  hashed) lets the tiles near no monster skip the scan.
+- **The step** (ADV-MON-006): `MoveHero` checks each entered tile; a guarded one is the path's
+  last (`PastVisit` for a later step), the hero's start may be guarded. After the move and the
+  tile's own visit, `visit_guard` (`ADV-STUB-5`: the monster's answer, T20b) returns the visit's
+  outcome unchanged. A step toward another hero or a neighbour-visited object does not enter, so
+  it is not tested (the original tests the hero's tile after a visit from the neighbour too:
+  T20b, with the answer).
+- **The query** (ADV-MON-006): `Reach` makes a guarded tile a destination (as a visit's), its
+  own start excepted; the property `the_query_and_move_hero_agree` now places monsters (`M` in
+  `testing::world`: five of the first creature, aggressive). `bench-check`: the test in the hot
+  loop cost the reach workload 11.6 % (random play 12.3 %) on the fixtures, which hold no
+  monster; asked only of a tile the search improves, on a map with a monster (`StaticMap`'s
+  `any_monster`), out of line (`Search::guarded`, cold), it costs 0.3 %. The fixtures gain
+  monsters in T20b, which measures the cost on a map with them.
+- **The store**: `AdventureState::apply(core, part, heroes, player, command, sink)` and
+  `reach(core, part, heroes, hero)` take the game's `&[Arc<HeroDetails>]` (`h3-heroes` a
+  dependency of `h3-adventure`, which `arch.toml` allowed since T18a); `move_hero` hands it to
+  `visit_guard`, T20b's first reader; `reach` reads it from increment 4 (movement skills).
+  `h3-game` splits its borrow (`GameState::adventure_with_heroes`, replacing `adventure_mut`);
+  `legal_moves`, the env's decoder and the tests pass `state.heroes()`.
+- Tests: the scan's order, clipping, water, the row above, a removal; the step past and onto a
+  guarded tile, leaving one; the query along a corridor and from a guarded start
+  (`state/tests/monsters.rs`); the reach property with monsters.

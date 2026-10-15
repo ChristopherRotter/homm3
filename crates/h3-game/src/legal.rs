@@ -76,5 +76,5 @@ pub fn legal_moves(
     adventure
         .hero(hero)
         .filter(|h| h.owner == player)
-        .and_then(|h| adventure.reach(rules.core(), rules.adventure(), h.id))
+        .and_then(|h| adventure.reach(rules.core(), rules.adventure(), state.heroes(), h.id))
 }

@@ -184,8 +184,8 @@ impl AdventureState {
     /// What `viewer` may know of the adventure map (ADV-FOG-004 to ADV-FOG-006): its sight's
     /// planes, built word by word from its explored grid, then each tile's view, the heroes and
     /// the typed objects it sees (a monster's creature and the word of its count, E08 T20a2a),
-    /// the Cartographer types it bought (E08 T14b) and the keys it holds (T15a). A viewer that is not a player of the game sees no tile, no hero, no object, no
-    /// purchase and no key.
+    /// the Cartographer types it bought (E08 T14b) and the keys it holds (T15a). A viewer that is
+    /// not a player of the game sees no tile, no hero, no object, no purchase and no key.
     // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006
     pub fn observe(
         &self,

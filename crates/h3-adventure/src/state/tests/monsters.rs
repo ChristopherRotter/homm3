@@ -451,12 +451,164 @@ fn a_monster_is_not_visited_before_its_answer_is_built() {
     };
     let mut events: Vec<AdventureEvent> = Vec::new();
     assert_eq!(
-        state.apply(&core, &part, RED, &step, &mut events),
+        state.apply(&core, &part, &[], RED, &step, &mut events),
         Err(AdventureCommandError::Visit { step: 0 })
     );
     assert_eq!(state, before);
     assert!(events.is_empty());
-    let reach = state.reach(&core, &part, HeroId::new(1)).unwrap();
+    let reach = state.reach(&core, &part, &[], HeroId::new(1)).unwrap();
     assert_eq!(reach.points_left(Pos::new(1, 0, 0)), None);
     assert!(reach.points_left(Pos::new(0, 1, 0)).is_some());
+}
+
+/// A monster of `creature` whose tile is `(x, y)` on the surface, blocking and visited there.
+fn monster_at(x: u16, y: u16, creature: CreatureTypeId) -> ObjectSetup {
+    ObjectSetup {
+        anchor: Pos::new(x, y, 0),
+        ..object_at(0, MONSTER, Some(fixed(creature, 5, 2)))
+    }
+}
+
+/// `rows` (as [`world`]'s) with these objects added after the rows' own and these heroes.
+fn guarded(rows: &[&str], objects: Vec<ObjectSetup>, heroes: Vec<HeroSetup>) -> AdventureState {
+    let (core, part) = monster_rules();
+    let mut setup = world(rows, 1, heroes);
+    setup.map.objects.extend(objects);
+    AdventureState::new(&core, &part, &setup, &mut draws()).unwrap()
+}
+
+// covers: ADV-MON-005
+#[test]
+fn a_monster_guards_the_tiles_around_it_in_the_originals_order() {
+    let (_, part) = monster_rules();
+    let p = |x, y| Pos::new(x, y, 0);
+    let rows = ["gggggg", "gggggg", "gggggg", "gggg~~", "ggggg~"];
+    let state = guarded(&rows, vec![monster_at(1, 1, PIKEMAN)], vec![]);
+    let guard = |state: &AdventureState, x, y| state.guard_of(&part, p(x, y));
+    // Its eight neighbours and its own tile, clipped to the map; nothing two steps away.
+    for (x, y) in [
+        (0, 0),
+        (1, 0),
+        (2, 0),
+        (0, 1),
+        (1, 1),
+        (2, 1),
+        (0, 2),
+        (1, 2),
+        (2, 2),
+    ] {
+        assert_eq!(guard(&state, x, y), Some(0), "({x}, {y})");
+    }
+    for (x, y) in [(3, 1), (1, 3), (3, 3), (9, 9)] {
+        assert_eq!(guard(&state, x, y), None, "({x}, {y})");
+    }
+    // Two guards: the first by columns from the left, each from the top, whatever the map's
+    // order.
+    let two = guarded(
+        &rows,
+        vec![monster_at(3, 1, PIKEMAN), monster_at(1, 2, GNOLL)],
+        vec![],
+    );
+    assert_eq!(guard(&two, 2, 1), Some(1));
+    assert_eq!(guard(&two, 2, 2), Some(1));
+    assert_eq!(guard(&two, 3, 2), Some(0));
+    // A land monster guards no water tile, a water monster no land tile: the sea's (4, 3) is
+    // the water monster's, though the land one's column comes first.
+    let shore = guarded(
+        &rows,
+        vec![monster_at(3, 2, PIKEMAN), monster_at(5, 4, GNOLL)],
+        vec![],
+    );
+    assert_eq!(guard(&shore, 4, 3), Some(1));
+    assert_eq!(guard(&shore, 3, 3), Some(0));
+    assert_eq!(guard(&shore, 4, 4), None);
+    assert_eq!(guard(&shore, 5, 3), Some(1));
+    // A tile whose object is not visited from above is not guarded from the row above.
+    let tent = guarded(
+        &["gggggg", "gggggg", "ggYggg", "gggggg"],
+        vec![monster_at(2, 1, PIKEMAN)],
+        vec![],
+    );
+    assert_eq!(guard(&tent, 2, 2), None);
+    assert_eq!(guard(&tent, 1, 2), Some(1));
+    let beside = guarded(
+        &["gggggg", "gggggg", "ggYggg", "gggggg"],
+        vec![monster_at(3, 2, PIKEMAN)],
+        vec![],
+    );
+    assert_eq!(guard(&beside, 2, 2), Some(1));
+    // A monster that left the map guards nothing.
+    let mut gone = state.clone();
+    gone.remove_object(0);
+    assert_eq!(guard(&gone, 0, 0), None);
+}
+
+// covers: ADV-MON-006
+#[test]
+fn a_step_onto_a_guarded_tile_ends_the_move() {
+    let (core, part) = monster_rules();
+    let p = |x, y| Pos::new(x, y, 0);
+    let state = guarded(
+        &["gggggg", "gggggg", "gggggg"],
+        vec![monster_at(3, 0, PIKEMAN)],
+        vec![hero_at(1, 0, p(0, 2), &[PIKEMAN])],
+    );
+    let walk = |state: &mut AdventureState, path: Vec<Pos>| {
+        let mut events: Vec<AdventureEvent> = Vec::new();
+        let step = AdventureCommand::MoveHero {
+            hero: HeroId::new(1),
+            path,
+        };
+        state
+            .apply(&core, &part, &[], RED, &step, &mut events)
+            .map(|outcome| (outcome, events.len()))
+    };
+    // Past the guarded tile (2, 1): refused, nothing changed.
+    let mut s = state.clone();
+    assert_eq!(
+        walk(&mut s, vec![p(1, 1), p(2, 1), p(3, 1)]),
+        Err(AdventureCommandError::PastVisit { step: 2 })
+    );
+    assert_eq!(s, state);
+    // Onto it: the move ends there, the guard's visit (E08 T20b) leaves nothing yet.
+    let (outcome, steps) = walk(&mut s, vec![p(1, 1), p(2, 1)]).unwrap();
+    assert_eq!(outcome, AdventureOutcome::default());
+    assert_eq!(steps, 2);
+    assert_eq!(s.hero(HeroId::new(1)).unwrap().pos, p(2, 1));
+    // A hero on a guarded tile may leave it, onto another guarded tile, where it stops again.
+    walk(&mut s, vec![p(3, 1)]).unwrap();
+    assert_eq!(
+        walk(&mut s, vec![p(4, 1), p(5, 1)]),
+        Err(AdventureCommandError::PastVisit { step: 1 })
+    );
+    walk(&mut s, vec![p(3, 2), p(2, 2)]).unwrap();
+}
+
+// covers: ADV-MON-006
+#[test]
+fn the_reachable_tiles_end_at_a_guarded_tile() {
+    let (core, part) = monster_rules();
+    let p = |x, y| Pos::new(x, y, 0);
+    let rows = ["######", "gggggg", "######"];
+    let state = guarded(
+        &rows,
+        vec![monster_at(4, 0, PIKEMAN)],
+        vec![hero_at(1, 0, p(0, 1), &[PIKEMAN])],
+    );
+    let reach = state.reach(&core, &part, &[], HeroId::new(1)).unwrap();
+    // The corridor's first guarded tile is reached; nothing behind it.
+    assert!(reach.points_left(p(3, 1)).is_some());
+    assert_eq!(reach.points_left(p(4, 1)), None);
+    assert_eq!(reach.points_left(p(5, 1)), None);
+    assert_eq!(reach.path(p(3, 1)), Some(vec![p(1, 1), p(2, 1), p(3, 1)]));
+    // From a guarded tile the search goes on.
+    let inside = guarded(
+        &rows,
+        vec![monster_at(4, 0, PIKEMAN)],
+        vec![hero_at(1, 0, p(4, 1), &[PIKEMAN])],
+    );
+    let reach = inside.reach(&core, &part, &[], HeroId::new(1)).unwrap();
+    assert!(reach.points_left(p(3, 1)).is_some());
+    assert!(reach.points_left(p(5, 1)).is_some());
+    assert_eq!(reach.points_left(p(2, 1)), None);
 }

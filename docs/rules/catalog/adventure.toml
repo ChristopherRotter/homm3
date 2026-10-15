@@ -881,3 +881,50 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
   retrieved  = "2026-10-15"
   confidence = "medium"
+
+[[rule]]
+id       = "ADV-MON-005"
+title    = "The tiles a monster guards"
+context  = "adventure"
+status   = "implemented"
+summary  = "The guard of a tile is found in the 3 x 3 block around it on its level, clipped to the map, column by column from the left and each column from the top, the row above left out when the tile's object is not visited from above (ADV-OBJ-004): the first tile whose object (the last still on the map visited from it) is a monster on water if and only if the tile is. So a monster guards its eight neighbours and its own tile, a land monster land and a water monster water; a monster that left the map guards nothing (computed from the static map and the occupancy layer, no per-tile flags). E08 T20a2b: `AdventureState::guard_of`, with a per-tile bit of the static map for the tiles near a monster."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-battles.md section 2.1): 0x41A460 scans the block column by column from the left, each from the top; the first tile whose top object is a monster on its visitable tile with the scanned tile's water status; the row above is left out when the scanned tile's object cannot be entered from above; the flags are recomputed at a new game and when an object is removed (0x4CA410)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapping/CMap.cpp CMap::guardingCreaturePosition: the same order (dx outer, dy inner), the same water test and checkForVisitableDir; VCMI also returns a monster on the tile itself first"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/CMap.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Wandering creature: 'your hero initiates a fight whenever they move at the square next to the creature'; 'In case of multiple creatures at the nearby squares, only one combat occurs'; 'The priority is top-to-down, left-to-right'"
+  url        = "https://heroes.thelazy.net/index.php/Wandering_creature"
+  retrieved  = "2026-10-15"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MON-006"
+title    = "A step onto a guarded tile"
+context  = "adventure"
+status   = "implemented"
+summary  = "A step that enters a tile a monster guards (ADV-MON-005) is the path's last (a later step is refused, PastVisit) and visits the guard after any visit of the tile's own object; a hero standing on a guarded tile may leave it. The reachable tiles end there: the query reports a guarded tile as a destination and goes on only from the hero's own tile. The guard's visit is the monster's answer (E08 T20b; until then it does nothing, ADV-STUB-5). Flying and a hero at sea come with later increments. E08 T20a2b: `MoveHero`, `Reach`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-battles.md section 2.2): after each step (hero_move_step, 0x480090; also visit_from_neighbour, 0x481900) the game tests the new tile's guard flag and gives the first guard the visit of a click on it (0x4A79C0 to 0x4A7740), ending the move; the pathfinder does not go on from a guarded tile other than the start (pathfinder_run, 0x56BC05; read in part)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/pathfinder/CPathfinder.cpp and CGPathNode: no path continues from a guarded tile but the start; the server starts the fight after the step"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/CPathfinder.cpp"
+  retrieved  = "2026-10-13"
+  confidence = "high"

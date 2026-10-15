@@ -42,7 +42,7 @@ fn move_hero(
         hero: HeroId::new(hero),
         path: path.to_vec(),
     };
-    let result = state.apply(&rules.0, &rules.1, player, &command, &mut events);
+    let result = state.apply(&rules.0, &rules.1, &[], player, &command, &mut events);
     assert!(
         result.is_ok() || events.is_empty(),
         "a rejected move emitted events"
@@ -518,7 +518,7 @@ fn a_step_toward_a_pile_visits_it_from_the_tile_before() {
             path: vec![p(1, 0), p(2, 0)],
         };
         let outcome = state
-            .apply(&rules.0, &rules.1, RED, &command, &mut events)
+            .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
             .unwrap();
         // The owner gains the pile; the hero stays on (1, 0) and pays both steps.
         assert_eq!(outcome.gains, contents);
@@ -566,7 +566,7 @@ fn a_visit_from_the_hero_s_own_tile_moves_nothing_and_a_fire_gives_two_resources
         path: vec![p(1, 0)],
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, RED, &command, &mut events)
+        .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
         .unwrap();
     // The fire's wood, then its gold (ADV-PIK-003's order).
     assert_eq!(outcome.gains, contents);
@@ -655,7 +655,7 @@ fn a_step_onto_a_chart_enters_it_and_ends_the_move() {
             path: vec![p(1, 0), p(2, 0)],
         };
         let outcome = state
-            .apply(&rules.0, &rules.1, RED, &command, &mut events)
+            .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
             .unwrap();
         // The hero stands on the chart's tile, both steps paid as steps are; the visit gains and
         // removes nothing, and offers the chart's type (E08 T14b).
@@ -718,7 +718,7 @@ fn enter(
         path: vec![to],
     };
     state
-        .apply(&rules.0, &rules.1, player, &command, &mut Vec::new())
+        .apply(&rules.0, &rules.1, &[], player, &command, &mut Vec::new())
         .unwrap()
 }
 
@@ -879,6 +879,7 @@ fn objects_visited_from_above_are_entered_and_left_across_their_top() {
         .apply(
             &rules.0,
             &rules.1,
+            &[],
             RED,
             &AdventureCommand::MoveHero {
                 hero: HeroId::new(1),
@@ -1014,7 +1015,7 @@ fn visit_by(
         path: path.to_vec(),
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, player, &command, &mut events)
+        .apply(&rules.0, &rules.1, &[], player, &command, &mut events)
         .unwrap();
     events.retain(|e| !matches!(e.kind, AdventureEventKind::HeroStepped { .. }));
     (events, outcome)
@@ -1252,7 +1253,7 @@ fn a_border_guard_offers_its_key_s_holders_to_pass() {
         path: blue.to_vec(),
     };
     state
-        .apply(&rules.0, &rules.1, BLUE, &command, &mut events)
+        .apply(&rules.0, &rules.1, &[], BLUE, &command, &mut events)
         .unwrap();
     assert_eq!(hero(&state, 2).0, p(3, 0));
     // An offer that no longer stands carries nothing out (the game rejects its acceptance
@@ -1393,7 +1394,7 @@ fn a_step_toward_another_players_hero_visits_it_and_starts_a_battle() {
         path: vec![p(1, 0), p(2, 0), p(3, 0)],
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, RED, &command, &mut events)
+        .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
         .unwrap();
     // Two steps, then the visit from (2, 0) at the step's price: 1300 - 3 × 100.
     assert_eq!(events.len(), 2);
@@ -1421,10 +1422,14 @@ fn a_step_toward_another_players_hero_visits_it_and_starts_a_battle() {
         }
     );
     // The query lists the hero's tile with the points the visit leaves, its own hero's not.
-    let reach = state.reach(&rules.0, &rules.1, HeroId::new(3)).unwrap();
+    let reach = state
+        .reach(&rules.0, &rules.1, &[], HeroId::new(3))
+        .unwrap();
     assert_eq!(reach.points_left(p(1, 1)), Some(1200));
     assert_eq!(reach.path(p(1, 1)), Some(vec![p(1, 1)]));
-    let reach = state.reach(&rules.0, &rules.1, HeroId::new(1)).unwrap();
+    let reach = state
+        .reach(&rules.0, &rules.1, &[], HeroId::new(1))
+        .unwrap();
     assert_eq!(reach.points_left(p(3, 0)), Some(900));
     assert_eq!(reach.points_left(p(1, 2)), None);
 }
@@ -1459,7 +1464,7 @@ fn a_hero_visit_ends_the_move_and_an_own_hero_blocks() {
         path: vec![p(1, 0), p(1, 1)],
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, RED, &down, &mut events)
+        .apply(&rules.0, &rules.1, &[], RED, &down, &mut events)
         .unwrap();
     let battle = outcome.battle.unwrap();
     assert_eq!(
@@ -1479,7 +1484,9 @@ fn a_hero_visit_ends_the_move_and_an_own_hero_blocks() {
         E::FromAbove { step: 0 }
     );
     // The query's path to red's hero goes round: from (0, 1), 1300 - 100 - 141.
-    let reach = state.reach(&rules.0, &rules.1, HeroId::new(4)).unwrap();
+    let reach = state
+        .reach(&rules.0, &rules.1, &[], HeroId::new(4))
+        .unwrap();
     assert_eq!(reach.points_left(p(1, 0)), Some(1059));
     assert_eq!(reach.path(p(1, 0)), Some(vec![p(0, 1), p(1, 0)]));
 }

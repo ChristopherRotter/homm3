@@ -956,9 +956,10 @@ fn reaches(state: &GameState, rules: &GameRuleset) -> Vec<(HeroId, Reach)> {
         .heroes()
         .iter()
         .map(|hero| {
-            let reach = state
-                .adventure()
-                .reach(rules.core(), rules.adventure(), hero.id);
+            let reach =
+                state
+                    .adventure()
+                    .reach(rules.core(), rules.adventure(), state.heroes(), hero.id);
             (hero.id, reach.unwrap())
         })
         .collect()

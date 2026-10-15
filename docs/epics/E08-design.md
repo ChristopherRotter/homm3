@@ -31,10 +31,10 @@ to the tasks that first use them:
 - **T20a2a** built (2026-10-15; decision 36): the game's difficulty as a static input
   (`AdventureSetup.difficulty`, `AdventureState::difficulty`, in the state hash's bump to v9), read
   only by ADV-MON-007's Easy rule (D-10, T20b).
-- **T20a2b** (before T20b's monster answer, the first reader): the game passes its store
-  (`&[Arc<HeroDetails>]` by `HeroId`) to `AdventureState::apply` and the queries (`reach`); the
-  adventure reads the visiting hero's details only through `h3-heroes`' derivations (in increment
-  3 the two above). Increment 4 adds movement and scouting.
+- **T20a2b** built (2026-10-15): the game passes its store (`&[Arc<HeroDetails>]` by `HeroId`)
+  to `AdventureState::apply` and `reach`; the adventure reads the visiting hero's details only
+  through `h3-heroes`' derivations (in increment 3 the two above; T20b's answer is the first
+  reader, through the guard's visit). Increment 4 adds movement and scouting.
 - Increment 3's adventure visits change no hero (a joining group changes the army only); the
   battle's outcome does (§5).
 
@@ -45,13 +45,9 @@ monsters' parameters and `not_random_monsters` (part v7), the import of monsters
 (`docs/formats/h3m.md`, v6), the setup's checks, the draws (ADV-MON-002 to -004), the static map's
 monsters and drawn tiles, `army_left` (written from T20b), what a viewer sees (ADV-FOG-006), a
 ground's battlefield (ADV-GRD-001; the topmost, the last in map order); adventure state hash v9.
-Left for **T20a2b**:
-- Guarded tiles (ADV-MON-005): the guard of a tile is the first monster in the 3 × 3 scan
-  (columns from the left, each from the top; the row above left out where the scanned tile's
-  object cannot be entered from above; same water status), recomputed lazily from the static map
-  and the occupancy layer (no per-tile flags: a removal frees the tiles). ADV-MON-006: a step onto
-  a guarded tile ends the move and visits the guard (a stub until T20b's answer); `Reach` does not
-  continue from a guarded tile but the start (the pathfinder's rule, survey §2.2).
+T20a2b built guarded tiles (2026-10-15): `guard_of` (ADV-MON-005, the original's scan), a step
+onto a guarded tile the path's last and `Reach` ending there (ADV-MON-006); the guard's visit is
+`ADV-STUB-5` until T20b.
 
 ## 4. The monster's answer and the offers (ADV-MON-007, -008; T20b)
 
@@ -195,6 +191,6 @@ Each bumps once in the increment, in the task that first changes it.
 | 1 | T18a + T18b | done (2026-10-14): the shared groundwork with the ADR amendments (§10); the store of heroes, its defaults, the import of hero customisations (§1), trimmed at the checkpoint (decision 28) |
 | 2 | T19a1 + T19a2 | split at the checkpoint (decision 29): T19a1 done (2026-10-14): battles through the game, hero against hero, the armies' and the map's outcome (§5, §6); T19a2 split again (decision 32): T19a2a done (2026-10-14), the heroes' outcome without pack changes; T19a2b done (2026-10-14, decision 33), Necromancy and Eagle Eye (§2, §5); round 2 closed |
 | 3 | T19b1 + T19b2 | split at the checkpoint (decision 34): T19b1 done (2026-10-14), the env, replays and benchmarks with battles, the versions (§8); T19b2 done (2026-10-14, decision 35), the property plans to a victory; round 3 closed |
-| 4 | T20a + T20b | T20a split (decision 35): T20a1 done (2026-10-14), the heroes' groundwork (`attack_defense`, `join_bonus`, Diplomacy's values; with T19b2), T20a2 split again (decision 36): T20a2a done (2026-10-15), monsters and grounds as data with every bump; T20a2b guarded tiles and the store passed through; then T20b. Monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
+| 4 | T20a + T20b | T20a split (decision 35): T20a1 done (2026-10-14), the heroes' groundwork (`attack_defense`, `join_bonus`, Diplomacy's values; with T19b2), T20a2 split again (decision 36): T20a2a done (2026-10-15), monsters and grounds as data with every bump; T20a2b done (2026-10-15), guarded tiles and the store passed through; then T20b. Monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
 | 5 | T21 + T22a | guarded piles and the maps with monsters, replays, benchmarks, the audit (§7); batch E3's spec and run (cross-lane, the client lane's recipes) |
 | 6 | T22b | batch E3 scored, increment 3 closed, increment 4 refined |
