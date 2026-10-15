@@ -23,8 +23,8 @@ use h3_adventure::{
 use h3_battle::{
     CastTargets, Command, Event, EventKind, cast_targets, castable_spells, second_targets,
 };
-use h3_content::{ArtifactTypeId, ResourceId};
-use h3_contracts::{BattleResult, HeroId, PlayerId};
+use h3_content::{ArtifactTypeId, CreatureTypeId, ResourceId};
+use h3_contracts::{BattleResult, BattleSide, HeroId, PlayerId};
 use h3_game::{
     Actor, Answer, GameCommand, GameCommandError, GameEvent, GameRuleset, GameState, HeroChange,
     OpenBattle, Sink, apply, legal_commands, legal_moves,
@@ -40,7 +40,9 @@ use super::import::{object, template};
 use super::sample;
 use super::strategy::version;
 use crate::import::codes;
-use crate::model::{Artifacts, Body, HeroBody, RawMap, Stack, Template, Tile, Version};
+use crate::model::{
+    Artifacts, Body, HeroBody, MonsterBody, MonsterTreasure, RawMap, Stack, Template, Tile, Version,
+};
 use crate::{Limits, import, parse};
 
 fn rules(profile: &str) -> GameRuleset {
@@ -83,8 +85,14 @@ pub(super) const BLOCKER_CLASS: u32 = 124;
 /// T14a) a land Cartographer, entered and not from above, (T15a) the red border guard and (T15b)
 /// the red border gate. No random resource: its drawn pile type shows. The kinds after the first
 /// [`PLAYED`] only the committed maps lay out (E08 T16a, `fixtures.rs`): the other piles of a
-/// drawn amount, a random resource, the Pillar of Fire, and the green tent, guard and gate.
-pub(super) const KINDS: [(u32, u32, Option<u32>); 20] = [
+/// drawn amount, a random resource, the Pillar of Fire, and the green tent, guard and gate. Then
+/// (E08 T20b3b1) the plans' wandering monsters ([`MONSTERS`]: goblins, gogs, pikemen, wolf riders
+/// and centaurs, class 54 with the creature's code as the subclass) and special grounds (Cursed
+/// Ground and Magic Plains), which the strategy draws by their objects ([`MONSTER_OBJECTS`],
+/// [`GROUND_OBJECTS`]): appended, so the committed maps keep their templates. No random monster
+/// and no drawn count: the drawn creature and its count's word would show (as a random resource's
+/// pile type).
+pub(super) const KINDS: [(u32, u32, Option<u32>); 27] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -105,7 +113,38 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 20] = [
     (10, 1, None),
     (9, 1, None),
     (212, 1, None),
+    (54, 84, None),
+    (54, 44, None),
+    (54, 0, None),
+    (54, 86, None),
+    (54, 14, None),
+    (21, 0, None),
+    (46, 0, None),
 ];
+/// The plans' wandering monsters (E08 T20b3b1), by kind: the count, the disposition (0 compliant,
+/// 1 friendly, 2 aggressive, 3 hostile, 4 savage), whether it never flees, and its treasure's
+/// gold. Six compliant goblins join most heroes (aggression −4, ADV-MON-007); fourteen hostile
+/// gogs with 100 gold mostly fight; five aggressive pikemen are weak, so they offer to flee from
+/// most heroes or join one that holds pikemen; eight savage wolf riders never flee, so they fight;
+/// four friendly centaurs with 50 gold join, join for gold (Diplomacy), flee or fight.
+pub(super) const MONSTERS: [(usize, u16, u8, bool, i32); 5] = [
+    (20, 6, 0, false, 0),
+    (21, 14, 3, false, 100),
+    (22, 5, 2, false, 0),
+    (23, 8, 4, true, 0),
+    (24, 4, 1, false, 50),
+];
+/// The monsters' objects (one shape: [`masks`] gives a monster its one tile, blocked and visited).
+pub(super) const MONSTER_OBJECTS: [usize; 5] = [
+    BLOCKERS.len() * 20,
+    BLOCKERS.len() * 21,
+    BLOCKERS.len() * 22,
+    BLOCKERS.len() * 23,
+    BLOCKERS.len() * 24,
+];
+/// The special grounds' objects (no tile blocked or visited: [`masks`]; the import's ground lies on
+/// its anchor, an unknown picture's one tile).
+pub(super) const GROUND_OBJECTS: [usize; 2] = [BLOCKERS.len() * 25, BLOCKERS.len() * 26];
 /// The kinds the strategy's plans draw: the first nine.
 const PLAYED: usize = 9;
 /// The objects a plan may lay out: object `i` has the shape `BLOCKERS[i % 3]` and the kind
@@ -132,6 +171,41 @@ const KEYS: [usize; 8] = [
 
 /// A template mask's tiles, as `(column, row)` left of and above the anchor.
 pub(super) type Mask = &'static [(u8, u8)];
+
+/// The blocked and visitable masks of object `object` ([`OBJECTS`]): its shape's
+/// ([`BLOCKERS`]), but a monster's one tile, blocked and visited, and nothing of a special
+/// ground's, which neither blocks nor is visited (E08 T20b3b1).
+pub(super) fn masks(object: usize) -> (Mask, Mask) {
+    match KINDS[object / BLOCKERS.len()].0 {
+        54 => (&[(0, 0)], &[(0, 0)]),
+        21 | 46 => (&[], &[]),
+        _ => BLOCKERS[object % BLOCKERS.len()],
+    }
+}
+
+/// The body of an object of kind `kind`: a pile's amount, a monster's data ([`MONSTERS`]; its
+/// identifier, which AB and SoD store, `identifier`), else none.
+fn body(kind: usize, v: Version, identifier: u32) -> Body {
+    if let Some(&(_, count, disposition, never_flees, gold)) =
+        MONSTERS.iter().find(|m| m.0 == kind)
+    {
+        return Body::Monster(MonsterBody {
+            identifier: (v != Version::RoE).then_some(identifier),
+            count,
+            disposition,
+            treasure: (gold > 0).then(|| MonsterTreasure {
+                resources: [0, 0, 0, 0, 0, 0, gold],
+                ..MonsterTreasure::default()
+            }),
+            never_flees,
+            no_growth: false,
+        });
+    }
+    KINDS[kind].2.map_or(Body::None, |amount| Body::Resource {
+        message: None,
+        amount,
+    })
+}
 /// A tile as column, row and level.
 pub(super) type Spot = (u8, u8, u8);
 /// An army's seven slots as creature code and count (none: the hero type's starting army).
@@ -161,7 +235,8 @@ pub(super) struct Plan {
     /// (none: its type's; E08 T19b2: Necromancy, Eagle Eye and Wisdom more often than the types
     /// have them, so that battles' winners raise creatures and learn spells).
     pub(super) skills: Vec<Option<Vec<(u8, u8)>>>,
-    /// Each object's anchor (modulo the map) and object (shape and kind, [`OBJECTS`]).
+    /// Each object's anchor (modulo the map) and object (shape and kind, [`OBJECTS`]; since E08
+    /// T20b3b1 also the monsters' and grounds', [`MONSTER_OBJECTS`], [`GROUND_OBJECTS`]).
     pub(super) blockers: Vec<(Spot, usize)>,
     /// The game's difficulty (E08 T14b), written as the map's (the import's own default is
     /// normal; the tests take the map's): impossible, with no gold to start, in half the cases,
@@ -222,13 +297,26 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     3 => 0..OBJECTS,
                     1 => proptest::sample::select(&CHARTS[..]),
                     2 => proptest::sample::select(&KEYS[..]),
+                    1 => proptest::sample::select(&MONSTER_OBJECTS[..]),
+                    1 => proptest::sample::select(&GROUND_OBJECTS[..]),
                 ],
             ),
             0..=8,
         ),
         prop_oneof![Just(4), 0u8..4],
         proptest::option::weighted(0.75, ((0u8..7, 0u8..7), 0u8..3)),
-        (vec(vec(7u16..=40, 0..=3), 0..=6), vec(skills(), 0..=6)),
+        (
+            vec(vec(7u16..=40, 0..=3), 0..=6),
+            vec(skills(), 0..=6),
+            proptest::option::weighted(
+                0.75,
+                (
+                    (0u8..5, 0u8..5),
+                    proptest::sample::select(&MONSTER_OBJECTS[..]),
+                    proptest::option::of(proptest::sample::select(&GROUND_OBJECTS[..])),
+                ),
+            ),
+        ),
     )
         .prop_map(
             |(
@@ -243,7 +331,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 mut blockers,
                 difficulty,
                 keyring,
-                (backpacks, skills),
+                (backpacks, skills, beside),
             )| {
                 // In three plans of four a red tent within three tiles of the first hero, a red
                 // guard whose visitable tile is two columns east of the tent, a row up, level or
@@ -259,6 +347,18 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     blockers.push(((tx, ty, hz % levels), KEYS[3]));
                     blockers.push(((at(tx, 6), at(ty, row + 2), hz % levels), KEYS[4]));
                     blockers.push(((at(tx, 4), at(ty, 4), hz % levels), KEYS[6]));
+                }
+                // In three plans of four (E08 T20b3b1) a monster within two tiles of the first
+                // hero, on a special ground in one of those cases of two, so that random play
+                // meets monsters early and fights some of them on a ground's battlefield.
+                if let Some(((dx, dy), monster, ground)) = beside {
+                    let ((hx, hy, hz), _) = heroes[0];
+                    let levels = 1 + u8::from(two_levels);
+                    let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
+                    let (dx, dy) = if (dx, dy) == (2, 2) { (3, 2) } else { (dx, dy) };
+                    let spot = (at(hx, dx), at(hy, dy), hz % levels);
+                    blockers.push((spot, monster));
+                    blockers.extend(ground.map(|ground| (spot, ground)));
                 }
                 Plan {
                     version,
@@ -313,7 +413,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     // The blockers' templates, and the typed objects' up to the last one the plan uses.
     let used = plan.blockers.iter().map(|&(_, o)| o + 1).max().unwrap_or(0);
     m.templates.extend((0..used.max(BLOCKERS.len())).map(|o| {
-        let (blocked, visitable) = BLOCKERS[o % BLOCKERS.len()];
+        let (blocked, visitable) = masks(o);
         let (class, subclass, _) = KINDS[o / BLOCKERS.len()];
         Template {
             subclass,
@@ -341,7 +441,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     let mut typed: Vec<((u32, u32), Spot)> = Vec::new();
     for &((x, y, z), shape) in &plan.blockers {
         let (ax, ay, az) = (x % side, y % side, z % levels);
-        let (blocked, visitable) = BLOCKERS[shape % BLOCKERS.len()];
+        let (blocked, visitable) = masks(shape);
         let covers = |&((hx, hy, hz), _): &(Spot, _)| {
             hz == az
                 && blocked.iter().chain(visitable).any(|&(column, row)| {
@@ -361,13 +461,8 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
                 typed.push(((class, subclass), (ax, ay, az)));
             }
             let template = 1 + u32::try_from(shape).unwrap();
-            let body = KINDS[shape / BLOCKERS.len()]
-                .2
-                .map_or(Body::None, |amount| Body::Resource {
-                    message: None,
-                    amount,
-                });
-            let mut o = object(ax, ay, template, body);
+            let identifier = u32::try_from(m.objects.len()).unwrap();
+            let mut o = object(ax, ay, template, body(kind, v, identifier));
             o.pos.z = az;
             m.objects.push(o);
         }
@@ -639,16 +734,15 @@ fn seek(state: &GameState, legal: &[GameCommand], n: u16) -> GameCommand {
         .map_or(GameCommand::EndTurn, |&command| command.clone())
 }
 
-/// In a battle (E08 T19b2): the acting player's `n`-th fighting command: in three steps of four
-/// its hero's cast while it may cast (the spell, its target and a second target by `n`: the game's
+/// In a battle (E08 T19b2): the actor's `n`-th fighting command: in three steps of four its
+/// hero's cast while it may cast (the spell, its target and a second target by `n`: the game's
 /// legal commands list no casts, a separate action head, ADR-0014 point 9; Eagle Eye picks only
 /// what the other side's hero casts, BAT-MAG-069), else a strike (an attack or a shot) if its
 /// active stack has one, else a command that stays in the battle; in one step of 128 it leaves
-/// the battle (a retreat or a surrender, if its side may), so most battles end by a victory.
+/// the battle (a retreat or a surrender, if its side may), so most battles end by a victory. The
+/// system actor (E08 T20b3b1) fights a monster's side alike: it has no hero to cast or leave.
 fn fight(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -> GameCommand {
-    let actor = acting(state);
-    let battle = state.battle(actor).unwrap();
-    let side = battle.side_of(actor).unwrap();
+    let (battle, side) = battle_of(state, actor(state)).unwrap();
     let (field, ruleset) = (battle.state(), rules.battle());
     let n = usize::from(n);
     let spells = castable_spells(field, ruleset, side);
@@ -774,7 +868,8 @@ fn landing(
 }
 
 /// The player who acts: the one whose turn is running (sequential play: one at a time), or, while
-/// its battle's other side is to act, that side's owner (E08 T19a).
+/// its battle's other side is to act, that side's owner (E08 T19a); while the other side is a
+/// monster's, still the player whose battle it is ([`actor`] is then the system).
 pub(super) fn acting(state: &GameState) -> PlayerId {
     let player = state.turn_group()[0];
     state
@@ -783,11 +878,46 @@ pub(super) fn acting(state: &GameState) -> PlayerId {
         .unwrap_or(player)
 }
 
-/// The commands the driver picks from: the acting player's legal commands, then each of its legal
-/// moves with the query's path, by hero and row by row. The game does not list moves one by one
-/// (a hero with many points reaches thousands of tiles); the small maps here allow it.
+/// Who acts (E08 T20b3b1): the system actor while a battle's side to act is a monster's (no
+/// player owns it: `GameState::unowned_battle`), else the acting player ([`acting`]).
+pub(super) fn actor(state: &GameState) -> Actor {
+    if state.unowned_battle().is_some() {
+        Actor::System
+    } else {
+        Actor::Player(acting(state))
+    }
+}
+
+/// The player a command of `actor` is played for: the player itself, or for the system actor the
+/// player whose battle it plays ([`acting`]).
+pub(super) fn player_of(state: &GameState, actor: Actor) -> PlayerId {
+    match actor {
+        Actor::Player(player) => player,
+        Actor::System => acting(state),
+    }
+}
+
+/// The battle `actor` plays and its side there: a player's open battle and the side it owns, or
+/// the system actor's (the first whose side to act no player owns) and that side.
+fn battle_of(state: &GameState, actor: Actor) -> Option<(&OpenBattle, BattleSide)> {
+    match actor {
+        Actor::Player(player) => {
+            let battle = state.battle(player)?;
+            Some((battle, battle.side_of(player)?))
+        }
+        Actor::System => {
+            let battle = state.unowned_battle()?;
+            Some((battle, battle.state().side_to_act()?))
+        }
+    }
+}
+
+/// The commands the driver picks from: the actor's legal commands, then each of its legal moves
+/// with the query's path, by hero and row by row (none for the system actor). The game does not
+/// list moves one by one (a hero with many points reaches thousands of tiles); the small maps
+/// here allow it.
 pub(super) fn options(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand> {
-    let actor = Actor::Player(acting(state));
+    let actor = actor(state);
     let mut options = legal_commands(state, rules, actor);
     for hero in state.adventure().heroes() {
         if let Some(moves) = legal_moves(state, rules, actor, hero.id) {
@@ -799,13 +929,16 @@ pub(super) fn options(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand
     options
 }
 
-/// A step's actor and command, given the acting player's [`options`].
+/// A step's actor and command, given the actor's [`options`]: the acting player's, or (E08
+/// T20b3b1) the system actor's in a monster's battle, whose steps but a fight's and a free
+/// command's of a player are refused or its legal commands.
 pub(super) fn resolve(
     state: &GameState,
     rules: &GameRuleset,
     legal: &[GameCommand],
     step: &Step,
-) -> (PlayerId, GameCommand) {
+) -> (Actor, GameCommand) {
+    let who = actor(state);
     let actor = acting(state);
     let players = u8::try_from(state.players()).unwrap();
     let heroes = u16::try_from(state.adventure().heroes().len()).unwrap();
@@ -822,26 +955,26 @@ pub(super) fn resolve(
         })
     };
     match step {
-        Step::Legal(n) => (actor, legal[usize::from(*n) % legal.len()].clone()),
+        Step::Legal(n) => (who, legal[usize::from(*n) % legal.len()].clone()),
         Step::Visit(n) => {
             let visits: Vec<&GameCommand> = legal.iter().filter(visits).collect();
             let command = match visits.len() {
                 0 => &legal[usize::from(*n) % legal.len()],
                 len => visits[usize::from(*n) % len],
             };
-            (actor, command.clone())
+            (who, command.clone())
         }
-        Step::EndTurn => (actor, GameCommand::EndTurn),
-        Step::Fight(n) if state.battle(actor).is_some() => (actor, fight(state, rules, legal, *n)),
-        Step::Fight(n) => (actor, seek(state, legal, *n)),
+        Step::EndTurn => (who, GameCommand::EndTurn),
+        Step::Fight(n) if battle_of(state, who).is_some() => (who, fight(state, rules, legal, *n)),
+        Step::Fight(n) => (who, seek(state, legal, *n)),
         Step::Edited(n, edit) => {
             let moves: Vec<(HeroId, &[TilePos])> = legal.iter().filter_map(as_move).collect();
             let Some(&(mut hero, path)) = moves.get(usize::from(*n) % moves.len().max(1)) else {
-                return (actor, move_hero(HeroId::new(0), Vec::new()));
+                return (who, move_hero(HeroId::new(0), Vec::new()));
             };
             let origin = state.adventure().hero(hero).unwrap().pos;
             let mut path = path.to_vec();
-            let mut actor = actor;
+            let mut who = who;
             match edit {
                 Edit::DropLast => {
                     path.pop();
@@ -863,15 +996,18 @@ pub(super) fn resolve(
                     path[i] = toward(if i == 0 { origin } else { path[i - 1] }, *direction);
                 }
                 Edit::OtherHero(id) => hero = HeroId::new(u16::from(*id) % (heroes + 1)),
-                Edit::OtherPlayer(id) => actor = PlayerId::new(id % (players + 1)),
+                Edit::OtherPlayer(id) => who = Actor::Player(PlayerId::new(id % (players + 1))),
             }
-            (actor, move_hero(hero, path))
+            (who, move_hero(hero, path))
         }
         Step::Free { player, command } => {
-            let actor = player.map_or(actor, |player| PlayerId::new(player % (players + 1)));
+            let who = player.map_or(who, |player| {
+                Actor::Player(PlayerId::new(player % (players + 1)))
+            });
+            let actor = player_of(state, who);
             match command {
-                Free::EndTurn => (actor, GameCommand::EndTurn),
-                Free::Answer(answer) => (actor, GameCommand::Answer(*answer)),
+                Free::EndTurn => (who, GameCommand::EndTurn),
+                Free::Answer(answer) => (who, GameCommand::Answer(*answer)),
                 Free::Move {
                     hero,
                     directions,
@@ -890,7 +1026,7 @@ pub(super) fn resolve(
                         };
                         path.push(at);
                     }
-                    (actor, move_hero(hero, path))
+                    (who, move_hero(hero, path))
                 }
                 Free::Line { hero, to } => {
                     let hero = hero.hero(state, actor);
@@ -909,7 +1045,7 @@ pub(super) fn resolve(
                         );
                         path.push(at);
                     }
-                    (actor, move_hero(hero, path))
+                    (who, move_hero(hero, path))
                 }
             }
         }
@@ -925,7 +1061,7 @@ pub(super) fn advance<S: Sink>(
 ) -> Result<(), GameCommandError> {
     let options = options(state, rules);
     let (actor, command) = resolve(state, rules, &options, step);
-    apply(state, rules, Actor::Player(actor), command, sink)
+    apply(state, rules, actor, command, sink)
 }
 
 /// Plays a game from the plan's map: the final state, every event and the hash after each step.
@@ -975,36 +1111,45 @@ const ANSWERS: [GameCommand; 2] = [
     GameCommand::Answer(Answer::Decline),
 ];
 
-/// Legality consistency, before a step: only the acting player has legal commands, `EndTurn`, or
-/// with an open decision (only ever the acting player's in sequential play) its answers and
-/// nothing else (GAM-DEC-001, E08 T14b), `Decline` alone if the offer no longer stands (T15a;
-/// never in sequential play), or in a battle (T19a) the battle's commands while its side is to
-/// act, each of which applies; its legal moves are the query of each of its own heroes while no
-/// decision is open, and nobody has any for another player's; every listed answer applies and
-/// closes the decision; every option's move applies and leaves the hero on its last tile (on the
-/// tile before for a visit from a neighbour) with the points the query reports there, one event
-/// per step.
+/// Legality consistency, before a step: only the actor has legal commands, `EndTurn`, or with an
+/// open decision (only ever the acting player's in sequential play) its answers and nothing else
+/// (GAM-DEC-001, E08 T14b), `Decline` alone if the offer no longer stands (T15a; never in
+/// sequential play), or in a battle (T19a) the battle's commands while its side is to act, each
+/// of which applies; while a monster's side is to act (E08 T20b3b1) the actor is the system, its
+/// commands that side's, no player's any; the system has none otherwise and never a move; the
+/// actor's legal moves are the query of each of its own heroes while no decision is open, and
+/// nobody has any for another player's; every listed answer applies and closes the decision;
+/// every option's move applies and leaves the hero on its last tile (on the tile before for a
+/// visit from a neighbour) with the points the query reports there, one event per step.
 fn check_legal(
     state: &GameState,
     rules: &GameRuleset,
     legal: &[GameCommand],
     reaches: &[(HeroId, Reach)],
 ) -> Result<(), TestCaseError> {
+    let who = actor(state);
     let actor = acting(state);
-    let fighting = state.battle(actor).is_some();
+    let fighting = battle_of(state, who).is_some();
     let decided = state.decision(actor).is_some();
+    let system = legal_commands(state, rules, Actor::System);
+    prop_assert_eq!(system.is_empty(), who != Actor::System);
+    prop_assert!(system.iter().all(|c| matches!(c, GameCommand::Battle(_))));
+    for (hero, _) in reaches {
+        prop_assert_eq!(legal_moves(state, rules, Actor::System, *hero), None);
+    }
     let answers = match state.decision(actor) {
         Some(offer) if !state.adventure().offer_stands(offer) => &ANSWERS[1..],
         _ => &ANSWERS[..],
     };
     for player in (0..=state.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         let listed = legal_commands(state, rules, Actor::Player(player));
+        let me = who == Actor::Player(player);
         prop_assert!(player == actor || state.decision(player).is_none());
-        if player == actor && fighting {
+        if me && fighting {
             prop_assert!(!listed.is_empty());
             prop_assert!(listed.iter().all(|c| matches!(c, GameCommand::Battle(_))));
         } else {
-            let expected = if player != actor {
+            let expected = if !me {
                 Vec::new()
             } else if decided {
                 answers.to_vec()
@@ -1015,7 +1160,7 @@ fn check_legal(
         }
         for (hero, reach) in reaches {
             let moves = legal_moves(state, rules, Actor::Player(player), *hero);
-            let own = player == actor
+            let own = me
                 && !decided
                 && !fighting
                 && state.adventure().hero(*hero).map(|h| h.owner) == Some(actor);
@@ -1023,19 +1168,10 @@ fn check_legal(
         }
     }
     if fighting {
-        prop_assert_eq!(
-            legal,
-            &legal_commands(state, rules, Actor::Player(actor))[..]
-        );
+        prop_assert_eq!(legal, &legal_commands(state, rules, who)[..]);
         for command in legal {
             let mut probe = state.clone();
-            let result = apply(
-                &mut probe,
-                rules,
-                Actor::Player(actor),
-                command.clone(),
-                &mut Vec::new(),
-            );
+            let result = apply(&mut probe, rules, who, command.clone(), &mut Vec::new());
             prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
         }
         return Ok(());
@@ -1092,14 +1228,18 @@ fn check_legal(
 /// the actor's own hero along another path the hero can pay. A one-step move's tile is among its
 /// legal moves, with at least the points the move left (every tile one step away is). Or (E08
 /// T19b2) a cast of the actor's hero in its battle (the game lists no casts, a separate action
-/// head): of a spell the battle's castable spells held, at one of its targets.
+/// head): of a spell the battle's castable spells held, at one of its targets. The system actor
+/// (E08 T20b3b1) plays only what it is listed: a monster's side has no hero to cast.
 fn check_unlisted(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
-    actor: PlayerId,
+    actor: Actor,
     command: &GameCommand,
     reaches: &[(HeroId, Reach)],
 ) -> Result<(), TestCaseError> {
+    let Actor::Player(actor) = actor else {
+        return Err(fail(format!("the system's unlisted {command:?} accepted")));
+    };
     if let GameCommand::Battle(Command::Cast { spell, target, .. }) = *command {
         let battle = before.battle(actor).unwrap();
         let side = battle.side_of(actor).unwrap();
@@ -1137,7 +1277,11 @@ fn check_unlisted(
 /// none); since T14b by an accepted offer's price, which its owner is told it paid, exactly the
 /// price of the decision it answered; and since T19a by a surrender's price, which the
 /// surrendering side's owner pays and the other side's owner gains, as much as was paid. The
-/// heroes' details (E08 T19a2a) change only by a battle's end.
+/// heroes' details (E08 T19a2a) change only by a battle's end. Since E08 T20b3b1 a wandering
+/// monster is a source of creatures and resources: a group that joins goes into its visitor's
+/// army (into the stack of its creature, else the first free slot), all of it, told to the
+/// visitor's owner as the creatures joining, and its treasure is the owner's gains as it leaves
+/// the map; a monster that flees leaves without its treasure.
 fn check_conservation(
     rules: &GameRuleset,
     before: &GameState,
@@ -1150,6 +1294,22 @@ fn check_conservation(
     }
     prop_assert_eq!(before.heroes(), after.heroes());
     let (map, adventure) = (before.adventure().map(), after.adventure());
+    let joined: Vec<(HeroId, CreatureTypeId, u32)> = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::CreaturesJoined {
+                        hero,
+                        creature,
+                        count,
+                    },
+                ..
+            }) => Some((hero, creature, count)),
+            _ => None,
+        })
+        .collect();
+    prop_assert!(joined.len() <= 1, "{:?}", joined);
     let mut contents = Vec::new();
     for event in events {
         if let GameEvent::Adventure(AdventureEvent {
@@ -1166,7 +1326,18 @@ fn check_conservation(
                     && !before.adventure().is_removed(i)
                     && adventure.is_removed(i)
             });
-            contents.extend(left.flat_map(|(_, o)| o.contents.iter().copied()));
+            for (i, o) in left {
+                contents.extend(o.contents.iter().copied());
+                // A monster that joins (all of it, of its creature) gives its treasure; one that
+                // flees gives nothing.
+                if let Some(monster) = &o.monster
+                    && let Some(&(_, creature, count)) = joined.first()
+                {
+                    prop_assert_eq!(creature, monster.creature);
+                    prop_assert_eq!(Some(count), before.adventure().monster_count(i));
+                    contents.extend(monster.treasure.iter().copied());
+                }
+            }
         }
     }
     let gains: Vec<(ResourceId, u32)> = events
@@ -1230,7 +1401,26 @@ fn check_conservation(
             prop_assert_eq!(&paid[..], before.decision(player).unwrap().price());
         }
     }
-    prop_assert_eq!(armies(before), armies(after));
+    let mut expected = armies(before);
+    for &(hero, creature, count) in &joined {
+        let (_, army) = expected.iter_mut().find(|(id, _)| *id == hero).unwrap();
+        if let Some(stack) = army.iter_mut().find(|s| s.creature == creature) {
+            stack.count += count;
+        } else {
+            let slot = (0..7).find(|&slot| army.iter().all(|s| s.slot != slot));
+            let slot = slot.ok_or_else(|| fail(format!("{hero:?} joined without room")))?;
+            let at = army.iter().position(|s| s.slot > slot).unwrap_or(army.len());
+            army.insert(
+                at,
+                h3_contracts::ArmyStack {
+                    slot,
+                    creature,
+                    count,
+                },
+            );
+        }
+    }
+    prop_assert_eq!(expected, armies(after));
     Ok(())
 }
 
@@ -1247,7 +1437,9 @@ fn armies(state: &GameState) -> Vec<(HeroId, Vec<h3_contracts::ArmyStack>)> {
 /// other side's owner gains what was paid. The heroes' details (E08 T19a2a; GAM-BAT-002, -004)
 /// change exactly as the changes told to their owners, only the battle's heroes', only the
 /// winner that stays gains experience, and artifacts only move between the two or leave with a
-/// destroyed war machine.
+/// destroyed war machine. A monster's battle (E08 T20b3b1; ADV-MON-010): beaten, the monster
+/// leaves the map, told as its removal, with its treasure for the visitor's owner (a draw gives
+/// none); else it stays with at most the creatures it had; no surrender.
 fn check_battle_end(
     rules: &GameRuleset,
     before: &GameState,
@@ -1275,8 +1467,14 @@ fn check_battle_end(
             _ => None,
         })
         .collect();
+    let monster = heroes[BattleSide::Defender.index()].is_none();
+    if monster {
+        check_monster_battle_end(before, after, events, heroes, result)?;
+    }
     for (side, hero) in heroes.iter().enumerate() {
-        let hero = hero.unwrap();
+        let Some(hero) = *hero else {
+            continue;
+        };
         let won = result.winner().map(|w| w.index()) == Some(side);
         let stays = after.adventure().hero(hero);
         prop_assert!(won || stays.is_none(), "{:?} did not win but stays", hero);
@@ -1297,6 +1495,7 @@ fn check_battle_end(
                 prop_assert_eq!(player, owner(heroes[side.index()]));
                 paid = Some(amount);
             }
+            GameEvent::ResourceGained { .. } if monster => {}
             GameEvent::ResourceGained { player, amount, .. } => {
                 let BattleResult::Surrender(side) = result else {
                     return Err(fail(format!("{event:?} without a surrender")));
@@ -1312,11 +1511,91 @@ fn check_battle_end(
             before.treasury(player).unwrap(),
             after.treasury(player).unwrap(),
         );
-        if paid.is_none() {
+        if paid.is_none() && !monster {
             prop_assert_eq!(b, a);
         }
     }
     check_heroes_after_battle(rules, (before, after), events, heroes)
+}
+
+/// The monster's part of [`check_battle_end`] (E08 T20b3b1; ADV-MON-010): the monster fought is
+/// the one visited at the battle's tile; a victory of the visitor's side removes it, told as its
+/// removal, and gives the visitor's owner exactly its treasure; a draw removes it without one;
+/// else it stays with between one and the creatures it had, and no treasury changes. No side
+/// surrenders to a monster or pays it.
+fn check_monster_battle_end(
+    before: &GameState,
+    after: &GameState,
+    events: &[GameEvent],
+    heroes: [Option<HeroId>; 2],
+    result: BattleResult,
+) -> Result<(), TestCaseError> {
+    let visitor = heroes[BattleSide::Attacker.index()].unwrap();
+    let owner = before.adventure().hero(visitor).unwrap().owner;
+    let started = events.iter().find_map(|e| match *e {
+        GameEvent::BattleStarted { tile, .. } => Some(tile),
+        _ => None,
+    });
+    let tile = before.battle(owner).map(OpenBattle::tile).or(started).unwrap();
+    let map = before.adventure().map();
+    let index = map
+        .visited_from(tile)
+        .iter()
+        .copied()
+        .rev()
+        .find(|&i| map.objects()[i].monster.is_some() && !before.adventure().is_removed(i))
+        .ok_or_else(|| fail(format!("no monster fought at {tile:?}")))?;
+    let monster = map.objects()[index].monster.as_ref().unwrap();
+    let had = before.adventure().monster_count(index).unwrap();
+    let removals = events
+        .iter()
+        .filter(|e| {
+            matches!(
+                e,
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::ObjectRemoved { anchor, .. },
+                    ..
+                }) if *anchor == map.objects()[index].anchor
+            )
+        })
+        .count();
+    let won = result.winner() == Some(BattleSide::Attacker);
+    let beaten = won || result == BattleResult::Draw;
+    prop_assert_eq!(after.adventure().is_removed(index), beaten, "{:?}", result);
+    prop_assert_eq!(removals, usize::from(beaten));
+    if !beaten {
+        let left = after.adventure().monster_count(index).unwrap();
+        prop_assert!((1..=had).contains(&left), "{} of {}", left, had);
+    }
+    prop_assert!(!matches!(result, BattleResult::Surrender(_)), "{:?}", result);
+    let mut treasury = before.treasury(owner).unwrap().to_vec();
+    let mut gains = Vec::new();
+    for event in events {
+        match *event {
+            GameEvent::ResourceGained {
+                player,
+                resource,
+                amount,
+            } => {
+                prop_assert_eq!(player, owner);
+                treasury[usize::from(resource.raw())] += amount;
+                gains.push((resource, amount));
+            }
+            GameEvent::ResourcePaid { .. } => {
+                return Err(fail(format!("{event:?} in a monster's battle")));
+            }
+            _ => {}
+        }
+    }
+    let treasure = if won { monster.treasure.clone() } else { Vec::new() };
+    prop_assert_eq!(gains, treasure);
+    prop_assert_eq!(after.treasury(owner).unwrap(), &treasury[..]);
+    for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        if player != owner {
+            prop_assert_eq!(before.treasury(player), after.treasury(player));
+        }
+    }
+    Ok(())
 }
 
 /// The heroes' part of [`check_battle_end`] (E08 T19a2a): each change goes to one of the
@@ -1443,14 +1722,18 @@ fn check_heroes_after_battle(
 }
 
 /// The pending decisions (GAM-DEC-001, ADV-VIS-001, ADV-VIS-004; E08 T14b, T15a) and the keys
-/// (ADV-VIS-003), after an accepted command of `actor`: an offer opens, as the actor's decision,
-/// only when it was told so and could pay the price, the object's type's (the actor's treasury
-/// after the command holds it), or is refused when it could not; a Cartographer's offers its
-/// reveal for its price to a player that has not bought its type, a border guard's its passage
-/// without a price to a holder of its key; an answer closes the decision it names; only an
-/// accepted Cartographer's adds the type to the actor's purchases, and only an accepted guard's
-/// removes the guard, told as its removal; the actor's keys grow only by the keys it is told it
-/// gained, each one it did not hold; nothing else changes either.
+/// (ADV-VIS-003), after an accepted command of `actor` (for the system's, the player whose battle
+/// it plays): an offer opens, as the actor's decision, only when it was told so and could pay the
+/// price, the object's type's (the actor's treasury after the command holds it), or is refused
+/// when it could not; a Cartographer's offers its reveal for its price to a player that has not
+/// bought its type, a border guard's its passage without a price to a holder of its key, (E08
+/// T20b3b1) a monster's its group to join (for free, or for gold the actor holds) or its flight,
+/// never refused (an offer to join for gold the actor cannot pay does not open); an answer closes
+/// the decision it names; only an accepted Cartographer's adds the type to the actor's purchases;
+/// an accepted guard's removes the guard, an accepted join (told as the creatures joining) and a
+/// declined flight the monster, each told as its removal, and an accepted pursuit starts its
+/// battle; the actor's keys grow only by the keys it is told it gained, each one it did not hold;
+/// nothing else changes either.
 fn check_decisions(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -1487,6 +1770,20 @@ fn check_decisions(
                 prop_assert_eq!(after.adventure().hero(hero).map(|h| h.owner), Some(actor));
                 let kind = &rules.adventure().object_type(object_type).unwrap().kind;
                 let kind = match kind {
+                    ObjectKind::Monster { .. } => {
+                        prop_assert!(opened, "{:?}: a monster's offer is never refused", event);
+                        let open = after.decision(actor).map(|o| o.kind.clone());
+                        prop_assert!(
+                            matches!(
+                                open,
+                                Some(OfferKind::Join | OfferKind::JoinForGold { .. } | OfferKind::Pursue)
+                            ),
+                            "{:?}: {:?}",
+                            event,
+                            open
+                        );
+                        open.unwrap()
+                    }
                     ObjectKind::RevealTerrain { price, .. } => {
                         prop_assert!(!bought.contains(&object_type));
                         OfferKind::Reveal {
@@ -1525,9 +1822,29 @@ fn check_decisions(
                         bought.sort();
                     }
                     (true, OfferKind::Pass) => passed = Some((object_type, anchor)),
-                    // The generated maps hold no monster (E08 T20b1).
-                    (true, OfferKind::Join | OfferKind::JoinForGold { .. } | OfferKind::Pursue)
-                    | (false, _) => {}
+                    // E08 T20b3b1: the group joins and leaves the map, a declined flight lets the
+                    // monster leave; an accepted pursuit is its battle.
+                    (true, OfferKind::Join | OfferKind::JoinForGold { .. }) => {
+                        let joined = events.iter().any(|e| {
+                            matches!(
+                                e,
+                                GameEvent::Adventure(AdventureEvent {
+                                    kind: AdventureEventKind::CreaturesJoined { .. },
+                                    ..
+                                })
+                            )
+                        });
+                        prop_assert!(joined, "{:?} without the creatures joining", event);
+                        passed = Some((object_type, anchor));
+                    }
+                    (false, OfferKind::Pursue) => passed = Some((object_type, anchor)),
+                    (true, OfferKind::Pursue) => {
+                        let fought = events
+                            .iter()
+                            .any(|e| matches!(e, GameEvent::BattleStarted { .. }));
+                        prop_assert!(fought, "{:?} without its battle", event);
+                    }
+                    (false, _) => {}
                 }
             }
             GameEvent::Adventure(AdventureEvent {
@@ -1646,11 +1963,11 @@ proptest! {
             let reaches = reaches(&state, rules);
             check_legal(&state, rules, &legal, &reaches)?;
             let (actor, command) = resolve(&state, rules, &legal, step);
-            let listed = actor == acting(&state) && legal.contains(&command);
+            let listed = actor == self::actor(&state) && legal.contains(&command);
             let before = state.clone();
             let hash = state.state_hash();
             let mut events = Vec::new();
-            let result = apply(&mut state, rules, Actor::Player(actor), command.clone(), &mut events);
+            let result = apply(&mut state, rules, actor, command.clone(), &mut events);
             if result.is_err() {
                 // Atomicity: a rejected command changes nothing and emits nothing.
                 prop_assert_eq!(&state, &before);
@@ -1659,7 +1976,7 @@ proptest! {
                 prop_assert!(!listed, "legal {:?} rejected", command);
                 continue;
             }
-            prop_assert_eq!(actor, acting(&before));
+            prop_assert_eq!(actor, self::actor(&before));
             if !listed {
                 check_unlisted(rules, (&before, &state), actor, &command, &reaches)?;
             }
@@ -1668,8 +1985,9 @@ proptest! {
                 let (at, _) = landing(&before, start, path, &events)?;
                 prop_assert_eq!(state.adventure().hero(hero).map(|h| h.pos), Some(at));
             }
-            check_decisions(rules, (&before, &state), actor, &events)?;
-            check_isolation(&before, &state, actor, &events)?;
+            let player = player_of(&before, actor);
+            check_decisions(rules, (&before, &state), player, &events)?;
+            check_isolation(&before, &state, player, &events)?;
             check_conservation(rules, &before, &state, &events)?;
         }
     }
@@ -1721,7 +2039,8 @@ proptest! {
 }
 
 /// What a set of games played: the battles started and how they ended, and the heroes' part of
-/// their outcomes (E08 T19b2).
+/// their outcomes (E08 T19b2); (E08 T20b3b1) the monsters' battles, those on a special ground,
+/// how they ended for the visitor, the monsters' offers by kind, and the groups that joined.
 #[derive(Debug, Default)]
 struct Fought {
     started: usize,
@@ -1734,19 +2053,66 @@ struct Fought {
     raised: usize,
     learned: usize,
     casts: usize,
+    monster_battles: usize,
+    on_ground: usize,
+    monsters_beaten: usize,
+    visitors_lost: usize,
+    system_commands: usize,
+    joins_offered: usize,
+    gold_offered: usize,
+    flights_offered: usize,
+    joined: usize,
 }
 
 impl Fought {
-    fn count(&mut self, events: &[GameEvent]) {
+    /// Counts `events`, which a command emitted on its way to `after`.
+    fn count(&mut self, rules: &GameRuleset, after: &GameState, events: &[GameEvent]) {
+        let part = rules.adventure();
         for event in events {
             match *event {
+                GameEvent::BattleStarted { heroes, tile, .. } if heroes[1].is_none() => {
+                    self.started += 1;
+                    self.monster_battles += 1;
+                    let ground = |o: &h3_adventure::MapObject| {
+                        o.lies_on(tile)
+                            && o.object_type.and_then(|id| part.object_type(id)).is_some_and(
+                                |ty| matches!(ty.kind, ObjectKind::Ground { .. }),
+                            )
+                    };
+                    if after.adventure().map().objects().iter().any(ground) {
+                        self.on_ground += 1;
+                    }
+                }
+                GameEvent::BattleEnded { heroes, result, .. } if heroes[1].is_none() => {
+                    self.count_result(result);
+                    if result.winner() == Some(BattleSide::Attacker) {
+                        self.monsters_beaten += 1;
+                    } else {
+                        self.visitors_lost += 1;
+                    }
+                }
+                GameEvent::OfferOpened {
+                    player,
+                    object_type,
+                    ..
+                } if matches!(
+                    part.object_type(object_type).map(|t| &t.kind),
+                    Some(ObjectKind::Monster { .. })
+                ) =>
+                {
+                    match after.decision(player).map(|o| &o.kind) {
+                        Some(OfferKind::Join) => self.joins_offered += 1,
+                        Some(OfferKind::JoinForGold { .. }) => self.gold_offered += 1,
+                        Some(OfferKind::Pursue) => self.flights_offered += 1,
+                        _ => {}
+                    }
+                }
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::CreaturesJoined { .. },
+                    ..
+                }) => self.joined += 1,
                 GameEvent::BattleStarted { .. } => self.started += 1,
-                GameEvent::BattleEnded { result, .. } => match result {
-                    BattleResult::Victory(_) => self.victories += 1,
-                    BattleResult::Draw => self.draws += 1,
-                    BattleResult::Retreat(_) => self.retreats += 1,
-                    BattleResult::Surrender(_) => self.surrenders += 1,
-                },
+                GameEvent::BattleEnded { result, .. } => self.count_result(result),
                 GameEvent::HeroChanged { change, .. } => match change {
                     HeroChange::AddArtifact(_) => self.captured += 1,
                     HeroChange::LearnSpell(_) => self.learned += 1,
@@ -1765,12 +2131,23 @@ impl Fought {
             }
         }
     }
+
+    fn count_result(&mut self, result: BattleResult) {
+        match result {
+            BattleResult::Victory(_) => self.victories += 1,
+            BattleResult::Draw => self.draws += 1,
+            BattleResult::Retreat(_) => self.retreats += 1,
+            BattleResult::Surrender(_) => self.surrenders += 1,
+        }
+    }
 }
 
 /// The plans play battles to a victory (E08 T19b2): over a fixed set of cases (proptest's
 /// deterministic runner), random play with the fighting runs ([`steps`]) starts battles that end
 /// by victories as well as by retreats and surrenders, and their winners capture artifacts, raise
-/// creatures and learn Eagle Eye's picks, so the properties above see each.
+/// creatures and learn Eagle Eye's picks, so the properties above see each. Since E08 T20b3b1 it
+/// meets monsters too: their battles, the system playing their side, some on a special ground,
+/// won and lost; their offers to join, to join for gold and to flee, and groups that join.
 #[test]
 fn the_plans_play_battles_to_a_victory() {
     use proptest::strategy::ValueTree;
@@ -1784,10 +2161,12 @@ fn the_plans_play_battles_to_a_victory() {
         for step in &steps {
             let mut events = Vec::new();
             let fighting = state.battle(acting(&state)).is_some();
+            let system = actor(&state) == Actor::System;
             if advance(&mut state, rules, step, &mut events).is_ok() && fighting {
                 fought.commands += 1;
+                fought.system_commands += usize::from(system);
             }
-            fought.count(&events);
+            fought.count(rules, &state, &events);
         }
     }
     let f = &fought;
@@ -1795,4 +2174,7 @@ fn the_plans_play_battles_to_a_victory() {
     assert!(f.victories > f.retreats + f.surrenders + f.draws, "{f:?}");
     assert!(f.retreats > 0 && f.surrenders > 0, "{f:?}");
     assert!(f.captured > 0 && f.raised > 0 && f.learned > 0, "{f:?}");
+    assert!(f.monster_battles > 0 && f.system_commands > 0 && f.on_ground > 0, "{f:?}");
+    assert!(f.monsters_beaten > 0 && f.visitors_lost > 0, "{f:?}");
+    assert!(f.joins_offered > 0 && f.flights_offered > 0 && f.joined > 0, "{f:?}");
 }

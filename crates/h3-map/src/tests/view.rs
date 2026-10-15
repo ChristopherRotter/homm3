@@ -4,8 +4,8 @@
 //! it cannot see) and the observation's consistency with the events it is told.
 
 use h3_adventure::{
-    AdventureEvent, AdventureEventKind, ObjectView, Offer, OfferKind, Pos as TilePos, TileMask,
-    TileView, Viewers,
+    AdventureEvent, AdventureEventKind, ObjectKind, ObjectView, Offer, OfferKind, Pos as TilePos,
+    TileMask, TileView, Viewers,
 };
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
@@ -18,8 +18,8 @@ use proptest::test_runner::TestCaseError;
 
 use super::import::object;
 use super::play::{
-    BLOCKERS, FAITHFUL, HERO_TEMPLATE, STRICT, Slots, Spot, army, lay_out, options, plan, resolve,
-    slots, start_on, steps, tile,
+    BLOCKERS, FAITHFUL, HERO_TEMPLATE, STRICT, Slots, Spot, army, lay_out, masks, options, plan,
+    player_of, resolve, slots, start_on, steps, tile,
 };
 use crate::model::{Body, Object, Pos, RawMap, Stack};
 
@@ -85,7 +85,7 @@ fn own_army() -> impl Strategy<Value = Vec<Option<(u16, u16)>>> {
 /// The tiles a template anchored at `anchor` covers on the map (blocked and visitable).
 fn covers(anchor: Spot, template: usize, side: u8) -> impl Iterator<Item = Spot> {
     let (ax, ay, az) = anchor;
-    let (blocked, visitable) = BLOCKERS[template % BLOCKERS.len()];
+    let (blocked, visitable) = masks(template);
     blocked
         .iter()
         .chain(visitable)
@@ -704,7 +704,7 @@ proptest! {
         for step in &steps {
             let legal = options(&end, rules);
             let (actor, command) = resolve(&end, rules, &legal, step);
-            let _ = apply(&mut end, rules, Actor::Player(actor), command, &mut Vec::new());
+            let _ = apply(&mut end, rules, actor, command, &mut Vec::new());
         }
         let explored = |x: i16, y: i16, z: u8| {
             u16::try_from(x)
@@ -730,13 +730,16 @@ proptest! {
             let legal = options(&a, rules);
             let (actor, command) = resolve(&a, rules, &legal, step);
             let (mut ea, mut eb) = (Vec::new(), Vec::new());
-            let (from_a, from_b) = (tiles(&a, actor), tiles(&b, actor));
-            let ra = apply(&mut a, rules, Actor::Player(actor), command.clone(), &mut ea);
-            let rb = apply(&mut b, rules, Actor::Player(actor), command, &mut eb);
-            if actor == viewer {
+            // The system's commands play a monster's battle against `player`'s hero (E08
+            // T20b3b1): they count as that player's.
+            let player = player_of(&a, actor);
+            let (from_a, from_b) = (tiles(&a, player), tiles(&b, player));
+            let ra = apply(&mut a, rules, actor, command.clone(), &mut ea);
+            let rb = apply(&mut b, rules, actor, command, &mut eb);
+            if actor == Actor::Player(viewer) {
                 prop_assert_eq!(ra, rb);
-            } else if outcome((actor, ra.is_ok()), &from_a, &a, &ea)
-                != outcome((actor, rb.is_ok()), &from_b, &b, &eb)
+            } else if outcome((player, ra.is_ok()), &from_a, &a, &ea)
+                != outcome((player, rb.is_ok()), &from_b, &b, &eb)
             {
                 // The other player's command did not do the same in both games.
                 break;
@@ -752,10 +755,25 @@ proptest! {
             if battle(&ta) || battle(&tb) {
                 break;
             }
+            // A monster's answer follows from its aggression, drawn from the seed and never
+            // shown (ADV-MON-002, ADV-MON-007; E08 T20b3b1): the comparison ends when the viewer
+            // is told a monster's offer, as at a battle.
+            let answered = |events: &[GameEvent]| {
+                events.iter().any(|e| match *e {
+                    GameEvent::OfferOpened { object_type, .. } => matches!(
+                        rules.adventure().object_type(object_type).map(|t| &t.kind),
+                        Some(ObjectKind::Monster { .. })
+                    ),
+                    _ => false,
+                })
+            };
+            if answered(&ta) || answered(&tb) {
+                break;
+            }
             let bought = ta
                 .iter()
                 .any(|e| matches!(e, GameEvent::OfferAnswered { accepted: true, .. }));
-            if actor == viewer && (ta != tb || bought) {
+            if actor == Actor::Player(viewer) && (ta != tb || bought) {
                 // The viewer learned a pickup's contents or bought a reveal: only what it gained
                 // and how many tiles it explored may differ.
                 let blind = |events: Vec<GameEvent>| -> Vec<Option<GameEvent>> {
@@ -803,10 +821,10 @@ proptest! {
             let legal = options(&state, rules);
             let (actor, command) = resolve(&state, rules, &legal, step);
             let mut events = Vec::new();
-            let result = apply(&mut state, rules, Actor::Player(actor), command, &mut events);
+            let result = apply(&mut state, rules, actor, command, &mut events);
             for (&player, view) in players.iter().zip(&mut views) {
                 let after = observe(&state, rules, Viewer::Player(player));
-                let own = player == actor && result.is_ok();
+                let own = Actor::Player(player) == actor && result.is_ok();
                 check_told(player, (view, &after), &told(&events, player), own)?;
                 *view = after;
             }
