@@ -17,6 +17,8 @@ depends = []
 groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], breath = [17, 18, 19], move_start = 20, move_end = 21, turn_left = [7, 10], turn_right = [9, 8] }
 hero_groups = { standing = 0, idle = 1, defeat = 2, victory = 3, cast = 4 }
 flags = ["CmFlagL.def", "CmFlagR.def"]
+magic = [{ def = "Heal.def", place = 1, translucent = true }]
+heal_sound = "Regener"
 
 [[hero]]
 key = "orrin"
@@ -296,8 +298,47 @@ fn a_moment_draws_each_stack_in_its_pose() {
         }),
         ray: Some(ray.clone()),
         heroes: [None; 2],
+        // E17 M3 T3b: a magic animation over the walking Pikemen (stack 0) and over a stack
+        // that is not in the battle.
+        magic: Some(Magic {
+            def: "Heal.def".to_string(),
+            frame: 1,
+            translucent: true,
+            over: vec![(0, [7, 8], false), (9, [1, 1], true)],
+        }),
     };
     let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
+    // The magic animation right after its stack's sprite, once.
+    let walker = list
+        .iter()
+        .position(|d| {
+            matches!(
+                d,
+                Draw::Creature {
+                    group: 0,
+                    frame: 3,
+                    ..
+                }
+            )
+        })
+        .unwrap();
+    assert_eq!(
+        list[walker + 1],
+        Draw::Magic {
+            def: "Heal.def".to_string(),
+            frame: 1,
+            x: 7,
+            y: 8,
+            mirrored: false,
+            translucent: true,
+        }
+    );
+    assert_eq!(
+        list.iter()
+            .filter(|d| matches!(d, Draw::Magic { .. }))
+            .count(),
+        1
+    );
     // T4b-1: the projectile over everything, then the ray (M3 T1b-1); the outline three idle
     // steps on (§4.2).
     assert_eq!(list.last(), Some(&Draw::Ray(ray)));

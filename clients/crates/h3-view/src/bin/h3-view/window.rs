@@ -22,7 +22,7 @@ use std::process::ExitCode;
 
 use h3_render::screen::Screen;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
-use h3_view::anim::Speed;
+use h3_view::anim::{Sound, Speed};
 use h3_view::clock::Clock;
 use h3_view::compose::FORMAT;
 use h3_view::cursor::{self, Cursor};
@@ -305,7 +305,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         None
     } else {
         let stacks = battle.stack_sounds();
-        Some(Library::load(&source.install, opening, stacks, &mut lines)?)
+        // The tent's heal sound, if the battle heals (E17 M3 T3b).
+        let heals = battle.timeline.cues.iter().any(|c| c.sound == Sound::Heal);
+        let heal = heals.then_some(battle.tables.battle.heal_sound.as_str());
+        Some(Library::load(
+            &source.install,
+            opening,
+            stacks,
+            heal,
+            &mut lines,
+        )?)
     };
     let mut player = match library.as_ref().map(Player::open) {
         Some(Ok(p)) => Some(p),

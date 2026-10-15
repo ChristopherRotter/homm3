@@ -96,6 +96,12 @@ const FLAGS: [u32; 2] = [0x66_FF04, 0x66_FEF8];
 const HERO_INFO: (u32, usize, usize) = (0x67_9DD0, 156, 0x5C);
 const HERO_CLASSES: (u32, usize, usize) = (0x67_D868, 18, 0x40);
 const HERO_DEFS: (u32, usize, usize) = (0x63_BD40, 18, 0x10);
+/// The magic animations (E17 M3 T3b, design §7.15): `PlayMagicAnimation` 0x496840's table, 83
+/// records of 12 bytes: the DEF's name (+0), a force-feedback effect's name (+4, IFC20's; not
+/// harvested) and the kind (+8: the low byte where it is drawn, bit 8 the translucent drawer).
+const MAGIC: (u32, usize, usize) = (0x64_1E08, 83, 12);
+/// The heal's sound `first_aid_tent_action` plays (0x478C46, `Regener.wav`).
+const HEAL_SOUND: u32 = 0x66_0A94;
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -197,6 +203,9 @@ struct Harvest {
     hero_defs: Vec<String>,
     hero_names: Vec<String>,
     flags: [String; 2],
+    /// The magic animations: DEF, place, translucent.
+    magic: Vec<(String, u8, bool)>,
+    heal_sound: String,
     obstacles: Vec<(String, u8, u8)>,
     absolute: Vec<(String, i16, i16)>,
     terrains: Vec<[String; 3]>,
@@ -371,6 +380,17 @@ fn read_harvest(
             .ok_or(format!("hero {id}: class {class}'s town {town}"))?;
         hero_defs.push(def.clone());
     }
+    let mut magic = Vec::new();
+    for k in 0..MAGIC.1 {
+        let record = bytes(&image, exe, MAGIC.0 + to_u32(k * MAGIC.2), MAGIC.2)?;
+        let kind = u32_at(&record, 8);
+        magic.push((string(u32_at(&record, 0))?, kind as u8, kind & 0x100 != 0));
+    }
+    let heal_sound = string(HEAL_SOUND)?;
+    let heal_sound = heal_sound
+        .split_once('.')
+        .map_or(heal_sound.as_str(), |(stem, _)| stem)
+        .to_owned();
     let mut specials = vec![string(SHORE)?];
     let row = bytes(&image, exe, SPECIAL_BACKGROUNDS + 4, 4 * 9)?;
     for k in 0..9 {
@@ -389,6 +409,8 @@ fn read_harvest(
         hero_defs,
         hero_names: hero_names(hotraits),
         flags: [string(FLAGS[0])?, string(FLAGS[1])?],
+        magic,
+        heal_sound,
         obstacles,
         absolute,
         terrains,
@@ -588,6 +610,21 @@ fn write_table(
             "\n[battle]\n{GROUPS}\n{HERO_GROUPS}\nflags = [{}]",
             list(&h.flags)
         );
+        // The magic animations by number (E17 M3 T3b), one a line.
+        let _ = writeln!(t, "magic = [");
+        for (n, (def, place, translucent)) in h.magic.iter().enumerate() {
+            let shown = if *translucent {
+                ", translucent = true"
+            } else {
+                ""
+            };
+            let _ = writeln!(
+                t,
+                "    {{ def = \"{}\", place = {place}{shown} }},  # {n}",
+                plain(def)?
+            );
+        }
+        let _ = writeln!(t, "]\nheal_sound = \"{}\"", plain(&h.heal_sound)?);
     }
     for c in &pack.creature {
         let name = c.name.as_deref().unwrap_or_default();

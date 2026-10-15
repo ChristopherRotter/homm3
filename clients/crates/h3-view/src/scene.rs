@@ -13,7 +13,7 @@ use core::fmt;
 
 use h3_protocol::wire::{Manifest, Observation, Side, Stack};
 
-use crate::anim::{Pose, Projectile, Ray, Timeline};
+use crate::anim::{Magic, Pose, Projectile, Ray, Timeline};
 use crate::hero::{FLAG_START, HeroPose};
 use crate::layout::BattleLayout;
 use crate::tables::{ObstacleArt, Tables};
@@ -44,6 +44,8 @@ pub struct Moment {
     /// The attacker's and the defender's hero and flag (E17 M3 T3a; none: the hero stands, its
     /// flag at its start).
     pub heroes: [Option<HeroPose>; 2],
+    /// The magic animation drawn over stacks (E17 M3 T3b).
+    pub magic: Option<Magic>,
 }
 
 impl Moment {
@@ -59,6 +61,7 @@ impl Moment {
                 .heroes
                 .as_ref()
                 .map_or([None; 2], |h| h.at(timeline, t)),
+            magic: timeline.magic(t),
         }
     }
 }
@@ -142,6 +145,24 @@ pub enum Draw {
         y: i32,
         /// Reflected across its canvas (the right side's).
         mirrored: bool,
+    },
+    /// A magic animation's frame over a stack, right after its sprite (`draw_battle_stack`'s
+    /// tail 0x43E795, §7.15; E17 M3 T3b): group 0, by the plain drawer with runs skipped or the
+    /// translucent one (0x4953B0, which clips it to the battlefield, 0x694F18: the panel below,
+    /// not drawn yet, is the only part of the screen outside it).
+    Magic {
+        /// The DEF.
+        def: String,
+        /// The frame in group 0.
+        frame: u32,
+        /// The canvas's left edge.
+        x: i32,
+        /// The canvas's top edge.
+        y: i32,
+        /// Reflected across its canvas (the stack faces left).
+        mirrored: bool,
+        /// Drawn half and half with what is under it.
+        translucent: bool,
     },
     /// A creature's sprite with the shadow its frame holds, standing on a hex (§4.2).
     Creature {
@@ -357,8 +378,23 @@ pub fn battle_at(
         .stacks
         .iter()
         .filter(|s| s.alive || moment.poses.contains_key(&s.id))
-        .map(|s| creature(s, moment, manifest, tables, layout, at))
-        .collect::<Result<Vec<_>, _>>()?;
+        .map(|s| {
+            let (at, layer, draw) = creature(s, moment, manifest, tables, layout, at)?;
+            // A magic animation over the stack is drawn right after it (E17 M3 T3b).
+            let magic = moment.magic.as_ref().and_then(|m| {
+                let &(_, [x, y], mirrored) = m.over.iter().find(|o| o.0 == s.id)?;
+                Some(Draw::Magic {
+                    def: m.def.clone(),
+                    frame: m.frame,
+                    x,
+                    y,
+                    mirrored,
+                    translucent: m.translucent,
+                })
+            });
+            Ok((at, layer, [Some(draw), magic]))
+        })
+        .collect::<Result<Vec<_>, SceneError>>()?;
     for row in 0..height {
         for pass in 0..PASSES {
             for column in 0..width {
@@ -371,7 +407,7 @@ pub fn battle_at(
                 let here = stacks
                     .iter()
                     .filter(|(at, layer, _)| *layer == pass && *at == (row, column));
-                list.extend(here.map(|(_, _, draw)| draw.clone()));
+                list.extend(here.flat_map(|(_, _, draws)| draws.iter().flatten().cloned()));
             }
         }
     }
@@ -380,7 +416,7 @@ pub fn battle_at(
         stacks
             .iter()
             .filter(|(_, layer, _)| *layer >= PASSES)
-            .map(|(_, _, draw)| draw.clone()),
+            .flat_map(|(_, _, draws)| draws.iter().flatten().cloned()),
     );
     if let Some(p) = &moment.projectile {
         list.push(Draw::Projectile {

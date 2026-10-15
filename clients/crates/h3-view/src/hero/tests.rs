@@ -2,6 +2,7 @@ use super::*;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use crate::anim::tests::magic;
 use crate::anim::{self, Member, Pose, Stage, Timeline};
 use crate::record::tests::observation;
 use crate::scene::Moment;
@@ -31,6 +32,7 @@ fn idle(turns: &[(u32, u8)], actions: Vec<Action>) -> Timeline {
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
+        magic: &magic(),
     };
     let mut timeline = anim::timeline(
         &observation(),

@@ -50,6 +50,10 @@ HERO_POINTERS, HERO_GROUPS, HERO_FRAMES, FLAG_FRAMES = 0x53CC, 0x53E4, 0x53EC, 0
 # The active stack (a pointer: outline 0x60) and the mouse's highlight (+0x132CC set: the stack on
 # the hex +0x132D0 gets outline 0x70) (M2 T4b-1; structs.toml, design §4.2).
 ACTIVE_STACK, MOUSE_HIGHLIGHT, MOUSE_HEX = 0x132C8, 0x132CC, 0x132D0
+# The magic animation (E17 M3 T3b, design §7.15): its number in the table 0x641E08 (+0x132EC,
+# the last loaded) and the frame drawn (+0x132F0); a stack shows it while its byte +0x20 is set
+# (`PlayMagicAnimation` 0x496840, `draw_battle_stack`'s tail 0x43E795).
+MAGIC_ANIMATION, MAGIC_FRAME, MAGIC_SHOWN = 0x132EC, 0x132F0, 0x20
 # Stack fields (structs.toml, battle_stack): name -> offset (all i32).
 FIELDS = {
     "draw_layer": 0x8,
@@ -110,12 +114,15 @@ class Mem:
             "combat_speed": self.i32(COMBAT_SPEED),
             "active": None,
             "mouse_hex": None,
+            "magic": None,
         }
         if manager:
             found["idle_steps"] = self.i32(manager + STEP_COUNTER)
             found["active"] = self.stack_at(manager, self.u32(manager + ACTIVE_STACK))
             if self.read(manager + MOUSE_HIGHLIGHT, 1) != b"\0":
                 found["mouse_hex"] = self.i32(manager + MOUSE_HEX)
+            found["magic"] = [self.i32(manager + MAGIC_ANIMATION),
+                              self.i32(manager + MAGIC_FRAME)]
         return found
 
     @staticmethod
@@ -138,6 +145,7 @@ class Mem:
                 raw = self.read(base, STACK_SIZE)
                 stack = {"side": side, "record": record}
                 stack.update({k: struct.unpack_from("<i", raw, o)[0] for k, o in FIELDS.items()})
+                stack["magic"] = raw[MAGIC_SHOWN]
                 result.append(stack)
         return result
 

@@ -116,7 +116,8 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         Draw::Obstacle { def, .. }
         | Draw::Projectile { def, .. }
         | Draw::Creature { def, .. }
-        | Draw::Hero { def, .. } => vec![def],
+        | Draw::Hero { def, .. }
+        | Draw::Magic { def, .. } => vec![def],
         Draw::Flag { def, palette, .. } => vec![def, palette],
         Draw::Ray(_) => Vec::new(),
     });
@@ -211,6 +212,15 @@ mod tests {
                 palette: "Players.pal".to_string(),
                 player: 0,
             },
+            // A magic animation its DEF (M3 T3b).
+            Draw::Magic {
+                def: "sp12_.def".to_string(),
+                frame: 0,
+                x: 0,
+                y: 0,
+                mirrored: false,
+                translucent: true,
+            },
         ];
         let layout = crate::scene::tests::layout();
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
@@ -225,7 +235,8 @@ mod tests {
                 "GAME.PAL",
                 "OB.DEF",
                 "PLAYERS.PAL",
-                "PLCBOWX.DEF"
+                "PLCBOWX.DEF",
+                "SP12_.DEF"
             ]
         );
     }

@@ -273,6 +273,13 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   drawn, the flags and the heroes' idle motion, defeat and victory over time; the `heroes` mask
   gone from the capture set (28 situations, 44 frames, all exact: every hero picture, the idle
   motion) and from the frame check (the heroes from the original's memory).
+- **T3b done 2026-10-15** ([log](E17-log.md#m3-t3b--the-war-machines-2026-10-15),
+  [design §7.15](E17-design.md)): the war machines drawn as stacks (no count box, no fidget) and
+  numbered as the original's records; an automatic machine's turn ticks the battle loop once;
+  the First Aid Tent's heal under magic animation 79 (`PlayMagicAnimation` read for one stack,
+  the translucent drawer 0x47EF60, the table 0x641E08 harvested). Captured: `war-machines` and
+  the smoke battle (30 situations, 55 frames, all exact) and the hot-seat sequence `machines`
+  (two Ballistas' shots, the heal: timeline and 106 frames exact).
 
 ### Later (refined when they come up)
 
@@ -452,6 +459,15 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T3b: the asset tables' `[battle] magic` (the 83 magic animations by number: DEF, `place`,
+  `translucent`, harvested from 0x641E08) and `heal_sound` (the formats); the heal's sound on the
+  start sound's stream (category 2 has four channels: one built); the battle's wait for the
+  heal's sound at speeds 1 and 2 with the sound on not built (*provisional*: 1 881 ms against
+  the animation's 1 302 at speed 1); an automatic war machine's turn ticks the loop once only
+  when the engine plays it inside a command (the viewer's own fidgets skip that tick); the
+  magic animation's places 3 and above stand on the anchor until T7; the capture set's `smoke`
+  in hot seat (`hot_seat` in `set.toml`).
 
 - T3a: the asset tables' `[[hero]]` (a hero type's key and battle DEF, harvested by the packs'
   order, checked against `hotraits.txt`'s names) and `[battle]`'s `hero_groups` and `flags`; the

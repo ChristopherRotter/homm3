@@ -23,7 +23,8 @@ T2 (2026-10-14): the window, input and audio library chosen by measurement and t
 the window at the times the executable plays them (design §8.2). M2 T5c (2026-10-14): M2 closed
 after a fresh review; M3 (fidelity) refined. M3 T1a, T1c (2026-10-14/15): a battle in progress in
 hot seat, the redraw artifacts classified. M3 T1b-1 (2026-10-15): the Arch Magi's and Beholders'
-energy ray (`h3_view::ray`, design §7.12).
+energy ray (`h3_view::ray`, design §7.12). M3 T3a, T3b (2026-10-15): the heroes and their flags;
+the war machines and the First Aid Tent's heal under its magic animation (design §7.14, §7.15).
 Decisions: ADR-0020
 and the epic file `docs/epics/E17-clients.md`; tasks in `docs/lanes/client/QUEUE.md`.
 
@@ -61,7 +62,8 @@ search the parent directories).
   list (`--list` prints it); the assets load as one checkpoint batch; the PNG goes to
   `clients/out/render/`. Drawn so far: the background (the picture of an empty surrounding,
   CLT-Q4), the obstacles, every living stack standing on its hex, the active stack's outline, the
-  heroes and their flags (M3 T3a); not yet the count boxes, corpses, spell obstacles or the grid. With `--at <ms>` (and
+  heroes and their flags (M3 T3a), the war machines and the heal's magic animation (M3 T3b); not
+  yet the count boxes, corpses, spell obstacles or the grid. With `--at <ms>` (and
   `--speed <0-2>`) the record's commands are played at the original's timing first and each
   stack is drawn in its pose then (`h3_view::anim`, E17 M2 T4a); `--frames <dir>` draws so each
   time a capture's `frames.toml` lists, with the original's fidgets (the capture set, M3 T1b-2).
@@ -142,8 +144,10 @@ on the M1 review list):
 - `[battle]` (in exactly one table of a selection): `groups`, the creature DEF groups the battle
   shows (`moving`, `mouse_over`, `standing`, the reactions `hit`, `defend`, `death`, `strike` and
   `shoot` up, straight and down, `move_start`, `move_end`; design §7), `hero_groups` (a battle
-  hero's: `standing`, `idle`, `defeat`, `victory`, `cast`; M3 T3a) and `flags` (the left and the
-  right side's flag DEFs).
+  hero's: `standing`, `idle`, `defeat`, `victory`, `cast`; M3 T3a), `flags` (the left and the
+  right side's flag DEFs), `magic` (M3 T3b: the magic animations by number, each `def`, `place`,
+  where it is drawn over a stack, 0 on the hex, 1 centred, 2 above, 3 beside, higher not over a
+  stack, and `translucent`; design §7.15) and `heal_sound` (the First Aid Tent's heal).
 - `[[creature]]`: `key`, `def` (the battle sprite), `times` (`cranim.txt`'s fidget interval, walk,
   attack and flight distance as the executable keeps them: scaled by 9000, 500, 500, 115 and
   truncated), optional `troop_count_offset`, `attack_climax`, `missile` (a shooter's projectile

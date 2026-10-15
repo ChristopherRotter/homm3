@@ -248,6 +248,44 @@ fn a_projectile_is_drawn_plain_and_mirrored_toward_the_left() {
 }
 
 #[test]
+fn a_magic_animation_is_drawn_translucent_or_plain() {
+    // E17 M3 T3b (§7.15): group 0's frame over the screen; translucent, its literal pixels half
+    // and half with what is under them and its runs skipped; else plain, its runs skipped.
+    let p = palette(&[(3, RED), (4, WHITE)]);
+    let heal = build::def(
+        0x40,
+        (2, 1),
+        &p,
+        &[(0, &[("f", 0)])],
+        &[row(&[3, 4], &[false, true])],
+    );
+    let mut b = batch();
+    b.add("Heal.def", &heal).unwrap();
+    let magic = |x, mirrored, translucent| Draw::Magic {
+        def: "HEAL.DEF".to_string(),
+        frame: 0,
+        x,
+        y: 0,
+        mirrored,
+        translucent,
+    };
+    let background = Draw::Background {
+        picture: "bg.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    let list = [background, magic(0, false, true), magic(2, true, false)];
+    let screen = compose(&list, &b, &small()).unwrap();
+    let [bl, r] = [BLUE, RED].map(|c| FORMAT.pack(c));
+    let half = FORMAT.half_mask();
+    let blend = ((r >> 1) & half) + ((bl >> 1) & half);
+    assert_eq!(screen.pixels()[..6], [blend, bl, bl, r, bl, bl]);
+    // A DEF the batch lacks.
+    let missing = compose(&[magic(0, false, true)], &batch(), &small()).unwrap_err();
+    assert_eq!(missing, ComposeError::Missing("HEAL.DEF".into()));
+}
+
+#[test]
 fn a_ray_is_written_into_the_screen_in_its_colours() {
     // M3 T1b-1 (§7.12): each pixel its entry's colour scaled into the masks; an entry beyond the
     // colours takes the last; pixels off the battlefield or the screen are left out.

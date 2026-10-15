@@ -924,3 +924,51 @@ machines as T3b), the user agreed.
   timeline as recorded (the scenarios now name their heroes); `h3drive.py set` on the final
   code: 28 situations, 44 frames, all exact; `h3drive.py frames --reuse` on the final code: every
   count as recorded; `check-lane`, `check-docs`, `check-exe-map`.
+
+### M3 T3b — The war machines (2026-10-15)
+
+On `client/e17-m3-t3b`, the user present: the agent proposed T3b (next in the queue; T4 and T7a
+as the alternatives), the user agreed.
+
+- **Starting point:** master at #235 (`9dc7261`, T3a merged), no client pull request open; a fresh
+  sandbox, the original files staged (one LOD per call), the client code's baseline `check.sh`
+  green (`verify-once`: all gates, 100 %).
+- **Code reading** (design §7.15; the map's new entries `play_magic_animation` 0x496840,
+  `battle_load_magic_animation` 0x5A92F0, `battle_draw_magic_frame` 0x4953B0,
+  `force_feedback_effect` 0x4B69F0, `magic_animations` 0x641E08, `heal_sound_name` 0x660A94;
+  `draw_battle_stack`'s tail, `first_aid_tent_action` and `draw_frame_transparent` read; the
+  stack's +0x20 and +0x16C, the manager's +0x132E8 to +0x132F0): war machines are drawn as any
+  stack, without a count box (flag 0x40) and, their DEFs lacking group 1, without fidgets; the
+  original's records put them after each side's army in the setup's order (Catapult, Ballista,
+  tent, Ammo Cart). The tent's heal: no animation of the tent, `Regener.wav`, the log's line,
+  magic animation 79 (`sp12_.def`) over the patient a frame per 100 ms, then the wait for the
+  sound. The magic animation's place by the table entry's kind (0 on the hex, 1 centred on the
+  creature, 2 above it, 3 beside it), drawn after the stack's sprite; bit 8 the translucent
+  drawer (literal pixels half and half, runs skipped). The table's second name is a
+  force-feedback effect's (IFC20), not a sound.
+- **The capture set:** `h3-view situation` writes each side's war machines as its hero's
+  artifacts (slots 13 to 15, the packs' artifacts 4 to 6); `war-machines` (all three on both
+  sides, grass, 9 frames to 800 ms): exact on the first run (no count box beside a machine, the
+  tent standing in frame 0 although its group 2 has six). The smoke battle (`scenarios/smoke.toml`
+  with the smoke map's heroes and Orrin's Ballista) as `smoke`, in hot seat (the set's
+  `hot_seat`, new) so that the Wolf Riders open idle: exact at 0 and 400 ms. 30 situations, 55
+  frames, all exact.
+- **The sequence `machines`** (hot seat): the Pikemen defend, the Archers shoot them; then the
+  attacker's Ballista shoots right, the defender's left, the tent heals the Pikemen; round 2 the
+  Archers defend. The first comparison differed only in the order of lines at the same
+  millisecond: the viewer numbered war machines by the engine's ids (Ballista, Ammo Cart, tent);
+  numbered as the original's records, the timeline matched. The frame check then showed the
+  flags behind from the first Ballista on: the original runs an idle step at each automatic war
+  machine's turn (as at the computer's, §7.9), outlining it until its first frame; built, all 106
+  frames exact, the heal's translucent frames and the tent's outline through the heal included.
+  The harness reads the magic animation from memory (`h3mem`) and its timeline names it
+  (`magic 79 f<n> 0.0`, `magic -`): the heal's 20 frames from 5 845 ms, erased at 7 845, the next
+  turn at 7 945, as the viewer's.
+- **Built:** the asset tables' `[battle] magic` (83 entries, harvested) and `heal_sound`;
+  `h3_view::anim` (the heal, `MagicLook`, `MagicKey`, `Magic`, `Sound::Heal`, the war machines'
+  records and turns, the idle steps kept by the player), the scene's `Draw::Magic` after its
+  stack's sprite, `h3_render`'s `Drawer::Translucent`; the window plays the heal's sound on the
+  start sound's stream (category 2).
+- **For others:** the original's automatic tent heals the most hurt stack and a machine with
+  nothing to do defends (QUEUE inbox, for the battle lane through the user); the heal's sound
+  wait at the faster speeds (inbox, for T8).

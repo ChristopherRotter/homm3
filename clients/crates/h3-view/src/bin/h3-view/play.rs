@@ -8,7 +8,7 @@ use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use h3_view::anim::Speed;
+use h3_view::anim::{Sound, Speed};
 use h3_view::scene::Moment;
 
 use crate::assets;
@@ -128,10 +128,13 @@ fn play(options: &Options) -> Result<Vec<String>, String> {
     let sounds = battle.stack_sounds();
     let mut cues = String::new();
     for c in &battle.timeline.cues {
-        let name = sounds
-            .get(&c.stack)
-            .and_then(|s| s.name(c.sound))
-            .unwrap_or("-");
+        // The heal's sound is the battle's (E17 M3 T3b).
+        let name = if c.sound == Sound::Heal {
+            Some(battle.tables.battle.heal_sound.as_str())
+        } else {
+            sounds.get(&c.stack).and_then(|s| s.name(c.sound))
+        };
+        let name = name.unwrap_or("-");
         let what = if c.stop { "stop" } else { "start" };
         let _ = writeln!(cues, "{} {} {:?} {what} {name}", c.at, c.stack, c.sound);
     }

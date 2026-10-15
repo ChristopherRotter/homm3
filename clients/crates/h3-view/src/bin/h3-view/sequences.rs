@@ -211,7 +211,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
             .map_or("", |p| p.id.as_str());
         let tables = assets::load(&assets::default_dir(), top)?;
         let looks = motion::looks(&record, &tables, &archives)?;
-        let stage = motion::stage(&record, &tables, &layout);
+        let magic = motion::magic(&record, &tables, &archives)?;
+        let stage = motion::stage(&record, &tables, &layout, &magic);
         // The harness acts `pre` ms after the opening, and then at each command's `at`.
         let commands: Vec<anim::Command<'_>> = record
             .messages

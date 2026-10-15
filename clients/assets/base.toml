@@ -12,6 +12,92 @@ depends = []
 groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], breath = [17, 18, 19], move_start = 20, move_end = 21, turn_left = [7, 10], turn_right = [9, 8] }
 hero_groups = { standing = 0, idle = 1, defeat = 2, victory = 3, cast = 4 }
 flags = ["CmFlagL.def", "CmFlagR.def"]
+magic = [
+    { def = "C10spW.def", place = 0, translucent = true },  # 0
+    { def = "C11spA0.def", place = 2 },  # 1
+    { def = "C01spA0.def", place = 1 },  # 2
+    { def = "C02spA0.def", place = 1 },  # 3
+    { def = "C01spE0.def", place = 1 },  # 4
+    { def = "C02spE0.def", place = 1 },  # 5
+    { def = "C02spF0.def", place = 1 },  # 6
+    { def = "C04spA0.def", place = 1 },  # 7
+    { def = "C04spE0.def", place = 1 },  # 8
+    { def = "C04spF0.def", place = 1 },  # 9
+    { def = "C05spE0.def", place = 0 },  # 10
+    { def = "C05spF0.def", place = 1 },  # 11
+    { def = "C06spF0.def", place = 15 },  # 12
+    { def = "C07spA0.def", place = 15 },  # 13
+    { def = "C07spA1.def", place = 1, translucent = true },  # 14
+    { def = "C0fear.def", place = 1, translucent = true },  # 15
+    { def = "C08spE0.def", place = 1 },  # 16
+    { def = "C08spF0.def", place = 1 },  # 17
+    { def = "C09spA0.def", place = 1 },  # 18
+    { def = "C09spE0.def", place = 0 },  # 19
+    { def = "C09spW0.def", place = 1 },  # 20
+    { def = "C10spA0.def", place = 1 },  # 21
+    { def = "C11spE0.def", place = 0 },  # 22
+    { def = "C11spF0.def", place = 0 },  # 23
+    { def = "C11spW0.def", place = 0 },  # 24
+    { def = "C12spA0.def", place = 1 },  # 25
+    { def = "C13spA0.def", place = 0 },  # 26
+    { def = "C13spE0.def", place = 1 },  # 27
+    { def = "C13spW0.def", place = 1 },  # 28
+    { def = "C14spA0.def", place = 1, translucent = true },  # 29
+    { def = "C14spE0.def", place = 1 },  # 30
+    { def = "C15spA0.def", place = 0 },  # 31
+    { def = "C15spE0.def", place = 0 },  # 32
+    { def = "C15spE9.def", place = 0 },  # 33
+    { def = "C18spW0.def", place = 0 },  # 34
+    { def = "C01spF0.def", place = 1 },  # 35
+    { def = "C01spW0.def", place = 1 },  # 36
+    { def = "C03spA0.def", place = 2 },  # 37
+    { def = "C03spA1.def", place = 1 },  # 38
+    { def = "C03spW0.def", place = 1 },  # 39
+    { def = "C04spW0.def", place = 1 },  # 40
+    { def = "C05spW0.def", place = 1 },  # 41
+    { def = "C06spW0.def", place = 1 },  # 42
+    { def = "C07spF0.def", place = 4 },  # 43
+    { def = "C07spF9.def", place = 4 },  # 44
+    { def = "C07spW0.def", place = 1 },  # 45
+    { def = "C08spW5.def", place = 1, translucent = true },  # 46
+    { def = "C09spF0.def", place = 4 },  # 47
+    { def = "C10spF0.def", place = 1 },  # 48
+    { def = "C11spA1.def", place = 0 },  # 49
+    { def = "C12spE0.def", place = 1, translucent = true },  # 50
+    { def = "C12spF0.def", place = 1 },  # 51
+    { def = "C12spF1.def", place = 1, translucent = true },  # 52
+    { def = "C13spF.def", place = 1 },  # 53
+    { def = "C16spE0.def", place = 1 },  # 54
+    { def = "C17spE0.def", place = 4 },  # 55
+    { def = "C17spW0.def", place = 1 },  # 56
+    { def = "C09spF3.def", place = 0 },  # 57
+    { def = "C17spE2.def", place = 4 },  # 58
+    { def = "C09spF2.def", place = 4 },  # 59
+    { def = "C15spE2.def", place = 4 },  # 60
+    { def = "C15spE11.def", place = 4 },  # 61
+    { def = "C07spF2.def", place = 4 },  # 62
+    { def = "C07spF11.def", place = 4 },  # 63
+    { def = "C20SPX.DEF", place = 1 },  # 64
+    { def = "C07spF60.def", place = 4 },  # 65
+    { def = "C07spF62.def", place = 4 },  # 66
+    { def = "sp11_.def", place = 1 },  # 67
+    { def = "sp02_.def", place = 0 },  # 68
+    { def = "sp05_.def", place = 1 },  # 69
+    { def = "sp10_.def", place = 0 },  # 70
+    { def = "sp01_.def", place = 1 },  # 71
+    { def = "sp04_.def", place = 15, translucent = true },  # 72
+    { def = "sp03_.def", place = 1 },  # 73
+    { def = "sp06_.def", place = 1, translucent = true },  # 74
+    { def = "sp07_A.def", place = 1 },  # 75
+    { def = "sp07_B.def", place = 1 },  # 76
+    { def = "sp08_.def", place = 0 },  # 77
+    { def = "sp09_.def", place = 3 },  # 78
+    { def = "sp12_.def", place = 1, translucent = true },  # 79
+    { def = "c07spe0.def", place = 1 },  # 80
+    { def = "c0acid.def", place = 1 },  # 81
+    { def = "poof.def", place = 0 },  # 82
+]
+heal_sound = "Regener"
 
 [[creature]]
 key = "pikeman"  # original id 0

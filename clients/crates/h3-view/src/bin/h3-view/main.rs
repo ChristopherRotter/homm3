@@ -80,8 +80,9 @@ commands:
   situation <scenario.toml> [--packs <dir>] [--install <dir>] [--out <file.h3m>]
           writes the original's map for a scenario's battle, for the capture harness
           (clients/capture/README.md): Red's hero (human) just west of Blue's (computer) on the
-          scenario's terrain, each with the scenario's stacks in their slots and its formation, no
-          skills, artifacts or war machines; stepping Red's hero east starts the battle. The
+          scenario's terrain, each with the scenario's stacks in their slots, its formation and its
+          war machines (as artifacts), no skills or other artifacts; stepping Red's hero east
+          starts the battle (--hot-seat: Blue a human too). The
           creatures' original ids from the installation's crtraits.txt; the map defaults to
           clients/out/situation/<stem>.h3m.
   sequences [<id>] [--speed <0-2>] [--packs <dir>] [--install <dir>] [--out <dir>]

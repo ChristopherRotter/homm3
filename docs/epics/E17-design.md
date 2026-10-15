@@ -132,6 +132,7 @@ codes; raw pixels are drawn with their palette colour by every drawer below exce
 | 0x47D0A0 | 3 (1 → 0x47C9E0) | 5 takes the flag colour when one is given; every other run skipped: no shadow |
 | 0x47D930 (shadow pass; raw pixels skipped) | 3 | 1 border, 4 body, the rest skipped |
 | 0x47DD40 | 0, 2 | encoding 0 has no runs: every index drawn, 0–7 included; encoding 2: runs skipped |
+| 0x47EF60 (with its flag; a magic animation's, §7.15) | 1; 3 → 0x47D4F0; 0, 2 → 0x47DD40 | encoding 1: literal pixels blended half and half with the screen, every run skipped; without the flag the plain drawer with runs skipped |
 
 - **Shadow** (on the 16-bit pixel already in the frame): body `d = (d >> 1) & H`, border
   `d = ((d >> 2) & Q) + ((d >> 1) & H)`, H and Q the half and quarter masks 0x47C460 builds from
@@ -170,8 +171,8 @@ codes; raw pixels are drawn with their palette colour by every drawer below exce
 
 ### 3.5 Still open
 
-The drawers 0x47D4F0, 0x47E820 and 0x47EF60 (a half blend, rotations, H3API's `DrawTransparent`)
-not read; how a 24-bit PCX is drawn, and an 8-bit one outside the cases of §4.4 (index 0 is
+The drawers 0x47D4F0 and 0x47E820 (a half blend, rotations) not read (0x47EF60, H3API's
+`DrawTransparent`, read at M3 T3b: §3.3, §7.15); how a 24-bit PCX is drawn, and an 8-bit one outside the cases of §4.4 (index 0 is
 transparent only when the caller asks), not read; DDrawCompat's expansion (licence first); 555 not
 modelled. The battle screen's open points: §4.7.
 
@@ -717,9 +718,10 @@ the viewer's own generator cannot reproduce.
 
 ### 7.7 Open
 
-- Not read: the teleporting move, the spells' and the magic animations' frames (H3API's
-  PlayMagicAnimation), the heroes' idle groups, the arrow towers' and the catapult's shots, the
-  first aid tent, the sounds' timing. (Read since: the mouse over a stack, §7.13.)
+- Not read: the teleporting move, the spells' magic animations (which, where, when: M3 T7a), the
+  arrow towers' and the catapult's shots, the sounds' timing. (Read since: the mouse over a
+  stack, §7.13; the heroes, §7.14; the First Aid Tent and `PlayMagicAnimation` over one stack,
+  §7.15.)
 - Not in a sequence yet: Haste and Slow (M3 T7b, with the spells), a ray up or down (the rays of
   `shots` are straight; the ray itself does not depend on the group). Recorded since: a strike's
   and a shot's turns (§7.10), a shot up (`behind`) and down, a death by a shot, a defending
@@ -1115,6 +1117,66 @@ viewer's model is `h3_view::hero`.
   210 pixels a frame; five shadows deep at most, so the classifier's limit is five, §7.11); the
   flags exact throughout, so they stand still while a command plays. No hero reacted to a death
   in these recordings (the reactions are read, not yet seen).
+
+### 7.15 The war machines and the magic animation (M3 T3b)
+
+Read in `battle_war_machine_stacks` (0x463600), `stack_load_graphics`, `first_aid_tent_action`
+(0x478B90), `play_magic_animation` (0x496840, H3API's PlayMagicAnimation), `draw_battle_stack`'s
+tail (0x43E795) and the drawers behind it; recorded in the capture set's `war-machines` and
+`smoke` and in the sequence `machines` (hot seat: two Ballistas shoot, the tent heals).
+
+- **Standing.** War machines are stacks drawn as every stack (§4.2) at the engine's places
+  (BAT-WAR-001; the capture shows the same hexes): the Ballista (`SMBAL.DEF`: groups 2, 3, 4, 5,
+  14-16), the First Aid Tent (`SMTENT.DEF`: 2, 3, 4, 5) and the Ammo Cart (`SMCART.DEF`: 2, 3, 4,
+  5). No count box (creature flag 0x40, §4.3; the capture shows none), no fidget (no group 1),
+  and the tent stands in group 2's frame 0 although the group has six. The original's records
+  hold each side's army, then its war machines in the setup's order: the Catapult, the Ballista,
+  the tent, the Ammo Cart, then the turrets (0x463600); the viewer numbers its timeline's
+  records so (the engine's ids follow the kinds: Ballista, Ammo Cart, tent).
+- **Their turns.** Without Artillery or First Aid a war machine acts on its own when its turn
+  starts (the engine plays that turn inside the command before it, BAT-WAR-002/003). As at the
+  computer's turn (§7.9) the battle loop ticks once as it acts: an idle step (the flags, the
+  outline's pulse) and the machine outlined until its action's first frame shows; a Ballista's
+  shot is a shot (§7.4: its groups 14-16, `SMBALX.DEF`, its climax 5) and clears the active
+  stack. Confirmed in `machines`: the attacker's Ballista at 2 221 ms, the defender's at 3 683
+  (its first frame drawn a millisecond later), the tent at 5 845, each an idle step.
+- **The heal.** The tent does not move and stays the active stack (outlined) through its heal:
+  `Regener.wav` starts (category 2, 0x478C46), the log's line (0x472E90), then magic animation 79
+  over the patient (0x478D14: 100 ms a frame, without the patient's hit), then the battle waits
+  for the sound's end (`wait_for_sample`, at most 4 s). The sound lasts 1 881 ms and the
+  animation 2 100 ms at speed 0, so the wait only matters at the faster speeds with sound on (not
+  built: the captures play without sound; *provisional*). The engine picks the patient at
+  random (BAT-WAR-003), the original's automatic tent the stack with the most lost hit points
+  (0x473EA0); a tent or Ballista without anything to do defends there (action 3) and does
+  nothing in the engine: both for the battle lane (QUEUE inbox).
+- **The magic animation** (`play_magic_animation`): nothing while the battle is hidden; the DEF
+  of entry `id` of the table 0x641E08 (83 entries: DEF, a force-feedback effect's name for
+  IFC20, 0x4B69F0, and the kind) is loaded into the manager (+0x132E8, its number +0x132EC) and
+  the target's byte +0x20 set; with `show_hit` the target first plays its hit group (not read
+  further); then each frame of group 0 (+0x132F0) is drawn and shown by a redraw that waits
+  trunc(`time` × F) on the deadline (§7.1), and a last redraw that clears the byte erases it.
+  In `machines` frame i of the heal is drawn at 5 845 + 100 i and shown 100 ms later, erased at
+  7 945, when the next turn starts.
+- **Where it is drawn** (`draw_battle_stack`, part 0, after the stack's sprite and before its
+  count box): x = the position's anchor (22 pixels toward the front of a two-hex stack) − W / 2;
+  y by the kind's low nibble: 0 the anchor − H (standing on the hex), 1 the anchor − H / 2 −
+  h / 2 (centred on the creature), 2 the anchor − H − h (above it), with W, H the DEF's size and h
+  the creature's height (+0x16C: 267 less its standing frame's top, 0x43DD62); 3 beside the
+  standing frame's front edge and higher kinds (whole-field animations) are not built; halves
+  truncated toward zero; mirrored when the stack faces left. It goes through 0x4953B0 (clipped to
+  the battlefield) to the drawer 0x47EF60: with the kind's bit 8 encoding 1's literal pixels
+  blend half and half with the screen, ((c >> 1) & H) + ((d >> 1) & H), and every run is
+  skipped; without it the plain drawer with runs skipped (§3.3). The heal's `sp12_.def` (20
+  frames of 95 × 94) is centred and translucent.
+- **The viewer** (`h3_view::anim`'s heal, `MagicKey`, the scene's `Draw::Magic`, `h3_render`'s
+  `Drawer::Translucent`): the table is harvested into the asset tables' `[battle] magic`, the
+  heal's sound as `heal_sound`; the harness reads the magic animation from memory
+  (`h3mem`: +0x132EC, +0x132F0 and each stack's +0x20) and its timeline lines name it
+  (`<ms> magic <number> f<frame> <side>.<record>`, `<ms> magic -`).
+- **Checked:** `war-machines` (all three on both sides, 9 frames) and `smoke` (the M1 smoke
+  battle with its heroes and Orrin's Ballista, in hot seat so that the Wolf Riders open idle; 2
+  frames) exact; `machines`' timeline as recorded on the first run (after the records' order)
+  and its 106 frames exact, the heal's translucent frames and the tent's outline included.
 
 ## 8. The window, input and audio evaluation (M2 T2)
 
