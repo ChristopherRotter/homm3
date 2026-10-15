@@ -342,12 +342,18 @@ def write_screens(screens):
     SCREENS.write_text("\n".join(lines) + "\n")
 
 
-def capture(game, map_path, out, frames, key="Right"):
+def capture(game, map_path, out, frames, key="Right", stacks=None):
     """The battle of the map: its opening, then a dump at each time in `frames` (ms after the
-    opening, ascending); returns the dumps' paths."""
+    opening, ascending); returns the dumps' paths. With `stacks` (a list; M3 T1b-2) the stacks
+    the game's memory holds at each dump (h3mem: the fidgets) are appended to it."""
     game.start(map_path)
     to_scenario(game)
     t0 = into_battle(game, key)
+    mem = None
+    if stacks is not None:
+        import h3mem
+
+        mem = h3mem.Mem()
     now, paths = t0, []
     for ms in sorted(frames):
         if ms > now - t0:
@@ -356,6 +362,8 @@ def capture(game, map_path, out, frames, key="Right"):
         path = Path(out) / f"t{ms:05d}.xwd"
         game.dump(path)
         paths.append(path)
+        if mem is not None:
+            stacks.append(mem.stacks())
     return paths
 
 
@@ -383,21 +391,26 @@ def run_set(rest):
         tile = ["--tile", ",".join(map(str, sit["tile"]))] if "tile" in sit else []
         subprocess.run([h3view, "situation", str(scenario), "--out", str(map_path), *tile],
                        check=True, capture_output=True)
-        ours = here / "ours.png"
-        subprocess.run([h3view, "render", str(scenario), "--out", str(ours)], check=True,
-                       capture_output=True)
         frames = {f["at"]: f for f in sit.get("frame", [])} or {0: {"at": 0}}
-        game = Game(here)
+        game, stacks = Game(here), []
         try:
-            paths = capture(game, map_path, here, list(frames))
+            paths = capture(game, map_path, here, list(frames), stacks=stacks)
         finally:
             game.stop()
+        # Our frame at each time (M3 T1b-2): the battle's idle steps (the outline's pulse) on the
+        # original's clock, the original's fidgets taken from its memory, as the frame check does.
+        kept = [{"t": at, "frame": p.name, "stacks": st}
+                for at, p, st in zip(sorted(frames), paths, stacks)]
+        (here / "frames.toml").write_text(frames_toml(kept))
+        ours = here / "ours.png"  # its record: ours.jsonl (the count boxes' masks)
+        subprocess.run([h3view, "render", str(scenario), "--out", str(ours), "--frames",
+                        str(here)], check=True, capture_output=True)
         for (at, frame), path in zip(sorted(frames.items()), paths):
             # The pixels' digest: an XWD file's colour map holds bytes the X server leaves unset.
             pixels = xwd565(path.read_bytes()).tobytes()
             digests.append(f"{hashlib.sha1(pixels).hexdigest()}  {sid}/{path.name}")
-            n = h3cap.diff(path, ours, ours.with_suffix(".jsonl"), sit.get("mask", []),
-                           here / f"diff-t{at:05d}.png", quiet=True)
+            n = h3cap.diff(path, here / "ours" / f"{path.stem}.png", ours.with_suffix(".jsonl"),
+                           sit.get("mask", []), here / f"diff-t{at:05d}.png", quiet=True)
             expected = frame.get("differing")
             verdict = "ok" if n == expected else "CHANGED" if expected is not None else "new"
             failed += verdict != "ok"
@@ -661,6 +674,10 @@ def run_frames(rest):
     h3view = str(ROOT / "clients" / "target" / "release" / "h3-view")
     failed = 0
     for e in entries:
+        if not e.get("command"):
+            # The viewer cannot play it (a hover, M3 T1b-2: no engine command): its timeline only.
+            print(f"{e['id']}: no engine commands, no frames", flush=True)
+            continue
         here = out / e["id"]
         here.mkdir(parents=True, exist_ok=True)
         if not (reuse and (here / "frames.jsonl").exists()):

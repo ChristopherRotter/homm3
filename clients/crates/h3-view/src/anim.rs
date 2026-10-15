@@ -13,10 +13,11 @@
 //! T4b-2a added the turns, the draw layers and the viewer's own fidgets, T5b the sounds' cues.
 //!
 //! *Provisional* (the M2 review list): the next command's default start, a command without a
-//! time counting as the computer's (the idle step and the outline), the flight's cycles rounding;
-//! a breath told by its second stack's place (E17 M2 T5c). Not yet (E17 M3 T1): the spells'
-//! sprites, deaths other than by a strike, created stacks (a strike by a stack the timeline does
-//! not know plays its reactions alone).
+//! time counting as the computer's (the idle step and the outline), the flight's cycles rounding.
+//! Confirmed by the recorded `fly` (E17 M3 T1b-2): a flier's cycles over every row, a breath
+//! told by its second stack's place. Not yet (E17 M3 T1): the spells' sprites, deaths other than
+//! by a strike, created stacks (a strike by a stack the timeline does not know plays its
+//! reactions alone).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -56,7 +57,8 @@ const CORPSE: u8 = 1;
 /// Not a pass: a flier between its hexes (E17 M2 T5a, design §7.10). The flight takes it off its
 /// hexes (0x468730, from 0x4B4BFE), so no row pass draws it, and draws it by itself at each
 /// point over the whole battlefield (0x4B4D60); it stands on the landing hex again before group
-/// 21 (0x4B4E24). The scene draws this layer after every row.
+/// 21 (0x4B4E24). The scene draws this layer after every row: the recorded `fly`'s cycles across
+/// rows match the original's frames (E17 M3 T1b-2).
 pub const FLYING: u8 = 8;
 /// A projectile's step length in pixels: trunc((d + 20) / 40) steps (§7.4).
 const STEP_PIXELS: u64 = 40;
@@ -1553,7 +1555,8 @@ impl Player<'_> {
     /// Whether `live`'s strike on `hit` is a breath: a second stack struck stands beyond its
     /// neighbours. `melee_strike` strikes the stack behind its target only for a creature with
     /// flag 0x8 (0x44171B; its second stack [ebp − 8], 0x441A35); a multi-headed striker's
-    /// stacks all stand beside it (*provisional*: the record does not name the ability).
+    /// stacks all stand beside it (the record does not name the ability; the recorded `fly`'s
+    /// breath confirms it, E17 M3 T1b-2).
     fn breath(&self, live: &Live, hit: &[(u8, u32)]) -> bool {
         let near: Vec<u8> = live
             .covers(live.hex)

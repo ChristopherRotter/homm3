@@ -253,6 +253,13 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   integers (`h3_view::ray`); the hot-seat sequence `shots` (three rays, the Cyclops' throws, a
   defend reaction, a death by a shot) as recorded, all 139 frames equal to the original's outside
   the masks; a shooter now plays its group out beyond the reactions.
+- **T1b-2 done 2026-10-15** ([log](E17-log.md#m3-t1b-2--flights-the-breath-the-mouse-and-the-set-by-time-2026-10-15),
+  [design §7.13](E17-design.md)): the hot-seat sequence `fly` (two flights across rows, a
+  breath on two stacks) as recorded on the first run, its frames exact or redraw artifacts only:
+  a flier's layer 8 and the breath's groups and detection lifted from *provisional*; the mouse
+  over a stack read (`battle_mouse_stack` 0x477C20: group 1 at once, the outline 0x70) and
+  recorded (`hover`), the window's mouse-over queued for T6; the capture set compares each frame
+  at its time, all 17 exact outside the masks.
 
 ### Later (refined when they come up)
 
@@ -403,7 +410,8 @@ original cannot be matched (the fidgets' generator); the others are lifted.
   drawer without an outline; for the hardware cursor drawn over black and white (shadow pixels
   as black with alpha; this cursor has none). The executable's cursor code is M3's.
 - A flier's cycles in layer 8, drawn after every row (T5a, design §7.10): from the code reading
-  only; a recorded flight across rows (T4b-2b) checks it against the original's frames.
+  only; a recorded flight across rows (T4b-2b) checks it against the original's frames
+  (confirmed in M3 T1b-2, sequence `fly`).
 - `h3_view::clock` and `Screen::xrgb` in the pure crates (T5a); `play` and `window` share
   `bin/h3-view/battle.rs`; an executable copied into a checkout's `clients/` finds the tables,
   layouts and packs from its own place (`assets::clients_dir`).
@@ -432,6 +440,11 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
 
+- T1b-2: `h3-view render --frames <dir>` (the capture set's frames by time, the original's
+  fidgets from its memory, `frames.toml` as the frame check's); a recorded sequence without
+  engine commands (`hover`: the original's timeline only, skipped by `h3-view sequences` and the
+  frame check); the set's recorded counts all 0.
+
 - T1b-1: the asset tables' `ray` field (a ray shooter's five colours, R, G, B from the edge
   inward, harvested from the executable's tables); a frame drawn and never shown is kept in the
   timeline as drawn (a key shown at `u32::MAX`), so `lines()` matches the original's memory
@@ -446,6 +459,6 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 
 - The reviewer's fixes (M2 T5c): a command's last layer changes show at the first idle step after
   it (*provisional*, as after the last command); a breath told by its second stack standing beyond
-  the striker's neighbours (*provisional*: the record does not name the ability), the asset
+  the striker's neighbours (the record does not name the ability; confirmed in M3 T1b-2), the asset
   tables' `breath = [17, 18, 19]`; a strike or shot by a stack the timeline does not know plays
   its targets' reactions alone; `Timeline::still`, which ends the window's look-ahead.

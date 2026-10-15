@@ -8,10 +8,12 @@
 #
 # The situations: every land terrain's battlefield (its third background: nothing around the
 # battle, design §4.4), human-first openings (the Royal Griffins' outline), two-hex stacks facing
-# either way, the original's usual obstacles and, at tile (20, 20), an absolute one. The outline:
-# its pixels match exactly, its colour steps through game.pal's yellow ramp every 100 ms (design
-# §4.2, §6); the original's opening already shows the ramp's second entry, our still its first,
-# until the scene runs over time (M2 T3, T4).
+# either way, the original's usual obstacles and, at tile (20, 20), an absolute one. Since M3
+# T1b-2 each frame is compared with ours at its time (`h3-view render --frames`): the outline's
+# pulse on the original's clock (design §4.2, §7.1), a fidget in the original's poses read from
+# its memory (as the frame check, design §7.9). Until then one still stood for every frame: the
+# outline's colour differed by a step of its pulse (412 pixels) and the grass Pikemen's fidget
+# (200 to 700 ms) by up to 2 036.
 
 [[situation]]
 id = "grass"
@@ -20,48 +22,48 @@ mask = ["panel", "heroes", "count_boxes"]
 
 [[situation.frame]]
 at = 0
-differing = 412
-why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+differing = 0
+why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 
 [[situation.frame]]
 at = 100
-differing = 412
-why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+differing = 0
+why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 
 [[situation.frame]]
 at = 200
-differing = 1945
-why = "the outline's colour; the Pikemen's idle animation (M2 T4)"
+differing = 0
+why = "exact: the Pikemen's fidget in the original's poses (M3 T1b-2)"
 
 [[situation.frame]]
 at = 300
-differing = 2036
-why = "the outline's colour; the Pikemen's idle animation (M2 T4)"
+differing = 0
+why = "exact: the Pikemen's fidget in the original's poses (M3 T1b-2)"
 
 [[situation.frame]]
 at = 400
-differing = 1832
-why = "the outline's colour; the Pikemen's idle animation (M2 T4)"
+differing = 0
+why = "exact: the Pikemen's fidget in the original's poses (M3 T1b-2)"
 
 [[situation.frame]]
 at = 500
-differing = 1832
-why = "the outline's colour; the Pikemen's idle animation (M2 T4)"
+differing = 0
+why = "exact: the Pikemen's fidget in the original's poses (M3 T1b-2)"
 
 [[situation.frame]]
 at = 600
-differing = 1695
-why = "the outline's colour; the Pikemen's idle animation (M2 T4)"
+differing = 0
+why = "exact: the Pikemen's fidget in the original's poses (M3 T1b-2)"
 
 [[situation.frame]]
 at = 700
-differing = 1283
-why = "the Pikemen's idle animation (M2 T4); the outline matches"
+differing = 0
+why = "exact: the Pikemen's fidget in the original's poses (M3 T1b-2)"
 
 [[situation.frame]]
 at = 800
-differing = 412
-why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+differing = 0
+why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 
 [[situation]]
 id = "dirt"
@@ -70,8 +72,8 @@ mask = ["panel", "heroes", "count_boxes"]
 
 [[situation.frame]]
 at = 0
-differing = 412
-why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+differing = 0
+why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 
 [[situation]]
 id = "sand"
@@ -80,8 +82,8 @@ mask = ["panel", "heroes", "count_boxes"]
 
 [[situation.frame]]
 at = 0
-differing = 412
-why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+differing = 0
+why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 
 [[situation]]
 id = "snow"
@@ -90,8 +92,8 @@ mask = ["panel", "heroes", "count_boxes"]
 
 [[situation.frame]]
 at = 0
-differing = 412
-why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+differing = 0
+why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 
 [[situation]]
 id = "swamp"
@@ -100,8 +102,8 @@ mask = ["panel", "heroes", "count_boxes"]
 
 [[situation.frame]]
 at = 0
-differing = 412
-why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+differing = 0
+why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 
 [[situation]]
 id = "rough"
@@ -110,8 +112,8 @@ mask = ["panel", "heroes", "count_boxes"]
 
 [[situation.frame]]
 at = 0
-differing = 412
-why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+differing = 0
+why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 
 [[situation]]
 id = "subterranean"
@@ -120,8 +122,8 @@ mask = ["panel", "heroes", "count_boxes"]
 
 [[situation.frame]]
 at = 0
-differing = 412
-why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+differing = 0
+why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 
 [[situation]]
 id = "lava"
@@ -130,8 +132,8 @@ mask = ["panel", "heroes", "count_boxes"]
 
 [[situation.frame]]
 at = 0
-differing = 412
-why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+differing = 0
+why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 
 [[situation]]
 id = "dirt-absolute"
@@ -141,5 +143,5 @@ mask = ["panel", "heroes", "count_boxes"]
 
 [[situation.frame]]
 at = 0
-differing = 412
-why = "the outline's colour, a step of its pulse (M2 T3, T4)"
+differing = 0
+why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
