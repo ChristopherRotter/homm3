@@ -9,7 +9,9 @@
 use std::path::PathBuf;
 
 use super::gzip_with;
-use super::play::{BLOCKERS, FAITHFUL, KINDS, Plan, Spot, lay_out};
+use super::play::{
+    BLOCKERS, FAITHFUL, GROUND_OBJECTS, GUARDED, KINDS, MONSTER_OBJECTS, Plan, Spot, lay_out, masks,
+};
 use crate::model::Version;
 use crate::{Limits, import, read};
 
@@ -120,6 +122,8 @@ enum Area {
 struct Placer<'a> {
     side: u8,
     tiles: &'a [Codes],
+    /// The heroes' tiles (E08 T20b3b2: no monster guards one).
+    heroes: Vec<Spot>,
     /// Tiles covered by a blocker, a hero or a placed object.
     taken: Vec<bool>,
     /// Tiles kept free beside a placed object's visitable tile.
@@ -133,6 +137,10 @@ impl<'a> Placer<'a> {
         let mut placer = Placer {
             side,
             tiles,
+            heroes: heroes
+                .iter()
+                .map(|&(x, y, z)| (x % side, y % side, z % 2))
+                .collect(),
             taken: vec![false; count],
             kept: vec![false; count],
             placed: Vec::new(),
@@ -161,9 +169,9 @@ impl<'a> Placer<'a> {
         Some((x.checked_sub(column)?, y.checked_sub(row)?, z))
     }
 
-    /// Every tile of `object` at `anchor` (`None` for one off the map).
+    /// Every tile of `object` at `anchor` (`None` for one off the map): its [`masks`].
     fn covered(&self, anchor: Spot, object: usize) -> Vec<Option<Spot>> {
-        let (blocked, visitable) = BLOCKERS[object % BLOCKERS.len()];
+        let (blocked, visitable) = masks(object);
         blocked
             .iter()
             .chain(visitable)
@@ -198,62 +206,106 @@ impl<'a> Placer<'a> {
         entries
     }
 
-    /// Places an object of `kind` in `area`: the anchor drawn from `mix` until it fits.
+    /// Places an object of `kind` in `area`: its shape (one with a visitable tile, the road's
+    /// the first) and anchor drawn from `mix` until it fits ([`Self::fits`]).
     fn place(&mut self, mix: &mut Mix, kind: usize, area: Area) {
-        let side = self.side;
-        let middle = side / 2 - 1;
         for _ in 0..100_000 {
             let shape = match area {
                 Area::Road(_) => 1,
                 _ => 1 + usize::from(mix.below(2)),
             };
-            let anchor = match area {
-                Area::Near((hx, hy, hz)) => {
-                    let near = |h: u8, d: u8| u16::from(h) + u16::from(side) + u16::from(d) - 4;
-                    let x = near(hx, mix.below(9)) % u16::from(side);
-                    let y = near(hy, mix.below(9)) % u16::from(side);
-                    (u8::try_from(x).unwrap(), u8::try_from(y).unwrap(), hz)
-                }
-                Area::Road(0) => (1 + mix.below(side - 1), middle, 0),
-                Area::Road(_) => (middle + 1, mix.below(side), 1),
-                Area::Level(z) => (mix.below(side), mix.below(side), z),
-                Area::Anywhere => (mix.below(side), mix.below(side), mix.below(2)),
-            };
-            let object = kind * BLOCKERS.len() + shape;
-            let covered = self.covered(anchor, object);
-            let Some(own) = covered.iter().copied().collect::<Option<Vec<Spot>>>() else {
-                continue;
-            };
-            let (_, visitable) = BLOCKERS[shape];
-            let visit = self.at(anchor, visitable[0]).unwrap();
-            let roads = own.iter().filter(|&&spot| self.road(spot)).count();
-            let fits = match area {
-                Area::Near((hx, hy, _)) => {
-                    let (dx, dy) = (visit.0.abs_diff(hx), visit.1.abs_diff(hy));
-                    let near = u16::from(dx).pow(2) + u16::from(dy).pow(2) <= 20;
-                    roads == 0 && dx.max(dy) >= 2 && near
-                }
-                Area::Road(_) => self.road(visit),
-                Area::Level(_) | Area::Anywhere => roads == 0,
-            };
-            if !fits {
-                continue;
-            }
-            let entries = self.entries(visit, &own);
-            if own.iter().all(|&spot| self.free(spot)) && entries.len() >= 2 {
-                for spot in own {
-                    let i = self.index(spot);
-                    self.taken[i] = true;
-                }
-                for spot in entries {
-                    let i = self.index(spot);
-                    self.kept[i] = true;
-                }
-                self.placed.push((anchor, object));
+            let anchor = self.anchor(mix, area);
+            if self.fits(anchor, kind * BLOCKERS.len() + shape, area) {
                 return;
             }
         }
         panic!("no tile for an object of kind {kind}");
+    }
+
+    /// Places `object` (its shape fixed: a monster's, E08 T20b3b2) in `area`: the anchor drawn
+    /// from `mix` until it fits.
+    fn place_object(&mut self, mix: &mut Mix, object: usize, area: Area) {
+        for _ in 0..100_000 {
+            let anchor = self.anchor(mix, area);
+            if self.fits(anchor, object, area) {
+                return;
+            }
+        }
+        panic!("no tile for object {object}");
+    }
+
+    /// Places the special ground `ground` (E08 T20b3b2) on a land tile of `area` drawn from
+    /// `mix`: it covers no tile, so any object or hero may stand on it.
+    fn place_ground(&mut self, mix: &mut Mix, ground: usize, area: Area) {
+        loop {
+            let anchor = self.anchor(mix, area);
+            if self.tiles[self.index(anchor)].0 < 8 {
+                self.placed.push((anchor, ground));
+                return;
+            }
+        }
+    }
+
+    /// An anchor drawn from `mix` in `area`.
+    fn anchor(&self, mix: &mut Mix, area: Area) -> Spot {
+        let side = self.side;
+        let middle = side / 2 - 1;
+        match area {
+            Area::Near((hx, hy, hz)) => {
+                let near = |h: u8, d: u8| u16::from(h) + u16::from(side) + u16::from(d) - 4;
+                let x = near(hx, mix.below(9)) % u16::from(side);
+                let y = near(hy, mix.below(9)) % u16::from(side);
+                (u8::try_from(x).unwrap(), u8::try_from(y).unwrap(), hz)
+            }
+            Area::Road(0) => (1 + mix.below(side - 1), middle, 0),
+            Area::Road(_) => (middle + 1, mix.below(side), 1),
+            Area::Level(z) => (mix.below(side), mix.below(side), z),
+            Area::Anywhere => (mix.below(side), mix.below(side), mix.below(2)),
+        }
+    }
+
+    /// Whether `object` fits at `anchor` in `area`, and if so places it: every tile of it a free
+    /// land tile on the map, its visitable tile where the area asks, two free land neighbours it
+    /// is visited from not from above kept free, and (E08 T20b3b2) a monster three or more tiles
+    /// from every hero on its level, so no hero starts on or beside a tile it guards (ADV-MON-005):
+    /// a hero's first steps are its own.
+    fn fits(&mut self, anchor: Spot, object: usize, area: Area) -> bool {
+        let covered = self.covered(anchor, object);
+        let Some(own) = covered.iter().copied().collect::<Option<Vec<Spot>>>() else {
+            return false;
+        };
+        let (_, visitable) = masks(object);
+        let visit = self.at(anchor, visitable[0]).unwrap();
+        let roads = own.iter().filter(|&&spot| self.road(spot)).count();
+        let fits = match area {
+            Area::Near((hx, hy, _)) => {
+                let (dx, dy) = (visit.0.abs_diff(hx), visit.1.abs_diff(hy));
+                let near = u16::from(dx).pow(2) + u16::from(dy).pow(2) <= 20;
+                roads == 0 && dx.max(dy) >= 2 && near
+            }
+            Area::Road(_) => self.road(visit),
+            Area::Level(_) | Area::Anywhere => roads == 0,
+        };
+        let monster = MONSTER_OBJECTS.contains(&object);
+        let apart =
+            |&(x, y, z): &Spot| z != visit.2 || x.abs_diff(visit.0).max(y.abs_diff(visit.1)) >= 3;
+        if !fits || (monster && !self.heroes.iter().all(apart)) {
+            return false;
+        }
+        let entries = self.entries(visit, &own);
+        if !(own.iter().all(|&spot| self.free(spot)) && entries.len() >= 2) {
+            return false;
+        }
+        for spot in own {
+            let i = self.index(spot);
+            self.taken[i] = true;
+        }
+        for spot in entries {
+            let i = self.index(spot);
+            self.kept[i] = true;
+        }
+        self.placed.push((anchor, object));
+        true
     }
 }
 
@@ -344,7 +396,41 @@ fn objects(
     for _ in 0..*pillars {
         placer.place(mix, kind(60, 0, None), Area::Level(1));
     }
+    encounters(&mut placer, mix, heroes, scale);
     placer.placed
+}
+
+/// Increment 3's objects (E08 T20b3b2), drawn after increment 2's, so those stay as they were: the
+/// plans' wandering monsters, guarded piles and special grounds (`play.rs`'s `MONSTERS`, `GUARDED`,
+/// `GROUND_OBJECTS`). Beside each hero (its first reveal, so random play meets them early) a
+/// monster, the five kinds in turn by the hero's index (compliant goblins, hostile gogs, weak
+/// pikemen, savage wolf riders, friendly centaurs), on a special ground for every other hero
+/// (Cursed Ground, Magic Plains in turn), and a guarded pile, the two kinds in turn (500 gold whose
+/// guards ask, four crystals whose guards fight at once); then `2 × scale` monsters of each kind,
+/// piles of each guarded kind and grounds of each kind, anywhere. The duel's counts: 14 monsters,
+/// 8 guarded piles, 6 grounds.
+fn encounters(placer: &mut Placer, mix: &mut Mix, heroes: &[Spot], scale: usize) {
+    for (i, &hero) in heroes.iter().enumerate() {
+        let monster = MONSTER_OBJECTS[i % MONSTER_OBJECTS.len()];
+        placer.place_object(mix, monster, Area::Near(hero));
+        if i % 2 == 0 {
+            let (anchor, _) = *placer.placed.last().unwrap();
+            let ground = GROUND_OBJECTS[i / 2 % GROUND_OBJECTS.len()];
+            placer.placed.push((anchor, ground));
+        }
+        placer.place(mix, GUARDED[i % GUARDED.len()].0, Area::Near(hero));
+    }
+    for _ in 0..2 * scale {
+        for &monster in &MONSTER_OBJECTS {
+            placer.place_object(mix, monster, Area::Anywhere);
+        }
+        for &(kind, ..) in &GUARDED {
+            placer.place(mix, kind, Area::Anywhere);
+        }
+        for &ground in &GROUND_OBJECTS {
+            placer.place_ground(mix, ground, Area::Anywhere);
+        }
+    }
 }
 
 /// `e08-duel-36.h3m`: decision 11's random-play map. SoD, 36 × 36 with an underground, red and

@@ -4,38 +4,44 @@
 //! with `-C target-cpu=native`; running it on another OS is the cross-platform check. The replays
 //! play the generated duel map `fixtures/maps/e08-duel-36.h3m` (re-record them with
 //! `h3 adventure run … --record` when a rule or an encoding changes on purpose; the commit says
-//! why). They were recorded with `--map fixtures/maps/e08-duel-36.h3m` and: `duel-s1-d28`
-//! `--seed 1 --agent-seed 1 --days 28`; `duel-s2-d7` `--seed 2 --agent-seed 3 --days 7`;
-//! `duel-s5-strict-d7` `--seed 5 --agent-seed 8 --days 7 --profile base:strict-fixed`;
-//! `duel-s3-easy-d7` `--seed 3 --agent-seed 4 --days 7 --difficulty 0` (E08 T14b: the replay's
-//! difficulty, which `verify` plays at, shows in the treasuries). All four were re-recorded with
-//! the same options in E08 T16a, when the duel got increment 2's typed objects: the 28-day replay
-//! picks up a crystal pile and takes the green key, `duel-s2-d7` a campfire and a sulfur pile,
-//! the strict one a gold pile and the green key; none of these four meets an offer (random play's
-//! moves seldom end on an object: the T16a log). So two more were chosen from a search over
-//! seeds (`--seed N --agent-seed N --days 28` for N up to 1 200, E08 T16a): `duel-s892-d28`
-//! accepts a Cartographer's offer (paid, a level revealed), takes a key and accepts a border
-//! guard's pass (the guard removed), and `duel-s988-d28` declines an offer, accepts one and
-//! visits an observatory, so the matrix replays both answers and both offer kinds. In E08 T19b1
-//! (format v3, the random agent's moves onto other players' heroes) all six were re-recorded with
-//! their options (`duel-s892-d28`'s later moves changed, its answers stayed), and two with hero
-//! battles came from a search over seeds (`--seed N --agent-seed N --days 28` for N up to 1 500;
-//! 9 of them fight a battle, in either profile): `duel-s792-d28`, blue's hero attacks red's, wins
-//! and captures its backpack's artifact, and `duel-s120-strict-d28` (`--profile
-//! base:strict-fixed`: the obstacles from the attacker's stream, `ADV-QUIRK-5` off), red's
-//! underground hero attacks blue's and loses to it after 148 battle commands. In E08 T20a1
-//! (Diplomacy's join bonus in the base pack) all eight were re-recorded with their options: only
-//! the core ruleset hash in their headers moved. In E08 T20a2a (the monster and ground kinds:
-//! adventure ruleset part v7, adventure state hash v9, map import v6) all eight were re-recorded
-//! with their options: their commands stayed, their hashes and versions moved. In E08 T20b1 (the
-//! wandering monsters' offers: adventure ruleset part v8, game state hash v7) all eight were
-//! re-recorded with their options again: their commands stayed (the duel holds no monster). In
-//! `shared/e08-t20b2` (flag 24 on in `faithful`) the six `faithful` ones were re-recorded with
-//! their options: only the core ruleset hash in their headers moved. In E04c T9 (BAT-QUIRK-23's
-//! flag on in `faithful`) the six `faithful` ones were re-recorded with their options: only the
-//! core ruleset hash in their headers moved. In E08 T21a (the guarded piles: map import v7,
-//! adventure state hash v10, game state hash v8) all eight were re-recorded with their options:
-//! their commands stayed (the duel holds no guarded pile), their hashes and versions moved.
+//! why), recorded with `--map fixtures/maps/e08-duel-36.h3m` and the options below. Since E08
+//! T20b3b2 the duel holds increment 3's monsters, guarded piles and special grounds, a monster and
+//! a guarded pile beside each hero, so random play meets them in every game; what each replay
+//! meets (from the T20b3b2 recording):
+//!
+//! - `duel-s1-d28` (`--seed 1 --agent-seed 1 --days 28`): a key; a declined offer to join, then
+//!   the flight pursued and its battle won; another pursuit won.
+//! - `duel-s2-d7` (`--seed 2 --agent-seed 3 --days 7`): a Cartographer's offer accepted, a
+//!   monster's battle won.
+//! - `duel-s5-strict-d7` (`--seed 5 --agent-seed 8 --days 7 --profile base:strict-fixed`): a
+//!   monster's battle won in strict-fixed (the split and the obstacles from the stream).
+//! - `duel-s3-easy-d7` (`--seed 3 --agent-seed 4 --days 7 --difficulty 0`): two monsters' battles
+//!   won at the easy difficulty (E08 T14b: the replay's difficulty, which `verify` plays at).
+//! - `duel-s535-d28` (`--seed 535 --agent-seed 535 --days 28`): a Cartographer accepted, a guarded
+//!   pile fought at once and picked up, a pile's question declined, a hero battle won with a
+//!   capture.
+//! - `duel-s1218-d28` (`--seed 1218 --agent-seed 1218 --days 28`): a pursuit won, a key, a pile's
+//!   question declined, a border guard's passage accepted (the guard removed).
+//! - `duel-s6-d28` (`--seed 6 --agent-seed 6 --days 28`): a pile's question accepted and its
+//!   guards beaten, a group joining, a key, a pursuit won, a pile's guards beating the visitor
+//!   (their survivors stay, the hero leaves the map).
+//! - `duel-s1429-d28` (`--seed 1429 --agent-seed 1429 --days 28`): a declined join and a declined
+//!   flight (the monster leaves), a group joining, a monster's battle lost, a Cartographer declined.
+//! - `duel-s100-strict-d28` (`--seed 100 --agent-seed 100 --days 28 --profile
+//!   base:strict-fixed`): a Cartographer accepted, a monster's battle won, a hero battle lost in
+//!   strict-fixed, the winner capturing.
+//!
+//! The last five came from a search over seeds (`--seed N --agent-seed N --days 28` for N up to
+//! 1 500, `strict-fixed` up to 800; E08 T20b3b2): of 1 500 such games 10 have a hero battle, 3 a
+//! guard's passage, 58 a pile's guards beating the visitor. History: E08 T16a re-recorded the
+//! first four when the duel got increment 2's objects and added two searched ones (a
+//! Cartographer's offer, a key and a guard's passage; a declined and an accepted offer), E08 T19b1
+//! two with hero battles (format v3), and every later version bump (T20a1, T20a2a, T20b1,
+//! `shared/e08-t20b2`, E04c T9, T21a) re-recorded them all with their options, their commands
+//! unchanged. E08 T20b3b2 changed the duel, so every command changed: the first four were
+//! re-recorded with their options and the four searched ones (`duel-s892-d28`, `duel-s988-d28`,
+//! `duel-s792-d28`, `duel-s120-strict-d28`), which no longer met what they were chosen for, were
+//! replaced by the five above.
 
 use std::path::PathBuf;
 
@@ -50,7 +56,7 @@ fn golden_adventure_replays_reproduce_their_hashes() {
         .collect();
     files.sort();
     assert!(
-        files.len() >= 8,
+        files.len() >= 9,
         "expected the E08 replay fixtures in {}",
         dir.display()
     );

@@ -2428,3 +2428,41 @@ benchmarks change once. Baseline: master `c1309983` (#236 merged), already verif
 - Not changed (shared): `docs/06-security.md` does not say what a viewer learns of a guarded pile
   (the QUEUE's inbox, with T20b3b1's note). The writer (`h3_map::writer::Pile`) writes no guards
   (T22a's, `cross-lane`: `h3-experiment` builds piles).
+
+### Round 4 of increment 3: T20b3b2 (2026-10-15, `adventure/e08-t20b3b2`, on T21a's branch)
+
+Decisions 39 and 41: the fixture maps, the golden replays and the benchmarks with monsters,
+grounds and guarded piles, changed once, after T21a (#239).
+
+- **The fixture maps** (`h3-map`'s `tests/fixtures.rs`): `Placer` takes an object's masks from
+  `play.rs`'s `masks` (a monster's one tile), `place_object` places a fixed object (a monster),
+  `place_ground` a ground on a land tile, `fits` holds the old checks and keeps a monster three
+  tiles or more from every hero on its level. `encounters`, drawn after increment 2's objects (so
+  those, the terrain and the heroes stay byte for byte): beside each hero a monster (the plans' five
+  kinds in turn, on a ground for every other hero) and a guarded pile (the two kinds in turn), then
+  `2 × scale` of each monster kind, guarded kind and ground anywhere. The duel: 14 monsters, 8
+  guarded piles, 6 grounds; the 144 map: 168, 72, 68. A first layout with two tiles between a
+  monster and a hero boxed the duel's first hero in (its day-1 query reached 3 tiles, every exit
+  guarded by the goblins): the env's battle tests found it, so three.
+- **The env's and the CLI's tests on the changed duel**: all of `h3-sim`'s held once the hero was
+  free; `h3-cli`'s reach workload test now allows fewer than two queries a step (a hero lost, or
+  the neutral seat playing a monster's or guards' side).
+- **The replays** (nine): the four with fixed options re-recorded (`duel-s1-d28`, `duel-s2-d7`,
+  `duel-s5-strict-d7`, `duel-s3-easy-d7`); the four searched ones (`duel-s792-d28`,
+  `duel-s892-d28`, `duel-s988-d28`, `duel-s120-strict-d28`) no longer met what they had been
+  chosen for and were replaced by five from a search (`--seed N --agent-seed N --days 28`, N up
+  to 1 500, `strict-fixed` up to 800; a scratch tool replaying each game's commands and noting its
+  offers, answers, joins, battles and their ends, not committed): `duel-s535-d28` (a Cartographer
+  accepted, a pile fought at once and picked up, a question declined, a hero battle won with a
+  capture), `duel-s1218-d28` (a pursuit won, a key, a question declined, a guard's passage),
+  `duel-s6-d28` (a question accepted and its guards beaten, a group joining, a pile's guards
+  beating the visitor), `duel-s1429-d28` (a declined join and flight, a join, a monster's battle
+  lost, a Cartographer declined), `duel-s100-strict-d28` (a hero battle lost in strict-fixed, the
+  winner capturing). Of the 1 500 faithful games: 10 with a hero battle, 3 with a guard's
+  passage, 106 with a monster's battle lost, 58 with a pile's guards winning, none with an offer
+  to join for gold (no hero of the duel has Diplomacy).
+- **The benchmarks** re-baselined: `random-play-duel-36` 396.4 M → 549.2 M Ir (667 → 2 912
+  steps, most new ones battle commands, cheaper than map steps), `reach-xl-144` 557.3 M → 489.7 M
+  (1 904 → 4 032 queries; guarded tiles end paths), `fork-xl-144` 354.8 M → 355.8 M (the walk to a
+  battle: 76 → 18 steps, a monster or pile on the way).
+- No version bump: the maps are data; the replays name the duel by content hash.
