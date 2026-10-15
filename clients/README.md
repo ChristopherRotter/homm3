@@ -63,7 +63,8 @@ search the parent directories).
   CLT-Q4), the obstacles, every living stack standing on its hex, the active stack's outline; not
   yet the heroes, count boxes, corpses, spell obstacles or the grid. With `--at <ms>` (and
   `--speed <0-2>`) the record's commands are played at the original's timing first and each
-  stack is drawn in its pose then (`h3_view::anim`, E17 M2 T4a).
+  stack is drawn in its pose then (`h3_view::anim`, E17 M2 T4a); `--frames <dir>` draws so each
+  time a capture's `frames.toml` lists, with the original's fidgets (the capture set, M3 T1b-2).
 - **The timing check:** `cargo run --release -p h3-view -- sequences [<id>]` (from `clients/`)
   plays each recorded sequence of `situations/sequences.toml` with its engine commands, times it
   with `h3_view::anim` and compares the timeline with the one the harness recorded in the
@@ -167,7 +168,7 @@ runs unattended in a Linux sandbox under Wine, on a virtual X display at 16 bits
 taken at an exact game time, and a driver steers it by fixed coordinates, recognising screens by
 probe pixels. The capture set (`situations/set.toml`: every land terrain, human-first openings,
 two-hex stacks facing either way, usual and absolute obstacles) runs with one command and compares
-each frame with our render, outside masks over what we do not draw yet. The game's own battle state
+each frame with our render at its time, outside masks over what we do not draw yet. The game's own battle state
 is read from its memory (M2 T3, `capture/h3mem.py`), so the recorded sequences
 (`situations/sequences.toml`: a walk, shots, a flight and a strike with its retaliation) check the
 animations' timing millisecond by millisecond against timelines of numbers. The runbook, its
