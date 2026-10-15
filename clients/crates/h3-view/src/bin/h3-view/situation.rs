@@ -5,8 +5,12 @@
 //! secondary skills, artifacts or war machines (nothing the still does not draw, nothing that moves
 //! on its own: no morale from Leadership, no Tactics phase); stepping Red's hero east starts the
 //! battle (`h3drive.py`). With `--hot-seat` (E17 M3 T1a) Blue may be a human too, so that the
-//! harness plays both sides of a hot-seat battle (`hot_seat` in `sequences.toml`). The creatures' original ids come from `crtraits.txt` (`H3bitmap.lod`) by
-//! the packs' names, as `harvest` keys the asset tables. An adapter: it reads files and writes one.
+//! harness plays both sides of a hot-seat battle (`hot_seat` in `sequences.toml`). A special
+//! battlefield (E17 M3 T2) is set up as the original makes it, on the defender's tile: water
+//! beside Blue for the shore, a special ground under both heroes for the others. The creatures'
+//! original ids come from `crtraits.txt` (`H3bitmap.lod`) by the packs' names, as `harvest` keys
+//! the asset tables; the grounds' pictures from its `Objects.txt`. An adapter: it reads files and
+//! writes one.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -16,8 +20,8 @@ use std::process::ExitCode;
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 use h3_map::writer::{
-    ARMY_SLOTS, ARTIFACT_SLOTS, Hero, HeroArtifacts, Map, MapObject, PLAYERS, Player, Terrain,
-    gzip, write,
+    ARMY_SLOTS, ARTIFACT_SLOTS, Ground, Hero, HeroArtifacts, Map, MapObject, ObjectTemplate,
+    PLAYERS, Patch, Player, Terrain, gzip, write,
 };
 
 use crate::gate::find_ci;
@@ -31,6 +35,21 @@ const BLUE: (u8, u8) = (102, 12);
 /// Where Blue stands on the 36 × 36 map by default; Red stands one tile west. The original's
 /// obstacles depend on the battle's tile (`--tile`: the capture set's other battlefields).
 const BLUE_TILE: (u8, u8) = (11, 10);
+
+/// The special grounds by their battlefield's key (the packs' `ground` object types,
+/// `packs/base/adventure.toml` and `packs/sod/adventure.toml`, ADV-GRD-001): the object class
+/// whose first picture in `Objects.txt` the map places (h3-map's import reads the same classes).
+const GROUNDS: [(&str, u32); 9] = [
+    ("cursed_ground", 21),
+    ("magic_plains", 46),
+    ("clover_field", 222),
+    ("evil_fog", 224),
+    ("fiery_fields", 226),
+    ("holy_ground", 227),
+    ("lucid_pools", 228),
+    ("magic_clouds", 229),
+    ("rocklands", 231),
+];
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -124,9 +143,12 @@ pub fn run(options: &Options) -> ExitCode {
 
 fn situation(options: &Options) -> Result<(), String> {
     let battle = sides(&options.scenario, &options.packs)?;
-    let ids = original_ids(&options.install)?;
+    let (ids, objects) = original_tables(&options.install)?;
     let id = options.scenario.display().to_string();
-    let map = map(&id, &battle, &ids, options.tile, options.hot_seat)?;
+    let mut map = map(&id, &battle, &ids, options.tile, options.hot_seat)?;
+    let (patches, ground) = special(battle.battlefield.as_deref(), &objects, options.tile)?;
+    map.patches = patches;
+    map.objects.extend(ground);
     let bytes = write(&map).map_err(|e| format!("the map: {e}"))?;
     if let Some(dir) = options.out.parent() {
         fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -136,17 +158,67 @@ fn situation(options: &Options) -> Result<(), String> {
     Ok(())
 }
 
-/// `crtraits.txt`'s creature ids by singular name, from the installation's `H3bitmap.lod`.
-fn original_ids(install: &Path) -> Result<BTreeMap<String, usize>, String> {
+/// From the installation's `H3bitmap.lod`: `crtraits.txt`'s creature ids by singular name, and
+/// `Objects.txt` (the map objects' templates).
+fn original_tables(install: &Path) -> Result<(BTreeMap<String, usize>, String), String> {
     let data = find_ci(install, "Data").map_err(|e| format!("{}: Data: {e}", install.display()))?;
     let path = find_ci(&data, "H3bitmap.lod").map_err(|e| format!("H3bitmap.lod: {e}"))?;
     let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let lod = LodArchive::parse(&bytes).map_err(|e| format!("H3bitmap.lod: {e:?}"))?;
-    let table = lod
-        .read_by_name("CRTRAITS.TXT")
-        .map_err(|e| format!("CRTRAITS.TXT: {e:?}"))?
-        .ok_or("H3bitmap.lod has no CRTRAITS.TXT")?;
-    creature_names(&TextTable::parse(&table).map_err(|e| format!("CRTRAITS.TXT: {e:?}"))?)
+    let entry = |name: &str| -> Result<Vec<u8>, String> {
+        lod.read_by_name(name)
+            .map_err(|e| format!("{name}: {e:?}"))?
+            .ok_or(format!("H3bitmap.lod has no {name}"))
+    };
+    let table = entry("CRTRAITS.TXT")?;
+    let ids =
+        creature_names(&TextTable::parse(&table).map_err(|e| format!("CRTRAITS.TXT: {e:?}"))?)?;
+    // Latin-1, one byte a character.
+    let objects = entry("OBJECTS.TXT")?.into_iter().map(char::from).collect();
+    Ok((ids, objects))
+}
+
+/// How the original fights the special battlefield `key` at Blue's `tile` (the battle's tile is
+/// the defender's; survey `E04c-battlefields.md` §1, §4): the shore, a land tile beside water
+/// (the writer gives it the coast flag 0x40), so water east of Blue; a special ground's field,
+/// the ground under the tile: its class's first picture in `objects` (`Objects.txt`), its
+/// bottom-right tile one east and one south of Blue's, so that the picture (3 × 3 or 6 × 4
+/// tiles) lies under both heroes. A ship's deck or two boats need boats, which h3-map's writer
+/// lacks (CLT-Q5).
+fn special(
+    key: Option<&str>,
+    objects: &str,
+    tile: (u8, u8),
+) -> Result<(Vec<Patch>, Option<MapObject>), String> {
+    let Some(key) = key else {
+        return Ok((Vec::new(), None));
+    };
+    let name = key.rsplit(':').next().unwrap_or(key);
+    if name == "shore" {
+        let water = Patch {
+            terrain: Terrain::Water,
+            from: (tile.0 + 1, tile.1 - 1),
+            to: ((tile.0 + 3).min(35), tile.1 + 1),
+        };
+        return Ok((vec![water], None));
+    }
+    let class = GROUNDS
+        .iter()
+        .find(|(k, _)| *k == name)
+        .map(|&(_, class)| class)
+        .ok_or_else(|| {
+            format!("no map for the battlefield `{key}` (a ship's deck, two boats: CLT-Q5)")
+        })?;
+    let line = objects
+        .lines()
+        .find(|l| l.split_whitespace().nth(5) == Some(class.to_string().as_str()))
+        .ok_or(format!("Objects.txt has no picture of class {class}"))?;
+    let template = ObjectTemplate::from_objects_txt(line).map_err(|e| e.to_string())?;
+    let ground = Ground {
+        tile: (tile.0 + 1, tile.1 + 1),
+        template,
+    };
+    Ok((Vec::new(), Some(MapObject::Ground(ground))))
 }
 
 /// The map terrain of a pack's terrain key (`base:grass`): the packs' land terrains in the map
@@ -270,6 +342,7 @@ mod tests {
         };
         Sides {
             terrain: terrain.map(str::to_owned),
+            battlefield: None,
             stacks: [stacks(attacker), stacks(&[(0, "Goblin", 30)])],
             tight: [false, true],
         }
@@ -383,6 +456,63 @@ mod tests {
 
     #[test]
     fn a_missing_installation_is_an_error() {
-        assert!(original_ids(Path::new("/no/such/install")).is_err());
+        assert!(original_tables(Path::new("/no/such/install")).is_err());
+    }
+
+    /// Two lines of `Objects.txt` (numbers and pictures' names only).
+    const OBJECTS: &str = "2\n\
+        AVXcrsd0.def 111111111111111111111111111111111111111111111111 \
+        000000000000000000000000000000000000000000000000 111111111 011111111 21 0 1 0\n\
+        AVXhg0.def 111111111111111111111111111111111111111111111111 \
+        000000000000000000000000000000000000000000000000 111111111 011111111 227 0 1 0\n";
+
+    #[test]
+    fn a_special_battlefield_lies_under_the_defender() {
+        let blue = BLUE_TILE;
+        assert_eq!(special(None, OBJECTS, blue), Ok((Vec::new(), None)));
+        // The shore: water east of Blue's tile.
+        let (patches, ground) = special(Some("base:shore"), OBJECTS, blue).unwrap();
+        assert_eq!(
+            (patches[0].terrain, patches[0].from, patches[0].to),
+            (Terrain::Water, (12, 9), (14, 11))
+        );
+        assert!(ground.is_none());
+        // At the map's eastern edge the water stops at the last column.
+        let (patches, _) = special(Some("base:shore"), OBJECTS, (34, 10)).unwrap();
+        assert_eq!(patches[0].to, (35, 11));
+        // A special ground's first picture, its bottom-right tile south-east of Blue.
+        for (key, def) in [
+            ("base:cursed_ground", "AVXcrsd0.def"),
+            ("sod:holy_ground", "AVXhg0.def"),
+        ] {
+            let (patches, ground) = special(Some(key), OBJECTS, blue).unwrap();
+            let Some(MapObject::Ground(g)) = ground else {
+                panic!("{key}: a ground");
+            };
+            assert_eq!(
+                (patches.len(), g.tile, g.template.def.as_str()),
+                (0, (12, 11), def)
+            );
+        }
+        // The water fields need boats; a ground without a picture cannot be placed.
+        assert!(
+            special(Some("base:deck"), OBJECTS, blue)
+                .unwrap_err()
+                .contains("CLT-Q5")
+        );
+        assert!(special(Some("base:boats"), OBJECTS, blue).is_err());
+        assert!(
+            special(Some("sod:rocklands"), OBJECTS, blue)
+                .unwrap_err()
+                .contains("class 231")
+        );
+        let bad = "AVXrk0.def 1 2 3 4 231 0 1 0";
+        assert!(special(Some("sod:rocklands"), bad, blue).is_err());
+        // The map takes them: a ground under both heroes, water beside them.
+        let mut map = map("t", &sides_of(Some("grass"), &[]), &ids(), blue, false).unwrap();
+        let (patches, ground) = special(Some("base:cursed_ground"), OBJECTS, blue).unwrap();
+        map.patches = patches;
+        map.objects.extend(ground);
+        assert!(write(&map).is_ok());
     }
 }

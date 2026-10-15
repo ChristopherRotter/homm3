@@ -1,0 +1,38 @@
+# E17 M3 T2: a situation of the capture set (situations/set.toml) on a special battlefield, Holy
+# Ground (special field 3, `CmBkHG.pcx`): the SoD ground (class 227) under both heroes (`h3-view
+# situation`; design §5, §6.2). The grass situation's armies: the human's Royal Griffins open.
+# The obstacles are the original's, of the field's own types, found in its capture (`h3cap.py
+# find`).
+
+[scenario]
+id = "situation-holy-ground"
+packs = ["base", "ab", "sod"]
+profile = "base:faithful"
+terrain = "base:grass"
+battlefield = "sod:holy_ground"
+obstacles = [
+    { hexes = [144, 145], anchor = 144, kind = "sod:obstacle_62" },
+    { hexes = [59], anchor = 58, kind = "sod:obstacle_63" },
+    { hexes = [38, 39, 40], anchor = 38, kind = "sod:obstacle_64" },
+    { hexes = [95, 96, 97, 98], anchor = 95, kind = "sod:obstacle_65" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15

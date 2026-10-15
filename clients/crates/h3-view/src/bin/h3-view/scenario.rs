@@ -71,10 +71,13 @@ pub fn battle(
 }
 
 /// What the original's map needs of a scenario's battle (E17 M2 T1, `situation`): its terrain's
-/// key, and each side's stacks (slot, the creature's singular name, count) and formation.
+/// key, its special battlefield's (M3 T2), and each side's stacks (slot, the creature's singular
+/// name, count) and formation.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Sides {
     pub terrain: Option<String>,
+    /// The special battlefield's key (E17 M3 T2).
+    pub battlefield: Option<String>,
     pub stacks: [Vec<(u8, String, u32)>; 2],
     pub tight: [bool; 2],
 }
@@ -99,6 +102,7 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
     let tight = h3_pack_battle::tight_sides(setup.formations);
     Ok(Sides {
         terrain,
+        battlefield: setup.battlefield.as_ref().map(|k| k.as_str().to_owned()),
         stacks,
         tight: ["attacker", "defender"].map(|side| tight.iter().any(|t| t == side)),
     })
