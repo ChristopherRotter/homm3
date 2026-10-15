@@ -28,6 +28,8 @@
 //! aggression = [[-4, -4], [1, 7]]  # bounds by disposition code, from 0 (ADV-MON-002)
 //! count_words = [5, 10, 20]        # where each word of a count after the first begins
 //!                                  # (ADV-FOG-006)
+//! price_resource = "gold"          # a group's price to join: its creature's cost in this
+//!                                  # resource times its count (ADV-MON-008, E08 T20b1)
 //!
 //! not_random_monsters = ["azure_dragon"] # top-level, before any table (E08 T20a2a): creatures
 //!                                  # no random monster becomes (ADV-MON-003)
@@ -202,6 +204,7 @@ struct ParamsDto {
 struct MonstersDto {
     aggression: Vec<[i8; 2]>,
     count_words: Vec<u32>,
+    price_resource: String,
 }
 
 #[derive(Deserialize)]
@@ -487,6 +490,16 @@ pub fn parse_adventure(
                         })
                     })
                     .transpose()?;
+                let monsters = p
+                    .monsters
+                    .map(|m| {
+                        Ok::<_, KeyError>(MonsterParamsDef {
+                            aggression: m.aggression,
+                            count_words: m.count_words,
+                            price_resource: reference(pack, &m.price_resource)?,
+                        })
+                    })
+                    .transpose()?;
                 Ok::<_, KeyError>(AdventureParamsDef {
                     native_cost: p.native_cost,
                     land_points: p.land_points,
@@ -497,10 +510,7 @@ pub fn parse_adventure(
                     army_slots: p.army_slots,
                     starting_stack_chances: p.starting_stack_chances,
                     battle,
-                    monsters: p.monsters.map(|m| MonsterParamsDef {
-                        aggression: m.aggression,
-                        count_words: m.count_words,
-                    }),
+                    monsters,
                 })
             })
             .transpose()?,

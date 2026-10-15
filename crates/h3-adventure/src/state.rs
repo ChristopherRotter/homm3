@@ -64,6 +64,7 @@ impl StaticTile {
 }
 
 mod flags;
+mod monsters;
 mod occupancy;
 
 use flags::Flags;
@@ -955,7 +956,7 @@ impl AdventureState {
             points = pricing.left_after(&to, left);
             if met.is_none_or(Meets::enters) {
                 (at, from) = (next, to);
-                guard = self.guard_of(part, next);
+                guard = self.guard_at(part, next);
             }
             visit = met;
         }
@@ -984,33 +985,29 @@ impl AdventureState {
             });
             from = to;
         }
+        let rules = (core, part, heroes);
         let outcome = match visit {
             None => AdventureOutcome::default(),
-            Some(Meets::Object(visit)) => self.visit(core, (player, id), visit, sink),
+            Some(Meets::Object(visit)) => self.visit(rules, (player, id), visit, sink),
             Some(Meets::Hero(defender)) => AdventureOutcome {
                 battle: Some(self.battle_start(part, index, defender)),
                 ..AdventureOutcome::default()
             },
         };
+        // The guard visits after the tile's own object (ADV-MON-006); after its offer's answer
+        // when it made one (E08 T20b1). A step that meets a hero does not enter: no guard then.
         Ok(match guard {
             None => outcome,
-            Some(guard) => self.visit_guard(heroes, (player, id), guard, outcome),
+            Some(_) if outcome.offer.is_some() => AdventureOutcome {
+                guard_after: true,
+                ..outcome
+            },
+            Some(guard) => {
+                let mut answer = self.visit_monster(rules, (player, id), guard, sink);
+                answer.gains.splice(0..0, outcome.gains);
+                answer
+            }
         })
-    }
-
-    /// The guard's visit after a step onto a tile it guards (ADV-MON-006): the monster's answer
-    /// to the visiting hero, with the store's details of it (E08 T20b); for now nothing happens
-    /// and `outcome`, the visit of the tile's own object, stands.
-    // stub: ADV-STUB-5
-    #[allow(clippy::unused_self)]
-    fn visit_guard(
-        &mut self,
-        _heroes: &[Arc<HeroDetails>],
-        _visitor: (PlayerId, HeroId),
-        _guard: usize,
-        outcome: AdventureOutcome,
-    ) -> AdventureOutcome {
-        outcome
     }
 
     /// The monster that guards `pos`, by index in the static map, if one does (ADV-MON-005, E08
@@ -1022,6 +1019,15 @@ impl AdventureState {
     /// and the objects that left it, so a removed monster guards nothing.
     // rule: ADV-MON-005
     pub fn guard_of(&self, part: &AdventureRuleset, pos: Pos) -> Option<usize> {
+        self.guard_at(part, pos).map(|(index, _)| index)
+    }
+
+    /// [`Self::guard_of`] with the guard's object type.
+    pub(crate) fn guard_at(
+        &self,
+        part: &AdventureRuleset,
+        pos: Pos,
+    ) -> Option<(usize, ObjectTypeId)> {
         if !self.map.near_monster(pos) {
             return None;
         }
@@ -1047,10 +1053,10 @@ impl AdventureState {
                 if self.map.tile(tile).is_none() || water(tile) != at_water {
                     continue;
                 }
-                if let Some((index, _, ty)) = self.tile_object(part, tile)
+                if let Some((index, id, ty)) = self.tile_object(part, tile)
                     && matches!(ty.kind, ObjectKind::Monster { .. })
                 {
-                    return Some(index);
+                    return Some((index, id));
                 }
             }
         }
@@ -1169,24 +1175,7 @@ impl AdventureState {
         if count == 0 {
             return None;
         }
-        if let Some(stack) = army.iter_mut().find(|s| s.creature == creature) {
-            stack.count = stack.count.saturating_add(count);
-            return Some((creature, count));
-        }
-        let free = (0..slots).find(|&slot| army.iter().all(|s| s.slot != slot));
-        if let Some(slot) = free {
-            let at = army
-                .iter()
-                .position(|s| s.slot > slot)
-                .unwrap_or(army.len());
-            army.insert(
-                at,
-                ArmyStack {
-                    slot,
-                    creature,
-                    count,
-                },
-            );
+        if monsters::add_stack(army, slots, creature, count) {
             return Some((creature, count));
         }
         let upgrade = core.upgrades(creature).first().copied()?;
@@ -1208,16 +1197,18 @@ impl AdventureState {
     /// guard (ADV-VIS-004): for a holder of its key an offer to pass, without a price; for another
     /// player nothing (the original's message is not modelled). A border gate (ADV-VIS-005, E08
     /// T15b), visited by a player without its key (its holders cross it, [`Self::visit_at`]):
-    /// nothing, as the guard's (the original's message is not modelled).
+    /// nothing, as the guard's (the original's message is not modelled). A wandering monster
+    /// (ADV-MON-007, E08 T20b1): its answer to the hero ([`Self::visit_monster`]).
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
     // rule: ADV-VIS-005
     fn visit<S: Sink>(
         &mut self,
-        core: &Ruleset,
+        rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         (player, hero): (PlayerId, HeroId),
         visit: StepVisit<'_>,
         sink: &mut S,
     ) -> AdventureOutcome {
+        let core = rules.0;
         let anchor = self.map.objects()[visit.object].anchor;
         let offer = |kind| Offer {
             hero,
@@ -1264,6 +1255,14 @@ impl AdventureState {
                 outcome.offer = self.has_key(player, key).then(|| offer(OfferKind::Pass));
             }
             Effect::Gate(_) => {}
+            Effect::Monster => {
+                outcome = self.visit_monster(
+                    rules,
+                    (player, hero),
+                    (visit.object, visit.object_type),
+                    sink,
+                );
+            }
         }
         outcome
     }
@@ -1322,8 +1321,12 @@ impl AdventureState {
     /// object of the type makes it an offer; it was made for a type the player had not bought, and
     /// while it is open nothing of the player's but its answer runs (ADR-0017 point 6) and no other
     /// player's command buys for it. A border guard's (ADV-VIS-004, E08 T15a): the guard leaves the
-    /// map for everyone ([`Self::take_object`]). Infallible.
-    // rule: ADV-VIS-001, ADV-VIS-004
+    /// map for everyone ([`Self::take_object`]). A wandering monster's offer to join, for free or
+    /// for its price (ADV-MON-008, E08 T20b1): the group joins the hero's army and the monster
+    /// leaves the map; its treasure is the outcome's gains ([`Self::join`]). Its offer to flee:
+    /// the hero fights it (ADV-MON-008; [`Self::pursue`]). Infallible; the outcome is what the
+    /// game applies after.
+    // rule: ADV-VIS-001, ADV-VIS-004, ADV-MON-008
     pub fn accept_offer<S: Sink>(
         &mut self,
         core: &Ruleset,
@@ -1331,14 +1334,22 @@ impl AdventureState {
         player: PlayerId,
         offer: &Offer,
         sink: &mut S,
-    ) {
+    ) -> AdventureOutcome {
         match offer.kind {
-            OfferKind::Reveal { .. } => self.reveal_terrain(part, player, offer.object_type, sink),
+            OfferKind::Reveal { .. } => {
+                self.reveal_terrain(part, player, offer.object_type, sink);
+                AdventureOutcome::default()
+            }
             OfferKind::Pass => {
                 if let Some(index) = self.offer_object(offer) {
                     self.take_object(core, (index, offer.object_type), sink);
                 }
+                AdventureOutcome::default()
             }
+            OfferKind::Join | OfferKind::JoinForGold { .. } => {
+                self.join((core, part), player, offer, sink)
+            }
+            OfferKind::Pursue => self.pursue(core, player, offer, sink),
         }
     }
 
@@ -1632,9 +1643,14 @@ impl AdventureState {
     /// a battle left on it, else the static map's count; none for an object that is no monster.
     pub fn monster_count(&self, index: usize) -> Option<u32> {
         let monster = self.map.objects().get(index)?.monster.as_ref()?;
-        Some(self.army_left(index).map_or(monster.count, |army| {
+        Some(self.count_of(index, monster))
+    }
+
+    /// The count of `monster`, the object at `index`, as it stands ([`Self::monster_count`]).
+    fn count_of(&self, index: usize, monster: &Monster) -> u32 {
+        self.army_left(index).map_or(monster.count, |army| {
             army.iter().fold(0, |sum, s| sum.saturating_add(s.count))
-        }))
+        })
     }
 
     /// The hero with this id, if it is on the map.

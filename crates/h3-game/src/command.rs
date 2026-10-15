@@ -40,13 +40,15 @@ pub enum GameCommand {
     Battle(h3_battle::Command),
 }
 
-/// An answer to a pending decision (ADR-0017 point 6): increment 2's decisions are offers,
-/// answered yes or no; later kinds add variants.
+/// An answer to a pending decision (ADR-0017 point 6): increments 2's and 3's decisions are
+/// offers, answered yes or no; later kinds add variants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Answer {
     /// Yes: the offer's price is paid and the offer carried out.
     Accept,
-    /// No: the decision closes and nothing else changes (a later visit asks again).
+    /// No: the decision closes; nothing else changes but a wandering monster's answer, which
+    /// goes on (its next offer or a fight after a declined join, its leaving after a declined
+    /// flight; ADV-MON-007, ADV-MON-008). A later visit asks again.
     Decline,
 }
 
@@ -297,13 +299,7 @@ pub fn apply<S: Sink>(
                     &mut AdventureSink(sink),
                 )
                 .map_err(GameCommandError::Adventure)?;
-            state.gain(player, &outcome.gains, sink);
-            if let Some(offer) = outcome.offer {
-                state.open(player, offer, sink);
-            }
-            if let Some(battle) = outcome.battle {
-                state.start_battle(rules, player, battle, sink);
-            }
+            state.settle_outcome(rules, player, outcome, sink);
             Ok(())
         }
     }

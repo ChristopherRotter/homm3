@@ -28,9 +28,15 @@ epic   = "E04c"
 # --- adventure (ADV-STUB-<n>) ---
 
 [[stub]]
-id     = "ADV-STUB-5"
-where  = "crates/h3-adventure/src/state.rs::AdventureState::visit_guard"
-reason = "A step onto a tile a monster guards ends the move and visits the guard (ADV-MON-006, E08 T20a2b), but the visit does nothing yet: the monster's answer (fight, join, join for gold, flee; ADV-MON-007, -008) and its battle (ADV-MON-009, -010) come with E08 T20b"
+id     = "ADV-STUB-2"
+where  = "crates/h3-adventure/src/state/monsters.rs::AdventureState::answer_to"
+reason = "A wandering monster's offer to join is skipped, as declined, when the hero's army has neither a stack of the group's creature nor a free slot (E08 decision 22); the original shows its army dialog (0x5D11D0, not read) so the player can make room (dismiss or merge stacks) and then accept. A feature to-do for increment 4's army management: read 0x5D11D0, build the dialog as a pending decision"
+epic   = "E08"
+
+[[stub]]
+id     = "ADV-STUB-6"
+where  = "crates/h3-adventure/src/state/monsters.rs::AdventureState::fight"
+reason = "A wandering monster's answer of a fight (ADV-MON-007) and an accepted offer to flee (ADV-MON-008) do nothing yet: the monster stays and the hero's move is over. The battle against the monster (the split, ADV-MON-009; its outcome, ADV-MON-010; the unowned side played by the system actor) comes with E08 T20b2"
 epic   = "E08"
 
 # --- server (SRV-STUB-<n>) ---

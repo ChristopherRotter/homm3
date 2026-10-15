@@ -8,7 +8,7 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use h3_adventure::{AdventureState, Offer, OfferKind};
+use h3_adventure::{AdventureOutcome, AdventureState, Offer, OfferKind};
 use h3_content::ResourceId;
 use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::{ArtifactInstance, HeroDetails};
@@ -37,8 +37,9 @@ struct PlayerState {
 }
 
 /// A pending decision (ADR-0017 point 6, GAM-DEC-001; E08 T14b): what its owners must answer
-/// before anything else. Increment 2's are offers (ADV-VIS-001, ADV-VIS-004); since E08 T19a a
-/// battle, owned by the players of its sides, who play it.
+/// before anything else. Increment 2's are offers (ADV-VIS-001, ADV-VIS-004), increment 3's the
+/// wandering monsters' too (ADV-MON-008, E08 T20b1); since E08 T19a a battle, owned by the
+/// players of its sides, who play it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Decision {
     /// An offer, answered by its owner.
@@ -47,6 +48,9 @@ enum Decision {
         owner: PlayerId,
         /// The offer.
         offer: Offer,
+        /// Whether the visit of a monster guarding the hero's tile waits for the answer
+        /// (`AdventureOutcome::guard_after`, ADV-MON-006; E08 T20b1).
+        guard_after: bool,
     },
     /// A battle (GAM-BAT-001), shared between forks and copied on its first write.
     Battle(Arc<OpenBattle>),
@@ -214,17 +218,54 @@ impl GameState {
         Ok(())
     }
 
+    /// Applies what the adventure left of a command of `player` or of its answer (ADR-0017
+    /// point 10): the gains (GAM-RES-001), then the offer ([`Self::open`]) with whatever follows
+    /// one that does not open, then the battle ([`Self::start_battle`]; an outcome has an offer or
+    /// a battle, not both).
+    // rule: GAM-DEC-001
+    pub(crate) fn settle_outcome<S: Sink>(
+        &mut self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        outcome: AdventureOutcome,
+        sink: &mut S,
+    ) {
+        let mut next = Some(outcome);
+        while let Some(outcome) = next.take() {
+            self.gain(player, &outcome.gains, sink);
+            next = outcome
+                .offer
+                .and_then(|offer| self.open(rules, player, offer, outcome.guard_after, sink));
+            if let Some(battle) = outcome.battle {
+                self.start_battle(rules, player, battle, sink);
+            }
+        }
+    }
+
     /// Opens the offer a command of `player` made (ADR-0017 point 10): as a pending decision of
     /// the player if its treasury can pay the price (GAM-DEC-001; a border guard's has none, so it
-    /// always opens, ADV-VIS-004), told to it alone; otherwise the offer does not open, and the
-    /// player alone is told so (ADV-VIS-001: the original's message).
-    // rule: GAM-DEC-001, ADV-VIS-001, ADV-VIS-004
-    pub(crate) fn open<S: Sink>(&mut self, player: PlayerId, offer: Offer, sink: &mut S) {
+    /// always opens, ADV-VIS-004), told to it alone. Otherwise the offer does not open: a
+    /// wandering monster's offer to join for its price counts as declined, without an event, and
+    /// the monster's answer goes on ([`AdventureState::decline_offer`]; ADV-MON-008, E08 T20b1);
+    /// any other's refusal is told to the player alone (ADV-VIS-001: the original's message), and
+    /// the visit of a monster guarding the hero's tile that waited for it follows
+    /// ([`AdventureState::visit_guard`], ADV-MON-006). Returns that outcome, for the caller to
+    /// apply.
+    // rule: GAM-DEC-001, ADV-VIS-001, ADV-VIS-004, ADV-MON-006, ADV-MON-008
+    pub(crate) fn open<S: Sink>(
+        &mut self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        offer: Offer,
+        guard_after: bool,
+        sink: &mut S,
+    ) -> Option<AdventureOutcome> {
         let (hero, object_type, anchor) = (offer.hero, offer.object_type, offer.anchor);
         if self.treasuries.can_pay(player, offer.price()) {
             self.push_decision(Decision::Offer {
                 owner: player,
                 offer,
+                guard_after,
             });
             sink.emit(GameEvent::OfferOpened {
                 player,
@@ -232,14 +273,25 @@ impl GameState {
                 object_type,
                 anchor,
             });
-        } else {
-            sink.emit(GameEvent::OfferRefused {
-                player,
-                hero,
-                object_type,
-                anchor,
-            });
+            return None;
         }
+        let (adventure, heroes) = self.adventure_with_heroes();
+        let context = (rules.core(), rules.adventure(), heroes);
+        if matches!(offer.kind, OfferKind::JoinForGold { .. }) {
+            return Some(adventure.decline_offer(
+                context,
+                player,
+                &offer,
+                &mut AdventureSink(sink),
+            ));
+        }
+        sink.emit(GameEvent::OfferRefused {
+            player,
+            hero,
+            object_type,
+            anchor,
+        });
+        guard_after.then(|| adventure.visit_guard(context, player, hero, &mut AdventureSink(sink)))
     }
 
     /// `Answer`: closes `player`'s first open decision (GAM-DEC-001), in its turn or not. Accepted,
@@ -247,17 +299,23 @@ impl GameState {
     /// guard another player of the turn group passed has left the map, E08 T15a); then the
     /// treasury pays the price and the adventure carries the offer out
     /// ([`AdventureState::accept_offer`]: a Cartographer's reveal and purchase, ADV-VIS-001; a
-    /// guard's removal, ADV-VIS-004). Declined, nothing else changes. ADR-0017 point 10's other
-    /// check, that the treasury can pay, cannot fail and is not made: the decision opened only
-    /// when the treasury could pay, and while it is open its owner's only legal commands are its
-    /// answers and no other player's command changes the owner's treasury (ownership isolation;
-    /// `h3-map`'s play properties check it at every step).
+    /// guard's removal, ADV-VIS-004; a wandering monster's group joining with its treasure, or
+    /// the pursuit of a fleeing one, ADV-MON-008, E08 T20b1). Declined, the adventure's answer
+    /// goes on ([`AdventureState::decline_offer`]: after a monster's declined offer to join its
+    /// next answer, after a declined flight its leaving; nothing for the others). What follows is
+    /// applied as a command's outcome ([`Self::settle_outcome`]): a monster's next offer opens in
+    /// the same command, so the player still has at most one open decision. Then the visit of a
+    /// monster guarding the hero's tile that waited for this answer (ADV-MON-006). ADR-0017 point
+    /// 10's other check, that the treasury can pay, cannot fail and is not made: the decision
+    /// opened only when the treasury could pay, and while it is open its owner's only legal
+    /// commands are its answers and no other player's command changes the owner's treasury
+    /// (ownership isolation; `h3-map`'s play properties check it at every step).
     ///
     /// # Errors
     ///
     /// `UnknownPlayer`, then `NoDecision`, then `BattleOpen` when the first is a battle (E08
     /// T19a), then `OfferGone` for an acceptance; the state is then unchanged.
-    // rule: GAM-DEC-001, ADV-VIS-004
+    // rule: GAM-DEC-001, ADV-VIS-004, ADV-MON-006, ADV-MON-008
     pub(crate) fn answer<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -269,11 +327,13 @@ impl GameState {
             .get(player.index())
             .ok_or(GameCommandError::UnknownPlayer(player))?;
         let at = self.first(player).ok_or(GameCommandError::NoDecision)?;
-        let Decision::Offer { offer, .. } = &self.decisions.as_deref().unwrap_or_default()[at]
+        let Decision::Offer {
+            offer, guard_after, ..
+        } = &self.decisions.as_deref().unwrap_or_default()[at]
         else {
             return Err(GameCommandError::BattleOpen);
         };
-        let offer = offer.clone();
+        let (offer, guard_after) = (offer.clone(), *guard_after);
         let accepted = answer == Answer::Accept;
         if accepted && !self.adventure.offer_stands(&offer) {
             return Err(GameCommandError::OfferGone);
@@ -294,13 +354,22 @@ impl GameState {
                     amount,
                 });
             }
-            self.adventure.accept_offer(
-                rules.core(),
-                rules.adventure(),
-                player,
-                &offer,
-                &mut AdventureSink(sink),
-            );
+        }
+        let (adventure, heroes) = self.adventure_with_heroes();
+        let context = (rules.core(), rules.adventure(), heroes);
+        let mut events = AdventureSink(&mut *sink);
+        let outcome = if accepted {
+            adventure.accept_offer(context.0, context.1, player, &offer, &mut events)
+        } else {
+            adventure.decline_offer(context, player, &offer, &mut events)
+        };
+        self.settle_outcome(rules, player, outcome, sink);
+        if guard_after {
+            let (adventure, heroes) = self.adventure_with_heroes();
+            let context = (rules.core(), rules.adventure(), heroes);
+            let guard =
+                adventure.visit_guard(context, player, offer.hero, &mut AdventureSink(&mut *sink));
+            self.settle_outcome(rules, player, guard, sink);
         }
         Ok(())
     }
@@ -488,23 +557,32 @@ impl CanonicalHash for GameState {
         h.write_len(decisions.len());
         for decision in decisions {
             match decision {
-                Decision::Offer { owner, offer } => {
+                Decision::Offer {
+                    owner,
+                    offer,
+                    guard_after,
+                } => {
                     h.write_u8(0);
                     h.write_u8(owner.raw());
                     h.write_u16(offer.hero.raw());
                     offer.object_type.hash_into(h);
                     offer.anchor.hash_into(h);
-                    match &offer.kind {
-                        OfferKind::Reveal { price } => {
-                            h.write_u8(0);
-                            h.write_len(price.len());
-                            for (resource, amount) in price {
-                                resource.hash_into(h);
-                                h.write_u32(*amount);
-                            }
+                    let (tag, price) = match &offer.kind {
+                        OfferKind::Reveal { price } => (0, Some(price)),
+                        OfferKind::Pass => (1, None),
+                        OfferKind::Join => (2, None),
+                        OfferKind::JoinForGold { price } => (3, Some(price)),
+                        OfferKind::Pursue => (4, None),
+                    };
+                    h.write_u8(tag);
+                    if let Some(price) = price {
+                        h.write_len(price.len());
+                        for (resource, amount) in price {
+                            resource.hash_into(h);
+                            h.write_u32(*amount);
                         }
-                        OfferKind::Pass => h.write_u8(1),
                     }
+                    h.write_bool(*guard_after);
                 }
                 Decision::Battle(battle) => {
                     h.write_u8(1);

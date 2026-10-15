@@ -38,6 +38,7 @@
 
 extern crate alloc;
 
+mod answer;
 mod command;
 mod fog;
 mod movement;
@@ -88,5 +89,6 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 9;
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting
 /// stack chances. v4 (E08 T12a): the object types. v5 (E08 T13a): the starting resources by
 /// difficulty. v6 (E08 T19a): the battle terrains by tile. v7 (E08 T20a2a): the monster and
-/// ground kinds, the monsters' parameters and the creatures no random monster becomes.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 7;
+/// ground kinds, the monsters' parameters and the creatures no random monster becomes. v8 (E08
+/// T20b1): the resource a monster's price to join is paid in.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 8;

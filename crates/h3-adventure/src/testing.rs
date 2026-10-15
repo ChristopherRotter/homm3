@@ -184,11 +184,12 @@ fn object_types() -> Vec<ObjectTypeDef> {
 }
 
 /// The monsters' parameters of [`rules`] and [`movement_rules`] (E08 T20a2a): the original's five
-/// dispositions and nine words of a count.
+/// dispositions and nine words of a count; a group's price to join in `t:gold` (E08 T20b1).
 pub(crate) fn monster_params() -> MonsterParamsDef {
     MonsterParamsDef {
         aggression: vec![[-4, -4], [1, 7], [1, 10], [4, 10], [10, 10]],
         count_words: vec![5, 10, 20, 50, 100, 250, 500, 1000],
+        price_resource: key("t:gold"),
     }
 }
 

@@ -642,7 +642,7 @@ fn a_battle_command_with_an_offer_open_is_refused() {
         anchor: Pos::new(3, 0, 0),
         kind: h3_adventure::OfferKind::Pass,
     };
-    game.open(GREEN, offer.clone(), &mut NoopSink);
+    game.open(&rules, GREEN, offer.clone(), false, &mut NoopSink);
     assert_eq!(game.decision(GREEN), Some(&offer));
     assert_eq!(game.battle(GREEN), None);
     assert_eq!(game.decision(RED), None);
