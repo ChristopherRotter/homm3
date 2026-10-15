@@ -13,6 +13,8 @@ use h3_assets::palette::Rgb;
 use h3_render::blit::{Drawer, Placement, draw_frame, draw_image, draw_image_keyed};
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::{PixelFormat, Screen};
+use h3_render::text::{TextBox, draw_text};
+use h3_render::tint::{Tint, adjust_hue_saturation};
 
 use crate::batch::{Batch, Sprite};
 use crate::layout::BattleLayout;
@@ -177,6 +179,43 @@ pub fn compose(
                     &palette,
                     at,
                     Drawer::Shadowed { colour: None },
+                );
+            }
+            Draw::CountBox { x, y, count, tint } => {
+                // 0x43E568: the picture, index 0 transparent (0x4958E0 → 0x44FDB0), its inside
+                // tinted (0x44E940), the count's `%d` in the font (0x4B5490), centred.
+                let b = &layout.count_box;
+                draw_image_keyed(&mut screen, picture_of(batch, &b.picture)?, *x, *y);
+                let [[dx, dy], size] = b.tint_rect;
+                let [hue, saturation] = *tint;
+                adjust_hue_saturation(
+                    &mut screen,
+                    [x.saturating_add(dx), y.saturating_add(dy)],
+                    size,
+                    Tint { hue, saturation },
+                );
+                let font = batch
+                    .font(&b.font)
+                    .ok_or_else(|| ComposeError::Missing(b.font.clone()))?;
+                let palette = batch
+                    .palette(&b.font_palette)
+                    .ok_or_else(|| ComposeError::Missing(b.font_palette.clone()))?;
+                let area = TextBox {
+                    x: *x,
+                    y: *y,
+                    width: b.text_size[0],
+                    height: b.text_size[1],
+                };
+                let text = format!("{count}");
+                let colours = ScreenPalette::new(palette, FORMAT);
+                draw_text(
+                    &mut screen,
+                    font,
+                    &colours,
+                    text.as_bytes(),
+                    area,
+                    b.text_colour,
+                    b.text_align,
                 );
             }
             Draw::Creature {

@@ -89,6 +89,18 @@ impl PixelFormat {
         }
     }
 
+    /// The red, green and blue masks (0xF800, 0x07E0, 0x001F in 565): the surface's, which the
+    /// executable keeps at 0x694D68, 0x694D60 and 0x694D64 (E17 M3 T4a).
+    #[must_use]
+    pub fn channel_masks(self) -> [u32; 3] {
+        let ones = |width: u8| (1u32 << width) - 1;
+        [
+            ones(self.red) << (self.green + self.blue),
+            ones(self.green) << self.blue,
+            ones(self.blue),
+        ]
+    }
+
     /// Each channel shifted down one, as the half mask leaves it (0x47C460: `0x7BEF` in 565).
     #[must_use]
     pub fn half_mask(self) -> u16 {
@@ -302,6 +314,11 @@ mod tests {
         assert_eq!(f.quarter_mask(), 0x39E7);
         assert_eq!(PixelFormat::RGB555.half_mask(), 0x3DEF);
         assert_eq!(PixelFormat::RGB555.quarter_mask(), 0x1CE7);
+        assert_eq!(f.channel_masks(), [0xF800, 0x07E0, 0x001F]);
+        assert_eq!(
+            PixelFormat::RGB555.channel_masks(),
+            [0x7C00, 0x03E0, 0x001F]
+        );
         let white = 0xFFFF;
         // Body: 31 -> 15, 63 -> 31. Border: 31 -> 7 + 15 = 22, 63 -> 15 + 31 = 46.
         assert_eq!(f.shadow_body(white), 15 << 11 | 31 << 5 | 15);

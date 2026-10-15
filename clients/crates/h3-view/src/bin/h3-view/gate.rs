@@ -302,6 +302,7 @@ fn decoded_text(check: &Result<EntryCheck, String>) -> String {
                 "def 0x{kind:02X} {groups} groups {frames} frames enc {}/{}/{}/{}",
                 encodings[0], encodings[1], encodings[2], encodings[3]
             ),
+            Ok(Decoded::Fnt { height, glyphs }) => format!("fnt height {height}, {glyphs} glyphs"),
             Ok(Decoded::Msk { width, height }) => format!("msk {width}x{height}"),
             Ok(Decoded::Skipped) => String::from("skipped"),
         },

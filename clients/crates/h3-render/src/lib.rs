@@ -29,3 +29,5 @@ pub mod blit;
 pub mod palette;
 pub mod png;
 pub mod screen;
+pub mod text;
+pub mod tint;

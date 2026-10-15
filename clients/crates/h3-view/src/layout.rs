@@ -42,6 +42,71 @@ pub struct BattleLayout {
     /// The palette of the players' colours (`PLAYERS.PAL`): a player's flag takes its 32 entries
     /// from 32 × the player's colour over the DEF's entries 224–255 (0x5FFE20, §4.5).
     pub player_palette: String,
+    /// A stack's count box (§4.3; E17 M3 T4a).
+    pub count_box: CountBox,
+}
+
+/// A stack's count box (`draw_battle_stack`'s part 1, 0x43E568; design §4.3): its picture beside
+/// the stack, its inside tinted, the count written over it.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CountBox {
+    /// The picture, index 0 transparent (`CmNumWin.pcx`, 0x463395).
+    pub picture: String,
+    /// The font of the count (`tiny.fnt`, 0x698A04).
+    pub font: String,
+    /// The palette the font's colours come from (`game.pal`, copied when the font loads,
+    /// 0x55B817).
+    pub font_palette: String,
+    /// The box's top-left corner from the stack's anchor when the hex ahead is free: facing right
+    /// (22, −15) and facing left (52, −30), whose x is negated (0x43E5B5).
+    pub beside: [[i32; 2]; 2],
+    /// What a two-hex stack adds to x before a left-facing one's is negated (44).
+    pub two_hex: i32,
+    /// When the hex ahead is taken: added to x before the negation (−37) and the y (−15).
+    pub taken: [i32; 2],
+    /// The tinted rectangle inside the box: its corner from the box's and its size (1, 1; 28 × 9;
+    /// 0x43E682).
+    pub tint_rect: [[i32; 2]; 2],
+    /// The tint of a stack without spells: hue 0.75 and saturation 0.8, as the bits of the f32
+    /// values the executable passes.
+    pub tint: [u32; 2],
+    /// The count's text box, from the box's corner (30 × 15; 0x43E776).
+    pub text_size: [i32; 2],
+    /// The text drawer's colour argument (4: `game.pal`'s entry 13, white).
+    pub text_colour: u32,
+    /// The text drawer's alignment (1: each line centred, from the box's top).
+    pub text_align: u32,
+}
+
+impl CountBox {
+    /// The box's top-left corner beside a stack anchored at `anchor`: facing right or not, two
+    /// hexes wide or not, the hex ahead taken or not, the creature's troop-count offset `t`
+    /// (added when the hex ahead is free; 0x43E5B5 to 0x43E651).
+    #[must_use]
+    pub fn corner(
+        &self,
+        anchor: [i32; 2],
+        right: bool,
+        wide: bool,
+        taken: bool,
+        t: i32,
+    ) -> [i32; 2] {
+        let [mut x, mut y] = self.beside[usize::from(!right)];
+        if wide {
+            x += self.two_hex;
+        }
+        if taken {
+            x += self.taken[0];
+            y = self.taken[1];
+        } else {
+            x += t;
+        }
+        if !right {
+            x = -x;
+        }
+        [anchor[0] + x, anchor[1] + y]
+    }
 }
 
 impl BattleLayout {
@@ -111,6 +176,20 @@ mod tests {
         assert_eq!(layout.hero_canvas, [[-43, -19], [693, -19]]);
         assert_eq!(layout.flag_canvas, [[29, 20], [755, 20]]);
         assert_eq!(layout.player_palette, "PLAYERS.PAL");
+        // §4.3: the count box by facing, size and the hex ahead, at the anchor (100, 200).
+        let b = &layout.count_box;
+        let at = [100, 200];
+        assert_eq!(b.corner(at, true, false, false, 0), [122, 185]);
+        assert_eq!(b.corner(at, true, true, false, 3), [169, 185]);
+        assert_eq!(b.corner(at, true, false, true, 3), [85, 185]);
+        assert_eq!(b.corner(at, true, true, true, 0), [129, 185]);
+        assert_eq!(b.corner(at, false, false, false, 0), [48, 170]);
+        assert_eq!(b.corner(at, false, true, false, -2), [6, 170]);
+        assert_eq!(b.corner(at, false, false, true, 0), [85, 185]);
+        assert_eq!(b.corner(at, false, true, true, 0), [41, 185]);
+        assert_eq!(b.tint_rect, [[1, 1], [28, 9]]);
+        assert_eq!(b.tint, [0x3F40_0000, 0x3F4C_CCCD]);
+        assert_eq!((b.text_size, b.text_colour, b.text_align), ([30, 15], 4, 1));
         let flat = BattleLayout {
             outline_ramp: 0,
             ..layout

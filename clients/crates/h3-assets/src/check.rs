@@ -6,6 +6,7 @@ use alloc::vec::Vec;
 use crate::Error;
 use crate::archive::extension;
 use crate::def::{self, Def};
+use crate::fnt;
 use crate::msk;
 use crate::palette;
 use crate::pcx::{self, Pcx};
@@ -37,6 +38,13 @@ pub enum Decoded {
         frames: usize,
         /// How many frames use each encoding (by number).
         encodings: [u32; 4],
+    },
+    /// A font (E17 M3 T4a).
+    Fnt {
+        /// Its line height.
+        height: u8,
+        /// The glyphs with pixels.
+        glyphs: usize,
     },
     /// An MSK.
     Msk {
@@ -93,7 +101,7 @@ pub struct EntryCheck {
     pub findings: Vec<Finding>,
 }
 
-/// Decodes an entry by its name's extension (PCX, PAL, DEF, MSK; any other is
+/// Decodes an entry by its name's extension (PCX, PAL, DEF, FNT, MSK; any other is
 /// [`Decoded::Skipped`]) and collects the findings. `tag` is the archive's type tag.
 #[must_use]
 pub fn check_entry(name: &str, tag: u32, bytes: &[u8]) -> EntryCheck {
@@ -114,6 +122,10 @@ pub fn check_entry(name: &str, tag: u32, bytes: &[u8]) -> EntryCheck {
         "DEF" => def::parse_def(bytes).and_then(|d| {
             type_tag(&mut findings, tag, d.kind);
             check_frames(&d, bytes, &mut findings)
+        }),
+        "FNT" => fnt::decode_fnt(bytes).map(|f| Decoded::Fnt {
+            height: f.height,
+            glyphs: f.glyphs.iter().filter(|g| !g.pixels.is_empty()).count(),
         }),
         "MSK" => msk::decode_msk(bytes).map(|m| Decoded::Msk {
             width: m.width,
@@ -247,6 +259,27 @@ mod tests {
             })
         );
         assert_eq!(check_entry("x.txt", 2, &[]).decoded, Ok(Decoded::Skipped));
+        // A font (E17 M3 T4a): its height and the glyphs with pixels.
+        let mut glyphs = vec![fnt::Glyph::default(); 256];
+        glyphs[usize::from(b'0')] = fnt::Glyph {
+            left: 0,
+            width: 1,
+            right: 1,
+            pixels: vec![0xFF; 2],
+        };
+        let font = fnt::Font {
+            height: 2,
+            y_offset: 0,
+            glyphs,
+        };
+        assert_eq!(
+            check_entry("tiny.fnt", 80, &build::fnt(&font)).decoded,
+            Ok(Decoded::Fnt {
+                height: 2,
+                glyphs: 1
+            })
+        );
+        assert_eq!(check_entry("x.FNT", 80, &[]).decoded, Err(Error::Truncated));
     }
 
     #[test]

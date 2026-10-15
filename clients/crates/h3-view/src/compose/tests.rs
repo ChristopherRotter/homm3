@@ -420,3 +420,75 @@ fn a_hero_and_its_flag_take_the_shadowed_drawer_the_flag_its_players_colours() {
         ComposeError::Missing("CH.DEF group 1 frame 3".into())
     );
 }
+
+/// A count box's layout (M3 T4a): a 4 x 3 picture at (2, 1) of an 8 x 4 frame, its middle row's
+/// inner two pixels tinted, the count in a 4 x 3 text box, centred.
+fn boxed() -> (BattleLayout, Batch) {
+    let mut layout = small();
+    layout.frame = [8, 4];
+    layout.count_box.picture = "Box.pcx".to_string();
+    layout.count_box.font = "Digits.fnt".to_string();
+    layout.count_box.font_palette = "text.pal".to_string();
+    layout.count_box.tint_rect = [[1, 1], [2, 1]];
+    layout.count_box.text_size = [4, 3];
+    let mut b = batch();
+    let pixels = [0, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1];
+    let picture = build::pcx_indexed(4, 3, &pixels, &palette(&[(1, BLUE), (2, WHITE)]));
+    b.add("Box.pcx", &picture).unwrap();
+    // The text's colour (entry 13) and the shadow's (32).
+    let text = build::pal(&palette(&[(13, WHITE), (32, GREEN)]), &[0; 256], 0, &[]);
+    b.add("text.pal", &text).unwrap();
+    // `1` inks its bottom row, `2` shades it; each one pixel wide.
+    let mut glyphs = vec![h3_assets::fnt::Glyph::default(); 256];
+    glyphs[usize::from(b'1')].width = 1;
+    glyphs[usize::from(b'1')].pixels = vec![0, 0, 0xFF];
+    glyphs[usize::from(b'2')].width = 1;
+    glyphs[usize::from(b'2')].pixels = vec![0, 0, 1];
+    let font = h3_assets::fnt::Font {
+        height: 3,
+        y_offset: 0,
+        glyphs,
+    };
+    b.add("Digits.fnt", &build::fnt(&font)).unwrap();
+    (layout, b)
+}
+
+#[test]
+fn a_count_box_is_its_picture_tinted_with_the_count_over_it() {
+    let (layout, batch) = boxed();
+    let count = |tint| Draw::CountBox {
+        x: 2,
+        y: 1,
+        count: 12,
+        tint,
+    };
+    // The count box's own tint: white becomes 0x919F (h3_render::tint's tests).
+    let screen = compose(&[count([0x3F40_0000, 0x3F4C_CCCD])], &batch, &layout).unwrap();
+    let [b, w, g] = [BLUE, WHITE, GREEN].map(|c| FORMAT.pack(c));
+    let tinted = 0x919F;
+    assert_eq!(
+        screen.pixels(),
+        [
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, b, b, b, 0, 0],
+            [0, 0, b, tinted, tinted, b, 0, 0],
+            [0, 0, b, w, g, b, 0, 0],
+        ]
+        .concat()
+    );
+    // A hue of 1 leaves the picture as it is.
+    let plain = compose(&[count([0x3F80_0000, 0])], &batch, &layout).unwrap();
+    assert_eq!(plain.pixel(3, 2), Some(w));
+    // What the batch lacks: the font, its palette, the picture.
+    let mut no_font = layout.clone();
+    no_font.count_box.font = "no.fnt".to_string();
+    let gone = |what: &str| Err(ComposeError::Missing(what.to_string()));
+    let list = [count([0, 0])];
+    assert_eq!(compose(&list, &batch, &no_font), gone("no.fnt"));
+    let mut no_palette = layout.clone();
+    no_palette.count_box.font_palette = "no.pal".to_string();
+    assert_eq!(compose(&list, &batch, &no_palette), gone("no.pal"));
+    let mut no_picture = layout;
+    no_picture.count_box.picture = "no.pcx".to_string();
+    assert_eq!(compose(&list, &batch, &no_picture), gone("no.pcx"));
+}
