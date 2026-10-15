@@ -249,3 +249,28 @@ fn a_guards_visit_waits_for_the_answer_to_the_tiles_own_offer() {
     };
     assert_eq!(after_steps(events), [refused, opened(&rules, guard)]);
 }
+
+// covers: GAM-DEC-001
+#[test]
+fn the_hash_sees_each_kind_of_a_monsters_offer() {
+    let rules = rules();
+    let at = Pos::new(1, 1, 0);
+    let open = |difficulty, count, disposition, answers: &[GameCommand]| {
+        let monster = object(&rules, "t:monster", at, gogs(count, disposition));
+        let mut state = game(&rules, difficulty, vec![monster]);
+        play(&mut state, &rules, RED, move_hero(0, &[at])).unwrap();
+        for answer in answers {
+            play(&mut state, &rules, RED, answer.clone()).unwrap();
+        }
+        state.state_hash()
+    };
+    // Join, join for gold, the flight after a declined join: three hashes.
+    let hashes = [
+        open(0, 4, 0, &[]),
+        open(0, 4, 5, &[]),
+        open(0, 4, 0, &[DECLINE]),
+    ];
+    assert_ne!(hashes[0], hashes[1]);
+    assert_ne!(hashes[0], hashes[2]);
+    assert_ne!(hashes[1], hashes[2]);
+}

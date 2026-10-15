@@ -141,17 +141,11 @@ impl AdventureState {
         Some((answer, monster))
     }
 
-    /// The monster at object index `index` as its answer reads it, if it is a monster still on
-    /// the map: its creature, its count as it stands ([`Self::monster_count`]), its aggression
-    /// and whether it never flees.
+    /// The object at `index`, one still on the map (the callers find it among those), as its
+    /// answer reads it if it is a monster: its creature, its count as it stands
+    /// ([`Self::monster_count`]), its aggression and whether it never flees.
     fn wanderer(&self, index: usize) -> Option<Wanderer> {
-        let monster = self
-            .map
-            .objects()
-            .get(index)
-            .filter(|_| !self.is_removed(index))?
-            .monster
-            .as_ref()?;
+        let monster = self.map.objects()[index].monster.as_ref()?;
         Some(Wanderer {
             creature: monster.creature,
             count: self.count_of(index, monster),
