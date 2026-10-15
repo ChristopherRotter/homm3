@@ -7,41 +7,52 @@
 //! why), recorded with `--map fixtures/maps/e08-duel-36.h3m` and the options below. Since E08
 //! T20b3b2 the duel holds increment 3's monsters, guarded piles and special grounds, a monster and
 //! a guarded pile beside each hero, so random play meets them in every game; what each replay
-//! meets (from the T20b3b2 recording):
+//! meets (from the E04c T10b recording):
 //!
-//! - `duel-s1-d28` (`--seed 1 --agent-seed 1 --days 28`): a key; a declined offer to join, then
-//!   the flight pursued and its battle won; another pursuit won.
+//! - `duel-s1-d28` (`--seed 1 --agent-seed 1 --days 28`): a key; twice a declined offer to join,
+//!   then the flight pursued and its battle won.
 //! - `duel-s2-d7` (`--seed 2 --agent-seed 3 --days 7`): a Cartographer's offer accepted, a
 //!   monster's battle won.
-//! - `duel-s5-strict-d7` (`--seed 5 --agent-seed 8 --days 7 --profile base:strict-fixed`): a
-//!   monster's battle won in strict-fixed (the split and the obstacles from the stream).
-//! - `duel-s3-easy-d7` (`--seed 3 --agent-seed 4 --days 7 --difficulty 0`): two monsters' battles
-//!   won at the easy difficulty (E08 T14b: the replay's difficulty, which `verify` plays at).
-//! - `duel-s535-d28` (`--seed 535 --agent-seed 535 --days 28`): a Cartographer accepted, a guarded
-//!   pile fought at once and picked up, a pile's question declined, a hero battle won with a
-//!   capture.
-//! - `duel-s1218-d28` (`--seed 1218 --agent-seed 1218 --days 28`): a pursuit won, a key, a pile's
-//!   question declined, a border guard's passage accepted (the guard removed).
-//! - `duel-s6-d28` (`--seed 6 --agent-seed 6 --days 28`): a pile's question accepted and its
-//!   guards beaten, a group joining, a key, a pursuit won, a pile's guards beating the visitor
-//!   (their survivors stay, the hero leaves the map).
-//! - `duel-s1429-d28` (`--seed 1429 --agent-seed 1429 --days 28`): a declined join and a declined
-//!   flight (the monster leaves), a group joining, a monster's battle lost, a Cartographer declined.
-//! - `duel-s100-strict-d28` (`--seed 100 --agent-seed 100 --days 28 --profile
-//!   base:strict-fixed`): a Cartographer accepted, a monster's battle won, a hero battle lost in
-//!   strict-fixed, the winner capturing.
+//! - `duel-s5-strict-d7` (`--seed 5 --agent-seed 8 --days 7 --profile base:strict-fixed`): in
+//!   strict-fixed (the split and the obstacles from the stream) a monster's battle won, two
+//!   pursuits won (one after a declined join), a guarded pile fought at once and picked up, a key.
+//! - `duel-s3-easy-d7` (`--seed 3 --agent-seed 4 --days 7 --difficulty 0`): a monster's battle won
+//!   at the easy difficulty (E08 T14b: the replay's difficulty, which `verify` plays at).
+//! - `duel-s1279-d28` (`--seed 1279 --agent-seed 1279 --days 28`): two monsters' battles won, a
+//!   declined join and a declined flight (the monster leaves), a hero battle won with a capture.
+//! - `duel-s810-d28` (`--seed 810 --agent-seed 810 --days 28`): a key, three monsters' battles
+//!   won, a group joining, a border guard's passage accepted (the guard removed).
+//! - `duel-s328-d28` (`--seed 328 --agent-seed 328 --days 28`): a Cartographer accepted, a group
+//!   joining, a key, a pile's guards beating the visitor (their survivors stay, the hero leaves
+//!   the map), a pursuit won.
+//! - `duel-s1122-d28` (`--seed 1122 --agent-seed 1122 --days 28`): a monster's battle lost, a
+//!   declined join and a declined flight (the monster leaves), a group joining, a pile's question
+//!   accepted and its guards beaten.
+//! - `duel-s307-strict-d28` (`--seed 307 --agent-seed 307 --days 28 --profile
+//!   base:strict-fixed`): a guarded pile fought at once and picked up, a Cartographer accepted,
+//!   monsters' battles won, a hero battle lost in strict-fixed, the winner capturing.
 //!
 //! The last five came from a search over seeds (`--seed N --agent-seed N --days 28` for N up to
-//! 1 500, `strict-fixed` up to 800; E08 T20b3b2): of 1 500 such games 10 have a hero battle, 3 a
-//! guard's passage, 58 a pile's guards beating the visitor. History: E08 T16a re-recorded the
-//! first four when the duel got increment 2's objects and added two searched ones (a
-//! Cartographer's offer, a key and a guard's passage; a declined and an accepted offer), E08 T19b1
-//! two with hero battles (format v3), and every later version bump (T20a1, T20a2a, T20b1,
-//! `shared/e08-t20b2`, E04c T9, T21a) re-recorded them all with their options, their commands
-//! unchanged. E08 T20b3b2 changed the duel, so every command changed: the first four were
-//! re-recorded with their options and the four searched ones (`duel-s892-d28`, `duel-s988-d28`,
-//! `duel-s792-d28`, `duel-s120-strict-d28`), which no longer met what they were chosen for, were
-//! replaced by the five above.
+//! 1 500, `strict-fixed` up to 800; E08 T20b3b2, again E04c T10b): of the 1 500 faithful games of
+//! E04c T10b 11 have a hero battle (one with a capture), 1 a guard's passage, 62 a pile's guards
+//! beating the visitor; of the 800 strict-fixed ones 6 a hero battle (two with a capture).
+//! History: E08 T16a re-recorded the first four when the duel got increment 2's objects and added
+//! two searched ones (a Cartographer's offer, a key and a guard's passage; a declined and an
+//! accepted offer), E08 T19b1 two with hero battles (format v3), and every later version bump
+//! (T20a1, T20a2a, T20b1, `shared/e08-t20b2`, E04c T9, T21a) re-recorded them all with their
+//! options, their commands unchanged. E08 T20b3b2 changed the duel, so every command changed: the
+//! first four were re-recorded with their options and the four searched ones (`duel-s892-d28`,
+//! `duel-s988-d28`, `duel-s792-d28`, `duel-s120-strict-d28`), which no longer met what they were
+//! chosen for, were replaced by five (`duel-s535-d28`, `duel-s1218-d28`, `duel-s6-d28`,
+//! `duel-s1429-d28`, `duel-s100-strict-d28`). E04c T10b re-recorded them for the original's
+//! obstacle placement and draw (BAT-Q50 (1), `cross-lane`): the obstacles of every battle changed,
+//! so its commands did; the first four kept their options, and the five searched ones, which no
+//! longer met what they were chosen for, were replaced by the five above, the closest where no game
+//! met the whole set: `duel-s1279-d28` (the one faithful game with a capture) lacks the
+//! Cartographer, the pile fought at once and the declined question, `duel-s810-d28` (the one with a
+//! passage) the pursuit and the declined question, `duel-s328-d28` the accepted question
+//! (`duel-s1122-d28` has it), `duel-s1122-d28` the declined Cartographer; no replay now declines a
+//! pile's question or a Cartographer.
 
 use std::path::PathBuf;
 
