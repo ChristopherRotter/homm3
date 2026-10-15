@@ -803,3 +803,33 @@ with the spells), then away.
   code): every count as recorded; `check-lane`, `check-docs`, `check-exe-map`. `h3-view harvest`
   writes the three `ray` lines as committed; its other difference, 35 obstacles beyond the table,
   predates the task (the inbox, for T2).
+
+### M3 T1b-2 — Flights, the breath, the mouse and the set by time (2026-10-15)
+
+On `client/e17-m3-t1b2-checks`, the user present at the start (the increment confirmed: T1b-2 in
+full), then away.
+
+- **Starting point:** master at #221 (`103a88f`, T1b-1 merged that morning); the clients'
+  baseline full check green (all gates, 100 %); the original files staged before the user left.
+- **The sequence `fly`** (`seq-fly.toml`, hot seat, two commands): the Black Dragons fly from
+  row 2 to row 3 beside the attacker's column and breathe through the Pikemen into the Gnolls
+  behind them (group 19, both stacks hit; the Pikemen strike back), then the Angels fly from
+  row 0 to row 9 over the Dragons and five stacks. Where the Dragons stand came from the
+  cursor's slot inside the Pikemen's hex (three probes, design §7.13): only the slot up and to
+  the right at (+14, −13) puts their head on the breath's line. The viewer's timeline as
+  recorded on its first run (110 changes); frames 102, 91 exact, 11 redraw artifacts only. So
+  M2's two rules from the code reading hold: a flier's cycles over every row (layer 8, T5a) and
+  the breath's groups 17–19 told by the second stack's place (T5c); their *provisional* marks
+  lifted (code, design §7.4, §7.10, the review lists). A unit test replays `fly` from its events.
+- **The mouse over a stack** (design §7.13, map: `battle_mouse_stack` 0x477C20): read, then
+  recorded (`hover`, the `fly` map's opening): the stack the mouse enters starts group 1 at
+  frame 0 at once and takes the mouse's outline (0x70, cyan); the idle step plays the group as a
+  fidget; entering again while it plays stands the stack. No engine command (the viewer draws no
+  mouse in a record): `h3-view sequences` and the frame check skip such an entry. The window's
+  mouse-over is queued for T6 (the inbox), with the cursor rules.
+- **The capture set by time:** `h3drive.py set` reads each frame's stacks from the original's
+  memory and draws ours with `h3-view render --frames` (the outline's pulse on the original's
+  clock, a fidget in the original's poses, `frames.toml` as the frame check's). All 17 frames of
+  the nine situations exact outside the masks (412 to 2 036 differing pixels each before); the
+  set's counts recorded as 0.
+- **Checks:** CHECKS

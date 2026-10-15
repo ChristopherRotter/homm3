@@ -4,12 +4,12 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a, T1c, T1b-1 (shots and rays, 2026-10-15) done; next: M3 T1b-2** (`QUEUE.md`; T2–T8 also ready). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ the amendment draft in `adr-drafts/`), ADR-0024; the capture harness `clients/capture/README.md`; design §3–§8; records in `E17-log.md`.
-- **Pull requests (2026-10-15):** T1b-1 #221 open (T1c #216, the shared #219 merged).
+- **E17 M0–M2 done; M3 T1a–T1c done (2026-10-15); next: M3 T2–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ the amendment draft in `adr-drafts/`), ADR-0024; the capture harness `clients/capture/README.md`; design §3–§8; records in `E17-log.md`.
+- **Pull requests (2026-10-15):** T1b-2 #PR open (T1b-1 #221 merged).
 - **The user's requirements (2026-10-13)**, epic "Decisions": a string catalogue, language packs; graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
-- The lane needs the user's computer online (it may sleep: stage all first) for the original files, from `original-data/install/` into the clone's: the four LODs (one per staging call), `h3maped.exe`, the two `.snd` (sound: also `MP3/COMBAT01`–`04`); the captures also `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`. Captured frames live only in their sandbox: a new one captures again (runbook).
+- The lane needs the user's computer online (it may sleep: stage all first) for the original files, from `original-data/install/` into the clone's: the four LODs (one per staging call), `h3maped.exe`, the two `.snd` (sound: also `MP3/COMBAT01`–`04`); the captures also `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`. `sandbox-setup.sh` copies only the engine's few: `cp -rn` the staged `original-data/.` before `capture/setup.sh`. Captured frames live only in their sandbox (runbook).
 - **Open:** CLT-Q2 (a table-only LOD reader in `h3-formats`; until then whole archives); CLT-Q4 (how a record carries the background variant).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -50,6 +50,6 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-15, E17 M3 T1b-1 (the user away after the start).** T1b re-cut with the user (T1b-1, T1b-2; Haste and Slow to T7b). `draw_ray` read and built in integers; `shots` (hot seat: three rays, the Cyclops' throws, a defend reaction, a death) as recorded, 139 frames equal; a shooter plays its group out beyond the reactions.
-- **2026-10-15, E17 M3 T1c (the user present).** The six sequences captured again (counts as recorded). `h3cap.redraws`: ours with 1–4 more shadows, or an earlier moment's with ≥ 1; frame files `<ms> <differing> <artifacts>`; `melee` 3 966's stale count box listed for T5. The leaner verify: `shared/verify-once`.
-- **2026-10-14, E17 M3 T1a (the user present).** A battle in progress in hot seat; `climb`, `behind` recorded (timelines as recorded, frames 43/43, 164/194); the walk-by read: dirty rectangles, not copied (the user), T1c classifies.
+- **2026-10-15, E17 M3 T1b-2 (the user away after the start).** `fly` (hot seat: two flights across rows, a breath on two stacks) as recorded, frames exact or artifacts only: layer 8 and the breath confirmed; the mouse over a stack read (0x477C20) and recorded (`hover`), the window's for T6; the capture set by time (`render --frames`), all 17 frames exact.
+- **2026-10-15, E17 M3 T1b-1 (the user away after the start).** T1b re-cut (Haste and Slow to T7b). `draw_ray` read and built in integers; `shots` (three rays, the Cyclops' throws, a defend, a death) as recorded, 139 frames equal; a shooter plays its group out.
+- **2026-10-15, E17 M3 T1c (the user present).** `h3cap.redraws` classifies redraw artifacts (frame files `<ms> <differing> <artifacts>`); `melee` 3 966's stale count box listed for T5. The leaner verify: `shared/verify-once`.
