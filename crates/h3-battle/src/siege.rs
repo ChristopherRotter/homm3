@@ -179,9 +179,9 @@ impl SiegeState {
 }
 
 impl CanonicalHash for SiegeState {
-    /// Faction, fort level, moat kind, the Escape Tunnel, the gate, the wall line, the gate's, drawbridge's and
-    /// outer bridge's hexes, the moat, its second row, its damage, the defense penalty (state
-    /// hash v46).
+    /// Faction, fort level, moat kind, the gate, the wall line, the gate's, drawbridge's and outer
+    /// bridge's hexes, the moat, its second row, its damage, the defense penalty (state hash v46);
+    /// the Escape Tunnel after the moat kind (v50).
     fn hash_into(&self, h: &mut StateHasher) {
         self.faction.hash_into(h);
         h.write_u8(self.fort as u8);

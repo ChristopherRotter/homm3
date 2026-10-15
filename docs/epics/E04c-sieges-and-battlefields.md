@@ -104,10 +104,11 @@ reading).
 **Increment 7** (the user, 2026-10-15: T8 as the next sensible increment; disputes by the code with
 a batch; the wire `cross-lane` if needed).
 
-- [ ] **T8 The siege's other rules** — built 2026-10-15 (record: [`E04c-log.md`](E04c-log.md)):
+- [x] **T8 The siege's other rules** — built 2026-10-15 (record: [`E04c-log.md`](E04c-log.md)):
   T8a the reading (§7.32, D-20), T8b the battle (BAT-SIE-024 to 028; Teleport's siege masteries
   harvested, pack format v42; BAT-TAC-001 and BAT-END-003 amended; BAT-STUB-2 closed), T8c batch
-  3g by an agent; for the user's checkpoint.
+  3g by an agent: every value as the code, D-21 found (the Brotherhood replaces the Tavern's
+  morale: the town context's); BAT-SIE-024 to 027 `verified`; for the user's checkpoint.
 - [ ] T9 Workload and measurements; T10 closure (the independent review, as E04b's T11).
 
 ### T5 — Walls, gate and moat (refined 2026-10-14, increment 3)

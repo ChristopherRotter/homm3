@@ -170,7 +170,13 @@ def play(game, out, plan):
     todo = [dict(c, done=False) for c in plan["casts"]]
     steps, seen = [], []
     while True:
-        before = run.until_turn()
+        try:
+            before = run.until_turn()
+        except TimeoutError:
+            # The battle ended (TV: the Swordsmen die in the moat in round 3): the steps so far.
+            if not all(c["done"] for c in todo):
+                raise
+            break
         if run.round > plan["rounds"]:
             break
         side, record = catapult.commanded(mem, before, False)

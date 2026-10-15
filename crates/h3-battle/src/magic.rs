@@ -1240,8 +1240,9 @@ fn first_target(
 /// Whether `second` is the second target of `side`'s cast of `spell` at `mastery` aimed at
 /// `target` (BAT-MAG-029): for Teleport a hex, other than the stack's position, where the stack
 /// fits (inside the field, outside the side columns, not blocked by an obstacle or another
-/// living stack; the original's 0x5A3700, `installation.md` §7.15), at a town only across the
-/// moat and the walls as the mastery allows (BAT-SIE-026); for Sacrifice a victim other than
+/// living stack; the original's 0x5A3700, `installation.md` §7.15), at a town the closed gate
+/// passing as for the caster's side (0x469A10 reads the acting side) and only across the moat
+/// and the walls as the mastery allows (BAT-SIE-026); for Sacrifice a victim other than
 /// the target ([`raise::victim`], BAT-MAG-036); none for every other spell.
 // rule: BAT-MAG-029
 fn second_target(
@@ -1257,7 +1258,7 @@ fn second_target(
             let field = Field::new(ruleset.battle().field);
             let stack = state.at(s);
             h != stack.hex
-                && movement::fits(field, stack, h, state.blocked_for(field, s))
+                && movement::fits(field, stack, h, state.blocked_as(field, s, Some(side)))
                 && crate::siege::teleport_allowed(state, ruleset, (stack.hex, h), mastery)
         }
         // rule: BAT-MAG-036

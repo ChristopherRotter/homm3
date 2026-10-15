@@ -511,3 +511,42 @@ fn a_town_has_its_tactics_phase() {
         assert_eq!(s.tactics().map(|t| t.side), Some(Attacker), "{fort:?}");
     }
 }
+
+// covers: BAT-SIE-026, BAT-MAG-026
+#[test]
+fn teleport_passes_the_closed_gate_for_the_caster_s_side_only() {
+    use crate::Status;
+    let r = ruleset();
+    let fort = town(&r, "t:castle", FortLevel::Fort, Moat::Absent);
+    let heroes = [
+        Some(caster(&r, &["teleport"], 3)),
+        Some(caster(&r, &["teleport"], 3)),
+    ];
+    let mut s = at_town(
+        &r,
+        Some(fort),
+        heroes,
+        &[("fixed", 5, 2, 5), ("fixed", 5, 2, 7)],
+        &[("fixed", 5, 14, 9)],
+        |_| {},
+    );
+    let gate = at(&r, 11, 5);
+    let reaches = |s: &BattleState, side: BattleSide, id: u8| {
+        let mut out = CastTargets::new();
+        second_targets(s, &r, side, (spell(&r, "teleport"), stack(id)), &mut out);
+        out.as_slice().contains(&CastTarget::Hex(gate))
+    };
+    // The attacker's Expert Teleport reaches anywhere inside but not the closed gate's hex.
+    assert!(!reaches(&s, Attacker, 0));
+    // Its own stack under the defender's Hypnotize: still the attacker's cast, still not the gate.
+    let st = &mut s.stacks.as_mut_slice()[1];
+    st.spells.status = st.spells.status.with(Status::HYPNOTIZED, true);
+    let mut out = CastTargets::new();
+    cast_targets(&s, &r, Attacker, spell(&r, "teleport"), &mut out);
+    assert!(out.as_slice().contains(&stack(1)));
+    assert!(!reaches(&s, Attacker, 1));
+    // The defender's own cast on its stack passes the closed gate.
+    let d = defender(&s);
+    activate(&mut s, d);
+    assert!(reaches(&s, Defender, d));
+}

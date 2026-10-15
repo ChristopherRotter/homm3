@@ -4672,7 +4672,7 @@ numeric  = "float"
 id       = "BAT-SIE-024"
 title    = "A town's defender: no surrender, retreat through the Escape Tunnel only"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "In a battle at a town (BattleSetup.siege, with or without a fort) the defender never surrenders, not even with the Escape Tunnel (CommandError::CannotSurrender), and retreats only when the town has an Escape Tunnel (Siege.escape_tunnel; CommandError::CannotRetreat otherwise); the attacker keeps both as anywhere (BAT-FLE-001, BAT-FLE-002: a hero, no NoRetreat, the enemy's hero and the price for a surrender). The tunnel is battle state (state hash v50); whether each side may retreat and surrender stays public (Observation.may_retreat, Observation.surrender_possible), so the observation and its encoding are unchanged. A town's turrets never enter a surrender's price, as its defender never surrenders."
 numeric  = "integer"
 
@@ -4695,12 +4695,17 @@ numeric  = "integer"
   retrieved  = "2026-10-15"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3g.md (agent run under Wine, 2026-10-15, hot seat: both players human): the battle window's Surrender and Retreat buttons (items 2001, 2002) disabled at every turn of a Castle's and a Rampart's defender (CM, RL), Retreat enabled and Surrender disabled for a Stronghold's with the Escape Tunnel (ET), both enabled for the attacker; without a defending hero Surrender disabled for the attacker too (TB)"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-025"
 title    = "A town's morale and luck"
 context  = "battle"
-status   = "implemented"
-summary  = "In a battle at a town the town's morale and luck (Siege.morale, Siege.luck: the Tavern +1 and the Castle's Brotherhood of the Sword +2 more, the Rampart's Fountain of Fortune +2 luck, as the town context derives them, ADR-0023 point 2) are changes on the defender's side (side modifiers, ADR-0012, with the army's alignment, the auras and the heroes' changes; the original adds them last to the base values, before the clamp): every defender stack's morale and luck from the battle's start, created stacks included, then clamped as any (BAT-MOR-001, BAT-LCK-001); a creature without morale keeps 0. A hypnotized stack keeps its own side's, as its other morale and luck (BAT-MAG-026; the original recomputes them after every action from the controller, which gets the town only as the defender: the battle queue's inbox)."
+status   = "verified"
+summary  = "In a battle at a town the town's morale and luck (Siege.morale, Siege.luck: the Tavern +1, or +2 in a Castle with the Brotherhood of the Sword, which replaces the Tavern's, the Rampart's Fountain of Fortune +2 luck, as the town context derives them, ADR-0023 point 2; survey D-21) are changes on the defender's side (side modifiers, ADR-0012, with the army's alignment, the auras and the heroes' changes; the original adds them last to the base values, before the clamp): every defender stack's morale and luck from the battle's start, created stacks included, then clamped as any (BAT-MOR-001, BAT-LCK-001); a creature without morale keeps 0. A hypnotized stack keeps its own side's, as its other morale and luck (BAT-MAG-026; the original recomputes them after every action from the controller, which gets the town only as the defender: the battle queue's inbox)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4715,12 +4720,17 @@ numeric  = "integer"
   retrieved  = "2026-10-15"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3g.md (agent run under Wine, 2026-10-15): a Castle with a Tavern and the Brotherhood: the defenders' morale +1 with three alignments (-1 + 2: the Brotherhood replaces the Tavern in the set +0x150, read back from the town record; CM, twice); a Rampart with the Fountain of Fortune: the defenders' luck +2 (RL)"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-026"
 title    = "Teleport across the moat and the walls"
 context  = "battle"
-status   = "implemented"
-summary  = "In a battle at a town a teleport effect's destination (BAT-MAG-029) is limited by the cast's mastery, as the siege field gives it (teleport_moat, teleport_walls: 2 and 3, Advanced and Expert, harvested from the executable): below teleport_moat, with a moat (a Citadel or a Castle, not the Tower's mines), the stack may not cross the moat, a hex's side of it decided by its row's moat hex (left of it outside; the moat hex and right of it inside, so the Fortress's outer row is outside); below teleport_walls, with a fort, the straight line from the stack's position to the destination (the shot's line test, BAT-SIE-008) may meet no standing wall and not the closed gate, outside the walls too. So no mastery and Basic: neither across the moat nor through the walls; Advanced: across the moat, not through the walls (an open gate, a destroyed wall on the line let it through); Expert: wherever the stack fits. A refused destination is no second target (CommandError::InvalidSpellTarget, nothing spent)."
+status   = "verified"
+summary  = "In a battle at a town a teleport effect's destination (BAT-MAG-029) is limited by the cast's mastery, as the siege field gives it (teleport_moat, teleport_walls: 2 and 3, Advanced and Expert, harvested from the executable): below teleport_moat, with a moat (a Citadel or a Castle, not the Tower's mines), the stack may not cross the moat, a hex's side of it decided by its row's moat hex (left of it outside; the moat hex and right of it inside, so the Fortress's outer row is outside); below teleport_walls, with a fort, the straight line from the stack's position to the destination (the shot's line test, BAT-SIE-008) may meet no standing wall and not the closed gate, outside the walls too. So no mastery and Basic: neither across the moat nor through the walls; Advanced: across the moat, not through the walls (an open gate, a destroyed wall on the line let it through); Expert: wherever the stack fits. The closed gate passes as for the caster's side, which casts on its own stacks (0x469A10 reads the acting side: a hypnotized stack teleported by its owner does not pass it as its controller's). A refused destination is no second target (CommandError::InvalidSpellTarget, nothing spent)."
 numeric  = "float"
 
   [[rule.source]]
@@ -4742,17 +4752,27 @@ numeric  = "float"
   retrieved  = "2026-10-15"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3g.md (agent run under Wine, 2026-10-15, a Citadel of a Castle town): from hex 86 Basic Teleport refused the inside hex 64 and the moat hex 61 and accepted 91 (TB); Advanced refused 64 and accepted 61, landing without the moat's damage (TV); Expert accepted 64 (TE)"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-SIE-027"
 title    = "No spell obstacle on a wall"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "In a battle at a town the hexes of the standing walls and the gate's hex, destroyed or not (the original's blocked bit: a destroyed wall clears its own, the destroyed gate not), take no spell obstacle: Force Field's and Fire Wall's targets need every hex of their shape off them (BAT-MAG-027), Quicksand's pits and Land Mine's mines are never drawn on them (BAT-MAG-032, BAT-MAG-033). The moat's hexes take them as any other hex."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.15, §7.16, §7.29, §7.32): the target test 0x5A39C0 and the draws of 0x5A0354 and 0x5A0536 refuse a hex with an object bit 0x3F; the siege's setup (0x4662E3) sets the blocked bit 0x2 on the 11 wall hexes, the gate's 96 among them; 0x465990 clears it for a destroyed wall (1, 2, 4, 5), not for the gate"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3g.md (agent run under Wine, 2026-10-15, a Fort of a Castle town): Expert Force Field refused hex 95 (its shape reaches the wall hex 78) and the gate's hex 96 and was placed at 91 (FF)"
   confidence = "high"
 
 [[rule]]

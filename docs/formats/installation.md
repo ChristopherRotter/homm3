@@ -2457,7 +2457,8 @@ mana before the battle.
 
 **Morale and luck.** 0x469750 passes the town to the defender's stacks only. The base morale
 (0x44B065 to 0x44B0AD): +1 with a Tavern (building 5), +2 more in a Castle with building 22 (the
-Brotherhood of the Sword). The base luck 0x44B2D0 takes the town too (not read; Rampart's Fountain
+Brotherhood of the Sword; E04c T8: the Tavern is read in the set +0x150, where the Brotherhood
+replaces it, so +2 in all, §7.32). The base luck 0x44B2D0 takes the town too (not read; Rampart's Fountain
 of Fortune by VCMI and the wiki).
 
 **The controls** (0x478573 to 0x478635). Surrender needs a hero on both sides and is refused to
@@ -2856,8 +2857,14 @@ sides, the stack's luck (0x43DF20) and morale (0x43E000) from its **controller**
 side while +0x288 is set: hypnotized): the controller's hero and army, the other side's hero and
 army, the special field +0x53C0, and the town only when the controller is the defender. The base
 morale (0x44AE60) adds the town's terms last, after the hero's, the alignments' and the undead's
-and before its optional clamp: +1 with a Tavern (building 5 in the built set +0x150), +2 more in a
-Castle (type 0) with building 22 (the Brotherhood of the Sword, in +0x158). The base luck
+and before its optional clamp: +1 with a Tavern (building 5 in the set +0x150), +2 in a Castle
+(type 0) with building 22 (the Brotherhood of the Sword, in +0x158). **The two do not add up:**
++0x150 holds the buildings with an upgrade's predecessor left out (the Citadel without the Fort,
+the Brotherhood, the Tavern's upgrade, without the Tavern), +0x158 every built one (batch 3g CM,
+read back from the town record: +0x150 the Citadel, the Village Hall, the Brotherhood; +0x158 also
+the Fort and the Tavern; the defenders' morale −1 + 2). So a Castle with the Brotherhood gives +2,
+any other town with a Tavern +1 (`vcmi`: the Brotherhood `upgrades` the Tavern with
+`upgradeReplacesBonuses`; the `wiki`'s "+2 (in addition to Tavern)" is refuted; survey D-21). The base luck
 (0x44B2D0) is 0 when either hero wears the Hourglass of the Evil Hour (85); else the controller's
 hero's luck, −1 if the other army holds Devils or Arch Devils (54, 55), then +2 in a Rampart
 (type 1) with building 21 (the Fountain of Fortune, +0x158). The town context derives these as

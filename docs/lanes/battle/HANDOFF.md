@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 7, T8 (the user, 2026-10-15):** in progress on `battle/e04c-t8`: reading §7.32, BAT-SIE-024 to 028 done; batch 3g (`town.py`) next; then docs, full verify, the `cross-lane` PR.
+- **E04c increment 7, T8 (the user, 2026-10-15):** built (`battle/e04c-t8`; batch 3g: as the code, D-21); its `cross-lane` PR awaits the user's checkpoint. **Next:** T7e or T9 (the user picks).
 - **Merged:** up to #218 (T7d).
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-3 (T7e), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
-- **Versions** (T8): battle state hash v50, battle part hash v6, replay format v28, action encoding v13, C ABI v23, observation encoding v19; shared: core ruleset hash v44, pack format v42, protocol v32. Next ids: BAT-Q47, BAT-QUIRK-23, BAT-STUB-4, BAT-TER-007, BAT-SIE-029; survey D-21, S-30.
+- **Versions** (T8): battle state hash v50, battle part hash v6, replay format v28, action encoding v13, C ABI v23, observation encoding v19; shared: core ruleset hash v44, pack format v42, protocol v32. Next ids: BAT-Q47, BAT-QUIRK-23, BAT-STUB-4, BAT-TER-007, BAT-SIE-029; survey D-22, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
 
 ## Standing traps
@@ -61,12 +61,12 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-15 (sixty-fifth) — E04c T8: the siege's other rules (increment 7)
 
-In progress: the reading §7.32 (D-20), BAT-SIE-024 to 028, batch 3g by an agent. Detail: `docs/epics/E04c-log.md`.
+The user chose T8 (offline after). Reading §7.32; BAT-SIE-024 to 028; Teleport's masteries harvested (pack v42); batch 3g by an agent (`town.py`): as the code; D-21 (the Brotherhood replaces the Tavern's morale). Detail: `docs/epics/E04c-log.md`.
 
 ### 2026-10-14 (sixty-fourth) — E04c T7d: the automatic turret's target (increment 6)
 
-Reading §7.31 (0x41E190); BAT-Q46: the turrets fully; the seam (difficulty, human sides, `X87::sqrt`); `aim.rs`, BAT-SIE-020 to 023, BAT-STUB-3; batch 3f by an agent: as the code. Detail: `docs/epics/E04c-log.md`.
+Reading §7.31; BAT-Q46; the seam (difficulty, human sides); `aim.rs`, BAT-SIE-020 to 023; batch 3f: as the code; #217, #218 merged.
 
 ### 2026-10-14 (sixty-third) — E04c T7: the arrow towers (increment 5)
 
-Reading §7.30; BAT-Q44; BAT-SIE-016 to 019; batch 3e by an agent (`turrets.py`); BAT-Q45: (b); PR #209, merged. Detail: `docs/epics/E04c-log.md`.
+Reading §7.30; BAT-SIE-016 to 019; batch 3e (`turrets.py`); PR #209, merged.
