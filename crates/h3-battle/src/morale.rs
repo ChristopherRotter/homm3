@@ -1,4 +1,4 @@
-//! Morale and luck (BAT-MOR-001..004, BAT-LCK-001/002, BAT-HER-003).
+//! Morale and luck (BAT-MOR-001..004, BAT-LCK-001/002, BAT-HER-003; a town's, BAT-SIE-025).
 //!
 //! Battle-wide sources (army composition, auras, the heroes' effects) are modifiers on the sides
 //! (ADR-0012), set up once when the battle starts and kept until it ends (auras persist after
@@ -17,7 +17,7 @@ use alloc::vec::Vec;
 
 use h3_content::{Affects, CreatureFlag, CreatureTypeId, NO_LUCK_WITHOUT_HERO};
 use h3_content_battle::{Ability, AuraTarget, BattleRuleset, Battlefield, MAX_AURA_VALUES};
-use h3_contracts::{BattleEffect, BattleHero, BattleSide};
+use h3_contracts::{BattleEffect, BattleHero, BattleSide, Siege};
 use h3_kernel::modifier::evaluate;
 use h3_kernel::{
     CanonicalHash, Handle, Modifier, ModifierOp, ModifierPool, SourceKey, StateHasher,
@@ -87,9 +87,10 @@ impl CanonicalHash for Expiry {
 
 /// Capacity of the battle's modifier pool. Per side at most: army alignment, undead in the
 /// army, one modifier per distinct aura value of the ruleset (auras with equal values replace
-/// each other; the compiler caps the distinct values at [`MAX_AURA_VALUES`]), and the heroes'
-/// change and cap of morale and of luck (4).
-pub const MODIFIER_CAPACITY: usize = 2 * (2 + MAX_AURA_VALUES + 4);
+/// each other; the compiler caps the distinct values at [`MAX_AURA_VALUES`]), the heroes'
+/// change and cap of morale and of luck (4), and a town's morale and luck (2, the defender's
+/// only, counted for both sides).
+pub const MODIFIER_CAPACITY: usize = 2 * (2 + MAX_AURA_VALUES + 4 + 2);
 
 /// The battle's modifiers (ADR-0012).
 pub type Modifiers = ModifierPool<Bearer, Stat, Expiry, MODIFIER_CAPACITY>;
@@ -102,6 +103,8 @@ const ARMY_UNDEAD: SourceKey = SourceKey(2);
 const HERO_CHANGE: SourceKey = SourceKey(3);
 /// Source of the heroes' morale and luck caps reaching a side, the smallest (BAT-HER-003).
 const HERO_CAP: SourceKey = SourceKey(4);
+/// Source of a town's morale and luck for its defender (BAT-SIE-025).
+const TOWN: SourceKey = SourceKey(5);
 
 /// A side-wide battle modifier that adds `amount`.
 fn side_modifier(
@@ -216,12 +219,14 @@ fn alignment_groups(hero: Option<&BattleHero>) -> Vec<BTreeSet<u16>> {
 
 /// Sets up the battle-wide modifiers of a new battle and materialises every stack's morale and
 /// luck: army alignment and undead (BAT-MOR-002), morale and luck auras (BAT-MOR-001,
-/// BAT-LCK-001) and the heroes' morale and luck effects (BAT-HER-003).
+/// BAT-LCK-001), the heroes' morale and luck effects (BAT-HER-003) and the town's for its
+/// defender (BAT-SIE-025).
 // rule: BAT-MOR-001, BAT-MOR-002, BAT-LCK-001
 pub(crate) fn setup(
     state: &mut BattleState,
     ruleset: &BattleRuleset,
     heroes: &[Option<BattleHero>; 2],
+    town: Option<&Siege>,
 ) {
     for side in BattleSide::BOTH {
         // War machines are not part of the army (VCMI counts the army's slots).
@@ -281,7 +286,32 @@ pub(crate) fn setup(
         }
     }
     hero_modifiers(state, heroes);
+    town_modifiers(state, town);
     materialize(state, ruleset);
+}
+
+/// Inserts a town's morale and luck (`Siege.morale`, `Siege.luck`: the Tavern, the Brotherhood
+/// of the Sword, the Fountain of Fortune, as the town context derives them) as changes of its
+/// defender's side (BAT-SIE-025; the original's 0x44AE60 and 0x44B2D0 add them last to the base
+/// values, before the clamp). The original passes the town to the stacks the defender controls
+/// (0x469750, after every action): here a hypnotized stack keeps its own side's, as its other
+/// morale and luck (BAT-MAG-026).
+// rule: BAT-SIE-025
+fn town_modifiers(state: &mut BattleState, town: Option<&Siege>) {
+    let Some(town) = town else {
+        return;
+    };
+    for (stat, amount) in [(Stat::Morale, town.morale), (Stat::Luck, town.luck)] {
+        if amount != 0 {
+            // The pool is sized for these (MODIFIER_CAPACITY).
+            let _ = state.modifiers.insert(side_modifier(
+                BattleSide::Defender,
+                stat,
+                i32::from(amount),
+                TOWN,
+            ));
+        }
+    }
 }
 
 /// Recomputes every stack's morale and luck: the changes on its side, those of its timed

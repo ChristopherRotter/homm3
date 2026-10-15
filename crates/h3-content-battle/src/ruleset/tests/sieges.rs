@@ -19,6 +19,8 @@ fn field() -> SiegeFieldDef {
         second_moat: vec![10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180],
         moat_defense_penalty: 3,
         mine_power: 3,
+        teleport_moat: 2,
+        teleport_walls: 3,
         catapult: 119,
         turret_count: 4,
         targets: [
@@ -141,6 +143,7 @@ fn the_field_and_the_records_compile() {
     let f = r.siege_field().unwrap();
     assert_eq!((f.gate, f.bridge(), f.outer_bridge()), (96, 95, 94));
     assert_eq!((f.moat_defense_penalty, f.mine_power), (3, 3));
+    assert_eq!((f.teleport_moat, f.teleport_walls), (2, 3));
     assert_eq!(r.sieges().len(), 2);
     let castle = r.faction_by_key("base:castle").unwrap();
     let dungeon = r.faction_by_key("base:dungeon").unwrap();
@@ -175,10 +178,10 @@ fn the_field_and_the_records_compile() {
 fn the_hash_covers_the_sieges() {
     let hash = |p: Pack| compile(&[p], "base:faithful").unwrap().content_hash();
     let with = hash(sieges());
-    // Golden value: pins the sieges' encoding (battle part v5; bump BATTLE_RULESET_HASH_VERSION
+    // Golden value: pins the sieges' encoding (battle part v6; bump BATTLE_RULESET_HASH_VERSION
     // when it changes).
     assert_eq!(with, GOLDEN, "got {with:#018x}");
-    assert_eq!(crate::BATTLE_RULESET_HASH_VERSION, 5);
+    assert_eq!(crate::BATTLE_RULESET_HASH_VERSION, 6);
     assert_ne!(with, hash(base()));
     let mut p = sieges();
     p.battle.sieges[0].moat_damage = 71;
@@ -190,7 +193,7 @@ fn the_hash_covers_the_sieges() {
     let mut p = sieges();
     p.battle.sieges[0].hit_points[0] = 3;
     assert_ne!(hash(p), with);
-    let edits: [&dyn Fn(&mut SiegeFieldDef); 9] = [
+    let edits: [&dyn Fn(&mut SiegeFieldDef); 11] = [
         &|f| f.catapult = 102,
         // The turrets (battle part v5).
         &|f| f.turret_count = 5,
@@ -201,6 +204,9 @@ fn the_hash_covers_the_sieges() {
         &|f| f.fallback.pop().map_or((), drop),
         &|f| f.castle_bonus = 2,
         &|f| f.ballistics[0].shots = 2,
+        // Teleport's masteries (battle part v6).
+        &|f| f.teleport_moat = 3,
+        &|f| f.teleport_walls = 2,
     ];
     for edit in edits {
         let mut p = sieges();
@@ -211,7 +217,7 @@ fn the_hash_covers_the_sieges() {
     }
 }
 
-const GOLDEN: u64 = 0x5dd3_f4b1_3ebb_111a;
+const GOLDEN: u64 = 0x3223_a026_5428_ab56;
 
 #[test]
 fn field_errors() {
@@ -242,6 +248,10 @@ fn field_errors() {
         with(&|f| f.gate = 95),
         "the gate must be one of the wall hexes"
     );
+    // Teleport's masteries above Expert (E04c T8).
+    let teleport = "Teleport's siege masteries must be at most Expert (3)";
+    assert_eq!(with(&|f| f.teleport_moat = 4), teleport);
+    assert_eq!(with(&|f| f.teleport_walls = 4), teleport);
     // Records without the field.
     let mut p = sieges();
     if let Some(b) = p.battle.battle.as_mut() {

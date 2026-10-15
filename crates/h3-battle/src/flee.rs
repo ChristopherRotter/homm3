@@ -9,17 +9,19 @@ use h3_kernel::arith::{SINGLE_FRAC_BITS, single_precision};
 use crate::state::BattleState;
 
 /// The ruleset's surrender parameters if `side` may surrender at all (public, ADR-0013 point 9):
-/// it may retreat (BAT-FLE-001), the enemy is led by a hero and the ruleset prices surrenders.
+/// it may retreat (BAT-FLE-001), the enemy is led by a hero, it is not a town's defender (not
+/// even with the Escape Tunnel, BAT-SIE-024) and the ruleset prices surrenders.
 // rule: BAT-FLE-002
 pub(crate) fn surrender_terms(
     state: &BattleState,
     ruleset: &BattleRuleset,
     side: BattleSide,
 ) -> Option<SurrenderParams> {
-    ruleset
-        .battle()
-        .surrender
-        .filter(|_| state.may_retreat(side) && state.has_hero(side.opponent()))
+    ruleset.battle().surrender.filter(|_| {
+        state.may_retreat(side)
+            && state.has_hero(side.opponent())
+            && crate::siege::may_surrender(state, side)
+    })
 }
 
 /// The price of `side`'s surrender, if it may surrender at all ([`surrender_terms`]). The price

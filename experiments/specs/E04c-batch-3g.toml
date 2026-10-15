@@ -1,0 +1,271 @@
+# Experiment batch 3g (E04c T8): the siege's other rules. Checks the code reading of
+# installation.md §7.32 that the battle follows since T8: the controls at a town (BAT-SIE-024: the
+# defender never surrenders and retreats only through the Escape Tunnel), the town's morale and
+# luck (BAT-SIE-025), Teleport across the moat and the walls by mastery (BAT-SIE-026, D-20) and no
+# spell obstacle on a wall (BAT-SIE-027).
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them. They are the code's (installation.md §7.32) and the engine's
+# (faithful profile); the alternatives name their source.
+#
+# Each Red hero stands south of a Blue town's entrance: stepping north attacks it. Play in hot
+# seat (Red and Blue human), so one player commands both armies. An agent's run reads everything
+# from memory (experiments/agent/town.py): each stack's morale (+0x4E8) and luck (+0x4EC) at the
+# opening, the battle window's surrender (control 2001) and retreat (2002) buttons at every turn
+# (their state 0x1000: disabled), and the stacks' positions and hit points around a cast.
+# Hexes: row r, column c is 17 r + c; the attacker's stacks start in column 1, the defender's in
+# column 15. Wall hexes: 12, 29, 45, 62, 78, 96 (the gate), 112, 130, 147, 165, 182; the moat with
+# a Citadel one column left of them (11, 28, 44, 61, 77, 95, …).
+
+[map]
+name = "E04c batch 3g"
+description = "Engine-generated experiment map (E04c, batch 3g): the siege's other rules. Follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Copy `E04c-batch-3g.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps` and start it in hot seat (Red and Blue human). Save right away.",
+    "Each Red hero stands south of a Blue town's entrance. Play the encounters in any order: select the hero and step north into the town; command both armies as the encounter says (every stack without a step defends).",
+    "Then end the battle as you like and load the save for the next encounter.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- BAT-SIE-024 and BAT-SIE-025: the controls and the town's morale -------------------------------
+
+[[encounter]]
+id = "CM"
+title = "A Castle with a Tavern and the Brotherhood of the Sword: the defender's buttons and morale"
+questions = ["BAT-SIE-024", "BAT-SIE-025"]
+procedure = [
+    "Every stack defends.",
+    "At the first turn of each side, note whether the Surrender and Retreat buttons are enabled.",
+    "Note every stack's morale at the opening. Play to round 2, then end the battle as you like.",
+]
+predictions = """
+- The attacker's turn: Surrender and Retreat enabled (both heroes there).
+- The defender's turn: **both disabled** (a town's defender: 0x478573 to 0x478635). `vcmi` and the
+  `wiki`: the same.
+- The defender's stacks (three alignments: 2 - 3 = -1) get the Tavern's +1 and the Brotherhood's +2:
+  **morale +2** each. Without the town's terms -1. The attacker's Titans: +1 (one alignment).
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [8, 12]
+primary = [0, 0, 1, 1]
+army = [["Titan", 3]]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel", "tavern", "brotherhood of the sword"]
+garrison = [["Pikeman", 10], ["Gnoll", 10], ["Goblin", 10]]
+[encounter.opponent.hero]
+type = "Gelare"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 10], ["Gnoll", 10], ["Goblin", 10]]
+[[encounter.record]]
+field = "CM1: the buttons at the attacker's and the defender's turn"
+[[encounter.record]]
+field = "CM2: every stack's morale at the opening"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "ET"
+title = "A Stronghold with the Escape Tunnel: the defender may retreat but not surrender"
+questions = ["BAT-SIE-024"]
+procedure = [
+    "Every stack defends.",
+    "At the first turn of each side, note whether the Surrender and Retreat buttons are enabled. Then end the battle as you like.",
+]
+predictions = """
+- The attacker's turn: both enabled.
+- The defender's turn: **Retreat enabled, Surrender disabled** (the Escape Tunnel, building 17 of
+  a Stronghold). `vcmi` and the `wiki` (Escape Tunnel: "retreat (but not surrender)"): the same.
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+at = [18, 12]
+primary = [0, 0, 1, 1]
+army = [["Titan", 3]]
+[encounter.opponent.town]
+faction = "Stronghold"
+buildings = ["fort", "escape tunnel"]
+garrison = [["Goblin", 10]]
+[encounter.opponent.hero]
+type = "Grindan"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Goblin", 10]]
+[[encounter.record]]
+field = "ET1: the buttons at the attacker's and the defender's turn"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "RL"
+title = "A Rampart with the Fountain of Fortune: the defender's luck"
+questions = ["BAT-SIE-025"]
+procedure = [
+    "Every stack defends.",
+    "Note every stack's luck at the opening, then end the battle as you like.",
+]
+predictions = """
+- The defender's Centaurs: **luck +2** (the Fountain of Fortune, building 21 of a Rampart:
+  0x44B2D0). Without it 0. The attacker's Titans: 0.
+- No Tavern: the defender's morale +1 (one alignment), not more.
+"""
+[encounter.hero]
+type = "Rissa"
+specialty = "resource mercury"
+at = [28, 12]
+primary = [0, 0, 1, 1]
+army = [["Titan", 3]]
+[encounter.opponent.town]
+faction = "Rampart"
+buildings = ["fort", "fountain of fortune"]
+garrison = [["Centaur", 10]]
+[encounter.opponent.hero]
+type = "Sylvia"
+specialty = "skill Navigation"
+primary = [0, 0, 1, 1]
+army = [["Centaur", 10]]
+[[encounter.record]]
+field = "RL1: every stack's morale and luck at the opening"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-SIE-026 (D-20): Teleport across the moat and the walls ------------------------------------
+
+[[encounter]]
+id = "TB"
+title = "Basic Teleport at a Citadel: neither across the moat nor through the walls"
+questions = ["BAT-SIE-026", "D-20"]
+procedure = [
+    "Round 1, at the Swordsmen's turn: the Red hero casts Teleport on them and tries, in this order, hex 64 (inside), hex 61 (the moat), hex 91 (outside), until one is accepted.",
+    "Every other turn defends. Play to round 2, then end the battle as you like.",
+]
+predictions = """
+Basic Water Magic: mastery 1.
+- 64 (inside the walls): **refused** (the line from 86 to 64 meets a wall; below Expert).
+- 61 (the moat hex of row 3): **refused** (across the moat: 61 counts as inside; below Advanced).
+- 91 (outside): accepted; the Swordsmen stand on 91.
+`vcmi`: 64 refused (the walls), 61 accepted (both hexes outside the walls: no check, D-20); the
+`wiki`: 61 refused ("cannot teleport over walls or moats").
+"""
+[encounter.hero]
+type = "Octavia"
+specialty = "resource gold"
+at = [8, 20]
+primary = [0, 0, 1, 3]
+skills = [["Water Magic", 1]]
+army = [["Swordsman", 5]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Teleport"]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Peasant", 10]]
+[[encounter.record]]
+field = "TB1: each destination tried: refused or accepted; where the Swordsmen stood afterwards"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "TV"
+title = "Advanced Teleport at a Citadel: across the moat, not through the walls"
+questions = ["BAT-SIE-026", "D-20", "BAT-MAG-029"]
+procedure = [
+    "Round 1, at the Swordsmen's turn: the Red hero casts Teleport on them and tries, in this order, hex 64 (inside), hex 61 (the moat), hex 91 (outside), until one is accepted.",
+    "Every other turn defends. Play to round 2, then end the battle as you like.",
+]
+predictions = """
+Advanced Water Magic: mastery 2.
+- 64: **refused** (the walls, below Expert).
+- 61: **accepted**: the Swordsmen land in the moat and lose nothing on landing (a teleport enters
+  no hex, §7.15); defending there in round 1 and acting in place in round 2 costs them the moat's
+  70 each time (§7.28).
+`vcmi` and the `wiki`: the same for 64 and 61.
+"""
+[encounter.hero]
+type = "Aine"
+specialty = "resource gold"
+at = [18, 20]
+primary = [0, 0, 1, 3]
+skills = [["Water Magic", 2]]
+army = [["Swordsman", 5]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Teleport"]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Peasant", 10]]
+[[encounter.record]]
+field = "TV1: each destination tried: refused or accepted; the Swordsmen's hit points on landing and after their turns"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "TE"
+title = "Expert Teleport at a Citadel: through the walls"
+questions = ["BAT-SIE-026"]
+procedure = [
+    "Round 1, at the Swordsmen's turn: the Red hero casts Teleport on them and tries, in this order, hex 64 (inside), hex 61 (the moat), hex 91 (outside), until one is accepted.",
+    "Every other turn defends. Play to round 2, then end the battle as you like.",
+]
+predictions = """
+Expert Water Magic: mastery 3.
+- 64: **accepted**: the Swordsmen stand inside the walls.
+"""
+[encounter.hero]
+type = "Calid"
+specialty = "resource sulfur"
+at = [28, 20]
+primary = [0, 0, 1, 3]
+skills = [["Water Magic", 3]]
+army = [["Swordsman", 5]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Teleport"]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort", "citadel"]
+garrison = [["Peasant", 10]]
+[[encounter.record]]
+field = "TE1: each destination tried: refused or accepted; where the Swordsmen stood afterwards"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-SIE-027: no spell obstacle on a wall -----------------------------------------------------
+
+[[encounter]]
+id = "FF"
+title = "Force Field beside the walls: never on a wall's hex or the gate's"
+questions = ["BAT-SIE-027", "BAT-MAG-027"]
+procedure = [
+    "Round 1, at the Swordsmen's turn: the Red hero casts Force Field and tries, in this order, hex 95 (its shape reaches the wall hex 78), hex 96 (the gate), hex 91 (outside), until one is accepted.",
+    "Every other turn defends. Then end the battle as you like.",
+]
+predictions = """
+Expert Earth Magic: three hexes, the target, its upper right and that one's upper left (the
+engine's geometry, batch 2c): from 95 the hexes 95, 78, 61; from 96 the gate itself; from 91 the
+hexes 91, 74, 57.
+- 95: **refused** (78 is a standing wall: its blocked bit, 0x5A39C0).
+- 96: **refused** (the gate's hex has the bit too).
+- 91: accepted.
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+at = [8, 28]
+primary = [0, 0, 1, 3]
+skills = [["Earth Magic", 3]]
+army = [["Swordsman", 5]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Force Field"]
+[encounter.opponent.town]
+faction = "Castle"
+buildings = ["fort"]
+garrison = [["Peasant", 10]]
+[[encounter.record]]
+field = "FF1: each target tried: refused or accepted; the Force Field's hexes"
+[[encounter.record]]
+field = "anything odd"

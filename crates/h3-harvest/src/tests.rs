@@ -126,6 +126,8 @@ fn siege() -> SiegeData {
         second_moat_town: 2,
         mines_town: 1,
         mines_spell: 3,
+        teleport_moat: 2,
+        teleport_walls: 3,
     }
 }
 
