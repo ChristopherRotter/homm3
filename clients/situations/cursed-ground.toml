@@ -1,0 +1,36 @@
+# E17 M3 T2: a situation of the capture set (situations/set.toml) on a special battlefield,
+# Cursed Ground (special field 2, `CmBkCur.pcx`): the ground (class 21) under both heroes
+# (`h3-view situation`; design §5, §6.2). The grass situation's armies: the human's Royal
+# Griffins open. The obstacles are the original's, of the field's own types, found in its
+# capture (`h3cap.py find`).
+
+[scenario]
+id = "situation-cursed-ground"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+battlefield = "base:cursed_ground"
+obstacles = [
+    { hexes = [94, 76, 60], anchor = 93, kind = "base:obstacle_15" },
+    { hexes = [46, 45, 44, 29, 28], anchor = 61, kind = "base:obstacle_41" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15

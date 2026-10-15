@@ -37,10 +37,11 @@ const TERRAINS_WITH_BACKGROUNDS: usize = 8;
 const SHORE: u32 = 0x66_FF40;
 const SHIP_TO_SHIP: u32 = 0x66_FF5C;
 const SHIP: u32 = 0x66_FF4C;
-/// VCMI's names for the special fields 0–9 (`config/battlefields.json`), which the packs do not
-/// define yet (E04 left special battlefields out).
+/// The packs' keys of the special fields 0–9 (manager +0x53C0; `packs/base/battle.toml` and
+/// `packs/sod/battle.toml`, E04c T2b; survey `E04c-battlefields.md` §1), whose pictures 0x4646D0
+/// names; a battle on a ship (`deck`) and two heroes in boats (`boats`) have pictures of their own.
 const SPECIAL_FIELDS: [&str; 10] = [
-    "sand_shore",
+    "shore",
     "magic_plains",
     "cursed_ground",
     "holy_ground",
@@ -123,7 +124,7 @@ impl Options {
 }
 
 /// The parts of a pack the tables are keyed by: from `core.toml` the manifest, creatures and
-/// terrains, from `battle.toml` the obstacles.
+/// terrains, from `battle.toml` the special battlefields and the obstacles.
 #[derive(Debug, Deserialize)]
 struct Pack {
     pack: PackHeader,
@@ -132,12 +133,16 @@ struct Pack {
     #[serde(default)]
     terrain: Vec<Keyed>,
     #[serde(skip)]
+    battlefield: Vec<Keyed>,
+    #[serde(skip)]
     obstacle: Vec<Keyed>,
 }
 
 /// The part of a pack's `battle.toml` the tables are keyed by.
 #[derive(Debug, Default, Deserialize)]
 struct BattlePart {
+    #[serde(default)]
+    battlefield: Vec<Keyed>,
     #[serde(default)]
     obstacle: Vec<Keyed>,
 }
@@ -208,6 +213,7 @@ fn harvest(options: &Options) -> Result<(), String> {
     let h = read_harvest(&exe_bytes, &text("CRANIM.TXT")?, &text("CRTRAITS.TXT")?)?;
     let mut gaps = Vec::new();
     fs::create_dir_all(&options.out).map_err(|e| format!("{}: {e}", options.out.display()))?;
+    let mut packs = Vec::new();
     for id in PACKS {
         let path = options.packs.join(id).join("core.toml");
         let source = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -220,6 +226,7 @@ fn harvest(options: &Options) -> Result<(), String> {
                 .map_err(|e| format!("{}: {e}", battle_path.display()))?;
             let battle: BattlePart =
                 toml::from_str(&source).map_err(|e| format!("{}: {e}", battle_path.display()))?;
+            pack.battlefield = battle.battlefield;
             pack.obstacle = battle.obstacle;
         }
         if pack.pack.id != id {
@@ -229,7 +236,18 @@ fn harvest(options: &Options) -> Result<(), String> {
                 pack.pack.id
             ));
         }
-        let table = write_table(&pack, &h, &mut gaps)?;
+        packs.push(pack);
+    }
+    // The obstacle types some pack defines; base keeps the others (none since E04c T2b).
+    let mut defined = Vec::new();
+    for pack in &packs {
+        for o in &pack.obstacle {
+            defined.push(obstacle_number(&pack.pack.id, &o.id)?);
+        }
+    }
+    for pack in &packs {
+        let id = &pack.pack.id;
+        let table = write_table(pack, &h, &defined, &mut gaps)?;
         let out = options.out.join(format!("{id}.toml"));
         fs::write(&out, table).map_err(|e| format!("{}: {e}", out.display()))?;
         println!("harvest: {}", out.display());
@@ -464,7 +482,19 @@ pub fn creature_names(table: &TextTable) -> Result<BTreeMap<String, usize>, Stri
     Ok(names)
 }
 
-fn write_table(pack: &Pack, h: &Harvest, gaps: &mut Vec<String>) -> Result<String, String> {
+/// The type number of an obstacle key `obstacle_<n>` of pack `id`.
+fn obstacle_number(id: &str, key: &str) -> Result<usize, String> {
+    key.strip_prefix("obstacle_")
+        .and_then(|n| n.parse().ok())
+        .ok_or(format!("{id}:{key}: not an obstacle_<n> key"))
+}
+
+fn write_table(
+    pack: &Pack,
+    h: &Harvest,
+    defined: &[usize],
+    gaps: &mut Vec<String>,
+) -> Result<String, String> {
     let id = &pack.pack.id;
     let mut t = String::new();
     let _ = writeln!(
@@ -543,32 +573,33 @@ fn write_table(pack: &Pack, h: &Harvest, gaps: &mut Vec<String>) -> Result<Strin
             None => gaps.push(format!("{id}:{}: no background (0x4646D0)", terrain.id)),
         }
     }
-    if id == "base" {
-        let mut specials: Vec<(&str, &String)> =
-            SPECIAL_FIELDS.iter().copied().zip(&h.specials).collect();
-        specials.push(("ship_to_ship", &h.ship_to_ship));
-        specials.push(("ship", &h.ship));
-        let _ = writeln!(
-            t,
-            "\n# Special battlefields: VCMI's names, until the packs define them (E04 left them out)."
-        );
-        for (key, name) in specials {
-            let _ = write!(
-                t,
-                "\n[[battlefield]]\nkey = \"{key}\"\nbackgrounds = [\"{}\"]\n",
-                plain(name)?
-            );
+    for field in &pack.battlefield {
+        let picture = match field.id.as_str() {
+            "deck" => Some(&h.ship),
+            "boats" => Some(&h.ship_to_ship),
+            key => SPECIAL_FIELDS
+                .iter()
+                .position(|k| *k == key)
+                .and_then(|k| h.specials.get(k)),
+        };
+        match picture {
+            Some(name) => {
+                let _ = write!(
+                    t,
+                    "\n[[battlefield]]\nkey = \"{}\"\nbackgrounds = [\"{}\"]\n",
+                    plain(&field.id)?,
+                    plain(name)?
+                );
+            }
+            None => gaps.push(format!("{id}:{}: no picture (0x4646D0)", field.id)),
         }
     }
     let mut keys: Vec<(usize, &str)> = Vec::new();
     for o in &pack.obstacle {
-        let n = o.id.strip_prefix("obstacle_").and_then(|n| n.parse().ok());
-        let n = n.ok_or(format!("{id}:{}: not an obstacle_<n> key", o.id))?;
-        keys.push((n, "pack"));
+        keys.push((obstacle_number(id, &o.id)?, "pack"));
     }
     if id == "base" {
-        // The obstacle types no pack defines yet (the special battlefields'), kept with base.
-        let defined: Vec<usize> = keys.iter().map(|k| k.0).collect();
+        // The obstacle types no pack defines, kept with base.
         let all = (0..h.obstacles.len()).chain(ABSOLUTE_BASE..ABSOLUTE_BASE + h.absolute.len());
         for n in all.filter(|n| !defined.contains(n)) {
             keys.push((n, "no pack yet"));

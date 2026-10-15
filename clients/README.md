@@ -148,17 +148,18 @@ on the M1 review list):
   (a ray shooter's five colours, R, G, B from the ray's edge inward, M3 T1b-1) and `sounds`
   (T5b: the sound archives' entries of `move`, `attack`, `wince`, `shot`, `death`, `defend`,
   `start`, `end`; one the creature lacks is left out; `h3-view harvest` writes them).
-- `[[battlefield]]`: `key` (a terrain's, or a special battlefield's while the packs define none)
-  and `backgrounds` (the pictures by the variant the adventure map picks).
+- `[[battlefield]]`: `key` (a terrain's, or a special battlefield's: the packs' `[[battlefield]]`
+  of `battle.toml`, M3 T2) and `backgrounds` (the pictures by the variant the adventure map
+  picks; a special battlefield has one, which wins over the terrain's).
 - `[[obstacle]]`: `key` (`obstacle_<n>`, the packs' numbering) and either `def`, `rows` (height in
   hex rows) and `layer` (1: drawn before every stack, 0: in the row passes) for a usual obstacle,
   or `pcx` and `at` (its top-left on the screen) for an absolute one.
 - `[[fix]]`: `id` (`CLT-QUIRK-<n>`), `source`, `target` (the key it changes), `summary`; the change's
   own fields come with the first fix (none yet).
 
-Which table an entry belongs to is the pack that defines its key; the graphics no pack defines yet
-(special battlefields, their obstacles) sit in `base.toml`. Where the names and numbers come from:
-`docs/epics/E17-design.md` §5.
+Which table an entry belongs to is the pack that defines its key (since M3 T2 every entry's: the
+SoD fields and their obstacles in `sod.toml`); `harvest` would keep graphics no pack defines in
+`base.toml`. Where the names and numbers come from: `docs/epics/E17-design.md` §5.
 
 ## Reference captures
 

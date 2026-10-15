@@ -145,3 +145,119 @@ mask = ["panel", "heroes", "count_boxes"]
 at = 0
 differing = 0
 why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
+
+
+# The special battlefields (M3 T2): each as the original makes it on the defender's tile
+# (`h3-view situation`, design §5), its picture (0x4646D0) and its own obstacles. The ship's deck
+# and the two boats need boats on the map, which h3-map's writer lacks (CLT-Q5).
+
+[[situation]]
+id = "shore"
+scenario = "shore.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the shore (water beside the defender's tile, fought on sand), its picture and obstacles (M3 T2)"
+
+[[situation]]
+id = "magic-plains"
+scenario = "magic-plains.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Magic Plains (the ground, class 46), its picture and obstacles (M3 T2)"
+
+[[situation]]
+id = "cursed-ground"
+scenario = "cursed-ground.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Cursed Ground (class 21), its picture and obstacles (M3 T2)"
+
+[[situation]]
+id = "holy-ground"
+scenario = "holy-ground.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Holy Ground (SoD, class 227), its picture and obstacles (M3 T2)"
+
+[[situation]]
+id = "evil-fog"
+scenario = "evil-fog.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Evil Fog (SoD, class 224), its picture and obstacles (M3 T2)"
+
+[[situation]]
+id = "clover-field"
+scenario = "clover-field.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Clover Field (SoD, class 222), its picture and obstacles (M3 T2)"
+
+[[situation]]
+id = "lucid-pools"
+scenario = "lucid-pools.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Lucid Pools (SoD, class 228), its picture and obstacles (M3 T2)"
+
+[[situation]]
+id = "fiery-fields"
+scenario = "fiery-fields.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Fiery Fields (SoD, class 226), its picture and obstacles (M3 T2)"
+
+[[situation]]
+id = "rocklands"
+scenario = "rocklands.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Rocklands (SoD, class 231), its picture and obstacles (M3 T2)"
+
+[[situation]]
+id = "magic-clouds"
+scenario = "magic-clouds.toml"
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Magic Clouds (SoD, class 229), its picture and obstacles (M3 T2)"
+
+[[situation]]
+id = "shore-absolute"
+scenario = "shore-absolute.toml"
+tile = [18, 5]
+mask = ["panel", "heroes", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the shore with its absolute obstacle 126 (M3 T2)"
