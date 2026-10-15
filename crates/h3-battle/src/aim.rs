@@ -61,10 +61,12 @@ pub(crate) struct Context {
     pub(crate) desperate: bool,
 }
 
-/// The value `x` an `_ftol` gives: truncated toward 0; one outside `i32` is `i32::MIN` (the x87's
-/// integer indefinite).
-fn ftol(x: X87) -> i32 {
-    i32::try_from(x.trunc()).unwrap_or(i32::MIN)
+/// The value `x` an `_ftol` gives its callers (0x6179D4): truncated toward 0 into 64 bits
+/// (`fistp qword`; from 2^63 on the integer indefinite, 2^63), of which they keep the low 32 bits.
+pub(crate) fn ftol(x: X87) -> i32 {
+    let t = x.trunc();
+    let low = if t >= 1 << 63 { 0 } else { t & 0xFFFF_FFFF };
+    i32::from_ne_bytes(u32::try_from(low).unwrap_or(0).to_ne_bytes())
 }
 
 /// An integer as `fild` loads it and a store keeps it: exact up to 2^53.
@@ -147,16 +149,22 @@ fn shoots(state: &BattleState, field: Field, id: StackId) -> bool {
 }
 
 /// The damage of one creature of `s` as the original's stack record holds it (+0xD0, +0xD4), which
-/// the computer reads: for a war machine its creature's own, without its hero's multiplier
-/// (BAT-WAR-005: the original applies it only in a strike's base damage, 0x4431AC).
-fn damage(ruleset: &BattleRuleset, s: &Stack) -> (u64, u64) {
-    if s.has(StackTraits::WAR_MACHINE) {
-        ruleset.creature(s.creature).map_or((0, 0), |c| {
-            (u64::from(c.damage_min), u64::from(c.damage_max))
-        })
-    } else {
-        (u64::from(s.damage_min), u64::from(s.damage_max))
+/// the computer reads. A war machine's stack keeps its creature's range times its side's hero's
+/// attack + 1 (BAT-WAR-005), the original only its creature's range (with the hero's changes,
+/// BAT-HER-005) and multiplies in a strike's base damage (0x4431AC): the hero's share comes off.
+fn damage(state: &BattleState, ruleset: &BattleRuleset, s: &Stack) -> (u64, u64) {
+    let (min, max) = (u64::from(s.damage_min), u64::from(s.damage_max));
+    if !s.has(StackTraits::WAR_MACHINE) {
+        return (min, max);
     }
+    let attack = state.heroes[s.side.index()].map_or(0, |h| u64::from(h.view.attack));
+    let (own_min, own_max) = ruleset.creature(s.creature).map_or((0, 0), |c| {
+        (u64::from(c.damage_min), u64::from(c.damage_max))
+    });
+    (
+        min.saturating_sub(own_min * attack),
+        max.saturating_sub(own_max * attack),
+    )
 }
 
 /// The total hit points of `s` for the computer: 1 for a clone (0x442A50, 0x443080).
@@ -200,7 +208,7 @@ pub(crate) fn worth(
         let (n, d) = ARTILLERY.get(usize::from(level)).copied().unwrap_or((1, 1));
         offense = offense.times(X87::ratio(n, d, DOUBLE_BITS).unwrap_or(X87::ONE));
     }
-    let (min, max) = damage(ruleset, s);
+    let (min, max) = damage(state, ruleset, s);
     let roll = match s.spells.damage {
         DamageRoll::Random => None,
         DamageRoll::Maximum(bonus) => Some(max + u64::from(bonus)),
@@ -574,7 +582,7 @@ pub(crate) fn estimate(
 ) -> u64 {
     let s = state.at(shooter);
     let count = hit_points(s).div_ceil(u64::from(s.max_hp.max(1)));
-    let (min, max) = damage(ruleset, s);
+    let (min, max) = damage(state, ruleset, s);
     let each = match s.spells.damage {
         DamageRoll::Maximum(bonus) => double(max + u64::from(bonus)),
         DamageRoll::Minimum(penalty) => double(min.saturating_sub(u64::from(penalty)).max(1)),

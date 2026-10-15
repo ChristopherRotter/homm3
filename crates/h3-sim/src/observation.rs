@@ -613,7 +613,7 @@ mod tests {
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
         assert_eq!(
             OBSERVATION_LEN,
-            38 + 2 * 14 + (65 + 4 * 128) + 16 * 255 + (48 + 27 + 3 * 8) * 42
+            38 + 2 * 14 + (66 + 4 * 128) + 16 * 255 + (48 + 27 + 3 * 8) * 42
         );
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).
@@ -834,6 +834,8 @@ mod tests {
             hidden[16 - 10] = rounds;
             hidden[22 - 10] = 1.0;
             hidden[23 - 10] = eagle;
+            // The commanded Ballista's Artillery level (v20): both heroes' 1.
+            hidden[OWN_HERO_SCALARS - 1 - 10] = 1.0;
             hidden[OWN_HERO_SCALARS - 10..OWN_HERO_SCALARS - 6].copy_from_slice(&specialty);
             let opening = OWN_HERO_SCALARS + 4 * MAX_SPELL_BONUSES - 10;
             hidden[opening..opening + 6].copy_from_slice(&openings);
@@ -1166,7 +1168,7 @@ mod tests {
         assert_eq!(own(&out)[10..15], [500.0, 0.0, 0.0, 0.0, 700.0]);
         assert_eq!(
             own(&out)[15..OWN_HERO_SCALARS],
-            [2000.0, 0.0, 1.0, 3.0, 3.0, 1.0, 1.0, 1.0, 40.0, 0.0, 0.0]
+            [2000.0, 0.0, 1.0, 3.0, 3.0, 1.0, 1.0, 1.0, 40.0, 0.0, 1.0]
         );
         let bonus = OWN_HERO_SCALARS;
         assert_eq!(

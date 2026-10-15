@@ -17,8 +17,8 @@ use h3_kernel::arith::{DOUBLE_BITS, X87};
 
 use super::support::*;
 use crate::aim::{
-    advantage, ballista_target, context, estimate, kill_value, shot_value, turns, turret_target,
-    worth,
+    advantage, ballista_target, context, estimate, ftol, kill_value, shot_value, turns,
+    turret_target, worth,
 };
 use crate::effects::{DamageRoll, Status};
 use crate::geometry::{Field, Hex};
@@ -604,6 +604,25 @@ fn the_ballista_prefers_a_stack_that_keeps_its_turns() {
     blind(&mut s, 3);
     assert_eq!(value(&r, &s, 3), 28 / 10);
     assert_eq!(aimed(&r, &s), Some(2));
+    // An earlier stack that keeps its turns before a later blind one of a higher value: the slow
+    // creatures (20 per 5 hit points: 8, more than five turns away: a fifth, 1) before the blind
+    // fast ones (6).
+    let mut s = fresh(
+        &r,
+        &BattleSetup {
+            difficulty: 1,
+            ..ballista_battle(
+                &r,
+                20,
+                (&[(0, "fixed", 1)], &[(0, "slow", 10), (1, "fast", 10)]),
+                &[],
+            )
+        },
+    );
+    blind(&mut s, 3);
+    assert!(turns(&s, field(&r), StackId(2)).is_some_and(|t| t > 5));
+    assert_eq!((value(&r, &s, 2), value(&r, &s, 3)), (8 / 5, 66 / 10));
+    assert_eq!(aimed(&r, &s), Some(2));
 }
 
 // covers: BAT-WAR-008
@@ -688,6 +707,39 @@ fn a_desperate_ballista_counts_every_creature_1000() {
     assert_eq!(at(0, [false, false]), Some(2));
     assert_eq!(at(1, [false, false]), Some(3));
     assert_eq!(at(0, [true, false]), Some(3));
+    // A clone counts its creatures times its real worth over 5, desperate or not: 140 shared
+    // with the side's other 130 hit points (its own counted 1), 10 · 138.9 / 5.
+    let mut s = fresh(
+        &r,
+        &BattleSetup {
+            difficulty: 1,
+            ..base
+        },
+    );
+    let clone = &mut s.stacks.as_mut_slice()[3];
+    clone.traits = clone
+        .traits
+        .with(StackTraits::CLONE, true)
+        .with(StackTraits::SUMMONED, true);
+    let ctx = context(&s, &r, field(&r), BattleSide::Attacker);
+    assert!(ctx.desperate);
+    let desperate = shot_value(&s, (&r, field(&r)), &ctx, (gun(&s), StackId(3)), true);
+    let real = worth(&s, (&r, field(&r)), &ctx, StackId(3), true);
+    assert_eq!(desperate, kill_value(s.at(StackId(3)), 0, real));
+    assert_eq!(desperate, 277);
+}
+
+// covers: BAT-SIE-020, BAT-WAR-008
+#[test]
+fn the_runtime_s_ftol_keeps_the_low_32_bits() {
+    // 0x6179D4 truncates into 64 bits (`fistp qword`) and its callers keep `eax`.
+    assert_eq!(ftol(X87::int(5)), 5);
+    assert_eq!(ftol(X87::int(5).over(X87::int(2)).unwrap()), 2);
+    assert_eq!(ftol(X87::int(1 << 31)), i32::MIN);
+    assert_eq!(ftol(X87::int((1 << 32) + 7)), 7);
+    // From 2^63 on the integer indefinite, 2^63: its low half is 0.
+    assert_eq!(ftol(X87::int(1 << 63)), 0);
+    assert_eq!(ftol(X87::int(u64::MAX)), 0);
 }
 
 // covers: BAT-WAR-008, BAT-SIE-023

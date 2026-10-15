@@ -382,7 +382,7 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   tests' now); the Ballista's Artillery factors in `aim::worth` (BAT-SIE-021, BAT-STUB-3 closed);
   `hero::check` refuses a level outside 1..=3. State hash v51 (the level hashed), observation
   encoding v20 (the own hero's Artillery level, the last scalar), C ABI v24. BAT-WAR-002 (the
-  target moved out), BAT-WAR-005, BAT-SIE-021 to 023, BAT-MAG-031 amended. Tests: 10 in
+  target moved out), BAT-WAR-005, BAT-SIE-021 to 023, BAT-MAG-031 amended. Tests: 11 in
   `tests/aim.rs`, the level's bounds in `tests/heroes.rs`, a property (the Ballista shoots a stack
   of the other side, one that keeps its turns while there is one) replacing the lazy-ranking one.
   The siege scenario's attacker brings a Ballista she does not command: `siege-s7` re-recorded
@@ -400,6 +400,15 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   the estimate of one Ballista starts from 2. Fixed (`aim::damage`, also for the worth's Bless and
   Curse ratio of a war machine), every shot then as the code; VCMI's rule refuted by TI, DE, DN
   and AR. BAT-WAR-008 `verified`; BAT-SIE-021's Artillery factor observed from below (AR, AN).
+- **The independent check** (a fresh agent over the diff against §7.33 and the code at 0x41F060,
+  0x41EB80, 0x435CB0, 0x435B90, 0x4359B0, 0x442780, 0x442C0F): no faithfulness finding. It found
+  that the hero's private Artillery level shows through choices both sides see (BAT-Q47: the user
+  applied BAT-Q26's rationale, the level stays private and the other side infers it); that
+  `aim::ftol` saturated where the runtime's `_ftol` (0x6179D4, `fistp qword`) keeps the low 32
+  bits (fixed, also for the turrets); that a hero's changes to a war machine's damage would have
+  been left out of the record's range (fixed: the stack's range less the hero's share); and two
+  untested branches (a later disabled stack of a higher value, more than five turns, a clone in
+  desperate mode: tests added). Left as is: the desperate rerun recomputes the turns (rare).
 - **Not tested:** Easy for a computer side (hot seat makes both sides human; the engine's default
   setup, difficulty 0 and no human, is that case: the Ballista's values are then not divided); a
   stack that loses its turns (/ 10); a hypnotized candidate.
