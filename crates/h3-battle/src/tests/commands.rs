@@ -253,6 +253,7 @@ fn state_hash_is_pinned() {
         reduction: Rate::bp(500),
     };
     led.war_machines.ballista = Some(h3_contracts::BallistaControl {
+        level: 1,
         shots: 2,
         double_damage_chance_bp: 7500,
     });

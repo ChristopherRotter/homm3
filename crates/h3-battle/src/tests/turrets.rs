@@ -88,6 +88,7 @@ fn strikes(events: &[Event]) -> Vec<(u8, u8, u64)> {
 fn gunner(r: &BattleRuleset) -> BattleHero {
     let mut h = hero(r);
     h.war_machines.ballista = Some(BallistaControl {
+        level: 1,
         shots: 2,
         double_damage_chance_bp: 0,
     });

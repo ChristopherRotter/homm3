@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v28 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v29 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 28
+//! format = 29
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -59,7 +59,8 @@
 //! surrender_discount_bp = 4000    # surrender discount (format 10; omitted when 0)
 //!
 //! [setup.attacker_hero.ballista]  # the side commands its Ballista (format 6; omitted when not):
-//! shots = 1                       #   `h3_pack_battle::BallistaEntry`
+//! level = 1                       #   `h3_pack_battle::BallistaEntry` (the Artillery level:
+//! shots = 1                       #   format 29)
 //! double_damage_chance_bp = 5000
 //!
 //! [setup.attacker_hero.tent]      # the side commands its First Aid Tent (format 7; omitted

@@ -437,6 +437,7 @@ fn make_setup(
     let mut led = hero(r);
     if machines & (1 << 8) != 0 {
         led.war_machines.ballista = Some(BallistaControl {
+            level: 1,
             shots: 1 + u8::from(machines & (1 << 9) != 0),
             double_damage_chance_bp: u16::try_from((machines >> 10) % 16_384)
                 .unwrap()
@@ -1336,7 +1337,7 @@ proptest! {
                     melee: Rate::bp(damage[1].into()),
                     reduction: Rate::bp(reduction.into()),
                 };
-                let ballista = BallistaControl { shots, double_damage_chance_bp: chance };
+                let ballista = BallistaControl { level: 1, shots, double_damage_chance_bp: chance };
                 hero.ballista = hero.ballista.and(Some(ballista));
                 hero.tent = hero.tent.and(Some(TentControl { heal_bonus: Rate::bp(heal )}));
                 hero.surrender_discount_bp = discount;
@@ -1973,6 +1974,7 @@ fn arb_extreme_hero() -> impl Strategy<Value = Option<(BattleHero, u32)>> {
                 };
                 h.war_machines.ballista =
                     ballista.map(|(shots, double_damage_chance_bp)| BallistaControl {
+                        level: 1,
                         shots,
                         double_damage_chance_bp,
                     });
@@ -2087,6 +2089,7 @@ fn extreme_caster(r: &BattleRuleset, rng: &mut Rng) -> BattleHero {
     };
     if rng.below(3) == 0 {
         h.war_machines.ballista = Some(BallistaControl {
+            level: 1,
             shots: one_of(rng, &[1, 2, 255]),
             double_damage_chance_bp: one_of(rng, &[0, 5000, 10_000]),
         });

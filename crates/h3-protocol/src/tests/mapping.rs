@@ -586,6 +586,7 @@ fn every_part_of_an_observation_is_mapped() {
     });
     let own = o.own_hero.as_mut().unwrap();
     own.ballista = Some(BallistaControl {
+        level: 2,
         shots: 2,
         double_damage_chance_bp: 500,
     });
@@ -690,6 +691,7 @@ fn every_part_of_an_observation_is_mapped() {
     assert_eq!(
         own.ballista,
         Some(Ballista {
+            level: 2,
             shots: 2,
             double_damage_chance_bp: 500
         })

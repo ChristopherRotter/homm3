@@ -908,7 +908,8 @@ fn damage_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> DamageBonuses {
 }
 
 /// The war machines the hero commands (HER-BAT-005): the Ballista if an effect gives Artillery,
-/// with the most shots and the highest double-damage chance among such effects (skill
+/// with the highest level, the most shots and the highest double-damage chance among such
+/// effects (skill
 /// specialties do not grow them: the original has no Artillery specialist and keeps no
 /// Artillery value its specialty getter could scale, `docs/formats/installation.md` §7.4); the
 /// First Aid Tent if an effect gives First Aid, its heal bonus the sum of the grown `heal_bp`
@@ -921,13 +922,16 @@ fn machine_control(details: &HeroDetails, ruleset: &Ruleset) -> MachineControl {
     for (effect, growth) in grown_effects(details, ruleset) {
         match *effect {
             HeroEffect::Artillery {
+                level,
                 shots,
                 double_damage_chance_bp,
             } => {
                 let ballista = control.ballista.get_or_insert(BallistaControl {
+                    level,
                     shots,
                     double_damage_chance_bp,
                 });
+                ballista.level = ballista.level.max(level);
                 ballista.shots = ballista.shots.max(shots);
                 ballista.double_damage_chance_bp = ballista
                     .double_damage_chance_bp

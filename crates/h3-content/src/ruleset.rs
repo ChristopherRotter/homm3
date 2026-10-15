@@ -27,7 +27,7 @@ use crate::quirks::{DATA_QUIRK_PREFIX, QuirkRegistry, Quirks, REGISTRY};
 pub const MAX_ARMY_SLOTS: usize = 16;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 44;
+pub const RULESET_HASH_VERSION: u32 = 45;
 
 /// How an army is arranged at the start of a battle (BAT-SET-001): chosen per army in the
 /// original (hero or garrison setting) and passed in the battle setup.
