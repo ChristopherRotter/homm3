@@ -503,7 +503,7 @@ fn a_guarded_piles_question_opens_and_its_acceptance_fights_the_unsplit_guards()
         object_type: pile_type,
         anchor: at,
     };
-    assert_eq!(after_steps(events), [opened.clone()]);
+    assert_eq!(after_steps(events), [opened]);
     let question = Offer {
         hero: HeroId::new(0),
         object_type: pile_type,

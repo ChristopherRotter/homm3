@@ -153,10 +153,12 @@ pub(super) const GROUND_OBJECTS: [usize; 2] = [BLOCKERS.len() * 25, BLOCKERS.len
 /// message has a text) and their stacks by slot as creature code and count. Eight gremlins and two
 /// gnolls ask before they guard 500 gold, weak enough that most heroes beat them; twenty
 /// skeletons fight at once for four crystals, strong enough that many heroes lose.
-pub(super) const GUARDED: [(usize, bool, [(u8, u16, u16); 2]); 2] = [
+pub(super) const GUARDED: [(usize, bool, Guard); 2] = [
     (27, true, [(0, 28, 8), (3, 98, 2)]),
     (28, false, [(2, 56, 20), (2, 56, 0)]),
 ];
+/// A guarded pile's two stacks as slot, creature code and count (a count of 0: no stack).
+pub(super) type Guard = [(u8, u16, u16); 2];
 /// The guarded piles' objects, of a shape with a visitable tile.
 pub(super) const GUARDED_OBJECTS: [usize; 4] = [
     BLOCKERS.len() * 27 + 1,
