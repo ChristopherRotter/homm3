@@ -222,8 +222,9 @@ impl AdventureState {
     /// upgraded stack's survivors vanished). None left: the monster leaves the map, told to the
     /// players that see it there, and when the visitor's side `won` its treasure's resources are
     /// the returned gains (a draw gives none); else it stays with that count, which its next
-    /// answer, battle and the word a viewer sees read ([`Self::monster_count`]). Infallible:
-    /// nothing when no monster is visited at `tile`.
+    /// answer, battle and the word a viewer sees read ([`Self::monster_count`]), the word's change
+    /// told to the players that see it (E08 T20b3b1). Infallible: nothing when no monster is
+    /// visited at `tile`.
     // rule: ADV-MON-010
     pub fn end_monster_battle<S: Sink>(
         &mut self,
@@ -245,6 +246,7 @@ impl AdventureState {
         let left = survivors
             .iter()
             .fold(0u32, |sum, stack| sum.saturating_add(stack.count));
+        let had = self.monster_count(index).unwrap_or_default();
         let mut armies = self.army_left.as_deref().cloned().unwrap_or_default();
         if left == 0 {
             armies.remove(&index);
@@ -260,6 +262,18 @@ impl AdventureState {
         }
         self.army_left = (!armies.is_empty()).then(|| Arc::new(armies));
         if left > 0 {
+            let word = |count| part.params().monsters().map_or(0, |w| w.count_word(count));
+            if word(left) != word(had) {
+                let object = &self.map.objects()[index];
+                sink.emit(AdventureEvent {
+                    kind: AdventureEventKind::MonsterChanged {
+                        object_type,
+                        anchor: object.anchor,
+                        count_word: word(left),
+                    },
+                    seen_by: self.object_viewers(core, object),
+                });
+            }
             return Vec::new();
         }
         self.take_object(core, (index, object_type), sink);

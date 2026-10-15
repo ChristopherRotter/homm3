@@ -684,6 +684,8 @@ mod tests {
             |id: &str, depends: &str| format!("[table]\nid = \"{id}\"\ndepends = [{depends}]\n");
         let base = header("base", "")
             + "[battle]\ngroups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], breath = [17, 18, 19], move_start = 20, move_end = 21, turn_left = [7, 10], turn_right = [9, 8] }\n\
+               hero_groups = { standing = 0, idle = 1, defeat = 2, victory = 3, cast = 4 }\n\
+               flags = [\"x.def\", \"x.def\"]\n\
                [[creature]]\nkey = \"x\"\ndef = \"x.def\"\ntimes = [0, 0, 0, 0]\n\
                [[battlefield]]\nkey = \"dirt\"\nbackgrounds = [\"Y.PCX\"]\n";
         fs::write(tables.join("base.toml"), &base).unwrap();

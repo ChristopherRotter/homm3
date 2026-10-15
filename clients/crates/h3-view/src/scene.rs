@@ -2,7 +2,7 @@
 //! T7: the battle at time 0, `docs/epics/E17-design.md` §4; animations come with M2).
 //!
 //! The list names what is drawn (a picture, an obstacle's sprite, a creature's sprite with the
-//! shadow its frame holds and its outline) in the executable's order; [`crate::compose`] decides
+//! shadow its frame holds and its outline, a hero and its flag) in the executable's order; [`crate::compose`] decides
 //! how each is drawn, so a later graphics option changes only the compositor (the user,
 //! 2026-10-13).
 
@@ -14,6 +14,7 @@ use core::fmt;
 use h3_protocol::wire::{Manifest, Observation, Side, Stack};
 
 use crate::anim::{Pose, Projectile, Ray, Timeline};
+use crate::hero::{FLAG_START, HeroPose};
 use crate::layout::BattleLayout;
 use crate::tables::{ObstacleArt, Tables};
 
@@ -40,6 +41,9 @@ pub struct Moment {
     pub projectile: Option<Projectile>,
     /// The ray drawn so far, over everything (§7.12).
     pub ray: Option<Ray>,
+    /// The attacker's and the defender's hero and flag (E17 M3 T3a; none: the hero stands, its
+    /// flag at its start).
+    pub heroes: [Option<HeroPose>; 2],
 }
 
 impl Moment {
@@ -51,6 +55,10 @@ impl Moment {
             pulse: timeline.pulse(t),
             projectile: timeline.projectile(t),
             ray: timeline.ray(t),
+            heroes: timeline
+                .heroes
+                .as_ref()
+                .map_or([None; 2], |h| h.at(timeline, t)),
         }
     }
 }
@@ -104,6 +112,37 @@ pub enum Draw {
     },
     /// A ray's strokes, each pixel in its colour straight into the screen (§7.12).
     Ray(Ray),
+    /// A hero's flag beside the battlefield, in its player's colours, with the shadow its frame
+    /// holds (§4.5; E17 M3 T3a).
+    Flag {
+        /// The DEF.
+        def: String,
+        /// The frame in group 0.
+        frame: u32,
+        /// The canvas's left edge.
+        x: i32,
+        /// The canvas's top edge.
+        y: i32,
+        /// The palette of the players' colours.
+        palette: String,
+        /// The player's colour (0 red to 7 pink): its 32 entries of that palette.
+        player: u8,
+    },
+    /// A hero beside the battlefield, with the shadow its frame holds, no outline (§4.5).
+    Hero {
+        /// The DEF.
+        def: String,
+        /// The DEF group.
+        group: u32,
+        /// The frame in the group.
+        frame: u32,
+        /// The canvas's left edge.
+        x: i32,
+        /// The canvas's top edge.
+        y: i32,
+        /// Reflected across its canvas (the right side's).
+        mirrored: bool,
+    },
     /// A creature's sprite with the shadow its frame holds, standing on a hex (§4.2).
     Creature {
         /// The DEF.
@@ -152,16 +191,20 @@ struct Placed {
     y: i32,
 }
 
+/// The players' colours of the attacker's and the defender's flags: red and blue, as the capture
+/// set's maps give them (*provisional*: a battle's record names no player colours, CLT-Q6).
+const PLAYERS: [u8; 2] = [0, 1];
+
 /// The background variant 0x41ADB0 returns when no tree, mountain or dead vegetation stands
 /// around the battle (§4.4).
 const EMPTY_SURROUNDINGS: usize = 2;
 
 /// The draw list of the battle `observation` shows, at time 0: the background with the absolute
-/// obstacle, the layer-1 obstacles, then each row's passes with its layer-0 obstacles and its
-/// living stacks (§4.6). A natural obstacle without a type is not drawn; a removed one is no
+/// obstacle, the layer-1 obstacles, each side's flag and hero (E17 M3 T3a), then each row's
+/// passes with its layer-0 obstacles and its living stacks (§4.6). A natural obstacle without a type is not drawn; a removed one is no
 /// longer in the observation's list (the engine drops it), so every listed one is drawn, whatever
-/// hexes a removal cleared. Left out until later tasks: the
-/// heroes and flags, the count boxes (M3, with `tiny.fnt`), corpses, spell obstacles, the grid.
+/// hexes a removal cleared. Left out until later tasks: the war machines' own rules (M3 T3b), the
+/// count boxes (M3, with `tiny.fnt`), corpses, spell obstacles, the grid.
 ///
 /// # Errors
 /// A handle the manifest does not resolve, a key the tables lack, an obstacle type of the wrong
@@ -274,6 +317,41 @@ pub fn battle_at(
                 .filter(|o| o.before_stacks && o.at == (row, column));
             list.extend(here.map(obstacle_draw));
         }
+    }
+    // The heroes (§4.5, `battle_redraw` 0x494701, after the siege's parts): each side's flag,
+    // then its hero, the left side first; the right hero mirrored in its canvas.
+    let standing = u32::from(tables.battle.hero_groups.standing);
+    for (side, view) in observation.sides.iter().enumerate() {
+        let Some(hero) = &view.hero else {
+            continue;
+        };
+        let key = key(&keys.hero_types, "hero types", hero.hero_type)?;
+        let def = tables
+            .heroes
+            .get(key)
+            .ok_or_else(|| SceneError::Key(key.to_string()))?;
+        let pose = moment.heroes[side].unwrap_or(HeroPose {
+            group: standing,
+            frame: 0,
+            flag: FLAG_START[side],
+        });
+        let ([fx, fy], [hx, hy]) = (layout.flag_canvas[side], layout.hero_canvas[side]);
+        list.push(Draw::Flag {
+            def: tables.battle.flags[side].clone(),
+            frame: pose.flag,
+            x: fx,
+            y: fy,
+            palette: layout.player_palette.clone(),
+            player: PLAYERS[side],
+        });
+        list.push(Draw::Hero {
+            def: def.clone(),
+            group: pose.group,
+            frame: pose.frame,
+            x: hx,
+            y: hy,
+            mirrored: side == 1,
+        });
     }
     let stacks = observation
         .stacks

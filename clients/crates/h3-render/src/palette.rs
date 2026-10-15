@@ -34,8 +34,8 @@ impl ScreenPalette {
 }
 
 /// `palette` with indices 224–255 replaced by `colours` (a player's 32; fewer replace fewer, more
-/// are ignored). Where the 32 colours come from (a row of `PLAYERS.PAL`, presumably) is not read
-/// yet (*provisional*).
+/// are ignored): `PLAYERS.PAL`'s entries from 32 × the player's colour (0x5FFE20 copies them from
+/// its 16-bit conversion, 0x6AACA8; read at E17 M3 T3a for the heroes' flags).
 #[must_use]
 pub fn with_player_colours(palette: &Palette, colours: &[Rgb]) -> Palette {
     let mut out = palette.clone();

@@ -71,8 +71,8 @@ pub fn battle(
 }
 
 /// What the original's map needs of a scenario's battle (E17 M2 T1, `situation`): its terrain's
-/// key, its special battlefield's (M3 T2), and each side's stacks (slot, the creature's singular
-/// name, count) and formation.
+/// key, its special battlefield's (M3 T2), each side's stacks (slot, the creature's singular
+/// name, count) and formation, and its hero (M3 T3a).
 #[derive(Debug, PartialEq, Eq)]
 pub struct Sides {
     pub terrain: Option<String>,
@@ -80,6 +80,19 @@ pub struct Sides {
     pub battlefield: Option<String>,
     pub stacks: [Vec<(u8, String, u32)>; 2],
     pub tight: [bool; 2],
+    pub heroes: [Option<SideHero>; 2],
+}
+
+/// A side's hero for the original's map (E17 M3 T3a): its hero type's and class's numbers in
+/// the ruleset, which are the original's when its packs come in their order (base, ab, sod, as
+/// `harvest` keys the heroes; `situation` checks the name against `hotraits.txt`), its name, and
+/// its attack, defense, power and knowledge.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SideHero {
+    pub hero_type: usize,
+    pub class: usize,
+    pub name: String,
+    pub primary: [u8; 4],
 }
 
 /// The [`Sides`] of the battle `scenario` sets up, its packs read from `packs`.
@@ -100,11 +113,22 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
             .collect()
     });
     let tight = h3_pack_battle::tight_sides(setup.formations);
+    let heroes = setup.heroes.map(|h| {
+        let h = h?;
+        let t = (*ruleset).hero_type(h.hero_type)?;
+        Some(SideHero {
+            hero_type: h.hero_type.index(),
+            class: t.class.index(),
+            name: t.name.clone(),
+            primary: [h.attack, h.defense, h.power, h.knowledge],
+        })
+    });
     Ok(Sides {
         terrain,
         battlefield: setup.battlefield.as_ref().map(|k| k.as_str().to_owned()),
         stacks,
         tight: ["attacker", "defender"].map(|side| tight.iter().any(|t| t == side)),
+        heroes,
     })
 }
 

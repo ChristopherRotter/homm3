@@ -238,7 +238,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             stage,
             Speed::new(options.speed),
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?
+        .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
         let drawn =
             crate::sequences::draw_frames(dir, &record, &timeline, &tables, &layout, &archives)?;
         lines.push(format!("{drawn} frames drawn in {}", dir.display()));
@@ -251,16 +252,19 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             let looks = motion::looks(&record, &tables, &archives)?;
             let stage = motion::stage(&record, &tables, &layout);
             let commands = anim::commands(&record.messages);
-            // With the viewer's own fidgets, from the seed (T4b-2a).
+            // With the viewer's own fidgets, from the seed (T4b-2a), and its heroes' (E17 M3
+            // T3a).
+            let seed = u32::try_from(options.seed & u64::from(u32::MAX)).unwrap_or(1);
             let timeline = anim::fidgeting(
                 observation,
                 &commands,
                 &looks,
                 stage,
                 Speed::new(options.speed),
-                u32::try_from(options.seed & u64::from(u32::MAX)).unwrap_or(1),
+                seed,
             )
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string())?
+            .with_heroes(motion::heroes(&record, &tables, &archives, Some(seed))?);
             lines.push(format!("the timeline ends at {} ms", timeline.end));
             let moment = scene::Moment::at(&timeline, t);
             scene::battle_at(observation, &moment, manifest, &tables, &layout)

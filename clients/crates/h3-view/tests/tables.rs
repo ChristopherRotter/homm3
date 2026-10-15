@@ -1,6 +1,6 @@
 //! The committed asset tables against the committed packs (E17 M1 T4; no original file needed):
-//! each expansion selection loads, and every creature, terrain and obstacle key of a pack has an
-//! entry in that pack's table, except the listed gaps; terrains and special battlefields share the
+//! each expansion selection loads, and every creature, hero (E17 M3 T3a), terrain and obstacle
+//! key of a pack has an entry in that pack's table, except the listed gaps; terrains and special battlefields share the
 //! tables' battlefields (E17 M3 T2). No table has an entry no pack defines.
 
 use std::collections::BTreeSet;
@@ -21,6 +21,8 @@ const GAPS: [&str; 3] = ["base:arrow_tower", "base:water", "base:rock"];
 struct Pack {
     #[serde(default)]
     creature: Vec<Keyed>,
+    #[serde(default)]
+    hero: Vec<Keyed>,
     #[serde(default)]
     obstacle: Vec<Keyed>,
     #[serde(default)]
@@ -67,16 +69,17 @@ fn every_selection_loads() {
 #[test]
 fn every_pack_key_has_an_entry() {
     let t = load("sod");
-    let (creatures, fields, obstacles) = (
+    let (creatures, heroes, fields, obstacles) = (
         keys(&t.creatures),
+        keys(&t.heroes),
         keys(&t.battlefields),
         keys(&t.obstacles),
     );
     let mut defined = BTreeSet::new();
     let mut missing = Vec::new();
     for id in PACKS {
-        // The keys: creatures and terrains in core.toml, special battlefields and obstacles in
-        // battle.toml; a terrain and a special battlefield never share a key.
+        // The keys: creatures, heroes and terrains in core.toml, special battlefields and
+        // obstacles in battle.toml; no two share a key.
         let read = |file: &str| -> Pack {
             let path = root().join(format!("packs/{id}/{file}"));
             fs::read_to_string(path).map_or(Pack::default(), |t| toml::from_str(&t).unwrap())
@@ -84,6 +87,7 @@ fn every_pack_key_has_an_entry() {
         let (core, battle) = (read("core.toml"), read("battle.toml"));
         let lists = [
             (&core.creature, &creatures),
+            (&core.hero, &heroes),
             (&core.terrain, &fields),
             (&battle.battlefield, &fields),
             (&battle.obstacle, &obstacles),
@@ -99,7 +103,7 @@ fn every_pack_key_has_an_entry() {
         }
     }
     assert_eq!(missing, GAPS);
-    for have in [&creatures, &fields, &obstacles] {
+    for have in [&creatures, &heroes, &fields, &obstacles] {
         assert_eq!(have.difference(&defined).count(), 0, "{have:?}");
     }
 }

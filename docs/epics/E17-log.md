@@ -875,3 +875,52 @@ On `client/e17-m3-t2-battlefields`, the user present at the start ("start with T
   frames --reuse` (T1b-2's captures, redrawn on the final code): every timeline and count as
   recorded; `h3drive.py set` on the final code: 20 situations, all 28 frames as recorded (exact);
   `check-lane`, `check-docs`, `check-exe-map`.
+
+### M3 T3a — The heroes (2026-10-15)
+
+On `client/e17-m3-t3a`, the user present: the agent proposed T3 split (the heroes first, the war
+machines as T3b), the user agreed.
+
+- **Starting point:** master at #229 (`6ab2212`, T2 merged); its client code verified already
+  (`verify-once`: light gates only). A fresh sandbox: the original files staged, the capture
+  setup's apt wait failed once (the setup's own install held the lock) and passed on a retry.
+- **Code reading** (design §4.5, §7.14; the map's entries `battle_load_heroes` 0x463370,
+  `hero_battle_defs` 0x63BD40, `hero_class_table` 0x67D868, `player_id_is_human_here` 0x4CE970,
+  and the battle manager's hero fields): a hero's battle DEF is record town × 2 + female of 18,
+  so by faction and sex; Tower and Stronghold name theirs the other way round, Conflux takes CH16
+  and CH17 by sex for both classes (VCMI: by class). The flags take their player's 32 colours of
+  `PLAYERS.PAL`, wave a frame per idle step from 0 and 3; a hero's idle motion more than 4 500 ms
+  after its clock (the battle's start, every action, the motion's end); a dying stack's draws ask
+  for defeat (below 60) or the enemy's victory (below 80), played once a round while the active
+  side is human.
+- **The asset tables:** `[[hero]]` (156: `base` 128, `ab` 28; keyed by the packs' order as the
+  hero types, each checked against `hotraits.txt`'s name: two heroes are called Lord Haart),
+  `[battle]`'s `hero_groups` and `flags`; the layout's canvases and `PLAYERS.PAL`.
+- **The viewer:** `h3_view::hero` (the flags, the idle motion, defeat and victory over the
+  timeline's idle steps and actions; the timeline records each action's end, deaths and round
+  starts); the scene draws each side's flag and hero after the layer-1 obstacles; the compositor
+  the shadowed drawer without an outline, the flag in its player's colours (red and blue:
+  CLT-Q6). `h3-view situation` writes the scenario's heroes (both required, with their primary
+  skills); every situation and sequence scenario names Orrin and Crag Hack (1 in each skill, as
+  the maps had them); the recorded sequences' timelines stay as recorded.
+- **The capture set:** the `heroes` mask gone. The 20 situations exact as before; eight grass
+  situations with a male and a female hero of each town, so all 18 pictures (exact on the first
+  run, Conflux's by sex); the grass situation from 4 400 to 5 100 ms: both heroes' idle motion at
+  4 600 to 4 900, exact once the set's clock stepped at most 100 ms (a longer step runs one idle
+  step: the outline and the flags were behind). 28 situations, 44 frames, all exact.
+- **The frame check:** the heroes' groups and frames from the original's memory
+  (`h3mem.battle_heroes`; defeat and victory are drawn from its generator), the flags the
+  viewer's own; the `heroes` mask gone. Every sequence captured again (about 50 minutes):
+  `shot` and `shots` as recorded; `walk`, `melee`, `turn`, `climb`, `behind` and `fly` gained
+  only redraw artifacts in the left hero's shadow under a nearby stack's redrawn rectangles (2 to
+  210 pixels a frame), some five shadows deep (black), so `h3cap.MAX_SHADOWS` is five (four since
+  T1c); every other count as recorded, `melee`'s stale count box at 3 966 included. The new
+  counts recorded. No hero reacted to a death in the eight recordings (the reactions stay read,
+  not seen).
+- **Checks:** `clients/scripts/check.sh` all gates, 100 % (code `f8b4d84`, the branch merged with
+  master `ae6d517`: verify-once's line in the pull request; a first run missed one region, an
+  `if let`'s implicit else in a test); the real-asset gate (329 names: 18 hero DEFs and 2 flags
+  more); `h3-view harvest` writes the three tables as committed; `h3-view sequences`: every
+  timeline as recorded (the scenarios now name their heroes); `h3drive.py set` on the final
+  code: 28 situations, 44 frames, all exact; `h3drive.py frames --reuse` on the final code: every
+  count as recorded; `check-lane`, `check-docs`, `check-exe-map`.

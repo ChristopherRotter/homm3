@@ -11,7 +11,7 @@ use core::fmt;
 use h3_assets::def::Frame;
 use h3_assets::palette::Rgb;
 use h3_render::blit::{Drawer, Placement, draw_frame, draw_image, draw_image_keyed};
-use h3_render::palette::ScreenPalette;
+use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::{PixelFormat, Screen};
 
 use crate::batch::{Batch, Sprite};
@@ -95,6 +95,67 @@ pub fn compose(
                         screen.set(i64::from(x), i64::from(y), pixel);
                     }
                 }
+            }
+            Draw::Flag {
+                def,
+                frame,
+                x,
+                y,
+                palette,
+                player,
+            } => {
+                // 0x4952B0 as a hero's, the DEF's entries 224-255 its player's 32 of the players'
+                // palette (0x4634D5, 0x5FFE20: from entry 32 x the player's colour).
+                let (sprite, frame) = frame_of(batch, def, 0, *frame)?;
+                let players = batch
+                    .palette(palette)
+                    .ok_or_else(|| ComposeError::Missing(palette.clone()))?;
+                let colours: Vec<Rgb> = players
+                    .0
+                    .iter()
+                    .skip(32 * usize::from(*player))
+                    .take(32)
+                    .copied()
+                    .collect();
+                let palette =
+                    ScreenPalette::new(&with_player_colours(&sprite.def.palette, &colours), FORMAT);
+                let at = Placement {
+                    x: *x,
+                    y: *y,
+                    mirrored: false,
+                };
+                draw_frame(
+                    &mut screen,
+                    frame,
+                    &palette,
+                    at,
+                    Drawer::Shadowed { colour: None },
+                );
+            }
+            Draw::Hero {
+                def,
+                group,
+                frame,
+                x,
+                y,
+                mirrored,
+            } => {
+                // `battle_draw_hero_def` 0x4952B0: the shadowed drawer without an outline, the
+                // canvas at (x, y), mirrored in it (§4.5).
+                let (sprite, frame) = frame_of(batch, def, *group, *frame)?;
+                let palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
+                let at = Placement {
+                    x: *x,
+                    y: *y,
+                    mirrored: *mirrored,
+                };
+                draw_frame(
+                    &mut screen,
+                    frame,
+                    &palette,
+                    at,
+                    Drawer::Shadowed { colour: None },
+                );
             }
             Draw::Creature {
                 def,

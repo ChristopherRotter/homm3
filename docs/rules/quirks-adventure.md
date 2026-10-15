@@ -15,7 +15,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Community status: known; VCMI's pathfinder notes that objects are usually visible on the fog's border.
 - Sources: the user's look in SoD (2026-10-11, survey `E08-adventure-core.md` §4: terrain, objects and creatures visible, no path onto a dark tile); heroes on the fringe show as creatures do (the user's choice for E08 T8b1, 2026-10-11, not looked at).
 - Flag: `quirk.adventure.fringe_shows_objects`
-- Defaults: faithful = on (terrain, roads, rivers, what objects cover there and the heroes standing there), strict-fixed = off (terrain, roads and rivers only)
+- Defaults: faithful = on (terrain, roads, rivers, what objects cover there and the heroes standing there), strict-fixed = off (terrain, roads and rivers only, but a wandering monster: it guards the explored tiles beside it, and the guard shapes the player's paths there, so hiding it would leak it through the legal moves; E08 decision 40, the user, 2026-10-15, after the plans' view property found the leak in T20b3b1)
 - Regression test: `crates/h3-adventure/src/observe/tests.rs` (E08 T8b1)
 - Decided by / date: confirmed by the user 2026-10-11 (E08 T8a checkpoint answers); class as suggested; the flag with E08 T8b1
 
