@@ -703,6 +703,8 @@ pub struct Hero {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Ballista {
+    /// The hero's Artillery level, 1 to 3 (v33).
+    pub level: u8,
     /// Shots per turn.
     pub shots: u8,
     /// Its double-damage chance in basis points.

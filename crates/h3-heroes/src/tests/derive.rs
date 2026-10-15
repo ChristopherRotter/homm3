@@ -530,20 +530,22 @@ fn damage_bonuses_sum_skills_artifacts_and_specialty() {
 // covers: HER-BAT-005
 #[test]
 fn artillery_and_first_aid_make_the_hero_command_its_war_machines() {
-    // Artillery: one shot and 50 %, two and 75 %, two and 100 % (the base pack's values);
-    // First Aid: +100/200/300 % of the tent's largest heal. `t:kit` (worn) brings one shot at
-    // 90 % and +50 % heal as an artifact could. The specialty grows First Aid by 5 % of itself
+    // Artillery: levels 1 to 3 with one shot and 50 %, two and 75 %, two and 100 % (the base
+    // pack's values); First Aid: +100/200/300 % of the tent's largest heal. `t:kit` (worn) brings
+    // Basic, one shot at 90 % and +50 % heal as an artifact could. The specialty grows First Aid by 5 % of itself
     // per level (an Artillery specialty would grow nothing; one specialty per skill only).
     let mut p = effect_pack();
     for s in &mut p.skills {
         match s.key.to_string().as_str() {
             "t:artillery" => {
-                s.levels = [(1, 5000), (2, 7500), (2, 10_000)].map(|(shots, chance)| {
-                    vec![HeroEffectDef::Artillery {
-                        shots,
-                        double_damage_chance_bp: chance,
-                    }]
-                });
+                s.levels =
+                    [(1, 1, 5000), (2, 2, 7500), (3, 2, 10_000)].map(|(level, shots, chance)| {
+                        vec![HeroEffectDef::Artillery {
+                            level,
+                            shots,
+                            double_damage_chance_bp: chance,
+                        }]
+                    });
             }
             "t:first_aid" => {
                 s.levels = [10_000, 20_000, 30_000]
@@ -561,6 +563,7 @@ fn artillery_and_first_aid_make_the_hero_command_its_war_machines() {
         if a.key.to_string() == "t:kit" {
             a.effects = vec![
                 HeroEffectDef::Artillery {
+                    level: 1,
                     shots: 1,
                     double_damage_chance_bp: 9000,
                 },
@@ -582,19 +585,22 @@ fn artillery_and_first_aid_make_the_hero_command_its_war_machines() {
         (
             machines
                 .ballista
-                .map(|b| (b.shots, b.double_damage_chance_bp)),
+                .map(|b| (b.level, b.shots, b.double_damage_chance_bp)),
             machines.tent.map(|t| t.heal_bonus.bp),
         )
     };
     assert_eq!(control(&without_kit, 20, None, None), (None, None));
     assert_eq!(
         control(&without_kit, 20, Some(1), None),
-        (Some((1, 5000)), None)
+        (Some((1, 1, 5000)), None)
     );
-    assert_eq!(control(&without_kit, 20, Some(2), None).0, Some((2, 7500)));
+    assert_eq!(
+        control(&without_kit, 20, Some(2), None).0,
+        Some((2, 2, 7500))
+    );
     assert_eq!(
         control(&without_kit, 20, Some(3), None).0,
-        Some((2, 10_000))
+        Some((3, 2, 10_000))
     );
     // First Aid at level 1: +5 % of itself; Expert at level 10: 300 % × 1.5 = 450 % (the
     // executable's 1 + 3 × (1 + 0.05 × 10) = 5.5 times the tent's 25, 137).
@@ -603,11 +609,14 @@ fn artillery_and_first_aid_make_the_hero_command_its_war_machines() {
         (None, Some(10_500))
     );
     assert_eq!(control(&without_kit, 10, None, Some(3)).1, Some(45_000));
-    // With the kit: the most shots and the highest chance of all sources; heal bonuses add up,
-    // the artifact's not grown.
-    assert_eq!(control(&r, 20, None, None), (Some((1, 9000)), Some(5000)));
-    assert_eq!(control(&r, 20, Some(2), None).0, Some((2, 9000)));
-    assert_eq!(control(&r, 20, Some(3), None).0, Some((2, 10_000)));
+    // With the kit: the highest level, the most shots and the highest chance of all sources;
+    // heal bonuses add up, the artifact's not grown.
+    assert_eq!(
+        control(&r, 20, None, None),
+        (Some((1, 1, 9000)), Some(5000))
+    );
+    assert_eq!(control(&r, 20, Some(2), None).0, Some((2, 2, 9000)));
+    assert_eq!(control(&r, 20, Some(3), None).0, Some((3, 2, 10_000)));
     assert_eq!(control(&r, 10, None, Some(3)).1, Some(45_000 + 5000));
     // Far beyond `u16`: level 255.
     assert_eq!(

@@ -488,6 +488,7 @@ fn scenario_heroes() {
         reduction: Rate::bp(500),
     };
     expected.war_machines.ballista = Some(BallistaControl {
+        level: 1,
         shots: 1,
         double_damage_chance_bp: 5000,
     });
@@ -785,7 +786,7 @@ fn scenario_heroes() {
         "{written}"
     );
     assert!(
-        written.contains("[ballista]\nshots = 1\ndouble_damage_chance_bp = 5000\n"),
+        written.contains("[ballista]\nlevel = 1\nshots = 1\ndouble_damage_chance_bp = 5000\n"),
         "{written}"
     );
     assert!(
@@ -1683,6 +1684,7 @@ fn hero_details_fit_the_harvested_slots() {
                 .war_machines
                 .ballista,
             Some(BallistaControl {
+                level,
                 shots,
                 double_damage_chance_bp: chance
             })

@@ -251,20 +251,20 @@ commands = [
     "A shoot 9 142",
 ]
 checkpoints = [
-    "0x553cbff6c943fdd7",
-    "0x529bde0e7f5c2fd3",
-    "0x09bb6f32c70f600d",
-    "0xf63ac688502db686",
-    "0x5841ea1f9524bf80",
-    "0x91a067c8d538d246",
-    "0xd03170d69c86cee8",
-    "0xd7ed3b726e83b706",
-    "0x4f50deec5828f0e9",
-    "0x2a0cc7b4bee93b6e",
+    "0xa2c41e0502e2e87e",
+    "0xdeb732f14fd39ab0",
+    "0x7f346017951b1f36",
+    "0x04424cbe4954ef73",
+    "0xbdddccd4dcdd8f8d",
+    "0x5d132936c3bd9057",
+    "0x46be357349251f8d",
+    "0xe99ec9d95144a4af",
+    "0xbd2769dec2279bcc",
+    "0xc4b25c8081177d2b",
 ]
 
 [replay]
-format = 28
+format = 29
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -273,13 +273,13 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0xaec96ca7a4fafcb8"
+ruleset_hash = "0xcdb35214a7e9cf0f"
 battle_ruleset_hash = "0x827992c874254045"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 50
+battle_state_hash_version = 51
 checkpoint_every = 25
 
 [setup]
@@ -331,6 +331,7 @@ spell_book = [
 ]
 
 [setup.attacker_hero.ballista]
+level = 1
 shots = 1
 double_damage_chance_bp = 5000
 
@@ -433,6 +434,7 @@ spell_book = [
 ]
 
 [setup.defender_hero.ballista]
+level = 1
 shots = 1
 double_damage_chance_bp = 5000
 
@@ -648,4 +650,4 @@ count = 4
 
 [result]
 winner = "attacker"
-final_hash = "0x2a0cc7b4bee93b6e"
+final_hash = "0xc4b25c8081177d2b"

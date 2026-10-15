@@ -171,6 +171,8 @@ pub struct HeroEntry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BallistaEntry {
+    /// The hero's Artillery level, 1 to 3 (replay format v29, E04c T7e).
+    pub level: u8,
     /// Shots per turn.
     pub shots: u8,
     /// Chance of each shot to deal double damage, basis points.
@@ -180,6 +182,7 @@ pub struct BallistaEntry {
 impl From<BallistaEntry> for BallistaControl {
     fn from(e: BallistaEntry) -> Self {
         Self {
+            level: e.level,
             shots: e.shots,
             double_damage_chance_bp: e.double_damage_chance_bp,
         }
@@ -189,6 +192,7 @@ impl From<BallistaEntry> for BallistaControl {
 impl From<BallistaControl> for BallistaEntry {
     fn from(c: BallistaControl) -> Self {
         Self {
+            level: c.level,
             shots: c.shots,
             double_damage_chance_bp: c.double_damage_chance_bp,
         }

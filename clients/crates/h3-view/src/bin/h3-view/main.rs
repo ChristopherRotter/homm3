@@ -39,7 +39,7 @@ commands:
           below), and writes a PNG (default clients/out/sprite/<name>-<group>.png). The base
           archives are searched before the AB ones, as the game does.
   render <scenario.toml | record.jsonl> [--seed <n>] [--packs <dir>] [--install <dir>]
-         [--out <file.png>] [--list] [--at <ms>] [--speed <0-2>]
+         [--out <file.png>] [--list] [--at <ms> | --frames <dir>] [--speed <0-2>]
           draws a battle still: the battle at its start as the record's first snapshot shows it
           (the background, the obstacles, every living stack standing on its hex; no heroes,
           count boxes or corpses yet), with its assets loaded as one checkpoint batch, and writes
@@ -50,7 +50,10 @@ commands:
           (<stem>-s<seed>.jsonl). --list prints the draw list. --at draws the battle <ms>
           after the record's start, its commands played at the original's timing at combat
           speed --speed (default 0; h3_view::anim): each stack in its pose then
-          (<stem>[-s<seed>]-<ms>ms.png).
+          (<stem>[-s<seed>]-<ms>ms.png). --frames draws, instead of the still, the battle at
+          each time <dir>/frames.toml lists (the capture set's, `h3drive.py set`), without
+          fidgets of the viewer's own and with those the file lists, into <dir>/ours/ (what
+          it drew: <dir>/ours.txt).
   play <scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
        [--install <dir>] [--out <dir>] [--png] [--from <ms>] [--to <ms>]
           a whole battle frame by frame, headless: a scenario is fought to its end in-process

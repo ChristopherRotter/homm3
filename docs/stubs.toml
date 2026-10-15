@@ -19,12 +19,6 @@ where  = "crates/h3-battle/src/observe.rs::observe_as"
 reason = "The observation does not show which dead created stacks vanished when their rounds ran out (Created::vanished). Since the E04b T11b review that mark decides whether a later created stack takes the record (BAT-MAG-037, BAT-MAG-052), so the observation is not complete on this point (ADR-0014 point 8): a public per-stack field for the next observation-encoding bump (BAT-Q35)"
 epic   = "E05"
 
-[[stub]]
-id     = "BAT-STUB-3"
-where  = "crates/h3-battle/src/aim.rs::worth"
-reason = "The computer's worth of a Ballista whose hero has Artillery (BAT-SIE-021) leaves out the original's Artillery factors (x2 above Basic, then x1.0, 1.5, 1.5, 2.0 by level; 0x63B7F0): the seam's BallistaControl carries no level (BAT-Q46). With the Ballista's own computer routine, E04c T7e"
-epic   = "E04c"
-
 # --- adventure (ADV-STUB-<n>) ---
 
 [[stub]]
