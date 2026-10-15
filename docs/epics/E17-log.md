@@ -768,3 +768,38 @@ On `client/e17-m3-t1c-artifacts`, the user present.
 - **Checks:** `frames --reuse` all six as recorded; `clients/scripts/check.sh` (below, PR);
   the session's baseline full verify at the start was green but for this HANDOFF's budget (an
   in-progress line), trimmed.
+
+### M3 T1b-1 — Shots and rays (2026-10-15)
+
+On `client/e17-m3-t1b1-shots`, the user present at the start (T1b re-cut with them: T1b-1 shots
+and rays, T1b-2 the provisional rules' checks and the capture set by time, Haste and Slow to T7b
+with the spells), then away.
+
+- **Starting point:** master at #219 (`fa542fc`); the clients' baseline full check green (all
+  gates, 100 %); the original files staged before the user left.
+- **The ray read** (design §7.12, the address map: `draw_ray` 0x5A5C20, `ray_init`, `ray_step`,
+  `ray_aim`, `ray_colours` 0x68833C, `screen_masks` 0x68C860, `crt_atan2`, `crt_sin`, `crt_cos`;
+  `shot_animation`'s summary): creature flag 0x800 (the Arch Magi, Beholders, Evil Eyes; the
+  Magi shoot their projectile); after the climax frames a wait of trunc(115 F), then the ray on
+  its own clock, a tick every trunc(10 F), trunc(d / 15) + 15 one-pixel steps per tick along an
+  f32 aim renewed each tick, cross-sections of thickness 5 then 4 coloured from the edge inward
+  (the colours scaled into the screen's masks, not truncated); the battle redrawn at once without
+  it; then the shot group's rest on the deadline, the last frame drawn and never shown.
+- **Built:** `h3_view::ray` (the ray in integers: the f32 and 53-bit roundings exact, sine,
+  cosine and arc tangent by series), `anim`'s `Beam` and `Timeline::ray`, the scene's and the
+  compositor's `Draw::Ray`, `PixelFormat::scale` and `Screen::set` in `h3-render`; the asset
+  tables' `ray` (the colours, `h3-view harvest` writes them; the three creatures' entries as the
+  harvest gives them).
+- **The sequence `shots`** (`seq-shots.toml`, hot seat, six commands over two rounds): three
+  rays, the Cyclops' throws down and straight, the Gnolls' defend reaction to a ray, the
+  Beholders' death by a throw. The recorded timeline showed one rule wrong: a shooter plays its
+  shot group out beyond the reactions (the Cyclops: 10 frames left after its climax, which T5b's
+  *provisional* L = R + 1 cut; design §7.4). With that fixed, the viewer's timeline as recorded
+  on its first run, and all 139 frames equal the original's outside the masks, every ray tick's
+  pixels included.
+- **Checks:** `clients/scripts/check.sh` all gates, 100 % (code of `838073f`, master `fa542fc`;
+  verify-once's line in the pull request); `h3-view sequences`: the seven as recorded; `h3drive.py
+  frames` (all seven captured afresh in this sandbox, about 40 minutes, then redrawn on the final
+  code): every count as recorded; `check-lane`, `check-docs`, `check-exe-map`. `h3-view harvest`
+  writes the three `ray` lines as committed; its other difference, 35 obstacles beyond the table,
+  predates the task (the inbox, for T2).

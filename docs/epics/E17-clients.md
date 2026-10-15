@@ -220,10 +220,11 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
 
 Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUEUE.md`.
 
-- The scene over time completed (T1a, T1b; M2's T4b-2b): turns, the walk-by, deaths, defending,
-  shots up and down, Haste and Slow, the **rays** (the user: Magi and Beholders draw an energy
+- The scene over time completed (T1a, T1b-1, T1b-2; M2's T4b-2b): turns, the walk-by, deaths,
+  defending, shots up and down, the **rays** (the user: Arch Magi and Beholders draw an energy
   ray, not a projectile), and recordings that check the provisional rules (the flier's layer, the
-  shot's loop, the breath's groups).
+  shot's loop, the breath's groups); Haste and Slow with the spells (T7b; T1b re-cut with the
+  user, 2026-10-15).
 - A representative situation set over the harness: every battlefield (T2), the heroes and war
   machines (T3), the count boxes (T5) and the panel (T6), each mask removed as it is drawn;
   sieges later.
@@ -247,6 +248,11 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   files record `<ms> <differing> <artifacts>`. The six sequences captured again, every count as
   recorded: `behind`'s 30 frames and 6 of `melee`'s 7 artifacts only; `melee` at 3 966 keeps the
   stale count box (231 pixels) listed for T5.
+- **T1b-1 done 2026-10-15** ([log](E17-log.md#m3-t1b-1--shots-and-rays-2026-10-15),
+  [design §7.12, §7.4](E17-design.md)): the ray read (`draw_ray` and its helpers) and built in
+  integers (`h3_view::ray`); the hot-seat sequence `shots` (three rays, the Cyclops' throws, a
+  defend reaction, a death by a shot) as recorded, all 139 frames equal to the original's outside
+  the masks; a shooter now plays its group out beyond the reactions.
 
 ### Later (refined when they come up)
 
@@ -425,6 +431,12 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T1b-1: the asset tables' `ray` field (a ray shooter's five colours, R, G, B from the edge
+  inward, harvested from the executable's tables); a frame drawn and never shown is kept in the
+  timeline as drawn (a key shown at `u32::MAX`), so `lines()` matches the original's memory
+  (*provisional*); a shooter plays its group out beyond the reactions, L = max(R + 1, its frames
+  left + 1) (*provisional*, not read; the Cyclops in `shots`).
 
 - T1a: a battle in progress is played by the harness in hot seat (`h3-view situation
   --hot-seat`), both sides human, rather than against the original's AI: every command chosen,
