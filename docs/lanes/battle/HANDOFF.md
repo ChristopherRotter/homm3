@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 8, T7e (the user, 2026-10-15: the next sensible increment):** built: the seam #225 (`shared/e04c-t7e-seam`) and the battle's #227 (`battle/e04c-t7e`, stacked on it), both `cross-lane`, full verify green; batch 3h: as the code; BAT-Q47 answered. Both await the user's checkpoint, #225 merges first. **Next:** T9 (workload and measurements), then T10 (the closure's review).
+- **E04c increment 8, T7e (the user, 2026-10-15: the next sensible increment):** built: the seam #225 (`shared/e04c-t7e-seam`) and the battle's #227 (`battle/e04c-t7e`, stacked on it), both `cross-lane`, full verify green; batch 3h: as the code; BAT-Q47 answered. #225 merged; #227 awaits the user's checkpoint. **Next:** T9 (workload and measurements), then T10 (the closure's review).
 - **Merged:** up to #222 (T8).
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
 - **Versions** (T7e): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v24, observation encoding v20; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q47, BAT-QUIRK-23, BAT-STUB-4, BAT-TER-007, BAT-SIE-029, BAT-WAR-009; survey D-22, S-30.
