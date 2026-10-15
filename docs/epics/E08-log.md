@@ -2185,3 +2185,50 @@ Decision 36's second part, built on `adventure/e08-t20a2a`; no version bump.
 - Tests: the scan's order, clipping, water, the row above, a removal; the step past and onto a
   guarded tile, leaving one; the query along a corridor and from a guarded start
   (`state/tests/monsters.rs`); the reach property with monsters.
+
+### Round 4 of increment 3: T20b1 (2026-10-15, `adventure/e08-t20b1`)
+
+#220 and #223 merged before the session; `master` 615286e verified already (#223's record:
+the baseline ran the light gates only). Asked for a seam, the user split T20b in three (decision
+37: T20b1 and T20b2 this session, T20b3 next) and confirmed T20a2a's provisional call (special
+grounds out of the one-type-per-anchor check).
+
+- **The answer** (ADV-MON-007, `answer.rs`): `Temper::new` from the visitor's army, its details
+  (`h3_heroes::attack_defense`, `join_bonus`; none: 0) and the monster as it stands (`Wanderer`:
+  creature, count with a battle's survivors, aggression, never flees) on the game's difficulty;
+  `first` (fight above C, join up to Sy + L + 1, join for gold up to Sy + 2L + 1, else
+  `after_join`) and `after_join` (insulted at M = C or never flees: fight; else the flight). The
+  code reading checked again (0x4A7740, 0x427650, 0x4E5400, 0x4A75C0, 0x47B1A0, 0x47B220,
+  0x44AC80, 0x44ACE0): the power is the army's value stored as a float times the factor stored
+  as a float, truncated (5.95 as a float is 5.9499998: Attack and Defense 99 give 5 949 for a value
+  of 1 000); the ratio's operands are stored as floats and divided at 53 bits, then stored; the
+  comparisons are with doubles (0.333's double lies below 0.333 as a float, so r = 0.333 is −2).
+  The related type in the content: the first upgrade, else the creature whose first upgrade it is,
+  of its faction and level (the original's town table by the record's faction and level; under
+  `BAT-QUIRK-19` the Ice, Magma and Energy Elementals have none, their bases keep them; the RoE
+  exceptions at map kind 0 do not apply to a SoD game). Not modelled: the 32-bit army value's wrap
+  above 2³¹ (about 27 000 Azure Dragons).
+- **The offers** (ADV-MON-008): `OfferKind::{Join, JoinForGold { price }, Pursue}` (the price:
+  the creature's cost in `[params.monsters] price_resource`, the base pack's gold, times the count,
+  empty when it costs none: adventure ruleset part v8); `AdventureState::accept_offer` returns an
+  outcome (a join: the group into its creature's stack or the first free slot through
+  `add_stack`, shared with `raise`; `CreaturesJoined` to the owner; the treasure as gains; the
+  monster removed; a pursuit: the fight); `decline_offer` (new, infallible; a declined join goes on
+  to `after_join`, a declined flight removes the monster without its treasure). An offer to join
+  is skipped as declined without room (`ADV-STUB-2` in `answer_to`). The fight is `ADV-STUB-6`
+  (`state/monsters.rs::fight`): nothing happens until T20b2.
+- **The visits**: `Effect::Monster` makes a monster visitable from a neighbour (a step onto its
+  tile was refused); `Reach` lists it. The guard's visit after an entering step is the monster's
+  answer (`ADV-STUB-5` closed); when the tile's own object made an offer (a Cartographer beside a
+  monster), the outcome carries `guard_after` instead, the game keeps it on the decision and calls
+  the new `AdventureState::visit_guard` after the answer, or at once when the offer does not open.
+- **The game**: `GameState::settle_outcome` applies an outcome (gains, the offer, the battle) and
+  what follows an offer that does not open: a join for gold the treasury cannot pay is declined
+  without an event and its chain goes on; another refusal is told and the waiting guard visits.
+  `answer` declines through the adventure too, then settles, then the waiting guard. Game state
+  hash v7 (the offer kinds' tags 2 to 4 and `guard_after`).
+- Tests: `answer/tests.rs` (the power's arithmetic, the step's thresholds, the sympathy, Easy, the
+  tests' order), `state/tests/answers.rs` (visits, each answer, room, declines, joins, gone offers,
+  the guard after a step and after an offer), `h3-game`'s `tests/monsters.rs` (the decisions
+  through `apply`, the chain, the unpayable price, the waiting guard). The eight golden replays
+  re-recorded with their options: commands unchanged (the duel holds no monster).
