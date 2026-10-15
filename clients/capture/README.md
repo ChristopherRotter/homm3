@@ -20,7 +20,7 @@ enter git (they stay in the sandbox or `clients/out/`).
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
-| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a); the adventure map's players, heroes, view and path (below). |
+| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b); the adventure map's players, heroes, view and path (below). |
 | `h3adv.py` | The adventure map (M2 T6): hot seat, heroes, tiles clicked twice, turns; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
@@ -29,7 +29,7 @@ enter git (they stay in the sandbox or `clients/out/`).
 Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINKW32.DLL`,
 `IFC20.dll`, `MP3DEC.ASI`, `MSS32.DLL`, `SMACKW32.DLL`, `Data/` with the four LODs, `Heroes3.snd`,
 `H3ab_ahd.snd`, `H3ab_ahd.vid`; one large file per staging call), run `clients/capture/setup.sh`,
-and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (20 situations since M3 T2) takes about 2.5 minutes.
+and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (30 situations since M3 T3b) takes about 4 minutes.
 
 ## Common uses
 
@@ -68,7 +68,10 @@ score of 1.0 is an exact match; an obstacle partly covered by another scores abo
 them, run again, and record each frame's count with why. Situations need the human's stack to
 open (speed above every enemy's; the original's AI acts at once) and armies of one faction or
 without Leadership's morale. Each side's hero is the scenario's (`attacker_hero`,
-`defender_hero`, with their primary skills; M3 T3a), without skills, artifacts or war machines;
+`defender_hero`, with their primary skills; M3 T3a) with the scenario's war machines as
+artifacts (`attacker_war_machines`, `defender_war_machines`; M3 T3b), without skills or other
+artifacts; an entry's `hot_seat = true` (M3 T3b) starts it in hot seat, so that a faster stack of
+Blue's opens idle instead of acting (`smoke`);
 the packs in their order (base, ab, sod) give the original's hero types. A scenario's
 `battlefield` (M3 T2) is set up on the defender's (Blue's) tile: water east of it for the shore
 (`base:shore`, on sand), a special ground under both heroes for the nine ground fields; `find`
@@ -104,7 +107,9 @@ python3 capture/h3drive.py sequences [--only walk]
 (`hex:<n>` clicks a hex at `hex_point`, `key:d` defends, `click:x,y`, `move:x,y`, `step:<ms>`) and
 then steps 1 ms at a time, reading the game's state after each step: `<out>/states.jsonl` (every
 state, with `--screen` a digest of the battlefield's pixels) and `<out>/timeline.txt` (one line per
-change of a stack's group, frame or hex). `sequences` replays the recorded ones and fails when a
+change of a stack's group, frame or hex, by the original's records: each side's army, then its
+war machines; after them a change of the magic animation drawn, `<ms> magic <number> f<frame>
+<side>.<record>…` or `<ms> magic -`, M3 T3b). `sequences` replays the recorded ones and fails when a
 timeline changes; add one like a situation (its entry, `new`, then copy its timeline into
 `timelines/`).
 
@@ -117,7 +122,10 @@ starts: a player who waits lets fidgets start, which the viewer's timeline does 
 entry's `[[sequence.command]]`s, `at` gives each player's command its time from `turns.txt` (`ms`
 counts from the last one). `behind` (`seq-behind.toml`): two rounds, 8 commands, about 13 s;
 `shots` (`seq-shots.toml`, M3 T1b-1): two rounds, 6 commands, three rays, about 10 s; `fly`
-(`seq-fly.toml`, M3 T1b-2): two flights across rows and a breath, about 9 s. A two-hex striker
+(`seq-fly.toml`, M3 T1b-2): two flights across rows and a breath, about 9 s; `machines`
+(`seq-machines.toml`, M3 T3b): the war machines act on their own after the Archers' shot (two
+Ballistas' shots and the tent's heal), about 8.5 s. A war machine without Artillery or First Aid
+needs no action (the engine plays its turn inside the command before it). A two-hex striker
 stands where the cursor's slot inside the target's hex says (design §7.13): `click:x,y` with an
 offset from the hex's point picks it. `hover` (M3 T1b-2) moves the mouse over a stack
 (`move:x,y`) and away; it has no engine command (the viewer draws no mouse in a record), so
@@ -142,7 +150,7 @@ pixels outside the masks and how many of them are the original's **redraw artifa
 shadows, or one we drew there at an earlier moment of the sequence with at least one more. The
 diff PNG marks those yellow, any other difference red; a change in either count fails. The
 original's frames live only in the sandbox that captured them (`clients/out/`, never in git):
-a new sandbox captures them again (all eight with frames, about 50 minutes: `shots` and `fly` about 9 each) before `--reuse` works. `--reuse` keeps the original's frames from an earlier run and only redraws
+a new sandbox captures them again (all nine with frames, about 60 minutes: `shots`, `fly` and `machines` about 9 each) before `--reuse` works. `--reuse` keeps the original's frames from an earlier run and only redraws
 and compares (after a change to the viewer). About 14 minutes for the first four sequences and 15
 more for `behind` (default `<dir>`: `clients/out/frames`). Only a fidget comes from the
 original's memory; everything else is the viewer's own timeline.

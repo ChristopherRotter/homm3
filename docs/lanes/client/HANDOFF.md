@@ -4,13 +4,13 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T1c, T2, T3a done (2026-10-15); next: M3 T3b–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ the amendment draft in `adr-drafts/`), ADR-0024; the capture harness `clients/capture/README.md`; design §3–§8; records in `E17-log.md`.
-- **Pull requests (2026-10-15):** T3a #235 open (T2 #229 merged).
+- **E17 M0–M2 done; M3 T1a–T1c, T2, T3a, T3b done (2026-10-15); next: M3 T4–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ the amendment draft in `adr-drafts/`), ADR-0024; the capture harness `clients/capture/README.md`; design §3–§8; records in `E17-log.md`.
+- **Pull requests (2026-10-15):** T3b open (branch `client/e17-m3-t3b`; T3a #235 merged).
 - **The user's requirements (2026-10-13)**, epic "Decisions": a string catalogue, language packs; graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
-- The lane needs the user's computer online (it may sleep: stage all first) for the original files, from `original-data/install/` into the clone's: the four LODs (one per staging call), `h3maped.exe`, the two `.snd` (sound: also `MP3/COMBAT01`–`04`); the captures also `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`. `sandbox-setup.sh` copies only the engine's few: `cp -rn` the staged `original-data/.` before `capture/setup.sh`. Captured frames live only in their sandbox (runbook).
-- **Open:** CLT-Q2 (a table-only LOD reader in `h3-formats`; until then whole archives); CLT-Q4 (how a record carries the background variant); CLT-Q5 (boats in `h3-map`'s writer: the deck and the two boats); CLT-Q6 (a battle's player colours and a hero's sex: the flags are red and blue).
+- The lane needs the user's computer online (it may sleep: stage all first) for the original files, from `original-data/install/` into the clone's: the four LODs (one per staging call), `h3maped.exe`, the two `.snd` (sound: also `MP3/COMBAT01`–`04`); the captures also `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`. `sandbox-setup.sh` copies only the engine's few: `cp -rn` the staged `original-data/.` before `capture/setup.sh`. Frames live only in their sandbox.
+- **Open:** CLT-Q2 (a table-only LOD reader; until then whole archives); CLT-Q4 (the background variant); CLT-Q5 (boats in `h3-map`'s writer); CLT-Q6 (player colours, a hero's sex: red and blue flags).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -46,12 +46,16 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Reading the original's state (`capture/h3mem.py`): memory holds the frame drawn, the screen the one shown, and lags it by a step after an animation (design §7.1, §7.9; runbook "Traps"): never render memory's poses as the screen. `Combat Speed` (the prefix's registry, 0): reset it after a run at another.
 - No float arithmetic or platform transcendental in the client's drawing and timing, the binary included (`clippy.toml`): f32 behaviour in fixed point (`anim::f32_round`), tangents by series; SDL's floats only at the adapter's edge (coordinates, `audio::gain`).
 - A battle in progress: act as the stack's turn starts (`turn:`, runbook): a click before is lost, one after lets fidgets in.
-- A capture's scenario names both heroes (the map's); the set's clock steps ≤ 100 ms (runbook).
+- A capture's scenario names both heroes; the set's clock steps ≤ 100 ms; a computer that would
+  act first: `hot_seat` (runbook). Timelines' records: army, then war machines (design §7.15).
 - The adventure map's harness (`h3adv.py`): `Show Route` on (`setup.sh`), heroes selected from the hero list only, real time (no heavy build beside a batch): the runbook's "Traps".
 
 ## Recent sessions
 
-- **2026-10-15, E17 M3 T3a (the user present; T3 split: war machines T3b).** Hero pictures by
-  town and sex (Conflux by sex), flags and heroes drawn and timed; no `heroes` mask, all exact.
-- **2026-10-15, E17 M3 T2 (the user present).** Special battlefields keyed by the packs (`sod.toml` holds the SoD fields) and drawn by the observation's `battlefield`; `situation` sets up the shore and the nine grounds, all 11 captures exact; the deck and boats wait for CLT-Q5.
-- **2026-10-15, E17 M3 T1b-2 (the user away).** `fly`: layer 8 and the breath confirmed; `hover` recorded; the set by time.
+- **2026-10-15, E17 M3 T3b (the user present).** War machines drawn; an automatic one's turn
+  ticks the loop once; the tent's heal under magic animation 79 (translucent); all exact. Two
+  findings for the battle lane: inbox.
+- **2026-10-15, E17 M3 T3a (the user present; T3 split).** Hero pictures by town and sex
+  (Conflux by sex), flags and heroes drawn and timed; no `heroes` mask, all exact.
+- **2026-10-15, E17 M3 T2 (the user present).** Special battlefields drawn by the observation's
+  `battlefield`; the shore and the nine grounds captured, exact; the deck and boats: CLT-Q5.

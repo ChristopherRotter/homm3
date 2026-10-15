@@ -436,3 +436,22 @@ why = "exact: the war machines stand still (the tent's group 2 has six frames: f
 at = 800
 differing = 0
 why = "exact: the war machines stand still (the tent's group 2 has six frames: frame 0 shows) and have no count box (M3 T3b)"
+
+# The smoke battle (M1 T8, `../scenarios/smoke.toml`) with its heroes and Red's Ballista (M3
+# T3b), in hot seat so that it opens idle: the Wolf Riders, faster than every stack of Red's, are
+# Blue's and wait for a human (the original's computer acted at once at M1 T8).
+[[situation]]
+id = "smoke"
+scenario = "../scenarios/smoke.toml"
+hot_seat = true
+mask = ["panel", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the smoke battle with Orrin's Ballista and both heroes, the Wolf Riders outlined (M3 T3b)"
+
+[[situation.frame]]
+at = 400
+differing = 0
+why = "exact: the Pikemen's fidget in the original's poses, the flags four steps on (M3 T3b)"

@@ -349,12 +349,19 @@ def write_screens(screens):
     SCREENS.write_text("\n".join(lines) + "\n")
 
 
-def capture(game, map_path, out, frames, key="Right", stacks=None):
+def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=False):
     """The battle of the map: its opening, then a dump at each time in `frames` (ms after the
     opening, ascending); returns the dumps' paths. With `stacks` (a list; M3 T1b-2) the stacks
-    the game's memory holds at each dump (h3mem: the fidgets) are appended to it."""
+    the game's memory holds at each dump (h3mem: the fidgets) are appended to it. With
+    `hot_seat` (M3 T3b) the map starts in hot seat, Red and Blue both humans, so that a faster
+    stack of Blue's opens idle."""
     game.start(map_path)
-    to_scenario(game)
+    if hot_seat:
+        import h3adv
+
+        h3adv.to_hot_seat(game, ["Red", "Blue"])
+    else:
+        to_scenario(game)
     t0 = into_battle(game, key)
     mem = None
     if stacks is not None:
@@ -399,12 +406,14 @@ def run_set(rest):
         here.mkdir(parents=True, exist_ok=True)
         map_path = here / f"{sid}.h3m"
         tile = ["--tile", ",".join(map(str, sit["tile"]))] if "tile" in sit else []
-        subprocess.run([h3view, "situation", str(scenario), "--out", str(map_path), *tile],
-                       check=True, capture_output=True)
+        hot_seat = ["--hot-seat"] if sit.get("hot_seat") else []
+        subprocess.run([h3view, "situation", str(scenario), "--out", str(map_path), *tile,
+                        *hot_seat], check=True, capture_output=True)
         frames = {f["at"]: f for f in sit.get("frame", [])} or {0: {"at": 0}}
         game, stacks = Game(here), []
         try:
-            paths = capture(game, map_path, here, list(frames), stacks=stacks)
+            paths = capture(game, map_path, here, list(frames), stacks=stacks,
+                            hot_seat=bool(hot_seat))
         finally:
             game.stop()
         # Our frame at each time (M3 T1b-2): the battle's idle steps (the outline's pulse) on the

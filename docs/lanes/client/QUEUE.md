@@ -6,20 +6,6 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T3b — War machines on the battlefield
-
-- **Scope:** split from T3 with the user at T3a (the heroes done 2026-10-15). The war machines
-  (the Ballista of the smoke capture, the First Aid Tent, the Ammo Cart): their places, DEFs and
-  what the viewer draws of them as stacks (no count box, no outline?: to read), the tent's and
-  the Ballista's actions (the Ballista's shot groups, `melee_strike` 0x441AAF; the tent's heal
-  and its animation: not read), their sounds (design §8.2: a war machine's wince for attack and
-  defend); `h3-view situation` gives a hero its war machines (the map writer's artifacts slots
-  13–16), and the set gains a situation with all three (the smoke battle's Ballista too). The
-  Catapult, walls and towers come with sieges (later).
-- **Acceptance:** the smoke battle and a situation with the three war machines match outside the
-  remaining masks; a recorded sequence of the Ballista's shot and the tent's heal as recorded.
-- **Depends on:** nothing. **Status:** ready.
-
 ### E17 M3 T4 — Fonts and the string catalogue
 
 - **Scope:** which font draws what in the battle (the executable), a decoder of the original's
@@ -58,7 +44,10 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 ### E17 M3 T7a — Code reading: the magic animations
 
 - **Scope:** the user (T5c): the plethora of spell animations. How the executable draws a spell
-  or a magic animation (H3API's PlayMagicAnimation and its table: each animation's DEF, where it
+  or a magic animation (H3API's PlayMagicAnimation and its table: read over one stack at T3b,
+  design §7.15, the table harvested into `[battle] magic`; left: the hit it plays with
+  `show_hit`, the places 3 and above, mass animations over several stacks (0x5A66D0), which spell
+  plays which; each animation's DEF, where it
   is drawn: over a stack, a hex, the field, from caster to target; its timing and its place in
   `strike_animation`'s L = max(the magic animation's frames, A + R − 1), §7.4; the spells'
   sounds by the spell table's names); the hero's and a creature caster's cast animation; morale
@@ -105,9 +94,22 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T3b–T8 (T1a–T1c, T2 and T3a done). **Status:** waiting.
+- **Depends on:** T4–T8 (T1a–T1c, T2, T3a and T3b done). **Status:** waiting.
 
 ## Inbox
+
+- 2026-10-15 (E17 M3 T3b): **for the battle lane** (BAT inbox, through the user): the original's
+  automatic First Aid Tent heals the stack with the most lost hit points (0x473EA0, the map's
+  entry; `installation.md` §7.14 says so too), BAT-WAR-003 a random one (the wiki and VCMI);
+  and an automatic tent without a patient, or a Ballista without a target, defends there
+  (action 3; 0x473EA0, 0x41F060), where the engine does nothing (a later shot at it would play
+  its defend reaction in the original). Neither shows in `machines` (one patient, targets for
+  both Ballistas).
+- 2026-10-15 (E17 M3 T3b): **for T8**: the battle waits for the heal's sound to end
+  (`wait_for_sample` after `first_aid_tent_action`'s animation, design §7.15): at speed 0 the
+  animation outlasts `Regener` (2 100 against 1 881 ms), at speeds 1 and 2 with the sound on the
+  viewer's timeline should wait; the sound plays on the start sound's stream (category 2's four
+  channels: one built).
 
 - 2026-10-15 (E17 M3 T2): **when CLT-Q5 is answered** (boats in `h3-map`'s writer): the deck and
   the two boats as capture-set situations (`h3-view situation`'s `special` refuses them now: a
