@@ -362,8 +362,7 @@ impl GameState {
         if guard_after {
             let (adventure, heroes) = self.adventure_with_heroes();
             let context = (rules.core(), rules.adventure(), heroes);
-            let guard =
-                adventure.visit_guard(context, offer.hero);
+            let guard = adventure.visit_guard(context, offer.hero);
             self.settle_outcome(rules, player, guard, sink);
         }
         Ok(())

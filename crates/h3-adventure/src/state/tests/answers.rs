@@ -521,7 +521,6 @@ fn the_guard_answers_after_the_step_or_after_the_tiles_offer() {
     let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 1)]);
     assert_eq!(outcome.offer.map(|o| o.object_type), Some(CHART));
     assert!(outcome.guard_after);
-    let mut events: Vec<AdventureEvent> = Vec::new();
     let guard = s.visit_guard(triple(&rules, &[]), HERO);
     assert_eq!(guard.offer, offer(3, 1, OfferKind::Join));
     // Onto an observatory's tile: its reveal, then the guard's answer in the same outcome.
@@ -542,7 +541,7 @@ fn the_guard_answers_after_the_step_or_after_the_tiles_offer() {
         s.visit_guard(triple(&rules, &[]), HeroId::new(9)),
         AdventureOutcome::default()
     );
-    let mut s = state(
+    let s = state(
         &rules,
         &ROWS,
         vec![monster_at(5, 0, PIKEMAN, 10)],

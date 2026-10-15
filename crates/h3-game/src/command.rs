@@ -99,7 +99,9 @@ impl fmt::Display for GameCommandError {
             Self::NoBattle => f.write_str("no battle is open"),
             Self::NotYourSide => f.write_str("the side to act is not the player's"),
             Self::Battle(error) => write!(f, "{error}"),
-            Self::NotForSystem => f.write_str("the system actor issues only an unowned side's commands"),
+            Self::NotForSystem => {
+                f.write_str("the system actor issues only an unowned side's commands")
+            }
         }
     }
 }

@@ -287,7 +287,11 @@ fn unchanged_mana_lost_machines_without_artifacts_and_absent_heroes_change_nothi
         [(RED, RED_HERO, HeroChange::GainExperience(killed))]
     );
     // A winning side without a hero: no one gains; nothing killed gives nothing.
-    let sides = ([Some(RED), Some(BLUE)], [None, Some(BLUE_HERO)], Pos::new(0, 0, 0));
+    let sides = (
+        [Some(RED), Some(BLUE)],
+        [None, Some(BLUE_HERO)],
+        Pos::new(0, 0, 0),
+    );
     let (_, changes) = end(&game, &rules, sides, &quiet);
     assert!(changes.is_empty());
     let mut none = quiet;

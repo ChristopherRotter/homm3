@@ -316,7 +316,11 @@ fn a_monster_fights_split_by_its_tile_and_the_system_plays_its_side() {
     let rules = valued("t:split");
     let at = Pos::new(1, 1, 0);
     // A savage (aggression 10) group of 12 gogs against 9 imps: C = −1, a fight.
-    let mut state = game(&rules, 1, vec![object(&rules, "t:monster", at, gogs(12, 4))]);
+    let mut state = game(
+        &rules,
+        1,
+        vec![object(&rules, "t:monster", at, gogs(12, 4))],
+    );
     let events = play(&mut state, &rules, RED, move_hero(0, &[at])).unwrap();
     assert_eq!(
         after_steps(events)[0],
@@ -359,7 +363,10 @@ fn a_monster_fights_split_by_its_tile_and_the_system_plays_its_side() {
         ),
         Err(GameCommandError::NotForSystem)
     );
-    assert_eq!(legal_moves(&state, &rules, Actor::System, HeroId::new(0)), None);
+    assert_eq!(
+        legal_moves(&state, &rules, Actor::System, HeroId::new(0)),
+        None
+    );
     let wait = legal_commands(&state, &rules, Actor::Player(RED))
         .into_iter()
         .rfind(|c| !matches!(c, GameCommand::Battle(c) if c.leaves_battle()))
@@ -435,7 +442,11 @@ fn a_won_battle_removes_the_monster_and_gives_its_treasure() {
 fn a_lost_battle_takes_the_hero_off_the_map_and_leaves_the_survivors() {
     let rules = valued("t:split");
     let at = Pos::new(1, 1, 0);
-    let mut state = game(&rules, 1, vec![object(&rules, "t:monster", at, gogs(40, 4))]);
+    let mut state = game(
+        &rules,
+        1,
+        vec![object(&rules, "t:monster", at, gogs(40, 4))],
+    );
     play(&mut state, &rules, RED, move_hero(0, &[at])).unwrap();
     let events = fight_out(&mut state, &rules);
     assert!(events.iter().any(|e| matches!(
