@@ -6,14 +6,18 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T3 — Heroes and war machines on the battlefield
+### E17 M3 T3b — War machines on the battlefield
 
-- **Scope:** the heroes (design §4.5: their battle DEFs by class and sex, the flags; their idle
-  groups and their sounds, not read), the war machines (the Ballista of the smoke capture, the
-  First Aid Tent, the Ammo Cart: places, DEFs, the tent's and the Ballista's actions), each
-  capture mask removed as it is drawn. The Catapult, walls and towers come with sieges (later).
-- **Acceptance:** the smoke battle and a hero battle of the capture set match outside the
-  remaining masks.
+- **Scope:** split from T3 with the user at T3a (the heroes done 2026-10-15). The war machines
+  (the Ballista of the smoke capture, the First Aid Tent, the Ammo Cart): their places, DEFs and
+  what the viewer draws of them as stacks (no count box, no outline?: to read), the tent's and
+  the Ballista's actions (the Ballista's shot groups, `melee_strike` 0x441AAF; the tent's heal
+  and its animation: not read), their sounds (design §8.2: a war machine's wince for attack and
+  defend); `h3-view situation` gives a hero its war machines (the map writer's artifacts slots
+  13–16), and the set gains a situation with all three (the smoke battle's Ballista too). The
+  Catapult, walls and towers come with sieges (later).
+- **Acceptance:** the smoke battle and a situation with the three war machines match outside the
+  remaining masks; a recorded sequence of the Ballista's shot and the tent's heal as recorded.
 - **Depends on:** nothing. **Status:** ready.
 
 ### E17 M3 T4 — Fonts and the string catalogue
@@ -101,7 +105,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T3–T8 (T1a–T1c and T2 done). **Status:** waiting.
+- **Depends on:** T3b–T8 (T1a–T1c, T2 and T3a done). **Status:** waiting.
 
 ## Inbox
 

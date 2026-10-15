@@ -19,3 +19,10 @@ outline_palette = "game.pal"
 outline_active = 96
 # Its range's entries (96-103): each idle step rotates them by one (0x4960D0 via 0x522950, §4.2).
 outline_ramp = 8
+# The heroes' and their flags' canvases, top-left corners, the left side's and the right side's
+# (§4.5, `battle_redraw` 0x494701): each flag, then its hero; the right hero mirrored in its
+# canvas (E17 M3 T3a).
+hero_canvas = [[-43, -19], [693, -19]]
+flag_canvas = [[29, 20], [755, 20]]
+# The players' colours (0x5FFE20): a flag takes its player's 32 entries over 224-255.
+player_palette = "PLAYERS.PAL"

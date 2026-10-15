@@ -9,7 +9,7 @@ nothing is written into the game.
   h3mem.py adventure  print the adventure map's state as JSON: the current player, the view,
                       each player's selected hero and resources, every hero on the map
 
-Library use: `Mem` (globals, stacks; current_player, player, heroes, hero, hero_named, view,
+Library use: `Mem` (globals, stacks, battle_heroes; current_player, player, heroes, hero, hero_named, view,
 mouse_tile, path). Needs a running game (h3drive.py) and the rights to read its memory (root in a
 sandbox).
 """
@@ -44,6 +44,9 @@ COMBAT_SPEED = 0x6987EC  # the setting, 0 to 2 (factors 0x63CF7C)
 # Battle manager: records per side +0x54BC, the stacks from +0x54CC (21 per side, 0x6EE8 apart,
 # 0x548 each), the idle step's counter +0x13FFC.
 SIDE_COUNTS, STACKS, SIDE_STRIDE, STACK_SIZE, STEP_COUNTER = 0x54BC, 0x54CC, 0x6EE8, 0x548, 0x13FFC
+# The heroes (E17 M3 T3a, design §4.5, §7.14): each side's hero (a pointer, 0: none) +0x53CC, its
+# DEF group +0x53E4 and frame +0x53EC, its flag's frame +0x5414 (i32 per side).
+HERO_POINTERS, HERO_GROUPS, HERO_FRAMES, FLAG_FRAMES = 0x53CC, 0x53E4, 0x53EC, 0x5414
 # The active stack (a pointer: outline 0x60) and the mouse's highlight (+0x132CC set: the stack on
 # the hex +0x132D0 gets outline 0x70) (M2 T4b-1; structs.toml, design §4.2).
 ACTIVE_STACK, MOUSE_HIGHLIGHT, MOUSE_HEX = 0x132C8, 0x132CC, 0x132D0
@@ -137,6 +140,17 @@ class Mem:
                 stack.update({k: struct.unpack_from("<i", raw, o)[0] for k, o in FIELDS.items()})
                 result.append(stack)
         return result
+
+    def battle_heroes(self):
+        """Each side's hero as drawn (E17 M3 T3a): side, DEF group, frame and the flag's frame;
+        a side without a hero is left out; [] outside a battle."""
+        manager = self.manager()
+        if not manager:
+            return []
+        return [{"side": side, "group": self.i32(manager + HERO_GROUPS + 4 * side),
+                 "frame": self.i32(manager + HERO_FRAMES + 4 * side),
+                 "flag": self.i32(manager + FLAG_FRAMES + 4 * side)}
+                for side in (0, 1) if self.u32(manager + HERO_POINTERS + 4 * side)]
 
     # -- the adventure map ---------------------------------------------------------------------
     def game(self):

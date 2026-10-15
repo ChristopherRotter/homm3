@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use h3_formats::lod::LodArchive;
 use h3_view::anim::{Look, Missile, Stage};
 use h3_view::batch::Batch;
+use h3_view::hero::{HeroLook, Heroes};
 use h3_view::layout::BattleLayout;
 use h3_view::record::Record;
 use h3_view::tables::Tables;
@@ -69,6 +70,56 @@ pub fn looks(
         );
     }
     Ok(looks)
+}
+
+/// The heroes of the record's battle (E17 M3 T3a): each side's hero's [`HeroLook`] (its DEF's
+/// groups, its flag's frames), whether each side's player is human, and `seed` for the viewer's
+/// own defeats and victories (none: none of its own, as the reference checks want).
+pub fn heroes(
+    record: &Record,
+    tables: &Tables,
+    archives: &[(&str, LodArchive<'_>)],
+    seed: Option<u32>,
+) -> Result<Heroes, String> {
+    let snapshot = record
+        .first_snapshot()
+        .ok_or("the record holds no snapshot")?;
+    let keys = &record.header.manifest.keys.hero_types;
+    let groups = |def: &str| -> Result<BTreeMap<u32, u32>, String> {
+        let mut batch = Batch::default();
+        batch
+            .add(def, &lookup(archives, def)?)
+            .map_err(|e| e.to_string())?;
+        let sprite = batch
+            .sprite(def)
+            .ok_or_else(|| format!("{def}: not a DEF"))?;
+        Ok(sprite
+            .def
+            .groups
+            .iter()
+            .map(|g| (g.id, u32::try_from(g.frames.len()).unwrap_or(0)))
+            .collect())
+    };
+    let mut looks = [None, None];
+    for (side, view) in snapshot.sides.iter().enumerate() {
+        let Some(hero) = &view.hero else {
+            continue;
+        };
+        let key = keys
+            .get(usize::from(hero.hero_type))
+            .ok_or_else(|| format!("no hero type handle {}", hero.hero_type))?;
+        let def = tables
+            .heroes
+            .get(key)
+            .ok_or_else(|| format!("the asset tables have no entry for `{key}`"))?;
+        let flag = groups(&tables.battle.flags[side])?;
+        looks[side] = Some(HeroLook {
+            frames: groups(def)?,
+            flag_frames: flag.get(&0).copied().unwrap_or(0),
+        });
+    }
+    let human = [snapshot.sides[0].human, snapshot.sides[1].human];
+    Ok(Heroes::new(looks, human, tables.battle.hero_groups, seed))
 }
 
 /// A projectile: its DEF's canvas and the creature's angle for each frame of its group 0 (the

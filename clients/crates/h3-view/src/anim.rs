@@ -29,6 +29,7 @@ use core::fmt::Write as _;
 
 use h3_protocol::wire::{Event, Observation, ServerMessage, Side};
 
+use crate::hero::{Action, Happening, Heroes};
 use crate::layout::BattleLayout;
 use crate::ray::{self, Stroke};
 use crate::tables::Groups;
@@ -393,6 +394,10 @@ pub struct Timeline {
     pub fidgets: Option<Fidgets>,
     /// The creatures' sounds, in time order.
     pub cues: Vec<Cue>,
+    /// Each command's end and what it did that the heroes answer, in order (E17 M3 T3a).
+    pub actions: Vec<Action>,
+    /// The heroes beside the battlefield (none: none drawn; [`Timeline::with_heroes`]).
+    pub heroes: Option<Heroes>,
     /// When the last frame shows.
     pub end: u32,
 }
@@ -503,7 +508,7 @@ pub struct Idle {
 
 impl Idle {
     /// Runs the steps up to `until` (included), each time given to `step`.
-    fn run(&mut self, until: u32, mut step: impl FnMut(u32)) {
+    pub(crate) fn run(&mut self, until: u32, mut step: impl FnMut(u32)) {
         loop {
             let now = self.next.max(self.from);
             if now > until {
@@ -591,6 +596,16 @@ impl Timeline {
     pub fn still(&self) -> bool {
         self.outlined(self.end).is_none()
             && self.fidgets.as_ref().is_none_or(|f| f.stacks.is_empty())
+            && self.heroes.as_ref().is_none_or(|h| !h.any())
+    }
+
+    /// The timeline with its battle's heroes drawn (E17 M3 T3a).
+    #[must_use]
+    pub fn with_heroes(self, heroes: Heroes) -> Self {
+        Self {
+            heroes: Some(heroes),
+            ..self
+        }
     }
 
     /// The idle steps taken by `t` (the outline's pulse, §4.2): the opening's at 0, then as
@@ -867,7 +882,9 @@ fn played(
         flights: Vec::new(),
         beams: Vec::new(),
         cues: Vec::new(),
+        happenings: Vec::new(),
     };
+    let mut actions = Vec::new();
     let mut fidgets = seed.map(|rng| Fidgets {
         rng,
         group: stage.groups.mouse_over,
@@ -923,6 +940,10 @@ fn played(
             waiting = Some(stack);
         }
         idle.from = player.clock.now;
+        actions.push(Action {
+            end: player.clock.now,
+            happenings: core::mem::take(&mut player.happenings),
+        });
         if let Some(f) = fidgets.as_mut() {
             let drawn: Vec<u8> = player.keys[before..].iter().map(|k| k.stack).collect();
             f.reset(player.clock.now, &player.bases(), &drawn);
@@ -942,6 +963,8 @@ fn played(
         idle,
         fidgets,
         cues: player.cues,
+        actions,
+        heroes: None,
         end: player.clock.now,
     })
 }
@@ -1055,6 +1078,8 @@ struct Player<'a> {
     flights: Vec<Flight>,
     beams: Vec<Beam>,
     cues: Vec<Cue>,
+    /// What the command so far did that the heroes answer (E17 M3 T3a).
+    happenings: Vec<Happening>,
 }
 
 /// A command's melee (`move_and_attack` 0x478900, `melee_attack` 0x441CB0): its striker, its
@@ -1232,6 +1257,7 @@ impl Player<'_> {
                     self.reactions(&[(target, kills)]);
                 }
                 Event::Defended { stack } => self.defends(stack, true),
+                Event::RoundStarted { .. } => self.happenings.push(Happening::Round),
                 Event::TurnStarted { stack } => {
                     // The attack ends before the next turn starts (E17 M2 T5c, the reviewer).
                     self.attack_over(&mut melee, &mut shooter);
@@ -1497,6 +1523,7 @@ impl Player<'_> {
             let Some(live) = self.stacks.get_mut(&stack) else {
                 continue;
             };
+            let living = live.count > 0;
             live.count = live.count.saturating_sub(kills);
             let died = live.count == 0;
             let (group, sound) = if died {
@@ -1508,6 +1535,9 @@ impl Player<'_> {
             };
             let frames = live.look.count(group);
             let live = live.clone();
+            if died && living {
+                self.happenings.push(Happening::Died(live.side));
+            }
             out.push(Reaction {
                 stack,
                 group,
