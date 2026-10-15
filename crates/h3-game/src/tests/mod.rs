@@ -9,6 +9,7 @@ mod battles;
 mod decisions;
 mod heroes;
 mod legal;
+mod monsters;
 mod moves;
 mod observe;
 mod state;
@@ -24,8 +25,8 @@ use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
 use h3_adventure::{
     AdventurePack, AdventureParamsDef, AdventureRuleset, ArmyError, BattleTerrainsDef, MapSetup,
-    ObjectKindDef, ObjectTypeDef, Passage, PickupDef, Pos, SetupError, StandError,
-    StartingResourcesDef, TerrainMovementDef, TileSetup, Visit,
+    MonsterParamsDef, ObjectKindDef, ObjectTypeDef, Passage, PickupDef, Pos, SetupError,
+    StandError, StartingResourcesDef, TerrainMovementDef, TileSetup, Visit,
 };
 use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ContentKey, ContentPack, CreatureDef,
@@ -104,6 +105,11 @@ fn core(extra: bool) -> Ruleset {
 
 /// [`core`] with the profile `profile`.
 fn core_with(extra: bool, profile: &str) -> Ruleset {
+    Ruleset::compile(&[core_pack(extra)], profile).unwrap()
+}
+
+/// [`core`]'s pack, before it compiles (E08 T20b2: the monsters' tests give it AI values).
+fn core_pack(extra: bool) -> ContentPack {
     // The imp costs 50 gold and the gog 100: a surrender's price (E08 T19a).
     let costing = |k: &str, speed, gold| CreatureDef {
         info: CreatureInfoDef {
@@ -120,7 +126,7 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
     if extra {
         creatures.push(creature("t:elf", 5));
     }
-    let pack = ContentPack {
+    ContentPack {
         terrains: ["t:grass", "t:rock"]
             .iter()
             .map(|k| TerrainDef {
@@ -179,6 +185,11 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
             ProfileDef {
                 key: key("t:single"),
                 quirks: vec![("quirk.battle.single_precision_rates".to_string(), true)],
+            },
+            // A monster's split from its tile, ADV-QUIRK-6 (E08 T20b2).
+            ProfileDef {
+                key: key("t:split"),
+                quirks: vec![("quirk.adventure.split_from_tile".to_string(), true)],
             },
         ],
         // The hero model's content (E08 T18b): a book and a machine slot, the spell book, the
@@ -289,8 +300,7 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
             learn_level: 2,
         }),
         ..ContentPack::new(manifest())
-    };
-    Ruleset::compile(&[pack], profile).unwrap()
+    }
 }
 
 fn artifact(k: &str, slot: &str) -> ArtifactDef {
@@ -377,6 +387,14 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                     battlefield: key("t:holy"),
                 },
             },
+            // A wandering monster of the map's creature (E08 T20b1).
+            ObjectTypeDef {
+                key: key("t:monster"),
+                name: "Monster".into(),
+                visit: Visit::Neighbour,
+                from_above: true,
+                kind: ObjectKindDef::Monster { levels: None },
+            },
         ],
         params: Some(AdventureParamsDef {
             native_cost: cost,
@@ -393,7 +411,13 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                 coast: key("t:rock"),
                 coast_battlefield: key("t:shore"),
             }),
-            monsters: None,
+            // The original's five dispositions and a sixth of aggression 3; the price to join in
+            // gold (E08 T20b1).
+            monsters: Some(MonsterParamsDef {
+                aggression: vec![[-4, -4], [1, 7], [1, 10], [4, 10], [10, 10], [3, 3]],
+                count_words: vec![5, 10],
+                price_resource: key("t:gold"),
+            }),
         }),
         // Difficulty 0 starts with 3 000 gold for a human, 1 with 2 000 (E08 T13a).
         starting_resources: [3000, 2000]

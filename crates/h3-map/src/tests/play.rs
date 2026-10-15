@@ -1525,7 +1525,9 @@ fn check_decisions(
                         bought.sort();
                     }
                     (true, OfferKind::Pass) => passed = Some((object_type, anchor)),
-                    (false, _) => {}
+                    // The generated maps hold no monster (E08 T20b1).
+                    (true, OfferKind::Join | OfferKind::JoinForGold { .. } | OfferKind::Pursue)
+                    | (false, _) => {}
                 }
             }
             GameEvent::Adventure(AdventureEvent {

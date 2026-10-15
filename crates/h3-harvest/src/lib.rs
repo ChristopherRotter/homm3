@@ -921,7 +921,8 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.adventure.diagonal_check_ignores_native\" = true, \
          \"quirk.adventure.native_skips_leading_neutrals\" = true, \
          \"quirk.adventure.fringe_shows_objects\" = true, \
-         \"quirk.adventure.obstacles_from_tile\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, ADV-QUIRK-1 to ADV-QUIRK-5\n",
+         \"quirk.adventure.obstacles_from_tile\" = true, \
+         \"quirk.adventure.split_from_tile\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, ADV-QUIRK-1 to ADV-QUIRK-6\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -946,7 +947,8 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.adventure.diagonal_check_ignores_native\" = false, \
          \"quirk.adventure.native_skips_leading_neutrals\" = false, \
          \"quirk.adventure.fringe_shows_objects\" = false, \
-         \"quirk.adventure.obstacles_from_tile\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, ADV-QUIRK-1 to ADV-QUIRK-5\n",
+         \"quirk.adventure.obstacles_from_tile\" = false, \
+         \"quirk.adventure.split_from_tile\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, ADV-QUIRK-1 to ADV-QUIRK-6\n",
     );
 
     // ab

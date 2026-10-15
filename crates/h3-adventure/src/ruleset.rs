@@ -20,7 +20,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::num::{NonZeroU8, NonZeroU16};
 
-use h3_content::{ContentKey, CreatureTypeId, PackManifest, Ruleset, TerrainId};
+use h3_content::{ContentKey, CreatureTypeId, PackManifest, ResourceId, Ruleset, TerrainId};
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
@@ -147,6 +147,9 @@ pub struct MonsterParamsDef {
     /// The counts at which each word of a monster's count after the first begins, ascending from
     /// 2: what a player sees of a count is the number of them it reaches (ADV-FOG-006).
     pub count_words: Vec<u32>,
+    /// The resource a group's price to join is counted and paid in: its creature's cost in it
+    /// times its count (ADV-MON-008, E08 T20b1; the original's gold, creature record +0x38).
+    pub price_resource: ContentKey,
 }
 
 /// The compiled [`MonsterParamsDef`].
@@ -154,6 +157,7 @@ pub struct MonsterParamsDef {
 pub struct MonsterParams {
     aggression: Vec<[i8; 2]>,
     count_words: Vec<u32>,
+    price_resource: ResourceId,
 }
 
 impl MonsterParams {
@@ -167,6 +171,11 @@ impl MonsterParams {
     /// thresholds the count reaches, 0 for the first word.
     pub fn count_word(&self, count: u32) -> u8 {
         u8::try_from(self.count_words.partition_point(|&t| t <= count)).unwrap_or(u8::MAX)
+    }
+
+    /// The resource a group's price to join is paid in (ADV-MON-008).
+    pub const fn price_resource(&self) -> ResourceId {
+        self.price_resource
     }
 }
 
@@ -495,7 +504,12 @@ struct Tables {
     rivers: Vec<RiverKind>,
     river_index: BTreeMap<String, RiverId>,
     objects: ObjectTables,
-    params: Option<(AdventureParamsDef, Option<BattleTerrains>)>,
+    /// The parameters with the battle terrains and the monsters' price resource resolved.
+    params: Option<(
+        AdventureParamsDef,
+        Option<BattleTerrains>,
+        Option<ResourceId>,
+    )>,
     starting_resources: Option<Vec<StartingResources>>,
     not_random_monsters: BTreeSet<CreatureTypeId>,
 }
@@ -526,8 +540,8 @@ impl AdventureRuleset {
             })
             .collect::<Result<Vec<_>, _>>()?;
         check_object_types(core, &tables.objects.types, &tables.not_random_monsters)?;
-        let (params, battle) = tables.params.ok_or(AdventureCompileError::MissingParams)?;
-        let params = validate_params(params, battle)?;
+        let (params, battle, price) = tables.params.ok_or(AdventureCompileError::MissingParams)?;
+        let params = validate_params(params, battle, price)?;
         let starting_resources = tables
             .starting_resources
             .ok_or(AdventureCompileError::MissingDifficulties)?;
@@ -707,6 +721,7 @@ impl CanonicalHash for AdventureRuleset {
                     h.write_i32(i32::from(*high));
                 }
                 monsters.count_words.hash_into(h);
+                monsters.price_resource.hash_into(h);
             }
         }
         h.write_len(self.not_random_monsters.len());
@@ -848,7 +863,17 @@ fn compile_pack(
                 })
             })
             .transpose()?;
-        tables.params = Some((params.clone(), battle));
+        let scope = Scope {
+            core,
+            pack: id,
+            closure,
+        };
+        let price = params
+            .monsters
+            .as_ref()
+            .map(|monsters| scope.resource(&monsters.price_resource))
+            .transpose()?;
+        tables.params = Some((params.clone(), battle, price));
     }
     Ok(())
 }
@@ -873,6 +898,7 @@ fn core_terrain(
 fn validate_params(
     def: AdventureParamsDef,
     battle: Option<BattleTerrains>,
+    price: Option<ResourceId>,
 ) -> Result<AdventureParams, AdventureCompileError> {
     let reason = if def.land_points.is_empty() {
         Some("land_points is empty")
@@ -901,9 +927,10 @@ fn validate_params(
             army_slots: def.army_slots,
             starting_stack_chances: def.starting_stack_chances,
             battle,
-            monsters: def.monsters.map(|m| MonsterParams {
+            monsters: def.monsters.zip(price).map(|(m, price)| MonsterParams {
                 aggression: m.aggression,
                 count_words: m.count_words,
+                price_resource: price,
             }),
         }),
     }
