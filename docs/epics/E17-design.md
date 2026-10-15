@@ -965,8 +965,8 @@ rectangle and shows only that. Read for the walk-by difference (§7.9); every ad
   viewer draws each moment whole on its background (`h3_render`) in every profile, so it matches
   the original wherever no redraw meets another stack; the artifacts are not reproduced.
 - **Classified** (M3 T1c, *provisional*; `h3cap.redraws`): a differing pixel is a redraw
-  artifact when the original's is the viewer's at the same moment with one to four more shadows
-  (body or border in any order, §3.3), or one the viewer drew there at an earlier moment of the
+  artifact when the original's is the viewer's at the same moment with one to five more shadows
+  (body or border in any order, §3.3; four until M3 T3a, §7.14), or one the viewer drew there at an earlier moment of the
   sequence with at least one more (a rectangle restored from the saved screen or left as it was).
   Any other difference is no artifact; the frame check records both counts and fails when
   either changes, and the diff PNG marks artifacts yellow, other differences red. On the six
@@ -977,7 +977,9 @@ rectangle and shows only that. Read for the walk-by difference (§7.9); every ad
   same moment (up to four shadows), 73 an earlier moment's (mostly the frame before; none with no
   more shadow, which a timing slip of the viewer's would give). The rule's strictness: the
   viewer's frames shifted one pixel differ in 2.4 to 11 million pixels over `walk`, `shot` and
-  `behind`, of which 0.2 % fit it; a misplacement still fails.
+  `behind`, of which 0.2 % fit it; a misplacement still fails. Since the heroes are drawn (M3
+  T3a) the left hero's shadow under a walker's redrawn rectangles shows such artifacts too, five
+  shadows deep at most (`turn`, `climb`: black pixels).
 
 ### 7.12 The ray (M3 T1b-1)
 
@@ -1107,7 +1109,12 @@ viewer's model is `h3_view::hero`.
 - **Checked:** the capture set's grass situation from 4 400 to 5 100 ms (both heroes' idle
   motion from 4 600 ms, a frame a step, standing at 5 000; the flags all along), exact. The
   set's clock now steps at most 100 ms at a time: a longer step runs one idle step (0x496820), so
-  a frame far on had shown too few steps.
+  a frame far on had shown too few steps. The frame check without the `heroes` mask, every
+  sequence captured again: `shot` and `shots` as recorded; in the other six only redraw
+  artifacts were added, all in the left hero's shadow where a stack beside it is redrawn (2 to
+  210 pixels a frame; five shadows deep at most, so the classifier's limit is five, §7.11); the
+  flags exact throughout, so they stand still while a command plays. No hero reacted to a death
+  in these recordings (the reactions are read, not yet seen).
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

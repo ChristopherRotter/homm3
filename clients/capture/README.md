@@ -138,7 +138,7 @@ boxes where the drawn poses show them; the heroes are compared since M3 T3a), wr
 line compared with the sequence's recorded `timelines/<id>-frames.txt` (`ok`, `new`, `CHANGED`;
 exit 1 on a change). Each line is `<ms> <differing> <artifacts>` (M3 T1c): the differing
 pixels outside the masks and how many of them are the original's **redraw artifacts**
-(`h3cap.redraws`, design §7.11): its pixel is ours at that moment with one to four more
+(`h3cap.redraws`, design §7.11): its pixel is ours at that moment with one to five more
 shadows, or one we drew there at an earlier moment of the sequence with at least one more. The
 diff PNG marks those yellow, any other difference red; a change in either count fails. The
 original's frames live only in the sandbox that captured them (`clients/out/`, never in git):

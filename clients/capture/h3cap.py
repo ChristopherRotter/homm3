@@ -201,7 +201,9 @@ def shadow_border(d):
     return ((d >> 2) & 0x39E7) + ((d >> 1) & 0x7BEF)
 
 
-MAX_SHADOWS = 4  # *provisional* (M3 T1c): `melee` and `behind` need all four, none more
+# *provisional*: M3 T1c's `melee` and `behind` needed four; since the heroes are drawn (M3 T3a)
+# the left hero's shadow under a walker's redrawn rectangles takes five (`turn` and `climb`).
+MAX_SHADOWS = 5
 
 
 def shadowed(cap, base):

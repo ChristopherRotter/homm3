@@ -50,7 +50,7 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
 - **The original's redraw artifacts are not copied** (2026-10-14, M3 T1a): the original redraws
   by dirty rectangles (design §7.11), which darkens shadows again and leaves stale count boxes;
   the viewer keeps drawing each frame whole in every profile, and the frame check classifies
-  those pixels apart (a pixel that is ours with one to four more shadows) while any other
+  those pixels apart (a pixel that is ours with one to five more shadows) while any other
   difference still fails (M3 T1c, done). An ADR-0020 point 9 amendment is drafted in
   `docs/lanes/client/adr-drafts/` for the next checkpoint.
 - **The natural obstacles' types first** (2026-10-13, CLT-Q3): the engine dropped them at
@@ -461,7 +461,8 @@ original cannot be matched (the fidgets' generator); the others are lifted.
   alike but a stream of its own, a death's draws at its action's end (*provisional*: the rules'
   generator draws them at the death); a scenario of the capture set names both heroes and their
   primary skills (`situation` refuses one without); the frame check takes the heroes' groups and
-  frames from the original's memory, the flags not; the set's clock steps at most 100 ms.
+  frames from the original's memory, the flags not; the set's clock steps at most 100 ms; the
+  redraw classifier takes up to five shadows (four at T1c: the left hero's shadow needs five).
 
 - T2: the asset tables' special battlefields in `[[battlefield]]` beside the terrains, keyed by
   the packs' keys, one picture each (the format); `h3-view situation`'s special battlefields (the

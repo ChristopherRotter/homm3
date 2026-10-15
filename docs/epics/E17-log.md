@@ -910,4 +910,10 @@ machines as T3b), the user agreed.
   step: the outline and the flags were behind). 28 situations, 44 frames, all exact.
 - **The frame check:** the heroes' groups and frames from the original's memory
   (`h3mem.battle_heroes`; defeat and victory are drawn from its generator), the flags the
-  viewer's own; the `heroes` mask gone. FRAMES_RESULT
+  viewer's own; the `heroes` mask gone. Every sequence captured again (about 50 minutes):
+  `shot` and `shots` as recorded; `walk`, `melee`, `turn`, `climb`, `behind` and `fly` gained
+  only redraw artifacts in the left hero's shadow under a nearby stack's redrawn rectangles (2 to
+  210 pixels a frame), some five shadows deep (black), so `h3cap.MAX_SHADOWS` is five (four since
+  T1c); every other count as recorded, `melee`'s stale count box at 3 966 included. The new
+  counts recorded. No hero reacted to a death in the eight recordings (the reactions stay read,
+  not seen). CHECKS_RESULT
