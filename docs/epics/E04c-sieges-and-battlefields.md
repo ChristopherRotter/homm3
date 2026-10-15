@@ -149,7 +149,9 @@ E04b's T11; the shot's exact line before the review, so that it reads the epic's
     and counted the agents' batches for exit criterion 6 (BAT-Q49).
   - [ ] **T10b The independent review** (the next increment): fresh reviewer agents per slice (the
     battlefields; walls, gate and moat; the Catapult and Earthquake; the turrets and the computer's
-    aim; the town's other rules), a robustness and a security review; the fold-in.
+    aim; the town's other rules), a robustness and a security review; the fold-in. Built
+    2026-10-15 (record: [`E04c-log.md`](E04c-log.md)): 39 findings, the user's decisions BAT-Q50,
+    the fixes with their tests, the replays re-recorded.
   - [ ] **T10c The closure**: status, BACKLOG and the ADRs' lines in a `shared/` pull request,
     `h3-heroes`' handover to the adventure lane (its inbox), the user's Windows verify and a
     `full` measurement on the user's machine (exit criteria 5 and 7).

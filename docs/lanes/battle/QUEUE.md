@@ -24,6 +24,8 @@ E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epic
 
 **E04c increment 9** (the user, 2026-10-15: the next sensible increment): T9 the workload and the measurements (#233 `battle/e04c-t9`, #232 `shared/e04c-t9`): T9a the property tests' games at the epic's places (exit criterion 4; its check's BAT-SIE-029, the user's fix-optional BAT-QUIRK-23, BAT-Q48), T9b the siege workload and the measurements (exit criterion 5). Next: T10 (the closure's independent review).
 
+**E04c increment 10** (the user, 2026-10-15: T10 in three parts): T10a the fold-in and the audit (#238, BAT-Q49) and T10b the independent review and its fold-in (`battle/e04c-t10b`, BAT-Q50) done. Next: T10c (the closure; the inbox's "E04c T10b" bullet lists what it passes on).
+
 
 ## Inbox
 

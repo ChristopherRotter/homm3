@@ -4,9 +4,9 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 10, T10b in progress (2026-10-15; stopped by the user after eight reviews):** reports, briefs and `DIGEST.md` (31 findings: one high, seven medium; the user's decisions; next steps) on `battle/e04c-t10b-review-reports` (backup); kept tests on `battle/e04c-t10b-robustness` (6b9f5e9). **Not run:** r6 (BAT-SIE-024 to 029, BAT-QUIRK-23, D-23, §7.32) and security. T10a #238 confirmed (BAT-Q49). **Next:** finish T10b, then T10c.
+- **E04c increment 10, T10b (2026-10-15):** `battle/e04c-t10b`: the last two reviews (r6, security), the fold-in of all ten reports (BAT-Q50), the replays re-recorded; reports on `battle/e04c-t10b-review-reports` (backup, not for merging). **Next:** the user's checkpoint, then T10c (the inbox's "E04c T10b" bullet).
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, the inbox, Q43; S-23, S-24, batch 2g.
-- **Versions** (T7e; none since): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v24, observation encoding v20; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q50, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
+- **Versions** (T10b): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v25, observation encoding v21; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q51, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
 
 ## Standing traps
@@ -24,6 +24,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 **Battle code and tests**
 - Stack ids: war machines follow the army in the original's record order (Catapult, Ballista, Tent, Ammo Cart: `state::RECORD_ORDER`, D-23), not in `BattleSetup.war_machines`' order; then a town's turrets (keep, upper, lower), off the field (254, 255, 251): a rule that walks stacks for targets or distances leaves them out (`Stack::is_turret`).
+- The aim's paths read `BattleSetup.human`: a computer-controlled weak walker keeps out of the moat (BAT-SIE-022), so set `human` in a test of turns at a town.
 - The computer's choices (`aim.rs`) read Fight Values, which test creatures lack (`fighting_turret_ruleset`); `BattleState::new` has run the keep's first shot already (`tests/aim.rs`'s `fresh`). It reads a war machine's damage as the original's record (`aim::damage`); its values are small, so ties (the later stack) decide often.
 - Defend spoils exact damage expectations: skip turns with `activate`. `BattleState::new` drops the first activation's events (use `start`).
 - Hidden obstacles leak through public events too: a hidden obstacle that does nothing must not change them (a mine that does not go off must not split a `Moved`). `hidden_obstacles_do_not_show` checks the acting side's commands and casts (its profiles leave BAT-QUIRK-4 off; no Berserk in its books, BAT-Q31); the computer's aim (the turrets', the automatic Ballista's) reads only `obstacles::public_pits`. `legal_commands` lists no casts: a property over legal commands must add `cast_targets` × `second_targets` itself.
@@ -57,14 +58,14 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-15 (seventieth) — E04c T10b: the last reviews and the fold-in (increment 10)
+
+r6 and security run; the user's decisions BAT-Q50 (the original's obstacles and moat avoidance, the tunnel hidden); five fix workers; observation v21, ABI v25; three replays re-recorded. Detail: the log.
+
 ### 2026-10-15 (sixty-ninth) — E04c T10b: the review's first eight reports (increment 10)
 
-Fresh reviewers in small slices; nothing folded in yet. High: the tie after the Catapult's turn (0x4650BB); seven medium (the gate, the moat, the obstacles' rows, the Catapult's commands, the AI's stops). Detail: the digest.
+Fresh reviewers in small slices: eight reports (one high, seven medium), nothing folded in. Detail: the log (T10b).
 
 ### 2026-10-15 (sixty-eighth) — E04c T10a: the fold-in and the audit (increment 10)
 
 T10 cut as E04b's T11. Wall line in integers (siege −17 % Ir); war machines in 0x463600's order (D-23); the reach test; summaries; the inbox. Detail: the log.
-
-### 2026-10-15 (sixty-seventh) — E04c T9: the workload and the measurements (increment 9)
-
-T9a: the properties at the epic's places; BAT-SIE-029. T9b: `random-rollouts-siege`; the measurements. Detail: the log.
