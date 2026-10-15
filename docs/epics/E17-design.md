@@ -1009,7 +1009,9 @@ seat (`seq-fly.toml`; the runbook's "A battle in progress").
   11 redraw artifacts only (§7.11: shadows drawn again where the landing Dragons and Angels meet
   the stacks beside them, 68 to 119 pixels each, at 2 000 to 2 700 and 7 418 to 7 718 ms).
   Every frame of both flights' cycles is exact: **a flier in flight is drawn over every row**
-  (§7.10, layer 8), and **the breath's groups and its detection by place** (§7.4) hold.
+  (§7.10, layer 8), and **the breath's groups and its detection by place** (§7.4) hold. The
+  recording tells the two models apart: a viewer that kept the flier in its start row's pass
+  differs at 23 of these frames, by up to 2 480 pixels (the Angels under the stacks below row 0).
 - **Where a two-hex striker stands** (the harness's clicks, `cursor_attack_from_hex` 0x474A00;
   not read further): the cursor's slot inside the target's hex picks the hexes. With the cursor
   up and to the right of the Pikemen's centre (+14, −13) the defending Dragons stand on 53 and 54

@@ -818,7 +818,9 @@ full), then away.
   cursor's slot inside the Pikemen's hex (three probes, design §7.13): only the slot up and to
   the right at (+14, −13) puts their head on the breath's line. The viewer's timeline as
   recorded on its first run (110 changes); frames 102, 91 exact, 11 redraw artifacts only. So
-  M2's two rules from the code reading hold: a flier's cycles over every row (layer 8, T5a) and
+  M2's two rules from the code reading hold (a viewer built with the flier in its start row's
+  pass, as before T5a, differs at 23 frames, by up to 2 480 pixels: the recording tells them
+  apart): a flier's cycles over every row (layer 8, T5a) and
   the breath's groups 17–19 told by the second stack's place (T5c); their *provisional* marks
   lifted (code, design §7.4, §7.10, the review lists). A unit test replays `fly` from its events.
 - **The mouse over a stack** (design §7.13, map: `battle_mouse_stack` 0x477C20): read, then
@@ -832,4 +834,10 @@ full), then away.
   clock, a fidget in the original's poses, `frames.toml` as the frame check's). All 17 frames of
   the nine situations exact outside the masks (412 to 2 036 differing pixels each before); the
   set's counts recorded as 0.
-- **Checks:** CHECKS
+- **Checks:** `clients/scripts/check.sh` all gates, 100 % (code `e5142bc`, the branch merged with
+  master `615286e`: verify-once's line in the pull request); `h3drive.py sequences`: all nine
+  timelines as recorded in a fresh run of the original; `h3drive.py frames` (all eight with
+  engine commands captured afresh in this sandbox, `fly` once more) and `h3-view sequences`:
+  every count and timeline as recorded; `h3drive.py set`: 17 of 17 exact. Master's merge left
+  `h3-view situation`'s maps as they were (all 17 compared), so the captures hold for it.
+  `check-lane`, `check-docs`, `check-exe-map` ok.
