@@ -2661,6 +2661,15 @@ destroyed gate stayed 0 and let a walker pass 95 without a stop or damage; Earth
 sides (D-15) drew the absent towers, wasted a hit on a doomed part (D-14), and the absent towers'
 destruction marked the defender's first stack dead (S-08).
 
+**Review re-read (E04c T10b, 2026-10-15): the side after the Catapult's turn.** The pick 0x465080
+first looks at the record activated last (+0x132B8, +0x132BC; §7.21): when it is the attacker's
+and its creature is 145, the Catapult, it writes the defender's record 0 there (0x46508B to
+0x4650C5) before it compares the candidates. The comparison then prefers at equal speeds the
+stack whose side is not the defender's (0x46502A), so after the Catapult's turn, automatic,
+commanded or passed (action 12 follows an activation too), the attacker's stack wins a tie. The
+engine counts the defender as the side that acted last after the Catapult's turn (BAT-SIE-011,
+BAT-TRN-001). Not observed.
+
 ### 7.30 Code reading: the arrow towers (E04c T7, 2026-10-14)
 
 Read for E04c T7 (the survey `docs/rules/surveys/E04c-sieges.md`, D-16 to D-19; quirk candidates

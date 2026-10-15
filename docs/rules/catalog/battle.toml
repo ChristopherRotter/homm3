@@ -158,7 +158,7 @@ id       = "BAT-TRN-001"
 title    = "Turn order within a round"
 context  = "battle"
 status   = "implemented"
-summary  = "In the normal phase living stacks that have not acted or waited act in descending speed. Speed ties: the stack of the side that did not act last goes first (the attacker at the start of the battle; the rule carries across rounds), then the lower army slot. The order is re-evaluated before every activation. A blind stack's turn starts and passes (BAT-MAG-024); it is then passed over until its blindness ends, and acts in the same round if that happens before the round is over. Good morale gives the stack that just acted another turn outside this order (BAT-MOR-003). War machines take their turns in this order too (speed 0, so last in the normal phase; BAT-WAR-002/003), as in VCMI. Scope: no siege phases (E04), speed never changes during a round."
+summary  = "In the normal phase living stacks that have not acted or waited act in descending speed. Speed ties: the stack of the side that did not act last goes first (the attacker at the start of the battle; the rule carries across rounds; after the Catapult's turn the defender counts as the side that acted last, BAT-SIE-011), then the lower army slot. The order is re-evaluated before every activation. A blind stack's turn starts and passes (BAT-MAG-024); it is then passed over until its blindness ends, and acts in the same round if that happens before the round is over. Good morale gives the stack that just acted another turn outside this order (BAT-MOR-003). War machines take their turns in this order too (speed 0, so last in the normal phase; BAT-WAR-002/003), as in VCMI. Scope: no siege phases (E04), speed never changes during a round."
 numeric  = "integer"
 
   [[rule.source]]
@@ -188,6 +188,11 @@ numeric  = "integer"
   retrieved  = "2026-10-06"
   confidence = "high"
   note       = "answers the tie-break part of OPEN-QUESTIONS Q40"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21): the pick's comparison 0x464F50 prefers at equal speeds the stack whose side is not +0x132B8, the side activated last (0x46502A to 0x46504C); the pick 0x465080 writes the defender's record 0 there when the attacker's Catapult was activated last (0x46508B to 0x4650C5)"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-TRN-002"
@@ -4336,12 +4341,12 @@ id       = "BAT-SIE-011"
 title    = "The Catapult's turn"
 context  = "battle"
 status   = "verified"
-summary  = "The Catapult acts in the round's order before every other stack of its phase but the turrets, which act first (BAT-SIE-017). With no standing target its turn passes (it defends). Its side's hero commands it with a Ballistics level (BattleHero.war_machines.catapult, HER-BAT-018): the side then shoots the walls with Command::ShootWall at any standing target (the only legal command besides the side's hero's), with that level's Ballistics record (BAT-SIE-014). Without the command the battle aims for it, with no Ballistics (the record of level 0): at the weakest standing wall of the siege field's automatic list (1, 2, 4, 5: the fewest hit points; a tie drawn with random(1, n) among the tied in that order), else at the first standing target of the fallback list (3 the gate, 7 the keep, 0 and 6 the towers), else at the first standing target by index; then it shoots as BAT-SIE-014 (D-13, the code: BAT-Q43). Its shots use no ammunition. The automatic aim with Ballistics that the original's computer player and hidden battles use (the gate first) is the agent's choice here."
+summary  = "The Catapult acts in the round's order before every other stack of its phase but the turrets, which act first (BAT-SIE-017); after its turn the defender counts as the side that acted last, so at equal speeds the attacker's stack acts first (BAT-TRN-001). With no standing target its turn passes (it defends). Its side's hero commands it with a Ballistics level (BattleHero.war_machines.catapult, HER-BAT-018): the side then shoots the walls with Command::ShootWall at any standing target (the only legal command besides the side's hero's), with that level's Ballistics record (BAT-SIE-014). Without the command the battle aims for it, with no Ballistics (the record of level 0): at the weakest standing wall of the siege field's automatic list (1, 2, 4, 5: the fewest hit points; a tie drawn with random(1, n) among the tied in that order), else at the first standing target of the fallback list (3 the gate, 7 the keep, 0 and 6 the towers), else at the first standing target by index; then it shoots as BAT-SIE-014 (D-13, the code: BAT-Q43). Its shots use no ammunition. The automatic aim with Ballistics that the original's computer player and hidden battles use (the gate first) is the agent's choice here."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.29): the Catapult's turn 0x473C00 (action 12 with no standing target; 0x474BF0 decides whether the player aims; the automatic aim: the weakest standing wall of 0x63D54C, ties with random(1, n), else the first standing of 0x670198, else the first standing target); the pick 0x464F50 takes it after the arrow towers and before every other stack"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.29): the Catapult's turn 0x473C00 (action 12 with no standing target; 0x474BF0 decides whether the player aims; the automatic aim: the weakest standing wall of 0x63D54C, ties with random(1, n), else the first standing of 0x670198, else the first standing target); the pick 0x464F50 takes it after the arrow towers and before every other stack; after its turn the pick 0x465080 records the defender as activated last (0x46508B to 0x4650C5, §7.21)"
   confidence = "high"
 
   [[rule.source]]

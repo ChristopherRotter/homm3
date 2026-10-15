@@ -412,6 +412,72 @@ fn without_ballistics_the_catapult_aims_at_the_weakest_wall() {
     assert!([1, 2, 4, 5].contains(&shot[0].1));
 }
 
+/// The stacks whose turns `events` report started, in order.
+fn turns(events: &[Event]) -> Vec<u8> {
+    events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::TurnStarted { stack } => Some(stack.0),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The first `n` turns of the battle `s` started with `events`: the side to act defends, a
+/// commanded Catapult shoots its first standing target.
+fn first_turns(
+    s: &mut BattleState,
+    r: &BattleRuleset,
+    mut events: Vec<Event>,
+    n: usize,
+) -> Vec<u8> {
+    while turns(&events).len() < n {
+        let command = wall_shots(&legal(s, r))
+            .first()
+            .map_or(Command::Defend, |&part| Command::ShootWall { part });
+        events.extend(act(s, r, command).unwrap());
+    }
+    turns(&events)[..n].to_vec()
+}
+
+// covers: BAT-SIE-011, BAT-TRN-001
+#[test]
+fn after_the_catapult_s_turn_the_attacker_wins_a_tie() {
+    let r = ruleset();
+    // Equal speeds: after the Catapult (stack 1) the attacker's stack acts first, every round,
+    // whether the Catapult shoots on its own or on its hero's command (the original's pick,
+    // 0x4650BB, records the defender as the side activated last).
+    for catapult in [hero(&r), ballistician(&r, 1)] {
+        let (mut s, events) = siege(
+            &r,
+            (FortLevel::Fort, [Some(catapult), None]),
+            &[("fixed", 5, 3, 5)],
+            &[("fixed", 5, 13, 5)],
+            |_| {},
+        );
+        assert_eq!(first_turns(&mut s, &r, events, 7), [1, 0, 2, 1, 0, 2, 1]);
+    }
+}
+
+// covers: BAT-SIE-011, BAT-SIE-016
+#[test]
+fn the_turrets_then_the_catapult_open_each_round() {
+    let r = turret_ruleset("t:faithful");
+    // A Castle: the keep (3), the upper (4) and the lower tower (5), then the Catapult (1), then
+    // the attacker's stack, which wins the tie after the Catapult (BAT-TRN-001).
+    let (mut s, events) = siege(
+        &r,
+        (FortLevel::Castle, [Some(hero(&r)), None]),
+        &[("fixed", 200, 3, 5)],
+        &[("fixed", 200, 13, 5)],
+        |_| {},
+    );
+    assert_eq!(
+        first_turns(&mut s, &r, events, 11),
+        [3, 4, 5, 1, 0, 2, 3, 4, 5, 1, 0]
+    );
+}
+
 // covers: BAT-SIE-011
 #[test]
 fn ballistics_commands_the_catapult() {

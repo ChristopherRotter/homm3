@@ -112,6 +112,19 @@ pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &BattleRule
     obstacles::count_down(state, sink);
 }
 
+/// The side the tie-break counts as activated last after stack `s`'s turn (BAT-TRN-001): its
+/// own, but the defender after the Catapult's (BAT-SIE-011): the original's pick writes the
+/// defender's record 0 as the last activated once that was the attacker's Catapult (0x46508B to
+/// 0x4650C5), so at equal speeds the attacker's stack acts first after it.
+// rule: BAT-TRN-001, BAT-SIE-011
+fn acted_side(s: &Stack) -> BattleSide {
+    if s.slot == crate::siege::CATAPULT_SLOT {
+        BattleSide::Defender
+    } else {
+        s.side
+    }
+}
+
 /// How a turn ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TurnEnd {
@@ -136,7 +149,7 @@ pub(crate) fn end_turn<S: Sink>(
 ) {
     // rule: BAT-SIE-003
     crate::siege::close_gate(state, sink);
-    state.last_side_acted = Some(state.at(mover).side);
+    state.last_side_acted = Some(acted_side(state.at(mover)));
     // rule: BAT-MOR-003
     if state.result.is_none() && how == TurnEnd::Acted && morale::good_morale(state, ruleset, mover)
     {
@@ -279,7 +292,7 @@ fn activate<S: Sink>(
         }
         // Later picks follow an action: the original's dispatcher asks with the checks on.
         checks = true;
-        state.last_side_acted = Some(state.at(id).side);
+        state.last_side_acted = Some(acted_side(state.at(id)));
         // A war machine's shot can end the battle.
         next = if state.result.is_some() {
             None
@@ -354,7 +367,7 @@ pub(crate) fn berserk_turn<S: Sink>(
         let acted = control::berserk(state, ruleset, id, sink);
         // rule: BAT-MAG-035
         crate::raise::mark_corpses(state);
-        state.last_side_acted = Some(state.at(id).side);
+        state.last_side_acted = Some(acted_side(state.at(id)));
         if state.result.is_some() || !acted || !morale::good_morale(state, ruleset, id) {
             state.at_mut(id).flags.set(StackFlags::ACTED, true);
             return false;
