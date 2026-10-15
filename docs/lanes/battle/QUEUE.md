@@ -16,15 +16,19 @@ E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epic
 
 **E04c increment 5** (the user, 2026-10-14: the next sensible increment; refined in `docs/epics/E04c-sieges-and-battlefields.md`, "T7"; BAT-Q44): T7a the reading (`installation.md` §7.30), T7b the battle and T7c the batch 3e run by an agent (`battle/e04c-t7`: every value as the code, S-06 and S-07 refuted; the automatic keep's target as the wiki's rule, BAT-Q45); the `cross-lane` pull request #209, confirmed by the user 2026-10-14.
 
-**E04c increment 6** (the user, 2026-10-14: the next sensible increment; BAT-Q46 at its reading): T7d the automatic turret's target (`installation.md` §7.31; `shared/e04c-t7d-seam`, `battle/e04c-t7d`; batch 3f run by an agent: every target as the code; BAT-SIE-020 to 023).
+**E04c increment 6** (the user, 2026-10-14: the next sensible increment; BAT-Q46 at its reading): T7d the automatic turret's target (`installation.md` §7.31; `shared/e04c-t7d-seam`, `battle/e04c-t7d`; batch 3f run by an agent: every target as the code; BAT-SIE-020 to 023); merged (#217, #218).
+
+**E04c increment 7** (the user, 2026-10-15: T8 rather than T7e; refined in `docs/epics/E04c-sieges-and-battlefields.md`, "T8"): T8 the siege's other rules (`installation.md` §7.32; `battle/e04c-t8`; batch 3g run by an agent; BAT-SIE-024 to 028).
 
 ### E04c T7e — The automatic Ballista's target (the computer's shooter)
 
 - **Scope:** port the computer's general shooter for the Ballista without Artillery (`installation.md` §7.31, "The general shooter": 0x41F060, 0x41EB80, 0x435CB0 and 0x435B90 with its damage estimate, not read yet), replacing VCMI's rule (BAT-WAR-002); the worth, context, threat records and turns of T7d's `aim.rs` serve it; on Easy for a computer side no turns weighting (0x435CF5). BAT-STUB-3: the hero's Artillery level on the seam (`BallistaControl.level`, `HeroEffect::Artillery.level`, the gap-fill, a `shared/` pull request) for the Ballista's worth. A batch run by an agent (an automatic Ballista's targets where VCMI's rule and the code's differ).
 - **Acceptance:** the automatic Ballista picks as the code; BAT-STUB-3 closed; the batch agrees.
-- **Depends on:** T7d merged. **Status:** proposed (the user picks the next increment: T7e or T8).
+- **Depends on:** T7d merged. **Status:** proposed (the user chose T8 first, 2026-10-15; T7e or T9 next).
 
 ## Inbox
+
+- 2026-10-15 (E04c T8, `installation.md` §7.32): **a hypnotized stack's morale and luck.** 0x469750 recomputes every stack's morale and luck at the battle's start and after every action from the stack's *controller*: the controller's hero, army (alignments) and, for the defender's controller, the town. The engine keeps the owner's (BAT-MAG-026: "Its owner keeps: its statistics set at the battle's start ... morale and luck"; BAT-SIE-025 follows it). Confirm in a batch (a hypnotized stack between armies of different morale, its morale read before and after the next action) and align, or record why not.
 
 - 2026-10-14 (E04c T7d, batch 3f BA): the original's records put the siege's Catapult (record 1) before the hero's Ballista (record 2) in a siege; the engine gives war machines ids in kind order, the Catapult last (the HANDOFF's trap). Only tie-breaks over records see it (none in T7d's batches). Read 0x463600's order and align the ids, or record why not.
 - 2026-10-14 (the adventure lane, E08 T20a1, `cross-lane`; for your information, nothing to do): `h3-heroes` gains `attack_defense` (HER-ADV-001: `derive_battle_hero`'s effective Attack and Defense, for the wandering monsters' answer) and `join_bonus` (HER-ADV-002, `MAX_JOIN_BONUS`); the harvester's gap-fill gives Diplomacy `join_bonus` 1/2/3 beside its surrender discount (`packs/base/core.toml`; the core ruleset hash's value moved, no battle replay: they use `synthetic`). The code reading behind them: the hero record's +0x476 to +0x479 hold the worn artifacts' bonuses (`hero_equip_artifact` 0x4E2A00 adds, `hero_remove_artifact` 0x4E2BD0 subtracts) as signed bytes, unclamped: a base of 99 with 29 or more from artifacts wraps in the original (the wiki: "At 129 the skill value is reset to 0"), where HER-BAT-001 clamps at 99; the user keeps the clamp, without the wrap and without a flag (2026-10-15; HER-ADV-001's summary).

@@ -53,8 +53,8 @@ damage (6..12 + (2..4)·⌊N/2⌋) follow. `vcmi`: keep (10 + 2n)..(20 + 4n), to
 value before): Tower's Grail +150 mana; Inferno's Brimstone Stormclouds +2 power; Dungeon's Grail
 +12 power; Stronghold's Grail +20 attack; Fortress's Blood Obelisk +2 attack, Glyphs of Fear +2
 defense, its Grail +10 attack and defense. **The defenders' stacks**: Tavern +1 morale, Castle's
-Brotherhood of the Sword +2 more (`code`); luck from the town (Rampart's Fountain of Fortune by
-`vcmi` and the `wiki`; `code` not read).
+Brotherhood of the Sword +2 in its place, not more (`code`, T8's batch 3g; D-21); luck from the town (Rampart's Fountain of Fortune +2:
+`vcmi`, the `wiki`, `code` §7.32, batch 3g RL).
 
 ## 2. The rule areas compared
 
@@ -68,10 +68,11 @@ Brotherhood of the Sword +2 more (`code`); luck from the town (Rampart's Fountai
 | Catapult and Ballistics | the Catapult on hex 119; its turn, automatic aim, shot and the parts' damage (§7.29, D-11 to D-13) | `BALLIST.TXT`: hit chances keep/tower/gate/wall none 5/10/25/50 %, Basic and Advanced 7/15/30/60 %, Expert 10/20/40/75 %; shots 1, 1, 2, 2; damage 0/1/2 by 10/60/30 % (none), 0/50/50 % (Basic, Advanced), always 2 (Expert) | from the same table | Basic: control; Advanced: two shots; Expert: "always hits the intended target" | T6 |
 | Earthquake | 2, 2, 3, 4 hits of 1 by mastery; the draw (§7.29, D-14, D-15; S-08) | `SPTRAITS.TXT` | `other.json`: uniform among the standing parts, the attacker only | "one point of damage to two (three, four) random walls/arrow towers"; S-08 | T6 |
 | Arrow towers | as §1; first in the round, the keep before the towers; Artillery controls; the shot: per creature `random(2, 4)`, summed, times the target's protection factor (Air Shield, petrification, Armorer), nothing else; immune to every spell, off the field (§7.30, D-16 to D-19) | stats in `CRTRAITS.TXT` (2–4, 100 hit points) | one uniform draw of the range through the full formula (attack 0, defense ignored); first in the siege phase; Artillery controls | as §1; no luck, defense ignored, no modifiers but the bugs S-06 and S-07; Artillery controls; the computer's target by classes A–C | T7 (S-06, S-07) |
-| Defender's bonuses | as §1 | — | town buildings' bonuses | town pages | T8 |
-| Surrender, retreat | surrender never for the besieged; retreat only with the Escape Tunnel | — | the same | — | T8 |
-| Experience | +500 for the attacker at a town | — | — | +500 for a capture (`E04-battle.md` §4.2) | T8 |
-| Teleport, summoning, spell cost in sieges | §7.15, 0x467130, §7.21 (partly) | — | — | — | T8 |
+| Defender's bonuses | as §1; the town's morale and luck last in the base routines, before the clamp, to the stacks the defender controls (§7.32) | — | town buildings' bonuses | Morale, Luck: "when defending against siege" | T8 |
+| Surrender, retreat | surrender never for the besieged; retreat only with the Escape Tunnel (§7.32) | — | the same | Combat, Escape Tunnel: the same | T8 |
+| Experience | +500 for the attacker at a town; −500 after a retreat or a surrender (§7.32; the orchestrator's) | — | — | +500 for a capture, none after an escape or a surrender | T8 |
+| Teleport, summoning, spell cost in sieges | Teleport by mastery: the moat, the walls' line (D-20); a created stack placed through the closed gate for the defender, a summon there opens it; no spell obstacle on a wall's hex; the cost's armies as the setup's (§7.32) | — | Teleport: the masteries (D-20) | Teleport: the masteries | T8 |
+| Tactics | the phase as in any battle: only a creature bank has none (§7.32) | — | `tacticsAllowed`, off in banks only | Tactics: "especially vital when sieging a town" | T8 |
 
 ## 3. What the battle setup must receive, and who derives it
 
@@ -214,6 +215,21 @@ follows the result (the adventure lane).
   stack can attack (1 to 5), ties to the later record, and a desperate mode; batch 3e's choice
   follows (a tie, the later record). The wiki's classes and tie agree, its "damage 1" and AI value
   do not; VCMI has no turret routine.
+- **D-20 Teleport in a siege** (T8; `code` §7.32: below Advanced not across the moat, the
+  moat's side by its row's moat hex, so the moat hex itself counts as inside; below Expert only
+  where the shot's line test meets no standing wall and not the closed gate, outside the walls
+  too; `vcmi`: the same masteries, but tested only while a wall stands and for two hexes on
+  different sides of the walls, along the shortest hex path; the `wiki`: the masteries, no
+  detail). The masteries agree; the code's tests are the original's. Recommendation: the code,
+  with confirmation rows (the user's standing answer for E04c, BAT-Q42 to BAT-Q44: the code with
+  a batch). **Batch 3g: as the code** (Basic refused the moat hex 61, Advanced accepted it and
+  refused the inside hex 64, Expert accepted 64).
+- **D-21 The Tavern and the Brotherhood of the Sword** (T8; `code` §7.32: the Tavern's +1 is read in
+  the town's set +0x150, the Brotherhood's +2 in +0x158; batch 3g CM read both sets back: in
+  +0x150 the Brotherhood replaces the Tavern, its predecessor, so a Castle with it gives +2 in
+  all; `vcmi`: the Brotherhood upgrades the Tavern and replaces its bonus, +2; the `wiki` (Morale):
+  "+2 (in addition to Tavern)"). The code, VCMI and the batch agree: +2. A fact for whoever derives
+  `Siege.morale` (the town context; the adventure lane's inbox); the battle adds what it is given.
 - **S-06, S-07** (`E04-quirks.md`: the towers) are D-16 and D-17: the code reading finds neither
   bug in the user's executable (T7, §7.30), and batch 3e confirms it (Air Shield and Armorer lower
   the damage, Archery does not touch it): **not quirks** of the user's version.
@@ -240,3 +256,10 @@ stands and a miss lands on a wall, so it hits the gate only once every wall is d
 Ballistics the side aims, the gate too, and a second shot (Advanced, Expert, the Cyclops King)
 moves on to a neighbour of a fallen target, the gate among them. A destroyed gate lets both sides
 pass, and its drawbridge's hex is no longer moat.
+
+**Batch 3g** (T8, 2026-10-15; `experiments/results/E04c-batch-3g.md`, `experiments/agent/town.py`):
+the battle window's buttons at a Castle, a Rampart and a Stronghold with the Escape Tunnel, the
+defenders' morale and luck, Teleport at Basic, Advanced and Expert Water Magic from outside to the
+moat and inside a Citadel (D-20), Force Field beside the walls: every value as the code. The
+Brotherhood of the Sword replaces the Tavern's morale (D-21: +2 in all, the wiki's "in addition"
+refuted).

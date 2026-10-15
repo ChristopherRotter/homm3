@@ -1,7 +1,7 @@
 # E04c — Sieges and special battlefields
 
 Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2 closed: T3 (#179), T4 (#180), BAT-Q39 and BAT-Q40 answered; increment 3, T5: the seam ADR-0023 (#183), towns on the experiment maps (#184), the reading (BAT-Q41, BAT-Q42), the battle's walls, gate and moat (#187), the siege batch 3c run by
-an agent (T5e): increment 3 done (#190); increment 4, T6, refined 2026-10-14 (BAT-Q43), built and confirmed 2026-10-14: the seam #191, the battle and the batch 3d, #199; increment 5, T7, the arrow towers, built 2026-10-14 (BAT-Q44, BAT-Q45)) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
+an agent (T5e): increment 3 done (#190); increment 4, T6, refined 2026-10-14 (BAT-Q43), built and confirmed 2026-10-14: the seam #191, the battle and the batch 3d, #199; increment 5, T7, the arrow towers, built 2026-10-14 (BAT-Q44, BAT-Q45); increment 6, T7d, built and merged 2026-10-14 (BAT-Q46); increment 7, T8, the siege's other rules, built 2026-10-15) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
 
@@ -101,8 +101,14 @@ reading).
 - [ ] T7e The automatic Ballista's target: the computer's general shooter (0x41F060, 0x41EB80,
   0x435CB0, 0x435B90) for the Ballista without Artillery (BAT-WAR-002, VCMI's rule until then), and
   BAT-STUB-3 (the hero's Artillery level on the seam); a batch.
-- [ ] T8 The siege's other rules (no retreat or surrender for the besieged, the spell cost's town
-  armies, Teleport's and the summon's siege limits, the outcome: walls, capture).
+**Increment 7** (the user, 2026-10-15: T8 as the next sensible increment; disputes by the code with
+a batch; the wire `cross-lane` if needed).
+
+- [x] **T8 The siege's other rules** — built 2026-10-15 (record: [`E04c-log.md`](E04c-log.md)):
+  T8a the reading (§7.32, D-20), T8b the battle (BAT-SIE-024 to 028; Teleport's siege masteries
+  harvested, pack format v42; BAT-TAC-001 and BAT-END-003 amended; BAT-STUB-2 closed), T8c batch
+  3g by an agent: every value as the code, D-21 found (the Brotherhood replaces the Tavern's
+  morale: the town context's); BAT-SIE-024 to 027 `verified`; for the user's checkpoint.
 - [ ] T9 Workload and measurements; T10 closure (the independent review, as E04b's T11).
 
 ### T5 — Walls, gate and moat (refined 2026-10-14, increment 3)
@@ -182,6 +188,29 @@ reading).
 - Acceptance: every rule of §7.30 has a catalog rule with its sources and a test; battles without a
   siege replay unchanged apart from the hashes; no turret ever reaches a hex-based rule;
   `verify --with-original-data` green.
+
+### T8 — The siege's other rules (refined 2026-10-15, increment 7)
+
+- **T8a, the reading** (`installation.md` §7.32; the survey's §2 rows, D-20): the controls
+  (0x4782D0), the town's morale and luck (0x469750, 0x44AE60, 0x44B2D0), the experience
+  (0x46A350), the tactics phase (0x462C16), Teleport (0x5A3700, 0x467490), a created stack's place
+  (0x5A7080, 0x5A6C70, 0x469A10), the spell obstacles' tests against the walls' bit, the spell
+  cost's armies (0x463A7F). No seam change: ADR-0023 point 2 carries the Escape Tunnel, morale and
+  luck; the outcome stays without the town (point 4: the experience is the orchestrator's).
+- **T8b, the battle** (`battle/e04c-t8`, `cross-lane` for the adventure lane's replays and inbox):
+  the controls at a town (BAT-SIE-024; the tunnel in the state, hash v50), the town's morale and
+  luck as the defender's side modifiers (BAT-SIE-025), Teleport's moat and walls by mastery
+  (BAT-SIE-026; the masteries in the siege field, harvested from the executable's two compares,
+  battle part v6, pack format v42), no spell obstacle on a wall (BAT-SIE-027: a fix, the engine
+  placed them there), a created stack placed through the closed gate for the caster's side and a
+  summon opening it (BAT-SIE-028); the tactics phase at a town (BAT-TAC-001: no change, the
+  catalog corrected); the siege scenario's town with morale and luck; golden replays.
+- **T8c, batch 3g by an agent** (`experiments/specs/E04c-batch-3g.toml`, `experiments/agent/town.py`):
+  the buttons at a Castle and with the Escape Tunnel, the defenders' morale and luck, Teleport at
+  Basic, Advanced and Expert across the moat and the walls (D-20), Force Field beside the walls.
+- Acceptance: every rule of §7.32 the battle owns has a catalog rule with its sources and a test;
+  battles away from towns replay unchanged apart from the hashes; the batch agrees or its
+  disagreement is a question; `verify --with-original-data` green.
 
 ## Design
 

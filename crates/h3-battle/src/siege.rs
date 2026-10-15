@@ -7,9 +7,12 @@
 //! targets' hit points, the attacker's Catapult (set up by the battle, BAT-SIE-009) and the
 //! Cyclops shooting them, a destroyed wall's hex and a destroyed gate, Earthquake. The turrets
 //! (E04c T7, `installation.md` §7.30; BAT-SIE-016 to BAT-SIE-019): the keep and the towers hold
-//! their turrets' stacks, set up in `state.rs`, which die with them. The town's other rules (the
-//! controls, the experience, the defenders' morale and luck, Teleport's and the summon's limits)
-//! come with E04c T8 (BAT-STUB-2).
+//! their turrets' stacks, set up in `state.rs`, which die with them. The town's other rules
+//! (E04c T8, `installation.md` §7.32; BAT-SIE-024 to BAT-SIE-028): the controls (no surrender for
+//! the defender, retreat through the Escape Tunnel only), the town's morale and luck (in
+//! `morale.rs`), Teleport across the moat and the walls, no spell obstacle on a wall's hex, and a
+//! created stack placed through the closed gate. The experience at a town is the orchestrator's
+//! (BAT-END-003).
 
 use h3_content::SpellId;
 use h3_content_battle::{
@@ -35,6 +38,8 @@ pub struct SiegeState {
     pub fort: FortLevel,
     /// The town's moat as the setup gives it.
     pub moat_kind: Moat,
+    /// The town has an Escape Tunnel: its defender may retreat (BAT-SIE-024).
+    escape_tunnel: bool,
     /// The gate is open (BAT-SIE-003); a town without a fort has no gate.
     pub gate_open: bool,
     /// The battlefield.
@@ -174,13 +179,15 @@ impl SiegeState {
 }
 
 impl CanonicalHash for SiegeState {
-    /// Faction, fort level, moat kind, the gate, the wall line, the gate's, drawbridge's and
-    /// outer bridge's hexes, the moat, its second row, its damage, the defense penalty (state
-    /// hash v46).
+    /// Faction, fort level, moat kind, the gate, the wall line, the gate's, drawbridge's and outer
+    /// bridge's hexes, the moat, its second row, its damage, the defense penalty (state hash v46);
+    /// the Escape Tunnel after the moat kind (v50).
     fn hash_into(&self, h: &mut StateHasher) {
         self.faction.hash_into(h);
         h.write_u8(self.fort as u8);
         h.write_u8(self.moat_kind as u8);
+        // State hash v50 (E04c T8): the Escape Tunnel.
+        h.write_bool(self.escape_tunnel);
         h.write_bool(self.gate_open);
         self.line.hash_into(h);
         for hex in [self.gate, self.bridge, self.outer_bridge] {
@@ -321,6 +328,7 @@ pub(crate) fn setup(
         faction: town.faction,
         fort: town.fort,
         moat_kind: town.moat,
+        escape_tunnel: town.escape_tunnel,
         gate_open: !walled,
         field,
         line,
@@ -375,21 +383,77 @@ fn lies(state: &BattleState, field: Field, hex: Hex) -> bool {
         .any(|(s, &corpse)| corpse != NO_CORPSE && s.footprint(field).covers(hex))
 }
 
-/// The hexes the walls and the gate block for stack `mover` (BAT-SIE-002, BAT-SIE-003; the
-/// original's 0x469A10): the wall hexes but the gate's always; while the gate is closed the
-/// gate's and the drawbridge's too, but for a stack its controller commands for the defender
-/// when no living stack and no corpse lies on the drawbridge's or the outer bridge's hex, in
-/// every town (the mover on one of them included, as the original reads the hexes). Without a
-/// mover (a stack being placed) the closed gate blocks.
+/// The hexes the walls and the gate block for a stack moved or placed for `passer` (BAT-SIE-002,
+/// BAT-SIE-003; the original's 0x469A10, which reads the acting side): the wall hexes but the
+/// gate's always; while the gate is closed the gate's and the drawbridge's too, but for the
+/// defender when no living stack and no corpse lies on the drawbridge's or the outer bridge's
+/// hex, in every town (the mover on one of them included, as the original reads the hexes).
+/// A walker passes for its controller; a created stack for its caster's side (BAT-SIE-028);
+/// without a passer (the battle's setup) the closed gate blocks.
 // rule: BAT-SIE-002, BAT-SIE-003
-pub(crate) fn blocked_for(state: &BattleState, mover: Option<&Stack>) -> HexSet {
+pub(crate) fn blocked_for(state: &BattleState, passer: Option<BattleSide>) -> HexSet {
     state.siege.map_or(HexSet::new(), |s| {
         let passes = !s.gate_open
-            && mover.is_some_and(|m| m.controller() == BattleSide::Defender)
+            && passer == Some(BattleSide::Defender)
             && !lies(state, s.field, s.bridge)
             && !lies(state, s.field, s.outer_bridge);
         blocks(&s, passes)
     })
+}
+
+/// Whether `side` may retreat at the battle's town (BAT-SIE-024; the original's 0x478573 to
+/// 0x478635): the attacker may, the defender only through the town's Escape Tunnel; away from a
+/// town every side may.
+// rule: BAT-SIE-024
+pub(crate) fn may_retreat(state: &BattleState, side: BattleSide) -> bool {
+    state
+        .siege
+        .is_none_or(|s| side == BattleSide::Attacker || s.escape_tunnel)
+}
+
+/// Whether `side` may surrender at the battle's town (BAT-SIE-024): never the defender, not even
+/// with the Escape Tunnel; away from a town every side may.
+// rule: BAT-SIE-024
+pub(crate) fn may_surrender(state: &BattleState, side: BattleSide) -> bool {
+    state.siege.is_none() || side == BattleSide::Attacker
+}
+
+/// The hexes the original marks blocked for the walls (its bit `0x2`; 0x4662E3, 0x465990): every
+/// wall hex but those destroyed walls opened, the gate's always, destroyed or not. No spell
+/// obstacle lies on them (BAT-SIE-027).
+// rule: BAT-SIE-027
+pub(crate) fn walled(state: &BattleState) -> HexSet {
+    state.siege.map_or(HexSet::new(), |s| {
+        let mut gate = HexSet::new();
+        gate.insert(s.gate);
+        s.line.without(s.broken.without(gate))
+    })
+}
+
+/// Whether Teleport at `mastery` may move a stack from its position `from` to the position `to`
+/// at the battle's town (BAT-SIE-026; the original's 0x5A3700): below the siege field's
+/// `teleport_moat` (Advanced) not across the moat, a hex's side of it by its row's moat hex (left
+/// of it outside; the moat hex and right of it inside, so the Fortress's outer row is outside;
+/// 0x467490); below its `teleport_walls` (Expert) only where the straight line from `from` to
+/// `to` meets no standing wall and not the closed gate ([`line_blocked`], as a shot's). Without a
+/// moat the first test, without a fort the second passes; away from a town every move may.
+// rule: BAT-SIE-026
+pub(crate) fn teleport_allowed(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (from, to): (Hex, Hex),
+    mastery: u8,
+) -> bool {
+    let Some((s, sf)) = state.siege.zip(ruleset.siege_field()) else {
+        return true;
+    };
+    let outside = |hex: Hex| {
+        let row = usize::try_from(s.field.coords(hex).1).unwrap_or(usize::MAX);
+        sf.moat.get(row).is_some_and(|&m| hex.0 < m)
+    };
+    let across_moat = !s.moat.is_empty() && outside(from) != outside(to);
+    let through_walls = s.fort != FortLevel::None && line_blocked(&s, from, to);
+    !(mastery < sf.teleport_moat && across_moat) && !(mastery < sf.teleport_walls && through_walls)
 }
 
 /// Where a walk of a stack its controller commands for `side` stops (BAT-SIE-004; the original's

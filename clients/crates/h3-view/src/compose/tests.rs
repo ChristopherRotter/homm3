@@ -246,3 +246,49 @@ fn a_projectile_is_drawn_plain_and_mirrored_toward_the_left() {
     let missing = compose(&[shot(0, false)], &batch(), &small()).unwrap_err();
     assert_eq!(missing, ComposeError::Missing("PR.DEF".into()));
 }
+
+#[test]
+fn a_ray_is_written_into_the_screen_in_its_colours() {
+    // M3 T1b-1 (§7.12): each pixel its entry's colour scaled into the masks; an entry beyond the
+    // colours takes the last; pixels off the battlefield or the screen are left out.
+    use crate::anim::Ray;
+    use crate::ray::Stroke;
+    let stroke = |x, lo, hi| Stroke {
+        x,
+        y: 0,
+        lo,
+        hi,
+        column: true,
+    };
+    let ray = Draw::Ray(Ray {
+        strokes: vec![stroke(1, -2, 2), stroke(4, 0, 1)],
+        colours: vec![[152, 188, 24], [124, 216, 124]],
+    });
+    let background = Draw::Background {
+        picture: "bg.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    let screen = compose(&[background, ray], &batch(), &small()).unwrap();
+    let bl = FORMAT.pack(BLUE);
+    // (1, 0) is entry 2 (the last colour), (1, 1) entry 1; (4, 0) entry 1, (4, 1) entry 0.
+    assert_eq!(
+        screen.pixels(),
+        [
+            bl, 0x7EAF, bl, bl, 0x7EAF, bl, bl, 0x7EAF, bl, bl, 0x95C2, bl
+        ]
+    );
+    // Without colours: black (the executable's colour 0).
+    let bare = Draw::Ray(Ray {
+        strokes: vec![stroke(0, 0, 0)],
+        colours: vec![],
+    });
+    let background = Draw::Background {
+        picture: "bg.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    let screen = compose(&[background, bare], &batch(), &small()).unwrap();
+    assert_eq!(screen.pixel(0, 0), Some(0));
+    assert_eq!(screen.pixel(1, 0), Some(bl));
+}

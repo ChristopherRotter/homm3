@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 6, T7d (the automatic turret's target):** for the user's checkpoint: PR #217 (seam, ADR-0023 point 7) merged; #218 (BAT-SIE-020 to 023, `cross-lane`) for the user to merge. **Next: the user picks T7e or T8.**
-- **Merged:** up to #217 (T7d's seam).
-- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-2 (T8), BAT-STUB-3 (T7e), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
-- **Versions** (T7d): battle state hash v49, battle part hash v5, replay format v28, action encoding v13, C ABI v23, observation encoding v19; shared: core ruleset hash v44, pack format v41, protocol v32. Next ids: BAT-Q47, BAT-QUIRK-23, BAT-STUB-4, BAT-TER-007, BAT-SIE-024; survey D-20, S-30.
+- **E04c increment 7, T8 (the user, 2026-10-15):** built (`battle/e04c-t8`; batch 3g: as the code, D-21); PR #222 (`cross-lane`, full verify green) awaits the user's checkpoint. **Next:** T7e or T9 (the user picks).
+- **Merged:** up to #218 (T7d).
+- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, BAT-STUB-3 (T7e), `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
+- **Versions** (T8): battle state hash v50, battle part hash v6, replay format v28, action encoding v13, C ABI v23, observation encoding v19; shared: core ruleset hash v44, pack format v42, protocol v32. Next ids: BAT-Q47, BAT-QUIRK-23, BAT-STUB-4, BAT-TER-007, BAT-SIE-029; survey D-22, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
 
 ## Standing traps
@@ -59,14 +59,14 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-15 (sixty-fifth) — E04c T8: the siege's other rules (increment 7)
+
+The user chose T8 (offline after). Reading §7.32; BAT-SIE-024 to 028; Teleport's masteries harvested (pack v42); batch 3g by an agent (`town.py`): as the code; D-21 (the Brotherhood replaces the Tavern's morale). Detail: `docs/epics/E04c-log.md`.
+
 ### 2026-10-14 (sixty-fourth) — E04c T7d: the automatic turret's target (increment 6)
 
-Reading §7.31 (0x41E190); BAT-Q46: the turrets fully; the seam (difficulty, human sides, `X87::sqrt`); `aim.rs`, BAT-SIE-020 to 023, BAT-STUB-3; batch 3f by an agent: as the code. Detail: `docs/epics/E04c-log.md`.
+Reading §7.31; BAT-Q46; the seam (difficulty, human sides); `aim.rs`, BAT-SIE-020 to 023; batch 3f: as the code; #217, #218 merged.
 
 ### 2026-10-14 (sixty-third) — E04c T7: the arrow towers (increment 5)
 
-Reading §7.30; BAT-Q44; BAT-SIE-016 to 019; batch 3e by an agent (`turrets.py`); BAT-Q45: (b); PR #209, merged. Detail: `docs/epics/E04c-log.md`.
-
-### 2026-10-14 (sixty-second) — E04c T6: master merged, the verify, PR #199
-
-Detail: `docs/epics/E04c-log.md`.
+Reading §7.30; BAT-SIE-016 to 019; batch 3e (`turrets.py`); PR #209, merged.

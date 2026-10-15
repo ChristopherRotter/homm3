@@ -2457,7 +2457,8 @@ mana before the battle.
 
 **Morale and luck.** 0x469750 passes the town to the defender's stacks only. The base morale
 (0x44B065 to 0x44B0AD): +1 with a Tavern (building 5), +2 more in a Castle with building 22 (the
-Brotherhood of the Sword). The base luck 0x44B2D0 takes the town too (not read; Rampart's Fountain
+Brotherhood of the Sword; E04c T8: the Tavern is read in the set +0x150, where the Brotherhood
+replaces it, so +2 in all, §7.32). The base luck 0x44B2D0 takes the town too (not read; Rampart's Fountain
 of Fortune by VCMI and the wiki).
 
 **The controls** (0x478573 to 0x478635). Surrender needs a hero on both sides and is refused to
@@ -2832,3 +2833,97 @@ preferring a stack that is not blind, petrified or paralysed, ties to the later 
 0x435CB0 is the expected damage value of 0x435B90 (the shooter's own damage estimate, then
 0x442FD0's kills times worth) divided as above, but by 10 for a blind, petrified or paralysed
 target, and not at all on Easy for a computer side.
+
+### 7.32 Code reading: the siege's other rules (E04c T8, 2026-10-15)
+
+Read for E04c T8 (the survey `docs/rules/surveys/E04c-sieges.md`, §2's rows "Surrender, retreat",
+"Experience", "Teleport, summoning, spell cost in sieges" and "Defender's bonuses"; BAT-STUB-2).
+Insight only, nothing copied (Q29).
+
+**The controls** (0x4782D0, re-read from 0x478573 to 0x478635). For the acting side (+0x132C0),
+the surrender button (control 2001) is enabled when the acting side's hero (+0x53CC + 4 × side)
+and the other side's are both there and the battle is not at a town (+0x53C8) with the acting
+side the defender; the retreat button (2002) when the acting side's hero is there and the
+acting side is the attacker, or the battle is at no town, or the town is a Stronghold (type 6,
++0x4) with building 17 (the Escape Tunnel) in its second set +0x158 (the bit at 0x66CE20). So a
+town's defender never surrenders, with the Escape Tunnel neither; it retreats only through the
+tunnel; the attacker of a town keeps both. `vcmi` (1.7.5, `battleCanFlee`,
+`battleCanSurrender`): the same; the `wiki` (Combat: "a hero defending a town cannot surrender
+(or flee)"; Escape Tunnel: "retreat (but not surrender)").
+
+**Morale and luck** (0x469750, re-read whole; 0x44AE60, 0x44B2D0). At the battle's start
+(0x462E19) and after every action (0x479D16) 0x469750 recomputes, for every record in use of both
+sides, the stack's luck (0x43DF20) and morale (0x43E000) from its **controller** (+0xF4, the other
+side while +0x288 is set: hypnotized): the controller's hero and army, the other side's hero and
+army, the special field +0x53C0, and the town only when the controller is the defender. The base
+morale (0x44AE60) adds the town's terms last, after the hero's, the alignments' and the undead's
+and before its optional clamp: +1 with a Tavern (building 5 in the set +0x150), +2 in a Castle
+(type 0) with building 22 (the Brotherhood of the Sword, in +0x158). **The two do not add up:**
++0x150 holds the buildings with an upgrade's predecessor left out (the Citadel without the Fort,
+the Brotherhood, the Tavern's upgrade, without the Tavern), +0x158 every built one (batch 3g CM,
+read back from the town record: +0x150 the Citadel, the Village Hall, the Brotherhood; +0x158 also
+the Fort and the Tavern; the defenders' morale −1 + 2). So a Castle with the Brotherhood gives +2,
+any other town with a Tavern +1 (`vcmi`: the Brotherhood `upgrades` the Tavern with
+`upgradeReplacesBonuses`; the `wiki`'s "+2 (in addition to Tavern)" is refuted; survey D-21). The base luck
+(0x44B2D0) is 0 when either hero wears the Hourglass of the Evil Hour (85); else the controller's
+hero's luck, −1 if the other army holds Devils or Arch Devils (54, 55), then +2 in a Rampart
+(type 1) with building 21 (the Fountain of Fortune, +0x158). The town context derives these as
+`Siege.morale` and `Siege.luck` (ADR-0023 point 2); the battle adds them to the defender's stacks
+as side terms. A stack another side controls takes that side's terms, the town's included, from
+the next action on: the engine keeps a hypnotized stack's own side's (BAT-MAG-026; the battle
+queue's inbox). `vcmi`: the buildings' bonuses (Tavern +1, Brotherhood +2, Fountain +2 luck) to
+the town's defender; the `wiki` (Morale, Luck: "when defending against siege").
+
+**Experience** (0x46A350, re-read from 0x46A3D1 to 0x46A41C). After the kills (the other side's
+records that are neither summoned, `0x400000`, nor war machines, `0x40`: start − end counts times
+hit points), +500 if the other side has a hero, **−500 if the battle ended in a retreat
+(0x6985A3) or a surrender (0x697744)**, **+500 if the battle is at a town (+0x53C8, any fort level)
+and the receiving side is the attacker**; then times the hero's Learning (0x4E4840). The battle
+reports facts and leaves experience to the orchestrator (BAT-END-003): it knows the battle was at a
+town (the adventure lane's inbox). The `wiki` (Experience): "if an enemy hero is defeated or an
+enemy town is captured during a siege, the hero receives 500 extra experience points … not … if
+the enemy hero escapes or surrenders".
+
+**Tactics** (0x462A20, 0x462C16 to 0x462D0D). The difference of the heroes' Tactics levels (+0xDC)
+goes to +0x13D70; the tactics phase +0x13D68 is on when it is not 0 and the battle's bank flag
++0x53C5 is clear (an argument of the battle's start, 0x463C48; it also skips the obstacles,
+0x4662B3, and goes to the war machines' setup, 0x46400D); the rest (from 0x462C82: the game's
+settings, the players, the hero's formation bit +0x48 & 2) can only turn it off again. No test of
+the town or the fort: **a siege has its tactics phase** (`vcmi`: `layout.tacticsAllowed`, off in
+creature banks only; the `wiki`, Tactics: "especially vital when sieging a town").
+
+**Teleport in a siege** (0x5A3700, re-read). After the fit test (§7.15) the mastery is the acting
+side's hero's of Teleport on the battlefield (0x4E5080 with +0x53C0), 0 without a hero. With the
+moat flag +0x53A8 (a Citadel or a Castle, not a Tower, not a Stronghold under RoE or AB rules,
+§7.27), a move **crosses the moat** when 0x467490 differs for the stack's position (+0x38) and the
+destination: 0x467490(hex) is whether the hex lies left of its row's moat hex in 0x63BCE8 (so the
+moat hex counts as inside, the Fortress's outer row, 0x63BCF4, as outside). Below Advanced
+(mastery < 2) a crossing refuses the hex; below Expert (< 3) the line test 0x467840 (§7.28) from
+the position to the destination must meet no standing wall and not the closed gate (it passes
+without a fort). So Basic and no mastery: neither across the moat nor through the walls; Advanced:
+across the moat, not through the walls; Expert: wherever the stack fits. The `wiki` (Teleport):
+"cannot teleport over walls or moats" (Basic), "over moats (but not walls)" (Advanced), "no
+restrictions" (Expert); `vcmi` the same masteries (`config/spells/other.json`: `isMoatPassable`
+from Advanced, `isWallPassable` at Expert), its test (`Teleport::isReceptive`,
+`battleHasPenaltyOnLine`) only while a wall stands, only for two hexes on different sides of the
+walls, along the shortest hex path (survey D-20).
+
+**Placing a created stack** (0x5A7080, 0x5A6C70, 0x469A10, re-read). The summon's place test
+0x446C40 runs for a stack of the acting side (its +0xF4 set to it, 0x5A7109), the clone's for its
+original; `hex_blocked` (0x469A10) lets the acting side through the closed gate as the defender
+(§7.28: 95 and 96, while no living stack and no corpse lies on 95 nor on 94). So the defender's
+summoned elemental and clone may be placed on the gate's or the drawbridge's hex while the gate is
+closed. A summoned stack placed by the defender on 94, 95 or 96 opens the gate (0x5A71D7 →
+0x467130, 0x4671C0); a clone does not (0x5A6C70 calls neither), nor does Teleport (§7.15).
+
+**Spell obstacles and the walls** (0x5A39C0, 0x5A0354, 0x5A0536, re-read). Fire Wall's and Force
+Field's target test and Quicksand's and Land Mine's draws refuse a hex with any of the object bits
+`0x3F` (§7.15, §7.16): the wall hexes' blocked bit `0x2` (0x4662E3: the 11 wall hexes, the gate's
+96 included) is one. A destroyed wall clears its hex's bit, the destroyed gate does not (§7.29):
+no spell obstacle ever lies on a standing wall's hex or on the gate's; the moat's hexes have no
+bit.
+
+**The spell cost in a siege** (0x59FFDF, 0x463A7F). The cost's army tests (§7.21) read the armies
+the battle's start was given (+0x54C4 per side, set at 0x463A7F from its arguments), as every
+battle does: which army defends a town is whoever starts the battle's choice (the town context,
+E09); the battle reads the setup's armies (BAT-MAG-054), nothing siege-specific.

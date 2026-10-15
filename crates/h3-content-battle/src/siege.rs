@@ -17,6 +17,7 @@ use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::error::BattleCompileError;
 use crate::params::FieldParams;
+use crate::spell::MAX_MASTERY;
 
 /// Most wall-shot targets a siege field may have (the original's eight).
 pub const MAX_WALL_TARGETS: usize = 8;
@@ -103,6 +104,12 @@ pub struct SiegeFieldDef {
     /// The power of the land mines of a town without a defending hero in a game before SoD
     /// (0x466460).
     pub mine_power: u8,
+    /// The Teleport mastery (0 to 3) from which a teleported stack may cross the moat
+    /// (0x5A3793; pack format v42, E04c T8).
+    pub teleport_moat: u8,
+    /// The Teleport mastery (0 to 3) from which a teleported stack may pass the walls
+    /// (0x5A37A5; pack format v42).
+    pub teleport_walls: u8,
     /// The attacker's Catapult's position (its rear hex, 0x46377C).
     pub catapult: u8,
     /// The keep's least creature count (0x5BF4F0; the town's structures add to it, E04c T7).
@@ -138,6 +145,10 @@ pub struct SiegeField {
     pub moat_defense_penalty: u8,
     /// The mines' power without a hero before SoD.
     pub mine_power: u8,
+    /// The Teleport mastery from which a move may cross the moat.
+    pub teleport_moat: u8,
+    /// The Teleport mastery from which a move may pass the walls.
+    pub teleport_walls: u8,
     /// The Catapult's position.
     pub catapult: u8,
     /// The keep's least creature count.
@@ -213,6 +224,9 @@ pub(crate) fn compile_field(
     if !def.walls.contains(&def.gate) {
         return invalid("the gate must be one of the wall hexes");
     }
+    if def.teleport_moat > MAX_MASTERY || def.teleport_walls > MAX_MASTERY {
+        return invalid("Teleport's siege masteries must be at most Expert (3)");
+    }
     let ballistics = compile_wall_shots(def, field)?;
     Ok(SiegeField {
         walls: def.walls.clone(),
@@ -221,6 +235,8 @@ pub(crate) fn compile_field(
         second_moat: def.second_moat.clone(),
         moat_defense_penalty: def.moat_defense_penalty,
         mine_power: def.mine_power,
+        teleport_moat: def.teleport_moat,
+        teleport_walls: def.teleport_walls,
         catapult: def.catapult,
         turret_count: def.turret_count,
         targets: def.targets.clone(),
@@ -320,7 +336,7 @@ impl CanonicalHash for SiegeField {
     /// power (battle part v3); the Catapult's hex, the targets as length + each's kind and wall
     /// hex (0xFF none), the three lists as length + bytes, the Castle's bonus, the Ballistics
     /// records' bytes (battle part v4); each target's turret (0xFF none) and the keep's least
-    /// count (battle part v5).
+    /// count (battle part v5); Teleport's moat and walls masteries (battle part v6).
     fn hash_into(&self, h: &mut StateHasher) {
         for list in [&self.walls, &self.moat, &self.second_moat] {
             h.write_len(list.len());
@@ -348,6 +364,9 @@ impl CanonicalHash for SiegeField {
             h.write_u8(r.shots);
             h.write_bytes(&r.damage);
         }
+        // Battle part v6 (E04c T8): Teleport's siege masteries.
+        h.write_u8(self.teleport_moat);
+        h.write_u8(self.teleport_walls);
     }
 }
 
