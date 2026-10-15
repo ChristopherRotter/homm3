@@ -211,6 +211,28 @@ fn test(scope: Option<&LaneScope>) -> Result<(), String> {
     run_cmd(doc)
 }
 
+/// The `test` gate when `coverage` runs in the same verify: its instrumented run is a run of every
+/// test of the same packages (`--all-targets`; a failing test fails it), so `test` runs only what
+/// coverage leaves out: the doc tests and, in a full verify, `xtask`'s own tests.
+const TEST_REST: &str = "test-rest";
+
+fn test_rest(scope: Option<&LaneScope>) -> Result<(), String> {
+    if scope.is_none() {
+        let mut xtask = cargo();
+        xtask.args(["test", "-p", "xtask", "--all-targets", "--quiet"]);
+        run_cmd(xtask)?;
+    }
+    let mut doc = cargo();
+    doc.arg("test")
+        .args(package_args(scope))
+        .args(["--doc", "--quiet"]);
+    run_cmd(doc)
+}
+
+/// The `determinism` gate when the verify has run the golden replays in a debug build already
+/// (in `test` or `coverage`): only its release and `target-cpu=native` runs.
+const DETERMINISM_OPTIMIZED: &str = "determinism-optimized";
+
 #[derive(Debug, PartialEq, Eq, Default)]
 struct Options {
     quick: bool,
@@ -450,6 +472,12 @@ fn run_step(
     scope: Option<&LaneScope>,
     install: Option<&str>,
 ) -> Result<Status, String> {
+    if name == TEST_REST {
+        return passed(test_rest(scope));
+    }
+    if name == DETERMINISM_OPTIMIZED {
+        return passed(crate::determinism::run_optimized());
+    }
     if name == ORIGINAL_DATA {
         let install = install.unwrap_or(DEFAULT_ORIGINAL_DATA);
         return harvest_check(install)
@@ -562,6 +590,44 @@ fn failure_line(section: &str) -> String {
         .to_owned()
 }
 
+/// Which variant of `test` and `determinism` a verify runs, so that each test runs once in it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Plan {
+    /// `test` runs only what coverage leaves out ([`TEST_REST`]).
+    test_rest: bool,
+    /// `determinism` runs only its release legs ([`DETERMINISM_OPTIMIZED`]).
+    determinism_optimized: bool,
+}
+
+impl Plan {
+    /// `test_runs`: the `test` gate is not skipped; `coverage_tests`: the `coverage` gate runs and
+    /// runs the tests (it has logic crates to measure); `replay_crate`: the tested packages
+    /// include the replay crate, whose debug test run is determinism's debug leg.
+    fn new(test_runs: bool, coverage_tests: bool, replay_crate: bool) -> Self {
+        Plan {
+            test_rest: coverage_tests,
+            determinism_optimized: replay_crate && (test_runs || coverage_tests),
+        }
+    }
+
+    /// The step `name` runs as.
+    fn variant(self, name: &str) -> &str {
+        match name {
+            "test" if self.test_rest => TEST_REST,
+            "determinism" if self.determinism_optimized => DETERMINISM_OPTIMIZED,
+            _ => name,
+        }
+    }
+
+    fn note(variant: &str) -> &'static str {
+        if variant == TEST_REST {
+            "doc tests (and xtask's); coverage runs every other test"
+        } else {
+            "release and target-cpu=native; the debug run was test's or coverage's"
+        }
+    }
+}
+
 pub fn run_steps(args: &[String]) -> Result<(), String> {
     let options = parse(args)?;
     let scope = options.scope.as_deref().map(lane_scope).transpose()?;
@@ -592,26 +658,49 @@ pub fn run_steps(args: &[String]) -> Result<(), String> {
     if options.original_data.is_some() {
         names.push(ORIGINAL_DATA);
     }
-    let mut results = Vec::new();
-    let mut first_failure: Option<(&str, String)> = None;
-    for name in names {
+    let skip_reason = |name: &str| {
         let step = STEPS.iter().find(|s| s.name == name);
-        let skipped = if options.skip.iter().any(|s| s == name) {
+        if options.skip.iter().any(|s| s == name) {
             Some("--skip".to_owned())
         } else if options.quick && step.is_some_and(|s| s.slow) {
             Some("--quick".to_owned())
         } else {
             step.and_then(|s| out_of_scope(s, scope.as_ref()))
                 .map(|why| format!("--scope: {why}"))
-        };
+        }
+    };
+    let plan = Plan::new(
+        skip_reason("test").is_none(),
+        skip_reason("coverage").is_none()
+            && crate::coverage::runs_tests(scope.as_ref().map(|s| s.packages.as_slice()))?,
+        scope
+            .as_ref()
+            .is_none_or(|s| s.packages.iter().any(|p| p == REPLAY_CRATE)),
+    );
+    let mut results = Vec::new();
+    let mut first_failure: Option<(&str, String)> = None;
+    for name in names {
+        let skipped = skip_reason(name);
+        let run_name = plan.variant(name);
         let start = Instant::now();
         let outcome = if let Some(why) = skipped {
             Outcome::Skipped(why)
         } else if let Some(log) = &log {
-            run_logged(log, name, scope.as_ref(), options.original_data.as_deref())?
+            if run_name != name {
+                println!("  ...   {name}: {}", Plan::note(run_name));
+            }
+            run_logged(
+                log,
+                run_name,
+                scope.as_ref(),
+                options.original_data.as_deref(),
+            )?
         } else {
             println!("\n==> {name}");
-            let result = run_step(name, scope.as_ref(), options.original_data.as_deref());
+            if run_name != name {
+                println!("{name}: {}", Plan::note(run_name));
+            }
+            let result = run_step(run_name, scope.as_ref(), options.original_data.as_deref());
             println!("<== {name} ({:.1}s)", start.elapsed().as_secs_f64());
             match result {
                 Ok(Status::Passed) => Outcome::Passed,
@@ -694,6 +783,26 @@ mod tests {
 
     fn strings(args: &[&str]) -> Vec<String> {
         args.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    #[test]
+    fn each_test_runs_once_in_a_verify() {
+        // A full verify: coverage runs every test, its debug run includes the replays.
+        let full = Plan::new(true, true, true);
+        assert_eq!(full.variant("test"), TEST_REST);
+        assert_eq!(full.variant("determinism"), DETERMINISM_OPTIMIZED);
+        assert_eq!(full.variant("clippy"), "clippy");
+        // Coverage skipped: test runs whole, and its debug run is determinism's.
+        let no_coverage = Plan::new(true, false, true);
+        assert_eq!(no_coverage.variant("test"), "test");
+        assert_eq!(no_coverage.variant("determinism"), DETERMINISM_OPTIMIZED);
+        // A lane whose tested packages leave out the replay crate keeps the debug leg.
+        let without_replays = Plan::new(true, true, false);
+        assert_eq!(without_replays.variant("determinism"), "determinism");
+        // Neither test nor coverage runs: determinism runs whole.
+        let untested = Plan::new(false, false, true);
+        assert_eq!(untested.variant("test"), "test");
+        assert_eq!(untested.variant("determinism"), "determinism");
     }
 
     #[test]

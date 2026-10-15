@@ -156,10 +156,10 @@ def diff(capture, render, record=None, masks=(), out=None, quiet=False):
     return n
 
 
-def compare(cap, ours, masked, out=None):
+def compare(cap, ours, masked, out=None, redrawn=None):
     """The count of pixels of `cap` and `ours` (5-6-5 arrays) that differ outside `masked`, and
     where they lie (text); with `out`, writes the capture dimmed with them red, the masked parts
-    blue."""
+    blue and the differing pixels `redrawn` marks (`redraws`) yellow."""
     differ = (cap != ours) & ~masked
     n = int(differ.sum())
     where = ""
@@ -172,12 +172,64 @@ def compare(cap, ours, masked, out=None):
         ) // 3
         rgb[masked] = rgb[masked] // 2 + (0, 0, 96)
         rgb[differ] = (255, 0, 0)
+        if redrawn is not None:
+            rgb[differ & redrawn] = (255, 255, 0)
         subprocess.run(
             ["convert", "-size", f"{cap.shape[1]}x{cap.shape[0]}", "-depth", "8", "rgb:-", out],
             input=rgb.astype(np.uint8).tobytes(),
             check=True,
         )
     return n, where
+
+
+# -- redraw artifacts (M3 T1c) ------------------------------------------------------------------
+# The original redraws by dirty rectangles and draws each item that meets one whole, over pixels
+# it did not restore, so a shadow already there is darkened again (design §7.11). The viewer draws
+# every moment whole and does not copy this (the user, 2026-10-14); the frame check counts such
+# pixels apart instead of failing on them.
+
+
+def shadow_body(d):
+    """A shadow's body on a 5-6-5 pixel (0x47C9E0, 0x47C460's 5-6-5 masks; design §3.3)."""
+    return (d >> 1) & 0x7BEF
+
+
+def shadow_border(d):
+    """A shadow's border on a 5-6-5 pixel (design §3.3)."""
+    return ((d >> 2) & 0x39E7) + ((d >> 1) & 0x7BEF)
+
+
+MAX_SHADOWS = 4  # *provisional* (M3 T1c): `melee` and `behind` need all four, none more
+
+
+def shadowed(cap, base):
+    """Where `cap` is `base` with one to MAX_SHADOWS more shadows, body or border in any order
+    (arrays of 5-6-5 values of one shape)."""
+    hit = np.zeros(cap.shape, bool)
+    level = [base.astype(np.uint16)]
+    for _ in range(MAX_SHADOWS):
+        level = [f(d) for d in level for f in (shadow_body, shadow_border)]
+        for d in level:
+            hit |= cap == d
+    return hit
+
+
+def redraws(cap, ours, differ, earlier=()):
+    """Which of the `differ` pixels are the original's redraw artifacts: its pixel is the viewer's
+    at the same moment with one to MAX_SHADOWS more shadows, or one the viewer drew there at an
+    `earlier` moment of the same sequence with at least one more (a rectangle the original left
+    unrestored; a timing slip of the viewer's shows no more shadows, so it still fails). Any
+    other difference is no artifact."""
+    ys, xs = np.nonzero(differ)
+    theirs = cap[ys, xs]
+    hit = shadowed(theirs, ours[ys, xs])
+    for before in earlier:
+        if hit.all():
+            break
+        hit |= shadowed(theirs, before[ys, xs])
+    out = np.zeros(differ.shape, bool)
+    out[ys[hit], xs[hit]] = True
+    return out
 
 
 # -- finding the obstacles ----------------------------------------------------------------------

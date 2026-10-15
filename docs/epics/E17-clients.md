@@ -51,7 +51,7 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
   by dirty rectangles (design §7.11), which darkens shadows again and leaves stale count boxes;
   the viewer keeps drawing each frame whole in every profile, and the frame check classifies
   those pixels apart (a pixel that is ours with one to four more shadows) while any other
-  difference still fails (M3 T1c). An ADR-0020 point 9 amendment is drafted in
+  difference still fails (M3 T1c, done). An ADR-0020 point 9 amendment is drafted in
   `docs/lanes/client/adr-drafts/` for the next checkpoint.
 - **The natural obstacles' types first** (2026-10-13, CLT-Q3): the engine dropped them at
   generation; a `cross-lane` change carries them to the wire before T7 draws obstacles.
@@ -241,6 +241,12 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   difference read: the original redraws by dirty rectangles (shadows drawn again, the saved
   screen's count boxes); the user's decision: not copied, the frame check classifies them
   (**T1c**; Decisions).
+- **T1c done 2026-10-15** ([log](E17-log.md#m3-t1c--the-frame-check-classifies-redraw-artifacts-2026-10-15),
+  [design §7.11](E17-design.md)): a differing pixel is a redraw artifact when the original's is
+  ours with one to four more shadows (or an earlier moment's with at least one more); the frame
+  files record `<ms> <differing> <artifacts>`. The six sequences captured again, every count as
+  recorded: `behind`'s 30 frames and 6 of `melee`'s 7 artifacts only; `melee` at 3 966 keeps the
+  stale count box (231 pixels) listed for T5.
 
 ### Later (refined when they come up)
 
