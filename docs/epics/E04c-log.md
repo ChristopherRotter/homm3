@@ -651,8 +651,12 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   found unpinned, among them batches 3f, 3g and 3h's rows with their own numbers
   (`crates/h3-cli/tests/aim_rows.rs`).
 - **Replays and benchmarks:** `siege-s7` re-recorded (the defender now wins, in 146 commands); the
-  adventure lane's `duel-s792-d28` and `duel-s120-strict-d28` re-recorded for the obstacles
-  (`cross-lane`; their battles keep their winners); the other replays unchanged.
+  other battle replays unchanged. The adventure lane's nine (`cross-lane`, master's E08 T20b3b2
+  set, merged in: every one fights a monster's battle) re-recorded for the obstacles: four with
+  their fixed options, five searched ones replaced from a new search (1 500 faithful and 800
+  strict-fixed games) by `duel-s1279-d28`, `duel-s810-d28`, `duel-s328-d28`, `duel-s1122-d28` and
+  `duel-s307-strict-d28`; none now declines a pile's question or a Cartographer's offer (the doc
+  comment of `adventure_replays.rs` says what each meets).
 - **Left** (the queue's inbox, "E04c T10b"): the shared docs' sentences for T10c (ADR-0023,
   `06-security.md`, `07-simulation-and-ai.md`), the server lane's siege frames, and the readings
   the engine does not follow yet.

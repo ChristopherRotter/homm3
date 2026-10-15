@@ -60,7 +60,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-15 (seventieth) — E04c T10b: the last reviews and the fold-in (increment 10)
 
-r6 and security run; the user's decisions BAT-Q50 (the original's obstacles and moat avoidance, the tunnel hidden); five fix workers; observation v21, ABI v25; three replays re-recorded. Detail: the log.
+r6 and security; the user's decisions BAT-Q50 (the original's obstacles and moat avoidance, the tunnel hidden); five fixers; observation v21, ABI v25; siege-s7 and the adventure lane's nine replays redone. Detail: the log.
 
 ### 2026-10-15 (sixty-ninth) — E04c T10b: the review's first eight reports (increment 10)
 
