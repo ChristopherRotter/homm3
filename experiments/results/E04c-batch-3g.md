@@ -30,8 +30,8 @@ drew a starting-bonus artifact were played again. A run took 17 to 86 s of real 
 **Record**
 
 - CM1: the buttons at the attacker's and the defender's turn: both enabled at the attacker's turns (the buttons' word +0x16 = 0x0006, rounds 1 and 2); **both disabled at every defender's turn** (0x000E: the bit 0x8 that 0x4782D0's state 0x1000 sets), as the code.
-- CM2: every stack's morale at the opening: the Titans +1. The defender's Pikemen, Gnolls and Goblins (each 20: the garrison joined the visiting hero's stacks) **+1 each, not +2**: three alignments (−1) and the town's **+2**. Read back from the town record (a probe): the built set +0x150 holds the Citadel (8), the Village Hall (10) and the Brotherhood (22) but neither the Fort (7) nor the Tavern (5): an upgrade replaces its predecessor there, and the Brotherhood is the Tavern's; the second set +0x158 holds all five. The Tavern's +1 reads +0x150, so with the Brotherhood a Castle gives +2 in all (D-21). The hero has no skill, no morale bonus (+0x11A 0) and only the Catapult.
-- anything odd: run twice (the first run's Blue hero drew starting-bonus artifacts in five attempts; a later run): the same values.
+- CM2: every stack's morale at the opening: the Titans +1. The defender's Pikemen, Gnolls and Goblins (each 20: the garrison joined the visiting hero's stacks) **+1 each, not +2**: three alignments (−1) and the town's **+2**. Read back from the town record (the script's opening read, a third run): the built set +0x150 holds the Citadel (8), the Village Hall (10) and the Brotherhood (22) but neither the Fort (7) nor the Tavern (5): an upgrade replaces its predecessor there, and the Brotherhood is the Tavern's; the second set +0x158 holds all five. The Tavern's +1 reads +0x150, so with the Brotherhood a Castle gives +2 in all (D-21). The hero has no skill, no morale bonus (+0x11A 0) and only the Catapult.
+- anything odd: run three times (the first run's Blue hero drew starting-bonus artifacts in five attempts): the same values each time.
 
 ## ET — A Stronghold with the Escape Tunnel: the defender may retreat but not surrender (BAT-SIE-024)
 

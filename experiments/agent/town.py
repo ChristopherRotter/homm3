@@ -8,7 +8,8 @@ after each step; rounds counted by the living creatures' acted bits.
 For each map (one encounter each, `h3-experiment E04c-batch-3g.toml --only <id>`): the agent
 steps the only Red hero north into Blue's town, reads the opening (each stack's morale +0x4E8 and
 luck +0x4EC, set by 0x469750; the battle manager's town +0x53C8, fort level +0x132F4, moat flag
-+0x53A8 and tactics flag +0x13D68) and plays the plan: at a planned turn the side's hero casts the
++0x53A8 and tactics flag +0x13D68; the town record's built sets +0x150 and +0x158; each hero's
+secondary skills +0xC9 and morale and luck bonuses +0x11A, +0x11B) and plays the plan: at a planned turn the side's hero casts the
 first spell of its book (`c`, then the book's first slot), clicks the stack's own hex if the plan
 says so (Teleport's first target), then tries the plan's hexes in order until one starts
 something within 1.5 s of game time (a refused click changes nothing read); with none accepted
@@ -165,6 +166,18 @@ def play(game, out, plan):
     opening["fort"] = mem.i32(m + FORT)
     opening["moat_flag"] = mem.read(m + MOAT, 1)[0]
     opening["tactics"] = mem.read(m + TACTICS, 1)[0]
+    # The town record's built sets (+0x150: an upgrade's predecessor left out; +0x158: every
+    # built one; batch 3g CM, D-21) and the heroes' skills and morale and luck bonuses.
+    town = mem.u32(m + TOWN)
+    if town:
+        opening["town_sets"] = [mem.read(town + o, 8).hex() for o in (0x150, 0x158)]
+    opening["heroes"] = []
+    for side in (0, 1):
+        hero = mem.u32(m + siege.HEROES + 4 * side)
+        opening["heroes"].append(None if not hero else {
+            "skills": list(mem.read(hero + 0xC9, 28)),
+            "morale_bonus": struct.unpack("<b", mem.read(hero + 0x11A, 1))[0],
+            "luck_bonus": struct.unpack("<b", mem.read(hero + 0x11B, 1))[0]})
     with open(out / "opening.json", "w") as f:
         json.dump(opening, f)
     todo = [dict(c, done=False) for c in plan["casts"]]
@@ -219,6 +232,7 @@ def play(game, out, plan):
     game.dump(str(out / "end.xwd"))
     with open(out / "summary.json", "w") as f:
         json.dump({"worn": opening["worn"], "town": opening["town"], "fort": opening["fort"],
+                   "town_sets": opening.get("town_sets"), "heroes": opening["heroes"],
                    "moat_flag": opening["moat_flag"], "tactics": opening["tactics"],
                    "stacks": [{k: s[k] for k in ("side", "record", "creature", "hex", "count",
                                                  "hp", "morale", "luck")}
