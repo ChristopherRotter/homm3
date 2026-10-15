@@ -1,0 +1,65 @@
+# E17 M3 T1b-2: flights across rows and a breath on two stacks, in hot seat (`hot_seat` in
+# sequences.toml: the harness plays both sides). The Black Dragons fly from row 2 to row 3, up
+# beside the attacker's column, and breathe down and to the left through the Pikemen (row 4) into
+# the Gnolls (row 5) behind them; the Pikemen strike back. Then the Angels fly from row 0 down to
+# row 9, over the Dragons and the attacker's stacks in rows 2 to 8, whom the rows drawn after
+# theirs would cover if a flier stayed in its row (design §7.10, §7.4). Seven attacking stacks
+# stand in rows 0, 2, 4, 5, 6, 8 and 10, so two stand in a line the breath can follow. Two
+# factions a side, so morale is 0 and nothing moves on its own. On grass at the capture set's
+# tile (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-fly"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:angel"
+count = 3
+
+[[attacker]]
+slot = 1
+creature = "base:archer"
+count = 10
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 30
+
+[[attacker]]
+slot = 3
+creature = "base:gnoll"
+count = 30
+
+[[attacker]]
+slot = 4
+creature = "base:halberdier"
+count = 10
+
+[[attacker]]
+slot = 5
+creature = "base:marksman"
+count = 10
+
+[[attacker]]
+slot = 6
+creature = "base:pikeman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:black_dragon"
+count = 1
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 20

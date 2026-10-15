@@ -286,7 +286,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
 /// Draws the viewer's frame at each time in `<here>/frames.toml` (the stacks the original shows
 /// fidgeting then in its poses) into `<here>/ours/<file>.png`, and what it drew into
 /// `<here>/ours.txt`; returns how many.
-fn draw_frames(
+pub(crate) fn draw_frames(
     here: &Path,
     record: &Record,
     timeline: &Timeline,

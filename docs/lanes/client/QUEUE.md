@@ -6,18 +6,6 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T1b-2 — The provisional rules' checks and the capture set by time
-
-- **Scope:** recordings that check the provisional rules: a flight across rows over other stacks
-  (T5a's layer 8), a breath on two stacks (T5c's groups 17–19 and its detection by place);
-  whether hovering starts group 1. Then the capture set by time: `h3drive.py set` compares every
-  frame of a situation with one still (`render`, the outline's colour at no idle step: 412 pixels
-  per frame); with the idle steps modelled (`Timeline::pulse`) each frame can be drawn with
-  `render --at <ms>`.
-- **Acceptance:** the provisional marks of the checked rules lifted or the rules fixed; the
-  capture set compares by time.
-- **Depends on:** nothing. **Status:** ready.
-
 ### E17 M3 T2 — Every battlefield
 
 - **Scope:** the special battlefields from the battle's own facts: the observation's
@@ -71,7 +59,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** the panel below the battlefield (its picture, buttons and their states), the log's
   lines from the string catalogue as the engine's events produce them, the heroes' portraits if
   the panel shows them, the cursor rules of the executable (which cursor over which hex; T5a's
-  `CRDEFLT.DEF` frame 0 is provisional); its masks removed. May split when refined.
+  `CRDEFLT.DEF` frame 0 is provisional), the mouse over a stack in the window (group 1 and the
+  outline 0x70, read and recorded in T1b-2: the inbox); its masks removed. May split when refined.
 - **Acceptance:** a frame with the panel matches the original's outside the listed differences.
 - **Depends on:** T4. **Status:** ready.
 
@@ -129,6 +118,14 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 
 ## Inbox
 
+- 2026-10-15 (E17 M3 T1b-2): **for T6, the mouse over a stack** (design §7.13; read,
+  `battle_mouse_stack` 0x477C20, and recorded: the sequence `hover`): the stack the mouse enters
+  starts group 1 at frame 0 at once (unless it shows it: then it stands), the idle step plays it
+  as a fidget (stalls, the fidget clock drawn again at its end), and the stack takes the mouse's
+  outline (entry 0x70, the cyan ramp) until the mouse leaves it. The window (`h3-view window`)
+  has a mouse but no such state yet; with the cursor rules, the hover's timeline (`hover.txt`)
+  checks it. Also there: where a two-hex striker stands by the cursor's slot inside the target's
+  hex (`cursor_attack_from_hex` 0x474A00, not read further; the harness's offsets in §7.13).
 - 2026-10-15 (E17 M3 T1b-1): **for T2:** a fresh `h3-view harvest` writes 35 obstacles more
   into `base.toml` than the committed table holds (`obstacle_61` on, "not in a pack yet", and
   absolute ones), the packs' numbering having grown; T2 reconciles them with the special

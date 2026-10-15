@@ -39,12 +39,15 @@ and build `cargo build --release -p h3-view` in `clients/`. A run of the whole s
 python3 capture/h3drive.py set [--only <id>] [--out <dir>]
 ```
 
-For each situation: its map (`h3-view situation`), its frames in the original, our render, and
-the masked diff of each frame against the count `set.toml` records. One line per frame
-(`grass t=0: 412 differing (recorded 412) ok`); exit 1 if any count changed. `<dir>/frames.sha1`
-holds the pixels' digests: two runs (say, one after a fresh `setup.sh`) agree when these files do.
-Each situation's folder keeps the frames (`t00000.xwd`, …), `ours.png`, its record and a
-`diff-t*.png` (differing pixels red, masked ones blue).
+For each situation: its map (`h3-view situation`), its frames in the original with the stacks
+its memory holds at each (`h3mem`), our frame at each time (M3 T1b-2: `h3-view render --frames`,
+the outline's pulse on the original's clock, a fidget in the original's poses, as the frame check
+does), and the masked diff of each frame against the count `set.toml` records. One line per
+frame (`grass t=0: 0 differing (recorded 0) ok`); exit 1 if any count changed.
+`<dir>/frames.sha1` holds the pixels' digests: two runs (say, one after a fresh `setup.sh`) agree
+when these files do. Each situation's folder keeps the frames (`t00000.xwd`, …), their
+`frames.toml`, ours (`ours/t00000.png`, …, and what it drew, `ours.txt`), its record
+(`ours.jsonl`) and a `diff-t*.png` (differing pixels red, masked ones blue).
 
 **One battle at chosen times:**
 
@@ -107,7 +110,12 @@ it act then; its time goes to `<out>/turns.txt` (`at:<ms>` steps so up to a time
 starts: a player who waits lets fidgets start, which the viewer's timeline does not have. In the
 entry's `[[sequence.command]]`s, `at` gives each player's command its time from `turns.txt` (`ms`
 counts from the last one). `behind` (`seq-behind.toml`): two rounds, 8 commands, about 13 s;
-`shots` (`seq-shots.toml`, M3 T1b-1): two rounds, 6 commands, three rays, about 10 s.
+`shots` (`seq-shots.toml`, M3 T1b-1): two rounds, 6 commands, three rays, about 10 s; `fly`
+(`seq-fly.toml`, M3 T1b-2): two flights across rows and a breath, about 9 s. A two-hex striker
+stands where the cursor's slot inside the target's hex says (design §7.13): `click:x,y` with an
+offset from the hex's point picks it. `hover` (M3 T1b-2) moves the mouse over a stack
+(`move:x,y`) and away; it has no engine command (the viewer draws no mouse in a record), so
+`h3-view sequences` and the frame check skip it.
 
 **The frame check** (M2 T4b-1, design §7.9): from `clients/`,
 
@@ -127,7 +135,7 @@ pixels outside the masks and how many of them are the original's **redraw artifa
 shadows, or one we drew there at an earlier moment of the sequence with at least one more. The
 diff PNG marks those yellow, any other difference red; a change in either count fails. The
 original's frames live only in the sandbox that captured them (`clients/out/`, never in git):
-a new sandbox captures them again (all seven sequences, about 40 minutes: `shots` alone about 9) before `--reuse` works. `--reuse` keeps the original's frames from an earlier run and only redraws
+a new sandbox captures them again (all eight with frames, about 50 minutes: `shots` and `fly` about 9 each) before `--reuse` works. `--reuse` keeps the original's frames from an earlier run and only redraws
 and compares (after a change to the viewer). About 14 minutes for the first four sequences and 15
 more for `behind` (default `<dir>`: `clients/out/frames`). Only a fidget comes from the
 original's memory; everything else is the viewer's own timeline.
