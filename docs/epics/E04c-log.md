@@ -649,9 +649,9 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   raised from its corpse; the original tests creature 145).
 - **Not changed:** F-robust-1 (a taken Catapult place stays `NoRoom`, as for every war machine);
   F-r2b-2 (the bow's wall exemption reads the owner's hero, the original the controller's:
-  recorded, as the distance penalty's note). **Docs:** BAT-SIE-003, 004, 006, 009, 011, 014, 018,
-  019, 022, 024, 028, BAT-GEO-004, BAT-TER-005, BAT-FLE-001, BAT-MAG-019, 068 and BAT-WAR-008's
-  texts and sources; "Review re-read (E04c T10b)" notes in `installation.md` §7.26, §7.28, §7.29,
+  recorded, as the distance penalty's note). **Docs:** 23 entries' texts and sources (BAT-SIE-001,
+  003, 004, 006, 008, 009, 011, 013, 014, 018, 019, 020, 022, 024, 028, BAT-GEO-004, BAT-TER-005,
+  BAT-TRN-001, BAT-FLE-001, BAT-MAG-019, 025, 068, BAT-WAR-008); "Review re-read (E04c T10b)" notes in `installation.md` §7.26, §7.28, §7.29,
   §7.31; the ledger's note beside BAT-Q31; experiment candidates (the Catapult's Wait, the tie
   after the Catapult, the defender's summon onto the gate). **Tests** for the clauses the reports
   found unpinned, among them batches 3f, 3g and 3h's rows with their own numbers
