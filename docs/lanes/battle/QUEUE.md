@@ -20,11 +20,14 @@ E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epic
 
 **E04c increment 7** (the user, 2026-10-15: T8 rather than T7e; refined in `docs/epics/E04c-sieges-and-battlefields.md`, "T8"): T8 the siege's other rules (`installation.md` §7.32; `battle/e04c-t8`; batch 3g run by an agent; BAT-SIE-024 to 028); merged (#222).
 
-**E04c increment 8** (the user, 2026-10-15: the next sensible increment): T7e the automatic Ballista's target (`installation.md` §7.33; `shared/e04c-t7e-seam` #225, `battle/e04c-t7e` #227; batch 3h run by an agent; BAT-WAR-008, BAT-STUB-3 closed; BAT-Q47). Next: T9 (workload and measurements), then T10 (the closure's independent review).
+**E04c increment 8** (the user, 2026-10-15: the next sensible increment): T7e the automatic Ballista's target (`installation.md` §7.33; `shared/e04c-t7e-seam` #225, `battle/e04c-t7e` #227; batch 3h run by an agent; BAT-WAR-008, BAT-STUB-3 closed; BAT-Q47); merged (#225, #227).
+
+**E04c increment 9** (the user, 2026-10-15: the next sensible increment): T9 the workload and the measurements (`battle/e04c-t9`, `shared/e04c-t9`): T9a the property tests' games at the epic's places (exit criterion 4), T9b the siege workload and the measurements (exit criterion 5). Next: T10 (the closure's independent review).
 
 
 ## Inbox
 
+- 2026-10-15 (E04c T9b, the siege's profile): **the shot's wall test is a quarter of a siege's instructions.** `siege::line_blocked` (BAT-SIE-008, also Teleport's walls, BAT-SIE-026) costs about 68 k Ir a call: 17 × the longer difference steps of `X87` additions, each rounded to 53 and then 24 bits; the computer's shot estimates (the keep, the automatic Ballista) call it for every candidate. Each axis's positions are `f32` sums of `f32` steps no finer than 2^-32 below 17, so the exact sum fits about 38 bits, the 53-bit rounding never acts, and an integer fixed-point sum rounded once to 24 bits gives the same positions; an exhaustive per-axis test (start 0..=16, difference −16..=16, longer difference 1..=16) against the `X87` version proves it. Expected: the siege workload about 20 % fewer instructions. For the user to schedule (or E05).
 - 2026-10-15 (E04c T7e, `installation.md` §7.33): **the automatic Ballista on Easy for a computer side.** 0x435CB0 divides nothing there (no turns, no / 5 or / 10), and the engine's default setup is that case (difficulty 0, no human side: every env and replay that does not set them). Batch 3h could not show it (hot seat makes both sides human): a batch with a computer player's Ballista on Easy, or accept the reading. Also unobserved: the / 10 of a stack that loses its turns, a hypnotized candidate.
 - 2026-10-15 (E04c T7e): this increment bumped the observation encoding (v20) without BAT-STUB-1's per-stack mark (BAT-Q35 recommends folding it into such a bump; the user has not answered): the next bump, or T9/T10 with the user's answer.
 

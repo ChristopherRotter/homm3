@@ -413,3 +413,79 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   setup, difficulty 0 and no human, is that case: the Ballista's values are then not divided); a
   stack that loses its turns (/ 10); a hypnotized candidate.
 
+
+## T9 — the workload and the measurements (2026-10-15, increment 9)
+
+- **The choice** (the user, 2026-10-15: "the next sensible increment"): T9, refined at its start
+  (no earlier refinement): T9a the invariants where the epic's battles are fought (exit criterion
+  4: until now every generated game of `properties.rs` ran on the ordinary field, without a town),
+  T9b the workload and the measurements (exit criterion 5); T10 after the checkpoint.
+- **T9a, the places** (`tests/properties.rs`): a generated game's `Ground` holds its natural
+  obstacles and its `Place`: two in seven on the terrain's ordinary field, one in seven on one of
+  the test ruleset's eight special battlefields, one in seven at an anti-magic garrison, three in
+  seven at a town (`TownSpec`: any of the three test siege records, the moat's second row and the
+  town's mines among them; no fort, Fort, Citadel or Castle by 1:2:3:3; the moat from a Citadel on;
+  0 to 11 structures; the Escape Tunnel; morale 0 to 2 and luck 0 to 1; the attacker's Ballistics
+  0 to 3; the defender's Artillery 0 to 3, so that some turrets are commanded). A town with a fort
+  has no natural obstacles. The property ruleset (`lively`) gains the town's turret and Fight
+  Values from 40 to 78 845, so that the computer's aim for the turrets and the automatic Ballista
+  weighs its targets; the heroes' books gain Earthquake.
+- **What the properties had to learn** (no engine change): the outcome leaves the turrets out
+  (BAT-SIE-016); a turret dies with its tower or keep, and only `WallDestroyed` tells it
+  (BAT-SIE-017: "no event but the part's"); the moat's damage explains another side's stack's
+  loss (BAT-SIE-005); the automatic Ballista's candidates leave the turrets out (BAT-WAR-008);
+  the casting limits read the garrison and the battlefield (BAT-MAG-061, BAT-TER-004: no creature
+  casts, raises or periodic casts on Cursed Ground, a spell level limit of 1 there).
+- **New property** `walls_and_the_moat_agree_with_movement` (BAT-SIE-002 to 004, 48 cases at a
+  town with a fort): at every step no living stack covers a standing wall hex but the gate's and
+  none but the defender's own the closed gate's or drawbridge's hex (its clone, summoned or
+  teleported stack may, §7.32); no legal move goes there but onto the closed gate for a stack
+  commanded for the defender; within a command no `Moved` lands on a standing wall, one onto the
+  closed gate or drawbridge is followed by `GateOpened`, and a walker's walk that enters the moat
+  outside its start ends there. A throwaway count over one run's games: about 5 800 moves, 52 gate
+  openings, 15 walks into the moat, 2 500 legal moves onto the gate's hexes.
+- **The hidden siege objects**: the town's mines (`t:necropolis` with a moat) are spell obstacles,
+  so `hidden_obstacles_do_not_show` and `observations_do_not_depend_on_hidden_state` now cover
+  them in about one game in sixteen.
+- **Robustness**: `extreme_heroes_and_counts_play_without_failures` plays half its battles at a
+  town with any structures byte (the keep's count is computed in `u32`), and
+  `extreme_casting_heroes_play_without_failures` half of its hundred seeds.
+- **Stress**: besides the normal runs, two throwaway runs with the case counts raised (every
+  earlier property at 1 500 and 600 cases; then, with the garrisons, the Artillery and the new
+  property, at 1 000 and 500): no failure. Exit criterion 4 is met.
+- **T9b, the workload**: `benches/battle/random-rollouts-siege.toml`, 60 random battles of the
+  synthetic siege (a Citadel with a damaging moat, the keep of seven, Brea's commanded Catapult
+  and Earthquake, her automatic Ballista): 698 902 794 Ir for 7 872 steps (88.8 k Ir per step);
+  in every full verify, as `random-rollouts-full`. The criterion benches (`h3-sim/benches/battle.rs`)
+  gain `legal_commands`, the step and `observe + encode` on mid-game siege states.
+- **Measurements** (cloud sandbox: Intel Xeon @ 2.10 GHz, 2 vCPUs, one used; release; E04b T9b's
+  sandbox was a 2.80 GHz Xeon, so wall times compare only within a column; `random-rollouts-full`
+  plays the same 7 633 steps as at E04b's end):
+
+  | Measure | E04c T9b |
+  |---|---|
+  | `h3 bench --games 2000`, `full` | median ≈ 98 k steps/s (eleven runs, 84–104 k); E04b's end (`bcd3a071`, built here) median ≈ 100 k (eight runs, 92–103 k), interleaved: the same within the sandbox's noise |
+  | the same with the observation encoded before each step | ≈ 68 k (69.1 k, 67.2 k) |
+  | `h3 bench --games 2000`, `siege` | ≈ 73 k steps/s (71.8 k, 74.4 k, 72.2 k); ≈ 63 k with the observation (63.6 k, 62.4 k) |
+  | criterion `legal_commands` / `step` / `BattleEnv` step via mask (`full`) | 2.68 / 4.93 / 1.87 µs |
+  | criterion `legal_commands` / `step` / `observe + encode` (siege) | 1.56 / 17.4 / 2.64 µs |
+  | criterion `observe` / `observe + encode` (`full`) | 0.99 / 3.87 µs |
+  | `BattleState` size / clone; `BattleEnv` size / fork | 6 768 bytes / 0.58 µs; 6 800 bytes / 3.40 µs |
+  | `state_hash` | 4.88 µs |
+  | bench-check `random-rollouts-full` | 592 768 860 Ir for 7 633 steps (77.7 k per step); at E04b's end 609 775 459 for the same steps: E04c costs the field workload nothing (−2.8 %, the footprint's change of 2026-10-13) |
+  | bench-check `random-rollouts-siege` | 698 902 794 Ir for 7 872 steps (88.8 k per step), new |
+
+  **Exit criterion 5:** the golden replays `field-s5` and `siege-s7` exist since T2 and T5; the
+  100 k steps/s on `full` is at the edge of this slower sandbox, where E04b's end measures the
+  same (E04b T9b: 104 k on its faster one); the instruction count says the epic added nothing
+  there. A run on the user's Ryzen would settle the wall time.
+- **The siege's profile** (callgrind, `--toggle-collect='*random_rollout*'`, exclusive):
+  `movement::reachable_within` 26 %, `siege::line_blocked` 24 % (2 442 calls, ≈ 68 k Ir each: the
+  shot's wall test steps 17 × the longer difference through software x87 additions; reached from
+  the computer's shot estimates for the keep and the automatic Ballista, 18 % inclusive, and from
+  real shots, 8 %), `Field::neighbors` 16 %, `Field::attack_positions` 5 %, `aim::turns` 5 %;
+  `movement::path` through `travel_through` 14 % inclusive (a damaging moat sends every walk
+  there). A cheaper exact line (each axis's positions are `f32` sums of `f32` steps whose exact
+  sum needs at most about 38 bits, so the 53-bit rounding never acts and an integer fixed-point
+  sum rounded once to 24 bits is the same; testable exhaustively per axis) would take most of
+  the 24 %: the queue's inbox, for the user.

@@ -1,7 +1,8 @@
 # E04c — Sieges and special battlefields
 
 Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2 closed: T3 (#179), T4 (#180), BAT-Q39 and BAT-Q40 answered; increment 3, T5: the seam ADR-0023 (#183), towns on the experiment maps (#184), the reading (BAT-Q41, BAT-Q42), the battle's walls, gate and moat (#187), the siege batch 3c run by
-an agent (T5e): increment 3 done (#190); increment 4, T6, refined 2026-10-14 (BAT-Q43), built and confirmed 2026-10-14: the seam #191, the battle and the batch 3d, #199; increment 5, T7, the arrow towers, built 2026-10-14 (BAT-Q44, BAT-Q45); increment 6, T7d, built and merged 2026-10-14 (BAT-Q46); increment 7, T8, the siege's other rules, built 2026-10-15; increment 8, T7e, the automatic Ballista's target, built 2026-10-15) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
+an agent (T5e): increment 3 done (#190); increment 4, T6, refined 2026-10-14 (BAT-Q43), built and confirmed 2026-10-14: the seam #191, the battle and the batch 3d, #199; increment 5, T7, the arrow towers, built 2026-10-14 (BAT-Q44, BAT-Q45); increment 6, T7d, built and merged 2026-10-14 (BAT-Q46); increment 7, T8, the siege's other rules, built 2026-10-15; increment 8, T7e, the automatic Ballista's target, built and merged 2026-10-15 (#225, #227);
+increment 9, T9, the workload and the measurements, built 2026-10-15) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
 
@@ -116,8 +117,21 @@ measures the epic's final code).
   and 0x442780), the seam (`shared/e04c-t7e-seam`, #225: the hero's Artillery level, BAT-STUB-3),
   the battle (`aim::ballista_target`, BAT-WAR-008; BAT-SIE-021's Artillery factors), batch 3h by an
   agent: every shot as the code once the estimate reads the Ballista's record (2..3); VCMI's rule
-  refuted; for the user's checkpoint.
-- [ ] T9 Workload and measurements; T10 closure (the independent review, as E04b's T11).
+  refuted; confirmed by the user and merged 2026-10-15 (#225, #227).
+**Increment 9** (the user, 2026-10-15: the next sensible increment; refined at its start: T9a
+the invariants where the epic's battles are fought, exit criterion 4; T9b the workload and the
+measurements, exit criterion 5).
+
+- [x] **T9 Workload and measurements** — built 2026-10-15 (record: [`E04c-log.md`](E04c-log.md)):
+  T9a the property tests' games at a place (the ordinary field, a special battlefield, an
+  anti-magic garrison, a town with its fort, moat, mines, turrets, Catapult, Ballistics and
+  Artillery), every earlier property there, a new one for the walls, the gate and the moat; no
+  engine defect found (two runs at ten to fifteen times the cases too); T9b the siege workload
+  `random-rollouts-siege` (bench-check), the criterion benches' siege variants, the
+  measurements: the `full` workload as fast as at E04b's end on the same machine (identical games,
+  2.8 % fewer instructions), the siege about 27 % slower per step (the shot's wall test,
+  `siege::line_blocked`, a quarter of its instructions); for the user's checkpoint.
+- [ ] T10 Closure: the independent review (as E04b's T11).
 
 ### T5 — Walls, gate and moat (refined 2026-10-14, increment 3)
 
