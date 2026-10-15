@@ -115,13 +115,14 @@ fn war_machines_stand_at_their_places_after_the_army() {
         [
             ("serf", 0, (1, 5)),
             ("ballista", 16, (0, 3)),
-            ("cart", 17, (1, 1)),
             ("tent", 18, (0, 9)),
+            ("cart", 17, (1, 1)),
             ("serf", 0, (15, 5)),
             ("ballista", 16, (16, 3)),
             ("tent", 18, (16, 9)),
         ]
     );
+    // The ids follow the original's record order (D-23): the Ballista, the Tent, the Ammo Cart.
     // Two-hex machines reach into the side columns with their positions, their front hexes on
     // the ruleset's hexes.
     assert_eq!(s.stacks()[1].footprint(field(&r)).front, at(&r, 1, 3));

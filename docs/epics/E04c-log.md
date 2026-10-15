@@ -523,3 +523,74 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   against its baseline (as on master), `random-rollouts-siege` +0.00 %. Again with BAT-QUIRK-23
   on 207f388 (master and `shared/e04c-t9` merged): every step passed; +1.24 % and +0.02 %. CI
   cannot run.
+
+## T10a — the fold-in and the audit (2026-10-15, increment 10)
+
+- **The cut** (the user, 2026-10-15: the next sensible increment): T10 in three parts as E04b's
+  T11: T10a the fold-in and the audit (this), T10b the independent review by fresh agents, T10c
+  the closure. The shot's exact line comes before the review (the user), so that the review reads
+  the epic's final code, as T7e came before T9.
+- **The shot's wall line in integers** (`siege::LineAxis`, BAT-SIE-008 and Teleport's walls,
+  BAT-SIE-026): each axis's step is still computed as the original's `f32` (the difference over
+  the longer one in [`X87`], stored, divided by 17, stored); each position is then an integer
+  numerator over 2^40, the sum rounded once to single precision (`round_single`). The step is at
+  least 1/272, so a multiple of 2^-32, and every position below 17 a multiple of 2^-32: the exact
+  sum fits 37 bits and the FPU's 53-bit rounding never acts; a position below 0 stays 0 as
+  `X87::minus` kept it. `tests::sieges::the_line_s_integer_axis_is_the_x87_s` compares every
+  position of every start (0 to 16), difference and longer difference (1 to 16) with the
+  step-by-step `X87` computation (904 k steps). The line now tests a hex once where it enters it
+  (the answer does not change within the line). No game changed: the siege workload played the
+  same 7 872 steps in 585.0 M Ir (−16.3 %) with the integer line alone.
+- **The war machines' record order** (`installation.md` §7.27, re-read; survey D-23; BAT-WAR-001):
+  0x463600 gives the records after the army to the Catapult, the Ballista, the First Aid Tent,
+  the Ammo Cart; the engine numbered them Ballista, Ammo Cart, Tent, Catapult (VCMI's sequence;
+  VCMI numbers them before the army). Not only the siege's Catapult (the queue's T7d note): the
+  Tent and the Ammo Cart were swapped in every battle. The stack ids now follow the code
+  (`state::RECORD_ORDER`); the slots and places are unchanged. Only the computer's ties (the later
+  record) and draws over stacks see it. The `full` scenario (Ballista and Tent; Ballista and Ammo
+  Cart) keeps its ids and games; `siege-s7` re-recorded (the same 89 commands, new hashes: the
+  Catapult is stack 4, the Ballista 5). Six tests named the old order: three in `h3-battle`, and in `h3-pack-battle` the harvested games of batch 1b R8 and batch 2d SU, whose stacks now list the Tent before the Ammo Cart as the original's records do. The user was told at the
+  start; an experiment row (a Tent and an Ammo Cart tied in the computer's aim) is in
+  `docs/experiments/README.md`.
+- **The walls property's reach** (T9's open point): `the_walls_property_s_games_reach_the_gate_the_moat_and_the_breaches`
+  draws 96 games as the property's runner does, from proptest's fixed seed, and requires the gate
+  opened and closed, a walk into the moat and the moat's damage, the gate, a wall and a turret's
+  part destroyed, a destroyed wall's hex crossed and a town mine set off: a generator change that
+  loses one fails there.
+- **The audit.** Catalog: no E04c rule changes status (the `implemented` ones have no observation
+  of what they state: BAT-TER-002's batches 3a/3b observe the derivation, the adventure lane's;
+  HER-BAT-018's batch 3d the control, BAT-SIE-011's); stale clauses rewritten in BAT-HER-004,
+  BAT-MAG-002, 022, 048 to 053, BAT-SIE-011, HER-SPL-003, HER-WAR-001 (the battlefields' limits
+  and raise, the turrets left out of a mirror's draw, the Catapult set up by the battle), and a
+  stale comment in `casters::ready` (the Faerie Dragon's `ignores_magic_block` is harvested since
+  BAT-Q32 (2)). The disputes D-1 to D-23 are each settled by the code with an observation, by the
+  user, or carry their experiment (D-22, D-23: `docs/experiments/README.md`, "From E04c").
+- **Exit criteria** (for T10c): (1) ADR-0022 and ADR-0023 accepted. (2) Every E04c rule has its
+  sources and tests (`check-rules`); the disputes as above. (3) BAT-QUIRK-22 and 23 in the ledger
+  with flags; S-06 and S-07 refuted by batch 3e, S-08 the user's fix (BAT-Q43), S-22 and S-29
+  honoured, S-28 not a quirk (BAT-Q39). (4) Met in T9a; the reach test above. (5) `field-s5` and
+  `siege-s7`; bench-check re-baselined (below); 100 k steps/s on `full`: 97 k to 104 k here (a
+  2.80 GHz Xeon), the user's machine at T10c. (6) The batches 3a to 3h were played by an agent on
+  the capture harness, as the user decided at increment 2 (none by the user): met by the user's
+  answer at the checkpoint (BAT-Q49). (7) The full verify on Linux with the original data (below); Windows at T10c.
+- **The queue's inbox** (31.5 to 22.8 KB): E04c's per-task notes, the E04c bullets of E04b's
+  triage and review (done by T2 to T8), the adventure lane's notes for information and three
+  E02/E03 notes E04c did (war machines, special battlefields, the obstacle table) replaced by one
+  item by destination: what T10c passes on (`h3-heroes`, the game's version, the Catapult's
+  artifact row, the original's battle AI to size), battle work without a task, the client lane's
+  gate event order. The experiment candidates went to `docs/experiments/README.md`.
+- **Measurements** (cloud sandbox: Intel Xeon @ 2.80 GHz, one core, release): bench-check
+  `random-rollouts-siege` 577 498 334 Ir for 7 882 steps (73.3 k per step; T9b: 88.8 k, −17.5 %),
+  re-baselined; `siege::line_blocked` 7.4 % of it (24 % before; 17 k Ir a call);
+  `random-rollouts-full` unchanged (600 181 313 Ir, +1.25 % against its baseline as on master).
+  `h3 bench --games 2000`: `siege` ≈ 95 k steps/s (master's code built here ≈ 82 k, noisy),
+  `full` ≈ 97 k to 104 k. The architecture doc's E04c column keeps T9b's numbers (a shared path;
+  the closure updates it).
+- **Verify**: the full local verify with the original data (without the 164 maps; no map code
+  changed) on a4e7588 (master merged: `docs/exe/map.toml`'s conflict beside the client lane's
+  0x463370, both entries kept): every step passed; bench-check `random-rollouts-full` +1.25 %
+  against its baseline (as on master), `random-rollouts-siege` +0.00 % against T10a's. The run
+  before found the harvested games' order (`h3-pack-battle`) and rustfmt. CI cannot run.
+- **The checkpoint** (the user, 2026-10-15, BAT-Q49): the original's war machine order stays
+  (D-23); the batches played by agents count for exit criterion 6, so it is met. Recorded in the
+  docs only; no new verify (the user: none needed).

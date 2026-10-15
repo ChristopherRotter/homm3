@@ -510,7 +510,8 @@ fn statistic_effects_change_the_selected_stacks_of_the_side_at_setup() {
             })
             .collect()
     };
-    // Stacks: the attacker's squire, paladin, fixed, Ballista, cart and tent, the defender's squire.
+    // Stacks: the attacker's squire, paladin, fixed, Ballista, tent and cart (the original's
+    // record order, D-23), the defender's squire.
     assert_eq!(
         stats(&s),
         [
@@ -518,8 +519,8 @@ fn statistic_effects_change_the_selected_stacks_of_the_side_at_setup() {
             (13, 13, [12, 14], 35 + 8 + 4, 47, 10),
             (10, 10, [2, 2], 14, 14, 7),
             (10, 10, [2, 3], 254, 254, 0),
-            (0, 5, [0, 0], 104, 104, 0),
             (0, 0, [0, 0], 79, 79, 0),
+            (0, 5, [0, 0], 104, 104, 0),
             (10, 12, [6, 9], 35, 35, 5),
         ]
     );

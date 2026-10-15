@@ -237,6 +237,15 @@ follows the result (the adventure lane).
   fix-optional quirk, BAT-QUIRK-23 (the user, BAT-Q48), fixed the Ballista fights at every town;
   without a fort the engine keeps the code's Ballista. Unobserved: a batch row (a defending hero
   with a Ballista in a town without a fort) would settle it.
+- **D-23 The war machines' record order** (T10a, BAT-WAR-001; `code` §7.27: 0x463600 gives the
+  records after the army to the Catapult, the Ballista, the First Aid Tent, the Ammo Cart; `vcmi`:
+  `BattleInfo::setupBattle` numbers the war machines before the army, Ballista, Ammo Cart, Tent,
+  then the Catapult; the `wiki`: silent). Only tie-breaks and draws over records see it: the
+  computer's ties go to the later record (the turrets', the automatic Ballista's), a Magic Mirror's
+  or a Faerie Dragon's draw among stacks. The engine numbered them in VCMI's order after the army;
+  T10a follows the code (stack ids: the army, then the code's order). **The user (BAT-Q49): the
+  original's order.** Unobserved: a tie between a First Aid Tent and an Ammo Cart in the
+  computer's aim would show it.
 - **S-06, S-07** (`E04-quirks.md`: the towers) are D-16 and D-17: the code reading finds neither
   bug in the user's executable (T7, §7.30), and batch 3e confirms it (Air Shield and Armorer lower
   the damage, Archery does not touch it): **not quirks** of the user's version.
