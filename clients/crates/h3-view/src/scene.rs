@@ -198,12 +198,19 @@ pub fn battle_at(
     let (width, height) = (manifest.field.width, manifest.field.height);
     let at = |hex: u8| (hex / width.max(1), hex % width.max(1));
     let mut list = Vec::new();
-    // The background buffer (§4.4): the battlefield's picture, then the absolute obstacle. Which
-    // of a terrain's three pictures a battle gets depends on the adventure map around it (0x41ADB0,
-    // §4.4), which a battle's record does not carry: an empty surrounding gives the third, which
-    // the reference captures confirm (*provisional*, E17 M2 T1); a field with one picture has it.
-    if let Some(handle) = observation.terrain {
-        let key = key(&keys.terrains, "terrains", handle)?;
+    // The background buffer (§4.4): the battlefield's picture, then the absolute obstacle. The
+    // picture (0x4646D0, §5): a special battlefield's own (the shore, a special ground's field, a
+    // ship's deck, two boats; E17 M3 T2); else the terrain's. Which of a terrain's three pictures
+    // a battle gets depends on the adventure map around it (0x41ADB0, §4.4), which a battle's
+    // record does not carry: an empty surrounding gives the third, which the reference captures
+    // confirm (*provisional*, E17 M2 T1); a field with one picture has it. Water and rock have
+    // none (the original fights on water on a deck or between boats only): a key the tables lack.
+    let field = match (observation.battlefield, observation.terrain) {
+        (Some(handle), _) => Some(key(&keys.battlefields, "battlefields", handle)?),
+        (None, Some(handle)) => Some(key(&keys.terrains, "terrains", handle)?),
+        (None, None) => None,
+    };
+    if let Some(key) = field {
         let field = tables
             .battlefields
             .get(key)

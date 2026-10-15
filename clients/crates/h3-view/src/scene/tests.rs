@@ -30,6 +30,10 @@ times = [9000, 575, 500, 115]
 key = "grass"
 backgrounds = ["CmBkGrDd.pcx", "CmBkGrMt.pcx", "CmBkGrTr.pcx"]
 
+[[battlefield]]
+key = "shore"
+backgrounds = ["CmBkBch.pcx"]
+
 [[obstacle]]
 key = "obstacle_1"
 def = "Back.def"
@@ -61,6 +65,7 @@ pub(crate) fn keys() -> Manifest {
     let list = |keys: &[&str]| keys.iter().map(|k| (*k).to_string()).collect();
     manifest(KeyTables {
         terrains: list(&["base:grass", "base:lava"]),
+        battlefields: list(&["base:shore", "base:deck"]),
         creatures: list(&["base:pikeman", "base:dragon", "base:ghost"]),
         obstacles: list(&[
             "base:obstacle_1",
@@ -386,6 +391,26 @@ fn an_empty_battle_draws_nothing() {
 }
 
 #[test]
+fn a_special_battlefield_has_its_own_picture() {
+    // 0x4646D0 (E17 M3 T2): a special battlefield's picture, whatever the terrain under it; a
+    // battle without a terrain or a special battlefield has no background.
+    let (tables, layout) = (tables(), layout());
+    let background = |terrain, battlefield| {
+        let mut o = observation();
+        (o.terrain, o.battlefield) = (terrain, battlefield);
+        let list = battle(&o, &keys(), &tables, &layout).unwrap();
+        list.into_iter().find_map(|d| match d {
+            Draw::Background { picture, .. } => Some(picture),
+            _ => None,
+        })
+    };
+    assert_eq!(background(Some(0), Some(0)).as_deref(), Some("CmBkBch.pcx"));
+    assert_eq!(background(None, Some(0)).as_deref(), Some("CmBkBch.pcx"));
+    assert_eq!(background(Some(0), None).as_deref(), Some("CmBkGrTr.pcx"));
+    assert_eq!(background(None, None), None);
+}
+
+#[test]
 fn what_the_tables_or_the_manifest_lack_is_an_error() {
     let (tables, layout) = (tables(), layout());
     let run = |change: &dyn Fn(&mut Observation)| {
@@ -399,6 +424,11 @@ fn what_the_tables_or_the_manifest_lack_is_an_error() {
         SceneError::Handle("terrains", 2)
     );
     assert_eq!(run(&|o| o.terrain = Some(1)), key("base:lava"));
+    assert_eq!(
+        run(&|o| o.battlefield = Some(2)),
+        SceneError::Handle("battlefields", 2)
+    );
+    assert_eq!(run(&|o| o.battlefield = Some(1)), key("base:deck"));
     assert_eq!(
         run(&|o| o.absolute_obstacle = Some(4)),
         SceneError::Handle("obstacles", 4)

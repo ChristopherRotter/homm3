@@ -32,7 +32,7 @@ pub struct TableFile {
     /// Creatures, by key.
     #[serde(default)]
     pub creature: Vec<Creature>,
-    /// Battlefield backgrounds, by terrain key.
+    /// Battlefield backgrounds, by a terrain's or a special battlefield's key.
     #[serde(default)]
     pub battlefield: Vec<Battlefield>,
     /// Obstacle graphics, by key.
@@ -199,7 +199,8 @@ impl Sounds {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Battlefield {
-    /// The terrain key (or a special battlefield's name, while the packs have none).
+    /// The terrain's key, or a special battlefield's (E17 M3 T2; both in the pack that defines
+    /// it).
     pub key: String,
     /// The pictures, by the variant the adventure map picks (0x41ADB0).
     pub backgrounds: Vec<String>,

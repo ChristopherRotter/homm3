@@ -62,9 +62,10 @@ pub fn battle(
     let mut setup = def
         .resolve(&ruleset)
         .map_err(|e| format!("{}: {e}", scenario.display()))?;
-    if let (true, Some(terrain)) = (def.random_obstacles, setup.terrain) {
+    if def.random_obstacles {
+        // For the terrain and the special battlefield, as `h3 run` (E17 M3 T2).
         let mut rng = Rng::for_stream(seed, StreamId::OBSTACLES);
-        setup.obstacles = h3_battle::generate_obstacles(&ruleset, terrain, &mut rng);
+        setup.obstacles = h3_battle::generate_setup_obstacles(&ruleset, &setup, &mut rng);
     }
     Ok((ruleset, setup))
 }
