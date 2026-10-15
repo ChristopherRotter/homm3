@@ -230,7 +230,8 @@ fn strict_parsing() {
          \"quirk.battle.draws_avoid_hidden\" = true, \
          \"quirk.battle.sacrifice_tests_as_resurrection\" = true, \
          \"quirk.battle.clone_on_its_original\" = true, \
-         \"quirk.battle.periodic_first_stack\" = true }",
+         \"quirk.battle.periodic_first_stack\" = true, \
+         \"quirk.battle.no_defender_ballista_at_fort\" = true }",
         "quirks = { \"quirk.x\" = true }",
     );
     let pack = parse_pack(&quirky).unwrap();
@@ -247,8 +248,10 @@ fn strict_parsing() {
         "quirk.battle.creature_mirror_untested",
     ] {
         let old = SYNTHETIC_PACK.replace(
-            "\"quirk.battle.periodic_first_stack\" = true }",
-            &format!("\"quirk.battle.periodic_first_stack\" = true, \"{retired}\" = true }}"),
+            "\"quirk.battle.no_defender_ballista_at_fort\" = true }",
+            &format!(
+                "\"quirk.battle.no_defender_ballista_at_fort\" = true, \"{retired}\" = true }}"
+            ),
         );
         let named = (retired.to_owned(), true);
         assert!(
@@ -1304,8 +1307,8 @@ fn gated_override_syntax() {
     // Pack format v34 (E04b T8e, ADR-0007): `fixes` gates a creature or hero override by a
     // data quirk flag; it applies only in profiles that turn the flag off.
     let keeps = SYNTHETIC_PACK.replace(
-        "\"quirk.battle.periodic_first_stack\" = true }",
-        "\"quirk.battle.periodic_first_stack\" = true, \
+        "\"quirk.battle.no_defender_ballista_at_fort\" = true }",
+        "\"quirk.battle.no_defender_ballista_at_fort\" = true, \
          \"quirk.content.elemental_levels\" = true, \
          \"quirk.content.roland_crusader_specialty\" = true }",
     );

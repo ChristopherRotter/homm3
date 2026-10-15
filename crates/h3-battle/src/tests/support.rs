@@ -1722,15 +1722,14 @@ fn creature_defs(table: &[Creature]) -> (Vec<CreatureDef>, Vec<BattleCreatureDef
 /// The test ruleset (profile `profile`) with the town's turret (BAT-SIE-016, E04c T7): the
 /// sieges with a Citadel or Castle set the keep and the towers up.
 pub fn turret_ruleset(profile: &str) -> BattleRuleset {
-    ruleset_from(
-        profile,
-        |_| {},
-        |core, battle| {
-            let (mut c, mut b) = creature_defs(&[TURRET]);
-            core.creatures.append(&mut c);
-            battle.creatures.append(&mut b);
-        },
-    )
+    ruleset_from(profile, |_| {}, add_turret)
+}
+
+/// Adds the town's turret ([`TURRET`]) to a test pack's creatures, as [`turret_ruleset`] has it.
+pub fn add_turret(core: &mut ContentPack, battle: &mut BattlePack) {
+    let (mut c, mut b) = creature_defs(&[TURRET]);
+    core.creatures.append(&mut c);
+    battle.creatures.append(&mut b);
 }
 
 /// [`turret_ruleset`] with Fight Values `(name, value)`, the computer's worth of a creature
@@ -1740,9 +1739,7 @@ pub fn fighting_turret_ruleset(profile: &str, fights: &[(&str, u32)]) -> BattleR
         profile,
         |_| {},
         |core, battle| {
-            let (mut c, mut b) = creature_defs(&[TURRET]);
-            core.creatures.append(&mut c);
-            battle.creatures.append(&mut b);
+            add_turret(core, battle);
             for def in &mut core.creatures {
                 if let Some(&(_, value)) = fights.iter().find(|(n, _)| def.key.name() == *n) {
                     def.info.fight_value = value;
@@ -1907,6 +1904,13 @@ pub fn try_ruleset_from(
             ProfileDef {
                 key: ContentKey::new("t", "first_stack").unwrap(),
                 quirks: vec![(String::from("quirk.battle.periodic_first_stack"), true)],
+            },
+            ProfileDef {
+                key: ContentKey::new("t", "fort_ballista").unwrap(),
+                quirks: vec![(
+                    String::from("quirk.battle.no_defender_ballista_at_fort"),
+                    true,
+                )],
             },
             ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),

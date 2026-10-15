@@ -1,7 +1,9 @@
 //! Wall-time benchmarks of the battle hot path (criterion; local only, not a CI gate).
 //! The deterministic regression gate is `cargo xtask bench-check` (instruction counts).
 //!
-//! Workload: the "full" synthetic scenario (7 stacks per side), random legal play.
+//! Workload: the "full" synthetic scenario (7 stacks per side), random legal play; since E04c T9b
+//! also the synthetic siege (a Citadel: walls, gate, moat, keep, the Catapult) for the step, the
+//! legal commands and the observation.
 
 use std::hint::black_box;
 use std::sync::Arc;
@@ -12,8 +14,9 @@ use h3_kernel::{Rng, StreamId};
 use h3_sim::action::HERO_CAST;
 use h3_sim::{ACTION_COUNT, Action, BattleEnv, OBSERVATION_LEN, observation};
 
-fn mid_game_states() -> (Arc<h3_content_battle::BattleRuleset>, Vec<BattleState>) {
-    let (ruleset, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
+/// Mid-game states of random legal play on the synthetic `scenario`.
+fn mid_game_states(scenario: &str) -> (Arc<h3_content_battle::BattleRuleset>, Vec<BattleState>) {
+    let (ruleset, setup) = h3_pack_battle::synthetic(scenario).unwrap();
     let mut states = Vec::new();
     let mut legal = LegalCommands::new();
     for seed in 0..32u64 {
@@ -33,7 +36,7 @@ fn mid_game_states() -> (Arc<h3_content_battle::BattleRuleset>, Vec<BattleState>
 }
 
 fn benches(c: &mut Criterion) {
-    let (ruleset, states) = mid_game_states();
+    let (ruleset, states) = mid_game_states(h3_pack_battle::SYNTHETIC_FULL);
     let mut legal = LegalCommands::new();
 
     c.bench_function("legal_commands (full armies, mid-game)", |b| {
@@ -92,6 +95,51 @@ fn benches(c: &mut Criterion) {
     c.bench_function("state_hash", |b| {
         let s = &states[0];
         b.iter(|| black_box(black_box(s).state_hash()))
+    });
+
+    // The siege (E04c T9b): the walls, the gate and the moat in every move's reach, the turrets'
+    // and the Catapult's turns, the siege's planes and globals in the observation.
+    let (siege_ruleset, sieges) = mid_game_states(h3_pack_battle::SYNTHETIC_SIEGE);
+    c.bench_function("legal_commands (siege, mid-game)", |b| {
+        let mut i = 0;
+        b.iter(|| {
+            let s = &sieges[i % sieges.len()];
+            i += 1;
+            legal_commands(
+                black_box(s),
+                &siege_ruleset,
+                s.side_to_act().unwrap(),
+                &mut legal,
+            );
+            black_box(legal.len())
+        })
+    });
+
+    c.bench_function("step = legal_commands + pick + apply (siege)", |b| {
+        let mut rng = Rng::from_seed(1);
+        b.iter_batched_ref(
+            || sieges[rng.below(sieges.len() as u32) as usize].clone(),
+            |s| {
+                let side = s.side_to_act().unwrap();
+                legal_commands(s, &siege_ruleset, side, &mut legal);
+                let cmd: Command = legal.as_slice()[(legal.len() / 2).min(legal.len() - 1)];
+                apply(s, &siege_ruleset, side, cmd, &mut NoopSink).unwrap();
+            },
+            BatchSize::SmallInput,
+        )
+    });
+
+    c.bench_function("observe + encode (siege, mid-game)", |b| {
+        let width = siege_ruleset.battle().field.width;
+        let mut out = vec![0.0f32; OBSERVATION_LEN];
+        let mut i = 0;
+        b.iter(|| {
+            let s = &sieges[i % sieges.len()];
+            i += 1;
+            let obs = observe(black_box(s), &siege_ruleset, s.side_to_act().unwrap());
+            observation::encode(&obs, width, &mut out).unwrap();
+            black_box(out[0])
+        })
     });
 
     let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();

@@ -463,3 +463,16 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: n/a
 - Regression test: `crates/h3-battle/src/tests/walls.rs`, `an_absent_turret_quaked_down_harms_no_stack`; with the turrets set up (E04c T7: an absent target holds none, BAT-SIE-017), `crates/h3-battle/src/tests/turrets.rs`, `a_destroyed_tower_or_keep_takes_its_turret_down`
 - Decided by / date: user, 2026-10-14 (BAT-Q43: the absent parts soak hits, no stack is harmed)
+
+### BAT-QUIRK-23 — No Ballista for the defender at a town with a fort (E04c T9; survey D-22)
+- Class: fix-optional (user, 2026-10-15, BAT-Q48)
+- Context / rules affected: battle, BAT-SIE-029 (with BAT-WAR-001, BAT-SIE-009)
+- Original behavior: the battle's setup 0x463600 sets up, in a battle with a fort level above 0, the attacker's Catapult and no Ballista for the defender, though the defending hero has one; its First Aid Tent and Ammo Cart are set up as elsewhere (`docs/formats/installation.md` §7.27). VCMI leaves it out at every town, with or without a fort ("bug #551").
+- Intended/expected behavior: the defending hero's Ballista fights at every town, as it does everywhere else (strict-fixed).
+- Impact: gameplay-altering (one war machine more or less for the defender of a fortified town)
+- Community status: unknown (not searched); VCMI treats a defender's Ballista in a town as its bug #551 and leaves it out
+- Sources: original-data (`installation.md` §7.27), vcmi (`lib/battle/BattleInfo.cpp` 1.7.5, `BattleInfo::setupBattle`)
+- Flag: `quirk.battle.no_defender_ballista_at_fort` (registry position 25; E04c T9)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/sieges.rs`, `with_bat_quirk_23_a_town_with_a_fort_sets_up_no_ballista_for_its_defender` (both settings); the invariant properties mix it into half their games
+- Decided by / date: user, 2026-10-15 (E04c T9, BAT-Q48)

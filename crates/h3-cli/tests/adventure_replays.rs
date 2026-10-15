@@ -31,7 +31,9 @@
 //! wandering monsters' offers: adventure ruleset part v8, game state hash v7) all eight were
 //! re-recorded with their options again: their commands stayed (the duel holds no monster). In
 //! `shared/e08-t20b2` (flag 24 on in `faithful`) the six `faithful` ones were re-recorded with
-//! their options: only the core ruleset hash in their headers moved.
+//! their options: only the core ruleset hash in their headers moved. In E04c T9 (BAT-QUIRK-23's
+//! flag on in `faithful`) the six `faithful` ones were re-recorded with their options: only the
+//! core ruleset hash in their headers moved.
 
 use std::path::PathBuf;
 

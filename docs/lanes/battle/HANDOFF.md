@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 8, T7e (the user, 2026-10-15: the next sensible increment):** built: the seam #225 (`shared/e04c-t7e-seam`) and the battle's #227 (`battle/e04c-t7e`, stacked on it), both `cross-lane`, full verify green; batch 3h: as the code; BAT-Q47 answered. #225 merged; #227 awaits the user's checkpoint. **Next:** T9 (workload and measurements), then T10 (the closure's review).
-- **Merged:** up to #222 (T8).
+- **E04c increment 9, T9 (the user, 2026-10-15):** #233 (`battle/e04c-t9`), the small #232 (`shared/e04c-t9`, first): T9a the properties at the epic's places, its review's BAT-SIE-029 as BAT-QUIRK-23 (flag 25, BAT-Q48); T9b siege workload, measurements. Awaits the user's checkpoint. **Next:** T10 (the closure's review).
+- **Merged:** up to #227 (T7e).
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
-- **Versions** (T7e): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v24, observation encoding v20; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q47, BAT-QUIRK-23, BAT-STUB-4, BAT-TER-007, BAT-SIE-029, BAT-WAR-009; survey D-22, S-30.
+- **Versions** (T7e; T9 moved none): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v24, observation encoding v20; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q49, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-23, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
 
 ## Standing traps
@@ -37,6 +37,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A town's gate opens in `obstacles::moved`: a quiet sink moves a walker in one step, so only a recording sink sees it open mid-walk; a rule reading the gate mid-walk belongs in `travel_through`.
 - A retired quirk flag keeps its `REGISTRY` position without a name (`flags()` lists the live ones). A flag that comes or goes changes the faithful ruleset hashes: the golden replays, and the adventure lane's faithful replays (a `cross-lane` header line).
 
+- `properties.rs` plays its games at a `Place` (field, battlefield, garrison, town): what a property assumes must hold at each.
 - The observation is complete since T9a: a new state field a rule reads goes into `observe_as` (public, own part or neither: ADR-0014 point 8), the flat encoding (version and ABI bump) and the hygiene property.
 - `h3-protocol`'s hygiene tests compare a viewer's frames across seeds on the `full` scenario up to the first hidden cast: no draw the viewer sees may come before it, public or its own (T9b: resistance on Brea's stacks, Eagle Eye listing Mire or Snare).
 
@@ -57,14 +58,14 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-15 (sixty-seventh) — E04c T9: the workload and the measurements (increment 9)
+
+T9a: the properties at the epic's places, the walls property; its review: BAT-SIE-029. T9b: `random-rollouts-siege`; `full` as at E04b's end; the siege's wall line a quarter of its cost (inbox). Detail: the log.
+
 ### 2026-10-15 (sixty-sixth) — E04c T7e: the automatic Ballista's target (increment 8)
 
-The user: the next sensible increment (T7e before T9). Reading §7.33; the seam #225; BAT-WAR-008 in `aim.rs`; batch 3h by an agent (`ballista.py`): the first port's estimate refuted (TU, DN), fixed to the record's 2..3; then every shot as the code. Detail: `docs/epics/E04c-log.md`.
+Reading §7.33; the seam #225; BAT-WAR-008; batch 3h (`ballista.py`): the first estimate refuted, fixed to the record's 2..3; #225, #227 merged.
 
 ### 2026-10-15 (sixty-fifth) — E04c T8: the siege's other rules (increment 7)
 
-Reading §7.32; BAT-SIE-024 to 028; pack v42; batch 3g (`town.py`): as the code; D-21; #222 merged.
-
-### 2026-10-14 (sixty-fourth) — E04c T7d: the automatic turret's target (increment 6)
-
-Reading §7.31; the seam (difficulty, human sides); `aim.rs`, BAT-SIE-020 to 023; batch 3f; #217, #218.
+Reading §7.32; BAT-SIE-024 to 028; batch 3g (`town.py`): as the code; #222 merged.
