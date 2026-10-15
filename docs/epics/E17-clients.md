@@ -260,6 +260,12 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   over a stack read (`battle_mouse_stack` 0x477C20: group 1 at once, the outline 0x70) and
   recorded (`hover`), the window's mouse-over queued for T6; the capture set compares each frame
   at its time, all 17 exact outside the masks.
+- **T2 done 2026-10-15** ([log](E17-log.md#m3-t2--every-battlefield-2026-10-15),
+  [design §5, §6.2](E17-design.md)): the special battlefields keyed by the packs (`base` 5, `sod`
+  7) and drawn by the observation's `battlefield` over the terrain's picture; the shore and the
+  nine special grounds set up in the original and captured, all exact (11 frames, the shore once
+  with an absolute obstacle); the deck and the two boats drawn from scenarios, their capture
+  waiting for boats in `h3-map`'s writer (CLT-Q5).
 
 ### Later (refined when they come up)
 
@@ -439,6 +445,11 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T2: the asset tables' special battlefields in `[[battlefield]]` beside the terrains, keyed by
+  the packs' keys, one picture each (the format); `h3-view situation`'s special battlefields (the
+  shore's water east of Blue, a ground's first `Objects.txt` picture one tile east and south of
+  Blue, *provisional*); a scenario's random obstacles for its battlefield, as `h3 run`.
 
 - T1b-2: `h3-view render --frames <dir>` (the capture set's frames by time, the original's
   fidgets from its memory, `frames.toml` as the frame check's); a recorded sequence without
