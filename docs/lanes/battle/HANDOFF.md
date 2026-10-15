@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 9, T9 (the user, 2026-10-15):** `battle/e04c-t9`, the small `shared/e04c-t9`: T9a the properties at the epic's places, its review's BAT-SIE-029 (BAT-Q48); T9b the siege workload, the measurements. Awaits the user's checkpoint. **Next:** T10 (the closure's review).
+- **E04c increment 9, T9 (the user, 2026-10-15):** #233 (`battle/e04c-t9`), the small #232 (`shared/e04c-t9`, first): T9a the properties at the epic's places, its review's BAT-SIE-029 (BAT-Q48); T9b the siege workload, the measurements. Awaits the user's checkpoint. **Next:** T10 (the closure's review).
 - **Merged:** up to #227 (T7e).
 - **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-Q48 (built), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
 - **Versions** (T7e; T9 moved none): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v24, observation encoding v20; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q49, BAT-QUIRK-23, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-23, S-30.
@@ -68,4 +68,4 @@ Reading §7.33; the seam #225; BAT-WAR-008; batch 3h (`ballista.py`): the first 
 
 ### 2026-10-15 (sixty-fifth) — E04c T8: the siege's other rules (increment 7)
 
-Reading §7.32; BAT-SIE-024 to 028; pack v42; batch 3g (`town.py`): as the code; D-21; #222 merged.
+Reading §7.32; BAT-SIE-024 to 028; batch 3g (`town.py`): as the code; #222 merged.
