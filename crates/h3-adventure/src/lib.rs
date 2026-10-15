@@ -38,6 +38,7 @@
 
 extern crate alloc;
 
+mod answer;
 mod command;
 mod fog;
 mod movement;
@@ -46,6 +47,7 @@ mod persistent;
 mod reach;
 mod ruleset;
 mod setup;
+mod split;
 mod state;
 
 #[cfg(test)]
@@ -53,7 +55,7 @@ mod testing;
 
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    BattleStart, Combatant, Offer, OfferKind, Sink, Viewers,
+    BattleStart, Combatant, Defender, Offer, OfferKind, Sink, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, native_terrain};
 pub use observe::{AdventureObservation, HeroView, MonsterView, ObjectView, OwnHeroView, TileView};
@@ -71,6 +73,7 @@ pub use setup::{
     AdventureSetup, ArmyError, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos, SetupError,
     StandError, TileMask, TileSetup,
 };
+pub use split::{TileRand, split};
 pub use state::{AdventureState, HeroOnMap, MapObject, Monster, StaticMap, StaticTile};
 
 /// Version of the adventure state's canonical hash encoding (`docs/08-work-process.md`,
@@ -88,5 +91,6 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 9;
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting
 /// stack chances. v4 (E08 T12a): the object types. v5 (E08 T13a): the starting resources by
 /// difficulty. v6 (E08 T19a): the battle terrains by tile. v7 (E08 T20a2a): the monster and
-/// ground kinds, the monsters' parameters and the creatures no random monster becomes.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 7;
+/// ground kinds, the monsters' parameters and the creatures no random monster becomes. v8 (E08
+/// T20b1): the resource a monster's price to join is paid in.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 8;

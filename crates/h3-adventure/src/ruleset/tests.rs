@@ -1197,6 +1197,7 @@ fn monster_packs() -> Vec<AdventurePack> {
         t.params.as_mut().unwrap().monsters = Some(MonsterParamsDef {
             aggression: vec![[-4, -4], [1, 7]],
             count_words: vec![5, 10],
+            price_resource: key("t:gold"),
         });
         pack(p, "u").not_random_monsters = vec![key("t:gog")];
     })
@@ -1224,8 +1225,8 @@ fn compiles_monsters_grounds_and_their_parameters() {
             battlefield: key("t:hallow")
         }
     );
-    // Neither is visited: the monster's answer comes with E08 T20b, a ground never.
-    assert_eq!(kind(0).effect(), None);
+    // A monster's visit is its answer (E08 T20b1); a ground is never visited.
+    assert_eq!(kind(0).effect(), Some(Effect::Monster));
     assert_eq!(kind(2).effect(), None);
     let monsters = part.params().monsters().unwrap();
     assert_eq!(monsters.aggression(0), Some([-4, -4]));
@@ -1236,6 +1237,13 @@ fn compiles_monsters_grounds_and_their_parameters() {
         .map(|&c| monsters.count_word(c))
         .collect();
     assert_eq!(words, [0, 0, 1, 1, 2, 2]);
+    assert_eq!(
+        Some(monsters.price_resource()),
+        core.resources()
+            .iter()
+            .position(|r| r.key == key("t:gold"))
+            .and_then(ResourceId::from_index)
+    );
     // The war machine never, `t:gog` left out by `u`, the rest in the core's order.
     let imp = core.creature_by_key("t:imp").unwrap();
     let wisp = core.creature_by_key("u:wisp").unwrap();
@@ -1311,6 +1319,19 @@ fn monsters_and_grounds_are_checked() {
     assert_eq!(
         compile_err(&p),
         AdventureCompileError::UnknownCreature("u:ghost".into())
+    );
+    let mut p = monster_packs();
+    pack(&mut p, "t")
+        .params
+        .as_mut()
+        .unwrap()
+        .monsters
+        .as_mut()
+        .unwrap()
+        .price_resource = key("t:iron");
+    assert_eq!(
+        compile_err(&p),
+        AdventureCompileError::UnknownResource("t:iron".into())
     );
     let params = |edit: fn(&mut MonsterParamsDef)| {
         let mut p = monster_packs();
@@ -1391,6 +1412,7 @@ fn the_hash_sees_the_monsters_and_the_grounds() {
     change(&|p| monsters(p).aggression[0] = [-3, -3]);
     change(&|p| monsters(p).aggression.push([10, 10]));
     change(&|p| monsters(p).count_words.push(20));
+    change(&|p| monsters(p).price_resource = key("t:wood"));
     change(&|p| pack(p, "t").params.as_mut().unwrap().monsters = None);
     change(&|p| pack(p, "u").not_random_monsters.clear());
     change(&|p| pack(p, "u").not_random_monsters.push(key("t:imp")));

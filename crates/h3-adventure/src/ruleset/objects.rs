@@ -106,7 +106,7 @@ pub enum ObjectKind {
     },
     /// A wandering monster (ADV-MON-001, E08 T20a2a): its creature the map's or, with levels,
     /// drawn when the game is built among the creatures of those levels (ADV-MON-003). Its visit
-    /// (the monster's answer) comes with E08 T20b.
+    /// is its answer to the hero (ADV-MON-007, E08 T20b1).
     Monster {
         /// The creature levels, inclusive, a random monster's creature is drawn from; none for
         /// a monster whose creature the map names.
@@ -138,6 +138,8 @@ pub(crate) enum Effect<'k> {
     /// For a holder of this key, a tile like any other, crossed without a visit; for another
     /// player, a visit that does nothing (a border gate, ADV-VIS-005).
     Gate(u8),
+    /// The monster's answer to the hero (a wandering monster, ADV-MON-007, E08 T20b1).
+    Monster,
 }
 
 impl ObjectKind {
@@ -145,7 +147,8 @@ impl ObjectKind {
     /// the one place a task that builds a kind's visit extends. A step onto the visitable tile of
     /// an object whose visit is not built is rejected (`Visit`). E08 T13b: the pickups; T14a and
     /// T14b: the Cartographer, entered, with its offer; T15a: the observatories, the tents and the
-    /// guards with their offer; T15b: the gates, which are not visited by their key's holders.
+    /// guards with their offer; T15b: the gates, which are not visited by their key's holders;
+    /// T20b1: the wandering monsters, whose visit is their answer.
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
             Self::Pickup(_) => Some(Effect::Pickup),
@@ -154,7 +157,8 @@ impl ObjectKind {
             Self::KeyTent { key } => Some(Effect::Tent(*key)),
             Self::KeyGuard { key } => Some(Effect::Guard(*key)),
             Self::KeyGate { key } => Some(Effect::Gate(*key)),
-            Self::Monster { .. } | Self::Ground { .. } => None,
+            Self::Monster { .. } => Some(Effect::Monster),
+            Self::Ground { .. } => None,
         }
     }
 

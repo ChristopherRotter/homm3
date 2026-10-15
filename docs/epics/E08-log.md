@@ -2185,3 +2185,97 @@ Decision 36's second part, built on `adventure/e08-t20a2a`; no version bump.
 - Tests: the scan's order, clipping, water, the row above, a removal; the step past and onto a
   guarded tile, leaving one; the query along a corridor and from a guarded start
   (`state/tests/monsters.rs`); the reach property with monsters.
+
+### Round 4 of increment 3: T20b1 (2026-10-15, `adventure/e08-t20b1`)
+
+#220 and #223 merged before the session; `master` 615286e verified already (#223's record:
+the baseline ran the light gates only). Asked for a seam, the user split T20b in three (decision
+37: T20b1 and T20b2 this session, T20b3 next) and confirmed T20a2a's provisional call (special
+grounds out of the one-type-per-anchor check).
+
+- **The answer** (ADV-MON-007, `answer.rs`): `Temper::new` from the visitor's army, its details
+  (`h3_heroes::attack_defense`, `join_bonus`; none: 0) and the monster as it stands (`Wanderer`:
+  creature, count with a battle's survivors, aggression, never flees) on the game's difficulty;
+  `first` (fight above C, join up to Sy + L + 1, join for gold up to Sy + 2L + 1, else
+  `after_join`) and `after_join` (insulted at M = C or never flees: fight; else the flight). The
+  code reading checked again (0x4A7740, 0x427650, 0x4E5400, 0x4A75C0, 0x47B1A0, 0x47B220,
+  0x44AC80, 0x44ACE0): the power is the army's value stored as a float times the factor stored
+  as a float, truncated (5.95 as a float is 5.9499998: Attack and Defense 99 give 5 949 for a value
+  of 1 000); the ratio's operands are stored as floats and divided at 53 bits, then stored; the
+  comparisons are with doubles (0.333's double lies below 0.333 as a float, so r = 0.333 is −2).
+  The related type in the content: the first upgrade, else the creature whose first upgrade it is,
+  of its faction and level (the original's town table by the record's faction and level; under
+  `BAT-QUIRK-19` the Ice, Magma and Energy Elementals have none, their bases keep them; the RoE
+  exceptions at map kind 0 do not apply to a SoD game). Not modelled: the 32-bit army value's wrap
+  above 2³¹ (about 27 000 Azure Dragons).
+- **The offers** (ADV-MON-008): `OfferKind::{Join, JoinForGold { price }, Pursue}` (the price:
+  the creature's cost in `[params.monsters] price_resource`, the base pack's gold, times the count,
+  empty when it costs none: adventure ruleset part v8); `AdventureState::accept_offer` returns an
+  outcome (a join: the group into its creature's stack or the first free slot through
+  `add_stack`, shared with `raise`; `CreaturesJoined` to the owner; the treasure as gains; the
+  monster removed; a pursuit: the fight); `decline_offer` (new, infallible; a declined join goes on
+  to `after_join`, a declined flight removes the monster without its treasure). An offer to join
+  is skipped as declined without room (`ADV-STUB-2` in `answer_to`). The fight is `ADV-STUB-6`
+  (`state/monsters.rs::fight`): nothing happens until T20b2.
+- **The visits**: `Effect::Monster` makes a monster visitable from a neighbour (a step onto its
+  tile was refused); `Reach` lists it. The guard's visit after an entering step is the monster's
+  answer (`ADV-STUB-5` closed); when the tile's own object made an offer (a Cartographer beside a
+  monster), the outcome carries `guard_after` instead, the game keeps it on the decision and calls
+  the new `AdventureState::visit_guard` after the answer, or at once when the offer does not open.
+- **The game**: `GameState::settle_outcome` applies an outcome (gains, the offer, the battle) and
+  what follows an offer that does not open: a join for gold the treasury cannot pay is declined
+  without an event and its chain goes on; another refusal is told and the waiting guard visits.
+  `answer` declines through the adventure too, then settles, then the waiting guard. Game state
+  hash v7 (the offer kinds' tags 2 to 4 and `guard_after`).
+- Tests: `answer/tests.rs` (the power's arithmetic, the step's thresholds, the sympathy, Easy, the
+  tests' order), `state/tests/answers.rs` (visits, each answer, room, declines, joins, gone offers,
+  the guard after a step and after an offer), `h3-game`'s `tests/monsters.rs` (the decisions
+  through `apply`, the chain, the unpayable price, the waiting guard). The eight golden replays
+  re-recorded with their options: commands unchanged (the duel holds no monster).
+
+### Round 4 of increment 3: T20b2 (2026-10-15, `shared/e08-t20b2`, `adventure/e08-t20b2`)
+
+Decision 37's second part, on T20b1's branch (#228) with `shared/e08-t20b2` (#230) merged in.
+
+**`shared/e08-t20b2`** (#230, `cross-lane`): `h3_content::SPLIT_FROM_TILE` (flag 24,
+`quirk.adventure.split_from_tile`), on in `faithful` (`packs/base/core.toml`, the harvester's
+profile lines) and the six `faithful` golden replays re-recorded (the core ruleset hash);
+`06-security.md`: what each viewer learns of a wandering monster (the inbox's item, survey §9).
+The profile lines were to be T20b2's `cross-lane` part (decision 37); they came here because
+`h3-pack-battle`'s `the_profiles_differ_exactly_by_the_quirk_flags` needs `faithful` to set every
+registered flag, so T20b2 stays in its lane.
+
+**T20b2 — the monster's battle** (`adventure/e08-t20b2`, in the lane):
+- **The split** (ADV-MON-009, `split.rs`): `h3_adventure::split(core, visitor, (creature, count),
+  percent)` and `TileRand` (the C runtime's `rand`, 214 013 and 2 531 011, bits 16 to 30, seeded
+  with the tile's 248 071 x + 276 589 y + 310 111 z + 155 303). The code reading checked again
+  (0x4AC580, the table 0x6776E0 = 3.0, 2.0, 1.5, 1.0, 0.67, 0.5 read from its fifth entry down,
+  0x50B230, 0x617E5C, 0x47B120): the ratio in doubles (a strength of 0 gives 2 stacks, 7 for a
+  worthless army: the FPU's infinity and NaN), the ±1 draw, the clamp, the even stacks, the second
+  draw only for a town's unupgraded creature in at least two stacks (stack n / 2). The tile
+  (12, 27) underground draws 44 then 50, the survey's D-11 example. The thresholds stay code
+  constants with their addresses, as the answer's (T20b1).
+- **The battle**: the fight (`state/monsters.rs::fight`, `ADV-STUB-6` closed) and an accepted
+  pursuit return `BattleStart { defender: Defender::Monster { creature, count }, tile: the
+  monster's }`. `GameState::start_battle` splits it (under `ADV-QUIRK-6` from `TileRand`, else
+  from the attacker's stream after the battle's seed and before the obstacles', so a hero battle
+  draws as before); the defending side has no hero, no owner, no war machines, the default
+  formation, no funds. `Actor::System` (ADR-0017 point 2): `GameCommand::Battle` goes to the first
+  battle whose side to act is unowned (`GameState::unowned_battle`, `OpenBattle::unowned_to_act`),
+  any other command `NotForSystem`; `legal_commands(System)` lists that side's commands,
+  `legal_moves(System)` none. The game state hash stays v7 (the battle's encoding has no new
+  field: the monster is found at the battle's tile).
+- **The outcome** (ADV-MON-010): `GameState::end_battle` (with the battle's tile), after the
+  heroes' part, calls `AdventureState::end_monster_battle` for a battle whose defender has no
+  hero: every surviving stack counts as the monster's creature (A-6 fixed, `ADV-QUIRK-7` without
+  a flag), kept in `army_left`; none left removes the monster (and its `army_left`), with the
+  treasure's resources for the visitor's owner after a victory.
+- **The env and the replays**: the env yields no seat for the unowned side (`ADV-STUB-7` at
+  `to_move`; the fixtures hold no monster). The replay writer must name the new actor, so the
+  adventure replay format v4 (`system battle <command>`) came now, not with T20b3; the eight golden
+  replays re-recorded with their options (headers only: the format).
+- Tests: `split/tests.rs` (the generator, the table, the draws, even stacks, the upgraded middle
+  stack, no strength), `state/tests/answers.rs` (the battle's start, the guard's at its tile, the
+  outcome's three cases), `h3-game`'s `tests/monsters.rs` (the split by the tile in the battle,
+  the system actor's commands and refusals, a won and a lost battle played out), `h3-cli`'s
+  format v4.

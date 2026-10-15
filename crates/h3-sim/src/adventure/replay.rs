@@ -27,9 +27,9 @@ use super::rollout::choose;
 /// Version of the adventure replay model (bump when fields change meaning). Owned by the
 /// adventure lane (`docs/08-work-process.md`, the versions table). Version 2 (E08 T14b): the
 /// game's difficulty and the answers to decisions; version 3 (E08 T19b1): each command's actor
-/// (ADR-0017 point 8) and battle commands. A replay of another version is refused
-/// ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 3;
+/// (ADR-0017 point 8) and battle commands; version 4 (E08 T20b2): the system actor, which plays a
+/// battle's unowned side. A replay of another version is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 4;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

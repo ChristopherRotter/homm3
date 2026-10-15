@@ -128,7 +128,10 @@ impl AdventureEnv {
     /// The players that may act now, in id order: those of the turn group whose turn is running
     /// (one in sequential play) and who are in no battle, and for each open battle the owner of
     /// its side to act (ADR-0017 point 8, E08 T19b1: an attacked player acts in its battle
-    /// outside its turn); none once the episode is over.
+    /// outside its turn); none once the episode is over. A battle's unowned side to act (a
+    /// wandering monster's, E08 T20b2) is no player's: the system actor plays it through
+    /// `h3_game::apply`, the env's neutral seat comes with E08 T20b3.
+    // stub: ADV-STUB-7
     pub fn to_move(&self) -> impl Iterator<Item = PlayerId> + '_ {
         let done = self.is_done();
         (0..=u8::MAX)
