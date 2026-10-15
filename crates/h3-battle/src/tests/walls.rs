@@ -738,6 +738,53 @@ fn an_attacker_s_cyclops_shoots_the_walls_without_shots() {
     );
 }
 
+// covers: BAT-SIE-013, BAT-SIE-011
+#[test]
+fn a_living_stack_in_the_gate_spares_it_from_the_cyclops() {
+    let r = ruleset();
+    // The defender's stack stands in the open gate: the original's cursor sends a click on the
+    // gate's hex to the stack (0x4766AA to 0x4766B9), so the Cyclops has no shot at the gate.
+    let in_gate = |s: &mut BattleState, id: usize| {
+        let mut town = s.siege.unwrap();
+        town.gate_open = true;
+        s.siege = Some(town);
+        s.stacks.as_mut_slice()[id].hex = crate::Hex(96);
+    };
+    let (mut s, _) = siege(
+        &r,
+        (FortLevel::Fort, [None, None]),
+        &[("cyclops", 5, 3, 5)],
+        &[("fixed", 5, 13, 5)],
+        |_| {},
+    );
+    in_gate(&mut s, 1);
+    activate(&mut s, 0);
+    assert_eq!(wall_shots(&legal(&s, &r)), [1, 2, 4, 5]);
+    assert_eq!(
+        act(&mut s.clone(), &r, Command::ShootWall { part: 3 }),
+        Err(CommandError::NoSuchPart)
+    );
+    // A dead stack there does not count.
+    let mut t = s.clone();
+    t.stacks.as_mut_slice()[1].count = 0;
+    assert_eq!(wall_shots(&legal(&t, &r)), [1, 2, 3, 4, 5]);
+    // The Catapult shoots it whoever stands there.
+    let (mut c, _) = siege(
+        &r,
+        (FortLevel::Fort, [Some(ballistician(&r, 1)), None]),
+        &[("fixed", 5, 3, 5)],
+        &[("fixed", 5, 13, 5)],
+        |_| {},
+    );
+    in_gate(&mut c, 2);
+    assert_eq!(c.active(), Some(StackId(1)));
+    assert_eq!(wall_shots(&legal(&c, &r)), [1, 2, 3, 4, 5]);
+    assert_eq!(
+        shots(&act(&mut c, &r, Command::ShootWall { part: 3 }).unwrap()).len(),
+        1
+    );
+}
+
 // ---------------------------------------------------------------- BAT-SIE-014
 
 // covers: BAT-SIE-014

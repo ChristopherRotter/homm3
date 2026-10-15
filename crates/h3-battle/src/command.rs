@@ -326,8 +326,8 @@ fn plan<'r>(
             let Some(level) = crate::siege::commanded_wall_shots(state, ruleset, id) else {
                 return Err(CommandError::CannotShootWalls);
             };
-            // rule: BAT-SIE-010
-            if !state.siege.is_some_and(|s| s.stands(part)) {
+            // rule: BAT-SIE-010, BAT-SIE-013
+            if !crate::siege::may_shoot_part(state, id, part) {
                 return Err(CommandError::NoSuchPart);
             }
             Ok(Plan::ShootWall {

@@ -72,7 +72,7 @@ pub fn legal_commands(
             crate::siege::commanded_wall_shots(state, ruleset, id),
             state.siege,
         ) {
-            for part in (0..siege.targets).filter(|&t| siege.stands(t)) {
+            for part in (0..siege.targets).filter(|&t| crate::siege::may_shoot_part(state, id, t)) {
                 let _ = out.push(Command::ShootWall { part });
             }
         }

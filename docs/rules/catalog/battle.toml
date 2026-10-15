@@ -4406,12 +4406,12 @@ id       = "BAT-SIE-013"
 title    = "A creature's wall shots (the Cyclops)"
 context  = "battle"
 status   = "implemented"
-summary  = "A creature with the wall_shots ability (pack format v39: the Cyclops level 1, the Cyclops King level 2; the compiler requires the flag catapult with it) that its controller commands for the attacker in a siege with a standing target may shoot the walls as its action (Command::ShootWall at a standing target), with that Ballistics level's record (BAT-SIE-014), whether it has shots left or stands next to an enemy or not, and without using a shot. The turn ends as after a shot, good morale included."
+summary  = "A creature with the wall_shots ability (pack format v39: the Cyclops level 1, the Cyclops King level 2; the compiler requires the flag catapult with it) that its controller commands for the attacker in a siege with a standing target may shoot the walls as its action (Command::ShootWall at a standing target), with that Ballistics level's record (BAT-SIE-014), whether it has shots left or stands next to an enemy or not, and without using a shot; not at a target whose hex holds a living stack (the open gate's: the original sends that click to the stack; the Catapult shoots it, BAT-SIE-011). The turn ends as after a shot, good morale included."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.29): 0x445D30 takes the Ballistics record of level 1 for creature 94, 2 for 95; the cursor offers the wall shot (0x47684B) on a standing target's empty aim hex to a creature with the catapult flag when the battle has a fort and the acting side is the attacker (+0x132C0 0), whether it could shoot or not; the action 9 then sets the acted bit and rolls good morale (0x479AE9, 0x464920)"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.29): 0x445D30 takes the Ballistics record of level 1 for creature 94, 2 for 95; the cursor offers the wall shot (0x47684B) on a standing target's empty aim hex to a creature with the catapult flag (a hex with a living stack goes to the wall test only under the Catapult, 0x4766AA to 0x4766B9) when the battle has a fort and the acting side is the attacker (+0x132C0 0), whether it could shoot or not; the action 9 then sets the acted bit and rolls good morale (0x479AE9, 0x464920)"
   confidence = "high"
 
   [[rule.source]]

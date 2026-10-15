@@ -277,7 +277,8 @@ pub enum CommandError {
     /// (BAT-SIE-011, BAT-SIE-013).
     CannotShootWalls,
     /// The wall-shot target is not one, is not set up by the fort level or is destroyed
-    /// (BAT-SIE-010).
+    /// (BAT-SIE-010), or a living stack stands on its hex for a shooter other than the Catapult
+    /// (the open gate, BAT-SIE-013).
     NoSuchPart,
 }
 

@@ -2675,6 +2675,15 @@ that brings down the last standing target during the commanded turn passes the t
 the Catapult's turn 0x473C00 (called by the battle loop at 0x4743A3) does without a standing
 target; whether the loop calls it again after a cast was not read.
 
+**Review re-read (E04c T10b, 2026-10-15): a living stack on the gate's hex.** Before the wall test
+the cursor 0x476490 reads the hovered hex's record (+0x18, the living stack on it): it goes on to
+the empty-hex path with the wall test (0x47684B) only when no living stack stands there or the
+acting creature is 145, the Catapult (0x4766AA to 0x4766B9); any other creature's click on a hex
+with a living stack goes to that stack. Of the targets' aim hexes only the gate's (96) can hold a
+stack (the walls' are wall hexes, the towers' and the keep's lie off the field), so while a
+living stack stands in the open gate the Cyclops has no shot at the gate. The engine neither
+lists nor accepts it then (BAT-SIE-013); a corpse there does not count. Not observed.
+
 ### 7.30 Code reading: the arrow towers (E04c T7, 2026-10-14)
 
 Read for E04c T7 (the survey `docs/rules/surveys/E04c-sieges.md`, D-16 to D-19; quirk candidates

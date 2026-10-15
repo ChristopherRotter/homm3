@@ -765,6 +765,24 @@ pub(crate) fn commanded_wall_shots(
     }
 }
 
+/// Whether the active stack `id`, a wall shooter on its side's command, may shoot target `part`
+/// (BAT-SIE-010, BAT-SIE-013): it stands and, for a shooter other than the Catapult, no living
+/// stack stands on its aim hex (the open gate's): the original's cursor takes a hex with a living
+/// stack for the wall test only under the Catapult (0x4766AA to 0x4766B9) and sends the others'
+/// click to the stack.
+pub(crate) fn may_shoot_part(state: &BattleState, id: StackId, part: u8) -> bool {
+    state.siege.is_some_and(|s| {
+        s.stands(part)
+            && (state.at(id).slot == CATAPULT_SLOT
+                || s.opens[usize::from(part)].is_none_or(|hex| {
+                    !state
+                        .stacks
+                        .iter()
+                        .any(|o| o.is_alive() && o.footprint(s.field).covers(hex))
+                }))
+    })
+}
+
 /// The standing target nearest to `from` among `candidates` (by their difference of indices; a
 /// tie is replaced with one roll of `random(1, 100)` ≤ 50, in the candidates' order), `from`
 /// itself excluded (the original's 0x445EC0, 0x445D30).
