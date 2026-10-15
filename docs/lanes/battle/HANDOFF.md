@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 10, T10b (2026-10-15):** `battle/e04c-t10b`: the last two reviews (r6, security), the fold-in of all ten reports (BAT-Q50), the replays re-recorded; reports on `battle/e04c-t10b-review-reports` (backup, not for merging). **Next:** the user's checkpoint, then T10c (the inbox's "E04c T10b" bullet).
+- **E04c increment 10, T10b (2026-10-15):** #242 (`cross-lane`): the last two reviews (r6, security), the fold-in of all ten reports (BAT-Q50), the replays re-recorded; reports on `battle/e04c-t10b-review-reports` (backup, not for merging). **Next:** the user's checkpoint, then T10c (the inbox's "E04c T10b" bullet).
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, the inbox, Q43; S-23, S-24, batch 2g.
 - **Versions** (T10b): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v25, observation encoding v21; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q51, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
