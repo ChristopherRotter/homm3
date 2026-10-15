@@ -95,6 +95,8 @@ fn a_visits_gains_go_to_its_owner_s_treasury_and_are_told_to_it_alone() {
         visitable: TileMask::from_bits(1),
         object_type: rules.adventure().object_type_by_key("t:pile"),
         amount: Some(7),
+        drawn: TileMask::default(),
+        monster: None,
     });
     let mut state = GameState::new(&rules, &setup, 7).unwrap();
     let gold = ResourceId::from_raw(0);

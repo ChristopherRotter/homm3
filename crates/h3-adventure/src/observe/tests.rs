@@ -105,7 +105,7 @@ fn a_player_sees_its_explored_tiles_and_the_fringe() {
     for faithful in [false, true] {
         let rules = movement_rules(faithful);
         let state = state_of(&rules, &marks, four_heroes());
-        let seen = state.observe(&rules.0, RED);
+        let seen = state.observe(&rules.0, &rules.1, RED);
         assert_eq!(seen.viewer, RED);
         assert_eq!((seen.width, seen.height, seen.levels), (16, 16, 1));
         let sight = Sight::of(state.explored(RED).unwrap());
@@ -179,7 +179,7 @@ fn the_planes_and_the_tiles_line_up_on_a_wide_map_with_two_levels() {
         let setup = crate::testing::world(&rows, 2, heroes.clone());
         let state =
             AdventureState::new(&rules.0, &rules.1, &setup, &mut crate::testing::draws()).unwrap();
-        let seen = state.observe(&rules.0, RED);
+        let seen = state.observe(&rules.0, &rules.1, RED);
         assert_eq!(
             (seen.width, seen.height, seen.levels, seen.stride),
             (70, 9, 2, 2)
@@ -203,7 +203,7 @@ fn a_player_sees_where_other_heroes_stand_and_its_own_in_full() {
     for faithful in [false, true] {
         let rules = movement_rules(faithful);
         let state = state_of(&rules, &[], four_heroes());
-        let red = state.observe(&rules.0, RED);
+        let red = state.observe(&rules.0, &rules.1, RED);
         // Hero 2 stands on red's fringe: seen under ADV-QUIRK-1 only. Hero 3 is hidden.
         let expected: &[u16] = if faithful { &[1, 2, 4] } else { &[1, 4] };
         assert_eq!(hero_ids(&red), expected);
@@ -233,7 +233,7 @@ fn a_player_sees_where_other_heroes_stand_and_its_own_in_full() {
         );
         assert_eq!(red.hero(HeroId::new(3)), None);
         // Blue sees its three heroes in full, and red's on a tile hero 4 explored.
-        let blue = state.observe(&rules.0, BLUE);
+        let blue = state.observe(&rules.0, &rules.1, BLUE);
         assert_eq!(hero_ids(&blue), [1, 2, 3, 4]);
         assert!(blue.heroes[0].own.is_none());
         assert!(blue.heroes[1..].iter().all(|h| h.own.is_some()));
@@ -244,7 +244,7 @@ fn a_player_sees_where_other_heroes_stand_and_its_own_in_full() {
 fn a_viewer_that_is_not_a_player_sees_no_tile_and_no_hero() {
     let rules = movement_rules(true);
     let state = state_of(&rules, &[], four_heroes());
-    let seen = state.observe(&rules.0, PlayerId::new(2));
+    let seen = state.observe(&rules.0, &rules.1, PlayerId::new(2));
     assert_eq!(seen.tiles, vec![TileView::Hidden; 256]);
     assert!(seen.heroes.is_empty());
     assert_eq!((seen.explored.len(), seen.fringe.len()), (16, 16));
@@ -255,7 +255,7 @@ fn a_viewer_that_is_not_a_player_sees_no_tile_and_no_hero() {
 fn the_observation_answers_off_the_map_as_unseen() {
     let rules = movement_rules(true);
     let state = state_of(&rules, &[], four_heroes());
-    let seen = state.observe(&rules.0, RED);
+    let seen = state.observe(&rules.0, &rules.1, RED);
     assert!(seen.is_explored(p(2, 2)));
     for pos in [p(16, 2), p(2, 16), Pos::new(2, 2, 1)] {
         assert!(!seen.is_explored(pos) && !seen.is_fringe(pos));
@@ -270,7 +270,7 @@ fn red_sees(
     marks: &[(usize, usize, char)],
     heroes: Vec<HeroSetup>,
 ) -> AdventureObservation {
-    state_of(rules, marks, heroes).observe(&rules.0, RED)
+    state_of(rules, marks, heroes).observe(&rules.0, &rules.1, RED)
 }
 
 // covers: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006
@@ -317,7 +317,7 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
             path,
         };
         state
-            .apply(&rules.0, &rules.1, RED, &command, &mut events)
+            .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
             .unwrap();
         // Then back from (5, 0) to (3, 0): out of blue's explored tiles onto its fringe, then off
         // the fringe onto a hidden tile.
@@ -326,7 +326,7 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
             path: vec![p(4, 0), p(3, 0)],
         };
         state
-            .apply(&rules.0, &rules.1, RED, &back, &mut events)
+            .apply(&rules.0, &rules.1, &[], RED, &back, &mut events)
             .unwrap();
         // The step onto (4, 0) enters blue's fringe, the one onto (5, 0) its explored tiles; back,
         // the step onto (4, 0) leaves them, the one onto (3, 0) leaves the fringe.
@@ -434,32 +434,37 @@ fn a_typed_object_shows_whole_once_a_tile_it_covers_is_seen() {
         anchor: p(x, y),
         blocked: TileMask::from_bits(1),
         visitable: TileMask::from_bits(1),
+        drawn: TileMask::default(),
+        monster: None,
     };
     for faithful in [true, false] {
         let rules = movement_rules(faithful);
         let state = state_of(&rules, &marks, heroes());
-        let red = state.observe(&rules.0, RED);
+        let red = state.observe(&rules.0, &rules.1, RED);
         // Objects come in map order: (3, 3), (4, 4), (2, 8), (13, 13).
         let mut expected = vec![pile(3, 3)];
         if faithful {
             expected.push(pile(2, 8));
         }
         assert_eq!(red.objects, expected, "faithful {faithful}");
-        let blue = state.observe(&rules.0, BLUE);
+        let blue = state.observe(&rules.0, &rules.1, BLUE);
         assert_eq!(blue.objects, [pile(13, 13)]);
         // A viewer that is not a player sees none.
-        assert_eq!(state.observe(&rules.0, PlayerId::new(5)).objects, []);
+        assert_eq!(
+            state.observe(&rules.0, &rules.1, PlayerId::new(5)).objects,
+            []
+        );
         // A removed object shows no more, and its tile is free.
         let mut removed = state.clone();
         removed.remove_object(0);
-        let red = removed.observe(&rules.0, RED);
+        let red = removed.observe(&rules.0, &rules.1, RED);
         assert_eq!(red.objects.len(), usize::from(faithful));
         let TileView::Seen(tile) = red.tile(p(3, 3)).copied().unwrap() else {
             panic!("(3, 3) is explored");
         };
         assert!(!tile.blocked && !tile.visitable);
         assert_eq!(
-            state.observe(&rules.0, RED).tile(p(3, 3)),
+            state.observe(&rules.0, &rules.1, RED).tile(p(3, 3)),
             Some(&TileView::Seen(*state.map().tile(p(3, 3)).unwrap()))
         );
     }

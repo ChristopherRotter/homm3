@@ -36,6 +36,8 @@ fn game(rules: &GameRuleset, difficulty: u8) -> GameState {
             visitable: TileMask::from_bits(1),
             object_type: rules.adventure().object_type_by_key("t:chart"),
             amount: None,
+            drawn: TileMask::default(),
+            monster: None,
         });
     }
     GameState::new(rules, &setup, 7).unwrap()
@@ -301,6 +303,8 @@ fn keys_game(rules: &GameRuleset) -> GameState {
             visitable: TileMask::from_bits(1),
             object_type: rules.adventure().object_type_by_key(ty),
             amount: None,
+            drawn: TileMask::default(),
+            monster: None,
         });
     }
     GameState::new(rules, &setup, 7).unwrap()
@@ -372,7 +376,7 @@ fn a_guard_offers_its_key_s_holders_to_pass_without_a_price() {
     assert!(
         declined
             .adventure()
-            .observe(rules.core(), RED)
+            .observe(rules.core(), rules.adventure(), RED)
             .objects
             .iter()
             .any(|o| o.object_type == guard)

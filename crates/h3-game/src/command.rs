@@ -286,11 +286,12 @@ pub fn apply<S: Sink>(
         GameCommand::Battle(command) => state.battle_command(rules, player, command, sink),
         GameCommand::Adventure(command) => {
             state.check_ready(player)?;
-            let outcome = state
-                .adventure_mut()
+            let (adventure, heroes) = state.adventure_with_heroes();
+            let outcome = adventure
                 .apply(
                     rules.core(),
                     rules.adventure(),
+                    heroes,
                     player,
                     &command,
                     &mut AdventureSink(sink),

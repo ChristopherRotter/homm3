@@ -16,8 +16,8 @@ use super::sample;
 use super::strategy::{raw_map, version};
 use crate::import::codes;
 use crate::model::{
-    Artifacts, Bits, Body, CustomHero, HeroBody, MainTown, Message, Object, Pos, RawMap, Stack,
-    Template, Text, Tile, Version,
+    Artifacts, Bits, Body, CustomHero, HeroBody, MainTown, Message, MonsterBody, MonsterTreasure,
+    Object, Pos, RawMap, Stack, Template, Text, Tile, Version,
 };
 use crate::{ImportError, Limits, Unsupported, import, import_map, parse};
 
@@ -142,7 +142,7 @@ fn imports_the_static_layer_players_and_a_placed_hero() {
     assert_eq!(s.tiles[1].river, part.river_by_key("base:lava_river"));
     // The hero is not a static object.
     assert_eq!(s.objects.len(), 1);
-    let blocker = s.objects[0];
+    let blocker = s.objects[0].clone();
     assert_eq!(blocker.anchor, TilePos::new(2, 2, 0));
     assert_eq!(blocker.blocked, TileMask::from_bits(0b11));
     assert_eq!(blocker.visitable, TileMask::from_bits(1 << 8));
@@ -310,15 +310,36 @@ fn the_typed_classes_import_as_their_object_types() {
         cases.push((9, subclass, format!("base:border_guard_{colour}")));
         cases.push((212, subclass, format!("ab:border_gate_{colour}")));
     }
+    // E08 T20a2a: the monsters (class 54's subclass is the creature) and the special grounds.
+    cases.push((54, 0, "base:monster".into()));
+    cases.push((71, 0, "base:random_monster".into()));
+    for (class, level) in [72, 73, 74, 75, 162, 163, 164].into_iter().zip(1..) {
+        cases.push((class, 0, format!("base:random_monster_{level}")));
+    }
+    for (class, key) in [
+        (21, "base:cursed_ground"),
+        (46, "base:magic_plains"),
+        (222, "sod:clover_field"),
+        (223, "sod:cursed_ground"),
+        (224, "sod:evil_fog"),
+        (226, "sod:fiery_fields"),
+        (227, "sod:holy_ground"),
+        (228, "sod:lucid_pools"),
+        (229, "sod:magic_clouds"),
+        (230, "sod:magic_plains"),
+        (231, "sod:rocklands"),
+    ] {
+        cases.push((class, 0, key.into()));
+    }
     let part = SOD.adventure();
     for (class, subclass, key) in &cases {
-        let body = if matches!(class, 76 | 79) {
-            pile_body(0, None)
-        } else {
-            Body::None
+        let body = match class {
+            76 | 79 => pile_body(0, None),
+            54 | 71..=75 | 162..=164 => Body::Monster(MonsterBody::default()),
+            _ => Body::None,
         };
         let setup = import(&typed_map(*class, *subclass, body), &SOD).unwrap();
-        let object = setup.map.objects[0];
+        let object = setup.map.objects[0].clone();
         assert_eq!(object.object_type, part.object_type_by_key(key), "{key}");
         assert!(object.object_type.is_some(), "{key}");
         assert_eq!(object.amount, None);
@@ -392,6 +413,111 @@ fn a_piles_fixed_amount_and_message_carry_over_and_guards_are_unsupported() {
     let setup = import(&m, &SOD).unwrap();
     assert_eq!(setup.map.objects[0].amount, Some(u32::MAX));
     assert!(setup.validate(&SOD).is_err());
+}
+
+// covers: ADV-MON-001
+#[test]
+fn monsters_import_with_their_data() {
+    let body = |count, treasure| {
+        Body::Monster(MonsterBody {
+            identifier: Some(7),
+            count,
+            disposition: 3,
+            treasure,
+            never_flees: true,
+            no_growth: false,
+        })
+    };
+    let rules = SOD.core();
+    let resource = |key: &str| {
+        let index = rules.resources().iter().position(|r| r.key.as_str() == key);
+        h3_content::ResourceId::from_index(index.unwrap()).unwrap()
+    };
+    // Class 54's subclass is the creature; the treasure keeps its resources above 0, in order.
+    let treasure = MonsterTreasure {
+        text: Text::default(),
+        resources: [5, 0, -3, 0, 0, 0, 2500],
+        artifact: None,
+    };
+    let setup = import(&typed_map(54, 13, body(20, Some(treasure.clone()))), &SOD).unwrap();
+    let monster = setup.map.objects[0].monster.clone().unwrap();
+    assert_eq!(monster.creature, rules.creature_by_key("base:archangel"));
+    assert_eq!(
+        (
+            monster.count,
+            monster.disposition,
+            monster.never_flees,
+            monster.no_growth
+        ),
+        (20, 3, true, false)
+    );
+    assert_eq!(
+        monster.treasure,
+        [(resource("base:wood"), 5), (resource("base:gold"), 2500)]
+    );
+    setup.validate(&SOD).unwrap();
+    // A random monster names none; a count of 0 is drawn when the game is built.
+    let setup = import(&typed_map(164, 0, body(0, None)), &SOD).unwrap();
+    let monster = setup.map.objects[0].monster.clone().unwrap();
+    assert_eq!((monster.creature, monster.count), (None, 0));
+    assert!(monster.treasure.is_empty());
+    setup.validate(&SOD).unwrap();
+    // A count above the original's 12 bits passes the import; validation refuses it.
+    let setup = import(&typed_map(54, 0, body(4096, None)), &SOD).unwrap();
+    assert!(setup.validate(&SOD).is_err());
+    // An unknown creature code.
+    assert_eq!(
+        import(&typed_map(54, 122, body(1, None)), &SOD),
+        Err(ImportError::UnknownCode {
+            what: "creature",
+            code: 122
+        })
+    );
+    // A treasure with an artifact: unsupported, its static layer keeps the monster without it.
+    let m = typed_map(
+        54,
+        0,
+        body(
+            9,
+            Some(MonsterTreasure {
+                artifact: Some(7),
+                ..treasure
+            }),
+        ),
+    );
+    assert_eq!(
+        import(&m, &SOD),
+        Err(ImportError::Unsupported(Unsupported::MonsterArtifact(0)))
+    );
+    let layer = import_map(&m, &SOD).unwrap();
+    assert_eq!(layer.objects[0].monster.as_ref().unwrap().count, 9);
+    assert!(layer.objects[0].object_type.is_some());
+}
+
+// covers: ADV-GRD-001
+#[test]
+fn a_special_ground_lies_on_its_pictures_tiles() {
+    let drawn = |class: u32, picture: &str| {
+        let mut m = typed_map(class, 0, Body::None);
+        m.templates[0].def = Text(picture.as_bytes().to_vec());
+        import(&m, &SOD).unwrap().map.objects[0].drawn
+    };
+    // 6 × 4, 3 × 3 and 2 × 5 tiles to the left of and above the anchor, by the picture's name
+    // in any case; a picture the table lacks lies on its anchor alone (`default.msk`).
+    let rect = |width: u8, height: u8| {
+        let row = (1u64 << width) - 1;
+        TileMask::from_bits((0..height).fold(0, |b, r| b | row << (8 * u32::from(r))))
+    };
+    assert_eq!(drawn(21, "AVXcrsd0.def"), rect(6, 4));
+    assert_eq!(drawn(230, "avxmp5.DEF"), rect(3, 3));
+    assert_eq!(drawn(223, "AVXcg6"), rect(2, 5));
+    assert_eq!(drawn(227, "AVXhg1.def"), rect(8, 6));
+    assert_eq!(drawn(46, "unknown.def"), rect(1, 1));
+    // Other objects lie on no more than their masks.
+    assert_eq!(drawn(58, "AVXcrsd0.def"), TileMask::default());
+    // Favorable Winds changes no battle: a blocker without tiles.
+    let winds = import(&typed_map(225, 0, Body::None), &SOD).unwrap();
+    assert_eq!(winds.map.objects[0].object_type, None);
 }
 
 // covers: ADV-OBJ-001
@@ -584,6 +710,10 @@ fn the_errors_and_reasons_read_well() {
         ),
         (Unsupported::HeroInTown(0), "a hero standing in a town"),
         (Unsupported::GuardedPile(0), "a guarded resource pile"),
+        (
+            Unsupported::MonsterArtifact(0),
+            "a monster with an artifact in its treasure",
+        ),
     ];
     for (what, text) in reasons {
         assert_eq!(what.reason(), text);

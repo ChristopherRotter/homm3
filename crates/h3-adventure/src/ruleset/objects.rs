@@ -3,14 +3,15 @@
 //! define the types (`adventure.toml`, `[[object_type]]`) and this module compiles them into the
 //! ruleset part. The rules that read a kind come with the tasks that build them (pickups T13, the
 //! Cartographer T14, the observatories, tents and guards T15a, the gates T15b); the setup draws
-//! random contents (T12b).
+//! random contents (T12b). Since T20a2a the wandering monsters and the special grounds, which no
+//! visit reads yet.
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::num::NonZeroU32;
 
-use h3_content::{ContentKey, ResourceId, Ruleset, TerrainId};
+use h3_content::{ContentKey, CreatureFlag, CreatureTypeId, ResourceId, Ruleset, TerrainId};
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
 use super::{AdventureCompileError, check_namespace, insert_unique};
@@ -103,6 +104,20 @@ pub enum ObjectKind {
         /// The key colour, below [`KEY_COLOURS`].
         key: u8,
     },
+    /// A wandering monster (ADV-MON-001, E08 T20a2a): its creature the map's or, with levels,
+    /// drawn when the game is built among the creatures of those levels (ADV-MON-003). Its visit
+    /// (the monster's answer) comes with E08 T20b.
+    Monster {
+        /// The creature levels, inclusive, a random monster's creature is drawn from; none for
+        /// a monster whose creature the map names.
+        levels: Option<[u8; 2]>,
+    },
+    /// A special ground (ADV-GRD-001, E08 T20a2a): a battle on a tile it lies on is fought on
+    /// this battlefield; never visited.
+    Ground {
+        /// The battlefield (a battle part's key, checked when the game bundles the parts).
+        battlefield: ContentKey,
+    },
 }
 
 /// What a visit of an object does, for the kinds whose visit is built ([`ObjectKind::effect`]):
@@ -139,6 +154,7 @@ impl ObjectKind {
             Self::KeyTent { key } => Some(Effect::Tent(*key)),
             Self::KeyGuard { key } => Some(Effect::Guard(*key)),
             Self::KeyGate { key } => Some(Effect::Gate(*key)),
+            Self::Monster { .. } | Self::Ground { .. } => None,
         }
     }
 
@@ -243,6 +259,16 @@ pub enum ObjectKindDef {
     KeyGate {
         /// The key colour.
         key: u8,
+    },
+    /// [`ObjectKind::Monster`]: its type visited from a neighbour; levels from 1, low to high.
+    Monster {
+        /// The levels of a random monster's creature.
+        levels: Option<[u8; 2]>,
+    },
+    /// [`ObjectKind::Ground`]: a battlefield key of the pack's dependency closure.
+    Ground {
+        /// The battlefield.
+        battlefield: ContentKey,
     },
 }
 
@@ -351,6 +377,12 @@ pub(super) fn compile_object_types(
                 "a key guard or gate is not visited from a neighbour",
             ));
         }
+        // A monster is attacked from the tile beside it, which the hero keeps (survey
+        // `E08-battles.md` §2.3: class 54 is on the original's list of objects visited from a
+        // neighbour, as VCMI's `CGCreature` is blocking-visitable).
+        if matches!(kind, ObjectKind::Monster { .. }) && def.visit != Visit::Neighbour {
+            return Err(invalid("a monster is not visited from a neighbour"));
+        }
         tables.types.push(ObjectType {
             key: def.key.clone(),
             name: def.name.clone(),
@@ -362,9 +394,24 @@ pub(super) fn compile_object_types(
     Ok(())
 }
 
-/// Checks, once every pack is in, that each [`Pickup::OneOf`] names resource pickups only.
-pub(super) fn check_object_types(types: &[ObjectType]) -> Result<(), AdventureCompileError> {
+/// Checks, once every pack is in, that each [`Pickup::OneOf`] names resource pickups only and
+/// that each random monster has a creature to draw ([`random_monsters`]).
+pub(super) fn check_object_types(
+    core: &Ruleset,
+    types: &[ObjectType],
+    excluded: &BTreeSet<CreatureTypeId>,
+) -> Result<(), AdventureCompileError> {
     for ty in types {
+        if let ObjectKind::Monster {
+            levels: Some(levels),
+        } = &ty.kind
+            && random_monsters(core, excluded, *levels).next().is_none()
+        {
+            return Err(AdventureCompileError::InvalidObjectType {
+                key: String::from(ty.key.as_str()),
+                reason: "no creature of its levels may be drawn",
+            });
+        }
         if let ObjectKind::Pickup(Pickup::OneOf(choices)) = &ty.kind {
             let resource = |id: &ObjectTypeId| {
                 types
@@ -380,6 +427,24 @@ pub(super) fn check_object_types(types: &[ObjectType]) -> Result<(), AdventureCo
         }
     }
     Ok(())
+}
+
+/// The creatures a random monster of these levels is drawn from (ADV-MON-003), in the core's
+/// order: each creature whose level lies between them, inclusive, neither a war machine nor
+/// excluded by a pack (`not_random_monsters`; the original draws among the creature ids 0 to 144
+/// without the expansions' six, 132 to 137, survey `E08-battles.md` §1.4).
+pub(crate) fn random_monsters<'a>(
+    core: &'a Ruleset,
+    excluded: &'a BTreeSet<CreatureTypeId>,
+    [low, high]: [u8; 2],
+) -> impl Iterator<Item = CreatureTypeId> + 'a {
+    (0..core.creature_count())
+        .filter_map(CreatureTypeId::from_index)
+        .filter(move |&id| {
+            core.creature(id).is_some_and(|c| {
+                (low..=high).contains(&c.level) && !c.flags.contains(CreatureFlag::WarMachine)
+            }) && !excluded.contains(&id)
+        })
 }
 
 /// A kind with its references resolved: an unknown reference is an error of its own; an invalid
@@ -482,6 +547,18 @@ fn compile_kind(
         ObjectKindDef::KeyTent { key } => check_key(*key).map(|key| ObjectKind::KeyTent { key }),
         ObjectKindDef::KeyGuard { key } => check_key(*key).map(|key| ObjectKind::KeyGuard { key }),
         ObjectKindDef::KeyGate { key } => check_key(*key).map(|key| ObjectKind::KeyGate { key }),
+        ObjectKindDef::Monster { levels } => match levels {
+            Some([low, high]) if !(1 <= *low && low <= high) => {
+                Err("levels is not 1 <= low <= high")
+            }
+            _ => Ok(ObjectKind::Monster { levels: *levels }),
+        },
+        ObjectKindDef::Ground { battlefield } => {
+            scope.reach(battlefield)?;
+            Ok(ObjectKind::Ground {
+                battlefield: battlefield.clone(),
+            })
+        }
     })
 }
 
@@ -510,8 +587,10 @@ fn check_key(key: u8) -> Result<u8, &'static str> {
 
 impl CanonicalHash for ObjectType {
     /// Key, name, visit (0 enter, 1 neighbour), from above, then the kind: its tag (0 pickup,
-    /// 1 reveal terrain, 2 reveal area, 3 key tent, 4 key guard, 5 key gate) and parameters (a
-    /// pickup's own tag, 0 resource, 1 one of, 2 paired, then its fields in order).
+    /// 1 reveal terrain, 2 reveal area, 3 key tent, 4 key guard, 5 key gate; since part v7 6
+    /// monster, 7 ground) and parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired,
+    /// then its fields in order; a monster's levels as 0 for none, else 1, low, high; a ground's
+    /// battlefield key).
     fn hash_into(&self, h: &mut StateHasher) {
         self.key.as_str().hash_into(h);
         self.name.as_str().hash_into(h);
@@ -549,6 +628,21 @@ impl CanonicalHash for ObjectType {
             ObjectKind::KeyGate { key } => {
                 h.write_u8(5);
                 h.write_u8(*key);
+            }
+            ObjectKind::Monster { levels } => {
+                h.write_u8(6);
+                match levels {
+                    None => h.write_u8(0),
+                    Some([low, high]) => {
+                        h.write_u8(1);
+                        h.write_u8(*low);
+                        h.write_u8(*high);
+                    }
+                }
+            }
+            ObjectKind::Ground { battlefield } => {
+                h.write_u8(7);
+                battlefield.as_str().hash_into(h);
             }
         }
     }
