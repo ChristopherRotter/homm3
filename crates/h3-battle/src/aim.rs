@@ -137,7 +137,7 @@ fn base(ruleset: &BattleRuleset, s: &Stack) -> (i64, i64) {
 fn is_ballista(s: &Stack) -> bool {
     s.has(StackTraits::WAR_MACHINE)
         && s.has(StackTraits::SHOOTER)
-        && s.slot != siege::CATAPULT_SLOT
+        && !s.is_catapult()
         && !s.is_turret()
 }
 

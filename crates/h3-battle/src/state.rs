@@ -850,6 +850,13 @@ impl Stack {
         self.slot >= TURRET_SLOT && self.slot < TURRET_SLOT + MAX_TURRETS as u8
     }
 
+    /// Whether the stack is the attacker's Catapult (BAT-SIE-009): the record of its slot, not a
+    /// stack raised from its corpse into that slot (BAT-MAG-052; the original tests the creature,
+    /// 0x473C35). A created stack takes [`CREATED_SLOT`].
+    pub(crate) const fn is_catapult(&self) -> bool {
+        self.slot == CATAPULT_SLOT && !self.traits.contains(StackTraits::RAISED)
+    }
+
     /// Whether the battle created the stack (a clone or a summoned stack, BAT-MAG-037).
     pub const fn is_created(&self) -> bool {
         self.traits.contains(StackTraits::SUMMONED)
@@ -1415,7 +1422,9 @@ impl BattleState {
             .map(Stack::controller)
     }
 
-    /// The side of the last stack that took a turn (speed tie-breaks, BAT-TRN-001).
+    /// The side the speed tie-break counts as activated last (BAT-TRN-001; the original's
+    /// +0x132B8): the side of the last stack that took a turn, but the defender after the
+    /// attacker's Catapult (BAT-SIE-011).
     pub const fn last_side_acted(&self) -> Option<BattleSide> {
         self.last_side_acted
     }

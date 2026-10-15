@@ -752,7 +752,7 @@ pub(crate) fn shooter_level(
     id: StackId,
 ) -> Option<u8> {
     let s = state.at(id);
-    if s.slot == CATAPULT_SLOT {
+    if s.is_catapult() {
         return Some(crate::hero::catapult(&state.heroes, s.side).map_or(0, |c| c.level));
     }
     ruleset.abilities(s.creature).iter().find_map(|a| match *a {
@@ -760,9 +760,6 @@ pub(crate) fn shooter_level(
         _ => None,
     })
 }
-
-/// The army slot of the Catapult (BAT-SIE-009): after the army slots and the other war machines.
-pub(crate) const CATAPULT_SLOT: u8 = crate::state::CATAPULT_SLOT;
 
 /// Every target index, in order.
 const ALL_TARGETS: [u8; MAX_WALL_TARGETS] = [0, 1, 2, 3, 4, 5, 6, 7];
@@ -787,7 +784,7 @@ pub(crate) fn commanded_wall_shots(
         return None;
     }
     let s = state.at(id);
-    if s.slot == CATAPULT_SLOT {
+    if s.is_catapult() {
         crate::hero::catapult(&state.heroes, s.side).map(|c| c.level)
     } else if s.controller() == BattleSide::Attacker {
         shooter_level(state, ruleset, id)
@@ -804,7 +801,7 @@ pub(crate) fn commanded_wall_shots(
 pub(crate) fn may_shoot_part(state: &BattleState, id: StackId, part: u8) -> bool {
     state.siege.is_some_and(|s| {
         s.stands(part)
-            && (state.at(id).slot == CATAPULT_SLOT
+            && (state.at(id).is_catapult()
                 || s.opens[usize::from(part)].is_none_or(|hex| {
                     !state
                         .stacks

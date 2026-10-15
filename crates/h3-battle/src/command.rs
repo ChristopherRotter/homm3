@@ -180,7 +180,7 @@ pub fn validate(
 /// Wait or Defend, as the original offers neither (BAT-Q50).
 // rule: BAT-SIE-011
 fn not_the_catapult(mover: &Stack) -> Result<(), CommandError> {
-    if mover.slot == crate::siege::CATAPULT_SLOT {
+    if mover.is_catapult() {
         return Err(CommandError::MustShoot);
     }
     Ok(())

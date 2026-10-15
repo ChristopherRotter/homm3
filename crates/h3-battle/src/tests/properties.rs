@@ -2080,7 +2080,7 @@ proptest! {
                     }
                     continue;
                 }
-                let ballista = s.has(crate::StackTraits::WAR_MACHINE) && s.has(crate::StackTraits::SHOOTER) && s.slot != crate::siege::CATAPULT_SLOT;
+                let ballista = s.has(crate::StackTraits::WAR_MACHINE) && s.has(crate::StackTraits::SHOOTER) && !s.is_catapult();
                 if s.is_alive() && ballista {
                     let candidates: Vec<&crate::Stack> = state
                         .stacks()

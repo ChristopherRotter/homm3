@@ -15,7 +15,8 @@ use h3_kernel::{Rng, StreamId};
 
 use super::spells::spell;
 use super::support::*;
-use crate::siege::{CATAPULT_SLOT, damage_part, earthquake, nearest, shoot_walls};
+use crate::siege::{damage_part, earthquake, nearest, shoot_walls};
+use crate::state::CATAPULT_SLOT;
 use crate::{
     BattleState, CastTarget, Command, CommandError, Event, EventKind, LegalCommands, SetupError,
     StackId, StackTraits, apply, castable_spells, legal_commands,
@@ -556,6 +557,40 @@ fn ballistics_commands_the_catapult() {
     }
     assert_ne!(s.active(), Some(StackId(1)));
     assert!(shots(&events).is_empty());
+}
+
+// covers: BAT-SIE-011, BAT-MAG-052
+#[test]
+fn a_stack_raised_from_the_catapult_s_corpse_is_no_catapult() {
+    // A raised stack takes the corpse's army slot (BAT-MAG-052), the Catapult's too, were its
+    // creature alive (no pack makes it so): it is commanded as any stack, Wait and Defend
+    // included (the original tests the creature, 0x473C35).
+    let r = ruleset();
+    let (mut s, _) = siege(
+        &r,
+        (FortLevel::Citadel, [Some(ballistician(&r, 2)), None]),
+        &[("fiend", 2, 3, 5)],
+        &[("fixed", 5, 13, 5)],
+        |_| {},
+    );
+    let catapult = StackId(catapult(&s).unwrap());
+    let st = &mut s.stacks.as_mut_slice()[usize::from(catapult.0)];
+    st.traits = st.traits.with(StackTraits::ALIVE, true);
+    let mut events = Vec::new();
+    crate::damage::apply_damage(s.at_mut(catapult), 1000);
+    crate::effects::damaged(&mut s, &r, catapult, &mut events);
+    crate::raise::mark_corpses(&mut s);
+    let imp = r.creature_by_key("t:imp").unwrap();
+    let side = (BattleSide::Attacker, catapult);
+    crate::created::raise_corpse(&mut s, &r, side, (imp, 8), &mut events);
+    let raised = u8::try_from(s.stacks().len() - 1).unwrap();
+    let imps = s.stacks()[usize::from(raised)];
+    assert!(imps.has(StackTraits::RAISED) && imps.slot == CATAPULT_SLOT);
+    assert!(!imps.is_catapult() && s.at(catapult).is_catapult());
+    activate(&mut s, raised);
+    let commands = legal(&s, &r);
+    assert!(commands.contains(&Command::Wait) && commands.contains(&Command::Defend));
+    assert!(act(&mut s, &r, Command::Defend).is_ok());
 }
 
 // ---------------------------------------------------------------- BAT-SIE-012

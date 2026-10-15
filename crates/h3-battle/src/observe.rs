@@ -79,7 +79,8 @@ pub struct Observation {
     pub wait_phase: bool,
     /// The stack whose turn it is.
     pub active: Option<StackId>,
-    /// Side of the last stack that took a turn.
+    /// The side the speed tie-break counts as activated last (BAT-TRN-001): the side of the last
+    /// stack that took a turn, but the defender after the attacker's Catapult (BAT-SIE-011).
     pub last_side_acted: Option<BattleSide>,
     /// How the battle ended, once it is over.
     pub result: Option<BattleResult>,

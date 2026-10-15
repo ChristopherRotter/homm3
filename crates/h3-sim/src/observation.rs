@@ -22,7 +22,8 @@
 //! if the viewer controls it (0:
 //! none or hidden), the round starts since the viewer's periodic casters cast, the round starts
 //! since the opponent's (both at most 255, which every battle starts with), the round's wait
-//! phase has begun, the side that took the last turn (1 viewer, 2 opponent, 0 none yet), the
+//! phase has begun, the side the speed tie-break counts as activated last (the last turn's,
+//! the defender after the attacker's Catapult; 1 viewer, 2 opponent, 0 none yet), the
 //! terrain's handle + 1 (0 none), the creature the viewer's Summon Elemental casts are bound to
 //! as handle + 1 (0 none yet), the opponent's, a spectator's observation, the special
 //! battlefield's handle + 1 (0 none), the battle is at an anti-magic garrison, the town the

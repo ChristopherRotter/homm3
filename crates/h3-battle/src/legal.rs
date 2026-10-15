@@ -64,7 +64,7 @@ pub fn legal_commands(
     } else {
         // rule: BAT-SIE-011
         // The commanded Catapult only shoots the walls: no Wait, no Defend (BAT-Q50).
-        if mover.slot != crate::siege::CATAPULT_SLOT {
+        if !mover.is_catapult() {
             turn_commands(state, field, (id, &mover), out);
         }
         // rule: BAT-SIE-010, BAT-SIE-011, BAT-SIE-013

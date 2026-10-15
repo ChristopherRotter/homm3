@@ -60,7 +60,7 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
             // The turrets, then the Catapult before every other stack of their phase (the
             // original's 0x464F50); the turrets by slot: the keep, the upper, the lower tower.
             let turret = !s.is_turret();
-            let catapult = s.slot != crate::siege::CATAPULT_SLOT;
+            let catapult = !s.is_catapult();
             // The trailing id makes the key unique, so the order is total (ADR-0003 §9).
             (
                 phase,
@@ -118,7 +118,7 @@ pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &BattleRule
 /// 0x4650C5), so at equal speeds the attacker's stack acts first after it.
 // rule: BAT-TRN-001, BAT-SIE-011
 fn acted_side(s: &Stack) -> BattleSide {
-    if s.slot == crate::siege::CATAPULT_SLOT {
+    if s.is_catapult() {
         BattleSide::Defender
     } else {
         s.side
@@ -414,9 +414,10 @@ pub(crate) fn catapult_passes<S: Sink>(
     ruleset: &BattleRuleset,
     sink: &mut S,
 ) {
-    if let Some(id) = state.active.filter(|&id| {
-        state.at(id).slot == crate::siege::CATAPULT_SLOT && !crate::siege::any_standing(state)
-    }) {
+    if let Some(id) = state
+        .active
+        .filter(|&id| state.at(id).is_catapult() && !crate::siege::any_standing(state))
+    {
         end_turn(state, ruleset, id, TurnEnd::Acted, sink);
     }
 }

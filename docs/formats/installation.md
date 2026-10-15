@@ -2727,6 +2727,12 @@ stack (the walls' are wall hexes, the towers' and the keep's lie off the field),
 living stack stands in the open gate the Cyclops has no shot at the gate. The engine neither
 lists nor accepts it then (BAT-SIE-013); a corpse there does not count. Not observed.
 
+**Review re-read (E04c T10b, 2026-10-16): the Catapult is its creature.** The tie-break's reset
+(0x4650AE), the Catapult's turn (0x473C35) and the cursor (0x4766B2) compare the record's
+creature (+0x34) with 145, not its slot. A stack the engine raises from a corpse takes the
+corpse's army slot (BAT-MAG-052), so `Stack::is_catapult` leaves a raised stack out: one risen
+from the Catapult's corpse, were its creature alive, is commanded as any stack (BAT-SIE-009).
+
 ### 7.30 Code reading: the arrow towers (E04c T7, 2026-10-14)
 
 Read for E04c T7 (the survey `docs/rules/surveys/E04c-sieges.md`, D-16 to D-19; quirk candidates
