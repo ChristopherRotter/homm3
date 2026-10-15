@@ -2390,7 +2390,29 @@ native when its town's native terrain is +0x5394 (+1 speed, attack and defense, 
 - The two tables (usual types 0x63C7C8, absolute obstacles 0x63BEC0) equal VCMI 1.7.5's
   `config/obstacles.json` in every type's terrains, fields, size and blocked hexes (checked
   2026-10-13, 91 + 34 records); VCMI calls the water bit of type 55 the battlefield `ship`.
-- Not read: how 0x466010 and 0x4668A0 choose positions (the engine keeps VCMI's, BAT-GEO-004).
+- How 0x466010 and 0x4668A0 choose: the review re-read below.
+
+**Review re-read (E04c T10b; BAT-Q50).** The loop 0x4667F8 to 0x466878: the sampler over the
+usual types 0 to 90 (0x50C6E0) is set up once, before the loop. Each pass draws from it
+(0x50C740: one `rand() % n` over the n values not drawn yet while more than one is left, none
+for the last; −1 once it is empty, which ends the loop) until a type has the mask's bit, calls
+0x466010 with that type and, only when it is placed (0x466858), adds the type's hex count (+6)
+to the hexes blocked; the loop goes on while that sum is below the count (less half the absolute
+obstacles' hexes, truncated). So each usual type appears at most once in a battle, and a type
+without a place is passed over for the next one; VCMI, whose generator the engine had ported,
+draws a type anew for every obstacle and stops at the first one without a place. 0x466010 draws
+anchors 18 to 168 from a sampler of its own until one passes (an empty sampler fails the
+placement): the row (anchor / 17) at least the type's height +4 (0x46608D; VCMI and the engine
+refused the height's own row too), the column (anchor % 17) not 0, column + width (+5) at most
+15, the anchor's flags 0x3F clear; then each of the +6 offsets (+8, signed bytes added to the
+anchor; one hex less when it lands in an even row from an odd anchor row) in columns 3 to 13 and
+free. A branch for a siege of town type 6 on the game version (0x466147 to 0x466194) was not
+followed. 0x4668A0 draws the 34 absolute records the same way and returns the hexes it blocked,
+0 when no record has the mask's bit. The engine draws once among the candidates that fit where
+these samplers draw until one fits: the same chances, other draws (and its stream, not the
+tile's seed). The opening spells (§7.24) are cast as kind 2, and 0x59FE98 to 0x59FECD gives
+every kind but 0 its mastery argument, 3 on field 1: the engine raises them as the creatures'
+casts since this review.
 
 ### 7.27 Code reading: the siege's setup (E04c T4, 2026-10-13)
 

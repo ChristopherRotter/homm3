@@ -3,9 +3,10 @@
 //!
 //! Obstacle generation runs *before* the battle starts (the caller puts the hexes into
 //! `BattleSetup::obstacles`, 03-domain "Seams"), with a random stream the caller chooses
-//! (`StreamId::OBSTACLES` in the tools). The algorithm is ported from VCMI
-//! (`BattleInfo::setupBattle`, 1.7.5), which follows the original's; the original seeds it from
-//! the map tile, we from the stream (fidelity is about the algorithm, not the seed).
+//! (`StreamId::OBSTACLES` in the tools). The algorithm is the original's (0x466290,
+//! `installation.md` §7.26), first ported from VCMI (`BattleInfo::setupBattle`, 1.7.5), which
+//! differs from it in the anchor's row and in drawing a type again (BAT-Q50); the original seeds
+//! it from the map tile, we from the stream (fidelity is about the algorithm, not the seed).
 
 use alloc::vec::Vec;
 
@@ -46,19 +47,20 @@ pub(crate) fn native_terrain(ruleset: &BattleRuleset, setup: &BattleSetup) -> Op
     setup.terrain.filter(|_| !no_native)
 }
 
+/// An index below `len`, uniformly, or `None` if `len` is 0.
+fn draw(rng: &mut Rng, len: usize) -> Option<usize> {
+    let n = u32::try_from(len).ok().filter(|&n| n > 0)?;
+    usize::try_from(rng.below(n)).ok()
+}
+
 /// One of `items`, uniformly, or `None` if there are none.
 fn pick<T: Copy>(rng: &mut Rng, items: &[T]) -> Option<T> {
-    let n = u32::try_from(items.len()).unwrap_or(u32::MAX);
-    if n == 0 {
-        return None;
-    }
-    items
-        .get(usize::try_from(rng.below(n)).unwrap_or(0))
-        .copied()
+    draw(rng, items.len()).and_then(|i| items.get(i).copied())
 }
 
 /// The hexes obstacle `o` blocks with its anchor at `(x, y)` (bottom-left hex), or `None` if the
-/// placement is not allowed: the anchor needs `height` rows above it, a standable hex (column ≥ 1
+/// placement is not allowed: the anchor needs `height` rows above it (the original's 0x46608D:
+/// its row is at least the height; VCMI wants one more), a standable hex (column ≥ 1
 /// with the original's one side column) and `width` columns to its right within the first
 /// `field width − 2` columns; every blocked hex must be
 /// on the field, free, and in columns 3 to `field width − 4` (the two columns next to each
@@ -72,7 +74,7 @@ fn placement(
     blocked: HexSet,
 ) -> Option<HexSet> {
     let (x, y) = field.coords(anchor);
-    if y <= i32::from(o.height)
+    if y < i32::from(o.height)
         || !field.is_standable(anchor)
         || x + i32::from(o.width) > width - 2
         || blocked.contains(anchor)
@@ -131,9 +133,11 @@ pub fn generate_setup_obstacles(
 /// the obstacle types are the battlefield's own when it has them, else the terrain's (the
 /// original's 0x466290, `installation.md` §7.26), and: block 5–12 hexes; with 40 % chance first
 /// place one absolute obstacle of those types (it counts half its hexes; no anchor); then, while
-/// hexes remain to be blocked, place a uniformly chosen usual obstacle at a uniformly chosen
-/// allowed anchor (rows 1 to `height − 2`; the obstacle keeps it), stopping early if no obstacle
-/// or no anchor is left. An unknown battlefield counts as none.
+/// hexes remain to be blocked, draw a usual obstacle type uniformly among those not drawn yet
+/// (each at most once a battle: the original's sampler over the types, set up once at
+/// 0x4667F8) and place it at a uniformly chosen allowed anchor (rows 1 to `height − 2`; the
+/// obstacle keeps it), or pass over it if it has none (0x466858); stop when no type is left.
+/// An unknown battlefield counts as none.
 // rule: BAT-GEO-004
 pub fn generate_battlefield_obstacles(
     ruleset: &BattleRuleset,
@@ -195,19 +199,21 @@ pub fn generate_battlefield_obstacles(
         out.push(piece(o, hexes, None));
         to_block -= i32::try_from(o.blocked.len() / 2).unwrap_or(i32::MAX);
     }
-    let usual = of_terrain(false);
+    // The types not drawn yet, in the ruleset's order (the sampler's).
+    let mut usual = of_terrain(false);
+    // Anchors from row 1, column 1 to row `height − 2`, column `width − 2`, in hex order.
+    let first = u8::try_from(width + 1).unwrap_or(u8::MAX);
+    let last = u8::try_from((height - 1) * width - 2).unwrap_or(0);
     while to_block > 0 {
-        let Some(o) = pick(rng, &usual) else {
+        let Some(i) = draw(rng, usual.len()) else {
             break;
         };
-        // Anchors from row 1, column 1 to row `height − 2`, column `width − 2`, in hex order.
-        let first = u8::try_from(width + 1).unwrap_or(u8::MAX);
-        let last = u8::try_from((height - 1) * width - 2).unwrap_or(0);
+        let o = usual.remove(i);
         let anchors: Vec<(Hex, HexSet)> = (first..=last)
             .filter_map(|i| placement(field, width, o, Hex(i), blocked).map(|s| (Hex(i), s)))
             .collect();
         let Some((anchor, hexes)) = pick(rng, &anchors) else {
-            break;
+            continue;
         };
         blocked = blocked.union(hexes);
         out.push(piece(o, hexes, Some(anchor)));
