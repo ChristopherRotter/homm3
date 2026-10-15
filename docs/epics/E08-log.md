@@ -2235,14 +2235,17 @@ grounds out of the one-type-per-anchor check).
 
 ### Round 4 of increment 3: T20b2 (2026-10-15, `shared/e08-t20b2`, `adventure/e08-t20b2`)
 
-Decision 37's second part, on T20b1's branch (#228) with `shared/e08-t20b2` merged in.
+Decision 37's second part, on T20b1's branch (#228) with `shared/e08-t20b2` (#230) merged in.
 
-**`shared/e08-t20b2`** (shared paths only): `h3_content::SPLIT_FROM_TILE` (flag 24,
-`quirk.adventure.split_from_tile`; no profile set it there); `06-security.md`: what each viewer
-learns of a wandering monster (the inbox's item, survey §9).
+**`shared/e08-t20b2`** (#230, `cross-lane`): `h3_content::SPLIT_FROM_TILE` (flag 24,
+`quirk.adventure.split_from_tile`), on in `faithful` (`packs/base/core.toml`, the harvester's
+profile lines) and the six `faithful` golden replays re-recorded (the core ruleset hash);
+`06-security.md`: what each viewer learns of a wandering monster (the inbox's item, survey §9).
+The profile lines were to be T20b2's `cross-lane` part (decision 37); they came here because
+`h3-pack-battle`'s `the_profiles_differ_exactly_by_the_quirk_flags` needs `faithful` to set every
+registered flag, so T20b2 stays in its lane.
 
-**T20b2 — the monster's battle** (`cross-lane`: the flag on in `packs/base/core.toml`'s
-`faithful` and in the harvester's profile lines):
+**T20b2 — the monster's battle** (`adventure/e08-t20b2`, in the lane):
 - **The split** (ADV-MON-009, `split.rs`): `h3_adventure::split(core, visitor, (creature, count),
   percent)` and `TileRand` (the C runtime's `rand`, 214 013 and 2 531 011, bits 16 to 30, seeded
   with the tile's 248 071 x + 276 589 y + 310 111 z + 155 303). The code reading checked again
@@ -2270,7 +2273,7 @@ learns of a wandering monster (the inbox's item, survey §9).
 - **The env and the replays**: the env yields no seat for the unowned side (`ADV-STUB-7` at
   `to_move`; the fixtures hold no monster). The replay writer must name the new actor, so the
   adventure replay format v4 (`system battle <command>`) came now, not with T20b3; the eight golden
-  replays re-recorded with their options (headers only: the core ruleset hash, the format).
+  replays re-recorded with their options (headers only: the format).
 - Tests: `split/tests.rs` (the generator, the table, the draws, even stacks, the upgraded middle
   stack, no strength), `state/tests/answers.rs` (the battle's start, the guard's at its tile, the
   outcome's three cases), `h3-game`'s `tests/monsters.rs` (the split by the tile in the battle,
