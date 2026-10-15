@@ -2233,6 +2233,81 @@ proptest! {
     }
 }
 
+// covers: BAT-SIE-003, BAT-SIE-004, BAT-SIE-005, BAT-SIE-007, BAT-SIE-012, BAT-SIE-016
+/// The games of `walls_and_the_moat_agree_with_movement` reach what it checks (E04c T10a; T9's
+/// open point): 96 of them, drawn as its runner draws them but from a fixed seed, open and close
+/// the gate, walk into the moat and are hurt there, destroy the gate, a wall and a turret's part,
+/// cross a destroyed wall's hex and set off a mine. A change to the generators that loses one of
+/// these fails here, not silently in the property.
+#[test]
+fn the_walls_property_s_games_reach_the_gate_the_moat_and_the_breaches() {
+    use proptest::strategy::ValueTree;
+    use proptest::test_runner::TestRunner;
+
+    let r = lively();
+    let sf = r.siege_field().unwrap();
+    let kind = |part: u8| sf.targets[usize::from(part)].kind;
+    let field = crate::Field::new(r.battle().field);
+    let mut runner = TestRunner::deterministic();
+    let games = (arb_game(), arb_town());
+    // Opened, closed, entered the moat, hurt by the moat, the gate destroyed, a wall destroyed,
+    // a turret's part destroyed, a destroyed wall's hex crossed, a mine set off.
+    let mut reached = [0u32; 9];
+    let mut legal = LegalCommands::new();
+    for _ in 0..96 {
+        let ((att, def, ground, seed, steps, hidden), town) =
+            games.new_tree(&mut runner).unwrap().current();
+        let town = TownSpec {
+            fort: 1 + town.fort % 3,
+            ..town
+        };
+        let ground = Ground {
+            place: Place::Town(town),
+            ..ground
+        };
+        let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
+        let mut state = BattleState::new(&r, &setup, seed).unwrap();
+        let walls = state.siege.unwrap().walls();
+        for step in &steps {
+            let (actor, cmd) = resolve(&state, &r, step, &mut legal);
+            let mut events = Vec::new();
+            let _ = apply(&mut state, &r, actor, cmd, &mut events);
+            let s = state.siege.unwrap();
+            let broken = walls.without(s.walls());
+            for e in &events {
+                let at = match e.kind {
+                    EventKind::GateOpened => 0,
+                    EventKind::GateClosed => 1,
+                    EventKind::Moved { stack, to, .. } => {
+                        let mut st = state.stacks()[stack.index()];
+                        st.hex = to;
+                        let hexes = st.footprint(field).hexes().collect::<Vec<Hex>>();
+                        let breach = hexes.iter().any(|&h| broken.contains(h));
+                        reached[7] += u32::from(breach);
+                        if st.has(crate::StackTraits::FLIES)
+                            || !hexes.iter().any(|&h| s.moat().contains(h))
+                        {
+                            continue;
+                        }
+                        2
+                    }
+                    EventKind::MoatDamage { .. } => 3,
+                    EventKind::WallDestroyed { part } => match kind(part) {
+                        h3_content_battle::WallKind::Gate => 4,
+                        h3_content_battle::WallKind::Wall => 5,
+                        h3_content_battle::WallKind::Keep | h3_content_battle::WallKind::Tower => 6,
+                    },
+                    // The town's mines lie on the moat's row hexes (BAT-SIE-007).
+                    EventKind::ObstacleTriggered { hex, .. } if sf.moat.contains(&hex.0) => 8,
+                    _ => continue,
+                };
+                reached[at] += 1;
+            }
+        }
+    }
+    assert!(reached.iter().all(|&n| n > 0), "{reached:?}");
+}
+
 /// One effect of an extreme hero: kind, selector (all, a flag, a creature), statistic,
 /// operation, amount (also the morale/luck value and the regeneration), affected sides.
 type ExtremeEffect = (u8, u8, usize, u8, i16, u8);

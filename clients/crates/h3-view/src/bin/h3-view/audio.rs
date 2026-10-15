@@ -7,7 +7,9 @@
 //! As the executable plays them (`play_sample` 0x59A210): creature sounds share eight channels
 //! (their category's, 0x684AB8): a sound takes a free channel, else the next one in turn,
 //! cutting what that one played; a move's sound loops until its stop; a sound a creature lacks
-//! plays nothing. An adapter: it reads files and drives the audio device.
+//! plays nothing. The tent's heal sound plays in category 2, on the start sound's stream (E17
+//! M3 T3b; *provisional*: the category's other three channels are not built). An adapter: it
+//! reads files and drives the audio device.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -49,6 +51,8 @@ pub struct Library {
     took: u128,
     /// Each stack's sounds.
     stacks: BTreeMap<u8, Sounds>,
+    /// The tent's heal sound, upper-cased, if the battle heals (E17 M3 T3b).
+    heal: Option<String>,
 }
 
 impl Library {
@@ -59,9 +63,11 @@ impl Library {
         install: &Path,
         opening: Opening,
         stacks: BTreeMap<u8, Sounds>,
+        heal: Option<&str>,
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
-        let (result, took) = crate::gate::timed(|| Self::decode(install, opening, stacks, lines));
+        let (result, took) =
+            crate::gate::timed(|| Self::decode(install, opening, stacks, heal, lines));
         let mut library = result?;
         library.took = took.as_millis();
         Ok(library)
@@ -72,13 +78,16 @@ impl Library {
         install: &Path,
         opening: Opening,
         stacks: BTreeMap<u8, Sounds>,
+        heal: Option<&str>,
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
         let start = opening.start_sound();
+        let heal = heal.map(str::to_ascii_uppercase);
         let mut wanted: Vec<String> = stacks
             .values()
             .flat_map(Sounds::names)
             .chain(std::iter::once(&start))
+            .chain(&heal)
             .map(|n| n.to_ascii_uppercase())
             .collect();
         wanted.sort_unstable();
@@ -138,11 +147,15 @@ impl Library {
             start: start.to_ascii_uppercase(),
             took: 0,
             stacks,
+            heal,
         })
     }
 
     /// The clip of `stack`'s `sound`, if the creature has it and it was found.
     fn clip(&self, stack: u8, sound: Sound) -> Option<&Pcm> {
+        if sound == Sound::Heal {
+            return self.clips.get(self.heal.as_ref()?);
+        }
         let name = self.stacks.get(&stack)?.name(sound)?;
         self.clips.get(&name.to_ascii_uppercase())
     }
@@ -270,6 +283,14 @@ impl Player {
         let Some(clip) = library.clip(cue.stack, cue.sound) else {
             return;
         };
+        if cue.sound == Sound::Heal {
+            // Category 2, the start sound's (`play_sound_file` 0x59A470; E17 M3 T3b).
+            self.out.clear(self.start_stream);
+            self.out
+                .set_format(self.start_stream, clip.rate, clip.channels);
+            let _ = self.out.put(self.start_stream, &clip.samples, true);
+            return;
+        }
         let free = self
             .channels
             .iter()

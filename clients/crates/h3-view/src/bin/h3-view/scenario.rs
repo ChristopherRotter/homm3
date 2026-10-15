@@ -72,7 +72,7 @@ pub fn battle(
 
 /// What the original's map needs of a scenario's battle (E17 M2 T1, `situation`): its terrain's
 /// key, its special battlefield's (M3 T2), each side's stacks (slot, the creature's singular
-/// name, count) and formation, and its hero (M3 T3a).
+/// name, count) and formation, its hero (M3 T3a) and its war machines (M3 T3b).
 #[derive(Debug, PartialEq, Eq)]
 pub struct Sides {
     pub terrain: Option<String>,
@@ -81,6 +81,10 @@ pub struct Sides {
     pub stacks: [Vec<(u8, String, u32)>; 2],
     pub tight: [bool; 2],
     pub heroes: [Option<SideHero>; 2],
+    /// Each side's war machines as its hero's artifacts (E17 M3 T3b): the worn slot (13 to 16,
+    /// `ArtSlots.txt`'s order) and the artifact's number, which is the original's when the packs
+    /// come in their order (base first: the Ballista 4, the Ammo Cart 5, the First Aid Tent 6).
+    pub machines: [Vec<(usize, u16)>; 2],
 }
 
 /// A side's hero for the original's map (E17 M3 T3a): its hero type's and class's numbers in
@@ -123,12 +127,41 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
             primary: [h.attack, h.defense, h.power, h.knowledge],
         })
     });
+    // Each war machine's artifact (E17 M3 T3b): the one that places the machine, worn in its
+    // `war_machine_<n>` slot, the map's slot 12 + n.
+    let artifact = |machine| -> Result<(usize, u16), String> {
+        let (id, artifact) = ruleset
+            .artifacts()
+            .iter()
+            .enumerate()
+            .find(|(_, a)| a.war_machine == Some(machine))
+            .ok_or("a war machine no artifact places")?;
+        let slot = artifact
+            .slot
+            .and_then(|s| ruleset.artifact_slot(s))
+            .map_or("", |s| s.key.as_str());
+        let n: usize = slot
+            .rsplit("war_machine_")
+            .next()
+            .and_then(|n| n.parse().ok())
+            .filter(|n| (1..=4).contains(n))
+            .ok_or_else(|| format!("{}: slot `{slot}` is no war machine's", artifact.key))?;
+        let id = u16::try_from(id).map_err(|_| format!("{}: number {id}", artifact.key))?;
+        Ok((12 + n, id))
+    };
+    let machines = |side: usize| -> Result<Vec<(usize, u16)>, String> {
+        setup.war_machines[side]
+            .iter()
+            .map(|&m| artifact(m))
+            .collect()
+    };
     Ok(Sides {
         terrain,
         battlefield: setup.battlefield.as_ref().map(|k| k.as_str().to_owned()),
         stacks,
         tight: ["attacker", "defender"].map(|side| tight.iter().any(|t| t == side)),
         heroes,
+        machines: [machines(0)?, machines(1)?],
     })
 }
 
@@ -270,6 +303,19 @@ mod tests {
             .iter()
             .all(|o| o.kind.is_some());
         assert!(typed);
+    }
+
+    #[test]
+    fn war_machines_become_their_artifacts() {
+        // E17 M3 T3b: the Ballista, the Ammo Cart and the First Aid Tent as artifacts 4, 5, 6 in
+        // the war machines' slots 13, 14, 15.
+        let scenario = repo().join("clients/situations/war-machines.toml");
+        let sides = sides(&scenario, &repo().join("packs")).unwrap();
+        let all = vec![(13, 4), (14, 5), (15, 6)];
+        assert_eq!(sides.machines, [all.clone(), all]);
+        let grass = repo().join("clients/situations/grass.toml");
+        let sides = super::sides(&grass, &repo().join("packs")).unwrap();
+        assert_eq!(sides.machines, [Vec::new(), Vec::new()]);
     }
 
     #[test]

@@ -67,6 +67,27 @@ pub struct Battle {
     /// The flags' DEFs beside the heroes: the left side's, the right side's (0x4634AB; E17 M3
     /// T3a).
     pub flags: [String; 2],
+    /// The magic animations by number (`PlayMagicAnimation` 0x496840's table 0x641E08, 83
+    /// records; E17 M3 T3b): the tent's heal is number 79.
+    pub magic: Vec<Magic>,
+    /// The sound the First Aid Tent's heal plays (`first_aid_tent_action` 0x478C46; E17 M3 T3b).
+    pub heal_sound: String,
+}
+
+/// A magic animation (`docs/epics/E17-design.md` §7.15; E17 M3 T3b): its DEF (group 0), where it
+/// is drawn over a stack (`place`, the table entry's low byte: 0 standing on the hex, 1 centred on
+/// the creature, 2 above it, 3 beside it; higher ones not over a stack, not read) and whether
+/// the translucent drawer draws it (the entry's bit 8).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Magic {
+    /// The DEF.
+    pub def: String,
+    /// Where it is drawn.
+    pub place: u8,
+    /// Drawn half and half with what is under it.
+    #[serde(default)]
+    pub translucent: bool,
 }
 
 /// A battle hero's DEF groups (`docs/epics/E17-design.md` §4.5).
@@ -210,6 +231,8 @@ impl Sounds {
             Sound::Defend => self.defend.as_deref(),
             Sound::Start => self.start.as_deref(),
             Sound::End => self.end.as_deref(),
+            // The battle's, not the creature's ([`Battle::heal_sound`]).
+            Sound::Heal => None,
         }
     }
 
@@ -326,6 +349,7 @@ impl Tables {
         self.creatures
             .values()
             .flat_map(|c| c.sounds.names())
+            .chain(core::iter::once(&self.battle.heal_sound))
             .map(|n| n.to_ascii_uppercase())
             .collect()
     }
@@ -337,7 +361,8 @@ impl Tables {
             .values()
             .flat_map(|c| core::iter::once(&c.def).chain(&c.missile))
             .chain(self.heroes.values())
-            .chain(&self.battle.flags);
+            .chain(&self.battle.flags)
+            .chain(self.battle.magic.iter().map(|m| &m.def));
         let fields = self.battlefields.values().flat_map(|b| &b.backgrounds);
         let obstacles = self.obstacles.values().map(|o| match o {
             ObstacleArt::Usual { def, .. } => def,
@@ -416,6 +441,15 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
     };
     for flag in &battle.flags {
         names("[battle]", &[(flag, ".DEF")])?;
+    }
+    for magic in &battle.magic {
+        names("[battle]", &[(&magic.def, ".DEF")])?;
+    }
+    if battle.heal_sound.is_empty() || battle.heal_sound.contains('.') {
+        return Err(entry(
+            "[battle]",
+            "a sound is an entry's name, without an extension",
+        ));
     }
     let battle = battle.clone();
     let mut tables = Tables {
@@ -574,6 +608,8 @@ depends = []
 groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], breath = [17, 18, 19], move_start = 20, move_end = 21, turn_left = [7, 10], turn_right = [9, 8] }
 hero_groups = { standing = 0, idle = 1, defeat = 2, victory = 3, cast = 4 }
 flags = ["CmFlagL.def", "CmFlagR.def"]
+magic = [{ def = "C10spW.def", place = 0, translucent = true }, { def = "sp12_.def", place = 1 }]
+heal_sound = "Regener"
 
 [[hero]]
 key = "orrin"
@@ -716,6 +752,7 @@ at = [124, 254]
         assert_eq!(
             names,
             [
+                "C10SPW.DEF",
                 "CH00.DEF",
                 "CLCBOW.DEF",
                 "CMBKDRDD.PCX",
@@ -727,9 +764,21 @@ at = [124, 254]
                 "OBDINO1.DEF",
                 "OBDINO2.DEF",
                 "OBDTL04.PCX",
-                "PLCBOWX.DEF"
+                "PLCBOWX.DEF",
+                "SP12_.DEF"
             ]
         );
+        // The magic animations by number, the tent's heal sound (E17 M3 T3b).
+        assert_eq!(
+            t.battle.magic[1],
+            Magic {
+                def: "sp12_.def".to_string(),
+                place: 1,
+                translucent: false
+            }
+        );
+        assert!(t.battle.magic[0].translucent);
+        assert_eq!(t.battle.heal_sound, "Regener");
         // A selection loads only what it depends on.
         assert_eq!(load(&files, "base").unwrap().order, ["base"]);
     }
@@ -909,6 +958,20 @@ at = [124, 254]
             rule(&[b], "base").to_string(),
             "`[battle]`: `CmFlagR.pcx` is not a DEF name"
         );
+        let mut b = base();
+        b.battle.as_mut().unwrap().magic[1].def = "sp12_.pcx".to_string();
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`[battle]`: `sp12_.pcx` is not a DEF name"
+        );
+        for sound in ["", "Regener.wav"] {
+            let mut b = base();
+            b.battle.as_mut().unwrap().heal_sound = sound.to_string();
+            assert_eq!(
+                rule(&[b], "base").to_string(),
+                "`[battle]`: a sound is an entry's name, without an extension"
+            );
+        }
     }
 
     #[test]
@@ -920,7 +983,7 @@ at = [124, 254]
         assert_eq!(pikeman.name(Sound::Wince), Some("pikewnce"));
         assert_eq!(pikeman.name(Sound::Death), Some("pikekill"));
         assert_eq!(pikeman.name(Sound::Defend), Some("pikedfnd"));
-        for none in [Sound::Shot, Sound::Start, Sound::End] {
+        for none in [Sound::Shot, Sound::Start, Sound::End, Sound::Heal] {
             assert_eq!(pikeman.name(none), None);
         }
         let all = Sounds {
@@ -932,11 +995,13 @@ at = [124, 254]
         assert_eq!(all.name(Sound::Shot), Some("s"));
         assert_eq!(all.name(Sound::Start), Some("a"));
         assert_eq!(all.name(Sound::End), Some("e"));
-        // The archer has none.
+        // The archer has none; the tent's heal sound is the battle's (E17 M3 T3b).
         let names: Vec<String> = tables.sound_names().into_iter().collect();
         assert_eq!(
             names,
-            ["PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE", "PIKEWNCE"]
+            [
+                "PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE", "PIKEWNCE", "REGENER"
+            ]
         );
     }
 

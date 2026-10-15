@@ -2,9 +2,9 @@
 //! map for a scenario's battle, so that the capture harness can show the original that battle and
 //! compare its frames with ours. Red's hero (a human) stands just west of Blue's (the computer) on
 //! the scenario's terrain, the scenario's heroes (E17 M3 T3a: each side names one, with its
-//! primary skills), each with the scenario's stacks in their slots and its formation, no
-//! secondary skills, artifacts or war machines (nothing the still does not draw, nothing that moves
-//! on its own: no morale from Leadership, no Tactics phase); stepping Red's hero east starts the
+//! primary skills), each with the scenario's stacks in their slots and its formation and its war
+//! machines (E17 M3 T3b: their artifacts), no secondary skills or other artifacts (no morale from
+//! Leadership, no Tactics phase); stepping Red's hero east starts the
 //! battle (`h3drive.py`). With `--hot-seat` (E17 M3 T1a) Blue may be a human too, so that the
 //! harness plays both sides of a hot-seat battle (`hot_seat` in `sequences.toml`). A special
 //! battlefield (E17 M3 T2) is set up as the original makes it, on the defender's tile: water
@@ -285,6 +285,17 @@ fn army(
     Ok(army)
 }
 
+/// A hero's worn artifacts: its war machines only (E17 M3 T3b), each in its slot.
+fn worn(machines: &[(usize, u16)]) -> Result<[Option<u16>; ARTIFACT_SLOTS], String> {
+    let mut worn = [None; ARTIFACT_SLOTS];
+    for &(slot, artifact) in machines {
+        *worn
+            .get_mut(slot)
+            .ok_or_else(|| format!("artifact {artifact}: no slot {slot}"))? = Some(artifact);
+    }
+    Ok(worn)
+}
+
 /// The map of the battle `battle` (`id` names it in the scenario list), Blue on `tile`; Blue may
 /// be a human with `hot_seat`.
 fn map(
@@ -318,7 +329,7 @@ fn map(
             army: Some(army(&battle.stacks[owner], ids)?),
             tight_formation: battle.tight[owner],
             artifacts: Some(HeroArtifacts {
-                worn: [None; ARTIFACT_SLOTS],
+                worn: worn(&battle.machines[owner])?,
                 backpack: Vec::new(),
             }),
             spells: None,
@@ -384,6 +395,7 @@ mod tests {
             stacks: [stacks(attacker), stacks(&[(0, "Goblin", 30)])],
             tight: [false, true],
             heroes: [hero(0, 0, "Orrin"), hero(102, 12, "Crag Hack")],
+            machines: [vec![(13, 4), (15, 6)], Vec::new()],
         }
     }
 
@@ -458,13 +470,24 @@ mod tests {
             ..h
         });
         assert!(super::map("t", &alone, &ids(), BLUE_TILE, false).is_err());
+        // Red's war machines in their slots (E17 M3 T3b), Blue without.
+        let worn = red.artifacts.as_ref().unwrap().worn;
+        assert_eq!((worn[13], worn[14], worn[15]), (Some(4), None, Some(6)));
+        assert_eq!(worn.iter().flatten().count(), 2);
         assert!(
-            red.artifacts
+            blue.artifacts
                 .as_ref()
                 .unwrap()
                 .worn
                 .iter()
                 .all(Option::is_none)
+        );
+        let mut bad = sides_of(Some("base:desert"), &[]);
+        bad.machines[1] = vec![(19, 4)];
+        assert!(
+            super::map("t", &bad, &ids(), BLUE_TILE, false)
+                .unwrap_err()
+                .contains("slot 19")
         );
         assert!(!map.players[1].as_ref().unwrap().human);
         // The writer accepts it.

@@ -3,9 +3,12 @@
 # (clients/README.md, "Reference captures"): Smoke Red (Archers 20, Pikemen 10, loose) steps onto
 # Smoke Blue (Goblins 30, Wolf Riders 10, loose) on grass. The original placed the same obstacles
 # on every run; `h3cap.py obstacles` found each by matching every grass type at every hex against
-# the capture (the log and the rock exactly, the pond where the rock leaves it visible). Left out:
-# the heroes and Red's Ballista (not drawn yet). On 2026-10-13 the background, the three obstacles
-# and the Archers, Pikemen and Goblins matched the capture pixel for pixel.
+# the capture (the log and the rock exactly, the pond where the rock leaves it visible). On
+# 2026-10-13 the background, the three obstacles and the Archers, Pikemen and Goblins matched the
+# capture pixel for pixel. The heroes (E17 M3 T3a) and Red's Ballista (M3 T3b) as the smoke map
+# has them (Orrin's skills and his Centaur's Axe left out: nothing drawn shows them); the capture
+# set's `smoke` (situations/set.toml) shows this battle in hot seat, so that it opens idle, at the
+# same tile as the smoke map's battle (11, 10) and with the same obstacles.
 # `cargo run --release -p h3-view -- render scenarios/smoke.toml` from clients/.
 
 [scenario]
@@ -13,6 +16,7 @@ id = "capture-smoke"
 packs = ["base"]
 profile = "base:faithful"
 terrain = "base:grass"
+attacker_war_machines = ["base:ballista"]
 # Anchored as found; the blocked hexes from each type's shape (one row up: half a hex left).
 obstacles = [
     # The pond (ObGrS01.def, layer 1, two rows) at (4,6).
@@ -42,3 +46,19 @@ count = 30
 slot = 1
 creature = "base:wolf_rider"
 count = 10
+
+# The smoke map's heroes (`cargo run -p h3-map --example smoke_map`): Orrin with his Ballista,
+# Crag Hack.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 5
+defense = 4
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 3
+defense = 3
+power = 1
+knowledge = 1

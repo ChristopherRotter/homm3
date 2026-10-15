@@ -27,7 +27,7 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt::Write as _;
 
-use h3_protocol::wire::{Event, Observation, ServerMessage, Side};
+use h3_protocol::wire::{Event, Observation, ServerMessage, Side, Stack};
 
 use crate::hero::{Action, Happening, Heroes};
 use crate::layout::BattleLayout;
@@ -222,6 +222,64 @@ pub struct Stage<'a> {
     pub width: u8,
     /// The DEF groups.
     pub groups: Groups,
+    /// The magic animations the record shows, by number (E17 M3 T3b).
+    pub magic: &'a BTreeMap<u8, MagicLook>,
+}
+
+/// A magic animation's numbers (`PlayMagicAnimation` 0x496840, design §7.15; E17 M3 T3b): its
+/// DEF, the frames of its group 0, its width and height (the DEF's), where it is drawn over a
+/// stack ([`crate::tables::Magic::place`]) and whether translucent.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct MagicLook {
+    /// The DEF.
+    pub def: String,
+    /// The frames of its group 0.
+    pub frames: u32,
+    /// The DEF's width and height.
+    pub size: [i32; 2],
+    /// Where it is drawn over a stack: 0 standing on the hex, 1 centred on the creature, 2 above
+    /// it (3, beside it, is not built yet).
+    pub place: u8,
+    /// Drawn by the translucent drawer.
+    pub translucent: bool,
+}
+
+/// The magic animation of the First Aid Tent's heal (`first_aid_tent_action` 0x478D14: number
+/// 0x4F over the patient, 100 ms a frame, without the patient's hit).
+pub const HEAL: u8 = 79;
+
+/// A frame of a magic animation drawn over stacks, or (`frame` none) its erasure: drawn at
+/// `drawn`, shown from `shown` (E17 M3 T3b).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MagicKey {
+    /// Its number.
+    pub animation: u8,
+    /// When it is drawn.
+    pub drawn: u32,
+    /// When it shows.
+    pub shown: u32,
+    /// The frame of group 0, none once erased.
+    pub frame: Option<u32>,
+    /// The DEF.
+    pub def: String,
+    /// Drawn by the translucent drawer.
+    pub translucent: bool,
+    /// The stacks it is drawn over, each with the canvas's top-left corner and whether mirrored.
+    pub over: Vec<(u8, [i32; 2], bool)>,
+}
+
+/// A magic animation as it shows at a time: its frame over each of its stacks, drawn after the
+/// stack's sprite (`draw_battle_stack`'s tail 0x43E795; E17 M3 T3b).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Magic {
+    /// The DEF.
+    pub def: String,
+    /// The frame of group 0.
+    pub frame: u32,
+    /// Drawn by the translucent drawer.
+    pub translucent: bool,
+    /// The stacks, each with the canvas's top-left corner and whether mirrored.
+    pub over: Vec<(u8, [i32; 2], bool)>,
 }
 
 impl Stage<'_> {
@@ -353,6 +411,10 @@ pub enum Sound {
     Start,
     /// After a move (group 21).
     End,
+    /// The First Aid Tent's heal, cued on its patient: the battle's sound, not the creature's
+    /// (the asset tables' `heal_sound`, category 2: `play_sound_file` 0x59A470 from
+    /// `first_aid_tent_action` 0x478C46; E17 M3 T3b).
+    Heal,
 }
 
 /// A sound a stack starts at a time, or (`stop`) the move sound it ends then (E17 M2 T5b; the
@@ -382,6 +444,8 @@ pub struct Timeline {
     pub flights: Vec<Flight>,
     /// The rays, in order.
     pub beams: Vec<Beam>,
+    /// The magic animations' frames and erasures, in order (E17 M3 T3b).
+    pub magics: Vec<MagicKey>,
     /// The stack outlined as active from a time on (none: no outline), in order (§7.9).
     pub outlines: Vec<(u32, Option<u8>)>,
     /// When each idle step ran, up to the last command's start (none runs while a command
@@ -580,6 +644,17 @@ impl Timeline {
         })
     }
 
+    /// The magic animation showing at `t`, if one is drawn then (E17 M3 T3b).
+    pub fn magic(&self, t: u32) -> Option<Magic> {
+        let key = self.magics.iter().rev().find(|k| k.shown <= t)?;
+        key.frame.map(|frame| Magic {
+            def: key.def.clone(),
+            frame,
+            translucent: key.translucent,
+            over: key.over.clone(),
+        })
+    }
+
     /// The stack outlined as active at `t` (§7.9): the snapshot's active stack until the first
     /// command's first frame shows; none while a command plays; a turn's stack from its start
     /// when a player acts next, none when the computer does (*provisional*).
@@ -619,8 +694,8 @@ impl Timeline {
 
     /// Every time up to `until` at which what shows may change (E17 M2 T4b-2a, `h3-view
     /// play`): 0, each pose's, each projectile step's and its erasure's, each ray tick's and its
-    /// erasure's, each outline's and each idle step's (the outline's colour), and the last
-    /// frame's; in order, each once.
+    /// erasure's, each magic animation's frame and erasure, each outline's and each idle step's
+    /// (the outline's colour), and the last frame's; in order, each once.
     pub fn changes(&self, until: u32) -> Vec<u32> {
         let mut times = vec![0, self.end];
         times.extend(self.keys.iter().map(|k| k.shown));
@@ -631,6 +706,7 @@ impl Timeline {
             let ticks = u32::try_from(b.ticks.len()).unwrap_or(0);
             times.extend((1..=ticks).map(|k| b.from + k * b.step));
         }
+        times.extend(self.magics.iter().map(|k| k.shown));
         times.extend(self.outlines.iter().map(|(t, _)| *t));
         times.extend(&self.steps);
         let mut idle = self.idle;
@@ -652,12 +728,15 @@ impl Timeline {
 
     /// The timeline in the capture harness's format (design §7.6): one line per change of a
     /// stack's group, frame or hex, `<ms> <side>.<record> g<group> f<frame> h<hex>`, every stack
-    /// at 0; a change at a time is the last pose drawn then.
+    /// at 0; a change at a time is the last pose drawn then. After a time's stacks, a change of
+    /// the magic animation drawn (E17 M3 T3b): `<ms> magic <number> f<frame> <side>.<record>…`
+    /// over its stacks, `<ms> magic -` once erased.
     pub fn lines(&self) -> String {
         let mut now: BTreeMap<u8, Pose> = self.members.iter().map(|m| (m.stack, m.start)).collect();
         let mut printed: BTreeMap<u8, (u32, u32, u8)> = BTreeMap::new();
         let mut out = String::new();
         let mut times: Vec<u32> = self.keys.iter().map(|k| k.drawn).collect();
+        times.extend(self.magics.iter().map(|k| k.drawn));
         times.push(0);
         times.sort_unstable();
         times.dedup();
@@ -676,6 +755,22 @@ impl Timeline {
                         m.record, p.group, p.frame, p.hex
                     );
                 }
+            }
+            // Each key drawn differs from the one before it (a frame on, or the erasure).
+            if let Some(key) = self.magics.iter().rev().find(|k| k.drawn == t) {
+                let _ = match key.frame {
+                    Some(frame) => {
+                        let over = key.over.iter().filter_map(|(stack, ..)| {
+                            self.members.iter().find(|m| m.stack == *stack)
+                        });
+                        let records: Vec<String> = over
+                            .map(|m| format!("{}.{}", u8::from(m.side == Side::Defender), m.record))
+                            .collect();
+                        let records = records.join(" ");
+                        writeln!(out, "{t} magic {} f{frame} {records}", key.animation)
+                    }
+                    None => writeln!(out, "{t} magic -"),
+                };
             }
         }
         out
@@ -727,6 +822,8 @@ struct Live {
     flies: bool,
     two_hex: bool,
     defending: bool,
+    /// A war machine (E17 M3 T3b).
+    war_machine: bool,
     /// It faces right (+0x44 = 1); the setup faces the attacker right (0x43D846).
     right: bool,
     look: Look,
@@ -827,7 +924,18 @@ fn played(
     let mut fidgeters = Vec::new();
     let mut stacks = BTreeMap::new();
     let mut records = [0u8; 2];
-    for s in snapshot.stacks.iter().filter(|s| s.alive) {
+    // The harness's records follow the original's setup: each side's army, then its war
+    // machines in `battle_war_machine_stacks`' order (E17 M3 T3b).
+    let mut living: Vec<&Stack> = snapshot.stacks.iter().filter(|s| s.alive).collect();
+    living.sort_by_key(|s| {
+        (
+            s.side == Side::Defender,
+            s.war_machine,
+            setup_order(s.slot),
+            s.id,
+        )
+    });
+    for s in living {
         let look = looks.get(&s.creature).ok_or(AnimError::Look(s.creature))?;
         let side = usize::from(s.side == Side::Defender);
         let start = Pose {
@@ -861,6 +969,7 @@ fn played(
                 flies: s.flies,
                 two_hex: s.two_hex,
                 defending: s.defending,
+                war_machine: s.war_machine,
                 right: s.side == Side::Attacker,
                 look: look.clone(),
             },
@@ -881,6 +990,11 @@ fn played(
         turns: Vec::new(),
         flights: Vec::new(),
         beams: Vec::new(),
+        magics: Vec::new(),
+        outlined: Vec::new(),
+        machine: None,
+        idle: Idle::default(),
+        steps: Vec::new(),
         cues: Vec::new(),
         happenings: Vec::new(),
     };
@@ -895,28 +1009,30 @@ fn played(
     }
     let mut outlines = vec![(0, snapshot.active)];
     let mut waiting = snapshot.active;
-    let (mut idle, mut steps) = (Idle::default(), Vec::new());
     for (i, command) in commands.iter().enumerate() {
         let default = if i == 0 { 0 } else { player.clock.now };
         player.clock.start(command.at.unwrap_or(default));
         // A command without a time after the first is the computer's: the loop did not tick
         // since the last one ended, but once when it acts, which outlines its stack until its
         // first frame shows (*provisional*, §7.9).
-        let ran = steps.len();
+        let ran = player.steps.len();
+        let now = player.clock.now;
         if i > 0 && command.at.is_none() {
-            if idle.once(player.clock.now, &mut steps) {
-                outlines.push((player.clock.now, waiting));
+            if player.idle.once(now, &mut player.steps) {
+                outlines.push((now, waiting));
             }
         } else {
-            idle.run(player.clock.now, |t| steps.push(t));
+            let Player { idle, steps, .. } = &mut player;
+            idle.run(now, |t| steps.push(t));
         }
         // The last command's layer changes show with the battle's next redraw: the first idle
         // step since, if one ran, before any fidget (*provisional*, as at the end; E17 M2 T5c).
-        if let Some(&first) = steps.get(ran) {
+        if let Some(&first) = player.steps.get(ran) {
             player.flush(first, first);
         }
         if let Some(f) = fidgets.as_mut() {
-            for &now in &steps[ran..] {
+            let steps = player.steps[ran..].to_vec();
+            for now in steps {
                 player
                     .keys
                     .extend(f.step(now).into_iter().map(|(stack, pose)| Key {
@@ -934,12 +1050,13 @@ fn played(
         if let Some(first) = player.keys.get(before) {
             outlines.push((first.shown, None));
         }
+        outlines.append(&mut player.outlined);
         if let Some(&(at, stack)) = player.turns.get(turns..).and_then(<[_]>::last) {
             let computer = commands.get(i + 1).is_some_and(|c| c.at.is_none());
             outlines.push((at, (!computer).then_some(stack)));
             waiting = Some(stack);
         }
-        idle.from = player.clock.now;
+        player.idle.from = player.clock.now;
         actions.push(Action {
             end: player.clock.now,
             happenings: core::mem::take(&mut player.happenings),
@@ -958,15 +1075,26 @@ fn played(
         turns: player.turns,
         flights: player.flights,
         beams: player.beams,
+        magics: player.magics,
         outlines,
-        steps,
-        idle,
+        steps: player.steps,
+        idle: player.idle,
         fidgets,
         cues: player.cues,
         actions,
         heroes: None,
         end: player.clock.now,
     })
+}
+
+/// Where a war machine of army slot `slot` comes in the original's setup (`battle_war_machine_
+/// stacks` 0x463600: the Catapult, the Ballista, the First Aid Tent, the Ammo Cart, then the
+/// turrets; the engine's slots are 16 + its kind, BAT-WAR-001: the Ballista 16, the Ammo Cart 17,
+/// the tent 18, the Catapult 19, the turrets 20 to 22); any other slot after them, by itself.
+fn setup_order(slot: u8) -> (usize, u8) {
+    const ORDER: [u8; 4] = [19, 16, 18, 17];
+    let at = ORDER.iter().position(|&s| s == slot);
+    (at.unwrap_or(ORDER.len()), slot)
 }
 
 /// A still pose: frame 0 of `group` on `hex`, facing right, standing's layer.
@@ -1077,6 +1205,16 @@ struct Player<'a> {
     turns: Vec<(u32, u8)>,
     flights: Vec<Flight>,
     beams: Vec<Beam>,
+    /// The magic animations' frames (E17 M3 T3b).
+    magics: Vec<MagicKey>,
+    /// The outline's changes inside the command so far: a war machine's turn that plays out
+    /// in it (E17 M3 T3b).
+    outlined: Vec<(u32, Option<u8>)>,
+    /// The war machine outlined at its turn's idle step until its action's first frame shows.
+    machine: Option<u8>,
+    /// The battle loop's idle steps: their clock and when each ran (§7.1).
+    idle: Idle,
+    steps: Vec<u32>,
     cues: Vec<Cue>,
     /// What the command so far did that the heroes answer (E17 M3 T3a).
     happenings: Vec<Happening>,
@@ -1100,6 +1238,9 @@ impl Player<'_> {
     fn frame(&mut self, poses: &[(u8, Pose)], time: u32) {
         let drawn = self.clock.now;
         let shown = self.clock.show(time);
+        if self.machine.take().is_some() {
+            self.outlined.push((shown, None));
+        }
         self.pending
             .retain(|(s, _)| poses.iter().all(|(p, _)| p != s));
         self.flush(drawn, shown);
@@ -1257,17 +1398,96 @@ impl Player<'_> {
                     self.reactions(&[(target, kills)]);
                 }
                 Event::Defended { stack } => self.defends(stack, true),
+                Event::Healed { healer, target, .. } => self.heal(healer, target),
                 Event::RoundStarted { .. } => self.happenings.push(Happening::Round),
                 Event::TurnStarted { stack } => {
                     // The attack ends before the next turn starts (E17 M2 T5c, the reviewer).
                     self.attack_over(&mut melee, &mut shooter);
                     self.defends(stack, false);
                     self.turns.push((self.clock.now, stack));
+                    // A war machine's turn the command plays out (another turn follows in it):
+                    // the battle loop ticks once as it acts, as for the computer's, which
+                    // outlines it until its action's first frame shows (E17 M3 T3b, `machines`).
+                    let later = events[i..]
+                        .iter()
+                        .any(|e| matches!(e, Event::TurnStarted { .. }));
+                    let machine = self.stacks.get(&stack).is_some_and(|l| l.war_machine);
+                    let now = self.clock.now;
+                    if later && machine && self.idle.once(now, &mut self.steps) {
+                        self.outlined.push((now, Some(stack)));
+                        self.machine = Some(stack);
+                    }
                 }
                 _ => {}
             }
         }
         self.attack_over(&mut melee, &mut shooter);
+    }
+
+    /// The First Aid Tent heals `target` (`first_aid_tent_action` 0x478B90, design §7.15; E17
+    /// M3 T3b): the tent does not move and stays the active stack, outlined from its turn's idle
+    /// step (or, commanded, the heal's first frame) to the heal's end; the heal's sound starts, then magic animation
+    /// [`HEAL`] over the patient, a frame per redraw of trunc(100 F) on the deadline
+    /// (`PlayMagicAnimation` 0x496840 without the hit), and a last redraw that erases it. The
+    /// battle then waits for the sound to end (`wait_for_sample` 0x59A4C0), which it has at
+    /// speed 0 (`Regener`, 1 881 ms, against the animation's 2 100); not at the faster speeds
+    /// with the sound on (*provisional*: not built, the captures play without sound).
+    fn heal(&mut self, healer: u8, target: u8) {
+        self.cue(target, Sound::Heal, false);
+        let Some(look) = self.stage.magic.get(&HEAL).cloned() else {
+            return;
+        };
+        let over: Vec<(u8, [i32; 2], bool)> = self
+            .live(target)
+            .map(|live| (target, self.magic_at(&live, &look), !live.right))
+            .into_iter()
+            .collect();
+        // The tent stays the active stack: outlined through the heal.
+        let ticked = self.machine.take() == Some(healer);
+        let time = self.speed.scale(TICK);
+        for frame in (0..look.frames).map(Some).chain([None]) {
+            let drawn = self.clock.now;
+            let shown = self.clock.show(time);
+            self.flush(drawn, shown);
+            if frame == Some(0) && !ticked {
+                self.outlined.push((shown, Some(healer)));
+            }
+            self.magics.push(MagicKey {
+                animation: HEAL,
+                drawn,
+                shown,
+                frame,
+                def: look.def.clone(),
+                translucent: look.translucent,
+                over: over.clone(),
+            });
+        }
+        self.outlined.push((self.clock.now, None));
+    }
+
+    /// The canvas's top-left corner of magic animation `look` over `live` (`draw_battle_stack`
+    /// 0x43E7FD to 0x43E98C): centred on its position's anchor (on a two-hex stack's middle, 22
+    /// pixels toward its front), standing on the anchor (place 0), centred on the creature, whose
+    /// height is 267 less its standing frame's top (+0x16C, 0x43DD62; place 1), or above it
+    /// (place 2); the halves truncated toward zero. Place 3 (beside it) and the higher ones are
+    /// not built: they stand on the anchor (*provisional*).
+    fn magic_at(&self, live: &Live, look: &MagicLook) -> [i32; 2] {
+        let [x, y] = self.stage.anchor(live.position(live.hex));
+        let middle = if !live.two_hex {
+            0
+        } else if live.right {
+            HALF_HEX
+        } else {
+            -HALF_HEX
+        };
+        let [w, h] = look.size;
+        let height = self.stage.layout.stack_canvas[1] - live.look.top;
+        let top = match look.place {
+            1 => y - h / 2 - height / 2,
+            2 => y - h - height,
+            _ => y - h,
+        };
+        [x + middle - w / 2, top]
     }
 
     /// An attack is over: a melee's target turns back, then its striker at the attack's end
@@ -1950,4 +2170,4 @@ pub fn differences(ours: &str, expected: &str) -> Vec<String> {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

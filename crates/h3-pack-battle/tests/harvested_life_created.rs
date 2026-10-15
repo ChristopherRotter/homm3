@@ -355,8 +355,8 @@ fn batch_2d_cl1_clones_places_turns_shots_and_ends() {
     assert_eq!(s.corpse(StackId(5)), NO_CORPSE);
 }
 
-/// The stacks of batch 2d SU's battle: 0 to 6 Red's Peasants, 7 the Ammo Cart, 8 the First Aid
-/// Tent, 9 Blue's Skeletons; from 10 on the elementals.
+/// The stacks of batch 2d SU's battle: 0 to 6 Red's Peasants, 7 the First Aid Tent, 8 the Ammo
+/// Cart (the original's record order, D-23), 9 Blue's Skeletons; from 10 on the elementals.
 const SKELETONS: u8 = 9;
 
 /// The active stack Defends.
@@ -521,9 +521,9 @@ fn batch_2d_su_summons_until_the_limit_and_a_side_of_elementals_loses() {
     // nobody's way, and E1's row was free again after its death (no corpse). Then column 2.
     let columns: Vec<i32> = places.iter().map(|p| p.0).collect();
     assert_eq!(columns, [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2]);
-    // The cart's hex, the two-hex tent's position in the side column (its front hex on (1, 9)).
+    // The two-hex tent's position in the side column (its front hex on (1, 9)), the cart's hex.
     let machines = [s.stacks()[7].hex, s.stacks()[8].hex].map(|h| field.coords(h));
-    assert_eq!(machines, [(1, 1), (0, 9)]);
+    assert_eq!(machines, [(0, 9), (1, 1)]);
     let mut rows: Vec<i32> = places[..10].iter().map(|p| p.1).collect();
     rows.sort_unstable();
     let mut expected = vec![0, 2, 3, 4, 5, 6, 7, 8, 10, row1];
@@ -586,13 +586,13 @@ fn batch_2d_su_summons_until_the_limit_and_a_side_of_elementals_loses() {
     expected.push(record(
         &r,
         StackOrigin::WarMachine,
-        "base:ammo_cart",
+        "base:first_aid_tent",
         (1, 1),
     ));
     expected.push(record(
         &r,
         StackOrigin::WarMachine,
-        "base:first_aid_tent",
+        "base:ammo_cart",
         (1, 1),
     ));
     expected.extend([record(&r, StackOrigin::Created, "base:air_elemental", (2, 2)); 10]);
@@ -638,13 +638,13 @@ fn batch_2d_su_a_side_of_elementals_loses_too_when_the_enemy_leaves() {
         expected.push(record(
             &r,
             StackOrigin::WarMachine,
-            "base:ammo_cart",
+            "base:first_aid_tent",
             (1, 1),
         ));
         expected.push(record(
             &r,
             StackOrigin::WarMachine,
-            "base:first_aid_tent",
+            "base:ammo_cart",
             (1, 1),
         ));
         expected.extend([record(&r, StackOrigin::Created, "base:air_elemental", (2, 2)); 2]);

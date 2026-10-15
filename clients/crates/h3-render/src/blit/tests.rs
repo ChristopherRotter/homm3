@@ -348,3 +348,37 @@ fn images_are_drawn_opaque_and_clipped() {
     draw_image_keyed(&mut s, &rgb, 2, -1);
     assert_eq!(s.pixels(), [WHITE, 0xF800, 0x07E0]);
 }
+
+#[test]
+fn the_translucent_drawer_blends_literal_pixels_and_skips_runs() {
+    // E17 M3 T3b (0x47EF60): half the frame's colour plus half the screen's, per channel.
+    let half = F.half_mask();
+    for i in [0, 4, 200, 255] {
+        let blended = ((grey(i) >> 1) & half) + ((WHITE >> 1) & half);
+        assert_eq!(
+            result(Drawer::Translucent, Encoding::Rows, i, false),
+            blended
+        );
+        // Every run is skipped, the shadows' included.
+        assert_eq!(result(Drawer::Translucent, Encoding::Rows, i, true), WHITE);
+    }
+    // White over white stays a step under white: each half loses its lowest bit.
+    assert_eq!(
+        result(Drawer::Translucent, Encoding::Rows, 255, false),
+        0xF7DE
+    );
+    // The other encodings as the plain drawer without a flag colour.
+    assert_eq!(result(Drawer::Translucent, Encoding::Raw, 5, true), grey(5));
+    assert_eq!(
+        result(Drawer::Translucent, Encoding::PackedRows, 5, true),
+        WHITE
+    );
+    assert_eq!(
+        result(Drawer::Translucent, Encoding::PackedBlocks, 5, true),
+        WHITE
+    );
+    assert_eq!(
+        result(Drawer::Translucent, Encoding::PackedBlocks, 9, false),
+        grey(9)
+    );
+}

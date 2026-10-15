@@ -1,0 +1,53 @@
+# E17 M3 T3b: a situation of the capture set (situations/set.toml): the grass battle (grass.toml)
+# with every war machine on both sides, so that the Ballista, the Ammo Cart and the First Aid Tent
+# are compared facing either way at their places (BAT-WAR-001). War machines act last (speed 0),
+# so the opening is still the Royal Griffins'.
+
+[scenario]
+id = "situation-war-machines"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+attacker_war_machines = ["base:ballista", "base:ammo_cart", "base:first_aid_tent"]
+defender_war_machines = ["base:ballista", "base:ammo_cart", "base:first_aid_tent"]
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+# The heroes, each with 1 in every primary skill (`h3-view situation` writes them so) and its
+# war machines as its artifacts.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
