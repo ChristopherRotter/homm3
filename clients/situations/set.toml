@@ -456,10 +456,20 @@ at = 400
 differing = 0
 why = "exact: the Pikemen's fidget in the original's poses, the flags four steps on (M3 T3b)"
 
-# The count boxes' digits (M3 T4a): `grass` with counts of three, four and five digits (the map's
-# counts are 16-bit: six digits and the cut of seven cannot be set up), centred by the text
-# drawer.
+# The count boxes' digits (M3 T4a): `grass` with counts of three, four and five digits, centred
+# by the text drawer. A map's army counts are 16-bit and the original drops a stack of 65 535 (a
+# signed -1?): six digits and the cut of seven cannot be set up.
 [[situation]]
 id = "counts"
 scenario = "counts.toml"
 mask = ["panel"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: counts of three to five digits centred in their boxes, each box tinted (M3 T4a)"
+
+[[situation.frame]]
+at = 400
+differing = 0
+why = "exact: the Pikemen fidget (group 1) with their box, the outline four steps on (M3 T4a)"

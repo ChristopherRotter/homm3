@@ -22,7 +22,7 @@ count = 999
 [[attacker]]
 slot = 2
 creature = "base:pikeman"
-count = 65535
+count = 12345
 
 [[defender]]
 slot = 0
