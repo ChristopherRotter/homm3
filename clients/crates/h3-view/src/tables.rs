@@ -904,9 +904,7 @@ at = [124, 254]
             );
         }
         let mut b = base();
-        if let Some(battle) = b.battle.as_mut() {
-            battle.flags[1] = "CmFlagR.pcx".to_string();
-        }
+        b.battle.as_mut().unwrap().flags[1] = "CmFlagR.pcx".to_string();
         assert_eq!(
             rule(&[b], "base").to_string(),
             "`[battle]`: `CmFlagR.pcx` is not a DEF name"

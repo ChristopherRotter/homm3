@@ -352,10 +352,14 @@ fn a_hero_and_its_flag_take_the_shadowed_drawer_the_flag_its_players_colours() {
     let [bl, g, r, w, y] = [BLUE, GREEN, RED, WHITE, YELLOW].map(|c| FORMAT.pack(c));
     assert_eq!(screen.pixels(), [g, w, y, w, r, w, w, bl, bl, w, bl, bl]);
     // A players' palette or a frame the batch lacks.
-    let mut no_palette = flag(0, 0, 0);
-    if let Draw::Flag { palette, .. } = &mut no_palette {
-        *palette = "none.pal".to_string();
-    }
+    let no_palette = Draw::Flag {
+        def: "FL.DEF".to_string(),
+        frame: 0,
+        x: 0,
+        y: 0,
+        palette: "none.pal".to_string(),
+        player: 0,
+    };
     let missing = |list: &[Draw]| compose(list, &b, &small()).unwrap_err();
     assert_eq!(
         missing(&[no_palette]),
@@ -365,10 +369,14 @@ fn a_hero_and_its_flag_take_the_shadowed_drawer_the_flag_its_players_colours() {
         missing(&[flag(0, 0, 1)]),
         ComposeError::Missing("FL.DEF group 0 frame 1".into())
     );
-    let mut lost = hero(0, false);
-    if let Draw::Hero { frame, .. } = &mut lost {
-        *frame = 3;
-    }
+    let lost = Draw::Hero {
+        def: "CH.DEF".to_string(),
+        group: 1,
+        frame: 3,
+        x: 0,
+        y: 1,
+        mirrored: false,
+    };
     assert_eq!(
         missing(&[lost]),
         ComposeError::Missing("CH.DEF group 1 frame 3".into())
