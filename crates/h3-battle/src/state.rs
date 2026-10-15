@@ -441,7 +441,10 @@ fn war_machines(
 
 /// The attacker's Catapult at the siege field's hex (BAT-SIE-009; the original's 0x463600 sets
 /// it up for a hero without testing its Catapult artifact), the ruleset's first creature with
-/// the flags `war_machine` and `catapult`; none if the ruleset has no such creature.
+/// the flags `war_machine` and `catapult`; none if the ruleset has no such creature. An obstacle
+/// of the setup on its hexes leaves it no room ([`SetupError::NoRoom`]), as on any war machine's
+/// fixed hexes (BAT-WAR-001); [`SetupError::InvalidSiege`] is the walls', the moat's and the
+/// mines' alone.
 fn catapult(
     ruleset: &BattleRuleset,
     field: Field,

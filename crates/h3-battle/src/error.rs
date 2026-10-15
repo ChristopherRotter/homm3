@@ -315,7 +315,7 @@ impl fmt::Display for CommandError {
             Self::CastingForbidden => "no one may cast in this battle",
             Self::SpellLevelBarred => "the spell's level is above the battle's limit",
             Self::CannotShootWalls => "the stack cannot shoot the walls",
-            Self::NoSuchPart => "no such standing wall part",
+            Self::NoSuchPart => "no such standing wall part, or a stack stands on it",
         })
     }
 }
@@ -520,7 +520,10 @@ mod tests {
                 CommandError::CannotShootWalls,
                 "the stack cannot shoot the walls",
             ),
-            (CommandError::NoSuchPart, "no such standing wall part"),
+            (
+                CommandError::NoSuchPart,
+                "no such standing wall part, or a stack stands on it",
+            ),
             (
                 CommandError::NotAPatient,
                 "the target is not a hurt allied stack",
