@@ -520,4 +520,6 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   the 24 %: the queue's inbox, for the user.
 - **Verify**: the full local verify with the original data (the 164 maps staged too) on 1f399af
   (the branch with master merged): every step passed; bench-check `random-rollouts-full` +1.22 %
-  against its baseline (as on master), `random-rollouts-siege` +0.00 %. CI cannot run.
+  against its baseline (as on master), `random-rollouts-siege` +0.00 %. Again with BAT-QUIRK-23
+  on 207f388 (master and `shared/e04c-t9` merged): every step passed; +1.24 % and +0.02 %. CI
+  cannot run.
