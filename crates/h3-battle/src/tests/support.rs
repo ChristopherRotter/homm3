@@ -1906,6 +1906,13 @@ pub fn try_ruleset_from(
                 quirks: vec![(String::from("quirk.battle.periodic_first_stack"), true)],
             },
             ProfileDef {
+                key: ContentKey::new("t", "fort_ballista").unwrap(),
+                quirks: vec![(
+                    String::from("quirk.battle.no_defender_ballista_at_fort"),
+                    true,
+                )],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),

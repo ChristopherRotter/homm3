@@ -3,8 +3,8 @@
 
 use alloc::vec::Vec;
 use h3_content::{
-    CreatureFlag, CreatureTypeId, MAX_ARMY_SLOTS, OBSTACLE_ANCHORS, TerrainId,
-    UNLIMITED_BALLISTA_SHOTS,
+    CreatureFlag, CreatureTypeId, MAX_ARMY_SLOTS, NO_DEFENDER_BALLISTA_AT_FORT, OBSTACLE_ANCHORS,
+    TerrainId, UNLIMITED_BALLISTA_SHOTS,
 };
 use h3_content_battle::{
     Ability, AreaShot, BattleRuleset, BattlefieldId, CreatureType, MAX_SIDE_STACKS, MAX_TURRETS,
@@ -371,8 +371,8 @@ fn war_machine_kind(
 
 /// The war machine stacks of `side`, by kind, placed with their front hexes on the ruleset's
 /// hexes (mirrored for the defender) and reserved in `taken` (BAT-WAR-001); in a siege with a
-/// fort the attacker's Catapult, which the setup never lists (BAT-SIE-009), and no Ballista for
-/// the defender, which it may list (BAT-SIE-029).
+/// fort the attacker's Catapult, which the setup never lists (BAT-SIE-009), and with quirk
+/// BAT-QUIRK-23 no Ballista for the defender, which it may list (BAT-SIE-029).
 // rule: BAT-WAR-001
 fn war_machines(
     ruleset: &BattleRuleset,
@@ -394,9 +394,13 @@ fn war_machines(
             return Err(invalid);
         }
         listed[kind] = true;
-        // A town with a fort sets up no Ballista for its defender (the original's 0x463600): the
-        // hero keeps it, the battle leaves it out.
-        if walled && side == BattleSide::Defender && kind == 0 {
+        // With quirk BAT-QUIRK-23 a town with a fort sets up no Ballista for its defender (the
+        // original's 0x463600): the hero keeps it, the battle leaves it out.
+        if walled
+            && side == BattleSide::Defender
+            && kind == 0
+            && ruleset.quirks().is_enabled(NO_DEFENDER_BALLISTA_AT_FORT)
+        {
             continue;
         }
         // `kind < MAX_WAR_MACHINES <= MAX_ARMY_SLOTS`.

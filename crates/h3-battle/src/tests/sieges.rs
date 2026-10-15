@@ -747,18 +747,26 @@ fn the_open_gate_the_walls_absence_and_a_bow_let_shots_through() {
 
 // covers: BAT-SIE-029
 #[test]
-fn a_town_with_a_fort_sets_up_no_ballista_for_its_defender() {
-    let r = ruleset();
+fn with_bat_quirk_23_a_town_with_a_fort_sets_up_no_ballista_for_its_defender() {
+    // With the quirk (profile `t:fort_ballista`) as the original; fixed (`t:faithful` has no
+    // quirks) the defender's Ballista is set up at every town.
+    town_ballistae(&ruleset_with("t:fort_ballista", |_| {}), true);
+    town_ballistae(&ruleset(), false);
+}
+
+/// The war machines the battles at a town of each fort level set up for `r`, whose profile has
+/// BAT-QUIRK-23 if `quirk`.
+fn town_ballistae(r: &BattleRuleset, quirk: bool) {
     let machine = |k: &str| r.creature_by_key(&std::format!("t:{k}")).unwrap();
     // The war machines each side's battle sets up, by creature.
     let machines = |fort, defender: Vec<_>| {
         let setup = BattleSetup {
-            siege: Some(town(&r, "t:castle", fort, Moat::Absent)),
+            siege: Some(town(r, "t:castle", fort, Moat::Absent)),
             war_machines: [vec![machine("ballista")], defender],
-            heroes: [Some(hero(&r)), Some(hero(&r))],
-            ..setup(&r, &[(0, "fixed", 1)], &[(0, "fixed", 1)])
+            heroes: [Some(hero(r)), Some(hero(r))],
+            ..setup(r, &[(0, "fixed", 1)], &[(0, "fixed", 1)])
         };
-        BattleState::new(&r, &setup, 1).map(|s| {
+        BattleState::new(r, &setup, 1).map(|s| {
             BattleSide::BOTH.map(|side| {
                 s.stacks()
                     .iter()
@@ -769,8 +777,9 @@ fn a_town_with_a_fort_sets_up_no_ballista_for_its_defender() {
         })
     };
     let listed = vec![machine("ballista"), machine("tent")];
-    // At a town without a fort the defender keeps its Ballista; with a fort the battle leaves it
-    // out and keeps the rest; the attacker's Ballista stays beside its Catapult.
+    // At a town without a fort the defender keeps its Ballista; with a fort the quirk leaves it
+    // out and keeps the rest, the fix sets it up; the attacker's Ballista stays beside its
+    // Catapult.
     assert_eq!(
         machines(FortLevel::None, listed.clone()).unwrap(),
         [vec![machine("ballista")], listed.clone()]
@@ -778,7 +787,12 @@ fn a_town_with_a_fort_sets_up_no_ballista_for_its_defender() {
     for fort in [FortLevel::Fort, FortLevel::Citadel, FortLevel::Castle] {
         let [attacker, defender] = machines(fort, listed.clone()).unwrap();
         assert_eq!(attacker, [machine("ballista"), machine("catapult")]);
-        assert_eq!(defender, [machine("tent")]);
+        let kept = if quirk {
+            vec![machine("tent")]
+        } else {
+            listed.clone()
+        };
+        assert_eq!(defender, kept);
     }
     // A Ballista listed twice is still refused.
     assert_eq!(

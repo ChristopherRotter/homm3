@@ -963,16 +963,17 @@ proptest! {
     /// step, by the trusted actor and the active stack's controller: who commands and whose hero
     /// casts (BAT-MAG-026), which turns are automatic (a berserk stack's, BAT-MAG-025; a war
     /// machine's, BAT-WAR-002), and what a command or such a turn may move and strike; and the
-    /// battle's end (BAT-END-001, BAT-END-002). Half the games with quirk BAT-QUIRK-7 as well,
-    /// one of their two-hex stacks in a crowd: Clone turns it into its own clone, which may
-    /// vanish as its side's last stack (BAT-MAG-038).
+    /// battle's end (BAT-END-001, BAT-END-002). Half the games with quirks BAT-QUIRK-7 and
+    /// BAT-QUIRK-23 as well, one of their two-hex stacks in a crowd: Clone turns it into its own
+    /// clone, which may vanish as its side's last stack (BAT-MAG-038), and a town with a fort
+    /// sets up no Ballista for the defender (BAT-SIE-029).
     #[test]
     fn every_step_preserves_the_invariants(
         (att, def, ground, seed, steps, hidden) in arb_game(),
         own_clone: bool,
     ) {
         let r = if own_clone {
-            lively_mix(&["no_luck_without_hero", "clone_on_its_original"])
+            lively_mix(&["no_luck_without_hero", "clone_on_its_original", "no_defender_ballista_at_fort"])
         } else {
             lively()
         };
@@ -2031,11 +2032,11 @@ proptest! {
     #![proptest_config(Config { cases: 32, ..Config::default() })]
 
     /// The automatic Ballista's target (BAT-WAR-008) in every state of random games with
-    /// ballistae on both sides (but the defender's at a town with a fort, BAT-SIE-029): a living
-    /// stack of the side its controller fights, never a turret, one that keeps its turns while
-    /// there is one; none only when nothing but turrets is left to shoot. And a town's automatic
-    /// turret's (BAT-SIE-020): a living stack of the attacker's, whoever controls it; none only
-    /// when none lives.
+    /// ballistae on both sides (at every town: the property ruleset is without BAT-QUIRK-23): a
+    /// living stack of the side its controller fights, never a turret, one that keeps its turns
+    /// while there is one; none only when nothing but turrets is left to shoot. And a town's
+    /// automatic turret's (BAT-SIE-020): a living stack of the attacker's, whoever controls it;
+    /// none only when none lives.
     #[test]
     fn the_ballista_shoots_a_stack_of_the_other_side((att, def, ground, seed, steps, hidden) in arb_game()) {
         let r = lively();
