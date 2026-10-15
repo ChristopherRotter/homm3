@@ -29,7 +29,7 @@ enter git (they stay in the sandbox or `clients/out/`).
 Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINKW32.DLL`,
 `IFC20.dll`, `MP3DEC.ASI`, `MSS32.DLL`, `SMACKW32.DLL`, `Data/` with the four LODs, `Heroes3.snd`,
 `H3ab_ahd.snd`, `H3ab_ahd.vid`; one large file per staging call), run `clients/capture/setup.sh`,
-and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set takes about 70 s.
+and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (20 situations since M3 T2) takes about 2.5 minutes.
 
 ## Common uses
 
@@ -67,7 +67,11 @@ game running (frozen) for more commands; `wineserver -k` ends it.
 score of 1.0 is an exact match; an obstacle partly covered by another scores above 0.9). Paste
 them, run again, and record each frame's count with why. Situations need the human's stack to
 open (speed above every enemy's; the original's AI acts at once) and armies of one faction or
-without Leadership's morale; the heroes have no skills, artifacts or war machines.
+without Leadership's morale; the heroes have no skills, artifacts or war machines. A scenario's
+`battlefield` (M3 T2) is set up on the defender's (Blue's) tile: water east of it for the shore
+(`base:shore`, on sand), a special ground under both heroes for the nine ground fields; `find`
+then tries the field's own obstacle types. The deck and the two boats cannot be set up yet
+(CLT-Q5).
 
 **Another battlefield:** the original's obstacles depend on the battle's tile, the background on
 what stands around it (§4.4): `--tile x,y` (the set's `tile`) moves the battle. At (20, 20) on dirt

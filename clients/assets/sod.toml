@@ -8,6 +8,34 @@
 id = "sod"
 depends = ["ab"]
 
+[[battlefield]]
+key = "holy_ground"
+backgrounds = ["CmBkHG.pcx"]
+
+[[battlefield]]
+key = "evil_fog"
+backgrounds = ["CmBkEF.pcx"]
+
+[[battlefield]]
+key = "clover_field"
+backgrounds = ["CmBkCF.pcx"]
+
+[[battlefield]]
+key = "lucid_pools"
+backgrounds = ["CmBkLP.pcx"]
+
+[[battlefield]]
+key = "fiery_fields"
+backgrounds = ["CmBkFF.pcx"]
+
+[[battlefield]]
+key = "rocklands"
+backgrounds = ["CmBkRK.pcx"]
+
+[[battlefield]]
+key = "magic_clouds"
+backgrounds = ["CmBkMC.pcx"]
+
 [[obstacle]]
 key = "obstacle_61"
 def = "ObHGs00.def"

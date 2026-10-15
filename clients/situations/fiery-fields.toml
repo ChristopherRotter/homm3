@@ -1,0 +1,37 @@
+# E17 M3 T2: a situation of the capture set (situations/set.toml) on a special battlefield,
+# Fiery Fields (special field 7, `CmBkFF.pcx`): the SoD ground (class 226) under both heroes
+# (`h3-view situation`; design §5, §6.2). The grass situation's armies: the human's Royal
+# Griffins open. The obstacles are the original's, of the field's own types, found in its
+# capture (`h3cap.py find`).
+
+[scenario]
+id = "situation-fiery-fields"
+packs = ["base", "ab", "sod"]
+profile = "base:faithful"
+terrain = "base:grass"
+battlefield = "sod:fiery_fields"
+obstacles = [
+    { hexes = [81], anchor = 81, kind = "sod:obstacle_79" },
+    { hexes = [130, 131], anchor = 130, kind = "sod:obstacle_80" },
+    { hexes = [55, 56, 57, 38, 37], anchor = 54, kind = "sod:obstacle_82" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
