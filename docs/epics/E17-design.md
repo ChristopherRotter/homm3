@@ -176,6 +176,69 @@ The drawers 0x47D4F0 and 0x47E820 (a half blend, rotations) not read (0x47EF60, 
 transparent only when the caller asks), not read; DDrawCompat's expansion (licence first); 555 not
 modelled. The battle screen's open points: §4.7.
 
+### 3.6 The bitmap fonts and the text drawer (M3 T4a)
+
+Read in the font loader (`font_load` 0x55BB00 → `font_read` 0x55B8D0 → `font_from_stream`
+0x55B750 → 0x4B5070, 0x4B5180), `text_draw` (0x4B5490, H3API's `TextDraw`), its line drawer
+(0x4B5260), its glyph drawer (0x4B51A0) and its line count (0x4B5820); built as
+`h3_assets::fnt` and `h3_render::text`.
+
+- **The fonts.** Startup loads five into globals (0x4EE458): `tiny.fnt` (0x698A04),
+  `smalfont.fnt`, `medfont.fnt`, `bigfont.fnt` and `Calli10R.fnt`; others load by name. A name
+  is looked up as a loose file first, then in the archives, else `default.fnt` (which the
+  archives lack). The loader copies the file's first 0x1020 bytes verbatim into the font
+  object (+0x1C) and the rest as the glyphs' pixels, checks nothing, and copies `game.pal`'s
+  16-bit palette into the font (+0x103C; its colours at +0x1058): a font's colours are
+  `game.pal`'s, not `font.pal`'s.
+- **The file** (`fnt` module): a 32-byte header (byte 5 the line height, byte 6 a signed y offset
+  the drawer adds to each line; the files hold `1F FF 08 00 00` or `1E FF 08 00 00` before them),
+  256 glyph metrics (three `i32`: the space before the pixels, their width, the space after; the
+  advance is their sum), 256 `u32` offsets, the pixels (width × height bytes a glyph, row by
+  row). A pixel 0 is not drawn, 255 is drawn in the text's colour, any other in `game.pal`'s
+  entry 32 (black). The game's nine fonts (all in `H3bitmap.lod`): heights 11 (`tiny`) to 31
+  (`CREDITS`), y offset 0 in each, every glyph's pixels inside the file; `bigfont.fnt`'s pixels
+  hold all 256 values, the others 0, 1 and 255 (`tiny` 0 and 255).
+- **`TextDraw`** (text, screen, x, y, width, height, colour, alignment, caret): the colour
+  argument is `game.pal`'s entry colour + 9 (or the entry itself with bit 0x100); `{` and `}`
+  switch a highlight on and off (the next entry), drawn and counted as nothing. The alignment's
+  bit 4 centres the lines in the height ((height − lines × line height) / 2, or (height − line
+  height) / 2 when they do not fit and the box is less than two lines high), bit 8 puts them at
+  the bottom, and the rest aligns each line (1 centred, 2 right, else left; halves truncated
+  toward zero). A line is measured glyph by glyph up to a newline, the end, or the first glyph
+  reached with the width already past the box's; a negative left space of its first glyph and a
+  negative right space of its last widen it. Too wide, it breaks after the last space that lets
+  it fit; with none (one long word) at the first glyph from its end that lets it fit, keeping
+  the whole width for its alignment, and that glyph is lost (the next line starts after it); in
+  the box's last line (two more line heights would pass its bottom) at that glyph whatever the
+  spaces. Drawing stops at the first line that would pass the bottom below a line already drawn.
+  The line count (bit 4 and 8) breaks the same way without the negative spaces and the last-line
+  rule.
+- **The line drawer:** the line moves down by the y offset and right by its first glyph's
+  negative left space; it is drawn only if it lies inside the box's height; glyphs left of the
+  box are skipped and the line ends before the first glyph that would pass the box's right edge.
+  The glyph drawer does not clip (its callers keep texts on the screen; the client's screen
+  clips). The caret (`_`, for an input field) is not built.
+- **Quirks kept as read:** the lost glyph of a long word; a line's width taken from a glyph of
+  128 or above with a negative space reads that space at the glyph's value − 256 (a sign-extended
+  index, before the metrics; `tiny.fnt`'s glyphs 236, 238, 239 have negative left spaces): the
+  client takes the glyph's own (no such line is drawn yet).
+
+### 3.7 The tint (M3 T4a)
+
+`pcx16_adjust_hue_saturation` (0x44E940, H3API's `AdjustHueSaturation`; screen, x, y, width,
+height, hue, saturation; built as `h3_render::tint`): the rectangle is cut at the screen's right
+and bottom edges only. Per pixel, each channel c becomes c × K with K = 0x7FFFFFFF / its mask
+(unsigned; the surface's masks at 0x694D68, 0x694D60, 0x694D64: red, green, blue); V, the largest,
+is stored as an f32; with H = f32(hue × 6), i = `crt_ftol`(H) and f = `fmod`(H, 1) (0x617F20, the
+CRT's), p = f32((1 − s) V), q = f32((1 − f s) V), t = f32((1 − (1 − f) s) V), each operation at
+53 bits on f32 operands; the channels are (V, t, p), (q, V, p), (p, V, t), (p, q, V), (t, p, V),
+(V, p, q) for i = 0 to 5, each rounded to an integer by adding 1.5 × 2^52 and taking the low
+word (ties to even), divided by its K and kept to its mask. Any other i leaves the pixel as it
+was (the switch's default). V's f32 loses the low bits of a large channel: with no saturation a
+grey comes out a shade off (0x1234 becomes 0xA513). The client computes it in integers, each
+x87 result and f32 store rounded to its 53 or 24 bits; over all 65 536 pixels it equals a
+reference in IEEE doubles for nine hues and saturations (the tests' digests).
+
 ## 4. The battle screen (M1 T5)
 
 Read 2026-10-13 in the user's `Heroes3.exe`, compared with VCMI 1.7.5 (`client/battle/`,
@@ -256,9 +319,22 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   troop-count offset: `CRANIM.TXT`'s cell 22 of the creature's row (counting from 0; VCMI's
   `troopCountLocationOffset`), which 0x50CA00 stores at +0x3C of the creature's 0x54-byte
   animation record (table 0x6998E0) and 0x43DA0F copies into the stack at +0x110 (so +0x14C).
-- Then the box is tinted (0x44E940 over its inner 28 × 9 pixels: no active spells (0.75, 0.8), else
-  by the spells' kinds; not read) and the count (+0x4C, or +0x50 when it is not −1) written in
-  `tiny.fnt` into the box (M3).
+- The box is drawn only when `battle_draw_pcx` draws it (its dirty-rectangle tests, §7.11); then
+  its inside is tinted (§3.7, 0x43E6A0: from (1, 1), 28 × 9) with the hue 0.75 and the
+  saturation 0.8 when the stack has no active spell (+0x194 = 0); else the hue is
+  f32((r + 1) × 0.1667) with r = Σ k / Σ |k| over its 81 spells' durations +0x198 that are not 0,
+  k the spell table's first field (0x43E6AA to 0x43E73E; not built: M3 T5). The count is `%d` of
+  +0x4C, or of +0x50 when it is not −1 (not read where it is set), written by `TextDraw` (§3.6)
+  in `tiny.fnt` into (x, y, 30, 15) with colour 4 (`game.pal`'s entry 13, white) and alignment 1
+  (centred, from the top). A count of seven digits or more is cut by the long word's rule (its
+  first five shown).
+- **Built** (M3 T4a): the scene's `Draw::CountBox` after each stack's sprite (and any magic
+  animation over it) for a living stack, not a war machine, in group 1 or 2, by its pose's hex
+  and facing; the hexes ahead taken by every living stack's poses and the blocked hexes; the
+  layout's `[count_box]` holds the numbers. Not yet: the moments the executable hides it (+0x30,
+  set by a walk 0x442145 and a flight 0x4B4BD8; who clears it not read) and the spells' tint
+  (M3 T5). Every creature's troop-count offset is 0 in the harvested tables. Checked: the capture
+  set without the count-box mask, all 55 frames exact (§6.2).
 - VCMI's `showStackAmountBox` gives the same four positions (its hex centre is the anchor −
   (0, 16)) but leaves out t and counts every stack ahead as taking the hex, war machines included.
 
@@ -349,8 +425,8 @@ The redraw 0x494440, after the background:
   land terrain (M2 T1, §6):** the backgrounds (variant 2, §5), the usual obstacles of each terrain,
   an absolute one, two-hex stacks facing either way, the outline's pixels and its rotation (a step
   per 100 ms through eight entries).
-- Not read: the grid and shading options (0x493930); the count box's tint and text; the stack's
-  byte +0x4F1; the palette effects; the siege branches (E04c).
+- Not read: the grid and shading options (0x493930); the stack's byte +0x4F1; the palette
+  effects; the siege branches (E04c).
 
 ## 5. The asset tables' sources (M1 T4)
 
@@ -493,6 +569,11 @@ The runbook: `clients/capture/README.md`. What it rests on:
   each situation names its heroes (Orrin and Crag Hack, as before), and eight grass situations
   show the other 16 battle pictures (a male and a female hero of every town), all exact. The
   original's obstacles did not change with the heroes.
+- **The count boxes** (M3 T4a; §3.6, §3.7, §4.3): drawn in every situation, the `count_boxes`
+  mask gone from the set (the panel's stays): all 30 situations' 55 frames exact on the first
+  run, the tint and the digits included (counts of one to four digits, boxes beside their
+  stacks and over them). The sequences keep the mask where the drawn poses show a box until
+  M3 T5 draws them over time.
 
 ### 6.3 The adventure map: experiments by agents (M2 T6)
 

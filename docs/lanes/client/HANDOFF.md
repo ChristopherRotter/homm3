@@ -4,8 +4,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T1c, T2, T3a, T3b done (2026-10-15); next: M3 T4–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ the amendment draft in `adr-drafts/`), ADR-0024; the capture harness `clients/capture/README.md`; design §3–§8; records in `E17-log.md`.
-- **Pull requests (2026-10-15):** T3b #237 open (T3a #235 merged).
+- **E17 M0–M2 done; M3 T1a–T1c, T2, T3a, T3b, T4a done (2026-10-15); next: M3 T4b–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ the amendment draft in `adr-drafts/`), ADR-0024; the capture harness `clients/capture/README.md`; design §3–§8; records in `E17-log.md`.
+- **Pull requests (2026-10-15):** T4a #238 open (T3b #237 merged).
 - **The user's requirements (2026-10-13)**, epic "Decisions": a string catalogue, language packs; graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
@@ -52,10 +52,9 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+- **2026-10-15, E17 M3 T4a (the user present; T4 split).** Fonts decoded, `TextDraw` ported,
+  the tint in exact integers, count boxes drawn: the set without their mask, all exact.
 - **2026-10-15, E17 M3 T3b (the user present).** War machines drawn; an automatic one's turn
-  ticks the loop once; the tent's heal under magic animation 79 (translucent); all exact. Two
-  findings for the battle lane: inbox.
-- **2026-10-15, E17 M3 T3a (the user present; T3 split).** Hero pictures by town and sex
-  (Conflux by sex), flags and heroes drawn and timed; no `heroes` mask, all exact.
-- **2026-10-15, E17 M3 T2 (the user present).** Special battlefields drawn by the observation's
-  `battlefield`; the shore and the nine grounds captured, exact; the deck and boats: CLT-Q5.
+  ticks the loop once; the tent's heal under magic animation 79 (translucent); all exact.
+- **2026-10-15, E17 M3 T3a (the user present; T3 split).** Hero pictures by town and sex,
+  flags and heroes drawn and timed; no `heroes` mask, all exact.

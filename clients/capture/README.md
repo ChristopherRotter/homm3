@@ -29,7 +29,7 @@ enter git (they stay in the sandbox or `clients/out/`).
 Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINKW32.DLL`,
 `IFC20.dll`, `MP3DEC.ASI`, `MSS32.DLL`, `SMACKW32.DLL`, `Data/` with the four LODs, `Heroes3.snd`,
 `H3ab_ahd.snd`, `H3ab_ahd.vid`; one large file per staging call), run `clients/capture/setup.sh`,
-and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (30 situations since M3 T3b) takes about 4 minutes.
+and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (31 situations since M3 T4a) takes about 4 minutes.
 
 ## Common uses
 

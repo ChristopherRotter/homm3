@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 refined (T5c), next. Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a done). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T1a (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T4b–T8 (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -228,8 +228,9 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
 - A representative situation set over the harness: every battlefield (T2), the heroes (T3a) and
   war machines (T3b), the count boxes (T5) and the panel (T6), each mask removed as it is drawn;
   sieges later.
-- Fonts, the string catalogue and the language packs (T4, an ADR-0020 amendment), and the battle
-  interface (T5, T6: the panel, the log, the cursors).
+- Fonts and the text drawer (T4a, with the count boxes in the stills), the string catalogue and
+  the language packs (T4b, an ADR-0020 amendment), and the battle interface (T5, T6: the boxes
+  over time, the panel, the log, the cursors). T4 split with the user on 2026-10-15.
 - The **spell animations** (the user, at T5c: their plethora; T7a the code reading, T7b on
   stacks with morale and luck, T7c area spells, rays and spell obstacles) and their sounds.
 - The sound's remainder (T8: the battle's end; the volume settings later).
@@ -280,6 +281,13 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   the translucent drawer 0x47EF60, the table 0x641E08 harvested). Captured: `war-machines` and
   the smoke battle (30 situations, 55 frames, all exact) and the hot-seat sequence `machines`
   (two Ballistas' shots, the heal: timeline and 106 frames exact).
+- **T4a done 2026-10-15** ([log](E17-log.md#m3-t4a--fonts-the-text-drawer-and-the-count-boxes-2026-10-15),
+  [design §3.6, §3.7, §4.3](E17-design.md)): T4 split with the user (the catalogue left as T4b).
+  The fonts read and decoded (`h3_assets::fnt`, the gate decodes all nine), the executable's
+  text drawer ported with its line breaking and quirks (`h3_render::text`), its tint in exact
+  integers (`h3_render::tint`), each stack's count box drawn after its sprite (the layout's
+  `[count_box]`). The capture set without the count-box mask: 31 situations, 57 frames, all
+  exact (the new `counts`: three to five digits).
 
 ### Later (refined when they come up)
 
@@ -459,6 +467,15 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T4a: the layout's `[count_box]` (picture, font and its palette, the place's numbers, the tint
+  rectangle and values as f32 bits, the text box, colour and alignment; the format); the batch's
+  fonts by `.FNT`; `h3_render::text` takes the executable's colour and alignment arguments as
+  numbers; the text drawer's caret not built and a glyph of 128 or above with a negative space
+  at a line's ends measured by its own space (the executable reads outside the metrics); the
+  tint exact for hues and saturations in [0, 1] (others clamped; the executable passes none);
+  the count boxes drawn in the sequences too, under their masks until T5; the T4 split itself
+  (T4b the catalogue, T5 the boxes over time).
 
 - T3b: the asset tables' `[battle] magic` (the 83 magic animations by number: DEF, `place`,
   `translucent`, harvested from 0x641E08) and `heal_sound` (the formats); the heal's sound on the

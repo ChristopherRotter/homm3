@@ -3,6 +3,7 @@
 //! colours (transparency, shadow, outline and flag, player colours) applied as the executable's
 //! drawers apply them (`docs/epics/E17-design.md` §3). [`screen`]: the frame and its pixel
 //! format; [`palette`]: palettes in that format, player colours; [`blit`]: the drawers;
+//! [`text`]: text in the bitmap fonts; [`tint`]: a rectangle's hue and saturation (E17 M3 T4a);
 //! [`png`]: the frame as PNG bytes. The window, and writing the PNG to a file, are adapters.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`; the frame size and every layout are

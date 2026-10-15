@@ -455,3 +455,11 @@ why = "exact: the smoke battle with Orrin's Ballista and both heroes, the Wolf R
 at = 400
 differing = 0
 why = "exact: the Pikemen's fidget in the original's poses, the flags four steps on (M3 T3b)"
+
+# The count boxes' digits (M3 T4a): `grass` with counts of three, four and five digits (the map's
+# counts are 16-bit: six digits and the cut of seven cannot be set up), centred by the text
+# drawer.
+[[situation]]
+id = "counts"
+scenario = "counts.toml"
+mask = ["panel"]

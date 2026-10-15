@@ -972,3 +972,40 @@ as the alternatives), the user agreed.
 - **For others:** the original's automatic tent heals the most hurt stack and a machine with
   nothing to do defends (QUEUE inbox, for the battle lane through the user); the heal's sound
   wait at the faster speeds (inbox, for T8).
+
+### M3 T4a — Fonts, the text drawer and the count boxes (2026-10-15)
+
+On `client/e17-m3-t4a`, the user present: the agent proposed splitting T4 (its two halves are
+independent, and with the panel masked the only text on a battle screen is the count boxes'),
+the user chose T4a (the fonts and the count boxes in the stills) over T4 whole, T7a and T8.
+
+- **Starting point:** master at #237 (`3b530ab`, T3b merged at the session's start), no client
+  pull request open; a fresh sandbox, the original files staged (one LOD per call); the client
+  code's baseline already verified on that commit (`verify-once`: the light gates).
+- **Code reading** (design §3.6, §3.7, §4.3; the map's new entries `font_load` 0x55BB00,
+  `font_read` 0x55B8D0, `font_from_stream` 0x55B750, `font_construct` 0x4B5070,
+  `font_set_palette` 0x4B5180, `text_draw` 0x4B5490, `text_draw_line` 0x4B5260,
+  `text_draw_glyph` 0x4B51A0, `text_line_count` 0x4B5820, `crt_fmod` 0x617F20, the site
+  `load_startup_fonts` 0x4EE458, the globals `tiny_font` and the screen's three masks;
+  `pcx16_adjust_hue_saturation` 0x44E940 read): a font is the file's first 0x1020 bytes and its
+  pixels, its colours `game.pal`'s; `TextDraw`'s alignment bits, colour argument, highlight
+  braces, line breaking (after the last space that fits; a long word loses the glyph at its
+  break; the box's last line cut at any glyph), the line and glyph drawers. The count box:
+  drawn for a living stack in group 1 or 2 that is not a war machine and whose +0x30 is clear;
+  its inside tinted by the HSV routine with (0.75, 0.8) without spells, else a hue from the
+  balance of its spells' kinds; `%d` of the count in `tiny.fnt`, colour 4 (white), centred in
+  30 × 15. The tint's f32 V cuts a large channel's low bits (a grey comes out a shade off).
+- **Built:** `h3_assets::fnt` (and `build::fnt`; the gate decodes the nine fonts:
+  `FNT 9 ok`), `h3_render::text` (`TextDraw` with its quirks; no caret), `h3_render::tint` (in
+  integers to 2^−48 and 2^−96, each x87 result and f32 store rounded to 53 or 24 bits: all
+  65 536 pixels equal a reference in IEEE doubles for nine hues and saturations, the tests'
+  digests), `PixelFormat::channel_masks`; the layout's `[count_box]`, the batch's fonts, the
+  scene's `Draw::CountBox` after each stack's sprite and magic animation (the hexes ahead taken
+  by every living stack's poses and the blocked hexes), compose's picture, tint and text.
+- **The capture set:** the `count_boxes` mask removed from all 30 situations: 55 frames exact on
+  the first run. The new `counts` (`grass` with 999, 65 535, 4 567 and 123: three to five
+  digits; a map's counts are 16-bit, so six digits and the cut of seven are not set up): RESULT.
+- **The sequences:** the boxes are drawn there too, under the frame check's masks (where the
+  drawn poses show them) until T5: RESULT.
+- **For later:** T5 (the boxes over time: +0x30 set by a walk and a flight, the count's +0x50,
+  the spells' tint), T4b (the catalogue; which font the panel and the log use).
