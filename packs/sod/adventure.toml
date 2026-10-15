@@ -1,4 +1,76 @@
 # The Shadow of Death's adventure-map data (E08 T4; format: crates/h3-pack-adventure). Hand-written
 # source; the harvester never writes this file (E08 decision 10).
 #
-# Empty: SoD changes nothing the adventure part holds yet (no terrain, road or river of its own).
+# SoD adds no terrain, road or river of its own.
+
+# ADV-GRD-001 (E08 T20a2a): the Shadow of Death's special grounds (classes 222 to 231 but 225,
+# Favorable Winds, which changes no battle). Each lies on its picture's tiles and is never
+# visited; a battle on a tile it lies on is fought on its battlefield. Code reading 0x4643B0 and
+# 0x4FCE20 (installation.md section 7.26): Clover Field 222 field 5, Evil Fog 224 4, Fiery Fields
+# 226 7, Holy Ground 227 3, Lucid Pools 228 6, Magic Clouds 229 9, Rocklands 231 8; the SoD
+# pictures of Cursed Ground (223) and Magic Plains (230), which that list lacks, fight on Cursed
+# Ground and Magic Plains (E04c batch 3a, D-4: an observation). VCMI 1.7.5
+# config/objects/generic.json gives each the same battleground (and Favorable Winds the ship's,
+# a battle on a boat: later increments).
+[[object_type]]
+id = "clover_field"
+name = "Clover Field"
+visit = "enter"
+from_above = true
+ground = { battlefield = "clover_field" }
+
+[[object_type]]
+id = "cursed_ground"
+name = "Cursed Ground"
+visit = "enter"
+from_above = true
+ground = { battlefield = "base:cursed_ground" }
+
+[[object_type]]
+id = "evil_fog"
+name = "Evil Fog"
+visit = "enter"
+from_above = true
+ground = { battlefield = "evil_fog" }
+
+[[object_type]]
+id = "fiery_fields"
+name = "Fiery Fields"
+visit = "enter"
+from_above = true
+ground = { battlefield = "fiery_fields" }
+
+[[object_type]]
+id = "holy_ground"
+name = "Holy Ground"
+visit = "enter"
+from_above = true
+ground = { battlefield = "holy_ground" }
+
+[[object_type]]
+id = "lucid_pools"
+name = "Lucid Pools"
+visit = "enter"
+from_above = true
+ground = { battlefield = "lucid_pools" }
+
+[[object_type]]
+id = "magic_clouds"
+name = "Magic Clouds"
+visit = "enter"
+from_above = true
+ground = { battlefield = "magic_clouds" }
+
+[[object_type]]
+id = "magic_plains"
+name = "Magic Plains"
+visit = "enter"
+from_above = true
+ground = { battlefield = "base:magic_plains" }
+
+[[object_type]]
+id = "rocklands"
+name = "Rocklands"
+visit = "enter"
+from_above = true
+ground = { battlefield = "rocklands" }

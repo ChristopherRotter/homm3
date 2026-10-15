@@ -24,6 +24,14 @@
 //! coast = "desert"                 # on this one with this battlefield (a key of the battle
 //! coast_battlefield = "shore"      # part), else on the tile's terrain
 //!
+//! [params.monsters]                # optional (E08 T20a2a): without it a map holds no monster
+//! aggression = [[-4, -4], [1, 7]]  # bounds by disposition code, from 0 (ADV-MON-002)
+//! count_words = [5, 10, 20]        # where each word of a count after the first begins
+//!                                  # (ADV-FOG-006)
+//!
+//! not_random_monsters = ["azure_dragon"] # top-level, before any table (E08 T20a2a): creatures
+//!                                  # no random monster becomes (ADV-MON-003)
+//!
 //! [[terrain]]                      # every core terrain needs one entry, from any pack of
 //! terrain = "grass"                # its closure; `name` means `<own pack>:name`
 //! cost = 100                       # a straight step (ADV-MOV-003)
@@ -50,6 +58,9 @@
 //! # reveal_terrain = { terrains = ["water"], price = { gold = 1000 } }
 //! # reveal_area = { radius = 20 }
 //! # key_tent = { key = 0 }         # also key_guard, key_gate (from_above = true); keys 0-7
+//! # monster = {}                   # E08 T20a2a, visit = "neighbour": the map names the creature,
+//! # monster = { levels = [1, 7] } # or a random monster's levels (ADV-MON-001, ADV-MON-003)
+//! # ground = { battlefield = "cursed_ground" } # a special ground (ADV-GRD-001)
 //!
 //! [[difficulty]]                   # E08 T13a, GAM-RES-002: the starting resources by the game's
 //!                                  # difficulty, from 0 (easy); exactly one enabled pack gives
@@ -69,8 +80,8 @@ use std::num::NonZeroU32;
 
 use h3_adventure::{
     AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef,
-    ObjectKindDef, ObjectTypeDef, Passage, PickupDef, RiverDef, RoadDef, StartingResourcesDef,
-    TerrainMovementDef, Visit,
+    MonsterParamsDef, ObjectKindDef, ObjectTypeDef, Passage, PickupDef, RiverDef, RoadDef,
+    StartingResourcesDef, TerrainMovementDef, Visit,
 };
 use h3_content::{ContentKey, KeyError, PackManifest, Ruleset};
 use h3_pack::PackError;
@@ -147,6 +158,8 @@ impl From<AdventureCompileError> for AdventurePackError {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct AdventureFile {
+    #[serde(default)]
+    not_random_monsters: Vec<String>,
     params: Option<ParamsDto>,
     #[serde(default)]
     terrain: Vec<TerrainDto>,
@@ -180,6 +193,15 @@ struct ParamsDto {
     starting_stack_chances: Vec<u8>,
     #[serde(default)]
     battle: Option<BattleDto>,
+    #[serde(default)]
+    monsters: Option<MonstersDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MonstersDto {
+    aggression: Vec<[i8; 2]>,
+    count_words: Vec<u32>,
 }
 
 #[derive(Deserialize)]
@@ -245,6 +267,20 @@ struct ObjectTypeDto {
     key_tent: Option<KeyDto>,
     key_guard: Option<KeyDto>,
     key_gate: Option<KeyDto>,
+    monster: Option<MonsterDto>,
+    ground: Option<GroundDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MonsterDto {
+    levels: Option<[u8; 2]>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GroundDto {
+    battlefield: String,
 }
 
 #[derive(Deserialize)]
@@ -328,6 +364,15 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
     kinds.extend(t.key_tent.map(|k| ObjectKindDef::KeyTent { key: k.key }));
     kinds.extend(t.key_guard.map(|k| ObjectKindDef::KeyGuard { key: k.key }));
     kinds.extend(t.key_gate.map(|k| ObjectKindDef::KeyGate { key: k.key }));
+    kinds.extend(
+        t.monster
+            .map(|m| ObjectKindDef::Monster { levels: m.levels }),
+    );
+    if let Some(g) = t.ground {
+        kinds.push(ObjectKindDef::Ground {
+            battlefield: reference(pack, &g.battlefield)?,
+        });
+    }
     let [kind] = <[ObjectKindDef; 1]>::try_from(kinds)
         .map_err(|_| AdventurePackError::ObjectKind(t.id.clone()))?;
     Ok(ObjectTypeDef {
@@ -417,12 +462,18 @@ pub fn parse_adventure(
             })
         })
         .collect::<Result<_, KeyError>>()?;
+    let not_random_monsters = file
+        .not_random_monsters
+        .iter()
+        .map(|k| reference(pack, k))
+        .collect::<Result<_, KeyError>>()?;
     Ok(AdventurePack {
         terrains,
         roads,
         rivers,
         object_types,
         starting_resources,
+        not_random_monsters,
         params: file
             .params
             .map(|p| {
@@ -446,6 +497,10 @@ pub fn parse_adventure(
                     army_slots: p.army_slots,
                     starting_stack_chances: p.starting_stack_chances,
                     battle,
+                    monsters: p.monsters.map(|m| MonsterParamsDef {
+                        aggression: m.aggression,
+                        count_words: m.count_words,
+                    }),
                 })
             })
             .transpose()?,

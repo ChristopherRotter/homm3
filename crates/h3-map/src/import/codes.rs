@@ -89,6 +89,112 @@ const BORDER_GATES: [&str; 8] = [
     "ab:border_gate_black",
 ];
 
+/// Resources by `.h3m` code (0 wood to 6 gold), as a monster's treasure lists them.
+pub(crate) const RESOURCES: [&str; 7] = [
+    "base:wood",
+    "base:mercury",
+    "base:ore",
+    "base:sulfur",
+    "base:crystal",
+    "base:gems",
+    "base:gold",
+];
+
+/// The class of a monster whose subclass names its creature (ADV-MON-001).
+pub(crate) const MONSTER: u32 = 54;
+
+/// The special grounds' pictures and their sizes in tiles, width then height (ADV-GRD-001, E08
+/// T20a2a): the first two bytes of each picture's `.msk` in the sprite archives (`H3sprite.lod`,
+/// `H3ab_spr.lod`; read 2026-10-15 for the pictures `Objects.txt` lists for classes 21, 46,
+/// 222–224 and 226–231), sorted by name, lower case without `.def`. The original takes an
+/// object's width and height from its picture's `.msk` (`default.msk`, 1 × 1, without one; the
+/// loader 0x514610) and places it on every tile of that rectangle (0x505B20), where the battle
+/// finds its ground (0x4FCE20); VCMI 1.7.5 `ObjectTemplate::readMsk` takes the same size.
+pub(crate) const GROUND_PICTURES: [(&str, u8, u8); 72] = [
+    ("avxcf0", 6, 4),
+    ("avxcf1", 8, 6),
+    ("avxcf2", 6, 6),
+    ("avxcf3", 8, 3),
+    ("avxcf4", 3, 6),
+    ("avxcf5", 3, 3),
+    ("avxcf6", 5, 2),
+    ("avxcf7", 2, 5),
+    ("avxcg1", 8, 6),
+    ("avxcg2", 6, 6),
+    ("avxcg3", 8, 3),
+    ("avxcg4", 3, 6),
+    ("avxcg5", 3, 3),
+    ("avxcg6", 2, 5),
+    ("avxcg7", 5, 2),
+    ("avxcrsd0", 6, 4),
+    ("avxef0", 6, 4),
+    ("avxef1", 8, 6),
+    ("avxef2", 6, 6),
+    ("avxef3", 8, 3),
+    ("avxef4", 3, 6),
+    ("avxef5", 3, 3),
+    ("avxef6", 5, 2),
+    ("avxef7", 2, 5),
+    ("avxff0", 6, 4),
+    ("avxff1", 8, 6),
+    ("avxff2", 6, 6),
+    ("avxff3", 8, 3),
+    ("avxff4", 3, 6),
+    ("avxff5", 3, 3),
+    ("avxff6", 5, 2),
+    ("avxff7", 2, 5),
+    ("avxhg0", 6, 4),
+    ("avxhg1", 8, 6),
+    ("avxhg2", 6, 6),
+    ("avxhg3", 8, 3),
+    ("avxhg4", 3, 6),
+    ("avxhg5", 3, 3),
+    ("avxhg6", 5, 2),
+    ("avxhg7", 2, 5),
+    ("avxlp0", 6, 4),
+    ("avxlp1", 8, 6),
+    ("avxlp2", 6, 6),
+    ("avxlp3", 8, 3),
+    ("avxlp4", 3, 6),
+    ("avxlp5", 3, 3),
+    ("avxlp6", 5, 2),
+    ("avxlp7", 2, 5),
+    ("avxmc0", 6, 4),
+    ("avxmc1", 8, 6),
+    ("avxmc2", 6, 6),
+    ("avxmc3", 8, 3),
+    ("avxmc4", 3, 6),
+    ("avxmc5", 3, 3),
+    ("avxmc6", 5, 2),
+    ("avxmc7", 2, 5),
+    ("avxmp1", 8, 6),
+    ("avxmp2", 6, 6),
+    ("avxmp3", 8, 3),
+    ("avxmp4", 3, 6),
+    ("avxmp5", 3, 3),
+    ("avxmp6", 5, 2),
+    ("avxmp7", 2, 5),
+    ("avxplns0", 6, 4),
+    ("avxrk0", 6, 4),
+    ("avxrk1", 8, 6),
+    ("avxrk2", 6, 6),
+    ("avxrk3", 8, 3),
+    ("avxrk4", 3, 6),
+    ("avxrk5", 3, 3),
+    ("avxrk6", 5, 2),
+    ("avxrk7", 2, 5),
+];
+
+/// The size of a special ground's picture in tiles (its `.msk`'s width and height): the table's,
+/// else 1 × 1, the original's `default.msk` for a picture without its own.
+pub(crate) fn ground_size(picture: &[u8]) -> (u8, u8) {
+    let name = picture.to_ascii_lowercase();
+    let name = name.strip_suffix(b".def").unwrap_or(&name);
+    GROUND_PICTURES
+        .binary_search_by(|&(p, _, _)| p.as_bytes().cmp(name))
+        .map_or((1, 1), |i| (GROUND_PICTURES[i].1, GROUND_PICTURES[i].2))
+}
+
 /// The object type an object of this class and subclass has (E08 T12a, ADV-OBJ-002; survey
 /// `docs/rules/surveys/E08-objects.md` §1): `None` for a class without a type (a blocker),
 /// `Some(None)` for a subclass its class does not define.
@@ -104,11 +210,33 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         10 => by_subclass(&KEYMASTERS),
         12 => Some("base:campfire"),
         13 => by_subclass(&CARTOGRAPHERS),
+        // E08 T20a2a: the special grounds (ADV-GRD-001) and the monsters (ADV-MON-001; the
+        // subclass of class 54 is its creature, the import's other table).
+        21 => Some("base:cursed_ground"),
+        46 => Some("base:magic_plains"),
+        MONSTER => Some("base:monster"),
         58 => Some("base:redwood_observatory"),
         60 => Some("base:pillar_of_fire"),
+        71 => Some("base:random_monster"),
+        72 => Some("base:random_monster_1"),
+        73 => Some("base:random_monster_2"),
+        74 => Some("base:random_monster_3"),
+        75 => Some("base:random_monster_4"),
         76 => Some("base:random_resource"),
         79 => by_subclass(&PILES),
+        162 => Some("base:random_monster_5"),
+        163 => Some("base:random_monster_6"),
+        164 => Some("base:random_monster_7"),
         212 => by_subclass(&BORDER_GATES),
+        222 => Some("sod:clover_field"),
+        223 => Some("sod:cursed_ground"),
+        224 => Some("sod:evil_fog"),
+        226 => Some("sod:fiery_fields"),
+        227 => Some("sod:holy_ground"),
+        228 => Some("sod:lucid_pools"),
+        229 => Some("sod:magic_clouds"),
+        230 => Some("sod:magic_plains"),
+        231 => Some("sod:rocklands"),
         _ => return None,
     })
 }

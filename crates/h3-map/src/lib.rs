@@ -37,8 +37,9 @@ pub use parse::parse;
 /// v2 (E08 T12a): object types and the piles' fixed amounts; guarded piles unsupported. v3 (E08
 /// T13a): the setup's difficulty, normal (the map holds none). v4 (E08 T18b): the placed heroes'
 /// formation and customised details; a hero with an experience of 1 000 or more unsupported. v5
-/// (E08 T19a): each tile's coast flag.
-pub const MAP_IMPORT_VERSION: u32 = 5;
+/// (E08 T19a): each tile's coast flag. v6 (E08 T20a2a): the monsters with their data and the
+/// special grounds with their tiles; a monster with an artifact unsupported.
+pub const MAP_IMPORT_VERSION: u32 = 6;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

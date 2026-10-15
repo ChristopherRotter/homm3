@@ -791,9 +791,14 @@ fn a_chart_offers_its_reveal_once_per_player_and_type() {
     assert_eq!(state.bought(RED).collect::<Vec<_>>(), [CHART]);
     assert_eq!(state.bought(BLUE).count(), 0);
     // The viewer sees its own purchases only.
-    assert_eq!(state.observe(&rules.0, RED).bought, [CHART]);
-    assert!(state.observe(&rules.0, BLUE).bought.is_empty());
-    assert!(state.observe(&rules.0, PlayerId::new(2)).bought.is_empty());
+    assert_eq!(state.observe(&rules.0, &rules.1, RED).bought, [CHART]);
+    assert!(state.observe(&rules.0, &rules.1, BLUE).bought.is_empty());
+    assert!(
+        state
+            .observe(&rules.0, &rules.1, PlayerId::new(2))
+            .bought
+            .is_empty()
+    );
     assert_ne!(state.state_hash(), before.state_hash());
     // Bought: a later visit offers nothing; another type still offers.
     enter(&mut state, &rules, (RED, 1), p(1, 1));
@@ -902,7 +907,7 @@ fn stacked(
             hero_at(2, 1, p(12, 2), &[PEASANT]),
         ],
     );
-    let mut object = setup.map.objects[0];
+    let mut object = setup.map.objects[0].clone();
     object.object_type = object_type;
     setup.map.objects.push(object);
     AdventureState::new(&rules.0, &rules.1, &setup, &mut draws())
@@ -1110,9 +1115,9 @@ fn a_tent_gives_its_key_to_its_visitor_s_owner_once() {
     assert!(!state.is_removed(0));
     assert_ne!(state.state_hash(), before.state_hash());
     // The viewer sees its own keys only.
-    assert_eq!(state.observe(&rules.0, RED).keys, 1);
-    assert_eq!(state.observe(&rules.0, BLUE).keys, 0);
-    assert_eq!(state.observe(&rules.0, PlayerId::new(2)).keys, 0);
+    assert_eq!(state.observe(&rules.0, &rules.1, RED).keys, 1);
+    assert_eq!(state.observe(&rules.0, &rules.1, BLUE).keys, 0);
+    assert_eq!(state.observe(&rules.0, &rules.1, PlayerId::new(2)).keys, 0);
     // Held: a later visit gives nothing and tells nothing.
     move_hero(&mut state, &rules, RED, 1, &[p(3, 0)]).unwrap();
     let held = state.clone();
@@ -1222,7 +1227,7 @@ fn a_border_guard_offers_its_key_s_holders_to_pass() {
     assert!(state.is_removed(0) && !state.offer_stands(&offer));
     assert!(
         state
-            .observe(&rules.0, RED)
+            .observe(&rules.0, &rules.1, RED)
             .objects
             .iter()
             .all(|o| o.object_type != GUARD)

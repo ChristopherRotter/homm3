@@ -84,6 +84,8 @@ fn chart_setup(rules: &GameRuleset, difficulty: u8) -> Arc<GameSetup> {
             visitable: TileMask::from_bits(1),
             object_type: chart,
             amount: None,
+            drawn: TileMask::default(),
+            monster: None,
         });
     }
     Arc::new(setup)

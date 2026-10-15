@@ -17,12 +17,12 @@
 
 use alloc::vec::Vec;
 
-use h3_content::{FRINGE_SHOWS_OBJECTS, Formation, Ruleset, TerrainId};
+use h3_content::{CreatureTypeId, FRINGE_SHOWS_OBJECTS, Formation, Ruleset, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
 use crate::command::{AdventureEvent, AdventureEventKind, Viewers};
 use crate::fog::Sight;
-use crate::ruleset::{ObjectTypeId, RiverId, RoadId};
+use crate::ruleset::{AdventureRuleset, ObjectTypeId, RiverId, RoadId};
 use crate::setup::{Pos, TileMask};
 use crate::state::{AdventureState, StaticTile};
 
@@ -116,6 +116,24 @@ pub struct ObjectView {
     pub blocked: TileMask,
     /// The tiles a hero visits it from.
     pub visitable: TileMask,
+    /// The tiles its picture is drawn on beyond those: where a special ground lies (ADV-GRD-001,
+    /// E08 T20a2a).
+    pub drawn: TileMask,
+    /// What the viewer sees of a wandering monster (ADV-FOG-006, E08 T20a2a): none for every
+    /// other object.
+    pub monster: Option<MonsterView>,
+}
+
+/// What a viewer sees of a wandering monster (ADV-FOG-006, E08 T20a2a; the original's hover text,
+/// 0x44ADE0): its creature and the word of its count, never the count, its aggression, its flags
+/// or its treasure.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MonsterView {
+    /// The creature.
+    pub creature: CreatureTypeId,
+    /// The word of its count ([`crate::MonsterParams::count_word`]): 0 the first (the original's
+    /// "few"), each next word from the next threshold of the monsters' parameters.
+    pub count_word: u8,
 }
 
 /// What a viewer sees of a tile.
@@ -165,11 +183,16 @@ pub struct OwnHeroView {
 impl AdventureState {
     /// What `viewer` may know of the adventure map (ADV-FOG-004 to ADV-FOG-006): its sight's
     /// planes, built word by word from its explored grid, then each tile's view, the heroes and
-    /// the typed objects it sees, the Cartographer types it bought (E08 T14b) and the keys it
-    /// holds (T15a). A viewer that is not a player of the game sees no tile, no hero, no object, no
+    /// the typed objects it sees (a monster's creature and the word of its count, E08 T20a2a),
+    /// the Cartographer types it bought (E08 T14b) and the keys it holds (T15a). A viewer that is not a player of the game sees no tile, no hero, no object, no
     /// purchase and no key.
     // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006
-    pub fn observe(&self, core: &Ruleset, viewer: PlayerId) -> AdventureObservation {
+    pub fn observe(
+        &self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        viewer: PlayerId,
+    ) -> AdventureObservation {
         let map = self.map();
         let (width, height, levels) = (map.width(), map.height(), map.levels());
         let sight = self
@@ -243,17 +266,25 @@ impl AdventureState {
             .collect();
         let sees =
             |pos| observation.is_explored(pos) || (objects_on_fringe && observation.is_fringe(pos));
+        let words = part.params().monsters();
         let objects = map
             .objects()
             .iter()
             .enumerate()
             .filter_map(|(index, object)| {
                 let object_type = object.object_type?;
-                (!self.is_removed(index) && object.tiles(map).any(sees)).then_some(ObjectView {
+                (!self.is_removed(index) && object.tiles(map).any(sees)).then(|| ObjectView {
                     object_type,
                     anchor: object.anchor,
                     blocked: object.blocked,
                     visitable: object.visitable,
+                    drawn: object.drawn,
+                    monster: object.monster.as_ref().map(|monster| MonsterView {
+                        creature: monster.creature,
+                        count_word: words.map_or(0, |w| {
+                            w.count_word(self.monster_count(index).unwrap_or(monster.count))
+                        }),
+                    }),
                 })
             })
             .collect();
