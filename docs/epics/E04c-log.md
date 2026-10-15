@@ -586,3 +586,8 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   `h3 bench --games 2000`: `siege` ≈ 95 k steps/s (master's code built here ≈ 82 k, noisy),
   `full` ≈ 97 k to 104 k. The architecture doc's E04c column keeps T9b's numbers (a shared path;
   the closure updates it).
+- **Verify**: the full local verify with the original data (without the 164 maps; no map code
+  changed) on a4e7588 (master merged: `docs/exe/map.toml`'s conflict beside the client lane's
+  0x463370, both entries kept): every step passed; bench-check `random-rollouts-full` +1.25 %
+  against its baseline (as on master), `random-rollouts-siege` +0.00 % against T10a's. The run
+  before found the harvested games' order (`h3-pack-battle`) and rustfmt. CI cannot run.
