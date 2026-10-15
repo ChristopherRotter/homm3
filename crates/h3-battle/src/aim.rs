@@ -227,9 +227,10 @@ pub(crate) fn worth(
         .map_or(0, |info| info.fight_value);
     let mut v = offense.times(defense).sqrt().times(double(fight.into()));
     if s.has(StackTraits::WAR_MACHINE) || s.has(StackTraits::SUMMONED) {
-        // A living stack has hit points: the original's 0.1 for none never arises here.
-        let own = hit_points(s);
-        let others: u64 = state
+        // A living stack has hit points: the original's 0.1 for none never arises here. At most
+        // 42 stacks below 2^64 hit points each: below 2^70, saturated into the doubles.
+        let own = u128::from(hit_points(s));
+        let others: u128 = state
             .stacks
             .iter()
             .filter(|t| {
@@ -238,11 +239,12 @@ pub(crate) fn worth(
                     && !t.has(StackTraits::WAR_MACHINE)
                     && !t.has(StackTraits::SUMMONED)
             })
-            .map(Stack::total_hp)
+            .map(|t| u128::from(t.total_hp()))
             .sum();
-        v = double(others)
+        let wide = |n: u128| double(u64::try_from(n).unwrap_or(u64::MAX));
+        v = wide(others)
             .times(v)
-            .over(double(own + others))
+            .over(wide(own + others))
             .unwrap_or(X87::ZERO);
     }
     v
@@ -263,7 +265,7 @@ pub(crate) fn kill_value(s: &Stack, damage: i64, v: X87) -> i32 {
     let hp = i64::from(s.max_hp.max(1));
     let lost = i64::from(s.max_hp - s.top_hp);
     let dealt = if damage % hp + lost >= hp {
-        damage + lost
+        damage.saturating_add(lost)
     } else {
         damage
     };

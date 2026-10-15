@@ -267,6 +267,36 @@ fn a_war_machine_is_worth_its_share_of_its_army() {
     assert!(!context(&s, &r, field(&r), BattleSide::Defender).desperate);
 }
 
+// covers: BAT-SIE-020, BAT-SIE-021
+#[test]
+fn the_aim_s_sums_saturate_with_extreme_stacks() {
+    // Two stacks of u32::MAX creatures of u32::MAX hit points beside the Ballista: their hit
+    // points pass 2^64; the share's sums saturate, as the doubles do at 2^64 (`X87::MAX`), and
+    // the Ballista's worth stays within its whole worth, 650.
+    let r = rules();
+    let mut setup = siege(
+        &r,
+        &[(0, "archer", 1), (1, "archer", 1)],
+        &[(0, "slow", 10)],
+    );
+    setup.war_machines[0] = std::vec![r.creature_by_key("t:ballista").unwrap()];
+    let mut s = fresh(&r, &setup);
+    for st in &mut s.stacks.as_mut_slice()[..2] {
+        (st.count, st.max_hp, st.top_hp) = (u32::MAX, u32::MAX, u32::MAX);
+    }
+    let ctx = context(&s, &r, field(&r), BattleSide::Defender);
+    let ballista = worth(&s, (&r, field(&r)), &ctx, StackId(2), true);
+    assert!(
+        ballista > X87::ZERO && ballista <= X87::int(650),
+        "{ballista:?}"
+    );
+    // A kill value's damage with the top creature's lost hit points saturates too: as much as
+    // without them.
+    let whole = kill_value(s.at(StackId(0)), i64::MAX, X87::ONE);
+    s.stacks.as_mut_slice()[0].top_hp = 1;
+    assert_eq!(kill_value(s.at(StackId(0)), i64::MAX, X87::ONE), whole);
+}
+
 // ---------------------------------------------------------------- BAT-SIE-022 the turns
 
 // covers: BAT-SIE-022
