@@ -617,12 +617,17 @@ fn line_blocked(s: &SiegeState, from: Hex, to: Hex) -> bool {
     let (dx, dy) = (tx - fx, ty - fy);
     let long = dx.unsigned_abs().max(dy.unsigned_abs());
     let (mut x, mut y) = (LineAxis::new(fx, dx, long), LineAxis::new(fy, dy, long));
+    // A hex is tested once where the line enters it: its answer does not change within the line
+    // (most steps stay in the hex of the step before).
+    let mut last = (-1, -1);
     for _ in 0..17 * long {
+        let at = (x.advance(), y.advance());
+        if at == last {
+            continue;
+        }
+        last = at;
         // The positions stay between the two hexes' columns and rows.
-        let hex = s
-            .field
-            .hex(x.advance(), y.advance())
-            .unwrap_or(Hex(u8::MAX));
+        let hex = s.field.hex(at.0, at.1).unwrap_or(Hex(u8::MAX));
         if hex == s.gate {
             if !s.gate_open {
                 return true;

@@ -60,7 +60,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-15 (sixty-eighth) — E04c T10a: the fold-in and the audit (increment 10)
 
-T10 cut as E04b's T11. The wall line in integers (siege −X % Ir); war machines in 0x463600's order (D-23); the reach test; summaries; the inbox. Detail: the log.
+T10 cut as E04b's T11. Wall line in integers (siege −17 % Ir); war machines in 0x463600's order (D-23); the reach test; summaries; the inbox. Detail: the log.
 
 ### 2026-10-15 (sixty-seventh) — E04c T9: the workload and the measurements (increment 9)
 

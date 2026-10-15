@@ -822,7 +822,8 @@ fn town_ballistae(r: &BattleRuleset, quirk: bool) {
     );
     for fort in [FortLevel::Fort, FortLevel::Citadel, FortLevel::Castle] {
         let [attacker, defender] = machines(fort, listed.clone()).unwrap();
-        assert_eq!(attacker, [machine("ballista"), machine("catapult")]);
+        // The Catapult's record comes first (D-23).
+        assert_eq!(attacker, [machine("catapult"), machine("ballista")]);
         let kept = if quirk {
             vec![machine("tent")]
         } else {
