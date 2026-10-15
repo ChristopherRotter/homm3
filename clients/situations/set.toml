@@ -66,6 +66,46 @@ at = 800
 differing = 0
 why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 
+[[situation.frame]]
+at = 4400
+differing = 0
+why = "exact: the heroes stand, the flags wave on the idle steps (M3 T3a)"
+
+[[situation.frame]]
+at = 4500
+differing = 0
+why = "exact: not yet more than 4 500 ms since the battle's start (0x4965AB; M3 T3a)"
+
+[[situation.frame]]
+at = 4600
+differing = 0
+why = "exact: both heroes' idle motion (group 1) from frame 0 (M3 T3a)"
+
+[[situation.frame]]
+at = 4700
+differing = 0
+why = "exact: the idle motion's frame 1 (M3 T3a)"
+
+[[situation.frame]]
+at = 4800
+differing = 0
+why = "exact: the idle motion's frame 2 (M3 T3a)"
+
+[[situation.frame]]
+at = 4900
+differing = 0
+why = "exact: the idle motion's frame 3, its last (M3 T3a)"
+
+[[situation.frame]]
+at = 5000
+differing = 0
+why = "exact: standing again, the heroes' clocks started anew (M3 T3a)"
+
+[[situation.frame]]
+at = 5100
+differing = 0
+why = "exact: standing (M3 T3a)"
+
 [[situation]]
 id = "dirt"
 scenario = "dirt.toml"

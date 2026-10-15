@@ -78,7 +78,9 @@ struct Frames {
 
 /// One kept frame: its time, the stacks the original shows fidgeting then (the viewer draws
 /// none of its own in a check), each `[side, record, group, frame]`, and its heroes (E17 M3 T3a:
-/// their defeats and victories come from its generator), each `[side, group, frame, flag]`.
+/// their defeats and victories come from its generator), each `[side, group, frame]`: the frame
+/// check's, not the capture set's, whose heroes are the viewer's own. The flags are always the
+/// viewer's.
 #[derive(Debug, Deserialize)]
 struct Kept {
     t: u32,
@@ -86,7 +88,7 @@ struct Kept {
     #[serde(default)]
     fidgets: Vec<[u32; 4]>,
     #[serde(default)]
-    heroes: Vec<[u32; 4]>,
+    heroes: Vec<[u32; 3]>,
 }
 
 /// The command's options.
@@ -331,7 +333,7 @@ pub(crate) fn draw_frames(
                 moment.poses.insert(m.stack, pose);
             }
         }
-        for &[side, group, f, flag] in &frame.heroes {
+        for &[side, group, f] in &frame.heroes {
             if let Some(hero) = moment
                 .heroes
                 .get_mut(side as usize)
@@ -340,7 +342,7 @@ pub(crate) fn draw_frames(
                 *hero = HeroPose {
                     group,
                     frame: f,
-                    flag,
+                    ..*hero
                 };
             }
         }
