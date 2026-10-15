@@ -154,6 +154,8 @@ fn remove_obstacle_takes_away_a_whole_natural_obstacle() {
         let o = observe(&s, &r, viewer);
         assert_eq!(o.obstacles, cells(&r, CLIFF));
         assert!(o.removable_obstacles.is_empty());
+        // Remove Obstacle finds nothing on the hexes the removal cleared.
+        assert_eq!(o.removable_at(at(&r, 7, 4)), None);
     }
     // Its hexes are free; nothing is left to remove, so the spell cannot be cast.
     activate(&mut s, 0);

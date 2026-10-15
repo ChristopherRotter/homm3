@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 9, T9 (the user, 2026-10-15):** `battle/e04c-t9`, the small `shared/e04c-t9`: T9a the properties at the epic's places, no defect found; T9b the siege workload, the measurements. Awaits the user's checkpoint. **Next:** T10 (the closure's review).
+- **E04c increment 9, T9 (the user, 2026-10-15):** `battle/e04c-t9`, the small `shared/e04c-t9`: T9a the properties at the epic's places, its review's BAT-SIE-029 (BAT-Q48); T9b the siege workload, the measurements. Awaits the user's checkpoint. **Next:** T10 (the closure's review).
 - **Merged:** up to #227 (T7e).
-- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
-- **Versions** (T7e; T9 changed none): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v24, observation encoding v20; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q47, BAT-QUIRK-23, BAT-STUB-4, BAT-TER-007, BAT-SIE-029, BAT-WAR-009; survey D-22, S-30.
+- **Open for later tasks:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-Q48 (built), BAT-STUB-1, `QUEUE.md`'s inbox, Q43; S-23, S-24 and batch 2g later.
+- **Versions** (T7e; T9 moved none): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v24, observation encoding v20; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q49, BAT-QUIRK-23, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-23, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
 
 ## Standing traps
@@ -60,7 +60,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-15 (sixty-seventh) — E04c T9: the workload and the measurements (increment 9)
 
-T9a: the properties at the epic's places, the walls property, two stress runs: no engine defect. T9b: `random-rollouts-siege`; `full` as at E04b's end; the siege's wall line a quarter of its cost (inbox). Detail: `docs/epics/E04c-log.md`.
+T9a: the properties at the epic's places, the walls property; its review: BAT-SIE-029. T9b: `random-rollouts-siege`; `full` as at E04b's end; the siege's wall line a quarter of its cost (inbox). Detail: the log.
 
 ### 2026-10-15 (sixty-sixth) — E04c T7e: the automatic Ballista's target (increment 8)
 

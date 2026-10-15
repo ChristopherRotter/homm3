@@ -200,6 +200,9 @@ struct Ground {
     obstacles: Vec<u8>,
     /// The place.
     place: Place,
+    /// The game's difficulty and which sides are human, which the computer's choices for the
+    /// turrets and the automatic Ballista read (BAT-SIE-023, BAT-WAR-008).
+    computer: (u8, [bool; 2]),
 }
 
 /// Where a generated game is fought (E04c T9a).
@@ -255,7 +258,13 @@ fn arb_ground() -> impl Strategy<Value = Ground> {
         3 => arb_town().prop_map(Place::Town),
         1 => Just(Place::Garrison),
     ];
-    (arb_obstacles(), place).prop_map(|(obstacles, place)| Ground { obstacles, place })
+    (arb_obstacles(), place, (0u8..5, any::<[bool; 2]>())).prop_map(
+        |(obstacles, place, computer)| Ground {
+            obstacles,
+            place,
+            computer,
+        },
+    )
 }
 
 /// A town: any of the test siege records, most with a fort, a third of these with a Castle.
@@ -529,6 +538,7 @@ fn game_setup(
 ) -> BattleSetup {
     let mut setup = make_setup(r, attacker, defender, &ground.obstacles, machines);
     situate(r, &mut setup, ground.place);
+    (setup.difficulty, setup.human) = ground.computer;
     for (hero, hidden) in setup.heroes.iter_mut().zip(hidden) {
         hero.iter_mut().for_each(|hero| conceal(r, hero, hidden));
     }
@@ -1476,6 +1486,19 @@ proptest! {
                 let n = state.stacks().iter().filter(|s| s.side == side).count();
                 prop_assert!(n <= usize::from(r.battle().side_stack_limit));
             }
+            // A town's turrets (BAT-SIE-016, BAT-SIE-017): each is held by one wall-shot target,
+            // lives exactly while that target stands and leaves no corpse.
+            if let Some(siege) = state.siege {
+                for (i, st) in state.stacks().iter().enumerate() {
+                    let id = StackId(u8::try_from(i).unwrap());
+                    let held: Vec<u8> = (0..siege.targets).filter(|&t| siege.turret(t) == Some(id)).collect();
+                    prop_assert_eq!(held.len(), usize::from(st.is_turret()), "turret {:?}", id);
+                    if let Some(&t) = held.first() {
+                        prop_assert_eq!(st.is_alive(), siege.stands(t), "turret {:?} of part {}", id, t);
+                        prop_assert!(st.is_alive() || state.corpse(id) == crate::NO_CORPSE);
+                    }
+                }
+            }
         }
     }
 
@@ -2008,9 +2031,11 @@ proptest! {
     #![proptest_config(Config { cases: 32, ..Config::default() })]
 
     /// The automatic Ballista's target (BAT-WAR-008) in every state of random games with
-    /// ballistae on both sides: a living stack of the side its controller fights, never a turret,
-    /// one that keeps its turns while there is one; none only when nothing but turrets is left
-    /// to shoot.
+    /// ballistae on both sides (but the defender's at a town with a fort, BAT-SIE-029): a living
+    /// stack of the side its controller fights, never a turret, one that keeps its turns while
+    /// there is one; none only when nothing but turrets is left to shoot. And a town's automatic
+    /// turret's (BAT-SIE-020): a living stack of the attacker's, whoever controls it; none only
+    /// when none lives.
     #[test]
     fn the_ballista_shoots_a_stack_of_the_other_side((att, def, ground, seed, steps, hidden) in arb_game()) {
         let r = lively();
@@ -2021,7 +2046,18 @@ proptest! {
         let field = crate::Field::new(r.battle().field);
         for step in &steps {
             for (i, s) in (0u8..).zip(state.stacks()) {
-                if s.is_alive() && s.has(crate::StackTraits::WAR_MACHINE) && s.has(crate::StackTraits::SHOOTER) {
+                if s.is_alive() && s.is_turret() {
+                    match crate::aim::turret_target(&state, &r, field, StackId(i)) {
+                        Some(t) => {
+                            let t = &state.stacks()[t.index()];
+                            prop_assert!(t.is_alive() && t.side != s.side);
+                        }
+                        None => prop_assert!(!state.stacks().iter().any(|t| t.is_alive() && t.side != s.side)),
+                    }
+                    continue;
+                }
+                let ballista = s.has(crate::StackTraits::WAR_MACHINE) && s.has(crate::StackTraits::SHOOTER) && s.slot != crate::siege::CATAPULT_SLOT;
+                if s.is_alive() && ballista {
                     let candidates: Vec<&crate::Stack> = state
                         .stacks()
                         .iter()
@@ -2053,11 +2089,17 @@ proptest! {
     /// town with a fort, at every step. No living stack on the field covers a standing wall hex
     /// but the gate's, and none but the defender's own covers the closed gate's or the
     /// drawbridge's hex (its clone, summoned stack or teleported stack may stand there without
-    /// opening the gate). No legal move puts the active stack there, but onto the closed gate's
-    /// or drawbridge's hex for a stack commanded for the defender. Within a command no `Moved`
-    /// lands on a standing wall hex; one onto the closed gate's or drawbridge's hex opens the gate
-    /// at once; and a walker's walk that enters the moat outside the hexes it started on ends
-    /// there (the bridges left out: no moat for the defender, closed to the attacker).
+    /// opening the gate); an open gate that stands has a living stack or a corpse on the gate's,
+    /// the drawbridge's or, in a town whose record has the moat's second row, the outer bridge's
+    /// hex (moat or not). No legal move or
+    /// attack puts the active stack on a standing wall hex, nor on the closed gate's or
+    /// drawbridge's hex but for a stack commanded for the defender. Within a command no `Moved`
+    /// lands on a standing wall hex; one of a stack commanded for the defender onto the closed
+    /// gate's, drawbridge's or outer bridge's hex opens the gate at once (in every town), and
+    /// none of a stack commanded for the attacker lands on the closed gate's or drawbridge's hex;
+    /// and a walker's walk that enters the moat outside the hexes it started on ends there (the
+    /// bridges are no moat for the defender, and for the attacker only while the gate is
+    /// closed).
     #[test]
     fn walls_and_the_moat_agree_with_movement(
         (att, def, ground, seed, steps, hidden) in arb_game(),
@@ -2072,14 +2114,28 @@ proptest! {
         let gate = Hex(sf.gate);
         let row = usize::try_from(field.coords(gate).1).unwrap();
         let (bridge, outer) = (Hex(sf.moat[row]), Hex(sf.second_moat[row]));
-        let mut gates = crate::geometry::HexSet::new();
-        gates.insert(gate);
-        gates.insert(bridge);
-        let mut bridges = crate::geometry::HexSet::new();
-        bridges.insert(bridge);
-        bridges.insert(outer);
+        let set = |hexes: &[Hex]| {
+            let mut set = crate::geometry::HexSet::new();
+            hexes.iter().for_each(|&h| set.insert(h));
+            set
+        };
         let gate_part = sf.targets.iter().position(|t| t.kind == h3_content_battle::WallKind::Gate);
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
+        // The town's moat, the bridges included; the gate's hexes, which a stack commanded for the
+        // defender opens in every town; those that hold it open, the outer bridge only for a town
+        // whose record has the moat's second row (the Fortress's), moat or not (§7.28: 0x4672E0).
+        let first = state.siege.unwrap();
+        let fortress = r.sieges().iter().any(|t| t.faction == first.faction && t.second_moat);
+        let moat = if first.moat().is_empty() {
+            first.moat()
+        } else if fortress {
+            first.moat().union(set(&[bridge, outer]))
+        } else {
+            first.moat().union(set(&[bridge]))
+        };
+        let (gates, bridges) = (set(&[gate, bridge]), set(&[bridge, outer]));
+        let openers = set(&[gate, bridge, outer]);
+        let holders = if fortress { openers } else { gates };
         let mut legal = LegalCommands::new();
         // The hexes of `stack` at `hex`.
         let foot = |stack: &crate::Stack, hex: Hex| {
@@ -2101,11 +2157,18 @@ proptest! {
                     prop_assert!(!on_gate || st.side == BattleSide::Defender, "stack {i} on the closed gate {h:?}");
                 }
             }
+            if s.gate_open && !s.gate_destroyed() {
+                let lies = |h: Hex| state.stacks().iter().enumerate().any(|(i, st)| {
+                    let id = StackId(u8::try_from(i).unwrap());
+                    !st.is_turret() && (st.is_alive() || state.corpse(id) != crate::NO_CORPSE) && foot(st, st.hex).contains(&h)
+                });
+                prop_assert!(holders.iter().any(lies), "the gate stands open with nothing on it");
+            }
             if let (Some(id), Some(side)) = (state.active(), state.side_to_act()) {
                 let mover = state.stacks()[id.index()];
                 legal_commands(&state, &r, side, &mut legal);
                 for c in legal.iter() {
-                    let Command::Move { to } = *c else { continue };
+                    let (Command::Move { to } | Command::Attack { from: to, .. }) = *c else { continue };
                     for h in foot(&mover, to) {
                         prop_assert!(!walls.contains(h), "{c:?} onto the wall {h:?}");
                         let on_gate = closed && gates.contains(h);
@@ -2114,13 +2177,12 @@ proptest! {
                 }
             }
             let placing = state.tactics.is_some();
+            let before = state.clone();
             let (actor, cmd) = resolve(&state, &r, step, &mut legal);
             let mut events = Vec::new();
             let _ = apply(&mut state, &r, actor, cmd, &mut events);
             // Walls only fall: those standing now stood throughout the command.
-            let after = state.siege.unwrap();
-            let walls = after.walls().without(gates);
-            let stops = after.moat().without(bridges);
+            let walls = state.siege.unwrap().walls().without(gates);
             let mut shut = closed;
             // The stack that walks, the hexes its walk started on, and whether it entered the
             // moat.
@@ -2137,12 +2199,22 @@ proptest! {
                         for &h in &hexes {
                             prop_assert!(!walls.contains(h), "{:?} onto the wall {h:?}", e.kind);
                         }
-                        if shut && hexes.iter().any(|&h| gates.contains(h)) {
+                        // Who commands it, if the command did not change that.
+                        let led = Some(st.controller()).filter(|&c| c == before.stacks()[stack.index()].controller());
+                        let opens = |set: crate::geometry::HexSet| hexes.iter().any(|&h| set.contains(h));
+                        if shut && led == Some(BattleSide::Defender) && opens(openers) {
                             prop_assert_eq!(events.get(k + 1).map(|e| e.kind), Some(EventKind::GateOpened), "{:?}", e.kind);
+                        }
+                        if shut && led == Some(BattleSide::Attacker) {
+                            prop_assert!(!opens(gates), "{:?} onto the closed gate", e.kind);
                         }
                         if placing || st.has(crate::StackTraits::FLIES) {
                             continue;
                         }
+                        let stops = match led {
+                            Some(BattleSide::Attacker) if shut => moat,
+                            _ => moat.without(bridges),
+                        };
                         let start = match walk.take() {
                             Some((s, start, entered)) if s == stack => {
                                 prop_assert!(!entered, "{stack:?} walked on through the moat to {to:?}");

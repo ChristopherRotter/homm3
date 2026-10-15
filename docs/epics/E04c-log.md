@@ -452,7 +452,27 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   `extreme_casting_heroes_play_without_failures` half of its hundred seeds.
 - **Stress**: besides the normal runs, two throwaway runs with the case counts raised (every
   earlier property at 1 500 and 600 cases; then, with the garrisons, the Artillery and the new
-  property, at 1 000 and 500): no failure. Exit criterion 4 is met.
+  property, at 1 000 and 500): no failure. With the check's additions (below), exit criterion 4
+  is met.
+- **The independent check** (a fresh agent over the property changes against the rules and the
+  engine's code): no relaxation broader than its rule. It found: (1) the Ballista property handed
+  the turrets and the Catapult to `ballista_target`, which the game never does (war.rs sends them
+  to their own aims): now the Ballista only, and a turret's own target (BAT-SIE-020) is checked:
+  a living stack of the attacker's, none only when none lives; (2) the turret of each part was
+  read from the engine's own map: now every step checks that each turret is held by one target,
+  lives exactly while it stands and leaves no corpse; (3) **the generated sieges gave the defender
+  a Ballista at a fort**, which the original's 0x463600 never sets up (§7.27; VCMI none at any
+  town, D-22) and the engine accepted: **BAT-SIE-029**, the battle leaves a listed defender's
+  Ballista out at a town with a fort (BAT-Q48 for the user; no replay or version moved), with a
+  test; (4) desperate mode (BAT-SIE-023) was never generated: the ground now draws the difficulty
+  and the human sides; (5) the walls property left out the outer bridge, which opens the gate for
+  a stack commanded for the defender and stops an attacker's walk while the gate is closed, and
+  the attack's `from`; both added, and an open gate that stands must have a stack or a corpse on
+  its hexes (never failed). Not done: asserting that the moat and gate checks fire in every run
+  (the cases are random; `tests/sieges.rs` covers them with fixed games). The full verify before
+  these fixes failed only the coverage gate: `Observation::removable_at`'s cleared-hex line, which
+  only the properties reached and the new places reached more rarely (the HANDOFF's flaky-line
+  trap); `tests/remove.rs` now asks it after a removal.
 - **T9b, the workload**: `benches/battle/random-rollouts-siege.toml`, 60 random battles of the
   synthetic siege (a Citadel with a damaging moat, the keep of seven, Brea's commanded Catapult
   and Earthquake, her automatic Ballista): 698 902 794 Ir for 7 872 steps (88.8 k Ir per step);

@@ -125,8 +125,10 @@ measurements, exit criterion 5).
 - [x] **T9 Workload and measurements** — built 2026-10-15 (record: [`E04c-log.md`](E04c-log.md)):
   T9a the property tests' games at a place (the ordinary field, a special battlefield, an
   anti-magic garrison, a town with its fort, moat, mines, turrets, Catapult, Ballistics and
-  Artillery), every earlier property there, a new one for the walls, the gate and the moat; no
-  engine defect found (two runs at ten to fifteen times the cases too); T9b the siege workload
+  Artillery), every earlier property there, a new one for the walls, the gate and the moat; the
+  properties found no defect (two runs at ten to fifteen times the cases too), their independent
+  check one setup gap: BAT-SIE-029, no Ballista for the defender at a fort (BAT-Q48, built for the
+  user's confirmation); T9b the siege workload
   `random-rollouts-siege` (bench-check), the criterion benches' siege variants, the
   measurements: the `full` workload as fast as at E04b's end on the same machine (identical games,
   2.8 % fewer instructions), the siege about 27 % slower per step (the shot's wall test,

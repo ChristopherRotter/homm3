@@ -742,3 +742,52 @@ fn the_open_gate_the_walls_absence_and_a_bow_let_shots_through() {
     // archer (attack 6) at fixed (defense 10): 90.
     assert_eq!(shot(&back, &r, 1, 0), 90);
 }
+
+// ---------------------------------------------------------------- BAT-SIE-029
+
+// covers: BAT-SIE-029
+#[test]
+fn a_town_with_a_fort_sets_up_no_ballista_for_its_defender() {
+    let r = ruleset();
+    let machine = |k: &str| r.creature_by_key(&std::format!("t:{k}")).unwrap();
+    // The war machines each side's battle sets up, by creature.
+    let machines = |fort, defender: Vec<_>| {
+        let setup = BattleSetup {
+            siege: Some(town(&r, "t:castle", fort, Moat::Absent)),
+            war_machines: [vec![machine("ballista")], defender],
+            heroes: [Some(hero(&r)), Some(hero(&r))],
+            ..setup(&r, &[(0, "fixed", 1)], &[(0, "fixed", 1)])
+        };
+        BattleState::new(&r, &setup, 1).map(|s| {
+            BattleSide::BOTH.map(|side| {
+                s.stacks()
+                    .iter()
+                    .filter(|st| st.side == side && st.has(crate::StackTraits::WAR_MACHINE))
+                    .map(|st| st.creature)
+                    .collect::<Vec<_>>()
+            })
+        })
+    };
+    let listed = vec![machine("ballista"), machine("tent")];
+    // At a town without a fort the defender keeps its Ballista; with a fort the battle leaves it
+    // out and keeps the rest; the attacker's Ballista stays beside its Catapult.
+    assert_eq!(
+        machines(FortLevel::None, listed.clone()).unwrap(),
+        [vec![machine("ballista")], listed.clone()]
+    );
+    for fort in [FortLevel::Fort, FortLevel::Citadel, FortLevel::Castle] {
+        let [attacker, defender] = machines(fort, listed.clone()).unwrap();
+        assert_eq!(attacker, [machine("ballista"), machine("catapult")]);
+        assert_eq!(defender, [machine("tent")]);
+    }
+    // A Ballista listed twice is still refused.
+    assert_eq!(
+        machines(
+            FortLevel::Fort,
+            vec![machine("ballista"), machine("ballista")]
+        ),
+        Err(SetupError::InvalidWarMachine {
+            side: BattleSide::Defender
+        })
+    );
+}

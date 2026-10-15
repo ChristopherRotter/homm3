@@ -4824,3 +4824,22 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.28, §7.32): 0x469A10 lets the acting side through the closed gate as the defender; the summon 0x5A7080 tests its place for a stack of the acting side (0x5A7109) and opens the gate through 0x467130 and 0x4671C0 (0x5A71D7); the clone 0x5A6C70 tests its place for the original and calls neither"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-SIE-029"
+title    = "No Ballista for the defender at a town with a fort"
+context  = "battle"
+status   = "implemented"
+summary  = "In a battle at a town with a Fort, Citadel or Castle the battle sets up no Ballista for the defender: a shooting war machine the setup lists for the defending side is left out (its hero keeps it; no error), while its First Aid Tent and Ammo Cart are set up as elsewhere (BAT-WAR-001) and the attacker's Ballista stays beside its Catapult (BAT-SIE-009). The setup is still checked as before (a kind listed twice is SetupError::InvalidWarMachine). At a town without a fort the defender keeps its Ballista, as the original's code does; VCMI gives a defending hero no Ballista at any town (survey D-22, unobserved). Found by E04c T9a's review of the generated sieges."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.27): 0x463600 sets up, in a battle with a fort level above 0, the attacker's Catapult and no Ballista for the defender; the First Aid Tent and the Ammo Cart as elsewhere"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/BattleInfo.cpp (1.7.5) BattleInfo::setupBattle: `if(!town) //defending hero shouldn't receive ballista (bug #551)`, at any town, with or without a fort (survey D-22)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp"
+  confidence = "medium"

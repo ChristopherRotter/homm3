@@ -371,7 +371,8 @@ fn war_machine_kind(
 
 /// The war machine stacks of `side`, by kind, placed with their front hexes on the ruleset's
 /// hexes (mirrored for the defender) and reserved in `taken` (BAT-WAR-001); in a siege with a
-/// fort the attacker's Catapult, which the setup never lists (BAT-SIE-009).
+/// fort the attacker's Catapult, which the setup never lists (BAT-SIE-009), and no Ballista for
+/// the defender, which it may list (BAT-SIE-029).
 // rule: BAT-WAR-001
 fn war_machines(
     ruleset: &BattleRuleset,
@@ -382,12 +383,21 @@ fn war_machines(
 ) -> Result<[Option<Stack>; MAX_WAR_MACHINES], SetupError> {
     let params = ruleset.battle();
     let mut out: [Option<Stack>; MAX_WAR_MACHINES] = [None; MAX_WAR_MACHINES];
+    let mut listed = [false; MAX_WAR_MACHINES];
+    // rule: BAT-SIE-029
+    let walled = siege.is_some_and(|s| s.fort >= h3_contracts::FortLevel::Fort);
     for &id in &setup.war_machines[side.index()] {
         let invalid = SetupError::InvalidWarMachine { side };
         let creature = ruleset.creature(id).ok_or(invalid)?;
         let kind = war_machine_kind(creature, ruleset.abilities(id)).ok_or(invalid)?;
-        if out[kind].is_some() || kind == CATAPULT_KIND {
+        if listed[kind] || kind == CATAPULT_KIND {
             return Err(invalid);
+        }
+        listed[kind] = true;
+        // A town with a fort sets up no Ballista for its defender (the original's 0x463600): the
+        // hero keeps it, the battle leaves it out.
+        if walled && side == BattleSide::Defender && kind == 0 {
+            continue;
         }
         // `kind < MAX_WAR_MACHINES <= MAX_ARMY_SLOTS`.
         let slot = u8::try_from(MAX_ARMY_SLOTS + kind).unwrap_or(u8::MAX);
@@ -413,7 +423,6 @@ fn war_machines(
         out[kind] = Some(stack);
     }
     // rule: BAT-SIE-009
-    let walled = siege.is_some_and(|s| s.fort >= h3_contracts::FortLevel::Fort);
     if walled && side == BattleSide::Attacker && setup.heroes[side.index()].is_some() {
         out[CATAPULT_KIND] = catapult(ruleset, field, setup, taken)?;
     }

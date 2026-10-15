@@ -83,6 +83,12 @@ The original casts a Faerie Dragon's drawn spell in two ways: the mouse cursor o
 
 The review's fix C3 follows the reading of 0x47A100: a created stack whose rounds ran out keeps its record, so no later created stack takes its id and it counts towards the side's stack limit (BAT-MAG-037, BAT-MAG-052; the wiki and VCMI are silent). The rule now reads the engine's mark of such a stack (`Created::vanished`), which the observation does not show: a killed clone and an expired one look alike but differ in whether a Pit Lord may raise at the limit and in the next created stack's id. Nothing hidden leaks (both ends are public events) and the legal mask stays exact, but the observation is no longer complete in ADR-0014 point 8's sense. Registered as BAT-STUB-1. **Options:** (a) keep the fix and add a per-stack public mark to the observation at the next observation-encoding bump (the flat encoding and the C ABI change, and the server's wire maps the observation: a `cross-lane` change); (b) take the fix out until then (one commit; the engine again reuses an expired stack's record, unlike the reading). **Recommendation:** (a) with E05's batch API or E04c, whichever bumps the encoding first. **Blocked:** nothing.
 
+#### BAT-Q48 — The defender's Ballista at a town with a fort: the battle leaves it out (E04c T9; built, for the user's confirmation)
+
+**Found** by the independent check of T9a's generated sieges: the original's setup 0x463600 gives the defender no Ballista in a battle with a fort level above 0 (`installation.md` §7.27; the siege survey's table said so since T4), and VCMI gives a defending hero none at any town (`BattleInfo::setupBattle`, "bug #551"; survey D-22). The engine set up whatever `BattleSetup.war_machines` listed, and no rule said who drops it; a caller that lists a hero's war machines as `h3_heroes::war_machines` derives them would get an unfaithful siege.
+
+**Options:** (a) the battle leaves a listed defender's Ballista out at a town with a fort, as it sets up the Catapult and the turrets itself (no contract change; BAT-SIE-029); (b) the battle refuses such a setup (`SetupError::InvalidWarMachine`) and the caller drops it; (c) the caller's job, the battle accepts anything (no change). Recommendation (a), **built in T9** (`battle/e04c-t9`; no replay or version moved: no setup of the fixtures lists one). Without a fort the engine keeps the code's Ballista (D-22: VCMI's differs, unobserved).
+
 ### Adventure lane (`ADV-Q<n>`)
 
 (no open questions)
