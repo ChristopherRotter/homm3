@@ -20,7 +20,7 @@ E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epic
 
 **E04c increment 7** (the user, 2026-10-15: T8 rather than T7e; refined in `docs/epics/E04c-sieges-and-battlefields.md`, "T8"): T8 the siege's other rules (`installation.md` §7.32; `battle/e04c-t8`; batch 3g run by an agent; BAT-SIE-024 to 028); merged (#222).
 
-**E04c increment 8** (the user, 2026-10-15: the next sensible increment): T7e the automatic Ballista's target (`installation.md` §7.33; `shared/e04c-t7e-seam` #225, `battle/e04c-t7e`; batch 3h run by an agent; BAT-WAR-008, BAT-STUB-3 closed). Next: T9 (workload and measurements), then T10 (the closure's independent review).
+**E04c increment 8** (the user, 2026-10-15: the next sensible increment): T7e the automatic Ballista's target (`installation.md` §7.33; `shared/e04c-t7e-seam` #225, `battle/e04c-t7e` #227; batch 3h run by an agent; BAT-WAR-008, BAT-STUB-3 closed; BAT-Q47). Next: T9 (workload and measurements), then T10 (the closure's independent review).
 
 
 ## Inbox
