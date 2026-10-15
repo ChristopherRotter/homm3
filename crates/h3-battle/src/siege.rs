@@ -374,13 +374,18 @@ fn blocks(s: &SiegeState, passes: bool) -> HexSet {
 }
 
 /// Whether a living stack or a corpse lies on `hex` (the original's hex records: a stack, its
-/// corpses).
+/// corpses). A created stack that died leaves none (BAT-MAG-037), also before the command's end
+/// marks its corpse `NO_CORPSE` (`raise::mark_corpses`).
 fn lies(state: &BattleState, field: Field, hex: Hex) -> bool {
     state
         .stacks
         .iter()
         .zip(state.raised.corpse.iter())
-        .any(|(s, &corpse)| corpse != NO_CORPSE && s.footprint(field).covers(hex))
+        .any(|(s, &corpse)| {
+            corpse != NO_CORPSE
+                && (s.is_alive() || !s.is_created())
+                && s.footprint(field).covers(hex)
+        })
 }
 
 /// The hexes the walls and the gate block for a stack moved or placed for `passer` (BAT-SIE-002,

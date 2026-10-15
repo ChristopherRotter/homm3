@@ -4063,7 +4063,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "lib/battle/BattleInfo.cpp setupBattle: a town with a fort gets walls (EWallState), a moat by the town's moat hexes (config/factions/*.json town.moatHexes, moatAbility), no random obstacles"
+  ref        = "lib/battle/BattleInfo.cpp setupBattle: a town with a fort gets walls (EWallState), a moat by the town's moatAbility (config/factions/*.json) and its hexes (config/spells/moats.json moatHexes), no random obstacles"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp"
   retrieved  = "2026-10-13"
   confidence = "medium"
@@ -4093,17 +4093,17 @@ id       = "BAT-SIE-003"
 title    = "The gate"
 context  = "battle"
 status   = "verified"
-summary  = "A town with a Fort has a gate on the gate's hex (96), closed at the start; its drawbridge's hex is the moat hex before it (95), the outer bridge's the second moat row's hex on that row (94). While the gate is closed the gate's and the drawbridge's hexes block every stack (BAT-SIE-002), except a stack its controller commands for the defender when no living stack and no corpse lies on the drawbridge's or the outer bridge's hex (the outer bridge's tested in every town, as in the original). Such a stack that stands on the gate's, the drawbridge's or the outer bridge's hex (either hex of a two-hex stack; a walk's step, a flight's landing) while the gate is closed opens it (event GateOpened). After every walk, flight or teleporting move, at the end of every action and at every turn's end an open gate closes (event GateClosed) unless a living stack or a corpse lies on the gate's or the drawbridge's hex, or with a second moat row on the outer bridge's. While open neither hex blocks. A destroyed gate stands open for both sides for the rest of the battle (BAT-SIE-012). Scope: a summoned elemental opening it (T8)."
+summary  = "A town with a Fort has a gate on the gate's hex (96), closed at the start; its drawbridge's hex is the moat hex before it (95), the outer bridge's the second moat row's hex on that row (94). While the gate is closed the gate's and the drawbridge's hexes block every stack (BAT-SIE-002), except a stack its controller commands for the defender when no living stack and no corpse lies on the drawbridge's or the outer bridge's hex (the outer bridge's tested in every town, as in the original; the moving stack itself included: a defender's stack on the outer bridge's hex bars itself from the drawbridge and the gate and goes round through the moat). A created stack that dies leaves no corpse (BAT-MAG-037) and holds nothing from its death on: killed on the drawbridge it lets the gate close at that action's end, before a good-morale turn. Such a stack that stands on the gate's, the drawbridge's or the outer bridge's hex (either hex of a two-hex stack; a walk's step, a flight's landing) while the gate is closed opens it (event GateOpened). After every walk, flight or teleporting move, at the end of every action and at every turn's end an open gate closes (event GateClosed) unless a living stack or a corpse lies on the gate's or the drawbridge's hex, or with a second moat row on the outer bridge's. While open neither hex blocks. A destroyed gate stands open for both sides for the rest of the battle (BAT-SIE-012). Scope: a summoned elemental opening it (T8)."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.28): hex_blocked 0x469A10 (hexes 95 and 96; the acting side 1 passes when 95 and 94 hold no living stack and no corpse), the opening 0x467130 -> 0x4671C0 (the walk 0x442186, the flight 0x4B4A8C), the closing 0x4672E0 after a walk, a flight, a teleporting move and every action (0x4423F2, 0x4B4A29, 0x4B4EF9, 0x479C65)"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.28): hex_blocked 0x469A10 (hexes 95 and 96; the acting side 1 passes when 95 and 94 hold no living stack and no corpse), the opening 0x467130 -> 0x4671C0 (the walk 0x442186, the flight 0x4B4A8C), the closing 0x4672E0 after a walk, a flight, a teleporting move and every action (0x4423F2, 0x4B4A29, 0x4B4EF9, 0x479C65), reading the hexes' records, where a summoned stack's death leaves no corpse (0x444120)"
   confidence = "high"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "lib/battle/CBattleInfoCallback.cpp battleGetAccessibility, server/battles/BattleActionProcessor.cpp: the gate (EGateState CLOSED, OPENED) opens for the defender's stack on the gate's or bridge hex and closes when they are free (a Force Field on 94 keeps it closed; only living stacks keep it open)"
+  ref        = "lib/battle/CBattleInfoCallback.cpp battleGetAccessibility, server/battles/BattleActionProcessor.cpp: the gate (EGateState CLOSED, OPENED) opens for the defender's stack on the gate's or bridge hex and closes when they are free (a Force Field on 94 keeps it closed); server/battles/BattleProcessor.cpp L229-L231 reads the units on 94 to 96 dead or alive (battleGetUnitByPos with onlyAlive false; CBattleInfoCallback.cpp L398-L412), so a corpse holds the gate there too and a dead summoned unit (a ghost, CUnitState.cpp L888-L889) does not: as here"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
   retrieved  = "2026-10-13"
   confidence = "medium"
@@ -4119,7 +4119,7 @@ id       = "BAT-SIE-004"
 title    = "The moat stops walkers"
 context  = "battle"
 status   = "verified"
-summary  = "A town with a Citadel or Castle and a moat (BattleSetup.siege.moat not absent; not a town whose record has mines instead, BAT-SIE-007) has the moat's hexes: one per row left of the wall (the original's 11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181) and with the record's second row also those left of it (the Fortress's 10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180); the drawbridge's and the outer bridge's hexes are moat hexes only while the gate is closed. A walker's walk stops on the first moat hex it enters (not one of its own hexes; flyers and teleporters do not stop); the drawbridge's and the outer bridge's hexes are no stop for a stack its controller commands for the defender. The moat's hexes are public."
+summary  = "A town with a Citadel or Castle and a moat (BattleSetup.siege.moat not absent; not a town whose record has mines instead, BAT-SIE-007) has the moat's hexes: one per row left of the wall (the original's 11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181) and with the record's second row also those left of it (the Fortress's 10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180); the drawbridge's and the outer bridge's hexes are moat hexes only while the gate is closed. A walker's walk stops on the first moat hex it enters (not one of its own hexes; flyers and teleporters do not stop), so an attack ordered with a walk that ends in the moat is no legal command (CommandError::Unreachable; as from a seen pit, BAT-MAG-032); the drawbridge's and the outer bridge's hexes are no stop for a stack its controller commands for the defender. The moat's hexes are public."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4136,8 +4136,8 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "config/factions/*.json town.moatHexes (fortress: two rows); lib/battle/CBattleInfoCallback.cpp getStoppers: moat hexes stop walkers"
-  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/factions"
+  ref        = "config/spells/moats.json moatHexes (castleMoat L42-L66; fortressMoat L662-L686: two rows without 95); config/factions/*.json name only the town's moatAbility; lib/battle/CBattleInfoCallback.cpp getStoppers: moat hexes stop walkers"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/moats.json"
   retrieved  = "2026-10-13"
   confidence = "medium"
 

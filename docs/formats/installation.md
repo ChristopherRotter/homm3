@@ -2567,6 +2567,18 @@ at a round's start the stacks' turn flags (+0x4F0) are cleared, then the keep sh
 Catapult (the keep's flag stayed set throughout, and so did the Catapult's in G's town with a Fort only,
 though it shot every round: not read).
 
+**Review re-read (E04c T10b, 2026-10-15): the gate's hexes as the records hold them.** `hex_blocked`
+(0x469A10) reads the records of 95 and 94 as they are (their stack byte and corpse count), with no
+exception for the stack that moves: a defender's stack standing on 94 bars itself from 95 and 96
+and must go round through the moat (the review found no call that takes the mover off its hexes
+before the pathfinder's test; not re-read here). The closing 0x4672E0 reads the same records, and
+the death routine 0x444120 appends no corpse for a summoned stack: one killed on 95 holds nothing
+from its death on, so the gate closes at that action's end (0x479C65). The engine had counted a
+dead created stack as a corpse until the command's end marked it none, which kept the gate open
+through the killer's good-morale turn; it now counts it nowhere (BAT-SIE-003). Not read: whether
+the dispatcher reaches 0x479C65 before a good-morale turn (the engine closes the gate at every
+turn's end, before the morale roll).
+
 ### 7.29 Code reading: the Catapult, Ballistics and Earthquake (E04c T6, 2026-10-14)
 
 Read for E04c T6 (the survey `docs/rules/surveys/E04c-sieges.md`, D-11 to D-15; BAT-Q43): the
