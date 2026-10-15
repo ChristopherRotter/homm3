@@ -641,6 +641,12 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
     `false`, and the observed `SiegeState` carries the Escape Tunnel for its defender only
     (observation encoding v21, C ABI v25: a change of meaning, the layout unchanged, as the rear
     hex's v14/v18).
+- **An independent read of the fixes** (a fresh agent, the executable re-read at the deciding
+  addresses): ten of the eleven as their findings and the original; two items fixed after it: the
+  berserk turn takes the same pathfinder with the side argument −1 (0x445582, 0x42232C), so a
+  computer's weak berserk walker keeps out of the moat by the gate's term alone (`control::berserk`,
+  `Reach::without_stops`); the Catapult is told by `Stack::is_catapult` (its slot, not a stack
+  raised from its corpse; the original tests creature 145).
 - **Not changed:** F-robust-1 (a taken Catapult place stays `NoRoom`, as for every war machine);
   F-r2b-2 (the bow's wall exemption reads the owner's hero, the original the controller's:
   recorded, as the distance penalty's note). **Docs:** BAT-SIE-003, 004, 006, 009, 011, 014, 018,
