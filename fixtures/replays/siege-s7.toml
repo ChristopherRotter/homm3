@@ -90,9 +90,9 @@ commands = [
     "D move 110",
 ]
 checkpoints = [
-    "0xebe83e848d15249b",
-    "0x50bd938bfb772915",
-    "0x31c3ddcd4d5ee376",
+    "0xc6e5da7277da0a87",
+    "0x380b9042f262fc6d",
+    "0x52d8d041f5c7abc2",
 ]
 
 [replay]
@@ -179,4 +179,4 @@ count = 15
 
 [result]
 winner = "attacker"
-final_hash = "0x716e95bc0749cca3"
+final_hash = "0x28244912aaff7657"

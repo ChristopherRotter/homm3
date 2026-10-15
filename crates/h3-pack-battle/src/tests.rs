@@ -1978,7 +1978,8 @@ fn harvested_hero_effects_reproduce_the_experiments() {
     );
     // Batch 1b R8: Pikemen 14 hit points and speed 7 (Ring of Vitality, Ring of Life, Vial of
     // Lifeblood +4; Necklace of Swiftness +1, Cape of Velocity +2); the war machines get the
-    // hit points but not the speed: Ballista 254, Ammo Cart 104, First Aid Tent 79, speed 0.
+    // hit points but not the speed: Ballista 254, First Aid Tent 79, Ammo Cart 104 (the stacks in
+    // the original's record order, D-23), speed 0.
     let worn = [
         "base:ring_of_life",
         "base:vial_of_lifeblood",
@@ -1999,7 +2000,7 @@ fn harvested_hero_effects_reproduce_the_experiments() {
     );
     assert_eq!(
         r8.iter().map(|s| (s.2, s.3)).collect::<Vec<_>>(),
-        [(14, 7), (254, 0), (104, 0), (79, 0)]
+        [(14, 7), (254, 0), (79, 0), (104, 0)]
     );
     // The Golden Bow takes the range penalty from the shooters, the Ballista included
     // (batch 1b R8: 23, 17 and 20 at long range); the Bow of the Sharpshooter also lets them

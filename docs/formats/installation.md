@@ -2445,6 +2445,12 @@ is 0x5BF4F0's result: 4 + the number of building ids 0–43 the town has built a
 0x24 bytes; 0x466C50) hold each turret's picture and position from the town type's record
 (0x63CF88, 32 bytes). `CRTRAITS.TXT`: the Arrow Tower 100 hit points, attack 10, defense 5, damage
 2–4, 99 shots (the harvest, E04c T7); the Catapult 1 000 hit points, attack 10, defense 10, no damage.
+**The records' order** (re-read in E04c T10a): after the army's stacks (slots 0–6) the war
+machines' records follow in one fixed order, each only where it is set up: the Catapult (side 0
+with a fort level above 0, 0x46376D), the Ballista (artifact 4, 0x4637AB; not for side 1 with a
+fort), the First Aid Tent (artifact 6, creature 147, 0x463819), the Ammo Cart (artifact 5,
+creature 148, 0x46387B); then, for side 1, the turrets. VCMI numbers the war machines before the
+army (Ballista, Ammo Cart, Tent, Catapult): the engine follows the code (survey D-23).
 
 **The defending hero** (0x463C60, a battle at a town with a defending hero; the fort level is not
 tested). The hero's attack, defense, power and mana are kept (+0x13DE8 to +0x13DF4), then raised by

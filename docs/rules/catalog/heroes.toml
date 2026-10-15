@@ -140,7 +140,7 @@ id       = "HER-SPL-003"
 title    = "Mastery of a spell"
 context  = "heroes"
 status   = "implemented"
-summary  = "A hero's mastery of a spell (h3_heroes::spell_masteries, for every spell above none; the one derivation for the adventure map and the battle, BAT-Q19) is the best level of its `school_mastery` effects among the spell's schools (the magic school skills: 1 Basic, 2 Advanced, 3 Expert), raised by a `spell_mastery` effect for the spell (Armageddon's Blade: Armageddon at Expert), at most Expert. It is the mastery on ordinary ground; a battlefield that raises it (Magic Plains, the elemental battlefields) is the battle's (E04c). No specialty or other artifact changes it. The list covers spells the hero does not have too: the original asks the hero for any spell's mastery (Sacrifice's test asks for Resurrection's, BAT-QUIRK-5)."
+summary  = "A hero's mastery of a spell (h3_heroes::spell_masteries, for every spell above none; the one derivation for the adventure map and the battle, BAT-Q19) is the best level of its `school_mastery` effects among the spell's schools (the magic school skills: 1 Basic, 2 Advanced, 3 Expert), raised by a `spell_mastery` effect for the spell (Armageddon's Blade: Armageddon at Expert), at most Expert. It is the mastery on ordinary ground; a battlefield that raises it (Magic Plains, the elemental battlefields) is the battle's (BAT-TER-005). No specialty or other artifact changes it. The list covers spells the hero does not have too: the original asks the hero for any spell's mastery (Sacrifice's test asks for Resurrection's, BAT-QUIRK-5)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -174,7 +174,7 @@ id       = "HER-WAR-001"
 title    = "War machines a hero brings"
 context  = "heroes"
 status   = "implemented"
-summary  = "A hero brings to a battle the war machine of every worn artifact that places one (Ballista, Ammo Cart, First Aid Tent; each in its own slot, so at most one of each), in the order worn; they become BattleSetup.war_machines (BAT-WAR-001). The Catapult's artifact places none until sieges arrive (E04c); artifacts in the backpack never place one."
+summary  = "A hero brings to a battle the war machine of every worn artifact that places one (Ballista, Ammo Cart, First Aid Tent; each in its own slot, so at most one of each), in the order worn; they become BattleSetup.war_machines (BAT-WAR-001). The Catapult's artifact places none: the battle sets the Catapult up for any attacking hero at a town with a fort (BAT-SIE-009); artifacts in the backpack never place one."
 numeric  = "integer"
 
   [[rule.source]]
