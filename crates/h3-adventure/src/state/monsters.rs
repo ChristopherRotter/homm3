@@ -286,8 +286,9 @@ impl AdventureState {
     /// monster's answer after a declined join (ADV-MON-007: a fight when its aggression equals
     /// the charisma or it never flees, else its offer to flee); a declined offer to flee lets the
     /// monster leave the map without its treasure (ADV-MON-008), told to the players that see it
-    /// there. A Cartographer's or a border guard's decline changes nothing, nor that of an offer
-    /// whose monster is no longer on the map. Infallible.
+    /// there. A Cartographer's, a border guard's or a guarded pile's (ADV-PIK-004, E08 T21a: the
+    /// hero stays) decline changes nothing, nor that of an offer whose monster is no longer on the
+    /// map. Infallible.
     // rule: ADV-MON-007, ADV-MON-008
     pub fn decline_offer<S: Sink>(
         &mut self,

@@ -3,11 +3,11 @@
 //! goes on to the next in the same command, a price to join the treasury cannot pay counts as
 //! declined, an accepted join pays and gains the treasure, and a guard's visit waits for the
 //! answer to the offer of the tile's own object; a monster's battle (E08 T20b2): its split, the
-//! system actor playing its side, its outcome.
+//! system actor playing its side, its outcome; a guarded pile's question and battle (E08 T21a).
 
 use h3_adventure::{
-    AdventureEvent, AdventureEventKind, MonsterSetup, ObjectSetup, ObjectTypeId, Offer, OfferKind,
-    TileMask, TileRand, Viewers, split,
+    AdventureEvent, AdventureEventKind, Guards, MonsterSetup, ObjectSetup, ObjectTypeId, Offer,
+    OfferKind, TileMask, TileRand, Viewers, split,
 };
 use h3_contracts::BattleSide;
 
@@ -31,6 +31,7 @@ fn object(
         amount: None,
         drawn: TileMask::default(),
         monster,
+        guards: None,
     }
 }
 
@@ -460,5 +461,149 @@ fn a_lost_battle_takes_the_hero_off_the_map_and_leaves_the_survivors() {
     assert!(!state.adventure().is_removed(0));
     let left = state.adventure().monster_count(0).unwrap();
     assert!((1..=40).contains(&left), "{left}");
+    assert_eq!(state.treasury(RED).unwrap()[0], 2000);
+}
+
+/// The gold pile `t:pile` of 5 hundreds at `anchor`, guarded by these stacks, asking first when
+/// `question` (E08 T21a).
+fn guarded_pile(
+    rules: &GameRuleset,
+    anchor: Pos,
+    army: Vec<ArmyStack>,
+    question: bool,
+) -> ObjectSetup {
+    ObjectSetup {
+        amount: Some(5),
+        guards: Some(Guards { army, question }),
+        ..object(rules, "t:pile", anchor, None)
+    }
+}
+
+/// `count` gogs in slot `slot`.
+fn gogs_in(slot: u8, count: u32) -> ArmyStack {
+    ArmyStack {
+        slot,
+        creature: GOG,
+        count,
+    }
+}
+
+// covers: ADV-PIK-004, GAM-DEC-001, GAM-BAT-001
+#[test]
+fn a_guarded_piles_question_opens_and_its_acceptance_fights_the_unsplit_guards() {
+    let rules = valued("t:split");
+    let at = Pos::new(1, 1, 0);
+    let pile = guarded_pile(&rules, at, vec![gogs_in(1, 1)], true);
+    let pile_type = pile.object_type.unwrap();
+    let mut state = game(&rules, 1, vec![pile]);
+    let events = play(&mut state, &rules, RED, move_hero(0, &[at])).unwrap();
+    let opened = GameEvent::OfferOpened {
+        player: RED,
+        hero: HeroId::new(0),
+        object_type: pile_type,
+        anchor: at,
+    };
+    assert_eq!(after_steps(events), [opened]);
+    let question = Offer {
+        hero: HeroId::new(0),
+        object_type: pile_type,
+        anchor: at,
+        kind: OfferKind::Fight,
+    };
+    assert_eq!(state.decision(RED), Some(&question));
+    assert_eq!(
+        legal_commands(&state, &rules, Actor::Player(RED)),
+        [ACCEPT, DECLINE]
+    );
+    // The hash sees the offer's kind.
+    let asked = state.state_hash();
+    // Declined: nothing else happens.
+    let events = play(&mut state, &rules, RED, DECLINE).unwrap();
+    assert_eq!(
+        events,
+        [GameEvent::OfferAnswered {
+            player: RED,
+            object_type: pile_type,
+            anchor: at,
+            accepted: false,
+        }]
+    );
+    assert_ne!(state.state_hash(), asked);
+    assert!(!state.adventure().is_removed(0));
+    assert_eq!(state.treasury(RED).unwrap()[0], 2000);
+    // Asked again and accepted: the battle against the guards as the map gives them, unsplit
+    // (the split's profile does not touch them), owned by red alone.
+    play(&mut state, &rules, RED, move_hero(0, &[at])).unwrap();
+    let events = play(&mut state, &rules, RED, ACCEPT).unwrap();
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, GameEvent::BattleStarted { tile, .. } if *tile == at))
+    );
+    let battle = state.battle(RED).unwrap();
+    assert_eq!(battle.owners(), [Some(RED), None]);
+    assert_eq!(battle.heroes(), [Some(HeroId::new(0)), None]);
+    let defending: Vec<(u8, CreatureTypeId, u32)> = battle
+        .state()
+        .stacks()
+        .iter()
+        .filter(|s| s.side == BattleSide::Defender)
+        .map(|s| (s.slot, s.creature, s.count))
+        .collect();
+    assert_eq!(defending, [(1, GOG, 1)]);
+    // Won: the pile is picked up, its gold in red's treasury.
+    let events = fight_out(&mut state, &rules);
+    assert!(events.iter().any(|e| matches!(
+        e,
+        GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::ObjectRemoved { anchor, .. },
+            ..
+        }) if *anchor == at
+    )));
+    assert_eq!(
+        events.last(),
+        Some(&GameEvent::ResourceGained {
+            player: RED,
+            resource: GOLD,
+            amount: 500,
+        })
+    );
+    assert_eq!(state.treasury(RED).unwrap()[0], 2500);
+    assert!(state.adventure().hero(HeroId::new(0)).is_some());
+    assert!(state.adventure().is_removed(0));
+}
+
+// covers: ADV-PIK-004, GAM-BAT-003
+#[test]
+fn a_guarded_pile_without_a_question_fights_at_once_and_keeps_its_guards_survivors() {
+    let rules = valued("t:faithful");
+    let at = Pos::new(1, 1, 0);
+    let mut state = game(
+        &rules,
+        1,
+        vec![guarded_pile(&rules, at, vec![gogs_in(0, 40)], false)],
+    );
+    let events = play(&mut state, &rules, RED, move_hero(0, &[at])).unwrap();
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, GameEvent::BattleStarted { .. }))
+    );
+    let events = fight_out(&mut state, &rules);
+    assert!(events.iter().any(|e| matches!(
+        e,
+        GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::HeroRemoved { .. },
+            ..
+        })
+    )));
+    assert!(state.adventure().hero(HeroId::new(0)).is_none());
+    assert!(!state.adventure().is_removed(0));
+    let left = state.adventure().guards_left(0);
+    assert!(
+        matches!(left, [ArmyStack { slot: 0, creature, count }]
+            if *creature == GOG && (1..=40).contains(count)),
+        "{left:?}"
+    );
     assert_eq!(state.treasury(RED).unwrap()[0], 2000);
 }

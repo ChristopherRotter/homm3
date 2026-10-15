@@ -14,7 +14,8 @@
 //! drawn at the build, the objects that left the map and the tiles they freed, and the typed
 //! objects a viewer sees ([`ObjectView`], T12b), visits from a neighbour and entered (T13b, T14a),
 //! the Cartographer's offer ([`Offer`]) and its acceptance (T14b), the observatories, the
-//! Keymaster's tents with the keys and the border guards with their offer (T15a).
+//! Keymaster's tents with the keys and the border guards with their offer (T15a), the wandering
+//! monsters (T20), the guarded piles ([`Guards`], T21a).
 //! Pointer identity (`ptr_eq`, `as_ptr`) is allowed only in the persistent module
 //! `src/persistent.rs` (`arch.toml`, ADR-0016 point 2).
 //!
@@ -70,8 +71,8 @@ pub use ruleset::{
     TerrainMovement, TerrainMovementDef, Visit,
 };
 pub use setup::{
-    AdventureSetup, ArmyError, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos, SetupError,
-    StandError, TileMask, TileSetup,
+    AdventureSetup, ArmyError, Guards, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos,
+    SetupError, StandError, TileMask, TileSetup,
 };
 pub use split::{TileRand, split};
 pub use state::{AdventureState, HeroOnMap, MapObject, Monster, StaticMap, StaticTile};
@@ -84,8 +85,8 @@ pub use state::{AdventureState, HeroOnMap, MapObject, Monster, StaticMap, Static
 /// T15a): the keys each player holds. v7 (E08 T18b): a hero's formation. v8 (E08 T19a): whether a
 /// tile of the static map is on the coast. v9 (E08 T20a2a): the tiles each object lies on, each
 /// monster's creature, count, aggression, flags and treasure, the armies battles left on objects
-/// and the game's difficulty.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 9;
+/// and the game's difficulty. v10 (E08 T21a): each guarded pile's guards.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 10;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

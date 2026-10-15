@@ -72,6 +72,7 @@ fn object_at(x: u16, object_type: ObjectTypeId, monster: Option<MonsterSetup>) -
         amount: None,
         drawn: TileMask::default(),
         monster,
+        guards: None,
     }
 }
 
@@ -331,6 +332,7 @@ fn ground(
         amount: None,
         drawn: TileMask::from_bits((0..height).fold(0, |bits, r| bits | row << (8 * u32::from(r)))),
         monster: None,
+        guards: None,
     }
 }
 

@@ -518,13 +518,16 @@ impl GameState {
 }
 
 impl CanonicalHash for GameState {
-    /// Encoding v6 (E08 T19a; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's): version;
+    /// Encoding v8 (E08 T21a; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6 T19a's,
+    /// v7 T20b1's): version;
     /// the master seed; the day; the running group's index; the schedule (groups as length +
     /// player ids); the players (colour, acting, stream state); since v2 the treasuries (the
     /// resource kinds, then every player's amounts as length and entries); since v3 the open
     /// decisions in opening order, as length and entries: since v6 first the decision's kind, 0
     /// an offer, 1 a battle; an offer's owner, hero, object type, anchor, since v4 the offer's
-    /// kind, 0 a reveal, 1 a passage, then a reveal's price as length and resource–amount pairs;
+    /// kind, 0 a reveal, 1 a passage, since v7 2 a join, 3 a join for gold, 4 a flight, since v8
+    /// 5 a guarded pile's fight, then a reveal's or a join for gold's price as length and
+    /// resource–amount pairs, since v7 whether a guard's visit waits for the answer;
     /// a battle's owners and heroes by side (each 0 for none, else 1 and the id), tile and battle
     /// state hash; the game's stream; since v5 the store of heroes (length, then each hero's
     /// details by id, [`hash_details`]); the adventure state's hash.
@@ -567,6 +570,7 @@ impl CanonicalHash for GameState {
                         OfferKind::Join => (2, None),
                         OfferKind::JoinForGold { price } => (3, Some(price)),
                         OfferKind::Pursue => (4, None),
+                        OfferKind::Fight => (5, None),
                     };
                     h.write_u8(tag);
                     if let Some(price) = price {

@@ -72,6 +72,7 @@ fn monster_at(x: u16, y: u16, creature: CreatureTypeId, count: u32) -> ObjectSet
             no_growth: false,
             treasure: vec![(GOLD, 500)],
         }),
+        guards: None,
     }
 }
 
