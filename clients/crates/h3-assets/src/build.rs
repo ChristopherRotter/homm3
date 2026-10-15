@@ -7,6 +7,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::def::{Encoding, Frame};
+use crate::fnt::Font;
 use crate::msk::Mask;
 use crate::palette::{Chunk, PAL_VERSION, Palette, Rgb};
 use crate::read::index;
@@ -269,6 +270,32 @@ pub fn runs_by_repetition(encoding: Encoding, width: u32, pixels: &[u8]) -> Vec<
             out.resize(out.len() + same, marked);
             i += same;
         }
+    }
+    out
+}
+
+/// A font file (`.FNT`, E17 M3 T4a): the header (the game's first bytes, the height and the y
+/// offset), the 256 glyphs' metrics (a font with fewer gets empty ones), their offsets, then
+/// each glyph's pixels in order.
+#[must_use]
+pub fn fnt(font: &Font) -> Vec<u8> {
+    let mut out = Vec::from([0x1F, 0xFF, 0x08, 0, 0, font.height]);
+    out.extend_from_slice(&font.y_offset.to_le_bytes());
+    out.resize(32, 0);
+    let glyph = |c: usize| font.glyphs.get(c).cloned().unwrap_or_default();
+    for c in 0..256 {
+        let g = glyph(c);
+        for v in [g.left, g.width, g.right] {
+            out.extend_from_slice(&v.to_le_bytes());
+        }
+    }
+    let mut offset = 0;
+    for c in 0..256 {
+        put_u32(&mut out, word(offset));
+        offset += glyph(c).pixels.len();
+    }
+    for c in 0..256 {
+        out.extend_from_slice(&glyph(c).pixels);
     }
     out
 }

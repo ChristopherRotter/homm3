@@ -8,6 +8,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use h3_formats::lod::LodArchive;
+use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_view::anim::{self, Speed, Timeline};
 use h3_view::batch::{self, Batch, Sprite};
@@ -191,7 +192,7 @@ impl Battle {
 
     /// `list` drawn into a frame with the batch.
     pub fn compose(&self, t: u32, list: &[Draw]) -> Result<Screen, String> {
-        compose(list, &self.batch, &self.layout).map_err(|e| format!("{t} ms: {e}"))
+        compose(list, &self.batch, &self.layout, Bugs::Fixed).map_err(|e| format!("{t} ms: {e}"))
     }
 
     /// A DEF of the batch.

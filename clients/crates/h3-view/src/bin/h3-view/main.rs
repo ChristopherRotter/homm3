@@ -41,8 +41,9 @@ commands:
   render <scenario.toml | record.jsonl> [--seed <n>] [--packs <dir>] [--install <dir>]
          [--out <file.png>] [--list] [--at <ms> | --frames <dir>] [--speed <0-2>]
           draws a battle still: the battle at its start as the record's first snapshot shows it
-          (the background, the obstacles, every living stack standing on its hex; no heroes,
-          count boxes or corpses yet), with its assets loaded as one checkpoint batch, and writes
+          (the background, the obstacles, the heroes and their flags, every living stack
+          standing on its hex with its count box; no corpses yet), with its assets loaded as one
+          checkpoint batch, and writes
           a PNG (default clients/out/render/<stem>.png; <stem>-s<seed>.png from a scenario). A
           scenario file (as `h3 run` reads it, its packs from <dir>, default the repository's
           packs/; obstacles from the seed, default 1, when it asks) is run in-process as a

@@ -6,30 +6,32 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T4 — Fonts and the string catalogue
+### E17 M3 T4b — The string catalogue and the language packs
 
-- **Scope:** which font draws what in the battle (the executable), a decoder of the original's
-  bitmap fonts (`.FNT`) in `h3-assets` (the gate decodes every one), text drawn by `h3-render` as
-  the executable does; the string catalogue and the language packs (the user's decision of
-  2026-10-13 and the agent's notes in the inbox below): its format (JSON, TOML or Fluent, chosen
-  with the placeholders and plurals the battle's texts need), the original's text read at run
-  time from the user's `.TXT` entries through committed keys; an ADR-0020 amendment drafted in
-  `adr-drafts/` for the user's checkpoint; the licence question on committing translations of
-  the original's text filed as `CLT-Q<n>` (stop the line).
-- **Acceptance:** the gate decodes every font; a text drawn by the viewer matches the original's
-  pixel for pixel.
-- **Depends on:** nothing. **Status:** ready.
+- **Scope:** (T4 split with the user on 2026-10-15: T4a, the fonts, the text drawer and the
+  count boxes in the stills, done.) The string catalogue and the language packs (the user's
+  decision of 2026-10-13 and the agent's notes in the inbox below): its format (JSON, TOML or
+  Fluent, chosen with the placeholders and plurals the battle's texts need), the original's text
+  read at run time from the user's `.TXT` entries through committed keys; which font draws what
+  in the battle's panel and log (the executable; `h3_render::text` draws it); an ADR-0020
+  amendment drafted in `adr-drafts/` for the user's checkpoint; the licence question on
+  committing translations of the original's text filed as `CLT-Q<n>` (stop the line).
+- **Acceptance:** a battle text (a log line) from the catalogue drawn by the viewer matches the
+  original's pixel for pixel.
+- **Depends on:** nothing (T4a done). **Status:** ready.
 
 ### E17 M3 T5 — The count boxes
 
-- **Scope:** each stack's count box (design §4.3: its place, `cranim.txt`'s offset, the colours
-  by the stack's effects, the digits in the battle's font), drawn when the original draws it
-  (not during a stack's own animation: to read); their masks removed from the capture set; a stale box the
-  original's partial redraw leaves under a walker (design §7.11) is a redraw artifact, not
-  copied: T1c lists it (`melee` at 3 966 ms: 231 pixels, the frame check's other count) until
-  the boxes are drawn; then classified (the box's earlier place) or masked.
-- **Acceptance:** the capture set matches with the count boxes drawn.
-- **Depends on:** T4. **Status:** ready.
+- **Scope:** (T4a drew the boxes in the stills: place, picture, tint without spells, digits;
+  design §4.3, §3.6, §3.7.) The boxes over time: when the original hides them (+0x30, set by a
+  walk 0x442145 and a flight 0x4B4BD8; who clears it to read), the count shown (+0x50 when not
+  −1: to read), the tint by the stack's spells (read: design §4.3; the spell table's first field
+  to harvest); their masks removed from the frame check; a stale box the original's partial
+  redraw leaves under a walker (design §7.11) is a redraw artifact, not copied: T1c lists it
+  (`melee` at 3 966 ms: 231 pixels, the frame check's other count); then classified (the box's
+  earlier place) or masked.
+- **Acceptance:** the recorded sequences match with the count boxes drawn.
+- **Depends on:** nothing (T4a done). **Status:** ready.
 
 ### E17 M3 T6 — The battle interface
 
@@ -39,7 +41,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   `CRDEFLT.DEF` frame 0 is provisional), the mouse over a stack in the window (group 1 and the
   outline 0x70, read and recorded in T1b-2: the inbox); its masks removed. May split when refined.
 - **Acceptance:** a frame with the panel matches the original's outside the listed differences.
-- **Depends on:** T4. **Status:** ready.
+- **Depends on:** T4b. **Status:** ready.
 
 ### E17 M3 T7a — Code reading: the magic animations
 
@@ -94,7 +96,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T4–T8 (T1a–T1c, T2, T3a and T3b done). **Status:** waiting.
+- **Depends on:** T4b–T8 (T1a–T1c, T2, T3a, T3b and T4a done). **Status:** waiting.
 
 ## Inbox
 

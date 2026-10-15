@@ -62,11 +62,13 @@ search the parent directories).
   list (`--list` prints it); the assets load as one checkpoint batch; the PNG goes to
   `clients/out/render/`. Drawn so far: the background (the picture of an empty surrounding,
   CLT-Q4), the obstacles, every living stack standing on its hex, the active stack's outline, the
-  heroes and their flags (M3 T3a), the war machines and the heal's magic animation (M3 T3b); not
-  yet the count boxes, corpses, spell obstacles or the grid. With `--at <ms>` (and
+  heroes and their flags (M3 T3a), the war machines and the heal's magic animation (M3 T3b), the
+  count boxes (M3 T4a: not yet hidden when the original hides them, nor tinted by spells); not
+  yet corpses, spell obstacles or the grid. With `--at <ms>` (and
   `--speed <0-2>`) the record's commands are played at the original's timing first and each
   stack is drawn in its pose then (`h3_view::anim`, E17 M2 T4a); `--frames <dir>` draws so each
-  time a capture's `frames.toml` lists, with the original's fidgets (the capture set, M3 T1b-2).
+  time a capture's `frames.toml` lists, with the original's fidgets (the capture set, M3 T1b-2)
+  and its drawing bugs (M3 T4a: the client draws them fixed, the comparisons as the original).
 - **The timing check:** `cargo run --release -p h3-view -- sequences [<id>]` (from `clients/`)
   plays each recorded sequence of `situations/sequences.toml` with its engine commands, times it
   with `h3_view::anim` and compares the timeline with the one the harness recorded in the
@@ -106,12 +108,12 @@ search the parent directories).
 |---|---|
 | `clients/Cargo.toml`, `clients/Cargo.lock`, `clients/deny.toml` | the client workspace (`deny.toml`: the engine's policy, kept identical by `check.sh` until M2) |
 | `clients/scripts/check.sh` | the client's gates (local and CI) |
-| `clients/crates/h3-assets` | decoders: palettes, PCX, DEF, MSK, the sound archives and their IMA ADPCM WAVs (done), later fonts and video; encoders for synthetic test assets (`build`); the gate's checks (`check`, `survey`); reads LOD archives through `crates/h3-formats` (a path dependency into the engine workspace) |
-| `clients/crates/h3-render` | the software compositor: the screen in a 16-bit pixel format, palettes truncated into it, the executable's frame drawers (shadows, outline and flag colours, mirroring, clipping), opaque images, PNG bytes |
+| `clients/crates/h3-assets` | decoders: palettes, PCX, DEF, MSK, the bitmap fonts (`fnt`, M3 T4a), the sound archives and their IMA ADPCM WAVs (done), later video; encoders for synthetic test assets (`build`); the gate's checks (`check`, `survey`); reads LOD archives through `crates/h3-formats` (a path dependency into the engine workspace) |
+| `clients/crates/h3-render` | the software compositor: the screen in a 16-bit pixel format, palettes truncated into it, the executable's frame drawers (shadows, outline and flag colours, mirroring, clipping), opaque images, text in the bitmap fonts (`text`: the executable's text drawer) and its tint of a rectangle (`tint`), PNG bytes |
 | `clients/crates/h3-view` | the scene model (the library: `record` reads a record, `anim` plays its commands at the original's timing, `scene` makes the draw list of a snapshot at a moment, `batch` holds a checkpoint's decoded assets, `compose` draws the list into a frame; `tables` and `layout` load the asset tables and the layouts); its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the tables' harvester, `sprite`, the headless renderer `render` with its scenario adapter, the timing check `sequences`, `play` (a battle fought by its bot and drawn frame by frame), `situation` (a scenario's battle as a map for the original), `window` (the battle in a window, through `h3-sdl`; with `play` it loads the battle through `battle.rs`). The library also has `cursor` (the game's mouse cursor), `clock` (the battle's clock in the window) and `sound` (the opening's start sound and music). Its package depends on `h3-protocol` (the library) and, for the adapters only, on `h3-pack-battle`, `h3-battle`, `h3-content-battle`, `h3-kernel`, `h3-map`, `h3-sdl` and `nanomp3` (the music), which `tests/purity.rs` keeps out of the library |
 | `clients/crates/h3-sdl` | the platform adapter (ADR-0024): every SDL 3 call and all of the client's `unsafe` code; `sdl3-sys` with SDL built from its sources and linked statically; the window (integer scale, nearest sampling, centred), its events, the hardware cursor, the read-back; the audio device and its streams; SDL's own WAV loader for the gate. Left out of the coverage gate as an adapter |
 | `clients/assets/{base,ab,sod}.toml` | the asset tables per expansion (below): content keys to archive entry names and the drawing's numbers, asset fixes; identifiers and numbers only |
-| `clients/layouts/battle.toml` | the battle screen's layout at the native resolution (ADR-0020 point 3: layouts are data): the frame, the hex boxes, where sprites stand, the stack canvas, the layer-1 pass's columns, the outline's palette entry (`docs/epics/E17-design.md` §4); an HD layout is another file of the same format (*provisional*) |
+| `clients/layouts/battle.toml` | the battle screen's layout at the native resolution (ADR-0020 point 3: layouts are data): the frame, the hex boxes, where sprites stand, the stack canvas, the layer-1 pass's columns, the outline's palette entry, the heroes' and flags' canvases, the count box (`docs/epics/E17-design.md` §4); an HD layout is another file of the same format (*provisional*) |
 | `clients/scenarios/*.toml` | the client's battle scenarios (the scenario format of `packs/README.md`) for `h3-view render` and `play`: the stills T7 renders, `smoke.toml` the captured smoke battle (T8), `battle.toml` the whole battle `play` fights (M2 T4b-2a) |
 | `clients/capture/` | the reference captures (below; the runbook `capture/README.md`): `setup.sh`, the driver `h3drive.py` and its screens' probes, `h3cap.py` (diffs, obstacles), the `xdd.dll` source (forwarder and virtual clock) |
 | `clients/situations/` | the capture set (`set.toml`) and its situations' scenario files: what the harness shows the original, with each frame's recorded differences; the recorded sequences (`sequences.toml`, `timelines/`) with their engine commands |

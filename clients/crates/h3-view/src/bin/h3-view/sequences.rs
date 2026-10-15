@@ -13,6 +13,7 @@ use std::process::ExitCode;
 
 use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Command, Seat, ServerMessage, Side};
+use h3_render::Bugs;
 use h3_view::anim::{self, Pose, Speed, Timeline};
 use h3_view::batch::{self, Batch};
 use h3_view::compose::compose;
@@ -363,7 +364,8 @@ pub(crate) fn draw_frames(
             .map_err(|e| e.to_string())?;
     }
     for (frame, list) in &lists {
-        let screen = compose(list, &batch, layout).map_err(|e| e.to_string())?;
+        // Compared with the original's captures: its drawing bugs reproduced (E17 M3 T4a).
+        let screen = compose(list, &batch, layout, Bugs::Original).map_err(|e| e.to_string())?;
         let png = here
             .join("ours")
             .join(Path::new(&frame.file).with_extension("png"));

@@ -29,7 +29,7 @@ enter git (they stay in the sandbox or `clients/out/`).
 Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINKW32.DLL`,
 `IFC20.dll`, `MP3DEC.ASI`, `MSS32.DLL`, `SMACKW32.DLL`, `Data/` with the four LODs, `Heroes3.snd`,
 `H3ab_ahd.snd`, `H3ab_ahd.vid`; one large file per staging call), run `clients/capture/setup.sh`,
-and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (30 situations since M3 T3b) takes about 4 minutes.
+and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (31 situations since M3 T4a) takes about 4 minutes.
 
 ## Common uses
 
@@ -41,6 +41,8 @@ python3 capture/h3drive.py set [--only <id>] [--out <dir>]
 
 For each situation: its map (`h3-view situation`), its frames in the original with the stacks
 its memory holds at each (`h3mem`), our frame at each time (M3 T1b-2: `h3-view render --frames`,
+which, as `sequences --frames`, draws the original's drawing bugs the client otherwise fixes, so
+that the comparison stays exact: M3 T4a, design §3.6;
 the outline's pulse on the original's clock, a fidget in the original's poses, as the frame check
 does), and the masked diff of each frame against the count `set.toml` records. One line per
 frame (`grass t=0: 0 differing (recorded 0) ok`); exit 1 if any count changed.
