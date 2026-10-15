@@ -2087,7 +2087,7 @@ the harvester's gap-fill and `packs/` are the battle lane's).
   parameters; the levels, an artifact type once, the cap). Versions: none (the core ruleset
   hash's value only).
 
-### Round 4 of increment 3: T20a2a (2026-10-15, `adventure/e08-t20a2a`)
+### Round 4 of increment 3: T20a2a (2026-10-15, `adventure/e08-t20a2a` #220)
 
 Decision 36 (the seam, confirmed before building): T20a2 in two pull requests, T20a2a with every
 version bump, T20a2b (guarded tiles, the store passed through) without one. Baseline: the full
@@ -2150,7 +2150,7 @@ seam, had the session stage the sprite archives (`H3sprite.lod`, `H3ab_spr.lod`)
   visited (`state/tests/monsters.rs`), the packs (`h3-pack-adventure`), the import, the parts'
   battlefields (`h3-game`).
 
-### Round 4 of increment 3: T20a2b (2026-10-15, `adventure/e08-t20a2b`)
+### Round 4 of increment 3: T20a2b (2026-10-15, `adventure/e08-t20a2b` #223)
 
 Decision 36's second part, built on `adventure/e08-t20a2a`; no version bump.
 
