@@ -86,6 +86,18 @@ first, and a player has at most one open decision; the game calls `AdventureStat
 after the answer, or at once when the offer does not open. A fight and an accepted pursuit do
 nothing until T20b2 (`ADV-STUB-6`).
 
+Built by T20b2 (2026-10-15; decision 37): a fight (and an accepted pursuit) returns a
+`BattleStart` whose defender is `Defender::Monster { creature, count }`, unsplit, at the
+monster's tile; the game splits it (`h3_adventure::split`, ADV-MON-009) with the draws its
+profile gives (`TileRand`, the C runtime's `rand` seeded by the tile, under `ADV-QUIRK-6`, flag 24;
+else the attacker's stream after the battle's seed, before the obstacles'), the defending side
+without a hero and without an owner; `Actor::System` plays it (`GameCommand::Battle` to the first
+battle whose side to act is unowned, `GameState::unowned_battle`; any other command
+`NotForSystem`); at the end `AdventureState::end_monster_battle` (ADV-MON-010) keeps the
+survivors as the monster's count (A-6 fixed, `ADV-QUIRK-7`) or removes it, with the treasure
+after a victory. The env yields no seat for the unowned side until T20b3 (`ADV-STUB-7`); replay
+format v4 (`system battle …`) came with T20b2, since the writer must name the new actor.
+
 ## 5. Battles through the game (GAM-BAT-001 to -003; T19a1, T19a2)
 
 Built by T19a1 (2026-10-14; decision 29): `Decision::Battle(Arc<OpenBattle>)` (state, owners,
@@ -128,9 +140,9 @@ the heroes leaving the map (`HeroRemoved`) and a surrender's gold (GAM-BAT-005).
   at the build: the count's x87 arithmetic per record (0x477643: fild, fstp f32, fmul the share,
   fdiv f32(raised hp), ftol; `X87::over`), the Cloak's 30 % without the skill a rule (decision 33).
   Not built: the Necropolis buildings' +10/+20 % (E09), the elementals' exception to the upgrade.
-- **T20a2a** built (2026-10-15): a ground on the tile replaces the field (ADV-GRD-001); **T20b**:
-  the unowned side (`Actor::System`, the neutral seat; decision 29), the monster's split and its
-  survivors (ADV-MON-009, -010, A-6), a beaten monster's treasure.
+- **T20a2a** built (2026-10-15): a ground on the tile replaces the field (ADV-GRD-001); **T20b2**
+  built (2026-10-15): the unowned side (`Actor::System`; decision 29), the monster's split and its
+  survivors (ADV-MON-009, -010, A-6), a beaten monster's treasure (§4).
 - Not in increment 3: CLT-Q4's background variant (trees, mountains and dead vegetation within 3
   tiles) needs those decorations typed (E12's long tail); viewers keep the third picture.
 
@@ -162,19 +174,21 @@ fork workload with a battle open (the heroes seek each other: random play seldom
 by T19b2 (decision 35): the property plans play battles to a victory (the driver's runs of
 fighting steps, its hero casts; captures, Necromancy and Eagle Eye's learning happen in them).
 Left:
-- **T20b**: the neutral seat (`Seat::Neutral`, a battle action issued as `Actor::System`;
-  decision 29), `to_move` yielding seats; `random_rollout` plays it at random until the battle
-  lane has ported the original's battle AI (decision 27); golden replays with monsters.
+- **T20b3**: the neutral seat (`Seat::Neutral`, a battle action issued as `Actor::System`;
+  decision 29), `to_move` yielding seats (`ADV-STUB-7`); `random_rollout` plays it at random
+  until the battle lane has ported the original's battle AI (decision 27); golden replays with
+  monsters. Replay format v4 (the system actor's commands) came with T20b2.
 
 ## 9. Versions
 
-Shared (T19a2b): core ruleset hash v44, pack format v40. Game state hash v6 (heroes' details since T18b, battles since T19a1; offer kinds later); adventure
+Shared (T19a2b): core ruleset hash v44, pack format v40. Game state hash v7 (heroes' details since T18b, battles since T19a1; the monsters' offer kinds since T20b1); adventure
 state hash v9 (the formation since T18b, the coast since T19a1; the monsters, drawn tiles, armies
-left and the difficulty since T20a2a); adventure ruleset part v7 (the battle terrains since
-T19a1; the monster and ground kinds and the monsters' parameters since T20a2a); map import v6
-(hero customisations since T18b, the coast since T19a1, monsters and grounds since T20a2a;
-guarded piles later); action encoding v3 and adventure replay format v3 (since T19b1).
-Each bumps once in the increment, in the task that first changes it.
+left and the difficulty since T20a2a); adventure ruleset part v8 (the battle terrains since
+T19a1; the monster and ground kinds and the monsters' parameters since T20a2a; the price resource
+since T20b1); map import v6 (hero customisations since T18b, the coast since T19a1, monsters and
+grounds since T20a2a; guarded piles later); action encoding v3 (since T19b1); adventure replay
+format v4 (actors since T19b1, the system actor since T20b2). Each bumps once in the increment,
+in the task that first changes it.
 
 ## 10. Shared and cross-lane work
 
@@ -204,6 +218,6 @@ Each bumps once in the increment, in the task that first changes it.
 | 1 | T18a + T18b | done (2026-10-14): the shared groundwork with the ADR amendments (§10); the store of heroes, its defaults, the import of hero customisations (§1), trimmed at the checkpoint (decision 28) |
 | 2 | T19a1 + T19a2 | split at the checkpoint (decision 29): T19a1 done (2026-10-14): battles through the game, hero against hero, the armies' and the map's outcome (§5, §6); T19a2 split again (decision 32): T19a2a done (2026-10-14), the heroes' outcome without pack changes; T19a2b done (2026-10-14, decision 33), Necromancy and Eagle Eye (§2, §5); round 2 closed |
 | 3 | T19b1 + T19b2 | split at the checkpoint (decision 34): T19b1 done (2026-10-14), the env, replays and benchmarks with battles, the versions (§8); T19b2 done (2026-10-14, decision 35), the property plans to a victory; round 3 closed |
-| 4 | T20a + T20b | T20a split (decision 35): T20a1 done (2026-10-14), the heroes' groundwork (`attack_defense`, `join_bonus`, Diplomacy's values; with T19b2), T20a2 split again (decision 36): T20a2a done (2026-10-15), monsters and grounds as data with every bump; T20a2b done (2026-10-15), guarded tiles and the store passed through; T20b split in three (decision 37): T20b1 done (2026-10-15), the answer and its offers; T20b2 the monster's battle; T20b3 the env, replays and plans with monsters. Monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
+| 4 | T20a + T20b | T20a split (decision 35): T20a1 done (2026-10-14), the heroes' groundwork (`attack_defense`, `join_bonus`, Diplomacy's values; with T19b2), T20a2 split again (decision 36): T20a2a done (2026-10-15), monsters and grounds as data with every bump; T20a2b done (2026-10-15), guarded tiles and the store passed through; T20b split in three (decision 37): T20b1 done (2026-10-15), the answer and its offers; T20b2 done (2026-10-15), the monster's battle; T20b3 the env, replays and plans with monsters. Monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
 | 5 | T21 + T22a | guarded piles and the maps with monsters, replays, benchmarks, the audit (§7); batch E3's spec and run (cross-lane, the client lane's recipes) |
 | 6 | T22b | batch E3 scored, increment 3 closed, increment 4 refined |

@@ -8,9 +8,9 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use h3_adventure::{BattleStart, Combatant, Pos, Viewers};
+use h3_adventure::{BattleStart, Combatant, Defender, Pos, TileRand, Viewers, split};
 use h3_battle::{BattleState, Command, Event, Visibility, generate_setup_obstacles};
-use h3_content::{FULL_BP, OBSTACLES_FROM_TILE, Ruleset, SINGLE_PRECISION_RATES};
+use h3_content::{FULL_BP, OBSTACLES_FROM_TILE, Ruleset, SINGLE_PRECISION_RATES, SPLIT_FROM_TILE};
 use h3_contracts::{
     Army, ArmyStack, BattleHero, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroId,
     PlayerId, StackOrigin, StackRecord,
@@ -73,6 +73,14 @@ impl OpenBattle {
         self.state
             .side_to_act()
             .and_then(|side| self.owners[side.index()])
+    }
+
+    /// Whether the side to act, while the battle goes on, is owned by no player: the system
+    /// actor's to play (a wandering monster's; ADR-0017 point 2, E08 T20b2).
+    pub fn unowned_to_act(&self) -> bool {
+        self.state
+            .side_to_act()
+            .is_some_and(|side| self.owners[side.index()].is_none())
     }
 }
 
@@ -162,11 +170,16 @@ impl GameState {
     /// battlefield of the tile, each side owner's gold as its funds (a surrender's price, the
     /// battle part's resource) — and its obstacles; the battle's own seed is the attacking player's
     /// stream's next draw, and the obstacles' seed the tile's under `ADV-QUIRK-5` (`faithful`),
-    /// else the stream's draw after it (ADR-0017 point 4). The battle opens as a decision of both
-    /// players, told to them with its start's events, unless it is already over (then its outcome
-    /// applies at once). A setup the battle refuses cannot come from a valid game (the armies,
-    /// the heroes and the parts were checked when they were built); it would start no battle.
-    // rule: GAM-BAT-001, GAM-BAT-004
+    /// else the stream's draw after it (ADR-0017 point 4). Against a wandering monster (E08
+    /// T20b2) the defending side has no hero and no owner, its army the monster split into stacks
+    /// (ADV-MON-009, `h3_adventure::split`; its formation the default), the split's draws from the
+    /// monster's tile's generator under `ADV-QUIRK-6` (`faithful`), else from the stream after the
+    /// battle's seed and before the obstacles'. The battle opens as a decision of its owners (the
+    /// visitor's alone against a monster), told to them with its start's events, unless it is
+    /// already over (then its outcome applies at once). A setup the battle refuses cannot come
+    /// from a valid game (the armies, the heroes and the parts were checked when they were built);
+    /// it would start no battle.
+    // rule: GAM-BAT-001, GAM-BAT-004, ADV-MON-009
     pub(crate) fn start_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -175,7 +188,11 @@ impl GameState {
         sink: &mut S,
     ) {
         let core = rules.core();
-        let sides: [&Combatant; 2] = [&start.attacker, &start.defender];
+        let defending = match &start.defender {
+            Defender::Hero(hero) => Some(hero),
+            Defender::Monster { .. } => None,
+        };
+        let sides: [Option<&Combatant>; 2] = [Some(&start.attacker), defending];
         let resource = rules.battle().battle().surrender.map(|s| s.resource);
         let funds = |owner: PlayerId| {
             resource
@@ -183,28 +200,45 @@ impl GameState {
                 .and_then(|(resource, held)| held.get(usize::from(resource.raw())).copied())
                 .unwrap_or(0)
         };
+        let heroes = sides.map(|side| side.and_then(|side| self.battle_hero(core, side.hero)));
+        let war_machines = sides.map(|side| {
+            side.and_then(|side| self.hero(side.hero))
+                .map(|details| war_machines(details, core))
+                .unwrap_or_default()
+        });
+        let funds = sides.map(|side| side.map_or(0, |side| funds(side.owner)));
+        // ADV-QUIRK-5 (`faithful`): the obstacles from the tile; else the stream's draw after the
+        // battle's seed (and a monster's split).
+        let stream = &mut self.players[player.index()].rng;
+        let seed = stream.next_u64();
+        let defender = match &start.defender {
+            Defender::Hero(hero) => hero.army.clone(),
+            // rule: ADV-MON-009
+            &Defender::Monster { creature, count } => {
+                let from_tile = core.quirks().is_enabled(SPLIT_FROM_TILE);
+                let mut tile = TileRand::new(start.tile);
+                split(core, &start.attacker.army, (creature, count), || {
+                    if from_tile {
+                        tile.percent()
+                    } else {
+                        stream.range_inclusive(1, 100)
+                    }
+                })
+            }
+        };
         let mut setup = BattleSetup {
             attacker: Army {
                 stacks: start.attacker.army.clone(),
             },
-            defender: Army {
-                stacks: start.defender.army.clone(),
-            },
-            heroes: sides.map(|side| self.battle_hero(core, side.hero)),
+            defender: Army { stacks: defender },
+            heroes,
             terrain: Some(start.terrain),
             battlefield: start.battlefield.clone(),
-            war_machines: sides.map(|side| {
-                self.hero(side.hero)
-                    .map(|details| war_machines(details, core))
-                    .unwrap_or_default()
-            }),
-            formations: sides.map(|side| side.formation),
-            funds: sides.map(|side| funds(side.owner)),
+            war_machines,
+            formations: sides.map(|side| side.map(|side| side.formation).unwrap_or_default()),
+            funds,
             ..BattleSetup::default()
         };
-        // ADV-QUIRK-5 (`faithful`): the tile's seed; else the stream's second draw.
-        let stream = &mut self.players[player.index()].rng;
-        let seed = stream.next_u64();
         let obstacles = if core.quirks().is_enabled(OBSTACLES_FROM_TILE) {
             tile_seed(start.tile)
         } else {
@@ -212,8 +246,8 @@ impl GameState {
         };
         setup.obstacles =
             generate_setup_obstacles(rules.battle(), &setup, &mut Rng::from_seed(obstacles));
-        let owners = sides.map(|side| Some(side.owner));
-        let heroes = sides.map(|side| Some(side.hero));
+        let owners = sides.map(|side| side.map(|side| side.owner));
+        let heroes = sides.map(|side| side.map(|side| side.hero));
         let mut events = Vec::new();
         let Ok(state) = BattleState::start(rules.battle(), &setup, seed, &mut events) else {
             return;
@@ -262,6 +296,55 @@ impl GameState {
             .get(player.index())
             .ok_or(GameCommandError::UnknownPlayer(player))?;
         let at = self.first(player).ok_or(GameCommandError::NoBattle)?;
+        self.command_battle(rules, (at, Some(player)), command, sink)
+    }
+
+    /// `Battle` from the system actor (ADR-0017 point 2; E08 T20b2): a command to the first open
+    /// battle, in the decisions' order, whose side to act no player owns (a wandering monster's,
+    /// [`Self::unowned_battle`]), as an owner's to its side; the system commands no owned side.
+    ///
+    /// # Errors
+    ///
+    /// `NoBattle` when no battle waits for an unowned side, then the battle's own refusal; the
+    /// state is then unchanged.
+    // rule: GAM-BAT-001
+    pub(crate) fn system_battle_command<S: Sink>(
+        &mut self,
+        rules: &GameRuleset,
+        command: Command,
+        sink: &mut S,
+    ) -> Result<(), GameCommandError> {
+        let at = self
+            .decisions
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .position(|d| d.battle().is_some_and(|b| b.unowned_to_act()))
+            .ok_or(GameCommandError::NoBattle)?;
+        self.command_battle(rules, (at, None), command, sink)
+    }
+
+    /// The first open battle, in the decisions' order, whose side to act no player owns: the
+    /// system actor's to play (E08 T20b2).
+    pub fn unowned_battle(&self) -> Option<&OpenBattle> {
+        self.decisions
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .filter_map(Decision::battle)
+            .find(|b| b.unowned_to_act())
+            .map(|battle| &**battle)
+    }
+
+    /// A command to the battle of the decision at `at`, for the side `owner` owns (none: an
+    /// unowned side) while it is to act ([`Self::battle_command`], [`Self::system_battle_command`]).
+    fn command_battle<S: Sink>(
+        &mut self,
+        rules: &GameRuleset,
+        (at, owner): (usize, Option<PlayerId>),
+        command: Command,
+        sink: &mut S,
+    ) -> Result<(), GameCommandError> {
         // The decision list is copied on its first write when a fork shares it (its entries are
         // references), the battle only once the command is valid.
         let list = self
@@ -276,7 +359,7 @@ impl GameState {
         let side = battle
             .state
             .side_to_act()
-            .filter(|side| battle.owners[side.index()] == Some(player))
+            .filter(|side| battle.owners[side.index()] == owner)
             .ok_or(GameCommandError::NotYourSide)?;
         h3_battle::validate(&battle.state, rules.battle(), side, command)
             .map_err(GameCommandError::Battle)?;
@@ -301,7 +384,7 @@ impl GameState {
             .get(at)
             .and_then(Decision::battle)
             .and_then(|battle| {
-                let sides = (battle.owners, battle.heroes);
+                let sides = (battle.owners, battle.heroes, battle.tile);
                 battle.state.outcome().map(|outcome| (sides, outcome))
             });
         if let Some((sides, outcome)) = ended {
@@ -317,12 +400,16 @@ impl GameState {
     /// created in the battle only (BAT-END-001) — leaves the map; then the heroes' part
     /// ([`Self::heroes_after_battle`], E08 T19a2a, T19a2b); then a surrender's price leaves the
     /// surrendering side's owner's treasury and enters the other side's owner's (GAM-BAT-005,
-    /// D-13), each told to its owner.
-    // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005
+    /// D-13), each told to its owner. A battle against a wandering monster (E08 T20b2; its
+    /// defending side has no hero) then ends in the adventure (ADV-MON-010,
+    /// `AdventureState::end_monster_battle`): the monster's survivors stay on the map as its count,
+    /// or it leaves the map, and after the visitor's victory its treasure's resources enter the
+    /// visitor's owner's treasury.
+    // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005, ADV-MON-010
     pub(crate) fn end_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
-        (owners, heroes): ([Option<PlayerId>; 2], [Option<HeroId>; 2]),
+        (owners, heroes, tile): ([Option<PlayerId>; 2], [Option<HeroId>; 2], Pos),
         outcome: &BattleOutcome,
         sink: &mut S,
     ) {
@@ -366,6 +453,18 @@ impl GameState {
                 resource,
                 amount,
             });
+        }
+        // rule: ADV-MON-010
+        if let (Some(visitor), None) = (owners[0], heroes[1]) {
+            let won = result.winner() == Some(BattleSide::Attacker);
+            let survivors = &outcome.survivors[BattleSide::Defender.index()].stacks;
+            let gains = self.adventure.end_monster_battle(
+                (rules.core(), rules.adventure()),
+                tile,
+                (survivors, won),
+                &mut AdventureSink(&mut *sink),
+            );
+            self.gain(visitor, &gains, sink);
         }
     }
 

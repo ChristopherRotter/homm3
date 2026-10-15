@@ -154,16 +154,33 @@ pub struct AdventureOutcome {
 pub struct BattleStart {
     /// The attacking side: the visiting hero's.
     pub attacker: Combatant,
-    /// The defending side: another player's hero (monsters and guards come with E08 T20, T21).
-    pub defender: Combatant,
+    /// The defending side: another player's hero, or a wandering monster (E08 T20b2; an
+    /// object's guards come with T21).
+    pub defender: Defender,
     /// The tile the battle is fought at: the defender's (survey `E04c-battlefields.md` §4,
-    /// batch 3b).
+    /// batch 3b), a monster's its own.
     pub tile: Pos,
     /// The battle's terrain by its tile ([`crate::BattleTerrains`]): the underground's, else the
     /// coast's, else the tile's own.
     pub terrain: TerrainId,
     /// The special battlefield the tile gives, if any: the coast's.
     pub battlefield: Option<ContentKey>,
+}
+
+/// The defending side of a battle on the map (ADR-0017 point 10).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Defender {
+    /// Another player's hero (GAM-BAT-004, E08 T19a).
+    Hero(Combatant),
+    /// A wandering monster (ADV-MON-009, E08 T20b2), unowned: its creature and its count as it
+    /// stands, unsplit; the game splits it ([`crate::split`]) with the draws its profile gives
+    /// (`ADV-QUIRK-6`).
+    Monster {
+        /// The creature.
+        creature: CreatureTypeId,
+        /// The count.
+        count: u32,
+    },
 }
 
 /// A side of a battle on the map as the adventure has it: a hero on the map, its owner, its army

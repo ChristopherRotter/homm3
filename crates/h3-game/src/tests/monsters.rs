@@ -2,12 +2,14 @@
 //! 10): a monster's answer opens as its visitor's owner's decision, a declined offer to join
 //! goes on to the next in the same command, a price to join the treasury cannot pay counts as
 //! declined, an accepted join pays and gains the treasure, and a guard's visit waits for the
-//! answer to the offer of the tile's own object.
+//! answer to the offer of the tile's own object; a monster's battle (E08 T20b2): its split, the
+//! system actor playing its side, its outcome.
 
 use h3_adventure::{
     AdventureEvent, AdventureEventKind, MonsterSetup, ObjectSetup, ObjectTypeId, Offer, OfferKind,
-    TileMask, Viewers,
+    TileMask, TileRand, Viewers, split,
 };
+use h3_contracts::BattleSide;
 
 use super::decisions::{ACCEPT, DECLINE, GOLD, RED, after_steps, move_hero, play};
 use super::*;
@@ -273,4 +275,190 @@ fn the_hash_sees_each_kind_of_a_monsters_offer() {
     assert_ne!(hashes[0], hashes[1]);
     assert_ne!(hashes[0], hashes[2]);
     assert_ne!(hashes[1], hashes[2]);
+}
+
+/// The rules with AI values (the imp 50, the gog 100: E08 T20b2) and the profile `profile`
+/// (`t:faithful`, or `t:split` with ADV-QUIRK-6).
+fn valued(profile: &str) -> GameRuleset {
+    let mut pack = core_pack(false);
+    pack.creatures[0].info.ai_value = 50;
+    pack.creatures[1].info.ai_value = 100;
+    let core = Arc::new(Ruleset::compile(&[pack], profile).unwrap());
+    let part = part(&core);
+    let battle = battle_part(&core, 7);
+    GameRuleset::new(core, Arc::new(part), Arc::new(battle)).unwrap()
+}
+
+/// Plays red's battle to its end: the system actor for the monster's side, red for its own, each
+/// the last legal command that stays in the battle; the events of the last command.
+fn fight_out(state: &mut GameState, rules: &GameRuleset) -> Vec<GameEvent> {
+    for _ in 0..2000 {
+        let actor = if state.unowned_battle().is_some() {
+            Actor::System
+        } else {
+            Actor::Player(RED)
+        };
+        let listed = legal_commands(state, rules, actor);
+        let fights = |c: &&GameCommand| !matches!(c, GameCommand::Battle(c) if c.leaves_battle());
+        let command = listed.iter().rfind(fights).unwrap().clone();
+        let mut events = Vec::new();
+        apply(state, rules, actor, command, &mut events).unwrap();
+        if state.battle(RED).is_none() {
+            return events;
+        }
+    }
+    panic!("the battle did not end");
+}
+
+// covers: ADV-MON-009, GAM-BAT-001
+#[test]
+fn a_monster_fights_split_by_its_tile_and_the_system_plays_its_side() {
+    let rules = valued("t:split");
+    let at = Pos::new(1, 1, 0);
+    // A savage (aggression 10) group of 12 gogs against 9 imps: C = −1, a fight.
+    let mut state = game(
+        &rules,
+        1,
+        vec![object(&rules, "t:monster", at, gogs(12, 4))],
+    );
+    let events = play(&mut state, &rules, RED, move_hero(0, &[at])).unwrap();
+    assert_eq!(
+        after_steps(events)[0],
+        GameEvent::BattleStarted {
+            heroes: [Some(HeroId::new(0)), None],
+            tile: at,
+            seen_by: Viewers::NONE.with(RED),
+        }
+    );
+    let battle = state.battle(RED).unwrap();
+    assert_eq!(battle.owners(), [Some(RED), None]);
+    assert_eq!(battle.heroes(), [Some(HeroId::new(0)), None]);
+    // Under ADV-QUIRK-6 its stacks are the split with the tile's draws.
+    let army = state.adventure().hero(HeroId::new(0)).unwrap().army.clone();
+    let mut tile = TileRand::new(at);
+    let expected: Vec<(u8, CreatureTypeId, u32)> =
+        split(rules.core(), &army, (GOG, 12), || tile.percent())
+            .iter()
+            .map(|s| (s.slot, s.creature, s.count))
+            .collect();
+    let defending: Vec<(u8, CreatureTypeId, u32)> = battle
+        .state()
+        .stacks()
+        .iter()
+        .filter(|s| s.side == BattleSide::Defender)
+        .map(|s| (s.slot, s.creature, s.count))
+        .collect();
+    assert_eq!(defending, expected);
+    assert!(expected.len() > 1);
+    // The imps act first; the system actor has nothing to command, then the gogs' side.
+    assert_eq!(legal_commands(&state, &rules, Actor::System), []);
+    let mut probe = state.clone();
+    assert_eq!(
+        apply(
+            &mut probe,
+            &rules,
+            Actor::System,
+            GameCommand::EndTurn,
+            &mut NoopSink
+        ),
+        Err(GameCommandError::NotForSystem)
+    );
+    assert_eq!(
+        legal_moves(&state, &rules, Actor::System, HeroId::new(0)),
+        None
+    );
+    let wait = legal_commands(&state, &rules, Actor::Player(RED))
+        .into_iter()
+        .rfind(|c| !matches!(c, GameCommand::Battle(c) if c.leaves_battle()))
+        .unwrap();
+    assert_eq!(
+        apply(
+            &mut probe,
+            &rules,
+            Actor::System,
+            wait.clone(),
+            &mut NoopSink
+        ),
+        Err(GameCommandError::NoBattle)
+    );
+    apply(&mut state, &rules, Actor::Player(RED), wait, &mut NoopSink).unwrap();
+    if state.unowned_battle().is_some() {
+        let listed = legal_commands(&state, &rules, Actor::System);
+        assert!(!listed.is_empty());
+        let mut probe = state.clone();
+        assert_eq!(
+            apply(
+                &mut probe,
+                &rules,
+                Actor::Player(RED),
+                listed[0].clone(),
+                &mut NoopSink
+            ),
+            Err(GameCommandError::NotYourSide)
+        );
+    }
+}
+
+// covers: ADV-MON-009, ADV-MON-010, GAM-BAT-002
+#[test]
+fn a_won_battle_removes_the_monster_and_gives_its_treasure() {
+    // Without ADV-QUIRK-6 the split draws from red's stream.
+    let rules = valued("t:faithful");
+    let at = Pos::new(1, 1, 0);
+    let mut state = game(&rules, 1, vec![object(&rules, "t:monster", at, gogs(1, 4))]);
+    play(&mut state, &rules, RED, move_hero(0, &[at])).unwrap();
+    let defending = state
+        .battle(RED)
+        .unwrap()
+        .state()
+        .stacks()
+        .iter()
+        .filter(|s| s.side == BattleSide::Defender)
+        .count();
+    assert_eq!(defending, 1);
+    let events = fight_out(&mut state, &rules);
+    assert!(events.iter().any(|e| matches!(
+        e,
+        GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::ObjectRemoved { anchor, .. },
+            ..
+        }) if *anchor == at
+    )));
+    assert_eq!(
+        events.last(),
+        Some(&GameEvent::ResourceGained {
+            player: RED,
+            resource: GOLD,
+            amount: 100,
+        })
+    );
+    assert_eq!(state.treasury(RED).unwrap()[0], 2100);
+    assert!(state.adventure().hero(HeroId::new(0)).is_some());
+    assert!(state.adventure().is_removed(0));
+}
+
+// covers: ADV-MON-010, GAM-BAT-003
+#[test]
+fn a_lost_battle_takes_the_hero_off_the_map_and_leaves_the_survivors() {
+    let rules = valued("t:split");
+    let at = Pos::new(1, 1, 0);
+    let mut state = game(
+        &rules,
+        1,
+        vec![object(&rules, "t:monster", at, gogs(40, 4))],
+    );
+    play(&mut state, &rules, RED, move_hero(0, &[at])).unwrap();
+    let events = fight_out(&mut state, &rules);
+    assert!(events.iter().any(|e| matches!(
+        e,
+        GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::HeroRemoved { .. },
+            ..
+        })
+    )));
+    assert!(state.adventure().hero(HeroId::new(0)).is_none());
+    assert!(!state.adventure().is_removed(0));
+    let left = state.adventure().monster_count(0).unwrap();
+    assert!((1..=40).contains(&left), "{left}");
+    assert_eq!(state.treasury(RED).unwrap()[0], 2000);
 }

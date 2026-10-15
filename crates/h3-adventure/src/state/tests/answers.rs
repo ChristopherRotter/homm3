@@ -207,7 +207,7 @@ fn the_answer_follows_the_aggression_against_the_charisma() {
     let visit = |s: &mut AdventureState, heroes: &[Arc<HeroDetails>]| {
         walk(&rules, s, heroes, &[(2, 0)]).0.offer.map(|o| o.kind)
     };
-    // C = 0 (St 0, Sy 0, L 0): M = 1 fights (nothing yet, ADV-STUB-6), M = 0 = C offers to join.
+    // C = 0 (St 0, Sy 0, L 0): M = 1 fights (a battle, no offer), M = 0 = C offers to join.
     assert_eq!(visit(&mut pikemen(&rules, &[(PEASANT, 100)], 1), &[]), None);
     assert_eq!(
         visit(&mut pikemen(&rules, &[(PEASANT, 100)], 0), &[]),
@@ -308,17 +308,17 @@ fn a_declined_join_goes_on_to_the_flight_or_a_fight() {
     // M = −4, C = 0: declined, the monster offers to flee.
     let mut s = pikemen(&rules, &[(PEASANT, 100)], -4);
     let join = offer(2, 0, OfferKind::Join).unwrap();
-    let next = s.decline_offer(triple(&rules, &[]), RED, &join, &mut events);
+    let next = s.decline_offer(triple(&rules, &[]), &join, &mut events);
     assert_eq!(next.offer, offer(2, 0, OfferKind::Pursue));
-    // M = C = 0: insulted, it fights (nothing yet); so does one that never flees.
+    // M = C = 0: insulted, it fights; so does one that never flees.
     let mut s = pikemen(&rules, &[(PEASANT, 100)], 0);
-    let next = s.decline_offer(triple(&rules, &[]), RED, &join, &mut events);
-    assert_eq!(next, AdventureOutcome::default());
+    let next = s.decline_offer(triple(&rules, &[]), &join, &mut events);
+    assert_eq!((next.offer, next.battle.is_some()), (None, true));
     let mut s = pikemen(&rules, &[(PEASANT, 100)], -4);
     set_never_flees(&mut s, 0);
     let gold = offer(2, 0, OfferKind::JoinForGold { price: vec![] }).unwrap();
-    let next = s.decline_offer(triple(&rules, &[]), RED, &gold, &mut events);
-    assert_eq!(next, AdventureOutcome::default());
+    let next = s.decline_offer(triple(&rules, &[]), &gold, &mut events);
+    assert_eq!((next.offer, next.battle.is_some()), (None, true));
     assert!(events.is_empty());
     assert!(!s.is_removed(0));
 }
@@ -330,7 +330,7 @@ fn a_declined_flight_lets_the_monster_go_without_its_treasure() {
     let mut s = pikemen(&rules, &[(PEASANT, 100)], -4);
     let mut events: Vec<AdventureEvent> = Vec::new();
     let pursue = offer(2, 0, OfferKind::Pursue).unwrap();
-    let next = s.decline_offer(triple(&rules, &[]), RED, &pursue, &mut events);
+    let next = s.decline_offer(triple(&rules, &[]), &pursue, &mut events);
     assert_eq!(next, AdventureOutcome::default());
     assert!(s.is_removed(0));
     assert_eq!(s.guard_of(&rules.1, Pos::new(1, 1, 0)), None);
@@ -344,11 +344,20 @@ fn a_declined_flight_lets_the_monster_go_without_its_treasure() {
             seen_by: Viewers::NONE.with(RED),
         }]
     );
-    // Accepted, the hero pursues and fights it (nothing yet, ADV-STUB-6).
+    // Accepted, the hero pursues and fights it: the battle, the monster still on the map.
     let mut s = pikemen(&rules, &[(PEASANT, 100)], -4);
     let before = s.clone();
     let outcome = s.accept_offer(&rules.0, &rules.1, RED, &pursue, &mut events);
-    assert_eq!(outcome, AdventureOutcome::default());
+    assert_eq!(
+        outcome.battle.map(|b| (b.tile, b.defender)),
+        Some((
+            Pos::new(2, 0, 0),
+            Defender::Monster {
+                creature: PIKEMAN,
+                count: 10
+            }
+        ))
+    );
     assert_eq!(s, before);
 }
 
@@ -439,7 +448,7 @@ fn an_offer_whose_monster_or_room_is_gone_does_nothing() {
             AdventureOutcome::default()
         );
         assert_eq!(
-            s.decline_offer(triple(&rules, &[]), RED, &gone, &mut events),
+            s.decline_offer(triple(&rules, &[]), &gone, &mut events),
             AdventureOutcome::default()
         );
     }
@@ -451,7 +460,7 @@ fn an_offer_whose_monster_or_room_is_gone_does_nothing() {
         ..join.clone()
     };
     assert_eq!(
-        s.decline_offer(triple(&rules, &[]), RED, &stranger, &mut events),
+        s.decline_offer(triple(&rules, &[]), &stranger, &mut events),
         AdventureOutcome::default()
     );
     assert_eq!(
@@ -473,7 +482,7 @@ fn an_offer_whose_monster_or_room_is_gone_does_nothing() {
         ..join.clone()
     };
     assert_eq!(
-        s.decline_offer(triple(&rules, &[]), RED, &odd, &mut events),
+        s.decline_offer(triple(&rules, &[]), &odd, &mut events),
         AdventureOutcome::default()
     );
     assert!(events.is_empty());
@@ -484,7 +493,7 @@ fn an_offer_whose_monster_or_room_is_gone_does_nothing() {
         ..join
     };
     assert_eq!(
-        s.decline_offer(triple(&rules, &[]), RED, &chart, &mut events),
+        s.decline_offer(triple(&rules, &[]), &chart, &mut events),
         AdventureOutcome::default()
     );
 }
@@ -512,8 +521,7 @@ fn the_guard_answers_after_the_step_or_after_the_tiles_offer() {
     let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 1)]);
     assert_eq!(outcome.offer.map(|o| o.object_type), Some(CHART));
     assert!(outcome.guard_after);
-    let mut events: Vec<AdventureEvent> = Vec::new();
-    let guard = s.visit_guard(triple(&rules, &[]), RED, HERO, &mut events);
+    let guard = s.visit_guard(triple(&rules, &[]), HERO);
     assert_eq!(guard.offer, offer(3, 1, OfferKind::Join));
     // Onto an observatory's tile: its reveal, then the guard's answer in the same outcome.
     let mut s = state(
@@ -530,10 +538,10 @@ fn the_guard_answers_after_the_step_or_after_the_tiles_offer() {
     assert!(!outcome.guard_after);
     // No guard, or no hero: nothing.
     assert_eq!(
-        s.visit_guard(triple(&rules, &[]), RED, HeroId::new(9), &mut events),
+        s.visit_guard(triple(&rules, &[]), HeroId::new(9)),
         AdventureOutcome::default()
     );
-    let mut s = state(
+    let s = state(
         &rules,
         &ROWS,
         vec![monster_at(5, 0, PIKEMAN, 10)],
@@ -542,7 +550,121 @@ fn the_guard_answers_after_the_step_or_after_the_tiles_offer() {
         1,
     );
     assert_eq!(
-        s.visit_guard(triple(&rules, &[]), RED, HERO, &mut events),
+        s.visit_guard(triple(&rules, &[]), HERO),
         AdventureOutcome::default()
     );
+}
+
+// covers: ADV-MON-009
+#[test]
+fn a_fight_starts_a_battle_against_the_unsplit_monster_at_its_tile() {
+    let rules = rules();
+    let tile = Pos::new(2, 0, 0);
+    // M = 1 above C = 0: the hero's step toward the pikemen starts the battle.
+    let mut s = pikemen(&rules, &[(PEASANT, 100)], 1);
+    let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 0)]);
+    let battle = outcome.battle.unwrap();
+    assert_eq!(
+        battle.attacker,
+        Combatant {
+            hero: HERO,
+            owner: RED,
+            army: s.hero(HERO).unwrap().army.clone(),
+            formation: Formation::Loose,
+        }
+    );
+    assert_eq!(
+        battle.defender,
+        Defender::Monster {
+            creature: PIKEMAN,
+            count: 10
+        }
+    );
+    assert_eq!(battle.tile, tile);
+    assert_eq!(
+        (battle.terrain, battle.battlefield),
+        s.battle_ground(&rules.1, tile)
+    );
+    // A guard's fight is at the guard's tile, not at the tile the hero stepped onto.
+    let mut s = pikemen(&rules, &[(PEASANT, 100)], 1);
+    let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 1)]);
+    assert_eq!(outcome.battle.map(|b| b.tile), Some(tile));
+}
+
+// covers: ADV-MON-010
+#[test]
+fn a_monsters_battle_leaves_its_survivors_or_removes_it_with_its_treasure() {
+    let rules = rules();
+    let core = (&rules.0, &rules.1);
+    let tile = Pos::new(2, 0, 0);
+    let stack = |slot, creature, count| ArmyStack {
+        slot,
+        creature,
+        count,
+    };
+    let mut events: Vec<AdventureEvent> = Vec::new();
+    let word = |s: &AdventureState| {
+        s.observe(&rules.0, &rules.1, RED).objects[0]
+            .monster
+            .unwrap()
+            .count_word
+    };
+    // It survives: every stack it has left counts as its creature (A-6 fixed: another stack's,
+    // an upgrade's in the game, too); the count and the word a viewer sees follow.
+    let mut s = pikemen(&rules, &[(PEASANT, 100)], 1);
+    assert_eq!(word(&s), 2);
+    let left = [stack(0, PIKEMAN, 3), stack(2, GNOLL, 2)];
+    let gains = s.end_monster_battle(core, tile, (&left, false), &mut events);
+    assert!(gains.is_empty());
+    assert!(events.is_empty());
+    assert_eq!(s.monster_count(0), Some(5));
+    assert_eq!(s.army_left(0), Some(&[stack(0, PIKEMAN, 5)][..]));
+    assert_eq!(word(&s), 1);
+    // Its next battle is against the survivors.
+    set_aggression(&mut s, 0, 10);
+    let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 0)]);
+    assert_eq!(
+        outcome.battle.map(|b| b.defender),
+        Some(Defender::Monster {
+            creature: PIKEMAN,
+            count: 5
+        })
+    );
+    // Beaten: it leaves the map, and the victory gives its treasure.
+    let gains = s.end_monster_battle(core, tile, (&[], true), &mut events);
+    assert_eq!(gains, [(GOLD, 500)]);
+    assert!(s.is_removed(0));
+    assert_eq!(s.army_left(0), None);
+    assert_eq!(
+        events,
+        [AdventureEvent {
+            kind: AdventureEventKind::ObjectRemoved {
+                object_type: MONSTER,
+                anchor: tile,
+            },
+            seen_by: Viewers::NONE.with(RED),
+        }]
+    );
+    // Both sides dead: it leaves the map without its treasure.
+    let mut s = pikemen(&rules, &[(PEASANT, 100)], 1);
+    let gains = s.end_monster_battle(core, tile, (&[], false), &mut events);
+    assert!(gains.is_empty());
+    assert!(s.is_removed(0));
+    // No monster visited at the tile, or another object: nothing.
+    let mut s = state(
+        &rules,
+        &["gggggg", "ggOggg", "gggggg"],
+        vec![monster_at(4, 0, PIKEMAN, 10)],
+        (0, 2),
+        &[(PEASANT, 100)],
+        1,
+    );
+    let before = s.clone();
+    for at in [Pos::new(0, 0, 0), Pos::new(2, 1, 0)] {
+        assert!(
+            s.end_monster_battle(core, at, (&[], true), &mut events)
+                .is_empty()
+        );
+    }
+    assert_eq!(s, before);
 }

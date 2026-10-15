@@ -23,7 +23,7 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 use crate::ADVENTURE_STATE_HASH_VERSION;
 use crate::command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    BattleStart, Combatant, Offer, OfferKind, Sink, Viewers,
+    BattleStart, Combatant, Defender, Offer, OfferKind, Sink, Viewers,
 };
 use crate::fog::{on_fringe, reveal};
 use crate::movement::{DIRECTIONS, Pricing, day_points, direction};
@@ -1003,7 +1003,7 @@ impl AdventureState {
                 ..outcome
             },
             Some(guard) => {
-                let mut answer = self.visit_monster(rules, (player, id), guard, sink);
+                let mut answer = self.visit_monster(rules, id, guard);
                 answer.gains.splice(0..0, outcome.gains);
                 answer
             }
@@ -1082,7 +1082,7 @@ impl AdventureState {
         let (terrain, battlefield) = self.battle_ground(part, tile);
         BattleStart {
             attacker: side(&self.heroes[attacker]),
-            defender: side(&self.heroes[defender]),
+            defender: Defender::Hero(side(&self.heroes[defender])),
             tile,
             terrain,
             battlefield,
@@ -1256,12 +1256,7 @@ impl AdventureState {
             }
             Effect::Gate(_) => {}
             Effect::Monster => {
-                outcome = self.visit_monster(
-                    rules,
-                    (player, hero),
-                    (visit.object, visit.object_type),
-                    sink,
-                );
+                outcome = self.visit_monster(rules, hero, (visit.object, visit.object_type));
             }
         }
         outcome
@@ -1349,7 +1344,7 @@ impl AdventureState {
             OfferKind::Join | OfferKind::JoinForGold { .. } => {
                 self.join((core, part), player, offer, sink)
             }
-            OfferKind::Pursue => self.pursue(core, player, offer, sink),
+            OfferKind::Pursue => self.pursue(part, offer),
         }
     }
 

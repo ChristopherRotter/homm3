@@ -102,14 +102,20 @@ fn outcome(result: BattleResult) -> BattleOutcome {
     }
 }
 
-const SIDES: ([Option<PlayerId>; 2], [Option<HeroId>; 2]) =
-    ([Some(RED), Some(BLUE)], [Some(RED_HERO), Some(BLUE_HERO)]);
+/// The sides of a battle and its tile (no monster's: E08 T20b2).
+type Sides = ([Option<PlayerId>; 2], [Option<HeroId>; 2], Pos);
+
+const SIDES: Sides = (
+    [Some(RED), Some(BLUE)],
+    [Some(RED_HERO), Some(BLUE_HERO)],
+    Pos::new(0, 0, 0),
+);
 
 /// `game` after the battle ended with `outcome`, and the changes told, by owner and hero.
 fn end(
     game: &GameState,
     rules: &GameRuleset,
-    sides: ([Option<PlayerId>; 2], [Option<HeroId>; 2]),
+    sides: Sides,
     outcome: &BattleOutcome,
 ) -> (GameState, Vec<(PlayerId, HeroId, HeroChange)>) {
     let mut ended = game.clone();
@@ -274,19 +280,23 @@ fn unchanged_mana_lost_machines_without_artifacts_and_absent_heroes_change_nothi
         [(RED, RED_HERO, HeroChange::GainExperience(killed + 500))]
     );
     // A victory over a side without a hero: no 500, nothing to capture.
-    let sides = ([Some(RED), None], [Some(RED_HERO), None]);
+    let sides = ([Some(RED), None], [Some(RED_HERO), None], Pos::new(0, 0, 0));
     let (_, changes) = end(&game, &rules, sides, &quiet);
     assert_eq!(
         changes,
         [(RED, RED_HERO, HeroChange::GainExperience(killed))]
     );
     // A winning side without a hero: no one gains; nothing killed gives nothing.
-    let sides = ([Some(RED), Some(BLUE)], [None, Some(BLUE_HERO)]);
+    let sides = (
+        [Some(RED), Some(BLUE)],
+        [None, Some(BLUE_HERO)],
+        Pos::new(0, 0, 0),
+    );
     let (_, changes) = end(&game, &rules, sides, &quiet);
     assert!(changes.is_empty());
     let mut none = quiet;
     none.stacks[1].clear();
-    let sides = ([Some(RED), None], [Some(RED_HERO), None]);
+    let sides = ([Some(RED), None], [Some(RED_HERO), None], Pos::new(0, 0, 0));
     let (_, changes) = end(&game, &rules, sides, &none);
     assert!(changes.is_empty());
 }

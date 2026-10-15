@@ -47,6 +47,7 @@ mod persistent;
 mod reach;
 mod ruleset;
 mod setup;
+mod split;
 mod state;
 
 #[cfg(test)]
@@ -54,7 +55,7 @@ mod testing;
 
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    BattleStart, Combatant, Offer, OfferKind, Sink, Viewers,
+    BattleStart, Combatant, Defender, Offer, OfferKind, Sink, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, native_terrain};
 pub use observe::{AdventureObservation, HeroView, MonsterView, ObjectView, OwnHeroView, TileView};
@@ -72,6 +73,7 @@ pub use setup::{
     AdventureSetup, ArmyError, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos, SetupError,
     StandError, TileMask, TileSetup,
 };
+pub use split::{TileRand, split};
 pub use state::{AdventureState, HeroOnMap, MapObject, Monster, StaticMap, StaticTile};
 
 /// Version of the adventure state's canonical hash encoding (`docs/08-work-process.md`,

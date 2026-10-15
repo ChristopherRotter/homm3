@@ -528,7 +528,11 @@ fn every_result_takes_the_heroes_that_did_not_win_off_the_map() {
         creature: IMP,
         count: 3,
     };
-    let sides = ([Some(RED), Some(BLUE)], [Some(RED_HERO), Some(BLUE_HERO)]);
+    let sides = (
+        [Some(RED), Some(BLUE)],
+        [Some(RED_HERO), Some(BLUE_HERO)],
+        Pos::new(0, 0, 0),
+    );
     let end = |outcome: BattleOutcome| {
         let mut ended = game.clone();
         let mut events = Vec::new();
@@ -713,6 +717,10 @@ fn the_battle_errors_read_well() {
         (
             GameCommandError::Battle(h3_battle::CommandError::BattleOver),
             "the battle is over",
+        ),
+        (
+            GameCommandError::NotForSystem,
+            "the system actor issues only an unowned side's commands",
         ),
     ] {
         assert_eq!(error.to_string(), text);

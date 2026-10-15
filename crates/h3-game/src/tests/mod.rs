@@ -105,6 +105,11 @@ fn core(extra: bool) -> Ruleset {
 
 /// [`core`] with the profile `profile`.
 fn core_with(extra: bool, profile: &str) -> Ruleset {
+    Ruleset::compile(&[core_pack(extra)], profile).unwrap()
+}
+
+/// [`core`]'s pack, before it compiles (E08 T20b2: the monsters' tests give it AI values).
+fn core_pack(extra: bool) -> ContentPack {
     // The imp costs 50 gold and the gog 100: a surrender's price (E08 T19a).
     let costing = |k: &str, speed, gold| CreatureDef {
         info: CreatureInfoDef {
@@ -121,7 +126,7 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
     if extra {
         creatures.push(creature("t:elf", 5));
     }
-    let pack = ContentPack {
+    ContentPack {
         terrains: ["t:grass", "t:rock"]
             .iter()
             .map(|k| TerrainDef {
@@ -180,6 +185,11 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
             ProfileDef {
                 key: key("t:single"),
                 quirks: vec![("quirk.battle.single_precision_rates".to_string(), true)],
+            },
+            // A monster's split from its tile, ADV-QUIRK-6 (E08 T20b2).
+            ProfileDef {
+                key: key("t:split"),
+                quirks: vec![("quirk.adventure.split_from_tile".to_string(), true)],
             },
         ],
         // The hero model's content (E08 T18b): a book and a machine slot, the spell book, the
@@ -290,8 +300,7 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
             learn_level: 2,
         }),
         ..ContentPack::new(manifest())
-    };
-    Ruleset::compile(&[pack], profile).unwrap()
+    }
 }
 
 fn artifact(k: &str, slot: &str) -> ArtifactDef {

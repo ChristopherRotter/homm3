@@ -79,7 +79,20 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Impact: exploit (mild): a player can work out the exact stacks before it attacks and tune its army (the ratio) to get a split it likes; a re-visit always splits the same way.
 - Community status: known: the wiki says the split varies but "is not random"; VCMI reproduces the first draw exactly (`hashByPosition`) and approximates the second (D-11).
 - Sources: code reading 0x4AC580 (E08 T17a, survey `E08-battles.md` §4.1), confirmed by an independent second reading (a fresh agent, 2026-10-13); wiki Wandering creature (https://heroes.thelazy.net/index.php/Wandering_creature); VCMI 1.7.5 `lib/mapObjects/CGCreature.cpp`.
-- Flag: `quirk.adventure.split_from_tile` (its number with E08 T20b)
+- Flag: `quirk.adventure.split_from_tile` (flag 24 in `h3_content`'s registry, E08 T20b2)
 - Defaults: faithful = on, strict-fixed = off
-- Regression test: with E08 T20b
+- Regression test: `crates/h3-adventure/src/split/tests.rs` (the tile's generator), `crates/h3-game/src/tests/monsters.rs`, `a_monster_fights_split_by_its_tile_and_the_system_plays_its_side`
 - Decided by / date: classified by the user 2026-10-13 (ADV-Q13; the epic's decision 26)
+
+### ADV-QUIRK-7 — A monster that survives a battle loses its upgraded stack's survivors
+- Class: fix, no flag (the user, 2026-10-13, ADV-Q12; the epic's decision 23: "A-6 always fixed")
+- Context / rules affected: adventure, ADV-MON-010 (after a monster's battle; E08 T20b2)
+- Original behavior: after the battle `monster_battle` counts the survivors of the monster's own creature only (`army_count_of_type`, 0x44ADC0, written back at 0x4AC905), so the survivors of the stack the split upgraded (ADV-MON-009) vanish when the hero loses or retreats.
+- Intended/expected behavior: every survivor counts as the monster's creature (as VCMI turns upgraded survivors back into the base creature and keeps them); the next battle splits the whole count again.
+- Impact: gameplay-altering (small): a lost or fled battle shrinks the monster by the upgraded stack's survivors.
+- Community status: known: the wiki ("A bug removes troops equal to the upgraded stack's size from the wandering army when a hero is defeated or retreats").
+- Sources: code reading 0x4AC580 (E08 T17a, survey `E08-battles.md` §4.3, A-6); wiki Wandering creature (https://heroes.thelazy.net/index.php/Wandering_creature); VCMI 1.7.5 `lib/mapObjects/CGCreature.cpp` `battleFinished`.
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-adventure/src/state/tests/answers.rs`, `a_monsters_battle_leaves_its_survivors_or_removes_it_with_its_treasure`
+- Decided by / date: the user, 2026-10-13 (ADV-Q12; decision 23)

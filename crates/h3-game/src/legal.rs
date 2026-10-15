@@ -11,10 +11,10 @@ use alloc::vec::Vec;
 
 use h3_adventure::Reach;
 use h3_battle::LegalCommands;
-use h3_contracts::HeroId;
+use h3_contracts::{HeroId, PlayerId};
 
 use crate::command::{Actor, Answer, GameCommand};
-use crate::{GameRuleset, GameState};
+use crate::{GameRuleset, GameState, OpenBattle};
 
 /// The commands `actor` may issue now but its moves: with an open battle the battle's legal
 /// commands for its side while that side is to act, and none while the other side is
@@ -25,20 +25,18 @@ use crate::{GameRuleset, GameState};
 /// the game, by `apply`'s own checks (ADR-0017's consequence). The moves are [`legal_moves`].
 // rule: GAM-DEC-001, GAM-BAT-001
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
-    let Actor::Player(player) = actor;
-    if let Some(battle) = state.battle(player) {
-        let mut legal = LegalCommands::new();
-        if let Some(side) = battle
-            .state()
-            .side_to_act()
-            .filter(|side| battle.owners()[side.index()] == Some(player))
-        {
-            h3_battle::legal_commands(battle.state(), rules.battle(), side, &mut legal);
+    let player = match actor {
+        // E08 T20b2: the system actor's are the unowned side's of the first battle it waits for.
+        Actor::System => {
+            return state
+                .unowned_battle()
+                .map(|battle| battle_commands(battle, rules, None))
+                .unwrap_or_default();
         }
-        return legal
-            .iter()
-            .map(|&command| GameCommand::Battle(command))
-            .collect();
+        Actor::Player(player) => player,
+    };
+    if let Some(battle) = state.battle(player) {
+        return battle_commands(battle, rules, Some(player));
     }
     if let Some(offer) = state.decision(player) {
         let accept = state.adventure().offer_stands(offer);
@@ -52,6 +50,27 @@ pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> V
         return Vec::new();
     }
     vec![GameCommand::EndTurn]
+}
+
+/// The legal commands of `battle` for the side `owner` owns (none: an unowned side) while it is
+/// to act; none while the other side is.
+fn battle_commands(
+    battle: &OpenBattle,
+    rules: &GameRuleset,
+    owner: Option<PlayerId>,
+) -> Vec<GameCommand> {
+    let mut legal = LegalCommands::new();
+    if let Some(side) = battle
+        .state()
+        .side_to_act()
+        .filter(|side| battle.owners()[side.index()] == owner)
+    {
+        h3_battle::legal_commands(battle.state(), rules.battle(), side, &mut legal);
+    }
+    legal
+        .iter()
+        .map(|&command| GameCommand::Battle(command))
+        .collect()
 }
 
 /// Where `actor` may move `hero` now: the hero's reachable-tiles query
@@ -70,7 +89,9 @@ pub fn legal_moves(
     actor: Actor,
     hero: HeroId,
 ) -> Option<Reach> {
-    let Actor::Player(player) = actor;
+    let Actor::Player(player) = actor else {
+        return None;
+    };
     state.check_ready(player).ok()?;
     let adventure = state.adventure();
     adventure
