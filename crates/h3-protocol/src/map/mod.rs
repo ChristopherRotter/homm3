@@ -492,10 +492,12 @@ fn own_hero(h: &OwnHeroView) -> OwnHero {
         damage_reduction_bp: bp(reduction),
         ballista: ballista.map(|b| {
             let BallistaControl {
+                level,
                 shots,
                 double_damage_chance_bp,
             } = b;
             Ballista {
+                level,
                 shots,
                 double_damage_chance_bp,
             }

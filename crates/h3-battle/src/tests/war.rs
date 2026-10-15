@@ -564,6 +564,7 @@ fn led(r: &BattleRuleset, attack: u8, ballista: Option<(u8, u16)>) -> BattleHero
     let mut h = hero(r);
     h.attack = attack;
     h.war_machines.ballista = ballista.map(|(shots, chance)| BallistaControl {
+        level: 1,
         shots,
         double_damage_chance_bp: chance,
     });

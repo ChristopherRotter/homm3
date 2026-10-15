@@ -201,6 +201,7 @@ fn stacks_are_handed_over_in_rounds_and_next_creature_waits() {
         )
     };
     s.heroes[0].as_mut().unwrap().war_machines.ballista = Some(BallistaControl {
+        level: 1,
         shots: 1,
         double_damage_chance_bp: 0,
     });
