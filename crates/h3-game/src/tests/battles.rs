@@ -718,6 +718,10 @@ fn the_battle_errors_read_well() {
             GameCommandError::Battle(h3_battle::CommandError::BattleOver),
             "the battle is over",
         ),
+        (
+            GameCommandError::NotForSystem,
+            "the system actor issues only an unowned side's commands",
+        ),
     ] {
         assert_eq!(error.to_string(), text);
     }

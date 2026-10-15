@@ -2232,3 +2232,47 @@ grounds out of the one-type-per-anchor check).
   the guard after a step and after an offer), `h3-game`'s `tests/monsters.rs` (the decisions
   through `apply`, the chain, the unpayable price, the waiting guard). The eight golden replays
   re-recorded with their options: commands unchanged (the duel holds no monster).
+
+### Round 4 of increment 3: T20b2 (2026-10-15, `shared/e08-t20b2`, `adventure/e08-t20b2`)
+
+Decision 37's second part, on T20b1's branch (#228) with `shared/e08-t20b2` merged in.
+
+**`shared/e08-t20b2`** (shared paths only): `h3_content::SPLIT_FROM_TILE` (flag 24,
+`quirk.adventure.split_from_tile`; no profile set it there); `06-security.md`: what each viewer
+learns of a wandering monster (the inbox's item, survey §9).
+
+**T20b2 — the monster's battle** (`cross-lane`: the flag on in `packs/base/core.toml`'s
+`faithful` and in the harvester's profile lines):
+- **The split** (ADV-MON-009, `split.rs`): `h3_adventure::split(core, visitor, (creature, count),
+  percent)` and `TileRand` (the C runtime's `rand`, 214 013 and 2 531 011, bits 16 to 30, seeded
+  with the tile's 248 071 x + 276 589 y + 310 111 z + 155 303). The code reading checked again
+  (0x4AC580, the table 0x6776E0 = 3.0, 2.0, 1.5, 1.0, 0.67, 0.5 read from its fifth entry down,
+  0x50B230, 0x617E5C, 0x47B120): the ratio in doubles (a strength of 0 gives 2 stacks, 7 for a
+  worthless army: the FPU's infinity and NaN), the ±1 draw, the clamp, the even stacks, the second
+  draw only for a town's unupgraded creature in at least two stacks (stack n / 2). The tile
+  (12, 27) underground draws 44 then 50, the survey's D-11 example. The thresholds stay code
+  constants with their addresses, as the answer's (T20b1).
+- **The battle**: the fight (`state/monsters.rs::fight`, `ADV-STUB-6` closed) and an accepted
+  pursuit return `BattleStart { defender: Defender::Monster { creature, count }, tile: the
+  monster's }`. `GameState::start_battle` splits it (under `ADV-QUIRK-6` from `TileRand`, else
+  from the attacker's stream after the battle's seed and before the obstacles', so a hero battle
+  draws as before); the defending side has no hero, no owner, no war machines, the default
+  formation, no funds. `Actor::System` (ADR-0017 point 2): `GameCommand::Battle` goes to the first
+  battle whose side to act is unowned (`GameState::unowned_battle`, `OpenBattle::unowned_to_act`),
+  any other command `NotForSystem`; `legal_commands(System)` lists that side's commands,
+  `legal_moves(System)` none. The game state hash stays v7 (the battle's encoding has no new
+  field: the monster is found at the battle's tile).
+- **The outcome** (ADV-MON-010): `GameState::end_battle` (with the battle's tile), after the
+  heroes' part, calls `AdventureState::end_monster_battle` for a battle whose defender has no
+  hero: every surviving stack counts as the monster's creature (A-6 fixed, `ADV-QUIRK-7` without
+  a flag), kept in `army_left`; none left removes the monster (and its `army_left`), with the
+  treasure's resources for the visitor's owner after a victory.
+- **The env and the replays**: the env yields no seat for the unowned side (`ADV-STUB-7` at
+  `to_move`; the fixtures hold no monster). The replay writer must name the new actor, so the
+  adventure replay format v4 (`system battle <command>`) came now, not with T20b3; the eight golden
+  replays re-recorded with their options (headers only: the core ruleset hash, the format).
+- Tests: `split/tests.rs` (the generator, the table, the draws, even stacks, the upgraded middle
+  stack, no strength), `state/tests/answers.rs` (the battle's start, the guard's at its tile, the
+  outcome's three cases), `h3-game`'s `tests/monsters.rs` (the split by the tile in the battle,
+  the system actor's commands and refusals, a won and a lost battle played out), `h3-cli`'s
+  format v4.
