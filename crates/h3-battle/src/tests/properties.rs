@@ -2257,8 +2257,14 @@ fn the_walls_property_s_games_reach_the_gate_the_moat_and_the_breaches() {
     for _ in 0..96 {
         let ((att, def, ground, seed, steps, hidden), town) =
             games.new_tree(&mut runner).unwrap().current();
-        let town = TownSpec { fort: 1 + town.fort % 3, ..town };
-        let ground = Ground { place: Place::Town(town), ..ground };
+        let town = TownSpec {
+            fort: 1 + town.fort % 3,
+            ..town
+        };
+        let ground = Ground {
+            place: Place::Town(town),
+            ..ground
+        };
         let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
         let walls = state.siege.unwrap().walls();
