@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 10, T10a (the user, 2026-10-15):** `battle/e04c-t10a`: the wall line in integers, the war machines' record order (D-23), the walls property's reach, the audit. Awaits the user's checkpoint. **Next:** T10b (the review), T10c (the closure; the inbox lists what it passes on).
+- **E04c increment 10, T10a (the user, 2026-10-15):** #238 (`battle/e04c-t10a`): the wall line in integers, the war machines' record order (D-23), the walls property's reach, the audit. Awaits the user's checkpoint. **Next:** T10b (the review), T10c (the closure; the inbox lists what it passes on).
 - **Merged:** up to #233 (T9).
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, the inbox, Q43; S-23, S-24, batch 2g.
 - **Versions** (T7e; none since): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v24, observation encoding v20; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q49, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
