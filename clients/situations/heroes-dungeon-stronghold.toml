@@ -1,0 +1,49 @@
+# E17 M3 T3a: a situation of the capture set (situations/set.toml): the grass battle (grass.toml)
+# with other heroes, so that every hero's battle picture is compared: base:lorelei, a female
+# Overlord (CH11), against base:shiva, a female Barbarian (CH012: Stronghold's female picture).
+
+[scenario]
+id = "situation-heroes-dungeon-stronghold"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+# The heroes, each with 1 in every primary skill (`h3-view situation` writes them so).
+[scenario.attacker_hero]
+hero_type = "base:lorelei"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:shiva"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

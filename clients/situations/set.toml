@@ -2,9 +2,10 @@
 # harness shows the original and compares with our renders, unattended
 # (`clients/capture/h3drive.py set`). Each names its scenario (beside this file; its map comes from
 # `h3-view situation`, Blue's hero on `tile`, default [11, 10]), the masks over what we do not draw
-# yet (`h3cap.py diff`), and per frame (ms after the opening, on the original's clock) the number
-# of pixels that differ outside the masks, with why. A run that counts another number fails: a
-# change, to be fixed or recorded deliberately.
+# yet (`h3cap.py diff`; the heroes and their flags are drawn since M3 T3a), and per frame (ms
+# after the opening, on the original's clock) the number of pixels that differ outside the masks,
+# with why. A run that counts another number fails: a change, to be fixed or recorded
+# deliberately.
 #
 # The situations: every land terrain's battlefield (its third background: nothing around the
 # battle, design §4.4), human-first openings (the Royal Griffins' outline), two-hex stacks facing
@@ -261,3 +262,86 @@ mask = ["panel", "count_boxes"]
 at = 0
 differing = 0
 why = "exact: the shore with its absolute obstacle 126 (M3 T2)"
+
+# The heroes (M3 T3a): every battle picture of the 18 (`battle_load_heroes` 0x463370: by the
+# class's town and the hero's sex, design §4.5), the grass battle with other heroes; Orrin (CH00)
+# and Crag Hack (CH013) are in every other situation.
+[[situation]]
+id = "heroes-castle-rampart"
+scenario = "heroes-castle-rampart.toml"
+mask = ["panel", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Valeska (CH01, a female Knight), Ufretin (CH02, a male Ranger) (M3 T3a)"
+
+[[situation]]
+id = "heroes-rampart-tower"
+scenario = "heroes-rampart-tower.toml"
+mask = ["panel", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Mephala (CH03, a female Ranger), Piquedram (CH05: Tower's male picture) (M3 T3a)"
+
+[[situation]]
+id = "heroes-tower-inferno"
+scenario = "heroes-tower-inferno.toml"
+mask = ["panel", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Josephine (CH04: Tower's female picture), Rashka (CH06, a male Demoniac) (M3 T3a)"
+
+[[situation]]
+id = "heroes-inferno-necropolis"
+scenario = "heroes-inferno-necropolis.toml"
+mask = ["panel", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Fiona (CH07, a female Demoniac), Straker (CH08, a male Death Knight) (M3 T3a)"
+
+[[situation]]
+id = "heroes-necropolis-dungeon"
+scenario = "heroes-necropolis-dungeon.toml"
+mask = ["panel", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Charna (CH09, a female Death Knight), Arlach (CH010, a male Overlord) (M3 T3a)"
+
+[[situation]]
+id = "heroes-dungeon-stronghold"
+scenario = "heroes-dungeon-stronghold.toml"
+mask = ["panel", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Lorelei (CH11, a female Overlord), Shiva (CH012: Stronghold's female picture) (M3 T3a)"
+
+[[situation]]
+id = "heroes-fortress"
+scenario = "heroes-fortress.toml"
+mask = ["panel", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Bron (CH014, a male Beastmaster), Mirlanda (CH015, a female Witch) (M3 T3a)"
+
+[[situation]]
+id = "heroes-conflux"
+scenario = "heroes-conflux.toml"
+mask = ["panel", "count_boxes"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Pasis, a female Planeswalker, CH17, and Inteus, a male Elementalist, CH16: by sex, not by class as VCMI (M3 T3a)"
