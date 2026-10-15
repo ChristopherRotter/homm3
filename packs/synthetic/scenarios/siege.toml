@@ -6,13 +6,16 @@
 # (BAT-SIE-013), and she shakes them with Quake at Advanced (an Earthquake: three hits,
 # BAT-SIE-015). Since E04c T7 the town's Citadel sets up its keep: seven Spires (4 + the town's
 # three structures) shoot first every round on their own (BAT-SIE-016, BAT-SIE-018). Since E04c T8
-# the town's Tavern and a fountain raise its defenders' morale and luck by 1 (BAT-SIE-025).
+# the town's Tavern and a fountain raise its defenders' morale and luck by 1 (BAT-SIE-025). Since
+# E04c T7e the attacker brings a Bolt Thrower (a Ballista) that Brea does not command: it shoots
+# the defender's stacks the original's computer picks (BAT-WAR-008).
 
 [scenario]
 id = "siege"
 packs = ["synthetic"]
 profile = "synthetic:faithful"
 terrain = "synthetic:meadow"
+attacker_war_machines = ["synthetic:bolt_thrower"]   # E04c T7e: shoots on its own (BAT-WAR-008)
 
 [scenario.siege]                 # BAT-SIE-001
 faction = "synthetic:vale"

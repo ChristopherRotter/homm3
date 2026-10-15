@@ -281,6 +281,8 @@ impl CanonicalHash for HeroRecord {
         }
         h.write_u8(u8::from(self.ballista.is_some()));
         if let Some(b) = self.ballista {
+            // State hash v51 (E04c T7e): the Artillery level first.
+            h.write_u8(b.level);
             h.write_u8(b.shots);
             h.write_u16(b.double_damage_chance_bp);
         }
@@ -326,11 +328,11 @@ pub(crate) fn check(
     if reduction.bp > FULL_BP.into() || reduction.single.is_some_and(|b| b.get() > 0x3f80_0000) {
         return Err(invalid(HeroError::DamageReduction));
     }
-    if hero
-        .war_machines
-        .ballista
-        .is_some_and(|b| b.shots == 0 || b.double_damage_chance_bp > FULL_BP)
-    {
+    if hero.war_machines.ballista.is_some_and(|b| {
+        !(1..=MAX_SKILL_LEVEL).contains(&b.level)
+            || b.shots == 0
+            || b.double_damage_chance_bp > FULL_BP
+    }) {
         return Err(invalid(HeroError::BallistaControl));
     }
     if hero

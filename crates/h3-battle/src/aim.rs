@@ -1,17 +1,20 @@
-//! The computer's aim for the automatic turrets (BAT-SIE-020 to BAT-SIE-023): which attacker stack
-//! an arrow tower shoots when it acts on its own. The original's turret has a routine of its own
-//! (0x41E190, `docs/formats/installation.md` §7.31), not the computer's shooter: every attacker
-//! stack scores the kills of the turret's mean damage times the computer's worth of one of its
-//! creatures (0x442A50), divided by the turns it needs to attack (0x448BD0); the best score wins,
-//! a tie the later stack. Its numbers are the original's x87 arithmetic in every profile: they
-//! decide a choice, not an amount.
+//! The computer's aim for the automatic turrets (BAT-SIE-020 to BAT-SIE-023) and the automatic
+//! Ballista (BAT-WAR-008): which stack an arrow tower or a Ballista without Artillery shoots when it
+//! acts on its own. The original's turret has a routine of its own (0x41E190,
+//! `docs/formats/installation.md` §7.31): every attacker stack scores the kills of the turret's
+//! mean damage times the computer's worth of one of its creatures (0x442A50), divided by the turns
+//! it needs to attack (0x448BD0); the best score wins, a tie the later stack. The Ballista takes the
+//! computer's shooter (0x41F060, §7.33): every stack it may shoot scores the kills of the
+//! computer's estimate of its shot times the same worth, divided by its turns, by 5 or by 10; a
+//! stack that keeps its turns first, then the best score, a tie the later stack. Their numbers are
+//! the original's x87 arithmetic in every profile: they decide a choice, not an amount.
 
 use h3_content_battle::BattleRuleset;
 use h3_contracts::BattleSide;
 use h3_kernel::arith::{DOUBLE_BITS, X87};
 
 use crate::binds;
-use crate::combat::can_shoot;
+use crate::combat::{can_shoot, shot_damage};
 use crate::damage::{Strike, effective_defense, frenzied};
 use crate::effects::{DamageRoll, Status};
 use crate::geometry::{Field, Hex, HexSet};
@@ -42,6 +45,13 @@ const NO_ENTRY: u16 = u16::MAX;
 /// The worth of every creature in desperate mode (0x442FD0: 1000.0).
 const DESPERATE_WORTH: u64 = 1000;
 
+/// The factor of a Ballista's offense by its hero's Artillery level, none to Expert (0x63B7F0:
+/// 1.0, 1.5, 1.5, 2.0; above Basic the offense is doubled first).
+const ARTILLERY: [(u32, u32); 4] = [(1, 1), (3, 2), (3, 2), (2, 1)];
+
+/// The divisor of a shot's value at a stack that loses its turns (0x435CB0).
+const DISABLED: i32 = 10;
+
 /// The computer's battle context for a side (0x435EC0): the least attack and defense bonus of
 /// the stacks on the field, and whether the side is desperate (BAT-SIE-023).
 #[derive(Debug, Clone, Copy)]
@@ -51,10 +61,12 @@ pub(crate) struct Context {
     pub(crate) desperate: bool,
 }
 
-/// The value `x` an `_ftol` gives: truncated toward 0; one outside `i32` is `i32::MIN` (the x87's
-/// integer indefinite).
-fn ftol(x: X87) -> i32 {
-    i32::try_from(x.trunc()).unwrap_or(i32::MIN)
+/// The value `x` an `_ftol` gives its callers (0x6179D4): truncated toward 0 into 64 bits
+/// (`fistp qword`; from 2^63 on the integer indefinite, 2^63), of which they keep the low 32 bits.
+pub(crate) fn ftol(x: X87) -> i32 {
+    let t = x.trunc();
+    let low = if t >= 1 << 63 { 0 } else { t & 0xFFFF_FFFF };
+    i32::from_ne_bytes(u32::try_from(low).unwrap_or(0).to_ne_bytes())
 }
 
 /// An integer as `fild` loads it and a store keeps it: exact up to 2^53.
@@ -136,6 +148,25 @@ fn shoots(state: &BattleState, field: Field, id: StackId) -> bool {
     is_ballista(s) || s.is_turret() || can_shoot(state, field, id)
 }
 
+/// The damage of one creature of `s` as the original's stack record holds it (+0xD0, +0xD4), which
+/// the computer reads. A war machine's stack keeps its creature's range times its side's hero's
+/// attack + 1 (BAT-WAR-005), the original only its creature's range (with the hero's changes,
+/// BAT-HER-005) and multiplies in a strike's base damage (0x4431AC): the hero's share comes off.
+fn damage(state: &BattleState, ruleset: &BattleRuleset, s: &Stack) -> (u64, u64) {
+    let (min, max) = (u64::from(s.damage_min), u64::from(s.damage_max));
+    if !s.has(StackTraits::WAR_MACHINE) {
+        return (min, max);
+    }
+    let attack = state.heroes[s.side.index()].map_or(0, |h| u64::from(h.view.attack));
+    let (own_min, own_max) = ruleset.creature(s.creature).map_or((0, 0), |c| {
+        (u64::from(c.damage_min), u64::from(c.damage_max))
+    });
+    (
+        min.saturating_sub(own_min * attack),
+        max.saturating_sub(own_max * attack),
+    )
+}
+
 /// The total hit points of `s` for the computer: 1 for a clone (0x442A50, 0x443080).
 fn hit_points(s: &Stack) -> u64 {
     if s.has(StackTraits::CLONE) {
@@ -146,8 +177,8 @@ fn hit_points(s: &Stack) -> u64 {
 }
 
 /// The computer's worth of one creature of stack `id` (0x442A50; BAT-SIE-021), a double:
-/// `sqrt(offense · defense) · Fight Value`, for a war machine or a created stack times its side's
-/// other hit points over its own and theirs.
+/// `sqrt(offense · defense) · Fight Value`, the Ballista's offense grown by its hero's Artillery,
+/// for a war machine or a created stack times its side's other hit points over its own and theirs.
 // rule: BAT-SIE-021
 pub(crate) fn worth(
     state: &BattleState,
@@ -167,8 +198,17 @@ pub(crate) fn worth(
     if !shot && s.has(StackTraits::SHOOTER) {
         offense = offense.times(X87::ratio(1, 2, DOUBLE_BITS).unwrap_or(X87::ZERO));
     }
-    // stub: BAT-STUB-3 — a commanded Ballista's Artillery factors (0x63B7F0) need the hero's level.
-    let (min, max) = (u64::from(s.damage_min), u64::from(s.damage_max));
+    if is_ballista(s) {
+        // The Ballista's offense by its hero's Artillery level (0x442C0F; 0 without a hero or the
+        // skill): doubled above Basic, then times 0x63B7F0's factor, each a double.
+        let level = hero::ballista(&state.heroes, s.controller()).map_or(0, |c| c.level);
+        if level > 1 {
+            offense = offense.plus(offense);
+        }
+        let (n, d) = ARTILLERY.get(usize::from(level)).copied().unwrap_or((1, 1));
+        offense = offense.times(X87::ratio(n, d, DOUBLE_BITS).unwrap_or(X87::ONE));
+    }
+    let (min, max) = damage(state, ruleset, s);
     let roll = match s.spells.damage {
         DamageRoll::Random => None,
         DamageRoll::Maximum(bonus) => Some(max + u64::from(bonus)),
@@ -526,4 +566,107 @@ pub(crate) fn turret_target(
         }
     }
     best.1
+}
+
+/// The computer's estimate of the damage a shot of `shooter` deals to `target` (0x4359B0,
+/// 0x442780; BAT-WAR-008): the shooter's creatures by its hit points (rounded up) times one
+/// creature's damage as its record holds it ([`damage`]: a Ballista's 2–3 without its hero's
+/// multiplier; the maximum and Bless's bonus while blessed, the minimum less Curse's penalty but at
+/// least 1 while cursed, else the mean, a double), truncated, through every stage of a real shot
+/// without its draws ([`shot_damage`]); at least 1, doubled for a creature that shoots twice, at
+/// most the target's hit points (1 for a clone).
+pub(crate) fn estimate(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (shooter, target): (StackId, StackId),
+) -> u64 {
+    let s = state.at(shooter);
+    let count = hit_points(s).div_ceil(u64::from(s.max_hp.max(1)));
+    let (min, max) = damage(state, ruleset, s);
+    let each = match s.spells.damage {
+        DamageRoll::Maximum(bonus) => double(max + u64::from(bonus)),
+        DamageRoll::Minimum(penalty) => double(min.saturating_sub(u64::from(penalty)).max(1)),
+        DamageRoll::Random => double(min + max).over(X87::int(2)).unwrap_or(X87::ZERO),
+    };
+    let base = u64::try_from(ftol(double(count).times(each))).unwrap_or(0);
+    let mut damage = shot_damage(state, ruleset, (shooter, target), base).max(1);
+    if s.has(StackTraits::STRIKES_TWICE) {
+        damage = damage.saturating_mul(2);
+    }
+    damage.min(hit_points(state.at(target)))
+}
+
+/// The computer's value of a shot of `shooter` at `target` (0x435CB0, 0x435B90; BAT-WAR-008): the
+/// kills of its estimated damage ([`estimate`]) times the worth of one of the target's creatures
+/// with the shot flag ([`kill_value`]; 1000 in `desperate` mode). Whole on Easy for a computer side;
+/// else divided by 10 for a stack that loses its turns, by 5 for a First Aid Tent or an Ammo Cart,
+/// a stack without a target ([`turns`]) or one more than 5 turns away, else by its turns.
+// rule: BAT-WAR-008
+pub(crate) fn shot_value(
+    state: &BattleState,
+    (ruleset, field): (&BattleRuleset, Field),
+    ctx: &Context,
+    (shooter, target): (StackId, StackId),
+    desperate: bool,
+) -> i32 {
+    let t = state.at(target);
+    let dealt = estimate(state, ruleset, (shooter, target));
+    let v = if desperate && !t.has(StackTraits::CLONE) {
+        X87::int(DESPERATE_WORTH)
+    } else {
+        worth(state, (ruleset, field), ctx, target, true)
+    };
+    let value = kill_value(t, i64::try_from(dealt).unwrap_or(i64::MAX), v);
+    let side = state.at(shooter).controller();
+    if state.difficulty == 0 && !state.human[side.index()] {
+        return value;
+    }
+    let divisor = if t.spells.status.contains(Status::NO_TURNS) {
+        DISABLED
+    } else if t.has(StackTraits::FIRST_AID) || t.has(StackTraits::AMMO_SUPPLY) {
+        MAX_TURNS
+    } else {
+        turns(state, field, target).map_or(MAX_TURNS, |n| {
+            i32::try_from(n).unwrap_or(MAX_TURNS).min(MAX_TURNS)
+        })
+    };
+    value / divisor
+}
+
+/// The stack the automatic Ballista `shooter` shoots (0x41F060, 0x41EB80; BAT-WAR-008): of the
+/// living stacks it may shoot (the other side's, whoever controls them, but the turrets), a stack
+/// that keeps its turns before one that loses them, then the best [`shot_value`], ties to the later
+/// stack; in desperate mode (BAT-SIE-023) chosen again without it when the best value is 0. `None`
+/// without a stack to shoot.
+// rule: BAT-WAR-008, BAT-SIE-023
+pub(crate) fn ballista_target(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    field: Field,
+    shooter: StackId,
+) -> Option<StackId> {
+    let me = state.at(shooter);
+    let ctx = context(state, ruleset, field, me.controller());
+    let pick = |desperate: bool| {
+        let mut best: Option<((bool, i32), StackId)> = None;
+        for (i, t) in (0u8..).zip(state.stacks.iter()) {
+            if !t.is_alive() || !me.may_attack(t) {
+                continue;
+            }
+            let id = StackId(i);
+            let keeps = !t.spells.status.contains(Status::NO_TURNS);
+            let value = shot_value(state, (ruleset, field), &ctx, (shooter, id), desperate);
+            if best.is_none_or(|(b, _)| (keeps, value) >= b) {
+                best = Some(((keeps, value), id));
+            }
+        }
+        best
+    };
+    let best = pick(ctx.desperate);
+    let best = if ctx.desperate && best.is_some_and(|((_, v), _)| v == 0) {
+        pick(false)
+    } else {
+        best
+    };
+    best.map(|(_, id)| id)
 }
