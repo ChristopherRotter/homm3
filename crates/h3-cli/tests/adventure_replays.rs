@@ -33,7 +33,9 @@
 //! `shared/e08-t20b2` (flag 24 on in `faithful`) the six `faithful` ones were re-recorded with
 //! their options: only the core ruleset hash in their headers moved. In E04c T9 (BAT-QUIRK-23's
 //! flag on in `faithful`) the six `faithful` ones were re-recorded with their options: only the
-//! core ruleset hash in their headers moved.
+//! core ruleset hash in their headers moved. In E08 T21a (the guarded piles: map import v7,
+//! adventure state hash v10, game state hash v8) all eight were re-recorded with their options:
+//! their commands stayed (the duel holds no guarded pile), their hashes and versions moved.
 
 use std::path::PathBuf;
 

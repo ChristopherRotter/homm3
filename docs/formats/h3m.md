@@ -125,7 +125,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a; `MAP_IMPORT_VERSION` 6)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a; `MAP_IMPORT_VERSION` 7)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -155,9 +155,14 @@ content and draws nothing; it rejects what the current increment cannot represen
   `base:border_guard_<colour>`, `ab:border_gate_<colour>`. A subclass outside these is an error
   (`Subclass`); classes 12, 58, 60 and 76 ignore it. A resource body's amount (76, 79) is the
   pile's fixed amount (0 is none: drawn when the game is built; gold counts in hundreds, the type
-  multiplies), which the setup bounds at 0x7FFFF; its message is presentation. Every other class
-  is a blocker. Unsupported: a pile or random resource with a guards record, even an empty one
-  (battles: increment 3; ADV-Q10, D-6); `import_map` keeps it as a blocker.
+  multiplies), which the setup bounds at 0x7FFFF; its message's text is presentation. Every other
+  class is a blocker.
+- **Guarded piles** (v7, E08 T21a, ADV-PIK-004): a pile's or random resource's guards record gives
+  its guards (`ObjectSetup.guards`): the stacks by slot (creature by original id, the count) and
+  whether the message has a text (the visit asks first; the text itself is not kept). A record
+  without stacks is a plain pile, as the original's stack count reads it (0x4A47E0). Unsupported:
+  a random stack among the guards (the 14 codes below "none", as a hero's); `import_map` keeps
+  that pile unguarded. The setup checks the stacks as a hero's army, no war machine among them.
 - **Monsters** (v6, E08 T20a2a, ADV-MON-001): class 54 → `base:monster` with the creature its
   subclass names (by original id, as a hero's stacks; 122, 124, 126 and 128 are unknown codes);
   71 → `base:random_monster`, 72–75 → `base:random_monster_1` to `_4`, 162–164 →
@@ -221,7 +226,10 @@ for a hero in a town. The census: 14 021 monsters, 357 with a treasure (55 with 
 with a resource below 0), no disposition beyond savage; 1 887 special grounds, every picture in
 the table; 10 939 tiles under two or more grounds, 142 of them (in 9 maps) under grounds of
 different battlefields, where the last in map order counts (ADV-GRD-001); 5 maps stack two grounds
-of one type on one anchor, which the setup allows for grounds only.
+of one type on one anchor, which the setup allows for grounds only. E08 T21a's run (import v7): the
+same 4 import and validate whole; the 4 maps unsupported for a guarded pile before now count for
+a random hero (19), the other outcomes as before. 39 piles have a guards record: 3 without a
+stack (plain), 36 guarded (30 ask first, 9 with two stacks), none with a random stack.
 
 ## The subset we write (E04a T2)
 

@@ -413,22 +413,22 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xca26fd3fa9371e30",
-    "0x7a77003007c01e8a",
-    "0x907b97ee12f84ff3",
-    "0xfb7dce34752a046a",
-    "0x5fd1cfe08018f64a",
-    "0x400c35254df2696b",
-    "0xfc6ee6f77ea1ff00",
-    "0x9c9057682b1ce902",
-    "0x03159ce6b4660414",
-    "0x40d18aa2bf065e77",
-    "0xf2a78b0557e395c9",
-    "0xcc31e10221390fa7",
-    "0x9427d077e9e23872",
-    "0x6c6efa1eddf71e72",
-    "0x20d4beed82df5ebf",
-    "0x19b9ae23ff92552b",
+    "0x95d6231ff2ea5c12",
+    "0xd8da66c70c00d610",
+    "0xbf9319ce4410429c",
+    "0xbc2768df2e84af87",
+    "0x74b67b97df8ee906",
+    "0x0aebdd46bf8a8fdd",
+    "0x8dbe52f979776f92",
+    "0xd274d383c304cf98",
+    "0x3cabdebf82d9c2f6",
+    "0x76354a430bdffb29",
+    "0xc9c9c1868a71713f",
+    "0x6509efecd4228d81",
+    "0x080dcb59e140fcc0",
+    "0xddeeede351cb0324",
+    "0x5d9d93b854d0b29d",
+    "0x8f7a302225b01c8c",
 ]
 
 [replay]
@@ -457,15 +457,15 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 7
-adventure_state_hash_version = 9
+game_state_hash_version = 8
+adventure_state_hash_version = 10
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x9362525eadd3de88"
-import_version = 6
+import_version = 7
 
 [result]
 day = 29
-final_hash = "0x2decbe705f2f6fa4"
+final_hash = "0x982fe1bbd25a6bab"
