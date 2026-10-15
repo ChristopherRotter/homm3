@@ -33,8 +33,8 @@ use crate::ruleset::{
     ObjectType, ObjectTypeId, Passage, Pickup, RiverId, RoadId, Visit,
 };
 use crate::setup::{
-    AdventureSetup, ArmyError, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos, SetupError,
-    StandError, TileMask,
+    AdventureSetup, ArmyError, Guards, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos,
+    SetupError, StandError, TileMask,
 };
 
 /// A tile of the static map.
@@ -66,6 +66,7 @@ impl StaticTile {
 mod flags;
 mod monsters;
 mod occupancy;
+mod piles;
 
 use flags::Flags;
 pub(crate) use occupancy::Occupancy;
@@ -91,6 +92,10 @@ pub struct MapObject {
     /// A wandering monster's data with what the build drew (ADV-MON-001 to ADV-MON-004, E08
     /// T20a2a); none for every other object.
     pub monster: Option<Monster>,
+    /// A guarded pile's guards as the map gives them, their stacks in slot order (ADV-PIK-004,
+    /// E08 T21a); none for every other object. A battle they survive leaves their stacks in the
+    /// state, not here.
+    pub guards: Option<Guards>,
 }
 
 /// A wandering monster of the static map (ADV-MON-001, E08 T20a2a): the map's data with what the
@@ -289,7 +294,21 @@ impl StaticMap {
             if !check_monster(core, part, levels, object.monster.as_ref()) {
                 return Err(SetupError::Monster(index));
             }
-            map.place(object);
+            // rule: ADV-PIK-004
+            let pile = ty.is_some_and(|ty| {
+                matches!(
+                    ty.kind,
+                    ObjectKind::Pickup(Pickup::Resource { .. } | Pickup::OneOf(_))
+                )
+            });
+            let guards = object
+                .guards
+                .as_ref()
+                .map(|guards| {
+                    check_guards(core, part, pile, guards).ok_or(SetupError::Guards(index))
+                })
+                .transpose()?;
+            map.place(object, guards);
         }
         map.resolve(core, part, &setup.objects, draws);
         map.mark_near_monsters();
@@ -485,7 +504,7 @@ impl StaticMap {
     /// Marks the tiles an object covers; tiles of its footprint off the map are ignored
     /// (ADV-OBJ-001).
     // rule: ADV-OBJ-001
-    fn place(&mut self, object: &ObjectSetup) {
+    fn place(&mut self, object: &ObjectSetup, guards: Option<Guards>) {
         for (column, row) in object.blocked.offsets() {
             if let Some(index) = self.offset(object.anchor, column, row) {
                 self.tiles[index].blocked = true;
@@ -511,6 +530,7 @@ impl StaticMap {
             contents: Vec::new(),
             drawn: object.drawn,
             monster: None,
+            guards,
         });
     }
 
@@ -602,7 +622,9 @@ impl CanonicalHash for StaticMap {
     /// coast); every object (anchor, blocked and visitable masks; since v4 its object type and
     /// contents; since v9 its drawn mask and, as 0 for none or 1 and its fields in order, its
     /// monster: creature, count, aggression, never flees, does not grow, the treasure as length
-    /// and entries). The per-tile object flags follow from the objects.
+    /// and entries; since v10, as 0 for none or 1 and its fields, its guards: whether they ask,
+    /// the stacks as length and slot, creature and count each). The per-tile object flags follow
+    /// from the objects.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u16(self.width);
         h.write_u16(self.height);
@@ -639,6 +661,19 @@ impl CanonicalHash for StaticMap {
                     for (resource, amount) in &monster.treasure {
                         resource.hash_into(h);
                         h.write_u32(*amount);
+                    }
+                }
+            }
+            match &object.guards {
+                None => h.write_u8(0),
+                Some(guards) => {
+                    h.write_u8(1);
+                    h.write_bool(guards.question);
+                    h.write_len(guards.army.len());
+                    for stack in &guards.army {
+                        h.write_u8(stack.slot);
+                        stack.creature.hash_into(h);
+                        h.write_u32(stack.count);
                     }
                 }
             }
@@ -1190,7 +1225,8 @@ impl AdventureState {
 
     /// An object's visit by `player`'s hero `hero`, by what its kind does ([`Effect`]). A pickup
     /// (ADV-PIK-001, ADV-PIK-003): the visitor's owner gains its contents, and it leaves the map
-    /// ([`Self::take_object`], ADV-OBJ-005). A Cartographer (ADV-VIS-001, E08 T14b): an offer of
+    /// ([`Self::take_object`], ADV-OBJ-005); a guarded pile's guards ask first or fight
+    /// ([`Self::visit_pile`], ADV-PIK-004, E08 T21a). A Cartographer (ADV-VIS-001, E08 T14b): an offer of
     /// its reveal for its price, unless the player has bought its type; the game opens it if the
     /// player can pay (ADR-0017 point 10). An observatory (ADV-VIS-002, T15a): the tiles within its
     /// radius of the visited tile, on its level, explored for the player, told to it alone with
@@ -1202,7 +1238,7 @@ impl AdventureState {
     /// nothing, as the guard's (the original's message is not modelled). A wandering monster
     /// (ADV-MON-007, E08 T20b1): its answer to the hero ([`Self::visit_monster`]).
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
-    // rule: ADV-VIS-005
+    // rule: ADV-VIS-005, ADV-PIK-004
     fn visit<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -1221,8 +1257,8 @@ impl AdventureState {
         let mut outcome = AdventureOutcome::default();
         match visit.effect {
             Effect::Pickup => {
-                outcome.gains = self.map.objects()[visit.object].contents.clone();
-                self.take_object(core, (visit.object, visit.object_type), sink);
+                let object = (visit.object, visit.object_type);
+                outcome = self.visit_pile(core, rules.1, hero, object, sink);
             }
             Effect::Chart(price) => {
                 outcome.offer = (!self.has_bought(player, visit.object_type)).then(|| {
@@ -1321,9 +1357,10 @@ impl AdventureState {
     /// map for everyone ([`Self::take_object`]). A wandering monster's offer to join, for free or
     /// for its price (ADV-MON-008, E08 T20b1): the group joins the hero's army and the monster
     /// leaves the map; its treasure is the outcome's gains ([`Self::join`]). Its offer to flee:
-    /// the hero fights it (ADV-MON-008; [`Self::pursue`]). Infallible; the outcome is what the
-    /// game applies after.
-    // rule: ADV-VIS-001, ADV-VIS-004, ADV-MON-008
+    /// the hero fights it (ADV-MON-008; [`Self::pursue`]). A guarded pile's question (ADV-PIK-004,
+    /// E08 T21a): the hero fights its guards as they stand, or picks it up when none stand any
+    /// more ([`Self::fight_or_pick`]). Infallible; the outcome is what the game applies after.
+    // rule: ADV-VIS-001, ADV-VIS-004, ADV-MON-008, ADV-PIK-004
     pub fn accept_offer<S: Sink>(
         &mut self,
         core: &Ruleset,
@@ -1347,6 +1384,13 @@ impl AdventureState {
                 self.join((core, part), player, offer, sink)
             }
             OfferKind::Pursue => self.pursue(part, offer),
+            OfferKind::Fight => self
+                .offer_object(offer)
+                .map(|index| {
+                    let pile = (index, offer.object_type);
+                    self.fight_or_pick(core, part, offer.hero, pile, sink)
+                })
+                .unwrap_or_default(),
         }
     }
 
@@ -1832,6 +1876,25 @@ fn check_monster(
         && monster.treasure.iter().all(|&(resource, amount)| {
             usize::from(resource.raw()) < core.resources().len() && (1..=MAX_GAIN).contains(&amount)
         })
+}
+
+/// A guarded pile's guards checked (ADV-PIK-004, E08 T21a): on a pile (`pile`), their stacks valid
+/// as a hero's army ([`check_army`]) with no war machine; the stacks in slot order.
+fn check_guards(
+    core: &Ruleset,
+    part: &AdventureRuleset,
+    pile: bool,
+    guards: &Guards,
+) -> Option<Guards> {
+    let army = check_army(core, part, &guards.army).ok()?;
+    let machine = army.iter().any(|stack| {
+        core.creature(stack.creature)
+            .is_some_and(|c| c.flags.contains(CreatureFlag::WarMachine))
+    });
+    (pile && !machine).then_some(Guards {
+        army,
+        question: guards.question,
+    })
 }
 
 /// One of `choices` with equal chances (`random_between(0, n − 1)` in the original); none for no

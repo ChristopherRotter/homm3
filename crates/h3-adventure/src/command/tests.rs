@@ -1642,10 +1642,10 @@ fn a_battles_end_sets_the_armies_and_takes_heroes_off_the_map() {
     assert_eq!(again, before);
 }
 
-/// The hero of a battle's defending side; panics for a monster's.
+/// The hero of a battle's defending side; panics for a monster's or guards'.
 fn defender_hero(battle: &BattleStart) -> HeroId {
     match &battle.defender {
         Defender::Hero(side) => side.hero,
-        Defender::Monster { .. } => panic!("a monster defends"),
+        Defender::Monster { .. } | Defender::Guards { .. } => panic!("no hero defends"),
     }
 }

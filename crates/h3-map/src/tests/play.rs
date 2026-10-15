@@ -41,7 +41,8 @@ use super::sample;
 use super::strategy::version;
 use crate::import::codes;
 use crate::model::{
-    Artifacts, Body, HeroBody, MonsterBody, MonsterTreasure, RawMap, Stack, Template, Tile, Version,
+    Artifacts, Body, HeroBody, Message, MonsterBody, MonsterTreasure, RawMap, Stack, Template,
+    Text, Tile, Version,
 };
 use crate::{Limits, import, parse};
 
@@ -91,8 +92,9 @@ pub(super) const BLOCKER_CLASS: u32 = 124;
 /// Ground and Magic Plains), which the strategy draws by their objects ([`MONSTER_OBJECTS`],
 /// [`GROUND_OBJECTS`]): appended, so the committed maps keep their templates. No random monster
 /// and no drawn count: the drawn creature and its count's word would show (as a random resource's
-/// pile type).
-pub(super) const KINDS: [(u32, u32, Option<u32>); 27] = [
+/// pile type). Then (E08 T21a) the plans' guarded piles ([`GUARDED`]): 500 gold whose guards ask
+/// first and four crystals whose guards fight at once.
+pub(super) const KINDS: [(u32, u32, Option<u32>); 29] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -120,6 +122,8 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 27] = [
     (54, 14, None),
     (21, 0, None),
     (46, 0, None),
+    (79, 6, Some(5)),
+    (79, 4, Some(4)),
 ];
 /// The plans' wandering monsters (E08 T20b3b1), by kind: the count, the disposition (0 compliant,
 /// 1 friendly, 2 aggressive, 3 hostile, 4 savage), whether it never flees, and its treasure's
@@ -145,6 +149,21 @@ pub(super) const MONSTER_OBJECTS: [usize; 5] = [
 /// The special grounds' objects (no tile blocked or visited: [`masks`]; the import's ground lies on
 /// its anchor, an unknown picture's one tile).
 pub(super) const GROUND_OBJECTS: [usize; 2] = [BLOCKERS.len() * 25, BLOCKERS.len() * 26];
+/// The plans' guarded piles (E08 T21a, ADV-PIK-004), by kind: whether the guards ask first (the
+/// message has a text) and their stacks by slot as creature code and count. Eight gremlins and two
+/// gnolls ask before they guard 500 gold, weak enough that most heroes beat them; twenty
+/// skeletons fight at once for four crystals, strong enough that many heroes lose.
+pub(super) const GUARDED: [(usize, bool, [(u8, u16, u16); 2]); 2] = [
+    (27, true, [(0, 28, 8), (3, 98, 2)]),
+    (28, false, [(2, 56, 20), (2, 56, 0)]),
+];
+/// The guarded piles' objects, of a shape with a visitable tile.
+pub(super) const GUARDED_OBJECTS: [usize; 4] = [
+    BLOCKERS.len() * 27 + 1,
+    BLOCKERS.len() * 27 + 2,
+    BLOCKERS.len() * 28 + 1,
+    BLOCKERS.len() * 28 + 2,
+];
 /// The kinds the strategy's plans draw: the first nine.
 const PLAYED: usize = 9;
 /// The objects a plan may lay out: object `i` has the shape `BLOCKERS[i % 3]` and the kind
@@ -183,8 +202,9 @@ pub(super) fn masks(object: usize) -> (Mask, Mask) {
     }
 }
 
-/// The body of an object of kind `kind`: a pile's amount, a monster's data ([`MONSTERS`]; its
-/// identifier, which AB and SoD store, `identifier`), else none.
+/// The body of an object of kind `kind`: a pile's amount (and since E08 T21a its message with
+/// guards, [`GUARDED`]), a monster's data ([`MONSTERS`]; its identifier, which AB and SoD store,
+/// `identifier`), else none.
 fn body(kind: usize, v: Version, identifier: u32) -> Body {
     if let Some(&(_, count, disposition, never_flees, gold)) = MONSTERS.iter().find(|m| m.0 == kind)
     {
@@ -200,10 +220,22 @@ fn body(kind: usize, v: Version, identifier: u32) -> Body {
             no_growth: false,
         });
     }
-    KINDS[kind].2.map_or(Body::None, |amount| Body::Resource {
-        message: None,
-        amount,
-    })
+    let message = GUARDED
+        .iter()
+        .find(|g| g.0 == kind)
+        .map(|&(_, asks, stacks)| {
+            let mut guards = vec![None; 7];
+            for (slot, creature, count) in stacks.into_iter().filter(|s| s.2 > 0) {
+                guards[usize::from(slot)] = Some(Stack { creature, count });
+            }
+            Message {
+                text: Text(if asks { b"Fight?".to_vec() } else { Vec::new() }),
+                guards: Some(guards),
+            }
+        });
+    KINDS[kind]
+        .2
+        .map_or(Body::None, |amount| Body::Resource { message, amount })
 }
 /// A tile as column, row and level.
 pub(super) type Spot = (u8, u8, u8);
@@ -299,6 +331,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     2 => proptest::sample::select(&KEYS[..]),
                     1 => proptest::sample::select(&MONSTER_OBJECTS[..]),
                     1 => proptest::sample::select(&GROUND_OBJECTS[..]),
+                    1 => proptest::sample::select(&GUARDED_OBJECTS[..]),
                 ],
             ),
             0..=8,
@@ -317,6 +350,13 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     any::<bool>(),
                 ),
             ),
+            proptest::option::weighted(
+                0.5,
+                (
+                    (0u8..5, 0u8..5),
+                    proptest::sample::select(&GUARDED_OBJECTS[..]),
+                ),
+            ),
         ),
     )
         .prop_map(
@@ -332,7 +372,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 mut blockers,
                 difficulty,
                 keyring,
-                (backpacks, mut skills, beside),
+                (backpacks, mut skills, beside, pile),
             )| {
                 // In three plans of four a red tent within three tiles of the first hero, a red
                 // guard whose visitable tile is two columns east of the tent, a row up, level or
@@ -376,6 +416,14 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     let spot = (at(hx, dx), at(hy, dy), hz % levels);
                     blockers.push((spot, monster));
                     blockers.extend(ground.map(|ground| (spot, ground)));
+                }
+                // In half the plans (E08 T21a) a guarded pile whose visitable tile is within
+                // three tiles of the first hero, so that random play meets its guards early.
+                if let Some(((dx, dy), pile)) = pile {
+                    let ((hx, hy, hz), _) = heroes[0];
+                    let levels = 1 + u8::from(two_levels);
+                    let at = |h: u8, d: u8| (h % side + side + d - 1) % side;
+                    blockers.push(((at(hx, dx), at(hy, dy), hz % levels), pile));
                 }
                 Plan {
                     version,
@@ -1494,7 +1542,8 @@ fn armies(state: &GameState) -> Vec<(HeroId, Vec<h3_contracts::ArmyStack>)> {
 /// winner that stays gains experience, and artifacts only move between the two or leave with a
 /// destroyed war machine. A monster's battle (E08 T20b3b1; ADV-MON-010): beaten, the monster
 /// leaves the map, told as its removal, with its treasure for the visitor's owner (a draw gives
-/// none); else it stays with at most the creatures it had; no surrender.
+/// none); else it stays with at most the creatures it had; no surrender. A guarded pile's (E08
+/// T21a; ADV-PIK-004): won, the pile is picked up; else its guards keep their survivors.
 fn check_battle_end(
     rules: &GameRuleset,
     before: &GameState,
@@ -1524,7 +1573,7 @@ fn check_battle_end(
         .collect();
     let monster = heroes[BattleSide::Defender.index()].is_none();
     if monster {
-        check_monster_battle_end(before, after, events, heroes, result)?;
+        check_unowned_battle_end(before, after, events, heroes, result)?;
     }
     for (side, hero) in heroes.iter().enumerate() {
         let Some(hero) = *hero else {
@@ -1573,12 +1622,15 @@ fn check_battle_end(
     check_heroes_after_battle(rules, (before, after), events, heroes)
 }
 
-/// The monster's part of [`check_battle_end`] (E08 T20b3b1; ADV-MON-010): the monster fought is
-/// the one visited at the battle's tile; a victory of the visitor's side removes it, told as its
-/// removal, and gives the visitor's owner exactly its treasure; a draw removes it without one;
-/// else it stays with between one and the creatures it had, and no treasury changes. No side
-/// surrenders to a monster or pays it.
-fn check_monster_battle_end(
+/// The unowned side's part of [`check_battle_end`]: the object fought is the one visited at the
+/// battle's tile, a wandering monster (E08 T20b3b1; ADV-MON-010) or a guarded pile (E08 T21a;
+/// ADV-PIK-004). A monster: a victory of the visitor's side removes it, told as its removal, and
+/// gives the visitor's owner exactly its treasure; a draw removes it without one; else it stays
+/// with between one and the creatures it had. A pile: a victory picks it up, told as its removal,
+/// and gives the visitor's owner exactly its contents; else it stays, its guards' survivors by
+/// slot each of its stack's creature and at most its count (none after a draw). No treasury
+/// changes otherwise; no side surrenders to them or pays them.
+fn check_unowned_battle_end(
     before: &GameState,
     after: &GameState,
     events: &[GameEvent],
@@ -1602,10 +1654,10 @@ fn check_monster_battle_end(
         .iter()
         .copied()
         .rev()
-        .find(|&i| map.objects()[i].monster.is_some() && !before.adventure().is_removed(i))
-        .ok_or_else(|| fail(format!("no monster fought at {tile:?}")))?;
-    let monster = map.objects()[index].monster.as_ref().unwrap();
-    let had = before.adventure().monster_count(index).unwrap();
+        .find(|&i| !before.adventure().is_removed(i))
+        .filter(|&i| map.objects()[i].monster.is_some() || map.objects()[i].guards.is_some())
+        .ok_or_else(|| fail(format!("no monster or guards fought at {tile:?}")))?;
+    let object = &map.objects()[index];
     let removals = events
         .iter()
         .filter(|e| {
@@ -1614,25 +1666,44 @@ fn check_monster_battle_end(
                 GameEvent::Adventure(AdventureEvent {
                     kind: AdventureEventKind::ObjectRemoved { anchor, .. },
                     ..
-                }) if *anchor == map.objects()[index].anchor
+                }) if *anchor == object.anchor
             )
         })
         .count();
     let won = result.winner() == Some(BattleSide::Attacker);
-    let beaten = won || result == BattleResult::Draw;
-    prop_assert_eq!(after.adventure().is_removed(index), beaten, "{:?}", result);
-    prop_assert_eq!(removals, usize::from(beaten));
-    if !beaten {
-        let left = after.adventure().monster_count(index).unwrap();
-        prop_assert!((1..=had).contains(&left), "{} of {}", left, had);
-    }
+    let (removed, gains) = if let Some(monster) = &object.monster {
+        let beaten = won || result == BattleResult::Draw;
+        if !beaten {
+            let had = before.adventure().monster_count(index).unwrap();
+            let left = after.adventure().monster_count(index).unwrap();
+            prop_assert!((1..=had).contains(&left), "{} of {}", left, had);
+        }
+        (beaten, won.then(|| monster.treasure.clone()))
+    } else {
+        if !won {
+            let had = before.adventure().guards_left(index);
+            let left = after.adventure().guards_left(index);
+            prop_assert!(
+                left.iter().all(|s| had
+                    .iter()
+                    .any(|h| (h.slot, h.creature) == (s.slot, s.creature) && h.count >= s.count)),
+                "{:?} of {:?}",
+                left,
+                had
+            );
+            prop_assert_eq!(left.is_empty(), result == BattleResult::Draw);
+        }
+        (won, won.then(|| object.contents.clone()))
+    };
+    prop_assert_eq!(after.adventure().is_removed(index), removed, "{:?}", result);
+    prop_assert_eq!(removals, usize::from(removed));
     prop_assert!(
         !matches!(result, BattleResult::Surrender(_)),
         "{:?}",
         result
     );
     let mut treasury = before.treasury(owner).unwrap().to_vec();
-    let mut gains = Vec::new();
+    let mut gained = Vec::new();
     for event in events {
         match *event {
             GameEvent::ResourceGained {
@@ -1642,20 +1713,15 @@ fn check_monster_battle_end(
             } => {
                 prop_assert_eq!(player, owner);
                 treasury[usize::from(resource.raw())] += amount;
-                gains.push((resource, amount));
+                gained.push((resource, amount));
             }
             GameEvent::ResourcePaid { .. } => {
-                return Err(fail(format!("{event:?} in a monster's battle")));
+                return Err(fail(format!("{event:?} in a battle without an enemy hero")));
             }
             _ => {}
         }
     }
-    let treasure = if won {
-        monster.treasure.clone()
-    } else {
-        Vec::new()
-    };
-    prop_assert_eq!(gains, treasure);
+    prop_assert_eq!(gained, gains.unwrap_or_default());
     prop_assert_eq!(after.treasury(owner).unwrap(), &treasury[..]);
     for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         if player != owner {
@@ -1795,11 +1861,12 @@ fn check_heroes_after_battle(
 /// when it could not; a Cartographer's offers its reveal for its price to a player that has not
 /// bought its type, a border guard's its passage without a price to a holder of its key, (E08
 /// T20b3b1) a monster's its group to join (for free, or for gold the actor holds) or its flight,
-/// never refused (an offer to join for gold the actor cannot pay does not open); an answer closes
-/// the decision it names; only an accepted Cartographer's adds the type to the actor's purchases;
+/// never refused (an offer to join for gold the actor cannot pay does not open), (E08 T21a) a
+/// guarded pile's question while its guards stand and its message asks, never refused; an answer
+/// closes the decision it names; only an accepted Cartographer's adds the type to the actor's purchases;
 /// an accepted guard's removes the guard, an accepted join (told as the creatures joining) and a
-/// declined flight the monster, each told as its removal, and an accepted pursuit starts its
-/// battle; the actor's keys grow only by the keys it is told it gained, each one it did not hold;
+/// declined flight the monster, each told as its removal, and an accepted pursuit or question
+/// starts its battle; the actor's keys grow only by the keys it is told it gained, each one it did not hold;
 /// nothing else changes either.
 fn check_decisions(
     rules: &GameRuleset,
@@ -1865,6 +1932,19 @@ fn check_decisions(
                         prop_assert!(keys >> key & 1 == 1, "{:?} without the key", event);
                         OfferKind::Pass
                     }
+                    // E08 T21a: a guarded pile asks while its guards stand, never refused.
+                    ObjectKind::Pickup(_) => {
+                        prop_assert!(opened, "{:?}: a pile's question is never refused", event);
+                        let map = before.adventure().map();
+                        let asks = map.objects().iter().enumerate().any(|(i, o)| {
+                            (o.object_type, o.anchor) == (Some(object_type), anchor)
+                                && !before.adventure().is_removed(i)
+                                && o.guards.as_ref().is_some_and(|g| g.question)
+                                && !before.adventure().guards_left(i).is_empty()
+                        });
+                        prop_assert!(asks, "{:?} without guards that ask", event);
+                        OfferKind::Fight
+                    }
                     _ => return Err(fail(format!("{event:?} offers no offer"))),
                 };
                 let offer = Offer {
@@ -1909,7 +1989,9 @@ fn check_decisions(
                         passed = Some((object_type, anchor));
                     }
                     (false, OfferKind::Pursue) => passed = Some((object_type, anchor)),
-                    (true, OfferKind::Pursue) => {
+                    // E08 T21a: an accepted question of a guarded pile is its battle (its guards
+                    // stand: nobody but the visitor's owner acts while it is open).
+                    (true, OfferKind::Pursue | OfferKind::Fight) => {
                         let fought = events
                             .iter()
                             .any(|e| matches!(e, GameEvent::BattleStarted { .. }));
@@ -2111,7 +2193,8 @@ proptest! {
 
 /// What a set of games played: the battles started and how they ended, and the heroes' part of
 /// their outcomes (E08 T19b2); (E08 T20b3b1) the monsters' battles, those on a special ground,
-/// how they ended for the visitor, the monsters' offers by kind, and the groups that joined.
+/// how they ended for the visitor, the monsters' offers by kind, and the groups that joined; (E08
+/// T21a) the guarded piles' questions and battles, and how those ended.
 #[derive(Debug, Default)]
 struct Fought {
     started: usize,
@@ -2133,6 +2216,12 @@ struct Fought {
     gold_offered: usize,
     flights_offered: usize,
     joined: usize,
+    questions: usize,
+    guard_battles: usize,
+    piles_won: usize,
+    guards_held: usize,
+    /// The visitors of the guarded piles' battles in progress.
+    at_piles: Vec<HeroId>,
 }
 
 impl Fought {
@@ -2141,6 +2230,24 @@ impl Fought {
         let part = rules.adventure();
         for event in events {
             match *event {
+                GameEvent::BattleStarted { heroes, tile, .. }
+                    if heroes[1].is_none() && Self::at_pile(after, tile) =>
+                {
+                    self.started += 1;
+                    self.guard_battles += 1;
+                    self.at_piles.extend(heroes[0]);
+                }
+                GameEvent::BattleEnded { heroes, result, .. }
+                    if heroes[0].is_some_and(|h| self.at_piles.contains(&h)) =>
+                {
+                    self.count_result(result);
+                    self.at_piles.retain(|&h| Some(h) != heroes[0]);
+                    if result.winner() == Some(BattleSide::Attacker) {
+                        self.piles_won += 1;
+                    } else {
+                        self.guards_held += 1;
+                    }
+                }
                 GameEvent::BattleStarted { heroes, tile, .. } if heroes[1].is_none() => {
                     self.started += 1;
                     self.monster_battles += 1;
@@ -2178,6 +2285,11 @@ impl Fought {
                         _ => {}
                     }
                 }
+                GameEvent::OfferOpened { player, .. }
+                    if after.decision(player).map(|o| &o.kind) == Some(&OfferKind::Fight) =>
+                {
+                    self.questions += 1;
+                }
                 GameEvent::Adventure(AdventureEvent {
                     kind: AdventureEventKind::CreaturesJoined { .. },
                     ..
@@ -2203,6 +2315,16 @@ impl Fought {
         }
     }
 
+    /// Whether the battle fought at `tile` is against a guarded pile's guards.
+    fn at_pile(state: &GameState, tile: TilePos) -> bool {
+        let map = state.adventure().map();
+        map.visited_from(tile)
+            .iter()
+            .rev()
+            .find(|&&i| !state.adventure().is_removed(i))
+            .is_some_and(|&i| map.objects()[i].guards.is_some())
+    }
+
     fn count_result(&mut self, result: BattleResult) {
         match result {
             BattleResult::Victory(_) => self.victories += 1,
@@ -2218,7 +2340,8 @@ impl Fought {
 /// by victories as well as by retreats and surrenders, and their winners capture artifacts, raise
 /// creatures and learn Eagle Eye's picks, so the properties above see each. Since E08 T20b3b1 it
 /// meets monsters too: their battles, the system playing their side, some on a special ground,
-/// won and lost; their offers to join, to join for gold and to flee, and groups that join.
+/// won and lost; their offers to join, to join for gold and to flee, and groups that join. Since
+/// E08 T21a guarded piles too: their questions, and their battles won and lost.
 #[test]
 fn the_plans_play_battles_to_a_victory() {
     use proptest::strategy::ValueTree;
@@ -2252,6 +2375,10 @@ fn the_plans_play_battles_to_a_victory() {
     assert!(f.monsters_beaten > 0 && f.visitors_lost > 0, "{f:?}");
     assert!(
         f.joins_offered > 0 && f.flights_offered > 0 && f.joined > 0,
+        "{f:?}"
+    );
+    assert!(
+        f.questions > 0 && f.guard_battles > 0 && f.piles_won > 0 && f.guards_held > 0,
         "{f:?}"
     );
     assert!(f.gold_offered > 0, "{f:?}");

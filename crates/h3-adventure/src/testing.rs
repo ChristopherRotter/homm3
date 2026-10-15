@@ -513,6 +513,7 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
                         no_growth: false,
                         treasure: vec![],
                     }),
+                    guards: None,
                 });
             }
         }

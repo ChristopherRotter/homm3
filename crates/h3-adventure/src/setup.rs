@@ -112,6 +112,23 @@ pub struct ObjectSetup {
     /// A wandering monster's data, exactly for an object whose type is a monster (ADV-MON-001,
     /// E08 T20a2a).
     pub monster: Option<MonsterSetup>,
+    /// A guarded pile's guards (ADV-PIK-004, E08 T21a): only for a pile, a random one included; a
+    /// pile without guards has none (the map's empty guards record is a plain pile).
+    pub guards: Option<Guards>,
+}
+
+/// A guarded pile's guards as the map gives them (ADV-PIK-004, E08 T21a): the stacks that defend
+/// it, unsplit, and whether its message asks the visitor first (the message's text is
+/// presentation).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Guards {
+    /// The stacks by slot: at least one, in distinct slots below the army slots, each with
+    /// creatures, of a creature the ruleset knows and no war machine (as a hero's army,
+    /// [`ArmyError`]).
+    pub army: Vec<ArmyStack>,
+    /// The visit asks first (the message has a text): declined, nothing happens; else the visit
+    /// is the battle at once.
+    pub question: bool,
 }
 
 /// A wandering monster's data as the map gives it (ADV-MON-001, E08 T20a2a).
@@ -276,6 +293,10 @@ pub enum SetupError {
     /// the monsters' parameters lack (or no such parameters); a treasure naming an unknown
     /// resource or one twice, or an amount outside 1 to [`crate::MAX_GAIN`].
     Monster(usize),
+    /// The object at this index has guards and is no pile, or its guards are invalid
+    /// (ADV-PIK-004): no stack, a slot beyond the army slots or used twice, a stack without
+    /// creatures, an unknown creature or a war machine.
+    Guards(usize),
     /// More objects than the state tracks (32 × 65 535); the number.
     Objects(usize),
     /// Two heroes share this id.
@@ -330,6 +351,7 @@ impl fmt::Display for SetupError {
                 )
             }
             Self::Monster(object) => write!(f, "object {object} has invalid monster data"),
+            Self::Guards(object) => write!(f, "object {object} has invalid guards"),
             Self::Objects(n) => write!(f, "{n} objects are too many"),
             Self::DuplicateHero(hero) => write!(f, "hero {} is placed twice", hero.raw()),
             Self::UnknownOwner(hero) => {

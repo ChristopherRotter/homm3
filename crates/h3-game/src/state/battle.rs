@@ -174,12 +174,14 @@ impl GameState {
     /// T20b2) the defending side has no hero and no owner, its army the monster split into stacks
     /// (ADV-MON-009, `h3_adventure::split`; its formation the default), the split's draws from the
     /// monster's tile's generator under `ADV-QUIRK-6` (`faithful`), else from the stream after the
-    /// battle's seed and before the obstacles'. The battle opens as a decision of its owners (the
-    /// visitor's alone against a monster), told to them with its start's events, unless it is
+    /// battle's seed and before the obstacles'. Against a guarded pile's guards (ADV-PIK-004, E08
+    /// T21a) the defending side has no hero and no owner either, its army the guards' stacks as
+    /// they stand, unsplit. The battle opens as a decision of its owners (the visitor's alone
+    /// against a monster or guards), told to them with its start's events, unless it is
     /// already over (then its outcome applies at once). A setup the battle refuses cannot come
     /// from a valid game (the armies, the heroes and the parts were checked when they were built);
     /// it would start no battle.
-    // rule: GAM-BAT-001, GAM-BAT-004, ADV-MON-009
+    // rule: GAM-BAT-001, GAM-BAT-004, ADV-MON-009, ADV-PIK-004
     pub(crate) fn start_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -190,7 +192,7 @@ impl GameState {
         let core = rules.core();
         let defending = match &start.defender {
             Defender::Hero(hero) => Some(hero),
-            Defender::Monster { .. } => None,
+            Defender::Monster { .. } | Defender::Guards { .. } => None,
         };
         let sides: [Option<&Combatant>; 2] = [Some(&start.attacker), defending];
         let resource = rules.battle().battle().surrender.map(|s| s.resource);
@@ -225,6 +227,8 @@ impl GameState {
                     }
                 })
             }
+            // rule: ADV-PIK-004
+            Defender::Guards { army } => army.clone(),
         };
         let mut setup = BattleSetup {
             attacker: Army {
@@ -400,12 +404,14 @@ impl GameState {
     /// created in the battle only (BAT-END-001) — leaves the map; then the heroes' part
     /// ([`Self::heroes_after_battle`], E08 T19a2a, T19a2b); then a surrender's price leaves the
     /// surrendering side's owner's treasury and enters the other side's owner's (GAM-BAT-005,
-    /// D-13), each told to its owner. A battle against a wandering monster (E08 T20b2; its
-    /// defending side has no hero) then ends in the adventure (ADV-MON-010,
-    /// `AdventureState::end_monster_battle`): the monster's survivors stay on the map as its count,
-    /// or it leaves the map, and after the visitor's victory its treasure's resources enter the
-    /// visitor's owner's treasury.
-    // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005, ADV-MON-010
+    /// D-13), each told to its owner. A battle against a wandering monster (E08 T20b2) or a
+    /// guarded pile's guards (E08 T21a), whose defending side has no hero, then ends in the
+    /// adventure (`AdventureState::end_unowned_battle`): the monster's survivors stay on the map as
+    /// its count, or it leaves the map, and after the visitor's victory its treasure's resources
+    /// enter the visitor's owner's treasury (ADV-MON-010); the guards' survivors stay with the
+    /// pile, or after the visitor's victory the pile is picked up, its contents entering the
+    /// treasury (ADV-PIK-004).
+    // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005, ADV-MON-010, ADV-PIK-004
     pub(crate) fn end_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -454,11 +460,11 @@ impl GameState {
                 amount,
             });
         }
-        // rule: ADV-MON-010
+        // rule: ADV-MON-010, ADV-PIK-004
         if let (Some(visitor), None) = (owners[0], heroes[1]) {
             let won = result.winner() == Some(BattleSide::Attacker);
             let survivors = &outcome.survivors[BattleSide::Defender.index()].stacks;
-            let gains = self.adventure.end_monster_battle(
+            let gains = self.adventure.end_unowned_battle(
                 (rules.core(), rules.adventure()),
                 tile,
                 (survivors, won),

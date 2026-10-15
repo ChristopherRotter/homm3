@@ -11,7 +11,7 @@ pub(crate) mod codes;
 use std::fmt;
 
 use h3_adventure::ObjectKind;
-use h3_adventure::{MapSetup, MonsterSetup, ObjectSetup, Pos, TileMask, TileSetup};
+use h3_adventure::{Guards, MapSetup, MonsterSetup, ObjectSetup, Pos, TileMask, TileSetup};
 use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId, SpellId};
 use h3_contracts::{ArmyStack, PlayerId};
 use h3_game::{
@@ -20,8 +20,8 @@ use h3_game::{
 };
 
 use crate::model::{
-    Army, Artifacts, Bits, Body, CustomHero, HeroBody, MonsterBody, Object, RawMap, Template,
-    Version,
+    Army, Artifacts, Bits, Body, CustomHero, HeroBody, MonsterBody, Object, RawMap, Stack,
+    Template, Version,
 };
 
 /// Object classes the import tells apart beside the typed ones (`codes::object_type`); every other
@@ -51,9 +51,6 @@ pub enum Unsupported {
     /// (towns: E09; VCMI 1.7.5 `CGameState::placeHeroesInTowns` moves it to its own town's
     /// entrance, an "H3M format quirk").
     HeroInTown(usize),
-    /// The object at this index is a guarded resource pile, which fights before the pickup
-    /// (battles: increment 3; ADV-Q10, D-6). Its static layer keeps it as a blocker.
-    GuardedPile(usize),
     /// The hero object at this index has an experience of at least 1 000, its own or its hero
     /// type's map-wide entry's: level 2 or more, which needs increment 4's levels (E08 decision
     /// 22).
@@ -70,9 +67,8 @@ impl Unsupported {
             Self::HeroAtMainTown(_) => "a hero generated at a main town",
             Self::RandomHero(_) => "a random hero",
             Self::HeroPlaceholder(_) => "a campaign hero placeholder",
-            Self::RandomStack(_) => "a random stack in a hero's army",
+            Self::RandomStack(_) => "a random stack in a hero's army or a pile's guards",
             Self::HeroInTown(_) => "a hero standing in a town",
-            Self::GuardedPile(_) => "a guarded resource pile",
             Self::HeroExperience(_) => "a hero with an experience of 1 000 or more",
             Self::MonsterArtifact(_) => "a monster with an artifact in its treasure",
         }
@@ -197,10 +193,10 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
 
 /// Imports the static map (E08 T5a, T12a): the size, every tile's terrain, road and river, and
 /// every object but the heroes with its footprint (ADV-OBJ-001) and, for the typed classes, its
-/// object type and fixed amount (ADV-OBJ-002), a monster's data (ADV-MON-001, E08 T20a2a) and a
-/// special ground's tiles (ADV-GRD-001); every other object is a blocker, and so is a guarded
-/// pile here (the whole [`import`] refuses it, and a monster with an artifact, which this keeps
-/// without it).
+/// object type and fixed amount (ADV-OBJ-002), a monster's data (ADV-MON-001, E08 T20a2a), a
+/// special ground's tiles (ADV-GRD-001) and a pile's guards (ADV-PIK-004, E08 T21a); every other
+/// object is a blocker (the whole [`import`] refuses a monster with an artifact, which this keeps
+/// without it, and a pile's guards with a random stack, which this leaves unguarded).
 ///
 /// # Errors
 ///
@@ -210,7 +206,8 @@ pub fn import_map(map: &RawMap, rules: &GameRuleset) -> Result<MapSetup, ImportE
     static_layer(map, rules).map(|(setup, _)| setup)
 }
 
-/// [`import_map`] with what the first guarded pile or monster with an artifact makes unsupported.
+/// [`import_map`] with what the first monster with an artifact or pile's guards with a random
+/// stack makes unsupported.
 fn static_layer(
     map: &RawMap,
     rules: &GameRuleset,
@@ -227,7 +224,7 @@ fn static_layer(
         if matches!(template.class, HERO | RANDOM_HERO | HERO_PLACEHOLDER) {
             continue;
         }
-        let (setup, what) = typed(rules, index, object, template)?;
+        let (setup, what) = typed(rules, map.header.version, index, (object, template))?;
         unsupported = unsupported.or(what);
         placed.push(setup);
     }
@@ -242,16 +239,15 @@ fn static_layer(
 }
 
 /// An object with its footprint and, for a typed class, its object type and the amount the map
-/// fixes (0 is none: drawn when the game is built), a monster's data and a special ground's
-/// tiles; what it makes unsupported: a guarded pile, which stays a blocker, or a monster with an
-/// artifact, kept without it. A guards record counts even without stacks (the original flags a
-/// guarded pile's tile, 0x4A4BF4; how its loader treats an empty record was not read).
+/// fixes (0 is none: drawn when the game is built), a monster's data, a special ground's tiles and
+/// a pile's guards ([`guards`]); what it makes unsupported: a monster with an artifact, kept
+/// without it, or a pile's guards with a random stack, kept unguarded.
 // rule: ADV-OBJ-002
 fn typed(
     rules: &GameRuleset,
+    version: Version,
     index: usize,
-    object: &Object,
-    template: &Template,
+    (object, template): (&Object, &Template),
 ) -> Result<(ObjectSetup, Option<Unsupported>), ImportError> {
     let mut setup = footprint(object, template);
     let Some(key) = codes::object_type(template.class, template.subclass) else {
@@ -265,10 +261,19 @@ fn typed(
     let mut unsupported = None;
     match &object.body {
         Body::Resource { message, amount } => {
-            if message.as_ref().is_some_and(|m| m.guards.is_some()) {
-                return Ok((setup, Some(Unsupported::GuardedPile(index))));
-            }
             setup.amount = (*amount != 0).then_some(*amount);
+            if let Some(message) = message {
+                let army = message.guards.as_deref().unwrap_or_default();
+                if army
+                    .iter()
+                    .flatten()
+                    .any(|s| random_stack(version, s.creature))
+                {
+                    unsupported = Some(Unsupported::RandomStack(index));
+                } else {
+                    setup.guards = guards(rules, army, !message.text.as_bytes().is_empty())?;
+                }
+            }
         }
         Body::Monster(body) => {
             let (monster, artifact) = monster(rules, template, body)?;
@@ -340,6 +345,20 @@ fn monster(
         },
         treasure.is_some_and(|t| t.artifact.is_some()),
     ))
+}
+
+/// A pile's guards (ADV-PIK-004, E08 T21a; `docs/formats/h3m.md`, "Import"): the guards record's
+/// stacks by slot, none random (the caller's check), and whether the message asks (it has a text;
+/// the text itself is presentation). A record without stacks is a plain pile (survey
+/// `E08-battles.md` §5.1: the original tests the stack count, 0x4A47E0), as one without a record.
+// rule: ADV-PIK-004
+fn guards(
+    rules: &GameRuleset,
+    army: &[Option<Stack>],
+    question: bool,
+) -> Result<Option<Guards>, ImportError> {
+    let army = stacks(rules, army)?;
+    Ok((!army.is_empty()).then_some(Guards { army, question }))
 }
 
 /// The tiles of a picture `width` columns wide and `height` rows high, its bottom right tile the
@@ -461,6 +480,7 @@ fn footprint(object: &Object, template: &Template) -> ObjectSetup {
         amount: None,
         drawn: TileMask::default(),
         monster: None,
+        guards: None,
     }
 }
 
@@ -689,32 +709,47 @@ fn army(
     index: usize,
     army: Option<&Army>,
 ) -> Result<HeroArmy, ImportError> {
+    let army = army.map(Vec::as_slice).unwrap_or_default();
+    if army
+        .iter()
+        .flatten()
+        .any(|s| random_stack(version, s.creature))
+    {
+        return Err(Unsupported::RandomStack(index).into());
+    }
+    let stacks = stacks(rules, army)?;
+    Ok(if stacks.is_empty() {
+        HeroArmy::Starting
+    } else {
+        HeroArmy::Custom(stacks)
+    })
+}
+
+/// Whether `code` is a random stack's code in `version`'s files: one of the
+/// [`RANDOM_STACK_CODES`] below the format's "none".
+fn random_stack(version: Version, code: u16) -> bool {
     let none = if version == Version::RoE {
         u16::from(u8::MAX)
     } else {
         u16::MAX
     };
-    let stacks = army
-        .into_iter()
-        .flatten()
+    (none - RANDOM_STACK_CODES..none).contains(&code)
+}
+
+/// An army's stacks as stored, by slot, its empty slots left out; none random (the callers'
+/// check).
+fn stacks(rules: &GameRuleset, army: &[Option<Stack>]) -> Result<Vec<ArmyStack>, ImportError> {
+    army.iter()
         .zip(0u8..)
         .filter_map(|(stack, slot)| stack.map(|s| (s, slot)))
         .map(|(stack, slot)| {
-            if (none - RANDOM_STACK_CODES..none).contains(&stack.creature) {
-                return Err(Unsupported::RandomStack(index).into());
-            }
             Ok(ArmyStack {
                 slot,
                 creature: creature(rules, stack.creature)?,
                 count: u32::from(stack.count),
             })
         })
-        .collect::<Result<Vec<_>, ImportError>>()?;
-    Ok(if stacks.is_empty() {
-        HeroArmy::Starting
-    } else {
-        HeroArmy::Custom(stacks)
-    })
+        .collect()
 }
 
 /// The creature type of an original creature id.
