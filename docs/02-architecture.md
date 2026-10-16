@@ -109,7 +109,7 @@ An *extension* (AB, SoD, later WoG/HotA) is a **content pack** (Tier 1–3 data)
 
   | Measure | E01 | E04b T9b | E04c T9b | Target / threshold |
   |---|---|---|---|---|
-  | Random legal play, `legal_commands` + agent pick + `apply` (`h3 bench --games 2000`) | ≈ 245 k steps/s (≈ 4.1 µs/step) | ≈ 104 k steps/s (≈ 9.6 µs/step); ≈ 69 k with the flat observation encoded before each step (`--observe 1`) | `full` ≈ 98 k (E04b's end on the same machine ≈ 100 k: the same within noise); ≈ 68 k observed; `siege` ≈ 73 k, ≈ 63 k observed | ≥ 100 k steps/s/core on `full` (met at E04b T9b; at the edge of the slower E04c sandbox, with fewer instructions per step) |
+  | Random legal play, `legal_commands` + agent pick + `apply` (`h3 bench --games 2000`) | ≈ 245 k steps/s (≈ 4.1 µs/step) | ≈ 104 k steps/s (≈ 9.6 µs/step); ≈ 69 k with the flat observation encoded before each step (`--observe 1`) | `full` ≈ 98 k (E04b's end on the same machine ≈ 100 k: the same within noise); ≈ 68 k observed; `siege` ≈ 73 k, ≈ 63 k observed. At E04c's end on the user's Ryzen: `full` ≈ 131 k and 133 k (two runs, 741 561 steps), `siege` ≈ 129 k (254 435 steps) | ≥ 100 k steps/s/core on `full` (met at E04b T9b and at E04c's end on the user's Ryzen; at the edge of the slower E04c sandbox) |
   | criterion `step = legal_commands + pick + apply` (mid-game states) | 4.7 µs | 5.3 µs | 4.9 µs; siege 17.4 µs | — |
   | criterion `legal_commands` alone | 2.6 µs | 3.2 µs | 2.7 µs; siege 1.6 µs | — |
   | criterion `BattleEnv` step via action mask (mask 449 actions + decode + apply) | 6.8 µs | 2.4 µs (from a fresh reset) | 1.9 µs | — |
@@ -120,7 +120,7 @@ An *extension* (AB, SoD, later WoG/HotA) is a **content pack** (Tier 1–3 data)
   | Instruction count, `random-rollouts-full` workload | 387 614 575 Ir for 10 402 steps (≈ 37 k Ir/step) | 571 597 279 Ir for 7 388 steps (≈ 77 k Ir/step) | 592 768 860 Ir for 7 633 steps (≈ 78 k Ir/step; E04b's end 609 775 459 for the same steps); at E04c's end +1.3 % on the same steps (T10b's checks, under the gate) | **regression gate: +2 %** (`benches/battle/random-rollouts-full.toml`) |
   | Instruction count, `random-rollouts-siege` workload | — | — | 698 902 794 Ir for 7 872 steps (≈ 89 k Ir/step; the shot's wall test about a quarter); at E04c's end 529 084 003 for 7 276 steps (≈ 73 k Ir/step: the wall line in integers, −17 % in T10a; T10b's rules changed the games) | **regression gate: +2 %** (`benches/battle/random-rollouts-siege.toml`) |
 
-  Wall-time numbers are indicative (shared cloud CPU, ±5 %, more in E04c T9b's sandbox); the deterministic gate is the instruction count. Re-measure on the user's Ryzen when convenient.
+  Wall-time numbers are indicative (shared cloud CPU, ±5 %, more in E04c T9b's sandbox); the deterministic gate is the instruction count. E04c's end was also measured on the user's machine (AMD Ryzen 9 3900X, Windows, release, one core; 2026-10-16).
 - **Adventure layers (measured in E08 T5b, 2026-10-11)**: a player's explored layer as a persistent grid (`h3_adventure::BitGrid`, ADR-0016 point 1) against a flat bitset copied by each fork, callgrind instructions per operation with twenty revealed disks (`crates/h3-adventure/examples/grid_bench.rs`; all leaf sizes in `E08-log.md`):
 
   | Operation | 36×36 flat | 36×36 grid | 144×144×2 flat | 144×144×2 grid |
