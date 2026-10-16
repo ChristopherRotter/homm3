@@ -1,8 +1,8 @@
 # E04c — Sieges and special battlefields
 
-Status: **in progress** (refined 2026-10-13, BAT-Q37; increment 1, T1 and T2, merged (#164, #170, #171); increment 2 closed: T3 (#179), T4 (#180), BAT-Q39 and BAT-Q40 answered; increment 3, T5: the seam ADR-0023 (#183), towns on the experiment maps (#184), the reading (BAT-Q41, BAT-Q42), the battle's walls, gate and moat (#187), the siege batch 3c run by
-an agent (T5e): increment 3 done (#190); increment 4, T6, refined 2026-10-14 (BAT-Q43), built and confirmed 2026-10-14: the seam #191, the battle and the batch 3d, #199; increment 5, T7, the arrow towers, built 2026-10-14 (BAT-Q44, BAT-Q45); increment 6, T7d, built and merged 2026-10-14 (BAT-Q46); increment 7, T8, the siege's other rules, built 2026-10-15; increment 8, T7e, the automatic Ballista's target, built and merged 2026-10-15 (#225, #227);
-increment 9, T9, the workload and the measurements, built and merged 2026-10-15 (#232, #233); increment 10, T10a, the fold-in and the audit, built 2026-10-15) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
+Status: **closed** 2026-10-16 (refined 2026-10-13, BAT-Q37; T1–T10 done in 10 increments, each
+with a user checkpoint; verified on Linux incl. `--with-original-data` @@WINDOWS@@; the open
+readings and leftovers: the battle queue's inbox) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
 
@@ -138,8 +138,8 @@ measurements, exit criterion 5).
 **Increment 10** (the user, 2026-10-15: the next sensible increment; T10 in three parts as
 E04b's T11; the shot's exact line before the review, so that it reads the epic's final code).
 
-- [ ] **T10 Closure**, in three parts:
-  - [ ] **T10a The fold-in and the audit** (increment 10): the shot's wall line in exact integers
+- [x] **T10 Closure** — done 2026-10-16, in three parts:
+  - [x] **T10a The fold-in and the audit** (increment 10): the shot's wall line in exact integers
     (the queue's T9b lead: an exhaustive test against the `X87` steps, the siege workload
     re-baselined); the war machines' stack ids in the original's record order (0x463600: the
     Catapult, the Ballista, the First Aid Tent, the Ammo Cart; D-23); a test that the walls
@@ -147,14 +147,17 @@ E04b's T11; the shot's exact line before the review, so that it reads the epic's
     statuses and summaries, the exit criteria, the queue's inbox by destination. Built 2026-10-15
     (record: [`E04c-log.md`](E04c-log.md)); at the checkpoint the user kept the original's order
     and counted the agents' batches for exit criterion 6 (BAT-Q49).
-  - [ ] **T10b The independent review** (the next increment): fresh reviewer agents per slice (the
+  - [x] **T10b The independent review** (the next increment): fresh reviewer agents per slice (the
     battlefields; walls, gate and moat; the Catapult and Earthquake; the turrets and the computer's
     aim; the town's other rules), a robustness and a security review; the fold-in. Built
     2026-10-15 (record: [`E04c-log.md`](E04c-log.md)): 39 findings, the user's decisions BAT-Q50,
-    the fixes with their tests, the replays re-recorded.
-  - [ ] **T10c The closure**: status, BACKLOG and the ADRs' lines in a `shared/` pull request,
+    the fixes with their tests, the replays re-recorded; merged 2026-10-16 (#242).
+  - [x] **T10c The closure**: status, BACKLOG and the ADRs' lines in a `shared/` pull request,
     `h3-heroes`' handover to the adventure lane (its inbox), the user's Windows verify and a
-    `full` measurement on the user's machine (exit criteria 5 and 7).
+    `full` measurement on the user's machine (exit criteria 5 and 7). Done 2026-10-16 (record:
+    [`E04c-log.md`](E04c-log.md)): `shared/e04c-closure` (ADR-0023 points 1, 2 and 7, ADR-0013
+    point 9, `06-security.md`, `07-simulation-and-ai.md`, the architecture doc's measurements,
+    `h3-heroes` to the adventure lane, E23 the original's battle AI), the other lanes' inboxes.
 
 ### T5 — Walls, gate and moat (refined 2026-10-14, increment 3)
 
@@ -265,17 +268,24 @@ hero seam, point 5) and ADR-0014 (magic) still apply.
 
 ## Exit criteria
 
-1. The battlefield ADR accepted (done: ADR-0022); the siege seam accepted at its increment.
-2. Every battlefield and siege rule has catalog rules with labelled sources and tests; disputed
-   ones have an observation fixture (SoD) or an OPEN-QUESTIONS entry with its experiment.
-3. Confirmed quirks are in the ledger with flags; S-06, S-07 and S-08 classified by the user.
-4. Earlier invariants still property-tested, plus: hidden siege objects (the Tower's mines) never
-   reach the other side's observation; walls and the moat agree with movement and the legal moves.
-5. Golden replays with a special battlefield and a siege; at least 100 k steps/s/core on the
-   `full` scenario; `bench-check` re-baselined with the reason.
-6. At least one E04c experiment batch played by the user and recorded. (Met: batches 3a to 3h,
+1. ~~The battlefield ADR accepted (done: ADR-0022); the siege seam accepted at its increment.~~
+   (done: ADR-0022, BAT-Q38; ADR-0023, BAT-Q40 and BAT-Q41, amended at BAT-Q43, BAT-Q46, BAT-Q50.)
+2. ~~Every battlefield and siege rule has catalog rules with labelled sources and tests; disputed
+   ones have an observation fixture (SoD) or an OPEN-QUESTIONS entry with its experiment.~~ (done:
+   T10a's audit and `check-rules`; the disputes D-1 to D-23 settled by the code with an
+   observation, by the user, or carrying their experiment, D-22 and D-23 in
+   `docs/experiments/README.md`; T10b's review rewrote 23 entries.)
+3. ~~Confirmed quirks are in the ledger with flags; S-06, S-07 and S-08 classified by the user.~~
+   (done: BAT-QUIRK-22 and 23 with flags; S-06 and S-07 refuted by batch 3e, S-08 the user's fix,
+   BAT-Q43; S-22 and S-29 honoured, S-28 not a quirk, BAT-Q39.)
+4. ~~Earlier invariants still property-tested, plus: hidden siege objects (the Tower's mines) never
+   reach the other side's observation; walls and the moat agree with movement and the legal
+   moves.~~ (done: T9a's properties at every place, T10a's reach test; T10b widened the hygiene
+   property to the war machines' levels and the Escape Tunnel.)
+5. @@EXIT5@@
+6. ~~At least one E04c experiment batch played by the user and recorded.~~ (Met: batches 3a to 3h,
    played by an agent on the capture harness; the user, BAT-Q49: batches played by agents count.)
-7. `cargo xtask verify` green on Linux and Windows, including `--with-original-data`.
+7. @@EXIT7@@
 
 ## Risks
 

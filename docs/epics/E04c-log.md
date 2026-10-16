@@ -666,3 +666,41 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
 - **Left** (the queue's inbox, "E04c T10b"): the shared docs' sentences for T10c (ADR-0023,
   `06-security.md`, `07-simulation-and-ai.md`), the server lane's siege frames, and the readings
   the engine does not follow yet.
+
+## T10c — the closure (2026-10-16, increment 10)
+
+- **The start:** `master` at 2ad6d55 (#242, T10b, merged by the user 2026-10-16); its code was
+  verified by T10b's full local verify with the original data (2026-10-16, on cbf9ea7, code
+  afe125be; CI did not start: "recent account payments have failed or your spending limit needs
+  to be increased"), so the sandbox's baseline ran the light gates only: all passed. The closure
+  changes docs and `lanes.toml` only.
+- **Shared first** (`shared/e04c-closure`): BACKLOG (E04c done; E23 the original's battle AI, sized
+  here: a survey and reading increment, then the policy in about three); ADR-0023 points 1, 2 and 7
+  and ADR-0013 point 9 (BAT-Q50: the Escape Tunnel private to the defender; the computer's moat
+  avoidance reads `human`), the ADR index; `06-security.md` (what a battle's viewer may know: the
+  tunnel, the computer's aim reading the other side's Armorer and Artillery), `07-simulation-and-ai.md`
+  (the choices the battle makes for a side as the original's computer, the defaults, `human` for a
+  human player's battles); the architecture doc's instruction counts at E04c's end
+  (`random-rollouts-full` +1.3 % on the same 7 633 steps; `random-rollouts-siege` 529 084 003 Ir
+  for 7 276 steps) and the user's wall times (below); `lanes.toml` and the global HANDOFF:
+  `crates/h3-heroes/` and `docs/rules/catalog/heroes.toml` move to the adventure lane (ADV-Q13:
+  once the battle lane is done with it; the catalog goes with the crate, as the adventure lane's
+  `cross-lane` changes to it came with their HER rules).
+- **The handover** (the other lanes' inboxes, `cross-lane`): the adventure lane gets `h3-heroes`,
+  the game's version for `Siege.moat` (the original's `mapKind`, BAT-Q41), the Catapult artifact's
+  row (the battle sets the Catapult up without it), E23 for its neutral seat and the coverage its
+  nine replays lost in T10b; the server lane T10b's points on the wire (the tunnel in its frames
+  with no code change, a siege scenario for its hygiene tests, two doc strings); the client lane
+  the gate's event order. The client lane's note of 2026-10-15 for the battle lane (the original's
+  automatic First Aid Tent heals the stack with the most lost hit points, 0x473EA0, BAT-WAR-003 a
+  uniformly drawn one; an idle tent or automatic Ballista defends) went into the battle queue's
+  inbox: sources in conflict, a question for the user before the rule changes.
+- **The queue's inbox:** T10a's triage and T10b's leftovers became one item, the battle lane's
+  work without a task (BAT-STUB-1 with BAT-Q35, a hypnotized stack's morale, luck and bows, the
+  automatic Catapult with Ballistics, ties between shortest paths, the war machines' exceptions,
+  the moat avoidance's further cases, the obstacle generator's draws, sieges through the C ABI,
+  the security review's two open points, the tent's patient).
+- **Exit criteria:** 1 to 4 and 6 hold (the epic file); 5: @@LOG5@@; 7: @@LOG7@@
+- **What later epics inherit:** the battle queue's inbox; OPEN-QUESTIONS BAT-Q28, BAT-Q32,
+  BAT-Q33 and BAT-Q35; BAT-STUB-1; E23; the experiment candidates in `docs/experiments/README.md`
+  ("From E04c").
