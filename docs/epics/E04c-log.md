@@ -700,7 +700,15 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   automatic Catapult with Ballistics, ties between shortest paths, the war machines' exceptions,
   the moat avoidance's further cases, the obstacle generator's draws, sieges through the C ABI,
   the security review's two open points, the tent's patient).
-- **Exit criteria:** 1 to 4 and 6 hold (the epic file); 5: @@LOG5@@; 7: @@LOG7@@
+- **Exit criteria:** 1 to 4 and 6 hold (the epic file); 5: @@LOG5@@; 7: met for the battle scope (Linux: T10b's full
+  verify with the original data on `master`'s code; Windows, the user's runs of `master` at 2ad6d55:
+  the full verify failed only in `h3-server`'s coverage, `tests::card`'s connect to `0.0.0.0` and,
+  in one run of two, the two log tests of E04b's closure: the server lane's inbox; coverage stopped
+  there before `h3-sim`'s tests, so the user ran `--scope battle --with-original-data`: every step
+  passed, `deny` skipped by the scope, `ffi-smoke` and `bench-check` N/A on Windows; the
+  original-data step's executable-map check skipped, the user's Python being older than 3.11).
+  The shared branch's own full verify (`lanes.toml` is in the code fingerprint) passed in the
+  sandbox without the original data on 824439d (code c6bd5484).
 - **What later epics inherit:** the battle queue's inbox; OPEN-QUESTIONS BAT-Q28, BAT-Q32,
   BAT-Q33 and BAT-Q35; BAT-STUB-1; E23; the experiment candidates in `docs/experiments/README.md`
   ("From E04c").

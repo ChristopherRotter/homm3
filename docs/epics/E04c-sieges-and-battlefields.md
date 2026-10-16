@@ -1,7 +1,8 @@
 # E04c — Sieges and special battlefields
 
 Status: **closed** 2026-10-16 (refined 2026-10-13, BAT-Q37; T1–T10 done in 10 increments, each
-with a user checkpoint; verified on Linux incl. `--with-original-data` @@WINDOWS@@; the open
+with a user checkpoint; verified on Linux incl. `--with-original-data` and on Windows for the battle scope (the
+workspace's verify failed there only in the server lane's `h3-server`, passed on to its queue); the open
 readings and leftovers: the battle queue's inbox) · Follows E04b (closed 2026-10-12) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, E04b battle magic, **E04c** sieges and special battlefields (this one).
 
 ## Goal
@@ -285,7 +286,16 @@ hero seam, point 5) and ADR-0014 (magic) still apply.
 5. @@EXIT5@@
 6. ~~At least one E04c experiment batch played by the user and recorded.~~ (Met: batches 3a to 3h,
    played by an agent on the capture harness; the user, BAT-Q49: batches played by agents count.)
-7. @@EXIT7@@
+7. ~~`cargo xtask verify` green on Linux and Windows, including `--with-original-data`.~~ (Met for
+   the battle scope. Linux: T10b's full verify with the original data in the cloud sandbox,
+   2026-10-16, on the code `master` has since #242 (code afe125be); CI could not start (billing).
+   Windows, the user's runs of `master` at 2ad6d55, 2026-10-16: the full verify passed every step
+   but coverage, which failed in the server lane's `h3-server` only (`tests::card` connects to
+   `0.0.0.0`, which Windows refuses; the two log tests of E04b's closure failed in one run and
+   passed in the next), passed on to its queue; stopping there, coverage left `h3-sim`'s tests
+   unrun, so the user also ran `--scope battle --with-original-data`: every step passed, `deny`
+   skipped by the scope, `ffi-smoke` and `bench-check` N/A on Windows. The original-data step's
+   executable-map check was skipped on the user's Python, older than 3.11.)
 
 ## Risks
 
