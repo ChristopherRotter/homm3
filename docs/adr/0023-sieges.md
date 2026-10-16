@@ -1,11 +1,13 @@
 # ADR-0023: Sieges — the town on the setup as derived facts
 
 - Status: Accepted (user, 2026-10-13, BAT-Q40 and BAT-Q41; drafted at E04c T4); point 6 amended
-  2026-10-14 (user, BAT-Q43; E04c T6); point 7 added 2026-10-14 (user, BAT-Q46; E04c T7d)
+  2026-10-14 (user, BAT-Q43; E04c T6); point 7 added 2026-10-14 (user, BAT-Q46; E04c T7d); points
+  1, 2 and 7 amended 2026-10-15 (user, BAT-Q50; E04c T10b)
 - Date: 2026-10-13
 - Deciders: user; battle lane session (E04c T4, T5)
 - Working detail: the survey [`docs/rules/surveys/E04c-sieges.md`](../rules/surveys/E04c-sieges.md),
-  the code reading `docs/formats/installation.md` §7.27; the epic `docs/epics/E04c-sieges-and-battlefields.md`
+  the code readings `docs/formats/installation.md` §7.27 to §7.33; the epic
+  `docs/epics/E04c-sieges-and-battlefields.md` (closed 2026-10-16) and its log
 
 ## Context
 
@@ -23,8 +25,8 @@ the adventure lane derives the battlefield (ADR-0022).
 
 1. **`BattleSetup.siege: Option<Siege>`** (`h3-contracts`): `Some` for every battle at a town,
    with or without a fort (the original's: no surrender, no retreat without the Escape Tunnel for
-   its defender, +500 experience for the attacker, the town's terrain; survey D-7). Public. `None`
-   elsewhere; every existing constructor takes `None`.
+   its defender, +500 experience for the attacker, the town's terrain; survey D-7). Public but for
+   the Escape Tunnel (point 2). `None` elsewhere; every existing constructor takes `None`.
 2. **`Siege` carries derived facts, not the town's buildings.** Whoever starts a battle at a town
    derives them (the town context, E09; until then scenarios and the CLI give them):
    - `faction: FactionId`: the town's faction, a handle of the battle's ruleset (BAT-Q41); the
@@ -37,7 +39,10 @@ the adventure lane derives the battlefield (ADR-0022).
      version; a Tower's land mines take its moat's place and the value decides their damage;
    - `structures: u8`: the town's buildings as the original counts them for its turrets
      (0x5BF4F0, BAT-Q41); the turrets' counts from it are a battle rule (T7);
-   - `escape_tunnel: bool`: the town's defender may retreat;
+   - `escape_tunnel: bool`: the town's defender may retreat. Private to the defender (amendment,
+     E04c T10b, BAT-Q50): the original enables the retreat control for the acting side only
+     (0x478573) and a town's buildings are no public fact, so the attacker and a spectator see the
+     defender's option to retreat as `false` (unknown) and the observed siege without the tunnel;
    - `morale: i8`, `luck: i8`: the town's bonuses to the defender's stacks (the Tavern, the
      Brotherhood of the Sword, the Fountain of Fortune), side modifiers like a hero's.
 3. **The defending hero's town bonuses** (the Grails, Blood Obelisk, Glyphs of Fear, Brimstone
@@ -64,7 +69,9 @@ the adventure lane derives the battlefield (ADR-0022).
 7. **The game's difficulty and the human sides** (amendment, E04c T7d, BAT-Q46): the battle makes
    some choices for a side as the original's computer player does (an automatic turret's target,
    whose desperate mode needs the difficulty above Easy or a human defender, `installation.md`
-   §7.31; later the automatic Ballista, T7e). The setup carries the two facts
+   §7.31; the automatic Ballista's, T7e; amendment, E04c T10b, BAT-Q50: a computer-controlled
+   walker of few hit points keeps out of the moat in those choices' estimates and in its berserk
+   walk, as the original's pathfinder, BAT-SIE-022). The setup carries the two facts
    those choices read, as the game has them: `BattleSetup.difficulty: u8` (0 Easy to 4
    Impossible) and `BattleSetup.human: [bool; 2]` (whether each side's player is human; false for
    a side without a player). Both are public and battle state. They do not decide who commands a

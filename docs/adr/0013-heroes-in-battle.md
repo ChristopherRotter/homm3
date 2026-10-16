@@ -58,7 +58,8 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    need information outside the battle, the price becomes an injected input, never an import.
 9. **Visibility.** What the original shows in battle (hero identity, primary skills, mana, war
    machines and which of them the hero commands, tactics zone, retreat/surrender options) is
-   public; skill levels, bonuses, effects, spell book, funds and the surrender price are private
+   public (but at a town the defender's option to retreat, which only the defender sees: ADR-0023
+   point 2); skill levels, bonuses, effects, spell book, funds and the surrender price are private
    to the hero's side, which sees them in its own observation (`observe` reads the ruleset, Q37).
    Hidden battlefield objects (E04b) use the same owner-side projection (ADR-0004).
 10. **Encodings.** E04a extends the dense action encoding (v8: heals, `EndTactics`, Retreat,
@@ -132,3 +133,6 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   level beside its derived shots and chance: the computer's worth of a Ballista grows with it
   (`installation.md` §7.33), and the turrets and the automatic Ballista read that worth. Private,
   as the rest of the control (point 9).
+- 2026-10-15 (E04c T10b; the user, BAT-Q50): point 9 — at a town the defender's option to retreat
+  (the town's Escape Tunnel) is private to the defender: the original enables the retreat control
+  for the acting side only (0x478573), and a town's buildings are no public fact (ADR-0023 point 2).
