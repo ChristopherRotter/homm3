@@ -283,7 +283,11 @@ hero seam, point 5) and ADR-0014 (magic) still apply.
    reach the other side's observation; walls and the moat agree with movement and the legal
    moves.~~ (done: T9a's properties at every place, T10a's reach test; T10b widened the hygiene
    property to the war machines' levels and the Escape Tunnel.)
-5. @@EXIT5@@
+5. ~~Golden replays with a special battlefield and a siege; at least 100 k steps/s/core on the
+   `full` scenario; `bench-check` re-baselined with the reason.~~ (done: `field-s5` and `siege-s7`;
+   bench-check re-baselined with its reasons in T9b, T10a and T10b; on the user's Ryzen 9 3900X
+   (Windows, release, `master` at 2ad6d55, 2026-10-16) `h3 bench --games 2000` gives ≈ 131 k and
+   133 k steps/s on `full` and ≈ 129 k on the siege; the cloud sandboxes measure 97 k to 104 k.)
 6. ~~At least one E04c experiment batch played by the user and recorded.~~ (Met: batches 3a to 3h,
    played by an agent on the capture harness; the user, BAT-Q49: batches played by agents count.)
 7. ~~`cargo xtask verify` green on Linux and Windows, including `--with-original-data`.~~ (Met for

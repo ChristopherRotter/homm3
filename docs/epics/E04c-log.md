@@ -700,7 +700,9 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
   automatic Catapult with Ballistics, ties between shortest paths, the war machines' exceptions,
   the moat avoidance's further cases, the obstacle generator's draws, sieges through the C ABI,
   the security review's two open points, the tent's patient).
-- **Exit criteria:** 1 to 4 and 6 hold (the epic file); 5: @@LOG5@@; 7: met for the battle scope (Linux: T10b's full
+- **Exit criteria:** 1 to 4 and 6 hold (the epic file); 5: met (the user's Ryzen 9 3900X,
+  Windows, release, `master` at 2ad6d55: `h3 bench --games 2000` ≈ 130 761 and 133 280 steps/s on `full`, 741 561 steps each;
+  ≈ 128 697 on the siege, 254 435 steps); 7: met for the battle scope (Linux: T10b's full
   verify with the original data on `master`'s code; Windows, the user's runs of `master` at 2ad6d55:
   the full verify failed only in `h3-server`'s coverage, `tests::card`'s connect to `0.0.0.0` and,
   in one run of two, the two log tests of E04b's closure: the server lane's inbox; coverage stopped
