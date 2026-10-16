@@ -4,9 +4,9 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c increment 10, T10b (2026-10-15):** #242 (`cross-lane`): the last two reviews (r6, security), the fold-in of all ten reports (BAT-Q50), the replays re-recorded; reports on `battle/e04c-t10b-review-reports` (backup, not for merging). **Next:** the user's checkpoint, then T10c (the inbox's "E04c T10b" bullet).
+- **E04c closed (2026-10-16, T10c):** #243 `shared/e04c-closure` (merge first), #244 `battle/e04c-t10c` (`cross-lane`); `h3-heroes` and `heroes.toml` move to the adventure lane with the shared one. **Next:** the user picks the next epic (E05, E23 the original's battle AI, E11).
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, the inbox, Q43; S-23, S-24, batch 2g.
-- **Versions** (T10b): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v25, observation encoding v21; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q51, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
+- **Versions** (unchanged since T10b): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v25, observation encoding v21; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q51, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
 
 ## Standing traps
@@ -30,7 +30,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Hidden obstacles leak through public events too: a hidden obstacle that does nothing must not change them (a mine that does not go off must not split a `Moved`). `hidden_obstacles_do_not_show` checks the acting side's commands and casts (its profiles leave BAT-QUIRK-4 off; no Berserk in its books, BAT-Q31); the computer's aim (the turrets', the automatic Ballista's) reads only `obstacles::public_pits`. `legal_commands` lists no casts: a property over legal commands must add `cast_targets` × `second_targets` itself.
 - Natural obstacles follow the original's hex records (`h3_battle::natural`): the piece listed last wins a shared hex, and a removal clears its hexes and anchor for every piece (0x466B30).
 - A dead stack's timed effects stay until the command's end (`effects::remove_dead`): code that brings a stack back within a command removes them first, a reused record is cleared with `effects::forget`. The first activation skips the freezing checks (`turn::activate_first`); good morale goes through `turn::morale_turn`.
-- Hero spells and masteries come from `h3-heroes` (ADR-0013 point 2); the battle reads `BattleMagic` only. Tests: `support::masteries(r, [schools])`. A stack's spell test needs the casting side (`affects_stack`, `share`, `resists`: the heroes' `Guard`, BAT-MAG-066); battle-wide hero magic is `BattleState.limits`, derived at the start.
+- Hero spells and masteries come from `h3-heroes` (ADR-0013 point 2; the adventure lane's since E04c: `cross-lane`); the battle reads `BattleMagic` only. Tests: `support::masteries(r, [schools])`. A stack's spell test needs the casting side (`affects_stack`, `share`, `resists`: the heroes' `Guard`, BAT-MAG-066); battle-wide hero magic is `BattleState.limits`, derived at the start.
 - Rule code reads abilities via `ruleset.abilities(creature)`; per-attack booleans are `StackTraits` bits set at setup. `Stack.spells` holds the spells' values only: a creature's `innate_spell` is read where the original reads the creature (`magic::mirror_chance`, `magic::reflection`).
 - A two-hex stack's position is its rear hex (BAT-GEO-002): where VCMI measures at its head, use `Footprint::front` (placement, a shot's aim, the berserk shooter); a shot's distance is `footprint_distance` (the original turns its shooter, BAT-Q36); `hexes()` keeps the front hex first. Tests place two-hex stacks by the rear hex.
 - Relations go by the acting stack's controller and the other stack's own side (`Stack::may_attack`; `is_hostile_to` only for blocking and multi-headed strikes).
@@ -58,6 +58,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-16 (seventy-first) — E04c T10c: the closure (increment 10)
+
+Closed: the shared sentences (BAT-Q50), `h3-heroes` handed over, E23, the lanes' inboxes, the user's Windows run. Detail: the log.
+
 ### 2026-10-15 (seventieth) — E04c T10b: the last reviews and the fold-in (increment 10)
 
 r6 and security; the user's decisions BAT-Q50 (the original's obstacles and moat avoidance, the tunnel hidden); five fixers; observation v21, ABI v25; siege-s7 and the adventure lane's nine replays redone. Detail: the log.
@@ -65,7 +69,3 @@ r6 and security; the user's decisions BAT-Q50 (the original's obstacles and moat
 ### 2026-10-15 (sixty-ninth) — E04c T10b: the review's first eight reports (increment 10)
 
 Fresh reviewers in small slices: eight reports (one high, seven medium), nothing folded in. Detail: the log (T10b).
-
-### 2026-10-15 (sixty-eighth) — E04c T10a: the fold-in and the audit (increment 10)
-
-T10 cut as E04b's T11. Wall line in integers (siege −17 % Ir); war machines in 0x463600's order (D-23); the reach test; summaries; the inbox. Detail: the log.

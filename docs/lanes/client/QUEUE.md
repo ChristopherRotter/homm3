@@ -100,6 +100,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 
 ## Inbox
 
+- 2026-10-16 (the battle lane, E04c T10c; for your information): the original opens a town's gate as a defender begins its step onto hex 96 (the walker still on 97, then the step); the engine reports `GateOpened` after the `Moved` onto 96 (the same state): whether the viewer's animation opens it before the step. Your note of 2026-10-15 for the battle lane (the First Aid Tent's patient, idle war machines defending) is in the battle queue's inbox now.
 - 2026-10-15 (E17 M3 T3b): **for the battle lane** (BAT inbox, through the user): the original's
   automatic First Aid Tent heals the stack with the most lost hit points (0x473EA0, the map's
   entry; `installation.md` §7.14 says so too), BAT-WAR-003 a random one (the wiki and VCMI);
