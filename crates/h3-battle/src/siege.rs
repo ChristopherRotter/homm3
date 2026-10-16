@@ -29,7 +29,8 @@ use crate::hero::HeroRecord;
 use crate::state::{BattleState, NO_CORPSE, Stack, StackId};
 
 /// What the battle keeps of the town it is fought at (public: the original shows the walls, the
-/// gate and the moat; ADR-0023 point 5).
+/// gate and the moat; ADR-0023 point 5), but its Escape Tunnel, which only its defender sees
+/// (BAT-SIE-024, BAT-Q50 (4)): an observation carries it for the defender only.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SiegeState {
     /// The town's faction.
@@ -38,7 +39,8 @@ pub struct SiegeState {
     pub fort: FortLevel,
     /// The town's moat as the setup gives it.
     pub moat_kind: Moat,
-    /// The town has an Escape Tunnel: its defender may retreat (BAT-SIE-024).
+    /// The town has an Escape Tunnel: its defender may retreat (BAT-SIE-024; private to the
+    /// defender, [`seen_by`](Self::seen_by)).
     escape_tunnel: bool,
     /// The gate is open (BAT-SIE-003); a town without a fort has no gate.
     pub gate_open: bool,
@@ -95,6 +97,16 @@ pub(crate) struct TownMines {
 }
 
 impl SiegeState {
+    /// The town as `viewer` (a side, or a spectator: `None`) may know it: the Escape Tunnel for
+    /// the defender only, else as if there were none (BAT-SIE-024, BAT-Q50 (4)).
+    // rule: BAT-SIE-024
+    pub(crate) const fn seen_by(self, viewer: Option<BattleSide>) -> Self {
+        Self {
+            escape_tunnel: self.escape_tunnel && matches!(viewer, Some(BattleSide::Defender)),
+            ..self
+        }
+    }
+
     /// The gate's and the drawbridge's hexes.
     fn gate_hexes(&self) -> HexSet {
         let mut set = HexSet::new();
@@ -374,13 +386,18 @@ fn blocks(s: &SiegeState, passes: bool) -> HexSet {
 }
 
 /// Whether a living stack or a corpse lies on `hex` (the original's hex records: a stack, its
-/// corpses).
+/// corpses). A created stack that died leaves none (BAT-MAG-037), also before the command's end
+/// marks its corpse `NO_CORPSE` (`raise::mark_corpses`).
 fn lies(state: &BattleState, field: Field, hex: Hex) -> bool {
     state
         .stacks
         .iter()
         .zip(state.raised.corpse.iter())
-        .any(|(s, &corpse)| corpse != NO_CORPSE && s.footprint(field).covers(hex))
+        .any(|(s, &corpse)| {
+            corpse != NO_CORPSE
+                && (s.is_alive() || !s.is_created())
+                && s.footprint(field).covers(hex)
+        })
 }
 
 /// The hexes the walls and the gate block for a stack moved or placed for `passer` (BAT-SIE-002,
@@ -409,6 +426,20 @@ pub(crate) fn may_retreat(state: &BattleState, side: BattleSide) -> bool {
     state
         .siege
         .is_none_or(|s| side == BattleSide::Attacker || s.escape_tunnel)
+}
+
+/// Whether `viewer` (a side, or a spectator: `None`) sees that `side` may retreat (BAT-SIE-024,
+/// BAT-Q50 (4)): at a town the defender's option rests on the Escape Tunnel, which only the
+/// defender knows, so another viewer sees it as `false` (unknown; the original shows the
+/// controls of the acting side only, 0x478573); every other side's option as it is.
+// rule: BAT-SIE-024
+pub(crate) fn retreat_seen(
+    state: &BattleState,
+    side: BattleSide,
+    viewer: Option<BattleSide>,
+) -> bool {
+    state.may_retreat(side)
+        && (state.siege.is_none() || side == BattleSide::Attacker || viewer == Some(side))
 }
 
 /// Whether `side` may surrender at the battle's town (BAT-SIE-024): never the defender, not even
@@ -504,9 +535,9 @@ pub(crate) fn moat_damage<S: Sink>(
     crate::effects::damaged(state, ruleset, s, sink);
 }
 
-/// The defense a stack struck now loses in the moat (BAT-SIE-006; the original's 0x442590): the
-/// penalty while either of its hexes is a moat hex, else 0; never for a frenzied stack, whose
-/// defense is 0 (the caller's).
+/// The defense `victim` loses in the moat now (BAT-SIE-006; the original's 0x442590): the penalty
+/// while either of its hexes is a moat hex, else 0. For a struck stack, never a frenzied one,
+/// whose defense is 0 (the caller's); also for a frenzied striker's own defense (BAT-MAG-019).
 // rule: BAT-SIE-006
 pub(crate) fn defense_penalty(state: &BattleState, victim: &Stack) -> i32 {
     state.siege.map_or(0, |s| {
@@ -721,7 +752,7 @@ pub(crate) fn shooter_level(
     id: StackId,
 ) -> Option<u8> {
     let s = state.at(id);
-    if s.slot == CATAPULT_SLOT {
+    if s.is_catapult() {
         return Some(crate::hero::catapult(&state.heroes, s.side).map_or(0, |c| c.level));
     }
     ruleset.abilities(s.creature).iter().find_map(|a| match *a {
@@ -729,9 +760,6 @@ pub(crate) fn shooter_level(
         _ => None,
     })
 }
-
-/// The army slot of the Catapult (BAT-SIE-009): after the army slots and the other war machines.
-pub(crate) const CATAPULT_SLOT: u8 = crate::state::CATAPULT_SLOT;
 
 /// Every target index, in order.
 const ALL_TARGETS: [u8; MAX_WALL_TARGETS] = [0, 1, 2, 3, 4, 5, 6, 7];
@@ -756,13 +784,31 @@ pub(crate) fn commanded_wall_shots(
         return None;
     }
     let s = state.at(id);
-    if s.slot == CATAPULT_SLOT {
+    if s.is_catapult() {
         crate::hero::catapult(&state.heroes, s.side).map(|c| c.level)
     } else if s.controller() == BattleSide::Attacker {
         shooter_level(state, ruleset, id)
     } else {
         None
     }
+}
+
+/// Whether the active stack `id`, a wall shooter on its side's command, may shoot target `part`
+/// (BAT-SIE-010, BAT-SIE-013): it stands and, for a shooter other than the Catapult, no living
+/// stack stands on its aim hex (the open gate's): the original's cursor takes a hex with a living
+/// stack for the wall test only under the Catapult (0x4766AA to 0x4766B9) and sends the others'
+/// click to the stack.
+pub(crate) fn may_shoot_part(state: &BattleState, id: StackId, part: u8) -> bool {
+    state.siege.is_some_and(|s| {
+        s.stands(part)
+            && (state.at(id).is_catapult()
+                || s.opens[usize::from(part)].is_none_or(|hex| {
+                    !state
+                        .stacks
+                        .iter()
+                        .any(|o| o.is_alive() && o.footprint(s.field).covers(hex))
+                }))
+    })
 }
 
 /// The standing target nearest to `from` among `candidates` (by their difference of indices; a

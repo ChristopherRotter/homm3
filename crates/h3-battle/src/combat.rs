@@ -250,7 +250,7 @@ fn strike_inputs(
     if striker.spells.frenzy > 0 {
         attack = frenzied(
             attack,
-            frenzy_defense(ruleset, striker, victim),
+            frenzy_defense(state, ruleset, striker, victim),
             striker.spells.frenzy,
             staged,
         );
@@ -345,8 +345,15 @@ fn specialist_terms(state: &BattleState, ruleset: &BattleRuleset, s: StackId) ->
 
 /// The defense a frenzied `striker` adds to its attack (BAT-MAG-019): its defense with the Defend
 /// bonus and, with quirk Q-0009 (S-16), as `victim` sees it: reduced by the share a Behemoth
-/// ignores (BAT-DMG-006), as the original computes it (`installation.md` §7.11).
-fn frenzy_defense(ruleset: &BattleRuleset, striker: &Stack, victim: &Stack) -> i32 {
+/// ignores (BAT-DMG-006), as the original computes it (`installation.md` §7.11); then the moat's
+/// penalty while the striker stands in it, not floored (BAT-SIE-006; the original's 0x442410 asks
+/// 0x442590 for the striker's own defense, `installation.md` §7.28).
+fn frenzy_defense(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    striker: &Stack,
+    victim: &Stack,
+) -> i32 {
     let mut defense = effective_defense(striker, ruleset.battle());
     if ruleset.quirks().is_enabled(FRENZY_REDUCED_DEFENSE) {
         for ability in ruleset.abilities(victim.creature) {
@@ -355,7 +362,8 @@ fn frenzy_defense(ruleset: &BattleRuleset, striker: &Stack, victim: &Stack) -> i
             }
         }
     }
-    defense
+    // rule: BAT-SIE-006
+    defense - crate::siege::defense_penalty(state, striker)
 }
 
 /// Whether Slayer cast at `mastery` counts against `victim`'s creature (BAT-MAG-014): king 1 at

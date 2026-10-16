@@ -594,3 +594,75 @@ The record of E04c's tasks: what each built and decided, beyond the one line in 
 - **The checkpoint** (the user, 2026-10-15, BAT-Q49): the original's war machine order stays
   (D-23); the batches played by agents count for exit criterion 6, so it is met. Recorded in the
   docs only; no new verify (the user: none needed).
+
+## T10b — the independent review and its fold-in (2026-10-15, increment 10)
+
+- **The review.** Ten fresh reviewer agents, none of which wrote E04c, each with a slice and a
+  common brief (rule text against code, code against its sources, the executable re-read where a
+  mistake is likeliest or costliest, VCMI 1.7.5 checked where a rule leans on it, the batches'
+  rows, the tests): r1 the battlefields, r2a/r2b the walls, gate, moat, mines and shot line,
+  r3a/r3b the Catapult, the wall shots, Earthquake, Ballistics and BAT-QUIRK-22, r4 the turrets,
+  r5 the computer's aim, r6 the town's other rules and the war machines' record order (D-23
+  confirmed by its re-read of 0x463600), a robustness review (111 120 extreme synthetic sieges and
+  8 120 sieges on the harvested packs: no panic, overflow or rejected legal command; three bounded
+  tests kept) and a security review. 36 rules and two quirks; 39 findings (F-r6-2 is F-sec-1):
+  one high, eight medium, the rest low; two questions dropped (F-r3a-7, F-r6-1) and one claim not
+  borne out (F-robust-1). Every high and medium one was checked again in the code and the
+  executable (by the coordinator or by its fix worker) before it was fixed. The briefs, the reports and the verified list are on the backup branch
+  `battle/e04c-t10b-review-reports` (not merged).
+- **The user's decisions** (BAT-Q50): the random obstacles as the original's (not VCMI's), the
+  computer's moat avoidance as the original's, no Wait or Defend for the commanded Catapult, the
+  Escape Tunnel hidden from the attacker, the computer's aim kept reading the other side's
+  Armorer and Artillery as the original's computer does. F-r6-1 (BAT-QUIRK-23's class) was not
+  put again: BAT-Q48's question already named VCMI's "bug #551".
+- **Fixed** (each with a test that failed before; five fix workers in sequence, each checking its
+  claims in the code and the executable first):
+  - the turn order: after the Catapult's turn the pick 0x465080 makes the defender the last side
+    to act, so the attacker wins an equal-speed tie (high; the engine gave it to the defender);
+  - the commanded Catapult has no Wait and no Defend (`MustShoot`); a hero's Earthquake that
+    brings down the last standing target passes its turn (`turn::catapult_passes`: no command
+    would be left; whether the original calls the Catapult's turn again after a cast was not
+    read);
+  - no shooter but the Catapult shoots the gate while a living stack stands on it (0x4766AA);
+  - a dead created stack holds no gate (`siege::lies`; the original adds no corpse for a summoned
+    stack, 0x444120);
+  - a frenzied striker in the moat adds its defense less 3 (0x442514 → 0x442646);
+  - Sacrifice refuses a turret in code (`raise::victim`), not only through the packs' `excludes`;
+  - the computer's turns: a two-hex walker pays only the stops it does not cover yet
+    (0x4B3701); a computer-controlled walker (`BattleSetup.human` of its controller) keeps out of
+    every stop when its hit points are at most 4 × the moat's damage, or 40 × for the defender's
+    stacks or a gate that is not closed (0x4B3420–0x4B34B2, read at 0x4B375C; `aim::avoids_stops`);
+    the default `human = [false, false]` now plays so; the aim's hit-point sums saturate;
+  - the random obstacles: an anchor may lie in the obstacle's own height row (0x46608D), each usual
+    type is drawn at most once and a type without a place passes to the next (0x4667F8–0x466878);
+    the draw sequence still differs from the original's (the inbox);
+  - Magic Plains raise the opening spells to Expert (0x59FE98);
+  - the observation: at a town the attacker and a spectator see the defender's `may_retreat` as
+    `false`, and the observed `SiegeState` carries the Escape Tunnel for its defender only
+    (observation encoding v21, C ABI v25: a change of meaning, the layout unchanged, as the rear
+    hex's v14/v18).
+- **An independent read of the fixes** (a fresh agent, the executable re-read at the deciding
+  addresses): ten of the eleven as their findings and the original; two items fixed after it: the
+  berserk turn takes the same pathfinder with the side argument −1 (0x445582, 0x42232C), so a
+  computer's weak berserk walker keeps out of the moat by the gate's term alone (`control::berserk`,
+  `Reach::without_stops`); the Catapult is told by `Stack::is_catapult` (its slot, not a stack
+  raised from its corpse; the original tests creature 145).
+- **Not changed:** F-robust-1 (a taken Catapult place stays `NoRoom`, as for every war machine);
+  F-r2b-2 (the bow's wall exemption reads the owner's hero, the original the controller's:
+  recorded, as the distance penalty's note). **Docs:** 23 entries' texts and sources (BAT-SIE-001,
+  003, 004, 006, 008, 009, 011, 013, 014, 018, 019, 020, 022, 024, 028, BAT-GEO-004, BAT-TER-005,
+  BAT-TRN-001, BAT-FLE-001, BAT-MAG-019, 025, 068, BAT-WAR-008); "Review re-read (E04c T10b)" notes in `installation.md` §7.26, §7.28, §7.29,
+  §7.31; the ledger's note beside BAT-Q31; experiment candidates (the Catapult's Wait, the tie
+  after the Catapult, the defender's summon onto the gate). **Tests** for the clauses the reports
+  found unpinned, among them batches 3f, 3g and 3h's rows with their own numbers
+  (`crates/h3-cli/tests/aim_rows.rs`).
+- **Replays and benchmarks:** `siege-s7` re-recorded (the defender now wins, in 146 commands); the
+  other battle replays unchanged. The adventure lane's nine (`cross-lane`, master's E08 T20b3b2
+  set, merged in: every one fights a monster's battle) re-recorded for the obstacles: four with
+  their fixed options, five searched ones replaced from a new search (1 500 faithful and 800
+  strict-fixed games) by `duel-s1279-d28`, `duel-s810-d28`, `duel-s328-d28`, `duel-s1122-d28` and
+  `duel-s307-strict-d28`; none now declines a pile's question or a Cartographer's offer (the doc
+  comment of `adventure_replays.rs` says what each meets).
+- **Left** (the queue's inbox, "E04c T10b"): the shared docs' sentences for T10c (ADR-0023,
+  `06-security.md`, `07-simulation-and-ai.md`), the server lane's siege frames, and the readings
+  the engine does not follow yet.

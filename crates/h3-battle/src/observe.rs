@@ -4,8 +4,9 @@
 //! the viewer may not know: the RNG state (it would predict rolls) and the private part of the
 //! other side's hero (ADR-0013 point 9: its skill values, surrender discount, funds and price)
 //! the other side's hidden spell obstacles the viewer does not see (ADR-0014 point 7,
-//! BAT-MAG-031) and the spell a random caster the viewer does not control drew (ADR-0014 point 8,
-//! BAT-MAG-049). The viewer's own hero's private part is shown to the viewer ([`OwnHeroView`]):
+//! BAT-MAG-031), the spell a random caster the viewer does not control drew (ADR-0014 point 8,
+//! BAT-MAG-049) and, at a town, the defender's Escape Tunnel, which shows to the defender only,
+//! in its option to retreat too (BAT-SIE-024, BAT-Q50 (4)). The viewer's own hero's private part is shown to the viewer ([`OwnHeroView`]):
 //! its spell book, masteries and spell bonuses among them (ADR-0014 point 8), and its hidden
 //! magic, which the other side infers only from the casts it may not make (BAT-Q26). Timed
 //! effects on stacks are public.
@@ -37,7 +38,7 @@ use crate::hero::{HeroRecord, HeroView, OwnHeroView};
 use crate::magic::resistance_bp;
 use crate::natural::{MAX_REMOVABLE_OBSTACLES, RemovableObstacle};
 use crate::obstacles::{self, SpellObstacle};
-use crate::siege::SiegeState;
+use crate::siege::{self, SiegeState};
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
 use crate::tactics::TacticsPhase;
 
@@ -67,7 +68,9 @@ pub struct Observation {
     pub round: u16,
     /// The running tactics phase: its side and zone (public, ADR-0013 point 9).
     pub tactics: Option<TacticsPhase>,
-    /// Whether each side may retreat (BAT-FLE-001; public), indexed by [`BattleSide::index`].
+    /// Whether each side may retreat (BAT-FLE-001; public), indexed by [`BattleSide::index`]; at a
+    /// town the defender's rests on its Escape Tunnel and shows to the defender only, `false`
+    /// (unknown) to the attacker and a spectator (BAT-SIE-024, BAT-Q50 (4)).
     pub may_retreat: [bool; 2],
     /// Whether each side may surrender at all (BAT-FLE-002; public, ADR-0013 point 9), indexed
     /// by [`BattleSide::index`]. Whether the viewer can pay is in [`own_hero`](Self::own_hero).
@@ -76,7 +79,8 @@ pub struct Observation {
     pub wait_phase: bool,
     /// The stack whose turn it is.
     pub active: Option<StackId>,
-    /// Side of the last stack that took a turn.
+    /// The side the speed tie-break counts as activated last (BAT-TRN-001): the side of the last
+    /// stack that took a turn, but the defender after the attacker's Catapult (BAT-SIE-011).
     pub last_side_acted: Option<BattleSide>,
     /// How the battle ended, once it is over.
     pub result: Option<BattleResult>,
@@ -149,7 +153,8 @@ pub struct Observation {
     /// Whether each side's player is human, indexed by [`BattleSide::index`] (public; ADR-0023
     /// point 7, BAT-SIE-023).
     pub human: [bool; 2],
-    /// The town the battle is fought at, if any: its walls, gate and moat (public; BAT-SIE-001).
+    /// The town the battle is fought at, if any: its walls, gate and moat (public; BAT-SIE-001);
+    /// its Escape Tunnel for the defender only (BAT-SIE-024, BAT-Q50 (4)).
     pub siege: Option<SiegeState>,
     /// The timed effects on stacks, by stack and spell (public; BAT-MAG-009).
     pub effects: Vec<ActiveEffect>,
@@ -192,7 +197,8 @@ pub fn observe_as(state: &BattleState, ruleset: &BattleRuleset, viewer: Viewer) 
         spectator: side.is_none(),
         round: state.round,
         tactics: state.tactics,
-        may_retreat: BattleSide::BOTH.map(|side| state.may_retreat(side)),
+        // rule: BAT-SIE-024
+        may_retreat: BattleSide::BOTH.map(|of| siege::retreat_seen(state, of, side)),
         surrender_possible: BattleSide::BOTH.map(|side| state.surrender_possible(ruleset, side)),
         wait_phase: state.wait_phase,
         active: state.active,
@@ -237,7 +243,8 @@ pub fn observe_as(state: &BattleState, ruleset: &BattleRuleset, viewer: Viewer) 
         anti_magic: state.anti_magic,
         difficulty: state.difficulty,
         human: state.human,
-        siege: state.siege,
+        // rule: BAT-SIE-024
+        siege: state.siege.map(|s| s.seen_by(side)),
         effects: state.effects().to_vec(),
         // rule: BAT-MAG-031
         spell_obstacles: obstacles::observed(state, side),

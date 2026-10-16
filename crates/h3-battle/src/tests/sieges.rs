@@ -24,7 +24,8 @@ use super::support::*;
 use crate::raise::mark_corpses;
 use crate::{
     BattleState, Command, CommandError, Event, EventKind, Hex, LegalCommands, NoopSink, SetupError,
-    StackId, Viewer, apply, effects, generate_setup_obstacles, legal_commands, observe, observe_as,
+    StackId, StackTraits, Viewer, apply, effects, generate_setup_obstacles, legal_commands,
+    observe, observe_as,
 };
 
 /// The town of `faction` with `fort` and `moat`, nothing else.
@@ -300,6 +301,17 @@ fn the_defender_opens_the_gate_and_it_closes_behind_it() {
     // A walk inside never opens it.
     let mut t = s1.clone();
     assert!(gate(&act(&mut t, &r, walk(&r, 13, 8)).unwrap()).is_empty());
+    // A flight's landing on the drawbridge opens it, and the flyer holds it there.
+    let mut t = at_town(
+        &r,
+        fort,
+        [None, None],
+        &[("fixed", 1, 2, 1)],
+        &[("flyer", 1, 13, 3)],
+    );
+    activate(&mut t, 1);
+    assert_eq!(gate(&act(&mut t, &r, walk(&r, 10, 5)).unwrap()), [true]);
+    assert!(open(&t));
 }
 
 // covers: BAT-SIE-003
@@ -337,6 +349,71 @@ fn a_stack_or_a_corpse_on_the_bridges_keeps_the_gate_shut_for_the_defender() {
     place(&mut t, &r, 0, 2, 9);
     place(&mut t, &r, 1, 9, 5);
     assert!(destinations(&t, &r).iter().all(|&h| !inside(&r, h)));
+    // The defender's own stack on the outer bridge bars itself: neither bridge nor gate for it.
+    let mut t = s.clone();
+    place(&mut t, &r, 0, 2, 9);
+    place(&mut t, &r, 2, 9, 5);
+    let d = destinations(&t, &r);
+    assert!(d.contains(&at(&r, 8, 5)));
+    assert!(!d.contains(&at(&r, 10, 5)) && !d.contains(&at(&r, 11, 5)));
+}
+
+// covers: BAT-SIE-003, BAT-MAG-037
+#[test]
+fn a_created_stack_killed_on_the_drawbridge_lets_the_gate_close_before_good_morale() {
+    // Good morale that always triggers (BAT-MOR-003).
+    let r = ruleset_with("t:faithful", |b| {
+        b.morale_dice = 255;
+        b.good_morale_chances = vec![255, 255, 255];
+    });
+    let fort = town(&r, "t:castle", FortLevel::Fort, Moat::Absent);
+    // The defender's stack on the drawbridge (10, 5) holds the gate open; the attacker's archers
+    // shoot it dead and act again.
+    let shoot = |created: bool| {
+        let mut s = at_town(
+            &r,
+            fort,
+            [None, None],
+            &[("archer", 10, 8, 5)],
+            &[("slow", 1, 10, 5), ("fixed", 1, 14, 9)],
+        );
+        let stack = &mut s.stacks.as_mut_slice()[1];
+        stack.traits = stack.traits.with(StackTraits::SUMMONED, created);
+        s.stacks.as_mut_slice()[0].morale = 1;
+        let mut siege = s.siege.unwrap();
+        siege.gate_open = true;
+        s.siege = Some(siege);
+        let target = StackId(1);
+        let events = act(
+            &mut s,
+            &r,
+            Command::Shoot {
+                target,
+                at: at(&r, 10, 5),
+            },
+        )
+        .unwrap();
+        assert!(!s.stacks()[1].is_alive());
+        assert!(
+            events
+                .iter()
+                .any(|e| e.kind == EventKind::GoodMorale { stack: StackId(0) })
+        );
+        assert_eq!(s.active(), Some(StackId(0)));
+        (s, gate(&events))
+    };
+    // A created stack leaves no corpse (BAT-MAG-037): the gate closes at the shot's end, so the
+    // archers' second turn finds the drawbridge and the gate barred.
+    let (s, events) = shoot(true);
+    assert_eq!(events, [false]);
+    assert!(!open(&s));
+    let d = destinations(&s, &r);
+    assert!(!d.contains(&at(&r, 10, 5)) && !d.contains(&at(&r, 11, 5)));
+    // A corpse holds it open.
+    let (s, events) = shoot(false);
+    assert!(events.is_empty());
+    assert!(open(&s));
+    assert!(destinations(&s, &r).contains(&at(&r, 11, 5)));
 }
 
 // covers: BAT-SIE-003, BAT-SIE-004
@@ -403,6 +480,54 @@ fn the_moat_stops_walkers_but_not_flyers_or_the_defender_on_the_bridges() {
     activate(&mut t, 2);
     act(&mut t, &r, walk(&r, 9, 6)).unwrap();
     assert_eq!(t.stacks()[2].hex, at(&r, 9, 6));
+}
+
+// covers: BAT-SIE-004
+#[test]
+fn a_walker_goes_round_a_moat_hex_and_attacks_from_none_it_enters() {
+    let r = ruleset();
+    let castle = town(&r, "t:castle", FortLevel::Citadel, Moat::Harmless);
+    // From the moat (9, 6) to the moat (10, 8): round (10, 7) over (9, 7) and (9, 8), no stop
+    // before the end (batch 3c M, the single row of the original's Inferno).
+    let mut s = at_town(
+        &r,
+        castle,
+        [None, None],
+        &[("fast", 1, 9, 6)],
+        &[("fixed", 1, 14, 9)],
+    );
+    assert!(destinations(&s, &r).contains(&at(&r, 10, 8)));
+    let events = act(&mut s, &r, walk(&r, 10, 8)).unwrap();
+    let steps: Vec<Hex> = events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::Moved { to, .. } => Some(to),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(steps, [at(&r, 9, 7), at(&r, 9, 8), at(&r, 10, 8)]);
+    // An attack ordered with a walk that ends in the moat is no command (as from a seen pit,
+    // BAT-MAG-032): the walker on (9, 3) may strike the stack on (9, 5) from (8, 4), not from the
+    // moat (9, 4).
+    let mut s = at_town(
+        &r,
+        castle,
+        [None, None],
+        &[("fast", 1, 9, 3)],
+        &[("fixed", 1, 9, 5)],
+    );
+    let attack = |x, y| Command::Attack {
+        target: StackId(1),
+        from: at(&r, x, y),
+    };
+    let mut out = LegalCommands::new();
+    legal_commands(&s, &r, BattleSide::Attacker, &mut out);
+    assert!(out.as_slice().contains(&attack(8, 4)));
+    assert!(!out.as_slice().contains(&attack(9, 4)));
+    assert_eq!(
+        act(&mut s, &r, attack(9, 4)),
+        Err(CommandError::Unreachable)
+    );
 }
 
 // ---------------------------------------------------------------- BAT-SIE-005
@@ -504,6 +629,41 @@ fn a_two_hex_stack_is_hurt_once_and_the_moat_may_end_the_battle() {
     assert_eq!(soaked(&events), [(1, at(&r, 9, 4), 90, 9)]);
 }
 
+// covers: BAT-SIE-005
+#[test]
+fn a_stack_in_a_damaging_moat_is_hurt_again_whatever_it_does_where_it_stands() {
+    let r = ruleset();
+    // The attacker's walker in the moat (9, 4) beside the defender's stack on (8, 4), its archers
+    // in the moat (10, 8); 10 creatures of 10 hit points each: 70 damage, 7 killed.
+    let s = at_town(
+        &r,
+        town(&r, "t:castle", FortLevel::Citadel, Moat::Damaging),
+        [None, None],
+        &[("fixed", 10, 9, 4), ("archer", 10, 10, 8)],
+        &[("slow", 1, 8, 4), ("fixed", 1, 14, 1)],
+    );
+    let hurt = |id: u8, command: Command| {
+        let mut t = s.clone();
+        activate(&mut t, id);
+        soaked(&act(&mut t, &r, command).unwrap())
+    };
+    let walker = |x, y| vec![(0, at(&r, x, y), 70, 7)];
+    // A wait, an attack from where it stands, a shot: the moat's damage each time.
+    assert_eq!(hurt(0, Command::Wait), walker(9, 4));
+    let attack = Command::Attack {
+        target: StackId(2),
+        from: at(&r, 9, 4),
+    };
+    assert_eq!(hurt(0, attack), walker(9, 4));
+    let shot = Command::Shoot {
+        target: StackId(2),
+        at: at(&r, 8, 4),
+    };
+    assert_eq!(hurt(1, shot), [(1, at(&r, 10, 8), 70, 7)]);
+    // A walk from the moat into the next moat hex: once, on that hex (its own hex is no entry).
+    assert_eq!(hurt(0, walk(&r, 10, 3)), walker(10, 3));
+}
+
 // ---------------------------------------------------------------- BAT-SIE-006
 
 // covers: BAT-SIE-006
@@ -552,6 +712,90 @@ fn the_moat_lowers_the_defense_below_zero_but_not_a_frenzied_stack_s() {
     assert_eq!(strike("t:necropolis", Moat::Harmless, "fixed", 0), 20);
 }
 
+/// The damage stack `striker` deals stack `target` attacking it from where it stands.
+fn struck(s: &mut BattleState, r: &BattleRuleset, striker: u8, target: u8) -> u64 {
+    activate(s, striker);
+    let from = s.stacks()[usize::from(striker)].hex;
+    let target = StackId(target);
+    let events = act(s, r, Command::Attack { target, from }).unwrap();
+    events
+        .iter()
+        .find_map(|e| match e.kind {
+            EventKind::Struck {
+                target: t, damage, ..
+            } if t == target => Some(damage),
+            _ => None,
+        })
+        .unwrap()
+}
+
+// covers: BAT-SIE-006, BAT-MAG-019
+#[test]
+fn the_moat_s_penalty_reads_either_hex_the_closed_drawbridge_and_a_frenzied_striker() {
+    let r = ruleset();
+    let castle = |moat| town(&r, "t:castle", FortLevel::Citadel, moat);
+    // The attacker's two-hex stack (defense 6) on (8, 4) with its front hex in the moat (9, 4),
+    // struck by 10 `fixed` (damage 20) from (9, 5): defense 3, +35 %; without a moat +20 %.
+    let wide = |moat| {
+        let mut s = at_town(
+            &r,
+            castle(moat),
+            [None, None],
+            &[("wide", 10, 8, 4)],
+            &[("fixed", 10, 9, 5)],
+        );
+        struck(&mut s, &r, 1, 0)
+    };
+    assert_eq!(wide(Moat::Harmless), 27);
+    assert_eq!(wide(Moat::Absent), 24);
+    // The drawbridge's hex is a moat hex only while the gate is closed: the defender's stack on
+    // (10, 5) struck from (9, 5).
+    let bridge = |open: bool| {
+        let mut s = at_town(
+            &r,
+            castle(Moat::Harmless),
+            [None, None],
+            &[("fixed", 10, 9, 5)],
+            &[("fixed", 50, 10, 5)],
+        );
+        let mut siege = s.siege.unwrap();
+        siege.gate_open = open;
+        s.siege = Some(siege);
+        struck(&mut s, &r, 0, 1)
+    };
+    assert_eq!(bridge(false), 23);
+    assert_eq!(bridge(true), 20);
+    // A frenzied striker in the moat adds its defense less the moat's 3 (the original's 0x442410
+    // asks 0x442590 for the striker's own defense): 10 + (10 - 3) × 100 % = 17 against defense
+    // 10, +35 %; outside the moat 10 + 10, +50 %.
+    let frenzied = |moat| {
+        let mut s = at_town(
+            &r,
+            castle(moat),
+            [None, None],
+            &[("fixed", 10, 9, 4)],
+            &[("fixed", 50, 8, 4)],
+        );
+        s.stacks.as_mut_slice()[0].spells.frenzy = 100;
+        struck(&mut s, &r, 0, 1)
+    };
+    assert_eq!(frenzied(Moat::Harmless), 27);
+    assert_eq!(frenzied(Moat::Absent), 30);
+    // Not floored: a striker of defense 1 in the moat adds (1 - 3) × 100 %: attack 4 - 2 = 2
+    // against `fixed`'s defense 10 (`slow`: damage 1, 50 creatures: 50; -8 × 2.5 % = -20 %).
+    let mut s = at_town(
+        &r,
+        castle(Moat::Harmless),
+        [None, None],
+        &[("slow", 50, 9, 4)],
+        &[("fixed", 50, 8, 4)],
+    );
+    let slow = &mut s.stacks.as_mut_slice()[0];
+    slow.attack = 4;
+    slow.spells.frenzy = 100;
+    assert_eq!(struck(&mut s, &r, 0, 1), 40);
+}
+
 // ---------------------------------------------------------------- BAT-SIE-007
 
 // covers: BAT-SIE-007
@@ -589,6 +833,22 @@ fn the_tower_lays_hidden_mines_on_its_moat_by_the_game_s_version_and_its_hero() 
     // Before: the hero's, or the spell's at power 3 without one.
     assert_eq!(values(Moat::Harmless, citadel, None), [55; 10]);
     assert_eq!(values(Moat::Harmless, citadel, Some(lord(1, 2))), [60; 10]);
+    // The hero's mastery on the battlefield: Magic Plains make its Fire Magic Expert (BAT-TER-005),
+    // 10 + 100 instead of 10 + 25.
+    assert_eq!(values(Moat::Harmless, citadel, Some(lord(1, 0))), [35; 10]);
+    let plains = arena_on(
+        &r,
+        [None, Some(lord(1, 0))],
+        &[("fixed", 1, 2, 1)],
+        &[("fixed", 1, 14, 9)],
+        1,
+        |s| {
+            s.siege = Some(town(&r, "t:necropolis", citadel, Moat::Harmless));
+            s.battlefield = h3_content::ContentKey::new("t", "plains").ok();
+        },
+    );
+    let mines: Vec<u64> = plains.spell_obstacles().iter().map(|o| o.value).collect();
+    assert_eq!(mines, [110; 10]);
     // No moat, no mines.
     assert!(values(Moat::Absent, FortLevel::Castle, None).is_empty());
     // The defender's, hidden from the attacker, on the moat but the drawbridge, for the battle.
@@ -806,7 +1066,7 @@ fn town_ballistae(r: &BattleRuleset, quirk: bool) {
             BattleSide::BOTH.map(|side| {
                 s.stacks()
                     .iter()
-                    .filter(|st| st.side == side && st.has(crate::StackTraits::WAR_MACHINE))
+                    .filter(|st| st.side == side && st.has(StackTraits::WAR_MACHINE))
                     .map(|st| st.creature)
                     .collect::<Vec<_>>()
             })

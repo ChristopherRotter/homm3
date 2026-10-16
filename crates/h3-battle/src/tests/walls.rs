@@ -15,7 +15,8 @@ use h3_kernel::{Rng, StreamId};
 
 use super::spells::spell;
 use super::support::*;
-use crate::siege::{CATAPULT_SLOT, damage_part, earthquake, nearest, shoot_walls};
+use crate::siege::{damage_part, earthquake, nearest, shoot_walls};
+use crate::state::CATAPULT_SLOT;
 use crate::{
     BattleState, CastTarget, Command, CommandError, Event, EventKind, LegalCommands, SetupError,
     StackId, StackTraits, apply, castable_spells, legal_commands,
@@ -273,7 +274,7 @@ fn the_catapult_shoots_first_each_round_and_never_at_stacks() {
     for i in starts {
         assert_eq!(first(&later[i..]), Some(1));
     }
-    // Commanded, it awaits a command with no shot or move at a stack.
+    // Commanded, it awaits a command with no shot or move at a stack, no Wait and no Defend.
     let (s, _) = siege(
         &r,
         (FortLevel::Fort, [Some(ballistician(&r, 1)), None]),
@@ -283,10 +284,11 @@ fn the_catapult_shoots_first_each_round_and_never_at_stacks() {
     );
     assert_eq!(s.active(), Some(StackId(1)));
     let commands = legal(&s, &r);
-    assert!(commands.iter().all(|c| matches!(
-        c,
-        Command::Wait | Command::Defend | Command::ShootWall { .. } | Command::Retreat
-    )));
+    assert!(
+        commands
+            .iter()
+            .all(|c| matches!(c, Command::ShootWall { .. } | Command::Retreat))
+    );
     assert_eq!(wall_shots(&commands), [1, 2, 3, 4, 5]);
 }
 
@@ -412,6 +414,72 @@ fn without_ballistics_the_catapult_aims_at_the_weakest_wall() {
     assert!([1, 2, 4, 5].contains(&shot[0].1));
 }
 
+/// The stacks whose turns `events` report started, in order.
+fn turns(events: &[Event]) -> Vec<u8> {
+    events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::TurnStarted { stack } => Some(stack.0),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The first `n` turns of the battle `s` started with `events`: the side to act defends, a
+/// commanded Catapult shoots its first standing target.
+fn first_turns(
+    s: &mut BattleState,
+    r: &BattleRuleset,
+    mut events: Vec<Event>,
+    n: usize,
+) -> Vec<u8> {
+    while turns(&events).len() < n {
+        let command = wall_shots(&legal(s, r))
+            .first()
+            .map_or(Command::Defend, |&part| Command::ShootWall { part });
+        events.extend(act(s, r, command).unwrap());
+    }
+    turns(&events)[..n].to_vec()
+}
+
+// covers: BAT-SIE-011, BAT-TRN-001
+#[test]
+fn after_the_catapult_s_turn_the_attacker_wins_a_tie() {
+    let r = ruleset();
+    // Equal speeds: after the Catapult (stack 1) the attacker's stack acts first, every round,
+    // whether the Catapult shoots on its own or on its hero's command (the original's pick,
+    // 0x4650BB, records the defender as the side activated last).
+    for catapult in [hero(&r), ballistician(&r, 1)] {
+        let (mut s, events) = siege(
+            &r,
+            (FortLevel::Fort, [Some(catapult), None]),
+            &[("fixed", 5, 3, 5)],
+            &[("fixed", 5, 13, 5)],
+            |_| {},
+        );
+        assert_eq!(first_turns(&mut s, &r, events, 7), [1, 0, 2, 1, 0, 2, 1]);
+    }
+}
+
+// covers: BAT-SIE-011, BAT-SIE-016
+#[test]
+fn the_turrets_then_the_catapult_open_each_round() {
+    let r = turret_ruleset("t:faithful");
+    // A Castle: the keep (3), the upper (4) and the lower tower (5), then the Catapult (1), then
+    // the attacker's stack, which wins the tie after the Catapult (BAT-TRN-001).
+    let (mut s, events) = siege(
+        &r,
+        (FortLevel::Castle, [Some(hero(&r)), None]),
+        &[("fixed", 200, 3, 5)],
+        &[("fixed", 200, 13, 5)],
+        |_| {},
+    );
+    assert_eq!(
+        first_turns(&mut s, &r, events, 11),
+        [3, 4, 5, 1, 0, 2, 3, 4, 5, 1, 0]
+    );
+}
+
 // covers: BAT-SIE-011
 #[test]
 fn ballistics_commands_the_catapult() {
@@ -433,7 +501,8 @@ fn ballistics_commands_the_catapult() {
         assert_eq!(shots(&fired).len(), if level == 1 { 1 } else { 2 });
         assert_ne!(s.active(), Some(StackId(1)));
     }
-    // Wait and Defend as any commanded war machine; a target not set up, destroyed or no target.
+    // No Wait and no Defend (the original offers neither, BAT-Q50); a target not set up,
+    // destroyed or no target.
     let (s, _) = siege(
         &r,
         (FortLevel::Fort, [Some(ballistician(&r, 2)), None]),
@@ -454,25 +523,74 @@ fn ballistics_commands_the_catapult() {
         act(&mut t, &r, Command::ShootWall { part: 1 }),
         Err(CommandError::NoSuchPart)
     );
-    let mut t = s.clone();
-    act(&mut t, &r, Command::Wait).unwrap();
-    // With nothing standing a commanded Catapult's turn passes.
+    for command in [Command::Wait, Command::Defend] {
+        let mut t = s.clone();
+        assert_eq!(act(&mut t, &r, command), Err(CommandError::MustShoot));
+    }
+    // With nothing standing a commanded Catapult's turn passes: at once when its hero's
+    // Earthquake brings down the last standing target (it may not Wait or Defend), and at its
+    // turn's start.
+    let quake = spell(&r, "quake");
+    let mut caster = ballistician(&r, 2);
+    caster.magic.spell_book = Some(vec![quake]);
+    caster.magic.mana = 40;
+    caster.magic.masteries = vec![(quake, 3)];
     let (mut s, _) = siege(
         &r,
-        (FortLevel::Fort, [Some(ballistician(&r, 2)), None]),
+        (FortLevel::Fort, [Some(caster), None]),
         &[("fixed", 5, 3, 5)],
         &[("fixed", 5, 13, 5)],
         |_| {},
     );
-    set_parts(&mut s, [2, 0, 0, 0, 0, 0, 2, 2]);
-    advance_to(&mut s, &r, 2);
-    let mut events = Vec::new();
+    assert_eq!(s.active(), Some(StackId(1)));
+    set_parts(&mut s, [0, 1, 0, 0, 0, 0, 0, 0]);
+    let quaked = Command::Cast {
+        spell: quake,
+        target: CastTarget::None,
+        second: CastTarget::None,
+    };
+    let mut events = act(&mut s, &r, quaked).unwrap();
+    assert_eq!(destroyed(&events), [1]);
+    assert_eq!(s.active(), Some(StackId(0)));
     while s.round < 2 {
-        let side = s.side_to_act().unwrap();
-        apply(&mut s, &r, side, Command::Defend, &mut events).unwrap();
+        events.extend(act(&mut s, &r, Command::Defend).unwrap());
     }
     assert_ne!(s.active(), Some(StackId(1)));
     assert!(shots(&events).is_empty());
+}
+
+// covers: BAT-SIE-011, BAT-MAG-052
+#[test]
+fn a_stack_raised_from_the_catapult_s_corpse_is_no_catapult() {
+    // A raised stack takes the corpse's army slot (BAT-MAG-052), the Catapult's too, were its
+    // creature alive (no pack makes it so): it is commanded as any stack, Wait and Defend
+    // included (the original tests the creature, 0x473C35).
+    let r = ruleset();
+    let (mut s, _) = siege(
+        &r,
+        (FortLevel::Citadel, [Some(ballistician(&r, 2)), None]),
+        &[("fiend", 2, 3, 5)],
+        &[("fixed", 5, 13, 5)],
+        |_| {},
+    );
+    let catapult = StackId(catapult(&s).unwrap());
+    let st = &mut s.stacks.as_mut_slice()[usize::from(catapult.0)];
+    st.traits = st.traits.with(StackTraits::ALIVE, true);
+    let mut events = Vec::new();
+    crate::damage::apply_damage(s.at_mut(catapult), 1000);
+    crate::effects::damaged(&mut s, &r, catapult, &mut events);
+    crate::raise::mark_corpses(&mut s);
+    let imp = r.creature_by_key("t:imp").unwrap();
+    let side = (BattleSide::Attacker, catapult);
+    crate::created::raise_corpse(&mut s, &r, side, (imp, 8), &mut events);
+    let raised = u8::try_from(s.stacks().len() - 1).unwrap();
+    let imps = s.stacks()[usize::from(raised)];
+    assert!(imps.has(StackTraits::RAISED) && imps.slot == CATAPULT_SLOT);
+    assert!(!imps.is_catapult() && s.at(catapult).is_catapult());
+    activate(&mut s, raised);
+    let commands = legal(&s, &r);
+    assert!(commands.contains(&Command::Wait) && commands.contains(&Command::Defend));
+    assert!(act(&mut s, &r, Command::Defend).is_ok());
 }
 
 // ---------------------------------------------------------------- BAT-SIE-012
@@ -655,6 +773,53 @@ fn an_attacker_s_cyclops_shoots_the_walls_without_shots() {
     );
 }
 
+// covers: BAT-SIE-013, BAT-SIE-011
+#[test]
+fn a_living_stack_in_the_gate_spares_it_from_the_cyclops() {
+    let r = ruleset();
+    // The defender's stack stands in the open gate: the original's cursor sends a click on the
+    // gate's hex to the stack (0x4766AA to 0x4766B9), so the Cyclops has no shot at the gate.
+    let in_gate = |s: &mut BattleState, id: usize| {
+        let mut town = s.siege.unwrap();
+        town.gate_open = true;
+        s.siege = Some(town);
+        s.stacks.as_mut_slice()[id].hex = crate::Hex(96);
+    };
+    let (mut s, _) = siege(
+        &r,
+        (FortLevel::Fort, [None, None]),
+        &[("cyclops", 5, 3, 5)],
+        &[("fixed", 5, 13, 5)],
+        |_| {},
+    );
+    in_gate(&mut s, 1);
+    activate(&mut s, 0);
+    assert_eq!(wall_shots(&legal(&s, &r)), [1, 2, 4, 5]);
+    assert_eq!(
+        act(&mut s.clone(), &r, Command::ShootWall { part: 3 }),
+        Err(CommandError::NoSuchPart)
+    );
+    // A dead stack there does not count.
+    let mut t = s.clone();
+    t.stacks.as_mut_slice()[1].count = 0;
+    assert_eq!(wall_shots(&legal(&t, &r)), [1, 2, 3, 4, 5]);
+    // The Catapult shoots it whoever stands there.
+    let (mut c, _) = siege(
+        &r,
+        (FortLevel::Fort, [Some(ballistician(&r, 1)), None]),
+        &[("fixed", 5, 3, 5)],
+        &[("fixed", 5, 13, 5)],
+        |_| {},
+    );
+    in_gate(&mut c, 2);
+    assert_eq!(c.active(), Some(StackId(1)));
+    assert_eq!(wall_shots(&legal(&c, &r)), [1, 2, 3, 4, 5]);
+    assert_eq!(
+        shots(&act(&mut c, &r, Command::ShootWall { part: 3 }).unwrap()).len(),
+        1
+    );
+}
+
 // ---------------------------------------------------------------- BAT-SIE-014
 
 // covers: BAT-SIE-014
@@ -693,6 +858,19 @@ fn a_missed_shot_lands_on_the_nearest_other_wall() {
     // Only standing walls; none: the aimed target itself.
     assert_eq!(landed([2, 0, 0, 2, 3, 3, 2, 2], 0), [Some(4)]);
     assert_eq!(landed([2, 3, 0, 0, 0, 0, 2, 2], 1), [None]);
+    // The tie's direction: a roll of at most 50 takes the later entry of the list, above 50 keeps
+    // the earlier (0x445F62 to 0x445F7A); both rolls occur among the seeds.
+    let mut seen = [false; 2];
+    for seed in 0..20 {
+        let mut t = s.clone();
+        t.rng = Rng::for_stream(seed, StreamId::BATTLE);
+        let low = t.rng.clone().range_inclusive(1, 100) <= 50;
+        seen[usize::from(low)] = true;
+        let pick = |list: [u8; 2]| if low { list[1] } else { list[0] };
+        assert_eq!(nearest(&mut t.clone(), &[2, 4], 3), Some(pick([2, 4])));
+        assert_eq!(nearest(&mut t, &[4, 2], 3), Some(pick([4, 2])));
+    }
+    assert_eq!(seen, [true, true]);
 }
 
 // covers: BAT-SIE-014

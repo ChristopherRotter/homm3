@@ -296,7 +296,8 @@ impl BattleEnv {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::action::{ACTION_COUNT, SPELL_COUNT, TARGET_COUNT};
+    use crate::action::{ACTION_COUNT, CREATURE_CAST, HERO_CAST, SPELL_COUNT, TARGET_COUNT};
+    use h3_battle::Command;
 
     fn make(max_steps: u32) -> BattleEnv {
         let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_DUEL).unwrap();
@@ -372,6 +373,74 @@ mod tests {
             StepError::Rejected(CommandError::NotYourTurn).to_string(),
             "rejected: it is not your turn"
         );
+    }
+
+    // covers: BAT-SIE-011, BAT-SIE-013
+    /// Robustness at a town (E04c T10b review): over random play of the siege scenario (the
+    /// baseline agent's choices, the wall shots among them) the mask agrees with `step` for every
+    /// non-cast entry, the wall shots' included: a masked entry steps a fork, an unmasked one
+    /// is refused and changes nothing; actions with out-of-range entries, spells and targets are
+    /// refused without a change; the episode ends or reaches its bound.
+    #[test]
+    fn the_siege_scenario_s_mask_agrees_with_step_for_every_entry() {
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_SIEGE).unwrap();
+        let (r, setup) = (Arc::new(r), Arc::new(setup));
+        let mut wall_shots = 0;
+        for seed in 0..4u64 {
+            let mut env = BattleEnv::new(r.clone(), setup.clone(), seed, 0).unwrap();
+            let mut rng = Rng::for_stream(seed, StreamId::AGENT);
+            let mut legal = LegalCommands::new();
+            let mut mask = [false; ACTION_COUNT];
+            for step in 0..250 {
+                let Some(side) = env.to_move() else {
+                    break;
+                };
+                env.legal_mask(side, &mut legal, &mut mask);
+                let hash = env.state_hash();
+                // Every entry every fifth step (a fork per entry).
+                let entries = if step % 5 == 0 { ACTION_COUNT + 8 } else { 0 };
+                for entry in 0..entries {
+                    if entry == HERO_CAST || entry == CREATURE_CAST {
+                        continue;
+                    }
+                    let mut fork = env.fork();
+                    let stepped = fork.step(side, Action::entry(entry));
+                    let allowed = mask.get(entry).copied().unwrap_or(false);
+                    assert_eq!(
+                        stepped.is_ok(),
+                        allowed,
+                        "seed {seed}: entry {entry}: {stepped:?}"
+                    );
+                    if !allowed {
+                        assert_eq!(fork.state_hash(), hash, "seed {seed}: entry {entry}");
+                    }
+                }
+                for _ in 0..4 {
+                    let garbage = Action {
+                        entry: rng.next_u32() >> (rng.below(32)),
+                        spell: u16::try_from(rng.next_u32() & 0xffff).unwrap(),
+                        target: u16::try_from(rng.next_u32() & 0xffff).unwrap(),
+                        second: u16::try_from(rng.next_u32() & 0xffff).unwrap(),
+                    };
+                    let mut fork = env.fork();
+                    if fork.step(side, garbage).is_err() {
+                        assert_eq!(fork.state_hash(), hash, "seed {seed}: {garbage:?}");
+                    }
+                }
+                // The observation encodes for both viewers (the turrets off the field among the
+                // stacks); a buffer one short is refused.
+                let mut out = vec![0.0; observation::OBSERVATION_LEN];
+                for viewer in BattleSide::BOTH {
+                    assert_eq!(env.encode_observation(viewer, &mut out), Ok(()));
+                    assert!(env.encode_observation(viewer, &mut out[1..]).is_err());
+                }
+                let command = crate::rollout::pick(&env, side, &mut rng, &mut legal);
+                wall_shots += u32::from(matches!(command, Command::ShootWall { .. }));
+                crate::rollout::step_command(&mut env, side, command).unwrap();
+            }
+            assert_eq!(env.state().outcome().is_some(), env.is_done());
+        }
+        assert!(wall_shots > 10, "{wall_shots}");
     }
 
     /// E04b T11b review (F-sec-2): the side that is not to move is refused before its action

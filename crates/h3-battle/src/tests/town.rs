@@ -188,6 +188,25 @@ fn a_town_raises_its_defender_s_morale_and_luck() {
     assert_eq!(values(&start(9, 9)), [(1, 0), (3, 3), (0, 3)]);
     // The setup's terms are the battle's from its start.
     assert_ne!(start(1, 0).state_hash(), start(0, 0).state_hash());
+    // Batch 3g's CM and RL: three alignments (−1) and the Brotherhood of the Sword (+2, D-21)
+    // give +1; the Fountain of Fortune +2.
+    let mixed = at_town(
+        &r,
+        Some(Siege {
+            morale: 2,
+            luck: 2,
+            ..town(&r, "t:castle", FortLevel::Fort, Moat::Absent)
+        }),
+        [None, None],
+        &[("fixed", 5, 2, 5)],
+        &[
+            ("pikeman_c", 5, 14, 3),
+            ("imp", 5, 14, 5),
+            ("serf", 5, 14, 7),
+        ],
+        |_| {},
+    );
+    assert_eq!(values(&mixed), [(1, 0), (1, 2), (1, 2), (1, 2)]);
 }
 
 // ---------------------------------------------------------------- BAT-SIE-026
@@ -201,17 +220,31 @@ fn teleport_reaches(
     edit: impl FnOnce(&mut BattleState),
     cells: &[(i32, i32)],
 ) -> Vec<bool> {
-    let mut s = at_town(
-        r,
-        Some(siege),
-        [Some(caster(r, &["teleport"], air)), None],
-        &[("fixed", 5, 2, 5)],
-        &[("fixed", 5, 14, 9)],
-        |_| {},
-    );
+    teleport_offers(r, siege, (Attacker, (2, 5)), air, edit, cells)
+}
+
+/// The destinations Teleport at `air` offers `side`'s hero, at its stack's turn, for that stack at
+/// `from` (the other side's alone at `(2, 5)` or `(14, 9)`, without a hero) at `siege`, after
+/// `edit`; the hexes of `(x, y)` among them.
+fn teleport_offers(
+    r: &BattleRuleset,
+    siege: Siege,
+    (side, (x, y)): (BattleSide, (i32, i32)),
+    air: u8,
+    edit: impl FnOnce(&mut BattleState),
+    cells: &[(i32, i32)],
+) -> Vec<bool> {
+    let mut heroes = [None, None];
+    heroes[side.index()] = Some(caster(r, &["teleport"], air));
+    let mut armies = [[("fixed", 5, 2, 5)], [("fixed", 5, 14, 9)]];
+    armies[side.index()] = [("fixed", 5, x, y)];
+    let mut s = at_town(r, Some(siege), heroes, &armies[0], &armies[1], |_| {});
+    let mover = if side == Attacker { 0 } else { defender(&s) };
+    activate(&mut s, mover);
     edit(&mut s);
     let mut out = CastTargets::new();
-    second_targets(&s, r, Attacker, (spell(r, "teleport"), stack(0)), &mut out);
+    let teleport = (spell(r, "teleport"), stack(mover));
+    second_targets(&s, r, side, teleport, &mut out);
     cells
         .iter()
         .map(|&(x, y)| out.as_slice().contains(&CastTarget::Hex(at(r, x, y))))
@@ -299,6 +332,67 @@ fn below_expert_teleport_follows_the_shot_s_line_through_the_walls() {
         events
             .iter()
             .any(|e| matches!(e.kind, EventKind::Teleported { .. }))
+    );
+}
+
+// covers: BAT-SIE-026
+#[test]
+fn below_expert_teleport_tests_the_line_inside_the_walls_too() {
+    let r = ruleset();
+    let fort = town(&r, "t:castle", FortLevel::Fort, Moat::Absent);
+    // The defender's stack inside, from (11, 4) (hex 79) to (11, 6) (hex 113): the line passes
+    // the closed gate's hex (11, 5) (96), though the move crosses no wall (the original tests
+    // every move, 0x5A3760 to 0x5A37AF; VCMI only a crossing, D-20).
+    let inside = (Defender, (11, 4));
+    let reach =
+        |air, edit: fn(&mut BattleState)| teleport_offers(&r, fort, inside, air, edit, &[(11, 6)]);
+    assert_eq!(reach(2, |_| {}), [false]);
+    assert_eq!(reach(3, |_| {}), [true]);
+    // The open gate lets the line through.
+    let open = |s: &mut BattleState| {
+        let mut siege = s.siege.unwrap();
+        siege.gate_open = true;
+        s.siege = Some(siege);
+    };
+    assert_eq!(reach(2, open), [true]);
+}
+
+// covers: BAT-SIE-026, BAT-SIE-005
+#[test]
+fn teleport_follows_batch_3g_and_lands_in_the_moat_without_its_damage() {
+    let r = ruleset();
+    let citadel = town(&r, "t:castle", FortLevel::Citadel, Moat::Damaging);
+    // Batch 3g's rows TB, TV, TE: from hex 86 (1, 5) to the inside hex 64 (13, 3), the moat hex
+    // 61 (10, 3) and the outside hex 91 (6, 5).
+    let cells = [(13, 3), (10, 3), (6, 5)];
+    let reach = |air| teleport_offers(&r, citadel, (Attacker, (1, 5)), air, |_| {}, &cells);
+    assert_eq!(reach(1), [false, false, true]);
+    assert_eq!(reach(2), [false, true, true]);
+    assert_eq!(reach(3), [true, true, true]);
+    // TV: Advanced Teleport lands on the damaging moat's hex without its damage.
+    let mut s = at_town(
+        &r,
+        Some(citadel),
+        [Some(caster(&r, &["teleport"], 2)), None],
+        &[("fixed", 5, 1, 5)],
+        &[("fixed", 5, 14, 9)],
+        |_| {},
+    );
+    let before = s.stacks()[0];
+    let moat = at(&r, 10, 3);
+    let go = Command::Cast {
+        spell: spell(&r, "teleport"),
+        target: stack(0),
+        second: CastTarget::Hex(moat),
+    };
+    let events = act(&mut s, &r, go).unwrap();
+    let after = s.stacks()[0];
+    assert_eq!(after.hex, moat);
+    assert_eq!((after.count, after.top_hp), (before.count, before.top_hp));
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e.kind, EventKind::MoatDamage { .. }))
     );
 }
 

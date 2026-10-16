@@ -639,9 +639,9 @@ pub(crate) fn mastery_at(
     }
 }
 
-/// The mastery of a cast that is not a hero's (a creature's, a periodic caster's, a strike's
-/// spell) at `mastery`: Expert where the battlefield raises those (BAT-TER-005; the original's
-/// 0x59FEBC: Magic Plains).
+/// The mastery of a cast that is not a hero's own (a creature's, a periodic caster's, a strike's
+/// spell, an opening spell) at `mastery`: Expert where the battlefield raises those
+/// (BAT-TER-005; the original's 0x59FEBC: Magic Plains).
 // rule: BAT-TER-005
 pub(crate) fn other_mastery(state: &BattleState, mastery: u8) -> u8 {
     if state.limits.others_expert {
@@ -1016,8 +1016,9 @@ pub(crate) fn opens_with(ruleset: &BattleRuleset, spell: &BattleSpell, mastery: 
 /// tactics phase (the battle's activations; the tactics phase has its own), its hero casts each
 /// of its opening spells in their order if it affects some stack (0x5A40D0: some living stack
 /// the target test accepts, hypnotized ones counted), as a mass cast of the hero at the spell's
-/// mastery and power (caster kind 2): no mana, not the round's cast, no Eagle Eye, the power its
-/// effects' duration without the duration bonus, the hero's specialty applied; each stack is
+/// mastery (Expert where the battlefield raises the casts that are not the hero's own,
+/// BAT-TER-005) and power (caster kind 2): no mana, not the round's cast, no Eagle Eye, the power
+/// its effects' duration without the duration bonus, the hero's specialty applied; each stack is
 /// tested and rolls as for any of the hero's mass casts.
 // rule: BAT-MAG-068
 pub(crate) fn opening<S: Sink>(
@@ -1041,8 +1042,10 @@ pub(crate) fn opening<S: Sink>(
         .filter_map(|o| ruleset.spell(o.spell).map(|s| (o, s)))
     {
         let pair = (o.spell, spell);
+        // rule: BAT-TER-005
+        let mastery = other_mastery(state, o.mastery);
         let affects_some = stack_ids(state).any(|s| {
-            in_reach(state, ruleset, side, (pair, o.mastery), s)
+            in_reach(state, ruleset, side, (pair, mastery), s)
                 && accepts(state, ruleset, side, pair, s)
         });
         if !affects_some {
@@ -1057,12 +1060,12 @@ pub(crate) fn opening<S: Sink>(
             id: o.spell,
             spell,
             cost: 0,
-            mastery: o.mastery,
+            mastery,
             target: CastTarget::None,
             second: CastTarget::None,
             // rule: BAT-MAG-004
             value: u64::from(o.power) * u64::from(spell.power)
-                + u64::from(spell.effect[usize::from(o.mastery)]),
+                + u64::from(spell.effect[usize::from(mastery)]),
             bonuses,
             rounds: o.power,
             power: o.power,

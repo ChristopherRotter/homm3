@@ -223,7 +223,9 @@ pub enum CommandError {
     NotAnEnemy,
     /// The attack position is not adjacent to the target (BAT-ATK-001).
     NotAdjacent,
-    /// The active stack can shoot, so it may not attack in melee (BAT-RNG-001).
+    /// The active stack must shoot: it can shoot, so it may not attack in melee (BAT-RNG-001);
+    /// it is the commanded Catapult, which may only shoot the walls (no Wait, no Defend:
+    /// BAT-SIE-011).
     MustShoot,
     /// The active stack cannot shoot: not a shooter, no shots left, or blocked (BAT-RNG-001).
     CannotShoot,
@@ -275,7 +277,8 @@ pub enum CommandError {
     /// (BAT-SIE-011, BAT-SIE-013).
     CannotShootWalls,
     /// The wall-shot target is not one, is not set up by the fort level or is destroyed
-    /// (BAT-SIE-010).
+    /// (BAT-SIE-010), or a living stack stands on its hex for a shooter other than the Catapult
+    /// (the open gate, BAT-SIE-013).
     NoSuchPart,
 }
 
@@ -290,7 +293,7 @@ impl fmt::Display for CommandError {
             Self::NoSuchTarget => "no such living stack",
             Self::NotAnEnemy => "the target is not an enemy",
             Self::NotAdjacent => "the attack position is not adjacent to the target",
-            Self::MustShoot => "the stack can shoot, so it cannot attack in melee",
+            Self::MustShoot => "the stack must shoot",
             Self::CannotShoot => "the stack cannot shoot",
             Self::NotOnTarget => "the stack cannot aim at that hex of the target",
             Self::NoMelee => "war machines do not attack in melee",
@@ -312,7 +315,7 @@ impl fmt::Display for CommandError {
             Self::CastingForbidden => "no one may cast in this battle",
             Self::SpellLevelBarred => "the spell's level is above the battle's limit",
             Self::CannotShootWalls => "the stack cannot shoot the walls",
-            Self::NoSuchPart => "no such standing wall part",
+            Self::NoSuchPart => "no such standing wall part, or a stack stands on it",
         })
     }
 }
@@ -505,10 +508,7 @@ mod tests {
                 CommandError::NotAdjacent,
                 "the attack position is not adjacent to the target",
             ),
-            (
-                CommandError::MustShoot,
-                "the stack can shoot, so it cannot attack in melee",
-            ),
+            (CommandError::MustShoot, "the stack must shoot"),
             (CommandError::CannotShoot, "the stack cannot shoot"),
             (
                 CommandError::NotOnTarget,
@@ -520,7 +520,10 @@ mod tests {
                 CommandError::CannotShootWalls,
                 "the stack cannot shoot the walls",
             ),
-            (CommandError::NoSuchPart, "no such standing wall part"),
+            (
+                CommandError::NoSuchPart,
+                "no such standing wall part, or a stack stands on it",
+            ),
             (
                 CommandError::NotAPatient,
                 "the target is not a hurt allied stack",

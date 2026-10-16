@@ -46,6 +46,18 @@ impl Reach {
     pub(crate) const fn stops_at(&self, hex: Hex) -> bool {
         self.stops.contains(hex)
     }
+
+    /// This reach for a walker the computer keeps out of its stops (BAT-SIE-022; the original's
+    /// 0x4B3400 at 0x4B375C): the positions where its walk stops are not reached at all. The
+    /// others keep their steps, as a walk goes on from no stop; its starting hexes are none.
+    // rule: BAT-SIE-022
+    pub(crate) fn without_stops(mut self) -> Self {
+        for hex in self.stops.iter() {
+            self.dist[hex.index()] = UNREACHABLE;
+        }
+        self.stops = HexSet::new();
+        self
+    }
 }
 
 /// Whether a stack shaped like `mover` fits at the position `hex`: every hex of the footprint is

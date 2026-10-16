@@ -57,7 +57,7 @@ pub(crate) fn is_commanded(
     (commanded_ballista(state, id).is_some() && can_shoot(state, field, id))
         || (commanded_tent(state, id).is_some() && !patients(state, id).is_empty())
         // rule: BAT-SIE-011
-        || (state.at(id).slot == crate::siege::CATAPULT_SLOT
+        || (state.at(id).is_catapult()
             && crate::siege::commanded_wall_shots(state, ruleset, id).is_some())
 }
 
@@ -94,7 +94,7 @@ pub(crate) fn act<S: Sink>(
     sink: &mut S,
 ) {
     let field = Field::new(ruleset.battle().field);
-    if state.at(id).slot == crate::siege::CATAPULT_SLOT {
+    if state.at(id).is_catapult() {
         // rule: BAT-SIE-011
         let level = crate::siege::shooter_level(state, ruleset, id).unwrap_or(0);
         // The Catapult stands only in a siege, whose field the ruleset has (BAT-SIE-001).

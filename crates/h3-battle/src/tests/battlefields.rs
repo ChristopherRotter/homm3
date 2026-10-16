@@ -182,6 +182,53 @@ fn cursed_ground_bars_spells_above_level_one() {
     act(&mut s, &r, cast(&r, "bolt", stack(1))).unwrap();
 }
 
+/// E04c T10b review (F-r1-4): the battle's level limit is the lowest of the field's and the
+/// heroes' (a Recanter's Cloak's 2), whichever is lower.
+// covers: BAT-TER-004, BAT-MAG-062
+#[test]
+fn the_fields_level_limit_and_a_heros_join_at_the_lower() {
+    use h3_contracts::BattleEffect;
+    // Cursed Ground's limit 1 and a modded one's 3.
+    let modded = ruleset_from(
+        "t:faithful",
+        |_| {},
+        |_, battle| {
+            let cursed = battle
+                .battlefields
+                .iter_mut()
+                .find(|b| key("t:cursed").is_some_and(|k| b.key == k))
+                .unwrap();
+            cursed.max_spell_level = Some(3);
+        },
+    );
+    let limit = |r: &BattleRuleset, cloak: bool| {
+        let mut wearer = mage(r, &["bolt", "gloom"]);
+        if cloak {
+            wearer
+                .effects
+                .push(BattleEffect::SpellLevelLimit { max_level: 2 });
+        }
+        let mut s = arena(
+            r,
+            Some("t:cursed"),
+            false,
+            [Some(wearer), None],
+            &[("serf", 10, 5, 5)],
+            &[("fixed", 10, 9, 5)],
+        );
+        let level = s.limits.max_level;
+        // The level-2 Sorrow.
+        let gloom = act(&mut s, r, cast(r, "gloom", stack(1))).map(|_| ());
+        (level, gloom)
+    };
+    // The field's 1 below the cloak's 2: the level-2 spell is barred.
+    let r = ruleset();
+    assert_eq!(limit(&r, true), (1, Err(CommandError::SpellLevelBarred)));
+    // The cloak's 2 below the field's 3: it passes; without the cloak the field's 3.
+    assert_eq!(limit(&modded, true), (2, Ok(())));
+    assert_eq!(limit(&modded, false).0, 3);
+}
+
 // covers: BAT-TER-004, BAT-MAG-048, BAT-MAG-049
 #[test]
 fn cursed_ground_stops_creature_casts_but_not_the_key_path() {
@@ -304,6 +351,133 @@ fn magic_fields_raise_the_mastery_of_their_schools() {
     assert_eq!(at(Some("t:plains")), (3, 3, 3, 3));
     // An elemental field: its school, for the hero only.
     assert_eq!(at(Some("t:fiery")), (1, 3, 0, 2));
+}
+
+/// The value of the timed effect of `name` on stack `id` of `s`, if it has one.
+fn effect_value(s: &BattleState, r: &BattleRuleset, id: u8, name: &str) -> Option<u16> {
+    s.effects()
+        .iter()
+        .find(|e| e.stack == StackId(id) && e.spell == spell(r, name))
+        .map(|e| e.value)
+}
+
+/// E04c T10b review (F-r1-3): the strike's spells take the raise too.
+// covers: BAT-TER-005, BAT-MAG-040
+#[test]
+fn magic_plains_cast_the_strikes_spells_at_expert() {
+    let r = ruleset();
+    let weakness = |field: Option<&str>| {
+        let mut s = arena(
+            &r,
+            field,
+            false,
+            [None, None],
+            &[("weakener", 5, 7, 5)],
+            &[("fixed", 10, 8, 5)],
+        );
+        let attack = Command::Attack {
+            target: StackId(1),
+            from: at(&r, 7, 5),
+        };
+        act(&mut s, &r, attack).unwrap();
+        effect_value(&s, &r, 1, "weaken")
+    };
+    // The weakener's Weakness is at mastery 0 (3), at Expert 6 on Magic Plains only (the
+    // original's 0x59FEBC).
+    assert_eq!(
+        [None, Some("t:fiery"), Some("t:plains")].map(weakness),
+        [Some(3), Some(3), Some(6)]
+    );
+}
+
+/// The test ruleset with Fortune (luck 1 below Advanced, 2 from it) of the fire school and
+/// without a target from Basic, and the test Bloodlust caster (`luster`) casting only it, at
+/// Basic: a modded pack's periodic caster and opening spell below Expert.
+fn fortune_from_basic() -> BattleRuleset {
+    use h3_content_battle::AbilityDef;
+    ruleset_from(
+        "t:faithful",
+        |_| {},
+        |pack, battle| {
+            let fortune = key("t:fortune").unwrap();
+            let def = pack.spells.iter_mut().find(|s| s.key == fortune).unwrap();
+            def.schools = vec![key("t:fire").unwrap()];
+            let def = battle.spells.iter_mut().find(|s| s.key == fortune).unwrap();
+            def.magic.mass_from = Some(1);
+            let luster = key("t:luster").unwrap();
+            let def = battle
+                .creatures
+                .iter_mut()
+                .find(|c| c.key == luster)
+                .unwrap();
+            def.abilities
+                .retain(|a| !matches!(a, AbilityDef::DrawnSpell { .. }));
+            for a in &mut def.abilities {
+                if let AbilityDef::PeriodicSpellCaster { mastery, .. } = a {
+                    *mastery = 1;
+                }
+            }
+            def.abilities.push(AbilityDef::DrawnSpell {
+                spell: fortune,
+                weight: 1,
+            });
+        },
+    )
+}
+
+/// E04c T10b review (F-r1-3): the periodic casts take the raise too.
+// covers: BAT-TER-005, BAT-MAG-053
+#[test]
+fn magic_plains_raise_the_periodic_casts_to_expert() {
+    let r = fortune_from_basic();
+    let fortune = |field: Option<&str>| {
+        let setup = BattleSetup {
+            battlefield: field.and_then(key),
+            ..setup(&r, &[(0, "fixed", 5), (1, "luster", 3)], &[(0, "fixed", 4)])
+        };
+        let mut events: Vec<Event> = Vec::new();
+        let s = BattleState::start(&r, &setup, 2, &mut events).unwrap();
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e.kind, EventKind::PeriodicCast { .. }))
+        );
+        [0, 1].map(|id| effect_value(&s, &r, id, "fortune"))
+    };
+    // Basic Fortune's 1 on both own stacks, Expert's 2 on Magic Plains only (a fire field
+    // raises only the hero's own casts).
+    assert_eq!(fortune(None), [Some(1); 2]);
+    assert_eq!(fortune(Some("t:fiery")), [Some(1); 2]);
+    assert_eq!(fortune(Some("t:plains")), [Some(2); 2]);
+}
+
+/// E04c T10b review (F-r1-1): the opening spells are cast at Expert on Magic Plains, as every
+/// cast that is not the hero's own (the original's 0x59FE98: caster kind 2 takes the argument,
+/// Expert on field 1).
+// covers: BAT-TER-005, BAT-MAG-068
+#[test]
+fn magic_plains_cast_the_opening_spells_at_expert() {
+    use h3_contracts::BattleEffect;
+    let r = fortune_from_basic();
+    let fortune = |field: Option<&str>| {
+        let mut opener = hero(&r);
+        opener.effects = vec![BattleEffect::OpeningSpell {
+            spell: spell(&r, "fortune"),
+            mastery: 1,
+            power: 10,
+        }];
+        let setup = BattleSetup {
+            heroes: [Some(opener), None],
+            battlefield: field.and_then(key),
+            ..setup(&r, &[(0, "fast", 10)], &[(0, "fixed", 10)])
+        };
+        let s = BattleState::start(&r, &setup, 1, &mut Vec::<Event>::new()).unwrap();
+        effect_value(&s, &r, 0, "fortune")
+    };
+    assert_eq!(
+        [None, Some("t:fiery"), Some("t:plains")].map(fortune),
+        [Some(1), Some(1), Some(2)]
+    );
 }
 
 // ---------------------------------------------------------------- BAT-GEO-004

@@ -191,11 +191,11 @@ fn casting_details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
 
 // covers: BAT-MAG-034, BAT-GEO-003, BAT-GEO-004
 /// E04b T11b review (F-robust-2) on a battlefield the engine generates (grass, the obstacle
-/// stream of seed 888): its fourth obstacle blocks hexes 109 and 110 from its anchor 108, which
-/// it does not block; the fifth is a one-hex obstacle placed on 108. In the default profile
-/// (quirk BAT-QUIRK-3 on) the removal of the fourth clears hex 108 too, so no hex leads to the
-/// fifth any more: once the others are removed, Remove Obstacle has no target and is not
-/// castable (it was, without a target).
+/// stream of seed 472; seed 888 until the E04c T10b review changed the generator): its first
+/// obstacle blocks hexes 60 and 61 from its anchor 59, which it does not block; the second is a
+/// one-hex obstacle placed on 59. In the default profile (quirk BAT-QUIRK-3 on) the removal of
+/// the first clears hex 59 too, so no hex leads to the second any more: once the others are
+/// removed, Remove Obstacle has no target and is not castable (it was, without a target).
 #[test]
 fn remove_obstacle_keeps_a_target_while_it_is_castable() {
     let r = h3_pack_battle::compile(
@@ -209,15 +209,19 @@ fn remove_obstacle_keeps_a_target_while_it_is_castable() {
     .unwrap();
     let remove = r.spell_by_key("base:remove_obstacle").unwrap();
     let grass = r.terrain_by_key("base:grass").unwrap();
-    let mut stream = Rng::for_stream(888, StreamId::OBSTACLES);
+    let mut stream = Rng::for_stream(472, StreamId::OBSTACLES);
     let obstacles = generate_obstacles(&r, grass, &mut stream);
     let piece = |hexes: &[u8], anchor| (hexes.to_vec(), Some(anchor));
     assert_eq!(
-        obstacles[3..]
+        obstacles
             .iter()
             .map(|o| (o.hexes.clone(), o.anchor))
             .collect::<Vec<_>>(),
-        [piece(&[109, 110], 108), piece(&[108], 108)]
+        [
+            piece(&[60, 61], 59),
+            piece(&[59], 59),
+            piece(&[109, 110], 109)
+        ]
     );
     // Each piece names its type (E17 M1, CLT-Q3).
     assert!(obstacles.iter().all(|o| o.kind.is_some()));
@@ -249,9 +253,9 @@ fn remove_obstacle_keeps_a_target_while_it_is_castable() {
     let mut state = BattleState::new(&r, &setup, 1).unwrap();
     let side = BattleSide::Attacker;
     let mut targets = CastTargets::new();
-    // A hex of the fourth obstacle first, then one of each other obstacle that can be reached,
+    // A hex of the first obstacle first, then one of each other obstacle that can be reached,
     // a cast a round.
-    for hex in [109, 122, 73, 80] {
+    for hex in [60, 109] {
         assert_eq!(state.side_to_act(), Some(side));
         let cast = Command::Cast {
             spell: remove,
@@ -270,9 +274,9 @@ fn remove_obstacle_keeps_a_target_while_it_is_castable() {
         )
         .unwrap();
     }
-    // The fifth obstacle is left, blocking hex 108, and no hex leads to it.
+    // The second obstacle is left, blocking hex 59, and no hex leads to it.
     assert_eq!(state.removable_obstacles().len(), 1);
-    assert_eq!(state.removable_obstacles()[0].hexes(), [Hex(108)]);
+    assert_eq!(state.removable_obstacles()[0].hexes(), [Hex(59)]);
     cast_targets(&state, &r, side, remove, &mut targets);
     assert!(targets.is_empty(), "{:?}", targets.as_slice());
     assert!(!castable_spells(&state, &r, side).contains(remove));

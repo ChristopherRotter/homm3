@@ -17,11 +17,12 @@ use h3_kernel::arith::{DOUBLE_BITS, X87};
 
 use super::support::*;
 use crate::aim::{
-    advantage, ballista_target, context, estimate, ftol, kill_value, shot_value, turns,
-    turret_target, worth,
+    advantage, avoids_stops, ballista_target, context, estimate, ftol, kill_value, shot_value,
+    turns, turret_target, worth,
 };
 use crate::effects::{DamageRoll, Status};
 use crate::geometry::{Field, Hex};
+use crate::siege::damage_part;
 use crate::{BattleState, Event, EventKind, StackId, StackTraits};
 
 /// The Fight Values of the creatures these tests use.
@@ -266,6 +267,36 @@ fn a_war_machine_is_worth_its_share_of_its_army() {
     assert!(!context(&s, &r, field(&r), BattleSide::Defender).desperate);
 }
 
+// covers: BAT-SIE-020, BAT-SIE-021
+#[test]
+fn the_aim_s_sums_saturate_with_extreme_stacks() {
+    // Two stacks of u32::MAX creatures of u32::MAX hit points beside the Ballista: their hit
+    // points pass 2^64; the share's sums saturate, as the doubles do at 2^64 (`X87::MAX`), and
+    // the Ballista's worth stays within its whole worth, 650.
+    let r = rules();
+    let mut setup = siege(
+        &r,
+        &[(0, "archer", 1), (1, "archer", 1)],
+        &[(0, "slow", 10)],
+    );
+    setup.war_machines[0] = std::vec![r.creature_by_key("t:ballista").unwrap()];
+    let mut s = fresh(&r, &setup);
+    for st in &mut s.stacks.as_mut_slice()[..2] {
+        (st.count, st.max_hp, st.top_hp) = (u32::MAX, u32::MAX, u32::MAX);
+    }
+    let ctx = context(&s, &r, field(&r), BattleSide::Defender);
+    let ballista = worth(&s, (&r, field(&r)), &ctx, StackId(2), true);
+    assert!(
+        ballista > X87::ZERO && ballista <= X87::int(650),
+        "{ballista:?}"
+    );
+    // A kill value's damage with the top creature's lost hit points saturates too: as much as
+    // without them.
+    let whole = kill_value(s.at(StackId(0)), i64::MAX, X87::ONE);
+    s.stacks.as_mut_slice()[0].top_hp = 1;
+    assert_eq!(kill_value(s.at(StackId(0)), i64::MAX, X87::ONE), whole);
+}
+
 // ---------------------------------------------------------------- BAT-SIE-022 the turns
 
 // covers: BAT-SIE-022
@@ -280,7 +311,7 @@ fn the_turns_until_a_stack_can_attack() {
     );
     let s = fresh(&r, &setup);
     let f = field(&r);
-    let at = |s: &BattleState, id: u8| turns(s, f, StackId(id));
+    let at = |s: &BattleState, id: u8| turns(s, (&r, f), StackId(id));
     // Behind the walls the walker reaches no defender; the archer shoots now; the flyer needs
     // its hex distance to a place next to the defender, 7 a turn.
     assert_eq!(at(&s, 0), None);
@@ -307,10 +338,12 @@ fn the_turns_until_a_stack_can_attack() {
     let mut out = s.clone();
     out.stacks.as_mut_slice()[3].hex = Hex(5 * 17 + 9);
     assert_eq!(at(&out, 0), Some(2));
-    // The Catapult has no target; the walker goes through the wall its first shot broke, wading
-    // the moat (each moat hex ends a turn).
+    // The Catapult has no target; a human player's walker goes through the wall its first shot
+    // broke, wading the moat (each moat hex ends a turn; a computer's of 100 hit points keeps out
+    // of it, `a_computer_s_weak_walker_keeps_out_of_the_moat`).
     let mut setup = setup;
     setup.heroes[0] = Some(hero(&r));
+    setup.human = [true, false];
     let shot = BattleState::new(&r, &setup, 5).unwrap();
     let catapult = (0u8..)
         .zip(shot.stacks())
@@ -333,15 +366,122 @@ fn a_dead_defender_s_place_counts_within_one_turn() {
     );
     let f = field(&r);
     let walker = s.at(StackId(0)).hex;
-    let living = turns(&s, f, StackId(0)).unwrap();
+    let living = turns(&s, (&r, f), StackId(0)).unwrap();
     assert!(living > 1, "{living}");
     let dead = &mut s.stacks.as_mut_slice()[2];
     dead.count = 0;
     dead.hex = Hex(walker.0 + 3);
-    assert_eq!(turns(&s, f, StackId(0)), Some(1));
+    assert_eq!(turns(&s, (&r, f), StackId(0)), Some(1));
     // Bound, it reaches neither (BAT-MAG-045).
     s.binds.bound |= 1;
-    assert_eq!(turns(&s, f, StackId(0)), None);
+    assert_eq!(turns(&s, (&r, f), StackId(0)), None);
+}
+
+/// A Castle siege with a damaging moat, players `human`, the wall of row 4 (target 2, hex 78)
+/// broken, the attacker's stack 0 at `walker` and the defender's at hex 80 (row 4, column 12),
+/// just inside; the moat's hex on row 4 is 77 (column 9).
+fn through_the_wall(r: &BattleRuleset, walker: Spec, human: [bool; 2], at: u8) -> BattleState {
+    let mut setup = town_battle(r, Moat::Damaging, &[walker], &[(0, "slow", 1)]);
+    setup.human = human;
+    let mut s = fresh(r, &setup);
+    damage_part(&mut s, 2, 9, &mut Vec::<Event>::new());
+    s.stacks.as_mut_slice()[0].hex = Hex(at);
+    s.stacks.as_mut_slice()[1].hex = Hex(4 * 17 + 12);
+    s
+}
+
+// covers: BAT-SIE-022
+#[test]
+fn a_two_hex_walker_pays_a_moat_hex_it_covers_once() {
+    // Its front three hexes before the moat (the position, its rear, at 73): the front enters
+    // the moat at 2 + 3 = 5; the next step leaves its rear on that moat hex, which it covers
+    // already, 6 (0x4B3701–0x4B3725); beside the defender at 7: 2 turns at speed 5. Human
+    // players: no moat avoidance.
+    let r = rules();
+    let s = through_the_wall(&r, (0, "wide", 10), [true, true], 4 * 17 + 5);
+    assert_eq!(turns(&s, (&r, field(&r)), StackId(0)), Some(2));
+}
+
+// covers: BAT-SIE-022
+#[test]
+fn a_computer_s_weak_walker_keeps_out_of_the_moat() {
+    // A walker of 10 hit points and speed 5 three hexes before the moat: a human player's wades
+    // through it (in at 2 + 3 = 5, beside the defender at 7: 2 turns); the computer's steps on
+    // no stop (0x4B3400 at 0x4B375C), and the moat lies between it and every defender: none.
+    let r = rules();
+    let f = field(&r);
+    let human = through_the_wall(&r, (0, "fixed", 1), [true, true], 4 * 17 + 6);
+    assert_eq!(turns(&human, (&r, f), StackId(0)), Some(2));
+    let computer = through_the_wall(&r, (0, "fixed", 1), [false, true], 4 * 17 + 6);
+    assert_eq!(turns(&computer, (&r, f), StackId(0)), None);
+}
+
+// covers: BAT-SIE-022
+#[test]
+fn the_computer_s_walker_keeps_out_of_its_stops_by_its_hit_points() {
+    // 0x4B3400's prologue (0x4B3420–0x4B34B2): at a town, a stack whose controller's player is
+    // no human keeps out of its stops with at most 4 times the town's moat damage in hit points
+    // (the table's, t:castle's 70, harmless or not), or 40 times when it is the defender's or
+    // the gate is not closed. `fixed` has 10 hit points.
+    let r = rules();
+    let at = |fort, moat, human, (attackers, defenders): (u32, u32)| {
+        let siege = Siege {
+            faction: r.faction_by_key("t:castle").unwrap(),
+            fort,
+            moat,
+            structures: 0,
+            escape_tunnel: false,
+            morale: 0,
+            luck: 0,
+        };
+        let setup = BattleSetup {
+            siege: Some(siege),
+            human,
+            ..setup(&r, &[(0, "fixed", attackers)], &[(0, "fixed", defenders)])
+        };
+        fresh(&r, &setup)
+    };
+    let avoids = |s: &BattleState, id: u8| {
+        let mover = s.at(StackId(id));
+        avoids_stops(s, &r, mover, Some(mover.side))
+    };
+    let citadel = |counts| at(FortLevel::Citadel, Moat::Damaging, [false; 2], counts);
+    // The attacker before the closed gate: 4 times; the defender: 40 times.
+    let s = citadel((28, 280));
+    assert!(avoids(&s, 0) && avoids(&s, 1));
+    let s = citadel((29, 281));
+    assert!(!avoids(&s, 0) && !avoids(&s, 1));
+    // The gate open: 40 times for the attacker too.
+    let mut open = citadel((29, 1));
+    let mut town = open.siege.unwrap();
+    town.gate_open = true;
+    open.siege = Some(town);
+    assert!(avoids(&open, 0));
+    open.stacks.as_mut_slice()[0].count = 281;
+    assert!(!avoids(&open, 0));
+    // The table's damage under a harmless moat; a town without a fort keeps the original's
+    // closed gate (3, from the setup).
+    assert!(avoids(
+        &at(FortLevel::Citadel, Moat::Harmless, [false; 2], (28, 1)),
+        0
+    ));
+    let fortless = |n| at(FortLevel::None, Moat::Absent, [false; 2], (n, 1));
+    assert!(avoids(&fortless(28), 0) && !avoids(&fortless(29), 0));
+    // A clone has 1 hit point.
+    let mut s = citadel((29, 1));
+    let clone = &mut s.stacks.as_mut_slice()[0];
+    clone.traits = clone.traits.with(StackTraits::CLONE, true);
+    assert!(avoids(&s, 0));
+    // A human player's stacks wade; a hypnotized stack goes by its controller's player.
+    let s = at(FortLevel::Citadel, Moat::Damaging, [true, false], (28, 280));
+    assert!(!avoids(&s, 0) && avoids(&s, 1));
+    let mut s = at(FortLevel::Citadel, Moat::Damaging, [false, true], (28, 1));
+    let st = &mut s.stacks.as_mut_slice()[0];
+    st.spells.status = st.spells.status.with(Status::HYPNOTIZED, true);
+    assert!(!avoids(&s, 0));
+    // Away from a town, never.
+    let s = fresh(&r, &setup(&r, &[(0, "fixed", 1)], &[(0, "fixed", 1)]));
+    assert!(!avoids(&s, 0));
 }
 
 // ---------------------------------------------------------------- BAT-SIE-023 desperate mode
@@ -565,12 +705,12 @@ fn the_ballista_scores_kills_over_turns_but_not_on_easy_for_the_computer() {
     );
     let dealt = |t: u8| i64::try_from(estimate(&s, &r, (gun(&s), StackId(t)))).unwrap();
     assert_eq!((dealt(2), dealt(3)), (2, 2));
-    assert_eq!(turns(&s, field(&r), StackId(2)), Some(4));
+    assert_eq!(turns(&s, (&r, field(&r)), StackId(2)), Some(4));
     assert_eq!(
         value(&r, &s, 3),
         kill_value(s.at(StackId(3)), dealt(3), X87::int(140))
     );
-    assert_eq!(turns(&s, field(&r), StackId(3)), Some(1));
+    assert_eq!(turns(&s, (&r, field(&r)), StackId(3)), Some(1));
 }
 
 // covers: BAT-WAR-008
@@ -620,7 +760,7 @@ fn the_ballista_prefers_a_stack_that_keeps_its_turns() {
         },
     );
     blind(&mut s, 3);
-    assert!(turns(&s, field(&r), StackId(2)).is_some_and(|t| t > 5));
+    assert!(turns(&s, (&r, field(&r)), StackId(2)).is_some_and(|t| t > 5));
     assert_eq!((value(&r, &s, 2), value(&r, &s, 3)), (8 / 5, 66 / 10));
     assert_eq!(aimed(&r, &s), Some(2));
 }
@@ -857,7 +997,7 @@ fn the_automatic_ballista_does_not_show_hidden_pits() {
     let shot = |s: &BattleState| ballista_target(s, &r, field(&r), StackId(4)).map(|id| id.0);
     // Both one turn away: the serfs (the estimate's 2 hit points at 700 per 10: 140) before the
     // fixed (500: 100).
-    assert_eq!(turns(&clear, field(&r), StackId(0)), Some(1));
+    assert_eq!(turns(&clear, (&r, field(&r)), StackId(0)), Some(1));
     assert_eq!(shot(&clear), Some(0));
     // A hidden pit changes nothing, whichever side's.
     assert_eq!(shot(&with_pit(BattleSide::Attacker)), Some(0));
@@ -866,7 +1006,7 @@ fn the_automatic_ballista_does_not_show_hidden_pits() {
     for side in [BattleSide::Attacker, BattleSide::Defender] {
         let mut s = with_pit(side);
         s.spell_obstacles.reveal_for_tests(at(&r, 6, 5));
-        assert_eq!(turns(&s, field(&r), StackId(0)), Some(2));
+        assert_eq!(turns(&s, (&r, field(&r)), StackId(0)), Some(2));
         assert_eq!(shot(&s), Some(1), "{side:?}");
     }
 }

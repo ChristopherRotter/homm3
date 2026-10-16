@@ -1,14 +1,14 @@
 //! What observations show (E04b T9a): what the battle keeps per stack, the natural obstacles a
-//! removal cleared, each hero's hidden magic to its own side only (BAT-Q26), and a spectator's
-//! view (SRV-Q4).
+//! removal cleared, each hero's hidden magic to its own side only (BAT-Q26), a spectator's view
+//! (SRV-Q4), and a town's private facts (its mines, its Escape Tunnel; E04c T10b).
 
 use std::vec;
 use std::vec::Vec;
 
 use h3_content_battle::{BattleRuleset, ObstacleKind};
-use h3_contracts::{BattleEffect, BattleSide, EagleEye, Rate};
+use h3_contracts::{BattleEffect, BattleSide, EagleEye, FortLevel, Moat, Rate, Siege};
 
-use super::spells::{arena, mage, spell};
+use super::spells::{arena, arena_on, mage, spell};
 use super::support::*;
 use crate::{
     BattleState, Defences, Event, EventKind, Hex, NO_CORPSE, Opening, SpellSet, StackId, Viewer,
@@ -189,4 +189,66 @@ fn a_spectator_sees_what_both_sides_see() {
     assert_eq!(project_as(&private, Viewer::Spectator), None);
     assert_eq!(project(&private, BattleSide::Defender), Some(private));
     assert_eq!(project_as(&private, BattleSide::Attacker.into()), None);
+}
+
+// covers: BAT-SIE-007, BAT-SIE-024, BAT-MAG-031
+#[test]
+fn a_towns_mines_and_escape_tunnel_show_to_its_defender_only() {
+    let r = ruleset();
+    // A Citadel of the Tower's test record with a damaging moat (its mines) and a defending
+    // hero; the attacker has none (no Catapult).
+    let start = |escape_tunnel| {
+        let town = Siege {
+            faction: r.faction_by_key("t:necropolis").unwrap(),
+            fort: FortLevel::Citadel,
+            moat: Moat::Damaging,
+            structures: 0,
+            escape_tunnel,
+            morale: 0,
+            luck: 0,
+        };
+        arena_on(
+            &r,
+            [None, Some(hero(&r))],
+            &[("fixed", 10, 2, 5)],
+            &[("fixed", 10, 14, 9)],
+            1,
+            |s| s.siege = Some(town),
+        )
+    };
+    let (plain, tunnel) = (start(false), start(true));
+    // The mines: the defender sees its ten, none seen by the attacker; the others see none.
+    for s in [&plain, &tunnel] {
+        let own = observe(s, &r, BattleSide::Defender).spell_obstacles;
+        assert_eq!(own.len(), 10);
+        assert!(
+            own.iter()
+                .all(|o| o.kind == ObstacleKind::Mine && !o.revealed)
+        );
+        for viewer in [Viewer::Side(BattleSide::Attacker), Viewer::Spectator] {
+            assert!(observe_as(s, &r, viewer).spell_obstacles.is_empty());
+        }
+    }
+    // The Escape Tunnel (BAT-Q50 (4)): the defender sees its own option to retreat; the attacker
+    // and a spectator see it as `false` (unknown) and the same town as without the tunnel.
+    assert_eq!(
+        observe(&plain, &r, BattleSide::Defender).may_retreat,
+        [false, false]
+    );
+    assert_eq!(
+        observe(&tunnel, &r, BattleSide::Defender).may_retreat,
+        [false, true]
+    );
+    for viewer in [Viewer::Side(BattleSide::Attacker), Viewer::Spectator] {
+        let seen = observe_as(&tunnel, &r, viewer);
+        assert_eq!(seen.may_retreat, [false, false]);
+        assert_eq!(seen, observe_as(&plain, &r, viewer));
+    }
+    // The defender's own view differs in its option and its town only.
+    let mut own = observe(&tunnel, &r, BattleSide::Defender);
+    let without = observe(&plain, &r, BattleSide::Defender);
+    assert_ne!(own.siege, without.siege);
+    own.may_retreat = without.may_retreat;
+    own.siege = without.siege;
+    assert_eq!(own, without);
 }

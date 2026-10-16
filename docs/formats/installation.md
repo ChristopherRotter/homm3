@@ -2390,7 +2390,29 @@ native when its town's native terrain is +0x5394 (+1 speed, attack and defense, 
 - The two tables (usual types 0x63C7C8, absolute obstacles 0x63BEC0) equal VCMI 1.7.5's
   `config/obstacles.json` in every type's terrains, fields, size and blocked hexes (checked
   2026-10-13, 91 + 34 records); VCMI calls the water bit of type 55 the battlefield `ship`.
-- Not read: how 0x466010 and 0x4668A0 choose positions (the engine keeps VCMI's, BAT-GEO-004).
+- How 0x466010 and 0x4668A0 choose: the review re-read below.
+
+**Review re-read (E04c T10b; BAT-Q50).** The loop 0x4667F8 to 0x466878: the sampler over the
+usual types 0 to 90 (0x50C6E0) is set up once, before the loop. Each pass draws from it
+(0x50C740: one `rand() % n` over the n values not drawn yet while more than one is left, none
+for the last; −1 once it is empty, which ends the loop) until a type has the mask's bit, calls
+0x466010 with that type and, only when it is placed (0x466858), adds the type's hex count (+6)
+to the hexes blocked; the loop goes on while that sum is below the count (less half the absolute
+obstacles' hexes, truncated). So each usual type appears at most once in a battle, and a type
+without a place is passed over for the next one; VCMI, whose generator the engine had ported,
+draws a type anew for every obstacle and stops at the first one without a place. 0x466010 draws
+anchors 18 to 168 from a sampler of its own until one passes (an empty sampler fails the
+placement): the row (anchor / 17) at least the type's height +4 (0x46608D; VCMI and the engine
+refused the height's own row too), the column (anchor % 17) not 0, column + width (+5) at most
+15, the anchor's flags 0x3F clear; then each of the +6 offsets (+8, signed bytes added to the
+anchor; one hex less when it lands in an even row from an odd anchor row) in columns 3 to 13 and
+free. A branch for a siege of town type 6 on the game version (0x466147 to 0x466194) was not
+followed. 0x4668A0 draws the 34 absolute records the same way and returns the hexes it blocked,
+0 when no record has the mask's bit. The engine draws once among the candidates that fit where
+these samplers draw until one fits: the same chances, other draws (and its stream, not the
+tile's seed). The opening spells (§7.24) are cast as kind 2, and 0x59FE98 to 0x59FECD gives
+every kind but 0 its mastery argument, 3 on field 1: the engine raises them as the creatures'
+casts since this review.
 
 ### 7.27 Code reading: the siege's setup (E04c T4, 2026-10-13)
 
@@ -2567,6 +2589,27 @@ at a round's start the stacks' turn flags (+0x4F0) are cleared, then the keep sh
 Catapult (the keep's flag stayed set throughout, and so did the Catapult's in G's town with a Fort only,
 though it shot every round: not read).
 
+**Review re-read (E04c T10b, 2026-10-15): the gate's hexes as the records hold them.** `hex_blocked`
+(0x469A10) reads the records of 95 and 94 as they are (their stack byte and corpse count), with no
+exception for the stack that moves: a defender's stack standing on 94 bars itself from 95 and 96
+and must go round through the moat (the review found no call that takes the mover off its hexes
+before the pathfinder's test; not re-read here). The closing 0x4672E0 reads the same records, and
+the death routine 0x444120 appends no corpse for a summoned stack: one killed on 95 holds nothing
+from its death on, so the gate closes at that action's end (0x479C65). The engine had counted a
+dead created stack as a corpse until the command's end marked it none, which kept the gate open
+through the killer's good-morale turn; it now counts it nowhere (BAT-SIE-003). Not read: whether
+the dispatcher reaches 0x479C65 before a good-morale turn (the engine closes the gate at every
+turn's end, before the morale roll).
+
+**Review re-read (E04c T10b, 2026-10-15): a frenzied striker in the moat.** For a frenzied
+striker `stack_attack_against` (0x442410) asks 0x442590 for the striker's own defense (0x442514,
+the other stack as the argument, the struck flag 0), scales it by the frenzy's factor and adds it
+to the attack. With the flag 0 only the "frenzied when struck: 0" branch is skipped: the Behemoths'
+share and the moat's 3 (0x442646, either hex of the striker on a moat hex) apply, without a floor.
+So a frenzied stack in the moat adds 3 × the factor less; with a defense below 3 the sum lowers its
+attack. VCMI agrees on the 3 (its moat's defence bonus feeds the frenzy's share) but floors the
+attack at 0. The engine had added the full defense (BAT-SIE-006, BAT-MAG-019). Not observed.
+
 ### 7.29 Code reading: the Catapult, Ballistics and Earthquake (E04c T6, 2026-10-14)
 
 Read for E04c T6 (the survey `docs/rules/surveys/E04c-sieges.md`, D-11 to D-15; BAT-Q43): the
@@ -2660,6 +2703,35 @@ the nearest standing target (D-12); a destroyed mid-upper wall opened 78, not 62
 destroyed gate stayed 0 and let a walker pass 95 without a stop or damage; Earthquake cast by both
 sides (D-15) drew the absent towers, wasted a hit on a doomed part (D-14), and the absent towers'
 destruction marked the defender's first stack dead (S-08).
+
+**Review re-read (E04c T10b, 2026-10-15): the side after the Catapult's turn.** The pick 0x465080
+first looks at the record activated last (+0x132B8, +0x132BC; §7.21): when it is the attacker's
+and its creature is 145, the Catapult, it writes the defender's record 0 there (0x46508B to
+0x4650C5) before it compares the candidates. The comparison then prefers at equal speeds the
+stack whose side is not the defender's (0x46502A), so after the Catapult's turn, automatic,
+commanded or passed (action 12 follows an activation too), the attacker's stack wins a tie. The
+engine counts the defender as the side that acted last after the Catapult's turn (BAT-SIE-011,
+BAT-TRN-001). Not observed. Action 12 (the dispatcher's case 0x479BC2) only sets the acted bit:
+a passed turn gives no Defend bonus. The engine offers the commanded Catapult no Wait and no
+Defend (BAT-Q50: batch 3d B saw Defend do nothing, Wait was not tried), and a hero's Earthquake
+that brings down the last standing target during the commanded turn passes the turn at once, as
+the Catapult's turn 0x473C00 (called by the battle loop at 0x4743A3) does without a standing
+target; whether the loop calls it again after a cast was not read.
+
+**Review re-read (E04c T10b, 2026-10-15): a living stack on the gate's hex.** Before the wall test
+the cursor 0x476490 reads the hovered hex's record (+0x18, the living stack on it): it goes on to
+the empty-hex path with the wall test (0x47684B) only when no living stack stands there or the
+acting creature is 145, the Catapult (0x4766AA to 0x4766B9); any other creature's click on a hex
+with a living stack goes to that stack. Of the targets' aim hexes only the gate's (96) can hold a
+stack (the walls' are wall hexes, the towers' and the keep's lie off the field), so while a
+living stack stands in the open gate the Cyclops has no shot at the gate. The engine neither
+lists nor accepts it then (BAT-SIE-013); a corpse there does not count. Not observed.
+
+**Review re-read (E04c T10b, 2026-10-16): the Catapult is its creature.** The tie-break's reset
+(0x4650AE), the Catapult's turn (0x473C35) and the cursor (0x4766B2) compare the record's
+creature (+0x34) with 145, not its slot. A stack the engine raises from a corpse takes the
+corpse's army slot (BAT-MAG-052), so `Stack::is_catapult` leaves a raised stack out: one risen
+from the Catapult's corpse, were its creature alive, is commanded as any stack (BAT-SIE-009).
 
 ### 7.30 Code reading: the arrow towers (E04c T7, 2026-10-14)
 
@@ -2839,6 +2911,45 @@ preferring a stack that is not blind, petrified or paralysed, ties to the later 
 0x435CB0 is the expected damage value of 0x435B90 (the shooter's own damage estimate, then
 0x442FD0's kills times worth) divided as above, but by 10 for a blind, petrified or paralysed
 target, and not at all on Easy for a computer side.
+
+**Review re-read (E04c T10b, 2026-10-15): the stop a step enters.** 0x4B3400 tests a step's stop
+at 0x4B3701–0x4B3725: for a one-hex stack the new hex; for a two-hex stack the new position's hex
+unless it is the current other hex, and the new other hex unless it is the current position's
+hex. So a stop is entered only by a hex the stack does not cover before the step: a two-hex
+walker whose front entered the moat and steps on, its rear now on that moat hex, pays nothing
+more (BAT-SIE-022). Its starting hexes are no stop at all (0x4B3290 clears them).
+
+**Review re-read (E04c T10b, 2026-10-15): the computer's walker keeps out of the moat.**
+0x4B3400's prologue (0x4B3420–0x4B34B2) clears a local flag and sets it only at a town (+0x53C8)
+for a stack 0x474BF0 calls automatic: for a creature (its default case) a hidden battle, +0x132C4
+with an options global (not read further), a remote network turn, or else a controlling side (the
+owner, the other side while +0x288, hypnotized) without a player or whose player is not human
+(0x474D15–0x474D60). With `h` = 0x443080(stack, 0), the total hit points (1 for a clone, a signed
+32-bit product), and `d` = 0x63BD18 by the town's type, read whatever the moat (harmless under RoE
+or AB rules, absent below a Citadel, the Tower's 150 of its mines): the flag is set when `h ≤ 4d`;
+otherwise, when the side argument is 1 or the gate +0x53A4 is not 3, when `h ≤ 40d` (0x4B3481
+leaves it clear when neither holds; signed comparisons). The side argument is the one 0x422B20
+passes on through 0x4B2DA0, the side whose records it fills: the stack's own side, not its
+controller. The gate is 3 from the setup at every town, a town without a fort too (0x463C10). No
+caller changes this: the flag 0x422B20 passes (the tactics byte +0x13D68) only widens the range
+and the speed (0x4B34DE). At a neighbour that fits, with the flag set and the step entering a stop
+(0x4B375C–0x4B376C), the walker does not queue it: the step takes the occupied hex's way (the
+attack marks) and, for neither a flyer nor a Devil (0x4B39C4), ends there. So such a walker's
+paths cross no moat hex and no Quicksand its side sees; flyers have no stops (0x4B3290). The
+engine keys it on `BattleSetup.human` of the stack's controller (the default: two computer
+players; BAT-SIE-022, BAT-Q50 (2)).
+
+**Review re-read (E04c T10b, 2026-10-16): the berserk turn's paths.** Both of a berserk stack's
+pathfinder queries run that prologue: the candidates' map (0x445582 calls 0x4B2DA0 with the
+side -1, which it passes on to 0x4B3400 at 0x4B2DF4–0x4B2E00) and the walk to the chosen one
+(0x42232C calls 0x4B3400 with the side -1). With no side's records the side term never holds, so
+only the gate decides the 40 times: such a walker keeps out of its stops with `h ≤ 4d`, or with
+`h ≤ 40d` while the gate is not 3. 0x474BF0 flips the controlling side for Hypnotize alone
+(+0x288; Berserk's duration is +0x284), so a berserk stack is automatic as its owner's player is.
+The engine's berserk walk takes no position on a stop then, neither as a place to attack from (it
+takes none anyway) nor as the end of a walk towards a farther target, where it could otherwise
+end on a moat hex among equally short paths (BAT-MAG-025). How the original's walk beyond the
+stack's speed continues (0x41F580) stays unread.
 
 ### 7.32 Code reading: the siege's other rules (E04c T8, 2026-10-15)
 

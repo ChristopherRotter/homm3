@@ -76,15 +76,43 @@ fn creatures_on_their_native_terrain_get_one_attack_defense_and_speed() {
 
 // ---------------------------------------------------------------- BAT-GEO-004 obstacles
 
+/// A usual obstacle type: `(name, width, height, blocked hexes)`.
+type UsualType<'a> = (&'a str, u8, u8, &'a [(i8, i8)]);
+
+/// The test ruleset with the usual obstacle types `types` on the void terrain, in this order.
+fn void_with(types: &[UsualType<'_>]) -> BattleRuleset {
+    use h3_content::ContentKey;
+    ruleset_from(
+        "t:faithful",
+        |_| {},
+        |_, battle| {
+            for &(name, width, height, blocked) in types {
+                battle.obstacles.push(h3_content_battle::ObstacleDef {
+                    key: ContentKey::new("t", name).unwrap(),
+                    terrains: std::vec![ContentKey::new("t", "void").unwrap()],
+                    battlefields: Vec::new(),
+                    width,
+                    height,
+                    blocked: blocked.to_vec(),
+                    absolute: false,
+                });
+            }
+        },
+    )
+}
+
 // covers: BAT-GEO-004
 #[test]
 fn generated_obstacles_block_five_to_twelve_hexes_away_from_the_armies() {
-    let r = ruleset();
+    // Eight two-hex stone types: each is drawn at most once, so they never run out here.
+    let stone: &[(i8, i8)] = &[(0, 0), (1, 0)];
+    let r = void_with(&["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"].map(|n| (n, 2, 1, stone)));
     let f = field(&r);
     let mut seen = BTreeSet::new();
+    let mut in_row_one = false;
     for seed in 0..200u64 {
-        let hexes = generate(&r, "plain", seed);
-        assert_eq!(hexes, generate(&r, "plain", seed), "deterministic");
+        let hexes = generate(&r, "void", seed);
+        assert_eq!(hexes, generate(&r, "void", seed), "deterministic");
         // Only two-hex stones: 5..=12 hexes to block means 3..=6 stones.
         assert!(
             (6..=12).contains(&hexes.len()) && hexes.len().is_multiple_of(2),
@@ -93,16 +121,22 @@ fn generated_obstacles_block_five_to_twelve_hexes_away_from_the_armies() {
         assert!(hexes.windows(2).all(|w| w[0] < w[1]), "sorted, each once");
         for &h in &hexes {
             let (x, y) = f.coords(crate::Hex(h));
-            assert!((3..=13).contains(&x) && (2..=9).contains(&y), "({x}, {y})");
+            assert!((3..=13).contains(&x) && (1..=9).contains(&y), "({x}, {y})");
+            in_row_one |= y == 1;
         }
         seen.insert(hexes.clone());
-        // Each stone keeps its anchor, its bottom-left hex (Q55).
-        let ps = pieces(&r, "plain", seed);
+        // Each stone keeps its anchor, its bottom-left hex (Q55), and is of another type.
+        let ps = pieces(&r, "void", seed);
         assert!(
             ps.iter()
                 .all(|o| o.hexes.len() == 2 && o.anchor == Some(o.hexes[0])),
             "{ps:?}"
         );
+        let kinds: BTreeSet<_> = ps
+            .iter()
+            .map(|o| o.kind.as_ref().map(|k| String::from(k.as_str())))
+            .collect();
+        assert_eq!(kinds.len(), ps.len(), "{ps:?}");
         // The setup is valid and the armies still find their places.
         let s = BattleSetup {
             obstacles: ps,
@@ -111,6 +145,98 @@ fn generated_obstacles_block_five_to_twelve_hexes_away_from_the_armies() {
         BattleState::new(&r, &s, seed).unwrap();
     }
     assert!(seen.len() > 150, "varied layouts: {}", seen.len());
+    // A height-1 stone may lie in row 1 (the original's 0x46608D).
+    assert!(in_row_one);
+}
+
+// covers: BAT-GEO-004
+#[test]
+fn an_anchor_may_lie_in_the_row_of_its_obstacles_height() {
+    // The original's 0x466010 refuses an anchor only in a row above its type's height
+    // (0x46608D: the row below the height); VCMI refused that row too.
+    let r = ruleset_with("t:faithful", |_| {});
+    let f = field(&r);
+    for height in [1u8, 2] {
+        let o = h3_content_battle::ObstacleType {
+            key: h3_content::ContentKey::new("t", "o").unwrap(),
+            terrains: Vec::new(),
+            battlefields: Vec::new(),
+            width: 1,
+            height,
+            blocked: std::vec![(0, 0)],
+            absolute: false,
+        };
+        let row = i32::from(height);
+        let anchor = at(&r, 5, row);
+        assert_eq!(
+            crate::terrain::placement_for_tests(f, &o, anchor),
+            Some(std::vec![anchor.0])
+        );
+        assert_eq!(
+            crate::terrain::placement_for_tests(f, &o, at(&r, 5, row - 1)),
+            None
+        );
+    }
+}
+
+/// The original draws each usual type at most once in a battle (its sampler over the types is
+/// set up once, 0x4667F8) and goes on with the next type after one without a place (0x466858):
+/// one-hex types `a`, `b` and `c` and a `spire` too tall for the field.
+// covers: BAT-GEO-004
+#[test]
+fn usual_types_are_drawn_once_each_and_one_without_a_place_is_passed_over() {
+    let one: &[(i8, i8)] = &[(0, 0)];
+    let r = void_with(&[
+        ("a", 1, 1, one),
+        ("spire", 1, 10, one),
+        ("b", 1, 1, one),
+        ("c", 1, 1, one),
+    ]);
+    let f = field(&r);
+    let void = terrain(&r, "void");
+    let types: Vec<_> = r
+        .obstacles()
+        .iter()
+        .filter(|o| o.terrains.contains(&void))
+        .cloned()
+        .collect();
+    let below =
+        |rng: &mut Rng, n: usize| usize::try_from(rng.below(u32::try_from(n).unwrap())).unwrap();
+    for seed in 0..50u64 {
+        let mut rng = Rng::for_stream(seed, StreamId::OBSTACLES);
+        let mut model = rng.clone();
+        let got = generate_obstacles(&r, void, &mut rng);
+        // The draws in the original's order: 5..=12 hexes to block, the 40 % roll (no absolute
+        // type here), then while hexes remain a type among those not drawn yet, in the
+        // ruleset's order, and, if it has a place, an anchor among its places.
+        let to_block = model.range_inclusive(5, 12);
+        model.range_inclusive(1, 100);
+        let mut left = types.clone();
+        let (mut blocked, mut expected) = (BTreeSet::new(), Vec::new());
+        while u32::try_from(blocked.len()).unwrap() < to_block && !left.is_empty() {
+            let o = left.remove(below(&mut model, left.len()));
+            let places: Vec<u8> = (18..=168u8)
+                .filter(|&h| {
+                    !blocked.contains(&h)
+                        && crate::terrain::placement_for_tests(f, &o, crate::Hex(h)).is_some()
+                })
+                .collect();
+            if places.is_empty() {
+                continue;
+            }
+            let anchor = places[below(&mut model, places.len())];
+            blocked.insert(anchor);
+            expected.push(h3_contracts::Obstacle {
+                hexes: std::vec![anchor],
+                anchor: Some(anchor),
+                kind: Some(o.key.clone()),
+            });
+        }
+        assert_eq!(got, expected, "{seed}");
+        assert_eq!(rng, model, "the same draws: {seed}");
+        // 5..=12 hexes to block outlast the three types that have a place.
+        assert_eq!(got.len(), 3);
+    }
 }
 
 // covers: BAT-GEO-004
@@ -134,10 +260,10 @@ fn absolute_obstacles_appear_with_their_chance_and_count_half() {
                 .iter()
                 .map(|p| p.kind.as_ref().map(|k| String::from(k.as_str())))
                 .collect();
-            assert_eq!(kinds[0].as_deref(), Some("t:cliff"));
-            assert!(kinds[1..].iter().all(|k| k.as_deref() == Some("t:stone")));
-            // The cliff counts 2 of 5..=12, the stones fill 3..=10: 2..=5 stones.
-            assert!((8..=14).contains(&hexes.len()), "{hexes:?}");
+            // The cliff counts 2 of 5..=12; 3..=10 remain, and the lava's one usual type, the
+            // stone, comes at most once (the original's 0x4667F8).
+            assert_eq!(kinds, [Some("t:cliff".into()), Some("t:stone".into())]);
+            assert_eq!(hexes.len(), 6, "{hexes:?}");
         }
     }
     // 40 % of 400 = 160 (σ ≈ 9.8); stones alone never cover all four cliff hexes in a row

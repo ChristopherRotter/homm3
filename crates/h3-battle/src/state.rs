@@ -441,7 +441,10 @@ fn war_machines(
 
 /// The attacker's Catapult at the siege field's hex (BAT-SIE-009; the original's 0x463600 sets
 /// it up for a hero without testing its Catapult artifact), the ruleset's first creature with
-/// the flags `war_machine` and `catapult`; none if the ruleset has no such creature.
+/// the flags `war_machine` and `catapult`; none if the ruleset has no such creature. An obstacle
+/// of the setup on its hexes leaves it no room ([`SetupError::NoRoom`]), as on any war machine's
+/// fixed hexes (BAT-WAR-001); [`SetupError::InvalidSiege`] is the walls', the moat's and the
+/// mines' alone.
 fn catapult(
     ruleset: &BattleRuleset,
     field: Field,
@@ -847,6 +850,13 @@ impl Stack {
         self.slot >= TURRET_SLOT && self.slot < TURRET_SLOT + MAX_TURRETS as u8
     }
 
+    /// Whether the stack is the attacker's Catapult (BAT-SIE-009): the record of its slot, not a
+    /// stack raised from its corpse into that slot (BAT-MAG-052; the original tests the creature,
+    /// 0x473C35). A created stack takes [`CREATED_SLOT`].
+    pub(crate) const fn is_catapult(&self) -> bool {
+        self.slot == CATAPULT_SLOT && !self.traits.contains(StackTraits::RAISED)
+    }
+
     /// Whether the battle created the stack (a clone or a summoned stack, BAT-MAG-037).
     pub const fn is_created(&self) -> bool {
         self.traits.contains(StackTraits::SUMMONED)
@@ -995,7 +1005,8 @@ pub struct BattleState {
     pub(crate) anti_magic: bool,
     /// The game's difficulty, 0 (Easy) to 4 (Impossible), and whether each side's player is
     /// human (ADR-0023 point 7; public): read only by the choices the battle makes for a side as
-    /// the original's computer does (an automatic turret's desperate aim, BAT-SIE-023).
+    /// the original's computer does (an automatic turret's desperate aim, BAT-SIE-023; the stops
+    /// a computer's walker keeps out of in its turns, BAT-SIE-022).
     pub(crate) difficulty: u8,
     /// See `difficulty`.
     pub(crate) human: [bool; 2],
@@ -1252,9 +1263,10 @@ impl BattleState {
         self.heroes[side.index()].is_some()
     }
 
-    /// Whether `side` may retreat (BAT-FLE-001; public, ADR-0013 point 9): it has a hero, no
-    /// hero in the battle has a `NoRetreat` effect and, at a town, it is the attacker or the town
-    /// has an Escape Tunnel (BAT-SIE-024). It retreats on its own turn or in its tactics phase.
+    /// Whether `side` may retreat (BAT-FLE-001; public, ADR-0013 point 9, but at a town the
+    /// defender's to the defender only: BAT-Q50 (4)): it has a hero, no hero in the battle has a
+    /// `NoRetreat` effect and, at a town, it is the attacker or the town has an Escape Tunnel
+    /// (BAT-SIE-024). It retreats on its own turn or in its tactics phase.
     pub fn may_retreat(&self, side: BattleSide) -> bool {
         hero::may_retreat(&self.heroes, side) && siege::may_retreat(self, side)
     }
@@ -1410,7 +1422,9 @@ impl BattleState {
             .map(Stack::controller)
     }
 
-    /// The side of the last stack that took a turn (speed tie-breaks, BAT-TRN-001).
+    /// The side the speed tie-break counts as activated last (BAT-TRN-001; the original's
+    /// +0x132B8): the side of the last stack that took a turn, but the defender after the
+    /// attacker's Catapult (BAT-SIE-011).
     pub const fn last_side_acted(&self) -> Option<BattleSide> {
         self.last_side_acted
     }
