@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c closed (2026-10-16, T10c):** `shared/e04c-closure` (merge first), `battle/e04c-t10c` (`cross-lane`); `h3-heroes` and `heroes.toml` move to the adventure lane with the shared one. **Next:** the user picks the next epic (E05, E23 the original's battle AI, E11).
+- **E04c closed (2026-10-16, T10c):** #243 `shared/e04c-closure` (merge first), #244 `battle/e04c-t10c` (`cross-lane`); `h3-heroes` and `heroes.toml` move to the adventure lane with the shared one. **Next:** the user picks the next epic (E05, E23 the original's battle AI, E11).
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, the inbox, Q43; S-23, S-24, batch 2g.
 - **Versions** (unchanged since T10b): battle state hash v51, battle part hash v6, replay format v29, action encoding v13, C ABI v25, observation encoding v21; shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q51, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
