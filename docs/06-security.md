@@ -29,6 +29,13 @@ untrusted files  ──bytes──▶ [formats adapter: validates, bounds, conve
 - **Side channels to consider:** RNG seed/stream state must not reach clients (it predicts rolls); saves and replays are exported *per viewer* (redacted) unless the requester is authorized (e.g., post-game); state hashes must not be computed over, or exposed in a form that leaks, hidden data; error messages must not reveal hidden facts ("no such hidden object at tile X" vs. "invalid").
 - **Hotseat** hiding is UI-level and out of scope for the core.
 
+### What a viewer may know: a battle (E04a–E04c)
+
+ADR-0013 point 9 owns the list (ADR-0014 for magic, ADR-0023 for a town); `h3_battle::observe` and `project` implement it, the battle's hygiene properties and `h3-protocol`'s frame tests check it. Two points E04c's review settled (the user, BAT-Q50):
+
+- **A town's Escape Tunnel** is its defender's: at a town the attacker and a spectator see the defender's `may_retreat` as `false` and the observed siege without the tunnel (E04c T10b). The original enables the retreat control for the acting side only (0x478573), and a town's buildings are no public fact.
+- **The computer's choices for a side** (the automatic turrets' and Ballista's targets, ADR-0023 point 7) read the other side's private Armorer reduction and Artillery level, as the original's computer does, and the target shot is public, so a side may infer something of them from it. Kept as the original in every profile (BAT-SIE-020, BAT-WAR-008; the quirks ledger, beside BAT-Q31's berserk walk, which reads the hidden pits of its own side the same way).
+
 ### What a viewer may know: the adventure map (E08)
 
 The list the adventure epic owns (ADR-0016 points 5 and 6, ADR-0017 point 5); `h3_game::observe` and `project` implement it (E08 T8b1), the property tests of E08 T8b2 check it. A player viewer:

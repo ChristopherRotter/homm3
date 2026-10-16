@@ -93,7 +93,6 @@ name = "battle"
 code = "BAT"
 paths = [
     "crates/h3-battle/",
-    "crates/h3-heroes/",
     "crates/h3-content-battle/",
     "crates/h3-pack-battle/",
     # Until the AI lane (E05).
@@ -110,7 +109,6 @@ paths = [
     "experiments/",
     "benches/battle/",
     "docs/rules/catalog/battle.toml",
-    "docs/rules/catalog/heroes.toml",
     "docs/rules/quirks-ledger.md",
     "docs/rules/surveys/",
     "docs/experiments/",
@@ -131,6 +129,10 @@ paths = [
     "crates/h3-game/",
     "crates/h3-map/",
     "crates/h3-pack-adventure/",
+    # The hero model beneath the contexts and its rules (ADR-0013 points 1 and 2, E08 decision 25):
+    # moved from battle when E04c closed (the user, ADV-Q13: once the battle lane is done with it).
+    "crates/h3-heroes/",
+    "docs/rules/catalog/heroes.toml",
     # Adventure-owned sub-paths of the battle lane's crates and folders, by the longest match
     # (ADR-0017 point 8): AdventureEnv, the CLI's adventure commands and the test that re-runs the
     # adventure's golden replays (`cargo xtask determinism`), the replays, test maps.
