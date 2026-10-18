@@ -89,7 +89,9 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### AI lane (`AI-Q<n>`)
 
-(no open questions)
+#### AI-Q4 — The encounter distribution's assumptions (E05 T5a)
+
+**Context.** The census of the 159 shipped maps (`crates/h3-sim/data/census-v1.toml`, `docs/epics/E05-design.md` §4.3) gives the places, the monsters' levels, the towns and their forts. What the maps cannot say (decision 7: "stated assumptions where maps say nothing") is proposed in design §4.4, A1 to A12: the kinds of encounter and their shares, the game week per kind, the neutral stack (the census's level, the game's own draws, 10 % growth a week), the army facing it (its value × a ratio around 1.8), a hero's army (the faction's weekly growth × weeks × a share), its creatures by week, a hero's level and kit by week, sieges, the twins, the places, the difficulty left out, the neutral kinds weighted 0 in training until E23. **Options:** (a) the table as proposed; (b) changes per row; (c) fewer dimensions in v1 (for example fixed weeks or no hero kit) and the rest in a later version. **Recommendation:** (a) with the user's changes per row; T5b builds the sampler on it, and every number stays a field of `encounters-v1.toml` that a later version can change. **Blocked:** T5b.
 
 ### Client lane (`CLT-Q<n>`)
 

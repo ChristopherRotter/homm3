@@ -107,7 +107,7 @@ rewards between its own moves (§5).
   text, integer weight, seats); each reset draws one by weight; or (ii) the encounter
   distribution (T5).
 
-### 4.2 The encounter distribution v1 (shape; T5 fills it)
+### 4.2 The encounter distribution v1 (shape; T5b fills it)
 
 A versioned TOML in the AI lane (`crates/h3-sim/data/encounters-v1.toml`; parsed in Rust, which
 needs `serde`/`toml` in `h3-sim` and `h3-heroes` for the heroes: T5's shared pull request), its
@@ -157,15 +157,69 @@ player = "external"
   none (level, class, primary and secondary skills, artifacts, spells and their masteries, war
   machines, through `h3-heroes`' `derive_battle_hero`); the attacker/defender value ratio;
   difficulty; seats.
-- **The census** (T5a): `h3 ai census <maps>` (`h3-cli`'s `src/ai/`, run locally with the user's
-  maps through `h3-map`) writes aggregate numbers only (ADR-0009: counts and shares, no map
-  content, no per-map rows): land tiles per terrain, monster placements per terrain and level
-  class, special-ground tiles per kind, towns per faction, guarded piles, water share, map sizes.
-  Each placement counts once (a larger map holds more battles). Its derivation is recorded with
-  it; the adventure lane's census (`docs/rules/surveys/E08-battles.md` §1.1) is the precedent.
+- **The census** (T5a): built, §4.3; the assumptions where maps say nothing, §4.4.
 - A curriculum samples the same dimensions with other weights (an override table of the same
   shape). T5b's check samples many scenarios and compares each dimension's frequencies with its
   weights.
+
+### 4.3 The census v1 (T5a, built)
+
+- **`h3 ai census <maps folder or files> [--out <file>]`** (`h3-cli`'s `src/ai/census.rs`) reads
+  each `.h3m` through `h3-map` (the raw model and the static layer's `import_map`, which every
+  shipped map passes) into a `GameState` of one player on the original packs (`base:faithful`)
+  and adds up aggregate numbers only (ADR-0009): the maps by version, size and levels; the tiles
+  by passage (land, water, impassable; underground, coast, *open*: no object blocks it or is
+  visited from it); the monsters by level (fixed or drawn creature) and how many fix their count;
+  guarded piles, special grounds, placed and random heroes, prisons, garrisons (anti-magic apart:
+  subclass 1), creature banks, the four banks with their own class, boats; the towns by faction
+  (a random town apart) and starting fort (the standard set's flag, or the custom set's fort,
+  citadel or castle bit); and **every battle place** with its open land tiles, monsters and
+  guarded piles. A place is the engine's own `AdventureState::battle_ground` of the defender's
+  tile (the monster's or the pile's visited tile; GAM-BAT-001, ADV-GRD-001): underground the
+  subterranean field, a coast tile the sand and the shore, a special ground on top; the census
+  and the adventure map cannot disagree. Every placement and tile counts once, so a larger map
+  weighs more (it holds more battles). A map that does not read or import is skipped and named
+  on standard error.
+- **`crates/h3-sim/data/census-v1.toml`:** the 159 maps of the user's installation
+  (`original-data/install/Maps`, 2026-10-18; the tutorial left out, not an `.h3m`). The earlier
+  count of 164 (E08's survey) included maps that are not the game's (`experiment`); 160 in the
+  epic counted the tutorial. 25 s in a debug build.
+- **What it says** (derived; T5b reads the file, these are for the review): 48 RoE, 55 AB, 56 SoD
+  maps; 31 S, 71 M, 38 L, 19 XL; 103 with an underground. 13 863 monsters (87 a map): level 1
+  17.7 %, 2 26.1 %, 3 25.5 %, 4 16.0 %, 5 8.3 %, 6 3.5 %, 7 2.4 %, any 0.5 %; 1 483 name their
+  creature, 740 their count. Their places: grass 24.0 %, dirt 18.8 %, subterranean 17.0 %, sand
+  11.5 % (the shore included), rough 9.4 %, snow 7.6 %, swamp 5.8 %, lava 5.4 %, water 0.4 % (55
+  monsters a hero meets from a boat); the plain field 88.2 %, the shore 7.5 %, a special ground
+  4.3 % (of open land 2.8 %: map makers put monsters on grounds). 335 457 open land tiles, their
+  places within a point of the monsters'. 1 465 towns (9 a map; 875 random; Castle the most
+  named, 118, Necropolis the fewest, 32); at the start 20.9 % without a fort, 74.3 % a fort,
+  1.8 % a citadel, 3.1 % a castle. 36 guarded piles, 238 garrisons (45 anti-magic), 2 137
+  creature banks (13 a map), 371 heroes placed, random or in prisons, 118 boats, 1 857 special
+  grounds.
+- **Twins:** 35 maps share their terrain with an earlier one (the allied versions). Leaving the
+  twins out moves no terrain or level share by more than 1.6 points, so every shipped map counts
+  once (proposed, A9 below).
+
+### 4.4 The assumptions v1 (proposed at T5a; the user's review, AI-Q4)
+
+What the maps cannot say, for the encounter distribution's `why` fields (T5b writes
+`encounters-v1.toml` from the census and these). Every number is provisional; the adventure's
+logged battles replace them (decision 7).
+
+| # | Dimension | Proposed | Why |
+|---|---|---|---|
+| A1 | Encounter kind (of battles fought) | wandering 0.78, guards 0.02, hero 0.10, siege 0.10 | 87 monsters a map against 9 towns and a few heroes: a player clears most monsters on the way; each neutral or enemy town taken is a siege. Guards are the 274 piles and garrisons against 13 863 monsters (2 %). Creature banks (13 a map) wait for their battle layouts (the adventure lane's queue) |
+| A2 | Game week (1 to 16), per kind | wandering ∝ 0.8^(w−1); hero rising to week 4, flat to 8, falling to 16; siege ∝ 0.9^(w−1) | neutrals fall early (median week 3), enemy heroes meet mid-game, towns are taken throughout |
+| A3 | A neutral stack | level by the census; the creature drawn among the level's (ADV-MON-003), the count from its adventure range (ADV-MON-004), grown 10 % a week to the battle's week, at most 4 000 (VCMI 1.7.5 `CGCreature::newTurn`: `weeklyGrowthPercent` 10, `weeklyGrowthCap` 4 000); split by the original's rule against the hero's army (`h3_adventure::split`, ADV-MON-009) | the map's own levels and the game's own draws; growth makes late neutrals larger |
+| A4 | The army facing a neutral | value = the stack's × r, r log-normal (median 1.8, ×/÷ 1.5), capped at the week's largest army (2 × A5's value), else the stack is drawn again | players attack what they beat; the split's own table expects ratios 0.5 to 2 |
+| A5 | A hero's army (hero and siege kinds) | value = G × w × k: G the faction's weekly growth value (growth × `ai_value` of its seven creatures, from the packs: 13 900 Stronghold, 23 000 Conflux, 15 600 to 16 900 the others), k log-normal (median 0.7, ×/÷ 1.6); the attacker's over the defender's log-normal (median 1.3, ×/÷ 1.5) | one main army carries most of a kingdom's production, less its losses; attackers choose fights |
+| A6 | An army's creatures | the hero's faction; levels 1–4 from week 1, 5 from week 2, 6 from week 3, 7 from week 4; value split by each level's growth value; upgraded share (w − 1) / 6, at most 1 | a usual build order |
+| A7 | A hero | faction by the census's named towns, might or magic class 1 : 1; level by week 4, 7, 9, 11 (weeks 1–4), then +1 a week to 15 (week 8), then +0.5 a week, ± 2; skills, primary skills and spells by the level-ups and the mage guild through `h3-heroes` where it has the rule (T5b lists the rest); artifacts by level (treasure from 1, minor from 6, major from 11, a relic from 16) | a human main hero's usual pace |
+| A8 | A siege | the faction by the census's named towns; the fort from the census in week 1, then citadel and castle more likely each week (castle at most 0.7); a hero defends half of them, the garrison one week's growth | neutral towns early, owned towns later |
+| A9 | Twins | every shipped map once | §4.3 |
+| A10 | Places | neutral stacks and guards: the census's monster places (the 55 on water: the deck, the hero in a boat); hero battles: open land; sieges: the town's own field; two boats left out | where battles stand on the maps |
+| A11 | Difficulty | left out (normal) | the batch plays both sides as human players' (ADR-0025 point 6); the difficulty shapes only the computer's automatic choices (ADR-0023 point 7) |
+| A12 | Seats | neutrals internal (the system actor), heroes external; until E23 neutral kinds weigh 0 in training (a curriculum) | random neutrals teach the wrong lessons (the epic's risk) |
 
 ## 5. The Python side (e)
 

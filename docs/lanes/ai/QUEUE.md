@@ -4,9 +4,15 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 
 ## Tasks
 
-**E05** (`docs/epics/E05-battle-env.md`, refined 2026-10-18, AI-Q1). Increments 1 (T1, T2) and 2
-(T3a–T3d, T4) done. Next: the user's checkpoint on increment 2, which cuts increment 3 from the
-epic's outline (T5 encounter distribution, T6 the Python binding) into tasks here.
+**E05** (`docs/epics/E05-battle-env.md`, refined 2026-10-18, AI-Q1). Increments 1 and 2 done;
+increment 3 cut 2026-10-18 (T5a done, on its pull request):
+
+1. **T5b The sampler** — waits for AI-Q4 (the assumptions, design §4.4). A `shared/` pull request
+   first (`serde`, `toml`, `h3-heroes` for `h3-sim`); then `encounters-v1.toml`, the sampler, the
+   batch's encounter source and C ABI v28, the frequency check, `batch-random-encounters-v1`.
+2. **T6a The Python binding on Linux** (design §5) — independent of T5b; `uv run pytest` stays a
+   lane command (the user, 2026-10-18).
+3. **T6b Windows and PyTorch** — on the user's machine (PyTorch's index is refused elsewhere).
 
 ## Inbox
 

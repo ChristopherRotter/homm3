@@ -136,3 +136,41 @@ The full record of done tasks (the epic file keeps one line each).
   through a batch; every function's null, argument and not-ready errors, refusals per env. The C
   smoke test plays a batch of 4 envs on two threads, 300 calls (21 episodes, all decided; the
   rewards zero-sum, every status `H3_OK`).
+
+## Increment 3 cut (2026-10-18)
+
+- The user merged increment 2 (#252) and chose the census (T5a) over the Python binding (T6a) for
+  the session, while the device link held the maps; the Python tests stay a lane command
+  (`uv run pytest`), not a `verify` step, until a later shared change.
+- `download.pytorch.org` is refused (403) from the cloud sandbox and from the device link's VM:
+  T6b locks PyTorch on the user's Windows machine.
+
+## T5a — The census and the assumptions (2026-10-18)
+
+- **Built:** `h3 ai census <maps folder or files> [--out <file>]` (`h3-cli`'s `src/ai/census.rs`,
+  design §4.3): each map through `h3_map::read` and `import_map` into a `GameState` of one player
+  on the original packs; aggregate counts only; every battle place from
+  `AdventureState::battle_ground` of the defender's tile (the monster's or the pile's visited
+  tile). `crates/h3-sim/data/census-v1.toml`: the 159 maps of the user's
+  `original-data/install/Maps` (copied from `maps.tar` through the device link), none skipped,
+  25 s in a debug build.
+- **Decisions of the build:** the tutorial (`Tutorial.tut`) is left out (a folder's `.h3m` files
+  only); towns, heroes, garrisons, banks and boats come from the raw model's classes (the
+  static layer imports no town or hero), a town's faction from its subclass in the original's
+  order, the anti-magic garrison as subclass 1 (VCMI's `Obj::GARRISON`), the fort from the
+  standard set's flag or the custom set's bits 3 to 5 (`docs/formats/h3m.md`); an *open* tile is
+  one no object blocks or is visited from; the twins (35 maps whose terrain equals an earlier
+  one's) are counted, as leaving them out moves no share by more than 1.6 points (a one-off run
+  over the 117 maps without an allied name).
+- **Checked against E08's census** (164 maps then, `docs/rules/surveys/E08-battles.md` §1.1):
+  random monsters by level within 25 placements of it (level 1 2 204 against 2 215, any 63
+  against 88), fixed creatures 1 483 against 1 570, fixed counts 740 against 782; E08's five
+  more files included maps that are not the game's (`experiment`).
+- **Assumptions:** A1 to A12 in design §4.4 (AI-Q4), with the facts behind them: the factions'
+  weekly growth values from the packs, the wandering monsters' weekly growth from VCMI 1.7.5
+  (`CGCreature::newTurn`, `gameConfig.json`: 10 %, at most 4 000), the split's ratio table
+  (`h3_adventure::split`).
+- **Tests:** `h3-cli`'s `ai::tests`: a map written by `h3_map::writer` (water, a coast, snow, a
+  Clover Field, three fixed creatures, a Stronghold with a citadel, a Castle without a fort)
+  counted twice (its twin) with a broken file skipped: tiles, places, levels, forts, the TOML
+  read back, the command line; the fort levels of custom buildings.
