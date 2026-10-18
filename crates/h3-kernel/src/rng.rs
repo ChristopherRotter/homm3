@@ -61,12 +61,31 @@ impl StreamId {
     pub const SETUP: Self = Self(5);
     /// First id of the per-player streams; ids below it are the named streams above.
     const PLAYER_BASE: u64 = 0x100;
+    /// First id of the per-seat streams, after the players'.
+    const SEAT_BASE: u64 = 0x200;
+    /// First id of the per-environment streams, above every other id.
+    const ENV_BASE: u64 = 1 << 32;
 
     /// The stream of the player at `index` of a game's player list: randomness caused by that
     /// player's commands draws only from it (ADR-0017 point 4). Distinct from every named stream
     /// and from every other player's.
     pub const fn player(index: u8) -> Self {
         Self(Self::PLAYER_BASE + index as u64)
+    }
+
+    /// The stream of the battle seat at `index` (0 the attacker, 1 the defender) of an episode's
+    /// seed: a policy played inside the engine for that side draws only from it (ADR-0025
+    /// point 5). Distinct from every named, player and environment stream.
+    pub const fn seat(index: u8) -> Self {
+        Self(Self::SEAT_BASE + index as u64)
+    }
+
+    /// The stream of the environment at `index` of a batch's seed: that environment's episode
+    /// seeds are its successive draws (ADR-0025 point 4), so an episode depends on the batch's
+    /// seed, the environment's index and the episode's number only. Distinct from every other
+    /// stream.
+    pub const fn env(index: u32) -> Self {
+        Self(Self::ENV_BASE + index as u64)
     }
 }
 
@@ -308,6 +327,31 @@ mod tests {
         assert_ne!(
             Rng::for_stream(7, StreamId::player(0)),
             Rng::for_stream(7, StreamId::player(1))
+        );
+    }
+
+    // covers: KER-RNG-001
+    #[test]
+    fn seat_and_env_streams_are_distinct_from_every_other_stream() {
+        let named = [1, 2, 3, 4, 5].map(StreamId);
+        let players = (0..=u8::MAX).map(StreamId::player);
+        let seats: Vec<StreamId> = (0..=u8::MAX).map(StreamId::seat).collect();
+        let envs = [0, 1, 2, u32::MAX - 1, u32::MAX].map(StreamId::env);
+        let mut all: Vec<StreamId> = named.into_iter().chain(players).collect();
+        assert!(seats.iter().all(|s| !all.contains(s)));
+        all.extend(&seats);
+        assert!(envs.iter().all(|e| !all.contains(e)));
+        assert!(seats.windows(2).all(|w| w[0] < w[1]));
+        assert!(envs.windows(2).all(|w| w[0] < w[1]));
+        assert_eq!(StreamId::seat(0), StreamId(0x200));
+        assert_eq!(StreamId::env(0), StreamId(1 << 32));
+        assert_ne!(
+            Rng::for_stream(7, StreamId::env(0)).next_u64(),
+            Rng::for_stream(7, StreamId::env(1)).next_u64()
+        );
+        assert_ne!(
+            Rng::for_stream(7, StreamId::seat(0)).next_u64(),
+            Rng::for_stream(7, StreamId::seat(1)).next_u64()
         );
     }
 
