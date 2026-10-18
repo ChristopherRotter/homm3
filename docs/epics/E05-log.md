@@ -46,3 +46,32 @@ The full record of done tasks (the epic file keeps one line each).
   (2.6 ms the synthetic skirmish), ten times that in debug; the batch shares its rulesets.
 - **Closed:** F-robust-2 (no siege reached the C ABI) and the E01 inbox item's half on loading
   packs and scenarios (batch stepping stays T3); a line in the battle lane's inbox.
+
+## Increment 2's cut (2026-10-18)
+
+- With the user: increment 2 is T3 and T4, with the C ABI last (T3d) so that it lands once with
+  its reward; this session T3a and T3b; the dispatch line `h3 ai` in `h3-cli`'s `main.rs` (T3c) as
+  a `cross-lane` change. Tasks in the lane's `QUEUE.md`.
+
+## T3a — Kernel streams (2026-10-18)
+
+- `StreamId::seat(i)` (`0x200 + i`) and `StreamId::env(i)` (`2^32 + i`) in `h3-kernel` with a test
+  that they differ from every other stream; KER-RNG-001's list. Additive: `RNG_VERSION` stays 1.
+  A `shared/` pull request, merged before T3b's.
+
+## T3b — The batch core (2026-10-18)
+
+- **Built:** `h3_sim::batch` (design §1, "Built (T3b)"): `BattleBatch::new` / `add_scenario` /
+  `reset` / `step` / `spell_mask` / `target_mask` / `second_mask` / `env`; `Scenario::new` forces
+  `human = [true, true]` and checks the scenario; `Policy::Random` plays `rollout::pick` (which
+  never escapes) from the seat's stream; the masks never allow Retreat or Surrender and `step`
+  refuses them as invalid actions; an episode that ends before an external seat acts is skipped
+  (64 in a row: the env gives up).
+- **Tests** (`src/batch/tests.rs`): the determinism property (proptest, 8 cases, and a fixed
+  case of 4 envs over the four synthetic scenarios with mixed seats, 400 calls, 19 episodes
+  ended): a batch steps as N single envs built from the public pieces (`episode_seed`,
+  `draw_scenario`, `Scenario::env`, the seats' policies on their streams), output by output and
+  state hash by state hash, and every action its masks allow applies; a reset replays the same
+  episodes; escapes masked and refused (the env unchanged); a hero's cast through the head calls;
+  a truncation's final observations and the next episode's seed; skipped episodes and an env
+  that gives up (Drakes before Spearmen with a step limit of one); refusals per env; every error.
