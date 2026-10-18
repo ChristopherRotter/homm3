@@ -317,7 +317,10 @@ fn the_abi_batch_is_the_rust_batch() {
             }
         }
     }
-    assert!(ended > 3 && rewarded > 0 && truncated > 0, "{ended} {rewarded} {truncated}");
+    assert!(
+        ended > 3 && rewarded > 0 && truncated > 0,
+        "{ended} {rewarded} {truncated}"
+    );
     assert_eq!(
         h3_batch_episode_seed(c.seed, 3, 2),
         episode_seed(c.seed, 3, 2)
