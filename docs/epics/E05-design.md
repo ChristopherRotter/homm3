@@ -1,9 +1,8 @@
 # E05 — Battle environment: design note (T1)
 
-Working detail behind the ADR draft `docs/lanes/ai/adr-drafts/battle-env.md` (E05 T1, 2026-10-18).
-A handover, not binding: each task that builds a section deletes it here (`docs/adr/README.md`,
-"Keep ADRs short"). Sections follow T1's points (a) to (g); open points are OPEN-QUESTIONS AI-Q2
-and AI-Q3.
+Working detail behind ADR-0025 (E05 T1, accepted 2026-10-18 with the user's review: AI-Q2,
+AI-Q3). A handover, not binding: each task that builds a section deletes it here
+(`docs/adr/README.md`, "Keep ADRs short"). Sections follow T1's points (a) to (g).
 
 ## 1. The batch API (a)
 
@@ -45,7 +44,7 @@ typedef struct H3BatchBuffers {
 
 H3Batch *h3_batch_create(const H3BatchConfig *config, char *error, size_t error_len);
 int32_t h3_batch_add_scenario(H3Batch *b, const char *toml, size_t len, uint32_t weight,
-                              H3Seats seats, const H3Stakes *stakes, char *error, size_t error_len);
+                              H3Seats seats, char *error, size_t error_len);
 int32_t h3_batch_set_encounters(H3Batch *b, const char *toml, size_t len, char *error,
                                 size_t error_len);                                   /* T5 */
 int32_t h3_batch_reset(H3Batch *b, const H3BatchBuffers *out);   /* every env's first episode */
@@ -97,119 +96,75 @@ void h3_batch_destroy(H3Batch *b);
 - Seats from the encounter distribution (T5): a neutral side (a wandering monster, guards, a
   neutral town's garrison) is `Internal(System)`; a player's side is external. Until E23 the
   neutral share samples `Internal(Random)` and is marked as not for training (BACKLOG order).
-- **`human` and `difficulty`** (ADR-0023 point 7) are scenario data, not seat properties: the
-  game the battle belongs to says them. What an agent's own side counts as is AI-Q3 (BAT-Q33's
-  open point); the proposal there is `human = false`.
+- **A level playing field** (the user, AI-Q3): the batch builds every episode's setup with
+  `human = [true, true]`, whatever the scenario or the sampler says; `human = false` remains for
+  compatibility with the original's computer player (ADR-0023 point 7). `difficulty` stays
+  scenario data. This also
+  answers BAT-Q33's open point for E05: an agent's side counts as a human player's.
+- **No escapes** (the user, AI-Q2): the batch's masks never allow Retreat (entry 1392) or
+  Surrender (1393), for external and internal seats alike, and `step` refuses them as an action
+  that does not decode. The encoding keeps the entries; a batch option (`escapes`, default off)
+  turns them back on when the adventure's view of a battle comes (E13). `BattleEnv` and the
+  single-env C functions keep them (tools, replays and the battle lane's benchmarks use them).
 
 ## 3. Reward v1 (c)
 
+The user (2026-10-18, AI-Q2): keep it simple. Kill the most, lose the least, spend mana
+sparingly; nothing from the adventure counts (no hero, artifacts, treasure, town or gold:
+those decide whether to fight, not how). Retreat and surrender are disabled in the batch (§2).
+
 ### 3.1 The balance
 
-One currency: creature `ai_value` (harvested, `packs/*/core.toml`). For side s and its opponent
-o, from the battle's start (the setup and the stakes) and its `BattleOutcome`:
+    r_s = (K_o − K_s − p · (m_s − m_o)) / S
 
-    r_s = (D_o − D_s) + (T_o→s − T_s→o) − p · (m_s − m_o)
-
-- **D (destroyed):** value a side loses that nobody gains.
-  - Army: `A(0) − A(end)`, `A` = Σ count × `ai_value` over the army and raised stacks
-    (`StackOrigin::Army`, `Raised`). `A(0)` from the setup's army, `A(end)` from what the side
-    keeps after the battle (below). Raised Demons and permanent resurrections are in `A(end)`;
-    creatures raised only for the battle are not (`StackRecord::end` already leaves them out).
-  - War machines: the `ai_value` of each of the setup's machines that is not in
+- **Currency:** creature `ai_value` (harvested, `packs/*/core.toml`) by default; the alternative
+  is the creature's gold cost (`cost.gold`; other resources left out). One currency per run, in
+  the config.
+- **K, the value a side lost:** `A(0) − A(end) + W_lost`.
+  - `A` = Σ count × value over the army and raised stacks (`StackOrigin::Army`, `Raised`):
+    `A(0)` from the setup's armies, `A(end)` from `BattleOutcome::survivors` (empty for a side
+    wiped out). Creatures raised only for the battle are not survivors (`StackRecord::end`);
+    permanently resurrected ones and a Pit Lord's Demons are, so they offset the loss.
+  - `W_lost`: the value of each of the setup's war machines missing from
     `BattleOutcome::war_machines` (Ballista 600, Catapult 500, Ammo Cart 400, First Aid Tent 300
-    in `base`); a defeated side's surviving machines count as destroyed too (v1). Turrets are no
-    side's (the outcome leaves them out) and count nothing; walls and towers are repaired after a
-    siege and count nothing.
+    by `ai_value` in `base`). Turrets are no side's (the outcome leaves them out); walls count
+    nothing.
   - Created stacks (summons, clones; `StackOrigin::Created`) count nothing on either side: they
-    end with the battle. Their cost is the mana that made them.
-  - The hero `H`: lost when its side is defeated (a victory over it) or in a draw; kept after a
-    win, a retreat or a surrender.
-  - Artifacts `R`: lost in a draw (nobody captures them).
-- **T (transferred):** value that moves from the loser to the winner, counted once.
-  - Artifacts `R` of a hero defeated by a victory (GAM-BAT-004; v1 counts them all, whether or not
-    the winner has room, HER-CHG-002).
-  - The prize `P` of the losing side: a town (a siege lost, also by the defender's retreat through
-    the Escape Tunnel or its surrender), a wandering monster's treasure, a guarded pile's contents.
-  - A surrender's price: `BattleOutcome::surrender_cost` × g.
-- **What each side keeps (`A(end)`),** as the orchestrator applies the outcome (ADR-0013 point 5,
-  `h3-game`'s `end_battle`): the winner its survivors; a side that retreats nothing (its army is
-  lost: destroyed); a side that surrenders its survivors; a neutral side (no hero) its survivors
-  whatever the result (they stay on the map); a defeated side nothing.
+    end with the battle; their cost is the mana that made them.
 - **Mana:** `m` = the hero's mana at the start (`BattleHero` in the setup) minus
-  `HeroOutcome::mana`; price p per spell point.
-- **Zero-sum:** `r_o = −r_s` by construction (every term is antisymmetric). In self-play both are
-  used; against the system actor only the external side's is (the internal one is reported too).
-- **Scale:** r is divided by `S` = `A_a(0) + M_a(0) + A_d(0) + M_d(0)` (both sides' armies and war
-  machines at the start, at least 1), so a battle's size does not set the reward's size. Stakes
-  can make |r| exceed 1 (example 2).
-- Computed in the sim layer (`h3-sim`, module `reward`) from integers (sums in `i64`), scaled once
-  in `f64`, reported as `f32`; it never feeds back into the battle (ADR-0003).
-
-### 3.2 Weights and stakes
-
-- **p**, the mana price (ai_value per spell point): AI-Q2.
-- **g**, the gold price (ai_value per gold): default the median `ai_value / gold cost` of the
-  ruleset's faction creatures of levels 1–7 (computed from the ruleset at T4; 1.57 for `base`'s
-  112 such creatures). Used for the surrender price, artifacts and the hero.
-- **Stakes** are not battle state: the outcome does not report them, so the episode source gives
-  them per side: `H` (hero), `R` (artifacts), `P` (prize), in ai_value. A fixed scenario carries
-  them in `h3_batch_add_scenario` (default 0); the encounter sampler (T5) computes them from what
-  it sampled: `H = (2 500 + 500 · (level − 1)) gold · g` (a proposal, AI-Q2), `R` = Σ the
-  artifacts' gold cost (`packs/*/core.toml`) · g, `P` = a town's buildings' cost · g or a
-  treasure's resources at their market value · g.
-- No separate escape weight: an escape is priced by what the escaping side keeps (`H`, `R`, and on
-  a surrender its army), which a kill would have destroyed or captured. Each weight is reported
-  with every run (E05 risks).
-- **Left out in v1** (the orchestrator's consequences after the battle): the winner's experience,
-  Necromancy's raised creatures, Eagle Eye's learned spells. They grow a hero's later value; E06
-  may add them as stakes.
-
-### 3.3 Terminal by default; optional shaping
-
-- The reward is 0 on every step but the one that ends the battle. A truncated episode gets 0 and
-  `truncated = 1`, with both sides' final observations, so the learner bootstraps.
-- **Optional potential-based shaping** (off by default): `Φ_s(t)` = `(K_o(t) − K_s(t) −
-  p · (m_s(t) − m_o(t))) / S`, where `K(t)` is the value a side's army and raised stacks have lost
-  so far plus its war machines destroyed so far, and `m(t)` the mana spent so far (no stakes, no
-  retreat or surrender); `Φ = 0` at the start and after the end; each step adds
-  `γ · Φ(t+1) − Φ(t)` (γ from the config, default 1). With γ = 1 the shaped rewards of an episode
-  sum to its terminal reward: shaping moves credit earlier, it cannot change the best play.
+  `HeroOutcome::mana`; **p**, the price per spell point, default 10 ai_value (provisional: it is
+  there to keep spells from being spammed; tuned in E06). With the cost currency p is in gold.
+- **S:** `A_a(0) + M_a(0) + A_d(0) + M_d(0)`, both sides' armies and war machines at the start
+  (at least 1), so the battle's size does not set the reward's size; |r| ≤ 1 plus the mana terms.
+- **Zero-sum:** `r_o = −r_s` by construction. In self-play both are used; against the system
+  actor only the external side's is (the internal one is reported too).
+- **Terminal:** 0 on every step but the one that ends the battle. A truncated episode gets 0 and
+  `truncated = 1`, with both sides' final observations, so the learner bootstraps. Shaping is not
+  built; if a later run needs it, only in potential-based form (decision 9 of the epic).
 - **Per seat:** the batch reports both sides' rewards every call; the Python side accumulates each
   seat's rewards between its own moves (a seat that did not make the last move still gets the
   episode's end, §5).
+- Computed in the sim layer (`h3-sim`, module `reward`) from integers (sums in `i64`), scaled once
+  in `f64`, reported as `f32`; it never feeds back into the battle (ADR-0003).
 
-### 3.4 Worked examples (`base` values, g = 1.57, p = 10; S as above)
+### 3.2 Worked examples (`ai_value` of `base`, p = 10)
 
-1. **A wandering monster.** A level-5 hero (`H` = 4 500 gold · g = 7 065; artifacts 6 000 gold,
-   `R` = 9 420) with 20 Swordsmen (445) and 10 Griffins (351), `A_a(0)` = 12 410, attacks 50
-   Skeletons (60), `A_d(0)` = 3 000, no treasure. The hero casts 10 mana; the attacker loses 3
-   Swordsmen and wins. `D_d` = 3 000, `D_a` = 1 335, T = 0, mana −100:
-   `r_a` = 3 000 − 1 335 − 100 = **1 565**, S = 15 410, **0.102**. With a treasure of 1 000 gold
-   (`P_d` = 1 570): **3 135, 0.203**.
-2. **Hero against hero: retreat, surrender, kill.** Attacker: level 8 (`H_a` = 9 420), 40 Orcs
-   (192) and a Ballista (600): 8 280. Defender: level 6 (`H_d` = 7 850), artifacts 4 000 gold
-   (`R_d` = 6 280), 60 Goblins (60) and 15 Wolf Riders (130): 5 550; S = 13 830. The defender
-   loses 30 Goblins and 5 Wolf Riders (2 450) and casts 15 mana; the attacker loses 6 Orcs
-   (1 152), no mana. Then:
-   - **the defender retreats:** its 3 100 of survivors are lost too: `D_d` = 5 550, its hero and
-     artifacts are kept: `r_a` = 5 550 − 1 152 + 150 = **4 548, 0.329**;
-   - **it surrenders** for a price of 1 450 gold (T = 2 277) and keeps its survivors: `D_d` =
-     2 450: `r_a` = 2 450 + 2 277 − 1 152 + 150 = **3 725, 0.269** (surrender beats retreat for the
-     defender by 823, as in the game when the price is below the army's value);
-   - **the attacker kills the army instead** (the same losses of its own): `D_d` = 5 550 + 7 850,
-     T = 6 280: `r_a` = **18 678, 1.351**. Blocking the escape is worth `H_d + R_d` = 14 130
-     (1.02 of S) here.
-3. **Summons.** The attacker's hero summons Earth Elementals (25 mana at Basic): −250. The
-   elementals that die cost nothing more; what they kill counts as any kill.
-4. **A siege.** A garrison without a hero (`A_d(0)` = 6 000) loses to an attacker of 15 000 that
-   loses 2 000; the town's buildings cost 20 000 gold (`P_d` = 31 400): `r_a` = 6 000 − 2 000 +
-   31 400 = **35 400**, S = 21 000, **1.686**. A town is the largest stake of most battles, as in
-   the game.
-5. **A draw in self-play.** Both armies die by the same action: each side destroys the other's
-   army, hero and artifacts: `r_a = (A_d + M_d + H_d + R_d) − (A_a + M_a + H_a + R_a) + p · (m_d − m_a)`
-   (losses of machines that survive left out).
+1. **A wandering monster.** 20 Swordsmen (445) and 10 Griffins (351), `A_a(0)` = 12 410, attack
+   50 Skeletons (60), `A_d(0)` = 3 000. The hero casts 10 mana; the attacker loses 3 Swordsmen
+   and wins. `r_a` = (3 000 − 1 335 − 100) / 15 410 = **0.102**.
+2. **Hero against hero.** Attacker: 40 Orcs (192) and a Ballista (600), 8 280. Defender: 60
+   Goblins (60) and 15 Wolf Riders (130), 5 550, its hero casts 15 mana. The attacker kills
+   everything and loses 6 Orcs (1 152): `r_a` = (5 550 − 1 152 + 150) / 13 830 = **0.329**. Had
+   its Ballista been destroyed too: (5 550 − 1 752 + 150) / 13 830 = **0.285**.
+3. **Summons.** A hero summons Earth Elementals for 25 mana: −250 before S. The elementals that
+   die cost nothing more; what they kill counts as any kill.
+4. **A siege.** A garrison of 6 000 without a hero loses to an attacker of 15 000 that loses
+   2 000: `r_a` = (6 000 − 2 000) / 21 000 = **0.190**; the town, its turrets and walls count
+   nothing.
+5. **A draw in self-play.** Both armies die by the same action: `r_a` = (K_d − K_a + p · (m_d −
+   m_a)) / S, K each side's whole army plus its destroyed machines.
 6. **Raised stacks.** A Pit Lord raises 5 Demons (445) from its side's dead stack: the dead stack
-   counts fully in `A(0) − A(end)`, the Demons it keeps count in `A(end)`: +2 225 against the loss.
+   counts fully in `A(0)`, the Demons it keeps in `A(end)`: 2 225 less lost.
 
 ## 4. Scenarios and the encounter distribution (d)
 
@@ -230,7 +185,7 @@ o, from the battle's start (the setup and the stakes) and its `BattleOutcome`:
   `h3_env_create_synthetic`). Tests per place: a field, a special battlefield, a garrison, a town
   (closes F-robust-2 and the E01 inbox item).
 - **Episode sources of a batch:** (i) a weighted list of fixed scenarios (`h3_batch_add_scenario`:
-  text, integer weight, seats, stakes); each reset draws one by weight; or (ii) the encounter
+  text, integer weight, seats); each reset draws one by weight; or (ii) the encounter
   distribution (T5).
 
 ### 4.2 The encounter distribution v1 (shape; T5 fills it)
@@ -273,8 +228,6 @@ level = { … }                        # skills, artifacts by level, spells by t
 [siege]                              # fort by week, a defending hero's share (assumption)
 [difficulty]                         # assumption
 weights = { 0 = 0.1, 1 = 0.4, 2 = 0.3, 3 = 0.15, 4 = 0.05 }
-[stakes]                             # §3.2
-hero = { base_gold = 2500, per_level_gold = 500 }
 [seats]                              # §2
 neutral = "internal:system"
 player = "external"
@@ -284,7 +237,7 @@ player = "external"
   level and moat); per side the faction, the army's value and composition by level, a hero or
   none (level, class, primary and secondary skills, artifacts, spells and their masteries, war
   machines, through `h3-heroes`' `derive_battle_hero`); the attacker/defender value ratio;
-  difficulty; seats and stakes.
+  difficulty; seats.
 - **The census** (T5a): `h3 ai census <maps>` (`h3-cli`'s `src/ai/`, run locally with the user's
   maps through `h3-map`) writes aggregate numbers only (ADR-0009: counts and shares, no map
   content, no per-map rows): land tiles per terrain, monster placements per terrain and level
