@@ -8,8 +8,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E05** (`docs/epics/E05-battle-env.md`): in progress. **Increment 1 done** (2026-10-18): T1
   (ADR-0025; detail in `docs/epics/E05-design.md`, record in `E05-log.md`) and T2
   (`h3_env_create_scenario`, C ABI v26). **Increment 2** (T3 and T4, cut with the user): T3a
-  (kernel streams, the `shared/kernel-batch-streams` pull request: merge first) and T3b
-  (`h3_sim::batch`, one thread; the `ai/e05-t3b` pull request) done. **Next:** T3c, T4, T3d
+  (kernel streams, **#250** `shared/kernel-batch-streams`: merge first) and T3b
+  (`h3_sim::batch`, one thread; `ai/e05-t3b`, stacked on #250) done. **Next:** T3c, T4, T3d
   (`QUEUE.md`), then the user's checkpoint.
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v26 (T2) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q4, AI-QUIRK-1, AI-STUB-1.
