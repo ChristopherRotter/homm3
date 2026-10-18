@@ -252,6 +252,14 @@ fn the_synthetic_scenarios_by_text() {
 }
 
 #[test]
+fn every_built_in_pack_by_its_id() {
+    for id in super::BUILTIN_PACKS {
+        assert!(super::builtin_pack(id).is_some(), "{id}");
+    }
+    assert_eq!(super::builtin_pack("hota"), None);
+}
+
+#[test]
 fn errors_are_messages() {
     let error = |text: &str| create(text, 1).unwrap_err();
     assert!(error("[scenario").starts_with("scenario: "));
