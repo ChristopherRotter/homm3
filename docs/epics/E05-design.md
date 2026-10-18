@@ -184,6 +184,15 @@ those decide whether to fight, not how). Retreat and surrender are disabled in t
   with the parse or setup error's message in `error`; random obstacles as the scenario says (as
   `h3_env_create_synthetic`). Tests per place: a field, a special battlefield, a garrison, a town
   (closes F-robust-2 and the E01 inbox item).
+- **Built (T2):** the scenario's text is parsed and its packs compiled in `h3-ffi` (its module
+  `scenario`): `arch.toml` lets `h3-sim` use `h3-pack-battle` only in its tests, so `h3-sim`
+  takes a resolved `BattleSetup` and the C ABI layer turns texts into setups (T3's
+  `h3_batch_add_scenario` the same way). On error `error` gets the stage and the message
+  (`scenario:`, `unknown pack`, `packs:`, `setup:`), on success it is left untouched;
+  `h3_env_create_synthetic` takes the same path with its built-in texts. Each call compiles its
+  packs: about 18 ms for `base`, `ab` and `sod` (2.6 ms for the synthetic skirmish) in a release
+  build on the cloud sandbox, about ten times that in a debug build; the batch's shared rulesets
+  (above) avoid it per env.
 - **Episode sources of a batch:** (i) a weighted list of fixed scenarios (`h3_batch_add_scenario`:
   text, integer weight, seats); each reset draws one by weight; or (ii) the encounter
   distribution (T5).

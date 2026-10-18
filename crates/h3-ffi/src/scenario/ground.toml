@@ -1,0 +1,51 @@
+# E05 T2: a battle on a special battlefield, through the C ABI; the test fills in the terrain and
+# the battlefield (each of the shipped packs' grounds in turn) and generates the obstacles for
+# each episode (BAT-GEO-004). Both heroes cast.
+
+[scenario]
+id = "ffi-ground"
+packs = ["base", "ab", "sod"]
+profile = "base:faithful"
+terrain = "{terrain}"
+battlefield = "{battlefield}"
+random_obstacles = true
+
+[scenario.attacker_hero]
+hero_type = "base:solmyr"
+attack = 1
+defense = 1
+power = 3
+knowledge = 3
+mana = 30
+max_mana = 30
+spell_book = ["base:magic_arrow", "base:lightning_bolt", "base:haste"]
+
+[scenario.defender_hero]
+hero_type = "base:sandro"
+attack = 1
+defense = 2
+power = 2
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:magic_arrow", "base:bless"]
+
+[[attacker]]
+slot = 0
+creature = "base:gnoll"
+count = 20
+
+[[attacker]]
+slot = 1
+creature = "base:lizardman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:swordsman"
+count = 8
+
+[[defender]]
+slot = 1
+creature = "base:archer"
+count = 10
