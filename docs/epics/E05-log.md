@@ -75,3 +75,64 @@ The full record of done tasks (the epic file keeps one line each).
   episodes; escapes masked and refused (the env unchanged); a hero's cast through the head calls;
   a truncation's final observations and the next episode's seed; skipped episodes and an env
   that gives up (Drakes before Spearmen with a step limit of one); refusals per env; every error.
+
+## T3c — Threads and benchmarks (2026-10-18)
+
+- **Built:** `h3_sim::batch::pool` (design §1): T std threads (at most N), env i in shard
+  `i * T / N`, parked on a condition variable between calls, T = 0 the caller's thread; reset,
+  step and the three head calls run shard by shard and write into the caller's arrays (one
+  `unsafe` lifetime erasure in `Pool::run`, sound because the call blocks until every worker is
+  done; a worker's panic is resumed in the caller after that). `BatchConfig.threads`,
+  `BatchError::Threads`. `h3 ai bench --envs N --threads T --calls K [--scenario] [--seed]
+  [--max-steps]` (`h3-cli`'s `src/ai/`; `pub mod ai;` in `lib.rs` and the dispatch in `main.rs`
+  are the battle lane's lines: `cross-lane`, the user's consent).
+- **Tests:** the determinism property draws T (0 to 7) with N (1 to 6); the pool's shards, its
+  in-place writes over repeated calls and a worker's panic; the bench's steps equal whatever T.
+- **Gated** (lane-only, `--threads 0`): `batch-random-full` 11.45 G Ir and `batch-random-siege`
+  12.30 G Ir for 64 000 steps each (64 envs, 1 000 calls), counted inside `*BattleBatch>::step`.
+- **Wall time on the user's machine:** moved to T9 (the user, 2026-10-18: the sandbox has four
+  cores). The sandbox's indication (4 vCPUs of a shared Xeon at 2.1 GHz, `full`, 64 000 steps per
+  row, release; thousands of steps/s inside `BattleBatch::step` / with the head calls and the
+  bench's random choice, which runs in the caller's thread):
+
+  | N \ T | 0 | 1 | 2 | 4 |
+  |---|---|---|---|---|
+  | 64 | 55 / 36 | 46 / 28 | 77 / 43 | 77 / 41 |
+  | 256 | 44 / 25 | 49 / 28 | 85 / 44 | 97 / 49 |
+  | 1 024 | 53 / 31 | 46 / 27 | 86 / 47 | 118 / 58 |
+
+  One worker costs about 10 % against the caller's thread; four give 2.2 × at N = 1 024. The
+  bench's choice (a scan of every mask) is serial and caps the second figure: a learner's policy
+  replaces it.
+
+## T4 — Reward v1 (2026-10-18)
+
+- **Built:** `h3_sim::reward` (design §3): `Balance::of` (K, m and S per side from the setup and
+  the `BattleOutcome`) and `rewards`, `Currency::AiValue` (default) or `Gold` (the creatures' cost
+  in the ruleset's surrender resource), `RewardConfig { currency, mana_price }` with
+  `DEFAULT_MANA_PRICE` 10, in `BatchConfig.reward`; `EnvReport::reward` carries it on the call that
+  decides a battle, 0 otherwise. `BattleEnv::setup()` lets a single env compute the same.
+- **Decisions of the build:** sums in `i128` instead of the sketch's `i64` (a scenario's counts
+  and values are `u32`: no overflow and no panic for any setup); a hero that gains mana (spent
+  < 0) is credited at the same price.
+- **Tests:** the six worked examples of T1's design, one test each (a wandering monster 0.102,
+  hero against hero 0.329 and 0.285 without the Ballista, summons, a siege 0.190, a draw, raised
+  Demons); the gold currency, a ruleset handle outside the ruleset, empty armies (S = 1); the
+  determinism property draws the currency and the price and checks the zero sum on every call.
+- **Benchmarks:** the reward at each episode's end moved the batch workloads by −0.02 % and
+  +0.01 % (re-baselined).
+
+## T3d — The C ABI v27 (2026-10-18)
+
+- **Built:** `h3-ffi`'s `src/batch.rs` (design §1): `h3_batch_create` (`H3BatchConfig` with
+  `H3RewardConfig`), `h3_batch_add_scenario` (a scenario's text, its weight and `H3Seats`:
+  `H3_SEAT_EXTERNAL`, `H3_SEAT_RANDOM`), `h3_batch_reset`, `h3_batch_spell_mask`, `_target_mask`,
+  `_second_mask`, `h3_batch_step`, `h3_batch_episode_seed`, `h3_batch_destroy`; `H3BatchBuffers`
+  (twelve arrays, each optional); `H3_ERR_NOT_READY`; `include/h3.h`. Rulesets shared per packs
+  and profile (ADR-0025 point 9) through `h3_sim::Scenario::ruleset`.
+- **Tests:** the ABI batch equals the Rust batch output by output over 300 calls (the duel, the
+  skirmish against a random defender, the siege with a random attacker; two threads; gold at 7
+  per spell point; decided and truncated episodes); shared rulesets and the `base` siege of T2
+  through a batch; every function's null, argument and not-ready errors, refusals per env. The C
+  smoke test plays a batch of 4 envs on two threads, 300 calls (21 episodes, all decided; the
+  rewards zero-sum, every status `H3_OK`).
