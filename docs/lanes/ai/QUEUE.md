@@ -6,10 +6,11 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 
 **E05** (`docs/epics/E05-battle-env.md`, refined 2026-10-18, AI-Q1). Increment 1: T1, then T2 after the user's review.
 
-### E05 T1 — Design and ADR draft
+### E05 T1 — Design and ADR draft (drafted 2026-10-18; in the user's review, PR on `ai/e05-t1`)
 
 - **Scope:** the epic's T1 (a) to (g): the batch API, the seats, the reward against `BattleOutcome`, the scenario description and the encounter distribution's config shape, the Python side, the information boundary against the original's battle screen, the benchmark workloads. Output: `docs/lanes/ai/adr-drafts/battle-env.md` with worked reward examples, and questions as `AI-Q<n>` in OPEN-QUESTIONS.
 - **Acceptance:** the draft decides each of (a) to (g) or names the question that blocks it; no code. Then **stop** for the user's review.
+- **State:** `docs/lanes/ai/adr-drafts/battle-env.md`, `docs/epics/E05-design.md`, AI-Q2 and AI-Q3. After the review: apply the user's changes, then the ADR's numbering (a `shared/` pull request) and T2.
 - **Depends on:** nothing.
 
 ### E05 T2 — Scenarios through the C ABI

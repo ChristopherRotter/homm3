@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **refined** 2026-10-18 (AI-Q1; increment 1 refined: T1–T2; nothing built) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1: T1 drafted, waiting for the user's review; T2 next) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -97,8 +97,11 @@ in E05 needs it.
 
 **Increment 1:** T1, then T2 after the user's review.
 
-- [ ] **T1 Design and ADR draft** — an ADR draft `docs/lanes/ai/adr-drafts/battle-env.md` for the
-  user's review, then **stop**. It decides: (a) the batch API (a handle of N envs; buffers per call
+- [ ] **T1 Design and ADR draft** — **drafted 2026-10-18, in the user's review:** the ADR draft
+  `docs/lanes/ai/adr-drafts/battle-env.md`, the design note `E05-design.md` (worked reward
+  examples), AI-Q2 (the reward's defaults), AI-Q3 (an agent's `human` flag); (f) settled by the
+  user (the projection is a human's view). The task as refined: the draft for the user's review,
+  then **stop**. It decides: (a) the batch API (a handle of N envs; buffers per call
   for observations, masks, rewards, dones and the acting seat; the head calls of decision 5;
   automatic reset; threads only in the adapter, where and how many; a batch must step bit for bit
   as N single envs); (b) the seats (external, internal; how the internal policy plugs in, so E23's
