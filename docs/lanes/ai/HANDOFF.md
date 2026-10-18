@@ -9,8 +9,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   `h3_env_create_scenario`). **Increment 2 done** (2026-10-18): T3a (kernel streams), T3b
   (`h3_sim::batch`), T3c (`batch::pool`, `h3 ai bench`, `benches/ai/`), T4 (`h3_sim::reward`),
   T3d (`h3_batch_*`, C ABI v27); detail in `docs/epics/E05-design.md` §1, §3, §7, record in
-  `E05-log.md`. T3c to T3d are one pull request from `claude/e05-continuation-4tjnq2`, labelled
-  `cross-lane` (`h3-cli`'s `lib.rs` and `main.rs`). **Next:** the user's checkpoint, then cut
+  `E05-log.md`. T3c to T3d are one pull request, **#252** from `claude/e05-continuation-4tjnq2`
+  (open; labelled `cross-lane` for `h3-cli`'s `lib.rs` and `main.rs`). **Next:** the user's checkpoint, then cut
   increment 3 (T5 encounters, T6 Python; the epic's outline).
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v27 (T3d) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q4, AI-QUIRK-1, AI-STUB-1.
