@@ -291,6 +291,12 @@ impl BattleEnv {
     pub fn ruleset(&self) -> &Arc<BattleRuleset> {
         &self.ruleset
     }
+
+    /// The setup every episode starts from (with random obstacles, each episode's obstacles are
+    /// generated from its seed instead of these).
+    pub fn setup(&self) -> &Arc<BattleSetup> {
+        &self.setup
+    }
 }
 
 #[cfg(test)]

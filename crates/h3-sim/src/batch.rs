@@ -14,6 +14,8 @@
 //! * Every side plays as a human player's (`human = [true, true]`, ADR-0025 point 6), and
 //!   Retreat and Surrender are never legal and refused as invalid actions (point 7).
 //! * A refused action leaves its env unchanged; the other envs step.
+//! * The reward is [`reward`](crate::reward) v1 at the end of a decided episode, 0 otherwise (a
+//!   truncation included).
 //! * With `threads` T > 0 the envs run in T contiguous shards on parked std threads (`pool`);
 //!   what an env does never depends on T.
 //!
@@ -34,6 +36,7 @@ use crate::action::{
 };
 use crate::env::{BattleEnv, StepError};
 use crate::observation::OBSERVATION_LEN;
+use crate::reward::{self, RewardConfig};
 use crate::rollout;
 
 mod pool;
@@ -243,6 +246,8 @@ pub struct BatchConfig {
     pub seed: u64,
     /// Accepted steps of both seats per episode before it is truncated; 0 = no limit.
     pub max_steps: u32,
+    /// The reward's currency and mana price.
+    pub reward: RewardConfig,
 }
 
 /// What a call reports for one env.
@@ -257,8 +262,8 @@ pub struct EnvReport {
     pub truncated: bool,
     /// How the episode that ended in this call ended, if it was decided.
     pub result: Option<BattleResult>,
-    /// This call's reward per side, indexed by [`BattleSide::index`] (until T4 the env's: +1 for
-    /// a victory, −1 for a defeat, at the end of an episode).
+    /// This call's reward per side, indexed by [`BattleSide::index`]: reward v1
+    /// ([`reward::rewards`]) of the episode that ended in this call if it was decided, else 0.
     pub reward: [f32; 2],
     /// The number of the env's current episode (0 the first; it grows at each reset).
     pub episode: u32,
@@ -325,6 +330,7 @@ struct Source<'a> {
     scenarios: &'a [Scenario],
     total: u32,
     max_steps: u32,
+    reward: RewardConfig,
 }
 
 /// N battle environments stepped together (see the module documentation).
@@ -434,6 +440,7 @@ impl BattleBatch {
             scenarios: &self.scenarios,
             total: self.total_weight,
             max_steps: self.config.max_steps,
+            reward: self.config.reward,
         };
         let parts = parts(&mut self.slots, out, &self.ranges);
         self.pool.run(parts, |(slots, mut out)| {
@@ -464,6 +471,7 @@ impl BattleBatch {
             scenarios: &self.scenarios,
             total: self.total_weight,
             max_steps: self.config.max_steps,
+            reward: self.config.reward,
         };
         let parts: Vec<_> = parts(&mut self.slots, out, &self.ranges)
             .into_iter()
@@ -758,7 +766,10 @@ fn advance(
     report.done = true;
     report.truncated = last.truncated;
     report.result = last.result;
-    report.reward = last.reward;
+    // A decided battle has an outcome; a truncated one has none and gets 0.
+    report.reward = env.state().outcome().map_or([0.0; 2], |outcome| {
+        reward::rewards(source.reward, env.ruleset(), env.setup(), &outcome)
+    });
     if let Some(final_obs) = final_obs.filter(|_| last.truncated) {
         let (attacker, defender) = final_obs.split_at_mut(OBSERVATION_LEN);
         let _ = env.encode_observation(BattleSide::Attacker, attacker);

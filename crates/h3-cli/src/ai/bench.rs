@@ -14,7 +14,7 @@ use h3_kernel::{Rng, StreamId};
 use h3_sim::action::{CREATURE_CAST, HERO_CAST};
 use h3_sim::{
     ACTION_COUNT, Action, BatchConfig, BattleBatch, EnvReport, OBSERVATION_LEN, Outputs,
-    SPELL_COUNT, Scenario, Seat, TARGET_COUNT,
+    RewardConfig, SPELL_COUNT, Scenario, Seat, TARGET_COUNT,
 };
 
 use crate::load_scenario;
@@ -189,6 +189,7 @@ pub fn run(options: &BenchOptions) -> Result<BenchReport, String> {
         threads: options.threads,
         seed: options.seed,
         max_steps: options.max_steps,
+        reward: RewardConfig::default(),
     })
     .map_err(|e| e.to_string())?;
     batch.add_scenario(scenario).map_err(|e| e.to_string())?;
