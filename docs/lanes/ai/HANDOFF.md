@@ -47,7 +47,9 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - Built `h3 ai census` and `census-v1.toml` (159 maps, every battle place from `battle_ground`;
   matches E08's census within the maps it lacked). Proposed the assumptions A1–A12 (design §4.4)
   and asked AI-Q4. PyTorch's index is refused from the sandbox and the device link (T6b).
-- In progress: the pull request of `ai/e05-t5a-census`, the full local verify standing in for CI.
+- The full local verify passed every step but coverage, whose test run hit a random case of the
+  battle lane's proptest `every_step_preserves_the_invariants` (a siege; QUEUE inbox); coverage
+  alone, rerun on the same code, passed. The pull request is the branch's (named below once open).
 
 ### 2026-10-18 — E05 T3c, T4, T3d: increment 2 done
 

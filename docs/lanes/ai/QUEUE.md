@@ -24,3 +24,8 @@ Taken over from the battle lane's inbox (2026-10-18; the items stay there too un
 - BAT-Q33's open point for E05 is answered (AI-Q3): the batch plays both sides as human players' (ADR-0025 point 6); the second morale roll stays the battle lane's question.
 - 2026-10-18 (T1): the battle lane's proptest `walks_are_reported_hex_by_hex` found a state that differs with and without an event sink (its inbox, 2026-10-18). The env steps with `NoopSink`; once fixed, nothing to do here unless the fix changes `apply`'s signature.
 - 2026-10-18 (T3c): `benches/README.md`'s workload table lacks `ai/batch-random-full` and `ai/batch-random-siege` (lane-only; 64 envs, threads 0, 1 000 calls, inside `h3_sim::batch::BattleBatch::step`): the file is a shared path, so a small `shared/` pull request adds the two rows.
+- 2026-10-19 (T5a's verify): the battle lane's proptest `every_step_preserves_the_invariants`
+  (`h3-battle`) failed once under coverage: `state.is_over() || state.active() == Some(mover) ||
+  killed || enraged` broke in a siege (faction 0, fort 1, no moat); its regression line is in the
+  T5a pull request's description. `h3-battle` is untouched by T5a; the battle lane's to fix, like
+  `walks_are_reported_hex_by_hex` (the gate fails only when proptest finds such a case).
