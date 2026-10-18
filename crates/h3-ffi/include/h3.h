@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 25 (see crates/h3-ffi/src/lib.rs and ADR-0011).
+ * h3 engine C ABI, version 26 (see crates/h3-ffi/src/lib.rs and ADR-0011).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -62,6 +62,13 @@ uint32_t h3_observation_len(void);
 
 /* scenario: 0 = duel, 1 = skirmish, 2 = full armies; max_steps 0 = unlimited. NULL on error. */
 H3Env *h3_env_create_synthetic(uint32_t scenario, uint64_t seed, uint32_t max_steps);
+/* Any battle (a field, a special battlefield, a garrison, a town under siege) from a scenario's
+ * text: toml[0..len], UTF-8, not NUL-terminated (the format of packs/synthetic/scenarios/), on
+ * the built-in packs it names ("synthetic", "synthetic-ext", "base", "ab", "sod"); max_steps 0 =
+ * unlimited. NULL on error, its message written into error[0..error_len] as a NUL-terminated
+ * string cut to fit (nothing if error is NULL or error_len is 0); untouched on success. */
+H3Env *h3_env_create_scenario(const char *toml, size_t len, uint64_t seed, uint32_t max_steps,
+                              char *error, size_t error_len);
 void h3_env_destroy(H3Env *env);
 H3Env *h3_env_fork(const H3Env *env);
 int32_t h3_env_reset(H3Env *env, uint64_t seed);

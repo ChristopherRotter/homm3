@@ -10,8 +10,8 @@
 //! exposes the full-state hash; a server must not forward it to untrusted clients.
 #![allow(unsafe_code)]
 
+use std::ffi::c_char;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::sync::Arc;
 
 use h3_battle::LegalCommands;
 use h3_contracts::{BattleResult, BattleSide};
@@ -19,6 +19,8 @@ use h3_sim::{
     ACTION_COUNT, Action, ActionMask, BattleEnv, OBSERVATION_LEN, SPELL_COUNT, SpellMask,
     StepError, TARGET_COUNT, TargetMask,
 };
+
+mod scenario;
 
 /// Version of this ABI (functions, structs, error codes, and the action/observation encodings).
 ///
@@ -64,8 +66,10 @@ use h3_sim::{
 /// `h3_observation_len` grows); no function changes. v24 (E04c T7e): observation encoding v20 (the
 /// own hero's Artillery level; `h3_observation_len` grows); no function changes. v25 (E04c T10b):
 /// observation encoding v21 (at a town the defender's option to retreat shows to the defender
-/// only, BAT-Q50 (4); the layout unchanged); no function changes.
-pub const H3_ABI_VERSION: u32 = 25;
+/// only, BAT-Q50 (4); the layout unchanged); no function changes. v26 (E05 T2):
+/// `h3_env_create_scenario` (an environment from a scenario's text on the built-in packs: any
+/// battle the engine plays, sieges included; ADR-0025 point 9); the encodings unchanged.
+pub const H3_ABI_VERSION: u32 = 26;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -232,31 +236,71 @@ pub extern "C" fn h3_observation_len() -> u32 {
 
 /// Creates an environment on the built-in synthetic content pack. `scenario`: 0 = duel (obstacles
 /// generated for each episode from its seed, BAT-GEO-004), 1 = skirmish, 2 = full armies (both
-/// led by heroes). `max_steps` = 0 means no step limit. Returns null on error.
+/// led by heroes). `max_steps` = 0 means no step limit. Returns null on error. Any other battle:
+/// [`h3_env_create_scenario`].
 #[unsafe(no_mangle)]
 pub extern "C" fn h3_env_create_synthetic(scenario: u32, seed: u64, max_steps: u32) -> *mut H3Env {
+    let text = match scenario {
+        0 => h3_pack_battle::SYNTHETIC_DUEL,
+        1 => h3_pack_battle::SYNTHETIC_SKIRMISH,
+        2 => h3_pack_battle::SYNTHETIC_FULL,
+        _ => return std::ptr::null_mut(),
+    };
+    catch_unwind(|| scenario::scenario_env(text, seed, max_steps))
+        .ok()
+        .and_then(Result::ok)
+        .map_or(std::ptr::null_mut(), handle)
+}
+
+/// Creates an environment from a scenario: `toml[0..len]` is the text of a scenario file (UTF-8,
+/// not NUL-terminated; the battle lane's format, `packs/synthetic/scenarios/`), on the built-in
+/// packs it names by id (`synthetic`, `synthetic-ext`, `base`, `ab`, `sod`). Any battle the
+/// engine plays: a field, a special battlefield, a garrison, a town under siege. Obstacles are
+/// generated for each episode from its seed where the scenario asks for random ones
+/// (BAT-GEO-004); the scenario's `difficulty` and `human` apply as written. `max_steps` = 0 means
+/// no step limit. Returns null on error and writes its message into `error[0..error_len]` as a
+/// NUL-terminated string cut to fit (nothing if `error` is null or `error_len` is 0); on success
+/// `error` is left untouched. Each call compiles the scenario's packs.
+///
+/// # Safety
+/// `toml` must be null or valid for `len` bytes of reads; `error` must be null or valid for
+/// `error_len` bytes of writes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn h3_env_create_scenario(
+    toml: *const c_char,
+    len: usize,
+    seed: u64,
+    max_steps: u32,
+    error: *mut c_char,
+    error_len: usize,
+) -> *mut H3Env {
     let created = catch_unwind(|| {
-        let text = match scenario {
-            0 => h3_pack_battle::SYNTHETIC_DUEL,
-            1 => h3_pack_battle::SYNTHETIC_SKIRMISH,
-            2 => h3_pack_battle::SYNTHETIC_FULL,
-            _ => return None,
-        };
-        let random_obstacles = h3_pack_battle::parse_scenario(text).ok()?.random_obstacles;
-        let (ruleset, setup) = h3_pack_battle::synthetic(text).ok()?;
-        let (ruleset, setup) = (Arc::new(ruleset), Arc::new(setup));
-        let env = if random_obstacles {
-            BattleEnv::with_random_obstacles(ruleset, setup, seed, max_steps)
-        } else {
-            BattleEnv::new(ruleset, setup, seed, max_steps)
+        if toml.is_null() {
+            return Err("the scenario text is null".to_owned());
         }
-        .ok()?;
-        Some(Box::new(H3Env::new(env)))
-    });
+        // SAFETY: a non-null `toml` is valid for `len` bytes of reads per the contract.
+        let bytes = unsafe { std::slice::from_raw_parts(toml.cast::<u8>(), len) };
+        let text = std::str::from_utf8(bytes)
+            .map_err(|e| format!("the scenario text is not UTF-8: {e}"))?;
+        scenario::scenario_env(text, seed, max_steps)
+    })
+    .unwrap_or(Err(PANIC_MESSAGE.to_owned()));
     match created {
-        Ok(Some(b)) => Box::into_raw(b),
-        _ => std::ptr::null_mut(),
+        Ok(env) => handle(env),
+        Err(message) => {
+            // SAFETY: per the contract.
+            unsafe { scenario::write_error(&message, error, error_len) };
+            std::ptr::null_mut()
+        }
     }
+}
+
+/// The message of a caught panic.
+const PANIC_MESSAGE: &str = "a panic was caught (a bug)";
+
+/// A new handle owning `env`.
+fn handle(env: BattleEnv) -> *mut H3Env {
+    Box::into_raw(Box::new(H3Env::new(env)))
 }
 
 /// Destroys an environment. Null is ignored.
@@ -562,7 +606,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 25);
+        assert_eq!(h3_abi_version(), 26);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);

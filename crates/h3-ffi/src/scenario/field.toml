@@ -1,0 +1,64 @@
+# E05 T2: a battle in the open field on the shipped packs, through the C ABI: a Knight against a
+# Barbarian on grass, obstacles generated for each episode (BAT-GEO-004), a creature of each
+# expansion, war machines on both sides.
+
+[scenario]
+id = "ffi-field"
+packs = ["base", "ab", "sod"]
+profile = "base:faithful"
+terrain = "base:grass"
+random_obstacles = true
+attacker_war_machines = ["base:ballista"]
+defender_war_machines = ["base:first_aid_tent"]
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 2
+defense = 2
+power = 2
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:magic_arrow", "base:bless", "base:haste"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 3
+defense = 1
+power = 1
+knowledge = 1
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 20
+
+[[attacker]]
+slot = 1
+creature = "base:archer"
+count = 12
+
+[[attacker]]
+slot = 2
+creature = "base:griffin"
+count = 6
+
+[[attacker]]
+slot = 3
+creature = "ab:pixie"
+count = 15
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 25
+
+[[defender]]
+slot = 1
+creature = "base:wolf_rider"
+count = 10
+
+[[defender]]
+slot = 2
+creature = "base:orc"
+count = 8

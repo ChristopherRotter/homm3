@@ -1,0 +1,64 @@
+# E05 T2: a siege on the shipped packs, through the C ABI: a Barbarian with Advanced Ballistics
+# (he aims his Catapult's two shots, BAT-SIE-011) and Earthquake attacks a Castle with a castle,
+# a damaging moat and its turrets (BAT-SIE-001, BAT-SIE-016), defended by a Knight; obstacles
+# generated for each episode (BAT-GEO-004).
+
+[scenario]
+id = "ffi-town"
+packs = ["base", "ab", "sod"]
+profile = "base:faithful"
+terrain = "base:grass"
+random_obstacles = true
+
+[scenario.siege]
+faction = "base:castle"
+fort = "castle"
+moat = "damaging"
+structures = 3
+morale = 1
+
+[scenario.attacker_hero]
+hero_type = "base:crag_hack"
+attack = 3
+defense = 2
+power = 1
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:earthquake"]
+catapult = 2
+
+[scenario.defender_hero]
+hero_type = "base:orrin"
+attack = 2
+defense = 2
+power = 1
+knowledge = 1
+mana = 10
+max_mana = 10
+spell_book = ["base:bless"]
+
+[[attacker]]
+slot = 0
+creature = "base:ogre"
+count = 12
+
+[[attacker]]
+slot = 1
+creature = "base:orc"
+count = 15
+
+[[attacker]]
+slot = 2
+creature = "base:goblin"
+count = 40
+
+[[defender]]
+slot = 0
+creature = "base:pikeman"
+count = 20
+
+[[defender]]
+slot = 1
+creature = "base:archer"
+count = 15

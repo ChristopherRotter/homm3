@@ -1,0 +1,50 @@
+# E05 T2: a battle at an anti-magic garrison (BAT-MAG-061), through the C ABI: both heroes carry
+# spell books and mana, and neither may cast.
+
+[scenario]
+id = "ffi-garrison"
+packs = ["base", "ab", "sod"]
+profile = "base:faithful"
+terrain = "base:dirt"
+anti_magic = true
+random_obstacles = true
+
+[scenario.attacker_hero]
+hero_type = "base:solmyr"
+attack = 1
+defense = 1
+power = 3
+knowledge = 3
+mana = 30
+max_mana = 30
+spell_book = ["base:magic_arrow", "base:haste"]
+
+[scenario.defender_hero]
+hero_type = "base:orrin"
+attack = 2
+defense = 2
+power = 1
+knowledge = 1
+mana = 10
+max_mana = 10
+spell_book = ["base:bless"]
+
+[[attacker]]
+slot = 0
+creature = "base:ogre"
+count = 8
+
+[[attacker]]
+slot = 1
+creature = "base:goblin"
+count = 30
+
+[[defender]]
+slot = 0
+creature = "base:pikeman"
+count = 25
+
+[[defender]]
+slot = 1
+creature = "base:archer"
+count = 12
