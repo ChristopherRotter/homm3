@@ -1,5 +1,6 @@
-//! E05 T3b: the batch against N single envs built from its public pieces (the determinism
-//! property, ADR-0025 point 4), its seats, escapes, truncation, skipped episodes and errors.
+//! E05 T3b, T3c: the batch against N single envs built from its public pieces (the determinism
+//! property for any thread count, ADR-0025 points 3 and 4), its seats, escapes, truncation,
+//! skipped episodes and errors.
 
 use std::sync::Arc;
 
@@ -353,6 +354,7 @@ fn a_batch_steps_as_single_envs() {
     ];
     let config = BatchConfig {
         envs: 4,
+        threads: 3,
         seed: 11,
         max_steps: 120,
     };
@@ -364,6 +366,7 @@ fn a_batch_steps_as_single_envs() {
 fn a_reset_replays_the_same_episodes() {
     let config = BatchConfig {
         envs: 3,
+        threads: 0,
         seed: 2,
         max_steps: 0,
     };
@@ -402,6 +405,7 @@ fn escapes_are_never_legal_and_refused() {
     // batch masks both out and refuses them as invalid actions (ADR-0025 point 7).
     let config = BatchConfig {
         envs: 2,
+        threads: 0,
         seed: 3,
         max_steps: 0,
     };
@@ -454,6 +458,7 @@ fn every_side_plays_as_a_human_players() {
 fn a_hero_casts_through_the_head_calls() {
     let config = BatchConfig {
         envs: 1,
+        threads: 0,
         seed: 3,
         max_steps: 0,
     };
@@ -502,6 +507,7 @@ fn a_hero_casts_through_the_head_calls() {
 fn truncation_writes_both_last_observations_and_resets() {
     let config = BatchConfig {
         envs: 1,
+        threads: 0,
         seed: 9,
         max_steps: 6,
     };
@@ -549,6 +555,7 @@ fn an_episode_without_a_decision_is_skipped() {
     let decided = scenario(TEXTS[0], 1, EXTERNAL);
     let config = BatchConfig {
         envs: 3,
+        threads: 0,
         seed: 5,
         max_steps: 1,
     };
@@ -584,6 +591,7 @@ fn an_episode_without_a_decision_is_skipped() {
 fn refused_actions_leave_their_env_unchanged() {
     let config = BatchConfig {
         envs: 2,
+        threads: 0,
         seed: 6,
         max_steps: 0,
     };
@@ -605,6 +613,7 @@ fn refused_actions_leave_their_env_unchanged() {
 fn errors() {
     let config = BatchConfig {
         envs: 2,
+        threads: 0,
         seed: 1,
         max_steps: 0,
     };
@@ -737,6 +746,7 @@ fn errors() {
         BatchError::Setup(SetupError::EmptyArmy(BattleSide::Defender)),
         BatchError::NoScenario,
         BatchError::NotReset,
+        BatchError::Threads("refused".to_owned()),
         BatchError::Buffer {
             name: "obs",
             len: 1,
@@ -745,7 +755,8 @@ fn errors() {
     ]
     .map(|e| e.to_string());
     assert!(messages.iter().all(|m| !m.is_empty()));
-    assert_eq!(messages[7], "`obs` has 1 elements, 2 needed");
+    assert_eq!(messages[7], "a thread did not start: refused");
+    assert_eq!(messages[8], "`obs` has 1 elements, 2 needed");
 }
 
 #[test]
@@ -765,12 +776,13 @@ fn scenarios_are_drawn_by_weight() {
 proptest! {
     #![proptest_config(ProptestConfig { cases: 8, ..ProptestConfig::default() })]
 
-    /// The determinism property (ADR-0025 point 4): for random batches, a batch steps as N single
-    /// envs with the derived seeds, output by output and state hash by state hash, and every
-    /// action its masks allow applies.
+    /// The determinism property (ADR-0025 points 3 and 4): for random batches and thread counts, a
+    /// batch steps as N single envs with the derived seeds, output by output and state hash by
+    /// state hash, and every action its masks allow applies.
     #[test]
     fn a_batch_is_n_single_envs(
-        envs in 1u32..5,
+        envs in 1u32..7,
+        threads in 0u32..8,
         seed in any::<u64>(),
         max_steps in prop::sample::select(vec![0u32, 3, 40]),
         picks in prop::collection::vec((0usize..4, 1u32..4, 0usize..3), 1..4),
@@ -781,6 +793,7 @@ proptest! {
             .iter()
             .map(|&(text, weight, seat)| scenario(TEXTS[text], weight, seats[seat]))
             .collect();
-        same_as_single_envs(BatchConfig { envs, seed, max_steps }, scenarios, 40, play);
+        let config = BatchConfig { envs, threads, seed, max_steps };
+        same_as_single_envs(config, scenarios, 40, play);
     }
 }
