@@ -69,20 +69,26 @@ time per lane**. A lane owns paths; everything else it may not change in its own
 **Ownership** (`lanes.toml`; the longest matching pattern decides):
 
 - **battle:** `h3-battle`, `h3-heroes`, the battle part `h3-content-battle` and its pack adapter
-  `h3-pack-battle` (since R01; the core `h3-content` and `h3-pack` are shared), `h3-sim`, `h3-ffi` and `h3-cli` (until an AI lane exists at E05), the formats/tools
-  crates `h3-formats`, `h3-harvest`, `h3-experiment` and `docs/formats/` (until a formats/tools
-  lane opens), packs, fixtures, experiments, `benches/battle/`, the BAT and HER rules, the quirks
-  ledger, the surveys, the epics E01–E06. `h3-heroes` moves to adventure with a handover
-  checkpoint when hero progression starts (E08–E10).
+  `h3-pack-battle` (since R01; the core `h3-content` and `h3-pack` are shared), `h3-cli` (its
+  `src/ai/` the AI lane's), the formats/tools crates `h3-formats`, `h3-harvest`, `h3-experiment`
+  and `docs/formats/` (until a formats/tools lane opens), packs, fixtures, experiments,
+  `benches/battle/`, the BAT rules, the quirks ledger, the surveys, the epics E01–E04c.
+  `h3-heroes` moved to adventure when E04c closed (ADV-Q13).
 - **adventure:** `h3-adventure`, `h3-game`, `h3-map` and `h3-pack-adventure` (E08; later the
   town), adventure-owned sub-paths of the battle lane's crates and folders (`h3-sim`'s and
   `h3-cli`'s `src/adventure/`, `fixtures/replays/adventure/`, the packs' `adventure.toml`; the
   longest match decides), `docs/formats/h3m.md`, the ADV, GAM and town rules, its own quirks
   ledger `docs/rules/quirks-adventure.md`, `benches/adventure/`, the epics E07–E10 and E12–E14.
+- **ai** (since E05; the user, 2026-10-18, AI-Q1): `h3-sim` (its `src/adventure/` stays the
+  adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, the Python side `python/`,
+  `benches/ai/`, the epics E05 and E06. The battle lane still changes rules that the encodings
+  show: such a change (a new observation feature, a new action entry) is a `cross-lane` pull
+  request from the battle lane, with the AI lane's version bumps in it.
 - **server:** the new adapter crates `h3-protocol` and `h3-server`, `benches/server/`, E16.
 - **client:** `clients/`, a separate Cargo workspace with its own lockfile and CI job
   (`clients/README.md`), E17.
-- **Later lanes:** formats/tools when needed, AI at E05. Opening a lane is a `lanes.toml` change.
+- **Later lanes:** formats/tools when needed. Opening a lane is a `lanes.toml` change, with the
+  lane's `HANDOFF.md` and `QUEUE.md` in the same pull request (`check-docs`).
 - **Shared** (a small, separate pull request that merges first): `h3-kernel`, `h3-contracts`,
   `Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, `scripts/`, CI, the toolchain and lint
   configuration, ADRs, `AGENTS.md`, the numbered docs, `BACKLOG.md`, the global HANDOFF, the
@@ -107,7 +113,7 @@ first, waits for its merge and rebases; a seam change (`h3-contracts`) stops the
 it touches.
 
 **Ids.** New questions, quirks and stubs carry the lane code from `lanes.toml` (BAT, ADV, SRV,
-CLT) and count per lane: questions `ADV-Q1`, quirks `ADV-QUIRK-1` (in the lane's ledger), stubs
+CLT, AI) and count per lane: questions `ADV-Q1`, quirks `ADV-QUIRK-1` (in the lane's ledger), stubs
 `ADV-STUB-1`. Existing ids (`Q55`, `Q-0012`, `STUB-0001`) stay. `check-rules` and `check-stubs`
 accept both forms. **ADRs** are written as drafts in `docs/lanes/<lane>/adr-drafts/<slug>.md`
 and get the next number when the user accepts them (a shared change moves them to `docs/adr/`).
@@ -122,13 +128,13 @@ conflict on rebase and bumps again.
 | core ruleset hash | `RULESET_HASH_VERSION`, `h3-content` | shared (with `h3-content`, R01) |
 | battle ruleset-part hash | `BATTLE_RULESET_HASH_VERSION`, `h3-content-battle` | battle |
 | pack format (`core.toml`, `battle.toml`) | `packs/README.md` | shared (with `h3-pack`; the battle file with `h3-pack-battle`) |
-| replay format, action and observation encodings | `h3-sim` | battle (AI lane from E05) |
-| C ABI | `H3_ABI_VERSION`, `h3-ffi` | battle (AI lane from E05) |
+| replay format, action and observation encodings | `h3-sim` | ai (battle until E05) |
+| C ABI | `H3_ABI_VERSION`, `h3-ffi` | ai (battle until E05) |
 | kernel RNG and hash | `RNG_VERSION`, `HASH_VERSION`, `h3-kernel` | shared |
 | game state hash | `GAME_STATE_HASH_VERSION`, `h3-game` | adventure |
 | adventure state hash, adventure ruleset-part hash | `ADVENTURE_STATE_HASH_VERSION`, `ADVENTURE_RULESET_HASH_VERSION`, `h3-adventure` | adventure |
 | map import | `MAP_IMPORT_VERSION`, `h3-map` (a replay names its map by content hash, path and this version; ADR-0015) | adventure |
-| adventure replay format, action and observation encodings | `h3-sim/src/adventure/`: `adventure::ACTION_ENCODING_VERSION` (E08 T9a), `adventure::replay::REPLAY_FORMAT_VERSION` (E08 T9b; the file format in `h3-cli`'s `src/adventure/`); no observation encoding before E13 | adventure (AI lane from E05) |
+| adventure replay format, action and observation encodings | `h3-sim/src/adventure/`: `adventure::ACTION_ENCODING_VERSION` (E08 T9a), `adventure::replay::REPLAY_FORMAT_VERSION` (E08 T9b; the file format in `h3-cli`'s `src/adventure/`); no observation encoding before E13 | adventure (the AI lane's from E13) |
 | wire protocol | `PROTOCOL_VERSION`, `h3-protocol` | server |
 | viewer record format | `RECORD_FORMAT_VERSION`, `h3-protocol` (from E16 M1) | server |
 | game journal format | `JOURNAL_FORMAT_VERSION`, `h3-server` (from E16 M2) | server |

@@ -12,16 +12,17 @@ A thin, allocation-conscious wrapper over the game logic:
 - `fork(env) -> env` (cheap clone for search/rollouts) and `state_hash(env)`
 - Two environment families: **BattleEnv** (from a `BattleSetup`; first) and **AdventureEnv** (E08 T9a: a game on a map through `h3-game`, `h3-sim`'s `src/adventure/`; its replays record the game commands, not the env's actions, and `h3 adventure run/verify/bench` drives it, T9b; action encoding v2 adds the answers to an open decision, an entry that takes no tile has tile 0 alone, and a replay records the game's difficulty, T14b; encoding v3 adds the battle phase, in which a player in a battle acts with the battle's own encoding for its side and `to_move` yields the owner of the side to act, and replay format v3 records each command's actor and battle commands, T19b1)
 - Vectorized/batched stepping in Rust, parallel across instances; single-threaded per instance
-- Observations are **per-player projections** (same function as the security layer), so agents never see hidden information
+- Observations are **per-player projections** (same function as the security layer), so agents never see hidden information: an agent sees exactly what a human player would, as data rather than pixels (AI-Q1). `fork` and `state_hash` see the full state: tools and training only, never an agent's move
 - **Choices the battle makes for a side as the original's computer** (ADR-0023 point 7; E04c): the automatic turrets' and Ballista's targets read `BattleSetup.difficulty` and `.human`, which never decide who commands a side. The defaults (Easy, no human side) are the original's battle between two computer players, in which those targets count a computer side's walker of few hit points as keeping out of the moat, and that walker's berserk walk keeps out of it too (BAT-SIE-022, BAT-Q50): a `BattleEnv` for a human player's battles sets `human`
-- Reward is computed in the sim layer from events/state; the domain knows nothing about rewards
+- Reward is computed in the sim layer from events/state; the domain knows nothing about rewards. A real battle is won at the least cost and the greatest gain (AI-Q1): the battle reward is a value balance in one currency (losses on both sides, the mana spent at a price, an enemy's escape by retreat or surrender priced at what escapes), zero-sum in self-play, its weights configurable (E05)
+- **Opponents** (AI-Q1): agents face each other (a hero against a hero) and the system actor (a neutral side; E23's policy of the original's computer), whose seat the engine plays inside a step
 - Exposed to other languages via the C ABI (`h3-ffi`), batch-oriented to amortize call overhead
 
 The scenario distribution matters as much as the engine: training on few fixed setups overfits. Battle setups are sampled from generators (armies, terrain, heroes, artifacts, spells); adventure training needs generated maps (epic: map generator, seeded by the user's existing project, optimizing zone balance and minimal teleport connections among other objectives).
 
 ## 2. Baselines (needed before RL)
 
-Scripted bots are required for bootstrapping, evaluation and the self-play opponent pool:
+Scripted bots are baselines for evaluation only; training uses self-play and the system actor alone (AI-Q1):
 
 - random legal agent (also the benchmark workload),
 - simple heuristic battle bot (e.g., greedy damage/value),
@@ -44,7 +45,7 @@ Principles:
 - **League/self-play pool** with past checkpoints to avoid strategy collapse.
 - **Automated sweeps** over a small, agreed set of hyperparameters with early stopping; reports summarizing what changed and what improved.
 - **Human guidance points** (user decides, rarely): objective/reward definition, evaluation criteria and opponent ladder, compute budget, scenario distribution, which approach family to pursue next. Agents propose options with evidence; the user picks.
-- Prefer established libraries/frameworks over bespoke RL code where they fit; the choice of training language/framework is deferred (the C ABI keeps it open).
+- Prefer established libraries/frameworks over bespoke RL code where they fit. Training is Python with PyTorch over the C ABI (Q5, AI-Q1); Rust-native frameworks (burn, candle) stay an option, mainly for running a trained network inside the engine's own processes.
 
 ## 5. Compute assumptions (initial)
 
@@ -52,7 +53,7 @@ Local PC: Ryzen 9 3900-class CPU (12 cores / 24 threads), GTX 1070 (8 GB, Pascal
 
 - Simulation speed is the lever: CPU-side self-play is cheap if the engine is fast; GPU is used for batched inference/training of small-to-medium networks.
 - Design networks/observations compactly; do not rely on fp16/tensor cores.
-- Verify framework support for Pascal (compute capability 6.1): newer CUDA toolkit releases have been dropping older architectures, which can constrain framework versions.
+- Pascal (compute capability 6.1): PyTorch 2.14 is the last release with prebuilt wheels for it (the CUDA 12.6 build; PyTorch's notice of 2026-09-04); later releases need a source build. Pin 2.14 until the GPU changes (Q5).
 - Long training times are acceptable; cloud scale-out remains possible later because runs are config-driven and the engine is portable.
 
 ## 6. Upfront constraints the AI imposes on the engine
@@ -67,4 +68,4 @@ Local PC: Ryzen 9 3900-class CPU (12 cores / 24 threads), GTX 1070 (8 GB, Pascal
 
 ## 7. Deferred
 
-RL algorithm selection, network architectures, training framework/language, reward design details, the exact opponent ladder, league management, multi-agent (>2 players) handling.
+RL algorithm selection, network architectures, the reward's weights, the exact opponent ladder, league management, multi-agent (>2 players) handling.
