@@ -6,7 +6,7 @@ You are one of many agents working on this over time. No single session finishes
 
 ## Start-of-session checklist
 
-1. Know your lane (`battle`, `adventure`, `server`, `client`, or `shared` for a change to shared paths): the task, the branch (`<lane>/<task>`) or the user says which. See "Lanes" below.
+1. Know your lane (`battle`, `adventure`, `ai`, `server`, `client`, or `shared` for a change to shared paths): the task, the branch (`<lane>/<task>`) or the user says which. See "Lanes" below.
 2. Read `docs/HANDOFF.md` (the lane index and the traps of every lane), then `docs/lanes/<lane>/HANDOFF.md` (the lane's state, traps and last sessions) and your task: the lane's `QUEUE.md` entry, or the epic task the user names.
 3. Read the "Open" section of `docs/OPEN-QUESTIONS.md` (answered entries are history: read one when a doc points to it).
 4. Read your lane's reading list (below): the epic file you are working on (`docs/epics/`; its log `<epic>-log.md` only where a task builds on an earlier one) and, from the ADR index (`docs/adr/README.md`, column "Read when"), only the ADRs that touch your task. ADRs are binding; do not silently deviate. ADRs stay short: decisions only, detail in design notes (rule in the ADR index).
@@ -49,8 +49,9 @@ Several agents work in parallel, **one agent at a time per lane** (`docs/08-work
 
 | Lane | Read | When the task touches it |
 |---|---|---|
-| battle | the current epic file (`docs/epics/E04b-battle-magic.md`), ADR-0014 | ADR-0003 (numbers), ADR-0012/0013, `docs/04-rules-and-sources.md`, the quirks ledger, `docs/exe/README.md` and `docs/formats/installation.md` §7 (code reading), `docs/experiments/README.md` |
+| battle | the current epic file (the lane HANDOFF names it), ADR-0014 | ADR-0003 (numbers), ADR-0012/0013, `docs/04-rules-and-sources.md`, the quirks ledger, `docs/exe/README.md` and `docs/formats/installation.md` §7 (code reading), `docs/experiments/README.md` |
 | adventure | `docs/03-domain.md`, the adventure epic file once refined | `docs/02-architecture.md`, ADR-0003/0004/0005/0006, `docs/04-rules-and-sources.md`, `docs/formats/h3m.md`, `docs/exe/README.md` (code reading) |
+| ai | `docs/07-simulation-and-ai.md`, the current epic file (`docs/epics/E05-battle-env.md`), ADR-0011, ADR-0014 point 9 | ADR-0003 (determinism), `docs/06-security.md` (projections), ADR-0023 point 7, `h3-sim`'s encodings |
 | server | `docs/06-security.md`, ADR-0004, ADR-0008, ADR-0018 | ADR-0011 (encodings), `docs/02-architecture.md`, `h3-sim`'s action and observation encodings |
 | client | `clients/README.md`, ADR-0009, ADR-0020, the asset notes in the lane HANDOFF | `docs/formats/installation.md` (archives), `docs/02-architecture.md` |
 | shared | `docs/02-architecture.md`, `docs/05-testing.md`, `lanes.toml` | the ADRs the change touches |

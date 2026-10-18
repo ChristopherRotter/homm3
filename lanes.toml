@@ -14,9 +14,9 @@
 # Ownership decided by the user on 2026-10-07: `h3-content` and `h3-pack` stayed with battle until
 # the content split (R01 decision 6) made these core crates shared paths; the battle's parts
 # (`h3-content-battle`, `h3-pack-battle`) are battle's. The formats/tools crates (`h3-formats`,
-# `h3-harvest`, `h3-experiment`) are battle's until a formats/tools lane opens; an AI lane takes
-# `h3-sim`/`h3-ffi` at E05. The epics E11, E15 and E18–E20 have no lane yet: their files get a
-# pattern here when they start.
+# `h3-harvest`, `h3-experiment`) are battle's until a formats/tools lane opens. The AI lane took
+# `h3-sim` and `h3-ffi` at E05 (the user, 2026-10-18, AI-Q1). The epics E11, E15 and E18–E20
+# have no lane yet: their files get a pattern here when they start.
 
 [shared]
 paths = [
@@ -95,9 +95,7 @@ paths = [
     "crates/h3-battle/",
     "crates/h3-content-battle/",
     "crates/h3-pack-battle/",
-    # Until the AI lane (E05).
-    "crates/h3-sim/",
-    "crates/h3-ffi/",
+    # The CLI's battle commands and golden replays; its AI commands are the AI lane's (`src/ai/`).
     "crates/h3-cli/",
     # Until a formats/tools lane opens.
     "crates/h3-formats/",
@@ -116,8 +114,6 @@ paths = [
     "docs/epics/E02*",
     "docs/epics/E03*",
     "docs/epics/E04*",
-    "docs/epics/E05*",
-    "docs/epics/E06*",
     "docs/lanes/battle/",
 ]
 
@@ -204,4 +200,21 @@ paths = [
     "clients/",
     "docs/epics/E17*",
     "docs/lanes/client/",
+]
+
+# The battle agent (E05, E06; the user, 2026-10-18, AI-Q1): the sim layer and its encodings, the
+# C ABI, the Python side, the AI benchmarks. A battle rule that changes the observation or the
+# action encoding is a `cross-lane` change from the battle lane (`docs/08-work-process.md`).
+[[lane]]
+name = "ai"
+code = "AI"
+paths = [
+    "crates/h3-sim/",
+    "crates/h3-ffi/",
+    "crates/h3-cli/src/ai/",
+    "python/",
+    "benches/ai/",
+    "docs/epics/E05*",
+    "docs/epics/E06*",
+    "docs/lanes/ai/",
 ]

@@ -620,7 +620,7 @@ paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
     #[test]
     fn the_repository_lanes_file_is_valid() {
         let c = Config::load(&workspace_root()).unwrap();
-        for lane in ["battle", "adventure", "server", "client"] {
+        for lane in ["battle", "adventure", "ai", "server", "client"] {
             assert!(c.lane(lane).is_some(), "{lane}");
             assert_eq!(
                 c.owner(&format!("docs/lanes/{lane}/HANDOFF.md")),
@@ -661,12 +661,23 @@ paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
             assert_eq!(c.owner(path), adventure, "{path}");
         }
         for path in [
-            "crates/h3-sim/src/env.rs",
+            "crates/h3-cli/src/main.rs",
             "fixtures/replays/duel-s1.toml",
             "packs/sod/battle.toml",
             "docs/formats/installation.md",
         ] {
             assert_eq!(c.owner(path), battle, "{path}");
+        }
+        // The AI lane's (E05, AI-Q1): the sim layer and the C ABI, the CLI's `src/ai/`.
+        let ai = Owner::Lane("ai".to_owned());
+        for path in [
+            "crates/h3-sim/src/env.rs",
+            "crates/h3-ffi/src/lib.rs",
+            "crates/h3-cli/src/ai/mod.rs",
+            "python/README.md",
+            "docs/epics/E05-battle-env.md",
+        ] {
+            assert_eq!(c.owner(path), ai, "{path}");
         }
         assert_eq!(c.owner("docs/rules/surveys/README.md"), Owner::Common);
     }

@@ -6,7 +6,7 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epics/E04b-battle-magic.md`; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27).
 
-**E04c** (`docs/epics/E04c-sieges-and-battlefields.md`, records in `E04c-log.md`): increments 1 to 10 are done and the epic closed on 2026-10-16 (their cuts: OPEN-QUESTIONS BAT-Q37 to BAT-Q50). **Next:** the user's choice at the checkpoint (E05's refinement, E23 the original's battle AI, or E11's battle part; BACKLOG).
+**E04c** (`docs/epics/E04c-sieges-and-battlefields.md`, records in `E04c-log.md`): increments 1 to 10 are done and the epic closed on 2026-10-16 (their cuts: OPEN-QUESTIONS BAT-Q37 to BAT-Q50). **Next:** E05 is the AI lane's (refined 2026-10-18, AI-Q1); this lane's next epic is the user's choice: E23 the original's battle AI (BACKLOG: after E05, before E06) or E11's battle part. The inbox's E05 items were copied to `docs/lanes/ai/QUEUE.md`.
 
 ## Inbox
 

@@ -1,19 +1,20 @@
 # HANDOFF
 
-Read first, then the lane's HANDOFF (`AGENTS.md`): the lane index and the traps of every lane; a lane's state lives in its own HANDOFF only. Rules: `docs/08-work-process.md` ("Lanes", "Keeping the start-of-session reading small"); `check-docs` keeps it under 6 000 bytes; change it in a `shared/` pull request.
+Read first, then the lane's HANDOFF (`AGENTS.md`): the lane index and every lane's traps; a lane's state lives in its own HANDOFF only. Rules: `docs/08-work-process.md` ("Lanes", "Keeping the start-of-session reading small"); `check-docs` keeps it under 6 000 bytes; change it in a `shared/` pull request.
 
 ## Lanes
 
 | Lane | Owns (`lanes.toml`) | State, traps, tasks |
 |---|---|---|
-| battle | `h3-battle`, `h3-content-battle`, `h3-pack-battle`, `h3-sim`, `h3-ffi`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
+| battle | `h3-battle`, `h3-content-battle`, `h3-pack-battle`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
 | adventure | `h3-adventure`, `h3-game`, `h3-map`, `h3-pack-adventure`, `h3-heroes`; `src/adventure/` in `h3-sim` and `h3-cli`, `fixtures/replays/adventure/`, `docs/formats/h3m.md` | [HANDOFF](lanes/adventure/HANDOFF.md), [QUEUE](lanes/adventure/QUEUE.md) |
+| ai | `h3-sim`, `h3-ffi`, `python/` | [HANDOFF](lanes/ai/HANDOFF.md), [QUEUE](lanes/ai/QUEUE.md) |
 | server | `h3-protocol`, `h3-server` | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
 | client | `clients/` (own Cargo workspace) | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
 
-Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content` and `h3-pack` (R01), workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md` and `docs/stubs.toml` (a block per lane), both `Cargo.lock`s, `docs/exe/map.toml` and `structs.toml` (a line per entry).
+Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content` and `h3-pack` (R01), workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common: `OPEN-QUESTIONS.md` and `docs/stubs.toml` (a block per lane), both `Cargo.lock`s, `docs/exe/map.toml` and `structs.toml` (a line per entry).
 
-- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: out of minutes or billing, runs fail unstarted and the full local verify stands in; CI never blocks work, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full verify for pull requests and `master` (once per code, not for docs only) and weekly `cargo deny check advisories`. Changes reach `master` by pull request only, **opened only when its branch is ready for merging**; each push to an open one runs CI: merge `master` into it only after `master`'s latest run finished.
+- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: without minutes or billing runs fail unstarted and the full local verify stands in; CI never blocks work, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full verify for pull requests and `master` (once per code, not for docs only) and weekly `cargo deny check advisories`. Changes reach `master` by pull request only, **opened when its branch is ready to merge**; each push to an open one runs CI: merge `master` into it after `master`'s latest run finished.
 
 ## Traps for every lane
 
@@ -33,11 +34,11 @@ Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `
 - The wiki is reachable only through WebFetch (summarised) and needs the user's approval per session: ask for verbatim quotes, use `index.php?title=<Page>&action=raw` and `index.php?search=<term>&fulltext=1`; ask for the `swh` template's SoD argument, the summariser otherwise reports HotA.
 - VCMI 1.7.5: `git clone --depth 1 --branch 1.7.5 https://github.com/vcmi/vcmi.git` works through the proxy.
 - Experiments: agents play batches on the client lane's harness (`experiments/README.md`).
-- Code reading (Q29, Q57): stage `Heroes3.exe`, `pip install capstone pefile`, then `scripts/exe.py lookup|fn|switch|callers|refs|grep` with the address map (`docs/exe/README.md`); every address cited in docs or code needs a map entry (`check-exe-map`; `scripts/exe.py cited`). `fn` prints a long function only sliced (`--around`, `--from/--to`): never read `map.toml` or `h3api.toml` whole. The tool prints each float constant's width; the x87 runs at 53 bits (`installation.md` §7.10).
+- Code reading (Q29, Q57): stage `Heroes3.exe`, `pip install capstone pefile`, then `scripts/exe.py lookup|fn|switch|callers|refs|grep` with the address map (`docs/exe/README.md`); every address cited in docs or code needs a map entry (`check-exe-map`; `scripts/exe.py cited`). `fn` prints a long function only sliced (`--around`, `--from/--to`): never read `map.toml` or `h3api.toml` whole. It prints each float constant's width; the x87 runs at 53 bits (§7.10).
 
 **Coverage, lints, formatting**
-- LLVM counts the implicit `else` of `if let`, the error arm of `?` and rarely reached closures: no defensive dead branches; use infallible accessors and combinators, saturate instead of returning `Option`. Lines only proptests reach make the gate flaky: give each a fixed test (`cargo llvm-cov -p <crate> -- --skip <proptest>`).
-- Coverage misses on non-code lines: stale binaries (`cargo llvm-cov clean --workspace`).
+- LLVM counts the implicit `else` of `if let`, the error arm of `?` and rare closures: no defensive dead branches; use infallible accessors and combinators; saturate, do not return `Option`. Lines only proptests reach make the gate flaky: give each a fixed test (`cargo llvm-cov -p <crate> -- --skip <proptest>`).
+- Misses on non-code lines: stale binaries (`cargo llvm-cov clean --workspace`).
 - clippy: `should_implement_trait` rejects methods named `div`/`shr`/`mul`/`add`/`sub`; `type_complexity` fires on arrays of fn pointers in tests (use a type alias). `cargo fmt` reflows code: match scripted patches against the formatted text.
 - Dev-dependencies obey the layers too (`check-arch`): domain crates build test rulesets in code.
 - serde ignores unknown keys of a unit variant in an internally tagged enum (use struct variants); TOML serialization needs table fields after plain values.
