@@ -465,6 +465,7 @@ fn every_side_plays_as_a_human_players() {
     };
     let s = Scenario::new(Arc::new(ruleset), &setup, false, 1, EXTERNAL).unwrap();
     assert_eq!(s.setup().human, [true, true]);
+    assert!(Arc::ptr_eq(s.ruleset(), s.env(0, 0).unwrap().ruleset()));
     assert_eq!(s.seats(), EXTERNAL);
 }
 

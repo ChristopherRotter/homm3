@@ -5,7 +5,8 @@
 use std::ffi::c_char;
 use std::sync::Arc;
 
-use h3_sim::BattleEnv;
+use h3_pack_battle::ScenarioDef;
+use h3_sim::{BattleBatch, BattleEnv, Scenario, Seat};
 
 /// The ids of the built-in packs, compiled into the library ([`builtin_pack`]).
 pub const BUILTIN_PACKS: [&str; 5] = ["synthetic", "synthetic-ext", "base", "ab", "sod"];
@@ -33,18 +34,7 @@ pub fn builtin_pack(id: &str) -> Option<(&'static str, &'static str)> {
 /// packs' compilation, or the battle's setup.
 pub fn scenario_env(text: &str, seed: u64, max_steps: u32) -> Result<BattleEnv, String> {
     let def = h3_pack_battle::parse_scenario(text).map_err(|e| format!("scenario: {e}"))?;
-    let packs = def
-        .packs
-        .iter()
-        .map(|id| {
-            builtin_pack(id).ok_or_else(|| {
-                format!(
-                    "unknown pack `{id}` (built-in packs: {})",
-                    BUILTIN_PACKS.join(", ")
-                )
-            })
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+    let packs = packs(&def)?;
     let ruleset =
         h3_pack_battle::compile(&packs, &def.profile).map_err(|e| format!("packs: {e}"))?;
     let setup = def
@@ -56,6 +46,62 @@ pub fn scenario_env(text: &str, seed: u64, max_steps: u32) -> Result<BattleEnv, 
         BattleEnv::new
     };
     create(Arc::new(ruleset), Arc::new(setup), seed, max_steps).map_err(|e| format!("setup: {e}"))
+}
+
+/// The texts of the built-in packs `def` names.
+fn packs(def: &ScenarioDef) -> Result<Vec<(&'static str, &'static str)>, String> {
+    def.packs
+        .iter()
+        .map(|id| {
+            builtin_pack(id).ok_or_else(|| {
+                format!(
+                    "unknown pack `{id}` (built-in packs: {})",
+                    BUILTIN_PACKS.join(", ")
+                )
+            })
+        })
+        .collect()
+}
+
+/// Adds the scenario `text` on the built-in packs it names to `batch` with `weight` and `seats`
+/// (E05 T3d). Scenarios on the same packs and profile share one ruleset (ADR-0025 point 9):
+/// `rulesets` holds, per packs and profile, the index of the first scenario that compiled it.
+///
+/// # Errors
+/// A message naming the stage that failed, as [`scenario_env`]'s, or the batch's refusal (seats,
+/// weight); the batch is unchanged.
+pub fn add_to_batch(
+    batch: &mut BattleBatch,
+    rulesets: &mut Vec<(Vec<String>, String, usize)>,
+    text: &str,
+    weight: u32,
+    seats: [Seat; 2],
+) -> Result<(), String> {
+    let def = h3_pack_battle::parse_scenario(text).map_err(|e| format!("scenario: {e}"))?;
+    let shared = rulesets
+        .iter()
+        .find(|(packs, profile, _)| *packs == def.packs && *profile == def.profile)
+        .and_then(|&(_, _, index)| batch.scenarios().get(index))
+        .map(|s| s.ruleset().clone());
+    let compiled = shared.is_none();
+    let ruleset = match shared {
+        Some(ruleset) => ruleset,
+        None => Arc::new(
+            h3_pack_battle::compile(&packs(&def)?, &def.profile)
+                .map_err(|e| format!("packs: {e}"))?,
+        ),
+    };
+    let setup = def
+        .resolve(&ruleset)
+        .map_err(|e| format!("scenario: {e}"))?;
+    let scenario = Scenario::new(ruleset, &setup, def.random_obstacles, weight, seats)
+        .map_err(|e| e.to_string())?;
+    let index = batch.scenarios().len();
+    batch.add_scenario(scenario).map_err(|e| e.to_string())?;
+    if compiled {
+        rulesets.push((def.packs, def.profile, index));
+    }
+    Ok(())
 }
 
 /// Writes `message` into `error[0..len]` as a NUL-terminated string, cut at a character boundary

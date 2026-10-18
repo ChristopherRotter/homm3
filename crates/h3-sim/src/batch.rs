@@ -177,6 +177,11 @@ impl Scenario {
         Ok(scenario)
     }
 
+    /// The ruleset its battles run on (shared by the scenarios a caller built on it).
+    pub fn ruleset(&self) -> &Arc<BattleRuleset> {
+        &self.ruleset
+    }
+
     /// The setup every episode starts from (`human = [true, true]`).
     pub fn setup(&self) -> &Arc<BattleSetup> {
         &self.setup
