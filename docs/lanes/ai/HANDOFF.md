@@ -32,6 +32,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - Drafted the batch API (same-step automatic reset, per-env status, head calls per batch, std-thread shards in `h3-sim`, seeds per env stream), seats per scenario side (internal policies a closed enum; E23's function shared with `h3-game`), reward v1 as destroyed plus transferred value (transfers counted once, stakes from the episode, scaled by the starting armies), the scenario TOML unchanged, the encounter distribution's shape and census, ctypes with zero-copy numpy, uv and `uv.lock` for PyTorch 2.14, the benchmarks.
 - The user settled (f): every per-player observation already is a human player's information; no check of the original's screens. The user also noted that `verify` cleans up after itself (the coverage gate's clean, `08-work-process.md` "Cloud sandbox" 5).
 - Nothing built; stop for the review.
+- **Found on `master` (for the battle lane):** the baseline's full verify failed coverage: `h3-battle`'s proptest `walks_are_reported_hex_by_hex` found a case in which `apply` with an event sink and with `NoopSink` end in different state hashes (properties.rs:1924; a town, a Clone). The env steps with `NoopSink`, replays and the server with sinks. The `cc` line is in the T1 pull request's description; master's full verify fails until the battle lane fixes it.
 
 ### 2026-10-18 — E05 refined, the lane opened
 
