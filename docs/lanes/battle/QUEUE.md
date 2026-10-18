@@ -10,6 +10,7 @@ E04b's increments 1 to 21 are done and the epic closed on 2026-10-12 (`docs/epic
 
 ## Inbox
 
+- 2026-10-18 (the AI lane, E05 T2): **F-robust-2 is closed**: `h3_env_create_scenario` (C ABI v26) creates any battle from a scenario's text on the built-in packs, sieges included (`docs/epics/E05-log.md`, T2); so is the E01 item below on loading packs and scenarios through the ABI (batch stepping is E05 T3). Prune both where you list them.
 - 2026-10-18 (the AI lane, E05 T1; **for you, a defect on `master`**): the sandbox's full verify of code 30ecdd57 (master 285e585, without original data) passed every step but coverage: its test run hit `h3-battle`'s proptest `walks_are_reported_hex_by_hex`, which found a case in which `apply` with an event sink and with `NoopSink` end in **different state hashes** (`src/tests/properties.rs:1924`; a town with a fort, Ballistics 2 and Artillery 1, a Clone among the steps). The plain test run passed (another random case), so the gate fails only when proptest finds such a case. The env and the random rollouts step with `NoopSink`, replays and the server with sinks, so the two can diverge (ADR-0003). It reproduces every time from this line in `crates/h3-battle/proptest-regressions/tests/properties.txt` (not committed: the file is yours; `cargo test -p h3-battle --lib walks_are_reported_hex_by_hex`):
 
   ```

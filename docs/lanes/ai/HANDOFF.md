@@ -5,9 +5,14 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 ## Current state
 
 - **Opened 2026-10-18** with E05's refinement (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` stays the adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05 and E06 (`lanes.toml`).
-- **E05** (`docs/epics/E05-battle-env.md`): in progress. **T1 done** (2026-10-18): **ADR-0025** accepted (the batch API, seats, both sides human, no escapes, reward v1 without the adventure, scenarios, the encounter distribution, Python, benchmarks); detail in `docs/epics/E05-design.md`, record in `E05-log.md`. Open: **#248** (`shared/adr-0025-battle-env`: the ADR, its index row, `07-simulation-and-ai.md`; merge first) and **#247** (`ai/e05-t1`, `cross-lane`: the epic, the design note, OPEN-QUESTIONS, the battle inbox's two entries). **Next:** T2 (an env from a scenario, C ABI v26; `QUEUE.md`).
+- **E05** (`docs/epics/E05-battle-env.md`): in progress. **Increment 1 done** (2026-10-18): T1
+  (ADR-0025 accepted; detail in `docs/epics/E05-design.md`, record in `E05-log.md`) and **T2**
+  (`h3_env_create_scenario`, C ABI v26: any battle from a scenario's text on the built-in packs,
+  sieges included). Open: the T2 pull request (`ai/e05-t2`, `cross-lane` for one line in the
+  battle lane's inbox). **Next:** the user's checkpoint, then increment 2 cut from T3 (the batch
+  API) and refined into `QUEUE.md`.
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
-- **Versions** (taken over from the battle lane, unchanged): action encoding v13, observation encoding v21, replay format v29, C ABI v25 (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q4, AI-QUIRK-1, AI-STUB-1.
+- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v26 (T2) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q4, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -21,11 +26,18 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - `BattleSetup.human` and `.difficulty` change the computer's automatic choices (the turrets, the automatic Ballista, the moat avoidance; ADR-0023 point 7): the batch sets `human = [true, true]` for every episode (ADR-0025 point 6) and masks Retreat and Surrender out (point 7); `BattleEnv` and the single-env C functions stay as they are (replays and the battle benchmarks use escapes).
 - `verify --scope ai` skips the golden replays (their crate `h3-cli` is the battle lane's) and the battle benchmarks: after a change to `h3-sim` run `cargo xtask determinism` and `cargo xtask bench-check --workload random-rollouts-full` too.
 - `legal_commands` lists no casts: the cast heads come from `cast_targets` × `second_targets` (the battle lane's trap; `h3_sim::action`).
+- Scenario texts are parsed and packs compiled in `h3-ffi` (`src/scenario.rs`), never in `h3-sim`: `arch.toml` gives `h3-sim` `h3-pack-battle` for tests only. Each `h3_env_create_scenario` compiles its packs (about 18 ms for `base`, `ab`, `sod` in release, ten times that in debug).
 
 **Python**
 - PyTorch 2.14 (CUDA 12.6 build) is the last prebuilt release for the user's GTX 1070: pin it. The user's system Python is older than 3.11: use a venv.
 
 ## Recent sessions
+
+### 2026-10-18 — E05 T2, scenarios through the C ABI
+
+- The user confirmed T2 alone as the session's increment, and one line in the battle lane's inbox (`cross-lane`) for F-robust-2's closure.
+- Built `h3_env_create_scenario` (C ABI v26) in `h3-ffi`; `h3_env_create_synthetic` on the same path. Tests through the ABI on `base`, `ab`, `sod`: a field, all twelve special battlefields, an anti-magic garrison (no hero's cast legal), a Castle under siege (aimed Catapult shots legal); the seed; the errors. The C smoke test plays a siege from text.
+- CI cannot start (the account's billing; GitHub's annotation on `master`'s last run): the full local verify stands in, recorded in the pull request. `master`'s known coverage failure (`h3-battle`'s proptest, the battle lane's inbox) is unchanged.
 
 ### 2026-10-18 — E05 T1, the design; ADR-0025 accepted
 

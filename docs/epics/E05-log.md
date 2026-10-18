@@ -20,3 +20,29 @@ The full record of done tasks (the epic file keeps one line each).
 - **Found on `master`:** the full verify of code 30ecdd57 failed coverage on `h3-battle`'s proptest
   `walks_are_reported_hex_by_hex` (properties.rs:1924: `apply` with an event sink and with
   `NoopSink` end in different state hashes; a town, a Clone); filed in the battle lane's inbox.
+
+## T2 — Scenarios through the C ABI (2026-10-18)
+
+- **Built:** `h3_env_create_scenario(toml, len, seed, max_steps, error, error_len)` (C ABI v26,
+  `h3-ffi`'s `src/scenario.rs`): the battle lane's scenario TOML unchanged, its packs by id from
+  the five built-in ones (`synthetic`, `synthetic-ext`, `base`, `ab`, `sod`), random obstacles per
+  episode where the scenario asks for them, `difficulty` and `human` as written. Null on error,
+  the message in the caller's buffer prefixed by its stage (`scenario:`, `unknown pack`,
+  `packs:`, `setup:`), cut at a character boundary and NUL-terminated; untouched on success.
+  `h3_env_create_synthetic` takes the same path (its texts built in; unchanged results).
+- **Where:** in `h3-ffi`, not `h3-sim`: `arch.toml` lets `h3-sim` use `h3-pack-battle` only in its
+  tests. The batch (T3) parses its scenarios the same way (design §4.1, "Built").
+- **Tests** (`src/scenario/tests.rs`, through the ABI on `base`, `ab` and `sod`, random legal
+  actions with every head to the end, both viewers observed): a field (a Knight against a
+  Barbarian, an `ab` creature, war machines); all twelve special battlefields of the packs, each
+  on a terrain it lies on; an anti-magic garrison (no hero's cast is ever legal; legal in the same
+  battle without it, BAT-MAG-061); a Castle under siege (the hero's aimed Catapult shots become
+  legal, BAT-SIE-011; never without the siege); the synthetic siege by text; the seed (same seed
+  same state, a reset back to it, another seed another battle); the errors and the buffer. In the
+  sandbox's runs every battle was decided (none truncated).
+- **C smoke test:** also plays a siege from a scenario's text (aimed wall shots) and checks a
+  syntax error's message.
+- **Cost:** one call compiles its packs: about 18 ms for `base`, `ab` and `sod` in a release build
+  (2.6 ms the synthetic skirmish), ten times that in debug; the batch shares its rulesets.
+- **Closed:** F-robust-2 (no siege reached the C ABI) and the E01 inbox item's half on loading
+  packs and scenarios (batch stepping stays T3); a line in the battle lane's inbox.

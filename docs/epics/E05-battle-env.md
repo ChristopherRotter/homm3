@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **in progress** 2026-10-18 (AI-Q1; increment 1: T1 done, ADR-0025 accepted; T2 next) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -95,14 +95,14 @@ in E05 needs it.
 
 ## Tasks (outline; refine at the start of each increment; keep status current)
 
-**Increment 1:** T1, then T2 after the user's review.
+**Increment 1** (done 2026-10-18): T1, then T2 after the user's review.
 
 - [x] **T1 Design and ADR draft** — ADR-0025 accepted 2026-10-18 with the user's review (the
   reward without the adventure, no escapes, both sides human: AI-Q2, AI-Q3; (f): the projection is
   a human player's view); the detail in `E05-design.md`; record in `E05-log.md`.
-- [ ] **T2 Scenarios through the C ABI** — create an env from packs (`base`, `ab`,
-  `sod`, the synthetic ones) and a scenario (ADR-0025 point 9, design §4.1), any battle the engine plays including
-  sieges (closes F-robust-2 and the E01 inbox item); C ABI v26; the C smoke test and tests per place.
+- [x] **T2 Scenarios through the C ABI** — `h3_env_create_scenario` (C ABI v26, 2026-10-18): any
+  battle from a scenario's text on the built-in packs, sieges included; tests per place on the
+  shipped packs, the C smoke test plays a siege; F-robust-2 closed. Record in `E05-log.md`.
 
 **Later increments** (coarse; cut at each checkpoint):
 
