@@ -8,8 +8,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E05** (`docs/epics/E05-battle-env.md`): in progress. Increments 1 (T1, T2) and 2 (T3a–T3d,
   T4; #252, merged 2026-10-18) done. **Increment 3** cut 2026-10-18: T5a, T5b, T6a, T6b. T5a built
   on `ai/e05-t5a-census` (`h3 ai census`, `crates/h3-sim/data/census-v1.toml`; design §4.3, the
-  proposed assumptions §4.4, record in `E05-log.md`), its pull request named in the newest
-  session below. **Next:** the user's answer to AI-Q4 (the assumptions), then T5b (the sampler,
+  proposed assumptions §4.4, record in `E05-log.md`), pull request **#253** (open). **Next:** the user's answer to AI-Q4 (the assumptions), then T5b (the sampler,
   with its `shared/` pull request first); T6a (Python on Linux) can go any time.
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v27 (T3d) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q5, AI-QUIRK-1, AI-STUB-1.
@@ -49,7 +48,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   and asked AI-Q4. PyTorch's index is refused from the sandbox and the device link (T6b).
 - The full local verify passed every step but coverage, whose test run hit a random case of the
   battle lane's proptest `every_step_preserves_the_invariants` (a siege; QUEUE inbox); coverage
-  alone, rerun on the same code, passed. The pull request is the branch's (named below once open).
+  alone, rerun on the same code, passed. Pull request #253, open.
 
 ### 2026-10-18 — E05 T3c, T4, T3d: increment 2 done
 
