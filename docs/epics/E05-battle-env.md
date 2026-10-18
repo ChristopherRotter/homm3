@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **refined** 2026-10-18 (AI-Q1; increment 1 refined: T1–T2; nothing built) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1: T1 done, ADR-0025 accepted; T2 next) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -45,16 +45,16 @@ benchmarks.
    ratios). A curriculum may sample it with other weights.
 8. **Heuristic bots are baselines, never training opponents.** Training uses self-play and the
    system actor only.
-9. **Reward: the least cost for the greatest gain.** One currency (creature `ai_value`, harvested);
-   a side's reward is the value it destroys minus the value it loses, minus the mana it spends at a
-   price, with escapes priced: an enemy hero who retreats or surrenders keeps his hero, artifacts
-   and (on surrender) army, which counts against the winner, so blocking escapes or hurting the
-   enemy before he flees pays. Capturing the loser's artifacts and the hero's own value make
-   winning worth something without a separate bonus. **Zero-sum in self-play** (one side's reward
-   is the other's negative); against the system actor only the agent's side is scored. Terminal by
-   default, from the battle's outcome; optional shaping only in potential-based form (it cannot
-   change the best play). The weights (mana price, hero value, escape weight) are configurable; the
-   adventure AI may later pass them as an input (one agent for different situations).
+9. **Reward v1: kill the most, lose the least, spend mana sparingly** (revised at T1's review,
+   AI-Q2; ADR-0025 point 8). One currency (creature `ai_value`, or the creature's cost): a side's
+   reward is the value of the opponent's creatures and war machines it kills minus the value of
+   its own it loses, minus the mana it spends at a price (against spamming spells), over both
+   armies' starting value. Nothing from the adventure counts (no hero, artifacts, treasure, town or
+   gold: they decide whether to engage, not how to fight), and the batch disables retreat and
+   surrender for now (ADR-0025 point 7). **Zero-sum in self-play**; against the system actor only
+   the agent's side is used. Terminal; shaping, if ever, only in potential-based form. The
+   currency and the mana price are configurable; the adventure AI may later add escapes and
+   stakes (E13).
 10. **Information:** an agent sees exactly what a human player sees in the original's battle, as
     data (the projected observation), never the full state. `fork` and `state_hash` see everything:
     tools and training only (an agent's search would have to guess the hidden part: E06).
@@ -97,33 +97,20 @@ in E05 needs it.
 
 **Increment 1:** T1, then T2 after the user's review.
 
-- [ ] **T1 Design and ADR draft** — an ADR draft `docs/lanes/ai/adr-drafts/battle-env.md` for the
-  user's review, then **stop**. It decides: (a) the batch API (a handle of N envs; buffers per call
-  for observations, masks, rewards, dones and the acting seat; the head calls of decision 5;
-  automatic reset; threads only in the adapter, where and how many; a batch must step bit for bit
-  as N single envs); (b) the seats (external, internal; how the internal policy plugs in, so E23's
-  policy and the random placeholder share one interface; `human` and `difficulty` per seat and
-  BAT-Q33's open point: what a self-play agent's side counts as); (c) the reward (decision 9 worked
-  out against `BattleOutcome`: the currency for war machines, created, raised and summoned stacks;
-  the mana price; the hero's and the artifacts' values; what the outcome does not report yet, if
-  anything; worked examples); (d) the scenario description the ABI loads (packs plus a scenario
-  file, every place including sieges) and the encounter distribution's config shape (its
-  dimensions, how weights are derived, how the maps' statistics are kept: derived numbers only,
-  ADR-0009); (e) the Python side (cffi or ctypes, zero-copy numpy buffers, the package layout in
-  `python/`, a lock file pinning PyTorch 2.14 cu126 for Linux and Windows; the user's Python is
-  older than 3.11: a venv); (f) the information boundary (decision 10: check the projection against
-  what the original's battle screen shows a human, the hero and stack windows, and list
-  differences); (g) the benchmark workloads. Readings it needs go into the draft; questions as
-  `AI-Q<n>`.
-- [ ] **T2 Scenarios through the C ABI** — after the review: create an env from packs (`base`, `ab`,
-  `sod`, the synthetic ones) and a scenario as T1 decides, any battle the engine plays including
+- [x] **T1 Design and ADR draft** — ADR-0025 accepted 2026-10-18 with the user's review (the
+  reward without the adventure, no escapes, both sides human: AI-Q2, AI-Q3; (f): the projection is
+  a human player's view); the detail in `E05-design.md`; record in `E05-log.md`.
+- [ ] **T2 Scenarios through the C ABI** — create an env from packs (`base`, `ab`,
+  `sod`, the synthetic ones) and a scenario (ADR-0025 point 9, design §4.1), any battle the engine plays including
   sieges (closes F-robust-2 and the E01 inbox item); C ABI v26; the C smoke test and tests per place.
 
 **Later increments** (coarse; cut at each checkpoint):
 
 - **T3 The batch API** in Rust and the C ABI (seats, head calls, automatic reset, the random internal
-  seat), its determinism property against single envs, `benches/ai/` workloads.
-- **T4 Reward v1** in the sim layer, configurable weights, tests against hand-computed outcomes;
+  seat, no escapes, both sides human: ADR-0025 points 1 to 7), its determinism property against
+  single envs, `benches/ai/` workloads.
+- **T4 Reward v1** in the sim layer (ADR-0025 point 8: the currency and the mana price configurable),
+  tests against hand-computed outcomes (design §3.2);
   the zero-sum property in self-play.
 - **T5 Encounter distribution v1:** T5a the statistics of the 160 shipped maps and the stated
   assumptions, committed as derived numbers with their derivation; T5b the setup sampler (armies,
@@ -159,8 +146,8 @@ in E05 needs it.
 - **Pascal:** PyTorch 2.14 is the last prebuilt release for the GPU; pinned, a later GPU lifts it.
 - **The encounter approximation** may be wrong in ways that matter; retrain when the adventure's
   logged encounters exist (decision 7).
-- **The reward's weights** shape the play strongly (a cheap mana price makes a caster spend
-  freely): configurable, reported with every run, the user decides the defaults at T1's review.
+- **The reward's mana price** shapes the play strongly (a cheap one makes a caster spend freely):
+  configurable, reported with every run; the default (10 ai_value per spell point) is provisional.
 - **Ownership:** battle rules that change the encodings now cross lanes (`cross-lane` pull requests
   from the battle lane, `docs/08-work-process.md`).
 - **The internal seat before E23:** training on random neutrals would teach the wrong lessons; the
