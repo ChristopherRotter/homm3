@@ -80,6 +80,20 @@ void h3_batch_destroy(H3Batch *b);
   stepping the batch with random legal actions equals stepping N single envs with the derived
   seeds, state hash by state hash and output by output; and every action the masks allow applies.
 
+- **Built (T3b, one thread):** `h3_sim::batch` (`BattleBatch`, `Scenario`, `Seat`, `Policy`,
+  `EnvReport`, `Outputs`; `episode_seed`, `draw_scenario`). Decisions of the build (provisional,
+  the agent's): the big arrays (`obs`, `entry_mask`, `final_obs`) are the caller's slices, written
+  in place; the small per-env values come back as one `EnvReport` per env (the side to move, done,
+  truncated, result, reward, episode, scenario, episode seed, the refusal), which T3d's C layer
+  converts into `H3BatchBuffers`' arrays. A `Scenario` is resolved by the caller (the C layer
+  parses texts, T2) and checked when made (an external seat, a positive weight, a valid setup);
+  scenarios may be added at any time, episodes started later draw them. **An episode that ends
+  before an external seat could act is skipped** (an internal seat finished it, or the step limit
+  cut it): it holds no decision, so the env starts the next one; after 64 in a row
+  (`MAX_SKIPPED_EPISODES`) the env gives up and shows no side to move until the next reset (a
+  scenario mix that never lets the caller act). `reset` restarts every env's seed stream, so the
+  batch replays the same episodes. Until T4 the reward is the single env's ±1.
+
 ## 2. Seats (b)
 
 - A scenario names a seat per side: `External` (the caller acts: every acting seat the batch

@@ -6,11 +6,11 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 - **Opened 2026-10-18** with E05's refinement (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` stays the adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05 and E06 (`lanes.toml`).
 - **E05** (`docs/epics/E05-battle-env.md`): in progress. **Increment 1 done** (2026-10-18): T1
-  (ADR-0025 accepted; detail in `docs/epics/E05-design.md`, record in `E05-log.md`) and **T2**
-  (`h3_env_create_scenario`, C ABI v26: any battle from a scenario's text on the built-in packs,
-  sieges included). Open: the T2 pull request (`ai/e05-t2`, `cross-lane` for one line in the
-  battle lane's inbox). **Next:** the user's checkpoint, then increment 2 cut from T3 (the batch
-  API) and refined into `QUEUE.md`.
+  (ADR-0025; detail in `docs/epics/E05-design.md`, record in `E05-log.md`) and T2
+  (`h3_env_create_scenario`, C ABI v26). **Increment 2** (T3 and T4, cut with the user): T3a
+  (kernel streams, the `shared/kernel-batch-streams` pull request: merge first) and T3b
+  (`h3_sim::batch`, one thread; the `ai/e05-t3b` pull request) done. **Next:** T3c, T4, T3d
+  (`QUEUE.md`), then the user's checkpoint.
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v26 (T2) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q4, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
@@ -26,12 +26,18 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - `BattleSetup.human` and `.difficulty` change the computer's automatic choices (the turrets, the automatic Ballista, the moat avoidance; ADR-0023 point 7): the batch sets `human = [true, true]` for every episode (ADR-0025 point 6) and masks Retreat and Surrender out (point 7); `BattleEnv` and the single-env C functions stay as they are (replays and the battle benchmarks use escapes).
 - `verify --scope ai` skips the golden replays (their crate `h3-cli` is the battle lane's) and the battle benchmarks: after a change to `h3-sim` run `cargo xtask determinism` and `cargo xtask bench-check --workload random-rollouts-full` too.
 - `legal_commands` lists no casts: the cast heads come from `cast_targets` × `second_targets` (the battle lane's trap; `h3_sim::action`).
+- The batch (`h3_sim::batch`) skips an episode that ends before an external seat could act and gives up after 64 in a row (no side to move until a reset): a scenario whose internal seat always acts first and ends it (a step limit of one) does that. Its per-env values come back as `EnvReport`s; T3d converts them for the C arrays.
 - Scenario texts are parsed and packs compiled in `h3-ffi` (`src/scenario.rs`), never in `h3-sim`: `arch.toml` gives `h3-sim` `h3-pack-battle` for tests only. Each `h3_env_create_scenario` compiles its packs (about 18 ms for `base`, `ab`, `sod` in release, ten times that in debug).
 
 **Python**
 - PyTorch 2.14 (CUDA 12.6 build) is the last prebuilt release for the user's GTX 1070: pin it. The user's system Python is older than 3.11: use a venv.
 
 ## Recent sessions
+
+### 2026-10-18 — E05 increment 2 cut; T3a and T3b
+
+- With the user: increment 2 is T3 and T4 (T3a–T3d, T4; the C ABI last so that it lands once with its reward), this session T3a and T3b, the `h3 ai` dispatch line in `h3-cli`'s `main.rs` a `cross-lane` change in T3c.
+- T3a: kernel streams `seat(i)` and `env(i)` (`shared/kernel-batch-streams`). T3b: `BattleBatch` on one thread with the determinism property against single envs (decisions in design §1, "Built (T3b)"). Full local verifies stand in for CI.
 
 ### 2026-10-18 — E05 T2, scenarios through the C ABI
 
@@ -44,8 +50,3 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - Drafted the batch API (same-step automatic reset, per-env status, head calls per batch, std-thread shards in `h3-sim`, seeds per env stream), seats per scenario side (internal policies a closed enum; E23's function shared with `h3-game`), a first reward with the adventure's stakes, the scenario TOML unchanged, the encounter distribution's shape and census, ctypes with zero-copy numpy, uv and `uv.lock` for PyTorch 2.14, the benchmarks.
 - The user: (f) needs no check (every per-player observation is a human player's information); `verify` cleans up after itself (the coverage gate's clean). At the review (AI-Q2, AI-Q3): the reward kills the most and loses the least by `ai_value` (or cost) with a mana price, nothing from the adventure; no retreat or surrender for now; `human` true for both sides. Accepted as ADR-0025 with these changes; the draft removed.
 - **Found on `master`:** `h3-battle`'s proptest `walks_are_reported_hex_by_hex` (properties.rs:1924) found a state that differs with and without an event sink: master's full verify fails coverage until the battle lane fixes it; filed in its inbox with the case.
-
-### 2026-10-18 — E05 refined, the lane opened
-
-- With the user (AI-Q1): battle only; the AI lane opens; PyTorch 2.14 over the C ABI (Q5); opponents are self-play and the system actor, heuristic bots only baselines; casts by one call per head; the flat observation first; an encounter distribution weighted by approximate frequency, from the shipped maps until real games give it; the reward as a zero-sum value balance; the human player's view only; exit by a smoke run that learns. Recorded in the epic file, BACKLOG, `07-simulation-and-ai.md`, OPEN-QUESTIONS AI-Q1 and Q5.
-- The user's four own maps were removed from `original-data/maps.tar` and `original-data/install/Maps` (`experiment.h3m`, `Untitled.h3m`, `_modified_All for One.h3m`, `_modified_Terrible Rumor.h3m`): 160 shipped maps remain (the adventure lane's inbox has the note on its counts of 164).

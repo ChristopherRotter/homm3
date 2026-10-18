@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2: T3 and T4) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -104,14 +104,22 @@ in E05 needs it.
   battle from a scenario's text on the built-in packs, sieges included; tests per place on the
   shipped packs, the C smoke test plays a siege; F-robust-2 closed. Record in `E05-log.md`.
 
+**Increment 2** (cut 2026-10-18 with the user: T3 and T4, the C ABI last so that it lands once
+with its reward; tasks in the lane's `QUEUE.md`): **T3 The batch API** in Rust and the C ABI
+(ADR-0025 points 1 to 7) and **T4 Reward v1** (point 8).
+
+- [x] **T3a Kernel streams** — `StreamId::seat(i)` and `StreamId::env(i)` (`shared/` pull request,
+  2026-10-18).
+- [x] **T3b The batch core** — `h3_sim::batch::BattleBatch` on one thread (2026-10-18): fixed
+  scenarios by weight, seats, same-step automatic reset, the head calls, no escapes, both sides
+  human; the determinism property against single envs. Record in `E05-log.md`.
+- [ ] **T3c Threads and benchmarks** — `batch::pool`, the property for any thread count, `h3 ai
+  bench`, the gated `benches/ai/` workloads, wall time on the user's machine.
+- [ ] **T4 Reward v1** — in the batch, configurable; hand-computed outcomes (design §3.2), zero-sum.
+- [ ] **T3d The C ABI v27** — `h3_batch_*`, the C smoke test runs a batch.
+
 **Later increments** (coarse; cut at each checkpoint):
 
-- **T3 The batch API** in Rust and the C ABI (seats, head calls, automatic reset, the random internal
-  seat, no escapes, both sides human: ADR-0025 points 1 to 7), its determinism property against
-  single envs, `benches/ai/` workloads.
-- **T4 Reward v1** in the sim layer (ADR-0025 point 8: the currency and the mana price configurable),
-  tests against hand-computed outcomes (design §3.2);
-  the zero-sum property in self-play.
 - **T5 Encounter distribution v1:** T5a the statistics of the 160 shipped maps and the stated
   assumptions, committed as derived numbers with their derivation; T5b the setup sampler (armies,
   heroes with levels, skills, artifacts and spells through `h3-heroes`, battlefields, sieges,
