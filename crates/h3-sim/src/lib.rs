@@ -8,6 +8,7 @@
 //!   the sim layer, not the domain).
 //! * [`observation`]: the flat, versioned observation encoding of a per-viewer [`Observation`].
 //! * [`replay`]: recording and verifying replays (seed + commands + state hashes).
+//! * [`reward`]: the batch's reward v1 (value killed, value lost, mana spent; ADR-0025 point 8).
 //! * [`adventure`]: [`adventure::AdventureEnv`] for a game on an adventure map, with its own action
 //!   encoding (the adventure lane's, ADR-0017 point 8).
 //!
@@ -23,6 +24,7 @@ pub mod batch;
 pub mod env;
 pub mod observation;
 pub mod replay;
+pub mod reward;
 pub mod rollout;
 
 pub use action::{
@@ -33,4 +35,5 @@ pub use batch::{BatchConfig, BatchError, BattleBatch, EnvReport, Outputs, Policy
 pub use env::{BattleEnv, StepError, StepResult};
 pub use observation::{OBSERVATION_ENCODING_VERSION, OBSERVATION_LEN};
 pub use replay::{Replay, ReplayError, ReplayHeader};
+pub use reward::{Currency, RewardConfig};
 pub use rollout::{RolloutResult, random_rollout};

@@ -101,6 +101,7 @@ use h3_sim::{Replay, ReplayError, ReplayHeader};
 use serde::{Deserialize, Serialize};
 
 pub mod adventure;
+pub mod ai;
 
 /// Errors of the CLI library.
 #[derive(Debug)]

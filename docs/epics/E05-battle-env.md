@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2: T3 and T4) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4, the user's checkpoint next) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -105,18 +105,21 @@ in E05 needs it.
   shipped packs, the C smoke test plays a siege; F-robust-2 closed. Record in `E05-log.md`.
 
 **Increment 2** (cut 2026-10-18 with the user: T3 and T4, the C ABI last so that it lands once
-with its reward; tasks in the lane's `QUEUE.md`): **T3 The batch API** in Rust and the C ABI
-(ADR-0025 points 1 to 7) and **T4 Reward v1** (point 8).
+with its reward; done 2026-10-18, the user's checkpoint next): **T3 The batch API** in Rust and the
+C ABI (ADR-0025 points 1 to 7) and **T4 Reward v1** (point 8).
 
 - [x] **T3a Kernel streams** — `StreamId::seat(i)` and `StreamId::env(i)` (`shared/` pull request,
   2026-10-18).
 - [x] **T3b The batch core** — `h3_sim::batch::BattleBatch` on one thread (2026-10-18): fixed
   scenarios by weight, seats, same-step automatic reset, the head calls, no escapes, both sides
   human; the determinism property against single envs. Record in `E05-log.md`.
-- [ ] **T3c Threads and benchmarks** — `batch::pool`, the property for any thread count, `h3 ai
-  bench`, the gated `benches/ai/` workloads, wall time on the user's machine.
-- [ ] **T4 Reward v1** — in the batch, configurable; hand-computed outcomes (design §3.2), zero-sum.
-- [ ] **T3d The C ABI v27** — `h3_batch_*`, the C smoke test runs a batch.
+- [x] **T3c Threads and benchmarks** — `batch::pool` (2026-10-18), the property for any thread
+  count, `h3 ai bench`, the gated `benches/ai/` workloads; wall time on the user's machine moved to
+  T9 (the user). Record in `E05-log.md`.
+- [x] **T4 Reward v1** — `h3_sim::reward` (2026-10-18) in the batch, configurable; T1's worked
+  examples as tests, zero-sum exactly. Record in `E05-log.md`.
+- [x] **T3d The C ABI v27** — `h3_batch_*` (2026-10-18); the ABI batch equals the Rust batch; the C
+  smoke test runs a batch. Record in `E05-log.md`.
 
 **Later increments** (coarse; cut at each checkpoint):
 
@@ -130,7 +133,8 @@ with its reward; tasks in the lane's `QUEUE.md`): **T3 The batch API** in Rust a
   win rate, value efficiency, Elo between policies); where bots live is decided in T1 (a new crate
   would be a shared change).
 - **T8 Smoke training:** a small PPO in PyTorch 2.14 on a small encounter family; exit criterion 7.
-- **T9 Closure:** an independent review, measurements on the user's machine, the docs.
+- **T9 Closure:** an independent review, measurements on the user's machine (the batch's wall time
+  over threads and batch sizes, moved from T3c: `h3 ai bench`, design §7), the docs.
 
 ## Exit criteria
 

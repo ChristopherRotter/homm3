@@ -14,10 +14,15 @@
 //! * Every side plays as a human player's (`human = [true, true]`, ADR-0025 point 6), and
 //!   Retreat and Surrender are never legal and refused as invalid actions (point 7).
 //! * A refused action leaves its env unchanged; the other envs step.
+//! * The reward is [`reward`](crate::reward) v1 at the end of a decided episode, 0 otherwise (a
+//!   truncation included).
+//! * With `threads` T > 0 the envs run in T contiguous shards on parked std threads (`pool`);
+//!   what an env does never depends on T.
 //!
 //! Trusted tooling may read an env's full state ([`BattleBatch::env`]); agents see only the
 //! observations the batch writes (ADR-0025 point 12).
 
+use std::ops::Range;
 use std::sync::Arc;
 
 use h3_battle::{Command, LegalCommands, SetupError};
@@ -31,7 +36,12 @@ use crate::action::{
 };
 use crate::env::{BattleEnv, StepError};
 use crate::observation::OBSERVATION_LEN;
+use crate::reward::{self, RewardConfig};
 use crate::rollout;
+
+mod pool;
+
+use pool::{Pool, shard_ranges, split, split_optional};
 
 /// How many episodes in a row an env skips (each ended before an external seat could act)
 /// before it gives up: then it shows no side to move until the next [`BattleBatch::reset`].
@@ -87,6 +97,8 @@ pub enum BatchError {
     NoScenario,
     /// The batch was not reset yet.
     NotReset,
+    /// The system refused to start one of the batch's threads.
+    Threads(String),
     /// An input or output array is shorter than the batch needs.
     Buffer {
         /// The array.
@@ -108,6 +120,7 @@ impl std::fmt::Display for BatchError {
             Self::Setup(e) => write!(f, "setup: {e}"),
             Self::NoScenario => f.write_str("the batch has no scenario"),
             Self::NotReset => f.write_str("the batch was not reset"),
+            Self::Threads(e) => write!(f, "a thread did not start: {e}"),
             Self::Buffer { name, len, needed } => {
                 write!(f, "`{name}` has {len} elements, {needed} needed")
             }
@@ -162,6 +175,11 @@ impl Scenario {
         };
         scenario.env(0, 0).map_err(BatchError::Setup)?;
         Ok(scenario)
+    }
+
+    /// The ruleset its battles run on (shared by the scenarios a caller built on it).
+    pub fn ruleset(&self) -> &Arc<BattleRuleset> {
+        &self.ruleset
     }
 
     /// The setup every episode starts from (`human = [true, true]`).
@@ -226,10 +244,15 @@ pub fn draw_scenario(scenarios: &[Scenario], total: u32, seed: u64) -> usize {
 pub struct BatchConfig {
     /// The number of envs, N.
     pub envs: u32,
+    /// The number of worker threads, T (at most N are started); 0 runs every call in the
+    /// caller's thread.
+    pub threads: u32,
     /// The batch's seed: every env's episode seeds derive from it ([`episode_seed`]).
     pub seed: u64,
     /// Accepted steps of both seats per episode before it is truncated; 0 = no limit.
     pub max_steps: u32,
+    /// The reward's currency and mana price.
+    pub reward: RewardConfig,
 }
 
 /// What a call reports for one env.
@@ -244,8 +267,8 @@ pub struct EnvReport {
     pub truncated: bool,
     /// How the episode that ended in this call ended, if it was decided.
     pub result: Option<BattleResult>,
-    /// This call's reward per side, indexed by [`BattleSide::index`] (until T4 the env's: +1 for
-    /// a victory, −1 for a defeat, at the end of an episode).
+    /// This call's reward per side, indexed by [`BattleSide::index`]: reward v1
+    /// ([`reward::rewards`]) of the episode that ended in this call if it was decided, else 0.
     pub reward: [f32; 2],
     /// The number of the env's current episode (0 the first; it grows at each reset).
     pub episode: u32,
@@ -312,6 +335,7 @@ struct Source<'a> {
     scenarios: &'a [Scenario],
     total: u32,
     max_steps: u32,
+    reward: RewardConfig,
 }
 
 /// N battle environments stepped together (see the module documentation).
@@ -321,6 +345,9 @@ pub struct BattleBatch {
     scenarios: Vec<Scenario>,
     total_weight: u32,
     slots: Vec<Slot>,
+    /// Each shard's envs, in order (one shard per worker, or one).
+    ranges: Vec<Range<usize>>,
+    pool: Pool,
     reset: bool,
 }
 
@@ -328,11 +355,15 @@ impl BattleBatch {
     /// A batch of `config.envs` envs without scenarios; add them, then [`reset`](Self::reset).
     ///
     /// # Errors
-    /// [`BatchError::NoEnvs`].
+    /// [`BatchError::NoEnvs`], or [`BatchError::Threads`].
     pub fn new(config: BatchConfig) -> Result<Self, BatchError> {
         if config.envs == 0 {
             return Err(BatchError::NoEnvs);
         }
+        let envs = config.envs as usize;
+        let pool = Pool::new((config.threads as usize).min(envs))
+            .map_err(|e| BatchError::Threads(e.to_string()))?;
+        let ranges = shard_ranges(envs, pool.shards());
         let slots = (0..config.envs)
             .map(|index| Slot {
                 index,
@@ -354,6 +385,8 @@ impl BattleBatch {
             scenarios: Vec::new(),
             total_weight: 0,
             slots,
+            ranges,
+            pool,
             reset: false,
         })
     }
@@ -412,14 +445,17 @@ impl BattleBatch {
             scenarios: &self.scenarios,
             total: self.total_weight,
             max_steps: self.config.max_steps,
+            reward: self.config.reward,
         };
-        for (slot, rows) in self.slots.iter_mut().zip(rows(out)) {
-            slot.seeds = Rng::for_stream(seed, StreamId::env(slot.index));
-            slot.started = 0;
-            begin(slot, source);
-            let mut report = EnvReport::default();
-            write_state(slot, rows, &mut report);
-        }
+        let parts = parts(&mut self.slots, out, &self.ranges);
+        self.pool.run(parts, |(slots, mut out)| {
+            for (slot, rows) in slots.iter_mut().zip(rows(&mut out)) {
+                slot.seeds = Rng::for_stream(seed, StreamId::env(slot.index));
+                slot.started = 0;
+                begin(slot, source);
+                write_state(slot, rows, &mut EnvReport::default());
+            }
+        });
         self.reset = true;
         Ok(())
     }
@@ -430,6 +466,8 @@ impl BattleBatch {
     ///
     /// # Errors
     /// [`BatchError::NotReset`], or [`BatchError::Buffer`] for a short array.
+    // Never inlined: the batch benchmarks count inside it (`benches/ai/`).
+    #[inline(never)]
     pub fn step(&mut self, actions: &[Action], out: &mut Outputs<'_>) -> Result<(), BatchError> {
         self.check_ready()?;
         check("actions", actions.len(), self.len())?;
@@ -438,10 +476,18 @@ impl BattleBatch {
             scenarios: &self.scenarios,
             total: self.total_weight,
             max_steps: self.config.max_steps,
+            reward: self.config.reward,
         };
-        for ((slot, rows), action) in self.slots.iter_mut().zip(rows(out)).zip(actions) {
-            step_slot(slot, source, *action, rows);
-        }
+        let parts: Vec<_> = parts(&mut self.slots, out, &self.ranges)
+            .into_iter()
+            .zip(&self.ranges)
+            .map(|((slots, out), envs)| (slots, out, &actions[envs.clone()]))
+            .collect();
+        self.pool.run(parts, |(slots, mut out, actions)| {
+            for ((slot, rows), action) in slots.iter_mut().zip(rows(&mut out)).zip(actions) {
+                step_slot(slot, source, *action, rows);
+            }
+        });
         Ok(())
     }
 
@@ -454,18 +500,13 @@ impl BattleBatch {
         self.check_ready()?;
         check("entries", entries.len(), self.len())?;
         check("out", out.len(), self.len() * SPELL_COUNT)?;
-        for ((slot, row), entry) in self
-            .slots
-            .iter_mut()
-            .zip(out.chunks_exact_mut(SPELL_COUNT))
-            .zip(entries)
-        {
+        self.each_row(out, SPELL_COUNT, |slot, i, row| {
             slot.spells.fill(false);
             if let Some((env, side)) = acting(slot.env.as_ref()) {
-                env.spell_mask(side, *entry as usize, &mut slot.legal, &mut slot.spells);
+                env.spell_mask(side, entries[i] as usize, &mut slot.legal, &mut slot.spells);
             }
             write_mask(&slot.spells, row);
-        }
+        });
         Ok(())
     }
 
@@ -484,20 +525,14 @@ impl BattleBatch {
         check("entries", entries.len(), self.len())?;
         check("spells", spells.len(), self.len())?;
         check("out", out.len(), self.len() * TARGET_COUNT)?;
-        for (((slot, row), entry), spell) in self
-            .slots
-            .iter_mut()
-            .zip(out.chunks_exact_mut(TARGET_COUNT))
-            .zip(entries)
-            .zip(spells)
-        {
+        self.each_row(out, TARGET_COUNT, |slot, i, row| {
             slot.targets.fill(false);
             if let Some((env, side)) = acting(slot.env.as_ref()) {
-                let prefix = (*entry as usize, *spell);
+                let prefix = (entries[i] as usize, spells[i]);
                 env.target_mask(side, prefix, &mut slot.legal, &mut slot.targets);
             }
             write_mask(&slot.targets, row);
-        }
+        });
         Ok(())
     }
 
@@ -518,22 +553,35 @@ impl BattleBatch {
         check("spells", spells.len(), self.len())?;
         check("targets", targets.len(), self.len())?;
         check("out", out.len(), self.len() * TARGET_COUNT)?;
-        for ((((slot, row), entry), spell), target) in self
-            .slots
-            .iter_mut()
-            .zip(out.chunks_exact_mut(TARGET_COUNT))
-            .zip(entries)
-            .zip(spells)
-            .zip(targets)
-        {
+        self.each_row(out, TARGET_COUNT, |slot, i, row| {
             slot.targets.fill(false);
             if let Some((env, side)) = acting(slot.env.as_ref()) {
-                let prefix = (*entry as usize, *spell, *target);
+                let prefix = (entries[i] as usize, spells[i], targets[i]);
                 env.second_mask(side, prefix, &mut slot.legal, &mut slot.targets);
             }
             write_mask(&slot.targets, row);
-        }
+        });
         Ok(())
+    }
+
+    /// Runs `f(slot, i, row)` for every env i with its row of `out` (`width` values per env, the
+    /// array checked to hold every env), shard by shard on the pool.
+    fn each_row(
+        &mut self,
+        out: &mut [u8],
+        width: usize,
+        f: impl Fn(&mut Slot, usize, &mut [u8]) + Sync,
+    ) {
+        let parts: Vec<_> = split(&mut self.slots, 1, &self.ranges)
+            .into_iter()
+            .zip(split(out, width, &self.ranges))
+            .zip(self.ranges.iter().cloned())
+            .collect();
+        self.pool.run(parts, |((slots, out), envs)| {
+            for ((slot, row), i) in slots.iter_mut().zip(out.chunks_exact_mut(width)).zip(envs) {
+                f(slot, i, row);
+            }
+        });
     }
 
     fn check_ready(&self) -> Result<(), BatchError> {
@@ -569,6 +617,34 @@ fn check(name: &'static str, len: usize, needed: usize) -> Result<(), BatchError
     } else {
         Err(BatchError::Buffer { name, len, needed })
     }
+}
+
+/// Each shard's envs and their rows of `out` (checked to hold every env).
+fn parts<'a>(
+    slots: &'a mut [Slot],
+    out: &'a mut Outputs<'_>,
+    ranges: &[Range<usize>],
+) -> Vec<(&'a mut [Slot], Outputs<'a>)> {
+    let obs = split_optional(out.obs.as_deref_mut(), OBSERVATION_LEN, ranges);
+    let mask = split_optional(out.entry_mask.as_deref_mut(), ACTION_COUNT, ranges);
+    let final_obs = split_optional(out.final_obs.as_deref_mut(), 2 * OBSERVATION_LEN, ranges);
+    let reports = split_optional(out.reports.as_deref_mut(), 1, ranges);
+    split(slots, 1, ranges)
+        .into_iter()
+        .zip(obs)
+        .zip(mask)
+        .zip(final_obs)
+        .zip(reports)
+        .map(|((((slots, obs), entry_mask), final_obs), reports)| {
+            let out = Outputs {
+                obs,
+                entry_mask,
+                final_obs,
+                reports,
+            };
+            (slots, out)
+        })
+        .collect()
 }
 
 /// Each env's rows of `out`, in env order (as many as `out`'s shortest present array allows;
@@ -695,7 +771,10 @@ fn advance(
     report.done = true;
     report.truncated = last.truncated;
     report.result = last.result;
-    report.reward = last.reward;
+    // A decided battle has an outcome; a truncated one has none and gets 0.
+    report.reward = env.state().outcome().map_or([0.0; 2], |outcome| {
+        reward::rewards(source.reward, env.ruleset(), env.setup(), &outcome)
+    });
     if let Some(final_obs) = final_obs.filter(|_| last.truncated) {
         let (attacker, defender) = final_obs.split_at_mut(OBSERVATION_LEN);
         let _ = env.encode_observation(BattleSide::Attacker, attacker);

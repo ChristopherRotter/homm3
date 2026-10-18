@@ -1,5 +1,6 @@
-//! E05 T3b: the batch against N single envs built from its public pieces (the determinism
-//! property, ADR-0025 point 4), its seats, escapes, truncation, skipped episodes and errors.
+//! E05 T3b, T3c: the batch against N single envs built from its public pieces (the determinism
+//! property for any thread count, ADR-0025 points 3 and 4), its seats, escapes, truncation,
+//! skipped episodes and errors.
 
 use std::sync::Arc;
 
@@ -10,6 +11,7 @@ use proptest::prelude::*;
 
 use super::*;
 use crate::action::{CREATURE_CAST, HERO_CAST, RETREAT, SURRENDER};
+use crate::reward::{self, Currency, RewardConfig};
 use crate::rollout;
 
 /// The synthetic scenarios a batch draws from in these tests.
@@ -229,7 +231,9 @@ impl<'a> Reference<'a> {
                             report.done = true;
                             report.truncated = last.truncated;
                             report.result = last.result;
-                            report.reward = last.reward;
+                            report.reward = env.state().outcome().map_or([0.0; 2], |o| {
+                                reward::rewards(self.config.reward, env.ruleset(), env.setup(), &o)
+                            });
                             if last.truncated {
                                 let mut both = vec![0.0; 2 * OBSERVATION_LEN];
                                 let (a, d) = both.split_at_mut(OBSERVATION_LEN);
@@ -297,14 +301,14 @@ fn batch_shown(batch: &BattleBatch, arrays: &Arrays, i: usize) -> Shown {
 }
 
 /// Plays `calls` calls of random legal actions through `batch` and the reference and checks that
-/// every env shows the same after each, and that every action the masks allowed applied. Returns
-/// how many episodes ended.
+/// every env shows the same after each, that every action the masks allowed applied, and that the
+/// rewards are zero-sum. Returns how many episodes ended, and how many of them with a reward.
 fn same_as_single_envs(
     config: BatchConfig,
     scenarios: Vec<Scenario>,
     calls: u32,
     play: u64,
-) -> u32 {
+) -> (u32, u32) {
     let mut batch = BattleBatch::new(config).unwrap();
     for s in &scenarios {
         batch.add_scenario(s.clone()).unwrap();
@@ -322,7 +326,7 @@ fn same_as_single_envs(
         );
     }
     let mut rng = Rng::for_stream(play, StreamId::AGENT);
-    let mut ended = 0;
+    let (mut ended, mut rewarded) = (0, 0);
     for call in 0..calls {
         let live: Vec<bool> = arrays.reports.iter().map(|r| r.to_move.is_some()).collect();
         let actions = actions(&mut batch, &arrays, &mut rng);
@@ -338,9 +342,16 @@ fn same_as_single_envs(
             };
             assert_eq!(e.report.error, error, "env {i}, call {call}");
             ended += u32::from(e.report.done);
+            // Zero-sum, and 0 unless the episode was decided in this call (ADR-0025 point 8).
+            let r = e.report.reward;
+            assert_eq!(r[0], -r[1], "env {i}, call {call}");
+            if e.report.result.is_none() {
+                assert_eq!(r, [0.0; 2], "env {i}, call {call}");
+            }
+            rewarded += u32::from(r[0] != 0.0);
         }
     }
-    ended
+    (ended, rewarded)
 }
 
 #[test]
@@ -353,19 +364,24 @@ fn a_batch_steps_as_single_envs() {
     ];
     let config = BatchConfig {
         envs: 4,
+        threads: 3,
         seed: 11,
         max_steps: 120,
+        reward: RewardConfig::default(),
     };
-    let ended = same_as_single_envs(config, scenarios, 400, 5);
+    let (ended, rewarded) = same_as_single_envs(config, scenarios, 400, 5);
     assert!(ended > 4, "{ended}");
+    assert!(rewarded > 0, "{rewarded} of {ended}");
 }
 
 #[test]
 fn a_reset_replays_the_same_episodes() {
     let config = BatchConfig {
         envs: 3,
+        threads: 0,
         seed: 2,
         max_steps: 0,
+        reward: RewardConfig::default(),
     };
     let mut batch = BattleBatch::new(config).unwrap();
     batch
@@ -402,8 +418,10 @@ fn escapes_are_never_legal_and_refused() {
     // batch masks both out and refuses them as invalid actions (ADR-0025 point 7).
     let config = BatchConfig {
         envs: 2,
+        threads: 0,
         seed: 3,
         max_steps: 0,
+        reward: RewardConfig::default(),
     };
     let mut batch = BattleBatch::new(config).unwrap();
     batch.add_scenario(scenario(TEXTS[2], 1, EXTERNAL)).unwrap();
@@ -447,6 +465,7 @@ fn every_side_plays_as_a_human_players() {
     };
     let s = Scenario::new(Arc::new(ruleset), &setup, false, 1, EXTERNAL).unwrap();
     assert_eq!(s.setup().human, [true, true]);
+    assert!(Arc::ptr_eq(s.ruleset(), s.env(0, 0).unwrap().ruleset()));
     assert_eq!(s.seats(), EXTERNAL);
 }
 
@@ -454,8 +473,10 @@ fn every_side_plays_as_a_human_players() {
 fn a_hero_casts_through_the_head_calls() {
     let config = BatchConfig {
         envs: 1,
+        threads: 0,
         seed: 3,
         max_steps: 0,
+        reward: RewardConfig::default(),
     };
     let mut batch = BattleBatch::new(config).unwrap();
     batch.add_scenario(scenario(TEXTS[2], 1, EXTERNAL)).unwrap();
@@ -502,8 +523,10 @@ fn a_hero_casts_through_the_head_calls() {
 fn truncation_writes_both_last_observations_and_resets() {
     let config = BatchConfig {
         envs: 1,
+        threads: 0,
         seed: 9,
         max_steps: 6,
+        reward: RewardConfig::default(),
     };
     let mut batch = BattleBatch::new(config).unwrap();
     batch.add_scenario(scenario(TEXTS[1], 1, EXTERNAL)).unwrap();
@@ -549,8 +572,10 @@ fn an_episode_without_a_decision_is_skipped() {
     let decided = scenario(TEXTS[0], 1, EXTERNAL);
     let config = BatchConfig {
         envs: 3,
+        threads: 0,
         seed: 5,
         max_steps: 1,
+        reward: RewardConfig::default(),
     };
     same_as_single_envs(config, vec![skipped.clone(), decided], 30, 2);
     let mut batch = BattleBatch::new(config).unwrap();
@@ -584,8 +609,10 @@ fn an_episode_without_a_decision_is_skipped() {
 fn refused_actions_leave_their_env_unchanged() {
     let config = BatchConfig {
         envs: 2,
+        threads: 0,
         seed: 6,
         max_steps: 0,
+        reward: RewardConfig::default(),
     };
     let mut batch = BattleBatch::new(config).unwrap();
     batch.add_scenario(scenario(TEXTS[1], 1, EXTERNAL)).unwrap();
@@ -605,8 +632,10 @@ fn refused_actions_leave_their_env_unchanged() {
 fn errors() {
     let config = BatchConfig {
         envs: 2,
+        threads: 0,
         seed: 1,
         max_steps: 0,
+        reward: RewardConfig::default(),
     };
     assert_eq!(
         BattleBatch::new(BatchConfig { envs: 0, ..config }).unwrap_err(),
@@ -737,6 +766,7 @@ fn errors() {
         BatchError::Setup(SetupError::EmptyArmy(BattleSide::Defender)),
         BatchError::NoScenario,
         BatchError::NotReset,
+        BatchError::Threads("refused".to_owned()),
         BatchError::Buffer {
             name: "obs",
             len: 1,
@@ -745,7 +775,8 @@ fn errors() {
     ]
     .map(|e| e.to_string());
     assert!(messages.iter().all(|m| !m.is_empty()));
-    assert_eq!(messages[7], "`obs` has 1 elements, 2 needed");
+    assert_eq!(messages[7], "a thread did not start: refused");
+    assert_eq!(messages[8], "`obs` has 1 elements, 2 needed");
 }
 
 #[test]
@@ -765,14 +796,17 @@ fn scenarios_are_drawn_by_weight() {
 proptest! {
     #![proptest_config(ProptestConfig { cases: 8, ..ProptestConfig::default() })]
 
-    /// The determinism property (ADR-0025 point 4): for random batches, a batch steps as N single
-    /// envs with the derived seeds, output by output and state hash by state hash, and every
-    /// action its masks allow applies.
+    /// The determinism property (ADR-0025 points 3 and 4): for random batches and thread counts, a
+    /// batch steps as N single envs with the derived seeds, output by output and state hash by
+    /// state hash, and every action its masks allow applies.
     #[test]
     fn a_batch_is_n_single_envs(
-        envs in 1u32..5,
+        envs in 1u32..7,
+        threads in 0u32..8,
         seed in any::<u64>(),
         max_steps in prop::sample::select(vec![0u32, 3, 40]),
+        currency in prop::sample::select(vec![Currency::AiValue, Currency::Gold]),
+        mana_price in 0u32..30,
         picks in prop::collection::vec((0usize..4, 1u32..4, 0usize..3), 1..4),
         play in any::<u64>(),
     ) {
@@ -781,6 +815,8 @@ proptest! {
             .iter()
             .map(|&(text, weight, seat)| scenario(TEXTS[text], weight, seats[seat]))
             .collect();
-        same_as_single_envs(BatchConfig { envs, seed, max_steps }, scenarios, 40, play);
+        let reward = RewardConfig { currency, mana_price };
+        let config = BatchConfig { envs, threads, seed, max_steps, reward };
+        same_as_single_envs(config, scenarios, 40, play);
     }
 }

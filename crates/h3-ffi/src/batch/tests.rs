@@ -1,0 +1,501 @@
+//! E05 T3d: the batch through the C ABI against the Rust batch, the shared rulesets, the shipped
+//! packs, and every function's errors.
+
+use std::sync::Arc;
+
+use h3_battle::CommandError;
+use h3_kernel::{Rng, StreamId};
+use h3_sim::action::{CREATURE_CAST, HERO_CAST, RETREAT};
+
+use super::*;
+use crate::H3_RESULT_NONE;
+
+const DUEL: &str = h3_pack_battle::SYNTHETIC_DUEL;
+const SKIRMISH: &str = h3_pack_battle::SYNTHETIC_SKIRMISH;
+const FULL: &str = h3_pack_battle::SYNTHETIC_FULL;
+const SIEGE: &str = h3_pack_battle::SYNTHETIC_SIEGE;
+const TOWN: &str = include_str!("../scenario/town.toml");
+
+const EXTERNAL: H3Seats = H3Seats {
+    attacker: H3_SEAT_EXTERNAL,
+    defender: H3_SEAT_EXTERNAL,
+};
+
+/// The arrays a binding holds for a batch of `n` envs.
+struct Arrays {
+    obs: Vec<f32>,
+    mask: Vec<u8>,
+    to_move: Vec<i8>,
+    reward: Vec<f32>,
+    done: Vec<u8>,
+    truncated: Vec<u8>,
+    result: Vec<i8>,
+    final_obs: Vec<f32>,
+    episode: Vec<u32>,
+    scenario: Vec<u32>,
+    seed: Vec<u64>,
+    status: Vec<i32>,
+}
+
+impl Arrays {
+    fn new(n: usize) -> Self {
+        Self {
+            obs: vec![0.0; n * OBSERVATION_LEN],
+            mask: vec![0; n * ACTION_COUNT],
+            to_move: vec![0; n],
+            reward: vec![0.0; 2 * n],
+            done: vec![0; n],
+            truncated: vec![0; n],
+            result: vec![0; n],
+            final_obs: vec![0.0; n * 2 * OBSERVATION_LEN],
+            episode: vec![0; n],
+            scenario: vec![0; n],
+            seed: vec![0; n],
+            status: vec![0; n],
+        }
+    }
+
+    fn buffers(&mut self) -> H3BatchBuffers {
+        H3BatchBuffers {
+            obs: self.obs.as_mut_ptr(),
+            entry_mask: self.mask.as_mut_ptr(),
+            to_move: self.to_move.as_mut_ptr(),
+            reward: self.reward.as_mut_ptr(),
+            done: self.done.as_mut_ptr(),
+            truncated: self.truncated.as_mut_ptr(),
+            result: self.result.as_mut_ptr(),
+            final_obs: self.final_obs.as_mut_ptr(),
+            episode: self.episode.as_mut_ptr(),
+            scenario: self.scenario.as_mut_ptr(),
+            episode_seed: self.seed.as_mut_ptr(),
+            status: self.status.as_mut_ptr(),
+        }
+    }
+}
+
+fn config(envs: u32, threads: u32, seed: u64, max_steps: u32) -> H3BatchConfig {
+    H3BatchConfig {
+        envs,
+        threads,
+        seed,
+        max_steps,
+        reward: H3RewardConfig {
+            currency: H3_CURRENCY_GOLD,
+            mana_price: 7,
+        },
+    }
+}
+
+/// `h3_batch_create`, or its message.
+fn create(config: &H3BatchConfig) -> Result<*mut H3Batch, String> {
+    let mut error = [0 as c_char; 128];
+    let b = unsafe { h3_batch_create(config, error.as_mut_ptr(), error.len()) };
+    if b.is_null() {
+        let bytes: Vec<u8> = error
+            .iter()
+            .take_while(|c| **c != 0)
+            .map(|c| *c as u8)
+            .collect();
+        Err(String::from_utf8(bytes).unwrap())
+    } else {
+        Ok(b)
+    }
+}
+
+/// `h3_batch_add_scenario` with its code and message.
+fn add(b: *mut H3Batch, text: &str, weight: u32, seats: H3Seats) -> (i32, String) {
+    let mut error = [0 as c_char; 256];
+    let code = unsafe {
+        h3_batch_add_scenario(
+            b,
+            text.as_ptr().cast(),
+            text.len(),
+            weight,
+            seats,
+            error.as_mut_ptr(),
+            error.len(),
+        )
+    };
+    let bytes: Vec<u8> = error
+        .iter()
+        .take_while(|c| **c != 0)
+        .map(|c| *c as u8)
+        .collect();
+    (code, String::from_utf8(bytes).unwrap())
+}
+
+/// A uniformly random index among the set bytes of `mask` (0 if none is set).
+fn pick(mask: &[u8], rng: &mut Rng) -> usize {
+    let legal: Vec<usize> = (0..mask.len()).filter(|&i| mask[i] == 1).collect();
+    if legal.is_empty() {
+        return 0;
+    }
+    legal[rng.below(legal.len() as u32) as usize]
+}
+
+/// Random legal actions from the ABI's masks, a cast's heads one call after another.
+fn actions(b: *mut H3Batch, arrays: &Arrays, n: usize, rng: &mut Rng) -> Vec<H3Action> {
+    let entries: Vec<u32> = arrays
+        .mask
+        .chunks(ACTION_COUNT)
+        .map(|m| pick(m, rng) as u32)
+        .collect();
+    let mut spells = vec![0u8; n * SPELL_COUNT];
+    let mut targets = vec![0u8; n * TARGET_COUNT];
+    let (spell, target, second);
+    unsafe {
+        let e = entries.as_ptr();
+        assert_eq!(
+            h3_batch_spell_mask(b, e, spells.as_mut_ptr(), spells.len()),
+            H3_OK
+        );
+        spell = spells
+            .chunks(SPELL_COUNT)
+            .map(|m| pick(m, rng) as u16)
+            .collect::<Vec<_>>();
+        let s = spell.as_ptr();
+        assert_eq!(
+            h3_batch_target_mask(b, e, s, targets.as_mut_ptr(), targets.len()),
+            H3_OK
+        );
+        target = targets
+            .chunks(TARGET_COUNT)
+            .map(|m| pick(m, rng) as u16)
+            .collect::<Vec<_>>();
+        let t = target.as_ptr();
+        assert_eq!(
+            h3_batch_second_mask(b, e, s, t, targets.as_mut_ptr(), targets.len()),
+            H3_OK
+        );
+        second = targets
+            .chunks(TARGET_COUNT)
+            .map(|m| pick(m, rng) as u16)
+            .collect::<Vec<_>>();
+    }
+    (0..n)
+        .map(|i| H3Action {
+            entry: entries[i],
+            spell: spell[i],
+            target: target[i],
+            second: second[i],
+        })
+        .collect()
+}
+
+/// The same scenario for the Rust batch.
+fn rust_scenario(text: &str, weight: u32, seats: [Seat; 2]) -> h3_sim::Scenario {
+    let random = h3_pack_battle::parse_scenario(text)
+        .unwrap()
+        .random_obstacles;
+    let (ruleset, setup) = h3_pack_battle::synthetic(text).unwrap();
+    h3_sim::Scenario::new(Arc::new(ruleset), &setup, random, weight, seats).unwrap()
+}
+
+fn bits(values: &[f32]) -> Vec<u32> {
+    values.iter().map(|v| v.to_bits()).collect()
+}
+
+/// The Rust batch's outputs.
+struct RustArrays {
+    obs: Vec<f32>,
+    mask: Vec<u8>,
+    final_obs: Vec<f32>,
+    reports: Vec<EnvReport>,
+}
+
+impl RustArrays {
+    fn new(n: usize) -> Self {
+        Self {
+            obs: vec![0.0; n * OBSERVATION_LEN],
+            mask: vec![0; n * ACTION_COUNT],
+            final_obs: vec![0.0; n * 2 * OBSERVATION_LEN],
+            reports: vec![EnvReport::default(); n],
+        }
+    }
+
+    fn outputs(&mut self) -> Outputs<'_> {
+        Outputs {
+            obs: Some(&mut self.obs),
+            entry_mask: Some(&mut self.mask),
+            final_obs: Some(&mut self.final_obs),
+            reports: Some(&mut self.reports),
+        }
+    }
+}
+
+/// The ABI's arrays hold what the Rust batch's outputs hold.
+fn same(arrays: &Arrays, rust: &RustArrays) {
+    let (final_obs, reports) = (&rust.final_obs, &rust.reports);
+    assert_eq!(bits(&arrays.obs), bits(&rust.obs));
+    assert_eq!(arrays.mask, rust.mask);
+    let rows = 2 * OBSERVATION_LEN;
+    for (i, r) in reports.iter().enumerate() {
+        assert_eq!(arrays.to_move[i] as i32, side_code(r.to_move), "env {i}");
+        assert_eq!(bits(&arrays.reward[2 * i..2 * i + 2]), bits(&r.reward));
+        assert_eq!(arrays.done[i], u8::from(r.done));
+        assert_eq!(arrays.truncated[i], u8::from(r.truncated));
+        assert_eq!(arrays.result[i] as i32, result_code(r.result));
+        assert_eq!(arrays.episode[i], r.episode);
+        assert_eq!(arrays.scenario[i], r.scenario);
+        assert_eq!(arrays.seed[i], r.episode_seed);
+        assert_eq!(arrays.status[i], status_code(r.error));
+        if r.truncated {
+            let range = i * rows..(i + 1) * rows;
+            assert_eq!(
+                bits(&arrays.final_obs[range.clone()]),
+                bits(&final_obs[range])
+            );
+        }
+    }
+}
+
+#[test]
+fn the_abi_batch_is_the_rust_batch() {
+    let n = 5;
+    let c = config(n as u32, 2, 21, 150);
+    let b = create(&c).unwrap();
+    let random = H3Seats {
+        attacker: H3_SEAT_EXTERNAL,
+        defender: H3_SEAT_RANDOM,
+    };
+    let flipped = H3Seats {
+        attacker: H3_SEAT_RANDOM,
+        defender: H3_SEAT_EXTERNAL,
+    };
+    assert_eq!(add(b, DUEL, 2, EXTERNAL).0, H3_OK);
+    assert_eq!(add(b, SKIRMISH, 1, random).0, H3_OK);
+    assert_eq!(add(b, SIEGE, 1, flipped).0, H3_OK);
+    let rust_seats = [
+        [Seat::External, Seat::External],
+        [Seat::External, Seat::Internal(Policy::Random)],
+        [Seat::Internal(Policy::Random), Seat::External],
+    ];
+    let mut rust = BattleBatch::new(BatchConfig {
+        envs: c.envs,
+        threads: 0,
+        seed: c.seed,
+        max_steps: c.max_steps,
+        reward: RewardConfig {
+            currency: Currency::Gold,
+            mana_price: 7,
+        },
+    })
+    .unwrap();
+    for ((text, weight), seats) in [(DUEL, 2), (SKIRMISH, 1), (SIEGE, 1)]
+        .iter()
+        .zip(rust_seats)
+    {
+        rust.add_scenario(rust_scenario(text, *weight, seats))
+            .unwrap();
+    }
+    let mut arrays = Arrays::new(n);
+    let mut out = RustArrays::new(n);
+    let buffers = arrays.buffers();
+    assert_eq!(unsafe { h3_batch_reset(b, &buffers) }, H3_OK);
+    rust.reset(&mut out.outputs()).unwrap();
+    same(&arrays, &out);
+    let mut rng = Rng::for_stream(4, StreamId::AGENT);
+    let (mut ended, mut rewarded, mut truncated) = (0, 0, 0);
+    for call in 0..300 {
+        let chosen = actions(b, &arrays, n, &mut rng);
+        let buffers = arrays.buffers();
+        assert_eq!(
+            unsafe { h3_batch_step(b, chosen.as_ptr(), &buffers) },
+            H3_OK,
+            "{call}"
+        );
+        let chosen: Vec<Action> = chosen.into_iter().map(Action::from).collect();
+        rust.step(&chosen, &mut out.outputs()).unwrap();
+        same(&arrays, &out);
+        for i in 0..n {
+            assert_eq!(arrays.reward[2 * i], -arrays.reward[2 * i + 1]);
+            ended += u32::from(arrays.done[i]);
+            rewarded += u32::from(arrays.reward[2 * i] != 0.0);
+            truncated += u32::from(arrays.truncated[i]);
+            if arrays.done[i] == 0 {
+                assert_eq!(arrays.result[i] as i32, H3_RESULT_NONE);
+            }
+        }
+    }
+    assert!(
+        ended > 3 && rewarded > 0 && truncated > 0,
+        "{ended} {rewarded} {truncated}"
+    );
+    assert_eq!(
+        h3_batch_episode_seed(c.seed, 3, 2),
+        episode_seed(c.seed, 3, 2)
+    );
+    unsafe { h3_batch_destroy(b) };
+}
+
+#[test]
+fn scenarios_on_the_same_packs_share_a_ruleset() {
+    let b = create(&config(2, 0, 1, 0)).unwrap();
+    assert_eq!(add(b, DUEL, 1, EXTERNAL).0, H3_OK);
+    assert_eq!(add(b, FULL, 1, EXTERNAL).0, H3_OK);
+    assert_eq!(add(b, TOWN, 1, EXTERNAL).0, H3_OK);
+    let h = unsafe { &*b };
+    let s = h.batch.scenarios();
+    assert!(Arc::ptr_eq(s[0].ruleset(), s[1].ruleset()));
+    assert!(!Arc::ptr_eq(s[0].ruleset(), s[2].ruleset()));
+    assert_eq!(h.rulesets.len(), 2);
+    // A siege on the shipped packs plays through the batch.
+    let mut arrays = Arrays::new(2);
+    let mut rng = Rng::from_seed(3);
+    let buffers = arrays.buffers();
+    assert_eq!(unsafe { h3_batch_reset(b, &buffers) }, H3_OK);
+    for _ in 0..40 {
+        let chosen = actions(b, &arrays, 2, &mut rng);
+        let buffers = arrays.buffers();
+        assert_eq!(
+            unsafe { h3_batch_step(b, chosen.as_ptr(), &buffers) },
+            H3_OK
+        );
+    }
+    unsafe { h3_batch_destroy(b) };
+}
+
+#[test]
+fn errors_are_codes_not_panics() {
+    let null: *mut H3Batch = std::ptr::null_mut();
+    let mut error = [0 as c_char; 64];
+    // Creation.
+    assert!(unsafe { h3_batch_create(std::ptr::null(), error.as_mut_ptr(), 64) }.is_null());
+    assert!(unsafe { h3_batch_create(std::ptr::null(), null.cast(), 0) }.is_null());
+    assert_eq!(
+        create(&config(0, 0, 1, 0)).unwrap_err(),
+        "a batch needs at least one env"
+    );
+    let mut odd = config(1, 0, 1, 0);
+    odd.reward.currency = 9;
+    assert_eq!(create(&odd).unwrap_err(), "unknown currency");
+    unsafe { h3_batch_destroy(null) };
+
+    // Scenarios.
+    let b = create(&config(2, 1, 1, 0)).unwrap();
+    assert_eq!(add(null, DUEL, 1, EXTERNAL).0, H3_ERR_NULL);
+    let code = unsafe {
+        h3_batch_add_scenario(b, std::ptr::null(), 0, 1, EXTERNAL, error.as_mut_ptr(), 64)
+    };
+    assert_eq!(code, H3_ERR_NULL);
+    let bad = [0xFFu8, 0xFE];
+    let code =
+        unsafe { h3_batch_add_scenario(b, bad.as_ptr().cast(), 2, 1, EXTERNAL, null.cast(), 0) };
+    assert_eq!(code, H3_ERR_ARGUMENT);
+    let unknown = H3Seats {
+        attacker: 7,
+        defender: H3_SEAT_EXTERNAL,
+    };
+    assert_eq!(
+        add(b, DUEL, 1, unknown),
+        (H3_ERR_ARGUMENT, "unknown seat".to_owned())
+    );
+    let internal = H3Seats {
+        attacker: H3_SEAT_RANDOM,
+        defender: H3_SEAT_RANDOM,
+    };
+    assert_eq!(add(b, DUEL, 1, internal).0, H3_ERR_ARGUMENT);
+    assert_eq!(add(b, DUEL, 0, EXTERNAL).0, H3_ERR_ARGUMENT);
+    let (code, message) = add(b, "[scenario]\nid = 1\n", 1, EXTERNAL);
+    assert!(
+        code == H3_ERR_ARGUMENT && message.starts_with("scenario:"),
+        "{message}"
+    );
+    let elsewhere = DUEL.replace("[\"synthetic\"]", "[\"mod\"]");
+    let (code, message) = add(b, &elsewhere, 1, EXTERNAL);
+    assert!(
+        code == H3_ERR_ARGUMENT && message.starts_with("unknown pack"),
+        "{message}"
+    );
+
+    // Calls before a scenario or a reset.
+    let mut arrays = Arrays::new(2);
+    let buffers = arrays.buffers();
+    let zeros = [0u32; 2];
+    let heads = [0u16; 2];
+    let mut out = vec![0u8; 2 * SPELL_COUNT.max(TARGET_COUNT)];
+    let action = [H3Action::default(); 2];
+    unsafe {
+        assert_eq!(h3_batch_reset(null, &buffers), H3_ERR_NULL);
+        assert_eq!(h3_batch_reset(b, &buffers), H3_ERR_NOT_READY);
+        assert_eq!(
+            h3_batch_step(b, action.as_ptr(), &buffers),
+            H3_ERR_NOT_READY
+        );
+        assert_eq!(h3_batch_step(null, action.as_ptr(), &buffers), H3_ERR_NULL);
+        assert_eq!(h3_batch_step(b, std::ptr::null(), &buffers), H3_ERR_NULL);
+        let (z, h, o, len) = (zeros.as_ptr(), heads.as_ptr(), out.as_mut_ptr(), out.len());
+        assert_eq!(h3_batch_spell_mask(b, z, o, len), H3_ERR_NOT_READY);
+        assert_eq!(h3_batch_target_mask(b, z, h, o, len), H3_ERR_NOT_READY);
+        assert_eq!(h3_batch_second_mask(b, z, h, h, o, len), H3_ERR_NOT_READY);
+        assert_eq!(h3_batch_spell_mask(null, z, o, len), H3_ERR_NULL);
+        assert_eq!(
+            h3_batch_spell_mask(b, std::ptr::null(), o, len),
+            H3_ERR_NULL
+        );
+        assert_eq!(h3_batch_spell_mask(b, z, null.cast(), len), H3_ERR_NULL);
+        assert_eq!(
+            h3_batch_target_mask(b, z, std::ptr::null(), o, len),
+            H3_ERR_NULL
+        );
+        assert_eq!(
+            h3_batch_second_mask(b, z, h, std::ptr::null(), o, len),
+            H3_ERR_NULL
+        );
+        assert_eq!(h3_batch_spell_mask(b, z, o, 1), H3_ERR_ARGUMENT);
+        assert_eq!(h3_batch_target_mask(b, z, h, o, 1), H3_ERR_ARGUMENT);
+        assert_eq!(h3_batch_second_mask(b, z, h, h, o, 1), H3_ERR_ARGUMENT);
+    }
+
+    // Weights that overflow; then a refused action leaves only its env unchanged.
+    assert_eq!(add(b, SKIRMISH, u32::MAX, EXTERNAL).0, H3_OK);
+    let (code, message) = add(b, SKIRMISH, 1, EXTERNAL);
+    assert!(
+        code == H3_ERR_ARGUMENT && message.contains("u32::MAX"),
+        "{message}"
+    );
+    unsafe {
+        assert_eq!(h3_batch_reset(b, std::ptr::null()), H3_OK);
+        assert_eq!(h3_batch_reset(b, &buffers), H3_OK);
+    }
+    let mut rng = Rng::from_seed(2);
+    let mut chosen = actions(b, &arrays, 2, &mut rng);
+    chosen[0].entry = u32::MAX;
+    chosen[1] = H3Action {
+        entry: RETREAT as u32,
+        ..H3Action::default()
+    };
+    let episodes = arrays.episode.clone();
+    let buffers = arrays.buffers();
+    assert_eq!(
+        unsafe { h3_batch_step(b, chosen.as_ptr(), &buffers) },
+        H3_ERR_REJECTED
+    );
+    assert_eq!(arrays.status, [H3_ERR_INVALID_ACTION; 2]);
+    assert_eq!(arrays.episode, episodes);
+    let chosen = actions(b, &arrays, 2, &mut rng);
+    assert_eq!(
+        unsafe { h3_batch_step(b, chosen.as_ptr(), std::ptr::null()) },
+        H3_OK
+    );
+    unsafe { h3_batch_destroy(b) };
+
+    // The codes of the rest.
+    assert_eq!(
+        status_code(Some(StepError::EpisodeOver)),
+        H3_ERR_EPISODE_OVER
+    );
+    assert_eq!(
+        status_code(Some(StepError::Rejected(CommandError::NotYourTurn))),
+        H3_ERR_REJECTED
+    );
+    let short = BatchError::Buffer {
+        name: "obs",
+        len: 0,
+        needed: 1,
+    };
+    assert_eq!(error_code(&short), H3_ERR_ARGUMENT);
+    assert_eq!(error_code(&BatchError::NotReset), H3_ERR_NOT_READY);
+    assert_eq!(H3_ERR_PANIC, -99);
+    assert!([HERO_CAST, CREATURE_CAST].iter().all(|&c| c < ACTION_COUNT));
+}

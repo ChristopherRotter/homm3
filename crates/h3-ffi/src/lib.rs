@@ -1,6 +1,7 @@
 //! Adapter: the stable C ABI over the simulation environment (ADR-0011).
 //!
-//! Conventions: opaque handles created by `h3_env_create_*` and released by `h3_env_destroy`;
+//! Conventions: opaque handles created by `h3_env_create_*` and released by `h3_env_destroy`
+//! (a training batch's by `h3_batch_create` and `h3_batch_destroy`, module `batch`);
 //! functions return `H3_OK` (0) or a negative error code and never unwind across the boundary
 //! (panics are caught and reported as `H3_ERR_PANIC`); sides are `0` (attacker) and `1`
 //! (defender); action and observation encodings are those of `h3-sim`, versioned by
@@ -20,7 +21,15 @@ use h3_sim::{
     StepError, TARGET_COUNT, TargetMask,
 };
 
+mod batch;
 mod scenario;
+
+pub use batch::{
+    H3_CURRENCY_AI_VALUE, H3_CURRENCY_GOLD, H3_ERR_NOT_READY, H3_SEAT_EXTERNAL, H3_SEAT_RANDOM,
+    H3Batch, H3BatchBuffers, H3BatchConfig, H3RewardConfig, H3Seats, h3_batch_add_scenario,
+    h3_batch_create, h3_batch_destroy, h3_batch_episode_seed, h3_batch_reset, h3_batch_second_mask,
+    h3_batch_spell_mask, h3_batch_step, h3_batch_target_mask,
+};
 
 /// Version of this ABI (functions, structs, error codes, and the action/observation encodings).
 ///
@@ -68,8 +77,12 @@ mod scenario;
 /// observation encoding v21 (at a town the defender's option to retreat shows to the defender
 /// only, BAT-Q50 (4); the layout unchanged); no function changes. v26 (E05 T2):
 /// `h3_env_create_scenario` (an environment from a scenario's text on the built-in packs: any
-/// battle the engine plays, sieges included; ADR-0025 point 9); the encodings unchanged.
-pub const H3_ABI_VERSION: u32 = 26;
+/// battle the engine plays, sieges included; ADR-0025 point 9); the encodings unchanged. v27 (E05
+/// T3d): the training batch, `h3_batch_*` (N envs per handle on T threads, seats per scenario,
+/// same-step automatic reset, the head calls per batch, reward v1, the caller's arrays in
+/// `H3BatchBuffers`; ADR-0025 points 1 to 8) and `H3_ERR_NOT_READY`; the encodings and the single
+/// env's functions unchanged.
+pub const H3_ABI_VERSION: u32 = 27;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -606,7 +619,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 26);
+        assert_eq!(h3_abi_version(), 27);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);

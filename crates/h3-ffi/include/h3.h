@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 26 (see crates/h3-ffi/src/lib.rs and ADR-0011).
+ * h3 engine C ABI, version 27 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -21,6 +21,7 @@ extern "C" {
 #define H3_ERR_INVALID_ACTION (-3)
 #define H3_ERR_REJECTED (-4)
 #define H3_ERR_EPISODE_OVER (-5)
+#define H3_ERR_NOT_READY (-6) /* a batch without a scenario, or not reset yet */
 #define H3_ERR_PANIC (-99)
 
 /* H3StepResult.result */
@@ -82,6 +83,75 @@ int32_t h3_env_second_mask(H3Env *env, int32_t actor, uint32_t entry, uint16_t s
 int32_t h3_env_observe(const H3Env *env, int32_t viewer, float *out, size_t len);
 int32_t h3_env_step(H3Env *env, int32_t actor, H3Action action, H3StepResult *out);
 uint64_t h3_env_state_hash(const H3Env *env);
+
+/* The training batch (v27, ADR-0025): N envs per handle, stepped with one call on T worker
+ * threads, each env's next episode started in the call that ends one (its outputs then show the
+ * new episode, and done/result/reward/final_obs the one that ended). Every acting side the batch
+ * reports is an external seat; internal seats play inside the call. Both sides play as human
+ * players' (ADR-0025 point 6); Retreat and Surrender are never legal and refused (point 7). */
+#define H3_SEAT_EXTERNAL 0 /* the caller plays the side */
+#define H3_SEAT_RANDOM 1   /* uniformly random legal commands inside the call (tests) */
+#define H3_CURRENCY_AI_VALUE 0 /* the creatures' ai_value */
+#define H3_CURRENCY_GOLD 1     /* the creatures' cost in the ruleset's money */
+
+typedef struct H3Batch H3Batch;
+
+/* Reward v1: (K_o - K_s - mana_price * (m_s - m_o)) / S, at the call that decides a battle. */
+typedef struct H3RewardConfig {
+    uint32_t currency;   /* H3_CURRENCY_* */
+    uint32_t mana_price; /* per spell point, in the currency (default 10) */
+} H3RewardConfig;
+
+typedef struct H3BatchConfig {
+    uint32_t envs;      /* N >= 1 */
+    uint32_t threads;   /* T (at most N are started); 0 = the caller's thread */
+    uint64_t seed;      /* every env's episode seeds derive from it */
+    uint32_t max_steps; /* accepted steps of both seats per episode; 0 = unlimited */
+    H3RewardConfig reward;
+} H3BatchConfig;
+
+typedef struct H3Seats {
+    int32_t attacker; /* H3_SEAT_*; at least one side external */
+    int32_t defender;
+} H3Seats;
+
+/* The caller's arrays, N rows each; a NULL pointer skips that output. They must not overlap. */
+typedef struct H3BatchBuffers {
+    float *obs;             /* [N, h3_observation_len()]: the acting side's observation */
+    uint8_t *entry_mask;    /* [N, h3_action_count()] */
+    int8_t *to_move;        /* the acting side, -1 for an env that gave up */
+    float *reward;          /* [N, 2]: this call's reward (attacker, defender) */
+    uint8_t *done;          /* an episode ended in this call (decided or truncated) */
+    uint8_t *truncated;
+    int8_t *result;         /* H3_RESULT_* of the episode that ended, else H3_RESULT_NONE */
+    float *final_obs;       /* [N, 2, h3_observation_len()]: both sides' last observations,
+                               written only for the envs truncated in this call */
+    uint32_t *episode;      /* the env's episode counter (0 the first) */
+    uint32_t *scenario;     /* the index of its scenario, in the order added */
+    uint64_t *episode_seed; /* its seed: a single env with it plays the same battle */
+    int32_t *status;        /* H3_OK, or why the env refused this call's action (unchanged) */
+} H3BatchBuffers;
+
+/* NULL on error, its message written into error[0..error_len] as for h3_env_create_scenario. */
+H3Batch *h3_batch_create(const H3BatchConfig *config, char *error, size_t error_len);
+void h3_batch_destroy(H3Batch *batch);
+/* Adds a scenario's text (as for h3_env_create_scenario) with weight >= 1 and its seats;
+ * scenarios on the same packs and profile share one ruleset. H3_ERR_ARGUMENT with a message on
+ * error (the batch unchanged). */
+int32_t h3_batch_add_scenario(H3Batch *batch, const char *toml, size_t len, uint32_t weight,
+                              H3Seats seats, char *error, size_t error_len);
+/* Every env's first episode (a later call replays the same episodes). */
+int32_t h3_batch_reset(H3Batch *batch, const H3BatchBuffers *out);
+/* The head masks for every env at once (len >= N * h3_spell_count() or h3_target_count()),
+ * conditioned on each env's earlier choices; "0 only" for an entry that is no cast. */
+int32_t h3_batch_spell_mask(H3Batch *batch, const uint32_t *entries, uint8_t *out, size_t len);
+int32_t h3_batch_target_mask(H3Batch *batch, const uint32_t *entries, const uint16_t *spells,
+                             uint8_t *out, size_t len);
+int32_t h3_batch_second_mask(H3Batch *batch, const uint32_t *entries, const uint16_t *spells,
+                             const uint16_t *targets, uint8_t *out, size_t len);
+/* actions[0..N]; H3_ERR_REJECTED if an env refused its action (see status), the others step. */
+int32_t h3_batch_step(H3Batch *batch, const H3Action *actions, const H3BatchBuffers *out);
+uint64_t h3_batch_episode_seed(uint64_t batch_seed, uint32_t env, uint32_t episode);
 
 #ifdef __cplusplus
 }
