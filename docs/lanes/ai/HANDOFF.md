@@ -37,7 +37,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 - The user confirmed T2 alone as the session's increment, and one line in the battle lane's inbox (`cross-lane`) for F-robust-2's closure.
 - Built `h3_env_create_scenario` (C ABI v26) in `h3-ffi`; `h3_env_create_synthetic` on the same path. Tests through the ABI on `base`, `ab`, `sod`: a field, all twelve special battlefields, an anti-magic garrison (no hero's cast legal), a Castle under siege (aimed Catapult shots legal); the seed; the errors. The C smoke test plays a siege from text.
-- CI cannot start (the account's billing; GitHub's annotation on `master`'s last run): the full local verify stands in, recorded in the pull request. `master`'s known coverage failure (`h3-battle`'s proptest, the battle lane's inbox) is unchanged.
+- CI cannot start (the account's billing; GitHub's annotation on `master`'s last run): the full local verify stands in, recorded in the pull request. The baseline's full verify of `master` (code 30ecdd57) passed every gate: its proptest cases missed the `h3-battle` sink defect, which is still open (the battle lane's inbox; the gate fails only when proptest finds such a case).
 
 ### 2026-10-18 — E05 T1, the design; ADR-0025 accepted
 
