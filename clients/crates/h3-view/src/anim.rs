@@ -339,6 +339,22 @@ pub struct Pose {
     /// 7 walking up or down, 6 a melee's striker, 5 a struck stack, 1 among the corpses; or
     /// [`FLYING`], over every row.
     pub layer: u8,
+    /// Its count box hidden (+0x30, H3API's `skipCountDraw`; E17 M3 T5a, design §4.3): set
+    /// through a walk, from before its first turn to its end (`stack_walk` 0x442145, 0x4423D9),
+    /// and through a flight, from its cycles to the standing frame after it lands
+    /// (`stack_flight_animation` 0x4B4BD8, 0x4B4E73).
+    pub boxless: bool,
+}
+
+impl Pose {
+    /// Whether it holds its hex against another stack's count box (0x43E605 to 0x43E627): it
+    /// stands on the hex records, which a death leaves at the strike's end (`stack_death`
+    /// 0x444400, from `strike_animation` 0x4692C4; from then among the corpses), and its box is
+    /// not hidden.
+    #[must_use]
+    pub const fn holds_hex(&self) -> bool {
+        !self.boxless && self.layer != CORPSE
+    }
 }
 
 /// One pose of one stack: drawn at `drawn` (the harness reads it from then, design §7.1), shown
@@ -826,6 +842,8 @@ struct Live {
     war_machine: bool,
     /// It faces right (+0x44 = 1); the setup faces the attacker right (0x43D846).
     right: bool,
+    /// Its count box hidden: a walk or a flight under way ([`Pose::boxless`]).
+    boxless: bool,
     look: Look,
 }
 
@@ -971,6 +989,7 @@ fn played(
                 defending: s.defending,
                 war_machine: s.war_machine,
                 right: s.side == Side::Attacker,
+                boxless: false,
                 look: look.clone(),
             },
         );
@@ -1106,6 +1125,7 @@ const fn still(group: u32, hex: u8) -> Pose {
         offset: [0, 0],
         mirrored: false,
         layer: STANDING,
+        boxless: false,
     }
 }
 
@@ -1291,6 +1311,7 @@ impl Player<'_> {
             offset: [0, 0],
             mirrored: !live.right,
             layer: STANDING,
+            boxless: live.boxless,
         }
     }
 
@@ -1636,6 +1657,8 @@ impl Player<'_> {
                 self.frame(&[(stack, Self::posed(&live, g.move_start, f, start))], tick);
             }
             self.cue(stack, Sound::Move, false);
+            // Its count box hidden from the cycles on (0x4B4BD8).
+            live.boxless = true;
             // k cycles of the moving group along the straight line, the point moved on before
             // each frame by (Δ / k) / n, every value an f32 (0x4B4C7B to 0x4B4CEC), drawn at its
             // truncation (§7.9).
@@ -1673,6 +1696,9 @@ impl Player<'_> {
             }
             live.hex = end;
             self.frame(&[(stack, self.standing(&live, end))], tick);
+            // Shown again after that frame (0x4B4E73), with no redraw of its own: the next frame
+            // draws it.
+            live.boxless = false;
             self.stacks.insert(stack, live.clone());
             if turn_back && live.right != home {
                 live = self.turn(stack, live);
@@ -1683,7 +1709,9 @@ impl Player<'_> {
         }
         // A walk (`walk_step` 0x43F0B0): before each step the stack faces it, the first step's
         // turn animated, a later one at once (0x43F0E5); its layer by the step's direction
-        // (0x43F15E: up 3, down 7); one cycle per hex, the stack drawn along the step.
+        // (0x43F15E: up 3, down 7); one cycle per hex, the stack drawn along the step. Its count
+        // box is hidden from before the first turn (0x442145).
+        live.boxless = true;
         for (i, pair) in path.windows(2).enumerate() {
             let [ax, ay] = self.stage.anchor(pair[0]);
             let [bx, by] = self.stage.anchor(pair[1]);
@@ -1731,8 +1759,14 @@ impl Player<'_> {
         self.stacks.insert(stack, live.clone());
         // `stack_walk` 0x4423A2: a plain move turns back at its end.
         if turn_back && live.right != home {
-            self.turn(stack, live);
+            live = self.turn(stack, live);
         }
+        // Then its box shows again with a redraw of the whole battle, shown at once (0x4423D9,
+        // `battle_redraw` 0x4423E7).
+        live.boxless = false;
+        self.stacks.insert(stack, live.clone());
+        self.pending.push((stack, self.standing(&live, end)));
+        self.redraw();
     }
 
     /// The struck stacks' reactions; their kills taken.

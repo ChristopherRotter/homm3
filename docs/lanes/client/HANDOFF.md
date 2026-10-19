@@ -4,8 +4,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T4b-2b-2 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T5–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
-- **Pull request (2026-10-19):** T4b-2b-2 (`client/e17-m3-t4b-2b-2`) open.
+- **E17 M0–M2 done; M3 T1a–T4b-2b-2 done; H1, H2 done (2026-10-19: the adventure lane's harness); M3 T5a in progress (2026-10-20, `client/e17-m3-t5a`); next: M3 T5b–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **In progress (2026-10-20, T5a, the user's slice):** the count boxes of `walk`, `turn`, `climb`, `strike` compared (`boxes = true`): +0x30 read and built (`Pose::boxless`, `holds_hex`), a stale box at an earlier place classified; left: `strike` at 3 730 ms (the left hero's reaction), the records, docs, the pull request.
 - **The user's requirements**, epic "Decisions": a string catalogue (JSON packs, no committed translation: CLT-Q7); graphics options (`faithful` the default); exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.

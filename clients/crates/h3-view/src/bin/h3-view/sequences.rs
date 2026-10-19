@@ -7,6 +7,7 @@
 //! harness kept a frame of the original (`<dir>/<id>/frames.toml`, `h3drive.py frames`), for the
 //! harness's diff. An adapter: it reads files and the archives.
 
+use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -380,9 +381,19 @@ pub(crate) fn draw_frames(
                 };
             }
         }
-        drawn.push_str(&describe(frame.t, &moment));
         let mut list = scene::battle_at(snapshot, &moment, manifest, tables, layout)
             .map_err(|e| e.to_string())?;
+        // The moment, then the count boxes drawn (` box<x>,<y>`, their top-left corners: the
+        // frame check classifies a stale box at a place one stood earlier, E17 M3 T5a).
+        let mut line = describe(frame.t, &moment);
+        line.pop();
+        for d in &list {
+            if let scene::Draw::CountBox { x, y, .. } = d {
+                let _ = write!(line, " box{x},{y}");
+            }
+        }
+        line.push('\n');
+        drawn.push_str(&line);
         // The panel's log, empty as at the opening (E17 M3 T4b-2b-1), or from the sequence's
         // `log_at` its first strike's line (T4b-2b-2): the capture set compares its item, a
         // sequence's frame check from `log_at`.
@@ -418,7 +429,6 @@ pub(crate) fn draw_frames(
 /// each stack's `<id>:g<group>f<frame>h<hex>[m][+<x>,<y>]`, `m` when it faces left (the harness
 /// places a count box by the facing, M3 T1a).
 pub(crate) fn describe(t: u32, moment: &scene::Moment) -> String {
-    use std::fmt::Write as _;
     let mut line = format!("{t} pulse {} outline ", moment.pulse);
     match moment.active {
         Some(id) => line.push_str(&id.to_string()),

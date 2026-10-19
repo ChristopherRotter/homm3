@@ -22,7 +22,7 @@ fields = [
   { offset = 0x24, name = "clone_original", type = "i32", summary = "a clone's original (record index)", confidence = "read", refs = ["installation.md §7.19"] },
   { offset = 0x28, name = "clone", type = "i32", summary = "the original's clone (record index), -1 none", confidence = "read", refs = ["installation.md §7.19"] },
   { offset = 0x2C, name = "clone_rounds_left", type = "i32", summary = "a clone's rounds left", confidence = "read", refs = ["installation.md §7.19"] },
-  { offset = 0x30, name = "no_count_box", type = "u8", summary = "set: no count box (H3API skipCountDraw); a stack ahead with it set leaves the hex free for the box; who sets it not read", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x30, name = "no_count_box", type = "u8", summary = "set: no count box (H3API skipCountDraw); a stack ahead with it set leaves the hex free for the box (0x43E61C); set through a walk (0x442145 to 0x4423D9) and a flight (0x4B4BD8 to 0x4B4E73) (no other byte store to it found)", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x34, name = "creature", type = "i32", summary = "creature id", confidence = "inferred", refs = ["installation.md §7.21"] },
   { offset = 0x38, name = "position", type = "i32", summary = "hex 0..186", confidence = "read", refs = ["installation.md §7.19"] },
   { offset = 0x3C, name = "group", type = "i32", summary = "the DEF group shown (0 moving, 1 mouse-over, 2 standing: the count box only in 1 and 2)", confidence = "read", refs = ["epics/E17-design.md §4"] },

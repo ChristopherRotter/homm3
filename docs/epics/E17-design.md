@@ -338,10 +338,24 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
 - **Built** (M3 T4a): the scene's `Draw::CountBox` after each stack's sprite (and any magic
   animation over it) for a living stack, not a war machine, in group 1 or 2, by its pose's hex
   and facing; the hexes ahead taken by every living stack's poses and the blocked hexes; the
-  layout's `[count_box]` holds the numbers. Not yet: the moments the executable hides it (+0x30,
-  set by a walk 0x442145 and a flight 0x4B4BD8; who clears it not read) and the spells' tint
-  (M3 T5). Every creature's troop-count offset is 0 in the harvested tables. Checked: the capture
-  set without the count-box mask, 31 situations, all 57 frames exact (§6.2).
+  layout's `[count_box]` holds the numbers. Every creature's troop-count offset is 0 in the
+  harvested tables. Checked: the capture set without the count-box mask, 31 situations, all 57
+  frames exact (§6.2). Not yet: the count shown over time (+0x50; M3 T5b) and the spells' tint
+  (M3 T7b, with the first sequences that cast on stacks).
+- **Over time** (M3 T5a). +0x30 is stored only by the walk and the flight (no other byte store to
+  it found). `stack_walk` sets it before the path's first step, so before its turn (0x442145),
+  and clears it at the end, after group 21, the standing frame, the turn back of a plain move and
+  group 2 set, then redraws the whole battle and shows it at once (0x4423D9, `battle_redraw`
+  0x4423E7 with its first and fifth arguments). `stack_flight_animation` sets it after the turn
+  and group 20, as the cycles start (0x4B4BD8), and clears it after group 21 and the standing
+  frame (0x4B4E73) without a redraw: `stack_fly`'s next frame (the turn back's, or group 2 at
+  0x4B4A15) draws the box. While it is set the stack has no box and leaves the hex it stands on
+  free for another's (0x43E61C reads the occupant's +0x30). A stack killed by a strike stays on
+  its hexes through the strike's iterations; `stack_death` takes it off the hex records'
+  occupant byte (0x444400) after them (0x4692C4), so its hex is free for the next redraw. The
+  viewer: the poses carry the flag (`Pose::boxless`, the walk's last pose shown again unhidden by
+  the redraw, *provisional* in its timing to the millisecond), and a stack holds its hex for a box
+  while it is not hidden and not among the corpses (`Pose::holds_hex`).
 - VCMI's `showStackAmountBox` gives the same four positions (its hex centre is the anchor −
   (0, 16)) but leaves out t and counts every stack ahead as taking the hex, war machines included.
 
