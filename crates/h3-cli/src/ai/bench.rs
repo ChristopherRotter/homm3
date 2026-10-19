@@ -189,7 +189,7 @@ fn encounters(weights: [u32; 6]) -> Result<Scenario, String> {
     let sampler = Sampler::new(Arc::new(battle), Arc::new(adventure), &EncounterTable::v1())
         .and_then(|s| s.with_weights(weights))
         .map_err(|e| e.to_string())?;
-    Scenario::encounters(Arc::new(sampler), 1).map_err(|e| e.to_string())
+    Scenario::encounters(Arc::new(sampler), 1, None).map_err(|e| e.to_string())
 }
 
 /// Plays the benchmark (see the module documentation).

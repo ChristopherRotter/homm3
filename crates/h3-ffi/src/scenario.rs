@@ -111,18 +111,20 @@ const ENCOUNTER_PROFILE: &str = "base:faithful";
 
 /// Adds the encounter distribution v1 (E05 T5b2; `h3_sim::encounter`) to `batch` with `weight`,
 /// its kinds drawn by `kinds` (in `h3_sim::Kind::ALL`'s order) or, without, by the
-/// distribution's default (the neutral kinds 0 until E23). It runs on the original packs
+/// distribution's default (the neutral kinds 0 until E23), each episode with the encounter's
+/// seats or `seats` (E05 T8b, `Scenario::encounters`). It runs on the original packs
 /// (`base`, `ab`, `sod`, `base:faithful`), sharing their ruleset with the batch's scenarios on
 /// them (ADR-0025 point 9); the adventure part (its random monsters) is compiled here.
 ///
 /// # Errors
 /// A message naming the stage that failed (`packs:`, `adventure:`, `encounters:`), or the batch's
-/// refusal (weight); the batch is unchanged.
+/// refusal (weight, seats); the batch is unchanged.
 pub fn add_encounters(
     batch: &mut BattleBatch,
     rulesets: &mut Vec<(Vec<String>, String, usize)>,
     weight: u32,
     kinds: Option<[u32; 6]>,
+    seats: Option<[Seat; 2]>,
 ) -> Result<(), String> {
     let packs: Vec<String> = ENCOUNTER_PACKS.map(String::from).to_vec();
     let shared = rulesets
@@ -155,7 +157,8 @@ pub fn add_encounters(
             .with_weights(kinds)
             .map_err(|e| format!("encounters: {e}"))?;
     }
-    let scenario = Scenario::encounters(Arc::new(sampler), weight).map_err(|e| e.to_string())?;
+    let scenario =
+        Scenario::encounters(Arc::new(sampler), weight, seats).map_err(|e| e.to_string())?;
     let index = batch.scenarios().len();
     batch.add_scenario(scenario).map_err(|e| e.to_string())?;
     if compiled {

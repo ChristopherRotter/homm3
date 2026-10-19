@@ -87,7 +87,10 @@ pub use batch::{
 /// env's functions unchanged. v28 (E05 T5b2): `h3_batch_add_encounters` (the encounter
 /// distribution v1 as an episode source) and `H3BatchBuffers.encounter` (each env's encounter
 /// kind, `H3_ENCOUNTER_*`; the struct grows by one pointer at its end); the encodings unchanged.
-pub const H3_ABI_VERSION: u32 = 28;
+/// v29 (E05 T8b): `h3_batch_add_encounters` takes `const H3Seats *seats` after `kinds` (null:
+/// each encounter's own seats; else these for every episode of the entry); the encodings
+/// unchanged.
+pub const H3_ABI_VERSION: u32 = 29;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -624,7 +627,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 28);
+        assert_eq!(h3_abi_version(), 29);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);

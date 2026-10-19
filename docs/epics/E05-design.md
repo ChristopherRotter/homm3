@@ -285,12 +285,12 @@ and written in place by the engine (zero copy). `_ffi.py` (the library from `$H3
   is in the caller's thread; collect `*BattleBatch>::step`, never inlined).
 - The single-env gates (the battle lane's `random-rollouts-*`) stay as they are.
 
-## 8. Smoke training (T8) — designed (T8a), for the user's review
+## 8. Smoke training (T8) — designed (T8a), decided 2026-10-19 (AI-Q5)
 
 Exit criterion 7: a smoke run, within an hour on the user's machine, wins at least 80 % against
 Random on held-out seeds of its encounter family. Decided at T8a's start (the user, 2026-10-19):
-an own compact PPO, not a library (§8.3). The rest is proposed; the points for the review are
-AI-Q5.
+an own compact PPO, not a library (§8.3); at the review (AI-Q5) the rest as proposed here:
+self-play, the default distribution, C ABI v29's seats, the criterion and the settings.
 
 ### 8.1 Random against Random (measured, T8a)
 
@@ -323,7 +323,8 @@ steps/s on the sandbox's 4 cores (`threads = 4`).
   pool of earlier checkpoints is E06's.
 - **Evaluation against the internal Random:** two evaluation batches, the agent attacking in one
   (seats External, Random) and defending in the other (Random, External), so every reported
-  decision is the agent's. It needs **seats for the encounter source** (C ABI v29):
+  decision is the agent's. It needs **seats for the encounter source** (C ABI v29, built in
+  T8b; `BattleBatch.add_encounters(attacker=, defender=)` in Python):
   `h3_batch_add_encounters` gains `const H3Seats *seats` (null: the encounter's own seats, as
   now; else these for every episode of the entry, at least one external), and
   `Scenario::encounters` an `Option<[Seat; 2]>`. ADR-0025's point 5 is kept (seats per entry, not

@@ -391,18 +391,22 @@ pub unsafe extern "C" fn h3_batch_add_scenario(
 /// source entry with `weight` (at least 1): each episode's battle and seats are drawn from its
 /// seed (a neutral defender is played inside the call). `kinds` is null for the distribution's
 /// weights (the neutral kinds 0 until E23) or points to six weights in `H3_ENCOUNTER_*` order (a
-/// curriculum; not all 0). It runs on the original packs (`base`, `ab`, `sod`,
-/// `base:faithful`), sharing their ruleset with the batch's scenarios on them. On error the batch
-/// is unchanged and the message is written into `error[0..error_len]`.
+/// curriculum; not all 0). `seats` is null for each encounter's own seats, or replaces them for
+/// every episode of the entry (v29, E05 T8b: an evaluation against an internal seat; at least one
+/// external). It runs on the original packs (`base`, `ab`, `sod`, `base:faithful`), sharing their
+/// ruleset with the batch's scenarios on them. On error the batch is unchanged and the message
+/// is written into `error[0..error_len]`.
 ///
 /// # Safety
 /// `batch` must be null or a live handle not used concurrently; `kinds` must be null or valid for
-/// six reads; `error` must be null or valid for `error_len` bytes of writes.
+/// six reads; `seats` must be null or point to an `H3Seats`; `error` must be null or valid for
+/// `error_len` bytes of writes.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn h3_batch_add_encounters(
     batch: *mut H3Batch,
     weight: u32,
     kinds: *const u32,
+    seats: *const H3Seats,
     error: *mut c_char,
     error_len: usize,
 ) -> i32 {
@@ -412,9 +416,16 @@ pub unsafe extern "C" fn h3_batch_add_encounters(
     };
     // SAFETY: a non-null `kinds` is valid for six reads per the contract.
     let kinds = (!kinds.is_null()).then(|| unsafe { read(kinds, 6) });
+    // SAFETY: a non-null `seats` points to an `H3Seats` per the contract.
+    let seats = unsafe { seats.as_ref() }.copied();
     let added = catch_unwind(AssertUnwindSafe(|| {
         let kinds = kinds.map(|k| std::array::from_fn(|i| k[i]));
-        scenario::add_encounters(&mut h.batch, &mut h.rulesets, weight, kinds)
+        let seats = match seats.map(|s| (seat(s.attacker), seat(s.defender))) {
+            None => None,
+            Some((Some(attacker), Some(defender))) => Some([attacker, defender]),
+            Some(_) => return Err("unknown seat".to_owned()),
+        };
+        scenario::add_encounters(&mut h.batch, &mut h.rulesets, weight, kinds, seats)
     }));
     match added {
         Ok(Ok(())) => H3_OK,

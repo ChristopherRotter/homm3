@@ -125,8 +125,9 @@ static int play(H3Env *env, Played *out) {
 }
 
 /* A batch of BATCH envs on two threads (E05 T3d): the siege against a random defender and in
- * self-play, and (v28) the encounter distribution with its neutral kinds, CALLS calls of random
- * legal actions from the batch's masks. */
+ * self-play, (v28) the encounter distribution with its neutral kinds and (v29) at its default
+ * weights against a random defender, CALLS calls of random legal actions from the batch's
+ * masks. */
 #define BATCH 4
 #define CALLS 300
 
@@ -148,9 +149,11 @@ static int play_batch(Batched *out) {
     CHECK(h3_batch_add_scenario(batch, SIEGE, strlen(SIEGE), 1, self_play, error, sizeof error) ==
           H3_OK);
     uint32_t kinds[6] = {1, 1, 1, 1, 1, 1};
-    CHECK(h3_batch_add_encounters(batch, 2, kinds, error, sizeof error) == H3_OK);
+    CHECK(h3_batch_add_encounters(batch, 2, kinds, NULL, error, sizeof error) == H3_OK);
+    CHECK(h3_batch_add_encounters(batch, 1, NULL, &random_defender, error, sizeof error) == H3_OK);
     uint32_t no_kinds[6] = {0};
-    CHECK(h3_batch_add_encounters(batch, 1, no_kinds, error, sizeof error) == H3_ERR_ARGUMENT);
+    CHECK(h3_batch_add_encounters(batch, 1, no_kinds, NULL, error, sizeof error) ==
+          H3_ERR_ARGUMENT);
     CHECK(strncmp(error, "encounters: ", 12) == 0);
     uint32_t n_actions = h3_action_count();
     uint32_t n_spells = h3_spell_count();
@@ -218,7 +221,7 @@ static int play_batch(Batched *out) {
 }
 
 int main(void) {
-    CHECK(h3_abi_version() == 28);
+    CHECK(h3_abi_version() == 29);
 
     /* The full scenario: both sides are led by heroes with spell books. */
     H3Env *env = h3_env_create_synthetic(2, 42, 1000);

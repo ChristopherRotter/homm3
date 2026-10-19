@@ -11,7 +11,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   **In progress (2026-10-19):** T8a's design written (design §8, AI-Q5), waiting for the
   user's review; then T8b on the same branch (the user chose T8a then T8b, and an own PPO).
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
-- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v28 (T5b2) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q6, AI-QUIRK-1, AI-STUB-1.
+- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v29 (T8b: seats for the encounter source) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q6, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps

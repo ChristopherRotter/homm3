@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 28 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
+ * h3 engine C ABI, version 29 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -154,9 +154,11 @@ int32_t h3_batch_add_scenario(H3Batch *batch, const char *toml, size_t len, uint
  * seats drawn from its seed (a neutral defender played inside the call), on the original packs
  * (base, ab, sod, base:faithful; their ruleset shared with the batch's scenarios on them).
  * kinds: NULL for the distribution's weights (the neutral kinds 0), or six weights in
- * H3_ENCOUNTER_* order, not all 0. H3_ERR_ARGUMENT with a message on error (batch unchanged). */
+ * H3_ENCOUNTER_* order, not all 0. seats (v29): NULL for each encounter's own, else these for
+ * every episode of the entry (at least one external). H3_ERR_ARGUMENT with a message on error
+ * (batch unchanged). */
 int32_t h3_batch_add_encounters(H3Batch *batch, uint32_t weight, const uint32_t *kinds,
-                                char *error, size_t error_len);
+                                const H3Seats *seats, char *error, size_t error_len);
 /* Every env's first episode (a later call replays the same episodes). */
 int32_t h3_batch_reset(H3Batch *batch, const H3BatchBuffers *out);
 /* The head masks for every env at once (len >= N * h3_spell_count() or h3_target_count()),

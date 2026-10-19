@@ -29,7 +29,7 @@ from pathlib import Path
 import numpy as np
 
 #: The C ABI version this binding speaks (`h3_abi_version()`).
-ABI_VERSION = 28
+ABI_VERSION = 29
 
 OK = 0
 ERR_NULL = -1
@@ -198,7 +198,7 @@ _SIGNATURES = {
     ),
     "h3_batch_add_encounters": (
         c_int32,
-        [_batch, c_uint32, _u32p, POINTER(c_char), c_size_t],
+        [_batch, c_uint32, _u32p, POINTER(H3Seats), POINTER(c_char), c_size_t],
     ),
     "h3_batch_reset": (c_int32, [_batch, POINTER(H3BatchBuffers)]),
     "h3_batch_spell_mask": (c_int32, [_batch, _u32p, _u8p, c_size_t]),
