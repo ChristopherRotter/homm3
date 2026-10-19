@@ -30,11 +30,13 @@ def = "CH013.DEF"
 
 [[creature]]
 key = "pikeman"
+original = 0
 def = "CPKMAN.DEF"
 times = [9000, 575, 500, 115]
 
 [[creature]]
 key = "dragon"
+original = 26
 def = "CBDRGN.DEF"
 times = [9000, 575, 500, 115]
 

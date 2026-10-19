@@ -15,7 +15,14 @@ const PURE: [(&str, &[&str]); 3] = [
     ("h3-render", &["h3-assets", "miniz_oxide"]),
     (
         "h3-view",
-        &["h3-assets", "h3-protocol", "h3-render", "serde", "toml"],
+        &[
+            "h3-assets",
+            "h3-protocol",
+            "h3-render",
+            "serde",
+            "serde_json",
+            "toml",
+        ],
     ),
 ];
 

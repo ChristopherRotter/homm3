@@ -4,9 +4,9 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T1c, T2, T3a, T3b, T4a done (2026-10-15); next: M3 T4b–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ the amendment draft in `adr-drafts/`), ADR-0024; the capture harness `clients/capture/README.md`; design §3–§8; records in `E17-log.md`.
-- **Pull requests (2026-10-15):** T4a #241 open (T3b #237 merged).
-- **The user's requirements (2026-10-13)**, epic "Decisions": a string catalogue, language packs; graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
+- **E17 M0–M2 done; M3 T1a–T1c, T2, T3a, T3b, T4a, T4b-1 done (2026-10-19); next: M3 T4b-2, T5–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **Pull requests (2026-10-19):** T4b-1 (`client/e17-m3-t4b-1`) and the inbox policy #261 open.
+- **The user's requirements**, epic "Decisions": a string catalogue, packs in nested JSON, no committed translation of the original's text (CLT-Q7); graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
 - The lane needs the user's computer online (it may sleep: stage all first) for the original files, from `original-data/install/` into the clone's: the four LODs (one per staging call), `h3maped.exe`, the two `.snd` (sound: also `MP3/COMBAT01`–`04`); the captures also `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`. `sandbox-setup.sh` copies only the engine's few: `cp -rn` the staged `original-data/.` before `capture/setup.sh`. Frames live only in their sandbox.
@@ -34,8 +34,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Standing traps
 
-- **CI may be out** (billing, since 2026-10-12): `clients/scripts/check.sh` stands in, its result in the pull request (needs `cargo-deny`, `cargo-llvm-cov`, the LLVM tools: in a sandbox `LLVM_COV`, `LLVM_PROFDATA`).
-- The coverage gate reads cargo-llvm-cov's summary; generic code can show false region misses there (the engine reads the merged view, `xtask/src/coverage.rs`): port that before blaming the tests.
+- **CI may be out** (billing, since 2026-10-12): `clients/scripts/check.sh` stands in, its result in the pull request (needs `cargo-deny`, `cargo-llvm-cov`, the LLVM tools: `rustup component add llvm-tools-preview`; the sandbox's `/usr/bin` ones are too old).
+- The coverage gate reads cargo-llvm-cov's summary; generic code can show false region misses there (the engine reads the merged view, `xtask/src/coverage.rs`): port that, or take a concrete type (T4b-1).
 - A new dependency of a pure crate goes into `h3-view/tests/purity.rs`'s allowlist deliberately; a window or audio crate belongs in an adapter crate, not in `h3-view`'s pure library.
 - Sound in a sandbox: `SDL_AUDIO_DRIVER=disk` (the mix in `./sdlaudio.raw`, S16 stereo 44.1 kHz, real time).
 - `winit`, `cpal`, `hound` (and Bevy, eframe, `rodio`) are Apache-2.0-only, which `deny.toml` rejects (ADR-0009); the window is SDL 3 (`h3-sdl`). Building `h3-view` builds SDL: CMake, a C compiler, `clients.yml`'s apt list. Windows exes: `rustup target add x86_64-pc-windows-gnu`, `mingw-w64`, `--target x86_64-pc-windows-gnu`; put into the user's `clients/out/win/` (`device_commit_files`) they find the checkout from their place.
@@ -52,9 +52,9 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-15, E17 M3 T4a (the user present; T4 split).** Fonts decoded, `TextDraw` ported,
-  the tint in exact integers, count boxes drawn: the set without their mask, all exact.
-- **2026-10-15, E17 M3 T3b (the user present).** War machines drawn; an automatic one's turn
-  ticks the loop once; the tent's heal under magic animation 79 (translucent); all exact.
-- **2026-10-15, E17 M3 T3a (the user present; T3 split).** Hero pictures by town and sex,
-  flags and heroes drawn and timed; no `heroes` mask, all exact.
+- **2026-10-19, E17 M3 T4b-1 (the user present; T4b split).** The string catalogue: keys,
+  packs in nested JSON, the original's text read through the keys; CLT-Q7; shared PR #261.
+- **2026-10-15, E17 M3 T4a (the user present; T4 split).** Fonts, `TextDraw`, the tint in
+  exact integers, count boxes drawn: the set without their mask, all exact.
+- **2026-10-15, E17 M3 T3b (the user present).** War machines and the tent's heal (magic
+  animation 79, translucent) drawn; all exact.

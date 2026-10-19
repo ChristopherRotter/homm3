@@ -6,19 +6,20 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T4b — The string catalogue and the language packs
+### E17 M3 T4b-2 — The log's text drawn
 
-- **Scope:** (T4 split with the user on 2026-10-15: T4a, the fonts, the text drawer and the
-  count boxes in the stills, done.) The string catalogue and the language packs (the user's
-  decision of 2026-10-13 and the agent's notes in the inbox below): its format (JSON, TOML or
-  Fluent, chosen with the placeholders and plurals the battle's texts need), the original's text
-  read at run time from the user's `.TXT` entries through committed keys; which font draws what
-  in the battle's panel and log (the executable; `h3_render::text` draws it); an ADR-0020
-  amendment drafted in `adr-drafts/` for the user's checkpoint; the licence question on
-  committing translations of the original's text filed as `CLT-Q<n>` (stop the line).
+- **Scope:** (T4b split with the user on 2026-10-19: T4b-1, the catalogue's format, the keys, the
+  packs and the original's text read through them, done; design §9.) Which row the executable
+  writes for which event the engine reports, and which count picks its form (the log's call
+  sites: the damage and perish lines first, then wait, defend, morale, luck; the keys of
+  `clients/text/keys.toml` lifted from *provisional* or corrected, the executable's text numbers
+  against the rows' records); which font and colour draw the battle log's lines and the status
+  line (the executable; `h3_render::text` draws them); a log line composed from the catalogue
+  (the creature's name by its count, then the line) drawn by the viewer, the panel still masked
+  around it.
 - **Acceptance:** a battle text (a log line) from the catalogue drawn by the viewer matches the
   original's pixel for pixel.
-- **Depends on:** nothing (T4a done). **Status:** ready.
+- **Depends on:** nothing (T4b-1 done). **Status:** ready.
 
 ### E17 M3 T5 — The count boxes
 
@@ -41,7 +42,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   `CRDEFLT.DEF` frame 0 is provisional), the mouse over a stack in the window (group 1 and the
   outline 0x70, read and recorded in T1b-2: the inbox); its masks removed. May split when refined.
 - **Acceptance:** a frame with the panel matches the original's outside the listed differences.
-- **Depends on:** T4b. **Status:** ready.
+- **Depends on:** T4b-2. **Status:** ready.
 
 ### E17 M3 T7a — Code reading: the magic animations
 
@@ -96,18 +97,11 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T4b–T8 (T1a–T1c, T2, T3a, T3b and T4a done). **Status:** waiting.
+- **Depends on:** T4b-2–T8 (T1a–T1c, T2, T3a, T3b, T4a and T4b-1 done). **Status:** waiting.
 
 ## Inbox
 
 - 2026-10-16 (the battle lane, E04c T10c; for your information): the original opens a town's gate as a defender begins its step onto hex 96 (the walker still on 97, then the step); the engine reports `GateOpened` after the `Moved` onto 96 (the same state): whether the viewer's animation opens it before the step. Your note of 2026-10-15 for the battle lane (the First Aid Tent's patient, idle war machines defending) is in the battle queue's inbox now.
-- 2026-10-15 (E17 M3 T3b): **for the battle lane** (BAT inbox, through the user): the original's
-  automatic First Aid Tent heals the stack with the most lost hit points (0x473EA0, the map's
-  entry; `installation.md` §7.14 says so too), BAT-WAR-003 a random one (the wiki and VCMI);
-  and an automatic tent without a patient, or a Ballista without a target, defends there
-  (action 3; 0x473EA0, 0x41F060), where the engine does nothing (a later shot at it would play
-  its defend reaction in the original). Neither shows in `machines` (one patient, targets for
-  both Ballistas).
 - 2026-10-15 (E17 M3 T3b): **for T8**: the battle waits for the heal's sound to end
   (`wait_for_sample` after `first_aid_tent_action`'s animation, design §7.15): at speed 0 the
   animation outlasts `Regener` (2 100 against 1 881 ms), at speeds 1 and 2 with the sound on the
@@ -131,7 +125,6 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - 2026-10-13 (E17 M2 T6, done the same day: the harness plays the adventure's batches, `capture/h3adv.py batch`, design §6.3): **what it does not do yet**, each built when a batch needs it: the hero list's scrolling (more than five heroes per player), the underground (the path's arrows of level 1, the minimap's level), a visit that asks Yes/No, a battle started from the map (the adventure lane's increment 3: monsters and battles; a battle's recipe steps, quick combat or the battle's own clicks), a second day. (The battle lane's cross-check of its E04a batch 1a is done there: #179, merged 2026-10-13, replays R1 with its own `experiments/agent/crosscheck_r1.py`.) A new batch needs its recipe (`capture/batches/`): the domain lanes ask here with the spec.
 - 2026-10-13 (E17 M2 T1): **the background variants** 0 and 1 need trees, mountains or dead vegetation around the battle (design §5: `h3-map`'s writer has no decorative objects yet: an adventure-lane change); CLT-Q4: how a record carries the variant. (The rest of the capture set's growth went into M3 T1b, T2, T3, T5 and T6 at T5c.)
 
-- 2026-10-13 (the user, at E17 M1): **text through a string catalogue.** Every string the client shows comes from a key → string catalogue (nested JSON or similar), easy to translate, language packs swappable; not the original's bare text files. The agent's notes for the refinement (M3, with the fonts and the battle interface, where the first text appears): the original's text cannot be committed (ADR-0009), so the original's language is read at the checkpoint from the user's own `.TXT` entries through a committed catalogue of keys (key → archive entry, row, column), and a localized installation is a language pack of its own; the client's own strings (lobby, accounts, ladders: no original text) are committed in any language; a translation of the original's text is likely a derivative work (a licence question for the user before any is committed); the catalogue's format (flat or nested JSON, TOML, Fluent for plurals and cases) and how placeholders and plurals work; fonts: the original's are 8-bit bitmap fonts in a code page, so a language with other letters needs fonts of its own (or a modern renderer as a graphics option). An ADR-0020 amendment at that refinement.
 - 2026-10-13 (the user, at E17 M1): **graphics options.** Eventually the user chooses per effect whether it is drawn the original's dated but familiar way or a modern one (shadows first). The agent's notes: `faithful` stays the default and the only setting the reference frames check (ADR-0020 point 9); an option is a field of a settings value the compositor takes, never a fork of the scene model, so the draw list keeps naming what is drawn and only `h3-render` decides how; a modern shadow may want more than the 16-bit screen (alpha over a 24-bit frame), which ADR-0020 point 3 has to allow; independent of the asset fixes' `faithful`/`fixed` profile (point 6). An ADR-0020 amendment when the first option is built.
 
 - 2026-10-13 (E17 M1 T8, the reviewer): an HD layout needs the battlefield's origin and viewport in the layout format (the heroes, war machines and the water and rock battles went into M3 T2 and T3 at T5c).

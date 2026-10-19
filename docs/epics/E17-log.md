@@ -1022,3 +1022,35 @@ the user chose T4a (the fonts and the count boxes in the stills) over T4 whole, 
   as recorded (the runbook's trap: a run on a busy machine).
 - **For later:** T5 (the boxes over time: +0x30 set by a walk and a flight, the count's +0x50,
   the spells' tint), T4b (the catalogue; which font the panel and the log use).
+
+### M3 T4b-1 — The string catalogue's format (2026-10-19)
+
+On `client/e17-m3-t4b-1`, the user present: the agent proposed T5a (the count boxes over time
+without the spells' tint), T8 or T4b-1 (the catalogue's format alone, no drawing); the user
+chose T4b-1.
+
+- **Starting point:** master at `093a930f` (#241, T4a, merged on 2026-10-15), no client pull
+  request open; a sandbox an interrupted session of the same day had prepared (the original
+  files staged, the gate run, the inbox policy written on `shared/queue-inboxes`, finished here
+  as #261). The battle lane's inbox already held T3b's First Aid Tent note (E04c T10c,
+  2026-10-16): the client queue's copy removed.
+- **Research:** the battle log's rows in `GENRLTXT.TXT` (printf `%s`, `%d`, `%%`; singular and
+  plural rows; a line break opening the perish row; the possessive's two rows), the creatures'
+  names in `crtraits.txt`; VCMI 1.7.5's text identifiers (`core.genrltxt.<n>`: its parser skips
+  the header, so record n + 1) and its JSON translations; Fluent (`fluent-bundle` 0.16: about
+  15 crates, numbers through f64, braces that clash with the original's highlight markup) and
+  `intl_pluralrules` (CLDR 37); CLDR's current `plurals.xml` (read 2026-10-19).
+- **The user's decisions:** the packs are nested JSON (over TOML and Fluent); CLT-Q7, a
+  translation of the original's text is never committed, a player may load a pack of their own
+  which the project neither ships nor hosts (over never and committing them).
+- **Built:** `h3_view::text` (keys, packs, messages, plural rules, the catalogue's lookup,
+  `encode_1252`; 100 % covered; the original's tables taken as a concrete map, since a generic
+  closure showed false region misses in the summary), `clients/text/keys.toml` (ten keys and the
+  creature family), the asset tables' `[[creature]] original` (harvest writes it; a fresh harvest
+  equals the committed tables), `h3-view text`, the gate's `--keys` and its check.
+- **Checked:** the gate reads all 155 keys and their 306 forms from the user's tables; `h3-view
+  text` writes the damage line and the perish line as the rows say, and a Polish test pack's
+  `few` wins for 3 while 5 (`many`, which it lacks) falls back to the original's `other`.
+- **For later:** T4b-2 (which row and count the executable writes for which event, which font
+  the panel and the log use, a log line drawn pixel for pixel), a localized installation's code
+  page and fonts.
