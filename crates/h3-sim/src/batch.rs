@@ -545,7 +545,8 @@ impl BattleBatch {
     }
 
     /// Starts every env's first episode (and again from the start on a later call: the batch
-    /// then replays the same episodes) and writes them into `out`.
+    /// then replays the same episodes, as long as no scenario was added since) and writes them
+    /// into `out`.
     ///
     /// # Errors
     /// [`BatchError::NoScenario`], or [`BatchError::Buffer`] for a short output array.
@@ -842,12 +843,13 @@ fn play_internal(
 /// (at most [`MAX_SKIPPED_EPISODES`] in a row; then the slot gives up: no env).
 fn begin(slot: &mut Slot, source: Source<'_>) {
     slot.env = None;
-    for _ in 0..=MAX_SKIPPED_EPISODES {
+    for _ in 0..MAX_SKIPPED_EPISODES {
         slot.started = slot.started.saturating_add(1);
         slot.episode_seed = slot.seeds.next_u64();
         let index = draw_scenario(source.scenarios, source.total, slot.episode_seed);
         slot.scenario = index as u32;
         slot.seat_rngs = [0, 1].map(|s| Rng::for_stream(slot.episode_seed, StreamId::seat(s)));
+        slot.kind = None;
         let Ok(episode) = source.scenarios[index].episode(slot.episode_seed, source.max_steps)
         else {
             continue;
@@ -920,18 +922,18 @@ fn advance(
 }
 
 /// Writes the slot's current state (the acting seat's observation and entry mask, without the
-/// escapes) and `report` with its episode into `rows`. The slot keeps the single env's entry mask,
-/// escapes included, for the head calls ([`plain_head`]).
+/// escapes) and `report` with its episode into `rows`. The slot keeps that entry mask for the head
+/// calls ([`plain_head`]): an escape's later heads are as refused as the escape.
 fn write_state(slot: &mut Slot, rows: Rows<'_>, report: &mut EnvReport) {
     slot.mask.fill(false);
     let acting = acting(slot.env.as_ref());
     if let Some((env, side)) = acting {
         env.legal_mask(side, &mut slot.legal, &mut slot.mask);
+        slot.mask[RETREAT] = false;
+        slot.mask[SURRENDER] = false;
     }
     if let Some(mask) = rows.mask {
         write_mask(&slot.mask, mask);
-        mask[RETREAT] = 0;
-        mask[SURRENDER] = 0;
     }
     if let Some(obs) = rows.obs {
         match acting {

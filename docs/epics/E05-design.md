@@ -26,11 +26,11 @@ agent's, provisional):
   caller's arrays through one `unsafe` lifetime erasure (`Pool::run`), sound because the call
   blocks until every worker finished; a worker's panic is caught and resumed in the caller after
   that. T = 0 runs in the caller's thread.
-- **Head calls (2026-10-19):** each env keeps the single env's entry mask of the last call
-  (escapes included; only the output row masks them out). A non-cast entry's later heads ("0
-  only" while it is legal) are answered from it; only casts ask the env. The answers equal the
-  single env's (a test over every legal entry, the escapes, illegal ones and non-zero earlier
-  heads); the three calls cost 0.11–0.15 ms for 64 envs on `full` instead of 1.4 ms.
+- **Head calls (2026-10-19):** each env keeps the entry mask of the last call (the single env's
+  without the escapes: E05 T9b). A non-cast entry's later heads ("0 only" while it is legal) are
+  answered from it; only casts ask the env. The answers equal the single env's but for the
+  escapes, refused in every head (a test over every legal entry, the escapes, illegal ones and
+  non-zero earlier heads); the three calls cost 0.11–0.15 ms for 64 envs on `full` instead of 1.4 ms.
 - **Scenarios (T3d):** parsed and compiled in `h3-ffi` (`src/scenario.rs`, as T2's); one ruleset
   per packs and profile per batch, reused through the first scenario that compiled it
   (`Scenario::ruleset`), so `h3-ffi` needs no new dependency.
