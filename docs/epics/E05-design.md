@@ -285,7 +285,7 @@ and written in place by the engine (zero copy). `_ffi.py` (the library from `$H3
   is in the caller's thread; collect `*BattleBatch>::step`, never inlined).
 - The single-env gates (the battle lane's `random-rollouts-*`) stay as they are.
 
-## 8. Smoke training (T8) — designed (T8a), decided 2026-10-19 (AI-Q5)
+## 8. Smoke training (T8) — built (T8a–T8c, 2026-10-19; AI-Q5); exit criterion 7 met
 
 Exit criterion 7: a smoke run, within an hour on the user's machine, wins at least 80 % against
 Random on held-out seeds of its encounter family. Decided at T8a's start (the user, 2026-10-19):
