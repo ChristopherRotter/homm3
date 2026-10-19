@@ -668,6 +668,7 @@ fn the_experiment_writer_marks_the_coast() {
         roads: vec![],
         players,
         objects: vec![],
+        underground: None,
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     for (index, t) in m.terrain.tiles.iter().enumerate() {
@@ -740,6 +741,7 @@ fn towns_from_the_experiment_writer_read_back() {
             w::MapObject::Town(town),
             hero((10, 9), 1, 1),
         ],
+        underground: None,
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     let template = &m.templates[m.objects[1].template as usize];
@@ -871,6 +873,7 @@ fn maps_from_the_experiment_writer_read_back() {
                 )
                 .unwrap(),
                 amount: 0,
+                guards: None,
             }),
             // A Clover Field (E04c T3: the special grounds of batch 3), without a body.
             w::MapObject::Ground(w::Ground {
@@ -878,6 +881,7 @@ fn maps_from_the_experiment_writer_read_back() {
                 template: w::ObjectTemplate::from_objects_txt(CLOVER_FIELD).unwrap(),
             }),
         ],
+        underground: None,
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     assert_eq!(m.header.version, Version::Sod);
@@ -989,6 +993,151 @@ fn maps_from_the_experiment_writer_read_back() {
     );
     assert!(pile.object_type.is_some());
     assert_eq!(pile.amount, None);
+}
+
+/// E08 T22a1: the writer's underground level and guarded piles, read back and imported (batch
+/// E3's monster below and guarded piles; ADV-PIK-004).
+#[test]
+fn the_writer_s_underground_and_guarded_piles_read_back() {
+    use crate::writer as w;
+    let hero = |tile, hero_type| {
+        w::MapObject::Hero(w::Hero {
+            tile,
+            owner: 0,
+            hero_type,
+            class: 0,
+            name: None,
+            experience: None,
+            skills: None,
+            army: Some([Some((0, 5)), None, None, None, None, None, None]),
+            tight_formation: false,
+            artifacts: None,
+            spells: None,
+            primary: None,
+        })
+    };
+    let wood = w::ObjectTemplate::from_objects_txt(
+        "AVTwood0.def 011111111111111111111111111111111111111111111111 \
+         100000000000000000000000000000000000000000000000 111111111 000000001 79 0 5 0",
+    )
+    .unwrap();
+    let mut guards = [None; w::ARMY_SLOTS];
+    guards[1] = Some((0, 12));
+    guards[4] = Some((1, 3));
+    let pile = |tile, question: &str| {
+        w::MapObject::Pile(w::Pile {
+            tile,
+            template: wood.clone(),
+            amount: 7,
+            guards: Some(w::Guards {
+                army: guards,
+                question: question.into(),
+            }),
+        })
+    };
+    let monster = w::MapObject::Monster(w::Monster {
+        tile: (8, 8),
+        template: w::ObjectTemplate::from_objects_txt(
+            "AvWPike.def 011111111111111111111111111111111111111111111111 \
+             100000000000000000000000000000000000000000000000 111111111 000000100 54 0 2 0",
+        )
+        .unwrap(),
+        count: 20,
+        disposition: 1,
+        never_flees: false,
+        fixed_count: true,
+    });
+    let mut players: [Option<w::Player>; w::PLAYERS] = Default::default();
+    players[0] = Some(w::Player {
+        human: true,
+        computer: true,
+        towns: 1,
+    });
+    let map = w::Map {
+        name: "Below".to_owned(),
+        description: "Two levels".to_owned(),
+        size: 36,
+        terrain: w::Terrain::Grass,
+        patches: vec![],
+        roads: vec![],
+        players,
+        objects: vec![
+            hero((3, 4), 0),
+            pile((10, 10), "Fight?"),
+            pile((12, 10), ""),
+        ],
+        underground: Some(w::Underground {
+            terrain: w::Terrain::Subterranean,
+            patches: vec![w::Patch {
+                terrain: w::Terrain::Rock,
+                from: (0, 0),
+                to: (35, 1),
+            }],
+            objects: vec![hero((5, 5), 1), monster],
+        }),
+    };
+    let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
+    assert!(m.header.two_levels);
+    assert_eq!((m.terrain.levels, m.terrain.tiles.len()), (2, 2 * 36 * 36));
+    let level = |pos: Pos| {
+        m.terrain.tiles[(usize::from(pos.z) * 36 + usize::from(pos.y)) * 36 + usize::from(pos.x)]
+            .terrain
+    };
+    assert_eq!(level(Pos { x: 9, y: 1, z: 1 }), 9);
+    assert_eq!(level(Pos { x: 9, y: 2, z: 1 }), 6);
+    assert_eq!(level(Pos { x: 9, y: 1, z: 0 }), 2);
+    let red = m.players[0].details.as_ref().unwrap();
+    assert_eq!(
+        red.heroes.iter().map(|h| h.hero_type).collect::<Vec<_>>(),
+        [0, 1]
+    );
+    let positions: Vec<Pos> = m.objects.iter().map(|o| o.pos).collect();
+    assert_eq!(
+        positions,
+        [(4, 4, 0), (10, 10, 0), (12, 10, 0), (6, 5, 1), (8, 8, 1)].map(|(x, y, z)| Pos {
+            x,
+            y,
+            z
+        })
+    );
+    let Body::Resource {
+        message: Some(message),
+        amount: 7,
+    } = &m.objects[1].body
+    else {
+        panic!("not a guarded pile: {:?}", m.objects[1].body)
+    };
+    assert_eq!(message.text.as_bytes(), b"Fight?");
+    let army = message.guards.as_ref().unwrap();
+    assert_eq!(
+        army.iter()
+            .map(|s| s.map(|s| (s.creature, s.count)))
+            .collect::<Vec<_>>(),
+        [None, Some((0, 12)), None, None, Some((1, 3)), None, None]
+    );
+    let Body::Monster(mon) = &m.objects[4].body else {
+        panic!("not a monster: {:?}", m.objects[4].body)
+    };
+    assert_eq!(
+        (mon.count, mon.disposition, mon.never_flees),
+        (20, 1, false)
+    );
+    // The import: both piles guarded, the first asks; the second hero and the monster below.
+    let setup = crate::import(&m, &import::SOD).unwrap();
+    let guards: Vec<_> = setup.map.objects[..2]
+        .iter()
+        .map(|o| o.guards.as_ref().map(|g| (g.army.len(), g.question)))
+        .collect();
+    assert_eq!(guards, [Some((2, true)), Some((2, false))]);
+    let below = setup.map.objects[2]
+        .monster
+        .as_ref()
+        .map(|_| setup.map.objects[2].anchor.level);
+    assert_eq!(below, Some(1));
+    assert_eq!(
+        setup.heroes.iter().map(|h| h.pos.level).collect::<Vec<_>>(),
+        [0, 1]
+    );
 }
 
 // --- properties ---

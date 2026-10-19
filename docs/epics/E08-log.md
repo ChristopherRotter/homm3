@@ -2535,3 +2535,45 @@ E05 T8 on top): the full verify with the original data, coverage over 101 gated 
   --with-original-data`, 2026-10-19): every step passed on 7092c45 (`verify-once: verified
   (sandbox) code 6e2dc1c9`), coverage over 101 gated files.
 - No version moved, no rule changed.
+
+### Round 5 of increment 3: T22a1, the tools for batch E3 (2026-10-19, `adventure/e08-t22a1`, `cross-lane`)
+
+Decision 43: T22a in three (T22a1 the tools, T22a2 the spec, T22a3 the run). The client lane's
+E17 H1 and H2 (#272, merged the same evening) had built what T21b found the harness lacking:
+Yes/No questions, battles started from the map, the difficulty, the underground, the hero list
+scrolled, the start's reads. What still kept batch E3 from a map was the adventure lane's own
+tools. The baseline was `master` 7fd92d2 (its engine code verified in full on a620966; the light
+gates here).
+
+- **`h3_map::writer`:** `Map.underground: Option<Underground>` (a base terrain, patches and
+  objects; no roads): the header's flag, the second level's tiles after the first's, its objects
+  after the surface's with z = 1, a player's heroes on it in its hero list after the surface's.
+  `Pile.guards: Option<Guards>` (an army of one to seven stacks and a question): the format keeps
+  them in the pile's message (the flag, the text, the guards' flag and army, 4 unused bytes), so
+  a guarded pile always has a message, its text empty when the guards fight at once (the
+  import's `Guards.question`, ADV-PIK-004). The armies of heroes, towns and guards share one
+  check and one encoding. Tests: the bodies byte by byte and their mistakes; a read-back test
+  writes a two-level map with both kinds of guarded pile, a hero and a monster below, reads it
+  back and imports it (both piles guarded, one asking; the hero and the monster on level 1).
+- **`h3-experiment`** (`cross-lane`, battle-owned): `[map] difficulty` (`easy` … `impossible`:
+  the template's line "Choose it in the scenario list"; the map holds none, the harness's recipe
+  names it), `[map.underground]` with `[[map.underground.patch]]`, `rock` patches, an
+  encounter's `level` (its heroes and opponent below; the template says so), a monster's
+  `disposition` (`compliant` … `savage`, savage the default) and `flees` (false the default: the
+  old specs build the same map and template), a pile row's `level`, `guards` and `question`;
+  two objects on one tile are checked per level. Tests build each and its mistakes; a spec of
+  both levels compiled against the original tables imports and plays in the engine (`h3
+  adventure run`). The spec format in `docs/experiments/README.md`, which also gains the
+  harness's new reach.
+- **The other lanes' code:** `underground: None` in the `Map` literals of h3-cli's AI tests and
+  the client's `h3-view` (`situation.rs`), with the user's consent (one `cross-lane` pull
+  request).
+- No version moves: the writer and the spec compiler are tools (no map import, hash or format
+  version); the committed specs' maps are unchanged (`flees` and `disposition` default to the
+  old values).
+- **For T22a2:** batch E3's rows (survey `E08-battles.md` §13) need two difficulties (E3-1 on
+  Easy, E3-2 on Normal): two maps or two runs of one; E3-4 needs the monster on (12, 27) of a
+  36 × 36 two-level map, its hero beside it (`level = 1`, `at = [11, 27]`). The client lane's
+  harness check (`capture/checks/harness-check.toml`) can now place a monster's offers, a pile's
+  question and a walk below (its inbox).
+

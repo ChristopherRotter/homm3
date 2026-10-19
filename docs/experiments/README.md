@@ -57,10 +57,12 @@ python3 capture/h3adv.py batch capture/batches/<batch>.toml   # from clients/
 compile the spec, check the stamp, play the map in hot seat and write the results template filled
 in (`clients/out/batches/<batch>/<batch>.md`, a note at its top on how it was played), which an
 agent evaluates like a filled one from the user. E08 batch 2 cross-checked: D3a–D3d as the user's
-results, every field; D5's piles within their ranges (`docs/epics/E17-design.md` §6.3). Not built
-yet: the hero list's scrolling (more than five heroes per player), the underground, Yes/No
-dialogs, battles started from the map, more than one day: the client lane builds them when a
-batch needs them (its queue's inbox).
+results, every field; D5's piles within their ranges (`docs/epics/E17-design.md` §6.3). Since
+E17 H1 and H2 (2026-10-19) it also answers Yes/No questions, plays battles started from the map
+(by auto combat, a retreat or a surrender), chooses the difficulty, walks on the underground,
+scrolls the hero list, plays a second day and reads heroes' experience, levels and skills and a
+tile's monster (the runbook, "An experiment batch"); what a batch still needs the client lane
+builds when the batch asks (its queue's inbox).
 
 **The battle's openings** (E04c T3): `experiments/agent/opening.py` (below, "One encounter's
 map"). **Trap: the starting bonus.** The harness begins a single scenario with its default, a
@@ -118,8 +120,8 @@ last activated stack, printed one line per shot. Batch 3h ran so.
 - `[map]`: `name`, `description`, `size` (36, 72, 108 or 144), `terrain` (any land terrain; the
   battlefield of every encounter on it), `instructions` (the template's numbered introduction).
   `[[map.patch]]` (E08 T10a, the adventure map's experiments): `terrain`, `from = [column, row]`,
-  `to` (inclusive), a rectangle of another terrain (also `water`, E04c T3: the coast); a later
-  patch covers an earlier one. The
+  `to` (inclusive), a rectangle of another terrain (also `water`, E04c T3: the coast, and `rock`,
+  E08 T22a1); a later patch covers an earlier one. The
   writer gives every tile an interior picture of its terrain (the ranges the game's own maps use,
   `docs/formats/h3m.md`), so the game draws a hard edge between two terrains.
   `[[map.road]]` (E08 T10a): `kind` (dirt, gravel, cobblestone), `row`, `from` and `to` (the
@@ -131,7 +133,10 @@ last activated stack, printed one line per shot. Batch 3h ran so.
   the game starts): a resource pile on every tile of the row
   from `from` to `to`, the template from `Objects.txt` (class 79). A pile is visited from a
   neighbouring tile and the visit ends the move; the template does not list piles, the
-  encounters' procedures say where they are.
+  encounters' procedures say where they are. Since E08 T22a1 a row may lie on the underground
+  (`level = 1`) and be guarded: `guards` (`[creature, count]`, one to seven stacks, every pile
+  of the row with the same) and `question` (the text the game shows before the guards' battle;
+  absent, the guards fight at once; only with guards).
   `[[map.ground]]` (E04c T3): `picture` (a special ground's picture in `Objects.txt`: `AVXcrsd0`
   Cursed Ground 21, `AVXplns0` Magic Plains 46, `AVXcf0` Clover Field 222, `AVXcg1`–`7` and
   `AVXmp1`–`7` the SoD Cursed Ground 223 and Magic Plains 230, `AVXef0`, `AVXff0`, `AVXhg0`,
@@ -139,7 +144,13 @@ last activated stack, printed one line per shot. Batch 3h ran so.
   row]`, its bottom-right tile. The picture covers its width leftwards and its height upwards, every
   tile of it (its `.msk`): the `0` pictures 6 × 4, `AVXcg5` and `AVXmp5` 3 × 3. Heroes and
   monsters stand on it; the grounds are written first, so they are drawn below.
-- `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `procedure`
+  `difficulty` (E08 T22a1: `easy`, `normal`, `hard`, `expert` or `impossible`): the template
+  says to choose it in the scenario list (the map does not hold it; the harness's recipe names
+  it too). `[map.underground]` (E08 T22a1): a second level, `terrain` (a land terrain) and its
+  own `[[map.underground.patch]]` rectangles (`rock` for walls); no roads or grounds on it.
+- `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `level` (E08
+  T22a1: 1 puts the encounter's heroes and opponent on the underground; the template says so),
+  `procedure`
   (steps), `record` (`field = "…"` for a value, `table = [columns]` + `rows`, or `labels` for rows whose
   first column is filled in), `predictions`
   (for the evaluating agent; never shown in the template).
@@ -156,7 +167,9 @@ last activated stack, printed one line per shot. Batch 3h ran so.
   names, ids below 70; needs a worn `spell book`, E04b batch 2a). Skills, artifacts and spells
   replace the hero type's defaults, so heroes have no spell book unless one is listed. A hero
   starts with full mana: 10 × knowledge (no Intelligence), so knowledge sets the mana.
-- `[encounter.opponent]`: `monster` + `count` (a savage wandering monster that never flees),
+- `[encounter.opponent]`: `monster` + `count` (a wandering monster one column east of the hero; savage
+  and never fleeing unless E08 T22a1's `disposition`, `compliant` … `savage`, and `flees = true`
+  say otherwise; it does not grow),
   `[encounter.opponent.hero]` (a Blue hero) or `[encounter.opponent.town]` (E04c T5b: a siege): its
   entrance is the tile north of the encounter's hero, its picture needs 5 columns west of the
   entrance, 2 east and 5 rows north (give the hero `at`); `faction` (castle … conflux), `owner`

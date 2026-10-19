@@ -212,6 +212,7 @@ fn census_map() -> Vec<u8> {
                 buildings: w::TownBuildings::Standard { fort: false },
             }),
         ],
+        underground: None,
     };
     w::gzip(&w::write(&map).unwrap())
 }

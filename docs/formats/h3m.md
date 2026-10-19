@@ -250,7 +250,7 @@ the 39 guards records as T21a's.
 | Part | Bytes | Our value |
 |---|---|---|
 | version | u32 | `0x1C` |
-| any players, size, underground | u8, u32, u8 | 1, 36/72/108/144, 0 |
+| any players, size, underground | u8, u32, u8 | 1, 36/72/108/144, 0 or (E08 T22a1) 1 |
 | name, description | string, string | |
 | difficulty, level limit | u8, u8 | 1 (normal), 0 |
 | 8 players | see below | |
@@ -263,9 +263,9 @@ the 39 guards records as T21a's.
 | banned artifacts, spells, skills | 18, 9, 4 bytes, bit = banned | the editor's default (artifacts 127–143), none, none |
 | rumors | u32 | 0 |
 | customised hero types | 156 × bool | all 0 |
-| terrain | 7 bytes per tile, row by row | type, picture, river ×2, road ×2, flags |
+| terrain | 7 bytes per tile, level by level, row by row | type, picture, river ×2, road ×2, flags |
 | templates | u32 count + records | name, 6 bytes passable, 6 bytes visitable, u16 terrains, u16 editor terrains, u32 class, u32 subclass, u8 group, u8 priority, 16 zero bytes |
-| objects | u32 count + records | x, y, z (u8 each), u32 template index, 5 zero bytes, body |
+| objects | u32 count + records | x, y, z (u8 each), u32 template index, 5 zero bytes, body; the surface's objects, then the underground's |
 | timed events | u32 | 0 |
 
 **Player** (playable): human, computer (bools), AI tactic (i8), town choice offered (u8), allowed
@@ -304,15 +304,20 @@ the west end, 12 and 13 between, 15 at the east end with the road's mirror flag 
 tile's flags, `0x10`); a north–south road uses 14 at its ends and 10 and 11 between. The
 experiment writer lays east–west roads only.
 
-**What the experiment writer writes** (`h3_map::writer`): one level, a base terrain with
+**What the experiment writer writes** (`h3_map::writer`): a base terrain with
 rectangles of other terrains (water among them, its land neighbours with the coast flag `0x40`,
 E04c T3), east–west roads, players without a main town (Red and, with heroes or a town of
 its own, Blue), heroes (their own fields or their hero type's), wandering monsters (class 54),
 since E08 T16b resource piles (class 79 by resource, the template from `Objects.txt`, the body
-without a message: amount 0 is drawn when the game starts) and, since E04c T3, the special
+without a message: amount 0 is drawn when the game starts; since E08 T22a1 a guarded pile's
+message: its text, the question asked before the battle, empty when the guards fight at once,
+the guards' flag set and their army) and, since E04c T3, the special
 grounds (classes 21, 46, 222–231, no body), written before the other objects, and since E04c T5b
 towns of a fixed faction (class 98, the template from `Objects.txt`: its entrance two columns west
-of its position; no name, no events, no required or banned spells, the owner's alignment).
+of its position; no name, no events, no required or banned spells, the owner's alignment). Since
+E08 T22a1 an underground level may follow: its own base terrain and rectangles (no roads), its
+objects after the surface's (z = 1), a player's heroes on it in its hero list after the
+surface's. `h3-map`'s read-back test reads both back and imports them.
 
 **Town buildings** (a town's custom `built` and `forbidden` bits; VCMI 1.7.5's
 `config/gameConfig.json`, `mapFormat.restorationOfErathia`): 0 Town Hall, 1 City Hall, 2 Capitol,

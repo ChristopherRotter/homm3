@@ -89,6 +89,7 @@ fn smoke_map(pikeman: ObjectTemplate) -> Map {
                 fixed_count: true,
             }),
         ],
+        underground: None,
     }
 }
 
