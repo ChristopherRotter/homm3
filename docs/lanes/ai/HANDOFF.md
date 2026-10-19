@@ -7,8 +7,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **Opened 2026-10-18** with E05's refinement (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` stays the adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05 and E06 (`lanes.toml`).
 - **E05** (`docs/epics/E05-battle-env.md`): in progress. Increments 1 (T1, T2) and 2 (T3a–T3d,
   T4; #252) done. **Increment 3:** T5a (#253), T5b1 and T5b2 (#255, after the shared #254) merged;
-  **T6a** (the Python binding on Linux, `python/`, design §5) on the session branch
-  `claude/trusting-tesla-0b0n8o` (2026-10-19), its pull request opened when ready. The shared
+  **T6a** (the Python binding on Linux, `python/`, design §5) in the **open #257**
+  (branch `claude/trusting-tesla-0b0n8o`, 2026-10-19; the full local verify passed). The shared
   #256 (the batch workloads' rows in `benches/README.md`) is open beside it. **Next:** T6b (PyTorch's index; Windows), then the user's checkpoint of
   increment 3.
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
