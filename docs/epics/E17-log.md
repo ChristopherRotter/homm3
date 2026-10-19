@@ -1084,3 +1084,62 @@ against a capture); the user chose T4b-2a.
 - **For later:** T4b-2b (the log item's width and place, the small font's colour, the status
   line, one line drawn against a capture), T6's event mapping (which event writes which line, a
   `Struck` per target into one strike's hits, the defend's gain).
+### H1 — Questions, the difficulty, battles from the map (2026-10-19)
+
+On `client/e17-harness-e3`, the user present: the adventure lane's E08 T22a waited on the
+harness's missing features (its inbox request of 2026-10-13); the user had the client lane take
+them first. Refined into H1 (this) and H2 (the underground, the hero list's scrolling, the start's
+reads, a second day).
+
+- **Starting point:** master at `f8b1dccb`; the clients' full check passed in the new sandbox
+  (code 76a427e1). No client pull request open (T4b-1 had merged as `f2a329e8`).
+- **Found:** auto combat did nothing at first: the button toggles the battle manager's +0x132C4,
+  but a human side's creature acts on its own only with the setting `Combat Auto Creatures`
+  (0x698794, read from the registry at 0x50BB6D) on, which a new prefix holds at 0
+  (war_machine_automatic 0x474CDF); `setup.sh` sets it. A question's text is read from the window
+  manager's topmost dialog, not from the message buffer (0x6973D8), which a map's own text may not
+  pass through. The offers' records: ADVEVENT 86 (join), 88 or 89 + 90 (join for gold), 91 (flee),
+  87 (the insult, a message). A player left without heroes and towns is out, and the last human
+  then wins: the check map gives Blue a second hero. Hot seat needs two names.
+- **Built:** `h3adv.py`: `difficulty` (the scenario list's buttons, checked at game +0x1F6D8),
+  questions (`answer`, per kind), battles (`battle`: `auto`, `[defender] retreat|surrender`), the
+  observations (before and after the step: every player's resources, the hero's details by its
+  index, which stays when it leaves the map; the battles' stacks, hexes and outcome; another
+  hero's details by name; a tile's monster, aggression and flag), a stop after 30 s on an unknown
+  screen; `h3mem.py`: heroes' experience, level, army, skills and primary skills, all 156 heroes,
+  the difficulty, a tile's word and monster, creature names from the game's table, the battle's
+  outcome, the topmost dialog's text; `h3lod.py` (the LODs' text tables, a text's record);
+  `[button.cancel]`, `[button.battle_ok]`; the check spec and recipe; the runbook and design §6.3;
+  `docs/exe/` entries (0x698794, 0x699280, the manager's +0x132C4, the dialog records).
+- **Checked:** the check recipe on Easy plays its four encounters from memory (a won battle by
+  auto combat: 3 Pikemen and 2 Halberdiers to none, 50 experience; a retreat: the hero off the
+  map, the 30 Pikemen whole; Blue's surrender in hot seat: 470 gold from Blue to Red, Blue's hero
+  off the map; a hero with 5 000 experience: level 5, 3/5/1/2, Diplomacy and Logistics expert).
+  The questions on a local map (h3-experiment's monster patched in the sandbox to other
+  dispositions, never committed): join no then flee no (the monster gone), flee yes (a battle won
+  by auto combat), join yes (27 Pikemen), on Hard. E08 batch 2 again: D3a–D3d all 13 fields as the
+  user's, D5's random amounts within their ranges.
+- **For later:** H2; the guarded pile's question and a monster's offers in a committed check
+  once h3-experiment places them (E08 T22a); a level-up dialog after a battle (not met yet).
+
+### H2 — The underground, more heroes, the start's reads, a second day (2026-10-19)
+
+The same session and branch as H1, right after it.
+
+- **Built:** `h3mem.py`: the level in a packed tile (bit 26), the path's arrows of both levels,
+  the map's levels, the date (game +0x1F63E); `h3adv.py`: `walk = [x, y, level]` (the panel's
+  level button, the minimap on that level, the hover checked with its level), the hero list
+  scrolled for a player with more than five heroes, `level_up` (the left or right skill of a
+  level-up dialog, `[button.ok_disabled]`), the observations `date`, `level_ups`,
+  `heroes:experience`; `h3drive.Game.start` ends a game left running first (two games on the
+  display made the dumps unreadable). The `adventure` probes leave out the level button.
+- **Checked:** the check recipe with three more Red heroes (seven: the list scrolled for the
+  sixth and seventh), a level-up (1 500 experience: level 2, the left skill taken), both turns
+  ended and a walk on day 2 (`month 1, week 1, day 2`, the day's 1 560 points), the heroes off
+  the map (147: 40 to 90). The underground on the shipped `Arrogance` (hot seat with four
+  humans, Purple's hero on level 1): a walk to (5, 8, 1) after the view was put on the surface,
+  three green marks on level 1, arrived.
+- **For later:** the underground in the check once `h3-map`'s writer places it; a committed
+  check of the monsters' offers and a guarded pile's question once `h3-experiment` places them
+  (E08 T22a).
+
