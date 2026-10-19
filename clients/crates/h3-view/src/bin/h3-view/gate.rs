@@ -20,6 +20,7 @@ use h3_assets::archive;
 use h3_assets::check::{Decoded, EntryCheck, check_entry};
 use h3_assets::survey::{self, Mention, Mentions};
 use h3_formats::lod::LodArchive;
+use h3_view::text::Catalogue;
 use h3_view::text::pack::Pack;
 
 use crate::{assets, sounds, text};
@@ -273,6 +274,16 @@ fn gate(options: &Options) -> Result<(), String> {
         original.messages.len(),
         texts.len()
     );
+    // The battle log's lines (E17 M3 T4b-2a): composed from the original's text, every argument
+    // in its place.
+    let samples = text::log_samples(&Catalogue {
+        packs: vec![original],
+    });
+    let problems = text::log_problems(&samples);
+    if !problems.is_empty() {
+        return Err(format!("the battle log: {}", problems.join("; ")));
+    }
+    println!("gate: the battle log: {} lines composed", samples.len());
     // The sound archives (E17 M2 T5b): every WAV decodes to SDL's samples.
     print!(
         "{}",

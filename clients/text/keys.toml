@@ -13,10 +13,12 @@
 # `creature.<table>:<key>`, the creature's names), its row the `first`-based non-blank record of
 # its original id, its forms' columns in `forms`.
 #
-# The battle log's first lines (*provisional*: which row the executable writes for which event,
-# and with which count, is read when the log is drawn, M3 T4b-2 and T6).
+# The battle log's lines, as the executable writes them (read in M3 T4b-2a; docs/epics/E17-design.md
+# §9.4; composed by `h3_view::battle_log`). The executable's row n of a table is its record n here,
+# the header included. A creature's name is the singular for a count of exactly 1, else the plural.
 
-# A strike's or a shot's damage; `count`: the attacking stack's number.
+# A strike's or a shot's damage (0x469A90's first row); `count`: the striking stack's number, which
+# also picks the attacker's name.
 [[key]]
 id = "battle.log.damage"
 args = { attacker = "text", damage = "number" }
@@ -26,7 +28,8 @@ original = [
     { form = "other", at = "GENRLTXT:378", printf = ["attacker", "damage"] },
 ]
 
-# The creatures it killed, after the damage line (the row starts a new line); `count`: how many.
+# The creatures a strike killed, after its damage line (the row starts a new line); `count`: how
+# many, which also picks the name (or the word for creatures when the strike killed several kinds).
 [[key]]
 id = "battle.log.perish"
 args = { creature = "text" }
@@ -36,7 +39,14 @@ original = [
     { form = "other", at = "GENRLTXT:380", printf = ["count", "creature"] },
 ]
 
-# A stack waits; `count`: its number.
+# A war machine the strike destroyed, after the damage line instead of the perish row (the row
+# starts a new line).
+[[key]]
+id = "battle.log.destroyed"
+args = { creature = "text" }
+original = [{ at = "GENRLTXT:668", printf = ["creature"] }]
+
+# A stack waits (not in the tactics phase); `count`: its number.
 [[key]]
 id = "battle.log.wait"
 args = { creature = "text" }
@@ -46,7 +56,8 @@ original = [
     { form = "other", at = "GENRLTXT:138", printf = ["creature"] },
 ]
 
-# A stack defends; `count`: its number; `defense`: the skill it gains.
+# A stack defends (a war machine writes nothing); `count`: its number; `defense`: the skill it
+# gains, max(1, its defense x 20 / 100) in the executable (0x479758).
 [[key]]
 id = "battle.log.defend"
 args = { creature = "text", defense = "number" }
@@ -56,31 +67,27 @@ original = [
     { form = "other", at = "GENRLTXT:122", printf = ["creature", "defense"] },
 ]
 
-# Good morale: the stack acts again.
+# Good morale: the stack acts again; its name by its number.
 [[key]]
 id = "battle.log.morale-good"
 args = { creature = "text" }
 original = [{ at = "GENRLTXT:34", printf = ["creature"] }]
 
-# Bad morale: the stack loses its turn.
+# Bad morale: the stack loses its turn; its name by its number.
 [[key]]
 id = "battle.log.morale-bad"
 args = { creature = "text" }
 original = [{ at = "GENRLTXT:35", printf = ["creature"] }]
 
-# Good luck on a strike.
+# Good luck on a strike or a shot; the striker's name by its number. (The battle writes no line
+# for bad luck: the original has none.)
 [[key]]
 id = "battle.log.luck-good"
 args = { creature = "text" }
 original = [{ at = "GENRLTXT:46", printf = ["creature"] }]
 
-# Bad luck on a strike.
-[[key]]
-id = "battle.log.luck-bad"
-args = { creature = "text" }
-original = [{ at = "GENRLTXT:45", printf = ["creature"] }]
-
-# The word for a creature, by `count`.
+# The word for a creature, by `count`: a strike's perish row names it when the strike killed
+# several kinds.
 [[key]]
 id = "word.creature"
 plural = true
