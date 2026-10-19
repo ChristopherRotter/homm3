@@ -77,6 +77,10 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
                 target: Target::Stack { stack: 1 },
             },
         },
+        ClientMessage::Query {
+            seq: 9,
+            query: Query::CreatureCastTargets {},
+        },
         ClientMessage::FetchReplay { seq: 10 },
         ClientMessage::FetchRecord { seq: 11 },
         ClientMessage::Leave {},
@@ -619,6 +623,13 @@ fn the_json_is_serdes_default_enum_form() {
         r#"{"Join":{"game":1,"seat":"Defender","token":null}}"#
     );
     assert_eq!(text(&ClientMessage::Leave {}), r#"{"Leave":{}}"#);
+    assert_eq!(
+        text(&ClientMessage::Query {
+            seq: 3,
+            query: Query::CreatureCastTargets {}
+        }),
+        r#"{"Query":{"seq":3,"query":{"CreatureCastTargets":{}}}}"#
+    );
     assert_eq!(
         text(&ClientMessage::Pause { seq: 4 }),
         r#"{"Pause":{"seq":4}}"#
