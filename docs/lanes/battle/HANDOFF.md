@@ -5,6 +5,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **E04c closed (2026-10-16, T10c):** #243, #244 merged; `h3-heroes` and `heroes.toml` moved to the adventure lane. **Next:** E05 and `h3-sim`/`h3-ffi` went to the AI lane (AI-Q1); next here E23 (after E05) or E11, the user's choice. A rule changing an encoding is `cross-lane`.
+- **2026-10-19:** the AI lane's two proptest cases fixed (`battle/proptest-defects`, PR open).
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, the inbox, Q43; S-23, S-24, batch 2g.
 - **Versions** (unchanged since T10b): battle state hash v51, battle part hash v6 (the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q51, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
@@ -34,7 +35,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Rule code reads abilities via `ruleset.abilities(creature)`; per-attack booleans are `StackTraits` bits set at setup. `Stack.spells` holds the spells' values only: a creature's `innate_spell` is read where the original reads the creature (`magic::mirror_chance`, `magic::reflection`).
 - A two-hex stack's position is its rear hex (BAT-GEO-002): where VCMI measures at its head, use `Footprint::front` (placement, a shot's aim, the berserk shooter); a shot's distance is `footprint_distance` (the original turns its shooter, BAT-Q36); `hexes()` keeps the front hex first. Tests place two-hex stacks by the rear hex.
 - Relations go by the acting stack's controller and the other stack's own side (`Stack::may_attack`; `is_hostile_to` only for blocking and multi-headed strikes).
-- A town's gate opens in `obstacles::moved`: a quiet sink moves a walker in one step, so only a recording sink sees it open mid-walk; a rule reading the gate mid-walk belongs in `travel_through`.
+- Each position of a walk may open a town's gate (`obstacles::moved`); a quiet sink walks position by position only where something acts or the gate is closed for a defender's walker (`siege::gate_closed_for`): a new rule in `moved` needs the same, or the sinks diverge.
 - A retired quirk flag keeps its `REGISTRY` position without a name (`flags()` lists the live ones). A flag that comes or goes changes the faithful ruleset hashes: the golden replays, and the adventure lane's faithful replays (a `cross-lane` header line).
 
 - `properties.rs` plays its games at a `Place` (field, battlefield, garrison, town): what a property assumes must hold at each.
@@ -48,8 +49,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Code added to `movement::reachable_within` can push `fits` out of line (T5c1, T6b); keep `casters::ready` a cheap early exit (+2 % Ir in T7b1). Before re-baselining, compare `h3 bench --games 20` step counts (the old commit in a worktree) and per-function callgrind profiles (`--inclusive=no`, `--toggle-collect='*random_rollout*'`).
 
 **Process**
-- `xtask` takes the workspace root from its build: never share a target directory between worktrees (two workers' checks read each other's tree, T11b).
-- The user merges with merge commits or squashes (#164: merge master into a stacked branch, keep its side of its own files); after a rebase-merge, `git rebase --onto origin/master <old base head>`. Fetch master again before opening a pull request that bumps a shared version (#167 took protocol v27).
+- The user merges with merge commits or squashes (#164: merge master into a stacked branch, keep its own files' side); after a rebase-merge, `git rebase --onto origin/master <old base head>`. Fetch master again before opening a pull request that bumps a shared version (#167 took protocol v27).
 
 **Experiments in the original game**
 - The installation is read-only: maps go to the gitignored `experiments/out/`, the user copies them. Results hold for SoD; observation sources name the setup.
@@ -58,14 +58,14 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-19 (seventy-second) — the AI lane's two proptest cases
+
+A walk's step onto the outer bridge opened the gate only with a recording sink; a Clone on the gate's hex kept it open (fixed: `obstacles::go`, `travel_through`). The invariant property missed BAT-SIE-011's pass. Seeds committed.
+
 ### 2026-10-16 (seventy-first) — E04c T10c: the closure (increment 10)
 
 Closed: the shared sentences (BAT-Q50), `h3-heroes` handed over, E23, the lanes' inboxes, the user's Windows run. Detail: the log.
 
 ### 2026-10-15 (seventieth) — E04c T10b: the last reviews and the fold-in (increment 10)
 
-r6 and security; the user's decisions BAT-Q50 (the original's obstacles and moat avoidance, the tunnel hidden); five fixers; observation v21, ABI v25; siege-s7 and the adventure lane's nine replays redone. Detail: the log.
-
-### 2026-10-15 (sixty-ninth) — E04c T10b: the review's first eight reports (increment 10)
-
-Fresh reviewers in small slices: eight reports (one high, seven medium), nothing folded in. Detail: the log (T10b).
+r6 and security; the user's decisions BAT-Q50; five fixers; observation v21, ABI v25; siege-s7 and the adventure lane's nine replays redone. Detail: the log.
