@@ -238,9 +238,9 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   war machines (T3b), the count boxes (T5) and the panel (T6), each mask removed as it is drawn;
   sieges later.
 - Fonts and the text drawer (T4a, with the count boxes in the stills), the string catalogue and
-  the language packs (T4b-1, an ADR-0020 amendment; T4b-2 the log's text drawn), and the battle
-  interface (T5, T6: the boxes over time, the panel, the log, the cursors). T4 split with the user
-  on 2026-10-15, T4b on 2026-10-19.
+  the language packs (T4b-1, an ADR-0020 amendment; T4b-2a the log's lines read and composed,
+  T4b-2b a line drawn), and the battle interface (T5, T6: the boxes over time, the panel, the
+  log, the cursors). T4 split with the user on 2026-10-15, T4b and T4b-2 on 2026-10-19.
 - The **spell animations** (the user, at T5c: their plethora; T7a the code reading, T7b on
   stacks with morale and luck, T7c area spells, rays and spell obstacles) and their sounds.
 - The sound's remainder (T8: the battle's end; the volume settings later).
@@ -306,6 +306,13 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   ids), packs as nested JSON (i18next's conventions, CLDR's integer plural rules), the original's
   pack read at run time from the user's tables, a player's pack before it (CLT-Q7); the gate reads
   all 155 keys' 306 forms; `h3-view text` formats the log's lines from them.
+- **T4b-2a done 2026-10-19** ([log](E17-log.md#m3-t4b-2a--the-battle-logs-lines-read-and-composed-2026-10-19),
+  [design §9.4](E17-design.md)): T4b-2 split with the user (the line drawn left as T4b-2b). The
+  log's lines read in the executable (`battle_log_add`, the strike's line and its callers, wait,
+  defend, morale, luck): its row n is record n, a name's form and a row's by the number of exactly
+  1; the keys lifted from *provisional* (the war machine's row added, the bad luck row dropped:
+  the original has none); `h3_view::battle_log` composes them and the entries a line becomes;
+  the gate composes 12 sample lines from the user's tables, `h3-view text --log` prints them.
 
 ### Later (refined when they come up)
 
@@ -485,6 +492,12 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T4b-2a: a breath over two stacks of one creature: the original's log line reports the target's
+  hit alone (0x441B9B); copied as the original's (no `fixed` variant: the user's call); the
+  composer's inputs (`battle_log::Stack`, `Hit`, `Spread`: a strike's hits and how they add up,
+  the defend's gain given, not computed) and the entries' rule taking the line count as an
+  argument until T4b-2b reads the log's width; `h3-view text --log`'s fixed sample stacks.
 
 - T4b-1: the key catalogue's format (TOML: `[[key]]` with `args`, `plural`, `contexts`,
   `original` forms `{ form, at = "<TABLE>:<record>[:<column>]", printf }`; `[[family]]`) and its

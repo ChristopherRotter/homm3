@@ -1054,3 +1054,33 @@ chose T4b-1.
 - **For later:** T4b-2 (which row and count the executable writes for which event, which font
   the panel and the log use, a log line drawn pixel for pixel), a localized installation's code
   page and fonts.
+
+### M3 T4b-2a — The battle log's lines read and composed (2026-10-19)
+
+On `client/e17-m3-t4b-2a`, the user present: asked for a small increment, the agent proposed
+splitting T4b-2 along the code reading (T4b-2a: the log's call sites read, the keys corrected, a
+composer) and the drawing (T4b-2b: the log's font, colour and width, a line drawn pixel for pixel
+against a capture); the user chose T4b-2a.
+
+- **Starting point:** master at `d3889172` (#263, T4b-1, and #261 merged on 2026-10-19), no
+  client pull request open; the client gates' baseline (`check.sh`) passed on the sandbox.
+- **Read** (design §9.4, the map): `battle_log_add` 0x472E90 (an entry or the status line, the
+  first line break joined or split by the small font's line count, the status line held for
+  3 000 ms after an entry), `battle_log_damage` 0x469A90 and what its strike and shot callers
+  pass (one target; a breath's second stack; a multi-headed striker's and the area shots' sums),
+  `creature_name` 0x440100, wait 0x479918, defend 0x479758, morale 0x464AD5 and 0x464CDF, luck
+  0x44187A and 0x43F998; `general_text` 0x6A5D5C. The row numbers checked against the user's
+  `GENRLTXT.TXT` (in the sandbox only): the executable's row n is our record n.
+- **Found:** a breath over two stacks of one creature reports the target's hit alone (copied;
+  the M3 review list); the battle has no bad luck line (row 45 unused); a war machine's death
+  has a row of its own (668), its defend no line; no wait line in the tactics phase.
+- **Built:** `clients/text/keys.toml` (`battle.log.destroyed` added, `battle.log.luck-bad`
+  dropped, the comments citing the sites), `h3_view::battle_log` (a strike's line from its hits
+  and their spread, wait, defend, morale, luck, `entries`; 100 % covered, invented text only), the
+  gate's battle log check and `h3-view text --log`; the map's entries for the sites read.
+- **Checked:** the gate on the user's four LODs: 155 keys, 306 forms, the 12 sample lines
+  composed with every argument in place; `h3-view text --log` shows each as the original's rows
+  read.
+- **For later:** T4b-2b (the log item's width and place, the small font's colour, the status
+  line, one line drawn against a capture), T6's event mapping (which event writes which line, a
+  `Struck` per target into one strike's hits, the defend's gain).

@@ -6,20 +6,19 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T4b-2 — The log's text drawn
+### E17 M3 T4b-2b — A log line drawn
 
-- **Scope:** (T4b split with the user on 2026-10-19: T4b-1, the catalogue's format, the keys, the
-  packs and the original's text read through them, done; design §9.) Which row the executable
-  writes for which event the engine reports, and which count picks its form (the log's call
-  sites: the damage and perish lines first, then wait, defend, morale, luck; the keys of
-  `clients/text/keys.toml` lifted from *provisional* or corrected, the executable's text numbers
-  against the rows' records); which font and colour draw the battle log's lines and the status
-  line (the executable; `h3_render::text` draws them); a log line composed from the catalogue
-  (the creature's name by its count, then the line) drawn by the viewer, the panel still masked
-  around it.
-- **Acceptance:** a battle text (a log line) from the catalogue drawn by the viewer matches the
-  original's pixel for pixel.
-- **Depends on:** nothing (T4b-1 done). **Status:** ready.
+- **Scope:** (T4b-2 split with the user on 2026-10-19: T4b-2a, the log's lines read and composed
+  by `h3_view::battle_log`, done; design §9.4.) Where the battle panel's log item lies and its
+  width (the dialog that builds it; `battle_log_add` measures with the small font at the item's
+  width), the small font's colour for the log's lines and the status line's, how the log shows
+  its last two entries (the first line shown, 0x472C30, not read); a log line composed by
+  `battle_log` (its `entries` with `h3_render::text`'s line count, which is private now) drawn
+  by the viewer in the panel's place, the rest of the panel still masked around it; a capture
+  (a strike that kills, in hot seat) whose log line is unmasked.
+- **Acceptance:** a log line from the catalogue drawn by the viewer matches the original's pixel
+  for pixel.
+- **Depends on:** nothing (T4b-2a done). **Status:** ready.
 
 ### E17 M3 T5 — The count boxes
 
@@ -37,12 +36,13 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 ### E17 M3 T6 — The battle interface
 
 - **Scope:** the panel below the battlefield (its picture, buttons and their states), the log's
-  lines from the string catalogue as the engine's events produce them, the heroes' portraits if
+  lines from the string catalogue as the engine's events produce them (`battle_log`'s composers;
+  which event writes which line: design §9.4, "The caller's"), the heroes' portraits if
   the panel shows them, the cursor rules of the executable (which cursor over which hex; T5a's
   `CRDEFLT.DEF` frame 0 is provisional), the mouse over a stack in the window (group 1 and the
   outline 0x70, read and recorded in T1b-2: the inbox); its masks removed. May split when refined.
 - **Acceptance:** a frame with the panel matches the original's outside the listed differences.
-- **Depends on:** T4b-2. **Status:** ready.
+- **Depends on:** T4b-2b. **Status:** ready.
 
 ### E17 M3 T7a — Code reading: the magic animations
 
@@ -97,7 +97,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T4b-2–T8 (T1a–T1c, T2, T3a, T3b, T4a and T4b-1 done). **Status:** waiting.
+- **Depends on:** T4b-2b–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1 and T4b-2a done). **Status:**
+  waiting.
 
 ## Inbox
 

@@ -5,8 +5,9 @@
 //! [`compose`] draws the list into a frame; [`tables`] and [`layout`] are the asset tables and
 //! the screen layouts; [`cursor`] is the game's mouse cursor and [`clock`] the battle's clock in
 //! the window; [`sound`] is what a battle's opening plays; [`text`] is the string catalogue and
-//! its language packs. The adapters (the real-asset gate, the headless renderer, the window through
-//! `h3-sdl`) are the binary's modules, not this library.
+//! its language packs, [`battle_log`] the battle log's lines composed from it. The adapters (the
+//! real-asset gate, the headless renderer, the window through `h3-sdl`) are the binary's modules,
+//! not this library.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`; time is an input. The header below
 //! is checked by `tests/purity.rs`.
@@ -30,6 +31,7 @@ extern crate alloc;
 
 pub mod anim;
 pub mod batch;
+pub mod battle_log;
 pub mod clock;
 pub mod compose;
 pub mod cursor;
