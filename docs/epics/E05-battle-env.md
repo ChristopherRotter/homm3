@@ -152,6 +152,7 @@ is measured from Python against the batch's internal Random seat, without T7's r
   (2026-10-19); the sandbox's 30-minute CPU run learns (the sampled policy 0.51 → 0.73 against
   Random), the criterion moved to the sampled policy (the user). Record in `E05-log.md`.
 - [ ] **T8c The smoke run** — on the user's machine (the GTX 1070): exit criterion 7, recorded.
+  First hour (naive self-play): 0.779 peak, 0.721 final; the opponent pool built (2026-10-19).
 
 **Later increments** (coarse; cut at each checkpoint):
 - **T7 Baselines** (increment 5): heuristic bots (greedy damage or value) as `Policy` variants in

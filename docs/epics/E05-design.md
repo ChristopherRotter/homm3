@@ -319,8 +319,13 @@ steps/s on the sandbox's 4 cores (`threads = 4`).
   alone (`kinds = [0, 0, 1, 0, 0, 0]`), recorded as such.
 - **Training is self-play** (decision 8: self-play and the system actor only; Random is for tests
   and measurement, decision 4): one network plays both sides of each battle, both external, and
-  both sides' decisions are its samples. Naive self-play, the latest network on both sides; a
-  pool of earlier checkpoints is E06's.
+  both sides' decisions are its samples. **With an opponent pool** (the user, 2026-10-19, after
+  T8c's first run: naive self-play's defender regressed against Random, 0.63 → 0.52, while the
+  attacker held at 0.93): in `pool_share` (0.5) of the episodes a frozen earlier network plays
+  one side, drawn per episode from `pool_size` (8) snapshots taken every `pool_every` (25)
+  updates (when full, a new one replaces a random one, so the ages stay spread; the untrained
+  network is never one); only the learner's decisions train. A league and its ratings stay
+  E06's.
 - **Evaluation against the internal Random:** two evaluation batches, the agent attacking in one
   (seats External, Random) and defending in the other (Random, External), so every reported
   decision is the agent's. It needs **seats for the encounter source** (C ABI v29, built in
@@ -336,7 +341,8 @@ steps/s on the sandbox's 4 cores (`threads = 4`).
   run checks that no evaluation episode seed (`episode_seed`) is a training one (a set of the
   training episodes' seeds; disjoint unless two 64-bit hashes meet). E = 1 000 per side (the 95 %
   interval at 80 % is ±2.5 points per side, ±1.8 overall).
-- **The criterion:** the overall win rate, both sides weighed equally, at least 80 %, of the
+- **The criterion:** the final evaluation's overall win rate (`best.pt` keeps the best
+  evaluation's network, reported beside it), both sides weighed equally, at least 80 %, of the
   **sampled** policy (its draws from a generator seeded alike for every evaluation). Decided at
   T8b (the user, 2026-10-19), replacing AI-Q5's greedy choice: in T8b's sandbox run greedy play
   (the most likely entry, then the most likely heads) repeated itself against Random until the
@@ -395,7 +401,7 @@ steps/s on the sandbox's 4 cores (`threads = 4`).
   ABI version, torch's, the device, the commit), `metrics.jsonl` (per update: steps,
   episodes, steps/s, the losses, entropy, approximate KL, clip fraction, explained variance;
   per evaluation: the rates of §8.2), `checkpoint.pt` (the network and the optimizer at each
-  evaluation). The results go into `E05-log.md` by hand.
+  evaluation), `best.pt` (at the best sampled rate). The results go into `E05-log.md` by hand.
 - **Tests** (`tests/test_train.py`, skipped without torch, a lane command): sampling never picks
   a masked entry or head, a cast's heads conditioned row by row; the log-probability of a chosen
   action recomputed equal; GAE on a hand-computed two-sided trajectory (a side acting twice in a
