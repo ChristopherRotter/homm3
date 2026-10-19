@@ -89,7 +89,15 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### AI lane (`AI-Q<n>`)
 
-(no open questions)
+#### AI-Q5 — The smoke training's design (E05 T8a)
+
+**Context.** T8 shows that an agent learns from the env (exit criterion 7: at least 80 % against Random on held-out seeds of its encounter family, within an hour on the user's machine). The user chose an own PPO over the factorized heads (2026-10-19); the design is `docs/epics/E05-design.md` §8. Random against Random wins 72 % of the hero battles as the attacker, 60 % of the sieges a hero defends, 92 % of a garrison's (§8.1). T8b (the trainer) waits for these points:
+
+1. **Training by self-play, evaluated against Random.** Decision 8 says training uses self-play and the system actor only, and decision 4 keeps Random for tests: the network plays both sides and only the evaluation faces Random. Training against Random would likely reach 80 % sooner but contradicts both. *Recommended: self-play.*
+2. **The family:** the encounter distribution at its default weights (hero 4/7, a siege a hero defends 2/7, a garrison 1/7: every faction, week and army, sieges included), with the hero kind alone as the recorded fallback if an hour does not suffice. *Recommended.*
+3. **Seats for the encounter source** (C ABI v29): `h3_batch_add_encounters` gains `const H3Seats *seats` (null: the encounter's own, as now) and `Scenario::encounters` an `Option<[Seat; 2]>`, so that the evaluation plays the engine's own Random (the one T7's `h3 ai eval` will use) in the internal seat. Alternative: Random played from Python in the external rows (no ABI change, a second Random). *Recommended: v29.*
+4. **The criterion:** the agent attacks in half of the evaluation episodes and defends in the other half (1 000 each, the same held-out episodes every time, their seeds checked against training's), choosing greedily; a draw or truncation is no win; at least 80 % overall. *Recommended.*
+5. **Settings and budget** (§8.3, provisional): 256 envs, rollouts of 128 calls, the usual PPO values, reward v1 at its defaults, a 2 000-step limit, 60 minutes of wall time with an evaluation every 10. *Recommended: as proposed, tuned in T8b on the sandbox's CPU.*
 
 ### Client lane (`CLT-Q<n>`)
 

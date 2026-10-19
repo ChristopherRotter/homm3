@@ -8,9 +8,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E05** (`docs/epics/E05-battle-env.md`): in progress. Increments 1 (T1, T2), 2 (T3a–T3d,
   T4; #252) and 3 (T5a #253, T5b1 and T5b2 #255, T6a #257, T6b and the head calls #258) done.
   **Increment 4** (cut 2026-10-19 at the user's checkpoint): T8 smoke training before T7.
-  **Next:** T8a, the design, for the user's review before code (QUEUE).
+  **In progress (2026-10-19):** T8a's design written (design §8, AI-Q5), waiting for the
+  user's review; then T8b on the same branch (the user chose T8a then T8b, and an own PPO).
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
-- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v28 (T5b2) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q5, AI-QUIRK-1, AI-STUB-1.
+- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v28 (T5b2) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q6, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
