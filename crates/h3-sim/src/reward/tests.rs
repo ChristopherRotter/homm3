@@ -3,7 +3,12 @@
 //! sum.
 
 use h3_content::HeroTypeId;
-use h3_contracts::{ArmyStack, BattleHero, BattleResult, BattleSide, HeroOutcome};
+use std::sync::Arc;
+
+use h3_contracts::{
+    ArmyStack, BattleHero, BattleResult, BattleSide, FortLevel, HeroOutcome, StackOrigin,
+    StackRecord,
+};
 
 use super::*;
 
@@ -32,6 +37,11 @@ fn machines(ruleset: &BattleRuleset, keys: &[&str]) -> Vec<CreatureTypeId> {
         .collect()
 }
 
+/// A war machine the battle placed, and whether it stands at the end.
+fn placed(ruleset: &BattleRuleset, key: &str, standing: bool) -> (CreatureTypeId, bool) {
+    (ruleset.creature_by_key(key).unwrap(), standing)
+}
+
 /// A hero with `mana` spell points (nothing else is read).
 fn hero(mana: u16) -> Option<BattleHero> {
     let mut hero = BattleHero::new(HeroTypeId::from_index(0).unwrap());
@@ -39,17 +49,33 @@ fn hero(mana: u16) -> Option<BattleHero> {
     Some(hero)
 }
 
+/// The outcome with `survivors` and the war machines the battle placed, `machines` (each with
+/// whether it stands), reported as its records and survivors.
 fn outcome(
     result: BattleResult,
     survivors: [Army; 2],
-    war_machines: [Vec<CreatureTypeId>; 2],
+    machines: [Vec<(CreatureTypeId, bool)>; 2],
     mana_left: [Option<u16>; 2],
 ) -> BattleOutcome {
     BattleOutcome {
         result,
         survivors,
-        war_machines,
-        stacks: [Vec::new(), Vec::new()],
+        war_machines: machines.each_ref().map(|list| {
+            list.iter()
+                .filter(|(_, standing)| *standing)
+                .map(|&(m, _)| m)
+                .collect()
+        }),
+        stacks: machines.each_ref().map(|list| {
+            list.iter()
+                .map(|&(creature, standing)| StackRecord {
+                    origin: StackOrigin::WarMachine,
+                    creature,
+                    start: 1,
+                    end: u32::from(standing),
+                })
+                .collect()
+        }),
         surrender_cost: None,
         heroes: mana_left.map(|m| {
             m.map(|mana| HeroOutcome {
@@ -124,13 +150,14 @@ fn hero_against_hero_with_a_ballista() {
     let kept = outcome(
         WON,
         survivors.clone(),
-        [machines(&rules, &["base:ballista"]), Vec::new()],
+        [vec![placed(&rules, "base:ballista", true)], Vec::new()],
         [Some(0), Some(0)],
     );
     let r = rewards(RewardConfig::default(), &rules, &setup, &kept);
     check(r, 5_550 - 1_152 + 150, 13_830);
     assert!((r[0] - 0.329).abs() < 5e-4, "{r:?}");
-    let destroyed = outcome(WON, survivors, [Vec::new(), Vec::new()], [Some(0), Some(0)]);
+    let lost = [vec![placed(&rules, "base:ballista", false)], Vec::new()];
+    let destroyed = outcome(WON, survivors, lost, [Some(0), Some(0)]);
     let r = rewards(RewardConfig::default(), &rules, &setup, &destroyed);
     check(r, 5_550 - 1_752 + 150, 13_830);
     assert!((r[0] - 0.285).abs() < 5e-4, "{r:?}");
@@ -196,12 +223,82 @@ fn a_draw_in_self_play() {
     let end = outcome(
         BattleResult::Draw,
         [Army::default(), Army::default()],
-        [Vec::new(), Vec::new()],
+        [
+            Vec::new(),
+            vec![placed(&rules, "base:first_aid_tent", false)],
+        ],
         [Some(2), Some(10)],
     );
     let r = rewards(RewardConfig::default(), &rules, &setup, &end);
     let (k_a, k_d) = (3_510, 3_840 + 300);
     check(r, k_d - k_a + 10 * (20 - 10), k_a + k_d);
+}
+
+#[test]
+fn the_machines_count_as_the_battle_placed_them() {
+    // E05 T9b: a hero's Catapult, which no setup lists, counts at the start and when destroyed; a
+    // listed Ballista the battle left out (BAT-QUIRK-23 at a fort) counts nothing.
+    let rules = base();
+    let setup = BattleSetup {
+        attacker: army(&rules, &[("base:orc", 40)]),
+        defender: army(&rules, &[("base:goblin", 60)]),
+        war_machines: [Vec::new(), machines(&rules, &["base:ballista"])],
+        ..BattleSetup::default()
+    };
+    let survivors = [army(&rules, &[("base:orc", 34)]), Army::default()];
+    let (orcs, goblins, catapult) = (40 * 192, 60 * 60, 500);
+    for (standing, lost) in [(true, 6 * 192), (false, 6 * 192 + catapult)] {
+        let machines = [vec![placed(&rules, "base:catapult", standing)], Vec::new()];
+        let end = outcome(WON, survivors.clone(), machines, [None, None]);
+        let balance = Balance::of(&rules, &setup, &end, Currency::AiValue);
+        assert_eq!(balance.lost, [lost, goblins]);
+        assert_eq!(balance.scale, orcs + goblins + catapult);
+    }
+}
+
+#[test]
+fn a_played_siege_counts_the_machines_the_battle_placed() {
+    // The same on a sampled siege the engine plays to its end: a hero defends a walled town with
+    // a Ballista it keeps out of the battle, the attacker's hero brings the Catapult.
+    let sampler = crate::encounter::tests::SAMPLER.clone().with_shares();
+    let rules = sampler.battle();
+    let [ballista, catapult] =
+        ["base:ballista", "base:catapult"].map(|k| rules.creature_by_key(k).unwrap());
+    let encounter = (0..)
+        .map(|seed| sampler.sample(seed))
+        .find(|e| {
+            e.kind == crate::encounter::Kind::SiegeHero
+                && e.setup
+                    .siege
+                    .as_ref()
+                    .is_some_and(|s| s.fort != FortLevel::None)
+                && e.setup.war_machines[1].contains(&ballista)
+        })
+        .unwrap();
+    let seats = encounter.seats;
+    let scenario = crate::batch::Scenario::new(Arc::clone(rules), &encounter.setup, true, 1, seats);
+    let mut env = scenario.unwrap().env(1, 0).unwrap();
+    crate::rollout::random_rollout(&mut env, 1, 50_000);
+    let end = env.state().outcome().unwrap();
+    let placed = |side: usize| -> Vec<CreatureTypeId> {
+        end.stacks[side]
+            .iter()
+            .filter(|r| r.origin == StackOrigin::WarMachine)
+            .map(|r| r.creature)
+            .collect()
+    };
+    assert!(placed(0).contains(&catapult));
+    assert!(!placed(1).contains(&ballista));
+    let value = |c| creature_value(rules, Currency::AiValue, c);
+    let setup = env.setup();
+    let armies: i128 = [&setup.attacker, &setup.defender]
+        .iter()
+        .flat_map(|a| &a.stacks)
+        .map(|s| i128::from(s.count) * value(s.creature))
+        .sum();
+    let machines: i128 = [placed(0), placed(1)].concat().into_iter().map(value).sum();
+    let balance = Balance::of(rules, setup, &end, Currency::AiValue);
+    assert_eq!(balance.scale, armies + machines);
 }
 
 #[test]

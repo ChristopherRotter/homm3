@@ -168,6 +168,16 @@ fn a_table_out_of_shape_is_refused() {
         EncounterTable::parse(&zero, CENSUS_V1),
         "kind.share"
     ));
+    // The kinds' weights too (E05 T9b: all 0 would leave the default sampler nothing to draw).
+    let zero = ["weight = 100", "weight = 50", "weight = 25"]
+        .iter()
+        .fold(ENCOUNTERS_V1.to_owned(), |text, w| {
+            text.replace(w, "weight = 0")
+        });
+    assert!(table_error(
+        EncounterTable::parse(&zero, CENSUS_V1),
+        "kind.weight"
+    ));
     assert!(matches!(
         EncounterTable::parse(ENCOUNTERS_V1, "census = 1"),
         Err(EncounterError::Toml(_))
