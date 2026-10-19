@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 cut: T5a built, its assumptions in the user's review, AI-Q4) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 cut: T5a, T5b1, T5b2, T6a built; T6b waits for PyTorch's index) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -133,11 +133,12 @@ until a later shared change): **T5 Encounter distribution v1** and **T6 The Pyth
 - [x] **T5b2 The batch's encounter source** — `Scenario::encounters`, `h3_batch_add_encounters`
   (C ABI v28), the `batch-random-encounters-v1` workload (2026-10-19; design §4.1, §7). Record in
   `E05-log.md`.
-- [ ] **T6a The Python binding on Linux** (`python/`, design §5): ctypes over the C ABI, the batch
-  as numpy arrays written in place, the seats' bookkeeping for self-play, the trusted tools,
-  pytest; Python's steps/s against `h3 ai bench`.
-- [ ] **T6b Windows and PyTorch** — the binding's tests on the user's Windows machine and the lock
-  of PyTorch 2.14 (cu126) there: `download.pytorch.org` is refused from the cloud sandbox and the
+- [x] **T6a The Python binding on Linux** — `python/` (package `h3env`, 2026-10-19; design §5):
+  ctypes over C ABI v28, the batch's numpy arrays written in place, `SeatBook`, the trusted tools,
+  pytest (a lane command); Python's steps/s against `h3 ai bench`. Record in `E05-log.md`.
+- [ ] **T6b Windows and PyTorch** — the binding's tests on the user's Windows machine and the
+  group `train` with PyTorch 2.14 (cu126) in `uv.lock`: `download.pytorch.org` is refused from
+  the cloud sandbox (again 2026-10-19 in a new session, with `*.pytorch.org` allowed) and the
   device link (2026-10-18).
 
 **Later increments** (coarse; cut at each checkpoint):

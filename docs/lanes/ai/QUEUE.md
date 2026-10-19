@@ -5,14 +5,14 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 ## Tasks
 
 **E05** (`docs/epics/E05-battle-env.md`, refined 2026-10-18, AI-Q1). Increments 1 and 2 done;
-increment 3 cut 2026-10-18 (T5a done, #253; T5b1 and T5b2 done 2026-10-19, on their pull request
-after the shared #254):
+increment 3 cut 2026-10-18 (T5a done, #253; T5b1 and T5b2 done, #255; T6a done 2026-10-19):
 
-1. **T6a The Python binding on Linux** (design §5) — ctypes over C ABI v28 (the encounter source
-   included); `uv run pytest` stays a lane command (the user, 2026-10-18).
-2. **T6b Windows and PyTorch** — the lock of torch 2.14 (cu126). `download.pytorch.org` was refused
-   from the sandbox (a 403 at the proxy) even after the user allowed `*.pytorch.org` on
-   2026-10-19: try again in a new session; else on the user's machine.
+1. **T6b Windows and PyTorch** — the binding's tests on the user's Windows machine (`uv sync`,
+   `uv run pytest` in `python/`) and the group `train`, torch 2.14 from
+   `https://download.pytorch.org/whl/cu126`, in `uv.lock` (design §5). The sandbox's proxy
+   refused `download.pytorch.org`, `download-r2.pytorch.org` and `pytorch.org` again on
+   2026-10-19 in a new session with `*.pytorch.org` allowed; the user was asked to add the hosts
+   by name. Else the lock is made on the user's machine.
 
 ## Inbox
 
@@ -23,7 +23,6 @@ Taken over from the battle lane's inbox (2026-10-18; the items stay there too un
 - 2026-10-11 (the adventure lane, E08 T9b): reading both of the adventure env's mask heads doubles its step; the current state's queries belong in the env (E13 with the adventure's ABI).
 - BAT-Q33's open point for E05 is answered (AI-Q3): the batch plays both sides as human players' (ADR-0025 point 6); the second morale roll stays the battle lane's question.
 - 2026-10-18 (T1): the battle lane's proptest `walks_are_reported_hex_by_hex` found a state that differs with and without an event sink (its inbox, 2026-10-18). The env steps with `NoopSink`; once fixed, nothing to do here unless the fix changes `apply`'s signature.
-- 2026-10-18 (T3c): `benches/README.md`'s workload table lacks `ai/batch-random-full`, `ai/batch-random-siege` and (T5b2) `ai/batch-random-encounters-v1` (lane-only; 64 envs, threads 0, 1 000 calls, inside `h3_sim::batch::BattleBatch::step`): the file is a shared path, so a small `shared/` pull request adds the rows.
 - 2026-10-19 (T5b2): a sample costs 50 µs (two heroes derived, each artifact through `apply_change`'s checks; a `Vec` per level-up's skill draw), 2 % of an episode: worth a look if a profile of training shows it.
 - 2026-10-19 (T5a's verify): the battle lane's proptest `every_step_preserves_the_invariants`
   (`h3-battle`) failed once under coverage: `state.is_over() || state.active() == Some(mover) ||
@@ -35,3 +34,8 @@ Taken over from the battle lane's inbox (2026-10-18; the items stay there too un
   test hashes a pending Pass offer; 0 hits under `cargo llvm-cov -p h3-game`); #254's full verify
   covered it, so a property test reaches it only now and then. The adventure lane's to fix with a
   fixed test (suggested to the user as a task).
+- 2026-10-19 (T6a): a head call (`BattleBatch::spell_mask`, `target_mask`, `second_mask`) answers
+  every env and costs about 5.7 µs per env (0.37 ms for 64, measured from Python beside a verify):
+  almost all of it the non-cast envs' `action::legal_entry`, which regenerates the legal commands
+  to answer "0 only". The batch could answer those from the entry mask it wrote at the last call;
+  a policy that casts in any env of a call pays three head calls.

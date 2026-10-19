@@ -222,3 +222,23 @@ The full record of done tasks (the epic file keeps one line each).
   kinds), `h3-ffi`'s `encounters_are_an_episode_source` (errors, shared ruleset, curricula, the
   kinds per entry, a neutral defender played inside the call), `h3-cli`'s bench and command-line
   tests, the C smoke test.
+
+## T6a — The Python binding on Linux (2026-10-19)
+
+- The user chose T6a for the session, with a `shared/` pull request for the batch workloads'
+  rows in `benches/README.md` (`shared/bench-ai-workloads`).
+- **Built:** `python/` (package `h3env`, design §5): `_ffi.py` (every C ABI v28 signature, the
+  layouts, `ABI_VERSION`, refusal of another version), `BattleBatch` (`batch.py`: scenarios and
+  the encounter source, reset, step, the head calls, numpy arrays allocated once and written in
+  place, `random_actions`), `SeatBook` (`seats.py`), `tools.Env` (single envs, fork, hash),
+  `bench.py`; `pyproject.toml` (uv, `uv_build`, requires-python ≥ 3.10, numpy, the group `dev`
+  with pytest and ruff), `.python-version` 3.12, `uv.lock` (Linux and Windows on x86-64; numpy
+  2.2.6 for Python 3.10, 2.4.6 for 3.11, 2.5.4 from 3.12). The group `train` waits for T6b.
+- **Tests** (`uv run pytest`, 19, 2.5 s): the ABI version and a refused one, the layouts against
+  `h3.h`; the batch bit for bit as single envs (`tools.Env` from each episode's seed) on `full`
+  and `siege` with both sides human (observations, entry masks without the escapes, the head
+  masks, `to_move`, done, results, truncations' final observations, automatic resets), the
+  thread count changing nothing, a reset replaying, escapes refused without change, the
+  encounter source (default kinds, the neutral kinds' internal defender, mixed with a
+  scenario), errors with the engine's messages; `SeatBook` (every transition closes once,
+  terminal rewards zero-sum, an internal seat without transitions); fork and hash.

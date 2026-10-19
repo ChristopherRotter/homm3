@@ -6,11 +6,12 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 - **Opened 2026-10-18** with E05's refinement (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` stays the adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05 and E06 (`lanes.toml`).
 - **E05** (`docs/epics/E05-battle-env.md`): in progress. Increments 1 (T1, T2) and 2 (T3a–T3d,
-  T4; #252) done. **Increment 3** (T5a, T5b1, T5b2, T6a, T6b): T5a merged (#253); AI-Q4 answered
-  2026-10-19 (design §4.4); the shared #254 merged (`arch.toml` edges for `h3-sim` and `h3-ffi`,
-  the kernel stream `ENCOUNTER`, ADR-0025 point 4); T5b1 (the sampler, `h3_sim::encounter`, §4.2)
-  and T5b2 (the batch's encounter source, C ABI v28, §4.1) in the **open pull request from
-  `claude/practical-meitner-mtns9h`** (2026-10-19). **Next:** T6a.
+  T4; #252) done. **Increment 3:** T5a (#253), T5b1 and T5b2 (#255, after the shared #254) merged;
+  **T6a** (the Python binding on Linux, `python/`, design §5) on the session branch
+  `claude/trusting-tesla-0b0n8o` (2026-10-19), its pull request opened when ready. The shared
+  pull request `shared/bench-ai-workloads` (the batch workloads' rows in `benches/README.md`) is
+  open beside it. **Next:** T6b (PyTorch's index; Windows), then the user's checkpoint of
+  increment 3.
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v28 (T5b2) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q5, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
@@ -43,9 +44,23 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - Scenario texts are parsed and packs compiled in `h3-ffi` (`src/scenario.rs`), never in `h3-sim`: `arch.toml` gives `h3-sim` `h3-pack-battle` for tests only. Each `h3_env_create_scenario` compiles its packs (about 18 ms for `base`, `ab`, `sod` in release, ten times that in debug).
 
 **Python**
-- PyTorch 2.14 (CUDA 12.6 build) is the last prebuilt release for the user's GTX 1070: pin it. The user's system Python is older than 3.11: use a venv. PyPI's torch 2.14 is not it (Linux: a newer CUDA; Windows: CPU only): the lock needs `download.pytorch.org/whl/cu126`, refused by the sandbox's proxy on 2026-10-19 even after the user allowed `*.pytorch.org` (try a new session).
+- `python/` is a uv project (`uv sync`, `uv run pytest`, `uv run python -m h3env.bench`); its
+  tests are a lane command, not a gate (the user, 2026-10-18), and need the release library
+  (`cargo build --release -p h3-ffi`, else `$H3_LIBRARY`). A C ABI bump changes `h3env`'s
+  `ABI_VERSION` and its layouts (`_ffi.py`) in the same change: the binding refuses any other
+  version. Its action constants (Retreat, Surrender, the casts) are action encoding v13's.
+- PyTorch 2.14 (CUDA 12.6 build) is the last prebuilt release for the user's GTX 1070: pin it. The user's system Python is older than 3.11: use a venv. PyPI's torch 2.14 is not it (Linux: a newer CUDA; Windows: CPU only): the lock needs `download.pytorch.org/whl/cu126`, refused by the sandbox's proxy (2026-10-18, and 2026-10-19 in a new session with `*.pytorch.org` allowed: the user was asked to name the hosts).
 
 ## Recent sessions
+
+### 2026-10-19 — T6a, the Python binding; the batch workloads' rows
+
+- #254 and #255 had merged. The user chose T6a and a `shared/` pull request for the workloads'
+  rows in `benches/README.md` (the inbox item).
+- Built `python/` (`h3env`: `_ffi`, `BattleBatch`, `SeatBook`, `tools.Env`, `bench`; 19 pytest
+  tests, the batch bit for bit as single envs on `full` and `siege`); uv.lock without torch.
+  Python's steps/s against `h3 ai bench` in `E05-log.md`; the head calls' cost in the inbox.
+- PyTorch's index still refused in a new session (T6b, QUEUE).
 
 ### 2026-10-19 — AI-Q4 answered; T5b1, the sampler; T5b2, the batch's encounter source
 
@@ -67,9 +82,3 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - The full local verify passed every step but coverage, whose test run hit a random case of the
   battle lane's proptest `every_step_preserves_the_invariants` (a siege; QUEUE inbox); coverage
   alone, rerun on the same code, passed. Pull request #253, open.
-
-### 2026-10-18 — E05 T3c, T4, T3d: increment 2 done
-
-- The user confirmed T3c, T4 and T3d as the session's increment, and moved the batch's wall time on the user's machine to T9 (a cloud sandbox has four cores).
-- Built the pool (std threads, one `unsafe` lifetime erasure), `h3 ai bench` and two lane-only workloads; reward v1 (`i128` sums, zero-sum exactly; `Currency::Gold` is the ruleset's surrender resource); `h3_batch_*` (C ABI v27; rulesets shared per packs and profile through `Scenario::ruleset`, no new dependency). One branch for the three tasks (the session's), so one pull request.
-- `benches/README.md`'s table lacks the two workloads: it is a shared path (QUEUE inbox). CI cannot start (billing); the full local verify stands in.

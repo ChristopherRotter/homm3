@@ -218,35 +218,27 @@ as proposed. How T5b1 pins down what a row leaves open is marked *(T5b1)*.
 | A11 | Difficulty | left out (normal) | the batch plays both sides as human players' (ADR-0025 point 6); the difficulty shapes only the computer's automatic choices (ADR-0023 point 7) |
 | A12 | Seats | neutral kinds (wandering, guards, a neutral town) the system actor's (internal), the others external on both sides; the neutral kinds built and tested at A1's shares, weighted 0 in what the batch samples until E23's policy (after E05) | random neutrals teach the wrong lessons (the epic's risk) |
 
-## 5. The Python side (e)
+## 5. The Python side (e) — built on Linux (T6a)
 
-- **ctypes** over the C ABI: in the standard library, no compile step, the same on Linux and
-  Windows; `ctypes.CDLL` releases the GIL during each call. cffi's ABI mode would add a
-  dependency for the same thing; its API mode a build step per platform.
-- **Zero copy:** the binding allocates the numpy arrays of `H3BatchBuffers` once and passes their
-  data pointers each call; the engine writes into them. Python never copies an observation.
-- **Layout** (`python/`, the AI lane's):
+`python/` (package `h3env`, `python/README.md`): ctypes over C ABI v28 (no compile step, the same
+on Linux and Windows; `ctypes.CDLL` releases the GIL in each call), numpy arrays allocated once
+and written in place by the engine (zero copy). `_ffi.py` (the library from `$H3_LIBRARY`, else
+`../target/release/`; every signature; a library of another `h3_abi_version` is refused),
+`batch.py` (`BattleBatch`), `seats.py` (`SeatBook`), `tools.py` (single envs, fork, hash: §6),
+`bench.py`, `tests/` (pytest; a lane command, not a gate). A uv-managed CPython 3.12 in
+`python/.venv` (`.python-version`); `uv.lock` for Linux and Windows on x86-64 (`tool.uv
+.environments`), numpy and pytest only. Decisions of the build (the agent's, provisional):
 
-  ```
-  python/pyproject.toml   package h3env; requires-python >= 3.10; numpy; group "train": torch 2.14
-  python/uv.lock          Linux and Windows, torch from the cu126 index
-  python/h3env/_ffi.py    loads the library ($H3_LIBRARY, else ../target/release/), signatures,
-                          refuses a library whose h3_abi_version differs from the binding's
-  python/h3env/batch.py   BattleBatch: config, scenarios, reset/step, the head calls, numpy views
-  python/h3env/seats.py   per-seat bookkeeping: the acting seat per env, each seat's accumulated
-                          reward between its moves, episode ends for the seat that did not move
-  python/h3env/tools.py   single envs, fork, state hash: trusted tooling (§6)
-  python/tests/           pytest: the ABI version, batch vs single envs, masks, a random run
-  python/train/           T8's PPO
-  ```
-
-- **Environment:** a venv in `python/.venv` with a uv-managed CPython 3.12 (the user's system
-  Python is older than 3.11 and stays untouched); `uv sync` installs it; `uv sync --group train`
-  adds PyTorch 2.14 from `https://download.pytorch.org/whl/cu126` on Linux and Windows (x86-64),
-  pinned in `uv.lock`. The binding's tests need numpy only, so they run in the sandbox (PyPI is
-  reachable there; the PyTorch index may not be: T6 locks it on the user's machine if so).
-- A Gymnasium-style vector wrapper is a thin layer over `BattleBatch` if a library needs one (T6
-  or T8 decides); the factorized, conditioned heads mean most libraries need adapting anyway.
+- **The group `train`** (torch 2.14 from `https://download.pytorch.org/whl/cu126`) comes with
+  T6b: a lock needs the index, which the sandbox's proxy refuses.
+- **`BattleBatch.step`** takes the heads as arrays (or reads `actions`, an `H3Action` record
+  array); with `check` (default) it raises when an env with a side to move refused its action,
+  while an env that gave up refuses silently (`status`).
+- **`SeatBook`:** a side's transition opens when it acts and closes at its next decision or at
+  the episode's end (both sides' then), with the sum of its rewards in between; a side that never
+  acted has none. A Gymnasium-style wrapper stays out until a library needs one (T8).
+- **The random choice** (`sample`, `random_actions`, as `h3 ai bench`): one draw per row over the
+  legal indices' flat positions (82 µs for 64 × 1 404 entries; a cumulative sum cost 658 µs).
 
 ## 6. The information boundary (f)
 
