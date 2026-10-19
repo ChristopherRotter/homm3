@@ -8,10 +8,9 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 increment 3 done 2026-10-19 (#253, #255, #257, #258); increment 4 (T8) done 2026-10-19 (#260,
 #264; exit criterion 7 met).
 
-1. **T7d The network's row** (increment 5, design §9): after the pull requests merged (#271,
-   #274, then this lane's), on the user's machine: `uv run --group train python -m
-   h3env.train.ladder --checkpoint runs/pool/best.pt`; record its three lines beside `h3 ai
-   eval`'s table in `E05-log.md`. Then increment 5's checkpoint (T9, the closure, next).
+1. **Increment 6's cut** at the user's checkpoint of increment 5 (T7 done 2026-10-19, #271,
+   #274, #276): T9, the closure (the epic's outline: an independent review, the measurements
+   on the user's machine, the docs), refined then; AI-Q7 open, not blocking.
 
 ## Inbox
 
