@@ -9,7 +9,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   T4; #252) done. **Increment 3:** T5a (#253), T5b1 and T5b2 (#255, after the shared #254), T6a
   (#257, the shared #256 beside it) merged; **T6b's lock** (the group `train`, torch
   2.14.1+cu126) and the head calls from the kept entry mask on branch
-  `claude/zealous-ptolemy-0n6sn0` (2026-10-19). **Next:** the user's Windows run (QUEUE), then
+  `claude/zealous-ptolemy-0n6sn0` (2026-10-19), the **open #258** (the full local verify passed). **Next:** the user's Windows run (QUEUE), then
   the user's checkpoint of increment 3.
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v28 (T5b2) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q5, AI-QUIRK-1, AI-STUB-1.
