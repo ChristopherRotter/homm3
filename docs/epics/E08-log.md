@@ -2466,3 +2466,72 @@ grounds and guarded piles, changed once, after T21a (#239).
   (1 904 → 4 032 queries; guarded tiles end paths), `fork-xl-144` 354.8 M → 355.8 M (the walk to a
   battle: 76 → 18 steps, a monster or pile on the way).
 - No version bump: the maps are data; the replays name the duel by content hash.
+
+### Round 5 of increment 3: T21b, the audit (2026-10-19, `shared/e08-t21b-docs`, `adventure/e08-t21b`)
+
+Decision 42: T21b alone, with a `shared/` pull request for the queued notes; T22a next session.
+#239 (T21a) and #240 (T20b3b2) had merged; the baseline was `master` 093a930f (the AI lane's
+E05 T8 on top): the full verify with the original data, coverage over 101 gated files, passed.
+
+- **The audit of the exit criteria** (increment 3's, as fixed at T17's checkpoint), against
+  `master` and this branch:
+  - *ADR amendments accepted:* ADV-Q13 (decisions 25–27), applied by T18a (#185); round 4 needed
+    none beyond them (ADR-0017 point 8's seats came with the accepted draft).
+  - *Full verify green, the logic crates at 100 %:* the baseline's full run above and this
+    branch's below (CI cannot start: billing). Since a line only a seeded proptest reaches makes
+    the gate flaky (the AI lane's run of 2026-10-18 missed `h3-game`'s `state.rs:569`, the state
+    hash of a pending offer to pass), a coverage run of the lane's packages with all 58 proptests
+    of the workspace skipped (`cargo llvm-cov -p h3-adventure -p h3-game -p h3-heroes -p h3-map
+    -p h3-sim -p h3-cli -- --skip …`) listed every line of `h3-adventure`, `h3-game` and
+    `h3-heroes` left unreached: four, all in `h3-adventure`'s `testing.rs` (the `M` monster of
+    the `world` fixture, which only the reach property builds). Fixed tests: the offer to pass is
+    in the hash (`a_guard_offers_its_key_s_holders_to_pass_without_a_price`), a monster on the
+    other level guards nothing on the hero's (`the_query_stays_on_the_heros_level`).
+  - *Properties with battles, monsters and guarded piles:* the play properties
+    (`every_step_keeps_the_commands_invariants`: atomicity, legality consistency with a battle
+    open and the system actor to act, ownership isolation, conservation with
+    `check_battle_end`, `check_unowned_battle_end` and `check_heroes_after_battle`;
+    `forks_evolve_as_their_parent`; `replays_are_deterministic`) and the view properties
+    (hygiene, the views as the events say, a monster on the fringe, `MonsterChanged`) run on the
+    plans with monsters (T20b3b1), grounds and guarded piles (T21a); the fixed census
+    `the_plans_play_battles_to_a_victory` asserts that the 192 cases meet each (T21a's counts).
+    A guarded pile's hiding had no test of its own (`ObjectView` has no guards, and the view
+    properties vary no pile's guards): `a_guarded_pile_looks_like_any_pile_to_every_viewer`
+    compares each player's observation with the same game's pile unguarded.
+  - *Golden replays with battles in the determinism matrix:* nine (`cargo xtask determinism`:
+    debug, release, `target-cpu=native`), re-recorded or replaced by E04c T10b: monster battles
+    won and lost, joins, declined joins and flights, pursuits, guarded piles fought at once and
+    after an accepted question, a pile's guards beating the visitor, hero battles in both
+    profiles with captures, a border guard's passage, Cartographers accepted, the easy
+    difficulty. Lost with T10b's search: a declined pile question and a declined Cartographer
+    (both in `h3-game`'s unit tests and the plans; the queue's inbox).
+  - *Benchmarks re-baselined:* T20b3b2 (`random-play-duel-36`, `reach-xl-144`, `fork-xl-144` on
+    the maps with monsters and guarded piles), moved since by other lanes' re-baselines (now
+    523.5 M, 525.7 M and 355.8 M Ir); `bench-check` passed on the baseline and on this branch
+    (+0.02 %, 0.00 %, −0.14 %).
+  - *Every new rule `implemented` with sources:* ADV-MON-001 to -010, ADV-GRD-001, ADV-PIK-004,
+    GAM-HER-001, GAM-BAT-001 to -007 and the HER rules they rest on (`check-rules`); D-8 to D-13
+    rest on the code reading until batch E3 confirms them. Open stubs: `ADV-STUB-2` alone (the
+    army dialog, increment 4's feature to-do).
+  - *The batch:* not yet: T22a (the spec) and T22b (scored). The harness lacks what E3 needs
+    (Yes/No dialogs, battles started from the map, the underground, the memory reads; the client
+    lane's inbox since T17b), so T22a plans for the user to play what it cannot.
+  - *Docs:* `docs/06-security.md` gains what a viewer learns of a monster after its battle and on
+    the fringe and of a guarded pile, `docs/07-simulation-and-ai.md` the seats
+    (`shared/e08-t21b-docs`); the play properties' module comment names monsters and guarded
+    piles.
+- **The 160 shipped maps** (the AI lane's note of 2026-10-18: the user's `maps.tar` had held
+  four maps of the user's own, `experiment`, `Untitled` and edited copies of `All for One` and
+  `Terrible Rumor`): the baseline's `original_data` run on the 160 (49 RoE, 55 AB, 56 SoD; the
+  input-bound peaks unchanged): 2 import whole (`Race for Ardintinny`, `Tutorial.tut`), 128 have
+  a hero at a main town, 18 a random hero, 8 a monster with an artifact, 3 a hero's experience, 1
+  a hero in a town; 13 863 monsters (355 treasures, 53 with an artifact), 1 861 special grounds
+  (10 771 tiles under two or more), 0 of 100 311 visitable tiles visited from two objects, the
+  guarded piles as before (36, 30 asking first). Corrected in `docs/formats/h3m.md`, ADV-OBJ-003's
+  summary, the HANDOFF, the queue and two comments; the surveys' and the writer's counts
+  from one-off censuses are marked as counted over the 164 (decision 42), with the work
+  process's staging of `maps.tar` (`shared/e08-t21b-docs`).
+- **This branch's full verify** (`scripts/verify-once.sh engine --base origin/master --
+  --with-original-data`, 2026-10-19): every step passed on 7092c45 (`verify-once: verified
+  (sandbox) code 6e2dc1c9`), coverage over 101 gated files.
+- No version moved, no rule changed.

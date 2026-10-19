@@ -488,6 +488,30 @@ fn gogs_in(slot: u8, count: u32) -> ArmyStack {
     }
 }
 
+// covers: ADV-PIK-004, ADV-FOG-006
+#[test]
+fn a_guarded_pile_looks_like_any_pile_to_every_viewer() {
+    // Its guards and whether it asks first are hidden (`docs/06-security.md`, E08 T21b's audit):
+    // each player sees the same game as with the pile unguarded, the pile in sight.
+    let rules = valued("t:split");
+    let at = Pos::new(1, 1, 0);
+    let plain = ObjectSetup {
+        amount: Some(5),
+        ..object(&rules, "t:pile", at, None)
+    };
+    let guarded = game(
+        &rules,
+        1,
+        vec![guarded_pile(&rules, at, vec![gogs_in(1, 9)], true)],
+    );
+    let plain = game(&rules, 1, vec![plain]);
+    for viewer in [RED, PlayerId::new(1)].map(Viewer::Player) {
+        let seen = observe(&guarded, &rules, viewer);
+        assert_eq!(seen, observe(&plain, &rules, viewer));
+        assert!(seen.adventure.objects.iter().any(|o| o.anchor == at));
+    }
+}
+
 // covers: ADV-PIK-004, GAM-DEC-001, GAM-BAT-001
 #[test]
 fn a_guarded_piles_question_opens_and_its_acceptance_fights_the_unsplit_guards() {

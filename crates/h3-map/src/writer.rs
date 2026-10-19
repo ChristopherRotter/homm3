@@ -130,11 +130,11 @@ pub enum Terrain {
 
 impl Terrain {
     /// The first of eight interior tile pictures ("view" in map files) of this terrain: a tile
-    /// whose eight neighbours have its terrain shows one of them. Observed in the game's 164 maps
-    /// (E08 T10a, every interior tile counted): dirt 21–44, sand 0–23, the six other land
-    /// terrains 49–72, water 21–32, rock 0–7; the first eight of each range are by far the most
-    /// common. Between two terrains the writer puts interior pictures too, which the game draws
-    /// with a hard edge.
+    /// whose eight neighbours have its terrain shows one of them. Observed in the installation's
+    /// maps (E08 T10a, every interior tile of 164 counted, four of them the user's own): dirt
+    /// 21–44, sand 0–23, the six other land terrains 49–72, water 21–32, rock 0–7; the first eight
+    /// of each range are by far the most common. Between two terrains the writer puts interior
+    /// pictures too, which the game draws with a hard edge.
     const fn interior_view(self) -> u8 {
         match self {
             Self::Dirt | Self::Water => 21,
@@ -441,7 +441,8 @@ pub enum RoadKind {
 
 /// A straight road from west to east on one row, at least two tiles long (E08 T10a: movement
 /// experiments). Its tile pictures are the ones the game's own maps give such a road (counted
-/// over the 164 maps): 15 at the west end, 12 and 13 between, 15 mirrored at the east end.
+/// over 164 maps, four of them the user's own): 15 at the west end, 12 and 13 between, 15
+/// mirrored at the east end.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Road {
     /// Kind of road.

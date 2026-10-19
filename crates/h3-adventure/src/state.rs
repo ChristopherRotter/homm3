@@ -256,7 +256,7 @@ impl StaticMap {
         // What a player sees and is told names a typed object by its type and anchor, never by
         // its index (ADR-0016 point 6), and an offer names its object so: two typed objects of
         // one type on one anchor would share that name (the review of E08 T15: accepting one
-        // guard's passage could remove the other). The 164 shipped maps have none (T15a) but
+        // guard's passage could remove the other). The 160 shipped maps have none (T15a, T21b) but
         // special grounds, which nothing names (never visited, offered or removed): 5 maps stack
         // two of one type on one anchor (E08 T20a2a), so grounds are left out of the check.
         let mut named = BTreeSet::new();

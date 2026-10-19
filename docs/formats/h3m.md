@@ -55,7 +55,7 @@ bytes).
 
 **Tile:** terrain (0 dirt … 9 rock), picture, river (0 none … 4 lava), river picture, road (0 none
 … 3 cobblestone), road picture, flags. The reader keeps every code raw; the import maps them.
-Flag `0x40` marks the coast: in the game's own maps (the 164 of the installation, E04c T3) every
+Flag `0x40` marks the coast: in the game's own maps (the installation's, E04c T3: 164 then, four of them the user's own) every
 land tile with water among its eight neighbours has it and no other tile; the game takes the coast
 from it (a map without it has no shore battlefield, E04c batch 3b). VCMI 1.7.5 ignores the bit and
 looks at the same eight neighbours (`CMap::isCoastalTile`).
@@ -102,9 +102,10 @@ byte, SoD's human bool, a computer bool, u16 first day, u16 interval, 16 unused 
 | every other class | nothing |
 
 **Input bounds** (`h3_map::Limits`; above one the file is rejected before anything is
-allocated, and every count must also fit the bytes left). Peaks in the 164 maps shipped with the
-user's installation (50 RoE, 55 AB, 59 SoD, `Tutorial.tut` included; 2026-10-10,
-`cargo xtask verify --with-original-data`, which runs `crates/h3-map/examples/original_data.rs`;
+allocated, and every count must also fit the bytes left). Peaks in the 160 maps shipped with the
+game (49 RoE, 55 AB, 56 SoD, `Tutorial.tut` included; E08 T21b, 2026-10-19, the same peaks as the
+164 of 2026-10-10, four of which were the user's own; `cargo xtask verify --with-original-data`,
+which runs `crates/h3-map/examples/original_data.rs`;
 every one reads to its padding, and every body kind but the hero placeholder occurs):
 
 | Limit | Default | Shipped peak |
@@ -206,8 +207,10 @@ content and draws nothing; it rejects what the current increment cannot represen
   experience of 1 000 or more, the body's or the map-wide entry's (level 2: increment 4's levels,
   E08 decision 22). Ignored: name, portrait, patrol (a computer player's), biography, sex.
 
-The 164 maps of the user's installation (2026-10-12, import v2,
-`crates/h3-map/examples/original_data.rs`): every static layer imports and validates; 9 import and
+The maps of the user's installation (`crates/h3-map/examples/original_data.rs`): until
+2026-10-18 the folder held 164, four of them the user's own (`experiment`, `Untitled` and edited
+copies of `All for One` and `Terrible Rumor`), and the runs up to T21a's below counted them; the
+160 shipped are counted since T21b's run (the last of the paragraph). 2026-10-12, import v2: every static layer imports and validates; 9 import and
 validate whole (`Adventures of Jared Haret`, `Faeries`, `Knee Deep in the Dead`, `Pandora's Box `,
 `Race for Ardintinny`, `Tutorial.tut`, `Unholy Quest` and the user's `Untitled` and
 `experiment`); 129 are unsupported for a hero generated at a main town, 18 for a random hero, 5 for
@@ -229,7 +232,16 @@ different battlefields, where the last in map order counts (ADV-GRD-001); 5 maps
 of one type on one anchor, which the setup allows for grounds only. E08 T21a's run (import v7): the
 same 4 import and validate whole; the 4 maps unsupported for a guarded pile before now count for
 a random hero (19), the other outcomes as before. 39 piles have a guards record: 3 without a
-stack (plain), 36 guarded (30 ask first, 9 with two stacks), none with a random stack.
+stack (plain), 36 guarded (30 ask first, 9 with two stacks), none with a random stack. E08
+T21b's run (import v7, the 160 shipped maps): 2 import and validate whole (`Race for Ardintinny`,
+`Tutorial.tut`); 128 are unsupported for a hero generated at a main town, 18 for a random hero, 8
+for a monster with an artifact, 3 for a hero's experience, 1 for a hero in a town. The census:
+13 863 monsters, 355 with a treasure (53 with an artifact, none with a resource below 0), none
+beyond savage; 1 861 special grounds, every picture in the table, 10 771 tiles under two or more
+(the 142 tiles under grounds of different battlefields are T20a2a's count over the 164); 7 typed
+objects of one type on one anchor in 5 maps, all grounds (`Back For Revenge`, `Carpe Diem` and
+their allied versions, `Deluge`); no tile visited from two objects (0 of 100 311 visitable tiles);
+the 39 guards records as T21a's.
 
 ## The subset we write (E04a T2)
 
@@ -281,7 +293,7 @@ biography (bool + string); sex i8 (`-1` default); spells (bool + 9-byte mask); p
 (bool), 2 zero bytes.
 
 **Terrain pictures** of interior tiles (the eight neighbours on the level have the tile's terrain),
-counted over the game's 164 maps (E08 T10a): dirt 21–44, sand 0–23, grass, snow, swamp, rough,
+counted over 164 maps (E08 T10a; four of them the user's own): dirt 21–44, sand 0–23, grass, snow, swamp, rough,
 subterranean and lava 49–72, water 21–32, rock 0–7; in each range the first eight pictures are
 about ten times as common as the others. The other pictures are the edges between terrains. The
 experiment writer (`h3_map::writer`) gives every tile one of the first eight interior pictures of
