@@ -8,6 +8,8 @@
 //!   the sim layer, not the domain).
 //! * [`observation`]: the flat, versioned observation encoding of a per-viewer [`Observation`].
 //! * [`replay`]: recording and verifying replays (seed + commands + state hashes).
+//! * [`encounter`]: the encounter distribution v1, a sampler of battles as the adventure brings
+//!   them (E05 T5b, decision 7).
 //! * [`reward`]: the batch's reward v1 (value killed, value lost, mana spent; ADR-0025 point 8).
 //! * [`adventure`]: [`adventure::AdventureEnv`] for a game on an adventure map, with its own action
 //!   encoding (the adventure lane's, ADR-0017 point 8).
@@ -21,6 +23,7 @@
 pub mod action;
 pub mod adventure;
 pub mod batch;
+pub mod encounter;
 pub mod env;
 pub mod observation;
 pub mod replay;
@@ -31,7 +34,10 @@ pub use action::{
     ACTION_COUNT, ACTION_ENCODING_VERSION, Action, ActionMask, SPELL_COUNT, SpellMask,
     TARGET_COUNT, TargetMask,
 };
-pub use batch::{BatchConfig, BatchError, BattleBatch, EnvReport, Outputs, Policy, Scenario, Seat};
+pub use batch::{
+    BatchConfig, BatchError, BattleBatch, EnvReport, Episode, Outputs, Policy, Scenario, Seat,
+};
+pub use encounter::{Encounter, EncounterTable, Kind, Sampler};
 pub use env::{BattleEnv, StepError, StepResult};
 pub use observation::{OBSERVATION_ENCODING_VERSION, OBSERVATION_LEN};
 pub use replay::{Replay, ReplayError, ReplayHeader};

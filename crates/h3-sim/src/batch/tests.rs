@@ -11,6 +11,7 @@ use proptest::prelude::*;
 
 use super::*;
 use crate::action::{CREATURE_CAST, HERO_CAST, RETREAT, SURRENDER};
+use crate::encounter::Kind;
 use crate::reward::{self, Currency, RewardConfig};
 use crate::rollout;
 
@@ -117,6 +118,8 @@ struct Single {
     seed: u64,
     scenario: usize,
     env: Option<BattleEnv>,
+    seats: [Seat; 2],
+    kind: Option<Kind>,
     rngs: [Rng; 2],
     legal: LegalCommands,
 }
@@ -158,6 +161,8 @@ impl<'a> Reference<'a> {
                 seed: 0,
                 scenario: 0,
                 env: None,
+                seats: EXTERNAL,
+                kind: None,
                 rngs: [Rng::from_seed(0), Rng::from_seed(0)],
                 legal: LegalCommands::new(),
             };
@@ -168,7 +173,7 @@ impl<'a> Reference<'a> {
     }
 
     fn internal(&self, single: &mut Single) -> Option<crate::StepResult> {
-        let seats = self.scenarios[single.scenario].seats();
+        let seats = single.seats;
         let env = single.env.as_mut().unwrap();
         let mut last = None;
         while let Some(side) = env.to_move() {
@@ -188,11 +193,12 @@ impl<'a> Reference<'a> {
             single.started += 1;
             single.scenario = draw_scenario(self.scenarios, self.total, single.seed);
             single.rngs = [0, 1].map(|s| Rng::for_stream(single.seed, StreamId::seat(s)));
-            single.env = Some(
-                self.scenarios[single.scenario]
-                    .env(single.seed, self.config.max_steps)
-                    .unwrap(),
-            );
+            let episode = self.scenarios[single.scenario]
+                .episode(single.seed, self.config.max_steps)
+                .unwrap();
+            single.seats = episode.seats;
+            single.kind = episode.kind;
+            single.env = Some(episode.env);
             self.internal(single);
             if !single.env.as_ref().unwrap().is_done() {
                 return;
@@ -274,6 +280,7 @@ impl<'a> Reference<'a> {
         report.to_move = to_move;
         report.episode = single.started - 1;
         report.scenario = single.scenario as u32;
+        report.encounter = single.kind;
         report.episode_seed = single.seed;
         Shown {
             report,
@@ -464,9 +471,10 @@ fn every_side_plays_as_a_human_players() {
         ..setup
     };
     let s = Scenario::new(Arc::new(ruleset), &setup, false, 1, EXTERNAL).unwrap();
-    assert_eq!(s.setup().human, [true, true]);
+    assert_eq!(s.setup().unwrap().human, [true, true]);
     assert!(Arc::ptr_eq(s.ruleset(), s.env(0, 0).unwrap().ruleset()));
-    assert_eq!(s.seats(), EXTERNAL);
+    assert_eq!(s.seats(), Some(EXTERNAL));
+    assert!(s.sampler().is_none());
 }
 
 #[test]
@@ -819,4 +827,63 @@ proptest! {
         let config = BatchConfig { envs, threads, seed, max_steps, reward };
         same_as_single_envs(config, scenarios, 40, play);
     }
+}
+
+/// E05 T5b2: the encounter distribution as an episode source, mixed with a fixed scenario: the
+/// batch plays its envs bit for bit as single envs of [`Scenario::episode`], with each
+/// encounter's seats (the neutral kinds' defender inside the call) and kind.
+#[test]
+fn encounters_play_as_single_envs() {
+    let sampler = Arc::new(crate::encounter::tests::SAMPLER.clone().with_shares());
+    assert_eq!(
+        Scenario::encounters(Arc::clone(&sampler), 0).err(),
+        Some(BatchError::ZeroWeight)
+    );
+    let encounters = Scenario::encounters(Arc::clone(&sampler), 3).unwrap();
+    assert!(encounters.setup().is_none() && encounters.seats().is_none());
+    assert!(Arc::ptr_eq(encounters.ruleset(), sampler.battle()));
+    assert!(Arc::ptr_eq(encounters.sampler().unwrap(), &sampler));
+    // The episode of a seed is the sampler's encounter of that seed, as a human players' battle.
+    let episode = encounters.episode(9, 0).unwrap();
+    let encounter = sampler.sample(9);
+    assert_eq!(
+        (episode.seats, episode.kind),
+        (encounter.seats, Some(encounter.kind))
+    );
+    assert_eq!(episode.env.setup().attacker, encounter.setup.attacker);
+    assert_eq!(episode.env.setup().human, [true, true]);
+    let fixed = scenario(h3_pack_battle::SYNTHETIC_DUEL, 1, EXTERNAL);
+    for threads in [0, 2] {
+        let config = BatchConfig {
+            envs: 6,
+            threads,
+            seed: 11,
+            max_steps: 300,
+            reward: RewardConfig::default(),
+        };
+        let (ended, _) =
+            same_as_single_envs(config, vec![encounters.clone(), fixed.clone()], 150, 5);
+        assert!(ended > 0, "threads {threads}");
+    }
+    // The reports name each encounter's kind, and nothing for the fixed scenario.
+    let mut batch = BattleBatch::new(BatchConfig {
+        envs: 16,
+        threads: 0,
+        seed: 3,
+        max_steps: 0,
+        reward: RewardConfig::default(),
+    })
+    .unwrap();
+    batch.add_scenario(encounters).unwrap();
+    batch.add_scenario(fixed).unwrap();
+    let mut arrays = Arrays::new(16);
+    batch.reset(&mut arrays.outputs()).unwrap();
+    for report in &arrays.reports {
+        assert_eq!(
+            report.encounter.is_some(),
+            report.scenario == 0,
+            "{report:?}"
+        );
+    }
+    assert!(arrays.reports.iter().any(|r| r.encounter.is_some()));
 }

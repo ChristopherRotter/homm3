@@ -128,11 +128,11 @@ until a later shared change): **T5 Encounter distribution v1** and **T6 The Pyth
 - [x] **T5a The census and the assumptions** — `h3 ai census` and `census-v1.toml` of the 159
   shipped maps (2026-10-18); the assumptions proposed in design §4.4 for the user's review
   (AI-Q4). Record in `E05-log.md`.
-- [ ] **T5b The sampler** — after AI-Q4: a `shared/` pull request (`serde`, `toml` and `h3-heroes`
-  for `h3-sim`, design §4.2), `encounters-v1.toml`, the setup sampler (armies, heroes with levels,
-  skills, artifacts and spells through `h3-heroes`, battlefields, sieges, neutral stacks), the
-  batch's encounter source and its C ABI (v28), the sampled-scenario check that every dimension
-  occurs at its weight, the `batch-random-encounters-v1` workload.
+- [x] **T5b1 The sampler** — `encounters-v1.toml` and `h3_sim::encounter` (2026-10-19; AI-Q4
+  answered, design §4.2, §4.4; shared #254). Record in `E05-log.md`.
+- [x] **T5b2 The batch's encounter source** — `Scenario::encounters`, `h3_batch_add_encounters`
+  (C ABI v28), the `batch-random-encounters-v1` workload (2026-10-19; design §4.1, §7). Record in
+  `E05-log.md`.
 - [ ] **T6a The Python binding on Linux** (`python/`, design §5): ctypes over the C ABI, the batch
   as numpy arrays written in place, the seats' bookkeeping for self-play, the trusted tools,
   pytest; Python's steps/s against `h3 ai bench`.

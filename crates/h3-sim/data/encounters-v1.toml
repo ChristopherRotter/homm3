@@ -1,0 +1,158 @@
+# The encounter distribution v1 (E05 T5b1; docs/epics/E05-design.md §4.2, the assumptions A1 to
+# A12 in §4.4, decided with the user on 2026-10-19, AI-Q4). The census's numbers come from
+# census-v1.toml (derived from the shipped maps); everything here is a stated assumption where the
+# maps say nothing, each with its row of §4.4. Every number is provisional: the adventure's logged
+# battles replace them (decision 7). Integers only (the sim layer has no float arithmetic):
+# shares and weights in permille, a distribution as a quantile table.
+#
+# A quantile table lists a value (permille of the unit) at the probabilities 0.001, 0.05, 0.10, …,
+# 0.95, 0.999 (21 points); a draw takes a uniform point and interpolates linearly between them.
+
+[distribution]
+id = "encounters"
+version = 1
+census = "census-v1"
+
+# A1, A2, A12. Per kind: `share` is the estimated share of the battles fought (‰), `weight` what
+# the sampler draws (the neutral kinds 0 until E23's policy, after E05), `week` the weight of the
+# game weeks 1 to 16 (‰ of the first week's or the peak's).
+[kind.wandering]
+share = 780
+weight = 0
+week = [1000, 800, 640, 512, 410, 328, 262, 210, 168, 134, 107, 86, 69, 55, 44, 35]
+why = "A1: 87 monsters a map, cleared on the way; A2: 0.8^(w-1), neutrals fall early; A12: 0 until E23"
+
+[kind.guards]
+share = 20
+weight = 0
+week = [1000, 800, 640, 512, 410, 328, 262, 210, 168, 134, 107, 86, 69, 55, 44, 35]
+why = "A1: the 274 guarded piles and garrisons against 13 863 monsters; A2 as wandering; A12: 0 until E23"
+
+[kind.hero]
+share = 100
+weight = 100
+week = [250, 500, 750, 1000, 1000, 1000, 1000, 1000, 889, 778, 667, 556, 444, 333, 222, 111]
+why = "A1; A2: enemy heroes meet mid-game: rising to week 4, flat to 8, falling to 16"
+
+[kind.siege_hero]
+share = 50
+weight = 50
+week = [1000, 900, 810, 729, 656, 590, 531, 478, 430, 387, 349, 314, 282, 254, 229, 206]
+why = "A1, A8: a hero defends half of the sieges; A2: 0.9^(w-1), towns are taken throughout"
+
+[kind.siege_garrison]
+share = 25
+weight = 25
+week = [1000, 900, 810, 729, 656, 590, 531, 478, 430, 387, 349, 314, 282, 254, 229, 206]
+why = "A1, A8: an owned town without a hero, its garrison; A2 as siege_hero"
+
+[kind.siege_neutral]
+share = 25
+weight = 0
+week = [1000, 700, 490, 343, 240, 168, 118, 82, 58, 40, 28, 20, 14, 10, 7, 5]
+why = "A1, A8: a neutral town's garrison, taken early (0.7^(w-1)); A12: 0 until E23"
+
+# A3: a neutral stack. The level by the census's placements (fixed and random, the random ones of
+# any level spread evenly) times its ramp by week (‰, weeks 1 to 16): the adventure ranges make low
+# levels hordes and high ones few, and strong stacks are fought later (the user, AI-Q4). The count
+# grows each week by `growth_percent` of it (integer) while below `growth_cap` (VCMI 1.7.5
+# CGCreature::newTurn: weeklyGrowthPercent 10, weeklyGrowthCap 4000).
+[neutral]
+growth_percent = 10
+growth_cap = 4000
+level_ramp = [
+    [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000],
+    [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000],
+    [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000],
+    [500, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000],
+    [0, 500, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000],
+    [0, 0, 250, 500, 750, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000],
+    [0, 0, 0, 250, 500, 750, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000],
+]
+# A4: the army facing a neutral is worth the stack's value times `ratio`: normal, mean 1.8,
+# standard deviation 0.5, at least 0.5 (the user, AI-Q4). A stack whose army would exceed
+# `cap` (‰) of A5's value of the week is drawn again, the ratio kept.
+ratio = [500, 978, 1159, 1282, 1379, 1463, 1538, 1607, 1673, 1737, 1800, 1863, 1927, 1993, 2062, 2137, 2221, 2318, 2441, 2622, 3345]
+cap = 2000
+why = "A3, A4: the map's own levels and the game's own draws; players attack what they beat, now and then a tough fight"
+
+# A10 for guards: a guarded pile's or a garrison's army is a neutral stack of A3 (no growth: guards
+# stay as placed), divided evenly into `stacks`; `anti_magic` (‰) of them stand at an anti-magic
+# garrison (the census: 45 of 274).
+[guards]
+stacks = 3
+anti_magic = 164
+why = "A1, A10: piles and garrisons hold their guards as the map placed them"
+
+# A5, A6: a hero's army. Its value is `k` times the sum over the weeks u <= w of the faction's growth
+# value (growth × ai_value) of the levels available in week u (`level_from_week`, levels 1 to 7);
+# in a hero battle or a siege by a hero the attacker's value is the defender's times
+# `attacker_ratio`. One stack a level, its value by the level's growth value; upgraded with the
+# share `upgraded` (‰, weeks 1 to 16: (w - 1) / 6, at most 1).
+[army]
+level_from_week = [1, 1, 1, 1, 2, 3, 4]
+k = [234, 462, 548, 614, 673, 728, 782, 834, 888, 943, 1000, 1061, 1126, 1199, 1280, 1373, 1485, 1628, 1826, 2166, 4273]
+attacker_ratio = [371, 667, 773, 854, 924, 989, 1051, 1112, 1173, 1235, 1300, 1368, 1441, 1520, 1608, 1709, 1829, 1979, 2186, 2533, 4551]
+upgraded = [0, 167, 333, 500, 667, 833, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
+why = "A5: one main army carries a kingdom's production, less its losses (k log-normal, median 1.0, x/÷ 1.6); attackers choose fights (log-normal, median 1.3, x/÷ 1.5); A6: a usual build order"
+
+# A7: a hero. Its class even among its faction's (might or magic), its type even among the class's;
+# its level by week (weeks 1 to 16) ± `level_spread`; each level-up a primary skill by the class's
+# chances and a secondary skill raised or learnt by the class's weights (an approximation of the
+# original's offers, not a rule); a spell book; per spell level up to the mage guild of the week
+# (at most the faction's guild, VCMI 1.7.5 `mageGuild`) and its learn level, `spells_per_level`
+# spells (VCMI 1.7.5 CGTownInstance::spellsAtLevel: 6 - level, no Library) among the level's hero
+# spells; one artifact per `levels_per_artifact` levels, of a class even among those its level
+# reaches (`artifact_from_level`: treasure, minor, major, relic); each of the three war machines
+# with the chance `war_machine` (‰); full mana.
+[hero]
+level = [4, 7, 9, 11, 12, 13, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19]
+level_spread = 2
+guild = [1, 2, 3, 3, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+guild_max = { "base:castle" = 4, "base:stronghold" = 3, "base:fortress" = 3 }
+guild_max_default = 5
+spells_per_level = [5, 4, 3, 2, 1]
+levels_per_artifact = 2
+artifact_from_level = { treasure = 1, minor = 6, major = 11, relic = 16 }
+war_machines = ["base:ballista", "base:ammo_cart", "base:first_aid_tent"]
+war_machine = 500
+spell_book = "base:spell_book"
+why = "A7: a human main hero's usual pace"
+
+# A8: a siege at a town of a faction drawn as a hero's (A7). Its fort in week 1 from the census's
+# towns, later by `fort` (‰ none, fort, citadel, castle; weeks 2 to 7, the last row for every
+# later week); a neutral town keeps the census's. The moat damages from a Citadel on (SoD rules);
+# `structures` (the turrets' count) by week; morale +`morale` at an owned town (a Tavern); no
+# Escape Tunnel. The garrison is one week's growth of the levels the week reaches (A6). The town
+# stands on its faction's native terrain (`terrain` without one).
+[siege]
+fort = [
+    [150, 650, 120, 80],
+    [100, 500, 250, 150],
+    [50, 400, 300, 250],
+    [0, 300, 300, 400],
+    [0, 200, 250, 550],
+    [0, 150, 150, 700],
+]
+structures = { first = 6, per_week = 2, max = 30, neutral = 6 }
+morale = 1
+terrain = "base:grass"
+why = "A8: neutral towns early, owned towns later; forts grow into castles (at most 0.7)"
+
+# A7, A8: the factions of heroes and towns: the census's named towns, its random ones spread evenly
+# over these (else no Conflux, which no shipped map names).
+[factions]
+keys = ["base:castle", "base:rampart", "base:tower", "base:inferno", "base:necropolis", "base:dungeon", "base:stronghold", "base:fortress", "ab:conflux"]
+why = "A7: the census's towns"
+
+# A10: neutral stacks and guards stand on the census's monster places (water: a hero in a boat on
+# the ship's deck, `water_battlefield`), hero battles on its open land; sieges at the town. Two
+# boats are left out.
+[places]
+water_battlefield = "base:deck"
+why = "A10: where battles stand on the maps"
+
+# A11: the difficulty (Normal). The batch plays both sides as human players' (ADR-0025 point 6).
+[difficulty]
+value = 1
+why = "A11: it shapes only the computer's automatic choices (ADR-0023 point 7)"

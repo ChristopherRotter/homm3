@@ -9,8 +9,9 @@ AI-Q3). A handover, not binding: each task that builds a section deletes its det
 ADR-0025 points 1 to 7 as code: `h3_sim::batch` (`BattleBatch`, `Scenario`, `Seat`, `Policy`,
 `EnvReport`, `Outputs`, `episode_seed`, `draw_scenario`; the threads in `batch::pool`) and C ABI
 v27 in `h3-ffi`'s `src/batch.rs`, declared in `include/h3.h` (T1's sketch with its names, plus
-`H3Seats`, `H3_SEAT_*`, `H3_CURRENCY_*` and `H3_ERR_NOT_READY`; `h3_batch_set_encounters` comes
-with T5). Decisions of the build beyond the ADR (the agent's, provisional):
+`H3Seats`, `H3_SEAT_*`, `H3_CURRENCY_*` and `H3_ERR_NOT_READY`; the encounter source came with
+T5b2 as `h3_batch_add_encounters`, C ABI v28, §4.1). Decisions of the build beyond the ADR (the
+agent's, provisional):
 
 - **Outputs:** the big arrays (observations, entry masks, final observations) are the caller's,
   written in place by the workers; the small per-env values come back as one `EnvReport` per
@@ -103,64 +104,55 @@ rewards between its own moves (§5).
   packs: about 18 ms for `base`, `ab` and `sod` (2.6 ms for the synthetic skirmish) in a release
   build on the cloud sandbox, about ten times that in a debug build; the batch's shared rulesets
   (above) avoid it per env.
-- **Episode sources of a batch:** (i) a weighted list of fixed scenarios (`h3_batch_add_scenario`:
-  text, integer weight, seats); each reset draws one by weight; or (ii) the encounter
-  distribution (T5).
+- **Episode sources of a batch:** a weighted list of entries, each reset drawing one by weight:
+  (i) a fixed scenario (`h3_batch_add_scenario`: text, integer weight, seats), or (ii) the
+  encounter distribution (**built, T5b2**): `Scenario::encounters(sampler, weight)` in Rust,
+  `h3_batch_add_encounters(batch, weight, kinds, error, error_len)` in C ABI v28 (`kinds` null for
+  the distribution's weights, else six in `H3_ENCOUNTER_*` order: a curriculum; on the original
+  packs, `base:faithful`, sharing their ruleset with the batch's scenarios on them; the adventure
+  part compiled per call). `Scenario::episode(seed, max_steps)` gives an episode's env, seats and
+  kind: the sampler's encounter of the episode's seed, drawn from stream `ENCOUNTER` (a kernel
+  stream, #254) so that it is independent of the entry's draw from `SETUP`; the neutral kinds'
+  defender is played inside the call. Each env reports its episode's kind (`EnvReport.encounter`,
+  `H3BatchBuffers.encounter`: `H3_ENCOUNTER_*`, -1 for a fixed scenario). Cost in a release build
+  on the cloud sandbox: a sample 50 µs at the default weights (26 µs at A1's shares), an
+  episode's start with its env 160 µs, about 2 % of an episode of some 300 steps.
 
-### 4.2 The encounter distribution v1 (shape; T5b fills it)
+### 4.2 The encounter distribution v1 (built, T5b1)
 
-A versioned TOML in the AI lane (`crates/h3-sim/data/encounters-v1.toml`; parsed in Rust, which
-needs `serde`/`toml` in `h3-sim` and `h3-heroes` for the heroes: T5's shared pull request), its
-weights drawn from a census or stated as assumptions, each with `why`:
-
-```toml
-# The shape only: every number here is a placeholder that T5 replaces with a derived or stated one.
-[distribution]
-id = "encounters"
-version = 1
-packs = ["base", "ab", "sod"]
-profile = "base:faithful"
-census = "census-v1"                 # crates/h3-sim/data/census-v1.toml: derived numbers only
-
-[kind]                               # who fights: weights (assumption: per game week, below)
-wandering = { weight = 0.50, why = "…" }
-guards    = { weight = 0.10, why = "…" }     # guarded piles, later creature banks
-hero      = { weight = 0.20, why = "…" }     # hero against hero in the field
-siege     = { weight = 0.20, why = "…" }     # a town, with or without a fort or a hero
-
-[week]                               # the game week: army sizes, hero levels, the mage guild
-weights = { 1 = 0.20, 2 = 0.16, 3 = 0.13 }  # … (assumption)
-
-[terrain.wandering]                  # census: monster placements per terrain
-from = "census.monster_terrain"
-[terrain.hero]                       # census: passable land tiles per terrain
-from = "census.land_terrain"
-[battlefield]                        # census: the share of battles on each special ground
-from = "census.special_ground"
-[monster]                            # census: placements per level class and fixed creature;
-from = "census.monster_level"        # counts: the original's random counts by level and week
-[army]                               # value by week (median, spread) and the attacker/defender
-value = { … }                        # value ratio (assumption: attackers choose fights)
-balance = { … }
-[hero]                               # level by week, class from the census's town factions,
-level = { … }                        # skills, artifacts by level, spells by the mage guild
-[siege]                              # fort by week, a defending hero's share (assumption)
-[difficulty]                         # assumption
-weights = { 0 = 0.1, 1 = 0.4, 2 = 0.3, 3 = 0.15, 4 = 0.05 }
-[seats]                              # §2
-neutral = "internal:system"
-player = "external"
-```
-
-- **Dimensions:** encounter kind; game week; place (terrain, special ground, sea, siege with fort
-  level and moat); per side the faction, the army's value and composition by level, a hero or
-  none (level, class, primary and secondary skills, artifacts, spells and their masteries, war
-  machines, through `h3-heroes`' `derive_battle_hero`); the attacker/defender value ratio;
-  difficulty; seats.
-- **The census** (T5a): built, §4.3; the assumptions where maps say nothing, §4.4.
-- A curriculum samples the same dimensions with other weights (an override table of the same
-  shape). T5b's check samples many scenarios and compares each dimension's frequencies with its
-  weights.
+- **Files:** `crates/h3-sim/data/encounters-v1.toml` (the assumptions of §4.4, each table with
+  its `why`) names the census it reads (`census-v1.toml`, §4.3); both are compiled into `h3-sim`
+  (`h3_sim::encounter::{ENCOUNTERS_V1, CENSUS_V1}`) and checked by `EncounterTable::parse` (each
+  table's length, non-decreasing quantiles, drawable weights, no unknown field). Integers only
+  (the sim layer has no float arithmetic, ADR-0003): shares in ‰, a continuous distribution as a
+  quantile table of 21 points (p = 0.001, 0.05, …, 0.95, 0.999; a draw takes one of the 20 bins
+  and a point in it evenly, linear between), computed from the stated normal or log-normal when
+  the file was written.
+- **`Sampler`** (`h3_sim::encounter`): built on the battle and adventure parts of one core
+  (`GameRuleset`'s check); `sample(seed)` draws every choice from stream `ENCOUNTER` of the seed and
+  returns an `Encounter`: kind, week, a `BattleSetup` (obstacles left to the episode,
+  `random_obstacles`; both sides human), the seats (A12) and the `Facts` drawn (place, level,
+  count, redraws, ratio, k, factions, hero levels, values, fort). Its default weights are the
+  file's `weight` (the neutral kinds 0); `with_shares` draws at A1's shares, `with_weights` by a
+  curriculum's.
+- **The engine's rules it uses**, never copies: ADV-MON-003 (`AdventureRuleset::random_monsters`),
+  ADV-MON-004 (the adventure-map range), ADV-MON-009 (`h3_adventure::split`), and a hero's battle
+  values as GAM-BAT-001 derives them (`derive_battle_hero`, `max_mana`, `war_machines`); the
+  Catapult is the battle's own (BAT-SIE-009). **Approximations**, labelled in the code: a hero's
+  level-ups (the class's `primary_gain` and `skill_weights`), spells and artifacts; an army one
+  stack per built level, its value split by growth value, what a level's share cannot buy carried
+  to the level below; guards a stack of A3 divided evenly.
+- **The check** (`encounter::tests`): 30 000 encounters at A1's shares against their weights:
+  kinds, weeks per kind, the neutral levels from week 7 (no stack is drawn again there) and the
+  ramp's bounds, places, the bins of the ratio, k and the attacker ratio, factions, hero levels by
+  week, forts. 1 500 samples are valid battles (`Scenario::new`), every 50th plays out; every
+  sampled hero passes `h3_heroes::validate`.
+- **What it shows** (20 000 samples): in week 1 A4's cap draws 16 % of the neutral stacks again
+  (level 4 falls from 10 % to 4 % of them), in week 2 1 %, from week 4 none; under random play the
+  attacker wins 98 % of the neutral battles, 80 % of the hero battles, 63 % of the sieges a hero
+  defends.
+- Not drawn yet: the difficulty (A11: Normal), two boats (A10), creature banks (A1). T5b2 made the
+  sampler a batch's episode source (§4.1).
 
 ### 4.3 The census v1 (T5a, built)
 
@@ -200,26 +192,31 @@ player = "external"
   twins out moves no terrain or level share by more than 1.6 points, so every shipped map counts
   once (proposed, A9 below).
 
-### 4.4 The assumptions v1 (proposed at T5a; the user's review, AI-Q4)
+### 4.4 The assumptions v1 (decided 2026-10-19, AI-Q4)
 
-What the maps cannot say, for the encounter distribution's `why` fields (T5b writes
-`encounters-v1.toml` from the census and these). Every number is provisional; the adventure's
-logged battles replace them (decision 7).
+What the maps cannot say, for the encounter distribution's `why` fields (`encounters-v1.toml`
+holds every number, written from the census and these in T5b1). Every number is provisional; the
+adventure's logged battles replace them (decision 7). Proposed at T5a; **the user (2026-10-19):**
+A3 keeps in mind that the maps' stacks differ by level from the start (a horde of Pikemen in
+week 1, a few Black Dragons) and that no hero faces level 7 early; A4's ratio is a distribution
+around 1.8 with a standard deviation of 0.5, at least 0.5, for occasional tough battles; A5 as the
+review changed it; A12's neutral kinds fully built but weighted 0 until E23 (after E05); the rest
+as proposed. How T5b1 pins down what a row leaves open is marked *(T5b1)*.
 
-| # | Dimension | Proposed | Why |
+| # | Dimension | Decided | Why |
 |---|---|---|---|
-| A1 | Encounter kind (of battles fought) | wandering 0.78, guards 0.02, hero 0.10, siege 0.10 | 87 monsters a map against 9 towns and a few heroes: a player clears most monsters on the way; each neutral or enemy town taken is a siege. Guards are the 274 piles and garrisons against 13 863 monsters (2 %). Creature banks (13 a map) wait for their battle layouts (the adventure lane's queue) |
-| A2 | Game week (1 to 16), per kind | wandering ∝ 0.8^(w−1); hero rising to week 4, flat to 8, falling to 16; siege ∝ 0.9^(w−1) | neutrals fall early (median week 3), enemy heroes meet mid-game, towns are taken throughout |
-| A3 | A neutral stack | level by the census; the creature drawn among the level's (ADV-MON-003), the count from its adventure range (ADV-MON-004), grown 10 % a week to the battle's week, at most 4 000 (VCMI 1.7.5 `CGCreature::newTurn`: `weeklyGrowthPercent` 10, `weeklyGrowthCap` 4 000); split by the original's rule against the hero's army (`h3_adventure::split`, ADV-MON-009) | the map's own levels and the game's own draws; growth makes late neutrals larger |
-| A4 | The army facing a neutral | value = the stack's × r, r log-normal (median 1.8, ×/÷ 1.5), capped at the week's largest army (2 × A5's value), else the stack is drawn again | players attack what they beat; the split's own table expects ratios 0.5 to 2 |
-| A5 | A hero's army (hero and siege kinds) | value = G × w × k: G the faction's weekly growth value (growth × `ai_value` of its seven creatures, from the packs: 13 900 Stronghold, 23 000 Conflux, 15 600 to 16 900 the others), k log-normal (median 0.7, ×/÷ 1.6); the attacker's over the defender's log-normal (median 1.3, ×/÷ 1.5) | one main army carries most of a kingdom's production, less its losses; attackers choose fights |
-| A6 | An army's creatures | the hero's faction; levels 1–4 from week 1, 5 from week 2, 6 from week 3, 7 from week 4; value split by each level's growth value; upgraded share (w − 1) / 6, at most 1 | a usual build order |
-| A7 | A hero | faction by the census's named towns, might or magic class 1 : 1; level by week 4, 7, 9, 11 (weeks 1–4), then +1 a week to 15 (week 8), then +0.5 a week, ± 2; skills, primary skills and spells by the level-ups and the mage guild through `h3-heroes` where it has the rule (T5b lists the rest); artifacts by level (treasure from 1, minor from 6, major from 11, a relic from 16) | a human main hero's usual pace |
-| A8 | A siege | the faction by the census's named towns; the fort from the census in week 1, then citadel and castle more likely each week (castle at most 0.7); a hero defends half of them, the garrison one week's growth | neutral towns early, owned towns later |
+| A1 | Encounter kind (of battles fought) | wandering 0.78, guards 0.02, hero 0.10, sieges 0.10: a hero defends 0.05, an owned town's garrison 0.025, a neutral town's 0.025 *(T5b1: A8's split as kinds, so A12 can weigh the neutral one 0)* | 87 monsters a map against 9 towns and a few heroes: a player clears most monsters on the way; each neutral or enemy town taken is a siege. Guards are the 274 piles and garrisons against 13 863 monsters (2 %). Creature banks (13 a map) wait for their battle layouts (the adventure lane's queue) |
+| A2 | Game week (1 to 16), per kind | wandering and guards ∝ 0.8^(w−1); hero rising to week 4, flat to 8, falling to 16 (1/9 of the peak); sieges ∝ 0.9^(w−1), a neutral town ∝ 0.7^(w−1) *(T5b1: tabulated in ‰)* | neutrals fall early (median week 3), enemy heroes meet mid-game, towns are taken throughout, neutral ones early |
+| A3 | A neutral stack | level: the census's (fixed and random; "any" spread evenly) × a ramp by week: 1–3 always, 4 half in week 1, 5 half in week 2, 6 and 7 from weeks 3 and 4 in quarters (full from weeks 6 and 7); the creature drawn among the level's (ADV-MON-003), the count from its adventure range (ADV-MON-004), grown each week by a tenth (integer) while below 4 000 (VCMI 1.7.5 `CGCreature::newTurn`: `weeklyGrowthPercent` 10, `weeklyGrowthCap` 4 000); split by the original's rule against the hero's army (`h3_adventure::split`, ADV-MON-009) | the map's own levels and the game's own draws; the adventure ranges already make low levels hordes and high ones few; strong stacks are fought later; growth makes late neutrals larger |
+| A4 | The army facing a neutral | value = the stack's × r, r normal (mean 1.8, standard deviation 0.5), at least 0.5; a stack whose army would exceed 2 × A5's value of the week is drawn again (r kept) | players attack what they beat, now and then a tough fight; the split's own table expects ratios 0.5 to 2 |
+| A5 | A hero's army (hero and siege kinds) | value = k × the sum over the weeks u ≤ w of the faction's growth value (growth × `ai_value`) of the levels A6 makes available in week u; k log-normal (median 1.0, ×/÷ 1.6); the attacker's over the defender's log-normal (median 1.3, ×/÷ 1.5). Castle's median: 6 500 in week 1, 43 000 in week 4, 111 000 in week 8, 246 000 in week 16 | one main army carries a kingdom's production (a castle's double growth and more towns against its losses); consistent with A6, where G × w × 0.7 gave week 1 1.8 weeks of levels 1–4 |
+| A6 | An army's creatures | the hero's faction; levels 1–4 from week 1, 5 from week 2, 6 from week 3, 7 from week 4; value split by each level's growth value; one stack a level, upgraded with the share (w − 1) / 6, at most 1 | a usual build order |
+| A7 | A hero | faction by the census's towns (named; random ones spread evenly over the nine factions *(T5b1: else no Conflux)*), might or magic class 1 : 1, the hero type even among the class's; level by week 4, 7, 9, 11 (weeks 1–4), then +1 a week to 15 (week 8), then +0.5 a week, ± 2. *(T5b1: `h3-heroes` has no level-up rule; an approximation, not a rule:)* each level-up adds a primary skill by the class's chances (`primary_gain`, levels 2–9 and 10+) and raises a known skill or learns one by the class's `skill_weights` (at most 8, Expert at most); a spell book; per spell level up to the guild (levels 1, 2, 3, 3, 4, 4, then 5 from week 7; at most the faction's: 4 Castle, 3 Stronghold and Fortress, else 5, VCMI 1.7.5 `mageGuild`) and its learn level, 6 − level spells (VCMI `spellsAtLevel`, no Library) drawn among the level's hero spells; level / 2 artifacts drawn by class by level (treasure from 1, minor from 6, major from 11, a relic from 16; no combinations, scrolls or war machines), worn where a slot is free; Ballista, Ammo Cart and First Aid Tent each at 0.5; full mana | a human main hero's usual pace |
+| A8 | A siege | the faction by the census's towns (as A7); the fort from the census in week 1, then citadel and castle more likely each week (castle at most 0.7; a neutral town keeps the census's); a hero defends the kind of A1, else the garrison: one week's growth (A6's levels) *(T5b1: the moat damaging from a Citadel (SoD rules), structures 6 + 2 (w − 1) at most 30 (a neutral town 6), morale +1 at an owned town (a Tavern), no Escape Tunnel; the terrain the faction's native one)* | neutral towns early, owned towns later |
 | A9 | Twins | every shipped map once | §4.3 |
 | A10 | Places | neutral stacks and guards: the census's monster places (the 55 on water: the deck, the hero in a boat); hero battles: open land; sieges: the town's own field; two boats left out | where battles stand on the maps |
 | A11 | Difficulty | left out (normal) | the batch plays both sides as human players' (ADR-0025 point 6); the difficulty shapes only the computer's automatic choices (ADR-0023 point 7) |
-| A12 | Seats | neutrals internal (the system actor), heroes external; until E23 neutral kinds weigh 0 in training (a curriculum) | random neutrals teach the wrong lessons (the epic's risk) |
+| A12 | Seats | neutral kinds (wandering, guards, a neutral town) the system actor's (internal), the others external on both sides; the neutral kinds built and tested at A1's shares, weighted 0 in what the batch samples until E23's policy (after E05) | random neutrals teach the wrong lessons (the epic's risk) |
 
 ## 5. The Python side (e)
 
@@ -270,7 +267,10 @@ logged battles replace them (decision 7).
   them): `batch-random-full` — a batch of 64 envs of `packs/synthetic/scenarios/full.toml`, one
   thread, 1 000 calls of random legal actions chosen from the batch's own masks (casts through the
   heads), observations and masks written, counted inside `h3_sim::batch::BattleBatch::step`;
-  `batch-random-siege` the same on the siege. T5 adds `batch-random-encounters-v1`.
+  `batch-random-siege` the same on the siege; `batch-random-encounters-v1` (T5b2) the same on the
+  encounter distribution at its default weights (`h3 ai bench --encounters default`): 11.86 G
+  instructions against 11.45 G for `full`, the automatic resets' sampling included (on the
+  sandbox about 39 700 steps/s inside `step` against 50 700 for `full`, a run beside a verify).
 - **Recorded** (wall time, no gate): `h3 ai bench --envs N --threads T --calls K` prints steps/s
   inside `BattleBatch::step` and with the head calls and the random choice; on the user's Ryzen 9
   3900X for T = 1, 6, 12, 24 and N = 64, 256, 1 024 at T9 (moved from T3 by the user, 2026-10-18;

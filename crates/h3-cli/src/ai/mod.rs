@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! h3 ai bench [--scenario <file>] [--packs-dir packs] [--envs 64] [--threads 0] [--calls 1000]
-//!             [--seed 1] [--max-steps 0]
+//!             [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
 //! h3 ai census <maps folder or file>... [--out <file>]
 //! ```
 
@@ -16,11 +16,12 @@ pub mod census;
 use std::path::PathBuf;
 
 use bench::BenchOptions;
+use h3_sim::EncounterTable;
 
 /// The AI commands' usage.
 pub const USAGE: &str = "usage:
   h3 ai bench [--scenario <file>] [--packs-dir packs] [--envs 64] [--threads 0] [--calls 1000]
-              [--seed 1] [--max-steps 0]
+              [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
   h3 ai census <maps folder or file>... [--out <file>]";
 
 /// Parsed arguments: `--name value` options and positional words.
@@ -107,6 +108,7 @@ fn bench(args: &Args) -> Result<(), String> {
         "calls",
         "seed",
         "max-steps",
+        "encounters",
     ])?;
     let options = BenchOptions {
         scenario: args.path("scenario", "packs/synthetic/scenarios/full.toml"),
@@ -116,6 +118,7 @@ fn bench(args: &Args) -> Result<(), String> {
         calls: args.num("calls", 1000)?,
         seed: args.num("seed", 1)?,
         max_steps: args.num("max-steps", 0)?,
+        encounters: args.get("encounters").map(encounter_weights).transpose()?,
     };
     let report = bench::run(&options)?;
     println!(
@@ -135,6 +138,22 @@ fn bench(args: &Args) -> Result<(), String> {
         report.steps as f64 / report.secs
     );
     Ok(())
+}
+
+/// `--encounters`: `default` (the distribution's own weights) or six weights `a,b,c,d,e,f` (the
+/// kinds of `h3_sim::Kind::ALL`, in order).
+fn encounter_weights(value: &str) -> Result<[u32; 6], String> {
+    if value == "default" {
+        return Ok(EncounterTable::v1().kinds.map(|k| k.weight));
+    }
+    let weights = value
+        .split(',')
+        .map(|w| w.trim().parse::<u32>())
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| format!("--encounters: `{value}` is not six weights"))?;
+    weights
+        .try_into()
+        .map_err(|_| format!("--encounters: `{value}` is not six weights"))
 }
 
 /// `h3 ai census`: the census of the maps given (a folder's `.h3m` files, or files), as TOML on

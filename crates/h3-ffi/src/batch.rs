@@ -2,7 +2,8 @@
 //! `h3_batch_*`. A handle owns an [`h3_sim::BattleBatch`]; every call writes into the caller's
 //! arrays (numpy arrays in the Python binding, ADR-0025 point 11): the observations, entry masks
 //! and final observations directly from the batch's workers, the small per-env values converted
-//! from the batch's reports after the call.
+//! from the batch's reports after the call. Since v28 (E05 T5b2) an episode source entry may be
+//! the encounter distribution (`h3_batch_add_encounters`).
 
 use std::ffi::c_char;
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -26,6 +27,22 @@ pub const H3_ERR_NOT_READY: i32 = -6;
 pub const H3_SEAT_EXTERNAL: i32 = 0;
 /// `H3Seats`: uniformly random legal commands played inside the call (tests and benchmarks).
 pub const H3_SEAT_RANDOM: i32 = 1;
+
+/// `H3BatchBuffers.encounter`: the env's scenario is no encounter distribution.
+pub const H3_ENCOUNTER_NONE: i32 = -1;
+/// `H3BatchBuffers.encounter` and `h3_batch_add_encounters`' weights, in this order
+/// (`h3_sim::Kind::ALL`): a hero attacks a wandering monster.
+pub const H3_ENCOUNTER_WANDERING: i32 = 0;
+/// A hero attacks the guards of a pile or a garrison.
+pub const H3_ENCOUNTER_GUARDS: i32 = 1;
+/// A hero attacks a hero in the field.
+pub const H3_ENCOUNTER_HERO: i32 = 2;
+/// A hero attacks a town a hero defends.
+pub const H3_ENCOUNTER_SIEGE_HERO: i32 = 3;
+/// A hero attacks a player's town without a hero (its garrison).
+pub const H3_ENCOUNTER_SIEGE_GARRISON: i32 = 4;
+/// A hero attacks a neutral town (its garrison).
+pub const H3_ENCOUNTER_SIEGE_NEUTRAL: i32 = 5;
 
 /// `H3RewardConfig.currency`: the creatures' `ai_value`.
 pub const H3_CURRENCY_AI_VALUE: u32 = 0;
@@ -98,6 +115,9 @@ pub struct H3BatchBuffers {
     pub episode_seed: *mut u64,
     /// [N]: `H3_OK`, or why the env refused this call's action (it is unchanged).
     pub status: *mut i32,
+    /// [N]: the current episode's encounter kind (`H3_ENCOUNTER_*`), `H3_ENCOUNTER_NONE` for a
+    /// scenario's episode (C ABI v28).
+    pub encounter: *mut i8,
 }
 
 /// Opaque batch handle.
@@ -207,7 +227,7 @@ unsafe fn with_outputs(
 unsafe fn write_reports(reports: &[EnvReport], b: &H3BatchBuffers) {
     let n = reports.len();
     // SAFETY: per the contract (one row per report, two values per row for the rewards).
-    let (to_move, reward, done, truncated, result, episode, scenario, seed, status) = unsafe {
+    let (to_move, reward, done, truncated, result, episode, scenario, seed, status, encounter) = unsafe {
         (
             rows(b.to_move, n),
             rows(b.reward, 2 * n),
@@ -218,6 +238,7 @@ unsafe fn write_reports(reports: &[EnvReport], b: &H3BatchBuffers) {
             rows(b.scenario, n),
             rows(b.episode_seed, n),
             rows(b.status, n),
+            rows(b.encounter, n),
         )
     };
     put(to_move, reports, |r| side_code(r.to_move) as i8);
@@ -228,6 +249,9 @@ unsafe fn write_reports(reports: &[EnvReport], b: &H3BatchBuffers) {
     put(scenario, reports, |r| r.scenario);
     put(seed, reports, |r| r.episode_seed);
     put(status, reports, |r| status_code(r.error));
+    put(encounter, reports, |r| {
+        r.encounter.map_or(H3_ENCOUNTER_NONE, |k| k.index() as i32) as i8
+    });
     if let Some(reward) = reward {
         for (row, r) in reward.chunks_exact_mut(2).zip(reports) {
             row.copy_from_slice(&r.reward);
@@ -347,6 +371,50 @@ pub unsafe extern "C" fn h3_batch_add_scenario(
             weight,
             [attacker, defender],
         )
+    }));
+    match added {
+        Ok(Ok(())) => H3_OK,
+        Ok(Err(message)) => {
+            // SAFETY: per the contract.
+            unsafe { scenario::write_error(&message, error, error_len) };
+            H3_ERR_ARGUMENT
+        }
+        Err(_) => {
+            // SAFETY: per the contract.
+            unsafe { scenario::write_error(PANIC_MESSAGE, error, error_len) };
+            H3_ERR_PANIC
+        }
+    }
+}
+
+/// Adds the encounter distribution v1 (E05 T5b2, `docs/epics/E05-design.md` §4.2) as an episode
+/// source entry with `weight` (at least 1): each episode's battle and seats are drawn from its
+/// seed (a neutral defender is played inside the call). `kinds` is null for the distribution's
+/// weights (the neutral kinds 0 until E23) or points to six weights in `H3_ENCOUNTER_*` order (a
+/// curriculum; not all 0). It runs on the original packs (`base`, `ab`, `sod`,
+/// `base:faithful`), sharing their ruleset with the batch's scenarios on them. On error the batch
+/// is unchanged and the message is written into `error[0..error_len]`.
+///
+/// # Safety
+/// `batch` must be null or a live handle not used concurrently; `kinds` must be null or valid for
+/// six reads; `error` must be null or valid for `error_len` bytes of writes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn h3_batch_add_encounters(
+    batch: *mut H3Batch,
+    weight: u32,
+    kinds: *const u32,
+    error: *mut c_char,
+    error_len: usize,
+) -> i32 {
+    // SAFETY: per the contract.
+    let Some(h) = (unsafe { batch.as_mut() }) else {
+        return H3_ERR_NULL;
+    };
+    // SAFETY: a non-null `kinds` is valid for six reads per the contract.
+    let kinds = (!kinds.is_null()).then(|| unsafe { read(kinds, 6) });
+    let added = catch_unwind(AssertUnwindSafe(|| {
+        let kinds = kinds.map(|k| std::array::from_fn(|i| k[i]));
+        scenario::add_encounters(&mut h.batch, &mut h.rulesets, weight, kinds)
     }));
     match added {
         Ok(Ok(())) => H3_OK,
