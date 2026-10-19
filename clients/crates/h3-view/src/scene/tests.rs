@@ -687,3 +687,13 @@ fn each_hero_and_its_flag_are_drawn_after_the_layer_1_obstacles() {
         Err(SceneError::Key("base:sandro".to_string()))
     );
 }
+
+#[test]
+fn the_panel_draws_its_log() {
+    assert_eq!(
+        panel("a\nb"),
+        [Draw::Log {
+            text: "a\nb".to_string()
+        }]
+    );
+}

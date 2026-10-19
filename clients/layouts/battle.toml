@@ -47,3 +47,15 @@ tint = [0x3F400000, 0x3F4CCCCD]
 text_size = [30, 15]
 text_colour = 4
 text_align = 1
+
+# The battle log's item in the panel (design §9.5; E17 M3 T4b-2b-1): its picture drawn opaque at
+# its corner (the panel's (0, 556) plus (214, 7)), then the shown entries in the font over it,
+# in the item's 400 x 32 box, with the text drawer's colour 1 and alignment 1 (centred).
+[log]
+picture = "cRollovr.pcx"
+place = [214, 563]
+size = [400, 32]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 1
