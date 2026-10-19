@@ -440,3 +440,17 @@ The full record of done tasks (the epic file keeps one line each).
   `python -m h3env.train.ladder`. The sandbox's 20-minute pool checkpoint (0.76 against Random
   at its training): 0.751 against Random, 0.434 against Aggressor, 0.420 against Greedy on the
   same episodes. Left: the user's `best.pt` (0.811) on the GTX 1070.
+- **T7d, the network's row** (#276 merged; the user's machine): a new pool run of 11 minutes
+  (145 updates; its last evaluation 0.792 sampled, 0.817 greedy against Random), its `best.pt`
+  through `python -m h3env.train.ladder` on the same 1 000 held-out episodes per side:
+
+  | Against | The network | Aggressor | Greedy |
+  |---|---|---|---|
+  | Random | 0.802 (value +0.247) | 0.800 (+0.247) | 0.828 (+0.277) |
+  | Aggressor | 0.498 (−0.010) | – | 0.519 (+0.021) |
+  | Greedy | 0.479 (−0.025) | 0.481 (−0.021) | – |
+
+  The network plays at Aggressor's level: even against it, Greedy's margin over both alike.
+  Greedy play beat the sampled policy in this run (0.817 against 0.792), unlike the first runs.
+  **Exit criterion 6 met**: the bots and the runner exist and are recorded as baselines.
+  Increment 5 done; the user's checkpoint next (T9).
