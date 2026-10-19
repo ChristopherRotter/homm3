@@ -6,7 +6,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use super::{
-    Hit, Spread, Stack, defend, entries, luck_good, morale_bad, morale_good, strike, wait,
+    Hit, Spread, Stack, defend, entries, luck_good, morale_bad, morale_good, shown, strike, wait,
 };
 use crate::text::Catalogue;
 use crate::text::pack::Pack;
@@ -186,4 +186,13 @@ fn a_line_becomes_one_entry_or_two() {
         entries("ab\ncd", &|s: &str| i64::from(s != "ab cd") + 1),
         split(&["ab cd"])
     );
+}
+
+#[test]
+fn the_item_shows_two_entries_from_the_first() {
+    let log: Vec<String> = ["One.", "Two.", "Three."].map(String::from).into();
+    assert_eq!(shown(&log, 0), "One.\nTwo.");
+    assert_eq!(shown(&log, 2), "Three.");
+    assert_eq!(shown(&log, 3), "");
+    assert_eq!(shown(&[], 0), "");
 }

@@ -127,7 +127,8 @@ counts from the last one). `behind` (`seq-behind.toml`): two rounds, 8 commands,
 `shots` (`seq-shots.toml`, M3 T1b-1): two rounds, 6 commands, three rays, about 10 s; `fly`
 (`seq-fly.toml`, M3 T1b-2): two flights across rows and a breath, about 9 s; `machines`
 (`seq-machines.toml`, M3 T3b): the war machines act on their own after the Archers' shot (two
-Ballistas' shots and the tent's heal), about 8.5 s. A war machine without Artillery or First Aid
+Ballistas' shots and the tent's heal), about 8.5 s; `strike` (`seq-strike.toml`, M3 T4b-2b-2):
+the Archangel's fixed damage kills the Pikemen, about 4.3 s, its log line compared (below). A war machine without Artillery or First Aid
 needs no action (the engine plays its turn inside the command before it). A two-hex striker
 stands where the cursor's slot inside the target's hex says (design §7.13): `click:x,y` with an
 offset from the hex's point picks it. `hover` (M3 T1b-2) moves the mouse over a stack
@@ -147,7 +148,9 @@ drew in `ours.txt`, with the heroes the original showed: their defeat and victor
 generator; the flags are the viewer's own); the masked diff of each pair (the panel, the count
 boxes where the drawn poses show them; the heroes are compared since M3 T3a), written to `frames.txt` and, for a frame that differs, `diff/t<ms>.png`; each
 line compared with the sequence's recorded `timelines/<id>-frames.txt` (`ok`, `new`, `CHANGED`;
-exit 1 on a change). Each line is `<ms> <differing> <artifacts>` (M3 T1c): the differing
+exit 1 on a change). An entry's `log_at` (M3 T4b-2b-2) compares the log's item from that time on
+(`panel_beside_log` instead of `panel`), the viewer drawing its record's first strike's line
+there (design §9.6). Each line is `<ms> <differing> <artifacts>` (M3 T1c): the differing
 pixels outside the masks and how many of them are the original's **redraw artifacts**
 (`h3cap.redraws`, design §7.11): its pixel is ours at that moment with one to five more
 shadows, or one we drew there at an earlier moment of the sequence with at least one more. The
@@ -294,6 +297,9 @@ design §7.1.
   park point); a `CHANGED` there with only such shifts is that, not a change of the viewer.
 - The battle panel's buttons change with whose turn it is: the `battle` probes are the ones equal
   in both states.
+- A click's hover leaves the status line's hint in the log's item (`Attack Pikemen` over a
+  target) until a log line replaces it, and a line held there less than 3 000 ms keeps hints out
+  (design §9.4, §9.6): compare the log's item only from a sequence's `log_at`.
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.
 - The menus run in real time; only the battle runs on the stepped clock. Two runs still agree:
   the battle's setup does not depend on the clock (observed: the obstacles follow the tile).

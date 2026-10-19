@@ -1,7 +1,7 @@
 //! The battle log's lines (E17 M3 T4b-2a, `docs/epics/E17-design.md` §9.4): the texts the
 //! executable writes into the log for a strike, a wait, a defend, morale and luck, composed from the
-//! string catalogue's keys as its code composes them from its text rows, and the log's entries a
-//! line becomes (`battle_log_add` 0x472E90).
+//! string catalogue's keys as its code composes them from its text rows, the log's entries a
+//! line becomes (`battle_log_add` 0x472E90) and the text its item shows (0x472C30, M3 T4b-2b-2).
 //!
 //! A stack is named by its creature's key in the catalogue (`creature.base:pikeman`) and a number,
 //! which picks the name's form: the original's singular for exactly 1, else its plural (the
@@ -140,6 +140,21 @@ pub fn entries(line: &str, lines: &dyn Fn(&str) -> i64) -> Vec<String> {
     } else {
         vec![first.into(), rest.into()]
     }
+}
+
+/// The log item's text (`battle_log_show_from` 0x472C30, design §9.5): the entry `first` on the
+/// box's first line and, after a line break, the next one on its second, if there is one; nothing
+/// from past the last entry. (Which entry shows first, set by the entries a line added and by the
+/// scroll buttons, is the panel's: M3 T6.)
+#[must_use]
+pub fn shown(entries: &[String], first: usize) -> String {
+    let lines: Vec<&str> = entries
+        .iter()
+        .skip(first)
+        .take(2)
+        .map(String::as_str)
+        .collect();
+    lines.join("\n")
 }
 
 /// A stack's name by its number.

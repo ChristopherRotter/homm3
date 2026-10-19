@@ -757,7 +757,10 @@ def run_frames(rest):
             stem = Path(k["frame"]).stem
             cap = np.load(here / "frames" / k["frame"])["screen"]
             ours = h3cap.png565(here / "ours" / f"{stem}.png")
-            masked = h3cap.mask(["panel"], shape=cap.shape)
+            # The panel, but its log's item from the entry's `log_at` on (E17 M3 T4b-2b-2).
+            log_at = e.get("log_at")
+            masks = ["panel_beside_log" if log_at is not None and k["t"] >= log_at else "panel"]
+            masked = h3cap.mask(masks, shape=cap.shape)
             for x0, y0, x1, y1 in h3cap.boxes_at(observation, drawn[k["t"]]):
                 masked[max(y0, 0):max(y1, 0), max(x0, 0):max(x1, 0)] = True
             differ = (cap != ours) & ~masked

@@ -242,8 +242,9 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         )
         .map_err(|e| e.to_string())?
         .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
-        let drawn =
-            crate::sequences::draw_frames(dir, &record, &timeline, &tables, &layout, &archives)?;
+        let drawn = crate::sequences::draw_frames(
+            dir, &record, &timeline, &tables, &layout, &archives, None,
+        )?;
         lines.push(format!("{drawn} frames drawn in {}", dir.display()));
         return Ok(lines);
     }
