@@ -50,11 +50,14 @@ def line(record: dict) -> str:
         for name in ("greedy", "random"):
             if name in record:
                 text += f", {name} {record[name]['win_rate']:.3f}"
-        return text + f" [{record['eval_s']:.0f} s]"
+        if record.get("repeated"):
+            return text + " [final: the last evaluation's]"
+        return text + f" best {record['best']:.3f} [{record['eval_s']:.0f} s]"
     return (
         f"update {record['update']:>4} {record['minutes']:6.1f} min {record['samples']:>10} "
         f"samples {record['samples_per_s']:8.0f}/s episodes {record['episodes']:>7} "
         f"attacker {record['attacker_won']:.2f} trunc {record['truncated']:.2f} "
+        f"pool {record['pool']} won {record['pool_won']:.2f} "
         f"pg {record['policy_loss']:+.4f} v {record['value_loss']:.4f} "
         f"ent {record['entropy']:.3f} kl {record['kl']:.4f} ev {record['explained_variance']:+.2f}"
     )

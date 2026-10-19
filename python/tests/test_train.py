@@ -16,6 +16,23 @@ torch = pytest.importorskip("torch")
 
 from h3env.train import EVAL_SEED, Config, Policy, Rollout, gae, train  # noqa: E402
 from h3env.train.evaluate import episode_seeds, play, random_agent  # noqa: E402
+from h3env.train.ppo import Trainer  # noqa: E402
+
+#: A run small enough for a test.
+SMALL = dict(
+    envs=8,
+    threads=2,
+    max_steps=300,
+    rollout=16,
+    epochs=2,
+    minibatches=2,
+    hidden=32,
+    embed=8,
+    eval_episodes=8,
+    eval_envs=8,
+    eval_greedy=False,
+    device="cpu",
+)
 
 
 def casting_policy(batch: BattleBatch) -> Policy:
@@ -46,7 +63,7 @@ def test_choices_keep_to_the_masks_and_recompute_their_log_probabilities() -> No
     casts = 0
     for t in range(calls):
         choice = policy.act(batch, generator)
-        rollout.store(t, batch, choice)
+        rollout.store(t, batch, choice, batch.to_move)
         live = batch.to_move >= 0
         rows = np.nonzero(live)[0]
         assert (batch.entry_mask[rows, choice.entry[rows]] == 1).all()
@@ -61,6 +78,12 @@ def test_choices_keep_to_the_masks_and_recompute_their_log_probabilities() -> No
         a["target"], a["second"] = choice.target, choice.second
         batch.step()  # raises if an env with a side to move refuses its action
     assert casts > 0
+    # A subset of rows chooses as the same rows of a whole-batch call (greedy, so no draws).
+    rows = np.array([1, 4, 6])
+    whole, part = policy.act(batch, greedy=True), policy.act(batch, greedy=True, rows=rows)
+    for name in ("entry", "spell", "target", "second", "cast"):
+        np.testing.assert_array_equal(getattr(part, name), getattr(whole, name)[rows])
+    np.testing.assert_allclose(part.logprob, whole.logprob[rows], atol=1e-5)
     # The stored samples' log-probabilities under the same weights, recomputed for the update.
     valid = (rollout.side >= 0).reshape(-1)
 
@@ -158,22 +181,7 @@ def test_the_evaluation_plays_fixed_held_out_episodes() -> None:
 
 
 def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -> None:
-    config = Config(
-        updates=2,
-        envs=8,
-        threads=2,
-        max_steps=300,
-        rollout=16,
-        epochs=2,
-        minibatches=2,
-        hidden=32,
-        embed=8,
-        eval_every=0,
-        eval_episodes=8,
-        eval_envs=8,
-        eval_greedy=False,
-        device="cpu",
-    )
+    config = Config(**SMALL, updates=2, eval_every=0, pool_every=1)
     trainer = train(config, tmp_path)
     records = [json.loads(line) for line in (tmp_path / "metrics.jsonl").read_text().splitlines()]
     updates = [r for r in records if not r.get("eval")]
@@ -186,6 +194,9 @@ def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -
         assert all(np.isfinite(r[k]) for k in ("policy_loss", "value_loss", "entropy", "kl"))
         assert r["update_samples"] > 0
     assert updates[1]["samples"] == updates[0]["samples"] + updates[1]["update_samples"]
+    # A snapshot after each update: the second rollout drew from a pool of one.
+    assert [r["pool"] for r in updates] == [0, 1] and len(trainer.pool) == 2
+    assert (tmp_path / "best.pt").exists() and evals[-1]["best"] >= evals[0]["best"]
     meta = json.loads((tmp_path / "config.json").read_text())
     assert meta["abi"] == _ffi.ABI_VERSION and meta["config"]["hidden"] == 32
     saved = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
@@ -195,3 +206,43 @@ def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -
     for name, weights in trainer.policy.state_dict().items():
         assert torch.equal(weights, restored_state[name]), name
     assert saved["updates"] == 2
+
+
+def test_a_frozen_network_plays_its_side_and_only_the_learner_trains() -> None:
+    trainer = Trainer(Config(**{**SMALL, "max_steps": 10}, pool_share=1.0))
+    trainer.snapshot()
+    with torch.no_grad():
+        # The learner now prefers Defend everywhere it is legal, the frozen copy does not.
+        trainer.policy.entry_head.bias[1] = 50.0
+    trainer.assign(np.arange(trainer.config.envs))
+    assert (trainer.frozen_side >= 0).all() and all(
+        n is trainer.pool[0] for n in trainer.frozen_net
+    )
+    batch = trainer.batch
+    choice, side = trainer.act()
+    frozen = (batch.to_move >= 0) & (batch.to_move == trainer.frozen_side)
+    assert frozen.any() and (~frozen & (batch.to_move >= 0)).any()
+    np.testing.assert_array_equal(side, np.where(frozen, -1, batch.to_move))
+    defend = batch.entry_mask[:, 1] == 1
+    assert (choice.entry[~frozen & defend & (side >= 0)] == 1).all()
+    assert not choice.cast[frozen].any()
+    # A rollout keeps only the learner's decisions (about half of the moves here); its update
+    # runs on them.
+    roll = trainer.collect()
+    assert (trainer.rollout.side >= 0).sum() == roll["decisions"]
+    assert 0 < roll["decisions"] < 0.8 * trainer.config.rollout * trainer.config.envs
+    assert roll["pool_episodes"] > 0
+    stats = trainer.update(1e-4)
+    assert stats["update_samples"] > 0 and np.isfinite(stats["policy_loss"])
+
+
+def test_the_final_evaluation_reuses_the_last_when_nothing_changed(tmp_path) -> None:
+    # An evaluation after every update: the final one is the last one's record again.
+    train(Config(**SMALL, updates=1, eval_every=1e-9), tmp_path)
+    records = [json.loads(line) for line in (tmp_path / "metrics.jsonl").read_text().splitlines()]
+    evals = [r for r in records if r.get("eval")]
+    assert [(e["update"], e["final"], e.get("repeated", False)) for e in evals] == [
+        (0, False, False),
+        (1, False, False),
+        (1, True, True),
+    ]

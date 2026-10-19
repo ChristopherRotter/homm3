@@ -10,6 +10,7 @@ choice (or none: an env that gave up) stays finite.
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 
 import numpy as np
@@ -148,53 +149,63 @@ class Policy(nn.Module):
         batch: BattleBatch,
         generator: torch.Generator | None = None,
         greedy: bool = False,
+        rows: np.ndarray | None = None,
     ) -> Choice:
-        """Chooses an action for every row of `batch` from its current observation and masks: the
-        entry, then for the rows that chose a cast its heads through the batch's head calls."""
+        """Chooses an action for every row of `batch` (or only `rows`, the `Choice` then holding
+        theirs in that order) from its current observation and masks: the entry, then for the
+        rows that chose a cast its heads through the batch's head calls."""
         device = next(self.parameters()).device
         n = batch.envs
-        obs = torch.from_numpy(batch.obs).to(device)
-        h = self.features(obs)
+        if rows is None:
+            rows = np.arange(n)
+            obs, entry_mask = batch.obs, batch.entry_mask
+        else:
+            obs, entry_mask = batch.obs[rows], batch.entry_mask[rows]
+        m = len(rows)
+        h = self.features(torch.from_numpy(obs).to(device))
         value = self.value(h)
-        entry_mask = torch.from_numpy(batch.entry_mask).to(device).bool()
-        logits = masked(self.entry_head(h), entry_mask)
+        logits = masked(self.entry_head(h), torch.from_numpy(entry_mask).to(device).bool())
         entry = pick(logits, generator, greedy)
         logprob = chosen(logits, entry)
         entries = entry.cpu().numpy().astype(np.uint32)
         cast = np.isin(entries, CASTS)
-        spell = np.zeros(n, np.uint16)
-        target = np.zeros(n, np.uint16)
-        second = np.zeros(n, np.uint16)
-        spell_mask = np.zeros((n, batch.spell_count), np.uint8)
-        target_mask = np.zeros((n, batch.target_count), np.uint8)
-        second_mask = np.zeros((n, batch.target_count), np.uint8)
+        spell = np.zeros(m, np.uint16)
+        target = np.zeros(m, np.uint16)
+        second = np.zeros(m, np.uint16)
+        spell_mask = np.zeros((m, batch.spell_count), np.uint8)
+        target_mask = np.zeros((m, batch.target_count), np.uint8)
+        second_mask = np.zeros((m, batch.target_count), np.uint8)
         if cast.any():
-            rows_np = np.nonzero(cast)[0]
-            rows = torch.from_numpy(rows_np).to(device)
-            hc, c = h[rows], self._cast(entry[rows])
+            # The head calls take every env's choices: the other rows' entries stay 0 (no cast).
+            at = np.nonzero(cast)[0]
+            envs = rows[at]
+            full = [np.zeros(n, np.uint32), np.zeros(n, np.uint16), np.zeros(n, np.uint16)]
+            full[0][envs] = entries[at]
+            index = torch.from_numpy(at).to(device)
+            hc, c = h[index], self._cast(entry[index])
 
             def head(mask_np: np.ndarray, out_mask: np.ndarray, logits_of) -> torch.Tensor:
-                out_mask[rows_np] = mask_np[rows_np]
-                m = torch.from_numpy(out_mask[rows_np]).to(device).bool()
-                head_logits = masked(logits_of(), m)
-                index = pick(head_logits, generator, greedy)
-                logprob[rows] += chosen(head_logits, index)
-                return index
+                out_mask[at] = mask_np[envs]
+                legal = torch.from_numpy(out_mask[at]).to(device).bool()
+                head_logits = masked(logits_of(), legal)
+                choice = pick(head_logits, generator, greedy)
+                logprob[index] += chosen(head_logits, choice)
+                return choice
 
-            s = head(batch.spell_mask(entries), spell_mask, lambda: self._spell_logits(hc, c))
-            spell[rows_np] = s.cpu().numpy()
+            s = head(batch.spell_mask(full[0]), spell_mask, lambda: self._spell_logits(hc, c))
+            spell[at] = full[1][envs] = s.cpu().numpy()
             t = head(
-                batch.target_mask(entries, spell),
+                batch.target_mask(full[0], full[1]),
                 target_mask,
                 lambda: self._target_logits(hc, c, s),
             )
-            target[rows_np] = t.cpu().numpy()
+            target[at] = full[2][envs] = t.cpu().numpy()
             u = head(
-                batch.second_mask(entries, spell, target),
+                batch.second_mask(full[0], full[1], full[2]),
                 second_mask,
                 lambda: self._second_logits(hc, c, s, t),
             )
-            second[rows_np] = u.cpu().numpy()
+            second[at] = u.cpu().numpy()
         return Choice(
             entry=entries,
             spell=spell,
@@ -207,6 +218,13 @@ class Policy(nn.Module):
             target_mask=target_mask,
             second_mask=second_mask,
         )
+
+    def frozen(self) -> Policy:
+        """A copy for the opponent pool: evaluation mode, no gradients."""
+        twin = copy.deepcopy(self)
+        twin.eval()
+        twin.requires_grad_(False)
+        return twin
 
     def evaluate(
         self,
