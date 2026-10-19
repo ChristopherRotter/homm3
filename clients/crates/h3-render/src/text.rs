@@ -326,7 +326,9 @@ fn glyph(
 
 /// How many lines `text` takes at `width` (0x4B5820): its own breaking, simpler than the
 /// drawer's (no negative spaces, no last line), with the long word's bug or fixed as the drawer.
-fn line_count(font: &Font, text: &[u8], width: i64, bugs: Bugs) -> i64 {
+/// Also the battle log's measure of a line (`battle_log_add` 0x472E90, E17 M3 T4b-2b-2).
+#[must_use]
+pub fn line_count(font: &Font, text: &[u8], width: i64, bugs: Bugs) -> i64 {
     let len = to_i64(text.len());
     let at = |i: i64| byte(text, i);
     let advance = |c: u8| i64::from(font.glyph(c).advance());

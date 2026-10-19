@@ -1,0 +1,59 @@
+# E17 M3 T4b-2b-2: a strike's line in the battle log, in hot seat (`hot_seat` in sequences.toml:
+# the harness plays both sides). The Archangel (speed 18, the first turn) flies to the Pikemen and
+# strikes them; its damage is fixed (50 a creature), so the engine's line is the original's: attack
+# 31 against defense 11 doubles it, 100 damage, the Pikemen's 100 hit points, all ten perish and
+# none strike back. The log then holds one entry (design §9.4, §9.5). Three factions on the
+# attacker's side and the Archangel's +1 make its morale 0, two on the defender's; luck 0: nothing
+# rolls. On grass at the capture set's tile (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-strike"
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:archangel"
+count = 1
+
+[[attacker]]
+slot = 2
+creature = "base:goblin"
+count = 10
+
+[[attacker]]
+slot = 4
+creature = "base:gnoll"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:pikeman"
+count = 10
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 10
+
+# The heroes (E17 M3 T3a), as the original's map gets them (`h3-view situation`): Orrin, a
+# Knight, with 1 in every primary skill, and Crag Hack, a Barbarian, with defense 6.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 6
+power = 1
+knowledge = 1

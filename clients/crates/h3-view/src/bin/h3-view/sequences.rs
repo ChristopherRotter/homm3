@@ -25,7 +25,7 @@ use h3_view::{layout, record, scene};
 use serde::Deserialize;
 
 use crate::render::{lookup, read_archives, write};
-use crate::{assets, motion, scenario};
+use crate::{assets, log, motion, scenario};
 
 /// The sequences file.
 #[derive(Debug, Deserialize)]
@@ -45,6 +45,11 @@ struct Sequence {
     ms: u32,
     #[serde(default)]
     command: Vec<Step>,
+    /// From when the frame check compares the log's item (E17 M3 T4b-2b-2, design §9.6): the
+    /// original shows the line of the sequence's first strike from then on (observed; when the
+    /// line appears is M3 T6's), the viewer draws it into its frames from then on.
+    #[serde(default)]
+    log_at: Option<u32>,
 }
 
 impl Sequence {
@@ -184,6 +189,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
         })
         .collect::<Result<Vec<_>, _>>()?;
     let mut differing = 0;
+    let mut catalogue = None;
     for sequence in &file.sequence {
         if options.only.as_ref().is_some_and(|id| *id != sequence.id) {
             continue;
@@ -250,7 +256,31 @@ fn sequences(options: &Options) -> Result<usize, String> {
         write(&ours_path, ours.as_bytes())?;
         if let Some(dir) = &options.frames {
             let here = dir.join(&sequence.id);
-            let drawn = draw_frames(&here, &record, &timeline, &tables, &layout, &archives)?;
+            let log = match sequence.log_at {
+                None => None,
+                Some(at) => {
+                    if catalogue.is_none() {
+                        catalogue = Some(log::catalogue(&tables, &archives)?);
+                    }
+                    let line = catalogue
+                        .as_ref()
+                        .and_then(|c| log::first_strike(&record, c))
+                        .ok_or_else(|| format!("{}: `log_at` without a strike", sequence.id))?;
+                    let font = h3_assets::fnt::decode_fnt(&lookup(&archives, &layout.log.font)?)
+                        .map_err(|e| format!("{}: {e:?}", layout.log.font))?;
+                    let text = log::after_one(&line, &font, layout.log.size[0], Bugs::Original);
+                    Some((at, text))
+                }
+            };
+            let drawn = draw_frames(
+                &here,
+                &record,
+                &timeline,
+                &tables,
+                &layout,
+                &archives,
+                log.as_ref().map(|(at, text)| (*at, text.as_str())),
+            )?;
             println!(
                 "{}: {drawn} frames drawn in {}",
                 sequence.id,
@@ -294,7 +324,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
 
 /// Draws the viewer's frame at each time in `<here>/frames.toml` (the stacks the original shows
 /// fidgeting then in its poses) into `<here>/ours/<file>.png`, and what it drew into
-/// `<here>/ours.txt`; returns how many.
+/// `<here>/ours.txt`; returns how many. `log`: the log item's text and the time from which the
+/// frames show it (E17 M3 T4b-2b-2); before it, and without it, the log is empty.
 pub(crate) fn draw_frames(
     here: &Path,
     record: &Record,
@@ -302,6 +333,7 @@ pub(crate) fn draw_frames(
     tables: &Tables,
     layout: &BattleLayout,
     archives: &[(&str, LodArchive<'_>)],
+    log: Option<(u32, &str)>,
 ) -> Result<usize, String> {
     let path = here.join("frames.toml");
     let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -311,7 +343,7 @@ pub(crate) fn draw_frames(
         .ok_or("the record holds no snapshot")?;
     let manifest = &record.header.manifest;
     let mut lists = Vec::new();
-    let mut log = String::new();
+    let mut drawn = String::new();
     for frame in &kept.frame {
         let mut moment = scene::Moment::at(timeline, frame.t);
         for &[side, index, group, f] in &frame.fidgets {
@@ -348,12 +380,16 @@ pub(crate) fn draw_frames(
                 };
             }
         }
-        log.push_str(&describe(frame.t, &moment));
+        drawn.push_str(&describe(frame.t, &moment));
         let mut list = scene::battle_at(snapshot, &moment, manifest, tables, layout)
             .map_err(|e| e.to_string())?;
-        // The panel's log, empty as at the opening (E17 M3 T4b-2b-1): the capture set compares
-        // its item; a sequence's frame check, the battlefield only.
-        list.extend(scene::panel(""));
+        // The panel's log, empty as at the opening (E17 M3 T4b-2b-1), or from the sequence's
+        // `log_at` its first strike's line (T4b-2b-2): the capture set compares its item, a
+        // sequence's frame check from `log_at`.
+        let text = log
+            .filter(|(at, _)| frame.t >= *at)
+            .map_or("", |(_, text)| text);
+        list.extend(scene::panel(text));
         lists.push((frame, list));
     }
     let mut names = std::collections::BTreeSet::new();
@@ -374,7 +410,7 @@ pub(crate) fn draw_frames(
             .join(Path::new(&frame.file).with_extension("png"));
         write(&png, &h3_render::png::encode(&screen))?;
     }
-    write(&here.join("ours.txt"), log.as_bytes())?;
+    write(&here.join("ours.txt"), drawn.as_bytes())?;
     Ok(lists.len())
 }
 
@@ -461,6 +497,9 @@ mod tests {
         );
         assert_eq!((melee.pre, melee.ms), (0, 6000));
         assert_eq!((melee.until(), melee.command[0].at), (6000, None));
+        // The log's item compared from a time on (E17 M3 T4b-2b-2).
+        let strike = file.sequence.iter().find(|s| s.id == "strike").unwrap();
+        assert_eq!((melee.log_at, strike.log_at), (None, Some(3730)));
     }
 
     #[test]
