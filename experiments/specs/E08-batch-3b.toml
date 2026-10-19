@@ -1,5 +1,6 @@
 # Experiment batch E3b (E08 T22a2a; decision 44): the monster's answer on Normal (D-9, D-10's
-# control, D-8), the split's upgraded stack (D-11) and its survivors after a retreat (A-6).
+# control, D-8), the split's upgraded stack (D-11, with a control) and its survivors after a
+# retreat (A-6).
 # Batch E3's monster rows (survey docs/rules/surveys/E08-battles.md §13) in two maps: this one is
 # played on Normal, E08-batch-3a.toml on Easy with E3-1, E3-1c, E3-2 and E3-2c at the same tiles.
 # The user chose the code reading for D-8 to D-11 and A-6 always fixed (decision 23); the batch
@@ -28,13 +29,19 @@
 # | tile             | d1 | d2 | reading: upgraded | VCMI: upgraded |
 # | (12, 27) surface | 60 | 25 | yes               | yes            |
 # | (12, 27) below   | 44 | 50 | yes               | no (D-11)      |
+# | (29, 10) surface | 52 | 50 | yes               | yes (its value 49) |
+#
+# VCMI's value is the float formula evaluated in single precision step by step (it agrees with
+# d2 on all but the boundary tiles, survey §4.1). E3-4 and E3-4c tell three readings apart: the
+# code's d2 <= 50 (Halberdiers at both), VCMI's formula (none at E3-4, Halberdiers at E3-4c) and
+# an off-by-one d2 < 50 in the reading (none at both).
 #
 # The engine: a throwaway run of the compiled map through h3-map's reader and import and h3-game
 # (base:faithful, difficulty 1; never committed, E08-log.md T22a2a) gave every prediction marked
 # "the reading" below: E3-1 and E3-1c a battle at once, E3-2 and E3-2c a flee offer; E3-3 at each
 # aggression 1 to 7 (seeds searched) a join offer exactly at L >= M, 32 Halberdiers kept after the
-# retreats; E3-4 and E3-5 A 8 Pikemen, 8 Pikemen, 7 Halberdiers, 7 Pikemen, 30 kept after
-# the retreat (A-6 fixed); E3-5 B 15 Pikemen, 15 Halberdiers.
+# retreats; E3-4, E3-4c and E3-5 A 8 Pikemen, 8 Pikemen, 7 Halberdiers, 7 Pikemen, 30 kept
+# after the retreat (A-6 fixed); E3-5 B 15 Pikemen, 15 Halberdiers.
 #
 # The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
 # artifact; E3-3 needs Attack and Defense 0 exactly (a visit by a hero showing more is void), the
@@ -53,7 +60,7 @@ instructions = [
     "Move only the hero an encounter names, and only as it says. Before each visit of E3-1 to E3-3, read the hero's primary skills: if Attack or Defense is above 0 (a starting bonus's artifact), note it under `anything odd`.",
     "A click on a monster shows the hero's path, a second click attacks it. Answer every question as the encounter says. A battle: as the encounter says (auto combat, or retreat at once: the flag button, then Yes).",
     "E3-3 needs the monster's aggression, which only the game's memory shows: the capture harness reads it (clients/capture/batches/E08-batch-3b.toml); played by hand, leave those lines empty.",
-    "Order: day 1, Red's turn: E3-1, E3-1c, E3-2, E3-2c, then E3-3r; end the turn. Day 1, Blue's turn: save 2, then E3-3b, E3-4 (on the underground: the level button under the minimap) and E3-5. Then the map is done.",
+    "Order: day 1, Red's turn: E3-1, E3-1c, E3-2, E3-2c, then E3-3r; end the turn. Day 1, Blue's turn: save 2, then E3-3b, E3-4 (on the underground: the level button under the minimap), E3-4c (back on the surface) and E3-5. Then the map is done.",
     "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
 ]
 
@@ -223,6 +230,7 @@ record = [
     { field = "L3: the questions asked" },
     { field = "L3: a battle (yes/no)" },
     { field = "the Halberdiers on their tile after" },
+    { field = "the Halberdiers' aggression after the four visits (memory)" },
     { field = "anything odd" },
 ]
 predictions = """
@@ -248,7 +256,8 @@ predictions = """
   second draw. A visit by a hero whose Attack or Defense is above 0 (a starting bonus) has r > 0.5
   and St = -1 for every source: void. The split (n from 1840 / 3680 = 0.5: 6, then d1) is not
   recorded.
-- After the four retreats: **32 Halberdiers** on the tile.
+- After the four retreats: **32 Halberdiers** on the tile, the aggression as at the start (the
+  second read checks that no visit changed M).
 """
 [encounter.hero]
 type = "Grindan"
@@ -311,13 +320,15 @@ record = [
     { field = "L3: the questions asked" },
     { field = "L3: a battle (yes/no)" },
     { field = "the Halberdiers on their tile after" },
+    { field = "the Halberdiers' aggression after the four visits (memory)" },
     { field = "anything odd" },
 ]
 predictions = """
 - As E3-3r with this monster's own M: the reading offers to join at L >= M, VCMI at L >= M - 1;
   M = 1 to 4 tells D-8. With E3-3r, at least one of the two draws tells it with
   1 - (3/7)^2 = 82 % under uniform draws.
-- After the four retreats: **32 Halberdiers** on the tile.
+- After the four retreats: **32 Halberdiers** on the tile, the aggression as at the start (the
+  second read checks that no visit changed M).
 """
 [encounter.hero]
 type = "Rissa"
@@ -386,6 +397,9 @@ predictions = """
 - After the retreat: the reading and the wiki (A-6) **23 Pikemen** (the 7 Halberdiers vanish);
   the engine (A-6 fixed, ADV-QUIRK-7) 30; VCMI (no upgraded stack) 30. With Halberdiers at the
   start, 23 confirms A-6 a second time (E3-5).
+- Halberdiers here and at E3-4c: the reading (D-11 as decided). None here, Halberdiers at E3-4c:
+  VCMI's formula is the original's (the reading refuted). None at both: neither; the second draw's
+  threshold is d2 < 50 (the reading's comparison misread at 0x4AC781).
 """
 [encounter.hero]
 type = "Clavius"
@@ -399,11 +413,44 @@ monster = "Pikeman"
 count = 30
 
 [[encounter]]
+id = "E3-4c"
+title = "D-11's control: d2 = 50 where VCMI's formula upgrades too, 30 Pikemen at (29, 10)"
+questions = ["D-11", "ADV-MON-009", "A-6"]
+procedure = [
+    "Day 1, Blue's turn, after E3-4: back on the surface, select Blue's hero E3-4c (10 Griffins). The 30 savage Pikemen stand east of it, on (29, 10).",
+    "Click the Pikemen twice: a battle starts at once. Note the defender's stacks, then **retreat** at once.",
+    "Note the Pikemen left on the tile (right-click them).",
+]
+record = [
+    { field = "the defender's stacks at the battle's start" },
+    { field = "the monster on its tile after the retreat" },
+    { field = "anything odd" },
+]
+predictions = """
+- As E3-4 on another tile: a battle at once, n 4 (1.4625), d1 = 52: no change, stacks 8, 8, 7, 7;
+  d2 = 50 again, but VCMI's formula gives 49 here.
+- **The reading and VCMI 1.7.5**: stack 2 upgraded: **8 Pikemen, 8 Pikemen, 7 Halberdiers,
+  7 Pikemen**. A threshold of d2 < 50: no Halberdiers.
+- After the retreat: the reading and the wiki (A-6) **23 Pikemen**; the engine 30.
+- Read with E3-4 (its last prediction): this row tells VCMI's formula from a misread threshold.
+"""
+[encounter.hero]
+type = "Loynis"
+specialty = "spell Prayer"
+owner = "blue"
+at = [28, 10]
+primary = [0, 0, 1, 1]
+army = [["Griffin", 10]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 30
+
+[[encounter]]
 id = "E3-5"
 title = "A retreat from an upgraded stack, then a second visit (A-6)"
 questions = ["A-6", "ADV-QUIRK-7", "ADV-MON-009", "ADV-MON-010"]
 procedure = [
-    "Day 1, Blue's turn, after E3-4: back on the surface, select Blue's hero E3-5 A (10 Griffins). The 30 savage Pikemen stand east of it on (12, 27), Blue's hero E3-5 B (5 Archangels) east of them.",
+    "Day 1, Blue's turn, after E3-4c: select Blue's hero E3-5 A (10 Griffins). The 30 savage Pikemen stand east of it on (12, 27), Blue's hero E3-5 B (5 Archangels) east of them.",
     "A: click the Pikemen twice: a battle starts at once. Note the defender's stacks, then **retreat** at once. Note the Pikemen left on the tile (right-click them).",
     "B: click the Pikemen twice: a battle starts at once. Note the defender's stacks, then play it by auto combat (B wins). Then end Blue's turn: the map is done.",
 ]

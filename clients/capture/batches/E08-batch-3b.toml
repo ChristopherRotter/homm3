@@ -89,7 +89,7 @@ walk = [12, 5]
 answer = "no"
 battle = "retreat"
 expect = { battle = true, dialogs = true }
-record = { "L3's primary skills before" = "before:hero:primary", "L3: the questions asked" = "question", "L3: a battle (yes/no)" = "battle", "the Halberdiers on their tile after" = "monster:12,5" }
+record = { "L3's primary skills before" = "before:hero:primary", "L3: the questions asked" = "question", "L3: a battle (yes/no)" = "battle", "the Halberdiers on their tile after" = "monster:12,5", "the Halberdiers' aggression after the four visits (memory)" = "aggression:12,5" }
 
 [[step]]
 end_turn = true
@@ -135,9 +135,9 @@ walk = [20, 12]
 answer = "no"
 battle = "retreat"
 expect = { battle = true, dialogs = true }
-record = { "L3's primary skills before" = "before:hero:primary", "L3: the questions asked" = "question", "L3: a battle (yes/no)" = "battle", "the Halberdiers on their tile after" = "monster:20,12" }
+record = { "L3's primary skills before" = "before:hero:primary", "L3: the questions asked" = "question", "L3: a battle (yes/no)" = "battle", "the Halberdiers on their tile after" = "monster:20,12", "the Halberdiers' aggression after the four visits (memory)" = "aggression:20,12" }
 
-# --- Day 1, Blue: D-11 underground, A-6 on the surface -------------------------------------------
+# --- Day 1, Blue: D-11 underground and its control, A-6 on the surface ----------------------------
 
 [[step]]
 encounter = "E3-4"
@@ -146,6 +146,14 @@ walk = [12, 27, 1]
 battle = "retreat"
 expect = { question = "none", battle = true, dialogs = true }
 record = { "the defender's stacks at the battle's start" = "stacks:start:defender", "the monster on its tile after the retreat" = "monster:12,27,1" }
+
+[[step]]
+encounter = "E3-4c"
+hero = "E3-4c"
+walk = [29, 10]
+battle = "retreat"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "the defender's stacks at the battle's start" = "stacks:start:defender", "the monster on its tile after the retreat" = "monster:29,10" }
 
 [[step]]
 encounter = "E3-5"
@@ -159,6 +167,8 @@ record = { "A: the defender's stacks at the battle's start" = "stacks:start:defe
 encounter = "E3-5"
 hero = "E3-5 B"
 walk = [12, 27]
+# C = 11 > M = 10 here: only the never-flees bit keeps the flee offer away; if it comes, pursue.
+answer = { flee = "yes", other = "no" }
 battle = "auto"
 expect = { question = "none", battle = true, dialogs = true }
 record = { "B: the defender's stacks at the battle's start" = "stacks:start:defender", "B: the battle's winner" = "winner", "the monster on its tile after B's battle" = "monster:12,27" }

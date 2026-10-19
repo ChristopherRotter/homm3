@@ -2,7 +2,7 @@
 
 Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
-**Stamp `9952806a`.** The map's description in the scenario list starts with "Stamp 9952806a.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
+**Stamp `a2586e5b`.** The map's description in the scenario list starts with "Stamp a2586e5b.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
 
 **Difficulty: Normal.** Choose it in the scenario list before you start.
 
@@ -12,7 +12,7 @@ Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an ag
 4. Move only the hero an encounter names, and only as it says. Before each visit of E3-1 to E3-3, read the hero's primary skills: if Attack or Defense is above 0 (a starting bonus's artifact), note it under `anything odd`.
 5. A click on a monster shows the hero's path, a second click attacks it. Answer every question as the encounter says. A battle: as the encounter says (auto combat, or retreat at once: the flag button, then Yes).
 6. E3-3 needs the monster's aggression, which only the game's memory shows: the capture harness reads it (clients/capture/batches/E08-batch-3b.toml); played by hand, leave those lines empty.
-7. Order: day 1, Red's turn: E3-1, E3-1c, E3-2, E3-2c, then E3-3r; end the turn. Day 1, Blue's turn: save 2, then E3-3b, E3-4 (on the underground: the level button under the minimap) and E3-5. Then the map is done.
+7. Order: day 1, Red's turn: E3-1, E3-1c, E3-2, E3-2c, then E3-3r; end the turn. Day 1, Blue's turn: save 2, then E3-3b, E3-4 (on the underground: the level button under the minimap), E3-4c (back on the surface) and E3-5. Then the map is done.
 8. Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.
 
 ## E3-1 — 52 Pikemen against 10 savage Pikemen on Normal (E3-1's control) (D-9, D-10, ADV-MON-007)
@@ -112,6 +112,7 @@ Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an ag
 - L3: the questions asked: 
 - L3: a battle (yes/no): 
 - the Halberdiers on their tile after: 
+- the Halberdiers' aggression after the four visits (memory): 
 - anything odd: 
 
 ## E3-3b — r = 0.5 exactly: the same with Blue's four heroes and a second monster (D-8) (D-8, ADV-MON-007)
@@ -143,6 +144,7 @@ Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an ag
 - L3: the questions asked: 
 - L3: a battle (yes/no): 
 - the Halberdiers on their tile after: 
+- the Halberdiers' aggression after the four visits (memory): 
 - anything odd: 
 
 ## E3-4 — The upgraded stack's draw at d2 = 50: 30 Pikemen at (12, 27) underground (D-11) (D-11, ADV-MON-009, A-6)
@@ -161,13 +163,28 @@ Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an ag
 - the monster on its tile after the retreat: 
 - anything odd: 
 
+## E3-4c — D-11's control: d2 = 50 where VCMI's formula upgrades too, 30 Pikemen at (29, 10) (D-11, ADV-MON-009, A-6)
+
+- Blue hero **E3-4c** (Loynis, specialty spell Prayer): attack 0, defense 0, power 1, knowledge 1; no skills; no artifacts; no spells; army 10 Griffin
+- Opponent: 30 Pikeman (wandering monster, never flees)
+
+1. Day 1, Blue's turn, after E3-4: back on the surface, select Blue's hero E3-4c (10 Griffins). The 30 savage Pikemen stand east of it, on (29, 10).
+2. Click the Pikemen twice: a battle starts at once. Note the defender's stacks, then **retreat** at once.
+3. Note the Pikemen left on the tile (right-click them).
+
+**Record**
+
+- the defender's stacks at the battle's start: 
+- the monster on its tile after the retreat: 
+- anything odd: 
+
 ## E3-5 — A retreat from an upgraded stack, then a second visit (A-6) (A-6, ADV-QUIRK-7, ADV-MON-009, ADV-MON-010)
 
 - Blue hero **E3-5 A** (Adela, specialty spell Bless): attack 0, defense 0, power 1, knowledge 1; no skills; no artifacts; no spells; army 10 Griffin
 - Opponent: 30 Pikeman (wandering monster, never flees)
 - Blue hero **E3-5 B** (Cuthbert, specialty spell Weakness): attack 0, defense 0, power 1, knowledge 1; no skills; no artifacts; no spells; army 5 Archangel
 
-1. Day 1, Blue's turn, after E3-4: back on the surface, select Blue's hero E3-5 A (10 Griffins). The 30 savage Pikemen stand east of it on (12, 27), Blue's hero E3-5 B (5 Archangels) east of them.
+1. Day 1, Blue's turn, after E3-4c: select Blue's hero E3-5 A (10 Griffins). The 30 savage Pikemen stand east of it on (12, 27), Blue's hero E3-5 B (5 Archangels) east of them.
 2. A: click the Pikemen twice: a battle starts at once. Note the defender's stacks, then **retreat** at once. Note the Pikemen left on the tile (right-click them).
 3. B: click the Pikemen twice: a battle starts at once. Note the defender's stacks, then play it by auto combat (B wins). Then end Blue's turn: the map is done.
 
