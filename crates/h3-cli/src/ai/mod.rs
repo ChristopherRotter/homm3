@@ -173,6 +173,10 @@ fn eval(args: &Args) -> Result<(), String> {
         max_steps: args.num("max-steps", 2000)?,
         weights,
     };
+    if options.max_steps == 0 {
+        // Two deterministic bots may repeat themselves forever (E05 T9b).
+        return Err("--max-steps: eval needs a step limit (not 0)".to_owned());
+    }
     let source = bench::encounters(options.weights)?;
     let start = std::time::Instant::now();
     let report = eval::run(&source, &options)?;

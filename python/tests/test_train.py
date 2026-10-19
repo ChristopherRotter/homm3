@@ -256,6 +256,7 @@ def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
     assert list(rows) == ["random", "aggressor", "greedy"]
     for row in rows.values():
         assert row["attacker"]["episodes"] == row["defender"]["episodes"] == 4
+        assert row["attacker"]["skipped"] == row["defender"]["skipped"] == 0
         assert 0.0 <= row["win_rate"] <= 1.0
     from h3env.train.ladder import main
 
@@ -264,3 +265,9 @@ def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
     assert [line.split(":")[0].split()[-1] for line in lines] == ["random", "aggressor", "greedy"]
     with pytest.raises(ValueError, match="unknown opponent"):
         play(random_agent(np.random.default_rng(0)), episodes=2, envs=2, opponent="minimax")
+    # E05 T9b: a network trained on the ladder's own episodes (its run's seed EVAL_SEED) is refused.
+    saved = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
+    saved["config"]["seed"] = EVAL_SEED
+    torch.save(saved, tmp_path / "same.pt")
+    with pytest.raises(SystemExit):
+        main(["--checkpoint", str(tmp_path / "same.pt")])

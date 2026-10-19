@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import os
 
-from .evaluate import OPPONENTS, ladder, load
+from .evaluate import EVAL_SEED, OPPONENTS, ladder, load, trained_seed
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -26,6 +26,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--max-steps", type=int, default=2000)
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args(argv)
+    if trained_seed(args.checkpoint) == EVAL_SEED:
+        # The same batch seed gives the same episodes: the ladder's would be the run's own.
+        parser.error("the checkpoint was trained on the ladder's episodes (its seed is EVAL_SEED)")
     policy = load(args.checkpoint, args.device)
     rows = ladder(
         policy,
@@ -36,10 +39,12 @@ def main(argv: list[str] | None = None) -> None:
         max_steps=args.max_steps,
     )
     for opponent, r in rows.items():
+        skipped = r["attacker"]["skipped"] + r["defender"]["skipped"]
         print(
             f"against {opponent:9}: win rate {r['win_rate']:.3f} (attacker "
             f"{r['attacker']['win_rate']:.3f}, defender {r['defender']['win_rate']:.3f}), "
-            f"value {(r['attacker']['reward'] + r['defender']['reward']) / 2:+.3f}",
+            f"value {(r['attacker']['reward'] + r['defender']['reward']) / 2:+.3f}"
+            + (f", {skipped} episodes skipped (not h3 ai eval's)" if skipped else ""),
             flush=True,
         )
 

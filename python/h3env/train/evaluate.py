@@ -5,7 +5,9 @@ defender of the same battles.
 Each side's batch plays the family with the agent's seat external and Random's internal (C ABI
 v29's seats), from the fixed batch seed `EVAL_SEED`; the episodes counted are the first
 `ceil(episodes / envs)` of each env, so every evaluation plays the same battles however long they
-last. Their seeds (`episode_seeds`) are checked against training's by the caller.
+last. Their seeds (`episode_seeds`) are checked against training's by the caller. An episode the
+engine's seat ends before the agent could act is skipped by the batch (design §1): it is reported
+as `skipped`, not counted (none among the default episodes, E05 T9b).
 """
 
 from __future__ import annotations
@@ -67,7 +69,8 @@ def play(
 ) -> dict:
     """Plays the evaluation's episodes with `agent` on each side against `opponent` (an engine
     seat: Random by default, or a baseline bot); returns the rates per side, per kind and overall
-    (both sides weighed equally), the agent's mean reward v1 and the truncations."""
+    (both sides weighed equally), the agent's mean reward v1, the truncations and the episodes
+    the batch skipped (ended before the agent could act: counted in no rate)."""
     if opponent not in OPPONENTS:
         raise ValueError(f"unknown opponent {opponent!r} (one of {OPPONENTS})")
     k = episodes_per_env(episodes, envs)
@@ -91,18 +94,23 @@ def play(
         batch.reset()
         side = 0 if name == "attacker" else 1
         counted = np.zeros(envs, np.int64)
+        # The episodes among each env's first k that the batch skipped: those before the first one
+        # reset shows, then those between an ended episode and the next one shown.
+        skipped = int(np.minimum(batch.episode, k).sum())
         wins = truncated = 0
         reward = 0.0
         by_kind: dict[str, list[int]] = {}
         # A generous bound on the calls: Random's battles last under 1 000 decisions (§8.1).
         for _ in range(k * (max_steps or 10_000) + 1):
-            live = (counted < k) & (batch.to_move >= 0)
+            live = (batch.episode < k) & (batch.to_move >= 0)
             if not live.any():
                 break
-            before = batch.episode.copy()
+            before = batch.episode.astype(np.int64)
             kind = batch.encounter.copy()
             agent(batch)
             batch.step()
+            after = np.minimum(batch.episode, k).astype(np.int64)
+            skipped += int((after - np.minimum(before + batch.done, k)).sum())
             for e in np.nonzero(batch.done.astype(bool) & (before < k))[0]:
                 won = int(batch.result[e]) == winning
                 wins += won
@@ -117,6 +125,7 @@ def play(
         wins_total += wins
         report[name] = {
             "episodes": played,
+            "skipped": skipped,
             "win_rate": wins / max(played, 1),
             "reward": reward / max(played, 1),
             "truncated": truncated / max(played, 1),
@@ -199,6 +208,13 @@ def ladder(
         out[opponent] = play(sampled, opponent=opponent, **settings)
     policy.train()
     return out
+
+
+def trained_seed(path) -> int:
+    """The batch seed a checkpoint's run trained with (its episodes are `episode_seed(seed, …)`)."""
+    import torch
+
+    return int(torch.load(path, map_location="cpu", weights_only=True)["config"]["seed"])
 
 
 def load(path, device: str = "cpu"):

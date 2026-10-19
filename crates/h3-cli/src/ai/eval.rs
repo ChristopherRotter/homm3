@@ -215,8 +215,10 @@ fn play(
     while let Some(side) = env.to_move() {
         let i = side.index();
         let command = seats[i].choose(&env, side, &mut rngs[i], legal);
-        // A policy plays legal commands, which always apply (property-tested in h3-battle).
-        let _ = rollout::step_command(&mut env, side, command);
+        // A policy plays legal commands, which always apply (property-tested in h3-battle); a
+        // refusal would repeat itself forever.
+        rollout::step_command(&mut env, side, command)
+            .map_err(|e| format!("episode {seed:#x}: {command:?} refused: {e:?}"))?;
     }
     let rewards = env.state().outcome().map_or([0.0; 2], |outcome| {
         h3_sim::reward::rewards(reward, env.ruleset(), env.setup(), &outcome)
