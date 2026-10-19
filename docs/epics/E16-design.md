@@ -21,7 +21,8 @@ M1–M6 task turns its section into code and docs and deletes it here.
    then `Snapshot { n, observation }` with the projected observation for its viewer.
 5. When both seats are taken (a bot counts), the game starts. The seat to act gets
    `YourTurn { n, legal, castable }` (the legal commands and the castable spells of its hero);
-   it may ask `Query { seq, what: CastTargets { spell } | SecondTargets { spell, target } }`.
+   it may ask `Query { seq, what: CastTargets { spell } | SecondTargets { spell, target } |
+   CreatureCastTargets {} }` (the last for the active stack's own cast, wire 34).
 6. The seat sends `Command { seq, command }`. The session core calls the engine's `apply` with
    the seat's side. Either `Rejected { seq, code }` (nothing changed) or, after the command is
    in the journal, `Accepted { seq, command }` (echoed, so the client can see what was applied)

@@ -100,7 +100,19 @@ A ladder's scenarios are
 offers of their own, `<ladder>.<n>` in the pool's order: its matches' journals and replays name
 them, and an `[[offer]]` may not be named so. A ladder's bots (`[[ladder.bot]]`) are accounts in
 the player log without a key: no one logs in as them, `rebind` refuses them, and a start renames
-one whose display name the configuration changed. The first signal drains the server (no new game,
+one whose display name the configuration changed.
+
+**The ruleset's profile** (`profile` on an `[[offer]]` or a `[[ladder]]`, else the scenario's)
+says which of the original's known bugs its games keep (`docs/rules/quirks-ledger.md`).
+`faithful` keeps the fix-optional ones, BAT-QUIRK-4 among them: Quicksand's and Land Mine's
+random hexes avoid the other side's hidden pits and mines, so their caster learns where none
+lies. The server sends each player only what it may see, but a rule that shows a hidden fact
+shows it to the player it shows it to. `strict-fixed` fixes every such bug, that leak with them,
+and so plays less like the original elsewhere too (luck without a hero, among others). The
+example hosts its ladder, where results count, on `synthetic:strict-fixed`, and its offers on
+the scenarios' `faithful` (the user, 2026-10-19).
+
+The first signal drains the server (no new game,
 the running ones play on), a second stops it at once; the journals stay, and the next start
 restores the running and paused games.
 
