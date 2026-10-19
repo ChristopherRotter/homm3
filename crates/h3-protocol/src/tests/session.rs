@@ -1767,6 +1767,49 @@ fn a_hidden_quicksand_leaves_the_other_viewers_bytes_unchanged() {
     assert!(watched.iter().all(|o| o.spectator && o.own_hero.is_none()));
 }
 
+/// Every frame of a game of the `siege` scenario with `seed`, its town with an Escape Tunnel or
+/// without, which a spectator watches from the start and [`play`] plays for 40 commands: the
+/// attacker's, the defender's and the spectator's.
+fn siege_frames(tunnel: bool, seed: u64) -> [Vec<String>; 3] {
+    let (r, mut setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_SIEGE).unwrap();
+    setup.siege.as_mut().unwrap().escape_tunnel = tunnel;
+    let config = GameConfig {
+        setup,
+        ..config(seed)
+    };
+    let mut s = Session::new(&r, config, players()).unwrap();
+    let watcher = ConnId(8);
+    let mut first = join(&mut s, watcher, Seat::Spectator, None);
+    first.extend(started(&mut s));
+    let mut rng = Rng::for_stream(seed, StreamId::AGENT);
+    let all = play(&mut s, first, &mut rng, 40);
+    [A, B, watcher].map(|conn| frames(&all, conn))
+}
+
+#[test]
+fn a_towns_escape_tunnel_leaves_the_attackers_and_spectators_bytes_unchanged() {
+    // A town's private facts over the wire (E04c T10b's review, F-sec-3; BAT-Q50 (4)): the
+    // defender's legal list differs by `Retreat`, which `play` never picks, so both games run
+    // alike.
+    let [attacker, defender, watched] = siege_frames(true, 5);
+    let [attacker_without, defender_without, watched_without] = siege_frames(false, 5);
+    assert!(attacker.len() > 40, "{}", attacker.len());
+    assert_eq!(attacker, attacker_without);
+    assert_eq!(watched, watched_without, "spectators see no tunnel");
+    let retreat = |frames: &[String]| {
+        frames.iter().find_map(|f| match decode(f) {
+            ServerMessage::Snapshot { observation, .. } => Some(observation.sides[1].may_retreat),
+            _ => None,
+        })
+    };
+    assert_eq!(
+        (retreat(&defender), retreat(&defender_without)),
+        (Some(true), Some(false)),
+        "its defender knows"
+    );
+    assert_eq!(retreat(&attacker), Some(false));
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
