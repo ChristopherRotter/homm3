@@ -1,0 +1,47 @@
+# E08 batch E3a played by the capture harness (E08 T22a2a, `cross-lane`; h3adv.py batch): the
+# procedure of experiments/specs/E08-batch-3a.toml as steps, on Easy. Hot seat, Red and Blue human;
+# Blue's hero never moves. Each step clicks a monster twice, answers its questions No (a flee
+# offer: let it go) and plays a battle by auto combat. `expect` is the code reading's outcome (the
+# engine's): a difference shows under the encounter's "anything odd".
+
+spec = "experiments/specs/E08-batch-3a.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# --- Day 1, Red: D-9 and D-10 on Easy ----------------------------------------------------------
+
+[[step]]
+encounter = "E3-1"
+hero = "E3-1"
+walk = [4, 3]
+answer = "no"
+battle = "auto"
+expect = { question = "flee", battle = false }
+record = { "E3-1's primary skills (attack/defense/power/knowledge) before" = "before:hero:primary", "the questions asked (none, flee, join, …)" = "question", "a battle (yes/no)" = "battle", "the monster on its tile after" = "monster:4,3" }
+
+[[step]]
+encounter = "E3-1c"
+hero = "E3-1c"
+walk = [4, 7]
+answer = "no"
+battle = "auto"
+expect = { question = "flee", battle = false }
+record = { "E3-1c's primary skills (attack/defense/power/knowledge) before" = "before:hero:primary", "the questions asked (none, flee, join, …)" = "question", "a battle (yes/no)" = "battle", "the monster on its tile after" = "monster:4,7" }
+
+[[step]]
+encounter = "E3-2"
+hero = "E3-2"
+walk = [4, 11]
+answer = "no"
+battle = "auto"
+expect = { question = "flee", battle = false }
+record = { "E3-2's primary skills (attack/defense/power/knowledge) before" = "before:hero:primary", "the questions asked (none, flee, join, …)" = "question", "a battle (yes/no)" = "battle", "the monster on its tile after" = "monster:4,11" }
+
+[[step]]
+encounter = "E3-2c"
+hero = "E3-2c"
+walk = [4, 15]
+answer = "no"
+battle = "auto"
+expect = { question = "flee", battle = false }
+record = { "E3-2c's primary skills (attack/defense/power/knowledge) before" = "before:hero:primary", "the questions asked (none, flee, join, …)" = "question", "a battle (yes/no)" = "battle", "the monster on its tile after" = "monster:4,15" }

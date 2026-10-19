@@ -1,0 +1,203 @@
+# Experiment batch E3a (E08 T22a2a; decision 44): the monster's answer on Easy (D-9, D-10).
+# Batch E3's monster rows (survey docs/rules/surveys/E08-battles.md §13) in two maps: this one is
+# played on Easy, E08-batch-3b.toml on Normal with the same four encounters at the same tiles
+# (E3-1, E3-1c, E3-2, E3-2c) and the rows that need no difficulty of their own (E3-3 to E3-5).
+# The user chose the code reading for D-8 to D-11 (decision 23); the batch confirms or refutes it.
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them.
+#
+# The monster's answer (survey §3, 0x4A7740; the engine's ADV-MON-007): C = St + Sy + L. St from
+# r = the hero's power / the monster's strength (AI values times counts; the power times
+# sqrt((1 + 0.05 D)(1 + 0.05 A)), 1 for Attack and Defense 0): r >= 1 gives floor(2r - 2).
+# Sy: none of the hero's creatures of the monster's type or its related one 0, some 1, more than
+# half (by count) 2; the reading counts the monster's own type, VCMI 1.7.5 only its upgrades and
+# downgrades (D-9). L: Diplomacy 0 to 3; on Easy a human player's L + 1, at most 3, in the reading,
+# no such rule in VCMI (D-10). Every monster here is savage (aggression M = 10, fixed) and may flee:
+# M > C fights; M <= Sy + L + 1 offers to join, M <= Sy + 2L + 1 to join for gold (neither can
+# happen here: Sy + 2L + 1 <= 5); M = C fights; else the monster offers to flee ("pursue them?").
+# AI values (packs/base/core.toml, the executable's record +0x40): Pikeman 80, Halberdier 115.
+#
+# | row    | hero's army     | r       | St | reading, Easy | D-9 reading only | D-10 reading only | VCMI     |
+# | E3-1   | 52 Pikemen      | 5.2     | 8  | C 11: flee    | C 10: battle     | C 9: battle       | C 8: battle |
+# | E3-1c  | 36 Halberdiers  | 5.175   | 8  | C 11: flee    | C 10: battle     | C 11: flee        | C 10: battle |
+# | E3-2   | 56 Pikemen      | 5.6     | 9  | C 12: flee    | C 11: flee       | C 10: battle      | C 9: battle |
+# | E3-2c  | 39 Halberdiers  | 5.60625 | 9  | C 12: flee    | C 11: flee       | C 12: flee        | C 11: flee  |
+#
+# So on Easy: E3-1c settles D-10 whatever D-9 (Halberdiers are the Pikemen's upgrade, counted by
+# both); E3-2 settles D-9 whatever D-10; E3-1 is the survey's row (both together); E3-2c is the
+# control (a flee offer for every source). On Normal (batch 3b) E3-1 and E3-1c fight at once for
+# every source, E3-2 offers to flee only under the reading, E3-2c always.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact. A hero's Attack or Defense above 0 raises its power (+2 keeps every St above; a hero
+# showing more voids its row: play again). Each visit records the hero's primary skills before it.
+
+[map]
+name = "E08 batch E3a"
+description = "Engine-generated experiment map (E08, batch E3a): the monster's answer on Easy. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-3a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "Move only the hero an encounter names, and only as it says. Before each visit, read the hero's primary skills (its portrait's window): if Attack or Defense is above 0 (a starting bonus's artifact), note it under `anything odd`.",
+    "A click on the monster shows the hero's path, a second click attacks it. Answer every question as the encounter says. A battle: *auto combat* until it ends.",
+    "Order: day 1, Red's turn: E3-1, E3-1c, E3-2 and E3-2c, in this order; end the turn. Blue does nothing. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- D-9 and D-10 on Easy: four savage groups of 10 Pikemen that may flee ---------------------
+
+[[encounter]]
+id = "E3-1"
+title = "52 Pikemen against 10 savage Pikemen on Easy (the survey's E3-1)"
+questions = ["D-9", "D-10", "ADV-MON-007"]
+procedure = [
+    "Day 1, Red's turn: select Red's hero E3-1 (52 Pikemen). Read its primary skills. The 10 Pikemen stand on the tile east of it.",
+    "Click the Pikemen twice. If the game asks whether to pursue them (they want to flee), answer **No**: they leave. If a battle starts, play it by auto combat.",
+    "Note what happened and whether the Pikemen are still on the map.",
+]
+record = [
+    { field = "E3-1's primary skills (attack/defense/power/knowledge) before" },
+    { field = "the questions asked (none, flee, join, …)" },
+    { field = "a battle (yes/no)" },
+    { field = "the monster on its tile after" },
+    { field = "anything odd" },
+]
+predictions = """
+- r = 52 x 80 / (10 x 80) = 5.2 (single precision 5.19999981), St = floor(8.4) = 8, M = 10.
+- **The reading** (the engine, ADV-MON-007 with D-9 and D-10 as decision 23): Sy 2 (52 of 52 of
+  the monster's own type), L 1 (Easy): C = 11 > M, no join (Sy + L + 1 = 4), not M = C, it may
+  flee: **a flee offer**; No lets it go: **no battle, the tile empty after**.
+- D-9 the reading but no Easy rule: C = 10 = M: **a battle at once, no question**. The Easy rule
+  but D-9 as VCMI (Sy 0): C = 9: **a battle at once**. VCMI 1.7.5: C = 8: **a battle at once**.
+- A flee offer confirms both D-9 and D-10; a battle refutes at least one (E3-1c and E3-2 tell
+  which). Compare batch 3b's E3-1 (Normal): a battle at once for every source.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [3, 3]
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 52]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 10
+flees = true
+
+[[encounter]]
+id = "E3-1c"
+title = "36 Halberdiers against 10 savage Pikemen on Easy (D-10 alone)"
+questions = ["D-10", "ADV-MON-007"]
+procedure = [
+    "Day 1, Red's turn, after E3-1: select Red's hero E3-1c (36 Halberdiers, four rows below E3-1). Read its primary skills. The 10 Pikemen stand east of it.",
+    "Click the Pikemen twice. A pursuit question: **No**. A battle: auto combat.",
+    "Note what happened and whether the Pikemen are still on the map.",
+]
+record = [
+    { field = "E3-1c's primary skills (attack/defense/power/knowledge) before" },
+    { field = "the questions asked (none, flee, join, …)" },
+    { field = "a battle (yes/no)" },
+    { field = "the monster on its tile after" },
+    { field = "anything odd" },
+]
+predictions = """
+- r = 36 x 115 / 800 = 5.175, St = floor(8.35) = 8, M = 10. Halberdiers are the Pikemen's
+  upgrade: Sy 2 for every source (36 of 36 related), so D-9 does not enter.
+- **The reading** (L 1 on Easy): C = 11: **a flee offer**, No: **no battle, the tile empty**.
+- **Without the Easy rule** (VCMI 1.7.5, or the reading refuted): C = 10 = M: **a battle at
+  once, no question**.
+- So a flee offer confirms D-10, a battle refutes it, whatever E3-2 says of D-9. Batch 3b's E3-1c
+  (Normal): a battle at once for every source (C = 10).
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+at = [3, 7]
+primary = [0, 0, 1, 1]
+army = [["Halberdier", 36]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 10
+flees = true
+
+[[encounter]]
+id = "E3-2"
+title = "56 Pikemen against 10 savage Pikemen on Easy (D-9)"
+questions = ["D-9", "ADV-MON-007"]
+procedure = [
+    "Day 1, Red's turn, after E3-1c: select Red's hero E3-2 (56 Pikemen, four rows below E3-1c). Read its primary skills. The 10 Pikemen stand east of it.",
+    "Click the Pikemen twice. A pursuit question: **No**. A battle: auto combat.",
+    "Note what happened and whether the Pikemen are still on the map.",
+]
+record = [
+    { field = "E3-2's primary skills (attack/defense/power/knowledge) before" },
+    { field = "the questions asked (none, flee, join, …)" },
+    { field = "a battle (yes/no)" },
+    { field = "the monster on its tile after" },
+    { field = "anything odd" },
+]
+predictions = """
+- r = 56 x 80 / 800 = 5.6 (single precision 5.5999999), St = floor(9.2) = 9, M = 10.
+- **The reading** (Sy 2 with the own type, L 1): C = 12: **a flee offer**, No: **no battle, the
+  tile empty**. D-9 the reading without the Easy rule: C = 11: **a flee offer** too.
+- **D-9 as VCMI** (the own type not counted, Sy 0): C = 10 = M with the Easy rule, 9 without
+  (VCMI 1.7.5): **a battle at once, no question**.
+- So a flee offer confirms D-9 (the monster's own type counts for sympathy), a battle refutes it,
+  whatever D-10; batch 3b's E3-2 (Normal) asks the same without the Easy rule.
+"""
+[encounter.hero]
+type = "Octavia"
+specialty = "resource gold"
+at = [3, 11]
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 56]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 10
+flees = true
+
+[[encounter]]
+id = "E3-2c"
+title = "Control: 39 Halberdiers against 10 savage Pikemen on Easy"
+questions = ["D-9", "ADV-MON-007"]
+procedure = [
+    "Day 1, Red's turn, after E3-2: select Red's hero E3-2c (39 Halberdiers, four rows below E3-2). Read its primary skills. The 10 Pikemen stand east of it.",
+    "Click the Pikemen twice. A pursuit question: **No**. A battle: auto combat.",
+    "Note what happened and whether the Pikemen are still on the map. Then end Red's turn; Blue's hero stays where it is.",
+]
+record = [
+    { field = "E3-2c's primary skills (attack/defense/power/knowledge) before" },
+    { field = "the questions asked (none, flee, join, …)" },
+    { field = "a battle (yes/no)" },
+    { field = "the monster on its tile after" },
+    { field = "anything odd" },
+]
+predictions = """
+- r = 39 x 115 / 800 = 5.60625, St = floor(9.2125) = 9, Sy 2 for every source (the upgrade),
+  M = 10: C = 12 (the reading, Easy) or 11 (no Easy rule; VCMI): **a flee offer for every
+  source**, No: **no battle, the tile empty**.
+- A battle here refutes the shared part (the power, the strength step or the thresholds), not
+  D-9 or D-10: then E3-1 to E3-2 say nothing about those.
+"""
+[encounter.hero]
+type = "Aine"
+specialty = "resource gold"
+at = [3, 15]
+primary = [0, 0, 1, 1]
+army = [["Halberdier", 39]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 10
+flees = true
+# Blue's hero: hot seat needs a second human player, and a player without heroes or towns is out.
+[[encounter.also]]
+type = "Clavius"
+specialty = "resource gold"
+owner = "blue"
+at = [30, 30]
+name = "Blue"
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 1]]
