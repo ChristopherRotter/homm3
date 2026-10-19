@@ -127,9 +127,10 @@ pub fn luck_good(catalogue: &Catalogue, stack: Stack<'_>) -> String {
 /// The log's entries a line becomes (`battle_log_add` 0x472E90): a line without a line break is
 /// one entry; with one, its first break becomes a space when the line then takes fewer than two
 /// lines (`lines`: how many the log's font takes at the log's width, `text_line_count` 0x4B5820),
-/// else the line is two entries, split there (any later break stays in the second).
+/// else the line is two entries, split there (any later break stays in the second). (A concrete
+/// type for `lines`: a generic one shows false misses in the coverage summary.)
 #[must_use]
-pub fn entries(line: &str, lines: impl Fn(&str) -> i64) -> Vec<String> {
+pub fn entries(line: &str, lines: &dyn Fn(&str) -> i64) -> Vec<String> {
     let Some((first, rest)) = line.split_once('\n') else {
         return vec![line.into()];
     };

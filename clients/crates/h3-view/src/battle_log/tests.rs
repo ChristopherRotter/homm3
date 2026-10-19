@@ -173,14 +173,17 @@ fn a_line_becomes_one_entry_or_two() {
     let one_line = |_: &str| 1;
     let two_lines = |_: &str| 2;
     let split = |list: &[&str]| list.iter().map(|s| String::from(*s)).collect::<Vec<_>>();
-    assert_eq!(entries("Plain.", two_lines), split(&["Plain."]));
-    assert_eq!(entries("Hit.\nFall.", one_line), split(&["Hit. Fall."]));
-    assert_eq!(entries("Hit.\nFall.", two_lines), split(&["Hit.", "Fall."]));
-    assert_eq!(entries("A,\nb\nc", one_line), split(&["A, b\nc"]));
-    assert_eq!(entries("A,\nb\nc", two_lines), split(&["A,", "b\nc"]));
+    assert_eq!(entries("Plain.", &two_lines), split(&["Plain."]));
+    assert_eq!(entries("Hit.\nFall.", &one_line), split(&["Hit. Fall."]));
+    assert_eq!(
+        entries("Hit.\nFall.", &two_lines),
+        split(&["Hit.", "Fall."])
+    );
+    assert_eq!(entries("A,\nb\nc", &one_line), split(&["A, b\nc"]));
+    assert_eq!(entries("A,\nb\nc", &two_lines), split(&["A,", "b\nc"]));
     // The joined line is what is measured.
     assert_eq!(
-        entries("ab\ncd", |s: &str| i64::from(s != "ab cd") + 1),
+        entries("ab\ncd", &|s: &str| i64::from(s != "ab cd") + 1),
         split(&["ab cd"])
     );
 }
