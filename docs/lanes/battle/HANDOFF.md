@@ -5,7 +5,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **No epic in progress.** E04c closed 2026-10-16; since then #265 (the AI lane's two proptest cases) and the docs' cleanup (#267 merged; the QUEUE's consolidation on `battle/queue-consolidation`, open), all 2026-10-19. E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
-- **Next, the user's choice:** E23, the original's battle AI (after E05; to refine: a reading increment, then about three), or E11's battle part.
+- **Next, the user's choice:** E23, the original's battle AI (after E05; to refine: a reading increment, then about three), or E11's battle part. Waiting on this lane meanwhile: CLT-Q2's table-only LOD reader (decided, small; QUEUE).
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51 (none blocks), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
 - **Versions** (unchanged since T10b): battle state hash v51, battle part hash v6 (the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q52, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
@@ -44,7 +44,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ### 2026-10-19 (seventy-second) — the AI lane's two proptest cases
 
-#265 (merged): a walk's step onto the outer bridge opened the gate only with a recording sink, and a Clone on the gate's hex kept it open (fixed in `obstacles::go`, `travel_through`); the invariant property missed BAT-SIE-011's pass. Then, at the user's request, the docs' cleanup: this HANDOFF trimmed (#267: duplicates and stale traps out, area traps moved to the experiments and fixtures READMEs); the QUEUE's inbox merged by kind (20.6 → 9.1 KB), its items for other lanes sent to their inboxes, the First Aid Tent made BAT-Q51, BAT-Q33 brought up to date (`BattleSetup.human`, AI-Q3).
+#265 (merged): a walk's step onto the outer bridge opened the gate only with a recording sink, and a Clone on the gate's hex kept it open (fixed in `obstacles::go`, `travel_through`); the invariant property missed BAT-SIE-011's pass. Then, at the user's request, the docs' cleanup: this HANDOFF trimmed (#267: duplicates and stale traps out, area traps moved to the experiments and fixtures READMEs); the QUEUE's inbox merged by kind (20.6 → 9.1 KB), its items for other lanes sent to their inboxes, the First Aid Tent made BAT-Q51, BAT-Q33 brought up to date (`BattleSetup.human`, AI-Q3); BAT-Q28 and BAT-Q32 cut to their open parts (row 2's and row 13's record to the experiments README); CLT-Q2 queued.
 
 ### 2026-10-16 (seventy-first) — E04c T10c: the closure (increment 10)
 
