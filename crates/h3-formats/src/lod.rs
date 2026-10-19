@@ -3,6 +3,16 @@
 //! Header: magic `LOD\0`, u32 kind, u32 entry count, 80 unknown bytes; entry table of 32-byte
 //! records at offset 92 (capacity 10 000); entry = 16-byte NUL-terminated name, u32 absolute data
 //! offset, u32 uncompressed size, u32 type tag, u32 compressed size (`0` = stored, otherwise zlib).
+//!
+//! Two ways to read an archive, with the same checks:
+//! - **Table only** (OPEN-QUESTIONS CLT-Q2, ADR-0020 point 7): [`LodTable::parse`] takes the
+//!   archive's first bytes (at most [`MAX_TABLE_BYTES`]) and the file's length, and
+//!   [`read_entry`] inflates one entry from its stored bytes ([`LodEntry::stored_range`]). The
+//!   caller reads only the directory and the entries it needs.
+//! - **Whole archive:** [`LodArchive`] borrows every byte of the file and rests on both (the
+//!   harvester and the tools).
+
+use std::ops::Range;
 
 use crate::{FormatError, le};
 
@@ -14,6 +24,10 @@ pub const ENTRY_SIZE: usize = 32;
 pub const TABLE_CAPACITY: usize = 10_000;
 /// Largest uncompressed entry this reader inflates (the largest observed entry is ≈ 1.5 MB).
 pub const MAX_ENTRY_SIZE: u32 = 64 * 1024 * 1024;
+/// Bytes from an archive's start that hold its header and a full entry table (320 092; the
+/// first entry's data starts there in all four observed archives). Reading
+/// `min(file length, MAX_TABLE_BYTES)` bytes once gives [`LodTable::parse`] all it needs.
+pub const MAX_TABLE_BYTES: usize = TABLE_OFFSET + TABLE_CAPACITY * ENTRY_SIZE;
 
 /// One entry of the table.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,29 +54,46 @@ impl LodEntry {
             self.compressed_size
         }
     }
+
+    /// The bytes the entry occupies in the archive: `offset .. offset + stored_size` (in `u64`,
+    /// so the end cannot overflow). [`LodTable::parse`] has checked it against the file's length.
+    #[must_use]
+    pub fn stored_range(&self) -> Range<u64> {
+        let start = u64::from(self.offset);
+        start..start + u64::from(self.stored_size())
+    }
 }
 
-/// A parsed archive borrowing the archive bytes.
-#[derive(Debug)]
-pub struct LodArchive<'a> {
-    data: &'a [u8],
+/// An archive's directory: the header's kind and the entry table, parsed without the entries'
+/// data (CLT-Q2).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LodTable {
     kind: u32,
     entries: Vec<LodEntry>,
 }
 
-impl<'a> LodArchive<'a> {
-    /// Parses the header and entry table. Every entry's data range is checked to lie inside the
-    /// archive; decompression happens only in [`LodArchive::read`].
+impl LodTable {
+    /// Parses the header and the entry table from `head`, the archive's first bytes, and checks
+    /// every entry's data range against `file_len`, the length of the whole archive. `head` needs
+    /// the header and the used part of the table (`92 + 32 × entries` bytes); a prefix of
+    /// [`MAX_TABLE_BYTES`] (or the whole file, if shorter) always has them.
     ///
     /// # Errors
-    /// Bad magic, truncated header or table, an entry count above the table capacity, a name that
-    /// is not NUL-terminated printable ASCII, or a data range outside the archive.
-    pub fn parse(data: &'a [u8]) -> Result<Self, FormatError> {
-        if data.get(..4) != Some(b"LOD\0".as_slice()) {
+    /// `head` longer than `file_len`, bad magic, a truncated header or table, an entry count above
+    /// the table capacity, a name that is not NUL-terminated printable ASCII, or a data range
+    /// that ends after `file_len`.
+    pub fn parse(head: &[u8], file_len: u64) -> Result<Self, FormatError> {
+        if head.len() as u64 > file_len {
+            return Err(FormatError::OutOfRange {
+                what: "LOD head longer than the file",
+                value: head.len() as u64,
+            });
+        }
+        if head.get(..4) != Some(b"LOD\0".as_slice()) {
             return Err(FormatError::BadMagic("LOD archive"));
         }
-        let kind = le::u32_at(data, 4, "LOD header")?;
-        let count = le::u32_at(data, 8, "LOD header")?;
+        let kind = le::u32_at(head, 4, "LOD header")?;
+        let count = le::u32_at(head, 8, "LOD header")?;
         let count = usize::try_from(count)
             .ok()
             .filter(|&c| c <= TABLE_CAPACITY)
@@ -70,26 +101,23 @@ impl<'a> LodArchive<'a> {
                 what: "LOD entry count",
                 value: u64::from(count),
             })?;
-        let table_end = TABLE_OFFSET + count * ENTRY_SIZE;
-        if data.len() < table_end {
-            return Err(FormatError::Truncated {
+        let table = head
+            .get(TABLE_OFFSET..TABLE_OFFSET + count * ENTRY_SIZE)
+            .ok_or(FormatError::Truncated {
                 what: "LOD entry table",
                 offset: TABLE_OFFSET,
-            });
-        }
+            })?;
         let mut entries = Vec::with_capacity(count);
-        for i in 0..count {
-            let at = TABLE_OFFSET + i * ENTRY_SIZE;
-            let name = entry_name(&data[at..at + 16])?;
+        for record in table.chunks_exact(ENTRY_SIZE) {
             let entry = LodEntry {
-                name,
-                offset: le::u32_at(data, at + 16, "LOD entry")?,
-                size: le::u32_at(data, at + 20, "LOD entry")?,
-                type_tag: le::u32_at(data, at + 24, "LOD entry")?,
-                compressed_size: le::u32_at(data, at + 28, "LOD entry")?,
+                name: entry_name(&record[..16])?,
+                offset: field(record, 16),
+                size: field(record, 20),
+                type_tag: field(record, 24),
+                compressed_size: field(record, 28),
             };
-            let end = u64::from(entry.offset) + u64::from(entry.stored_size());
-            if end > data.len() as u64 {
+            let end = entry.stored_range().end;
+            if end > file_len {
                 return Err(FormatError::OutOfRange {
                     what: "LOD entry data end",
                     value: end,
@@ -97,11 +125,7 @@ impl<'a> LodArchive<'a> {
             }
             entries.push(entry);
         }
-        Ok(Self {
-            data,
-            kind,
-            entries,
-        })
+        Ok(Self { kind, entries })
     }
 
     /// The archive kind from the header (`200` or `500` in the observed archives).
@@ -123,20 +147,101 @@ impl<'a> LodArchive<'a> {
             .iter()
             .find(|e| e.name.eq_ignore_ascii_case(name))
     }
+}
 
-    /// Returns the entry's data, inflated if compressed. The result has exactly `entry.size`
-    /// bytes.
+/// A `u32` field of a 32-byte entry record; `at + 4 <= ENTRY_SIZE` at every call.
+fn field(record: &[u8], at: usize) -> u32 {
+    let mut buf = [0u8; 4];
+    buf.copy_from_slice(&record[at..at + 4]);
+    u32::from_le_bytes(buf)
+}
+
+/// Returns an entry's data from its stored bytes, `stored`: exactly the archive's bytes in
+/// [`LodEntry::stored_range`], inflated if the entry is compressed. The result has exactly
+/// `entry.size` bytes.
+///
+/// # Errors
+/// The declared size exceeds [`MAX_ENTRY_SIZE`], `stored` is not `entry.stored_size()` bytes
+/// long, the zlib stream is corrupt, or it inflates to a different size than declared.
+pub fn read_entry(entry: &LodEntry, stored: &[u8]) -> Result<Vec<u8>, FormatError> {
+    if entry.size > MAX_ENTRY_SIZE {
+        return Err(FormatError::OutOfRange {
+            what: "LOD entry size",
+            value: u64::from(entry.size),
+        });
+    }
+    if stored.len() as u64 != u64::from(entry.stored_size()) {
+        return Err(FormatError::OutOfRange {
+            what: "LOD entry stored bytes",
+            value: stored.len() as u64,
+        });
+    }
+    if entry.compressed_size == 0 {
+        return Ok(stored.to_vec());
+    }
+    let out = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(stored, entry.size as usize)
+        .map_err(|e| FormatError::Inflate(format!("{}: {:?}", entry.name, e.status)))?;
+    if out.len() != entry.size as usize {
+        return Err(FormatError::Inflate(format!(
+            "{}: inflated to {} bytes, header says {}",
+            entry.name,
+            out.len(),
+            entry.size
+        )));
+    }
+    Ok(out)
+}
+
+/// A parsed archive borrowing the archive bytes: a [`LodTable`] over the whole file, read with
+/// [`read_entry`].
+#[derive(Debug)]
+pub struct LodArchive<'a> {
+    data: &'a [u8],
+    table: LodTable,
+}
+
+impl<'a> LodArchive<'a> {
+    /// Parses the header and entry table. Every entry's data range is checked to lie inside the
+    /// archive; decompression happens only in [`LodArchive::read`].
     ///
     /// # Errors
-    /// The declared size exceeds [`MAX_ENTRY_SIZE`], the zlib stream is corrupt, or it inflates
-    /// to a different size than declared.
+    /// As [`LodTable::parse`] with the whole archive as its head.
+    pub fn parse(data: &'a [u8]) -> Result<Self, FormatError> {
+        let table = LodTable::parse(data, data.len() as u64)?;
+        Ok(Self { data, table })
+    }
+
+    /// The archive's directory.
+    #[must_use]
+    pub fn table(&self) -> &LodTable {
+        &self.table
+    }
+
+    /// The archive kind from the header (`200` or `500` in the observed archives).
+    #[must_use]
+    pub fn kind(&self) -> u32 {
+        self.table.kind()
+    }
+
+    /// All entries in table order.
+    #[must_use]
+    pub fn entries(&self) -> &[LodEntry] {
+        self.table.entries()
+    }
+
+    /// Finds an entry by name, ignoring ASCII case (the archives mix cases).
+    #[must_use]
+    pub fn find(&self, name: &str) -> Option<&LodEntry> {
+        self.table.find(name)
+    }
+
+    /// Returns the entry's data, inflated if compressed (see [`read_entry`]). The result has
+    /// exactly `entry.size` bytes.
+    ///
+    /// # Errors
+    /// The entry's range lies outside the archive (only for an entry built by hand), or as
+    /// [`read_entry`].
     pub fn read(&self, entry: &LodEntry) -> Result<Vec<u8>, FormatError> {
-        if entry.size > MAX_ENTRY_SIZE {
-            return Err(FormatError::OutOfRange {
-                what: "LOD entry size",
-                value: u64::from(entry.size),
-            });
-        }
         // Ranges were validated in `parse`; `get` keeps this total even for entries built by hand.
         let start = entry.offset as usize;
         let stored = start
@@ -146,21 +251,7 @@ impl<'a> LodArchive<'a> {
                 what: "LOD entry data",
                 offset: start,
             })?;
-        if entry.compressed_size == 0 {
-            return Ok(stored.to_vec());
-        }
-        let out =
-            miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(stored, entry.size as usize)
-                .map_err(|e| FormatError::Inflate(format!("{}: {:?}", entry.name, e.status)))?;
-        if out.len() != entry.size as usize {
-            return Err(FormatError::Inflate(format!(
-                "{}: inflated to {} bytes, header says {}",
-                entry.name,
-                out.len(),
-                entry.size
-            )));
-        }
-        Ok(out)
+        read_entry(entry, stored)
     }
 
     /// Reads an entry by name (see [`LodArchive::find`] and [`LodArchive::read`]); `Ok(None)` if
@@ -327,6 +418,140 @@ mod tests {
         assert!(matches!(
             archive.read(&entry),
             Err(FormatError::OutOfRange { .. })
+        ));
+        let beyond = LodEntry {
+            offset: u32::MAX,
+            size: 1,
+            compressed_size: 0,
+            ..entry
+        };
+        assert!(matches!(
+            archive.read(&beyond),
+            Err(FormatError::Truncated { .. })
+        ));
+    }
+
+    /// Three entries (stored, compressed, stored) and where the table ends.
+    fn three() -> (Vec<u8>, usize) {
+        let text = b"Name\tValue\r\nOne\t1\r\n".repeat(20);
+        let lod = build(
+            200,
+            &[
+                ("A.TXT", b"hello", false),
+                ("b.txt", &text, true),
+                ("C.PAL", b"", false),
+            ],
+        );
+        (lod, TABLE_OFFSET + 3 * ENTRY_SIZE)
+    }
+
+    #[test]
+    fn a_table_from_the_prefix_matches_the_whole_archive() {
+        assert_eq!(MAX_TABLE_BYTES, 320_092);
+        let (lod, table_end) = three();
+        let archive = LodArchive::parse(&lod).unwrap();
+        let len = lod.len() as u64;
+        for head in [&lod[..table_end], &lod[..], &lod[..table_end + 7]] {
+            let table = LodTable::parse(head, len).unwrap();
+            assert_eq!(&table, archive.table());
+            assert_eq!(table.kind(), 200);
+            assert_eq!(table.find("c.pal"), Some(&table.entries()[2]));
+            assert_eq!(table.find("missing"), None);
+        }
+        let table = LodTable::parse(&lod[..table_end], len).unwrap();
+        for entry in table.entries() {
+            let range = entry.stored_range();
+            let stored = &lod[range.start as usize..range.end as usize];
+            assert_eq!(
+                read_entry(entry, stored).unwrap(),
+                archive.read(entry).unwrap()
+            );
+        }
+        assert_eq!(
+            table.entries()[2].stored_range(),
+            lod.len() as u64..lod.len() as u64
+        );
+    }
+
+    #[test]
+    fn the_table_checks_ranges_against_the_file_length_not_the_head() {
+        let (lod, table_end) = three();
+        let len = lod.len() as u64;
+        // The head ends long before the entries' data: only the file's length bounds them.
+        assert!(LodTable::parse(&lod[..table_end], len).is_ok());
+        assert_eq!(
+            LodTable::parse(&lod[..table_end], len - 1),
+            Err(FormatError::OutOfRange {
+                what: "LOD entry data end",
+                value: len,
+            })
+        );
+        assert_eq!(
+            LodTable::parse(&lod, len - 1),
+            Err(FormatError::OutOfRange {
+                what: "LOD head longer than the file",
+                value: len,
+            })
+        );
+        assert_eq!(
+            LodTable::parse(&lod[..table_end - 1], len),
+            Err(FormatError::Truncated {
+                what: "LOD entry table",
+                offset: TABLE_OFFSET,
+            })
+        );
+        assert_eq!(
+            LodTable::parse(&lod[..10], len),
+            Err(FormatError::Truncated {
+                what: "LOD header",
+                offset: 8,
+            })
+        );
+    }
+
+    #[test]
+    fn stored_ranges_do_not_overflow() {
+        let entry = LodEntry {
+            name: "X".into(),
+            offset: u32::MAX,
+            size: u32::MAX,
+            type_tag: 2,
+            compressed_size: 0,
+        };
+        assert_eq!(
+            entry.stored_range(),
+            u64::from(u32::MAX)..2 * u64::from(u32::MAX)
+        );
+    }
+
+    #[test]
+    fn read_entry_wants_exactly_the_stored_bytes() {
+        let (lod, table_end) = three();
+        let table = LodTable::parse(&lod[..table_end], lod.len() as u64).unwrap();
+        let [stored, compressed, _] = table.entries() else {
+            panic!("three entries");
+        };
+        assert_eq!(read_entry(stored, b"hello").unwrap(), b"hello");
+        for (entry, wrong) in [(stored, 4usize), (stored, 6), (compressed, 0)] {
+            let bytes = vec![0u8; wrong];
+            assert_eq!(
+                read_entry(entry, &bytes),
+                Err(FormatError::OutOfRange {
+                    what: "LOD entry stored bytes",
+                    value: wrong as u64,
+                })
+            );
+        }
+        let huge = LodEntry {
+            size: MAX_ENTRY_SIZE + 1,
+            ..stored.clone()
+        };
+        assert!(matches!(
+            read_entry(&huge, b"hello"),
+            Err(FormatError::OutOfRange {
+                what: "LOD entry size",
+                ..
+            })
         ));
     }
 }

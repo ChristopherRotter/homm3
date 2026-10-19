@@ -1,6 +1,6 @@
 //! Property tests: no reader panics or over-allocates on arbitrary input (E02 exit criterion 4).
 
-use h3_formats::{exe, lod, text};
+use h3_formats::{FormatError, exe, lod, text};
 use proptest::prelude::*;
 
 proptest! {
@@ -32,6 +32,54 @@ proptest! {
                     prop_assert_eq!(out.len(), entry.size as usize);
                 }
             }
+        }
+    }
+
+    #[test]
+    fn lod_table_and_read_entry_never_panic(mut bytes in proptest::collection::vec(any::<u8>(), 0..2048), magic in any::<bool>(), cut in any::<usize>(), extra in 0u64..64) {
+        if magic && bytes.len() >= 4 {
+            bytes[..4].copy_from_slice(b"LOD\0");
+        }
+        let head = &bytes[..cut % (bytes.len() + 1)];
+        if let Ok(table) = lod::LodTable::parse(head, bytes.len() as u64 + extra) {
+            for entry in table.entries() {
+                let range = entry.stored_range();
+                if let Some(stored) = bytes.get(range.start as usize..range.end as usize) {
+                    let _ = lod::read_entry(entry, stored);
+                }
+            }
+        }
+    }
+
+    /// CLT-Q2: a table parsed from any prefix of a (mutated) archive and the file's length accepts
+    /// exactly what the whole archive's parse accepts, with the same entries and data, or stops
+    /// short because the prefix ends before the table does.
+    #[test]
+    fn lod_table_from_a_prefix_agrees_with_the_whole_parse(flips in proptest::collection::vec((any::<usize>(), any::<u8>()), 0..6), cut in any::<usize>()) {
+        let data = b"Name\tValue\r\n".repeat(8);
+        let mut bytes = lod::build(500, &[("a.txt", &data, true), ("b.txt", b"stored", false), ("c.txt", &data, false)]);
+        for (at, value) in flips {
+            let len = bytes.len();
+            bytes[at % len] = value;
+        }
+        let head = &bytes[..cut % (bytes.len() + 1)];
+        let whole = lod::LodArchive::parse(&bytes);
+        let part = lod::LodTable::parse(head, bytes.len() as u64);
+        match (whole, part) {
+            (Ok(archive), Ok(table)) => {
+                prop_assert_eq!(archive.table(), &table);
+                for entry in table.entries() {
+                    let range = entry.stored_range();
+                    let stored = &bytes[range.start as usize..range.end as usize];
+                    prop_assert_eq!(lod::read_entry(entry, stored), archive.read(entry));
+                }
+            }
+            (Ok(archive), Err(error)) => {
+                prop_assert!(head.len() < lod::TABLE_OFFSET + archive.entries().len() * lod::ENTRY_SIZE);
+                prop_assert!(matches!(error, FormatError::Truncated { .. } | FormatError::BadMagic(_)), "{error:?}");
+            }
+            (Err(error), Ok(_)) => prop_assert!(false, "the whole parse failed ({error:?}), the prefix's did not"),
+            (Err(_), Err(_)) => {}
         }
     }
 

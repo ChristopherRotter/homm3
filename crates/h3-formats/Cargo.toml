@@ -1,6 +1,6 @@
 [package]
 name = "h3-formats"
-description = "Adapter: bounded readers for the original game's files (LOD archives, text tables, the executable's static tables). Used by tools only."
+description = "Adapter: bounded readers for the original game's files (LOD archives, text tables, the executable's static tables). Used by tools and the clients."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
