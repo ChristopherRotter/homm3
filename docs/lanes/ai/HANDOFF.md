@@ -9,7 +9,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   T4; #252) and 3 (T5a #253, T5b1 and T5b2 #255, T6a #257, T6b and the head calls #258) done.
   **Increment 4** (cut 2026-10-19 at the user's checkpoint): T8 smoke training before T7;
   T8a (design §8, AI-Q5) and T8b (`python/h3env/train/`, C ABI v29) done on
-  `claude/exciting-pasteur-7etga9` (its pull request: see the newest session). **Next:** T8c,
+  `claude/exciting-pasteur-7etga9`, pull request #260 (open: watch it until it merges). **Next:** T8c,
   the hour on the user's GTX 1070 (QUEUE), then the checkpoint (T7 next).
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v29 (T8b: seats for the encounter source) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q6, AI-QUIRK-1, AI-STUB-1.
