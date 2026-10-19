@@ -4,11 +4,11 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **No epic in progress.** E04c closed 2026-10-16; since then #265 (the AI lane's two proptest cases), the docs' cleanup (#267, #268), CLT-Q2's table-only LOD reader (#273) and three of the inbox's test gaps (`battle/test-gaps`, its pull request open), all 2026-10-19. E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
-- **Next, the user's choice:** E23, the original's battle AI (after E05; to refine: a reading increment, then about three), or E11's battle part; the user asks for small increments (2026-10-19).
-- **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51 (none blocks), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
-- **Versions** (unchanged since T10b): battle state hash v51, battle part hash v6 (the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q52, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
-- Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a battle-lane crate of its own (its name and `h3-battle`'s surface for `aim.rs`'s computer numbers in T1b's ADR draft), the code reading first with batch rows only for readings at risk. **Next:** increment 1, T1a: the reading's map of the computer's battle turn (stage `Heroes3.exe`; `installation.md` §7.34; no code); then T1b, the survey and the ADR draft, with the user's review.
+- Since E04c's closure (2026-10-16): #265, #267, #268, #273, #277 merged. E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
+- **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51 (none blocks; BAT-Q33 and BAT-Q51 settle with E23's T6), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
+- **Versions** (unchanged since T10b): battle state hash v51, battle part hash v6 (the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q53, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
+- Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent; small increments (the user, 2026-10-19).
 
 ## Standing traps
 
@@ -43,6 +43,10 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
+### 2026-10-20 (seventy-fourth) — E23 refined
+
+The user chose E23's epic file as the next small increment (after #277 merged). The agent proposed four refinement questions; the user decided (BAT-Q52): the neutral side first; a crate of its own (the agent had recommended a module of `h3-battle`); the reading first with spot checks (the agent had recommended capturing every decision); T1 split into T1a and T1b. `shared/e23-refinement` (lanes.toml's `docs/epics/E23*`, BACKLOG, 08's ownership line) merges first; `battle/e23-refinement` stacks on it (the epic file, BAT-Q52, this HANDOFF, the QUEUE).
+
 ### 2026-10-19 (seventy-third) — CLT-Q2's LOD reader; three test gaps
 
 Small increments at the user's choice. #273 (merged), CLT-Q2: `h3_formats::lod`: `MAX_TABLE_BYTES`, `LodTable::parse(head, file_len)`, `LodEntry::stored_range`, `read_entry`; `LodArchive` rests on them, unchanged for the harvester and `h3-view`. A property: a table from any prefix of a mutated archive agrees with the whole parse. On the four real LODs both readers agree on every entry (an ad-hoc test, not committed; `installation.md` §3). CLT-Q2 answered; the switch is the client lane's (its inbox). Then `battle/test-gaps` (tests only, no behaviour changed, none failed): BAT-QUIRK-21's second half (a mutation to the original's listing fails only it), Bind released by a flying and a teleporting binder, and no attack from a seen Quicksand pit on the harvested packs (seeds 1 to 40 pick the draws; 8 cases per profile).
@@ -50,7 +54,3 @@ Small increments at the user's choice. #273 (merged), CLT-Q2: `h3_formats::lod`:
 ### 2026-10-19 (seventy-second) — the AI lane's two proptest cases
 
 #265 (merged): a walk's step onto the outer bridge opened the gate only with a recording sink, and a Clone on the gate's hex kept it open (fixed in `obstacles::go`, `travel_through`); the invariant property missed BAT-SIE-011's pass. Then, at the user's request, the docs' cleanup: this HANDOFF trimmed (#267: duplicates and stale traps out, area traps moved to the experiments and fixtures READMEs); the QUEUE's inbox merged by kind (20.6 → 9.1 KB), its items for other lanes sent to their inboxes, the First Aid Tent made BAT-Q51, BAT-Q33 brought up to date (`BattleSetup.human`, AI-Q3); BAT-Q28 and BAT-Q32 cut to their open parts (row 2's and row 13's record to the experiments README); CLT-Q2 queued.
-
-### 2026-10-16 (seventy-first) — E04c T10c: the closure (increment 10)
-
-Closed: the shared sentences (BAT-Q50), `h3-heroes` handed over, E23, the lanes' inboxes, the user's Windows run. Detail: the log.
