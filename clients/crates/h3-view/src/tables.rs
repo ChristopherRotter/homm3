@@ -157,6 +157,9 @@ pub struct Groups {
 pub struct Creature {
     /// The content key in the table's namespace.
     pub key: String,
+    /// Its original id: the executable's creature number, its record among `crtraits.txt`'s
+    /// creature rows (E17 M3 T4b-1: its names, the key catalogue's family `creature`).
+    pub original: u16,
     /// The battle sprite.
     pub def: String,
     /// `cranim.txt`'s four times as the executable keeps them (fidget interval, walk, attack,
@@ -617,12 +620,14 @@ def = "CH00.DEF"
 
 [[creature]]
 key = "pikeman"
+original = 0
 def = "CPKMAN.DEF"
 times = [9000, 575, 500, 115]
 sounds = { move = "pikemove", attack = "pikeattk", wince = "pikewnce", death = "pikekill", defend = "pikedfnd" }
 
 [[creature]]
 key = "archer"
+original = 2
 def = "clcbow.def"
 times = [9000, 500, 500, 115]
 troop_count_offset = -3

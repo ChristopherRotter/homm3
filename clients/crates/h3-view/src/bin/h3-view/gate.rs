@@ -1,6 +1,7 @@
 //! The real-asset gate (E17 M0 T3; M1 T2 and T3: every PCX, PAL, DEF and MSK decodes, the
 //! inventory report in `<out>/gate/report.md`, every entry with its verdict in `entries.tsv`;
-//! M2 T5b: every sound decodes to SDL's samples, `sounds.tsv`). It
+//! M2 T5b: every sound decodes to SDL's samples, `sounds.tsv`; M3 T4b-1: every key of the string
+//! catalogue is read from the text tables). It
 //! runs only where the user's files are (ADR-0009): a copy of the installation, never the
 //! installation itself, which it would only read anyway. It reads whole archives, since
 //! `h3-formats` parses only a whole archive; with the table-only reader (CLT-Q2) it measures the
@@ -19,8 +20,9 @@ use h3_assets::archive;
 use h3_assets::check::{Decoded, EntryCheck, check_entry};
 use h3_assets::survey::{self, Mention, Mentions};
 use h3_formats::lod::LodArchive;
+use h3_view::text::pack::Pack;
 
-use crate::{assets, sounds};
+use crate::{assets, sounds, text};
 
 /// The four LOD archives of the Complete edition, in the order the gate reports them.
 const ARCHIVES: [&str; 4] = [
@@ -36,12 +38,13 @@ pub struct Options {
     install: PathBuf,
     out: PathBuf,
     tables: PathBuf,
+    keys: PathBuf,
 }
 
 impl Options {
-    /// Parses `[--install <dir>] [--out <dir>] [--tables <dir>]`; the defaults are
-    /// `$H3_INSTALL`, then the repository's `original-data/install`, `clients/out` and
-    /// `clients/assets`.
+    /// Parses `[--install <dir>] [--out <dir>] [--tables <dir>] [--keys <file>]`; the defaults
+    /// are `$H3_INSTALL`, then the repository's `original-data/install`, `clients/out`,
+    /// `clients/assets` and `clients/text/keys.toml`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         // An adapter's ambient input, read once here.
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
@@ -53,17 +56,19 @@ impl Options {
         let mut install = None;
         let mut out = None;
         let mut tables = None;
+        let mut keys = None;
         let mut rest = args.iter();
         while let Some(flag) = rest.next() {
             let slot = match flag.as_str() {
                 "--install" => &mut install,
                 "--out" => &mut out,
                 "--tables" => &mut tables,
+                "--keys" => &mut keys,
                 other => return Err(format!("gate: unknown option `{other}`")),
             };
             let value = rest
                 .next()
-                .ok_or_else(|| format!("gate: `{flag}` needs a directory"))?;
+                .ok_or_else(|| format!("gate: `{flag}` needs a path"))?;
             *slot = Some(PathBuf::from(value));
         }
         Ok(Self {
@@ -72,6 +77,7 @@ impl Options {
                 .unwrap_or_else(|| manifest.join("../../../original-data/install")),
             out: out.unwrap_or_else(|| manifest.join("../../out")),
             tables: tables.unwrap_or_else(assets::default_dir),
+            keys: keys.unwrap_or_else(text::default_keys),
         })
     }
 }
@@ -241,6 +247,32 @@ fn gate(options: &Options) -> Result<(), String> {
         return Err(format!("asset tables: {}", problems.join("; ")));
     }
     println!("gate: the asset tables' {names} names are found and decode");
+    // The string catalogue (E17 M3 T4b-1): every original form of every key read from the text
+    // tables, where the game searches them, its specifiers as the key names them.
+    let keys = text::read_keys(&options.keys, &tables)?;
+    let entry = |name: &str| {
+        for &a in assets::search(&name.to_ascii_uppercase()) {
+            if let Some(bytes) = archives[a]
+                .read_by_name(name)
+                .map_err(|e| format!("{}:{name}: {e:?}", ARCHIVES[a]))?
+            {
+                return Ok(bytes);
+            }
+        }
+        Err(format!("{name}: in no archive"))
+    };
+    let texts = text::tables(&keys, entry)?;
+    let (original, problems) = Pack::original(&keys, &texts);
+    if !problems.is_empty() {
+        let shown: Vec<String> = problems.iter().map(ToString::to_string).collect();
+        return Err(format!("the key catalogue: {}", shown.join("; ")));
+    }
+    println!(
+        "gate: the key catalogue's {} keys: {} forms read from {} text tables",
+        keys.keys.len(),
+        original.messages.len(),
+        texts.len()
+    );
     // The sound archives (E17 M2 T5b): every WAV decodes to SDL's samples.
     print!(
         "{}",
@@ -615,17 +647,28 @@ mod tests {
         let o = Options::parse_with(&[], None).unwrap();
         assert!(o.install.ends_with("original-data/install"));
         assert!(o.tables.ends_with("../../assets"));
+        assert!(o.keys.ends_with("text/keys.toml"));
         let o = Options::parse_with(
-            &args(&["--install", "/a", "--out", "/b", "--tables", "/c"]),
+            &args(&[
+                "--install",
+                "/a",
+                "--out",
+                "/b",
+                "--tables",
+                "/c",
+                "--keys",
+                "/d",
+            ]),
             Some("/e".into()),
         )
         .unwrap();
         assert_eq!(
-            (o.install, o.out, o.tables),
+            (o.install, o.out, o.tables, o.keys),
             (
                 PathBuf::from("/a"),
                 PathBuf::from("/b"),
-                PathBuf::from("/c")
+                PathBuf::from("/c"),
+                PathBuf::from("/d")
             )
         );
     }
@@ -688,15 +731,24 @@ mod tests {
                hero_groups = { standing = 0, idle = 1, defeat = 2, victory = 3, cast = 4 }\n\
                flags = [\"x.def\", \"x.def\"]\n\
                magic = [{ def = \"x.def\", place = 1 }]\nheal_sound = \"x\"\n\
-               [[creature]]\nkey = \"x\"\ndef = \"x.def\"\ntimes = [0, 0, 0, 0]\n\
+               [[creature]]\nkey = \"x\"\noriginal = 0\ndef = \"x.def\"\ntimes = [0, 0, 0, 0]\n\
                [[battlefield]]\nkey = \"dirt\"\nbackgrounds = [\"Y.PCX\"]\n";
         fs::write(tables.join("base.toml"), &base).unwrap();
         fs::write(tables.join("ab.toml"), header("ab", "\"base\"")).unwrap();
         fs::write(tables.join("sod.toml"), header("sod", "\"ab\"")).unwrap();
+        // The key catalogue: a key and the creatures' names in the archives' `t.txt`.
+        let keys = root.join("keys.toml");
+        fs::write(
+            &keys,
+            "[[key]]\nid = \"a\"\noriginal = [{ at = \"T:0\" }]\n\
+             [[family]]\nid = \"creature\"\ntable = \"T\"\nfirst = 0\nforms = { one = 0 }\n",
+        )
+        .unwrap();
         let options = Options {
             install,
             out: root.join("out"),
             tables: tables.clone(),
+            keys: keys.clone(),
         };
         gate(&options).unwrap();
         let listing = fs::read_to_string(root.join("out/gate/entries.tsv")).unwrap();
@@ -708,6 +760,24 @@ mod tests {
         assert!(
             report.contains("3 names appear more than once (3 with identical bytes, 0 different)")
         );
+        // A key the text tables lack fails the gate, and so does a table no archive holds.
+        fs::write(
+            &keys,
+            "[[key]]\nid = \"a\"\noriginal = [{ at = \"T:9\" }]\n",
+        )
+        .unwrap();
+        assert!(
+            gate(&options)
+                .unwrap_err()
+                .contains("T.TXT has no such record")
+        );
+        fs::write(
+            &keys,
+            "[[key]]\nid = \"a\"\noriginal = [{ at = \"U:0\" }]\n",
+        )
+        .unwrap();
+        assert!(gate(&options).unwrap_err().contains("U.TXT: in no archive"));
+        fs::write(&keys, "[[key]]\nid = \"a\"\n").unwrap();
         // A name of the tables the archives lack fails the gate.
         fs::write(tables.join("base.toml"), base.replace("x.def", "z.def")).unwrap();
         assert!(gate(&options).unwrap_err().contains("Z.DEF: in no archive"));

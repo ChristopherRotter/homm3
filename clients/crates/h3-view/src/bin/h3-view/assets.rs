@@ -49,7 +49,7 @@ pub fn load(dir: &Path, top: &str) -> Result<Tables, String> {
 
 /// Where the game searches a name (`docs/epics/E17-design.md` §3.1): DEFs in `H3sprite`, then
 /// `H3ab_spr`; pictures in `H3bitmap`, then `H3ab_bmp` (indices into the gate's archive list).
-fn search(name: &str) -> &'static [usize] {
+pub fn search(name: &str) -> &'static [usize] {
     if name.ends_with(".DEF") {
         &[1, 3]
     } else {

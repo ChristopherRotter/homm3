@@ -638,7 +638,7 @@ fn write_table(
         };
         let _ = write!(
             t,
-            "\n[[creature]]\nkey = \"{}\"  # original id {original}\ndef = \"{}\"\ntimes = [{}]\n",
+            "\n[[creature]]\nkey = \"{}\"\noriginal = {original}\ndef = \"{}\"\ntimes = [{}]\n",
             plain(&c.id)?,
             plain(def)?,
             numbers(&anim.times)
