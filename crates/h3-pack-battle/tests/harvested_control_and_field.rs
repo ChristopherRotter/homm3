@@ -2,11 +2,12 @@
 //! F-10): F1, F2 and H1 of `experiments/results/E04b-batch-2c.md` (SoD 4.0 Complete, plain HD,
 //! 2026-10-07) replayed through real commands with the heroes the batch used, derived in the
 //! Heroes context: Fire Wall and Force Field (BAT-MAG-027, BAT-MAG-028), a walker's path
-//! (BAT-MOV-003) and Hypnotize (BAT-MAG-026).
+//! (BAT-MOV-003) and Hypnotize (BAT-MAG-026). Also, without a batch, no attack from a seen
+//! Quicksand pit (BAT-MAG-032) on these packs.
 
 use h3_battle::{
-    BattleState, CastTarget, CastTargets, Command, Direction, Event, EventKind, Field, Hex,
-    StackId, apply, cast_targets,
+    BattleState, CastTarget, CastTargets, Command, CommandError, Direction, Event, EventKind,
+    Field, Hex, LegalCommands, StackId, apply, cast_targets, legal_commands,
 };
 use h3_content::{Formation, SkillId, SpellId};
 use h3_content_battle::BattleRuleset;
@@ -73,6 +74,17 @@ fn battle(
     attacker: &[(&str, u32)],
     defender: &[(&str, u32)],
 ) -> BattleState {
+    battle_seeded(r, heroes, attacker, defender, 1)
+}
+
+/// [`battle`] with the battle's seed `seed`.
+fn battle_seeded(
+    r: &BattleRuleset,
+    heroes: [&HeroDetails; 2],
+    attacker: &[(&str, u32)],
+    defender: &[(&str, u32)],
+    seed: u64,
+) -> BattleState {
     let setup = BattleSetup {
         attacker: army(r, attacker),
         defender: army(r, defender),
@@ -87,7 +99,7 @@ fn battle(
         funds: [0; 2],
         ..BattleSetup::default()
     };
-    BattleState::new(r, &setup, 1).unwrap()
+    BattleState::new(r, &setup, seed).unwrap()
 }
 
 /// Stack `stack`, whose turn it is, does `command` for the side that commands it; returns the
@@ -372,5 +384,78 @@ fn batch_2c_h1_hypnotize_counts_full_hit_points_and_expert_cure_passes_over_it()
             );
             turn(&mut s, &r, one, Command::Defend);
         }
+    }
+}
+
+// covers: BAT-MAG-032
+/// No attack starts from a position where the walk stops in a pit the walker's side sees (the
+/// user, BAT-Q30; `installation.md` §7.16), on the harvested packs: the synthetic tests place
+/// pits by hand, which the public interface cannot (E04b T11b's test gap), so here Quicksand
+/// draws them and the battle's seed picks the draws. Blue's Archangel (speed 18) lands three
+/// hexes to the right of Red's ten Pikemen; Red's hero casts Expert Quicksand (8 pits). For every
+/// pit next to the Archangel that the Pikemen can walk to, the move into it stays legal, while
+/// the attack from it is neither listed nor accepted (the state untouched) and an attack from a
+/// hex without a pit still is, in either profile.
+#[test]
+fn quicksand_no_attack_starts_from_a_seen_pit_on_the_harvested_packs() {
+    for profile in ["base:faithful", "base:strict-fixed"] {
+        let r = sod(profile);
+        let field = Field::new(r.battle().field);
+        let quicksand = spell(&r, "base:quicksand");
+        let earth = vec![(r.skill_by_key("base:earth_magic").unwrap(), 3)];
+        let red = details(&r, "base:aine", (1, 1), earth, &["base:quicksand"]);
+        let blue = details(&r, "ab:gelare", (1, 1), vec![], &[]);
+        let (pikemen, angel) = (0, 1);
+        let mut checked = 0;
+        for seed in 1..=40 {
+            let mut s = battle_seeded(
+                &r,
+                [&red, &blue],
+                &[("base:pikeman", 10)],
+                &[("base:archangel", 1)],
+                seed,
+            );
+            let (x, y) = field.coords(s.stacks()[0].hex);
+            let landing = field.hex(x + 3, y).unwrap();
+            turn(&mut s, &r, angel, Command::Move { to: landing });
+            // Good morale may give the Archangel another turn: it defends.
+            defend_until(&mut s, &r, &[pikemen]);
+            turn(&mut s, &r, pikemen, cast(quicksand, CastTarget::None));
+            let pits = obstacle_hexes(&s, BattleSide::Attacker, quicksand);
+            assert_eq!(pits.len(), 8, "{profile}, seed {seed}");
+            let mut legal = LegalCommands::new();
+            legal_commands(&s, &r, BattleSide::Attacker, &mut legal);
+            let attack_from = |from| Command::Attack {
+                target: StackId(angel),
+                from,
+            };
+            let beside: Vec<Hex> = field.neighbors(landing).into_iter().flatten().collect();
+            for &pit in pits.iter().filter(|p| beside.contains(p)) {
+                if !legal.iter().any(|c| *c == Command::Move { to: pit }) {
+                    continue;
+                }
+                assert!(
+                    !legal.iter().any(|c| *c == attack_from(pit)),
+                    "{profile}, seed {seed}"
+                );
+                let mut t = s.clone();
+                let mut events = Vec::new();
+                let side = t.side_to_act().unwrap();
+                assert_eq!(
+                    apply(&mut t, &r, side, attack_from(pit), &mut events),
+                    Err(CommandError::Unreachable),
+                    "{profile}, seed {seed}"
+                );
+                assert_eq!(t, s, "{profile}, seed {seed}");
+                assert!(
+                    beside
+                        .iter()
+                        .any(|&h| !pits.contains(&h) && legal.iter().any(|c| *c == attack_from(h)))
+                );
+                checked += 1;
+            }
+        }
+        // 8 pits among about 140 hexes: about one seed in five puts one beside the Archangel.
+        assert!(checked >= 3, "{profile}: {checked}");
     }
 }
