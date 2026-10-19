@@ -470,4 +470,3 @@ fn guards_divide_evenly() {
     assert_eq!(counts(10, 3), [4, 3, 3]);
     assert_eq!(counts(2, 3), [1, 1]);
 }
-
