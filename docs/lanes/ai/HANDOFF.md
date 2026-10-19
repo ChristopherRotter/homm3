@@ -9,9 +9,12 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   T4; #252) and 3 (T5a #253, T5b1 and T5b2 #255, T6a #257, T6b and the head calls #258) done.
   **Increment 4** done 2026-10-19: T8 (design §8, AI-Q5; `python/h3env/train/`, C ABI v29,
   #260; the opponent pool, #264): exit criterion 7 met on the user's GTX 1070 (0.800 against
-  Random after 40 minutes, best 0.811). **Next:** the user's checkpoint, increment 5 (T7).
+  Random after 40 minutes, best 0.811). **Increment 5** (T7, design §9; AI-Q6): the preview
+  (#274, `cross-lane`), ADR-0025 point 5 (#271, `shared/`), the bots, `h3 ai eval`, C ABI v30
+  on `claude/exciting-pasteur-7etga9` (its PR after #271 and #274 merged). **Next:** T7d on the
+  user's machine (QUEUE).
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
-- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v29 (T8b: seats for the encounter source) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q6, AI-QUIRK-1, AI-STUB-1.
+- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v30 (T7: the bots' seats) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q8, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -41,6 +44,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   tests draw them with `with_shares`. Everything is an integer (quantile tables in ‰).
 - Scenario texts are parsed and packs compiled in `h3-ffi` (`src/scenario.rs`), never in `h3-sim`: `arch.toml` gives `h3-sim` `h3-pack-battle` for tests only. Each `h3_env_create_scenario` compiles its packs (about 18 ms for `base`, `ab`, `sod` in release, ten times that in debug).
 
+- The bots (`h3_sim::bots`) read the engine's preview (`h3_battle::preview`, BAT-DMG-011): a
+  change to the battle's strike stages moves them and `h3 ai eval`'s table; its default episodes
+  are the Python evaluation's (`EVAL_SEED`): keep both seeds equal.
+
 **Python**
 - The trainer (`h3env.train`, design §8): its tests are in the lane command (`uv run --group
   train pytest`); a run's files go into `python/runs/` (ignored). In a background shell `cd`
@@ -63,6 +70,16 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-19 — Increment 5's cut; T7a–T7c and T7d's code
+
+- #270 merged. The user cut increment 5 (T7) and decided AI-Q6 (the bots read the engine's
+  preview of their own attacks, never the retaliation; Glicko-2 from the server). Opened #271
+  (`shared/`, ADR-0025 point 5) and #274 (`cross-lane`, `h3_battle::preview`).
+- Built the bots, `h3 ai eval` (Greedy 0.828, Aggressor 0.800 against Random), C ABI v30 and
+  `h3env.train.ladder` (`E05-log.md`). In progress: this branch's PR after #271 and #274 merge.
+- For the global HANDOFF (a `shared/` change, kept from T8b): `cargo xtask verify` outside
+  `scripts/sandbox-verify.sh` needs `LLVM_COV`, `LLVM_PROFDATA` on `/usr/lib/llvm-20/bin`.
+
 ### 2026-10-19 — T8c: two hours on the user's machine; the opponent pool
 
 - The user's hour (GTX 1070) with naive self-play: 0.779 at 12 minutes, 0.721 at the end; the
@@ -71,26 +88,3 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   (#264). The second run (40 minutes): 0.800 final, 0.811 best: criterion 7 met (the user).
 - #260 merged and its remote branch was deleted: the follow-up restarted the branch from
   `master` (a plain push recreates it; `--force-with-lease` fails on the stale ref).
-
-### 2026-10-19 — T8a, the smoke training's design; T8b, the trainer and C ABI v29
-
-- #259 had merged. The user chose T8a then T8b, an own PPO; reviewed design §8 (AI-Q5): all
-  five as recommended. Built C ABI v29 (seats for the encounter source) and `h3env.train`
-  (`E05-log.md`); the sandbox's 30-minute CPU run learns (sampled 0.51 → 0.73 against Random).
-- Greedy play loops against Random (up to 17 % truncated): the user moved the criterion to the
-  sampled policy (design §8.2). T8c on the user's machine is next (QUEUE).
-- For the global HANDOFF (a shared change): `cargo xtask verify` outside
-  `scripts/sandbox-verify.sh` needs `LLVM_COV`, `LLVM_PROFDATA` on `/usr/lib/llvm-20/bin`, else
-  coverage fails ("LLVM tools not found").
-
-### 2026-10-19 — T6b; the head calls from the kept entry mask; checkpoint of increment 3
-
-- #256 and #257 had merged. PyTorch's index was refused because the environment's network access
-  was Trusted (the proxy's 403 body); the user set Custom, and the session reached it at once.
-- The user chose T6b with the inbox's head-call cost. Built: the batch keeps the single env's
-  entry mask and answers non-cast heads from it (three calls 1.4 → 0.11–0.15 ms for 64 envs);
-  the group `train` (torch 2.14.1+cu126) in `uv.lock`, `tests/test_torch.py` (`E05-log.md`).
-- #258 merged; on the user's Windows machine 23 passed, the GPU test included (a conda env
-  with uv, `python/README.md`). Checkpoint: increment 4 = T8 before T7. Trap for the global
-  HANDOFF: a cargo call before `sandbox-setup.sh` makes rustup fetch the pinned toolchain
-  without `llvm-tools` (coverage fails; `rustup component add llvm-tools-preview`).

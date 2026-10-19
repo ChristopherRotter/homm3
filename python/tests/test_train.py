@@ -15,7 +15,7 @@ from h3env import BattleBatch, _ffi
 torch = pytest.importorskip("torch")
 
 from h3env.train import EVAL_SEED, Config, Policy, Rollout, gae, train  # noqa: E402
-from h3env.train.evaluate import episode_seeds, play, random_agent  # noqa: E402
+from h3env.train.evaluate import episode_seeds, ladder, load, play, random_agent  # noqa: E402
 from h3env.train.ppo import Trainer  # noqa: E402
 
 #: A run small enough for a test.
@@ -246,3 +246,21 @@ def test_the_final_evaluation_reuses_the_last_when_nothing_changed(tmp_path) -> 
         (1, False, False),
         (1, True, True),
     ]
+
+
+def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
+    # E05 T7: a saved network against Random and both bots, as `h3 ai eval`'s table's row.
+    train(Config(**SMALL, updates=1, eval_every=0, eval_start=False), tmp_path)
+    policy = load(tmp_path / "checkpoint.pt")
+    rows = ladder(policy, episodes=4, envs=2, max_steps=300)
+    assert list(rows) == ["random", "aggressor", "greedy"]
+    for row in rows.values():
+        assert row["attacker"]["episodes"] == row["defender"]["episodes"] == 4
+        assert 0.0 <= row["win_rate"] <= 1.0
+    from h3env.train.ladder import main
+
+    main(["--checkpoint", str(tmp_path / "checkpoint.pt"), "--episodes", "2", "--envs", "2"])
+    lines = capsys.readouterr().out.splitlines()
+    assert [line.split(":")[0].split()[-1] for line in lines] == ["random", "aggressor", "greedy"]
+    with pytest.raises(ValueError, match="unknown opponent"):
+        play(random_agent(np.random.default_rng(0)), episodes=2, envs=2, opponent="minimax")

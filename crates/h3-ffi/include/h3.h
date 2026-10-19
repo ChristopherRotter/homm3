@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 29 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
+ * h3 engine C ABI, version 30 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -91,6 +91,8 @@ uint64_t h3_env_state_hash(const H3Env *env);
  * players' (ADR-0025 point 6); Retreat and Surrender are never legal and refused (point 7). */
 #define H3_SEAT_EXTERNAL 0 /* the caller plays the side */
 #define H3_SEAT_RANDOM 1   /* uniformly random legal commands inside the call (tests) */
+#define H3_SEAT_AGGRESSOR 2 /* v30: the baseline bot Aggressor inside the call (E05 T7) */
+#define H3_SEAT_GREEDY 3    /* v30: the baseline bot Greedy inside the call (E05 T7) */
 /* The encounter distribution's kinds (v28): H3BatchBuffers.encounter and the weights of
  * h3_batch_add_encounters, in this order. */
 #define H3_ENCOUNTER_NONE (-1)          /* the episode's scenario is no encounter distribution */

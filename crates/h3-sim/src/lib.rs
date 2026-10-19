@@ -23,6 +23,7 @@
 pub mod action;
 pub mod adventure;
 pub mod batch;
+pub mod bots;
 pub mod encounter;
 pub mod env;
 pub mod observation;

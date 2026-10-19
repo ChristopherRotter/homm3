@@ -5,6 +5,8 @@
 //! h3 ai bench [--scenario <file>] [--packs-dir packs] [--envs 64] [--threads 0] [--calls 1000]
 //!             [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
 //! h3 ai census <maps folder or file>... [--out <file>]
+//! h3 ai eval [--policies random,aggressor,greedy] [--episodes 1000] [--envs 100] [--seed <s>]
+//!            [--max-steps 2000] [--encounters default|<six weights, a,b,c,d,e,f>]
 //! ```
 
 // The bench times itself with the wall clock (an adapter).
@@ -12,6 +14,8 @@
 
 pub mod bench;
 pub mod census;
+pub mod eval;
+pub mod rating;
 
 use std::path::PathBuf;
 
@@ -22,7 +26,9 @@ use h3_sim::EncounterTable;
 pub const USAGE: &str = "usage:
   h3 ai bench [--scenario <file>] [--packs-dir packs] [--envs 64] [--threads 0] [--calls 1000]
               [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
-  h3 ai census <maps folder or file>... [--out <file>]";
+  h3 ai census <maps folder or file>... [--out <file>]
+  h3 ai eval [--policies random,aggressor,greedy] [--episodes 1000] [--envs 100] [--seed <s>]
+             [--max-steps 2000] [--encounters default|<six weights, a,b,c,d,e,f>]";
 
 /// Parsed arguments: `--name value` options and positional words.
 struct Args {
@@ -95,6 +101,7 @@ pub fn main(raw: &[String]) -> Result<(), String> {
     match command.as_str() {
         "bench" => bench(&args),
         "census" => census(&args),
+        "eval" => eval(&args),
         _ => Err(format!("unknown ai command `{command}`\n{USAGE}")),
     }
 }
@@ -136,6 +143,45 @@ fn bench(args: &Args) -> Result<(), String> {
     println!(
         "steps/s with the head calls and the random choice: {:.0}",
         report.steps as f64 / report.secs
+    );
+    Ok(())
+}
+
+/// `h3 ai eval`: the engine's policies against each other on the held-out encounters (E05 T7).
+fn eval(args: &Args) -> Result<(), String> {
+    args.check(&[
+        "policies",
+        "episodes",
+        "envs",
+        "seed",
+        "max-steps",
+        "encounters",
+    ])?;
+    let seed = match args.get("seed") {
+        None => eval::EVAL_SEED,
+        Some(v) => v
+            .strip_prefix("0x")
+            .map_or_else(|| v.parse(), |hex| u64::from_str_radix(hex, 16))
+            .map_err(|_| format!("--seed: `{v}` is not a number"))?,
+    };
+    let weights = encounter_weights(args.get("encounters").unwrap_or("default"))?;
+    let options = eval::EvalOptions {
+        policies: eval::policies(args.get("policies").unwrap_or("random,aggressor,greedy"))?,
+        episodes: args.num("episodes", 1000)?,
+        envs: args.num("envs", 100)?,
+        seed,
+        max_steps: args.num("max-steps", 2000)?,
+        weights,
+    };
+    let source = bench::encounters(options.weights)?;
+    let start = std::time::Instant::now();
+    let report = eval::run(&source, &options)?;
+    print!("{}", report.to_text());
+    println!(
+        "{} episodes per ordered pair, seed {:#x}, {:.1}s",
+        report.pairs[0][1].episodes,
+        options.seed,
+        start.elapsed().as_secs_f64()
     );
     Ok(())
 }

@@ -671,3 +671,47 @@ fn encounter_seats_through_the_abi() {
     assert!(wandering);
     unsafe { h3_batch_destroy(b) };
 }
+
+/// E05 T7 (v30): the baseline bots as internal seats: a scenario against `H3_SEAT_GREEDY` or
+/// `H3_SEAT_AGGRESSOR` leaves the caller only its own side to move, and battles end.
+#[test]
+fn bot_seats_play_inside_the_call() {
+    let n = 6;
+    let b = create(&config(n, 0, 3, 300)).unwrap();
+    for seats in [
+        H3Seats {
+            attacker: H3_SEAT_EXTERNAL,
+            defender: H3_SEAT_GREEDY,
+        },
+        H3Seats {
+            attacker: H3_SEAT_AGGRESSOR,
+            defender: H3_SEAT_EXTERNAL,
+        },
+    ] {
+        assert_eq!(add(b, SKIRMISH, 1, seats).0, H3_OK);
+    }
+    let both = H3Seats {
+        attacker: H3_SEAT_GREEDY,
+        defender: H3_SEAT_AGGRESSOR,
+    };
+    assert_eq!(add(b, SKIRMISH, 1, both).0, H3_ERR_ARGUMENT);
+    let mut arrays = Arrays::new(n as usize);
+    let buffers = arrays.buffers();
+    assert_eq!(unsafe { h3_batch_reset(b, &buffers) }, H3_OK);
+    let mut rng = Rng::for_stream(3, StreamId::AGENT);
+    let mut ended = 0;
+    for _ in 0..200 {
+        for i in 0..n as usize {
+            let external = if arrays.scenario[i] == 0 { 0 } else { 1 };
+            assert_eq!(arrays.to_move[i], external, "env {i}");
+        }
+        let actions = actions(b, &arrays, n as usize, &mut rng);
+        assert_eq!(
+            unsafe { h3_batch_step(b, actions.as_ptr(), &buffers) },
+            H3_OK
+        );
+        ended += arrays.done.iter().filter(|&&d| d == 1).count();
+    }
+    assert!(ended > 0);
+    unsafe { h3_batch_destroy(b) };
+}

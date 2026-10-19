@@ -341,3 +341,50 @@ fn a_towns_fort_is_its_highest_fort_building() {
     assert_eq!(fort_level(&custom(0x18)), 2);
     assert_eq!(fort_level(&custom(0x38)), 3);
 }
+
+/// E05 T7: `h3 ai eval` plays every ordered pair on the same episodes, the same way twice; the
+/// bots win most games against Random; the ratings follow; its arguments are checked.
+#[test]
+fn the_eval_runner_rates_the_policies() {
+    use super::eval::{self, EVAL_SEED, EvalOptions};
+    let options = EvalOptions {
+        policies: eval::policies("random, greedy,aggressor").unwrap(),
+        episodes: 12,
+        envs: 4,
+        seed: EVAL_SEED,
+        max_steps: 2000,
+        weights: [0, 0, 1, 1, 1, 0],
+    };
+    let source = super::bench::encounters(options.weights).unwrap();
+    let report = eval::run(&source, &options).unwrap();
+    assert_eq!(report, eval::run(&source, &options).unwrap());
+    assert_eq!(report.names, ["random", "greedy", "aggressor"]);
+    for a in 0..3 {
+        for b in (0..3).filter(|&b| b != a) {
+            assert_eq!(report.pairs[a][b].episodes, 12);
+            let both = report.win_rate(a, b) + report.win_rate(b, a);
+            assert!(both <= 1.0 + 1e-9, "{a} {b}: {both}");
+            assert!(
+                (report.value(a, b) + report.value(b, a)).abs() < 1e-6,
+                "zero-sum"
+            );
+        }
+    }
+    assert!(report.win_rate(1, 0) > 0.5 && report.win_rate(2, 0) > 0.5);
+    assert!(report.ratings[0].rating < report.ratings[1].rating.min(report.ratings[2].rating));
+    let text = report.to_text();
+    assert!(
+        text.contains("win rate") && text.contains("Glicko-2"),
+        "{text}"
+    );
+    assert!(eval::policies("random,minimax").is_err());
+    let one = EvalOptions {
+        policies: eval::policies("greedy").unwrap(),
+        ..options
+    };
+    assert!(eval::run(&source, &one).is_err());
+    let words = |w: &[&str]| w.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+    assert!(main(&words(&["eval", "--policies", "nobody"])).is_err());
+    assert!(main(&words(&["eval", "--seed", "0xZZ"])).is_err());
+    assert!(main(&words(&["eval", "--colour", "red"])).is_err());
+}

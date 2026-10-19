@@ -22,11 +22,11 @@ from ..batch import BattleBatch, episode_seed
 #: seeds, `episode_seeds`).
 EVAL_SEED = 0x5EED_E7A1_0000_0001
 
-#: The agent's seat and the winning result per side.
-SIDES = (
-    ("attacker", ("external", "random"), _ffi.RESULT_ATTACKER),
-    ("defender", ("random", "external"), _ffi.RESULT_DEFENDER),
-)
+#: The agent's side and the winning result per side.
+SIDES = (("attacker", _ffi.RESULT_ATTACKER), ("defender", _ffi.RESULT_DEFENDER))
+
+#: The engine's seats an agent can be evaluated against (C ABI v30's bots, E05 T7).
+OPPONENTS = ("random", "aggressor", "greedy")
 
 #: An agent: fills `batch.actions` for every row from the batch's current outputs.
 Agent = Callable[[BattleBatch], None]
@@ -63,15 +63,21 @@ def play(
     kinds: Iterable[int] | None = None,
     currency: str = "ai_value",
     mana_price: int = 10,
+    opponent: str = "random",
 ) -> dict:
-    """Plays the evaluation's episodes with `agent` on each side against Random; returns the rates
-    per side, per kind and overall (both sides weighed equally), the agent's mean reward v1 and
-    the truncations."""
+    """Plays the evaluation's episodes with `agent` on each side against `opponent` (an engine
+    seat: Random by default, or a baseline bot); returns the rates per side, per kind and overall
+    (both sides weighed equally), the agent's mean reward v1 and the truncations."""
+    if opponent not in OPPONENTS:
+        raise ValueError(f"unknown opponent {opponent!r} (one of {OPPONENTS})")
     k = episodes_per_env(episodes, envs)
     kinds = None if kinds is None else list(kinds)
     report: dict = {"episodes_per_side": k * envs}
     wins_total = 0
-    for name, (attacker, defender), winning in SIDES:
+    for name, winning in SIDES:
+        attacker, defender = (
+            ("external", opponent) if name == "attacker" else (opponent, "external")
+        )
         batch = BattleBatch(
             envs,
             threads=threads,
@@ -167,3 +173,44 @@ def _fill(batch: BattleBatch, choice) -> None:
     a["spell"] = choice.spell
     a["target"] = choice.target
     a["second"] = choice.second
+
+
+def ladder(
+    policy,
+    *,
+    opponents: Iterable[str] = OPPONENTS,
+    rng_seed: int = 0,
+    **settings,
+) -> dict[str, dict]:
+    """The sampled policy against each engine seat in `opponents` (E05 T7) on the held-out
+    episodes `settings` give (as `play`'s): the network's row beside `h3 ai eval`'s table, whose
+    default episodes are the same."""
+    import torch
+
+    policy.eval()
+    device = next(policy.parameters()).device
+    out = {}
+    for opponent in opponents:
+        generator = torch.Generator(device=device).manual_seed(rng_seed)
+
+        def sampled(batch: BattleBatch, generator=generator) -> None:
+            _fill(batch, policy.act(batch, generator=generator))
+
+        out[opponent] = play(sampled, opponent=opponent, **settings)
+    policy.train()
+    return out
+
+
+def load(path, device: str = "cpu"):
+    """The network of a checkpoint (`checkpoint.pt`, `best.pt`), sized by the run's config."""
+    import torch
+
+    from .policy import Policy
+
+    saved = torch.load(path, map_location=device, weights_only=True)
+    config = saved["config"]
+    probe = BattleBatch(1)
+    policy = Policy.for_batch(probe, config["hidden"], config["embed"])
+    probe.close()
+    policy.load_state_dict(saved["policy"])
+    return policy.to(device)
