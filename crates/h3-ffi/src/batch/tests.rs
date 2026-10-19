@@ -503,12 +503,31 @@ fn errors_are_codes_not_panics() {
     assert!([HERO_CAST, CREATURE_CAST].iter().all(|&c| c < ACTION_COUNT));
 }
 
-/// `h3_batch_add_encounters` with its code and message.
+/// `h3_batch_add_encounters` with its code and message, each encounter's own seats.
 fn add_encounters(b: *mut H3Batch, weight: u32, kinds: Option<[u32; 6]>) -> (i32, String) {
+    add_encounters_seated(b, weight, kinds, None)
+}
+
+/// `h3_batch_add_encounters` with its code and message.
+fn add_encounters_seated(
+    b: *mut H3Batch,
+    weight: u32,
+    kinds: Option<[u32; 6]>,
+    seats: Option<H3Seats>,
+) -> (i32, String) {
     let mut error = [0 as c_char; 256];
     let kinds_ptr = kinds.as_ref().map_or(std::ptr::null(), |k| k.as_ptr());
-    let code =
-        unsafe { h3_batch_add_encounters(b, weight, kinds_ptr, error.as_mut_ptr(), error.len()) };
+    let seats_ptr = seats.as_ref().map_or(std::ptr::null(), std::ptr::from_ref);
+    let code = unsafe {
+        h3_batch_add_encounters(
+            b,
+            weight,
+            kinds_ptr,
+            seats_ptr,
+            error.as_mut_ptr(),
+            error.len(),
+        )
+    };
     let bytes: Vec<u8> = error
         .iter()
         .take_while(|c| **c != 0)
@@ -606,5 +625,49 @@ fn encounters_are_an_episode_source() {
         seen[H3_ENCOUNTER_HERO as usize] && seen[H3_ENCOUNTER_WANDERING as usize],
         "{seen:?}"
     );
+    unsafe { h3_batch_destroy(b) };
+}
+
+/// E05 T8b (v29): seats for the encounter distribution replace each encounter's own for every
+/// episode of the entry: a random attacker leaves the caller the defender, a neutral kind's
+/// included; unknown or both internal seats are refused with the batch unchanged.
+#[test]
+fn encounter_seats_through_the_abi() {
+    let n = 8;
+    let b = create(&config(n, 0, 6, 300)).unwrap();
+    let random = |attacker, defender| Some(H3Seats { attacker, defender });
+    let (code, message) = add_encounters_seated(b, 1, None, random(H3_SEAT_EXTERNAL, 7));
+    assert!(
+        code == H3_ERR_ARGUMENT && message == "unknown seat",
+        "{message}"
+    );
+    let (code, message) = add_encounters_seated(b, 1, None, random(H3_SEAT_RANDOM, H3_SEAT_RANDOM));
+    assert_eq!(code, H3_ERR_ARGUMENT, "{message}");
+    assert!(unsafe { &*b }.batch.scenarios().is_empty());
+    let defender = random(H3_SEAT_RANDOM, H3_SEAT_EXTERNAL);
+    assert_eq!(add_encounters_seated(b, 1, None, defender).0, H3_OK);
+    assert_eq!(
+        add_encounters_seated(b, 1, Some([1, 0, 0, 0, 0, 0]), defender).0,
+        H3_OK
+    );
+    let mut arrays = Arrays::new(n as usize);
+    let buffers = arrays.buffers();
+    assert_eq!(unsafe { h3_batch_reset(b, &buffers) }, H3_OK);
+    let mut rng = Rng::for_stream(6, StreamId::AGENT);
+    let mut wandering = false;
+    for _ in 0..80 {
+        assert!(
+            arrays.to_move.iter().all(|&side| side == 1),
+            "{:?}",
+            arrays.to_move
+        );
+        wandering |= arrays.encounter.contains(&(H3_ENCOUNTER_WANDERING as i8));
+        let actions = actions(b, &arrays, n as usize, &mut rng);
+        assert_eq!(
+            unsafe { h3_batch_step(b, actions.as_ptr(), &buffers) },
+            H3_OK
+        );
+    }
+    assert!(wandering);
     unsafe { h3_batch_destroy(b) };
 }

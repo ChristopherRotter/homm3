@@ -7,10 +7,12 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **Opened 2026-10-18** with E05's refinement (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` stays the adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05 and E06 (`lanes.toml`).
 - **E05** (`docs/epics/E05-battle-env.md`): in progress. Increments 1 (T1, T2), 2 (T3a–T3d,
   T4; #252) and 3 (T5a #253, T5b1 and T5b2 #255, T6a #257, T6b and the head calls #258) done.
-  **Increment 4** (cut 2026-10-19 at the user's checkpoint): T8 smoke training before T7.
-  **Next:** T8a, the design, for the user's review before code (QUEUE).
+  **Increment 4** (cut 2026-10-19 at the user's checkpoint): T8 smoke training before T7;
+  T8a (design §8, AI-Q5) and T8b (`python/h3env/train/`, C ABI v29) done on
+  `claude/exciting-pasteur-7etga9`, pull request #260 (open: watch it until it merges). **Next:** T8c,
+  the hour on the user's GTX 1070 (QUEUE), then the checkpoint (T7 next).
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
-- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v28 (T5b2) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q5, AI-QUIRK-1, AI-STUB-1.
+- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v29 (T8b: seats for the encounter source) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q6, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -41,6 +43,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - Scenario texts are parsed and packs compiled in `h3-ffi` (`src/scenario.rs`), never in `h3-sim`: `arch.toml` gives `h3-sim` `h3-pack-battle` for tests only. Each `h3_env_create_scenario` compiles its packs (about 18 ms for `base`, `ab`, `sod` in release, ten times that in debug).
 
 **Python**
+- The trainer (`h3env.train`, design §8): its tests are in the lane command (`uv run --group
+  train pytest`); a run's files go into `python/runs/` (ignored). In a background shell `cd`
+  may not hold: run `uv --directory python run …` (a plain `uv run` from the root takes the
+  system Python). A run in the sandbox competes with a verify for the 4 cores: run one at a time.
 - `python/` is a uv project (`uv sync`, `uv run pytest`, `uv run python -m h3env.bench`); its
   tests are a lane command, not a gate (the user, 2026-10-18), and need the release library
   (`cargo build --release -p h3-ffi`, else `$H3_LIBRARY`). A C ABI bump changes `h3env`'s
@@ -57,6 +63,17 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   `CONNECT host:443` to `$HTTPS_PROXY` ("no rule or allowlist entry allows host", 2026-10-19).
 
 ## Recent sessions
+
+### 2026-10-19 — T8a, the smoke training's design; T8b, the trainer and C ABI v29
+
+- #259 had merged. The user chose T8a then T8b, an own PPO; reviewed design §8 (AI-Q5): all
+  five as recommended. Built C ABI v29 (seats for the encounter source) and `h3env.train`
+  (`E05-log.md`); the sandbox's 30-minute CPU run learns (sampled 0.51 → 0.73 against Random).
+- Greedy play loops against Random (up to 17 % truncated): the user moved the criterion to the
+  sampled policy (design §8.2). T8c on the user's machine is next (QUEUE).
+- For the global HANDOFF (a shared change): `cargo xtask verify` outside
+  `scripts/sandbox-verify.sh` needs `LLVM_COV`, `LLVM_PROFDATA` on `/usr/lib/llvm-20/bin`, else
+  coverage fails ("LLVM tools not found").
 
 ### 2026-10-19 — T6b; the head calls from the kept entry mask; checkpoint of increment 3
 
@@ -78,13 +95,3 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   tests, the batch bit for bit as single envs on `full` and `siege`); uv.lock without torch.
   Python's steps/s against `h3 ai bench` in `E05-log.md`; the head calls' cost in the inbox.
 - PyTorch's index still refused in a new session (T6b, QUEUE).
-
-### 2026-10-19 — AI-Q4 answered; T5b1, the sampler; T5b2, the batch's encounter source
-
-- Went through A1–A12 with the user: A3's level ramp, A4's normal ratio (≥ 0.5), A5 as reviewed,
-  A12's neutral kinds weighted 0 until E23; recorded in design §4.4 and OPEN-QUESTIONS.
-- Shared #254 (both T5b parts' dependencies in one, later the stream `ENCOUNTER`; merged); T5b1
-  (`encounters-v1.toml`, `h3_sim::encounter`, the frequency check) and T5b2 (`Scenario::encounters`,
-  `h3_batch_add_encounters`, C ABI v28, the workload) on the session branch (`E05-log.md`).
-- The baseline verify of `master` failed coverage on the adventure lane's `h3-game` (QUEUE inbox;
-  suggested to the user as a task). PyTorch's index still refused (QUEUE, T6b).

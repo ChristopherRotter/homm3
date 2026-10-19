@@ -11,12 +11,12 @@ from h3env import _ffi
 
 
 def test_the_library_speaks_the_bindings_abi() -> None:
-    assert _ffi.lib().h3_abi_version() == h3env.ABI_VERSION == 28
+    assert _ffi.lib().h3_abi_version() == h3env.ABI_VERSION == 29
 
 
 def test_a_library_of_another_version_is_refused() -> None:
-    with pytest.raises(ImportError, match="C ABI v28, this binding v27"):
-        _ffi.check_version(_ffi.lib(), expected=27)
+    with pytest.raises(ImportError, match="C ABI v29, this binding v28"):
+        _ffi.check_version(_ffi.lib(), expected=28)
 
 
 def test_the_encodings_sizes() -> None:

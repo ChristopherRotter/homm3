@@ -181,6 +181,18 @@ def test_neutral_encounters_play_the_defender_inside_the_call() -> None:
         batch.step()
 
 
+def test_encounter_seats_replace_the_encounters_own() -> None:
+    # The default distribution against a random attacker: the caller always defends.
+    batch = BattleBatch(8, seed=6, max_steps=300)
+    batch.add_encounters(attacker="random", defender="external")
+    batch.reset()
+    rng = np.random.default_rng(4)
+    for _ in range(100):
+        assert (batch.to_move == 1).all()
+        batch.random_actions(rng)
+        batch.step()
+
+
 def test_refused_calls_raise_with_the_engines_message() -> None:
     with pytest.raises(H3Error, match="H3_ERR_ARGUMENT: .+"):
         BattleBatch(0)
@@ -199,6 +211,10 @@ def test_refused_calls_raise_with_the_engines_message() -> None:
         batch.add_encounters(kinds={"dragons": 1})
     with pytest.raises(ValueError, match="six kind weights"):
         batch.add_encounters(kinds=[1, 2])
+    with pytest.raises(H3Error, match="H3_ERR_ARGUMENT: .+"):
+        batch.add_encounters(attacker="random", defender="random")
+    with pytest.raises(ValueError, match="both seats"):
+        batch.add_encounters(attacker="random")
     batch.add_scenario(scenario("duel"))
     with pytest.raises(H3Error, match="H3_ERR_NOT_READY"):
         batch.step()

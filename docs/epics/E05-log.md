@@ -301,3 +301,55 @@ The full record of done tasks (the epic file keeps one line each).
 - **Checkpoint:** increment 3 done. The user cut increment 4 as T8 before T7 (the agent's
   recommendation: trainability is the epic's largest open risk, and the win rate against Random
   needs no T7 runner); T8a, the design, goes to the user for review before code. T7 and T9 follow.
+
+## T8a — The smoke training's design (2026-10-19)
+
+- **The user, at the session's start:** T8a, then T8b in the same session after the review; an
+  own PPO over the factorized heads rather than a library's (a library's MaskablePPO masks each
+  dimension on its own and would force decision 5's fallback: casts as sub-steps, a new action
+  encoding, a C ABI change).
+- **Measured** (design §8.1): Random against Random per kind with both seats external, 1 000
+  episodes each: the attacker wins 72.4 % of the hero battles, 60.1 % of the sieges a hero
+  defends, 92.3 % of a garrison's; a battle takes about 260 decisions (p99 856); 1.5 % of the
+  decisions are casts. The observation's values reach 6 · 10^5 (hence `symlog`). So the agent
+  plays both sides, and Random's own rate with sides balanced is about 50 %.
+- **Proposed** (design §8, AI-Q5): self-play training, evaluation against the engine's Random,
+  the default distribution as the family, seats for the encounter source (C ABI v29), the
+  criterion (1 000 held-out episodes per side, greedy, at least 80 % overall) and PPO's settings.
+  **The user:** all five as recommended (AI-Q5 answered).
+
+## T8b — The trainer (2026-10-19)
+
+- **C ABI v29:** `h3_batch_add_encounters(batch, weight, kinds, seats, error, error_len)`, `seats`
+  null for each encounter's own, else for every episode of the entry (at least one external);
+  `Scenario::encounters(sampler, weight, Option<[Seat; 2]>)` (`seats()` returns the override).
+  Tests: the batch as single envs with either seat replaced, a neutral kind's defender included,
+  both internal refused (`h3-sim`); through the ABI an unknown seat, both random, the caller
+  always the defender against a random attacker (`h3-ffi`); the C smoke test adds an entry
+  against a random defender; `h3env`'s `ABI_VERSION` 29, `add_encounters(attacker=, defender=)`.
+  The batch workloads moved by at most +0.04 %.
+- **Built** `python/h3env/train/` (design §8.3, §8.4): `policy.py` (`symlog`, the trunk, the value
+  and entry heads, the cast heads conditioned through embeddings, Gumbel-max draws, masked logits
+  at the dtype's lowest value), `ppo.py` (`Config`, `Rollout`, `gae` per (env, side), `Staging`,
+  `Trainer`, `train`), `evaluate.py` (the held-out play against the engine's Random per side, the
+  untrained network and Random's own rates at the start), `__main__.py` (every `Config` field an
+  option). 5.9 M parameters at the defaults. `tests/test_train.py`: masks and conditioned heads
+  over 60 calls with casts preferred, log-probabilities and values recomputed equal, GAE by hand
+  over two envs (a side twice in a row, a decided battle, a truncation, a transition open at the
+  end, the last value), the evaluation's fixed and held-out episodes, a short run's files and its
+  checkpoint's round trip. 27 Python tests pass.
+- **Speed** on the sandbox's CPU (4 cores, 256 envs, the default network): 900 samples per
+  second, an update of 32 768 samples in about 36 s. A fresh array per minibatch (145 MB) paid its
+  page faults every time (the sandbox's first touch costs 93 ms per 9 MB): `Staging` gathers
+  into tensors allocated once (680 → 900 samples/s, the same losses).
+- **The sandbox run** (30 minutes, 46 updates, 1.5 M samples; 200 held-out episodes per side,
+  ±4.5 points overall at 95 %): against Random, the sampled policy 0.51 (untrained) → 0.60 (10
+  minutes) → 0.68 → **0.73** (attacker 0.90, defender 0.56); greedy play 0.35 → 0.745 → 0.71 →
+  0.675; Random itself 0.507 on the same episodes. Battles shortened (episodes per rollout 25 →
+  310); no training battle truncated. Greedy play repeated itself until the step limit in up to
+  17 % of its battles as the attacker (11 % as the defender); the sampled policy never. **The
+  user:** the criterion is the sampled policy's (design §8.2). Per kind at the end (sampled):
+  attacking 0.94 hero, 0.84 siege with a hero, 0.86 a garrison; defending 0.65, 0.52 and 0.31 (a
+  garrison is one week's growth against a hero's army: Random defends it 0.28). 80 % overall
+  needs the defender at about 0.6 to 0.65 with the attacker near 0.97.
+- **Left:** T8c, the hour on the user's machine (QUEUE).

@@ -6,7 +6,8 @@
 //!   and its scenario is drawn from that seed's stream `SETUP`. A single [`BattleEnv`] from
 //!   [`Scenario::env`] with that seed plays the same battle bit for bit. A scenario is one battle
 //!   or the encounter distribution ([`Scenario::encounters`], E05 T5b2), which draws each
-//!   episode's battle and seats from the seed's stream `ENCOUNTER`.
+//!   episode's battle and seats from the seed's stream `ENCOUNTER` (its seats replaceable for
+//!   every episode, E05 T8b).
 //! * A scenario names a [`Seat`] per side: `External` (the caller acts) or `Internal` (a
 //!   [`Policy`] plays inside the call, drawing from stream [`StreamId::seat`] of the episode
 //!   seed). Every side the batch reports to move is external.
@@ -142,8 +143,12 @@ enum Episodes {
         random_obstacles: bool,
         seats: [Seat; 2],
     },
-    /// The encounter distribution: each episode's battle and seats drawn from its seed.
-    Encounters(Arc<Sampler>),
+    /// The encounter distribution: each episode's battle drawn from its seed, its seats too
+    /// unless `seats` replaces them for every episode (E05 T8b).
+    Encounters {
+        sampler: Arc<Sampler>,
+        seats: Option<[Seat; 2]>,
+    },
 }
 
 /// An episode source entry: a battle and its seats, or the encounter distribution (E05 T5b2), with
@@ -209,17 +214,25 @@ impl Scenario {
     /// The encounter distribution of `sampler` as a scenario drawn with `weight`: each episode
     /// plays the encounter [`Sampler::sample`] draws from the episode's seed (stream
     /// `ENCOUNTER`), on the sampler's battle part, with the encounter's seats (the attacker always
-    /// external).
+    /// external), or with `seats` (indexed by [`BattleSide::index`]) for every episode when given
+    /// (E05 T8b: an evaluation against an internal policy).
     ///
     /// # Errors
-    /// [`BatchError::ZeroWeight`].
-    pub fn encounters(sampler: Arc<Sampler>, weight: u32) -> Result<Self, BatchError> {
+    /// [`BatchError::NoExternalSeat`] when `seats` are both internal, [`BatchError::ZeroWeight`].
+    pub fn encounters(
+        sampler: Arc<Sampler>,
+        weight: u32,
+        seats: Option<[Seat; 2]>,
+    ) -> Result<Self, BatchError> {
+        if seats.is_some_and(|s| !s.contains(&Seat::External)) {
+            return Err(BatchError::NoExternalSeat);
+        }
         if weight == 0 {
             return Err(BatchError::ZeroWeight);
         }
         Ok(Self {
             ruleset: Arc::clone(sampler.battle()),
-            episodes: Episodes::Encounters(sampler),
+            episodes: Episodes::Encounters { sampler, seats },
             weight,
         })
     }
@@ -234,7 +247,7 @@ impl Scenario {
     pub fn setup(&self) -> Option<&Arc<BattleSetup>> {
         match &self.episodes {
             Episodes::Fixed { setup, .. } => Some(setup),
-            Episodes::Encounters(_) => None,
+            Episodes::Encounters { .. } => None,
         }
     }
 
@@ -242,7 +255,7 @@ impl Scenario {
     pub fn sampler(&self) -> Option<&Arc<Sampler>> {
         match &self.episodes {
             Episodes::Fixed { .. } => None,
-            Episodes::Encounters(sampler) => Some(sampler),
+            Episodes::Encounters { sampler, .. } => Some(sampler),
         }
     }
 
@@ -251,12 +264,12 @@ impl Scenario {
         self.weight
     }
 
-    /// The seats, indexed by [`BattleSide::index`]; `None` for the encounter distribution, whose
-    /// episodes each have their own ([`Episode::seats`]).
+    /// The seats, indexed by [`BattleSide::index`]; `None` for the encounter distribution with
+    /// its own seats, whose episodes each have theirs ([`Episode::seats`]).
     pub fn seats(&self) -> Option<[Seat; 2]> {
         match &self.episodes {
             Episodes::Fixed { seats, .. } => Some(*seats),
-            Episodes::Encounters(_) => None,
+            Episodes::Encounters { seats, .. } => *seats,
         }
     }
 
@@ -274,14 +287,15 @@ impl Scenario {
                 random_obstacles,
                 seats,
             } => (Arc::clone(setup), *random_obstacles, *seats, None),
-            Episodes::Encounters(sampler) => {
+            Episodes::Encounters { sampler, seats } => {
                 let encounter = sampler.sample(seed);
                 let setup = Arc::new(BattleSetup {
                     human: [true, true],
                     ..encounter.setup
                 });
                 let random = encounter.random_obstacles;
-                (setup, random, encounter.seats, Some(encounter.kind))
+                let seats = seats.unwrap_or(encounter.seats);
+                (setup, random, seats, Some(encounter.kind))
             }
         };
         let create = if random_obstacles {

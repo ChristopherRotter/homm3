@@ -284,3 +284,126 @@ and written in place by the engine (zero copy). `_ffi.py` (the library from `$H3
 - **Built (T3c):** both gated workloads (`benches/ai/`, lane-only, threads 0 so that every count
   is in the caller's thread; collect `*BattleBatch>::step`, never inlined).
 - The single-env gates (the battle lane's `random-rollouts-*`) stay as they are.
+
+## 8. Smoke training (T8) — designed (T8a), decided 2026-10-19 (AI-Q5)
+
+Exit criterion 7: a smoke run, within an hour on the user's machine, wins at least 80 % against
+Random on held-out seeds of its encounter family. Decided at T8a's start (the user, 2026-10-19):
+an own compact PPO, not a library (§8.3); at the review (AI-Q5) the rest as proposed here:
+self-play, the default distribution, C ABI v29's seats, the criterion and the settings.
+
+### 8.1 Random against Random (measured, T8a)
+
+1 000 episodes per kind (sandbox, batch seed 7, 64 envs, a 3 000-step limit that no episode
+reached), both seats external playing `random_actions`, which chooses as the internal `Random`
+does (`rollout::choose`: a uniform entry, then uniform heads):
+
+| Kind | Attacker wins | Defender wins | Decisions, median (attacker, defender) | Both sides, p99 | Casts |
+|---|---|---|---|---|---|
+| hero | 72.4 % | 27.4 % | 148, 108 | 856 | 1.5 % |
+| siege, a hero defends | 60.1 % | 39.8 % | 134, 110 | 650 | 1.7 % |
+| siege, a garrison | 92.3 % | 7.7 % | 88, 42 | 465 | 1.3 % |
+
+So the agent must play both sides: as the attacker alone Random already wins most of these
+battles. Over the family below (§8.2), the agent in each seat half of the time, Random's own rate
+against Random is about 50 %. The observation's values reach 6 · 10^5 (counts, hit points,
+values): 1 731 of its 8 882 features exceed 1 somewhere, 293 exceed 100. Python played 16 000
+steps/s on the sandbox's 4 cores (`threads = 4`).
+
+### 8.2 The family, the opponent, the held-out seeds
+
+- **The family:** the encounter distribution v1 at its default weights (`add_encounters()`):
+  the three kinds with a player on both sides, hero 4/7, a siege a hero defends 2/7, a siege
+  of a garrison 1/7 (the neutral kinds weigh 0 until E23, A12). Every faction, week, hero and
+  army the sampler draws; sieges included. Fallback, if an hour does not suffice: the hero kind
+  alone (`kinds = [0, 0, 1, 0, 0, 0]`), recorded as such.
+- **Training is self-play** (decision 8: self-play and the system actor only; Random is for tests
+  and measurement, decision 4): one network plays both sides of each battle, both external, and
+  both sides' decisions are its samples. Naive self-play, the latest network on both sides; a
+  pool of earlier checkpoints is E06's.
+- **Evaluation against the internal Random:** two evaluation batches, the agent attacking in one
+  (seats External, Random) and defending in the other (Random, External), so every reported
+  decision is the agent's. It needs **seats for the encounter source** (C ABI v29, built in
+  T8b; `BattleBatch.add_encounters(attacker=, defender=)` in Python):
+  `h3_batch_add_encounters` gains `const H3Seats *seats` (null: the encounter's own seats, as
+  now; else these for every episode of the entry, at least one external), and
+  `Scenario::encounters` an `Option<[Seat; 2]>`. ADR-0025's point 5 is kept (seats per entry, not
+  per batch). The alternative, Random played from Python in the external rows, needs no ABI
+  change but is a second Random beside T7's `h3 ai eval`'s.
+- **Held-out seeds:** the evaluation batches have their own batch seeds (fixed constants), the
+  training batch the run's seed; every evaluation plays the same episodes: the first
+  `ceil(E / N)` episodes of each env, the episode set independent of how long battles last. The
+  run checks that no evaluation episode seed (`episode_seed`) is a training one (a set of the
+  training episodes' seeds; disjoint unless two 64-bit hashes meet). E = 1 000 per side (the 95 %
+  interval at 80 % is ±2.5 points per side, ±1.8 overall).
+- **The criterion:** the overall win rate, both sides weighed equally, at least 80 %, of the
+  **sampled** policy (its draws from a generator seeded alike for every evaluation). Decided at
+  T8b (the user, 2026-10-19), replacing AI-Q5's greedy choice: in T8b's sandbox run greedy play
+  (the most likely entry, then the most likely heads) repeated itself against Random until the
+  step limit in up to 17 % of its battles, while the sampled policy never did. A draw or a
+  truncation is no win. Reported per side and kind beside Random's own rates and the untrained
+  network's, with the mean reward v1 and the truncations; greedy play's rate too.
+
+### 8.3 The trainer: an own PPO over the factorized heads
+
+- **Why own:** a library's PPO (Stable-Baselines3's MaskablePPO) masks each action dimension on
+  its own, so a cast's conditioned heads would need decision 5's fallback (casts as sub-steps, a
+  new action encoding, the partial choice in the observation, a C ABI change) and a Gym wrapper
+  over a batch that already steps vectors. An own PPO (CleanRL's single-file pattern) uses the
+  head calls as they are and adds no dependency beyond torch.
+- **The action:** the entry from the entry mask; only for the rows that chose a cast (about 1.5 %
+  of the decisions), the spell from `spell_mask(entries)`, the target from `target_mask`, the
+  second from `second_mask`, one forward pass per head, each conditioned on the earlier choices.
+  A row's log-probability is the sum of its chosen heads' (a non-cast row's later heads are "0
+  only", log-probability 0); its entropy the entry's plus the cast's heads along the chosen path.
+  Masked logits are set to the dtype's lowest value, never `-inf` (no NaN when a row has one
+  legal choice).
+- **The network** over the flat observation v21 (8 882 values): `symlog(x) = sign(x) ·
+  ln(1 + |x|)` on the input (stateless: no running statistics to keep in a checkpoint, the same
+  for every kind), a shared trunk of two 512-unit layers (ReLU), the value head (one unit) and the
+  entry head (1 404 logits) on it; the spell head (128) takes the trunk and which cast was
+  chosen, the target head (298) also the spell (an embedding of 32), the second head (298) also
+  the target (an embedding of 32). About 6 M parameters, three quarters of them in the first layer.
+- **Self-play's transitions** (`SeatBook`, §5): one trajectory per (env, side). Each call's
+  sample is the acting side's (observation, masks, chosen heads, log-probability, value); a
+  sample's reward is what `SeatBook` closes for it (reward v1, terminal), and its next value the
+  value of the same side's next sample, 0 after a decided battle, the value of `final_obs[env,
+  side]` after a truncation. GAE runs backwards over the rollout's calls with a carry per (env,
+  side). A transition still open when the rollout ends has no next value yet: it is left out of
+  that update (at most two per env); the one before it bootstraps from its value.
+- **Settings** (provisional, in the run's config and its report): 256 envs, `threads` = the
+  machine's cores, rollouts of 128 calls (32 768 samples), γ 0.995, λ 0.95, Adam at 2.5 · 10^-4
+  (linear decay), 4 epochs of 8 minibatches, clip 0.2, value coefficient 0.5, entropy 0.01, the
+  gradient's norm at most 0.5, advantages normalized per minibatch; reward v1 at its defaults
+  (`ai_value`, mana price 10); a 2 000-step limit per battle. The rollout's observations stay on
+  the CPU (32 768 × 8 882 float32, 1.2 GB) and go to the device per minibatch.
+- **Budget:** wall time is the limit (`--minutes 60`), evaluations every 10 minutes and at the
+  end, and one at the start (the untrained network, and Random's own rates on the same episodes:
+  the baselines). Measured in T8b on the sandbox's CPU (4 cores, the default network): 900 samples
+  per second, an update of 32 768 samples in about 36 s (the rollout about a third). The
+  minibatches are gathered into tensors allocated once (`ppo.Staging`): a fresh 145 MB array per
+  minibatch paid its page faults every time (the sandbox's first touch costs 93 ms per 9 MB).
+
+### 8.4 Where the code lives (built, T8b)
+
+- `python/h3env/train/` (needs the group `train`; `import h3env` stays free of torch):
+  `policy.py` (the network, the masked heads, sampling and log-probabilities), `ppo.py` (the
+  rollout over a `BattleBatch` with `SeatBook`, GAE, the update), `evaluate.py` (the held-out
+  evaluation against Random, §8.2), `__main__.py` (`uv run python -m h3env.train --minutes 60
+  --out runs/<name>`).
+- **A run's output** in `python/runs/<name>/` (git-ignored): `config.json` (every setting, the
+  ABI version, torch's, the device, the commit), `metrics.jsonl` (per update: steps,
+  episodes, steps/s, the losses, entropy, approximate KL, clip fraction, explained variance;
+  per evaluation: the rates of §8.2), `checkpoint.pt` (the network and the optimizer at each
+  evaluation). The results go into `E05-log.md` by hand.
+- **Tests** (`tests/test_train.py`, skipped without torch, a lane command): sampling never picks
+  a masked entry or head, a cast's heads conditioned row by row; the log-probability of a chosen
+  action recomputed equal; GAE on a hand-computed two-sided trajectory (a side acting twice in a
+  row, a truncation, an open transition left out); two updates on a small batch with finite
+  losses and no refused action; the evaluation's episode set fixed and disjoint from training's;
+  a checkpoint's round trip.
+- **T8b's sandbox run** (CPU, 4 cores): a short run whose evaluation rate rises clearly above the
+  untrained network's on the same held-out episodes, its numbers in the log; T8c is the hour on
+  the user's machine with the GTX 1070.
+- **Determinism:** the env is deterministic; torch on a GPU is not bit for bit. Seeds are set and
+  recorded; a run is reproduced in its numbers, not bitwise. Nothing here is a gate.

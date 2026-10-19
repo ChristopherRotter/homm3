@@ -183,13 +183,22 @@ class BattleBatch:
         _ffi.check(code, error)
 
     def add_encounters(
-        self, weight: int = 1, kinds: Sequence[int] | Mapping[str, int] | None = None
+        self,
+        weight: int = 1,
+        kinds: Sequence[int] | Mapping[str, int] | None = None,
+        attacker: int | str | None = None,
+        defender: int | str | None = None,
     ) -> None:
         """Adds the encounter distribution v1 (on the original packs) with `weight`.
 
         `kinds`: None for the distribution's weights (the neutral kinds 0 until E23), six weights in
         `ENCOUNTER_KINDS` order, or a mapping from those names to weights (the others 0).
+        `attacker`, `defender`: None for each encounter's own seats, or both given (as for
+        `add_scenario`) to play every episode with them, e.g. against `"random"`.
         """
+        if (attacker is None) != (defender is None):
+            raise ValueError("give both seats or neither")
+        seats = None if attacker is None else _ffi.H3Seats(_seat(attacker), _seat(defender))
         error = _ffi.error_buffer()
         if kinds is None:
             pointer = None
@@ -202,7 +211,10 @@ class BattleBatch:
             if len(kinds) != len(_ffi.ENCOUNTER_KINDS):
                 raise ValueError(f"six kind weights, not {len(kinds)}")
             pointer = (c_uint32 * 6)(*kinds)
-        code = self._lib.h3_batch_add_encounters(self._live(), weight, pointer, error, len(error))
+        seats_pointer = None if seats is None else byref(seats)
+        code = self._lib.h3_batch_add_encounters(
+            self._live(), weight, pointer, seats_pointer, error, len(error)
+        )
         _ffi.check(code, error)
 
     # Calls.

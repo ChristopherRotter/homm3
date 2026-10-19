@@ -947,10 +947,10 @@ proptest! {
 fn encounters_play_as_single_envs() {
     let sampler = Arc::new(crate::encounter::tests::SAMPLER.clone().with_shares());
     assert_eq!(
-        Scenario::encounters(Arc::clone(&sampler), 0).err(),
+        Scenario::encounters(Arc::clone(&sampler), 0, None).err(),
         Some(BatchError::ZeroWeight)
     );
-    let encounters = Scenario::encounters(Arc::clone(&sampler), 3).unwrap();
+    let encounters = Scenario::encounters(Arc::clone(&sampler), 3, None).unwrap();
     assert!(encounters.setup().is_none() && encounters.seats().is_none());
     assert!(Arc::ptr_eq(encounters.ruleset(), sampler.battle()));
     assert!(Arc::ptr_eq(encounters.sampler().unwrap(), &sampler));
@@ -997,4 +997,37 @@ fn encounters_play_as_single_envs() {
         );
     }
     assert!(arrays.reports.iter().any(|r| r.encounter.is_some()));
+}
+
+/// E05 T8b: seats given to the encounter distribution replace each encounter's own for every
+/// episode (an evaluation against an internal policy), a neutral kind's defender included; both
+/// internal are refused. The batch still plays its envs as single envs of [`Scenario::episode`].
+#[test]
+fn encounter_seats_replace_the_encounters_own() {
+    let sampler = Arc::new(crate::encounter::tests::SAMPLER.clone().with_shares());
+    assert_eq!(
+        Scenario::encounters(Arc::clone(&sampler), 1, Some([RANDOM, RANDOM])).err(),
+        Some(BatchError::NoExternalSeat)
+    );
+    for seats in [[Seat::External, RANDOM], [RANDOM, Seat::External]] {
+        let encounters = Scenario::encounters(Arc::clone(&sampler), 1, Some(seats)).unwrap();
+        assert_eq!(encounters.seats(), Some(seats));
+        let mut kinds = Vec::new();
+        for seed in 0..40 {
+            let episode = encounters.episode(seed, 0).unwrap();
+            assert_eq!(episode.seats, seats);
+            kinds.push(episode.kind);
+        }
+        // Neutral kinds (an internal defender of their own) are among the episodes replaced.
+        assert!(kinds.contains(&Some(crate::encounter::Kind::Wandering)));
+        let config = BatchConfig {
+            envs: 4,
+            threads: 0,
+            seed: 5,
+            max_steps: 200,
+            reward: RewardConfig::default(),
+        };
+        let (ended, _) = same_as_single_envs(config, vec![encounters], 120, 7);
+        assert!(ended > 0, "{seats:?}");
+    }
 }
