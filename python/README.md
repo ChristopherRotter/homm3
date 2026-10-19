@@ -18,8 +18,21 @@ uv sync                             # .venv with a uv-managed CPython 3.12 and n
 uv run pytest                       # the binding's tests (a lane command, not a gate)
 uv run ruff check; uv run ruff format --check
 uv run python -m h3env.bench        # Python's steps/s, the counterpart of `h3 ai bench`
-uv sync --group train               # adds PyTorch 2.14 (cu126); `uv run pytest` then runs its tests
+uv sync --group train               # adds PyTorch 2.14 (cu126)
+uv run --group train pytest         # with its tests
 ```
+
+uv: `winget install --id=astral-sh.uv -e` on Windows, else https://docs.astral.sh/uv/. It brings
+its own CPython 3.12; to build the venv on an Anaconda Python instead (the user's machine):
+
+```powershell
+conda create -n h3 -c conda-forge python=3.12 uv
+conda activate h3
+$env:UV_PYTHON = "$env:CONDA_PREFIX\python.exe"; $env:UV_PYTHON_DOWNLOADS = "never"
+```
+
+`python/.venv` then sits on conda's Python, and the conda env stays as it is. Never point `uv sync`
+at a conda env itself (`UV_PROJECT_ENVIRONMENT`): it removes every package the lock does not list.
 
 The binding loads `$H3_LIBRARY`, else `../target/release/`, and refuses a library whose
 `h3_abi_version()` differs from `h3env.ABI_VERSION`: bump both together.

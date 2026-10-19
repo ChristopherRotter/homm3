@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 cut: T5a, T5b1, T5b2, T6a built; T6b's lock built, its Windows run the user's) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4 cut: T8, its design T8a first) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -136,16 +136,27 @@ until a later shared change): **T5 Encounter distribution v1** and **T6 The Pyth
 - [x] **T6a The Python binding on Linux** — `python/` (package `h3env`, 2026-10-19; design §5):
   ctypes over C ABI v28, the batch's numpy arrays written in place, `SeatBook`, the trusted tools,
   pytest (a lane command); Python's steps/s against `h3 ai bench`. Record in `E05-log.md`.
-- [ ] **T6b Windows and PyTorch** — the group `train` with PyTorch 2.14.1+cu126 in `uv.lock`
-  and its tests (2026-10-19; design §5; the sandbox reaches PyTorch's index with the
-  environment's network access at Custom); left: the binding's tests on the user's Windows
-  machine (QUEUE). Record in `E05-log.md`.
+- [x] **T6b Windows and PyTorch** — the group `train` with PyTorch 2.14.1+cu126 in `uv.lock`
+  and its tests (2026-10-19, #258; design §5); on the user's Windows machine 23 passed, the GPU
+  test on the GTX 1070 included. Record in `E05-log.md`.
+
+**Increment 4** (cut 2026-10-19 at the user's checkpoint of increment 3: T8 before T7, since
+whether an agent learns from the env is the epic's largest open risk; the win rate against Random
+is measured from Python against the batch's internal Random seat, without T7's runner):
+**T8 Smoke training** (exit criterion 7).
+
+- [ ] **T8a Design** — for the user's review before code: the trainer (an established library or
+  an own PPO over the factorized, conditioned heads, decision 5's fallback if a library needs
+  one choice per step), the encounter family and its held-out seeds, the opponent (Random as the
+  internal seat, self-play), the network over the flat observation v21, the metrics, the budget
+  (within an hour on the user's machine) and where the code lives in `python/`.
+- [ ] **T8b The trainer** — as T8a decides, with tests; a short run in the sandbox (CPU) learns.
+- [ ] **T8c The smoke run** — on the user's machine (the GTX 1070): exit criterion 7, recorded.
 
 **Later increments** (coarse; cut at each checkpoint):
-- **T7 Baselines:** heuristic bots (greedy damage or value) and an evaluation runner (match series,
-  win rate, value efficiency, Elo between policies); where bots live is decided in T1 (a new crate
-  would be a shared change).
-- **T8 Smoke training:** a small PPO in PyTorch 2.14 on a small encounter family; exit criterion 7.
+- **T7 Baselines** (increment 5): heuristic bots (greedy damage or value) as `Policy` variants in
+  `h3-sim`'s `bots` and the evaluation runner `h3 ai eval` (match series, win rate, value
+  efficiency, Elo between policies; ADR-0025 consequences).
 - **T9 Closure:** an independent review, measurements on the user's machine (the batch's wall time
   over threads and batch sizes, moved from T3c: `h3 ai bench`, design §7), the docs.
 

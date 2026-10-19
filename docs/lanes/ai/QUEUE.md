@@ -5,13 +5,15 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 ## Tasks
 
 **E05** (`docs/epics/E05-battle-env.md`, refined 2026-10-18, AI-Q1). Increments 1 and 2 done;
-increment 3 cut 2026-10-18 (T5a done, #253; T5b1 and T5b2 done, #255; T6a done, #257; T6b's
-lock done 2026-10-19):
+increment 3 done 2026-10-19 (#253, #255, #257, #258); increment 4 cut 2026-10-19: T8 before T7.
 
-1. **T6b on Windows** — the user's run on their Windows machine (no device link needed): in the
-   repo `cargo build --release -p h3-ffi`, then in `python/` `uv sync --group train` and
-   `uv run pytest` (23 tests; the GPU test runs with the GTX 1070). Then the user's checkpoint of
-   increment 3, which cuts increment 4 (T7 baselines, T8 smoke training).
+1. **T8a Design of the smoke training** — for the user's review before code (epic, increment 4):
+   the trainer (an established library or an own PPO over the factorized, conditioned heads), the
+   encounter family and its held-out seeds, Random as the internal opponent and self-play, the
+   network over the flat observation v21, the metrics (exit criterion 7: ≥ 80 % against Random on
+   held-out seeds), the budget (within an hour on the GTX 1070), where the code lives in
+   `python/`. Into `E05-design.md` as §8; questions as AI-Q5 onward.
+2. **T8b The trainer**, then **T8c the smoke run** on the user's machine (after T8a's review).
 
 ## Inbox
 
