@@ -26,6 +26,11 @@ agent's, provisional):
   caller's arrays through one `unsafe` lifetime erasure (`Pool::run`), sound because the call
   blocks until every worker finished; a worker's panic is caught and resumed in the caller after
   that. T = 0 runs in the caller's thread.
+- **Head calls (2026-10-19):** each env keeps the single env's entry mask of the last call
+  (escapes included; only the output row masks them out). A non-cast entry's later heads ("0
+  only" while it is legal) are answered from it; only casts ask the env. The answers equal the
+  single env's (a test over every legal entry, the escapes, illegal ones and non-zero earlier
+  heads); the three calls cost 0.11–0.15 ms for 64 envs on `full` instead of 1.4 ms.
 - **Scenarios (T3d):** parsed and compiled in `h3-ffi` (`src/scenario.rs`, as T2's); one ruleset
   per packs and profile per batch, reused through the first scenario that compiled it
   (`Scenario::ruleset`), so `h3-ffi` needs no new dependency.
@@ -218,7 +223,7 @@ as proposed. How T5b1 pins down what a row leaves open is marked *(T5b1)*.
 | A11 | Difficulty | left out (normal) | the batch plays both sides as human players' (ADR-0025 point 6); the difficulty shapes only the computer's automatic choices (ADR-0023 point 7) |
 | A12 | Seats | neutral kinds (wandering, guards, a neutral town) the system actor's (internal), the others external on both sides; the neutral kinds built and tested at A1's shares, weighted 0 in what the batch samples until E23's policy (after E05) | random neutrals teach the wrong lessons (the epic's risk) |
 
-## 5. The Python side (e) — built on Linux (T6a)
+## 5. The Python side (e) — built on Linux (T6a), PyTorch locked (T6b)
 
 `python/` (package `h3env`, `python/README.md`): ctypes over C ABI v28 (no compile step, the same
 on Linux and Windows; `ctypes.CDLL` releases the GIL in each call), numpy arrays allocated once
@@ -227,10 +232,18 @@ and written in place by the engine (zero copy). `_ffi.py` (the library from `$H3
 `batch.py` (`BattleBatch`), `seats.py` (`SeatBook`), `tools.py` (single envs, fork, hash: §6),
 `bench.py`, `tests/` (pytest; a lane command, not a gate). A uv-managed CPython 3.12 in
 `python/.venv` (`.python-version`); `uv.lock` for Linux and Windows on x86-64 (`tool.uv
-.environments`), numpy and pytest only. Decisions of the build (the agent's, provisional):
+.environments`), numpy and pytest, and torch in the group `train`. Decisions of the build (the agent's, provisional):
 
-- **The group `train`** (torch 2.14 from `https://download.pytorch.org/whl/cu126`) comes with
-  T6b: a lock needs the index, which the sandbox's proxy refuses.
+- **The group `train`** (T6b, 2026-10-19): `torch==2.14.*` from PyTorch's index
+  `https://download.pytorch.org/whl/cu126` only (`tool.uv.sources`, an `explicit` index), its
+  dependencies from PyPI; locked as 2.14.1+cu126 for Python 3.10 to 3.15 on both platforms, with
+  the CUDA 12.6 runtime (`cuda-toolkit` 12.6.3, `nvidia-*-cu12`) on Linux (the Windows wheel
+  carries its own). Opt-in (`uv sync --group train`, about 4 GB on Linux): the default groups
+  stay `dev`, and `tests/test_torch.py` skips without torch (the locked build, tensors over the
+  engine's arrays, a network's masked choices for every head, the GPU's kernels where there is
+  one). Licences: torch is BSD-3; NVIDIA's CUDA libraries are proprietary, fetched by uv on the
+  machine that trains, never distributed with or linked into the engine (ADR-0009 point 3 covers
+  the engine's dependencies).
 - **`BattleBatch.step`** takes the heads as arrays (or reads `actions`, an `H3Action` record
   array); with `check` (default) it raises when an env with a side to move refused its action,
   while an env that gave up refuses silently (`status`).

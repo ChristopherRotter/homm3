@@ -18,6 +18,7 @@ uv sync                             # .venv with a uv-managed CPython 3.12 and n
 uv run pytest                       # the binding's tests (a lane command, not a gate)
 uv run ruff check; uv run ruff format --check
 uv run python -m h3env.bench        # Python's steps/s, the counterpart of `h3 ai bench`
+uv sync --group train               # adds PyTorch 2.14 (cu126); `uv run pytest` then runs its tests
 ```
 
 The binding loads `$H3_LIBRARY`, else `../target/release/`, and refuses a library whose
@@ -36,4 +37,9 @@ for _ in range(1000):
     batch.step()
 ```
 
-PyTorch 2.14 (cu126) comes with T6b as the group `train`.
+The group `train` holds PyTorch 2.14 with its CUDA 12.6 build, the last release with kernels
+for the GTX 1070's Pascal GPU (ADR-0025 point 11), from PyTorch's own index
+(`download.pytorch.org/whl/cu126`; its dependencies from PyPI). It is opt-in, about 4 GB on
+Linux; without it `tests/test_torch.py` is skipped, and its GPU test runs only where CUDA finds
+a device. `torch.from_numpy(batch.obs)` and the other arrays share the engine's memory: the
+tensors show each call's results without a copy.

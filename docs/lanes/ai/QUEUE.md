@@ -5,14 +5,13 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 ## Tasks
 
 **E05** (`docs/epics/E05-battle-env.md`, refined 2026-10-18, AI-Q1). Increments 1 and 2 done;
-increment 3 cut 2026-10-18 (T5a done, #253; T5b1 and T5b2 done, #255; T6a done 2026-10-19):
+increment 3 cut 2026-10-18 (T5a done, #253; T5b1 and T5b2 done, #255; T6a done, #257; T6b's
+lock done 2026-10-19):
 
-1. **T6b Windows and PyTorch** — the binding's tests on the user's Windows machine (`uv sync`,
-   `uv run pytest` in `python/`) and the group `train`, torch 2.14 from
-   `https://download.pytorch.org/whl/cu126`, in `uv.lock` (design §5). The sandbox's proxy
-   refused `download.pytorch.org`, `download-r2.pytorch.org` and `pytorch.org` again on
-   2026-10-19 in a new session with `*.pytorch.org` allowed; the user was asked to add the hosts
-   by name. Else the lock is made on the user's machine.
+1. **T6b on Windows** — the user's run on their Windows machine (no device link needed): in the
+   repo `cargo build --release -p h3-ffi`, then in `python/` `uv sync --group train` and
+   `uv run pytest` (23 tests; the GPU test runs with the GTX 1070). Then the user's checkpoint of
+   increment 3, which cuts increment 4 (T7 baselines, T8 smoke training).
 
 ## Inbox
 
@@ -34,8 +33,3 @@ Taken over from the battle lane's inbox (2026-10-18; the items stay there too un
   test hashes a pending Pass offer; 0 hits under `cargo llvm-cov -p h3-game`); #254's full verify
   covered it, so a property test reaches it only now and then. The adventure lane's to fix with a
   fixed test (suggested to the user as a task).
-- 2026-10-19 (T6a): a head call (`BattleBatch::spell_mask`, `target_mask`, `second_mask`) answers
-  every env and costs about 5.7 µs per env (0.37 ms for 64, measured from Python beside a verify):
-  almost all of it the non-cast envs' `action::legal_entry`, which regenerates the legal commands
-  to answer "0 only". The batch could answer those from the entry mask it wrote at the last call;
-  a policy that casts in any env of a call pays three head calls.

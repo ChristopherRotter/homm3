@@ -9,7 +9,18 @@ dependencies = ["numpy>=1.26"]
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.14"]
-# T6b adds the group "train": torch 2.14 from https://download.pytorch.org/whl/cu126 (pinned).
+# PyTorch 2.14 with its CUDA 12.6 build, the last prebuilt release for the user's GTX 1070
+# (Pascal; ADR-0025 point 11): `uv sync --group train`. torch alone comes from PyTorch's index
+# (tool.uv.sources), its dependencies from PyPI.
+train = ["torch==2.14.*"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
 
 [build-system]
 requires = ["uv_build>=0.11,<0.12"]

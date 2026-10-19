@@ -6,11 +6,11 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 - **Opened 2026-10-18** with E05's refinement (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` stays the adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05 and E06 (`lanes.toml`).
 - **E05** (`docs/epics/E05-battle-env.md`): in progress. Increments 1 (T1, T2) and 2 (T3a–T3d,
-  T4; #252) done. **Increment 3:** T5a (#253), T5b1 and T5b2 (#255, after the shared #254) merged;
-  **T6a** (the Python binding on Linux, `python/`, design §5) in the **open #257**
-  (branch `claude/trusting-tesla-0b0n8o`, 2026-10-19; the full local verify passed). The shared
-  #256 (the batch workloads' rows in `benches/README.md`) is open beside it. **Next:** T6b (PyTorch's index; Windows), then the user's checkpoint of
-  increment 3.
+  T4; #252) done. **Increment 3:** T5a (#253), T5b1 and T5b2 (#255, after the shared #254), T6a
+  (#257, the shared #256 beside it) merged; **T6b's lock** (the group `train`, torch
+  2.14.1+cu126) and the head calls from the kept entry mask on branch
+  `claude/zealous-ptolemy-0n6sn0` (2026-10-19). **Next:** the user's Windows run (QUEUE), then
+  the user's checkpoint of increment 3.
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v28 (T5b2) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q5, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
@@ -48,9 +48,25 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   (`cargo build --release -p h3-ffi`, else `$H3_LIBRARY`). A C ABI bump changes `h3env`'s
   `ABI_VERSION` and its layouts (`_ffi.py`) in the same change: the binding refuses any other
   version. Its action constants (Retreat, Surrender, the casts) are action encoding v13's.
-- PyTorch 2.14 (CUDA 12.6 build) is the last prebuilt release for the user's GTX 1070: pin it. The user's system Python is older than 3.11: use a venv. PyPI's torch 2.14 is not it (Linux: a newer CUDA; Windows: CPU only): the lock needs `download.pytorch.org/whl/cu126`, refused by the sandbox's proxy (2026-10-18, and 2026-10-19 in a new session with `*.pytorch.org` allowed: the user was asked to name the hosts).
+- PyTorch 2.14 (CUDA 12.6 build) is the last prebuilt release for the user's GTX 1070: pinned in
+  the opt-in group `train` (`uv sync --group train`), torch from `download.pytorch.org/whl/cu126`
+  only. PyPI's torch 2.14 is not it (Linux: CUDA 13; Windows: CPU only). The user's system
+  Python is older than 3.11: use the venv.
+- The sandbox reaches PyTorch's index (`download.pytorch.org`, `download-r2.pytorch.org`) only
+  while the environment's network access is **Custom** with `*.pytorch.org`: **Trusted** ignores
+  the Allowed domains. The proxy's 403 says why in its body, which curl hides: send a raw
+  `CONNECT host:443` to `$HTTPS_PROXY` ("no rule or allowlist entry allows host", 2026-10-19).
 
 ## Recent sessions
+
+### 2026-10-19 — T6b's lock; the head calls from the kept entry mask
+
+- #256 and #257 had merged. PyTorch's index was refused because the environment's network access
+  was Trusted (the proxy's 403 body); the user set Custom, and the session reached it at once.
+- The user chose T6b with the inbox's head-call cost. Built: the batch keeps the single env's
+  entry mask and answers non-cast heads from it (three calls 1.4 → 0.11–0.15 ms for 64 envs);
+  the group `train` (torch 2.14.1+cu126) in `uv.lock`, `tests/test_torch.py` (`E05-log.md`).
+- Left: the user's Windows run (QUEUE).
 
 ### 2026-10-19 — T6a, the Python binding; the batch workloads' rows
 
@@ -70,14 +86,3 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   `h3_batch_add_encounters`, C ABI v28, the workload) on the session branch (`E05-log.md`).
 - The baseline verify of `master` failed coverage on the adventure lane's `h3-game` (QUEUE inbox;
   suggested to the user as a task). PyTorch's index still refused (QUEUE, T6b).
-
-### 2026-10-18 — E05 increment 3 cut; T5a, the census
-
-- #252 was merged; the user chose T5a over T6a for the session (the device link held the maps)
-  and kept the Python tests a lane command, not a gate. Increment 3: T5a, T5b, T6a, T6b.
-- Built `h3 ai census` and `census-v1.toml` (159 maps, every battle place from `battle_ground`;
-  matches E08's census within the maps it lacked). Proposed the assumptions A1–A12 (design §4.4)
-  and asked AI-Q4. PyTorch's index is refused from the sandbox and the device link (T6b).
-- The full local verify passed every step but coverage, whose test run hit a random case of the
-  battle lane's proptest `every_step_preserves_the_invariants` (a siege; QUEUE inbox); coverage
-  alone, rerun on the same code, passed. Pull request #253, open.

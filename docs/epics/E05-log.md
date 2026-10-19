@@ -254,3 +254,38 @@ The full record of done tasks (the epic file keeps one line each).
   calls (not measured further). The random choice in numpy costs about 0.3 ms per call of 64 envs
   (a cumulative-sum sampler cost 0.66 ms for the entries alone); the head calls are the engine's
   (QUEUE inbox).
+
+## The head calls from the kept entry mask (2026-10-19, T6a's inbox)
+
+- The user chose it with T6b. `BattleBatch`'s spell, target and second masks regenerated each
+  env's legal commands to answer "0 only" for an entry that is no cast. The slot now keeps the
+  single env's entry mask of the last call (escapes included; only the output row masks them
+  out) and answers those entries from it (`plain_head`); casts still ask the env (design §1).
+- **Test:** `the_head_calls_answer_as_the_single_envs` compares all three heads with the single
+  env's on `full` and `siege` for every legal entry, the escapes, the casts, illegal and
+  out-of-range entries and non-zero earlier heads (it fails when the earlier heads or the
+  escapes are ignored); a given-up env answers nothing for a cast too.
+- **Measured** from Python (release, 64 envs, `full`, 1 000 calls, sandbox): the three head calls
+  1.40–1.45 → 0.11–0.15 ms per call; `python -m h3env.bench` with the head calls and the random
+  choice 15 300–16 200 → 24 100–24 400 steps/s (the same episodes; inside the step unchanged
+  within the noise).
+
+## T6b — PyTorch in the lock (2026-10-19)
+
+- **The index:** refused since 2026-10-18 although `*.pytorch.org` was in the environment's
+  Allowed domains. The proxy's 403 body (hidden by curl; a raw `CONNECT` shows it): "no rule or
+  allowlist entry allows host". The reachable hosts were exactly the Trusted defaults (conda and
+  githubusercontent yes, huggingface.co no): the network access was **Trusted**, which ignores
+  the Allowed domains (only **Custom** uses them). The user set Custom; the running session
+  reached the index within the minute. PyPI's torch 2.14 (CUDA 13 on Linux) and conda-forge were
+  reachable but are not the cu126 build.
+- **Built:** the group `train` (`torch==2.14.*`, `tool.uv.sources` from the `explicit` index
+  `pytorch-cu126`), locked as 2.14.1+cu126 (Python 3.10–3.15, Linux x86-64 and win_amd64; the
+  Linux CUDA 12.6 runtime `cuda-toolkit` 12.6.3 and `nvidia-*-cu12`, triton 3.8.0, from PyPI);
+  `tests/test_torch.py` (skipped without the group): the locked build (2.14, CUDA 12.6), tensors
+  sharing the engine's arrays, a linear network's masked choices for every head over 200 calls
+  of 8 envs on `full` and `siege` (bounded logits, casts preferred: 133 casts; every action
+  accepted), and the GPU's kernels where CUDA finds a device. Licences noted in design §5.
+- **Ran** in the sandbox: `uv sync --group train` (about 4 GB), `uv run pytest` 22 passed, the GPU
+  test skipped (no device; the build's archs `sm_50`–`sm_90`, Pascal's 6.1 through `sm_60`).
+  Left: the run on the user's Windows machine with the GTX 1070 (QUEUE).
