@@ -1,0 +1,39 @@
+# The capture harness's own check (E17 H1, *provisional*; capture/checks/harness-check.toml, the
+# runbook's "An experiment batch"): each thing the harness does on the adventure map, played on
+# Easy. A monster's questions wait for h3-experiment's dispositions (E08 T22a): until then they
+# were checked on a local map (E17-log.md, H1).
+
+spec = "clients/capture/checks/harness-check.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# Day 1, Red: a battle fought by the computer, a retreat, a surrender, a hero's details.
+
+[[step]]
+encounter = "Win"
+hero = "Win"
+walk = [4, 3]
+battle = "auto"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "difficulty" = "difficulty", "gold at the start" = "before:resource:gold", "a battle (yes/no)" = "battle", "stacks at the start" = "stacks:start", "stacks at the end" = "stacks:end", "the hero's army after" = "hero:army", "experience after" = "hero:experience", "the monster after" = "monster:4,3" }
+
+[[step]]
+encounter = "Run"
+hero = "Run"
+walk = [4, 8]
+battle = "retreat"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "stacks at the start" = "stacks:start", "the hero on the map after (yes/no)" = "hero:on_map", "the monster after" = "monster:4,8" }
+
+[[step]]
+encounter = "Hot"
+hero = "Hot"
+walk = [4, 13]
+battle = "defender surrender"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "Red's gold before" = "before:resource:gold:red", "Blue's gold before" = "before:resource:gold:blue", "Red's gold after" = "resource:gold:red", "Blue's gold after" = "resource:gold:blue", "Red's hexes at the start" = "hexes:start:attacker", "Blue's hexes at the start" = "hexes:start:defender", "Blue's hero on the map after (yes/no)" = "hero[Hot B]:on_map" }
+
+[[step]]
+encounter = "Exp"
+hero = "Exp"
+record = { "experience" = "hero:experience", "level" = "hero:level", "primary skills" = "hero:primary", "Diplomacy" = "hero:skill:Diplomacy", "Logistics" = "hero:skill:Logistics" }

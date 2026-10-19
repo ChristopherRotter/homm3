@@ -1054,3 +1054,41 @@ chose T4b-1.
 - **For later:** T4b-2 (which row and count the executable writes for which event, which font
   the panel and the log use, a log line drawn pixel for pixel), a localized installation's code
   page and fonts.
+
+### H1 — Questions, the difficulty, battles from the map (2026-10-19)
+
+On `client/e17-harness-e3`, the user present: the adventure lane's E08 T22a waited on the
+harness's missing features (its inbox request of 2026-10-13); the user had the client lane take
+them first. Refined into H1 (this) and H2 (the underground, the hero list's scrolling, the start's
+reads, a second day).
+
+- **Starting point:** master at `f8b1dccb`; the clients' full check passed in the new sandbox
+  (code 76a427e1). No client pull request open (T4b-1 had merged as `f2a329e8`).
+- **Found:** auto combat did nothing at first: the button toggles the battle manager's +0x132C4,
+  but a human side's creature acts on its own only with the setting `Combat Auto Creatures`
+  (0x698794, read from the registry at 0x50BB6D) on, which a new prefix holds at 0
+  (war_machine_automatic 0x474CDF); `setup.sh` sets it. A question's text is read from the window
+  manager's topmost dialog, not from the message buffer (0x6973D8), which a map's own text may not
+  pass through. The offers' records: ADVEVENT 86 (join), 88 or 89 + 90 (join for gold), 91 (flee),
+  87 (the insult, a message). A player left without heroes and towns is out, and the last human
+  then wins: the check map gives Blue a second hero. Hot seat needs two names.
+- **Built:** `h3adv.py`: `difficulty` (the scenario list's buttons, checked at game +0x1F6D8),
+  questions (`answer`, per kind), battles (`battle`: `auto`, `[defender] retreat|surrender`), the
+  observations (before and after the step: every player's resources, the hero's details by its
+  index, which stays when it leaves the map; the battles' stacks, hexes and outcome; another
+  hero's details by name; a tile's monster, aggression and flag), a stop after 30 s on an unknown
+  screen; `h3mem.py`: heroes' experience, level, army, skills and primary skills, all 156 heroes,
+  the difficulty, a tile's word and monster, creature names from the game's table, the battle's
+  outcome, the topmost dialog's text; `h3lod.py` (the LODs' text tables, a text's record);
+  `[button.cancel]`, `[button.battle_ok]`; the check spec and recipe; the runbook and design §6.3;
+  `docs/exe/` entries (0x698794, 0x699280, the manager's +0x132C4, the dialog records).
+- **Checked:** the check recipe on Easy plays its four encounters from memory (a won battle by
+  auto combat: 3 Pikemen and 2 Halberdiers to none, 50 experience; a retreat: the hero off the
+  map, the 30 Pikemen whole; Blue's surrender in hot seat: 470 gold from Blue to Red, Blue's hero
+  off the map; a hero with 5 000 experience: level 5, 3/5/1/2, Diplomacy and Logistics expert).
+  The questions on a local map (h3-experiment's monster patched in the sandbox to other
+  dispositions, never committed): join no then flee no (the monster gone), flee yes (a battle won
+  by auto combat), join yes (27 Pikemen), on Hard. E08 batch 2 again: D3a–D3d all 13 fields as the
+  user's, D5's random amounts within their ranges.
+- **For later:** H2; the guarded pile's question and a monster's offers in a committed check
+  once h3-experiment places them (E08 T22a); a level-up dialog after a battle (not met yet).

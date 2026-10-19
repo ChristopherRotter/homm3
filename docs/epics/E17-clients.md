@@ -1,6 +1,6 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a done). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a done); the adventure lane's harness H1 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
@@ -306,6 +306,22 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   ids), packs as nested JSON (i18next's conventions, CLDR's integer plural rules), the original's
   pack read at run time from the user's tables, a player's pack before it (CLT-Q7); the gate reads
   all 155 keys' 306 forms; `h3-view text` formats the log's lines from them.
+
+### The adventure lane's harness (H1, H2: its batch E3)
+
+Taken ahead of M3's remainder on 2026-10-19 (the user): the adventure lane's E08 T22a waits on
+it (`docs/rules/surveys/E08-battles.md` §13; the requests in the queue's inbox since 2026-10-13).
+
+- **H1 done 2026-10-19** ([log](E17-log.md#h1--questions-the-difficulty-battles-from-the-map-2026-10-19),
+  [design §6.3](E17-design.md)): `h3adv.py` answers a visit's questions by the record their text
+  was written from (`h3lod.py`, the topmost dialog's text in memory), starts a game at a chosen
+  difficulty, plays the battles a step opens (auto combat, a retreat or a surrender by side) with
+  their stacks read at the start and the end, and records heroes' details, the players' resources
+  before and after and a tile's monster from memory; `setup.sh` turns on the auto combat of
+  creatures. The check recipe (`capture/batches/harness-check.toml`) plays each; batch 2 still
+  reproduces.
+- H2 (queue): the underground, the hero list's scrolling, the 156 heroes' experience, a second
+  day.
 
 ### Later (refined when they come up)
 

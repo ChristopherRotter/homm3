@@ -1,0 +1,138 @@
+# The capture harness's own check (E17 H1, *provisional*; clients/capture/README.md, "An experiment
+# batch"): not an experiment of the rules but a map whose recipe (capture/batches/harness-check.toml)
+# plays each thing the harness does on the adventure map: the difficulty, a battle started from
+# the map and fought by the computer, a retreat, a surrender in hot seat, a hero's details read from
+# memory. Built by h3-experiment as the domain lanes' specs are; the questions of a monster's offers
+# need a monster that offers (a disposition other than savage, or one that may flee), which
+# h3-experiment places from E08 T22a on: the recipe's question steps wait for it.
+
+[map]
+name = "Harness check"
+description = "The capture harness's check map (E17 H1): played by clients/capture/h3adv.py, not by hand."
+size = 36
+terrain = "grass"
+
+[[encounter]]
+id = "Win"
+title = "A battle against a monster, fought by the computer (auto combat)"
+questions = []
+procedure = ["Walk into the Pikemen; auto combat."]
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [3, 3]
+primary = [5, 5, 1, 1]
+army = [["Archangel", 20]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 5
+[[encounter.record]]
+field = "difficulty"
+[[encounter.record]]
+field = "gold at the start"
+[[encounter.record]]
+field = "a battle (yes/no)"
+[[encounter.record]]
+field = "stacks at the start"
+[[encounter.record]]
+field = "stacks at the end"
+[[encounter.record]]
+field = "the hero's army after"
+[[encounter.record]]
+field = "experience after"
+[[encounter.record]]
+field = "the monster after"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "Run"
+title = "A battle against a monster, the hero retreats"
+questions = []
+procedure = ["Walk into the Pikemen; retreat."]
+[encounter.hero]
+type = "Aine"
+specialty = "resource gold"
+at = [3, 8]
+primary = [1, 1, 1, 1]
+army = [["Peasant", 1]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 30
+[[encounter.record]]
+field = "stacks at the start"
+[[encounter.record]]
+field = "the hero on the map after (yes/no)"
+[[encounter.record]]
+field = "the monster after"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "Hot"
+title = "A battle between two players' heroes in hot seat, the defender surrenders"
+questions = []
+procedure = ["Red walks into Blue's hero; Blue surrenders at its first turn."]
+[encounter.hero]
+type = "Octavia"
+specialty = "resource gold"
+at = [3, 13]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+tight = true
+[encounter.opponent.hero]
+type = "Gelare"
+specialty = "resource gold"
+name = "Hot B"
+primary = [1, 1, 1, 1]
+army = [["Gnoll", 10], ["Lizardman", 4]]
+[[encounter.record]]
+field = "Red's gold before"
+[[encounter.record]]
+field = "Blue's gold before"
+[[encounter.record]]
+field = "Red's gold after"
+[[encounter.record]]
+field = "Blue's gold after"
+[[encounter.record]]
+field = "Red's hexes at the start"
+[[encounter.record]]
+field = "Blue's hexes at the start"
+[[encounter.record]]
+field = "Blue's hero on the map after (yes/no)"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "Exp"
+title = "A hero with a custom experience: its level and skills at the start"
+questions = []
+procedure = ["Select the hero and read its details."]
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+at = [3, 18]
+experience = 5000
+primary = [2, 3, 1, 1]
+skills = [["Diplomacy", 1], ["Logistics", 2]]
+army = [["Pikeman", 1]]
+# Blue's second hero, far away: Blue keeps a hero after its surrender in Hot, so the game goes on.
+[encounter.opponent.hero]
+type = "Jenova"
+specialty = "resource gold"
+name = "Keep B"
+at = [20, 18]
+primary = [1, 1, 1, 1]
+army = [["Gnoll", 1]]
+[[encounter.record]]
+field = "experience"
+[[encounter.record]]
+field = "level"
+[[encounter.record]]
+field = "primary skills"
+[[encounter.record]]
+field = "Diplomacy"
+[[encounter.record]]
+field = "Logistics"
+[[encounter.record]]
+field = "anything odd"

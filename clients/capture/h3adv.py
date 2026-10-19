@@ -47,6 +47,7 @@ from pathlib import Path
 import numpy as np
 
 import h3drive
+import h3lod
 import h3mem
 from h3drive import ROOT, Game
 
@@ -56,6 +57,7 @@ HOT_SEAT = (580, 152)  # the multiplayer dialog's first button
 NAME_FIELDS = (400, 186, 30)  # the hot-seat names: x, the first field's y, the step
 NAMES_OK = (340, 444)
 BEGIN = (497, 553)  # scenario list
+DIFFICULTY_BUTTONS = (521, 478, 32)  # the scenario list's player difficulty: Easy's centre, the step
 PARK = (700, 300)  # over the right panel: no edge scrolls, no tile hovered
 HERO_LIST = (638, 227, 32, 5)  # the hero list's portraits: x, the first one's y, the step, rows
 MAP_AREA = (8, 8, 18, 17)  # the map's screen area: its top-left, the tiles across and down
@@ -63,6 +65,7 @@ TILE = 32
 RADAR = (630, 26, 144)  # the minimap: its top-left and side in pixels
 CENTRE = (9, 8)  # a minimap click puts the clicked tile here in the view
 QUIET = 1.5  # seconds without a change: a walk or a visit is over
+STRANGE = 30  # seconds on an unknown screen without a dialog: the batch stops
 
 
 def stamp(spec_path):
@@ -113,9 +116,10 @@ def dismiss(game, quiet=1.5, limit=60.0):
 
 
 # -- the game's start and turns ----------------------------------------------------------------
-def to_hot_seat(game, names):
+def to_hot_seat(game, names, difficulty="normal"):
     """From the start to the first human's adventure map of the only map in Maps/, every name a
-    human player (hot seat; colours from red on, as the map allows them)."""
+    human player (hot seat, at least two; colours from red on, as the map allows them), the
+    players' difficulty chosen in the scenario list (E17 H1; its default Normal)."""
     game.wait("main_menu", 90)
     game.click(640, 75, 1.0)  # New Game
     game.wait("new_game_menu")
@@ -130,6 +134,8 @@ def to_hot_seat(game, names):
         h3drive.run("xdotool", "type", "--delay", "50", name)
     game.click(*NAMES_OK, 1.0)
     game.wait("scenario_list")
+    x, y, step = DIFFICULTY_BUTTONS
+    game.click(x + step * h3mem.DIFFICULTIES.index(difficulty), y, 0.6)
     game.click(*BEGIN, 1.0)
     game.move(*PARK)
     game.wait("turn_dialog", 60)
@@ -208,72 +214,275 @@ def hover(game, mem, x, y):
     return point
 
 
-def observe(mem, name, colour):
-    hero = mem.hero_named(name)
-    return {"tile": hero["tile"][:2], "points": hero["points"],
-            "resources": mem.player(colour)["resources"]}
+def observe(mem, index):
+    """The hero by index (its type, which stays when it leaves the map) and every player's
+    resources: what a step waits on and records."""
+    hero = mem.hero(index)
+    return {"tile": hero["tile"][:2], "points": hero["points"], "owner": hero["owner"],
+            "resources": {colour: mem.player(colour)["resources"] for colour in range(8)
+                          if mem.player(colour)["heroes"] or colour == hero["owner"]}}
 
 
-def settle(game, mem, name, colour):
-    """Waits until the hero's tile, its points and its player's resources stay the same for
-    QUIET seconds (the walk and any visit over), clicking any dialog's OK on the way; returns
-    the observation and the number of dialogs."""
-    last, since, dialogs = None, time.monotonic(), 0
-    end = time.monotonic() + 120
+# -- questions and battles (E17 H1) -----------------------------------------------------------
+# A question's kind by the record its text was written from (ADVEVENT.TXT; survey E08-battles §3.2):
+# the monster's offer to join for free, to join for gold (one record, or two together), to flee.
+KINDS = {"ADVEVENT:86": "join", "ADVEVENT:88": "join for gold", "ADVEVENT:89+90": "join for gold",
+         "ADVEVENT:91": "flee"}
+BATTLE_PARK = (420, 580)  # over the battle's panel, off the battlefield
+SIDES = ("attacker", "defender")
+BATTLE_KEYS = {"retreat": "r", "surrender": "s"}
+
+
+def reply(answer, kind):
+    """The step's answer to a question of `kind`: `answer` itself ("yes", "no") or its entry for
+    the kind (`other` for any other); None when it has none."""
+    if isinstance(answer, dict):
+        return answer.get(kind, answer.get("other"))
+    return answer
+
+
+def stacks(mem):
+    """The battle's stacks: [side, creature, count, hex] in the records' order."""
+    return [[s["side"], s["creature"], s["count"], s["hex"]] for s in mem.stacks()]
+
+
+def fight(game, mem, plan, limit=300.0):
+    """Plays the battle on the screen as `plan` says and returns its record: the stacks at the
+    start and the end, the outcome and how it was played. `plan`: "auto" (auto combat: the
+    computer plays every human side; setup.sh's `Combat Auto Creatures`), or "retreat" or
+    "surrender", optionally "defender retreat" or "defender surrender" (default the attacker):
+    every other stack defends until one of that side's stacks acts, which then retreats or
+    surrenders; the confirmation's OK is clicked."""
+    if plan is None:
+        raise RuntimeError("a battle the step does not plan (`battle`)")
+    words = plan.split()
+    action, side = words[-1], SIDES.index(words[0]) if len(words) == 2 else 0
+    if action not in ("auto", *BATTLE_KEYS) or len(words) > 2:
+        raise ValueError(f"unknown battle plan `{plan}`")
+    game.move(*BATTLE_PARK)
+    wait_for(lambda: mem.stacks(), "the battle's stacks", 10)
+    time.sleep(0.5)
+    record = {"plan": plan, "start": stacks(mem)}
+    end = time.monotonic() + limit
+    if action == "auto":
+        game.key("a", 0.5)
+    else:
+        while True:
+            if time.monotonic() > end:
+                raise TimeoutError(f"no stack of the {SIDES[side]} acted")
+            active = mem.globals()["active"]
+            if active is None or find_button(game, "battle_ok"):
+                time.sleep(0.1)
+                if find_button(game, "battle_ok"):
+                    break  # over before that side acted
+                continue
+            if active[0] == side:
+                game.key(BATTLE_KEYS[action], 1.0)
+                found = find_button(game, "ok")
+                if not found:
+                    raise RuntimeError(f"no confirmation after the {action} key")
+                click_button(game, "ok", found[0])
+                game.move(*BATTLE_PARK)
+                break
+            game.key("d", 0.3)
+            wait_for(lambda a=active: mem.globals()["active"] != a, "the next stack's turn", 30)
+    while not find_button(game, "battle_ok"):
+        if time.monotonic() > end:
+            raise TimeoutError("the battle does not end")
+        time.sleep(0.2)
+    time.sleep(0.3)
+    record["end"] = stacks(mem)
+    record.update(mem.battle_outcome())
+    click_button(game, "battle_ok", find_button(game, "battle_ok")[0])
+    return record
+
+
+def settle(game, mem, index, answer=None, battle=None):
+    """Waits until the hero, its points and the players' resources stay the same for QUIET
+    seconds on the adventure map (the walk and any visit over), on the way answering each question
+    as `answer` says, playing each battle as `battle` says and clicking any other dialog's OK;
+    returns the observation and what happened: the dialogs passed, the questions (record, kind,
+    answer) and the battles (fight's records)."""
+    events = {"dialogs": 0, "questions": [], "battles": []}
+    last, since, known = None, time.monotonic(), time.monotonic()
+    end = time.monotonic() + 600
     while time.monotonic() < end:
-        found = find_button(game, "ok")
-        if found:
-            click_button(game, "ok", found[0])
-            dialogs, since = dialogs + 1, time.monotonic()
-        now = observe(mem, name, colour)
-        if now != last:
+        pix = game.pixels()
+        if game.matches("adventure", pix) or game.matches("battle", pix):
+            known = time.monotonic()
+        elif time.monotonic() - known > STRANGE:
+            bad = game.out / "not-adventure.xwd"
+            game.dump(bad)
+            raise TimeoutError(f"neither the adventure map, a battle nor a dialog for {STRANGE} s "
+                               f"(the game over?; the display: {bad})")
+        if game.matches("battle", pix):
+            events["battles"].append(fight(game, mem, battle))
+            last, since = None, time.monotonic()
+            continue
+        oks, cancels = find_button(game, "ok", pix), find_button(game, "cancel", pix)
+        if oks or cancels:
+            known = time.monotonic()
+        if oks and cancels:
+            record = h3lod.identify(mem.dialog_text())
+            kind = KINDS.get(record, "other")
+            said = reply(answer, kind)
+            if said not in ("yes", "no"):
+                raise RuntimeError(f"a question ({record or 'its text not identified'}, {kind}) "
+                                   "the step does not answer (`answer`)")
+            events["questions"].append({"record": record, "kind": kind, "answer": said})
+            click_button(game, *(("ok", oks[0]) if said == "yes" else ("cancel", cancels[0])))
+            last, since = None, time.monotonic()
+            continue
+        if oks:
+            click_button(game, "ok", oks[0])
+            events["dialogs"] += 1
+            last, since = None, time.monotonic()
+            continue
+        now = observe(mem, index)
+        if now != last or not game.matches("adventure", pix):
             last, since = now, time.monotonic()
         elif time.monotonic() - since >= QUIET:
-            return now, dialogs
+            return now, events
         time.sleep(0.05)
-    raise TimeoutError(f"{name} does not come to rest")
+    raise TimeoutError(f"hero {index} does not come to rest")
 
 
-def walk(game, mem, name, target):
+def walk(game, mem, name, target, answer=None, battle=None):
     """Selects the hero, clicks the target tile once (the path shows: its marks are read) and
-    again (the hero goes, or not), waits until it rests; returns the observation."""
+    again (the hero goes, or not, or visits what stands there), waits until it rests, answering
+    questions and playing battles on the way (settle); returns the observation."""
     hero = select(game, mem, name)
-    colour = hero["owner"]
+    index = hero["index"]
     (x0, y0), (x, y) = hero["tile"][:2], target
     centre(game, mem, (x0 + x) // 2, (y0 + y) // 2)
-    before = observe(mem, name, colour)
+    before = observe(mem, index)
     game.click(*hover(game, mem, x, y), 0.3)
     game.move(*PARK)
     time.sleep(0.3)
     path = mem.path()
     # The game walks on a click on the hero's current destination: a path to this tile set
     # before makes the first click walk.
-    first_walked = observe(mem, name, colour) != before
+    first_walked = observe(mem, index) != before
     if not first_walked:
         game.click(*hover(game, mem, x, y), 0.3)
         game.move(*PARK)
-    after, dialogs = settle(game, mem, name, colour)
+    after, events = settle(game, mem, index, answer, battle)
     colours = sorted(set(path.values()))
     return {
-        "hero": name, "from": before["tile"], "target": [x, y], "tile": after["tile"],
-        "marks": len(path), "mark": path.get((x, y), "none"), "path": colours,
-        "arrived": after["tile"] == [x, y], "moved": after["tile"] != before["tile"],
-        "points_before": before["points"], "points": after["points"],
-        "resources": after["resources"], "dialogs": dialogs, "first_click_walked": first_walked,
+        "hero": name, "index": index, "from": before["tile"], "target": [x, y],
+        "tile": after["tile"], "marks": len(path), "mark": path.get((x, y), "none"),
+        "path": colours, "arrived": after["tile"] == [x, y],
+        "moved": after["tile"] != before["tile"], "points_before": before["points"],
+        "points": after["points"], "first_click_walked": first_walked, **events,
     }
 
 
 # -- a batch ---------------------------------------------------------------------------------
-def value(obs, what):
+COLOURS = ("red", "blue", "tan", "green", "orange", "purple", "teal", "pink")
+LEVELS = ("none", "basic", "advanced", "expert")
+
+
+def snapshot(mem, index):
+    """What a step's record may read before and after it: the hero by index and every player's
+    resources by colour."""
+    hero = mem.hero(index)
+    players = {COLOURS[c]: mem.player(c)["resources"] for c in range(8) if mem.player(c)["heroes"]
+               or c == hero["owner"]}
+    return {"hero": hero, "resources": players}
+
+
+def army_text(mem, army):
+    return ", ".join(f"{count} {mem.creature_name(creature, count)}" for creature, count in army
+                     if count) or "none"
+
+
+def hero_value(mem, hero, field):
+    """A hero's detail (`hero:<field>`): experience, level, primary (attack/defense/power/
+    knowledge), army, skill:<name> (none, basic, advanced, expert), on_map (yes/no), tile."""
+    if field == "experience":
+        return str(hero["experience"])
+    if field == "level":
+        return str(hero["hero_level"])
+    if field == "primary":
+        return "/".join(map(str, hero["primary"]))
+    if field == "army":
+        return army_text(mem, hero["army"])
+    if field.startswith("skill:"):
+        name = field.split(":", 1)[1]
+        if name not in h3mem.SKILLS:
+            raise ValueError(f"unknown secondary skill `{name}`")
+        return LEVELS[hero["skills"].get(name, 0)]
+    if field == "on_map":
+        return {True: "yes", False: "no"}[hero["owner"] >= 0]
+    if field == "tile":
+        return ",".join(map(str, hero["tile"]))
+    raise ValueError(f"unknown hero detail `{field}`")
+
+
+def stacks_text(mem, stacks, side=None):
+    """A battle's stacks by side (`attacker 20 Archangels | defender 3 Pikemen, 2 Halberdiers`),
+    or one side's."""
+    sides = [side] if side is not None else [0, 1]
+    parts = []
+    for s in sides:
+        text = army_text(mem, [(c, n) for sd, c, n, _ in stacks if sd == s])
+        parts.append(text if side is not None else f"{SIDES[s]} {text}")
+    return " | ".join(parts)
+
+
+def value(obs, what, mem):
+    """A record's value from a step's observation (the game's memory right after the step for
+    `monster:`, `aggression:` and another hero's details)."""
     yes = {True: "yes", False: "no"}
+    if what.startswith("before:"):
+        return value({**obs, "after": obs["before"]}, what.split(":", 1)[1], mem)
+    after = obs["after"]
     if what in ("arrived", "moved"):
         return yes[obs[what]]
+    if what == "points" and "points" not in obs:
+        return str(after["hero"]["points"])
     if what in ("mark", "marks", "points"):
         return str(obs[what])
     if what == "points_if_moved":
         return str(obs["points"]) if obs["moved"] else ""
     if what.startswith("resource:"):
-        return str(obs["resources"][what.split(":", 1)[1]])
+        _, name, *colour = what.split(":")
+        owner = colour[0] if colour else COLOURS[obs["before"]["hero"]["owner"]]
+        return str(after["resources"][owner][name])
+    if what == "difficulty":
+        return mem.difficulty()
+    if what == "question":
+        return ", ".join(q["kind"] for q in obs.get("questions", [])) or "none"
+    if what == "questions":
+        return ", ".join(q["record"] or "?" for q in obs.get("questions", [])) or "none"
+    battles = obs.get("battles", [])
+    if what == "battle":
+        return yes[bool(battles)]
+    if what.split(":")[0] in ("stacks", "hexes", "winner", "retreated", "surrendered"):
+        if not battles:
+            return "no battle"
+        fought = battles[-1]
+        kind, *rest = what.split(":")
+        if kind in ("winner", "retreated", "surrendered"):
+            return "none" if fought[kind] is None else SIDES[fought[kind]]
+        moment, side = rest[0], SIDES.index(rest[1]) if len(rest) > 1 else None
+        if kind == "stacks":
+            return stacks_text(mem, fought[moment], side)
+        return ", ".join(str(h) for sd, _, _, h in fought[moment] if side in (None, sd))
+    if what.startswith("hero:"):
+        return hero_value(mem, after["hero"], what.split(":", 1)[1])
+    if m := re.match(r"hero\[(.+)\]:(.+)$", what):
+        found = [h for h in mem.all_heroes() if h["name"] == m.group(1)]
+        if len(found) != 1:
+            raise ValueError(f"{len(found)} heroes named {m.group(1)!r}")
+        return hero_value(mem, found[0], m.group(2))
+    if m := re.match(r"(monster|aggression|never_flees):(\d+),(\d+)(?:,(\d))?$", what):
+        found = mem.monster(int(m.group(2)), int(m.group(3)), int(m.group(4) or 0))
+        if found is None:
+            return "none"
+        if m.group(1) == "monster":
+            return army_text(mem, [(found["creature"], found["count"])])
+        return str(found["aggression"]) if m.group(1) == "aggression" else yes[found["never_flees"]]
     raise ValueError(f"unknown observation `{what}`")
 
 
@@ -284,10 +493,16 @@ def oddities(obs, expect):
     if "path" in expect and obs.get("path") != [expect["path"]]:
         notes.append(f"the path to {obs['target']} was {'/'.join(obs['path']) or 'not shown'}, "
                      f"not all {expect['path']}")
-    if obs.get("dialogs"):
+    if obs.get("dialogs") and not expect.get("dialogs"):
         notes.append(f"{obs['dialogs']} dialog(s) after the walk to {obs['target']}")
     if obs.get("first_click_walked"):
         notes.append(f"the first click on {obs['target']} walked (a path to it was set before)")
+    if "question" in expect:
+        asked = ", ".join(q["kind"] for q in obs.get("questions", [])) or "none"
+        if asked != expect["question"]:
+            notes.append(f"the questions were {asked}, not {expect['question']}")
+    if "battle" in expect and bool(obs.get("battles")) != expect["battle"]:
+        notes.append(f"{'a' if obs.get('battles') else 'no'} battle")
     return notes
 
 
@@ -314,6 +529,11 @@ def fill(template, values, notes, header):
     if values:
         raise ValueError(f"fields the template does not have: {sorted(values)}")
     return "\n".join(out) + "\n"
+
+
+def shown(path):
+    """A path as the repository names it (absolute outside it)."""
+    return path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
 
 
 def compile_spec(spec, out, name):
@@ -347,33 +567,39 @@ def batch(recipe_path, map_path=None, out=None):
     game = Game(out)
     try:
         game.start(map_path)
-        to_hot_seat(game, recipe["players"])
+        difficulty = recipe.get("difficulty", "normal")
+        to_hot_seat(game, recipe["players"], difficulty)
         mem = h3mem.Mem()
+        if mem.difficulty() != difficulty:
+            raise RuntimeError(f"the game's difficulty is {mem.difficulty()}, not {difficulty}")
         for step in recipe["step"]:
             if step.get("end_turn"):
                 obs = {"end_turn": True, "player": end_turn(game, mem)}
-            elif "walk" in step:
-                obs = walk(game, mem, step["hero"], step["walk"])
             else:
-                hero = select(game, mem, step["hero"])
-                obs = observe(mem, step["hero"], hero["owner"])
+                index = select(game, mem, step["hero"])["index"]
+                before = snapshot(mem, index)
+                obs = (walk(game, mem, step["hero"], step["walk"], step.get("answer"),
+                            step.get("battle")) if "walk" in step else {"hero": step["hero"]})
+                obs.update(before=before, after=snapshot(mem, index))
             obs["encounter"] = step.get("encounter")
+            obs["record"] = {field: value(obs, what, mem)
+                             for field, what in step.get("record", {}).items()}
             steps.append(obs)
             log.write(json.dumps(obs) + "\n")
             log.flush()
             print(json.dumps(obs), flush=True)
-            for field, what in step.get("record", {}).items():
-                values[(step["encounter"], field)] = value(obs, what)
+            for field, got in obs["record"].items():
+                values[(step["encounter"], field)] = got
             for note in oddities(obs, step.get("expect", {})):
                 notes.setdefault(step["encounter"], []).append(note)
     finally:
         game.stop()
         log.close()
     header = (f"> Played by the capture harness on {date.today().isoformat()} "
-              f"(`clients/capture/h3adv.py batch {recipe_path.relative_to(ROOT)}`): "
+              f"(`clients/capture/h3adv.py batch {shown(recipe_path)}`): "
               "the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, "
-              "the scenario list's defaults (difficulty Normal, starting bonus random), Show "
-              "Route on; read from the game's memory.")
+              f"difficulty {recipe.get('difficulty', 'normal').capitalize()}, the starting bonus "
+              "random, Show Route on; read from the game's memory.")
     filled = fill(Path(template).read_text(), values, notes, header)
     result = out / f"{name}.md"
     result.write_text(filled)
