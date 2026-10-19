@@ -336,10 +336,13 @@ steps/s on the sandbox's 4 cores (`threads = 4`).
   run checks that no evaluation episode seed (`episode_seed`) is a training one (a set of the
   training episodes' seeds; disjoint unless two 64-bit hashes meet). E = 1 000 per side (the 95 %
   interval at 80 % is ±2.5 points per side, ±1.8 overall).
-- **The criterion:** the overall win rate, both sides weighed equally, at least 80 %, with the
-  network choosing greedily (the most likely entry, then the most likely heads). A draw or a
-  truncation is no win. Reported per side and kind beside Random's own rates, with the mean
-  reward v1 and the truncations; the sampled policy's rate too.
+- **The criterion:** the overall win rate, both sides weighed equally, at least 80 %, of the
+  **sampled** policy (its draws from a generator seeded alike for every evaluation). Decided at
+  T8b (the user, 2026-10-19), replacing AI-Q5's greedy choice: in T8b's sandbox run greedy play
+  (the most likely entry, then the most likely heads) repeated itself against Random until the
+  step limit in up to 17 % of its battles, while the sampled policy never did. A draw or a
+  truncation is no win. Reported per side and kind beside Random's own rates and the untrained
+  network's, with the mean reward v1 and the truncations; greedy play's rate too.
 
 ### 8.3 The trainer: an own PPO over the factorized heads
 
@@ -375,18 +378,21 @@ steps/s on the sandbox's 4 cores (`threads = 4`).
   (`ai_value`, mana price 10); a 2 000-step limit per battle. The rollout's observations stay on
   the CPU (32 768 × 8 882 float32, 1.2 GB) and go to the device per minibatch.
 - **Budget:** wall time is the limit (`--minutes 60`), evaluations every 10 minutes and at the
-  end. To be measured in T8b: the steps/s of training on the sandbox's CPU; on the user's machine
-  in T8c.
+  end, and one at the start (the untrained network, and Random's own rates on the same episodes:
+  the baselines). Measured in T8b on the sandbox's CPU (4 cores, the default network): 900 samples
+  per second, an update of 32 768 samples in about 36 s (the rollout about a third). The
+  minibatches are gathered into tensors allocated once (`ppo.Staging`): a fresh 145 MB array per
+  minibatch paid its page faults every time (the sandbox's first touch costs 93 ms per 9 MB).
 
-### 8.4 Where the code lives
+### 8.4 Where the code lives (built, T8b)
 
 - `python/h3env/train/` (needs the group `train`; `import h3env` stays free of torch):
   `policy.py` (the network, the masked heads, sampling and log-probabilities), `ppo.py` (the
   rollout over a `BattleBatch` with `SeatBook`, GAE, the update), `evaluate.py` (the held-out
   evaluation against Random, §8.2), `__main__.py` (`uv run python -m h3env.train --minutes 60
   --out runs/<name>`).
-- **A run's output** in `python/runs/<name>/` (git-ignored): `config.toml` (every setting, the
-  library's ABI and encodings' versions, the commit), `metrics.jsonl` (per update: steps,
+- **A run's output** in `python/runs/<name>/` (git-ignored): `config.json` (every setting, the
+  ABI version, torch's, the device, the commit), `metrics.jsonl` (per update: steps,
   episodes, steps/s, the losses, entropy, approximate KL, clip fraction, explained variance;
   per evaluation: the rates of §8.2), `checkpoint.pt` (the network and the optimizer at each
   evaluation). The results go into `E05-log.md` by hand.

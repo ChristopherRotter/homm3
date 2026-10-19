@@ -171,7 +171,7 @@ def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -
         eval_every=0,
         eval_episodes=8,
         eval_envs=8,
-        eval_sampled=False,
+        eval_greedy=False,
         device="cpu",
     )
     trainer = train(config, tmp_path)
@@ -184,7 +184,8 @@ def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -
     assert all(e["held_out"] for e in evals)
     for r in updates:
         assert all(np.isfinite(r[k]) for k in ("policy_loss", "value_loss", "entropy", "kl"))
-        assert r["samples"] > 0
+        assert r["update_samples"] > 0
+    assert updates[1]["samples"] == updates[0]["samples"] + updates[1]["update_samples"]
     meta = json.loads((tmp_path / "config.json").read_text())
     assert meta["abi"] == _ffi.ABI_VERSION and meta["config"]["hidden"] == 32
     saved = torch.load(tmp_path / "checkpoint.pt", weights_only=True)

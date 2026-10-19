@@ -41,13 +41,13 @@ def parse(argv: list[str] | None = None) -> tuple[Config, Path | None]:
 
 def line(record: dict) -> str:
     if record.get("eval"):
-        g = record["greedy"]
+        g = record["sampled"]
         text = (
-            f"eval update {record['update']:>4} {record['minutes']:6.1f} min: greedy "
+            f"eval update {record['update']:>4} {record['minutes']:6.1f} min: sampled "
             f"{g['win_rate']:.3f} (attacker {g['attacker']['win_rate']:.3f}, defender "
             f"{g['defender']['win_rate']:.3f})"
         )
-        for name in ("sampled", "random"):
+        for name in ("greedy", "random"):
             if name in record:
                 text += f", {name} {record[name]['win_rate']:.3f}"
         return text + f" [{record['eval_s']:.0f} s]"

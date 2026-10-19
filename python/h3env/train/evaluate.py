@@ -123,8 +123,12 @@ def play(
 
 
 def evaluate(policy, config, rng_seed: int = 0, baseline: bool = False) -> dict:
-    """The policy's evaluation with `config`'s settings (`ppo.Config`): greedy, sampled (with
-    `config.eval_sampled`) and, with `baseline`, Random's own rates on the same episodes."""
+    """The policy's evaluation with `config`'s settings (`ppo.Config`): the sampled policy (exit
+    criterion 7's; its draws from a generator seeded with `rng_seed`, so every evaluation plays
+    alike), greedy (with `config.eval_greedy`) and, with `baseline`, Random's own rates on the
+    same episodes. Greedy play can repeat itself against Random until the step limit (T8b's
+    sandbox run: up to 17 % truncated), hence the sampled policy as the criterion (the user,
+    2026-10-19)."""
     import torch
 
     policy.eval()
@@ -148,9 +152,9 @@ def evaluate(policy, config, rng_seed: int = 0, baseline: bool = False) -> dict:
         currency=config.currency,
         mana_price=config.mana_price,
     )
-    out = {"greedy": play(greedy, **settings)}
-    if config.eval_sampled:
-        out["sampled"] = play(sampled, **settings)
+    out = {"sampled": play(sampled, **settings)}
+    if config.eval_greedy:
+        out["greedy"] = play(greedy, **settings)
     if baseline:
         out["random"] = play(random_agent(np.random.default_rng(rng_seed)), **settings)
     policy.train()

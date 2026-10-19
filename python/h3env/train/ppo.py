@@ -63,7 +63,8 @@ class Config:
     eval_episodes: int = 1000
     eval_envs: int = 100
     eval_seed: int = EVAL_SEED
-    eval_sampled: bool = True
+    #: Also evaluate greedy play (the criterion is the sampled policy's).
+    eval_greedy: bool = True
     #: Evaluate the untrained network and Random itself on the same episodes first.
     eval_start: bool = True
     device: str = "auto"
@@ -375,7 +376,7 @@ class Trainer:
         y, p = returns.reshape(-1)[flat], r.value.reshape(-1)[flat]
         var = float(np.var(y))
         stats["explained_variance"] = float("nan") if var == 0 else 1 - float(np.var(y - p)) / var
-        stats["samples"] = len(flat)
+        stats["update_samples"] = len(flat)
         stats["update_s"] = time.perf_counter() - start
         self.samples += len(flat)
         self.updates += 1
@@ -476,7 +477,7 @@ def train(
                 "samples": trainer.samples,
                 "episodes": trainer.episodes,
                 "minutes": (now - start) / 60,
-                "samples_per_s": stats["samples"] / (roll["rollout_s"] + stats["update_s"]),
+                "samples_per_s": stats["update_samples"] / (roll["rollout_s"] + stats["update_s"]),
                 **roll,
                 **stats,
             }

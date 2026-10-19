@@ -205,10 +205,11 @@ static int play_batch(Batched *out) {
             out->episodes += done[i];
             out->decided += done[i] && !truncated[i];
             CHECK(done[i] ? result[i] != H3_RESULT_NONE || truncated[i] : reward[2 * i] == 0);
-            CHECK(scenario[i] == 2 ? encounter[i] >= H3_ENCOUNTER_WANDERING &&
+            CHECK(scenario[i] >= 2 ? encounter[i] >= H3_ENCOUNTER_WANDERING &&
                                          encounter[i] <= H3_ENCOUNTER_SIEGE_NEUTRAL
                                    : encounter[i] == H3_ENCOUNTER_NONE);
-            out->encounters += done[i] && scenario[i] == 2;
+            CHECK(scenario[i] != 3 || to_move[i] == 0); /* v29: the defender plays inside */
+            out->encounters += done[i] && scenario[i] >= 2;
         }
     }
     CHECK(seed[0] == h3_batch_episode_seed(9, 0, episode[0]));

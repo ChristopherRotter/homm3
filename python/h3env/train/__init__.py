@@ -1,6 +1,6 @@
 """The smoke training (E05 T8, `docs/epics/E05-design.md` §8): an own PPO over the batch's
 factorized, conditioned heads, trained by self-play on the encounter distribution v1 and evaluated
-against the engine's Random on held-out episodes.
+against the engine's Random on held-out episodes (the sampled policy: exit criterion 7).
 
     uv run --group train python -m h3env.train --minutes 60 --out runs/smoke
 

@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4 cut: T8, its design T8a first) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4: T8a and T8b done, T8c on the user's machine) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -145,12 +145,12 @@ whether an agent learns from the env is the epic's largest open risk; the win ra
 is measured from Python against the batch's internal Random seat, without T7's runner):
 **T8 Smoke training** (exit criterion 7).
 
-- [ ] **T8a Design** — for the user's review before code: the trainer (an established library or
-  an own PPO over the factorized, conditioned heads, decision 5's fallback if a library needs
-  one choice per step), the encounter family and its held-out seeds, the opponent (Random as the
-  internal seat, self-play), the network over the flat observation v21, the metrics, the budget
-  (within an hour on the user's machine) and where the code lives in `python/`.
-- [ ] **T8b The trainer** — as T8a decides, with tests; a short run in the sandbox (CPU) learns.
+- [x] **T8a Design** — design §8 (2026-10-19; AI-Q5 answered): an own PPO, self-play on the
+  encounter distribution, evaluated against the engine's Random on held-out episodes. Record in
+  `E05-log.md`.
+- [x] **T8b The trainer** — `python/h3env/train/` and C ABI v29's seats for the encounter source
+  (2026-10-19); the sandbox's 30-minute CPU run learns (the sampled policy 0.51 → 0.73 against
+  Random), the criterion moved to the sampled policy (the user). Record in `E05-log.md`.
 - [ ] **T8c The smoke run** — on the user's machine (the GTX 1070): exit criterion 7, recorded.
 
 **Later increments** (coarse; cut at each checkpoint):

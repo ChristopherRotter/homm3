@@ -67,9 +67,10 @@ uv run --group train python -m h3env.train --minutes 60 --out runs/smoke   # --d
 ```
 
 Each update prints one line (samples, samples/s, self-play's attacker wins, truncations, the
-losses), each evaluation its win rates against Random (greedy and sampled, overall and per
+losses), each evaluation its win rates against Random (sampled and greedy, overall and per
 side); `--eval-every` minutes apart and at the end. Every `h3env.train.Config` field is an option
 (`python -m h3env.train --help`). The run's directory (`runs/` is git-ignored) gets `config.json`
 (the settings, the commit, the ABI), `metrics.jsonl` (one record per update and evaluation) and
 `checkpoint.pt` (the network and the optimizer at the last evaluation). The criterion of E05's
-exit 7: the final greedy `win_rate` at least 0.8.
+exit 7: the final evaluation's sampled `win_rate` at least 0.8 (greedy play can repeat itself
+against Random until the step limit).
