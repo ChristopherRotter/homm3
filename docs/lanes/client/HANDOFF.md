@@ -4,8 +4,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T4b-2b, T5–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
-- **Pull request (2026-10-19):** H1 and H2 (`client/e17-harness-e3`) open.
+- **E17 M0–M2 done; M3 T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T4b-2b-2, T5–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **Pull request (2026-10-19):** T4b-2b-1 (`client/e17-m3-t4b-2b-1`) open.
 - **The user's requirements**, epic "Decisions": a string catalogue (JSON packs, no committed translation: CLT-Q7); graphics options (`faithful` the default); exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
@@ -52,9 +52,10 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+- **2026-10-19, E17 M3 T4b-2b-1 (the user present).** The log's item drawn and compared by
+  the capture set.
 - **2026-10-19, E17 H1, H2 (the user present: the adventure lane's batch E3 first).**
   `h3adv.py`: questions, the difficulty, battles, level-ups, the underground, the list's
   scrolling, heroes' details; auto combat needs `Combat Auto Creatures`.
-- **2026-10-19, E17 M3 T4b-2a (the user present; T4b-2 split).** The log's lines read (row n
-  = record n), the keys corrected, `h3_view::battle_log`.
-- **2026-10-19, E17 M3 T4b-1 (the user present).** The string catalogue; CLT-Q7.
+- **2026-10-19, E17 M3 T4b-2a (the user present; T4b-2 split).** The log's lines read, the
+  keys corrected, `h3_view::battle_log`.

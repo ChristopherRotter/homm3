@@ -7,7 +7,8 @@ an XWD dump of the 16-bit X display (raw 5-6-5), a render is h3-view's PNG, whos
   h3cap.py diff <capture.xwd> <render.png> [--record <render.jsonl>] [--mask <name,...>]
                 [--out <diff.png>]
       counts the pixels that differ outside the masks and writes the capture dimmed with them red
-      (the masked parts blue). Masks: `panel` (the bottom bar), `heroes` (the two corners where
+      (the masked parts blue). Masks: `panel` (the bottom bar), `panel_beside_log` (the bottom
+      bar but its log's item, the layout's [log]), `heroes` (the two corners where
       the heroes and their flags stand), `count_boxes` (each living stack's box, from the record's
       first snapshot: design §4.3).
   h3cap.py find <capture.xwd> <scenario.toml> [--out <dir>]
@@ -136,6 +137,11 @@ def mask(names, record=None, shape=(600, 800)):
     for name in names:
         if name == "panel":
             boxes.append((0, FIELD_BOTTOM, shape[1], shape[0]))
+        elif name == "panel_beside_log":
+            # The panel but its log's item (E17 M3 T4b-2b-1; the layout's [log]).
+            (x, y), (w, h) = layout()["log"]["place"], layout()["log"]["size"]
+            boxes += [(0, FIELD_BOTTOM, shape[1], y), (0, y, x, y + h),
+                      (x + w, y, shape[1], y + h), (0, y + h, shape[1], shape[0])]
         elif name == "heroes":
             boxes += HERO_BOXES
         elif name == "count_boxes":

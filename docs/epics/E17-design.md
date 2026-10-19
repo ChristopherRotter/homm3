@@ -1661,9 +1661,40 @@ gate composes them.
   the text is two entries split there. The number of new entries (at most 2) sets the first line
   the log shows. With the second argument 0 the text goes to the **status line** instead, unless
   a log entry came less than 3 000 ms ago (`clock_ms` 0x4F82E0) and the third argument is 0.
-  Built: `battle_log::entries`, the line count as an argument; the log item's width, the
-  scrolling, the font's colour and the panel are T4b-2b's and T6's.
+  Built: `battle_log::entries`, the line count as an argument; the log's item: §9.5; the
+  scrolling and the panel are T6's.
 - **The caller's.** Which event writes which line, when none (a hidden battle, a wait in the
   tactics phase, a war machine's defend), how the protocol's events (`Struck` once per target,
   `Defended` without its gain) become a strike's hits and a defend's gain: T6's event mapping.
+
+### 9.5 The log's item in the panel (M3 T4b-2b-1)
+
+T4b-2b split with the user on 2026-10-19 (a strike's line against a capture left as T4b-2b-2).
+Read: the battle's dialog (`combat_dialog_create` 0x4721D0, the manager's +0x132FC), its panel
+(`battle_panel_create` 0x46BC30), the log's item (0x46BCBE), the text items (0x5BC280, 0x5BC760)
+and their drawing (0x5BC7F0, 0x5BC5F0), and how the shown entries become the item's text
+(`battle_log_show_from` 0x472C30). Built: the layout's `[log]`, the draw `Draw::Log` after the
+battlefield (`scene::panel`), drawn by `compose`.
+
+- **The panel** is a panel of the dialog at (0, 556), 800 × 44, over `cbar.pcx`; outside the
+  tactics phase 0x46BC30 builds it (in the phase 0x46C050, not read). Its log's item is a text
+  item with a picture behind it at the panel's (214, 7), so the screen's (214, 563), 400 × 32:
+  `smalfont.fnt` over `cRollovr.pcx` (400 × 32 itself), colour argument 1, alignment 1 (each
+  line centred, from the box's top), no text at first. The log's two scroll buttons
+  (`ComSlide.def`) sit right of it; the rest of the panel is T6's.
+- **Drawn:** the picture opaque from its corner, at most the item's size of it (the picture is
+  that size), then `TextDraw` (§3.6) of the item's text in its box with that colour (+2 with the
+  item's flag 8, not met yet) and alignment; Windows-1252 bytes of the text (§9.3).
+- **The text** is the shown entries (0x472C30): the first shown, then a line break and the next if
+  there is one, so the box's two lines hold two entries; an entry too wide for 400 pixels breaks
+  and pushes the rest below the box, where nothing is drawn. The status line (§9.4) sets the same
+  item's text. The dialog's other item at the same place (+0x4C, over `cRollovr.pcx`) is
+  taken for the edit line of a message (not read): hidden, and while it is active the status
+  line is left alone.
+- **Checked:** the capture set compares the log's item since T4b-2b-1 (`h3cap`'s mask
+  `panel_beside_log`: the panel but the item, the layout's `[log]`): at every opening and later
+  frame the original shows the picture without text, as ours, all 31 situations exact. The
+  harness parked the game's cursor at (420, 580), inside the item; it parks it at (618, 593) now,
+  in the panel right of the item and below the scroll buttons, where it covers no probe and
+  hovers nothing that shows a hint.
 
