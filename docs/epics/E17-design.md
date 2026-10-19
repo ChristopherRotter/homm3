@@ -1495,3 +1495,80 @@ current directory): `--check 25` with sound, all 293 frames read back exact; the
 5.8 s (`BATTLE01`, seed 1), then the music fading in; with the music switched off (M), the
 effects' onsets in the mix within 10–100 ms of their cues' times (onset detection on 10 ms
 windows; overlapping sounds hide some).
+
+## 9. The string catalogue (M3 T4b-1)
+
+The user's decisions: every text the client shows comes from a key → string catalogue, easy to
+translate, language packs swappable (2026-10-13); the packs are nested JSON (2026-10-19); the
+original's text and translations of it are never committed, a player may load a pack of their
+own (CLT-Q7, 2026-10-19). Built as `h3_view::text` (pure), `clients/text/keys.toml`, `h3-view
+text` and the gate's check; the formats in `clients/README.md` ("The string catalogue").
+
+### 9.1 Keys and the original's rows
+
+- **Two files, two jobs.** The key catalogue (TOML, like the asset tables: identifiers and
+  numbers) says which keys exist, which arguments their messages may use, and where the user's
+  text tables hold the original's forms; the packs (JSON) hold messages. The original's own pack
+  is built from the user's tables at run time, so the original's text and its language come from
+  the user's installation (a localized one gives its language) and nothing of it enters git.
+- **Rows** are records counted from 0 with the header rows, as `h3-formats`' parser reads them (a
+  quoted field with line breaks is one record): `GENRLTXT`'s record n is VCMI's
+  `core.genrltxt.<n − 1>` (its parser skips the header) and `installation.md`'s 1-based "line
+  n + 1". The executable's own indexing (which record a code site's text number names) is read
+  with the log (T4b-2): the keys' rows for the battle log's events are *provisional* until then.
+- **Specifiers.** The original's rows use `%s`, `%d` and `%%`; the key names each specifier's
+  argument in order (`printf`), and its declared kind must match (`text` for `%s`, `number` for
+  `%d`), so a row and a key that disagree fail the gate. The forms of one key may name different
+  arguments (`battle.log.perish`: "one …" without the count, "%d … perish" with it).
+- **Plural rows.** Where the original has a singular and a plural row, the key has the forms
+  `one` and `other`; the original's pack picks `one` for a count of exactly 1 (the executable's
+  rule as far as the rows show it; which count picks it per event is T4b-2's reading). A
+  creature's names are a family over the asset tables: `crtraits.txt`'s non-blank records from
+  record 2 are the original ids in order (the harvesters' reading), its first two columns the
+  singular and plural; the asset tables' `[[creature]]` carries `original` (the comment `#
+  original id` before T4b-1).
+- **Contexts.** A key may have forms by a context (`word.possessive`: `male`, `female`, the
+  original's "his" and "her" rows), the argument `context` picking one; i18next's context
+  suffix.
+- **Checked:** the gate reads all 155 keys (10 keys, 145 creatures' names) and their 306 forms
+  from `GENRLTXT.TXT` and `CRTRAITS.TXT` (the base archive's copies win, §3.1), every specifier
+  as named; `h3-view text` formats the damage line and the perish line from them as the rows say
+  (one log entry: the perish row starts with a line break).
+
+### 9.2 Packs and lookup
+
+- **The JSON** follows i18next's v4 format (nested keys, `{{name}}`, `_<category>` and
+  `_<context>` suffixes) so that translation tools that read it (Weblate, Crowdin) can edit a
+  pack; nesting, formatting functions and `$t()` references are left out. A placeholder's name
+  starts with a lower-case letter and goes on with lower-case letters, digits and `_`, so the
+  original's highlight braces (`{Tactics Phase}`, `{%s}`: `TextDraw`'s markup, §3.6) stay text
+  in every pack and in the original's.
+- **Language** is a pack file's name (`de.json`, `pt-BR.json`; its primary subtag picks the plural
+  rule); a language without a rule is refused. A pack is checked against the keys: an entry no key
+  names, or a placeholder its key lacks, is listed (`h3-view text --pack`).
+- **Lookup** goes through the packs by priority (the player's, the client's own, the original's)
+  and in each tries `<key>_<context>_<category>`, `<key>_<context>_other`, `<key>_<context>`,
+  `<key>_<category>`, `<key>_other`, `<key>`: a pack that lacks a form falls back within itself
+  before the next pack is asked, and a key no pack has shows as itself. The client has no strings
+  of its own yet (lobby, accounts, options come later): its pack, `clients/text/<lang>.json`, is
+  committed when the first one appears, in any language.
+- **Values:** a number is written in decimal digits with `-` before a negative one (as `%d`); a
+  placeholder without a value stays visible as `{{name}}`.
+
+### 9.3 Plurals and code pages
+
+- **Plural rules** are CLDR's cardinal rules (`common/supplemental/plurals.xml`, the `main`
+  branch read on 2026-10-19) for whole numbers only, the battle's counts: `one`/`other` (en, de,
+  nl, sv, da, nb, fi, et, hu, tr, el, bg), with `many` for a non-zero multiple of a million (it,
+  es, ca), `one` for 0 and 1 with that `many` (fr, pt), Polish, Russian and Ukrainian (`one`,
+  `few`, `many`), Czech and Slovak (`one`, `few`, `other`), `other` only (zh, ja, ko). CLDR's
+  `zero` and `two` belong to languages without a rule here. Each rule is tested on CLDR's
+  `@integer` samples. The `intl_pluralrules` crate (CLDR 37) was not taken: older than the data
+  read, and a dependency for twenty lines.
+- **Code pages.** Strings stay Unicode until drawn. The installation's fonts draw Windows-1252
+  bytes (§3.6), so `encode_1252` gives the bytes and lists the characters it has none for (drawn
+  as `?`): a pack in a language whose letters 1252 lacks (Polish, Russian, Czech) needs fonts of
+  its own, from a localized installation or a modern renderer (a graphics option, later).
+  `h3-formats` decodes the text tables as 1252 with every byte kept (undefined ones as their C1
+  controls), so a localized installation's tables in another code page (1250, 1251) can be
+  re-decoded without an engine change; that and its fonts wait for such an installation.

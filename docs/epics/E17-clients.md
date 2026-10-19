@@ -43,7 +43,10 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
 - **Text through a string catalogue** (2026-10-13): every string the client shows is an entry of
   a key → string catalogue (nested JSON or similar), easy to translate; language packs swap. The
   original's text stays uncommitted (ADR-0009): its language comes from the user's own files
-  through a committed catalogue of keys. Refined with M3's fonts (QUEUE inbox: the agent's notes).
+  through a committed catalogue of keys. **The packs are nested JSON** with i18next's conventions
+  (2026-10-19, M3 T4b-1, over TOML and Fluent), and **a translation of the original's text is
+  never committed**: a player may load a pack of their own, which the project neither ships nor
+  hosts (CLT-Q7, 2026-10-19). An ADR-0020 amendment is drafted in `docs/lanes/client/adr-drafts/`.
 - **Graphics options** (2026-10-13), eventually: per effect the original's way or a modern one
   (shadows first); `faithful` is the default and the reference. The draw list names what is
   drawn, the compositor decides how (QUEUE inbox).
@@ -235,8 +238,9 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   war machines (T3b), the count boxes (T5) and the panel (T6), each mask removed as it is drawn;
   sieges later.
 - Fonts and the text drawer (T4a, with the count boxes in the stills), the string catalogue and
-  the language packs (T4b, an ADR-0020 amendment), and the battle interface (T5, T6: the boxes
-  over time, the panel, the log, the cursors). T4 split with the user on 2026-10-15.
+  the language packs (T4b-1, an ADR-0020 amendment; T4b-2 the log's text drawn), and the battle
+  interface (T5, T6: the boxes over time, the panel, the log, the cursors). T4 split with the user
+  on 2026-10-15, T4b on 2026-10-19.
 - The **spell animations** (the user, at T5c: their plethora; T7a the code reading, T7b on
   stacks with morale and luck, T7c area spells, rays and spell obstacles) and their sounds.
 - The sound's remainder (T8: the battle's end; the volume settings later).
@@ -294,6 +298,14 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   integers (`h3_render::tint`), each stack's count box drawn after its sprite (the layout's
   `[count_box]`). The capture set without the count-box mask: 31 situations, 57 frames, all
   exact (the new `counts`: three to five digits).
+
+- **T4b-1 done 2026-10-19** ([log](E17-log.md#m3-t4b-1--the-string-catalogues-format-2026-10-19),
+  [design §9](E17-design.md)): T4b split with the user (the log's text drawn left as T4b-2). The
+  catalogue built (`h3_view::text`): the committed key catalogue `clients/text/keys.toml` (the
+  battle log's first keys, the creatures' names as a family over the asset tables' original
+  ids), packs as nested JSON (i18next's conventions, CLDR's integer plural rules), the original's
+  pack read at run time from the user's tables, a player's pack before it (CLT-Q7); the gate reads
+  all 155 keys' 306 forms; `h3-view text` formats the log's lines from them.
 
 ### Later (refined when they come up)
 
@@ -473,6 +485,19 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T4b-1: the key catalogue's format (TOML: `[[key]]` with `args`, `plural`, `contexts`,
+  `original` forms `{ form, at = "<TABLE>:<record>[:<column>]", printf }`; `[[family]]`) and its
+  place `clients/text/keys.toml`; rows counted from 0 with the header rows (VCMI's index + 1);
+  the keys' ids (lower-case segments, `-`), the first keys and their rows (*provisional* until
+  T4b-2 reads which row the executable writes for which event); the asset tables'
+  `[[creature]] original` (the original id, a field instead of a comment); the JSON subset taken
+  from i18next (no nesting, formatting or `$t()`), the lookup's fallback order within a pack
+  before the next pack, a missing key shown as itself, a missing value as `{{name}}`; the plural
+  rules in code for 27 languages from CLDR's current data (not `intl_pluralrules`, CLDR 37), a
+  language without one refused; the original's pack picks `one` for exactly 1; `encode_1252`
+  writes `?` for a character the fonts lack; `serde_json` in `h3-view`'s pure library (the
+  engine's version, already in the lockfile); `h3-view text` and the gate's `--keys`.
 
 - T4a: the layout's `[count_box]` (picture, font and its palette, the place's numbers, the tint
   rectangle and values as f32 bits, the text box, colour and alignment; the format); the batch's

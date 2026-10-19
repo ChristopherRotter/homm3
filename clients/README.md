@@ -49,7 +49,10 @@ search the parent directories).
   (`--tables <dir>`, default `clients/assets`) is found where the game searches it and decodes.
   Then the sound archives (`Heroes3.snd`, `H3ab_ahd.snd`; skipped if absent): every WAV decodes
   with `h3_assets::wav` to SDL's own loader's samples (`clients/out/gate/sounds.tsv`), and every
-  sound the tables name is one of them. A debug build takes about ten times as long.
+  sound the tables name is one of them. Then the string catalogue (`--keys <file>`, default
+  `clients/text/keys.toml`): every key's original forms are read from the text tables where the
+  game searches them, each row's `%s` and `%d` as the key names them. A debug build takes about
+  ten times as long.
 - **A look at the drawers:** `cargo run --release -p h3-view -- sprite CPKMAN.DEF --group 2
   --background CmBkGrMt.pcx [--mirror]` draws every frame of one group of a DEF side by side over
   a PCX, as the battle draws a stack, into `clients/out/sprite/` (the base archives searched
@@ -150,7 +153,8 @@ on the M1 review list):
   right side's flag DEFs), `magic` (M3 T3b: the magic animations by number, each `def`, `place`,
   where it is drawn over a stack, 0 on the hex, 1 centred, 2 above, 3 beside, higher not over a
   stack, and `translucent`; design §7.15) and `heal_sound` (the First Aid Tent's heal).
-- `[[creature]]`: `key`, `def` (the battle sprite), `times` (`cranim.txt`'s fidget interval, walk,
+- `[[creature]]`: `key`, `original` (its original id, the executable's creature number: its
+  record among `crtraits.txt`'s creature rows; M3 T4b-1), `def` (the battle sprite), `times` (`cranim.txt`'s fidget interval, walk,
   attack and flight distance as the executable keeps them: scaled by 9000, 500, 500, 115 and
   truncated), optional `troop_count_offset`, `attack_climax`, `missile` (a shooter's projectile
   DEF), `missile_offsets` (up, straight, down; x, y), `missile_angles` (12, in degrees), `ray`
@@ -171,6 +175,35 @@ on the M1 review list):
 Which table an entry belongs to is the pack that defines its key (since M3 T2 every entry's: the
 SoD fields and their obstacles in `sod.toml`); `harvest` would keep graphics no pack defines in
 `base.toml`. Where the names and numbers come from: `docs/epics/E17-design.md` §5.
+
+## The string catalogue
+
+Every text the client shows is a key's message, looked up in language packs by priority: the
+player's pack, the client's own, the original's (E17 M3 T4b-1; the user, 2026-10-13 and
+2026-10-19; ADR-0020's amendment draft in `docs/lanes/client/adr-drafts/`; detail:
+`docs/epics/E17-design.md` §9). Library: `h3_view::text` (pure); the command `h3-view text`
+prints every key's forms from the installation, or one key's text (`h3-view text
+battle.log.damage attacker=Imps damage=4 count=2 [--pack de.json]`).
+
+- **The key catalogue** `clients/text/keys.toml` (committed; identifiers and numbers only, as the
+  asset tables): `[[key]]` with `id` (lower-case segments of letters, digits and `-` joined by
+  `.`), `args` (the names its messages may use, each `text` or `number`), `plural` (forms by the
+  number `count`), `contexts` (forms by the argument `context`) and `original`, its forms in the
+  user's text tables: `form` (the suffix: `one`, `other`, a context; none for the only form),
+  `at = "<TABLE>:<record>[:<column>]"` (records from 0 with the header rows) and `printf` (the
+  arguments the row's `%s` and `%d` stand for, in order); `[[family]]`: a key per asset-table
+  entry (`creature`: `creature.<table>:<key>`, a creature's names), its row the non-blank record
+  of its original id from `first`, its forms' columns in `forms`. Unknown fields are errors.
+- **A language pack** is nested JSON with i18next's conventions: objects nest a key's segments,
+  a string is a message, `{{name}}` a placeholder (any other brace is text: the original's
+  highlight braces stay), the suffixes `_<context>` and `_<category>` its forms (`_one`, `_few`,
+  `_many`, `_other`: CLDR's integer rules for the pack's language, which is its file's name,
+  `de.json`). A lookup tries `<key>_<context>_<category>`, `…_<context>_other`,
+  `…_<context>`, `<key>_<category>`, `<key>_other`, `<key>` in each pack, then the next pack; a
+  key no pack has shows itself.
+- **The original's text** is read at run time from the user's tables through the catalogue, with
+  the executable's rule (`one` for exactly 1); it is never committed, nor is a translation of it:
+  a player may load a pack of their own, which the project neither ships nor hosts (CLT-Q7).
 
 ## Reference captures
 
