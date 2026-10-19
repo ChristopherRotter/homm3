@@ -57,5 +57,18 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   is lopsided (8 attacker victories in 2 399 agent seeds; E04b T11a): the encounter workload
   (`batch-random-encounters-v1`) is the realistic one.
 
+- **Encounters v2** (with the adventure's logged encounters, decision 7; E05 T9b): A7's "+0.5 a
+  week" in weeks 9 to 16 is rounded down in `encounters-v1.toml` (odd weeks half a level low);
+  untested: A4's cap and redraws in weeks 1 to 6, the forts of weeks 2 to 6, A7's war-machine
+  chance and class split, A6's upgraded share, the guards' anti-magic share.
+- **The C ABI** (E05 T9b): `h3_batch_create` takes any N (an absurd one aborts on its
+  allocation, which no `catch_unwind` catches; the binding range-checks it, a trusted local
+  consumer, ADR-0011); `h3env.tools.Env` keeps its handle after `H3_ERR_PANIC` (tests only).
+
+**For E23** (the system actor; the neutral kinds' share): A3 grows a wandering stack by a tenth
+of its count, VCMI 1.7.5's `CGCreature::newTurn` a tenth of its power (a thousand per creature:
+5 creatures are 9 after seven weeks, the count's tenth leaves them 5); VCMI's growth makes
+late-week stacks pass A4's cap and be drawn again, so decide both together (E05 T9b).
+
 **For E13** (the adventure env's ABI): reading both of the adventure env's mask heads doubles
 its step; the current state's queries belong in the env (the adventure lane, E08 T9b).
