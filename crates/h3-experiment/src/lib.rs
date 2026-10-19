@@ -16,8 +16,9 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
 use h3_map::writer::{
-    ARMY_SLOTS, ARTIFACT_SLOTS, Ground, Hero, HeroArtifacts, Map, MapObject, Monster,
+    ARMY_SLOTS, ARTIFACT_SLOTS, Ground, Guards, Hero, HeroArtifacts, Map, MapObject, Monster,
     ObjectTemplate, PLAYERS, Patch, Pile, Player, Road, RoadKind, Terrain, Town, TownBuildings,
+    Underground,
 };
 use serde::Deserialize;
 
@@ -145,6 +146,12 @@ const LEVELS: [&str; 3] = ["Basic", "Advanced", "Expert"];
 pub const MAP_SPELLS: usize = 70;
 /// The slot of the Spell Book in [`SLOT_NAMES`].
 const SPELL_BOOK_SLOT: &str = "spell book";
+/// A wandering monster's dispositions, the map's value in order (`docs/formats/h3m.md`, the
+/// monster body; E08 T22a1).
+pub const DISPOSITIONS: [&str; 5] = ["compliant", "friendly", "aggressive", "hostile", "savage"];
+/// The game's difficulties as the scenario list names them, Easy (0) to Impossible (4) (E08
+/// T22a1: the difficulty a batch is played on).
+pub const DIFFICULTIES: [&str; 5] = ["easy", "normal", "hard", "expert", "impossible"];
 
 /// A whole spec file.
 #[derive(Debug, Clone, Deserialize)]
@@ -189,6 +196,25 @@ pub struct MapSpec {
     /// Special grounds (`[[map.ground]]`, E04c T3): Cursed Ground, Magic Plains, Clover Field, ….
     #[serde(default)]
     pub ground: Vec<GroundSpec>,
+    /// The difficulty the batch is played on ([`DIFFICULTIES`]; E08 T22a1): the template says
+    /// to choose it in the scenario list (the map does not hold it). None: the template is silent.
+    #[serde(default)]
+    pub difficulty: Option<String>,
+    /// The underground level (`[map.underground]`, E08 T22a1); none: the map has one level.
+    #[serde(default)]
+    pub underground: Option<UndergroundSpec>,
+}
+
+/// The underground level: its own terrain and rectangles; encounters and piles with `level = 1`
+/// stand on it (no roads or grounds there).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UndergroundSpec {
+    /// Terrain of the level, as [`MapSpec::terrain`].
+    pub terrain: String,
+    /// Rectangles of other terrains (`[[map.underground.patch]]`); a later one covers an earlier.
+    #[serde(default)]
+    pub patch: Vec<PatchSpec>,
 }
 
 /// A special ground: one of its pictures, placed with its bottom-right tile on `at`.
@@ -219,6 +245,17 @@ pub struct PileSpec {
     /// The amount as the map stores it; 0 (the default) is drawn when the game starts.
     #[serde(default)]
     pub amount: u32,
+    /// The level: 0 the surface (the default), 1 the underground (E08 T22a1).
+    #[serde(default)]
+    pub level: u8,
+    /// Guards of every pile of the row as (creature, count), at most seven stacks (E08 T22a1;
+    /// ADV-PIK-004); none: unguarded.
+    #[serde(default)]
+    pub guards: Vec<(String, u16)>,
+    /// The question the game shows before the guards' battle (the map's message; needs guards).
+    /// None: the guards fight at once.
+    #[serde(default)]
+    pub question: Option<String>,
 }
 
 /// A road on one row.
@@ -267,6 +304,10 @@ pub struct Encounter {
     /// What the hero fights (none for an inspection).
     #[serde(default)]
     pub opponent: Option<Opponent>,
+    /// The level of the encounter's heroes and opponent: 0 the surface (the default), 1 the
+    /// underground (E08 T22a1; needs [`MapSpec::underground`]).
+    #[serde(default)]
+    pub level: u8,
     /// More heroes of the encounter, each on its own tile (`at`); their names are their hero
     /// types' unless given (E08 T10a: inspections of many heroes).
     #[serde(default)]
@@ -362,6 +403,13 @@ pub struct Opponent {
     /// Number of creatures of the monster.
     #[serde(default)]
     pub count: Option<u16>,
+    /// The monster's disposition ([`DISPOSITIONS`]; E08 T22a1); none: savage, it never joins.
+    #[serde(default)]
+    pub disposition: Option<String>,
+    /// The monster may flee from a much stronger hero (E08 T22a1); false (the default): it never
+    /// flees.
+    #[serde(default)]
+    pub flees: bool,
     /// A hero (owner "blue" by default for opponents); with a town, its visiting hero, on the
     /// town's entrance.
     #[serde(default)]
@@ -467,26 +515,26 @@ pub fn build_only(
         return Err(format!("map size {size} (36, 72, 108 or 144)"));
     }
     let base = terrain(&spec.map.terrain)?;
-    let patches = spec
+    let patches = level_patches(&spec.map.patch, size)?;
+    let below = spec
         .map
-        .patch
-        .iter()
-        .map(|p| {
-            let [fx, fy] = p.from;
-            let [tx, ty] = p.to;
-            if fx > tx || fy > ty || tx >= size || ty >= size {
-                return Err(format!(
-                    "patch from {:?} to {:?}: corners out of order or off the map",
-                    p.from, p.to
-                ));
-            }
-            Ok(Patch {
-                terrain: patch_terrain(&p.terrain)?,
-                from: (fx, fy),
-                to: (tx, ty),
-            })
+        .underground
+        .as_ref()
+        .map(|u| Ok::<_, String>((terrain(&u.terrain)?, level_patches(&u.patch, size)?)))
+        .transpose()?;
+    let levels = 1 + u8::from(below.is_some());
+    let difficulty = spec
+        .map
+        .difficulty
+        .as_deref()
+        .map(|d| {
+            DIFFICULTIES
+                .iter()
+                .position(|n| n.eq_ignore_ascii_case(d.trim()))
+                .map(|i| capitalized(DIFFICULTIES[i]))
+                .ok_or_else(|| format!("unknown difficulty `{d}`"))
         })
-        .collect::<Result<Vec<_>, String>>()?;
+        .transpose()?;
     let roads = spec
         .map
         .road
@@ -525,7 +573,7 @@ pub fn build_only(
         .map
         .ground
         .iter()
-        .map(|g| ground(g, tables, size))
+        .map(|g| Ok((0, ground(g, tables, size)?)))
         .collect::<Result<Vec<_>, String>>()?;
     let mut used_types = Vec::new();
     let mut heroes_per_player = [0usize; PLAYERS];
@@ -544,6 +592,12 @@ pub fn build_only(
          do not play it, ask for the map again.\n",
         spec.stamp, spec.stamp
     );
+    if let Some(difficulty) = &difficulty {
+        let _ = writeln!(
+            text,
+            "**Difficulty: {difficulty}.** Choose it in the scenario list before you start.\n"
+        );
+    }
     for (i, step) in spec.map.instructions.iter().enumerate() {
         let _ = writeln!(text, "{}. {step}", i + 1);
     }
@@ -554,6 +608,12 @@ pub fn build_only(
         let x = ORIGIN + (index % columns) * COLUMN_STEP;
         let y = ORIGIN + (index / columns) * ROW_STEP;
         let ctx = |e: String| format!("encounter {}: {e}", enc.id);
+        let level = enc.level;
+        if level >= levels {
+            return Err(ctx(format!(
+                "level {level}: no such level (`[map.underground]` adds level 1)"
+            )));
+        }
         let mut add_hero = |h: &HeroSpec, tile: (u8, u8), name: Option<&str>, owner: &str| {
             let tile = h.at.map_or(tile, |[x, y]| (x, y));
             let hero = hero(h, tables, tile, name, owner).map_err(ctx)?;
@@ -572,7 +632,7 @@ pub fn build_only(
                 )));
             }
             let summary = hero_summary(h, &hero, tables);
-            objects.push(MapObject::Hero(hero));
+            objects.push((level, MapObject::Hero(hero)));
             Ok(summary)
         };
         let own = add_hero(&enc.hero, (x, y), Some(&enc.id), "red")?;
@@ -591,6 +651,8 @@ pub fn build_only(
             Some(Opponent {
                 monster: Some(creature),
                 count: Some(count),
+                disposition,
+                flees,
                 hero: None,
                 town: None,
             }) => {
@@ -604,14 +666,30 @@ pub fn build_only(
                 if *count == 0 {
                     return Err(ctx("a monster needs at least one creature".into()));
                 }
-                objects.push(monster(template, (x.saturating_add(1), y), *count));
+                let disposition = disposition
+                    .as_deref()
+                    .map(|d| {
+                        DISPOSITIONS
+                            .iter()
+                            .position(|n| n.eq_ignore_ascii_case(d.trim()))
+                            .ok_or_else(|| ctx(format!("unknown disposition `{d}`")))
+                    })
+                    .transpose()?;
+                let tile = (x.saturating_add(1), y);
+                // Savage unless given: it never joins.
+                let kind = disposition.map_or(4, |d| d as u8);
+                objects.push((level, monster(template, tile, *count, kind, *flees)));
+                let named = disposition.map_or(String::new(), |d| format!(", {}", DISPOSITIONS[d]));
+                let flight = if *flees { "may flee" } else { "never flees" };
                 Some(format!(
-                    "{count} {creature} (wandering monster, never flees)"
+                    "{count} {creature} (wandering monster{named}, {flight})"
                 ))
             }
             Some(Opponent {
                 monster: None,
                 count: None,
+                disposition: None,
+                flees: false,
                 hero: Some(h),
                 town: None,
             }) => Some(add_hero(
@@ -623,6 +701,8 @@ pub fn build_only(
             Some(Opponent {
                 monster: None,
                 count: None,
+                disposition: None,
+                flees: false,
                 hero,
                 town: Some(t),
             }) => {
@@ -647,7 +727,8 @@ pub fn build_only(
             }
             Some(_) => {
                 return Err(ctx(
-                    "an opponent is `monster` + `count`, `hero`, or `town` with or without `hero`"
+                    "an opponent is `monster` + `count`, `hero`, or `town` with or without `hero` \
+                     (`disposition` and `flees` with a monster only)"
                         .into(),
                 ));
             }
@@ -655,7 +736,10 @@ pub fn build_only(
         // The town before its visiting hero, the encounter's last object.
         if let Some(town) = placed_town {
             let visiting = enc.opponent.as_ref().is_some_and(|o| o.hero.is_some());
-            objects.insert(objects.len() - usize::from(visiting), MapObject::Town(town));
+            objects.insert(
+                objects.len() - usize::from(visiting),
+                (level, MapObject::Town(town)),
+            );
         }
         encounter_text(&mut text, enc, &own, against.as_deref(), &more);
         if only.is_some_and(|id| id != enc.id) {
@@ -663,22 +747,29 @@ pub fn build_only(
         }
     }
     for p in &spec.map.pile {
-        objects.extend(piles(p, tables, size)?);
+        if p.level >= levels {
+            return Err(format!(
+                "piles on row {} at level {}: no such level (`[map.underground]` adds level 1)",
+                p.row, p.level
+            ));
+        }
+        objects.extend(piles(p, tables, size)?.into_iter().map(|o| (p.level, o)));
     }
     // Heroes and monsters stand on grounds; two grounds may overlap (the game takes the last).
-    let mut tiles: Vec<(u8, u8)> = objects
+    let mut tiles: Vec<(u8, (u8, u8))> = objects
         .iter()
-        .filter_map(|o| match o {
-            MapObject::Hero(h) => Some(h.tile),
-            MapObject::Monster(m) => Some(m.tile),
-            MapObject::Pile(p) => Some(p.tile),
-            MapObject::Town(t) => Some(t.tile),
+        .filter_map(|(level, o)| match o {
+            MapObject::Hero(h) => Some((*level, h.tile)),
+            MapObject::Monster(m) => Some((*level, m.tile)),
+            MapObject::Pile(p) => Some((*level, p.tile)),
+            MapObject::Town(t) => Some((*level, t.tile)),
             MapObject::Ground(_) => None,
         })
         .collect();
     tiles.sort_unstable();
     if let Some(w) = tiles.windows(2).find(|w| w[0] == w[1]) {
-        return Err(format!("two objects on the tile {:?}", w[0]));
+        let below = if w[0].0 == 1 { " underground" } else { "" };
+        return Err(format!("two objects on the tile {:?}{below}", w[0].1));
     }
     let mut players: [Option<Player>; PLAYERS] = Default::default();
     // Both players may be human, so the map can be played in hot seat; the allowed towns are the
@@ -706,10 +797,52 @@ pub fn build_only(
         patches,
         roads,
         players,
-        objects,
-        underground: None,
+        objects: on_level(&mut objects, 0),
+        underground: below.map(|(terrain, patches)| Underground {
+            terrain,
+            patches,
+            objects: on_level(&mut objects, 1),
+        }),
     };
     Ok((map, text))
+}
+
+/// The objects of `level`, taken out of `objects` in their order.
+fn on_level(objects: &mut Vec<(u8, MapObject)>, level: u8) -> Vec<MapObject> {
+    let (here, rest) = std::mem::take(objects)
+        .into_iter()
+        .partition::<Vec<_>, _>(|(l, _)| *l == level);
+    *objects = rest;
+    here.into_iter().map(|(_, o)| o).collect()
+}
+
+/// Rectangles of other terrains on one level.
+fn level_patches(specs: &[PatchSpec], size: u8) -> Result<Vec<Patch>, String> {
+    specs
+        .iter()
+        .map(|p| {
+            let [fx, fy] = p.from;
+            let [tx, ty] = p.to;
+            if fx > tx || fy > ty || tx >= size || ty >= size {
+                return Err(format!(
+                    "patch from {:?} to {:?}: corners out of order or off the map",
+                    p.from, p.to
+                ));
+            }
+            Ok(Patch {
+                terrain: patch_terrain(&p.terrain)?,
+                from: (fx, fy),
+                to: (tx, ty),
+            })
+        })
+        .collect()
+}
+
+/// A name with its first letter upper case.
+fn capitalized(name: &str) -> String {
+    let mut name = name.to_owned();
+    name[..1].make_ascii_uppercase();
+    name
 }
 
 /// A row of piles, west to east.
@@ -730,13 +863,41 @@ fn piles(p: &PileSpec, tables: &Tables, size: u8) -> Result<Vec<MapObject>, Stri
             p.row, p.from, p.to
         ));
     }
+    let row = |e: String| format!("piles on row {}: {e}", p.row);
+    let guards = if p.guards.is_empty() {
+        if p.question.is_some() {
+            return Err(row("a question needs guards".into()));
+        }
+        None
+    } else {
+        if p.guards.len() > ARMY_SLOTS {
+            return Err(row(format!(
+                "{} guard stacks (1–{ARMY_SLOTS})",
+                p.guards.len()
+            )));
+        }
+        let mut army = [None; ARMY_SLOTS];
+        for (slot, (name, count)) in p.guards.iter().enumerate() {
+            if *count == 0 {
+                return Err(row(format!("an empty guard stack of {name}")));
+            }
+            army[slot] = Some((
+                lookup(&tables.creatures, name, "creature").map_err(row)? as u16,
+                *count,
+            ));
+        }
+        Some(Guards {
+            army,
+            question: p.question.clone().unwrap_or_default(),
+        })
+    };
     Ok((p.from..=p.to)
         .map(|x| {
             MapObject::Pile(Pile {
                 tile: (x, p.row),
                 template: template.clone(),
                 amount: p.amount,
-                guards: None,
+                guards: guards.clone(),
             })
         })
         .collect())
@@ -872,12 +1033,13 @@ fn terrain(name: &str) -> Result<Terrain, String> {
     })
 }
 
-/// A patch's terrain: a land terrain or water (E04c T3: the coast; the map's own terrain is land).
+/// A patch's terrain: a land terrain, water (E04c T3: the coast; the map's own terrain is land)
+/// or rock (E08 T22a1: the underground's walls).
 fn patch_terrain(name: &str) -> Result<Terrain, String> {
-    if name == "water" {
-        Ok(Terrain::Water)
-    } else {
-        terrain(name)
+    match name {
+        "water" => Ok(Terrain::Water),
+        "rock" => Ok(Terrain::Rock),
+        _ => terrain(name),
     }
 }
 
@@ -1025,13 +1187,19 @@ fn hero(
     })
 }
 
-fn monster(template: ObjectTemplate, tile: (u8, u8), count: u16) -> MapObject {
+fn monster(
+    template: ObjectTemplate,
+    tile: (u8, u8),
+    count: u16,
+    disposition: u8,
+    flees: bool,
+) -> MapObject {
     MapObject::Monster(Monster {
         tile,
         template,
         count,
-        disposition: 4, // savage: never joins
-        never_flees: true,
+        disposition,
+        never_flees: !flees,
         fixed_count: true,
     })
 }
@@ -1120,6 +1288,9 @@ fn encounter_text(
     let _ = writeln!(out, "- {own}");
     if let Some(against) = against {
         let _ = writeln!(out, "- Opponent: {against}");
+    }
+    if enc.level == 1 {
+        let _ = writeln!(out, "- On the underground level.");
     }
     for hero in more {
         let _ = writeln!(out, "- {hero}");
@@ -1804,5 +1975,208 @@ mod tests {
             );
         }
         assert!(fails("row = 52", "row = 30").contains("two objects"));
+    }
+
+    /// E08 T22a1 (batch E3's shape): the difficulty, an underground level, monsters of any
+    /// disposition that may flee, guarded piles.
+    const BELOW: &str = r#"
+        [map]
+        name = "Below"
+        description = "d"
+        terrain = "grass"
+        difficulty = "Easy"
+        [map.underground]
+        terrain = "subterranean"
+        [[map.underground.patch]]
+        terrain = "rock"
+        from = [0, 0]
+        to = [35, 1]
+
+        [[map.pile]]
+        resource = "wood"
+        row = 20
+        from = 10
+        to = 11
+        amount = 5
+        guards = [["Pikeman", 12], ["Archangel", 1]]
+        question = "Fight?"
+
+        [[map.pile]]
+        resource = "gold"
+        row = 22
+        from = 10
+        to = 10
+        level = 1
+        guards = [["Pikeman", 3]]
+
+        [[encounter]]
+        id = "J"
+        title = "Join or flee"
+        [encounter.hero]
+        type = "Orrin"
+        specialty = "skill Archery"
+        primary = [0, 0, 0, 0]
+        army = [["Pikeman", 56]]
+        [encounter.opponent]
+        monster = "Pikeman"
+        count = 10
+        disposition = "friendly"
+        flees = true
+
+        [[encounter]]
+        id = "U"
+        title = "Below"
+        level = 1
+        [encounter.hero]
+        type = "Sylvia"
+        specialty = "resource gold"
+        at = [11, 27]
+        primary = [0, 0, 0, 0]
+        army = [["Pikeman", 1]]
+        [encounter.opponent]
+        monster = "Pikeman"
+        count = 30
+    "#;
+
+    #[test]
+    fn builds_the_underground_monsters_of_any_disposition_and_guarded_piles() {
+        let spec = parse(BELOW).expect("spec");
+        let (map, text) = build(&spec, &tables(), "b.h3m").expect("build");
+        h3_map::writer::write(&map).expect("writes");
+        let below = map.underground.as_ref().expect("underground");
+        assert_eq!(below.terrain, Terrain::Subterranean);
+        assert_eq!(
+            below.patches,
+            [Patch {
+                terrain: Terrain::Rock,
+                from: (0, 0),
+                to: (35, 1),
+            }]
+        );
+        let monsters = |objects: &[MapObject]| -> Vec<(u8, u8, u16, u8, bool)> {
+            objects
+                .iter()
+                .filter_map(|o| match o {
+                    MapObject::Monster(m) => {
+                        Some((m.tile.0, m.tile.1, m.count, m.disposition, m.never_flees))
+                    }
+                    _ => None,
+                })
+                .collect()
+        };
+        let piles = |objects: &[MapObject]| -> Vec<((u8, u8), Option<Guards>)> {
+            objects
+                .iter()
+                .filter_map(|o| match o {
+                    MapObject::Pile(p) => Some((p.tile, p.guards.clone())),
+                    _ => None,
+                })
+                .collect()
+        };
+        assert_eq!(monsters(&map.objects), [(4, 3, 10, 1, false)]);
+        assert_eq!(monsters(&below.objects), [(12, 27, 30, 4, true)]);
+        let mut army = [None; ARMY_SLOTS];
+        army[0] = Some((0, 12));
+        army[1] = Some((1, 1));
+        let asks = Guards {
+            army,
+            question: "Fight?".into(),
+        };
+        assert_eq!(
+            piles(&map.objects),
+            [((10, 20), Some(asks.clone())), ((11, 20), Some(asks))]
+        );
+        let mut army = [None; ARMY_SLOTS];
+        army[0] = Some((0, 3));
+        let at_once = Guards {
+            army,
+            question: String::new(),
+        };
+        assert_eq!(piles(&below.objects), [((10, 22), Some(at_once))]);
+        let heroes: Vec<(u8, u8)> = below
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Hero(h) => Some(h.tile),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(heroes, [(11, 27)]);
+        assert!(text.contains("**Difficulty: Easy.** Choose it in the scenario list"));
+        assert!(text.contains("Opponent: 10 Pikeman (wandering monster, friendly, may flee)"));
+        assert!(text.contains("Opponent: 30 Pikeman (wandering monster, never flees)"));
+        let underground = text.find("- On the underground level.").expect("the level");
+        assert!(underground > text.find("## U").expect("U"));
+        // `only` keeps the level of the one encounter.
+        let (only, _) = build_only(&spec, &tables(), "b.h3m", Some("U")).expect("only");
+        assert_eq!(monsters(&only.objects), []);
+        let only_below = only.underground.expect("underground");
+        assert_eq!(monsters(&only_below.objects), [(12, 27, 30, 4, true)]);
+        // A one-level spec writes no underground.
+        let (one, _) = build(&parse(WALKS).expect("spec"), &tables(), "w.h3m").expect("build");
+        assert!(one.underground.is_none());
+    }
+
+    #[test]
+    fn rejects_mistakes_in_the_underground_monsters_and_guards() {
+        let t = tables();
+        let fails = |from: &str, to: &str| {
+            let spec = parse(&BELOW.replacen(from, to, 1)).expect("spec");
+            build(&spec, &t, "b.h3m").expect_err(to)
+        };
+        assert!(fails("\"Easy\"", "\"medium\"").contains("unknown difficulty `medium`"));
+        let one_level = BELOW.replacen("[map.underground]", "[map.unused]", 1);
+        assert!(parse(&one_level).is_err());
+        let no_level = |text: &str| {
+            let start = text.find("        [map.underground]").expect("level");
+            let end = text.find("        [[map.pile]]").expect("piles");
+            format!("{}{}", &text[..start], &text[end..])
+        };
+        let spec = parse(&no_level(BELOW)).expect("spec");
+        let err = build(&spec, &t, "b.h3m").expect_err("no level");
+        assert!(err.contains("encounter U: level 1: no such level"), "{err}");
+        let surface_encounter =
+            BELOW.replacen("level = 1\n        [encounter.hero]", "[encounter.hero]", 1);
+        let spec = parse(&no_level(&surface_encounter)).expect("spec");
+        let err = build(&spec, &t, "b.h3m").expect_err("no level");
+        assert!(
+            err.contains("piles on row 22 at level 1: no such level"),
+            "{err}"
+        );
+        assert!(
+            fails(
+                "level = 1\n        [encounter.hero]",
+                "level = 2\n        [encounter.hero]"
+            )
+            .contains("no such level")
+        );
+        assert!(
+            fails("terrain = \"subterranean\"", "terrain = \"rock\"").contains("unknown terrain")
+        );
+        assert!(fails("to = [35, 1]", "to = [36, 1]").contains("off the map"));
+        assert!(fails("\"friendly\"", "\"shy\"").contains("unknown disposition `shy`"));
+        let guards = "guards = [[\"Pikeman\", 3]]";
+        assert!(fails(guards, "question = \"?\"").contains("a question needs guards"));
+        let eight = format!("guards = [{}]", vec!["[\"Pikeman\", 1]"; 8].join(", "));
+        assert!(fails(guards, &eight).contains("8 guard stacks (1–7)"));
+        assert!(fails(guards, "guards = [[\"Pikeman\", 0]]").contains("an empty guard stack"));
+        assert!(fails(guards, "guards = [[\"Imp\", 1]]").contains("unknown creature `Imp`"));
+        // Two objects on one tile of the underground; the same tile on the surface is free.
+        assert!(
+            fails(
+                "row = 22\n        from = 10\n        to = 10",
+                "row = 27\n        from = 11\n        to = 11",
+            )
+            .contains("on the tile (11, 27) underground")
+        );
+        let spec = parse(&BELOW.replacen("level = 1\n        guards", "guards", 1)).expect("spec");
+        let (map, _) = build(&spec, &t, "b.h3m").expect("the surface's tile");
+        assert_eq!(map.underground.expect("level").objects.len(), 2);
+        // A disposition or flight is a monster's.
+        let hero = "[encounter.opponent]\n        monster = \"Pikeman\"\n        count = 30";
+        let blue = "[encounter.opponent]\n        flees = true\n        [encounter.opponent.hero]\n        \
+                    type = \"Twin\"\n        specialty = \"x\"\n        primary = [0, 0, 0, 0]\n        \
+                    army = [[\"Pikeman\", 1]]";
+        assert!(fails(hero, blue).contains("with a monster only"));
     }
 }
