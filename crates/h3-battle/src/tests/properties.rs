@@ -1138,13 +1138,15 @@ proptest! {
                     }
                     let mover = before.active().unwrap();
                     // ... unless it killed the active stack, whose turn then ends (BAT-MAG-004,
-                    // BAT-MAG-036), or made it berserk: it takes its automatic turn at once
-                    // (BAT-MAG-025).
+                    // BAT-MAG-036), made it berserk: it takes its automatic turn at once
+                    // (BAT-MAG-025), or brought down the last standing target of the active
+                    // Catapult, whose turn then passes (Earthquake, BAT-SIE-011, BAT-SIE-015).
                     if cast_now {
                         let killed = !state.stacks()[mover.index()].is_alive();
                         let enraged = events.iter().any(|e| matches!(e.kind,
                             EventKind::EffectApplied { target, spell, .. } if target == mover && has_change(&r, spell, TimedChange::Berserk)));
-                        prop_assert!(state.is_over() || state.active() == Some(mover) || killed || enraged);
+                        let idle = state.stacks()[mover.index()].is_catapult() && !crate::siege::any_standing(&state);
+                        prop_assert!(state.is_over() || state.active() == Some(mover) || killed || enraged || idle);
                     }
                     // A stack's cast uses one of its casts and nothing else does (BAT-MAG-048)
                     // but its rebirths (BAT-MAG-059): one cast each time it comes back, which

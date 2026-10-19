@@ -442,6 +442,59 @@ fn the_fortress_s_outer_bridge_holds_the_gate_open() {
     }
 }
 
+// covers: BAT-SIE-003, BAT-MOV-003
+#[test]
+fn a_walk_over_the_outer_bridge_opens_the_held_gate_with_every_sink() {
+    let r = ruleset();
+    // Without a moat the walk goes straight (`obstacles::go`); a damaging moat makes every walk
+    // check its positions (`travel_through`).
+    for (fort, moat) in [
+        (FortLevel::Fort, Moat::Absent),
+        (FortLevel::Citadel, Moat::Damaging),
+    ] {
+        let walled = town(&r, "t:castle", fort, moat);
+        // The defender's walker outside on (9, 6), a defender's stack moved onto the closed
+        // gate's hex (11, 5), as a Clone may be placed there.
+        let mut s = at_town(
+            &r,
+            walled,
+            [None, None],
+            &[("fixed", 1, 2, 1)],
+            &[("fast", 1, 9, 6), ("fixed", 1, 14, 9)],
+        );
+        place(&mut s, &r, 2, 11, 5);
+        assert!(!open(&s));
+        activate(&mut s, 1);
+        // On to (8, 5) over the outer bridge (9, 5): the step there opens the gate, and the
+        // stack on the gate's hex holds it open after the walk.
+        let mut t = s.clone();
+        let events = act(&mut t, &r, walk(&r, 8, 5)).unwrap();
+        let path: Vec<Hex> = events
+            .iter()
+            .filter_map(|e| match e.kind {
+                EventKind::Moved { to, .. } => Some(to),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(path, [at(&r, 9, 5), at(&r, 8, 5)], "{moat:?}");
+        assert_eq!(gate(&events), [true], "{moat:?}");
+        assert!(open(&t));
+        assert!(soaked(&events).is_empty());
+        // A sink that records nothing walks it alike: the same state.
+        let mut quiet = s.clone();
+        apply(
+            &mut quiet,
+            &r,
+            BattleSide::Defender,
+            walk(&r, 8, 5),
+            &mut NoopSink,
+        )
+        .unwrap();
+        assert!(open(&quiet), "{moat:?}");
+        assert_eq!(quiet.state_hash(), t.state_hash(), "{moat:?}");
+    }
+}
+
 // ---------------------------------------------------------------- BAT-SIE-004
 
 // covers: BAT-SIE-004

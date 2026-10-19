@@ -26,7 +26,7 @@ use crate::geometry::{Direction, Field, Hex, HexSet};
 use crate::magic;
 use crate::movement;
 use crate::siege::{self, TownMines};
-use crate::state::{BattleState, NO_CORPSE, StackId, StackTraits, side_code};
+use crate::state::{BattleState, NO_CORPSE, Stack, StackId, StackTraits, side_code};
 
 /// Obstacles reserved with the first one and on every fork that has any (ADR-0014 point 5).
 pub const OBSTACLE_CAPACITY: usize = 8;
@@ -795,9 +795,11 @@ pub(crate) fn travel_back<S: Sink>(
 }
 
 /// Moves stack `mover` from `from` to `to` where nothing on the way acts on it: a walker
-/// position by position along its path (BAT-MOV-003) when the sink records, else, and a flyer,
-/// in one `Moved` (a walker whose path is not found, out of its reach, too).
-// rule: BAT-MOV-003
+/// position by position along its path (BAT-MOV-003) when the sink records or a position may
+/// open the town's gate (BAT-SIE-003: the step onto the drawbridge opens it, and a stack on the
+/// gate's hex can keep it open after the walk), else, and a flyer, in one `Moved` (a walker
+/// whose path is not found, out of its reach, too).
+// rule: BAT-MOV-003, BAT-SIE-003
 fn go<S: Sink>(
     state: &mut BattleState,
     ruleset: &BattleRuleset,
@@ -807,7 +809,7 @@ fn go<S: Sink>(
 ) {
     let mut start = from;
     let stack = *state.at(mover);
-    if S::RECORDS && !stack.has(StackTraits::FLIES) {
+    if !stack.has(StackTraits::FLIES) && (S::RECORDS || siege::gate_closed_for(state, &stack)) {
         let field = Field::new(ruleset.battle().field);
         let (path, len) = movement::path(state, field, mover, &stack, to);
         // The path ends at `to`: its last step is the move below.
@@ -889,8 +891,14 @@ fn travel_through<S: Sink>(
             }
         }
         let stops = in_pit.iter().any(Option::is_some);
-        // A recording sink gets every position (BAT-MOV-003); else only where something acts.
-        if S::RECORDS || stops || new.iter().any(Option::is_some) {
+        // A recording sink gets every position (BAT-MOV-003); else only where something acts
+        // or the stack opens the gate (BAT-SIE-003: the open gate takes the bridges out of the
+        // moat, so the later positions' moat damage depends on it).
+        if S::RECORDS
+            || stops
+            || new.iter().any(Option::is_some)
+            || siege::opens_gate(state, &Stack { hex: at, ..stack })
+        {
             moved(state, mover, (start, at), sink);
             start = at;
             if stops {
