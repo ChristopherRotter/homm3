@@ -61,4 +61,4 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-19 — the inbox after M6
 
-The battle lane's inbox entries done (`E16-log.md`): the Windows fixes (the card test's `0.0.0.0` dial; `open_log` reads through its own handle; the "Access is denied" flake unproven, the user's next Windows run decides), `Query::CreatureCastTargets {}`, `may_retreat` as its viewer knows it (wire 34), a siege's frames, the example's ladder on `strict-fixed` (the user's choice, BAT-QUIRK-4). The full local verify stands in for CI.
+The battle lane's inbox entries done (`E16-log.md`): the Windows fixes (the card test's `0.0.0.0` dial; `open_log` reads through its own handle; the "Access is denied" flake unproven: the user's next Windows run), `Query::CreatureCastTargets {}`, `may_retreat` as its viewer knows it (wire 34), a siege's frames, the example's ladder on `strict-fixed` (the user's choice, BAT-QUIRK-4). #281 open, the full local verify for CI.
