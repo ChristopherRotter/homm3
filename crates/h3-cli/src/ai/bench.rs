@@ -173,7 +173,7 @@ fn choose(batch: &mut BattleBatch, arrays: &mut Arrays, rng: &mut Rng) -> Result
 }
 
 /// The encounter distribution v1 on the original packs (`base:faithful`) with the kinds' `weights`.
-fn encounters(weights: [u32; 6]) -> Result<Scenario, String> {
+pub(super) fn encounters(weights: [u32; 6]) -> Result<Scenario, String> {
     let profile = "base:faithful";
     let battle = h3_pack_battle::compile(
         &[

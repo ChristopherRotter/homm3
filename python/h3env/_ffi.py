@@ -29,7 +29,7 @@ from pathlib import Path
 import numpy as np
 
 #: The C ABI version this binding speaks (`h3_abi_version()`).
-ABI_VERSION = 29
+ABI_VERSION = 30
 
 OK = 0
 ERR_NULL = -1
@@ -61,6 +61,9 @@ RESULT_DEFENDER_SURRENDERED = 6
 
 SEAT_EXTERNAL = 0
 SEAT_RANDOM = 1
+#: The baseline bots inside the call (v30, E05 T7; `h3_sim::bots`).
+SEAT_AGGRESSOR = 2
+SEAT_GREEDY = 3
 
 ENCOUNTER_NONE = -1
 ENCOUNTER_WANDERING = 0

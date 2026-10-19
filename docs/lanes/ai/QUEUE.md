@@ -8,8 +8,10 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 increment 3 done 2026-10-19 (#253, #255, #257, #258); increment 4 (T8) done 2026-10-19 (#260,
 #264; exit criterion 7 met).
 
-1. **Increment 5's cut** at the user's checkpoint: T7 Baselines (the epic's outline: heuristic
-   bots as `Policy` variants, `h3 ai eval`), refined then; T9 (closure) after it.
+1. **T7d The network's row** (increment 5, design §9): after the pull requests merged (#271,
+   #274, then this lane's), on the user's machine: `uv run --group train python -m
+   h3env.train.ladder --checkpoint runs/pool/best.pt`; record its three lines beside `h3 ai
+   eval`'s table in `E05-log.md`. Then increment 5's checkpoint (T9, the closure, next).
 
 ## Inbox
 
@@ -34,3 +36,7 @@ Taken over from the battle lane's inbox (2026-10-18; pruned there 2026-10-19):
 - 2026-10-19 (T8b): the trainer copies each call's observations (9 MB at 256 envs) into the
   rollout; the batch could write them there in place (`H3BatchBuffers.obs` per call) if a
   profile on the user's machine shows the copy.
+- 2026-10-19 (T7c): Greedy value beats Aggressor only 0.519 on the held-out episodes: the
+  preview of its own kills buys little without spells or a plan; a stronger baseline (casts, a
+  one-ply look at the opponent's reply) is E06's, AI-Q7 decides whether the agents get the
+  preview.

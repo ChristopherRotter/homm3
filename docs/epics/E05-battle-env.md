@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4 done: T8, exit criterion 7 met) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4 done: T8, exit criterion 7 met; increment 5: T7) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -156,10 +156,19 @@ next (increment 5: T7).
   (naive self-play) 0.779 peak, 0.721 final; with the opponent pool (#264) **0.800** at the end
   of 40 minutes (best 0.811): exit criterion 7 met (the user). Record in `E05-log.md`.
 
+**Increment 5** (cut 2026-10-19 at the user's checkpoint of increment 4; design §9; AI-Q6):
+**T7 Baselines** (exit criterion 6).
+
+- [x] **T7a The damage preview** — `h3_battle::preview` (BAT-DMG-011), the AI lane's `cross-lane`
+  change (#274), after ADR-0025 point 5's amendment (`shared/`, #271), 2026-10-19.
+- [x] **T7b The bots** — `h3_sim::bots`: Aggressor and Greedy value as `Policy` variants, 2026-10-19.
+- [x] **T7c The runner** — `h3 ai eval` with Glicko-2 from `h3-server`, 2026-10-19: on 1 000
+  held-out episodes per pair Greedy 0.828 and Aggressor 0.800 against Random, Greedy 0.519
+  against Aggressor. Record in `E05-log.md`.
+- [ ] **T7d The network's row** — C ABI v30's bot seats and `python -m h3env.train.ladder`
+  built (2026-10-19); the user's `best.pt` against the ladder on the GTX 1070, recorded.
+
 **Later increments** (coarse; cut at each checkpoint):
-- **T7 Baselines** (increment 5): heuristic bots (greedy damage or value) as `Policy` variants in
-  `h3-sim`'s `bots` and the evaluation runner `h3 ai eval` (match series, win rate, value
-  efficiency, Elo between policies; ADR-0025 consequences).
 - **T9 Closure:** an independent review, measurements on the user's machine (the batch's wall time
   over threads and batch sizes, moved from T3c: `h3 ai bench`, design §7), the docs.
 

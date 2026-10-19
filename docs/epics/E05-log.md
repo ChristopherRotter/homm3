@@ -408,3 +408,35 @@ The full record of done tasks (the epic file keeps one line each).
   95 %). The pool cost about a third of the updates per minute (440 in 42 minutes against 744
   in 48): the frozen networks' forward passes per call, and longer evaluations (82–140 s) as the
   agent's defence lasts. Increment 4 done; T7 next (increment 5, the user's checkpoint).
+
+## Increment 5's cut and T7 — Baselines (2026-10-19)
+
+- **The cut** (the user, at increment 4's checkpoint): T7 with the bots as internal seats and the
+  trained network's row; two bots, Aggressor and Greedy value; the estimate from the engine (a
+  preview of one's own attack, counting everything the strike reveals such as the defender's
+  Armorer, never the retaliation: AI-Q6; the estimates in the agents' encodings may follow,
+  AI-Q7); ratings "what the server already built": its Glicko-2, copied. Separate branches for
+  the `shared/` ADR amendment (#271) and the `cross-lane` preview (#274), the user's consent.
+- **T7a** (#274): `h3_battle::preview` and `combat::strike_preview` on the real strike's stages
+  (BAT-DMG-011; VCMI 1.7.5's `battleEstimateDamage` gives its shape). Tests: real strikes land
+  within their previews (melee and shots, 24 seeds), only valid attacks and shots preview, Bless
+  fixes it, jousting's charge counts; `h3-battle`'s coverage holds; the full verify passed.
+- **T7b** `h3_sim::bots` (`Policy::Aggressor`, `Policy::Greedy`; design §9): the observation, the
+  creature data and the preview; no casts; deterministic. Tests: both win at least 70 % against
+  Random from either side over 30 encounters, only legal commands, every battle to its end.
+- **T7c** `h3 ai eval` and `src/ai/rating.rs` (Glicko-2 from `h3-server`, its two worked tests).
+  On the 1 000 held-out episodes per ordered pair (`EVAL_SEED`, the default kinds; 8.8 s):
+
+  | Row against column | Random | Aggressor | Greedy |
+  |---|---|---|---|
+  | Random | – | 0.200 | 0.172 |
+  | Aggressor | 0.800 | – | 0.481 |
+  | Greedy | 0.828 | 0.519 | – |
+
+  Value efficiency against Random: Aggressor +0.247, Greedy +0.277; Greedy against Aggressor
+  +0.021. Glicko-2: Greedy 1718, Aggressor 1714, Random 1509 (± about 130 at two deviations).
+  Greedy's preview buys little over Aggressor's nearest target (AI-Q7's question).
+- **T7d** C ABI v30 (`H3_SEAT_AGGRESSOR`, `H3_SEAT_GREEDY`), `h3env`'s seats and opponents,
+  `python -m h3env.train.ladder`. The sandbox's 20-minute pool checkpoint (0.76 against Random
+  at its training): 0.751 against Random, 0.434 against Aggressor, 0.420 against Greedy on the
+  same episodes. Left: the user's `best.pt` (0.811) on the GTX 1070.

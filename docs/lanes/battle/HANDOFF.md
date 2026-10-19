@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **No epic in progress.** E04c closed 2026-10-16; since then #265 (the AI lane's two proptest cases), the docs' cleanup (#267, #268) and CLT-Q2's table-only LOD reader (`battle/clt-q2-lod-table`, its pull request open), all 2026-10-19. E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
+- **No epic in progress.** E04c closed 2026-10-16; since then #265 (the AI lane's two proptest cases), the docs' cleanup (#267, #268), CLT-Q2's table-only LOD reader (#273) and three of the inbox's test gaps (`battle/test-gaps`, its pull request open), all 2026-10-19. E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Next, the user's choice:** E23, the original's battle AI (after E05; to refine: a reading increment, then about three), or E11's battle part; the user asks for small increments (2026-10-19).
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51 (none blocks), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
 - **Versions** (unchanged since T10b): battle state hash v51, battle part hash v6 (the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q52, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
@@ -29,6 +29,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 - Defend spoils exact damage expectations: skip turns with `activate`. `BattleState::new` drops the first activation's events (use `start`).
 - `legal_commands` lists no casts: a property over legal commands adds `cast_targets` × `second_targets`. `properties.rs` plays at every `Place`.
 - Tests patch the synthetic pack by text (`Texts`): each patch asserts it matched.
+- A creature the test table lacks: `support::ruleset_with_creatures` adds a test's own, `CREATURES` stays. On the harvested packs a pit lies where Quicksand draws it: loop over seeds (`harvested_control_and_field.rs`).
 
 **Packs, replays, benchmarks**
 - `packs/base|ab|sod` are generated: change `h3-harvest` or its gap-fill file and re-run it; harvested keys may coincide across kinds (`base:ballista`).
@@ -42,9 +43,9 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
-### 2026-10-19 (seventy-third) — CLT-Q2: the table-only LOD reader
+### 2026-10-19 (seventy-third) — CLT-Q2's LOD reader; three test gaps
 
-The user chose CLT-Q2 as a small increment. `h3_formats::lod`: `MAX_TABLE_BYTES`, `LodTable::parse(head, file_len)`, `LodEntry::stored_range`, `read_entry`; `LodArchive` rests on them, unchanged for the harvester and `h3-view`. A property: a table from any prefix of a mutated archive agrees with the whole parse. On the four real LODs both readers agree on every entry (an ad-hoc test, not committed; `installation.md` §3). CLT-Q2 answered; the switch is the client lane's (its inbox).
+Small increments at the user's choice. #273 (merged), CLT-Q2: `h3_formats::lod`: `MAX_TABLE_BYTES`, `LodTable::parse(head, file_len)`, `LodEntry::stored_range`, `read_entry`; `LodArchive` rests on them, unchanged for the harvester and `h3-view`. A property: a table from any prefix of a mutated archive agrees with the whole parse. On the four real LODs both readers agree on every entry (an ad-hoc test, not committed; `installation.md` §3). CLT-Q2 answered; the switch is the client lane's (its inbox). Then `battle/test-gaps` (tests only, no behaviour changed, none failed): BAT-QUIRK-21's second half (a mutation to the original's listing fails only it), Bind released by a flying and a teleporting binder, and no attack from a seen Quicksand pit on the harvested packs (seeds 1 to 40 pick the draws; 8 cases per profile).
 
 ### 2026-10-19 (seventy-second) — the AI lane's two proptest cases
 

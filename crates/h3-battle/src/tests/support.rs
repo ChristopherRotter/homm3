@@ -1732,6 +1732,20 @@ pub fn add_turret(core: &mut ContentPack, battle: &mut BattlePack) {
     battle.creatures.append(&mut b);
 }
 
+/// The test ruleset (profile `profile`) with a test's own creatures `extra` beside
+/// [`CREATURES`], which stays unchanged for every other test.
+pub fn ruleset_with_creatures(profile: &str, extra: &[Creature]) -> BattleRuleset {
+    ruleset_from(
+        profile,
+        |_| {},
+        |core, battle| {
+            let (mut c, mut b) = creature_defs(extra);
+            core.creatures.append(&mut c);
+            battle.creatures.append(&mut b);
+        },
+    )
+}
+
 /// [`turret_ruleset`] with Fight Values `(name, value)`, the computer's worth of a creature
 /// (E04c T7d, BAT-SIE-021; the other test creatures have none).
 pub fn fighting_turret_ruleset(profile: &str, fights: &[(&str, u32)]) -> BattleRuleset {
