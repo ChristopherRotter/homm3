@@ -5,16 +5,11 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 ## Tasks
 
 **E05** (`docs/epics/E05-battle-env.md`, refined 2026-10-18, AI-Q1). Increments 1 and 2 done;
-increment 3 done 2026-10-19 (#253, #255, #257, #258); increment 4 cut 2026-10-19: T8 before T7
-(T8a, T8b done 2026-10-19).
+increment 3 done 2026-10-19 (#253, #255, #257, #258); increment 4 (T8) done 2026-10-19 (#260,
+#264; exit criterion 7 met).
 
-1. **T8c The smoke run** on the user's machine (the GTX 1070; epic, increment 4; design §8):
-   `in progress` 2026-10-19. The first hour (naive self-play) peaked at 0.779 and ended at
-   0.721 (`E05-log.md`); the opponent pool is built. Next: the hour again with the pool, after
-   its pull request merged: `cargo build --release -p h3-ffi`, `uv sync --group train`, `uv run
-   --group train python -m h3env.train --minutes 60 --out runs/pool` in `python/`. Exit
-   criterion 7: the final evaluation's sampled `win_rate` at least 0.8 (design §8.2). Record the
-   evaluations' lines in `E05-log.md`. Then increment 4's checkpoint (T7 next).
+1. **Increment 5's cut** at the user's checkpoint: T7 Baselines (the epic's outline: heuristic
+   bots as `Policy` variants, `h3 ai eval`), refined then; T9 (closure) after it.
 
 ## Inbox
 
