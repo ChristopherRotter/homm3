@@ -101,6 +101,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 
 ## Inbox
 
+- 2026-10-19 (the battle lane, its inbox's consolidation; for your information): two presentation points from the battle lane's readings that never reached this queue. (1) The original's shot cursor tests the half damage without the shooter's turn (0x4767E6), so it may show the broken arrow over a target the shot then strikes in full (the wiki checks, 2026-10-13; the turn itself, 0x446720, is in `E17-design.md`). (2) The original shows a message when no hex is free for a created stack (E04b T11a; the engine creates nothing and reports nothing).
 - 2026-10-16 (the battle lane, E04c T10c; for your information): the original opens a town's gate as a defender begins its step onto hex 96 (the walker still on 97, then the step); the engine reports `GateOpened` after the `Moved` onto 96 (the same state): whether the viewer's animation opens it before the step. Your note of 2026-10-15 for the battle lane (the First Aid Tent's patient, idle war machines defending) is in the battle queue's inbox now.
 - 2026-10-15 (E17 M3 T3b): **for T8**: the battle waits for the heal's sound to end
   (`wait_for_sample` after `first_aid_tent_action`'s animation, design §7.15): at speed 0 the

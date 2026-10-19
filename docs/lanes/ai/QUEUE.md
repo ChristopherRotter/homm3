@@ -18,6 +18,8 @@ increment 3 done 2026-10-19 (#253, #255, #257, #258); increment 4 cut 2026-10-19
 
 ## Inbox
 
+- 2026-10-19 (the battle lane, its inbox's consolidation; for your information, nothing to do now): E04b's review (T11b, 2026-10-12) noted that `h3_sim::action::encode` answers without a viewer (the same root as F-sec-2's leak, which the sim's `step` closes); it leaks nothing today.
+
 Taken over from the battle lane's inbox (2026-10-18; pruned there 2026-10-19):
 
 - 2026-10-11 (E04b T11a): the flat observation costs about a third of a step (`observe` ≈ 1 µs, `observe + encode` ≈ 3.5 µs; the buffer is zeroed and mostly rewritten zeros); `state_hash` ≈ 4.3 µs at 6.3 KB, too slow for per-node hashing; the `full` workload is lopsided (8 attacker victories in 2 399 agent seeds).
