@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4, the user's checkpoint next) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 cut: T5a built, its assumptions in the user's review, AI-Q4) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -40,7 +40,7 @@ benchmarks.
    balance, wandering stacks and heroes, each **sampled by its approximate encounter probability**.
    An encounter distribution v1 approximates them until full games run; then the adventure's
    logged encounters give the real types and frequencies. v1 is a versioned config whose weights
-   are derived from the 160 maps shipped with the game (terrain shares, neutral stacks, towns, read
+   are derived from the 159 maps shipped with the game (terrain shares, neutral stacks, towns, read
    with `h3-map`) and from stated assumptions where maps say nothing (game week, hero levels, army
    ratios). A curriculum may sample it with other weights.
 8. **Heuristic bots are baselines, never training opponents.** Training uses self-play and the
@@ -121,14 +121,26 @@ C ABI (ADR-0025 points 1 to 7) and **T4 Reward v1** (point 8).
 - [x] **T3d The C ABI v27** — `h3_batch_*` (2026-10-18); the ABI batch equals the Rust batch; the C
   smoke test runs a batch. Record in `E05-log.md`.
 
-**Later increments** (coarse; cut at each checkpoint):
+**Increment 3** (cut 2026-10-18 after the user merged increment 2, #252: T5 and T6; the census
+first, while the session had the user's maps; the Python tests stay a lane command, not a gate,
+until a later shared change): **T5 Encounter distribution v1** and **T6 The Python binding**.
 
-- **T5 Encounter distribution v1:** T5a the statistics of the 160 shipped maps and the stated
-  assumptions, committed as derived numbers with their derivation; T5b the setup sampler (armies,
-  heroes with levels, skills, artifacts and spells through `h3-heroes`, battlefields, sieges,
-  neutral stacks) and a sampled-scenario check that every place occurs at its weight.
-- **T6 The Python binding** (`python/`): the batch API as numpy arrays, a vector interface for
-  self-play (the acting seat per env), tests on Linux and on the user's Windows machine.
+- [x] **T5a The census and the assumptions** — `h3 ai census` and `census-v1.toml` of the 159
+  shipped maps (2026-10-18); the assumptions proposed in design §4.4 for the user's review
+  (AI-Q4). Record in `E05-log.md`.
+- [ ] **T5b The sampler** — after AI-Q4: a `shared/` pull request (`serde`, `toml` and `h3-heroes`
+  for `h3-sim`, design §4.2), `encounters-v1.toml`, the setup sampler (armies, heroes with levels,
+  skills, artifacts and spells through `h3-heroes`, battlefields, sieges, neutral stacks), the
+  batch's encounter source and its C ABI (v28), the sampled-scenario check that every dimension
+  occurs at its weight, the `batch-random-encounters-v1` workload.
+- [ ] **T6a The Python binding on Linux** (`python/`, design §5): ctypes over the C ABI, the batch
+  as numpy arrays written in place, the seats' bookkeeping for self-play, the trusted tools,
+  pytest; Python's steps/s against `h3 ai bench`.
+- [ ] **T6b Windows and PyTorch** — the binding's tests on the user's Windows machine and the lock
+  of PyTorch 2.14 (cu126) there: `download.pytorch.org` is refused from the cloud sandbox and the
+  device link (2026-10-18).
+
+**Later increments** (coarse; cut at each checkpoint):
 - **T7 Baselines:** heuristic bots (greedy damage or value) and an evaluation runner (match series,
   win rate, value efficiency, Elo between policies); where bots live is decided in T1 (a new crate
   would be a shared change).

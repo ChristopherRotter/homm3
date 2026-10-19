@@ -1,0 +1,620 @@
+# The census of the maps the encounter distribution is derived from (E05 T5a,
+# docs/epics/E05-design.md §4.2), written by `h3 ai census`: aggregate counts only
+# (ADR-0009), no map content. Regenerate it, never edit it by hand.
+
+[census]
+id = "census"
+version = 1
+packs = ["base", "ab", "sod"]
+profile = "base:faithful"
+maps = 159
+
+[maps]
+roe = 48
+ab = 55
+sod = 56
+two_levels = 103
+terrain_twins = 35
+
+[maps.size]
+s = 31
+m = 71
+l = 38
+xl = 19
+other = 0
+
+[tiles]
+total = 1964736
+land = 1057900
+water = 365875
+impassable = 540961
+underground_land = 150475
+coast = 87422
+open_land = 335457
+open_water = 312562
+
+[monsters]
+placements = 13863
+fixed_count = 740
+
+[monsters.level.1]
+fixed = 248
+random = 2204
+
+[monsters.level.2]
+fixed = 217
+random = 3401
+
+[monsters.level.3]
+fixed = 286
+random = 3255
+
+[monsters.level.4]
+fixed = 228
+random = 1990
+
+[monsters.level.5]
+fixed = 176
+random = 977
+
+[monsters.level.6]
+fixed = 116
+random = 367
+
+[monsters.level.7]
+fixed = 212
+random = 123
+
+[monsters.level.any]
+fixed = 0
+random = 63
+
+[objects]
+guarded_piles = 36
+special_grounds = 1857
+heroes = 106
+random_heroes = 176
+prisons = 89
+garrisons = 193
+anti_magic_garrisons = 45
+creature_banks = 1215
+derelict_ships = 170
+dragon_utopias = 74
+crypts = 277
+shipwrecks = 401
+boats = 118
+
+[towns."base:castle"]
+none = 36
+fort = 70
+citadel = 5
+castle = 7
+
+[towns."base:dungeon"]
+none = 19
+fort = 69
+citadel = 0
+castle = 1
+
+[towns."base:fortress"]
+none = 20
+fort = 34
+citadel = 2
+castle = 2
+
+[towns."base:inferno"]
+none = 21
+fort = 54
+citadel = 3
+castle = 1
+
+[towns."base:necropolis"]
+none = 4
+fort = 25
+citadel = 0
+castle = 3
+
+[towns."base:rampart"]
+none = 23
+fort = 53
+citadel = 3
+castle = 4
+
+[towns."base:stronghold"]
+none = 13
+fort = 47
+citadel = 1
+castle = 1
+
+[towns."base:tower"]
+none = 15
+fort = 50
+citadel = 0
+castle = 4
+
+[towns.random]
+none = 155
+fort = 686
+citadel = 12
+castle = 22
+
+[[place]]
+terrain = "base:desert"
+open_land = 10763
+monsters = 507
+guarded_piles = 0
+
+[[place]]
+terrain = "base:desert"
+battlefield = "base:cursed_ground"
+open_land = 126
+monsters = 4
+guarded_piles = 0
+
+[[place]]
+terrain = "base:desert"
+battlefield = "base:magic_plains"
+open_land = 41
+monsters = 3
+guarded_piles = 0
+
+[[place]]
+terrain = "base:desert"
+battlefield = "base:shore"
+open_land = 25420
+monsters = 1043
+guarded_piles = 1
+
+[[place]]
+terrain = "base:desert"
+battlefield = "sod:clover_field"
+open_land = 23
+monsters = 1
+guarded_piles = 0
+
+[[place]]
+terrain = "base:desert"
+battlefield = "sod:evil_fog"
+open_land = 170
+monsters = 12
+guarded_piles = 0
+
+[[place]]
+terrain = "base:desert"
+battlefield = "sod:fiery_fields"
+open_land = 60
+monsters = 4
+guarded_piles = 0
+
+[[place]]
+terrain = "base:desert"
+battlefield = "sod:holy_ground"
+open_land = 15
+monsters = 6
+guarded_piles = 0
+
+[[place]]
+terrain = "base:desert"
+battlefield = "sod:lucid_pools"
+open_land = 34
+monsters = 4
+guarded_piles = 0
+
+[[place]]
+terrain = "base:desert"
+battlefield = "sod:magic_clouds"
+open_land = 21
+monsters = 6
+guarded_piles = 0
+
+[[place]]
+terrain = "base:desert"
+battlefield = "sod:rocklands"
+open_land = 93
+monsters = 9
+guarded_piles = 0
+
+[[place]]
+terrain = "base:dirt"
+open_land = 63901
+monsters = 2492
+guarded_piles = 2
+
+[[place]]
+terrain = "base:dirt"
+battlefield = "base:cursed_ground"
+open_land = 414
+monsters = 23
+guarded_piles = 0
+
+[[place]]
+terrain = "base:dirt"
+battlefield = "base:magic_plains"
+open_land = 807
+monsters = 30
+guarded_piles = 0
+
+[[place]]
+terrain = "base:dirt"
+battlefield = "sod:clover_field"
+open_land = 83
+monsters = 6
+guarded_piles = 0
+
+[[place]]
+terrain = "base:dirt"
+battlefield = "sod:evil_fog"
+open_land = 225
+monsters = 12
+guarded_piles = 0
+
+[[place]]
+terrain = "base:dirt"
+battlefield = "sod:fiery_fields"
+open_land = 36
+monsters = 2
+guarded_piles = 0
+
+[[place]]
+terrain = "base:dirt"
+battlefield = "sod:holy_ground"
+open_land = 156
+monsters = 12
+guarded_piles = 0
+
+[[place]]
+terrain = "base:dirt"
+battlefield = "sod:lucid_pools"
+open_land = 18
+monsters = 4
+guarded_piles = 0
+
+[[place]]
+terrain = "base:dirt"
+battlefield = "sod:magic_clouds"
+open_land = 62
+monsters = 8
+guarded_piles = 0
+
+[[place]]
+terrain = "base:dirt"
+battlefield = "sod:rocklands"
+open_land = 177
+monsters = 13
+guarded_piles = 0
+
+[[place]]
+terrain = "base:grass"
+open_land = 83442
+monsters = 3177
+guarded_piles = 5
+
+[[place]]
+terrain = "base:grass"
+battlefield = "base:cursed_ground"
+open_land = 442
+monsters = 19
+guarded_piles = 0
+
+[[place]]
+terrain = "base:grass"
+battlefield = "base:magic_plains"
+open_land = 891
+monsters = 29
+guarded_piles = 0
+
+[[place]]
+terrain = "base:grass"
+battlefield = "sod:clover_field"
+open_land = 589
+monsters = 52
+guarded_piles = 0
+
+[[place]]
+terrain = "base:grass"
+battlefield = "sod:evil_fog"
+open_land = 109
+monsters = 16
+guarded_piles = 0
+
+[[place]]
+terrain = "base:grass"
+battlefield = "sod:fiery_fields"
+open_land = 88
+monsters = 4
+guarded_piles = 0
+
+[[place]]
+terrain = "base:grass"
+battlefield = "sod:holy_ground"
+open_land = 187
+monsters = 12
+guarded_piles = 0
+
+[[place]]
+terrain = "base:grass"
+battlefield = "sod:lucid_pools"
+open_land = 88
+monsters = 3
+guarded_piles = 0
+
+[[place]]
+terrain = "base:grass"
+battlefield = "sod:magic_clouds"
+open_land = 230
+monsters = 8
+guarded_piles = 0
+
+[[place]]
+terrain = "base:grass"
+battlefield = "sod:rocklands"
+open_land = 141
+monsters = 9
+guarded_piles = 0
+
+[[place]]
+terrain = "base:lava"
+open_land = 16214
+monsters = 700
+guarded_piles = 3
+
+[[place]]
+terrain = "base:lava"
+battlefield = "base:cursed_ground"
+open_land = 136
+monsters = 6
+guarded_piles = 0
+
+[[place]]
+terrain = "base:lava"
+battlefield = "base:magic_plains"
+open_land = 7
+monsters = 0
+guarded_piles = 0
+
+[[place]]
+terrain = "base:lava"
+battlefield = "sod:evil_fog"
+open_land = 128
+monsters = 10
+guarded_piles = 0
+
+[[place]]
+terrain = "base:lava"
+battlefield = "sod:fiery_fields"
+open_land = 182
+monsters = 27
+guarded_piles = 0
+
+[[place]]
+terrain = "base:lava"
+battlefield = "sod:rocklands"
+open_land = 14
+monsters = 2
+guarded_piles = 0
+
+[[place]]
+terrain = "base:rough"
+open_land = 26879
+monsters = 1250
+guarded_piles = 2
+
+[[place]]
+terrain = "base:rough"
+battlefield = "base:cursed_ground"
+open_land = 345
+monsters = 18
+guarded_piles = 0
+
+[[place]]
+terrain = "base:rough"
+battlefield = "base:magic_plains"
+open_land = 132
+monsters = 10
+guarded_piles = 0
+
+[[place]]
+terrain = "base:rough"
+battlefield = "sod:clover_field"
+open_land = 20
+monsters = 2
+guarded_piles = 0
+
+[[place]]
+terrain = "base:rough"
+battlefield = "sod:evil_fog"
+open_land = 2
+monsters = 0
+guarded_piles = 0
+
+[[place]]
+terrain = "base:rough"
+battlefield = "sod:fiery_fields"
+open_land = 8
+monsters = 4
+guarded_piles = 0
+
+[[place]]
+terrain = "base:rough"
+battlefield = "sod:holy_ground"
+open_land = 36
+monsters = 7
+guarded_piles = 0
+
+[[place]]
+terrain = "base:rough"
+battlefield = "sod:lucid_pools"
+open_land = 94
+monsters = 0
+guarded_piles = 0
+
+[[place]]
+terrain = "base:rough"
+battlefield = "sod:rocklands"
+open_land = 284
+monsters = 16
+guarded_piles = 0
+
+[[place]]
+terrain = "base:snow"
+open_land = 26793
+monsters = 1029
+guarded_piles = 16
+
+[[place]]
+terrain = "base:snow"
+battlefield = "base:cursed_ground"
+open_land = 56
+monsters = 6
+guarded_piles = 0
+
+[[place]]
+terrain = "base:snow"
+battlefield = "base:magic_plains"
+open_land = 26
+monsters = 3
+guarded_piles = 0
+
+[[place]]
+terrain = "base:snow"
+battlefield = "sod:evil_fog"
+open_land = 12
+monsters = 4
+guarded_piles = 0
+
+[[place]]
+terrain = "base:snow"
+battlefield = "sod:lucid_pools"
+open_land = 44
+monsters = 0
+guarded_piles = 0
+
+[[place]]
+terrain = "base:snow"
+battlefield = "sod:magic_clouds"
+open_land = 122
+monsters = 13
+guarded_piles = 0
+
+[[place]]
+terrain = "base:subterranean"
+open_land = 55746
+monsters = 2243
+guarded_piles = 7
+
+[[place]]
+terrain = "base:subterranean"
+battlefield = "base:cursed_ground"
+open_land = 1024
+monsters = 82
+guarded_piles = 0
+
+[[place]]
+terrain = "base:subterranean"
+battlefield = "base:magic_plains"
+open_land = 125
+monsters = 5
+guarded_piles = 0
+
+[[place]]
+terrain = "base:subterranean"
+battlefield = "sod:clover_field"
+open_land = 162
+monsters = 6
+guarded_piles = 0
+
+[[place]]
+terrain = "base:subterranean"
+battlefield = "sod:evil_fog"
+open_land = 66
+monsters = 10
+guarded_piles = 0
+
+[[place]]
+terrain = "base:subterranean"
+battlefield = "sod:fiery_fields"
+open_land = 6
+monsters = 2
+guarded_piles = 0
+
+[[place]]
+terrain = "base:subterranean"
+battlefield = "sod:holy_ground"
+open_land = 186
+monsters = 6
+guarded_piles = 0
+
+[[place]]
+terrain = "base:subterranean"
+battlefield = "sod:lucid_pools"
+open_land = 41
+monsters = 2
+guarded_piles = 0
+
+[[place]]
+terrain = "base:subterranean"
+battlefield = "sod:magic_clouds"
+open_land = 10
+monsters = 2
+guarded_piles = 0
+
+[[place]]
+terrain = "base:subterranean"
+battlefield = "sod:rocklands"
+open_land = 108
+monsters = 3
+guarded_piles = 0
+
+[[place]]
+terrain = "base:swamp"
+open_land = 16766
+monsters = 772
+guarded_piles = 0
+
+[[place]]
+terrain = "base:swamp"
+battlefield = "base:cursed_ground"
+open_land = 25
+monsters = 4
+guarded_piles = 0
+
+[[place]]
+terrain = "base:swamp"
+battlefield = "base:magic_plains"
+open_land = 407
+monsters = 9
+guarded_piles = 0
+
+[[place]]
+terrain = "base:swamp"
+battlefield = "sod:clover_field"
+open_land = 171
+monsters = 9
+guarded_piles = 0
+
+[[place]]
+terrain = "base:swamp"
+battlefield = "sod:lucid_pools"
+open_land = 203
+monsters = 14
+guarded_piles = 0
+
+[[place]]
+terrain = "base:swamp"
+battlefield = "sod:magic_clouds"
+open_land = 23
+monsters = 2
+guarded_piles = 0
+
+[[place]]
+terrain = "base:swamp"
+battlefield = "sod:rocklands"
+open_land = 2
+monsters = 0
+guarded_piles = 0
+
+[[place]]
+terrain = "base:water"
+open_land = 0
+monsters = 55
+guarded_piles = 0

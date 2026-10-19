@@ -4,12 +4,14 @@
 //! ```text
 //! h3 ai bench [--scenario <file>] [--packs-dir packs] [--envs 64] [--threads 0] [--calls 1000]
 //!             [--seed 1] [--max-steps 0]
+//! h3 ai census <maps folder or file>... [--out <file>]
 //! ```
 
 // The bench times itself with the wall clock (an adapter).
 #![allow(clippy::disallowed_types, clippy::disallowed_methods)]
 
 pub mod bench;
+pub mod census;
 
 use std::path::PathBuf;
 
@@ -18,7 +20,8 @@ use bench::BenchOptions;
 /// The AI commands' usage.
 pub const USAGE: &str = "usage:
   h3 ai bench [--scenario <file>] [--packs-dir packs] [--envs 64] [--threads 0] [--calls 1000]
-              [--seed 1] [--max-steps 0]";
+              [--seed 1] [--max-steps 0]
+  h3 ai census <maps folder or file>... [--out <file>]";
 
 /// Parsed arguments: `--name value` options and positional words.
 struct Args {
@@ -90,6 +93,7 @@ pub fn main(raw: &[String]) -> Result<(), String> {
     let args = Args::parse(rest)?;
     match command.as_str() {
         "bench" => bench(&args),
+        "census" => census(&args),
         _ => Err(format!("unknown ai command `{command}`\n{USAGE}")),
     }
 }
@@ -131,6 +135,37 @@ fn bench(args: &Args) -> Result<(), String> {
         report.steps as f64 / report.secs
     );
     Ok(())
+}
+
+/// `h3 ai census`: the census of the maps given (a folder's `.h3m` files, or files), as TOML on
+/// standard output or into `--out`; the maps it skipped and why on standard error.
+fn census(args: &Args) -> Result<(), String> {
+    if let Some((n, _)) = args.options.iter().find(|(n, _)| n != "out") {
+        return Err(format!("unknown option --{n}"));
+    }
+    if args.positional.is_empty() {
+        return Err(format!("census needs a maps folder or file\n{USAGE}"));
+    }
+    let paths: Vec<PathBuf> = args.positional.iter().map(PathBuf::from).collect();
+    let files = census::map_files(&paths)?;
+    let rules = census::original_rules()?;
+    let (counted, skipped) = census::run(&files, &rules)?;
+    for s in &skipped {
+        eprintln!("skipped {}: {}", s.path.display(), s.reason);
+    }
+    eprintln!(
+        "census: {} of {} maps counted",
+        counted.census.maps,
+        files.len()
+    );
+    let text = census::to_toml(&counted)?;
+    match args.get("out") {
+        Some(out) => std::fs::write(out, text).map_err(|e| format!("{out}: {e}")),
+        None => {
+            print!("{text}");
+            Ok(())
+        }
+    }
 }
 
 #[cfg(test)]
