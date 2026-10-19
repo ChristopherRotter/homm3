@@ -218,9 +218,11 @@ Agents usually work in a cloud sandbox cloned from GitHub.
    (`D:\Users\Christopher\Source\Repos\homm3`) and stage `original-data/install/Heroes3.exe`,
    `original-data/install/Data/H3bitmap.lod`, `original-data/install/Data/H3ab_bmp.lod` and
    `original-data/extracted/H3bitmap/Objects.txt` (one large LOD per staging call); for the
-   map reader also `original-data/install/Maps/*` (164 files, at most 50 per staging call; the
-   user's copy of the installation's `Maps`, 2026-10-10). Without the link, the user may upload
-   them; otherwise the session only prepares (Q48).
+   map reader also the shipped maps as one archive, `original-data/maps.tar` (the 160 maps of
+   the installation's `Maps`; untar it into the staged `original-data/install` before step 3;
+   2026-10-18: the four maps of the user's own it held before are gone); `extracted.tar` holds
+   the text tables, `Objects.txt` among them (untar it into the staged `original-data`). Without
+   the link, the user may upload them; otherwise the session only prepares (Q48).
 3. **Setup:** `scripts/sandbox-setup.sh --lane <lane>` makes the clone track every branch name
    first, links the image's `stable` toolchain as the pinned one, copies the staged files into
    `original-data/` and starts the tool installs (cargo-deny's and cargo-llvm-cov's release
