@@ -5,14 +5,17 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 ## Tasks
 
 **E05** (`docs/epics/E05-battle-env.md`, refined 2026-10-18, AI-Q1). Increments 1 and 2 done;
-increment 3 cut 2026-10-18 (T5a done, on its pull request):
+increment 3 cut 2026-10-18 (T5a done, #253; T5b1 done, on its pull request after #254):
 
-1. **T5b The sampler** — waits for AI-Q4 (the assumptions, design §4.4). A `shared/` pull request
-   first (`serde`, `toml`, `h3-heroes` for `h3-sim`); then `encounters-v1.toml`, the sampler, the
-   batch's encounter source and C ABI v28, the frequency check, `batch-random-encounters-v1`.
+1. **T5b2 The batch's encounter source** — episodes drawn from `h3_sim::encounter::Sampler`
+   (design §4.2) by each episode's seed, `h3_batch_add_encounters` or a config field (C ABI v28;
+   `h3-ffi` compiles the adventure part, #254), the `batch-random-encounters-v1` workload, the
+   sampling cost per episode.
 2. **T6a The Python binding on Linux** (design §5) — independent of T5b; `uv run pytest` stays a
    lane command (the user, 2026-10-18).
-3. **T6b Windows and PyTorch** — on the user's machine (PyTorch's index is refused elsewhere).
+3. **T6b Windows and PyTorch** — the lock of torch 2.14 (cu126). `download.pytorch.org` was refused
+   from the sandbox (a 403 at the proxy) even after the user allowed `*.pytorch.org` on
+   2026-10-19: try again in a new session; else on the user's machine.
 
 ## Inbox
 
@@ -29,3 +32,7 @@ Taken over from the battle lane's inbox (2026-10-18; the items stay there too un
   killed || enraged` broke in a siege (faction 0, fort 1, no moat); its regression line is in
   #253's description. `h3-battle` is untouched by T5a; the battle lane's to fix, like
   `walks_are_reported_hex_by_hex` (the gate fails only when proptest finds such a case).
+- 2026-10-19 (T5b1's baseline): `master`'s coverage gate fails on the adventure lane's
+  `crates/h3-game/src/state.rs:569` (`OfferKind::Pass` in the open decisions' hash: no fixed
+  test hashes a pending Pass offer; 0 hits under `cargo llvm-cov -p h3-game`). The adventure
+  lane's to fix with a fixed test (suggested to the user as a task).

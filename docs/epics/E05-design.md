@@ -107,60 +107,41 @@ rewards between its own moves (§5).
   text, integer weight, seats); each reset draws one by weight; or (ii) the encounter
   distribution (T5).
 
-### 4.2 The encounter distribution v1 (shape; T5b fills it)
+### 4.2 The encounter distribution v1 (built, T5b1)
 
-A versioned TOML in the AI lane (`crates/h3-sim/data/encounters-v1.toml`; parsed in Rust, which
-needs `serde`/`toml` in `h3-sim` and `h3-heroes` for the heroes: T5's shared pull request), its
-weights drawn from a census or stated as assumptions, each with `why`:
-
-```toml
-# The shape only: every number here is a placeholder that T5 replaces with a derived or stated one.
-[distribution]
-id = "encounters"
-version = 1
-packs = ["base", "ab", "sod"]
-profile = "base:faithful"
-census = "census-v1"                 # crates/h3-sim/data/census-v1.toml: derived numbers only
-
-[kind]                               # who fights: weights (assumption: per game week, below)
-wandering = { weight = 0.50, why = "…" }
-guards    = { weight = 0.10, why = "…" }     # guarded piles, later creature banks
-hero      = { weight = 0.20, why = "…" }     # hero against hero in the field
-siege     = { weight = 0.20, why = "…" }     # a town, with or without a fort or a hero
-
-[week]                               # the game week: army sizes, hero levels, the mage guild
-weights = { 1 = 0.20, 2 = 0.16, 3 = 0.13 }  # … (assumption)
-
-[terrain.wandering]                  # census: monster placements per terrain
-from = "census.monster_terrain"
-[terrain.hero]                       # census: passable land tiles per terrain
-from = "census.land_terrain"
-[battlefield]                        # census: the share of battles on each special ground
-from = "census.special_ground"
-[monster]                            # census: placements per level class and fixed creature;
-from = "census.monster_level"        # counts: the original's random counts by level and week
-[army]                               # value by week (median, spread) and the attacker/defender
-value = { … }                        # value ratio (assumption: attackers choose fights)
-balance = { … }
-[hero]                               # level by week, class from the census's town factions,
-level = { … }                        # skills, artifacts by level, spells by the mage guild
-[siege]                              # fort by week, a defending hero's share (assumption)
-[difficulty]                         # assumption
-weights = { 0 = 0.1, 1 = 0.4, 2 = 0.3, 3 = 0.15, 4 = 0.05 }
-[seats]                              # §2
-neutral = "internal:system"
-player = "external"
-```
-
-- **Dimensions:** encounter kind; game week; place (terrain, special ground, sea, siege with fort
-  level and moat); per side the faction, the army's value and composition by level, a hero or
-  none (level, class, primary and secondary skills, artifacts, spells and their masteries, war
-  machines, through `h3-heroes`' `derive_battle_hero`); the attacker/defender value ratio;
-  difficulty; seats.
-- **The census** (T5a): built, §4.3; the assumptions where maps say nothing, §4.4.
-- A curriculum samples the same dimensions with other weights (an override table of the same
-  shape). T5b's check samples many scenarios and compares each dimension's frequencies with its
-  weights.
+- **Files:** `crates/h3-sim/data/encounters-v1.toml` (the assumptions of §4.4, each table with
+  its `why`) names the census it reads (`census-v1.toml`, §4.3); both are compiled into `h3-sim`
+  (`h3_sim::encounter::{ENCOUNTERS_V1, CENSUS_V1}`) and checked by `EncounterTable::parse` (each
+  table's length, non-decreasing quantiles, drawable weights, no unknown field). Integers only
+  (the sim layer has no float arithmetic, ADR-0003): shares in ‰, a continuous distribution as a
+  quantile table of 21 points (p = 0.001, 0.05, …, 0.95, 0.999; a draw takes one of the 20 bins
+  and a point in it evenly, linear between), computed from the stated normal or log-normal when
+  the file was written.
+- **`Sampler`** (`h3_sim::encounter`): built on the battle and adventure parts of one core
+  (`GameRuleset`'s check); `sample(seed)` draws every choice from stream `SETUP` of the seed and
+  returns an `Encounter`: kind, week, a `BattleSetup` (obstacles left to the episode,
+  `random_obstacles`; both sides human), the seats (A12) and the `Facts` drawn (place, level,
+  count, redraws, ratio, k, factions, hero levels, values, fort). Its default weights are the
+  file's `weight` (the neutral kinds 0); `with_shares` draws at A1's shares, `with_weights` by a
+  curriculum's.
+- **The engine's rules it uses**, never copies: ADV-MON-003 (`AdventureRuleset::random_monsters`),
+  ADV-MON-004 (the adventure-map range), ADV-MON-009 (`h3_adventure::split`), and a hero's battle
+  values as GAM-BAT-001 derives them (`derive_battle_hero`, `max_mana`, `war_machines`); the
+  Catapult is the battle's own (BAT-SIE-009). **Approximations**, labelled in the code: a hero's
+  level-ups (the class's `primary_gain` and `skill_weights`), spells and artifacts; an army one
+  stack per built level, its value split by growth value, what a level's share cannot buy carried
+  to the level below; guards a stack of A3 divided evenly.
+- **The check** (`encounter::tests`): 30 000 encounters at A1's shares against their weights:
+  kinds, weeks per kind, the neutral levels from week 7 (no stack is drawn again there) and the
+  ramp's bounds, places, the bins of the ratio, k and the attacker ratio, factions, hero levels by
+  week, forts. 1 500 samples are valid battles (`Scenario::new`), every 50th plays out; every
+  sampled hero passes `h3_heroes::validate`.
+- **What it shows** (20 000 samples): in week 1 A4's cap draws 16 % of the neutral stacks again
+  (level 4 falls from 10 % to 4 % of them), in week 2 1 %, from week 4 none; under random play the
+  attacker wins 98 % of the neutral battles, 80 % of the hero battles, 63 % of the sieges a hero
+  defends.
+- Not drawn yet: the difficulty (A11: Normal), two boats (A10), creature banks (A1). T5b2 makes the
+  sampler a batch's episode source.
 
 ### 4.3 The census v1 (T5a, built)
 
@@ -203,7 +184,7 @@ player = "external"
 ### 4.4 The assumptions v1 (decided 2026-10-19, AI-Q4)
 
 What the maps cannot say, for the encounter distribution's `why` fields (`encounters-v1.toml`
-holds every number; T5b1 writes it from the census and these). Every number is provisional; the
+holds every number, written from the census and these in T5b1). Every number is provisional; the
 adventure's logged battles replace them (decision 7). Proposed at T5a; **the user (2026-10-19):**
 A3 keeps in mind that the maps' stacks differ by level from the start (a horde of Pikemen in
 week 1, a few Black Dragons) and that no hero faces level 7 early; A4's ratio is a distribution

@@ -15,6 +15,9 @@ h3-contracts.workspace = true
 h3-battle.workspace = true
 h3-adventure.workspace = true
 h3-game.workspace = true
+h3-heroes.workspace = true
+serde.workspace = true
+toml.workspace = true
 
 [dev-dependencies]
 h3-pack-battle.workspace = true

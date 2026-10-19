@@ -174,3 +174,27 @@ The full record of done tasks (the epic file keeps one line each).
   Clover Field, three fixed creatures, a Stronghold with a citadel, a Castle without a fort)
   counted twice (its twin) with a broken file skipped: tiles, places, levels, forts, the TOML
   read back, the command line; the fort levels of custom buildings.
+
+## T5b1 — The sampler (2026-10-19)
+
+- **AI-Q4 answered** (the user, 2026-10-19; design §4.4): A3 ramps the neutral levels by week
+  (stacks differ by level from the start; no level 7 early), A4's ratio normal around 1.8 (sd 0.5,
+  at least 0.5), A5 changed at the review (the growth of the levels A6 makes available, summed
+  over the weeks, k median 1.0), A12's neutral kinds built but weighted 0 until E23 (after E05);
+  the rest as proposed. T5b split into T5b1 (this) and T5b2 (the batch's source, C ABI v28).
+- **Shared first:** #254 (`arch.toml`): `h3-sim` may use `h3-heroes`, `serde`, `toml`; `h3-ffi`
+  `h3-game` and `h3-pack-adventure` for T5b2, so that one shared merge serves both.
+- **Built:** `crates/h3-sim/data/encounters-v1.toml`, `h3_sim::encounter` (`EncounterTable`,
+  `Sampler`, `Encounter`, `Facts`, `Kind`), design §4.2. Decisions of the build, each in §4.4's
+  *(T5b1)* notes: sieges as three kinds (a hero defends, an owned town's garrison, a neutral
+  town), so A12 weighs the neutral one 0; the random towns spread over the nine factions (no
+  shipped map names a Conflux town); spells per guild level 6 − level and the guilds' maxima
+  from VCMI 1.7.5 (`spellsAtLevel`, the factions' `mageGuild`); the moat, structures, morale and
+  terrain of a town; quantile tables for every continuous draw (integers only).
+- **Found while testing:** an army split by growth value lost the value of the levels it could
+  not buy one creature of (a week-4 army worth 6 730 came out at 2 736): the remainder now goes to
+  the level below.
+- **Tests:** `encounter::tests` (design §4.2, "The check"); 10 tests, 13 s in a debug build.
+- **Verify:** the baseline full verify of `master` (1f32f10) failed only coverage, on the
+  adventure lane's `h3-game/src/state.rs:569` (a pending Pass offer's hash tag; 0 hits in
+  `cargo llvm-cov -p h3-game`): queued for the adventure lane.

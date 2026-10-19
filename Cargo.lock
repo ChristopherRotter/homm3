@@ -709,11 +709,14 @@ dependencies = [
  "h3-content-battle",
  "h3-contracts",
  "h3-game",
+ "h3-heroes",
  "h3-kernel",
  "h3-map",
  "h3-pack-adventure",
  "h3-pack-battle",
  "proptest",
+ "serde",
+ "toml",
 ]
 
 [[package]]
