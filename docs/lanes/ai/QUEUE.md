@@ -14,6 +14,19 @@ Increment 6 (T9, the closure) cut 2026-10-19 (the epic: T9a to T9d; AI-Q7 moves 
    2026-10-19 (`claude/festive-brown-igukig`).
 2. **T9c The user's machine**: the bench sweep and the Windows verify with original data; the
    Linux verify with original data in a sandbox with the user's files staged (criteria 8, 9).
+   On `master` after this lane's T9 pull request, in PowerShell (the conda env of
+   `python/README.md` for the Python line):
+   ```powershell
+   cargo build --release -p h3-cli -p h3-ffi
+   foreach ($n in 64, 256, 1024) { foreach ($t in 1, 6, 12, 24) {
+     .\target\release\h3.exe ai bench --encounters default --envs $n --threads $t --calls (1048576 / $n) } }
+   .\target\release\h3.exe ai bench --encounters default --envs 256 --threads 12 --calls 4096
+   uv --directory python run python -m h3env.bench --encounters --envs 256 --threads 12 --calls 4096
+   cargo xtask verify --with-original-data --summary
+   ```
+   Record the 12 lines' two steps/s, the Rust/Python pair and the verify's steps in
+   `E05-log.md`. If another lane's step fails the full verify (E04c's precedent: `h3-server`'s
+   coverage on Windows), add `cargo xtask verify --scope ai --with-original-data --summary`.
 3. **T9d The closure**: the `shared/` pull request, the design note folded, the epic closed.
 
 ## Inbox
