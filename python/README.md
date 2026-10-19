@@ -8,6 +8,8 @@ place.
   distribution v1 as episode sources, the head calls for casts, automatic reset.
 - `h3env.SeatBook` — each seat's transitions in self-play (a side's rewards between its moves).
 - `h3env.tools.Env` — single envs, `fork`, `state_hash`: trusted tooling, never an agent's input.
+- `h3env.train` — the smoke training (E05 T8, design §8): an own PPO, self-play on the encounter
+  distribution, evaluated against the engine's Random on held-out episodes (group `train`).
 
 ## Use
 
@@ -56,3 +58,18 @@ for the GTX 1070's Pascal GPU (ADR-0025 point 11), from PyTorch's own index
 Linux; without it `tests/test_torch.py` is skipped, and its GPU test runs only where CUDA finds
 a device. `torch.from_numpy(batch.obs)` and the other arrays share the engine's memory: the
 tensors show each call's results without a copy.
+
+## The smoke training
+
+```sh
+uv sync --group train
+uv run --group train python -m h3env.train --minutes 60 --out runs/smoke   # --device cuda|cpu
+```
+
+Each update prints one line (samples, samples/s, self-play's attacker wins, truncations, the
+losses), each evaluation its win rates against Random (greedy and sampled, overall and per
+side); `--eval-every` minutes apart and at the end. Every `h3env.train.Config` field is an option
+(`python -m h3env.train --help`). The run's directory (`runs/` is git-ignored) gets `config.json`
+(the settings, the commit, the ABI), `metrics.jsonl` (one record per update and evaluation) and
+`checkpoint.pt` (the network and the optimizer at the last evaluation). The criterion of E05's
+exit 7: the final greedy `win_rate` at least 0.8.
