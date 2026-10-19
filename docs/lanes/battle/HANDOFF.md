@@ -5,7 +5,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **E04c closed (2026-10-16, T10c):** #243, #244 merged; `h3-heroes` and `heroes.toml` moved to the adventure lane. **Next:** E05 and `h3-sim`/`h3-ffi` went to the AI lane (AI-Q1); next here E23 (after E05) or E11, the user's choice. A rule changing an encoding is `cross-lane`.
-- **2026-10-19:** the AI lane's two proptest cases fixed (`battle/proptest-defects`, PR open).
+- **2026-10-19:** the AI lane's two proptest cases fixed (#265 on `battle/proptest-defects`, open).
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, the inbox, Q43; S-23, S-24, batch 2g.
 - **Versions** (unchanged since T10b): battle state hash v51, battle part hash v6 (the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q51, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
