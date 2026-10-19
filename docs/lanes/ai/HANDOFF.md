@@ -5,12 +5,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 ## Current state
 
 - **Opened 2026-10-18** with E05's refinement (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` stays the adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05 and E06 (`lanes.toml`).
-- **E05** (`docs/epics/E05-battle-env.md`): in progress. Increments 1 (T1, T2) and 2 (T3a–T3d,
-  T4; #252) done. **Increment 3:** T5a (#253), T5b1 and T5b2 (#255, after the shared #254), T6a
-  (#257, the shared #256 beside it) merged; **T6b's lock** (the group `train`, torch
-  2.14.1+cu126) and the head calls from the kept entry mask on branch
-  `claude/zealous-ptolemy-0n6sn0` (2026-10-19), the **open #258** (the full local verify passed). **Next:** the user's Windows run (QUEUE), then
-  the user's checkpoint of increment 3.
+- **E05** (`docs/epics/E05-battle-env.md`): in progress. Increments 1 (T1, T2), 2 (T3a–T3d,
+  T4; #252) and 3 (T5a #253, T5b1 and T5b2 #255, T6a #257, T6b and the head calls #258) done.
+  **Increment 4** (cut 2026-10-19 at the user's checkpoint): T8 smoke training before T7.
+  **Next:** T8a, the design, for the user's review before code (QUEUE).
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v28 (T5b2) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q5, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
@@ -50,8 +48,9 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   version. Its action constants (Retreat, Surrender, the casts) are action encoding v13's.
 - PyTorch 2.14 (CUDA 12.6 build) is the last prebuilt release for the user's GTX 1070: pinned in
   the opt-in group `train` (`uv sync --group train`), torch from `download.pytorch.org/whl/cu126`
-  only. PyPI's torch 2.14 is not it (Linux: CUDA 13; Windows: CPU only). The user's system
-  Python is older than 3.11: use the venv.
+  only. PyPI's torch 2.14 is not it (Linux: CUDA 13; Windows: CPU only). The user works with
+  Anaconda (system Python older than 3.11): uv in a conda env, `UV_PYTHON` on its Python
+  (`python/README.md`); runs on the user's machine are given as those commands.
 - The sandbox reaches PyTorch's index (`download.pytorch.org`, `download-r2.pytorch.org`) only
   while the environment's network access is **Custom** with `*.pytorch.org`: **Trusted** ignores
   the Allowed domains. The proxy's 403 says why in its body, which curl hides: send a raw
@@ -59,15 +58,16 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
-### 2026-10-19 — T6b's lock; the head calls from the kept entry mask
+### 2026-10-19 — T6b; the head calls from the kept entry mask; checkpoint of increment 3
 
 - #256 and #257 had merged. PyTorch's index was refused because the environment's network access
   was Trusted (the proxy's 403 body); the user set Custom, and the session reached it at once.
 - The user chose T6b with the inbox's head-call cost. Built: the batch keeps the single env's
   entry mask and answers non-cast heads from it (three calls 1.4 → 0.11–0.15 ms for 64 envs);
   the group `train` (torch 2.14.1+cu126) in `uv.lock`, `tests/test_torch.py` (`E05-log.md`).
-- Left: the user's Windows run (QUEUE). The full local verify passed (`cdd7b45`). Trap for the
-  global HANDOFF: a cargo call before `sandbox-setup.sh` makes rustup fetch the pinned toolchain
+- #258 merged; on the user's Windows machine 23 passed, the GPU test included (a conda env
+  with uv, `python/README.md`). Checkpoint: increment 4 = T8 before T7. Trap for the global
+  HANDOFF: a cargo call before `sandbox-setup.sh` makes rustup fetch the pinned toolchain
   without `llvm-tools` (coverage fails; `rustup component add llvm-tools-preview`).
 
 ### 2026-10-19 — T6a, the Python binding; the batch workloads' rows

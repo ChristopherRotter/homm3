@@ -289,3 +289,15 @@ The full record of done tasks (the epic file keeps one line each).
 - **Ran** in the sandbox: `uv sync --group train` (about 4 GB), `uv run pytest` 22 passed, the GPU
   test skipped (no device; the build's archs `sm_50`–`sm_90`, Pascal's 6.1 through `sm_60`).
   Left: the run on the user's Windows machine with the GTX 1070 (QUEUE).
+
+## T6b on Windows; the checkpoint of increment 3 (2026-10-19)
+
+- #258 merged. The user ran the binding's tests on their Windows machine: 23 passed, the GPU
+  test on the GTX 1070 included (the cu126 build's kernels and cuBLAS run on Pascal). uv was not
+  installed there; the user's route kept to Anaconda: a conda env with Python 3.12 and uv from
+  conda-forge, `UV_PYTHON` set to the env's `python.exe` and `UV_PYTHON_DOWNLOADS=never`, so
+  `python/.venv` sits on conda's Python (`python/README.md`). Never point `uv sync` at a conda
+  env itself: it removes what the lock does not list.
+- **Checkpoint:** increment 3 done. The user cut increment 4 as T8 before T7 (the agent's
+  recommendation: trainability is the epic's largest open risk, and the win rate against Random
+  needs no T7 runner); T8a, the design, goes to the user for review before code. T7 and T9 follow.
