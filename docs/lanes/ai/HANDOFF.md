@@ -66,7 +66,9 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - The user chose T6b with the inbox's head-call cost. Built: the batch keeps the single env's
   entry mask and answers non-cast heads from it (three calls 1.4 → 0.11–0.15 ms for 64 envs);
   the group `train` (torch 2.14.1+cu126) in `uv.lock`, `tests/test_torch.py` (`E05-log.md`).
-- Left: the user's Windows run (QUEUE).
+- Left: the user's Windows run (QUEUE). The full local verify passed (`cdd7b45`). Trap for the
+  global HANDOFF: a cargo call before `sandbox-setup.sh` makes rustup fetch the pinned toolchain
+  without `llvm-tools` (coverage fails; `rustup component add llvm-tools-preview`).
 
 ### 2026-10-19 — T6a, the Python binding; the batch workloads' rows
 
