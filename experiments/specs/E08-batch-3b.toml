@@ -29,6 +29,13 @@
 # | (12, 27) surface | 60 | 25 | yes               | yes            |
 # | (12, 27) below   | 44 | 50 | yes               | no (D-11)      |
 #
+# The engine: a throwaway run of the compiled map through h3-map's reader and import and h3-game
+# (base:faithful, difficulty 1; never committed, E08-log.md T22a2a) gave every prediction marked
+# "the reading" below: E3-1 and E3-1c a battle at once, E3-2 and E3-2c a flee offer; E3-3 at each
+# aggression 1 to 7 (seeds searched) a join offer exactly at L >= M, 32 Halberdiers kept after the
+# retreats; E3-4 and E3-5 A 8 Pikemen, 8 Pikemen, 7 Halberdiers, 7 Pikemen, 30 kept after
+# the retreat (A-6 fixed); E3-5 B 15 Pikemen, 15 Halberdiers.
+#
 # The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
 # artifact; E3-3 needs Attack and Defense 0 exactly (a visit by a hero showing more is void), the
 # other rows stand +2. Each answer's visit records the hero's primary skills before it.

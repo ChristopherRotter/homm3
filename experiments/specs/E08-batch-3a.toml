@@ -28,6 +28,10 @@
 # control (a flee offer for every source). On Normal (batch 3b) E3-1 and E3-1c fight at once for
 # every source, E3-2 offers to flee only under the reading, E3-2c always.
 #
+# The engine: a throwaway run of the compiled map through h3-map's reader and import and h3-game
+# (base:faithful, difficulty 0; never committed, E08-log.md T22a2a) gave the reading's column
+# above: a flee offer at all four, each monster gone after the No.
+#
 # The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
 # artifact. A hero's Attack or Defense above 0 raises its power (+2 keeps every St above; a hero
 # showing more voids its row: play again). Each visit records the hero's primary skills before it.
