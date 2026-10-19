@@ -190,7 +190,10 @@ act on their own: a Blue hero holds still. Check each move against the creature'
 armies start 14 columns apart). A single-alignment army has +1 morale: mix two where an extra
 turn spoils a count. Every hero has a Catapult. A rerun is no new sample (the draws repeat); a
 random starting bonus may arm a hero: play again. Count rounds by the acted bits
-(`catapult.py`). A worktree runs the harness through a symlinked `original-data`.
+(`catapult.py`). A worktree runs the harness through a symlinked `original-data`. The idle
+fidgets draw from the rules' generator (`docs/epics/E17-design.md` §7.2), so how long a player
+waits changes later rolls: a batch that compares random outcomes keeps its timing fixed (the
+capture harness's frozen clock does; the client lane, E17 M2 T3).
 
 ## Status
 
