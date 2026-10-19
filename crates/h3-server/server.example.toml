@@ -74,6 +74,8 @@ bots = ["defender"]            # the server's random bot plays the defender
 id = "arena"
 name = "Arena"
 scenarios = ["../../packs/synthetic/scenarios/duel.toml", "../../packs/synthetic/scenarios/full.toml"]
+profile = "synthetic:strict-fixed"   # every flagged bug fixed where results count: no leak of the
+                                     # hidden obstacles by Quicksand's and Land Mine's draws (BAT-QUIRK-4; README.md)
 grace_ms = 300000               # a player away longer at once forfeits
 grace_total_ms = 600000         # a player away longer in all in one game forfeits
 bot_after_ms = 60000            # a player waiting this long without a match plays the bot
