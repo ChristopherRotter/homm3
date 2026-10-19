@@ -28,6 +28,7 @@ mod observe;
 mod obstacles;
 mod opening;
 mod pits;
+mod preview;
 mod properties;
 mod protect;
 mod rage;

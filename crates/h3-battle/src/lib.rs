@@ -55,7 +55,8 @@ mod vitality;
 mod war;
 
 pub use casters::{CastSpell, creature_cast_spell, creature_cast_targets, stack_spell};
-pub use command::{Command, apply, validate};
+pub use combat::DamagePreview;
+pub use command::{Command, apply, preview, validate};
 pub use effects::{ActiveEffect, DamageRoll, EFFECT_CAPACITY, SpellValues, Status};
 pub use error::{CommandError, HeroError, SetupError};
 pub use event::{Event, EventKind, NoopSink, Sink, StrikeFlags, Visibility};
