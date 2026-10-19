@@ -2506,7 +2506,9 @@ E05 T8 on top): the full verify with the original data, coverage over 101 gated 
     difficulty. Lost with T10b's search: a declined pile question and a declined Cartographer
     (both in `h3-game`'s unit tests and the plans; the queue's inbox).
   - *Benchmarks re-baselined:* T20b3b2 (`random-play-duel-36`, `reach-xl-144`, `fork-xl-144` on
-    the maps with monsters and guarded piles); `bench-check` passed on the baseline.
+    the maps with monsters and guarded piles), moved since by other lanes' re-baselines (now
+    523.5 M, 525.7 M and 355.8 M Ir); `bench-check` passed on the baseline and on this branch
+    (+0.02 %, 0.00 %, −0.14 %).
   - *Every new rule `implemented` with sources:* ADV-MON-001 to -010, ADV-GRD-001, ADV-PIK-004,
     GAM-HER-001, GAM-BAT-001 to -007 and the HER rules they rest on (`check-rules`); D-8 to D-13
     rest on the code reading until batch E3 confirms them. Open stubs: `ADV-STUB-2` alone (the
@@ -2529,4 +2531,7 @@ E05 T8 on top): the full verify with the original data, coverage over 101 gated 
   summary, the HANDOFF, the queue and two comments; the surveys' and the writer's counts
   from one-off censuses are marked as counted over the 164 (decision 42), with the work
   process's staging of `maps.tar` (`shared/e08-t21b-docs`).
+- **This branch's full verify** (`scripts/verify-once.sh engine --base origin/master --
+  --with-original-data`, 2026-10-19): every step passed on 7092c45 (`verify-once: verified
+  (sandbox) code 6e2dc1c9`), coverage over 101 gated files.
 - No version moved, no rule changed.
