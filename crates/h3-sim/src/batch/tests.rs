@@ -527,6 +527,101 @@ fn a_hero_casts_through_the_head_calls() {
     assert!(casts > 0);
 }
 
+/// The single env's spell, target and second masks of env `i` for `entry` and the earlier heads
+/// `(spell, target)`, as 0/1 bytes (all 0 for an env without a side to move).
+fn single_heads(
+    batch: &BattleBatch,
+    i: usize,
+    entry: usize,
+    (spell, target): (u16, u16),
+) -> Vec<u8> {
+    let mut legal = LegalCommands::new();
+    let mut spells = [false; SPELL_COUNT];
+    let mut targets = [false; TARGET_COUNT];
+    let mut seconds = [false; TARGET_COUNT];
+    if let Some((env, side)) = acting(batch.env(i)) {
+        env.spell_mask(side, entry, &mut legal, &mut spells);
+        env.target_mask(side, (entry, spell), &mut legal, &mut targets);
+        env.second_mask(side, (entry, spell, target), &mut legal, &mut seconds);
+    }
+    [&spells[..], &targets, &seconds]
+        .concat()
+        .into_iter()
+        .map(u8::from)
+        .collect()
+}
+
+#[test]
+fn the_head_calls_answer_as_the_single_envs() {
+    // A non-cast entry's heads come from the entry mask the batch kept at the last call, a cast's
+    // from the env: both as the single env's, for every legal entry (the escapes the batch masks
+    // out included), the casts, illegal and out-of-range entries, and earlier heads other than 0.
+    let config = BatchConfig {
+        envs: 2,
+        threads: 0,
+        seed: 4,
+        max_steps: 0,
+        reward: RewardConfig::default(),
+    };
+    let mut batch = BattleBatch::new(config).unwrap();
+    batch.add_scenario(scenario(TEXTS[2], 1, EXTERNAL)).unwrap();
+    batch.add_scenario(scenario(TEXTS[3], 1, EXTERNAL)).unwrap();
+    let mut arrays = Arrays::new(2);
+    batch.reset(&mut arrays.outputs()).unwrap();
+    let mut rng = Rng::from_seed(2);
+    let mut legal = LegalCommands::new();
+    let mut checked = 0;
+    for _ in 0..8 {
+        let mut entries = std::collections::BTreeSet::from([
+            0,
+            RETREAT,
+            SURRENDER,
+            HERO_CAST,
+            CREATURE_CAST,
+            ACTION_COUNT - 1,
+            ACTION_COUNT,
+            u32::MAX as usize,
+        ]);
+        for i in 0..2 {
+            if let Some((env, side)) = acting(batch.env(i)) {
+                let mut mask = [false; ACTION_COUNT];
+                env.legal_mask(side, &mut legal, &mut mask);
+                entries.extend((0..ACTION_COUNT).filter(|&e| mask[e]));
+            }
+        }
+        for &entry in &entries {
+            for earlier in [(0, 0), (1, 0), (0, 1)] {
+                let n = 2;
+                let e = vec![entry as u32; n];
+                let (s, t) = (vec![earlier.0; n], vec![earlier.1; n]);
+                let mut spells = vec![0u8; n * SPELL_COUNT];
+                let mut targets = vec![0u8; n * TARGET_COUNT];
+                let mut seconds = vec![0u8; n * TARGET_COUNT];
+                batch.spell_mask(&e, &mut spells).unwrap();
+                batch.target_mask(&e, &s, &mut targets).unwrap();
+                batch.second_mask(&e, &s, &t, &mut seconds).unwrap();
+                for i in 0..n {
+                    let rows = [
+                        &spells[i * SPELL_COUNT..(i + 1) * SPELL_COUNT],
+                        &targets[i * TARGET_COUNT..(i + 1) * TARGET_COUNT],
+                        &seconds[i * TARGET_COUNT..(i + 1) * TARGET_COUNT],
+                    ]
+                    .concat();
+                    assert_eq!(
+                        rows,
+                        single_heads(&batch, i, entry, earlier),
+                        "{entry} {earlier:?}"
+                    );
+                }
+                checked += 1;
+            }
+        }
+        let actions = actions(&mut batch, &arrays, &mut rng);
+        batch.step(&actions, &mut arrays.outputs()).unwrap();
+    }
+    assert!(checked > 100, "{checked}");
+}
+
 #[test]
 fn truncation_writes_both_last_observations_and_resets() {
     let config = BatchConfig {
@@ -608,9 +703,25 @@ fn an_episode_without_a_decision_is_skipped() {
             .iter()
             .all(|r| r.error == Some(StepError::EpisodeOver))
     );
-    let mut spells = vec![1u8; 3 * SPELL_COUNT];
-    batch.spell_mask(&[0; 3], &mut spells).unwrap();
-    assert!(spells.iter().all(|m| *m == 0));
+    for entry in [0, HERO_CAST as u32, CREATURE_CAST as u32] {
+        let mut spells = vec![1u8; 3 * SPELL_COUNT];
+        batch.spell_mask(&[entry; 3], &mut spells).unwrap();
+        let mut targets = vec![1u8; 3 * TARGET_COUNT];
+        batch
+            .target_mask(&[entry; 3], &[0; 3], &mut targets)
+            .unwrap();
+        let mut seconds = vec![1u8; 3 * TARGET_COUNT];
+        batch
+            .second_mask(&[entry; 3], &[0; 3], &[0; 3], &mut seconds)
+            .unwrap();
+        assert!(
+            spells
+                .iter()
+                .chain(&targets)
+                .chain(&seconds)
+                .all(|m| *m == 0)
+        );
+    }
 }
 
 #[test]

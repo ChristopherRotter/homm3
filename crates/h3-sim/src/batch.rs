@@ -33,8 +33,8 @@ use h3_contracts::{BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
 
 use crate::action::{
-    ACTION_COUNT, Action, ActionMask, RETREAT, SPELL_COUNT, SURRENDER, SpellMask, TARGET_COUNT,
-    TargetMask,
+    ACTION_COUNT, Action, ActionMask, CREATURE_CAST, HERO_CAST, RETREAT, SPELL_COUNT, SURRENDER,
+    SpellMask, TARGET_COUNT, TargetMask,
 };
 use crate::encounter::{Kind, Sampler};
 use crate::env::{BattleEnv, StepError};
@@ -594,9 +594,11 @@ impl BattleBatch {
         check("entries", entries.len(), self.len())?;
         check("out", out.len(), self.len() * SPELL_COUNT)?;
         self.each_row(out, SPELL_COUNT, |slot, i, row| {
+            let entry = entries[i] as usize;
             slot.spells.fill(false);
-            if let Some((env, side)) = acting(slot.env.as_ref()) {
-                env.spell_mask(side, entries[i] as usize, &mut slot.legal, &mut slot.spells);
+            slot.spells[0] = plain_head(&slot.mask, entry, (0, 0));
+            if let Some((env, side)) = acting(slot.env.as_ref()).filter(|_| is_cast(entry)) {
+                env.spell_mask(side, entry, &mut slot.legal, &mut slot.spells);
             }
             write_mask(&slot.spells, row);
         });
@@ -619,9 +621,11 @@ impl BattleBatch {
         check("spells", spells.len(), self.len())?;
         check("out", out.len(), self.len() * TARGET_COUNT)?;
         self.each_row(out, TARGET_COUNT, |slot, i, row| {
+            let entry = entries[i] as usize;
             slot.targets.fill(false);
-            if let Some((env, side)) = acting(slot.env.as_ref()) {
-                let prefix = (entries[i] as usize, spells[i]);
+            slot.targets[0] = plain_head(&slot.mask, entry, (spells[i], 0));
+            if let Some((env, side)) = acting(slot.env.as_ref()).filter(|_| is_cast(entry)) {
+                let prefix = (entry, spells[i]);
                 env.target_mask(side, prefix, &mut slot.legal, &mut slot.targets);
             }
             write_mask(&slot.targets, row);
@@ -647,9 +651,11 @@ impl BattleBatch {
         check("targets", targets.len(), self.len())?;
         check("out", out.len(), self.len() * TARGET_COUNT)?;
         self.each_row(out, TARGET_COUNT, |slot, i, row| {
+            let entry = entries[i] as usize;
             slot.targets.fill(false);
-            if let Some((env, side)) = acting(slot.env.as_ref()) {
-                let prefix = (entries[i] as usize, spells[i], targets[i]);
+            slot.targets[0] = plain_head(&slot.mask, entry, (spells[i], targets[i]));
+            if let Some((env, side)) = acting(slot.env.as_ref()).filter(|_| is_cast(entry)) {
+                let prefix = (entry, spells[i], targets[i]);
                 env.second_mask(side, prefix, &mut slot.legal, &mut slot.targets);
             }
             write_mask(&slot.targets, row);
@@ -771,6 +777,19 @@ fn acting(env: Option<&BattleEnv>) -> Option<(&BattleEnv, BattleSide)> {
     env.and_then(|e| e.to_move().map(|side| (e, side)))
 }
 
+/// Whether `entry` is a cast, whose later heads the env computes.
+fn is_cast(entry: usize) -> bool {
+    entry == HERO_CAST || entry == CREATURE_CAST
+}
+
+/// The later heads' 0 for an entry that is no cast, after the earlier heads `earlier`: set when
+/// the entry is legal and the earlier heads are 0, as [`crate::action::spell_mask`] and the
+/// others answer, but read from the slot's entry mask of the last call instead of regenerating
+/// the legal commands (about 5.7 µs per env and call, E05 T6a).
+fn plain_head(mask: &ActionMask, entry: usize, earlier: (u16, u16)) -> bool {
+    !is_cast(entry) && earlier == (0, 0) && mask.get(entry).copied().unwrap_or(false)
+}
+
 /// Converts `bools` into 0/1 bytes in `out`.
 fn write_mask(bools: &[bool], out: &mut [u8]) {
     for (o, m) in out.iter_mut().zip(bools) {
@@ -880,17 +899,18 @@ fn advance(
 }
 
 /// Writes the slot's current state (the acting seat's observation and entry mask, without the
-/// escapes) and `report` with its episode into `rows`.
+/// escapes) and `report` with its episode into `rows`. The slot keeps the single env's entry mask,
+/// escapes included, for the head calls ([`plain_head`]).
 fn write_state(slot: &mut Slot, rows: Rows<'_>, report: &mut EnvReport) {
     slot.mask.fill(false);
     let acting = acting(slot.env.as_ref());
     if let Some((env, side)) = acting {
         env.legal_mask(side, &mut slot.legal, &mut slot.mask);
-        slot.mask[RETREAT] = false;
-        slot.mask[SURRENDER] = false;
     }
     if let Some(mask) = rows.mask {
         write_mask(&slot.mask, mask);
+        mask[RETREAT] = 0;
+        mask[SURRENDER] = 0;
     }
     if let Some(obs) = rows.obs {
         match acting {
