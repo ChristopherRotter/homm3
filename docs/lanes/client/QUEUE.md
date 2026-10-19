@@ -6,20 +6,19 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T4b-2 — The log's text drawn
+### E17 M3 T4b-2b — A log line drawn
 
-- **Scope:** (T4b split with the user on 2026-10-19: T4b-1, the catalogue's format, the keys, the
-  packs and the original's text read through them, done; design §9.) Which row the executable
-  writes for which event the engine reports, and which count picks its form (the log's call
-  sites: the damage and perish lines first, then wait, defend, morale, luck; the keys of
-  `clients/text/keys.toml` lifted from *provisional* or corrected, the executable's text numbers
-  against the rows' records); which font and colour draw the battle log's lines and the status
-  line (the executable; `h3_render::text` draws them); a log line composed from the catalogue
-  (the creature's name by its count, then the line) drawn by the viewer, the panel still masked
-  around it.
-- **Acceptance:** a battle text (a log line) from the catalogue drawn by the viewer matches the
-  original's pixel for pixel.
-- **Depends on:** nothing (T4b-1 done). **Status:** ready.
+- **Scope:** (T4b-2 split with the user on 2026-10-19: T4b-2a, the log's lines read and composed
+  by `h3_view::battle_log`, done; design §9.4.) Where the battle panel's log item lies and its
+  width (the dialog that builds it; `battle_log_add` measures with the small font at the item's
+  width), the small font's colour for the log's lines and the status line's, how the log shows
+  its last two entries (the first line shown, 0x472C30, not read); a log line composed by
+  `battle_log` (its `entries` with `h3_render::text`'s line count, which is private now) drawn
+  by the viewer in the panel's place, the rest of the panel still masked around it; a capture
+  (a strike that kills, in hot seat) whose log line is unmasked.
+- **Acceptance:** a log line from the catalogue drawn by the viewer matches the original's pixel
+  for pixel.
+- **Depends on:** nothing (T4b-2a done). **Status:** ready.
 
 ### E17 M3 T5 — The count boxes
 
@@ -37,12 +36,13 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 ### E17 M3 T6 — The battle interface
 
 - **Scope:** the panel below the battlefield (its picture, buttons and their states), the log's
-  lines from the string catalogue as the engine's events produce them, the heroes' portraits if
+  lines from the string catalogue as the engine's events produce them (`battle_log`'s composers;
+  which event writes which line: design §9.4, "The caller's"), the heroes' portraits if
   the panel shows them, the cursor rules of the executable (which cursor over which hex; T5a's
   `CRDEFLT.DEF` frame 0 is provisional), the mouse over a stack in the window (group 1 and the
   outline 0x70, read and recorded in T1b-2: the inbox); its masks removed. May split when refined.
 - **Acceptance:** a frame with the panel matches the original's outside the listed differences.
-- **Depends on:** T4b-2. **Status:** ready.
+- **Depends on:** T4b-2b. **Status:** ready.
 
 ### E17 M3 T7a — Code reading: the magic animations
 
@@ -97,11 +97,13 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T4b-2–T8 (T1a–T1c, T2, T3a, T3b, T4a and T4b-1 done). **Status:** waiting.
+- **Depends on:** T4b-2b–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1 and T4b-2a done). **Status:**
+  waiting.
 
 ## Inbox
 
 - 2026-10-19 (the battle lane, CLT-Q2; for your information): **the table-only LOD reader is in `h3-formats`** (`battle/clt-q2-lod-table`; OPEN-QUESTIONS CLT-Q2, answered). Read `min(file length, lod::MAX_TABLE_BYTES)` (320 092) bytes once, `lod::LodTable::parse(head, file_len)` lists the entries (`find` ignores case) with every range checked against the file's length, `LodEntry::stored_range()` (`u64`) is what to read for an entry (sort a batch's entries by it), and `lod::read_entry(entry, stored)` inflates exactly those bytes with today's checks. `LodArchive` is unchanged (plus `table()`), so nothing of yours had to change; switching the archive set from whole reads to the directories and a batch's ranges, and `h3-view gate`'s measurement of it, are yours. `.snd` and `.vid` have no reader yet.
+- 2026-10-19 (E17 H1, H2, done): **the harness's check grows with the adventure lane's tools**: once `h3-experiment` places monsters of other dispositions and guarded piles (E08 T22a), the check spec (`capture/checks/harness-check.toml`) gains a monster's offers (join, join for gold, flee) and a pile's question, which H1 checked only on a local map; once `h3-map`'s writer has the underground, a walk on level 1 (H2 showed it on the shipped `Arrogance`). A batch E3 recipe comes with T22a's spec (`capture/batches/`).
 - 2026-10-19 (the battle lane, its inbox's consolidation; for your information): two presentation points from the battle lane's readings that never reached this queue. (1) The original's shot cursor tests the half damage without the shooter's turn (0x4767E6), so it may show the broken arrow over a target the shot then strikes in full (the wiki checks, 2026-10-13; the turn itself, 0x446720, is in `E17-design.md`). (2) The original shows a message when no hex is free for a created stack (E04b T11a; the engine creates nothing and reports nothing).
 - 2026-10-16 (the battle lane, E04c T10c; for your information): the original opens a town's gate as a defender begins its step onto hex 96 (the walker still on 97, then the step); the engine reports `GateOpened` after the `Moved` onto 96 (the same state): whether the viewer's animation opens it before the step. Your note of 2026-10-15 for the battle lane (the First Aid Tent's patient, idle war machines defending) is in the battle queue's inbox now.
 - 2026-10-15 (E17 M3 T3b): **for T8**: the battle waits for the heal's sound to end
@@ -123,8 +125,6 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   hex (`cursor_attack_from_hex` 0x474A00, not read further; the harness's offsets in §7.13).
 - 2026-10-14 (the battle lane, E04c T7, `cross-lane`; for your information): a town's turrets are battle stacks now (BAT-SIE-016): with a Citadel the defender gets the keep, with a Castle also two towers, each a stack of the Arrow Tower (`base:arrow_tower`, 149) at the original's off-field positions 254 (keep), 255 (upper) and 251 (lower tower), so a `StackView`'s hex can be one of those (no field hex); they shoot first every round (`Struck` with the turret as attacker). The creature has no picture in the executable's creature table, so `h3-view`'s `tests/tables.rs` lists it among `GAPS`; the original draws turrets from the town's records (0x63CF88, `installation.md` §7.27). No wire change; observation encoding v18 (a turret flag per stack), C ABI v22.
 - 2026-10-14 (the battle lane, E04c T6, `cross-lane`; for your information): the base pack gained the Catapult creature (145, `base:catapult`), so `clients/assets/base.toml` gained its entry as `h3-view harvest` writes it (`smcata.def`, missile `SMCatx.def`, the harvested times and offsets) for `every_pack_key_has_an_entry`; the battle sets the Catapult up in a siege for an attacker with a hero (BAT-SIE-009), and the protocol (v31) has `ShootWall`, `WallShot`, `WallQuaked`, `WallDestroyed` and `Siege.parts`.
-- 2026-10-13 (the adventure lane, E08 T17b; its `cross-lane` pull request, the user at ADV-Q12): **what increment 3's batch E3 needs from the harness** (`docs/rules/surveys/E08-battles.md` §13; the spec and its recipes come with E08 T22a, after four building rounds, so not before the lane's next milestones): a visit that asks Yes/No (a monster's offer to join, to join for gold, to pursue; a guarded pile's question), a battle started from the map (by stepping next to a monster, by visiting an enemy hero in hot seat) with its stacks' counts read at the start and the end, a surrender and both players' gold before and after (E3-8), the underground (a monster on level 1, E3-4), memory reads of a monster's tile word (count and aggression, E3-3, optional) and of the 156 heroes' experience after a new game (E3-7), a hero's level, primary and secondary skills at the start (E3-6), the formation in a battle (E3-9). The game's difficulty at the start (Easy and Normal, E3-1, E3-2).
-- 2026-10-13 (E17 M2 T6, done the same day: the harness plays the adventure's batches, `capture/h3adv.py batch`, design §6.3): **what it does not do yet**, each built when a batch needs it: the hero list's scrolling (more than five heroes per player), the underground (the path's arrows of level 1, the minimap's level), a visit that asks Yes/No, a battle started from the map (the adventure lane's increment 3: monsters and battles; a battle's recipe steps, quick combat or the battle's own clicks), a second day. (The battle lane's cross-check of its E04a batch 1a is done there: #179, merged 2026-10-13, replays R1 with its own `experiments/agent/crosscheck_r1.py`.) A new batch needs its recipe (`capture/batches/`): the domain lanes ask here with the spec.
 - 2026-10-13 (E17 M2 T1): **the background variants** 0 and 1 need trees, mountains or dead vegetation around the battle (design §5: `h3-map`'s writer has no decorative objects yet: an adventure-lane change); CLT-Q4: how a record carries the variant. (The rest of the capture set's growth went into M3 T1b, T2, T3, T5 and T6 at T5c.)
 
 - 2026-10-13 (the user, at E17 M1): **graphics options.** Eventually the user chooses per effect whether it is drawn the original's dated but familiar way or a modern one (shadows first). The agent's notes: `faithful` stays the default and the only setting the reference frames check (ADR-0020 point 9); an option is a field of a settings value the compositor takes, never a fork of the scene model, so the draw list keeps naming what is drawn and only `h3-render` decides how; a modern shadow may want more than the 16-bit screen (alpha over a 24-bit frame), which ADR-0020 point 3 has to allow; independent of the asset fixes' `faithful`/`fixed` profile (point 6). An ADR-0020 amendment when the first option is built.

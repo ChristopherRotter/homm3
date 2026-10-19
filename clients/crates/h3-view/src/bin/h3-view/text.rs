@@ -9,6 +9,7 @@ use std::process::ExitCode;
 
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
+use h3_view::battle_log::{self, Hit, Spread, Stack};
 use h3_view::tables::Tables as AssetTables;
 use h3_view::text::keys::{Entry, Keys};
 use h3_view::text::pack::{Pack, Problem, Tables};
@@ -112,11 +113,12 @@ pub struct Options {
     pack: Option<PathBuf>,
     key: Option<String>,
     args: Vec<(String, String)>,
+    log: bool,
 }
 
 impl Options {
-    /// Parses `[<key> [<name>=<value>]...] [--pack <file>] [--install <dir>] [--tables <dir>]
-    /// [--keys <file>]`.
+    /// Parses `[<key> [<name>=<value>]...] [--log] [--pack <file>] [--install <dir>]
+    /// [--tables <dir>] [--keys <file>]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         Self::parse_with(args, env)
@@ -131,6 +133,7 @@ impl Options {
             pack: None,
             key: None,
             args: Vec::new(),
+            log: false,
         };
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
@@ -144,6 +147,7 @@ impl Options {
                 "--tables" => options.tables = value("a directory")?,
                 "--keys" => options.keys = value("a file")?,
                 "--pack" => options.pack = Some(value("a file")?),
+                "--log" => options.log = true,
                 flag if flag.starts_with("--") => {
                     return Err(format!("text: unknown option `{flag}`"));
                 }
@@ -210,6 +214,14 @@ fn text(options: &Options) -> Result<Vec<String>, String> {
         catalogue.packs.push(pack);
     }
     catalogue.packs.push(original);
+    if options.log {
+        lines.extend(
+            log_samples(&catalogue)
+                .into_iter()
+                .map(|(what, line)| format!("{what}\t{}", line.replace('\n', "\\n"))),
+        );
+        return Ok(lines);
+    }
     match &options.key {
         Some(key) => lines.push(catalogue.text(key, &arguments(&options.args))),
         None => {
@@ -222,6 +234,84 @@ fn text(options: &Options) -> Result<Vec<String>, String> {
         }
     }
     Ok(lines)
+}
+
+/// The battle log's lines (`h3_view::battle_log`, E17 M3 T4b-2a) for a few stacks of the asset
+/// tables: each composer once or twice, by its name.
+pub fn log_samples(catalogue: &Catalogue) -> Vec<(&'static str, String)> {
+    let stack = |key, count| Stack {
+        creature: key,
+        count,
+    };
+    let hit = |key, damage, kills| Hit {
+        creature: key,
+        war_machine: false,
+        damage,
+        kills,
+    };
+    let (wolves, pikemen, ballista) = (
+        "creature.base:wolf_rider",
+        "creature.base:pikeman",
+        "creature.base:ballista",
+    );
+    let c = catalogue;
+    let strike = |attacker, spread, hits: &[Hit<'_>]| battle_log::strike(c, attacker, spread, hits);
+    vec![
+        (
+            "strike",
+            strike(stack(wolves, 4), Spread::Target, &[hit(pikemen, 37, 1)]),
+        ),
+        (
+            "strike",
+            strike(stack(wolves, 1), Spread::Target, &[hit(pikemen, 5, 0)]),
+        ),
+        (
+            "strike",
+            strike(stack(pikemen, 10), Spread::Target, &[hit(wolves, 60, 3)]),
+        ),
+        (
+            "strike",
+            strike(
+                stack(wolves, 20),
+                Spread::Target,
+                &[Hit {
+                    war_machine: true,
+                    ..hit(ballista, 250, 1)
+                }],
+            ),
+        ),
+        (
+            "strike",
+            strike(
+                stack(wolves, 6),
+                Spread::Around,
+                &[hit(pikemen, 20, 2), hit(wolves, 30, 1)],
+            ),
+        ),
+        ("wait", battle_log::wait(c, stack(pikemen, 1))),
+        ("wait", battle_log::wait(c, stack(pikemen, 12))),
+        ("defend", battle_log::defend(c, stack(pikemen, 1), 1)),
+        ("defend", battle_log::defend(c, stack(wolves, 8), 2)),
+        ("morale-good", battle_log::morale_good(c, stack(wolves, 8))),
+        ("morale-bad", battle_log::morale_bad(c, stack(pikemen, 1))),
+        ("luck-good", battle_log::luck_good(c, stack(wolves, 8))),
+    ]
+}
+
+/// The samples whose text still shows a placeholder (`{{`), a specifier (`%`) or a key (`.`
+/// between letters: `battle.log`, `creature.base`), each as `<what>: <text>`.
+pub fn log_problems(samples: &[(&str, String)]) -> Vec<String> {
+    samples
+        .iter()
+        .filter(|(_, line)| {
+            line.contains("{{")
+                || line.contains('%')
+                || line.contains("battle.log")
+                || line.contains("creature.")
+                || line.contains("word.")
+        })
+        .map(|(what, line)| format!("{what}: {line}"))
+        .collect()
 }
 
 #[cfg(test)]
@@ -263,11 +353,13 @@ mod tests {
         for bad in [&["--bogus"][..], &["--pack"], &["k", "novalue"]] {
             assert!(Options::parse_with(&args(bad), None).is_err(), "{bad:?}");
         }
+        assert!(Options::parse_with(&args(&["--log"]), None).unwrap().log);
         let o = Options::parse_with(
             &args(&["--keys", "k.toml", "--tables", "t", "--install", "i"]),
             None,
         )
         .unwrap();
+        assert!(!o.log);
         assert_eq!(
             (o.keys, o.tables, o.install, o.key),
             (
@@ -314,5 +406,30 @@ mod tests {
         );
         assert!(read_pack(&dir.join("none.json"), &keys).is_err());
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Without a pack every sample shows its keys, which the check lists; an invented pack's
+    /// texts pass it.
+    #[test]
+    fn the_log_samples_and_their_check() {
+        let empty = log_samples(&Catalogue::default());
+        assert_eq!(log_problems(&empty).len(), empty.len());
+        let pack = Pack::from_json(
+            "en",
+            r#"{ "battle": { "log": {
+                "damage": "{{attacker}} {{damage}}", "perish": " {{count}} {{creature}}",
+                "destroyed": " {{creature}}", "wait": "{{creature}}",
+                "defend": "{{creature}} {{defense}}", "morale-good": "{{creature}}",
+                "morale-bad": "{{creature}}", "luck-good": "{{creature}}" } },
+                "word": { "creature": "w" }, "creature": { "base:wolf_rider": "W",
+                "base:pikeman": "P", "base:ballista": "B" } }"#,
+        )
+        .unwrap();
+        let catalogue = Catalogue { packs: vec![pack] };
+        let samples = log_samples(&catalogue);
+        assert_eq!(log_problems(&samples), Vec::<String>::new());
+        assert_eq!(samples[0], ("strike", String::from("W 37 1 P")));
+        let bad = [("x", String::from("50%")), ("y", String::from("{{a}}"))];
+        assert_eq!(log_problems(&bad), ["x: 50%", "y: {{a}}"]);
     }
 }

@@ -624,9 +624,57 @@ batch") does it on the harness; everything a record holds is read from the game'
   from run to run (the piles are drawn at the game's start, which runs in real time). The starting
   amounts differ by difficulty: the user played Easy (30 wood, 15 mercury, plus the random bonus),
   the harness Normal (20, 10).
-- **Not built yet:** scrolling the hero list (more than five heroes), the underground, a visit
-  that asks a question (a Yes/No dialog), a battle started from the map (the adventure lane's
-  increment 3: monsters and battles), a second day.
+- **Questions, the difficulty and battles (E17 H1, 2026-10-19; for the adventure lane's batch E3,
+  survey `docs/rules/surveys/E08-battles.md` §13).** The scenario list's five difficulty buttons
+  sit at (521 + 32 *i*, 478); the game holds the choice at game +0x1F6D8 (Easy: 30 000 gold and
+  30 wood, Hard 15 000). A question is a message box with an OK (item 30725) and a Cancel (30726):
+  the harness finds both buttons by their probes and reads the text from the window manager's
+  topmost dialog (0x699280 → +0x54; the items listed from +0x2C, the next at +0x8; a text item's
+  string at +0x30, its characters at +0x34 and their number at +0x38: H3API's layouts, observed,
+  `docs/exe/structs.toml`), never from the game's message buffer (0x6973D8, H3API's
+  `h3_TextBuffer` 0x50 lower as its other globals), which a map's own text may not pass through.
+  The text names the record it was written from in the original's tables read at run time
+  (`h3lod.py`, ADR-0009: the record's number, never its text): a monster's offer to join is
+  ADVEVENT 86, to join for gold 88 (or 89 and 90 together), to flee 91, the insult after a
+  declined offer 87 (a plain message). Seen on a local map whose monsters had other dispositions
+  (h3-experiment places savage ones that never flee until E08 T22a): a compliant group of 7
+  Pikemen offered to join, then, declined, to flee, and left the map at a second no (its tile's
+  class 0); a savage group of 13 that may flee offered to flee, and a yes started the battle; a
+  yes to the join put the 7 into the hero's stack of Pikemen (27). The tile's word holds the
+  aggression as 5 signed bits (compliant −4 read as 28 unsigned).
+- **Battles from the map (E17 H1).** The battle screen's probes show it; the battle manager's
+  pointer stays set between battles, so the screen decides. Stacks (side, creature, count, hex)
+  are read at the start and when the result window shows (its OK, `[button.battle_ok]`, 64 × 32 at
+  (549, 525)); the outcome from the manager (winner +0x13D48, retreated +0x132B0, surrendered
+  +0x132B2). Auto combat (key `a`, control 2004) toggles +0x132C4, but a human side's creature
+  acts on its own only with the setting `Combat Auto Creatures` (0x698794) on, 0 in a new prefix:
+  `setup.sh` sets it. Retreat (`r`) and surrender (`s`) ask for a confirmation whose OK is the
+  question's. The check (`capture/batches/harness-check.toml`, Easy): 20 Archangels against 5
+  Pikemen (split 3 and 2 Halberdiers) won by auto combat, 50 experience; a Peasant's retreat from
+  30 Pikemen (7 stacks) left the hero off the map (owner −1) and the monster whole; Blue's
+  surrender in hot seat moved 470 gold from Blue to Red (D-13's reading) and took its hero off the
+  map; a hero with 5 000 experience from the map started at level 5 with its primary skills 3/5/1/2
+  for the map's 2/3/1/1 and Diplomacy and Logistics expert for basic and advanced (E3-6's
+  question, for the adventure lane to judge). A player left without heroes and towns is out: with
+  one human left the game ends in the Hall of Fame, so a map keeps each player a hero.
+- **The underground, more heroes, a level-up, a second day (E17 H2, 2026-10-19).** The packed
+  view and mouse tile hold the level in bit 26; the path's arrows are a u16 per tile level by
+  level, the underground's after the surface's. The panel's level button (725, 211) switches the
+  view (the minimap then shows that level); it is enabled only on a two-level map and changes
+  with the level shown, so the `adventure` probes leave it out. Shown on a shipped map
+  (`Arrogance`, four humans in hot seat, Purple's hero on level 1): the view switched from the
+  surface back to level 1, the path to (5, 8, 1) three green marks there, the hero arrived; `h3-map`'s
+  writer has no underground yet, so the check has none. The hero list holds the heroes by their
+  type's number, not in the map's order; its arrows at (638, 203) and (638, 379) move it a row
+  (no scroll position found in the adventure manager): with more than five heroes the harness
+  clicks up three times (eight heroes at most) and down to the hero's row, and checks the
+  selection in memory. A level-up after a battle shows two offered skills and keeps its OK
+  disabled until one is clicked (`[button.ok_disabled]`, probes on the pixels that change when it
+  is enabled); the skills sit at the OK's corner + (−150, −64) and (−52, −64). The date is game
+  +0x1F63E (day, week, month, u16 each). The heroes off the map at a new game (E3-7) held 40 to 90
+  in two runs (147 heroes; 1 and 4 at 90). A map hero's custom experience draws its level-ups at
+  the start: 5 000 gave level 5 in both runs, but 3/5/1/2 with Diplomacy expert in one and
+  3/4/2/2 with Diplomacy advanced in the other.
 
 
 ## 7. Animation timing (M2 T3)
@@ -1514,15 +1562,15 @@ text` and the gate's check; the formats in `clients/README.md` ("The string cata
 - **Rows** are records counted from 0 with the header rows, as `h3-formats`' parser reads them (a
   quoted field with line breaks is one record): `GENRLTXT`'s record n is VCMI's
   `core.genrltxt.<n − 1>` (its parser skips the header) and `installation.md`'s 1-based "line
-  n + 1". The executable's own indexing (which record a code site's text number names) is read
-  with the log (T4b-2): the keys' rows for the battle log's events are *provisional* until then.
+  n + 1". The executable's own indexing is the same: its row n is record n (read in T4b-2a,
+  §9.4).
 - **Specifiers.** The original's rows use `%s`, `%d` and `%%`; the key names each specifier's
   argument in order (`printf`), and its declared kind must match (`text` for `%s`, `number` for
   `%d`), so a row and a key that disagree fail the gate. The forms of one key may name different
   arguments (`battle.log.perish`: "one …" without the count, "%d … perish" with it).
 - **Plural rows.** Where the original has a singular and a plural row, the key has the forms
   `one` and `other`; the original's pack picks `one` for a count of exactly 1 (the executable's
-  rule as far as the rows show it; which count picks it per event is T4b-2's reading). A
+  rule; which number picks it per line: §9.4). A
   creature's names are a family over the asset tables: `crtraits.txt`'s non-blank records from
   record 2 are the original ids in order (the harvesters' reading), its first two columns the
   singular and plural; the asset tables' `[[creature]]` carries `original` (the comment `#
@@ -1572,3 +1620,50 @@ text` and the gate's check; the formats in `clients/README.md` ("The string cata
   `h3-formats` decodes the text tables as 1252 with every byte kept (undefined ones as their C1
   controls), so a localized installation's tables in another code page (1250, 1251) can be
   re-decoded without an engine change; that and its fonts wait for such an installation.
+
+### 9.4 The battle log's lines (M3 T4b-2a)
+
+T4b-2 split with the user on 2026-10-19 (the line drawn left as T4b-2b). Read: `battle_log_add`
+(0x472E90), the strike's line (`battle_log_damage` 0x469A90, H3API's `ReportDamageDone`) and what
+its strike and shot callers pass, `creature_name` (0x440100), and the lines of wait (0x479918),
+defend (0x479758), morale (0x464AD5, 0x464CDF) and luck (0x44187A, 0x43F998). Built as
+`h3_view::battle_log`; `h3-view text --log` prints sample lines from the user's tables, and the
+gate composes them.
+
+- **Rows.** The executable reads `GENRLTXT.TXT` through `general_text` (0x6A5D5C, its rows at
+  +0x20): its row n is our record n, from 0 with the header, checked on the battle log's fifteen
+  rows and the clone limit's against the user's file. The keys lose *provisional*;
+  `battle.log.destroyed` (row 668) is new, and the bad luck key (row 45) is gone: no battle code
+  writes that row, as the original has no bad luck (the protocol's `lucky` is good luck only).
+- **Names.** A stack's name is its creature's singular for a number of exactly 1, else the plural,
+  0 included (0x440100 and its inlined copies). The number that names a stack also picks its
+  row's form: the striker's for the damage row, the kills for the perish row.
+- **A strike** (0x469A90): the damage row by the attackers' number (their name, the damage); with
+  kills above 0 the perish row appended, whose text begins with a line break: row 668 for a war
+  machine (creature flag 0x40, its name by the kills), else rows 379 and 380 (the kills, the
+  name by them), with the word for creatures (rows 43, 44, by the kills) when the caller names no
+  target. Its callers: a strike or shot at one target names it (`melee_strike` 0x441C5D, the
+  shot 0x43FDB4); a breath's stack behind of another creature adds its damage and kills and
+  names no target, while one of the target's own creature is left out of the line (0x441B9B: the
+  line reports the target's hit alone; copied, the M3 review list); a multi-headed striker's
+  loop (0x440310, its line at 0x4404ED; `melee_strike` writes none for it, 0x441B95) and the
+  area shots (0x43FC4F, 0x44003F) add every hit up and name their creature when all share one,
+  else none. A hidden battle writes no line. The other callers (spells, the moat, fire walls,
+  land mines, turrets, Fire Shield, the striker's effects) come with T6 and T7.
+- **Turns.** Wait: rows 137 and 138 by the number, with the name; none in the tactics phase.
+  Defend: rows 121 and 122 by the number, with the name and the gain max(1, defense × 20 / 100)
+  (integer, the stack's defense skill); a war machine writes none. Morale: good row 34, bad row
+  35, luck: good row 46 after a strike's or a shot's lucky roll; each with the name by the
+  number.
+- **Entries** (0x472E90 with its second argument 1): a text without a line break is one entry;
+  with one, its first break becomes a space when the text then takes fewer than two lines of the
+  small font (`smalfont.fnt`, §3.6; `text_line_count` 0x4B5820) at the log item's width, else
+  the text is two entries split there. The number of new entries (at most 2) sets the first line
+  the log shows. With the second argument 0 the text goes to the **status line** instead, unless
+  a log entry came less than 3 000 ms ago (`clock_ms` 0x4F82E0) and the third argument is 0.
+  Built: `battle_log::entries`, the line count as an argument; the log item's width, the
+  scrolling, the font's colour and the panel are T4b-2b's and T6's.
+- **The caller's.** Which event writes which line, when none (a hidden battle, a wait in the
+  tactics phase, a war machine's defend), how the protocol's events (`Struck` once per target,
+  `Defended` without its gain) become a strike's hits and a defend's gain: T6's event mapping.
+

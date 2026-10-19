@@ -1,6 +1,6 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a done). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
@@ -238,9 +238,9 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   war machines (T3b), the count boxes (T5) and the panel (T6), each mask removed as it is drawn;
   sieges later.
 - Fonts and the text drawer (T4a, with the count boxes in the stills), the string catalogue and
-  the language packs (T4b-1, an ADR-0020 amendment; T4b-2 the log's text drawn), and the battle
-  interface (T5, T6: the boxes over time, the panel, the log, the cursors). T4 split with the user
-  on 2026-10-15, T4b on 2026-10-19.
+  the language packs (T4b-1, an ADR-0020 amendment; T4b-2a the log's lines read and composed,
+  T4b-2b a line drawn), and the battle interface (T5, T6: the boxes over time, the panel, the
+  log, the cursors). T4 split with the user on 2026-10-15, T4b and T4b-2 on 2026-10-19.
 - The **spell animations** (the user, at T5c: their plethora; T7a the code reading, T7b on
   stacks with morale and luck, T7c area spells, rays and spell obstacles) and their sounds.
 - The sound's remainder (T8: the battle's end; the volume settings later).
@@ -306,6 +306,31 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   ids), packs as nested JSON (i18next's conventions, CLDR's integer plural rules), the original's
   pack read at run time from the user's tables, a player's pack before it (CLT-Q7); the gate reads
   all 155 keys' 306 forms; `h3-view text` formats the log's lines from them.
+- **T4b-2a done 2026-10-19** ([log](E17-log.md#m3-t4b-2a--the-battle-logs-lines-read-and-composed-2026-10-19),
+  [design §9.4](E17-design.md)): T4b-2 split with the user (the line drawn left as T4b-2b). The
+  log's lines read in the executable (`battle_log_add`, the strike's line and its callers, wait,
+  defend, morale, luck): its row n is record n, a name's form and a row's by the number of exactly
+  1; the keys lifted from *provisional* (the war machine's row added, the bad luck row dropped:
+  the original has none); `h3_view::battle_log` composes them and the entries a line becomes;
+  the gate composes 12 sample lines from the user's tables, `h3-view text --log` prints them.
+
+### The adventure lane's harness (H1, H2: its batch E3)
+
+Taken ahead of M3's remainder on 2026-10-19 (the user): the adventure lane's E08 T22a waits on
+it (`docs/rules/surveys/E08-battles.md` §13; the requests in the queue's inbox since 2026-10-13).
+
+- **H1 done 2026-10-19** ([log](E17-log.md#h1--questions-the-difficulty-battles-from-the-map-2026-10-19),
+  [design §6.3](E17-design.md)): `h3adv.py` answers a visit's questions by the record their text
+  was written from (`h3lod.py`, the topmost dialog's text in memory), starts a game at a chosen
+  difficulty, plays the battles a step opens (auto combat, a retreat or a surrender by side) with
+  their stacks read at the start and the end, and records heroes' details, the players' resources
+  before and after and a tile's monster from memory; `setup.sh` turns on the auto combat of
+  creatures. The check recipe (`capture/batches/harness-check.toml`) plays each; batch 2 still
+  reproduces.
+- **H2 done 2026-10-19** ([log](E17-log.md#h2--the-underground-more-heroes-the-starts-reads-a-second-day-2026-10-19)):
+  a `walk` onto either level (the view switched by the panel's button; shown on a shipped map),
+  the hero list scrolled beyond five heroes, a level-up's skill chosen, the heroes off the map's
+  experience, the date; the check recipe plays a second day.
 
 ### Later (refined when they come up)
 
@@ -485,6 +510,12 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T4b-2a: a breath over two stacks of one creature: the original's log line reports the target's
+  hit alone (0x441B9B); copied as the original's (no `fixed` variant: the user's call); the
+  composer's inputs (`battle_log::Stack`, `Hit`, `Spread`: a strike's hits and how they add up,
+  the defend's gain given, not computed) and the entries' rule taking the line count as an
+  argument until T4b-2b reads the log's width; `h3-view text --log`'s fixed sample stacks.
 
 - T4b-1: the key catalogue's format (TOML: `[[key]]` with `args`, `plural`, `contexts`,
   `original` forms `{ form, at = "<TABLE>:<record>[:<column>]", printf }`; `[[family]]`) and its
