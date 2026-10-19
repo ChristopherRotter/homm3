@@ -1846,3 +1846,38 @@ were written in; the archive's older replays are the battle lane's replay format
   accepted"): the review list as built, the reviewer's two left findings as left. Next, the user's
   wish: what the ecosystem around the server needs, talked through with the user (M5 waits for
   E08's increment 3). #169 (CLT-Q1, wire 29) merged meanwhile; `master` merged into #173.
+
+### The inbox after M6 (2026-10-19)
+
+The battle lane's entries of 2026-10-16 and 2026-10-19, done together (no task was ready: M5 waits
+for E08, the ecosystem for its refinement).
+
+- **Windows** (the user's verify of `master` at 2ad6d55, the battle lane's report): (1)
+  `tests::card::the_operators_card_is_the_running_servers` binds `0.0.0.0:0` and its test client
+  dialed the bound address, which Windows refuses (os error 10049): `crate::reachable` maps an
+  unspecified address to loopback for `h3-server card` (as before) and the tests' `greeted`. (2)
+  The players' and the ladders' torn-line tests failed in one run with "Access is denied" at
+  `open_log` and passed in the next; not reproducible here (no Windows; Wine is no test).
+  `open_log` now reads the log through the handle that cuts and writes it instead of a second open
+  of the file, and the players' test closes its own append handle before `Players::open`: one
+  handle per log at a time. Whether that was the cause, or a scanner holding the fresh file, the
+  user's next Windows verify shows.
+- **`Query::CreatureCastTargets {}`** (E04b's review, T11b): the active stack's cast targets
+  (`h3_battle::creature_cast_targets`), none if it is not the seat's or may not cast; a client
+  no longer probes with `CreatureCast` commands. A message shape inside ADR-0018 point 10
+  (provisional, for the next milestone's review list).
+- **A side's `may_retreat`** is as the viewer knows it (BAT-Q50 (4)): a town's Escape Tunnel
+  shows to its defender only. The engine's projection already gave the wire `false` in the
+  attacker's and a spectator's frames; the doc says so now, and the change of meaning bumps the
+  protocol (the precedents: v23, v29). `last_side_acted`'s doc as the engine's (BAT-TRN-001,
+  BAT-SIE-011). **Wire 34.**
+- **A siege's frames** (E04c T10b's review, F-sec-3): `h3-protocol`'s
+  `a_towns_escape_tunnel_leaves_the_attackers_and_spectators_bytes_unchanged` plays the `siege`
+  scenario with and without the tunnel: the attacker's and a spectator's bytes are the same, the
+  defender's first snapshot differs. A town's land mines (BAT-SIE-007) have no synthetic town to
+  play (the vale has a moat); they are hidden obstacles as a hero's Land Mine is, whose frames
+  `hidden_obstacles_never_reach_the_other_viewers_bytes` covers.
+- **The example's ladder on `synthetic:strict-fixed`** (the user, 2026-10-19, of four options):
+  where results count, no leak of the other side's hidden obstacles by Quicksand's and Land Mine's
+  draws (BAT-QUIRK-4); the offers stay on the scenarios' `faithful`. The operator's notes explain
+  the profile and the trade-off.

@@ -4,11 +4,11 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M4 and M6 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22, SRV-Q24; M6 is discovery: ADR-0021, `E16-design.md` §12). **Next:** nothing ready; the ecosystem talk of 2026-10-13 is recorded (E16 "Later", BACKLOG E21 and E22, QUEUE inbox). M5 waits for E08's increment 3.
-- **The TLS client** (ADR-0021 point 4, `peers::Tls`): rustls over graviola, the OS roots read at the first `wss://` fetch; no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
+- **M1–M4 and M6 closed** (checkpoints SRV-Q12 to SRV-Q24; M6 is discovery: ADR-0021); the inbox after M6 done 2026-10-19 (`E16-log.md`). **Next:** nothing ready; the ecosystem talk of 2026-10-13 is recorded (E16 "Later", BACKLOG E21 and E22, QUEUE inbox). M5 waits for E08's increment 3. **For the next milestone's review list:** `Query::CreatureCastTargets {}` (a message shape, provisional).
+- **The TLS client** (ADR-0021 point 4, `peers::Tls`): rustls over graviola; no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 29 since CLT-Q1; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 8 since BAT-GEO-002's rear hex; another format's journal is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 34 since the inbox after M6; bumped on every wire change, a field's new meaning too), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 8 since BAT-GEO-002's rear hex; another format's journal is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -22,19 +22,19 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 - `h3-protocol` is `no_std`: take `serde` (`derive`, `alloc`) and `serde_json` (`alloc`) with `default-features = false` in its own manifest, not `workspace = true` (the workspace entries enable `std`).
 - `postcard` (and any format that is not self-describing) cannot decode `#[serde(tag = ...)]`, `untagged` or `flatten`: keep the wire types in serde's default enum form (SRV-Q5).
-- A 64-bit integer on the wire travels as a string (JavaScript clients lose precision above 2^53).
+- A 64-bit integer on the wire is a string (JavaScript loses precision above 2^53).
 - A wildcard arm after every variant of an enum still counts as one uncovered region (llvm-cov), and `#[coverage(off)]` is unstable: no fallback arms in `h3-protocol` (ADR-0018 point 5 as amended).
 - A test client picking uniformly among legal commands rarely ends a `full` battle: pick strikes first (`tests/session.rs`, `play`).
-- A test `Client` answers pings only while it reads: one unread beyond `ping_timeout_ms` is dropped, and its late pong draws a reset that drops its unread frames.
+- A test `Client` answers pings only while it reads: one unread beyond `ping_timeout_ms` is dropped (its late pong draws a reset).
 - Automated clients exceed the default rates (20 messages/s, 40 per address): end-to-end tests that play raise both (`tests.rs`, `fast()`).
 - A frame the game marks `left` is acted on only if the task passed the game exactly that many messages (`Bound::passed`): leaving after a pipelined join would drop its `Joined` and token.
-- A game leaves the lobby only under the registry's lock, after its bound connections are counted down (`registry.rs`): deciding by the game's own connection list races a join that is already queued.
-- A socket closed over unread data is reset and the peer drops its unread `Goodbye`: the close reads on for the peer's (`net.rs`, `LINGER`).
-- A journal's line holds tokens: errors from reading one name the line and column, never its text (serde_json's messages quote values); a log line never carries a hash either (`journal.rs`).
+- A game leaves the lobby only under the registry's lock, after its bound connections are counted down (`registry.rs`): deciding by the game's own connection list races a queued join.
+- A socket closed over unread data is reset, the peer's unread `Goodbye` lost: the close reads on (`net.rs`, `LINGER`).
+- A journal's line holds tokens: errors reading one name its line and column, never its text (serde_json quotes values); a log line never carries a hash (`journal.rs`).
 - No file I/O under the registry's lock (T5e): a game opens its journal on its own thread (`game::launch`); its opening is queued under the lock first (`registry::Opening::first`).
 - Replays go into `archive::dir` through `game::finish`, then `Registry::archived`: one written elsewhere is neither listed nor trimmed.
 - `PROPTEST_CASES` applies to every proptest of a crate: name the test for a longer mutation run (`cargo test -p h3-protocol mutat`).
-- A game's frames go through `game::Outbox` (`offer`, or `last` for a goodbye), never a bare channel: the task subtracts each frame's bytes as it takes it, so a frame queued around the count wraps it and the queue refuses every frame.
+- A game's frames go through `game::Outbox` (`offer`, or `last` for a goodbye), never a bare channel: the task subtracts each frame's bytes as it takes it (a frame queued around the count wraps it).
 - Write-ahead order in a game's thread: drain and sync the session's entries before `deliver`; anything a restart must redo needs an `Entry` (`Entry::Resumed`), or the restore diverges.
 - The observation's mapping (`map/mod.rs`) names every field of the engine's types in patterns, without `..` (a field left out: `name: _` with its reason), those read through a method too.
 - The workspace's clippy bans `std::time::Instant` and `SystemTime`: the server uses `tokio::time::Instant`, a file's age `fs::metadata(p)?.modified()?.elapsed()`.
@@ -50,15 +50,15 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A paused journal's last write starts its deadline and an agreed pause's due time: never append to one. A pause's hold returns at a restore from `agreed_pause()` or `held_pause()` (`Held`); `game::resume` re-applies either.
 - A game whose thread ends with its journal kept leaves by `Registry::stopped`, not `leave` (a match keeps its players). A start re-runs journals one by one by id (rating order).
 - A ranked game's end is told only by the host's verdict (`publish_replay`/`withhold_replay`): a new way to end must reach `finish`. A ladder's log names a game once (`<data>/next-game`): never hand out ids below `GameIds::last`.
-- **The workload is lane-only and follows `master`** (55 % battle engine; not in the full verify): `verify --scope server` measures it at each session's start; re-baseline a drift from `master` (`cargo xtask bench-check --update --workload session-random-play-full`), the range in the commit; measure only with the file's arguments.
+- **The workload is lane-only and follows `master`** (55 % battle engine; not in the full verify): `verify --scope server` measures it; re-baseline a drift from `master` (`cargo xtask bench-check --update --workload session-random-play-full`), the range in the commit; only with the file's arguments.
 - A connection's server id is `Connection::id`, set by its hello: logins sign it, not `Host::id` (M6 T1).
 - A card travels as the text its key signed (`SignedCard::card`): relay it verbatim. The server re-signs its own a minute old (`card::RESIGN`).
-- Windows refuses `set_len` through an `append(true)` handle: logs open `write(true)` and write at their end (`journal::open_log`). Check with clippy `--target x86_64-pc-windows-gnu`; Wine is no test.
+- Windows refuses `set_len` through an `append(true)` handle (logs open `write(true)`, `journal::open_log`) and a connect to `0.0.0.0` (`crate::reachable`). Check with clippy `--target x86_64-pc-windows-gnu`; Wine is no test.
 - A `wss://` dial passes `Connector::Rustls` (`Client::dial`), or tokio-tungstenite panics (no process-wide provider). Graviola panics on a processor without its extensions: each fetch is a task of its own.
 - `ListPeers` serves `peers::relay`'s rebuild (peers, listed servers, chains), chains checked against served cards. A fetch below `depth` pages `ListPeers`: a fake peer must answer it (`tests/peers.rs`). A fetch dials through `Tls::to` (the roots at the first `wss://`); a listed card must name its list's address.
 
 ## Recent sessions
 
-### 2026-10-13 — M6 T6, M6's closure
+### 2026-10-19 — the inbox after M6
 
-#173 merged (`E16-log.md`): `06-security.md`'s discovery and the client lane's inbox (`cross-lane` commits); the reviewer's two major findings (a list's `wss://` servers never fetched; a listed card not naming its address relayed) and four minor fixed; SRV-Q24 passed. The full local verify stands in for CI (billing).
+The battle lane's inbox entries done (`E16-log.md`): the Windows fixes (the card test's `0.0.0.0` dial; `open_log` reads through its own handle; the "Access is denied" flake unproven, the user's next Windows run decides), `Query::CreatureCastTargets {}`, `may_retreat` as its viewer knows it (wire 34), a siege's frames, the example's ladder on `strict-fixed` (the user's choice, BAT-QUIRK-4). The full local verify stands in for CI.
