@@ -197,7 +197,9 @@ The full record of done tasks (the epic file keeps one line each).
 - **Tests:** `encounter::tests` (design §4.2, "The check"); 10 tests, 13 s in a debug build.
 - **Verify:** the baseline full verify of `master` (1f32f10) failed only coverage, on the
   adventure lane's `h3-game/src/state.rs:569` (a pending Pass offer's hash tag; 0 hits in
-  `cargo llvm-cov -p h3-game`): queued for the adventure lane.
+  `cargo llvm-cov -p h3-game`), which #254's full verify covered: flaky, a property test reaches
+  it now and then; queued for the adventure lane. #254's full verify passed every step; the
+  lane's scoped verify every step but `check-lane` (the shared commits, until #254 merges).
 
 ## T5b2 — The batch's encounter source (2026-10-19)
 

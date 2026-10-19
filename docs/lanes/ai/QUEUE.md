@@ -32,5 +32,6 @@ Taken over from the battle lane's inbox (2026-10-18; the items stay there too un
   `walks_are_reported_hex_by_hex` (the gate fails only when proptest finds such a case).
 - 2026-10-19 (T5b1's baseline): `master`'s coverage gate fails on the adventure lane's
   `crates/h3-game/src/state.rs:569` (`OfferKind::Pass` in the open decisions' hash: no fixed
-  test hashes a pending Pass offer; 0 hits under `cargo llvm-cov -p h3-game`). The adventure
-  lane's to fix with a fixed test (suggested to the user as a task).
+  test hashes a pending Pass offer; 0 hits under `cargo llvm-cov -p h3-game`); #254's full verify
+  covered it, so a property test reaches it only now and then. The adventure lane's to fix with a
+  fixed test (suggested to the user as a task).
