@@ -150,7 +150,9 @@ boxes where the drawn poses show them; the heroes are compared since M3 T3a), wr
 line compared with the sequence's recorded `timelines/<id>-frames.txt` (`ok`, `new`, `CHANGED`;
 exit 1 on a change). An entry's `log_at` (M3 T4b-2b-2) compares the log's item from that time on
 (`panel_beside_log` instead of `panel`), the viewer drawing its record's first strike's line
-there (design §9.6). Each line is `<ms> <differing> <artifacts>` (M3 T1c): the differing
+there (design §9.6). An entry with `boxes = true` (M3 T5a) compares the count boxes; any other
+masks them where the drawn poses show them and where the viewer drew them (`ours.txt` lists the
+boxes it drew, ` box<x>,<y>`). Each line is `<ms> <differing> <artifacts>` (M3 T1c): the differing
 pixels outside the masks and how many of them are the original's **redraw artifacts**
 (`h3cap.redraws`, design §7.11): its pixel is ours at that moment with one to five more
 shadows, or one we drew there at an earlier moment of the sequence with at least one more. The
@@ -300,6 +302,10 @@ design §7.1.
 - A click's hover leaves the status line's hint in the log's item (`Attack Pikemen` over a
   target) until a log line replaces it, and a line held there less than 3 000 ms keeps hints out
   (design §9.4, §9.6): compare the log's item only from a sequence's `log_at`.
+- A hero's reaction may be read a step late at its first frame: one of two runs of `strike`
+  (M3 T5a) read the left hero standing at 3 730 ms while its screen showed its reaction (group 3)
+  (2 400 pixels); run again, as recorded. A `CHANGED` with differences only on a hero at the
+  frame its reaction starts is that, not a change of the viewer.
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.
 - The menus run in real time; only the battle runs on the stepped clock. Two runs still agree:
   the battle's setup does not depend on the clock (observed: the obstacles follow the tile).

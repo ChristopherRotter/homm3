@@ -353,9 +353,23 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   free for another's (0x43E61C reads the occupant's +0x30). A stack killed by a strike stays on
   its hexes through the strike's iterations; `stack_death` takes it off the hex records'
   occupant byte (0x444400) after them (0x4692C4), so its hex is free for the next redraw. The
-  viewer: the poses carry the flag (`Pose::boxless`, the walk's last pose shown again unhidden by
-  the redraw, *provisional* in its timing to the millisecond), and a stack holds its hex for a box
-  while it is not hidden and not among the corpses (`Pose::holds_hex`).
+  viewer: the poses carry the flag (`Pose::boxless`; the walk's last pose shown again unhidden by
+  the whole redraw at the same moment), and a stack holds its hex for a box while it is not hidden
+  and not among the corpses (`Pose::holds_hex`).
+- **Checked** (M3 T5a; the frame check with the boxes unmasked, `boxes = true`): `walk`, `turn`
+  and `climb` match outside redraw artifacts (in `turn` and `climb` the standing frame after the
+  path's first turn hides the box), `strike` too but at 2 730 ms. While the Archangel lands
+  (2 330 to 2 630 ms: group 21 and the standing frame, the flag set) the Pikemen's box stays
+  beside them; at 2 730 (0x4B4A15, the flag clear) both boxes stand over their stacks; from the
+  Goblins' turn (3 730) the Archangel's stands beside it, the Pikemen's hex free. The viewer
+  before this, the boxes unmasked: 574 to 872 pixels in each frame from 2 330 to 2 630 ms, 606
+  in each from 3 730 on. Left, listed (134 pixels at 2 730,
+  §7.11's effects, not copied): a piece of the Pikemen's earlier box (123), which the flier's
+  restored rectangle brings back from the saved screen, and the new box's last column (11), right
+  of the rectangle the original shows. Not classified: a rule "a box at an earlier place" would
+  also pass a box the viewer moves too early, as the Pikemen's before this task. The other six
+  sequences (boxes still masked, also where the viewer draws them) as recorded but `melee` at
+  3 966, now artifacts only (§7.9).
 - VCMI's `showStackAmountBox` gives the same four positions (its hex centre is the anchor −
   (0, 16)) but leaves out t and counts every stack ahead as taking the hex, war machines included.
 
@@ -974,7 +988,10 @@ Riders walk past the Angels: dark pixels at the Angels' outline edges (sword tip
 poses (the walk's end on hex 45) put it beside them. Read in M3 T1a: the original's redraws by
 dirty rectangles, §7.11 (shadows drawn again, the saved screen's count box); not copied, the
 user's decision; classified since M3 T1c (§7.11): 6 of the 7 frames are artifacts only, and at
-3 966 the 231 other pixels are the stale count box (listed until M3 T5 draws the boxes).
+3 966 the 231 other pixels are the stale count box (listed until M3 T5 draws the boxes). Not
+stale (M3 T5a, §4.3): the Wolf Riders, still in their walk (+0x30 set), leave the hex ahead of
+the Angels free, so the original draws the Angels' box beside them; the viewer now does too, and
+the frame is 96 artifacts only.
 
 ### 7.10 A whole battle: turns, layers, fidgets (M2 T4b-2a)
 
@@ -1126,7 +1143,8 @@ rectangle and shows only that. Read for the walk-by difference (§7.9); every ad
   sequences captured again (T1a's frames were lost with its sandbox; every count as recorded):
   `melee` 6 of its 7 frames artifacts only (9 to 198 pixels, up to four shadows); at 3 966, 96
   artifacts and the stale count box, 231 pixels in its 30 × 11 rectangle at (476, 197), listed
-  until M3 T5 draws the boxes (since M3 T4a draws them in the viewer's earlier frames, 136
+  until M3 T5 draws the boxes (M3 T5a: no stale box but the walker's +0x30, §4.3; the frame
+  artifacts only) (since M3 T4a draws them in the viewer's earlier frames, 136
   artifacts: the box's 40 pixels under the Wolf Riders' shadow are an earlier moment's, shadowed;
   191 left); `behind` all 30 frames artifacts only, 3 951 pixels: 3 878 at the
   same moment (up to four shadows), 73 an earlier moment's (mostly the frame before; none with no

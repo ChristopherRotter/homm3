@@ -66,7 +66,8 @@ search the parent directories).
   `clients/out/render/`. Drawn so far: the background (the picture of an empty surrounding,
   CLT-Q4), the obstacles, every living stack standing on its hex, the active stack's outline, the
   heroes and their flags (M3 T3a), the war machines and the heal's magic animation (M3 T3b), the
-  count boxes (M3 T4a: not yet hidden when the original hides them, nor tinted by spells), the
+  count boxes (M3 T4a; hidden through walks and flights, M3 T5a; not yet their numbers over time
+  nor tinted by spells), the
   panel's log item (M3 T4b-2b-1: empty, as at the opening; the rest of the panel with T6); not
   yet corpses, spell obstacles or the grid. With `--at <ms>` (and
   `--speed <0-2>`) the record's commands are played at the original's timing first and each

@@ -16,9 +16,12 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   engine rolls damage differently from the original, so after a rolled strike the digits differ:
   compare a box's digits only where the original's count (its memory, `h3mem`: +0x4C, +0x50)
   equals the engine's, and list the rest. Then the boxes compared in the other six sequences
-  (`shot`, `melee`, `behind`, `shots`, `fly`, `machines`); a stale box the original's partial
-  redraw leaves under a walker (design §7.11; `melee` at 3 966 ms: 231 pixels) classified (the
-  box's earlier place) or masked. (The spells' tint moved to T7b, the user, 2026-10-20.)
+  (`shot`, `melee`, `behind`, `shots`, `fly`, `machines`; they mask the boxes where the viewer
+  draws them so far, from `ours.txt`'s ` box<x>,<y>`); a stale box the original's partial redraw
+  leaves (design §7.11) listed with its count as T5a listed `strike`'s at 2 730 ms (design §4.3),
+  or classified by a rule that cannot pass a box the viewer moves too early (`melee`'s at
+  3 966 ms was none: the walker's +0x30, T5a). (The spells' tint moved to T7b, the user,
+  2026-10-20.)
 - **Acceptance:** the recorded sequences match with the count boxes drawn.
 - **Depends on:** nothing (T5a done). **Status:** ready.
 

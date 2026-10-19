@@ -13,7 +13,11 @@
 # `h3-view sequences` plays them and checks the viewer's timeline against the recorded one.
 # `frames` (E17 M2 T4b-1, design §7.9): the frame check's recorded counts, `<ms> <differing
 # pixels> <redraw artifacts among them>` for every distinct battlefield the original showed
-# (`h3drive.py frames`; the artifacts since M3 T1c, design §7.11).
+# (`h3drive.py frames`; the artifacts since M3 T1c, design §7.11). `boxes = true` (E17 M3 T5a,
+# design §4.3): the frame check compares the count boxes; without it they are masked where the
+# drawn poses show them and where the viewer drew them. Compared so far in the sequences whose
+# counts never change (no rolled strike); `strike` at 2 730 ms differs in 134 pixels of the
+# original's redraws (design §4.3).
 
 [[sequence]]
 id = "walk"
