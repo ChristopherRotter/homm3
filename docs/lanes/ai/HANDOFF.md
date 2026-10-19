@@ -10,9 +10,9 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   **Increment 4** done 2026-10-19: T8 (design §8, AI-Q5; `python/h3env/train/`, C ABI v29,
   #260; the opponent pool, #264): exit criterion 7 met on the user's GTX 1070 (0.800 against
   Random after 40 minutes, best 0.811). **Increment 5** (T7, design §9; AI-Q6): the preview
-  (#274, `cross-lane`), ADR-0025 point 5 (#271, `shared/`), the bots, `h3 ai eval`, C ABI v30
-  on `claude/exciting-pasteur-7etga9` (its PR after #271 and #274 merged). **Next:** T7d on the
-  user's machine (QUEUE).
+  (#274, `cross-lane`) and ADR-0025 point 5 (#271, `shared/`) merged; the bots, `h3 ai eval`,
+  C ABI v30 on `claude/exciting-pasteur-7etga9`, its pull request open (see the newest
+  session). **Next:** T7d on the user's machine (QUEUE).
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v30 (T7: the bots' seats) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q8, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
@@ -76,7 +76,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   preview of their own attacks, never the retaliation; Glicko-2 from the server). Opened #271
   (`shared/`, ADR-0025 point 5) and #274 (`cross-lane`, `h3_battle::preview`).
 - Built the bots, `h3 ai eval` (Greedy 0.828, Aggressor 0.800 against Random), C ABI v30 and
-  `h3env.train.ladder` (`E05-log.md`). In progress: this branch's PR after #271 and #274 merge.
+  `h3env.train.ladder` (`E05-log.md`); #271 and #274 merged, this branch's PR opened after
+  them (watch it until it merges).
 - For the global HANDOFF (a `shared/` change, kept from T8b): `cargo xtask verify` outside
   `scripts/sandbox-verify.sh` needs `LLVM_COV`, `LLVM_PROFDATA` on `/usr/lib/llvm-20/bin`.
 
