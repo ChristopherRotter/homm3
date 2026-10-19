@@ -4,8 +4,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a done (2026-10-19); next: M3 T4b-2b, T5–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
-- **Pull request (2026-10-19):** T4b-2a (`client/e17-m3-t4b-2a`) open.
+- **E17 M0–M2 done; M3 T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1 done (2026-10-19); next: M3 T4b-2b-2, T5–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **Pull request (2026-10-19):** T4b-2b-1 (`client/e17-m3-t4b-2b-1`) open.
 - **The user's requirements**, epic "Decisions": a string catalogue, packs in nested JSON, no committed translation of the original's text (CLT-Q7); graphics options (`faithful` the default and the reference); automatic, exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
@@ -52,9 +52,9 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-19, E17 M3 T4b-2a (the user present; T4b-2 split).** The log's lines read (row n
-  = record n), the keys corrected, `h3_view::battle_log`.
+- **2026-10-19, E17 M3 T4b-2b-1 (the user present; T4b-2b split).** The log's item read,
+  drawn and compared by the capture set; the cursor parked beside it.
+- **2026-10-19, E17 M3 T4b-2a (the user present; T4b-2 split).** The log's lines read, the
+  keys corrected, `h3_view::battle_log`.
 - **2026-10-19, E17 M3 T4b-1 (the user present; T4b split).** The string catalogue: keys,
   packs in nested JSON, the original's text read through the keys; CLT-Q7; shared PR #261.
-- **2026-10-15, E17 M3 T4a (the user present; T4 split).** Fonts, `TextDraw`, the tint in
-  exact integers, count boxes drawn: the set without their mask, all exact.

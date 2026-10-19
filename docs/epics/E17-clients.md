@@ -313,6 +313,12 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   1; the keys lifted from *provisional* (the war machine's row added, the bad luck row dropped:
   the original has none); `h3_view::battle_log` composes them and the entries a line becomes;
   the gate composes 12 sample lines from the user's tables, `h3-view text --log` prints them.
+- **T4b-2b-1 done 2026-10-19** ([log](E17-log.md#m3-t4b-2b-1--the-logs-item-in-the-panel-2026-10-19),
+  [design §9.5](E17-design.md)): T4b-2b split with the user (a strike's line against a capture
+  left as T4b-2b-2). The panel's log item read (a text item over `cRollovr.pcx` at (214, 563),
+  400 × 32, `smalfont.fnt`, colour 1, centred; two entries as its text) and drawn (the layout's
+  `[log]`, `Draw::Log`); the capture set compares it (`panel_beside_log`), the harness's cursor
+  parked beside it: 31 situations, all frames exact.
 
 ### Later (refined when they come up)
 
@@ -492,6 +498,13 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T4b-2b-1: the layout's `[log]` (picture, place, size, font, its palette, colour, alignment; the
+  format); `Draw::Log` and `scene::panel` (the panel's draws appended by the adapters after the
+  battlefield, the log empty until T6 maps the events); the picture drawn whole (the executable
+  draws at most the item's size: the same for `cRollovr.pcx`); the item's flag 8 (colour + 2)
+  not built; the harness's battle cursor parked at (618, 593) instead of (420, 580), inside the
+  log's item, and the capture set's mask `panel_beside_log`.
 
 - T4b-2a: a breath over two stacks of one creature: the original's log line reports the target's
   hit alone (0x441B9B); copied as the original's (no `fixed` variant: the user's call); the
