@@ -29,7 +29,8 @@ and ADR-0023 point 7 (`human`, `difficulty`) stay as they are.
    caller's thread), N envs split into T contiguous shards. An env's play never depends on T.
 4. **Seeds:** env i draws its episode seeds from stream `env(i)` of the batch seed (a kernel stream
    id, T3); `h3_batch_episode_seed` exposes them. **A batch steps bit for bit as N single envs**
-   with those seeds (a property test).
+   with those seeds (a property test). An episode drawn from the encounter distribution draws its
+   battle from stream `ENCOUNTER` of its seed (T5b), apart from the scenario's draw (`SETUP`).
 5. **Seats per scenario side:** `External` (the caller acts; every acting side the batch reports
    is external) or `Internal(policy)`, played inside the step until an external side must act or
    the episode ends. Policies are a closed enum in `h3-sim` choosing a `Command`: `Random` (tests
