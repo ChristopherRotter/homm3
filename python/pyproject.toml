@@ -1,0 +1,35 @@
+[project]
+name = "h3env"
+version = "0.1.0"
+description = "The h3 engine's battle environment from Python: ctypes over its C ABI (E05)"
+readme = "README.md"
+license = "GPL-2.0-or-later"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26"]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.14"]
+# T6b adds the group "train": torch 2.14 from https://download.pytorch.org/whl/cu126 (pinned).
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+
+[tool.uv]
+# The lock covers Linux and Windows on x86-64, the platforms of PyTorch's cu126 wheels.
+environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
