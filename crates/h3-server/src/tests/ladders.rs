@@ -170,6 +170,11 @@ fn ladders_are_configured_and_checked() {
     let ids: Vec<&str> = example.ladders.iter().map(|l| l.id.as_str()).collect();
     assert_eq!(ids, ["arena"]);
     assert!(example.ladders[0].scenarios.iter().all(|s| s.is_file()));
+    // Its games keep no leak of hidden obstacles (BAT-QUIRK-4; the user, 2026-10-19).
+    assert_eq!(
+        example.ladders[0].profile.as_deref(),
+        Some("synthetic:strict-fixed")
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

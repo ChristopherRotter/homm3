@@ -9,10 +9,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   T4; #252) and 3 (T5a #253, T5b1 and T5b2 #255, T6a #257, T6b and the head calls #258) done.
   **Increment 4** done 2026-10-19: T8 (design §8, AI-Q5; `python/h3env/train/`, C ABI v29,
   #260; the opponent pool, #264): exit criterion 7 met on the user's GTX 1070 (0.800 against
-  Random after 40 minutes, best 0.811). **Increment 5** (T7, design §9; AI-Q6): the preview
-  (#274, `cross-lane`) and ADR-0025 point 5 (#271, `shared/`) merged; the bots, `h3 ai eval`,
-  C ABI v30 on `claude/exciting-pasteur-7etga9`, its pull request open (see the newest
-  session). **Next:** T7d on the user's machine (QUEUE).
+  Random after 40 minutes, best 0.811). **Increment 5** done 2026-10-19 (T7, design §9;
+  AI-Q6): the preview (#274), ADR-0025 point 5 (#271), the bots, `h3 ai eval`, C ABI v30
+  (#276), the user's network at Aggressor's level: exit criterion 6 met. **Next:** the
+  user's checkpoint, increment 6 (T9, the closure; QUEUE).
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v30 (T7: the bots' seats) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q8, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
@@ -70,14 +70,14 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
-### 2026-10-19 — Increment 5's cut; T7a–T7c and T7d's code
+### 2026-10-19 — Increment 5: T7, the baselines (AI-Q6), and the network's row
 
 - #270 merged. The user cut increment 5 (T7) and decided AI-Q6 (the bots read the engine's
   preview of their own attacks, never the retaliation; Glicko-2 from the server). Opened #271
   (`shared/`, ADR-0025 point 5) and #274 (`cross-lane`, `h3_battle::preview`).
 - Built the bots, `h3 ai eval` (Greedy 0.828, Aggressor 0.800 against Random), C ABI v30 and
-  `h3env.train.ladder` (`E05-log.md`); #271 and #274 merged, this branch's PR opened after
-  them (watch it until it merges).
+  `h3env.train.ladder` (`E05-log.md`); #271, #274, #276 merged. The user's network: 0.802
+  against Random, 0.498 against Aggressor, 0.479 against Greedy (T7d).
 - For the global HANDOFF (a `shared/` change, kept from T8b): `cargo xtask verify` outside
   `scripts/sandbox-verify.sh` needs `LLVM_COV`, `LLVM_PROFDATA` on `/usr/lib/llvm-20/bin`.
 

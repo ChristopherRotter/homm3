@@ -208,7 +208,9 @@ pub(crate) fn open_log(path: &Path) -> io::Result<(File, String)> {
     if new {
         File::open(dir).and_then(|d| d.sync_all())?;
     }
-    let mut text = fs::read_to_string(path)?;
+    // Read through the handle that cuts and writes, not a second open of the file.
+    let mut text = String::new();
+    io::Read::read_to_string(&mut file, &mut text)?;
     let complete = text.rfind('\n').map_or(0, |end| end + 1);
     if complete < text.len() {
         file.set_len(u64::try_from(complete).unwrap_or(u64::MAX))?;

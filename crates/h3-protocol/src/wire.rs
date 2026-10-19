@@ -820,7 +820,9 @@ pub struct OwnHero {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SideView {
-    /// It may retreat.
+    /// It may retreat, as the viewer knows it (BAT-FLE-001): at a town the defender's rests on its
+    /// Escape Tunnel, which shows to the defender only, `false` (unknown) to the attacker and a
+    /// spectator (BAT-SIE-024, BAT-Q50 (4)).
     pub may_retreat: bool,
     /// It may surrender at all (whether the viewer can pay is in [`OwnHero`]).
     pub may_surrender: bool,
@@ -897,7 +899,8 @@ pub struct Observation {
     pub wait_phase: bool,
     /// The stack whose turn it is.
     pub active: Option<u8>,
-    /// The side of the last stack that took a turn.
+    /// The side the speed tie-break counts as activated last (BAT-TRN-001): the side of the last
+    /// stack that took a turn, but the defender after the attacker's Catapult (BAT-SIE-011).
     pub last_side_acted: Option<Side>,
     /// How the battle ended, once it is over.
     pub result: Option<Outcome>,
@@ -1165,6 +1168,9 @@ pub enum Query {
         /// The first target.
         target: Target,
     },
+    /// The targets of the active stack's own cast now (a `CreatureCast`, BAT-MAG-048): none if
+    /// it is not the seat's or may not cast.
+    CreatureCastTargets {},
 }
 
 /// A message from a client.

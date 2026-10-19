@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4 done: T8, exit criterion 7 met; increment 5: T7) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4 done: T8, exit criterion 7 met; increment 5 done: T7, exit criterion 6 met) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -165,8 +165,10 @@ next (increment 5: T7).
 - [x] **T7c The runner** — `h3 ai eval` with Glicko-2 from `h3-server`, 2026-10-19: on 1 000
   held-out episodes per pair Greedy 0.828 and Aggressor 0.800 against Random, Greedy 0.519
   against Aggressor. Record in `E05-log.md`.
-- [ ] **T7d The network's row** — C ABI v30's bot seats and `python -m h3env.train.ladder`
-  built (2026-10-19); the user's `best.pt` against the ladder on the GTX 1070, recorded.
+- [x] **T7d The network's row** — C ABI v30's bot seats and `python -m h3env.train.ladder`
+  (#276); the user's network (a pool run of 11 minutes) 0.802 against Random, 0.498 against
+  Aggressor, 0.479 against Greedy: at Aggressor's level (2026-10-19). Exit criterion 6 met.
+  Record in `E05-log.md`.
 
 **Later increments** (coarse; cut at each checkpoint):
 - **T9 Closure:** an independent review, measurements on the user's machine (the batch's wall time
