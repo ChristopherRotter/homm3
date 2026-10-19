@@ -100,8 +100,13 @@ time per lane**. A lane owns paths; everything else it may not change in its own
   gate checks it on the pull request, and a heavy dependency stops the line under the autonomy
   contract; user, 2026-10-07), `clients/Cargo.lock` (an engine crate the client builds that
   changes its dependencies updates it too; the verify's `clients-lock` gate; user, 2026-10-14),
-  and the survey index `docs/rules/surveys/README.md` (one section
-  per epic).
+  the survey index `docs/rules/surveys/README.md` (one section
+  per epic), and **every lane's `QUEUE.md`, for its inbox only** (user, 2026-10-19): a lane that
+  finds something another lane should learn about or do adds it as a dated inbox entry to that
+  lane's queue itself, naming the sender (`2026-10-19 (the client lane, E17 M3 T4b-1): …`), in
+  its own pull request; it never edits that queue's tasks or other entries, and leaves nothing
+  "to pass on" in its own queue or with the user. The receiving lane triages it like any inbox
+  entry.
 
 **Branches and pull requests.** A lane works on a branch `<lane>/<task>` per task or increment and
 merges it at its checkpoint; a shared change goes on `shared/<topic>`. `cargo xtask check-lane`
@@ -296,6 +301,6 @@ See `05-testing.md`.
 
 ## Backlog hygiene
 
-- New discoveries → the lane's `QUEUE.md` inbox; cross-cutting ones (tooling, gates, kernel) → the inbox at the bottom of `BACKLOG.md` (a shared change).
+- New discoveries → the lane's `QUEUE.md` inbox, one for another lane straight into that lane's inbox ("Lanes", common paths); cross-cutting ones (tooling, gates, kernel) → the inbox at the bottom of `BACKLOG.md` (a shared change).
 - Completed epics are marked done with a one-paragraph summary and links to ADRs.
 - Keep the backlog short and honest; delete items that stopped being relevant.

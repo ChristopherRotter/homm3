@@ -12,7 +12,7 @@ Read first, then the lane's HANDOFF (`AGENTS.md`): the lane index and every lane
 | server | `h3-protocol`, `h3-server` | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
 | client | `clients/` (own Cargo workspace) | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
 
-Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content` and `h3-pack` (R01), workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common: `OPEN-QUESTIONS.md` and `docs/stubs.toml` (a block per lane), both `Cargo.lock`s, `docs/exe/map.toml` and `structs.toml` (a line per entry).
+Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content` and `h3-pack` (R01), workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common: `OPEN-QUESTIONS.md`, `docs/stubs.toml` (a block per lane), both `Cargo.lock`s, `docs/exe/map.toml`, `structs.toml` (a line per entry), each lane's `QUEUE.md` inbox.
 
 - **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: without minutes or billing runs fail unstarted and the full local verify stands in; CI never blocks work, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full verify for pull requests and `master` (once per code, not for docs only) and weekly `cargo deny check advisories`. Changes reach `master` by pull request only, **opened when its branch is ready to merge**; each push to an open one runs CI: merge `master` into it after `master`'s latest run finished.
 
@@ -23,7 +23,7 @@ Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `
 
 **Sandbox and sync**
 - Original files: stage the user's `original-data/` through the device link (`08-work-process.md` "Cloud sandbox"; one LOD per call), then `scripts/sandbox-setup.sh`; without the link a session only prepares (Q48). Fetch `master` before a push (a thin pack).
-- **Stop hook "… no remote branch"** after a push: the clone lacks `origin/<branch>`; nothing is lost. Don't report it; fix: `08-work-process.md` "Cloud sandbox" 1.
+- **Stop hook "… no remote branch"** after a push: nothing is lost, don't report it; fix: `08-work-process.md` "Cloud sandbox" 1.
 - Git on the user's machine: delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock`), `-c user.name -c user.email`; no GitHub credentials there. Cloud sessions open pull requests by the REST API (GraphQL is blocked).
 - The VM can restart (files stay, background jobs die): check `ps` first. A build's `Bus error` or `No space`: the disk allowance is spent (`08-work-process.md` "Cloud sandbox" 5).
 - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background and poll its log, or `verify --summary` (full log `target/verify/verify.log`); the inner loop is `verify --scope <lane> --quick`.

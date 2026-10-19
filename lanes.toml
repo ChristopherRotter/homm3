@@ -86,6 +86,14 @@ paths = [
     "docs/rules/surveys/README.md",
     "docs/exe/map.toml",
     "docs/exe/structs.toml",
+    # Each lane's queue, for its inbox only: a lane adds what another lane should learn about to
+    # that lane's inbox itself, never its tasks (user, 2026-10-19; docs/08-work-process.md,
+    # "Lanes"). The longest match makes these files common inside each lane's folder.
+    "docs/lanes/adventure/QUEUE.md",
+    "docs/lanes/ai/QUEUE.md",
+    "docs/lanes/battle/QUEUE.md",
+    "docs/lanes/client/QUEUE.md",
+    "docs/lanes/server/QUEUE.md",
 ]
 
 [[lane]]
