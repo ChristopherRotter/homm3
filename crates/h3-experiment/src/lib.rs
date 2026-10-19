@@ -2157,7 +2157,7 @@ mod tests {
         assert!(fails("\"friendly\"", "\"shy\"").contains("unknown disposition `shy`"));
         let guards = "guards = [[\"Pikeman\", 3]]";
         assert!(fails(guards, "question = \"?\"").contains("a question needs guards"));
-        let eight = format!("guards = [{}]", vec!["[\"Pikeman\", 1]"; 8].join(", "));
+        let eight = format!("guards = [{}]", ["[\"Pikeman\", 1]"; 8].join(", "));
         assert!(fails(guards, &eight).contains("8 guard stacks (1–7)"));
         assert!(fails(guards, "guards = [[\"Pikeman\", 0]]").contains("an empty guard stack"));
         assert!(fails(guards, "guards = [[\"Imp\", 1]]").contains("unknown creature `Imp`"));
