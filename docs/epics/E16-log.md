@@ -1873,7 +1873,8 @@ for E08, the ecosystem for its refinement).
   BAT-SIE-011). **Wire 34.**
 - **A siege's frames** (E04c T10b's review, F-sec-3): `h3-protocol`'s
   `a_towns_escape_tunnel_leaves_the_attackers_and_spectators_bytes_unchanged` plays the `siege`
-  scenario with and without the tunnel: the attacker's and a spectator's bytes are the same, the
+  scenario, its defender led by the `full` scenario's hero (a side retreats only with a hero,
+  BAT-FLE-001), with and without the tunnel: the attacker's and a spectator's bytes are the same, the
   defender's first snapshot differs. A town's land mines (BAT-SIE-007) have no synthetic town to
   play (the vale has a moat); they are hidden obstacles as a hero's Land Mine is, whose frames
   `hidden_obstacles_never_reach_the_other_viewers_bytes` covers.
@@ -1881,3 +1882,5 @@ for E08, the ecosystem for its refinement).
   where results count, no leak of the other side's hidden obstacles by Quicksand's and Land Mine's
   draws (BAT-QUIRK-4); the offers stay on the scenarios' `faithful`. The operator's notes explain
   the profile and the trade-off.
+- **The workload** re-baselined (+3.44 %): `master`'s drift (e7fd849..aaa9630), measured on a
+  clean worktree of `master` at the same count.
