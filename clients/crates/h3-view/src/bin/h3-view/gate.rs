@@ -275,15 +275,17 @@ fn gate(options: &Options) -> Result<(), String> {
         texts.len()
     );
     // The battle log's lines (E17 M3 T4b-2a): composed from the original's text, every argument
-    // in its place.
-    let samples = text::log_samples(&Catalogue {
-        packs: vec![original],
-    });
-    let problems = text::log_problems(&samples);
-    if !problems.is_empty() {
-        return Err(format!("the battle log: {}", problems.join("; ")));
+    // in its place (a catalogue without the log's keys, as the tests' own, has none to compose).
+    if keys.keys.contains_key("battle.log.damage") {
+        let samples = text::log_samples(&Catalogue {
+            packs: vec![original],
+        });
+        let problems = text::log_problems(&samples);
+        if !problems.is_empty() {
+            return Err(format!("the battle log: {}", problems.join("; ")));
+        }
+        println!("gate: the battle log: {} lines composed", samples.len());
     }
-    println!("gate: the battle log: {} lines composed", samples.len());
     // The sound archives (E17 M2 T5b): every WAV decodes to SDL's samples.
     print!(
         "{}",
