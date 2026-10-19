@@ -195,6 +195,21 @@ fn the_query_stays_on_the_heros_level() {
     assert_eq!(reach.points_left(Pos::new(1, 1, 1)), Some(1159));
     assert_eq!(reach.points_left(p(1, 1)), None);
     assert_eq!(reach.points_left(p(1, 0)), None);
+    // A monster on the other level guards nothing on the hero's (a fixed test for the fixture's
+    // monster, which otherwise only the property below builds: E08 T21b).
+    let setup = world(
+        &["ggM", "ggg", "ggg", "ggg"],
+        2,
+        vec![
+            hero_at(1, 0, Pos::new(0, 0, 1), &[PEASANT]),
+            hero_at(2, 1, p(1, 1), &[PEASANT]),
+        ],
+    );
+    let guarded =
+        AdventureState::new(&rules.0, &rules.1, &setup, &mut crate::testing::draws()).unwrap();
+    assert_eq!(guarded.guard_of(&rules.1, p(1, 0)), Some(0));
+    assert_eq!(guarded.guard_of(&rules.1, Pos::new(1, 0, 1)), None);
+    assert_eq!(self::reach(&guarded, &rules, 1), reach);
 }
 
 /// The tiles of the property's maps, weighted toward walkable ones.

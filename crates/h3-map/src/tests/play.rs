@@ -11,8 +11,11 @@
 //! to act (a battle's outcome changes armies, removes heroes and moves a surrender's gold); since
 //! T19b2 with runs of fighting steps that bring heroes together and play their battles mostly to
 //! a victory, with hero casts, and heroes with Eagle Eye, Necromancy and Wisdom of their own, so
-//! that winners capture, raise and learn (`the_plans_play_battles_to_a_victory`). What a viewer
-//! may learn is T8b2b's ([`super::view`]), on the same maps and driver.
+//! that winners capture, raise and learn (`the_plans_play_battles_to_a_victory`); since T20b3b1
+//! with wandering monsters and special grounds (their offers to join, to join for gold and to
+//! flee, groups joining, and their battles, whose unowned side the driver plays as the system
+//! actor); since T21a with guarded piles (their questions, and their battles won and lost). What
+//! a viewer may learn is T8b2b's ([`super::view`]), on the same maps and driver.
 
 use std::sync::{Arc, LazyLock};
 

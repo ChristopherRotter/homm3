@@ -14,8 +14,9 @@ tests.
   links `https://github.com/vcmi/vcmi/blob/1.7.5/<file>`.
 - `h3api`: H3API (commit `92255ab`, MIT) for names and layouts (`H3GlobalObjectSettings`,
   `H3MapItem`'s access bits, `H3Main::keymasterVisited`): guesses, each checked in the code below.
-- `maps`: a census of the 164 maps shipped with the user's installation, read with `h3-map`
-  (counts in §1).
+- `maps`: a census of the 164 maps of the user's installation, read with `h3-map`
+  (counts in §1). Four of them turned out to be the user's own (removed on 2026-10-18): the
+  counts include them; the 160 shipped maps' census: `docs/formats/h3m.md`'s "Import" (E08 T21b).
 - `wiki`: read 2026-10-12 through the summarising fetch tool (the first attempts waited for the
   user's approval and timed out; the user approved later the same day):
   [Resources](https://heroes.thelazy.net/index.php/Resources),
@@ -150,8 +151,8 @@ object. VCMI keeps every object of a tile: `visitObjectOnTile` visits the last
 
 The engine (T14a): the last object in map order still on the map, for both modes and for §2.3;
 T13b's neighbour visit took the first (VCMI's), changed with the user's leave (2026-10-12). It
-matters for no shipped map: none of the 164 has a tile visited from two objects (0 of 101 246
-visitable tiles, heroes left out; `crates/h3-map/examples/original_data.rs`).
+matters for no shipped map: no shipped map has a tile visited from two objects (0 of 100 311
+visitable tiles over the 160 since E08 T21b, 0 of 101 246 over the 164 before; heroes left out; `crates/h3-map/examples/original_data.rs`).
 
 ## 3. Pickups
 
