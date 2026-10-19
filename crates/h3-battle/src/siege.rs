@@ -556,18 +556,32 @@ pub(crate) fn defense_penalty(state: &BattleState, victim: &Stack) -> i32 {
 /// landing).
 // rule: BAT-SIE-003
 pub(crate) fn entered<S: Sink>(state: &mut BattleState, mover: StackId, sink: &mut S) {
-    let stack = *state.at(mover);
-    let Some(s) = state.siege.as_mut() else {
-        return;
-    };
-    let on_gate = stack
-        .footprint(s.field)
-        .hexes()
-        .any(|h| h == s.gate || h == s.bridge || h == s.outer_bridge);
-    if !s.gate_open && stack.controller() == BattleSide::Defender && on_gate {
+    let opens = opens_gate(state, state.at(mover));
+    if let Some(s) = state.siege.as_mut().filter(|_| opens) {
         s.gate_open = true;
         sink.emit(Event::public(EventKind::GateOpened));
     }
+}
+
+/// Whether `stack`, standing where its `hex` says, opens the gate ([`entered`], BAT-SIE-003).
+pub(crate) fn opens_gate(state: &BattleState, stack: &Stack) -> bool {
+    gate_closed_for(state, stack)
+        && state.siege.is_some_and(|s| {
+            stack
+                .footprint(s.field)
+                .hexes()
+                .any(|h| h == s.gate || h == s.bridge || h == s.outer_bridge)
+        })
+}
+
+/// Whether the town's gate is closed and `stack` is commanded for the defender: a position of
+/// its walk may open the gate (BAT-SIE-003), so the walk goes position by position also where
+/// nothing records it (`obstacles::go`); every sink then ends in the same state.
+// rule: BAT-SIE-003
+pub(crate) fn gate_closed_for(state: &BattleState, stack: &Stack) -> bool {
+    state
+        .siege
+        .is_some_and(|s| !s.gate_open && stack.controller() == BattleSide::Defender)
 }
 
 /// After a move or an action: an open gate closes unless a living stack or a corpse lies on the
