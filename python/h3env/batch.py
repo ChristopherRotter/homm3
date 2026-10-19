@@ -26,7 +26,7 @@ SEATS = {
 
 
 def episode_seed(batch_seed: int, env: int, episode: int) -> int:
-    """The seed of episode `episode` of env `env`: a single env with it plays the same battle."""
+    """The seed of episode `episode` of env `env`, as `BattleBatch.episode_seed` (trusted)."""
     return _ffi.lib().h3_batch_episode_seed(batch_seed, env, episode)
 
 
@@ -48,6 +48,32 @@ def _seat(seat: int | str) -> int:
     return SEATS[seat] if isinstance(seat, str) else int(seat)
 
 
+def _unsigned(name: str, value: int, bits: int = 32) -> int:
+    """`value` if it fits the ABI's unsigned field of `bits` (ctypes would wrap it silently)."""
+    if not 0 <= int(value) < 1 << bits:
+        raise ValueError(f"{name} = {value} is out of range (0 to 2^{bits} - 1)")
+    return int(value)
+
+
+#: The arrays the engine writes at each call, in `H3BatchBuffers` order: read-only attributes of
+#: a `BattleBatch` (the engine holds their addresses, so they are never replaced).
+_OUTPUTS = (
+    "obs",
+    "entry_mask",
+    "to_move",
+    "reward",
+    "done",
+    "truncated",
+    "result",
+    "final_obs",
+    "episode",
+    "scenario",
+    "episode_seed",
+    "status",
+    "encounter",
+)
+
+
 class BattleBatch:
     """N battle environments stepped together (`h3_batch_*`).
 
@@ -64,7 +90,9 @@ class BattleBatch:
     - `final_obs` [N, 2, `observation_len`] float32: both sides' last observations, written only
       for the rows truncated in this call (None with `final_obs=False`);
     - `episode`, `scenario` [N] uint32, `episode_seed` [N] uint64: the current episode, its
-      source's index (in the order added) and its seed;
+      source's index (in the order added) and its seed. The seed is trusted tooling (it decides
+      the battle's draws: never an agent's input); a single env of the episode's scenario with
+      both sides human and this seed plays the same battle;
     - `status` [N] int32: `H3_OK`, or why the env refused this call's action (it is unchanged);
     - `encounter` [N] int8: the episode's encounter kind (`H3_ENCOUNTER_*`, -1 for a scenario).
 
@@ -90,11 +118,13 @@ class BattleBatch:
         if currency not in _ffi.CURRENCIES:
             raise ValueError(f"unknown currency {currency!r} (one of {sorted(_ffi.CURRENCIES)})")
         config = _ffi.H3BatchConfig(
-            envs=envs,
-            threads=threads,
-            seed=seed,
-            max_steps=max_steps,
-            reward=_ffi.H3RewardConfig(_ffi.CURRENCIES[currency], mana_price),
+            envs=_unsigned("envs", envs),
+            threads=_unsigned("threads", threads),
+            seed=_unsigned("seed", seed, 64),
+            max_steps=_unsigned("max_steps", max_steps),
+            reward=_ffi.H3RewardConfig(
+                _ffi.CURRENCIES[currency], _unsigned("mana_price", mana_price)
+            ),
         )
         error = _ffi.error_buffer()
         handle = h.h3_batch_create(byref(config), error, len(error))
@@ -104,38 +134,23 @@ class BattleBatch:
         self.envs = envs
         self.seed = seed
         n, obs = envs, self.observation_len
-        self.obs = np.zeros((n, obs), np.float32)
-        self.entry_mask = np.zeros((n, self.action_count), np.uint8)
-        self.to_move = np.full(n, -1, np.int8)
-        self.reward = np.zeros((n, 2), np.float32)
-        self.done = np.zeros(n, np.uint8)
-        self.truncated = np.zeros(n, np.uint8)
-        self.result = np.full(n, _ffi.RESULT_NONE, np.int8)
-        self.final_obs = np.zeros((n, 2, obs), np.float32) if final_obs else None
-        self.episode = np.zeros(n, np.uint32)
-        self.scenario = np.zeros(n, np.uint32)
-        self.episode_seed = np.zeros(n, np.uint64)
-        self.status = np.zeros(n, np.int32)
-        self.encounter = np.full(n, _ffi.ENCOUNTER_NONE, np.int8)
+        self._out = {
+            "obs": np.zeros((n, obs), np.float32),
+            "entry_mask": np.zeros((n, self.action_count), np.uint8),
+            "to_move": np.full(n, -1, np.int8),
+            "reward": np.zeros((n, 2), np.float32),
+            "done": np.zeros(n, np.uint8),
+            "truncated": np.zeros(n, np.uint8),
+            "result": np.full(n, _ffi.RESULT_NONE, np.int8),
+            "final_obs": np.zeros((n, 2, obs), np.float32) if final_obs else None,
+            "episode": np.zeros(n, np.uint32),
+            "scenario": np.zeros(n, np.uint32),
+            "episode_seed": np.zeros(n, np.uint64),
+            "status": np.zeros(n, np.int32),
+            "encounter": np.full(n, _ffi.ENCOUNTER_NONE, np.int8),
+        }
         self._buffers = _ffi.H3BatchBuffers(
-            *(
-                None if a is None else a.ctypes.data
-                for a in (
-                    self.obs,
-                    self.entry_mask,
-                    self.to_move,
-                    self.reward,
-                    self.done,
-                    self.truncated,
-                    self.result,
-                    self.final_obs,
-                    self.episode,
-                    self.scenario,
-                    self.episode_seed,
-                    self.status,
-                    self.encounter,
-                )
-            )
+            *(None if a is None else a.ctypes.data for a in map(self._out.get, _OUTPUTS))
         )
         self.actions = np.zeros(n, _ffi.ACTION_DTYPE)
         self._spell_mask = np.zeros((n, self.spell_count), np.uint8)
@@ -164,6 +179,19 @@ class BattleBatch:
             raise H3Error(_ffi.ERR_NULL, "the batch is closed")
         return self._handle
 
+    def _check(self, code: int, error=None) -> int:
+        """`_ffi.check`, closing the handle first on `H3_ERR_PANIC` (the batch is broken then)."""
+        if code == _ffi.ERR_PANIC:
+            self.close()
+        return _ffi.check(code, error)
+
+    def _column(self, name: str, values: np.ndarray, dtype) -> np.ndarray:
+        """`values` as the contiguous [N] array of `dtype` the engine reads N values from."""
+        column = np.ascontiguousarray(values, dtype)
+        if column.shape != (self.envs,):
+            raise ValueError(f"{name}: shape {column.shape}, not ({self.envs},)")
+        return column
+
     # Episode sources.
 
     def add_scenario(
@@ -184,9 +212,9 @@ class BattleBatch:
         seats = _ffi.H3Seats(_seat(attacker), _seat(defender))
         error = _ffi.error_buffer()
         code = self._lib.h3_batch_add_scenario(
-            self._live(), text, len(text), weight, seats, error, len(error)
+            self._live(), text, len(text), _unsigned("weight", weight), seats, error, len(error)
         )
-        _ffi.check(code, error)
+        self._check(code, error)
 
     def add_encounters(
         self,
@@ -216,34 +244,34 @@ class BattleBatch:
                 kinds = [kinds.get(name, 0) for name in _ffi.ENCOUNTER_KINDS]
             if len(kinds) != len(_ffi.ENCOUNTER_KINDS):
                 raise ValueError(f"six kind weights, not {len(kinds)}")
-            pointer = (c_uint32 * 6)(*kinds)
+            pointer = (c_uint32 * 6)(*(_unsigned("kinds", k) for k in kinds))
         seats_pointer = None if seats is None else byref(seats)
         code = self._lib.h3_batch_add_encounters(
-            self._live(), weight, pointer, seats_pointer, error, len(error)
+            self._live(), _unsigned("weight", weight), pointer, seats_pointer, error, len(error)
         )
-        _ffi.check(code, error)
+        self._check(code, error)
 
     # Calls.
 
     def reset(self) -> None:
         """Starts every env's first episode (a later reset replays the same episodes)."""
-        _ffi.check(self._lib.h3_batch_reset(self._live(), byref(self._buffers)))
+        self._check(self._lib.h3_batch_reset(self._live(), byref(self._buffers)))
 
     def spell_mask(self, entries: np.ndarray) -> np.ndarray:
         """[N, `spell_count`]: each env's legal spells after choosing `entries` ("0 only" for an
         entry that is no cast). The array is rewritten by the next spell-mask call."""
-        e = np.ascontiguousarray(entries, np.uint32)
+        e = self._column("entries", entries, np.uint32)
         out = self._spell_mask
         code = self._lib.h3_batch_spell_mask(
             self._live(), _ffi.ptr(e, c_uint32), _ffi.ptr(out, c_uint8), out.size
         )
-        _ffi.check(code)
+        self._check(code)
         return out
 
     def target_mask(self, entries: np.ndarray, spells: np.ndarray) -> np.ndarray:
         """[N, `target_count`]: each env's legal targets after choosing `entries` and `spells`."""
-        e = np.ascontiguousarray(entries, np.uint32)
-        s = np.ascontiguousarray(spells, np.uint16)
+        e = self._column("entries", entries, np.uint32)
+        s = self._column("spells", spells, np.uint16)
         out = self._target_mask
         code = self._lib.h3_batch_target_mask(
             self._live(),
@@ -252,16 +280,16 @@ class BattleBatch:
             _ffi.ptr(out, c_uint8),
             out.size,
         )
-        _ffi.check(code)
+        self._check(code)
         return out
 
     def second_mask(
         self, entries: np.ndarray, spells: np.ndarray, targets: np.ndarray
     ) -> np.ndarray:
         """[N, `target_count`]: each env's legal second targets (Teleport's destination)."""
-        e = np.ascontiguousarray(entries, np.uint32)
-        s = np.ascontiguousarray(spells, np.uint16)
-        t = np.ascontiguousarray(targets, np.uint16)
+        e = self._column("entries", entries, np.uint32)
+        s = self._column("spells", spells, np.uint16)
+        t = self._column("targets", targets, np.uint16)
         out = self._second_mask
         code = self._lib.h3_batch_second_mask(
             self._live(),
@@ -271,7 +299,7 @@ class BattleBatch:
             _ffi.ptr(out, c_uint8),
             out.size,
         )
-        _ffi.check(code)
+        self._check(code)
         return out
 
     def step(
@@ -292,6 +320,8 @@ class BattleBatch:
         side to move raises; an env that gave up refuses every action silently.
         """
         a = self.actions
+        if a.dtype != _ffi.ACTION_DTYPE or a.shape != (self.envs,) or not a.flags.c_contiguous:
+            raise ValueError("actions must stay a contiguous [N] array of ACTION_DTYPE")
         for name, values in (
             ("entry", entry),
             ("spell", spell),
@@ -311,7 +341,7 @@ class BattleBatch:
                         code, f"{len(refused)} env(s) refused their action; env {i}: {name}"
                     )
             return code
-        return _ffi.check(code)
+        return self._check(code)
 
     def random_actions(self, rng: np.random.Generator) -> np.ndarray:
         """Fills `actions` with a uniformly random legal action per env from the batch's masks: the
@@ -331,3 +361,11 @@ class BattleBatch:
             a["target"] = targets
             a["second"] = sample(self.second_mask(e, spells, targets), rng)
         return a
+
+
+def _output(name: str) -> property:
+    return property(lambda self: self._out[name], doc=f"The engine's `{name}` array (read-only).")
+
+
+for _name in _OUTPUTS:
+    setattr(BattleBatch, _name, _output(_name))

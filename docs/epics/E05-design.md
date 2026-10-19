@@ -261,7 +261,9 @@ and written in place by the engine (zero copy). `_ffi.py` (the library from `$H3
 - The batch API serves only the acting seat's `observe` (and, at a truncation, both sides'), never
   the state, its hash or a fork. Full-state access stays in the single-env functions
   (`h3_env_state_hash`, `h3_env_fork`, `BattleEnv::state`), marked trusted tooling in `h3.h` and
-  in `h3env.tools` (exit criterion 3).
+  in `h3env.tools` (exit criterion 3). The batch's episode seeds (an output for bookkeeping and
+  replays, ADR-0025 point 1) decide the battle's draws: marked trusted tooling too, never an
+  agent's input (the trainer reads them only to keep its held-out episodes apart; E05 T9b).
 - The flat observation is the visible state now; a human also sees the battle's log. A fact that
   only history tells and that matters for play belongs in the observation (BAT-Q35 is one such
   corner, the battle lane's).
