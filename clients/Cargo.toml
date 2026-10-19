@@ -39,6 +39,9 @@ miniz_oxide = { version = "0.8", default-features = false, features = ["with-all
 # crate in a newer major version, the first that parses without std (the engine has 0.8, std only).
 serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
 toml = { version = "1.1", default-features = false, features = ["parse", "serde"] }
+# The language packs' parser (E17 M3 T4b-1: nested JSON, the user's choice of 2026-10-19): the
+# engine's version and features (`h3-protocol` has it without std), so the lockfile gains nothing.
+serde_json = { version = "1", default-features = false, features = ["alloc"] }
 # The platform adapter's (E17 M2 T5a, ADR-0024): SDL 3 built from its sources by `sdl3-src` (CMake
 # and a C compiler) and linked statically, one executable; the subsystems the client does not use
 # left out (audio stays: T5b). Only `h3-sdl` names it.
