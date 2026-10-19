@@ -24,3 +24,6 @@ file per workload: `benches/<lane>/<workload>.toml`. The directory is the owning
 | adventure | `reach-xl-144` | every hero's reachable-tiles query of the acting player at each step of 2 random games of 28 days on `fixtures/maps/e08-xl-144.h3m`, inside `h3_cli::adventure::bench::reach_queries` |
 | adventure | `fork-xl-144` | 100 000 forks of the env after 7 days of random play on the same map, inside `h3_cli::adventure::bench::fork_workload` |
 | server | `session-random-play-full` (lane-only) | 20 hosted battles on the same scenario, two scripted clients through `h3-server-bench`, inside `h3_server::bench::serve_frame` (decode, validate, apply, project, encode; the battle engine included) |
+| ai | `batch-random-full` (lane-only) | a training batch of 64 envs of `packs/synthetic/scenarios/full.toml`, both seats external, one thread (`--threads 0`), 1 000 calls of random legal actions from the batch's own masks (casts through the head calls), inside `h3_sim::batch::BattleBatch::step` (`h3 ai bench`; E05 T3c) |
+| ai | `batch-random-siege` (lane-only) | the same on `packs/synthetic/scenarios/siege.toml` (E05 T3c) |
+| ai | `batch-random-encounters-v1` (lane-only) | the same on the encounter distribution v1 at its default weights, each automatic reset's sampled encounter included (`h3 ai bench --encounters default`; E05 T5b2) |
