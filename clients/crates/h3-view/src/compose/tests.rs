@@ -497,3 +497,61 @@ fn a_count_box_is_its_picture_tinted_with_the_count_over_it() {
     no_picture.count_box.picture = "no.pcx".to_string();
     assert_eq!(compose(&list, &batch, &no_picture), gone("no.pcx"));
 }
+
+/// The log's item (M3 T4b-2b-1): a 4 x 2 picture at (2, 1) of an 8 x 4 frame, the text in a 4 x 3
+/// box from the same corner, colour 1 (entry 10), centred.
+#[test]
+fn the_log_is_its_picture_with_the_text_over_it() {
+    let mut layout = small();
+    layout.frame = [8, 4];
+    layout.log.picture = "Roll.pcx".to_string();
+    layout.log.font = "Small.fnt".to_string();
+    layout.log.font_palette = "text.pal".to_string();
+    layout.log.place = [2, 1];
+    layout.log.size = [4, 3];
+    let mut batch = batch();
+    let picture = build::pcx_indexed(4, 2, &[1; 8], &palette(&[(1, BLUE)]));
+    batch.add("Roll.pcx", &picture).unwrap();
+    let text = build::pal(&palette(&[(10, WHITE), (32, GREEN)]), &[0; 256], 0, &[]);
+    batch.add("text.pal", &text).unwrap();
+    // `a` inks its bottom row; `é` (Windows-1252's 0xE9) shades it.
+    let mut glyphs = vec![h3_assets::fnt::Glyph::default(); 256];
+    glyphs[usize::from(b'a')].width = 1;
+    glyphs[usize::from(b'a')].pixels = vec![0, 0, 0xFF];
+    glyphs[0xE9].width = 1;
+    glyphs[0xE9].pixels = vec![0, 0, 1];
+    let font = h3_assets::fnt::Font {
+        height: 3,
+        y_offset: 0,
+        glyphs,
+    };
+    batch.add("Small.fnt", &build::fnt(&font)).unwrap();
+    let log = |text: &str| Draw::Log { text: text.into() };
+    let screen = compose(&[log("a\u{e9}")], &batch, &layout).unwrap();
+    let [b, w, g] = [BLUE, WHITE, GREEN].map(|c| FORMAT.pack(c));
+    assert_eq!(
+        screen.pixels(),
+        [
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, b, b, b, b, 0, 0],
+            [0, 0, b, b, b, b, 0, 0],
+            [0, 0, 0, w, g, 0, 0, 0],
+        ]
+        .concat()
+    );
+    // Empty: the picture alone.
+    let empty = compose(&[log("")], &batch, &layout).unwrap();
+    assert_eq!(empty.pixel(3, 3), Some(0));
+    // What the batch lacks: the font, its palette, the picture.
+    let gone = |what: &str| Err(ComposeError::Missing(what.to_string()));
+    let list = [log("a")];
+    let mut no_font = layout.clone();
+    no_font.log.font = "no.fnt".to_string();
+    assert_eq!(compose(&list, &batch, &no_font), gone("no.fnt"));
+    let mut no_palette = layout.clone();
+    no_palette.log.font_palette = "no.pal".to_string();
+    assert_eq!(compose(&list, &batch, &no_palette), gone("no.pal"));
+    let mut no_picture = layout;
+    no_picture.log.picture = "no.pcx".to_string();
+    assert_eq!(compose(&list, &batch, &no_picture), gone("no.pcx"));
+}

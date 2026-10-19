@@ -36,7 +36,11 @@ and ADR-0023 point 7 (`human`, `difficulty`) stay as they are.
    the episode ends. Policies are a closed enum in `h3-sim` choosing a `Command`: `Random` (tests
    and benchmarks), `System` (E23's function, shared with the adventure's neutral seat), the
    baseline bots (T7). Every scenario has an external side. Bots read their side's observation
-   only.
+   and the engine's damage preview of their own attacks (AI-Q6): `h3-battle`'s preview of a
+   shot or melee attack gives the first strike's least and greatest damage and kills on its
+   target, counting every modifier the strike reveals (the defender's Armorer, its protections),
+   without the rolls (luck, death blows, double damage). Never the retaliation, which the
+   original does not show either: a bot estimates it itself.
 6. **A level playing field: the batch plays every side as a human player's** (AI-Q3): each
    episode's setup has `human = [true, true]` whatever the scenario says. `human = false` remains
    for compatibility with the original's computer player (ADR-0023 point 7); `difficulty` stays
@@ -100,3 +104,5 @@ and ADR-0023 point 7 (`human`, `difficulty`) stay as they are.
 
 - 2026-10-18: Accepted (E05 T1 review: the reward without adventure stakes, escapes disabled, both
   sides human).
+- 2026-10-19: Point 5: bots also read the engine's damage preview of their own attacks, never
+  the retaliation (E05 T7's cut, AI-Q6).

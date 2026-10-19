@@ -58,6 +58,12 @@ Entry (32 bytes): name (16 bytes, NUL-terminated ASCII, mixed case), u32 data of
 u32 uncompressed size, u32 type tag, u32 compressed size. A compressed size of `0` means the data
 is stored; otherwise the data is a zlib stream that inflates to exactly the uncompressed size.
 
+**Reading the directory alone** (CLT-Q2, 2026-10-19): the used table ends at `92 + 32 n` (18 300 to
+157 148 bytes in the four archives), so the first 320 092 bytes and the file's length are all a
+reader needs to list the entries and check their ranges; each entry is then read from its own range
+(`offset .. offset + stored size`). `h3_formats::lod::LodTable` and `read_entry` do so; on all four
+archives they give the whole-archive reader's table and every entry's bytes (11 981 entries).
+
 | Archive | Entries | Compressed | Content by extension (type tag) |
 |---|---:|---:|---|
 | `H3bitmap.lod` | 4 908 | 4 887 | PCX (16, 17), **TXT (2) × 71**, H3C campaigns (1) × 14, FNT (80), PAL (96), XMI, IFR |

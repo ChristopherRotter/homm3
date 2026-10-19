@@ -119,9 +119,11 @@ impl Batch {
 }
 
 /// The batch a draw list needs: every name in it (a flag's palette too), the layout's count box's
-/// picture, font and font palette when it draws a count box, and the outline palette, upper-cased.
+/// picture, font and font palette when it draws a count box, its log's when it draws the log, and
+/// the outline palette, upper-cased.
 pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
     let boxes = &layout.count_box;
+    let log = &layout.log;
     let named = list.iter().flat_map(|d| match d {
         Draw::Background { picture, .. } | Draw::AbsoluteObstacle { picture, .. } => vec![picture],
         Draw::Obstacle { def, .. }
@@ -131,6 +133,7 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         | Draw::Magic { def, .. } => vec![def],
         Draw::Flag { def, palette, .. } => vec![def, palette],
         Draw::CountBox { .. } => vec![&boxes.picture, &boxes.font, &boxes.font_palette],
+        Draw::Log { .. } => vec![&log.picture, &log.font, &log.font_palette],
         Draw::Ray(_) => Vec::new(),
     });
     named
@@ -240,6 +243,10 @@ mod tests {
                 count: 1,
                 tint: [0, 0],
             },
+            // The log the layout's picture, font and its palette (M3 T4b-2b-1).
+            Draw::Log {
+                text: "x".to_string(),
+            },
         ];
         let layout = crate::scene::tests::layout();
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
@@ -252,10 +259,12 @@ mod tests {
                 "CMFLAGL.DEF",
                 "CMNUMWIN.PCX",
                 "CR.DEF",
+                "CROLLOVR.PCX",
                 "GAME.PAL",
                 "OB.DEF",
                 "PLAYERS.PAL",
                 "PLCBOWX.DEF",
+                "SMALFONT.FNT",
                 "SP12_.DEF",
                 "TINY.FNT"
             ]

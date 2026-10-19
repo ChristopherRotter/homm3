@@ -1,6 +1,6 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a done). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
@@ -313,6 +313,30 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   1; the keys lifted from *provisional* (the war machine's row added, the bad luck row dropped:
   the original has none); `h3_view::battle_log` composes them and the entries a line becomes;
   the gate composes 12 sample lines from the user's tables, `h3-view text --log` prints them.
+- **T4b-2b-1 done 2026-10-19** ([log](E17-log.md#m3-t4b-2b-1--the-logs-item-in-the-panel-2026-10-19),
+  [design §9.5](E17-design.md)): T4b-2b split with the user (a strike's line against a capture
+  left as T4b-2b-2). The panel's log item read (a text item over `cRollovr.pcx` at (214, 563),
+  400 × 32, `smalfont.fnt`, colour 1, centred; two entries as its text) and drawn (the layout's
+  `[log]`, `Draw::Log`); the capture set compares it (`panel_beside_log`), the harness's cursor
+  parked beside it: 31 situations, all frames exact.
+
+### The adventure lane's harness (H1, H2: its batch E3)
+
+Taken ahead of M3's remainder on 2026-10-19 (the user): the adventure lane's E08 T22a waits on
+it (`docs/rules/surveys/E08-battles.md` §13; the requests in the queue's inbox since 2026-10-13).
+
+- **H1 done 2026-10-19** ([log](E17-log.md#h1--questions-the-difficulty-battles-from-the-map-2026-10-19),
+  [design §6.3](E17-design.md)): `h3adv.py` answers a visit's questions by the record their text
+  was written from (`h3lod.py`, the topmost dialog's text in memory), starts a game at a chosen
+  difficulty, plays the battles a step opens (auto combat, a retreat or a surrender by side) with
+  their stacks read at the start and the end, and records heroes' details, the players' resources
+  before and after and a tile's monster from memory; `setup.sh` turns on the auto combat of
+  creatures. The check recipe (`capture/batches/harness-check.toml`) plays each; batch 2 still
+  reproduces.
+- **H2 done 2026-10-19** ([log](E17-log.md#h2--the-underground-more-heroes-the-starts-reads-a-second-day-2026-10-19)):
+  a `walk` onto either level (the view switched by the panel's button; shown on a shipped map),
+  the hero list scrolled beyond five heroes, a level-up's skill chosen, the heroes off the map's
+  experience, the date; the check recipe plays a second day.
 
 ### Later (refined when they come up)
 
@@ -492,6 +516,13 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T4b-2b-1: the layout's `[log]` (picture, place, size, font, its palette, colour, alignment; the
+  format); `Draw::Log` and `scene::panel` (the panel's draws appended by the adapters after the
+  battlefield, the log empty until T6 maps the events); the picture drawn whole (the executable
+  draws at most the item's size: the same for `cRollovr.pcx`); the item's flag 8 (colour + 2)
+  not built; the harness's battle cursor parked at (618, 593) instead of (420, 580), inside the
+  log's item, and the capture set's mask `panel_beside_log`.
 
 - T4b-2a: a breath over two stacks of one creature: the original's log line reports the target's
   hit alone (0x441B9B); copied as the original's (no `fixed` variant: the user's call); the

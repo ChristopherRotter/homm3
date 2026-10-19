@@ -7,7 +7,6 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 None queued. E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50). **Next:** this lane's next epic is the user's choice: E23, the original's battle AI (BACKLOG: after E05, before E06), or E11's battle part.
 
 **Waiting on this lane** (found in the 2026-10-19 consolidation; never queued here):
-- **CLT-Q2, decided** (the user, 2026-10-12): a table-only LOD reader in `h3-formats` for the client's checkpoint loading (ADR-0020 point 7): parse the header and the entry table from the archive's first bytes and the file's length, checking each entry's range against that length; inflate one entry from its stored bytes with today's checks; `LodArchive` rests on both, unchanged for the harvester. A small task; until it lands the client reads whole archives (OPEN-QUESTIONS CLT-Q2; or the client lane makes it as a `cross-lane` pull request with the user's consent).
 - **Open questions naming this lane:** CLT-Q4 (a battle's background variant in the setup) and CLT-Q6 (each side's player colour and a hero's sex for viewers): small setup fields, `cross-lane` with the server lane's wire; the client lane holds them.
 
 ## Inbox

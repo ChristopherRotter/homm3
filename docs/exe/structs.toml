@@ -168,6 +168,7 @@ fields = [
   { offset = 0x132B8, name = "last_activated_side", type = "i32", summary = "the real side of the stack activated last (0x465362); the turn order's tie-break prefers the other side (0x46502A); 1 after the tactics phase", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x132BC, name = "last_activated_record", type = "i32", summary = "the record index of the stack activated last (the active stack)", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x132C0, name = "acting_side", type = "i32", summary = "the side acting now", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x132C4, name = "auto_combat", type = "i32", summary = "auto combat on: the button (control 2004, 0x474E5A) toggles it; a human side's creature then acts on its own only with the option 0x698794 set (war_machine_automatic 0x474CDF); the capture harness's `battle = \"auto\"` (E17 H1)", confidence = "read", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x132C8, name = "active_stack", type = "stack*", summary = "the stack whose turn it is: outline 0x60", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x132CC, name = "mouse_highlight", type = "u8", summary = "with +0x132D0: the stack on that hex gets outline 0x70", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x132D0, name = "mouse_hex", type = "i32", summary = "the hex under the mouse", confidence = "read", refs = ["epics/E17-design.md §4"] },
@@ -412,4 +413,40 @@ fields = [
   { offset = 0x2, name = "removable", type = "u8", summary = "H3API's canBeRemoved", confidence = "read" },
   { offset = 0x8, name = "value", type = "i32", summary = "from 0x63A6E4; meaning not read", confidence = "read" },
   { offset = 0xC, name = "decoration", type = "u32", summary = "a decoration", confidence = "read" },
+]
+
+[[struct]]
+name = "window_manager"
+size = 0x60
+summary = "The window manager (pointer at 0x699280; H3API's H3WindowManager, whose size is used here); only what the capture harness reads."
+refs = ["epics/E17-design.md §6.3"]
+h3api = "H3WindowManager"
+fields = [
+  { offset = 0x54, name = "top_dialog", type = "dialog*", summary = "the topmost dialog (H3API's lastDlg): a question's message box while it shows; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+]
+
+[[struct]]
+name = "dialog"
+size = 0x40
+summary = "A dialog (H3API's H3BaseDlg, which gives no size: 0x40 covers the fields read); only what the capture harness reads, observed in the running game (h3mem.py), not read."
+refs = ["epics/E17-design.md §6.3"]
+h3api = "H3BaseDlg"
+fields = [
+  { offset = 0x18, name = "x", type = "i32", summary = "the left edge on the screen (a question's box: 240)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x1C, name = "y", type = "i32", summary = "the top edge", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x20, name = "width", type = "i32", summary = "the width", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x24, name = "height", type = "i32", summary = "the height", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x2C, name = "first_item", type = "dialog_item*", summary = "the first of its items, each the next at its +0x8 (a list; the frame's pieces, the text, the buttons)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+]
+
+[[struct]]
+name = "dialog_item"
+size = 0x50
+summary = "An item of a dialog (H3API's H3DlgItem; a text item is its H3DlgText, whose size is used here); only what the capture harness reads, observed in the running game (h3mem.py), not read."
+refs = ["epics/E17-design.md §6.3"]
+h3api = "H3DlgItem"
+fields = [
+  { offset = 0x8, name = "next", type = "dialog_item*", summary = "the next item of the dialog (0 after the last)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x10, name = "id", type = "i16", summary = "the item's id (a question's OK 30725, its Cancel 30726)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x30, name = "text", type = "string", summary = "a text item's text: a string record, the characters' pointer at +0x34 and their number at +0x38 (H3API's H3String)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
 ]
