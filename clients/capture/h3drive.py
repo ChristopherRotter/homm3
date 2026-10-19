@@ -749,13 +749,15 @@ def run_frames(rest):
             poses = re.findall(r"(\d+):g(\d+)f\d+h(\d+)(m?)", line)
             drawn[int(line.split()[0])] = {int(i): (int(g), int(h), m == "m")
                                            for i, g, h, m in poses}
-            # The count boxes it drew (E17 M3 T5a): a stale one at an earlier place is classified.
-            boxed[int(line.split()[0])] = [(int(x), int(y))
-                                           for x, y in re.findall(r" box(-?\d+),(-?\d+)", line)]
+            # The count boxes it drew (E17 M3 T5a: hidden through walks and flights, placed by the
+            # stacks holding their hexes then), each (x0, y0, x1, y1).
+            boxed[int(line.split()[0])] = [
+                (int(x), int(y), int(x) + h3cap.COUNT_BOX[0], int(y) + h3cap.COUNT_BOX[1])
+                for x, y in re.findall(r" box(-?\d+),(-?\d+)", line)]
         shutil.rmtree(here / "diff", ignore_errors=True)
         (here / "diff").mkdir()
         # Each line `<ms> <differing> <redraw artifacts among them>` (M3 T1c, h3cap.redraws).
-        lines, differing, only_redraws, earlier, earlier_boxes = [], 0, 0, [], []
+        lines, differing, only_redraws, earlier = [], 0, 0, []
         for k in kept:
             stem = Path(k["frame"]).stem
             cap = np.load(here / "frames" / k["frame"])["screen"]
@@ -764,14 +766,14 @@ def run_frames(rest):
             log_at = e.get("log_at")
             masks = ["panel_beside_log" if log_at is not None and k["t"] >= log_at else "panel"]
             masked = h3cap.mask(masks, shape=cap.shape)
-            # The count boxes masked where the drawn poses show them, unless the entry compares
-            # them (`boxes`, E17 M3 T5a: the viewer hides and places them over time).
-            boxes = [] if e.get("boxes") else h3cap.boxes_at(observation, drawn[k["t"]])
+            # The count boxes masked where the drawn poses show them and where the viewer drew
+            # them, unless the entry compares them (`boxes`, E17 M3 T5a).
+            boxes = [] if e.get("boxes") else (h3cap.boxes_at(observation, drawn[k["t"]])
+                                                + boxed[k["t"]])
             for x0, y0, x1, y1 in boxes:
                 masked[max(y0, 0):max(y1, 0), max(x0, 0):max(x1, 0)] = True
             differ = (cap != ours) & ~masked
-            redrawn = h3cap.redraws(cap, ours, differ, earlier,
-                                    earlier_boxes if e.get("boxes") else ())
+            redrawn = h3cap.redraws(cap, ours, differ, earlier)
             n, a = int(differ.sum()), int(redrawn.sum())
             if n:
                 h3cap.compare(cap, ours, masked, here / "diff" / f"{stem}.png", redrawn)
@@ -779,11 +781,6 @@ def run_frames(rest):
                 only_redraws += a == n
             lines.append(f"{k['t']} {n} {a}")
             earlier.append(ours)
-            box_mask = np.zeros(cap.shape, bool)
-            for x, y in boxed[k["t"]]:
-                box_mask[max(y, 0):max(y + h3cap.COUNT_BOX[1], 0),
-                         max(x, 0):max(x + h3cap.COUNT_BOX[0], 0)] = True
-            earlier_boxes.append(box_mask)
         got = "\n".join(lines) + "\n"
         (here / "frames.txt").write_text(got)
         recorded = set_path.parent / e.get("frames", f"timelines/{e['id']}-frames.txt")

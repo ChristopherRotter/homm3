@@ -383,8 +383,8 @@ pub(crate) fn draw_frames(
         }
         let mut list = scene::battle_at(snapshot, &moment, manifest, tables, layout)
             .map_err(|e| e.to_string())?;
-        // The moment, then the count boxes drawn (` box<x>,<y>`, their top-left corners: the
-        // frame check classifies a stale box at a place one stood earlier, E17 M3 T5a).
+        // The moment, then the count boxes drawn (` box<x>,<y>`, their top-left corners: a
+        // sequence that does not compare them masks them where they show, E17 M3 T5a).
         let mut line = describe(frame.t, &moment);
         line.pop();
         for d in &list {

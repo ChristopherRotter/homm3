@@ -224,23 +224,19 @@ def shadowed(cap, base):
     return hit
 
 
-def redraws(cap, ours, differ, earlier=(), boxes=()):
+def redraws(cap, ours, differ, earlier=()):
     """Which of the `differ` pixels are the original's redraw artifacts: its pixel is the viewer's
     at the same moment with one to MAX_SHADOWS more shadows, or one the viewer drew there at an
     `earlier` moment of the same sequence with at least one more (a rectangle the original left
-    unrestored; a timing slip of the viewer's shows no more shadows, so it still fails). With
-    `boxes` (a mask per earlier moment: the count boxes the viewer drew then; E17 M3 T5a), also
-    the very pixel of such a box: a stale box at its earlier place, which the saved screen or an
-    unrestored rectangle keeps (design §7.11). Any other difference is no artifact."""
+    unrestored; a timing slip of the viewer's shows no more shadows, so it still fails). Any
+    other difference is no artifact."""
     ys, xs = np.nonzero(differ)
     theirs = cap[ys, xs]
     hit = shadowed(theirs, ours[ys, xs])
-    for i, before in enumerate(earlier):
+    for before in earlier:
         if hit.all():
             break
         hit |= shadowed(theirs, before[ys, xs])
-        if i < len(boxes):
-            hit |= (theirs == before[ys, xs]) & boxes[i][ys, xs]
     out = np.zeros(differ.shape, bool)
     out[ys[hit], xs[hit]] = True
     return out
