@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T4b–T8 (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T5–T8 (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -319,6 +319,12 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   400 × 32, `smalfont.fnt`, colour 1, centred; two entries as its text) and drawn (the layout's
   `[log]`, `Draw::Log`); the capture set compares it (`panel_beside_log`), the harness's cursor
   parked beside it: 31 situations, all frames exact.
+- **T4b-2b-2 done 2026-10-19** ([log](E17-log.md#m3-t4b-2b-2--a-strikes-line-against-a-capture-2026-10-19),
+  [design §9.6](E17-design.md)): narrowed with the user to one line in a still (when it appears,
+  several entries and the scroll left to T6). The hot-seat sequence `strike`: the Archangel's
+  fixed damage kills all ten Pikemen, so the engine's line is the original's; the viewer draws
+  the record's first strike's line (`battle_log::shown`, the small font's line count) from the
+  sequence's `log_at`, the frame check compares the log's item from then on: exact.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -516,6 +522,12 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T4b-2b-2: a sequence's `log_at` (the frame check compares the log's item from a time observed
+  in the original, until T6 times the line); `h3-view`'s `log` module (one strike's line from a
+  record, named by the opening's stacks: *provisional* until T6's event mapping); the sequence
+  `strike` built on a fixed damage (the Archangel's) so that the engine's numbers are the
+  original's.
 
 - T4b-2b-1: the layout's `[log]` (picture, place, size, font, its palette, colour, alignment; the
   format); `Draw::Log` and `scene::panel` (the panel's draws appended by the adapters after the

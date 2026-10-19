@@ -1698,3 +1698,37 @@ battlefield (`scene::panel`), drawn by `compose`.
   in the panel right of the item and below the scroll buttons, where it covers no probe and
   hovers nothing that shows a hint.
 
+
+### 9.6 A strike's line against a capture (M3 T4b-2b-2)
+
+T4b-2b-2 narrowed with the user on 2026-10-19 to one line in a still: when the line appears
+during a strike, several entries and which two show, and the scroll buttons are T6's. Built:
+`battle_log::shown` (0x472C30), `h3_render::text::line_count` public (0x4B5820, the log's
+measure), and in the adapters `h3-view`'s `log` module (*provisional* until T6's event mapping):
+the catalogue of the original's text, the line of a record's first strike, the item's text after
+one line entered an empty log; `h3-view sequences --frames` draws it from a sequence's `log_at`.
+
+- **Why a fixed damage.** Every strike of the recorded sequences rolls its damage, so the
+  engine's numbers, and its line, are not the original's. Only the Angels and Archangels (50),
+  the Nagas (20) and the Naga Queens (30) have a fixed damage in the base pack. The sequence
+  `strike` (`seq-strike.toml`, hot seat): the Archangel (speed 18, the native grass's +1 attack,
+  defense and speed) flies beside the Pikemen and strikes them, attack 32 against defense 12
+  doubles its 50, and the 100 damage kill all ten (100 hit points): no retaliation, so one
+  `battle_log_add`. Three factions with the Archangel's +1 make the attacker's morale 0, two the
+  defender's: nothing rolls, the engine's record is the original's battle (its timeline as
+  recorded, 57 changes).
+- **The original's line:** the damage row by the attacker's number of 1 and the perish row by the
+  10 kills, the perish row's line break joined to a space (the line fits 400 pixels of
+  `smalfont.fnt`): one entry, on the box's first line, centred. The engine's `Struck` (damage 100,
+  kills 10) composes the same text from the user's tables.
+- **When it shows:** the frame check keeps a frame where the battlefield changes; the first kept
+  frame that shows the line is the defender's Goblins' turn at 3 730 ms (the strike's animation
+  ends at 3 330, the frame before at 3 630 still shows the status line). Until then the item shows
+  the status line's hint over the Pikemen, `Attack Pikemen`, set while the mouse passed over them
+  for the click (the hint is T6's). The sequence's `log_at` takes 3 730 as observed; the frame
+  check compares the log's item from then on (`panel_beside_log`), the whole panel before.
+- **Checked:** the log's item exact in all six frames from 3 730 ms (1 166 pixels of text). The
+  frame check's other differences are count boxes (T5): the Pikemen's box where the original last
+  drew it while the Archangel lands (2 330 to 2 730 ms, with stale pieces), the Archangel's box
+  moved in front of it at the Goblins' turn once the Pikemen's hex is free (from 3 730 ms: 324
+  pixels, 6 redraw artifacts); ours places both by the opening's stacks.

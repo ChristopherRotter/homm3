@@ -1169,3 +1169,31 @@ strike's line against a capture (T4b-2b-2); the user chose that.
   variation in this sandbox, not the park point's (the capture README's traps).
 - **For later:** T4b-2b-2 (a strike in hot seat, its line in the log against the capture: the
   panel's frame at a sequence's end and our render with the composed line), T6.
+
+### M3 T4b-2b-2 — A strike's line against a capture (2026-10-19)
+
+On `client/e17-m3-t4b-2b-2`, the user present: asked for a small increment, the agent proposed
+narrowing T4b-2b-2 to one line in a still (a fixed-damage strike in hot seat, the original's
+frames from the next turn with the log's item compared), with when the line appears, several
+entries and the scroll left to T6; the user chose that.
+
+- **Starting point:** master at `aaa9630` (#275, T4b-2b-1, merged on 2026-10-19, and two of the AI
+  lane's commits after it), no client pull request open; the client gates' baseline (`check.sh`)
+  passed on the sandbox.
+- **Found:** every recorded sequence's strikes roll their damage, so the engine's line is not the
+  original's; the base pack's fixed damages are the Angels', Archangels', Nagas' and Naga
+  Queens'. In the original the log's item shows the status line's hint over the target (`Attack
+  Pikemen`) from the click until the line replaces it; the first kept frame with the line is the
+  next turn's (3 730 ms).
+- **Built:** the sequence `strike` (`seq-strike.toml`: the Archangel kills all ten Pikemen with
+  100 damage; three factions and the Archangel's +1 make morale 0), recorded (timeline 57
+  changes, 58 frames); `battle_log::shown` (0x472C30); `h3_render::text::line_count` public;
+  `h3-view`'s `log` module (the original's catalogue, `first_strike`, `after_one`;
+  *provisional*); a sequence's `log_at` (`h3-view sequences --frames` draws the line from then
+  on, `h3drive.py frames` compares the log's item from then on).
+- **Checked:** the log's item exact in the six frames from 3 730 ms (1 166 text pixels); the
+  viewer's timeline as recorded; the other differences count boxes (T5's: the Pikemen's while the
+  Archangel lands, the Archangel's once their hex is free); the capture set (31 situations) and
+  the ten sequences' timelines as recorded.
+- **For later:** T5 (the two boxes), T6 (when the line appears, the hint in the status line,
+  several entries and the first shown, the event mapping that replaces `first_strike`).

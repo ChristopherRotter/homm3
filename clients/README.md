@@ -106,7 +106,9 @@ search the parent directories).
 - **The frame check** (E17 M2 T4b-1, design §7.9): `python3 capture/h3drive.py frames` (from
   `clients/`, in a sandbox with the harness) keeps every distinct battlefield the original shows
   in each recorded sequence, draws the viewer's frame at the same times (`h3-view sequences
-  --frames`) and compares them with masks against the counts in `situations/timelines/`.
+  --frames`) and compares them with masks against the counts in `situations/timelines/`; from a
+  sequence's `log_at` also the log's item, the viewer drawing the record's first strike's line
+  there (M3 T4b-2b-2, design §9.6: `strike`).
 
 | Path | What |
 |---|---|
@@ -187,7 +189,8 @@ prints every key's forms from the installation, or one key's text (`h3-view text
 battle.log.damage attacker=Imps damage=4 count=2 [--pack de.json]`). The battle log's lines are
 composed from the keys as the executable composes them from its rows (`h3_view::battle_log`, M3
 T4b-2a, design §9.4: a strike's damage and perish rows, wait, defend, morale, luck, and the log
-entries a line becomes); `h3-view text --log` prints sample lines.
+entries a line becomes; the text the log's item shows, M3 T4b-2b-2); `h3-view text --log` prints
+sample lines, and the frame check draws one strike's line (design §9.6).
 
 - **The key catalogue** `clients/text/keys.toml` (committed; identifiers and numbers only, as the
   asset tables): `[[key]]` with `id` (lower-case segments of letters, digits and `-` joined by

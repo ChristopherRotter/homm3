@@ -4,13 +4,13 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T4b-2b-2, T5–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
-- **Pull request (2026-10-19):** T4b-2b-1 (`client/e17-m3-t4b-2b-1`) open.
+- **E17 M0–M2 done; M3 T1a–T4b-2b-2 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T5–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **Pull request (2026-10-19):** T4b-2b-2 (`client/e17-m3-t4b-2b-2`) open.
 - **The user's requirements**, epic "Decisions": a string catalogue (JSON packs, no committed translation: CLT-Q7); graphics options (`faithful` the default); exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
 - The lane needs the user's computer online (it may sleep: stage all first) for the original files, from `original-data/install/` into the clone's: the four LODs (one per staging call), `h3maped.exe`, the two `.snd` (sound: also `MP3/COMBAT01`–`04`); the captures also `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`. `sandbox-setup.sh` copies only the engine's few: `cp -rn` the staged `original-data/.` before `capture/setup.sh`. Frames live only in their sandbox.
-- **Open:** CLT-Q2 (a table-only LOD reader; until then whole archives); CLT-Q4 (the background variant); CLT-Q5 (boats in `h3-map`'s writer); CLT-Q6 (player colours, a hero's sex).
+- **Open:** CLT-Q2 (answered: `h3-formats`' table-only reader; the switch: the inbox); CLT-Q4 (the background variant); CLT-Q5 (boats in `h3-map`'s writer); CLT-Q6 (player colours, a hero's sex).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -38,13 +38,15 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - The coverage gate reads cargo-llvm-cov's summary; generic code can show false region misses there (the engine reads the merged view, `xtask/src/coverage.rs`): port that, or take a concrete type (T4b-1).
 - A new dependency of a pure crate goes into `h3-view/tests/purity.rs`'s allowlist deliberately; a window or audio crate belongs in an adapter crate, not in `h3-view`'s pure library.
 - Sound in a sandbox: `SDL_AUDIO_DRIVER=disk` (the mix in `./sdlaudio.raw`, S16 stereo, 44.1 kHz).
-- `winit`, `cpal`, `hound` (and Bevy, eframe, `rodio`) are Apache-2.0-only, which `deny.toml` rejects (ADR-0009); the window is SDL 3 (`h3-sdl`). Building `h3-view` builds SDL: CMake, a C compiler, `clients.yml`'s apt list. Windows exes: `rustup target add x86_64-pc-windows-gnu`, `mingw-w64`, `--target x86_64-pc-windows-gnu`; put into the user's `clients/out/win/` (`device_commit_files`) they find the checkout from their place.
+- `winit`, `cpal`, `hound` (and Bevy, eframe, `rodio`) are Apache-2.0-only, which `deny.toml` rejects (ADR-0009); the window is SDL 3 (`h3-sdl`). Building `h3-view` builds SDL: CMake, a C compiler, `clients.yml`'s apt list. Windows exes: `rustup target add x86_64-pc-windows-gnu`, `mingw-w64`, `--target …`; in the user's `clients/out/win/` they find the checkout.
 - `clients/Cargo.lock` is a common path: the verify's `clients-lock` gate (#202) fails when an engine crate's dependencies change it; fix: `cargo update --workspace --manifest-path clients/Cargo.toml`.
 - `ci.yml` ignores `clients/**`; the client's job `clients.yml` watches `clients/` and the engine crates the client builds, which `check.sh` keeps complete ("ci paths").
 - `h3-protocol` builds `h3-battle`, `h3-content`, `h3-contracts`, `h3-kernel`: their changes can break the client.
-- Never run the original game from the installation: it writes saves, settings and DDrawCompat's log into its folder. Captures run the copy under `original-data/wine/` (`clients/capture/README.md`, its "Traps": the game's own cursor, the panel by turn, XWD colour maps); a Wine prefix must sit in a directory the shell's user owns (`/root/...` in a sandbox). Captures never enter git (ADR-0009).
-- Reading the original's state (`capture/h3mem.py`): memory holds the frame drawn, the screen the one shown, and lags it by a step after an animation (design §7.1, §7.9; runbook "Traps"): never render memory's poses as the screen. `Combat Speed` (the prefix's registry, 0): reset it after a run at another.
+- Never run the original game from the installation: it writes saves, settings and DDrawCompat's log into its folder. Captures run the copy under `original-data/wine/` (`clients/capture/README.md`, its "Traps"); a Wine prefix must sit in a directory the shell's user owns (`/root/...` in a sandbox). Captures never enter git (ADR-0009).
+- The original's memory (`capture/h3mem.py`) holds the frame drawn, the screen the one shown, a step behind after an animation (design §7.1, §7.9): never render memory's poses as the screen. `Combat Speed` (the prefix's registry, 0): reset it after a run at another.
 - No float arithmetic or platform transcendental in the client's drawing and timing, the binary included (`clippy.toml`): f32 behaviour in fixed point (`anim::f32_round`), tangents by series; SDL's floats only at the adapter's edge (coordinates, `audio::gain`).
+- A log line matches the original's only with a fixed damage (Angels, Archangels, Nagas: design
+  §9.6): a rolled one differs between the engine and the original.
 - A battle in progress: act as the stack's turn starts (`turn:`, runbook): a click before is lost, one after lets fidgets in.
 - A capture's scenario names both heroes; the set's clock steps ≤ 100 ms; a computer that would
   act first: `hot_seat` (runbook). Timelines' records: army, then war machines (design §7.15).
@@ -52,10 +54,10 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+- **2026-10-19, E17 M3 T4b-2b-2 (the user present; one line in a still).** The sequence
+  `strike`, its log line exact from `log_at`; findings into T5 (boxes) and T6 (the line's time).
 - **2026-10-19, E17 M3 T4b-2b-1 (the user present).** The log's item drawn and compared by
   the capture set.
 - **2026-10-19, E17 H1, H2 (the user present: the adventure lane's batch E3 first).**
   `h3adv.py`: questions, the difficulty, battles, level-ups, the underground, the list's
-  scrolling, heroes' details; auto combat needs `Combat Auto Creatures`.
-- **2026-10-19, E17 M3 T4b-2a (the user present; T4b-2 split).** The log's lines read, the
-  keys corrected, `h3_view::battle_log`.
+  scrolling, heroes' details.
