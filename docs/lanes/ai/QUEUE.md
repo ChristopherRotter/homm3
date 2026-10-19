@@ -8,9 +8,13 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 increment 3 done 2026-10-19 (#253, #255, #257, #258); increment 4 (T8) done 2026-10-19 (#260,
 #264; exit criterion 7 met).
 
-1. **Increment 6's cut** at the user's checkpoint of increment 5 (T7 done 2026-10-19, #271,
-   #274, #276): T9, the closure (the epic's outline: an independent review, the measurements
-   on the user's machine, the docs), refined then; AI-Q7 open, not blocking.
+Increment 6 (T9, the closure) cut 2026-10-19 (the epic: T9a to T9d; AI-Q7 moves to E06).
+
+1. **T9a The audit** and **T9b The independent review** (in the sandbox): `in progress`
+   2026-10-19 (`claude/festive-brown-igukig`).
+2. **T9c The user's machine**: the bench sweep and the Windows verify with original data; the
+   Linux verify with original data in a sandbox with the user's files staged (criteria 8, 9).
+3. **T9d The closure**: the `shared/` pull request, the design note folded, the epic closed.
 
 ## Inbox
 

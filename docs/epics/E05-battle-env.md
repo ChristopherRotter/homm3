@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4 done: T8, exit criterion 7 met; increment 5 done: T7, exit criterion 6 met) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4 done: T8, exit criterion 7 met; increment 5 done: T7, exit criterion 6 met; increment 6, T9, in progress) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -170,9 +170,20 @@ next (increment 5: T7).
   Aggressor, 0.479 against Greedy: at Aggressor's level (2026-10-19). Exit criterion 6 met.
   Record in `E05-log.md`.
 
-**Later increments** (coarse; cut at each checkpoint):
-- **T9 Closure:** an independent review, measurements on the user's machine (the batch's wall time
-  over threads and batch sizes, moved from T3c: `h3 ai bench`, design §7), the docs.
+**Increment 6** (cut 2026-10-19 at the user's checkpoint of increment 5): **T9 Closure** (exit
+criteria 8 and 9), in four parts; AI-Q7 moves to E06 (the user).
+
+- [ ] **T9a The audit** — exit criteria 1 to 7 against the code and tests, the lane's inbox sorted
+  (E06, E13, E23, done), stale docs.
+- [ ] **T9b The independent review** — four fresh reviewers, one slice each (the batch, its pool
+  and determinism; the C ABI and the binding: robustness and the information boundary; reward,
+  encounters and census against ADR-0025 and their sources; the bots, `h3 ai eval`, the trainer
+  and the ladder); the fixes.
+- [ ] **T9c The user's machine** — `h3 ai bench` over threads and batch sizes (design §7, moved
+  from T3c; criterion 8), the Python binding's steps/s; `cargo xtask verify --with-original-data`
+  on Windows, and on Linux in a sandbox with the user's files staged (criterion 9).
+- [ ] **T9d The closure** — the `shared/` pull request (BACKLOG, ADR-0025's working-detail line),
+  the design note's lasting parts into `docs/07-simulation-and-ai.md`, the epic closed.
 
 ## Exit criteria
 

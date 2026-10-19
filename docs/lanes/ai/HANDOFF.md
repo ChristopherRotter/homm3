@@ -11,8 +11,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   #260; the opponent pool, #264): exit criterion 7 met on the user's GTX 1070 (0.800 against
   Random after 40 minutes, best 0.811). **Increment 5** done 2026-10-19 (T7, design §9;
   AI-Q6): the preview (#274), ADR-0025 point 5 (#271), the bots, `h3 ai eval`, C ABI v30
-  (#276), the user's network at Aggressor's level: exit criterion 6 met. **Next:** the
-  user's checkpoint, increment 6 (T9, the closure; QUEUE).
+  (#276), the user's network at Aggressor's level: exit criterion 6 met. **Increment 6**
+  (T9, the closure) cut 2026-10-19: T9a and T9b in progress on `claude/festive-brown-igukig`.
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v30 (T7: the bots' seats) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q8, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
