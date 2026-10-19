@@ -240,6 +240,9 @@ design §7.1.
 - The game draws its own cursor: the recipes park it (the battle's at (618, 593) since M3
   T4b-2b-1, beside the log's item, which the set compares), and probes stay clear of its picture
   where it rests (the battle's nearest, 34 px right on its row and 15 px above it).
+- `machines`' timeline (M3 T3b) varies between runs: the automatic Ballistas' shots, and the
+  heal after one, start 1 ms later than recorded in most runs (M3 T4b-2b-1, 8 runs, at either
+  park point); a `CHANGED` there with only such shifts is that, not a change of the viewer.
 - The battle panel's buttons change with whose turn it is: the `battle` probes are the ones equal
   in both states.
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.

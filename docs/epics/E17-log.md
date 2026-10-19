@@ -1104,6 +1104,9 @@ strike's line against a capture (T4b-2b-2); the user chose that.
 - **Found:** the original at the opening shows the item's picture and no text; the harness's
   parked cursor (420, 580) lay inside the item (77 pixels): parked at (618, 593) since.
 - **Checked:** the capture set, 31 situations, every frame as recorded (exact) with the log's
-  item compared; the recorded sequences' timelines as recorded with the new park point.
+  item compared; the recorded sequences' timelines as recorded with the new park point, but
+  `machines`: in 7 of 8 runs the automatic Ballistas' shots (and the heal after one) started
+  1 ms later than recorded, at either park point (the old one too, 2 of 3 runs), a run-to-run
+  variation in this sandbox, not the park point's (the capture README's traps).
 - **For later:** T4b-2b-2 (a strike in hot seat, its line in the log against the capture: the
   panel's frame at a sequence's end and our render with the composed line), T6.
