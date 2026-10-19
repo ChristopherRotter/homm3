@@ -624,9 +624,57 @@ batch") does it on the harness; everything a record holds is read from the game'
   from run to run (the piles are drawn at the game's start, which runs in real time). The starting
   amounts differ by difficulty: the user played Easy (30 wood, 15 mercury, plus the random bonus),
   the harness Normal (20, 10).
-- **Not built yet:** scrolling the hero list (more than five heroes), the underground, a visit
-  that asks a question (a Yes/No dialog), a battle started from the map (the adventure lane's
-  increment 3: monsters and battles), a second day.
+- **Questions, the difficulty and battles (E17 H1, 2026-10-19; for the adventure lane's batch E3,
+  survey `docs/rules/surveys/E08-battles.md` §13).** The scenario list's five difficulty buttons
+  sit at (521 + 32 *i*, 478); the game holds the choice at game +0x1F6D8 (Easy: 30 000 gold and
+  30 wood, Hard 15 000). A question is a message box with an OK (item 30725) and a Cancel (30726):
+  the harness finds both buttons by their probes and reads the text from the window manager's
+  topmost dialog (0x699280 → +0x54; the items listed from +0x2C, the next at +0x8; a text item's
+  string at +0x30, its characters at +0x34 and their number at +0x38: H3API's layouts, observed,
+  `docs/exe/structs.toml`), never from the game's message buffer (0x6973D8, H3API's
+  `h3_TextBuffer` 0x50 lower as its other globals), which a map's own text may not pass through.
+  The text names the record it was written from in the original's tables read at run time
+  (`h3lod.py`, ADR-0009: the record's number, never its text): a monster's offer to join is
+  ADVEVENT 86, to join for gold 88 (or 89 and 90 together), to flee 91, the insult after a
+  declined offer 87 (a plain message). Seen on a local map whose monsters had other dispositions
+  (h3-experiment places savage ones that never flee until E08 T22a): a compliant group of 7
+  Pikemen offered to join, then, declined, to flee, and left the map at a second no (its tile's
+  class 0); a savage group of 13 that may flee offered to flee, and a yes started the battle; a
+  yes to the join put the 7 into the hero's stack of Pikemen (27). The tile's word holds the
+  aggression as 5 signed bits (compliant −4 read as 28 unsigned).
+- **Battles from the map (E17 H1).** The battle screen's probes show it; the battle manager's
+  pointer stays set between battles, so the screen decides. Stacks (side, creature, count, hex)
+  are read at the start and when the result window shows (its OK, `[button.battle_ok]`, 64 × 32 at
+  (549, 525)); the outcome from the manager (winner +0x13D48, retreated +0x132B0, surrendered
+  +0x132B2). Auto combat (key `a`, control 2004) toggles +0x132C4, but a human side's creature
+  acts on its own only with the setting `Combat Auto Creatures` (0x698794) on, 0 in a new prefix:
+  `setup.sh` sets it. Retreat (`r`) and surrender (`s`) ask for a confirmation whose OK is the
+  question's. The check (`capture/batches/harness-check.toml`, Easy): 20 Archangels against 5
+  Pikemen (split 3 and 2 Halberdiers) won by auto combat, 50 experience; a Peasant's retreat from
+  30 Pikemen (7 stacks) left the hero off the map (owner −1) and the monster whole; Blue's
+  surrender in hot seat moved 470 gold from Blue to Red (D-13's reading) and took its hero off the
+  map; a hero with 5 000 experience from the map started at level 5 with its primary skills 3/5/1/2
+  for the map's 2/3/1/1 and Diplomacy and Logistics expert for basic and advanced (E3-6's
+  question, for the adventure lane to judge). A player left without heroes and towns is out: with
+  one human left the game ends in the Hall of Fame, so a map keeps each player a hero.
+- **The underground, more heroes, a level-up, a second day (E17 H2, 2026-10-19).** The packed
+  view and mouse tile hold the level in bit 26; the path's arrows are a u16 per tile level by
+  level, the underground's after the surface's. The panel's level button (725, 211) switches the
+  view (the minimap then shows that level); it is enabled only on a two-level map and changes
+  with the level shown, so the `adventure` probes leave it out. Shown on a shipped map
+  (`Arrogance`, four humans in hot seat, Purple's hero on level 1): the view switched from the
+  surface back to level 1, the path to (5, 8, 1) three green marks there, the hero arrived; `h3-map`'s
+  writer has no underground yet, so the check has none. The hero list holds the heroes by their
+  type's number, not in the map's order; its arrows at (638, 203) and (638, 379) move it a row
+  (no scroll position found in the adventure manager): with more than five heroes the harness
+  clicks up three times (eight heroes at most) and down to the hero's row, and checks the
+  selection in memory. A level-up after a battle shows two offered skills and keeps its OK
+  disabled until one is clicked (`[button.ok_disabled]`, probes on the pixels that change when it
+  is enabled); the skills sit at the OK's corner + (−150, −64) and (−52, −64). The date is game
+  +0x1F63E (day, week, month, u16 each). The heroes off the map at a new game (E3-7) held 40 to 90
+  in two runs (147 heroes; 1 and 4 at 90). A map hero's custom experience draws its level-ups at
+  the start: 5 000 gave level 5 in both runs, but 3/5/1/2 with Diplomacy expert in one and
+  3/4/2/2 with Diplomacy advanced in the other.
 
 
 ## 7. Animation timing (M2 T3)

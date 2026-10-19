@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4: T8a and T8b done, T8c on the user's machine) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4 done: T8, exit criterion 7 met) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -143,7 +143,8 @@ until a later shared change): **T5 Encounter distribution v1** and **T6 The Pyth
 **Increment 4** (cut 2026-10-19 at the user's checkpoint of increment 3: T8 before T7, since
 whether an agent learns from the env is the epic's largest open risk; the win rate against Random
 is measured from Python against the batch's internal Random seat, without T7's runner):
-**T8 Smoke training** (exit criterion 7).
+**T8 Smoke training** (exit criterion 7). Done 2026-10-19 (#260, #264); the user's checkpoint
+next (increment 5: T7).
 
 - [x] **T8a Design** — design §8 (2026-10-19; AI-Q5 answered): an own PPO, self-play on the
   encounter distribution, evaluated against the engine's Random on held-out episodes. Record in
@@ -151,8 +152,9 @@ is measured from Python against the batch's internal Random seat, without T7's r
 - [x] **T8b The trainer** — `python/h3env/train/` and C ABI v29's seats for the encounter source
   (2026-10-19); the sandbox's 30-minute CPU run learns (the sampled policy 0.51 → 0.73 against
   Random), the criterion moved to the sampled policy (the user). Record in `E05-log.md`.
-- [ ] **T8c The smoke run** — on the user's machine (the GTX 1070): exit criterion 7, recorded.
-  First hour (naive self-play): 0.779 peak, 0.721 final; the opponent pool built (2026-10-19).
+- [x] **T8c The smoke run** — on the user's machine (the GTX 1070), 2026-10-19: the first hour
+  (naive self-play) 0.779 peak, 0.721 final; with the opponent pool (#264) **0.800** at the end
+  of 40 minutes (best 0.811): exit criterion 7 met (the user). Record in `E05-log.md`.
 
 **Later increments** (coarse; cut at each checkpoint):
 - **T7 Baselines** (increment 5): heuristic bots (greedy damage or value) as `Policy` variants in

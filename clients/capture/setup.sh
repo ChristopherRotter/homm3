@@ -62,6 +62,10 @@ key="HKEY_LOCAL_MACHINE\\SOFTWARE\\New World Computing\\Heroes of Might and Magi
     # The adventure map shows a hero's path on the first click and walks on the second, as the
     # experiments' procedures say (left at 0, the first click walks at once).
     printf '"Show Route"=dword:00000001\r\n'
+    # Auto combat (a batch's `battle = "auto"`, E17 H1) lets the computer play the creatures; left
+    # at 0, the button only sets a flag and the stack's turn still waits (war_machine_automatic,
+    # 0x474CDF). The capture set never turns auto combat on.
+    printf '"Combat Auto Creatures"=dword:00000001\r\n'
     printf '"Main Game Full Screen"=dword:00000001\r\n\r\n'
     printf '[HKEY_CURRENT_USER\\Software\\Wine\\Drivers]\r\n"Audio"=""\r\n'
 } > "$run/h3.reg"

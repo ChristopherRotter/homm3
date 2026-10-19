@@ -1,6 +1,6 @@
 # Reference captures: the runbook
 
-*Provisional* (E17 M1 T8, M2 T1, T3, T6, T4b-1; ADR-0020 point 9; findings in `docs/epics/E17-design.md` §6).
+*Provisional* (E17 M1 T8, M2 T1, T3, T6, T4b-1, H1, H2; ADR-0020 point 9; findings in `docs/epics/E17-design.md` §6).
 The original game runs unattended in a Linux sandbox under Wine, on a virtual X display at 16 bits,
 so an XWD dump of the display is the original's own 5-6-5 screen and compares exactly with our
 renders. A script steers it through its menus by fixed coordinates and recognises each screen by a
@@ -15,14 +15,15 @@ enter git (they stay in the sandbox or `clients/out/`).
 
 | File | What it does |
 |---|---|
-| `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`); builds `xdd.dll`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
+| `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`); builds `xdd.dll`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
 | `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, and the **virtual clock** (below). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
-| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b); the adventure map's players, heroes, view and path (below). |
-| `h3adv.py` | The adventure map (M2 T6): hot seat, heroes, tiles clicked twice, turns; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
-| `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`). |
+| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below). |
+| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
+| `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
+| `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
 | `h3-view situation` | Writes the original's map for a scenario's battle (`cargo run --release -p h3-view -- help`). |
 
@@ -157,27 +158,68 @@ and compares (after a change to the viewer). About 14 minutes for the first four
 more for `behind` (default `<dir>`: `clients/out/frames`). Only a fidget comes from the
 original's memory; everything else is the viewer's own timeline.
 
-**An experiment batch on the adventure map** (M2 T6; `docs/experiments/README.md`): from
+**An experiment batch on the adventure map** (M2 T6, H1; `docs/experiments/README.md`): from
 `clients/`,
 
 ```
 python3 capture/h3adv.py batch capture/batches/E08-batch-2.toml [--map <h3m>] [--out <dir>]
 python3 capture/h3adv.py compare out/batches/E08-batch-2/E08-batch-2.md ../experiments/results/E08-batch-2.md
+python3 capture/h3adv.py batch capture/batches/harness-check.toml     # the harness's own check
 ```
 
 `batch` compiles the recipe's spec with `h3-experiment` (the engine's workspace; `--map` plays a
 map compiled before, after checking its stamp), starts it in hot seat with the recipe's
-`players` as the humans, plays the steps and writes `<out>/<batch>.md`, the batch's results
-template filled in (a note at its top says how it was played), and `<out>/steps.jsonl`, each
-step's observation. E08 batch 2 (41 steps) takes about three minutes. A recipe is the spec's
-procedure as `[[step]]`s: a hero's step selects the hero (`hero`, its name on the map), clicks
-`walk`'s tile once, reads the path's marks from memory, clicks it again and waits until the hero,
-its points and its player's resources rest; `record` fills the template's fields and table rows
-from the observation (`arrived`, `moved`, `mark`, `marks`, `points`, `points_if_moved`,
-`resource:<name>`), `expect` notes a difference under "anything odd"; `end_turn = true` ends the
-turn. A step without `walk` only reads. Everything the record holds comes from the game's memory,
-not from the screen. `compare` prints each record line of two filled templates as the same or
-different (random amounts differ by nature: judge them by their ranges).
+`players` as the humans (at least two: the hot-seat dialog takes no fewer) at the recipe's
+`difficulty` (`easy` to `impossible`, default `normal`, checked in memory), plays the steps and
+writes `<out>/<batch>.md`, the batch's results template filled in (a note at its top says how it
+was played), and `<out>/steps.jsonl`, each step's observation. E08 batch 2 (41 steps) takes about
+three minutes, the check about two.
+
+A recipe is the spec's procedure as `[[step]]`s. A hero's step selects the hero (`hero`, its name
+on the map; from the hero list, scrolled when the player has more than five) and, with `walk =
+[x, y]` (or `[x, y, level]`, 1 the underground: the view switches by the panel's level button),
+clicks the tile once, reads the path's marks from memory (on both levels), clicks it again and
+waits until the hero, its points and the players' resources rest, on the way:
+
+- **answering questions** (a monster's offer to join, to join for gold, to flee; a guarded pile's
+  question): a dialog with both an OK and a Cancel button; its text, read from the game's memory,
+  is named by the record it was written from (`h3lod`: `ADVEVENT:86` join, `88` or `89+90` join
+  for gold, `91` flee; anything else `other`), and `answer` says `yes` or `no`, for every question
+  or per kind (`answer = { join = "no", flee = "yes", other = "no" }`). A question the step does
+  not answer stops the batch.
+- **playing battles**: the battle screen; its stacks are read at the start and the end, and
+  `battle` says how: `auto` (auto combat: the computer plays every human side to the end),
+  `retreat` or `surrender` (the attacker; `defender retreat`, `defender surrender`: every other
+  stack defends until one of that side's acts, which then retreats or surrenders, the
+  confirmation's OK clicked). The result window's OK (`[button.battle_ok]`) ends it. A battle the
+  step does not plan stops the batch.
+- **choosing a level-up's skill**: the dialog whose OK stays disabled (`[button.ok_disabled]`)
+  until one of its two offered skills is clicked: `level_up = "left"` (the default) or `"right"`.
+- clicking any other dialog's OK.
+
+A step without `walk` only reads. `record` fills the template's fields and table rows from the
+observation; `before:<observation>` reads the same before the step:
+
+| Observation | What |
+|---|---|
+| `arrived`, `moved` | yes or no: the hero stands on the tile; it left its tile |
+| `mark`, `marks`, `points`, `points_if_moved` | the target's path mark at the first click (green, red, none), the marks, the points left (if it moved) |
+| `resource:<name>[:<colour>]` | a resource of the hero's player (or of `red`, `blue`, …) |
+| `difficulty`, `date` | the game's difficulty; the date (`month 1, week 1, day 2`) |
+| `heroes:experience` | the heroes off the map (E3-7): `147 heroes: 40 to 90; 2 at 40, 1 at 90` |
+| `level_ups` | the level-up dialogs passed |
+| `question`, `questions` | the questions' kinds (`join, flee`; `none`), their records |
+| `battle`, `winner`, `retreated`, `surrendered` | yes or no; the side (`attacker`, `defender`, `none`) |
+| `stacks:start`, `stacks:end[:<side>]` | the battle's stacks (`attacker 20 Archangels \| defender 3 Pikemen, 2 Halberdiers`) |
+| `hexes:start[:<side>]` | their hexes at the start (the formation) |
+| `hero:<detail>`, `hero[<name>]:<detail>` | the step's hero after the step, or another by name: `experience`, `level`, `primary` (`3/5/1/2`), `army`, `skill:<name>` (none, basic, advanced, expert), `on_map`, `tile` |
+| `monster:x,y`, `aggression:x,y`, `never_flees:x,y` | the monster on a tile (`30 Pikemen`, `none`), its aggression (−4 to 10) and flag, from the tile's word |
+
+`expect = { marks = <n>, path = "green", question = "join, flee", battle = true, dialogs = true }`
+notes a difference under the encounter's "anything odd" (`dialogs = true`: dialogs passed after
+the walk are expected). `end_turn = true` ends the turn. Everything the record holds comes from
+the game's memory, not from the screen. `compare` prints each record line of two filled templates
+as the same or different (random amounts differ by nature: judge them by their ranges).
 
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`
@@ -207,10 +249,17 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 | Hot-seat names | OK | (340, 444) |
 | Any dialog | OK: found by `[button.ok]` | its corner + (33, 16) |
 | Adventure map | the hero list's row *i* (0 to 4) | (638, 227 + 32 *i*) |
+| Adventure map | the hero list's arrows: up, down (one row each) | (638, 203), (638, 379) |
+| Adventure map | the surface or the underground (the level button) | (725, 211) |
+| Level-up dialog | its two skills: left, right | the disabled OK's corner + (−150, −64), (−52, −64) |
 | Adventure map | tile (x, y) in the view at (vx, vy) | (24 + 32 (x − vx), 24 + 32 (y − vy)) |
 | Adventure map | the minimap (72 × 72 map): centre the view on (x, y) | (630 + 2x, 26 + 2y) |
 | Adventure map | end the turn | key `e` |
 | Adventure map | park the cursor over the right panel | (700, 300) |
+| Scenario list | the players' difficulty *i* (0 Easy to 4 Impossible) | (521 + 32 *i*, 478) |
+| Any question | Yes, No: found by `[button.ok]`, `[button.cancel]` | their corner + (33, 16) |
+| Battle | auto combat, retreat, surrender, defend | keys `a`, `r`, `s`, `d` |
+| Battle's result window | OK: found by `[button.battle_ok]` | its corner + (32, 16) |
 
 ## The clock
 
@@ -259,14 +308,26 @@ design §7.1.
   tile walks at once). The game also walks on the first click when the hero's path already ends
   on that tile; `walk` notes it under "anything odd".
 - On the adventure map a click on another of the player's heroes routes the selected hero to it
-  (a meeting): heroes are selected from the hero list only. The list's scrolling is not built: a
-  hero beyond its fifth row stops the batch.
+  (a meeting): heroes are selected from the hero list only. The list holds the heroes by their
+  type's number, not in the map's order; with more than five the harness scrolls it to its top
+  first, then down to the hero's row (H2).
+- The panel's level button changes with the map (enabled on a two-level map) and the level shown:
+  the `adventure` probes leave it out (H2).
 - The adventure panel takes the current player's colour: the `adventure` probes are the ones
   equal on Red's and Blue's turn (`adventure_map`, Red's, stays for the battle's recipes).
 - A player without towns gets a message at the end of its turn and at the start of its next
   ("you have lost your last town"); `dismiss` and `end_turn` click every OK.
 - The adventure map walks in real time (the clock runs); a walk is over when the hero, its points
   and its player's resources rest for 1.5 s. Keep heavy builds off the machine while a batch runs.
+- Auto combat plays a human side's creatures only with the setting `Combat Auto Creatures` on
+  (`setup.sh` sets it; a new prefix holds 0, and then the button only sets a flag and the turn
+  still waits: 0x474CDF). The capture set never turns auto combat on.
+- A player left without heroes and towns is out, and with one human left the game is won: the
+  Hall of Fame shows and the batch stops (`neither the adventure map, a battle nor a dialog`). An
+  experiment map keeps each player a hero after its battles (the check gives Blue a second one).
+- A player without towns gets "you have lost your last town" after each battle too.
+- The dialog's text is read from the topmost dialog's text items (design §6.3), not from the game's
+  message buffer (0x6973D8), which a dialog with a map's own text may not touch.
 - The game's memory can lag its screen by a step: after an animation it starts the next turn in
   the same millisecond after the 20 clock reads the driver waits for (design §7.9). A state read
   then is one step behind; the frame check draws the viewer's own timeline for that reason.
