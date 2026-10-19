@@ -449,7 +449,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Sources: original-data, `docs/formats/installation.md` §7.20 ("Not reproduced (BAT-Q8)")
 - Flag: none
 - Defaults: n/a
-- Regression test: `crates/h3-battle/src/tests/strike.rs`, `shots_cast_nothing_and_a_killed_target_takes_no_spell` (a killed target takes no strike spell, so no binder joins it, and a dead stack is left without binders); no test yet raises a stack that a binder's strike killed and binds it again
+- Regression test: `crates/h3-battle/src/tests/strike.rs`, `shots_cast_nothing_and_a_killed_target_takes_no_spell` (a killed target takes no strike spell) and `a_stack_a_binders_strike_killed_is_bound_by_its_next_strike_once_raised` (2026-10-19: the binder's strike kills a stack, which has no binders; raised by Resurrection, it is bound by that binder's next strike; the original's listing of the binder on the dead stack fails it)
 - Decided by / date: user, 2026-10-08 (E04b T7a checkpoint, BAT-Q8: not reproduced, the engine binds only a living stack); entered here at the E04b T11b review, 2026-10-12
 
 ### BAT-QUIRK-22 — Earthquake disables the first defending stack (survey S-08; E04c T6)

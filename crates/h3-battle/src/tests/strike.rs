@@ -1052,6 +1052,125 @@ fn a_bound_shooter_still_shoots() {
     act(&mut s, &r, shoot).unwrap();
 }
 
+/// A binder that flies and one that teleports (speed 7): no creature of the original binds and
+/// flies or teleports, so the test pack's `binder` gets the flag `flying` or the ability
+/// `teleports` (both give the trait `FLIES`, BAT-MOV-002).
+const FLYING_BINDERS: [Creature; 2] = [
+    (
+        "flybinder",
+        10,
+        10,
+        2,
+        2,
+        10,
+        7,
+        &["alive", "flying", "spell_after_strike=tether:100:0:3"],
+    ),
+    (
+        "portbinder",
+        10,
+        10,
+        2,
+        2,
+        10,
+        7,
+        &["alive", "teleports", "spell_after_strike=tether:100:0:3"],
+    ),
+];
+
+// covers: BAT-MAG-045, BAT-MOV-002
+#[test]
+fn bind_ends_when_its_binder_flies_or_teleports_away() {
+    // E04b T11a's test gap: a flight or a teleporting creature's move goes through the same
+    // `obstacles::travel` as a walk, which releases the stacks the mover binds before it moves;
+    // the original's flight (0x4B49C0 at 0x4B49E1) and a Devil's teleporting move (0x4B4E90 at
+    // 0x4B4EB1) call 0x43EE10 as the walk does (`installation.md` §7.20).
+    let r = ruleset_with_creatures("t:faithful", &FLYING_BINDERS);
+    for binder in ["flybinder", "portbinder"] {
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[(binder, 5, 7, 5)],
+            &[("fixed", 10, 8, 5), ("fixed", 1, 14, 2)],
+            1,
+        );
+        assert!(s.at(StackId(0)).has(crate::StackTraits::FLIES), "{binder}");
+        let events = hit(&mut s, &r, 1, (7, 5));
+        assert_eq!(
+            strike_spells(&r, &events),
+            vec![(0, 1, String::from("tether"))],
+            "{binder}"
+        );
+        assert!(crate::binds::is_bound(&s, StackId(1)), "{binder}");
+        // Its next move, one `Moved` across the field: the Bind ends first.
+        activate(&mut s, 0);
+        let events = act(&mut s, &r, Command::Move { to: at(&r, 3, 2) }).unwrap();
+        let ended = Event::public(EventKind::EffectEnded {
+            target: StackId(1),
+            spell: spell(&r, "tether"),
+        });
+        let moved = |e: &Event| matches!(e.kind, EventKind::Moved { stack, .. } if stack.0 == 0);
+        assert_eq!(events.iter().filter(|e| moved(e)).count(), 1, "{binder}");
+        let end = events.iter().position(|e| *e == ended);
+        assert!(
+            end.is_some() && end < events.iter().position(moved),
+            "{binder}: {events:?}"
+        );
+        assert!(!crate::binds::is_bound(&s, StackId(1)), "{binder}");
+        assert_eq!(s.binds.by[1], 0, "{binder}");
+        assert!(on(&s, &r, 1).is_empty(), "{binder}");
+        // The stack moves again.
+        activate(&mut s, 1);
+        act(&mut s, &r, Command::Move { to: at(&r, 8, 6) }).unwrap();
+    }
+}
+
+// covers: BAT-MAG-045, BAT-MAG-035
+#[test]
+fn a_stack_a_binders_strike_killed_is_bound_by_its_next_strike_once_raised() {
+    // BAT-QUIRK-21's second half (exploit-fix, no flag; the user, BAT-Q8): the original lists a
+    // binder on a stack its strike killed (0x440500 does not ask whether the stack lives), so
+    // once the stack is raised that binder's next strike binds nothing. The engine lists a
+    // binder only on a living stack: the raised stack is bound by its next strike as by any.
+    let r = ruleset();
+    let mut raiser = super::spells::mage(&r, &["rise"]);
+    raiser.magic.mana = 100;
+    let mut s = arena(
+        &r,
+        [None, Some(raiser)],
+        &[("binder", 1, 7, 5)],
+        &[("serf", 1, 8, 5), ("fixed", 1, 14, 2)],
+        1,
+    );
+    // The lone serf (10/10, 10 HP, alive: Resurrection raises it) is wounded to its last hit
+    // point: the binder's strike kills it.
+    s.stacks.as_mut_slice()[1].top_hp = 1;
+    let events = hit(&mut s, &r, 1, (7, 5));
+    assert!(!s.at(StackId(1)).is_alive());
+    assert!(strike_spells(&r, &events).is_empty());
+    assert!(!crate::binds::is_bound(&s, StackId(1)));
+    assert_eq!(s.binds.by[1], 0);
+    // The defender's hero raises it: back on its hex, unbound, without binders.
+    activate(&mut s, 2);
+    let rise = super::spells::cast(&r, "rise", super::spells::stack(1));
+    act(&mut s, &r, rise).unwrap();
+    assert!(s.at(StackId(1)).is_alive());
+    assert_eq!(s.at(StackId(1)).hex, at(&r, 8, 5));
+    assert!(!crate::binds::is_bound(&s, StackId(1)));
+    assert_eq!(s.binds.by[1], 0);
+    // The same binder strikes it again: bound, the binder its one binder.
+    activate(&mut s, 0);
+    let events = hit(&mut s, &r, 1, (7, 5));
+    assert!(s.at(StackId(1)).is_alive());
+    assert_eq!(
+        strike_spells(&r, &events),
+        vec![(0, 1, String::from("tether"))]
+    );
+    assert!(crate::binds::is_bound(&s, StackId(1)));
+    assert_eq!(s.binds.by[1], 1);
+    assert_eq!(on(&s, &r, 1), vec![(String::from("tether"), Some(255), 0)]);
+}
+
 // covers: BAT-MAG-045, BAT-MAG-038
 #[test]
 fn a_binding_clone_that_vanishes_with_its_original_frees_the_stack_it_binds() {
