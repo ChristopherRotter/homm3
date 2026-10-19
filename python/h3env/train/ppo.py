@@ -69,6 +69,13 @@ class Config:
     eval_start: bool = True
     device: str = "auto"
     torch_threads: int = 0
+    #: The share of episodes in which a frozen earlier network (from the pool) plays one side,
+    #: drawn per episode (self-play otherwise; design §8.2, T8c).
+    pool_share: float = 0.5
+    #: Snapshots the pool holds; when full, a new one replaces a random one (ages stay spread).
+    pool_size: int = 8
+    #: Updates between snapshots (the first after this many).
+    pool_every: int = 25
 
 
 class Rollout:
@@ -106,11 +113,12 @@ class Rollout:
         self.truncated.fill(False)
         self.cast.fill(False)
 
-    def store(self, t: int, batch: BattleBatch, choice: Choice) -> None:
-        """Call `t`'s samples: the batch's outputs before the step and the chosen actions."""
+    def store(self, t: int, batch: BattleBatch, choice: Choice, side: np.ndarray) -> None:
+        """Call `t`'s samples: the batch's outputs before the step, the chosen actions and each
+        row's learning side (-1 where none: no side to move, or a frozen network's move)."""
         self.obs[t] = batch.obs
         self.entry_mask[t] = batch.entry_mask
-        self.side[t] = batch.to_move
+        self.side[t] = side
         self.entry[t] = choice.entry
         self.cast[t] = choice.cast
         if choice.cast.any():
@@ -255,6 +263,52 @@ class Trainer:
         self.samples = 0
         self.updates = 0
         self.episodes = 0
+        self.best = -1.0
+        #: The opponent pool (frozen snapshots) and, per env, the side its current episode's
+        #: frozen network plays (-1: self-play) and that network.
+        self.pool: list[Policy] = []
+        self.pool_rng = np.random.default_rng(c.seed)
+        self.frozen_side = np.full(c.envs, -1, np.int8)
+        self.frozen_net: list[Policy | None] = [None] * c.envs
+
+    def assign(self, envs: np.ndarray) -> None:
+        """Draws the opponent of each of `envs`' new episodes: a frozen network for one side with
+        `pool_share` once the pool holds one, else self-play."""
+        rng, c = self.pool_rng, self.config
+        for e in envs:
+            if self.pool and rng.random() < c.pool_share:
+                self.frozen_side[e] = rng.integers(2)
+                self.frozen_net[e] = self.pool[rng.integers(len(self.pool))]
+            else:
+                self.frozen_side[e] = -1
+                self.frozen_net[e] = None
+
+    def snapshot(self) -> None:
+        """Adds the current network to the pool (replacing a random one when it is full)."""
+        twin = self.policy.frozen()
+        if len(self.pool) < self.config.pool_size:
+            self.pool.append(twin)
+        else:
+            self.pool[self.pool_rng.integers(len(self.pool))] = twin
+
+    def act(self) -> tuple[Choice, np.ndarray]:
+        """Every row's action, the frozen networks' rows overwritten by theirs; and each row's
+        learning side (-1 for no side to move or a frozen network's move)."""
+        b = self.batch
+        choice = self.policy.act(b, self.generator)
+        to_move = b.to_move
+        frozen = (to_move >= 0) & (self.frozen_side == to_move)
+        groups: dict[int, tuple[Policy, list[int]]] = {}
+        for e in np.nonzero(frozen)[0]:
+            net = self.frozen_net[e]
+            groups.setdefault(id(net), (net, []))[1].append(int(e))
+        for net, envs in groups.values():
+            rows = np.array(envs)
+            c = net.act(b, self.generator, rows=rows)
+            for name in ("entry", "spell", "target", "second"):
+                getattr(choice, name)[rows] = getattr(c, name)
+            choice.cast[rows] = False
+        return choice, np.where(frozen, -1, to_move).astype(np.int8)
 
     def collect(self) -> dict:
         """Plays one rollout; returns its episodes' statistics."""
@@ -266,12 +320,13 @@ class Trainer:
         truncated = 0
         decisions = 0
         start = time.perf_counter()
+        pool_episodes = pool_won = 0
         for t in range(c.rollout):
-            choice = self.policy.act(b, self.generator)
-            r.store(t, b, choice)
-            live = b.to_move >= 0
+            choice, side = self.act()
+            r.store(t, b, choice, side)
+            live = side >= 0
             decisions += int(live.sum())
-            self.opened[rows[live], b.to_move[live].astype(np.intp)] = t
+            self.opened[rows[live], side[live].astype(np.intp)] = t
             self.book.act(b)
             a = b.actions
             a["entry"], a["spell"] = choice.entry, choice.spell
@@ -295,17 +350,26 @@ class Trainer:
             self.opened[e, s] = -1
             done = np.nonzero(b.done)[0]
             if len(done):
-                res = b.result[done]
+                pooled = self.frozen_side[done] >= 0
+                own = done[~pooled]
+                res = b.result[own]
                 for value in res[res >= 0]:
                     results[int(value)] += 1
-                truncated += int(b.truncated[done].sum())
+                truncated += int(b.truncated[own].sum())
+                # The learner's side is the one the frozen network does not play.
+                learner = 1 - self.frozen_side[done[pooled]]
+                pool_episodes += len(learner)
+                pool_won += int((b.result[done[pooled]] == learner).sum())
                 self.episodes += len(done)
                 self.train_seeds.update(int(x) for x in b.episode_seed[done])
+                self.assign(done)
         elapsed = time.perf_counter() - start
         with torch.no_grad():
             obs = torch.from_numpy(b.obs).to(self.device)
             self.last_value = self.policy.value(self.policy.features(obs)).cpu().numpy()
-        self.last_side = b.to_move.copy()
+        # A frozen network to move: the learner's transition stays open (left out).
+        frozen = (b.to_move >= 0) & (self.frozen_side == b.to_move)
+        self.last_side = np.where(frozen, -1, b.to_move).astype(np.int8)
         ended = int(results.sum()) + truncated
         return {
             "decisions": decisions,
@@ -313,6 +377,9 @@ class Trainer:
             "episodes": ended,
             "attacker_won": int(results[_ffi.RESULT_ATTACKER]) / max(ended, 1),
             "truncated": truncated / max(ended, 1),
+            "pool": len(self.pool),
+            "pool_episodes": pool_episodes,
+            "pool_won": pool_won / max(pool_episodes, 1),
         }
 
     def update(self, lr: float) -> dict:
@@ -404,8 +471,9 @@ def train(
     log: Callable[[dict], None] | None = None,
 ) -> Trainer:
     """Trains for `config.minutes` (or `config.updates`) with evaluations every
-    `config.eval_every` minutes and at the end; writes `config.json`, `metrics.jsonl` and
-    `checkpoint.pt` into `out` when given."""
+    `config.eval_every` minutes and at the end; writes `config.json`, `metrics.jsonl`,
+    `checkpoint.pt` (the last evaluation's) and `best.pt` (the best sampled rate's) into `out`
+    when given. The final evaluation reuses the last one if no update came between."""
     trainer = Trainer(config)
     if out is not None:
         out.mkdir(parents=True, exist_ok=True)
@@ -431,28 +499,34 @@ def train(
     start = time.perf_counter()
     budget = config.minutes * 60.0
     last_eval = start
+    last_record: dict = {}
 
     def run_eval(final: bool, baseline: bool = False) -> None:
-        nonlocal last_eval
+        nonlocal last_eval, last_record
         held_out = trainer.held_out_check()
         if not held_out:
             raise RuntimeError("an evaluation episode's seed was played in training")
         t0 = time.perf_counter()
         result = evaluate(trainer.policy, config, baseline=baseline)
-        emit(
-            {
-                "eval": True,
-                "final": final,
-                "update": trainer.updates,
-                "samples": trainer.samples,
-                "minutes": (time.perf_counter() - start) / 60,
-                "held_out": held_out,
-                "eval_s": time.perf_counter() - t0,
-                **result,
-            }
-        )
+        rate = result["sampled"]["win_rate"]
+        improved = rate > trainer.best
+        trainer.best = max(trainer.best, rate)
+        last_record = {
+            "eval": True,
+            "final": final,
+            "update": trainer.updates,
+            "samples": trainer.samples,
+            "minutes": (time.perf_counter() - start) / 60,
+            "held_out": held_out,
+            "eval_s": time.perf_counter() - t0,
+            "best": trainer.best,
+            **result,
+        }
+        emit(last_record)
         if out is not None:
             trainer.checkpoint(out / "checkpoint.pt")
+            if improved:
+                trainer.checkpoint(out / "best.pt")
         last_eval = time.perf_counter()
 
     if config.eval_start:
@@ -482,9 +556,14 @@ def train(
                 **stats,
             }
         )
+        if config.pool_share > 0 and trainer.updates % config.pool_every == 0:
+            trainer.snapshot()
         if config.eval_every and now - last_eval >= config.eval_every * 60:
             run_eval(final=False)
-    run_eval(final=True)
+    if last_record.get("update") == trainer.updates:
+        emit({**last_record, "final": True, "repeated": True})
+    else:
+        run_eval(final=True)
     if metrics is not None:
         metrics.close()
     return trainer

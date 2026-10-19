@@ -353,3 +353,42 @@ The full record of done tasks (the epic file keeps one line each).
   garrison is one week's growth against a hero's army: Random defends it 0.28). 80 % overall
   needs the defender at about 0.6 to 0.65 with the attacker near 0.97.
 - **Left:** T8c, the hour on the user's machine (QUEUE).
+
+## T8c — The first hour on the user's machine; the opponent pool (2026-10-19)
+
+- #260 merged. **The user's run** (GTX 1070, Ryzen 9 3900X, the defaults: 256 envs, 60 minutes):
+  936 updates, about 30 M samples (8 500 per second over the hour, its 12 minutes of
+  evaluations included), against Random on the 1 000 held-out
+  episodes per side (sampled; attacker, defender; greedy):
+
+  | Minutes | Sampled | Attacker | Defender | Greedy |
+  |---|---|---|---|---|
+  | 0 (untrained) | 0.500 | 0.717 | 0.284 | 0.317 |
+  | 11.7 | **0.779** | 0.930 | 0.628 | 0.701 |
+  | 23.8 | 0.726 | 0.932 | 0.519 | 0.681 |
+  | 35.9 | 0.725 | 0.936 | 0.514 | 0.695 |
+  | 48.0 | 0.724 | 0.930 | 0.517 | 0.692 |
+  | 60.5 | 0.721 | 0.906 | 0.536 | 0.669 |
+
+  Random itself 0.502. Exit criterion 7 not met (0.721; the peak 0.779). The attacker saturated
+  near 0.93; the defender peaked and lost ten points, then stayed flat: naive self-play drift
+  (the defender learns against its own, ever stronger attacker, which Random is not). A longer
+  run would not help (flat from minute 24). The final evaluation ran twice (one fell due just
+  before the budget): fixed.
+- **The user** chose an opponent pool over the hero kind alone, a revised criterion or training
+  against Random (design §8.2). Built: `Config.pool_share` (0.5), `pool_size` (8),
+  `pool_every` (25); `Trainer.assign` draws each new episode's opponent (a frozen snapshot on a
+  random side, else self-play), `Trainer.act` routes the frozen side's rows to its network
+  (`Policy.act(rows=...)`), the rollout keeps only the learner's decisions (`Rollout.store`'s
+  `side`; the learner's transition spans the frozen moves, `SeatBook` unchanged), the rollout's
+  last value only where the learner is to move; per rollout `pool`, `pool_episodes`,
+  `pool_won`; `best.pt` at the best sampled rate; the final evaluation reuses the last one when
+  no update came between. Tests: a subset of rows chooses as the whole batch's same rows; a
+  frozen network plays its side and only the learner's decisions are samples; a run's pool and
+  `best.pt`; the reused final evaluation. 29 Python tests pass.
+- **The sandbox's check** (CPU, 20 minutes, 66 updates, 1.65 M samples, `--pool-every 5`, 200
+  held-out episodes per side): sampled 0.51 → 0.67 (10 minutes) → **0.76** (attacker 0.91,
+  defender 0.61: hero 0.70, siege with a hero 0.59, a garrison 0.31); the naive run of T8b had
+  0.68 at the same point. The pool filled (8), the learner beat its frozen past selves 0.54 →
+  0.64 of the pool episodes; updates hold about 24 000 samples (the frozen side's moves do not
+  train). Too short to show whether the drift is gone: that is the next hour on the GTX 1070.

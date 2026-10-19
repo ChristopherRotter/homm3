@@ -8,14 +8,13 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 increment 3 done 2026-10-19 (#253, #255, #257, #258); increment 4 cut 2026-10-19: T8 before T7
 (T8a, T8b done 2026-10-19).
 
-1. **T8c The smoke run** on the user's machine (the GTX 1070; epic, increment 4; T8a and T8b
-   done, design §8): after this branch merged, in `python/` of the user's conda setup
-   (`python/README.md`): `cargo build --release -p h3-ffi`, `uv sync --group train`, `uv run
-   --group train python -m h3env.train --minutes 60 --out runs/smoke`. Exit criterion 7: the
-   final evaluation's sampled `win_rate` at least 0.8 (design §8.2). Record the evaluations'
-   lines, the samples per second and `config.json`'s device in `E05-log.md`; if the hour falls
-   short, the fallbacks are the hero kind alone (`--kinds 0,0,1,0,0,0`, design §8.2) or a longer
-   run, the user's call. Then increment 4's checkpoint (T7 next).
+1. **T8c The smoke run** on the user's machine (the GTX 1070; epic, increment 4; design §8):
+   `in progress` 2026-10-19. The first hour (naive self-play) peaked at 0.779 and ended at
+   0.721 (`E05-log.md`); the opponent pool is built. Next: the hour again with the pool, after
+   its pull request merged: `cargo build --release -p h3-ffi`, `uv sync --group train`, `uv run
+   --group train python -m h3env.train --minutes 60 --out runs/pool` in `python/`. Exit
+   criterion 7: the final evaluation's sampled `win_rate` at least 0.8 (design §8.2). Record the
+   evaluations' lines in `E05-log.md`. Then increment 4's checkpoint (T7 next).
 
 ## Inbox
 

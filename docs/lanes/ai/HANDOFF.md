@@ -8,9 +8,11 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E05** (`docs/epics/E05-battle-env.md`): in progress. Increments 1 (T1, T2), 2 (T3a–T3d,
   T4; #252) and 3 (T5a #253, T5b1 and T5b2 #255, T6a #257, T6b and the head calls #258) done.
   **Increment 4** (cut 2026-10-19 at the user's checkpoint): T8 smoke training before T7;
-  T8a (design §8, AI-Q5) and T8b (`python/h3env/train/`, C ABI v29) done on
-  `claude/exciting-pasteur-7etga9`, pull request #260 (open: watch it until it merges). **Next:** T8c,
-  the hour on the user's GTX 1070 (QUEUE), then the checkpoint (T7 next).
+  T8a (design §8, AI-Q5) and T8b (`python/h3env/train/`, C ABI v29; #260) done. **T8c in
+  progress:** the first hour peaked at 0.779 against Random (0.721 final); the opponent pool
+  is built on `claude/exciting-pasteur-7etga9`, pull request #264 (open: watch it until it
+  merges); next the hour again
+  with it (QUEUE), then the checkpoint (T7 next).
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v29 (T8b: seats for the encounter source) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q6, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
@@ -64,6 +66,14 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-19 — T8c: the first hour; the opponent pool
+
+- The user's hour (GTX 1070) with naive self-play: 0.779 at 12 minutes, 0.721 at the end; the
+  defender regressed (0.63 → 0.52), the attacker held at 0.93 (`E05-log.md`). The user chose an
+  opponent pool (design §8.2); built with `best.pt` and the double final evaluation fixed.
+- #260 merged and its remote branch was deleted: the follow-up restarted the branch from
+  `master` (a plain push recreates it; `--force-with-lease` fails on the stale ref).
+
 ### 2026-10-19 — T8a, the smoke training's design; T8b, the trainer and C ABI v29
 
 - #259 had merged. The user chose T8a then T8b, an own PPO; reviewed design §8 (AI-Q5): all
@@ -86,12 +96,3 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   with uv, `python/README.md`). Checkpoint: increment 4 = T8 before T7. Trap for the global
   HANDOFF: a cargo call before `sandbox-setup.sh` makes rustup fetch the pinned toolchain
   without `llvm-tools` (coverage fails; `rustup component add llvm-tools-preview`).
-
-### 2026-10-19 — T6a, the Python binding; the batch workloads' rows
-
-- #254 and #255 had merged. The user chose T6a and a `shared/` pull request for the workloads'
-  rows in `benches/README.md` (the inbox item).
-- Built `python/` (`h3env`: `_ffi`, `BattleBatch`, `SeatBook`, `tools.Env`, `bench`; 19 pytest
-  tests, the batch bit for bit as single envs on `full` and `siege`); uv.lock without torch.
-  Python's steps/s against `h3 ai bench` in `E05-log.md`; the head calls' cost in the inbox.
-- PyTorch's index still refused in a new session (T6b, QUEUE).
