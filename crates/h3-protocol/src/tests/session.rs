@@ -1768,11 +1768,13 @@ fn a_hidden_quicksand_leaves_the_other_viewers_bytes_unchanged() {
 }
 
 /// Every frame of a game of the `siege` scenario with `seed`, its town with an Escape Tunnel or
-/// without, which a spectator watches from the start and [`play`] plays for 40 commands: the
-/// attacker's, the defender's and the spectator's.
+/// without and its defender led by the `full` scenario's defending hero (a side retreats only
+/// with a hero, BAT-FLE-001), which a spectator watches from the start and [`play`] plays for 40
+/// commands: the attacker's, the defender's and the spectator's.
 fn siege_frames(tunnel: bool, seed: u64) -> [Vec<String>; 3] {
     let (r, mut setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_SIEGE).unwrap();
     setup.siege.as_mut().unwrap().escape_tunnel = tunnel;
+    setup.heroes[1] = full().1.heroes[1].clone();
     let config = GameConfig {
         setup,
         ..config(seed)

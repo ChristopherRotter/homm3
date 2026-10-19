@@ -786,7 +786,10 @@ fn a_creatures_cast_targets_come_from_the_rules() {
             break actor;
         }
         let other = actor.opponent();
-        assert!(map::query(&state, &ruleset, other, query).is_empty(), "not its stack");
+        assert!(
+            map::query(&state, &ruleset, other, query).is_empty(),
+            "not its stack"
+        );
         let defend = map::command_to_engine(Command::Defend {});
         h3_battle::apply(&mut state, &ruleset, actor, defend, &mut NoopSink).unwrap();
         defended += 1;
@@ -795,7 +798,10 @@ fn a_creatures_cast_targets_come_from_the_rules() {
     let targets = map::query(&state, &ruleset, actor, query);
     let mut engine = h3_battle::CastTargets::new();
     h3_battle::creature_cast_targets(&state, &ruleset, actor, &mut engine);
-    assert_eq!(targets, engine.iter().map(|&t| map::target(t)).collect::<Vec<_>>());
+    assert_eq!(
+        targets,
+        engine.iter().map(|&t| map::target(t)).collect::<Vec<_>>()
+    );
     for &target in &targets {
         let cast = map::command_to_engine(Command::CreatureCast { target });
         assert_eq!(h3_battle::validate(&state, &ruleset, actor, cast), Ok(()));
